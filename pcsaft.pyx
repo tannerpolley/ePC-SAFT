@@ -102,14 +102,14 @@ def create_assoc_matrix(params):
     return params
 
 def ensure_numpy_input(x, params):
-    if type(x) == np.float_:
-        x = np.asarray([x])
-    if type(params['m']) == np.float_:
-        params['m'] = np.asarray([params['m']])
-    if type(params['s']) == np.float_:
-        params['s'] = np.asarray([params['s']])
-    if type(params['e']) == np.float_:
-        params['e'] = np.asarray([params['e']])
+    if np.isscalar(x):
+        x = np.asarray([x], dtype=float)
+    if np.isscalar(params['m']):
+        params['m'] = np.asarray([params['m']], dtype=float)
+    if np.isscalar(params['s']):
+        params['s'] = np.asarray([params['s']], dtype=float)
+    if np.isscalar(params['e']):
+        params['e'] = np.asarray([params['e']], dtype=float)
     return x, params
 
 def pcsaft_p(t, rho, x, params):

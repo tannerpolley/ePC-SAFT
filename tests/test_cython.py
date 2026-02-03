@@ -1489,3 +1489,4 @@ def test_pressure(print_result=False):
         print('    PC-SAFT:', calc, 'Pa')
         print('    Relative deviation:', (calc-ref)/ref*100, '%')
     assert abs((calc-ref)/ref*100) < 1e-6
+

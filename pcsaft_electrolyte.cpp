@@ -21,7 +21,7 @@ using std::vector;
 vector<double> XA_find(vector<double> XA_guess, vector<double> delta_ij, double den,
     vector<double> x) {
     /**Iterate over this function in order to solve for XA*/
-    int num_sites = XA_guess.size();
+    int num_sites = static_cast<int>(XA_guess.size());
     vector<double> XA = XA_guess;
 
     int idxij = -1; // index for delta_ij
@@ -41,7 +41,7 @@ vector<double> XA_find(vector<double> XA_guess, vector<double> delta_ij, double 
 vector<double> dXAdt_find(vector<double> delta_ij, double den,
     vector<double> XA, vector<double> ddelta_dt, vector<double> x) {
     /**Solve for the derivative of XA with respect to temperature.*/
-    int num_sites = XA.size();
+    int num_sites = static_cast<int>(XA.size());
     Eigen::MatrixXd B = Eigen::MatrixXd::Zero(num_sites, 1);
     Eigen::MatrixXd A = Eigen::MatrixXd::Zero(num_sites, num_sites);
 
@@ -71,8 +71,8 @@ vector<double> dXAdx_find(vector<int> assoc_num, vector<double> delta_ij,
     double den, vector<double> XA, vector<double> ddelta_dx, vector<double> x) {
     /**Solve for the derivative of XA with respect to composition, or actually
     rho_i (the molar density of component i, which equals x_i * rho).*/
-    int num_sites = XA.size();
-    int ncomp = assoc_num.size();
+    int num_sites = static_cast<int>(XA.size());
+    int ncomp = static_cast<int>(assoc_num.size());
     Eigen::MatrixXd B(num_sites*ncomp, 1);
     Eigen::MatrixXd A = Eigen::MatrixXd::Zero(num_sites*ncomp, num_sites*ncomp);
 
@@ -112,7 +112,7 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, add_args &cppargs) {
     /**
     Calculate the compressibility factor.
     */
-    int ncomp = x.size(); // number of components
+    int ncomp = static_cast<int>(x.size()); // number of components
     vector<double> d (ncomp);
     for (int i = 0; i < ncomp; i++) {
         d[i] = cppargs.s[i]*(1-0.12*exp(-3*cppargs.e[i]/t));
@@ -321,7 +321,7 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, add_args &cppargs) {
         for(std::vector<int>::iterator it = cppargs.assoc_num.begin(); it != cppargs.assoc_num.end(); ++it) {
             num_sites += *it;
             for (int i = 0; i < *it; i++) {
-                iA.push_back(it - cppargs.assoc_num.begin());
+                iA.push_back(static_cast<int>(it - cppargs.assoc_num.begin()));
             }
         }
 
@@ -461,7 +461,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
     /**
     Calculate the natural logarithm of the fugacity coefficients for one phase of the system.
     */
-    int ncomp = x.size(); // number of components
+    int ncomp = static_cast<int>(x.size()); // number of components
     vector<double> d (ncomp);
     for (int i = 0; i < ncomp; i++) {
         d[i] = cppargs.s[i]*(1-0.12*exp(-3*cppargs.e[i]/t));
@@ -796,7 +796,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
         for(std::vector<int>::iterator it = cppargs.assoc_num.begin(); it != cppargs.assoc_num.end(); ++it) {
             num_sites += *it;
             for (int i = 0; i < *it; i++) {
-                iA.push_back(it - cppargs.assoc_num.begin());
+                iA.push_back(static_cast<int>(it - cppargs.assoc_num.begin()));
             }
         }
 
@@ -951,7 +951,7 @@ vector<double> pcsaft_fugcoef_cpp(double t, double rho, vector<double> x, add_ar
     /**
     Calculate the fugacity coefficients for one phase of the system.
     */
-    int ncomp = x.size(); // number of components
+    int ncomp = static_cast<int>(x.size()); // number of components
     vector<double> lnfug = pcsaft_lnfug_cpp(t, rho, x, cppargs);
     vector<double> fugcoef(ncomp, 0);
     for (int i = 0; i < ncomp; i++) {
@@ -978,7 +978,7 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, add_args &cppargs
     /**
     Calculate the residual Helmholtz energy
     */
-    int ncomp = x.size(); // number of components
+    int ncomp = static_cast<int>(x.size()); // number of components
     vector<double> d (ncomp);
     for (int i = 0; i < ncomp; i++) {
         d[i] = cppargs.s[i]*(1-0.12*exp(-3*cppargs.e[i]/t));
@@ -1159,7 +1159,7 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, add_args &cppargs
         for(std::vector<int>::iterator it = cppargs.assoc_num.begin(); it != cppargs.assoc_num.end(); ++it) {
             num_sites += *it;
             for (int i = 0; i < *it; i++) {
-                iA.push_back(it - cppargs.assoc_num.begin());
+                iA.push_back(static_cast<int>(it - cppargs.assoc_num.begin()));
             }
         }
 
@@ -1256,7 +1256,7 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, add_args &cppargs
     Calculate the temperature derivative of the residual Helmholtz energy at
     constant density.
     */
-    int ncomp = x.size(); // number of components
+    int ncomp = static_cast<int>(x.size()); // number of components
     vector<double> d (ncomp), dd_dt(ncomp);
     for (int i = 0; i < ncomp; i++) {
         d[i] = cppargs.s[i]*(1-0.12*exp(-3*cppargs.e[i]/t));
@@ -1485,7 +1485,7 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, add_args &cppargs
         for(std::vector<int>::iterator it = cppargs.assoc_num.begin(); it != cppargs.assoc_num.end(); ++it) {
             num_sites += *it;
             for (int i = 0; i < *it; i++) {
-                iA.push_back(it - cppargs.assoc_num.begin());
+                iA.push_back(static_cast<int>(it - cppargs.assoc_num.begin()));
             }
         }
 
@@ -1635,8 +1635,8 @@ vector<double> flashTQ_cpp(double t, double Q, vector<double> x, add_args &cppar
         output = outerTQ(p_guess, t, Q, x, cppargs);
         solution_found = true;
     }
-    catch (const SolutionError& ex) {}
-    catch (const ValueError& ex) {}
+    catch (const SolutionError&) {}
+    catch (const ValueError&) {}
 
     // if solution hasn't been found, try cycling through a range of pressures
     if (!solution_found) {
@@ -1648,9 +1648,9 @@ vector<double> flashTQ_cpp(double t, double Q, vector<double> x, add_args &cppar
             try {
                 output = outerTQ(pow(10, p_guess), t, Q, x, cppargs);
                 solution_found = true;
-            } catch (const SolutionError& ex) {
+            } catch (const SolutionError&) {
                 p_guess += p_step;
-            } catch (const ValueError& ex) {
+            } catch (const ValueError&) {
                 p_guess += p_step;
             }
         }
@@ -1669,7 +1669,6 @@ vector<double> flashTQ_cpp(double t, double Q, vector<double> x, add_args &cppar
         output = outerTQ(p_guess, t, Q, x, cppargs);
     } catch (const SolutionError& ex) {
         throw ex;
-        output = flashTQ_cpp(t, Q, x, cppargs); // call function without an initial guess
     }
 
     return output;
@@ -1685,8 +1684,8 @@ vector<double> flashPQ_cpp(double p, double Q, vector<double> x, add_args &cppar
         output = outerPQ(t_guess, p, Q, x, cppargs);
         solution_found = true;
     }
-    catch (const SolutionError& ex) {}
-    catch (const ValueError& ex) {}
+    catch (const SolutionError&) {}
+    catch (const ValueError&) {}
 
     // if solution hasn't been found, try calling the flash function directly with a range of initial temperatures
     if (!solution_found) {
@@ -1702,9 +1701,9 @@ vector<double> flashPQ_cpp(double p, double Q, vector<double> x, add_args &cppar
             try {
                 output = outerPQ(t_guess, p, Q, x, cppargs);
                 solution_found = true;
-            } catch (const SolutionError& ex) {
+            } catch (const SolutionError&) {
                 t_guess -= t_step;
-            } catch (const ValueError& ex) {
+            } catch (const ValueError&) {
                 t_guess -= t_step;
             }
         }
@@ -1721,7 +1720,7 @@ vector<double> flashPQ_cpp(double p, double Q, vector<double> x, add_args &cppar
     vector<double> output;
     try {
         output = outerPQ(t_guess, p, Q, x, cppargs);
-    } catch (const SolutionError& ex) {
+    } catch (const SolutionError&) {
         output = flashPQ_cpp(p, Q, x, cppargs); // call function without an initial guess
     }
 
@@ -1731,7 +1730,7 @@ vector<double> flashPQ_cpp(double p, double Q, vector<double> x, add_args &cppar
 
 vector<double> outerPQ(double t_guess, double p, double Q, vector<double> x, add_args &cppargs) {
     // Based on the algorithm proposed in H. A. J. Watson, M. Vikse, T. Gundersen, and P. I. Barton, “Reliable Flash Calculations: Part 1. Nonsmooth Inside-Out Algorithms,” Ind. Eng. Chem. Res., vol. 56, no. 4, pp. 960–973, Feb. 2017, doi: 10.1021/acs.iecr.6b03956.
-    int ncomp = x.size();
+    int ncomp = static_cast<int>(x.size());
     double TOL = 1e-8;
     double MAXITER = 200;
 
@@ -1753,7 +1752,7 @@ vector<double> outerPQ(double t_guess, double p, double Q, vector<double> x, add
     std::vector<double>::iterator water_iter = std::find(cppargs.e.begin(), cppargs.e.end(), 353.9449);
     int water_idx = -1;
     if (water_iter != cppargs.e.end()) {
-        water_idx = std::distance(cppargs.e.begin(), water_iter);
+        water_idx = static_cast<int>(std::distance(cppargs.e.begin(), water_iter));
         cppargs.s[water_idx] = calc_sigma(t, &calc_water_sigma);
         cppargs.dielc = dielc_water(t); // Right now only aqueous mixtures are supported. Other solvents could be modeled by replacing the dielc_water function.
     }
@@ -1950,7 +1949,7 @@ vector<double> outerPQ(double t_guess, double p, double Q, vector<double> x, add
 
 vector<double> outerTQ(double p_guess, double t, double Q, vector<double> x, add_args &cppargs) {
     // Based on the algorithm proposed in H. A. J. Watson, M. Vikse, T. Gundersen, and P. I. Barton, “Reliable Flash Calculations: Part 1. Nonsmooth Inside-Out Algorithms,” Ind. Eng. Chem. Res., vol. 56, no. 4, pp. 960–973, Feb. 2017, doi: 10.1021/acs.iecr.6b03956.
-    int ncomp = x.size();
+    int ncomp = static_cast<int>(x.size());
     double TOL = 1e-8;
     double MAXITER = 200;
 
@@ -2156,7 +2155,7 @@ vector<double> outerTQ(double p_guess, double t, double Q, vector<double> x, add
 }
 
 double resid_inner(double R, double kb0, double Q, vector<double> u, vector<double> x, add_args &cppargs) {
-    int ncomp = x.size();
+    int ncomp = static_cast<int>(x.size());
     double error = 0;
 
     vector<double> pp(ncomp);
@@ -2232,7 +2231,7 @@ double pcsaft_den_cpp(double t, double p, vector<double> x, int phase, add_args 
         Molar density (mol m^-3)
     */
     // split into grid and find bounds for each root
-    int ncomp = x.size(); // number of components
+    int ncomp = static_cast<int>(x.size()); // number of components
     vector<double> x_lo, x_hi;
     int num_pts = 25;
     double err;
@@ -2313,7 +2312,7 @@ double estimate_flash_t(double p, double Q, vector<double> x, add_args &cppargs)
     Get a quick estimate of the temperature at which VLE occurs
     */
     double t_guess = _HUGE;
-    int ncomp = x.size();
+    int ncomp = static_cast<int>(x.size());
 
     double x_ions = 0.; // overall mole fraction of ions in the system
     for (int i = 0; i < ncomp; i++) {
@@ -2340,7 +2339,7 @@ double estimate_flash_t(double p, double Q, vector<double> x, add_args &cppargs)
         std::vector<double>::iterator water_iter = std::find(cppargs.e.begin(), cppargs.e.end(), 353.9449);
         int water_idx = -1;
         if (water_iter != cppargs.e.end()) {
-            water_idx = std::distance(cppargs.e.begin(), water_iter);
+            water_idx = static_cast<int>(std::distance(cppargs.e.begin(), water_iter));
             cppargs.s[water_idx] = calc_sigma(t, &calc_water_sigma);
             cppargs.dielc = dielc_water(t); // Right now only aqueous mixtures are supported for electrolyte PC-SAFT. Other solvents could be modeled by replacing the dielc_water function.
         }
@@ -2353,7 +2352,7 @@ double estimate_flash_t(double p, double Q, vector<double> x, add_args &cppargs)
             double intercept = std::log10(p1) - slope * (1/t);
             t_guess = slope / (std::log10(p) - intercept);
             guess_found = true;
-        } catch (const SolutionError& ex) {
+        } catch (const SolutionError&) {
             t_start -= t_step;
         }
     }
@@ -2370,7 +2369,7 @@ double estimate_flash_p(double t, double Q, vector<double> x, add_args &cppargs)
     Get a quick estimate of the pressure at which VLE occurs
     */
     double p_guess = _HUGE;
-    int ncomp = x.size();
+    int ncomp = static_cast<int>(x.size());
 
     double x_ions = 0.; // overall mole fraction of ions in the system
     for (int i = 0; i < ncomp; i++) {
@@ -2548,9 +2547,9 @@ add_args get_single_component(int i, add_args &cppargs) {
         args_single.assoc_num.push_back(cppargs.assoc_num[i]);
 
         if (args_single.assoc_num[0] > 0) {
-            int nassoc = cppargs.assoc_num.size();
+            int nassoc = static_cast<int>(cppargs.assoc_num.size());
             int start = 0;
-            for (int l = 0; l < (int)cppargs.assoc_num.size(); l++) {
+            for (int l = 0; l < static_cast<int>(cppargs.assoc_num.size()); l++) {
                 if (l < i) {
                     start += 1;
                 }

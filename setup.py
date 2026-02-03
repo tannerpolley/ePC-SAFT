@@ -9,10 +9,15 @@ from Cython.Build import cythonize
 import numpy as np
 import os
 
+extra_compile_args = []
+if os.name == "nt":
+    extra_compile_args.append("/wd4551")
+
 ext_modules = [
     Extension("pcsaft",
         sources=["pcsaft.pyx"],
-        language="c++")]
+        language="c++",
+        extra_compile_args=extra_compile_args)]
 
 with open("docs/README.rst", "r") as fh:
     long_description = fh.read()
@@ -29,13 +34,14 @@ setup(name='pcsaft',
       description="The PC-SAFT equation of state, including dipole, association and ion terms.",
       long_description=long_description,
       long_description_content_type="text/x-rst",
+      license="GPL-3.0-only",
+      license_files=["LICENSE"],
       url="https://github.com/zmeri/PC-SAFT",
       packages=find_packages(),
       install_requires=install_requires,
       classifiers=[
         "Programming Language :: Python :: 3",
         "Programming Language :: C++",
-        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Operating System :: Microsoft :: Windows :: Windows 10",
         "Operating System :: POSIX :: Linux",
         "Operating System :: MacOS"
