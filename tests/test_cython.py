@@ -7,7 +7,7 @@ Tests for checking that the PC-SAFT functions are working correctly.
 import numpy as np
 from pcsaft import pcsaft_den, pcsaft_hres, pcsaft_gres, pcsaft_sres
 from pcsaft import flashTQ, flashPQ, pcsaft_Hvap
-from pcsaft import dielc_water, pcsaft_osmoticC, pcsaft_fugcoef, pcsaft_miac_m
+from pcsaft import dielc_water, pcsaft_osmoticC, pcsaft_fugcoef, pcsaft_miac_m, pcsaft_gsolv
 from pcsaft import pcsaft_cp, pcsaft_ares, pcsaft_dadt, pcsaft_p
 from data.epcsaft_properties import get_prop_dict, molality_to_molefraction
 
@@ -1008,7 +1008,7 @@ def test_miac_m(print_result=False):
     params = get_prop_dict(species, x, t, user_options={'dielc_rule': 1})
     rho = pcsaft_den(t, p, x, params, phase='liq')
 
-    ref = 0.50
+    ref = 0.20
     calc = pcsaft_miac_m(t, rho, x, params, species=species)['Na+Br-']
     if print_result:
         print('\n##########  Test with NaBr in methanol ##########')
@@ -1017,6 +1017,25 @@ def test_miac_m(print_result=False):
         print('    PC-SAFT:', calc)
         print('    Relative deviation:', (calc-ref)/ref*100, '%')
     assert abs((calc-ref)/ref*100) < 100
+
+def test_gsolv(print_result=False):
+    """Test ion-wise infinite-dilution Gibbs solvation energy output format."""
+    t = 293.15 # K
+    p = 101325
+    m_salt = 1.0
+    species = ['Na+', 'Cl-', 'H2O-2B-NaCl']
+
+    x = molality_to_molefraction(m_salt, species=species)
+    params = get_prop_dict(species, x, t, user_options={'dielc_rule': 1})
+    rho = pcsaft_den(t, p, x, params, phase='liq')
+
+    calc = pcsaft_gsolv(t, rho, x, params, species=species)
+    if print_result:
+        print('\n##########  Test gsolv with NaCl in water ##########')
+        print('----- gsolv at 293.15 K -----')
+        print(calc)
+    assert set(calc.keys()) == {'Na+', 'Cl-'}
+    assert np.all(np.isfinite(list(calc.values())))
 
 
 def test_Hvap(print_result=False):
@@ -1500,4 +1519,4 @@ def test_pressure(print_result=False):
         print('    Relative deviation:', (calc-ref)/ref*100, '%')
     assert abs((calc-ref)/ref*100) < 1e-6
 
-test_miac_m(print_result=True)
+test_gsolv(print_result=True)

@@ -1167,6 +1167,37 @@ def pcsaft_gres(t, rho, x, params):
     cppargs = create_struct(params)
     return pcsaft_gres_cpp(t, rho, x, cppargs)
 
+def pcsaft_gsolv(t, rho, x, params, species=None):
+    """
+    Gibbs solvation energy at infinite dilution on the mole-fraction scale for ions.
+    """
+    x, params = ensure_numpy_input(x, params)
+    check_input(x, {'density':rho, 'temperature':t})
+    params = check_association(params)
+    cppargs = create_struct(params)
+
+    z = np.asarray(params.get('z', []), dtype=float)
+    idx_ion = np.where((np.abs(z) > 1e-12) & (x > 0))[0]
+    if len(idx_ion) == 0:
+        raise InputError('pcsaft_gsolv requires at least one present ionic species.')
+    if species is None or len(species) != len(x):
+        raise InputError('species list (matching x order) is required to label ions.')
+
+    eps = 1e-12
+    p = pcsaft_p_cpp(t, rho, x, cppargs)
+    phase = 1 if rho < 900 else 0
+    result = {}
+    for i in idx_ion:
+        x_inf = np.asarray(x, dtype=float).copy()
+        x_inf[i] = eps
+        x_inf /= np.sum(x_inf)
+        rho_inf = pcsaft_den_cpp(t, p, x_inf, phase, cppargs)
+        lnfug_inf = float(pcsaft_lnfug_cpp(t, rho_inf, x_inf, cppargs)[i])
+        if not np.isfinite(lnfug_inf):
+            raise SolutionError('Non-finite ln(fugacity coefficient) at infinite dilution.')
+        result[species[i]] = 8.31446261815324 * t * lnfug_inf
+    return result
+
 
 def pcsaft_ares(t, rho, x, params):
     """
