@@ -912,24 +912,40 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
         for (int i = 0; i < ncomp; i++) {
             summ += cppargs.z[i]*cppargs.z[i]*x[i];
         }
-        double kappa = sqrt(den*E_CHRG*E_CHRG/kb/t/(cppargs.dielc*perm_vac)*summ); // the inverse Debye screening length. Equation 4 in Held et al. 2008.
+        double eps = cppargs.dielc; // scalar dielectric constant
 
-        if (kappa != 0) {
-            vector<double> chi(ncomp);
-            vector<double> sigma_k(ncomp);
-            double summ1 = 0.;
-            double summ2 = 0.;
-            for (int i = 0; i < ncomp; i++) {
-                chi[i] = 3/pow(kappa*d[i], 3)*(1.5 + log(1+kappa*d[i]) - 2*(1+kappa*d[i]) +
-                    0.5*pow(1+kappa*d[i], 2));
-                sigma_k[i] = -2*chi[i]+3/(1+kappa*d[i]);
-                summ1 += q[i]*q[i]*x[i]*sigma_k[i];
-                summ2 += x[i]*q[i]*q[i];
+        // Debye–Hückel chemical potential (Bulow 2019 closed form, default)
+        {
+            double kappa = sqrt(den*E_CHRG*E_CHRG/kb/t/(eps*perm_vac)*summ); // inverse Debye screening length
+            if (kappa != 0) {
+                vector<double> chi(ncomp);
+                vector<double> sigma_k(ncomp);
+                double sum_q2_sigma = 0.;
+                double sum_q2 = 0.;
+                for (int i = 0; i < ncomp; i++) {
+                    double ka = kappa*d[i];
+                    chi[i] = 3/pow(ka, 3)*(1.5 + log(1+ka) - 2*(1+ka) + 0.5*pow(1+ka, 2));
+                    sigma_k[i] = -2*chi[i] + 3/(1+ka);
+                    double q2 = q[i]*q[i];
+                    sum_q2_sigma += x[i]*q2*sigma_k[i];
+                    sum_q2 += x[i]*q2;
+                }
+
+                for (int i = 0; i < ncomp; i++) {
+                    double q2 = q[i]*q[i];
+                    mu_ion[i] = -q2*kappa/(24.0*PI*kb*t*(eps*perm_vac))*
+                        (2.0*chi[i] + sum_q2_sigma/sum_q2);
+                }
             }
+        }
 
+        // Optional parity check (toggle by setting check_parity=true)
+        bool check_parity = false;
+        if (check_parity && use_bulow) {
             for (int i = 0; i < ncomp; i++) {
-                mu_ion[i] = -q[i]*q[i]*kappa/24./PI/kb/t/(cppargs.dielc*perm_vac)*
-                    (2*chi[i] + summ1/summ2);
+                if (std::abs(mu_ion_bulow[i] - mu_ion_legacy[i]) > 1e-6) {
+                    throw SolutionError("Mu_DH parity check failed: legacy vs Bulow differ.");
+                }
             }
         }
     }
