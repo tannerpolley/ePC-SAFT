@@ -903,75 +903,76 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
     // Ion term ---------------------------------------------------------------
     vector<double> mu_ion(ncomp, 0);
     if (!cppargs.z.empty()) {
-        // Toggle between implementations (Bulow 2019 composite vs legacy Held 2005 form)
-        bool use_bulow = true;      // default: Bulow 2019 composite
-        bool check_parity = false;  // set true to assert equality (only valid when dielectric is composition-independent)
-
-        vector<double> mu_ion_legacy(ncomp, 0);
-        vector<double> mu_ion_bulow(ncomp, 0);
-
-        // Convert charges to Coulombs
+        // Bulow 2019 composite form with eps(x) sensitivity (deps_dx currently zero)
         vector<double> q(cppargs.z.begin(), cppargs.z.end());
         for (int i = 0; i < ncomp; i++) {
             q[i] = q[i]*E_CHRG;
         }
 
-        // Common charge-squared sum (Q) for ions
         double Qsum = 0.;
         for (int i = 0; i < ncomp; i++) {
             Qsum += cppargs.z[i]*cppargs.z[i]*x[i];
         }
         double eps = cppargs.dielc; // scalar dielectric constant (relative)
+        vector<double> deps_dx(ncomp, 0.0); // d(eps_r)/dx_i; assumption: 8 for ions, 0 for neutrals
+        const double deps_dx_assumed = 8.0;
+        for (int i = 0; i < ncomp; i++) {
+            if (cppargs.z[i] != 0) {
+                deps_dx[i] = deps_dx_assumed;
+            }
+        }
 
         double kappa = sqrt(den*E_CHRG*E_CHRG/kb/t/(eps*perm_vac)*Qsum); // inverse Debye screening length
         if ((kappa != 0) && (Qsum != 0)) {
             vector<double> chi(ncomp, 0.0);
             vector<double> sigma_k(ncomp, 0.0);
-            double sum_q2_sigma = 0.;
-            double sum_q2 = 0.;
-            double S = 0.;     // sum x z^2 chi_i (Bulow)
-            double Tsum = 0.;  // sum x z^2 sigma_i (Bulow)
+            double S = 0.;
+            double Tsum = 0.;
 
             for (int i = 0; i < ncomp; i++) {
                 double ka = kappa*d[i];
                 chi[i] = 3/pow(ka, 3)*(1.5 + log(1+ka) - 2*(1+ka) + 0.5*pow(1+ka, 2));
                 sigma_k[i] = -2*chi[i] + 3/(1+ka);
 
-                double q2 = q[i]*q[i];
-                sum_q2_sigma += x[i]*q2*sigma_k[i];
-                sum_q2 += x[i]*q2;
-
                 S += x[i]*cppargs.z[i]*cppargs.z[i]*chi[i];
                 Tsum += x[i]*cppargs.z[i]*cppargs.z[i]*sigma_k[i];
             }
 
-            // Legacy Held et al. 2005 closed form
-            double pref_legacy = kappa/(24.0*PI*kb*t*(eps*perm_vac));
+            double inv_eps = 1.0/(eps*perm_vac);
+            double K0 = E_CHRG*E_CHRG/(12.0*PI*kb*t); // without epsilon
+
+            // dkappa/dx (Bulow 2019 with eps(x))
+            vector<double> dkappa_dx(ncomp, 0.0);
+            double Aconst = den*E_CHRG*E_CHRG/(kb*t*perm_vac);
             for (int i = 0; i < ncomp; i++) {
-                double q2 = q[i]*q[i];
-                mu_ion_legacy[i] = -q2*pref_legacy*(2.0*chi[i] + sum_q2_sigma/sum_q2);
+                dkappa_dx[i] = Aconst*( cppargs.z[i]*cppargs.z[i]/eps - Qsum*deps_dx[i]/(eps*eps) )/(2.0*kappa);
             }
 
-            // Bulow 2019 composite form: mu = a_DH + Z_DH + da_DH/dx_k - sum_j x_j da_DH/dx_j
-            double C = E_CHRG*E_CHRG/(12.0*PI*kb*t*(eps*perm_vac));
-            double a_DH = -C*kappa*S;
-            double Z_DH = -(C/2.0)*kappa*Tsum;
-            double sum_x_da = -C*kappa*(S + Tsum/2.0);
+            // dS/dx using dchi/dkappa = (sigma-chi)/kappa
+            vector<double> dS_dx(ncomp, 0.0);
             for (int i = 0; i < ncomp; i++) {
-                double dadx_i = -C*kappa*cppargs.z[i]*cppargs.z[i]*(chi[i] + Tsum/(2.0*Qsum));
-                mu_ion[i] = a_DH + Z_DH + dadx_i - sum_x_da;
+                dS_dx[i] = cppargs.z[i]*cppargs.z[i]*chi[i] + dkappa_dx[i]*(Tsum - S)/kappa;
+            }
+            // a_DH and Z_DH
+            double a_DH = -K0*kappa*inv_eps*S;
+            double Z_DH = -(K0/2.0)*kappa*inv_eps*Tsum;
+
+            // da_DH/dx_i
+            vector<double> dadx(ncomp, 0.0);
+            for (int i = 0; i < ncomp; i++) {
+                double d_inv_eps_dx = -deps_dx[i]/(perm_vac*eps*eps);
+                double term1 = (dkappa_dx[i]*inv_eps + kappa*d_inv_eps_dx)*S;
+                double term2 = kappa*inv_eps*dS_dx[i];
+                dadx[i] = -K0*(term1 + term2);
             }
 
-            // Select implementation
-//            mu_ion = use_bulow ? mu_ion_bulow : mu_ion_legacy;
+            double sum_x_dadx = 0.0;
+            for (int i = 0; i < ncomp; i++) {
+                sum_x_dadx += x[i]*dadx[i];
+            }
 
-            // Optional parity check
-            if (check_parity) {
-                for (int i = 0; i < ncomp; i++) {
-                    if (std::abs(mu_ion_bulow[i] - mu_ion_legacy[i]) > 1e-6) {
-                        throw SolutionError("Mu_DH parity check failed: legacy vs Bulow differ.");
-                    }
-                }
+            for (int i = 0; i < ncomp; i++) {
+                mu_ion[i] = a_DH + Z_DH + dadx[i] - sum_x_dadx;
             }
         }
     }
