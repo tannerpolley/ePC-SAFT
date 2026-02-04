@@ -426,6 +426,7 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, add_args &cppargs) {
 
     // Ion term ---------------------------------------------------------------
     double Zion = 0;
+    double Zborn = 0;
     if (!cppargs.z.empty()) {
         vector<double> q(cppargs.z.begin(), cppargs.z.end());
         for (int i = 0; i < ncomp; i++) {
@@ -452,7 +453,8 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, add_args &cppargs) {
         }
     }
 
-    double Z = Zid + Zhc + Zdisp + Zpolar + Zassoc + Zion;
+    // Born term (Bulow 2021a, non-SSM+DS) has no explicit density dependence.
+    double Z = Zid + Zhc + Zdisp + Zpolar + Zassoc + Zion + Zborn;
     return Z;
 }
 
@@ -900,25 +902,28 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
         }
     }
 
-    // Ion term ---------------------------------------------------------------
+    // Ion terms --------------------------------------------------------------
     vector<double> mu_ion(ncomp, 0);
+    vector<double> mu_born(ncomp, 0);
     if (!cppargs.z.empty()) {
-        // Bulow 2019 composite form with eps(x) sensitivity (deps_dx currently zero)
-        vector<double> q(cppargs.z.begin(), cppargs.z.end());
-        for (int i = 0; i < ncomp; i++) {
-            q[i] = q[i]*E_CHRG;
-        }
-
+        // Debye-Huckel term with eps(x) sensitivity
         double Qsum = 0.;
         for (int i = 0; i < ncomp; i++) {
             Qsum += cppargs.z[i]*cppargs.z[i]*x[i];
         }
         double eps = cppargs.dielc; // scalar dielectric constant (relative)
-        vector<double> deps_dx(ncomp, 0.0); // d(eps_r)/dx_i; assumption: 8 for ions, 0 for neutrals
-        const double deps_dx_assumed = 8.0;
-        for (int i = 0; i < ncomp; i++) {
-            if (cppargs.z[i] != 0) {
-                deps_dx[i] = deps_dx_assumed;
+        vector<double> deps_dx(ncomp, 0.0); // d(eps_r)/dx_i
+        if (cppargs.dielc_diff.size() == static_cast<size_t>(ncomp)) {
+            for (int i = 0; i < ncomp; i++) {
+                deps_dx[i] = cppargs.dielc_diff[i];
+            }
+        }
+        else {
+            const double deps_dx_assumed = 8.0;
+            for (int i = 0; i < ncomp; i++) {
+                if (cppargs.z[i] != 0) {
+                    deps_dx[i] = deps_dx_assumed;
+                }
             }
         }
 
@@ -938,8 +943,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
                 Tsum += x[i]*cppargs.z[i]*cppargs.z[i]*sigma_k[i];
             }
 
-            double inv_eps = 1.0/(eps*perm_vac);
-            double K0 = E_CHRG*E_CHRG/(12.0*PI*kb*t); // without epsilon
+            double K0 = E_CHRG*E_CHRG/(12.0*PI*kb*t*perm_vac); // without epsilon
 
             // dkappa/dx (Bulow 2019 with eps(x))
             vector<double> dkappa_dx(ncomp, 0.0);
@@ -954,15 +958,15 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
                 dS_dx[i] = cppargs.z[i]*cppargs.z[i]*chi[i] + dkappa_dx[i]*(Tsum - S)/kappa;
             }
             // a_DH and Z_DH
-            double a_DH = -K0*kappa*inv_eps*S;
-            double Z_DH = -(K0/2.0)*kappa*inv_eps*Tsum;
+            double a_DH = -K0*kappa/(eps)*S;
+            double Z_DH = -(K0/2.0)*kappa/(eps)*Tsum;
 
             // da_DH/dx_i
             vector<double> dadx(ncomp, 0.0);
             for (int i = 0; i < ncomp; i++) {
-                double d_inv_eps_dx = -deps_dx[i]/(perm_vac*eps*eps);
-                double term1 = (dkappa_dx[i]*inv_eps + kappa*d_inv_eps_dx)*S;
-                double term2 = kappa*inv_eps*dS_dx[i];
+                double d_inv_eps_dx = -deps_dx[i]/(eps*eps);
+                double term1 = (dkappa_dx[i]/eps + kappa*d_inv_eps_dx)*S;
+                double term2 = kappa/eps*dS_dx[i];
                 dadx[i] = -K0*(term1 + term2);
             }
 
@@ -975,13 +979,53 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
                 mu_ion[i] = a_DH + Z_DH + dadx[i] - sum_x_dadx;
             }
         }
+
+        if (cppargs.born_model == 1 || cppargs.born_model == 2) {
+            // Born term (Bulow 2021a, non-SSM+DS), Version 1 differential, a_i = sigma_i,ion
+            double born_sum = 0.;
+            for (int i = 0; i < ncomp; i++) {
+                if (cppargs.z[i] != 0) {
+                    if (cppargs.s[i] <= 0) {
+                        throw ValueError("Born term requires positive ion sigma (a_i = sigma_i,ion).");
+                    }
+                    born_sum += x[i]*cppargs.z[i]*cppargs.z[i]/cppargs.s[i];
+                }
+            }
+            double Kborn = E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac);
+            double a_born = -Kborn*(1.0 - 1.0/eps)*born_sum;
+            double Z_born = 0.0;
+
+            vector<double> dadx_born(ncomp, 0.0);
+            for (int i = 0; i < ncomp; i++) {
+                double ion_part = 0.0;
+                if (cppargs.z[i] != 0) {
+                    ion_part = (1.0 - 1.0/eps)*cppargs.z[i]*cppargs.z[i]/cppargs.s[i];
+                }
+                if (cppargs.born_model == 2) {
+                    // Eq. 133 form: scale eps-differential term by sum_j x_j z_j^2/a_j
+                    dadx_born[i] = -Kborn*(ion_part + born_sum*deps_dx[i]/(eps*eps));
+                }
+                else {
+                    // Eq. 132 form
+                    dadx_born[i] = -Kborn*(ion_part + deps_dx[i]/(eps*eps));
+                }
+            }
+
+            double sum_x_dadx_born = 0.0;
+            for (int i = 0; i < ncomp; i++) {
+                sum_x_dadx_born += x[i]*dadx_born[i];
+            }
+            for (int i = 0; i < ncomp; i++) {
+                mu_born[i] = a_born + Z_born + dadx_born[i] - sum_x_dadx_born;
+            }
+        }
     }
     double Z = pcsaft_Z_cpp(t, rho, x, cppargs);
 
     vector<double> mu(ncomp, 0);
     vector<double> lnfugcoef(ncomp, 0);
     for (int i = 0; i < ncomp; i++) {
-        mu[i] = mu_hc[i] + mu_disp[i] + mu_polar[i] + mu_assoc[i] + mu_ion[i];
+        mu[i] = mu_hc[i] + mu_disp[i] + mu_polar[i] + mu_assoc[i] + mu_ion[i] + mu_born[i];
         lnfugcoef[i] = mu[i] - log(Z); // the natural logarithm of the fugacity coefficient
     }
 
@@ -1263,6 +1307,7 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, add_args &cppargs
 
     // Ion term ---------------------------------------------------------------
     double ares_ion = 0.;
+    double ares_born = 0.;
     if (!cppargs.z.empty()) {
         vector<double> q(cppargs.z.begin(), cppargs.z.end());
         for (int i = 0; i < ncomp; i++) {
@@ -1286,9 +1331,23 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, add_args &cppargs
 
             ares_ion = -1/12./PI/kb/t/(cppargs.dielc*perm_vac)*summ;
         }
+
+        if (cppargs.born_model == 1) {
+            // Born term (Bulow 2021a, non-SSM+DS): a_i = sigma_i,ion
+            double born_sum = 0.;
+            for (int i = 0; i < ncomp; i++) {
+                if (cppargs.z[i] != 0) {
+                    if (cppargs.s[i] <= 0) {
+                        throw ValueError("Born term requires positive ion sigma (a_i = sigma_i,ion).");
+                    }
+                    born_sum += x[i]*cppargs.z[i]*cppargs.z[i]/cppargs.s[i];
+                }
+            }
+            ares_born = -E_CHRG*E_CHRG/(4.*PI*kb*t*perm_vac)*(1.-1./cppargs.dielc)*born_sum;
+        }
     }
 
-    double ares = ares_hc + ares_disp + ares_polar + ares_assoc + ares_ion;
+    double ares = ares_hc + ares_disp + ares_polar + ares_assoc + ares_ion + ares_born;
     return ares;
 }
 
@@ -1595,6 +1654,7 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, add_args &cppargs
 
     // Ion term ---------------------------------------------------------------
     double dadt_ion = 0.;
+    double dadt_born = 0.;
     if (!cppargs.z.empty()) {
         vector<double> q(cppargs.z.begin(), cppargs.z.end());
         for (int i = 0; i < ncomp; i++) {
@@ -1626,9 +1686,23 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, add_args &cppargs
             }
             dadt_ion = -1/12./PI/kb/(cppargs.dielc*perm_vac)*summ;
         }
+
+        if (cppargs.born_model == 1) {
+            // Born term temperature derivative (Eq. 151 in equations.tex, non-SSM+DS)
+            double born_sum = 0.;
+            for (int i = 0; i < ncomp; i++) {
+                if (cppargs.z[i] != 0) {
+                    if (cppargs.s[i] <= 0) {
+                        throw ValueError("Born term requires positive ion sigma (a_i = sigma_i,ion).");
+                    }
+                    born_sum += x[i]*cppargs.z[i]*cppargs.z[i]/cppargs.s[i];
+                }
+            }
+            dadt_born = E_CHRG*E_CHRG/(4.*PI*kb*perm_vac*t*t)*(1.-1./cppargs.dielc)*born_sum;
+        }
     }
 
-    double dadt = dadt_hc + dadt_disp + dadt_assoc + dadt_polar + dadt_ion;
+    double dadt = dadt_hc + dadt_disp + dadt_assoc + dadt_polar + dadt_ion + dadt_born;
     return dadt;
 }
 
@@ -2570,6 +2644,7 @@ double calc_water_sigma(double t) {
 
 add_args get_single_component(int i, add_args &cppargs) {
     add_args args_single;
+    args_single.born_model = cppargs.born_model;
     args_single.m.push_back(cppargs.m[i]);
     args_single.s.push_back(cppargs.s[i]);
     args_single.e.push_back(cppargs.e[i]);
@@ -2584,6 +2659,9 @@ add_args get_single_component(int i, add_args &cppargs) {
     if (!cppargs.z.empty()) {
         args_single.z.push_back(cppargs.z[i]);
         args_single.dielc = cppargs.dielc;
+        if (cppargs.dielc_diff.size() > static_cast<size_t>(i)) {
+            args_single.dielc_diff.push_back(cppargs.dielc_diff[i]);
+        }
     }
     if (!cppargs.assoc_num.empty()) {
         args_single.assoc_num.push_back(cppargs.assoc_num[i]);

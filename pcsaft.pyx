@@ -1440,6 +1440,9 @@ def create_struct(params):
         cppargs.z = np_to_vector_double(params['z'])
     if 'dielc' in params:
         cppargs.dielc = params['dielc']
+    if 'dielc_diff' in params:
+        cppargs.dielc_diff = np_to_vector_double(np.asarray(params['dielc_diff'], dtype=float))
+    cppargs.born_model = int(params['born_model']) if 'born_model' in params else 1
     if 'assoc_num' in params:
         cppargs.assoc_num = np_to_vector_int(params['assoc_num'])
     if 'assoc_matrix' in params:

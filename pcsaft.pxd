@@ -34,6 +34,8 @@ cdef extern from "pcsaft_electrolyte.cpp":
         vector[double] dip_num
         vector[double] z
         double dielc
+        vector[double] dielc_diff
+        int born_model
         vector[int] assoc_num
         vector[int] assoc_matrix
         vector[double] k_hb
