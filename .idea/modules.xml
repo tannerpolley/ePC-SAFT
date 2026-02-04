@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/PC-SAFT-zmeri.iml" filepath="$PROJECT_DIR$/.idea/PC-SAFT-zmeri.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/PC-SAFT.iml" filepath="$PROJECT_DIR$/.idea/PC-SAFT.iml" />
     </modules>
   </component>
 </project>
