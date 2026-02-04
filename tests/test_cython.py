@@ -7,8 +7,9 @@ Tests for checking that the PC-SAFT functions are working correctly.
 import numpy as np
 from pcsaft import pcsaft_den, pcsaft_hres, pcsaft_gres, pcsaft_sres
 from pcsaft import flashTQ, flashPQ, pcsaft_Hvap
-from pcsaft import dielc_water, pcsaft_osmoticC, pcsaft_fugcoef
+from pcsaft import dielc_water, pcsaft_osmoticC, pcsaft_fugcoef, pcsaft_miac_m
 from pcsaft import pcsaft_cp, pcsaft_ares, pcsaft_dadt, pcsaft_p
+from data.epcsaft_properties import get_prop_dict, molality_to_molefraction
 
 def test_hres(print_result=False):
     """Test the residual enthalpy function to see if it is working correctly."""
@@ -977,25 +978,13 @@ def test_osmoticC(print_result=False):
     """Test the function for calculating osmotic coefficients to see if it is working correctly."""
     # NaCl in water
     # 0 = Na+, 1 = Cl-, 2 = H2O
+
     x = np.asarray([0.0629838206, 0.0629838206, 0.8740323588])
-    m = np.asarray([1, 1, 1.2047])
-    s = np.asarray([2.8232, 2.7599589, 0.])
-    e = np.asarray([230.00, 170.00, 353.9449])
-    volAB = np.asarray([0, 0, 0.0451])
-    eAB = np.asarray([0, 0, 2425.67])
-    k_ij = np.asarray([[0, 0.317, 0],
-                       [0.317, 0, -0.25],
-                        [0, -0.25, 0]])
-    z = np.asarray([1., -1., 0.])
-
-    ref = 1.116 # source: R. A. Robinson and R. H. Stokes, Electrolyte Solutions: Second Revised Edition. Dover Publications, 1959.
     t = 293.15 # K
-    s[2] = 2.7927 + 10.11*np.exp(-0.01775*t) - 1.417*np.exp(-0.01146*t) # temperature dependent segment diameter for water
-    k_ij[0,2] = -0.007981*t + 2.37999
-    k_ij[2,0] = -0.007981*t + 2.37999
-    dielc = dielc_water(t)
 
-    params = {'m':m, 's':s, 'e':e, 'e_assoc':eAB, 'vol_a':volAB, 'k_ij':k_ij, 'z':z, 'dielc':dielc}
+    params = get_prop_dict(['Na+', 'Cl-', 'H2O-2B-NaCl'], x, t, user_options={'dielc_rule': 0})
+
+    ref = 1.116  # source: R. A. Robinson and R. H. Stokes, Electrolyte Solutions: Second Revised Edition. Dover Publications, 1959.
 
     rho = pcsaft_den(t, 2339.3, x, params, phase='liq')
     result = pcsaft_osmoticC(t, rho, x, params)
@@ -1007,6 +996,27 @@ def test_osmoticC(print_result=False):
         print('    PC-SAFT:', calc)
         print('    Relative deviation:', (calc-ref)/ref*100, '%')
     assert abs((calc-ref)/ref*100) < 2
+
+def test_miac_m(print_result=False):
+    """Test molality-scale MIAC (structure mirrors osmotic test)."""
+    t = 293.15 # K
+    p = 101325
+    m_salt = 1.0
+    species = ['Na+', 'Br-', 'Methanol']
+
+    x = molality_to_molefraction(m_salt, species=species)
+    params = get_prop_dict(species, x, t, user_options={'dielc_rule': 1})
+    rho = pcsaft_den(t, p, x, params, phase='liq')
+
+    ref = 0.50
+    calc = pcsaft_miac_m(t, rho, x, params, species=species)['Na+Br-']
+    if print_result:
+        print('\n##########  Test with NaBr in methanol ##########')
+        print('----- MIAC_m at 293.15 K -----')
+        print('    Reference:', ref)
+        print('    PC-SAFT:', calc)
+        print('    Relative deviation:', (calc-ref)/ref*100, '%')
+    assert abs((calc-ref)/ref*100) < 100
 
 
 def test_Hvap(print_result=False):
@@ -1490,3 +1500,4 @@ def test_pressure(print_result=False):
         print('    Relative deviation:', (calc-ref)/ref*100, '%')
     assert abs((calc-ref)/ref*100) < 1e-6
 
+test_miac_m(print_result=True)

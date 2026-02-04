@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # setuptools: language=c++
 
+import math
 import numpy as np
 from libcpp.vector cimport vector
 from copy import deepcopy
@@ -743,6 +744,69 @@ def pcsaft_osmoticC(t, rho, x, params):
 
     osmC = -1000*np.log(x[indx_water]*gamma)/18.0153/np.sum(molality)
     return osmC
+
+def pcsaft_miac_m(t, rho, x, params, species=None):
+    """
+    Molality-scale mean ionic activity coefficient (MIAC_m).
+    """
+    x, params = ensure_numpy_input(x, params)
+    check_input(x, {'density':rho, 'temperature':t})
+    params = check_association(params)
+    cppargs = create_struct(params)
+
+    z = np.asarray(params.get('z', []), dtype=float)
+    if z.size == 0 or np.allclose(z, 0):
+        raise InputError('pcsaft_miac_m requires ionic species (non-zero z).')
+    idx_cat = np.where(z > 0)[0]
+    idx_an = np.where(z < 0)[0]
+    idx_sol = np.where(np.abs(z) < 1e-12)[0]
+    if len(idx_cat) == 0 or len(idx_an) == 0:
+        raise InputError('pcsaft_miac_m needs at least one cation and one anion.')
+    if len(idx_sol) == 0:
+        raise InputError('pcsaft_miac_m needs a neutral solvent to define molality.')
+
+    mw = np.asarray(params['MW'], dtype=float)
+    mass_solvent = float(np.sum(x[idx_sol] * mw[idx_sol]))
+    if mass_solvent <= 0:
+        raise InputError('Solvent mass is zero; check solvent mole fraction and MW.')
+
+    fugcoef = np.asarray(pcsaft_fugcoef_cpp(t, rho, x, cppargs), dtype=float)
+
+    eps = 1e-12
+    x_inf = np.full_like(x, eps)
+    x_inf[idx_sol[0]] = max(1.0 - eps * (len(x) - 1), eps)
+    x_inf /= np.sum(x_inf)
+    rho_inf = pcsaft_den_cpp(t, pcsaft_p_cpp(t, rho, x, cppargs), x_inf, 0, cppargs)
+    fugcoef_inf = np.asarray(pcsaft_fugcoef_cpp(t, rho_inf, x_inf, cppargs), dtype=float)
+    if np.any(fugcoef_inf <= 0):
+        raise SolutionError('Non-positive fugacity at infinite dilution.')
+    gamma_i = fugcoef / fugcoef_inf
+
+    mass_neutral = x[idx_sol] * mw[idx_sol]
+    w_sf = mass_neutral / mass_neutral.sum()
+    M_solvent_mix = 1.0 / np.sum(w_sf / mw[idx_sol])
+
+    if species is None or len(species) != len(x):
+        raise InputError('species list (matching x order) is required to label salts.')
+
+    result = {}
+    for ic in idx_cat:
+        for ia in idx_an:
+            zc = int(round(abs(z[ic])))
+            za = int(round(abs(z[ia])))
+            g = math.gcd(zc, za)
+            nu_cat = za // g
+            nu_an = zc // g
+            n_salt = 0.5 * (x[ic] / nu_cat + x[ia] / nu_an)
+            m_salt = n_salt / mass_solvent
+            sum_nu = float(nu_cat + nu_an)
+            ln_gamma_pm = (nu_cat * math.log(gamma_i[ic]) + nu_an * math.log(gamma_i[ia])) / sum_nu
+            gamma_pm_x = math.exp(ln_gamma_pm)
+            gamma_pm_m = gamma_pm_x / (1.0 + M_solvent_mix * m_salt * sum_nu)
+            salt_name = species[ic] + species[ia]
+            result[salt_name] = gamma_pm_m
+
+    return result
 
 def pcsaft_cp(t, rho, aly_lee_params, x, params):
     """
