@@ -148,7 +148,7 @@ pcsaft_prop = {
         'e_assoc': 2425.67, 'vol_a': .0451, 'assoc_scheme': '2B',
         'dipm': 0., 'dip_num': 1,
         'z': 0.,
-        'dielc': lambda T: 7.6555618295e-04*T*T - 8.1783881423e-1*T + 2.5419616803e2,
+        'dielc': 78.09,
         'f_solv': 1.5,
     },
 
@@ -334,7 +334,7 @@ k_ij_dict = {
 
     # Water
     # Cation - Solvent
-    ("Na+", "H2O-2B-NaCl"): lambda T: -0.007981*T + 2.37999,
+    ("Na+", "H2O-2B-NaCl"): .0045,
     # Anion - Solvent
     ("Cl-", "H2O-2B-NaCl"): -.25,
     ("Na+", "Cl-"): .317,
@@ -422,12 +422,22 @@ def _get_value(entry, prop, T):
     return value
 
 
-def get_prop_dict(species, x, T, user_params=None, user_options={"dielc_rule": 1}):
+def get_prop_dict(species, x, T, user_params=None, user_options=None):
     """
     species: list of species names that match dictionary keys in pcsaft_prop
     T: Temperature (K) (often not used, used in calculations of temperature-dependent binary interaction parameters)
     user_params: optional dict in the form {component: {m, s, e, ...}}
     """
+
+    default_options = {"dielc_rule": 1, "born_model": 1, "debug": False}
+    if user_options is None:
+        user_options = {}
+    unknown_options = set(user_options) - set(default_options)
+    if unknown_options:
+        raise KeyError("Unknown user_options key(s): {}. Allowed keys: {}.".format(
+            sorted(unknown_options), sorted(default_options.keys())))
+    options = default_options.copy()
+    options.update(user_options)
 
     prop_dic = {}
     entries = []
@@ -444,7 +454,14 @@ def get_prop_dict(species, x, T, user_params=None, user_options={"dielc_rule": 1
         if prop == 'assoc_scheme':
             prop_dic[prop] = prop_list
         elif prop == 'dielc':
-            prop_dic[prop] = dielc_rule(x, prop_list, rule=user_options['dielc_rule'])
+            prop_dic[prop] = dielc_rule(
+                x, prop_list, rule=options['dielc_rule'],
+                mw=prop_dic.get('MW', None), z=prop_dic.get('z', None)
+            )
+            prop_dic['dielc_diff'] = dielc_diff_rule(
+                x, prop_list, rule=options['dielc_rule'],
+                mw=prop_dic.get('MW', None), z=prop_dic.get('z', None)
+            )
         else:
             prop_dic[prop] = np.array(prop_list)
 
@@ -499,6 +516,9 @@ def get_prop_dict(species, x, T, user_params=None, user_options={"dielc_rule": 1
     if np.all(prop_dic['z'] == 0):
         prop_dic['z'] = np.array([])
 
+    prop_dic['born_model'] = options['born_model']
+    prop_dic['debug'] = bool(options['debug'])
+
     return prop_dic
 
 
@@ -533,12 +553,133 @@ def validate_species_params(species, user_params=None):
     }
 
 
-def dielc_rule(x, dielc, rule=1):
+def _prepare_dielc_inputs(x, dielc, mw=None, z=None):
+    x = np.asarray(x, dtype=float)
+    dielc = np.asarray(dielc, dtype=float)
+    if x.size != dielc.size:
+        raise ValueError("x and dielc must have the same length.")
+    if mw is not None:
+        mw = np.asarray(mw, dtype=float)
+        if mw.size != x.size:
+            raise ValueError("mw must have the same length as x.")
+    if z is not None:
+        z = np.asarray(z, dtype=float)
+        if z.size != x.size:
+            raise ValueError("z must have the same length as x.")
+    return x, dielc, mw, z
+
+
+def dielc_rule(x, dielc, rule=1, mw=None, z=None):
+    x, dielc, mw, z = _prepare_dielc_inputs(x, dielc, mw=mw, z=z)
+
     if rule == 0:
-        return float(max(dielc))
-    elif rule == 1:
-        return float(sum([x[i] * dielc[i] for i in range(len(dielc))]))
-    return None
+        return float(np.max(dielc))
+
+    if rule == 1:
+        # Mole-fraction mixing.
+        return float(np.dot(x, dielc))
+
+    if rule == 2:
+        # Mass-fraction mixing.
+        if mw is None:
+            raise ValueError("dielc_rule=2 requires mw.")
+        mw_bar = float(np.dot(x, mw))
+        if mw_bar <= 0:
+            raise ValueError("Average molecular weight must be positive for dielc_rule=2.")
+        return float(np.dot(x * mw, dielc) / mw_bar)
+
+    if rule == 3:
+        # Combo rule: solvents mass-fraction mixed, ions mole-fraction mixed.
+        if mw is None or z is None:
+            raise ValueError("dielc_rule=3 requires mw and z.")
+        idx_sol = np.where(np.abs(z) <= 1e-12)[0]
+        idx_ion = np.where(np.abs(z) > 1e-12)[0]
+        if idx_sol.size == 0:
+            raise ValueError("dielc_rule=3 requires at least one solvent species (z=0).")
+        mw_sol = float(np.dot(x[idx_sol], mw[idx_sol]))
+        if mw_sol <= 0:
+            raise ValueError("Solvent molecular-weight denominator must be positive for dielc_rule=3.")
+        eps_sol_w = float(np.dot(x[idx_sol] * mw[idx_sol], dielc[idx_sol]) / mw_sol)
+        x_sol = float(np.sum(x[idx_sol]))
+        eps_ion = float(np.dot(x[idx_ion], dielc[idx_ion])) if idx_ion.size > 0 else 0.0
+        return float(x_sol * eps_sol_w + eps_ion)
+
+    if rule == 4:
+        # New mixing rule (Figiel 2025).
+        if mw is None or z is None:
+            raise ValueError("dielc_rule=4 requires mw and z.")
+        idx_sol = np.where(np.abs(z) <= 1e-12)[0]
+        idx_ion = np.where(np.abs(z) > 1e-12)[0]
+        if idx_sol.size == 0:
+            raise ValueError("dielc_rule=4 requires at least one solvent species (z=0).")
+        mw_sol = float(np.dot(x[idx_sol], mw[idx_sol]))
+        if mw_sol <= 0:
+            raise ValueError("Solvent molecular-weight denominator must be positive for dielc_rule=4.")
+        eps_sf = float(np.dot(x[idx_sol] * mw[idx_sol], dielc[idx_sol]) / mw_sol)
+        x_ion = float(np.sum(x[idx_ion])) if idx_ion.size > 0 else 0.0
+        return float(eps_sf / (1.0 + 7.01 * x_ion))
+
+    raise ValueError("Unknown dielc_rule: {}. Supported rules: 0, 1, 2, 3, 4.".format(rule))
+
+
+def dielc_diff_rule(x, dielc, rule=1, mw=None, z=None):
+    x, dielc, mw, z = _prepare_dielc_inputs(x, dielc, mw=mw, z=z)
+
+    if rule == 0:
+        return np.zeros(len(x), dtype=float)
+
+    if rule == 1:
+        # d/dx_i sum_j x_j eps_j = eps_i
+        return np.asarray(dielc, dtype=float)
+
+    if rule == 2:
+        # (MW_i / MW_bar) * (eps_i - eps_mix)
+        if mw is None:
+            raise ValueError("dielc_rule=2 requires mw.")
+        mw_bar = float(np.dot(x, mw))
+        if mw_bar <= 0:
+            raise ValueError("Average molecular weight must be positive for dielc_rule=2.")
+        eps_mix = float(np.dot(x * mw, dielc) / mw_bar)
+        return np.asarray((mw / mw_bar) * (dielc - eps_mix), dtype=float)
+
+    if rule == 3:
+        # Solvent components use combo-rule derivative; ions contribute with eps_i.
+        if mw is None or z is None:
+            raise ValueError("dielc_rule=3 requires mw and z.")
+        idx_sol = np.where(np.abs(z) <= 1e-12)[0]
+        idx_ion = np.where(np.abs(z) > 1e-12)[0]
+        if idx_sol.size == 0:
+            raise ValueError("dielc_rule=3 requires at least one solvent species (z=0).")
+        mw_sol = float(np.dot(x[idx_sol], mw[idx_sol]))
+        if mw_sol <= 0:
+            raise ValueError("Solvent molecular-weight denominator must be positive for dielc_rule=3.")
+        eps_sol_w = float(np.dot(x[idx_sol] * mw[idx_sol], dielc[idx_sol]) / mw_sol)
+        x_sol = float(np.sum(x[idx_sol]))
+        deps = np.zeros(len(x), dtype=float)
+        deps[idx_sol] = eps_sol_w + x_sol * (mw[idx_sol] / mw_sol) * (dielc[idx_sol] - eps_sol_w)
+        deps[idx_ion] = dielc[idx_ion]
+        return deps
+
+    if rule == 4:
+        # Figiel 2025 dielectric mixing-rule derivative.
+        if mw is None or z is None:
+            raise ValueError("dielc_rule=4 requires mw and z.")
+        idx_sol = np.where(np.abs(z) <= 1e-12)[0]
+        idx_ion = np.where(np.abs(z) > 1e-12)[0]
+        if idx_sol.size == 0:
+            raise ValueError("dielc_rule=4 requires at least one solvent species (z=0).")
+        mw_sol = float(np.dot(x[idx_sol], mw[idx_sol]))
+        if mw_sol <= 0:
+            raise ValueError("Solvent molecular-weight denominator must be positive for dielc_rule=4.")
+        eps_sf = float(np.dot(x[idx_sol] * mw[idx_sol], dielc[idx_sol]) / mw_sol)
+        x_ion = float(np.sum(x[idx_ion])) if idx_ion.size > 0 else 0.0
+        den = 1.0 + 7.01 * x_ion
+        deps = np.zeros(len(x), dtype=float)
+        deps[idx_sol] = (1.0 / den) * (mw[idx_sol] / mw_sol) * (dielc[idx_sol] - eps_sf)
+        deps[idx_ion] = -7.01 * eps_sf / (den * den)
+        return deps
+
+    raise ValueError("Unknown dielc_rule: {}. Supported rules: 0, 1, 2, 3, 4.".format(rule))
 
 def molality_to_molefraction(molality, species=None, solvent=None, basis_mass_kg=1.0):
     """

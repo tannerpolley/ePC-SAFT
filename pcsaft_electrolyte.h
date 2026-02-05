@@ -26,7 +26,10 @@ struct add_args {
     vector<double> z;
     double dielc;
     vector<double> dielc_diff;
+    vector<double> d_born;
+    vector<double> f_solv;
     int born_model;
+    int debug;
     vector<int> assoc_num;
     vector<int> assoc_matrix;
     vector<double> k_hb;

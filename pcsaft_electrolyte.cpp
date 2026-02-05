@@ -1,6 +1,8 @@
 #include <vector>
 #include <string>
 #include <cmath>
+#include <iostream>
+#include <iomanip>
 #include "math.h"
 #include "externals/eigen/Eigen/Dense"
 
@@ -16,6 +18,85 @@ using std::vector;
     #  define _HUGE HUGE
     #endif
 #endif
+
+struct DebugFlagGuard {
+    int &flag;
+    int old;
+    DebugFlagGuard(int &flag_ref, int new_value) : flag(flag_ref), old(flag_ref) { flag = new_value; }
+    ~DebugFlagGuard() { flag = old; }
+};
+
+struct BornSSMDSData {
+    vector<double> d_born;
+    vector<double> D;
+    vector<double> ddelta_prefac;
+    vector<double> f_k;
+    vector<double> bracket;
+    double sum_bracket;
+    double sum_invD;
+    double sum_dpref_over_D2;
+};
+
+BornSSMDSData build_born_ssmds_data(vector<double> x, add_args &cppargs, double eps_r, double eps_r_ion) {
+    int ncomp = static_cast<int>(x.size());
+    BornSSMDSData data;
+    data.d_born.assign(ncomp, 1.0);
+    data.D.assign(ncomp, 1.0);
+    data.ddelta_prefac.assign(ncomp, 0.0);
+    data.f_k.assign(ncomp, 1.0);
+    data.bracket.assign(ncomp, 0.0);
+    data.sum_bracket = 0.0;
+    data.sum_invD = 0.0;
+    data.sum_dpref_over_D2 = 0.0;
+
+    double f_mix = 0.0;
+    for (int i = 0; i < ncomp; i++) {
+        bool is_ion = std::abs(cppargs.z[i]) > 1e-12;
+        double fi = 1.0;
+        if (!is_ion && cppargs.f_solv.size() > static_cast<size_t>(i)) {
+            fi = cppargs.f_solv[i];
+        }
+        data.f_k[i] = fi;
+        f_mix += x[i]*fi;
+
+        if (cppargs.d_born.size() > static_cast<size_t>(i) && cppargs.d_born[i] > 0.0) {
+            data.d_born[i] = cppargs.d_born[i];
+        }
+        else if (cppargs.s[i] > 0.0) {
+            data.d_born[i] = cppargs.s[i];
+        }
+        else if (is_ion) {
+            throw ValueError("Born model 2 requires positive ion d_born or sigma.");
+        }
+
+        if (is_ion) {
+            data.ddelta_prefac[i] = data.d_born[i]/std::abs(cppargs.z[i]);
+        }
+    }
+
+    for (int i = 0; i < ncomp; i++) {
+        bool is_ion = std::abs(cppargs.z[i]) > 1e-12;
+        if (!is_ion) {
+            data.D[i] = data.d_born[i];
+            continue;
+        }
+
+        double delta_di = (f_mix - 1.0)*data.ddelta_prefac[i];
+        data.D[i] = data.d_born[i] + delta_di;
+        if (data.D[i] <= 0.0) {
+            throw ValueError("Born model 2 generated a non-positive d_born + Delta d.");
+        }
+
+        double z2 = cppargs.z[i]*cppargs.z[i];
+        double invD = 1.0/data.D[i];
+        data.bracket[i] = (1.0 - 1.0/eps_r)*invD +
+                          (1.0 - 1.0/eps_r_ion)*(1.0/data.d_born[i] - invD);
+        data.sum_bracket += x[i]*z2*data.bracket[i];
+        data.sum_invD += x[i]*z2*invD;
+        data.sum_dpref_over_D2 += x[i]*z2*data.ddelta_prefac[i]*invD*invD;
+    }
+    return data;
+}
 
 
 vector<double> XA_find(vector<double> XA_guess, vector<double> delta_ij, double den,
@@ -455,6 +536,18 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, add_args &cppargs) {
 
     // Born term (Bulow 2021a, non-SSM+DS) has no explicit density dependence.
     double Z = Zid + Zhc + Zdisp + Zpolar + Zassoc + Zion + Zborn;
+    if (cppargs.debug) {
+        std::cout << std::fixed << std::setprecision(10)
+                  << "[DEBUG Zres] t=" << t << " rho=" << rho
+                  << " Zhc=" << Zhc
+                  << " Zdisp=" << Zdisp
+                  << " Zpolar=" << Zpolar
+                  << " Zassoc=" << Zassoc
+                  << " Zion=" << Zion
+                  << " Zborn=" << Zborn
+                  << " Zres=" << (Z - 1.0)
+                  << " Z=" << Z << std::endl;
+    }
     return Z;
 }
 
@@ -980,7 +1073,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
             }
         }
 
-        if (cppargs.born_model == 1 || cppargs.born_model == 2) {
+        if (cppargs.born_model == 1) {
             // Born term (Bulow 2021a, non-SSM+DS), Version 1 differential, a_i = sigma_i,ion
             double born_sum = 0.;
             for (int i = 0; i < ncomp; i++) {
@@ -1001,14 +1094,35 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
                 if (cppargs.z[i] != 0) {
                     ion_part = (1.0 - 1.0/eps)*cppargs.z[i]*cppargs.z[i]/cppargs.s[i];
                 }
-                if (cppargs.born_model == 2) {
-                    // Eq. 133 form: scale eps-differential term by sum_j x_j z_j^2/a_j
-                    dadx_born[i] = -Kborn*(ion_part + born_sum*deps_dx[i]/(eps*eps));
+                dadx_born[i] = -Kborn*(ion_part + deps_dx[i]/(eps*eps));
+            }
+
+            double sum_x_dadx_born = 0.0;
+            for (int i = 0; i < ncomp; i++) {
+                sum_x_dadx_born += x[i]*dadx_born[i];
+            }
+            for (int i = 0; i < ncomp; i++) {
+                mu_born[i] = a_born + Z_born + dadx_born[i] - sum_x_dadx_born;
+            }
+        }
+        else if (cppargs.born_model == 2) {
+            const double eps_r_ion = 8.0;
+            const double Kborn = E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac);
+            BornSSMDSData born = build_born_ssmds_data(x, cppargs, eps, eps_r_ion);
+            double a_born = -Kborn*born.sum_bracket;
+            double Z_born = 0.0;
+
+            vector<double> dadx_born(ncomp, 0.0);
+            const double inv_eps2 = 1.0/(eps*eps);
+            const double shell_coeff = 1.0/eps_r_ion - 1.0/eps;
+            for (int k = 0; k < ncomp; k++) {
+                double direct_part = 0.0;
+                if (std::abs(cppargs.z[k]) > 1e-12) {
+                    direct_part = cppargs.z[k]*cppargs.z[k]*born.bracket[k];
                 }
-                else {
-                    // Eq. 132 form
-                    dadx_born[i] = -Kborn*(ion_part + deps_dx[i]/(eps*eps));
-                }
+                double deps_part = born.sum_invD*deps_dx[k]*inv_eps2;
+                double ddelta_part = shell_coeff*born.sum_dpref_over_D2*born.f_k[k];
+                dadx_born[k] = -Kborn*(direct_part + deps_part - ddelta_part);
             }
 
             double sum_x_dadx_born = 0.0;
@@ -1027,6 +1141,21 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
     for (int i = 0; i < ncomp; i++) {
         mu[i] = mu_hc[i] + mu_disp[i] + mu_polar[i] + mu_assoc[i] + mu_ion[i] + mu_born[i];
         lnfugcoef[i] = mu[i] - log(Z); // the natural logarithm of the fugacity coefficient
+    }
+    if (cppargs.debug) {
+        std::cout << std::fixed << std::setprecision(10)
+                  << "[DEBUG mu_res] t=" << t << " rho=" << rho << std::endl;
+        for (int i = 0; i < ncomp; i++) {
+            std::cout << "  i=" << i
+                      << " mu_hc=" << mu_hc[i]*8.314*t/1000
+                      << " mu_disp=" << mu_disp[i]*8.314*t/1000
+                      << " mu_polar=" << mu_polar[i]*8.314*t/1000
+                      << " mu_assoc=" << mu_assoc[i]*8.314*t/1000
+                      << " mu_ion=" << mu_ion[i]*8.314*t/1000
+                      << " mu_born=" << mu_born[i]*8.314*t/1000
+                      << " mu_res=" << mu[i]*8.314*t/1000
+                      << " lnphi=" << lnfugcoef[i]*8.314*t/1000 << std::endl;
+        }
     }
 
     return lnfugcoef;
@@ -1345,9 +1474,26 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, add_args &cppargs
             }
             ares_born = -E_CHRG*E_CHRG/(4.*PI*kb*t*perm_vac)*(1.-1./cppargs.dielc)*born_sum;
         }
+        else if (cppargs.born_model == 2) {
+            const double eps_r_ion = 8.0;
+            const double Kborn = E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac);
+            BornSSMDSData born = build_born_ssmds_data(x, cppargs, cppargs.dielc, eps_r_ion);
+            ares_born = -Kborn*born.sum_bracket;
+        }
     }
 
     double ares = ares_hc + ares_disp + ares_polar + ares_assoc + ares_ion + ares_born;
+    if (cppargs.debug) {
+        std::cout << std::fixed << std::setprecision(10)
+                  << "[DEBUG ares] t=" << t << " rho=" << rho
+                  << " ares_hc=" << ares_hc
+                  << " ares_disp=" << ares_disp
+                  << " ares_polar=" << ares_polar
+                  << " ares_assoc=" << ares_assoc
+                  << " ares_ion=" << ares_ion
+                  << " ares_born=" << ares_born
+                  << " ares_total=" << ares << std::endl;
+    }
     return ares;
 }
 
@@ -1699,6 +1845,11 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, add_args &cppargs
                 }
             }
             dadt_born = E_CHRG*E_CHRG/(4.*PI*kb*perm_vac*t*t)*(1.-1./cppargs.dielc)*born_sum;
+        }
+        else if (cppargs.born_model == 2) {
+            const double eps_r_ion = 8.0;
+            BornSSMDSData born = build_born_ssmds_data(x, cppargs, cppargs.dielc, eps_r_ion);
+            dadt_born = E_CHRG*E_CHRG/(4.*PI*kb*perm_vac*t*t)*born.sum_bracket;
         }
     }
 
@@ -2346,6 +2497,9 @@ double pcsaft_den_cpp(double t, double p, vector<double> x, int phase, add_args 
     rho : double
         Molar density (mol m^-3)
     */
+    // suppress debug output during density root-finding to avoid repeated prints.
+    DebugFlagGuard debug_guard(cppargs.debug, 0);
+
     // split into grid and find bounds for each root
     int ncomp = static_cast<int>(x.size()); // number of components
     vector<double> x_lo, x_hi;
@@ -2645,6 +2799,7 @@ double calc_water_sigma(double t) {
 add_args get_single_component(int i, add_args &cppargs) {
     add_args args_single;
     args_single.born_model = cppargs.born_model;
+    args_single.debug = cppargs.debug;
     args_single.m.push_back(cppargs.m[i]);
     args_single.s.push_back(cppargs.s[i]);
     args_single.e.push_back(cppargs.e[i]);
@@ -2661,6 +2816,12 @@ add_args get_single_component(int i, add_args &cppargs) {
         args_single.dielc = cppargs.dielc;
         if (cppargs.dielc_diff.size() > static_cast<size_t>(i)) {
             args_single.dielc_diff.push_back(cppargs.dielc_diff[i]);
+        }
+        if (cppargs.d_born.size() > static_cast<size_t>(i)) {
+            args_single.d_born.push_back(cppargs.d_born[i]);
+        }
+        if (cppargs.f_solv.size() > static_cast<size_t>(i)) {
+            args_single.f_solv.push_back(cppargs.f_solv[i]);
         }
     }
     if (!cppargs.assoc_num.empty()) {

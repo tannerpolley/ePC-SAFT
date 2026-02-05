@@ -1177,18 +1177,30 @@ def pcsaft_gsolv(t, rho, x, params, species=None):
     cppargs = create_struct(params)
 
     z = np.asarray(params.get('z', []), dtype=float)
-    idx_ion = np.where((np.abs(z) > 1e-12) & (x > 0))[0]
+    idx_ion = np.where(np.abs(z) > 1e-12)[0]
     if len(idx_ion) == 0:
-        raise InputError('pcsaft_gsolv requires at least one present ionic species.')
+        raise InputError('pcsaft_gsolv requires ionic species in params["z"].')
     if species is None or len(species) != len(x):
         raise InputError('species list (matching x order) is required to label ions.')
 
+    idx_solv = np.where(np.abs(z) <= 1e-12)[0]
+    if len(idx_solv) == 0:
+        raise InputError('pcsaft_gsolv requires at least one solvent species (z=0).')
+
+    x_ref = np.asarray(x, dtype=float).copy()
+    x_ref[idx_ion] = 0.0
+    solv_sum = np.sum(x_ref[idx_solv])
+    if solv_sum > 0:
+        x_ref[idx_solv] = x_ref[idx_solv] / solv_sum
+    else:
+        x_ref[idx_solv] = 1.0 / len(idx_solv)
+
     eps = 1e-12
-    p = pcsaft_p_cpp(t, rho, x, cppargs)
+    p = pcsaft_p_cpp(t, rho, x_ref, cppargs)
     phase = 1 if rho < 900 else 0
     result = {}
     for i in idx_ion:
-        x_inf = np.asarray(x, dtype=float).copy()
+        x_inf = x_ref.copy()
         x_inf[i] = eps
         x_inf /= np.sum(x_inf)
         rho_inf = pcsaft_den_cpp(t, p, x_inf, phase, cppargs)
@@ -1442,7 +1454,12 @@ def create_struct(params):
         cppargs.dielc = params['dielc']
     if 'dielc_diff' in params:
         cppargs.dielc_diff = np_to_vector_double(np.asarray(params['dielc_diff'], dtype=float))
+    if 'd_born' in params:
+        cppargs.d_born = np_to_vector_double(np.asarray(params['d_born'], dtype=float))
+    if 'f_solv' in params:
+        cppargs.f_solv = np_to_vector_double(np.asarray(params['f_solv'], dtype=float))
     cppargs.born_model = int(params['born_model']) if 'born_model' in params else 1
+    cppargs.debug = int(bool(params['debug'])) if 'debug' in params else 0
     if 'assoc_num' in params:
         cppargs.assoc_num = np_to_vector_int(params['assoc_num'])
     if 'assoc_matrix' in params:
