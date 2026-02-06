@@ -89,8 +89,8 @@ BornSSMDSData build_born_ssmds_data(vector<double> x, add_args &cppargs, double 
 
         double z2 = cppargs.z[i]*cppargs.z[i];
         double invD = 1.0/data.D[i];
-        data.bracket[i] = (1.0 - 1.0/eps_r)*invD +
-                          (1.0 - 1.0/eps_r_ion)*(1.0/data.d_born[i] - invD);
+        data.bracket[i] = (1.0 - 1.0/eps_r_ion)*invD +
+                          (1.0 - 1.0/eps_r)*(1.0/data.d_born[i] - invD);
         data.sum_bracket += x[i]*z2*data.bracket[i];
         data.sum_invD += x[i]*z2*invD;
         data.sum_dpref_over_D2 += x[i]*z2*data.ddelta_prefac[i]*invD*invD;
@@ -1163,7 +1163,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
                 }
             }
         }
-        else if ((cppargs.born_model >= 2) && (cppargs.born_model <= 4)) {
+        else if ((cppargs.born_model >= 2) && (cppargs.born_model <= 5)) {
             const double eps_r_ion = 8.0;
             const double Kborn = E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac);
             BornSSMDSData born = build_born_ssmds_data(x, cppargs, eps, eps_r_ion);
@@ -1176,14 +1176,14 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
             vector<double> ddelta_part_vec(ncomp, 0.0);
             const double inv_eps2 = 1.0/(eps*eps);
             const double shell_coeff = 1.0/eps_r_ion - 1.0/eps;
-            const bool use_shell_chain = (cppargs.born_model == 2);
-            const bool born_deps_off = (cppargs.born_model == 4);
+            const bool use_deps = (cppargs.born_model == 3 || cppargs.born_model == 5);
+            const bool use_shell_chain = (cppargs.born_model == 4 || cppargs.born_model == 5);
             for (int k = 0; k < ncomp; k++) {
                 double direct_part = 0.0;
                 if (std::abs(cppargs.z[k]) > 1e-12) {
                     direct_part = cppargs.z[k]*cppargs.z[k]*born.bracket[k];
                 }
-                double deps_part = born_deps_off ? 0.0 : born.sum_invD*deps_dx[k]*inv_eps2;
+                double deps_part = use_deps ? born.sum_invD*deps_dx[k]*inv_eps2 : 0.0;
                 double ddelta_part = use_shell_chain ? shell_coeff*born.sum_dpref_over_D2*born.f_k[k] : 0.0;
                 direct_part_vec[k] = direct_part;
                 deps_part_vec[k] = deps_part;
@@ -1230,7 +1230,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
             }
         }
         else if (cppargs.born_model != 0) {
-            throw ValueError("Unknown born_model. Supported values are 0, 1, 2, 3, 4.");
+            throw ValueError("Unknown born_model. Supported values are 0, 1, 2, 3, 4, 5.");
         }
     }
     double Z = pcsaft_Z_cpp(t, rho, x, cppargs);
@@ -1573,14 +1573,14 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, add_args &cppargs
             }
             ares_born = -E_CHRG*E_CHRG/(4.*PI*kb*t*perm_vac)*(1.-1./cppargs.dielc)*born_sum;
         }
-        else if ((cppargs.born_model >= 2) && (cppargs.born_model <= 4)) {
+        else if ((cppargs.born_model >= 2) && (cppargs.born_model <= 5)) {
             const double eps_r_ion = 8.0;
             const double Kborn = E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac);
             BornSSMDSData born = build_born_ssmds_data(x, cppargs, cppargs.dielc, eps_r_ion);
             ares_born = -Kborn*born.sum_bracket;
         }
         else if (cppargs.born_model != 0) {
-            throw ValueError("Unknown born_model. Supported values are 0, 1, 2, 3, 4.");
+            throw ValueError("Unknown born_model. Supported values are 0, 1, 2, 3, 4, 5.");
         }
     }
 
@@ -1948,13 +1948,13 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, add_args &cppargs
             }
             dadt_born = E_CHRG*E_CHRG/(4.*PI*kb*perm_vac*t*t)*(1.-1./cppargs.dielc)*born_sum;
         }
-        else if ((cppargs.born_model >= 2) && (cppargs.born_model <= 4)) {
+        else if ((cppargs.born_model >= 2) && (cppargs.born_model <= 5)) {
             const double eps_r_ion = 8.0;
             BornSSMDSData born = build_born_ssmds_data(x, cppargs, cppargs.dielc, eps_r_ion);
             dadt_born = E_CHRG*E_CHRG/(4.*PI*kb*perm_vac*t*t)*born.sum_bracket;
         }
         else if (cppargs.born_model != 0) {
-            throw ValueError("Unknown born_model. Supported values are 0, 1, 2, 3, 4.");
+            throw ValueError("Unknown born_model. Supported values are 0, 1, 2, 3, 4, 5.");
         }
     }
 

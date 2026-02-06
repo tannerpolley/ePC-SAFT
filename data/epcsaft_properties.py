@@ -620,7 +620,34 @@ def dielc_rule(x, dielc, rule=1, mw=None, z=None):
         x_ion = float(np.sum(x[idx_ion])) if idx_ion.size > 0 else 0.0
         return float(eps_sf / (1.0 + 7.01 * x_ion))
 
-    raise ValueError("Unknown dielc_rule: {}. Supported rules: 0, 1, 2, 3, 4.".format(rule))
+    if rule == 5:
+        # Same eps_mix as rule 4; derivative behavior is overridden in dielc_diff_rule.
+        if mw is None or z is None:
+            raise ValueError("dielc_rule=5 requires mw and z.")
+        idx_sol = np.where(np.abs(z) <= 1e-12)[0]
+        idx_ion = np.where(np.abs(z) > 1e-12)[0]
+        if idx_sol.size == 0:
+            raise ValueError("dielc_rule=5 requires at least one solvent species (z=0).")
+        mw_sol = float(np.dot(x[idx_sol], mw[idx_sol]))
+        if mw_sol <= 0:
+            raise ValueError("Solvent molecular-weight denominator must be positive for dielc_rule=5.")
+        eps_sf = float(np.dot(x[idx_sol] * mw[idx_sol], dielc[idx_sol]) / mw_sol)
+        x_ion = float(np.sum(x[idx_ion])) if idx_ion.size > 0 else 0.0
+        return float(eps_sf / (1.0 + 7.01 * x_ion))
+
+    if rule == 6:
+        # Same functional form as rule 4, but eps_sf is treated as concentration-independent.
+        if z is None:
+            raise ValueError("dielc_rule=6 requires z.")
+        idx_sol = np.where(np.abs(z) <= 1e-12)[0]
+        idx_ion = np.where(np.abs(z) > 1e-12)[0]
+        if idx_sol.size == 0:
+            raise ValueError("dielc_rule=6 requires at least one solvent species (z=0).")
+        eps_sf_const = float(np.mean(dielc[idx_sol]))
+        x_ion = float(np.sum(x[idx_ion])) if idx_ion.size > 0 else 0.0
+        return float(eps_sf_const / (1.0 + 7.01 * x_ion))
+
+    raise ValueError("Unknown dielc_rule: {}. Supported rules: 0, 1, 2, 3, 4, 5, 6.".format(rule))
 
 
 def dielc_diff_rule(x, dielc, rule=1, mw=None, z=None):
@@ -680,7 +707,24 @@ def dielc_diff_rule(x, dielc, rule=1, mw=None, z=None):
         deps[idx_ion] = -7.01 * eps_sf / (den * den)
         return deps
 
-    raise ValueError("Unknown dielc_rule: {}. Supported rules: 0, 1, 2, 3, 4.".format(rule))
+    if rule == 5:
+        # Same eps_mix as rule 4, but force rule-1 differential.
+        return np.asarray(dielc, dtype=float)
+
+    if rule == 6:
+        # Solvent-only differential: solvents use their dielectric values, ions are zero.
+        if z is None:
+            raise ValueError("dielc_rule=6 requires z.")
+        idx_sol = np.where(np.abs(z) <= 1e-12)[0]
+        idx_ion = np.where(np.abs(z) > 1e-12)[0]
+        if idx_sol.size == 0:
+            raise ValueError("dielc_rule=6 requires at least one solvent species (z=0).")
+        deps = np.zeros(len(x), dtype=float)
+        deps[idx_sol] = dielc[idx_sol]
+        deps[idx_ion] = 0.0
+        return deps
+
+    raise ValueError("Unknown dielc_rule: {}. Supported rules: 0, 1, 2, 3, 4, 5, 6.".format(rule))
 
 def molality_to_molefraction(molality, species=None, solvent=None, basis_mass_kg=1.0):
     """

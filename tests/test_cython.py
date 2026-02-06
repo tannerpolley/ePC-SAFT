@@ -1080,7 +1080,7 @@ def test_gsolv(print_result=False):
 
     # model 2 (SSM+DS) path coverage and sanity check against model 1
     x = molality_to_molefraction(1.0, species=species)
-    params = get_prop_dict(species, x, t, user_options={'dielc_rule': 4, 'born_model': 2, 'debug': False})
+    params = get_prop_dict(species, x, t, user_options={'dielc_rule': 4, 'born_model': 5, 'debug': False})
     rho_model = pcsaft_den(t, p, x, params, phase='liq')
 
     calc_model = pcsaft_gsolv(t, rho_model, x, params, species=species)
@@ -1585,6 +1585,6 @@ def test_pressure(print_result=False):
 
 if __name__ == '__main__':
     # test_ares(print_result=True)
-    # test_gsolv(print_result=True)
-    test_miac_m(print_result=True)
+    test_gsolv(print_result=True)
+    # test_miac_m(print_result=True)
     # test_osmoticC(print_result=True)
