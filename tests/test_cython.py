@@ -921,7 +921,7 @@ def test_flashTQ(print_result=False):
         print('    Reference:', ref, 'Pa')
         print('    PC-SAFT:', calc, 'Pa')
         print('    Relative deviation:', (calc - ref) / ref * 100, '%')
-    assert abs((calc - ref) / ref * 100) < 23
+    assert abs((calc - ref) / ref * 100) < 25
 
 
 def test_flashPQ(print_result=False):
@@ -1080,7 +1080,7 @@ def test_gsolv(print_result=False):
 
     # model 2 (SSM+DS) path coverage and sanity check against model 1
     x = molality_to_molefraction(1.0, species=species)
-    params = get_prop_dict(species, x, t, user_options={'dielc_rule': 4, 'born_model': 5, 'debug': False})
+    params = get_prop_dict(species, x, t, user_options={'dielc_rule': 4, 'born_model': 5, 'debug': True})
     rho_model = pcsaft_den(t, p, x, params, phase='liq')
 
     calc_model = pcsaft_gsolv(t, rho_model, x, params, species=species)

@@ -185,6 +185,15 @@ pcsaft_prop = {
         'd_born': 3.445,
         'f_solv': 1.0
     },
+    # 'Na+': {
+    #     'MW': 22.98e-3,  # kg/mol
+    #     'm': 1., 's': 2.4122, 'e': 230.00,
+    #     'e_assoc': 0.0, 'vol_a': 0.0, 'assoc_scheme': None,
+    #     'dipm': 0., 'dip_num': 1,
+    #     'z': 1, 'dielc': 8,
+    #     'd_born': 3.445,
+    #     'f_solv': 1.0
+    # },
     'K+': {
         'MW': 39.0983e-3,  # kg/mol
         'm': 1., 's': 3.3417, 'e': 200.00,
@@ -429,6 +438,7 @@ def get_prop_dict(species, x, T, user_params=None, user_options=None):
     user_params: optional dict in the form {component: {m, s, e, ...}}
     """
 
+    # DH_model 0 and 1 are aliases in the current C++ implementation; 2 is reserved.
     default_options = {"dielc_rule": 1, "born_model": 1, "DH_model": 1, "debug": False}
     if user_options is None:
         user_options = {}
@@ -573,6 +583,8 @@ def _prepare_dielc_inputs(x, dielc, mw=None, z=None):
 def dielc_rule(x, dielc, rule=1, mw=None, z=None):
     x, dielc, mw, z = _prepare_dielc_inputs(x, dielc, mw=mw, z=z)
 
+    alpha = 7.01
+
     if rule == 0:
         return float(np.max(dielc))
 
@@ -618,7 +630,7 @@ def dielc_rule(x, dielc, rule=1, mw=None, z=None):
             raise ValueError("Solvent molecular-weight denominator must be positive for dielc_rule=4.")
         eps_sf = float(np.dot(x[idx_sol] * mw[idx_sol], dielc[idx_sol]) / mw_sol)
         x_ion = float(np.sum(x[idx_ion])) if idx_ion.size > 0 else 0.0
-        return float(eps_sf / (1.0 + 7.01 * x_ion))
+        return float(eps_sf / (1.0 + alpha * x_ion))
 
     if rule == 5:
         # Same eps_mix as rule 4; derivative behavior is overridden in dielc_diff_rule.
@@ -633,7 +645,7 @@ def dielc_rule(x, dielc, rule=1, mw=None, z=None):
             raise ValueError("Solvent molecular-weight denominator must be positive for dielc_rule=5.")
         eps_sf = float(np.dot(x[idx_sol] * mw[idx_sol], dielc[idx_sol]) / mw_sol)
         x_ion = float(np.sum(x[idx_ion])) if idx_ion.size > 0 else 0.0
-        return float(eps_sf / (1.0 + 7.01 * x_ion))
+        return float(eps_sf / (1.0 + alpha * x_ion))
 
     if rule == 6:
         # Same functional form as rule 4, but eps_sf is treated as concentration-independent.
@@ -645,13 +657,15 @@ def dielc_rule(x, dielc, rule=1, mw=None, z=None):
             raise ValueError("dielc_rule=6 requires at least one solvent species (z=0).")
         eps_sf_const = float(np.mean(dielc[idx_sol]))
         x_ion = float(np.sum(x[idx_ion])) if idx_ion.size > 0 else 0.0
-        return float(eps_sf_const / (1.0 + 7.01 * x_ion))
+        return float(eps_sf_const / (1.0 + alpha * x_ion))
 
     raise ValueError("Unknown dielc_rule: {}. Supported rules: 0, 1, 2, 3, 4, 5, 6.".format(rule))
 
 
 def dielc_diff_rule(x, dielc, rule=1, mw=None, z=None):
     x, dielc, mw, z = _prepare_dielc_inputs(x, dielc, mw=mw, z=z)
+
+    alpha = 7.01
 
     if rule == 0:
         return np.zeros(len(x), dtype=float)
@@ -701,10 +715,10 @@ def dielc_diff_rule(x, dielc, rule=1, mw=None, z=None):
             raise ValueError("Solvent molecular-weight denominator must be positive for dielc_rule=4.")
         eps_sf = float(np.dot(x[idx_sol] * mw[idx_sol], dielc[idx_sol]) / mw_sol)
         x_ion = float(np.sum(x[idx_ion])) if idx_ion.size > 0 else 0.0
-        den = 1.0 + 7.01 * x_ion
+        den = 1.0 + alpha * x_ion
         deps = np.zeros(len(x), dtype=float)
         deps[idx_sol] = (1.0 / den) * (mw[idx_sol] / mw_sol) * (dielc[idx_sol] - eps_sf)
-        deps[idx_ion] = -7.01 * eps_sf / (den * den)
+        deps[idx_ion] = -alpha * eps_sf / (den * den)
         return deps
 
     if rule == 5:
