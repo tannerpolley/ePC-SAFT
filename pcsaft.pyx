@@ -1459,6 +1459,11 @@ def create_struct(params):
     if 'f_solv' in params:
         cppargs.f_solv = np_to_vector_double(np.asarray(params['f_solv'], dtype=float))
     cppargs.born_model = int(params['born_model']) if 'born_model' in params else 1
+    cppargs.DH_model = int(params['DH_model']) if 'DH_model' in params else 1
+    if cppargs.DH_model == 2:
+        raise ValueError("DH_model=2 (Bjerrum treatment) is reserved and not implemented.")
+    if cppargs.DH_model < 0 or cppargs.DH_model > 2:
+        raise ValueError("Unknown DH_model. Supported values are 0, 1, and reserved 2.")
     cppargs.debug = int(bool(params['debug'])) if 'debug' in params else 0
     if 'assoc_num' in params:
         cppargs.assoc_num = np_to_vector_int(params['assoc_num'])

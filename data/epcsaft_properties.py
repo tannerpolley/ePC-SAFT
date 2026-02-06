@@ -429,7 +429,7 @@ def get_prop_dict(species, x, T, user_params=None, user_options=None):
     user_params: optional dict in the form {component: {m, s, e, ...}}
     """
 
-    default_options = {"dielc_rule": 1, "born_model": 1, "debug": False}
+    default_options = {"dielc_rule": 1, "born_model": 1, "DH_model": 1, "debug": False}
     if user_options is None:
         user_options = {}
     unknown_options = set(user_options) - set(default_options)
@@ -517,6 +517,7 @@ def get_prop_dict(species, x, T, user_params=None, user_options=None):
         prop_dic['z'] = np.array([])
 
     prop_dic['born_model'] = options['born_model']
+    prop_dic['DH_model'] = options['DH_model']
     prop_dic['debug'] = bool(options['debug'])
 
     return prop_dic
