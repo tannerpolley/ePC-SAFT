@@ -439,7 +439,13 @@ def get_prop_dict(species, x, T, user_params=None, user_options=None):
     """
 
     # DH_model 0 and 1 are aliases in the current C++ implementation; 2 is reserved.
-    default_options = {"dielc_rule": 1, "born_model": 1, "DH_model": 1, "debug": False}
+    default_options = {
+        "dielc_rule": 1,
+        "dielc_diff_mode": 0,
+        "born_model": 1,
+        "DH_model": 1,
+        "debug": False,
+    }
     if user_options is None:
         user_options = {}
     unknown_options = set(user_options) - set(default_options)
@@ -458,20 +464,17 @@ def get_prop_dict(species, x, T, user_params=None, user_options=None):
     for prop in BASE_KEYS:
         prop_list = []
         for sp, entry in zip(species, entries):
-            if prop not in entry:
-                raise KeyError("Missing '{}' for species '{}' in {}.".format(prop, sp, 'user_params' if (user_params is not None and sp in user_params) else 'default pcsaft_prop'))
-            prop_list.append(_get_value(entry, prop, T))
+            if prop in entry:
+                prop_list.append(_get_value(entry, prop, T))
+                continue
+            if prop == 'dielc':
+                z_i = float(_get_value(entry, 'z', T)) if 'z' in entry else 0.0
+                if abs(z_i) > 1e-12:
+                    prop_list.append(8.0)
+                    continue
+            raise KeyError("Missing '{}' for species '{}' in {}.".format(prop, sp, 'user_params' if (user_params is not None and sp in user_params) else 'default pcsaft_prop'))
         if prop == 'assoc_scheme':
             prop_dic[prop] = prop_list
-        elif prop == 'dielc':
-            prop_dic[prop] = dielc_rule(
-                x, prop_list, rule=options['dielc_rule'],
-                mw=prop_dic.get('MW', None), z=prop_dic.get('z', None)
-            )
-            prop_dic['dielc_diff'] = dielc_diff_rule(
-                x, prop_list, rule=options['dielc_rule'],
-                mw=prop_dic.get('MW', None), z=prop_dic.get('z', None)
-            )
         else:
             prop_dic[prop] = np.array(prop_list)
 
@@ -528,6 +531,8 @@ def get_prop_dict(species, x, T, user_params=None, user_options=None):
 
     prop_dic['born_model'] = options['born_model']
     prop_dic['DH_model'] = options['DH_model']
+    prop_dic['dielc_rule'] = options['dielc_rule']
+    prop_dic['dielc_diff_mode'] = options['dielc_diff_mode']
     prop_dic['debug'] = bool(options['debug'])
 
     return prop_dic
@@ -581,6 +586,7 @@ def _prepare_dielc_inputs(x, dielc, mw=None, z=None):
 
 
 def dielc_rule(x, dielc, rule=1, mw=None, z=None):
+    # Utility/reference implementation. Runtime electrolyte calculations now use the C++ dielectric engine.
     x, dielc, mw, z = _prepare_dielc_inputs(x, dielc, mw=mw, z=z)
 
     alpha = 7.01
@@ -663,6 +669,7 @@ def dielc_rule(x, dielc, rule=1, mw=None, z=None):
 
 
 def dielc_diff_rule(x, dielc, rule=1, mw=None, z=None):
+    # Utility/reference implementation. Runtime electrolyte calculations now use the C++ dielectric engine.
     x, dielc, mw, z = _prepare_dielc_inputs(x, dielc, mw=mw, z=z)
 
     alpha = 7.01

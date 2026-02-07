@@ -22,6 +22,8 @@ cdef extern from "pcsaft_electrolyte.cpp":
     vector[double] flashTQ_cpp(double t, double Q, vector[double] x, add_args &cppargs, double p_guess) except +
     vector[double] flashPQ_cpp(double p, double Q, vector[double] x, add_args &cppargs) except +
     vector[double] flashPQ_cpp(double p, double Q, vector[double] x, add_args &cppargs, double t_guess) except +
+    double pcsaft_dielc_eps_cpp(vector[double] x, add_args &cppargs)
+    vector[double] pcsaft_dielc_diff_cpp(vector[double] x, add_args &cppargs)
 
     ctypedef struct add_args:
         vector[double] m
@@ -33,8 +35,10 @@ cdef extern from "pcsaft_electrolyte.cpp":
         vector[double] dipm
         vector[double] dip_num
         vector[double] z
-        double dielc
-        vector[double] dielc_diff
+        vector[double] dielc
+        vector[double] mw
+        int dielc_rule
+        int dielc_diff_mode
         vector[double] d_born
         vector[double] f_solv
         int born_model

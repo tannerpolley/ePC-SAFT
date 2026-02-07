@@ -1434,8 +1434,10 @@ def np_to_vector_int(np_array):
 def create_struct(params):
     """Convert PC-SAFT parameters to a C++ struct."""
     cdef add_args cppargs
+    cdef int ncomp
 
     cppargs.m = np_to_vector_double(params['m'])
+    ncomp = len(np.asarray(params['m']).flatten())
     cppargs.s = np_to_vector_double(params['s'])
     cppargs.e = np_to_vector_double(params['e'])
     if 'k_ij' in params:
@@ -1451,9 +1453,21 @@ def create_struct(params):
     if 'z' in params:
         cppargs.z = np_to_vector_double(params['z'])
     if 'dielc' in params:
-        cppargs.dielc = params['dielc']
-    if 'dielc_diff' in params:
-        cppargs.dielc_diff = np_to_vector_double(np.asarray(params['dielc_diff'], dtype=float))
+        dielc_arr = np.asarray(params['dielc'], dtype=float).flatten()
+        if dielc_arr.size != ncomp:
+            raise ValueError('params["dielc"] must have length {}, got {}.'.format(ncomp, dielc_arr.size))
+        cppargs.dielc = np_to_vector_double(dielc_arr)
+    if 'MW' in params:
+        mw_arr = np.asarray(params['MW'], dtype=float).flatten()
+        if mw_arr.size != ncomp:
+            raise ValueError('params["MW"] must have length {}, got {}.'.format(ncomp, mw_arr.size))
+        cppargs.mw = np_to_vector_double(mw_arr)
+    cppargs.dielc_rule = int(params['dielc_rule']) if 'dielc_rule' in params else 1
+    cppargs.dielc_diff_mode = int(params['dielc_diff_mode']) if 'dielc_diff_mode' in params else 0
+    if cppargs.dielc_diff_mode not in (0, 1):
+        raise ValueError("Unknown dielc_diff_mode. Supported values are 0 (analytic) and 1 (finite-diff).")
+    if cppargs.z.size() > 0 and cppargs.dielc.size() == 0:
+        raise ValueError('Electrolyte parameters require params["dielc"] as a per-species array.')
     if 'd_born' in params:
         cppargs.d_born = np_to_vector_double(np.asarray(params['d_born'], dtype=float))
     if 'f_solv' in params:
@@ -1475,3 +1489,16 @@ def create_struct(params):
         cppargs.l_ij = np_to_vector_double(params['l_ij'])
 
     return cppargs
+
+
+def pcsaft_dielc_eval(x, params):
+    """
+    Evaluate mixed dielectric constant and composition derivatives using the C++ dielectric engine.
+    """
+    x, params = ensure_numpy_input(x, params)
+    check_input(x, {})
+    params = check_association(params)
+    cppargs = create_struct(params)
+    eps = pcsaft_dielc_eps_cpp(x, cppargs)
+    deps = np.asarray(pcsaft_dielc_diff_cpp(x, cppargs))
+    return eps, deps

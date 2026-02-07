@@ -357,7 +357,7 @@ def test_density(print_result=False):
     k_ij[2, 0] = -0.007981 * t + 2.37999
     dielc = dielc_water(t)
 
-    params = {'m': m, 's': s, 'e': e, 'e_assoc': eAB, 'vol_a': volAB, 'k_ij': k_ij, 'z': z, 'dielc': dielc}
+    params = {'m': m, 's': s, 'e': e, 'e_assoc': eAB, 'vol_a': volAB, 'k_ij': k_ij, 'z': z, 'dielc': np.full(len(m), dielc)}
 
     calc = pcsaft_den(t, 101325, x, params, phase='liq')
     if print_result:
@@ -539,7 +539,7 @@ def test_indexes(print_result=False):
 
     s[2] = 3.8395 + 1.2828 * np.exp(-0.0074944 * t) - 1.3939 * np.exp(-0.00056029 * t)
     params = {'m': m, 's': s, 'e': e, 'e_assoc': eAB, 'vol_a': volAB, 'dipm': dipm, 'dip_num': dip_num, 'k_ij': k_ij, 'z': z,
-              'dielc': dielc}
+              'dielc': np.full(len(m), dielc)}
     fugcoef_mix = pcsaft_fugcoef(t, rho, x, params)
     if print_result:
         print('\n##########  Test with water  ##########')
@@ -911,7 +911,7 @@ def test_flashTQ(print_result=False):
     k_ij[2, 0] = -0.007981 * t + 2.37999
     dielc = dielc_water(t)
 
-    params = {'m': m, 's': s, 'e': e, 'e_assoc': eAB, 'vol_a': volAB, 'k_ij': k_ij, 'z': z, 'dielc': dielc}
+    params = {'m': m, 's': s, 'e': e, 'e_assoc': eAB, 'vol_a': volAB, 'k_ij': k_ij, 'z': z, 'dielc': np.full(len(m), dielc)}
 
     xv_guess = np.asarray([0., 0., 1.])
     calc, xl, xv = flashTQ(t, 0, x, params)
@@ -1011,7 +1011,7 @@ def test_flashPQ(print_result=False):
     k_ij[2, 0] = -0.007981 * ref + 2.37999
     dielc = dielc_water(ref)
 
-    params = {'m': m, 's': s, 'e': e, 'e_assoc': eAB, 'vol_a': volAB, 'k_ij': k_ij, 'z': z, 'dielc': dielc}
+    params = {'m': m, 's': s, 'e': e, 'e_assoc': eAB, 'vol_a': volAB, 'k_ij': k_ij, 'z': z, 'dielc': np.full(len(m), dielc)}
 
     xv_guess = np.asarray([0., 0., 1.])
     calc, xl, xv = flashPQ(p, 0, x, params)
@@ -1283,7 +1283,7 @@ def test_dadt(print_result=False):
     k_ij[2, 0] = -0.007981 * t + 2.37999
     dielc = dielc_water(t)
 
-    params = {'m': m, 's': s, 'e': e, 'e_assoc': eAB, 'vol_a': volAB, 'k_ij': k_ij, 'z': z, 'dielc': dielc}
+    params = {'m': m, 's': s, 'e': e, 'e_assoc': eAB, 'vol_a': volAB, 'k_ij': k_ij, 'z': z, 'dielc': np.full(len(m), dielc)}
 
     rho = pcsaft_den(t, p, x, params, phase='liq')
     dadt_eos = pcsaft_dadt(t, rho, x, params)
@@ -1571,7 +1571,7 @@ def test_pressure(print_result=False):
     dielc = dielc_water(t)
     rho = 55757.07260200306  # mol m^-3 From density calculation with working PC-SAFT density function
 
-    params = {'m': m, 's': s, 'e': e, 'e_assoc': eAB, 'vol_a': volAB, 'k_ij': k_ij, 'z': z, 'dielc': dielc}
+    params = {'m': m, 's': s, 'e': e, 'e_assoc': eAB, 'vol_a': volAB, 'k_ij': k_ij, 'z': z, 'dielc': np.full(len(m), dielc)}
 
     calc = pcsaft_p(t, rho, x, params)
     if print_result:

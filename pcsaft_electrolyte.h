@@ -24,8 +24,10 @@ struct add_args {
     vector<double> dipm;
     vector<double> dip_num;
     vector<double> z;
-    double dielc;
-    vector<double> dielc_diff;
+    vector<double> dielc;
+    vector<double> mw;
+    int dielc_rule;
+    int dielc_diff_mode;
     vector<double> d_born;
     vector<double> f_solv;
     int born_model;
@@ -68,6 +70,8 @@ double dielc_water(double t);
 double calc_water_sigma(double t);
 double calc_sigma(double t, double (*function)(double)){return function(t);} // this can allow us to accept a custom function for a temperature dependent sigma
 add_args get_single_component(int i, add_args &cppargs);
+double pcsaft_dielc_eps_cpp(vector<double> x, add_args &cppargs);
+vector<double> pcsaft_dielc_diff_cpp(vector<double> x, add_args &cppargs);
 
 class ValueError: public std::exception
 {
