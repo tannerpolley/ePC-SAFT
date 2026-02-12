@@ -443,6 +443,7 @@ def get_prop_dict(species, x, T, user_params=None, user_options=None):
         "dielc_rule": 1,
         "dielc_diff_mode": 0,
         "born_model": 1,
+        "born_diff_mode": 0,
         "DH_model": 1,
         "debug": False,
     }
@@ -530,6 +531,7 @@ def get_prop_dict(species, x, T, user_params=None, user_options=None):
         prop_dic['z'] = np.array([])
 
     prop_dic['born_model'] = options['born_model']
+    prop_dic['born_diff_mode'] = options['born_diff_mode']
     prop_dic['DH_model'] = options['DH_model']
     prop_dic['dielc_rule'] = options['dielc_rule']
     prop_dic['dielc_diff_mode'] = options['dielc_diff_mode']

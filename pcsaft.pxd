@@ -42,6 +42,7 @@ cdef extern from "pcsaft_electrolyte.cpp":
         vector[double] d_born
         vector[double] f_solv
         int born_model
+        int born_diff_mode
         int DH_model
         int debug
         vector[int] assoc_num

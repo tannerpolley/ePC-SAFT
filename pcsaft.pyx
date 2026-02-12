@@ -156,9 +156,14 @@ def pcsaft_p(t, rho, x, params):
             as an adjustable parameter that is fit to data.
         z : ndarray, shape (n,)
             Charge number of the ions
-        dielc : float
-            Dielectric constant of the medium to be used for electrolyte
-            calculations.
+        dielc : ndarray, shape (n,)
+            Component dielectric constants used for electrolyte calculations.
+        MW : ndarray, shape (n,)
+            Molecular weights in kg/mol; required for non-water solvent
+            molality conversion.
+        osmotic_solvent_index : int, optional
+            Explicit solvent index for the molality basis. If omitted, the
+            method chooses a neutral component (z=0) automatically.
         assoc_scheme : list, shape (n,)
             The types of association sites for each component. Use `None` for molecules
             without association sites. If a molecule has multiple association sites,
@@ -726,11 +731,52 @@ def pcsaft_osmoticC(t, rho, x, params):
     params = check_association(params)
     cppargs = create_struct(params)
 
-    indx_water = np.where(params['e'] == 353.9449)[0] # to find index for water
-    molality = x/(x[indx_water]*18.0153/1000.)
-    molality[indx_water] = 0
+    # Select solvent component for molality basis.
+    if 'osmotic_solvent_index' in params:
+        indx_solvent = int(params['osmotic_solvent_index'])
+        if indx_solvent < 0 or indx_solvent >= len(x):
+            raise InputError('params["osmotic_solvent_index"] is out of bounds.')
+    else:
+        indx_solvent = -1
+        z = np.asarray(params.get('z', []), dtype=float).flatten()
+        if z.size == len(x):
+            idx_sol = np.where(np.abs(z) < 1e-12)[0]
+            if idx_sol.size == 1:
+                indx_solvent = int(idx_sol[0])
+            elif idx_sol.size > 1:
+                # For mixed neutral solvents, default to the dominant neutral component.
+                indx_solvent = int(idx_sol[np.argmax(x[idx_sol])])
+        # Backward-compatible fallback for legacy water-only parameter sets.
+        if indx_solvent < 0 and 'e' in params:
+            idx_water = np.where(np.isclose(np.asarray(params['e'], dtype=float), 353.9449, atol=1e-6))[0]
+            if idx_water.size == 1:
+                indx_solvent = int(idx_water[0])
+        if indx_solvent < 0:
+            raise InputError('pcsaft_osmoticC requires a solvent component. Provide params["osmotic_solvent_index"] or one neutral species (z=0).')
+
+    mw = np.asarray(params.get('MW', []), dtype=float).flatten()
+    if mw.size == len(x):
+        mw_solvent = float(mw[indx_solvent])
+    elif 'e' in params and np.isclose(np.asarray(params['e'], dtype=float)[indx_solvent], 353.9449, atol=1e-6):
+        # Legacy fallback for water if MW is omitted.
+        mw_solvent = 18.0153/1000.
+    else:
+        raise InputError('pcsaft_osmoticC requires params["MW"] to compute molality for non-water solvent.')
+    # If a molar mass in g/mol was passed by mistake, convert to kg/mol.
+    if mw_solvent > 1.0:
+        mw_solvent = mw_solvent/1000.0
+    if mw_solvent <= 0.0:
+        raise InputError('Solvent molecular weight must be positive.')
+    if x[indx_solvent] <= 0.0:
+        raise InputError('Solvent mole fraction must be positive.')
+
+    molality = x/(x[indx_solvent]*mw_solvent)
+    molality[indx_solvent] = 0
+    molality_sum = float(np.sum(molality))
+    if molality_sum <= 0.0:
+        raise InputError('Total molality is zero; osmotic coefficient is undefined.')
     x0 = np.zeros_like(x)
-    x0[indx_water] = 1.
+    x0[indx_solvent] = 1.
 
     fugcoef = np.asarray(pcsaft_fugcoef_cpp(t, rho, x, cppargs))
     p = pcsaft_p_cpp(t, rho, x, cppargs)
@@ -740,10 +786,11 @@ def pcsaft_osmoticC(t, rho, x, params):
         ph = 0
     rho0 = pcsaft_den_cpp(t, p, x0, ph, cppargs)
     fugcoef0 = np.asarray(pcsaft_fugcoef_cpp(t, rho0, x0, cppargs))
-    gamma = fugcoef[indx_water]/fugcoef0[indx_water]
+    gamma = float(fugcoef[indx_solvent]/fugcoef0[indx_solvent])
 
-    osmC = -1000*np.log(x[indx_water]*gamma)/18.0153/np.sum(molality)
-    return osmC
+    osmC = -np.log(x[indx_solvent]*gamma)/(mw_solvent*molality_sum)
+    # Keep legacy return shape for callers/tests that index result[0].
+    return np.asarray([osmC], dtype=float)
 
 def pcsaft_miac_m(t, rho, x, params, species=None):
     """
@@ -1473,6 +1520,9 @@ def create_struct(params):
     if 'f_solv' in params:
         cppargs.f_solv = np_to_vector_double(np.asarray(params['f_solv'], dtype=float))
     cppargs.born_model = int(params['born_model']) if 'born_model' in params else 1
+    cppargs.born_diff_mode = int(params['born_diff_mode']) if 'born_diff_mode' in params else 0
+    if cppargs.born_diff_mode not in (0, 1, 2):
+        raise ValueError("Unknown born_diff_mode. Supported values are 0 (analytic), 1 (finite-diff), and 2 (Eq.133-style).")
     cppargs.DH_model = int(params['DH_model']) if 'DH_model' in params else 1
     if cppargs.DH_model == 2:
         raise ValueError("DH_model=2 (Bjerrum treatment) is reserved and not implemented.")

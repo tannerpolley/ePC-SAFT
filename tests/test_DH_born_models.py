@@ -121,18 +121,19 @@ def _load_miac_data(solvent, salt):
         with data_path.open("r", newline="", encoding="utf-8") as handle:
             reader = csv.DictReader(handle)
             fields = set(reader.fieldnames or [])
-            if {"molality (kg/mol)", "gamma"}.issubset(fields):
+            y_key = "gamma" if "gamma" in fields else ("miac_m" if "miac_m" in fields else None)
+            if {"molality (kg/mol)"}.issubset(fields) and y_key is not None:
                 for row in reader:
                     m = float(row["molality (kg/mol)"])
-                    g = float(row["gamma"])
+                    g = float(row[y_key])
                     if m_min <= m <= m_max:
                         molal.append(m)
                         gamma_exp.append(g)
-            elif {"x_methanol", "molality (kg/mol)", "gamma"}.issubset(fields):
+            elif {"x_methanol", "molality (kg/mol)"}.issubset(fields) and y_key is not None:
                 for row in reader:
                     x_meoh = float(row["x_methanol"])
                     m = float(row["molality (kg/mol)"])
-                    g = float(row["gamma"])
+                    g = float(row[y_key])
                     if abs(x_meoh - 1.0) <= 1e-12 and m_min <= m <= m_max:
                         molal.append(m)
                         gamma_exp.append(g)

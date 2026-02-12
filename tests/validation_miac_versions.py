@@ -1,6 +1,7 @@
-"""NaBr alcohol MIAC comparison across 2008/2014/2020 model versions."""
+"""Alcohol MIAC comparisons across 2008/2014/2020 model versions."""
 
 import csv
+import math
 import sys
 from pathlib import Path
 
@@ -20,6 +21,8 @@ import matplotlib.pyplot as plt
 
 T_REF = 298.15
 P_REF = 1.0e5
+AXIS_LABEL_SIZE = 13
+AXIS_TICK_SIZE = 11
 
 
 SOLVENT_PROPS = {
@@ -45,110 +48,210 @@ SOLVENT_PROPS = {
 
 
 ION_PROPS = {
-    "2008": {"na_s": 2.4122, "na_e": 646.05, "br_s": 3.4573, "br_e": 60.22, "k_nabr": 1.0},
-    "2014": {"na_s": 2.8232, "na_e": 230.00, "br_s": 3.0707, "br_e": 190.00, "k_nabr": 0.290},
-    "2020": {"na_s": 2.8232, "na_e": 230.00, "br_s": 3.0707, "br_e": 190.00, "k_nabr": 0.290},
+    "2008": {
+        "Li+": {"s": 1.8177, "e": 2697.28, "MW": 6.941e-3, "z": 1.0},
+        "Na+": {"s": 2.4122, "e": 646.05, "MW": 22.98e-3, "z": 1.0},
+        "K+": {"s": 2.9698, "e": 271.05, "MW": 39.0983e-3, "z": 1.0},
+        "Cl-": {"s": 3.0575, "e": 47.29, "MW": 35.453e-3, "z": -1.0},
+        "Br-": {"s": 3.4573, "e": 60.22, "MW": 79.904e-3, "z": -1.0},
+        "I-": {"s": 3.9319, "e": 80.43, "MW": 126.90447e-3, "z": -1.0},
+    },
+    "2014": {
+        "Li+": {"s": 2.8449, "e": 360.00, "MW": 6.941e-3, "z": 1.0},
+        "Na+": {"s": 2.8232, "e": 230.00, "MW": 22.98e-3, "z": 1.0},
+        "K+": {"s": 3.3417, "e": 200.00, "MW": 39.0983e-3, "z": 1.0},
+        "Cl-": {"s": 2.7560, "e": 170.00, "MW": 35.453e-3, "z": -1.0},
+        "Br-": {"s": 3.0707, "e": 190.00, "MW": 79.904e-3, "z": -1.0},
+        "I-": {"s": 3.6672, "e": 200.00, "MW": 126.90447e-3, "z": -1.0},
+    },
+    "2020": {
+        "Li+": {"s": 2.8449, "e": 360.00, "MW": 6.941e-3, "z": 1.0},
+        "Na+": {"s": 2.8232, "e": 230.00, "MW": 22.98e-3, "z": 1.0},
+        "K+": {"s": 3.3417, "e": 200.00, "MW": 39.0983e-3, "z": 1.0},
+        "Cl-": {"s": 2.7560, "e": 170.00, "MW": 35.453e-3, "z": -1.0},
+        "Br-": {"s": 3.0707, "e": 190.00, "MW": 79.904e-3, "z": -1.0},
+        "I-": {"s": 3.6672, "e": 200.00, "MW": 126.90447e-3, "z": -1.0},
+    },
+}
+
+SALT_SPECS = {
+    "LiBr": {"cation": "Li+", "anion": "Br-"},
+    "LiCl": {"cation": "Li+", "anion": "Cl-"},
+    "NaBr": {"cation": "Na+", "anion": "Br-"},
+    "NaCl": {"cation": "Na+", "anion": "Cl-"},
+    "NaI": {"cation": "Na+", "anion": "I-"},
+    "KBr": {"cation": "K+", "anion": "Br-"},
+    "KI": {"cation": "K+", "anion": "I-"},
+}
+
+ION_PAIR_K = {
+    "2008": {salt: 1.0 for salt in SALT_SPECS},
+    "2014": {
+        "LiBr": 0.591,
+        "LiCl": 0.669,
+        "NaBr": 0.290,
+        "NaCl": 0.317,
+        "NaI": 0.018,
+        "KBr": -0.102,
+        "KI": -0.312,
+    },
+    "2020": {
+        "LiBr": 0.591,
+        "LiCl": 0.669,
+        "NaBr": 0.290,
+        "NaCl": 0.317,
+        "NaI": 0.018,
+        "KBr": -0.102,
+        "KI": -0.312,
+    },
+}
+
+VERSIONS = ("2008", "2014", "2020_m0", "2020_m1", "2020_m2")
+
+STYLE = {
+    "2008": {"color": "gray", "linestyle": "--", "lw": 2.0},
+    "2014": {"color": "black", "linestyle": "-", "lw": 2.0},
+    "2020_m0": {"color": "tab:blue", "linestyle": "-.", "lw": 2.0},
+    "2020_m1": {"color": "tab:red", "linestyle": ":", "lw": 2.2},
+    "2020_m2": {"color": "tab:green", "linestyle": (0, (3, 1, 1, 1)), "lw": 2.0},
 }
 
 
-def _load_exp_data(solvent):
-    if solvent == "Methanol":
-        path = ROOT / "data" / "MIAC_m" / "methanol" / "methanol-NaBr.csv"
-        m_key, g_key = "molality (kg/mol)", "gamma"
-    elif solvent == "Ethanol":
-        path = ROOT / "data" / "MIAC_m" / "ethanol" / "ethanol-NaBr.csv"
-        m_key, g_key = "molality (kg/mol)", "gamma"
-    else:
-        raise ValueError(f"Unsupported solvent: {solvent}")
+def _discover_combos():
+    combos = []
+    for solvent in ("Methanol", "Ethanol"):
+        solvent_lower = solvent.lower()
+        prefix = f"{solvent_lower}-"
+        data_dir = ROOT / "data" / "MIAC_m" / solvent_lower
+        if not data_dir.exists():
+            continue
 
-    if not path.exists():
-        raise FileNotFoundError(f"Experimental data file not found: {path}")
+        for path in sorted(data_dir.glob(f"{prefix}*.csv")):
+            salt = path.stem.replace(prefix, "", 1)
+            if salt not in SALT_SPECS:
+                raise ValueError(
+                    f"Unsupported salt '{salt}' discovered in {path}. "
+                    f"Add it to SALT_SPECS/ION_PROPS/ION_PAIR_K."
+                )
+            combos.append(
+                {
+                    "salt": salt,
+                    "solvent": solvent,
+                    "data_path": path,
+                    "output": ROOT / "tests" / "fit_plots" / f"validation_miac_versions_{salt.lower()}_{solvent_lower}.png",
+                }
+            )
 
+    if not combos:
+        raise FileNotFoundError("No alcohol MIAC CSV files found in data/MIAC_m/methanol or data/MIAC_m/ethanol.")
+    return combos
+
+
+def _species_for_combo(salt, solvent):
+    salt_spec = SALT_SPECS[salt]
+    return [salt_spec["cation"], salt_spec["anion"], solvent]
+
+
+def _pair_key(salt):
+    salt_spec = SALT_SPECS[salt]
+    return f"{salt_spec['cation']}{salt_spec['anion']}"
+
+
+def _load_exp_data(combo):
+    path = combo["data_path"]
+    salt = combo["salt"]
     molal = []
-    gamma = []
+    miac = []
+
     with path.open("r", newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
-        required = {m_key, g_key}
-        if not required.issubset(set(reader.fieldnames or [])):
-            raise ValueError(f"Missing columns {sorted(required)} in {path}.")
+        fields = set(reader.fieldnames or [])
+
+        m_key = None
+        for candidate in ("molality (kg/mol)", f"m_{salt}", "molality", "m"):
+            if candidate in fields:
+                m_key = candidate
+                break
+        if m_key is None:
+            raise ValueError(
+                f"Missing molality column in {path}. Tried: 'molality (kg/mol)', 'm_{salt}', 'molality', 'm'."
+            )
+
+        y_key = None
+        for candidate in ("miac_m", "gamma"):
+            if candidate in fields:
+                y_key = candidate
+                break
+        if y_key is None:
+            raise ValueError(f"Missing MIAC column in {path}. Tried: 'miac_m', 'gamma'.")
+
         for row in reader:
-            m = float(row[m_key])
-            g = float(row[g_key])
-            molal.append(m)
-            gamma.append(g)
+            molal.append(float(row[m_key]))
+            miac.append(float(row[y_key]))
 
     molal = np.asarray(molal, dtype=float)
-    gamma = np.asarray(gamma, dtype=float)
-    species = ["Na+", "Br-", solvent]
-    x_salt = np.empty_like(molal)
-    for i, m in enumerate(molal):
-        x = molality_to_molefraction(float(m), species=species)
-        x_salt[i] = x[0] + x[1]
+    miac = np.asarray(miac, dtype=float)
+    if not np.all(np.isfinite(molal)) or not np.all(np.isfinite(miac)):
+        raise ValueError(f"Non-finite experimental values in {path}.")
+    if molal.size == 0:
+        raise ValueError(f"No data rows in {path}.")
 
-    mask = (x_salt >= 0.0) & (x_salt <= 0.05)
-    if not np.any(mask):
-        raise ValueError(f"No {solvent} experimental points in 0<=x_salt<=0.05.")
-
-    order = np.argsort(x_salt[mask])
-    return x_salt[mask][order], gamma[mask][order]
+    order = np.argsort(molal)
+    return molal[order], miac[order]
 
 
-def _params_for_version(version, solvent):
-    if version not in ION_PROPS:
-        raise ValueError(f"Unsupported version: {version}")
-    if solvent not in SOLVENT_PROPS:
-        raise ValueError(f"Unsupported solvent: {solvent}")
-
-    ion = ION_PROPS[version]
+def _params_for_version(version, salt, solvent):
+    base = "2020" if version.startswith("2020_") else version
+    cation = SALT_SPECS[salt]["cation"]
+    anion = SALT_SPECS[salt]["anion"]
+    ion = ION_PROPS[base]
     solv = SOLVENT_PROPS[solvent]
 
     k_ij = np.zeros((3, 3), dtype=float)
-    k_ij[0, 1] = ion["k_nabr"]
-    k_ij[1, 0] = ion["k_nabr"]
-    # Requested setup: no ion-solvent kij for alcohol comparisons.
-    k_ij[0, 2] = 0.0
-    k_ij[2, 0] = 0.0
-    k_ij[1, 2] = 0.0
-    k_ij[2, 1] = 0.0
+    kij_pair = ION_PAIR_K[base][salt]
+    k_ij[0, 1] = kij_pair
+    k_ij[1, 0] = kij_pair
 
     params = {
         "m": np.asarray([1.0, 1.0, solv["m"]], dtype=float),
-        "s": np.asarray([ion["na_s"], ion["br_s"], solv["s"]], dtype=float),
-        "e": np.asarray([ion["na_e"], ion["br_e"], solv["e"]], dtype=float),
-        "MW": np.asarray([22.98e-3, 79.904e-3, solv["MW"]], dtype=float),
+        "s": np.asarray([ion[cation]["s"], ion[anion]["s"], solv["s"]], dtype=float),
+        "e": np.asarray([ion[cation]["e"], ion[anion]["e"], solv["e"]], dtype=float),
+        "MW": np.asarray([ion[cation]["MW"], ion[anion]["MW"], solv["MW"]], dtype=float),
         "e_assoc": np.asarray([0.0, 0.0, solv["e_assoc"]], dtype=float),
         "vol_a": np.asarray([0.0, 0.0, solv["vol_a"]], dtype=float),
-        "z": np.asarray([1.0, -1.0, 0.0], dtype=float),
+        "z": np.asarray([ion[cation]["z"], ion[anion]["z"], 0.0], dtype=float),
         "k_ij": k_ij,
         "dielc": np.asarray([8.0, 8.0, solv["dielc"]], dtype=float),
         "DH_model": 1,
         "debug": False,
     }
-    if version == "2020":
+    if version.startswith("2020_"):
         params["born_model"] = 1
         params["dielc_rule"] = 1
+        params["born_diff_mode"] = int(version.split("_m", 1)[1])
     else:
         params["born_model"] = 0
         params["dielc_rule"] = 0
+        params["born_diff_mode"] = 0
     return params
 
 
-def _m_from_x_salt(x_salt, mw_solvent):
-    n_solvent = 1.0 / mw_solvent
-    return x_salt * n_solvent / (2.0 * (1.0 - x_salt))
+def _calc_curve(combo, version, molal_grid):
+    salt = combo["salt"]
+    solvent = combo["solvent"]
+    params = _params_for_version(version, salt, solvent)
+    species = _species_for_combo(salt, solvent)
+    pair_key = _pair_key(salt)
 
-
-def _calc_curve(solvent, version, x_salt_grid):
-    params = _params_for_version(version, solvent)
-    species = ["Na+", "Br-", solvent]
-    molal_grid = _m_from_x_salt(x_salt_grid, SOLVENT_PROPS[solvent]["MW"])
-    gamma = np.empty_like(x_salt_grid, dtype=float)
+    gamma = np.empty_like(molal_grid, dtype=float)
     for i, m in enumerate(molal_grid):
-        x = molality_to_molefraction(float(m), species=species)
+        # Use a tiny positive molality for the left endpoint to keep the density/fugacity solve stable.
+        m_eval = float(m) if m > 0.0 else 1e-12
+        x = molality_to_molefraction(m_eval, species=species)
         rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
-        gamma[i] = pcsaft_miac_m(T_REF, rho, x, params, species=species)["Na+Br-"]
+        gamma[i] = pcsaft_miac_m(T_REF, rho, x, params, species=species)[pair_key]
     if not np.all(np.isfinite(gamma)):
-        raise ValueError(f"Non-finite MIAC values for {solvent} {version}.")
+        raise ValueError(f"Non-finite MIAC values for {salt}/{solvent} {version}.")
     return gamma
 
 
@@ -156,50 +259,59 @@ def run_validation_miac_versions():
     out_dir = ROOT / "tests" / "fit_plots"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    style = {
-        "2008": {"color": "gray", "linestyle": "--", "lw": 1.8},
-        "2014": {"color": "black", "linestyle": "-", "lw": 2.0},
-        "2020": {"color": "tab:blue", "linestyle": "-.", "lw": 1.8},
-    }
-    x_grids = {
-        "Methanol": np.linspace(1e-6, 0.05, 101),
-        "Ethanol": np.linspace(1e-6, 0.05, 101),
-    }
-    outputs = {
-        "Methanol": out_dir / "validation_miac_versions_nabr_methanol.png",
-        "Ethanol": out_dir / "validation_miac_versions_nabr_ethanol.png",
-    }
+    combos = _discover_combos()
+    generated = []
 
-    for solvent in ("Methanol", "Ethanol"):
-        x_salt_grid = x_grids[solvent]
-        x_exp, g_exp = _load_exp_data(solvent)
-        curves = {v: _calc_curve(solvent, v, x_salt_grid) for v in ("2008", "2014", "2020")}
+    for combo in combos:
+        salt = combo["salt"]
+        solvent = combo["solvent"]
+        molal_exp, miac_exp = _load_exp_data(combo)
+
+        xmax = float(max(1, int(math.ceil(float(np.max(molal_exp))))))
+        ymax = float(max(1, int(math.ceil(float(np.max(miac_exp))))))
+        molal_grid = np.linspace(0.0, xmax, 701)
+        curves = {version: _calc_curve(combo, version, molal_grid) for version in VERSIONS}
 
         fig, ax = plt.subplots(figsize=(7.2, 5.0))
-        ax.scatter(x_exp, g_exp, color="black", marker="o", s=34, facecolors="none", label=f"NaBr data ({solvent})")
-        for version in ("2008", "2014", "2020"):
+        ax.scatter(
+            molal_exp,
+            miac_exp,
+            color="black",
+            marker="o",
+            s=34,
+            facecolors="none",
+            label=f"{salt} data ({solvent})",
+        )
+        for version in VERSIONS:
+            label = f"{salt} 2020 born_diff_mode={version[-1]}" if version.startswith("2020_") else f"{salt} {version}"
             ax.plot(
-                x_salt_grid,
+                molal_grid,
                 curves[version],
-                color=style[version]["color"],
-                linestyle=style[version]["linestyle"],
-                linewidth=style[version]["lw"],
-                label=f"NaBr {version}",
+                color=STYLE[version]["color"],
+                linestyle=STYLE[version]["linestyle"],
+                linewidth=STYLE[version]["lw"],
+                label=label,
             )
-        ax.set_xlim(0.0, 0.05)
-        ax.set_ylim(0.0, 1.0)
-        ax.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
-        ax.set_xlabel(r"total NaBr mole fraction, $x_{\mathrm{NaBr}} = x_{\mathrm{Na^+}} + x_{\mathrm{Br^-}}$")
-        ax.set_ylabel(r"mean ionic activity coefficient, $\gamma_{\pm}^{m}$")
-        ax.set_title(f"NaBr in {solvent.lower()} at 298.15 K (2008/2014/2020)")
+
+        ax.set_xlim(0.0, xmax)
+        ax.set_ylim(0.0, ymax)
+        ax.set_xlabel(r"molality, $m$ / mol kg$^{-1}$", fontsize=AXIS_LABEL_SIZE)
+        ax.set_ylabel(r"mean ionic activity coefficient, $\gamma_{\pm}^{m}$", fontsize=AXIS_LABEL_SIZE)
+        ax.tick_params(axis="both", labelsize=AXIS_TICK_SIZE)
+        ax.set_title(f"{salt} in {solvent.lower()} at 298.15 K (2008/2014/2020 born-diff modes)")
         ax.grid(True, alpha=0.3)
         ax.legend(fontsize=8)
         fig.tight_layout()
-        fig.savefig(outputs[solvent], dpi=220)
+        fig.savefig(combo["output"], dpi=220)
         plt.close(fig)
 
-        if not outputs[solvent].exists():
-            raise FileNotFoundError(f"Expected plot was not written: {outputs[solvent]}")
+        if not combo["output"].exists():
+            raise FileNotFoundError(f"Expected plot was not written: {combo['output']}")
+        generated.append(combo["output"])
+
+    print("Generated validation plots:")
+    for path in generated:
+        print(f"- {path}")
 
 
 def test_validation_miac_versions():

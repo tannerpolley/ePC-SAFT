@@ -44,6 +44,8 @@ struct DielcState {
     vector<double> deps_dx;
 };
 
+double compute_eps_rule(int rule, const vector<double> &x, add_args &cppargs);
+
 BornSSMDSData build_born_ssmds_data(vector<double> x, add_args &cppargs, double eps_r, double eps_r_ion) {
     int ncomp = static_cast<int>(x.size());
     BornSSMDSData data;
@@ -107,6 +109,57 @@ BornSSMDSData build_born_ssmds_data(vector<double> x, add_args &cppargs, double 
     return data;
 }
 
+double compute_born_ares_only(double t, const vector<double> &x, add_args &cppargs) {
+    if (cppargs.born_model == 0) {
+        return 0.0;
+    }
+    double eps = compute_eps_rule(cppargs.dielc_rule, x, cppargs);
+    if (cppargs.born_model == 1) {
+        double born_sum = 0.0;
+        for (int i = 0; i < static_cast<int>(x.size()); i++) {
+            if (std::abs(cppargs.z[i]) > 1e-12) {
+                double d_born_i = cppargs.s[i]*(1.0 - 0.12*std::exp(-3.0*cppargs.e[i]/t));
+                if (d_born_i <= 0) {
+                    throw ValueError("Born term requires positive ion d_born,i.");
+                }
+                born_sum += x[i]*cppargs.z[i]*cppargs.z[i]/d_born_i;
+            }
+        }
+        return -E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac)*(1.0 - 1.0/eps)*born_sum;
+    }
+    if (cppargs.born_model >= 2 && cppargs.born_model <= 5) {
+        const double eps_r_ion = 8.0;
+        const double Kborn = E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac);
+        BornSSMDSData born = build_born_ssmds_data(x, cppargs, eps, eps_r_ion);
+        return -Kborn*born.sum_bracket;
+    }
+    throw ValueError("Unknown born_model. Supported values are 0, 1, 2, 3, 4, 5.");
+}
+
+vector<double> compute_born_dadx_fd(double t, const vector<double> &x, add_args &cppargs, double a0) {
+    int ncomp = static_cast<int>(x.size());
+    vector<double> dadx_born(ncomp, 0.0);
+    for (int i = 0; i < ncomp; i++) {
+        double h = 1e-6*std::max(1.0, std::abs(x[i]));
+        vector<double> xp = x;
+        xp[i] += h;
+        double fp = compute_born_ares_only(t, xp, cppargs);
+        if (x[i] - h >= 0.0) {
+            vector<double> xm = x;
+            xm[i] -= h;
+            double fm = compute_born_ares_only(t, xm, cppargs);
+            dadx_born[i] = (fp - fm)/(2.0*h);
+        }
+        else {
+            dadx_born[i] = (fp - a0)/h;
+        }
+        if (!std::isfinite(dadx_born[i])) {
+            throw ValueError("Non-finite Born finite-difference derivative.");
+        }
+    }
+    return dadx_born;
+}
+
 void validate_dielc_inputs(const vector<double> &x, add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     if (cppargs.dielc.size() != static_cast<size_t>(ncomp)) {
@@ -114,6 +167,9 @@ void validate_dielc_inputs(const vector<double> &x, add_args &cppargs) {
     }
     if (cppargs.dielc_diff_mode != 0 && cppargs.dielc_diff_mode != 1) {
         throw ValueError("Unknown dielc_diff_mode. Supported values are 0 (analytic) and 1 (finite-diff).");
+    }
+    if (cppargs.born_diff_mode != 0 && cppargs.born_diff_mode != 1 && cppargs.born_diff_mode != 2) {
+        throw ValueError("Unknown born_diff_mode. Supported values are 0 (analytic), 1 (finite-diff), and 2 (Eq.133-style).");
     }
     int rule = cppargs.dielc_rule;
     if (rule < 0 || rule > 6) {
@@ -1367,19 +1423,25 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
             vector<double> dadx_born(ncomp, 0.0);
             vector<double> ion_part_vec(ncomp, 0.0);
             vector<double> eps_part_vec(ncomp, 0.0);
-            for (int i = 0; i < ncomp; i++) {
-                double ion_part = 0.0;
-                if (cppargs.z[i] != 0) {
-                    double d_born_i = cppargs.s[i]*(1.0 - 0.12*std::exp(-3.0*cppargs.e[i]/t));
-                    if (d_born_i <= 0) {
-                        throw ValueError("Born term requires positive ion d_born,i.");
+            if (cppargs.born_diff_mode == 1) {
+                dadx_born = compute_born_dadx_fd(t, x, cppargs, a_born);
+            }
+            else {
+                for (int i = 0; i < ncomp; i++) {
+                    double ion_part = 0.0;
+                    if (cppargs.z[i] != 0) {
+                        double d_born_i = cppargs.s[i]*(1.0 - 0.12*std::exp(-3.0*cppargs.e[i]/t));
+                        if (d_born_i <= 0) {
+                            throw ValueError("Born term requires positive ion d_born,i.");
+                        }
+                        ion_part = (1.0 - 1.0/eps)*cppargs.z[i]*cppargs.z[i]/d_born_i;
                     }
-                    ion_part = (1.0 - 1.0/eps)*cppargs.z[i]*cppargs.z[i]/d_born_i;
+                    // born_diff_mode=2 follows Eq.133-style: remove the born_sum multiplier on the dielectric term.
+                    double eps_part = (cppargs.born_diff_mode == 2) ? (deps_dx[i]/(eps*eps)) : (born_sum*deps_dx[i]/(eps*eps));
+                    ion_part_vec[i] = ion_part;
+                    eps_part_vec[i] = eps_part;
+                    dadx_born[i] = -Kborn*(ion_part + eps_part);
                 }
-                double eps_part = born_sum*deps_dx[i]/(eps*eps);
-                ion_part_vec[i] = ion_part;
-                eps_part_vec[i] = eps_part;
-                dadx_born[i] = -Kborn*(ion_part + eps_part);
             }
 
             double sum_x_dadx_born = 0.0;
@@ -1390,8 +1452,23 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
                 mu_born[i] = a_born + Z_born + dadx_born[i] - sum_x_dadx_born;
             }
             if (cppargs.debug) {
+                if (cppargs.born_diff_mode == 1) {
+                    std::cout << std::fixed << std::setprecision(10)
+                              << "[DEBUG born_model1_fd] eps=" << eps
+                              << " born_sum=" << born_sum
+                              << " a_born=" << a_born*8.314*t/1000.0
+                              << " sum_x_dadx=" << sum_x_dadx_born*8.314*t/1000.0
+                              << std::endl;
+                    for (int i = 0; i < ncomp; i++) {
+                        std::cout << "  k=" << i
+                                  << " dadx_born=" << dadx_born[i]*8.314*t/1000.0
+                                  << " mu_born=" << mu_born[i]*8.314*t/1000.0
+                                  << std::endl;
+                    }
+                }
+                else {
                 std::cout << std::fixed << std::setprecision(10)
-                          << "[DEBUG born_model1] eps=" << eps
+                          << "[DEBUG born_model1_m" << cppargs.born_diff_mode << "] eps=" << eps
                           << " born_sum=" << born_sum
                           << " a_born=" << a_born*8.314*t/1000.0
                           << " sum_x_dadx=" << sum_x_dadx_born*8.314*t/1000.0
@@ -1403,6 +1480,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
                               << " dadx_born=" << dadx_born[i]*8.314*t/1000.0
                               << " mu_born=" << mu_born[i]*8.314*t/1000.0
                               << std::endl;
+                }
                 }
             }
         }
@@ -1417,21 +1495,26 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
             vector<double> direct_part_vec(ncomp, 0.0);
             vector<double> deps_part_vec(ncomp, 0.0);
             vector<double> ddelta_part_vec(ncomp, 0.0);
-            const double inv_eps2 = 1.0/(eps*eps);
-            const double shell_coeff = 1.0/eps_r_ion - 1.0/eps;
-            const bool use_deps = (cppargs.born_model == 3 || cppargs.born_model == 5);
-            const bool use_shell_chain = (cppargs.born_model == 4 || cppargs.born_model == 5);
-            for (int k = 0; k < ncomp; k++) {
-                double direct_part = 0.0;
-                if (std::abs(cppargs.z[k]) > 1e-12) {
-                    direct_part = cppargs.z[k]*cppargs.z[k]*born.bracket[k];
+            if (cppargs.born_diff_mode == 1) {
+                dadx_born = compute_born_dadx_fd(t, x, cppargs, a_born);
+            }
+            else {
+                const double inv_eps2 = 1.0/(eps*eps);
+                const double shell_coeff = 1.0/eps_r_ion - 1.0/eps;
+                const bool use_deps = (cppargs.born_model == 3 || cppargs.born_model == 5);
+                const bool use_shell_chain = (cppargs.born_model == 4 || cppargs.born_model == 5);
+                for (int k = 0; k < ncomp; k++) {
+                    double direct_part = 0.0;
+                    if (std::abs(cppargs.z[k]) > 1e-12) {
+                        direct_part = cppargs.z[k]*cppargs.z[k]*born.bracket[k];
+                    }
+                    double deps_part = use_deps ? born.sum_gap*deps_dx[k]*inv_eps2 : 0.0;
+                    double ddelta_part = use_shell_chain ? shell_coeff*born.sum_dpref_over_D2*born.f_k[k] : 0.0;
+                    direct_part_vec[k] = direct_part;
+                    deps_part_vec[k] = deps_part;
+                    ddelta_part_vec[k] = ddelta_part;
+                    dadx_born[k] = -Kborn*(direct_part + deps_part + ddelta_part);
                 }
-                double deps_part = use_deps ? born.sum_gap*deps_dx[k]*inv_eps2 : 0.0;
-                double ddelta_part = use_shell_chain ? shell_coeff*born.sum_dpref_over_D2*born.f_k[k] : 0.0;
-                direct_part_vec[k] = direct_part;
-                deps_part_vec[k] = deps_part;
-                ddelta_part_vec[k] = ddelta_part;
-                dadx_born[k] = -Kborn*(direct_part + deps_part + ddelta_part);
             }
 
             double sum_x_dadx_born = 0.0;
@@ -1446,30 +1529,53 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
                 for (int i = 0; i < ncomp; i++) {
                     f_mix_dbg += x[i]*born.f_k[i];
                 }
-                std::cout << std::fixed << std::setprecision(10)
-                          << "[DEBUG born_model" << cppargs.born_model << "] eps=" << eps
-                          << " eps_ion=" << eps_r_ion
-                          << " f_mix=" << f_mix_dbg
-                          << " sum_bracket=" << born.sum_bracket
-                          << " sum_invD=" << born.sum_invD
-                          << " sum_gap=" << born.sum_gap
-                          << " sum_dpref_over_D2=" << born.sum_dpref_over_D2
-                          << " a_born=" << a_born*8.314*t/1000.0
-                          << " sum_x_dadx=" << sum_x_dadx_born*8.314*t/1000.0
-                          << std::endl;
-                for (int i = 0; i < ncomp; i++) {
-                    std::cout << "  k=" << i
-                              << " z=" << cppargs.z[i]
-                              << " d_born=" << born.d_born[i]
-                              << " D=" << born.D[i]
-                              << " f_k=" << born.f_k[i]
-                              << " bracket=" << born.bracket[i]
-                              << " direct=" << direct_part_vec[i]
-                              << " deps=" << deps_part_vec[i]
-                              << " ddelta=" << ddelta_part_vec[i]
-                              << " dadx_born=" << dadx_born[i]*8.314*t/1000.0
-                              << " mu_born=" << mu_born[i]*8.314*t/1000.0
+                if (cppargs.born_diff_mode == 1) {
+                    std::cout << std::fixed << std::setprecision(10)
+                              << "[DEBUG born_model" << cppargs.born_model << "_fd] eps=" << eps
+                              << " eps_ion=" << eps_r_ion
+                              << " f_mix=" << f_mix_dbg
+                              << " sum_bracket=" << born.sum_bracket
+                              << " a_born=" << a_born*8.314*t/1000.0
+                              << " sum_x_dadx=" << sum_x_dadx_born*8.314*t/1000.0
                               << std::endl;
+                    for (int i = 0; i < ncomp; i++) {
+                        std::cout << "  k=" << i
+                                  << " z=" << cppargs.z[i]
+                                  << " d_born=" << born.d_born[i]
+                                  << " D=" << born.D[i]
+                                  << " f_k=" << born.f_k[i]
+                                  << " bracket=" << born.bracket[i]
+                                  << " dadx_born=" << dadx_born[i]*8.314*t/1000.0
+                                  << " mu_born=" << mu_born[i]*8.314*t/1000.0
+                                  << std::endl;
+                    }
+                }
+                else {
+                    std::cout << std::fixed << std::setprecision(10)
+                              << "[DEBUG born_model" << cppargs.born_model << "] eps=" << eps
+                              << " eps_ion=" << eps_r_ion
+                              << " f_mix=" << f_mix_dbg
+                              << " sum_bracket=" << born.sum_bracket
+                              << " sum_invD=" << born.sum_invD
+                              << " sum_gap=" << born.sum_gap
+                              << " sum_dpref_over_D2=" << born.sum_dpref_over_D2
+                              << " a_born=" << a_born*8.314*t/1000.0
+                              << " sum_x_dadx=" << sum_x_dadx_born*8.314*t/1000.0
+                              << std::endl;
+                    for (int i = 0; i < ncomp; i++) {
+                        std::cout << "  k=" << i
+                                  << " z=" << cppargs.z[i]
+                                  << " d_born=" << born.d_born[i]
+                                  << " D=" << born.D[i]
+                                  << " f_k=" << born.f_k[i]
+                                  << " bracket=" << born.bracket[i]
+                                  << " direct=" << direct_part_vec[i]
+                                  << " deps=" << deps_part_vec[i]
+                                  << " ddelta=" << ddelta_part_vec[i]
+                                  << " dadx_born=" << dadx_born[i]*8.314*t/1000.0
+                                  << " mu_born=" << mu_born[i]*8.314*t/1000.0
+                                  << std::endl;
+                    }
                 }
             }
         }
@@ -3165,6 +3271,7 @@ double calc_water_sigma(double t) {
 add_args get_single_component(int i, add_args &cppargs) {
     add_args args_single;
     args_single.born_model = cppargs.born_model;
+    args_single.born_diff_mode = cppargs.born_diff_mode;
     args_single.DH_model = cppargs.DH_model;
     args_single.dielc_rule = cppargs.dielc_rule;
     args_single.dielc_diff_mode = cppargs.dielc_diff_mode;
