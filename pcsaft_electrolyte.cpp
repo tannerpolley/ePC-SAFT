@@ -1348,14 +1348,15 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
         }
 
         if (cppargs.born_model == 1) {
-            // Born term (Bulow 2021a, non-SSM+DS), Version 2 differential, a_i = sigma_i,ion
+            // Born term (Bulow 2021a, non-SSM+DS), Version 2 differential, using d_born,i in denominator
             double born_sum = 0.;
             for (int i = 0; i < ncomp; i++) {
                 if (cppargs.z[i] != 0) {
-                    if (cppargs.s[i] <= 0) {
-                        throw ValueError("Born term requires positive ion sigma (a_i = sigma_i,ion).");
+                    double d_born_i = cppargs.s[i]*(1.0 - 0.12*std::exp(-3.0*cppargs.e[i]/t));
+                    if (d_born_i <= 0) {
+                        throw ValueError("Born term requires positive ion d_born,i.");
                     }
-                    born_sum += x[i]*cppargs.z[i]*cppargs.z[i]/cppargs.s[i];
+                    born_sum += x[i]*cppargs.z[i]*cppargs.z[i]/d_born_i;
                 }
             }
             double Kborn = E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac);
@@ -1369,7 +1370,11 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
             for (int i = 0; i < ncomp; i++) {
                 double ion_part = 0.0;
                 if (cppargs.z[i] != 0) {
-                    ion_part = (1.0 - 1.0/eps)*cppargs.z[i]*cppargs.z[i]/cppargs.s[i];
+                    double d_born_i = cppargs.s[i]*(1.0 - 0.12*std::exp(-3.0*cppargs.e[i]/t));
+                    if (d_born_i <= 0) {
+                        throw ValueError("Born term requires positive ion d_born,i.");
+                    }
+                    ion_part = (1.0 - 1.0/eps)*cppargs.z[i]*cppargs.z[i]/d_born_i;
                 }
                 double eps_part = born_sum*deps_dx[i]/(eps*eps);
                 ion_part_vec[i] = ion_part;
@@ -1802,14 +1807,15 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, add_args &cppargs
         }
 
         if (cppargs.born_model == 1) {
-            // Born term (Bulow 2021a, non-SSM+DS): a_i = sigma_i,ion
+            // Born term (Bulow 2021a, non-SSM+DS): use d_born,i in denominator
             double born_sum = 0.;
             for (int i = 0; i < ncomp; i++) {
                 if (cppargs.z[i] != 0) {
-                    if (cppargs.s[i] <= 0) {
-                        throw ValueError("Born term requires positive ion sigma (a_i = sigma_i,ion).");
+                    double d_born_i = cppargs.s[i]*(1.0 - 0.12*std::exp(-3.0*cppargs.e[i]/t));
+                    if (d_born_i <= 0) {
+                        throw ValueError("Born term requires positive ion d_born,i.");
                     }
-                    born_sum += x[i]*cppargs.z[i]*cppargs.z[i]/cppargs.s[i];
+                    born_sum += x[i]*cppargs.z[i]*cppargs.z[i]/d_born_i;
                 }
             }
             ares_born = -E_CHRG*E_CHRG/(4.*PI*kb*t*perm_vac)*(1.-1./eps)*born_sum;
@@ -2181,15 +2187,21 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, add_args &cppargs
         if (cppargs.born_model == 1) {
             // Born term temperature derivative (Eq. 151 in equations.tex, non-SSM+DS)
             double born_sum = 0.;
+            double born_sum_dt = 0.;
             for (int i = 0; i < ncomp; i++) {
                 if (cppargs.z[i] != 0) {
-                    if (cppargs.s[i] <= 0) {
-                        throw ValueError("Born term requires positive ion sigma (a_i = sigma_i,ion).");
+                    double d_born_i = cppargs.s[i]*(1.0 - 0.12*std::exp(-3.0*cppargs.e[i]/t));
+                    if (d_born_i <= 0) {
+                        throw ValueError("Born term requires positive ion d_born,i.");
                     }
-                    born_sum += x[i]*cppargs.z[i]*cppargs.z[i]/cppargs.s[i];
+                    double d_born_dt = -0.36*cppargs.s[i]*cppargs.e[i]/(t*t)*std::exp(-3.0*cppargs.e[i]/t);
+                    born_sum += x[i]*cppargs.z[i]*cppargs.z[i]/d_born_i;
+                    born_sum_dt += x[i]*cppargs.z[i]*cppargs.z[i]*(-d_born_dt)/(d_born_i*d_born_i);
                 }
             }
-            dadt_born = E_CHRG*E_CHRG/(4.*PI*kb*perm_vac*t*t)*(1.-1./eps)*born_sum;
+            double born_factor = (1.-1./eps);
+            double prefactor = E_CHRG*E_CHRG/(4.*PI*kb*perm_vac);
+            dadt_born = prefactor*born_factor*(born_sum/(t*t) - born_sum_dt/t);
         }
         else if ((cppargs.born_model >= 2) && (cppargs.born_model <= 5)) {
             const double eps_r_ion = 8.0;
