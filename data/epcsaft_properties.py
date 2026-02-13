@@ -1,6 +1,10 @@
 import numpy as np
 import types
 import math
+import json
+import copy
+import warnings
+from pathlib import Path
 
 pcsaft_prop = {
     'CO2': {
@@ -15,16 +19,27 @@ pcsaft_prop = {
         'm': 3.0353, 's': 3.0435, 'e': 277.174,
         'e_assoc': 2586.3, 'vol_a': 0.037470, 'assoc_scheme': '2B',
         'dipm': 0., 'dip_num': 1,
-        'z': 0., 'dielc': 32.
+        'z': 0., 'dielc': 32., 'd_born': 0., 'f_solv': 1.0,
     },
     'MEA-4C': {
         'MW': 61.08e-3,  # kg/mol
         'm': 4.5208, 's': 2.6574, 'e': 237.6864,
         'e_assoc': 989.8984, 'vol_a': 0.187533, 'assoc_scheme': '4C',
         'dipm': 0., 'dip_num': 1,
-        'z': 0., 'dielc': 0.
+        'z': 0., 'dielc': 0., 'd_born': 0., 'f_solv': 1.0,
     },
-    'H2O-2B-CC': {
+    'MEA': {
+        'MW': 61.08e-3,  # kg/mol
+        'm': {'2B': 3.0353, '4C': 4.5208},
+        's': {'2B': 3.0435, '4C': 2.6574},
+        'e': {'2B': 277.174, '4C': 237.6864},
+        'e_assoc': {'2B': 2586.3, '4C': 989.8984},
+        'vol_a': {'2B': 0.037470, '4C': 0.187533},
+        'assoc_scheme': {'2B': '2B', '4C': '4C'},
+        'dipm': 0., 'dip_num': 1,
+        'z': 0., 'dielc': {'2B': 32., '4C': 0.}, 'd_born': 0., 'f_solv': 1.0,
+    },
+    'H2O-2B-MEA': {
         'MW': 18.01528e-3,  # kg/mol
         'm': 1.9599, 's': 2.362, 'e': 279.42,
         'e_assoc': 2059.28, 'vol_a': 0.1750, 'assoc_scheme': '2B',
@@ -32,7 +47,7 @@ pcsaft_prop = {
         'z': 0.,
         'dielc': 78.09,
     },
-    'H2O-4C-CC': {
+    'H2O-4C-MEA': {
         'MW': 18.01528e-3,  # kg/mol
         'm': 2.1945, 's': 2.229, 'e': 141.66,
         'e_assoc': 1804.17, 'vol_a': 0.2039, 'assoc_scheme': '4C',
@@ -130,8 +145,19 @@ pcsaft_prop = {
         'e_assoc': 2544.56, 'vol_a': 0.00669, 'assoc_scheme': '2B',
         'dipm': 0., 'dip_num': 1,
         'z': 0., 'dielc': 20.47},
+    'H2O-Salt-2001': {
+        'MW': 18.01528e-3,  # kg/mol
+        'm': 1.09528, 's': 2.88980, 'e': 365.956,
+        'e_assoc': 2515.6706, 'vol_a': 0.0348679836, 'assoc_scheme': '2B',
+        'dipm': 0., 'dip_num': 1,
+        'z': 0.,
+        # 'dielc': lambda T: -105.2*np.log(T) + 677.480,
+        'dielc': 78.09,
+        'f_solv': 1.5,
+        'd_born': 0,
+    },
 
-    'H2O-2B-Li': {
+    'H2O-Salt-': {
         'MW': 18.01528e-3,  # kg/mol
         'm': 1.2047, 's': lambda T: 2.7927 + (10.11 * np.exp(-.01775 * T) - 1.417 * np.exp(-.01146 * T)), 'e': 353.9449,
         'e_assoc': 2425.7, 'vol_a': .04509, 'assoc_scheme': '2B',
@@ -260,8 +286,8 @@ k_ij_dict = {
     # CO2-MEA-H2O System
     ("CO2", "H2O"): lambda T: -2.2e-2 + 4.2e-4 * (T - 298) - 1.7e-6 * (T - 298),
     ("CO2", "MEA"): 0.0,
-    # ("MEA-2B", "H2O-2B-CC"): -0.0420, # Baygi 2015
-    ("MEA-2B", "H2O-2B-CC"): 0.250,  # Baygi 2015
+    # ("MEA-2B", "H2O-2B-MEA"): -0.0420, # Baygi 2015
+    ("MEA-2B", "H2O-2B-MEA"): 0.250,  # Baygi 2015
     ("MEAH+", "MEACOO-"): 0.0,
 
     # Example System for hydrocarbons from LearnChemE
@@ -349,8 +375,8 @@ k_ij_dict = {
     ("Na+", "Cl-"): .317,
 }
 
-k_ij_dict[("H2O-2B-CC", "MEAH+")] = k_ij_dict[("MEA-2B", "H2O-2B-CC")]
-k_ij_dict[("H2O-2B-CC", "MEACOO-")] = k_ij_dict[("MEA-2B", "H2O-2B-CC")]
+k_ij_dict[("H2O-2B-MEA", "MEAH+")] = k_ij_dict[("MEA-2B", "H2O-2B-MEA")]
+k_ij_dict[("H2O-2B-MEA", "MEACOO-")] = k_ij_dict[("MEA-2B", "H2O-2B-MEA")]
 
 unique_strings = set()
 
@@ -415,20 +441,540 @@ BASE_KEYS = [
 ]
 OPTIONAL_KEYS = ['d_born', 'f_solv']
 
+CATALOG_PATH = Path(__file__).resolve().parent / "epc-saft_parameters" / "epc-saft_parameters.json"
+_CATALOG_CACHE = None
 
-def _resolve_species_params(sp, user_params):
+_RULE_ALIASES = {
+    "constant": 0,
+    "linear-mixing-mole": 1,
+    "linear-mixing-weight": 2,
+    "combined": 3,
+    "empirical": 4,
+    "rule4": 4,
+    "rule5": 5,
+    "rule6": 6,
+}
+_DIELC_DIFF_RULE_ALIASES = {
+    "same": "same",
+    "rule1": "rule1",
+    "rule1-override": "rule1",
+    "constant_saltfree": "constant_saltfree",
+}
+_DIFFC_MODE_ALIASES = {"analytic": 0, "numeric": 1}
+_BORN_DIFF_MODE_ALIASES = {"analytic": 0, "numeric": 1, "eq133": 2, "no_dielc_dep": 3}
+
+_CANONICAL_ELEC_MODEL = {
+    "born_contrib": True,
+    "ssm_ds": False,
+    "dielc_rule": "linear-mixing-mole",
+    "dielc_diff_rule": "same",
+    "dielc_diff_mode": "analytic",
+    "born_diff_model": "analytic",
+    "born_diff_options": {
+        "include_sum_term": True,
+        "include_dielc_conc_dep": True,
+        "include_delta_d_i_conc_dep": True,
+    },
+    "eps_r_bulk": "mix",
+    "bjeruum_treatment": False,
+}
+
+_FALLBACK_ELEC_PRESETS = {
+    "legacy_default": {
+        "parameter_set_key": "default",
+        "component_set_key": {"default": "default", "H2O": "salt_2025"},
+        "kij_set": "2025",
+        "model": copy.deepcopy(_CANONICAL_ELEC_MODEL),
+    },
+    "2005": {
+        "parameter_set_key": "2005",
+        "component_set_key": {"default": "2005", "H2O": "salt_2005"},
+        "kij_set": "2005",
+        "model": {
+            "born_contrib": False,
+            "ssm_ds": False,
+            "dielc_rule": "constant",
+            "dielc_diff_rule": "same",
+            "dielc_diff_mode": "analytic",
+            "born_diff_model": "analytic",
+            "born_diff_options": {
+                "include_sum_term": False,
+                "include_dielc_conc_dep": False,
+                "include_delta_d_i_conc_dep": False,
+            },
+            "eps_r_bulk": "mix",
+            "bjeruum_treatment": False,
+        },
+    },
+    "2008": {
+        "parameter_set_key": "2008",
+        "component_set_key": {"default": "2008", "H2O": "salt_2008"},
+        "kij_set": "2008",
+        "model": {
+            "born_contrib": False,
+            "ssm_ds": False,
+            "dielc_rule": "constant",
+            "dielc_diff_rule": "same",
+            "dielc_diff_mode": "analytic",
+            "born_diff_model": "analytic",
+            "born_diff_options": {
+                "include_sum_term": False,
+                "include_dielc_conc_dep": False,
+                "include_delta_d_i_conc_dep": False,
+            },
+            "eps_r_bulk": "mix",
+            "bjeruum_treatment": False,
+        },
+    },
+    "2014_s1": {
+        "parameter_set_key": "2014_s1",
+        "component_set_key": {"default": "2014_s1", "H2O": "salt_2014_s1"},
+        "kij_set": "2014_s1",
+        "model": {
+            "born_contrib": False,
+            "ssm_ds": False,
+            "dielc_rule": "constant",
+            "dielc_diff_rule": "same",
+            "dielc_diff_mode": "analytic",
+            "born_diff_model": "analytic",
+            "born_diff_options": {
+                "include_sum_term": False,
+                "include_dielc_conc_dep": False,
+                "include_delta_d_i_conc_dep": False,
+            },
+            "eps_r_bulk": "mix",
+            "bjeruum_treatment": False,
+        },
+    },
+    "2014_s2": {
+        "parameter_set_key": "2014_s2",
+        "component_set_key": {"default": "2014_s2", "H2O": "salt_2014_s2"},
+        "kij_set": "2014_s2",
+        "model": {
+            "born_contrib": False,
+            "ssm_ds": False,
+            "dielc_rule": "constant",
+            "dielc_diff_rule": "same",
+            "dielc_diff_mode": "analytic",
+            "born_diff_model": "analytic",
+            "born_diff_options": {
+                "include_sum_term": False,
+                "include_dielc_conc_dep": False,
+                "include_delta_d_i_conc_dep": False,
+            },
+            "eps_r_bulk": "mix",
+            "bjeruum_treatment": False,
+        },
+    },
+    "2020": {
+        "parameter_set_key": "2020",
+        "component_set_key": {"default": "2020", "H2O": "salt_2020"},
+        "kij_set": "2020",
+        "model": {
+            "born_contrib": True,
+            "ssm_ds": False,
+            "dielc_rule": "linear-mixing-mole",
+            "dielc_diff_rule": "same",
+            "dielc_diff_mode": "analytic",
+            "born_diff_model": "analytic",
+            "born_diff_options": {
+                "include_sum_term": True,
+                "include_dielc_conc_dep": True,
+                "include_delta_d_i_conc_dep": True,
+            },
+            "eps_r_bulk": "mix",
+            "bjeruum_treatment": False,
+        },
+    },
+    "2025": {
+        "parameter_set_key": "2025",
+        "component_set_key": {"default": "2025", "H2O": "salt_2025"},
+        "kij_set": "2025",
+        "model": {
+            "born_contrib": True,
+            "ssm_ds": True,
+            "dielc_rule": "empirical",
+            "dielc_diff_rule": "same",
+            "dielc_diff_mode": "analytic",
+            "born_diff_model": "analytic",
+            "born_diff_options": {
+                "include_sum_term": True,
+                "include_dielc_conc_dep": True,
+                "include_delta_d_i_conc_dep": True,
+            },
+            "eps_r_bulk": "mix",
+            "bjeruum_treatment": False,
+        },
+    },
+}
+
+_FALLBACK_ALIASES = {
+    "preset_int": {"1": "2005", "2": "2008", "3": "2014_s1", "4": "2014_s2", "5": "2020", "6": "2025"},
+    "preset_str": {"2005": "2005", "2008": "2008", "2014_s1": "2014_s1", "2014_s2": "2014_s2", "2020": "2020", "2025": "2025"},
+    "component_aliases": {
+        "H2O-2B-Li": "H2O",
+        "H2O-2B-NaCl": "H2O",
+        "H2O-Salt-2001": "H2O",
+        "H2O-Salt-": "H2O",
+    },
+}
+
+
+def _load_epcsaft_catalog():
+    global _CATALOG_CACHE
+    if _CATALOG_CACHE is not None:
+        return _CATALOG_CACHE
+    if CATALOG_PATH.exists():
+        with CATALOG_PATH.open("r", encoding="utf-8") as handle:
+            _CATALOG_CACHE = json.load(handle)
+    else:
+        _CATALOG_CACHE = None
+    return _CATALOG_CACHE
+
+
+def _coerce_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, np.integer)):
+        return bool(int(value))
+    if isinstance(value, str):
+        v = value.strip().lower()
+        if v in {"1", "true", "yes", "on"}:
+            return True
+        if v in {"0", "false", "no", "off"}:
+            return False
+    raise ValueError("Could not interpret boolean value: {!r}".format(value))
+
+
+def _deep_update(base, updates):
+    out = copy.deepcopy(base)
+    for key, value in updates.items():
+        if isinstance(value, dict) and isinstance(out.get(key), dict):
+            out[key] = _deep_update(out[key], value)
+        else:
+            out[key] = value
+    return out
+
+
+def _normalize_component_name(sp, catalog):
+    aliases = (catalog or {}).get("aliases", {}).get("component_aliases", {})
+    aliases = {**_FALLBACK_ALIASES["component_aliases"], **aliases}
+    return aliases.get(sp, sp)
+
+
+def _resolve_descriptor(value, T):
+    if isinstance(value, dict):
+        kind = value.get("type", "").strip().lower()
+        if kind == "water_sigma_2008":
+            return 2.7927 + (10.11 * np.exp(-0.01775 * T) - 1.417 * np.exp(-0.01146 * T))
+        if kind == "linear_t":
+            return float(value["a"]) * T + float(value["b"])
+    return value
+
+
+def _resolve_set_value(set_values, set_key, T):
+    if not isinstance(set_values, dict):
+        return _resolve_descriptor(set_values, T)
+    candidates = [set_key]
+    if not str(set_key).startswith("salt_"):
+        candidates.append("salt_{}".format(set_key))
+    candidates.extend(["default", "legacy_default"])
+    for key in candidates:
+        if key in set_values:
+            return _resolve_descriptor(set_values[key], T)
+    return None
+
+
+def _normalize_elec_model(model):
+    out = copy.deepcopy(_CANONICAL_ELEC_MODEL)
+    if model is None:
+        return out
+    if not isinstance(model, dict):
+        raise TypeError("elec_model dict expected, got {}.".format(type(model).__name__))
+
+    normalized = {}
+    for key, value in model.items():
+        k = key
+        if key == "SSM+DS":
+            k = "ssm_ds"
+        if key == "emperical":
+            k = "empirical"
+        normalized[k] = value
+
+    if "born_model" in normalized and "born_contrib" not in normalized:
+        normalized["born_contrib"] = _coerce_bool(normalized["born_model"])
+    if "bjeruum_treatment" in normalized:
+        normalized["bjeruum_treatment"] = _coerce_bool(normalized["bjeruum_treatment"])
+    if "born_contrib" in normalized:
+        normalized["born_contrib"] = _coerce_bool(normalized["born_contrib"])
+    if "ssm_ds" in normalized:
+        normalized["ssm_ds"] = _coerce_bool(normalized["ssm_ds"])
+    if "born_diff_options" in normalized and not isinstance(normalized["born_diff_options"], dict):
+        raise TypeError("elec_model['born_diff_options'] must be a dict.")
+
+    out = _deep_update(out, normalized)
+    out["born_diff_options"]["include_sum_term"] = _coerce_bool(out["born_diff_options"]["include_sum_term"])
+    out["born_diff_options"]["include_dielc_conc_dep"] = _coerce_bool(out["born_diff_options"]["include_dielc_conc_dep"])
+    out["born_diff_options"]["include_delta_d_i_conc_dep"] = _coerce_bool(out["born_diff_options"]["include_delta_d_i_conc_dep"])
+    return out
+
+
+def _resolve_elec_preset(elec_model):
+    catalog = _load_epcsaft_catalog()
+    presets = dict(_FALLBACK_ELEC_PRESETS)
+    aliases = copy.deepcopy(_FALLBACK_ALIASES)
+    if catalog is not None:
+        presets.update(catalog.get("elec_model_presets", {}))
+        aliases.update(catalog.get("aliases", {}))
+
+    if elec_model is None:
+        preset_key = "legacy_default"
+        preset = presets[preset_key]
+        model = _normalize_elec_model(preset.get("model"))
+        return {
+            "catalog": catalog,
+            "preset_key": preset_key,
+            "preset": preset,
+            "model": model,
+        }
+
+    if isinstance(elec_model, dict):
+        base_key = elec_model.get("preset") or elec_model.get("base") or "legacy_default"
+        if base_key not in presets:
+            raise KeyError("Unknown elec_model base preset '{}'. Available: {}.".format(base_key, sorted(presets.keys())))
+        preset = presets[base_key]
+        model = _normalize_elec_model(_deep_update(preset.get("model", {}), elec_model))
+        return {
+            "catalog": catalog,
+            "preset_key": base_key,
+            "preset": preset,
+            "model": model,
+        }
+
+    if isinstance(elec_model, (int, np.integer)):
+        preset_key = aliases.get("preset_int", {}).get(str(int(elec_model)))
+        if preset_key is None:
+            raise KeyError("Unknown elec_model id '{}'. Supported ids: {}.".format(elec_model, sorted(aliases.get("preset_int", {}).keys())))
+    elif isinstance(elec_model, str):
+        raw = elec_model.strip()
+        preset_key = aliases.get("preset_str", {}).get(raw, aliases.get("preset_int", {}).get(raw))
+        if preset_key is None and raw in presets:
+            preset_key = raw
+        if preset_key is None:
+            raise KeyError("Unknown elec_model preset '{}'. Available: {}.".format(elec_model, sorted(presets.keys())))
+    else:
+        raise TypeError("elec_model must be int, str, dict, or None.")
+
+    preset = presets[preset_key]
+    model = _normalize_elec_model(preset.get("model"))
+    return {
+        "catalog": catalog,
+        "preset_key": preset_key,
+        "preset": preset,
+        "model": model,
+    }
+
+
+def _warn_legacy_key(option_key):
+    warnings.warn(
+        "user_options['{}'] is legacy. Prefer user_options['elec_model'] / user_options['bjeruum_treatment'].".format(option_key),
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
+
+def _as_rule_number(value, aliases):
+    if isinstance(value, (int, np.integer)):
+        return int(value)
+    if isinstance(value, str):
+        v = value.strip().lower()
+        if v.isdigit() or (v.startswith("-") and v[1:].isdigit()):
+            return int(v)
+        if v in aliases:
+            return int(aliases[v])
+    raise ValueError("Unknown rule option '{}'. Supported aliases: {}.".format(value, sorted(aliases.keys())))
+
+
+def _flatten_model_to_runtime(model):
+    dielc_rule = _as_rule_number(model["dielc_rule"], _RULE_ALIASES)
+    dielc_diff_rule = str(model.get("dielc_diff_rule", "same")).strip().lower()
+    dielc_diff_rule = _DIELC_DIFF_RULE_ALIASES.get(dielc_diff_rule, dielc_diff_rule)
+    if dielc_rule == 4:
+        if dielc_diff_rule == "rule1":
+            dielc_rule = 5
+        elif dielc_diff_rule == "constant_saltfree":
+            dielc_rule = 6
+
+    if model["born_contrib"]:
+        if model["ssm_ds"]:
+            use_deps = model["born_diff_options"]["include_dielc_conc_dep"]
+            use_delta = model["born_diff_options"]["include_delta_d_i_conc_dep"]
+            if use_deps and use_delta:
+                born_model = 5
+            elif use_deps:
+                born_model = 3
+            elif use_delta:
+                born_model = 4
+            else:
+                born_model = 2
+        else:
+            born_model = 1
+    else:
+        born_model = 0
+
+    born_diff_model = model.get("born_diff_model", "analytic")
+    if born_model == 1:
+        include_dielc = _coerce_bool(model["born_diff_options"].get("include_dielc_conc_dep", True))
+        if not include_dielc:
+            born_diff_mode = 3
+        elif born_diff_model is None:
+            born_diff_mode = 2 if not model["born_diff_options"]["include_sum_term"] else 0
+        else:
+            born_diff_mode = _as_rule_number(born_diff_model, _BORN_DIFF_MODE_ALIASES)
+    else:
+        born_diff_mode = _as_rule_number(born_diff_model, _BORN_DIFF_MODE_ALIASES)
+
+    dielc_diff_mode = _as_rule_number(model["dielc_diff_mode"], _DIFFC_MODE_ALIASES)
+    dh_model = 2 if _coerce_bool(model.get("bjeruum_treatment", False)) else 1
+    eps_bulk_raw = model.get("eps_r_bulk", "mix")
+    if isinstance(eps_bulk_raw, (int, np.integer)):
+        born_eps_mode = int(eps_bulk_raw)
+    else:
+        eps_key = str(eps_bulk_raw).strip().lower()
+        if eps_key in {"mix", "bulk", "eps_r_mix"}:
+            born_eps_mode = 0
+        elif eps_key in {"solvent", "eps_r_solvent"}:
+            born_eps_mode = 1
+        else:
+            raise ValueError("Unknown eps_r_bulk option '{}'. Supported values: 'mix', 'solvent'.".format(eps_bulk_raw))
+
+    return {
+        "born_model": int(born_model),
+        "born_diff_mode": int(born_diff_mode),
+        "born_eps_mode": int(born_eps_mode),
+        "dielc_rule": int(dielc_rule),
+        "dielc_diff_mode": int(dielc_diff_mode),
+        "DH_model": int(dh_model),
+        "bjeruum_treatment": bool(dh_model == 2),
+    }
+
+
+def _resolve_runtime_options(user_options):
+    allowed = {
+        "elec_model",
+        "bjeruum_treatment",
+        "dielc_rule",
+        "dielc_diff_mode",
+        "born_model",
+        "born_diff_mode",
+        "born_eps_mode",
+        "DH_model",
+        "debug",
+    }
+    if user_options is None:
+        user_options = {}
+    unknown_options = set(user_options) - allowed
+    if unknown_options:
+        raise KeyError("Unknown user_options key(s): {}. Allowed keys: {}.".format(
+            sorted(unknown_options), sorted(allowed)))
+
+    resolved = _resolve_elec_preset(user_options.get("elec_model"))
+    model = copy.deepcopy(resolved["model"])
+    if "bjeruum_treatment" in user_options:
+        model["bjeruum_treatment"] = _coerce_bool(user_options["bjeruum_treatment"])
+
+    runtime = _flatten_model_to_runtime(model)
+
+    for key in ("dielc_rule", "dielc_diff_mode", "born_model", "born_diff_mode", "born_eps_mode", "DH_model"):
+        if key in user_options:
+            _warn_legacy_key(key)
+            runtime[key] = int(user_options[key])
+    if "DH_model" in user_options and int(user_options["DH_model"]) == 2:
+        runtime["bjeruum_treatment"] = True
+    elif "DH_model" in user_options:
+        runtime["bjeruum_treatment"] = False
+
+    runtime["debug"] = bool(user_options.get("debug", False))
+    return {
+        "runtime": runtime,
+        "model": model,
+        "preset_key": resolved["preset_key"],
+        "preset": resolved["preset"],
+        "catalog": resolved["catalog"],
+    }
+
+
+def _build_catalog_entry(sp, T, preset_data):
+    catalog = preset_data["catalog"]
+    if catalog is None:
+        return None
+    comp_key = _normalize_component_name(sp, catalog)
+    comp_data = catalog.get("component_parameters", {}).get(comp_key)
+    if comp_data is None:
+        return None
+
+    component_set_map = preset_data["preset"].get("component_set_key", {})
+    default_set = preset_data["preset"].get("parameter_set_key", "default")
+    set_key = component_set_map.get(comp_key, component_set_map.get(sp, component_set_map.get("default", default_set)))
+
+    out = {}
+    for prop in (BASE_KEYS + OPTIONAL_KEYS):
+        if prop in comp_data:
+            value = _resolve_set_value(comp_data[prop], set_key, T)
+            if value is not None or prop == "assoc_scheme":
+                out[prop] = value
+    if out:
+        return out
+    return None
+
+
+def _resolve_species_params(sp, user_params, T, preset_data):
+    base_entry = _build_catalog_entry(sp, T, preset_data)
+    if base_entry is None and sp in pcsaft_prop:
+        base_entry = dict(pcsaft_prop[sp])
     if user_params is not None and sp in user_params:
-        return user_params[sp], 'user_params'
-    if sp in pcsaft_prop:
-        return pcsaft_prop[sp], 'default'
-    raise KeyError("Species '{}' not found in user_params or default pcsaft_prop.".format(sp))
+        merged = {}
+        if base_entry is not None:
+            merged.update(base_entry)
+        merged.update(user_params[sp])
+        return merged, 'user_params'
+    if base_entry is not None:
+        return base_entry, 'catalog' if preset_data["catalog"] is not None else 'default'
+    raise KeyError("Species '{}' not found in user_params, parameter catalog, or default pcsaft_prop.".format(sp))
 
 
 def _get_value(entry, prop, T):
     value = entry[prop]
     if isinstance(value, types.FunctionType):
         return value(T)
-    return value
+    return _resolve_descriptor(value, T)
+
+
+def _resolve_catalog_kij(sp1, sp2, z1, z2, T, preset_data):
+    catalog = preset_data["catalog"]
+    if catalog is None:
+        return None
+    kij_set = preset_data["preset"].get("kij_set")
+    if kij_set is None:
+        return None
+    kij_data = catalog.get("kij_parameters", {}).get(kij_set)
+    if kij_data is None:
+        return None
+
+    c1 = _normalize_component_name(sp1, catalog)
+    c2 = _normalize_component_name(sp2, catalog)
+    key12 = "{}|{}".format(c1, c2)
+    key21 = "{}|{}".format(c2, c1)
+    pairs = kij_data.get("pairs", {})
+    if key12 in pairs:
+        return float(_resolve_descriptor(pairs[key12], T))
+    if key21 in pairs:
+        return float(_resolve_descriptor(pairs[key21], T))
+    if z1 * z2 < 0 and abs(z1) > 1e-12 and abs(z2) > 1e-12 and "ion_pair_default" in kij_data:
+        return float(kij_data["ion_pair_default"])
+    if kij_data.get("default_zero", False):
+        return 0.0
+    return None
 
 
 def get_prop_dict(species, x, T, user_params=None, user_options=None):
@@ -438,28 +984,13 @@ def get_prop_dict(species, x, T, user_params=None, user_options=None):
     user_params: optional dict in the form {component: {m, s, e, ...}}
     """
 
-    # DH_model 0 and 1 are aliases in the current C++ implementation; 2 is reserved.
-    default_options = {
-        "dielc_rule": 1,
-        "dielc_diff_mode": 0,
-        "born_model": 1,
-        "born_diff_mode": 0,
-        "DH_model": 1,
-        "debug": False,
-    }
-    if user_options is None:
-        user_options = {}
-    unknown_options = set(user_options) - set(default_options)
-    if unknown_options:
-        raise KeyError("Unknown user_options key(s): {}. Allowed keys: {}.".format(
-            sorted(unknown_options), sorted(default_options.keys())))
-    options = default_options.copy()
-    options.update(user_options)
+    preset_data = _resolve_runtime_options(user_options)
+    runtime_options = preset_data["runtime"]
 
     prop_dic = {}
     entries = []
     for sp in species:
-        entry, _ = _resolve_species_params(sp, user_params)
+        entry, _ = _resolve_species_params(sp, user_params, T, preset_data)
         entries.append(entry)
 
     for prop in BASE_KEYS:
@@ -473,7 +1004,7 @@ def get_prop_dict(species, x, T, user_params=None, user_options=None):
                 if abs(z_i) > 1e-12:
                     prop_list.append(8.0)
                     continue
-            raise KeyError("Missing '{}' for species '{}' in {}.".format(prop, sp, 'user_params' if (user_params is not None and sp in user_params) else 'default pcsaft_prop'))
+            raise KeyError("Missing '{}' for species '{}' in {}.".format(prop, sp, 'user_params' if (user_params is not None and sp in user_params) else 'defaults/catalog'))
         if prop == 'assoc_scheme':
             prop_dic[prop] = prop_list
         else:
@@ -482,16 +1013,21 @@ def get_prop_dict(species, x, T, user_params=None, user_options=None):
     for prop in OPTIONAL_KEYS:
         if any(prop in entry for entry in entries):
             prop_list = []
-            for sp, entry in zip(species, entries):
+            for entry in entries:
                 prop_list.append(_get_value(entry, prop, T) if prop in entry else 0.0)
             prop_dic[prop] = np.array(prop_list)
 
     n = len(species)
+    z_vals = np.asarray(prop_dic.get('z', np.zeros(n)), dtype=float)
 
     # Create the binary interaction parameter dictionary and matrix for dispersion forces
     k_ij = np.zeros((n, n))
     for i, sp1 in enumerate(species):
         for j, sp2 in enumerate(species):
+            kij_val = _resolve_catalog_kij(sp1, sp2, z_vals[i], z_vals[j], T, preset_data)
+            if kij_val is not None:
+                k_ij[i, j] = kij_val
+                continue
             try:
                 if isinstance(k_ij_dict[(sp1, sp2)], types.FunctionType):
                     k_ij[i, j] = k_ij_dict[(sp1, sp2)](T)
@@ -530,12 +1066,16 @@ def get_prop_dict(species, x, T, user_params=None, user_options=None):
     if np.all(prop_dic['z'] == 0):
         prop_dic['z'] = np.array([])
 
-    prop_dic['born_model'] = options['born_model']
-    prop_dic['born_diff_mode'] = options['born_diff_mode']
-    prop_dic['DH_model'] = options['DH_model']
-    prop_dic['dielc_rule'] = options['dielc_rule']
-    prop_dic['dielc_diff_mode'] = options['dielc_diff_mode']
-    prop_dic['debug'] = bool(options['debug'])
+    prop_dic['elec_model'] = copy.deepcopy(preset_data["model"])
+    prop_dic['elec_model_preset'] = preset_data["preset_key"]
+    prop_dic['bjeruum_treatment'] = bool(runtime_options['bjeruum_treatment'])
+    prop_dic['born_model'] = runtime_options['born_model']
+    prop_dic['born_diff_mode'] = runtime_options['born_diff_mode']
+    prop_dic['born_eps_mode'] = runtime_options['born_eps_mode']
+    prop_dic['DH_model'] = runtime_options['DH_model']
+    prop_dic['dielc_rule'] = runtime_options['dielc_rule']
+    prop_dic['dielc_diff_mode'] = runtime_options['dielc_diff_mode']
+    prop_dic['debug'] = bool(runtime_options['debug'])
 
     return prop_dic
 
@@ -551,13 +1091,16 @@ def validate_species_params(species, user_params=None):
     missing_species = []
     missing_keys = {}
 
+    preset_data = _resolve_runtime_options(None)
     for sp in species:
         entry = None
         if user_params is not None and sp in user_params:
             entry = user_params[sp]
-        elif sp in pcsaft_prop:
-            entry = pcsaft_prop[sp]
         else:
+            entry = _build_catalog_entry(sp, 298.15, preset_data)
+            if entry is None and sp in pcsaft_prop:
+                entry = pcsaft_prop[sp]
+        if entry is None:
             missing_species.append(sp)
             continue
 
@@ -777,29 +1320,43 @@ def molality_to_molefraction(molality, species=None, solvent=None, basis_mass_kg
     molality = float(molality)
     basis_mass_kg = float(basis_mass_kg)
 
+    def _default_species_entry(sp):
+        if sp in pcsaft_prop:
+            return pcsaft_prop[sp]
+        catalog = _load_epcsaft_catalog()
+        if catalog is None:
+            raise KeyError(sp)
+        comp_key = _normalize_component_name(sp, catalog)
+        comp_data = catalog.get("component_parameters", {}).get(comp_key)
+        if comp_data is None:
+            raise KeyError(sp)
+        mw = _resolve_set_value(comp_data.get("MW", {}), "default", 298.15)
+        z = _resolve_set_value(comp_data.get("z", {}), "default", 298.15)
+        return {"MW": mw, "z": z}
+
     # Identify charged species by name suffix; fall back to charge sign if available.
     cations = [sp for sp in species if sp.endswith("+")]
     anions = [sp for sp in species if sp.endswith("-")]
 
     if len(cations) != 1 or len(anions) != 1:
         # Fallback using charge sign from property table in case names lack +/- suffix
-        cations = [sp for sp in species if pcsaft_prop.get(sp, {}).get("z", 0) > 0]
-        anions = [sp for sp in species if pcsaft_prop.get(sp, {}).get("z", 0) < 0]
+        cations = [sp for sp in species if _default_species_entry(sp).get("z", 0) > 0]
+        anions = [sp for sp in species if _default_species_entry(sp).get("z", 0) < 0]
     if len(cations) != 1 or len(anions) != 1:
         raise ValueError("Expected exactly one cation and one anion in `species`.")
 
     cation, anion = cations[0], anions[0]
 
     if solvent is None:
-        neutrals = [sp for sp in species if (not sp.endswith("+") and not sp.endswith("-") and pcsaft_prop.get(sp, {}).get("z", 0) == 0)]
+        neutrals = [sp for sp in species if (not sp.endswith("+") and not sp.endswith("-") and _default_species_entry(sp).get("z", 0) == 0)]
         if len(neutrals) != 1:
             raise ValueError("Expected exactly one neutral solvent species when `solvent` is not provided.")
         solvent = neutrals[0]
     elif solvent not in species:
         raise ValueError(f"Solvent '{solvent}' not found in provided `species` list.")
 
-    z_cat = pcsaft_prop[cation]["z"]
-    z_an = pcsaft_prop[anion]["z"]
+    z_cat = _default_species_entry(cation)["z"]
+    z_an = _default_species_entry(anion)["z"]
     if z_cat <= 0 or z_an >= 0:
         raise ValueError("Charges for cation/anion must be positive/negative respectively.")
 
@@ -809,7 +1366,7 @@ def molality_to_molefraction(molality, species=None, solvent=None, basis_mass_kg
     v_cat = z_an_abs // gcd_z  # moles of cation per formula unit
     v_an = z_cat_abs // gcd_z  # moles of anion per formula unit
 
-    mw_solvent = pcsaft_prop[solvent]["MW"]
+    mw_solvent = _default_species_entry(solvent)["MW"]
     n_solvent = basis_mass_kg / mw_solvent
     n_cation = molality * basis_mass_kg * v_cat
     n_anion = molality * basis_mass_kg * v_an

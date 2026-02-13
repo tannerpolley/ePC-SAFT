@@ -1,0 +1,10 @@
+entry_type,name,parameter,set_key,value
+kij_pair,Br-|Ethanol,k_ij,2021,-0.35
+kij_pair,Br-|Methanol,k_ij,2021,-0.42
+kij_pair,Cl-|Ethanol,k_ij,2021,-0.15
+kij_pair,Cl-|Methanol,k_ij,2021,-0.21
+kij_pair,I-|Ethanol,k_ij,2021,-0.38
+kij_pair,K+|Ethanol,k_ij,2021,-0.2
+kij_pair,K+|Methanol,k_ij,2021,0.47
+kij_pair,Na+|Ethanol,k_ij,2021,0.42
+kij_pair,Na+|Methanol,k_ij,2021,-0.31

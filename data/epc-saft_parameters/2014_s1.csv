@@ -1,0 +1,18 @@
+entry_type,name,parameter,set_key,value
+component,Br-,e,2014_s1,60.2216
+component,Br-,s,2014_s1,3.4573
+component,Cl-,e,2014_s1,47.2878
+component,Cl-,s,2014_s1,3.0575
+component,H2O,e,salt_2014_s1,353.9449
+component,H2O,e_assoc,salt_2014_s1,2425.6714
+component,H2O,m,salt_2014_s1,1.2047
+component,H2O,s,salt_2014_s1,"{""type"": ""water_sigma_2008""}"
+component,H2O,vol_a,salt_2014_s1,0.04509
+component,I-,e,2014_s1,80.4347
+component,I-,s,2014_s1,3.9319
+component,K+,e,2014_s1,271.0518
+component,K+,s,2014_s1,2.9698
+component,Li+,e,2014_s1,2697.2795
+component,Li+,s,2014_s1,1.8177
+component,Na+,e,2014_s1,646.0504
+component,Na+,s,2014_s1,2.4122

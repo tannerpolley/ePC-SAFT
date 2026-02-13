@@ -1006,7 +1006,8 @@ def test_flashPQ(print_result=False):
 
     p = 2393.8  # Pa
     ref = 298.15  # K, average of repeat data points from source: A. Apelblat and E. Korin, “The vapor pressures of saturated aqueous solutions of sodium chloride, sodium bromide, sodium nitrate, sodium nitrite, potassium iodate, and rubidium chloride at temperatures from 227 K to 323 K,” J. Chem. Thermodyn., vol. 30, no. 1, pp. 59–71, Jan. 1998. (Solubility calculated using equation from Yaws, Carl L.. (2008). Yaws' Handbook of Properties for Environmental and Green Engineering.)
-    s[2] = 3.8395 + 1.2828 * np.exp(-0.0074944 * ref) - 1.3939 * np.exp(-0.00056029 * ref)  # temperature dependent segment diameter for water
+    s[2] = 3.8395 + 1.2828 * np.exp(-0.0074944 * ref) - 1.3939 * np.exp(
+        -0.00056029 * ref)  # temperature dependent segment diameter for water
     k_ij[0, 2] = -0.007981 * ref + 2.37999
     k_ij[2, 0] = -0.007981 * ref + 2.37999
     dielc = dielc_water(ref)

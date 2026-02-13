@@ -1521,11 +1521,19 @@ def create_struct(params):
         cppargs.f_solv = np_to_vector_double(np.asarray(params['f_solv'], dtype=float))
     cppargs.born_model = int(params['born_model']) if 'born_model' in params else 1
     cppargs.born_diff_mode = int(params['born_diff_mode']) if 'born_diff_mode' in params else 0
-    if cppargs.born_diff_mode not in (0, 1, 2):
-        raise ValueError("Unknown born_diff_mode. Supported values are 0 (analytic), 1 (finite-diff), and 2 (Eq.133-style).")
-    cppargs.DH_model = int(params['DH_model']) if 'DH_model' in params else 1
+    if cppargs.born_diff_mode not in (0, 1, 2, 3):
+        raise ValueError("Unknown born_diff_mode. Supported values are 0 (analytic), 1 (finite-diff), 2 (Eq.133-style), and 3 (no dielectric-concentration term).")
+    cppargs.born_eps_mode = int(params['born_eps_mode']) if 'born_eps_mode' in params else 0
+    if cppargs.born_eps_mode not in (0, 1):
+        raise ValueError('Unknown born_eps_mode. Supported values are 0 (eps_r,mix) and 1 (eps_r,solvent).')
+    if 'DH_model' in params:
+        cppargs.DH_model = int(params['DH_model'])
+    elif 'bjeruum_treatment' in params:
+        cppargs.DH_model = 2 if bool(params['bjeruum_treatment']) else 1
+    else:
+        cppargs.DH_model = 1
     if cppargs.DH_model == 2:
-        raise ValueError("DH_model=2 (Bjerrum treatment) is reserved and not implemented.")
+        raise ValueError("Bjerrum treatment is reserved and not implemented (DH_model=2).")
     if cppargs.DH_model < 0 or cppargs.DH_model > 2:
         raise ValueError("Unknown DH_model. Supported values are 0, 1, and reserved 2.")
     cppargs.debug = int(bool(params['debug'])) if 'debug' in params else 0

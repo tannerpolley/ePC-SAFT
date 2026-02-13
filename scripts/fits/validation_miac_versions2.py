@@ -1,4 +1,4 @@
-"""MIAC comparisons across 2005/2008/2014/2020 model versions for water and alcohol solvents."""
+"""MIAC comparisons across 2005/2008/2014 with selected 2020/2025 model variants."""
 
 import csv
 import math
@@ -26,84 +26,6 @@ AXIS_LABEL_SIZE = 13
 AXIS_TICK_SIZE = 11
 
 
-SOLVENT_PROPS = {
-    "Water": {
-        "MW": 18.0153e-3,
-        "m": 1.2047,
-        "s": None,
-        "e": 353.95,
-        "e_assoc": 2425.7,
-        "vol_a": 0.04509,
-        "dielc": 78.09,
-    },
-    "Methanol": {
-        "MW": 32.04e-3,
-        "m": 1.5255,
-        "s": 3.2300,
-        "e": 188.90,
-        "e_assoc": 2899.5,
-        "vol_a": 0.03518,
-        "dielc": 33.05,
-    },
-    "Ethanol": {
-        "MW": 46.068e-3,
-        "m": 2.3827,
-        "s": 3.1771,
-        "e": 198.24,
-        "e_assoc": 2653.4,
-        "vol_a": 0.03238,
-        "dielc": 24.88,
-    },
-}
-
-SOLVENT_PROPS_2005 = {
-    "Water": {
-        "MW": 18.0153e-3,
-        "m": 1.09528,
-        "s": 2.88980,
-        "e": 365.956,
-        "e_assoc": 2515.6706,
-        "vol_a": 0.0348679836,
-        "dielc": 78.09,
-    }
-}
-
-
-ION_PROPS = {
-    "2005": {
-        "Li+": {"s": 1.8059, "e": 1110.9261, "MW": 6.941e-3, "z": 1.0},
-        "Na+": {"s": 1.6262, "e": 119.8060, "MW": 22.98e-3, "z": 1.0},
-        "K+": {"s": 2.7602, "e": 8.8773, "MW": 39.0983e-3, "z": 1.0},
-        "Cl-": {"s": 3.5991, "e": 359.6604, "MW": 35.453e-3, "z": -1.0},
-        "Br-": {"s": 3.8225, "e": 524.0636, "MW": 79.904e-3, "z": -1.0},
-        "I-": {"s": 4.1766, "e": 413.0494, "MW": 126.90447e-3, "z": -1.0},
-    },
-    "2008": {
-        "Li+": {"s": 1.8177, "e": 2697.28, "MW": 6.941e-3, "z": 1.0},
-        "Na+": {"s": 2.4122, "e": 646.05, "MW": 22.98e-3, "z": 1.0},
-        "K+": {"s": 2.9698, "e": 271.05, "MW": 39.0983e-3, "z": 1.0},
-        "Cl-": {"s": 3.0575, "e": 47.29, "MW": 35.453e-3, "z": -1.0},
-        "Br-": {"s": 3.4573, "e": 60.22, "MW": 79.904e-3, "z": -1.0},
-        "I-": {"s": 3.9319, "e": 80.43, "MW": 126.90447e-3, "z": -1.0},
-    },
-    "2014": {
-        "Li+": {"s": 2.8449, "e": 360.00, "MW": 6.941e-3, "z": 1.0},
-        "Na+": {"s": 2.8232, "e": 230.00, "MW": 22.98e-3, "z": 1.0},
-        "K+": {"s": 3.3417, "e": 200.00, "MW": 39.0983e-3, "z": 1.0},
-        "Cl-": {"s": 2.7560, "e": 170.00, "MW": 35.453e-3, "z": -1.0},
-        "Br-": {"s": 3.0707, "e": 190.00, "MW": 79.904e-3, "z": -1.0},
-        "I-": {"s": 3.6672, "e": 200.00, "MW": 126.90447e-3, "z": -1.0},
-    },
-    "2020": {
-        "Li+": {"s": 2.8449, "e": 360.00, "MW": 6.941e-3, "z": 1.0},
-        "Na+": {"s": 2.8232, "e": 230.00, "MW": 22.98e-3, "z": 1.0},
-        "K+": {"s": 3.3417, "e": 200.00, "MW": 39.0983e-3, "z": 1.0},
-        "Cl-": {"s": 2.7560, "e": 170.00, "MW": 35.453e-3, "z": -1.0},
-        "Br-": {"s": 3.0707, "e": 190.00, "MW": 79.904e-3, "z": -1.0},
-        "I-": {"s": 3.6672, "e": 200.00, "MW": 126.90447e-3, "z": -1.0},
-    },
-}
-
 SALT_SPECS = {
     "LiBr": {"cation": "Li+", "anion": "Br-"},
     "LiCl": {"cation": "Li+", "anion": "Cl-"},
@@ -116,47 +38,26 @@ SALT_SPECS = {
     "KI": {"cation": "K+", "anion": "I-"},
 }
 
-ION_PAIR_K = {
-    "2005": {salt: 0.0 for salt in SALT_SPECS},
-    "2008": {salt: 1.0 for salt in SALT_SPECS},
-    "2014": {
-        "LiBr": 0.591,
-        "LiCl": 0.669,
-        "LiI": 0.002,
-        "NaBr": 0.290,
-        "NaCl": 0.317,
-        "NaI": 0.018,
-        "KCl": 0.064,
-        "KBr": -0.102,
-        "KI": -0.312,
-    },
-    "2020": {
-        "LiBr": 0.591,
-        "LiCl": 0.669,
-        "LiI": 0.002,
-        "NaBr": 0.290,
-        "NaCl": 0.317,
-        "NaI": 0.018,
-        "KCl": 0.064,
-        "KBr": -0.102,
-        "KI": -0.312,
-    },
-}
-
-VERSIONS = ("2005", "2008", "2014", "2020_m0", "2020_m1", "2020_m2")
+VERSIONS = ("2005", "2008", "2014", "2020_normal", "2020_no_dielc_dep", "2020_sum_off", "2025_num")
 
 STYLE = {
-    "2005": {"color": "black", "linestyle": "--", "lw": 2.2},
-    "2008": {"color": "dimgray", "linestyle": "--", "lw": 2.0},
-    "2014": {"color": "silver", "linestyle": "--", "lw": 2.2},
-    "2020_m0": {"color": "tab:blue", "linestyle": "--", "lw": 2.0},
-    "2020_m1": {"color": "tab:red", "linestyle": "--", "lw": 2.2},
-    "2020_m2": {"color": "tab:green", "linestyle": "--", "lw": 2.0},
+    "2005": {"color": "black", "linestyle": "--", "lw": 1.5},
+    "2008": {"color": "dimgray", "linestyle": "--", "lw": 1.5},
+    "2014": {"color": "silver", "linestyle": "--", "lw": 1.5},
+    "2020_normal": {"color": "tab:purple", "linestyle": "--", "lw": 1.5},
+    "2020_no_dielc_dep": {"color": "tab:blue", "linestyle": "--", "lw": 1.5},
+    "2020_sum_off": {"color": "tab:orange", "linestyle": "--", "lw": 1.5},
+    "2025_num": {"color": "tab:red", "linestyle": "--", "lw": 1.5},
 }
-
-
-def _water_sigma(t):
-    return 2.7927 + 10.11 * np.exp(-0.01775 * t) - 1.417 * np.exp(-0.01146 * t)
+DISPLAY_LABEL = {
+    "2005": "2005",
+    "2008": "2008",
+    "2014": "2014",
+    "2020_normal": "2020 (normal)",
+    "2020_no_dielc_dep": "2020 (no dielc dep)",
+    "2020_sum_off": "2020 (sum term off)",
+    "2025_num": "2025 numeric",
+}
 
 
 def _requested_scope():
@@ -280,16 +181,58 @@ def _load_exp_data(combo):
 
 def _params_for_version(version, species):
     if version == "2005":
-        options = {"elec_model": "2005", "debug": False}
+        options = {"elec_model": {"preset": "2005", "dielc_rule": "constant"}, "debug": False}
     elif version == "2008":
-        options = {"elec_model": "2008", "debug": False}
+        options = {"elec_model": {"preset": "2008", "dielc_rule": "constant"}, "debug": False}
     elif version == "2014":
-        options = {"elec_model": "2014_s2", "debug": False}
-    elif version.startswith("2020_"):
+        options = {"elec_model": {"preset": "2014_s2", "dielc_rule": "constant"}, "debug": False}
+    elif version == "2020_normal":
         options = {
-            "elec_model": "2020",
-            "born_diff_mode": int(version.split("_m", 1)[1]),
-            "dielc_rule": 3,
+            "elec_model": {
+                "preset": "2020",
+                "dielc_rule": 3,
+                "born_diff_model": "analytic",
+                "born_diff_options": {
+                    "include_dielc_conc_dep": True,
+                    "include_sum_term": True,
+                },
+            },
+            "debug": False,
+        }
+    elif version == "2020_no_dielc_dep":
+        options = {
+            "elec_model": {
+                "preset": "2020",
+                "dielc_rule": 3,
+                "born_diff_model": "analytic",
+                "born_diff_options": {"include_dielc_conc_dep": False},
+            },
+            "debug": False,
+        }
+    elif version == "2020_sum_off":
+        options = {
+            "elec_model": {
+                "preset": "2020",
+                "dielc_rule": 3,
+                "born_diff_model": None,
+                "born_diff_options": {"include_sum_term": False},
+            },
+            "debug": False,
+        }
+    elif version == "2025_num":
+        options = {
+            "elec_model": {
+                "preset": "2025",
+                "ssm_ds": True,
+                "dielc_rule": "empirical",
+                "dielc_diff_mode": "numeric",
+                "eps_r_bulk": "solvent",
+                "born_diff_model": "numeric",
+                "born_diff_options": {
+                    "include_dielc_conc_dep": True,
+                    "include_delta_d_i_conc_dep": True,
+                },
+            },
             "debug": False,
         }
     else:
@@ -344,7 +287,7 @@ def run_validation_miac_versions():
             label=f"{salt} data ({solvent})",
         )
         for version in VERSIONS:
-            label = f"{salt} 2020 born_diff_mode={version[-1]}" if version.startswith("2020_") else f"{salt} {version}"
+            label = f"{salt} {DISPLAY_LABEL[version]}"
             ax.plot(
                 molal_grid,
                 curves[version],
@@ -359,7 +302,7 @@ def run_validation_miac_versions():
         ax.set_xlabel(r"molality, $m$ / mol kg$^{-1}$", fontsize=AXIS_LABEL_SIZE)
         ax.set_ylabel(r"mean ionic activity coefficient, $\gamma_{\pm}^{m}$", fontsize=AXIS_LABEL_SIZE)
         ax.tick_params(axis="both", labelsize=AXIS_TICK_SIZE)
-        ax.set_title(f"{salt} in {solvent.lower()} at 298.15 K (2005/2008/2014/2020 born-diff modes)")
+        ax.set_title(f"{salt} in {solvent.lower()} at 298.15 K (2005/2008/2014 + 2020/2025 variants)")
         ax.grid(True, alpha=0.3)
         ax.legend(fontsize=8)
         fig.tight_layout()
