@@ -12,6 +12,7 @@ try:
     from .pcsaft import pcsaft_Z
     from .pcsaft import pcsaft_ares
     from .pcsaft import pcsaft_dadt
+    from .pcsaft import pcsaft_multiphase_lle
     from .pcsaft import flashTQ
     from .pcsaft import flashPQ
     from .pcsaft import aly_lee
@@ -30,6 +31,7 @@ except ImportError:
     from pcsaft import pcsaft_Z
     from pcsaft import pcsaft_ares
     from pcsaft import pcsaft_dadt
+    from pcsaft import pcsaft_multiphase_lle
     from pcsaft import flashTQ
     from pcsaft import flashPQ
     from pcsaft import aly_lee

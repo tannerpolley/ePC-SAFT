@@ -31,6 +31,7 @@ struct add_args {
     vector<double> d_born;
     vector<double> f_solv;
     int born_model;
+    int born_radius_model;
     int born_diff_mode;
     int born_eps_mode;
     int DH_model;

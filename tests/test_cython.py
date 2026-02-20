@@ -5,10 +5,12 @@ Tests for checking that the PC-SAFT functions are working correctly.
 @author: Zach Baird
 """
 import numpy as np
+import pytest
 from pcsaft import pcsaft_den, pcsaft_hres, pcsaft_gres, pcsaft_sres
 from pcsaft import flashTQ, flashPQ, pcsaft_Hvap
 from pcsaft import dielc_water, pcsaft_osmoticC, pcsaft_fugcoef, pcsaft_miac_m, pcsaft_gsolv
 from pcsaft import pcsaft_cp, pcsaft_ares, pcsaft_dadt, pcsaft_p
+from pcsaft import pcsaft_multiphase_lle
 from data.epcsaft_properties import get_prop_dict, molality_to_molefraction, dielc_rule, dielc_diff_rule
 
 
@@ -58,6 +60,83 @@ def test_dielc_rules(print_result=False):
     assert np.isfinite(eps4)
     assert np.all(np.isfinite(deps4))
     assert eps4 < eps3
+
+
+def _electrolyte_state(user_options, d_born_override=None):
+    t = 298.15
+    p = 101325.0
+    species = ["Na+", "Cl-", "H2O-2B-NaCl"]
+    x = molality_to_molefraction(0.25, species=species, solvent="H2O-2B-NaCl")
+    params = get_prop_dict(species, x, t, user_options=user_options)
+    if d_born_override is not None:
+        params["d_born"] = np.asarray(d_born_override, dtype=float)
+    rho = pcsaft_den(t, p, x, params, phase="liq")
+    fug = pcsaft_fugcoef(t, rho, x, params)
+    return params, rho, fug
+
+
+def test_elec_model_override_dielc_rule():
+    params, _, fug = _electrolyte_state({"elec_model": "2020", "dielc_rule": 3, "born_model": 0})
+    assert params["dielc_rule"] == 3
+    assert np.all(np.isfinite(fug))
+
+
+def test_born_rel_perm_alias_mapping():
+    params_mix, _, fug_mix = _electrolyte_state({"born_model": 1, "born_rel_perm": "mix"})
+    params_sol, _, fug_sol = _electrolyte_state({"born_model": 1, "born_rel_perm": "solvent"})
+    assert params_mix["born_eps_mode"] == 0
+    assert params_sol["born_eps_mode"] == 1
+    assert np.all(np.isfinite(fug_mix))
+    assert np.all(np.isfinite(fug_sol))
+
+
+def test_born_radius_model_variants_for_born_model_1():
+    _, _, fug_r1 = _electrolyte_state({"born_model": 1, "born_radius_model": 1})
+    _, _, fug_r2 = _electrolyte_state({"born_model": 1, "born_radius_model": 2})
+    _, _, fug_r3 = _electrolyte_state({"born_model": 1, "born_radius_model": 3})
+    _, _, fug_r4 = _electrolyte_state(
+        {"born_model": 1, "born_radius_model": 4},
+        d_born_override=[2.6, 3.0, 0.0],
+    )
+    assert np.all(np.isfinite(fug_r1))
+    assert np.all(np.isfinite(fug_r2))
+    assert np.all(np.isfinite(fug_r3))
+    assert np.all(np.isfinite(fug_r4))
+
+    with pytest.raises(ValueError, match="born_radius_model 4/5 requires positive ionic params\\['d_born'\\] values"):
+        _electrolyte_state(
+            {"born_model": 1, "born_radius_model": 4},
+            d_born_override=[0.0, 0.0, 0.0],
+        )
+
+
+def test_born_radius_model_constraints_for_ssm():
+    t = 298.15
+    species = ["Na+", "Br-", "Methanol"]
+    x = molality_to_molefraction(0.5, species=species, solvent="Methanol")
+
+    with pytest.raises(ValueError, match="born_model >= 2 requires born_radius_model=5"):
+        get_prop_dict(species, x, t, user_options={"born_model": 2, "born_radius_model": 1})
+
+    params = get_prop_dict(species, x, t, user_options={"born_model": 2, "born_radius_model": 5})
+    rho = pcsaft_den(t, 101325.0, x, params, phase="liq")
+    assert np.isfinite(rho)
+
+
+def test_multiphase_api_smoke():
+    t = 298.15
+    p = 1.0e5
+    species = ["H2O-2B-Li", "Na+", "Cl-"]
+    z_feed = molality_to_molefraction(1e-4, species=species, solvent="H2O-2B-Li")
+    params = get_prop_dict(species, z_feed, t, user_options={"elec_model": "2020", "debug": False})
+
+    out = pcsaft_multiphase_lle(
+        t, p, z_feed, params, species,
+        options={"tpdf_global_trials": 300, "tpdf_local_trials": 120, "tpdf_tol": -1e-6},
+    )
+    assert "n_phases" in out
+    assert "phases" in out
+    assert "e_matrix" in out
 
 
 def test_hres(print_result=False):
@@ -1057,7 +1136,7 @@ def test_miac_m(print_result=False):
     species = ['Na+', 'Br-', 'Methanol']
 
     x = molality_to_molefraction(m_salt, species=species)
-    params = get_prop_dict(species, x, t, user_options={'dielc_rule': 4, 'born_model': 2, 'debug': True})
+    params = get_prop_dict(species, x, t, user_options={'dielc_rule': 4, 'born_model': 2, 'born_radius_model': 5, 'debug': True})
     rho = pcsaft_den(t, p, x, params, phase='liq')
 
     ref = 0.38
@@ -1081,7 +1160,7 @@ def test_gsolv(print_result=False):
 
     # model 2 (SSM+DS) path coverage and sanity check against model 1
     x = molality_to_molefraction(1.0, species=species)
-    params = get_prop_dict(species, x, t, user_options={'dielc_rule': 4, 'born_model': 5, 'debug': True})
+    params = get_prop_dict(species, x, t, user_options={'dielc_rule': 4, 'born_model': 5, 'born_radius_model': 5, 'debug': True})
     rho_model = pcsaft_den(t, p, x, params, phase='liq')
 
     calc_model = pcsaft_gsolv(t, rho_model, x, params, species=species)

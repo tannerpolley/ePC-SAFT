@@ -227,6 +227,7 @@ def _params_for_version(version, species):
                 "dielc_rule": "empirical",
                 "dielc_diff_mode": "numeric",
                 "eps_r_bulk": "solvent",
+                "born_radius_model": 5,
                 "born_diff_model": "numeric",
                 "born_diff_options": {
                     "include_dielc_conc_dep": True,
@@ -261,7 +262,7 @@ def _calc_curve(combo, version, molal_grid):
     return gamma
 
 
-def run_validation_miac_versions():
+def run_validation_miac_versions2():
     combos = _discover_combos()
     generated = []
 
@@ -318,9 +319,13 @@ def run_validation_miac_versions():
         print(f"- {path}")
 
 
-def test_validation_miac_versions():
-    run_validation_miac_versions()
+def test_validation_miac_versions2():
+    run_validation_miac_versions2()
 
 
 if __name__ == "__main__":
-    run_validation_miac_versions()
+    run_validation_miac_versions2()
+
+
+# Backward-compatible alias while this script transitions to the v2 name.
+run_validation_miac_versions = run_validation_miac_versions2

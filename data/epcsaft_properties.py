@@ -462,6 +462,13 @@ _DIELC_DIFF_RULE_ALIASES = {
 }
 _DIFFC_MODE_ALIASES = {"analytic": 0, "numeric": 1}
 _BORN_DIFF_MODE_ALIASES = {"analytic": 0, "numeric": 1, "eq133": 2, "no_dielc_dep": 3}
+_BORN_RADIUS_MODE_ALIASES = {
+    "sigma": 1,
+    "sigma_const": 2,
+    "sigma_temp": 3,
+    "dborn": 4,
+    "dborn_delta": 5,
+}
 
 _CANONICAL_ELEC_MODEL = {
     "born_contrib": True,
@@ -469,6 +476,7 @@ _CANONICAL_ELEC_MODEL = {
     "dielc_rule": "linear-mixing-mole",
     "dielc_diff_rule": "same",
     "dielc_diff_mode": "analytic",
+    "born_radius_model": 1,
     "born_diff_model": "analytic",
     "born_diff_options": {
         "include_sum_term": True,
@@ -699,6 +707,8 @@ def _normalize_elec_model(model):
             k = "ssm_ds"
         if key == "emperical":
             k = "empirical"
+        if key == "born_rel_perm":
+            k = "eps_r_bulk"
         normalized[k] = value
 
     if "born_model" in normalized and "born_contrib" not in normalized:
@@ -795,6 +805,40 @@ def _as_rule_number(value, aliases):
     raise ValueError("Unknown rule option '{}'. Supported aliases: {}.".format(value, sorted(aliases.keys())))
 
 
+def _resolve_born_eps_mode(value):
+    if isinstance(value, (int, np.integer)):
+        mode = int(value)
+        if mode in (0, 1):
+            return mode
+        raise ValueError("Unknown born permittivity mode '{}'. Supported values are 0 (mix) and 1 (solvent).".format(value))
+    eps_key = str(value).strip().lower()
+    if eps_key in {"mix", "bulk", "eps_r_mix"}:
+        return 0
+    if eps_key in {"solvent", "eps_r_solvent"}:
+        return 1
+    raise ValueError("Unknown born permittivity selector '{}'. Supported values are 'mix' and 'solvent'.".format(value))
+
+
+def _resolve_born_radius_mode(value):
+    if isinstance(value, (int, np.integer)):
+        mode = int(value)
+    else:
+        v = str(value).strip().lower()
+        if v.isdigit() or (v.startswith("-") and v[1:].isdigit()):
+            mode = int(v)
+        elif v in _BORN_RADIUS_MODE_ALIASES:
+            mode = int(_BORN_RADIUS_MODE_ALIASES[v])
+        else:
+            raise ValueError(
+                "Unknown born_radius_model '{}'. Supported values are 1, 2, 3, 4, 5 and aliases {}.".format(
+                    value, sorted(_BORN_RADIUS_MODE_ALIASES.keys())
+                )
+            )
+    if mode < 1 or mode > 5:
+        raise ValueError("Unknown born_radius_model '{}'. Supported values are 1, 2, 3, 4, 5.".format(value))
+    return mode
+
+
 def _flatten_model_to_runtime(model):
     dielc_rule = _as_rule_number(model["dielc_rule"], _RULE_ALIASES)
     dielc_diff_rule = str(model.get("dielc_diff_rule", "same")).strip().lower()
@@ -835,21 +879,18 @@ def _flatten_model_to_runtime(model):
         born_diff_mode = _as_rule_number(born_diff_model, _BORN_DIFF_MODE_ALIASES)
 
     dielc_diff_mode = _as_rule_number(model["dielc_diff_mode"], _DIFFC_MODE_ALIASES)
+    born_radius_model = _resolve_born_radius_mode(model.get("born_radius_model", 1))
+    if born_model == 1 and born_radius_model == 5:
+        raise ValueError("born_model=1 supports born_radius_model values 1, 2, 3, 4.")
+    if born_model >= 2 and born_radius_model != 5:
+        raise ValueError("born_model >= 2 requires born_radius_model=5.")
+
     dh_model = 2 if _coerce_bool(model.get("bjeruum_treatment", False)) else 1
-    eps_bulk_raw = model.get("eps_r_bulk", "mix")
-    if isinstance(eps_bulk_raw, (int, np.integer)):
-        born_eps_mode = int(eps_bulk_raw)
-    else:
-        eps_key = str(eps_bulk_raw).strip().lower()
-        if eps_key in {"mix", "bulk", "eps_r_mix"}:
-            born_eps_mode = 0
-        elif eps_key in {"solvent", "eps_r_solvent"}:
-            born_eps_mode = 1
-        else:
-            raise ValueError("Unknown eps_r_bulk option '{}'. Supported values: 'mix', 'solvent'.".format(eps_bulk_raw))
+    born_eps_mode = _resolve_born_eps_mode(model.get("eps_r_bulk", "mix"))
 
     return {
         "born_model": int(born_model),
+        "born_radius_model": int(born_radius_model),
         "born_diff_mode": int(born_diff_mode),
         "born_eps_mode": int(born_eps_mode),
         "dielc_rule": int(dielc_rule),
@@ -866,8 +907,11 @@ def _resolve_runtime_options(user_options):
         "dielc_rule",
         "dielc_diff_mode",
         "born_model",
+        "born_radius_model",
         "born_diff_mode",
         "born_eps_mode",
+        "born_rel_perm",
+        "eps_r_bulk",
         "DH_model",
         "debug",
     }
@@ -889,6 +933,20 @@ def _resolve_runtime_options(user_options):
         if key in user_options:
             _warn_legacy_key(key)
             runtime[key] = int(user_options[key])
+    if "born_radius_model" in user_options:
+        runtime["born_radius_model"] = _resolve_born_radius_mode(user_options["born_radius_model"])
+    if "born_rel_perm" in user_options and "eps_r_bulk" in user_options:
+        raise ValueError("Use one Born permittivity selector: either born_rel_perm or eps_r_bulk.")
+    if "born_rel_perm" in user_options:
+        runtime["born_eps_mode"] = _resolve_born_eps_mode(user_options["born_rel_perm"])
+    elif "eps_r_bulk" in user_options:
+        runtime["born_eps_mode"] = _resolve_born_eps_mode(user_options["eps_r_bulk"])
+
+    if runtime["born_model"] == 1 and runtime["born_radius_model"] == 5:
+        raise ValueError("born_model=1 supports born_radius_model values 1, 2, 3, 4.")
+    if runtime["born_model"] >= 2 and runtime["born_radius_model"] != 5:
+        raise ValueError("born_model >= 2 requires born_radius_model=5.")
+
     if "DH_model" in user_options and int(user_options["DH_model"]) == 2:
         runtime["bjeruum_treatment"] = True
     elif "DH_model" in user_options:
@@ -1070,6 +1128,7 @@ def get_prop_dict(species, x, T, user_params=None, user_options=None):
     prop_dic['elec_model_preset'] = preset_data["preset_key"]
     prop_dic['bjeruum_treatment'] = bool(runtime_options['bjeruum_treatment'])
     prop_dic['born_model'] = runtime_options['born_model']
+    prop_dic['born_radius_model'] = runtime_options['born_radius_model']
     prop_dic['born_diff_mode'] = runtime_options['born_diff_mode']
     prop_dic['born_eps_mode'] = runtime_options['born_eps_mode']
     prop_dic['DH_model'] = runtime_options['DH_model']

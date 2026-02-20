@@ -151,13 +151,16 @@ def _calc_rule_curve(molal, species, dielc_rule, born_model):
 
     for i, m_salt in enumerate(molal):
         x = molality_to_molefraction(float(m_salt), species=species)
+        born_model_int = int(born_model)
+        born_radius_model = 5 if born_model_int >= 2 else 1
         params = get_prop_dict(
             species,
             x,
             t,
             user_options={
                 "dielc_rule": int(dielc_rule),
-                "born_model": int(born_model),
+                "born_model": born_model_int,
+                "born_radius_model": born_radius_model,
                 "DH_model": 1,
                 "debug": False,
             },

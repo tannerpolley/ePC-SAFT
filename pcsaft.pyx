@@ -3,6 +3,7 @@
 
 import math
 import numpy as np
+from scipy.optimize import least_squares
 from libcpp.vector cimport vector
 from copy import deepcopy
 cimport pcsaft
@@ -112,6 +113,596 @@ def ensure_numpy_input(x, params):
     if np.isscalar(params['e']):
         params['e'] = np.asarray([params['e']], dtype=float)
     return x, params
+
+def _safe_unit_log(values, floor=1e-300):
+    vals = np.asarray(values, dtype=float)
+    return np.log(np.maximum(vals, floor))
+
+
+def _softmax(u):
+    u = np.asarray(u, dtype=float)
+    if u.size == 0:
+        return u
+    um = float(np.max(u))
+    ex = np.exp(np.clip(u - um, -700.0, 700.0))
+    s = float(np.sum(ex))
+    if s <= 0.0 or (not np.isfinite(s)):
+        return np.full(u.shape, 1.0/u.size, dtype=float)
+    return ex/s
+
+
+def _sigmoid(v):
+    if v >= 0:
+        e = math.exp(-v)
+        return 1.0/(1.0 + e)
+    e = math.exp(v)
+    return e/(1.0 + e)
+
+
+def _logit(v):
+    vv = min(max(v, 1e-12), 1.0 - 1e-12)
+    return math.log(vv/(1.0 - vv))
+
+
+def _split_ion_groups(z, z_feed):
+    z = np.asarray(z, dtype=float).flatten()
+    z_feed = np.asarray(z_feed, dtype=float).flatten()
+    if z.size != z_feed.size:
+        raise InputError("z and z_feed must have the same length.")
+    charged_idx = np.where(np.abs(z) > 1e-12)[0]
+    if charged_idx.size == 0:
+        raise InputError("pcsaft_multiphase_lle requires ionic species (non-zero z).")
+    z_ch = z[charged_idx]
+    cat_local = [int(i) for i in np.where(z_ch > 0.0)[0]]
+    an_local = [int(i) for i in np.where(z_ch < 0.0)[0]]
+    if len(cat_local) == 0 or len(an_local) == 0:
+        raise InputError("pcsaft_multiphase_lle needs at least one cation and one anion.")
+    cat_local = sorted(cat_local, key=lambda i: -float(z_feed[charged_idx[i]]))
+    an_local = sorted(an_local, key=lambda i: -float(z_feed[charged_idx[i]]))
+    return {
+        "charged_idx": charged_idx.astype(int),
+        "cat_local": cat_local,
+        "an_local": an_local,
+    }
+
+
+def _build_e_matrix(z, z_feed, species=None):
+    """
+    Build Ascani 2022 E matrix for independent ionic pairs.
+    Returns (E_matrix, info_dict).
+    """
+    split = _split_ion_groups(z, z_feed)
+    charged_idx = split["charged_idx"]
+    cat_local = split["cat_local"]
+    an_local = split["an_local"]
+    z = np.asarray(z, dtype=float).flatten()
+    z_ch = z[charged_idx]
+    n_ch = int(charged_idx.size)
+    n_cat = len(cat_local)
+    n_an = len(an_local)
+    E = np.zeros((n_ch - 1, n_ch), dtype=float)
+
+    if n_cat <= n_an:
+        for k in range(n_an):
+            E[k, cat_local[0]] = 1.0/abs(z_ch[cat_local[0]])
+            E[k, an_local[k]] = 1.0/abs(z_ch[an_local[k]])
+        if n_cat > 1:
+            for k in range(n_cat - 1):
+                row = n_an + k
+                E[row, cat_local[k + 1]] = 1.0/abs(z_ch[cat_local[k + 1]])
+                E[row, an_local[k]] = 1.0/abs(z_ch[an_local[k]])
+    else:
+        for k in range(n_cat):
+            E[k, an_local[0]] = 1.0/abs(z_ch[an_local[0]])
+            E[k, cat_local[k]] = 1.0/abs(z_ch[cat_local[k]])
+        if n_an > 1:
+            for k in range(n_an - 1):
+                row = n_cat + k
+                E[row, an_local[k + 1]] = 1.0/abs(z_ch[an_local[k + 1]])
+                E[row, cat_local[k]] = 1.0/abs(z_ch[cat_local[k]])
+
+    rank = int(np.linalg.matrix_rank(E))
+    if rank != n_ch - 1:
+        raise SolutionError("Failed to construct full-rank E matrix. rank={} expected={}.".format(rank, n_ch - 1))
+
+    if species is None:
+        species = [str(i) for i in range(z.size)]
+
+    ion_pair_rows = []
+    for r in range(E.shape[0]):
+        cols = np.where(np.abs(E[r]) > 0.0)[0]
+        ion_pair_rows.append({
+            "row": int(r),
+            "charged_local_indices": [int(c) for c in cols.tolist()],
+            "species_indices": [int(charged_idx[c]) for c in cols.tolist()],
+            "species": [species[int(charged_idx[c])] for c in cols.tolist()],
+            "weights": [float(E[r, c]) for c in cols.tolist()],
+        })
+
+    info = {
+        "charged_idx": charged_idx.astype(int),
+        "charged_species": [species[int(i)] for i in charged_idx.tolist()],
+        "rank": rank,
+        "ion_pair_rows": ion_pair_rows,
+    }
+    return E, info
+
+
+def _trial_x_from_n_xi(n_neut, xi, neutral_idx, charged_idx, E, ncomp):
+    x = np.zeros(ncomp, dtype=float)
+    n_neut = np.asarray(n_neut, dtype=float).flatten()
+    xi = np.asarray(xi, dtype=float).flatten()
+    if E.size == 0:
+        n_ch = np.zeros(len(charged_idx), dtype=float)
+    else:
+        n_ch = E.T.dot(xi)
+    n_ch = np.maximum(n_ch, 0.0)
+    denom = float(np.sum(n_neut) + np.sum(n_ch))
+    if denom <= 0.0:
+        raise SolutionError("Trial composition denominator is non-positive.")
+    if len(neutral_idx) > 0:
+        x[np.asarray(neutral_idx, dtype=int)] = n_neut/denom
+    if len(charged_idx) > 0:
+        x[np.asarray(charged_idx, dtype=int)] = n_ch/denom
+    x_sum = float(np.sum(x))
+    if x_sum <= 0.0:
+        raise SolutionError("Trial composition sum is non-positive.")
+    return x/x_sum
+
+
+def _phase_state_liq(t, p, x, params):
+    rho = float(pcsaft_den(t, p, x, params, phase='liq'))
+    lnfugcoef = np.asarray(pcsaft_lnfugcoef(t, rho, x, params), dtype=float)
+    lnfug = lnfugcoef + _safe_unit_log(x) + math.log(float(p))
+    return {"rho": rho, "lnfugcoef": lnfugcoef, "lnfug": lnfug}
+
+
+def _tpdf_value(t, p, x_trial, lnfug_feed, params):
+    state_trial = _phase_state_liq(t, p, x_trial, params)
+    val = float(np.dot(x_trial, state_trial["lnfug"] - lnfug_feed))
+    return val, state_trial
+
+
+def _find_tpdf_seed(t, p, z_feed, params, neutral_idx, charged_idx, E, options):
+    global_trials = int(options.get("tpdf_global_trials", 4000))
+    local_trials = int(options.get("tpdf_local_trials", 2000))
+    if global_trials <= 0:
+        raise ValueError("tpdf_global_trials must be positive.")
+    if local_trials < 0:
+        raise ValueError("tpdf_local_trials must be >= 0.")
+
+    rng = np.random.default_rng(int(options.get("random_seed", 12345)))
+    ncomp = int(len(z_feed))
+    feed_state = _phase_state_liq(t, p, z_feed, params)
+    lnfug_feed = feed_state["lnfug"]
+
+    n_neut_dim = len(neutral_idx)
+    xi_dim = len(charged_idx) - 1
+    best_val = np.inf
+    best_state = None
+    best_x = None
+    best_n = None
+    best_xi = None
+
+    for _ in range(global_trials):
+        n_neut = rng.random(n_neut_dim) + 1e-14
+        xi = rng.random(xi_dim) + 1e-14
+        try:
+            x_trial = _trial_x_from_n_xi(n_neut, xi, neutral_idx, charged_idx, E, ncomp)
+            tpdf, state = _tpdf_value(t, p, x_trial, lnfug_feed, params)
+        except Exception:
+            continue
+        if np.isfinite(tpdf) and (tpdf < best_val):
+            best_val = tpdf
+            best_state = state
+            best_x = x_trial
+            best_n = n_neut.copy()
+            best_xi = xi.copy()
+
+    if best_x is None:
+        raise SolutionError("TPDF search failed to find a valid trial phase.")
+
+    if local_trials > 0:
+        n_scale = np.maximum(best_n, 1e-3)
+        xi_scale = np.maximum(best_xi, 1e-3)
+        step_n = 0.30*n_scale
+        step_xi = 0.30*xi_scale
+        for itr in range(local_trials):
+            cand_n = np.maximum(best_n + rng.normal(0.0, step_n, size=n_neut_dim), 1e-14)
+            cand_xi = np.maximum(best_xi + rng.normal(0.0, step_xi, size=xi_dim), 1e-14)
+            try:
+                x_trial = _trial_x_from_n_xi(cand_n, cand_xi, neutral_idx, charged_idx, E, ncomp)
+                tpdf, state = _tpdf_value(t, p, x_trial, lnfug_feed, params)
+            except Exception:
+                tpdf = np.inf
+            if np.isfinite(tpdf) and (tpdf < best_val):
+                best_val = tpdf
+                best_state = state
+                best_x = x_trial
+                best_n = cand_n
+                best_xi = cand_xi
+            damp = 0.995 if itr < (local_trials//2) else 0.999
+            step_n *= damp
+            step_xi *= damp
+
+    return {
+        "tpdf_min": float(best_val),
+        "seed_x": np.asarray(best_x, dtype=float),
+        "seed_state": best_state,
+        "feed_state": feed_state,
+        "lnfug_feed": lnfug_feed,
+    }
+
+
+def _residual_two_phase(y, t, p, z_feed, params, z, E, neutral_idx, charged_idx, beta_bounds, charge_weight=1.0, anchor=None):
+    ncomp = int(len(z_feed))
+    nres = ncomp + (1 if anchor is not None else 0)
+    beta_lo, beta_hi = float(beta_bounds[0]), float(beta_bounds[1])
+    x1_logits = np.asarray(y[:ncomp - 1], dtype=float)
+    x1 = _softmax(np.concatenate([x1_logits, np.zeros(1, dtype=float)]))
+    beta = beta_lo + (beta_hi - beta_lo)*_sigmoid(float(y[ncomp - 1]))
+    denom = (1.0 - beta)
+    penalty = np.full(nres, 1e6, dtype=float)
+    if denom <= 0.0:
+        return penalty
+
+    x2 = (z_feed - beta*x1)/denom
+    if np.any(~np.isfinite(x2)):
+        return penalty
+    if np.any(x2 <= 1e-15):
+        return penalty
+    if abs(float(np.sum(x2)) - 1.0) > 1e-8:
+        return penalty
+
+    try:
+        st1 = _phase_state_liq(t, p, x1, params)
+        st2 = _phase_state_liq(t, p, x2, params)
+    except Exception:
+        return penalty
+
+    res_neutral = st1["lnfug"][neutral_idx] - st2["lnfug"][neutral_idx]
+    delta_ch = st1["lnfug"][charged_idx] - st2["lnfug"][charged_idx]
+    res_ionic = E.dot(delta_ch)
+    res_charge = np.array([float(charge_weight*np.dot(z, x1))], dtype=float)
+    res = np.concatenate([res_neutral, res_ionic, res_charge])
+    if anchor is not None:
+        idx = int(anchor["component"])
+        target = float(anchor["target"])
+        weight = float(anchor.get("weight", 1.0))
+        res = np.concatenate([res, np.array([weight*(x1[idx] - target)], dtype=float)])
+    if res.size != nres:
+        out = np.full(nres, 1e6, dtype=float)
+        out[:min(nres, res.size)] = res[:min(nres, res.size)]
+        return out
+    return res
+
+
+def _phase_equilibrium_residual(x1, x2, z, E, neutral_idx, charged_idx, lnfug1, lnfug2):
+    dlnf = np.asarray(lnfug1, dtype=float) - np.asarray(lnfug2, dtype=float)
+    res_neutral = dlnf[neutral_idx]
+    res_ionic = E.dot(dlnf[charged_idx])
+    res_charge = np.array([float(np.dot(z, x1))], dtype=float)
+    return np.concatenate([res_neutral, res_ionic, res_charge])
+
+
+def _solve_two_phase_lle(t, p, z_feed, params, z, E, neutral_idx, charged_idx, seed_x, options):
+    solver_tol = float(options.get("solver_tol", 1e-9))
+    max_nfev = int(options.get("max_nfev", 200))
+    beta_bounds = options.get("beta_bounds", (1e-8, 1.0 - 1e-8))
+    if len(beta_bounds) != 2:
+        raise ValueError("beta_bounds must be a two-element tuple.")
+    beta_lo, beta_hi = float(beta_bounds[0]), float(beta_bounds[1])
+    charge_weight = float(options.get("charge_weight", 1000.0))
+    charge_tol = float(options.get("charge_tol", 1e-6))
+    mass_balance_tol = float(options.get("mass_balance_tol", 1e-8))
+    split_tol = float(options.get("split_tol", 1e-3))
+    solver_accept_norm = float(options.get("solver_accept_norm", 2e-1))
+    if not (0.0 < beta_lo < beta_hi < 1.0):
+        raise ValueError("beta_bounds must satisfy 0 < low < high < 1.")
+
+    ncomp = int(len(z_feed))
+    rng = np.random.default_rng(int(options.get("random_seed", 12345)))
+    starts = []
+    starts.append(np.asarray(seed_x, dtype=float))
+    starts.append(np.asarray(z_feed, dtype=float))
+    starts.append(0.8*np.asarray(seed_x, dtype=float) + 0.2*np.asarray(z_feed, dtype=float))
+    starts.append(0.2*np.asarray(seed_x, dtype=float) + 0.8*np.asarray(z_feed, dtype=float))
+    for _ in range(8):
+        blend = float(rng.uniform(0.1, 0.9))
+        jitter = rng.random(ncomp) + 1e-10
+        starts.append(blend*np.asarray(seed_x, dtype=float) + (1.0 - blend)*jitter/np.sum(jitter))
+
+    candidates = []
+    for x_start in starts:
+        x_start = np.maximum(x_start, 1e-12)
+        x_start = x_start/np.sum(x_start)
+        beta0 = 0.5*(beta_lo + beta_hi)
+        y0 = np.zeros(ncomp, dtype=float)
+        y0[:ncomp - 1] = np.log(np.maximum(x_start[:ncomp - 1], 1e-15)/max(float(x_start[-1]), 1e-15))
+        frac = (beta0 - beta_lo)/(beta_hi - beta_lo)
+        y0[ncomp - 1] = _logit(frac)
+        try:
+            sol = least_squares(
+                _residual_two_phase,
+                y0,
+                args=(t, p, z_feed, params, z, E, neutral_idx, charged_idx, (beta_lo, beta_hi), charge_weight, None),
+                method="trf",
+                ftol=solver_tol,
+                xtol=solver_tol,
+                gtol=solver_tol,
+                max_nfev=max_nfev,
+            )
+        except Exception:
+            continue
+
+        y = sol.x
+        x1 = _softmax(np.concatenate([y[:ncomp - 1], np.zeros(1, dtype=float)]))
+        beta = beta_lo + (beta_hi - beta_lo)*_sigmoid(float(y[ncomp - 1]))
+        if beta <= 0.0 or beta >= 1.0:
+            continue
+        x2 = (z_feed - beta*x1)/(1.0 - beta)
+        if np.any(~np.isfinite(x2)):
+            continue
+        if np.any(x2 <= 1e-15):
+            continue
+        if abs(float(np.sum(x2)) - 1.0) > 1e-8:
+            continue
+        try:
+            st1 = _phase_state_liq(t, p, x1, params)
+            st2 = _phase_state_liq(t, p, x2, params)
+            residual = _phase_equilibrium_residual(x1, x2, z, E, neutral_idx, charged_idx, st1["lnfug"], st2["lnfug"])
+        except Exception:
+            continue
+
+        candidates.append({
+            "sol": sol,
+            "x1": x1,
+            "x2": x2,
+            "beta": float(beta),
+            "st1": st1,
+            "st2": st2,
+            "residual": residual,
+            "residual_norm": float(np.linalg.norm(residual)),
+            "split_norm": float(np.max(np.abs(x1 - x2))),
+        })
+
+    if len(candidates) == 0:
+        return {
+            "converged": False,
+            "status": -1,
+            "message": "least_squares did not produce a candidate solution.",
+            "residual_norm": np.inf,
+            "phases": [],
+            "n_phases": 2,
+        }
+
+    best_res = min(c["residual_norm"] for c in candidates)
+    split_candidates = [
+        c for c in candidates
+        if (c["split_norm"] > 1e-3 and c["residual_norm"] <= max(1e-3, 50.0*best_res))
+    ]
+    if len(split_candidates) > 0:
+        best_cand = min(split_candidates, key=lambda c: (c["residual_norm"], c["sol"].cost))
+    else:
+        best_cand = min(candidates, key=lambda c: (c["residual_norm"], c["sol"].cost))
+
+    # If unconstrained solve falls back to a trivial split, try a seeded anchored solve.
+    if best_cand["split_norm"] <= 1e-4:
+        split_delta = np.abs(np.asarray(seed_x, dtype=float) - np.asarray(z_feed, dtype=float))
+        if split_delta.size > 0 and float(np.max(split_delta)) > 1e-8:
+            anchor_idx = int(np.argmax(split_delta))
+            anchor = {"component": anchor_idx, "target": float(seed_x[anchor_idx]), "weight": 1.0}
+            anchored_candidates = []
+            for x_start in starts:
+                x_start = np.maximum(np.asarray(x_start, dtype=float), 1e-12)
+                x_start = x_start/np.sum(x_start)
+                beta0 = 0.5*(beta_lo + beta_hi)
+                y0 = np.zeros(ncomp, dtype=float)
+                y0[:ncomp - 1] = np.log(np.maximum(x_start[:ncomp - 1], 1e-15)/max(float(x_start[-1]), 1e-15))
+                frac = (beta0 - beta_lo)/(beta_hi - beta_lo)
+                y0[ncomp - 1] = _logit(frac)
+                try:
+                    sol = least_squares(
+                        _residual_two_phase,
+                        y0,
+                        args=(t, p, z_feed, params, z, E, neutral_idx, charged_idx, (beta_lo, beta_hi), charge_weight, anchor),
+                        method="trf",
+                        ftol=solver_tol,
+                        xtol=solver_tol,
+                        gtol=solver_tol,
+                        max_nfev=max_nfev,
+                    )
+                except Exception:
+                    continue
+
+                y = sol.x
+                x1 = _softmax(np.concatenate([y[:ncomp - 1], np.zeros(1, dtype=float)]))
+                beta = beta_lo + (beta_hi - beta_lo)*_sigmoid(float(y[ncomp - 1]))
+                if beta <= 0.0 or beta >= 1.0:
+                    continue
+                x2 = (z_feed - beta*x1)/(1.0 - beta)
+                if np.any(~np.isfinite(x2)):
+                    continue
+                if np.any(x2 <= 1e-15):
+                    continue
+                if abs(float(np.sum(x2)) - 1.0) > 1e-8:
+                    continue
+                try:
+                    st1 = _phase_state_liq(t, p, x1, params)
+                    st2 = _phase_state_liq(t, p, x2, params)
+                    residual = _phase_equilibrium_residual(x1, x2, z, E, neutral_idx, charged_idx, st1["lnfug"], st2["lnfug"])
+                except Exception:
+                    continue
+                anchored_candidates.append({
+                    "sol": sol,
+                    "x1": x1,
+                    "x2": x2,
+                    "beta": float(beta),
+                    "st1": st1,
+                    "st2": st2,
+                    "residual": residual,
+                    "residual_norm": float(np.linalg.norm(residual)),
+                    "split_norm": float(np.max(np.abs(x1 - x2))),
+                })
+
+            anchored_candidates = [c for c in anchored_candidates if c["split_norm"] > 1e-4]
+            if len(anchored_candidates) > 0:
+                best_cand = min(anchored_candidates, key=lambda c: (c["residual_norm"], c["sol"].cost))
+    best = best_cand["sol"]
+    x1 = best_cand["x1"]
+    x2 = best_cand["x2"]
+    beta = best_cand["beta"]
+    st1 = best_cand["st1"]
+    st2 = best_cand["st2"]
+    residual = best_cand["residual"]
+    residual_norm = best_cand["residual_norm"]
+    tol_ok = residual_norm <= max(solver_accept_norm, 1e3*solver_tol)
+    charge_ok = abs(float(np.dot(z, x1))) <= charge_tol and abs(float(np.dot(z, x2))) <= charge_tol
+    mb_ok = np.max(np.abs(z_feed - (beta*x1 + (1.0-beta)*x2))) <= mass_balance_tol
+    frac_ok = (beta > beta_lo) and (beta < beta_hi)
+    split_ok = best_cand["split_norm"] > split_tol
+    converged = bool(charge_ok and mb_ok and frac_ok and split_ok and tol_ok)
+
+    phases = [
+        {
+            "beta": float(beta),
+            "x": np.asarray(x1, dtype=float),
+            "rho": float(st1["rho"]),
+            "lnfugcoef": np.asarray(st1["lnfugcoef"], dtype=float),
+            "lnfug": np.asarray(st1["lnfug"], dtype=float),
+        },
+        {
+            "beta": float(1.0 - beta),
+            "x": np.asarray(x2, dtype=float),
+            "rho": float(st2["rho"]),
+            "lnfugcoef": np.asarray(st2["lnfugcoef"], dtype=float),
+            "lnfug": np.asarray(st2["lnfug"], dtype=float),
+        },
+    ]
+
+    return {
+        "converged": converged,
+        "status": int(best.status),
+        "message": str(best.message),
+        "residual_norm": residual_norm,
+        "phases": phases,
+        "n_phases": 2,
+        "solver_result": best,
+    }
+
+
+def pcsaft_multiphase_lle(t, p, z_feed, params, species, options=None):
+    """
+    Two-liquid-phase electrolyte flash using Ascani 2022-style mean-ionic conditions.
+
+    Parameters
+    ----------
+    t : float
+        Temperature (K)
+    p : float
+        Pressure (Pa)
+    z_feed : array_like
+        Overall species mole fractions (sum to 1), aligned with `species`.
+    params : dict
+        Standard PC-SAFT/ePC-SAFT parameter dictionary.
+    species : list[str]
+        Species names aligned with `z_feed`.
+    options : dict, optional
+        Solver controls:
+        - tpdf_global_trials (default 4000)
+        - tpdf_local_trials (default 2000)
+        - tpdf_tol (default -1e-8)
+        - beta_bounds (default (1e-8, 1-1e-8))
+        - solver_tol (default 1e-9)
+        - solver_accept_norm (default 2e-1)
+        - max_nfev (default 200)
+        - charge_weight (default 1000.0)
+        - charge_tol (default 1e-6)
+        - mass_balance_tol (default 1e-8)
+        - split_tol (default 1e-3)
+        - debug (default False)
+
+    Returns
+    -------
+    dict
+        Structured result containing phase compositions, fractions, densities, fugacity
+        diagnostics, TPDF information, and E-matrix metadata.
+    """
+    if options is None:
+        options = {}
+    z_feed = np.asarray(z_feed, dtype=float).flatten()
+    if len(species) != z_feed.size:
+        raise InputError("`species` length ({}) must match z_feed length ({}).".format(len(species), z_feed.size))
+    check_input(z_feed, {"temperature": t, "pressure": p})
+
+    x_dummy, params = ensure_numpy_input(z_feed, params)
+    params = check_association(params)
+    z = np.asarray(params.get("z", []), dtype=float).flatten()
+    if z.size != z_feed.size:
+        raise InputError("params['z'] must be present and aligned with z_feed for pcsaft_multiphase_lle.")
+    if np.allclose(z, 0.0):
+        raise InputError("pcsaft_multiphase_lle requires ionic species (non-zero z).")
+
+    feed_charge = float(np.dot(z, z_feed))
+    if abs(feed_charge) > 1e-8:
+        raise InputError("Feed must be electroneutral. Sum(z_i*z_feed_i) = {}".format(feed_charge))
+
+    neutral_idx = np.where(np.abs(z) <= 1e-12)[0].astype(int)
+    split = _split_ion_groups(z, z_feed)
+    charged_idx = split["charged_idx"].astype(int)
+    if charged_idx.size < 2:
+        raise InputError("At least two charged species are required.")
+    E, e_info = _build_e_matrix(z, z_feed, species=species)
+
+    tpdf = _find_tpdf_seed(t, p, z_feed, params, neutral_idx, charged_idx, E, options)
+    tpdf_tol = float(options.get("tpdf_tol", -1e-8))
+    debug = bool(options.get("debug", False))
+    if debug:
+        print("[DEBUG multiphase] tpdf_min =", tpdf["tpdf_min"], "tol =", tpdf_tol)
+
+    if tpdf["tpdf_min"] >= tpdf_tol:
+        st = tpdf["feed_state"]
+        return {
+            "n_phases": 1,
+            "phases": [{
+                "beta": 1.0,
+                "x": np.asarray(z_feed, dtype=float),
+                "rho": float(st["rho"]),
+                "lnfugcoef": np.asarray(st["lnfugcoef"], dtype=float),
+                "lnfug": np.asarray(st["lnfug"], dtype=float),
+            }],
+            "tpdf_min": float(tpdf["tpdf_min"]),
+            "tpdf_seed_x": np.asarray(tpdf["seed_x"], dtype=float),
+            "converged": True,
+            "status": 1,
+            "message": "Feed is stable (single liquid phase).",
+            "residual_norm": 0.0,
+            "e_matrix": np.asarray(E, dtype=float),
+            "ion_pair_rows": e_info["ion_pair_rows"],
+            "charged_species": e_info["charged_species"],
+            "charged_species_indices": e_info["charged_idx"],
+        }
+
+    solve = _solve_two_phase_lle(
+        t, p, z_feed, params, z, E, neutral_idx, charged_idx, tpdf["seed_x"], options
+    )
+
+    result = {
+        "n_phases": int(solve["n_phases"]),
+        "phases": solve["phases"],
+        "tpdf_min": float(tpdf["tpdf_min"]),
+        "tpdf_seed_x": np.asarray(tpdf["seed_x"], dtype=float),
+        "converged": bool(solve["converged"]),
+        "status": int(solve["status"]),
+        "message": solve["message"],
+        "residual_norm": float(solve["residual_norm"]),
+        "e_matrix": np.asarray(E, dtype=float),
+        "ion_pair_rows": e_info["ion_pair_rows"],
+        "charged_species": e_info["charged_species"],
+        "charged_species_indices": e_info["charged_idx"],
+    }
+    return result
+
 
 def pcsaft_p(t, rho, x, params):
     """
@@ -1497,8 +2088,13 @@ def create_struct(params):
         cppargs.dipm = np_to_vector_double(params['dipm'])
     if ('dip_num' in params) and np.any(params['dip_num']):
         cppargs.dip_num = np_to_vector_double(params['dip_num'])
+    z_arr = None
     if 'z' in params:
-        cppargs.z = np_to_vector_double(params['z'])
+        z_arr = np.asarray(params['z'], dtype=float).flatten()
+        if z_arr.size not in (0, ncomp):
+            raise ValueError('params["z"] must have length {} (or be empty), got {}.'.format(ncomp, z_arr.size))
+        if z_arr.size == ncomp:
+            cppargs.z = np_to_vector_double(z_arr)
     if 'dielc' in params:
         dielc_arr = np.asarray(params['dielc'], dtype=float).flatten()
         if dielc_arr.size != ncomp:
@@ -1515,11 +2111,30 @@ def create_struct(params):
         raise ValueError("Unknown dielc_diff_mode. Supported values are 0 (analytic) and 1 (finite-diff).")
     if cppargs.z.size() > 0 and cppargs.dielc.size() == 0:
         raise ValueError('Electrolyte parameters require params["dielc"] as a per-species array.')
+    d_born_arr = None
     if 'd_born' in params:
-        cppargs.d_born = np_to_vector_double(np.asarray(params['d_born'], dtype=float))
+        d_born_arr = np.asarray(params['d_born'], dtype=float).flatten()
+        if d_born_arr.size != ncomp:
+            raise ValueError('params["d_born"] must have length {}, got {}.'.format(ncomp, d_born_arr.size))
+        cppargs.d_born = np_to_vector_double(d_born_arr)
     if 'f_solv' in params:
         cppargs.f_solv = np_to_vector_double(np.asarray(params['f_solv'], dtype=float))
     cppargs.born_model = int(params['born_model']) if 'born_model' in params else 1
+    cppargs.born_radius_model = int(params['born_radius_model']) if 'born_radius_model' in params else 1
+    if cppargs.born_radius_model < 1 or cppargs.born_radius_model > 5:
+        raise ValueError("Unknown born_radius_model. Supported values are 1, 2, 3, 4, 5.")
+    if cppargs.born_model == 1 and cppargs.born_radius_model == 5:
+        raise ValueError("born_model=1 supports born_radius_model values 1, 2, 3, 4.")
+    if cppargs.born_model >= 2 and cppargs.born_radius_model != 5:
+        raise ValueError("born_model >= 2 requires born_radius_model=5.")
+    if cppargs.born_model > 0 and cppargs.born_radius_model in (4, 5):
+        if z_arr is None:
+            raise ValueError("born_radius_model 4/5 requires params['z'] as a per-species array.")
+        if d_born_arr is None:
+            raise ValueError("born_radius_model 4/5 requires params['d_born'] as a per-species array.")
+        ion_mask = np.abs(z_arr) > 1e-12
+        if np.any(d_born_arr[ion_mask] <= 0.0):
+            raise ValueError("born_radius_model 4/5 requires positive ionic params['d_born'] values.")
     cppargs.born_diff_mode = int(params['born_diff_mode']) if 'born_diff_mode' in params else 0
     if cppargs.born_diff_mode not in (0, 1, 2, 3):
         raise ValueError("Unknown born_diff_mode. Supported values are 0 (analytic), 1 (finite-diff), 2 (Eq.133-style), and 3 (no dielectric-concentration term).")

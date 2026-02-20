@@ -44,6 +44,50 @@ struct DielcState {
     vector<double> deps_dx;
 };
 
+inline bool is_ion_species(const add_args &cppargs, int i) {
+    return std::abs(cppargs.z[i]) > 1e-12;
+}
+
+double compute_ion_born_radius(int i, double t, const add_args &cppargs) {
+    if (!is_ion_species(cppargs, i)) {
+        return cppargs.s[i];
+    }
+    int mode = cppargs.born_radius_model;
+    double sigma_i = cppargs.s[i];
+    if (sigma_i <= 0.0) {
+        throw ValueError("Born term requires positive ionic sigma_i.");
+    }
+    if (mode == 1) {
+        return sigma_i;
+    }
+    if (mode == 2) {
+        return sigma_i*(1.0 - 0.12);
+    }
+    if (mode == 3) {
+        return sigma_i*(1.0 - 0.12*std::exp(-3.0*cppargs.e[i]/t));
+    }
+    if (mode == 4 || mode == 5) {
+        if (cppargs.d_born.size() <= static_cast<size_t>(i) || cppargs.d_born[i] <= 0.0) {
+            throw ValueError("born_radius_model 4/5 requires positive ionic params['d_born'] values.");
+        }
+        return cppargs.d_born[i];
+    }
+    throw ValueError("Unknown born_radius_model. Supported values are 1, 2, 3, 4, 5.");
+}
+
+double compute_ion_born_radius_dt(int i, double t, const add_args &cppargs) {
+    if (!is_ion_species(cppargs, i)) {
+        return 0.0;
+    }
+    int mode = cppargs.born_radius_model;
+    if (mode == 3) {
+        double sigma_i = cppargs.s[i];
+        double expo = std::exp(-3.0*cppargs.e[i]/t);
+        return -0.36*sigma_i*cppargs.e[i]*expo/(t*t);
+    }
+    return 0.0;
+}
+
 double compute_eps_rule(int rule, const vector<double> &x, add_args &cppargs);
 
 double compute_eps_solvent_reference(const vector<double> &x, add_args &cppargs) {
@@ -91,8 +135,11 @@ vector<double> compute_deps_solvent_reference(const vector<double> &x, add_args 
     return deps;
 }
 
-BornSSMDSData build_born_ssmds_data(vector<double> x, add_args &cppargs, double eps_r, double eps_r_ion) {
+BornSSMDSData build_born_ssmds_data(vector<double> x, add_args &cppargs, double t, double eps_r, double eps_r_ion) {
     int ncomp = static_cast<int>(x.size());
+    if (cppargs.born_radius_model != 5) {
+        throw ValueError("born_model >= 2 requires born_radius_model=5.");
+    }
     BornSSMDSData data;
     data.d_born.assign(ncomp, 1.0);
     data.D.assign(ncomp, 1.0);
@@ -106,7 +153,7 @@ BornSSMDSData build_born_ssmds_data(vector<double> x, add_args &cppargs, double 
 
     double f_mix = 0.0;
     for (int i = 0; i < ncomp; i++) {
-        bool is_ion = std::abs(cppargs.z[i]) > 1e-12;
+        bool is_ion = is_ion_species(cppargs, i);
         double fi = 1.0;
         if (!is_ion && cppargs.f_solv.size() > static_cast<size_t>(i)) {
             fi = cppargs.f_solv[i];
@@ -114,14 +161,17 @@ BornSSMDSData build_born_ssmds_data(vector<double> x, add_args &cppargs, double 
         data.f_k[i] = fi;
         f_mix += x[i]*fi;
 
-        if (cppargs.d_born.size() > static_cast<size_t>(i) && cppargs.d_born[i] > 0.0) {
+        if (is_ion) {
+            data.d_born[i] = compute_ion_born_radius(i, t, cppargs);
+        }
+        else if (cppargs.d_born.size() > static_cast<size_t>(i) && cppargs.d_born[i] > 0.0) {
             data.d_born[i] = cppargs.d_born[i];
         }
         else if (cppargs.s[i] > 0.0) {
             data.d_born[i] = cppargs.s[i];
         }
-        else if (is_ion) {
-            throw ValueError("Born model 2 requires positive ion d_born or sigma.");
+        else {
+            throw ValueError("Born model requires positive solvent diameter.");
         }
 
         if (is_ion) {
@@ -163,20 +213,17 @@ double compute_born_ares_only(double t, const vector<double> &x, add_args &cppar
     if (cppargs.born_model == 1) {
         double born_sum = 0.0;
         for (int i = 0; i < static_cast<int>(x.size()); i++) {
-            if (std::abs(cppargs.z[i]) > 1e-12) {
-                double d_born_i = cppargs.s[i];
-                if (d_born_i <= 0) {
-                    throw ValueError("Born term requires positive ion d_born,i.");
-                }
+            if (is_ion_species(cppargs, i)) {
+                double d_born_i = compute_ion_born_radius(i, t, cppargs);
                 born_sum += x[i]*cppargs.z[i]*cppargs.z[i]/d_born_i;
             }
         }
-        return -E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac)*(1.0 - 1.0/eps_mix)*born_sum;
+        return -E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac)*(1.0 - 1.0/eps_born)*born_sum;
     }
     if (cppargs.born_model >= 2 && cppargs.born_model <= 5) {
         const double eps_r_ion = 8.0;
         const double Kborn = E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac);
-        BornSSMDSData born = build_born_ssmds_data(x, cppargs, eps_born, eps_r_ion);
+        BornSSMDSData born = build_born_ssmds_data(x, cppargs, t, eps_born, eps_r_ion);
         return -Kborn*born.sum_bracket;
     }
     throw ValueError("Unknown born_model. Supported values are 0, 1, 2, 3, 4, 5.");
@@ -219,6 +266,32 @@ void validate_dielc_inputs(const vector<double> &x, add_args &cppargs) {
     }
     if (cppargs.born_eps_mode != 0 && cppargs.born_eps_mode != 1) {
         throw ValueError("Unknown born_eps_mode. Supported values are 0 (eps_r,mix) and 1 (eps_r,solvent).");
+    }
+    if (cppargs.born_model < 0 || cppargs.born_model > 5) {
+        throw ValueError("Unknown born_model. Supported values are 0, 1, 2, 3, 4, 5.");
+    }
+    if (cppargs.born_model > 0 && cppargs.z.size() != static_cast<size_t>(ncomp)) {
+        throw ValueError("Born contribution requires params['z'] as an array with length equal to ncomp.");
+    }
+    if (cppargs.born_radius_model < 1 || cppargs.born_radius_model > 5) {
+        throw ValueError("Unknown born_radius_model. Supported values are 1, 2, 3, 4, 5.");
+    }
+    if (cppargs.born_model == 1 && cppargs.born_radius_model == 5) {
+        throw ValueError("born_model=1 supports born_radius_model values 1, 2, 3, 4.");
+    }
+    if (cppargs.born_model >= 2 && cppargs.born_radius_model != 5) {
+        throw ValueError("born_model >= 2 requires born_radius_model=5.");
+    }
+    if (cppargs.born_model > 0 && (cppargs.born_radius_model == 4 || cppargs.born_radius_model == 5)) {
+        if (cppargs.z.size() != static_cast<size_t>(ncomp)) {
+            throw ValueError("born_radius_model 4/5 requires ionic charge array params['z'] with length ncomp.");
+        }
+        for (int i = 0; i < ncomp; i++) {
+            if (is_ion_species(cppargs, i) &&
+                (cppargs.d_born.size() <= static_cast<size_t>(i) || cppargs.d_born[i] <= 0.0)) {
+                throw ValueError("born_radius_model 4/5 requires positive ionic params['d_born'] values.");
+            }
+        }
     }
     int rule = cppargs.dielc_rule;
     if (rule < 0 || rule > 6) {
@@ -1389,7 +1462,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
         vector<double> deps_dx = dielc_state.deps_dx; // d(eps_r)/dx_i
         double eps_born = eps;
         vector<double> deps_dx_born = deps_dx;
-        if ((cppargs.born_model >= 2) && (cppargs.born_eps_mode == 1)) {
+        if ((cppargs.born_model >= 1) && (cppargs.born_eps_mode == 1)) {
             eps_born = compute_eps_solvent_reference(x, cppargs);
             deps_dx_born = compute_deps_solvent_reference(x, cppargs);
         }
@@ -1460,19 +1533,16 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
         }
 
         if (cppargs.born_model == 1) {
-            // Born term (Bulow 2021a, non-SSM+DS), Version 2 differential, using d_born,i in denominator
+            // Born term (Bulow 2021a, non-SSM+DS), using user-selected born_radius_model for D_born
             double born_sum = 0.;
             for (int i = 0; i < ncomp; i++) {
-                if (cppargs.z[i] != 0) {
-                    double d_born_i = cppargs.s[i];
-                    if (d_born_i <= 0) {
-                        throw ValueError("Born term requires positive ion d_born,i.");
-                    }
+                if (is_ion_species(cppargs, i)) {
+                    double d_born_i = compute_ion_born_radius(i, t, cppargs);
                     born_sum += x[i]*cppargs.z[i]*cppargs.z[i]/d_born_i;
                 }
             }
             double Kborn = E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac);
-            double a_born = -Kborn*(1.0 - 1.0/eps)*born_sum;
+            double a_born = -Kborn*(1.0 - 1.0/eps_born)*born_sum;
 
             double Z_born = 0.0;
 
@@ -1485,24 +1555,21 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
             else {
                 for (int i = 0; i < ncomp; i++) {
                     double ion_part = 0.0;
-                    if (cppargs.z[i] != 0) {
-                        double d_born_i = cppargs.s[i];
-                        if (d_born_i <= 0) {
-                            throw ValueError("Born term requires positive ion d_born,i.");
-                        }
-                        ion_part = (1.0 - 1.0/eps)*cppargs.z[i]*cppargs.z[i]/d_born_i;
+                    if (is_ion_species(cppargs, i)) {
+                        double d_born_i = compute_ion_born_radius(i, t, cppargs);
+                        ion_part = (1.0 - 1.0/eps_born)*cppargs.z[i]*cppargs.z[i]/d_born_i;
                     }
                     // born_diff_mode=2 follows Eq.133-style: remove the born_sum multiplier on the dielectric term.
                     // born_diff_mode=3 disables dielectric-concentration coupling in Born model 1.
                     double eps_part = 0.0;
                     if (cppargs.born_diff_mode == 2) {
-                        eps_part = deps_dx[i]/(eps*eps);
+                        eps_part = deps_dx_born[i]/(eps_born*eps_born);
                     }
                     else if (cppargs.born_diff_mode == 3) {
                         eps_part = 0.0;
                     }
                     else {
-                        eps_part = born_sum*deps_dx[i]/(eps*eps);
+                        eps_part = born_sum*deps_dx_born[i]/(eps_born*eps_born);
                     }
                     ion_part_vec[i] = ion_part;
                     eps_part_vec[i] = eps_part;
@@ -1520,7 +1587,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
             if (cppargs.debug) {
                 if (cppargs.born_diff_mode == 1) {
                     std::cout << std::fixed << std::setprecision(10)
-                              << "[DEBUG born_model1_fd] eps=" << eps
+                              << "[DEBUG born_model1_fd] eps=" << eps_born
                               << " born_sum=" << born_sum
                               << " a_born=" << a_born*8.314*t/1000.0
                               << " sum_x_dadx=" << sum_x_dadx_born*8.314*t/1000.0
@@ -1534,7 +1601,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
                 }
                 else {
                 std::cout << std::fixed << std::setprecision(10)
-                          << "[DEBUG born_model1_m" << cppargs.born_diff_mode << "] eps=" << eps
+                          << "[DEBUG born_model1_m" << cppargs.born_diff_mode << "] eps=" << eps_born
                           << " born_sum=" << born_sum
                           << " a_born=" << a_born*8.314*t/1000.0
                           << " sum_x_dadx=" << sum_x_dadx_born*8.314*t/1000.0
@@ -1553,7 +1620,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
         else if ((cppargs.born_model >= 2) && (cppargs.born_model <= 5)) {
             const double eps_r_ion = 8.0;
             const double Kborn = E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac);
-            BornSSMDSData born = build_born_ssmds_data(x, cppargs, eps_born, eps_r_ion);
+            BornSSMDSData born = build_born_ssmds_data(x, cppargs, t, eps_born, eps_r_ion);
             double a_born = -Kborn*born.sum_bracket;
             double Z_born = 0.0;
 
@@ -1983,20 +2050,17 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, add_args &cppargs
             // Born term (Bulow 2021a, non-SSM+DS): use d_born,i in denominator
             double born_sum = 0.;
             for (int i = 0; i < ncomp; i++) {
-                if (cppargs.z[i] != 0) {
-                    double d_born_i = cppargs.s[i];
-                    if (d_born_i <= 0) {
-                        throw ValueError("Born term requires positive ion d_born,i.");
-                    }
+                if (is_ion_species(cppargs, i)) {
+                    double d_born_i = compute_ion_born_radius(i, t, cppargs);
                     born_sum += x[i]*cppargs.z[i]*cppargs.z[i]/d_born_i;
                 }
             }
-            ares_born = -E_CHRG*E_CHRG/(4.*PI*kb*t*perm_vac)*(1.-1./eps)*born_sum;
+            ares_born = -E_CHRG*E_CHRG/(4.*PI*kb*t*perm_vac)*(1.-1./eps_born)*born_sum;
         }
         else if ((cppargs.born_model >= 2) && (cppargs.born_model <= 5)) {
             const double eps_r_ion = 8.0;
             const double Kborn = E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac);
-            BornSSMDSData born = build_born_ssmds_data(x, cppargs, eps_born, eps_r_ion);
+            BornSSMDSData born = build_born_ssmds_data(x, cppargs, t, eps_born, eps_r_ion);
             ares_born = -Kborn*born.sum_bracket;
         }
         else if (cppargs.born_model != 0) {
@@ -2359,27 +2423,24 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, add_args &cppargs
         }
 
         if (cppargs.born_model == 1) {
-            // Born term temperature derivative (non-SSM+DS) with d_born,i = sigma_i
+            // Born term temperature derivative (non-SSM+DS) with user-selected born_radius_model
             double born_sum = 0.;
             double born_sum_dt = 0.;
             for (int i = 0; i < ncomp; i++) {
-                if (cppargs.z[i] != 0) {
-                    double d_born_i = cppargs.s[i];
-                    if (d_born_i <= 0) {
-                        throw ValueError("Born term requires positive ion d_born,i.");
-                    }
-                    double d_born_dt = 0.0;
+                if (is_ion_species(cppargs, i)) {
+                    double d_born_i = compute_ion_born_radius(i, t, cppargs);
+                    double d_born_dt = compute_ion_born_radius_dt(i, t, cppargs);
                     born_sum += x[i]*cppargs.z[i]*cppargs.z[i]/d_born_i;
                     born_sum_dt += x[i]*cppargs.z[i]*cppargs.z[i]*(-d_born_dt)/(d_born_i*d_born_i);
                 }
             }
-            double born_factor = (1.-1./eps);
+            double born_factor = (1.-1./eps_born);
             double prefactor = E_CHRG*E_CHRG/(4.*PI*kb*perm_vac);
             dadt_born = prefactor*born_factor*(born_sum/(t*t) - born_sum_dt/t);
         }
         else if ((cppargs.born_model >= 2) && (cppargs.born_model <= 5)) {
             const double eps_r_ion = 8.0;
-            BornSSMDSData born = build_born_ssmds_data(x, cppargs, eps_born, eps_r_ion);
+            BornSSMDSData born = build_born_ssmds_data(x, cppargs, t, eps_born, eps_r_ion);
             dadt_born = E_CHRG*E_CHRG/(4.*PI*kb*perm_vac*t*t)*born.sum_bracket;
         }
         else if (cppargs.born_model != 0) {
@@ -3339,6 +3400,7 @@ double calc_water_sigma(double t) {
 add_args get_single_component(int i, add_args &cppargs) {
     add_args args_single;
     args_single.born_model = cppargs.born_model;
+    args_single.born_radius_model = cppargs.born_radius_model;
     args_single.born_diff_mode = cppargs.born_diff_mode;
     args_single.born_eps_mode = cppargs.born_eps_mode;
     args_single.DH_model = cppargs.DH_model;
