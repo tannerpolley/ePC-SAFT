@@ -16,8 +16,8 @@ from typing import Any, Dict, List, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PAPER_DIR = REPO_ROOT / "docs" / "papers" / "md"
-OUT_DIR = REPO_ROOT / "data" / "epc-saft_parameters"
-OUT_JSON = OUT_DIR / "epc-saft_parameters.json"
+OUT_DIR = REPO_ROOT / "data" / "pcsaft_parameters" / "catalog"
+OUT_JSON = OUT_DIR / "pcsaft-parameter-catalog.json"
 
 
 SOURCE_NOTES = {
@@ -268,10 +268,10 @@ def _build_catalog() -> Dict[str, Any]:
             "component_set_key": {"default": "default", "H2O": "salt_2020"},
             "kij_set": "2025",
             "model": {
-                "born_contrib": True, "ssm_ds": False,
+                "born_model": 1,
                 "dielc_rule": "linear-mixing-mole", "dielc_diff_rule": "same",
-                "dielc_diff_mode": "analytic", "born_diff_model": "analytic",
-                "born_diff_options": {"include_sum_term": True, "include_dielc_conc_dep": True, "include_delta_d_i_conc_dep": True},
+                "dielc_diff_mode": "analytic",
+                "born_term_options": {"numerical": False, "sum_term": True, "deps_dx_term": True, "d_born_mode": 1},
                 "eps_r_bulk": "mix", "bjeruum_treatment": False,
             },
         },
@@ -280,10 +280,10 @@ def _build_catalog() -> Dict[str, Any]:
             "component_set_key": {"default": "2005", "H2O": "salt_2005", "Methanol": "default", "Ethanol": "default"},
             "kij_set": "2005",
             "model": {
-                "born_contrib": False, "ssm_ds": False,
+                "born_model": 0,
                 "dielc_rule": "constant", "dielc_diff_rule": "same",
-                "dielc_diff_mode": "analytic", "born_diff_model": "analytic",
-                "born_diff_options": {"include_sum_term": False, "include_dielc_conc_dep": False, "include_delta_d_i_conc_dep": False},
+                "dielc_diff_mode": "analytic",
+                "born_term_options": {"numerical": False, "sum_term": True, "deps_dx_term": True, "d_born_mode": 1},
                 "eps_r_bulk": "mix", "bjeruum_treatment": False,
             },
         },
@@ -292,10 +292,10 @@ def _build_catalog() -> Dict[str, Any]:
             "component_set_key": {"default": "2008", "H2O": "salt_2008"},
             "kij_set": "2008",
             "model": {
-                "born_contrib": False, "ssm_ds": False,
+                "born_model": 0,
                 "dielc_rule": "constant", "dielc_diff_rule": "same",
-                "dielc_diff_mode": "analytic", "born_diff_model": "analytic",
-                "born_diff_options": {"include_sum_term": False, "include_dielc_conc_dep": False, "include_delta_d_i_conc_dep": False},
+                "dielc_diff_mode": "analytic",
+                "born_term_options": {"numerical": False, "sum_term": True, "deps_dx_term": True, "d_born_mode": 1},
                 "eps_r_bulk": "mix", "bjeruum_treatment": False,
             },
         },
@@ -304,10 +304,10 @@ def _build_catalog() -> Dict[str, Any]:
             "component_set_key": {"default": "2014_s1", "H2O": "salt_2014_s1"},
             "kij_set": "2014_s1",
             "model": {
-                "born_contrib": False, "ssm_ds": False,
+                "born_model": 0,
                 "dielc_rule": "constant", "dielc_diff_rule": "same",
-                "dielc_diff_mode": "analytic", "born_diff_model": "analytic",
-                "born_diff_options": {"include_sum_term": False, "include_dielc_conc_dep": False, "include_delta_d_i_conc_dep": False},
+                "dielc_diff_mode": "analytic",
+                "born_term_options": {"numerical": False, "sum_term": True, "deps_dx_term": True, "d_born_mode": 1},
                 "eps_r_bulk": "mix", "bjeruum_treatment": False,
             },
         },
@@ -316,10 +316,10 @@ def _build_catalog() -> Dict[str, Any]:
             "component_set_key": {"default": "2014_s2", "H2O": "salt_2014_s2"},
             "kij_set": "2014_s2",
             "model": {
-                "born_contrib": False, "ssm_ds": False,
+                "born_model": 0,
                 "dielc_rule": "constant", "dielc_diff_rule": "same",
-                "dielc_diff_mode": "analytic", "born_diff_model": "analytic",
-                "born_diff_options": {"include_sum_term": False, "include_dielc_conc_dep": False, "include_delta_d_i_conc_dep": False},
+                "dielc_diff_mode": "analytic",
+                "born_term_options": {"numerical": False, "sum_term": True, "deps_dx_term": True, "d_born_mode": 1},
                 "eps_r_bulk": "mix", "bjeruum_treatment": False,
             },
         },
@@ -328,10 +328,10 @@ def _build_catalog() -> Dict[str, Any]:
             "component_set_key": {"default": "2020", "H2O": "salt_2020"},
             "kij_set": "2020",
             "model": {
-                "born_contrib": True, "ssm_ds": False,
+                "born_model": 1,
                 "dielc_rule": "linear-mixing-mole", "dielc_diff_rule": "same",
-                "dielc_diff_mode": "analytic", "born_diff_model": "analytic",
-                "born_diff_options": {"include_sum_term": True, "include_dielc_conc_dep": True, "include_delta_d_i_conc_dep": True},
+                "dielc_diff_mode": "analytic",
+                "born_term_options": {"numerical": False, "sum_term": True, "deps_dx_term": True, "d_born_mode": 1},
                 "eps_r_bulk": "mix", "bjeruum_treatment": False,
             },
         },
@@ -340,10 +340,10 @@ def _build_catalog() -> Dict[str, Any]:
             "component_set_key": {"default": "2025", "H2O": "salt_2025"},
             "kij_set": "2025",
             "model": {
-                "born_contrib": True, "ssm_ds": True,
+                "born_model": 2,
                 "dielc_rule": "empirical", "dielc_diff_rule": "same",
-                "dielc_diff_mode": "analytic", "born_diff_model": "analytic",
-                "born_diff_options": {"include_sum_term": True, "include_dielc_conc_dep": True, "include_delta_d_i_conc_dep": True},
+                "dielc_diff_mode": "analytic",
+                "born_term_options": {"numerical": False, "sum_term": True, "deps_dx_term": True, "d_born_mode": 1},
                 "eps_r_bulk": "mix", "bjeruum_treatment": False,
             },
         },
@@ -446,4 +446,3 @@ def build() -> None:
 
 if __name__ == "__main__":
     build()
-

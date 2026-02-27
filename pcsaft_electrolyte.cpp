@@ -138,7 +138,7 @@ vector<double> compute_deps_solvent_reference(const vector<double> &x, add_args 
 BornSSMDSData build_born_ssmds_data(vector<double> x, add_args &cppargs, double t, double eps_r, double eps_r_ion) {
     int ncomp = static_cast<int>(x.size());
     if (cppargs.born_radius_model != 5) {
-        throw ValueError("born_model >= 2 requires born_radius_model=5.");
+        throw ValueError("born_model=2 requires born_radius_model=5.");
     }
     BornSSMDSData data;
     data.d_born.assign(ncomp, 1.0);
@@ -220,13 +220,13 @@ double compute_born_ares_only(double t, const vector<double> &x, add_args &cppar
         }
         return -E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac)*(1.0 - 1.0/eps_born)*born_sum;
     }
-    if (cppargs.born_model >= 2 && cppargs.born_model <= 5) {
+    if (cppargs.born_model == 2) {
         const double eps_r_ion = 8.0;
         const double Kborn = E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac);
         BornSSMDSData born = build_born_ssmds_data(x, cppargs, t, eps_born, eps_r_ion);
         return -Kborn*born.sum_bracket;
     }
-    throw ValueError("Unknown born_model. Supported values are 0, 1, 2, 3, 4, 5.");
+    throw ValueError("Unknown born_model. Supported values are 0, 1, 2.");
 }
 
 vector<double> compute_born_dadx_fd(double t, const vector<double> &x, add_args &cppargs, double a0) {
@@ -267,8 +267,8 @@ void validate_dielc_inputs(const vector<double> &x, add_args &cppargs) {
     if (cppargs.born_eps_mode != 0 && cppargs.born_eps_mode != 1) {
         throw ValueError("Unknown born_eps_mode. Supported values are 0 (eps_r,mix) and 1 (eps_r,solvent).");
     }
-    if (cppargs.born_model < 0 || cppargs.born_model > 5) {
-        throw ValueError("Unknown born_model. Supported values are 0, 1, 2, 3, 4, 5.");
+    if (cppargs.born_model < 0 || cppargs.born_model > 2) {
+        throw ValueError("Unknown born_model. Supported values are 0, 1, 2.");
     }
     if (cppargs.born_model > 0 && cppargs.z.size() != static_cast<size_t>(ncomp)) {
         throw ValueError("Born contribution requires params['z'] as an array with length equal to ncomp.");
@@ -279,8 +279,8 @@ void validate_dielc_inputs(const vector<double> &x, add_args &cppargs) {
     if (cppargs.born_model == 1 && cppargs.born_radius_model == 5) {
         throw ValueError("born_model=1 supports born_radius_model values 1, 2, 3, 4.");
     }
-    if (cppargs.born_model >= 2 && cppargs.born_radius_model != 5) {
-        throw ValueError("born_model >= 2 requires born_radius_model=5.");
+    if (cppargs.born_model == 2 && cppargs.born_radius_model != 5) {
+        throw ValueError("born_model=2 requires born_radius_model=5.");
     }
     if (cppargs.born_model > 0 && (cppargs.born_radius_model == 4 || cppargs.born_radius_model == 5)) {
         if (cppargs.z.size() != static_cast<size_t>(ncomp)) {
@@ -1617,7 +1617,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
                 }
             }
         }
-        else if ((cppargs.born_model >= 2) && (cppargs.born_model <= 5)) {
+        else if (cppargs.born_model == 2) {
             const double eps_r_ion = 8.0;
             const double Kborn = E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac);
             BornSSMDSData born = build_born_ssmds_data(x, cppargs, t, eps_born, eps_r_ion);
@@ -1634,8 +1634,8 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
             else {
                 const double inv_eps2 = 1.0/(eps_born*eps_born);
                 const double shell_coeff = 1.0/eps_r_ion - 1.0/eps_born;
-                const bool use_deps = (cppargs.born_model == 3 || cppargs.born_model == 5);
-                const bool use_shell_chain = (cppargs.born_model == 4 || cppargs.born_model == 5);
+                const bool use_deps = true;
+                const bool use_shell_chain = true;
                 for (int k = 0; k < ncomp; k++) {
                     double direct_part = 0.0;
                     if (std::abs(cppargs.z[k]) > 1e-12) {
@@ -1713,7 +1713,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
             }
         }
         else if (cppargs.born_model != 0) {
-            throw ValueError("Unknown born_model. Supported values are 0, 1, 2, 3, 4, 5.");
+            throw ValueError("Unknown born_model. Supported values are 0, 1, 2.");
         }
     }
     double Z = pcsaft_Z_cpp(t, rho, x, cppargs);
@@ -2057,14 +2057,14 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, add_args &cppargs
             }
             ares_born = -E_CHRG*E_CHRG/(4.*PI*kb*t*perm_vac)*(1.-1./eps_born)*born_sum;
         }
-        else if ((cppargs.born_model >= 2) && (cppargs.born_model <= 5)) {
+        else if (cppargs.born_model == 2) {
             const double eps_r_ion = 8.0;
             const double Kborn = E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac);
             BornSSMDSData born = build_born_ssmds_data(x, cppargs, t, eps_born, eps_r_ion);
             ares_born = -Kborn*born.sum_bracket;
         }
         else if (cppargs.born_model != 0) {
-            throw ValueError("Unknown born_model. Supported values are 0, 1, 2, 3, 4, 5.");
+            throw ValueError("Unknown born_model. Supported values are 0, 1, 2.");
         }
     }
 
@@ -2438,13 +2438,13 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, add_args &cppargs
             double prefactor = E_CHRG*E_CHRG/(4.*PI*kb*perm_vac);
             dadt_born = prefactor*born_factor*(born_sum/(t*t) - born_sum_dt/t);
         }
-        else if ((cppargs.born_model >= 2) && (cppargs.born_model <= 5)) {
+        else if (cppargs.born_model == 2) {
             const double eps_r_ion = 8.0;
             BornSSMDSData born = build_born_ssmds_data(x, cppargs, t, eps_born, eps_r_ion);
             dadt_born = E_CHRG*E_CHRG/(4.*PI*kb*perm_vac*t*t)*born.sum_bracket;
         }
         else if (cppargs.born_model != 0) {
-            throw ValueError("Unknown born_model. Supported values are 0, 1, 2, 3, 4, 5.");
+            throw ValueError("Unknown born_model. Supported values are 0, 1, 2.");
         }
     }
 

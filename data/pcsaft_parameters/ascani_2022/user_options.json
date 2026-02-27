@@ -1,0 +1,24 @@
+{
+  "dataset_key": "ascani_2022",
+  "paper_key": "2022",
+  "source": {
+    "canonical_user_options_source": "docs/papers/md/Ascani 2022 + SI Tables S1-S4",
+    "resolver_source": "data/epcsaft_properties.py::_resolve_runtime_options"
+  },
+  "canonical_user_options": {
+    "debug": false,
+    "elec_model": {
+      "born_model": 1,
+      "dielc_rule": 3,
+      "dielc_diff_mode": "analytic",
+      "eps_r_bulk": "mix",
+      "bjeruum_treatment": false,
+      "born_term_options": {
+        "numerical": false,
+        "sum_term": true,
+        "deps_dx_term": true,
+        "d_born_mode": 1
+      }
+    }
+  }
+}

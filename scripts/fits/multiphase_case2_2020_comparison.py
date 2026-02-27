@@ -37,7 +37,7 @@ def _case2_feed() -> tuple[list[str], np.ndarray, dict[str, float]]:
     n_k = w_kcl / mw_kcl
     n_cl = n_na + n_k
 
-    species = ["H2O-2B-Li", "Butanol", "Na+", "K+", "Cl-"]
+    species = ["H2O", "Butanol", "Na+", "K+", "Cl-"]
     n = np.array([n_water, n_but, n_na, n_k, n_cl], dtype=float)
     mass_feed = {
         "w_water": w_water,
@@ -70,12 +70,43 @@ def _paper_targets() -> dict[str, float]:
 
 def _model_definitions():
     return [
-        {"name": "model_2020", "user_options": {"elec_model": "2020", "debug": False,
-                                                # "dielc_rule": 3
-                                                }},
+        {
+            "name": "model_2020",
+            "user_options": {
+                "elec_model": {
+                    "born_model": 1,
+                    "dielc_rule": 3,
+                    "dielc_diff_mode": "analytic",
+                    "eps_r_bulk": "mix",
+                    "bjeruum_treatment": False,
+                    "born_term_options": {
+                        "numerical": False,
+                        "sum_term": True,
+                        "deps_dx_term": True,
+                        "d_born_mode": 1,
+                    },
+                },
+                "debug": False,
+            },
+        },
         {
             "name": "model_2025_num",
-            "user_options": {"elec_model": {"base": "2025", "born_diff_model": "numeric"}, "debug": False},
+            "user_options": {
+                "elec_model": {
+                    "born_model": 2,
+                    "dielc_rule": "empirical",
+                    "dielc_diff_mode": "numeric",
+                    "eps_r_bulk": "mix",
+                    "bjeruum_treatment": False,
+                    "born_term_options": {
+                        "numerical": True,
+                        "sum_term": True,
+                        "deps_dx_term": True,
+                        "d_born_mode": 1,
+                    },
+                },
+                "debug": False,
+            },
         },
     ]
 
@@ -94,7 +125,7 @@ def _ghat_from_phases(t: float, phase_rows: list[dict]) -> float:
 
 
 def _apply_si_water_butanol_override(params: dict, species: list[str], t: float) -> None:
-    i_w = species.index("H2O-2B-Li")
+    i_w = species.index("H2O")
     i_b = species.index("Butanol")
     kij = float(2.94e-4 * t - 0.102)
     lij = -0.0044
@@ -141,7 +172,7 @@ def _solve_model(model: dict) -> dict[str, float]:
     t = 298.15
     p = 1.0e5
     species, z_feed, mass_feed = _case2_feed()
-    params = get_prop_dict(species, z_feed, t, user_options=copy.deepcopy(model["user_options"]))
+    params = get_prop_dict("ascani_2022", species, z_feed, t, user_options=copy.deepcopy(model["user_options"]))
 
     feed_state = _phase_state_liq(t, p, z_feed, params)
     ghat_feed = _ghat_from_phases(
@@ -175,7 +206,7 @@ def _solve_model(model: dict) -> dict[str, float]:
     )
 
     z = np.asarray(params["z"], dtype=float)
-    i_w = species.index("H2O-2B-Li")
+    i_w = species.index("H2O")
     i_b = species.index("Butanol")
     i_na = species.index("Na+")
     i_k = species.index("K+")

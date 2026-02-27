@@ -2120,13 +2120,15 @@ def create_struct(params):
     if 'f_solv' in params:
         cppargs.f_solv = np_to_vector_double(np.asarray(params['f_solv'], dtype=float))
     cppargs.born_model = int(params['born_model']) if 'born_model' in params else 1
+    if cppargs.born_model not in (0, 1, 2):
+        raise ValueError("Unknown born_model. Supported public values are 0, 1, 2.")
     cppargs.born_radius_model = int(params['born_radius_model']) if 'born_radius_model' in params else 1
     if cppargs.born_radius_model < 1 or cppargs.born_radius_model > 5:
         raise ValueError("Unknown born_radius_model. Supported values are 1, 2, 3, 4, 5.")
     if cppargs.born_model == 1 and cppargs.born_radius_model == 5:
         raise ValueError("born_model=1 supports born_radius_model values 1, 2, 3, 4.")
-    if cppargs.born_model >= 2 and cppargs.born_radius_model != 5:
-        raise ValueError("born_model >= 2 requires born_radius_model=5.")
+    if cppargs.born_model == 2 and cppargs.born_radius_model != 5:
+        raise ValueError("born_model=2 requires born_radius_model=5.")
     if cppargs.born_model > 0 and cppargs.born_radius_model in (4, 5):
         if z_arr is None:
             raise ValueError("born_radius_model 4/5 requires params['z'] as a per-species array.")

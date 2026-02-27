@@ -42,9 +42,9 @@ def _load_dielc_data():
 def _species_for_salt(salt):
     """Map salt label to species list for get_prop_dict."""
     mapping = {
-        "NaCl": ["Na+", "Cl-", "H2O-2B-NaCl"],
-        "NaBr": ["Na+", "Br-", "H2O-2B-NaCl"],
-        "LiCl": ["Li+", "Cl-", "H2O-2B-Li"],
+        "NaCl": ["Na+", "Cl-", "H2O"],
+        "NaBr": ["Na+", "Br-", "H2O"],
+        "LiCl": ["Li+", "Cl-", "H2O"],
     }
     if salt not in mapping:
         raise ValueError(f"Unsupported salt in dielectric dataset: {salt}")
@@ -56,7 +56,7 @@ def _calc_dielc_curve(x_ion_grid, species, rule, t=298.15):
     dielc = np.empty_like(x_ion_grid, dtype=float)
     for i, x_ion in enumerate(x_ion_grid):
         x = np.asarray([0.5 * x_ion, 0.5 * x_ion, 1.0 - x_ion], dtype=float)
-        params = get_prop_dict(species, x, t, user_options={"dielc_rule": int(rule)})
+        params = get_prop_dict("bulow_2020", species, x, t, user_options={"dielc_rule": int(rule)})
         dielc[i] = float(pcsaft_dielc_eval(x, params)[0])
 
     if not np.all(np.isfinite(dielc)):

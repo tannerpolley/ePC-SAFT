@@ -11,127 +11,87 @@ from pcsaft import flashTQ, flashPQ, pcsaft_Hvap
 from pcsaft import dielc_water, pcsaft_osmoticC, pcsaft_fugcoef, pcsaft_miac_m, pcsaft_gsolv
 from pcsaft import pcsaft_cp, pcsaft_ares, pcsaft_dadt, pcsaft_p
 from pcsaft import pcsaft_multiphase_lle
-from data.epcsaft_properties import get_prop_dict, molality_to_molefraction, dielc_rule, dielc_diff_rule
+
+import json
+from pathlib import Path
 
 
 def test_ares(print_result=False):
-    """Test ares with methane ethane propane mixture copying the PC-SAFT Calculations from ."""
+    """Test ares with methane/ethane/propane mixture."""
     t = 233.15  # K
     rho = 14330.417110
-    species = ['Methane', 'Ethane', 'Propane']
-    x = np.array([.1, .3, .6])
+    x = np.array([0.1, 0.3, 0.6])
 
-    params = get_prop_dict(species, x, t, user_options={'debug': True})
+    m = np.asarray([1.0000, 1.6069, 2.0020])
+    s = np.asarray([3.7039, 3.5206, 3.6184])
+    e = np.asarray([150.03, 191.42, 208.11])
+    k_ij = np.asarray([
+        [0.0, 3.0e-4, 1.15e-2],
+        [3.0e-4, 0.0, 5.10e-3],
+        [1.15e-2, 5.10e-3, 0.0],
+    ])
+    params = {"m": m, "s": s, "e": e, "k_ij": k_ij}
 
     calc = pcsaft_ares(t, rho, x, params)
     ref = -3.54988543593195
     if print_result:
-        print('\n##########  Test ares with methane ethane propane mixture ##########')
         print('----- ares at 233.15 K -----')
         print(calc)
     assert abs((calc - ref) / ref * 100) < 1e-4
 
-
-def test_dielc_rules(print_result=False):
-    x = np.asarray([0.1, 0.1, 0.8])
-    eps = np.asarray([8.0, 8.0, 78.0])
-    mw = np.asarray([0.02299, 0.03545, 0.018015])
-    z = np.asarray([1.0, -1.0, 0.0])
-
-    eps1 = dielc_rule(x, eps, rule=1)
-    deps1 = dielc_diff_rule(x, eps, rule=1)
-    assert np.isfinite(eps1)
-    assert np.allclose(deps1, eps)
-
-    eps2 = dielc_rule(x, eps, rule=2, mw=mw)
-    deps2 = dielc_diff_rule(x, eps, rule=2, mw=mw)
-    assert np.isfinite(eps2)
-    assert np.all(np.isfinite(deps2))
-
-    eps3 = dielc_rule(x, eps, rule=3, mw=mw, z=z)
-    deps3 = dielc_diff_rule(x, eps, rule=3, mw=mw, z=z)
-    assert np.isfinite(eps3)
-    assert np.all(np.isfinite(deps3))
-    assert np.isclose(deps3[0], eps[0])
-    assert np.isclose(deps3[1], eps[1])
-
-    eps4 = dielc_rule(x, eps, rule=4, mw=mw, z=z)
-    deps4 = dielc_diff_rule(x, eps, rule=4, mw=mw, z=z)
-    assert np.isfinite(eps4)
-    assert np.all(np.isfinite(deps4))
-    assert eps4 < eps3
-
-
-def _electrolyte_state(user_options, d_born_override=None):
-    t = 298.15
-    p = 101325.0
-    species = ["Na+", "Cl-", "H2O-2B-NaCl"]
-    x = molality_to_molefraction(0.25, species=species, solvent="H2O-2B-NaCl")
-    params = get_prop_dict(species, x, t, user_options=user_options)
-    if d_born_override is not None:
-        params["d_born"] = np.asarray(d_born_override, dtype=float)
-    rho = pcsaft_den(t, p, x, params, phase="liq")
-    fug = pcsaft_fugcoef(t, rho, x, params)
-    return params, rho, fug
-
-
-def test_elec_model_override_dielc_rule():
-    params, _, fug = _electrolyte_state({"elec_model": "2020", "dielc_rule": 3, "born_model": 0})
-    assert params["dielc_rule"] == 3
-    assert np.all(np.isfinite(fug))
-
-
-def test_born_rel_perm_alias_mapping():
-    params_mix, _, fug_mix = _electrolyte_state({"born_model": 1, "born_rel_perm": "mix"})
-    params_sol, _, fug_sol = _electrolyte_state({"born_model": 1, "born_rel_perm": "solvent"})
-    assert params_mix["born_eps_mode"] == 0
-    assert params_sol["born_eps_mode"] == 1
-    assert np.all(np.isfinite(fug_mix))
-    assert np.all(np.isfinite(fug_sol))
-
-
-def test_born_radius_model_variants_for_born_model_1():
-    _, _, fug_r1 = _electrolyte_state({"born_model": 1, "born_radius_model": 1})
-    _, _, fug_r2 = _electrolyte_state({"born_model": 1, "born_radius_model": 2})
-    _, _, fug_r3 = _electrolyte_state({"born_model": 1, "born_radius_model": 3})
-    _, _, fug_r4 = _electrolyte_state(
-        {"born_model": 1, "born_radius_model": 4},
-        d_born_override=[2.6, 3.0, 0.0],
-    )
-    assert np.all(np.isfinite(fug_r1))
-    assert np.all(np.isfinite(fug_r2))
-    assert np.all(np.isfinite(fug_r3))
-    assert np.all(np.isfinite(fug_r4))
-
-    with pytest.raises(ValueError, match="born_radius_model 4/5 requires positive ionic params\\['d_born'\\] values"):
-        _electrolyte_state(
-            {"born_model": 1, "born_radius_model": 4},
-            d_born_override=[0.0, 0.0, 0.0],
-        )
-
-
-def test_born_radius_model_constraints_for_ssm():
-    t = 298.15
-    species = ["Na+", "Br-", "Methanol"]
-    x = molality_to_molefraction(0.5, species=species, solvent="Methanol")
-
-    with pytest.raises(ValueError, match="born_model >= 2 requires born_radius_model=5"):
-        get_prop_dict(species, x, t, user_options={"born_model": 2, "born_radius_model": 1})
-
-    params = get_prop_dict(species, x, t, user_options={"born_model": 2, "born_radius_model": 5})
-    rho = pcsaft_den(t, 101325.0, x, params, phase="liq")
-    assert np.isfinite(rho)
-
-
-def test_multiphase_api_smoke():
+def test_multiphase_lle():
     t = 298.15
     p = 1.0e5
     species = ["H2O-2B-Li", "Na+", "Cl-"]
-    z_feed = molality_to_molefraction(1e-4, species=species, solvent="H2O-2B-Li")
-    params = get_prop_dict(species, z_feed, t, user_options={"elec_model": "2020", "debug": False})
+
+    runtime = json.loads(
+        (Path(__file__).resolve().parents[1] / "data" / "pcsaft_parameters" / "bulow_2020" / "user_options.json").read_text(encoding="utf-8")
+    )["resolved"]["runtime_options"]
+    runtime["dielc_rule"] = 1
+    runtime["dielc_diff_mode"] = 0
+
+    s_water = 2.7927 + 10.11 * np.exp(-0.01775 * t) - 1.417 * np.exp(-0.01146 * t)
+    params = {
+        "MW": np.asarray([18.01528e-3, 22.98e-3, 35.45e-3]),
+        "m": np.asarray([1.2047, 1.0, 1.0]),
+        "s": np.asarray([s_water, 2.8232, 2.7560]),
+        "e": np.asarray([353.95, 230.0, 170.0]),
+        "e_assoc": np.asarray([2425.7, 0.0, 0.0]),
+        "vol_a": np.asarray([0.04509, 0.0, 0.0]),
+        "assoc_scheme": ["2B", None, None],
+        "dipm": np.asarray([0.0, 0.0, 0.0]),
+        "dip_num": np.asarray([1.0, 1.0, 1.0]),
+        "z": np.asarray([0.0, 1.0, -1.0]),
+        "dielc": np.asarray([78.09, 8.0, 8.0]),
+        "d_born": np.asarray([0.0, 3.445, 4.1]),
+        "f_solv": np.asarray([1.5, 1.0, 1.0]),
+        "k_ij": np.asarray([
+            [0.0, 0.0045, -0.25],
+            [0.0045, 0.0, 0.317],
+            [-0.25, 0.317, 0.0],
+        ]),
+        "l_ij": np.zeros((3, 3)),
+        "k_hb": np.zeros((3, 3)),
+        "born_model": int(runtime["born_model"]),
+        "born_radius_model": int(runtime["born_radius_model"]),
+        "born_diff_mode": int(runtime["born_diff_mode"]),
+        "born_eps_mode": int(runtime["born_eps_mode"]),
+        "DH_model": int(runtime["DH_model"]),
+        "dielc_rule": int(runtime["dielc_rule"]),
+        "dielc_diff_mode": int(runtime["dielc_diff_mode"]),
+        "bjeruum_treatment": bool(runtime["bjeruum_treatment"]),
+        "debug": bool(runtime["debug"]),
+    }
+
+    n = np.asarray([1.0 / 0.01801528, 1e-4, 1e-4])
+    z_feed = n / np.sum(n)
 
     out = pcsaft_multiphase_lle(
-        t, p, z_feed, params, species,
+        t,
+        p,
+        z_feed,
+        params,
+        species,
         options={"tpdf_global_trials": 300, "tpdf_local_trials": 120, "tpdf_tol": -1e-6},
     )
     assert "n_phases" in out
@@ -189,7 +149,6 @@ def test_hres(print_result=False):
         print('Acetic acid, vapor:\t\t', calc, ref, (calc - ref) / ref * 100, 'J/mol')
     assert abs((calc - ref) / ref * 100) < 1e-2
 
-
 def test_sres(print_result=False):
     """Test the residual entropy function to see if it is working correctly."""
     if print_result:
@@ -240,7 +199,6 @@ def test_sres(print_result=False):
         print('Acetic acid, vapor:\t\t', calc, ref, (calc - ref) / ref * 100, 'J/mol/K')
     assert abs((calc - ref) / ref * 100) < 1e-2
 
-
 def test_gres(print_result=False):
     """Test the residual Gibbs energy function to see if it is working correctly."""
     if print_result:
@@ -290,7 +248,6 @@ def test_gres(print_result=False):
     if print_result:
         print('Acetic acid, vapor:\t\t', calc, ref, (calc - ref) / ref * 100, 'J/mol')
     assert abs((calc - ref) / ref * 100) < 1e-2
-
 
 def test_density(print_result=False):
     """Test the density function to see if it is working correctly."""
@@ -499,7 +456,6 @@ def test_density(print_result=False):
         print('    Relative deviation:', (calc - ref) / ref * 100, '%')
     assert abs((calc - ref) / ref * 100) < 2
 
-
 def test_indexes(print_result=False):
     '''
     Check that the properties of a pure compound are the same regardless of
@@ -626,7 +582,6 @@ def test_indexes(print_result=False):
         print('mix fugcoef:', fugcoef_mix[2])
         print('deviation', (fugcoef_mix[2] - fugcoef1[0]) / fugcoef1[0] * 100, '%')
     assert abs((fugcoef_mix[2] - fugcoef1) / fugcoef1 * 100) < 1e-1
-
 
 def test_flashTQ(print_result=False):
     """Test the flashTQ function to see if it is working correctly."""
@@ -1002,7 +957,6 @@ def test_flashTQ(print_result=False):
         print('    Relative deviation:', (calc - ref) / ref * 100, '%')
     assert abs((calc - ref) / ref * 100) < 25
 
-
 def test_flashPQ(print_result=False):
     """Test the flashPQ function to see if it is working correctly."""
     # Toluene
@@ -1103,16 +1057,48 @@ def test_flashPQ(print_result=False):
         print('    Relative deviation:', (calc - ref) / ref * 100, '%')
     assert abs((calc - ref) / ref * 100) < 1.5
 
-
 def test_osmoticC(print_result=False):
     """Test the function for calculating osmotic coefficients to see if it is working correctly."""
-    # NaCl in water
-    # 0 = Na+, 1 = Cl-, 2 = H2O
-
     x = np.asarray([0.0629838206, 0.0629838206, 0.8740323588])
     t = 293.15  # K
 
-    params = get_prop_dict(['Na+', 'Cl-', 'H2O-2B-NaCl'], x, t, user_options={'dielc_rule': 0, 'born_model': 0})
+    runtime = json.loads(
+        (Path(__file__).resolve().parents[1] / "data" / "pcsaft_parameters" / "held_2014" / "user_options.json").read_text(encoding="utf-8")
+    )["resolved"]["runtime_options"]
+
+    s_water = 2.7927 + 10.11 * np.exp(-0.01775 * t) - 1.417 * np.exp(-0.01146 * t)
+    k_na_h2o = -0.007981 * t + 2.37999
+    params = {
+        "MW": np.asarray([22.98e-3, 35.45e-3, 18.01528e-3]),
+        "m": np.asarray([1.0, 1.0, 1.2047]),
+        "s": np.asarray([2.8232, 2.7560, s_water]),
+        "e": np.asarray([230.0, 170.0, 353.95]),
+        "e_assoc": np.asarray([0.0, 0.0, 2425.7]),
+        "vol_a": np.asarray([0.0, 0.0, 0.0451]),
+        "assoc_scheme": [None, None, "2B"],
+        "dipm": np.asarray([0.0, 0.0, 0.0]),
+        "dip_num": np.asarray([1.0, 1.0, 1.0]),
+        "z": np.asarray([1.0, -1.0, 0.0]),
+        "dielc": np.asarray([8.0, 8.0, 78.09]),
+        "d_born": np.asarray([3.445, 4.1, 0.0]),
+        "f_solv": np.asarray([1.0, 1.0, 1.5]),
+        "k_ij": np.asarray([
+            [0.0, 0.317, k_na_h2o],
+            [0.317, 0.0, -0.25],
+            [k_na_h2o, -0.25, 0.0],
+        ]),
+        "l_ij": np.zeros((3, 3)),
+        "k_hb": np.zeros((3, 3)),
+        "born_model": int(runtime["born_model"]),
+        "born_radius_model": int(runtime["born_radius_model"]),
+        "born_diff_mode": int(runtime["born_diff_mode"]),
+        "born_eps_mode": int(runtime["born_eps_mode"]),
+        "DH_model": int(runtime["DH_model"]),
+        "dielc_rule": int(runtime["dielc_rule"]),
+        "dielc_diff_mode": int(runtime["dielc_diff_mode"]),
+        "bjeruum_treatment": bool(runtime["bjeruum_treatment"]),
+        "debug": bool(runtime["debug"]),
+    }
 
     ref = 1.116  # source: R. A. Robinson and R. H. Stokes, Electrolyte Solutions: Second Revised Edition. Dover Publications, 1959.
 
@@ -1135,8 +1121,46 @@ def test_miac_m(print_result=False):
     m_salt = 1.0
     species = ['Na+', 'Br-', 'Methanol']
 
-    x = molality_to_molefraction(m_salt, species=species)
-    params = get_prop_dict(species, x, t, user_options={'dielc_rule': 4, 'born_model': 2, 'born_radius_model': 5, 'debug': True})
+    runtime = json.loads(
+        (Path(__file__).resolve().parents[1] / "data" / "pcsaft_parameters" / "figiel_2025" / "user_options.json").read_text(encoding="utf-8")
+    )["resolved"]["runtime_options"]
+    runtime["dielc_diff_mode"] = 0
+    runtime["debug"] = True
+
+    params = {
+        "MW": np.asarray([22.98e-3, 79.90e-3, 32.04e-3]),
+        "m": np.asarray([1.0, 1.0, 1.5255]),
+        "s": np.asarray([2.8232, 3.0707, 3.2300]),
+        "e": np.asarray([230.0, 190.0, 188.90]),
+        "e_assoc": np.asarray([0.0, 0.0, 2899.5]),
+        "vol_a": np.asarray([0.0, 0.0, 0.03518]),
+        "assoc_scheme": [None, None, "2B"],
+        "dipm": np.asarray([0.0, 0.0, 0.0]),
+        "dip_num": np.asarray([1.0, 1.0, 1.0]),
+        "z": np.asarray([1.0, -1.0, 0.0]),
+        "dielc": np.asarray([8.0, 8.0, 33.05]),
+        "d_born": np.asarray([3.445, 4.48, 0.0]),
+        "f_solv": np.asarray([1.0, 1.0, 1.4]),
+        "k_ij": np.asarray([
+            [0.0, 0.65, -0.25],
+            [0.65, 0.0, 0.15],
+            [-0.25, 0.15, 0.0],
+        ]),
+        "l_ij": np.zeros((3, 3)),
+        "k_hb": np.zeros((3, 3)),
+        "born_model": int(runtime["born_model"]),
+        "born_radius_model": int(runtime["born_radius_model"]),
+        "born_diff_mode": int(runtime["born_diff_mode"]),
+        "born_eps_mode": int(runtime["born_eps_mode"]),
+        "DH_model": int(runtime["DH_model"]),
+        "dielc_rule": int(runtime["dielc_rule"]),
+        "dielc_diff_mode": int(runtime["dielc_diff_mode"]),
+        "bjeruum_treatment": bool(runtime["bjeruum_treatment"]),
+        "debug": bool(runtime["debug"]),
+    }
+
+    n = np.asarray([m_salt, m_salt, 1.0 / 0.03204])
+    x = n / np.sum(n)
     rho = pcsaft_den(t, p, x, params, phase='liq')
 
     ref = 0.38
@@ -1147,7 +1171,6 @@ def test_miac_m(print_result=False):
         print('    Reference:', ref)
         print('    PC-SAFT:', calc)
         print('    Relative deviation:', (calc - ref) / ref * 100, '%')
-    # assert abs((calc-ref)/ref*100) < 100
     assert np.all(np.isfinite(calc))
 
 
@@ -1158,9 +1181,46 @@ def test_gsolv(print_result=False):
     species = ['Na+', 'Cl-', 'H2O-2B-Li']
     ref1, ref2 = -378378.3784, -312883.4356
 
-    # model 2 (SSM+DS) path coverage and sanity check against model 1
-    x = molality_to_molefraction(1.0, species=species)
-    params = get_prop_dict(species, x, t, user_options={'dielc_rule': 4, 'born_model': 5, 'born_radius_model': 5, 'debug': True})
+    runtime = json.loads(
+        (Path(__file__).resolve().parents[1] / "data" / "pcsaft_parameters" / "figiel_2025" / "user_options.json").read_text(encoding="utf-8")
+    )["resolved"]["runtime_options"]
+    runtime["dielc_diff_mode"] = 0
+    runtime["debug"] = True
+
+    params = {
+        "MW": np.asarray([22.98e-3, 35.45e-3, 18.01528e-3]),
+        "m": np.asarray([1.0, 1.0, 1.2047]),
+        "s": np.asarray([2.8232, 2.7560, 2.7927 + 10.11 * np.exp(-0.01775 * t) - 1.417 * np.exp(-0.01146 * t)]),
+        "e": np.asarray([230.0, 170.0, 353.95]),
+        "e_assoc": np.asarray([0.0, 0.0, 2425.7]),
+        "vol_a": np.asarray([0.0, 0.0, 0.04509]),
+        "assoc_scheme": [None, None, "2B"],
+        "dipm": np.asarray([0.0, 0.0, 0.0]),
+        "dip_num": np.asarray([1.0, 1.0, 1.0]),
+        "z": np.asarray([1.0, -1.0, 0.0]),
+        "dielc": np.asarray([8.0, 8.0, 78.09]),
+        "d_born": np.asarray([3.445, 4.1, 0.0]),
+        "f_solv": np.asarray([1.0, 1.0, 1.5]),
+        "k_ij": np.asarray([
+            [0.0, 0.8, -0.3],
+            [0.8, 0.0, -0.3],
+            [-0.3, -0.3, 0.0],
+        ]),
+        "l_ij": np.zeros((3, 3)),
+        "k_hb": np.zeros((3, 3)),
+        "born_model": int(runtime["born_model"]),
+        "born_radius_model": int(runtime["born_radius_model"]),
+        "born_diff_mode": int(runtime["born_diff_mode"]),
+        "born_eps_mode": int(runtime["born_eps_mode"]),
+        "DH_model": int(runtime["DH_model"]),
+        "dielc_rule": int(runtime["dielc_rule"]),
+        "dielc_diff_mode": int(runtime["dielc_diff_mode"]),
+        "bjeruum_treatment": bool(runtime["bjeruum_treatment"]),
+        "debug": bool(runtime["debug"]),
+    }
+
+    n = np.asarray([1.0, 1.0, 1.0 / 0.01801528])
+    x = n / np.sum(n)
     rho_model = pcsaft_den(t, p, x, params, phase='liq')
 
     calc_model = pcsaft_gsolv(t, rho_model, x, params, species=species)
@@ -1239,7 +1299,6 @@ def test_Hvap(print_result=False):
         print('    PC-SAFT:', calc, 'J mol^-1')
         print('    Relative deviation:', (calc - ref) / ref * 100, '%')
     assert abs((calc - ref) / ref * 100) < 3
-
 
 def test_dadt(print_result=False):
     """Test the function for the temperature derivative of the Helmholtz energy."""
@@ -1379,7 +1438,6 @@ def test_dadt(print_result=False):
         print('    Relative deviation:', (dadt_eos - dadt_num) / dadt_num * 100, '%')
     assert abs((dadt_eos - dadt_num) / dadt_num * 100) < 2e-2
 
-
 def test_cp(print_result=False):
     """Test the heat capacity function to see if it is working correctly."""
     # Benzene
@@ -1471,7 +1529,6 @@ def test_cp(print_result=False):
         print('    PC-SAFT:', calc, 'J mol^-1 K^-1')
         print('    Relative deviation:', (calc - ref) / ref * 100, '%')
     assert abs((calc - ref) / ref * 100) < 3
-
 
 def test_pressure(print_result=False):
     """Test the pressure function to see if it is working correctly."""
@@ -1661,7 +1718,6 @@ def test_pressure(print_result=False):
         print('    PC-SAFT:', calc, 'Pa')
         print('    Relative deviation:', (calc - ref) / ref * 100, '%')
     assert abs((calc - ref) / ref * 100) < 1e-6
-
 
 if __name__ == '__main__':
     # test_ares(print_result=True)

@@ -40,12 +40,12 @@ def _calc_dielc_diff_curve(x_ion_grid, rule, t=298.15):
     Compute effective d(eps_r)/d(x_ion) along x=[x_ion/2, x_ion/2, 1-x_ion]
     using the C++ dielectric evaluator.
     """
-    species = ["Na+", "Cl-", "H2O-2B-NaCl"]
+    species = ["Na+", "Cl-", "H2O"]
     diff_curve = np.empty_like(x_ion_grid, dtype=float)
 
     for i, x_ion in enumerate(x_ion_grid):
         x = np.asarray([0.5 * x_ion, 0.5 * x_ion, 1.0 - x_ion], dtype=float)
-        params = get_prop_dict(species, x, t, user_options={"dielc_rule": int(rule)})
+        params = get_prop_dict("bulow_2020", species, x, t, user_options={"dielc_rule": int(rule)})
         deps_dx = np.asarray(pcsaft_dielc_eval(x, params)[1], dtype=float)
         # Chain-rule projection onto x_ion path:
         # d/dx_ion = 0.5*d/dx_cation + 0.5*d/dx_anion - d/dx_solvent
