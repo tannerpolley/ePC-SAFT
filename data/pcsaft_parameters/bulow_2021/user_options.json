@@ -1,38 +1,16 @@
 {
-  "canonical_user_options": {
-    "debug": false,
-    "elec_model": {
-      "born_model": 1,
-      "dielc_rule": 3,
-      "dielc_diff_mode": "analytic",
-      "eps_r_bulk": "mix",
-      "bjeruum_treatment": false,
-      "born_term_options": {
-        "numerical": false,
-        "sum_term": true,
-        "deps_dx_term": true,
-        "d_born_mode": 1
-      }
+  "debug": false,
+  "elec_model": {
+    "born_model": 1,
+    "dielc_rule": 3,
+    "dielc_diff_mode": "analytic",
+    "eps_r_bulk": "mix",
+    "bjeruum_treatment": false,
+    "born_term_options": {
+      "numerical": false,
+      "sum_term": true,
+      "deps_dx_term": true,
+      "d_born_mode": 1
     }
-  },
-  "dataset_key": "bulow_2021",
-  "paper_key": "2021",
-  "resolved": {
-    "preset_key": "legacy_default",
-    "runtime_options": {
-      "born_model": 1,
-      "born_radius_model": 1,
-      "born_diff_mode": 0,
-      "born_eps_mode": 0,
-      "dielc_rule": 3,
-      "dielc_diff_mode": 0,
-      "DH_model": 1,
-      "bjeruum_treatment": false,
-      "debug": false
-    }
-  },
-  "source": {
-    "canonical_user_options_source": "scripts/fits/validate_miac_fits.py",
-    "resolver_source": "data/epcsaft_properties.py::_resolve_runtime_options"
   }
 }

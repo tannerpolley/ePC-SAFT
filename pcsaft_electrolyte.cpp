@@ -11,6 +11,17 @@
 
 using std::vector;
 
+namespace {
+thread_local vector<double> g_last_mu_hc;
+thread_local vector<double> g_last_mu_disp;
+thread_local vector<double> g_last_mu_polar;
+thread_local vector<double> g_last_mu_assoc;
+thread_local vector<double> g_last_mu_ion;
+thread_local vector<double> g_last_mu_born;
+thread_local vector<double> g_last_mu_total;
+thread_local vector<double> g_last_lnfugcoef;
+}
+
 #if defined(HUGE_VAL) && !defined(_HUGE)
     # define _HUGE HUGE_VAL
 #else
@@ -1724,6 +1735,16 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
         mu[i] = mu_hc[i] + mu_disp[i] + mu_polar[i] + mu_assoc[i] + mu_ion[i] + mu_born[i];
         lnfugcoef[i] = mu[i] - log(Z); // the natural logarithm of the fugacity coefficient
     }
+
+    // Cache per-term residual chemical-potential contributions for structured API access.
+    g_last_mu_hc = mu_hc;
+    g_last_mu_disp = mu_disp;
+    g_last_mu_polar = mu_polar;
+    g_last_mu_assoc = mu_assoc;
+    g_last_mu_ion = mu_ion;
+    g_last_mu_born = mu_born;
+    g_last_mu_total = mu;
+    g_last_lnfugcoef = lnfugcoef;
     if (cppargs.debug) {
         std::cout << std::fixed << std::setprecision(10)
                   << "[DEBUG mu_res] t=" << t << " rho=" << rho << std::endl;
@@ -1741,6 +1762,48 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
     }
 
     return lnfugcoef;
+}
+
+
+vector<double> pcsaft_lnfug_terms_cpp(double t, double rho, vector<double> x, add_args &cppargs) {
+    /**
+    Calculate per-term residual chemical-potential contributions and ln fugacity coefficients
+    for one phase of the system.
+
+    Output layout (flattened blocks, each of length ncomp):
+      [mu_hc, mu_disp, mu_polar, mu_assoc, mu_ion, mu_born, mu_total, lnfugcoef]
+    */
+    vector<double> lnfug = pcsaft_lnfug_cpp(t, rho, x, cppargs);
+    int ncomp = static_cast<int>(x.size());
+
+    if ((static_cast<int>(g_last_mu_hc.size()) != ncomp) ||
+        (static_cast<int>(g_last_mu_disp.size()) != ncomp) ||
+        (static_cast<int>(g_last_mu_polar.size()) != ncomp) ||
+        (static_cast<int>(g_last_mu_assoc.size()) != ncomp) ||
+        (static_cast<int>(g_last_mu_ion.size()) != ncomp) ||
+        (static_cast<int>(g_last_mu_born.size()) != ncomp) ||
+        (static_cast<int>(g_last_mu_total.size()) != ncomp) ||
+        (static_cast<int>(g_last_lnfugcoef.size()) != ncomp) ||
+        (static_cast<int>(lnfug.size()) != ncomp)) {
+        throw ValueError("Internal lnfug term cache size mismatch.");
+    }
+
+    vector<double> out(8 * ncomp, 0.0);
+    auto copy_block = [&](int block, const vector<double> &src) {
+        for (int i = 0; i < ncomp; i++) {
+            out[block*ncomp + i] = src[i];
+        }
+    };
+
+    copy_block(0, g_last_mu_hc);
+    copy_block(1, g_last_mu_disp);
+    copy_block(2, g_last_mu_polar);
+    copy_block(3, g_last_mu_assoc);
+    copy_block(4, g_last_mu_ion);
+    copy_block(5, g_last_mu_born);
+    copy_block(6, g_last_mu_total);
+    copy_block(7, g_last_lnfugcoef);
+    return out;
 }
 
 

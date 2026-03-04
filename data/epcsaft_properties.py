@@ -43,6 +43,13 @@ COMPONENT_ALIASES = {
     "propanol": "Propanol",
 }
 
+PURE_SET_KEY_ALIASES = {
+    "water": "water",
+    "h2o": "water",
+    "methanol": "methanol",
+    "ethanol": "ethanol",
+}
+
 _COMPONENT_DEFAULTS = {
     "H+": {"MW": 1.008e-3, "z": 1.0, "d_born": 1.0},
     "Li+": {"MW": 6.94e-3, "z": 1.0, "d_born": 2.784},
@@ -163,6 +170,10 @@ _LINEAR_T_RE = re.compile(
     r"^\s*([+\-]?\d*\.?\d+(?:[eE][+\-]?\d+)?(?:\*10\^[+\-]?\d+)?)\s*\*?\s*T(?:\s*/\s*K)?\s*([+\-]\s*\d*\.?\d+(?:[eE][+\-]?\d+)?)\s*$",
     flags=re.IGNORECASE,
 )
+_LOG_T_RE = re.compile(
+    r"^\s*([+\-]?\d*\.?\d+(?:[eE][+\-]?\d+)?)\s*\*?\s*ln\s*\(\s*T\s*\)\s*([+\-]\s*\d*\.?\d+(?:[eE][+\-]?\d+)?)\s*$",
+    flags=re.IGNORECASE,
+)
 _FLOAT_RE = re.compile(r"[+\-]?\d*\.?\d+(?:[eE][+\-]?\d+)?")
 
 _RULE_ALIASES = {
@@ -249,6 +260,10 @@ def _dataset_dir(dataset_name: str) -> Path:
     return path
 
 
+def _normalize_pure_set_key(name: str) -> str:
+    return PURE_SET_KEY_ALIASES.get(name.strip().lower(), name.strip().lower())
+
+
 def _read_csv(path: Path) -> list[dict]:
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
         return list(csv.DictReader(handle))
@@ -286,7 +301,12 @@ def _load_canonical_user_options(dataset_dir: Path) -> dict:
     if not path.exists():
         return {}
     payload = json.loads(path.read_text(encoding="utf-8"))
-    canonical = payload.get("canonical_user_options", {})
+
+    if isinstance(payload, dict) and "canonical_user_options" in payload:
+        canonical = payload.get("canonical_user_options", {})
+    else:
+        canonical = payload
+
     if not isinstance(canonical, dict):
         return {}
     return _strip_preset_keys(canonical)
@@ -297,23 +317,43 @@ def _load_dataset(dataset_name: str) -> dict:
         return _DATASET_CACHE[dataset_name]
 
     dataset_dir = _dataset_dir(dataset_name)
-    pure_path = dataset_dir / "pure.csv"
-    if not pure_path.exists():
-        raise FileNotFoundError(f"Missing pure.csv for dataset '{dataset_name}' at {pure_path}")
 
-    pure_rows = _read_csv(pure_path)
     pure_map = {}
-    for row in pure_rows:
-        comp = _normalize_component(str(row.get("component", "")).strip())
-        if not comp:
-            continue
-        pure_map[comp] = {k: str(v or "").strip() for k, v in row.items()}
+    pure_path = dataset_dir / "pure.csv"
+    if pure_path.exists():
+        pure_rows = _read_csv(pure_path)
+        for row in pure_rows:
+            comp = _normalize_component(str(row.get("component", "")).strip())
+            if not comp:
+                continue
+            pure_map[comp] = {k: str(v or "").strip() for k, v in row.items()}
+
+    pure_sets: dict[str, dict[str, dict[str, str]]] = {}
+    pure_dir = dataset_dir / "pure"
+    if pure_dir.exists():
+        for pure_file in sorted(pure_dir.glob("*.csv")):
+            set_key = _normalize_pure_set_key(pure_file.stem)
+            set_rows = _read_csv(pure_file)
+            set_map: dict[str, dict[str, str]] = {}
+            for row in set_rows:
+                comp = _normalize_component(str(row.get("component", "")).strip())
+                if not comp:
+                    continue
+                set_map[comp] = {k: str(v or "").strip() for k, v in row.items()}
+            if set_map:
+                pure_sets[set_key] = set_map
+
+    if not pure_map and not pure_sets:
+        raise FileNotFoundError(
+            f"Dataset '{dataset_name}' must include pure.csv and/or pure/*.csv with component parameters."
+        )
 
     bi_dir = dataset_dir / "binary_interaction"
     data = {
         "dataset_name": dataset_name,
         "dataset_dir": dataset_dir,
         "pure": pure_map,
+        "pure_sets": pure_sets,
         "k_ij": _load_matrix(bi_dir / "k_ij.csv"),
         "l_ij": _load_matrix(bi_dir / "l_ij.csv"),
         "k_hb": _load_matrix(bi_dir / "k_hb_ij.csv") or _load_matrix(bi_dir / "khb_ij.csv"),
@@ -356,6 +396,16 @@ def _parse_linear_t_expression(raw: str, T: float) -> float | None:
     slope = _parse_t_coefficient(match.group(1))
     intercept = float(match.group(2).replace(" ", ""))
     return slope * T + intercept
+
+
+def _parse_log_t_expression(raw: str, T: float) -> float | None:
+    text = raw.replace(" ", "")
+    match = _LOG_T_RE.match(text)
+    if not match:
+        return None
+    coeff = float(match.group(1))
+    intercept = float(match.group(2).replace(" ", ""))
+    return coeff * np.log(T) + intercept
 
 
 def _parse_water_sigma_expression(raw: str, T: float) -> float | None:
@@ -424,6 +474,10 @@ def _parse_cell_value(raw, *, dataset: str, component: str, field: str, T: float
         if parsed is not None:
             return parsed
 
+    log_t = _parse_log_t_expression(text, T)
+    if log_t is not None:
+        return log_t
+
     linear = _parse_linear_t_expression(text, T)
     if linear is not None:
         return linear
@@ -443,8 +497,12 @@ def _parse_cell_value(raw, *, dataset: str, component: str, field: str, T: float
     )
 
 
-def _resolve_component_field(dataset: dict, component: str, field: str, T: float):
-    row = dataset["pure"].get(component)
+def _resolve_component_field(dataset: dict, component: str, field: str, T: float, pure_set_key: str | None = None):
+    row = None
+    if pure_set_key:
+        row = dataset.get("pure_sets", {}).get(_normalize_pure_set_key(pure_set_key), {}).get(component)
+    if row is None:
+        row = dataset["pure"].get(component)
     if row is None:
         raise KeyError(f"Component '{component}' is missing in dataset '{dataset['dataset_name']}' pure.csv.")
 
@@ -686,6 +744,13 @@ def _default_species_entry(species_name: str) -> dict:
     return resolved
 
 
+def _infer_pure_set_key(components: Iterable[str]) -> str | None:
+    neutrals = [comp for comp in components if not comp.endswith("+") and not comp.endswith("-")]
+    if len(neutrals) != 1:
+        return None
+    return _normalize_pure_set_key(neutrals[0])
+
+
 def molality_to_molefraction(molality, species=None, solvent=None, basis_mass_kg=1.0):
     """Convert salt molality (mol/kg solvent) to species mole-fraction vector."""
     if species is None:
@@ -776,6 +841,7 @@ def get_prop_dict(dataset_name: str, species: Iterable[str], x, T: float, user_o
     dataset = _load_dataset(dataset_name)
     species = list(species)
     components = [_normalize_component(s) for s in species]
+    pure_set_key = _infer_pure_set_key(components)
 
     merged_options = _deep_update(dataset["canonical_user_options"], user_options or {})
     resolved = _resolve_runtime_options(merged_options)
@@ -783,7 +849,7 @@ def get_prop_dict(dataset_name: str, species: Iterable[str], x, T: float, user_o
 
     prop_dic: dict = {}
     for field in BASE_KEYS:
-        values = [_resolve_component_field(dataset, comp, field, T) for comp in components]
+        values = [_resolve_component_field(dataset, comp, field, T, pure_set_key=pure_set_key) for comp in components]
         if field == "assoc_scheme":
             prop_dic[field] = list(values)
         else:
@@ -793,7 +859,7 @@ def get_prop_dict(dataset_name: str, species: Iterable[str], x, T: float, user_o
         values = []
         for comp in components:
             try:
-                values.append(_resolve_component_field(dataset, comp, field, T))
+                values.append(_resolve_component_field(dataset, comp, field, T, pure_set_key=pure_set_key))
             except KeyError:
                 values.append(0.0)
         prop_dic[field] = np.asarray(values, dtype=float)

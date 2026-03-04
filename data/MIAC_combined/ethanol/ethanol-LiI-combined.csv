@@ -1,0 +1,6 @@
+source,file,solvent_system,salt,molality,miac,miac_m,M_solvent_mix,sum_nu,conversion_factor,mw_mode
+MIAC,data/MIAC/ethanol/ethanol-LI.csv,ethanol,LiI,0.397350993,0.18956044,0.18286566737231413,0.046068,2,1.036610331091048,pure
+MIAC,data/MIAC/ethanol/ethanol-LI.csv,ethanol,LiI,0.606622517,0.20467033,0.19383646637236274,0.046068,2,1.055891772226312,pure
+MIAC,data/MIAC/ethanol/ethanol-LI.csv,ethanol,LiI,1.00397351,0.21978022,0.2011714387850073,0.046068,2,1.09250210331736,pure
+MIAC,data/MIAC/ethanol/ethanol-LI.csv,ethanol,LiI,1.255629139,0.225274725,0.2019154051059036,0.046068,2,1.115688646350904,pure
+MIAC,data/MIAC/ethanol/ethanol-LI.csv,ethanol,LiI,1.504635762,0.233516484,0.20508528159988024,0.046068,2,1.138631120567632,pure

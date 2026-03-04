@@ -843,6 +843,44 @@ def pcsaft_lnfugcoef(t, rho, x, params):
     return np.asarray(pcsaft_lnfug_cpp(t, rho, x, cppargs))
 
 
+def pcsaft_lnfugcoef_terms(t, rho, x, params):
+    """
+    Calculate per-term residual chemical-potential contributions and total ln fugacity coefficients.
+
+    Returns
+    -------
+    dict
+        Keys map to arrays of shape (n,):
+        - mu_hc, mu_disp, mu_polar, mu_assoc, mu_ion, mu_born
+        - mu_total
+        - lnfugcoef_total (alias: lnfugcoef)
+    """
+    x, params = ensure_numpy_input(x, params)
+    check_input(x, {'density':rho, 'temperature':t})
+    params = check_association(params)
+    cppargs = create_struct(params)
+
+    flat = np.asarray(pcsaft_lnfug_terms_cpp(t, rho, x, cppargs), dtype=float)
+    ncomp = int(np.asarray(x, dtype=float).size)
+    expected = 8 * ncomp
+    if flat.size != expected:
+        raise SolutionError('Unexpected lnfug term payload size: expected {}, got {}.'.format(expected, int(flat.size)))
+
+    blocks = flat.reshape((8, ncomp))
+    out = {
+        'mu_hc': blocks[0],
+        'mu_disp': blocks[1],
+        'mu_polar': blocks[2],
+        'mu_assoc': blocks[3],
+        'mu_ion': blocks[4],
+        'mu_born': blocks[5],
+        'mu_total': blocks[6],
+        'lnfugcoef_total': blocks[7],
+        'lnfugcoef': blocks[7],
+    }
+    return out
+
+
 def pcsaft_fugcoef(t, rho, x, params):
     """
     Calculate the fugacity coefficients for one phase of the system.

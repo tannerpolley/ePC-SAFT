@@ -1,0 +1,14 @@
+source,file,solvent_system,salt,molality,miac,miac_m,M_solvent_mix,sum_nu,conversion_factor,mw_mode
+MIAC,data/MIAC/methanol/methanol-KBr.csv,methanol,KBr,0.016129032,0.731843575,0.7310879602299684,0.03204,2,1.00103354837056,pure
+MIAC,data/MIAC/methanol/methanol-KBr.csv,methanol,KBr,0.040322581,0.666201117,0.6644841756149954,0.03204,2,1.00258387099048,pure
+MIAC,data/MIAC/methanol/methanol-KBr.csv,methanol,KBr,0.061827957,0.603351955,0.6009709468803651,0.03204,2,1.00396193548456,pure
+MIAC,data/MIAC/methanol/methanol-KBr.csv,methanol,KBr,0.077956989,0.582402235,0.5795073155611901,0.03204,2,1.00499548385512,pure
+MIAC,data/MIAC/methanol/methanol-KBr.csv,methanol,KBr,0.096774194,0.541899441,0.5385596760770257,0.03204,2,1.00620129035152,pure
+MIAC,data/MIAC/methanol/methanol-KBr.csv,methanol,KBr,0.115591398,0.526536313,0.5226648836215011,0.03204,2,1.00740709678384,pure
+MIAC,data/MIAC/methanol/methanol-KBr.csv,methanol,KBr,0.150537634,0.502793296,0.49798946473771105,0.03204,2,1.00964645158672,pure
+MIAC_m,data/MIAC_m/methanol/methanol-KBr.csv,methanol,KBr,0.05,0.5586843076,0.5569,0.03204,2,1.003204,pure
+MIAC_m,data/MIAC_m/methanol/methanol-KBr.csv,methanol,KBr,0.06,0.53886388864,0.5368,0.03204,2,1.0038448,pure
+MIAC_m,data/MIAC_m/methanol/methanol-KBr.csv,methanol,KBr,0.07,0.5222320634400001,0.5199,0.03204,2,1.0044856,pure
+MIAC_m,data/MIAC_m/methanol/methanol-KBr.csv,methanol,KBr,0.08,0.5077898572799999,0.5052,0.03204,2,1.0051264,pure
+MIAC_m,data/MIAC_m/methanol/methanol-KBr.csv,methanol,KBr,0.09,0.49865937776,0.4958,0.03204,2,1.0057672,pure
+MIAC_m,data/MIAC_m/methanol/methanol-KBr.csv,methanol,KBr,0.1,0.48468609279999997,0.4816,0.03204,2,1.006408,pure

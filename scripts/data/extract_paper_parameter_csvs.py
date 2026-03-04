@@ -408,6 +408,14 @@ def _matrix_has_parameter_data(matrix: Dict[str, Dict[str, str]]) -> bool:
                 return True
     return False
 
+
+def _set_cation_anion_kij_one(matrix: Dict[str, Dict[str, str]]) -> None:
+    cations = ["Li+", "Na+", "K+"]
+    anions = ["Cl-", "Br-", "I-"]
+    for cat in cations:
+        for an in anions:
+            _set_pair(matrix, cat, an, "1.0", allow_override=True)
+
 def _resolve_runtime_payload(canonical_options: Dict[str, Any]) -> Dict[str, Any]:
     if str(REPO_ROOT) not in sys.path:
         sys.path.insert(0, str(REPO_ROOT))
@@ -423,16 +431,7 @@ def _resolve_runtime_payload(canonical_options: Dict[str, Any]) -> Dict[str, Any
 def _build_user_options_payload(dataset_key: str, canonical_options: Dict[str, Any]) -> Dict[str, Any]:
     if dataset_key not in PAPER_KEY_BY_DATASET:
         raise ValueError(f"Missing paper key mapping for dataset {dataset_key}")
-    return {
-        "dataset_key": dataset_key,
-        "paper_key": PAPER_KEY_BY_DATASET[dataset_key],
-        "source": {
-            "canonical_user_options_source": CANONICAL_USER_OPTIONS_SOURCE,
-            "resolver_source": RESOLVER_SOURCE,
-        },
-        "canonical_user_options": canonical_options,
-        "resolved": _resolve_runtime_payload(canonical_options),
-    }
+    return canonical_options
 
 
 def _assert_runtime_sentinels(dataset_key: str, runtime_options: Dict[str, Any]) -> None:
@@ -445,53 +444,20 @@ def _assert_runtime_sentinels(dataset_key: str, runtime_options: Dict[str, Any])
 
 
 def _validate_user_options_payload(dataset_key: str, payload: Dict[str, Any]) -> None:
-    required_top_level = {"dataset_key", "paper_key", "source", "canonical_user_options", "resolved"}
-    if set(payload.keys()) != required_top_level:
-        raise ValueError(f"{dataset_key}: user_options top-level schema mismatch: {sorted(payload.keys())}")
+    if not isinstance(payload, dict):
+        raise ValueError(f"{dataset_key}: user_options payload must be a dict")
 
-    if payload["dataset_key"] != dataset_key:
-        raise ValueError(f"{dataset_key}: dataset_key mismatch in user_options payload")
-    expected_paper_key = PAPER_KEY_BY_DATASET[dataset_key]
-    if payload["paper_key"] != expected_paper_key:
-        raise ValueError(f"{dataset_key}: paper_key mismatch {payload['paper_key']} != {expected_paper_key}")
-
-    source = payload["source"]
-    if not isinstance(source, dict):
-        raise ValueError(f"{dataset_key}: source must be a dict")
-    if source.get("canonical_user_options_source") != CANONICAL_USER_OPTIONS_SOURCE:
-        raise ValueError(f"{dataset_key}: canonical_user_options_source mismatch")
-    if source.get("resolver_source") != RESOLVER_SOURCE:
-        raise ValueError(f"{dataset_key}: resolver_source mismatch")
-
-    canonical = payload["canonical_user_options"]
-    if not isinstance(canonical, dict):
-        raise ValueError(f"{dataset_key}: canonical_user_options must be a dict")
-
-    resolved = payload["resolved"]
-    if not isinstance(resolved, dict):
-        raise ValueError(f"{dataset_key}: resolved must be a dict")
-    if "preset_key" not in resolved or "runtime_options" not in resolved:
-        raise ValueError(f"{dataset_key}: resolved must include preset_key and runtime_options")
-    runtime_options = resolved["runtime_options"]
-    if not isinstance(runtime_options, dict):
-        raise ValueError(f"{dataset_key}: runtime_options must be a dict")
-
+    runtime_options = _resolve_runtime_payload(payload)["runtime_options"]
     if set(runtime_options.keys()) != RUNTIME_REQUIRED_KEYS:
         raise ValueError(
             f"{dataset_key}: runtime_options keys mismatch: {sorted(runtime_options.keys())}"
         )
     _assert_runtime_sentinels(dataset_key, runtime_options)
 
-    roundtrip = _resolve_runtime_payload(canonical)
-    if roundtrip["runtime_options"] != runtime_options:
-        raise ValueError(f"{dataset_key}: runtime_options mismatch with resolver output from canonical options")
-    if roundtrip["preset_key"] != resolved["preset_key"]:
-        raise ValueError(f"{dataset_key}: preset_key mismatch with resolver output from canonical options")
-
 
 def _write_user_options_json(path: Path, payload: Dict[str, Any]) -> None:
     with path.open("w", encoding="utf-8") as handle:
-        json.dump(payload, handle, indent=2, sort_keys=True)
+        json.dump(payload, handle, indent=2)
         handle.write("\n")
 
 
@@ -577,6 +543,7 @@ def _extract_2005(lines: Sequence[str], paper_key: str) -> Tuple[Dict[str, Dict[
         if uval is not None:
             pure_rows.append(PureRow(comp, "u_over_kb", uval, "K", "Table 2", paper_key, ""))
 
+    _set_cation_anion_kij_one(matrix)
     return matrix, pure_rows
 
 
@@ -632,6 +599,7 @@ def _extract_2008(lines: Sequence[str], paper_key: str) -> Tuple[Dict[str, Dict[
             if right_u is not None:
                 pure_rows.append(PureRow(right_comp, "u_over_kb", right_u, "K", "Table 2", paper_key, ""))
 
+    _set_cation_anion_kij_one(matrix)
     return matrix, pure_rows
 
 
@@ -1043,10 +1011,10 @@ def _validate_outputs(
                 if matrix[comp_i][comp_j] != matrix[comp_j][comp_i]:
                     raise ValueError(f"{paper_key}: asymmetry at {comp_i}/{comp_j}")
         if paper_key in {"cameretti_2005", "held_2008"}:
-            for comp_i in COMPONENT_ORDER:
-                for comp_j in COMPONENT_ORDER:
-                    if matrix[comp_i][comp_j] != "0":
-                        raise ValueError(f"{paper_key}: expected all-zero matrix")
+            for cat in ("Li+", "Na+", "K+"):
+                for an in ("Cl-", "Br-", "I-"):
+                    if matrix[cat][an] != "1.0" or matrix[an][cat] != "1.0":
+                        raise ValueError(f"{paper_key}: expected cation-anion k_ij=1.0 for {cat}/{an}")
 
         expected_cols = {"component", "parameter", "value", "unit", "source_table", "paper", "notes"}
         for row in rows:

@@ -8,12 +8,14 @@ import numpy as np
 import pytest
 from pcsaft import pcsaft_den, pcsaft_hres, pcsaft_gres, pcsaft_sres
 from pcsaft import flashTQ, flashPQ, pcsaft_Hvap
-from pcsaft import dielc_water, pcsaft_osmoticC, pcsaft_fugcoef, pcsaft_miac_m, pcsaft_gsolv
+from pcsaft import dielc_water, pcsaft_osmoticC, pcsaft_fugcoef, pcsaft_miac_m, pcsaft_gsolv, pcsaft_lnfugcoef_terms
 from pcsaft import pcsaft_cp, pcsaft_ares, pcsaft_dadt, pcsaft_p
 from pcsaft import pcsaft_multiphase_lle
 
 import json
 from pathlib import Path
+
+from data.epcsaft_properties import _resolve_runtime_options
 
 
 def test_ares(print_result=False):
@@ -44,9 +46,10 @@ def test_multiphase_lle():
     p = 1.0e5
     species = ["H2O-2B-Li", "Na+", "Cl-"]
 
-    runtime = json.loads(
+    canonical = json.loads(
         (Path(__file__).resolve().parents[1] / "data" / "pcsaft_parameters" / "bulow_2020" / "user_options.json").read_text(encoding="utf-8")
-    )["resolved"]["runtime_options"]
+    )
+    runtime = _resolve_runtime_options(canonical)["runtime"]
     runtime["dielc_rule"] = 1
     runtime["dielc_diff_mode"] = 0
 
@@ -1062,9 +1065,10 @@ def test_osmoticC(print_result=False):
     x = np.asarray([0.0629838206, 0.0629838206, 0.8740323588])
     t = 293.15  # K
 
-    runtime = json.loads(
+    canonical = json.loads(
         (Path(__file__).resolve().parents[1] / "data" / "pcsaft_parameters" / "held_2014" / "user_options.json").read_text(encoding="utf-8")
-    )["resolved"]["runtime_options"]
+    )
+    runtime = _resolve_runtime_options(canonical)["runtime"]
 
     s_water = 2.7927 + 10.11 * np.exp(-0.01775 * t) - 1.417 * np.exp(-0.01146 * t)
     k_na_h2o = -0.007981 * t + 2.37999
@@ -1121,9 +1125,10 @@ def test_miac_m(print_result=False):
     m_salt = 1.0
     species = ['Na+', 'Br-', 'Methanol']
 
-    runtime = json.loads(
+    canonical = json.loads(
         (Path(__file__).resolve().parents[1] / "data" / "pcsaft_parameters" / "figiel_2025" / "user_options.json").read_text(encoding="utf-8")
-    )["resolved"]["runtime_options"]
+    )
+    runtime = _resolve_runtime_options(canonical)["runtime"]
     runtime["dielc_diff_mode"] = 0
     runtime["debug"] = True
 
@@ -1174,6 +1179,76 @@ def test_miac_m(print_result=False):
     assert np.all(np.isfinite(calc))
 
 
+def test_lnfugcoef_terms_structure():
+    """Validate structured per-term ln fugacity contributions API."""
+    t = 298.15
+    p = 101325
+
+    canonical = json.loads(
+        (Path(__file__).resolve().parents[1] / "data" / "pcsaft_parameters" / "figiel_2025" / "user_options.json").read_text(encoding="utf-8")
+    )
+    runtime = _resolve_runtime_options(canonical)["runtime"]
+    runtime["dielc_diff_mode"] = 0
+
+    params = {
+        "MW": np.asarray([22.98e-3, 79.90e-3, 32.04e-3]),
+        "m": np.asarray([1.0, 1.0, 1.5255]),
+        "s": np.asarray([2.8232, 3.0707, 3.2300]),
+        "e": np.asarray([230.0, 190.0, 188.90]),
+        "e_assoc": np.asarray([0.0, 0.0, 2899.5]),
+        "vol_a": np.asarray([0.0, 0.0, 0.03518]),
+        "assoc_scheme": [None, None, "2B"],
+        "dipm": np.asarray([0.0, 0.0, 0.0]),
+        "dip_num": np.asarray([1.0, 1.0, 1.0]),
+        "z": np.asarray([1.0, -1.0, 0.0]),
+        "dielc": np.asarray([8.0, 8.0, 33.05]),
+        "d_born": np.asarray([3.445, 4.48, 0.0]),
+        "f_solv": np.asarray([1.0, 1.0, 1.4]),
+        "k_ij": np.asarray([
+            [0.0, 0.65, -0.25],
+            [0.65, 0.0, 0.15],
+            [-0.25, 0.15, 0.0],
+        ]),
+        "l_ij": np.zeros((3, 3)),
+        "k_hb": np.zeros((3, 3)),
+        "born_model": int(runtime["born_model"]),
+        "born_radius_model": int(runtime["born_radius_model"]),
+        "born_diff_mode": int(runtime["born_diff_mode"]),
+        "born_eps_mode": int(runtime["born_eps_mode"]),
+        "DH_model": int(runtime["DH_model"]),
+        "dielc_rule": int(runtime["dielc_rule"]),
+        "dielc_diff_mode": int(runtime["dielc_diff_mode"]),
+        "bjeruum_treatment": bool(runtime["bjeruum_treatment"]),
+        "debug": False,
+    }
+
+    n = np.asarray([1.0, 1.0, 1.0 / 0.03204])
+    x = n / np.sum(n)
+    rho = pcsaft_den(t, p, x, params, phase='liq')
+
+    terms = pcsaft_lnfugcoef_terms(t, rho, x, params)
+    expected = {
+        'mu_hc', 'mu_disp', 'mu_polar', 'mu_assoc', 'mu_ion', 'mu_born', 'mu_total', 'lnfugcoef_total', 'lnfugcoef'
+    }
+    assert expected.issubset(set(terms.keys()))
+
+    ncomp = len(x)
+    for key in expected:
+        arr = np.asarray(terms[key], dtype=float)
+        assert arr.shape == (ncomp,)
+        assert np.all(np.isfinite(arr))
+
+    mu_sum = (
+        np.asarray(terms['mu_hc'])
+        + np.asarray(terms['mu_disp'])
+        + np.asarray(terms['mu_polar'])
+        + np.asarray(terms['mu_assoc'])
+        + np.asarray(terms['mu_ion'])
+        + np.asarray(terms['mu_born'])
+    )
+    assert np.allclose(mu_sum, np.asarray(terms['mu_total']), rtol=0.0, atol=1e-12)
+
+
 def test_gsolv(print_result=False):
     """Test ion-wise infinite-dilution Gibbs solvation energy output format."""
     t = 298.15  # K
@@ -1181,9 +1256,10 @@ def test_gsolv(print_result=False):
     species = ['Na+', 'Cl-', 'H2O-2B-Li']
     ref1, ref2 = -378378.3784, -312883.4356
 
-    runtime = json.loads(
+    canonical = json.loads(
         (Path(__file__).resolve().parents[1] / "data" / "pcsaft_parameters" / "figiel_2025" / "user_options.json").read_text(encoding="utf-8")
-    )["resolved"]["runtime_options"]
+    )
+    runtime = _resolve_runtime_options(canonical)["runtime"]
     runtime["dielc_diff_mode"] = 0
     runtime["debug"] = True
 
