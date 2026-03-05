@@ -235,7 +235,7 @@ def _curve_configs() -> List[Dict[str, object]]:
             "lw": 2.0,
             "linestyle": "-",
             "zorder": 2,
-            "user_options": {"elec_model": {"born_model": 0}},
+            "user_options": {"elec_model": {"include_born_model": False}},
         },
         {
             "label": "2020 with constant dielectric rule",
@@ -244,7 +244,7 @@ def _curve_configs() -> List[Dict[str, object]]:
             "lw": 2.2,
             "linestyle": "--",
             "zorder": 5,
-            "user_options": {"elec_model": {"dielc_rule": "constant"}},
+            "user_options": {"elec_model": {"rel_perm": {"rule": "constant"}}},
         },
         {
             "label": "ePC-SAFT revised (2014)",

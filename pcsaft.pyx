@@ -2143,10 +2143,6 @@ def create_struct(params):
         if mw_arr.size != ncomp:
             raise ValueError('params["MW"] must have length {}, got {}.'.format(ncomp, mw_arr.size))
         cppargs.mw = np_to_vector_double(mw_arr)
-    cppargs.dielc_rule = int(params['dielc_rule']) if 'dielc_rule' in params else 1
-    cppargs.dielc_diff_mode = int(params['dielc_diff_mode']) if 'dielc_diff_mode' in params else 0
-    if cppargs.dielc_diff_mode not in (0, 1):
-        raise ValueError("Unknown dielc_diff_mode. Supported values are 0 (analytic) and 1 (finite-diff).")
     if cppargs.z.size() > 0 and cppargs.dielc.size() == 0:
         raise ValueError('Electrolyte parameters require params["dielc"] as a per-species array.')
     d_born_arr = None
@@ -2157,36 +2153,170 @@ def create_struct(params):
         cppargs.d_born = np_to_vector_double(d_born_arr)
     if 'f_solv' in params:
         cppargs.f_solv = np_to_vector_double(np.asarray(params['f_solv'], dtype=float))
-    cppargs.born_model = int(params['born_model']) if 'born_model' in params else 1
-    if cppargs.born_model not in (0, 1, 2):
-        raise ValueError("Unknown born_model. Supported public values are 0, 1, 2.")
-    cppargs.born_radius_model = int(params['born_radius_model']) if 'born_radius_model' in params else 1
-    if cppargs.born_radius_model < 1 or cppargs.born_radius_model > 5:
-        raise ValueError("Unknown born_radius_model. Supported values are 1, 2, 3, 4, 5.")
+
+    legacy_elec_keys = {
+        'dielc_rule', 'dielc_diff_mode', 'born_model', 'born_radius_model',
+        'born_diff_mode', 'born_eps_mode', 'DH_model', 'bjeruum_treatment'
+    }
+    if any((k in params) for k in legacy_elec_keys):
+        raise ValueError(
+            'Flat electrostatic params are no longer supported; provide nested params["elec_model"] schema.'
+        )
+
+    elec_model = params.get('elec_model', None)
+    if elec_model is None:
+        if cppargs.z.size() > 0:
+            # Backward-compatible electrolyte defaults when no explicit user options are provided.
+            elec_model = {
+                'rel_perm': {'rule': 1, 'differential_mode': 'analytical'},
+                'DH_model': {'d_ion_mode': 1, 'bjeruum_treatment': False},
+                'include_born_model': True,
+                'born_model': {
+                    'd_Born_mode': 0,
+                    'solvation_shell_model': False,
+                    'dielectric_saturation': False,
+                    'bulk_mode': 'mix',
+                    'mu_born_model': {
+                        'differential_mode': 'analytical',
+                        'comp_dep_rel_perm': True,
+                        'include_sum_term': True,
+                        'comp_dep_delta_d': False,
+                    },
+                },
+            }
+        else:
+            elec_model = {}
+    if not isinstance(elec_model, dict):
+        raise ValueError('params["elec_model"] must be a dict when provided.')
+
+    def _as_bool(v):
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, (int, np.integer)):
+            return bool(v)
+        if isinstance(v, str):
+            s = v.strip().lower()
+            if s in {'1', 'true', 'yes', 'y', 'on'}:
+                return True
+            if s in {'0', 'false', 'no', 'n', 'off'}:
+                return False
+        raise ValueError('Could not coerce value to bool: {}'.format(v))
+
+    def _as_int_alias(v, aliases):
+        if isinstance(v, (int, np.integer)):
+            return int(v)
+        if isinstance(v, str):
+            s = v.strip().lower()
+            if s in aliases:
+                return int(aliases[s])
+            if s.isdigit() or (s.startswith('-') and s[1:].isdigit()):
+                return int(s)
+        raise ValueError('Unknown option value: {}'.format(v))
+
+    rule_alias = {
+        'constant': 0,
+        'rule0': 0,
+        'linear': 1,
+        'linear-molefraction': 1,
+        'linear-mixing-mole': 1,
+        'rule1': 1,
+        'linear-massfraction': 2,
+        'linear-mixing-weight': 2,
+        'rule2': 2,
+        'combined': 3,
+        'rule3': 3,
+        'empirical': 4,
+        'rule4': 4,
+        'rule5': 5,
+        'rule6': 6,
+    }
+    diff_alias = {'analytic': 0, 'analytical': 0, 'numeric': 1, 'numerical': 1}
+    d_ion_alias = {'t_indep': 0, 't_dep_1': 1, 't_dep_2': 2}
+    d_born_alias = {'t_indep': 0, 't_dep_1': 1, 't_dep_2': 2, 'fitted_param': 3}
+    bulk_alias = {'mix': 0, 'bulk': 0, 'solvent': 1}
+
+    rel_perm = elec_model.get('rel_perm', {})
+    if not isinstance(rel_perm, dict):
+        raise ValueError('params["elec_model"]["rel_perm"] must be a dict.')
+    dh_model_dict = elec_model.get('DH_model', {})
+    if not isinstance(dh_model_dict, dict):
+        raise ValueError('params["elec_model"]["DH_model"] must be a dict.')
+    born_model_dict = elec_model.get('born_model', {})
+    if not isinstance(born_model_dict, dict):
+        raise ValueError('params["elec_model"]["born_model"] must be a dict.')
+    mu_born = born_model_dict.get('mu_born_model', {})
+    if not isinstance(mu_born, dict):
+        raise ValueError('params["elec_model"]["born_model"]["mu_born_model"] must be a dict.')
+
+    cppargs.dielc_rule = _as_int_alias(rel_perm.get('rule', 1), rule_alias)
+    cppargs.dielc_diff_mode = _as_int_alias(rel_perm.get('differential_mode', 'analytical'), diff_alias)
+    if cppargs.dielc_diff_mode not in (0, 1):
+        raise ValueError('Unknown rel_perm differential_mode. Supported values are analytical/numerical (0/1).')
+    if cppargs.dielc_rule < 0 or cppargs.dielc_rule > 6:
+        raise ValueError('Unknown rel_perm rule. Supported values are 0..6.')
+
+    cppargs.d_ion_mode = _as_int_alias(dh_model_dict.get('d_ion_mode', 1), d_ion_alias)
+    if cppargs.d_ion_mode not in (0, 1, 2):
+        raise ValueError('Unknown d_ion_mode. Supported values are 0,1,2.')
+    bjeruum = _as_bool(dh_model_dict.get('bjeruum_treatment', False))
+
+    cppargs.include_born_model = int(_as_bool(elec_model.get('include_born_model', True)))
+    cppargs.d_born_mode = _as_int_alias(born_model_dict.get('d_Born_mode', 0), d_born_alias)
+    if cppargs.d_born_mode not in (0, 1, 2, 3):
+        raise ValueError('Unknown d_Born_mode. Supported values are 0,1,2,3.')
+    cppargs.born_solvation_shell_model = int(_as_bool(born_model_dict.get('solvation_shell_model', False)))
+    cppargs.born_dielectric_saturation = int(_as_bool(born_model_dict.get('dielectric_saturation', False)))
+    cppargs.born_bulk_mode = _as_int_alias(born_model_dict.get('bulk_mode', 'mix'), bulk_alias)
+    cppargs.mu_born_diff_mode = _as_int_alias(mu_born.get('differential_mode', 'analytical'), diff_alias)
+    cppargs.mu_born_comp_dep_rel_perm = int(_as_bool(mu_born.get('comp_dep_rel_perm', True)))
+    cppargs.mu_born_include_sum_term = int(_as_bool(mu_born.get('include_sum_term', True)))
+    cppargs.mu_born_comp_dep_delta_d = int(_as_bool(mu_born.get('comp_dep_delta_d', False)))
+
+    if cppargs.include_born_model == 0:
+        cppargs.born_model = 0
+        cppargs.born_radius_model = 1
+        cppargs.born_diff_mode = 0
+        cppargs.born_eps_mode = cppargs.born_bulk_mode
+    else:
+        if cppargs.born_solvation_shell_model or cppargs.born_dielectric_saturation:
+            cppargs.born_model = 2
+        else:
+            cppargs.born_model = 1
+
+        # Legacy radius projection kept for C++ internals.
+        if cppargs.d_born_mode == 0:
+            cppargs.born_radius_model = 1
+        elif cppargs.d_born_mode == 1:
+            cppargs.born_radius_model = 2
+        elif cppargs.d_born_mode == 2:
+            cppargs.born_radius_model = 3
+        else:
+            cppargs.born_radius_model = 5
+
+        cppargs.born_eps_mode = cppargs.born_bulk_mode
+
+        if cppargs.mu_born_diff_mode == 1:
+            cppargs.born_diff_mode = 1
+        elif cppargs.mu_born_comp_dep_rel_perm == 0:
+            cppargs.born_diff_mode = 3
+        elif cppargs.mu_born_include_sum_term == 0:
+            cppargs.born_diff_mode = 2
+        else:
+            cppargs.born_diff_mode = 0
+
     if cppargs.born_model == 1 and cppargs.born_radius_model == 5:
-        raise ValueError("born_model=1 supports born_radius_model values 1, 2, 3, 4.")
-    if cppargs.born_model == 2 and cppargs.born_radius_model != 5:
-        raise ValueError("born_model=2 requires born_radius_model=5.")
+        raise ValueError('d_Born_mode="fitted_param" requires SSM/DS Born path (include_born_model=true and SSM or DS true).')
+
     if cppargs.born_model > 0 and cppargs.born_radius_model in (4, 5):
         if z_arr is None:
-            raise ValueError("born_radius_model 4/5 requires params['z'] as a per-species array.")
+            raise ValueError("fitted d_Born_mode requires params['z'] as a per-species array.")
         if d_born_arr is None:
-            raise ValueError("born_radius_model 4/5 requires params['d_born'] as a per-species array.")
+            raise ValueError("fitted d_Born_mode requires params['d_born'] as a per-species array.")
         ion_mask = np.abs(z_arr) > 1e-12
         if np.any(d_born_arr[ion_mask] <= 0.0):
-            raise ValueError("born_radius_model 4/5 requires positive ionic params['d_born'] values.")
-    cppargs.born_diff_mode = int(params['born_diff_mode']) if 'born_diff_mode' in params else 0
-    if cppargs.born_diff_mode not in (0, 1, 2, 3):
-        raise ValueError("Unknown born_diff_mode. Supported values are 0 (analytic), 1 (finite-diff), 2 (Eq.133-style), and 3 (no dielectric-concentration term).")
-    cppargs.born_eps_mode = int(params['born_eps_mode']) if 'born_eps_mode' in params else 0
-    if cppargs.born_eps_mode not in (0, 1):
-        raise ValueError('Unknown born_eps_mode. Supported values are 0 (eps_r,mix) and 1 (eps_r,solvent).')
-    if 'DH_model' in params:
-        cppargs.DH_model = int(params['DH_model'])
-    elif 'bjeruum_treatment' in params:
-        cppargs.DH_model = 2 if bool(params['bjeruum_treatment']) else 1
-    else:
-        cppargs.DH_model = 1
+            raise ValueError("fitted d_Born_mode requires positive ionic params['d_born'] values.")
+
+    cppargs.DH_model = 2 if bjeruum else 1
     if cppargs.DH_model == 2:
         raise ValueError("Bjerrum treatment is reserved and not implemented (DH_model=2).")
     if cppargs.DH_model < 0 or cppargs.DH_model > 2:

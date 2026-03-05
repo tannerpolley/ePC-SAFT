@@ -17,6 +17,36 @@ from pathlib import Path
 
 from data.epcsaft_properties import _resolve_runtime_options
 
+def _runtime_to_elec_model(runtime):
+    """Convert resolved runtime options to nested elec_model schema for params."""
+    radius_to_d_born = {1: 0, 2: 1, 3: 2, 4: 3, 5: 3}
+    born_radius_model = int(runtime.get("born_radius_model", 1))
+    born_diff_mode = int(runtime.get("born_diff_mode", 0))
+    born_model = int(runtime.get("born_model", 1))
+    return {
+        "rel_perm": {
+            "rule": int(runtime.get("dielc_rule", 1)),
+            "differential_mode": int(runtime.get("dielc_diff_mode", 0)),
+        },
+        "DH_model": {
+            "d_ion_mode": int(runtime.get("d_ion_mode", 1)),
+            "bjeruum_treatment": bool(runtime.get("bjeruum_treatment", False)),
+        },
+        "include_born_model": bool(runtime.get("include_born_model", born_model != 0)),
+        "born_model": {
+            "d_Born_mode": int(runtime.get("d_born_mode", radius_to_d_born.get(born_radius_model, 0))),
+            "solvation_shell_model": bool(runtime.get("born_solvation_shell_model", born_model == 2)),
+            "dielectric_saturation": bool(runtime.get("born_dielectric_saturation", born_model == 2)),
+            "bulk_mode": int(runtime.get("born_bulk_mode", runtime.get("born_eps_mode", 0))),
+            "mu_born_model": {
+                "differential_mode": int(runtime.get("mu_born_diff_mode", 1 if born_diff_mode == 1 else 0)),
+                "comp_dep_rel_perm": bool(runtime.get("mu_born_comp_dep_rel_perm", born_diff_mode != 3)),
+                "include_sum_term": bool(runtime.get("mu_born_include_sum_term", born_diff_mode != 2)),
+                "comp_dep_delta_d": bool(runtime.get("mu_born_comp_dep_delta_d", False)),
+            },
+        },
+    }
+
 
 def test_ares(print_result=False):
     """Test ares with methane/ethane/propane mixture."""
@@ -75,14 +105,7 @@ def test_multiphase_lle():
         ]),
         "l_ij": np.zeros((3, 3)),
         "k_hb": np.zeros((3, 3)),
-        "born_model": int(runtime["born_model"]),
-        "born_radius_model": int(runtime["born_radius_model"]),
-        "born_diff_mode": int(runtime["born_diff_mode"]),
-        "born_eps_mode": int(runtime["born_eps_mode"]),
-        "DH_model": int(runtime["DH_model"]),
-        "dielc_rule": int(runtime["dielc_rule"]),
-        "dielc_diff_mode": int(runtime["dielc_diff_mode"]),
-        "bjeruum_treatment": bool(runtime["bjeruum_treatment"]),
+        "elec_model": _runtime_to_elec_model(runtime),
         "debug": bool(runtime["debug"]),
     }
 
@@ -1093,14 +1116,7 @@ def test_osmoticC(print_result=False):
         ]),
         "l_ij": np.zeros((3, 3)),
         "k_hb": np.zeros((3, 3)),
-        "born_model": int(runtime["born_model"]),
-        "born_radius_model": int(runtime["born_radius_model"]),
-        "born_diff_mode": int(runtime["born_diff_mode"]),
-        "born_eps_mode": int(runtime["born_eps_mode"]),
-        "DH_model": int(runtime["DH_model"]),
-        "dielc_rule": int(runtime["dielc_rule"]),
-        "dielc_diff_mode": int(runtime["dielc_diff_mode"]),
-        "bjeruum_treatment": bool(runtime["bjeruum_treatment"]),
+        "elec_model": _runtime_to_elec_model(runtime),
         "debug": bool(runtime["debug"]),
     }
 
@@ -1153,14 +1169,7 @@ def test_miac_m(print_result=False):
         ]),
         "l_ij": np.zeros((3, 3)),
         "k_hb": np.zeros((3, 3)),
-        "born_model": int(runtime["born_model"]),
-        "born_radius_model": int(runtime["born_radius_model"]),
-        "born_diff_mode": int(runtime["born_diff_mode"]),
-        "born_eps_mode": int(runtime["born_eps_mode"]),
-        "DH_model": int(runtime["DH_model"]),
-        "dielc_rule": int(runtime["dielc_rule"]),
-        "dielc_diff_mode": int(runtime["dielc_diff_mode"]),
-        "bjeruum_treatment": bool(runtime["bjeruum_treatment"]),
+        "elec_model": _runtime_to_elec_model(runtime),
         "debug": bool(runtime["debug"]),
     }
 
@@ -1211,14 +1220,7 @@ def test_lnfugcoef_terms_structure():
         ]),
         "l_ij": np.zeros((3, 3)),
         "k_hb": np.zeros((3, 3)),
-        "born_model": int(runtime["born_model"]),
-        "born_radius_model": int(runtime["born_radius_model"]),
-        "born_diff_mode": int(runtime["born_diff_mode"]),
-        "born_eps_mode": int(runtime["born_eps_mode"]),
-        "DH_model": int(runtime["DH_model"]),
-        "dielc_rule": int(runtime["dielc_rule"]),
-        "dielc_diff_mode": int(runtime["dielc_diff_mode"]),
-        "bjeruum_treatment": bool(runtime["bjeruum_treatment"]),
+        "elec_model": _runtime_to_elec_model(runtime),
         "debug": False,
     }
 
@@ -1284,14 +1286,7 @@ def test_gsolv(print_result=False):
         ]),
         "l_ij": np.zeros((3, 3)),
         "k_hb": np.zeros((3, 3)),
-        "born_model": int(runtime["born_model"]),
-        "born_radius_model": int(runtime["born_radius_model"]),
-        "born_diff_mode": int(runtime["born_diff_mode"]),
-        "born_eps_mode": int(runtime["born_eps_mode"]),
-        "DH_model": int(runtime["DH_model"]),
-        "dielc_rule": int(runtime["dielc_rule"]),
-        "dielc_diff_mode": int(runtime["dielc_diff_mode"]),
-        "bjeruum_treatment": bool(runtime["bjeruum_treatment"]),
+        "elec_model": _runtime_to_elec_model(runtime),
         "debug": bool(runtime["debug"]),
     }
 

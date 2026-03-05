@@ -176,12 +176,14 @@ _LOG_T_RE = re.compile(
 )
 _FLOAT_RE = re.compile(r"[+\-]?\d*\.?\d+(?:[eE][+\-]?\d+)?")
 
-_RULE_ALIASES = {
+_REL_PERM_RULE_ALIASES = {
     "constant": 0,
     "rule0": 0,
     "linear": 1,
+    "linear-molefraction": 1,
     "linear-mixing-mole": 1,
     "rule1": 1,
+    "linear-massfraction": 2,
     "linear-mixing-weight": 2,
     "rule2": 2,
     "combined": 3,
@@ -191,28 +193,51 @@ _RULE_ALIASES = {
     "rule5": 5,
     "rule6": 6,
 }
-_DIFF_MODE_ALIASES = {"analytic": 0, "numeric": 1}
-_BORN_RADIUS_ALIASES = {
-    "sigma": 1,
-    "sigma_const": 2,
-    "sigma_temp": 3,
-    "dborn": 4,
-    "dborn_delta": 5,
+_DIFF_MODE_ALIASES = {
+    "analytic": 0,
+    "analytical": 0,
+    "numeric": 1,
+    "numerical": 1,
 }
-_BORN_TERM_DEFAULT = {
-    "numerical": False,
-    "sum_term": True,
-    "deps_dx_term": True,
-    "d_born_mode": 1,
+_D_ION_MODE_ALIASES = {
+    "t_indep": 0,
+    "t_dep_1": 1,
+    "t_dep_2": 2,
+}
+_D_BORN_MODE_ALIASES = {
+    "t_indep": 0,
+    "t_dep_1": 1,
+    "t_dep_2": 2,
+    "fitted_param": 3,
+}
+_BULK_MODE_ALIASES = {
+    "mix": 0,
+    "bulk": 0,
+    "solvent": 1,
 }
 _CANONICAL_ELEC_MODEL = {
-    "born_model": 1,
-    "dielc_rule": "linear-mixing-mole",
-    "dielc_diff_rule": "same",
-    "dielc_diff_mode": "analytic",
-    "born_term_options": copy.deepcopy(_BORN_TERM_DEFAULT),
-    "eps_r_bulk": "mix",
-    "bjeruum_treatment": False,
+    "rel_perm": {
+        "rule": 1,
+        "differential_mode": "analytical",
+    },
+    "DH_model": {
+        # Preserve current behavior (ionic diameter uses 0.88*sigma by default).
+        "d_ion_mode": 1,
+        "bjeruum_treatment": False,
+    },
+    "include_born_model": True,
+    "born_model": {
+        "d_Born_mode": 0,
+        "solvation_shell_model": False,
+        "dielectric_saturation": False,
+        "bulk_mode": "mix",
+        "mu_born_model": {
+            "differential_mode": "analytical",
+            "comp_dep_rel_perm": True,
+            "include_sum_term": True,
+            "comp_dep_delta_d": False,
+        },
+    },
 }
 
 _DATASET_CACHE: Dict[str, dict] = {}
@@ -557,37 +582,57 @@ def _as_rule_number(value, aliases: dict[str, int]) -> int:
             return int(key)
         if key in aliases:
             return int(aliases[key])
+    if not aliases and isinstance(value, str):
+        key = value.strip().lower()
+        if key.isdigit() or (key.startswith("-") and key[1:].isdigit()):
+            return int(key)
     raise ValueError(f"Unknown rule option '{value}'. Supported aliases: {sorted(aliases.keys())}.")
 
 
-def _resolve_born_eps_mode(value) -> int:
+def _resolve_born_bulk_mode(value) -> int:
     if isinstance(value, (int, np.integer)):
         mode = int(value)
         if mode in (0, 1):
             return mode
     key = str(value).strip().lower()
-    if key in {"mix", "bulk", "eps_r_mix"}:
-        return 0
-    if key in {"solvent", "eps_r_solvent"}:
-        return 1
-    raise ValueError("born_rel_perm/eps_r_bulk must be 'mix' or 'solvent'.")
+    if key in _BULK_MODE_ALIASES:
+        return int(_BULK_MODE_ALIASES[key])
+    raise ValueError("born bulk_mode must be one of {'mix','solvent'} (or 0/1).")
 
 
-def _resolve_born_radius_mode(value) -> int:
+def _resolve_d_ion_mode(value) -> int:
     if isinstance(value, (int, np.integer)):
         mode = int(value)
     else:
         key = str(value).strip().lower()
         if key.isdigit() or (key.startswith("-") and key[1:].isdigit()):
             mode = int(key)
-        elif key in _BORN_RADIUS_ALIASES:
-            mode = int(_BORN_RADIUS_ALIASES[key])
+        elif key in _D_ION_MODE_ALIASES:
+            mode = int(_D_ION_MODE_ALIASES[key])
         else:
             raise ValueError(
-                f"Unknown born d_born mode '{value}'. Supported values are 1,2,3,4,5 and aliases {sorted(_BORN_RADIUS_ALIASES.keys())}."
+                f"Unknown d_ion_mode '{value}'. Supported values are 0,1,2 and aliases {sorted(_D_ION_MODE_ALIASES.keys())}."
             )
-    if mode < 1 or mode > 5:
-        raise ValueError("born d_born mode must be in 1..5.")
+    if mode < 0 or mode > 2:
+        raise ValueError("d_ion_mode must be in {0,1,2}.")
+    return mode
+
+
+def _resolve_d_born_mode(value) -> int:
+    if isinstance(value, (int, np.integer)):
+        mode = int(value)
+    else:
+        key = str(value).strip().lower()
+        if key.isdigit() or (key.startswith("-") and key[1:].isdigit()):
+            mode = int(key)
+        elif key in _D_BORN_MODE_ALIASES:
+            mode = int(_D_BORN_MODE_ALIASES[key])
+        else:
+            raise ValueError(
+                f"Unknown d_Born_mode '{value}'. Supported values are 0,1,2,3 and aliases {sorted(_D_BORN_MODE_ALIASES.keys())}."
+            )
+    if mode < 0 or mode > 3:
+        raise ValueError("d_Born_mode must be in {0,1,2,3}.")
     return mode
 
 
@@ -598,79 +643,152 @@ def _normalize_elec_model(model) -> dict:
     if not isinstance(model, dict):
         raise TypeError(f"elec_model must be a dict, got {type(model).__name__}.")
 
-    normalized = {}
-    for key, value in model.items():
-        k = key
-        if key == "born_rel_perm":
-            k = "eps_r_bulk"
-        elif key == "emperical":
-            k = "empirical"
-        normalized[k] = value
+    # New nested schema blocks.
+    if "rel_perm" in model:
+        if not isinstance(model["rel_perm"], dict):
+            raise TypeError("elec_model['rel_perm'] must be a dict.")
+        out["rel_perm"] = _deep_update(out["rel_perm"], model["rel_perm"])
 
-    if "born_term_options" in normalized and not isinstance(normalized["born_term_options"], dict):
-        raise TypeError("elec_model['born_term_options'] must be a dict.")
+    if "DH_model" in model:
+        if isinstance(model["DH_model"], dict):
+            out["DH_model"] = _deep_update(out["DH_model"], model["DH_model"])
+        elif isinstance(model["DH_model"], (int, np.integer, str)):
+            # Legacy integer-style selector: 1/2 from older implementation.
+            out["DH_model"]["bjeruum_treatment"] = int(model["DH_model"]) == 2
+        else:
+            raise TypeError("elec_model['DH_model'] must be a dict or legacy int/string.")
 
-    out = _deep_update(out, normalized)
-    out["born_model"] = int(out["born_model"])
-    if out["born_model"] not in (0, 1, 2):
-        raise ValueError("born_model must be one of 0, 1, 2.")
+    if "include_born_model" in model:
+        out["include_born_model"] = _coerce_bool(model["include_born_model"])
 
-    term = out["born_term_options"]
-    term["numerical"] = _coerce_bool(term["numerical"])
-    term["sum_term"] = _coerce_bool(term["sum_term"])
-    term["deps_dx_term"] = _coerce_bool(term["deps_dx_term"])
-    term["d_born_mode"] = _resolve_born_radius_mode(term["d_born_mode"])
+    if "born_model" in model:
+        born_value = model["born_model"]
+        if isinstance(born_value, dict):
+            out["born_model"] = _deep_update(out["born_model"], born_value)
+        elif isinstance(born_value, (int, np.integer, str)):
+            # Legacy born_model int mapping.
+            born_int = int(born_value)
+            if born_int not in (0, 1, 2):
+                raise ValueError("Legacy born_model must be one of 0, 1, 2.")
+            out["include_born_model"] = born_int != 0
+            out["born_model"]["solvation_shell_model"] = born_int == 2
+            out["born_model"]["dielectric_saturation"] = born_int == 2
+        else:
+            raise TypeError("elec_model['born_model'] must be a dict or legacy int/string.")
 
-    if out["born_model"] == 1 and term["d_born_mode"] not in (1, 2, 3, 4):
-        raise ValueError("born_model=1 requires born_term_options['d_born_mode'] in {1,2,3,4}.")
+    # Legacy keys inside elec_model for transition compatibility.
+    if "dielc_rule" in model:
+        out["rel_perm"]["rule"] = model["dielc_rule"]
+    if "dielc_diff_mode" in model:
+        out["rel_perm"]["differential_mode"] = model["dielc_diff_mode"]
+    if "bjeruum_treatment" in model:
+        out["DH_model"]["bjeruum_treatment"] = model["bjeruum_treatment"]
+    if "born_rel_perm" in model and "eps_r_bulk" in model:
+        raise ValueError("Use only one Born permittivity selector in elec_model: born_rel_perm or eps_r_bulk.")
+    if "born_rel_perm" in model:
+        out["born_model"]["bulk_mode"] = model["born_rel_perm"]
+    if "eps_r_bulk" in model:
+        out["born_model"]["bulk_mode"] = model["eps_r_bulk"]
+    if "born_term_options" in model:
+        term = model["born_term_options"]
+        if not isinstance(term, dict):
+            raise TypeError("Legacy elec_model['born_term_options'] must be a dict.")
+        mu_model = out["born_model"]["mu_born_model"]
+        if "numerical" in term:
+            mu_model["differential_mode"] = "numerical" if _coerce_bool(term["numerical"]) else "analytical"
+        if "sum_term" in term:
+            mu_model["include_sum_term"] = _coerce_bool(term["sum_term"])
+        if "deps_dx_term" in term:
+            mu_model["comp_dep_rel_perm"] = _coerce_bool(term["deps_dx_term"])
+        if "d_born_mode" in term:
+            # Legacy values were 1..5.
+            d_old = int(_as_rule_number(term["d_born_mode"], {}))
+            legacy_map = {1: 0, 2: 1, 3: 2, 4: 3, 5: 3}
+            if d_old not in legacy_map:
+                raise ValueError("Legacy born_term_options['d_born_mode'] must be in {1,2,3,4,5}.")
+            out["born_model"]["d_Born_mode"] = legacy_map[d_old]
+
+    # Canonical coercions.
+    out["rel_perm"]["rule"] = _as_rule_number(out["rel_perm"]["rule"], _REL_PERM_RULE_ALIASES)
+    out["rel_perm"]["differential_mode"] = _as_rule_number(
+        out["rel_perm"]["differential_mode"], _DIFF_MODE_ALIASES
+    )
+    out["DH_model"]["d_ion_mode"] = _resolve_d_ion_mode(out["DH_model"]["d_ion_mode"])
+    out["DH_model"]["bjeruum_treatment"] = _coerce_bool(out["DH_model"]["bjeruum_treatment"])
+    out["include_born_model"] = _coerce_bool(out["include_born_model"])
+
+    born = out["born_model"]
+    born["d_Born_mode"] = _resolve_d_born_mode(born["d_Born_mode"])
+    born["solvation_shell_model"] = _coerce_bool(born["solvation_shell_model"])
+    born["dielectric_saturation"] = _coerce_bool(born["dielectric_saturation"])
+    born["bulk_mode"] = "solvent" if _resolve_born_bulk_mode(born["bulk_mode"]) == 1 else "mix"
+
+    mu_born_model = born.get("mu_born_model", {})
+    if not isinstance(mu_born_model, dict):
+        raise TypeError("elec_model['born_model']['mu_born_model'] must be a dict.")
+    born["mu_born_model"] = _deep_update(_CANONICAL_ELEC_MODEL["born_model"]["mu_born_model"], mu_born_model)
+    born["mu_born_model"]["differential_mode"] = _as_rule_number(
+        born["mu_born_model"]["differential_mode"], _DIFF_MODE_ALIASES
+    )
+    born["mu_born_model"]["comp_dep_rel_perm"] = _coerce_bool(born["mu_born_model"]["comp_dep_rel_perm"])
+    born["mu_born_model"]["include_sum_term"] = _coerce_bool(born["mu_born_model"]["include_sum_term"])
+    born["mu_born_model"]["comp_dep_delta_d"] = _coerce_bool(born["mu_born_model"]["comp_dep_delta_d"])
+
     return out
 
 
 def _flatten_model_to_runtime(model: dict) -> dict:
-    dielc_rule = _as_rule_number(model["dielc_rule"], _RULE_ALIASES)
-    dielc_diff_mode = _as_rule_number(model["dielc_diff_mode"], _DIFF_MODE_ALIASES)
+    rel_perm = model["rel_perm"]
+    dh_model = model["DH_model"]
+    born = model["born_model"]
+    mu_born = born["mu_born_model"]
 
-    born_model = int(model["born_model"])
-    term = model.get("born_term_options", _BORN_TERM_DEFAULT)
-    numerical = _coerce_bool(term.get("numerical", False))
-    sum_term = _coerce_bool(term.get("sum_term", True))
-    deps_dx_term = _coerce_bool(term.get("deps_dx_term", True))
-    d_born_mode = _resolve_born_radius_mode(term.get("d_born_mode", 1))
+    include_born_model = _coerce_bool(model["include_born_model"])
+    solvation_shell_model = _coerce_bool(born["solvation_shell_model"])
+    dielectric_saturation = _coerce_bool(born["dielectric_saturation"])
+    born_bulk_mode = _resolve_born_bulk_mode(born["bulk_mode"])
+    mu_born_diff_mode = _as_rule_number(mu_born["differential_mode"], _DIFF_MODE_ALIASES)
 
-    if born_model == 0:
-        born_diff_mode = 0
-        born_radius_model = 1
-    elif born_model == 1:
-        born_radius_model = d_born_mode
-        if numerical:
-            born_diff_mode = 1
-        elif not deps_dx_term:
-            born_diff_mode = 3
-        elif not sum_term:
-            born_diff_mode = 2
-        else:
-            born_diff_mode = 0
-    elif born_model == 2:
-        born_radius_model = 5
-        born_diff_mode = 0
+    # Transitional legacy runtime projections.
+    if not include_born_model:
+        legacy_born_model = 0
+    elif solvation_shell_model or dielectric_saturation:
+        legacy_born_model = 2
     else:
-        raise ValueError("born_model must be one of 0, 1, 2.")
-
-    if born_model == 2 and born_radius_model != 5:
-        raise ValueError("born_model=2 requires born_radius_model=5.")
-
-    dh_model = 2 if _coerce_bool(model.get("bjeruum_treatment", False)) else 1
-    born_eps_mode = _resolve_born_eps_mode(model.get("eps_r_bulk", "mix"))
+        legacy_born_model = 1
+    legacy_radius_map = {0: 1, 1: 2, 2: 3, 3: 5}
+    legacy_born_radius_model = int(legacy_radius_map[int(born["d_Born_mode"])])
+    if not include_born_model:
+        legacy_born_diff_mode = 0
+    elif mu_born_diff_mode == 1:
+        legacy_born_diff_mode = 1
+    elif not _coerce_bool(mu_born["comp_dep_rel_perm"]):
+        legacy_born_diff_mode = 3
+    elif not _coerce_bool(mu_born["include_sum_term"]):
+        legacy_born_diff_mode = 2
+    else:
+        legacy_born_diff_mode = 0
 
     return {
-        "born_model": int(born_model),
-        "born_radius_model": int(born_radius_model),
-        "born_diff_mode": int(born_diff_mode),
-        "born_eps_mode": int(born_eps_mode),
-        "dielc_rule": int(dielc_rule),
-        "dielc_diff_mode": int(dielc_diff_mode),
-        "DH_model": int(dh_model),
-        "bjeruum_treatment": bool(dh_model == 2),
+        "dielc_rule": int(rel_perm["rule"]),
+        "dielc_diff_mode": int(rel_perm["differential_mode"]),
+        "d_ion_mode": int(_resolve_d_ion_mode(dh_model["d_ion_mode"])),
+        "bjeruum_treatment": _coerce_bool(dh_model["bjeruum_treatment"]),
+        "include_born_model": include_born_model,
+        "d_Born_mode": int(_resolve_d_born_mode(born["d_Born_mode"])),
+        "born_solvation_shell_model": solvation_shell_model,
+        "born_dielectric_saturation": dielectric_saturation,
+        "born_bulk_mode": int(born_bulk_mode),
+        "mu_born_diff_mode": int(mu_born_diff_mode),
+        "mu_born_comp_dep_rel_perm": _coerce_bool(mu_born["comp_dep_rel_perm"]),
+        "mu_born_include_sum_term": _coerce_bool(mu_born["include_sum_term"]),
+        "mu_born_comp_dep_delta_d": _coerce_bool(mu_born["comp_dep_delta_d"]),
+        # Transitional legacy fields used by older callers/tests.
+        "born_model": int(legacy_born_model),
+        "born_radius_model": int(legacy_born_radius_model),
+        "born_diff_mode": int(legacy_born_diff_mode),
+        "born_eps_mode": int(born_bulk_mode),
+        "DH_model": 2 if _coerce_bool(dh_model["bjeruum_treatment"]) else 1,
     }
 
 
@@ -680,16 +798,9 @@ def _resolve_runtime_options(user_options=None) -> dict:
     if not isinstance(user_options, dict):
         raise TypeError("user_options must be a dict.")
 
-    rejected_legacy = {"born_diff_model", "born_diff_options", "born_diff_mode"} & set(user_options)
-    if rejected_legacy:
-        raise KeyError(
-            "Legacy Born option key(s) {} are no longer accepted. Use user_options['elec_model']['born_term_options'].".format(
-                sorted(rejected_legacy)
-            )
-        )
-
     allowed = {
         "elec_model",
+        # Legacy top-level pass-through keys.
         "bjeruum_treatment",
         "dielc_rule",
         "dielc_diff_mode",
@@ -702,26 +813,27 @@ def _resolve_runtime_options(user_options=None) -> dict:
     if unknown:
         raise KeyError(f"Unknown user_options key(s): {sorted(unknown)}")
 
-    model = _normalize_elec_model(user_options.get("elec_model"))
+    model = _normalize_elec_model(user_options.get("elec_model", {}))
+
+    # Legacy top-level compatibility: map into nested model.
+    if "dielc_rule" in user_options:
+        model["rel_perm"]["rule"] = user_options["dielc_rule"]
+    if "dielc_diff_mode" in user_options:
+        model["rel_perm"]["differential_mode"] = user_options["dielc_diff_mode"]
     if "bjeruum_treatment" in user_options:
-        model["bjeruum_treatment"] = _coerce_bool(user_options["bjeruum_treatment"])
-
-    runtime = _flatten_model_to_runtime(model)
-
-    for key in ("dielc_rule", "dielc_diff_mode", "DH_model"):
-        if key in user_options:
-            runtime[key] = int(user_options[key])
+        model["DH_model"]["bjeruum_treatment"] = _coerce_bool(user_options["bjeruum_treatment"])
+    if "DH_model" in user_options:
+        model["DH_model"]["bjeruum_treatment"] = int(user_options["DH_model"]) == 2
 
     if "born_rel_perm" in user_options and "eps_r_bulk" in user_options:
         raise ValueError("Use only one Born permittivity selector: born_rel_perm or eps_r_bulk.")
     if "born_rel_perm" in user_options:
-        runtime["born_eps_mode"] = _resolve_born_eps_mode(user_options["born_rel_perm"])
+        model["born_model"]["bulk_mode"] = user_options["born_rel_perm"]
     elif "eps_r_bulk" in user_options:
-        runtime["born_eps_mode"] = _resolve_born_eps_mode(user_options["eps_r_bulk"])
+        model["born_model"]["bulk_mode"] = user_options["eps_r_bulk"]
 
-    if "DH_model" in user_options:
-        runtime["bjeruum_treatment"] = int(user_options["DH_model"]) == 2
-
+    model = _normalize_elec_model(model)
+    runtime = _flatten_model_to_runtime(model)
     runtime["debug"] = bool(user_options.get("debug", False))
 
     return {
@@ -883,13 +995,5 @@ def get_prop_dict(dataset_name: str, species: Iterable[str], x, T: float, user_o
 
     prop_dic["elec_model"] = copy.deepcopy(resolved["model"])
     prop_dic["elec_model_dataset"] = dataset_name
-    prop_dic["bjeruum_treatment"] = bool(runtime["bjeruum_treatment"])
-    prop_dic["born_model"] = int(runtime["born_model"])
-    prop_dic["born_radius_model"] = int(runtime["born_radius_model"])
-    prop_dic["born_diff_mode"] = int(runtime["born_diff_mode"])
-    prop_dic["born_eps_mode"] = int(runtime["born_eps_mode"])
-    prop_dic["DH_model"] = int(runtime["DH_model"])
-    prop_dic["dielc_rule"] = int(runtime["dielc_rule"])
-    prop_dic["dielc_diff_mode"] = int(runtime["dielc_diff_mode"])
     prop_dic["debug"] = bool(runtime["debug"])
     return prop_dic

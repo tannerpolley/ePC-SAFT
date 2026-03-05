@@ -176,7 +176,7 @@ def _build_params(dielc_rule: int) -> Dict[str, object]:
         SPECIES,
         x_ref,
         T_REF,
-        user_options={"elec_model": {"dielc_rule": int(dielc_rule)}},
+        user_options={"elec_model": {"rel_perm": {"rule": int(dielc_rule)}}},
     )
 
 

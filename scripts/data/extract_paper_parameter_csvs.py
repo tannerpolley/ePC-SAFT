@@ -102,106 +102,159 @@ PAPER_KEY_BY_DATASET = {
 CANONICAL_USER_OPTIONS_SOURCE = "scripts/fits/validate_miac_fits.py"
 RESOLVER_SOURCE = "data/epcsaft_properties.py::_resolve_runtime_options"
 RUNTIME_REQUIRED_KEYS = {
-    "born_model",
-    "born_radius_model",
-    "born_diff_mode",
-    "born_eps_mode",
     "dielc_rule",
     "dielc_diff_mode",
-    "DH_model",
+    "d_ion_mode",
+    "include_born_model",
+    "d_Born_mode",
+    "born_solvation_shell_model",
+    "born_dielectric_saturation",
+    "born_bulk_mode",
+    "mu_born_diff_mode",
+    "mu_born_comp_dep_rel_perm",
+    "mu_born_include_sum_term",
+    "mu_born_comp_dep_delta_d",
     "bjeruum_treatment",
     "debug",
 }
 RUNTIME_SENTINELS: Dict[str, Dict[str, Any]] = {
-    "cameretti_2005": {"born_model": 0, "dielc_rule": 0},
-    "held_2008": {"born_model": 0, "dielc_rule": 0},
-    "held_2014": {"born_model": 0, "dielc_rule": 0},
-    "bulow_2020": {"born_model": 1, "dielc_rule": 3, "DH_model": 1},
-    "bulow_2021": {"born_model": 1, "dielc_rule": 3, "DH_model": 1, "bjeruum_treatment": False},
-    "figiel_2025": {"born_model": 2, "born_radius_model": 5, "dielc_rule": 4, "dielc_diff_mode": 1},
+    "cameretti_2005": {"include_born_model": False, "dielc_rule": 0, "d_ion_mode": 1},
+    "held_2008": {"include_born_model": False, "dielc_rule": 0, "d_ion_mode": 1},
+    "held_2014": {"include_born_model": False, "dielc_rule": 0, "d_ion_mode": 1},
+    "bulow_2020": {"include_born_model": True, "dielc_rule": 1, "d_Born_mode": 0, "d_ion_mode": 1},
+    "bulow_2021": {"include_born_model": True, "dielc_rule": 3, "d_Born_mode": 0, "d_ion_mode": 1},
+    "figiel_2025": {
+        "include_born_model": True,
+        "dielc_rule": 4,
+        "dielc_diff_mode": 1,
+        "d_Born_mode": 3,
+        "born_solvation_shell_model": True,
+        "born_dielectric_saturation": True,
+        "mu_born_diff_mode": 1,
+    },
 }
 DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
     "cameretti_2005": {
         "elec_model": {
-            "born_model": 0,
-            "dielc_rule": "constant",
-            "dielc_diff_mode": "analytic",
-            "eps_r_bulk": "mix",
-            "bjeruum_treatment": False,
+            "rel_perm": {"rule": "constant", "differential_mode": "analytical"},
+            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False},
+            "include_born_model": False,
+            "born_model": {
+                "d_Born_mode": 0,
+                "solvation_shell_model": False,
+                "dielectric_saturation": False,
+                "bulk_mode": "mix",
+                "mu_born_model": {
+                    "differential_mode": "analytical",
+                    "comp_dep_rel_perm": True,
+                    "include_sum_term": True,
+                    "comp_dep_delta_d": False,
+                },
+            },
         },
         "debug": False,
     },
     "held_2008": {
         "elec_model": {
-            "born_model": 0,
-            "dielc_rule": "constant",
-            "dielc_diff_mode": "analytic",
-            "eps_r_bulk": "mix",
-            "bjeruum_treatment": False,
+            "rel_perm": {"rule": "constant", "differential_mode": "analytical"},
+            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False},
+            "include_born_model": False,
+            "born_model": {
+                "d_Born_mode": 0,
+                "solvation_shell_model": False,
+                "dielectric_saturation": False,
+                "bulk_mode": "mix",
+                "mu_born_model": {
+                    "differential_mode": "analytical",
+                    "comp_dep_rel_perm": True,
+                    "include_sum_term": True,
+                    "comp_dep_delta_d": False,
+                },
+            },
         },
         "debug": False,
     },
     "held_2014": {
         "elec_model": {
-            "born_model": 0,
-            "dielc_rule": "constant",
-            "dielc_diff_mode": "analytic",
-            "eps_r_bulk": "mix",
-            "bjeruum_treatment": False,
+            "rel_perm": {"rule": "constant", "differential_mode": "analytical"},
+            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False},
+            "include_born_model": False,
+            "born_model": {
+                "d_Born_mode": 0,
+                "solvation_shell_model": False,
+                "dielectric_saturation": False,
+                "bulk_mode": "mix",
+                "mu_born_model": {
+                    "differential_mode": "analytical",
+                    "comp_dep_rel_perm": True,
+                    "include_sum_term": True,
+                    "comp_dep_delta_d": False,
+                },
+            },
         },
         "debug": False,
     },
     "bulow_2020": {
         "elec_model": {
-            "born_model": 1,
-            "dielc_rule": 3,
-            "dielc_diff_mode": "analytic",
-            "eps_r_bulk": "mix",
-            "bjeruum_treatment": False,
-            "born_term_options": {
-                "numerical": False,
-                "sum_term": True,
-                "deps_dx_term": True,
-                "d_born_mode": 1,
+            "rel_perm": {"rule": 1, "differential_mode": "analytical"},
+            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False},
+            "include_born_model": True,
+            "born_model": {
+                "d_Born_mode": 0,
+                "solvation_shell_model": False,
+                "dielectric_saturation": False,
+                "bulk_mode": "mix",
+                "mu_born_model": {
+                    "differential_mode": "analytical",
+                    "comp_dep_rel_perm": True,
+                    "include_sum_term": True,
+                    "comp_dep_delta_d": False,
+                },
             },
         },
         "debug": False,
     },
     "bulow_2021": {
         "elec_model": {
-            "born_model": 1,
-            "dielc_rule": 3,
-            "dielc_diff_mode": "analytic",
-            "eps_r_bulk": "mix",
-            "bjeruum_treatment": False,
-            "born_term_options": {
-                "numerical": False,
-                "sum_term": True,
-                "deps_dx_term": True,
-                "d_born_mode": 1,
+            "rel_perm": {"rule": 3, "differential_mode": "analytical"},
+            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False},
+            "include_born_model": True,
+            "born_model": {
+                "d_Born_mode": 0,
+                "solvation_shell_model": False,
+                "dielectric_saturation": False,
+                "bulk_mode": "mix",
+                "mu_born_model": {
+                    "differential_mode": "analytical",
+                    "comp_dep_rel_perm": True,
+                    "include_sum_term": True,
+                    "comp_dep_delta_d": False,
+                },
             },
         },
         "debug": False,
     },
     "figiel_2025": {
         "elec_model": {
-            "born_model": 2,
-            "dielc_rule": "empirical",
-            "dielc_diff_mode": "numeric",
-            "eps_r_bulk": "mix",
-            "bjeruum_treatment": False,
-            "born_term_options": {
-                "numerical": True,
-                "sum_term": True,
-                "deps_dx_term": True,
-                "d_born_mode": 1,
+            "rel_perm": {"rule": "empirical", "differential_mode": "numerical"},
+            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False},
+            "include_born_model": True,
+            "born_model": {
+                "d_Born_mode": 3,
+                "solvation_shell_model": True,
+                "dielectric_saturation": True,
+                "bulk_mode": "mix",
+                "mu_born_model": {
+                    "differential_mode": "numerical",
+                    "comp_dep_rel_perm": True,
+                    "include_sum_term": True,
+                    "comp_dep_delta_d": True,
+                },
             },
         },
         "debug": False,
     },
 }
-
-# Precedence is defined from less specific to more specific. Later entries override.
 BINARY_TABLE_PRECEDENCE = {
     "cameretti_2005": [],
     "held_2008": [],
@@ -446,11 +499,11 @@ def _assert_runtime_sentinels(dataset_key: str, runtime_options: Dict[str, Any])
 def _validate_user_options_payload(dataset_key: str, payload: Dict[str, Any]) -> None:
     if not isinstance(payload, dict):
         raise ValueError(f"{dataset_key}: user_options payload must be a dict")
-
     runtime_options = _resolve_runtime_payload(payload)["runtime_options"]
-    if set(runtime_options.keys()) != RUNTIME_REQUIRED_KEYS:
+    missing = RUNTIME_REQUIRED_KEYS - set(runtime_options.keys())
+    if missing:
         raise ValueError(
-            f"{dataset_key}: runtime_options keys mismatch: {sorted(runtime_options.keys())}"
+            f"{dataset_key}: runtime_options missing required keys: {sorted(missing)}"
         )
     _assert_runtime_sentinels(dataset_key, runtime_options)
 

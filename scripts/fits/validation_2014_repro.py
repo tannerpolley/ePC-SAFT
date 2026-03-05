@@ -22,6 +22,25 @@ P_REF = 1.0e5
 DIELC_CONST = 78.09
 MW_WATER = 18.0153e-3  # kg/mol
 
+def _elec_model_no_born_constant():
+    return {
+        "rel_perm": {"rule": 0, "differential_mode": "analytical"},
+        "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False},
+        "include_born_model": False,
+        "born_model": {
+            "d_Born_mode": 0,
+            "solvation_shell_model": False,
+            "dielectric_saturation": False,
+            "bulk_mode": "mix",
+            "mu_born_model": {
+                "differential_mode": "analytical",
+                "comp_dep_rel_perm": True,
+                "include_sum_term": True,
+                "comp_dep_delta_d": False,
+            },
+        },
+    }
+
 
 def _water_sigma(t):
     return 2.7927 + 10.11 * np.exp(-0.01775 * t) - 1.417 * np.exp(-0.01146 * t)
@@ -110,9 +129,7 @@ def _build_params_2008(salt, t):
         "z": np.asarray([1.0, -1.0, 0.0], dtype=float),
         "k_ij": k_ij,
         "dielc": np.full(3, DIELC_CONST, dtype=float),
-        "born_model": 0,
-        "dielc_rule": 0,
-        "DH_model": 1,
+        "elec_model": _elec_model_no_born_constant(),
         "debug": False,
     }
     return params
@@ -158,9 +175,7 @@ def _build_params_2014(salt, t):
         "z": np.asarray([1.0, -1.0, 0.0], dtype=float),
         "k_ij": k_ij,
         "dielc": np.full(3, DIELC_CONST, dtype=float),
-        "born_model": 0,
-        "dielc_rule": 0,
-        "DH_model": 1,
+        "elec_model": _elec_model_no_born_constant(),
         "debug": False,
     }
     return params

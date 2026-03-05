@@ -59,39 +59,73 @@ inline bool is_ion_species(const add_args &cppargs, int i) {
     return std::abs(cppargs.z[i]) > 1e-12;
 }
 
+double compute_ion_diameter(int i, double t, const add_args &cppargs) {
+    if (!is_ion_species(cppargs, i)) {
+        return cppargs.s[i];
+    }
+    int mode = cppargs.d_ion_mode;
+    double sigma_i = cppargs.s[i];
+    if (sigma_i <= 0.0) {
+        throw ValueError("DH/ion diameter requires positive ionic sigma_i.");
+    }
+    if (mode == 0) {
+        return sigma_i;
+    }
+    if (mode == 1) {
+        return sigma_i*(1.0 - 0.12);
+    }
+    if (mode == 2) {
+        return sigma_i*(1.0 - 0.12*std::exp(-3.0*cppargs.e[i]/t));
+    }
+    throw ValueError("Unknown d_ion_mode. Supported values are 0, 1, 2.");
+}
+
+double compute_ion_diameter_dt(int i, double t, const add_args &cppargs) {
+    if (!is_ion_species(cppargs, i)) {
+        return 0.0;
+    }
+    int mode = cppargs.d_ion_mode;
+    if (mode == 2) {
+        double sigma_i = cppargs.s[i];
+        double expo = std::exp(-3.0*cppargs.e[i]/t);
+        return -0.36*sigma_i*cppargs.e[i]*expo/(t*t);
+    }
+    return 0.0;
+}
+
 double compute_ion_born_radius(int i, double t, const add_args &cppargs) {
     if (!is_ion_species(cppargs, i)) {
         return cppargs.s[i];
     }
-    int mode = cppargs.born_radius_model;
+    int mode = cppargs.d_born_mode;
     double sigma_i = cppargs.s[i];
     if (sigma_i <= 0.0) {
         throw ValueError("Born term requires positive ionic sigma_i.");
     }
-    if (mode == 1) {
+    if (mode == 0) {
         return sigma_i;
     }
-    if (mode == 2) {
+    if (mode == 1) {
         return sigma_i*(1.0 - 0.12);
     }
-    if (mode == 3) {
+    if (mode == 2) {
         return sigma_i*(1.0 - 0.12*std::exp(-3.0*cppargs.e[i]/t));
     }
-    if (mode == 4 || mode == 5) {
+    if (mode == 3) {
         if (cppargs.d_born.size() <= static_cast<size_t>(i) || cppargs.d_born[i] <= 0.0) {
-            throw ValueError("born_radius_model 4/5 requires positive ionic params['d_born'] values.");
+            throw ValueError("d_Born_mode=fitted_param requires positive ionic params['d_born'] values.");
         }
         return cppargs.d_born[i];
     }
-    throw ValueError("Unknown born_radius_model. Supported values are 1, 2, 3, 4, 5.");
+    throw ValueError("Unknown d_Born_mode. Supported values are 0, 1, 2, 3.");
 }
 
 double compute_ion_born_radius_dt(int i, double t, const add_args &cppargs) {
     if (!is_ion_species(cppargs, i)) {
         return 0.0;
     }
-    int mode = cppargs.born_radius_model;
-    if (mode == 3) {
+    int mode = cppargs.d_born_mode;
+    if (mode == 2) {
         double sigma_i = cppargs.s[i];
         double expo = std::exp(-3.0*cppargs.e[i]/t);
         return -0.36*sigma_i*cppargs.e[i]*expo/(t*t);
@@ -148,9 +182,9 @@ vector<double> compute_deps_solvent_reference(const vector<double> &x, add_args 
 
 BornSSMDSData build_born_ssmds_data(vector<double> x, add_args &cppargs, double t, double eps_r, double eps_r_ion) {
     int ncomp = static_cast<int>(x.size());
-    if (cppargs.born_radius_model != 5) {
-        throw ValueError("born_model=2 requires born_radius_model=5.");
-    }
+    const bool use_ssm = (cppargs.born_solvation_shell_model != 0);
+    const bool use_ds = (cppargs.born_dielectric_saturation != 0);
+
     BornSSMDSData data;
     data.d_born.assign(ncomp, 1.0);
     data.D.assign(ncomp, 1.0);
@@ -197,20 +231,25 @@ BornSSMDSData build_born_ssmds_data(vector<double> x, add_args &cppargs, double 
             continue;
         }
 
-        double delta_di = (f_mix - 1.0)*data.ddelta_prefac[i];
+        double delta_di = use_ssm ? ((f_mix - 1.0)*data.ddelta_prefac[i]) : 0.0;
         data.D[i] = data.d_born[i] + delta_di;
         if (data.D[i] <= 0.0) {
-            throw ValueError("Born model 2 generated a non-positive d_born + Delta d.");
+            throw ValueError("Born model generated a non-positive d_born + Delta d.");
         }
 
         double z2 = cppargs.z[i]*cppargs.z[i];
         double invD = 1.0/data.D[i];
-        data.bracket[i] = (1.0 - 1.0/eps_r_ion)*invD +
-                          (1.0 - 1.0/eps_r)*(1.0/data.d_born[i] - invD);
+        double gap = (1.0/data.d_born[i] - invD);
+        double base_term = (1.0 - 1.0/eps_r)*invD;
+        double ds_term = use_ds ? ((1.0 - 1.0/eps_r_ion)*gap) : 0.0;
+
+        data.bracket[i] = base_term + ds_term;
         data.sum_bracket += x[i]*z2*data.bracket[i];
         data.sum_invD += x[i]*z2*invD;
-        data.sum_gap += x[i]*z2*(1.0/data.d_born[i] - invD);
-        data.sum_dpref_over_D2 += x[i]*z2*data.ddelta_prefac[i]*invD*invD;
+        data.sum_gap += x[i]*z2*gap;
+        if (use_ssm) {
+            data.sum_dpref_over_D2 += x[i]*z2*data.ddelta_prefac[i]*invD*invD;
+        }
     }
     return data;
 }
@@ -275,6 +314,21 @@ void validate_dielc_inputs(const vector<double> &x, add_args &cppargs) {
     if (cppargs.born_diff_mode != 0 && cppargs.born_diff_mode != 1 && cppargs.born_diff_mode != 2 && cppargs.born_diff_mode != 3) {
         throw ValueError("Unknown born_diff_mode. Supported values are 0 (analytic), 1 (finite-diff), 2 (Eq.133-style), and 3 (no dielectric-concentration term).");
     }
+    if (cppargs.d_ion_mode < 0 || cppargs.d_ion_mode > 2) {
+        throw ValueError("Unknown d_ion_mode. Supported values are 0, 1, 2.");
+    }
+    if (cppargs.include_born_model != 0 && cppargs.include_born_model != 1) {
+        throw ValueError("include_born_model must be 0 or 1.");
+    }
+    if (cppargs.d_born_mode < 0 || cppargs.d_born_mode > 3) {
+        throw ValueError("Unknown d_Born_mode. Supported values are 0, 1, 2, 3.");
+    }
+    if (cppargs.born_bulk_mode != 0 && cppargs.born_bulk_mode != 1) {
+        throw ValueError("Unknown born bulk_mode. Supported values are mix/solvent (0/1).");
+    }
+    if (cppargs.mu_born_diff_mode != 0 && cppargs.mu_born_diff_mode != 1) {
+        throw ValueError("Unknown mu_born differential_mode. Supported values are analytical/numerical (0/1).");
+    }
     if (cppargs.born_eps_mode != 0 && cppargs.born_eps_mode != 1) {
         throw ValueError("Unknown born_eps_mode. Supported values are 0 (eps_r,mix) and 1 (eps_r,solvent).");
     }
@@ -289,9 +343,6 @@ void validate_dielc_inputs(const vector<double> &x, add_args &cppargs) {
     }
     if (cppargs.born_model == 1 && cppargs.born_radius_model == 5) {
         throw ValueError("born_model=1 supports born_radius_model values 1, 2, 3, 4.");
-    }
-    if (cppargs.born_model == 2 && cppargs.born_radius_model != 5) {
-        throw ValueError("born_model=2 requires born_radius_model=5.");
     }
     if (cppargs.born_model > 0 && (cppargs.born_radius_model == 4 || cppargs.born_radius_model == 5)) {
         if (cppargs.z.size() != static_cast<size_t>(ncomp)) {
@@ -650,12 +701,8 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, add_args &cppargs) {
     vector<double> d (ncomp);
     for (int i = 0; i < ncomp; i++) {
         d[i] = cppargs.s[i]*(1-0.12*exp(-3*cppargs.e[i]/t));
-    }
-    if (!cppargs.z.empty()) {
-        for (int i = 0; i < ncomp; i++) {
-            if (cppargs.z[i] != 0) {
-                d[i] = cppargs.s[i]*(1-0.12); // for ions the diameter is assumed to be temperature independent (see Held et al. 2014)
-            }
+        if (!cppargs.z.empty() && is_ion_species(cppargs, i)) {
+            d[i] = compute_ion_diameter(i, t, cppargs);
         }
     }
 
@@ -1016,12 +1063,8 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
     vector<double> d (ncomp);
     for (int i = 0; i < ncomp; i++) {
         d[i] = cppargs.s[i]*(1-0.12*exp(-3*cppargs.e[i]/t));
-    }
-    if (!cppargs.z.empty()) {
-        for (int i = 0; i < ncomp; i++) {
-            if (cppargs.z[i] != 0) {
-                d[i] = cppargs.s[i]*(1-0.12); // for ions the diameter is assumed to be temperature independent (see Held et al. 2014)
-            }
+        if (!cppargs.z.empty() && is_ion_species(cppargs, i)) {
+            d[i] = compute_ion_diameter(i, t, cppargs);
         }
     }
 
@@ -1645,14 +1688,15 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
             else {
                 const double inv_eps2 = 1.0/(eps_born*eps_born);
                 const double shell_coeff = 1.0/eps_r_ion - 1.0/eps_born;
-                const bool use_deps = true;
-                const bool use_shell_chain = true;
+                const bool use_deps = (cppargs.mu_born_comp_dep_rel_perm != 0);
+                const bool use_shell_chain = (cppargs.mu_born_comp_dep_delta_d != 0);
+                const double deps_multiplier = (cppargs.mu_born_include_sum_term != 0) ? born.sum_gap : 1.0;
                 for (int k = 0; k < ncomp; k++) {
                     double direct_part = 0.0;
                     if (std::abs(cppargs.z[k]) > 1e-12) {
                         direct_part = cppargs.z[k]*cppargs.z[k]*born.bracket[k];
                     }
-                    double deps_part = use_deps ? born.sum_gap*deps_dx_born[k]*inv_eps2 : 0.0;
+                    double deps_part = use_deps ? deps_multiplier*deps_dx_born[k]*inv_eps2 : 0.0;
                     double ddelta_part = use_shell_chain ? shell_coeff*born.sum_dpref_over_D2*born.f_k[k] : 0.0;
                     direct_part_vec[k] = direct_part;
                     deps_part_vec[k] = deps_part;
@@ -1842,12 +1886,8 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, add_args &cppargs
     vector<double> d (ncomp);
     for (int i = 0; i < ncomp; i++) {
         d[i] = cppargs.s[i]*(1-0.12*exp(-3*cppargs.e[i]/t));
-    }
-    if (!cppargs.z.empty()) {
-        for (int i = 0; i < ncomp; i++) {
-            if (cppargs.z[i] != 0) {
-                d[i] = cppargs.s[i]*(1-0.12); // for ions the diameter is assumed to be temperature independent (see Held et al. 2014)
-            }
+        if (!cppargs.z.empty() && is_ion_species(cppargs, i)) {
+            d[i] = compute_ion_diameter(i, t, cppargs);
         }
     }
 
@@ -2157,13 +2197,9 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, add_args &cppargs
     for (int i = 0; i < ncomp; i++) {
         d[i] = cppargs.s[i]*(1-0.12*exp(-3*cppargs.e[i]/t));
         dd_dt[i] = cppargs.s[i]*-3*cppargs.e[i]/t/t*0.12*exp(-3*cppargs.e[i]/t);
-    }
-    if (!cppargs.z.empty()) {
-        for (int i = 0; i < ncomp; i++) {
-            if (cppargs.z[i] != 0) {
-                d[i] = cppargs.s[i]*(1-0.12); // for ions the diameter is assumed to be temperature independent (see Held et al. 2014)
-                dd_dt[i] = 0.;
-            }
+        if (!cppargs.z.empty() && is_ion_species(cppargs, i)) {
+            d[i] = compute_ion_diameter(i, t, cppargs);
+            dd_dt[i] = compute_ion_diameter_dt(i, t, cppargs);
         }
     }
 
@@ -3408,6 +3444,9 @@ double reduced_to_molar(double nu, double t, int ncomp, vector<double> x, add_ar
     double summ = 0.;
     for (int i = 0; i < ncomp; i++) {
         d[i] = cppargs.s[i]*(1-0.12*std::exp(-3*cppargs.e[i] / t));
+        if (!cppargs.z.empty() && is_ion_species(cppargs, i)) {
+            d[i] = compute_ion_diameter(i, t, cppargs);
+        }
         summ += x[i]*cppargs.m[i]*pow(d[i],3.);
     }
 
@@ -3469,6 +3508,16 @@ add_args get_single_component(int i, add_args &cppargs) {
     args_single.DH_model = cppargs.DH_model;
     args_single.dielc_rule = cppargs.dielc_rule;
     args_single.dielc_diff_mode = cppargs.dielc_diff_mode;
+    args_single.d_ion_mode = cppargs.d_ion_mode;
+    args_single.include_born_model = cppargs.include_born_model;
+    args_single.d_born_mode = cppargs.d_born_mode;
+    args_single.born_solvation_shell_model = cppargs.born_solvation_shell_model;
+    args_single.born_dielectric_saturation = cppargs.born_dielectric_saturation;
+    args_single.born_bulk_mode = cppargs.born_bulk_mode;
+    args_single.mu_born_diff_mode = cppargs.mu_born_diff_mode;
+    args_single.mu_born_comp_dep_rel_perm = cppargs.mu_born_comp_dep_rel_perm;
+    args_single.mu_born_include_sum_term = cppargs.mu_born_include_sum_term;
+    args_single.mu_born_comp_dep_delta_d = cppargs.mu_born_comp_dep_delta_d;
     args_single.debug = cppargs.debug;
     args_single.m.push_back(cppargs.m[i]);
     args_single.s.push_back(cppargs.s[i]);

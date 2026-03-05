@@ -262,6 +262,37 @@ def _build_catalog() -> Dict[str, Any]:
         },
     }
 
+    def _normalize_preset_model(model):
+        born_term_options = model.get("born_term_options", {}) if isinstance(model, dict) else {}
+        born_public = int(model.get("born_model", 1)) if isinstance(model, dict) else 1
+        d_old = int(born_term_options.get("d_born_mode", 1)) if isinstance(born_term_options, dict) else 1
+        d_map = {1: 0, 2: 1, 3: 2, 4: 3, 5: 3}
+        d_mode = d_map.get(d_old, 0)
+        return {
+            "rel_perm": {
+                "rule": model.get("dielc_rule", "linear-mixing-mole"),
+                "differential_mode": model.get("dielc_diff_mode", "analytic"),
+            },
+            "DH_model": {
+                "d_ion_mode": 1,
+                "bjeruum_treatment": bool(model.get("bjeruum_treatment", False)),
+            },
+            "include_born_model": born_public != 0,
+            "born_model": {
+                "d_Born_mode": d_mode,
+                "solvation_shell_model": born_public == 2,
+                "dielectric_saturation": born_public == 2,
+                "bulk_mode": model.get("eps_r_bulk", "mix"),
+                "mu_born_model": {
+                    "differential_mode": "numerical" if bool(born_term_options.get("numerical", False)) else "analytical",
+                    "comp_dep_rel_perm": bool(born_term_options.get("deps_dx_term", True)),
+                    "include_sum_term": bool(born_term_options.get("sum_term", True)),
+                    "comp_dep_delta_d": bool(born_term_options.get("comp_dep_delta_d", False)),
+                },
+            },
+        }
+
+
     presets = {
         "legacy_default": {
             "parameter_set_key": "default",
@@ -348,6 +379,10 @@ def _build_catalog() -> Dict[str, Any]:
             },
         },
     }
+
+    for preset in presets.values():
+        preset["model"] = _normalize_preset_model(preset["model"])
+
 
     aliases = {
         "preset_int": {"1": "2005", "2": "2008", "3": "2014_s1", "4": "2014_s2", "5": "2020", "6": "2025"},

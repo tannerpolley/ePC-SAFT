@@ -28,6 +28,16 @@ struct add_args {
     vector<double> mw;
     int dielc_rule;
     int dielc_diff_mode;
+    int d_ion_mode;
+    int include_born_model;
+    int d_born_mode;
+    int born_solvation_shell_model;
+    int born_dielectric_saturation;
+    int born_bulk_mode;
+    int mu_born_diff_mode;
+    int mu_born_comp_dep_rel_perm;
+    int mu_born_include_sum_term;
+    int mu_born_comp_dep_delta_d;
     vector<double> d_born;
     vector<double> f_solv;
     int born_model;

@@ -74,16 +74,26 @@ def _model_definitions():
             "name": "model_2020",
             "user_options": {
                 "elec_model": {
-                    "born_model": 1,
-                    "dielc_rule": 3,
-                    "dielc_diff_mode": "analytic",
-                    "eps_r_bulk": "mix",
-                    "bjeruum_treatment": False,
-                    "born_term_options": {
-                        "numerical": False,
-                        "sum_term": True,
-                        "deps_dx_term": True,
-                        "d_born_mode": 1,
+                    "rel_perm": {
+                        "rule": 3,
+                        "differential_mode": "analytical",
+                    },
+                    "DH_model": {
+                        "d_ion_mode": 1,
+                        "bjeruum_treatment": False,
+                    },
+                    "include_born_model": True,
+                    "born_model": {
+                        "d_Born_mode": 0,
+                        "solvation_shell_model": False,
+                        "dielectric_saturation": False,
+                        "bulk_mode": "mix",
+                        "mu_born_model": {
+                            "differential_mode": "analytical",
+                            "comp_dep_rel_perm": True,
+                            "include_sum_term": True,
+                            "comp_dep_delta_d": False,
+                        },
                     },
                 },
                 "debug": False,
@@ -93,24 +103,32 @@ def _model_definitions():
             "name": "model_2025_num",
             "user_options": {
                 "elec_model": {
-                    "born_model": 2,
-                    "dielc_rule": "empirical",
-                    "dielc_diff_mode": "numeric",
-                    "eps_r_bulk": "mix",
-                    "bjeruum_treatment": False,
-                    "born_term_options": {
-                        "numerical": True,
-                        "sum_term": True,
-                        "deps_dx_term": True,
-                        "d_born_mode": 1,
+                    "rel_perm": {
+                        "rule": "empirical",
+                        "differential_mode": "numerical",
+                    },
+                    "DH_model": {
+                        "d_ion_mode": 1,
+                        "bjeruum_treatment": False,
+                    },
+                    "include_born_model": True,
+                    "born_model": {
+                        "d_Born_mode": 3,
+                        "solvation_shell_model": True,
+                        "dielectric_saturation": True,
+                        "bulk_mode": "mix",
+                        "mu_born_model": {
+                            "differential_mode": "numerical",
+                            "comp_dep_rel_perm": True,
+                            "include_sum_term": True,
+                            "comp_dep_delta_d": True,
+                        },
                     },
                 },
                 "debug": False,
             },
         },
     ]
-
-
 def _phase_state_liq(t: float, p: float, x: np.ndarray, params: dict) -> dict:
     x = np.asarray(x, dtype=float)
     rho = float(pcs.pcsaft_den(t, p, x, params, phase="liq"))
