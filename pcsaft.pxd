@@ -41,6 +41,9 @@ cdef extern from "pcsaft_electrolyte.cpp":
         int dielc_rule
         int dielc_diff_mode
         int d_ion_mode
+        int mu_DH_diff_mode
+        int mu_DH_comp_dep_rel_perm
+        int mu_DH_include_sum_term
         int include_born_model
         int d_born_mode
         int born_solvation_shell_model

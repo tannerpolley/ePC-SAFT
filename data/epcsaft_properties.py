@@ -183,6 +183,9 @@ _REL_PERM_RULE_ALIASES = {
     "linear-molefraction": 1,
     "linear-mixing-mole": 1,
     "rule1": 1,
+    "rule1a": 7,
+    "linear-saltfraction": 7,
+    "linear-mixing-salt": 7,
     "linear-massfraction": 2,
     "linear-mixing-weight": 2,
     "rule2": 2,
@@ -224,6 +227,11 @@ _CANONICAL_ELEC_MODEL = {
         # Preserve current behavior (ionic diameter uses 0.88*sigma by default).
         "d_ion_mode": 1,
         "bjeruum_treatment": False,
+        "mu_DH_model": {
+            "differential_mode": "analytical",
+            "comp_dep_rel_perm": True,
+            "include_sum_term": True,
+        },
     },
     "include_born_model": True,
     "born_model": {
@@ -715,6 +723,19 @@ def _normalize_elec_model(model) -> dict:
     )
     out["DH_model"]["d_ion_mode"] = _resolve_d_ion_mode(out["DH_model"]["d_ion_mode"])
     out["DH_model"]["bjeruum_treatment"] = _coerce_bool(out["DH_model"]["bjeruum_treatment"])
+    mu_dh_model = out["DH_model"].get("mu_DH_model", {})
+    if not isinstance(mu_dh_model, dict):
+        raise TypeError("elec_model['DH_model']['mu_DH_model'] must be a dict.")
+    out["DH_model"]["mu_DH_model"] = _deep_update(_CANONICAL_ELEC_MODEL["DH_model"]["mu_DH_model"], mu_dh_model)
+    out["DH_model"]["mu_DH_model"]["differential_mode"] = _as_rule_number(
+        out["DH_model"]["mu_DH_model"]["differential_mode"], _DIFF_MODE_ALIASES
+    )
+    out["DH_model"]["mu_DH_model"]["comp_dep_rel_perm"] = _coerce_bool(
+        out["DH_model"]["mu_DH_model"]["comp_dep_rel_perm"]
+    )
+    out["DH_model"]["mu_DH_model"]["include_sum_term"] = _coerce_bool(
+        out["DH_model"]["mu_DH_model"]["include_sum_term"]
+    )
     out["include_born_model"] = _coerce_bool(out["include_born_model"])
 
     born = out["born_model"]
@@ -740,6 +761,7 @@ def _normalize_elec_model(model) -> dict:
 def _flatten_model_to_runtime(model: dict) -> dict:
     rel_perm = model["rel_perm"]
     dh_model = model["DH_model"]
+    mu_dh = dh_model["mu_DH_model"]
     born = model["born_model"]
     mu_born = born["mu_born_model"]
 
@@ -747,6 +769,7 @@ def _flatten_model_to_runtime(model: dict) -> dict:
     solvation_shell_model = _coerce_bool(born["solvation_shell_model"])
     dielectric_saturation = _coerce_bool(born["dielectric_saturation"])
     born_bulk_mode = _resolve_born_bulk_mode(born["bulk_mode"])
+    mu_dh_diff_mode = _as_rule_number(mu_dh["differential_mode"], _DIFF_MODE_ALIASES)
     mu_born_diff_mode = _as_rule_number(mu_born["differential_mode"], _DIFF_MODE_ALIASES)
 
     # Transitional legacy runtime projections.
@@ -774,6 +797,9 @@ def _flatten_model_to_runtime(model: dict) -> dict:
         "dielc_diff_mode": int(rel_perm["differential_mode"]),
         "d_ion_mode": int(_resolve_d_ion_mode(dh_model["d_ion_mode"])),
         "bjeruum_treatment": _coerce_bool(dh_model["bjeruum_treatment"]),
+        "mu_DH_diff_mode": int(mu_dh_diff_mode),
+        "mu_DH_comp_dep_rel_perm": _coerce_bool(mu_dh["comp_dep_rel_perm"]),
+        "mu_DH_include_sum_term": _coerce_bool(mu_dh["include_sum_term"]),
         "include_born_model": include_born_model,
         "d_Born_mode": int(_resolve_d_born_mode(born["d_Born_mode"])),
         "born_solvation_shell_model": solvation_shell_model,

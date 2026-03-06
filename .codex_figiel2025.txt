@@ -1,0 +1,916 @@
+                                                                                                          pubs.acs.org/IECR                                                                                                                                 Article
+
+
+
+                                                                                                          Predicting Thermodynamic Properties of Ions in Single Solvents and
+                                                                                                          in Mixed Solvents Using a Modified Born Term within the ePC-SAFT
+                                                                                                          Framework
+                                                                                                          Paul Figiel, Gangqiang Yu,* and Christoph Held*
+                                                                                                                Cite This: Ind. Eng. Chem. Res. 2025, 64, 9406−9418                            Read Online
+
+
+                                                                                                          ACCESS                        Metrics & More                             Article Recommendations               *
+                                                                                                                                                                                                                         sı Supporting Information
+See https://pubs.acs.org/sharingguidelines for options on how to legitimately share published articles.
+
+
+
+
+                                                                                                          ABSTRACT: In this work, the EoS ePC-SAFT was further
+         Downloaded via BRIGHAM YOUNG UNIV on May 15, 2025 at 17:06:32 (UTC).
+
+
+
+
+                                                                                                          developed by modifying the Born term and introducing a new
+                                                                                                          mixing rule for the dielectric constant of electrolyte solutions. The
+                                                                                                          modified Born term considers the solvent solvation-shell volume of
+                                                                                                          ions and accounts for the radial dependence of the dielectric
+                                                                                                          constant near a central ion. This required one additional parameter
+                                                                                                          per ion and one per solvent, while other pure-component
+                                                                                                          parameters were inherited from the literature. The performance
+                                                                                                          of ePC-SAFT was validated against experimental literature data:
+                                                                                                          Gibbs energies of solvation and of transfer and MIACs in pure water, methanol, ethanol, and in their mixtures. The new modeling
+                                                                                                          approach improves the accuracy of Gibbs energies at infinite dilution while retaining the ability to model properties of concentrated
+                                                                                                          electrolyte systems. Additionally, ePC-SAFT parameters for V3+ and VO2+ ions were fitted to density and osmotic-coefficient data of
+                                                                                                          VCl3 and VOSO4 in water using the new approach.
+
+
+                                                                                                          ■    INTRODUCTION
+                                                                                                          An increasing interest in environmentally benign technologies
+                                                                                                                                                                                          routes.13 One example is the production of ammonia using
+                                                                                                                                                                                          an electrolysis process with a LiOH solution. While originally
+                                                                                                                                                                                          only LiOH aqueous solution were tested, organic solvents and
+                                                                                                          has been observed in recent years due to the threat of climate
+                                                                                                                                                                                          salt mixtures have also been used in more recent research in
+                                                                                                          change. This was accompanied by a shift in the energy sector
+                                                                                                                                                                                          this process.13−15 Again, knowledge of the interactions
+                                                                                                          from fossil to renewable energy sources.1,2 However, renewable
+                                                                                                                                                                                          between solvents and ions aids the development in these
+                                                                                                          energy sources, such as solar or wind energy, are not able to
+                                                                                                                                                                                          areas. A lot of thermodynamic data (e.g., density, infinite-
+                                                                                                          provide electricity on demand. Even though great progress in
+                                                                                                                                                                                          dilution solvation properties, activity coefficients) on salt-
+                                                                                                          energy-storage systems was achieved in the last years, their
+                                                                                                                                                                                          solvent systems can be found in the literature for common
+                                                                                                          development and improvement are still ongoing.3,4 The most
+                                                                                                                                                                                          electrolytes (e.g., alkali halides) in common solvents (e.g.,
+                                                                                                          prominent representative of energy-storage systems is the
+                                                                                                                                                                                          water, ethanol). However, most literature sources include data
+                                                                                                          battery, which usually consists of two electrodes and a
+                                                                                                                                                                                          on only single-solvent single-electrolyte mixtures. However,
+                                                                                                          connecting electrolyte. The composition of these electrolytes
+                                                                                                                                                                                          data are scarce for an electrolyte in a solvent mixture.
+                                                                                                          ranges from aqueous electrolyte solutions in the case of
+                                                                                                                                                                                          Electrolyte thermodynamic models can aid in these cases to
+                                                                                                          vanadium-flow batteries to organic electrolyte solutions in Li-
+                                                                                                                                                                                          describe (or even predict) the properties of more complex
+                                                                                                          ion batteries and even solid-state electrolyte systems.5−7 A lot
+                                                                                                                                                                                          mixtures in order to reduce the high experimental effort to
+                                                                                                          of research interest lies in developing better electrolyte                      characterize multisolvent multielectrolyte mixtures. Many
+                                                                                                          solutions for these systems to reduce viscosity and increase                    different models exist in the literature for electrolyte
+                                                                                                          power density, stability, safety, and voltage range of the                      solutions.16−21 In general, such models were developed to
+                                                                                                          battery.7,8 This includes both the development of better                        describe aqueous electrolyte solutions, but such models have
+                                                                                                          solvents or solvent mixtures and the use of different ions in the               been subsequently improved to also describe nonaqueous
+                                                                                                          solution. One major goal is the replacement of lithium ions in                  electrolyte solutions. In this context, the implementation of the
+                                                                                                          Li-ion batteries with much cheaper and safer materials such as
+                                                                                                          sodium ions.3,9 It is of great interest to understand how
+                                                                                                          different ions behave in different solvents for these develop-                  Received: February 3, 2025
+                                                                                                          ments. Electrolyte solutions are also used in many other                        Revised: April 10, 2025
+                                                                                                          industrial fields. They are present in (reverse) osmosis                        Accepted: April 14, 2025
+                                                                                                          processes, carbon-capture technologies, and electrolysis                        Published: April 28, 2025
+                                                                                                          processes.10−12 Recent research focuses on replacing chemical
+                                                                                                          processes (fossil-based reactants) with electrochemical
+
+                                                                                                                                                © 2025 American Chemical Society                                                https://doi.org/10.1021/acs.iecr.5c00475
+                                                                                                                                                                                   9406                                       Ind. Eng. Chem. Res. 2025, 64, 9406−9418
+Industrial & Engineering Chemistry Research                                               pubs.acs.org/IECR                                                       Article
+
+Born term was intensely discussed in the literature, and many                   di(T ) = i· (1          0.12·e 3·uii / kBT )                                             (3)
+models included this term, which resulted in better modeling
+results in nonaqueous electrolyte solutions.16,22−25 The Born                 This equation can be simplified for ions since the dispersion
+term calculates the transfer energy of an ion from a vacuum                 energy between cation−cation pairs and anion−anion pairs is
+into any desired solvent, and this energy contribution is usually           set to zero in ePC-SAFT (uii = 0), which leads to eq 4
+comparatively high. One of the models that include the Born                     dion =     ion · 0.88                                                                    (4)
+term is electrolyte PC-SAFT (ePC-SAFT advanced16), which
+combines PC-SAFT with Coulomb forces as well as ion-                        In this work, no changes were made in the expressions for aDH,
+dipolar interactions. It has already been used to model mean                and dion is still used in aDH. However, a new diameter
+ionic activity coefficients (MIACs) and osmotic coefficients in             parameter for the Born term is introduced in this work. This
+aqueous and organic solvents.16,26 Further, ePC-SAFT was                    parameter was not tested at different temperatures and did not
+used to calculate salt solubilities in these solvents and to                include a temperature dependency.
+predict CO2 solubilities in aqueous and organic electrolyte
+solutions27,28 and even to predict the salt influence on
+esterification reaction equilibria and kinetics.29,30 All of these
+                                                                            ■   BORN TERM
+                                                                            The Born term is used in many thermodynamic models to
+works focused on systems with moderate to high ion                          calculate the transfer work of an ion from a vacuum into a pure
+concentrations. However, the properties of electrolyte                      solvent.16,23,31 In the Born term, the solvent is treated as a
+solutions at infinite dilution were not investigated in these               continuum that only interacts with the ion via its dielectric
+works. Properties at infinite dilution (like the Gibbs energy of            constant εr.32 The energy connected to this process of a single
+solvation or the Gibbs energy of transfer) are very important,              ion can be summed for all ions in the system, yielding the
+e.g., for the calculation of battery cell voltages in different             reduced Helmholtz energy contribution from Born term aBorn,
+solvents. The aim of this work is to further improve ePC-SAFT               given in eq 5
+advanced to better describe these infinite-dilution properties of
+electrolyte solutions while retaining the ability of ePC-SAFT to                              e 2 ijj            1 zyz              xizi2
+                                                                                a Born=              j1              zz
+                                                                                            4 0kBT jjk
+model properties of concentrated electrolyte solutions.                                                               z
+                                                                                                                  r{               diBorn                                (5)
+
+■
+                                                                                                                              i
+     EPC-SAFT                                                               Here, dBorn   is the Born diameter of ion i. This quantity is not
+                                                                                     i
+ePC-SAFT is an extension of the PC-SAFT EoS in order to                     well-defined, and many different possibilities exist for its
+access the modeling of charged species. In general, PC-SAFT                 determination. In all former ePC-SAFT modeling approaches,
+calculates the residual Helmholtz energy ares by evaluating                 dBorn
+                                                                              i    was set to σi in order to reduce the number of the model
+different contributions. These contributions are the hard-chain             parameters. However, this led to deviations between the
+contribution ahc, the dispersion contribution adisp, and the                modeled and experimental Gibbs energies of solvation at
+association contribution aassoc. In ePC-SAFT, two additional                infinite dilution of the considered ion, Δsolv G∞       i .
+                                                                                                                                       16
+                                                                                                                                           Other
+contributions for charged species are included: the Debye−                  authors used Pauling diameters or cavity diameters to estimate
+Hückel contribution aDH for ion−ion interactions and the Born              dBorn
+                                                                              i   , which also did not yield optimal results for ΔsolvG∞ i when
+contribution aBorn for ion-dipolar interactions. The residual               compared to literature data.33−35 Some authors suggested
+Helmholtz energy is obtained by summing these contributions                 fitting dBorn
+                                                                                     i    to literature ΔsolvG∞
+                                                                                                              i data.
+                                                                                                                      34,36
+                                                                                                                            Another approach is
+(eq 1)                                                                      to not only look at the diameter of the ion but also include the
+                                                                            solvent solvation shell in the Born term.34,35,37−40 This is done
+    a res = a hc + adisp + a assoc + a DH + a Born            (1)           by introducing an additional quantity into Born term Δdi that
+   Original ePC-SAFT requires two ion-specific parameters,                  accounts for this effect. This quantity might depend on the
+while three pure-component parameters for nonassociating                    kind of ion, the solvent, and the composition of the system.
+components and five pure-component parameters for associat-                 Approaches that include this quantity will be called “solvation
+ing components are required. These are the segment number                   shell models” (SSMs) in this work. The formula for the
+mseg                                                                        reduced Helmholtz energy contribution from the Born term
+  i , the segment diameter σi, and the dispersion energy
+parameter ui/kB for nonassociating components, where kB                     with an SSM approach is given in eq 6
+represents the Boltzmann constant. Associating components
+                                                                                 Born         e 2 ijj 1 yzz                            xizi2
+also require the association-energy parameter εAiBi and the                     aSSM  =              j1   zz
+association-volume parameter κAiBi. Additionally, the binary                                4 0kBT jjk  r{
+                                                                                                           z
+                                                                                                                          i
+                                                                                                                                  diBorn
+                                                                                                                                         +      di                       (6)
+interaction parameter kij between every component pair might
+be adjusted to alter the dispersion energy in the mixture. The                An SSM assumes that the volume between the surface of the
+corresponding combining rule is given in eq 2                               ion and the first solvation shell does not contribute to the
+                                                                            Helmholtz energy. This assumption does not hold when
+    uij =   uiuj ·(1   k ij)                                  (2)           looking at the changes in the dielectric constant around an ion.
+                                                                            The dielectric constant is much lower close to an ion in a
+  Note that the binary interaction parameter kij might depend               solvent environment compared to the bulk phase since the
+on the temperature.                                                         solvent molecules do not affect the electric fields at those
+  Both the expressions for aDH and aBorn require a diameter                 distances.41−43 This effect is called “dielectric saturation” (DS)
+that characterizes the ionic species. In all former ePC-SAFT                and can be included in the Born term by introducing a
+modeling approaches, the temperature-corrected segment                      function for the dielectric constant that depends on the
+diameter of the ion dion was used in both expressions, aDH                  distance from the ion. While it is possible to obtain a radius-
+and aBorn. eq 3 shows the general formula for temperature-                  dependent function for the dielectric constant, the effort is very
+corrected segment diameter di(T)                                            high, especially if different solvents, solvent mixtures, and
+                                                                     9407                                                             https://doi.org/10.1021/acs.iecr.5c00475
+                                                                                                                                    Ind. Eng. Chem. Res. 2025, 64, 9406−9418
+Industrial & Engineering Chemistry Research                                                                      pubs.acs.org/IECR                                              Article
+
+concentrated electrolyte solutions are considered. An easier                                       the Supporting Information. The SSM + DS approach was
+equation can be obtained by assuming a constant dielectric                                         chosen for all further calculations due to its superior
+constant between the ion surface and the solvation shell that                                      performance compared with the other approaches.
+increases instantaneously to the bulk dielectric constant at                                         In the literature, numerous approaches exist to calculate the
+distances greater than the radius of the solvation shell.39,40 In                                  solvation shell diameter. However, most of them only consider
+this work, the dielectric constant between the ion and the first                                   ions at infinite dilution, and such approaches yield poor results
+solvation shell is assumed to be equal to the dielectric constant                                  for concentrated solutions or are only applicable to water (for
+of the ion. The value of the relative dielectric constant of all                                   details, see Chapters S1 and S2 in the Supporting
+ions is assumed to be εr = 8 in the ePC-SAFT calculations.                                         Information). Thus, a new parameter f mix was included in
+This value was determined by Bülow et al. as the average of the                                   ePC-SAFT that depends on the solvent as well as on the ion
+relative dielectric constant of different salts taken from the                                     concentration but not on the kind of ion. The solvation shell
+literature.16,44 The simplified dependence of the relative                                         thickness was calculated using eq 8
+dielectric constant on the radius is schematically shown in
+                                                                                                                 (fmix       1)
+Figure 1. Both the solvation shell and the dielectric saturation                                         di =                     ·diBorn
+                                                                                                                      |zi|                                                              (8)
+                                                                                                       The parameter fsolv,mix was calculated via a mixing rule (eq 9)
+                                                                                                                       xf
+                                                                                                                      k kk
+                                                                                                        fmix =
+                                                                                                                       x
+                                                                                                                      k k                                                               (9)
+                                                                                                   Here, k is the number of ions and solvents in the system, and f k
+                                                                                                   is the “pure-component” adjustable parameter for each of these
+                                                                                                   components. The f k parameter was set to f k = 1 for all ions
+                                                                                                   since no solvation shell exists in a system consisting of pure
+                                                                                                   ions. For now, it was chosen to include only ions and solvents
+                                                                                                   in this mixing rule. This leads to a simplification of eq 9 since
+                                                                                                   no other components are considered in this work (eq 10)
+Figure 1. Relative dielectric constant εr as a function of the radius r as                              fmix =        xkfk
+assumed in combined solvation shell and dielectric saturation models.                                                                                                                  (10)
+                                                                                                                  k
+ri is the radius of the ion, and Δri is the distance between the ion
+surface and the first solvation shell.                                                               The parameter for each solvent was adjusted to MIACs of
+                                                                                                   NaBr in the respective solvent considered in this work (water,
+                                                                                                   methanol, and ethanol). It should be noted that the f k value is
+effect are included in this combined approach (SSM + DS),                                          constant for each solvent. In eq 8, Δdi is normalized to the
+which results in eq 7 for the reduced Helmholtz energy                                             absolute charge of the respective ion i. This caused significantly
+contribution of the Born term.                                                                     better modeling results for multivalent ions.
+
+
+    Born
+   aSSM + DS=
+                    e 2 ijj
+                          jj1
+                                          1 yzzjijj
+                                               zzj
+                                                zjj
+                                                         xizi2      zyz
+                                                                      zz
+                                                                                                   ■   DIELECTRIC CONSTANT
+                                                                                                   An important quantity for modeling electrolyte solutions with
+                  4 0kBT jk            r ,bulk {k i di
+                                                      Born
+                                                             + di zz{                              ePC-SAFT is the dielectric constant. The relative dielectric
+                                                                                                   constants of all components modeled in this work are given in
+                     ij      1 yzzjijj            i 1                        yzzyz
+                                  zzjj xizi2jjjj Born                         zzzz
+                                                                 1
+                + jjjj1            zj                                          zzzz
+                                                                                                   Table 1 at 298.15 K and 1 bar. All ions were characterized with
+                                                  jd     d  Born
+                                                                 +       d      z
+                      k   r ,bulk {k i            k i      i               i {{
+                                                                                                   Table 1. Relative Dielectric Constants of All Solvents and
+                                                                                      (7)
+                                                                                                   Ions Used in This Work Are Shown at 298.15 K and 1 bar
+    For SSMs, the Born diameter and the solvation shell
+thickness have the same effect on the Helmholtz energy (eq 6),                                            component                    dielectric constant (−)                  refs
+and it could be argued that the quantities cannot be considered                                           water                                78.09                            47
+independently. In contrast, for SSM+DS, a separate consid-                                                methanol                             33.05                            48
+eration for the Born diameter dBorn
+                                  i   and the combined diameter                                           ethanol                              24.88                            49
+dBorn
+  i    + Δdi is necessary since the consideration of the dielectric                                       salts (Ions)                          8                               16a
+saturation introduces a contribution that only depends on the                                      a
+                                                                                                    All salts were modeled with a similar dielectric constant that is a
+Born diameter (eq 7).                                                                              mean of available experimental data.44
+    It is also possible in these kinds of models to explicitly
+consider more than one solvation shell layer.45 However, it was                                    the same value of 8 for the relative dielectric constant, which is
+found that the performance does not significantly improve                                          the average of a number of different salts. This approach was
+compared to the models that use only one solvation shell                                           also used in earlier versions of ePC-SAFT.16
+layer.46 This consideration might not even be necessary if                                            Earlier modeling approaches using the ePC-SAFT frame-
+parameters are fitted to literature data since these data include                                  work assumed a linear dependency of the relative dielectric
+all solvation shell layers that might exist and therefore can only                                 constant on the ion mole fraction.16,50,51 This assumption was
+yield parameters that implicitly include these effects. A                                          validated against mixtures of ionic liquids with water. However,
+comparison of the performance of the three approaches                                              a linear dependency of the relative dielectric constant on the
+(original, SSM, SSM+DS) is given in Chapters S1 and S2 in                                          ion mole fraction cannot be observed in electrolyte solutions
+                                                                                            9408                                                    https://doi.org/10.1021/acs.iecr.5c00475
+                                                                                                                                                  Ind. Eng. Chem. Res. 2025, 64, 9406−9418
+Industrial & Engineering Chemistry Research                                                    pubs.acs.org/IECR                                                         Article
+
+that include salts, e.g., alkali halides.52−60 The relative dielectric
+constant decreases strongly at low ion mole fractions and gets
+less steep at higher ion mole fractions in solvents (in this work:
+water, methanol, and ethanol). A new mixing rule based on the
+ideas of Zuber et al. is introduced in this work to capture this
+behavior.52 For that purpose, relative dielectric constants in
+water and methanol were correlated over the ion mole fraction.
+This new mixing rule was also used to calculate the relative
+dielectric constants of salt solutions in ethanol to validate it in
+a different solvent that was not used in the correlation. The
+new mixing rule is given in eq 11
+                  salt free
+                 r ,solvent,mix
+    r ,mix =
+               1 + 7.01·xion                                      (11)
+                                                                                 Figure 3. Relative dielectric constants of different salt solutions in
+Here, εsalt‑free
+       r,solvent,mix is the relative dielectric constant of the solvent
+                                                                                 different solvents over the relative dielectric constant of the pure
+mixture without ions, and xion is the mole fraction of all ions in               solvent at 298.15 K and 1 bar. Solid line: Mixing rule introduced in
+the system. In Figure 2, the results of this mixing rule are                     this work by eq 11; gray circles: Data of different salts in water taken
+                                                                                 from refs 41,53−56; blue triangles: Data of different salts in methanol
+                                                                                 taken from refs 57,58; green squares: Data of different salts in ethanol
+                                                                                 taken from refs 59,60.
+
+
+                                                                                 correct. However, this hypothesis was not tested in this work
+                                                                                 since all systems were investigated at 298.15 K.
+                                                                                    Similar to earlier ePC-SAFT works, the dielectric constant of
+                                                                                 a solvent mixture εsalt‑free
+                                                                                                      r,solvent,mix was obtained by applying a weight
+                                                                                 fraction-based mixing rule (eq 12) to the pure-component
+                                                                                 dielectric constants50
+                                                                                      salt free                    salt free
+                                                                                     r ,solvent,mix =             wsolvent  · r ,solvent
+                                                                                                        solvent                                                               (12)
+                                                                                 Here,   wsalt‑free
+                                                                                          solventis the weight fraction of each solvent in the
+                                                                                 system without salt. This equation (together with eq 11)
+                                                                                 allows the estimation of the relative dielectric constant in all
+Figure 2. Relative dielectric constants of different aqueous salt                multicomponent systems, given that the pure component
+solutions at 298.15 K and 1 bar. Solid line: linear mixing rule; dashed          dielectric constants are known (which in this work were taken
+line: new mixing rule introduced in this work by eq 11. Gray circles:            from Table 5).
+Data of NaCl in water by Nörtemann et al.53 Green squares: Data of
+NaBr in water by Haggis et al.55 Blue triangles: Data of NaCl in water
+by Buchner et al.56 Orange upside-down triangles: Data of LiCl in
+                                                                                 ■   CALCULATION OF THERMODYNAMIC
+                                                                                     PROPERTIES
+water by Wei et al.54.
+                                                                                 The fugacity coefficient of each component in a system can be
+                                                                                 calculated if the residual Helmholtz energy and its derivations
+compared to experimental relative dielectric constants of salt                   are known by using eq 13
+solutions in pure water as well as to the linear mole fraction-                                                                         ji a zyz
+                                                                                                                                            res
+                                                                                     ln( i) = (Z            1)       ln (Z) + a res + jjj       z
+based mixing rule.                                                                                                                       j xi zz
+   The new mixing allows mimicking the experimental data of                                                                              k      {
+numerous salts in water sufficiently well, while the previously                                                  ij a res yz
+used linear mixing rule overestimates the experimental data in                                              xjjjjj         zz
+                                                                                                                            z
+                                                                                                                  j xj zz
+the considered mole fraction range. Figure 3 shows the                                                  j         k         {                                                 (13)
+performance of the new mixing for electrolyte solutions in
+water, methanol, and ethanol. The dielectric constants in all                    The fugacity coefficient can be used to calculate different
+three solvents can be described without using solvent-specific                   quantities of the system.
+parameters or ion-specific parameters. However, it should be                       Solvation describes the process of transferring a species from
+mentioned that this new mixing rule was not tested in any                        a pure, ideal gaseous phase (g) into a liquid phase (l). The
+other solvent, and the results might be poor for solvents with                   corresponding Gibbs energy of solvation of a species
+very low dielectric constants.61 Additionally, this new mixing                   ΔsolvGi(T,p,xj) can be calculated as the difference of its
+rule was correlated using experimental data points up to about                   chemical potential μi in both phases as given in eq 14.
+xion = 0.38 and might deviate from experimental data points at                        solv
+                                                                                             Gi(T , p , xj) =          l
+                                                                                                                           (T l , p l , x jl)        id,g
+                                                                                                                                                          (T g , p g )
+                                                                                                                   i                                0i                        (14)
+higher ion concentrations. This is acceptable since the
+solubility of most salts is much lower than this limit. It is                      The temperature is usually the same for both phases, while
+expected that the mixing rule is valid for temperatures other                    the pressure is often different for both phases depending on
+than 298.15 K only if the temperature influence on the pure                      the chosen standard process. The role of the different standard
+solvents’ dielectric constants is considered quantitatively                      processes is explained later in this chapter. The chemical
+                                                                          9409                                                               https://doi.org/10.1021/acs.iecr.5c00475
+                                                                                                                                           Ind. Eng. Chem. Res. 2025, 64, 9406−9418
+Industrial & Engineering Chemistry Research                                                           pubs.acs.org/IECR                                                             Article
+
+potential of a species i can be expressed in the following way                             solv, x
+                                                                                                     Gi (T , p , xj i , xi                   0)
+(eq 15):                                                                                                                                          solv,
+                                                                                                                                             =             Gi (T , p , xj i , xi         0)
+                                            ij f yz                                                                                                    ij RT         yz
+      (T , p , xj) = 0id,g (T , p) + RT lnjjj i zzz
+    i                  i                     j pz                                                                                            + RT ln jjj 0 solvent zzz
+                                             k {                     (15)                                                                               jp M          z
+                                                                                                                                                        k    solvent {
+                                                                                                                                                  solv, m
+Here, f i is the fugacity of component i in the mixture, and                                                                                 =              Gi (T , p , xj i , xi        0)
+μid,g
+ 0i (T,p) is the chemical potential of a pure, ideal gas at                                                                                            ij            yz
+                                                                                                                                                            1
+pressure p and temperature T. The fugacity can be expressed                                                                                  + RT ln jjj 0            zz
+                                                                                                                                                                       zz
+                                                                                                                                                        jm M
+via fugacity coefficient φi and mole fraction xi as shown in eq                                                                                         k    solvent {                  (18)
+                                                                                                  0
+16                                                                                 Here, p is the chosen standard pressure for the x-process
+                                                                                   (usually 1 bar), m̃ 0 is the standard molality (1 mol/kg), ρsolvent
+   fi =        ixip                                                  (16)          the density of the solute-free solvent (or solvent mixture), and
+                                                                                   Msolvent is the molar mass of the solvent (or solvent mixture). A
+In theory, the pressure of the gaseous phase and the                               detailed deviation of the conversion is found in the Supporting
+concentration in the liquid phase can be arbitrary. However,                       Information in Chapter S3. The superscript x for the x-process
+different standard treatments have been established that yield                     will be omitted in the following text since only values for the x-
+                                                                                   process are presented.
+different Gibbs energies. The three most common standard                             The Gibbs energy of transfer at infinite dilution from a
+processes found in the literature are the ρ-treatment, the x-                      solvent S1 to another solvent or solvent mixture S2
+treatment, and the m-treatment. The ρ-treatment corresponds                        ΔtrG∞,S1→S2
+                                                                                        i         was calculated as the difference of the Gibbs
+to a transfer from an ideal gas at a given concentration (usually                  energies of solvation in the two solvents (eq 19)
+1 mol/L) to a hypothetical solution with the same solute                                   tr
+                                                                                                Gi ,S1             S2
+                                                                                                                        (T , p , xj i , xi        0)
+concentration at 1 bar pressure and the properties of an                                                                                           solv
+infinitely diluted system.62 Note that the pressure in both                                                                                  =            Gi ,S2(T , p , xj i , xi         0)
+                                                                                                                                                   solv
+phases is not equal in this treatment. The x-treatment                                                                                                    Gi ,S1(T , p , xj i , xi         0)
+describes the transfer “from an ideal gas at 1 atm (1 bar in
+                                                                                                                                                        ij   ,S2 y
+                                                                                                                                                                   z
+this work) pressure to a hypothetical dilute-ideal solution (at                                                                              = RT ln jjjj i ,S1 zzzz
+                                                                                                                                                         j         z
+the same pressure) in which the mole fraction (of the solute) s                                                                                          k i       {                    (19)
+is unity” (see62 page 16). The m-treatment corresponds to a                          The activity coefficients of ions were calculated by using eq
+transfer from an ideal gaseous phase at 1 bar pressure to a                        20
+hypothetical solution at the same pressure with a solute                                                       S
+concentration of 1 mol/kg and the properties of an infinitely                          *=                  i
+                                                                                       i                       ,S
+diluted system.62 Note that this concentration is given in the                                         i                                                                                (20)
+molality scale and refers to 1 mol solute per 1 kg pure solvent                      The “*” indicates that the reference state for the activity
+(or solvent mixture). All three treatments assume the same                         coefficient is the infinitely diluted solution, which is most
+temperature in the gaseous and liquid phases. In this work, the                    commonly used for ions. The mean ionic activity coefficient
+Gibbs energies of solvation are given for the x-treatment, and                     (MIAC) γ*± is usually given in the literature. It can be
+                                                                                   calculated from the single ion activity coefficients using eq 21
+literature data was converted to this treatment when necessary.
+                                                                                       *      *, cat *, an 1/ cat + an
+The Gibbs energy of solvation for the x-process was obtained                           ± = ( cation · anion)                                                                            (21)
+by combining eqs 14−16 and is given in eq 17
+                                                                                   Here, νcat and νan are the stoichiometric coefficients of the ions.
+    solv, x                                     id,g                               MIACs are usually given in the molality scale γ*± ,m in the
+              Gi (T , p , xj i , xi   0) =     0i
+                                                     (T , p)                       literature while ePC-SAFT calculates mole fraction-based
+                                                ij xip yz                          MIACs γ±*,x. They were converted using eq 22
+                                      + RT ln jjj i     zz      id,g
+                                                               0i (T , p)
+                                                 j p zz                                                                           *, x
+                                                 k       {                             *, m                                       ±
+                                                                                       ± =
+                                      = RT ln                                                          1 + Msolvent ·msolute ·                    i i ,ion                              (22)
+                                      ( i (T , p , xj i , xi   0))   (17)          Here, Msolvent is the molar mass of the solvent (in SI units), and
+                                                                                   m̃ solute is the molality of the nondissociated solute. In this work,
+Here, φ∞ i is the fugacity coefficient of the ion at infinite
+                                                                                   all MIACs are given in the molality scale.
+dilution, which corresponds to the properties at infinite
+dilution as mentioned in the definition of the x-treatment.                        ■       MODEL PARAMETERS
+                                                                                   The pure-component parameters for the ions and solvents
+Therefore, the superscript ∞ is added to the Gibbs energies in                     were taken from the literature, with the exception of the
+this work. To convert values of the Gibbs energy of solvation                      parameters for V3+ and VO2+. These were fitted in this work to
+from the ρ-treatment or the m-treatment, eq 18 can be used.                        our own density data of VCl3 and VOSO4 in water (see
+                                                                            9410                                                                       https://doi.org/10.1021/acs.iecr.5c00475
+                                                                                                                                                     Ind. Eng. Chem. Res. 2025, 64, 9406−9418
+Industrial & Engineering Chemistry Research                                                          pubs.acs.org/IECR                                           Article
+
+Chapter S4 in the Supporting Information for additional                         Table 3. ePC-SAFT Pure-Ion Parameters, σi and ui/kB,
+details). The new modeling approach used in this work                           Taken froma17
+requires two additional parameters: The Born diameter dBorn   i    of
+                                                                                           ion                  σi/Å               ui/kB/K                 dBorn
+                                                                                                                                                            i    (Å)
+ions and the solvation parameter f k for solvents (set to 1 for all                        +
+ions). The Born diameters were adjusted to Gibbs energies of                            H                      3.4654               500.00                     1.218
+solvation at infinite dilution in water (details on the used Gibbs                      Li+                    2.8449               360.00                     2.784
+energies of solvation in water are found in Chapter S5 in the                           Na+                    2.8232               230.00                     3.445
+Supporting Information), and the solvent-specific (ion-                                 K+                     3.3417               200.00                     4.150
+                                                                                        VO2+                   3.4638              1488.28                     2.930
+independent) f k parameters were adjusted to MIAC data of
+                                                                                        V3+                    3.1401              1415.66                     2.940
+NaBr in each respective solvent. It can be observed that f k is
+                                                                                        Cl−                    2.7560               170.00                     4.100
+close to 1.5 for the considered solvents. Indeed, we found that
+                                                                                        Br−                    3.0707               190.00                     4.480
+f k = 1.5 for the considered solvents if only electrolyte solutions
+                                                                                        I−                     3.6672               200.00                     4.985
+with low ion concentrations are considered (ca. 10 mM). The
+                                                                                        SO42−                  2.6491                80.00                     4.953
+influence of f k on Δsolv,xG∞i is stronger with the smaller di
+                                                                  Born
+                                                                                a
+caused by the dependency of aBorn on 1/dBorn      , cf. eq 7.  Thus,                Segment number is 1 for all ions.
+                                               i
+the influence of f k on MIACs is much more pronounced than
+that on Δsolv,xG∞                                                               Table 4. ePC-SAFT Binary Interaction Parameters kij
+                  i .
+    New binary interaction parameters kij between the ions and                  between Different Anions and Cations Fitted in This Work
+the solvents and between all ions were also adjusted in this                    Are Valid at 298.15 K
+work. The kij between an ion and water and the kij among ions                        kcat,an             H+        Li+      Na+             K+          VO2+           V3+
+were adjusted to experimental MIAC literature data of different                      Cl−
+                                                                                                        −0.9       0.8      0.8           0                              1
+salts in water. In the special case of V3+ and VO2+, the kij                         Br−                −0.7       0.5      0.65          −0.35
+parameters V3+-water, VO2+-water, V3+-Cl−, and VO2+-SO42−                            I−                                     0.45          0
+were fitted to new osmotic coefficients of VCl3 and VOSO4 in                         SO42−                         0.8      0.7           −0.6             0
+water.
+    This order for fitting the different parameters (dBorn
+                                                        i  , f k, and           Table 5. ePC-SAFT Binary Interaction Parameters kij
+kij between ions and water) was chosen for the following                        between Different Components at 298.15 K Used in This
+reasons: The Gibbs energy of solvation of an ion in water is                    Worka
+strongly influenced by the dBorn i    parameter and only slightly
+changes with changing f k and kij. The dBorn        parameter was                              kij                water               methanol                 ethanol
+                                               i
+                                                                                           −
+therefore fit to this quantity, while MIACs in water were used                         Cl                       −0.3                      0.5                   0.8
+to adjust the other parameters. An iteration was then                                  Br−                      −0.3                      0.15                  0
+performed to get an optimal fit for all quantities. However,                           I−                       −0.05                     0.37                  0.18
+the change in all parameters during the iteration was minimal.                         SO42−                    −0.1
+    Gibbs energies of solvation at infinite dilution in organic                        H+                       0                       −0.3                    −0.6
+solvents were calculated using the literature Gibbs energies of                        Li+                      −0.4                    −0.9                    −0.8
+solvation in water and the literature Gibbs energies of transfer                       Na+                      −0.3                    −0.25                   0.05
+from water to the solvent. These data in the pure organic                              K+                       −0.1                     0.32                   0.53
+solvents were used to determine the kij between ion/methanol                           VO2+                     −0.08
+and ion/ethanol. kij values for solvent−solvent pairs were taken                       V3+                      −0.3
+from the literature since the new modeling approach does not                           methanol                 −0.087865
+                                                                                       ethanol                  −0.061766
+affect systems that only consist of neutral components. All                     a
+pure-component parameters are given in Tables 2 and 3, and                       All kijs between ions and solvents were fitted in this work, and the kijs
+all binary interaction parameters used in this work are                         between different solvents were inherited from the literature. Valid at
+                                                                                298.15 K
+presented in Tables 4 and 5. The values of the kij parameters
+between the ions and the solvents deviate strongly from 0,
+especially between an ion and an organic solvent. This strong                   described by the Born term, which was also found in ref 16
+deviation can be explained by the low sensitivity of the                        Therefore, high kij are needed to have an effect on the
+dispersion interactions compared to ion-dipolar forces                          modeling results.
+Table 2. Pure-Component Parameters of All Solvents Used
+in This Worka                                                                   ■    GIBBS ENERGY OF SOLVATION IN WATER
+                                                                                The Gibbs energy of solvation at infinite dilution in water
+    organic solvent    water63        methanol64         ethanol64              ΔsolvG∞,water
+                                                                                       i      was calculated by using the parameters from
+       mseg
+        i              1.2047            1.5255            2.3827               Tables 2 and 1. It is clear that the different mixing rules for the
+       σi/Å            b
+                                         3.2300            3.1771               dielectric constant have no influence on the Gibbs energies of
+       ui/kB/K         353.95          188.90            198.24                 solvation since that is a property at infinite dilution. The results
+       εAiBi/K         2425.7         2899.5            2653.4                  of ΔsolvG∞,water
+                                                                                          i      using the earlier version ePC-SAFT advanced
+       κAiBi           0.04509           0.03518           0.03238              and the new ePC-SAFT modeling approach are shown in
+       fk              1.5               1.4               1.6                  Figure 4 together with literature data. The Gibbs energy of
+                                                                                solvation at infinite dilution in water becomes less negative
+a
+ All solvents have a 2B association scheme. bσ = 2.7927 + (10.11·               from Li+ to K+ and also from Cl− to I−. Larger ions have a
+e−0.01775 T/K − 1.417 · e−0.01146 T/K)                                          lower charge density at the surface, which leads to weaker
+                                                                         9411                                                       https://doi.org/10.1021/acs.iecr.5c00475
+                                                                                                                                  Ind. Eng. Chem. Res. 2025, 64, 9406−9418
+Industrial & Engineering Chemistry Research                                              pubs.acs.org/IECR                                          Article
+
+
+
+
+Figure 4. Gibbs energy of solvation at infinite dilution in water of different ions at 298.15 K and 1 bar. Gray: Average value of different literature
+sources36,38,40,67−69 for H+ only the value of Tissandier et al.69 is shown as recommended by Klinksiek et al.;70 blue: New modeling approach
+introduced in this work using parameters from Tables 1−5; and brown: ePC-SAFT advanced results taken from ref 16 All values are given in the
+mole fraction scale.
+
+
+
+
+Figure 5. Molality-based MIACs of different salts in water at 298.15 K and 1 bar. Left: Cl− salts; right: Br− salts. Symbols: Literature data taken
+from.71 Purple upside-down triangles: H+ components; orange triangles: Li+ salts; green squares: Na+ salts; and gray circles: K+ salts. Lines:
+Calculated using ePC-SAFT with the modeling approach introduced in this work using parameters from Tables 1−5.
+
+interactions and consequently to Gibbs energies of solvation                   physical interpretation. The modeled Gibbs energies of
+closer to zero.                                                                solvation at infinite dilution in water for all investigated ions
+   The calculations with the new modeling approach are in                      are found in the Supporting Information in Table S4.
+good agreement with the literature values for ΔsolvG∞,water  . The
+reason behind this is that Δsolv,xG∞ i  is sensitive
+diameter. ePC-SAFT advanced predicts reasonable
+                                                     to
+                                                       i
+                                                         the  Born             ■    MIACS IN WATER
+                                                                               Most applications that use electrolyte solutions operate at
+ΔsolvG∞,water
+        i      values for Li+ but is not able to accurately                    higher electrolyte concentrations and cannot be described
+describe this quantity for other ions. This is related to the use              using only infinite-dilution properties. ePC-SAFT advanced
+of segment diameters in the Born term in ePC-SAFT advanced                     showed great results in modeling concentrated aqueous salt
+since those differ greatly from the fitted Born diameters (with                solutions and represents a good benchmark for the new
+the exception of Li+). Rashin et al. and Schmid et al. also used               modeling approach. It should again be noted that the aim of
+fitted Born diameters in the same range as the fitted ones in                  this work is the description of properties at infinite dilution
+this work.34,36 The differences in the exact values of the Born                while retaining the ability of ePC-SAFT to describe
+diameters can be attributed to the used literature Gibbs                       concentrated electrolyte solutions quantitatively correct. Figure
+energies of solvation, and the fact that in this work, other                   5 shows the MIACs of different salts in water. The new
+contributions than the Born term are included in calculating                   modeling approach is able to describe the initial decrease and
+this quantity. Fawcett et al. calculated the Gibbs energies of                 the later increase of the MIACs with higher salt concentrations
+solvation of different ions in water and used Shannon-Prewitt                  very well for the investigated salts. However, a re-evaluation of
+crystal radii in the Born term, which are smaller than the fitted              the binary interaction parameters compared to earlier versions
+values in this work and the works of Rashin et al. and Schmid                  of ePC-SAFT was necessary to achieve the quantitative
+et al.38 This led to Gibbs energies of solvation that were much                agreement. In contrast, the new treatment did not require
+more negative than the literature values. Other authors used                   refitting the pure-ion parameters. Note, the f k parameter for
+covalent radii or ionic (Pauling) radii, which also resulted in                water was only fitted to MIAC data of NaBr in water, and it
+too negative Gibbs energies of solvation.33,34 Therefore, fitting              remains constant for all other calculations.
+Born diameters to Gibbs energies of solvation is justified,
+especially since the values in this work are comparable to the
+values of other authors. However, this again shows the poor
+                                                                               ■    PROPERTIES IN ORGANIC AND MIXED SOLVENTS
+                                                                               The next step in this work was the evaluation of infinite-
+definition of the Born diameter and raises questions on its                    dilution properties of electrolytes in organic solvents. Methanol
+                                                                        9412                                            https://doi.org/10.1021/acs.iecr.5c00475
+                                                                                                                      Ind. Eng. Chem. Res. 2025, 64, 9406−9418
+Industrial & Engineering Chemistry Research                                             pubs.acs.org/IECR                                         Article
+
+
+
+
+Figure 6. Gibbs energies of transfer at infinite dilution from water to water + organic solvent systems ΔtransG∞
+                                                                                                               i of different ions at 298.15 K and 1
+bar. Top left: K+ in water−methanol mixtures; top right: Br− in water−methanol mixtures; bottom left: Na+ in water−ethanol mixtures; and
+bottom right: Cl− in water−ethanol mixtures. Lines: Calculated using ePC-SAFT with the approach introduced in this work using parameters from
+Tables 1−5; circles: Literature data taken from refs 73,74. All values are given on the mole fraction scale.
+
+and ethanol were chosen as they represent common solvents,                      The properties of concentrated solutions in organic and
+and there is more literature data on their electrolyte solutions              mixed solvents were also investigated to evaluate the
+available compared to other organic solvents. The Gibbs                       performance of the new modeling approach in these systems.
+energy of transfer at infinite dilution from water to organic                 First, experimental MIACs of NaBr in methanol and in ethanol
+solvents is a very important property for transferring ions from              were used to adjust the f k parameter of methanol and ethanol.
+an aqueous to an organic system. It represents the difference in              A comparison of the MIACs of NaBr in methanol with the
+Gibbs energy of solvation of an ion in the two solvents.
+                                                                              modeling results is presented in Figure 7. It can be observed
+   The new treatment of the Born term was then applied in the
+ePC-SAFT framework to predict Gibbs energies of transfer                      that ePC-SAFT modeling MIACs in methanol is quantitatively
+from water to mixed solvents and to predict MIACs of all                      correct using the mixing rule for the dielectric constant
+electrolytes (except NaBr, this was used to fit the f k parameter)            according to eq 16. In contrast, modeling using the mole
+in single solvents and solvent mixtures without fitting
+additional parameters. Figure 6 shows the Gibbs energies of
+transfer at infinite dilution from water to mixed solvent
+systems. ePC-SAFT correlates well with the experimental
+values in the pure solvents. Further, ePC-SAFT correctly
+predicts increasing Gibbs energy of transfer from water to
+mixed solvents with increasing alcohol content. The depend-
+ence of ΔtransG∞i on the solvent composition was discussed by
+Hefter et al., who attributed the observed behavior to changes
+in the three-dimensional structure of water molecules with an
+increase in the alcohol content, which results in complex
+enthalpy and entropy changes.72 The latter two partially
+compensate each other, which leads to an apparently simple
+behavior of ΔtransG∞ i with varying solvent compositions. We
+also checked whether previous versions of ePC-SAFT could
+describe these data, but this could not be confirmed, which is
+                                                                              Figure 7. Molality-based MIACs of NaBr in methanol at 298.15 K
+again caused by the strong influence of the Born diameters on                 and 1 bar. Circles: Literature data from ref 77; solid line: ePC-SAFT
+Gibbs energies of solvation, where differences between                        with the modeling approach introduced in this work using parameters
+modeling and experimental data cannot be overcome                             from Tables 1−5; and dashed line: ePC-SAFT with the modeling
+completely by only fitting kij parameters between ion and                     approach in this work but with the mole fraction-based linear mixing
+solvent.                                                                      rule for the dielectric constant.
+
+                                                                       9413                                           https://doi.org/10.1021/acs.iecr.5c00475
+                                                                                                                    Ind. Eng. Chem. Res. 2025, 64, 9406−9418
+Industrial & Engineering Chemistry Research                                          pubs.acs.org/IECR                                       Article
+
+
+
+
+Figure 8. Molality-based MIACs of LiBr (top left), NaI (top right), and NaBr (bottom) in methanol and in ethanol at 298.15 K and 1 bar. Gray
+circles: Literature MIAC data in methanol;75−78 green squares: Literature MIAC data in ethanol;77,79−81 lines: ePC-SAFT with the modeling
+approach introduced in this work using parameters from Tables 1−5; gray line: Methanol; and black line: Ethanol. The MIACs were modeled up to
+the solubility limit of the salts in the respective solvent as measured in refs 82,83.
+
+fraction-based linear mixing rule for the dielectric constant              about 1 mol kg−1. This could be related to the fact that only
+yielded high deviations between ePC-SAFT and the exper-                    data at low electrolyte concentrations were used in fitting the
+imental MIACs.                                                             parameters for the NaBr-ethanol system (infinite-dilution
+   As a next step, the MIACs of all other salts in ethanol and             properties were used for kij, and MIAC data were used up to
+methanol were modeled without fitting further parameters                   0.25 mol kg−1 for fethanol).
+since the binary interaction parameters ion-methanol and ion-                 To sum up, the new modeling approach within the ePC-
+ethanol were fitted to Gibbs energies of solvation at infinite             SAFT framework allows accurate modeling of properties at
+dilution. The MIACs of LiBr, NaI, and NaBr in pure methanol                infinite dilution and in concentrated electrolyte single-solvent
+and pure ethanol are shown in Figure 8. Two different sources              systems and even prediction in mixed-solvent electrolyte
+for LiBr MIACs in methanol were found in the literature.75,76              systems. The pure-ion parameters could be inherited from
+The ePC-SAFT-predicted MIACs agree well with these two                     earlier works, but the binary interaction parameters needed to
+data sources up to a molality of about 3.5 mol kg−1. At                    be readjusted. The improved performance of ePC-SAFT using
+molalities greater than 3.5 mol kg−1, ePC-SAFT underpredicts               our new approach vs recent modeling approaches for infinitely
+the experimental MIACs, which is quite obvious for LiBr in                 diluted systems was found to be in the new treatment of Born
+ethanol. These deviations might be explained by the fact that              diameters. The good performance of the model for
+the binary interaction parameters ion-methanol and ion-                    concentrated systems can be attributed to the use of a new
+ethanol were fitted to infinite-dilution data. Note that                   mixing rule for the dielectric constant in combination with this
+electrolyte solubility in organic solvents is usually not very             new treatment of Born diameter.
+high, so a low-to-moderate concentration range is more
+important.
+   Further, the ability of ePC-SAFT to predict MIACs in mixed
+                                                                           ■    CONCLUSIONS
+                                                                           The goal of this work was to increase the accuracy of ePC-
+solvent systems was evaluated. Figure 9 shows selected MIACs               SAFT toward modeling properties at infinite dilution in single
+in water−methanol and water−ethanol mixtures at different                  solvents and in mixed solvents at 298.15 K while keeping the
+solvent compositions. Again, the new modeling approach                     well-known accuracy of describing properties at more
+yields good results for the investigated systems, especially at            concentrated electrolyte solutions. To achieve this goal, ePC-
+lower electrolyte concentrations. The modeling results for the             SAFT was further improved by accounting for the solvation-
+system water−ethanol-NaBr show deviations at ion molalities                shell thickness and the dielectric saturation effect within the
+greater than about 2 mol kg−1 at salt-free weight fractions of             Born term. These modifications required the adjustment of the
+ethanol equal to 0.4. ePC-SAFT underestimates the increase in              Born diameter of each ion and one ion-independent solvation
+the MIACs with electrolyte molality at molalities greater than             parameter per solvent as well as one binary interaction
+                                                                    9414                                         https://doi.org/10.1021/acs.iecr.5c00475
+                                                                                                               Ind. Eng. Chem. Res. 2025, 64, 9406−9418
+Industrial & Engineering Chemistry Research                                                   pubs.acs.org/IECR                                         Article
+
+
+
+
+Figure 9. Molality-based MIACs of NaBr (top) and NaCl (bottom) in methanol−water (left) and ethanol−water (right) mixtures at 298.15 K and
+1 bar. Orange triangles: Literature MIACs in wsalt‑free                                                                               salt‑free
+                                                  organic solvent = 0.8 taken from refs 77,84,85; green squares: Literature MIACs in worganic solvent = 0.4
+taken from refs 77,84,85. Lines are modeling results with ePC-SAFT from this work using parameters from Tables 1−5. The MIACs were modeled
+up to the solubility of the salts in the respective solvent mixture as measured in refs 82,83.
+
+parameter ion−solvent. It was shown that infinite-dilution
+properties can be used to adjust the Born diameter, while
+                                                                                  ■     ASSOCIATED CONTENT
+                                                                                  * Supporting Information
+                                                                                  sı
+
+binary interaction parameters were used to correlate finite-                      The Supporting Information is available free of charge at
+concentration properties (MIACs in this work). All other pure-                    https://pubs.acs.org/doi/10.1021/acs.iecr.5c00475.
+ion parameters were taken from earlier versions of ePC-SAFT                             Details on different approaches to calculate the solvation
+without change. New parameters were determined for                                      shell diameter; comparison of the performance of
+                                                                                        different Born contributions in ePC-SAFT together
+vanadium ions V3+ and VO2+ by fitting to density data and
+                                                                                        with different mixing rules for the dielectric constant;
+to osmotic-coefficient data measured in this work. Additionally,                        equations for the conversion of the Gibbs energy of
+a new mixing rule for the dielectric constant was introduced by                         solvation for different standard treatments; density and
+correlating experimental dielectric constant data of single                             osmotic coefficient data for aqueous VCl3 and VOSO4
+electrolytes in water and in methanol. The mixing rule was                              solutions; comparison of literature data of the Gibbs
+                                                                                        energy of solvation of different ions in water (PDF)
+then validated and holds true also for single electrolytes in
+ethanol, which was not used for determining the correlation.
+The new treatment of the Born term allowed for a better
+description of properties of ions at infinite dilution in pure and
+                                                                                  ■     AUTHOR INFORMATION
+                                                                                  Corresponding Authors
+                                                                                       Gangqiang Yu − Laboratory of Thermodynamics, Department
+mixed solvents, which was shown by comparing modeled                                    of Biochemical and Chemical Engineering, TU Dortmund,
+Gibbs energies of solvation and transfer at infinite dilution with                      Dortmund 44277, Germany; College of Environmental
+literature data. The new modeling approach, including the new                           science and Engineering, Beijing University of Technology,
+mixing rule for the dielectric constant, retained the ability of                        Beijing 100124, China; orcid.org/0000-0002-3595-
+                                                                                        6972; Email: yugq@bjut.edu.cn
+earlier versions to describe properties of concentrated
+                                                                                       Christoph Held − Laboratory of Thermodynamics,
+electrolyte solutions in pure solvents, which was shown on                              Department of Biochemical and Chemical Engineering, TU
+MIACs in water, methanol, and ethanol. Even more, MIACs in                              Dortmund, Dortmund 44277, Germany; orcid.org/0000-
+mixed solvents were predicted accurately up to molalities of                            0003-1074-177X; Email: christoph.held@tu-dortmund.de
+about 2 mol kg−1. This is a significant advance over previous                     Author
+modeling works and should also be helpful for other electrolyte                        Paul Figiel − Laboratory of Thermodynamics, Department of
+thermodynamic models.                                                                    Biochemical and Chemical Engineering, TU Dortmund,
+                                                                           9415                                             https://doi.org/10.1021/acs.iecr.5c00475
+                                                                                                                          Ind. Eng. Chem. Res. 2025, 64, 9406−9418
+Industrial & Engineering Chemistry Research                                                   pubs.acs.org/IECR                                          Article
+
+     Dortmund 44277, Germany;            orcid.org/0000-0002-5947-                 strategy at atmospheric pressure. Energy Environ. Sci. 2017, 10 (7),
+     7247                                                                          1621−1630.
+                                                                                     (15) Andersen, S. Z.; Statt, M. J.; Bukas, V. J.; Shapel, S. G.;
+Complete contact information is available at:                                      Pedersen, J. B.; Krempl, K.; Saccoccio, M.; Chakraborty, D.;
+https://pubs.acs.org/10.1021/acs.iecr.5c00475                                      Kibsgaard, J.; Vesborg, P. C. K.; Nørskov, J.; Chorkendorff, I.
+                                                                                   Increasing stability, efficiency, and fundamental understanding of
+Notes                                                                              lithium-mediated electrochemical nitrogen reduction. Energy Environ.
+The authors declare no competing financial interest.                               Sci. 2020, 13 (11), 4291−4300.
+
+■    ACKNOWLEDGMENTS
+This work was sponsored by the Beijing Nova Program (No.
+                                                                                     (16) Bülow, M.; Ascani, M.; Held, C. ePC-SAFT advanced - Part I:
+                                                                                   Physical meaning of including a concentration-dependent dielectric
+                                                                                   constant in the born term and in the Debye-Hückel theory. Fluid
+                                                                                   Phase Equilib. 2021, 535, No. 112967.
+20240484727) and financially supported by the National                               (17) Held, C.; Reschke, T.; Mohammad, S.; Luza, A.; Sadowski, G.
+Natural Science Foundation of China under Grants (No.                              ePC-SAFT revised. Chem. Eng. Res. Des. 2014, 92 (12), 2884−2897.
+22378006). The authors acknowledge funding from the                                  (18) Silva, G. M.; Maribo-Mogensen, B.; Liang, X.; Kontogeorgis, G.
+Alexander von Humboldt Foundation (G.Y.). The work was                             M. Improving the Born equation: Origin of the Born radius and
+funded by the German Research Foundation (DFG), HE7165-                            introducing dielectric saturation effects. Fluid Phase Equilib. 2024,
+15/1, Project nr. 525252957.                                                       576, No. 113955.
+
+■    REFERENCES
+ (1) Adelekan, O. A.; Ilugbusi, B. S.; Adisa, O.; Obi, O. C.; Awonuga,
+                                                                                     (19) Friese, E.; Ebel, A. Temperature dependent thermodynamic
+                                                                                   model of the system H(+)-NH4(+)-Na(+)-SO42−-NO3−-Cl−-H2O. J.
+                                                                                   Phys. Chem. A 2010, 114 (43), 11595−11631.
+                                                                                     (20) Pitzer, K. S. Thermodynamics of electrolytes. I. Theoretical
+K. F.; Asuzu, O. F.; Ndubuisi, N. L. Energy transition policies: a global
+review of shifts towards renewable sources. Eng. Sci. Technol. J. 2024,            basis and general equations. J. Phys. Chem. A 1973, 77 (2), 268−277.
+5 (2), 272−287.                                                                      (21) Chen, C.-C.; Britt, H. I.; Boston, J. F.; Evans, L. B. Local
+ (2) Hassan, Q.; Viktor, P.; Al-Musawi, T. J.; Ali, B. M.; Algburi, S.;            composition model for excess Gibbs energy of electrolyte systems.
+Alzoubi, H. M.; Al-Jiboory, A. K.; Sameen, A. Z.; Salman, H. M.;                   Part I: Single solvent, single completely dissociated electrolyte
+Jaszczur, M. The renewable energy role in the global energy                        systems. AIChE J. 1982, 28 (4), 588−596.
+Transformations. Renewable Energy Focus 2024, 48, No. 100545.                        (22) Kontogeorgis, G. M.; Maribo-Mogensen, B.; Thomsen, K. The
+ (3) Singh, A. N.; Islam, M.; Meena, A.; Faizan, M.; Han, D.; Bathula,             Debye-Hückel theory and its importance in modeling electrolyte
+C.; Hajibabaei, A.; Anand, R.; Nam, K.-W. Unleashing the Potential of              solutions. Fluid Phase Equilib. 2018, 462, 130−152.
+Sodium-Ion Batteries: Current State and Future Directions for                        (23) Kontogeorgis, G. M.; Schlaikjer, A.; Olsen, M. D.; Maribo-
+Sustainable Energy Storage. Adv. Funct. Mater. 2023, 33 (46),                      Mogensen, B.; Thomsen, K.; von Solms, N.; Liang, X. A Review of
+No. 2304617.                                                                       Electrolyte Equations of State with Emphasis on Those Based on
+ (4) Wei, P.; Abid, M.; Adun, H.; Awoh, D. K.; Cai, D.; Zaini, J. H.;              Cubic and Cubic-Plus-Association (CPA) Models. Int. J. Thermophys.
+Bamisile, O. Progress in Energy Storage Technologies and Methods                   2022, 43 (4), No. 54.
+for Renewable Energy Systems Application. Appl. Sci. 2023, 13 (9),                   (24) Chen, C.-C.; Song, Y. Generalized electrolyte-NRTL model for
+No. 5626.                                                                          mixed-solvent electrolyte systems. AIChE J. 2004, 50 (8), 1928−1941.
+ (5) Kulova, T. L.; Fateev, V. N.; Seregina, E. A.; Grigoriev, A. S. A               (25) Simonin, J.-P. On the ″Born″ term used in thermodynamic
+Brief Review of Post-Lithium-Ion Batteries. Int. J. Electrochem. Sci.              models for electrolytes. J. Chem. Phys. 2019, 150 (24), No. 244503.
+2020, 15 (8), 7242−7259.                                                             (26) Bülow, M.; Ascani, M.; Held, C. ePC-SAFT advanced − Part II:
+ (6) Chalamala, B. R.; Soundappan, T.; Fisher, G. R.; Anstey, M. R.;               Application to Salt Solubility in Ionic and Organic Solvents and the
+Viswanathan, V. V.; Perry, M. L. Redox Flow Batteries: An                          Impact of Ion Pairing. Fluid Phase Equilib. 2021, 537, No. 112989.
+Engineering Perspective. Proc. IEEE 2014, 102 (6), 976−999.                          (27) Pabsch, D.; Held, C.; Sadowski, G. Modeling the CO 2
+ (7) Khan, F. N. U.; Rasul, M. G.; Sayem, A.; Mandal, N. Maximizing                Solubility in Aqueous Electrolyte Solutions Using ePC-SAFT. J. Chem.
+energy density of lithium-ion batteries for electric vehicles: A critical          Eng. Data 2020, 65 (12), 5768−5777.
+review. Energy Rep. 2023, 9, 11−21.                                                  (28) Pabsch, D.; Figiel, P.; Sadowski, G.; Held, C. Solubility of
+ (8) Khan, F. M. N. U.; Rasul, M. G.; Sayem, A.; Mandal, N. K.                     Electrolytes in Organic Solvents: Solvent-Specific Effects and Ion-
+Design and optimization of lithium-ion battery as an efficient energy              Specific Effects. J. Chem. Eng. Data 2022, 67 (9), 2706−2718.
+storage device for electric vehicles: A comprehensive review. J. Energy              (29) Pabsch, D.; Lindfeld, J.; Schwalm, J.; Strangmann, A.; Figiel, P.;
+Storage 2023, 71, No. 108033.                                                      Sadowski, G.; Held, C. Influence of solvent and salt on kinetics and
+ (9) Hosaka, T.; Kubota, K.; Hameed, A. S.; Komaba, S. Research                    equilibrium of esterification reactions. Chem. Eng. Sci. 2022, 263,
+Development on K-Ion Batteries. Chem. Rev. 2020, 120 (14), 6358−                   No. 118046.
+6466.                                                                                (30) Klinksiek, M.; Baco, S.; Leveneur, S.; Legros, J.; Held, C.
+ (10) Haupt, A.; Lerch, A. Forward Osmosis Application in                          Activity-Based Models to Predict Kinetics of Levulinic Acid
+Manufacturing Industries: A Short Review. Membranes 2018, 8 (3),                   Esterification. ChemPhysChem 2023, 24 (4), No. e202200729.
+No. 47.                                                                              (31) Maribo-Mogensen, B.; Thomsen, K.; Kontogeorgis, G. M. An
+ (11) Wang, Y.; Feric, T. G.; Tang, J.; Fang, C.; Hamilton, S. T.;                 electrolyte CPA equation of state for mixed solvent electrolytes.
+Halat, D. M.; Wu, B.; Celik, H.; Rim, G.; DuBridge, T.; Oshiro, J.;                AIChE J. 2015, 61 (9), 2933−2950.
+Wang, R.; Park, A.-H. A.; Reimer, J. A. Carbon capture in polymer-                   (32) Born, M. Volumen und Hydratationswärme der Ionen. Z. Phys.
+based electrolytes. Sci. Adv. 2024, 10 (16), No. eadk2350.                         1920, 1 (1), 45−48.
+ (12) Liu, Y.; Wang, Y.; Zhao, S. Journey of electrochemical chlorine                (33) Latimer, W. M.; Pitzer, K. S.; Slansky, C. M. The Free Energy
+production: From brine to seawater. Curr. Opin. Electrochem 2023, 37,              of Hydration of Gaseous Ions, and the Absolute Potential of the
+No. 101202.                                                                        Normal Calomel Electrode. J. Chem. Phys. 1939, 7 (2), 108−111.
+ (13) Xia, R.; Overa, S.; Jiao, F. Emerging Electrochemical Processes                (34) Rashin, A. A.; Honig, B. Reevaluation of the Born model of ion
+to Decarbonize the Chemical Industry. JACS Au 2022, 2 (5), 1054−                   hydration. J. Phys. Chem. A 1985, 89 (26), 5588−5593.
+1070.                                                                                (35) Latimer, W. M. Single Ion Free Energies and Entropies of
+ (14) McEnaney, J. M.; Singh, A. R.; Schwalbe, J. A.; Kibsgaard, J.;               Aqueous Ions. J. Chem. Phys. 1955, 23 (1), 90−92.
+Lin, J. C.; Cargnello, M.; Jaramillo, T. F.; Nørskov, J. K. Ammonia                  (36) Schmid, R.; Miah, A. M.; Sapunov, V. N. A new table of the
+synthesis from N 2 and H 2 O using a lithium cycling electrification               thermodynamic quantities of ionic hydration: values and some
+
+                                                                            9416                                             https://doi.org/10.1021/acs.iecr.5c00475
+                                                                                                                           Ind. Eng. Chem. Res. 2025, 64, 9406−9418
+Industrial & Engineering Chemistry Research                                                     pubs.acs.org/IECR                                           Article
+
+applications (enthalpy−entropy compensation and Born radii). Phys.                    (58) Winsor, P.; Cole, R. H. Dielectric properties of electrolyte
+Chem. Chem. Phys. 2000, 2 (1), 97−102.                                               solutions. 2. Alkali halides in methanol. J. Phys. Chem. A 1982, 86
+ (37) KJ Laidler, C. P. The influence of dielectric saturation on the                (13), 2491−2494.
+thermodynamic properties of aqueous ions. Proc. R. Soc. London, Ser.                  (59) Barthel, J.; R, N.; Chemistry Data Series, 12,2a. Electrolyte Data
+A 1957, 241 (1224), 80−92.                                                           Collection, 2a: Dielectric Properties of Nonaqueous Electrolyte Solutions;
+ (38) Fawcett, W. R. Thermodynamic Parameters for the Solvation of                   DECHEMA, 1996.
+Monatomic Ions in Water. J. Phys. Chem. B 1999, 103 (50), 11181−                      (60) Hasted, J. B.; Roderick, G. W. Dielectric Properties of Aqueous
+11185.                                                                               and Alcoholic Electrolytic Solutions. J. Chem. Phys. 1958, 29 (1), 17−
+ (39) Kumar, A. A Modified Born Equation for Solvation Energy of                     26.
+Ions. J. Phys. Soc. Jpn. 1992, 61 (11), 4247−4250.                                    (61) Weingärtner, H.; Nadolny, H. G.; Käshammer, S. Dielectric
+ (40) Marcus, Y. Thermodynamics of solvation of ions. Part 5.�                       Properties of an Electrolyte Solution at Low Reduced Temperature. J.
+Gibbs free energy of hydration at 298.15 K. J. Chem. Soc., Faraday                   Phys. Chem. B 1999, 103 (22), 4738−4743.
+Trans. 1991, 87 (18), 2995−2999.                                                      (62) Ben-Naim, A. Y. Solvation Thermodynamics; Springer, 1987.
+ (41) Hasted, J. B.; Ritson, D. M.; Collie, C. H. Dielectric Properties               (63) Cameretti, L. F.; Sadowski, G. Modeling of aqueous amino acid
+of Aqueous Ionic Solutions. Parts I and II. J. Chem. Phys. 1948, 16 (1),             and polypeptide solutions with PC-SAFT. Chem. Eng. Process.: Process
+1−21.                                                                                Intensif. 2008, 47 (6), 1018−1025.
+ (42) Duan, X.; Nakamura, I. A new lattice Monte Carlo simulation                     (64) Gross, J.; Sadowski, G. Application of the Perturbed-Chain
+for dielectric saturation in ion-containing liquids. Soft Matter 2015, 11            SAFT Equation of State to Associating Systems. Ind. Eng. Chem. Res.
+(18), 3566−3571.                                                                     2002, 41 (22), 5510−5515.
+ (43) Booth, F. Dielectric Constant of Polar Liquids at High Field                    (65) Held, C.; Sadowski, G. Manuel ’e-PC-SAFT 1.0′; TU Dortmund
+Strengths. J. Chem. Phys. 1955, 23 (3), 453−457.                                     University, Laboratory of Thermodynamics, 2017.
+ (44) Andeen, C.; Fontanella, J.; Schuele, D. Low-Frequency                           (66) Dohrn, S.; Reimer, P.; Luebbert, C.; Lehmkemper, K.;
+Dielectric Constant of LiF, NaF, NaCl, NaBr, KCl, and KBr by the                     Kyeremateng, S. O.; Degenhardt, M.; Sadowski, G. Thermodynamic
+Method of Substitution. Phys. Rev. B 1970, 2 (12), No. 5068.                         Modeling of Solvent-Impact on Phase Separation in Amorphous Solid
+ (45) Abraham, M. H.; Liszi, J.; Mészaros, L. Calculations on ionic                  Dispersions during Drying. Mol. Pharmaceutics 2020, 17 (7), 2721−
+solvation. III. The electrostatic free energy of solvation of ions, using a          2733.
+multilayered continuum model. J. Chem. Phys. 1979, 70 (5), 2491−                      (67) Conway, B. E. The evaluation and use of properties of
+2496.                                                                                individual ions in slution. J. Solution Chem. 1978, 7 (10), 721−770.
+ (46) Abraham, M. H.; Liszi, J.; Kristof, E. Calculations on ionic                    (68) Pliego, J. R., Jr; Riveros, J. M. Gibbs energy of solvation of
+solvation. VII. The free energy of solvation of ions calculated from                 organic ions in aqueous and dimethyl sulfoxide solutions. Phys. Chem.
+                                                                                     Chem. Phys. 2002, 4 (9), 1622−1627.
+various local solvent dielectric constant-distance functions. Aust. J.
+                                                                                      (69) Tissandier, M. D.; Cowen, K. A.; Feng, W. Y.; Gundlach, E.;
+Chem. 1982, 35 (7), 1273−1279.
+                                                                                     Cohen, M. H.; Earhart, A. D.; Coe, J. V.; Tuttle, T. R. The Proton’s
+ (47) Floriano, W. B.; Nascimento, M. A. C. Dielectric constant and
+                                                                                     Absolute Aqueous Enthalpy and Gibbs Free Energy of Solvation from
+density of water as a function of pressure at constant temperature.
+                                                                                     Cluster-Ion Solvation Data. J. Phys. Chem. A 1998, 102 (40), 7787−
+Braz. J. Phys. 2004, 34 (1), 38−41.
+                                                                                     7794.
+ (48) Khimenko, M. T.; Aleksandrov, V. V.; Gritsenko, N. N.
+                                                                                      (70) Klinksiek, M.; Baco, S.; Leveneur, S.; Legros, J.; Held, C.
+Polarizability and radii of molecules of some pure liquids. Zh. Fiz.
+                                                                                     Predicting Proton Activity and Acid Dissociation Equilibria in Mixed-
+Khim. 1973, No. 47, 2914−2915.                                                       Solvent Systems, and Their Impact on Esterification Kinetics of
+ (49) Shirke, R. M.; Chaudhari, A.; More, N. M.; Patil, P. B.
+                                                                                     Levulinic Acid. Ind. Eng. Chem. Res. 2025, 64 (11), 6188−6202.
+Temperature dependent dielectric relaxation study of ethyl acetate �                  (71) Hamer, W. J.; Wu, Y.-C. Osmotic Coefficients and Mean
+Alcohol mixtures using time domain technique. J. Mol. Liq. 2001, 94                  Activity Coefficients of Uni-univalent Electrolytes in Water at 25°C. J.
+(1), 27−36.                                                                          Phys. Chem. Ref. Data 1972, 1 (4), 1047−1100.
+ (50) Bülow, M.; Ji, X.; Held, C. Incorporating a concentration-                     (72) Hefter, G. T.; Mclay, P. J. Solvation of Fluoride Ions. II.
+dependent dielectric constant into ePC-SAFT. An application to                       Enthalpies and Entropies of Transfer From Water to Aqueous
+binary mixtures containing ionic liquids. Fluid Phase Equilib. 2019,                 Methanol. Aust. J. Chem. 1988, 41 (12), No. 1971.
+492, 26−33.                                                                           (73) Marcus, Y. Gibbs energies of transfer of anions from water to
+ (51) Ascani, M.; Held, C. Prediction of salting-out in liquid-liquid                mixed aqueous organic solvents. Chem. Rev. 2007, 107 (9), 3880−
+two-phase systems with ePC-SAFT: Effect of the Born term and of a                    3897.
+concentration-dependent dielectric constant. Z. Anorg. Allg. Chem.                    (74) Kalidas, C.; Hefter, G.; Marcus, Y. Gibbs energies of transfer of
+2021, 647 (12), 1305−1314.                                                           cations from water to mixed aqueous organic solvents. Chem. Rev.
+ (52) Zuber, A.; Cardozo-Filho, L.; Cabral, V. F.; Checoni, R. F.;                   2000, 100 (3), 819−852.
+Castier, M. An empirical equation for the dielectric constant in                      (75) Barthel, J.; Lauermann, G.; Neueder, R. Vapor pressure
+aqueous and nonaqueous electrolyte mixtures. Fluid Phase Equilib.                    measurements on non-aqueous electrolyte solutions. Part 2.
+2014, 376, 116−123.                                                                  Tetraalkylammonium salts in methanol. Activity coefficients of
+ (53) Nörtemann, K.; Hilland, J.; Kaatze, U. Dielectric Properties of                various 1−1 electrolytes at high concentrations. J. Solution Chem.
+Aqueous NaCl Solutions at Microwave Frequencies. J. Phys. Chem. A                    1986, 15 (10), 851−867.
+1997, 101 (37), 6864−6869.                                                            (76) Safarov, J. T. Study of thermodynamic properties of binary
+ (54) Wei, Y.-Z.; Sridhar, S. Dielectric spectroscopy up to 20 GHz of                solutions of lithium bromide or lithium chloride with methanol. Fluid
+LiCl/H2O solutions. J. Chem. Phys. 1990, 92 (2), 923−928.                            Phase Equilib. 2005, 236 (1−2), 87−95.
+ (55) Haggis, G. H.; Hasted, J. B.; Buchanan, T. J. The Dielectric                    (77) Ye, S.; Xans, P.; Lagourette, B. Modification of the Pitzer model
+Properties of Water in Solutions. J. Chem. Phys. 1952, 20 (9), 1452−                 to calculate the mean activity coefficients of electrolytes in a water-
+1465.                                                                                alcohol mixed solvent solution. J. Solution Chem. 1994, 23 (12),
+ (56) Buchner, R.; Hefter, G. T.; May, P. M. Dielectric Relaxation of                1301−1315.
+Aqueous NaCl Solutions. J. Phys. Chem. A 1999, 103 (1), 1−9.                          (78) Nasirzadeh, K.; Papaiconomou, N.; Neueder, R.; Kunz, W.
+ (57) Kaatze, U.; Adolph, D.; Gottlob, D.; Pottel, R. Static                         Vapor Pressures, Osmotic and Activity Coefficients of Electrolytes in
+Permittivity and Dielectric Relaxation of Solutions of Ions in                       Protic Solvents at Different Temperatures. 1. Lithium Bromide in
+Methanol. Ber. Bunsenges. Phys. Chem. 1980, 84 (12), 1198−1203.                      Methanol. J. Solution Chem. 2004, 33 (3), 227−245.
+
+                                                                              9417                                              https://doi.org/10.1021/acs.iecr.5c00475
+                                                                                                                              Ind. Eng. Chem. Res. 2025, 64, 9406−9418
+Industrial & Engineering Chemistry Research                                      pubs.acs.org/IECR                                 Article
+
+ (79) Barthel, J.; Lauermann, G. Vapor pressure measurements on
+non-aqueous electrolyte solutions. Part 3: Solutions of sodium lodide
+in ethanol, 2-propanol, and acetonitrile. J. Solution Chem. 1986, 15
+(10), 869−877.
+ (80) Held, C.; Prinz, A.; Wallmeyer, V.; Sadowski, G. Measuring and
+modeling alcohol/salt systems. Chem. Eng. Sci. 2012, 68 (1), 328−
+339.
+ (81) Safarov, J. T. Vapor pressures of lithium bromide or lithium
+chloride and ethanol solutions. Fluid Phase Equilib. 2006, 243 (1−2),
+38−44.
+ (82) Pinho, S. P.; Macedo, E. A. Solubility of NaCl, NaBr, and KCl
+in Water, Methanol, Ethanol, and Their Mixed Solvents. J. Chem. Eng.
+Data 2005, 50 (1), 29−32.
+ (83) Li, M.; Constantinescu, D.; Wang, L.; Mohs, A.; Gmehling, J.
+Solubilities of NaCl, KCl, LiCl, and LiBr in Methanol, Ethanol,
+Acetone, and Mixed Solvents and Correlation Using the LIQUAC
+Model. Ind. Eng. Chem. Res. 2010, 49 (10), 4981−4988.
+ (84) Yan, W.; Xu, Y.; Han, S. Activity coefficients of sodium chloride
+in methanol-water mixed solvents at 298.15 K. Acta Chim. Sin. 1994,
+52 (10), 937−946.
+ (85) Esteso, M. A.; Gonzalez-Diaz, O. M.; Hernandez-Luis, F. F.;
+Fernandez-Merida, L. Activity coefficients for NaCl in ethanol-water
+mixtures at 25C. J. Solution Chem. 1989, 18 (3), 277−288.
+
+
+
+
+                                                                          9418                         https://doi.org/10.1021/acs.iecr.5c00475
+                                                                                                     Ind. Eng. Chem. Res. 2025, 64, 9406−9418
+

@@ -276,6 +276,11 @@ def _build_catalog() -> Dict[str, Any]:
             "DH_model": {
                 "d_ion_mode": 1,
                 "bjeruum_treatment": bool(model.get("bjeruum_treatment", False)),
+                "mu_DH_model": {
+                    "differential_mode": "analytical",
+                    "comp_dep_rel_perm": True,
+                    "include_sum_term": True,
+                },
             },
             "include_born_model": born_public != 0,
             "born_model": {

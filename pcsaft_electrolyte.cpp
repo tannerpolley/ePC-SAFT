@@ -20,6 +20,17 @@ thread_local vector<double> g_last_mu_ion;
 thread_local vector<double> g_last_mu_born;
 thread_local vector<double> g_last_mu_total;
 thread_local vector<double> g_last_lnfugcoef;
+
+int gcd_int(int a, int b) {
+    a = std::abs(a);
+    b = std::abs(b);
+    while (b != 0) {
+        int t = a % b;
+        a = b;
+        b = t;
+    }
+    return a == 0 ? 1 : a;
+}
 }
 
 #if defined(HUGE_VAL) && !defined(_HUGE)
@@ -134,6 +145,7 @@ double compute_ion_born_radius_dt(int i, double t, const add_args &cppargs) {
 }
 
 double compute_eps_rule(int rule, const vector<double> &x, add_args &cppargs);
+DielcState evaluate_dielc_state(const vector<double> &x, add_args &cppargs);
 
 double compute_eps_solvent_reference(const vector<double> &x, add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
@@ -303,6 +315,70 @@ vector<double> compute_born_dadx_fd(double t, const vector<double> &x, add_args 
     return dadx_born;
 }
 
+double compute_dh_ares_only(double t, double rho, const vector<double> &x, add_args &cppargs) {
+    if (cppargs.z.empty()) {
+        return 0.0;
+    }
+    int ncomp = static_cast<int>(x.size());
+    vector<double> d(ncomp, 0.0);
+    for (int i = 0; i < ncomp; i++) {
+        d[i] = cppargs.s[i]*(1.0 - 0.12*std::exp(-3.0*cppargs.e[i]/t));
+        if (is_ion_species(cppargs, i)) {
+            d[i] = compute_ion_diameter(i, t, cppargs);
+        }
+    }
+
+    double den = rho*N_AV/1.0e30;
+    double Qsum = 0.0;
+    for (int i = 0; i < ncomp; i++) {
+        Qsum += cppargs.z[i]*cppargs.z[i]*x[i];
+    }
+    if (Qsum == 0.0) {
+        return 0.0;
+    }
+
+    DielcState dielc_state = evaluate_dielc_state(x, cppargs);
+    double eps = dielc_state.eps;
+    double kappa = std::sqrt(den*E_CHRG*E_CHRG/kb/t/(eps*perm_vac)*Qsum);
+    if (kappa == 0.0) {
+        return 0.0;
+    }
+
+    double S = 0.0;
+    for (int i = 0; i < ncomp; i++) {
+        double ka = kappa*d[i];
+        double chi = 3/std::pow(ka, 3)*(1.5 + std::log(1 + ka) - 2*(1 + ka) + 0.5*std::pow(1 + ka, 2));
+        S += x[i]*cppargs.z[i]*cppargs.z[i]*chi;
+    }
+
+    double K0 = E_CHRG*E_CHRG/(12.0*PI*kb*t*perm_vac);
+    return -K0*kappa/eps*S;
+}
+
+vector<double> compute_dh_dadx_fd(double t, double rho, const vector<double> &x, add_args &cppargs, double a0) {
+    int ncomp = static_cast<int>(x.size());
+    vector<double> dadx_dh(ncomp, 0.0);
+    for (int i = 0; i < ncomp; i++) {
+        double h = 1e-6*std::max(1.0, std::abs(x[i]));
+        vector<double> xp = x;
+        xp[i] += h;
+        double fp = compute_dh_ares_only(t, rho, xp, cppargs);
+        if (x[i] - h >= 0.0) {
+            vector<double> xm = x;
+            xm[i] -= h;
+            double fm = compute_dh_ares_only(t, rho, xm, cppargs);
+            dadx_dh[i] = (fp - fm)/(2.0*h);
+        }
+        else {
+            dadx_dh[i] = (fp - a0)/h;
+        }
+        if (!std::isfinite(dadx_dh[i])) {
+            throw ValueError("Non-finite DH finite-difference derivative.");
+        }
+    }
+    return dadx_dh;
+}
+
 void validate_dielc_inputs(const vector<double> &x, add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     if (cppargs.dielc.size() != static_cast<size_t>(ncomp)) {
@@ -316,6 +392,15 @@ void validate_dielc_inputs(const vector<double> &x, add_args &cppargs) {
     }
     if (cppargs.d_ion_mode < 0 || cppargs.d_ion_mode > 2) {
         throw ValueError("Unknown d_ion_mode. Supported values are 0, 1, 2.");
+    }
+    if (cppargs.mu_DH_diff_mode != 0 && cppargs.mu_DH_diff_mode != 1) {
+        throw ValueError("Unknown mu_DH differential_mode. Supported values are analytical/numerical (0/1).");
+    }
+    if (cppargs.mu_DH_comp_dep_rel_perm != 0 && cppargs.mu_DH_comp_dep_rel_perm != 1) {
+        throw ValueError("mu_DH comp_dep_rel_perm must be 0 or 1.");
+    }
+    if (cppargs.mu_DH_include_sum_term != 0 && cppargs.mu_DH_include_sum_term != 1) {
+        throw ValueError("mu_DH include_sum_term must be 0 or 1.");
     }
     if (cppargs.include_born_model != 0 && cppargs.include_born_model != 1) {
         throw ValueError("include_born_model must be 0 or 1.");
@@ -356,8 +441,8 @@ void validate_dielc_inputs(const vector<double> &x, add_args &cppargs) {
         }
     }
     int rule = cppargs.dielc_rule;
-    if (rule < 0 || rule > 6) {
-        throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6.");
+    if (rule < 0 || rule > 7) {
+        throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7.");
     }
     if ((rule == 2 || rule == 3 || rule == 4 || rule == 5) &&
         cppargs.mw.size() != static_cast<size_t>(ncomp)) {
@@ -381,6 +466,49 @@ double compute_eps_rule(int rule, const vector<double> &x, add_args &cppargs) {
             eps += x[i]*cppargs.dielc[i];
         }
         return eps;
+    }
+    if (rule == 7) {
+        vector<int> idx_sol;
+        vector<int> idx_cat;
+        vector<int> idx_an;
+        for (int i = 0; i < ncomp; i++) {
+            if (std::abs(cppargs.z[i]) <= 1e-12) idx_sol.push_back(i);
+            else if (cppargs.z[i] > 0.0) idx_cat.push_back(i);
+            else idx_an.push_back(i);
+        }
+        if (idx_sol.empty()) {
+            throw ValueError("dielc_rule=7 requires at least one solvent species (z=0).");
+        }
+        if (idx_cat.size() != 1 || idx_an.size() != 1) {
+            throw ValueError("dielc_rule=7 currently requires exactly one cation and one anion species.");
+        }
+        int idx_c = idx_cat[0];
+        int idx_a = idx_an[0];
+        int zc = static_cast<int>(std::llround(std::abs(cppargs.z[idx_c])));
+        int za = static_cast<int>(std::llround(std::abs(cppargs.z[idx_a])));
+        if (zc <= 0 || za <= 0) {
+            throw ValueError("dielc_rule=7 requires non-zero integer ion valences.");
+        }
+        int g = gcd_int(zc, za);
+        int nu_c = za / g;
+        int nu_a = zc / g;
+        int nu_tot = nu_c + nu_a;
+        if (nu_tot <= 0) {
+            throw ValueError("dielc_rule=7 computed invalid salt stoichiometry.");
+        }
+        double x_ion = 0.0;
+        double solvent_sum = 0.0;
+        for (int idx : idx_sol) {
+            solvent_sum += x[idx] * cppargs.dielc[idx];
+        }
+        for (int idx : idx_cat) x_ion += x[idx];
+        for (int idx : idx_an) x_ion += x[idx];
+        double denom = static_cast<double>(nu_tot) - static_cast<double>(nu_tot - 1) * x_ion;
+        if (denom <= 0.0) {
+            throw ValueError("dielc_rule=7 encountered non-positive salt-fraction denominator.");
+        }
+        double eps_salt = (static_cast<double>(nu_c) * cppargs.dielc[idx_c] + static_cast<double>(nu_a) * cppargs.dielc[idx_a]) / static_cast<double>(nu_tot);
+        return (static_cast<double>(nu_tot) * solvent_sum + x_ion * eps_salt) / denom;
     }
     if (rule == 2) {
         double mw_bar = 0.0;
@@ -461,7 +589,7 @@ double compute_eps_rule(int rule, const vector<double> &x, add_args &cppargs) {
         for (int idx : idx_ion) x_ion += x[idx];
         return eps_sf_const/(1.0 + alpha*x_ion);
     }
-    throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6.");
+    throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7.");
 }
 
 vector<double> compute_deps_rule_analytic(int rule, const vector<double> &x, add_args &cppargs) {
@@ -473,6 +601,55 @@ vector<double> compute_deps_rule_analytic(int rule, const vector<double> &x, add
     }
     if (rule == 1) {
         return cppargs.dielc;
+    }
+    if (rule == 7) {
+        vector<int> idx_sol;
+        vector<int> idx_cat;
+        vector<int> idx_an;
+        for (int i = 0; i < ncomp; i++) {
+            if (std::abs(cppargs.z[i]) <= 1e-12) idx_sol.push_back(i);
+            else if (cppargs.z[i] > 0.0) idx_cat.push_back(i);
+            else idx_an.push_back(i);
+        }
+        if (idx_sol.empty()) {
+            throw ValueError("dielc_rule=7 requires at least one solvent species (z=0).");
+        }
+        if (idx_cat.size() != 1 || idx_an.size() != 1) {
+            throw ValueError("dielc_rule=7 currently requires exactly one cation and one anion species.");
+        }
+        int idx_c = idx_cat[0];
+        int idx_a = idx_an[0];
+        int zc = static_cast<int>(std::llround(std::abs(cppargs.z[idx_c])));
+        int za = static_cast<int>(std::llround(std::abs(cppargs.z[idx_a])));
+        if (zc <= 0 || za <= 0) {
+            throw ValueError("dielc_rule=7 requires non-zero integer ion valences.");
+        }
+        int g = gcd_int(zc, za);
+        int nu_c = za / g;
+        int nu_a = zc / g;
+        int nu_tot = nu_c + nu_a;
+        if (nu_tot <= 0) {
+            throw ValueError("dielc_rule=7 computed invalid salt stoichiometry.");
+        }
+        double x_ion = 0.0;
+        double solvent_sum = 0.0;
+        for (int idx : idx_sol) {
+            solvent_sum += x[idx] * cppargs.dielc[idx];
+        }
+        for (int idx : idx_cat) x_ion += x[idx];
+        for (int idx : idx_an) x_ion += x[idx];
+        double denom = static_cast<double>(nu_tot) - static_cast<double>(nu_tot - 1) * x_ion;
+        if (denom <= 0.0) {
+            throw ValueError("dielc_rule=7 encountered non-positive salt-fraction denominator.");
+        }
+        double eps_salt = (static_cast<double>(nu_c) * cppargs.dielc[idx_c] + static_cast<double>(nu_a) * cppargs.dielc[idx_a]) / static_cast<double>(nu_tot);
+        double eps_num = static_cast<double>(nu_tot) * solvent_sum + x_ion * eps_salt;
+        vector<double> deps_dx(ncomp, 0.0);
+        double common_ion_deriv = (eps_salt * denom + static_cast<double>(nu_tot - 1) * eps_num) / (denom * denom);
+        for (int idx : idx_sol) deps_dx[idx] = static_cast<double>(nu_tot) * cppargs.dielc[idx] / denom;
+        for (int idx : idx_cat) deps_dx[idx] = common_ion_deriv;
+        for (int idx : idx_an) deps_dx[idx] = common_ion_deriv;
+        return deps_dx;
     }
     if (rule == 2) {
         double mw_bar = 0.0;
@@ -561,7 +738,7 @@ vector<double> compute_deps_rule_analytic(int rule, const vector<double> &x, add
         }
         return deps_dx;
     }
-    throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6.");
+    throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7.");
 }
 
 vector<double> compute_deps_rule_fd(int rule, const vector<double> &x, add_args &cppargs) {
@@ -1537,32 +1714,35 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
                 Tsum += x[i]*cppargs.z[i]*cppargs.z[i]*sigma_k[i];
             }
 
-            // Unified DH chemical potential form (DH_model 0 and 1 are aliases).
             double K0 = E_CHRG*E_CHRG/(12.0*PI*kb*t*perm_vac); // without epsilon
-
-            // dkappa/dx (Bulow 2019 with eps(x))
-            vector<double> dkappa_dx(ncomp, 0.0);
-            double Aconst = den*E_CHRG*E_CHRG/(kb*t*perm_vac);
-            for (int i = 0; i < ncomp; i++) {
-                dkappa_dx[i] = Aconst*( cppargs.z[i]*cppargs.z[i]/eps - Qsum*deps_dx[i]/(eps*eps) )/(2.0*kappa);
-            }
-
-            // dS/dx using dchi/dkappa = (sigma-chi)/kappa
-            vector<double> dS_dx(ncomp, 0.0);
-            for (int i = 0; i < ncomp; i++) {
-                dS_dx[i] = cppargs.z[i]*cppargs.z[i]*chi[i] + dkappa_dx[i]*(Tsum - S)/kappa;
-            }
-            // a_DH and Z_DH
             double a_DH = -K0*kappa/(eps)*S;
             double Z_DH = -(K0/2.0)*kappa/(eps)*Tsum;
 
-            // da_DH/dx_i
             vector<double> dadx(ncomp, 0.0);
-            for (int i = 0; i < ncomp; i++) {
-                double d_inv_eps_dx = -deps_dx[i]/(eps*eps);
-                double term1 = (dkappa_dx[i]/eps + kappa*d_inv_eps_dx)*S;
-                double term2 = kappa/eps*dS_dx[i];
-                dadx[i] = -K0*(term1 + term2);
+            vector<double> dkappa_dx(ncomp, 0.0);
+            vector<double> dS_dx(ncomp, 0.0);
+            const bool use_dh_deps = (cppargs.mu_DH_comp_dep_rel_perm != 0);
+            const double dh_deps_multiplier = (cppargs.mu_DH_include_sum_term != 0) ? Qsum : 1.0;
+            if (cppargs.mu_DH_diff_mode == 1) {
+                dadx = compute_dh_dadx_fd(t, rho, x, cppargs, a_DH);
+            }
+            else {
+                double Aconst = den*E_CHRG*E_CHRG/(kb*t*perm_vac);
+                for (int i = 0; i < ncomp; i++) {
+                    double deps_term = use_dh_deps ? dh_deps_multiplier*deps_dx[i]/(eps*eps) : 0.0;
+                    dkappa_dx[i] = Aconst*(cppargs.z[i]*cppargs.z[i]/eps - deps_term)/(2.0*kappa);
+                }
+
+                for (int i = 0; i < ncomp; i++) {
+                    dS_dx[i] = cppargs.z[i]*cppargs.z[i]*chi[i] + dkappa_dx[i]*(Tsum - S)/kappa;
+                }
+
+                for (int i = 0; i < ncomp; i++) {
+                    double d_inv_eps_dx = use_dh_deps ? -deps_dx[i]/(eps*eps) : 0.0;
+                    double term1 = (dkappa_dx[i]/eps + kappa*d_inv_eps_dx)*S;
+                    double term2 = kappa/eps*dS_dx[i];
+                    dadx[i] = -K0*(term1 + term2);
+                }
             }
 
             double sum_x_dadx = 0.0;
@@ -1575,12 +1755,15 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
             }
             if (cppargs.debug) {
                 std::cout << std::fixed << std::setprecision(10)
-                          << "[DEBUG DH_unified] model=" << dh_model
+                          << (cppargs.mu_DH_diff_mode == 1 ? "[DEBUG DH_fd]" : "[DEBUG DH_unified]")
+                          << " model=" << dh_model
                           << " eps=" << eps
                           << " kappa=" << kappa
                           << " Qsum=" << Qsum
                           << " S=" << S
                           << " Tsum=" << Tsum
+                          << " use_deps=" << use_dh_deps
+                          << " deps_multiplier=" << dh_deps_multiplier
                           << " sum_x_dadx=" << sum_x_dadx*8.314*t/1000.0
                           << std::endl;
             }
@@ -2126,28 +2309,7 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, add_args &cppargs
         DielcState dielc_state = evaluate_dielc_state(x, cppargs);
         double eps = dielc_state.eps;
         double eps_born = (cppargs.born_eps_mode == 1) ? compute_eps_solvent_reference(x, cppargs) : eps;
-        vector<double> q(cppargs.z.begin(), cppargs.z.end());
-        for (int i = 0; i < ncomp; i++) {
-            q[i] = q[i]*E_CHRG;
-        }
-
-        summ = 0.;
-        for (int i = 0; i < ncomp; i++) {
-            summ += cppargs.z[i]*cppargs.z[i]*x[i];
-        }
-        double kappa = sqrt(den*E_CHRG*E_CHRG/kb/t/(eps*perm_vac)*summ); // the inverse Debye screening length. Equation 4 in Held et al. 2008.
-
-        if (kappa != 0) {
-            vector<double> chi(ncomp);
-            summ = 0.;
-            for (int i = 0; i < ncomp; i++) {
-                chi[i] = 3/pow(kappa*d[i], 3)*(1.5 + log(1+kappa*d[i]) - 2*(1+kappa*d[i]) +
-                    0.5*pow(1+kappa*d[i], 2));
-                summ += x[i]*q[i]*q[i]*chi[i]*kappa;
-            }
-
-            ares_ion = -1/12./PI/kb/t/(eps*perm_vac)*summ;
-        }
+        ares_ion = compute_dh_ares_only(t, rho, x, cppargs);
 
         if (cppargs.born_model == 1) {
             // Born term (Bulow 2021a, non-SSM+DS): use d_born,i in denominator
@@ -3509,6 +3671,9 @@ add_args get_single_component(int i, add_args &cppargs) {
     args_single.dielc_rule = cppargs.dielc_rule;
     args_single.dielc_diff_mode = cppargs.dielc_diff_mode;
     args_single.d_ion_mode = cppargs.d_ion_mode;
+    args_single.mu_DH_diff_mode = cppargs.mu_DH_diff_mode;
+    args_single.mu_DH_comp_dep_rel_perm = cppargs.mu_DH_comp_dep_rel_perm;
+    args_single.mu_DH_include_sum_term = cppargs.mu_DH_include_sum_term;
     args_single.include_born_model = cppargs.include_born_model;
     args_single.d_born_mode = cppargs.d_born_mode;
     args_single.born_solvation_shell_model = cppargs.born_solvation_shell_model;

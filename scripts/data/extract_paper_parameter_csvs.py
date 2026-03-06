@@ -105,6 +105,9 @@ RUNTIME_REQUIRED_KEYS = {
     "dielc_rule",
     "dielc_diff_mode",
     "d_ion_mode",
+    "mu_DH_diff_mode",
+    "mu_DH_comp_dep_rel_perm",
+    "mu_DH_include_sum_term",
     "include_born_model",
     "d_Born_mode",
     "born_solvation_shell_model",
@@ -137,7 +140,7 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
     "cameretti_2005": {
         "elec_model": {
             "rel_perm": {"rule": "constant", "differential_mode": "analytical"},
-            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False},
+            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False, "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True}},
             "include_born_model": False,
             "born_model": {
                 "d_Born_mode": 0,
@@ -157,7 +160,7 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
     "held_2008": {
         "elec_model": {
             "rel_perm": {"rule": "constant", "differential_mode": "analytical"},
-            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False},
+            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False, "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True}},
             "include_born_model": False,
             "born_model": {
                 "d_Born_mode": 0,
@@ -177,7 +180,7 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
     "held_2014": {
         "elec_model": {
             "rel_perm": {"rule": "constant", "differential_mode": "analytical"},
-            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False},
+            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False, "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True}},
             "include_born_model": False,
             "born_model": {
                 "d_Born_mode": 0,
@@ -197,7 +200,7 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
     "bulow_2020": {
         "elec_model": {
             "rel_perm": {"rule": 1, "differential_mode": "analytical"},
-            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False},
+            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False, "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True}},
             "include_born_model": True,
             "born_model": {
                 "d_Born_mode": 0,
@@ -217,7 +220,7 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
     "bulow_2021": {
         "elec_model": {
             "rel_perm": {"rule": 3, "differential_mode": "analytical"},
-            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False},
+            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False, "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True}},
             "include_born_model": True,
             "born_model": {
                 "d_Born_mode": 0,
@@ -237,7 +240,7 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
     "figiel_2025": {
         "elec_model": {
             "rel_perm": {"rule": "empirical", "differential_mode": "numerical"},
-            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False},
+            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False, "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True}},
             "include_born_model": True,
             "born_model": {
                 "d_Born_mode": 3,

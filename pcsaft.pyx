@@ -2156,7 +2156,11 @@ def create_struct(params):
 
     legacy_elec_keys = {
         'dielc_rule', 'dielc_diff_mode', 'born_model', 'born_radius_model',
-        'born_diff_mode', 'born_eps_mode', 'DH_model', 'bjeruum_treatment'
+        'born_diff_mode', 'born_eps_mode', 'DH_model', 'bjeruum_treatment',
+        'd_ion_mode', 'include_born_model', 'd_Born_mode',
+        'born_solvation_shell_model', 'born_dielectric_saturation', 'born_bulk_mode',
+        'mu_DH_diff_mode', 'mu_DH_comp_dep_rel_perm', 'mu_DH_include_sum_term',
+        'mu_born_diff_mode', 'mu_born_comp_dep_rel_perm', 'mu_born_include_sum_term', 'mu_born_comp_dep_delta_d'
     }
     if any((k in params) for k in legacy_elec_keys):
         raise ValueError(
@@ -2169,7 +2173,15 @@ def create_struct(params):
             # Backward-compatible electrolyte defaults when no explicit user options are provided.
             elec_model = {
                 'rel_perm': {'rule': 1, 'differential_mode': 'analytical'},
-                'DH_model': {'d_ion_mode': 1, 'bjeruum_treatment': False},
+                'DH_model': {
+                    'd_ion_mode': 1,
+                    'bjeruum_treatment': False,
+                    'mu_DH_model': {
+                        'differential_mode': 'analytical',
+                        'comp_dep_rel_perm': True,
+                        'include_sum_term': True,
+                    },
+                },
                 'include_born_model': True,
                 'born_model': {
                     'd_Born_mode': 0,
@@ -2244,6 +2256,9 @@ def create_struct(params):
     born_model_dict = elec_model.get('born_model', {})
     if not isinstance(born_model_dict, dict):
         raise ValueError('params["elec_model"]["born_model"] must be a dict.')
+    mu_dh = dh_model_dict.get('mu_DH_model', {})
+    if not isinstance(mu_dh, dict):
+        raise ValueError('params["elec_model"]["DH_model"]["mu_DH_model"] must be a dict.')
     mu_born = born_model_dict.get('mu_born_model', {})
     if not isinstance(mu_born, dict):
         raise ValueError('params["elec_model"]["born_model"]["mu_born_model"] must be a dict.')
@@ -2252,13 +2267,18 @@ def create_struct(params):
     cppargs.dielc_diff_mode = _as_int_alias(rel_perm.get('differential_mode', 'analytical'), diff_alias)
     if cppargs.dielc_diff_mode not in (0, 1):
         raise ValueError('Unknown rel_perm differential_mode. Supported values are analytical/numerical (0/1).')
-    if cppargs.dielc_rule < 0 or cppargs.dielc_rule > 6:
-        raise ValueError('Unknown rel_perm rule. Supported values are 0..6.')
+    if cppargs.dielc_rule < 0 or cppargs.dielc_rule > 7:
+        raise ValueError('Unknown rel_perm rule. Supported values are 0..7.')
 
     cppargs.d_ion_mode = _as_int_alias(dh_model_dict.get('d_ion_mode', 1), d_ion_alias)
     if cppargs.d_ion_mode not in (0, 1, 2):
         raise ValueError('Unknown d_ion_mode. Supported values are 0,1,2.')
     bjeruum = _as_bool(dh_model_dict.get('bjeruum_treatment', False))
+    cppargs.mu_DH_diff_mode = _as_int_alias(mu_dh.get('differential_mode', 'analytical'), diff_alias)
+    if cppargs.mu_DH_diff_mode not in (0, 1):
+        raise ValueError('Unknown mu_DH differential_mode. Supported values are analytical/numerical (0/1).')
+    cppargs.mu_DH_comp_dep_rel_perm = int(_as_bool(mu_dh.get('comp_dep_rel_perm', True)))
+    cppargs.mu_DH_include_sum_term = int(_as_bool(mu_dh.get('include_sum_term', True)))
 
     cppargs.include_born_model = int(_as_bool(elec_model.get('include_born_model', True)))
     cppargs.d_born_mode = _as_int_alias(born_model_dict.get('d_Born_mode', 0), d_born_alias)

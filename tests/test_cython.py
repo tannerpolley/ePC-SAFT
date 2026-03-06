@@ -15,7 +15,7 @@ from pcsaft import pcsaft_multiphase_lle
 import json
 from pathlib import Path
 
-from data.epcsaft_properties import _resolve_runtime_options
+from data.epcsaft_properties import _resolve_runtime_options, get_prop_dict
 
 def _runtime_to_elec_model(runtime):
     """Convert resolved runtime options to nested elec_model schema for params."""
@@ -31,6 +31,11 @@ def _runtime_to_elec_model(runtime):
         "DH_model": {
             "d_ion_mode": int(runtime.get("d_ion_mode", 1)),
             "bjeruum_treatment": bool(runtime.get("bjeruum_treatment", False)),
+            "mu_DH_model": {
+                "differential_mode": int(runtime.get("mu_DH_diff_mode", 0)),
+                "comp_dep_rel_perm": bool(runtime.get("mu_DH_comp_dep_rel_perm", True)),
+                "include_sum_term": bool(runtime.get("mu_DH_include_sum_term", True)),
+            },
         },
         "include_born_model": bool(runtime.get("include_born_model", born_model != 0)),
         "born_model": {
@@ -1795,3 +1800,89 @@ if __name__ == '__main__':
     test_gsolv(print_result=True)
     # test_miac_m(print_result=True)
     # test_osmoticC(print_result=True)
+
+
+def _load_dataset_params(dataset, species, x, t, user_options=None):
+    return get_prop_dict(dataset, species, np.asarray(x, dtype=float), t, user_options=user_options or {})
+
+
+def test_resolve_runtime_mu_dh_defaults():
+    canonical = json.loads(
+        (Path(__file__).resolve().parents[1] / "data" / "pcsaft_parameters" / "held_2014" / "user_options.json").read_text(encoding="utf-8")
+    )
+    runtime = _resolve_runtime_options(canonical)["runtime"]
+    assert runtime["mu_DH_diff_mode"] == 0
+    assert runtime["mu_DH_comp_dep_rel_perm"] is True
+    assert runtime["mu_DH_include_sum_term"] is True
+
+
+def test_create_struct_rejects_flat_mu_dh_keys():
+    t = 298.15
+    p = 1.0e5
+    x = np.asarray([0.02, 0.02, 0.96])
+    params = _load_dataset_params("bulow_2020", ["Li+", "Br-", "Ethanol"], x, t)
+    params["mu_DH_diff_mode"] = 1
+    with pytest.raises(ValueError, match='Flat electrostatic params are no longer supported'):
+        rho = pcsaft_den(t, p, x, params, phase='liq')
+        pcsaft_lnfugcoef_terms(t, rho, x, params)
+
+
+@pytest.mark.parametrize(
+    "dataset,species,x,t",
+    [
+        ("bulow_2020", ["Li+", "Br-", "Ethanol"], np.asarray([0.03, 0.03, 0.94]), 298.15),
+        ("figiel_2025", ["Na+", "Cl-", "H2O-2B-Li"], np.asarray([0.02, 0.02, 0.96]), 298.15),
+    ],
+)
+def test_mu_dh_analytical_numeric_close(dataset, species, x, t):
+    analytical = _load_dataset_params(
+        dataset,
+        species,
+        x,
+        t,
+        user_options={"elec_model": {"DH_model": {"mu_DH_model": {"differential_mode": "analytical"}}}},
+    )
+    numerical = _load_dataset_params(
+        dataset,
+        species,
+        x,
+        t,
+        user_options={"elec_model": {"DH_model": {"mu_DH_model": {"differential_mode": "numerical"}}}},
+    )
+    rho = pcsaft_den(t, 1.0e5, x, analytical, phase='liq')
+    mu_dh_analytical = np.asarray(pcsaft_lnfugcoef_terms(t, rho, x, analytical)["mu_ion"], dtype=float)
+    mu_dh_numerical = np.asarray(pcsaft_lnfugcoef_terms(t, rho, x, numerical)["mu_ion"], dtype=float)
+    assert np.allclose(mu_dh_analytical, mu_dh_numerical, rtol=0.0, atol=2e-5)
+
+
+def test_mu_dh_toggle_changes_only_dh_branch():
+    t = 298.15
+    x = np.asarray([0.03, 0.03, 0.94])
+    species = ["Li+", "Br-", "Ethanol"]
+    base = _load_dataset_params("bulow_2020", species, x, t)
+    no_deps = _load_dataset_params(
+        "bulow_2020",
+        species,
+        x,
+        t,
+        user_options={"elec_model": {"DH_model": {"mu_DH_model": {"comp_dep_rel_perm": False}}}},
+    )
+    no_sum = _load_dataset_params(
+        "bulow_2020",
+        species,
+        x,
+        t,
+        user_options={"elec_model": {"DH_model": {"mu_DH_model": {"include_sum_term": False}}}},
+    )
+    rho = pcsaft_den(t, 1.0e5, x, base, phase='liq')
+    terms_base = pcsaft_lnfugcoef_terms(t, rho, x, base)
+    terms_no_deps = pcsaft_lnfugcoef_terms(t, rho, x, no_deps)
+    terms_no_sum = pcsaft_lnfugcoef_terms(t, rho, x, no_sum)
+
+    mu_base = np.asarray(terms_base["mu_ion"], dtype=float)
+    mu_no_deps = np.asarray(terms_no_deps["mu_ion"], dtype=float)
+    mu_no_sum = np.asarray(terms_no_sum["mu_ion"], dtype=float)
+    assert np.max(np.abs(mu_no_deps - mu_base)) > 1e-8
+    assert np.max(np.abs(mu_no_sum - mu_base)) > 1e-8
+    assert np.allclose(np.asarray(terms_base["mu_assoc"], dtype=float), np.asarray(terms_no_deps["mu_assoc"], dtype=float), rtol=0.0, atol=1e-12)
+    assert np.allclose(np.asarray(terms_base["mu_assoc"], dtype=float), np.asarray(terms_no_sum["mu_assoc"], dtype=float), rtol=0.0, atol=1e-12)

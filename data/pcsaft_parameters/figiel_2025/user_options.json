@@ -7,7 +7,12 @@
     },
     "DH_model": {
       "d_ion_mode": 1,
-      "bjeruum_treatment": false
+      "bjeruum_treatment": false,
+      "mu_DH_model": {
+        "differential_mode": "analytical",
+        "comp_dep_rel_perm": true,
+        "include_sum_term": true
+      }
     },
     "include_born_model": true,
     "born_model": {

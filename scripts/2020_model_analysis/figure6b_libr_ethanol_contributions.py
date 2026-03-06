@@ -174,9 +174,9 @@ def _load_exp_data(path: Path) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     return m_arr[order], x_arr[order], y_arr[order]
 
 
-def _build_params() -> Dict[str, object]:
+def _build_params(user_options: Dict[str, object] | None = None) -> Dict[str, object]:
     x_ref = _molality_to_species_molefraction(1e-8)
-    return get_prop_dict("bulow_2020", SPECIES, x_ref, T_REF, user_options={})
+    return get_prop_dict("bulow_2020", SPECIES, x_ref, T_REF, user_options=user_options or {})
 
 
 def _inf_dilution_state(x: np.ndarray, rho: float, params: Dict[str, object]) -> Tuple[np.ndarray, float]:
@@ -238,9 +238,11 @@ def run_analysis(
     y_max: float,
     grid_points: int,
     max_molality: float | None,
+    user_options: Dict[str, object] | None = None,
+    plot_title: str | None = None,
 ) -> Path:
     m_exp, x_exp, y_exp = _load_exp_data(data_path)
-    params = _build_params()
+    params = _build_params(user_options=user_options)
 
     # For Figure 6b, draw contribution lines only up to the last experimental point
     # unless the user explicitly overrides max_molality.
@@ -282,7 +284,7 @@ def run_analysis(
     ax.set_ylim(float(y_min), float(y_max))
     ax.set_xlabel(r"salt mole fraction, $x_{salt}$", fontsize=AXIS_LABEL_SIZE)
     ax.set_ylabel(r"$\ln(\gamma_{\pm}^{*})$", fontsize=AXIS_LABEL_SIZE)
-    ax.set_title("LiBr in ethanol at 298.15 K and 1 bar (Figure 6b-style)")
+    ax.set_title(plot_title or "LiBr in ethanol at 298.15 K and 1 bar (Figure 6b-style)")
     ax.grid(True, alpha=0.3, color="0.7")
     ax.tick_params(colors="black", labelsize=AXIS_TICK_SIZE)
     for spine in ax.spines.values():
