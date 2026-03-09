@@ -1450,7 +1450,10 @@ def pcsaft_miac_m(t, rho, x, params, species=None):
 
     eps = 1e-12
     x_inf = np.full_like(x, eps)
-    x_inf[idx_sol[0]] = max(1.0 - eps * (len(x) - 1), eps)
+    solvent_ref = np.asarray(x[idx_sol], dtype=float)
+    solvent_ref /= np.sum(solvent_ref)
+    solvent_budget = max(1.0 - eps * (len(x) - len(idx_sol)), eps * len(idx_sol))
+    x_inf[idx_sol] = solvent_ref * solvent_budget
     x_inf /= np.sum(x_inf)
     rho_inf = pcsaft_den_cpp(t, pcsaft_p_cpp(t, rho, x, cppargs), x_inf, 0, cppargs)
     fugcoef_inf = np.asarray(pcsaft_fugcoef_cpp(t, rho_inf, x_inf, cppargs), dtype=float)

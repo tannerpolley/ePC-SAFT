@@ -17,7 +17,7 @@ PANELS = [
     ("a)", "K+", "methanol", common.REPO_ROOT / "data" / "G_trans" / "water" / "methanol" / "K.csv", r"$x_{MeOH}$ / -", (0.0, 12.5)),
     ("b)", "Br-", "methanol", common.REPO_ROOT / "data" / "G_trans" / "water" / "methanol" / "Br.csv", r"$x_{MeOH}$ / -", (0.0, 12.0)),
     ("c)", "Na+", "ethanol", common.REPO_ROOT / "data" / "G_trans" / "water" / "ethanol" / "Na.csv", r"$x_{EtOH}$ / -", (0.0, 20.0)),
-    ("d)", "Cl-", "ethanol", common.REPO_ROOT / "data" / "G_trans" / "water" / "ethanol" / "Cl.csv", r"$x_{EtOH}$ / -", (0.0, 20.0)),
+    ("d)", "Cl-", "ethanol", common.REPO_ROOT / "data" / "G_trans" / "water" / "ethanol" / "Cl.csv", r"$x_{EtOH}$ / -", (0.0, 30.0)),
 ]
 
 

@@ -19,8 +19,8 @@ PANELS = [
     ("d)", "NaCl", "water-ethanol", 2.0),
 ]
 TARGETS = [
-    (0.8, common.ORGANIC_COLOR, "^", "0.25"),
-    (0.4, common.GREEN_COLOR, "s", "black"),
+    (0.8, common.ORGANIC_COLOR, "^", common.ORGANIC_COLOR, "-", r"Model, $w_{org}^{salt-free}=0.8$"),
+    (0.4, common.GREEN_COLOR, "s", common.GREEN_COLOR, "-", r"Model, $w_{org}^{salt-free}=0.4$"),
 ]
 
 
@@ -43,6 +43,8 @@ def _read_weight_fraction_dataset(path: Path, solvent_system: str):
     if molality_key is None or gamma_key is None:
         raise ValueError(f"Missing columns in {path}")
     organic = [s for s in solvent_system.split("-") if s != "water"][0]
+    w_org_key = lookup.get(f"w_{organic}_salt_free".lower()) or lookup.get(f"w_{organic}".lower())
+    w_water_key = lookup.get("w_h2o_salt_free") or lookup.get("w_water_salt_free") or lookup.get("w_h2o") or lookup.get("w_water")
     org_key = lookup.get(f"x_{organic}".lower())
     if org_key is None:
         org_key = lookup.get("x_methanol") if organic == "methanol" else lookup.get("x_ethanol")
@@ -51,8 +53,11 @@ def _read_weight_fraction_dataset(path: Path, solvent_system: str):
     for row in rows:
         m = common.parse_float(row.get(molality_key))
         y = common.parse_float(row.get(gamma_key))
-        w_org = common.parse_float(row.get(org_key)) if org_key else None
-        w_water = common.parse_float(row.get(water_key)) if water_key else None
+        w_org = common.parse_float(row.get(w_org_key)) if w_org_key else None
+        w_water = common.parse_float(row.get(w_water_key)) if w_water_key else None
+        if w_org is None:
+            w_org = common.parse_float(row.get(org_key)) if org_key else None
+            w_water = common.parse_float(row.get(water_key)) if water_key else None
         if m is None or y is None or w_org is None:
             continue
         if w_water is None:
@@ -86,46 +91,55 @@ def _closest_group(entries, target_w_org: float):
     candidates = []
     for rows in grouped.values():
         w_org = float(rows[0]["w_org"])
-        candidates.append((abs(w_org - target_w_org), rows, w_org, rows[0]["mole_comp"]))
+        candidates.append((abs(w_org - target_w_org), rows))
     candidates.sort(key=lambda item: item[0])
-    return candidates[0]
+    return candidates[0][1]
 
 
-def _plot_panel(ax, label, salt, solvent_system, m_max):
+def _plot_panel(ax, label: str, salt: str, solvent_system: str, m_max: float) -> None:
     path = _data_path(solvent_system, salt)
     entries = _read_weight_fraction_dataset(path, solvent_system) if path.exists() else []
-    used_signatures = set()
-    for target_w, marker_color, marker, line_color in TARGETS:
+
+    for target_w, marker_color, marker, line_color, line_style, line_label in TARGETS:
         comp_model = common.target_weight_fraction_to_comp(solvent_system, target_w)
         m_grid, y_model = common.mean_ionic_activity_curve("figiel_2025", salt, solvent_system, comp_model, m_max, points=600)
-        ax.plot(m_grid, y_model, color=line_color, linewidth=1.3)
+        ax.plot(m_grid, y_model, color=line_color, linestyle=line_style, linewidth=2.2, zorder=5)
+
         if entries:
-            _, rows, w_actual, _ = _closest_group(entries, target_w)
-            signature = rows[0]["weight_signature"]
-            if signature not in used_signatures:
-                used_signatures.add(signature)
-                ax.scatter([r["molality"] for r in rows], [r["miac_m"] for r in rows], s=24, marker=marker, facecolor=marker_color, edgecolor=marker_color, linewidth=0.8, label=common.safe_label_for_weight_fraction(target_w) if label == "a)" else None)
+            rows = _closest_group(entries, target_w)
+            data_label = common.safe_label_for_weight_fraction(target_w) if label == "a)" else None
+            ax.scatter(
+                [r["molality"] for r in rows],
+                [r["miac_m"] for r in rows],
+                s=24,
+                marker=marker,
+                facecolor="none",
+                edgecolor=marker_color,
+                linewidth=1.0,
+                zorder=6,
+                label=data_label,
+            )
         else:
             print(f"[figure_9] missing experimental data: {path}")
+
+        if label == "a)":
+            ax.plot([], [], color=line_color, linestyle=line_style, linewidth=2.2, label=line_label)
+
     organic = [s for s in solvent_system.split("-") if s != "water"][0]
     common.panel_label(ax, label)
     ax.set_xlim(0.0, m_max)
     ax.set_ylim(0.0, 1.125)
-    ax.set_title(f"{salt} in {organic}", fontsize=10)
-    ax.set_xlabel(r"$\bar{m}_{salt}$ / mol kg$^{-1}$")
-    ax.set_ylabel(r"$\gamma_{\pm}^{m,*}$ / -")
+    ax.set_title(f"{salt} in {organic}", fontsize=10, pad=8)
+    ax.set_xlabel(r"$\bar{m}_{salt}$ / mol kg$^{-1}$", labelpad=4)
+    ax.set_ylabel(r"$\gamma_{\pm}^{m,*}$ / -", labelpad=4)
 
 
 def main() -> None:
-    common.configure_style()
-    fig, axes = plt.subplots(2, 2, figsize=(6.6, 5.8))
+    fig, axes = plt.subplots(2, 2, figsize=(8.8, 7.8))
     for ax, cfg in zip(axes.flat, PANELS):
         _plot_panel(ax, *cfg)
-    handles = [
-        plt.Line2D([0], [0], marker="^", linestyle="None", color=common.ORGANIC_COLOR, markerfacecolor=common.ORGANIC_COLOR, markeredgecolor=common.ORGANIC_COLOR, label=r"$w_{org}^{salt-free}=0.8$"),
-        plt.Line2D([0], [0], marker="s", linestyle="None", color=common.GREEN_COLOR, markerfacecolor=common.GREEN_COLOR, markeredgecolor=common.GREEN_COLOR, label=r"$w_{org}^{salt-free}=0.4$"),
-    ]
-    fig.legend(handles=handles, loc="upper center", ncol=2, bbox_to_anchor=(0.5, 1.02), fontsize=9)
+    axes.flat[0].legend(loc="upper right", fontsize=8, frameon=False)
+    fig.subplots_adjust(left=0.08, right=0.98, bottom=0.09, top=0.96, wspace=0.20, hspace=0.32)
     common.save_figure(fig, OUTPUT)
     plt.close(fig)
 

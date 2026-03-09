@@ -15,6 +15,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+BUILD_LIB = REPO_ROOT / 'build' / f'lib.win-amd64-cpython-{sys.version_info.major}{sys.version_info.minor}'
+if BUILD_LIB.exists() and str(BUILD_LIB) not in sys.path:
+    sys.path.insert(0, str(BUILD_LIB))
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
@@ -390,3 +393,4 @@ def literature_gsolv_water() -> Dict[str, float]:
         if ion and value is not None:
             out[f"{ion}+" if ion in {"H", "Li", "Na", "K"} else f"{ion}-" if ion in {"Cl", "Br", "I"} else ion] = value
     return out
+

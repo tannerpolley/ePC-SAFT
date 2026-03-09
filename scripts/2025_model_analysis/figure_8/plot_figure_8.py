@@ -38,11 +38,11 @@ def _plot_panel(ax, label, salt, m_max, y_max):
 
 def main() -> None:
     common.configure_style()
-    fig = plt.figure(figsize=(6.6, 6.3))
-    gs = fig.add_gridspec(2, 2, height_ratios=[1.0, 1.0])
+    fig = plt.figure(figsize=(6.8, 6.3))
+    gs = fig.add_gridspec(2, 3, width_ratios=[1.0, 1.0, 1.0], height_ratios=[1.0, 1.0])
     ax1 = fig.add_subplot(gs[0, 0])
-    ax2 = fig.add_subplot(gs[0, 1])
-    ax3 = fig.add_subplot(gs[1, :])
+    ax2 = fig.add_subplot(gs[0, 2])
+    ax3 = fig.add_subplot(gs[1, 1])
     for ax, cfg in zip([ax1, ax2, ax3], PANELS):
         _plot_panel(ax, *cfg)
     handles = [

@@ -4,6 +4,7 @@ Tests for checking that the PC-SAFT functions are working correctly.
 
 @author: Zach Baird
 """
+import math
 import numpy as np
 import pytest
 from pcsaft import pcsaft_den, pcsaft_hres, pcsaft_gres, pcsaft_sres
@@ -1193,6 +1194,59 @@ def test_miac_m(print_result=False):
     assert np.all(np.isfinite(calc))
 
 
+def test_miac_m_mixed_solvent_reference_preserves_solvent_blend():
+    """Mixed-solvent MIAC_m must use the salt-free solvent blend at infinite dilution."""
+    t = 298.15
+    p = 101325.0
+    species = ['Na+', 'Br-', 'H2O-2B-NaCl', 'Methanol']
+    m_salt = 0.5
+    comp = {'water': 0.4, 'methanol': 0.6}
+
+    mw_mix = comp['water'] * 18.01528e-3 + comp['methanol'] * 32.04e-3
+    n_solv = 1.0 / mw_mix
+    n = np.asarray([m_salt, m_salt, comp['water'] * n_solv, comp['methanol'] * n_solv], dtype=float)
+    x = n / np.sum(n)
+
+    params = get_prop_dict('figiel_2025', species, x, t)
+    rho = pcsaft_den(t, p, x, params, phase='liq')
+    calc = pcsaft_miac_m(t, rho, x, params, species=species)['Na+Br-']
+
+    fugcoef = np.asarray(pcsaft_fugcoef(t, rho, x, params), dtype=float)
+    z = np.asarray(params['z'], dtype=float)
+    idx_sol = np.where(np.abs(z) < 1e-12)[0]
+    idx_cat = np.where(z > 0)[0]
+    idx_an = np.where(z < 0)[0]
+
+    eps = 1e-12
+    x_inf = np.full_like(x, eps)
+    solvent_ref = np.asarray(x[idx_sol], dtype=float)
+    solvent_ref /= np.sum(solvent_ref)
+    solvent_budget = max(1.0 - eps * (len(x) - len(idx_sol)), eps * len(idx_sol))
+    x_inf[idx_sol] = solvent_ref * solvent_budget
+    x_inf /= np.sum(x_inf)
+
+    rho_inf = pcsaft_den(t, p, x_inf, params, phase='liq')
+    fugcoef_inf = np.asarray(pcsaft_fugcoef(t, rho_inf, x_inf, params), dtype=float)
+    gamma_i = fugcoef / fugcoef_inf
+
+    mw = np.asarray(params['MW'], dtype=float)
+    mass_solvent = float(np.sum(x[idx_sol] * mw[idx_sol]))
+    mass_neutral = x[idx_sol] * mw[idx_sol]
+    w_sf = mass_neutral / mass_neutral.sum()
+    m_solvent_mix = 1.0 / np.sum(w_sf / mw[idx_sol])
+
+    ic = idx_cat[0]
+    ia = idx_an[0]
+    n_salt = 0.5 * (x[ic] + x[ia])
+    m_mix_salt = n_salt / mass_solvent
+    ln_gamma_pm = 0.5 * (math.log(gamma_i[ic]) + math.log(gamma_i[ia]))
+    expected = math.exp(ln_gamma_pm) / (1.0 + m_solvent_mix * m_mix_salt * 2.0)
+
+    assert np.isfinite(calc)
+    assert np.isfinite(expected)
+    assert abs(calc - expected) < 1e-10
+
+
 def test_lnfugcoef_terms_structure():
     """Validate structured per-term ln fugacity contributions API."""
     t = 298.15
@@ -1886,3 +1940,5 @@ def test_mu_dh_toggle_changes_only_dh_branch():
     assert np.max(np.abs(mu_no_sum - mu_base)) > 1e-8
     assert np.allclose(np.asarray(terms_base["mu_assoc"], dtype=float), np.asarray(terms_no_deps["mu_assoc"], dtype=float), rtol=0.0, atol=1e-12)
     assert np.allclose(np.asarray(terms_base["mu_assoc"], dtype=float), np.asarray(terms_no_sum["mu_assoc"], dtype=float), rtol=0.0, atol=1e-12)
+
+
