@@ -845,7 +845,8 @@ def pcsaft_lnfugcoef(t, rho, x, params):
 
 def pcsaft_lnfugcoef_terms(t, rho, x, params):
     """
-    Calculate per-term residual chemical-potential contributions and total ln fugacity coefficients.
+    Calculate per-term residual chemical-potential contributions, per-term residual
+    compressibility-factor pieces, and contribution-resolved ln fugacity coefficients.
 
     Returns
     -------
@@ -853,7 +854,17 @@ def pcsaft_lnfugcoef_terms(t, rho, x, params):
         Keys map to arrays of shape (n,):
         - mu_hc, mu_disp, mu_polar, mu_assoc, mu_ion, mu_born
         - mu_total
+        - lnfugcoef_hc, lnfugcoef_disp, lnfugcoef_polar, lnfugcoef_assoc
+        - lnfugcoef_ion, lnfugcoef_born
         - lnfugcoef_total (alias: lnfugcoef)
+        Scalar keys:
+        - z_hc, z_disp, z_polar, z_assoc, z_ion, z_born
+        - z_total
+
+    Notes
+    -----
+    Contribution-resolved solvation and transfer energies should prefer the
+    contribution-level ``lnfugcoef_*`` terms over the raw ``mu_*`` terms.
     """
     x, params = ensure_numpy_input(x, params)
     check_input(x, {'density':rho, 'temperature':t})
@@ -862,11 +873,12 @@ def pcsaft_lnfugcoef_terms(t, rho, x, params):
 
     flat = np.asarray(pcsaft_lnfug_terms_cpp(t, rho, x, cppargs), dtype=float)
     ncomp = int(np.asarray(x, dtype=float).size)
-    expected = 8 * ncomp
+    expected = 14 * ncomp + 7
     if flat.size != expected:
         raise SolutionError('Unexpected lnfug term payload size: expected {}, got {}.'.format(expected, int(flat.size)))
 
-    blocks = flat.reshape((8, ncomp))
+    blocks = flat[:14 * ncomp].reshape((14, ncomp))
+    z_terms = flat[14 * ncomp:]
     out = {
         'mu_hc': blocks[0],
         'mu_disp': blocks[1],
@@ -877,6 +889,19 @@ def pcsaft_lnfugcoef_terms(t, rho, x, params):
         'mu_total': blocks[6],
         'lnfugcoef_total': blocks[7],
         'lnfugcoef': blocks[7],
+        'lnfugcoef_hc': blocks[8],
+        'lnfugcoef_disp': blocks[9],
+        'lnfugcoef_polar': blocks[10],
+        'lnfugcoef_assoc': blocks[11],
+        'lnfugcoef_ion': blocks[12],
+        'lnfugcoef_born': blocks[13],
+        'z_hc': float(z_terms[0]),
+        'z_disp': float(z_terms[1]),
+        'z_polar': float(z_terms[2]),
+        'z_assoc': float(z_terms[3]),
+        'z_ion': float(z_terms[4]),
+        'z_born': float(z_terms[5]),
+        'z_total': float(z_terms[6]),
     }
     return out
 
@@ -1484,6 +1509,59 @@ def pcsaft_miac_m(t, rho, x, params, species=None):
             gamma_pm_m = gamma_pm_x / (1.0 + M_solvent_mix * m_salt * sum_nu)
             salt_name = species[ic] + species[ia]
             result[salt_name] = gamma_pm_m
+
+    return result
+
+def pcsaft_miac(t, rho, x, params, species=None):
+    """
+    Mole-fraction-scale mean ionic activity coefficient (MIAC).
+    """
+    x, params = ensure_numpy_input(x, params)
+    check_input(x, {'density':rho, 'temperature':t})
+    params = check_association(params)
+    cppargs = create_struct(params)
+
+    z = np.asarray(params.get('z', []), dtype=float)
+    if z.size == 0 or np.allclose(z, 0):
+        raise InputError('pcsaft_miac requires ionic species (non-zero z).')
+    idx_cat = np.where(z > 0)[0]
+    idx_an = np.where(z < 0)[0]
+    idx_sol = np.where(np.abs(z) < 1e-12)[0]
+    if len(idx_cat) == 0 or len(idx_an) == 0:
+        raise InputError('pcsaft_miac needs at least one cation and one anion.')
+    if len(idx_sol) == 0:
+        raise InputError('pcsaft_miac needs a neutral solvent reference.')
+
+    fugcoef = np.asarray(pcsaft_fugcoef_cpp(t, rho, x, cppargs), dtype=float)
+
+    eps = 1e-12
+    x_inf = np.full_like(x, eps)
+    solvent_ref = np.asarray(x[idx_sol], dtype=float)
+    solvent_ref /= np.sum(solvent_ref)
+    solvent_budget = max(1.0 - eps * (len(x) - len(idx_sol)), eps * len(idx_sol))
+    x_inf[idx_sol] = solvent_ref * solvent_budget
+    x_inf /= np.sum(x_inf)
+    rho_inf = pcsaft_den_cpp(t, pcsaft_p_cpp(t, rho, x, cppargs), x_inf, 0, cppargs)
+    fugcoef_inf = np.asarray(pcsaft_fugcoef_cpp(t, rho_inf, x_inf, cppargs), dtype=float)
+    if np.any(fugcoef_inf <= 0):
+        raise SolutionError('Non-positive fugacity at infinite dilution.')
+    gamma_i = fugcoef / fugcoef_inf
+
+    if species is None or len(species) != len(x):
+        raise InputError('species list (matching x order) is required to label salts.')
+
+    result = {}
+    for ic in idx_cat:
+        for ia in idx_an:
+            zc = int(round(abs(z[ic])))
+            za = int(round(abs(z[ia])))
+            g = math.gcd(zc, za)
+            nu_cat = za // g
+            nu_an = zc // g
+            sum_nu = float(nu_cat + nu_an)
+            ln_gamma_pm = (nu_cat * math.log(gamma_i[ic]) + nu_an * math.log(gamma_i[ia])) / sum_nu
+            salt_name = species[ic] + species[ia]
+            result[salt_name] = math.exp(ln_gamma_pm)
 
     return result
 
@@ -2115,6 +2193,7 @@ def create_struct(params):
     cdef add_args cppargs
     cdef int ncomp
 
+    cppargs.mixed_rel_perm_water_index = -1
     cppargs.m = np_to_vector_double(params['m'])
     ncomp = len(np.asarray(params['m']).flatten())
     cppargs.s = np_to_vector_double(params['s'])
@@ -2146,6 +2225,28 @@ def create_struct(params):
         if mw_arr.size != ncomp:
             raise ValueError('params["MW"] must have length {}, got {}.'.format(ncomp, mw_arr.size))
         cppargs.mw = np_to_vector_double(mw_arr)
+    if 'mixed_rel_perm_a' in params:
+        mixed_a_arr = np.asarray(params['mixed_rel_perm_a'], dtype=float).flatten()
+        if mixed_a_arr.size != ncomp:
+            raise ValueError('params["mixed_rel_perm_a"] must have length {}, got {}.'.format(ncomp, mixed_a_arr.size))
+        cppargs.mixed_rel_perm_a = np_to_vector_double(mixed_a_arr)
+    if 'mixed_rel_perm_b' in params:
+        mixed_b_arr = np.asarray(params['mixed_rel_perm_b'], dtype=float).flatten()
+        if mixed_b_arr.size != ncomp:
+            raise ValueError('params["mixed_rel_perm_b"] must have length {}, got {}.'.format(ncomp, mixed_b_arr.size))
+        cppargs.mixed_rel_perm_b = np_to_vector_double(mixed_b_arr)
+    if 'mixed_rel_perm_c' in params:
+        mixed_c_arr = np.asarray(params['mixed_rel_perm_c'], dtype=float).flatten()
+        if mixed_c_arr.size != ncomp:
+            raise ValueError('params["mixed_rel_perm_c"] must have length {}, got {}.'.format(ncomp, mixed_c_arr.size))
+        cppargs.mixed_rel_perm_c = np_to_vector_double(mixed_c_arr)
+    if 'mixed_rel_perm_mask' in params:
+        mixed_mask_arr = np.asarray(params['mixed_rel_perm_mask'], dtype=int).flatten()
+        if mixed_mask_arr.size != ncomp:
+            raise ValueError('params["mixed_rel_perm_mask"] must have length {}, got {}.'.format(ncomp, mixed_mask_arr.size))
+        cppargs.mixed_rel_perm_mask = np_to_vector_int(mixed_mask_arr)
+    if 'mixed_rel_perm_water_index' in params:
+        cppargs.mixed_rel_perm_water_index = int(params['mixed_rel_perm_water_index'])
     if cppargs.z.size() > 0 and cppargs.dielc.size() == 0:
         raise ValueError('Electrolyte parameters require params["dielc"] as a per-species array.')
     d_born_arr = None
@@ -2244,6 +2345,11 @@ def create_struct(params):
         'rule4': 4,
         'rule5': 5,
         'rule6': 6,
+        'aqueous-organic': 8,
+        'aqueous_organic': 8,
+        'mixed-aqueous-organic': 8,
+        'mixed_aqueous_organic': 8,
+        'rule8': 8,
     }
     diff_alias = {'analytic': 0, 'analytical': 0, 'numeric': 1, 'numerical': 1}
     d_ion_alias = {'t_indep': 0, 't_dep_1': 1, 't_dep_2': 2}
@@ -2270,8 +2376,8 @@ def create_struct(params):
     cppargs.dielc_diff_mode = _as_int_alias(rel_perm.get('differential_mode', 'analytical'), diff_alias)
     if cppargs.dielc_diff_mode not in (0, 1):
         raise ValueError('Unknown rel_perm differential_mode. Supported values are analytical/numerical (0/1).')
-    if cppargs.dielc_rule < 0 or cppargs.dielc_rule > 7:
-        raise ValueError('Unknown rel_perm rule. Supported values are 0..7.')
+    if cppargs.dielc_rule < 0 or cppargs.dielc_rule > 8:
+        raise ValueError('Unknown rel_perm rule. Supported values are 0..8.')
 
     cppargs.d_ion_mode = _as_int_alias(dh_model_dict.get('d_ion_mode', 1), d_ion_alias)
     if cppargs.d_ion_mode not in (0, 1, 2):

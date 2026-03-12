@@ -1,11 +1,11 @@
 """Extract per-paper binary interaction matrices and pure-component parameter CSVs.
 
 Outputs:
-- data/pcsaft_parameters/<dataset_key>/pure.csv
-- data/pcsaft_parameters/<dataset_key>/binary_interaction/k_ij.csv
+- data/pcsaft_parameters/<dataset_key>/pure/<name>.csv
+- data/pcsaft_parameters/<dataset_key>/mixed/binary_interaction/k_ij.csv
 - optional:
-  - data/pcsaft_parameters/<dataset_key>/binary_interaction/l_ij.csv
-  - data/pcsaft_parameters/<dataset_key>/binary_interaction/khb_ij.csv
+  - data/pcsaft_parameters/<dataset_key>/mixed/binary_interaction/l_ij.csv
+  - data/pcsaft_parameters/<dataset_key>/mixed/binary_interaction/khb_ij.csv
 
 Target papers: 2005, 2008, 2014, 2020, 2021, 2025
 """
@@ -30,6 +30,10 @@ OUT_BINARY_DIR = OUT_BASE_DIR / "binary_interaction_parameters"
 OUT_PURE_DIR = OUT_BASE_DIR / "pure_component_parameters"
 LEGACY_FLAT_DIRS = [OUT_BINARY_DIR, OUT_PURE_DIR]
 OPTIONAL_INTERACTION_TYPES = ("l_ij", "khb_ij")
+PURE_FILENAME_BY_DATASET = {
+    "held_2008": "water.csv",
+    "held_2012": None,
+}
 COMPONENT_ORDER = [
     "water",
     "methanol",
@@ -124,7 +128,7 @@ RUNTIME_SENTINELS: Dict[str, Dict[str, Any]] = {
     "cameretti_2005": {"include_born_model": False, "dielc_rule": 0, "d_ion_mode": 1},
     "held_2008": {"include_born_model": False, "dielc_rule": 0, "d_ion_mode": 1},
     "held_2014": {"include_born_model": False, "dielc_rule": 0, "d_ion_mode": 1},
-    "bulow_2020": {"include_born_model": True, "dielc_rule": 1, "d_Born_mode": 0, "d_ion_mode": 1},
+    "bulow_2020": {"include_born_model": True, "dielc_rule": 1, "d_Born_mode": 1, "d_ion_mode": 1},
     "bulow_2021": {"include_born_model": True, "dielc_rule": 3, "d_Born_mode": 0, "d_ion_mode": 1},
     "figiel_2025": {
         "include_born_model": True,
@@ -203,7 +207,7 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
             "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False, "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True}},
             "include_born_model": True,
             "born_model": {
-                "d_Born_mode": 0,
+                "d_Born_mode": 1,
                 "solvation_shell_model": False,
                 "dielectric_saturation": False,
                 "bulk_mode": "mix",
@@ -453,8 +457,19 @@ def _dataset_dir(dataset_key: str) -> Path:
     return OUT_BASE_DIR / dataset_key
 
 
+def _dataset_pure_dir(dataset_key: str) -> Path:
+    return _dataset_dir(dataset_key) / "pure"
+
+
+def _dataset_pure_path(dataset_key: str) -> Optional[Path]:
+    filename = PURE_FILENAME_BY_DATASET.get(dataset_key, "any_solvent.csv")
+    if filename is None:
+        return None
+    return _dataset_pure_dir(dataset_key) / filename
+
+
 def _dataset_binary_dir(dataset_key: str) -> Path:
-    return _dataset_dir(dataset_key) / "binary_interaction"
+    return _dataset_dir(dataset_key) / "mixed" / "binary_interaction"
 
 
 def _matrix_has_parameter_data(matrix: Dict[str, Dict[str, str]]) -> bool:
@@ -1110,12 +1125,17 @@ def _validate_outputs(
             ds_dir = _dataset_dir(dataset_key)
             if not ds_dir.is_dir():
                 raise ValueError(f"Missing dataset directory: {ds_dir}")
-            pure_path = ds_dir / "pure.csv"
-            if not pure_path.exists():
-                raise ValueError(f"Missing pure.csv for {dataset_key}")
+            pure_dir = _dataset_pure_dir(dataset_key)
+            if not pure_dir.is_dir():
+                raise ValueError(f"Missing pure directory for {dataset_key}")
+            pure_path = _dataset_pure_path(dataset_key)
+            if pure_path is not None and not pure_path.exists():
+                raise ValueError(f"Missing pure parameter file for {dataset_key}: {pure_path.name}")
+            if pure_path is None and not any(pure_dir.glob("*.csv")):
+                raise ValueError(f"Missing explicit pure parameter files for {dataset_key}")
             bin_dir = _dataset_binary_dir(dataset_key)
             if not bin_dir.is_dir():
-                raise ValueError(f"Missing binary_interaction directory for {dataset_key}")
+                raise ValueError(f"Missing mixed/binary_interaction directory for {dataset_key}")
             kij_path = bin_dir / "k_ij.csv"
             if not kij_path.exists():
                 raise ValueError(f"Missing k_ij.csv for {dataset_key}")
@@ -1169,11 +1189,15 @@ def build(check_only: bool) -> None:
     if not check_only:
         for base_name, (matrix, pure_rows, optional_interactions) in extracted.items():
             ds_dir = _dataset_dir(base_name)
+            pure_dir = _dataset_pure_dir(base_name)
             bin_dir = _dataset_binary_dir(base_name)
             ds_dir.mkdir(parents=True, exist_ok=True)
+            pure_dir.mkdir(parents=True, exist_ok=True)
             bin_dir.mkdir(parents=True, exist_ok=True)
 
-            _write_pure_csv(ds_dir / "pure.csv", pure_rows)
+            pure_path = _dataset_pure_path(base_name)
+            if pure_path is not None:
+                _write_pure_csv(pure_path, pure_rows)
             _write_binary_csv(bin_dir / "k_ij.csv", matrix)
             _write_user_options_json(ds_dir / "user_options.json", user_options_by_dataset[base_name])
 

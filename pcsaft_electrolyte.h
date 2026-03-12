@@ -26,6 +26,11 @@ struct add_args {
     vector<double> z;
     vector<double> dielc;
     vector<double> mw;
+    vector<double> mixed_rel_perm_a;
+    vector<double> mixed_rel_perm_b;
+    vector<double> mixed_rel_perm_c;
+    vector<int> mixed_rel_perm_mask;
+    int mixed_rel_perm_water_index;
     int dielc_rule;
     int dielc_diff_mode;
     int d_ion_mode;

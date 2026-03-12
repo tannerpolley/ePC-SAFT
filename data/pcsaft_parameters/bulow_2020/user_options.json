@@ -16,7 +16,7 @@
     },
     "include_born_model": true,
     "born_model": {
-      "d_Born_mode": 0,
+      "d_Born_mode": 1,
       "solvation_shell_model": false,
       "dielectric_saturation": false,
       "bulk_mode": "mix",

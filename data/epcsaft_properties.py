@@ -48,6 +48,9 @@ PURE_SET_KEY_ALIASES = {
     "h2o": "water",
     "methanol": "methanol",
     "ethanol": "ethanol",
+    "any": "any_solvent",
+    "default": "any_solvent",
+    "any_solvent": "any_solvent",
 }
 
 _COMPONENT_DEFAULTS = {
@@ -195,7 +198,23 @@ _REL_PERM_RULE_ALIASES = {
     "rule4": 4,
     "rule5": 5,
     "rule6": 6,
+    "aqueous-organic": 8,
+    "aqueous_organic": 8,
+    "mixed-aqueous-organic": 8,
+    "mixed_aqueous_organic": 8,
+    "rule8": 8,
 }
+
+SOLVENT_COMPONENT_TO_TOKEN = {
+    "H2O": "water",
+    "Methanol": "methanol",
+    "Ethanol": "ethanol",
+    "Propanol": "propanol",
+    "Butanol": "butanol",
+}
+
+SOLVENT_TOKEN_TO_COMPONENT = {token: comp for comp, token in SOLVENT_COMPONENT_TO_TOKEN.items()}
+SOLVENT_TOKEN_ORDER = {"water": 0, "methanol": 1, "ethanol": 2, "propanol": 3, "butanol": 4}
 _DIFF_MODE_ALIASES = {
     "analytic": 0,
     "analytical": 0,
@@ -297,9 +316,103 @@ def _normalize_pure_set_key(name: str) -> str:
     return PURE_SET_KEY_ALIASES.get(name.strip().lower(), name.strip().lower())
 
 
+def _solvent_token_for_component(name: str) -> str | None:
+    component = _normalize_component(name.strip())
+    return SOLVENT_COMPONENT_TO_TOKEN.get(component)
+
+
+def _canonical_solvent_tokens(tokens: Iterable[str]) -> list[str]:
+    unique = {str(token).strip().lower() for token in tokens if str(token).strip()}
+    return sorted(unique, key=lambda token: (SOLVENT_TOKEN_ORDER.get(token, 999), token))
+
+
+def _solvent_system_data_key(tokens: Iterable[str]) -> str:
+    canonical = _canonical_solvent_tokens(tokens)
+    return "-".join(canonical)
+
+
+def _solvent_fraction_aliases(token: str, basis: str) -> tuple[str, ...]:
+    token = str(token).strip().lower()
+    if token == "water":
+        names = ("water", "h2o")
+    elif token == "methanol":
+        names = ("methanol", "meoh")
+    elif token == "ethanol":
+        names = ("ethanol", "etoh")
+    else:
+        names = (token,)
+    aliases: list[str] = []
+    for name in names:
+        aliases.append(f"{basis}_{name}")
+        aliases.append(f"{basis}_{name}_salt_free")
+    return tuple(aliases)
+
+
+def _mixture_molecular_weight_from_token_fractions(x_map: dict[str, float]) -> float | None:
+    total = 0.0
+    for token, frac in x_map.items():
+        component = SOLVENT_TOKEN_TO_COMPONENT.get(token)
+        if component is None:
+            return None
+        mw = _deterministic_default(component, "MW", 298.15)
+        if mw is _MISSING:
+            return None
+        total += float(frac) * float(mw)
+    return total if total > 0.0 else None
+
+
+def _convert_weight_to_mole_fractions(weights: dict[str, float]) -> dict[str, float] | None:
+    numerators: dict[str, float] = {}
+    for token, weight in weights.items():
+        component = SOLVENT_TOKEN_TO_COMPONENT.get(token)
+        if component is None:
+            return None
+        mw = _deterministic_default(component, "MW", 298.15)
+        if mw is _MISSING or float(mw) <= 0.0:
+            return None
+        numerators[token] = float(weight) / float(mw)
+    total = float(sum(numerators.values()))
+    if total <= 0.0:
+        return None
+    return {token: value / total for token, value in numerators.items()}
+
+
 def _read_csv(path: Path) -> list[dict]:
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
         return list(csv.DictReader(handle))
+
+
+def _load_component_rows(path: Path) -> dict[str, dict[str, str]]:
+    rows = _read_csv(path)
+    mapping: dict[str, dict[str, str]] = {}
+    for row in rows:
+        comp = _normalize_component(str(row.get("component", "")).strip())
+        if not comp:
+            continue
+        mapping[comp] = {k: str(v or "").strip() for k, v in row.items()}
+    return mapping
+
+
+def _load_pure_sets(pure_dir: Path) -> dict[str, dict[str, dict[str, str]]]:
+    pure_sets: dict[str, dict[str, dict[str, str]]] = {}
+    if not pure_dir.exists():
+        return pure_sets
+    for pure_file in sorted(pure_dir.glob("*.csv")):
+        set_key = _normalize_pure_set_key(pure_file.stem)
+        set_map = _load_component_rows(pure_file)
+        if set_map:
+            pure_sets[set_key] = set_map
+    return pure_sets
+
+
+def _select_default_pure_set_key(pure_sets: dict[str, dict[str, dict[str, str]]]) -> str | None:
+    if "any_solvent" in pure_sets:
+        return "any_solvent"
+    if len(pure_sets) == 1:
+        return next(iter(pure_sets))
+    if "water" in pure_sets:
+        return "water"
+    return None
 
 
 def _load_matrix(path: Path) -> dict[tuple[str, str], str]:
@@ -318,6 +431,111 @@ def _load_matrix(path: Path) -> dict[tuple[str, str], str]:
             col_comp = _normalize_component(col.strip())
             matrix[(row_comp, col_comp)] = str(row.get(col, "") or "").strip()
     return matrix
+
+
+def _load_mixed_rel_perm(path: Path) -> dict[str, dict[str, float]]:
+    if not path.exists():
+        return {}
+    rows = _read_csv(path)
+    mixed: dict[str, dict[str, float]] = {}
+    for row in rows:
+        organic = _normalize_component(str(row.get("organic", row.get("component", ""))).strip())
+        if not organic:
+            continue
+        params: dict[str, float] = {}
+        for key in ("a", "b", "c"):
+            value = _maybe_float(row.get(key))
+            if value is None:
+                raise ValueError(f"Missing mixed rel_perm coefficient '{key}' for organic '{organic}'.")
+            params[key] = float(value)
+        mixed[organic] = params
+    return mixed
+
+
+def _load_specific_mixed_dielc_table(path: Path) -> list[dict]:
+    if not path.exists():
+        return []
+    solvent_tokens = [token for token in path.stem.split("-") if token]
+    rows = _read_csv(path)
+    entries: list[dict] = []
+    for row in rows:
+        row_norm = {str(key).strip().lower(): value for key, value in row.items() if key}
+        dielc = None
+        for key in ("dielc", "rel_perm", "epsilon", "eps_r"):
+            dielc = _maybe_float(row_norm.get(key))
+            if dielc is not None:
+                break
+        if dielc is None:
+            continue
+
+        x_map: dict[str, float] = {}
+        w_map: dict[str, float] = {}
+        for token in solvent_tokens:
+            x_val = None
+            for alias in _solvent_fraction_aliases(token, "x"):
+                x_val = _maybe_float(row_norm.get(alias.lower()))
+                if x_val is not None:
+                    break
+            if x_val is not None:
+                x_map[token] = float(x_val)
+
+            w_val = None
+            for alias in _solvent_fraction_aliases(token, "w"):
+                w_val = _maybe_float(row_norm.get(alias.lower()))
+                if w_val is not None:
+                    break
+            if w_val is not None:
+                w_map[token] = float(w_val)
+
+        if len(x_map) != len(solvent_tokens):
+            if len(w_map) != len(solvent_tokens):
+                continue
+            converted = _convert_weight_to_mole_fractions(w_map)
+            if converted is None:
+                continue
+            x_map = converted
+
+        x_total = float(sum(x_map.values()))
+        if x_total <= 0.0:
+            continue
+        x_norm = {token: value / x_total for token, value in x_map.items()}
+
+        if len(w_map) != len(solvent_tokens):
+            mw_mix = _mixture_molecular_weight_from_token_fractions(x_norm)
+            if mw_mix is None:
+                continue
+            w_map = {}
+            for token, frac in x_norm.items():
+                component = SOLVENT_TOKEN_TO_COMPONENT[token]
+                mw = float(_deterministic_default(component, "MW", 298.15))
+                w_map[token] = frac * mw / mw_mix
+
+        w_total = float(sum(w_map.values()))
+        if w_total <= 0.0:
+            continue
+        w_norm = {token: value / w_total for token, value in w_map.items()}
+
+        entries.append(
+            {
+                "x": x_norm,
+                "w": w_norm,
+                "dielc": float(dielc),
+            }
+        )
+    return entries
+
+
+def _load_mixed_rel_perm_tables(rel_perm_dir: Path) -> dict[str, list[dict]]:
+    tables: dict[str, list[dict]] = {}
+    if not rel_perm_dir.exists():
+        return tables
+    for table_file in sorted(rel_perm_dir.glob("*.csv")):
+        if table_file.stem.lower() == "parameters":
+            continue
+        table = _load_specific_mixed_dielc_table(table_file)
+        if table:
+            tables[table_file.stem] = table
+    return tables
 
 
 def _strip_preset_keys(canonical: dict) -> dict:
@@ -351,45 +569,34 @@ def _load_dataset(dataset_name: str) -> dict:
 
     dataset_dir = _dataset_dir(dataset_name)
 
-    pure_map = {}
-    pure_path = dataset_dir / "pure.csv"
-    if pure_path.exists():
-        pure_rows = _read_csv(pure_path)
-        for row in pure_rows:
-            comp = _normalize_component(str(row.get("component", "")).strip())
-            if not comp:
-                continue
-            pure_map[comp] = {k: str(v or "").strip() for k, v in row.items()}
-
-    pure_sets: dict[str, dict[str, dict[str, str]]] = {}
     pure_dir = dataset_dir / "pure"
-    if pure_dir.exists():
-        for pure_file in sorted(pure_dir.glob("*.csv")):
-            set_key = _normalize_pure_set_key(pure_file.stem)
-            set_rows = _read_csv(pure_file)
-            set_map: dict[str, dict[str, str]] = {}
-            for row in set_rows:
-                comp = _normalize_component(str(row.get("component", "")).strip())
-                if not comp:
-                    continue
-                set_map[comp] = {k: str(v or "").strip() for k, v in row.items()}
-            if set_map:
-                pure_sets[set_key] = set_map
+    pure_sets = _load_pure_sets(pure_dir)
+
+    pure_default_key = _select_default_pure_set_key(pure_sets)
+    pure_map: dict[str, dict[str, str]] = {}
+    if pure_default_key is not None:
+        pure_map = pure_sets[pure_default_key]
 
     if not pure_map and not pure_sets:
         raise FileNotFoundError(
-            f"Dataset '{dataset_name}' must include pure.csv and/or pure/*.csv with component parameters."
+            f"Dataset '{dataset_name}' must include pure/*.csv component-parameter files."
         )
 
-    bi_dir = dataset_dir / "binary_interaction"
+    mixed_dir = dataset_dir / "mixed"
+    bi_dir = mixed_dir / "binary_interaction"
+    rel_perm_dir = mixed_dir / "rel_perm"
+    rel_perm_coeff_path = rel_perm_dir / "parameters.csv"
     data = {
         "dataset_name": dataset_name,
         "dataset_dir": dataset_dir,
         "pure": pure_map,
         "pure_sets": pure_sets,
+        "pure_default_key": pure_default_key,
         "k_ij": _load_matrix(bi_dir / "k_ij.csv"),
         "l_ij": _load_matrix(bi_dir / "l_ij.csv"),
         "k_hb": _load_matrix(bi_dir / "k_hb_ij.csv") or _load_matrix(bi_dir / "khb_ij.csv"),
+        "mixed_rel_perm": _load_mixed_rel_perm(rel_perm_coeff_path),
+        "mixed_rel_perm_tables": _load_mixed_rel_perm_tables(rel_perm_dir),
         "canonical_user_options": _load_canonical_user_options(dataset_dir),
     }
     _DATASET_CACHE[dataset_name] = data
@@ -535,9 +742,19 @@ def _resolve_component_field(dataset: dict, component: str, field: str, T: float
     if pure_set_key:
         row = dataset.get("pure_sets", {}).get(_normalize_pure_set_key(pure_set_key), {}).get(component)
     if row is None:
+        component_pure_key = _solvent_token_for_component(component)
+        if component_pure_key is not None:
+            row = dataset.get("pure_sets", {}).get(component_pure_key, {}).get(component)
+    if row is None:
+        default_key = dataset.get("pure_default_key")
+        if default_key:
+            row = dataset.get("pure_sets", {}).get(default_key, {}).get(component)
+    if row is None:
         row = dataset["pure"].get(component)
     if row is None:
-        raise KeyError(f"Component '{component}' is missing in dataset '{dataset['dataset_name']}' pure.csv.")
+        raise KeyError(
+            f"Component '{component}' is missing in dataset '{dataset['dataset_name']}' pure parameter files."
+        )
 
     parsed = _parse_cell_value(
         row.get(field, ""),
@@ -826,6 +1043,8 @@ def _resolve_runtime_options(user_options=None) -> dict:
 
     allowed = {
         "elec_model",
+        "solvated_ion_diameter_mixing_rule",
+        "ion_dispersion_mixing_rule",
         # Legacy top-level pass-through keys.
         "bjeruum_treatment",
         "dielc_rule",
@@ -861,6 +1080,12 @@ def _resolve_runtime_options(user_options=None) -> dict:
     model = _normalize_elec_model(model)
     runtime = _flatten_model_to_runtime(model)
     runtime["debug"] = bool(user_options.get("debug", False))
+    runtime["solvated_ion_diameter_mixing_rule"] = _coerce_bool(
+        user_options.get("solvated_ion_diameter_mixing_rule", False)
+    )
+    runtime["ion_dispersion_mixing_rule"] = _coerce_bool(
+        user_options.get("ion_dispersion_mixing_rule", True)
+    )
 
     return {
         "runtime": runtime,
@@ -887,6 +1112,303 @@ def _infer_pure_set_key(components: Iterable[str]) -> str | None:
     if len(neutrals) != 1:
         return None
     return _normalize_pure_set_key(neutrals[0])
+
+
+def _as_composition_array(x, size: int) -> np.ndarray:
+    x_arr = np.asarray(x, dtype=float)
+    if x_arr.ndim != 1 or x_arr.size != size:
+        raise ValueError(f"x must be a 1D array-like vector with length {size}.")
+    if not np.all(np.isfinite(x_arr)):
+        raise ValueError("x contains non-finite values.")
+    return x_arr
+
+
+def _salt_free_neutral_fractions(x, charges) -> tuple[np.ndarray, np.ndarray]:
+    x_arr = np.asarray(x, dtype=float)
+    z_arr = np.asarray(charges, dtype=float)
+    neutral_idx = np.flatnonzero(np.abs(z_arr) <= 1e-12)
+    if neutral_idx.size == 0:
+        return neutral_idx, np.array([], dtype=float)
+    neutral_x = np.clip(x_arr[neutral_idx], 0.0, None)
+    total = float(np.sum(neutral_x))
+    if total <= 0.0:
+        return neutral_idx, np.array([], dtype=float)
+    return neutral_idx, neutral_x / total
+
+
+def _lookup_specific_mixed_rel_perm(
+    dataset: dict,
+    components: list[str],
+    charges,
+    x,
+    *,
+    atol: float = 5.0e-6,
+) -> tuple[float | None, str | None]:
+    neutral_idx, neutral_sf = _salt_free_neutral_fractions(x, charges)
+    if neutral_idx.size < 2 or neutral_sf.size != neutral_idx.size:
+        return None, None
+
+    token_fractions: dict[str, float] = {}
+    tokens: list[str] = []
+    for idx, frac in zip(neutral_idx, neutral_sf):
+        token = _solvent_token_for_component(components[int(idx)])
+        if token is None:
+            return None, None
+        tokens.append(token)
+        token_fractions[token] = float(frac)
+
+    system_key = _solvent_system_data_key(tokens)
+    if not system_key:
+        return None, None
+
+    entries = dataset.get("mixed_rel_perm_tables", {}).get(system_key, [])
+    if not entries:
+        return None, None
+
+    for entry in entries:
+        entry_x = entry["x"]
+        if set(entry_x) != set(token_fractions):
+            continue
+        if all(abs(float(entry_x[token]) - float(token_fractions[token])) <= atol for token in token_fractions):
+            return float(entry["dielc"]), system_key
+    return None, system_key
+
+
+def _compute_constant_mixed_rel_perm(
+    components: list[str],
+    charges,
+    dielc,
+    x,
+    mixed_rel_perm: dict[str, dict[str, float]],
+) -> float | None:
+    neutral_idx, neutral_sf = _salt_free_neutral_fractions(x, charges)
+    if neutral_idx.size < 2 or neutral_sf.size != neutral_idx.size:
+        return None
+
+    water_pos = None
+    for pos, idx in enumerate(neutral_idx):
+        if components[idx] == "H2O":
+            water_pos = pos
+            break
+    if water_pos is None:
+        return None
+
+    xw_sf = float(neutral_sf[water_pos])
+    water_eps = float(dielc[neutral_idx[water_pos]])
+    if xw_sf >= 1.0 - 1e-12:
+        return water_eps
+
+    x_org = 0.0
+    eps_org_num = 0.0
+    a_num = 0.0
+    b_num = 0.0
+    c_num = 0.0
+    for pos, idx in enumerate(neutral_idx):
+        if pos == water_pos:
+            continue
+        frac = float(neutral_sf[pos])
+        if frac <= 0.0:
+            continue
+        coeffs = mixed_rel_perm.get(components[idx])
+        if coeffs is None:
+            return None
+        x_org += frac
+        eps_org_num += frac * float(dielc[idx])
+        a_num += frac * float(coeffs["a"])
+        b_num += frac * float(coeffs["b"])
+        c_num += frac * float(coeffs["c"])
+
+    if x_org <= 1e-12:
+        return water_eps
+
+    eps_org = eps_org_num / x_org
+    if xw_sf <= 1e-12:
+        return eps_org
+
+    a_eff = a_num / x_org
+    b_eff = b_num / x_org
+    c_eff = c_num / x_org
+    return eps_org + ((a_eff * xw_sf + b_eff) * xw_sf + c_eff) * xw_sf
+
+
+def _compute_constant_salt_free_weight_avg_rel_perm(
+    charges,
+    dielc,
+    mw,
+    x,
+) -> float | None:
+    neutral_idx, neutral_sf = _salt_free_neutral_fractions(x, charges)
+    if neutral_idx.size < 2 or neutral_sf.size != neutral_idx.size:
+        return None
+
+    mw_neutral = np.asarray(mw, dtype=float)[neutral_idx]
+    if mw_neutral.size != neutral_sf.size or np.any(~np.isfinite(mw_neutral)) or np.any(mw_neutral <= 0.0):
+        return None
+
+    dielc_neutral = np.asarray(dielc, dtype=float)[neutral_idx]
+    if dielc_neutral.size != neutral_sf.size or np.any(~np.isfinite(dielc_neutral)):
+        return None
+
+    mass_weights = neutral_sf * mw_neutral
+    total_mass = float(np.sum(mass_weights))
+    if total_mass <= 0.0:
+        return None
+    mass_weights = mass_weights / total_mass
+    return float(np.dot(mass_weights, dielc_neutral))
+
+
+def _apply_constant_mixed_rel_perm_precompute(
+    prop_dic: dict,
+    dataset: dict,
+    components: list[str],
+    x,
+    rel_perm_rule: int,
+) -> None:
+    if int(rel_perm_rule) != 0:
+        return
+    exact_eps, exact_source = _lookup_specific_mixed_rel_perm(
+        dataset=dataset,
+        components=components,
+        charges=prop_dic["z"],
+        x=x,
+    )
+    if exact_eps is not None:
+        mixed_eps = float(exact_eps)
+        source = "specific"
+    else:
+        mixed_rel_perm = dataset.get("mixed_rel_perm", {})
+        mixed_eps = None
+        if mixed_rel_perm:
+            mixed_eps = _compute_constant_mixed_rel_perm(
+                components=components,
+                charges=prop_dic["z"],
+                dielc=prop_dic["dielc"],
+                x=x,
+                mixed_rel_perm=mixed_rel_perm,
+            )
+        if mixed_eps is None:
+            mixed_eps = _compute_constant_salt_free_weight_avg_rel_perm(
+                charges=prop_dic["z"],
+                dielc=prop_dic["dielc"],
+                mw=prop_dic["MW"],
+                x=x,
+            )
+            if mixed_eps is None:
+                return
+            source = "salt_free_weight_average"
+        else:
+            source = "empirical"
+
+    neutral_idx, _ = _salt_free_neutral_fractions(x, prop_dic["z"])
+    if neutral_idx.size < 2:
+        return
+
+    dielc = np.asarray(prop_dic["dielc"], dtype=float).copy()
+    dielc[neutral_idx] = float(mixed_eps)
+    prop_dic["dielc"] = dielc
+    prop_dic["mixed_solvent_rel_perm"] = float(mixed_eps)
+    prop_dic["mixed_solvent_rel_perm_applied"] = True
+    prop_dic["mixed_solvent_rel_perm_source"] = source
+    if exact_source is not None:
+        prop_dic["mixed_solvent_rel_perm_dataset"] = exact_source
+
+
+def _apply_mixed_solvent_ion_sigma(
+    prop_dic: dict,
+    dataset: dict,
+    components: list[str],
+    x,
+    T: float,
+    enabled: bool,
+) -> None:
+    if not enabled:
+        return
+
+    neutral_idx, neutral_sf = _salt_free_neutral_fractions(x, prop_dic["z"])
+    if neutral_idx.size < 2 or neutral_sf.size != neutral_idx.size:
+        return
+
+    pure_sets = dataset.get("pure_sets", {})
+    if not pure_sets:
+        raise ValueError(
+            f"Dataset '{dataset['dataset_name']}' requires pure/*.csv solvent parameter sets for mixed ion sigma precompute."
+        )
+
+    sigma = np.asarray(prop_dic["s"], dtype=float).copy()
+    mixed_sigmas: dict[str, float] = {}
+    source_weights: dict[str, float] = {}
+    for i, comp in enumerate(components):
+        if abs(float(prop_dic["z"][i])) <= 1e-12:
+            continue
+        sigma_mix = 0.0
+        for idx, frac in zip(neutral_idx, neutral_sf):
+            solvent = components[int(idx)]
+            pure_key = _normalize_pure_set_key(solvent)
+            if pure_key not in pure_sets:
+                raise KeyError(
+                    f"Dataset '{dataset['dataset_name']}' is missing pure/{pure_key}.csv needed for ion '{comp}'."
+                )
+            sigma_mix += float(frac) * float(
+                _resolve_component_field(dataset, comp, "s", T, pure_set_key=pure_key)
+            )
+            source_weights[f"pure/{pure_key}.csv"] = float(frac)
+        sigma[i] = sigma_mix
+        mixed_sigmas[comp] = float(sigma_mix)
+
+    if mixed_sigmas:
+        prop_dic["s"] = sigma
+        prop_dic["mixed_ion_sigma"] = mixed_sigmas
+        prop_dic["mixed_ion_sigma_applied"] = True
+        prop_dic["mixed_ion_sigma_sources"] = source_weights
+
+
+def _apply_mixed_solvent_ion_dispersion(
+    prop_dic: dict,
+    dataset: dict,
+    components: list[str],
+    x,
+    T: float,
+    enabled: bool,
+) -> None:
+    if not enabled:
+        return
+
+    neutral_idx, neutral_sf = _salt_free_neutral_fractions(x, prop_dic["z"])
+    if neutral_idx.size < 2 or neutral_sf.size != neutral_idx.size:
+        return
+
+    pure_sets = dataset.get("pure_sets", {})
+    if not pure_sets:
+        raise ValueError(
+            f"Dataset '{dataset['dataset_name']}' requires pure/*.csv solvent parameter sets for mixed ion dispersion precompute."
+        )
+
+    dispersion = np.asarray(prop_dic["e"], dtype=float).copy()
+    mixed_dispersion: dict[str, float] = {}
+    source_weights: dict[str, float] = {}
+    for i, comp in enumerate(components):
+        if abs(float(prop_dic["z"][i])) <= 1e-12:
+            continue
+        e_mix = 0.0
+        for idx, frac in zip(neutral_idx, neutral_sf):
+            solvent = components[int(idx)]
+            pure_key = _normalize_pure_set_key(solvent)
+            if pure_key not in pure_sets:
+                raise KeyError(
+                    f"Dataset '{dataset['dataset_name']}' is missing pure/{pure_key}.csv needed for ion '{comp}'."
+                )
+            e_mix += float(frac) * float(
+                _resolve_component_field(dataset, comp, "e", T, pure_set_key=pure_key)
+            )
+            source_weights[f"pure/{pure_key}.csv"] = float(frac)
+        dispersion[i] = e_mix
+        mixed_dispersion[comp] = float(e_mix)
+
+    if mixed_dispersion:
+        prop_dic["e"] = dispersion
+        prop_dic["mixed_ion_dispersion"] = mixed_dispersion
+        prop_dic["mixed_ion_dispersion_applied"] = True
+        prop_dic["mixed_ion_dispersion_sources"] = source_weights
 
 
 def molality_to_molefraction(molality, species=None, solvent=None, basis_mass_kg=1.0):
@@ -974,11 +1496,10 @@ def molefraction_to_molality(x, species):
 
 def get_prop_dict(dataset_name: str, species: Iterable[str], x, T: float, user_options: dict | None = None) -> dict:
     """Build a runtime parameter dictionary from a named dataset."""
-    del x  # API compatibility placeholder
-
     dataset = _load_dataset(dataset_name)
     species = list(species)
     components = [_normalize_component(s) for s in species]
+    x_arr = _as_composition_array(x, len(components))
     pure_set_key = _infer_pure_set_key(components)
 
     merged_options = _deep_update(dataset["canonical_user_options"], user_options or {})
@@ -1016,10 +1537,55 @@ def get_prop_dict(dataset_name: str, species: Iterable[str], x, T: float, user_o
     prop_dic["l_ij"] = l_ij
     prop_dic["k_hb"] = k_hb
 
+    mixed_rel_perm = dataset.get("mixed_rel_perm", {})
+    if mixed_rel_perm:
+        prop_dic["mixed_rel_perm_a"] = np.zeros(n, dtype=float)
+        prop_dic["mixed_rel_perm_b"] = np.zeros(n, dtype=float)
+        prop_dic["mixed_rel_perm_c"] = np.zeros(n, dtype=float)
+        prop_dic["mixed_rel_perm_mask"] = np.zeros(n, dtype=int)
+        water_index = -1
+        for i, comp in enumerate(components):
+            if comp == "H2O":
+                water_index = i
+            coeffs = mixed_rel_perm.get(comp)
+            if coeffs is None:
+                continue
+            prop_dic["mixed_rel_perm_a"][i] = float(coeffs["a"])
+            prop_dic["mixed_rel_perm_b"][i] = float(coeffs["b"])
+            prop_dic["mixed_rel_perm_c"][i] = float(coeffs["c"])
+            prop_dic["mixed_rel_perm_mask"][i] = 1
+        prop_dic["mixed_rel_perm_water_index"] = int(water_index)
+
+    _apply_constant_mixed_rel_perm_precompute(
+        prop_dic=prop_dic,
+        dataset=dataset,
+        components=components,
+        x=x_arr,
+        rel_perm_rule=runtime["dielc_rule"],
+    )
+    _apply_mixed_solvent_ion_sigma(
+        prop_dic=prop_dic,
+        dataset=dataset,
+        components=components,
+        x=x_arr,
+        T=T,
+        enabled=bool(runtime["solvated_ion_diameter_mixing_rule"]),
+    )
+    _apply_mixed_solvent_ion_dispersion(
+        prop_dic=prop_dic,
+        dataset=dataset,
+        components=components,
+        x=x_arr,
+        T=T,
+        enabled=bool(runtime["ion_dispersion_mixing_rule"]),
+    )
+
     if np.all(np.abs(prop_dic["z"]) < 1e-12):
         prop_dic["z"] = np.array([])
 
     prop_dic["elec_model"] = copy.deepcopy(resolved["model"])
     prop_dic["elec_model_dataset"] = dataset_name
+    prop_dic["solvated_ion_diameter_mixing_rule"] = bool(runtime["solvated_ion_diameter_mixing_rule"])
+    prop_dic["ion_dispersion_mixing_rule"] = bool(runtime["ion_dispersion_mixing_rule"])
     prop_dic["debug"] = bool(runtime["debug"])
     return prop_dic

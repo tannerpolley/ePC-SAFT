@@ -1289,7 +1289,9 @@ def test_lnfugcoef_terms_structure():
 
     terms = pcsaft_lnfugcoef_terms(t, rho, x, params)
     expected = {
-        'mu_hc', 'mu_disp', 'mu_polar', 'mu_assoc', 'mu_ion', 'mu_born', 'mu_total', 'lnfugcoef_total', 'lnfugcoef'
+        'mu_hc', 'mu_disp', 'mu_polar', 'mu_assoc', 'mu_ion', 'mu_born', 'mu_total',
+        'lnfugcoef_hc', 'lnfugcoef_disp', 'lnfugcoef_polar', 'lnfugcoef_assoc', 'lnfugcoef_ion',
+        'lnfugcoef_born', 'lnfugcoef_total', 'lnfugcoef'
     }
     assert expected.issubset(set(terms.keys()))
 
@@ -1308,6 +1310,58 @@ def test_lnfugcoef_terms_structure():
         + np.asarray(terms['mu_born'])
     )
     assert np.allclose(mu_sum, np.asarray(terms['mu_total']), rtol=0.0, atol=1e-12)
+
+    lnfug_sum = (
+        np.asarray(terms['lnfugcoef_hc'])
+        + np.asarray(terms['lnfugcoef_disp'])
+        + np.asarray(terms['lnfugcoef_polar'])
+        + np.asarray(terms['lnfugcoef_assoc'])
+        + np.asarray(terms['lnfugcoef_ion'])
+        + np.asarray(terms['lnfugcoef_born'])
+    )
+    assert np.allclose(lnfug_sum, np.asarray(terms['lnfugcoef_total']), rtol=0.0, atol=1e-12)
+
+    z_sum = (
+        float(terms['z_hc'])
+        + float(terms['z_disp'])
+        + float(terms['z_polar'])
+        + float(terms['z_assoc'])
+        + float(terms['z_ion'])
+        + float(terms['z_born'])
+    )
+    assert abs(z_sum - (float(terms['z_total']) - 1.0)) < 1e-12
+
+
+def test_lnfugcoef_terms_near_ideal_stable():
+    t = 430.0
+    p = 10.0
+    x = np.asarray([1.0])
+    params = {
+        'm': np.asarray([2.0020]),
+        's': np.asarray([3.6184]),
+        'e': np.asarray([208.11]),
+    }
+
+    rho = pcsaft_den(t, p, x, params, phase='vap')
+    terms = pcsaft_lnfugcoef_terms(t, rho, x, params)
+
+    assert abs(float(terms['z_total']) - 1.0) < 1e-4
+    for key in (
+        'lnfugcoef_hc', 'lnfugcoef_disp', 'lnfugcoef_polar',
+        'lnfugcoef_assoc', 'lnfugcoef_ion', 'lnfugcoef_born', 'lnfugcoef_total'
+    ):
+        arr = np.asarray(terms[key], dtype=float)
+        assert np.all(np.isfinite(arr))
+
+    lnfug_sum = (
+        np.asarray(terms['lnfugcoef_hc'])
+        + np.asarray(terms['lnfugcoef_disp'])
+        + np.asarray(terms['lnfugcoef_polar'])
+        + np.asarray(terms['lnfugcoef_assoc'])
+        + np.asarray(terms['lnfugcoef_ion'])
+        + np.asarray(terms['lnfugcoef_born'])
+    )
+    assert np.allclose(lnfug_sum, np.asarray(terms['lnfugcoef_total']), rtol=0.0, atol=1e-12)
 
 
 def test_gsolv(print_result=False):
@@ -1940,5 +1994,51 @@ def test_mu_dh_toggle_changes_only_dh_branch():
     assert np.max(np.abs(mu_no_sum - mu_base)) > 1e-8
     assert np.allclose(np.asarray(terms_base["mu_assoc"], dtype=float), np.asarray(terms_no_deps["mu_assoc"], dtype=float), rtol=0.0, atol=1e-12)
     assert np.allclose(np.asarray(terms_base["mu_assoc"], dtype=float), np.asarray(terms_no_sum["mu_assoc"], dtype=float), rtol=0.0, atol=1e-12)
+
+
+def test_bulow_2020_ethanol_transfer_contribution_sum_matches_total():
+    t = 298.15
+    p = 1.0e5
+    eps = 1e-8
+    r_gas = 8.31446261815324
+
+    def species_for_ion(ion):
+        if ion in {"Li+", "Na+", "K+"}:
+            return [ion, "Cl-", "Ethanol"]
+        return ["Na+", ion, "Ethanol"]
+
+    def lnfug_terms_for_state(species):
+        x = np.asarray([eps, eps, 1.0 - 2.0 * eps], dtype=float)
+        params = get_prop_dict("bulow_2020", species, x, t, user_options={})
+        rho = pcsaft_den(t, p, x, params, phase='liq')
+        terms = pcsaft_lnfugcoef_terms(t, rho, x, params)
+        values = pcsaft_gsolv(t, rho, x, params, species=species)
+        return terms, values
+
+    contribution_keys = (
+        "lnfugcoef_hc",
+        "lnfugcoef_disp",
+        "lnfugcoef_assoc",
+        "lnfugcoef_ion",
+        "lnfugcoef_born",
+    )
+
+    for ion in ("Na+", "Cl-", "I-"):
+        species_ethanol = species_for_ion(ion)
+        terms_ethanol, gsolv_ethanol = lnfug_terms_for_state(species_ethanol)
+        idx_ethanol = species_ethanol.index(ion)
+
+        species_water = species_ethanol[:-1] + ["Water"]
+        terms_water, gsolv_water = lnfug_terms_for_state(species_water)
+        idx_water = species_water.index(ion)
+
+        contribution_sum = 0.0
+        for key in contribution_keys:
+            contribution_sum += float(
+                r_gas * t * (terms_ethanol[key][idx_ethanol] - terms_water[key][idx_water]) / 1000.0
+            )
+
+        total_transfer = float(gsolv_ethanol[ion] - gsolv_water[ion]) / 1000.0
+        assert abs(contribution_sum - total_transfer) < 1e-10
 
 

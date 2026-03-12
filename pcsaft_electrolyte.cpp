@@ -19,7 +19,20 @@ thread_local vector<double> g_last_mu_assoc;
 thread_local vector<double> g_last_mu_ion;
 thread_local vector<double> g_last_mu_born;
 thread_local vector<double> g_last_mu_total;
+thread_local vector<double> g_last_lnfug_hc;
+thread_local vector<double> g_last_lnfug_disp;
+thread_local vector<double> g_last_lnfug_polar;
+thread_local vector<double> g_last_lnfug_assoc;
+thread_local vector<double> g_last_lnfug_ion;
+thread_local vector<double> g_last_lnfug_born;
 thread_local vector<double> g_last_lnfugcoef;
+thread_local double g_last_z_hc = 0.0;
+thread_local double g_last_z_disp = 0.0;
+thread_local double g_last_z_polar = 0.0;
+thread_local double g_last_z_assoc = 0.0;
+thread_local double g_last_z_ion = 0.0;
+thread_local double g_last_z_born = 0.0;
+thread_local double g_last_z_total = 1.0;
 
 int gcd_int(int a, int b) {
     a = std::abs(a);
@@ -30,6 +43,38 @@ int gcd_int(int a, int b) {
         b = t;
     }
     return a == 0 ? 1 : a;
+}
+
+double stable_logz_over_zminus1(double Z) {
+    double dz = Z - 1.0;
+    if (std::abs(dz) < 1e-8) {
+        double dz2 = dz * dz;
+        double dz3 = dz2 * dz;
+        return 1.0 - 0.5 * dz + dz2 / 3.0 - 0.25 * dz3;
+    }
+    return std::log(Z) / dz;
+}
+
+vector<double> normalize_z_contributions(const vector<double> &z_raw, double Z_total) {
+    vector<double> out = z_raw;
+    double target = Z_total - 1.0;
+    double raw_sum = 0.0;
+    for (double value : z_raw) {
+        raw_sum += value;
+    }
+
+    if (std::abs(target) <= 1e-12 && std::abs(raw_sum) <= 1e-12) {
+        std::fill(out.begin(), out.end(), 0.0);
+        return out;
+    }
+    if (std::abs(raw_sum) <= 1e-14) {
+        throw ValueError("Could not normalize contribution Z terms because their sum is ~0 while Z-1 is non-zero.");
+    }
+    double scale = target / raw_sum;
+    for (double &value : out) {
+        value *= scale;
+    }
+    return out;
 }
 }
 
@@ -145,7 +190,89 @@ double compute_ion_born_radius_dt(int i, double t, const add_args &cppargs) {
 }
 
 double compute_eps_rule(int rule, const vector<double> &x, add_args &cppargs);
+vector<double> compute_deps_rule_fd(int rule, const vector<double> &x, add_args &cppargs);
 DielcState evaluate_dielc_state(const vector<double> &x, add_args &cppargs);
+
+double compute_eps_aqueous_organic_mixed(const vector<double> &x, add_args &cppargs) {
+    int ncomp = static_cast<int>(x.size());
+    if (cppargs.z.size() != static_cast<size_t>(ncomp)) {
+        throw ValueError("dielc_rule=8 requires params['z'] as an array with length equal to ncomp.");
+    }
+    if (cppargs.mixed_rel_perm_a.size() != static_cast<size_t>(ncomp) ||
+        cppargs.mixed_rel_perm_b.size() != static_cast<size_t>(ncomp) ||
+        cppargs.mixed_rel_perm_c.size() != static_cast<size_t>(ncomp) ||
+        cppargs.mixed_rel_perm_mask.size() != static_cast<size_t>(ncomp)) {
+        throw ValueError("dielc_rule=8 requires mixed relative-permittivity arrays with length equal to ncomp.");
+    }
+
+    double x_sol = 0.0;
+    double x_water = 0.0;
+    double x_org = 0.0;
+    double eps_org_num = 0.0;
+    double a_num = 0.0;
+    double b_num = 0.0;
+    double c_num = 0.0;
+    bool needs_coeffs = false;
+
+    int water_idx = cppargs.mixed_rel_perm_water_index;
+    bool has_water_component = (
+        water_idx >= 0 &&
+        water_idx < ncomp &&
+        std::abs(cppargs.z[water_idx]) <= 1e-12
+    );
+
+    for (int i = 0; i < ncomp; i++) {
+        if (std::abs(cppargs.z[i]) > 1e-12) {
+            continue;
+        }
+        x_sol += x[i];
+        if (has_water_component && i == water_idx) {
+            x_water += x[i];
+            continue;
+        }
+        x_org += x[i];
+        eps_org_num += x[i] * cppargs.dielc[i];
+        if (x[i] > 0.0) {
+            needs_coeffs = true;
+            if (cppargs.mixed_rel_perm_mask[i] == 0) {
+                if (x_water > 0.0 || has_water_component) {
+                    throw ValueError("dielc_rule=8 is missing mixed relative-permittivity coefficients for an organic solvent.");
+                }
+            } else {
+                a_num += x[i] * cppargs.mixed_rel_perm_a[i];
+                b_num += x[i] * cppargs.mixed_rel_perm_b[i];
+                c_num += x[i] * cppargs.mixed_rel_perm_c[i];
+            }
+        }
+    }
+
+    if (x_sol <= 0.0) {
+        throw ValueError("dielc_rule=8 requires at least one solvent species (z=0).");
+    }
+    if (x_org <= DBL_EPSILON) {
+        if (!has_water_component) {
+            throw ValueError("dielc_rule=8 requires at least one organic solvent or water component.");
+        }
+        return cppargs.dielc[water_idx];
+    }
+
+    double eps_org = eps_org_num / x_org;
+    if (!has_water_component || x_water <= DBL_EPSILON) {
+        return eps_org;
+    }
+    if (x_water >= x_sol - DBL_EPSILON) {
+        return cppargs.dielc[water_idx];
+    }
+    if (!needs_coeffs) {
+        throw ValueError("dielc_rule=8 requires mixed relative-permittivity coefficients for the organic solvent phase.");
+    }
+
+    double xw_sf = x_water / x_sol;
+    double a_eff = a_num / x_org;
+    double b_eff = b_num / x_org;
+    double c_eff = c_num / x_org;
+    return eps_org + ((a_eff * xw_sf + b_eff) * xw_sf + c_eff) * xw_sf;
+}
 
 double compute_eps_solvent_reference(const vector<double> &x, add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
@@ -441,8 +568,8 @@ void validate_dielc_inputs(const vector<double> &x, add_args &cppargs) {
         }
     }
     int rule = cppargs.dielc_rule;
-    if (rule < 0 || rule > 7) {
-        throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7.");
+    if (rule < 0 || rule > 8) {
+        throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7, 8.");
     }
     if ((rule == 2 || rule == 3 || rule == 4 || rule == 5) &&
         cppargs.mw.size() != static_cast<size_t>(ncomp)) {
@@ -451,6 +578,17 @@ void validate_dielc_inputs(const vector<double> &x, add_args &cppargs) {
     if ((rule == 3 || rule == 4 || rule == 5 || rule == 6) &&
         cppargs.z.size() != static_cast<size_t>(ncomp)) {
         throw ValueError("dielc_rule requires params['z'] as an array with length equal to ncomp.");
+    }
+    if (rule == 8) {
+        if (cppargs.z.size() != static_cast<size_t>(ncomp)) {
+            throw ValueError("dielc_rule=8 requires params['z'] as an array with length equal to ncomp.");
+        }
+        if (cppargs.mixed_rel_perm_a.size() != static_cast<size_t>(ncomp) ||
+            cppargs.mixed_rel_perm_b.size() != static_cast<size_t>(ncomp) ||
+            cppargs.mixed_rel_perm_c.size() != static_cast<size_t>(ncomp) ||
+            cppargs.mixed_rel_perm_mask.size() != static_cast<size_t>(ncomp)) {
+            throw ValueError("dielc_rule=8 requires mixed relative-permittivity arrays with length equal to ncomp.");
+        }
     }
 }
 
@@ -509,6 +647,9 @@ double compute_eps_rule(int rule, const vector<double> &x, add_args &cppargs) {
         }
         double eps_salt = (static_cast<double>(nu_c) * cppargs.dielc[idx_c] + static_cast<double>(nu_a) * cppargs.dielc[idx_a]) / static_cast<double>(nu_tot);
         return (static_cast<double>(nu_tot) * solvent_sum + x_ion * eps_salt) / denom;
+    }
+    if (rule == 8) {
+        return compute_eps_aqueous_organic_mixed(x, cppargs);
     }
     if (rule == 2) {
         double mw_bar = 0.0;
@@ -589,7 +730,7 @@ double compute_eps_rule(int rule, const vector<double> &x, add_args &cppargs) {
         for (int idx : idx_ion) x_ion += x[idx];
         return eps_sf_const/(1.0 + alpha*x_ion);
     }
-    throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7.");
+    throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7, 8.");
 }
 
 vector<double> compute_deps_rule_analytic(int rule, const vector<double> &x, add_args &cppargs) {
@@ -650,6 +791,9 @@ vector<double> compute_deps_rule_analytic(int rule, const vector<double> &x, add
         for (int idx : idx_cat) deps_dx[idx] = common_ion_deriv;
         for (int idx : idx_an) deps_dx[idx] = common_ion_deriv;
         return deps_dx;
+    }
+    if (rule == 8) {
+        return compute_deps_rule_fd(rule, x, cppargs);
     }
     if (rule == 2) {
         double mw_bar = 0.0;
@@ -738,7 +882,7 @@ vector<double> compute_deps_rule_analytic(int rule, const vector<double> &x, add
         }
         return deps_dx;
     }
-    throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7.");
+    throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7, 8.");
 }
 
 vector<double> compute_deps_rule_fd(int rule, const vector<double> &x, add_args &cppargs) {
@@ -770,7 +914,7 @@ DielcState evaluate_dielc_state(const vector<double> &x, add_args &cppargs) {
     validate_dielc_inputs(x, cppargs);
     DielcState state;
     state.eps = compute_eps_rule(cppargs.dielc_rule, x, cppargs);
-    if (cppargs.dielc_diff_mode == 0) {
+    if (cppargs.dielc_diff_mode == 0 && cppargs.dielc_rule != 8) {
         state.deps_dx = compute_deps_rule_analytic(cppargs.dielc_rule, x, cppargs);
     }
     else {
@@ -1423,6 +1567,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
     }
 
     // Dipole term (Gross and Vrabec term) --------------------------------------
+    double Zpolar = 0.0;
     vector<double> mu_polar(ncomp, 0);
     if (!cppargs.dipm.empty()) {
         double A2 = 0.;
@@ -1549,7 +1694,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
 
         if (A2 != 0) { // when the mole fraction of the polar compounds is 0 then A2 = 0 and division by 0 occurs
             double ares_polar = A2/(1-A3/A2);
-            double Zpolar = eta*((dA2_det*(1-A3/A2)+(dA3_det*A2-A3*dA2_det)/A2)/(1-A3/A2)/(1-A3/A2));
+            Zpolar = eta*((dA2_det*(1-A3/A2)+(dA3_det*A2-A3*dA2_det)/A2)/(1-A3/A2)/(1-A3/A2));
             for (int i = 0; i < ncomp; i++) {
                 for (int j = 0; j < ncomp; j++) {
                     mu_polar[i] += x[j]*dapolar_dx[j];
@@ -1560,6 +1705,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
     }
 
     // Association term -------------------------------------------------------
+    double Zassoc = 0.0;
     vector<double> mu_assoc(ncomp, 0);
     if (!cppargs.e_assoc.empty()) {
         int num_sites = 0;
@@ -1659,9 +1805,11 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
         dXA_dx = dXAdx_find(cppargs.assoc_num, delta_ij, den, XA, ddelta_dx, x_assoc);
 
         int ij = 0;
+        double assoc_summ = 0.0;
         for (int i = 0; i < ncomp; i++) {
             for (int j = 0; j < num_sites; j++) {
                 mu_assoc[i] += x[iA[j]]*den*dXA_dx[ij]*(1/XA[j]-0.5);
+                assoc_summ += x[i]*x[iA[j]]*den*dXA_dx[ij]*(1/XA[j]-0.5);
                 ij += 1;
             }
         }
@@ -1669,9 +1817,12 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
         for (int i = 0; i < num_sites; i++) {
             mu_assoc[iA[i]] += log(XA[i]) - 0.5*XA[i] + 0.5;
         }
+        Zassoc = assoc_summ;
     }
 
     // Ion terms --------------------------------------------------------------
+    double Zion = 0.0;
+    double Zborn = 0.0;
     vector<double> mu_ion(ncomp, 0);
     vector<double> mu_born(ncomp, 0);
     if (!cppargs.z.empty()) {
@@ -1717,6 +1868,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
             double K0 = E_CHRG*E_CHRG/(12.0*PI*kb*t*perm_vac); // without epsilon
             double a_DH = -K0*kappa/(eps)*S;
             double Z_DH = -(K0/2.0)*kappa/(eps)*Tsum;
+            Zion = Z_DH;
 
             vector<double> dadx(ncomp, 0.0);
             vector<double> dkappa_dx(ncomp, 0.0);
@@ -1781,7 +1933,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
             double Kborn = E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac);
             double a_born = -Kborn*(1.0 - 1.0/eps_born)*born_sum;
 
-            double Z_born = 0.0;
+            Zborn = 0.0;
 
             vector<double> dadx_born(ncomp, 0.0);
             vector<double> ion_part_vec(ncomp, 0.0);
@@ -1819,7 +1971,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
                 sum_x_dadx_born += x[i]*dadx_born[i];
             }
             for (int i = 0; i < ncomp; i++) {
-                mu_born[i] = a_born + Z_born + dadx_born[i] - sum_x_dadx_born;
+                mu_born[i] = a_born + Zborn + dadx_born[i] - sum_x_dadx_born;
             }
             if (cppargs.debug) {
                 if (cppargs.born_diff_mode == 1) {
@@ -1859,7 +2011,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
             const double Kborn = E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac);
             BornSSMDSData born = build_born_ssmds_data(x, cppargs, t, eps_born, eps_r_ion);
             double a_born = -Kborn*born.sum_bracket;
-            double Z_born = 0.0;
+            Zborn = 0.0;
 
             vector<double> dadx_born(ncomp, 0.0);
             vector<double> direct_part_vec(ncomp, 0.0);
@@ -1893,7 +2045,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
                 sum_x_dadx_born += x[i]*dadx_born[i];
             }
             for (int i = 0; i < ncomp; i++) {
-                mu_born[i] = a_born + Z_born + dadx_born[i] - sum_x_dadx_born;
+                mu_born[i] = a_born + Zborn + dadx_born[i] - sum_x_dadx_born;
             }
             if (cppargs.debug) {
                 double f_mix_dbg = 0.0;
@@ -1958,9 +2110,24 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
 
     vector<double> mu(ncomp, 0);
     vector<double> lnfugcoef(ncomp, 0);
+    vector<double> raw_z_terms = {Zhc, Zdisp, Zpolar, Zassoc, Zion, Zborn};
+    vector<double> norm_z_terms = normalize_z_contributions(raw_z_terms, Z);
+    double z_weight = stable_logz_over_zminus1(Z);
+    vector<double> lnfug_hc(ncomp, 0.0);
+    vector<double> lnfug_disp(ncomp, 0.0);
+    vector<double> lnfug_polar(ncomp, 0.0);
+    vector<double> lnfug_assoc(ncomp, 0.0);
+    vector<double> lnfug_ion(ncomp, 0.0);
+    vector<double> lnfug_born(ncomp, 0.0);
     for (int i = 0; i < ncomp; i++) {
         mu[i] = mu_hc[i] + mu_disp[i] + mu_polar[i] + mu_assoc[i] + mu_ion[i] + mu_born[i];
-        lnfugcoef[i] = mu[i] - log(Z); // the natural logarithm of the fugacity coefficient
+        lnfug_hc[i] = mu_hc[i] - norm_z_terms[0] * z_weight;
+        lnfug_disp[i] = mu_disp[i] - norm_z_terms[1] * z_weight;
+        lnfug_polar[i] = mu_polar[i] - norm_z_terms[2] * z_weight;
+        lnfug_assoc[i] = mu_assoc[i] - norm_z_terms[3] * z_weight;
+        lnfug_ion[i] = mu_ion[i] - norm_z_terms[4] * z_weight;
+        lnfug_born[i] = mu_born[i] - norm_z_terms[5] * z_weight;
+        lnfugcoef[i] = lnfug_hc[i] + lnfug_disp[i] + lnfug_polar[i] + lnfug_assoc[i] + lnfug_ion[i] + lnfug_born[i];
     }
 
     // Cache per-term residual chemical-potential contributions for structured API access.
@@ -1971,7 +2138,20 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
     g_last_mu_ion = mu_ion;
     g_last_mu_born = mu_born;
     g_last_mu_total = mu;
+    g_last_lnfug_hc = lnfug_hc;
+    g_last_lnfug_disp = lnfug_disp;
+    g_last_lnfug_polar = lnfug_polar;
+    g_last_lnfug_assoc = lnfug_assoc;
+    g_last_lnfug_ion = lnfug_ion;
+    g_last_lnfug_born = lnfug_born;
     g_last_lnfugcoef = lnfugcoef;
+    g_last_z_hc = norm_z_terms[0];
+    g_last_z_disp = norm_z_terms[1];
+    g_last_z_polar = norm_z_terms[2];
+    g_last_z_assoc = norm_z_terms[3];
+    g_last_z_ion = norm_z_terms[4];
+    g_last_z_born = norm_z_terms[5];
+    g_last_z_total = Z;
     if (cppargs.debug) {
         std::cout << std::fixed << std::setprecision(10)
                   << "[DEBUG mu_res] t=" << t << " rho=" << rho << std::endl;
@@ -1998,7 +2178,9 @@ vector<double> pcsaft_lnfug_terms_cpp(double t, double rho, vector<double> x, ad
     for one phase of the system.
 
     Output layout (flattened blocks, each of length ncomp):
-      [mu_hc, mu_disp, mu_polar, mu_assoc, mu_ion, mu_born, mu_total, lnfugcoef]
+      [mu_hc, mu_disp, mu_polar, mu_assoc, mu_ion, mu_born, mu_total, lnfugcoef,
+       lnfug_hc, lnfug_disp, lnfug_polar, lnfug_assoc, lnfug_ion, lnfug_born,
+       Z_hc, Z_disp, Z_polar, Z_assoc, Z_ion, Z_born, Z_total]
     */
     vector<double> lnfug = pcsaft_lnfug_cpp(t, rho, x, cppargs);
     int ncomp = static_cast<int>(x.size());
@@ -2010,12 +2192,18 @@ vector<double> pcsaft_lnfug_terms_cpp(double t, double rho, vector<double> x, ad
         (static_cast<int>(g_last_mu_ion.size()) != ncomp) ||
         (static_cast<int>(g_last_mu_born.size()) != ncomp) ||
         (static_cast<int>(g_last_mu_total.size()) != ncomp) ||
+        (static_cast<int>(g_last_lnfug_hc.size()) != ncomp) ||
+        (static_cast<int>(g_last_lnfug_disp.size()) != ncomp) ||
+        (static_cast<int>(g_last_lnfug_polar.size()) != ncomp) ||
+        (static_cast<int>(g_last_lnfug_assoc.size()) != ncomp) ||
+        (static_cast<int>(g_last_lnfug_ion.size()) != ncomp) ||
+        (static_cast<int>(g_last_lnfug_born.size()) != ncomp) ||
         (static_cast<int>(g_last_lnfugcoef.size()) != ncomp) ||
         (static_cast<int>(lnfug.size()) != ncomp)) {
         throw ValueError("Internal lnfug term cache size mismatch.");
     }
 
-    vector<double> out(8 * ncomp, 0.0);
+    vector<double> out(14 * ncomp + 7, 0.0);
     auto copy_block = [&](int block, const vector<double> &src) {
         for (int i = 0; i < ncomp; i++) {
             out[block*ncomp + i] = src[i];
@@ -2030,6 +2218,20 @@ vector<double> pcsaft_lnfug_terms_cpp(double t, double rho, vector<double> x, ad
     copy_block(5, g_last_mu_born);
     copy_block(6, g_last_mu_total);
     copy_block(7, g_last_lnfugcoef);
+    copy_block(8, g_last_lnfug_hc);
+    copy_block(9, g_last_lnfug_disp);
+    copy_block(10, g_last_lnfug_polar);
+    copy_block(11, g_last_lnfug_assoc);
+    copy_block(12, g_last_lnfug_ion);
+    copy_block(13, g_last_lnfug_born);
+    int z_offset = 14 * ncomp;
+    out[z_offset + 0] = g_last_z_hc;
+    out[z_offset + 1] = g_last_z_disp;
+    out[z_offset + 2] = g_last_z_polar;
+    out[z_offset + 3] = g_last_z_assoc;
+    out[z_offset + 4] = g_last_z_ion;
+    out[z_offset + 5] = g_last_z_born;
+    out[z_offset + 6] = g_last_z_total;
     return out;
 }
 
@@ -3683,6 +3885,7 @@ add_args get_single_component(int i, add_args &cppargs) {
     args_single.mu_born_comp_dep_rel_perm = cppargs.mu_born_comp_dep_rel_perm;
     args_single.mu_born_include_sum_term = cppargs.mu_born_include_sum_term;
     args_single.mu_born_comp_dep_delta_d = cppargs.mu_born_comp_dep_delta_d;
+    args_single.mixed_rel_perm_water_index = (cppargs.mixed_rel_perm_water_index == i) ? 0 : -1;
     args_single.debug = cppargs.debug;
     args_single.m.push_back(cppargs.m[i]);
     args_single.s.push_back(cppargs.s[i]);
@@ -3702,6 +3905,18 @@ add_args get_single_component(int i, add_args &cppargs) {
         }
         if (cppargs.mw.size() > static_cast<size_t>(i)) {
             args_single.mw.push_back(cppargs.mw[i]);
+        }
+        if (cppargs.mixed_rel_perm_a.size() > static_cast<size_t>(i)) {
+            args_single.mixed_rel_perm_a.push_back(cppargs.mixed_rel_perm_a[i]);
+        }
+        if (cppargs.mixed_rel_perm_b.size() > static_cast<size_t>(i)) {
+            args_single.mixed_rel_perm_b.push_back(cppargs.mixed_rel_perm_b[i]);
+        }
+        if (cppargs.mixed_rel_perm_c.size() > static_cast<size_t>(i)) {
+            args_single.mixed_rel_perm_c.push_back(cppargs.mixed_rel_perm_c[i]);
+        }
+        if (cppargs.mixed_rel_perm_mask.size() > static_cast<size_t>(i)) {
+            args_single.mixed_rel_perm_mask.push_back(cppargs.mixed_rel_perm_mask[i]);
         }
         if (cppargs.d_born.size() > static_cast<size_t>(i)) {
             args_single.d_born.push_back(cppargs.d_born[i]);
