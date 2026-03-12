@@ -1,0 +1,640 @@
+                                                                    Fluid Phase Equilibria 535 (2021) 112967
+
+
+
+                                                                 Contents lists available at ScienceDirect
+
+
+                                                                  Fluid Phase Equilibria
+                                                         journal homepage: www.elsevier.com/locate/fluid
+
+
+
+
+ePC-SAFT advanced - Part I: Physical meaning of including a
+concentration-dependent dielectric constant in the born term and in
+the Debye-Hückel theory
+Mark Bülow, Moreno Ascani, Christoph Held∗
+Laboratory of Thermodynamics, Department of Biochemical and Chemical Engineering, TU Dortmund, Emil-Figge Str. 70, 44277 Dortmund, Germany
+
+
+
+
+a r t i c l e          i n f o                         a b s t r a c t
+
+Article history:                                       The transition from aqueous electrolyte systems to non-aqueous electrolyte systems is highly demanded
+Received 4 November 2020                               in industrial applications and especially challenging for physics-based thermodynamic models. Electrolyte
+Revised 28 December 2020
+                                                       thermodynamics is a complex matter, and still not all physico-chemical effects are accounted for in
+Accepted 12 January 2021
+                                                       state-of-the-art equations of state. The dielectric constant of non-aqueous electrolyte systems changes
+Available online 24 January 2021
+                                                       drastically compared to aqueous systems. One main consequence is that ions are very differently sol-
+Keywords:                                              vated in non-aqueous medium compared to aqueous medium. The Born term represents a methodology
+Non-aqueous systems                                    to account for the inﬂuence of solvation energies of ions, which is based on inﬂuences of solvent and
+Mean ionic activity coeﬃcients                         salt on the dielectric constant. Utilizing the Born term in electrolyte models is extensively debated, and
+Electrolyte thermodynamics                             it is often reasonably neglected in predominantly aqueous systems. Yet, it has a signiﬁcant inﬂuence
+Gibbs energy of transfer                               on transferability from aqueous to non-aqueous media i.e., systems with a large difference in polarity
+Gibbs energy of solvation, Dielectric
+                                                       or permittivity compared to aqueous systems. In this work, a modiﬁed Born term was combined with
+constant
+                                                       electrolyte Perturbed-Chain Statistical Associating Fluid Theory (ePC-SAFT) by introducing additionally a
+                                                       salt concentration-dependent dielectric constant, henceforth called altered Born contribution. The new
+                                                       methodology was validated against inﬁnite dilution properties for ion-solvent interactions: Gibbs energy
+                                                       of hydration and Gibbs energy of transfer of alkali halides from water to alcoholic solvents. Further, mean
+                                                       ionic activity coeﬃcients (MIACs) of alkali halides in alcoholic solvents were quantitatively correct pre-
+                                                       dicted with the advanced ePC-SAFT approach. Original ePC-SAFT parameters were applied for all predic-
+                                                       tions, and no further binary parameters were adjusted. Based on the success of the model predictions,
+                                                       the transferability of pure-ion ePC-SAFT parameters to organic solvents was veriﬁed and the incorpora-
+                                                       tion of concentration-dependent dielectric constant into the altered Born contribution and Debye-Hückel
+                                                       theory was proven to be meaningful methods for the transfer of electrolyte thermodynamic models from
+                                                       aqueous to non-aqueous systems.
+                                                                                                                            © 2021 Elsevier B.V. All rights reserved.
+
+
+
+
+1. Introduction                                                                           solubility issues and other important properties, which govern the
+                                                                                          design of unit operations. The design of such unit operations there-
+    The signiﬁcance of non-aqueous electrolyte systems and pure-                          fore is built on operating experience with a lack in general un-
+ionic systems in industrial applications is intensifying. Usually, unit                   derstanding of intrinsic and bulk interactions rather than on true
+operations involving electrolytes are perfectly optimized for ap-                         knowledge.
+plications with water as the main solvent; however, intensifying                              Facing these challenges, non-aqueous systems are more and
+upstream and downstream processes involving organic solvents or                           more in focus of methods from electrolyte thermodynamics. The
+even ionic ﬂuids are emerging. Non-aqueous solvents may enhance                           transfer from aqueous to pure-organic systems requires redesign-
+the eﬃciency of reactions and puriﬁcations to reduce energy de-                           ing state-of-the-art modeling theories. This is mainly caused by
+mand and costs. Organic solvents in classical non-electrolyte ther-                       model parameters, which have usually been designed especially
+modynamic models are handled frequently without large expendi-                            for aqueous systems. Two arising major aspects that need to
+ture. Processes with electrolytes especially involve phase changes,                       be addressed are the change in polarity - evident in a drastic
+                                                                                          decrease in static dielectric constant of the solvent - and direct
+  ∗
+                                                                                          interactions of the continuum solvent with the electrolytes that
+      Corresponding author:
+                                                                                          is the change in solvation energies. Both aspects are related and
+      E-mail address: christoph.held@tu-dortmund.de (C. Held).
+
+
+
+https://doi.org/10.1016/j.ﬂuid.2021.112967
+0378-3812/© 2021 Elsevier B.V. All rights reserved.
+M. Bülow, M. Ascani and C. Held                                                                                            Fluid Phase Equilibria 535 (2021) 112967
+
+
+must be addressed in a combined extension to the classical theory
+derived for aqueous systems. Extending an already established
+model comes with the beneﬁt of remaining reliability for aqueous
+systems while accessing the pure-organic and pure-ionic systems
+in one holistic methodology. The model must furthermore be
+reducible to the aqueous application without changing any pa-
+rameters. Moreover, it allows the model to account for additional
+theories in the future, covering so far unemployed physics-based
+interactions. Kontogeorgis et al. [1] assembled 17 central questions
+for electrolyte systems that are not less important for modeling
+non-aqueous systems. We address and try to give answers to
+the most important (in our opinion) and still open questions
+concerning the changeovers required for organic systems, i.e.:
+ - Do we need the Born term in modeling?
+ - Should the dielectric constant be considered constant or should            Figure 1. The Born cycle for calculating the electrostatic contribution to Helmholtz
+   we account for the concentration dependency including all                  energy of solvation. The total solvation Helmholtz energy Sol v Ai (1-4) is given as
+                                                                              sum of three contributions: discharging the ion in vacuum Disch A (1-2), transfer-
+   derivatives?
+                                                                              ring the neutral ion in the solvent Tr A (2-3) and recharging the ion ACharge (3-4).
+ - How many and which terms should we use in electrolyte equa-
+   tions of state (EoS)? For engineering applications?
+ - Which ion diameters should we use?                                         show that incorporating both of such effects is of vital importance
+                                                                              towards successful modeling properties of non-aqueous electrolyte
+    In this work, the decrease in the dielectric constant of the
+                                                                              systems. The new methodology within the ePC-SAFT framework is
+continuum medium upon changing from water solvent to organic
+                                                                              validated against ﬁnite and inﬁnite dilution properties: i) exclusive
+medium is accounted for. Ion-solvent interactions lower the dielec-
+                                                                              ion-solvent interactions are governed by the inﬁnite-dilution Gibbs
+tric constant as applied for the continuum in primitive models.
+                                                                              energy of hydration and Gibbs energy of transfer; ion-ion interac-
+This is by now accounted for by a concentration-dependent di-
+                                                                              tions do not perturb such systems. ii) Salt-concentration dependent
+electric constant based on the ion concentration. [2, 3] The Born
+                                                                              activity coeﬃcients (MIAC) give inside into the goodness of trans-
+term is a continuous solvation model to calculate the solvation
+                                                                              ferability of the developed theory to non-aqueous electrolyte sys-
+energy of ions, related to the transfer of an ionic species from
+                                                                              tems; MIACs are of more industrial and applicative importance due
+ideal gas (vacuum) into a medium. Ions are considered as charged
+                                                                              to the dependence on salt and solvent concentration.
+spheres in a primitive continuum solvent, expressed as dielectric
+constant ε = ε0 εr i.e., product of vacuum dielectric constant multi-
+                                                                              2. Thermodynamic theories: ePC-SAFT and the altered Born
+plied by relative permittivity. In fact, the Born contribution and the
+                                                                              contribution
+Debye-Hückel theory were originally derived based on exactly the
+same physical framework, and the Born term is an auxiliary con-
+                                                                              2.1. Ion solvation and thermodynamic properties
+straint in that theoretical framework. The thermodynamic model
+used in this work is electrolyte Perturbed-Chain Statistical Associ-
+                                                                                  The Born term for ion solvation is derived as the transfer work
+ating Fluid Theory (ePC-SAFT), the extension to PC-SAFT for elec-
+                                                                              of an initially charged sphere from inﬁnite distance to a ﬁrst neu-
+trolyte systems using the Debye-Hückel theory. ePC-SAFT was ap-
+                                                                              tral species in the solvent that is afterwards recharged. The work
+plied so far to optimize separations and reactions of mainly aque-
+                                                                              is then summed for each ion in the system to account for the salt
+ous systems. [4–10] It turned out that the incorporation of the
+                                                                              concentration dependence. In fact, the Born term may be visual-
+Born term to treat solvation energies was not necessary with pure-
+                                                                              ized as a cycle of energy needed to discharge, transfer and recharge
+component parameters for ions directly regressed to aqueous ther-
+                                                                              an ion as depicted in Figure 1.
+modynamic properties. [11] Additionally, if the dielectric constant
+                                                                                  The main contribution to the Helmholtz energy in the cycle is
+is independent of the system composition, the Born term will not
+                                                                              the charge process according to Eq. (1).
+contribute to excess properties. Still, the utilization of the Born
+term is a widely discussed topic. Thermodynamic approaches such                              Na e2  ni zi2
+                                                                              ACharge =                                                                        (1)
+as ePC-SAFT and other models treated solvation classically by dis-                           4π ε     ai
+                                                                                                     i
+persion forces or association forces between ion and solvent. How-
+ever, it was shown that the Born term has the main contribution                  The energy needed for the formation of cavities in the solvent
+to the total free energy of solvation for alkali halides. [12] Research       and the formation of solvation structures is generally small com-
+from various groups applying EoS previously included the Born                 pared to the electrostatic energy [12, 22, 23] and is reasonably ne-
+term into their methodology; inter alia the EoS Peng-Robinson [13,            glected. The reduced molar Helmholtz free energy contribution of
+14], Soave-Redlich-Kwong, [15] electrolyte Cubic-Plus-Association             the Born term is therefore obtained from the discharging in vac-
+(eCPA) [15–17], polar ePPC-SAFT, [12, 18] and SAFT-VRE (variable              uum and recharging of the solvent as shown in Eq. (2).
+range electrolyte). [19] Recent works addressed modeling elec-                          ABorn       e2         1
+                                                                                                                            x z2
+                                                                                                                                    i i
+trolyte solutions containing low-permittivity solvents, [20] and the          aBorn =         =−            1−                                                  (2)
+                                                                                        kT N     4π ε0 kB T    εr                   ai
+usefulness of the Born term was discussed also in a review by Held                                                             i
+
+[21] and by the several other work. [1, 17]                                      In this work, the Born radii ai were set to the respective
+    Until now, the application of a continuous approach for                   diameters of the ions estimated within the original ePC-SAFT
+a concentration-dependent dielectric constant included in the                 parametrization method. Thus, new parameters are not required.
+Debye-Hückel theory and in the Born term is not available in the              Using a concentration-dependent dielectric constant εr (x̄ ), the
+open literature. Continuous means that the pure-ion parameters in             derivative with respect to the composition of the system are
+ePC-SAFT revised are still applicable and that the model reduces              changed, yielding the further called ‘altered Born contribution’. The
+to the original ePC-SAFT revised model if the concentration depen-            partial derivative of the reduced molar altered Born contribution is
+dence of the dielectric constant is omitted. This manuscript will             derived in this work and presented in Eq. (3).
+
+                                                                          2
+M. Bülow, M. Ascani and C. Held                                                                                                                             Fluid Phase Equilibria 535 (2021) 112967
+
+
+                                                                                                                     dispersion energy ui . To calculate mixture properties, the combin-
+                                                          z2                                                     ing rules of Berthelot-Lorentz were applied Eqs. (12) and ((13)).
+    ∂a   Born
+                                       e         2
+                                                       1       i
+                                 =−             1−                                                                            1          
+     ∂ xi           T,vN ,x j=i
+                                    4π kB T ε0      εr (x̄ ) ai                                                      σi j =      σi + σ j                                                     (12)
+                                                                                                                          2
+                                       e2         1          ∂ εr (x̄ )                                                                          
+                                  −                                                                        (3)
+                                    4π kB T ε0 εr (x̄ )2        ∂ xi T,v,x                                           ui j =     ui u j 1 − ki j                                               (13)
+                                                                                                   j=i
+
+
+   An expression for the altered Born contribution with respect to                                                   Eq. (13) introduces the binary interaction parameter ki j that can
+the residual pressure and with respect to the particle volume is au-                                                 be used to alter the dispersion energy ui j in the mixture. For elec-
+tomatically set to zero as the pressure dependence of the dielectric                                                 trolyte solutions, kion, sol vent as well as kcat, an are required for sys-
+constant and of the Born radii are neglected (Eq. (4)).                                                              tems salt + water with pure-component parameters of the ions
+                                                                                                                   regressed including the interaction parameters. [11] For the pre-
+pBorn               ∂ aBorn                                                                                          diction of inﬁnite dilution properties and MIACs in the organic sol-
+      =                                          =0                                                        (4)
+kB T                 ∂ vN         T,vN ,x j=i                                                                       vent, kij -values between ion and solvent were set to zero. Thus,
+                                                                                                                     the results are denoted ‘predictions’. By derivation of the residual
+   In contrast, temperature dependence of the dielectric constant                                                    Helmholtz energy with respect to density and mole fraction, the
+cannot be neglected. From fundamental thermodynamics (Eq. (5))                                                       fugacity coeﬃcient is obtained (Eq. (14)).
+an expression for the enthalpy can be derived.                                                                                                    res 
+H = A + PV + T S                                                                                           (5)                     μres         ∂ kaB ·T
+                                                                                                                     ln (ϕi ) =     i
+                                                                                                                                       − ln 1 +                                               (14)
+                                                                                                                                kB · T            ∂ρ
+   Here, the Born contribution to pressure (PV) is equal to zero
+and the partial derivation of the Helmholtz energy over tempera-
+ture is equal to the negative entropy. Eq. (6) expresses the reduced                                                 3. Results and Discussion
+molar enthalpy caused by the ion solvation.
+                                                                                                                   3.1. Pure-component and binary interaction parameters
+            H Born       e2                                   1        T ∂ εr         xi z 2
+                                                                                               i
+hBorn =            =−                                    1−        −                                       (6)
+            kT N      4π ε0 kB T                              εr       εr2 ∂ T            ai                             The advanced treatment including the altered Born contribu-
+                                                                                      i
+                                                                                                                     tion and the concentration-dependent dielectric constant within
+   The Gibbs free energy of solvation is calculated from fugacity                                                    ePC-SAFT aims at using already published pure-component param-
+coeﬃcients of the ion i at inﬁnite dilution in the respective solvent                                                eters for all components and ions. The pure-component parame-
+S1 (Eq. (7)).                                                                                                        ters for the organic solvents and water are presented in Table 1.
+Hyd Gi (T , p) = RT · ln ϕi∞,S1 (T , p)                                                                   (7)       All solvents were modeled as associating ﬂuids with a 2B associat-
+                                                                                                                     ing scheme. The inorganic ions representing alkali-halide salts are
+   Consequently, the Gibbs energy of transfer is calculated from                                                     presented in Table 2 together with the binary interaction param-
+the ratio of the fugacity coeﬃcients at inﬁnite dilution in solvents                                                 eters kion,water [11] and interaction parameters between the inor-
+S1 and S2.                                                                                                           ganic ions Table 3). In ePC-SAFT revised [11], all these parameters
+                                            
+               ϕi∞,S2                                                                                                were estimated exclusively to properties (e.g. MIACs) in water sol-
+ Gi = RT · ln
+    Tr
+                                                                                                           (8)       vent.
+               ϕi∞,S1                                                                                                    A transferability study to non-aqueous systems will be pre-
+   Further, the MIAC is available experimentally as ﬁnite dilution                                                   sented in this work. The already existing interaction parameters
+property. If a salt is assumed to be fully dissociated, the MIAC is                                                  were applied in the present work to predict inﬁnite and ﬁnite
+calculated from the ion-based activity coeﬃcients of the cation cat                                                  properties in organic solvents. That is, further ki j -values were not
+and anion an as depicted in Eq. (9).                                                                                 used i.e., ki j = 0 for ion-organic solvent pairs.
+                                                          1
+                                                                                                                         The dielectric constant is a fundamental part of the modelling
+γ±∗ = (νcat ln γcat
+                 ∗
+                    + νan ln γan
+                               ∗ νcat +νan
+                                 )                                                                         (9)       within the new treatment for ePC-SAFT. The relative dielectric con-
+                                                                                                                     stants ε r applied in this work are summarized in Table 4. A linear
+   The activity coeﬃcient of each of the ions i in the mixture is
+                                                                                                                     concentration dependence of ε r with the mole-based salt concen-
+calculated from the ration of the fugacity coeﬃcients in mixture
+                                                                                                                     tration is assumed according to previous work. [2] In that work,
+and of the fugacity coeﬃcient at inﬁnite dilution of the ion.
+                                                                                                                     the linear relation has proven to be feasible for modeling LLE of
+              ϕi (T, p, x)                                                                                          water and ionic liquids. Certainly, this is not a perfect represen-
+γi∗ =                                                                                                     (10)
+          ϕ0i (T, p, xi → 0)                                                                                         tation of the actual dependence with concentration and is much
+                                                                                                                     more a practical simpliﬁcation with the application to engineering
+2.2. ePC-SAFT advanced                                                                                               models in mind. Beneﬁcially, this approach does not rely on exper-
+                                                                                                                     imental data for dielectric constants in mixtures. Even for binary
+   In this work, the inﬁnite-dilution fugacity coeﬃcient ϕi∞ and                                                     systems experimental data is rarely available. For multi-component
+the MIAC γ±∗ of the salt in the respective solvent (water, organic                                                   systems the effort for the determination of the dielectric constant
+solvent) were calculated with the advanced ePC-SAFT approach,                                                        for mixtures is enormously in terms of time and effort. The expres-
+see Eq. (11).                                                                                                        sion linear in concentration shows another beneﬁt of the new ap-
+                                                                                                                     proach. The derivative of the mixing rule for the dielectric constant
+ares = ahc + adisp + aassoc + aDH (εr (x̄ ) ) + aBorn (εr (x̄ ) )                                         (11)
+                                                                                                                     is always the value of the pure component for all species involved
+     The model including εr (x̄ ) and the required deviations will from                                              in the system, ∂ (ε∂rx(x̄ )) = εr,i . For the majority of industrially im-
+                                                                                                                                                  i
+now on be denoted ePC-SAFT advanced. ePC-SAFT advanced re-                                                           portant solvent classes and even for inorganic salts, experimental
+quires ﬁve pure-component parameters for associating compounds                                                       data for the dielectric constant of the pure compound are available
+like water: segment number mi , diameter σi , dispersion energy
+                                    seg
+                                                                                                                     in the literature. Bearing in mind the experimental lack for multi
+ui , association energy ε AiBi and volume κ AiBi , while only two pure-                                              component systems, the application of a simple mixing rule is fea-
+component parameters for the ions are applied: diameter σi and                                                       sible.
+
+                                                                                                                 3
+M. Bülow, M. Ascani and C. Held                                                                                                                 Fluid Phase Equilibria 535 (2021) 112967
+
+
+                                                Table 1
+                                                Pure-component parameters of water and organic solvents used in this work. All com-
+                                                ponents have a 2B association scheme.
+
+                                                  Organic Solvent         mseg
+                                                                           i
+                                                                                      σi / Å     ui /kB / K    ε AiBi / K   κ AiBi    Ref.
+                                                                                      ∗
+                                                  Water                   1.2047                  353.95        2425.7       0.04509   [24]
+                                                  Methanol                1.5255      3.2300      188.90        2899.5       0.03518   [25]
+                                                  Ethanol                 2.3827      3.1771      198.24        2653.4       0.03238   [25]
+                                                  ∗
+                                                      σ = 2.7927 + (10.11 · e−0.01775 T/K − 1.417 · e−0.01146 T/K )
+
+
+                      Table 2
+                      ePC-SAFT pure-ion parameters and binary
+                      interaction parameters ki j between water
+                      and inorganic ions from ref. [11] Segment
+                      number is unity for all ions. ki j valid only
+                      at 298.15 K.
+
+                        Ion       σi / Å    ui /kB / K     kion,water
+
+                        Li+       2.8449     360.00         -0.2500
+                        Na+       2.8232     230.00         0.0045
+                        K+        3.3417     200.00         0.1997
+                        F−        1.7712     275.00         0.0000
+                        Cl−       2.7560     170.00         -0.2500
+                        Br−       3.0707     190.00         -0.2500
+                        I−        3.6672     200.00         -0.2500                                  Figure 2. Gibbs energy of hydration at 298 K and 1 bar at inﬁnite dilution ePC-
+                                                                                                     SAFT revised11 : orange; ePC-SAFT advanced: green; SAFT-VR: violet [19]. Literature
+                                                                                                     data: gray, from Fawcett et al. [31]
+                         Table 3
+                         ePC-SAFT binary interaction param-
+                         eters ki j between halide anions and
+                         alkali cations from ref. [11]                                               the assumption to replace the Born radii with the ePC-SAFT ion
+                                     Li+      Na+         K+
+                                                                                                     diameters σi . Hyd Gi values for different alkali-halide ions have
+                                                                                                     been correlated by Fawcett et al. [31] from experimental data and
+                            F−       0        0.665       1.000
+                                                                                                     used for validation of SAFT-VRE by Schreckenberg et al. [19] In
+                            Cl−      0.669    0.317       0.064
+                            Br−      0.591    0.290       -0.102                                     Figure 2, the literature Hyd Gi values for the single alkali cations
+                            I−       0.002    0.018       -0.312                                     and halide anions are compared to SAFT-VRE and to ePC-SAFT ad-
+                                                                                                     vanced (green bars) from this work and to ePC-SAFT revised (or-
+               Table 4                                                                               ange bars) from 2014. [11]
+               Dielectric constants for solvents and salts applied in this                               The authors would like to stress that the literature Hyd Gi data
+               work at 298.15 K and 1 bar.                                                           are based on correlations of effects averaged from considering dif-
+                 Component        Dielectric constant / C · V m−1        Ref.                        ferent salts. Certainly, Hyd Gi values for single ions cannot be ex-
+                                                                                                     perimentally measured. Thus, a conclusion on the quantitative ac-
+                 Water            78.09                                  [30]
+                 Methanol         33.05                                  [29]
+                                                                                                     cordance between such data and the SAFT modeling approaches is
+                 Ethanol          24.88                                  [28]                        rather complicated. Nonetheless, the modeling results give a good
+                 Salts            8                                      a)                          indication of the correctness of the different modeling approaches.
+                 a)
+                   All salts were modeled with a similar dielectric con-
+                                                                                                     The data show that the Gibbs energy of hydration increases for
+               stant that is a mean of available experimental data.[27]                              the alkali cations from Li+ to K+ and for the halide anions from
+                                                                                                     F− to I− . The increase correlates with the size of the ions – the
+                                                                                                     smallest ions possess the highest surface charge density; thus, the
+   It has to be mentioned that there are theoretical models able to                                  smaller the ion the higher the water-ion interactions at inﬁnite
+predict the dielectric constant in a (binary) mixture with at least                                  dilution. Obviously, ePC-SAFT revised does not allow predicting
+qualitative agreement. [26] With a future model performing on a                                      Hyd Gi ; ePC-SAFT revised yields results of the wrong sign for all
+quantitative level, the above-mentioned beneﬁts might be dropped                                     ions except Li+ . This behavior is the reason behind the use of large
+in favor of a more physical meaningful approach coupled with a                                       binary interaction parameters to correlate distribution coeﬃcients
+numerical derivation with respect to the mole fraction of compo-                                     of salts in water/MIBK mixed solvent [32] or in water/polymer
+nent ∂ (ε∂rx(x̄)) . All salts were modeled with the same value of εr = 8                             two phase systems [9]. In contrast, ePC-SAFT advanced from this
+           i
+that represents the value for most of the salts (7 < εr < 9) in good                                 work and SAFT-VRE estimate much more meaningful Hyd Gi val-
+estimation. [27] The dielectric constant for solvents was taken from                                 ues; both predict more negative values than the literature data.
+literature and are here given for the temperature 298 K and 1 bar.                                   Hyd Gi for the alkali cations is more negative for SAFT-VRE than
+[28, 29]                                                                                             for ePC-SAFT advanced, and vice versa for the halide anions. The re-
+                                                                                                     sulting mean Gibbs energy of hydration (salt speciﬁc) predicted by
+3.2. Gibbs energy of solvation                                                                       both models, SAFT-VRE and ePC-SAFT advanced, are roughly equal
+                                                                                                     for all alkali halides at the conditions under study (not graphically
+    The advanced ePC-SAFT model was tested against literature                                        visualized).
+data on Gibbs energy of solvation and Gibbs energy of transfer.                                          Further, a detailed investigation into the different contributions
+At inﬁnite dilution, the only interactions involving ions are ion-                                   to the Gibbs energy of hydration is presented in Figure 3. The pre-
+solvent interactions, reducing the altered Born contribution to the                                  dominant contribution to Hyd Gi is coming from the Born term.
+original Born term. Both, Hyd Gi and T r Gi are important proper-                                  This has two implications. First, simpliﬁcations within deriving the
+ties; successfully modeling both such properties provides a mean-                                    Born term as discussed earlier (cf. Figure 1 and text) might be seen
+ingful validation of the new approach within ePC-SAFT including                                      critical. The application of the diameter σi instead of the Born radii
+
+                                                                                                 4
+M. Bülow, M. Ascani and C. Held                                                                                                  Fluid Phase Equilibria 535 (2021) 112967
+
+
+                                                                                           than on Hyd Gi . This can be explained by the Born self-energy that
+                                                                                           balances out for the transfer from water to the alcohol. Still, ne-
+                                                                                           glecting the Born term would translate to an oversimpliﬁcation,
+                                                                                           which might only be compensated by applying unphysically high
+                                                                                           binary interaction parameters ki j – a strategy that was used in pre-
+                                                                                           vious works [32] but which is not further recommended any more.
+
+                                                                                           3.4. MIAC in alcoholic solvents
+
+                                                                                               Gibbs energies of hydration and Gibbs energy of transfer
+                                                                                           present inﬁnite-dilution properties. Experimental MIACs for salts
+Figure 3. Contributions to the Gibbs energy of hydration Hyd Gi of ions at inﬁ-
+                                                                                           in different solvents [37, 38] are suitable to validate ePC-SAFT
+nite dilution within ePC-SAFT advanced from this work. For each alkali-halide ion,         advanced and to proof the physical meaning of including a
+the Born term (orange) provides the largest contribution. Debye-Hückel does not            concentration-dependent dielectric constant in the altered Born
+contribute at inﬁnite dilution. Gray: hard-chain contribution, dark gray: dispersion       contribution and in the Debye-Hückel theory (cf. Figure 6 and Fig-
+contribution, black: association contribution.
+                                                                                           ure 7). Originally in ePC-SAFT revised, [11] MIACs at 298.15 K were
+                                                                                           used as input data to the parameter estimation. The following re-
+or any of the other ion radii available in the literature might be                         sults were achieved using these originally-determined parameters.
+a reason for the deviations between ePC-SAFT advanced and the                              The methods aim at transferring all the parameters to predict MI-
+literature Hyd Gi . Nevertheless, Schreckenberg et al. applied Paul-                      ACs in non-aqueous solvents.
+ing radii, which also did not allow to further minimize the devia-                             Figure 6a illustrates the MIACs of LiBr in ethanol for different
+tions between SAFT-VRE and the literature Hyd Gi . In fact, Hyd Gi                       modeling prediction approaches within the ePC-SAFT framework,
+data might be useful to regress more meaningful radii, which is not                        all of them without the use of ki j -parameters between ion and sol-
+done in this work due to the desire to use a minimum number of                             vent: ePC-SAFT revised, ePC-SAFT revised with the Born term, ePC-
+model parameters.                                                                          SAFT revised but included with a concentration-dependent dielec-
+    Second, and more generally valid, neglecting the Born term                             tric constant in the Debye-Hückel theory and ePC-SAFT advanced.
+is not recommended for future work with ePC-SAFT especially                                Prediction of MIACs fail by using ePC-SAFT without and with the
+for modeling non-aqueous electrolyte systems. Upon neglecting                              Born term as long as the concentration-dependence εr (x̄ ) is ex-
+the Born term, huge ki j -values between ion and solvent or even                           cluded. The reason is that excess properties such as the MIACs
+solvent-dependent ion parameters were necessary in other works                             are not affected by the Born term as long as the dielectric con-
+[33, 34]. It should be noted here again that Hyd Gi is an inﬁnite-                        stant is of constant value; the Born contribution cancels out e.g.,
+dilution property. The concentration-dependency of the altered                             in Eq. (10). Neglecting the Born term for modeling aqueous sys-
+Born contribution and the dielectric constant does not play a role                         tems without a consideration of a concentration-dependent dielec-
+for modeling Hyd Gi ; the importance of the concentration depen-                          tric constant is therefore not only a simpliﬁcation, but also thermo-
+dence will be shown in the section “MIAC in organic solvents”.                             dynamically and mathematically consistent. Predictions with quan-
+                                                                                           titative agreement over the whole investigated concentration range
+3.3. Gibbs energy of transfer                                                              of the salt were only achieved by incorporating the concentration-
+                                                                                           dependent dielectric constant into the altered Born contribution
+    The Gibbs energy of transfer (T r Gi ) represents an important                        and Debye-Hückel theory (ePC-SAFT advanced). A detailed inspec-
+property for the transfer from aqueous to non-aqueous electrolyte                          tion of the different contributions to the MIAC within the ePC-
+systems. T r Gi values are experimentally available e.g., for alkali-                     SAFT advanced model is exemplarily shown for LiBr in ethanol in
+halide ions from water to methanol or to ethanol. The compari-                             Figure 6b. The short-range forces i.e., the classical physical forces
+son of ePC-SAFT modeling results for T r Gi with vs. without the                          described by original PC-SAFT, contribute with a linear rise to the
+Born term is compared to experimental data in Figure 4. T r Gi                            MIACs with increasing concentration of salt; however, the contri-
+values for the halide anions estimated with ePC-SAFT advanced                              bution to the MIAC is surprisingly low. Certainly, the electrostatic
+are in good agreement with the experimental data while ePC-SAFT                            forces are expected to play a more fundamental role in organic vs.
+revised (without the Born term) largely underestimates and even                            aqueous systems. Debye and Hückel stated that their treatment is
+qualitatively incorrect represents the experimental data. This indi-                       only applicable to a physical model that is fully developed and in-
+cates that the Born term allows correcting the ion-solvent inter-                          corporates all necessary short-range forces. For MIACs of the salts
+actions in a manner to bring the modeling results to the same or-                          (LiBr, LiCl, NaBr) under study in ethanol and methanol, this state-
+der of magnitude compared to the experimental T r Gi values. Still,                       ment might need to be revised as long as water is not present –
+the variation of T r Gi with increasing ion diameter is not correctly                     still a surprising conclusion. Further, this might even be an argu-
+represented with ePC-SAFT advanced for the cations. High devia-                            ment to not adjust ion-related model parameters to data of sys-
+tions are still observed for Li+ and K+ , which might be attributed                        tems alcohol + salt. Nevertheless, more complex systems will cer-
+to the potentially too high dispersion energy between ion and wa-                          tainly require reasonable models for the short-range interactions
+ter. However, this work does not aim at readjusting model param-                           e.g., liquid-liquid equilibria or solubility of salts in solvents or sol-
+eters.                                                                                     vent mixtures. The Debye-Hückel theory gives a monotone non-
+    The single contributions to the Gibbs energy of transfer within                        linear decrease that is responsible for the negative value of the
+ePC-SAFT advanced for Na+ , Cl− and I− for the transfer from wa-                           MIAC at small salt concentration ranges (usually < 0.1 mol/kg).
+ter to methanol and ethanol, respectively, is depicted in Figure 5.                        Only utilizing the altered Born contribution allows describing the
+The most important aspect here is that the Born term contributes                           increase of MIACs with increasing salt concentration – the key to-
+signiﬁcantly for the systems under study.                                                  wards quantitatively predicting the MIACs.
+    The ePC-SAFT diameter σi for Na+ and Cl− are almost similar,                               Similar accuracy was obtained also for MIACs of other salts in
+which explains the similar values for T r GNa+ and T r GCl− , while                      alcohol (c.f. Figure 7). This reassures that the pure-ion ePC-SAFT
+T r GI− is signiﬁcantly smaller caused by the larger σi -value. The                       parameters are still applicable also to non-aqueous systems, as
+percental contribution of the Born term on T r Gi is much smaller                         long as the advanced theory within ePC-SAFT is applied. This is
+
+                                                                                       5
+M. Bülow, M. Ascani and C. Held                                                                                                        Fluid Phase Equilibria 535 (2021) 112967
+
+
+
+
+Figure 4. Gibbs energy of transfer T r Gi of alkali-halide ions at inﬁnite dilution for the transfer from water to alcohol at 298.15 K and 1 bar. Comparison between ePC-SAFT
+advanced: green; this work) and ePC-SAFT revised: [11] orange with experimental data from Marcus et al.: gray bars. [35, 36] Left: T r Gi from water to methanol, right:
+from water to ethanol.
+
+
+
+
+Figure 5. Different contributions within ePC-SAFT advanced (bars: hard chain, dispersion, association, Debye-Hückel, Born) to the Gibbs energy of transfer for ions from
+water to methanol and from water to ethanol at inﬁnite dilution at 298.15 K and 1 bar. Blue: Na+ , red: Cl− or I− . Top: ethanol; left: NaCl, right: NaI. Bottom: methanol;
+left: NaCl, right: NaI.The contribution is in the same order of absolute magnitude compared to contributions from hard-chain repulsion, dispersion, and association. While
+the contributions due to hard-chain repulsion and dispersion more or less balance out, the Born term forces T r Gi to become positive – a realistic value. Further, the results
+show that using ePC-SAFT ion diameter as input to the Born term gives reasonable results.
+
+
+
+
+Figure 6. Mean ionic activity coeﬃcients (MIACs) of LiBr in ethanol at 298 K and 1 bar. Circles are experimental data. [23]. Left: Black: ePC-SAFT revised, [11] orange:
+ePC-SAFT + Born without ε(xsalt ), gray: ePC-SAFT with ε(xsalt ) in DH without Born, green: ePC-SAFT advanced with Born and ε(xsalt ) in Born and in DH. Right: Single
+contributions within ePC-SAFT advanced to the predicted MIAC. Orange: Born contribution with ε(xsalt ); blue: Debye-Hückel contribution ε(xsalt ). Gray solid: hard-chain
+contribution; gray dashed: dispersion contribution and gray dashed-dotted: association contribution.
+
+
+
+                                                                                       6
+M. Bülow, M. Ascani and C. Held                                                                                                    Fluid Phase Equilibria 535 (2021) 112967
+
+
+
+
+Figure 7. Mean ionic activity coeﬃcients (MIACs) of alkali-halide salts in alcohols methanol and ethanol at 298 K and 1 bar. Cycles are experimental data. [37, 38] Green:
+Predictions with ePC-SAFT advanced, black: ePC-SAFT revised. Top: ethanol; left: LiBr, right: NaBr. Bottom: methanol; left: LiCl, right: NaBrConclusion
+
+
+
+an extremely important discovery, meaning the new treatment not                         4. Conclusion
+only allows the transferability of pure-ion parameters, which is
+highly debated and that was at no time veriﬁed. Effectively, this                           This work advances the ePC-SAFT framework by incorporat-
+work shows the successfully achieved transition of ePC-SAFT to                          ing a concentration-dependent dielectric constant into the altered
+non-aqueous electrolyte systems. To the best of our knowledge,                          Born contribution and in the Debye-Hückel theory to the residual
+this is the ﬁrst possible transition of any (electrolyte) EoS to non-                   Helmholtz energy. By this ePC-SAFT is capable to describe physical
+aqueous solutions without considering large interaction parameters                      phenomena in solvents with low dielectric constant. The altered
+or the need for re-estimating new pure-component parameters.                            Born contribution addresses increased ion solvation by low per-
+   It is now possible to answer some of the questions of Konto-                         mittivity, which is induced by decreased dielectric constant upon
+georgis et al. [1] based on the modeling results within ePC-SAFT                        increasing salt concentration. The impact of the Born contribution
+advanced gained in the present work:                                                    is evaluated against Gibbs energy of hydration and Gibbs energy of
+                                                                                        transfer for alkali cations and halide anions. Such data are mean-
+                                                                                        ingful indicators for the physical soundness of any electrolyte ther-
+ - Yes, we need the Born term in modeling, but only combined                            modynamic model. It was shown that the altered Born contribu-
+   with a concentration-dependent dielectric constant including                         tion is of great importance for the transfer of the ePC-SAFT frame-
+   all derivatives, c.f. altered Born contribution.                                     work and the ion parameters from aqueous to non-aqueous sys-
+ - We should use as short-range and long-range contributions in                         tems. This was proven by the large percentage of the Born con-
+   electrolyte equations of state (EoS), as engineering applications                    tribution to both, Gibbs energy of hydration and Gibbs energy of
+   aim at complex systems involving a cocktail of diverse species.                      transfer. Further, the advanced ePC-SAFT framework was validated
+ - The use of uniﬁed ion diameters that reﬂect the distance of                          against experimental MIACs in alcohol. The predictions for MIACs
+   closest approach in Debye-Hückel theory as well as in the al-                        were found to be in very good agreement with experimental data.
+   tered Born contribution is apparently feasible.                                      That is, i) pure-component parameters for ions, estimated origi-
+                                                                                        nally using aqueous properties, are transferable non-aqueous sys-
+                                                                                        tems, ii) the importance of the Born term is signiﬁcant only if
+                                                                                        the concentration-dependent dielectric constant is used. Overall,
+   Further, including inﬁnite-dilution properties of organic sol-
+                                                                                        the transition of ePC-SAFT to a model for non-aqueous systems is
+vents into the parameter estimation might be an interesting op-
+                                                                                        accomplished. A re-estimation of the applied pure-component pa-
+tion, already implemented by other models. [20] Still, such data
+                                                                                        rameters for ions is ruled out by the accurate prediction of MIACs
+scatter signiﬁcantly (c.f. Figure 4). Nevertheless, including such
+                                                                                        and by the lack in precise experimental data for inﬁnite-dilution
+data would increase the available data set. As a ﬁnal statement, a
+                                                                                        properties. The consequences of the approach presented in this
+re-estimation of the pure-ion parameters or an inclusion of non-
+                                                                                        work is the need to rethink classical approaches upon model devel-
+uniﬁed ion parameters (different ion-size parameters for Debye-
+                                                                                        opment in the future: more pronounced physical phenomena can-
+Hückel and altered Born) within ePC-SAFT is not intended, given
+                                                                                        not be neglected in electrolyte solutions instead of compensating
+the success of ePC-SAFT advanced and the required effort for a re-
+                                                                                        such effects and hiding them by ﬁtting many model parameters.
+parametrization.
+
+                                                                                    7
+M. Bülow, M. Ascani and C. Held                                                                                                           Fluid Phase Equilibria 535 (2021) 112967
+
+
+Further, four central questions arisen in the work of Kontogeorgis                           [14] J.A. Myers, S.I. Sandler, R.H. Wood, An Equation of State for Electrolyte Solu-
+et al. have been addressed and intensively debated. Further, includ-                              tions Covering Wide Ranges of Temperature, Pressure, and Composition, Ind.
+                                                                                                  Eng. Chem. Res. 41 (2002) 3282–3297.
+ing the altered Born contribution brings a ﬁrst step towards univer-                         [15] Y. Lin, K. Thomsen, J.-C.de Hemptinne, Multicomponent equations of state for
+sal modelling, solvent-independent, predictive, and extrapolative in                              electrolytes, AIChE J 53 (2007) 989–1005.
+salt concentration.                                                                          [16] de R. Inchekel, J.-C. Hemptinne, W. Fürst, The simultaneous representation of
+                                                                                                  dielectric constant, volume and activity coeﬃcients using an electrolyte equa-
+                                                                                                  tion of state, Fluid Phase Equilibria 271 (2008) 19–27.
+Declaration of Competing Interest                                                            [17] B. Maribo-Mogensen, K. Thomsen, G.M. Kontogeorgis, An electrolyte CPA equa-
+                                                                                                  tion of state for mixed solvent electrolytes, AIChE J 61 (2015) 2933–2950.
+                                                                                             [18] de J. Rozmus, J.-C. Hemptinne, A. Galindo, S. Dufal, P. Mougin, Modeling of
+   The authors declare no conﬂict of interest.
+                                                                                                  Strong Electrolytes with ePPC-SAFT up to High Temperatures, Ind. Eng. Chem.
+                                                                                                  Res. 52 (2013) 9979–9994.
+CRediT authorship contribution statement                                                     [19] J.M.A. Schreckenberg, S. Dufal, A.J. Haslam, C.S. Adjiman, G. Jackson, A Galindo,
+                                                                                                  Modelling of the thermodynamic and solvation properties of electrolyte so-
+                                                                                                  lutions with the statistical associating ﬂuid theory for potentials of variable
+   Mark Bülow: Investigation, Validation, Formal analysis, Writing                                range, Molecular Physics 112 (2014) 2339–2364.
+- original draft, Conceptualization, Methodology. Moreno Ascani:                             [20] S. Müller, A. González de Castilla, C. Taeschler, A. Klein, I. Smirnova, Calcula-
+Investigation, Validation, Formal analysis. Christoph Held: Concep-                               tion of thermodynamic equilibria with the predictive electrolyte model COS-
+                                                                                                  MO-RS-ES: Improvements for low permittivity systems, Fluid Phase Equilibria
+tualization, Methodology, Project administration, Writing - review                                506 (2020) 112368.
+& editing, Supervision.                                                                      [21] C. Held, Thermodynamic gE Models and Equations of State for Electrolytes in
+                                                                                                  a Water-Poor Medium: A Review, J. Chem. Eng. Data 65 (2020) 5073–5082.
+                                                                                             [22] J.N. Israelachvili, Intermolecular and Surface Forces, 3rd ed., Elsevier Science,
+Acknowledgement                                                                                   Saint Louis, 2015.
+                                                                                             [23] A.A. Rashin, B. Honig, Reevaluation of the Born model of ion hydration, J. Phys.
+    This work has been supported by the German Science Founda-                                    Chem. 89 (1985) 5588–5593.
+                                                                                             [24] D. Fuchs, J. Fischer, F. Tumakaka, G. Sadowski, Solubility of Amino Acids: In-
+tion (DFG) within the priority program SPP 1708 “Material Synthe-                                 ﬂuence of the pH value and the Addition of Alcoholic Cosolvents on Aqueous
+sis Near Room Temperature” (grant HE 7165/7-1).                                                   Solubility, Ind. Eng. Chem. Res. 45 (2006) 6578–6584.
+                                                                                             [25] J. Gross, G. Sadowski, Application of the Perturbed-Chain SAFT Equation of
+References                                                                                        State to Associating Systems, Ind. Eng. Chem. Res. 41 (2002) 5510–5515.
+                                                                                             [26] B. Maribo-Mogensen, G.M. Kontogeorgis, K. Thomsen, Modeling of dielectric
+                                                                                                  properties of aqueous salt solutions with an equation of state, The journal of
+ [1] G.M. Kontogeorgis, B. Maribo-Mogensen, K. Thomsen, The Debye-Hückel the-
+                                                                                                  physical chemistry. B 117 (2013) 10523–10533.
+     ory and its importance in modeling electrolyte solutions, Fluid Phase Equilibria
+                                                                                             [27] C. Andeen, J. Fontanella, D. Schuele, Low-Frequency Dielectric Constant of LiF,
+     462 (2018) 130–152.
+                                                                                                  NaF, NaCl, NaBr, KCl, and KBr by the Method of Substitution, Physical Review
+ [2] M. Bülow, X. Ji, C. Held, Incorporating a concentration-dependent dielectric
+                                                                                                  B (1970) 5068–5073.
+     constant into ePC-SAFT. An application to binary mixtures containing ionic liq-
+                                                                                             [28] R.M. Shirke, A. Chaudhari, N.M. More, P.B. Patil, Temperature dependent dielec-
+     uids, Fluid Phase Equilib 492 (2019) 26–33.
+                                                                                                  tric relaxation study of ethyl acetate — Alcohol mixtures using time domain
+ [3] M. Bülow, A. Danzer, C. Held, Liquid-Liquid Equilibria of Binary and Ternary
+                                                                                                  technique, Journal of Molecular Liquids 94 (2001) 27–36.
+     Systems Containing Ionic Liquids, in: S Zhang (Ed.), Encyclopedia of Ionic Liq-
+                                                                                             [29] M.T. Khimenko, V.V. Aleksandrov, N.N. Gritsenko, Polarizability and radii of
+     uids, Springer Singapore, Singapore, 2020, pp. 1–7.
+                                                                                                  molecules of some pure liquids, Zh.Fiz.Khim (1973) 2914–2915.
+ [4] C. Held, G. Sadowski, Thermodynamics of Bioreactions, Annual review of
+                                                                                             [30] W.B. Floriano, M.A.C. Nascimento, Dielectric constant and density of water as
+     chemical and biomolecular engineering 7 (2016) 395–414.
+                                                                                                  a function of pressure at constant temperature, Braz. J. Phys. 34 (2004) 38–41.
+ [5] C. Held, T. Reschke, R. Müller, W. Kunz, G. Sadowski, Measuring and modeling
+                                                                                             [31] W.R. Fawcett, Thermodynamic Parameters for the Solvation of Monatomic Ions
+     aqueous electrolyte/amino-acid solutions with ePC-SAFT, The Journal of Chem-
+                                                                                                  in Water, The journal of physical chemistry. B 103 (1999) 11181–11185.
+     ical Thermodynamics 68 (2014) 1–12.
+                                                                                             [32] S. Mohammad, C. Held, E. Altuntepe, T. Köse, G. Sadowski, Inﬂuence of Salts
+ [6] M. Bülow, A. Schmitz, T. Mahmoudi, D. Schmidt, F. Junglas, C. Janiak, C. Held,
+                                                                                                  on the Partitioning of 5-Hydroxymethylfurfural in Water/MIBK, The journal of
+     Odd–even effect for eﬃcient bioreactions of chiral alcohols and boosted stabil-
+                                                                                                  physical chemistry. B 120 (2016) 3797–3808.
+     ity of the enzyme, RSC Adv 10 (2020) 28351–28354.
+                                                                                             [33] C. Held, A. Prinz, V. Wallmeyer, G. Sadowski, Measuring and modeling alco-
+ [7] K. Wysoczanska, E.A. Macedo, G. Sadowski, C. Held, Solubility Enhancement of
+                                                                                                  hol/salt systems, Chemical Engineering Science 68 (2012) 328–339.
+     Vitamins in Water in the Presence of Covitamins: Measurements and ePC-SAFT
+                                                                                             [34] S. Mohammad, C. Held, E. Altuntepe, T. Köse, T. Gerlach, I. Smirnova, G. Sad-
+     Predictions, Ind. Eng. Chem. Res. 58 (2019) 21761–21771.
+                                                                                                  owski, Salt inﬂuence on MIBK/water liquid–liquid equilibrium: Measuring and
+ [8] T. Reschke, C. Brandenbusch, G. Sadowski, Modeling aqueous two-phase sys-
+                                                                                                  modeling with ePC-SAFT and COSMO-RS, Fluid Phase Equilibria 416 (2016)
+     tems: I. Polyethylene glycol and inorganic salts as ATPS former, Fluid Phase
+                                                                                                  83–93.
+     Equilibria 368 (2014) 91–103.
+                                                                                             [35] C. Kalidas, G. Hefter, Y. Marcus, Gibbs energies of transfer of cations from wa-
+ [9] M. Wessner, M. Nowaczyk, C. Brandenbusch, Rapid identiﬁcation of tailor–
+                                                                                                  ter to mixed aqueous organic solvents, Chemical reviews 100 (2000) 819–852.
+     made aqueous two-phase systems for the extractive puriﬁcation of high-value
+                                                                                             [36] Y. Marcus, Gibbs energies of transfer of anions from water to mixed aqueous
+     biomolecules, Journal of Molecular Liquids 314 (2020) 113655.
+                                                                                                  organic solvents, Chemical reviews 107 (2007) 3880–3897.
+[10] M. Schleinitz, L. Nolte, C. Brandenbusch, Predicting protein-protein interactions
+                                                                                             [37] M.T.     Zafarani-Moattar,     K.     Nasirzade,    Osmotic      Coeﬃcient     of
+     using the ePC-SAFT equation-of-state, Journal of Molecular Liquids 298 (2020)
+                                                                                                  Methanol + LiCl, + LiBr, and + LiCH 3 COO at 25°C, J. Chem. Eng. Data
+     112011.
+                                                                                                  43 (1998) 215–219.
+[11] C. Held, T. Reschke, S. Mohammad, A. Luza, G. Sadowski, ePC-SAFT revised,
+                                                                                             [38] S. Han, H. Pan, Thermodynamics of the sodium bromide-methanol-water and
+     Chem. Eng. Res. Des. 92 (2014) 2884–2897.
+                                                                                                  sodium bromide-ethanol-water two ternary systems by the measurements of
+[12] S. Ahmed, N. Ferrando, J.-C. Hemptinne, J.-P. de; Simonin, O. Bernard, O. Bau-
+                                                                                                  electromotive force at 298. 15K, Fluid Phase Equilibria 83 (1993) 261–270.
+     douin, Modeling of mixed-solvent electrolyte systems, Fluid Phase Equilibria
+     459 (2018) 138–157.
+[13] J. Wu, J.M. Prausnitz, Phase Equilibria for Systems Containing Hydrocarbons,
+     Water, and Salt: An Extended Peng−Robinson Equation of State, Ind. Eng.
+     Chem. Res. 37 (1998) 1634–1643.
+
+
+
+
+                                                                                         8
+

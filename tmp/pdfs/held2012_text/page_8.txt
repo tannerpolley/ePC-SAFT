@@ -1,0 +1,53 @@
+                                                       C. Held et al. / Chemical Engineering Science 68 (2012) 328–339                                                     335
+
+
+
+
+Fig. 2. Thermodynamic properties of NaI alcohol solutions modeled with ePC-SAFT (lines) compared to the experimental data (Refs. see Table 7) in ethanol (open circles)
+and methanol solutions (full circles) at 25 1C. (a) Solution densities. (b) Vapor pressures. (c) Osmotic coefﬁcients. (d) Mean ionic activity coefﬁcients. Model parameters and
+deviations are given in Tables 6, 7.
+
+
+
+
+                                                                                          water activity coefﬁcients in both the diluted and the more
+                                                                                          concentrated regions. Moreover, the solvent activity coefﬁcients
+                                                                                          are high for alcohol and low for water in the diluted region, which
+                                                                                          is not the case for the more concentrated solutions. Because of this
+                                                                                          phenomenon, the activity coefﬁcients intersect. Up to a molality of
+                                                                                          approximately 0.9 m, the order is gwater o gmethanol o gethanol,
+                                                                                          whereas the series is reversed at higher concentrations. Independent
+                                                                                          of the considered solvent, two effects appear to be at play in
+                                                                                          electrolyte solutions; the ﬁrst effect leads to an increase in solvent
+                                                                                          activity coefﬁcients, and the second effect causes a decrease in
+                                                                                          activity coefﬁcients.
+
+                                                                                            At very small to moderate concentrations ( o0.5 m) the inter-
+                                                                                             ionic Coulombic forces dominate the solution’s behavior due
+                                                                                             to their long range. The strength of this interaction is deter-
+                                                                                             mined by the capability of the solvent to shield ionic charges,
+                                                                                             expressed by the solvent’s dielectric constant, e. The lower the
+                                                                                             e, the stronger the interionic interactions, i.e., the Debye–
+                                                                                             Hückel effect becomes more pronounced, increasing the sol-
+Fig. 3. Inﬂuence of NaI on solvent activity coefﬁcients at 25 1C. The symbols (stars:        vent activity coefﬁcient (more solvent molecules are forced to
+water, squares: methanol, circles: ethanol) represent experimental data from                 pass into the vapor phase compared to pure solvent). The
+Barthel and Lauermann (1986), Barthel et al. (1985), Lobo and Quaresma (1989),
+and Tomasula et al. (1985). The lines are calculations with ePC-SAFT.
+                                                                                             dielectric constants of the pure solvents are as follows:
+                                                                                             ewater 4 emethanol 4 eethanol, while the respective activity coefﬁ-
+                                                                                             cients follow the reverse order.
+coefﬁcients (MIACs) were introduced because they distinctly                                 Further addition of salt overlays the Coulomb forces by short-
+deviate from unity (see also Fig. 1). Generally, the modeled                                 range solvation effects, which results in lower solvent activity
+osmotic coefﬁcients and MIACs agree well with the experimental                               coefﬁcients (more solvent molecules are retained in the liquid
+data, as seen in Fig. 2c and d for the ethanol/NaI and methanol/NaI                          phase than in pure solvent). The solvents considered here (water,
+systems, respectively.                                                                       alcohols) possess a strong hydrogen-bond network. To solvate
+                                                                                             the introduced ions, such associating solvents must break their
+5.1.2. Comparing the inﬂuence of salt on different solvents                                  hydrogen-bond networks. As the strength of these networks
+   Based on the experimental data and ePC-SAFT modeling, it is                               decreases from water to ethanol, the activity coefﬁcients follow
+possible to compare the inﬂuence of a salt on both alcohols                                  that sequence into the more concentrated regions (m42).
+considered in this work with the inﬂuence on water (modeled
+previously by Held et al., 2008).
+   Fig. 3 illustrates the inﬂuence of sodium iodide on the activity                          This complex behavior is well captured with ePC-SAFT;
+coefﬁcients of water, methanol, and ethanol. In general, the inﬂu-                        the model describes the experimental data in Fig. 3 with good
+ence of salt on alcohol activity coefﬁcients is much stronger than on                     accuracy.
+

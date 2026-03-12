@@ -1,0 +1,44 @@
+278                Esteso, Gonzalez-l)iaz, Ilernandez-Luis, anti Fernandez-Merida
+
+
+(1,2) can be expressed as
+
+                                          ma (7~)R
+                             AE = 2k log -    -                               (3)
+                                             roT•
+
+where k = 2.303 RT/F; R, F and T being the ideal gas constant, Faraday
+constant and the absolute temperature, respectively. In Eq. (3), Y5 and
+(Y• are the stoichiometric activity coefficient at m and mR concentra-
+tions, respectively. Although tile value of (Y• remains constant for
+each ethanol-water mixture studied, it must be known to calculate the
+stoichiometric activity coefficient values, T+, in these solvent mixtures.
+
+2. E X P E R I M E N T A L
+
+2.1. Chemicals
+       NaCI (Merck, pro analysi) was dried in vacuo at 150~ for 48
+hours before use.
+       The conductivity-grade water was prepared by redistilling dis-
+tilled water in the presence of KMnO4 and a slightly alkaline medium.
+Its specific conductivity was 5 • 10 .7 S-cm -~.
+       EtOH ( Merck, p.a.) was fractionally distilled and only the inter-
+mediate fraction used. Its specific conductivity was 0.8• 10 -7 S-cm -I
+and its water conlent was determined as less than 0.2 weight %. This
+value was used to prepare the ethanol-water mixtures.
+       All the solutions were prepared by direct weighing of the solute
+and the two solvents.
+
+2.2. Electrodes
+      The sodium-glass electrodes used were Metrohm model
+6.0501.100 of 150 Mohm of nominal impedance at 20~                 Tile silver-
+silver chloride electrodes used, of thermal-electrolytic type, are
+described in the literature. (2) Their bias potentials were, in all cases, less
+than 0.02 mV.
+
+2.3. Apparatus
+      The cells used were built of pyrex glass tube in a H form. ~ Both
+ends of the cell were provided with ground-glass outlets to accom-
+modate tile electrodes. In all measurements, tile temperature inside the
+cell was kept constant at 25.00+0.002~ by using a thermostated oil
+bath.

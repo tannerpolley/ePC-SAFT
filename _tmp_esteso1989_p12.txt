@@ -1,0 +1,17 @@
+288               Esteso, Gonzalez-Diaz, Hernandez-Luis, and Fernandez-Merida
+
+
+  3. M. A. Esteso, L. Fcrnandez-Merida, and F. F. Hernandez-Luis, J. Electroanal.
+     Chem. 230, 69 (1987).
+  4. H. S. Harned and B. B. Owen, The Physical Chemistry of Electrolytic Solutions,
+     3rd ed. (Reinl~old, New York, 1958), p.166.
+  5. R. N. Roy, R. A. Robinson, and R. G. Bates, J. Chem. Thermodyn. 5, 559 (t973).
+  6. International Critical Tables of Numerical Data. Physics, Chemistry and
+     Technology, Vol. 11I, E. W. Washburn, ed. (McGraw-Hill, New York, 1928), p.77.
+  7. K. S. Pitzer, J. Phys. Chem. 77, 268 (1973).
+  8. K. S. Pitzer, J. Chem. Soc. Faraday Trans. II 68, 101 (1972).
+  9. R. A. Robinson and R. H. Stokes, Electrolyte Solutions (Butterworths, London,
+     1959), p.399.
+ 10. K. S. Pitzer and G. Mayorga, J. Phys. Chem. 77, 2300 (1973).
+ 11. H. O. Spivey and T. Shedlovsky, J. Phys. Chem. 71, 2165 (1967).
+ 12. R. L. Kay, J. Am. Chem. Soc. 82, 2099 (1960).

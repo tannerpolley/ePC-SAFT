@@ -1,0 +1,70 @@
+                                             C. Held et al. / Chemical Engineering Science 68 (2012) 328–339                                   329
+
+
+    The ﬁrst step toward modeling complex multicomponent                       2. Experimental work
+solutions is accurately describing binary solvent/salt systems.
+For that purpose, the interactions between all species must be                     Although the literature contains the thermodynamic proper-
+covered using a physically sound approach. In addition to the                  ties of numerous aqueous electrolyte solutions, experimental data
+nonionic short-range interactions resulting from repulsive and                 for ethanol/salt systems is rather scarce. Therefore, in this work,
+attractive (van der Waals) forces, the long-range Coulombic                    we measured the solution densities and osmotic coefﬁcients of
+interactions of the charged species must also be accounted for.                several ethanol/electrolyte solutions. To determine solution den-
+The ﬁrst forces can be described by using common gE models or                  sities, a vibrating-tube densimeter was used. This method has
+equations of state (EOS). The Coulombic interactions can be                    previously been applied to electrolyte solutions (Zhang and Han,
+modeled by the Debye–Hückel theory (DH) developed in 1923                     1996). However, determining osmotic/activity coefﬁcients is
+(Debye and Hückel, 1923) or by the mean spherical approxima-                  much more complicated. The measurements were carried out
+tion (MSA), which solves the Ornstein–Zernike equation for a ﬂuid              using a vapor-pressure osmometer, which has proven its applic-
+of charged spheres of equal size (Waisman and Lebowitz, 1970).                 ability in our earlier works (Held et al., 2011, 2010) in which we
+Coulomb and non-Coulomb expressions can be combined to yield                   precisely determined osmotic coefﬁcients in aqueous systems.
+state-of-the-art electrolyte models, which have been widely                    Moreover, Mato and Cocero (1988) have shown that vapor-
+applied to binary salt/water systems (for references see (Held                 pressure osmometry is also appropriate for measuring activity
+et al., 2008). To describe ternary systems (e.g., a salt dissolved in          coefﬁcients in ethanol/electrolyte solutions.
+two solvents), such approaches can be extended to powerful                         In the case of most methanol/electrolyte systems, experimen-
+multicomponent models by introducing appropriate mixing rules.                 tal solution data is available in the literature. However, osmotic
+Electrolyte gE models that have been applied to solutions with                 coefﬁcients (1) appear to vary signiﬁcantly, especially for the
+more than one solvent or one solute include the modiﬁed Pitzer                 ammonium solutions and (2) are not available for lithium iodide
+approach by Ye et al. (1994) and the model by Papaiconomou                     in methanol. Thus, the vapor-pressure osmometer was also used
+et al. (2002), which combined the NRTL theory with the MSA to                  to determine the osmotic coefﬁcients in these systems.
+calculate MIACs in solvent mixtures. However, the two groups
+applied ternary mixture parameters, which they ﬁtted to the                    2.1. Materials
+properties of their respective systems. Salimi et al. (2005) deﬁned
+concentration-dependent ‘‘ion parameters’’ that vary based on the                 LiChrosolvs ethanol from Merck with a purity of 99.9% and
+salt. For example, Cl  has different parameters in NaCl than in               methanol (Merck, 499.9%) were used to prepare the electrolyte
+KCl. Applying this approach, MIACs in mixed-solvent and mixed-                 solutions. Lithium iodide (Merck, 498%), lithium bromide (Sigma,
+salt electrolyte solutions could be predicted without ﬁtting                   499%), lithium chloride (VWR Prolabo 499%), sodium iodide (Fluka
+ternary parameters.                                                            499%), sodium bromide (Merck, 499%), sodium chloride (Merck,
+    System densities can also be calculated using EOS instead of gE            4 ¼ 99.5%), ammonium iodide (Acros, 4 ¼99%), ammonium bro-
+models. In the model of Fürst and Renon (1993), the Redlich–Kwong             mide (Merck, 4 ¼99.5%), and ammonium chloride (Merck, 499%)
+Soave EOS for short-range interactions was combined with the MSA               were used without further puriﬁcation. All solutions were prepared
+term for long-range interactions. A second short-range contribution            gravimetrically by weighing with an uncertainty of 0.01 mg.
+for ion-solvent forces was also included to predict osmotic coefﬁ-
+cients in multi-solute aqueous solutions. Later, Zuo et al. (2000)             2.2. Solution densities
+extended this approach to mixed-solvent systems. However, as in the
+work of Salimi et al. (2005), the ‘‘ion parameters’’ had to be changed            Whereas the solution densities of methanol/salt systems are in
+for different salts. Liu et al. (1999) could predict MIACs in two-salt         the literature, those of ethanol/salt systems are either not avail-
+solutions; however, they used salt-speciﬁc parameters. SAFT                    able or inconsistent. Thus, densities of binary ethanol/salt solu-
+approaches were also applied to electrolyte solutions. For example,            tions containing LiCl, LiBr, LiI, NaBr, NaI, NH4Cl, NH4Br, and NH4I
+Ji et al. (2005) proposed the SAFT1-RPM to model osmotic coefﬁcients           were determined using a vibrating-tube densimeter ‘‘DMA 602’’
+in multi-solute aqueous systems with ion-speciﬁc parameters and                from Anton Paar Germany GmbH (Ostﬁldern, Germany) at 25 1C
+subsequently extended the model (SAFT2) to also describe seawater              and ambient pressure. For these measurements, a U-tube is ﬁlled
+solutions (Ji and Adidharma, 2006); however, they had to ﬁt addi-              with the ﬂuid of interest and set into oscillation by an electro-
+tional ion parameters.                                                         magnetic ﬁeld. Densities are obtained by measuring the Eigen
+    In this work, we apply the ePC-SAFT model developed by                     frequency of the ﬁlled U-tube. The apparatus was calibrated with
+Cameretti et al. (2005) to aqueous electrolyte solutions containing            air and deionized water, and reference data were taken from
+methanol and ethanol as cosolvents. The ePC-SAFT model is a                    (Wagner and Pruss, 2002). According to the manufacturer, the
+combination of the PC-SAFT EOS by Gross and Sadowski (2001)                    maximum uncertainty of this apparatus is within 71.5  10  6
+and the Debye–Hückel contribution (Debye and Hückel, 1923),                  g/cm3. The results are summarized in Table 1. The density of pure
+which accounts for the Coulomb interactions. Only two solvent-                 ethanol at 25 1C was determined prior to measuring each salt
+speciﬁc parameters are used to characterize each ion: the sol-                 solution; its average density (rethanol ¼785.54 kg/m3) is consistent
+vated ion diameter sj and the dispersive energy parameter uj/kB,               with the published density of pure ethanol (785.10 kg/m3;
+which both reﬂect the strength of ionic solvation. Within ePC-                 Lacmann and Synowietz, 1977). Based on our experience, know-
+SAFT, the ionic species are considered independent of the salt                 ing the initial slope of r vs. m enables one to extrapolate the
+they are part of. We present ion-parameter sets that are able to               mixture densities to higher salt concentrations. Thus, we parti-
+reasonably describe solution densities, MIACs, and vapor–liquid                cularly considered the regions of low concentration for measuring
+equilibria (VLE) of binary alcohol/electrolyte systems. This work              the solution densities of the ethanol/salt systems shown in
+differs from the above-mentioned studies in that these binary                  Table 1.
+ion/solvent parameters are directly used to model ternary sys-
+tems by applying standard mixing rules without introducing new                 2.3. Osmotic coefﬁcients
+parameters. This allows one to predict the phase behavior in
+electrolyte two-solvent systems without impairing the calcula-                    Osmotic coefﬁcients were measured with two different vapor-
+tions of the binary solvent/salt solutions.                                    pressure osmometers: the Gonotec Osmomat O70 for small
+

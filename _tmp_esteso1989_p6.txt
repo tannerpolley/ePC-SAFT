@@ -1,0 +1,44 @@
+282                 Esteso, Gonzalez-Diaz, Hernandez-Luis, and Fernandez-Merida
+
+
+        Table II. Values of the Dielectric Constants, (4) Densities, (6)
+  Debye-Htickel Constants, and Pitzer Constants as a Function of the
+               Percentage of Ethanol in the Mixture
+
+      wt%                             do
+      EtOH           D              g-cm -3           A             B     A0
+
+       20           67.0         0.96639            0.6355      0.3498   0.4878
+       40           55.0         0.93148            0.8383      0.3790   0.6434
+       60           43.4         0.88699            1.168       0.4164   0.8962
+       70           38.0         0.86340            1.406       0.4390   1.079
+       80           32.8         0.83911            1.729       0.4659   1.327
+       90           28.1         0.81362            2.147       0.4956   t.647
+
+
+Table III. Values in ethanol-water mixtures with 80 and 90 weight % of
+ethanol cannot be obtained, due to the low value of their dielectric con-
+stants, which do not allow the application of this theoretical equation to
+these solutions.
+
+3.2. Pitzer Equations
+       The second theoretical equation used to fit the y• values was the
+Pitzer Equation, (7) which for 1:1 electrolytes is written as
+
+        in T• = f r + B'~m + C'(m 2                                               (6)
+
+             ft=              ,Jm             2
+where                                   +         In (1 + 1.2~m)]              (7a)
+                   -A~[I + 1.2"~m           1.2
+
+             B~ = 213(~ + ~     [1 - exp(-2~tm)(1 + 2~]m - 2m)]                (7b)
+                           Am
+
+
+             Cr = (3/2)C*                                                      (7c)
+
+after substitution of the parameters b by 1.2 and c~ by 2.0. (7~
+       The values used for the parameter Ae0 are given in Table II for the
+different ethanol-water mixtures studied.
+       If Eq. (6) is introduced into Eq. (3) and suitably rearranged, the
+following equation is obtained

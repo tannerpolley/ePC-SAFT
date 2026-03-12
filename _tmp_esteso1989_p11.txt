@@ -1,0 +1,54 @@
+ActMty Coefficients for Ethanol-Water Mixtures                                             287
+
+
+                    0.0
+
+
+                log yi
+
+
+
+
+                    0.20
+                                          ~                   2oz
+
+
+
+                   -0.40
+
+                                                 70% ~       60%
+
+                                     I                 I                I
+
+                                    0.5              1.0               1.5
+                                              m1/2 /moI 1/2 kg 1/2
+
+
+
+            Fig. 1. Plot of log T+ against ~,;mfor ethanol-water mixtures.
+
+mixtures, one can see that there is a good agreement between all of
+them, i.e., those obtained from the extended Debye-Htickel, the Pitzer,
+and the chemical model equations, with discrepancies included in the
+uncertainty interval of such measurements (+0.003 in the value of
+(?•       So we can obtain average values for these (Y:~)Rto calculate the
+experimental stoichiometric activity coefficients.
+       The values obtained for y• are plotted against ",/m at the different
+ethanol-water mixtures studied (Fig. 1). Aqueous solution values have
+been taken from the literature. (1~
+       Finally, a small comment about the association constant values
+here obtained. The comparison with those obtained from conductance
+measurements, previously reported by Spivey et al. (1~) in different
+ethanol-water mixtures, shows large differences between both series of
+data which are difficult to explain. Nevertheless, the value reported by
+Kay (t2) in pure ethanol, from conductance measurements also (Ka = 44),
+agrees with these presented here.
+
+ACKNOWLEDGMENT
+      This work was            supported        by         financial         assistance   from
+C.A.I.C.YT. of M.E.C.
+
+REFERENCES
+  1. A. J. Zielcn, J. Phys. Chem. 67, 1474 (1963).
+  2. G. J. Janz, Reference Electrodes, Theory and Practice, D. J. Des and G. J. Janz,
+     eds. (Academic Press, New York, 1961), p.209.

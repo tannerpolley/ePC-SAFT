@@ -1,0 +1,43 @@
+Journal of Solution Chemistry, Vol. 18, No. 3, 1989
+
+
+
+
+A c t i v i t y C o e f f i c i e n t s for N a C ! in E t h a n o l - W a t e r
+M i x t u r e s at 25~
+             Miguel A. Esteso, ~ Oscar M. Gonzalez-Diaz, *
+             Felipe F. Hernandez-Luis, 1 and
+             Luis Fernandez-Merida ~
+             Received January 4, 1988; Revised April l, I988
+
+             Activity coefficient values for NaCl in ethanol-water mixtures containing
+             20, 40, 60, YO, 80 and 90 weight % ethanol are calculated from the emf for
+             the galvanic cell
+                      Na-glass I NaCI (m), I120 (IO0-Y), EtOIl (I1), AgCI I Ag
+
+             in which the weight % of the corresponding solvent is indicated in paren-
+             theses. The results obtained are analyzed by using different theoretical
+             models. Chemical models which take into account the presence of ion
+             pairs in solutions of high ethanol content are also used. There is good
+             agreement between the results obtained from all the models.
+
+             KEY WORDS: Activity coefficients; ethanol-watermixtures; NaCI.
+
+1. I N T R O D U C T I O N
+      In tile present paper, activity coefficient values for NaCI in
+ethanol-water mixtures with 20, 40, 60, 70, 80 and 90 weight % of
+ethanol are dctemained from the emf measurenaents of the galvanic cell
+         Na-glass [ NaCI (m), H20 (100-10, EtOH (Y), AgC1 I Ag                                 (1)
+
+where m is the molality (mol-kg q) of mixed solvent, and the weight %
+of the solvcnt Y is indicated in parentheses. To compcnsate for the
+asymmetry potential of the Na-glass electrode, o) this cell was combined
+with a reference cell, R
+        Na-glass [ NaC1 (ma), H20 (100-Y), EtOH (Y), AgC1 I Ag                                 (2)
+
+       The difference between tile enlf of the cells described by Eqs.
+
+
+1Depmtamentode Quhnica Fisica, Universidad de La Laguna, Tenerife, Spain.
+                                     277
+                             0095-9782/89/0300-0277506.00/0   9 1989 Plenum Publishing Corporation

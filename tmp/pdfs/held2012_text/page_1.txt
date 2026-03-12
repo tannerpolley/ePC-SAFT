@@ -1,0 +1,79 @@
+                                                              Chemical Engineering Science 68 (2012) 328–339
+
+
+
+                                                     Contents lists available at SciVerse ScienceDirect
+
+
+                                                    Chemical Engineering Science
+                                                   journal homepage: www.elsevier.com/locate/ces
+
+
+
+
+Measuring and modeling alcohol/salt systems
+Christoph Held, Axel Prinz, Viktoria Wallmeyer, Gabriele Sadowski n
+Laboratory of Thermodynamics, Department of Biochemical and Chemical Engineering, Technische Universität Dortmund, Emil-Figge-Str. 70, 44227 Dortmund, Germany
+
+
+
+
+a r t i c l e i n f o                                 a b s t r a c t
+
+Article history:                                      Liquid densities, osmotic coefﬁcients, and mean ionic activity coefﬁcients (MIAC) at 25 1C of single-salt
+Received 12 May 2011                                  alcohol (methanol and ethanol) solutions containing univalent ions were measured and modeled with
+Received in revised form                              the ePC-SAFT equation of state. In accordance with our previous work [Held, C., Cameretti, L.F.,
+12 September 2011
+                                                      Sadowski, G., Fluid Phase Equlilib. 270 (2008) 87–96], only two solvent-speciﬁc ion parameters were
+Accepted 20 September 2011
+Available online 29 September 2011
+                                                      adjusted to experimental solution densities and osmotic coefﬁcients: the solvated ion diameter and the
+                                                      dispersion-energy parameter. ePC-SAFT was able to reproduce experimental data of the respective
+Keywords:                                             alcohol/salt systems with reasonable accuracy. Based on the solvent-speciﬁc ion-parameter sets, it is
+Phase equilibria                                      possible to predict densities and MIACs in ternary and quaternary water/alcohol(s)/salt solutions by
+Equation of state
+                                                      introducing appropriate mixing rules that do not contain any additional ﬁtting parameters.
+Ternary solutions
+                                                                                                                      & 2011 Elsevier Ltd. All rights reserved.
+Electrolytes
+Osmotic coefﬁcient
+Mean ionic activity coefﬁcient
+
+
+
+
+1. Introduction                                                                      2006; Wang et al., 2011; Ye et al., 1994; Zuo et al., 2000). Most
+                                                                                     models were developed to describe very speciﬁc systems by
+   Electrolyte solutions play an important role in biological and                    ﬁtting system-speciﬁc model parameters instead of being gen-
+chemical engineering. These systems have been used in waste-                         erally valid or predictive. This may be due to the absence or
+water and drinking-water treatments, fertilizer production, and                      inconsistency of activity-coefﬁcient data in binary alcohol/salt
+enhanced oil recovery (Enick and Klara, 1992). Water/salt systems                    systems. For ethanol, for example, only the vapor-pressure
+have been widely investigated over the last century. The increas-                    depressions in NaI, LiCl, and LiBr solutions are available (Mato
+ing interest in biological solutions requires a better understanding                 and Cocero, 1988). For methanol, the data in the literature for
+of how salt inﬂuences the thermodynamic behavior of aqueous                          ammonium-salt solutions is highly unreliable. Therefore, it is
+solutions, which we have addressed in the past (Held et al., 2008;                   impossible to determine universal ionic parameter sets for estab-
+Held and Sadowski, 2009). Because biological and pharmaceutical                      lishing predictive models based on the current binary solvent/salt
+systems often contain cosolvents, more complex solutions of                          data. This was the objective of this work. Here, we present an
+electrolytes in mixed solvents (here water and alcohols) must                        appropriate model that is able to calculate the properties of
+also be considered. Despite the availability of well-established                     ternary (two solventsþsalt) systems based on ion parameters
+experimental methods, the data in the literature is rather sparse                    that were ﬁtted to binary (one solventþ salt) solution data using
+considering that there is an almost endless number of possible                       universal ionic parameters.
+system conditions, for example, various types of solvent(s) and                          Due to the lack of or inconsistency in the literature data, new
+salt(s) and various temperatures and/or pressures, solvent com-                      experimental activity-coefﬁcient data were determined within
+positions, and salt concentrations.                                                  this work for alcohol/salt systems. Solvent activity coefﬁcients in
+   To complicate matters, the variety of experimental methods                        binary solutions can be measured using a vapor-pressure osm-
+for determining thermodynamic properties (e.g., activity coefﬁ-                      ometer, and such measurements have been performed for aqu-
+cients) in such systems is exceeded by the number of thermo-                         eous amino-acid systems (Held et al., 2011). These data can be
+dynamic models developed for calculating these properties                            converted into mean ionic activity coefﬁcients (MIAC) by the
+(Cameretti et al., 2005; Fürst and Renon, 1993; Huang et al.,                       Gibbs–Duhem relationship. Analogous to our previous work (Held
+2009; Ji and Adidharma, 2006; Ji et al., 2005; Liu et al., 1999;                     et al., 2008), model parameters were adjusted to both these
+Papaiconomou et al., 2002; Salimi et al., 2005; Simonin et al.,                      MIACs and solution-density data. As data from the literature were
+                                                                                     not always consistent, we also determined new liquid-density
+                                                                                     data for ethanol/salt systems. Thus, we present new experimental
+  n
+      Corresponding author. Tel.: þ49 231 755 2635.                                  solution densities, osmotic coefﬁcients, and MIAC data for eight
+      E-mail address: g.sadowski@bci.tu-dortmund.de (G. Sadowski).                   salts in methanol and ethanol.
+
+0009-2509/$ - see front matter & 2011 Elsevier Ltd. All rights reserved.
+doi:10.1016/j.ces.2011.09.040
+
