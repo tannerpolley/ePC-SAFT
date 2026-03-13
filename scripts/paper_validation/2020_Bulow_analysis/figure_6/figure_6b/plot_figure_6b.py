@@ -27,6 +27,7 @@ def main() -> None:
         grid_points=1201,
         max_molality=None,
         plot_title="LiBr in ethanol at 298.15 K and 1 bar",
+        method="mu",
     )
 
 

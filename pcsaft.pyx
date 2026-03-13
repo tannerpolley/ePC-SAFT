@@ -846,7 +846,8 @@ def pcsaft_lnfugcoef(t, rho, x, params):
 def pcsaft_lnfugcoef_terms(t, rho, x, params):
     """
     Calculate per-term residual chemical-potential contributions, per-term residual
-    compressibility-factor pieces, and contribution-resolved ln fugacity coefficients.
+    compressibility-factor pieces, intermediate derivative pieces, and
+    contribution-resolved ln fugacity coefficients.
 
     Returns
     -------
@@ -857,7 +858,12 @@ def pcsaft_lnfugcoef_terms(t, rho, x, params):
         - lnfugcoef_hc, lnfugcoef_disp, lnfugcoef_polar, lnfugcoef_assoc
         - lnfugcoef_ion, lnfugcoef_born
         - lnfugcoef_total (alias: lnfugcoef)
+        - dadx_hc, dadx_disp, dadx_polar, dadx_assoc, dadx_ion, dadx_born
         Scalar keys:
+        - a_hc, a_disp, a_polar, a_assoc, a_ion, a_born
+        - sum_x_dadx_hc, sum_x_dadx_disp, sum_x_dadx_polar, sum_x_dadx_assoc
+        - sum_x_dadx_ion, sum_x_dadx_born
+        - z_raw_hc, z_raw_disp, z_raw_polar, z_raw_assoc, z_raw_ion, z_raw_born
         - z_hc, z_disp, z_polar, z_assoc, z_ion, z_born
         - z_total
 
@@ -873,12 +879,12 @@ def pcsaft_lnfugcoef_terms(t, rho, x, params):
 
     flat = np.asarray(pcsaft_lnfug_terms_cpp(t, rho, x, cppargs), dtype=float)
     ncomp = int(np.asarray(x, dtype=float).size)
-    expected = 14 * ncomp + 7
+    expected = 20 * ncomp + 25
     if flat.size != expected:
         raise SolutionError('Unexpected lnfug term payload size: expected {}, got {}.'.format(expected, int(flat.size)))
 
-    blocks = flat[:14 * ncomp].reshape((14, ncomp))
-    z_terms = flat[14 * ncomp:]
+    blocks = flat[:20 * ncomp].reshape((20, ncomp))
+    scalars = flat[20 * ncomp:]
     out = {
         'mu_hc': blocks[0],
         'mu_disp': blocks[1],
@@ -895,13 +901,37 @@ def pcsaft_lnfugcoef_terms(t, rho, x, params):
         'lnfugcoef_assoc': blocks[11],
         'lnfugcoef_ion': blocks[12],
         'lnfugcoef_born': blocks[13],
-        'z_hc': float(z_terms[0]),
-        'z_disp': float(z_terms[1]),
-        'z_polar': float(z_terms[2]),
-        'z_assoc': float(z_terms[3]),
-        'z_ion': float(z_terms[4]),
-        'z_born': float(z_terms[5]),
-        'z_total': float(z_terms[6]),
+        'dadx_hc': blocks[14],
+        'dadx_disp': blocks[15],
+        'dadx_polar': blocks[16],
+        'dadx_assoc': blocks[17],
+        'dadx_ion': blocks[18],
+        'dadx_born': blocks[19],
+        'a_hc': float(scalars[0]),
+        'a_disp': float(scalars[1]),
+        'a_polar': float(scalars[2]),
+        'a_assoc': float(scalars[3]),
+        'a_ion': float(scalars[4]),
+        'a_born': float(scalars[5]),
+        'sum_x_dadx_hc': float(scalars[6]),
+        'sum_x_dadx_disp': float(scalars[7]),
+        'sum_x_dadx_polar': float(scalars[8]),
+        'sum_x_dadx_assoc': float(scalars[9]),
+        'sum_x_dadx_ion': float(scalars[10]),
+        'sum_x_dadx_born': float(scalars[11]),
+        'z_raw_hc': float(scalars[12]),
+        'z_raw_disp': float(scalars[13]),
+        'z_raw_polar': float(scalars[14]),
+        'z_raw_assoc': float(scalars[15]),
+        'z_raw_ion': float(scalars[16]),
+        'z_raw_born': float(scalars[17]),
+        'z_hc': float(scalars[18]),
+        'z_disp': float(scalars[19]),
+        'z_polar': float(scalars[20]),
+        'z_assoc': float(scalars[21]),
+        'z_ion': float(scalars[22]),
+        'z_born': float(scalars[23]),
+        'z_total': float(scalars[24]),
     }
     return out
 

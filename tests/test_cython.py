@@ -1291,15 +1291,26 @@ def test_lnfugcoef_terms_structure():
     expected = {
         'mu_hc', 'mu_disp', 'mu_polar', 'mu_assoc', 'mu_ion', 'mu_born', 'mu_total',
         'lnfugcoef_hc', 'lnfugcoef_disp', 'lnfugcoef_polar', 'lnfugcoef_assoc', 'lnfugcoef_ion',
-        'lnfugcoef_born', 'lnfugcoef_total', 'lnfugcoef'
+        'lnfugcoef_born', 'lnfugcoef_total', 'lnfugcoef',
+        'dadx_hc', 'dadx_disp', 'dadx_polar', 'dadx_assoc', 'dadx_ion', 'dadx_born'
+    }
+    expected_scalars = {
+        'a_hc', 'a_disp', 'a_polar', 'a_assoc', 'a_ion', 'a_born',
+        'sum_x_dadx_hc', 'sum_x_dadx_disp', 'sum_x_dadx_polar', 'sum_x_dadx_assoc',
+        'sum_x_dadx_ion', 'sum_x_dadx_born',
+        'z_raw_hc', 'z_raw_disp', 'z_raw_polar', 'z_raw_assoc', 'z_raw_ion', 'z_raw_born',
+        'z_hc', 'z_disp', 'z_polar', 'z_assoc', 'z_ion', 'z_born', 'z_total',
     }
     assert expected.issubset(set(terms.keys()))
+    assert expected_scalars.issubset(set(terms.keys()))
 
     ncomp = len(x)
     for key in expected:
         arr = np.asarray(terms[key], dtype=float)
         assert arr.shape == (ncomp,)
         assert np.all(np.isfinite(arr))
+    for key in expected_scalars:
+        assert np.isfinite(float(terms[key]))
 
     mu_sum = (
         np.asarray(terms['mu_hc'])
@@ -1310,6 +1321,15 @@ def test_lnfugcoef_terms_structure():
         + np.asarray(terms['mu_born'])
     )
     assert np.allclose(mu_sum, np.asarray(terms['mu_total']), rtol=0.0, atol=1e-12)
+
+    for suffix in ('hc', 'disp', 'polar', 'ion', 'born'):
+        recon = (
+            float(terms[f'a_{suffix}'])
+            + float(terms[f'z_raw_{suffix}'])
+            + np.asarray(terms[f'dadx_{suffix}'], dtype=float)
+            - float(terms[f'sum_x_dadx_{suffix}'])
+        )
+        assert np.allclose(recon, np.asarray(terms[f'mu_{suffix}']), rtol=0.0, atol=1e-12)
 
     lnfug_sum = (
         np.asarray(terms['lnfugcoef_hc'])
@@ -2000,6 +2020,7 @@ def test_bulow_2020_ethanol_transfer_contribution_sum_matches_total():
     t = 298.15
     p = 1.0e5
     eps = 1e-8
+    eps_inf = 1e-12
     r_gas = 8.31446261815324
 
     def species_for_ion(ion):
@@ -2007,13 +2028,25 @@ def test_bulow_2020_ethanol_transfer_contribution_sum_matches_total():
             return [ion, "Cl-", "Ethanol"]
         return ["Na+", ion, "Ethanol"]
 
-    def lnfug_terms_for_state(species):
+    def lnfug_terms_for_state(species, ion):
         x = np.asarray([eps, eps, 1.0 - 2.0 * eps], dtype=float)
         params = get_prop_dict("bulow_2020", species, x, t, user_options={})
         rho = pcsaft_den(t, p, x, params, phase='liq')
-        terms = pcsaft_lnfugcoef_terms(t, rho, x, params)
+        z = np.asarray(params["z"], dtype=float)
+        idx_ion = np.where(np.abs(z) > 1.0e-12)[0]
+        idx_solv = np.where(np.abs(z) <= 1.0e-12)[0]
+        x_ref = x.copy()
+        x_ref[idx_ion] = 0.0
+        x_ref[idx_solv] = x_ref[idx_solv] / np.sum(x_ref[idx_solv])
+        p_ref = pcsaft_p(t, rho, x_ref, params)
+        x_inf = x_ref.copy()
+        ion_idx = species.index(ion)
+        x_inf[ion_idx] = eps_inf
+        x_inf /= np.sum(x_inf)
+        rho_inf = pcsaft_den(t, p_ref, x_inf, params, phase='liq')
+        terms = pcsaft_lnfugcoef_terms(t, rho_inf, x_inf, params)
         values = pcsaft_gsolv(t, rho, x, params, species=species)
-        return terms, values
+        return terms, values, ion_idx
 
     contribution_keys = (
         "lnfugcoef_hc",
@@ -2025,12 +2058,10 @@ def test_bulow_2020_ethanol_transfer_contribution_sum_matches_total():
 
     for ion in ("Na+", "Cl-", "I-"):
         species_ethanol = species_for_ion(ion)
-        terms_ethanol, gsolv_ethanol = lnfug_terms_for_state(species_ethanol)
-        idx_ethanol = species_ethanol.index(ion)
+        terms_ethanol, gsolv_ethanol, idx_ethanol = lnfug_terms_for_state(species_ethanol, ion)
 
         species_water = species_ethanol[:-1] + ["Water"]
-        terms_water, gsolv_water = lnfug_terms_for_state(species_water)
-        idx_water = species_water.index(ion)
+        terms_water, gsolv_water, idx_water = lnfug_terms_for_state(species_water, ion)
 
         contribution_sum = 0.0
         for key in contribution_keys:

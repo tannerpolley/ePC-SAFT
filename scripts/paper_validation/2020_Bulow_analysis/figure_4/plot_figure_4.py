@@ -92,7 +92,7 @@ def _plot_one(panel_tag: str, title: str, solvent: str, data_path: Path) -> None
     fig, ax = plt.subplots(figsize=(11.8, 5.9))
     for offset, (row_key, label, color, hatch) in zip(offsets, SERIES):
         values = row_map[row_key]
-        ax.bar(
+        bars = ax.bar(
             x + offset,
             values,
             width=width,
@@ -103,6 +103,7 @@ def _plot_one(panel_tag: str, title: str, solvent: str, data_path: Path) -> None
             alpha=0.9 if hatch is None else 0.75,
             label=label,
         )
+        common.annotate_bar_values(ax, bars, fontsize=6)
 
     ax.errorbar(
         x + offsets[0],
@@ -136,14 +137,14 @@ def _plot_one(panel_tag: str, title: str, solvent: str, data_path: Path) -> None
         x + offsets[2],
         row_map["advanced"],
         row_map["advanced_calc"],
-        fontsize=7,
+        xs_ref=x + offsets[1],
     )
     common.annotate_percent_deltas(
         ax,
         x + offsets[4],
         row_map["revised"],
         row_map["revised_calc"],
-        fontsize=7,
+        xs_ref=x + offsets[3],
     )
     common.add_percent_note(ax)
     ax.legend(ncol=3, frameon=True)

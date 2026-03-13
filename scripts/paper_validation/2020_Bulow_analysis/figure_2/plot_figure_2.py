@@ -101,7 +101,7 @@ def main() -> None:
         valid = np.isfinite(values)
         if not np.any(valid):
             continue
-        ax.bar(
+        bars = ax.bar(
             x[valid] + offset,
             values[valid],
             width=width,
@@ -112,6 +112,7 @@ def main() -> None:
             hatch=hatch,
             alpha=0.9 if hatch is None else 0.75,
         )
+        common.annotate_bar_values(ax, bars, fontsize=6)
 
     ax.axhline(0.0, color="black", linewidth=0.8)
     ax.set_xticks(x)
@@ -130,14 +131,14 @@ def main() -> None:
         x + offsets[3],
         row_map["advanced"],
         row_map["advanced_calc"],
-        fontsize=7,
+        xs_ref=x + offsets[2],
     )
     common.annotate_percent_deltas(
         ax,
         x + offsets[5],
         row_map["revised"],
         row_map["revised_calc"],
-        fontsize=7,
+        xs_ref=x + offsets[4],
     )
     common.add_percent_note(ax)
 

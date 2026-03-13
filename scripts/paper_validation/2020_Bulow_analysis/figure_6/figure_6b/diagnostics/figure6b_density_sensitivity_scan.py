@@ -26,6 +26,10 @@ from pcsaft import pcsaft_den, pcsaft_lnfugcoef_terms
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+OUTPUT_ROOT = REPO_ROOT / "scripts" / "paper_validation" / "2020_Bulow_analysis" / "figure_6" / "figure_6b" / "diagnostics" / "output"
+OUTPUT_DATA_DIR = OUTPUT_ROOT / "data"
+OUTPUT_PLOTS_DIR = OUTPUT_ROOT / "plots"
+
 
 CONTRIBUTION_ORDER = ["born", "dh", "hc", "disp", "assoc", "total"]
 TITLE_LABELS = {
@@ -59,11 +63,11 @@ def _calc_point_contributions(x_salt: float, params: Dict[str, object], rho_scal
         return float(0.5 * ((a[0] - b[0]) + (a[1] - b[1])))
 
     out = {
-        "born": mean_ionic_delta("mu_born"),
-        "dh": mean_ionic_delta("mu_ion"),
-        "hc": mean_ionic_delta("mu_hc"),
-        "disp": mean_ionic_delta("mu_disp"),
-        "assoc": mean_ionic_delta("mu_assoc"),
+        "born": mean_ionic_delta("lnfugcoef_born"),
+        "dh": mean_ionic_delta("lnfugcoef_ion"),
+        "hc": mean_ionic_delta("lnfugcoef_hc"),
+        "disp": mean_ionic_delta("lnfugcoef_disp"),
+        "assoc": mean_ionic_delta("lnfugcoef_assoc"),
         "total": mean_ionic_delta("lnfugcoef_total"),
         "rho_base": rho_base,
         "rho_scaled": rho,
@@ -206,17 +210,17 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--out-csv",
         type=Path,
-        default=REPO_ROOT / "scripts" / "paper_validation" / "2020_Bulow_analysis" / "figure_6" / "figure_6b" / "diagnostics" / "output" / "figure6b_density_scan_metrics.csv",
+        default=OUTPUT_DATA_DIR / "figure6b_density_scan_metrics.csv",
     )
     parser.add_argument(
         "--out-plot",
         type=Path,
-        default=REPO_ROOT / "scripts" / "paper_validation" / "2020_Bulow_analysis" / "figure_6" / "figure_6b" / "diagnostics" / "output" / "figure6b_density_scan_rmse.png",
+        default=OUTPUT_PLOTS_DIR / "figure6b_density_scan_rmse.png",
     )
     parser.add_argument(
         "--out-points-csv",
         type=Path,
-        default=REPO_ROOT / "scripts" / "paper_validation" / "2020_Bulow_analysis" / "figure_6" / "figure_6b" / "diagnostics" / "output" / "figure6b_density_scan_baseline_points.csv",
+        default=OUTPUT_DATA_DIR / "figure6b_density_scan_baseline_points.csv",
     )
     parser.add_argument("--rho-min", type=float, default=0.94)
     parser.add_argument("--rho-max", type=float, default=1.06)

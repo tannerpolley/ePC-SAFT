@@ -14,6 +14,10 @@ from scipy.interpolate import PchipInterpolator
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+REPO_ROOT = Path(__file__).resolve().parents[6]
+OUTPUT_ROOT = REPO_ROOT / "scripts" / "paper_validation" / "2020_Bulow_analysis" / "figure_6" / "figure_6b" / "diagnostics" / "output"
+OUTPUT_PLOTS_DIR = OUTPUT_ROOT / "plots"
+
 AXIS_LABEL_SIZE = 12
 AXIS_TICK_SIZE = 11
 
@@ -178,7 +182,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--out",
         type=Path,
-        default=Path(r"C:\Users\Tanner\Documents\git\PC-SAFT\scripts\paper_validation\2020_Bulow_analysis\figure_6\figure_6b\diagnostics\output\figure6b_digitized_reference_replica.png"),
+        default=OUTPUT_PLOTS_DIR / "figure6b_digitized_reference_replica.png",
         help="Output PNG path.",
     )
     parser.add_argument("--x-min", type=float, default=0.0)

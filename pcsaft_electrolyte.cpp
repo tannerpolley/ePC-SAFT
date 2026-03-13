@@ -26,6 +26,30 @@ thread_local vector<double> g_last_lnfug_assoc;
 thread_local vector<double> g_last_lnfug_ion;
 thread_local vector<double> g_last_lnfug_born;
 thread_local vector<double> g_last_lnfugcoef;
+thread_local vector<double> g_last_dadx_hc;
+thread_local vector<double> g_last_dadx_disp;
+thread_local vector<double> g_last_dadx_polar;
+thread_local vector<double> g_last_dadx_assoc;
+thread_local vector<double> g_last_dadx_ion;
+thread_local vector<double> g_last_dadx_born;
+thread_local double g_last_a_hc = 0.0;
+thread_local double g_last_a_disp = 0.0;
+thread_local double g_last_a_polar = 0.0;
+thread_local double g_last_a_assoc = 0.0;
+thread_local double g_last_a_ion = 0.0;
+thread_local double g_last_a_born = 0.0;
+thread_local double g_last_sum_x_dadx_hc = 0.0;
+thread_local double g_last_sum_x_dadx_disp = 0.0;
+thread_local double g_last_sum_x_dadx_polar = 0.0;
+thread_local double g_last_sum_x_dadx_assoc = 0.0;
+thread_local double g_last_sum_x_dadx_ion = 0.0;
+thread_local double g_last_sum_x_dadx_born = 0.0;
+thread_local double g_last_z_raw_hc = 0.0;
+thread_local double g_last_z_raw_disp = 0.0;
+thread_local double g_last_z_raw_polar = 0.0;
+thread_local double g_last_z_raw_assoc = 0.0;
+thread_local double g_last_z_raw_ion = 0.0;
+thread_local double g_last_z_raw_born = 0.0;
 thread_local double g_last_z_hc = 0.0;
 thread_local double g_last_z_disp = 0.0;
 thread_local double g_last_z_polar = 0.0;
@@ -1557,18 +1581,23 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
 
     vector<double> mu_hc(ncomp, 0);
     vector<double> mu_disp(ncomp, 0);
+    double sum_x_dahc_dx = 0.0;
+    double sum_x_dadisp_dx = 0.0;
     for (int i = 0; i < ncomp; i++) {
-        for (int j = 0; j < ncomp; j++) {
-            mu_hc[i] += x[j]*dahc_dx[j];
-            mu_disp[i] += x[j]*dadisp_dx[j];
-        }
-        mu_hc[i] = ares_hc + Zhc + dahc_dx[i] - mu_hc[i];
-        mu_disp[i] = ares_disp + Zdisp + dadisp_dx[i] - mu_disp[i];
+        sum_x_dahc_dx += x[i]*dahc_dx[i];
+        sum_x_dadisp_dx += x[i]*dadisp_dx[i];
+    }
+    for (int i = 0; i < ncomp; i++) {
+        mu_hc[i] = ares_hc + Zhc + dahc_dx[i] - sum_x_dahc_dx;
+        mu_disp[i] = ares_disp + Zdisp + dadisp_dx[i] - sum_x_dadisp_dx;
     }
 
     // Dipole term (Gross and Vrabec term) --------------------------------------
     double Zpolar = 0.0;
     vector<double> mu_polar(ncomp, 0);
+    vector<double> dapolar_dx(ncomp, 0.0);
+    double ares_polar = 0.0;
+    double sum_x_dapolar_dx = 0.0;
     if (!cppargs.dipm.empty()) {
         double A2 = 0.;
         double A3 = 0.;
@@ -1687,19 +1716,18 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
             dA3_dx[i] = -4/3.*PI*PI*den*den*dA3_dx[i];
         }
 
-        vector<double> dapolar_dx(ncomp);
         for (int i = 0; i < ncomp; i++) {
             dapolar_dx[i] = (dA2_dx[i]*(1-A3/A2) + (dA3_dx[i]*A2 - A3*dA2_dx[i])/A2)/pow(1-A3/A2,2);
         }
 
         if (A2 != 0) { // when the mole fraction of the polar compounds is 0 then A2 = 0 and division by 0 occurs
-            double ares_polar = A2/(1-A3/A2);
+            ares_polar = A2/(1-A3/A2);
             Zpolar = eta*((dA2_det*(1-A3/A2)+(dA3_det*A2-A3*dA2_det)/A2)/(1-A3/A2)/(1-A3/A2));
             for (int i = 0; i < ncomp; i++) {
-                for (int j = 0; j < ncomp; j++) {
-                    mu_polar[i] += x[j]*dapolar_dx[j];
-                }
-                mu_polar[i] = ares_polar + Zpolar + dapolar_dx[i] - mu_polar[i];
+                sum_x_dapolar_dx += x[i]*dapolar_dx[i];
+            }
+            for (int i = 0; i < ncomp; i++) {
+                mu_polar[i] = ares_polar + Zpolar + dapolar_dx[i] - sum_x_dapolar_dx;
             }
         }
     }
@@ -1707,6 +1735,9 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
     // Association term -------------------------------------------------------
     double Zassoc = 0.0;
     vector<double> mu_assoc(ncomp, 0);
+    vector<double> daassoc_dx(ncomp, 0.0);
+    double ares_assoc = 0.0;
+    double sum_x_daassoc_dx = 0.0;
     if (!cppargs.e_assoc.empty()) {
         int num_sites = 0;
         vector<int> iA; //indices of associating compounds
@@ -1808,16 +1839,21 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
         double assoc_summ = 0.0;
         for (int i = 0; i < ncomp; i++) {
             for (int j = 0; j < num_sites; j++) {
-                mu_assoc[i] += x[iA[j]]*den*dXA_dx[ij]*(1/XA[j]-0.5);
+                daassoc_dx[i] += x[iA[j]]*den*dXA_dx[ij]*(1/XA[j]-0.5);
                 assoc_summ += x[i]*x[iA[j]]*den*dXA_dx[ij]*(1/XA[j]-0.5);
                 ij += 1;
             }
         }
 
         for (int i = 0; i < num_sites; i++) {
-            mu_assoc[iA[i]] += log(XA[i]) - 0.5*XA[i] + 0.5;
+            daassoc_dx[iA[i]] += log(XA[i]) - 0.5*XA[i] + 0.5;
+            ares_assoc += x[iA[i]]*(log(XA[i]) - 0.5*XA[i] + 0.5);
         }
         Zassoc = assoc_summ;
+        for (int i = 0; i < ncomp; i++) {
+            mu_assoc[i] = daassoc_dx[i];
+            sum_x_daassoc_dx += x[i]*daassoc_dx[i];
+        }
     }
 
     // Ion terms --------------------------------------------------------------
@@ -1825,6 +1861,12 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
     double Zborn = 0.0;
     vector<double> mu_ion(ncomp, 0);
     vector<double> mu_born(ncomp, 0);
+    vector<double> dadx_ion(ncomp, 0.0);
+    vector<double> dadx_born_diag(ncomp, 0.0);
+    double a_ion = 0.0;
+    double a_born_diag = 0.0;
+    double sum_x_dadx_ion = 0.0;
+    double sum_x_dadx_born_diag = 0.0;
     if (!cppargs.z.empty()) {
         int dh_model = cppargs.DH_model;
         if (dh_model == 2) {
@@ -1869,6 +1911,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
             double a_DH = -K0*kappa/(eps)*S;
             double Z_DH = -(K0/2.0)*kappa/(eps)*Tsum;
             Zion = Z_DH;
+            a_ion = a_DH;
 
             vector<double> dadx(ncomp, 0.0);
             vector<double> dkappa_dx(ncomp, 0.0);
@@ -1901,6 +1944,8 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
             for (int i = 0; i < ncomp; i++) {
                 sum_x_dadx += x[i]*dadx[i];
             }
+            dadx_ion = dadx;
+            sum_x_dadx_ion = sum_x_dadx;
 
             for (int i = 0; i < ncomp; i++) {
                 mu_ion[i] = a_DH + Z_DH + dadx[i] - sum_x_dadx;
@@ -1970,6 +2015,9 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
             for (int i = 0; i < ncomp; i++) {
                 sum_x_dadx_born += x[i]*dadx_born[i];
             }
+            a_born_diag = a_born;
+            dadx_born_diag = dadx_born;
+            sum_x_dadx_born_diag = sum_x_dadx_born;
             for (int i = 0; i < ncomp; i++) {
                 mu_born[i] = a_born + Zborn + dadx_born[i] - sum_x_dadx_born;
             }
@@ -2044,6 +2092,9 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
             for (int i = 0; i < ncomp; i++) {
                 sum_x_dadx_born += x[i]*dadx_born[i];
             }
+            a_born_diag = a_born;
+            dadx_born_diag = dadx_born;
+            sum_x_dadx_born_diag = sum_x_dadx_born;
             for (int i = 0; i < ncomp; i++) {
                 mu_born[i] = a_born + Zborn + dadx_born[i] - sum_x_dadx_born;
             }
@@ -2145,6 +2196,30 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
     g_last_lnfug_ion = lnfug_ion;
     g_last_lnfug_born = lnfug_born;
     g_last_lnfugcoef = lnfugcoef;
+    g_last_dadx_hc = dahc_dx;
+    g_last_dadx_disp = dadisp_dx;
+    g_last_dadx_polar = dapolar_dx;
+    g_last_dadx_assoc = daassoc_dx;
+    g_last_dadx_ion = dadx_ion;
+    g_last_dadx_born = dadx_born_diag;
+    g_last_a_hc = ares_hc;
+    g_last_a_disp = ares_disp;
+    g_last_a_polar = ares_polar;
+    g_last_a_assoc = ares_assoc;
+    g_last_a_ion = a_ion;
+    g_last_a_born = a_born_diag;
+    g_last_sum_x_dadx_hc = sum_x_dahc_dx;
+    g_last_sum_x_dadx_disp = sum_x_dadisp_dx;
+    g_last_sum_x_dadx_polar = sum_x_dapolar_dx;
+    g_last_sum_x_dadx_assoc = sum_x_daassoc_dx;
+    g_last_sum_x_dadx_ion = sum_x_dadx_ion;
+    g_last_sum_x_dadx_born = sum_x_dadx_born_diag;
+    g_last_z_raw_hc = Zhc;
+    g_last_z_raw_disp = Zdisp;
+    g_last_z_raw_polar = Zpolar;
+    g_last_z_raw_assoc = Zassoc;
+    g_last_z_raw_ion = Zion;
+    g_last_z_raw_born = Zborn;
     g_last_z_hc = norm_z_terms[0];
     g_last_z_disp = norm_z_terms[1];
     g_last_z_polar = norm_z_terms[2];
@@ -2180,6 +2255,10 @@ vector<double> pcsaft_lnfug_terms_cpp(double t, double rho, vector<double> x, ad
     Output layout (flattened blocks, each of length ncomp):
       [mu_hc, mu_disp, mu_polar, mu_assoc, mu_ion, mu_born, mu_total, lnfugcoef,
        lnfug_hc, lnfug_disp, lnfug_polar, lnfug_assoc, lnfug_ion, lnfug_born,
+       dadx_hc, dadx_disp, dadx_polar, dadx_assoc, dadx_ion, dadx_born,
+       a_hc, a_disp, a_polar, a_assoc, a_ion, a_born,
+       sum_x_dadx_hc, sum_x_dadx_disp, sum_x_dadx_polar, sum_x_dadx_assoc, sum_x_dadx_ion, sum_x_dadx_born,
+       Zraw_hc, Zraw_disp, Zraw_polar, Zraw_assoc, Zraw_ion, Zraw_born,
        Z_hc, Z_disp, Z_polar, Z_assoc, Z_ion, Z_born, Z_total]
     */
     vector<double> lnfug = pcsaft_lnfug_cpp(t, rho, x, cppargs);
@@ -2198,12 +2277,18 @@ vector<double> pcsaft_lnfug_terms_cpp(double t, double rho, vector<double> x, ad
         (static_cast<int>(g_last_lnfug_assoc.size()) != ncomp) ||
         (static_cast<int>(g_last_lnfug_ion.size()) != ncomp) ||
         (static_cast<int>(g_last_lnfug_born.size()) != ncomp) ||
+        (static_cast<int>(g_last_dadx_hc.size()) != ncomp) ||
+        (static_cast<int>(g_last_dadx_disp.size()) != ncomp) ||
+        (static_cast<int>(g_last_dadx_polar.size()) != ncomp) ||
+        (static_cast<int>(g_last_dadx_assoc.size()) != ncomp) ||
+        (static_cast<int>(g_last_dadx_ion.size()) != ncomp) ||
+        (static_cast<int>(g_last_dadx_born.size()) != ncomp) ||
         (static_cast<int>(g_last_lnfugcoef.size()) != ncomp) ||
         (static_cast<int>(lnfug.size()) != ncomp)) {
         throw ValueError("Internal lnfug term cache size mismatch.");
     }
 
-    vector<double> out(14 * ncomp + 7, 0.0);
+    vector<double> out(20 * ncomp + 25, 0.0);
     auto copy_block = [&](int block, const vector<double> &src) {
         for (int i = 0; i < ncomp; i++) {
             out[block*ncomp + i] = src[i];
@@ -2224,14 +2309,38 @@ vector<double> pcsaft_lnfug_terms_cpp(double t, double rho, vector<double> x, ad
     copy_block(11, g_last_lnfug_assoc);
     copy_block(12, g_last_lnfug_ion);
     copy_block(13, g_last_lnfug_born);
-    int z_offset = 14 * ncomp;
-    out[z_offset + 0] = g_last_z_hc;
-    out[z_offset + 1] = g_last_z_disp;
-    out[z_offset + 2] = g_last_z_polar;
-    out[z_offset + 3] = g_last_z_assoc;
-    out[z_offset + 4] = g_last_z_ion;
-    out[z_offset + 5] = g_last_z_born;
-    out[z_offset + 6] = g_last_z_total;
+    copy_block(14, g_last_dadx_hc);
+    copy_block(15, g_last_dadx_disp);
+    copy_block(16, g_last_dadx_polar);
+    copy_block(17, g_last_dadx_assoc);
+    copy_block(18, g_last_dadx_ion);
+    copy_block(19, g_last_dadx_born);
+    int scalar_offset = 20 * ncomp;
+    out[scalar_offset + 0] = g_last_a_hc;
+    out[scalar_offset + 1] = g_last_a_disp;
+    out[scalar_offset + 2] = g_last_a_polar;
+    out[scalar_offset + 3] = g_last_a_assoc;
+    out[scalar_offset + 4] = g_last_a_ion;
+    out[scalar_offset + 5] = g_last_a_born;
+    out[scalar_offset + 6] = g_last_sum_x_dadx_hc;
+    out[scalar_offset + 7] = g_last_sum_x_dadx_disp;
+    out[scalar_offset + 8] = g_last_sum_x_dadx_polar;
+    out[scalar_offset + 9] = g_last_sum_x_dadx_assoc;
+    out[scalar_offset + 10] = g_last_sum_x_dadx_ion;
+    out[scalar_offset + 11] = g_last_sum_x_dadx_born;
+    out[scalar_offset + 12] = g_last_z_raw_hc;
+    out[scalar_offset + 13] = g_last_z_raw_disp;
+    out[scalar_offset + 14] = g_last_z_raw_polar;
+    out[scalar_offset + 15] = g_last_z_raw_assoc;
+    out[scalar_offset + 16] = g_last_z_raw_ion;
+    out[scalar_offset + 17] = g_last_z_raw_born;
+    out[scalar_offset + 18] = g_last_z_hc;
+    out[scalar_offset + 19] = g_last_z_disp;
+    out[scalar_offset + 20] = g_last_z_polar;
+    out[scalar_offset + 21] = g_last_z_assoc;
+    out[scalar_offset + 22] = g_last_z_ion;
+    out[scalar_offset + 23] = g_last_z_born;
+    out[scalar_offset + 24] = g_last_z_total;
     return out;
 }
 

@@ -26,6 +26,9 @@ from pcsaft import pcsaft_den, pcsaft_lnfugcoef_terms, pcsaft_p
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+OUTPUT_ROOT = REPO_ROOT / "scripts" / "paper_validation" / "2020_Bulow_analysis" / "figure_6" / "figure_6b" / "diagnostics" / "output"
+OUTPUT_PLOTS_DIR = OUTPUT_ROOT / "plots"
+
 
 T_REF = 298.15
 P_REF = 1.0e5
@@ -37,6 +40,13 @@ AXIS_LABEL_SIZE = 12
 AXIS_TICK_SIZE = 11
 CONTRIBUTION_KEYS = ("hc", "disp", "assoc", "dh", "born")
 TERM_KEY_MAP = {
+    "hc": "lnfugcoef_hc",
+    "disp": "lnfugcoef_disp",
+    "assoc": "lnfugcoef_assoc",
+    "dh": "lnfugcoef_ion",
+    "born": "lnfugcoef_born",
+}
+LEGACY_TERM_KEY_MAP = {
     "hc": ("mu_hc", "z_hc"),
     "disp": ("mu_disp", "z_disp"),
     "assoc": ("mu_assoc", "z_assoc"),
@@ -188,7 +198,11 @@ def _inf_dilution_state(x: np.ndarray, rho: float, params: Dict[str, object]) ->
     return x_inf, float(rho_inf)
 
 
-def _term_lnphi(terms: Dict[str, object], mu_key: str, z_key: str, method: str) -> np.ndarray:
+def _term_lnphi(terms: Dict[str, object], contribution: str, method: str) -> np.ndarray:
+    if method == "lnphi":
+        return np.asarray(terms[TERM_KEY_MAP[contribution]], dtype=float)
+
+    mu_key, z_key = LEGACY_TERM_KEY_MAP[contribution]
     mu = np.asarray(terms[mu_key], dtype=float)
     if method == "mu":
         return mu
@@ -206,7 +220,7 @@ def _term_lnphi(terms: Dict[str, object], mu_key: str, z_key: str, method: str) 
 def _calc_ln_miac_contributions(
     m_grid: np.ndarray,
     params: Dict[str, object],
-    method: str = "mu",
+    method: str = "lnphi",
 ) -> Dict[str, np.ndarray]:
     out = {
         "total": np.empty_like(m_grid, dtype=float),
@@ -230,9 +244,8 @@ def _calc_ln_miac_contributions(
             return 0.5 * ((a[0] - b[0]) + (a[1] - b[1]))
 
         for name in CONTRIBUTION_KEYS:
-            mu_key, z_key = TERM_KEY_MAP[name]
-            act = _term_lnphi(terms, mu_key, z_key, method)
-            inf = _term_lnphi(terms_inf, mu_key, z_key, method)
+            act = _term_lnphi(terms, name, method)
+            inf = _term_lnphi(terms_inf, name, method)
             out[name][idx] = mean_ionic_delta(act, inf)
         out["total"][idx] = mean_ionic_delta(
             np.asarray(terms["lnfugcoef_total"], dtype=float),
@@ -257,7 +270,7 @@ def run_analysis(
     max_molality: float | None,
     user_options: Dict[str, object] | None = None,
     plot_title: str | None = None,
-    method: str = "mu",
+    method: str = "lnphi",
 ) -> Path:
     m_exp, x_exp, y_exp = _load_exp_data(data_path)
     params = _build_params(user_options=user_options)
@@ -307,7 +320,9 @@ def run_analysis(
     ax.set_ylim(float(y_min), float(y_max))
     ax.set_xlabel(r"salt mole fraction, $x_{salt}$", fontsize=AXIS_LABEL_SIZE)
     ax.set_ylabel(r"$\ln(\gamma_{\pm}^{*})$", fontsize=AXIS_LABEL_SIZE)
-    if method == "mu":
+    if method == "lnphi":
+        method_label = "per-term $\\ln\\varphi$ route"
+    elif method == "mu":
         method_label = "$\\mu$-difference route"
     elif method == "z_linear":
         method_label = "$\\mu - Z$ route"
@@ -362,7 +377,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--out",
         type=Path,
-        default=REPO_ROOT / "scripts" / "paper_validation" / "2020_Bulow_analysis" / "figure_6" / "figure_6b" / "diagnostics" / "output" / "figure6b_libr_ethanol_2020_contributions.png",
+        default=OUTPUT_PLOTS_DIR / "figure6b_libr_ethanol_2020_contributions.png",
         help="Output PNG path.",
     )
     parser.add_argument("--x-min", type=float, default=0.0)
@@ -378,15 +393,25 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--method",
-        choices=["mu", "z_linear", "term_z", "z_log1p"],
-        default="mu",
-        help="Contribution definition: raw residual chemical-potential deltas ('mu'), linear Z correction ('z_linear'), or per-term log route using ln(1 + Z_term) ('term_z'/'z_log1p').",
+        choices=["lnphi", "mu", "z_linear", "term_z", "z_log1p"],
+        default="lnphi",
+        help="Contribution definition: per-term fugacity-coefficient contributions ('lnphi'), raw residual chemical-potential deltas ('mu'), linear Z correction ('z_linear'), or per-term log route using ln(1 + Z_term) ('term_z'/'z_log1p').",
+    )
+    parser.add_argument(
+        "--d-born-mode",
+        type=int,
+        choices=[0, 1],
+        default=None,
+        help="Optional override for bulow_2020 born_model.d_Born_mode.",
     )
     return parser.parse_args()
 
 
 def main() -> None:
     args = _parse_args()
+    user_options = None
+    if args.d_born_mode is not None:
+        user_options = {"elec_model": {"born_model": {"d_Born_mode": int(args.d_born_mode)}}}
     run_analysis(
         data_path=Path(args.data),
         output_path=Path(args.out),
@@ -396,6 +421,7 @@ def main() -> None:
         y_max=float(args.y_max),
         grid_points=int(args.grid_points),
         max_molality=None if args.max_molality is None else float(args.max_molality),
+        user_options=user_options,
         method=str(args.method),
     )
 

@@ -1,8 +1,13 @@
-"""Generate one Figure 6b fit-comparison plot per contribution.
+"""Generate Figure 6b fit-comparison plots on the paper-style ``mu`` basis.
 
-Each plot overlays the actual PC-SAFT 2020 model curve used in
-figure6b_libr_ethanol_2020_contributions.png against the digitized contribution
-points from Figure6b_curves.csv.
+Each contribution plot overlays the digitized paper points against the raw
+residual chemical-potential route used by the paper-style decomposition.
+
+The total plot additionally shows:
+- the digitized paper total points
+- a connected paper-total guide line through those points
+- the EOS total from ``lnfugcoef_total``
+- the sum of the ``mu`` contribution curves
 """
 
 from __future__ import annotations
@@ -40,6 +45,10 @@ from figure6b_digitized_reference_replica import (
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+OUTPUT_ROOT = REPO_ROOT / "scripts" / "paper_validation" / "2020_Bulow_analysis" / "figure_6" / "figure_6b" / "diagnostics" / "output"
+OUTPUT_DATA_DIR = OUTPUT_ROOT / "data"
+OUTPUT_PLOTS_DIR = OUTPUT_ROOT / "plots"
+
 CONTRIBUTION_ORDER = ["born", "dh", "hc", "disp", "assoc", "total"]
 FILE_LABELS = {
     "born": "born",
@@ -64,18 +73,6 @@ METHOD_STYLES = {
         "linestyle": "--",
         "linewidth": 1.8,
     },
-    "z_linear": {
-        "label": r"PC-SAFT contribution from $\Delta (\tilde{\mu}^{(\alpha)} - Z^{(\alpha)})$",
-        "color": "#d62728",
-        "linestyle": "-",
-        "linewidth": 2.0,
-    },
-    "term_z": {
-        "label": r"PC-SAFT contribution from $\Delta (\tilde{\mu}^{(\alpha)} - \ln(1+Z^{(\alpha)}))$",
-        "color": "#9467bd",
-        "linestyle": ":",
-        "linewidth": 1.9,
-    },
 }
 
 
@@ -97,27 +94,49 @@ def _y_limits(y_data: np.ndarray, y_model: np.ndarray) -> Tuple[float, float]:
     return y_min - pad, y_max + pad
 
 
+def _sum_contribution_curves(curves: Dict[str, np.ndarray]) -> np.ndarray:
+    return (
+        np.asarray(curves["born"], dtype=float)
+        + np.asarray(curves["dh"], dtype=float)
+        + np.asarray(curves["hc"], dtype=float)
+        + np.asarray(curves["disp"], dtype=float)
+        + np.asarray(curves["assoc"], dtype=float)
+    )
+
+
 def run_analysis(
     miac_data_path: Path,
     digitized_path: Path,
     output_dir: Path,
+    metrics_path: Path,
     grid_points: int,
     x_min: float,
     x_max: float,
+    d_born_mode: int | None = None,
 ) -> Dict[str, Dict[str, float]]:
     m_exp, _, _ = _load_exp_data(miac_data_path)
     m_upper = float(np.max(m_exp))
     m_grid = np.linspace(0.0, m_upper, int(grid_points))
     x_grid = _salt_mole_fraction_from_molality(m_grid)
 
-    params = _build_params(user_options={})
+    user_options = {}
+    if d_born_mode is not None:
+        user_options = {"elec_model": {"born_model": {"d_Born_mode": int(d_born_mode)}}}
+    params = _build_params(user_options=user_options)
     model_curves_by_method: Dict[str, Dict[str, np.ndarray]] = {}
     method_errors: Dict[str, str] = {}
-    for method_name in ("mu", "z_linear", "term_z"):
+    for method_name in ("lnphi", "mu"):
         try:
             model_curves_by_method[method_name] = _calc_ln_miac_contributions(m_grid, params, method=method_name)
         except Exception as exc:
             method_errors[method_name] = str(exc)
+    born_compare_curves: Dict[str, np.ndarray] = {}
+    if d_born_mode is None or int(d_born_mode) == 1:
+        try:
+            compare_params = _build_params(user_options={"elec_model": {"born_model": {"d_Born_mode": 0}}})
+            born_compare_curves["dBorn0_mu"] = _calc_ln_miac_contributions(m_grid, compare_params, method="mu")["born"]
+        except Exception as exc:
+            method_errors["dBorn0_mu"] = str(exc)
     digitized = _load_digitized_curves(digitized_path)
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -126,10 +145,24 @@ def run_analysis(
 
     for name in CONTRIBUTION_ORDER:
         x_data, y_data = digitized[name]
-        method_names = tuple(
-            method_name for method_name in (("mu", "z_linear", "term_z") if name != "total" else ("mu",))
-            if method_name in model_curves_by_method
-        )
+        if name == "total":
+            method_names = tuple(
+                method_name for method_name in ("paper_total_line", "model_total", "mu_sum")
+                if (
+                    method_name == "paper_total_line"
+                ) or (
+                    method_name == "model_total"
+                    and "lnphi" in model_curves_by_method
+                ) or (
+                    method_name == "mu_sum"
+                    and "mu" in model_curves_by_method
+                )
+            )
+        else:
+            method_names = tuple(
+                method_name for method_name in ("mu",)
+                if method_name in model_curves_by_method
+            )
         results[name] = {"n_points": float(len(x_data))}
         metric_lines = []
 
@@ -152,44 +185,96 @@ def run_analysis(
 
         y_candidates = [np.asarray(y_data, dtype=float)]
         for method_name in method_names:
-            y_model = np.asarray(model_curves_by_method[method_name][name], dtype=float)
+            if method_name == "paper_total_line":
+                y_model = np.interp(x_grid, x_data, y_data)
+                label = "Digitized paper total guide"
+                color = "black"
+                linestyle = "--"
+                linewidth = 1.4
+            elif method_name == "model_total":
+                y_model = np.asarray(model_curves_by_method["lnphi"]["total"], dtype=float)
+                label = r"PC-SAFT EOS total from $\Delta \ln\varphi$"
+                color = "#111111"
+                linestyle = "-"
+                linewidth = 2.2
+            elif method_name == "mu_sum":
+                y_model = _sum_contribution_curves(model_curves_by_method["mu"])
+                label = r"Sum of PC-SAFT $\Delta \tilde{\mu}^{(\alpha)}$ contributions"
+                color = "#1f77b4"
+                linestyle = ":"
+                linewidth = 2.1
+            else:
+                y_model = np.asarray(model_curves_by_method[method_name][name], dtype=float)
+                method_style = METHOD_STYLES[method_name]
+                color = str(style["color"])
+                linestyle = str(method_style["linestyle"])
+                linewidth = float(method_style["linewidth"])
+                label = str(method_style["label"])
+            if method_name != "paper_total_line":
+                rmse, mae, max_abs = _metric_summary(x_data, y_data, x_grid, y_model)
+                results[name][f"{method_name}_rmse"] = rmse
+                results[name][f"{method_name}_mae"] = mae
+                results[name][f"{method_name}_max_abs"] = max_abs
+                summary_rows.append(
+                    {
+                        "contribution": name,
+                        "method": method_name,
+                        "rmse": rmse,
+                        "mae": mae,
+                        "max_abs": max_abs,
+                        "n_points": len(x_data),
+                    }
+                )
+                metric_lines.append(f"{method_name}: RMSE={rmse:.4f}, MAE={mae:.4f}, Max |Δ|={max_abs:.4f}")
+            ax.plot(
+                x_grid,
+                y_model,
+                color=color,
+                linestyle=linestyle,
+                linewidth=linewidth,
+                label=label,
+                zorder=5,
+            )
+            y_candidates.append(y_model)
+
+        if name == "born" and "dBorn0_mu" in born_compare_curves:
+            y_model = np.asarray(born_compare_curves["dBorn0_mu"], dtype=float)
             rmse, mae, max_abs = _metric_summary(x_data, y_data, x_grid, y_model)
-            results[name][f"{method_name}_rmse"] = rmse
-            results[name][f"{method_name}_mae"] = mae
-            results[name][f"{method_name}_max_abs"] = max_abs
+            results[name]["dBorn0_mu_rmse"] = rmse
+            results[name]["dBorn0_mu_mae"] = mae
+            results[name]["dBorn0_mu_max_abs"] = max_abs
             summary_rows.append(
                 {
                     "contribution": name,
-                    "method": method_name,
+                    "method": "dBorn0_mu",
                     "rmse": rmse,
                     "mae": mae,
                     "max_abs": max_abs,
                     "n_points": len(x_data),
                 }
             )
-            method_style = METHOD_STYLES[method_name]
-            if method_name == "mu":
-                color = str(style["color"])
-            else:
-                color = str(method_style["color"])
+            metric_lines.append(f"dBorn0_mu: RMSE={rmse:.4f}, MAE={mae:.4f}, Max |Δ|={max_abs:.4f}")
             ax.plot(
                 x_grid,
                 y_model,
-                color=color,
-                linestyle=str(method_style["linestyle"]),
-                linewidth=float(method_style["linewidth"]),
-                label=str(method_style["label"]),
-                zorder=5,
+                color="#cc5500",
+                linestyle="-",
+                linewidth=1.9,
+                label=r"PC-SAFT Born with $d_{\mathrm{Born}}$ mode 0",
+                zorder=4,
             )
             y_candidates.append(y_model)
-            metric_lines.append(f"{method_name}: RMSE={rmse:.4f}, MAE={mae:.4f}, Max |Δ|={max_abs:.4f}")
 
         y_lo, y_hi = _y_limits(y_data, np.concatenate(y_candidates[1:]))
         ax.set_xlim(float(x_min), float(x_max))
         ax.set_ylim(y_lo, y_hi)
         ax.set_xlabel(r"salt mole fraction, $x_{salt}$", fontsize=AXIS_LABEL_SIZE)
-        ax.set_ylabel(r"Contribution to $\ln(\gamma_{\pm}^{*})$", fontsize=AXIS_LABEL_SIZE)
-        ax.set_title(f"Figure 6b fit check: {TITLE_LABELS[name]}")
+        if name == "total":
+            ax.set_ylabel(r"Total or summed contribution to $\ln(\gamma_{\pm}^{*})$", fontsize=AXIS_LABEL_SIZE)
+            ax.set_title(r"Figure 6b fit check: paper total vs EOS total vs summed $\mu$ contributions")
+        else:
+            ax.set_ylabel(r"Contribution to $\ln(\gamma_{\pm}^{*})$", fontsize=AXIS_LABEL_SIZE)
+            ax.set_title(f"Figure 6b fit check: {TITLE_LABELS[name]} ($\\mu$ basis)")
         ax.grid(True, alpha=0.3, color="0.7")
         ax.tick_params(colors="black", labelsize=AXIS_TICK_SIZE)
         for spine in ax.spines.values():
@@ -218,24 +303,22 @@ def run_analysis(
         fig.tight_layout()
         fig.savefig(out_path, dpi=220)
         plt.close(fig)
-        best_method = min(
-            method_names,
-            key=lambda method_name: float(results[name][f"{method_name}_rmse"]),
-        )
+        ranked_methods = tuple(method_name for method_name in method_names if method_name != "paper_total_line")
+        best_method = min(ranked_methods, key=lambda method_name: float(results[name][f"{method_name}_rmse"]))
         print(f"{name}: best_method={best_method}, wrote={out_path}")
 
     for method_name, error_text in method_errors.items():
         print(f"skipped method {method_name}: {error_text}")
 
-    summary_path = output_dir / "figure6b_fit_method_metrics.csv"
-    with summary_path.open("w", newline="", encoding="utf-8") as handle:
+    metrics_path.parent.mkdir(parents=True, exist_ok=True)
+    with metrics_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(
             handle,
             fieldnames=["contribution", "method", "rmse", "mae", "max_abs", "n_points"],
         )
         writer.writeheader()
         writer.writerows(summary_rows)
-    print(f"wrote metrics: {summary_path}")
+    print(f"wrote metrics: {metrics_path}")
 
     return results
 
@@ -265,11 +348,23 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--out-dir",
         type=Path,
-        default=REPO_ROOT / "scripts" / "paper_validation" / "2020_Bulow_analysis" / "figure_6" / "figure_6b" / "diagnostics" / "output" / "figure6b_fit_checks",
+        default=OUTPUT_PLOTS_DIR / "figure6b_fit_checks",
+    )
+    parser.add_argument(
+        "--metrics-csv",
+        type=Path,
+        default=OUTPUT_DATA_DIR / "figure6b_fit_checks" / "figure6b_fit_method_metrics.csv",
     )
     parser.add_argument("--grid-points", type=int, default=1201)
     parser.add_argument("--x-min", type=float, default=0.0)
     parser.add_argument("--x-max", type=float, default=0.2)
+    parser.add_argument(
+        "--d-born-mode",
+        type=int,
+        choices=[0, 1],
+        default=None,
+        help="Optional override for bulow_2020 born_model.d_Born_mode.",
+    )
     return parser.parse_args()
 
 
@@ -279,9 +374,11 @@ def main() -> None:
         miac_data_path=Path(args.miac_data),
         digitized_path=Path(args.digitized),
         output_dir=Path(args.out_dir),
+        metrics_path=Path(args.metrics_csv),
         grid_points=int(args.grid_points),
         x_min=float(args.x_min),
         x_max=float(args.x_max),
+        d_born_mode=None if args.d_born_mode is None else int(args.d_born_mode),
     )
 
 

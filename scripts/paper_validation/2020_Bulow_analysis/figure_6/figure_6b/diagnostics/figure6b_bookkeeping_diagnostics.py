@@ -33,6 +33,10 @@ from pcsaft import pcsaft_Z, pcsaft_den, pcsaft_lnfugcoef_terms
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+OUTPUT_ROOT = REPO_ROOT / "scripts" / "paper_validation" / "2020_Bulow_analysis" / "figure_6" / "figure_6b" / "diagnostics" / "output"
+OUTPUT_DATA_DIR = OUTPUT_ROOT / "data"
+OUTPUT_PLOTS_DIR = OUTPUT_ROOT / "plots"
+
 
 def _mean_ionic_delta(terms: Dict[str, np.ndarray], terms_inf: Dict[str, np.ndarray], key: str) -> float:
     a = np.asarray(terms[key], dtype=float)
@@ -54,6 +58,7 @@ def run_analysis(
 
     rows: List[Dict[str, float]] = []
     max_closure = 0.0
+    max_lnfug_closure = 0.0
     max_mu_closure = 0.0
 
     for m, x_salt in zip(m_grid, x_grid):
@@ -72,13 +77,21 @@ def run_analysis(
         assoc = _mean_ionic_delta(terms, terms_inf, "mu_assoc")
         dh = _mean_ionic_delta(terms, terms_inf, "mu_ion")
         born = _mean_ionic_delta(terms, terms_inf, "mu_born")
+        lnfug_hc = _mean_ionic_delta(terms, terms_inf, "lnfugcoef_hc")
+        lnfug_disp = _mean_ionic_delta(terms, terms_inf, "lnfugcoef_disp")
+        lnfug_assoc = _mean_ionic_delta(terms, terms_inf, "lnfugcoef_assoc")
+        lnfug_dh = _mean_ionic_delta(terms, terms_inf, "lnfugcoef_ion")
+        lnfug_born = _mean_ionic_delta(terms, terms_inf, "lnfugcoef_born")
         mu_total = _mean_ionic_delta(terms, terms_inf, "mu_total")
         lnfug_total = _mean_ionic_delta(terms, terms_inf, "lnfugcoef_total")
         mu_sum = hc + disp + assoc + dh + born
+        lnfug_sum = lnfug_hc + lnfug_disp + lnfug_assoc + lnfug_dh + lnfug_born
         zcorr = float(math.log(Z_inf / Z))
-        closure = lnfug_total - mu_sum
+        closure = lnfug_total - lnfug_sum
+        mu_reference_gap = lnfug_total - mu_sum
         mu_closure = mu_total - mu_sum
         max_closure = max(max_closure, abs(closure))
+        max_lnfug_closure = max(max_lnfug_closure, abs(mu_reference_gap))
         max_mu_closure = max(max_mu_closure, abs(mu_closure))
 
         rows.append(
@@ -94,11 +107,18 @@ def run_analysis(
                 "assoc": assoc,
                 "dh": dh,
                 "born": born,
+                "lnfug_hc": lnfug_hc,
+                "lnfug_disp": lnfug_disp,
+                "lnfug_assoc": lnfug_assoc,
+                "lnfug_dh": lnfug_dh,
+                "lnfug_born": lnfug_born,
                 "mu_sum": mu_sum,
+                "lnfug_sum": lnfug_sum,
                 "mu_total": mu_total,
                 "lnfug_total": lnfug_total,
                 "z_correction": zcorr,
-                "closure_lnfug_minus_mu_sum": closure,
+                "closure_lnfug_minus_lnfug_sum": closure,
+                "closure_lnfug_minus_mu_sum": mu_reference_gap,
                 "closure_mu_total_minus_mu_sum": mu_closure,
             }
         )
@@ -119,10 +139,17 @@ def run_analysis(
                 "assoc",
                 "dh",
                 "born",
+                "lnfug_hc",
+                "lnfug_disp",
+                "lnfug_assoc",
+                "lnfug_dh",
+                "lnfug_born",
                 "mu_sum",
+                "lnfug_sum",
                 "mu_total",
                 "lnfug_total",
                 "z_correction",
+                "closure_lnfug_minus_lnfug_sum",
                 "closure_lnfug_minus_mu_sum",
                 "closure_mu_total_minus_mu_sum",
             ],
@@ -133,12 +160,13 @@ def run_analysis(
     fig, ax = plt.subplots(figsize=(8.4, 5.6))
     fig.patch.set_facecolor("white")
     ax.set_facecolor("white")
-    ax.plot([r["x_salt"] for r in rows], [r["lnfug_total"] for r in rows], linewidth=2.1, color="green", label=r"$\ln(\gamma_{\pm}^{*})$")
-    ax.plot([r["x_salt"] for r in rows], [r["mu_sum"] for r in rows], linewidth=1.9, color="black", linestyle="--", label=r"sum of $\mu$ contributions")
-    ax.plot([r["x_salt"] for r in rows], [r["z_correction"] for r in rows], linewidth=1.9, color="tab:red", linestyle="-.", label=r"$\ln(Z_{\infty}/Z)$")
+    ax.plot([r["x_salt"] for r in rows], [r["lnfug_total"] for r in rows], linewidth=2.1, color="green", label=r"$\ln(\gamma_{\pm}^{*})$ total")
+    ax.plot([r["x_salt"] for r in rows], [r["lnfug_sum"] for r in rows], linewidth=1.9, color="tab:blue", linestyle="--", label=r"sum of $\ln\varphi^\alpha$ contributions")
+    ax.plot([r["x_salt"] for r in rows], [r["mu_sum"] for r in rows], linewidth=1.6, color="black", linestyle=":", label=r"legacy sum of $\mu^\alpha$ contributions")
+    ax.plot([r["x_salt"] for r in rows], [r["z_correction"] for r in rows], linewidth=1.6, color="tab:red", linestyle="-.", label=r"$\ln(Z_{\infty}/Z)$")
     ax.set_xlabel(r"salt mole fraction, $x_{salt}$")
     ax.set_ylabel(r"Contribution to $\ln(\gamma_{\pm}^{*})$")
-    ax.set_title("Figure 6b bookkeeping: total vs mu-sum vs compressibility correction")
+    ax.set_title(r"Figure 6b bookkeeping: total vs summed $\ln\varphi^\alpha$ contributions")
     ax.grid(True, alpha=0.3, color="0.7")
     ax.legend(fontsize=9)
     fig.tight_layout()
@@ -147,10 +175,12 @@ def run_analysis(
 
     print(f"Wrote bookkeeping CSV: {output_csv}")
     print(f"Wrote bookkeeping plot: {output_plot}")
-    print(f"Max |lnfug_total - mu_sum| = {max_closure:.6e}")
+    print(f"Max |lnfug_total - lnfug_sum| = {max_closure:.6e}")
+    print(f"Max |lnfug_total - mu_sum| = {max_lnfug_closure:.6e}")
     print(f"Max |mu_total - mu_sum| = {max_mu_closure:.6e}")
     return {
-        "max_closure_lnfug_minus_mu_sum": max_closure,
+        "max_closure_lnfug_minus_lnfug_sum": max_closure,
+        "max_closure_lnfug_minus_mu_sum": max_lnfug_closure,
         "max_closure_mu_total_minus_mu_sum": max_mu_closure,
     }
 
@@ -165,12 +195,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--out-csv",
         type=Path,
-        default=REPO_ROOT / "scripts" / "paper_validation" / "2020_Bulow_analysis" / "figure_6" / "figure_6b" / "diagnostics" / "output" / "figure6b_bookkeeping.csv",
+        default=OUTPUT_DATA_DIR / "figure6b_bookkeeping.csv",
     )
     parser.add_argument(
         "--out-plot",
         type=Path,
-        default=REPO_ROOT / "scripts" / "paper_validation" / "2020_Bulow_analysis" / "figure_6" / "figure_6b" / "diagnostics" / "output" / "figure6b_bookkeeping.png",
+        default=OUTPUT_PLOTS_DIR / "figure6b_bookkeeping.png",
     )
     parser.add_argument("--grid-points", type=int, default=1201)
     return parser.parse_args()

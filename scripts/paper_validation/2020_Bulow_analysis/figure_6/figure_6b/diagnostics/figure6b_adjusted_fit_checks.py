@@ -15,6 +15,11 @@ from figure6b_digitized_reference_replica import SERIES_STYLES, _load_digitized_
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+REPO_ROOT = Path(__file__).resolve().parents[6]
+OUTPUT_ROOT = REPO_ROOT / "scripts" / "paper_validation" / "2020_Bulow_analysis" / "figure_6" / "figure_6b" / "diagnostics" / "output"
+OUTPUT_DATA_DIR = OUTPUT_ROOT / "data"
+OUTPUT_PLOTS_DIR = OUTPUT_ROOT / "plots"
+
 CONTRIBUTIONS = ["born", "dh", "hc", "disp", "assoc"]
 FILE_LABELS = {
     "born": "born",
@@ -96,7 +101,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--bookkeeping-csv",
         type=Path,
-        default=Path(r"C:\Users\Tanner\Documents\git\PC-SAFT\scripts\paper_validation\2020_Bulow_analysis\figure_6\figure_6b\diagnostics\output\figure6b_bookkeeping.csv"),
+        default=OUTPUT_DATA_DIR / "figure6b_bookkeeping.csv",
     )
     parser.add_argument(
         "--digitized-csv",
@@ -106,12 +111,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--weights-csv",
         type=Path,
-        default=Path(r"C:\Users\Tanner\Documents\git\PC-SAFT\scripts\paper_validation\2020_Bulow_analysis\figure_6\figure_6b\diagnostics\output\figure6b_accounting_best_scalar_zfits.csv"),
+        default=OUTPUT_DATA_DIR / "figure6b_accounting_best_scalar_zfits.csv",
     )
     parser.add_argument(
         "--out-dir",
         type=Path,
-        default=Path(r"C:\Users\Tanner\Documents\git\PC-SAFT\scripts\paper_validation\2020_Bulow_analysis\figure_6\figure_6b\diagnostics\output\figure6b_fit_checks_best_scalar_zfits"),
+        default=OUTPUT_PLOTS_DIR / "figure6b_fit_checks_best_scalar_zfits",
     )
     return parser.parse_args()
 

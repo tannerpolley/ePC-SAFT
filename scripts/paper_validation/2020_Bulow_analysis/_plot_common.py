@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import math
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -81,23 +82,34 @@ def annotate_percent_deltas(
     paper: np.ndarray,
     model: np.ndarray,
     *,
-    fontsize: int = 7,
-    rotation: float = 90.0,
+    xs_ref: np.ndarray | None = None,
+    fontsize: int = 8,
+    rotation: float = 0.0,
 ) -> None:
     y_min, y_max = ax.get_ylim()
     span = max(y_max - y_min, 1.0)
-    y_pad = 0.018 * span
+    y_pad = 0.05 * span
 
-    for x_val, paper_val, model_val in zip(xs, paper, model, strict=False):
+    if xs_ref is None:
+        xs_ref = xs
+
+    for x_val, x_ref_val, paper_val, model_val in zip(xs, xs_ref, paper, model, strict=False):
         if not (np.isfinite(paper_val) and np.isfinite(model_val)):
             continue
         pct = percent_delta(float(model_val), float(paper_val))
         if not np.isfinite(pct):
             continue
-        y_text = float(model_val) + (y_pad if model_val >= 0.0 else -y_pad)
-        va = "bottom" if model_val >= 0.0 else "top"
+        x_mid = 0.5 * (float(x_val) + float(x_ref_val))
+        top_value = max(float(paper_val), float(model_val))
+        bottom_value = min(float(paper_val), float(model_val))
+        if paper_val < 0.0 and model_val < 0.0:
+            y_text = bottom_value - y_pad
+            va = "top"
+        else:
+            y_text = top_value + y_pad
+            va = "bottom"
         ax.text(
-            float(x_val),
+            x_mid,
             y_text,
             f"{pct:+.1f}%",
             ha="center",
@@ -105,8 +117,86 @@ def annotate_percent_deltas(
             fontsize=fontsize,
             rotation=rotation,
             color="black",
+            fontweight="semibold",
             clip_on=False,
         )
+
+
+def annotate_bar_values(
+    ax: plt.Axes,
+    bars,
+    *,
+    fmt: str = "{:.1f}",
+    fontsize: int = 8,
+    rotation: float = 0.0,
+    color: str = "0.2",
+) -> None:
+    y_min, y_max = ax.get_ylim()
+    span = max(y_max - y_min, 1.0)
+    y_pad = 0.012 * span
+
+    for bar in bars:
+        height = float(bar.get_height())
+        if not np.isfinite(height):
+            continue
+        x_val = float(bar.get_x() + bar.get_width() / 2.0)
+        y_text = height + (y_pad if height >= 0.0 else -y_pad)
+        va = "bottom" if height >= 0.0 else "top"
+        ax.text(
+            x_val,
+            y_text,
+            fmt.format(height),
+            ha="center",
+            va=va,
+            fontsize=fontsize,
+            rotation=rotation,
+            color=color,
+            fontweight="semibold",
+            alpha=0.85,
+            clip_on=False,
+        )
+
+
+def _round_up_to_multiple(value: float, step: float) -> float:
+    return float(step * math.ceil(value / step))
+
+
+def _round_down_to_multiple(value: float, step: float) -> float:
+    return float(step * math.floor(value / step))
+
+
+def set_strict_bar_ylim(
+    ax: plt.Axes,
+    values: np.ndarray,
+    *,
+    step: float = 5.0,
+    top_pad_frac: float = 0.12,
+    bottom_pad_frac: float = 0.08,
+) -> tuple[float, float]:
+    finite = np.asarray(values, dtype=float)
+    finite = finite[np.isfinite(finite)]
+    if finite.size == 0:
+        lo, hi = -step, step
+        ax.set_ylim(lo, hi)
+        return lo, hi
+
+    raw_min = float(np.min(finite))
+    raw_max = float(np.max(finite))
+    span = max(raw_max - raw_min, step)
+
+    padded_min = raw_min - bottom_pad_frac * span
+    if raw_max <= 0.0:
+        padded_max = 0.0
+    else:
+        padded_max = raw_max + top_pad_frac * span
+
+    lo = _round_down_to_multiple(padded_min, step)
+    hi = 0.0 if padded_max == 0.0 else _round_up_to_multiple(padded_max, step)
+    if lo == hi:
+        hi = lo + step
+
+    ax.set_ylim(lo, hi)
+    return lo, hi
 
 
 def add_percent_note(ax: plt.Axes, *, xpos: float = 0.99, ypos: float = 0.01) -> None:
