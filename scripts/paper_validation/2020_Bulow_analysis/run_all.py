@@ -20,9 +20,11 @@ def main() -> None:
     run_script(ROOT / "figure_5" / "plot_figure_5.py")
     run_script(ROOT / "figure_6" / "figure_6a" / "plot_figure_6a.py")
     run_script(ROOT / "figure_6" / "figure_6b" / "plot_figure_6b.py")
+    run_script(ROOT / "figure_7" / "plot_figure_7.py")
     print("[done] 2020 figure scripts completed.")
     print(f"[note] Diagnostics: {ROOT / 'diagnostics'}")
 
 
 if __name__ == "__main__":
     main()
+

@@ -45,6 +45,10 @@ cdef extern from "pcsaft_electrolyte.cpp":
         int mixed_rel_perm_water_index
         int dielc_rule
         int dielc_diff_mode
+        int hc_dadx_diff_mode
+        int disp_dadx_diff_mode
+        int assoc_dadx_diff_mode
+        int polar_dadx_diff_mode
         int d_ion_mode
         int mu_DH_diff_mode
         int mu_DH_comp_dep_rel_perm

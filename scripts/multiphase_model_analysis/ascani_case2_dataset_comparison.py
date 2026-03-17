@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import csv
+import json
 import sys
 from pathlib import Path
 
@@ -22,26 +24,8 @@ import matplotlib.pyplot as plt
 T_REF = 298.15
 P_REF = 1.0e5
 R_GAS = 8.31446261815324
+PARAMETER_DATASET = "ascani_2022"
 SPECIES = ["H2O", "Butanol", "Na+", "K+", "Cl-"]
-NUMERIC_COMPONENT_FIELDS = ["MW", "m", "s", "e", "e_assoc", "vol_a", "dipm", "dip_num", "z", "dielc", "d_born", "f_solv"]
-MODEL_CONFIGS = [
-    {
-        "key": "ascani_2022",
-        "dataset": "ascani_2022",
-        "label": "Ascani 2022",
-        "color": "#228b22",
-        "build_mode": "dataset",
-        "coverage_note": "Full ascani_2022 dataset coverage for water/butanol/Na+/K+/Cl-.",
-    },
-    {
-        "key": "figiel_2025_overlay",
-        "dataset": "figiel_2025",
-        "label": "Figiel 2025 overlay",
-        "color": "#8b1e3f",
-        "build_mode": "figiel_overlay",
-        "coverage_note": "figiel_2025 has no Butanol entry, so case 2 uses ascani_2022 as the butanol base and overlays figiel_2025 shared H2O/ion pure parameters and available k_ij values.",
-    },
-]
 PAPER_TARGETS = {
     "x_water_org": 0.4426,
     "x_butanol_org": 0.5570,
@@ -72,7 +56,47 @@ RULE_LABELS = {
     5: "rule5",
     6: "rule6",
     7: "linear-salt",
+    8: "aqueous-organic",
 }
+
+
+def _load_user_options(dataset_name: str) -> dict:
+    path = REPO_ROOT / "data" / "pcsaft_parameters" / dataset_name / "user_options.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(payload, dict) and "canonical_user_options" in payload:
+        payload = payload["canonical_user_options"]
+    if not isinstance(payload, dict):
+        raise TypeError(f"user_options.json for '{dataset_name}' did not resolve to a dict.")
+    return payload
+
+
+def _default_model_configs() -> list[dict]:
+    return [
+        {
+            "key": "ascani2022_params_bulow2020_opts",
+            "parameter_dataset": PARAMETER_DATASET,
+            "options_dataset": "bulow_2020",
+            "label": "Ascani 2022 params + current Bulow 2020 options",
+            "color": "#2b6cb0",
+            "coverage_note": (
+                "Pure-component and binary-interaction parameters are fixed to ascani_2022. "
+                "Runtime/electrolyte options come from the current bulow_2020 user_options.json, with solvent-specific ion sigma/dispersion precomputes disabled because ascani_2022 only provides pure/any_solvent.csv."
+            ),
+            "user_options": _load_user_options("bulow_2020"),
+        },
+        {
+            "key": "ascani2022_params_figiel2025_opts",
+            "parameter_dataset": PARAMETER_DATASET,
+            "options_dataset": "figiel_2025",
+            "label": "Ascani 2022 params + current Figiel 2025 options",
+            "color": "#8b1e3f",
+            "coverage_note": (
+                "Pure-component and binary-interaction parameters are fixed to ascani_2022. "
+                "Runtime/electrolyte options come from the current figiel_2025 user_options.json, with solvent-specific ion sigma/dispersion precomputes disabled because ascani_2022 only provides pure/any_solvent.csv."
+            ),
+            "user_options": _load_user_options("figiel_2025"),
+        },
+    ]
 
 
 def _case2_feed() -> tuple[list[str], np.ndarray, dict[str, float]]:
@@ -177,41 +201,19 @@ def _elec_summary(params: dict) -> str:
 
 
 def _build_params_for_config(config: dict, species: list[str], z_feed: np.ndarray) -> dict:
-    if config["build_mode"] == "dataset":
-        return get_prop_dict(config["dataset"], species, z_feed, T_REF, user_options=None)
-
-    if config["build_mode"] != "figiel_overlay":
-        raise ValueError(f"Unsupported build_mode: {config['build_mode']}")
-
-    base = get_prop_dict("ascani_2022", species, z_feed, T_REF, user_options=None)
-    overlay_species = [sp for sp in species if sp != "Butanol"]
-    x_overlay = np.full(len(overlay_species), 1.0 / len(overlay_species), dtype=float)
-    overlay = get_prop_dict("figiel_2025", overlay_species, x_overlay, T_REF, user_options=None)
-
-    base_index = {sp: idx for idx, sp in enumerate(species)}
-    overlay_index = {sp: idx for idx, sp in enumerate(overlay_species)}
-
-    for field in NUMERIC_COMPONENT_FIELDS:
-        for sp, o_idx in overlay_index.items():
-            base[field][base_index[sp]] = overlay[field][o_idx]
-
-    if "assoc_scheme" in base and "assoc_scheme" in overlay:
-        for sp, o_idx in overlay_index.items():
-            base["assoc_scheme"][base_index[sp]] = overlay["assoc_scheme"][o_idx]
-
-    for sp_i, i_base in base_index.items():
-        if sp_i not in overlay_index:
-            continue
-        i_overlay = overlay_index[sp_i]
-        for sp_j, j_base in base_index.items():
-            if sp_j not in overlay_index:
-                continue
-            j_overlay = overlay_index[sp_j]
-            base["k_ij"][i_base, j_base] = overlay["k_ij"][i_overlay, j_overlay]
-
-    base["elec_model"] = overlay["elec_model"]
-    base["elec_model_dataset"] = "figiel_2025_overlay"
-    return base
+    user_options = copy.deepcopy(config["user_options"])
+    user_options["solvated_ion_diameter_mixing_rule"] = False
+    user_options["ion_dispersion_mixing_rule"] = False
+    params = get_prop_dict(
+        config["parameter_dataset"],
+        species,
+        z_feed,
+        T_REF,
+        user_options=user_options,
+    )
+    params["parameter_dataset"] = config["parameter_dataset"]
+    params["user_options_dataset"] = config["options_dataset"]
+    return params
 
 
 def _solve_dataset(config: dict) -> dict:
@@ -245,6 +247,12 @@ def _solve_dataset(config: dict) -> dict:
     n_org = beta_org * x_org
     n_aq = beta_aq * x_aq
     z = np.asarray(params["z"], dtype=float)
+    neutral_idx = np.where(np.abs(z) <= 1.0e-12)[0].astype(int)
+    charged_idx = np.asarray(result["charged_species_indices"], dtype=int)
+    e_matrix = np.asarray(result["e_matrix"], dtype=float)
+    lnf_delta = lnf_org - lnf_aq
+    neutral_gap = lnf_delta[neutral_idx] if neutral_idx.size else np.zeros(0, dtype=float)
+    ionic_gap = e_matrix.dot(lnf_delta[charged_idx]) if charged_idx.size else np.zeros(0, dtype=float)
 
     ghat_eq = _ghat_from_phases(
         T_REF,
@@ -282,7 +290,8 @@ def _solve_dataset(config: dict) -> dict:
 
     return {
         "key": config["key"],
-        "dataset": config["dataset"],
+        "parameter_dataset": config["parameter_dataset"],
+        "options_dataset": config["options_dataset"],
         "label": config["label"],
         "color": config["color"],
         "coverage_note": config["coverage_note"],
@@ -313,6 +322,10 @@ def _solve_dataset(config: dict) -> dict:
             "phase_charge_org": float(np.dot(z, x_org)),
             "phase_charge_aq": float(np.dot(z, x_aq)),
             "mass_balance_max": float(np.max(np.abs(mb))),
+            "neutral_gap_max": float(np.max(np.abs(neutral_gap))) if neutral_gap.size else 0.0,
+            "mean_ionic_gap_max": float(np.max(np.abs(ionic_gap))) if ionic_gap.size else 0.0,
+            "e_matrix_rank": float(np.linalg.matrix_rank(e_matrix)),
+            "mean_ionic_pair_count": float(e_matrix.shape[0]),
             "eta_water_to_org_pct": float(100.0 * n_org[i_w] / max(z_feed[i_w], 1e-300)),
             "eta_butanol_to_org_pct": float(100.0 * n_org[i_b] / max(z_feed[i_b], 1e-300)),
             "eta_na_to_aq_pct": float(100.0 * n_aq[i_na] / max(z_feed[i_na], 1e-300)),
@@ -347,6 +360,10 @@ def _summary_rows(results: list[dict]) -> list[dict[str, object]]:
         ("phase_charge_org", "Charge residual org"),
         ("phase_charge_aq", "Charge residual aq"),
         ("mass_balance_max", "Mass balance max error"),
+        ("neutral_gap_max", "Neutral fugacity gap max"),
+        ("mean_ionic_gap_max", "Mean-ionic gap max"),
+        ("e_matrix_rank", "E-matrix rank"),
+        ("mean_ionic_pair_count", "Independent ionic-pair count"),
         ("eta_water_to_org_pct", "$\\eta_{water\\to org}$ (%)"),
         ("eta_butanol_to_org_pct", "$\\eta_{butanol\\to org}$ (%)"),
         ("eta_na_to_aq_pct", "$\\eta_{Na^+\\to aq}$ (%)"),
@@ -370,7 +387,8 @@ def _phase_detail_rows(results: list[dict]) -> list[dict[str, object]]:
                 rows.append(
                     {
                         "model_key": result["key"],
-                        "dataset": result["dataset"],
+                        "parameter_dataset": result["parameter_dataset"],
+                        "options_dataset": result["options_dataset"],
                         "label": result["label"],
                         "phase": phase_key,
                         "phase_title": phase_title,
@@ -385,7 +403,8 @@ def _phase_detail_rows(results: list[dict]) -> list[dict[str, object]]:
                 rows.append(
                     {
                         "model_key": result["key"],
-                        "dataset": result["dataset"],
+                        "parameter_dataset": result["parameter_dataset"],
+                        "options_dataset": result["options_dataset"],
                         "label": result["label"],
                         "phase": phase_key,
                         "phase_title": phase_title,
@@ -409,10 +428,18 @@ def _write_csv(path: Path, rows: list[dict[str, object]], fieldnames: list[str])
 
 def _write_markdown(path: Path, results: list[dict], summary_rows: list[dict[str, object]]) -> None:
     lines = ["# Ascani Case 2 Dataset Comparison", ""]
+    lines.append("## Validation basis")
+    lines.append("")
+    lines.append(f"- Fixed pure-component and binary-interaction parameter basis: `{PARAMETER_DATASET}`.")
+    lines.append("- Only the electrolyte/runtime user options are swapped between the two runs.")
+    lines.append("")
     lines.append("## Model presets")
     lines.append("")
     for result in results:
-        lines.append(f"- `{result['key']}`: {result['elec_summary']}")
+        lines.append(
+            f"- `{result['key']}`: params=`{result['parameter_dataset']}`, "
+            f"options=`{result['options_dataset']}`, {result['elec_summary']}"
+        )
         lines.append(f"- Coverage: {result['coverage_note']}")
     lines.append("")
     lines.append("## Feed composition")
@@ -443,10 +470,17 @@ def _write_markdown(path: Path, results: list[dict], summary_rows: list[dict[str
             cells.append(_format_value(row[result["key"]]))
         lines.append("| " + " | ".join(cells) + " |")
     lines.append("")
-    lines.append("## Phase-resolved notes")
+    lines.append("## Algorithm checks")
     lines.append("")
-    lines.append("- The PNG figure compares paper and model bars for organic-phase composition, aqueous-phase composition, and equilibrium fugacity metrics.")
-    lines.append("- A fourth panel shows model-only ion partitioning to the aqueous phase because the paper does not report ion-resolved phase-share data.")
+    lines.append(
+        "- `Neutral fugacity gap max` is the maximum absolute phase-to-phase difference in $\\ln(f_i/bar)$ for neutral species."
+    )
+    lines.append(
+        "- `Mean-ionic gap max` is the maximum absolute residual in $E(\\ln f^{org}-\\ln f^{aq})$ for the charged-species system."
+    )
+    lines.append(
+        "- `E-matrix rank` should match the number of independent ionic-pair equations for the Ascani 2022 construction."
+    )
     lines.append("")
     path.write_text("\n".join(lines), encoding="utf-8")
 
@@ -468,11 +502,6 @@ def _plot_results(results: list[dict], out_path: Path) -> None:
     fig.patch.set_facecolor("white")
 
     paper_bar = {"label": "Paper (Ascani 2022)", "color": "white", "edgecolor": "black", "hatch": "//"}
-    model_bars = [
-        {"label": result["label"], "color": result["color"], "edgecolor": "black", "hatch": None}
-        for result in results
-    ]
-    all_bars = [paper_bar, *model_bars]
     width = 0.24
 
     composition_panels = [
@@ -592,10 +621,10 @@ def _plot_results(results: list[dict], out_path: Path) -> None:
     legend.get_frame().set_alpha(1.0)
 
     note_lines = [
-        "Hatched bars are paper values; composition panels use log y and fugacity uses symmetric log y.",
-        "Figiel 2025 is shown as the explicit butanol-base overlay because native figiel_2025 lacks Butanol.",
+        "Hatched bars are paper values; pure/binary parameters stay fixed at ascani_2022 in both runs.",
+        "Color changes only reflect the swapped current user-option sets.",
     ]
-    fig.suptitle("Ascani case 2: paper vs model comparison", fontsize=14, y=0.98)
+    fig.suptitle("Ascani case 2: fixed 2022 parameters with swapped runtime options", fontsize=14, y=0.98)
     fig.text(0.5, 0.02, " | ".join(note_lines), ha="center", va="bottom", fontsize=8)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -603,8 +632,9 @@ def _plot_results(results: list[dict], out_path: Path) -> None:
     fig.savefig(out_path, dpi=240, bbox_inches="tight")
     plt.close(fig)
 
-def run_analysis(out_dir: Path) -> dict[str, Path]:
-    results = [_solve_dataset(config) for config in MODEL_CONFIGS]
+
+def run_analysis(out_dir: Path, model_configs: list[dict] | None = None) -> dict[str, Path]:
+    results = [_solve_dataset(config) for config in (model_configs or _default_model_configs())]
     summary_rows = _summary_rows(results)
     detail_rows = _phase_detail_rows(results)
 
@@ -618,19 +648,33 @@ def run_analysis(out_dir: Path) -> dict[str, Path]:
     _write_csv(
         details_csv,
         detail_rows,
-        ["model_key", "dataset", "label", "phase", "phase_title", "beta", "species", "mole_fraction", "share_of_feed_pct", "lnfug_bar"],
+        [
+            "model_key",
+            "parameter_dataset",
+            "options_dataset",
+            "label",
+            "phase",
+            "phase_title",
+            "beta",
+            "species",
+            "mole_fraction",
+            "share_of_feed_pct",
+            "lnfug_bar",
+        ],
     )
     _write_markdown(summary_md, results, summary_rows)
     _plot_results(results, figure_png)
 
-    print("Model presets:")
+    print("Validation basis:")
+    print(f"- fixed parameter dataset: {PARAMETER_DATASET}")
+    print("- swapped option datasets only:")
     for result in results:
-        print(f"- {result['key']}: {result['elec_summary']}")
-        print(f"  coverage: {result['coverage_note']}")
+        print(f"  - {result['key']}: options={result['options_dataset']}; {result['elec_summary']}")
+        print(f"    coverage: {result['coverage_note']}")
     print("")
     print("| Quantity | Paper | " + " | ".join(result["key"] for result in results) + " |")
     print("|---|---:|" + "".join("---:|" for _ in results))
-    for row in summary_rows[:15]:
+    for row in summary_rows[:20]:
         cells = [row["quantity"], _format_value(row["paper"])]
         for result in results:
             cells.append(_format_value(row[result["key"]]))
@@ -650,7 +694,7 @@ def run_analysis(out_dir: Path) -> dict[str, Path]:
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Ascani case 2 dataset-driven multiphase comparison")
+    parser = argparse.ArgumentParser(description="Ascani case 2 fixed-parameter multiphase comparison")
     parser.add_argument(
         "--outdir",
         type=Path,
@@ -667,5 +711,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
 

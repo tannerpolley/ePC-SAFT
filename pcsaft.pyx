@@ -2307,6 +2307,10 @@ def create_struct(params):
             # Backward-compatible electrolyte defaults when no explicit user options are provided.
             elec_model = {
                 'rel_perm': {'rule': 1, 'differential_mode': 'analytical'},
+                'hc_model': {'dadx_differential_mode': 'analytical'},
+                'disp_model': {'dadx_differential_mode': 'analytical'},
+                'assoc_model': {'dadx_differential_mode': 'analytical'},
+                'polar_model': {'dadx_differential_mode': 'analytical'},
                 'DH_model': {
                     'd_ion_mode': 1,
                     'bjeruum_treatment': False,
@@ -2389,6 +2393,18 @@ def create_struct(params):
     rel_perm = elec_model.get('rel_perm', {})
     if not isinstance(rel_perm, dict):
         raise ValueError('params["elec_model"]["rel_perm"] must be a dict.')
+    hc_model_dict = elec_model.get('hc_model', {})
+    if not isinstance(hc_model_dict, dict):
+        raise ValueError('params["elec_model"]["hc_model"] must be a dict.')
+    disp_model_dict = elec_model.get('disp_model', {})
+    if not isinstance(disp_model_dict, dict):
+        raise ValueError('params["elec_model"]["disp_model"] must be a dict.')
+    assoc_model_dict = elec_model.get('assoc_model', {})
+    if not isinstance(assoc_model_dict, dict):
+        raise ValueError('params["elec_model"]["assoc_model"] must be a dict.')
+    polar_model_dict = elec_model.get('polar_model', {})
+    if not isinstance(polar_model_dict, dict):
+        raise ValueError('params["elec_model"]["polar_model"] must be a dict.')
     dh_model_dict = elec_model.get('DH_model', {})
     if not isinstance(dh_model_dict, dict):
         raise ValueError('params["elec_model"]["DH_model"] must be a dict.')
@@ -2406,6 +2422,18 @@ def create_struct(params):
     cppargs.dielc_diff_mode = _as_int_alias(rel_perm.get('differential_mode', 'analytical'), diff_alias)
     if cppargs.dielc_diff_mode not in (0, 1):
         raise ValueError('Unknown rel_perm differential_mode. Supported values are analytical/numerical (0/1).')
+    cppargs.hc_dadx_diff_mode = _as_int_alias(hc_model_dict.get('dadx_differential_mode', 'analytical'), diff_alias)
+    if cppargs.hc_dadx_diff_mode not in (0, 1):
+        raise ValueError('Unknown hc_model dadx_differential_mode. Supported values are analytical/numerical (0/1).')
+    cppargs.disp_dadx_diff_mode = _as_int_alias(disp_model_dict.get('dadx_differential_mode', 'analytical'), diff_alias)
+    if cppargs.disp_dadx_diff_mode not in (0, 1):
+        raise ValueError('Unknown disp_model dadx_differential_mode. Supported values are analytical/numerical (0/1).')
+    cppargs.assoc_dadx_diff_mode = _as_int_alias(assoc_model_dict.get('dadx_differential_mode', 'analytical'), diff_alias)
+    if cppargs.assoc_dadx_diff_mode not in (0, 1):
+        raise ValueError('Unknown assoc_model dadx_differential_mode. Supported values are analytical/numerical (0/1).')
+    cppargs.polar_dadx_diff_mode = _as_int_alias(polar_model_dict.get('dadx_differential_mode', 'analytical'), diff_alias)
+    if cppargs.polar_dadx_diff_mode not in (0, 1):
+        raise ValueError('Unknown polar_model dadx_differential_mode. Supported values are analytical/numerical (0/1).')
     if cppargs.dielc_rule < 0 or cppargs.dielc_rule > 8:
         raise ValueError('Unknown rel_perm rule. Supported values are 0..8.')
 

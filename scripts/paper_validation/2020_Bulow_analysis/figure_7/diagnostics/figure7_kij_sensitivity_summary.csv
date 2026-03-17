@@ -1,0 +1,4 @@
+panel,salt,solvent,requested_pair,runtime_pair,baseline_k,best_k_in_scan,baseline_rmse,best_rmse,baseline_bias,best_bias,rmse_improvement,note,scan_csv,scan_plot
+7a,LiBr,ethanol,Li-Br,Li-Br,0.591,1.1,0.871332433834692,0.817992035513917,-0.4697216892521137,-0.4371727530245414,0.053340398320775084,Direct salt-ion unlike pair in LiBr/ethanol.,figure7a_li_br_scan.csv,figure7a_li_br_scan.png
+7a,LiBr,ethanol,Li-H2O (requested),Li-Ethanol,0.0,-0.5,0.871332433834692,0.8035364755882111,-0.4697216892521137,-0.42950873930296607,0.06779595824648099,No H2O is present in Figure 7a; Li-Ethanol is the actual active solvent pair.,figure7a_li_solvent_scan.csv,figure7a_li_solvent_scan.png
+7c,LiCl,methanol,Li-H2O (requested),Li-Methanol,0.0,-0.5,0.07947814022429085,0.016709304894146886,-0.04800998367664217,0.00570408910895068,0.06276883533014396,No H2O is present in Figure 7c; Li-Methanol is the actual active solvent pair.,figure7c_li_solvent_scan.csv,figure7c_li_solvent_scan.png

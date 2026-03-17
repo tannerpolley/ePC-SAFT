@@ -1,0 +1,1 @@
+[{"id1": {"name": "ethanol"}, "id2": {"name": "lithium ion"}, "k_ij": [0.0, 0, 0, 0]}, {"id1": {"name": "ethanol"}, "id2": {"name": "bromide ion"}, "k_ij": [0.0, 0, 0, 0]}, {"id1": {"name": "lithium ion"}, "id2": {"name": "bromide ion"}, "k_ij": [0.591, 0, 0, 0]}]

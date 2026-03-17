@@ -15,6 +15,7 @@ def run_script(path: Path) -> None:
 
 def main() -> None:
     run_script(ROOT / "figure_1" / "plot_figure_1.py")
+    run_script(ROOT / "figure_2" / "plot_figure_2.py")
     run_script(ROOT / "figure_3" / "plot_figure_3.py")
     run_script(ROOT / "figure_4" / "plot_figure_4.py")
     run_script(ROOT / "figure_5" / "plot_figure_5.py")

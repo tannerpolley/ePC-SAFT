@@ -5,6 +5,18 @@
       "rule": 1,
       "differential_mode": "analytical"
     },
+    "hc_model": {
+      "dadx_differential_mode": "analytical"
+    },
+    "disp_model": {
+      "dadx_differential_mode": "analytical"
+    },
+    "assoc_model": {
+      "dadx_differential_mode": "analytical"
+    },
+    "polar_model": {
+      "dadx_differential_mode": "analytical"
+    },
     "DH_model": {
       "d_ion_mode": 1,
       "bjeruum_treatment": false,

@@ -1,0 +1,200 @@
+{
+  "epsilon_diag_k": [
+    353.9449,
+    230.0,
+    170.0
+  ],
+  "package": "Clapeyron.jl",
+  "counter_component": "chloride",
+  "sigma_born_m": [
+    0.0,
+    3.36e-10,
+    3.8740000000000003e-10
+  ],
+  "k_matrix": [
+    [
+      0.0,
+      2.37999,
+      -0.25
+    ],
+    [
+      2.37999,
+      0.0,
+      0.317
+    ],
+    [
+      -0.25,
+      0.317,
+      0.0
+    ]
+  ],
+  "target_component": "sodium",
+  "z": [
+    0.999999999999,
+    1.0e-12,
+    0.0
+  ],
+  "compressibility_factor": 0.0007289667030711975,
+  "neutralmodel_userlocations": [
+    "C:\\Users\\Tanner\\Documents\\git\\Clapeyron.jl\\database\\SAFT\\PCSAFT\\ePCSAFTAdv\\ePCSAFTAdv_like.csv",
+    "C:\\Users\\Tanner\\Documents\\git\\Clapeyron.jl\\database\\SAFT\\PCSAFT\\ePCSAFTAdv\\ePCSAFTAdv_unlike.csv",
+    "C:\\Users\\Tanner\\Documents\\git\\Clapeyron.jl\\database\\SAFT\\PCSAFT\\ePCSAFT\\ePCSAFT_like.csv",
+    "C:\\Users\\Tanner\\Documents\\git\\Clapeyron.jl\\database\\SAFT\\PCSAFT\\ePCSAFT\\ePCSAFT_unlike.csv"
+  ],
+  "contributions": {
+    "born": {
+      "a_plus_z_kj_mol": -4.0822314486374077e-10,
+      "simplex_fd_target_kj_mol": -408.22314481636755,
+      "simplex_fd_water_kj_mol": 408.2231449111045,
+      "name": "born",
+      "a_kj_mol": -4.0822314486374077e-10,
+      "mu_components_kj_mol": [
+        -4.7116207691020454e-24,
+        -408.2231448637361,
+        -354.0603424734513
+      ],
+      "z_kj_mol": -0.0,
+      "weighted_mu_kj_mol": -4.0822314486374077e-10,
+      "lnfug_target_kj_mol": -408.2231448637361,
+      "mu_minus_a_z_components_kj_mol": [
+        4.0822314486373607e-10,
+        -408.22314486332783,
+        -354.0603424730431
+      ],
+      "z_correction_kj_mol": 0.0,
+      "simplex_fd_counter_kj_mol": -354.06034243236775
+    },
+    "dh": {
+      "a_plus_z_kj_mol": -1.5335891350667915e-17,
+      "simplex_fd_target_kj_mol": -0.0010221755647452848,
+      "simplex_fd_water_kj_mol": null,
+      "name": "dh",
+      "a_kj_mol": -1.022394005411813e-17,
+      "mu_components_kj_mol": [
+        5.3056663105498385e-46,
+        -5.1119887576461406e-6,
+        -5.11198875764614e-6
+      ],
+      "z_kj_mol": -5.1119512965497866e-18,
+      "weighted_mu_kj_mol": -5.1119887576461406e-18,
+      "lnfug_target_kj_mol": -5.111988757609185e-6,
+      "mu_minus_a_z_components_kj_mol": [
+        1.5335891350667915e-17,
+        -5.111988757630805e-6,
+        -5.111988757630804e-6
+      ],
+      "z_correction_kj_mol": 3.695507454003981e-17,
+      "simplex_fd_counter_kj_mol": -0.0010221839506237898
+    },
+    "assoc": {
+      "a_plus_z_kj_mol": -20.94195553970345,
+      "simplex_fd_target_kj_mol": 16.571095784456702,
+      "simplex_fd_water_kj_mol": -16.571096317363754,
+      "name": "assoc",
+      "a_kj_mol": -13.313221583015064,
+      "assoc_delta_values": [
+        1.6098060173375139e-26
+      ],
+      "mu_components_kj_mol": [
+        -20.941955539720023,
+        -4.370859567652539,
+        -4.007541786242634
+      ],
+      "z_kj_mol": -7.628733956688386,
+      "weighted_mu_kj_mol": -20.94195553970345,
+      "lnfug_target_kj_mol": 50.77842016156337,
+      "assoc_site_matrix": [
+        [
+          0.0,
+          536.5029153950319
+        ],
+        [
+          536.5029153950319,
+          0.0
+        ]
+      ],
+      "mu_minus_a_z_components_kj_mol": [
+        -1.6573409311604337e-11,
+        16.571095972050912,
+        16.934413753460817
+      ],
+      "z_correction_kj_mol": 55.149279729215905,
+      "assoc_X_values": [
+        0.04225126824999388,
+        0.042251268249993874
+      ],
+      "simplex_fd_counter_kj_mol": 16.934413693547867
+    },
+    "hc": {
+      "a_plus_z_kj_mol": 36.15418357678043,
+      "simplex_fd_target_kj_mol": -5.435003558318385,
+      "simplex_fd_water_kj_mol": 5.435003558318385,
+      "name": "hc",
+      "a_kj_mol": 11.279368867498034,
+      "mu_components_kj_mol": [
+        36.15418357678585,
+        30.719180383648652,
+        28.759551286241884
+      ],
+      "z_kj_mol": 24.874814709282397,
+      "weighted_mu_kj_mol": 36.15418357678041,
+      "lnfug_target_kj_mol": -149.10464391053821,
+      "mu_minus_a_z_components_kj_mol": [
+        5.4143356464919634e-12,
+        -5.435003193131781,
+        -7.394632290538549
+      ],
+      "z_correction_kj_mol": -179.82382429418686,
+      "simplex_fd_counter_kj_mol": -7.394632817181446
+    },
+    "disp": {
+      "a_plus_z_kj_mol": -41.692640999911895,
+      "simplex_fd_target_kj_mol": 13.386205566234821,
+      "simplex_fd_water_kj_mol": -13.386205921506189,
+      "name": "disp",
+      "a_kj_mol": -21.96941029484836,
+      "mu_components_kj_mol": [
+        -41.69264099992535,
+        -28.306436013909007,
+        -29.68445994144183
+      ],
+      "z_kj_mol": -19.723230705063536,
+      "weighted_mu_kj_mol": -41.692640999911966,
+      "lnfug_target_kj_mol": 114.27580285991672,
+      "mu_minus_a_z_components_kj_mol": [
+        -1.3457679415296298e-11,
+        13.386204986002888,
+        12.008181058470065
+      ],
+      "z_correction_kj_mol": 142.58223887382573,
+      "simplex_fd_counter_kj_mol": 12.00817933977305
+    }
+  },
+  "config": "mixed_current",
+  "segment_diag": [
+    1.2046817736,
+    1.0,
+    1.0
+  ],
+  "components": [
+    "water",
+    "sodium",
+    "chloride"
+  ],
+  "sigma_diag_m": [
+    2.7927e-10,
+    2.8232e-10,
+    2.7599589e-10
+  ],
+  "RSPmodel_userlocations": [
+    "C:\\Users\\Tanner\\Documents\\git\\PC-SAFT\\scripts\\paper_validation\\2020_Bulow_analysis\\figure_3\\pcsaft_package_comparisons\\clapeyron_dielectric_overrides.csv"
+  ],
+  "state_volume_m3": 1.806975909078459e-5,
+  "reference_pressure_pa": 100005.60183705018,
+  "dielectric_loaded": [
+    78.38484961,
+    8.0,
+    8.0
+  ],
+  "density_mol_m3": 55341.08091734276
+}

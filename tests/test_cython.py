@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 from pcsaft import pcsaft_den, pcsaft_hres, pcsaft_gres, pcsaft_sres
 from pcsaft import flashTQ, flashPQ, pcsaft_Hvap
-from pcsaft import dielc_water, pcsaft_osmoticC, pcsaft_fugcoef, pcsaft_miac_m, pcsaft_gsolv, pcsaft_lnfugcoef_terms
+from pcsaft import dielc_water, pcsaft_osmoticC, pcsaft_fugcoef, pcsaft_miac_m, pcsaft_gsolv, pcsaft_lnfugcoef_terms, pcsaft_dielc_eval
 from pcsaft import pcsaft_cp, pcsaft_ares, pcsaft_dadt, pcsaft_p
 from pcsaft import pcsaft_multiphase_lle
 
@@ -28,6 +28,18 @@ def _runtime_to_elec_model(runtime):
         "rel_perm": {
             "rule": int(runtime.get("dielc_rule", 1)),
             "differential_mode": int(runtime.get("dielc_diff_mode", 0)),
+        },
+        "hc_model": {
+            "dadx_differential_mode": int(runtime.get("hc_dadx_diff_mode", 0)),
+        },
+        "disp_model": {
+            "dadx_differential_mode": int(runtime.get("disp_dadx_diff_mode", 0)),
+        },
+        "assoc_model": {
+            "dadx_differential_mode": int(runtime.get("assoc_dadx_diff_mode", 0)),
+        },
+        "polar_model": {
+            "dadx_differential_mode": int(runtime.get("polar_dadx_diff_mode", 0)),
         },
         "DH_model": {
             "d_ion_mode": int(runtime.get("d_ion_mode", 1)),
@@ -131,6 +143,17 @@ def test_multiphase_lle():
     assert "e_matrix" in out
 
 
+def test_dielc_rule7_matches_rule1_for_single_solvent_same_ion_dielc():
+    species = ['Li+', 'Br-', 'Ethanol']
+    x = np.asarray([0.04, 0.04, 0.92], dtype=float)
+    params_rule1 = get_prop_dict('bulow_2020', species, x, 298.15, user_options={'elec_model': {'rel_perm': {'rule': 1}}})
+    params_rule7 = get_prop_dict('bulow_2020', species, x, 298.15, user_options={'elec_model': {'rel_perm': {'rule': 7}}})
+
+    eps1, deps1 = pcsaft_dielc_eval(x, params_rule1)
+    eps7, deps7 = pcsaft_dielc_eval(x, params_rule7)
+
+    assert eps1 == pytest.approx(eps7, rel=0.0, abs=1.0e-12)
+    assert np.allclose(np.asarray(deps1, dtype=float), np.asarray(deps7, dtype=float), atol=1.0e-12, rtol=0.0)
 def test_hres(print_result=False):
     """Test the residual enthalpy function to see if it is working correctly."""
     if print_result:
@@ -1942,6 +1965,10 @@ def test_resolve_runtime_mu_dh_defaults():
     assert runtime["mu_DH_diff_mode"] == 0
     assert runtime["mu_DH_comp_dep_rel_perm"] is True
     assert runtime["mu_DH_include_sum_term"] is True
+    assert runtime["hc_dadx_diff_mode"] == 0
+    assert runtime["disp_dadx_diff_mode"] == 0
+    assert runtime["assoc_dadx_diff_mode"] == 0
+    assert runtime["polar_dadx_diff_mode"] == 0
 
 
 def test_create_struct_rejects_flat_mu_dh_keys():
@@ -2016,6 +2043,38 @@ def test_mu_dh_toggle_changes_only_dh_branch():
     assert np.allclose(np.asarray(terms_base["mu_assoc"], dtype=float), np.asarray(terms_no_sum["mu_assoc"], dtype=float), rtol=0.0, atol=1e-12)
 
 
+def test_contribution_dadx_numeric_modes_are_available():
+    t = 298.15
+    x = np.asarray([0.03, 0.03, 0.94])
+    species = ["Li+", "Br-", "Ethanol"]
+    analytical = _load_dataset_params("bulow_2020", species, x, t)
+    numerical = _load_dataset_params(
+        "bulow_2020",
+        species,
+        x,
+        t,
+        user_options={
+            "elec_model": {
+                "hc_model": {"dadx_differential_mode": "numerical"},
+                "disp_model": {"dadx_differential_mode": "numerical"},
+                "assoc_model": {"dadx_differential_mode": "numerical"},
+                "polar_model": {"dadx_differential_mode": "numerical"},
+            }
+        },
+    )
+    rho = pcsaft_den(t, 1.0e5, x, analytical, phase='liq')
+    terms_analytical = pcsaft_lnfugcoef_terms(t, rho, x, analytical)
+    terms_numerical = pcsaft_lnfugcoef_terms(t, rho, x, numerical)
+    for key in ("mu_hc", "mu_disp", "mu_assoc", "mu_polar"):
+        arr_a = np.asarray(terms_analytical[key], dtype=float)
+        arr_n = np.asarray(terms_numerical[key], dtype=float)
+        assert np.all(np.isfinite(arr_a))
+        assert np.all(np.isfinite(arr_n))
+    assert np.max(
+        np.abs(np.asarray(terms_numerical["mu_disp"], dtype=float) - np.asarray(terms_analytical["mu_disp"], dtype=float))
+    ) > 1e-10
+
+
 def test_bulow_2020_ethanol_transfer_contribution_sum_matches_total():
     t = 298.15
     p = 1.0e5
@@ -2071,5 +2130,7 @@ def test_bulow_2020_ethanol_transfer_contribution_sum_matches_total():
 
         total_transfer = float(gsolv_ethanol[ion] - gsolv_water[ion]) / 1000.0
         assert abs(contribution_sum - total_transfer) < 1e-10
+
+
 
 

@@ -1,29 +1,29 @@
-model_key,dataset,label,phase,phase_title,beta,species,mole_fraction,share_of_feed_pct,lnfug_bar
-ascani_2022,ascani_2022,Ascani 2022,organic,Organic-rich phase,0.05427367527749355,H2O,0.5262934939106763,3.0375047805237676,-3.5407759016459277
-ascani_2022,ascani_2022,Ascani 2022,organic,Organic-rich phase,0.05427367527749355,Butanol,0.473083945927715,52.61881162392907,-5.2461956683830895
-ascani_2022,ascani_2022,Ascani 2022,organic,Organic-rich phase,0.05427367527749355,Na+,4.768297598339611e-05,0.13381707473233168,-198.49783510858614
-ascani_2022,ascani_2022,Ascani 2022,organic,Organic-rich phase,0.05427367527749355,K+,0.00026372017518251883,0.4111384022093009,-166.61136075195031
-ascani_2022,ascani_2022,Ascani 2022,organic,Organic-rich phase,0.05427367527749355,Cl-,0.00031115701044299597,0.3118529224497396,-200.2275085418916
-ascani_2022,ascani_2022,Ascani 2022,organic,Organic-rich phase,0.05427367527749355,NaCl_pm,,,-199.36267182523886
-ascani_2022,ascani_2022,Ascani 2022,organic,Organic-rich phase,0.05427367527749355,KCl_pm,,,-183.41943464692096
-ascani_2022,ascani_2022,Ascani 2022,aqueous,Aqueous-rich phase,0.9457263247225065,H2O,0.964136596666191,96.96249521947622,-3.486082167582353
-ascani_2022,ascani_2022,Ascani 2022,aqueous,Aqueous-rich phase,0.9457263247225065,Butanol,0.024447073494061868,47.38118837607093,-5.244777618372966
-ascani_2022,ascani_2022,Ascani 2022,aqueous,Aqueous-rich phase,0.9457263247225065,Na+,0.0020421800317234214,99.86618292526767,-198.26950973579295
-ascani_2022,ascani_2022,Ascani 2022,aqueous,Aqueous-rich phase,0.9457263247225065,K+,0.0036659778253449096,99.5888615977907,-166.3829895280468
-ascani_2022,ascani_2022,Ascani 2022,aqueous,Aqueous-rich phase,0.9457263247225065,Cl-,0.005708171982678795,99.68814707755025,-200.45580341386912
-ascani_2022,ascani_2022,Ascani 2022,aqueous,Aqueous-rich phase,0.9457263247225065,NaCl_pm,,,-199.36265657483102
-ascani_2022,ascani_2022,Ascani 2022,aqueous,Aqueous-rich phase,0.9457263247225065,KCl_pm,,,-183.41939647095796
-figiel_2025_overlay,figiel_2025,Figiel 2025 overlay,organic,Organic-rich phase,0.059789768854303905,H2O,0.5225353819431134,3.3223265294817796,-3.54487674336311
-figiel_2025_overlay,figiel_2025,Figiel 2025 overlay,organic,Organic-rich phase,0.059789768854303905,Butanol,0.4732062330253022,57.981697251449646,-5.248098842982156
-figiel_2025_overlay,figiel_2025,Figiel 2025 overlay,organic,Organic-rich phase,0.059789768854303905,Na+,0.0001319336837087613,0.40788854623159587,-160.60988583609927
-figiel_2025_overlay,figiel_2025,Figiel 2025 overlay,organic,Organic-rich phase,0.059789768854303905,K+,0.001997271424241868,3.4301998149840696,-130.93415403077907
-figiel_2025_overlay,figiel_2025,Figiel 2025 overlay,organic,Organic-rich phase,0.059789768854303905,Cl-,0.0021291799236338085,2.3508246347690993,-132.0289277859102
-figiel_2025_overlay,figiel_2025,Figiel 2025 overlay,organic,Organic-rich phase,0.059789768854303905,NaCl_pm,,,-146.31940681100474
-figiel_2025_overlay,figiel_2025,Figiel 2025 overlay,organic,Organic-rich phase,0.059789768854303905,KCl_pm,,,-131.48154090834464
-figiel_2025_overlay,figiel_2025,Figiel 2025 overlay,aqueous,Aqueous-rich phase,0.9402102311456961,H2O,0.9669443518736757,96.67767347051822,-3.485885293073128
-figiel_2025_overlay,figiel_2025,Figiel 2025 overlay,aqueous,Aqueous-rich phase,0.9402102311456961,Butanol,0.021807201680897625,42.018302748550354,-5.24671280332721
-figiel_2025_overlay,figiel_2025,Figiel 2025 overlay,aqueous,Aqueous-rich phase,0.9402102311456961,Na+,0.002048523827887132,99.59211145376841,-160.22401660925172
-figiel_2025_overlay,figiel_2025,Figiel 2025 overlay,aqueous,Aqueous-rich phase,0.9402102311456961,K+,0.003575698594066815,96.56980018501594,-130.54805549598328
-figiel_2025_overlay,figiel_2025,Figiel 2025 overlay,aqueous,Aqueous-rich phase,0.9402102311456961,Cl-,0.005624224023472875,97.64917536523089,-132.41479359660693
-figiel_2025_overlay,figiel_2025,Figiel 2025 overlay,aqueous,Aqueous-rich phase,0.9402102311456961,NaCl_pm,,,-146.31940510292932
-figiel_2025_overlay,figiel_2025,Figiel 2025 overlay,aqueous,Aqueous-rich phase,0.9402102311456961,KCl_pm,,,-131.4814245462951
+model_key,parameter_dataset,options_dataset,label,phase,phase_title,beta,species,mole_fraction,share_of_feed_pct,lnfug_bar
+ascani2022_params_bulow2020_opts,ascani_2022,bulow_2020,Ascani 2022 params + current Bulow 2020 options,organic,Organic-rich phase,0.05214420367679294,H2O,0.5460178948425554,3.0276986880941688,-3.5331554450618654
+ascani2022_params_bulow2020_opts,ascani_2022,bulow_2020,Ascani 2022 params + current Bulow 2020 options,organic,Organic-rich phase,0.05214420367679294,Butanol,0.4483211573867456,47.90809116415448,-5.264221233891915
+ascani2022_params_bulow2020_opts,ascani_2022,bulow_2020,Ascani 2022 params + current Bulow 2020 options,organic,Organic-rich phase,0.05214420367679294,Na+,0.0005974637788057055,1.6109296244210758,-225.16145434191395
+ascani2022_params_bulow2020_opts,ascani_2022,bulow_2020,Ascani 2022 params + current Bulow 2020 options,organic,Organic-rich phase,0.05214420367679294,K+,0.002232992495200948,3.344635224240827,-189.1325260568927
+ascani2022_params_bulow2020_opts,ascani_2022,bulow_2020,Ascani 2022 params + current Bulow 2020 options,organic,Organic-rich phase,0.05214420367679294,Cl-,0.0028304914966923423,2.725516968498685,-227.91633355269374
+ascani2022_params_bulow2020_opts,ascani_2022,bulow_2020,Ascani 2022 params + current Bulow 2020 options,organic,Organic-rich phase,0.05214420367679294,NaCl_pm,,,-226.53889394730385
+ascani2022_params_bulow2020_opts,ascani_2022,bulow_2020,Ascani 2022 params + current Bulow 2020 options,organic,Organic-rich phase,0.05214420367679294,KCl_pm,,,-208.52442980479321
+ascani2022_params_bulow2020_opts,ascani_2022,bulow_2020,Ascani 2022 params + current Bulow 2020 options,aqueous,Aqueous-rich phase,0.947855796323207,H2O,0.9620678351097587,96.97230131190582,-3.4854658044372417
+ascani2022_params_bulow2020_opts,ascani_2022,bulow_2020,Ascani 2022 params + current Bulow 2020 options,aqueous,Aqueous-rich phase,0.947855796323207,Butanol,0.02681726036940193,52.09190883584553,-5.26282082504148
+ascani2022_params_bulow2020_opts,ascani_2022,bulow_2020,Ascani 2022 params + current Bulow 2020 options,aqueous,Aqueous-rich phase,0.947855796323207,Na+,0.002007454172446603,98.38907037557892,-225.11063245931618
+ascani2022_params_bulow2020_opts,ascani_2022,bulow_2020,Ascani 2022 params + current Bulow 2020 options,aqueous,Aqueous-rich phase,0.947855796323207,K+,0.0035499990568224945,96.65536477575917,-189.08155699900453
+ascani2022_params_bulow2020_opts,ascani_2022,bulow_2020,Ascani 2022 params + current Bulow 2020 options,aqueous,Aqueous-rich phase,0.947855796323207,Cl-,0.005557451291570448,97.27448303150132,-227.967010583322
+ascani2022_params_bulow2020_opts,ascani_2022,bulow_2020,Ascani 2022 params + current Bulow 2020 options,aqueous,Aqueous-rich phase,0.947855796323207,NaCl_pm,,,-226.5388215213191
+ascani2022_params_bulow2020_opts,ascani_2022,bulow_2020,Ascani 2022 params + current Bulow 2020 options,aqueous,Aqueous-rich phase,0.947855796323207,KCl_pm,,,-208.52428379116327
+ascani2022_params_figiel2025_opts,ascani_2022,figiel_2025,Ascani 2022 params + current Figiel 2025 options,organic,Organic-rich phase,0.05669345835298715,H2O,0.5380423442151197,3.243763206170312,-3.530465426838683
+ascani2022_params_figiel2025_opts,ascani_2022,figiel_2025,Ascani 2022 params + current Figiel 2025 options,organic,Organic-rich phase,0.05669345835298715,Butanol,0.43742232533811365,50.82150105547081,-5.305904224044885
+ascani2022_params_figiel2025_opts,ascani_2022,figiel_2025,Ascani 2022 params + current Figiel 2025 options,organic,Organic-rich phase,0.05669345835298715,Na+,0.0030144418615775446,8.836876990208008,-156.96821030521517
+ascani2022_params_figiel2025_opts,ascani_2022,figiel_2025,Ascani 2022 params + current Figiel 2025 options,organic,Organic-rich phase,0.05669345835298715,K+,0.009253231954123118,15.068910566984352,-129.28805013288633
+ascani2022_params_figiel2025_opts,ascani_2022,figiel_2025,Ascani 2022 params + current Figiel 2025 options,organic,Organic-rich phase,0.05669345835298715,Cl-,0.012267656631065953,12.843268383428295,-129.9681987926415
+ascani2022_params_figiel2025_opts,ascani_2022,figiel_2025,Ascani 2022 params + current Figiel 2025 options,organic,Organic-rich phase,0.05669345835298715,NaCl_pm,,,-143.46820454892833
+ascani2022_params_figiel2025_opts,ascani_2022,figiel_2025,Ascani 2022 params + current Figiel 2025 options,organic,Organic-rich phase,0.05669345835298715,KCl_pm,,,-129.6281244627639
+ascani2022_params_figiel2025_opts,ascani_2022,figiel_2025,Ascani 2022 params + current Figiel 2025 options,aqueous,Aqueous-rich phase,0.9433065416470129,H2O,0.9645536428298401,96.7562367938297,-3.483139680156965
+ascani2022_params_figiel2025_opts,ascani_2022,figiel_2025,Ascani 2022 params + current Figiel 2025 options,aqueous,Aqueous-rich phase,0.9433065416470129,Butanol,0.02543951513355765,49.17849894452919,-5.304714926784311
+ascani2022_params_figiel2025_opts,ascani_2022,figiel_2025,Ascani 2022 params + current Figiel 2025 options,aqueous,Aqueous-rich phase,0.9433065416470129,Na+,0.001868991822067903,91.16312300979199,-157.0769566661241
+ascani2022_params_figiel2025_opts,ascani_2022,figiel_2025,Ascani 2022 params + current Figiel 2025 options,aqueous,Aqueous-rich phase,0.9433065416470129,K+,0.0031344286798282717,84.93108943301564,-129.39674461401808
+ascani2022_params_figiel2025_opts,ascani_2022,figiel_2025,Ascani 2022 params + current Figiel 2025 options,aqueous,Aqueous-rich phase,0.9433065416470129,Cl-,0.005003421534706115,87.15673161657172,-129.85941769759273
+ascani2022_params_figiel2025_opts,ascani_2022,figiel_2025,Ascani 2022 params + current Figiel 2025 options,aqueous,Aqueous-rich phase,0.9433065416470129,NaCl_pm,,,-143.4681871818584
+ascani2022_params_figiel2025_opts,ascani_2022,figiel_2025,Ascani 2022 params + current Figiel 2025 options,aqueous,Aqueous-rich phase,0.9433065416470129,KCl_pm,,,-129.6280811558054

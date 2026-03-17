@@ -237,11 +237,18 @@ _BULK_MODE_ALIASES = {
     "bulk": 0,
     "solvent": 1,
 }
+_CANONICAL_CONTRIBUTION_MODEL = {
+    "dadx_differential_mode": "analytical",
+}
 _CANONICAL_ELEC_MODEL = {
     "rel_perm": {
         "rule": 1,
         "differential_mode": "analytical",
     },
+    "hc_model": dict(_CANONICAL_CONTRIBUTION_MODEL),
+    "disp_model": dict(_CANONICAL_CONTRIBUTION_MODEL),
+    "assoc_model": dict(_CANONICAL_CONTRIBUTION_MODEL),
+    "polar_model": dict(_CANONICAL_CONTRIBUTION_MODEL),
     "DH_model": {
         # Preserve current behavior (ionic diameter uses 0.88*sigma by default).
         "d_ion_mode": 1,
@@ -874,6 +881,12 @@ def _normalize_elec_model(model) -> dict:
             raise TypeError("elec_model['rel_perm'] must be a dict.")
         out["rel_perm"] = _deep_update(out["rel_perm"], model["rel_perm"])
 
+    for key in ("hc_model", "disp_model", "assoc_model", "polar_model"):
+        if key in model:
+            if not isinstance(model[key], dict):
+                raise TypeError(f"elec_model['{key}'] must be a dict.")
+            out[key] = _deep_update(out[key], model[key])
+
     if "DH_model" in model:
         if isinstance(model["DH_model"], dict):
             out["DH_model"] = _deep_update(out["DH_model"], model["DH_model"])
@@ -938,6 +951,10 @@ def _normalize_elec_model(model) -> dict:
     out["rel_perm"]["differential_mode"] = _as_rule_number(
         out["rel_perm"]["differential_mode"], _DIFF_MODE_ALIASES
     )
+    for key in ("hc_model", "disp_model", "assoc_model", "polar_model"):
+        out[key]["dadx_differential_mode"] = _as_rule_number(
+            out[key]["dadx_differential_mode"], _DIFF_MODE_ALIASES
+        )
     out["DH_model"]["d_ion_mode"] = _resolve_d_ion_mode(out["DH_model"]["d_ion_mode"])
     out["DH_model"]["bjeruum_treatment"] = _coerce_bool(out["DH_model"]["bjeruum_treatment"])
     mu_dh_model = out["DH_model"].get("mu_DH_model", {})
@@ -1012,6 +1029,10 @@ def _flatten_model_to_runtime(model: dict) -> dict:
     return {
         "dielc_rule": int(rel_perm["rule"]),
         "dielc_diff_mode": int(rel_perm["differential_mode"]),
+        "hc_dadx_diff_mode": int(_as_rule_number(model["hc_model"]["dadx_differential_mode"], _DIFF_MODE_ALIASES)),
+        "disp_dadx_diff_mode": int(_as_rule_number(model["disp_model"]["dadx_differential_mode"], _DIFF_MODE_ALIASES)),
+        "assoc_dadx_diff_mode": int(_as_rule_number(model["assoc_model"]["dadx_differential_mode"], _DIFF_MODE_ALIASES)),
+        "polar_dadx_diff_mode": int(_as_rule_number(model["polar_model"]["dadx_differential_mode"], _DIFF_MODE_ALIASES)),
         "d_ion_mode": int(_resolve_d_ion_mode(dh_model["d_ion_mode"])),
         "bjeruum_treatment": _coerce_bool(dh_model["bjeruum_treatment"]),
         "mu_DH_diff_mode": int(mu_dh_diff_mode),
