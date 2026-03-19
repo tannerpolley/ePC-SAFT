@@ -782,6 +782,48 @@ def _resolve_component_field(dataset: dict, component: str, field: str, T: float
     )
 
 
+def _resolve_component_field_with_source(
+    dataset: dict,
+    component: str,
+    field: str,
+    T: float,
+    pure_set_key: str | None = None,
+):
+    requested_key = _normalize_pure_set_key(pure_set_key) if pure_set_key else None
+    pure_sets = dataset.get("pure_sets", {})
+
+    source_key = None
+    row = None
+    if requested_key:
+        row = pure_sets.get(requested_key, {}).get(component)
+        if row is not None:
+            source_key = requested_key
+    if row is None:
+        component_pure_key = _solvent_token_for_component(component)
+        if component_pure_key is not None:
+            row = pure_sets.get(component_pure_key, {}).get(component)
+            if row is not None:
+                source_key = component_pure_key
+    if row is None:
+        default_key = dataset.get("pure_default_key")
+        if default_key:
+            row = pure_sets.get(default_key, {}).get(component)
+            if row is not None:
+                source_key = default_key
+    if row is None:
+        row = dataset["pure"].get(component)
+        if row is not None and dataset.get("pure_default_key"):
+            source_key = dataset["pure_default_key"]
+
+    if row is None:
+        raise KeyError(
+            f"Component '{component}' is missing in dataset '{dataset['dataset_name']}' pure parameter files."
+        )
+
+    value = _resolve_component_field(dataset, component, field, T, pure_set_key=pure_set_key)
+    return value, source_key
+
+
 def _matrix_value(dataset: dict, matrix_name: str, c1: str, c2: str, T: float) -> float:
     matrix = dataset[matrix_name]
     raw = matrix.get((c1, c2))
@@ -1365,14 +1407,13 @@ def _apply_mixed_solvent_ion_sigma(
         for idx, frac in zip(neutral_idx, neutral_sf):
             solvent = components[int(idx)]
             pure_key = _normalize_pure_set_key(solvent)
-            if pure_key not in pure_sets:
-                raise KeyError(
-                    f"Dataset '{dataset['dataset_name']}' is missing pure/{pure_key}.csv needed for ion '{comp}'."
-                )
-            sigma_mix += float(frac) * float(
-                _resolve_component_field(dataset, comp, "s", T, pure_set_key=pure_key)
+            sigma_value, source_key = _resolve_component_field_with_source(
+                dataset, comp, "s", T, pure_set_key=pure_key
             )
-            source_weights[f"pure/{pure_key}.csv"] = float(frac)
+            sigma_mix += float(frac) * float(sigma_value)
+            resolved_key = source_key or pure_key
+            source_name = f"pure/{resolved_key}.csv"
+            source_weights[source_name] = source_weights.get(source_name, 0.0) + float(frac)
         sigma[i] = sigma_mix
         mixed_sigmas[comp] = float(sigma_mix)
 
@@ -1414,14 +1455,13 @@ def _apply_mixed_solvent_ion_dispersion(
         for idx, frac in zip(neutral_idx, neutral_sf):
             solvent = components[int(idx)]
             pure_key = _normalize_pure_set_key(solvent)
-            if pure_key not in pure_sets:
-                raise KeyError(
-                    f"Dataset '{dataset['dataset_name']}' is missing pure/{pure_key}.csv needed for ion '{comp}'."
-                )
-            e_mix += float(frac) * float(
-                _resolve_component_field(dataset, comp, "e", T, pure_set_key=pure_key)
+            e_value, source_key = _resolve_component_field_with_source(
+                dataset, comp, "e", T, pure_set_key=pure_key
             )
-            source_weights[f"pure/{pure_key}.csv"] = float(frac)
+            e_mix += float(frac) * float(e_value)
+            resolved_key = source_key or pure_key
+            source_name = f"pure/{resolved_key}.csv"
+            source_weights[source_name] = source_weights.get(source_name, 0.0) + float(frac)
         dispersion[i] = e_mix
         mixed_dispersion[comp] = float(e_mix)
 

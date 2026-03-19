@@ -1270,6 +1270,35 @@ def test_miac_m_mixed_solvent_reference_preserves_solvent_blend():
     assert abs(calc - expected) < 1e-10
 
 
+def test_figiel2025_mixed_solvent_any_solvent_sources_are_used():
+    t = 298.15
+    species = ['Na+', 'Br-', 'H2O-2B-NaCl', 'Methanol']
+    x = np.asarray([1e-8, 1e-8, 0.5, 0.5], dtype=float)
+
+    params = get_prop_dict('figiel_2025', species, x, t)
+
+    assert params['solvated_ion_diameter_mixing_rule'] is False
+    assert params['ion_dispersion_mixing_rule'] is True
+    assert params.get('mixed_ion_sigma_applied') is None
+    assert params.get('mixed_ion_dispersion_applied') is True
+    assert params.get('mixed_ion_dispersion_sources') == {'pure/any_solvent.csv': 2.0}
+
+    forced = get_prop_dict(
+        'figiel_2025',
+        species,
+        x,
+        t,
+        user_options={'solvated_ion_diameter_mixing_rule': True, 'ion_dispersion_mixing_rule': True},
+    )
+
+    assert forced['solvated_ion_diameter_mixing_rule'] is True
+    assert forced['ion_dispersion_mixing_rule'] is True
+    assert forced.get('mixed_ion_sigma_applied') is True
+    assert forced.get('mixed_ion_dispersion_applied') is True
+    assert forced.get('mixed_ion_sigma_sources') == {'pure/any_solvent.csv': 2.0}
+    assert forced.get('mixed_ion_dispersion_sources') == {'pure/any_solvent.csv': 2.0}
+
+
 def test_lnfugcoef_terms_structure():
     """Validate structured per-term ln fugacity contributions API."""
     t = 298.15

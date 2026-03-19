@@ -762,6 +762,76 @@ def plot_combo(
     }
 
 
+def _grid_output_path(solvent_system: str) -> Path:
+    return REPO_ROOT / "data" / "MIAC" / solvent_system / "miac_m_fits" / f"maic_m_{solvent_system}_grid_3x3.png"
+
+
+def plot_single_solvent_grid(
+    solvent_system: str,
+    combos: List[Dict[str, object]],
+    close: bool = True,
+) -> Path:
+    combo_map = {
+        str(combo["salt"]): combo
+        for combo in combos
+        if str(combo["solvent_system"]) == solvent_system and not combo.get("comp_signature")
+    }
+
+    grid_salts = GRID_SALTS[:2] if solvent_system == "ethanol" else GRID_SALTS
+    nrows = len(grid_salts)
+    fig_height = 7.8 if solvent_system == "ethanol" else 11.2
+    fig, axes = plt.subplots(nrows, 3, figsize=(12.8, fig_height), sharex=False, sharey=False)
+    fig.patch.set_facecolor("white")
+    axes = np.atleast_2d(axes)
+
+    legend_handles = None
+    legend_labels = None
+    for r, salt_row in enumerate(grid_salts):
+        for c, salt in enumerate(salt_row):
+            ax = axes[r, c]
+            ax.set_facecolor("white")
+            combo = combo_map.get(salt)
+            if combo is None:
+                ax.axis("off")
+                continue
+
+            plot_combo(
+                combo,
+                save=False,
+                close=False,
+                ax=ax,
+                show_legend=False,
+                quantity="miac_m",
+            )
+            if legend_handles is None:
+                legend_handles, legend_labels = ax.get_legend_handles_labels()
+
+    if legend_handles and legend_labels:
+        legend = fig.legend(
+            legend_handles,
+            legend_labels,
+            loc="lower center",
+            ncol=min(5, len(legend_labels)),
+            fontsize=8,
+            frameon=True,
+            bbox_to_anchor=(0.5, 0.01),
+        )
+        frame = legend.get_frame()
+        frame.set_facecolor("white")
+        frame.set_edgecolor("black")
+        frame.set_alpha(1.0)
+        for text in legend.get_texts():
+            text.set_color("black")
+
+    fig.suptitle(f"{solvent_system.capitalize()} MIAC_m fits at 298.15 K", color="black", fontsize=14)
+    fig.tight_layout(rect=(0.0, 0.06, 1.0, 0.96))
+
+    out = _grid_output_path(solvent_system)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, dpi=220)
+    if close:
+        plt.close(fig)
+    return out
 def run_validate_miac_fits_v2() -> List[Path]:
     combos = discover_combos()
     quantities = _requested_quantities()
@@ -771,6 +841,11 @@ def run_validate_miac_fits_v2() -> List[Path]:
         for quantity in quantities:
             result = plot_combo(combo, save=True, close=True, quantity=quantity)
             generated.append(Path(result["output_path"]))
+
+    if "miac_m" in quantities:
+        for solvent_system in ("water", "methanol", "ethanol"):
+            if any(str(combo["solvent_system"]) == solvent_system and not combo.get("comp_signature") for combo in combos):
+                generated.append(plot_single_solvent_grid(solvent_system, combos, close=True))
 
     print("Dataset variants:")
     for dataset_name, cfg in DATASET_VARIANTS.items():

@@ -90,6 +90,26 @@ def save_figure(fig, path: Path) -> None:
     fig.savefig(path, dpi=300, bbox_inches="tight")
 
 
+def save_panel_figure(
+    plotter,
+    path: Path,
+    figsize: tuple[float, float] = (3.6, 3.1),
+    legend_handles=None,
+    legend_labels=None,
+    legend_kwargs: dict | None = None,
+) -> None:
+    configure_style()
+    fig, ax = plt.subplots(figsize=figsize)
+    plotter(ax)
+    if legend_handles and legend_labels:
+        kwargs = {"loc": "best", "fontsize": 8, "frameon": False}
+        if legend_kwargs:
+            kwargs.update(legend_kwargs)
+        ax.legend(legend_handles, legend_labels, **kwargs)
+    save_figure(fig, path)
+    plt.close(fig)
+
+
 def parse_float(value) -> float | None:
     if value is None:
         return None
@@ -393,5 +413,6 @@ def literature_gsolv_water() -> Dict[str, float]:
         if ion and value is not None:
             out[f"{ion}+" if ion in {"H", "Li", "Na", "K"} else f"{ion}-" if ion in {"Cl", "Br", "I"} else ion] = value
     return out
+
 
 

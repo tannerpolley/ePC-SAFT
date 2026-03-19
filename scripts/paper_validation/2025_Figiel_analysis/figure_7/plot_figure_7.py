@@ -12,7 +12,7 @@ if str(ROOT) not in sys.path:
 import _common as common
 
 OUTPUT = Path(__file__).with_name("figure_7.png")
-DATA = common.REPO_ROOT / "data" / "MIAC" / "methanol" / "methanol-NaBr.csv"
+DATA = Path(__file__).with_name("data") / "methanol" / "methanol-NaBr.csv"
 
 
 def main() -> None:
