@@ -9,11 +9,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[4]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 import _common as common
-from data.epcsaft_properties import get_prop_dict
+from scripts._env import require_pcsaft_install
+
+require_pcsaft_install()
+
+from pcsaft.parameters import get_prop_dict
 from pcsaft import pcsaft_den, pcsaft_fugcoef, pcsaft_p
 
 T_REF = 298.15

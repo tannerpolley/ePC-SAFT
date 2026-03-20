@@ -13,16 +13,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-
-_BUILD_CANDIDATES = [
-    REPO_ROOT / ".cython_build" / f"lib.win-amd64-cpython-{sys.version_info.major}{sys.version_info.minor}",
-    REPO_ROOT / "build" / f"lib.win-amd64-cpython-{sys.version_info.major}{sys.version_info.minor}",
-]
-for candidate in _BUILD_CANDIDATES:
-    if candidate.exists() and str(candidate) not in sys.path:
-        sys.path.insert(0, str(candidate))
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
+from scripts._env import require_pcsaft_install
+
+require_pcsaft_install()
 
 # Avoid WMI stalls from platform.machine() during scipy import on some Windows sessions.
 def _fast_machine() -> str:

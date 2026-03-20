@@ -19,6 +19,10 @@ if str(ANALYSIS_ROOT) not in sys.path:
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from scripts._env import require_pcsaft_install
+
+require_pcsaft_install()
+
 from plot_figure_7 import (  # type: ignore
     PANELS,
     T_REF,

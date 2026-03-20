@@ -16,16 +16,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-
-_BUILD_CANDIDATES = [
-    REPO_ROOT / ".cython_build" / f"lib.win-amd64-cpython-{sys.version_info.major}{sys.version_info.minor}",
-    REPO_ROOT / "build" / f"lib.win-amd64-cpython-{sys.version_info.major}{sys.version_info.minor}",
-]
-for candidate in _BUILD_CANDIDATES:
-    if candidate.exists() and str(candidate) not in sys.path:
-        sys.path.insert(0, str(candidate))
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
+from scripts._env import require_pcsaft_install
+
+require_pcsaft_install()
 
 # Avoid WMI stalls from platform.machine() during scipy import on some Windows sessions.
 def _fast_machine() -> str:
@@ -33,7 +29,7 @@ def _fast_machine() -> str:
 
 platform.machine = _fast_machine
 
-from data.epcsaft_properties import get_prop_dict
+from pcsaft.parameters import get_prop_dict
 from pcsaft import pcsaft_den, pcsaft_fugcoef, pcsaft_miac, pcsaft_miac_m
 
 T_REF = 298.15

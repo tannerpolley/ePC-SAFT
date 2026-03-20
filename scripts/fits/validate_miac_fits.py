@@ -1,7 +1,7 @@
 """Dataset-driven MIAC fit validation.
 
-This script validates MIAC datasets using parameter sets from
-`data/pcsaft_parameters/<dataset>/` through `data.epcsaft_properties`.
+This script validates MIAC datasets using parameter sets from the packaged
+`pcsaft.parameters` datasets.
 
 Experimental data source is canonical `data/MIAC/**` with `miac` and `miac_m` values.
 
@@ -27,7 +27,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from data.epcsaft_properties import get_prop_dict
+from scripts._env import require_pcsaft_install
+
+require_pcsaft_install()
+
+from pcsaft.parameters import get_prop_dict
 from pcsaft import pcsaft_den, pcsaft_miac_m
 
 matplotlib.use("Agg")

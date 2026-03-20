@@ -20,7 +20,11 @@ if str(ANALYSIS_ROOT) not in sys.path:
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from data.epcsaft_properties import get_prop_dict
+from scripts._env import require_pcsaft_install
+
+require_pcsaft_install()
+
+from pcsaft.parameters import get_prop_dict
 from pcsaft import pcsaft_den, pcsaft_lnfugcoef_terms, pcsaft_p
 import _plot_common as common
 
@@ -137,7 +141,7 @@ def _write_active_mode_summary(ws, start_row: int, frame) -> int:
         cell.fill = PatternFill("solid", fgColor="D9EAF7")
     row = start_row + 1
     for ion in IONS:
-        paper = float(frame.scalar("hc", ion))
+        paper = float(frame.scalar("hc avg", ion))
         state = _infinite_dilution_state(ion, 1)
         idx = int(state["ion_index"])
         mu_hc = float(R_GAS * T_REF * np.asarray(state["terms"]["mu_hc"], dtype=float)[idx] / 1000.0)
@@ -238,8 +242,8 @@ def _write_active_mode_detail(ws, start_row: int, frame) -> int:
             mu_hc,
             excel_mu_hc - mu_hc,
             lnfug_hc,
-            float(frame.scalar("hc", ion)),
-            mu_hc - float(frame.scalar("hc", ion)),
+            float(frame.scalar("hc avg", ion)),
+            mu_hc - float(frame.scalar("hc avg", ion)),
         ]
         for col, value in enumerate(row_values, start=1):
             ws.cell(row, col, value)

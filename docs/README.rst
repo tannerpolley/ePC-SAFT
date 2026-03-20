@@ -12,9 +12,13 @@ PC-SAFT
 .. image:: https://readthedocs.org/projects/pcsaft/badge/?version=latest
    :target: http://pcsaft.readthedocs.io/?badge=latest
 
-Status
-------
-This project is no longer actively maintained. In the past years, newer projects (such as `Clapeyron.jl`_ and `teqp`_) have come out that also implement PC-SAFT. Some of these also include the electrolyte term. Additionally, these programs are also more sophisticated than the PC-SAFT code here. For instance, they allow a variety of different models to be used in addition to PC-SAFT, handle differentiation more elegantly, and appear to have more robust algorithms for handling different phases. Try out one of these newer projects instead.
+Repository roles
+----------------
+This repository currently serves three purposes:
+
+- the installable ``pcsaft`` package
+- the package-owned runtime parameter datasets used by ``pcsaft.parameters``
+- the in-repo validation and paper-reproduction workspace under ``scripts/``
 
 Introduction
 ------------
@@ -75,25 +79,39 @@ Example
 Dependencies
 ------------
 
-The Numpy and Scipy packages are required. The core functions have been written in C++ to improve calculation speed, so Cython_ is needed, along with the Eigen_ package for linear algebra. For unit testing pytest is used.
+The runtime package depends on NumPy and SciPy. Building from source also requires Cython_ and a C++ toolchain. The repository vendors the Eigen_ headers used by the extension build.
 
 Python package
 --------------
 
-To make it easier to use this code, it has been added as a package to PyPi (pcsaft_), which means it can be installed using pip. This allows you to use the code without needing to compile the Cython code yourself. Binaries might not be available for all platforms or Python versions.
-
-Compiling with Cython
----------------------
-
-To speed up the original Python code the core functions have been rewritten in C++. These are then connected with the remaining Python code using Cython. This gave a significant improvement in speed. The Cython code needs to be compiled before use. To do so install Cython. Then run the following command from the directory containing the PC-SAFT code
+The supported install paths are now standard pip installs:
 
 ::
 
-  python setup.py build_ext --inplace
+  pip install .
 
-Make sure that the Eigen header files are somewhere on your path. More about the Cython build process can be found from the `Cython documentation`_.
+or, for local development inside a source checkout:
 
-The original Python-only code has been removed from the repository. If you still want to use the original Python-only functions, go back to an `earlier version`_ of the repository. Note that the Python-only code is no longer maintained, so it may not be as reliable as the Cython code.
+::
+
+  pip install -e . --no-build-isolation
+
+This repository builds wheels in CI and supports source builds from the packaged Cython/C++ sources plus the vendored Eigen headers.
+
+Source layout
+-------------
+
+The installable runtime code now lives under ``src/pcsaft/``. Package-owned runtime parameter datasets are bundled with the package under ``src/pcsaft/data/pcsaft_parameters`` and loaded through ``pcsaft.parameters``. The broader analysis datasets remain under the top-level ``data/`` workspace.
+
+For local rebuilds in this repo, use:
+
+::
+
+  python scripts/build_pcsaft.py
+
+That command performs an editable install using the active environment rather than relying on the legacy ``setup.py build_ext --inplace`` flow. If the editable build is already current, it skips the reinstall. Use ``python scripts/build_pcsaft.py --force`` to force a fresh editable reinstall.
+
+Analysis and validation scripts are expected to run from the active ``PC-SAFT`` environment with ``pcsaft`` installed editable. A source checkout by itself is not a supported package-import path.
 
 Author
 ------

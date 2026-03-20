@@ -1,0 +1,33 @@
+entry_type,name,parameter,set_key,value
+component,Br-,e,2014_s2,190.0
+component,Br-,s,2014_s2,3.0707
+component,Cl-,e,2014_s2,170.0
+component,Cl-,s,2014_s2,2.756
+component,H2O,e,salt_2014_s2,353.95
+component,H2O,e_assoc,salt_2014_s2,2425.7
+component,H2O,m,salt_2014_s2,1.2047
+component,H2O,s,salt_2014_s2,"{""type"": ""water_sigma_2008""}"
+component,H2O,vol_a,salt_2014_s2,0.04509
+component,I-,e,2014_s2,200.0
+component,I-,s,2014_s2,3.6672
+component,K+,e,2014_s2,200.0
+component,K+,s,2014_s2,3.3417
+component,Li+,e,2014_s2,360.0
+component,Li+,s,2014_s2,2.8449
+component,Na+,e,2014_s2,230.0
+component,Na+,s,2014_s2,2.8232
+kij_pair,Br-|H2O,k_ij,2014_s2,-0.25
+kij_pair,Cl-|H2O,k_ij,2014_s2,-0.25
+kij_pair,I-|H2O,k_ij,2014_s2,-0.25
+kij_pair,K+|Br-,k_ij,2014_s2,-0.102
+kij_pair,K+|Cl-,k_ij,2014_s2,0.064
+kij_pair,K+|H2O,k_ij,2014_s2,"{""type"": ""linear_t"", ""a"": -0.004012, ""b"": 1.3959}"
+kij_pair,K+|I-,k_ij,2014_s2,-0.312
+kij_pair,Li+|Br-,k_ij,2014_s2,0.591
+kij_pair,Li+|Cl-,k_ij,2014_s2,0.669
+kij_pair,Li+|H2O,k_ij,2014_s2,-0.25
+kij_pair,Li+|I-,k_ij,2014_s2,0.002
+kij_pair,Na+|Br-,k_ij,2014_s2,0.29
+kij_pair,Na+|Cl-,k_ij,2014_s2,0.317
+kij_pair,Na+|H2O,k_ij,2014_s2,"{""type"": ""linear_t"", ""a"": -0.007981, ""b"": 2.37999}"
+kij_pair,Na+|I-,k_ij,2014_s2,0.018

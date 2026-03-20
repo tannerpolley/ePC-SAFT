@@ -28,7 +28,11 @@ for path in (ANALYSIS_ROOT, REPO_ROOT, FIGURE3_DIAG_DIR):
 
 import _model_overlay as overlay
 import figure3_detailed_bookkeeping as f3diag
-from data.epcsaft_properties import get_prop_dict
+from scripts._env import require_pcsaft_install
+
+require_pcsaft_install()
+
+from pcsaft.parameters import get_prop_dict
 from pcsaft import pcsaft_lnfugcoef_terms
 
 

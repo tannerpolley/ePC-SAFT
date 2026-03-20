@@ -102,7 +102,7 @@ Insert (optional):
 - These fits establish the ion parameter base before moving into mixed-solvent and extraction scenarios
 
 Insert (optional):
-- Water MIAC fits: `data/MIAC_m/water/plot_fits/maic_m_water_*.png`
+- Water MIAC fits: `data/MIAC/water/miac_m_fits/maic_m_water_*.png`
 - Osmotic validation: `data/osmotic/water/plot_fits/validation_2014_repro_NaCl_KBr_fit.png`
 
 ---
@@ -114,8 +114,8 @@ Insert (optional):
 - The non-aqueous performance is where the 2020 dielectric-dependent Born treatment shows its value
 
 Insert (optional):
-- Methanol MIAC fits: `data/MIAC_m/methanol/plot_fits/maic_m_methanol_*.png`
-- Ethanol MIAC fits: `data/MIAC_m/ethanol/plot_fits/maic_m_ethanol_*.png`
+- Methanol MIAC fits: `data/MIAC/methanol/miac_m_fits/maic_m_methanol_*.png`
+- Ethanol MIAC fits: `data/MIAC/ethanol/miac_m_fits/maic_m_ethanol_*.png`
 
 ---
 
@@ -151,4 +151,3 @@ Insert (optional):
 - In progress: produced-water composition mapping and two-phase LLE validation for the chosen organic system
 - Next deliverables: phase diagrams, distribution ratios vs salinity/temperature, and sensitivity to competing ions
 - Ask: approve the 2020 baseline and the final validation path to connect thermodynamics to an extraction unit model
-

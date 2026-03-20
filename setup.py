@@ -1,49 +1,34 @@
-# -*- coding: utf-8 -*-
-"""
-Setup file for compiling to Cython module
-
-@author: Zach Baird
-"""
-from setuptools import setup, Extension, find_packages
-from Cython.Build import cythonize
-import numpy as np
 import os
+
+import numpy as np
+from Cython.Build import cythonize
+from setuptools import Extension
+from setuptools import setup
+
+
+PACKAGE_ROOT = "src/pcsaft"
 
 extra_compile_args = []
 if os.name == "nt":
     extra_compile_args.append("/wd4551")
 
 ext_modules = [
-    Extension("pcsaft",
-        sources=["pcsaft.pyx"],
+    Extension(
+        "pcsaft.pcsaft",
+        sources=[f"{PACKAGE_ROOT}/pcsaft.pyx"],
         language="c++",
-        extra_compile_args=extra_compile_args)]
+        include_dirs=[
+            np.get_include(),
+            PACKAGE_ROOT,
+            "externals/eigen",
+        ],
+        extra_compile_args=extra_compile_args,
+    )
+]
 
-with open("docs/README.rst", "r") as fh:
-    long_description = fh.read()
-
-requirements_path = './requirements.txt'
-install_requires = []
-if os.path.isfile(requirements_path):
-    with open(requirements_path) as f:
-        install_requires = f.read().splitlines()
-
-setup(name='pcsaft',
-      version='1.5.0',
-      author="Zach Baird",
-      description="The PC-SAFT equation of state, including dipole, association and ion terms.",
-      long_description=long_description,
-      long_description_content_type="text/x-rst",
-      license="GPL-3.0-only",
-      license_files=["LICENSE"],
-      url="https://github.com/zmeri/PC-SAFT",
-      packages=find_packages(),
-      install_requires=install_requires,
-      classifiers=[
-        "Programming Language :: Python :: 3",
-        "Programming Language :: C++",
-        "Operating System :: Microsoft :: Windows :: Windows 10",
-        "Operating System :: POSIX :: Linux",
-        "Operating System :: MacOS"
-      ],
-      ext_modules=cythonize(ext_modules, language_level="3"))
+setup(
+    ext_modules=cythonize(
+        ext_modules,
+        language_level="3",
+    )
+)

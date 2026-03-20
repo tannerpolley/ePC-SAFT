@@ -16,6 +16,10 @@ if str(ROOT) not in sys.path:
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from scripts._env import require_pcsaft_install
+
+require_pcsaft_install()
+
 from _common import build_params
 from pcsaft import pcsaft_den, pcsaft_lnfugcoef_terms
 

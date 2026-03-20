@@ -20,13 +20,17 @@ if str(ANALYSIS_ROOT) not in sys.path:
     sys.path.insert(0, str(ANALYSIS_ROOT))
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
+from scripts._env import require_pcsaft_install
+
+require_pcsaft_install()
 if str(FIGURE3_DIAG_DIR) not in sys.path:
     sys.path.insert(0, str(FIGURE3_DIAG_DIR))
 if str(PACKAGE_DIR) not in sys.path:
     sys.path.insert(0, str(PACKAGE_DIR))
 
 import _model_overlay as overlay
-from data.epcsaft_properties import get_prop_dict
+from pcsaft.parameters import get_prop_dict
 import figure3_detailed_bookkeeping as repo_diag
 import feos_extractor
 from pcsaft import pcsaft_lnfugcoef_terms

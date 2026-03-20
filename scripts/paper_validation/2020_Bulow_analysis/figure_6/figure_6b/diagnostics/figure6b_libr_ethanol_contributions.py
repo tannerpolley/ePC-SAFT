@@ -20,7 +20,11 @@ REPO_ROOT = Path(__file__).resolve().parents[6]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from data.epcsaft_properties import get_prop_dict
+from scripts._env import require_pcsaft_install
+
+require_pcsaft_install()
+
+from pcsaft.parameters import get_prop_dict
 from pcsaft import pcsaft_den, pcsaft_lnfugcoef_terms, pcsaft_p
 
 matplotlib.use("Agg")
@@ -114,6 +118,7 @@ def _load_exp_data(path: Path) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         raise ValueError(f"Missing molality column in {path}.")
 
     source_key = lookup.get("source")
+    has_source_labels = bool(source_key) and any(str(row.get(source_key, "")).strip() for row in rows)
     x_key = lookup.get("mole_fraction")
     miac_key = lookup.get("miac")
     miac_m_key = lookup.get("miac_m")
@@ -127,7 +132,7 @@ def _load_exp_data(path: Path) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
     for row in rows:
         src = str(row.get(source_key, "") if source_key else "").strip()
-        if src != "Bulow 2020":
+        if has_source_labels and src != "Bulow 2020":
             continue
 
         try:

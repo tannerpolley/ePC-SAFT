@@ -1,0 +1,9 @@
+include LICENSE
+include README.md
+include src/pcsaft/pcsaft.pyx
+include src/pcsaft/pcsaft.pxd
+include src/pcsaft/pcsaft_electrolyte.cpp
+include src/pcsaft/pcsaft_electrolyte.h
+recursive-include src/pcsaft/data *.csv *.json
+graft externals/eigen/Eigen
+prune .cython_build

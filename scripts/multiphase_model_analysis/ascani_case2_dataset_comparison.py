@@ -14,8 +14,13 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from scripts._env import require_pcsaft_install
+
+require_pcsaft_install()
+
 import pcsaft as pcs
-from data.epcsaft_properties import get_prop_dict
+from pcsaft.parameters import get_prop_dict
+from pcsaft.parameters import DATASET_ROOT
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -61,7 +66,7 @@ RULE_LABELS = {
 
 
 def _load_user_options(dataset_name: str) -> dict:
-    path = REPO_ROOT / "data" / "pcsaft_parameters" / dataset_name / "user_options.json"
+    path = DATASET_ROOT / dataset_name / "user_options.json"
     payload = json.loads(path.read_text(encoding="utf-8"))
     if isinstance(payload, dict) and "canonical_user_options" in payload:
         payload = payload["canonical_user_options"]

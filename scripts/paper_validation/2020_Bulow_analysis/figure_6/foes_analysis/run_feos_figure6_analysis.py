@@ -17,10 +17,14 @@ FIGURE6B_DIAG_DIR = FIGURE6_DIR / "figure_6b" / "diagnostics"
 
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
+from scripts._env import require_pcsaft_install
+
+require_pcsaft_install()
 if str(FIGURE6B_DIAG_DIR) not in sys.path:
     sys.path.insert(0, str(FIGURE6B_DIAG_DIR))
 
-from data.epcsaft_properties import get_prop_dict
+from pcsaft.parameters import get_prop_dict
 from figure6b_libr_ethanol_contributions import (
     _calc_ln_miac_contributions,
     _load_exp_data,

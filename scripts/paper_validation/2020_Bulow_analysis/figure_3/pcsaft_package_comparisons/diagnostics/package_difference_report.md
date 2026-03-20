@@ -4,19 +4,19 @@ This report compares the Figure 3 contribution bookkeeping for `Na+` and `Cl-` a
 
 ## Basis Checks
 
-- `Na+`: `pcsaft total - adjusted_sum = +0.000000` kJ/mol, `feos total - adjusted_sum = -40.961899` kJ/mol, `clapeyron total - adjusted_sum = -0.000000` kJ/mol.
-- `Cl-`: `pcsaft total - adjusted_sum = +0.000000` kJ/mol, `feos total - adjusted_sum = -40.961899` kJ/mol, `clapeyron total - adjusted_sum = +0.000000` kJ/mol.
+- `Na+`: `pcsaft total - adjusted_sum = +0.000000` kJ/mol, `feos total - adjusted_sum = -0.000000` kJ/mol, `clapeyron total - adjusted_sum = -0.000000` kJ/mol.
+- `Cl-`: `pcsaft total - adjusted_sum = +0.000000` kJ/mol, `feos total - adjusted_sum = -0.000000` kJ/mol, `clapeyron total - adjusted_sum = +0.000000` kJ/mol.
 
 The `pcsaft` and `Clapeyron` corrected sums close their totals to roundoff. `feos` does not: even after applying the same $-\frac{Z^\alpha}{Z-1}\ln Z$ correction using its pressure contributions, the reconstructed sum still misses the package total by about `-40.962` kJ/mol for both `Na+` and `Cl-`. That means the exposed `feos` contribution labels are not equivalent to the current repo's per-term $\mu^\alpha/Z^\alpha$ bookkeeping.
 
 ## Term-Level Observations
 
-- `Na+` `hc` mu term: `pcsaft = +24.398548`, `feos = +62.470353`, `clapeyron = +30.719180` kJ/mol.
-- `Na+` `disp` mu term: `pcsaft = -28.733397`, `feos = -25.843303`, `clapeyron = -28.306436` kJ/mol.
+- `Na+` `hc` mu term: `pcsaft = +24.398548`, `feos = +24.398548`, `clapeyron = +30.719180` kJ/mol.
+- `Na+` `disp` mu term: `pcsaft = -28.733397`, `feos = -28.733397`, `clapeyron = -28.306436` kJ/mol.
 - `Na+` `assoc` mu term: `pcsaft = -3.215655`, `feos = -3.215655`, `clapeyron = -4.370860` kJ/mol.
 - `Na+` `born` mu term: `pcsaft = -552.066713`, `feos = -552.095649`, `clapeyron = -408.223145` kJ/mol.
-- `Cl-` `hc` mu term: `pcsaft = +23.287466`, `feos = +61.359271`, `clapeyron = +28.759551` kJ/mol.
-- `Cl-` `disp` mu term: `pcsaft = -30.085203`, `feos = -27.195109`, `clapeyron = -29.684460` kJ/mol.
+- `Cl-` `hc` mu term: `pcsaft = +23.287466`, `feos = +23.287466`, `clapeyron = +28.759551` kJ/mol.
+- `Cl-` `disp` mu term: `pcsaft = -30.085203`, `feos = -30.085203`, `clapeyron = -29.684460` kJ/mol.
 - `Cl-` `assoc` mu term: `pcsaft = -3.018089`, `feos = -3.018089`, `clapeyron = -4.007542` kJ/mol.
 - `Cl-` `born` mu term: `pcsaft = -565.527846`, `feos = -565.557488`, `clapeyron = -354.060342` kJ/mol.
 

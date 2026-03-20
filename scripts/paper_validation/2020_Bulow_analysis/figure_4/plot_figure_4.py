@@ -18,8 +18,12 @@ if str(ANALYSIS_ROOT) not in sys.path:
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from scripts._env import require_pcsaft_install
+
+require_pcsaft_install()
+
 import _plot_common as common
-from data.epcsaft_properties import get_prop_dict
+from pcsaft.parameters import get_prop_dict
 from pcsaft import pcsaft_den, pcsaft_gsolv
 
 

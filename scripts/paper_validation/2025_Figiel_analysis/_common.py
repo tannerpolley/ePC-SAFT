@@ -15,13 +15,14 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-BUILD_LIB = REPO_ROOT / 'build' / f'lib.win-amd64-cpython-{sys.version_info.major}{sys.version_info.minor}'
-if BUILD_LIB.exists() and str(BUILD_LIB) not in sys.path:
-    sys.path.insert(0, str(BUILD_LIB))
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from data.epcsaft_properties import get_prop_dict
+from scripts._env import require_pcsaft_install
+
+require_pcsaft_install()
+
+from pcsaft.parameters import get_prop_dict
 from pcsaft import pcsaft_den, pcsaft_gsolv, pcsaft_miac_m
 
 T_REF = 298.15

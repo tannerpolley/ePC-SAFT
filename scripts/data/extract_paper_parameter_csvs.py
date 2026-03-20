@@ -1,11 +1,11 @@
 """Extract per-paper binary interaction matrices and pure-component parameter CSVs.
 
 Outputs:
-- data/pcsaft_parameters/<dataset_key>/pure/<name>.csv
-- data/pcsaft_parameters/<dataset_key>/mixed/binary_interaction/k_ij.csv
+- src/pcsaft/data/pcsaft_parameters/<dataset_key>/pure/<name>.csv
+- src/pcsaft/data/pcsaft_parameters/<dataset_key>/mixed/binary_interaction/k_ij.csv
 - optional:
-  - data/pcsaft_parameters/<dataset_key>/mixed/binary_interaction/l_ij.csv
-  - data/pcsaft_parameters/<dataset_key>/mixed/binary_interaction/khb_ij.csv
+  - src/pcsaft/data/pcsaft_parameters/<dataset_key>/mixed/binary_interaction/l_ij.csv
+  - src/pcsaft/data/pcsaft_parameters/<dataset_key>/mixed/binary_interaction/khb_ij.csv
 
 Target papers: 2005, 2008, 2014, 2020, 2021, 2025
 """
@@ -24,8 +24,15 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from scripts._env import require_pcsaft_install
+
+require_pcsaft_install()
+
 PAPER_DIR = REPO_ROOT / "docs" / "papers" / "md"
-OUT_BASE_DIR = REPO_ROOT / "data" / "pcsaft_parameters"
+OUT_BASE_DIR = REPO_ROOT / "src" / "pcsaft" / "data" / "pcsaft_parameters"
 OUT_BINARY_DIR = OUT_BASE_DIR / "binary_interaction_parameters"
 OUT_PURE_DIR = OUT_BASE_DIR / "pure_component_parameters"
 LEGACY_FLAT_DIRS = [OUT_BINARY_DIR, OUT_PURE_DIR]
@@ -488,9 +495,7 @@ def _set_cation_anion_kij_one(matrix: Dict[str, Dict[str, str]]) -> None:
             _set_pair(matrix, cat, an, "1.0", allow_override=True)
 
 def _resolve_runtime_payload(canonical_options: Dict[str, Any]) -> Dict[str, Any]:
-    if str(REPO_ROOT) not in sys.path:
-        sys.path.insert(0, str(REPO_ROOT))
-    from data.epcsaft_properties import _resolve_runtime_options
+    from pcsaft.parameters import _resolve_runtime_options
 
     resolved = _resolve_runtime_options(canonical_options)
     return {

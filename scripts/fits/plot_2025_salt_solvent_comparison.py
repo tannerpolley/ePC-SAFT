@@ -68,10 +68,16 @@ def _curve_for_combo(combo, quantity: str = "miac_m"):
     if str(combo["salt"]) == "LiBr" and str(combo["solvent_system"]) == "methanol":
         chosen = "Safarov"
         mask = source_exp == chosen
-        molal_exp = molal_exp[mask]
-        values_exp = values_exp[mask]
+        if np.any(mask):
+            molal_exp = molal_exp[mask]
+            values_exp = values_exp[mask]
+        else:
+            chosen = None
     else:
         chosen = None
+
+    if len(molal_exp) == 0:
+        raise ValueError(f"No experimental points available for {combo['salt']} in {combo['solvent_system']}.")
 
     m_upper = vmf._molality_axis_upper(float(np.max(molal_exp)))
     molal_grid = np.linspace(0.0, m_upper, 701)

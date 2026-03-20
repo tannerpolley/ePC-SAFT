@@ -1,0 +1,56 @@
+[build-system]
+requires = [
+    "setuptools>=69",
+    "wheel",
+    "Cython>=3.0",
+    "numpy>=2.0",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pcsaft"
+version = "1.5.0"
+description = "The PC-SAFT equation of state, including dipole, association, and ion terms."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "GPL-3.0-only"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Zach Baird" },
+]
+dependencies = [
+    "numpy>=2.0",
+    "scipy",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: C++",
+    "Operating System :: Microsoft :: Windows :: Windows 10",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+]
+
+[project.urls]
+Homepage = "https://github.com/tannerpolley/PC-SAFT"
+Documentation = "https://pcsaft.readthedocs.io/en/latest/"
+Repository = "https://github.com/tannerpolley/PC-SAFT"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+pcsaft = [
+    "data/**/*.csv",
+    "data/**/*.json",
+    "*.pyx",
+    "*.pxd",
+    "*.h",
+    "*.cpp",
+]
+
+[tool.pytest.ini_options]
+cache_dir = ".codex/.pytest_cache"
