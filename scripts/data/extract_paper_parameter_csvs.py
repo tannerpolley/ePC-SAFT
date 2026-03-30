@@ -38,8 +38,8 @@ OUT_PURE_DIR = OUT_BASE_DIR / "pure_component_parameters"
 LEGACY_FLAT_DIRS = [OUT_BINARY_DIR, OUT_PURE_DIR]
 OPTIONAL_INTERACTION_TYPES = ("l_ij", "khb_ij")
 PURE_FILENAME_BY_DATASET = {
-    "held_2008": "water.csv",
-    "held_2012": None,
+    "2008_Held": "water.csv",
+    "2012_Held": None,
 }
 COMPONENT_ORDER = [
     "water",
@@ -93,25 +93,25 @@ PURE_PARAM_MAP = {
 }
 
 PAPER_FILES = {
-    "cameretti_2005": "Cameretti, Sadowski, Mollerup - 2005 - Modeling of Aqueous Electrolyte Solutions with Perturbed-Chai.md",
-    "held_2008": "Held, Cameretti, Sadowski - 2008 - Modeling aqueous electrolyte solutions. Part 1. Fully dissociated.md",
-    "held_2014": "Held et al. - 2014 - ePC-SAFT Revised.md",
-    "bulow_2020": "Bülow, Ascani, Held - 2020 - ePC-SAFT advanced - Part I Physical meaning of including a concentratio.md",
-    "bulow_2021": "Bülow, Ascani, Held - 2021 - ePC-SAFT advanced – Part II Application to Salt Solubility in Ionic and.md",
-    "figiel_2025": "Figiel, Yu, Held - 2025 - Predicting Thermodynamic Properties of Ions in Single Solvents and in Mixe.md",
+    "2005_Cameretti": "Cameretti, Sadowski, Mollerup - 2005 - Modeling of Aqueous Electrolyte Solutions with Perturbed-Chai.md",
+    "2008_Held": "Held, Cameretti, Sadowski - 2008 - Modeling aqueous electrolyte solutions. Part 1. Fully dissociated.md",
+    "2014_Held": "Held et al. - 2014 - ePC-SAFT Revised.md",
+    "2020_Bulow": "Bülow, Ascani, Held - 2020 - ePC-SAFT advanced - Part I Physical meaning of including a concentratio.md",
+    "2021_Bulow": "Bülow, Ascani, Held - 2021 - ePC-SAFT advanced – Part II Application to Salt Solubility in Ionic and.md",
+    "2025_Figiel": "Figiel, Yu, Held - 2025 - Predicting Thermodynamic Properties of Ions in Single Solvents and in Mixe.md",
 }
 
 EXPECTED_BASENAMES = list(PAPER_FILES.keys())
 PAPER_KEY_BY_DATASET = {
-    "cameretti_2005": "2005",
-    "held_2008": "2008",
-    "held_2014": "2014",
-    "bulow_2020": "2020",
-    "bulow_2021": "2021",
-    "figiel_2025": "2025",
+    "2005_Cameretti": "2005",
+    "2008_Held": "2008",
+    "2014_Held": "2014",
+    "2020_Bulow": "2020",
+    "2021_Bulow": "2021",
+    "2025_Figiel": "2025",
 }
 CANONICAL_USER_OPTIONS_SOURCE = "scripts/fits/validate_miac_fits.py"
-RESOLVER_SOURCE = "data/epcsaft_properties.py::_resolve_runtime_options"
+RESOLVER_SOURCE = "pcsaft.parameters::_resolve_runtime_options"
 RUNTIME_REQUIRED_KEYS = {
     "dielc_rule",
     "dielc_diff_mode",
@@ -132,12 +132,12 @@ RUNTIME_REQUIRED_KEYS = {
     "debug",
 }
 RUNTIME_SENTINELS: Dict[str, Dict[str, Any]] = {
-    "cameretti_2005": {"include_born_model": False, "dielc_rule": 0, "d_ion_mode": 1},
-    "held_2008": {"include_born_model": False, "dielc_rule": 0, "d_ion_mode": 1},
-    "held_2014": {"include_born_model": False, "dielc_rule": 0, "d_ion_mode": 1},
-    "bulow_2020": {"include_born_model": True, "dielc_rule": 1, "d_Born_mode": 1, "d_ion_mode": 1},
-    "bulow_2021": {"include_born_model": True, "dielc_rule": 3, "d_Born_mode": 0, "d_ion_mode": 1},
-    "figiel_2025": {
+    "2005_Cameretti": {"include_born_model": False, "dielc_rule": 0, "d_ion_mode": 1},
+    "2008_Held": {"include_born_model": False, "dielc_rule": 0, "d_ion_mode": 1},
+    "2014_Held": {"include_born_model": False, "dielc_rule": 0, "d_ion_mode": 1},
+    "2020_Bulow": {"include_born_model": True, "dielc_rule": 1, "d_Born_mode": 1, "d_ion_mode": 1},
+    "2021_Bulow": {"include_born_model": True, "dielc_rule": 3, "d_Born_mode": 0, "d_ion_mode": 1},
+    "2025_Figiel": {
         "include_born_model": True,
         "dielc_rule": 4,
         "dielc_diff_mode": 1,
@@ -148,7 +148,7 @@ RUNTIME_SENTINELS: Dict[str, Dict[str, Any]] = {
     },
 }
 DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
-    "cameretti_2005": {
+    "2005_Cameretti": {
         "elec_model": {
             "rel_perm": {"rule": "constant", "differential_mode": "analytical"},
             "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False, "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True}},
@@ -168,7 +168,7 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
         },
         "debug": False,
     },
-    "held_2008": {
+    "2008_Held": {
         "elec_model": {
             "rel_perm": {"rule": "constant", "differential_mode": "analytical"},
             "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False, "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True}},
@@ -188,7 +188,7 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
         },
         "debug": False,
     },
-    "held_2014": {
+    "2014_Held": {
         "elec_model": {
             "rel_perm": {"rule": "constant", "differential_mode": "analytical"},
             "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False, "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True}},
@@ -208,7 +208,7 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
         },
         "debug": False,
     },
-    "bulow_2020": {
+    "2020_Bulow": {
         "elec_model": {
             "rel_perm": {"rule": 1, "differential_mode": "analytical"},
             "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False, "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True}},
@@ -228,7 +228,7 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
         },
         "debug": False,
     },
-    "bulow_2021": {
+    "2021_Bulow": {
         "elec_model": {
             "rel_perm": {"rule": 3, "differential_mode": "analytical"},
             "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False, "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True}},
@@ -248,7 +248,7 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
         },
         "debug": False,
     },
-    "figiel_2025": {
+    "2025_Figiel": {
         "elec_model": {
             "rel_perm": {"rule": "empirical", "differential_mode": "numerical"},
             "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False, "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True}},
@@ -270,12 +270,12 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
     },
 }
 BINARY_TABLE_PRECEDENCE = {
-    "cameretti_2005": [],
-    "held_2008": [],
-    "held_2014": ["table2_ion_water", "table3_cation_anion"],
-    "bulow_2020": ["table2_ion_water", "table3_cation_anion"],
-    "bulow_2021": ["table3_ion_water", "table4_cation_anion", "table8_ion_organic"],
-    "figiel_2025": ["table4_cation_anion", "table5_ion_solvent"],
+    "2005_Cameretti": [],
+    "2008_Held": [],
+    "2014_Held": ["table2_ion_water", "table3_cation_anion"],
+    "2020_Bulow": ["table2_ion_water", "table3_cation_anion"],
+    "2021_Bulow": ["table3_ion_water", "table4_cation_anion", "table8_ion_organic"],
+    "2025_Figiel": ["table4_cation_anion", "table5_ion_solvent"],
 }
 
 
@@ -505,9 +505,11 @@ def _resolve_runtime_payload(canonical_options: Dict[str, Any]) -> Dict[str, Any
 
 
 def _build_user_options_payload(dataset_key: str, canonical_options: Dict[str, Any]) -> Dict[str, Any]:
+    from pcsaft.parameters import minimize_user_options
+
     if dataset_key not in PAPER_KEY_BY_DATASET:
         raise ValueError(f"Missing paper key mapping for dataset {dataset_key}")
-    return canonical_options
+    return minimize_user_options(canonical_options)
 
 
 def _assert_runtime_sentinels(dataset_key: str, runtime_options: Dict[str, Any]) -> None:
@@ -1048,17 +1050,17 @@ def _extract_for_paper(
     text: str,
 ) -> Tuple[Dict[str, Dict[str, str]], List[PureRow], Dict[str, Dict[str, Dict[str, str]]]]:
     lines = text.splitlines()
-    if paper_key == "cameretti_2005":
+    if paper_key == "2005_Cameretti":
         matrix, pure_rows = _extract_2005(lines, paper_key)
-    elif paper_key == "held_2008":
+    elif paper_key == "2008_Held":
         matrix, pure_rows = _extract_2008(lines, paper_key)
-    elif paper_key == "held_2014":
+    elif paper_key == "2014_Held":
         matrix, pure_rows = _extract_2014(text, paper_key)
-    elif paper_key == "bulow_2020":
+    elif paper_key == "2020_Bulow":
         matrix, pure_rows = _extract_2020(lines, paper_key)
-    elif paper_key == "bulow_2021":
+    elif paper_key == "2021_Bulow":
         matrix, pure_rows = _extract_2021(lines, paper_key)
-    elif paper_key == "figiel_2025":
+    elif paper_key == "2025_Figiel":
         matrix, pure_rows = _extract_2025(lines, paper_key)
     else:
         raise ValueError(f"Unsupported paper key: {paper_key}")
@@ -1086,7 +1088,7 @@ def _validate_outputs(
             for comp_j in COMPONENT_ORDER[i + 1 :]:
                 if matrix[comp_i][comp_j] != matrix[comp_j][comp_i]:
                     raise ValueError(f"{paper_key}: asymmetry at {comp_i}/{comp_j}")
-        if paper_key in {"cameretti_2005", "held_2008"}:
+        if paper_key in {"2005_Cameretti", "2008_Held"}:
             for cat in ("Li+", "Na+", "K+"):
                 for an in ("Cl-", "Br-", "I-"):
                     if matrix[cat][an] != "1.0" or matrix[an][cat] != "1.0":
@@ -1112,16 +1114,16 @@ def _validate_outputs(
         _validate_user_options_payload(dataset_key, user_options_by_dataset[dataset_key])
 
     # Sentinel checks.
-    m2020 = data_by_paper["bulow_2020"][0]
+    m2020 = data_by_paper["2020_Bulow"][0]
     if m2020["Cl-"]["Li+"] != "0.669":
         raise ValueError(f"2020 sentinel mismatch Cl-/Li+: {m2020['Cl-']['Li+']}")
-    m2014 = data_by_paper["held_2014"][0]
+    m2014 = data_by_paper["2014_Held"][0]
     if m2014["Cl-"]["Li+"] != "0.669":
         raise ValueError(f"2014 sentinel mismatch Cl-/Li+: {m2014['Cl-']['Li+']}")
-    m2021 = data_by_paper["bulow_2021"][0]
+    m2021 = data_by_paper["2021_Bulow"][0]
     if m2021["methanol"]["Na+"] != "-0.31":
         raise ValueError(f"2021 sentinel mismatch methanol/Na+: {m2021['methanol']['Na+']}")
-    m2025 = data_by_paper["figiel_2025"][0]
+    m2025 = data_by_paper["2025_Figiel"][0]
     if m2025["water"]["methanol"] != "-0.0878":
         raise ValueError(f"2025 sentinel mismatch water/methanol: {m2025['water']['methanol']}")
 

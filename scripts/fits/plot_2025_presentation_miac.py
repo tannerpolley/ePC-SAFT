@@ -186,7 +186,7 @@ def _load_series(combo: dict[str, object]):
     source_exp = source_exp[order]
     x_end = float(molal_exp[-1]) if len(molal_exp) else 0.0
     molal_grid = np.linspace(0.0, x_end, 401) if x_end > 0.0 else np.array([0.0])
-    curve = vmf.calc_curve(combo, 'figiel_2025', molal_grid, quantity='miac_m')
+    curve = vmf.calc_curve(combo, '2025_Figiel', molal_grid, quantity='miac_m')
     return molal_exp, values_exp, molal_grid, curve, chosen_note
 
 

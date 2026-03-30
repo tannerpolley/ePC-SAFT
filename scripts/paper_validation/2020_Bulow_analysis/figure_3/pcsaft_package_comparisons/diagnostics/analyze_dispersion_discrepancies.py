@@ -123,7 +123,7 @@ def _run_clapeyron_scan() -> dict:
 def _current_repo_pairs(ion: str) -> dict[str, float]:
     species = ION_CASES[ion]
     x = np.asarray([1.0e-12, 1.0e-12, 1.0 - 2.0e-12], dtype=float)
-    props = get_prop_dict("bulow_2020", species, x, 298.15)
+    props = get_prop_dict("2020_Bulow", species, x, 298.15)
     k_ij = props["k_ij"]
     if ion.endswith("+"):
         target_index = 0

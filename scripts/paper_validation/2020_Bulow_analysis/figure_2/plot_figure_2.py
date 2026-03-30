@@ -42,23 +42,23 @@ SERIES = [
 ]
 
 ADVANCED_CASES = {
-    "Li+": ("bulow_2020", ["Li+", "Cl-", "Water"]),
-    "Na+": ("bulow_2020", ["Na+", "Cl-", "Water"]),
-    "K+": ("bulow_2020", ["K+", "Cl-", "Water"]),
-    "F-": ("bulow_2020", ["Na+", "F-", "Water"]),
-    "Cl-": ("bulow_2020", ["Na+", "Cl-", "Water"]),
-    "Br-": ("bulow_2020", ["Na+", "Br-", "Water"]),
-    "I-": ("bulow_2020", ["Na+", "I-", "Water"]),
+    "Li+": ("2020_Bulow", ["Li+", "Cl-", "Water"]),
+    "Na+": ("2020_Bulow", ["Na+", "Cl-", "Water"]),
+    "K+": ("2020_Bulow", ["K+", "Cl-", "Water"]),
+    "F-": ("2020_Bulow", ["Na+", "F-", "Water"]),
+    "Cl-": ("2020_Bulow", ["Na+", "Cl-", "Water"]),
+    "Br-": ("2020_Bulow", ["Na+", "Br-", "Water"]),
+    "I-": ("2020_Bulow", ["Na+", "I-", "Water"]),
 }
 
 REVISED_CASES = {
-    "Li+": ("held_2014", ["Li+", "Cl-", "Water"]),
-    "Na+": ("held_2014", ["Na+", "Cl-", "Water"]),
-    "K+": ("held_2014", ["K+", "Cl-", "Water"]),
-    "F-": ("held_2014", ["Na+", "F-", "Water"]),
-    "Cl-": ("held_2014", ["Na+", "Cl-", "Water"]),
-    "Br-": ("held_2014", ["Na+", "Br-", "Water"]),
-    "I-": ("held_2014", ["Na+", "I-", "Water"]),
+    "Li+": ("2014_Held", ["Li+", "Cl-", "Water"]),
+    "Na+": ("2014_Held", ["Na+", "Cl-", "Water"]),
+    "K+": ("2014_Held", ["K+", "Cl-", "Water"]),
+    "F-": ("2014_Held", ["Na+", "F-", "Water"]),
+    "Cl-": ("2014_Held", ["Na+", "Cl-", "Water"]),
+    "Br-": ("2014_Held", ["Na+", "Br-", "Water"]),
+    "I-": ("2014_Held", ["Na+", "I-", "Water"]),
 }
 
 

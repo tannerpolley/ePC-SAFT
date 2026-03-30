@@ -100,7 +100,7 @@ def test_multiphase_lle():
     species = ["H2O-2B-Li", "Na+", "Cl-"]
 
     canonical = json.loads(
-        _dataset_file("bulow_2020", "user_options.json").read_text(encoding="utf-8")
+        _dataset_file("2020_Bulow", "user_options.json").read_text(encoding="utf-8")
     )
     runtime = _resolve_runtime_options(canonical)["runtime"]
     runtime["dielc_rule"] = 1
@@ -151,8 +151,8 @@ def test_multiphase_lle():
 def test_dielc_rule7_matches_rule1_for_single_solvent_same_ion_dielc():
     species = ['Li+', 'Br-', 'Ethanol']
     x = np.asarray([0.04, 0.04, 0.92], dtype=float)
-    params_rule1 = get_prop_dict('bulow_2020', species, x, 298.15, user_options={'elec_model': {'rel_perm': {'rule': 1}}})
-    params_rule7 = get_prop_dict('bulow_2020', species, x, 298.15, user_options={'elec_model': {'rel_perm': {'rule': 7}}})
+    params_rule1 = get_prop_dict('2020_Bulow', species, x, 298.15, user_options={'elec_model': {'rel_perm': {'rule': 1}}})
+    params_rule7 = get_prop_dict('2020_Bulow', species, x, 298.15, user_options={'elec_model': {'rel_perm': {'rule': 7}}})
 
     eps1, deps1 = pcsaft_dielc_eval(x, params_rule1)
     eps7, deps7 = pcsaft_dielc_eval(x, params_rule7)
@@ -1123,7 +1123,7 @@ def test_osmoticC(print_result=False):
     t = 293.15  # K
 
     canonical = json.loads(
-        _dataset_file("held_2014", "user_options.json").read_text(encoding="utf-8")
+        _dataset_file("2014_Held", "user_options.json").read_text(encoding="utf-8")
     )
     runtime = _resolve_runtime_options(canonical)["runtime"]
 
@@ -1176,7 +1176,7 @@ def test_miac_m(print_result=False):
     species = ['Na+', 'Br-', 'Methanol']
 
     canonical = json.loads(
-        _dataset_file("figiel_2025", "user_options.json").read_text(encoding="utf-8")
+        _dataset_file("2025_Figiel", "user_options.json").read_text(encoding="utf-8")
     )
     runtime = _resolve_runtime_options(canonical)["runtime"]
     runtime["dielc_diff_mode"] = 0
@@ -1235,7 +1235,7 @@ def test_miac_m_mixed_solvent_reference_preserves_solvent_blend():
     n = np.asarray([m_salt, m_salt, comp['water'] * n_solv, comp['methanol'] * n_solv], dtype=float)
     x = n / np.sum(n)
 
-    params = get_prop_dict('figiel_2025', species, x, t)
+    params = get_prop_dict('2025_Figiel', species, x, t)
     rho = pcsaft_den(t, p, x, params, phase='liq')
     calc = pcsaft_miac_m(t, rho, x, params, species=species)['Na+Br-']
 
@@ -1280,7 +1280,7 @@ def test_figiel2025_mixed_solvent_any_solvent_sources_are_used():
     species = ['Na+', 'Br-', 'H2O-2B-NaCl', 'Methanol']
     x = np.asarray([1e-8, 1e-8, 0.5, 0.5], dtype=float)
 
-    params = get_prop_dict('figiel_2025', species, x, t)
+    params = get_prop_dict('2025_Figiel', species, x, t)
 
     assert params['solvated_ion_diameter_mixing_rule'] is False
     assert params['ion_dispersion_mixing_rule'] is True
@@ -1289,7 +1289,7 @@ def test_figiel2025_mixed_solvent_any_solvent_sources_are_used():
     assert params.get('mixed_ion_dispersion_sources') == {'pure/any_solvent.csv': 2.0}
 
     forced = get_prop_dict(
-        'figiel_2025',
+        '2025_Figiel',
         species,
         x,
         t,
@@ -1310,7 +1310,7 @@ def test_lnfugcoef_terms_structure():
     p = 101325
 
     canonical = json.loads(
-        _dataset_file("figiel_2025", "user_options.json").read_text(encoding="utf-8")
+        _dataset_file("2025_Figiel", "user_options.json").read_text(encoding="utf-8")
     )
     runtime = _resolve_runtime_options(canonical)["runtime"]
     runtime["dielc_diff_mode"] = 0
@@ -1449,7 +1449,7 @@ def test_gsolv(print_result=False):
     ref1, ref2 = -378378.3784, -312883.4356
 
     canonical = json.loads(
-        _dataset_file("figiel_2025", "user_options.json").read_text(encoding="utf-8")
+        _dataset_file("2025_Figiel", "user_options.json").read_text(encoding="utf-8")
     )
     runtime = _resolve_runtime_options(canonical)["runtime"]
     runtime["dielc_diff_mode"] = 0
@@ -1993,7 +1993,7 @@ def _load_dataset_params(dataset, species, x, t, user_options=None):
 
 def test_resolve_runtime_mu_dh_defaults():
     canonical = json.loads(
-        _dataset_file("held_2014", "user_options.json").read_text(encoding="utf-8")
+        _dataset_file("2014_Held", "user_options.json").read_text(encoding="utf-8")
     )
     runtime = _resolve_runtime_options(canonical)["runtime"]
     assert runtime["mu_DH_diff_mode"] == 0
@@ -2009,7 +2009,7 @@ def test_create_struct_rejects_flat_mu_dh_keys():
     t = 298.15
     p = 1.0e5
     x = np.asarray([0.02, 0.02, 0.96])
-    params = _load_dataset_params("bulow_2020", ["Li+", "Br-", "Ethanol"], x, t)
+    params = _load_dataset_params("2020_Bulow", ["Li+", "Br-", "Ethanol"], x, t)
     params["mu_DH_diff_mode"] = 1
     with pytest.raises(ValueError, match='Flat electrostatic params are no longer supported'):
         rho = pcsaft_den(t, p, x, params, phase='liq')
@@ -2019,8 +2019,8 @@ def test_create_struct_rejects_flat_mu_dh_keys():
 @pytest.mark.parametrize(
     "dataset,species,x,t",
     [
-        ("bulow_2020", ["Li+", "Br-", "Ethanol"], np.asarray([0.03, 0.03, 0.94]), 298.15),
-        ("figiel_2025", ["Na+", "Cl-", "H2O-2B-Li"], np.asarray([0.02, 0.02, 0.96]), 298.15),
+        ("2020_Bulow", ["Li+", "Br-", "Ethanol"], np.asarray([0.03, 0.03, 0.94]), 298.15),
+        ("2025_Figiel", ["Na+", "Cl-", "H2O-2B-Li"], np.asarray([0.02, 0.02, 0.96]), 298.15),
     ],
 )
 def test_mu_dh_analytical_numeric_close(dataset, species, x, t):
@@ -2048,16 +2048,16 @@ def test_mu_dh_toggle_changes_only_dh_branch():
     t = 298.15
     x = np.asarray([0.03, 0.03, 0.94])
     species = ["Li+", "Br-", "Ethanol"]
-    base = _load_dataset_params("bulow_2020", species, x, t)
+    base = _load_dataset_params("2020_Bulow", species, x, t)
     no_deps = _load_dataset_params(
-        "bulow_2020",
+        "2020_Bulow",
         species,
         x,
         t,
         user_options={"elec_model": {"DH_model": {"mu_DH_model": {"comp_dep_rel_perm": False}}}},
     )
     no_sum = _load_dataset_params(
-        "bulow_2020",
+        "2020_Bulow",
         species,
         x,
         t,
@@ -2081,9 +2081,9 @@ def test_contribution_dadx_numeric_modes_are_available():
     t = 298.15
     x = np.asarray([0.03, 0.03, 0.94])
     species = ["Li+", "Br-", "Ethanol"]
-    analytical = _load_dataset_params("bulow_2020", species, x, t)
+    analytical = _load_dataset_params("2020_Bulow", species, x, t)
     numerical = _load_dataset_params(
-        "bulow_2020",
+        "2020_Bulow",
         species,
         x,
         t,
@@ -2109,7 +2109,7 @@ def test_contribution_dadx_numeric_modes_are_available():
     ) > 1e-10
 
 
-def test_bulow_2020_ethanol_transfer_contribution_sum_matches_total():
+def test_2020_Bulow_ethanol_transfer_contribution_sum_matches_total():
     t = 298.15
     p = 1.0e5
     eps = 1e-8
@@ -2123,7 +2123,7 @@ def test_bulow_2020_ethanol_transfer_contribution_sum_matches_total():
 
     def lnfug_terms_for_state(species, ion):
         x = np.asarray([eps, eps, 1.0 - 2.0 * eps], dtype=float)
-        params = get_prop_dict("bulow_2020", species, x, t, user_options={})
+        params = get_prop_dict("2020_Bulow", species, x, t, user_options={})
         rho = pcsaft_den(t, p, x, params, phase='liq')
         z = np.asarray(params["z"], dtype=float)
         idx_ion = np.where(np.abs(z) > 1.0e-12)[0]

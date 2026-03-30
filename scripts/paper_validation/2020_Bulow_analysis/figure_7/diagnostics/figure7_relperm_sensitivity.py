@@ -91,7 +91,7 @@ def _read_paper_points(panel: dict[str, object]) -> tuple[np.ndarray, np.ndarray
 
 
 def _curve_with_solvent_dielc(salt: str, solvent: str, x_points: np.ndarray, solvent_eps: float) -> np.ndarray:
-    params = _build_params('bulow_2020', salt, solvent)
+    params = _build_params('2020_Bulow', salt, solvent)
     dielc = np.asarray(params['dielc'], dtype=float).copy()
     dielc[2] = float(solvent_eps)
     params['dielc'] = dielc
@@ -153,7 +153,7 @@ def main() -> None:
         solvent = str(panel['solvent'])
         x_data, y_data = _read_paper_points(panel)
         x_grid = np.linspace(float(panel['xlim'][0]), float(panel['xlim'][1]), 801)
-        base_params = _build_params('bulow_2020', salt, solvent)
+        base_params = _build_params('2020_Bulow', salt, solvent)
         base_eps = float(np.asarray(base_params['dielc'], dtype=float)[2])
         scan_eps = np.asarray(SCAN_BOUNDS[solvent], dtype=float)
         scan_rows: list[dict[str, object]] = []

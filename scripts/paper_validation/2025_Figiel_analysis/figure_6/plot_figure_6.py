@@ -54,7 +54,7 @@ def _load_xy(path: Path):
 def _plot_panel(ax, label, ion, organic, csv_path, xlabel, ylim) -> None:
     x_data, y_data = _load_xy(csv_path)
     x_grid = np.linspace(0.0, 1.0, 401)
-    y_model = common.transfer_curve('figiel_2025', ion, organic, x_grid)
+    y_model = common.transfer_curve('2025_Figiel', ion, organic, x_grid)
     ax.plot(x_grid, y_model, color='black', linewidth=1.5)
     ax.scatter(x_data, y_data, s=24, facecolor=common.LIGHT_GRAY, edgecolor=common.GRAY_COLOR, linewidth=0.8)
     ax.set_xlim(0.0, 1.0)

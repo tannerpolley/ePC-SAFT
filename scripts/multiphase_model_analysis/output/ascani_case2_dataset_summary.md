@@ -2,15 +2,15 @@
 
 ## Validation basis
 
-- Fixed pure-component and binary-interaction parameter basis: `ascani_2022`.
+- Fixed pure-component and binary-interaction parameter basis: `2022_Ascani`.
 - Only the electrolyte/runtime user options are swapped between the two runs.
 
 ## Model presets
 
-- `ascani2022_params_bulow2020_opts`: params=`ascani_2022`, options=`bulow_2020`, dielc rule 1 (linear-mole); rel_perm diff=0; Born=on; d_Born_mode=1; shell=False; sat=False
-- Coverage: Pure-component and binary-interaction parameters are fixed to ascani_2022. Runtime/electrolyte options come from the current bulow_2020 user_options.json, with solvent-specific ion sigma/dispersion precomputes disabled because ascani_2022 only provides pure/any_solvent.csv.
-- `ascani2022_params_figiel2025_opts`: params=`ascani_2022`, options=`figiel_2025`, dielc rule 4 (empirical); rel_perm diff=1; Born=on; d_Born_mode=3; shell=True; sat=True
-- Coverage: Pure-component and binary-interaction parameters are fixed to ascani_2022. Runtime/electrolyte options come from the current figiel_2025 user_options.json, with solvent-specific ion sigma/dispersion precomputes disabled because ascani_2022 only provides pure/any_solvent.csv.
+- `ascani2022_params_bulow2020_opts`: params=`2022_Ascani`, options=`2020_Bulow`, dielc rule 1 (linear-mole); rel_perm diff=0; Born=on; d_Born_mode=1; shell=False; sat=False
+- Coverage: Pure-component and binary-interaction parameters are fixed to 2022_Ascani. Runtime/electrolyte options come from the current 2020_Bulow user_options.json, with solvent-specific ion sigma/dispersion precomputes disabled because 2022_Ascani only provides pure/any_solvent.csv.
+- `ascani2022_params_figiel2025_opts`: params=`2022_Ascani`, options=`2025_Figiel`, dielc rule 4 (empirical); rel_perm diff=1; Born=on; d_Born_mode=3; shell=True; sat=True
+- Coverage: Pure-component and binary-interaction parameters are fixed to 2022_Ascani. Runtime/electrolyte options come from the current 2025_Figiel user_options.json, with solvent-specific ion sigma/dispersion precomputes disabled because 2022_Ascani only provides pure/any_solvent.csv.
 
 ## Feed composition
 

@@ -34,7 +34,7 @@ def _plot_panel(ax, label, salts, title):
         data = common.read_miac_dataset(DATA_ROOT / f'water-{salt}.csv', 'water')
         x_data = [row['molality'] for row in data]
         y_data = [row['miac_m'] for row in data]
-        m_grid, y_model = common.mean_ionic_activity_curve('figiel_2025', salt, 'water', {'water': 1.0}, 6.0, points=600)
+        m_grid, y_model = common.mean_ionic_activity_curve('2025_Figiel', salt, 'water', {'water': 1.0}, 6.0, points=600)
         ax.plot(m_grid, y_model, color=style['color'], linewidth=1.8)
         ax.scatter(x_data, y_data, marker=style['marker'], s=26, facecolor='none', edgecolor=style['color'], linewidth=1.0, label=salt)
     ax.set_title(title, fontsize=10)

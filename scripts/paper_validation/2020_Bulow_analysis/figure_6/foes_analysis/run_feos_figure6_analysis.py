@@ -129,7 +129,7 @@ def _map_feos_pairs(pairs, converter) -> dict[str, float]:
 
 def _build_custom_feos_files() -> tuple[Path, Path]:
     x_ref = _molality_to_species_molefraction(1.0e-12)
-    params = get_prop_dict("bulow_2020", REPO_SPECIES, x_ref, T_REF)
+    params = get_prop_dict("2020_Bulow", REPO_SPECIES, x_ref, T_REF)
     pure_records = [
         {
             "identifier": {"name": "ethanol", "formula": "C2H6O"},
@@ -335,8 +335,8 @@ def _write_notes(
         "## Source provenance",
         "",
         "- This Figure 6 `feos` run is not independent of this repo's parameter set.",
-        "- The custom `feos` ePC-SAFT pure/binary JSON files are built directly from `get_prop_dict(\"bulow_2020\", [\"Li+\", \"Br-\", \"Ethanol\"], ...)` in this repo.",
-        "- That means the parameter source for the current Figure 6 `feos` comparison is the `PC-SAFT` repo's `bulow_2020` values, not stock `feos` parameter files.",
+        "- The custom `feos` ePC-SAFT pure/binary JSON files are built directly from `get_prop_dict(\"2020_Bulow\", [\"Li+\", \"Br-\", \"Ethanol\"], ...)` in this repo.",
+        "- That means the parameter source for the current Figure 6 `feos` comparison is the `PC-SAFT` repo's `2020_Bulow` values, not stock `feos` parameter files.",
         "- The comparison is still useful for checking implementation behavior and bookkeeping across molality, but it is not an external parameter-set validation in the same sense as the water-only Figure 3 work.",
         "",
         "## Outputs",
@@ -348,7 +348,7 @@ def _write_notes(
         "",
         "## Important caveat",
         "",
-        "- `feos` Born uses the hard-sphere diameter path in its ePC-SAFT implementation rather than the repo's explicit `d_born` values, so the Born comparison is not a strict apples-to-apples port even though the other pure/binary values are ported from `bulow_2020`.",
+        "- `feos` Born uses the hard-sphere diameter path in its ePC-SAFT implementation rather than the repo's explicit `d_born` values, so the Born comparison is not a strict apples-to-apples port even though the other pure/binary values are ported from `2020_Bulow`.",
         "",
         "## Fit summary",
         "",
@@ -453,7 +453,7 @@ def run_analysis() -> None:
     m_grid = np.linspace(0.0, float(np.max(m_exp)), 1201)
     x_grid = _salt_mole_fraction_from_molality(m_grid)
     x_ref = _molality_to_species_molefraction(1.0e-12)
-    pcsaft_params = get_prop_dict("bulow_2020", REPO_SPECIES, x_ref, T_REF)
+    pcsaft_params = get_prop_dict("2020_Bulow", REPO_SPECIES, x_ref, T_REF)
     pcsaft_curves = _calc_ln_miac_contributions(m_grid, pcsaft_params, method="mu")
     feos_curves = _compute_feos_curves(m_grid)
 

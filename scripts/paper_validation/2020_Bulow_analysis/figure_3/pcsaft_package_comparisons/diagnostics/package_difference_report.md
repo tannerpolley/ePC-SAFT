@@ -34,14 +34,14 @@ For `Clapeyron`, the corrected fugacity sum closes exactly, so its remaining dif
 
 ### 2. `Clapeyron.jl` is a genuinely different advanced-like model setup
 
-- The extractor uses `ESElectrolyte + pharmaPCSAFT + DHBorn + LinMixRSP`, which is the closest composable analogue in-tree, but it is not the same implementation as the current repo's native `bulow_2020` path.
+- The extractor uses `ESElectrolyte + pharmaPCSAFT + DHBorn + LinMixRSP`, which is the closest composable analogue in-tree, but it is not the same implementation as the current repo's native `2020_Bulow` path.
 - Current repo explicit Born diameters: `Na+ = 3.445` A, `Cl- = 4.100` A.
 - Clapeyron explicit Born diameters from `born_like.csv`: `Na+ = 3.360` A, `Cl- = 3.874` A.
 - Those Born-radius differences directly explain part of the Born-term gap. The remaining association/hc/disp differences are consistent with the different neutralmodel implementation and state point that follow from the composable Clapeyron setup.
 
 ### 3. Binary interaction parameters are not the main remaining cause for `feos`
 
-- Current repo `bulow_2020` uses `k_ij(H2O,Na+) = 0.004500`, `k_ij(H2O,Cl-) = -0.250000`, `k_ij(Na+,Cl-) = 0.317000`.
+- Current repo `2020_Bulow` uses `k_ij(H2O,Na+) = 0.004500`, `k_ij(H2O,Cl-) = -0.250000`, `k_ij(Na+,Cl-) = 0.317000`.
 - `feos` Held-2014 binary JSON has `water/sodium ion k_ij = [0.0045, 0.0, 0.0, 0.0]`, `water/chloride ion k_ij = [-0.25, 0.0, 0.0, 0.0]`, `sodium ion/chloride ion k_ij = [0.317, 0.0, 0.0, 0.0]`.
 - Clapeyron advanced-like unlike CSV has `water/sodium k = 0.004500`, `water/chloride k = -0.250000`, `sodium/chloride k = 0.317000`.
 - So after fixing the missing binary files, the large residual `feos` branch discrepancy is still present even though the key aqueous `k` values now line up with the current repo. That reinforces that the remaining issue is the exposed contribution split, not simply missing unlike parameters.

@@ -1,0 +1,11 @@
+tie_line,phase,temperature_K,salt_wtfrac,x_water,x_ethanol,x_isobutanol,x_nacl,source
+1,organic,293.15,0.1,0.2456,0.0919,0.6612,0.0013,paper_table
+1,aqueous,293.15,0.1,0.9223,0.0044,0.0013,0.072,paper_table
+2,organic,293.15,0.1,0.248,0.0767,0.6739,0.0014,paper_table
+2,aqueous,293.15,0.1,0.9253,0.0033,0.001,0.0704,paper_table
+3,organic,293.15,0.1,0.2476,0.0615,0.6896,0.0013,paper_table
+3,aqueous,293.15,0.1,0.9277,0.0025,0.0013,0.0685,paper_table
+4,organic,293.15,0.1,0.2543,0.0383,0.7062,0.0012,paper_table
+4,aqueous,293.15,0.1,0.9311,0.0014,0.0014,0.0661,paper_table
+5,organic,293.15,0.1,0.256,0.0182,0.7248,0.001,paper_table
+5,aqueous,293.15,0.1,0.9353,0.0003,0.0001,0.0643,paper_table

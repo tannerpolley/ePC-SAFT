@@ -7,6 +7,8 @@ same shape expected by ``pcsaft`` runtime calls.
 Public API:
     - get_prop_dict(dataset_name, species, x, T, user_options=None)
     - available_datasets()
+    - default_user_options()
+    - minimize_user_options(user_options)
     - _resolve_runtime_options(user_options)
     - molality_to_molefraction(...)
     - molefraction_to_molality(...)
@@ -49,6 +51,8 @@ COMPONENT_ALIASES = {
     "ethanol": "Ethanol",
     "1-Butanol": "Butanol",
     "butanol": "Butanol",
+    "Isobutanol": "Butanol",
+    "isobutanol": "Butanol",
     "benzene": "Benzene",
     "toluene": "Toluene",
     "glycine": "Glycine",
@@ -348,6 +352,12 @@ _CANONICAL_ELEC_MODEL = {
         },
     },
 }
+_DEFAULT_USER_OPTIONS = {
+    "debug": False,
+    "solvated_ion_diameter_mixing_rule": False,
+    "ion_dispersion_mixing_rule": True,
+    "elec_model": copy.deepcopy(_CANONICAL_ELEC_MODEL),
+}
 
 _DATASET_CACHE: Dict[str, dict] = {}
 _MISSING = object()
@@ -375,6 +385,41 @@ def _deep_update(base: dict, updates: dict) -> dict:
         else:
             merged[key] = value
     return merged
+
+
+def _prune_default_overrides(payload, defaults):
+    if isinstance(payload, dict):
+        if not isinstance(defaults, dict):
+            return copy.deepcopy(payload)
+        pruned = {}
+        for key, value in payload.items():
+            default_value = defaults.get(key, _MISSING)
+            if default_value is _MISSING:
+                pruned[key] = copy.deepcopy(value)
+                continue
+            candidate = _prune_default_overrides(value, default_value)
+            if candidate is not _MISSING:
+                pruned[key] = candidate
+        return pruned if pruned else _MISSING
+    return _MISSING if payload == defaults else copy.deepcopy(payload)
+
+
+def default_user_options() -> dict:
+    """Return a deep copy of the package's canonical user-option defaults."""
+
+    return copy.deepcopy(_DEFAULT_USER_OPTIONS)
+
+
+def minimize_user_options(user_options: dict | None) -> dict:
+    """Drop any user-option entries that are identical to package defaults."""
+
+    if user_options is None:
+        return {}
+    if not isinstance(user_options, dict):
+        raise TypeError("user_options must be a dict.")
+    _resolve_runtime_options(user_options)
+    pruned = _prune_default_overrides(user_options, _DEFAULT_USER_OPTIONS)
+    return {} if pruned is _MISSING else pruned
 
 
 def _normalize_component(name: str) -> str:

@@ -207,7 +207,7 @@ def _find_feos_binary(name1: str, name2: str) -> dict:
 
 def _current_repo_param_snapshot() -> dict[str, float]:
     x = np.asarray([overlay.EPS, overlay.EPS, 1.0 - 2.0 * overlay.EPS], dtype=float)
-    params = get_prop_dict("bulow_2020", ["Na+", "Cl-", "Water"], x, overlay.T_REF)
+    params = get_prop_dict("2020_Bulow", ["Na+", "Cl-", "Water"], x, overlay.T_REF)
     return {
         "na_sigma": float(params["s"][0]),
         "na_epsilon": float(params["e"][0]),
@@ -327,14 +327,14 @@ def _render_report(rows: list[dict[str, object]]) -> str:
             "",
             "### 2. `Clapeyron.jl` is a genuinely different advanced-like model setup",
             "",
-            "- The extractor uses `ESElectrolyte + pharmaPCSAFT + DHBorn + LinMixRSP`, which is the closest composable analogue in-tree, but it is not the same implementation as the current repo's native `bulow_2020` path.",
+            "- The extractor uses `ESElectrolyte + pharmaPCSAFT + DHBorn + LinMixRSP`, which is the closest composable analogue in-tree, but it is not the same implementation as the current repo's native `2020_Bulow` path.",
             f"- Current repo explicit Born diameters: `Na+ = {current_params['na_d_born']:.3f}` A, `Cl- = {current_params['cl_d_born']:.3f}` A.",
             f"- Clapeyron explicit Born diameters from `born_like.csv`: `Na+ = {clapeyron_params['na_d_born']:.3f}` A, `Cl- = {clapeyron_params['cl_d_born']:.3f}` A.",
             "- Those Born-radius differences directly explain part of the Born-term gap. The remaining association/hc/disp differences are consistent with the different neutralmodel implementation and state point that follow from the composable Clapeyron setup.",
             "",
             "### 3. Binary interaction parameters are not the main remaining cause for `feos`",
             "",
-            f"- Current repo `bulow_2020` uses `k_ij(H2O,Na+) = {current_params['water_na_kij']:.6f}`, `k_ij(H2O,Cl-) = {current_params['water_cl_kij']:.6f}`, `k_ij(Na+,Cl-) = {current_params['na_cl_kij']:.6f}`.",
+            f"- Current repo `2020_Bulow` uses `k_ij(H2O,Na+) = {current_params['water_na_kij']:.6f}`, `k_ij(H2O,Cl-) = {current_params['water_cl_kij']:.6f}`, `k_ij(Na+,Cl-) = {current_params['na_cl_kij']:.6f}`.",
             f"- `feos` Held-2014 binary JSON has `water/sodium ion k_ij = {feos_params['water_na_kij']}`, `water/chloride ion k_ij = {feos_params['water_cl_kij']}`, `sodium ion/chloride ion k_ij = {feos_params['na_cl_kij']}`.",
             f"- Clapeyron advanced-like unlike CSV has `water/sodium k = {clapeyron_params['water_na_k']:.6f}`, `water/chloride k = {clapeyron_params['water_cl_k']:.6f}`, `sodium/chloride k = {clapeyron_params['na_cl_k']:.6f}`.",
             "- So after fixing the missing binary files, the large residual `feos` branch discrepancy is still present even though the key aqueous `k` values now line up with the current repo. That reinforces that the remaining issue is the exposed contribution split, not simply missing unlike parameters.",

@@ -25,8 +25,8 @@ SOLVENT_SPECIES = {
 }
 
 VARIANT_DATASET = {
-    "advanced": "bulow_2020",
-    "revised": "held_2014",
+    "advanced": "2020_Bulow",
+    "revised": "2014_Held",
 }
 CONTRIBUTION_KEYS = {
     "hc": "lnfugcoef_hc",

@@ -621,6 +621,9 @@ def pcsaft_multiphase_lle(t, p, z_feed, params, species, options=None):
         - mass_balance_tol (default 1e-8)
         - split_tol (default 1e-3)
         - debug (default False)
+        - seed_x (optional external composition seed to override the internal TPDF seed)
+        - force_seed_solve (default False; if True and seed_x is provided, attempt the
+          two-phase solve even when the feed stability test reports a single liquid phase)
 
     Returns
     -------
@@ -657,10 +660,19 @@ def pcsaft_multiphase_lle(t, p, z_feed, params, species, options=None):
     tpdf = _find_tpdf_seed(t, p, z_feed, params, neutral_idx, charged_idx, E, options)
     tpdf_tol = float(options.get("tpdf_tol", -1e-8))
     debug = bool(options.get("debug", False))
+    external_seed = options.get("seed_x", None)
+    force_seed_solve = bool(options.get("force_seed_solve", False))
+    seed_x = np.asarray(external_seed, dtype=float).flatten() if external_seed is not None else None
+    if seed_x is not None:
+        if seed_x.size != z_feed.size:
+            raise InputError("options['seed_x'] length ({}) must match z_feed length ({}).".format(seed_x.size, z_feed.size))
+        if np.any(seed_x <= 0.0):
+            raise InputError("options['seed_x'] must contain only positive entries.")
+        seed_x = seed_x/np.sum(seed_x)
     if debug:
         print("[DEBUG multiphase] tpdf_min =", tpdf["tpdf_min"], "tol =", tpdf_tol)
 
-    if tpdf["tpdf_min"] >= tpdf_tol:
+    if tpdf["tpdf_min"] >= tpdf_tol and not (force_seed_solve and seed_x is not None):
         st = tpdf["feed_state"]
         return {
             "n_phases": 1,
@@ -684,7 +696,7 @@ def pcsaft_multiphase_lle(t, p, z_feed, params, species, options=None):
         }
 
     solve = _solve_two_phase_lle(
-        t, p, z_feed, params, z, E, neutral_idx, charged_idx, tpdf["seed_x"], options
+        t, p, z_feed, params, z, E, neutral_idx, charged_idx, seed_x if seed_x is not None else tpdf["seed_x"], options
     )
 
     result = {

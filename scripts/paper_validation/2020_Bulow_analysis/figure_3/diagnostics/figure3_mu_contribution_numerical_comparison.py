@@ -68,7 +68,7 @@ def _kjmol(value: float) -> float:
 def _terms_for_user_options(ion: str, user_options: dict | None) -> tuple[dict[str, object], int]:
     species = overlay._species_for_ion(ion, "water")
     x = np.asarray([EPS, EPS, 1.0 - 2.0 * EPS], dtype=float)
-    params = get_prop_dict("bulow_2020", species, x, T_REF, user_options=user_options or {})
+    params = get_prop_dict("2020_Bulow", species, x, T_REF, user_options=user_options or {})
     rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
 
     z = np.asarray(params.get("z", []), dtype=float)

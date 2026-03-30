@@ -1,0 +1,24 @@
+{
+  "label": "Water + 1-propanol + KCl + NH4Cl",
+  "build_without_charge": {
+    "success": true,
+    "components": [
+      "water",
+      "1-propanol",
+      "potassium",
+      "ammonium",
+      "chloride"
+    ]
+  },
+  "build_with_charge": {
+    "success": true,
+    "components": [
+      "water",
+      "1-propanol",
+      "potassium",
+      "ammonium",
+      "chloride"
+    ]
+  },
+  "case_key": "water_propanol_kcl_nh4cl"
+}

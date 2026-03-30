@@ -33,6 +33,17 @@ result = pcsaft_multiphase_lle(
   - TPDF random search as phase-stability seed.
   - Nonlinear least-squares solve for two-phase equilibrium.
 
+## Experimental IPOPT Prototype
+
+- A standalone `cyipopt` experiment lives at `scripts/multiphase_model_analysis/cyipopt_two_phase_experiment.py`.
+- It reuses the same TPDF seed and EOS callbacks as `pcsaft_multiphase_lle`, but replaces the final `least_squares` stage with a `cyipopt.minimize_ipopt(...)` solve on the reduced two-phase residual system.
+- The production package API is unchanged. This path is for side-by-side solver testing only.
+- Manual benchmark entrypoint:
+
+```bash
+conda run -n PC-SAFT python scripts/multiphase_model_analysis/cyipopt_two_phase_experiment.py --bench-ascani-case2
+```
+
 ## Output
 
 The solver returns a structured dictionary with:

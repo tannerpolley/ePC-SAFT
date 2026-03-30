@@ -64,7 +64,7 @@ def _load_grouped_data() -> dict[float, list[dict[str, float]]]:
 
 def _plot_binary_reference(ax, solvent: str, color: str, label: str, m_max: float = 3.0) -> None:
     grid, y_model = common.mean_ionic_activity_curve(
-        dataset="held_2012",
+        dataset="2012_Held",
         salt="NaBr",
         solvent_system=solvent,
         comp={solvent: 1.0},
@@ -93,7 +93,7 @@ def main() -> None:
         mask = m_data <= 3.0 + 1e-12
 
         grid, y_model = common.mean_ionic_activity_curve(
-            dataset="held_2012",
+            dataset="2012_Held",
             salt="NaBr",
             solvent_system="water-methanol",
             comp=comp,

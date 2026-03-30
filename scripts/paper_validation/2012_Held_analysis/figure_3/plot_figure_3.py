@@ -82,7 +82,7 @@ def main() -> None:
         y_data = np.asarray([float(row["gamma"]) for row in rows], dtype=float)
 
         grid, y_model = common.solvent_activity_curve(
-            dataset="held_2012",
+            dataset="2012_Held",
             salt="NaI",
             solvent_system=series["solvent_system"],
             m_max=1.6,

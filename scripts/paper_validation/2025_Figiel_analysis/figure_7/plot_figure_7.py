@@ -21,9 +21,9 @@ def main() -> None:
     x_data = [row["molality"] for row in data]
     y_data = [row["miac_m"] for row in data]
     m_max = max(float(row["molality"]) for row in data)
-    m_grid, y_default = common.mean_ionic_activity_curve("figiel_2025", "NaBr", "methanol", {"methanol": 1.0}, m_max, points=500)
+    m_grid, y_default = common.mean_ionic_activity_curve("2025_Figiel", "NaBr", "methanol", {"methanol": 1.0}, m_max, points=500)
     _, y_linear = common.mean_ionic_activity_curve(
-        "figiel_2025",
+        "2025_Figiel",
         "NaBr",
         "methanol",
         {"methanol": 1.0},

@@ -90,14 +90,14 @@ def _build_strategy2_params(salt: str) -> dict:
     cation, anion = SALT_SPECS[salt]
     species = [cation, anion, "H2O"]
     x_ref = common.mole_fraction_from_molality_11(1e-8)
-    return get_prop_dict("held_2014", species, x_ref, T_REF, user_options={})
+    return get_prop_dict("2014_Held", species, x_ref, T_REF, user_options={})
 
 
 def _build_strategy1_like_params(salt: str) -> dict:
     cation, anion = SALT_SPECS[salt]
     species = [cation, anion, "H2O"]
     x_ref = common.mole_fraction_from_molality_11(1e-8)
-    params = get_prop_dict("held_2009", species, x_ref, T_REF, user_options={})
+    params = get_prop_dict("2009_Held", species, x_ref, T_REF, user_options={})
     return {
         key: (np.asarray(val, dtype=float).copy() if isinstance(val, np.ndarray) else copy.deepcopy(val))
         for key, val in params.items()

@@ -1,0 +1,18 @@
+{
+  "label": "Water + 1-butanol + KCl + NH4Cl",
+  "build_without_charge": {
+    "error": "MissingException: Missing values exist ∈ single parameter \u001b[1m\u001b[31mcharge\u001b[0m: [\"1-butanol\"].",
+    "success": false
+  },
+  "build_with_charge": {
+    "success": true,
+    "components": [
+      "water",
+      "1-butanol",
+      "potassium",
+      "ammonium",
+      "chloride"
+    ]
+  },
+  "case_key": "water_butanol_kcl_nh4cl"
+}

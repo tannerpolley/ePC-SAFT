@@ -81,7 +81,7 @@ def _curve_for_combo(combo, quantity: str = "miac_m"):
 
     m_upper = vmf._molality_axis_upper(float(np.max(molal_exp)))
     molal_grid = np.linspace(0.0, m_upper, 701)
-    curve = vmf.calc_curve(combo, "figiel_2025", molal_grid, quantity=quantity)
+    curve = vmf.calc_curve(combo, "2025_Figiel", molal_grid, quantity=quantity)
     return molal_exp, values_exp, molal_grid, curve, chosen
 
 

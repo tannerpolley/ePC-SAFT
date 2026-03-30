@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 T_REF = 298.15
 P_REF = 1.0e5
 R_GAS = 8.31446261815324
-PARAMETER_DATASET = "ascani_2022"
+PARAMETER_DATASET = "2022_Ascani"
 SPECIES = ["H2O", "Butanol", "Na+", "K+", "Cl-"]
 PAPER_TARGETS = {
     "x_water_org": 0.4426,
@@ -80,26 +80,26 @@ def _default_model_configs() -> list[dict]:
         {
             "key": "ascani2022_params_bulow2020_opts",
             "parameter_dataset": PARAMETER_DATASET,
-            "options_dataset": "bulow_2020",
+            "options_dataset": "2020_Bulow",
             "label": "Ascani 2022 params + current Bulow 2020 options",
             "color": "#2b6cb0",
             "coverage_note": (
-                "Pure-component and binary-interaction parameters are fixed to ascani_2022. "
-                "Runtime/electrolyte options come from the current bulow_2020 user_options.json, with solvent-specific ion sigma/dispersion precomputes disabled because ascani_2022 only provides pure/any_solvent.csv."
+                "Pure-component and binary-interaction parameters are fixed to 2022_Ascani. "
+                "Runtime/electrolyte options come from the current 2020_Bulow user_options.json, with solvent-specific ion sigma/dispersion precomputes disabled because 2022_Ascani only provides pure/any_solvent.csv."
             ),
-            "user_options": _load_user_options("bulow_2020"),
+            "user_options": _load_user_options("2020_Bulow"),
         },
         {
             "key": "ascani2022_params_figiel2025_opts",
             "parameter_dataset": PARAMETER_DATASET,
-            "options_dataset": "figiel_2025",
+            "options_dataset": "2025_Figiel",
             "label": "Ascani 2022 params + current Figiel 2025 options",
             "color": "#8b1e3f",
             "coverage_note": (
-                "Pure-component and binary-interaction parameters are fixed to ascani_2022. "
-                "Runtime/electrolyte options come from the current figiel_2025 user_options.json, with solvent-specific ion sigma/dispersion precomputes disabled because ascani_2022 only provides pure/any_solvent.csv."
+                "Pure-component and binary-interaction parameters are fixed to 2022_Ascani. "
+                "Runtime/electrolyte options come from the current 2025_Figiel user_options.json, with solvent-specific ion sigma/dispersion precomputes disabled because 2022_Ascani only provides pure/any_solvent.csv."
             ),
-            "user_options": _load_user_options("figiel_2025"),
+            "user_options": _load_user_options("2025_Figiel"),
         },
     ]
 
@@ -626,7 +626,7 @@ def _plot_results(results: list[dict], out_path: Path) -> None:
     legend.get_frame().set_alpha(1.0)
 
     note_lines = [
-        "Hatched bars are paper values; pure/binary parameters stay fixed at ascani_2022 in both runs.",
+        "Hatched bars are paper values; pure/binary parameters stay fixed at 2022_Ascani in both runs.",
         "Color changes only reflect the swapped current user-option sets.",
     ]
     fig.suptitle("Ascani case 2: fixed 2022 parameters with swapped runtime options", fontsize=14, y=0.98)

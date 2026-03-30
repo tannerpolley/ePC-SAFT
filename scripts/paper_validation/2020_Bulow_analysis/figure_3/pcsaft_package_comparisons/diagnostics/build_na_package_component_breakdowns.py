@@ -216,12 +216,12 @@ def _pcsaft_base():
     rho = float(state["rho_inf"])
 
     def term_state(x_new: np.ndarray):
-        params_new = get_prop_dict("bulow_2020", SPECIES, x_new, overlay.T_REF)
+        params_new = get_prop_dict("2020_Bulow", SPECIES, x_new, overlay.T_REF)
         return pcsaft_lnfugcoef_terms(overlay.T_REF, rho, x_new, params_new)
 
     common = _common_fields(
         package="pcsaft",
-        config="bulow_2020",
+        config="2020_Bulow",
         component_order="|".join(SPECIES),
         target_component="Na+",
         counter_component="Cl-",

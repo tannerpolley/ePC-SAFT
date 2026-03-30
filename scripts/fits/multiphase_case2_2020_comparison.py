@@ -194,7 +194,7 @@ def _solve_model(model: dict) -> dict[str, float]:
     t = 298.15
     p = 1.0e5
     species, z_feed, mass_feed = _case2_feed()
-    params = get_prop_dict("ascani_2022", species, z_feed, t, user_options=copy.deepcopy(model["user_options"]))
+    params = get_prop_dict("2022_Ascani", species, z_feed, t, user_options=copy.deepcopy(model["user_options"]))
 
     feed_state = _phase_state_liq(t, p, z_feed, params)
     ghat_feed = _ghat_from_phases(

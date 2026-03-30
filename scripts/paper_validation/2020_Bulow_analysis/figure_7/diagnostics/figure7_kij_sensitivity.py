@@ -196,15 +196,15 @@ def main() -> None:
         x_eval = x_paper[visible_mask]
         y_eval = y_paper[visible_mask]
         x_grid = np.linspace(float(panel['xlim'][0]), float(panel['xlim'][1]), 801)
-        base_params = _build_params('bulow_2020', salt, solvent)
+        base_params = _build_params('2020_Bulow', salt, solvent)
         i, j = cfg['pair_indices']
         base_k = float(np.asarray(base_params['k_ij'], dtype=float)[i, j])
 
         scan_rows: list[dict[str, object]] = []
         best = None
-        y_base_grid = _curve_with_override('bulow_2020', salt, solvent, x_grid, cfg['pair_indices'], base_k)
+        y_base_grid = _curve_with_override('2020_Bulow', salt, solvent, x_grid, cfg['pair_indices'], base_k)
         for k_value in np.asarray(cfg['k_values'], dtype=float):
-            y_model_full = _curve_with_override('bulow_2020', salt, solvent, x_paper, cfg['pair_indices'], float(k_value))
+            y_model_full = _curve_with_override('2020_Bulow', salt, solvent, x_paper, cfg['pair_indices'], float(k_value))
             y_model = y_model_full[visible_mask]
             stats = _metrics(y_model, y_eval)
             stats_full = _metrics(y_model_full, y_paper)
@@ -232,10 +232,10 @@ def main() -> None:
             continue
         csv_path = OUT_DIR / f"{cfg['slug']}_scan.csv"
         _write_scan_csv(csv_path, scan_rows)
-        y_best_grid = _curve_with_override('bulow_2020', salt, solvent, x_grid, cfg['pair_indices'], float(best['k_value']))
+        y_best_grid = _curve_with_override('2020_Bulow', salt, solvent, x_grid, cfg['pair_indices'], float(best['k_value']))
         plot_path = OUT_DIR / f"{cfg['slug']}_scan.png"
         _plot_scan(panel, str(cfg['pair_label']), str(cfg['runtime_pair_label']), x_paper[visible_mask], y_paper[visible_mask], x_grid, y_base_grid, y_best_grid, float(best['k_value']), base_k, plot_path)
-        y_base_eval_full = _curve_with_override('bulow_2020', salt, solvent, x_paper, cfg['pair_indices'], base_k)
+        y_base_eval_full = _curve_with_override('2020_Bulow', salt, solvent, x_paper, cfg['pair_indices'], base_k)
         baseline_metrics = _metrics(y_base_eval_full[visible_mask], y_eval)
         summary_rows.append({
             'panel': cfg['panel_id'],

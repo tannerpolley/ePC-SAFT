@@ -146,8 +146,8 @@ def _plot_panel(panel: dict[str, object]) -> Path:
     y_min, y_max = panel["ylim"]
 
     x_grid = np.linspace(float(x_min), float(x_max), 1201)
-    y_rev = _miac_curve("held_2014", salt, solvent, x_grid)
-    y_adv = _miac_curve("bulow_2020", salt, solvent, x_grid)
+    y_rev = _miac_curve("2014_Held", salt, solvent, x_grid)
+    y_adv = _miac_curve("2020_Bulow", salt, solvent, x_grid)
 
     fig, ax = plt.subplots(figsize=(5.2, 4.0))
     ax.scatter(x_data, y_data, s=24, facecolor="white", edgecolor="black", linewidth=0.8, label="Literature", zorder=5)

@@ -1,0 +1,638 @@
+[
+  {
+    "config_key": "ascani2022_params_bulow2020_opts",
+    "label": "Ascani 2022 params + current Bulow 2020 options",
+    "backend_key": "current",
+    "backend_label": "Current least_squares solver",
+    "parameter_dataset": "2022_Ascani",
+    "options_dataset": "2020_Bulow",
+    "elec_summary": "dielc rule 3 (combined); rel_perm diff=0; Born=on; d_Born_mode=1; shell=False; sat=False",
+    "coverage_note": "Pure-component and binary-interaction parameters are fixed to 2022_Ascani. Runtime/electrolyte options come from the current 2020_Bulow user_options.json, with solvent-specific ion sigma/dispersion precomputes disabled because 2022_Ascani only provides pure/any_solvent.csv.",
+    "feed_mass": {
+      "w_water": 0.8094,
+      "w_butanol": 0.1728,
+      "w_nacl": 0.0054,
+      "w_kcl": 0.0124
+    },
+    "feed_z": {
+      "H2O": 0.9403732422847481,
+      "Butanol": 0.04879624542603626,
+      "Na+": 0.0019339313461782706,
+      "K+": 0.003481324798429628,
+      "Cl-": 0.005415256144607899
+    },
+    "feed_state": {
+      "rho": 46347.00355183419,
+      "lnfug_bar": {
+        "H2O": -3.4917235164462834,
+        "Butanol": -5.091743816826748,
+        "Na+": -224.84356758025757,
+        "K+": -188.92827208064543,
+        "Cl-": -227.73443677746712
+      }
+    },
+    "phases": {
+      "organic": {
+        "beta": 0.055127970487071874,
+        "x": {
+          "H2O": 0.5232971667797756,
+          "Butanol": 0.4763552372932578,
+          "Na+": 2.464019103389174e-05,
+          "K+": 0.00014921022415097875,
+          "Cl-": 0.00017374551178172523
+        },
+        "lnfug_bar": {
+          "H2O": -3.542786509351883,
+          "Butanol": -5.2434940509212655,
+          "Na+": -225.23336299420652,
+          "K+": -189.201055612479,
+          "Cl-": -227.5241883680533
+        },
+        "share_of_feed_pct": {
+          "H2O": 3.067751129978285,
+          "Butanol": 53.81663534476158,
+          "Na+": 0.07023846667548572,
+          "K+": 0.23627950017978794,
+          "Cl-": 0.17687505798412562
+        },
+        "lnfpm_bar": {
+          "NaCl": -226.37877568112992,
+          "KCl": -208.36262199026615
+        }
+      },
+      "aqueous": {
+        "beta": 0.9448720295129281,
+        "x": {
+          "H2O": 0.9647072863278915,
+          "Butanol": 0.023850582152154902,
+          "Na+": 0.002045327750309616,
+          "K+": 0.003675734949405382,
+          "Cl-": 0.005721068820238764
+        },
+        "lnfug_bar": {
+          "H2O": -3.4861963320602243,
+          "Butanol": -5.242048007989999,
+          "Na+": -224.96128288228167,
+          "K+": -188.92890642354487,
+          "Cl-": -227.79626478241488
+        },
+        "share_of_feed_pct": {
+          "H2O": 96.93224887002172,
+          "Butanol": 46.18336465523842,
+          "Na+": 99.92976153332452,
+          "K+": 99.76372049982022,
+          "Cl-": 99.82312494201587
+        },
+        "lnfpm_bar": {
+          "NaCl": -226.37877383234826,
+          "KCl": -208.3625856029799
+        }
+      }
+    },
+    "paper_compare": {
+      "x_water_org": 0.5232971667797756,
+      "x_butanol_org": 0.4763552372932578,
+      "x_nacl_org": 2.464019103389174e-05,
+      "x_kcl_org": 0.00014921022415097875,
+      "x_water_aq": 0.9647072863278915,
+      "x_butanol_aq": 0.023850582152154902,
+      "x_nacl_aq": 0.002045327750309616,
+      "x_kcl_aq": 0.003675734949405382,
+      "lnf_water_bar": -3.5144914207060536,
+      "lnf_butanol_bar": -5.242771029455632,
+      "lnfpm_nacl_bar": -226.37877475673912,
+      "lnfpm_kcl_bar": -208.36260379662303,
+      "ghat_feed_j_per_mol": -14521.17091614763,
+      "ghat_eq_j_per_mol": -14532.008537132653,
+      "ghat_delta_j_per_mol": -10.837620985023023,
+      "beta_org": 0.055127970487071874,
+      "beta_aq": 0.9448720295129281,
+      "tpdf_min": -0.10144000333585604,
+      "residual_norm": 0.05660869646866818,
+      "phase_charge_org": 1.0490340314524434e-07,
+      "phase_charge_aq": -6.120523765758279e-09,
+      "mass_balance_max": 0.0,
+      "neutral_gap_max": 0.056590177291658605,
+      "mean_ionic_gap_max": 7.277457254417641e-05,
+      "e_matrix_rank": 2.0,
+      "mean_ionic_pair_count": 2.0,
+      "eta_water_to_org_pct": 3.067751129978285,
+      "eta_butanol_to_org_pct": 53.81663534476158,
+      "eta_na_to_aq_pct": 99.92976153332452,
+      "eta_k_to_aq_pct": 99.76372049982022,
+      "eta_cl_to_aq_pct": 99.82312494201587
+    },
+    "paper_abs_error": {
+      "x_water_org": 0.08069716677977556,
+      "x_butanol_org": 0.08064476270674226,
+      "x_nacl_org": 1.685980896610826e-05,
+      "x_kcl_org": 0.00027078977584902127,
+      "x_water_aq": 0.0020072863278914888,
+      "x_butanol_aq": 0.011650582152154901,
+      "x_nacl_aq": 0.005554672249690384,
+      "x_kcl_aq": 0.013724265050594616,
+      "lnf_water_bar": 0.006508579293946326,
+      "lnf_butanol_bar": 0.15477102945563193,
+      "lnfpm_kcl_bar": 1.6296037966230301,
+      "lnfpm_nacl_bar": 1.4877747567391282,
+      "ghat_feed_j_per_mol": 12840.146083852369,
+      "ghat_eq_j_per_mol": 12947.851462867347,
+      "ghat_delta_j_per_mol": 107.70537901497698
+    },
+    "solver_info": {},
+    "solve_options": {
+      "tpdf_global_trials": 1200,
+      "tpdf_local_trials": 600,
+      "solver_tol": 1e-09,
+      "max_nfev": 220,
+      "debug": false
+    },
+    "status": 3,
+    "message": "`xtol` termination condition is satisfied."
+  },
+  {
+    "config_key": "ascani2022_params_bulow2020_opts",
+    "label": "Ascani 2022 params + current Bulow 2020 options",
+    "backend_key": "cyipopt",
+    "backend_label": "cyipopt IPOPT experiment",
+    "parameter_dataset": "2022_Ascani",
+    "options_dataset": "2020_Bulow",
+    "elec_summary": "dielc rule 3 (combined); rel_perm diff=0; Born=on; d_Born_mode=1; shell=False; sat=False",
+    "coverage_note": "Pure-component and binary-interaction parameters are fixed to 2022_Ascani. Runtime/electrolyte options come from the current 2020_Bulow user_options.json, with solvent-specific ion sigma/dispersion precomputes disabled because 2022_Ascani only provides pure/any_solvent.csv.",
+    "feed_mass": {
+      "w_water": 0.8094,
+      "w_butanol": 0.1728,
+      "w_nacl": 0.0054,
+      "w_kcl": 0.0124
+    },
+    "feed_z": {
+      "H2O": 0.9403732422847481,
+      "Butanol": 0.04879624542603626,
+      "Na+": 0.0019339313461782706,
+      "K+": 0.003481324798429628,
+      "Cl-": 0.005415256144607899
+    },
+    "feed_state": {
+      "rho": 46347.00355183419,
+      "lnfug_bar": {
+        "H2O": -3.4917235164462834,
+        "Butanol": -5.091743816826748,
+        "Na+": -224.84356758025757,
+        "K+": -188.92827208064543,
+        "Cl-": -227.73443677746712
+      }
+    },
+    "phases": {
+      "organic": {
+        "beta": 0.664887732151347,
+        "x": {
+          "H2O": 0.940045603693253,
+          "Butanol": 0.04914230505071199,
+          "Na+": 0.0019286679896178389,
+          "K+": 0.0034773776275107264,
+          "Cl-": 0.005406045638906702
+        },
+        "lnfug_bar": {
+          "H2O": -3.4917306590698534,
+          "Butanol": -5.091604956661139,
+          "Na+": -224.84375285102618,
+          "K+": -188.9283974988364,
+          "Cl-": -227.73430545399046
+        },
+        "share_of_feed_pct": {
+          "H2O": 66.46560763892847,
+          "Butanol": 66.96030703301533,
+          "Na+": 66.30781843543762,
+          "K+": 66.41338738724912,
+          "Cl-": 66.37568618685565
+        },
+        "lnfpm_bar": {
+          "NaCl": -226.2890291525083,
+          "KCl": -208.33135147641343
+        }
+      },
+      "aqueous": {
+        "beta": 0.335112267848653,
+        "x": {
+          "H2O": 0.9410233016856259,
+          "Butanol": 0.04810963732148394,
+          "Na+": 0.0019443742381363472,
+          "K+": 0.0034891562799135223,
+          "Cl-": 0.005433530474840423
+        },
+        "lnfug_bar": {
+          "H2O": -3.4917054092439717,
+          "Butanol": -5.092099315752575,
+          "Na+": -224.8432160040517,
+          "K+": -188.92801260378806,
+          "Cl-": -227.7346950042621
+        },
+        "share_of_feed_pct": {
+          "H2O": 33.53439236107153,
+          "Butanol": 33.03969296698467,
+          "Na+": 33.692181564562375,
+          "K+": 33.58661261275089,
+          "Cl-": 33.62431381314436
+        },
+        "lnfpm_bar": {
+          "NaCl": -226.2889555041569,
+          "KCl": -208.33135380402507
+        }
+      }
+    },
+    "paper_compare": {
+      "x_water_org": 0.940045603693253,
+      "x_butanol_org": 0.04914230505071199,
+      "x_nacl_org": 0.0019286679896178389,
+      "x_kcl_org": 0.0034773776275107264,
+      "x_water_aq": 0.9410233016856259,
+      "x_butanol_aq": 0.04810963732148394,
+      "x_nacl_aq": 0.0019443742381363472,
+      "x_kcl_aq": 0.0034891562799135223,
+      "lnf_water_bar": -3.4917180341569125,
+      "lnf_butanol_bar": -5.091852136206857,
+      "lnfpm_nacl_bar": -226.2889923283326,
+      "lnfpm_kcl_bar": -208.33135264021925,
+      "ghat_feed_j_per_mol": -14521.17091614763,
+      "ghat_eq_j_per_mol": -14521.170771734473,
+      "ghat_delta_j_per_mol": 0.00014441315761359874,
+      "beta_org": 0.664887732151347,
+      "beta_aq": 0.335112267848653,
+      "tpdf_min": -0.10144000333585604,
+      "residual_norm": 0.0005164750282084342,
+      "phase_charge_org": -2.1778136585770547e-11,
+      "phase_charge_aq": 4.32094464375421e-11,
+      "mass_balance_max": 1.1102230246251565e-16,
+      "neutral_gap_max": 0.0004943590914363583,
+      "mean_ionic_gap_max": 0.00014729670283486485,
+      "e_matrix_rank": 2.0,
+      "mean_ionic_pair_count": 2.0,
+      "eta_water_to_org_pct": 66.46560763892847,
+      "eta_butanol_to_org_pct": 66.96030703301533,
+      "eta_na_to_aq_pct": 33.692181564562375,
+      "eta_k_to_aq_pct": 33.58661261275089,
+      "eta_cl_to_aq_pct": 33.62431381314436
+    },
+    "paper_abs_error": {
+      "x_water_org": 0.49744560369325297,
+      "x_butanol_org": 0.5078576949492881,
+      "x_nacl_org": 0.0018871679896178388,
+      "x_kcl_org": 0.0030573776275107266,
+      "x_water_aq": 0.021676698314374132,
+      "x_butanol_aq": 0.03590963732148394,
+      "x_nacl_aq": 0.005655625761863653,
+      "x_kcl_aq": 0.013910843720086476,
+      "lnf_water_bar": 0.0292819658430874,
+      "lnf_butanol_bar": 0.003852136206856649,
+      "lnfpm_kcl_bar": 1.5983526402192467,
+      "lnfpm_nacl_bar": 1.397992328332606,
+      "ghat_feed_j_per_mol": 12840.146083852369,
+      "ghat_eq_j_per_mol": 12958.689228265528,
+      "ghat_delta_j_per_mol": 118.54314441315762
+    },
+    "solver_info": {
+      "backend": "cyipopt",
+      "executed": true,
+      "status": 0,
+      "message": "b'Algorithm terminated successfully at a locally optimal point, satisfying the convergence tolerances (can be specified by options).'",
+      "success": true,
+      "objective_value": 1.3337322831497867e-07,
+      "nit": 37,
+      "start_index": 8,
+      "anchored_retry": false,
+      "split_norm": 0.001032667729228047,
+      "charge_ok": true,
+      "mass_balance_ok": true,
+      "tol_ok": true,
+      "split_ok": true,
+      "fraction_ok": true
+    },
+    "solve_options": {
+      "tpdf_global_trials": 1200,
+      "tpdf_local_trials": 600,
+      "solver_tol": 1e-09,
+      "max_nfev": 220,
+      "debug": false
+    },
+    "status": 0,
+    "message": "b'Algorithm terminated successfully at a locally optimal point, satisfying the convergence tolerances (can be specified by options).'"
+  },
+  {
+    "config_key": "ascani2022_params_figiel2025_opts",
+    "label": "Ascani 2022 params + current Figiel 2025 options",
+    "backend_key": "current",
+    "backend_label": "Current least_squares solver",
+    "parameter_dataset": "2022_Ascani",
+    "options_dataset": "2025_Figiel",
+    "elec_summary": "dielc rule 4 (empirical); rel_perm diff=1; Born=on; d_Born_mode=3; shell=True; sat=True",
+    "coverage_note": "Pure-component and binary-interaction parameters are fixed to 2022_Ascani. Runtime/electrolyte options come from the current 2025_Figiel user_options.json, with solvent-specific ion sigma/dispersion precomputes disabled because 2022_Ascani only provides pure/any_solvent.csv.",
+    "feed_mass": {
+      "w_water": 0.8094,
+      "w_butanol": 0.1728,
+      "w_nacl": 0.0054,
+      "w_kcl": 0.0124
+    },
+    "feed_z": {
+      "H2O": 0.9403732422847481,
+      "Butanol": 0.04879624542603626,
+      "Na+": 0.0019339313461782706,
+      "K+": 0.003481324798429628,
+      "Cl-": 0.005415256144607899
+    },
+    "feed_state": {
+      "rho": 46347.18490928584,
+      "lnfug_bar": {
+        "H2O": -3.4871344958433053,
+        "Butanol": -5.178849116345129,
+        "Na+": -157.09013359146104,
+        "K+": -129.41899115163702,
+        "Cl-": -129.8937283152668
+      }
+    },
+    "phases": {
+      "organic": {
+        "beta": 0.05669345835298715,
+        "x": {
+          "H2O": 0.5380423442151197,
+          "Butanol": 0.43742232533811365,
+          "Na+": 0.0030144418615775446,
+          "K+": 0.009253231954123118,
+          "Cl-": 0.012267656631065953
+        },
+        "lnfug_bar": {
+          "H2O": -3.530465426838683,
+          "Butanol": -5.305904224044885,
+          "Na+": -156.96821030521517,
+          "K+": -129.28805013288633,
+          "Cl-": -129.9681987926415
+        },
+        "share_of_feed_pct": {
+          "H2O": 3.243763206170312,
+          "Butanol": 50.82150105547081,
+          "Na+": 8.836876990208008,
+          "K+": 15.068910566984352,
+          "Cl-": 12.843268383428295
+        },
+        "lnfpm_bar": {
+          "NaCl": -143.46820454892833,
+          "KCl": -129.6281244627639
+        }
+      },
+      "aqueous": {
+        "beta": 0.9433065416470129,
+        "x": {
+          "H2O": 0.9645536428298401,
+          "Butanol": 0.02543951513355765,
+          "Na+": 0.001868991822067903,
+          "K+": 0.0031344286798282717,
+          "Cl-": 0.005003421534706115
+        },
+        "lnfug_bar": {
+          "H2O": -3.483139680156965,
+          "Butanol": -5.304714926784311,
+          "Na+": -157.0769566661241,
+          "K+": -129.39674461401808,
+          "Cl-": -129.85941769759273
+        },
+        "share_of_feed_pct": {
+          "H2O": 96.7562367938297,
+          "Butanol": 49.17849894452919,
+          "Na+": 91.16312300979199,
+          "K+": 84.93108943301564,
+          "Cl-": 87.15673161657172
+        },
+        "lnfpm_bar": {
+          "NaCl": -143.4681871818584,
+          "KCl": -129.6280811558054
+        }
+      }
+    },
+    "paper_compare": {
+      "x_water_org": 0.5380423442151197,
+      "x_butanol_org": 0.43742232533811365,
+      "x_nacl_org": 0.0030144418615775446,
+      "x_kcl_org": 0.009253231954123118,
+      "x_water_aq": 0.9645536428298401,
+      "x_butanol_aq": 0.02543951513355765,
+      "x_nacl_aq": 0.001868991822067903,
+      "x_kcl_aq": 0.0031344286798282717,
+      "lnf_water_bar": -3.506802553497824,
+      "lnf_butanol_bar": -5.305309575414598,
+      "lnfpm_nacl_bar": -143.46819586539337,
+      "lnfpm_kcl_bar": -129.62810280928466,
+      "ghat_feed_j_per_mol": -12369.19054103593,
+      "ghat_eq_j_per_mol": -12378.03936253769,
+      "ghat_delta_j_per_mol": -8.84882150175872,
+      "beta_org": 0.05669345835298715,
+      "beta_aq": 0.9433065416470129,
+      "tpdf_min": -0.08003105653784898,
+      "residual_norm": 0.04734077983501688,
+      "phase_charge_org": 1.718463471002407e-08,
+      "phase_charge_aq": -1.0328099408693503e-09,
+      "mass_balance_max": 0.0,
+      "neutral_gap_max": 0.04732574668171807,
+      "mean_ionic_gap_max": 8.661391700570675e-05,
+      "e_matrix_rank": 2.0,
+      "mean_ionic_pair_count": 2.0,
+      "eta_water_to_org_pct": 3.243763206170312,
+      "eta_butanol_to_org_pct": 50.82150105547081,
+      "eta_na_to_aq_pct": 91.16312300979199,
+      "eta_k_to_aq_pct": 84.93108943301564,
+      "eta_cl_to_aq_pct": 87.15673161657172
+    },
+    "paper_abs_error": {
+      "x_water_org": 0.09544234421511966,
+      "x_butanol_org": 0.1195776746618864,
+      "x_nacl_org": 0.0029729418615775448,
+      "x_kcl_org": 0.008833231954123118,
+      "x_water_aq": 0.0018536428298401297,
+      "x_butanol_aq": 0.01323951513355765,
+      "x_nacl_aq": 0.005731008177932097,
+      "x_kcl_aq": 0.014265571320171727,
+      "lnf_water_bar": 0.014197446502175914,
+      "lnf_butanol_bar": 0.21730957541459794,
+      "lnfpm_kcl_bar": 77.10489719071535,
+      "lnfpm_nacl_bar": 81.42280413460662,
+      "ghat_feed_j_per_mol": 14992.126458964069,
+      "ghat_eq_j_per_mol": 15101.820637462311,
+      "ghat_delta_j_per_mol": 109.69417849824129
+    },
+    "solver_info": {},
+    "solve_options": {
+      "tpdf_global_trials": 1200,
+      "tpdf_local_trials": 600,
+      "solver_tol": 1e-09,
+      "max_nfev": 220,
+      "debug": false
+    },
+    "status": 3,
+    "message": "`xtol` termination condition is satisfied."
+  },
+  {
+    "config_key": "ascani2022_params_figiel2025_opts",
+    "label": "Ascani 2022 params + current Figiel 2025 options",
+    "backend_key": "cyipopt",
+    "backend_label": "cyipopt IPOPT experiment",
+    "parameter_dataset": "2022_Ascani",
+    "options_dataset": "2025_Figiel",
+    "elec_summary": "dielc rule 4 (empirical); rel_perm diff=1; Born=on; d_Born_mode=3; shell=True; sat=True",
+    "coverage_note": "Pure-component and binary-interaction parameters are fixed to 2022_Ascani. Runtime/electrolyte options come from the current 2025_Figiel user_options.json, with solvent-specific ion sigma/dispersion precomputes disabled because 2022_Ascani only provides pure/any_solvent.csv.",
+    "feed_mass": {
+      "w_water": 0.8094,
+      "w_butanol": 0.1728,
+      "w_nacl": 0.0054,
+      "w_kcl": 0.0124
+    },
+    "feed_z": {
+      "H2O": 0.9403732422847481,
+      "Butanol": 0.04879624542603626,
+      "Na+": 0.0019339313461782706,
+      "K+": 0.003481324798429628,
+      "Cl-": 0.005415256144607899
+    },
+    "feed_state": {
+      "rho": 46347.18490928584,
+      "lnfug_bar": {
+        "H2O": -3.4871344958433053,
+        "Butanol": -5.178849116345129,
+        "Na+": -157.09013359146104,
+        "K+": -129.41899115163702,
+        "Cl-": -129.8937283152668
+      }
+    },
+    "phases": {
+      "organic": {
+        "beta": 0.07933816863203222,
+        "x": {
+          "H2O": 0.6089621549766056,
+          "Butanol": 0.3678388906206998,
+          "Na+": 0.002972061065475013,
+          "K+": 0.008627416323362313,
+          "Cl-": 0.01159947701385726
+        },
+        "lnfug_bar": {
+          "H2O": -3.48170637395871,
+          "Butanol": -5.374607099357187,
+          "Na+": -156.98388968081562,
+          "K+": -129.30598430274614,
+          "Cl-": -129.9572943820646
+        },
+        "share_of_feed_pct": {
+          "H2O": 5.137741055314933,
+          "Butanol": 59.80719147279553,
+          "Na+": 12.19267077206876,
+          "K+": 19.6615785872788,
+          "Cl-": 16.994233306676268
+        },
+        "lnfpm_bar": {
+          "NaCl": -143.4705920314401,
+          "KCl": -129.63163934240538
+        }
+      },
+      "aqueous": {
+        "beta": 0.9206618313679678,
+        "x": {
+          "H2O": 0.9689326414425369,
+          "Butanol": 0.021302698585223323,
+          "Na+": 0.0018444703650391814,
+          "K+": 0.0030378596049238484,
+          "Cl-": 0.004882330002276993
+        },
+        "lnfug_bar": {
+          "H2O": -3.481430928087944,
+          "Butanol": -5.3744878052464085,
+          "Na+": -157.08023152890823,
+          "K+": -129.4022303260288,
+          "Cl-": -129.86095073061517
+        },
+        "share_of_feed_pct": {
+          "H2O": 94.86225894468507,
+          "Butanol": 40.19280852720447,
+          "Na+": 87.80732922793125,
+          "K+": 80.33842141272119,
+          "Cl-": 83.00576669332374
+        },
+        "lnfpm_bar": {
+          "NaCl": -143.47059112976171,
+          "KCl": -129.631590528322
+        }
+      }
+    },
+    "paper_compare": {
+      "x_water_org": 0.6089621549766056,
+      "x_butanol_org": 0.3678388906206998,
+      "x_nacl_org": 0.002972061065475013,
+      "x_kcl_org": 0.008627416323362313,
+      "x_water_aq": 0.9689326414425369,
+      "x_butanol_aq": 0.021302698585223323,
+      "x_nacl_aq": 0.0018444703650391814,
+      "x_kcl_aq": 0.0030378596049238484,
+      "lnf_water_bar": -3.481568651023327,
+      "lnf_butanol_bar": -5.3745474523017975,
+      "lnfpm_nacl_bar": -143.4705915806009,
+      "lnfpm_kcl_bar": -129.6316149353637,
+      "ghat_feed_j_per_mol": -12369.19054103593,
+      "ghat_eq_j_per_mol": -12378.969552378492,
+      "ghat_delta_j_per_mol": -9.779011342561716,
+      "beta_org": 0.07933816863203222,
+      "beta_aq": 0.9206618313679678,
+      "tpdf_min": -0.08003105653784898,
+      "residual_norm": 0.00031565174421487995,
+      "phase_charge_org": 3.749800660951541e-10,
+      "phase_charge_aq": -3.231396313724266e-11,
+      "mass_balance_max": 0.0,
+      "neutral_gap_max": 0.0002754458707663332,
+      "mean_ionic_gap_max": 9.762816674196984e-05,
+      "e_matrix_rank": 2.0,
+      "mean_ionic_pair_count": 2.0,
+      "eta_water_to_org_pct": 5.137741055314933,
+      "eta_butanol_to_org_pct": 59.80719147279553,
+      "eta_na_to_aq_pct": 87.80732922793125,
+      "eta_k_to_aq_pct": 80.33842141272119,
+      "eta_cl_to_aq_pct": 83.00576669332374
+    },
+    "paper_abs_error": {
+      "x_water_org": 0.16636215497660556,
+      "x_butanol_org": 0.18916110937930025,
+      "x_nacl_org": 0.002930561065475013,
+      "x_kcl_org": 0.008207416323362313,
+      "x_water_aq": 0.006232641442536879,
+      "x_butanol_aq": 0.009102698585223322,
+      "x_nacl_aq": 0.005755529634960819,
+      "x_kcl_aq": 0.014362140395076151,
+      "lnf_water_bar": 0.039431348976672886,
+      "lnf_butanol_bar": 0.28654745230179746,
+      "lnfpm_kcl_bar": 77.1013850646363,
+      "lnfpm_nacl_bar": 81.42040841939908,
+      "ghat_feed_j_per_mol": 14992.126458964069,
+      "ghat_eq_j_per_mol": 15100.890447621508,
+      "ghat_delta_j_per_mol": 108.76398865743829
+    },
+    "solver_info": {
+      "backend": "cyipopt",
+      "executed": true,
+      "status": 0,
+      "message": "b'Algorithm terminated successfully at a locally optimal point, satisfying the convergence tolerances (can be specified by options).'",
+      "success": true,
+      "objective_value": 4.981808211790269e-08,
+      "nit": 33,
+      "start_index": 10,
+      "anchored_retry": false,
+      "split_norm": 0.3599704864659313,
+      "charge_ok": true,
+      "mass_balance_ok": true,
+      "tol_ok": true,
+      "split_ok": true,
+      "fraction_ok": true
+    },
+    "solve_options": {
+      "tpdf_global_trials": 1200,
+      "tpdf_local_trials": 600,
+      "solver_tol": 1e-09,
+      "max_nfev": 220,
+      "debug": false
+    },
+    "status": 0,
+    "message": "b'Algorithm terminated successfully at a locally optimal point, satisfying the convergence tolerances (can be specified by options).'"
+  }
+]

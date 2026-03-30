@@ -117,9 +117,9 @@ def main() -> None:
         x_eval = x_data[visible]
         y_eval = y_data[visible]
         x_grid = np.linspace(float(panel['xlim'][0]), float(panel['xlim'][1]), 801)
-        y_rev = _curve('held_2014', str(panel['salt']), str(panel['solvent']), x_grid)
-        y_adv = _curve('bulow_2020', str(panel['salt']), str(panel['solvent']), x_grid)
-        y_rule7 = _curve('bulow_2020', str(panel['salt']), str(panel['solvent']), x_grid, user_options={'elec_model': {'rel_perm': {'rule': 7}}})
+        y_rev = _curve('2014_Held', str(panel['salt']), str(panel['solvent']), x_grid)
+        y_adv = _curve('2020_Bulow', str(panel['salt']), str(panel['solvent']), x_grid)
+        y_rule7 = _curve('2020_Bulow', str(panel['salt']), str(panel['solvent']), x_grid, user_options={'elec_model': {'rel_perm': {'rule': 7}}})
         y_adv_eval = np.interp(x_eval, x_grid, y_adv)
         y_rule7_eval = np.interp(x_eval, x_grid, y_rule7)
         stats_adv = _metrics(y_adv_eval, y_eval)

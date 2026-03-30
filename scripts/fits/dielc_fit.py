@@ -65,7 +65,7 @@ def _calc_dielc_curve(x_ion_grid, species, rule, t=298.15):
     dielc = np.empty_like(x_ion_grid, dtype=float)
     for i, x_ion in enumerate(x_ion_grid):
         x = np.asarray([0.5 * x_ion, 0.5 * x_ion, 1.0 - x_ion], dtype=float)
-        params = get_prop_dict("bulow_2020", species, x, t, user_options={"elec_model": {"rel_perm": {"rule": int(rule)}}})
+        params = get_prop_dict("2020_Bulow", species, x, t, user_options={"elec_model": {"rel_perm": {"rule": int(rule)}}})
         dielc[i] = float(pcsaft_dielc_eval(x, params)[0])
 
     if not np.all(np.isfinite(dielc)):

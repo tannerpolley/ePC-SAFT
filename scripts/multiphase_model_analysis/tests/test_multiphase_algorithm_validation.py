@@ -122,7 +122,7 @@ def test_workbook_vle_methane_ethane_propane_example():
 def test_lle_water_c4mim_ntf2_example():
     species = ["H2O", "C4mim+", "NTf2-"]
     feed = np.asarray([0.5, 0.25, 0.25], dtype=float)
-    out = _solve_binary_lle(species, "bulow_2019", feed)
+    out = _solve_binary_lle(species, "2019_Bulow", feed)
 
     assert bool(out.get("converged", False))
     assert int(out.get("n_phases", 0)) == 2

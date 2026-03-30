@@ -210,7 +210,7 @@ def _parse_args() -> argparse.Namespace:
         type=int,
         choices=[0, 1],
         default=None,
-        help="Optional override for bulow_2020 born_model.d_Born_mode.",
+        help="Optional override for 2020_Bulow born_model.d_Born_mode.",
     )
     parser.add_argument(
         "--suffix",

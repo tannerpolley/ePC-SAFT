@@ -188,7 +188,7 @@ def _load_exp_data(path: Path) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
 def _build_params(user_options: Dict[str, object] | None = None) -> Dict[str, object]:
     x_ref = _molality_to_species_molefraction(1e-8)
-    return get_prop_dict("bulow_2020", SPECIES, x_ref, T_REF, user_options=user_options or {})
+    return get_prop_dict("2020_Bulow", SPECIES, x_ref, T_REF, user_options=user_options or {})
 
 
 def _inf_dilution_state(x: np.ndarray, rho: float, params: Dict[str, object]) -> Tuple[np.ndarray, float]:
@@ -407,7 +407,7 @@ def _parse_args() -> argparse.Namespace:
         type=int,
         choices=[0, 1],
         default=None,
-        help="Optional override for bulow_2020 born_model.d_Born_mode.",
+        help="Optional override for 2020_Bulow born_model.d_Born_mode.",
     )
     return parser.parse_args()
 

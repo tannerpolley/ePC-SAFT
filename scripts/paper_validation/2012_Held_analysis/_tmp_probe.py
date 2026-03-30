@@ -21,7 +21,7 @@ for solvent in ('ethanol', 'methanol'):
     mmax = max(float(r['molality']) for r in data)
     print('mmax', mmax, flush=True)
     comp = {solvent: 1.0}
-    params = c.build_params('held_2012', 'NaI', solvent, comp)
+    params = c.build_params('2012_Held', 'NaI', solvent, comp)
     species = c.species_for_combo('NaI', solvent)
     print('params ready', flush=True)
     for m in (0.01, 0.1, 0.5, 1.0, 1.6):

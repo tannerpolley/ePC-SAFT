@@ -41,7 +41,7 @@ SERIES = [
 T_REF = 298.15
 P_REF = 1.0e5
 EPS = 1.0e-8
-VARIANT_DATASET = {"advanced": "bulow_2020", "revised": "held_2014"}
+VARIANT_DATASET = {"advanced": "2020_Bulow", "revised": "2014_Held"}
 SOLVENT_SPECIES = {"water": "Water", "methanol": "Methanol", "ethanol": "Ethanol"}
 
 

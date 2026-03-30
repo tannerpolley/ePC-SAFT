@@ -82,22 +82,22 @@ SALT_CANONICAL["li"] = "LiI"
 
 DATASET_VARIANTS: "OrderedDict[str, Dict[str, object]]" = OrderedDict(
     [
-        ("cameretti_2005", {"label": "2005", "color": "black", "linestyle": "--", "lw": 1.6, "user_options": {}}),
-        ("held_2008", {"label": "2008", "color": "dimgray", "linestyle": "--", "lw": 1.6, "user_options": {}}),
-        ("held_2012", {"label": "2012", "color": "tab:blue", "linestyle": "--", "lw": 1.7, "user_options": {}}),
-        ("held_2014", {"label": "2014", "color": "silver", "linestyle": "--", "lw": 1.6, "user_options": {}}),
-        ("bulow_2020", {"label": "2020", "color": "tab:purple", "linestyle": "--", "lw": 1.8, "user_options": {}}),
-        ("figiel_2025", {"label": "2025", "color": "tab:red", "linestyle": "--", "lw": 1.8, "user_options": {}}),
+        ("2005_Cameretti", {"label": "2005", "color": "black", "linestyle": "--", "lw": 1.6, "user_options": {}}),
+        ("2008_Held", {"label": "2008", "color": "dimgray", "linestyle": "--", "lw": 1.6, "user_options": {}}),
+        ("2012_Held", {"label": "2012", "color": "tab:blue", "linestyle": "--", "lw": 1.7, "user_options": {}}),
+        ("2014_Held", {"label": "2014", "color": "silver", "linestyle": "--", "lw": 1.6, "user_options": {}}),
+        ("2020_Bulow", {"label": "2020", "color": "tab:purple", "linestyle": "--", "lw": 1.8, "user_options": {}}),
+        ("2025_Figiel", {"label": "2025", "color": "tab:red", "linestyle": "--", "lw": 1.8, "user_options": {}}),
     ]
 )
 
-AQUEOUS_ONLY_DATASETS = {"cameretti_2005", "held_2008"}
+AQUEOUS_ONLY_DATASETS = {"2005_Cameretti", "2008_Held"}
 
 
 def _variant_names_for_solvent_system(solvent_system: str) -> List[str]:
     if solvent_system == "water":
         # Water plots now compare modern sets only.
-        return ["held_2012", "held_2014", "bulow_2020", "figiel_2025"]
+        return ["2012_Held", "2014_Held", "2020_Bulow", "2025_Figiel"]
     return [name for name in DATASET_VARIANTS if name not in AQUEOUS_ONLY_DATASETS]
 
 

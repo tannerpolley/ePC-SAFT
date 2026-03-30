@@ -70,7 +70,7 @@ def _infinite_dilution_state(ion: str, d_ion_mode: int) -> dict[str, object]:
     species = _species_for_ion(ion)
     x = np.asarray([EPS, EPS, 1.0 - 2.0 * EPS], dtype=float)
     user_options = {"elec_model": {"DH_model": {"d_ion_mode": d_ion_mode}}}
-    params = get_prop_dict("bulow_2020", species, x, T_REF, user_options=user_options)
+    params = get_prop_dict("2020_Bulow", species, x, T_REF, user_options=user_options)
     rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
 
     z = np.asarray(params.get("z", []), dtype=float)

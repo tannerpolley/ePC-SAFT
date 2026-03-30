@@ -76,7 +76,7 @@ def _mole_fraction_from_molalities(m_kcl: float, m_aa: float) -> np.ndarray:
 def _build_strategy2_params(solute_species: str) -> dict:
     species = ["K+", "Cl-", solute_species, "H2O"]
     x_ref = _mole_fraction_from_molalities(1.0, 1e-8)
-    return get_prop_dict("held_2014", species, x_ref, T_REF, user_options={})
+    return get_prop_dict("2014_Held", species, x_ref, T_REF, user_options={})
 
 
 def _build_strategy1_like_params(solute_species: str) -> dict:

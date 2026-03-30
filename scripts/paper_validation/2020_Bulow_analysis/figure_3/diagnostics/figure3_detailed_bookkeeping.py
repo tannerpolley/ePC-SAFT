@@ -122,7 +122,7 @@ def _effective_diameters(params: dict[str, object], t: float) -> np.ndarray:
 def _state_for_ion(ion: str) -> dict[str, object]:
     species = overlay._species_for_ion(ion, "water")
     x = np.asarray([EPS, EPS, 1.0 - 2.0 * EPS], dtype=float)
-    params = get_prop_dict("bulow_2020", species, x, T_REF)
+    params = get_prop_dict("2020_Bulow", species, x, T_REF)
     rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
     z = np.asarray(params.get("z", []), dtype=float)
     idx_ion = np.where(np.abs(z) > 1.0e-12)[0]

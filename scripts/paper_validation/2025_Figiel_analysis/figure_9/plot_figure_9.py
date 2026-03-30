@@ -133,7 +133,7 @@ def _plot_panel(ax, label: str, salt: str, solvent_system: str, m_max: float, in
     for target_w, marker_color, marker, line_color, line_style, line_label, data_label_text in targets:
         curve_max = _curve_m_max(label, target_w, m_max)
         comp_model = common.target_weight_fraction_to_comp(solvent_system, target_w)
-        m_grid, y_model = common.mean_ionic_activity_curve('figiel_2025', salt, solvent_system, comp_model, curve_max, points=600)
+        m_grid, y_model = common.mean_ionic_activity_curve('2025_Figiel', salt, solvent_system, comp_model, curve_max, points=600)
         ax.plot(m_grid, y_model, color=line_color, linestyle=line_style, linewidth=2.2, zorder=5, label=line_label if include_legend else None)
 
         rows = _closest_group(entries, target_w) if entries else None
@@ -174,7 +174,7 @@ def _plot_40wt_solvent(ax, solvent_system: str, organic_label: str, salts: list[
         data_y = [r['miac_m'] for r in rows]
         curve_max = min(x_max, max(data_m) * 1.1)
         comp_model = common.target_weight_fraction_to_comp(solvent_system, 0.4)
-        m_grid, y_model = common.mean_ionic_activity_curve('figiel_2025', salt, solvent_system, comp_model, curve_max, points=600)
+        m_grid, y_model = common.mean_ionic_activity_curve('2025_Figiel', salt, solvent_system, comp_model, curve_max, points=600)
         ax.plot(m_grid, y_model, color=style['color'], linewidth=2.2, label=f'{salt} fit')
         ax.scatter(data_m, data_y, s=28, marker=style['marker'], facecolor='none', edgecolor=style['color'], linewidth=1.0, label=f'{salt} data')
 

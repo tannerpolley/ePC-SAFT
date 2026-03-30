@@ -114,7 +114,7 @@ def main() -> None:
         expected_dielc = dielc_lookup[key]
 
         params_check = common.build_params(
-            dataset="held_2012",
+            dataset="2012_Held",
             salt="NaCl",
             solvent_system="water-methanol-ethanol",
             comp=comp,
@@ -131,7 +131,7 @@ def main() -> None:
         mask = m_data <= 1.0 + 1e-12
 
         grid, y_model = common.mean_ionic_activity_curve(
-            dataset="held_2012",
+            dataset="2012_Held",
             salt="NaCl",
             solvent_system="water-methanol-ethanol",
             comp=comp,

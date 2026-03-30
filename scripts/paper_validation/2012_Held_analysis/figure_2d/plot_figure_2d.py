@@ -44,7 +44,7 @@ def _plot_panel(ax, panel: dict) -> None:
     m_max = max(m_data)
 
     grid, y_model = common.mean_ionic_activity_curve(
-        dataset="held_2012",
+        dataset="2012_Held",
         salt=panel["salt"],
         solvent_system=panel["solvent_system"],
         comp={panel["solvent_system"]: 1.0},
@@ -52,7 +52,7 @@ def _plot_panel(ax, panel: dict) -> None:
         points=220,
     )
 
-    ax.plot(grid, y_model, color=panel["color"], linewidth=2.0, label="ePC-SAFT (held_2012)")
+    ax.plot(grid, y_model, color=panel["color"], linewidth=2.0, label="ePC-SAFT (2012_Held)")
     ax.scatter(
         m_data,
         y_data,

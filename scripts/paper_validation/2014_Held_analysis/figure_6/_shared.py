@@ -48,7 +48,7 @@ def _mole_to_mass_fraction(x: np.ndarray) -> np.ndarray:
 def _solve_lle(feed_mass_fraction: np.ndarray) -> dict | None:
     z_feed = _mass_to_mole_fraction(feed_mass_fraction)
     params = get_prop_dict(
-        "held_2014",
+        "2014_Held",
         SPECIES,
         z_feed,
         common.T_REF,

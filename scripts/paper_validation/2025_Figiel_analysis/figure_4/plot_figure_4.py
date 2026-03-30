@@ -41,8 +41,8 @@ def _safe_model(dataset: str, ion: str) -> float:
 def _bar_values(ions):
     literature = _load_literature()
     lit_vals = np.array([-literature.get(ion, np.nan) for ion in ions], dtype=float)
-    figiel_vals = np.array([_safe_model('figiel_2025', ion) for ion in ions], dtype=float)
-    bulow_vals = np.array([_safe_model('bulow_2020', ion) for ion in ions], dtype=float)
+    figiel_vals = np.array([_safe_model('2025_Figiel', ion) for ion in ions], dtype=float)
+    bulow_vals = np.array([_safe_model('2020_Bulow', ion) for ion in ions], dtype=float)
     return lit_vals, figiel_vals, bulow_vals
 
 

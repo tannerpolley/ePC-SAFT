@@ -60,7 +60,7 @@ def _find_signature(grouped: dict, xw_target: float):
 
 def _plot_pure_reference(ax, solvent_system: str, color: str, lw: float) -> None:
     grid, y_model = common.mean_ionic_activity_curve(
-        dataset="held_2012",
+        dataset="2012_Held",
         salt="NaCl",
         solvent_system=solvent_system,
         comp={solvent_system: 1.0},
@@ -91,7 +91,7 @@ def main() -> None:
         y_data = np.asarray([float(row["miac_m"]) for row in rows], dtype=float)
 
         grid, y_model = common.mean_ionic_activity_curve(
-            dataset="held_2012",
+            dataset="2012_Held",
             salt="NaCl",
             solvent_system="water-ethanol",
             comp=comp,

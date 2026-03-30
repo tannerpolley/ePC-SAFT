@@ -25,7 +25,7 @@ from pcsaft import pcsaft_multiphase_lle
 
 
 P_REF = 1.0e5
-DATASET = "bulow_2019"
+DATASET = "2019_Bulow"
 WATER_DIELC = 78.09
 IL_DIELC = 11.0
 
