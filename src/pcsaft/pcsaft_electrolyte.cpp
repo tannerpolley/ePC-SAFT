@@ -4,6 +4,7 @@
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
+#include <array>
 #include "math.h"
 #include "Eigen/Dense"
 
@@ -117,6 +118,450 @@ vector<double> normalize_z_contributions(const vector<double> &z_raw, double Z_t
         value *= scale;
     }
     return out;
+}
+
+struct DensityScanPoint {
+    double nu = 0.0;
+    double rho = 0.0;
+    double resid = 0.0;
+    bool finite = false;
+};
+
+struct DensityBracket {
+    double nu_lo = 0.0;
+    double nu_hi = 0.0;
+    double resid_lo = 0.0;
+    double resid_hi = 0.0;
+};
+
+struct DensityRootCandidate {
+    double rho_sort = 0.0;
+    double rho = 0.0;
+    double gres = 0.0;
+    double rel_resid = 0.0;
+    double abs_p_error = 0.0;
+    double dpdrho = 0.0;
+    bool valid = false;
+};
+
+struct FlashPhaseState {
+    double p = 0.0;
+    double rhol = 0.0;
+    double rhov = 0.0;
+    bool valid = false;
+};
+
+vector<double> build_density_scan_grid() {
+    const double nu_min = 1e-13;
+    const double nu_log_max = 5e-3;
+    const double nu_linear_start = 5e-3;
+    const double nu_max = 0.7405 - 1e-4;
+    const int n_log = 24;
+    const int n_linear = 256;
+
+    vector<double> grid;
+    grid.reserve(1 + n_log + n_linear);
+    grid.push_back(nu_min);
+
+    if (n_log > 0) {
+        const double log_min = std::log(nu_min);
+        const double log_max = std::log(nu_log_max);
+        for (int i = 0; i < n_log; i++) {
+            double frac = static_cast<double>(i) / static_cast<double>(n_log - 1);
+            double nu = std::exp(log_min + frac * (log_max - log_min));
+            if (nu > grid.back()) {
+                grid.push_back(nu);
+            }
+        }
+    }
+
+    if (n_linear > 0) {
+        for (int i = 0; i < n_linear; i++) {
+            double frac = static_cast<double>(i) / static_cast<double>(n_linear - 1);
+            double nu = nu_linear_start + frac * (nu_max - nu_linear_start);
+            if (nu > grid.back()) {
+                grid.push_back(nu);
+            }
+        }
+    }
+
+    return grid;
+}
+
+DensityScanPoint evaluate_density_scan_point(double nu, double t, int ncomp, const vector<double> &x, double p, add_args &cppargs) {
+    DensityScanPoint point;
+    point.nu = nu;
+    point.rho = reduced_to_molar(nu, t, ncomp, x, cppargs);
+    try {
+        point.resid = resid_rho(point.rho, t, p, x, cppargs);
+        point.finite = std::isfinite(point.resid);
+    }
+    catch (const std::exception&) {
+        point.resid = 0.0;
+        point.finite = false;
+    }
+    return point;
+}
+
+vector<DensityBracket> find_density_brackets(const vector<DensityScanPoint> &points) {
+    vector<DensityBracket> brackets;
+    if (points.size() < 2) {
+        return brackets;
+    }
+
+    for (size_t i = 1; i < points.size(); i++) {
+        const DensityScanPoint &lo = points[i - 1];
+        const DensityScanPoint &hi = points[i];
+        if (!lo.finite || !hi.finite) {
+            continue;
+        }
+        if (lo.resid * hi.resid < 0.0) {
+            DensityBracket bracket;
+            bracket.nu_lo = lo.nu;
+            bracket.nu_hi = hi.nu;
+            bracket.resid_lo = lo.resid;
+            bracket.resid_hi = hi.resid;
+            brackets.push_back(bracket);
+        }
+    }
+
+    return brackets;
+}
+
+void append_refined_density_brackets(
+    const DensityBracket &coarse,
+    double t,
+    int ncomp,
+    const vector<double> &x,
+    double p,
+    add_args &cppargs,
+    vector<DensityBracket> &refined_brackets
+) {
+    const int refine_segments = 256;
+    const double discontinuity_threshold = 1e12;
+
+    vector<DensityScanPoint> refined_points;
+    refined_points.reserve(refine_segments + 1);
+    for (int i = 0; i <= refine_segments; i++) {
+        double frac = static_cast<double>(i) / static_cast<double>(refine_segments);
+        double nu = coarse.nu_lo + frac * (coarse.nu_hi - coarse.nu_lo);
+        refined_points.push_back(evaluate_density_scan_point(nu, t, ncomp, x, p, cppargs));
+    }
+
+    vector<DensityBracket> local_brackets = find_density_brackets(refined_points);
+    for (const DensityBracket &candidate : local_brackets) {
+        double nu_mid = 0.5 * (candidate.nu_lo + candidate.nu_hi);
+        DensityScanPoint mid = evaluate_density_scan_point(nu_mid, t, ncomp, x, p, cppargs);
+        if (!mid.finite) {
+            continue;
+        }
+
+        double min_abs = std::min(std::abs(candidate.resid_lo), std::abs(candidate.resid_hi));
+        min_abs = std::min(min_abs, std::abs(mid.resid));
+        if (min_abs > discontinuity_threshold) {
+            continue;
+        }
+
+        refined_brackets.push_back(candidate);
+    }
+}
+
+bool validate_density_root(
+    double t,
+    double p,
+    const vector<double> &x,
+    add_args &cppargs,
+    double rho,
+    DensityRootCandidate *candidate
+) {
+    const double rel_tol = 1e-6;
+    const double abs_tol = 1e-7;
+    const double ultra_low_pressure_rel_tol = 2.5e-4;
+    const double ultra_low_pressure_cutoff = 1e-3;
+
+    double p_calc = 0.0;
+    try {
+        p_calc = pcsaft_p_cpp(t, rho, x, cppargs);
+    }
+    catch (const std::exception&) {
+        return false;
+    }
+    if (!std::isfinite(p_calc)) {
+        return false;
+    }
+
+    double abs_p_error = std::abs(p_calc - p);
+    double rel_resid = abs_p_error / std::max(std::abs(p), 1e-300);
+    bool pressure_ok = (rel_resid <= rel_tol || abs_p_error <= abs_tol);
+    if (!pressure_ok && p <= ultra_low_pressure_cutoff) {
+        pressure_ok = (rel_resid <= ultra_low_pressure_rel_tol);
+    }
+    if (!pressure_ok) {
+        return false;
+    }
+
+    double h = std::max(1e-12, std::abs(rho) * 1e-6);
+    double dpdrho = 0.0;
+    try {
+        double p_plus = pcsaft_p_cpp(t, rho + h, x, cppargs);
+        if (!std::isfinite(p_plus)) {
+            return false;
+        }
+        if (rho > h) {
+            double p_minus = pcsaft_p_cpp(t, rho - h, x, cppargs);
+            if (!std::isfinite(p_minus)) {
+                return false;
+            }
+            dpdrho = (p_plus - p_minus) / (2.0 * h);
+        }
+        else {
+            dpdrho = (p_plus - p_calc) / h;
+        }
+    }
+    catch (const std::exception&) {
+        return false;
+    }
+    if (!(std::isfinite(dpdrho) && dpdrho > 0.0)) {
+        return false;
+    }
+
+    double gres = 0.0;
+    try {
+        gres = pcsaft_gres_cpp(t, rho, x, cppargs);
+    }
+    catch (const std::exception&) {
+        return false;
+    }
+    if (!std::isfinite(gres)) {
+        return false;
+    }
+
+    candidate->rho = rho;
+    candidate->gres = gres;
+    candidate->rel_resid = rel_resid;
+    candidate->abs_p_error = abs_p_error;
+    candidate->dpdrho = dpdrho;
+    candidate->valid = true;
+    return true;
+}
+
+bool try_flash_phase_state(
+    double t,
+    double p,
+    const vector<double> &xl,
+    const vector<double> &xv,
+    add_args &cppargs,
+    FlashPhaseState *state
+) {
+    try {
+        state->p = p;
+        state->rhol = pcsaft_den_cpp(t, p, xl, 0, cppargs);
+        state->rhov = pcsaft_den_cpp(t, p, xv, 1, cppargs);
+    }
+    catch (const std::exception&) {
+        state->valid = false;
+        return false;
+    }
+
+    state->valid = std::isfinite(state->rhol) && std::isfinite(state->rhov) && ((state->rhol - state->rhov) >= 1e-4);
+    return state->valid;
+}
+
+FlashPhaseState find_nearby_flash_phase_state(
+    double t,
+    double base_p,
+    const vector<double> &xl,
+    const vector<double> &xv,
+    add_args &cppargs,
+    int preferred_direction
+) {
+    FlashPhaseState state;
+    const std::array<double, 10> relative_steps = {1e-2, 5e-3, 2e-3, 1e-3, 5e-4, 2e-4, 1e-4, 5e-5, 2e-5, 1e-5};
+    const std::array<int, 2> directions = {preferred_direction >= 0 ? 1 : -1, preferred_direction >= 0 ? -1 : 1};
+
+    for (int direction : directions) {
+        for (double rel_step : relative_steps) {
+            double candidate_p = base_p * (1.0 + direction * rel_step);
+            if (!(candidate_p > 0.0) || std::abs(candidate_p - base_p) <= DBL_EPSILON * std::max(1.0, std::abs(base_p))) {
+                continue;
+            }
+            if (try_flash_phase_state(t, candidate_p, xl, xv, cppargs, &state)) {
+                return state;
+            }
+        }
+    }
+
+    state.valid = false;
+    return state;
+}
+
+bool is_effectively_pure_feed(const vector<double> &x) {
+    int nonzero = 0;
+    for (double xi : x) {
+        if (std::abs(xi) > 1e-12) {
+            nonzero += 1;
+        }
+    }
+    return nonzero == 1;
+}
+
+double pure_component_flash_resid(double t, double p, const vector<double> &x, add_args &cppargs) {
+    FlashPhaseState state;
+    if (!try_flash_phase_state(t, p, x, x, cppargs, &state)) {
+        throw SolutionError("Pure-component flash residual could not evaluate both phase densities.");
+    }
+
+    vector<double> fugcoef_l = pcsaft_fugcoef_cpp(t, state.rhol, x, cppargs);
+    vector<double> fugcoef_v = pcsaft_fugcoef_cpp(t, state.rhov, x, cppargs);
+    int comp = 0;
+    for (int i = 0; i < static_cast<int>(x.size()); ++i) {
+        if (std::abs(x[i]) > 1e-12) {
+            comp = i;
+            break;
+        }
+    }
+
+    double phi_l = fugcoef_l[comp];
+    double phi_v = fugcoef_v[comp];
+    if (!(phi_l > 0.0) || !(phi_v > 0.0) || !std::isfinite(phi_l) || !std::isfinite(phi_v)) {
+        throw SolutionError("Pure-component flash residual encountered a non-positive fugacity coefficient.");
+    }
+    return std::log(phi_l) - std::log(phi_v);
+}
+
+vector<double> pure_component_flashTQ(double t, vector<double> x, add_args &cppargs) {
+    const double log_p_min = -6.0;
+    const double log_p_max = 9.0;
+    const int scan_points = 301;
+    const int refine_levels = 6;
+    const int refine_points = 121;
+    const double resid_tol = 1e-8;
+    vector<std::pair<double, double>> valid_points;
+    valid_points.reserve(scan_points);
+
+    for (int i = 0; i < scan_points; ++i) {
+        double frac = static_cast<double>(i) / static_cast<double>(scan_points - 1);
+        double log_p = log_p_min + frac * (log_p_max - log_p_min);
+        double p = std::pow(10.0, log_p);
+
+        double f = 0.0;
+        try {
+            f = pure_component_flash_resid(t, p, x, cppargs);
+        }
+        catch (const std::exception&) {
+            continue;
+        }
+        if (!std::isfinite(f)) {
+            continue;
+        }
+        valid_points.emplace_back(p, f);
+    }
+
+    if (valid_points.empty()) {
+        throw SolutionError("No valid pure-component saturation states were found during the pressure scan.");
+    }
+
+    auto find_sign_change = [](const vector<std::pair<double, double>> &samples, double *p_lo, double *f_lo, double *p_hi, double *f_hi) {
+        for (size_t i = 1; i < samples.size(); ++i) {
+            const auto &left = samples[i - 1];
+            const auto &right = samples[i];
+            if (left.second == 0.0) {
+                *p_lo = left.first;
+                *f_lo = left.second;
+                *p_hi = left.first;
+                *f_hi = left.second;
+                return true;
+            }
+            if (right.second == 0.0 || left.second * right.second < 0.0) {
+                *p_lo = left.first;
+                *f_lo = left.second;
+                *p_hi = right.first;
+                *f_hi = right.second;
+                return true;
+            }
+        }
+        return false;
+    };
+
+    double p_lo = 0.0, p_hi = 0.0, f_lo = 0.0, f_hi = 0.0;
+    if (!find_sign_change(valid_points, &p_lo, &f_lo, &p_hi, &f_hi)) {
+        throw SolutionError("A valid sign-change bracket could not be found for the pure-component flash.");
+    }
+
+    if (p_lo == p_hi || std::abs(f_lo) <= resid_tol) {
+        vector<double> result;
+        result.push_back(p_lo);
+        result.insert(result.end(), x.begin(), x.end());
+        result.insert(result.end(), x.begin(), x.end());
+        return result;
+    }
+
+    for (int level = 0; level < refine_levels; ++level) {
+        vector<std::pair<double, double>> refined;
+        refined.reserve(refine_points);
+        const double log_lo = std::log(p_lo);
+        const double log_hi = std::log(p_hi);
+        for (int i = 0; i < refine_points; ++i) {
+            double frac = static_cast<double>(i) / static_cast<double>(refine_points - 1);
+            double p = std::exp(log_lo + frac * (log_hi - log_lo));
+            double f = 0.0;
+            try {
+                f = pure_component_flash_resid(t, p, x, cppargs);
+            }
+            catch (const std::exception&) {
+                continue;
+            }
+            if (!std::isfinite(f)) {
+                continue;
+            }
+            refined.emplace_back(p, f);
+        }
+
+        if (!refined.empty()) {
+            double new_lo = 0.0, new_hi = 0.0, new_f_lo = 0.0, new_f_hi = 0.0;
+            if (find_sign_change(refined, &new_lo, &new_f_lo, &new_hi, &new_f_hi)) {
+                p_lo = new_lo;
+                f_lo = new_f_lo;
+                p_hi = new_hi;
+                f_hi = new_f_hi;
+                if (p_lo == p_hi || std::min(std::abs(f_lo), std::abs(f_hi)) <= resid_tol) {
+                    break;
+                }
+            }
+        }
+    }
+
+    double p_est = p_lo;
+    double f_est = f_lo;
+    if (p_hi != p_lo && f_hi != f_lo) {
+        double log_lo = std::log(p_lo);
+        double log_hi = std::log(p_hi);
+        double log_est = log_lo - f_lo * (log_hi - log_lo) / (f_hi - f_lo);
+        p_est = std::exp(log_est);
+        try {
+            f_est = pure_component_flash_resid(t, p_est, x, cppargs);
+        }
+        catch (const std::exception&) {
+            if (std::abs(f_hi) < std::abs(f_lo)) {
+                p_est = p_hi;
+                f_est = f_hi;
+            }
+        }
+    }
+    if (std::abs(f_est) > std::min(std::abs(f_lo), std::abs(f_hi))) {
+        if (std::abs(f_hi) < std::abs(f_lo)) {
+            p_est = p_hi;
+        }
+        else {
+            p_est = p_lo;
+        }
+    }
+
+    vector<double> result;
+    result.push_back(p_est);
+    result.insert(result.end(), x.begin(), x.end());
+    result.insert(result.end(), x.begin(), x.end());
+    return result;
 }
 }
 
@@ -3416,6 +3861,9 @@ vector<double> flashTQ_cpp(double t, double Q, vector<double> x, add_args &cppar
     }
 
     if (!solution_found) {
+        if (is_effectively_pure_feed(x)) {
+            return pure_component_flashTQ(t, x, cppargs);
+        }
         throw SolutionError("solution could not be found for TQ flash");
     }
     return output;
@@ -3427,6 +3875,9 @@ vector<double> flashTQ_cpp(double t, double Q, vector<double> x, add_args &cppar
     try {
         output = outerTQ(p_guess, t, Q, x, cppargs);
     } catch (const SolutionError& ex) {
+        if (is_effectively_pure_feed(x)) {
+            return pure_component_flashTQ(t, x, cppargs);
+        }
         throw ex;
     }
 
@@ -3721,9 +4172,6 @@ vector<double> outerTQ(double p_guess, double t, double Q, vector<double> x, add
     double rhol, rhov;
     double Pref = p_guess - 0.01 * p_guess;
     double Pprime = p_guess + 0.01 * p_guess;
-    if (p_guess > 1e6) { // when close to the critical pressure then we need to have Pprime be less than p_guess
-        Pprime = p_guess - 0.005 * p_guess;
-    }
     double p = p_guess;
 
     // calculate initial guess for compositions based on fugacity coefficients and Raoult's Law.
@@ -3766,18 +4214,33 @@ vector<double> outerTQ(double p_guess, double t, double Q, vector<double> x, add
         }
     }
 
-    rhol = pcsaft_den_cpp(t, p, xl, 0, cppargs);
+    FlashPhaseState base_state;
+    if (!try_flash_phase_state(t, p, xl, xv, cppargs, &base_state)) {
+        throw SolutionError("No valid density roots found for outerTQ base state.");
+    }
+    rhol = base_state.rhol;
     fugcoef_l = pcsaft_fugcoef_cpp(t, rhol, xl, cppargs);
-    rhov = pcsaft_den_cpp(t, p, xv, 1, cppargs);
+    rhov = base_state.rhov;
     fugcoef_v = pcsaft_fugcoef_cpp(t, rhov, xv, cppargs);
     for (int i = 0; i < ncomp; i++) {
         k[i] = fugcoef_l[i] / fugcoef_v[i];
         u[i] = std::log(k[i] / kb);
     }
 
-    rhol = pcsaft_den_cpp(t, Pprime, xl, 0, cppargs);
+    FlashPhaseState prime_state = find_nearby_flash_phase_state(t, p, xl, xv, cppargs, p_guess > 1e6 ? -1 : 1);
+    if (!prime_state.valid) {
+        throw SolutionError("No valid nearby pressure state found for outerTQ.");
+    }
+    Pprime = prime_state.p;
+    double delta_p = Pprime - p;
+    Pref = p - delta_p;
+    if (!(Pref > 0.0)) {
+        Pref = std::max(0.5 * p, p * (1.0 - 1e-4));
+    }
+
+    rhol = prime_state.rhol;
     fugcoef_l = pcsaft_fugcoef_cpp(t, rhol, xl, cppargs);
-    rhov = pcsaft_den_cpp(t, Pprime, xv, 1, cppargs);
+    rhov = prime_state.rhov;
     fugcoef_v = pcsaft_fugcoef_cpp(t, rhov, xv, cppargs);
     for (int i = 0; i < ncomp; i++) {
         kprime[i] = fugcoef_l[i] / fugcoef_v[i];
@@ -3989,81 +4452,83 @@ double pcsaft_den_cpp(double t, double p, vector<double> x, int phase, add_args 
     // suppress debug output during density root-finding to avoid repeated prints.
     DebugFlagGuard debug_guard(cppargs.debug, 0);
 
-    // split into grid and find bounds for each root
-    int ncomp = static_cast<int>(x.size()); // number of components
-    vector<double> x_lo, x_hi;
-    int num_pts = 25;
-    double err;
-    double rho_guess = 1e-13;
-    double rho_guess_prev = rho_guess;
-    double err_prev = resid_rho(reduced_to_molar(rho_guess, t, ncomp, x, cppargs), t, p, x, cppargs);
-    for (int i = 0; i < num_pts; i++) {
-        rho_guess = 0.7405 / (double)num_pts * i + 6e-3;
-        err = resid_rho(reduced_to_molar(rho_guess, t, ncomp, x, cppargs), t, p, x, cppargs);
-        if (err * err_prev < 0) {
-            x_lo.push_back(rho_guess_prev);
-            x_hi.push_back(rho_guess);
-        }
-        err_prev = err;
-        rho_guess_prev = rho_guess;
+    int ncomp = static_cast<int>(x.size());
+    vector<double> scan_grid = build_density_scan_grid();
+    vector<DensityScanPoint> scan_points;
+    scan_points.reserve(scan_grid.size());
+    for (double nu : scan_grid) {
+        scan_points.push_back(evaluate_density_scan_point(nu, t, ncomp, x, p, cppargs));
     }
 
-    // solve for appropriate root(s)
-    double rho = _HUGE;
-    double x_lo_molar, x_hi_molar;
+    vector<DensityBracket> coarse_brackets = find_density_brackets(scan_points);
+    vector<DensityBracket> refined_brackets;
+    for (const DensityBracket &coarse : coarse_brackets) {
+        append_refined_density_brackets(coarse, t, ncomp, x, p, cppargs, refined_brackets);
+    }
 
-    if (x_lo.size() == 1) {
-        rho_guess = reduced_to_molar((x_lo[0] + x_hi[0]) / 2., t, ncomp, x, cppargs);
-        x_lo_molar = reduced_to_molar(x_lo[0], t, ncomp, x, cppargs);
-        x_hi_molar = reduced_to_molar(x_hi[0], t, ncomp, x, cppargs);
-        rho = BrentRho(t, p, x, phase, cppargs, x_lo_molar, x_hi_molar, DBL_EPSILON, 1e-8, 200);
+    if (refined_brackets.empty()) {
+        throw SolutionError("No continuous density root brackets were found for the requested state.");
     }
-    else if (x_lo.size() <= 3 && !x_lo.empty()) {
-        if (phase == 0) {
-            rho_guess = reduced_to_molar((x_lo.back() + x_hi.back()) / 2., t, ncomp, x, cppargs);
-            x_lo_molar = reduced_to_molar(x_lo.back(), t, ncomp, x, cppargs);
-            x_hi_molar = reduced_to_molar(x_hi.back(), t, ncomp, x, cppargs);
-            rho = BrentRho(t, p, x, phase, cppargs, x_lo_molar, x_hi_molar, DBL_EPSILON, 1e-8, 200);
+
+    vector<DensityRootCandidate> candidates;
+    candidates.reserve(refined_brackets.size());
+    for (const DensityBracket &bracket : refined_brackets) {
+        DensityRootCandidate candidate;
+        candidate.rho_sort = reduced_to_molar(0.5 * (bracket.nu_lo + bracket.nu_hi), t, ncomp, x, cppargs);
+
+        try {
+            double rho_lo = reduced_to_molar(bracket.nu_lo, t, ncomp, x, cppargs);
+            double rho_hi = reduced_to_molar(bracket.nu_hi, t, ncomp, x, cppargs);
+            double rho_root = BrentRho(t, p, x, phase, cppargs, rho_lo, rho_hi, DBL_EPSILON, 1e-14, 200);
+            validate_density_root(t, p, x, cppargs, rho_root, &candidate);
         }
-        else if (phase == 1) {
-            rho_guess = reduced_to_molar((x_lo[0] + x_hi[0]) / 40., t, ncomp, x, cppargs); // starting with a lower guess often provides better results
-            x_lo_molar = reduced_to_molar(x_lo[0], t, ncomp, x, cppargs);
-            x_hi_molar = reduced_to_molar(x_hi[0], t, ncomp, x, cppargs);
-            rho = BrentRho(t, p, x, phase, cppargs, x_lo_molar, x_hi_molar, DBL_EPSILON, 1e-8, 200);
+        catch (const std::exception&) {
+            candidate.valid = false;
         }
+
+        candidates.push_back(candidate);
     }
-    else if (x_lo.size() > 3) {
-        // if multiple roots to check, then find the one with the minimum gibbs energy. Reference: Privat R, Gani R, Jaubert JN. Are safe results obtained when the PC-SAFT equation of state is applied to ordinary pure chemicals?. Fluid Phase Equilibria. 2010 Aug 15;295(1):76-92.
-        double g_min = 1e60;
-        for (unsigned int i = 0; i < x_lo.size(); i++) {
-            rho_guess = reduced_to_molar((x_lo[i] + x_hi[i]) / 2., t, ncomp, x, cppargs);
-            x_lo_molar = reduced_to_molar(x_lo[i], t, ncomp, x, cppargs);
-            x_hi_molar = reduced_to_molar(x_hi[i], t, ncomp, x, cppargs);
-            double rho_i = BrentRho(t, p, x, phase, cppargs, x_lo_molar, x_hi_molar, DBL_EPSILON, 1e-8, 200);
-            double g_i = pcsaft_gres_cpp(t, rho_i, x, cppargs);
-            if (g_i < g_min) {
-                g_min = g_i;
-                rho = rho_i;
+
+    if (candidates.empty()) {
+        throw SolutionError("Density solver did not produce any candidate roots.");
+    }
+
+    std::sort(candidates.begin(), candidates.end(), [](const DensityRootCandidate &a, const DensityRootCandidate &b) {
+        return a.rho_sort < b.rho_sort;
+    });
+
+    const double rho_tol = 1e-8;
+    if (phase == 1) {
+        const double rho_extreme = candidates.front().rho_sort;
+        DensityRootCandidate *best = nullptr;
+        for (DensityRootCandidate &candidate : candidates) {
+            if (std::abs(candidate.rho_sort - rho_extreme) > rho_tol * std::max(1.0, std::abs(rho_extreme))) {
+                break;
+            }
+            if (candidate.valid && (best == nullptr || candidate.gres < best->gres)) {
+                best = &candidate;
             }
         }
-    }
-    else {
-        int num_pts = 25;
-        double err_min = 1e40;
-        double rho_min = _HUGE;
-        double err, rho_guess;
-        for (int i = 0; i < num_pts; i++) {
-            rho_guess = 0.7405 / (double)num_pts * i + 1e-8;
-            err = resid_rho(reduced_to_molar(rho_guess, t, ncomp, x, cppargs), t, p, x, cppargs);
-            if (std::abs(err) < err_min) {
-                err_min = std::abs(err);
-                rho_min = reduced_to_molar(rho_guess, t, ncomp, x, cppargs);
-            }
+        if (best != nullptr) {
+            return best->rho;
         }
-        rho = rho_min;
+        throw SolutionError("No valid density root found for vapor phase.");
     }
 
-    return rho;
+    const double rho_extreme = candidates.back().rho_sort;
+    DensityRootCandidate *best = nullptr;
+    for (auto it = candidates.rbegin(); it != candidates.rend(); ++it) {
+        if (std::abs(it->rho_sort - rho_extreme) > rho_tol * std::max(1.0, std::abs(rho_extreme))) {
+            break;
+        }
+        if (it->valid && (best == nullptr || it->gres < best->gres)) {
+            best = &(*it);
+        }
+    }
+    if (best != nullptr) {
+        return best->rho;
+    }
+    throw SolutionError("No valid density root found for liquid phase.");
 }
 
 double estimate_flash_t(double p, double Q, vector<double> x, add_args &cppargs) {
@@ -4529,7 +4994,8 @@ double BrentRho(double t, double p, vector<double> x, int phase, add_args &cppar
 
 double resid_rho(double rhomolar, double t, double p, vector<double> x, add_args &cppargs){
     double peos = pcsaft_p_cpp(t, rhomolar, x, cppargs);
-    double cost = (peos-p)/p;
+    double pressure_scale = std::max(std::abs(p), 1e-3);
+    double cost = (peos-p)/pressure_scale;
     if (std::isfinite(cost)) {
         return cost;
     }

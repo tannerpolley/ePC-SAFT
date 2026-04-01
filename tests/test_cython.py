@@ -7,7 +7,7 @@ Tests for checking that the PC-SAFT functions are working correctly.
 import math
 import numpy as np
 import pytest
-from pcsaft import pcsaft_den, pcsaft_hres, pcsaft_gres, pcsaft_sres
+from pcsaft import pcsaft_den, pcsaft_hres, pcsaft_gres, pcsaft_sres, SolutionError
 from pcsaft import flashTQ, flashPQ, pcsaft_Hvap
 from pcsaft import dielc_water, pcsaft_osmoticC, pcsaft_fugcoef, pcsaft_miac_m, pcsaft_gsolv, pcsaft_lnfugcoef_terms, pcsaft_dielc_eval
 from pcsaft import pcsaft_cp, pcsaft_ares, pcsaft_dadt, pcsaft_p
@@ -69,6 +69,13 @@ def _runtime_to_elec_model(runtime):
 
 def _dataset_file(*parts: str) -> Path:
     return DATASET_ROOT.joinpath(*parts)
+
+
+def _assert_density_roundtrip(t, p, x, params, phase, rel_tol=1e-6, abs_tol=1e-12):
+    rho = pcsaft_den(t, p, x, params, phase=phase)
+    p_back = pcsaft_p(t, rho, x, params)
+    assert abs(p_back - p) <= max(abs_tol, rel_tol * abs(p))
+    return rho
 
 
 def test_ares(print_result=False):
@@ -515,6 +522,24 @@ def test_density(print_result=False):
         print('    PC-SAFT:', calc, 'mol m^-3')
         print('    Relative deviation:', (calc - ref) / ref * 100, '%')
     assert abs((calc - ref) / ref * 100) < 2
+
+
+def test_density_roundtrip_validation():
+    x = np.asarray([1.0])
+    params = {'m': np.asarray([2.8149]), 's': np.asarray([3.7169]), 'e': np.asarray([285.69])}
+    _assert_density_roundtrip(320.0, 101325.0, x, params, phase='liq')
+    _assert_density_roundtrip(320.0, 101325.0, x, params, phase='vap')
+
+    params = {'m': np.asarray([2.0020]), 's': np.asarray([3.6184]), 'e': np.asarray([208.11])}
+    _assert_density_roundtrip(293.0, 1.39e-4, x, params, phase='vap')
+
+
+def test_density_rejects_unvalidated_liquid_root():
+    x = np.asarray([1.0])
+    params = {'m': np.asarray([2.0020]), 's': np.asarray([3.6184]), 'e': np.asarray([208.11])}
+
+    with pytest.raises(SolutionError, match='No valid density root found for liquid phase'):
+        pcsaft_den(150.0, 1.39e-4, x, params, phase='liq')
 
 def test_indexes(print_result=False):
     '''

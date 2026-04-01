@@ -18,6 +18,13 @@ class SolutionError(Exception):
     def __init__(self, message):
         self.message = message
 
+
+cdef double _pcsaft_den_checked(double t, double p, vector[double] x, int phase, add_args &cppargs) except *:
+    try:
+        return pcsaft_den_cpp(t, p, x, phase, cppargs)
+    except Exception as exc:
+        raise SolutionError(str(exc))
+
 def check_input(x, vars):
     if abs(np.sum(x) - 1) > 1e-7:
         raise InputError('The mole fractions do not sum to 1. x = {}'.format(x))
@@ -1352,9 +1359,9 @@ def pcsaft_Hvap(t, x, params, p_guess=None):
     except:
         raise SolutionError('A solution was not found for flashTQ. T={}'.format(t))
 
-    rho = pcsaft_den_cpp(t, Pvap, x, 0, cppargs)
+    rho = _pcsaft_den_checked(t, Pvap, x, 0, cppargs)
     hres_l = pcsaft_hres_cpp(t, rho, x, cppargs)
-    rho = pcsaft_den_cpp(t, Pvap, x, 1, cppargs)
+    rho = _pcsaft_den_checked(t, Pvap, x, 1, cppargs)
     hres_v = pcsaft_hres_cpp(t, rho, x, cppargs)
     Hvap = hres_v - hres_l
 
@@ -1480,7 +1487,7 @@ def pcsaft_osmoticC(t, rho, x, params):
         ph = 1
     else:
         ph = 0
-    rho0 = pcsaft_den_cpp(t, p, x0, ph, cppargs)
+    rho0 = _pcsaft_den_checked(t, p, x0, ph, cppargs)
     fugcoef0 = np.asarray(pcsaft_fugcoef_cpp(t, rho0, x0, cppargs))
     gamma = float(fugcoef[indx_solvent]/fugcoef0[indx_solvent])
 
@@ -1522,7 +1529,7 @@ def pcsaft_miac_m(t, rho, x, params, species=None):
     solvent_budget = max(1.0 - eps * (len(x) - len(idx_sol)), eps * len(idx_sol))
     x_inf[idx_sol] = solvent_ref * solvent_budget
     x_inf /= np.sum(x_inf)
-    rho_inf = pcsaft_den_cpp(t, pcsaft_p_cpp(t, rho, x, cppargs), x_inf, 0, cppargs)
+    rho_inf = _pcsaft_den_checked(t, pcsaft_p_cpp(t, rho, x, cppargs), x_inf, 0, cppargs)
     fugcoef_inf = np.asarray(pcsaft_fugcoef_cpp(t, rho_inf, x_inf, cppargs), dtype=float)
     if np.any(fugcoef_inf <= 0):
         raise SolutionError('Non-positive fugacity at infinite dilution.')
@@ -1583,7 +1590,7 @@ def pcsaft_miac(t, rho, x, params, species=None):
     solvent_budget = max(1.0 - eps * (len(x) - len(idx_sol)), eps * len(idx_sol))
     x_inf[idx_sol] = solvent_ref * solvent_budget
     x_inf /= np.sum(x_inf)
-    rho_inf = pcsaft_den_cpp(t, pcsaft_p_cpp(t, rho, x, cppargs), x_inf, 0, cppargs)
+    rho_inf = _pcsaft_den_checked(t, pcsaft_p_cpp(t, rho, x, cppargs), x_inf, 0, cppargs)
     fugcoef_inf = np.asarray(pcsaft_fugcoef_cpp(t, rho_inf, x_inf, cppargs), dtype=float)
     if np.any(fugcoef_inf <= 0):
         raise SolutionError('Non-positive fugacity at infinite dilution.')
@@ -1684,9 +1691,9 @@ def pcsaft_cp(t, rho, aly_lee_params, x, params):
 
     cp_ideal = aly_lee(t, aly_lee_params)
     p = pcsaft_p_cpp(t, rho, x, cppargs)
-    rho0 = pcsaft_den_cpp(t-0.001, p, x, ph, cppargs)
+    rho0 = _pcsaft_den_checked(t-0.001, p, x, ph, cppargs)
     hres0 = pcsaft_hres_cpp(t-0.001, rho0, x, cppargs)
-    rho1 = pcsaft_den_cpp(t+0.001, p, x, ph, cppargs)
+    rho1 = _pcsaft_den_checked(t+0.001, p, x, ph, cppargs)
     hres1 = pcsaft_hres_cpp(t+0.001, rho1, x, cppargs)
     dhdt = (hres1-hres0)/0.002 # a numerical derivative is used for now until analytical derivatives are ready
     return cp_ideal + dhdt
@@ -1765,7 +1772,7 @@ def pcsaft_den(t, p, x, params, phase='liq'):
     else:
         phase_num = 1
 
-    return pcsaft_den_cpp(t, p, x, phase_num, cppargs)
+    return _pcsaft_den_checked(t, p, x, phase_num, cppargs)
 
 
 def pcsaft_hres(t, rho, x, params):
@@ -2002,7 +2009,7 @@ def pcsaft_gsolv(t, rho, x, params, species=None):
         x_inf = x_ref.copy()
         x_inf[i] = eps
         x_inf /= np.sum(x_inf)
-        rho_inf = pcsaft_den_cpp(t, p, x_inf, phase, cppargs)
+        rho_inf = _pcsaft_den_checked(t, p, x_inf, phase, cppargs)
         lnfug_inf = float(pcsaft_lnfug_cpp(t, rho_inf, x_inf, cppargs)[i])
         if not np.isfinite(lnfug_inf):
             raise SolutionError('Non-finite ln(fugacity coefficient) at infinite dilution.')

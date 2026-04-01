@@ -53,4 +53,4 @@ pcsaft = [
 ]
 
 [tool.pytest.ini_options]
-cache_dir = ".codex/.pytest_cache"
+addopts = "-p no:cacheprovider"

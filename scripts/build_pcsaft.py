@@ -4,6 +4,7 @@ import importlib.util
 import subprocess
 import sys
 from pathlib import Path
+from typing import Literal
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +19,13 @@ COMPILED_INPUTS = [
     PACKAGE_ROOT / "pcsaft_electrolyte.cpp",
     PACKAGE_ROOT / "pcsaft_electrolyte.h",
 ]
+INPLACE_BUILD_INPUTS = {
+    REPO_ROOT / "setup.py",
+    PACKAGE_ROOT / "pcsaft.pyx",
+    PACKAGE_ROOT / "pcsaft.pxd",
+    PACKAGE_ROOT / "pcsaft_electrolyte.cpp",
+    PACKAGE_ROOT / "pcsaft_electrolyte.h",
+}
 
 
 def _cleanup_generated_cpp() -> None:
@@ -49,13 +57,14 @@ def _editable_install_matches_repo() -> bool:
     return module_path == EXPECTED_PACKAGE_INIT
 
 
-def _rebuild_reason() -> str | None:
-    if not _editable_install_matches_repo():
-        return "pcsaft is not installed editable from this repo in the active environment"
+def _rebuild_plan() -> tuple[Literal["build_ext", "editable_install"], str] | None:
+    editable_matches_repo = _editable_install_matches_repo()
+    if not editable_matches_repo:
+        return "editable_install", "pcsaft is not installed editable from this repo in the active environment"
 
     extension_mtime = _latest_extension_mtime()
     if extension_mtime is None:
-        return "compiled extension artifact is missing under src/pcsaft"
+        return "build_ext", "compiled extension artifact is missing under src/pcsaft"
 
     latest_input = max(path.stat().st_mtime for path in COMPILED_INPUTS if path.exists())
     if latest_input > extension_mtime:
@@ -63,9 +72,25 @@ def _rebuild_reason() -> str | None:
             (path for path in COMPILED_INPUTS if path.exists()),
             key=lambda path: path.stat().st_mtime,
         )
-        return f"compiled build inputs are newer than the extension ({newest_input.name})"
+        reason = f"compiled build inputs are newer than the extension ({newest_input.name})"
+        if newest_input in INPLACE_BUILD_INPUTS and editable_matches_repo:
+            return "build_ext", reason
+        return "editable_install", reason
 
     return None
+
+
+def _run_command(cmd: list[str]) -> None:
+    print("Running:", " ".join(cmd))
+    subprocess.run(cmd, cwd=str(REPO_ROOT), check=True)
+
+
+def _run_build_ext() -> None:
+    _run_command([sys.executable, "setup.py", "build_ext", "--inplace"])
+
+
+def _run_editable_install() -> None:
+    _run_command([sys.executable, "-m", "pip", "install", "-e", ".", "--no-build-isolation", "--no-deps"])
 
 
 def main() -> int:
@@ -82,16 +107,19 @@ def main() -> int:
         print(f"error: expected {pyproject} to exist")
         return 1
 
-    rebuild_reason = "forced rebuild requested" if args.force else _rebuild_reason()
-    if rebuild_reason is None:
+    rebuild_plan = ("build_ext", "forced rebuild requested") if args.force else _rebuild_plan()
+    if rebuild_plan is None:
         print("Editable install is up to date; skipping rebuild.")
         _cleanup_generated_cpp()
         return 0
 
-    cmd = [sys.executable, "-m", "pip", "install", "-e", ".", "--no-build-isolation", "--no-deps"]
-    print(f"Rebuilding editable install because {rebuild_reason}.")
-    print("Running:", " ".join(cmd))
-    subprocess.run(cmd, cwd=str(REPO_ROOT), check=True)
+    action, rebuild_reason = rebuild_plan
+    if action == "build_ext":
+        print(f"Rebuilding compiled extension in place because {rebuild_reason}.")
+        _run_build_ext()
+    else:
+        print(f"Rebuilding editable install because {rebuild_reason}.")
+        _run_editable_install()
 
     _cleanup_generated_cpp()
     return 0
