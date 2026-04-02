@@ -47,9 +47,33 @@ python run_pytest.py
 
 `python scripts/build_pcsaft.py` now skips the reinstall when the editable build is already current. Use `python scripts/build_pcsaft.py --force` to force a fresh editable reinstall, or `python run_pytest.py --force-build` to force that rebuild before tests.
 
-Analysis and validation scripts are expected to run from the active `PC-SAFT` environment with `pcsaft` installed editable. A source checkout by itself is not a supported package-import path.
+Analysis and validation scripts are expected to run from the repo-named `PC-SAFT` Conda environment with `pcsaft` installed editable. A source checkout by itself is not a supported package-import path.
 
 The paper-validation and exploratory analysis scripts intentionally remain outside `pytest`; they are workspace tools, not package-unit tests.
+
+## Codex / Agent Workflow
+
+For Codex agents and other automated local tooling on Windows, this repo overrides the generic "default to `conda run`" policy: prefer the repo-local environment wrapper first.
+
+```bash
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run_in_repo_env.ps1 scripts/codex_doctor.py
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run_in_repo_env.ps1 run_pytest.py
+```
+
+The wrapper resolves the repo-named Conda environment's `python.exe` directly and only falls back to `conda run` if needed, which avoids some Windows temp-file issues seen with `conda run`.
+
+Use raw `conda run -n PC-SAFT ...` only when you already know it is healthy in the current session. In that case, these are equivalent:
+
+```bash
+conda run -n PC-SAFT python scripts/codex_doctor.py
+conda run -n PC-SAFT python run_pytest.py
+```
+
+`scripts/codex_doctor.py` reports which checkout `pcsaft` is importing from, whether that checkout is compatible with the current repo, and whether a rebuild is needed before testing.
+
+`scripts/build_pcsaft.py` now treats a same-commit editable install from another worktree as compatible for testing, so agents do not need to reinstall the package just because the active environment still points at a sibling checkout with the same git `HEAD`.
+
+When an editable reinstall is required, the build helper uses repo-local pip temp/cache directories under `build/` instead of machine-global temp paths.
 
 ## MIAC Data Workflow
 

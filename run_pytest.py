@@ -29,7 +29,7 @@ def main() -> int:
     elif not build_script.exists():
         print(f"warning: build script not found at {build_script}")
 
-    cmd = [sys.executable, "-m", "pytest", "tests/test_cython.py"]
+    cmd = [sys.executable, "-m", "pytest", "tests"]
     cmd.extend(pytest_args)
     print("Running:", " ".join(cmd))
     subprocess.run(cmd, cwd=str(repo_root), check=True)
