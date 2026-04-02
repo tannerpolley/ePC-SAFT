@@ -36,6 +36,8 @@ The build requires a C++ toolchain, Cython, NumPy, and the vendored Eigen header
 
 The runtime dataset loader lives in `pcsaft.parameters`, and the package bundles the dataset files needed at runtime.
 
+The preferred object API is `PCSAFTMixture` plus `PCSAFTState`. Use `PCSAFTMixture.from_dataset(...)` for dataset-backed systems and `PCSAFTMixture.from_params(...)` when you already have a resolved parameter payload.
+
 ## Development Workflow
 
 For local work inside this repo, use an editable install and rerun it when package metadata or compiled sources change:
