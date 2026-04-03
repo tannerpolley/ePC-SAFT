@@ -78,6 +78,340 @@ struct AresContributions {
 };
 thread_local double g_last_z_total = 1.0;
 
+constexpr std::array<double, 7> kDispersionA0 = {
+    0.9105631445, 0.6361281449, 2.6861347891, -26.547362491,
+    97.759208784, -159.59154087, 91.297774084
+};
+constexpr std::array<double, 7> kDispersionA1 = {
+    -0.3084016918, 0.1860531159, -2.5030047259, 21.419793629,
+    -65.255885330, 83.318680481, -33.746922930
+};
+constexpr std::array<double, 7> kDispersionA2 = {
+    -0.0906148351, 0.4527842806, 0.5962700728, -1.7241829131,
+    -4.1302112531, 13.776631870, -8.6728470368
+};
+constexpr std::array<double, 7> kDispersionB0 = {
+    0.7240946941, 2.2382791861, -4.0025849485, -21.003576815,
+    26.855641363, 206.55133841, -355.60235612
+};
+constexpr std::array<double, 7> kDispersionB1 = {
+    -0.5755498075, 0.6995095521, 3.8925673390, -17.215471648,
+    192.67226447, -161.82646165, -165.20769346
+};
+constexpr std::array<double, 7> kDispersionB2 = {
+    0.0976883116, -0.2557574982, -9.1558561530, 20.642075974,
+    -38.804430052, 93.626774077, -29.666905585
+};
+constexpr std::array<double, 5> kDipoleA0 = { 0.3043504, -0.1358588, 1.4493329, 0.3556977, -2.0653308 };
+constexpr std::array<double, 5> kDipoleA1 = { 0.9534641, -1.8396383, 2.0131180, -7.3724958, 8.2374135 };
+constexpr std::array<double, 5> kDipoleA2 = { -1.1610080, 4.5258607, 0.9751222, -12.281038, 5.9397575 };
+constexpr std::array<double, 5> kDipoleB0 = { 0.2187939, -1.1896431, 1.1626889, 0.0, 0.0 };
+constexpr std::array<double, 5> kDipoleB1 = { -0.5873164, 1.2489132, -0.5085280, 0.0, 0.0 };
+constexpr std::array<double, 5> kDipoleB2 = { 3.4869576, -14.915974, 15.372022, 0.0, 0.0 };
+constexpr std::array<double, 5> kDipoleC0 = { -0.0646774, 0.1975882, -0.8087562, 0.6902849, 0.0 };
+constexpr std::array<double, 5> kDipoleC1 = { -0.9520876, 2.9924258, -2.3802636, -0.2701261, 0.0 };
+constexpr std::array<double, 5> kDipoleC2 = { -0.6260979, 1.2924686, 1.6542783, -3.4396744, 0.0 };
+constexpr double kDipoleConversion = 7242.702976750923;
+
+template <size_t N>
+double evaluate_polynomial(const std::array<double, N> &coeffs, double x) {
+    double value = 0.0;
+    for (size_t i = 0; i < N; ++i) {
+        value += coeffs[i] * std::pow(x, static_cast<int>(i));
+    }
+    return value;
+}
+
+template <size_t N>
+double evaluate_polynomial_derivative(const std::array<double, N> &coeffs, double x) {
+    double value = 0.0;
+    for (size_t i = 1; i < N; ++i) {
+        value += coeffs[i] * static_cast<double>(i) * std::pow(x, static_cast<int>(i - 1));
+    }
+    return value;
+}
+
+template <size_t N>
+double evaluate_eta_weighted_derivative(const std::array<double, N> &coeffs, double x) {
+    double value = 0.0;
+    for (size_t i = 0; i < N; ++i) {
+        value += coeffs[i] * static_cast<double>(i + 1) * std::pow(x, static_cast<int>(i));
+    }
+    return value;
+}
+
+struct ThermoCommonState {
+    vector<double> d;
+    vector<double> dd_dt;
+    vector<double> zeta;
+    vector<double> dzeta_dt;
+    vector<double> e_ij;
+    vector<double> s_ij;
+    vector<double> ghs;
+    vector<double> denghs;
+    double den = 0.0;
+    double eta = 0.0;
+    double m_avg = 0.0;
+    double m2es3 = 0.0;
+    double m2e2s3 = 0.0;
+};
+
+struct DispersionPolynomialState {
+    std::array<double, 7> a{};
+    std::array<double, 7> b{};
+    double I1 = 0.0;
+    double I2 = 0.0;
+    double dI1_deta = 0.0;
+    double dI2_deta = 0.0;
+    double dEtaI1_deta = 0.0;
+    double dEtaI2_deta = 0.0;
+    double C1 = 0.0;
+    double C2 = 0.0;
+};
+
+struct AssociationSetup {
+    vector<int> site_component_index;
+    vector<double> x_assoc;
+    vector<double> delta_ij;
+};
+
+double compute_pair_sigma(size_t idx, int i, int j, const add_args &cppargs) {
+    double sigma = 0.5 * (cppargs.s[i] + cppargs.s[j]);
+    if (!cppargs.l_ij.empty()) {
+        sigma *= (1.0 - cppargs.l_ij[idx]);
+    }
+    return sigma;
+}
+
+double compute_pair_epsilon(size_t idx, int i, int j, const add_args &cppargs) {
+    if (!cppargs.z.empty() && cppargs.z[i] * cppargs.z[j] > 0.0) {
+        return 0.0;
+    }
+    double epsilon = std::sqrt(cppargs.e[i] * cppargs.e[j]);
+    if (!cppargs.k_ij.empty()) {
+        epsilon *= (1.0 - cppargs.k_ij[idx]);
+    }
+    return epsilon;
+}
+
+double compute_pair_diameter(double d_i, double d_j) {
+    return d_i * d_j / (d_i + d_j);
+}
+
+double compute_hs_contact_value(double pair_diameter, double zeta2, double zeta3) {
+    return 1.0 / (1.0 - zeta3)
+        + pair_diameter * 3.0 * zeta2 / std::pow(1.0 - zeta3, 2.0)
+        + std::pow(pair_diameter, 2.0) * 2.0 * zeta2 * zeta2 / std::pow(1.0 - zeta3, 3.0);
+}
+
+double compute_hs_contact_density_derivative(double pair_diameter, double zeta2, double zeta3) {
+    return zeta3 / std::pow(1.0 - zeta3, 2.0)
+        + pair_diameter * (3.0 * zeta2 / std::pow(1.0 - zeta3, 2.0) + 6.0 * zeta2 * zeta3 / std::pow(1.0 - zeta3, 3.0))
+        + std::pow(pair_diameter, 2.0) * (4.0 * zeta2 * zeta2 / std::pow(1.0 - zeta3, 3.0) + 6.0 * zeta2 * zeta2 * zeta3 / std::pow(1.0 - zeta3, 4.0));
+}
+
+double compute_hs_contact_time_derivative(
+    double pair_diameter,
+    double pair_diameter_dt,
+    double zeta2,
+    double zeta3,
+    double dzeta2_dt,
+    double dzeta3_dt
+) {
+    return dzeta3_dt / std::pow(1.0 - zeta3, 2.0)
+        + 3.0 * (pair_diameter_dt * zeta2 + pair_diameter * dzeta2_dt) / std::pow(1.0 - zeta3, 2.0)
+        + 4.0 * pair_diameter * zeta2 * (1.5 * dzeta3_dt + pair_diameter_dt * zeta2 + pair_diameter * dzeta2_dt) / std::pow(1.0 - zeta3, 3.0)
+        + 6.0 * std::pow(pair_diameter * zeta2, 2.0) * dzeta3_dt / std::pow(1.0 - zeta3, 4.0);
+}
+
+ThermoCommonState build_thermo_common_state(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {
+    ThermoCommonState state;
+    int ncomp = static_cast<int>(x.size());
+    state.d.assign(ncomp, 0.0);
+    if (include_dt) {
+        state.dd_dt.assign(ncomp, 0.0);
+        state.dzeta_dt.assign(4, 0.0);
+    }
+    state.zeta.assign(4, 0.0);
+    state.e_ij.assign(ncomp * ncomp, 0.0);
+    state.s_ij.assign(ncomp * ncomp, 0.0);
+    state.ghs.assign(ncomp * ncomp, 0.0);
+    state.denghs.assign(ncomp * ncomp, 0.0);
+    state.den = rho * N_AV / 1.0e30;
+
+    for (int i = 0; i < ncomp; ++i) {
+        state.d[i] = cppargs.s[i] * (1.0 - 0.12 * std::exp(-3.0 * cppargs.e[i] / t));
+    }
+
+    if (include_dt) {
+        for (int i = 0; i < ncomp; ++i) {
+            state.dd_dt[i] = -0.36 * cppargs.s[i] * cppargs.e[i] * std::exp(-3.0 * cppargs.e[i] / t) / (t * t);
+        }
+    }
+
+    for (int k = 0; k < 4; ++k) {
+        double summ = 0.0;
+        for (int j = 0; j < ncomp; ++j) {
+            summ += x[j] * cppargs.m[j] * std::pow(state.d[j], k);
+        }
+        state.zeta[k] = PI / 6.0 * state.den * summ;
+    }
+
+    if (include_dt) {
+        for (int k = 1; k < 4; ++k) {
+            double summ = 0.0;
+            for (int j = 0; j < ncomp; ++j) {
+                summ += x[j] * cppargs.m[j] * k * state.dd_dt[j] * std::pow(state.d[j], k - 1);
+            }
+            state.dzeta_dt[k] = PI / 6.0 * state.den * summ;
+        }
+    }
+
+    state.eta = state.zeta[3];
+    state.m_avg = 0.0;
+    for (int i = 0; i < ncomp; ++i) {
+        state.m_avg += x[i] * cppargs.m[i];
+    }
+
+    int idx = -1;
+    for (int i = 0; i < ncomp; ++i) {
+        if (!cppargs.z.empty() && std::abs(cppargs.z[i]) > 1e-12) {
+            int mode = cppargs.d_ion_mode;
+            double sigma_i = cppargs.s[i];
+            if (sigma_i <= 0.0) {
+                throw ValueError("DH/ion diameter requires positive ionic sigma_i.");
+            }
+            if (mode == 0) {
+                state.d[i] = sigma_i;
+            }
+            else if (mode == 1) {
+                state.d[i] = sigma_i * (1.0 - 0.12);
+            }
+            else if (mode == 2) {
+                state.d[i] = sigma_i * (1.0 - 0.12 * std::exp(-3.0 * cppargs.e[i] / t));
+            }
+            else {
+                throw ValueError("Unknown d_ion_mode. Supported values are 0, 1, 2.");
+            }
+        }
+        for (int j = 0; j < ncomp; ++j) {
+            idx += 1;
+            state.s_ij[idx] = compute_pair_sigma(static_cast<size_t>(idx), i, j, cppargs);
+            state.e_ij[idx] = compute_pair_epsilon(static_cast<size_t>(idx), i, j, cppargs);
+            state.m2es3 += x[i] * x[j] * cppargs.m[i] * cppargs.m[j] * state.e_ij[idx] / t * std::pow(state.s_ij[idx], 3);
+            state.m2e2s3 += x[i] * x[j] * cppargs.m[i] * cppargs.m[j] * std::pow(state.e_ij[idx] / t, 2) * std::pow(state.s_ij[idx], 3);
+
+            double pair_diameter = compute_pair_diameter(state.d[i], state.d[j]);
+            state.ghs[idx] = compute_hs_contact_value(pair_diameter, state.zeta[2], state.zeta[3]);
+            state.denghs[idx] = compute_hs_contact_density_derivative(pair_diameter, state.zeta[2], state.zeta[3]);
+        }
+    }
+
+    if (include_dt) {
+        for (int i = 0; i < ncomp; ++i) {
+            if (!cppargs.z.empty() && std::abs(cppargs.z[i]) > 1e-12 && cppargs.d_ion_mode != 2) {
+                state.dd_dt[i] = 0.0;
+            }
+        }
+    }
+
+    return state;
+}
+
+DispersionPolynomialState build_dispersion_polynomials(double m_avg, double eta) {
+    DispersionPolynomialState state;
+    double c1 = (m_avg - 1.0) / m_avg;
+    double c2 = (m_avg - 2.0) / m_avg;
+    for (size_t i = 0; i < state.a.size(); ++i) {
+        state.a[i] = kDispersionA0[i] + c1 * kDispersionA1[i] + c1 * c2 * kDispersionA2[i];
+        state.b[i] = kDispersionB0[i] + c1 * kDispersionB1[i] + c1 * c2 * kDispersionB2[i];
+        state.I1 += state.a[i] * std::pow(eta, static_cast<int>(i));
+        state.I2 += state.b[i] * std::pow(eta, static_cast<int>(i));
+        if (i > 0) {
+            state.dI1_deta += state.a[i] * static_cast<double>(i) * std::pow(eta, static_cast<int>(i - 1));
+            state.dI2_deta += state.b[i] * static_cast<double>(i) * std::pow(eta, static_cast<int>(i - 1));
+        }
+        state.dEtaI1_deta += state.a[i] * static_cast<double>(i + 1) * std::pow(eta, static_cast<int>(i));
+        state.dEtaI2_deta += state.b[i] * static_cast<double>(i + 1) * std::pow(eta, static_cast<int>(i));
+    }
+    state.C1 = 1.0 / (1.0
+        + m_avg * (8.0 * eta - 2.0 * eta * eta) / std::pow(1.0 - eta, 4.0)
+        + (1.0 - m_avg) * (20.0 * eta - 27.0 * eta * eta + 12.0 * std::pow(eta, 3.0) - 2.0 * std::pow(eta, 4.0))
+            / std::pow((1.0 - eta) * (2.0 - eta), 2.0));
+    state.C2 = -state.C1 * state.C1 * (
+        m_avg * (-4.0 * eta * eta + 20.0 * eta + 8.0) / std::pow(1.0 - eta, 5.0)
+        + (1.0 - m_avg) * (2.0 * std::pow(eta, 3.0) + 12.0 * eta * eta - 48.0 * eta + 40.0)
+            / std::pow((1.0 - eta) * (2.0 - eta), 3.0));
+    return state;
+}
+
+vector<double> build_dipole_coefficients(const std::array<double, 5> &c0, const std::array<double, 5> &c1, const std::array<double, 5> &c2, double m) {
+    vector<double> coeffs(5, 0.0);
+    double a = (m - 1.0) / m;
+    double b = (m - 2.0) / m;
+    for (size_t i = 0; i < coeffs.size(); ++i) {
+        coeffs[i] = c0[i] + a * c1[i] + a * b * c2[i];
+    }
+    return coeffs;
+}
+
+double compute_dh_kappa(double den, double t, double eps, double q2_sum) {
+    return std::sqrt(den * E_CHRG * E_CHRG / kb / t / (eps * perm_vac) * q2_sum);
+}
+
+double compute_dh_chi(double kappa, double diameter) {
+    double ka = kappa * diameter;
+    return 3.0 / std::pow(ka, 3.0) * (1.5 + std::log(1.0 + ka) - 2.0 * (1.0 + ka) + 0.5 * std::pow(1.0 + ka, 2.0));
+}
+
+AssociationSetup build_association_setup(
+    const vector<double> &x,
+    const add_args &cppargs,
+    const vector<double> &s_ij,
+    const vector<double> &ghs,
+    double t
+) {
+    int ncomp = static_cast<int>(x.size());
+    AssociationSetup setup;
+    setup.site_component_index.reserve(ncomp);
+    setup.x_assoc.reserve(ncomp);
+
+    for (std::vector<int>::const_iterator it = cppargs.assoc_num.begin(); it != cppargs.assoc_num.end(); ++it) {
+        for (int i = 0; i < *it; ++i) {
+            setup.site_component_index.push_back(static_cast<int>(it - cppargs.assoc_num.begin()));
+            setup.x_assoc.push_back(x[setup.site_component_index.back()]);
+        }
+    }
+
+    int num_sites = static_cast<int>(setup.site_component_index.size());
+    setup.delta_ij.assign(static_cast<size_t>(num_sites * num_sites), 0.0);
+
+    int idxa = 0;
+    for (int i = 0; i < num_sites; ++i) {
+        int comp_i = setup.site_component_index[i];
+        int idxi = comp_i * ncomp + comp_i;
+        for (int j = 0; j < num_sites; ++j) {
+            int comp_j = setup.site_component_index[j];
+            int idxj = comp_j * ncomp + comp_j;
+            if (cppargs.assoc_matrix[idxa] != 0) {
+                double eABij = 0.5 * (cppargs.e_assoc[comp_i] + cppargs.e_assoc[comp_j]);
+                double volABij = sqrt(cppargs.vol_a[comp_i] * cppargs.vol_a[comp_j]) * std::pow(
+                    sqrt(s_ij[idxi] * s_ij[idxj]) / (0.5 * (s_ij[idxi] + s_ij[idxj])),
+                    3.0
+                );
+                if (!cppargs.k_hb.empty()) {
+                    volABij *= (1.0 - cppargs.k_hb[comp_i * ncomp + comp_j]);
+                }
+                setup.delta_ij[idxa] = ghs[comp_i * ncomp + comp_j] * (std::exp(eABij / t) - 1.0)
+                    * std::pow(s_ij[comp_i * ncomp + comp_j], 3.0) * volABij;
+            }
+            ++idxa;
+        }
+    }
+
+    return setup;
+}
+
 int gcd_int(int a, int b) {
     a = std::abs(a);
     b = std::abs(b);
@@ -982,16 +1316,14 @@ double compute_dh_ares_only(double t, double rho, const vector<double> &x, const
 
     DielcState dielc_state = evaluate_dielc_state(x, cppargs);
     double eps = dielc_state.eps;
-    double kappa = std::sqrt(den*E_CHRG*E_CHRG/kb/t/(eps*perm_vac)*Qsum);
+    double kappa = compute_dh_kappa(den, t, eps, Qsum);
     if (kappa == 0.0) {
         return 0.0;
     }
 
     double S = 0.0;
     for (int i = 0; i < ncomp; i++) {
-        double ka = kappa*d[i];
-        double chi = 3/std::pow(ka, 3)*(1.5 + std::log(1 + ka) - 2*(1 + ka) + 0.5*std::pow(1 + ka, 2));
-        S += x[i]*cppargs.z[i]*cppargs.z[i]*chi;
+        S += x[i]*cppargs.z[i]*cppargs.z[i]*compute_dh_chi(kappa, d[i]);
     }
 
     double K0 = E_CHRG*E_CHRG/(12.0*PI*kb*t*perm_vac);
@@ -1043,96 +1375,25 @@ double get_ares_contribution_value(const AresContributions &terms, AresContribut
 AresContributions compute_ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {
     AresContributions out;
     int ncomp = static_cast<int>(x.size());
-    vector<double> d(ncomp);
-    for (int i = 0; i < ncomp; i++) {
-        d[i] = cppargs.s[i]*(1-0.12*exp(-3*cppargs.e[i]/t));
-        if (!cppargs.z.empty() && is_ion_species(cppargs, i)) {
-            d[i] = compute_ion_diameter(i, t, cppargs);
-        }
-    }
-
-    double den = rho*N_AV/1.0e30;
-
-    vector<double> zeta(4, 0.0);
-    double summ;
-    for (int i = 0; i < 4; i++) {
-        summ = 0.0;
-        for (int j = 0; j < ncomp; j++) {
-            summ += x[j]*cppargs.m[j]*pow(d[j], i);
-        }
-        zeta[i] = PI/6*den*summ;
-    }
-
-    double eta = zeta[3];
-    double m_avg = 0.0;
-    for (int i = 0; i < ncomp; i++) {
-        m_avg += x[i]*cppargs.m[i];
-    }
-
-    vector<double> ghs(ncomp*ncomp, 0.0);
-    vector<double> e_ij(ncomp*ncomp, 0.0);
-    vector<double> s_ij(ncomp*ncomp, 0.0);
-    double m2es3 = 0.0;
-    double m2e2s3 = 0.0;
-    int idx = -1;
-    for (int i = 0; i < ncomp; i++) {
-        for (int j = 0; j < ncomp; j++) {
-            idx += 1;
-            if (cppargs.l_ij.empty()) {
-                s_ij[idx] = (cppargs.s[i] + cppargs.s[j])/2.0;
-            }
-            else {
-                s_ij[idx] = (cppargs.s[i] + cppargs.s[j])/2.0*(1-cppargs.l_ij[idx]);
-            }
-            if (!cppargs.z.empty()) {
-                if (cppargs.z[i]*cppargs.z[j] <= 0) {
-                    if (cppargs.k_ij.empty()) {
-                        e_ij[idx] = sqrt(cppargs.e[i]*cppargs.e[j]);
-                    }
-                    else {
-                        e_ij[idx] = sqrt(cppargs.e[i]*cppargs.e[j])*(1-cppargs.k_ij[idx]);
-                    }
-                }
-            }
-            else {
-                if (cppargs.k_ij.empty()) {
-                    e_ij[idx] = sqrt(cppargs.e[i]*cppargs.e[j]);
-                }
-                else {
-                    e_ij[idx] = sqrt(cppargs.e[i]*cppargs.e[j])*(1-cppargs.k_ij[idx]);
-                }
-            }
-            m2es3 += x[i]*x[j]*cppargs.m[i]*cppargs.m[j]*e_ij[idx]/t*pow(s_ij[idx], 3);
-            m2e2s3 += x[i]*x[j]*cppargs.m[i]*cppargs.m[j]*pow(e_ij[idx]/t, 2)*pow(s_ij[idx], 3);
-            ghs[idx] = 1/(1-zeta[3]) + (d[i]*d[j]/(d[i]+d[j]))*3*zeta[2]/pow(1-zeta[3], 2) +
-                pow(d[i]*d[j]/(d[i]+d[j]), 2)*2*zeta[2]*zeta[2]/pow(1-zeta[3], 3);
-        }
-    }
-
-    double ares_hs = 1/zeta[0]*(3*zeta[1]*zeta[2]/(1-zeta[3]) + pow(zeta[2], 3.)/(zeta[3]*pow(1-zeta[3],2))
-            + (pow(zeta[2], 3.)/pow(zeta[3], 2.) - zeta[0])*log(1-zeta[3]));
-
-    static double a0[7] = { 0.9105631445, 0.6361281449, 2.6861347891, -26.547362491, 97.759208784, -159.59154087, 91.297774084 };
-    static double a1[7] = { -0.3084016918, 0.1860531159, -2.5030047259, 21.419793629, -65.255885330, 83.318680481, -33.746922930 };
-    static double a2[7] = { -0.0906148351, 0.4527842806, 0.5962700728, -1.7241829131, -4.1302112531, 13.776631870, -8.6728470368 };
-    static double b0[7] = { 0.7240946941, 2.2382791861, -4.0025849485, -21.003576815, 26.855641363, 206.55133841, -355.60235612 };
-    static double b1[7] = { -0.5755498075, 0.6995095521, 3.8925673390, -17.215471648, 192.67226447, -161.82646165, -165.20769346 };
-    static double b2[7] = { 0.0976883116, -0.2557574982, -9.1558561530, 20.642075974, -38.804430052, 93.626774077, -29.666905585 };
-
-    vector<double> a(7, 0.0);
-    vector<double> b(7, 0.0);
-    for (int i = 0; i < 7; i++) {
-        a[i] = a0[i] + (m_avg-1.)/m_avg*a1[i] + (m_avg-1.)/m_avg*(m_avg-2.)/m_avg*a2[i];
-        b[i] = b0[i] + (m_avg-1.)/m_avg*b1[i] + (m_avg-1.)/m_avg*(m_avg-2.)/m_avg*b2[i];
-    }
-
-    double I1 = 0.0;
-    double I2 = 0.0;
-    for (int i = 0; i < 7; i++) {
-        I1 += a[i]*pow(eta, i);
-        I2 += b[i]*pow(eta, i);
-    }
-    double C1 = 1./(1. + m_avg*(8*eta-2*eta*eta)/pow(1-eta, 4) + (1-m_avg)*(20*eta-27*eta*eta+12*pow(eta, 3)-2*pow(eta, 4))/pow((1-eta)*(2-eta), 2.0));
+    ThermoCommonState thermo = build_thermo_common_state(t, rho, x, cppargs, false);
+    auto &d = thermo.d;
+    auto &zeta = thermo.zeta;
+    auto &e_ij = thermo.e_ij;
+    auto &s_ij = thermo.s_ij;
+    auto &ghs = thermo.ghs;
+    double den = thermo.den;
+    double eta = thermo.eta;
+    double m_avg = thermo.m_avg;
+    double m2es3 = thermo.m2es3;
+    double m2e2s3 = thermo.m2e2s3;
+    double summ = 0.0;
+    DispersionPolynomialState dispersion = build_dispersion_polynomials(m_avg, eta);
+    double I1 = dispersion.I1;
+    double I2 = dispersion.I2;
+    double C1 = dispersion.C1;
+    double ares_hs = 1.0 / zeta[0] * (3.0 * zeta[1] * zeta[2] / (1.0 - zeta[3])
+            + std::pow(zeta[2], 3.0) / (zeta[3] * std::pow(1.0 - zeta[3], 2.0))
+            + (std::pow(zeta[2], 3.0) / std::pow(zeta[3], 2.0) - zeta[0]) * std::log(1.0 - zeta[3]));
 
     summ = 0.0;
     for (int i = 0; i < ncomp; i++) {
@@ -1145,16 +1406,6 @@ AresContributions compute_ares_contributions_cpp(double t, double rho, const vec
         double A2 = 0.0;
         double A3 = 0.0;
         vector<double> dipmSQ(ncomp, 0.0);
-
-        static double a0dip[5] = { 0.3043504, -0.1358588, 1.4493329, 0.3556977, -2.0653308 };
-        static double a1dip[5] = { 0.9534641, -1.8396383, 2.0131180, -7.3724958, 8.2374135 };
-        static double a2dip[5] = { -1.1610080, 4.5258607, 0.9751222, -12.281038, 5.9397575 };
-        static double b0dip[5] = { 0.2187939, -1.1896431, 1.1626889, 0, 0 };
-        static double b1dip[5] = { -0.5873164, 1.2489132, -0.5085280, 0, 0 };
-        static double b2dip[5] = { 3.4869576, -14.915974, 15.372022, 0, 0 };
-        static double c0dip[5] = { -0.0646774, 0.1975882, -0.8087562, 0.6902849, 0 };
-        static double c1dip[5] = { -0.9520876, 2.9924258, -2.3802636, -0.2701261, 0 };
-        static double c2dip[5] = { -0.6260979, 1.2924686, 1.6542783, -3.4396744, 0 };
 
         const static double conv = 7242.702976750923;
         for (int i = 0; i < ncomp; i++) {
@@ -1171,10 +1422,10 @@ AresContributions compute_ares_contributions_cpp(double t, double rho, const vec
                 if (m_ij > 2) {
                     m_ij = 2;
                 }
+                vector<double> adip = build_dipole_coefficients(kDipoleA0, kDipoleA1, kDipoleA2, m_ij);
+                vector<double> bdip = build_dipole_coefficients(kDipoleB0, kDipoleB1, kDipoleB2, m_ij);
                 J2 = 0.0;
                 for (int l = 0; l < 5; l++) {
-                    adip[l] = a0dip[l] + (m_ij-1)/m_ij*a1dip[l] + (m_ij-1)/m_ij*(m_ij-2)/m_ij*a2dip[l];
-                    bdip[l] = b0dip[l] + (m_ij-1)/m_ij*b1dip[l] + (m_ij-1)/m_ij*(m_ij-2)/m_ij*b2dip[l];
                     J2 += (adip[l] + bdip[l]*e_ij[j*ncomp+j]/t)*pow(eta, l);
                 }
                 A2 += x[i]*x[j]*e_ij[i*ncomp+i]/t*e_ij[j*ncomp+j]/t*pow(s_ij[i*ncomp+i],3)*pow(s_ij[j*ncomp+j],3)/
@@ -1185,9 +1436,9 @@ AresContributions compute_ares_contributions_cpp(double t, double rho, const vec
                     if (m_ijk > 2) {
                         m_ijk = 2;
                     }
+                    vector<double> cdip = build_dipole_coefficients(kDipoleC0, kDipoleC1, kDipoleC2, m_ijk);
                     J3 = 0.0;
                     for (int l = 0; l < 5; l++) {
-                        cdip[l] = c0dip[l] + (m_ijk-1)/m_ijk*c1dip[l] + (m_ijk-1)/m_ijk*(m_ijk-2)/m_ijk*c2dip[l];
                         J3 += cdip[l]*pow(eta, l);
                     }
                     A3 += x[i]*x[j]*x[k]*e_ij[i*ncomp+i]/t*e_ij[j*ncomp+j]/t*e_ij[k*ncomp+k]/t*
@@ -1828,104 +2079,27 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppa
     Calculate the compressibility factor.
     */
     int ncomp = static_cast<int>(x.size()); // number of components
-    vector<double> d (ncomp);
-    for (int i = 0; i < ncomp; i++) {
-        d[i] = cppargs.s[i]*(1-0.12*exp(-3*cppargs.e[i]/t));
-        if (!cppargs.z.empty() && is_ion_species(cppargs, i)) {
-            d[i] = compute_ion_diameter(i, t, cppargs);
-        }
-    }
-
-    double den = rho*N_AV/1.0e30;
-
-    vector<double> zeta (4, 0);
-    double summ;
-    for (int i = 0; i < 4; i++) {
-        summ = 0;
-        for (int j = 0; j < ncomp; j++) {
-            summ += x[j]*cppargs.m[j]*pow(d[j], i);
-        }
-        zeta[i] = PI/6*den*summ;
-    }
-
-    double eta = zeta[3];
-    double m_avg = 0;
-    for (int i = 0; i < ncomp; i++) {
-        m_avg += x[i]*cppargs.m[i];
-    }
-
-    vector<double> ghs (ncomp*ncomp, 0);
-    vector<double> denghs (ncomp*ncomp, 0);
-    vector<double> e_ij (ncomp*ncomp, 0);
-    vector<double> s_ij (ncomp*ncomp, 0);
-    double m2es3 = 0.;
-    double m2e2s3 = 0.;
-    int idx = -1;
-    for (int i = 0; i < ncomp; i++) {
-        for (int j = 0; j < ncomp; j++) {
-            idx += 1;
-            if (cppargs.l_ij.empty()) {
-                s_ij[idx] = (cppargs.s[i] + cppargs.s[j])/2.;
-            }
-            else {
-                s_ij[idx] = (cppargs.s[i] + cppargs.s[j])/2.*(1-cppargs.l_ij[idx]);
-            }
-            if (!cppargs.z.empty()) {
-                if (cppargs.z[i]*cppargs.z[j] <= 0) { // for two cations or two anions e_ij is kept at zero to avoid dispersion between like ions (see Held et al. 2014)
-                    if (cppargs.k_ij.empty()) {
-                        e_ij[idx] = sqrt(cppargs.e[i]*cppargs.e[j]);
-                    }
-                    else {
-                        e_ij[idx] = sqrt(cppargs.e[i]*cppargs.e[j])*(1-cppargs.k_ij[idx]);
-                    }
-                }
-            } else {
-                if (cppargs.k_ij.empty()) {
-                    e_ij[idx] = sqrt(cppargs.e[i]*cppargs.e[j]);
-                }
-                else {
-                    e_ij[idx] = sqrt(cppargs.e[i]*cppargs.e[j])*(1-cppargs.k_ij[idx]);
-                }
-            }
-            m2es3 = m2es3 + x[i]*x[j]*cppargs.m[i]*cppargs.m[j]*e_ij[idx]/t*pow(s_ij[idx], 3);
-            m2e2s3 = m2e2s3 + x[i]*x[j]*cppargs.m[i]*cppargs.m[j]*pow(e_ij[idx]/t,2)*pow(s_ij[idx], 3);
-            ghs[idx] = 1/(1-zeta[3]) + (d[i]*d[j]/(d[i]+d[j]))*3*zeta[2]/(1-zeta[3])/(1-zeta[3]) +
-                    pow(d[i]*d[j]/(d[i]+d[j]), 2)*2*zeta[2]*zeta[2]/pow(1-zeta[3], 3);
-            denghs[idx] = zeta[3]/(1-zeta[3])/(1-zeta[3]) +
-                (d[i]*d[j]/(d[i]+d[j]))*(3*zeta[2]/(1-zeta[3])/(1-zeta[3]) +
-                6*zeta[2]*zeta[3]/pow(1-zeta[3], 3)) +
-                pow(d[i]*d[j]/(d[i]+d[j]), 2)*(4*zeta[2]*zeta[2]/pow(1-zeta[3], 3) +
-                6*zeta[2]*zeta[2]*zeta[3]/pow(1-zeta[3], 4));
-        }
-    }
-
+    ThermoCommonState thermo = build_thermo_common_state(t, rho, x, cppargs, false);
+    auto &d = thermo.d;
+    auto &zeta = thermo.zeta;
+    auto &e_ij = thermo.e_ij;
+    auto &s_ij = thermo.s_ij;
+    auto &ghs = thermo.ghs;
+    auto &denghs = thermo.denghs;
+    double den = thermo.den;
+    double eta = thermo.eta;
+    double m_avg = thermo.m_avg;
+    double m2es3 = thermo.m2es3;
+    double m2e2s3 = thermo.m2e2s3;
+    double summ = 0.0;
+    DispersionPolynomialState dispersion = build_dispersion_polynomials(m_avg, eta);
+    double detI1_det = dispersion.dEtaI1_deta;
+    double detI2_det = dispersion.dEtaI2_deta;
+    double I2 = dispersion.I2;
+    double C1 = dispersion.C1;
+    double C2 = dispersion.C2;
     double Zhs = zeta[3]/(1-zeta[3]) + 3.*zeta[1]*zeta[2]/zeta[0]/(1.-zeta[3])/(1.-zeta[3]) +
         (3.*pow(zeta[2], 3.) - zeta[3]*pow(zeta[2], 3.))/zeta[0]/pow(1.-zeta[3], 3.);
-
-    static double a0[7] = { 0.9105631445, 0.6361281449, 2.6861347891, -26.547362491, 97.759208784, -159.59154087, 91.297774084 };
-    static double a1[7] = { -0.3084016918, 0.1860531159, -2.5030047259, 21.419793629, -65.255885330, 83.318680481, -33.746922930 };
-    static double a2[7] = { -0.0906148351, 0.4527842806, 0.5962700728, -1.7241829131, -4.1302112531, 13.776631870, -8.6728470368 };
-    static double b0[7] = { 0.7240946941, 2.2382791861, -4.0025849485, -21.003576815, 26.855641363, 206.55133841, -355.60235612 };
-    static double b1[7] = { -0.5755498075, 0.6995095521, 3.8925673390, -17.215471648, 192.67226447, -161.82646165, -165.20769346 };
-    static double b2[7] = { 0.0976883116, -0.2557574982, -9.1558561530, 20.642075974, -38.804430052, 93.626774077, -29.666905585 };
-
-    vector<double> a (7, 0);
-    vector<double> b (7, 0);
-    for (int i = 0; i < 7; i++) {
-        a[i] = a0[i] + (m_avg-1.)/m_avg*a1[i] + (m_avg-1.)/m_avg*(m_avg-2.)/m_avg*a2[i];
-        b[i] = b0[i] + (m_avg-1.)/m_avg*b1[i] + (m_avg-1.)/m_avg*(m_avg-2.)/m_avg*b2[i];
-    }
-
-    double detI1_det = 0.0;
-    double detI2_det = 0.0;
-    double I2 = 0.0;
-    for (int i = 0; i < 7; i++) {
-        detI1_det += a[i]*(i+1)*pow(eta, i);
-        detI2_det += b[i]*(i+1)*pow(eta, i);
-        I2 += b[i]*pow(eta, i);
-    }
-    double C1 = 1./(1. + m_avg*(8*eta-2*eta*eta)/pow(1-eta, 4) + (1-m_avg)*(20*eta-27*eta*eta+12*pow(eta, 3)-2*pow(eta, 4))/pow((1-eta)*(2-eta), 2.0));
-    double C2 = -1.*C1*C1*(m_avg*(-4*eta*eta+20*eta+8)/pow(1-eta, 5) + (1-m_avg)*(2*pow(eta, 3)+12*eta*eta-48*eta+40)/pow((1-eta)*(2-eta), 3.0));
 
     summ = 0.0;
     for (int i = 0; i < ncomp; i++) {
@@ -1949,16 +2123,6 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppa
         vector<double> dipmSQ (ncomp, 0);
         double J2, detJ2_det, J3, detJ3_det;
 
-        static double a0dip[5] = { 0.3043504, -0.1358588, 1.4493329, 0.3556977, -2.0653308 };
-        static double a1dip[5] = { 0.9534641, -1.8396383, 2.0131180, -7.3724958, 8.2374135 };
-        static double a2dip[5] = { -1.1610080, 4.5258607, 0.9751222, -12.281038, 5.9397575 };
-        static double b0dip[5] = { 0.2187939, -1.1896431, 1.1626889, 0, 0 };
-        static double b1dip[5] = { -0.5873164, 1.2489132, -0.5085280, 0, 0 };
-        static double b2dip[5] = { 3.4869576, -14.915974, 15.372022, 0, 0 };
-        static double c0dip[5] = { -0.0646774, 0.1975882, -0.8087562, 0.6902849, 0 };
-        static double c1dip[5] = { -0.9520876, 2.9924258, -2.3802636, -0.2701261, 0 };
-        static double c2dip[5] = { -0.6260979, 1.2924686, 1.6542783, -3.4396744, 0 };
-
         const static double conv = 7242.702976750923; // conversion factor, see the note below Table 2 in Gross and Vrabec 2006
 
         for (int i = 0; i < ncomp; i++) {
@@ -1972,11 +2136,11 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppa
                 if (m_ij > 2) {
                     m_ij = 2;
                 }
+                vector<double> adip = build_dipole_coefficients(kDipoleA0, kDipoleA1, kDipoleA2, m_ij);
+                vector<double> bdip = build_dipole_coefficients(kDipoleB0, kDipoleB1, kDipoleB2, m_ij);
                 J2 = 0.;
                 detJ2_det = 0.;
                 for (int l = 0; l < 5; l++) {
-                    adip[l] = a0dip[l] + (m_ij-1)/m_ij*a1dip[l] + (m_ij-1)/m_ij*(m_ij-2)/m_ij*a2dip[l];
-                    bdip[l] = b0dip[l] + (m_ij-1)/m_ij*b1dip[l] + (m_ij-1)/m_ij*(m_ij-2)/m_ij*b2dip[l];
                     J2 += (adip[l] + bdip[l]*e_ij[i*ncomp+j]/t)*pow(eta, l); // i*ncomp+j needs to be used for e_ij because it is formatted as a 1D vector
                     detJ2_det += (adip[l] + bdip[l]*e_ij[i*ncomp+j]/t)*(l+1)*pow(eta, l);
                 }
@@ -1995,10 +2159,10 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppa
                     if (m_ijk > 2) {
                         m_ijk = 2;
                     }
+                    vector<double> cdip = build_dipole_coefficients(kDipoleC0, kDipoleC1, kDipoleC2, m_ijk);
                     J3 = 0.;
                     detJ3_det = 0.;
                     for (int l = 0; l < 5; l++) {
-                        cdip[l] = c0dip[l] + (m_ijk-1)/m_ijk*c1dip[l] + (m_ijk-1)/m_ijk*(m_ijk-2)/m_ijk*c2dip[l];
                         J3 += cdip[l]*pow(eta, l);
                         detJ3_det += cdip[l]*(l+2)*pow(eta, (l+1));
                     }
@@ -2027,44 +2191,14 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppa
     // Association term -------------------------------------------------------
     double Zassoc = 0;
     if (!cppargs.e_assoc.empty()) {
-        int num_sites = 0;
-        vector<int> iA; //indices of associating compounds
-        for(std::vector<int>::const_iterator it = cppargs.assoc_num.begin(); it != cppargs.assoc_num.end(); ++it) {
-            num_sites += *it;
-            for (int i = 0; i < *it; i++) {
-                iA.push_back(static_cast<int>(it - cppargs.assoc_num.begin()));
-            }
-        }
+        AssociationSetup assoc = build_association_setup(x, cppargs, s_ij, ghs, t);
+        const vector<int> &iA = assoc.site_component_index;
+        const vector<double> &x_assoc = assoc.x_assoc;
+        const vector<double> &delta_ij = assoc.delta_ij;
+        int num_sites = static_cast<int>(iA.size());
 
-        vector<double> x_assoc(num_sites); // mole fractions of only the associating compounds
+        vector<double> XA(num_sites, 0.0);
         for (int i = 0; i < num_sites; i++) {
-            x_assoc[i] = x[iA[i]];
-        }
-
-        vector<double> XA (num_sites, 0);
-        vector<double> delta_ij(num_sites * num_sites, 0);
-        int idxa = 0;
-        int idxi = 0; // index for the ii-th compound
-        int idxj = 0; // index for the jj-th compound
-        for (int i = 0; i < num_sites; i++) {
-            idxi = iA[i]*ncomp+iA[i];
-            for (int j = 0; j < num_sites; j++) {
-                idxj = iA[j]*ncomp+iA[j];
-                if (cppargs.assoc_matrix[idxa] != 0) {
-                    double eABij = (cppargs.e_assoc[iA[i]]+cppargs.e_assoc[iA[j]])/2.;
-                    double volABij = _HUGE;
-                    if (cppargs.k_hb.empty()) {
-                        volABij = sqrt(cppargs.vol_a[iA[i]]*cppargs.vol_a[iA[j]])*pow(sqrt(s_ij[idxi]*
-                            s_ij[idxj])/(0.5*(s_ij[idxi]+s_ij[idxj])), 3);
-                    }
-                    else {
-                        volABij = sqrt(cppargs.vol_a[iA[i]]*cppargs.vol_a[iA[j]])*pow(sqrt(s_ij[idxi]*
-                            s_ij[idxj])/(0.5*(s_ij[idxi]+s_ij[idxj])), 3)*(1-cppargs.k_hb[iA[i]*ncomp+iA[j]]);
-                    }
-                    delta_ij[idxa] = ghs[iA[i]*ncomp+iA[j]]*(exp(eABij/t)-1)*pow(s_ij[iA[i]*ncomp+iA[j]], 3)*volABij;
-                }
-                idxa += 1;
-            }
             XA[i] = (-1 + sqrt(1+8*den*delta_ij[i*num_sites+i]))/(4*den*delta_ij[i*num_sites+i]);
             if (!std::isfinite(XA[i])) {
                 XA[i] = 0.02;
@@ -2074,14 +2208,11 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppa
         vector<double> ddelta_dx(num_sites * num_sites * ncomp, 0);
         int idx_ddelta = 0;
         for (int k = 0; k < ncomp; k++) {
-            int idxi = 0; // index for the ii-th compound
-            int idxj = 0; // index for the jj-th compound
-            idxa = 0;
             for (int i = 0; i < num_sites; i++) {
-                idxi = iA[i]*ncomp+iA[i];
+                int idxi = iA[i]*ncomp+iA[i];
                 for (int j = 0; j < num_sites; j++) {
-                    idxj = iA[j]*ncomp+iA[j];
-                    if (cppargs.assoc_matrix[idxa] != 0) {
+                    int idxj = iA[j]*ncomp+iA[j];
+                    if (cppargs.assoc_matrix[i*num_sites+j] != 0) {
                         double eABij = (cppargs.e_assoc[iA[i]]+cppargs.e_assoc[iA[j]])/2.;
                         double volABij = _HUGE;
                         if (cppargs.k_hb.empty()) {
@@ -2100,7 +2231,6 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppa
                         ddelta_dx[idx_ddelta] = dghsd_dx*(exp(eABij/t)-1)*pow(s_ij[iA[i]*ncomp+iA[j]], 3)*volABij;
                     }
                     idx_ddelta += 1;
-                    idxa += 1;
                 }
             }
         }
@@ -2152,14 +2282,13 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppa
             summ += cppargs.z[i]*cppargs.z[i]*x[i];
         }
 
-        double kappa = sqrt(den*E_CHRG*E_CHRG/kb/t/(eps*perm_vac)*summ); // the inverse Debye screening length. Equation 4 in Held et al. 2008.
+        double kappa = compute_dh_kappa(den, t, eps, summ); // the inverse Debye screening length. Equation 4 in Held et al. 2008.
 
         if (kappa != 0) {
             double chi, sigma_k;
             summ = 0.;
             for (int i = 0; i < ncomp; i++) {
-                chi = 3/pow(kappa*d[i], 3)*(1.5 + log(1+kappa*d[i]) - 2*(1+kappa*d[i]) +
-                    0.5*pow(1+kappa*d[i], 2));
+                chi = compute_dh_chi(kappa, d[i]);
                 sigma_k = -2*chi+3/(1+kappa*d[i]);
                 summ += q[i]*q[i]*x[i]*sigma_k;
             }
@@ -2266,32 +2395,15 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
     double Zhs = zeta[3]/(1-zeta[3]) + 3.*zeta[1]*zeta[2]/zeta[0]/(1.-zeta[3])/(1.-zeta[3]) +
         (3.*pow(zeta[2], 3.) - zeta[3]*pow(zeta[2], 3.))/zeta[0]/pow(1.-zeta[3], 3.);
 
-    static double a0[7] = { 0.9105631445, 0.6361281449, 2.6861347891, -26.547362491, 97.759208784, -159.59154087, 91.297774084 };
-    static double a1[7] = { -0.3084016918, 0.1860531159, -2.5030047259, 21.419793629, -65.255885330, 83.318680481, -33.746922930 };
-    static double a2[7] = { -0.0906148351, 0.4527842806, 0.5962700728, -1.7241829131, -4.1302112531, 13.776631870, -8.6728470368 };
-    static double b0[7] = { 0.7240946941, 2.2382791861, -4.0025849485, -21.003576815, 26.855641363, 206.55133841, -355.60235612 };
-    static double b1[7] = { -0.5755498075, 0.6995095521, 3.8925673390, -17.215471648, 192.67226447, -161.82646165, -165.20769346 };
-    static double b2[7] = { 0.0976883116, -0.2557574982, -9.1558561530, 20.642075974, -38.804430052, 93.626774077, -29.666905585 };
-
-    vector<double> a (7, 0);
-    vector<double> b (7, 0);
-    for (int i = 0; i < 7; i++) {
-        a[i] = a0[i] + (m_avg-1.)/m_avg*a1[i] + (m_avg-1.)/m_avg*(m_avg-2.)/m_avg*a2[i];
-        b[i] = b0[i] + (m_avg-1.)/m_avg*b1[i] + (m_avg-1.)/m_avg*(m_avg-2.)/m_avg*b2[i];
-    }
-
-    double detI1_det = 0.0;
-    double detI2_det = 0.0;
-    double I1 = 0.0;
-    double I2 = 0.0;
-    for (int i = 0; i < 7; i++) {
-        detI1_det += a[i]*(i+1)*pow(eta, i);
-        detI2_det += b[i]*(i+1)*pow(eta, i);
-        I2 += b[i]*pow(eta, i);
-        I1 += a[i]*pow(eta, i);
-    }
-    double C1 = 1./(1. + m_avg*(8*eta-2*eta*eta)/pow(1-eta, 4) + (1-m_avg)*(20*eta-27*eta*eta+12*pow(eta, 3)-2*pow(eta, 4))/pow((1-eta)*(2-eta), 2.0));
-    double C2 = -1.*C1*C1*(m_avg*(-4*eta*eta+20*eta+8)/pow(1-eta, 5) + (1-m_avg)*(2*pow(eta, 3)+12*eta*eta-48*eta+40)/pow((1-eta)*(2-eta), 3.0));
+    DispersionPolynomialState dispersion = build_dispersion_polynomials(m_avg, eta);
+    const auto &a = dispersion.a;
+    const auto &b = dispersion.b;
+    double detI1_det = dispersion.dEtaI1_deta;
+    double detI2_det = dispersion.dEtaI2_deta;
+    double I1 = dispersion.I1;
+    double I2 = dispersion.I2;
+    double C1 = dispersion.C1;
+    double C2 = dispersion.C2;
 
     summ = 0.0;
     for (int i = 0; i < ncomp; i++) {
@@ -2343,8 +2455,8 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
         dm2es3_dx = 0.0;
         dm2e2s3_dx = 0.0;
         for (int l = 0; l < 7; l++) {
-            daa_dx = cppargs.m[i]/m_avg/m_avg*a1[l] + cppargs.m[i]/m_avg/m_avg*(3-4/m_avg)*a2[l];
-            db_dx = cppargs.m[i]/m_avg/m_avg*b1[l] + cppargs.m[i]/m_avg/m_avg*(3-4/m_avg)*b2[l];
+            daa_dx = cppargs.m[i]/m_avg/m_avg*kDispersionA1[l] + cppargs.m[i]/m_avg/m_avg*(3-4/m_avg)*kDispersionA2[l];
+            db_dx = cppargs.m[i]/m_avg/m_avg*kDispersionB1[l] + cppargs.m[i]/m_avg/m_avg*(3-4/m_avg)*kDispersionB2[l];
             dI1_dx += a[l]*l*dzeta3_dx*pow(eta,l-1) + daa_dx*pow(eta,l);
             dI2_dx += b[l]*l*dzeta3_dx*pow(eta,l-1) + db_dx*pow(eta,l);
         }
@@ -2398,16 +2510,6 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
         vector<double> dA2_dx(ncomp, 0);
         vector<double> dA3_dx(ncomp, 0);
 
-        static double a0dip[5] = { 0.3043504, -0.1358588, 1.4493329, 0.3556977, -2.0653308 };
-        static double a1dip[5] = { 0.9534641, -1.8396383, 2.0131180, -7.3724958, 8.2374135 };
-        static double a2dip[5] = { -1.1610080, 4.5258607, 0.9751222, -12.281038, 5.9397575 };
-        static double b0dip[5] = { 0.2187939, -1.1896431, 1.1626889, 0, 0 };
-        static double b1dip[5] = { -0.5873164, 1.2489132, -0.5085280, 0, 0 };
-        static double b2dip[5] = { 3.4869576, -14.915974, 15.372022, 0, 0 };
-        static double c0dip[5] = { -0.0646774, 0.1975882, -0.8087562, 0.6902849, 0 };
-        static double c1dip[5] = { -0.9520876, 2.9924258, -2.3802636, -0.2701261, 0 };
-        static double c2dip[5] = { -0.6260979, 1.2924686, 1.6542783, -3.4396744, 0 };
-
         const static double conv = 7242.702976750923; // conversion factor, see the note below Table 2 in Gross and Vrabec 2006
 
         vector<double> dipmSQ (ncomp, 0);
@@ -2427,12 +2529,12 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
                 if (m_ij > 2) {
                     m_ij = 2;
                 }
+                vector<double> adip = build_dipole_coefficients(kDipoleA0, kDipoleA1, kDipoleA2, m_ij);
+                vector<double> bdip = build_dipole_coefficients(kDipoleB0, kDipoleB1, kDipoleB2, m_ij);
                 J2 = 0.;
                 dJ2_det = 0.;
                 detJ2_det = 0;
                 for (int l = 0; l < 5; l++) {
-                    adip[l] = a0dip[l] + (m_ij-1)/m_ij*a1dip[l] + (m_ij-1)/m_ij*(m_ij-2)/m_ij*a2dip[l];
-                    bdip[l] = b0dip[l] + (m_ij-1)/m_ij*b1dip[l] + (m_ij-1)/m_ij*(m_ij-2)/m_ij*b2dip[l];
                     J2 += (adip[l] + bdip[l]*e_ij[i*ncomp+j]/t)*pow(eta, l); // i*ncomp+j needs to be used for e_ij because it is formatted as a 1D vector
                     dJ2_det += (adip[l] + bdip[l]*e_ij[i*ncomp+j]/t)*l*pow(eta, l-1);
                     detJ2_det += (adip[l] + bdip[l]*e_ij[i*ncomp+j]/t)*(l+1)*pow(eta, l);
@@ -2457,11 +2559,11 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
                     if (m_ijk > 2) {
                         m_ijk = 2;
                     }
+                    vector<double> cdip = build_dipole_coefficients(kDipoleC0, kDipoleC1, kDipoleC2, m_ijk);
                     J3 = 0.;
                     dJ3_det = 0.;
                     detJ3_det = 0.;
                     for (int l = 0; l < 5; l++) {
-                        cdip[l] = c0dip[l] + (m_ijk-1)/m_ijk*c1dip[l] + (m_ijk-1)/m_ijk*(m_ijk-2)/m_ijk*c2dip[l];
                         J3 += cdip[l]*pow(eta, l);
                         dJ3_det += cdip[l]*l*pow(eta, (l-1));
                         detJ3_det += cdip[l]*(l+2)*pow(eta, (l+1));
@@ -2533,44 +2635,14 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
     double ares_assoc = 0.0;
     double sum_x_daassoc_dx = 0.0;
     if (!cppargs.e_assoc.empty()) {
-        int num_sites = 0;
-        vector<int> iA; //indices of associating compounds
-        for(std::vector<int>::const_iterator it = cppargs.assoc_num.begin(); it != cppargs.assoc_num.end(); ++it) {
-            num_sites += *it;
-            for (int i = 0; i < *it; i++) {
-                iA.push_back(static_cast<int>(it - cppargs.assoc_num.begin()));
-            }
-        }
+        AssociationSetup assoc = build_association_setup(x, cppargs, s_ij, ghs, t);
+        const vector<int> &iA = assoc.site_component_index;
+        const vector<double> &x_assoc = assoc.x_assoc;
+        const vector<double> &delta_ij = assoc.delta_ij;
+        int num_sites = static_cast<int>(iA.size());
 
-        vector<double> x_assoc(num_sites); // mole fractions of only the associating compounds
+        vector<double> XA(num_sites, 0.0);
         for (int i = 0; i < num_sites; i++) {
-            x_assoc[i] = x[iA[i]];
-        }
-
-        vector<double> XA (num_sites, 0);
-        vector<double> delta_ij(num_sites * num_sites, 0);
-        int idxa = 0;
-        int idxi = 0; // index for the ii-th compound
-        int idxj = 0; // index for the jj-th compound
-        for (int i = 0; i < num_sites; i++) {
-            idxi = iA[i]*ncomp+iA[i];
-            for (int j = 0; j < num_sites; j++) {
-                idxj = iA[j]*ncomp+iA[j];
-                if (cppargs.assoc_matrix[idxa] != 0) {
-                    double eABij = (cppargs.e_assoc[iA[i]]+cppargs.e_assoc[iA[j]])/2.;
-                    double volABij = _HUGE;
-                    if (cppargs.k_hb.empty()) {
-                        volABij = sqrt(cppargs.vol_a[iA[i]]*cppargs.vol_a[iA[j]])*pow(sqrt(s_ij[idxi]*
-                            s_ij[idxj])/(0.5*(s_ij[idxi]+s_ij[idxj])), 3);
-                    }
-                    else {
-                        volABij = sqrt(cppargs.vol_a[iA[i]]*cppargs.vol_a[iA[j]])*pow(sqrt(s_ij[idxi]*
-                            s_ij[idxj])/(0.5*(s_ij[idxi]+s_ij[idxj])), 3)*(1-cppargs.k_hb[iA[i]*ncomp+iA[j]]);
-                    }
-                    delta_ij[idxa] = ghs[iA[i]*ncomp+iA[j]]*(exp(eABij/t)-1)*pow(s_ij[iA[i]*ncomp+iA[j]], 3)*volABij;
-                }
-                idxa += 1;
-            }
             XA[i] = (-1 + sqrt(1+8*den*delta_ij[i*num_sites+i]))/(4*den*delta_ij[i*num_sites+i]);
             if (!std::isfinite(XA[i])) {
                 XA[i] = 0.02;
@@ -2580,14 +2652,11 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
         vector<double> ddelta_dx(num_sites * num_sites * ncomp, 0);
         int idx_ddelta = 0;
         for (int k = 0; k < ncomp; k++) {
-            int idxi = 0; // index for the ii-th compound
-            int idxj = 0; // index for the jj-th compound
-            idxa = 0;
             for (int i = 0; i < num_sites; i++) {
-                idxi = iA[i]*ncomp+iA[i];
+                int idxi = iA[i]*ncomp+iA[i];
                 for (int j = 0; j < num_sites; j++) {
-                    idxj = iA[j]*ncomp+iA[j];
-                    if (cppargs.assoc_matrix[idxa] != 0) {
+                    int idxj = iA[j]*ncomp+iA[j];
+                    if (cppargs.assoc_matrix[i*num_sites+j] != 0) {
                         double eABij = (cppargs.e_assoc[iA[i]]+cppargs.e_assoc[iA[j]])/2.;
                         double volABij = _HUGE;
                         if (cppargs.k_hb.empty()) {
@@ -2606,7 +2675,6 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
                         ddelta_dx[idx_ddelta] = dghsd_dx*(exp(eABij/t)-1)*pow(s_ij[iA[i]*ncomp+iA[j]], 3)*volABij;
                     }
                     idx_ddelta += 1;
-                    idxa += 1;
                 }
             }
         }
@@ -2690,7 +2758,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
             deps_dx_born = compute_deps_solvent_reference(x, cppargs);
         }
 
-        double kappa = sqrt(den*E_CHRG*E_CHRG/kb/t/(eps*perm_vac)*Qsum); // inverse Debye screening length
+        double kappa = compute_dh_kappa(den, t, eps, Qsum); // inverse Debye screening length
         if ((kappa != 0) && (Qsum != 0)) {
             vector<double> chi(ncomp, 0.0);
             vector<double> sigma_k(ncomp, 0.0);
@@ -2699,7 +2767,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
 
             for (int i = 0; i < ncomp; i++) {
                 double ka = kappa*d[i];
-                chi[i] = 3/pow(ka, 3)*(1.5 + log(1+ka) - 2*(1+ka) + 0.5*pow(1+ka, 2));
+                chi[i] = compute_dh_chi(kappa, d[i]);
                 sigma_k[i] = -2*chi[i] + 3/(1+ka);
 
                 S += x[i]*cppargs.z[i]*cppargs.z[i]*chi[i];
@@ -3176,95 +3244,25 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, const add_args &c
     Calculate the residual Helmholtz energy
     */
     int ncomp = static_cast<int>(x.size()); // number of components
-    vector<double> d (ncomp);
-    for (int i = 0; i < ncomp; i++) {
-        d[i] = cppargs.s[i]*(1-0.12*exp(-3*cppargs.e[i]/t));
-        if (!cppargs.z.empty() && is_ion_species(cppargs, i)) {
-            d[i] = compute_ion_diameter(i, t, cppargs);
-        }
-    }
-
-    double den = rho*N_AV/1.0e30;
-
-    vector<double> zeta (4, 0);
-    double summ;
-    for (int i = 0; i < 4; i++) {
-        summ = 0;
-        for (int j = 0; j < ncomp; j++) {
-            summ += x[j]*cppargs.m[j]*pow(d[j], i);
-        }
-        zeta[i] = PI/6*den*summ;
-    }
-
-    double eta = zeta[3];
-    double m_avg = 0;
-    for (int i = 0; i < ncomp; i++) {
-        m_avg += x[i]*cppargs.m[i];
-    }
-
-    vector<double> ghs (ncomp*ncomp, 0);
-    vector<double> e_ij (ncomp*ncomp, 0);
-    vector<double> s_ij (ncomp*ncomp, 0);
-    double m2es3 = 0.;
-    double m2e2s3 = 0.;
-    int idx = -1;
-    for (int i = 0; i < ncomp; i++) {
-        for (int j = 0; j < ncomp; j++) {
-            idx += 1;
-            if (cppargs.l_ij.empty()) {
-                s_ij[idx] = (cppargs.s[i] + cppargs.s[j])/2.;
-            }
-            else {
-                s_ij[idx] = (cppargs.s[i] + cppargs.s[j])/2.*(1-cppargs.l_ij[idx]);
-            }
-            if (!cppargs.z.empty()) {
-                if (cppargs.z[i]*cppargs.z[j] <= 0) { // for two cations or two anions e_ij is kept at zero to avoid dispersion between like ions (see Held et al. 2014)
-                    if (cppargs.k_ij.empty()) {
-                        e_ij[idx] = sqrt(cppargs.e[i]*cppargs.e[j]);
-                    }
-                    else {
-                        e_ij[idx] = sqrt(cppargs.e[i]*cppargs.e[j])*(1-cppargs.k_ij[idx]);
-                    }
-                }
-            } else {
-                if (cppargs.k_ij.empty()) {
-                    e_ij[idx] = sqrt(cppargs.e[i]*cppargs.e[j]);
-                }
-                else {
-                    e_ij[idx] = sqrt(cppargs.e[i]*cppargs.e[j])*(1-cppargs.k_ij[idx]);
-                }
-            }
-            m2es3 = m2es3 + x[i]*x[j]*cppargs.m[i]*cppargs.m[j]*e_ij[idx]/t*pow(s_ij[idx], 3);
-            m2e2s3 = m2e2s3 + x[i]*x[j]*cppargs.m[i]*cppargs.m[j]*pow(e_ij[idx]/t,2)*pow(s_ij[idx], 3);
-            ghs[idx] = 1/(1-zeta[3]) + (d[i]*d[j]/(d[i]+d[j]))*3*zeta[2]/(1-zeta[3])/(1-zeta[3]) +
-                pow(d[i]*d[j]/(d[i]+d[j]), 2)*2*zeta[2]*zeta[2]/pow(1-zeta[3], 3);
-        }
-    }
-
-    double ares_hs = 1/zeta[0]*(3*zeta[1]*zeta[2]/(1-zeta[3]) + pow(zeta[2], 3.)/(zeta[3]*pow(1-zeta[3],2))
-            + (pow(zeta[2], 3.)/pow(zeta[3], 2.) - zeta[0])*log(1-zeta[3]));
-
-    static double a0[7] = { 0.9105631445, 0.6361281449, 2.6861347891, -26.547362491, 97.759208784, -159.59154087, 91.297774084 };
-    static double a1[7] = { -0.3084016918, 0.1860531159, -2.5030047259, 21.419793629, -65.255885330, 83.318680481, -33.746922930 };
-    static double a2[7] = { -0.0906148351, 0.4527842806, 0.5962700728, -1.7241829131, -4.1302112531, 13.776631870, -8.6728470368 };
-    static double b0[7] = { 0.7240946941, 2.2382791861, -4.0025849485, -21.003576815, 26.855641363, 206.55133841, -355.60235612 };
-    static double b1[7] = { -0.5755498075, 0.6995095521, 3.8925673390, -17.215471648, 192.67226447, -161.82646165, -165.20769346 };
-    static double b2[7] = { 0.0976883116, -0.2557574982, -9.1558561530, 20.642075974, -38.804430052, 93.626774077, -29.666905585 };
-
-    vector<double> a (7, 0);
-    vector<double> b (7, 0);
-    for (int i = 0; i < 7; i++) {
-        a[i] = a0[i] + (m_avg-1.)/m_avg*a1[i] + (m_avg-1.)/m_avg*(m_avg-2.)/m_avg*a2[i];
-        b[i] = b0[i] + (m_avg-1.)/m_avg*b1[i] + (m_avg-1.)/m_avg*(m_avg-2.)/m_avg*b2[i];
-    }
-
-    double I1 = 0.0;
-    double I2 = 0.0;
-    for (int i = 0; i < 7; i++) {
-        I1 += a[i]*pow(eta, i);
-        I2 += b[i]*pow(eta, i);
-    }
-    double C1 = 1./(1. + m_avg*(8*eta-2*eta*eta)/pow(1-eta, 4) + (1-m_avg)*(20*eta-27*eta*eta+12*pow(eta, 3)-2*pow(eta, 4))/pow((1-eta)*(2-eta), 2.0));
+    double summ = 0.0;
+    ThermoCommonState thermo = build_thermo_common_state(t, rho, x, cppargs, false);
+    auto &d = thermo.d;
+    auto &zeta = thermo.zeta;
+    auto &e_ij = thermo.e_ij;
+    auto &s_ij = thermo.s_ij;
+    auto &ghs = thermo.ghs;
+    double den = thermo.den;
+    double eta = thermo.eta;
+    double m_avg = thermo.m_avg;
+    double m2es3 = thermo.m2es3;
+    double m2e2s3 = thermo.m2e2s3;
+    DispersionPolynomialState dispersion = build_dispersion_polynomials(m_avg, eta);
+    double ares_hs = 1.0 / zeta[0] * (3.0 * zeta[1] * zeta[2] / (1.0 - zeta[3])
+        + std::pow(zeta[2], 3.0) / (zeta[3] * std::pow(1.0 - zeta[3], 2.0))
+        + (std::pow(zeta[2], 3.0) / std::pow(zeta[3], 2.0) - zeta[0]) * std::log(1.0 - zeta[3]));
+    double I1 = dispersion.I1;
+    double I2 = dispersion.I2;
+    double C1 = dispersion.C1;
 
     summ = 0.0;
     for (int i = 0; i < ncomp; i++) {
@@ -3280,52 +3278,35 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, const add_args &c
         double A2 = 0.;
         double A3 = 0.;
         vector<double> dipmSQ (ncomp, 0);
-
-        static double a0dip[5] = { 0.3043504, -0.1358588, 1.4493329, 0.3556977, -2.0653308 };
-        static double a1dip[5] = { 0.9534641, -1.8396383, 2.0131180, -7.3724958, 8.2374135 };
-        static double a2dip[5] = { -1.1610080, 4.5258607, 0.9751222, -12.281038, 5.9397575 };
-        static double b0dip[5] = { 0.2187939, -1.1896431, 1.1626889, 0, 0 };
-        static double b1dip[5] = { -0.5873164, 1.2489132, -0.5085280, 0, 0 };
-        static double b2dip[5] = { 3.4869576, -14.915974, 15.372022, 0, 0 };
-        static double c0dip[5] = { -0.0646774, 0.1975882, -0.8087562, 0.6902849, 0 };
-        static double c1dip[5] = { -0.9520876, 2.9924258, -2.3802636, -0.2701261, 0 };
-        static double c2dip[5] = { -0.6260979, 1.2924686, 1.6542783, -3.4396744, 0 };
-
         const static double conv = 7242.702976750923; // conversion factor, see the note below Table 2 in Gross and Vrabec 2006
 
         for (int i = 0; i < ncomp; i++) {
             dipmSQ[i] = pow(cppargs.dipm[i], 2.)/(cppargs.m[i]*cppargs.e[i]*pow(cppargs.s[i],3.))*conv;
         }
 
-        vector<double> adip (5, 0);
-        vector<double> bdip (5, 0);
-        vector<double> cdip (5, 0);
-        double J2, J3;
-        double m_ij;
-        double m_ijk;
         for (int i = 0; i < ncomp; i++) {
             for (int j = 0; j < ncomp; j++) {
-                m_ij = sqrt(cppargs.m[i]*cppargs.m[j]);
+                double m_ij = sqrt(cppargs.m[i]*cppargs.m[j]);
                 if (m_ij > 2) {
                     m_ij = 2;
                 }
-                J2 = 0.;
+                vector<double> adip = build_dipole_coefficients(kDipoleA0, kDipoleA1, kDipoleA2, m_ij);
+                vector<double> bdip = build_dipole_coefficients(kDipoleB0, kDipoleB1, kDipoleB2, m_ij);
+                double J2 = 0.;
                 for (int l = 0; l < 5; l++) {
-                    adip[l] = a0dip[l] + (m_ij-1)/m_ij*a1dip[l] + (m_ij-1)/m_ij*(m_ij-2)/m_ij*a2dip[l];
-                    bdip[l] = b0dip[l] + (m_ij-1)/m_ij*b1dip[l] + (m_ij-1)/m_ij*(m_ij-2)/m_ij*b2dip[l];
                     J2 += (adip[l] + bdip[l]*e_ij[j*ncomp+j]/t)*pow(eta, l); // j*ncomp+j needs to be used for e_ij because it is formatted as a 1D vector
                 }
                 A2 += x[i]*x[j]*e_ij[i*ncomp+i]/t*e_ij[j*ncomp+j]/t*pow(s_ij[i*ncomp+i],3)*pow(s_ij[j*ncomp+j],3)/
                     pow(s_ij[i*ncomp+j],3)*cppargs.dip_num[i]*cppargs.dip_num[j]*dipmSQ[i]*dipmSQ[j]*J2;
 
                 for (int k = 0; k < ncomp; k++) {
-                    m_ijk = pow((cppargs.m[i]*cppargs.m[j]*cppargs.m[k]),1/3.);
+                    double m_ijk = pow((cppargs.m[i]*cppargs.m[j]*cppargs.m[k]),1/3.);
                     if (m_ijk > 2) {
                         m_ijk = 2;
                     }
-                    J3 = 0.;
+                    vector<double> cdip = build_dipole_coefficients(kDipoleC0, kDipoleC1, kDipoleC2, m_ijk);
+                    double J3 = 0.;
                     for (int l = 0; l < 5; l++) {
-                        cdip[l] = c0dip[l] + (m_ijk-1)/m_ijk*c1dip[l] + (m_ijk-1)/m_ijk*(m_ijk-2)/m_ijk*c2dip[l];
                         J3 += cdip[l]*pow(eta, l);
                     }
                     A3 += x[i]*x[j]*x[k]*e_ij[i*ncomp+i]/t*e_ij[j*ncomp+j]/t*e_ij[k*ncomp+k]/t*
@@ -3347,44 +3328,14 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, const add_args &c
     // Association term -------------------------------------------------------
     double ares_assoc = 0.;
     if (!cppargs.e_assoc.empty()) {
-        int num_sites = 0;
-        vector<int> iA; //indices of associating compounds
-        for(std::vector<int>::const_iterator it = cppargs.assoc_num.begin(); it != cppargs.assoc_num.end(); ++it) {
-            num_sites += *it;
-            for (int i = 0; i < *it; i++) {
-                iA.push_back(static_cast<int>(it - cppargs.assoc_num.begin()));
-            }
-        }
+        AssociationSetup assoc = build_association_setup(x, cppargs, s_ij, ghs, t);
+        const vector<int> &iA = assoc.site_component_index;
+        const vector<double> &x_assoc = assoc.x_assoc;
+        const vector<double> &delta_ij = assoc.delta_ij;
+        int num_sites = static_cast<int>(iA.size());
 
-        vector<double> x_assoc(num_sites); // mole fractions of only the associating compounds
+        vector<double> XA(num_sites, 0.0);
         for (int i = 0; i < num_sites; i++) {
-            x_assoc[i] = x[iA[i]];
-        }
-
-        vector<double> XA (num_sites, 0);
-        vector<double> delta_ij(num_sites * num_sites, 0);
-        int idxa = 0;
-        int idxi = 0; // index for the ii-th compound
-        int idxj = 0; // index for the jj-th compound
-        for (int i = 0; i < num_sites; i++) {
-            idxi = iA[i]*ncomp+iA[i];
-            for (int j = 0; j < num_sites; j++) {
-                idxj = iA[j]*ncomp+iA[j];
-                if (cppargs.assoc_matrix[idxa] != 0) {
-                    double eABij = (cppargs.e_assoc[iA[i]]+cppargs.e_assoc[iA[j]])/2.;
-                    double volABij = _HUGE;
-                    if (cppargs.k_hb.empty()) {
-                        volABij = sqrt(cppargs.vol_a[iA[i]]*cppargs.vol_a[iA[j]])*pow(sqrt(s_ij[idxi]*
-                            s_ij[idxj])/(0.5*(s_ij[idxi]+s_ij[idxj])), 3);
-                    }
-                    else {
-                        volABij = sqrt(cppargs.vol_a[iA[i]]*cppargs.vol_a[iA[j]])*pow(sqrt(s_ij[idxi]*
-                            s_ij[idxj])/(0.5*(s_ij[idxi]+s_ij[idxj])), 3)*(1-cppargs.k_hb[iA[i]*ncomp+iA[j]]);
-                    }
-                    delta_ij[idxa] = ghs[iA[i]*ncomp+iA[j]]*(exp(eABij/t)-1)*pow(s_ij[iA[i]*ncomp+iA[j]], 3)*volABij;
-                }
-                idxa += 1;
-            }
             XA[i] = (-1 + sqrt(1+8*den*delta_ij[i*num_sites+i]))/(4*den*delta_ij[i*num_sites+i]);
             if (!std::isfinite(XA[i])) {
                 XA[i] = 0.02;
@@ -3465,87 +3416,39 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &c
     constant density.
     */
     int ncomp = static_cast<int>(x.size()); // number of components
-    vector<double> d (ncomp), dd_dt(ncomp);
-    for (int i = 0; i < ncomp; i++) {
-        d[i] = cppargs.s[i]*(1-0.12*exp(-3*cppargs.e[i]/t));
-        dd_dt[i] = cppargs.s[i]*-3*cppargs.e[i]/t/t*0.12*exp(-3*cppargs.e[i]/t);
-        if (!cppargs.z.empty() && is_ion_species(cppargs, i)) {
-            d[i] = compute_ion_diameter(i, t, cppargs);
-            dd_dt[i] = compute_ion_diameter_dt(i, t, cppargs);
-        }
-    }
-
-    double den = rho*N_AV/1.0e30;
-
-    vector<double> zeta (4, 0);
-    double summ;
-    for (int i = 0; i < 4; i++) {
-        summ = 0;
-        for (int j = 0; j < ncomp; j++) {
-            summ += x[j]*cppargs.m[j]*pow(d[j], i);
-        }
-        zeta[i] = PI/6*den*summ;
-    }
-
-    vector<double> dzeta_dt (4, 0);
-    for (int i = 1; i < 4; i++) {
-        summ = 0;
-        for (int j = 0; j < ncomp; j++) {
-            summ += x[j]*cppargs.m[j]*i*dd_dt[j]*pow(d[j],(i-1));
-        }
-        dzeta_dt[i] = PI/6*den*summ;
-    }
-
-    double eta = zeta[3];
-    double m_avg = 0;
-    for (int i = 0; i < ncomp; i++) {
-        m_avg += x[i]*cppargs.m[i];
-    }
-
-    vector<double> ghs (ncomp*ncomp, 0);
-    vector<double> dghs_dt (ncomp*ncomp, 0);
-    vector<double> e_ij (ncomp*ncomp, 0);
-    vector<double> s_ij (ncomp*ncomp, 0);
-    double m2es3 = 0.;
-    double m2e2s3 = 0.;
-    double ddij_dt;
+    double summ = 0.0;
+    ThermoCommonState thermo = build_thermo_common_state(t, rho, x, cppargs, true);
+    auto &d = thermo.d;
+    auto &dd_dt = thermo.dd_dt;
+    auto &zeta = thermo.zeta;
+    auto &dzeta_dt = thermo.dzeta_dt;
+    auto &e_ij = thermo.e_ij;
+    auto &s_ij = thermo.s_ij;
+    auto &ghs = thermo.ghs;
+    auto &denghs = thermo.denghs;
+    double den = thermo.den;
+    double eta = thermo.eta;
+    double m_avg = thermo.m_avg;
+    double m2es3 = thermo.m2es3;
+    double m2e2s3 = thermo.m2e2s3;
+    DispersionPolynomialState dispersion = build_dispersion_polynomials(m_avg, eta);
+    vector<double> dghs_dt(ncomp * ncomp, 0.0);
     int idx = -1;
-    for (int i = 0; i < ncomp; i++) {
-        for (int j = 0; j < ncomp; j++) {
-            idx += 1;
-            if (cppargs.l_ij.empty()) {
-                s_ij[idx] = (cppargs.s[i] + cppargs.s[j])/2.;
-            }
-            else {
-                s_ij[idx] = (cppargs.s[i] + cppargs.s[j])/2.*(1-cppargs.l_ij[idx]);
-            }
-            if (!cppargs.z.empty()) {
-                if (cppargs.z[i]*cppargs.z[j] <= 0) { // for two cations or two anions e_ij is kept at zero to avoid dispersion between like ions (see Held et al. 2014)
-                    if (cppargs.k_ij.empty()) {
-                        e_ij[idx] = sqrt(cppargs.e[i]*cppargs.e[j]);
-                    }
-                    else {
-                        e_ij[idx] = sqrt(cppargs.e[i]*cppargs.e[j])*(1-cppargs.k_ij[idx]);
-                    }
-                }
-            } else {
-                if (cppargs.k_ij.empty()) {
-                    e_ij[idx] = sqrt(cppargs.e[i]*cppargs.e[j]);
-                }
-                else {
-                    e_ij[idx] = sqrt(cppargs.e[i]*cppargs.e[j])*(1-cppargs.k_ij[idx]);
-                }
-            }
-            m2es3 = m2es3 + x[i]*x[j]*cppargs.m[i]*cppargs.m[j]*e_ij[idx]/t*pow(s_ij[idx], 3);
-            m2e2s3 = m2e2s3 + x[i]*x[j]*cppargs.m[i]*cppargs.m[j]*pow(e_ij[idx]/t,2)*pow(s_ij[idx], 3);
-            ghs[idx] = 1/(1-zeta[3]) + (d[i]*d[j]/(d[i]+d[j]))*3*zeta[2]/(1-zeta[3])/(1-zeta[3]) +
-                    pow(d[i]*d[j]/(d[i]+d[j]), 2)*2*zeta[2]*zeta[2]/pow(1-zeta[3], 3);
-            ddij_dt = (d[i]*d[j]/(d[i]+d[j]))*(dd_dt[i]/d[i]+dd_dt[j]/d[j]-(dd_dt[i]+dd_dt[j])/(d[i]+d[j]));
-            dghs_dt[idx] = dzeta_dt[3]/pow(1-zeta[3], 2.)
-                + 3*(ddij_dt*zeta[2]+(d[i]*d[j]/(d[i]+d[j]))*dzeta_dt[2])/pow(1-zeta[3], 2.)
-                + 4*(d[i]*d[j]/(d[i]+d[j]))*zeta[2]*(1.5*dzeta_dt[3]+ddij_dt*zeta[2]
-                + (d[i]*d[j]/(d[i]+d[j]))*dzeta_dt[2])/pow(1-zeta[3], 3.)
-                + 6*pow((d[i]*d[j]/(d[i]+d[j]))*zeta[2], 2.)*dzeta_dt[3]/pow(1-zeta[3], 4.);
+    for (int i = 0; i < ncomp; ++i) {
+        for (int j = 0; j < ncomp; ++j) {
+            ++idx;
+            double pair_diameter = compute_pair_diameter(d[i], d[j]);
+            double pair_diameter_dt = pair_diameter * (
+                dd_dt[i] / d[i] + dd_dt[j] / d[j] - (dd_dt[i] + dd_dt[j]) / (d[i] + d[j])
+            );
+            dghs_dt[idx] = compute_hs_contact_time_derivative(
+                pair_diameter,
+                pair_diameter_dt,
+                zeta[2],
+                zeta[3],
+                dzeta_dt[2],
+                dzeta_dt[3]
+            );
         }
     }
 
@@ -3556,33 +3459,13 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &c
         + (3*pow(zeta[2], 2.)*dzeta_dt[2]*zeta[3] - 2*pow(zeta[2], 3.)*dzeta_dt[3])/pow(zeta[3], 3.)
         * log(1-zeta[3])
         + (zeta[0]-pow(zeta[2],3)/pow(zeta[3],2.))*dzeta_dt[3]/(1-zeta[3]));
-
-    static double a0[7] = { 0.9105631445, 0.6361281449, 2.6861347891, -26.547362491, 97.759208784, -159.59154087, 91.297774084 };
-    static double a1[7] = { -0.3084016918, 0.1860531159, -2.5030047259, 21.419793629, -65.255885330, 83.318680481, -33.746922930 };
-    static double a2[7] = { -0.0906148351, 0.4527842806, 0.5962700728, -1.7241829131, -4.1302112531, 13.776631870, -8.6728470368 };
-    static double b0[7] = { 0.7240946941, 2.2382791861, -4.0025849485, -21.003576815, 26.855641363, 206.55133841, -355.60235612 };
-    static double b1[7] = { -0.5755498075, 0.6995095521, 3.8925673390, -17.215471648, 192.67226447, -161.82646165, -165.20769346 };
-    static double b2[7] = { 0.0976883116, -0.2557574982, -9.1558561530, 20.642075974, -38.804430052, 93.626774077, -29.666905585 };
-
-    vector<double> a (7, 0);
-    vector<double> b (7, 0);
-    for (int i = 0; i < 7; i++) {
-        a[i] = a0[i] + (m_avg-1.)/m_avg*a1[i] + (m_avg-1.)/m_avg*(m_avg-2.)/m_avg*a2[i];
-        b[i] = b0[i] + (m_avg-1.)/m_avg*b1[i] + (m_avg-1.)/m_avg*(m_avg-2.)/m_avg*b2[i];
-    }
-
-    double I1 = 0.0;
-    double I2 = 0.0;
-    double dI1_dt = 0.0, dI2_dt = 0.;
-    for (int i = 0; i < 7; i++) {
-        I1 += a[i]*pow(eta, i);
-        I2 += b[i]*pow(eta, i);
-        dI1_dt += a[i]*dzeta_dt[3]*i*pow(eta, i-1);
-        dI2_dt += b[i]*dzeta_dt[3]*i*pow(eta, i-1);
-    }
-    double C1 = 1./(1. + m_avg*(8*eta-2*eta*eta)/pow(1-eta, 4) + (1-m_avg)*(20*eta-27*eta*eta+12*pow(eta, 3)-2*pow(eta, 4))/pow((1-eta)*(2-eta), 2.0));
-    double C2 = -1*C1*C1*(m_avg*(-4*eta*eta+20*eta+8)/pow(1-eta,5.) + (1-m_avg)*(2*pow(eta,3)+12*eta*eta-48*eta+40)/pow((1-eta)*(2-eta),3));
-    double dC1_dt = C2*dzeta_dt[3];
+    double I1 = dispersion.I1;
+    double I2 = dispersion.I2;
+    double dI1_dt = dispersion.dI1_deta * dzeta_dt[3];
+    double dI2_dt = dispersion.dI2_deta * dzeta_dt[3];
+    double C1 = dispersion.C1;
+    double C2 = dispersion.C2;
+    double dC1_dt = C2 * dzeta_dt[3];
 
     summ = 0.;
     for (int i = 0; i < ncomp; i++) {
@@ -3601,40 +3484,24 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &c
         double dA3_dt = 0.;
         vector<double> dipmSQ (ncomp, 0);
 
-        static double a0dip[5] = { 0.3043504, -0.1358588, 1.4493329, 0.3556977, -2.0653308 };
-        static double a1dip[5] = { 0.9534641, -1.8396383, 2.0131180, -7.3724958, 8.2374135 };
-        static double a2dip[5] = { -1.1610080, 4.5258607, 0.9751222, -12.281038, 5.9397575 };
-        static double b0dip[5] = { 0.2187939, -1.1896431, 1.1626889, 0, 0 };
-        static double b1dip[5] = { -0.5873164, 1.2489132, -0.5085280, 0, 0 };
-        static double b2dip[5] = { 3.4869576, -14.915974, 15.372022, 0, 0 };
-        static double c0dip[5] = { -0.0646774, 0.1975882, -0.8087562, 0.6902849, 0 };
-        static double c1dip[5] = { -0.9520876, 2.9924258, -2.3802636, -0.2701261, 0 };
-        static double c2dip[5] = { -0.6260979, 1.2924686, 1.6542783, -3.4396744, 0 };
-
         const static double conv = 7242.702976750923; // conversion factor, see the note below Table 2 in Gross and Vrabec 2006
 
         for (int i = 0; i < ncomp; i++) {
             dipmSQ[i] = pow(cppargs.dipm[i], 2.)/(cppargs.m[i]*cppargs.e[i]*pow(cppargs.s[i],3.))*conv;
         }
 
-
-        vector<double> adip (5, 0);
-        vector<double> bdip (5, 0);
-        vector<double> cdip (5, 0);
         double J2, J3, dJ2_dt, dJ3_dt;
-        double m_ij;
-        double m_ijk;
         for (int i = 0; i < ncomp; i++) {
             for (int j = 0; j < ncomp; j++) {
-                m_ij = sqrt(cppargs.m[i]*cppargs.m[j]);
+                double m_ij = sqrt(cppargs.m[i]*cppargs.m[j]);
                 if (m_ij > 2) {
                     m_ij = 2;
                 }
+                vector<double> adip = build_dipole_coefficients(kDipoleA0, kDipoleA1, kDipoleA2, m_ij);
+                vector<double> bdip = build_dipole_coefficients(kDipoleB0, kDipoleB1, kDipoleB2, m_ij);
                 J2 = 0.;
                 dJ2_dt = 0.;
                 for (int l = 0; l < 5; l++) {
-                    adip[l] = a0dip[l] + (m_ij-1)/m_ij*a1dip[l] + (m_ij-1)/m_ij*(m_ij-2)/m_ij*a2dip[l];
-                    bdip[l] = b0dip[l] + (m_ij-1)/m_ij*b1dip[l] + (m_ij-1)/m_ij*(m_ij-2)/m_ij*b2dip[l];
                     J2 += (adip[l] + bdip[l]*e_ij[j*ncomp+j]/t)*pow(eta, l); // j*ncomp+j needs to be used for e_ij because it is formatted as a 1D vector
                     dJ2_dt += adip[l]*l*pow(eta, l-1)*dzeta_dt[3]
                         + bdip[l]*e_ij[j*ncomp+j]*(1/t*l*pow(eta, l-1)*dzeta_dt[3]
@@ -3647,14 +3514,14 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &c
                     (dJ2_dt/pow(t,2)-2*J2/pow(t,3));
 
                 for (int k = 0; k < ncomp; k++) {
-                    m_ijk = pow((cppargs.m[i]*cppargs.m[j]*cppargs.m[k]),1/3.);
+                    double m_ijk = pow((cppargs.m[i]*cppargs.m[j]*cppargs.m[k]),1/3.);
                     if (m_ijk > 2) {
                         m_ijk = 2;
                     }
+                    vector<double> cdip = build_dipole_coefficients(kDipoleC0, kDipoleC1, kDipoleC2, m_ijk);
                     J3 = 0.;
                     dJ3_dt = 0.;
                     for (int l = 0; l < 5; l++) {
-                        cdip[l] = c0dip[l] + (m_ijk-1)/m_ijk*c1dip[l] + (m_ijk-1)/m_ijk*(m_ijk-2)/m_ijk*c2dip[l];
                         J3 += cdip[l]*pow(eta, l);
                         dJ3_dt += cdip[l]*l*pow(eta, l-1)*dzeta_dt[3];
                     }
@@ -3684,31 +3551,19 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &c
     // only the 2B association type is currently implemented
     double dadt_assoc = 0.;
     if (!cppargs.e_assoc.empty()) {
-        int num_sites = 0;
-        vector<int> iA; //indices of associating compounds
-        for(std::vector<int>::const_iterator it = cppargs.assoc_num.begin(); it != cppargs.assoc_num.end(); ++it) {
-            num_sites += *it;
-            for (int i = 0; i < *it; i++) {
-                iA.push_back(static_cast<int>(it - cppargs.assoc_num.begin()));
-            }
-        }
+        AssociationSetup assoc = build_association_setup(x, cppargs, s_ij, ghs, t);
+        const vector<int> &iA = assoc.site_component_index;
+        const vector<double> &x_assoc = assoc.x_assoc;
+        const vector<double> &delta_ij = assoc.delta_ij;
+        int num_sites = static_cast<int>(iA.size());
 
-        vector<double> x_assoc(num_sites); // mole fractions of only the associating compounds
+        vector<double> XA(num_sites, 0.0);
+        vector<double> ddelta_dt(num_sites * num_sites, 0.0);
         for (int i = 0; i < num_sites; i++) {
-            x_assoc[i] = x[iA[i]];
-        }
-
-        vector<double> XA(num_sites, 0);
-        vector<double> delta_ij(num_sites * num_sites, 0);
-        vector<double> ddelta_dt(num_sites * num_sites, 0);
-        int idxa = 0;
-        int idxi = 0; // index for the ii-th compound
-        int idxj = 0; // index for the jj-th compound
-        for (int i = 0; i < num_sites; i++) {
-            idxi = iA[i]*ncomp+iA[i];
+            int idxi = iA[i]*ncomp+iA[i];
             for (int j = 0; j < num_sites; j++) {
-                idxj = iA[j]*ncomp+iA[j];
-                if (cppargs.assoc_matrix[idxa] != 0) {
+                int idxj = iA[j]*ncomp+iA[j];
+                if (cppargs.assoc_matrix[i*num_sites+j] != 0) {
                     double eABij = (cppargs.e_assoc[iA[i]]+cppargs.e_assoc[iA[j]])/2.;
                     double volABij = _HUGE;
                     if (cppargs.k_hb.empty()) {
@@ -3719,12 +3574,10 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &c
                         volABij = sqrt(cppargs.vol_a[iA[i]]*cppargs.vol_a[iA[j]])*pow(sqrt(s_ij[idxi]*
                             s_ij[idxj])/(0.5*(s_ij[idxi]+s_ij[idxj])), 3)*(1-cppargs.k_hb[iA[i]*ncomp+iA[j]]);
                     }
-                    delta_ij[idxa] = ghs[iA[i]*ncomp+iA[j]]*(exp(eABij/t)-1)*pow(s_ij[iA[i]*ncomp+iA[j]], 3)*volABij;
-                    ddelta_dt[idxa] = pow(s_ij[idxj],3)*volABij*(-eABij/pow(t,2)
+                    ddelta_dt[i*num_sites+j] = pow(s_ij[idxj],3)*volABij*(-eABij/pow(t,2)
                         *exp(eABij/t)*ghs[iA[i]*ncomp+iA[j]] + dghs_dt[iA[i]*ncomp+iA[j]]
                         *(exp(eABij/t)-1));
                 }
-                idxa += 1;
             }
             XA[i] = (-1 + sqrt(1+8*den*delta_ij[i*num_sites+i]))/(4*den*delta_ij[i*num_sites+i]);
             if (!std::isfinite(XA[i])) {
@@ -3771,7 +3624,7 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &c
         for (int i = 0; i < ncomp; i++) {
             summ += cppargs.z[i]*cppargs.z[i]*x[i];
         }
-        double kappa = sqrt(den*E_CHRG*E_CHRG/kb/t/(eps*perm_vac)*summ); // the inverse Debye screening length. Equation 4 in Held et al. 2008.
+        double kappa = compute_dh_kappa(den, t, eps, summ); // the inverse Debye screening length. Equation 4 in Held et al. 2008.
 
         double dkappa_dt;
         if (kappa != 0) {
@@ -3779,8 +3632,7 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &c
             vector<double> dchikap_dk(ncomp);
             summ = 0.;
             for (int i = 0; i < ncomp; i++) {
-                chi[i] = 3/pow(kappa*d[i], 3)*(1.5 + log(1+kappa*d[i]) - 2*(1+kappa*d[i]) +
-                    0.5*pow(1+kappa*d[i], 2));
+                chi[i] = compute_dh_chi(kappa, d[i]);
                 dchikap_dk[i] = -2*chi[i]+3/(1+kappa*d[i]);
                 summ += x[i]*cppargs.z[i]*cppargs.z[i];
             }
