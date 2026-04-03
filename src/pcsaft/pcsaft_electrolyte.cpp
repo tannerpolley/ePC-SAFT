@@ -241,11 +241,37 @@ ThermoCommonState build_thermo_common_state(double t, double rho, const vector<d
 
     for (int i = 0; i < ncomp; ++i) {
         state.d[i] = cppargs.s[i] * (1.0 - 0.12 * std::exp(-3.0 * cppargs.e[i] / t));
-    }
-
-    if (include_dt) {
-        for (int i = 0; i < ncomp; ++i) {
+        if (include_dt) {
             state.dd_dt[i] = -0.36 * cppargs.s[i] * cppargs.e[i] * std::exp(-3.0 * cppargs.e[i] / t) / (t * t);
+        }
+        if (!cppargs.z.empty() && std::abs(cppargs.z[i]) > 1e-12) {
+            int mode = cppargs.d_ion_mode;
+            double sigma_i = cppargs.s[i];
+            if (sigma_i <= 0.0) {
+                throw ValueError("DH/ion diameter requires positive ionic sigma_i.");
+            }
+            if (mode == 0) {
+                state.d[i] = sigma_i;
+                if (include_dt) {
+                    state.dd_dt[i] = 0.0;
+                }
+            }
+            else if (mode == 1) {
+                state.d[i] = sigma_i * (1.0 - 0.12);
+                if (include_dt) {
+                    state.dd_dt[i] = 0.0;
+                }
+            }
+            else if (mode == 2) {
+                double expo = std::exp(-3.0 * cppargs.e[i] / t);
+                state.d[i] = sigma_i * (1.0 - 0.12 * expo);
+                if (include_dt) {
+                    state.dd_dt[i] = -0.36 * sigma_i * cppargs.e[i] * expo / (t * t);
+                }
+            }
+            else {
+                throw ValueError("Unknown d_ion_mode. Supported values are 0, 1, 2.");
+            }
         }
     }
 
@@ -275,25 +301,6 @@ ThermoCommonState build_thermo_common_state(double t, double rho, const vector<d
 
     int idx = -1;
     for (int i = 0; i < ncomp; ++i) {
-        if (!cppargs.z.empty() && std::abs(cppargs.z[i]) > 1e-12) {
-            int mode = cppargs.d_ion_mode;
-            double sigma_i = cppargs.s[i];
-            if (sigma_i <= 0.0) {
-                throw ValueError("DH/ion diameter requires positive ionic sigma_i.");
-            }
-            if (mode == 0) {
-                state.d[i] = sigma_i;
-            }
-            else if (mode == 1) {
-                state.d[i] = sigma_i * (1.0 - 0.12);
-            }
-            else if (mode == 2) {
-                state.d[i] = sigma_i * (1.0 - 0.12 * std::exp(-3.0 * cppargs.e[i] / t));
-            }
-            else {
-                throw ValueError("Unknown d_ion_mode. Supported values are 0, 1, 2.");
-            }
-        }
         for (int j = 0; j < ncomp; ++j) {
             idx += 1;
             state.s_ij[idx] = compute_pair_sigma(static_cast<size_t>(idx), i, j, cppargs);
@@ -304,14 +311,6 @@ ThermoCommonState build_thermo_common_state(double t, double rho, const vector<d
             double pair_diameter = compute_pair_diameter(state.d[i], state.d[j]);
             state.ghs[idx] = compute_hs_contact_value(pair_diameter, state.zeta[2], state.zeta[3]);
             state.denghs[idx] = compute_hs_contact_density_derivative(pair_diameter, state.zeta[2], state.zeta[3]);
-        }
-    }
-
-    if (include_dt) {
-        for (int i = 0; i < ncomp; ++i) {
-            if (!cppargs.z.empty() && std::abs(cppargs.z[i]) > 1e-12 && cppargs.d_ion_mode != 2) {
-                state.dd_dt[i] = 0.0;
-            }
         }
     }
 
