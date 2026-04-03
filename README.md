@@ -22,7 +22,13 @@ Editable installs for local development and analysis:
 pip install -e . --no-build-isolation
 ```
 
-The build requires a C++ toolchain, Cython, NumPy, and the vendored Eigen headers included in this repository.
+The build requires a C++ toolchain, Cython, NumPy, and the installed `includeigen` package, which provides the Eigen headers used by the C++ extension.
+
+Install the build dependency first:
+
+```bash
+python -m pip install includeigen
+```
 
 ## Package Layout
 

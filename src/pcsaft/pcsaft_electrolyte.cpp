@@ -13,7 +13,7 @@
 
 using std::vector;
 
-namespace {
+namespace thermo_detail {
 thread_local vector<double> g_last_mu_hc;
 thread_local vector<double> g_last_mu_disp;
 thread_local vector<double> g_last_mu_polar;
@@ -46,18 +46,12 @@ thread_local double g_last_sum_x_dadx_polar = 0.0;
 thread_local double g_last_sum_x_dadx_assoc = 0.0;
 thread_local double g_last_sum_x_dadx_ion = 0.0;
 thread_local double g_last_sum_x_dadx_born = 0.0;
-thread_local double g_last_z_raw_hc = 0.0;
-thread_local double g_last_z_raw_disp = 0.0;
-thread_local double g_last_z_raw_polar = 0.0;
-thread_local double g_last_z_raw_assoc = 0.0;
-thread_local double g_last_z_raw_ion = 0.0;
-thread_local double g_last_z_raw_born = 0.0;
-thread_local double g_last_z_hc = 0.0;
-thread_local double g_last_z_disp = 0.0;
-thread_local double g_last_z_polar = 0.0;
-thread_local double g_last_z_assoc = 0.0;
-thread_local double g_last_z_ion = 0.0;
-thread_local double g_last_z_born = 0.0;
+thread_local double g_last_Z_hc = 0.0;
+thread_local double g_last_Z_disp = 0.0;
+thread_local double g_last_Z_polar = 0.0;
+thread_local double g_last_Z_assoc = 0.0;
+thread_local double g_last_Z_ion = 0.0;
+thread_local double g_last_Z_born = 0.0;
 
 enum class AresContributionKind {
     HC,
@@ -76,7 +70,7 @@ struct AresContributions {
     double ion = 0.0;
     double born = 0.0;
 };
-thread_local double g_last_z_total = 1.0;
+thread_local double g_last_Z_total = 1.0;
 
 constexpr std::array<double, 7> kDispersionA0 = {
     0.9105631445, 0.6361281449, 2.6861347891, -26.547362491,
@@ -460,26 +454,19 @@ double stable_logz_over_zminus1(double Z) {
     return std::log(Z) / dz;
 }
 
-vector<double> normalize_z_contributions(const vector<double> &z_raw, double Z_total) {
-    vector<double> out = z_raw;
-    double target = Z_total - 1.0;
+double compute_z_term_scale(const vector<double> &z_term, double Z_total) {
     double raw_sum = 0.0;
-    for (double value : z_raw) {
+    for (double value : z_term) {
         raw_sum += value;
     }
-
-    if (std::abs(target) <= 1e-12 && std::abs(raw_sum) <= 1e-12) {
-        std::fill(out.begin(), out.end(), 0.0);
-        return out;
-    }
+    double target = Z_total - 1.0;
     if (std::abs(raw_sum) <= 1e-14) {
-        throw ValueError("Could not normalize contribution Z terms because their sum is ~0 while Z-1 is non-zero.");
+        if (std::abs(target) <= 1e-12) {
+            return 0.0;
+        }
+        throw ValueError("Could not normalize Z terms because their sum is ~0 while Z-1 is non-zero.");
     }
-    double scale = target / raw_sum;
-    for (double &value : out) {
-        value *= scale;
-    }
-    return out;
+    return target / raw_sum;
 }
 
 struct DensityScanPoint {
@@ -926,6 +913,8 @@ vector<double> pure_component_flashTQ(double t, vector<double> x, const add_args
     return result;
 }
 }
+
+using namespace thermo_detail;
 
 #if defined(HUGE_VAL) && !defined(_HUGE)
     # define _HUGE HUGE_VAL
@@ -3027,9 +3016,16 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
 
     vector<double> mu(ncomp, 0);
     vector<double> lnfugcoef(ncomp, 0);
-    vector<double> raw_z_terms = {Zhc, Zdisp, Zpolar, Zassoc, Zion, Zborn};
-    vector<double> norm_z_terms = normalize_z_contributions(raw_z_terms, Z);
+    const double Z_hc = Zhc;
+    const double Z_disp = Zdisp;
+    const double Z_polar = Zpolar;
+    const double Z_assoc = Zassoc;
+    const double Z_ion = Zion;
+    const double Z_born = Zborn;
+    vector<double> Z_terms = {Z_hc, Z_disp, Z_polar, Z_assoc, Z_ion, Z_born};
+    double Z_term_scale = compute_z_term_scale(Z_terms, Z);
     double z_weight = stable_logz_over_zminus1(Z);
+    double Z_term_correction_scale = Z_term_scale * z_weight;
     vector<double> lnfug_hc(ncomp, 0.0);
     vector<double> lnfug_disp(ncomp, 0.0);
     vector<double> lnfug_polar(ncomp, 0.0);
@@ -3038,12 +3034,12 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
     vector<double> lnfug_born(ncomp, 0.0);
     for (int i = 0; i < ncomp; i++) {
         mu[i] = mu_hc[i] + mu_disp[i] + mu_polar[i] + mu_assoc[i] + mu_ion[i] + mu_born[i];
-        lnfug_hc[i] = mu_hc[i] - norm_z_terms[0] * z_weight;
-        lnfug_disp[i] = mu_disp[i] - norm_z_terms[1] * z_weight;
-        lnfug_polar[i] = mu_polar[i] - norm_z_terms[2] * z_weight;
-        lnfug_assoc[i] = mu_assoc[i] - norm_z_terms[3] * z_weight;
-        lnfug_ion[i] = mu_ion[i] - norm_z_terms[4] * z_weight;
-        lnfug_born[i] = mu_born[i] - norm_z_terms[5] * z_weight;
+        lnfug_hc[i] = mu_hc[i] - Z_hc * Z_term_correction_scale;
+        lnfug_disp[i] = mu_disp[i] - Z_disp * Z_term_correction_scale;
+        lnfug_polar[i] = mu_polar[i] - Z_polar * Z_term_correction_scale;
+        lnfug_assoc[i] = mu_assoc[i] - Z_assoc * Z_term_correction_scale;
+        lnfug_ion[i] = mu_ion[i] - Z_ion * Z_term_correction_scale;
+        lnfug_born[i] = mu_born[i] - Z_born * Z_term_correction_scale;
         lnfugcoef[i] = lnfug_hc[i] + lnfug_disp[i] + lnfug_polar[i] + lnfug_assoc[i] + lnfug_ion[i] + lnfug_born[i];
     }
 
@@ -3080,19 +3076,13 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
     g_last_sum_x_dadx_assoc = sum_x_daassoc_dx;
     g_last_sum_x_dadx_ion = sum_x_dadx_ion;
     g_last_sum_x_dadx_born = sum_x_dadx_born_diag;
-    g_last_z_raw_hc = Zhc;
-    g_last_z_raw_disp = Zdisp;
-    g_last_z_raw_polar = Zpolar;
-    g_last_z_raw_assoc = Zassoc;
-    g_last_z_raw_ion = Zion;
-    g_last_z_raw_born = Zborn;
-    g_last_z_hc = norm_z_terms[0];
-    g_last_z_disp = norm_z_terms[1];
-    g_last_z_polar = norm_z_terms[2];
-    g_last_z_assoc = norm_z_terms[3];
-    g_last_z_ion = norm_z_terms[4];
-    g_last_z_born = norm_z_terms[5];
-    g_last_z_total = Z;
+    g_last_Z_hc = Z_hc;
+    g_last_Z_disp = Z_disp;
+    g_last_Z_polar = Z_polar;
+    g_last_Z_assoc = Z_assoc;
+    g_last_Z_ion = Z_ion;
+    g_last_Z_born = Z_born;
+    g_last_Z_total = Z;
     if (cppargs.debug) {
         std::cout << std::fixed << std::setprecision(10)
                   << "[DEBUG mu_res] t=" << t << " rho=" << rho << std::endl;
@@ -3119,13 +3109,13 @@ vector<double> pcsaft_lnfug_terms_cpp(double t, double rho, vector<double> x, co
     for one phase of the system.
 
     Output layout (flattened blocks, each of length ncomp):
-      [mu_hc, mu_disp, mu_polar, mu_assoc, mu_ion, mu_born, mu_total, lnfugcoef,
-       lnfug_hc, lnfug_disp, lnfug_polar, lnfug_assoc, lnfug_ion, lnfug_born,
-       dadx_hc, dadx_disp, dadx_polar, dadx_assoc, dadx_ion, dadx_born,
-       a_hc, a_disp, a_polar, a_assoc, a_ion, a_born,
-       sum_x_dadx_hc, sum_x_dadx_disp, sum_x_dadx_polar, sum_x_dadx_assoc, sum_x_dadx_ion, sum_x_dadx_born,
-       Zraw_hc, Zraw_disp, Zraw_polar, Zraw_assoc, Zraw_ion, Zraw_born,
-       Z_hc, Z_disp, Z_polar, Z_assoc, Z_ion, Z_born, Z_total]
+       [mu_hc, mu_disp, mu_polar, mu_assoc, mu_ion, mu_born, mu_total, lnfugcoef,
+        lnfug_hc, lnfug_disp, lnfug_polar, lnfug_assoc, lnfug_ion, lnfug_born,
+        dadx_hc, dadx_disp, dadx_polar, dadx_assoc, dadx_ion, dadx_born,
+        a_hc, a_disp, a_polar, a_assoc, a_ion, a_born,
+        sum_x_dadx_hc, sum_x_dadx_disp, sum_x_dadx_polar, sum_x_dadx_assoc, sum_x_dadx_ion, sum_x_dadx_born,
+        Z_hc, Z_disp, Z_polar, Z_assoc, Z_ion, Z_born,
+        Z_norm_hc, Z_norm_disp, Z_norm_polar, Z_norm_assoc, Z_norm_ion, Z_norm_born, Z_total]
     */
     vector<double> lnfug = pcsaft_lnfug_cpp(t, rho, x, cppargs);
     int ncomp = static_cast<int>(x.size());
@@ -3155,6 +3145,14 @@ vector<double> pcsaft_lnfug_terms_cpp(double t, double rho, vector<double> x, co
     }
 
     vector<double> out(20 * ncomp + 25, 0.0);
+    const double Z_hc = g_last_Z_hc;
+    const double Z_disp = g_last_Z_disp;
+    const double Z_polar = g_last_Z_polar;
+    const double Z_assoc = g_last_Z_assoc;
+    const double Z_ion = g_last_Z_ion;
+    const double Z_born = g_last_Z_born;
+    vector<double> Z_terms = {Z_hc, Z_disp, Z_polar, Z_assoc, Z_ion, Z_born};
+    double Z_term_scale = compute_z_term_scale(Z_terms, g_last_Z_total);
     auto copy_block = [&](int block, const vector<double> &src) {
         for (int i = 0; i < ncomp; i++) {
             out[block*ncomp + i] = src[i];
@@ -3194,19 +3192,11 @@ vector<double> pcsaft_lnfug_terms_cpp(double t, double rho, vector<double> x, co
     out[scalar_offset + 9] = g_last_sum_x_dadx_assoc;
     out[scalar_offset + 10] = g_last_sum_x_dadx_ion;
     out[scalar_offset + 11] = g_last_sum_x_dadx_born;
-    out[scalar_offset + 12] = g_last_z_raw_hc;
-    out[scalar_offset + 13] = g_last_z_raw_disp;
-    out[scalar_offset + 14] = g_last_z_raw_polar;
-    out[scalar_offset + 15] = g_last_z_raw_assoc;
-    out[scalar_offset + 16] = g_last_z_raw_ion;
-    out[scalar_offset + 17] = g_last_z_raw_born;
-    out[scalar_offset + 18] = g_last_z_hc;
-    out[scalar_offset + 19] = g_last_z_disp;
-    out[scalar_offset + 20] = g_last_z_polar;
-    out[scalar_offset + 21] = g_last_z_assoc;
-    out[scalar_offset + 22] = g_last_z_ion;
-    out[scalar_offset + 23] = g_last_z_born;
-    out[scalar_offset + 24] = g_last_z_total;
+    for (int i = 0; i < 6; ++i) {
+        out[scalar_offset + 12 + i] = Z_terms[i];
+        out[scalar_offset + 18 + i] = Z_terms[i] * Z_term_scale;
+    }
+    out[scalar_offset + 24] = g_last_Z_total;
     return out;
 }
 
@@ -4946,7 +4936,7 @@ double BoundedSecantInner(double kb0, double Q, vector<double> u, vector<double>
     return x3;
 }
 
-namespace {
+namespace miac_detail {
 vector<double> build_miac_gamma_vector(double t, double rho, const vector<double>& x, const add_args& cppargs)
 {
     add_args args = cppargs;
@@ -5063,7 +5053,9 @@ vector<double> build_gsolv_values(double t, double rho, const vector<double>& x,
     }
     return result;
 }
-} // namespace
+} // namespace miac_detail
+
+using namespace miac_detail;
 
 PCSAFTMixtureNative::PCSAFTMixtureNative(const add_args& args)
     : args_(args)
