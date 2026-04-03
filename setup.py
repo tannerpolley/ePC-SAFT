@@ -15,7 +15,10 @@ if os.name == "nt":
 ext_modules = [
     Extension(
         "pcsaft.pcsaft",
-        sources=[f"{PACKAGE_ROOT}/pcsaft.pyx"],
+        sources=[
+            f"{PACKAGE_ROOT}/pcsaft.pyx",
+            f"{PACKAGE_ROOT}/pcsaft_electrolyte.cpp",
+        ],
         language="c++",
         include_dirs=[
             np.get_include(),

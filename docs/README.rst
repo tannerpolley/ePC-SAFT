@@ -36,13 +36,13 @@ Example
   from pcsaft import PCSAFTMixture
 
   toluene = PCSAFTMixture.from_params(
-      ['Toluene'],
       {'m': np.asarray([2.8149]), 's': np.asarray([3.7169]), 'e': np.asarray([285.69])},
+      species=['Toluene'],
   )
   state = toluene.state(T=320.0, x=np.asarray([1.0]), P=101325.0)
   print('Density of toluene at 320 K: {} mol m^-3'.format(state.density()))
 
-  water = PCSAFTMixture.from_dataset('2012_Held', ['Water'])
+  water = PCSAFTMixture.from_dataset('2012_Held', ['Water'], np.asarray([1.0]), 274.0)
   state = water.state(T=274.0, x=np.asarray([1.0]), P=101325.0)
   print('Density of water at 274 K: {} mol m^-3'.format(state.density()))
 

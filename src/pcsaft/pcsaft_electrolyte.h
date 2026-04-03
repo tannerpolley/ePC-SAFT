@@ -1,5 +1,6 @@
 #include <vector>
 #include <string>
+#include <memory>
 
 using std::vector;
 
@@ -64,22 +65,89 @@ struct add_args {
     vector<double> l_ij;
 };
 
-double pcsaft_Z_cpp(double t, double rho, vector<double> x, add_args &cppargs);
-vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args &cppargs);
-vector<double> pcsaft_lnfug_terms_cpp(double t, double rho, vector<double> x, add_args &cppargs);
-vector<double> pcsaft_fugcoef_cpp(double t, double rho, vector<double> x, add_args &cppargs);
-double pcsaft_p_cpp(double t, double rho, vector<double> x, add_args &cppargs);
-double pcsaft_den_cpp(double t, double p, vector<double> x, int phase, add_args &cppargs);
-double pcsaft_ares_cpp(double t, double rho, vector<double> x, add_args &cppargs);
-double pcsaft_dadt_cpp(double t, double rho, vector<double> x, add_args &cppargs);
-double pcsaft_hres_cpp(double t, double rho, vector<double> x, add_args &cppargs);
-double pcsaft_sres_cpp(double t, double rho, vector<double> x, add_args &cppargs);
-double pcsaft_gres_cpp(double t, double rho, vector<double> x, add_args &cppargs);
+struct FlashResultNative {
+    double value;
+    vector<double> xl;
+    vector<double> xv;
+};
 
-vector<double> flashTQ_cpp(double t, double Q, vector<double> x, add_args &cppargs);
-vector<double> flashTQ_cpp(double t, double Q, vector<double> x, add_args &cppargs, double p_guess); // used if a guess value is given
-vector<double> flashPQ_cpp(double p, double Q, vector<double> x, add_args &cppargs);
-vector<double> flashPQ_cpp(double p, double Q, vector<double> x, add_args &cppargs, double t_guess); // used if a guess value is given
+struct VaporizationResultNative {
+    double value;
+    double pressure;
+};
+
+class PCSAFTMixtureNative;
+
+class PCSAFTStateNative {
+public:
+    PCSAFTStateNative(std::shared_ptr<PCSAFTMixtureNative> mixture, double t, vector<double> x,
+        int phase, bool has_p, double p, bool has_rho, double rho);
+
+    double temperature() const;
+    int phase() const;
+    const vector<double>& composition() const;
+
+    double pressure();
+    double density();
+    double Z();
+    double ares();
+    double dadt();
+    double hres();
+    double sres();
+    double gres();
+    vector<double> lnfugcoef();
+    vector<double> fugcoef();
+    vector<double> lnfugcoef_terms();
+    vector<double> dielc_eval();
+    double osmoticC();
+    vector<double> miac_m();
+    vector<double> miac();
+    vector<double> gsolv();
+    FlashResultNative flashTQ(double q, bool has_p_guess = false, double p_guess = 0.0);
+    FlashResultNative flashPQ(double p, double q, bool has_t_guess = false, double t_guess = 0.0);
+    VaporizationResultNative Hvap(bool has_p_guess = false, double p_guess = 0.0);
+
+private:
+    std::shared_ptr<PCSAFTMixtureNative> mixture_;
+    double t_;
+    vector<double> x_;
+    int phase_;
+    bool has_p_;
+    bool has_rho_;
+    double p_;
+    double rho_;
+    bool pressure_cached_;
+    bool density_cached_;
+};
+
+class PCSAFTMixtureNative : public std::enable_shared_from_this<PCSAFTMixtureNative> {
+public:
+    explicit PCSAFTMixtureNative(const add_args& args);
+    const add_args& args() const;
+    std::shared_ptr<PCSAFTStateNative> state(double t, vector<double> x, int phase,
+        bool has_p, double p, bool has_rho, double rho);
+    size_t ncomp() const;
+
+private:
+    add_args args_;
+};
+
+double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+vector<double> pcsaft_lnfug_terms_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+vector<double> pcsaft_fugcoef_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+double pcsaft_p_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+double pcsaft_den_cpp(double t, double p, vector<double> x, int phase, const add_args &cppargs);
+double pcsaft_ares_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+double pcsaft_hres_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+double pcsaft_sres_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+double pcsaft_gres_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+
+vector<double> flashTQ_cpp(double t, double Q, vector<double> x, const add_args &cppargs);
+vector<double> flashTQ_cpp(double t, double Q, vector<double> x, const add_args &cppargs, double p_guess); // used if a guess value is given
+vector<double> flashPQ_cpp(double p, double Q, vector<double> x, const add_args &cppargs);
+vector<double> flashPQ_cpp(double p, double Q, vector<double> x, const add_args &cppargs, double t_guess); // used if a guess value is given
 
 // functions used to solve for XA and its derivatives
 vector<double> XA_find(vector<double> XA_guess, vector<double> delta_ij, double den,
@@ -90,14 +158,14 @@ vector<double> dXAdt_find(vector<double> delta_ij, double den,
     vector<double> XA, vector<double> ddelta_dt, vector<double> x);
 
 // helper functions
-bool IsNotZero (double x) {return x != 0.0;}
-double reduced_to_molar(double nu, double t, int ncomp, vector<double> x, add_args &cppargs);
+inline bool IsNotZero (double x) {return x != 0.0;}
+double reduced_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs);
 double dielc_water(double t);
 double calc_water_sigma(double t);
-double calc_sigma(double t, double (*function)(double)){return function(t);} // this can allow us to accept a custom function for a temperature dependent sigma
-add_args get_single_component(int i, add_args &cppargs);
-double pcsaft_dielc_eps_cpp(vector<double> x, add_args &cppargs);
-vector<double> pcsaft_dielc_diff_cpp(vector<double> x, add_args &cppargs);
+inline double calc_sigma(double t, double (*function)(double)){return function(t);} // this can allow us to accept a custom function for a temperature dependent sigma
+add_args get_single_component(int i, const add_args &cppargs);
+double pcsaft_dielc_eps_cpp(vector<double> x, const add_args &cppargs);
+vector<double> pcsaft_dielc_diff_cpp(vector<double> x, const add_args &cppargs);
 
 class ValueError: public std::exception
 {
@@ -120,15 +188,15 @@ private:
 };
 
 // functions used in solving for density
-double resid_rho(double rhomolar, double t, double p, vector<double> x, add_args &cppargs);
-double BrentRho(double t, double p, vector<double> x, int phase, add_args &cppargs, double a, double b,
+double resid_rho(double rhomolar, double t, double p, vector<double> x, const add_args &cppargs);
+double BrentRho(double t, double p, vector<double> x, int phase, const add_args &cppargs, double a, double b,
     double macheps, double tol_abs, int maxiter);
 
 // functions used for flash calculations
-vector<double> outerPQ(double t_guess, double p, double Q, vector<double> x, add_args &cppargs);
-vector<double> outerTQ(double p_guess, double t, double Q, vector<double> x, add_args &cppargs);
-double estimate_flash_t(double p, double Q, vector<double> x, add_args &cppargs);
-double estimate_flash_p(double t, double Q, vector<double> x, add_args &cppargs);
-double resid_inner(double R, double kb0, double Q, vector<double> u, vector<double> x, add_args &cppargs);
-double BoundedSecantInner(double kb0, double Q, vector<double> u, vector<double> x, add_args &cppargs, double x0, double xmin,
+vector<double> outerPQ(double t_guess, double p, double Q, vector<double> x, add_args cppargs);
+vector<double> outerTQ(double p_guess, double t, double Q, vector<double> x, add_args cppargs);
+double estimate_flash_t(double p, double Q, vector<double> x, add_args cppargs);
+double estimate_flash_p(double t, double Q, vector<double> x, const add_args &cppargs);
+double resid_inner(double R, double kb0, double Q, vector<double> u, vector<double> x, const add_args &cppargs);
+double BoundedSecantInner(double kb0, double Q, vector<double> u, vector<double> x, const add_args &cppargs, double x0, double xmin,
     double xmax, double dx, double tol, int maxiter);

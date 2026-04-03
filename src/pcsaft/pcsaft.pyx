@@ -5,18 +5,308 @@ import math
 import numpy as np
 from scipy.optimize import least_squares
 from libcpp.vector cimport vector
+from libcpp.memory cimport shared_ptr
 from copy import deepcopy
 from . cimport pcsaft
+from .parameters import get_prop_dict
+from ._types import FlashResult
+from ._types import InputError
+from ._types import MultiphaseLLEResult
+from ._types import PhaseResult
+from ._types import SolutionError
+from ._types import VaporizationResult
+from ._types import ion_labels_from_species
+from ._types import pair_labels_from_species
+from ._types import phase_to_int
+from ._types import vector_to_array
 
-class InputError(Exception):
-    # Exception raised for errors in the input.
-    def __init__(self, message):
-        self.message = message
 
-class SolutionError(Exception):
-    # Exception raised when a solver does not return a value.
-    def __init__(self, message):
-        self.message = message
+cdef class PCSAFTMixture:
+    cdef shared_ptr[PCSAFTMixtureNative] _native
+    cdef object _params
+    cdef object _species
+
+    def __init__(self, params=None, species=None):
+        self._native = shared_ptr[PCSAFTMixtureNative]()
+        self._params = None
+        self._species = None
+        if params is not None:
+            self._init_from_params(params, species)
+
+    @classmethod
+    def from_params(cls, params, species=None):
+        return cls(params=params, species=species)
+
+    @classmethod
+    def from_dataset(cls, dataset_name, species, x, T, user_options=None):
+        params = get_prop_dict(dataset_name, species, x, T, user_options=user_options)
+        return cls(params=params, species=species)
+
+    cdef void _init_from_params(self, params, species=None):
+        params = deepcopy(params)
+        params = check_association(params)
+        cppargs = create_struct(params)
+        self._native = shared_ptr[PCSAFTMixtureNative](new PCSAFTMixtureNative(cppargs))
+        self._params = params
+        if species is None:
+            ncomp = int(np.asarray(params["m"], dtype=float).size)
+            self._species = [str(i) for i in range(ncomp)]
+        else:
+            self._species = [str(s) for s in species]
+
+    @property
+    def species(self):
+        return list(self._species)
+
+    @property
+    def parameters(self):
+        return deepcopy(self._params)
+
+    @property
+    def ncomp(self):
+        return int(self._native.get().ncomp())
+
+    def state(self, T, x, P=None, rho=None, phase="liq"):
+        if (P is None) == (rho is None):
+            raise InputError("Provide exactly one of P or rho when constructing a state.")
+        return PCSAFTState(self, T, x, P=P, rho=rho, phase=phase)
+
+    def __repr__(self):
+        return f"PCSAFTMixture(ncomp={self.ncomp}, species={self._species})"
+
+
+cdef class PCSAFTState:
+    cdef shared_ptr[PCSAFTStateNative] _native
+    cdef object _mixture
+    cdef object _x
+    cdef double _T
+    cdef object _P
+    cdef object _rho
+    cdef int _phase
+
+    def __init__(self, mixture, T, x, P=None, rho=None, phase="liq"):
+        if not isinstance(mixture, PCSAFTMixture):
+            raise InputError("mixture must be a PCSAFTMixture instance.")
+        cdef PCSAFTMixture mix = mixture
+        x, params = ensure_numpy_input(x, mixture.parameters)
+        # ensure_numpy_input may normalize a scalar mixture parameter path, but the
+        # state should retain the original mixture data unchanged.
+        phase_num = phase_to_int(phase)
+        has_p = P is not None
+        has_rho = rho is not None
+        if has_p == has_rho:
+            raise InputError("Provide exactly one of P or rho when constructing a state.")
+        if has_p:
+            check_input(x, {"temperature": T, "pressure": P})
+        else:
+            check_input(x, {"temperature": T, "density": rho})
+        cpp_x = np_to_vector_double(x)
+        self._native = shared_ptr[PCSAFTStateNative](new PCSAFTStateNative(
+            mix._native,
+            float(T),
+            cpp_x,
+            phase_num,
+            has_p,
+            float(P) if P is not None else 0.0,
+            has_rho,
+            float(rho) if rho is not None else 0.0,
+        ))
+        self._mixture = mixture
+        self._x = np.asarray(x, dtype=float)
+        self._T = float(T)
+        self._P = None if P is None else float(P)
+        self._rho = None if rho is None else float(rho)
+        self._phase = phase_num
+
+    @property
+    def mixture(self):
+        return self._mixture
+
+    @property
+    def T(self):
+        return self._T
+
+    @property
+    def x(self):
+        return np.asarray(self._x, dtype=float)
+
+    @property
+    def phase(self):
+        return self._phase
+
+    def pressure(self):
+        return float(self._native.get().pressure())
+
+    def density(self):
+        return float(self._native.get().density())
+
+    def Z(self):
+        return float(self._native.get().Z())
+
+    def ares(self):
+        return float(self._native.get().ares())
+
+    def dadt(self):
+        return float(self._native.get().dadt())
+
+    def hres(self):
+        return float(self._native.get().hres())
+
+    def sres(self):
+        return float(self._native.get().sres())
+
+    def gres(self):
+        return float(self._native.get().gres())
+
+    def lnfugcoef(self):
+        return vector_to_array(self._native.get().lnfugcoef())
+
+    def fugcoef(self):
+        return vector_to_array(self._native.get().fugcoef())
+
+    def lnfugcoef_terms(self):
+        flat = vector_to_array(self._native.get().lnfugcoef_terms())
+        ncomp = int(self._x.size)
+        expected = 20 * ncomp + 25
+        if flat.size != expected:
+            raise SolutionError("Unexpected lnfug term payload size: expected {}, got {}.".format(expected, int(flat.size)))
+        blocks = flat[:20 * ncomp].reshape((20, ncomp))
+        scalars = flat[20 * ncomp:]
+        return {
+            "mu_hc": blocks[0],
+            "mu_disp": blocks[1],
+            "mu_polar": blocks[2],
+            "mu_assoc": blocks[3],
+            "mu_ion": blocks[4],
+            "mu_born": blocks[5],
+            "mu_total": blocks[6],
+            "lnfugcoef_total": blocks[7],
+            "lnfugcoef": blocks[7],
+            "lnfugcoef_hc": blocks[8],
+            "lnfugcoef_disp": blocks[9],
+            "lnfugcoef_polar": blocks[10],
+            "lnfugcoef_assoc": blocks[11],
+            "lnfugcoef_ion": blocks[12],
+            "lnfugcoef_born": blocks[13],
+            "dadx_hc": blocks[14],
+            "dadx_disp": blocks[15],
+            "dadx_polar": blocks[16],
+            "dadx_assoc": blocks[17],
+            "dadx_ion": blocks[18],
+            "dadx_born": blocks[19],
+            "a_hc": float(scalars[0]),
+            "a_disp": float(scalars[1]),
+            "a_polar": float(scalars[2]),
+            "a_assoc": float(scalars[3]),
+            "a_ion": float(scalars[4]),
+            "a_born": float(scalars[5]),
+            "sum_x_dadx_hc": float(scalars[6]),
+            "sum_x_dadx_disp": float(scalars[7]),
+            "sum_x_dadx_polar": float(scalars[8]),
+            "sum_x_dadx_assoc": float(scalars[9]),
+            "sum_x_dadx_ion": float(scalars[10]),
+            "sum_x_dadx_born": float(scalars[11]),
+            "z_raw_hc": float(scalars[12]),
+            "z_raw_disp": float(scalars[13]),
+            "z_raw_polar": float(scalars[14]),
+            "z_raw_assoc": float(scalars[15]),
+            "z_raw_ion": float(scalars[16]),
+            "z_raw_born": float(scalars[17]),
+            "z_hc": float(scalars[18]),
+            "z_disp": float(scalars[19]),
+            "z_polar": float(scalars[20]),
+            "z_assoc": float(scalars[21]),
+            "z_ion": float(scalars[22]),
+            "z_born": float(scalars[23]),
+            "z_total": float(scalars[24]),
+        }
+
+    def dielc_eval(self):
+        flat = vector_to_array(self._native.get().dielc_eval())
+        return flat[0], flat[1:]
+
+    def osmoticC(self):
+        return np.asarray([self._native.get().osmoticC()], dtype=float)
+
+    def miac_m(self, species=None):
+        species = self._mixture.species if species is None else species
+        values = vector_to_array(self._native.get().miac_m())
+        labels = pair_labels_from_species(self._mixture.parameters, species)
+        if values.size != len(labels):
+            raise SolutionError("Unexpected miac_m payload size: expected {}, got {}.".format(len(labels), int(values.size)))
+        return {label: float(value) for label, value in zip(labels, values)}
+
+    def miac(self, species=None):
+        species = self._mixture.species if species is None else species
+        values = vector_to_array(self._native.get().miac())
+        labels = pair_labels_from_species(self._mixture.parameters, species)
+        if values.size != len(labels):
+            raise SolutionError("Unexpected miac payload size: expected {}, got {}.".format(len(labels), int(values.size)))
+        return {label: float(value) for label, value in zip(labels, values)}
+
+    def gsolv(self, species=None):
+        species = self._mixture.species if species is None else species
+        values = vector_to_array(self._native.get().gsolv())
+        labels = ion_labels_from_species(self._mixture.parameters, species)
+        if values.size != self._x.size:
+            raise SolutionError("Unexpected gsolv payload size: expected {}, got {}.".format(self._x.size, int(values.size)))
+        z = np.asarray(self._mixture.parameters.get("z", []), dtype=float).flatten()
+        ion_idx = np.where(np.abs(z) > 1e-12)[0]
+        if len(labels) != len(ion_idx):
+            raise SolutionError("Unexpected gsolv ion label size: expected {}, got {}.".format(len(ion_idx), len(labels)))
+        result = {}
+        for idx, label in zip(ion_idx, labels):
+            result[label] = float(values[idx])
+        return result
+
+    def flashTQ(self, q, p_guess=None):
+        if p_guess is None:
+            out = self._native.get().flashTQ(float(q), False, 0.0)
+        else:
+            out = self._native.get().flashTQ(float(q), True, float(p_guess))
+        xl = vector_to_array(out.xl)
+        xv = vector_to_array(out.xv)
+        pl = float(out.value)
+        liq_state = PCSAFTState(self._mixture, self._T, xl, P=pl, phase="liq")
+        vap_state = PCSAFTState(self._mixture, self._T, xv, P=pl, phase="vap")
+        lnfug_l = liq_state.lnfugcoef() + np.log(np.maximum(liq_state.x, 1e-300)) + math.log(pl)
+        lnfug_v = vap_state.lnfugcoef() + np.log(np.maximum(vap_state.x, 1e-300)) + math.log(pl)
+        phases = [
+            PhaseResult(1.0 - float(q), xl, liq_state.density(), liq_state.lnfugcoef(), lnfug_l),
+            PhaseResult(float(q), xv, vap_state.density(), vap_state.lnfugcoef(), lnfug_v),
+        ]
+        return FlashResult(out.value, phases, "TQ")
+
+    def flashPQ(self, p, q, t_guess=None):
+        if t_guess is None:
+            out = self._native.get().flashPQ(float(p), float(q), False, 0.0)
+        else:
+            out = self._native.get().flashPQ(float(p), float(q), True, float(t_guess))
+        xl = vector_to_array(out.xl)
+        xv = vector_to_array(out.xv)
+        tt = float(out.value)
+        liq_state = PCSAFTState(self._mixture, tt, xl, P=float(p), phase="liq")
+        vap_state = PCSAFTState(self._mixture, tt, xv, P=float(p), phase="vap")
+        lnfug_l = liq_state.lnfugcoef() + np.log(np.maximum(liq_state.x, 1e-300)) + math.log(float(p))
+        lnfug_v = vap_state.lnfugcoef() + np.log(np.maximum(vap_state.x, 1e-300)) + math.log(float(p))
+        phases = [
+            PhaseResult(1.0 - float(q), xl, liq_state.density(), liq_state.lnfugcoef(), lnfug_l),
+            PhaseResult(float(q), xv, vap_state.density(), vap_state.lnfugcoef(), lnfug_v),
+        ]
+        return FlashResult(out.value, phases, "PQ")
+
+    def Hvap(self, p_guess=None):
+        if p_guess is None:
+            out = self._native.get().Hvap(False, 0.0)
+        else:
+            out = self._native.get().Hvap(True, float(p_guess))
+        return VaporizationResult(out.value, out.pressure)
+
+    def multiphase_lle(self, z_feed, species=None, options=None):
+        return MultiphaseLLEResult.from_payload(_pcsaft_multiphase_lle_impl(self._T, self.pressure() if self._P is None else self._P, z_feed, self._mixture.parameters, species or self._mixture.species, options=options))
+
+    def __repr__(self):
+        return f"PCSAFTState(T={self._T}, phase={self._phase}, x={self._x})"
 
 
 cdef double _pcsaft_den_checked(double t, double p, vector[double] x, int phase, add_args &cppargs) except *:
@@ -598,7 +888,7 @@ def _solve_two_phase_lle(t, p, z_feed, params, z, E, neutral_idx, charged_idx, s
     }
 
 
-def pcsaft_multiphase_lle(t, p, z_feed, params, species, options=None):
+def _pcsaft_multiphase_lle_impl(t, p, z_feed, params, species, options=None):
     """
     Two-liquid-phase electrolyte flash using Ascani 2022-style mean-ionic conditions.
 

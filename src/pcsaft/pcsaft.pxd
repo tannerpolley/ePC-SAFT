@@ -6,8 +6,10 @@ Created on Thu Jul 19 14:23:00 2018
 @author: Zach Baird
 """
 from libcpp.vector cimport vector
+from libcpp.memory cimport shared_ptr
+from libc.stddef cimport size_t
 
-cdef extern from "pcsaft_electrolyte.cpp":
+cdef extern from "pcsaft_electrolyte.h":
     double pcsaft_p_cpp(double t, double rho, vector[double] x, add_args &cppargs)
     double pcsaft_Z_cpp(double t, double rho, vector[double] x, add_args &cppargs)
     vector[double] pcsaft_lnfug_cpp(double t, double rho, vector[double] x, add_args &cppargs)
@@ -74,3 +76,45 @@ cdef extern from "pcsaft_electrolyte.cpp":
         vector[int] assoc_matrix
         vector[double] k_hb
         vector[double] l_ij
+
+    ctypedef struct FlashResultNative:
+        double value
+        vector[double] xl
+        vector[double] xv
+
+    ctypedef struct VaporizationResultNative:
+        double value
+        double pressure
+
+    cdef cppclass PCSAFTStateNative:
+        PCSAFTStateNative(shared_ptr[PCSAFTMixtureNative] mixture, double t, vector[double] x,
+                          int phase, bint has_p, double p, bint has_rho, double rho) except +
+        double temperature() const
+        int phase() const
+        const vector[double]& composition() const
+        double pressure()
+        double density()
+        double Z()
+        double ares()
+        double dadt()
+        double hres()
+        double sres()
+        double gres()
+        vector[double] lnfugcoef()
+        vector[double] fugcoef()
+        vector[double] lnfugcoef_terms()
+        vector[double] dielc_eval()
+        double osmoticC()
+        vector[double] miac_m()
+        vector[double] miac()
+        vector[double] gsolv()
+        FlashResultNative flashTQ(double q, bint has_p_guess, double p_guess)
+        FlashResultNative flashPQ(double p, double q, bint has_t_guess, double t_guess)
+        VaporizationResultNative Hvap(bint has_p_guess, double p_guess)
+
+    cdef cppclass PCSAFTMixtureNative:
+        PCSAFTMixtureNative(const add_args& args) except +
+        const add_args& args() const
+        shared_ptr[PCSAFTStateNative] state(double t, vector[double] x, int phase,
+                                           bool has_p, double p, bool has_rho, double rho)
+        size_t ncomp() const

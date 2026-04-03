@@ -11,20 +11,12 @@ Functions
 .. autosummary::
    :toctree: functions
 
-   flashTQ
-   flashPQ
-   pcsaft_Hvap
-   pcsaft_osmoticC
-   pcsaft_cp
-   pcsaft_den
-   pcsaft_p
-   pcsaft_hres
-   pcsaft_sres
-   pcsaft_gres
-   pcsaft_fugcoef
-   pcsaft_Z
-   pcsaft_ares
-   pcsaft_dadt
+   PCSAFTMixture
+   PCSAFTState
+   FlashResult
+   VaporizationResult
+   MultiphaseLLEResult
+   PhaseResult
    aly_lee
    dielc_water
 

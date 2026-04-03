@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <algorithm>
 #include <array>
+#include <numeric>
 #include "math.h"
 #include "Eigen/Dense"
 
@@ -86,6 +87,34 @@ int gcd_int(int a, int b) {
         b = t;
     }
     return a == 0 ? 1 : a;
+}
+
+struct ChargeGroups {
+    vector<int> cations;
+    vector<int> anions;
+    vector<int> solvents;
+};
+
+ChargeGroups collect_charge_groups(const add_args& args, size_t ncomp) {
+    ChargeGroups groups;
+    groups.cations.reserve(ncomp);
+    groups.anions.reserve(ncomp);
+    groups.solvents.reserve(ncomp);
+    for (size_t i = 0; i < ncomp; ++i) {
+        if (i >= args.z.size()) {
+            throw ValueError("Composition and charge vectors must be aligned.");
+        }
+        if (std::abs(args.z[i]) < 1e-12) {
+            groups.solvents.push_back(static_cast<int>(i));
+        }
+        else if (args.z[i] > 0.0) {
+            groups.cations.push_back(static_cast<int>(i));
+        }
+        else {
+            groups.anions.push_back(static_cast<int>(i));
+        }
+    }
+    return groups;
 }
 
 double stable_logz_over_zminus1(double Z) {
@@ -188,7 +217,7 @@ vector<double> build_density_scan_grid() {
     return grid;
 }
 
-DensityScanPoint evaluate_density_scan_point(double nu, double t, int ncomp, const vector<double> &x, double p, add_args &cppargs) {
+DensityScanPoint evaluate_density_scan_point(double nu, double t, int ncomp, const vector<double> &x, double p, const add_args &cppargs) {
     DensityScanPoint point;
     point.nu = nu;
     point.rho = reduced_to_molar(nu, t, ncomp, x, cppargs);
@@ -234,7 +263,7 @@ void append_refined_density_brackets(
     int ncomp,
     const vector<double> &x,
     double p,
-    add_args &cppargs,
+    const add_args &cppargs,
     vector<DensityBracket> &refined_brackets
 ) {
     const int refine_segments = 256;
@@ -270,7 +299,7 @@ bool validate_density_root(
     double t,
     double p,
     const vector<double> &x,
-    add_args &cppargs,
+    const add_args &cppargs,
     double rho,
     DensityRootCandidate *candidate
 ) {
@@ -350,7 +379,7 @@ bool try_flash_phase_state(
     double p,
     const vector<double> &xl,
     const vector<double> &xv,
-    add_args &cppargs,
+    const add_args &cppargs,
     FlashPhaseState *state
 ) {
     try {
@@ -372,7 +401,7 @@ FlashPhaseState find_nearby_flash_phase_state(
     double base_p,
     const vector<double> &xl,
     const vector<double> &xv,
-    add_args &cppargs,
+    const add_args &cppargs,
     int preferred_direction
 ) {
     FlashPhaseState state;
@@ -405,7 +434,7 @@ bool is_effectively_pure_feed(const vector<double> &x) {
     return nonzero == 1;
 }
 
-double pure_component_flash_resid(double t, double p, const vector<double> &x, add_args &cppargs) {
+double pure_component_flash_resid(double t, double p, const vector<double> &x, const add_args &cppargs) {
     FlashPhaseState state;
     if (!try_flash_phase_state(t, p, x, x, cppargs, &state)) {
         throw SolutionError("Pure-component flash residual could not evaluate both phase densities.");
@@ -429,7 +458,7 @@ double pure_component_flash_resid(double t, double p, const vector<double> &x, a
     return std::log(phi_l) - std::log(phi_v);
 }
 
-vector<double> pure_component_flashTQ(double t, vector<double> x, add_args &cppargs) {
+vector<double> pure_component_flashTQ(double t, vector<double> x, const add_args &cppargs) {
     const double log_p_min = -6.0;
     const double log_p_max = 9.0;
     const int scan_points = 301;
@@ -676,11 +705,11 @@ double compute_ion_born_radius_dt(int i, double t, const add_args &cppargs) {
     return 0.0;
 }
 
-double compute_eps_rule(int rule, const vector<double> &x, add_args &cppargs);
-vector<double> compute_deps_rule_fd(int rule, const vector<double> &x, add_args &cppargs);
-DielcState evaluate_dielc_state(const vector<double> &x, add_args &cppargs);
+double compute_eps_rule(int rule, const vector<double> &x, const add_args &cppargs);
+vector<double> compute_deps_rule_fd(int rule, const vector<double> &x, const add_args &cppargs);
+DielcState evaluate_dielc_state(const vector<double> &x, const add_args &cppargs);
 
-double compute_eps_aqueous_organic_mixed(const vector<double> &x, add_args &cppargs) {
+double compute_eps_aqueous_organic_mixed(const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     if (cppargs.z.size() != static_cast<size_t>(ncomp)) {
         throw ValueError("dielc_rule=8 requires params['z'] as an array with length equal to ncomp.");
@@ -761,7 +790,7 @@ double compute_eps_aqueous_organic_mixed(const vector<double> &x, add_args &cppa
     return eps_org + ((a_eff * xw_sf + b_eff) * xw_sf + c_eff) * xw_sf;
 }
 
-double compute_eps_solvent_reference(const vector<double> &x, add_args &cppargs) {
+double compute_eps_solvent_reference(const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     if (cppargs.z.size() != static_cast<size_t>(ncomp)) {
         return compute_eps_rule(cppargs.dielc_rule, x, cppargs);
@@ -780,7 +809,7 @@ double compute_eps_solvent_reference(const vector<double> &x, add_args &cppargs)
     return eps_sol_num/x_sol;
 }
 
-vector<double> compute_deps_solvent_reference(const vector<double> &x, add_args &cppargs) {
+vector<double> compute_deps_solvent_reference(const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     vector<double> deps(ncomp, 0.0);
     if (cppargs.z.size() != static_cast<size_t>(ncomp)) {
@@ -806,7 +835,7 @@ vector<double> compute_deps_solvent_reference(const vector<double> &x, add_args 
     return deps;
 }
 
-BornSSMDSData build_born_ssmds_data(vector<double> x, add_args &cppargs, double t, double eps_r, double eps_r_ion) {
+BornSSMDSData build_born_ssmds_data(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion) {
     int ncomp = static_cast<int>(x.size());
     const bool use_ssm = (cppargs.born_solvation_shell_model != 0);
     const bool use_ds = (cppargs.born_dielectric_saturation != 0);
@@ -880,7 +909,7 @@ BornSSMDSData build_born_ssmds_data(vector<double> x, add_args &cppargs, double 
     return data;
 }
 
-double compute_born_ares_only(double t, const vector<double> &x, add_args &cppargs) {
+double compute_born_ares_only(double t, const vector<double> &x, const add_args &cppargs) {
     if (cppargs.born_model == 0) {
         return 0.0;
     }
@@ -905,7 +934,7 @@ double compute_born_ares_only(double t, const vector<double> &x, add_args &cppar
     throw ValueError("Unknown born_model. Supported values are 0, 1, 2.");
 }
 
-vector<double> compute_born_dadx_fd(double t, const vector<double> &x, add_args &cppargs, double a0) {
+vector<double> compute_born_dadx_fd(double t, const vector<double> &x, const add_args &cppargs, double a0) {
     int ncomp = static_cast<int>(x.size());
     vector<double> dadx_born(ncomp, 0.0);
     for (int i = 0; i < ncomp; i++) {
@@ -929,7 +958,7 @@ vector<double> compute_born_dadx_fd(double t, const vector<double> &x, add_args 
     return dadx_born;
 }
 
-double compute_dh_ares_only(double t, double rho, const vector<double> &x, add_args &cppargs) {
+double compute_dh_ares_only(double t, double rho, const vector<double> &x, const add_args &cppargs) {
     if (cppargs.z.empty()) {
         return 0.0;
     }
@@ -969,7 +998,7 @@ double compute_dh_ares_only(double t, double rho, const vector<double> &x, add_a
     return -K0*kappa/eps*S;
 }
 
-vector<double> compute_dh_dadx_fd(double t, double rho, const vector<double> &x, add_args &cppargs, double a0) {
+vector<double> compute_dh_dadx_fd(double t, double rho, const vector<double> &x, const add_args &cppargs, double a0) {
     int ncomp = static_cast<int>(x.size());
     vector<double> dadx_dh(ncomp, 0.0);
     for (int i = 0; i < ncomp; i++) {
@@ -1011,7 +1040,7 @@ double get_ares_contribution_value(const AresContributions &terms, AresContribut
     throw ValueError("Unknown AresContributionKind.");
 }
 
-AresContributions compute_ares_contributions_cpp(double t, double rho, const vector<double> &x, add_args &cppargs) {
+AresContributions compute_ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {
     AresContributions out;
     int ncomp = static_cast<int>(x.size());
     vector<double> d(ncomp);
@@ -1179,7 +1208,7 @@ AresContributions compute_ares_contributions_cpp(double t, double rho, const vec
     if (!cppargs.e_assoc.empty()) {
         int num_sites = 0;
         vector<int> iA;
-        for (std::vector<int>::iterator it = cppargs.assoc_num.begin(); it != cppargs.assoc_num.end(); ++it) {
+        for (std::vector<int>::const_iterator it = cppargs.assoc_num.begin(); it != cppargs.assoc_num.end(); ++it) {
             num_sites += *it;
             for (int i = 0; i < *it; i++) {
                 iA.push_back(static_cast<int>(it - cppargs.assoc_num.begin()));
@@ -1272,7 +1301,7 @@ AresContributions compute_ares_contributions_cpp(double t, double rho, const vec
     return out;
 }
 
-vector<double> compute_contribution_dadx_fd(AresContributionKind kind, double t, double rho, const vector<double> &x, add_args &cppargs, double a0) {
+vector<double> compute_contribution_dadx_fd(AresContributionKind kind, double t, double rho, const vector<double> &x, const add_args &cppargs, double a0) {
     int ncomp = static_cast<int>(x.size());
     vector<double> dadx(ncomp, 0.0);
     for (int i = 0; i < ncomp; i++) {
@@ -1296,7 +1325,7 @@ vector<double> compute_contribution_dadx_fd(AresContributionKind kind, double t,
     return dadx;
 }
 
-void validate_dielc_inputs(const vector<double> &x, add_args &cppargs) {
+void validate_dielc_inputs(const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     if (cppargs.dielc.size() != static_cast<size_t>(ncomp)) {
         throw ValueError("params['dielc'] must be an array with length equal to ncomp.");
@@ -1394,7 +1423,7 @@ void validate_dielc_inputs(const vector<double> &x, add_args &cppargs) {
     }
 }
 
-double compute_eps_rule(int rule, const vector<double> &x, add_args &cppargs) {
+double compute_eps_rule(int rule, const vector<double> &x, const add_args &cppargs) {
     const double alpha = 7.01;
     int ncomp = static_cast<int>(x.size());
     if (rule == 0) {
@@ -1527,7 +1556,7 @@ double compute_eps_rule(int rule, const vector<double> &x, add_args &cppargs) {
     throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7, 8.");
 }
 
-vector<double> compute_deps_rule_analytic(int rule, const vector<double> &x, add_args &cppargs) {
+vector<double> compute_deps_rule_analytic(int rule, const vector<double> &x, const add_args &cppargs) {
     const double alpha = 7.01;
     int ncomp = static_cast<int>(x.size());
     vector<double> deps_dx(ncomp, 0.0);
@@ -1665,7 +1694,7 @@ vector<double> compute_deps_rule_analytic(int rule, const vector<double> &x, add
     throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7, 8.");
 }
 
-vector<double> compute_deps_rule_fd(int rule, const vector<double> &x, add_args &cppargs) {
+vector<double> compute_deps_rule_fd(int rule, const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     vector<double> deps_dx(ncomp, 0.0);
     double f0 = compute_eps_rule(rule, x, cppargs);
@@ -1690,7 +1719,7 @@ vector<double> compute_deps_rule_fd(int rule, const vector<double> &x, add_args 
     return deps_dx;
 }
 
-DielcState evaluate_dielc_state(const vector<double> &x, add_args &cppargs) {
+DielcState evaluate_dielc_state(const vector<double> &x, const add_args &cppargs) {
     validate_dielc_inputs(x, cppargs);
     DielcState state;
     state.eps = compute_eps_rule(cppargs.dielc_rule, x, cppargs);
@@ -1794,7 +1823,7 @@ vector<double> dXAdx_find(vector<int> assoc_num, vector<double> delta_ij,
 }
 
 
-double pcsaft_Z_cpp(double t, double rho, vector<double> x, add_args &cppargs) {
+double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     /**
     Calculate the compressibility factor.
     */
@@ -2000,7 +2029,7 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, add_args &cppargs) {
     if (!cppargs.e_assoc.empty()) {
         int num_sites = 0;
         vector<int> iA; //indices of associating compounds
-        for(std::vector<int>::iterator it = cppargs.assoc_num.begin(); it != cppargs.assoc_num.end(); ++it) {
+        for(std::vector<int>::const_iterator it = cppargs.assoc_num.begin(); it != cppargs.assoc_num.end(); ++it) {
             num_sites += *it;
             for (int i = 0; i < *it; i++) {
                 iA.push_back(static_cast<int>(it - cppargs.assoc_num.begin()));
@@ -2156,7 +2185,7 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, add_args &cppargs) {
 }
 
 
-vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args &cppargs) {
+vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     /**
     Calculate the natural logarithm of the fugacity coefficients for one phase of the system.
     */
@@ -2506,7 +2535,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
     if (!cppargs.e_assoc.empty()) {
         int num_sites = 0;
         vector<int> iA; //indices of associating compounds
-        for(std::vector<int>::iterator it = cppargs.assoc_num.begin(); it != cppargs.assoc_num.end(); ++it) {
+        for(std::vector<int>::const_iterator it = cppargs.assoc_num.begin(); it != cppargs.assoc_num.end(); ++it) {
             num_sites += *it;
             for (int i = 0; i < *it; i++) {
                 iA.push_back(static_cast<int>(it - cppargs.assoc_num.begin()));
@@ -3017,7 +3046,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, add_args
 }
 
 
-vector<double> pcsaft_lnfug_terms_cpp(double t, double rho, vector<double> x, add_args &cppargs) {
+vector<double> pcsaft_lnfug_terms_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     /**
     Calculate per-term residual chemical-potential contributions and ln fugacity coefficients
     for one phase of the system.
@@ -3115,7 +3144,7 @@ vector<double> pcsaft_lnfug_terms_cpp(double t, double rho, vector<double> x, ad
 }
 
 
-vector<double> pcsaft_fugcoef_cpp(double t, double rho, vector<double> x, add_args &cppargs) {
+vector<double> pcsaft_fugcoef_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     /**
     Calculate the fugacity coefficients for one phase of the system.
     */
@@ -3130,7 +3159,7 @@ vector<double> pcsaft_fugcoef_cpp(double t, double rho, vector<double> x, add_ar
 }
 
 
-double pcsaft_p_cpp(double t, double rho, vector<double> x, add_args &cppargs) {
+double pcsaft_p_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     /**
     Calculate pressure
     */
@@ -3142,7 +3171,7 @@ double pcsaft_p_cpp(double t, double rho, vector<double> x, add_args &cppargs) {
 }
 
 
-double pcsaft_ares_cpp(double t, double rho, vector<double> x, add_args &cppargs) {
+double pcsaft_ares_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     /**
     Calculate the residual Helmholtz energy
     */
@@ -3320,7 +3349,7 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, add_args &cppargs
     if (!cppargs.e_assoc.empty()) {
         int num_sites = 0;
         vector<int> iA; //indices of associating compounds
-        for(std::vector<int>::iterator it = cppargs.assoc_num.begin(); it != cppargs.assoc_num.end(); ++it) {
+        for(std::vector<int>::const_iterator it = cppargs.assoc_num.begin(); it != cppargs.assoc_num.end(); ++it) {
             num_sites += *it;
             for (int i = 0; i < *it; i++) {
                 iA.push_back(static_cast<int>(it - cppargs.assoc_num.begin()));
@@ -3430,7 +3459,7 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, add_args &cppargs
 }
 
 
-double pcsaft_dadt_cpp(double t, double rho, vector<double> x, add_args &cppargs) {
+double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     /**
     Calculate the temperature derivative of the residual Helmholtz energy at
     constant density.
@@ -3657,7 +3686,7 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, add_args &cppargs
     if (!cppargs.e_assoc.empty()) {
         int num_sites = 0;
         vector<int> iA; //indices of associating compounds
-        for(std::vector<int>::iterator it = cppargs.assoc_num.begin(); it != cppargs.assoc_num.end(); ++it) {
+        for(std::vector<int>::const_iterator it = cppargs.assoc_num.begin(); it != cppargs.assoc_num.end(); ++it) {
             num_sites += *it;
             for (int i = 0; i < *it; i++) {
                 iA.push_back(static_cast<int>(it - cppargs.assoc_num.begin()));
@@ -3795,7 +3824,7 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, add_args &cppargs
 }
 
 
-double pcsaft_hres_cpp(double t, double rho, vector<double> x, add_args &cppargs) {
+double pcsaft_hres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     /**
     Calculate the residual enthalpy for one phase of the system.
     */
@@ -3807,7 +3836,7 @@ double pcsaft_hres_cpp(double t, double rho, vector<double> x, add_args &cppargs
 }
 
 
-double pcsaft_sres_cpp(double t, double rho, vector<double> x, add_args &cppargs) {
+double pcsaft_sres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     /**
     Calculate the residual entropy (constant volume) for one phase of the system.
     */
@@ -3818,7 +3847,7 @@ double pcsaft_sres_cpp(double t, double rho, vector<double> x, add_args &cppargs
     return sres;
 }
 
-double pcsaft_gres_cpp(double t, double rho, vector<double> x, add_args &cppargs) {
+double pcsaft_gres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     /**
     Calculate the residual Gibbs energy for one phase of the system.
     */
@@ -3830,7 +3859,7 @@ double pcsaft_gres_cpp(double t, double rho, vector<double> x, add_args &cppargs
 }
 
 
-vector<double> flashTQ_cpp(double t, double Q, vector<double> x, add_args &cppargs) {
+vector<double> flashTQ_cpp(double t, double Q, vector<double> x, const add_args &cppargs) {
     bool solution_found = false;
     double p_guess;
     vector<double> output;
@@ -3870,7 +3899,7 @@ vector<double> flashTQ_cpp(double t, double Q, vector<double> x, add_args &cppar
 }
 
 
-vector<double> flashTQ_cpp(double t, double Q, vector<double> x, add_args &cppargs, double p_guess) {
+vector<double> flashTQ_cpp(double t, double Q, vector<double> x, const add_args &cppargs, double p_guess) {
     vector<double> output;
     try {
         output = outerTQ(p_guess, t, Q, x, cppargs);
@@ -3885,7 +3914,7 @@ vector<double> flashTQ_cpp(double t, double Q, vector<double> x, add_args &cppar
 }
 
 
-vector<double> flashPQ_cpp(double p, double Q, vector<double> x, add_args &cppargs){
+vector<double> flashPQ_cpp(double p, double Q, vector<double> x, const add_args &cppargs){
     bool solution_found = false;
     double t_guess;
     vector<double> output;
@@ -3926,7 +3955,7 @@ vector<double> flashPQ_cpp(double p, double Q, vector<double> x, add_args &cppar
 }
 
 
-vector<double> flashPQ_cpp(double p, double Q, vector<double> x, add_args &cppargs, double t_guess){
+vector<double> flashPQ_cpp(double p, double Q, vector<double> x, const add_args &cppargs, double t_guess){
     vector<double> output;
     try {
         output = outerPQ(t_guess, p, Q, x, cppargs);
@@ -3938,7 +3967,7 @@ vector<double> flashPQ_cpp(double p, double Q, vector<double> x, add_args &cppar
 }
 
 
-vector<double> outerPQ(double t_guess, double p, double Q, vector<double> x, add_args &cppargs) {
+vector<double> outerPQ(double t_guess, double p, double Q, vector<double> x, add_args cppargs) {
     // Based on the algorithm proposed in H. A. J. Watson, M. Vikse, T. Gundersen, and P. I. Barton, “Reliable Flash Calculations: Part 1. Nonsmooth Inside-Out Algorithms,” Ind. Eng. Chem. Res., vol. 56, no. 4, pp. 960–973, Feb. 2017, doi: 10.1021/acs.iecr.6b03956.
     int ncomp = static_cast<int>(x.size());
     double TOL = 1e-8;
@@ -4154,7 +4183,7 @@ vector<double> outerPQ(double t_guess, double p, double Q, vector<double> x, add
     return result;
 }
 
-vector<double> outerTQ(double p_guess, double t, double Q, vector<double> x, add_args &cppargs) {
+vector<double> outerTQ(double p_guess, double t, double Q, vector<double> x, add_args cppargs) {
     // Based on the algorithm proposed in H. A. J. Watson, M. Vikse, T. Gundersen, and P. I. Barton, “Reliable Flash Calculations: Part 1. Nonsmooth Inside-Out Algorithms,” Ind. Eng. Chem. Res., vol. 56, no. 4, pp. 960–973, Feb. 2017, doi: 10.1021/acs.iecr.6b03956.
     int ncomp = static_cast<int>(x.size());
     double TOL = 1e-8;
@@ -4373,7 +4402,7 @@ vector<double> outerTQ(double p_guess, double t, double Q, vector<double> x, add
     return result;
 }
 
-double resid_inner(double R, double kb0, double Q, vector<double> u, vector<double> x, add_args &cppargs) {
+double resid_inner(double R, double kb0, double Q, vector<double> u, vector<double> x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     double error = 0;
 
@@ -4394,7 +4423,7 @@ double resid_inner(double R, double kb0, double Q, vector<double> u, vector<doub
 }
 
 
-double pcsaft_den_cpp(double t, double p, vector<double> x, int phase, add_args &cppargs) {
+double pcsaft_den_cpp(double t, double p, vector<double> x, int phase, const add_args &cppargs) {
     /**
     Solve for the molar density when temperature and pressure are given.
 
@@ -4450,7 +4479,8 @@ double pcsaft_den_cpp(double t, double p, vector<double> x, int phase, add_args 
         Molar density (mol m^-3)
     */
     // suppress debug output during density root-finding to avoid repeated prints.
-    DebugFlagGuard debug_guard(cppargs.debug, 0);
+    int debug_flag = cppargs.debug;
+    DebugFlagGuard debug_guard(debug_flag, 0);
 
     int ncomp = static_cast<int>(x.size());
     vector<double> scan_grid = build_density_scan_grid();
@@ -4531,7 +4561,7 @@ double pcsaft_den_cpp(double t, double p, vector<double> x, int phase, add_args 
     throw SolutionError("No valid density root found for liquid phase.");
 }
 
-double estimate_flash_t(double p, double Q, vector<double> x, add_args &cppargs) {
+double estimate_flash_t(double p, double Q, vector<double> x, add_args cppargs) {
     /**
     Get a quick estimate of the temperature at which VLE occurs
     */
@@ -4587,7 +4617,7 @@ double estimate_flash_t(double p, double Q, vector<double> x, add_args &cppargs)
     return t_guess;
 }
 
-double estimate_flash_p(double t, double Q, vector<double> x, add_args &cppargs) {
+double estimate_flash_p(double t, double Q, vector<double> x, const add_args &cppargs) {
     /**
     Get a quick estimate of the pressure at which VLE occurs
     */
@@ -4702,7 +4732,7 @@ double estimate_flash_p(double t, double Q, vector<double> x, add_args &cppargs)
 }
 
 
-double reduced_to_molar(double nu, double t, int ncomp, vector<double> x, add_args &cppargs) {
+double reduced_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs) {
     vector<double> d(ncomp);
     double summ = 0.;
     for (int i = 0; i < ncomp; i++) {
@@ -4716,12 +4746,12 @@ double reduced_to_molar(double nu, double t, int ncomp, vector<double> x, add_ar
     return 6/PI*nu/summ*1.0e30/N_AV;
 }
 
-double pcsaft_dielc_eps_cpp(vector<double> x, add_args &cppargs) {
+double pcsaft_dielc_eps_cpp(vector<double> x, const add_args &cppargs) {
     DielcState state = evaluate_dielc_state(x, cppargs);
     return state.eps;
 }
 
-vector<double> pcsaft_dielc_diff_cpp(vector<double> x, add_args &cppargs) {
+vector<double> pcsaft_dielc_diff_cpp(vector<double> x, const add_args &cppargs) {
     DielcState state = evaluate_dielc_state(x, cppargs);
     return state.deps_dx;
 }
@@ -4762,7 +4792,7 @@ double calc_water_sigma(double t) {
     return 3.8395 + 1.2828 * std::exp(-0.0074944 * t) - 1.3939 * std::exp(-0.00056029 * t);
 }
 
-add_args get_single_component(int i, add_args &cppargs) {
+add_args get_single_component(int i, const add_args &cppargs) {
     add_args args_single;
     args_single.born_model = cppargs.born_model;
     args_single.born_radius_model = cppargs.born_radius_model;
@@ -4868,7 +4898,7 @@ at least one solution in the interval [a,b].
 @param tol_abs Tolerance (absolute)
 @param maxiter Maximum number of steps allowed.  Will throw a SolutionError if the solution cannot be found
 */
-double BrentRho(double t, double p, vector<double> x, int phase, add_args &cppargs, double a, double b,
+double BrentRho(double t, double p, vector<double> x, int phase, const add_args &cppargs, double a, double b,
     double macheps, double tol_abs, int maxiter)
 {
     int iter;
@@ -4992,7 +5022,7 @@ double BrentRho(double t, double p, vector<double> x, int phase, add_args &cppar
     return b;
 }
 
-double resid_rho(double rhomolar, double t, double p, vector<double> x, add_args &cppargs){
+double resid_rho(double rhomolar, double t, double p, vector<double> x, const add_args &cppargs){
     double peos = pcsaft_p_cpp(t, rhomolar, x, cppargs);
     double pressure_scale = std::max(std::abs(p), 1e-3);
     double cost = (peos-p)/pressure_scale;
@@ -5015,7 +5045,7 @@ In the secant function, a 1-D Newton-Raphson solver is implemented.  An initial 
 @param maxiter Maximum number of iterations
 @returns If no errors are found, the solution, otherwise the value _HUGE, the value for infinity
 */
-double BoundedSecantInner(double kb0, double Q, vector<double> u, vector<double> x, add_args &cppargs, double x0, double xmin,
+double BoundedSecantInner(double kb0, double Q, vector<double> u, vector<double> x, const add_args &cppargs, double x0, double xmin,
     double xmax, double dx, double tol, int maxiter) {
     double x1=0,x2=0,x3=0,y1=0,y2=0,R,fval=999;
     int iter=1;
@@ -5063,5 +5093,480 @@ double BoundedSecantInner(double kb0, double Q, vector<double> u, vector<double>
         iter=iter+1;
     }
     return x3;
+}
+
+namespace {
+vector<double> build_miac_gamma_vector(double t, double rho, const vector<double>& x, const add_args& cppargs)
+{
+    add_args args = cppargs;
+    const int ncomp = static_cast<int>(x.size());
+    if (args.z.empty() || std::all_of(args.z.begin(), args.z.end(), [](double v) { return std::abs(v) <= 1e-12; })) {
+        throw ValueError("miac requires ionic species (non-zero z).");
+    }
+    if (args.mw.size() != x.size()) {
+        throw ValueError("miac requires params['MW'] to be present and aligned with x.");
+    }
+    ChargeGroups groups = collect_charge_groups(args, x.size());
+    if (groups.cations.empty() || groups.anions.empty()) {
+        throw ValueError("miac requires at least one cation and one anion.");
+    }
+    if (groups.solvents.empty()) {
+        throw ValueError("miac requires a neutral solvent reference.");
+    }
+
+    vector<double> fugcoef = pcsaft_fugcoef_cpp(t, rho, x, args);
+    double p = pcsaft_p_cpp(t, rho, x, args);
+
+    const double eps = 1e-12;
+    vector<double> x_inf(ncomp, eps);
+    vector<double> solvent_ref(groups.solvents.size(), 0.0);
+    double solvent_sum = 0.0;
+    for (size_t k = 0; k < groups.solvents.size(); ++k) {
+        solvent_ref[k] = x[groups.solvents[k]];
+        solvent_sum += solvent_ref[k];
+    }
+    if (solvent_sum <= 0.0) {
+        throw ValueError("miac requires a positive solvent fraction.");
+    }
+    for (size_t k = 0; k < groups.solvents.size(); ++k) {
+        x_inf[groups.solvents[k]] = solvent_ref[k] / solvent_sum;
+    }
+    double solvent_budget = std::max(1.0 - eps * static_cast<double>(ncomp - groups.solvents.size()), eps * static_cast<double>(groups.solvents.size()));
+    for (size_t k = 0; k < groups.solvents.size(); ++k) {
+        x_inf[groups.solvents[k]] *= solvent_budget;
+    }
+    double x_inf_sum = 0.0;
+    for (double xi : x_inf) {
+        x_inf_sum += xi;
+    }
+    for (double& xi : x_inf) {
+        xi /= x_inf_sum;
+    }
+
+    double rho_inf = pcsaft_den_cpp(t, p, x_inf, 0, args);
+    vector<double> fugcoef_inf = pcsaft_fugcoef_cpp(t, rho_inf, x_inf, args);
+    vector<double> gamma_i(ncomp, 1.0);
+    for (int i = 0; i < ncomp; ++i) {
+        gamma_i[i] = fugcoef[i] / fugcoef_inf[i];
+    }
+    return gamma_i;
+}
+
+vector<double> build_gsolv_values(double t, double rho, const vector<double>& x, const add_args& cppargs)
+{
+    add_args args = cppargs;
+    const int ncomp = static_cast<int>(x.size());
+    if (args.z.empty() || std::all_of(args.z.begin(), args.z.end(), [](double v) { return std::abs(v) <= 1e-12; })) {
+        throw ValueError("gsolv requires ionic species in params['z'].");
+    }
+    if (args.mw.size() != x.size()) {
+        throw ValueError("gsolv requires params['MW'] to be present and aligned with x.");
+    }
+    ChargeGroups groups = collect_charge_groups(args, x.size());
+    if (groups.cations.empty() && groups.anions.empty()) {
+        throw ValueError("gsolv requires ionic species in params['z'].");
+    }
+    if (groups.solvents.empty()) {
+        throw ValueError("gsolv requires at least one solvent species (z=0).");
+    }
+
+    vector<double> x_ref = x;
+    vector<int> idx_ion = groups.cations;
+    idx_ion.insert(idx_ion.end(), groups.anions.begin(), groups.anions.end());
+    for (int i : idx_ion) {
+        x_ref[i] = 0.0;
+    }
+    double solv_sum = 0.0;
+    for (int i : groups.solvents) {
+        solv_sum += x_ref[i];
+    }
+    if (solv_sum > 0.0) {
+        for (int i : groups.solvents) {
+            x_ref[i] /= solv_sum;
+        }
+    }
+    else {
+        double equal = 1.0 / static_cast<double>(groups.solvents.size());
+        for (int i : groups.solvents) {
+            x_ref[i] = equal;
+        }
+    }
+
+    double p = pcsaft_p_cpp(t, rho, x_ref, args);
+    int phase = (rho < 900.0) ? 1 : 0;
+    vector<double> result(ncomp, 0.0);
+    const double eps = 1e-12;
+    for (int i : idx_ion) {
+        vector<double> x_inf = x_ref;
+        x_inf[i] = eps;
+        double sum_inf = 0.0;
+        for (double xi : x_inf) {
+            sum_inf += xi;
+        }
+        for (double& xi : x_inf) {
+            xi /= sum_inf;
+        }
+        double rho_inf = pcsaft_den_cpp(t, p, x_inf, phase, args);
+        vector<double> lnfug_inf = pcsaft_lnfug_cpp(t, rho_inf, x_inf, args);
+        result[i] = 8.31446261815324 * t * lnfug_inf[i];
+    }
+    return result;
+}
+} // namespace
+
+PCSAFTMixtureNative::PCSAFTMixtureNative(const add_args& args)
+    : args_(args)
+{
+}
+
+const add_args& PCSAFTMixtureNative::args() const
+{
+    return args_;
+}
+
+size_t PCSAFTMixtureNative::ncomp() const
+{
+    return args_.m.size();
+}
+
+std::shared_ptr<PCSAFTStateNative> PCSAFTMixtureNative::state(double t, vector<double> x, int phase,
+    bool has_p, double p, bool has_rho, double rho)
+{
+    return std::make_shared<PCSAFTStateNative>(shared_from_this(), t, std::move(x), phase, has_p, p, has_rho, rho);
+}
+
+PCSAFTStateNative::PCSAFTStateNative(std::shared_ptr<PCSAFTMixtureNative> mixture, double t, vector<double> x,
+    int phase, bool has_p, double p, bool has_rho, double rho)
+    : mixture_(std::move(mixture)), t_(t), x_(std::move(x)), phase_(phase),
+      has_p_(has_p), has_rho_(has_rho), p_(p), rho_(rho),
+      pressure_cached_(has_p), density_cached_(has_rho)
+{
+    if (!mixture_) {
+        throw ValueError("PCSAFTStateNative requires a valid mixture.");
+    }
+    if (x_.size() != mixture_->ncomp()) {
+        throw ValueError("State composition size does not match mixture size.");
+    }
+    if (phase_ != 0 && phase_ != 1) {
+        throw ValueError("phase must be 0 (liquid) or 1 (vapor).");
+    }
+}
+
+double PCSAFTStateNative::temperature() const
+{
+    return t_;
+}
+
+int PCSAFTStateNative::phase() const
+{
+    return phase_;
+}
+
+const vector<double>& PCSAFTStateNative::composition() const
+{
+    return x_;
+}
+
+double PCSAFTStateNative::pressure()
+{
+    if (pressure_cached_) {
+        return p_;
+    }
+    if (!density_cached_) {
+        throw ValueError("PCSAFTStateNative cannot compute pressure without density or pressure data.");
+    }
+    const add_args& args = mixture_->args();
+    p_ = pcsaft_p_cpp(t_, rho_, x_, args);
+    pressure_cached_ = true;
+    return p_;
+}
+
+double PCSAFTStateNative::density()
+{
+    if (density_cached_) {
+        return rho_;
+    }
+    if (!pressure_cached_) {
+        throw ValueError("PCSAFTStateNative cannot compute density without pressure or density data.");
+    }
+    const add_args& args = mixture_->args();
+    rho_ = pcsaft_den_cpp(t_, p_, x_, phase_, args);
+    density_cached_ = true;
+    return rho_;
+}
+
+double PCSAFTStateNative::Z()
+{
+    const add_args& args = mixture_->args();
+    return pcsaft_Z_cpp(t_, density(), x_, args);
+}
+
+double PCSAFTStateNative::ares()
+{
+    const add_args& args = mixture_->args();
+    return pcsaft_ares_cpp(t_, density(), x_, args);
+}
+
+double PCSAFTStateNative::dadt()
+{
+    const add_args& args = mixture_->args();
+    return pcsaft_dadt_cpp(t_, density(), x_, args);
+}
+
+double PCSAFTStateNative::hres()
+{
+    const add_args& args = mixture_->args();
+    return pcsaft_hres_cpp(t_, density(), x_, args);
+}
+
+double PCSAFTStateNative::sres()
+{
+    const add_args& args = mixture_->args();
+    return pcsaft_sres_cpp(t_, density(), x_, args);
+}
+
+double PCSAFTStateNative::gres()
+{
+    const add_args& args = mixture_->args();
+    return pcsaft_gres_cpp(t_, density(), x_, args);
+}
+
+vector<double> PCSAFTStateNative::lnfugcoef()
+{
+    const add_args& args = mixture_->args();
+    return pcsaft_lnfug_cpp(t_, density(), x_, args);
+}
+
+vector<double> PCSAFTStateNative::fugcoef()
+{
+    const add_args& args = mixture_->args();
+    return pcsaft_fugcoef_cpp(t_, density(), x_, args);
+}
+
+vector<double> PCSAFTStateNative::lnfugcoef_terms()
+{
+    const add_args& args = mixture_->args();
+    return pcsaft_lnfug_terms_cpp(t_, density(), x_, args);
+}
+
+vector<double> PCSAFTStateNative::dielc_eval()
+{
+    const add_args& args = mixture_->args();
+    vector<double> out;
+    out.push_back(pcsaft_dielc_eps_cpp(x_, args));
+    vector<double> deps = pcsaft_dielc_diff_cpp(x_, args);
+    out.insert(out.end(), deps.begin(), deps.end());
+    return out;
+}
+
+double PCSAFTStateNative::osmoticC()
+{
+    const add_args& args = mixture_->args();
+    vector<double> xx = x_;
+
+    int indx_solvent = -1;
+    if (args.mw.size() == xx.size()) {
+        for (size_t i = 0; i < xx.size(); ++i) {
+            if (args.z.size() == xx.size() && std::abs(args.z[i]) < 1e-12) {
+                indx_solvent = static_cast<int>(i);
+                break;
+            }
+        }
+    }
+    if (indx_solvent < 0) {
+        throw ValueError("PCSAFTStateNative::osmoticC requires a neutral solvent species.");
+    }
+    double mw_solvent = args.mw[indx_solvent];
+    if (mw_solvent > 1.0) {
+        mw_solvent /= 1000.0;
+    }
+    if (mw_solvent <= 0.0) {
+        throw ValueError("Solvent molecular weight must be positive.");
+    }
+    if (xx[indx_solvent] <= 0.0) {
+        throw ValueError("Solvent mole fraction must be positive.");
+    }
+
+    vector<double> molality(xx.size(), 0.0);
+    double molality_sum = 0.0;
+    for (size_t i = 0; i < xx.size(); ++i) {
+        molality[i] = xx[i] / (xx[indx_solvent] * mw_solvent);
+        if (static_cast<int>(i) != indx_solvent) {
+            molality_sum += molality[i];
+        }
+    }
+    if (molality_sum <= 0.0) {
+        throw ValueError("Total molality is zero; osmotic coefficient is undefined.");
+    }
+
+    vector<double> x0(xx.size(), 0.0);
+    x0[indx_solvent] = 1.0;
+
+    double rho = density();
+    double p = pcsaft_p_cpp(t_, rho, xx, args);
+    int ph = (rho < 900.0) ? 1 : 0;
+    double rho0 = pcsaft_den_cpp(t_, p, x0, ph, args);
+    vector<double> fugcoef = pcsaft_fugcoef_cpp(t_, rho, xx, args);
+    vector<double> fugcoef0 = pcsaft_fugcoef_cpp(t_, rho0, x0, args);
+    double gamma = fugcoef[indx_solvent] / fugcoef0[indx_solvent];
+    double osmC = -std::log(xx[indx_solvent] * gamma) / (mw_solvent * molality_sum);
+    return osmC;
+}
+
+vector<double> PCSAFTStateNative::miac_m()
+{
+    const add_args& args_ref = mixture_->args();
+    vector<double> gamma_i = build_miac_gamma_vector(t_, density(), x_, args_ref);
+    ChargeGroups groups = collect_charge_groups(args_ref, x_.size());
+    if (groups.cations.empty() || groups.anions.empty()) {
+        throw ValueError("miac_m requires at least one cation and one anion.");
+    }
+    if (groups.solvents.empty()) {
+        throw ValueError("miac_m requires a neutral solvent reference.");
+    }
+    if (args_ref.mw.size() != x_.size()) {
+        throw ValueError("miac_m requires params['MW'] to be present and aligned with x.");
+    }
+
+    double mass_solvent = 0.0;
+    for (int i : groups.solvents) {
+        mass_solvent += x_[i] * args_ref.mw[i];
+    }
+    if (mass_solvent <= 0.0) {
+        throw ValueError("Solvent mass is zero; check solvent mole fraction and MW.");
+    }
+
+    vector<double> mass_neutral(groups.solvents.size(), 0.0);
+    for (size_t k = 0; k < groups.solvents.size(); ++k) {
+        mass_neutral[k] = x_[groups.solvents[k]] * args_ref.mw[groups.solvents[k]];
+    }
+    double mass_neutral_sum = std::accumulate(mass_neutral.begin(), mass_neutral.end(), 0.0);
+    if (mass_neutral_sum <= 0.0) {
+        throw ValueError("Solvent mass is zero; check solvent mole fraction and MW.");
+    }
+    double w_sf_sum = 0.0;
+    double M_solvent_mix_inv = 0.0;
+    for (size_t k = 0; k < groups.solvents.size(); ++k) {
+        double w_sf = mass_neutral[k] / mass_neutral_sum;
+        w_sf_sum += w_sf;
+        M_solvent_mix_inv += w_sf / args_ref.mw[groups.solvents[k]];
+    }
+    (void)w_sf_sum;
+    if (M_solvent_mix_inv <= 0.0) {
+        throw ValueError("Solvent molecular weight mixture is invalid.");
+    }
+    double M_solvent_mix = 1.0 / M_solvent_mix_inv;
+
+    vector<double> out;
+    out.reserve(static_cast<size_t>(groups.cations.size() * groups.anions.size()));
+    for (int ic : groups.cations) {
+        for (int ia : groups.anions) {
+            int zc = static_cast<int>(std::round(std::abs(args_ref.z[ic])));
+            int za = static_cast<int>(std::round(std::abs(args_ref.z[ia])));
+            int g = gcd_int(zc, za);
+            int nu_cat = za / g;
+            int nu_an = zc / g;
+            double n_salt = 0.5 * (x_[ic] / static_cast<double>(nu_cat) + x_[ia] / static_cast<double>(nu_an));
+            double m_salt = n_salt / mass_solvent;
+            double sum_nu = static_cast<double>(nu_cat + nu_an);
+            double ln_gamma_pm = (static_cast<double>(nu_cat) * std::log(gamma_i[ic]) + static_cast<double>(nu_an) * std::log(gamma_i[ia])) / sum_nu;
+            double gamma_pm_x = std::exp(ln_gamma_pm);
+            double gamma_pm_m = gamma_pm_x / (1.0 + M_solvent_mix * m_salt * sum_nu);
+            out.push_back(gamma_pm_m);
+        }
+    }
+    return out;
+}
+
+vector<double> PCSAFTStateNative::miac()
+{
+    const add_args& args_ref = mixture_->args();
+    vector<double> gamma_i = build_miac_gamma_vector(t_, density(), x_, args_ref);
+
+    ChargeGroups groups = collect_charge_groups(args_ref, x_.size());
+    if (groups.cations.empty() || groups.anions.empty()) {
+        throw ValueError("miac requires at least one cation and one anion.");
+    }
+    if (groups.solvents.empty()) {
+        throw ValueError("miac requires a neutral solvent reference.");
+    }
+
+    vector<double> out;
+    out.reserve(static_cast<size_t>(groups.cations.size() * groups.anions.size()));
+    for (int ic : groups.cations) {
+        for (int ia : groups.anions) {
+            int zc = static_cast<int>(std::round(std::abs(args_ref.z[ic])));
+            int za = static_cast<int>(std::round(std::abs(args_ref.z[ia])));
+            int g = gcd_int(zc, za);
+            int nu_cat = za / g;
+            int nu_an = zc / g;
+            double sum_nu = static_cast<double>(nu_cat + nu_an);
+            double ln_gamma_pm = (static_cast<double>(nu_cat) * std::log(gamma_i[ic]) + static_cast<double>(nu_an) * std::log(gamma_i[ia])) / sum_nu;
+            out.push_back(std::exp(ln_gamma_pm));
+        }
+    }
+    return out;
+}
+
+vector<double> PCSAFTStateNative::gsolv()
+{
+    const add_args& args = mixture_->args();
+    return build_gsolv_values(t_, density(), x_, args);
+}
+
+FlashResultNative PCSAFTStateNative::flashTQ(double q, bool has_p_guess, double p_guess)
+{
+    const add_args& args = mixture_->args();
+    vector<double> payload;
+    if (has_p_guess) {
+        payload = flashTQ_cpp(t_, q, x_, args, p_guess);
+    } else {
+        payload = flashTQ_cpp(t_, q, x_, args);
+    }
+    FlashResultNative result;
+    result.value = payload.empty() ? 0.0 : payload[0];
+    if (payload.size() > 1) {
+        result.xl.assign(payload.begin() + 1, payload.begin() + 1 + static_cast<std::ptrdiff_t>(x_.size()));
+        result.xv.assign(payload.begin() + 1 + static_cast<std::ptrdiff_t>(x_.size()), payload.end());
+    }
+    return result;
+}
+
+FlashResultNative PCSAFTStateNative::flashPQ(double p, double q, bool has_t_guess, double t_guess)
+{
+    const add_args& args = mixture_->args();
+    vector<double> payload;
+    if (has_t_guess) {
+        payload = flashPQ_cpp(p, q, x_, args, t_guess);
+    } else {
+        payload = flashPQ_cpp(p, q, x_, args);
+    }
+    FlashResultNative result;
+    result.value = payload.empty() ? 0.0 : payload[0];
+    if (payload.size() > 1) {
+        result.xl.assign(payload.begin() + 1, payload.begin() + 1 + static_cast<std::ptrdiff_t>(x_.size()));
+        result.xv.assign(payload.begin() + 1 + static_cast<std::ptrdiff_t>(x_.size()), payload.end());
+    }
+    return result;
+}
+
+VaporizationResultNative PCSAFTStateNative::Hvap(bool has_p_guess, double p_guess)
+{
+    const add_args& args = mixture_->args();
+    vector<double> payload;
+    if (has_p_guess) {
+        payload = flashTQ_cpp(t_, 0.0, x_, args, p_guess);
+    } else {
+        payload = flashTQ_cpp(t_, 0.0, x_, args);
+    }
+    double pvap = payload.empty() ? 0.0 : payload[0];
+    double rho_l = pcsaft_den_cpp(t_, pvap, x_, 0, args);
+    double hres_l = pcsaft_hres_cpp(t_, rho_l, x_, args);
+    double rho_v = pcsaft_den_cpp(t_, pvap, x_, 1, args);
+    double hres_v = pcsaft_hres_cpp(t_, rho_v, x_, args);
+    VaporizationResultNative result;
+    result.value = hres_v - hres_l;
+    result.pressure = pvap;
+    return result;
 }
 
