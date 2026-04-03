@@ -1,3 +1,7 @@
 [submodule "externals/eigen"]
 	path = externals/eigen
 	url = https://gitlab.com/libeigen/eigen
+[submodule "docs/latex"]
+	path = docs/latex
+	url = https://git@git.overleaf.com/686d837e6bb7fceea660fb5b
+	branch = master

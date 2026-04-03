@@ -31,6 +31,7 @@ The build requires a C++ toolchain, Cython, NumPy, and the vendored Eigen header
 - `scripts/`: validation, fitting, and paper-reproduction workflows
 - `tests/`: core package regression tests
 - `docs/`: user documentation and paper/reference material
+- `docs/latex/`: separate Git submodule for the Overleaf-linked LaTeX project
 
 ## Runtime Parameter Data
 
@@ -52,6 +53,34 @@ python run_pytest.py
 Analysis and validation scripts are expected to run from the repo-named `PC-SAFT` Conda environment with `pcsaft` installed editable. A source checkout by itself is not a supported package-import path.
 
 The paper-validation and exploratory analysis scripts intentionally remain outside `pytest`; they are workspace tools, not package-unit tests.
+
+## LaTeX / Overleaf Workflow
+
+The LaTeX project lives in the `docs/latex` submodule and keeps its own Overleaf remote and branch history.
+
+Typical workflow:
+
+```bash
+git -C docs/latex status
+git -C docs/latex add -A
+git -C docs/latex commit -m "Update paper draft"
+git -C docs/latex push origin master
+git add docs/latex
+git commit -m "Bump latex submodule pointer"
+```
+
+Clone and initialize a fresh checkout with:
+
+```bash
+git clone --recurse-submodules <repo-url>
+git submodule update --init --recursive
+```
+
+If the submodule is already cloned but needs to be refreshed after a parent checkout:
+
+```bash
+git submodule update --init --recursive
+```
 
 ## Codex / Agent Workflow
 
