@@ -9,6 +9,7 @@ import pytest
 
 import pcsaft
 from pcsaft import DATASET_ROOT
+from pcsaft import aly_lee
 from pcsaft import PCSAFTMixture
 from pcsaft import SolutionError
 from pcsaft.parameters import _resolve_runtime_options
@@ -69,7 +70,12 @@ def test_package_exports_are_object_first():
     assert hasattr(pcsaft, "PCSAFTMixture")
     assert hasattr(pcsaft, "PCSAFTState")
     assert not hasattr(pcsaft, "pcsaft_den")
+    assert not hasattr(pcsaft, "pcsaft_cp")
     assert not hasattr(pcsaft, "pcsaft_ares")
+    assert not hasattr(pcsaft, "pcsaft_lnfugcoef")
+    assert not hasattr(pcsaft, "pcsaft_dielectric_eval")
+    with pytest.raises(ImportError):
+        exec("from pcsaft.pcsaft import pcsaft_ares", {})
 
 
 def test_state_properties_match_regression_values():
@@ -91,7 +97,7 @@ def test_state_properties_match_regression_values():
     state = mix.state(T=t, x=x, rho=rho)
 
     assert state.density() == pytest.approx(rho)
-    assert state.ares() == pytest.approx(-3.54988543593195, rel=1e-6)
+    assert state.a_res() == pytest.approx(-3.54988543593195, rel=1e-6)
     assert state.pressure() > 0.0
     assert state.Z() > 0.0
 
@@ -114,8 +120,70 @@ def test_state_roundtrip_hres_for_liquid_and_vapor():
     vap = mix.state(T=t, x=x, P=p, phase="vap")
 
     assert liq.density() > vap.density()
-    assert liq.hres() == pytest.approx(-36809.39, rel=tol)
-    assert vap.hres() == pytest.approx(-362.6777, rel=tol)
+    assert liq.h_res() == pytest.approx(-36809.39, rel=tol)
+    assert vap.h_res() == pytest.approx(-362.6777, rel=tol)
+
+
+def test_state_methods_and_breakdown_match_existing_accessors():
+    t = 233.15
+    rho = 14330.417110
+    x = np.array([0.1, 0.3, 0.6])
+    params = {
+        "m": np.asarray([1.0000, 1.6069, 2.0020]),
+        "s": np.asarray([3.7039, 3.5206, 3.6184]),
+        "e": np.asarray([150.03, 191.42, 208.11]),
+        "k_ij": np.asarray([
+            [0.0, 3.0e-4, 1.15e-2],
+            [3.0e-4, 0.0, 5.10e-3],
+            [1.15e-2, 5.10e-3, 0.0],
+        ]),
+    }
+
+    mix = PCSAFTMixture.from_params(params)
+    state = mix.state(T=t, x=x, rho=rho)
+
+    assert not hasattr(state, "ares")
+    assert not hasattr(state, "hres")
+    assert not hasattr(state, "sres")
+    assert not hasattr(state, "gres")
+    assert not hasattr(state, "mures")
+    assert not hasattr(state, "fugcoef")
+    assert not hasattr(state, "dielc_eval")
+    assert np.isfinite(state.a_res())
+    assert np.isfinite(state.h_res())
+    assert np.isfinite(state.s_res())
+    assert np.isfinite(state.g_res())
+    assert np.all(np.isfinite(state.mu_res()))
+    assert np.all(np.isfinite(state.gamma()))
+
+    breakdown = state.breakdown()
+    assert breakdown["miac"] == {}
+    assert breakdown["miac_m"] == {}
+    assert breakdown["gsolv"] == {}
+    assert breakdown["dielectric_eval"] is None
+    assert breakdown["osmoticC"] is None
+    np.testing.assert_allclose(breakdown["a_res"], state.a_res())
+    np.testing.assert_allclose(breakdown["h_res"], state.h_res())
+    np.testing.assert_allclose(breakdown["s_res"], state.s_res())
+    np.testing.assert_allclose(breakdown["g_res"], state.g_res())
+    np.testing.assert_allclose(breakdown["mu_res"], state.mu_res())
+    np.testing.assert_allclose(breakdown["lnfugcoef"], state.lnfugcoef())
+    np.testing.assert_allclose(breakdown["gamma"], state.gamma())
+    assert "fugcoef" not in breakdown
+
+    aly = np.asarray([1.2, 0.8, -0.01, 2.0e-5, -3.0e-8], dtype=float)
+    cp_mix = PCSAFTMixture.from_params({
+        "m": np.asarray([2.8149]),
+        "s": np.asarray([3.7169]),
+        "e": np.asarray([285.69]),
+    })
+    cp_state = cp_mix.state(T=325.0, x=np.asarray([1.0]), P=101325.0)
+    cp_expected = aly_lee(cp_state.T, aly)
+    cp_expected += (
+        cp_mix.state(T=cp_state.T + 0.001, x=np.asarray([1.0]), P=101325.0, phase="liq").h_res()
+        - cp_mix.state(T=cp_state.T - 0.001, x=np.asarray([1.0]), P=101325.0, phase="liq").h_res()
+    ) / 0.002
+    assert cp_state.cp(aly) == pytest.approx(cp_expected, rel=1e-8, abs=1e-8)
 
 
 def test_flash_and_vaporization_return_structured_results():
@@ -196,7 +264,7 @@ def test_dataset_state_methods_and_lle_workflow():
     mix = PCSAFTMixture.from_params(params, species=species)
     state = mix.state(T=t, x=z_feed, P=p)
 
-    eps, deps = state.dielc_eval()
+    eps, deps = state.dielectric_eval()
     assert eps > 0.0
     assert deps.shape == (3,)
     assert state.osmoticC().shape == (1,)
@@ -209,6 +277,16 @@ def test_dataset_state_methods_and_lle_workflow():
     assert np.isfinite(next(iter(miac.values())))
     assert np.isfinite(next(iter(miac_m.values())))
     assert all(np.isfinite(value) for value in gsolv.values())
+
+    breakdown = state.breakdown(species=species)
+    assert breakdown["miac"] == miac
+    assert breakdown["miac_m"] == miac_m
+    assert breakdown["gsolv"] == gsolv
+    np.testing.assert_allclose(breakdown["mu_res"], state.mu_res())
+    np.testing.assert_allclose(breakdown["gamma"], state.gamma())
+    np.testing.assert_allclose(breakdown["lnfugcoef"], state.lnfugcoef())
+    np.testing.assert_allclose(breakdown["dielectric_eval"][0], eps)
+    np.testing.assert_allclose(breakdown["dielectric_eval"][1], deps)
 
     lle = state.multiphase_lle(z_feed, species=species, options={"tpdf_global_trials": 50, "tpdf_local_trials": 20, "tpdf_tol": -1e-6})
     assert lle.n_phases >= 1

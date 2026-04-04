@@ -143,26 +143,29 @@ cdef class PCSAFTState:
     def Z(self):
         return float(self._native.get().Z())
 
-    def ares(self):
-        return float(self._native.get().ares())
+    def a_res(self):
+        return float(self._native.get().a_res())
 
     def dadt(self):
         return float(self._native.get().dadt())
 
-    def hres(self):
-        return float(self._native.get().hres())
+    def h_res(self):
+        return float(self._native.get().h_res())
 
-    def sres(self):
-        return float(self._native.get().sres())
+    def s_res(self):
+        return float(self._native.get().s_res())
 
-    def gres(self):
-        return float(self._native.get().gres())
+    def g_res(self):
+        return float(self._native.get().g_res())
+
+    def mu_res(self):
+        return vector_to_array(self._native.get().mu_res())
+
+    def gamma(self):
+        return vector_to_array(self._native.get().gamma())
 
     def lnfugcoef(self):
         return vector_to_array(self._native.get().lnfugcoef())
-
-    def fugcoef(self):
-        return vector_to_array(self._native.get().fugcoef())
 
     def lnfugcoef_terms(self):
         flat = vector_to_array(self._native.get().lnfugcoef_terms())
@@ -181,7 +184,6 @@ cdef class PCSAFTState:
             "mu_born": blocks[5],
             "mu_total": blocks[6],
             "lnfugcoef_total": blocks[7],
-            "lnfugcoef": blocks[7],
             "lnfugcoef_hc": blocks[8],
             "lnfugcoef_disp": blocks[9],
             "lnfugcoef_polar": blocks[10],
@@ -221,12 +223,53 @@ cdef class PCSAFTState:
             "z_total": float(scalars[24]),
         }
 
-    def dielc_eval(self):
-        flat = vector_to_array(self._native.get().dielc_eval())
+    def dielectric_eval(self):
+        flat = vector_to_array(self._native.get().dielectric_eval())
         return flat[0], flat[1:]
 
     def osmoticC(self):
         return np.asarray([self._native.get().osmoticC()], dtype=float)
+
+    def breakdown(self, species=None):
+        species = self._mixture.species if species is None else species
+        z = np.asarray(self._mixture.parameters.get("z", []), dtype=float).flatten()
+        has_ions = bool(np.any(np.abs(z) > 1e-12))
+        terms = self.lnfugcoef_terms()
+        lnfugcoef = self.lnfugcoef()
+        gamma = np.exp(lnfugcoef)
+        if has_ions:
+            dielectric_eval = self.dielectric_eval()
+            osmoticC = self.osmoticC()
+            miac_m = self.miac_m(species=species)
+            miac = self.miac(species=species)
+            gsolv = self.gsolv(species=species)
+        else:
+            dielectric_eval = None
+            osmoticC = None
+            miac_m = {}
+            miac = {}
+            gsolv = {}
+        return {
+            "T": self._T,
+            "phase": self._phase,
+            "x": np.asarray(self._x, dtype=float),
+            "pressure": self.pressure(),
+            "density": self.density(),
+            "Z": self.Z(),
+            "a_res": self.a_res(),
+            "h_res": self.h_res(),
+            "s_res": self.s_res(),
+            "g_res": self.g_res(),
+            "mu_res": self.mu_res(),
+            "lnfugcoef": lnfugcoef,
+            "gamma": gamma,
+            "lnfugcoef_terms": terms,
+            "dielectric_eval": dielectric_eval,
+            "osmoticC": osmoticC,
+            "miac_m": miac_m,
+            "miac": miac,
+            "gsolv": gsolv,
+        }
 
     def miac_m(self, species=None):
         species = self._mixture.species if species is None else species
@@ -302,6 +345,25 @@ cdef class PCSAFTState:
             out = self._native.get().Hvap(True, float(p_guess))
         return VaporizationResult(out.value, out.pressure)
 
+    def cp(self, aly_lee_params):
+        aly_lee_params = np.asarray(aly_lee_params, dtype=float).flatten()
+        if aly_lee_params.size != 5:
+            raise InputError("aly_lee_params must have length 5.")
+        cdef PCSAFTMixture mix = self._mixture
+        cdef add_args cppargs = create_struct(mix.parameters)
+        cdef object x = np.asarray(self._x, dtype=float)
+        cdef double t = self._T
+        cdef double rho = self.density()
+        cdef int ph = 0 if rho > 900 else 1
+        cdef double cp_ideal = aly_lee(t, aly_lee_params)
+        cdef double p = p_cpp(t, rho, x, cppargs)
+        cdef double rho0 = _pcsaft_den_checked(t - 0.001, p, x, ph, cppargs)
+        cdef double hres0 = hres_cpp(t - 0.001, rho0, x, cppargs)
+        cdef double rho1 = _pcsaft_den_checked(t + 0.001, p, x, ph, cppargs)
+        cdef double hres1 = hres_cpp(t + 0.001, rho1, x, cppargs)
+        cdef double dhdt = (hres1 - hres0) / 0.002
+        return float(cp_ideal + dhdt)
+
     def multiphase_lle(self, z_feed, species=None, options=None):
         return MultiphaseLLEResult.from_payload(_pcsaft_multiphase_lle_impl(self._T, self.pressure() if self._P is None else self._P, z_feed, self._mixture.parameters, species or self._mixture.species, options=options))
 
@@ -311,7 +373,7 @@ cdef class PCSAFTState:
 
 cdef double _pcsaft_den_checked(double t, double p, vector[double] x, int phase, add_args &cppargs) except *:
     try:
-        return pcsaft_den_cpp(t, p, x, phase, cppargs)
+        return den_cpp(t, p, x, phase, cppargs)
     except Exception as exc:
         raise SolutionError(str(exc))
 
@@ -548,8 +610,9 @@ def _trial_x_from_n_xi(n_neut, xi, neutral_idx, charged_idx, E, ncomp):
 
 
 def _phase_state_liq(t, p, x, params):
-    rho = float(pcsaft_den(t, p, x, params, phase='liq'))
-    lnfugcoef = np.asarray(pcsaft_lnfugcoef(t, rho, x, params), dtype=float)
+    cppargs = create_struct(params)
+    rho = float(den_cpp(t, p, x, 0, cppargs))
+    lnfugcoef = np.asarray(lnfug_cpp(t, rho, x, cppargs), dtype=float)
     lnfug = lnfugcoef + _safe_unit_log(x) + math.log(float(p))
     return {"rho": rho, "lnfugcoef": lnfugcoef, "lnfug": lnfug}
 
@@ -1082,7 +1145,7 @@ def pcsaft_p(t, rho, x, params):
     check_input(x, {'density':rho, 'temperature':t})
     params = check_association(params)
     cppargs = create_struct(params)
-    return pcsaft_p_cpp(t, rho, x, cppargs)
+    return p_cpp(t, rho, x, cppargs)
 
 
 def pcsaft_lnfugcoef(t, rho, x, params):
@@ -1149,7 +1212,7 @@ def pcsaft_lnfugcoef(t, rho, x, params):
     check_input(x, {'density':rho, 'temperature':t})
     params = check_association(params)
     cppargs = create_struct(params)
-    return np.asarray(pcsaft_lnfug_cpp(t, rho, x, cppargs))
+    return np.asarray(lnfug_cpp(t, rho, x, cppargs))
 
 
 def pcsaft_lnfugcoef_terms(t, rho, x, params):
@@ -1163,7 +1226,7 @@ def pcsaft_lnfugcoef_terms(t, rho, x, params):
     dict
         Keys map to arrays of shape (n,):
         - mu_hc, mu_disp, mu_polar, mu_assoc, mu_ion, mu_born
-        - mu_total
+        - mu_total (alias: mu_res, mures)
         - lnfugcoef_hc, lnfugcoef_disp, lnfugcoef_polar, lnfugcoef_assoc
         - lnfugcoef_ion, lnfugcoef_born
         - lnfugcoef_total (alias: lnfugcoef)
@@ -1186,7 +1249,7 @@ def pcsaft_lnfugcoef_terms(t, rho, x, params):
     params = check_association(params)
     cppargs = create_struct(params)
 
-    flat = np.asarray(pcsaft_lnfug_terms_cpp(t, rho, x, cppargs), dtype=float)
+    flat = np.asarray(lnfug_terms_cpp(t, rho, x, cppargs), dtype=float)
     ncomp = int(np.asarray(x, dtype=float).size)
     expected = 20 * ncomp + 25
     if flat.size != expected:
@@ -1309,7 +1372,7 @@ def pcsaft_fugcoef(t, rho, x, params):
     check_input(x, {'density':rho, 'temperature':t})
     params = check_association(params)
     cppargs = create_struct(params)
-    return np.asarray(pcsaft_fugcoef_cpp(t, rho, x, cppargs))
+    return np.asarray(fugcoef_cpp(t, rho, x, cppargs))
 
 
 def pcsaft_Z(t, rho, x, params):
@@ -1376,7 +1439,7 @@ def pcsaft_Z(t, rho, x, params):
     check_input(x, {'density':rho, 'temperature':t})
     params = check_association(params)
     cppargs = create_struct(params)
-    return pcsaft_Z_cpp(t, rho, x, cppargs)
+    return Z_cpp(t, rho, x, cppargs)
 
 
 def flashPQ(p, q, x, params, t_guess=None):
@@ -1650,9 +1713,9 @@ def pcsaft_Hvap(t, x, params, p_guess=None):
         raise SolutionError('A solution was not found for flashTQ. T={}'.format(t))
 
     rho = _pcsaft_den_checked(t, Pvap, x, 0, cppargs)
-    hres_l = pcsaft_hres_cpp(t, rho, x, cppargs)
+    hres_l = hres_cpp(t, rho, x, cppargs)
     rho = _pcsaft_den_checked(t, Pvap, x, 1, cppargs)
-    hres_v = pcsaft_hres_cpp(t, rho, x, cppargs)
+    hres_v = hres_cpp(t, rho, x, cppargs)
     Hvap = hres_v - hres_l
 
     output = [Hvap, Pvap]
@@ -1771,14 +1834,14 @@ def pcsaft_osmoticC(t, rho, x, params):
     x0 = np.zeros_like(x)
     x0[indx_solvent] = 1.
 
-    fugcoef = np.asarray(pcsaft_fugcoef_cpp(t, rho, x, cppargs))
-    p = pcsaft_p_cpp(t, rho, x, cppargs)
+    fugcoef = np.asarray(fugcoef_cpp(t, rho, x, cppargs))
+    p = p_cpp(t, rho, x, cppargs)
     if rho < 900:
         ph = 1
     else:
         ph = 0
     rho0 = _pcsaft_den_checked(t, p, x0, ph, cppargs)
-    fugcoef0 = np.asarray(pcsaft_fugcoef_cpp(t, rho0, x0, cppargs))
+    fugcoef0 = np.asarray(fugcoef_cpp(t, rho0, x0, cppargs))
     gamma = float(fugcoef[indx_solvent]/fugcoef0[indx_solvent])
 
     osmC = -np.log(x[indx_solvent]*gamma)/(mw_solvent*molality_sum)
@@ -1810,7 +1873,7 @@ def pcsaft_miac_m(t, rho, x, params, species=None):
     if mass_solvent <= 0:
         raise InputError('Solvent mass is zero; check solvent mole fraction and MW.')
 
-    fugcoef = np.asarray(pcsaft_fugcoef_cpp(t, rho, x, cppargs), dtype=float)
+    fugcoef = np.asarray(fugcoef_cpp(t, rho, x, cppargs), dtype=float)
 
     eps = 1e-12
     x_inf = np.full_like(x, eps)
@@ -1819,8 +1882,8 @@ def pcsaft_miac_m(t, rho, x, params, species=None):
     solvent_budget = max(1.0 - eps * (len(x) - len(idx_sol)), eps * len(idx_sol))
     x_inf[idx_sol] = solvent_ref * solvent_budget
     x_inf /= np.sum(x_inf)
-    rho_inf = _pcsaft_den_checked(t, pcsaft_p_cpp(t, rho, x, cppargs), x_inf, 0, cppargs)
-    fugcoef_inf = np.asarray(pcsaft_fugcoef_cpp(t, rho_inf, x_inf, cppargs), dtype=float)
+    rho_inf = _pcsaft_den_checked(t, p_cpp(t, rho, x, cppargs), x_inf, 0, cppargs)
+    fugcoef_inf = np.asarray(fugcoef_cpp(t, rho_inf, x_inf, cppargs), dtype=float)
     if np.any(fugcoef_inf <= 0):
         raise SolutionError('Non-positive fugacity at infinite dilution.')
     gamma_i = fugcoef / fugcoef_inf
@@ -1871,7 +1934,7 @@ def pcsaft_miac(t, rho, x, params, species=None):
     if len(idx_sol) == 0:
         raise InputError('pcsaft_miac needs a neutral solvent reference.')
 
-    fugcoef = np.asarray(pcsaft_fugcoef_cpp(t, rho, x, cppargs), dtype=float)
+    fugcoef = np.asarray(fugcoef_cpp(t, rho, x, cppargs), dtype=float)
 
     eps = 1e-12
     x_inf = np.full_like(x, eps)
@@ -1880,8 +1943,8 @@ def pcsaft_miac(t, rho, x, params, species=None):
     solvent_budget = max(1.0 - eps * (len(x) - len(idx_sol)), eps * len(idx_sol))
     x_inf[idx_sol] = solvent_ref * solvent_budget
     x_inf /= np.sum(x_inf)
-    rho_inf = _pcsaft_den_checked(t, pcsaft_p_cpp(t, rho, x, cppargs), x_inf, 0, cppargs)
-    fugcoef_inf = np.asarray(pcsaft_fugcoef_cpp(t, rho_inf, x_inf, cppargs), dtype=float)
+    rho_inf = _pcsaft_den_checked(t, p_cpp(t, rho, x, cppargs), x_inf, 0, cppargs)
+    fugcoef_inf = np.asarray(fugcoef_cpp(t, rho_inf, x_inf, cppargs), dtype=float)
     if np.any(fugcoef_inf <= 0):
         raise SolutionError('Non-positive fugacity at infinite dilution.')
     gamma_i = fugcoef / fugcoef_inf
@@ -1980,11 +2043,11 @@ def pcsaft_cp(t, rho, aly_lee_params, x, params):
     cppargs = create_struct(params)
 
     cp_ideal = aly_lee(t, aly_lee_params)
-    p = pcsaft_p_cpp(t, rho, x, cppargs)
+    p = p_cpp(t, rho, x, cppargs)
     rho0 = _pcsaft_den_checked(t-0.001, p, x, ph, cppargs)
-    hres0 = pcsaft_hres_cpp(t-0.001, rho0, x, cppargs)
+    hres0 = hres_cpp(t-0.001, rho0, x, cppargs)
     rho1 = _pcsaft_den_checked(t+0.001, p, x, ph, cppargs)
-    hres1 = pcsaft_hres_cpp(t+0.001, rho1, x, cppargs)
+    hres1 = hres_cpp(t+0.001, rho1, x, cppargs)
     dhdt = (hres1-hres0)/0.002 # a numerical derivative is used for now until analytical derivatives are ready
     return cp_ideal + dhdt
 
@@ -2129,7 +2192,7 @@ def pcsaft_hres(t, rho, x, params):
     check_input(x, {'density':rho, 'temperature':t})
     params = check_association(params)
     cppargs = create_struct(params)
-    return pcsaft_hres_cpp(t, rho, x, cppargs)
+    return hres_cpp(t, rho, x, cppargs)
 
 def pcsaft_sres(t, rho, x, params):
     """
@@ -2195,7 +2258,7 @@ def pcsaft_sres(t, rho, x, params):
     check_input(x, {'density':rho, 'temperature':t})
     params = check_association(params)
     cppargs = create_struct(params)
-    return pcsaft_sres_cpp(t, rho, x, cppargs)
+    return sres_cpp(t, rho, x, cppargs)
 
 def pcsaft_gres(t, rho, x, params):
     """
@@ -2261,7 +2324,40 @@ def pcsaft_gres(t, rho, x, params):
     check_input(x, {'density':rho, 'temperature':t})
     params = check_association(params)
     cppargs = create_struct(params)
-    return pcsaft_gres_cpp(t, rho, x, cppargs)
+    return gres_cpp(t, rho, x, cppargs)
+
+
+def pcsaft_a_res(t, rho, x, params):
+    return pcsaft_ares(t, rho, x, params)
+
+
+def pcsaft_h_res(t, rho, x, params):
+    return pcsaft_hres(t, rho, x, params)
+
+
+def pcsaft_s_res(t, rho, x, params):
+    return pcsaft_sres(t, rho, x, params)
+
+
+def pcsaft_g_res(t, rho, x, params):
+    return pcsaft_gres(t, rho, x, params)
+
+
+def pcsaft_gamma(t, rho, x, params):
+    return pcsaft_fugcoef(t, rho, x, params)
+
+
+def pcsaft_mures(t, rho, x, params):
+    x, params = ensure_numpy_input(x, params)
+    check_input(x, {'density': rho, 'temperature': t})
+    params = check_association(params)
+    cppargs = create_struct(params)
+    return np.asarray(mures_cpp(t, rho, x, cppargs), dtype=float)
+
+
+def pcsaft_mu_res(t, rho, x, params):
+    return pcsaft_mures(t, rho, x, params)
+
 
 def pcsaft_gsolv(t, rho, x, params, species=None):
     """
@@ -2292,7 +2388,7 @@ def pcsaft_gsolv(t, rho, x, params, species=None):
         x_ref[idx_solv] = 1.0 / len(idx_solv)
 
     eps = 1e-12
-    p = pcsaft_p_cpp(t, rho, x_ref, cppargs)
+    p = p_cpp(t, rho, x_ref, cppargs)
     phase = 1 if rho < 900 else 0
     result = {}
     for i in idx_ion:
@@ -2300,7 +2396,7 @@ def pcsaft_gsolv(t, rho, x, params, species=None):
         x_inf[i] = eps
         x_inf /= np.sum(x_inf)
         rho_inf = _pcsaft_den_checked(t, p, x_inf, phase, cppargs)
-        lnfug_inf = float(pcsaft_lnfug_cpp(t, rho_inf, x_inf, cppargs)[i])
+        lnfug_inf = float(lnfug_cpp(t, rho_inf, x_inf, cppargs)[i])
         if not np.isfinite(lnfug_inf):
             raise SolutionError('Non-finite ln(fugacity coefficient) at infinite dilution.')
         result[species[i]] = 8.31446261815324 * t * lnfug_inf
@@ -2371,7 +2467,7 @@ def pcsaft_ares(t, rho, x, params):
     check_input(x, {'density':rho, 'temperature':t})
     params = check_association(params)
     cppargs = create_struct(params)
-    return pcsaft_ares_cpp(t, rho, x, cppargs)
+    return ares_cpp(t, rho, x, cppargs)
 
 
 def pcsaft_dadt(t, rho, x, params):
@@ -2438,7 +2534,7 @@ def pcsaft_dadt(t, rho, x, params):
     check_input(x, {'density':rho, 'temperature':t})
     params = check_association(params)
     cppargs = create_struct(params)
-    return pcsaft_dadt_cpp(t, rho, x, cppargs)
+    return dadt_cpp(t, rho, x, cppargs)
 
 
 def aly_lee(t, c):
@@ -2830,7 +2926,7 @@ def create_struct(params):
     return cppargs
 
 
-def pcsaft_dielc_eval(x, params):
+def pcsaft_dielectric_eval(x, params):
     """
     Evaluate mixed dielectric constant and composition derivatives using the C++ dielectric engine.
     """
@@ -2838,6 +2934,44 @@ def pcsaft_dielc_eval(x, params):
     check_input(x, {})
     params = check_association(params)
     cppargs = create_struct(params)
-    eps = pcsaft_dielc_eps_cpp(x, cppargs)
-    deps = np.asarray(pcsaft_dielc_diff_cpp(x, cppargs))
+    eps = dielectric_eps_cpp(x, cppargs)
+    deps = np.asarray(dielectric_diff_cpp(x, cppargs))
     return eps, deps
+
+
+def pcsaft_dielc_eval(x, params):
+    return pcsaft_dielectric_eval(x, params)
+
+
+for _public_thermo_name in (
+    "flashPQ",
+    "flashTQ",
+    "pcsaft_Z",
+    "pcsaft_a_res",
+    "pcsaft_ares",
+    "pcsaft_dadt",
+    "pcsaft_den",
+    "pcsaft_dielectric_eval",
+    "pcsaft_dielc_eval",
+    "pcsaft_fugcoef",
+    "pcsaft_gamma",
+    "pcsaft_g_res",
+    "pcsaft_gres",
+    "pcsaft_Hvap",
+    "pcsaft_h_res",
+    "pcsaft_hres",
+    "pcsaft_lnfugcoef",
+    "pcsaft_lnfugcoef_terms",
+    "pcsaft_miac",
+    "pcsaft_miac_m",
+    "pcsaft_mu_res",
+    "pcsaft_mures",
+    "pcsaft_osmoticC",
+    "pcsaft_p",
+    "pcsaft_s_res",
+    "pcsaft_sres",
+    "pcsaft_cp",
+    "pcsaft_gsolv",
+):
+    globals().pop(_public_thermo_name, None)
+

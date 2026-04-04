@@ -90,14 +90,21 @@ public:
     double pressure();
     double density();
     double Z();
+    double a_res();
     double ares();
     double dadt();
+    double h_res();
     double hres();
+    double s_res();
     double sres();
+    double g_res();
     double gres();
+    vector<double> mu_res();
+    vector<double> gamma();
     vector<double> lnfugcoef();
     vector<double> fugcoef();
     vector<double> lnfugcoef_terms();
+    vector<double> dielectric_eval();
     vector<double> dielc_eval();
     double osmoticC();
     vector<double> miac_m();
@@ -132,17 +139,18 @@ private:
     add_args args_;
 };
 
-double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
-vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
-vector<double> pcsaft_lnfug_terms_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
-vector<double> pcsaft_fugcoef_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
-double pcsaft_p_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
-double pcsaft_den_cpp(double t, double p, vector<double> x, int phase, const add_args &cppargs);
-double pcsaft_ares_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
-double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
-double pcsaft_hres_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
-double pcsaft_sres_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
-double pcsaft_gres_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+double Z_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+vector<double> mures_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+vector<double> lnfug_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+vector<double> lnfug_terms_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+vector<double> fugcoef_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+double p_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+double den_cpp(double t, double p, vector<double> x, int phase, const add_args &cppargs);
+double ares_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+double dadt_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+double hres_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+double sres_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+double gres_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 
 vector<double> flashTQ_cpp(double t, double Q, vector<double> x, const add_args &cppargs);
 vector<double> flashTQ_cpp(double t, double Q, vector<double> x, const add_args &cppargs, double p_guess); // used if a guess value is given
@@ -163,9 +171,11 @@ double reduced_to_molar(double nu, double t, int ncomp, vector<double> x, const 
 double dielc_water(double t);
 double calc_water_sigma(double t);
 inline double calc_sigma(double t, double (*function)(double)){return function(t);} // this can allow us to accept a custom function for a temperature dependent sigma
-add_args get_single_component(int i, const add_args &cppargs);
-double pcsaft_dielc_eps_cpp(vector<double> x, const add_args &cppargs);
-vector<double> pcsaft_dielc_diff_cpp(vector<double> x, const add_args &cppargs);
+ add_args single_component_args_cpp(int i, const add_args &cppargs);
+double dielectric_eps_cpp(vector<double> x, const add_args &cppargs);
+vector<double> dielectric_diff_cpp(vector<double> x, const add_args &cppargs);
+double dielc_eps_cpp(vector<double> x, const add_args &cppargs);
+vector<double> dielc_diff_cpp(vector<double> x, const add_args &cppargs);
 
 class ValueError: public std::exception
 {
@@ -187,16 +197,24 @@ private:
     std::string m_err;
 };
 
-// functions used in solving for density
-double resid_rho(double rhomolar, double t, double p, vector<double> x, const add_args &cppargs);
-double BrentRho(double t, double p, vector<double> x, int phase, const add_args &cppargs, double a, double b,
+// functions used in flash calculations and root finding
+vector<double> flash_pq_cpp(double t_guess, double p, double Q, vector<double> x, add_args cppargs);
+vector<double> flash_tq_cpp(double p_guess, double t, double Q, vector<double> x, add_args cppargs);
+double density_root_residual_cpp(double rhomolar, double t, double p, vector<double> x, const add_args &cppargs);
+double density_brent_cpp(double t, double p, vector<double> x, int phase, const add_args &cppargs, double a, double b,
     double macheps, double tol_abs, int maxiter);
-
-// functions used for flash calculations
-vector<double> outerPQ(double t_guess, double p, double Q, vector<double> x, add_args cppargs);
-vector<double> outerTQ(double p_guess, double t, double Q, vector<double> x, add_args cppargs);
-double estimate_flash_t(double p, double Q, vector<double> x, add_args cppargs);
-double estimate_flash_p(double t, double Q, vector<double> x, const add_args &cppargs);
-double resid_inner(double R, double kb0, double Q, vector<double> u, vector<double> x, const add_args &cppargs);
-double BoundedSecantInner(double kb0, double Q, vector<double> u, vector<double> x, const add_args &cppargs, double x0, double xmin,
+namespace thermo_detail {
+double vle_temperature_guess_cpp(double p, double Q, vector<double> x, add_args cppargs);
+double vle_pressure_guess_cpp(double t, double Q, vector<double> x, const add_args &cppargs);
+}
+double secant_residual_cpp(double R, double kb0, double Q, vector<double> u, vector<double> x, const add_args &cppargs);
+double bounded_secant_cpp(double kb0, double Q, vector<double> u, vector<double> x, const add_args &cppargs, double x0, double xmin,
     double xmax, double dx, double tol, int maxiter);
+double reduced_density_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs);
+vector<double> association_site_fractions_cpp(vector<double> XA_guess, vector<double> delta_ij, double den,
+    vector<double> x);
+vector<double> association_site_fraction_dt_cpp(vector<double> delta_ij, double den,
+    vector<double> XA, vector<double> ddelta_dt, vector<double> x);
+vector<double> association_site_fraction_dx_cpp(vector<int> assoc_num, vector<double> delta_ij,
+    double den, vector<double> XA, vector<double> ddelta_dx, vector<double> x);
+

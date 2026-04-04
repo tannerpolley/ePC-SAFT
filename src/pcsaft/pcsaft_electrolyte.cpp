@@ -108,7 +108,7 @@ constexpr std::array<double, 5> kDipoleC2 = { -0.6260979, 1.2924686, 1.6542783, 
 constexpr double kDipoleConversion = 7242.702976750923;
 
 template <size_t N>
-double evaluate_polynomial(const std::array<double, N> &coeffs, double x) {
+double polynomial_value_cpp(const std::array<double, N> &coeffs, double x) {
     double value = 0.0;
     for (size_t i = 0; i < N; ++i) {
         value += coeffs[i] * std::pow(x, static_cast<int>(i));
@@ -117,7 +117,7 @@ double evaluate_polynomial(const std::array<double, N> &coeffs, double x) {
 }
 
 template <size_t N>
-double evaluate_polynomial_derivative(const std::array<double, N> &coeffs, double x) {
+double polynomial_derivative_cpp(const std::array<double, N> &coeffs, double x) {
     double value = 0.0;
     for (size_t i = 1; i < N; ++i) {
         value += coeffs[i] * static_cast<double>(i) * std::pow(x, static_cast<int>(i - 1));
@@ -126,7 +126,7 @@ double evaluate_polynomial_derivative(const std::array<double, N> &coeffs, doubl
 }
 
 template <size_t N>
-double evaluate_eta_weighted_derivative(const std::array<double, N> &coeffs, double x) {
+double eta_weighted_derivative_cpp(const std::array<double, N> &coeffs, double x) {
     double value = 0.0;
     for (size_t i = 0; i < N; ++i) {
         value += coeffs[i] * static_cast<double>(i + 1) * std::pow(x, static_cast<int>(i));
@@ -169,7 +169,7 @@ struct AssociationSetup {
     vector<double> delta_ij;
 };
 
-double compute_pair_sigma(size_t idx, int i, int j, const add_args &cppargs) {
+double pair_sigma_cpp(size_t idx, int i, int j, const add_args &cppargs) {
     double sigma = 0.5 * (cppargs.s[i] + cppargs.s[j]);
     if (!cppargs.l_ij.empty()) {
         sigma *= (1.0 - cppargs.l_ij[idx]);
@@ -177,7 +177,7 @@ double compute_pair_sigma(size_t idx, int i, int j, const add_args &cppargs) {
     return sigma;
 }
 
-double compute_pair_epsilon(size_t idx, int i, int j, const add_args &cppargs) {
+double pair_epsilon_cpp(size_t idx, int i, int j, const add_args &cppargs) {
     if (!cppargs.z.empty() && cppargs.z[i] * cppargs.z[j] > 0.0) {
         return 0.0;
     }
@@ -188,23 +188,23 @@ double compute_pair_epsilon(size_t idx, int i, int j, const add_args &cppargs) {
     return epsilon;
 }
 
-double compute_pair_diameter(double d_i, double d_j) {
+double pair_diameter_cpp(double d_i, double d_j) {
     return d_i * d_j / (d_i + d_j);
 }
 
-double compute_hs_contact_value(double pair_diameter, double zeta2, double zeta3) {
+double hs_contact_value_cpp(double pair_diameter, double zeta2, double zeta3) {
     return 1.0 / (1.0 - zeta3)
         + pair_diameter * 3.0 * zeta2 / std::pow(1.0 - zeta3, 2.0)
         + std::pow(pair_diameter, 2.0) * 2.0 * zeta2 * zeta2 / std::pow(1.0 - zeta3, 3.0);
 }
 
-double compute_hs_contact_density_derivative(double pair_diameter, double zeta2, double zeta3) {
+double hs_contact_density_derivative_cpp(double pair_diameter, double zeta2, double zeta3) {
     return zeta3 / std::pow(1.0 - zeta3, 2.0)
         + pair_diameter * (3.0 * zeta2 / std::pow(1.0 - zeta3, 2.0) + 6.0 * zeta2 * zeta3 / std::pow(1.0 - zeta3, 3.0))
         + std::pow(pair_diameter, 2.0) * (4.0 * zeta2 * zeta2 / std::pow(1.0 - zeta3, 3.0) + 6.0 * zeta2 * zeta2 * zeta3 / std::pow(1.0 - zeta3, 4.0));
 }
 
-double compute_hs_contact_time_derivative(
+double hs_contact_time_derivative_cpp(
     double pair_diameter,
     double pair_diameter_dt,
     double zeta2,
@@ -218,7 +218,7 @@ double compute_hs_contact_time_derivative(
         + 6.0 * std::pow(pair_diameter * zeta2, 2.0) * dzeta3_dt / std::pow(1.0 - zeta3, 4.0);
 }
 
-ThermoCommonState build_thermo_common_state(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {
+ThermoCommonState thermo_common_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {
     ThermoCommonState state;
     int ncomp = static_cast<int>(x.size());
     state.d.assign(ncomp, 0.0);
@@ -297,21 +297,21 @@ ThermoCommonState build_thermo_common_state(double t, double rho, const vector<d
     for (int i = 0; i < ncomp; ++i) {
         for (int j = 0; j < ncomp; ++j) {
             idx += 1;
-            state.s_ij[idx] = compute_pair_sigma(static_cast<size_t>(idx), i, j, cppargs);
-            state.e_ij[idx] = compute_pair_epsilon(static_cast<size_t>(idx), i, j, cppargs);
+            state.s_ij[idx] = pair_sigma_cpp(static_cast<size_t>(idx), i, j, cppargs);
+            state.e_ij[idx] = pair_epsilon_cpp(static_cast<size_t>(idx), i, j, cppargs);
             state.m2es3 += x[i] * x[j] * cppargs.m[i] * cppargs.m[j] * state.e_ij[idx] / t * std::pow(state.s_ij[idx], 3);
             state.m2e2s3 += x[i] * x[j] * cppargs.m[i] * cppargs.m[j] * std::pow(state.e_ij[idx] / t, 2) * std::pow(state.s_ij[idx], 3);
 
-            double pair_diameter = compute_pair_diameter(state.d[i], state.d[j]);
-            state.ghs[idx] = compute_hs_contact_value(pair_diameter, state.zeta[2], state.zeta[3]);
-            state.denghs[idx] = compute_hs_contact_density_derivative(pair_diameter, state.zeta[2], state.zeta[3]);
+            double pair_diameter = pair_diameter_cpp(state.d[i], state.d[j]);
+            state.ghs[idx] = hs_contact_value_cpp(pair_diameter, state.zeta[2], state.zeta[3]);
+            state.denghs[idx] = hs_contact_density_derivative_cpp(pair_diameter, state.zeta[2], state.zeta[3]);
         }
     }
 
     return state;
 }
 
-DispersionPolynomialState build_dispersion_polynomials(double m_avg, double eta) {
+DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta) {
     DispersionPolynomialState state;
     double c1 = (m_avg - 1.0) / m_avg;
     double c2 = (m_avg - 2.0) / m_avg;
@@ -338,7 +338,7 @@ DispersionPolynomialState build_dispersion_polynomials(double m_avg, double eta)
     return state;
 }
 
-vector<double> build_dipole_coefficients(const std::array<double, 5> &c0, const std::array<double, 5> &c1, const std::array<double, 5> &c2, double m) {
+vector<double> dipole_coefficients_cpp(const std::array<double, 5> &c0, const std::array<double, 5> &c1, const std::array<double, 5> &c2, double m) {
     vector<double> coeffs(5, 0.0);
     double a = (m - 1.0) / m;
     double b = (m - 2.0) / m;
@@ -348,16 +348,16 @@ vector<double> build_dipole_coefficients(const std::array<double, 5> &c0, const 
     return coeffs;
 }
 
-double compute_dh_kappa(double den, double t, double eps, double q2_sum) {
+double dh_kappa_cpp(double den, double t, double eps, double q2_sum) {
     return std::sqrt(den * E_CHRG * E_CHRG / kb / t / (eps * perm_vac) * q2_sum);
 }
 
-double compute_dh_chi(double kappa, double diameter) {
+double dh_chi_cpp(double kappa, double diameter) {
     double ka = kappa * diameter;
     return 3.0 / std::pow(ka, 3.0) * (1.5 + std::log(1.0 + ka) - 2.0 * (1.0 + ka) + 0.5 * std::pow(1.0 + ka, 2.0));
 }
 
-AssociationSetup build_association_setup(
+AssociationSetup association_setup_cpp(
     const vector<double> &x,
     const add_args &cppargs,
     const vector<double> &s_ij,
@@ -454,7 +454,7 @@ double stable_logz_over_zminus1(double Z) {
     return std::log(Z) / dz;
 }
 
-double compute_z_term_scale(const vector<double> &z_term, double Z_total) {
+double z_term_scale_cpp(const vector<double> &z_term, double Z_total) {
     double raw_sum = 0.0;
     for (double value : z_term) {
         raw_sum += value;
@@ -500,7 +500,7 @@ struct FlashPhaseState {
     bool valid = false;
 };
 
-vector<double> build_density_scan_grid() {
+vector<double> density_scan_grid_cpp() {
     const double nu_min = 1e-13;
     const double nu_log_max = 5e-3;
     const double nu_linear_start = 5e-3;
@@ -537,12 +537,12 @@ vector<double> build_density_scan_grid() {
     return grid;
 }
 
-DensityScanPoint evaluate_density_scan_point(double nu, double t, int ncomp, const vector<double> &x, double p, const add_args &cppargs) {
+DensityScanPoint density_scan_point_cpp(double nu, double t, int ncomp, const vector<double> &x, double p, const add_args &cppargs) {
     DensityScanPoint point;
     point.nu = nu;
-    point.rho = reduced_to_molar(nu, t, ncomp, x, cppargs);
+    point.rho = ::reduced_density_to_molar(nu, t, ncomp, x, cppargs);
     try {
-        point.resid = resid_rho(point.rho, t, p, x, cppargs);
+        point.resid = ::density_root_residual_cpp(point.rho, t, p, x, cppargs);
         point.finite = std::isfinite(point.resid);
     }
     catch (const std::exception&) {
@@ -552,7 +552,7 @@ DensityScanPoint evaluate_density_scan_point(double nu, double t, int ncomp, con
     return point;
 }
 
-vector<DensityBracket> find_density_brackets(const vector<DensityScanPoint> &points) {
+vector<DensityBracket> density_brackets_cpp(const vector<DensityScanPoint> &points) {
     vector<DensityBracket> brackets;
     if (points.size() < 2) {
         return brackets;
@@ -577,7 +577,7 @@ vector<DensityBracket> find_density_brackets(const vector<DensityScanPoint> &poi
     return brackets;
 }
 
-void append_refined_density_brackets(
+void refine_density_brackets_cpp(
     const DensityBracket &coarse,
     double t,
     int ncomp,
@@ -594,13 +594,13 @@ void append_refined_density_brackets(
     for (int i = 0; i <= refine_segments; i++) {
         double frac = static_cast<double>(i) / static_cast<double>(refine_segments);
         double nu = coarse.nu_lo + frac * (coarse.nu_hi - coarse.nu_lo);
-        refined_points.push_back(evaluate_density_scan_point(nu, t, ncomp, x, p, cppargs));
+        refined_points.push_back(density_scan_point_cpp(nu, t, ncomp, x, p, cppargs));
     }
 
-    vector<DensityBracket> local_brackets = find_density_brackets(refined_points);
+    vector<DensityBracket> local_brackets = density_brackets_cpp(refined_points);
     for (const DensityBracket &candidate : local_brackets) {
         double nu_mid = 0.5 * (candidate.nu_lo + candidate.nu_hi);
-        DensityScanPoint mid = evaluate_density_scan_point(nu_mid, t, ncomp, x, p, cppargs);
+        DensityScanPoint mid = density_scan_point_cpp(nu_mid, t, ncomp, x, p, cppargs);
         if (!mid.finite) {
             continue;
         }
@@ -615,7 +615,7 @@ void append_refined_density_brackets(
     }
 }
 
-bool validate_density_root(
+bool density_root_valid_cpp(
     double t,
     double p,
     const vector<double> &x,
@@ -630,7 +630,7 @@ bool validate_density_root(
 
     double p_calc = 0.0;
     try {
-        p_calc = pcsaft_p_cpp(t, rho, x, cppargs);
+        p_calc = p_cpp(t, rho, x, cppargs);
     }
     catch (const std::exception&) {
         return false;
@@ -652,12 +652,12 @@ bool validate_density_root(
     double h = std::max(1e-12, std::abs(rho) * 1e-6);
     double dpdrho = 0.0;
     try {
-        double p_plus = pcsaft_p_cpp(t, rho + h, x, cppargs);
+        double p_plus = p_cpp(t, rho + h, x, cppargs);
         if (!std::isfinite(p_plus)) {
             return false;
         }
         if (rho > h) {
-            double p_minus = pcsaft_p_cpp(t, rho - h, x, cppargs);
+            double p_minus = p_cpp(t, rho - h, x, cppargs);
             if (!std::isfinite(p_minus)) {
                 return false;
             }
@@ -676,7 +676,7 @@ bool validate_density_root(
 
     double gres = 0.0;
     try {
-        gres = pcsaft_gres_cpp(t, rho, x, cppargs);
+        gres = gres_cpp(t, rho, x, cppargs);
     }
     catch (const std::exception&) {
         return false;
@@ -694,7 +694,7 @@ bool validate_density_root(
     return true;
 }
 
-bool try_flash_phase_state(
+bool flash_phase_state_cpp(
     double t,
     double p,
     const vector<double> &xl,
@@ -704,8 +704,8 @@ bool try_flash_phase_state(
 ) {
     try {
         state->p = p;
-        state->rhol = pcsaft_den_cpp(t, p, xl, 0, cppargs);
-        state->rhov = pcsaft_den_cpp(t, p, xv, 1, cppargs);
+        state->rhol = den_cpp(t, p, xl, 0, cppargs);
+        state->rhov = den_cpp(t, p, xv, 1, cppargs);
     }
     catch (const std::exception&) {
         state->valid = false;
@@ -716,7 +716,7 @@ bool try_flash_phase_state(
     return state->valid;
 }
 
-FlashPhaseState find_nearby_flash_phase_state(
+FlashPhaseState nearby_flash_phase_state_cpp(
     double t,
     double base_p,
     const vector<double> &xl,
@@ -734,7 +734,7 @@ FlashPhaseState find_nearby_flash_phase_state(
             if (!(candidate_p > 0.0) || std::abs(candidate_p - base_p) <= DBL_EPSILON * std::max(1.0, std::abs(base_p))) {
                 continue;
             }
-            if (try_flash_phase_state(t, candidate_p, xl, xv, cppargs, &state)) {
+            if (flash_phase_state_cpp(t, candidate_p, xl, xv, cppargs, &state)) {
                 return state;
             }
         }
@@ -754,14 +754,14 @@ bool is_effectively_pure_feed(const vector<double> &x) {
     return nonzero == 1;
 }
 
-double pure_component_flash_resid(double t, double p, const vector<double> &x, const add_args &cppargs) {
+double pure_component_flash_residual(double t, double p, const vector<double> &x, const add_args &cppargs) {
     FlashPhaseState state;
-    if (!try_flash_phase_state(t, p, x, x, cppargs, &state)) {
+    if (!flash_phase_state_cpp(t, p, x, x, cppargs, &state)) {
         throw SolutionError("Pure-component flash residual could not evaluate both phase densities.");
     }
 
-    vector<double> fugcoef_l = pcsaft_fugcoef_cpp(t, state.rhol, x, cppargs);
-    vector<double> fugcoef_v = pcsaft_fugcoef_cpp(t, state.rhov, x, cppargs);
+    vector<double> fugcoef_l = fugcoef_cpp(t, state.rhol, x, cppargs);
+    vector<double> fugcoef_v = fugcoef_cpp(t, state.rhov, x, cppargs);
     int comp = 0;
     for (int i = 0; i < static_cast<int>(x.size()); ++i) {
         if (std::abs(x[i]) > 1e-12) {
@@ -778,7 +778,7 @@ double pure_component_flash_resid(double t, double p, const vector<double> &x, c
     return std::log(phi_l) - std::log(phi_v);
 }
 
-vector<double> pure_component_flashTQ(double t, vector<double> x, const add_args &cppargs) {
+vector<double> pure_component_flash_tq_cpp(double t, vector<double> x, const add_args &cppargs) {
     const double log_p_min = -6.0;
     const double log_p_max = 9.0;
     const int scan_points = 301;
@@ -795,7 +795,7 @@ vector<double> pure_component_flashTQ(double t, vector<double> x, const add_args
 
         double f = 0.0;
         try {
-            f = pure_component_flash_resid(t, p, x, cppargs);
+            f = pure_component_flash_residual(t, p, x, cppargs);
         }
         catch (const std::exception&) {
             continue;
@@ -810,7 +810,7 @@ vector<double> pure_component_flashTQ(double t, vector<double> x, const add_args
         throw SolutionError("No valid pure-component saturation states were found during the pressure scan.");
     }
 
-    auto find_sign_change = [](const vector<std::pair<double, double>> &samples, double *p_lo, double *f_lo, double *p_hi, double *f_hi) {
+    auto sign_change_bracket = [](const vector<std::pair<double, double>> &samples, double *p_lo, double *f_lo, double *p_hi, double *f_hi) {
         for (size_t i = 1; i < samples.size(); ++i) {
             const auto &left = samples[i - 1];
             const auto &right = samples[i];
@@ -833,7 +833,7 @@ vector<double> pure_component_flashTQ(double t, vector<double> x, const add_args
     };
 
     double p_lo = 0.0, p_hi = 0.0, f_lo = 0.0, f_hi = 0.0;
-    if (!find_sign_change(valid_points, &p_lo, &f_lo, &p_hi, &f_hi)) {
+    if (!sign_change_bracket(valid_points, &p_lo, &f_lo, &p_hi, &f_hi)) {
         throw SolutionError("A valid sign-change bracket could not be found for the pure-component flash.");
     }
 
@@ -853,10 +853,10 @@ vector<double> pure_component_flashTQ(double t, vector<double> x, const add_args
         for (int i = 0; i < refine_points; ++i) {
             double frac = static_cast<double>(i) / static_cast<double>(refine_points - 1);
             double p = std::exp(log_lo + frac * (log_hi - log_lo));
-            double f = 0.0;
-            try {
-                f = pure_component_flash_resid(t, p, x, cppargs);
-            }
+        double f = 0.0;
+        try {
+            f = pure_component_flash_residual(t, p, x, cppargs);
+        }
             catch (const std::exception&) {
                 continue;
             }
@@ -868,7 +868,7 @@ vector<double> pure_component_flashTQ(double t, vector<double> x, const add_args
 
         if (!refined.empty()) {
             double new_lo = 0.0, new_hi = 0.0, new_f_lo = 0.0, new_f_hi = 0.0;
-            if (find_sign_change(refined, &new_lo, &new_f_lo, &new_hi, &new_f_hi)) {
+            if (sign_change_bracket(refined, &new_lo, &new_f_lo, &new_hi, &new_f_hi)) {
                 p_lo = new_lo;
                 f_lo = new_f_lo;
                 p_hi = new_hi;
@@ -888,7 +888,7 @@ vector<double> pure_component_flashTQ(double t, vector<double> x, const add_args
         double log_est = log_lo - f_lo * (log_hi - log_lo) / (f_hi - f_lo);
         p_est = std::exp(log_est);
         try {
-            f_est = pure_component_flash_resid(t, p_est, x, cppargs);
+            f_est = pure_component_flash_residual(t, p_est, x, cppargs);
         }
         catch (const std::exception&) {
             if (std::abs(f_hi) < std::abs(f_lo)) {
@@ -911,6 +911,176 @@ vector<double> pure_component_flashTQ(double t, vector<double> x, const add_args
     result.insert(result.end(), x.begin(), x.end());
     result.insert(result.end(), x.begin(), x.end());
     return result;
+}
+
+double vle_temperature_guess_cpp(double p, double Q, vector<double> x, add_args cppargs) {
+    /**
+    Get a quick estimate of the temperature at which VLE occurs
+    */
+    double t_guess = _HUGE;
+    int ncomp = static_cast<int>(x.size());
+
+    double x_ions = 0.; // overall mole fraction of ions in the system
+    for (int i = 0; i < ncomp; i++) {
+        if (!cppargs.z.empty() && cppargs.z[i] != 0) {
+            x_ions += x[i];
+        }
+    }
+
+    bool guess_found = false;
+    double t_step = 30;
+    double t_start = 400;
+    double t_lbound = 1;
+    if (!cppargs.z.empty()) {
+        t_step = 15;
+        t_start = 350;
+        t_lbound = 264;
+    }
+    while (!guess_found && t_start > t_lbound) {
+        // initialize variables
+        double Tprime = t_start - 50;
+        double t = t_start;
+
+        // calculate sigma for water, if it is present
+        std::vector<double>::iterator water_iter = std::find(cppargs.e.begin(), cppargs.e.end(), 353.9449);
+        int water_idx = -1;
+        if (water_iter != cppargs.e.end()) {
+            water_idx = static_cast<int>(std::distance(cppargs.e.begin(), water_iter));
+            cppargs.s[water_idx] = calc_sigma(t, &calc_water_sigma);
+        }
+
+        try {
+            double p1 = thermo_detail::vle_pressure_guess_cpp(t, Q, x, cppargs);
+            double p2 = thermo_detail::vle_pressure_guess_cpp(Tprime, Q, x, cppargs);
+
+            double slope = (std::log10(p1) - std::log10(p2)) / (1/t - 1/Tprime);
+            double intercept = std::log10(p1) - slope * (1/t);
+            t_guess = slope / (std::log10(p) - intercept);
+            guess_found = true;
+        } catch (const SolutionError&) {
+            t_start -= t_step;
+        }
+    }
+
+    if (!guess_found) {
+        throw SolutionError("an estimate for the VLE temperature could not be found");
+    }
+
+    return t_guess;
+}
+
+double vle_pressure_guess_cpp(double t, double Q, vector<double> x, const add_args &cppargs) {
+    /**
+    Get a quick estimate of the pressure at which VLE occurs
+    */
+    double p_guess = _HUGE;
+    int ncomp = static_cast<int>(x.size());
+
+    double x_ions = 0.; // overall mole fraction of ions in the system
+    for (int i = 0; i < ncomp; i++) {
+        if (!cppargs.z.empty() && cppargs.z[i] != 0) {
+            x_ions += x[i];
+        }
+    }
+
+    bool guess_found = false;
+    double p_start = 10000;
+    while (!guess_found && p_start < 1e7) {
+        // initialize variables
+        vector<double> fugcoef_l(ncomp), fugcoef_v(ncomp), k(ncomp), u(ncomp), kprime(ncomp);
+        double rhol, rhov;
+        double Pprime = 0.99 * p_start;
+        double p = p_start;
+
+        // calculate initial guess for compositions based on fugacity coefficients and Raoult's Law.
+        rhol = den_cpp(t, p, x, 0, cppargs);
+        rhov = den_cpp(t, p, x, 1, cppargs);
+        if ((rhol - rhov) < 1e-4) {
+            p_start = p_start + 2e5;
+            continue;
+        }
+        fugcoef_l = fugcoef_cpp(t, rhol, x, cppargs);
+        fugcoef_v = fugcoef_cpp(t, rhov, x, cppargs);
+
+        for (int i = 0; i < ncomp; i++) {
+            if (cppargs.z.empty() || cppargs.z[i] == 0) {
+                k[i] = fugcoef_l[i] / fugcoef_v[i];
+            } else {
+                k[i] = 0; // set k to 0 for ionic components
+            }
+        }
+
+        vector<double> xl(ncomp);
+        vector<double> xv(ncomp);
+        double xv_sum = 0;
+        double xl_sum = 0;
+        for (int i = 0; i < ncomp; i++) {
+            xl[i] = x[i] / (1 + Q * (k[i] - 1));
+            xl_sum += xl[i];
+            xv[i] = k[i] * x[i] / (1 + Q * (k[i] - 1));
+            xv_sum += xv[i];
+        }
+
+        if (xv_sum != 1) {
+            for (int i = 0; i < ncomp; i++) {
+                xv[i] = xv[i] / xv_sum;
+            }
+        }
+
+        if (xl_sum != 1) {
+            for (int i = 0; i < ncomp; i++) {
+                xl[i] = xl[i] / xl_sum;
+            }
+        }
+
+        rhol = den_cpp(t, p, xl, 0, cppargs);
+        rhov = den_cpp(t, p, xv, 1, cppargs);
+        if ((rhol - rhov) < 1e-4) {
+            p_start = p_start + 2e5;
+            continue;
+        }
+        fugcoef_l = fugcoef_cpp(t, rhol, xl, cppargs);
+        fugcoef_v = fugcoef_cpp(t, rhov, xv, cppargs);
+        double numer = 0;
+        double denom = 0;
+        for (int i = 0; i < ncomp; i++) {
+            if (cppargs.z.empty() || cppargs.z[i] == 0) {
+                numer += xl[i] * fugcoef_l[i];
+                denom += xv[i] * fugcoef_v[i];
+            }
+        }
+        double ratio = numer / denom;
+
+        rhol = den_cpp(t, Pprime, xl, 0, cppargs);
+        rhov = den_cpp(t, Pprime, xv, 1, cppargs);
+        if ((rhol - rhov) < 1e-4) {
+            p_start = p_start + 2e5;
+            continue;
+        }
+        fugcoef_l = fugcoef_cpp(t, rhol, xl, cppargs);
+        fugcoef_v = fugcoef_cpp(t, rhov, xv, cppargs);
+        numer = 0;
+        denom = 0;
+        for (int i = 0; i < ncomp; i++) {
+            if (cppargs.z.empty() || cppargs.z[i] == 0) {
+                numer += xl[i] * fugcoef_l[i];
+                denom += xv[i] * fugcoef_v[i];
+            }
+        }
+        double ratio_prime = numer / denom;
+
+        double slope = (std::log10(ratio) - std::log10(ratio_prime)) / (std::log10(p) - std::log10(Pprime));
+        double intercept = std::log10(ratio) - slope * std::log10(p);
+        p_guess = pow(10, -intercept / slope);
+
+        guess_found = true;
+    }
+
+    if (!guess_found) {
+        throw SolutionError("an estimate for the VLE pressure could not be found");
+    }
+
+    return p_guess;
 }
 }
 
@@ -944,7 +1114,7 @@ struct BornSSMDSData {
     double sum_dpref_over_D2;
 };
 
-struct DielcState {
+struct DielectricState {
     double eps;
     vector<double> deps_dx;
 };
@@ -953,7 +1123,7 @@ inline bool is_ion_species(const add_args &cppargs, int i) {
     return std::abs(cppargs.z[i]) > 1e-12;
 }
 
-double compute_ion_diameter(int i, double t, const add_args &cppargs) {
+double ion_diameter_cpp(int i, double t, const add_args &cppargs) {
     if (!is_ion_species(cppargs, i)) {
         return cppargs.s[i];
     }
@@ -974,7 +1144,7 @@ double compute_ion_diameter(int i, double t, const add_args &cppargs) {
     throw ValueError("Unknown d_ion_mode. Supported values are 0, 1, 2.");
 }
 
-double compute_ion_diameter_dt(int i, double t, const add_args &cppargs) {
+double ion_diameter_cpp_dt(int i, double t, const add_args &cppargs) {
     if (!is_ion_species(cppargs, i)) {
         return 0.0;
     }
@@ -987,7 +1157,7 @@ double compute_ion_diameter_dt(int i, double t, const add_args &cppargs) {
     return 0.0;
 }
 
-double compute_ion_born_radius(int i, double t, const add_args &cppargs) {
+double ion_born_radius_cpp(int i, double t, const add_args &cppargs) {
     if (!is_ion_species(cppargs, i)) {
         return cppargs.s[i];
     }
@@ -1014,7 +1184,7 @@ double compute_ion_born_radius(int i, double t, const add_args &cppargs) {
     throw ValueError("Unknown d_Born_mode. Supported values are 0, 1, 2, 3.");
 }
 
-double compute_ion_born_radius_dt(int i, double t, const add_args &cppargs) {
+double ion_born_radius_cpp_dt(int i, double t, const add_args &cppargs) {
     if (!is_ion_species(cppargs, i)) {
         return 0.0;
     }
@@ -1027,11 +1197,11 @@ double compute_ion_born_radius_dt(int i, double t, const add_args &cppargs) {
     return 0.0;
 }
 
-double compute_eps_rule(int rule, const vector<double> &x, const add_args &cppargs);
-vector<double> compute_deps_rule_fd(int rule, const vector<double> &x, const add_args &cppargs);
-DielcState evaluate_dielc_state(const vector<double> &x, const add_args &cppargs);
+double dielectric_constant_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs);
+vector<double> dielectric_derivative_rule_fd_cpp(int rule, const vector<double> &x, const add_args &cppargs);
+DielectricState dielectric_state_cpp(const vector<double> &x, const add_args &cppargs);
 
-double compute_eps_aqueous_organic_mixed(const vector<double> &x, const add_args &cppargs) {
+double mixed_dielectric_constant_cpp(const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     if (cppargs.z.size() != static_cast<size_t>(ncomp)) {
         throw ValueError("dielc_rule=8 requires params['z'] as an array with length equal to ncomp.");
@@ -1112,10 +1282,10 @@ double compute_eps_aqueous_organic_mixed(const vector<double> &x, const add_args
     return eps_org + ((a_eff * xw_sf + b_eff) * xw_sf + c_eff) * xw_sf;
 }
 
-double compute_eps_solvent_reference(const vector<double> &x, const add_args &cppargs) {
+double reference_solvent_dielectric_constant_cpp(const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     if (cppargs.z.size() != static_cast<size_t>(ncomp)) {
-        return compute_eps_rule(cppargs.dielc_rule, x, cppargs);
+        return dielectric_constant_rule_cpp(cppargs.dielc_rule, x, cppargs);
     }
     double x_sol = 0.0;
     double eps_sol_num = 0.0;
@@ -1126,12 +1296,12 @@ double compute_eps_solvent_reference(const vector<double> &x, const add_args &cp
         }
     }
     if (x_sol <= 0.0) {
-        return compute_eps_rule(cppargs.dielc_rule, x, cppargs);
+        return dielectric_constant_rule_cpp(cppargs.dielc_rule, x, cppargs);
     }
     return eps_sol_num/x_sol;
 }
 
-vector<double> compute_deps_solvent_reference(const vector<double> &x, const add_args &cppargs) {
+vector<double> reference_solvent_dielectric_derivative_cpp(const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     vector<double> deps(ncomp, 0.0);
     if (cppargs.z.size() != static_cast<size_t>(ncomp)) {
@@ -1157,7 +1327,7 @@ vector<double> compute_deps_solvent_reference(const vector<double> &x, const add
     return deps;
 }
 
-BornSSMDSData build_born_ssmds_data(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion) {
+BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion) {
     int ncomp = static_cast<int>(x.size());
     const bool use_ssm = (cppargs.born_solvation_shell_model != 0);
     const bool use_ds = (cppargs.born_dielectric_saturation != 0);
@@ -1184,7 +1354,7 @@ BornSSMDSData build_born_ssmds_data(vector<double> x, const add_args &cppargs, d
         f_mix += x[i]*fi;
 
         if (is_ion) {
-            data.d_born[i] = compute_ion_born_radius(i, t, cppargs);
+            data.d_born[i] = ion_born_radius_cpp(i, t, cppargs);
         }
         else if (cppargs.d_born.size() > static_cast<size_t>(i) && cppargs.d_born[i] > 0.0) {
             data.d_born[i] = cppargs.d_born[i];
@@ -1231,17 +1401,17 @@ BornSSMDSData build_born_ssmds_data(vector<double> x, const add_args &cppargs, d
     return data;
 }
 
-double compute_born_ares_only(double t, const vector<double> &x, const add_args &cppargs) {
+double born_ares_only_cpp(double t, const vector<double> &x, const add_args &cppargs) {
     if (cppargs.born_model == 0) {
         return 0.0;
     }
-    double eps_mix = compute_eps_rule(cppargs.dielc_rule, x, cppargs);
-    double eps_born = (cppargs.born_eps_mode == 1) ? compute_eps_solvent_reference(x, cppargs) : eps_mix;
+    double eps_mix = dielectric_constant_rule_cpp(cppargs.dielc_rule, x, cppargs);
+    double eps_born = (cppargs.born_eps_mode == 1) ? reference_solvent_dielectric_constant_cpp(x, cppargs) : eps_mix;
     if (cppargs.born_model == 1) {
         double born_sum = 0.0;
         for (int i = 0; i < static_cast<int>(x.size()); i++) {
             if (is_ion_species(cppargs, i)) {
-                double d_born_i = compute_ion_born_radius(i, t, cppargs);
+                double d_born_i = ion_born_radius_cpp(i, t, cppargs);
                 born_sum += x[i]*cppargs.z[i]*cppargs.z[i]/d_born_i;
             }
         }
@@ -1250,24 +1420,24 @@ double compute_born_ares_only(double t, const vector<double> &x, const add_args 
     if (cppargs.born_model == 2) {
         const double eps_r_ion = 8.0;
         const double Kborn = E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac);
-        BornSSMDSData born = build_born_ssmds_data(x, cppargs, t, eps_born, eps_r_ion);
+        BornSSMDSData born = born_shell_data_cpp(x, cppargs, t, eps_born, eps_r_ion);
         return -Kborn*born.sum_bracket;
     }
     throw ValueError("Unknown born_model. Supported values are 0, 1, 2.");
 }
 
-vector<double> compute_born_dadx_fd(double t, const vector<double> &x, const add_args &cppargs, double a0) {
+vector<double> born_dadx_fd_cpp(double t, const vector<double> &x, const add_args &cppargs, double a0) {
     int ncomp = static_cast<int>(x.size());
     vector<double> dadx_born(ncomp, 0.0);
     for (int i = 0; i < ncomp; i++) {
         double h = 1e-6*std::max(1.0, std::abs(x[i]));
         vector<double> xp = x;
         xp[i] += h;
-        double fp = compute_born_ares_only(t, xp, cppargs);
+        double fp = born_ares_only_cpp(t, xp, cppargs);
         if (x[i] - h >= 0.0) {
             vector<double> xm = x;
             xm[i] -= h;
-            double fm = compute_born_ares_only(t, xm, cppargs);
+            double fm = born_ares_only_cpp(t, xm, cppargs);
             dadx_born[i] = (fp - fm)/(2.0*h);
         }
         else {
@@ -1280,7 +1450,7 @@ vector<double> compute_born_dadx_fd(double t, const vector<double> &x, const add
     return dadx_born;
 }
 
-double compute_dh_ares_only(double t, double rho, const vector<double> &x, const add_args &cppargs) {
+double dh_ares_only_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {
     if (cppargs.z.empty()) {
         return 0.0;
     }
@@ -1289,7 +1459,7 @@ double compute_dh_ares_only(double t, double rho, const vector<double> &x, const
     for (int i = 0; i < ncomp; i++) {
         d[i] = cppargs.s[i]*(1.0 - 0.12*std::exp(-3.0*cppargs.e[i]/t));
         if (is_ion_species(cppargs, i)) {
-            d[i] = compute_ion_diameter(i, t, cppargs);
+            d[i] = ion_diameter_cpp(i, t, cppargs);
         }
     }
 
@@ -1302,34 +1472,34 @@ double compute_dh_ares_only(double t, double rho, const vector<double> &x, const
         return 0.0;
     }
 
-    DielcState dielc_state = evaluate_dielc_state(x, cppargs);
+    DielectricState dielc_state = dielectric_state_cpp(x, cppargs);
     double eps = dielc_state.eps;
-    double kappa = compute_dh_kappa(den, t, eps, Qsum);
+    double kappa = dh_kappa_cpp(den, t, eps, Qsum);
     if (kappa == 0.0) {
         return 0.0;
     }
 
     double S = 0.0;
     for (int i = 0; i < ncomp; i++) {
-        S += x[i]*cppargs.z[i]*cppargs.z[i]*compute_dh_chi(kappa, d[i]);
+        S += x[i]*cppargs.z[i]*cppargs.z[i]*dh_chi_cpp(kappa, d[i]);
     }
 
     double K0 = E_CHRG*E_CHRG/(12.0*PI*kb*t*perm_vac);
     return -K0*kappa/eps*S;
 }
 
-vector<double> compute_dh_dadx_fd(double t, double rho, const vector<double> &x, const add_args &cppargs, double a0) {
+vector<double> dh_dadx_fd_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, double a0) {
     int ncomp = static_cast<int>(x.size());
     vector<double> dadx_dh(ncomp, 0.0);
     for (int i = 0; i < ncomp; i++) {
         double h = 1e-6*std::max(1.0, std::abs(x[i]));
         vector<double> xp = x;
         xp[i] += h;
-        double fp = compute_dh_ares_only(t, rho, xp, cppargs);
+        double fp = dh_ares_only_cpp(t, rho, xp, cppargs);
         if (x[i] - h >= 0.0) {
             vector<double> xm = x;
             xm[i] -= h;
-            double fm = compute_dh_ares_only(t, rho, xm, cppargs);
+            double fm = dh_ares_only_cpp(t, rho, xm, cppargs);
             dadx_dh[i] = (fp - fm)/(2.0*h);
         }
         else {
@@ -1342,7 +1512,7 @@ vector<double> compute_dh_dadx_fd(double t, double rho, const vector<double> &x,
     return dadx_dh;
 }
 
-double get_ares_contribution_value(const AresContributions &terms, AresContributionKind kind) {
+double ares_contribution_value_cpp(const AresContributions &terms, AresContributionKind kind) {
     switch (kind) {
         case AresContributionKind::HC:
             return terms.hc;
@@ -1360,10 +1530,10 @@ double get_ares_contribution_value(const AresContributions &terms, AresContribut
     throw ValueError("Unknown AresContributionKind.");
 }
 
-AresContributions compute_ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {
+AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {
     AresContributions out;
     int ncomp = static_cast<int>(x.size());
-    ThermoCommonState thermo = build_thermo_common_state(t, rho, x, cppargs, false);
+    ThermoCommonState thermo = thermo_common_state_cpp(t, rho, x, cppargs, false);
     auto &d = thermo.d;
     auto &zeta = thermo.zeta;
     auto &e_ij = thermo.e_ij;
@@ -1375,7 +1545,7 @@ AresContributions compute_ares_contributions_cpp(double t, double rho, const vec
     double m2es3 = thermo.m2es3;
     double m2e2s3 = thermo.m2e2s3;
     double summ = 0.0;
-    DispersionPolynomialState dispersion = build_dispersion_polynomials(m_avg, eta);
+    DispersionPolynomialState dispersion = dispersion_polynomials_cpp(m_avg, eta);
     double I1 = dispersion.I1;
     double I2 = dispersion.I2;
     double C1 = dispersion.C1;
@@ -1410,8 +1580,8 @@ AresContributions compute_ares_contributions_cpp(double t, double rho, const vec
                 if (m_ij > 2) {
                     m_ij = 2;
                 }
-                vector<double> adip = build_dipole_coefficients(kDipoleA0, kDipoleA1, kDipoleA2, m_ij);
-                vector<double> bdip = build_dipole_coefficients(kDipoleB0, kDipoleB1, kDipoleB2, m_ij);
+                vector<double> adip = dipole_coefficients_cpp(kDipoleA0, kDipoleA1, kDipoleA2, m_ij);
+                vector<double> bdip = dipole_coefficients_cpp(kDipoleB0, kDipoleB1, kDipoleB2, m_ij);
                 J2 = 0.0;
                 for (int l = 0; l < 5; l++) {
                     J2 += (adip[l] + bdip[l]*e_ij[j*ncomp+j]/t)*pow(eta, l);
@@ -1424,7 +1594,7 @@ AresContributions compute_ares_contributions_cpp(double t, double rho, const vec
                     if (m_ijk > 2) {
                         m_ijk = 2;
                     }
-                    vector<double> cdip = build_dipole_coefficients(kDipoleC0, kDipoleC1, kDipoleC2, m_ijk);
+                    vector<double> cdip = dipole_coefficients_cpp(kDipoleC0, kDipoleC1, kDipoleC2, m_ijk);
                     J3 = 0.0;
                     for (int l = 0; l < 5; l++) {
                         J3 += cdip[l]*pow(eta, l);
@@ -1494,7 +1664,7 @@ AresContributions compute_ares_contributions_cpp(double t, double rho, const vec
         vector<double> XA_old = XA;
         while ((ctr < 100) && (dif > 1e-15)) {
             ctr += 1;
-            XA = XA_find(XA_old, delta_ij, den, x_assoc);
+            XA = ::association_site_fractions_cpp(XA_old, delta_ij, den, x_assoc);
             dif = 0.0;
             for (int i = 0; i < num_sites; i++) {
                 dif += std::abs(XA[i] - XA_old[i]);
@@ -1511,16 +1681,16 @@ AresContributions compute_ares_contributions_cpp(double t, double rho, const vec
     }
 
     if (!cppargs.z.empty()) {
-        DielcState dielc_state = evaluate_dielc_state(x, cppargs);
+        DielectricState dielc_state = dielectric_state_cpp(x, cppargs);
         double eps = dielc_state.eps;
-        double eps_born = (cppargs.born_eps_mode == 1) ? compute_eps_solvent_reference(x, cppargs) : eps;
-        out.ion = compute_dh_ares_only(t, rho, x, cppargs);
+        double eps_born = (cppargs.born_eps_mode == 1) ? reference_solvent_dielectric_constant_cpp(x, cppargs) : eps;
+        out.ion = dh_ares_only_cpp(t, rho, x, cppargs);
 
         if (cppargs.born_model == 1) {
             double born_sum = 0.0;
             for (int i = 0; i < ncomp; i++) {
                 if (is_ion_species(cppargs, i)) {
-                    double d_born_i = compute_ion_born_radius(i, t, cppargs);
+                    double d_born_i = ion_born_radius_cpp(i, t, cppargs);
                     born_sum += x[i]*cppargs.z[i]*cppargs.z[i]/d_born_i;
                 }
             }
@@ -1529,7 +1699,7 @@ AresContributions compute_ares_contributions_cpp(double t, double rho, const vec
         else if (cppargs.born_model == 2) {
             const double eps_r_ion = 8.0;
             const double Kborn = E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac);
-            BornSSMDSData born = build_born_ssmds_data(x, cppargs, t, eps_born, eps_r_ion);
+            BornSSMDSData born = born_shell_data_cpp(x, cppargs, t, eps_born, eps_r_ion);
             out.born = -Kborn*born.sum_bracket;
         }
         else if (cppargs.born_model != 0) {
@@ -1540,18 +1710,18 @@ AresContributions compute_ares_contributions_cpp(double t, double rho, const vec
     return out;
 }
 
-vector<double> compute_contribution_dadx_fd(AresContributionKind kind, double t, double rho, const vector<double> &x, const add_args &cppargs, double a0) {
+vector<double> contribution_dadx_fd_cpp(AresContributionKind kind, double t, double rho, const vector<double> &x, const add_args &cppargs, double a0) {
     int ncomp = static_cast<int>(x.size());
     vector<double> dadx(ncomp, 0.0);
     for (int i = 0; i < ncomp; i++) {
         double h = 1e-6*std::max(1.0, std::abs(x[i]));
         vector<double> xp = x;
         xp[i] += h;
-        double fp = get_ares_contribution_value(compute_ares_contributions_cpp(t, rho, xp, cppargs), kind);
+        double fp = ares_contribution_value_cpp(ares_contributions_cpp(t, rho, xp, cppargs), kind);
         if (x[i] - h >= 0.0) {
             vector<double> xm = x;
             xm[i] -= h;
-            double fm = get_ares_contribution_value(compute_ares_contributions_cpp(t, rho, xm, cppargs), kind);
+            double fm = ares_contribution_value_cpp(ares_contributions_cpp(t, rho, xm, cppargs), kind);
             dadx[i] = (fp - fm)/(2.0*h);
         }
         else {
@@ -1564,7 +1734,7 @@ vector<double> compute_contribution_dadx_fd(AresContributionKind kind, double t,
     return dadx;
 }
 
-void validate_dielc_inputs(const vector<double> &x, const add_args &cppargs) {
+void dielectric_inputs_valid_cpp(const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     if (cppargs.dielc.size() != static_cast<size_t>(ncomp)) {
         throw ValueError("params['dielc'] must be an array with length equal to ncomp.");
@@ -1662,7 +1832,7 @@ void validate_dielc_inputs(const vector<double> &x, const add_args &cppargs) {
     }
 }
 
-double compute_eps_rule(int rule, const vector<double> &x, const add_args &cppargs) {
+double dielectric_constant_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {
     const double alpha = 7.01;
     int ncomp = static_cast<int>(x.size());
     if (rule == 0) {
@@ -1711,7 +1881,7 @@ double compute_eps_rule(int rule, const vector<double> &x, const add_args &cppar
         return eps_sol * x_sol + eps_salt * (1.0 - x_sol);
     }
     if (rule == 8) {
-        return compute_eps_aqueous_organic_mixed(x, cppargs);
+        return mixed_dielectric_constant_cpp(x, cppargs);
     }
     if (rule == 2) {
         double mw_bar = 0.0;
@@ -1795,7 +1965,7 @@ double compute_eps_rule(int rule, const vector<double> &x, const add_args &cppar
     throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7, 8.");
 }
 
-vector<double> compute_deps_rule_analytic(int rule, const vector<double> &x, const add_args &cppargs) {
+vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {
     const double alpha = 7.01;
     int ncomp = static_cast<int>(x.size());
     vector<double> deps_dx(ncomp, 0.0);
@@ -1841,7 +2011,7 @@ vector<double> compute_deps_rule_analytic(int rule, const vector<double> &x, con
         return deps_dx;
     }
     if (rule == 8) {
-        return compute_deps_rule_fd(rule, x, cppargs);
+        return dielectric_derivative_rule_fd_cpp(rule, x, cppargs);
     }
     if (rule == 2) {
         double mw_bar = 0.0;
@@ -1933,19 +2103,19 @@ vector<double> compute_deps_rule_analytic(int rule, const vector<double> &x, con
     throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7, 8.");
 }
 
-vector<double> compute_deps_rule_fd(int rule, const vector<double> &x, const add_args &cppargs) {
+vector<double> dielectric_derivative_rule_fd_cpp(int rule, const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     vector<double> deps_dx(ncomp, 0.0);
-    double f0 = compute_eps_rule(rule, x, cppargs);
+    double f0 = dielectric_constant_rule_cpp(rule, x, cppargs);
     for (int i = 0; i < ncomp; i++) {
         double h = 1e-6*std::max(1.0, std::abs(x[i]));
         vector<double> xp = x;
         xp[i] += h;
-        double fp = compute_eps_rule(rule, xp, cppargs);
+        double fp = dielectric_constant_rule_cpp(rule, xp, cppargs);
         if (x[i] - h >= 0.0) {
             vector<double> xm = x;
             xm[i] -= h;
-            double fm = compute_eps_rule(rule, xm, cppargs);
+            double fm = dielectric_constant_rule_cpp(rule, xm, cppargs);
             deps_dx[i] = (fp - fm)/(2.0*h);
         }
         else {
@@ -1958,21 +2128,21 @@ vector<double> compute_deps_rule_fd(int rule, const vector<double> &x, const add
     return deps_dx;
 }
 
-DielcState evaluate_dielc_state(const vector<double> &x, const add_args &cppargs) {
-    validate_dielc_inputs(x, cppargs);
-    DielcState state;
-    state.eps = compute_eps_rule(cppargs.dielc_rule, x, cppargs);
+DielectricState dielectric_state_cpp(const vector<double> &x, const add_args &cppargs) {
+    dielectric_inputs_valid_cpp(x, cppargs);
+    DielectricState state;
+    state.eps = dielectric_constant_rule_cpp(cppargs.dielc_rule, x, cppargs);
     if (cppargs.dielc_diff_mode == 0 && cppargs.dielc_rule != 8) {
-        state.deps_dx = compute_deps_rule_analytic(cppargs.dielc_rule, x, cppargs);
+        state.deps_dx = dielectric_derivative_rule_cpp(cppargs.dielc_rule, x, cppargs);
     }
     else {
-        state.deps_dx = compute_deps_rule_fd(cppargs.dielc_rule, x, cppargs);
+        state.deps_dx = dielectric_derivative_rule_fd_cpp(cppargs.dielc_rule, x, cppargs);
     }
     return state;
 }
 
 
-vector<double> XA_find(vector<double> XA_guess, vector<double> delta_ij, double den,
+vector<double> association_site_fractions_cpp(vector<double> XA_guess, vector<double> delta_ij, double den,
     vector<double> x) {
     /**Iterate over this function in order to solve for XA*/
     int num_sites = static_cast<int>(XA_guess.size());
@@ -1992,7 +2162,7 @@ vector<double> XA_find(vector<double> XA_guess, vector<double> delta_ij, double 
 }
 
 
-vector<double> dXAdt_find(vector<double> delta_ij, double den,
+vector<double> association_site_fraction_dt_cpp(vector<double> delta_ij, double den,
     vector<double> XA, vector<double> ddelta_dt, vector<double> x) {
     /**Solve for the derivative of XA with respect to temperature.*/
     int num_sites = static_cast<int>(XA.size());
@@ -2021,7 +2191,7 @@ vector<double> dXAdt_find(vector<double> delta_ij, double den,
 }
 
 
-vector<double> dXAdx_find(vector<int> assoc_num, vector<double> delta_ij,
+vector<double> association_site_fraction_dx_cpp(vector<int> assoc_num, vector<double> delta_ij,
     double den, vector<double> XA, vector<double> ddelta_dx, vector<double> x) {
     /**Solve for the derivative of XA with respect to composition, or actually
     rho_i (the molar density of component i, which equals x_i * rho).*/
@@ -2062,12 +2232,12 @@ vector<double> dXAdx_find(vector<int> assoc_num, vector<double> delta_ij,
 }
 
 
-double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
+double Z_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     /**
     Calculate the compressibility factor.
     */
     int ncomp = static_cast<int>(x.size()); // number of components
-    ThermoCommonState thermo = build_thermo_common_state(t, rho, x, cppargs, false);
+    ThermoCommonState thermo = thermo_common_state_cpp(t, rho, x, cppargs, false);
     auto &d = thermo.d;
     auto &zeta = thermo.zeta;
     auto &e_ij = thermo.e_ij;
@@ -2080,7 +2250,7 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppa
     double m2es3 = thermo.m2es3;
     double m2e2s3 = thermo.m2e2s3;
     double summ = 0.0;
-    DispersionPolynomialState dispersion = build_dispersion_polynomials(m_avg, eta);
+    DispersionPolynomialState dispersion = dispersion_polynomials_cpp(m_avg, eta);
     double detI1_det = dispersion.dEtaI1_deta;
     double detI2_det = dispersion.dEtaI2_deta;
     double I2 = dispersion.I2;
@@ -2124,8 +2294,8 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppa
                 if (m_ij > 2) {
                     m_ij = 2;
                 }
-                vector<double> adip = build_dipole_coefficients(kDipoleA0, kDipoleA1, kDipoleA2, m_ij);
-                vector<double> bdip = build_dipole_coefficients(kDipoleB0, kDipoleB1, kDipoleB2, m_ij);
+                vector<double> adip = dipole_coefficients_cpp(kDipoleA0, kDipoleA1, kDipoleA2, m_ij);
+                vector<double> bdip = dipole_coefficients_cpp(kDipoleB0, kDipoleB1, kDipoleB2, m_ij);
                 J2 = 0.;
                 detJ2_det = 0.;
                 for (int l = 0; l < 5; l++) {
@@ -2147,7 +2317,7 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppa
                     if (m_ijk > 2) {
                         m_ijk = 2;
                     }
-                    vector<double> cdip = build_dipole_coefficients(kDipoleC0, kDipoleC1, kDipoleC2, m_ijk);
+                    vector<double> cdip = dipole_coefficients_cpp(kDipoleC0, kDipoleC1, kDipoleC2, m_ijk);
                     J3 = 0.;
                     detJ3_det = 0.;
                     for (int l = 0; l < 5; l++) {
@@ -2179,7 +2349,7 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppa
     // Association term -------------------------------------------------------
     double Zassoc = 0;
     if (!cppargs.e_assoc.empty()) {
-        AssociationSetup assoc = build_association_setup(x, cppargs, s_ij, ghs, t);
+        AssociationSetup assoc = association_setup_cpp(x, cppargs, s_ij, ghs, t);
         const vector<int> &iA = assoc.site_component_index;
         const vector<double> &x_assoc = assoc.x_assoc;
         const vector<double> &delta_ij = assoc.delta_ij;
@@ -2228,7 +2398,7 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppa
         vector<double> XA_old = XA;
         while ((ctr < 100) && (dif > 1e-15)) {
             ctr += 1;
-            XA = XA_find(XA_old, delta_ij, den, x_assoc);
+            XA = ::association_site_fractions_cpp(XA_old, delta_ij, den, x_assoc);
             dif = 0.;
             for (int i = 0; i < num_sites; i++) {
                 dif += std::abs(XA[i] - XA_old[i]);
@@ -2239,7 +2409,7 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppa
         }
 
         vector<double> dXA_dx(num_sites*ncomp, 0);
-        dXA_dx = dXAdx_find(cppargs.assoc_num, delta_ij, den, XA, ddelta_dx, x_assoc);
+        dXA_dx = ::association_site_fraction_dx_cpp(cppargs.assoc_num, delta_ij, den, XA, ddelta_dx, x_assoc);
 
         summ = 0.;
         int ij = 0;
@@ -2257,9 +2427,9 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppa
     double Zion = 0;
     double Zborn = 0;
     if (!cppargs.z.empty()) {
-        DielcState dielc_state = evaluate_dielc_state(x, cppargs);
+        DielectricState dielc_state = dielectric_state_cpp(x, cppargs);
         double eps = dielc_state.eps;
-        double eps_born = (cppargs.born_eps_mode == 1) ? compute_eps_solvent_reference(x, cppargs) : eps;
+        double eps_born = (cppargs.born_eps_mode == 1) ? reference_solvent_dielectric_constant_cpp(x, cppargs) : eps;
         vector<double> q(cppargs.z.begin(), cppargs.z.end());
         for (int i = 0; i < ncomp; i++) {
             q[i] = q[i]*E_CHRG;
@@ -2270,13 +2440,13 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppa
             summ += cppargs.z[i]*cppargs.z[i]*x[i];
         }
 
-        double kappa = compute_dh_kappa(den, t, eps, summ); // the inverse Debye screening length. Equation 4 in Held et al. 2008.
+        double kappa = dh_kappa_cpp(den, t, eps, summ); // the inverse Debye screening length. Equation 4 in Held et al. 2008.
 
         if (kappa != 0) {
             double chi, sigma_k;
             summ = 0.;
             for (int i = 0; i < ncomp; i++) {
-                chi = compute_dh_chi(kappa, d[i]);
+                chi = dh_chi_cpp(kappa, d[i]);
                 sigma_k = -2*chi+3/(1+kappa*d[i]);
                 summ += q[i]*q[i]*x[i]*sigma_k;
             }
@@ -2302,7 +2472,7 @@ double pcsaft_Z_cpp(double t, double rho, vector<double> x, const add_args &cppa
 }
 
 
-vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
+vector<double> lnfug_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     /**
     Calculate the natural logarithm of the fugacity coefficients for one phase of the system.
     */
@@ -2311,7 +2481,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
     for (int i = 0; i < ncomp; i++) {
         d[i] = cppargs.s[i]*(1-0.12*exp(-3*cppargs.e[i]/t));
         if (!cppargs.z.empty() && is_ion_species(cppargs, i)) {
-            d[i] = compute_ion_diameter(i, t, cppargs);
+            d[i] = ion_diameter_cpp(i, t, cppargs);
         }
     }
 
@@ -2383,7 +2553,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
     double Zhs = zeta[3]/(1-zeta[3]) + 3.*zeta[1]*zeta[2]/zeta[0]/(1.-zeta[3])/(1.-zeta[3]) +
         (3.*pow(zeta[2], 3.) - zeta[3]*pow(zeta[2], 3.))/zeta[0]/pow(1.-zeta[3], 3.);
 
-    DispersionPolynomialState dispersion = build_dispersion_polynomials(m_avg, eta);
+    DispersionPolynomialState dispersion = dispersion_polynomials_cpp(m_avg, eta);
     const auto &a = dispersion.a;
     const auto &b = dispersion.b;
     double detI1_det = dispersion.dEtaI1_deta;
@@ -2465,10 +2635,10 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
     }
 
     if (cppargs.hc_dadx_diff_mode == 1) {
-        dahc_dx = compute_contribution_dadx_fd(AresContributionKind::HC, t, rho, x, cppargs, ares_hc);
+        dahc_dx = contribution_dadx_fd_cpp(AresContributionKind::HC, t, rho, x, cppargs, ares_hc);
     }
     if (cppargs.disp_dadx_diff_mode == 1) {
-        dadisp_dx = compute_contribution_dadx_fd(AresContributionKind::DISP, t, rho, x, cppargs, ares_disp);
+        dadisp_dx = contribution_dadx_fd_cpp(AresContributionKind::DISP, t, rho, x, cppargs, ares_disp);
     }
 
     vector<double> mu_hc(ncomp, 0);
@@ -2517,8 +2687,8 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
                 if (m_ij > 2) {
                     m_ij = 2;
                 }
-                vector<double> adip = build_dipole_coefficients(kDipoleA0, kDipoleA1, kDipoleA2, m_ij);
-                vector<double> bdip = build_dipole_coefficients(kDipoleB0, kDipoleB1, kDipoleB2, m_ij);
+                vector<double> adip = dipole_coefficients_cpp(kDipoleA0, kDipoleA1, kDipoleA2, m_ij);
+                vector<double> bdip = dipole_coefficients_cpp(kDipoleB0, kDipoleB1, kDipoleB2, m_ij);
                 J2 = 0.;
                 dJ2_det = 0.;
                 detJ2_det = 0;
@@ -2547,7 +2717,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
                     if (m_ijk > 2) {
                         m_ijk = 2;
                     }
-                    vector<double> cdip = build_dipole_coefficients(kDipoleC0, kDipoleC1, kDipoleC2, m_ijk);
+                    vector<double> cdip = dipole_coefficients_cpp(kDipoleC0, kDipoleC1, kDipoleC2, m_ijk);
                     J3 = 0.;
                     dJ3_det = 0.;
                     detJ3_det = 0.;
@@ -2605,7 +2775,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
                 dapolar_dx[i] = (dA2_dx[i]*(1-A3/A2) + (dA3_dx[i]*A2 - A3*dA2_dx[i])/A2)/pow(1-A3/A2,2);
             }
             if (cppargs.polar_dadx_diff_mode == 1) {
-                dapolar_dx = compute_contribution_dadx_fd(AresContributionKind::POLAR, t, rho, x, cppargs, ares_polar);
+                dapolar_dx = contribution_dadx_fd_cpp(AresContributionKind::POLAR, t, rho, x, cppargs, ares_polar);
             }
             for (int i = 0; i < ncomp; i++) {
                 sum_x_dapolar_dx += x[i]*dapolar_dx[i];
@@ -2623,7 +2793,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
     double ares_assoc = 0.0;
     double sum_x_daassoc_dx = 0.0;
     if (!cppargs.e_assoc.empty()) {
-        AssociationSetup assoc = build_association_setup(x, cppargs, s_ij, ghs, t);
+        AssociationSetup assoc = association_setup_cpp(x, cppargs, s_ij, ghs, t);
         const vector<int> &iA = assoc.site_component_index;
         const vector<double> &x_assoc = assoc.x_assoc;
         const vector<double> &delta_ij = assoc.delta_ij;
@@ -2672,7 +2842,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
         vector<double> XA_old = XA;
         while ((ctr < 100) && (dif > 1e-15)) {
             ctr += 1;
-            XA = XA_find(XA_old, delta_ij, den, x_assoc);
+            XA = ::association_site_fractions_cpp(XA_old, delta_ij, den, x_assoc);
             dif = 0.;
             for (int i = 0; i < num_sites; i++) {
                 dif += std::abs(XA[i] - XA_old[i]);
@@ -2683,7 +2853,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
         }
 
         vector<double> dXA_dx(num_sites*ncomp, 0);
-        dXA_dx = dXAdx_find(cppargs.assoc_num, delta_ij, den, XA, ddelta_dx, x_assoc);
+        dXA_dx = ::association_site_fraction_dx_cpp(cppargs.assoc_num, delta_ij, den, XA, ddelta_dx, x_assoc);
 
         int ij = 0;
         double assoc_summ = 0.0;
@@ -2701,7 +2871,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
         }
         Zassoc = assoc_summ;
         if (cppargs.assoc_dadx_diff_mode == 1) {
-            daassoc_dx = compute_contribution_dadx_fd(AresContributionKind::ASSOC, t, rho, x, cppargs, ares_assoc);
+            daassoc_dx = contribution_dadx_fd_cpp(AresContributionKind::ASSOC, t, rho, x, cppargs, ares_assoc);
         }
         for (int i = 0; i < ncomp; i++) {
             sum_x_daassoc_dx += x[i]*daassoc_dx[i];
@@ -2736,17 +2906,17 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
         for (int i = 0; i < ncomp; i++) {
             Qsum += cppargs.z[i]*cppargs.z[i]*x[i];
         }
-        DielcState dielc_state = evaluate_dielc_state(x, cppargs);
+        DielectricState dielc_state = dielectric_state_cpp(x, cppargs);
         double eps = dielc_state.eps; // mixed dielectric constant (relative)
         vector<double> deps_dx = dielc_state.deps_dx; // d(eps_r)/dx_i
         double eps_born = eps;
         vector<double> deps_dx_born = deps_dx;
         if ((cppargs.born_model >= 1) && (cppargs.born_eps_mode == 1)) {
-            eps_born = compute_eps_solvent_reference(x, cppargs);
-            deps_dx_born = compute_deps_solvent_reference(x, cppargs);
+            eps_born = reference_solvent_dielectric_constant_cpp(x, cppargs);
+            deps_dx_born = reference_solvent_dielectric_derivative_cpp(x, cppargs);
         }
 
-        double kappa = compute_dh_kappa(den, t, eps, Qsum); // inverse Debye screening length
+        double kappa = dh_kappa_cpp(den, t, eps, Qsum); // inverse Debye screening length
         if ((kappa != 0) && (Qsum != 0)) {
             vector<double> chi(ncomp, 0.0);
             vector<double> sigma_k(ncomp, 0.0);
@@ -2755,7 +2925,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
 
             for (int i = 0; i < ncomp; i++) {
                 double ka = kappa*d[i];
-                chi[i] = compute_dh_chi(kappa, d[i]);
+                chi[i] = dh_chi_cpp(kappa, d[i]);
                 sigma_k[i] = -2*chi[i] + 3/(1+ka);
 
                 S += x[i]*cppargs.z[i]*cppargs.z[i]*chi[i];
@@ -2774,7 +2944,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
             const bool use_dh_deps = (cppargs.mu_DH_comp_dep_rel_perm != 0);
             const double dh_deps_multiplier = (cppargs.mu_DH_include_sum_term != 0) ? Qsum : 1.0;
             if (cppargs.mu_DH_diff_mode == 1) {
-                dadx = compute_dh_dadx_fd(t, rho, x, cppargs, a_DH);
+                dadx = dh_dadx_fd_cpp(t, rho, x, cppargs, a_DH);
             }
             else {
                 double Aconst = den*E_CHRG*E_CHRG/(kb*t*perm_vac);
@@ -2826,7 +2996,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
             double born_sum = 0.;
             for (int i = 0; i < ncomp; i++) {
                 if (is_ion_species(cppargs, i)) {
-                    double d_born_i = compute_ion_born_radius(i, t, cppargs);
+                    double d_born_i = ion_born_radius_cpp(i, t, cppargs);
                     born_sum += x[i]*cppargs.z[i]*cppargs.z[i]/d_born_i;
                 }
             }
@@ -2839,13 +3009,13 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
             vector<double> ion_part_vec(ncomp, 0.0);
             vector<double> eps_part_vec(ncomp, 0.0);
             if (cppargs.born_diff_mode == 1) {
-                dadx_born = compute_born_dadx_fd(t, x, cppargs, a_born);
+                dadx_born = born_dadx_fd_cpp(t, x, cppargs, a_born);
             }
             else {
                 for (int i = 0; i < ncomp; i++) {
                     double ion_part = 0.0;
                     if (is_ion_species(cppargs, i)) {
-                        double d_born_i = compute_ion_born_radius(i, t, cppargs);
+                        double d_born_i = ion_born_radius_cpp(i, t, cppargs);
                         ion_part = (1.0 - 1.0/eps_born)*cppargs.z[i]*cppargs.z[i]/d_born_i;
                     }
                     // born_diff_mode=2 follows Eq.133-style: remove the born_sum multiplier on the dielectric term.
@@ -2912,7 +3082,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
         else if (cppargs.born_model == 2) {
             const double eps_r_ion = 8.0;
             const double Kborn = E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac);
-            BornSSMDSData born = build_born_ssmds_data(x, cppargs, t, eps_born, eps_r_ion);
+            BornSSMDSData born = born_shell_data_cpp(x, cppargs, t, eps_born, eps_r_ion);
             double a_born = -Kborn*born.sum_bracket;
             Zborn = 0.0;
 
@@ -2921,7 +3091,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
             vector<double> deps_part_vec(ncomp, 0.0);
             vector<double> ddelta_part_vec(ncomp, 0.0);
             if (cppargs.born_diff_mode == 1) {
-                dadx_born = compute_born_dadx_fd(t, x, cppargs, a_born);
+                dadx_born = born_dadx_fd_cpp(t, x, cppargs, a_born);
             }
             else {
                 const double inv_eps2 = 1.0/(eps_born*eps_born);
@@ -3012,7 +3182,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
             throw ValueError("Unknown born_model. Supported values are 0, 1, 2.");
         }
     }
-    double Z = pcsaft_Z_cpp(t, rho, x, cppargs);
+    double Z = Z_cpp(t, rho, x, cppargs);
 
     vector<double> mu(ncomp, 0);
     vector<double> lnfugcoef(ncomp, 0);
@@ -3023,7 +3193,7 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
     const double Z_ion = Zion;
     const double Z_born = Zborn;
     vector<double> Z_terms = {Z_hc, Z_disp, Z_polar, Z_assoc, Z_ion, Z_born};
-    double Z_term_scale = compute_z_term_scale(Z_terms, Z);
+    double Z_term_scale = z_term_scale_cpp(Z_terms, Z);
     double z_weight = stable_logz_over_zminus1(Z);
     double Z_term_correction_scale = Z_term_scale * z_weight;
     vector<double> lnfug_hc(ncomp, 0.0);
@@ -3103,7 +3273,17 @@ vector<double> pcsaft_lnfug_cpp(double t, double rho, vector<double> x, const ad
 }
 
 
-vector<double> pcsaft_lnfug_terms_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
+vector<double> mures_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
+    /**
+    Calculate the residual chemical-potential contributions for one phase of the system.
+    This uses the same evaluated state path as the fugacity-coefficient kernel.
+    */
+    lnfug_cpp(t, rho, x, cppargs);
+    return g_last_mu_total;
+}
+
+
+vector<double> lnfug_terms_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     /**
     Calculate per-term residual chemical-potential contributions and ln fugacity coefficients
     for one phase of the system.
@@ -3117,7 +3297,7 @@ vector<double> pcsaft_lnfug_terms_cpp(double t, double rho, vector<double> x, co
         Z_hc, Z_disp, Z_polar, Z_assoc, Z_ion, Z_born,
         Z_norm_hc, Z_norm_disp, Z_norm_polar, Z_norm_assoc, Z_norm_ion, Z_norm_born, Z_total]
     */
-    vector<double> lnfug = pcsaft_lnfug_cpp(t, rho, x, cppargs);
+    vector<double> lnfug = lnfug_cpp(t, rho, x, cppargs);
     int ncomp = static_cast<int>(x.size());
 
     if ((static_cast<int>(g_last_mu_hc.size()) != ncomp) ||
@@ -3152,7 +3332,7 @@ vector<double> pcsaft_lnfug_terms_cpp(double t, double rho, vector<double> x, co
     const double Z_ion = g_last_Z_ion;
     const double Z_born = g_last_Z_born;
     vector<double> Z_terms = {Z_hc, Z_disp, Z_polar, Z_assoc, Z_ion, Z_born};
-    double Z_term_scale = compute_z_term_scale(Z_terms, g_last_Z_total);
+    double Z_term_scale = z_term_scale_cpp(Z_terms, g_last_Z_total);
     auto copy_block = [&](int block, const vector<double> &src) {
         for (int i = 0; i < ncomp; i++) {
             out[block*ncomp + i] = src[i];
@@ -3201,12 +3381,12 @@ vector<double> pcsaft_lnfug_terms_cpp(double t, double rho, vector<double> x, co
 }
 
 
-vector<double> pcsaft_fugcoef_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
+vector<double> fugcoef_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     /**
     Calculate the fugacity coefficients for one phase of the system.
     */
     int ncomp = static_cast<int>(x.size()); // number of components
-    vector<double> lnfug = pcsaft_lnfug_cpp(t, rho, x, cppargs);
+    vector<double> lnfug = lnfug_cpp(t, rho, x, cppargs);
     vector<double> fugcoef(ncomp, 0);
     for (int i = 0; i < ncomp; i++) {
         fugcoef[i] = exp(lnfug[i]); // the fugacity coefficients
@@ -3216,25 +3396,25 @@ vector<double> pcsaft_fugcoef_cpp(double t, double rho, vector<double> x, const 
 }
 
 
-double pcsaft_p_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
+double p_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     /**
     Calculate pressure
     */
     double den = rho*N_AV/1.0e30;
 
-    double Z = pcsaft_Z_cpp(t, rho, x, cppargs);
+    double Z = Z_cpp(t, rho, x, cppargs);
     double P = Z*kb*t*den*1.0e30; // Pa
     return P;
 }
 
 
-double pcsaft_ares_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
+double ares_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     /**
     Calculate the residual Helmholtz energy
     */
     int ncomp = static_cast<int>(x.size()); // number of components
     double summ = 0.0;
-    ThermoCommonState thermo = build_thermo_common_state(t, rho, x, cppargs, false);
+    ThermoCommonState thermo = thermo_common_state_cpp(t, rho, x, cppargs, false);
     auto &d = thermo.d;
     auto &zeta = thermo.zeta;
     auto &e_ij = thermo.e_ij;
@@ -3245,7 +3425,7 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, const add_args &c
     double m_avg = thermo.m_avg;
     double m2es3 = thermo.m2es3;
     double m2e2s3 = thermo.m2e2s3;
-    DispersionPolynomialState dispersion = build_dispersion_polynomials(m_avg, eta);
+    DispersionPolynomialState dispersion = dispersion_polynomials_cpp(m_avg, eta);
     double ares_hs = 1.0 / zeta[0] * (3.0 * zeta[1] * zeta[2] / (1.0 - zeta[3])
         + std::pow(zeta[2], 3.0) / (zeta[3] * std::pow(1.0 - zeta[3], 2.0))
         + (std::pow(zeta[2], 3.0) / std::pow(zeta[3], 2.0) - zeta[0]) * std::log(1.0 - zeta[3]));
@@ -3279,8 +3459,8 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, const add_args &c
                 if (m_ij > 2) {
                     m_ij = 2;
                 }
-                vector<double> adip = build_dipole_coefficients(kDipoleA0, kDipoleA1, kDipoleA2, m_ij);
-                vector<double> bdip = build_dipole_coefficients(kDipoleB0, kDipoleB1, kDipoleB2, m_ij);
+                vector<double> adip = dipole_coefficients_cpp(kDipoleA0, kDipoleA1, kDipoleA2, m_ij);
+                vector<double> bdip = dipole_coefficients_cpp(kDipoleB0, kDipoleB1, kDipoleB2, m_ij);
                 double J2 = 0.;
                 for (int l = 0; l < 5; l++) {
                     J2 += (adip[l] + bdip[l]*e_ij[j*ncomp+j]/t)*pow(eta, l); // j*ncomp+j needs to be used for e_ij because it is formatted as a 1D vector
@@ -3293,7 +3473,7 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, const add_args &c
                     if (m_ijk > 2) {
                         m_ijk = 2;
                     }
-                    vector<double> cdip = build_dipole_coefficients(kDipoleC0, kDipoleC1, kDipoleC2, m_ijk);
+                    vector<double> cdip = dipole_coefficients_cpp(kDipoleC0, kDipoleC1, kDipoleC2, m_ijk);
                     double J3 = 0.;
                     for (int l = 0; l < 5; l++) {
                         J3 += cdip[l]*pow(eta, l);
@@ -3317,7 +3497,7 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, const add_args &c
     // Association term -------------------------------------------------------
     double ares_assoc = 0.;
     if (!cppargs.e_assoc.empty()) {
-        AssociationSetup assoc = build_association_setup(x, cppargs, s_ij, ghs, t);
+        AssociationSetup assoc = association_setup_cpp(x, cppargs, s_ij, ghs, t);
         const vector<int> &iA = assoc.site_component_index;
         const vector<double> &x_assoc = assoc.x_assoc;
         const vector<double> &delta_ij = assoc.delta_ij;
@@ -3336,7 +3516,7 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, const add_args &c
         vector<double> XA_old = XA;
         while ((ctr < 100) && (dif > 1e-15)) {
             ctr += 1;
-            XA = XA_find(XA_old, delta_ij, den, x_assoc);
+            XA = ::association_site_fractions_cpp(XA_old, delta_ij, den, x_assoc);
             dif = 0.;
             for (int i = 0; i < num_sites; i++) {
                 dif += std::abs(XA[i] - XA_old[i]);
@@ -3356,17 +3536,17 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, const add_args &c
     double ares_ion = 0.;
     double ares_born = 0.;
     if (!cppargs.z.empty()) {
-        DielcState dielc_state = evaluate_dielc_state(x, cppargs);
+        DielectricState dielc_state = dielectric_state_cpp(x, cppargs);
         double eps = dielc_state.eps;
-        double eps_born = (cppargs.born_eps_mode == 1) ? compute_eps_solvent_reference(x, cppargs) : eps;
-        ares_ion = compute_dh_ares_only(t, rho, x, cppargs);
+        double eps_born = (cppargs.born_eps_mode == 1) ? reference_solvent_dielectric_constant_cpp(x, cppargs) : eps;
+        ares_ion = dh_ares_only_cpp(t, rho, x, cppargs);
 
         if (cppargs.born_model == 1) {
             // Born term (Bulow 2021a, non-SSM+DS): use d_born,i in denominator
             double born_sum = 0.;
             for (int i = 0; i < ncomp; i++) {
                 if (is_ion_species(cppargs, i)) {
-                    double d_born_i = compute_ion_born_radius(i, t, cppargs);
+                    double d_born_i = ion_born_radius_cpp(i, t, cppargs);
                     born_sum += x[i]*cppargs.z[i]*cppargs.z[i]/d_born_i;
                 }
             }
@@ -3375,7 +3555,7 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, const add_args &c
         else if (cppargs.born_model == 2) {
             const double eps_r_ion = 8.0;
             const double Kborn = E_CHRG*E_CHRG/(4.0*PI*kb*t*perm_vac);
-            BornSSMDSData born = build_born_ssmds_data(x, cppargs, t, eps_born, eps_r_ion);
+            BornSSMDSData born = born_shell_data_cpp(x, cppargs, t, eps_born, eps_r_ion);
             ares_born = -Kborn*born.sum_bracket;
         }
         else if (cppargs.born_model != 0) {
@@ -3399,14 +3579,14 @@ double pcsaft_ares_cpp(double t, double rho, vector<double> x, const add_args &c
 }
 
 
-double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
+double dadt_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     /**
     Calculate the temperature derivative of the residual Helmholtz energy at
     constant density.
     */
     int ncomp = static_cast<int>(x.size()); // number of components
     double summ = 0.0;
-    ThermoCommonState thermo = build_thermo_common_state(t, rho, x, cppargs, true);
+    ThermoCommonState thermo = thermo_common_state_cpp(t, rho, x, cppargs, true);
     auto &d = thermo.d;
     auto &dd_dt = thermo.dd_dt;
     auto &zeta = thermo.zeta;
@@ -3420,17 +3600,17 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &c
     double m_avg = thermo.m_avg;
     double m2es3 = thermo.m2es3;
     double m2e2s3 = thermo.m2e2s3;
-    DispersionPolynomialState dispersion = build_dispersion_polynomials(m_avg, eta);
+    DispersionPolynomialState dispersion = dispersion_polynomials_cpp(m_avg, eta);
     vector<double> dghs_dt(ncomp * ncomp, 0.0);
     int idx = -1;
     for (int i = 0; i < ncomp; ++i) {
         for (int j = 0; j < ncomp; ++j) {
             ++idx;
-            double pair_diameter = compute_pair_diameter(d[i], d[j]);
+            double pair_diameter = pair_diameter_cpp(d[i], d[j]);
             double pair_diameter_dt = pair_diameter * (
                 dd_dt[i] / d[i] + dd_dt[j] / d[j] - (dd_dt[i] + dd_dt[j]) / (d[i] + d[j])
             );
-            dghs_dt[idx] = compute_hs_contact_time_derivative(
+            dghs_dt[idx] = hs_contact_time_derivative_cpp(
                 pair_diameter,
                 pair_diameter_dt,
                 zeta[2],
@@ -3486,8 +3666,8 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &c
                 if (m_ij > 2) {
                     m_ij = 2;
                 }
-                vector<double> adip = build_dipole_coefficients(kDipoleA0, kDipoleA1, kDipoleA2, m_ij);
-                vector<double> bdip = build_dipole_coefficients(kDipoleB0, kDipoleB1, kDipoleB2, m_ij);
+                vector<double> adip = dipole_coefficients_cpp(kDipoleA0, kDipoleA1, kDipoleA2, m_ij);
+                vector<double> bdip = dipole_coefficients_cpp(kDipoleB0, kDipoleB1, kDipoleB2, m_ij);
                 J2 = 0.;
                 dJ2_dt = 0.;
                 for (int l = 0; l < 5; l++) {
@@ -3507,7 +3687,7 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &c
                     if (m_ijk > 2) {
                         m_ijk = 2;
                     }
-                    vector<double> cdip = build_dipole_coefficients(kDipoleC0, kDipoleC1, kDipoleC2, m_ijk);
+                    vector<double> cdip = dipole_coefficients_cpp(kDipoleC0, kDipoleC1, kDipoleC2, m_ijk);
                     J3 = 0.;
                     dJ3_dt = 0.;
                     for (int l = 0; l < 5; l++) {
@@ -3540,7 +3720,7 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &c
     // only the 2B association type is currently implemented
     double dadt_assoc = 0.;
     if (!cppargs.e_assoc.empty()) {
-        AssociationSetup assoc = build_association_setup(x, cppargs, s_ij, ghs, t);
+        AssociationSetup assoc = association_setup_cpp(x, cppargs, s_ij, ghs, t);
         const vector<int> &iA = assoc.site_component_index;
         const vector<double> &x_assoc = assoc.x_assoc;
         const vector<double> &delta_ij = assoc.delta_ij;
@@ -3579,7 +3759,7 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &c
         vector<double> XA_old = XA;
         while ((ctr < 100) && (dif > 1e-15)) {
             ctr += 1;
-            XA = XA_find(XA_old, delta_ij, den, x_assoc);
+            XA = ::association_site_fractions_cpp(XA_old, delta_ij, den, x_assoc);
             dif = 0.;
             for (int i = 0; i < num_sites; i++) {
                 dif += std::abs(XA[i] - XA_old[i]);
@@ -3590,7 +3770,7 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &c
         }
 
         vector<double> dXA_dt(num_sites, 0);
-        dXA_dt = dXAdt_find(delta_ij, den, XA, ddelta_dt, x_assoc);
+        dXA_dt = ::association_site_fraction_dt_cpp(delta_ij, den, XA, ddelta_dt, x_assoc);
 
         for (int i = 0; i < num_sites; i++) {
             dadt_assoc += x[iA[i]]*(1/XA[i]-0.5)*dXA_dt[i];
@@ -3601,9 +3781,9 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &c
     double dadt_ion = 0.;
     double dadt_born = 0.;
     if (!cppargs.z.empty()) {
-        DielcState dielc_state = evaluate_dielc_state(x, cppargs);
+        DielectricState dielc_state = dielectric_state_cpp(x, cppargs);
         double eps = dielc_state.eps;
-        double eps_born = (cppargs.born_eps_mode == 1) ? compute_eps_solvent_reference(x, cppargs) : eps;
+        double eps_born = (cppargs.born_eps_mode == 1) ? reference_solvent_dielectric_constant_cpp(x, cppargs) : eps;
         vector<double> q(cppargs.z.begin(), cppargs.z.end());
         for (int i = 0; i < ncomp; i++) {
             q[i] = q[i]*E_CHRG;
@@ -3613,7 +3793,7 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &c
         for (int i = 0; i < ncomp; i++) {
             summ += cppargs.z[i]*cppargs.z[i]*x[i];
         }
-        double kappa = compute_dh_kappa(den, t, eps, summ); // the inverse Debye screening length. Equation 4 in Held et al. 2008.
+        double kappa = dh_kappa_cpp(den, t, eps, summ); // the inverse Debye screening length. Equation 4 in Held et al. 2008.
 
         double dkappa_dt;
         if (kappa != 0) {
@@ -3621,7 +3801,7 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &c
             vector<double> dchikap_dk(ncomp);
             summ = 0.;
             for (int i = 0; i < ncomp; i++) {
-                chi[i] = compute_dh_chi(kappa, d[i]);
+                chi[i] = dh_chi_cpp(kappa, d[i]);
                 dchikap_dk[i] = -2*chi[i]+3/(1+kappa*d[i]);
                 summ += x[i]*cppargs.z[i]*cppargs.z[i];
             }
@@ -3640,8 +3820,8 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &c
             double born_sum_dt = 0.;
             for (int i = 0; i < ncomp; i++) {
                 if (is_ion_species(cppargs, i)) {
-                    double d_born_i = compute_ion_born_radius(i, t, cppargs);
-                    double d_born_dt = compute_ion_born_radius_dt(i, t, cppargs);
+                    double d_born_i = ion_born_radius_cpp(i, t, cppargs);
+                    double d_born_dt = ion_born_radius_cpp_dt(i, t, cppargs);
                     born_sum += x[i]*cppargs.z[i]*cppargs.z[i]/d_born_i;
                     born_sum_dt += x[i]*cppargs.z[i]*cppargs.z[i]*(-d_born_dt)/(d_born_i*d_born_i);
                 }
@@ -3652,7 +3832,7 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &c
         }
         else if (cppargs.born_model == 2) {
             const double eps_r_ion = 8.0;
-            BornSSMDSData born = build_born_ssmds_data(x, cppargs, t, eps_born, eps_r_ion);
+            BornSSMDSData born = born_shell_data_cpp(x, cppargs, t, eps_born, eps_r_ion);
             dadt_born = E_CHRG*E_CHRG/(4.*PI*kb*perm_vac*t*t)*born.sum_bracket;
         }
         else if (cppargs.born_model != 0) {
@@ -3665,35 +3845,35 @@ double pcsaft_dadt_cpp(double t, double rho, vector<double> x, const add_args &c
 }
 
 
-double pcsaft_hres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
+double hres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     /**
     Calculate the residual enthalpy for one phase of the system.
     */
-    double Z = pcsaft_Z_cpp(t, rho, x, cppargs);
-    double dares_dt = pcsaft_dadt_cpp(t, rho, x, cppargs);
+    double Z = Z_cpp(t, rho, x, cppargs);
+    double dares_dt = dadt_cpp(t, rho, x, cppargs);
 
     double hres = (-t*dares_dt + (Z-1))*kb*N_AV*t; // Equation A.46 from Gross and Sadowski 2001
     return hres;
 }
 
 
-double pcsaft_sres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
+double sres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     /**
     Calculate the residual entropy (constant volume) for one phase of the system.
     */
-    double gres = pcsaft_gres_cpp(t, rho, x, cppargs);
-    double hres = pcsaft_hres_cpp(t, rho, x, cppargs);
+    double gres = gres_cpp(t, rho, x, cppargs);
+    double hres = hres_cpp(t, rho, x, cppargs);
 
     double sres = (hres - gres)/t;
     return sres;
 }
 
-double pcsaft_gres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
+double gres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     /**
     Calculate the residual Gibbs energy for one phase of the system.
     */
-    double ares = pcsaft_ares_cpp(t, rho, x, cppargs);
-    double Z = pcsaft_Z_cpp(t, rho, x, cppargs);
+    double ares = ares_cpp(t, rho, x, cppargs);
+    double Z = Z_cpp(t, rho, x, cppargs);
 
     double gres = (ares + (Z - 1) - log(Z))*kb*N_AV*t; // Equation A.50 from Gross and Sadowski 2001
     return gres;
@@ -3705,8 +3885,8 @@ vector<double> flashTQ_cpp(double t, double Q, vector<double> x, const add_args 
     double p_guess;
     vector<double> output;
     try {
-        p_guess = estimate_flash_p(t, Q, x, cppargs);
-        output = outerTQ(p_guess, t, Q, x, cppargs);
+        p_guess = thermo_detail::vle_pressure_guess_cpp(t, Q, x, cppargs);
+        output = flash_tq_cpp(p_guess, t, Q, x, cppargs);
         solution_found = true;
     }
     catch (const SolutionError&) {}
@@ -3720,7 +3900,7 @@ vector<double> flashTQ_cpp(double t, double Q, vector<double> x, const add_args 
         p_guess = p_lbound;
         while (p_guess < p_ubound && !solution_found) {
             try {
-                output = outerTQ(pow(10, p_guess), t, Q, x, cppargs);
+                output = flash_tq_cpp(pow(10, p_guess), t, Q, x, cppargs);
                 solution_found = true;
             } catch (const SolutionError&) {
                 p_guess += p_step;
@@ -3732,7 +3912,7 @@ vector<double> flashTQ_cpp(double t, double Q, vector<double> x, const add_args 
 
     if (!solution_found) {
         if (is_effectively_pure_feed(x)) {
-            return pure_component_flashTQ(t, x, cppargs);
+            return pure_component_flash_tq_cpp(t, x, cppargs);
         }
         throw SolutionError("solution could not be found for TQ flash");
     }
@@ -3743,10 +3923,10 @@ vector<double> flashTQ_cpp(double t, double Q, vector<double> x, const add_args 
 vector<double> flashTQ_cpp(double t, double Q, vector<double> x, const add_args &cppargs, double p_guess) {
     vector<double> output;
     try {
-        output = outerTQ(p_guess, t, Q, x, cppargs);
+        output = flash_tq_cpp(p_guess, t, Q, x, cppargs);
     } catch (const SolutionError& ex) {
         if (is_effectively_pure_feed(x)) {
-            return pure_component_flashTQ(t, x, cppargs);
+            return pure_component_flash_tq_cpp(t, x, cppargs);
         }
         throw ex;
     }
@@ -3760,8 +3940,8 @@ vector<double> flashPQ_cpp(double p, double Q, vector<double> x, const add_args 
     double t_guess;
     vector<double> output;
     try {
-        t_guess = estimate_flash_t(p, Q, x, cppargs);
-        output = outerPQ(t_guess, p, Q, x, cppargs);
+        t_guess = thermo_detail::vle_temperature_guess_cpp(p, Q, x, cppargs);
+        output = flash_pq_cpp(t_guess, p, Q, x, cppargs);
         solution_found = true;
     }
     catch (const SolutionError&) {}
@@ -3779,7 +3959,7 @@ vector<double> flashPQ_cpp(double p, double Q, vector<double> x, const add_args 
         t_guess = t_ubound;
         while (t_guess > t_lbound && !solution_found) {
             try {
-                output = outerPQ(t_guess, p, Q, x, cppargs);
+                output = flash_pq_cpp(t_guess, p, Q, x, cppargs);
                 solution_found = true;
             } catch (const SolutionError&) {
                 t_guess -= t_step;
@@ -3799,7 +3979,7 @@ vector<double> flashPQ_cpp(double p, double Q, vector<double> x, const add_args 
 vector<double> flashPQ_cpp(double p, double Q, vector<double> x, const add_args &cppargs, double t_guess){
     vector<double> output;
     try {
-        output = outerPQ(t_guess, p, Q, x, cppargs);
+        output = flash_pq_cpp(t_guess, p, Q, x, cppargs);
     } catch (const SolutionError&) {
         output = flashPQ_cpp(p, Q, x, cppargs); // call function without an initial guess
     }
@@ -3808,7 +3988,7 @@ vector<double> flashPQ_cpp(double p, double Q, vector<double> x, const add_args 
 }
 
 
-vector<double> outerPQ(double t_guess, double p, double Q, vector<double> x, add_args cppargs) {
+vector<double> flash_pq_cpp(double t_guess, double p, double Q, vector<double> x, add_args cppargs) {
     // Based on the algorithm proposed in H. A. J. Watson, M. Vikse, T. Gundersen, and P. I. Barton, “Reliable Flash Calculations: Part 1. Nonsmooth Inside-Out Algorithms,” Ind. Eng. Chem. Res., vol. 56, no. 4, pp. 960–973, Feb. 2017, doi: 10.1021/acs.iecr.6b03956.
     int ncomp = static_cast<int>(x.size());
     double TOL = 1e-8;
@@ -3837,13 +4017,13 @@ vector<double> outerPQ(double t_guess, double p, double Q, vector<double> x, add
     }
 
     // calculate initial guess for compositions based on fugacity coefficients and Raoult's Law.
-    rhol = pcsaft_den_cpp(t, p, x, 0, cppargs);
-    rhov = pcsaft_den_cpp(t, p, x, 1, cppargs);
+    rhol = den_cpp(t, p, x, 0, cppargs);
+    rhov = den_cpp(t, p, x, 1, cppargs);
     if ((rhol - rhov) < 1e-4) {
         throw SolutionError("liquid and vapor densities are the same.");
     }
-    fugcoef_l = pcsaft_fugcoef_cpp(t, rhol, x, cppargs);
-    fugcoef_v = pcsaft_fugcoef_cpp(t, rhov, x, cppargs);
+    fugcoef_l = fugcoef_cpp(t, rhol, x, cppargs);
+    fugcoef_v = fugcoef_cpp(t, rhov, x, cppargs);
 
     for (int i = 0; i < ncomp; i++) {
         if (cppargs.z.empty() || cppargs.z[i] == 0) {
@@ -3876,10 +4056,10 @@ vector<double> outerPQ(double t_guess, double p, double Q, vector<double> x, add
         }
     }
 
-    rhol = pcsaft_den_cpp(t, p, xl, 0, cppargs);
-    fugcoef_l = pcsaft_fugcoef_cpp(t, rhol, xl, cppargs);
-    rhov = pcsaft_den_cpp(t, p, xv, 1, cppargs);
-    fugcoef_v = pcsaft_fugcoef_cpp(t, rhov, xv, cppargs);
+    rhol = den_cpp(t, p, xl, 0, cppargs);
+    fugcoef_l = fugcoef_cpp(t, rhol, xl, cppargs);
+    rhov = den_cpp(t, p, xv, 1, cppargs);
+    fugcoef_v = fugcoef_cpp(t, rhov, xv, cppargs);
     for (int i = 0; i < ncomp; i++) {
         k[i] = fugcoef_l[i] / fugcoef_v[i];
         u[i] = std::log(k[i] / kb);
@@ -3888,10 +4068,10 @@ vector<double> outerPQ(double t_guess, double p, double Q, vector<double> x, add
     if (water_idx >= 0) {
         cppargs.s[water_idx] = calc_sigma(Tprime, &calc_water_sigma);
     }
-    rhol = pcsaft_den_cpp(Tprime, p, xl, 0, cppargs);
-    fugcoef_l = pcsaft_fugcoef_cpp(Tprime, rhol, xl, cppargs);
-    rhov = pcsaft_den_cpp(Tprime, p, xv, 1, cppargs);
-    fugcoef_v = pcsaft_fugcoef_cpp(Tprime, rhov, xv, cppargs);
+    rhol = den_cpp(Tprime, p, xl, 0, cppargs);
+    fugcoef_l = fugcoef_cpp(Tprime, rhol, xl, cppargs);
+    rhov = den_cpp(Tprime, p, xv, 1, cppargs);
+    fugcoef_v = fugcoef_cpp(Tprime, rhov, xv, cppargs);
     for (int i = 0; i < ncomp; i++) {
         kprime[i] = fugcoef_l[i] / fugcoef_v[i];
     }
@@ -3951,7 +4131,7 @@ vector<double> outerPQ(double t_guess, double p, double Q, vector<double> x, add
         double A_old = A;
 
         double R0 = kb * Q / (kb * Q + kb0 * (1 - Q));
-        double R = BoundedSecantInner(kb0, Q, u, x, cppargs, R0, Rmin, Rmax, DBL_EPSILON, 1e-8, 200);
+        double R = ::bounded_secant_cpp(kb0, Q, u, x, cppargs, R0, Rmin, Rmax, DBL_EPSILON, 1e-8, 200);
 
         double pp_sum = 0;
         double eupp_sum = 0;
@@ -3983,10 +4163,10 @@ vector<double> outerPQ(double t_guess, double p, double Q, vector<double> x, add
         if (water_idx >= 0) {
             cppargs.s[water_idx] = calc_sigma(t, &calc_water_sigma);
         }
-        rhol = pcsaft_den_cpp(t, p, xl, 0, cppargs);
-        fugcoef_l = pcsaft_fugcoef_cpp(t, rhol, xl, cppargs);
-        rhov = pcsaft_den_cpp(t, p, xv, 1, cppargs);
-        fugcoef_v = pcsaft_fugcoef_cpp(t, rhov, xv, cppargs);
+        rhol = den_cpp(t, p, xl, 0, cppargs);
+        fugcoef_l = fugcoef_cpp(t, rhol, xl, cppargs);
+        rhov = den_cpp(t, p, xv, 1, cppargs);
+        fugcoef_v = fugcoef_cpp(t, rhov, xv, cppargs);
         for (int i = 0; i < ncomp; i++) {
             k[i] = fugcoef_l[i] / fugcoef_v[i];
             u[i] = std::log(k[i] / kb);
@@ -4024,7 +4204,7 @@ vector<double> outerPQ(double t_guess, double p, double Q, vector<double> x, add
     return result;
 }
 
-vector<double> outerTQ(double p_guess, double t, double Q, vector<double> x, add_args cppargs) {
+vector<double> flash_tq_cpp(double p_guess, double t, double Q, vector<double> x, add_args cppargs) {
     // Based on the algorithm proposed in H. A. J. Watson, M. Vikse, T. Gundersen, and P. I. Barton, “Reliable Flash Calculations: Part 1. Nonsmooth Inside-Out Algorithms,” Ind. Eng. Chem. Res., vol. 56, no. 4, pp. 960–973, Feb. 2017, doi: 10.1021/acs.iecr.6b03956.
     int ncomp = static_cast<int>(x.size());
     double TOL = 1e-8;
@@ -4045,13 +4225,13 @@ vector<double> outerTQ(double p_guess, double t, double Q, vector<double> x, add
     double p = p_guess;
 
     // calculate initial guess for compositions based on fugacity coefficients and Raoult's Law.
-    rhol = pcsaft_den_cpp(t, p, x, 0, cppargs);
-    rhov = pcsaft_den_cpp(t, p, x, 1, cppargs);
+    rhol = den_cpp(t, p, x, 0, cppargs);
+    rhov = den_cpp(t, p, x, 1, cppargs);
     if ((rhol - rhov) < 1e-4) {
         throw SolutionError("liquid and vapor densities are the same.");
     }
-    fugcoef_l = pcsaft_fugcoef_cpp(t, rhol, x, cppargs);
-    fugcoef_v = pcsaft_fugcoef_cpp(t, rhov, x, cppargs);
+    fugcoef_l = fugcoef_cpp(t, rhol, x, cppargs);
+    fugcoef_v = fugcoef_cpp(t, rhov, x, cppargs);
 
     for (int i = 0; i < ncomp; i++) {
         if (cppargs.z.empty() || cppargs.z[i] == 0) {
@@ -4085,19 +4265,19 @@ vector<double> outerTQ(double p_guess, double t, double Q, vector<double> x, add
     }
 
     FlashPhaseState base_state;
-    if (!try_flash_phase_state(t, p, xl, xv, cppargs, &base_state)) {
+    if (!flash_phase_state_cpp(t, p, xl, xv, cppargs, &base_state)) {
         throw SolutionError("No valid density roots found for outerTQ base state.");
     }
     rhol = base_state.rhol;
-    fugcoef_l = pcsaft_fugcoef_cpp(t, rhol, xl, cppargs);
+    fugcoef_l = fugcoef_cpp(t, rhol, xl, cppargs);
     rhov = base_state.rhov;
-    fugcoef_v = pcsaft_fugcoef_cpp(t, rhov, xv, cppargs);
+    fugcoef_v = fugcoef_cpp(t, rhov, xv, cppargs);
     for (int i = 0; i < ncomp; i++) {
         k[i] = fugcoef_l[i] / fugcoef_v[i];
         u[i] = std::log(k[i] / kb);
     }
 
-    FlashPhaseState prime_state = find_nearby_flash_phase_state(t, p, xl, xv, cppargs, p_guess > 1e6 ? -1 : 1);
+    FlashPhaseState prime_state = nearby_flash_phase_state_cpp(t, p, xl, xv, cppargs, p_guess > 1e6 ? -1 : 1);
     if (!prime_state.valid) {
         throw SolutionError("No valid nearby pressure state found for outerTQ.");
     }
@@ -4109,9 +4289,9 @@ vector<double> outerTQ(double p_guess, double t, double Q, vector<double> x, add
     }
 
     rhol = prime_state.rhol;
-    fugcoef_l = pcsaft_fugcoef_cpp(t, rhol, xl, cppargs);
+    fugcoef_l = fugcoef_cpp(t, rhol, xl, cppargs);
     rhov = prime_state.rhov;
-    fugcoef_v = pcsaft_fugcoef_cpp(t, rhov, xv, cppargs);
+    fugcoef_v = fugcoef_cpp(t, rhov, xv, cppargs);
     for (int i = 0; i < ncomp; i++) {
         kprime[i] = fugcoef_l[i] / fugcoef_v[i];
     }
@@ -4171,7 +4351,7 @@ vector<double> outerTQ(double p_guess, double t, double Q, vector<double> x, add
         double A_old = A;
 
         double R0 = kb * Q / (kb * Q + kb0 * (1 - Q));
-        double R = BoundedSecantInner(kb0, Q, u, x, cppargs, R0, Rmin, Rmax, DBL_EPSILON, 1e-8, 200);
+        double R = ::bounded_secant_cpp(kb0, Q, u, x, cppargs, R0, Rmin, Rmax, DBL_EPSILON, 1e-8, 200);
 
         double pp_sum = 0;
         double eupp_sum = 0;
@@ -4200,10 +4380,10 @@ vector<double> outerTQ(double p_guess, double t, double Q, vector<double> x, add
             }
         }
 
-        rhol = pcsaft_den_cpp(t, p, xl, 0, cppargs);
-        fugcoef_l = pcsaft_fugcoef_cpp(t, rhol, xl, cppargs);
-        rhov = pcsaft_den_cpp(t, p, xv, 1, cppargs);
-        fugcoef_v = pcsaft_fugcoef_cpp(t, rhov, xv, cppargs);
+        rhol = den_cpp(t, p, xl, 0, cppargs);
+        fugcoef_l = fugcoef_cpp(t, rhol, xl, cppargs);
+        rhov = den_cpp(t, p, xv, 1, cppargs);
+        fugcoef_v = fugcoef_cpp(t, rhov, xv, cppargs);
         for (int i = 0; i < ncomp; i++) {
             k[i] = fugcoef_l[i] / fugcoef_v[i];
             u[i] = std::log(k[i] / kb);
@@ -4243,7 +4423,7 @@ vector<double> outerTQ(double p_guess, double t, double Q, vector<double> x, add
     return result;
 }
 
-double resid_inner(double R, double kb0, double Q, vector<double> u, vector<double> x, const add_args &cppargs) {
+double secant_residual_cpp(double R, double kb0, double Q, vector<double> u, vector<double> x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     double error = 0;
 
@@ -4264,7 +4444,7 @@ double resid_inner(double R, double kb0, double Q, vector<double> u, vector<doub
 }
 
 
-double pcsaft_den_cpp(double t, double p, vector<double> x, int phase, const add_args &cppargs) {
+double den_cpp(double t, double p, vector<double> x, int phase, const add_args &cppargs) {
     /**
     Solve for the molar density when temperature and pressure are given.
 
@@ -4324,17 +4504,17 @@ double pcsaft_den_cpp(double t, double p, vector<double> x, int phase, const add
     DebugFlagGuard debug_guard(debug_flag, 0);
 
     int ncomp = static_cast<int>(x.size());
-    vector<double> scan_grid = build_density_scan_grid();
+    vector<double> scan_grid = density_scan_grid_cpp();
     vector<DensityScanPoint> scan_points;
     scan_points.reserve(scan_grid.size());
     for (double nu : scan_grid) {
-        scan_points.push_back(evaluate_density_scan_point(nu, t, ncomp, x, p, cppargs));
+        scan_points.push_back(density_scan_point_cpp(nu, t, ncomp, x, p, cppargs));
     }
 
-    vector<DensityBracket> coarse_brackets = find_density_brackets(scan_points);
+    vector<DensityBracket> coarse_brackets = density_brackets_cpp(scan_points);
     vector<DensityBracket> refined_brackets;
     for (const DensityBracket &coarse : coarse_brackets) {
-        append_refined_density_brackets(coarse, t, ncomp, x, p, cppargs, refined_brackets);
+        refine_density_brackets_cpp(coarse, t, ncomp, x, p, cppargs, refined_brackets);
     }
 
     if (refined_brackets.empty()) {
@@ -4345,13 +4525,13 @@ double pcsaft_den_cpp(double t, double p, vector<double> x, int phase, const add
     candidates.reserve(refined_brackets.size());
     for (const DensityBracket &bracket : refined_brackets) {
         DensityRootCandidate candidate;
-        candidate.rho_sort = reduced_to_molar(0.5 * (bracket.nu_lo + bracket.nu_hi), t, ncomp, x, cppargs);
+        candidate.rho_sort = ::reduced_density_to_molar(0.5 * (bracket.nu_lo + bracket.nu_hi), t, ncomp, x, cppargs);
 
         try {
-            double rho_lo = reduced_to_molar(bracket.nu_lo, t, ncomp, x, cppargs);
-            double rho_hi = reduced_to_molar(bracket.nu_hi, t, ncomp, x, cppargs);
-            double rho_root = BrentRho(t, p, x, phase, cppargs, rho_lo, rho_hi, DBL_EPSILON, 1e-14, 200);
-            validate_density_root(t, p, x, cppargs, rho_root, &candidate);
+            double rho_lo = ::reduced_density_to_molar(bracket.nu_lo, t, ncomp, x, cppargs);
+            double rho_hi = ::reduced_density_to_molar(bracket.nu_hi, t, ncomp, x, cppargs);
+            double rho_root = ::density_brent_cpp(t, p, x, phase, cppargs, rho_lo, rho_hi, DBL_EPSILON, 1e-14, 200);
+            density_root_valid_cpp(t, p, x, cppargs, rho_root, &candidate);
         }
         catch (const std::exception&) {
             candidate.valid = false;
@@ -4402,184 +4582,13 @@ double pcsaft_den_cpp(double t, double p, vector<double> x, int phase, const add
     throw SolutionError("No valid density root found for liquid phase.");
 }
 
-double estimate_flash_t(double p, double Q, vector<double> x, add_args cppargs) {
-    /**
-    Get a quick estimate of the temperature at which VLE occurs
-    */
-    double t_guess = _HUGE;
-    int ncomp = static_cast<int>(x.size());
-
-    double x_ions = 0.; // overall mole fraction of ions in the system
-    for (int i = 0; i < ncomp; i++) {
-        if (!cppargs.z.empty() && cppargs.z[i] != 0) {
-            x_ions += x[i];
-        }
-    }
-
-    bool guess_found = false;
-    double t_step = 30;
-    double t_start = 400;
-    double t_lbound = 1;
-    if (!cppargs.z.empty()) {
-        t_step = 15;
-        t_start = 350;
-        t_lbound = 264;
-    }
-    while (!guess_found && t_start > t_lbound) {
-        // initialize variables
-        double Tprime = t_start - 50;
-        double t = t_start;
-
-        // calculate sigma for water, if it is present
-        std::vector<double>::iterator water_iter = std::find(cppargs.e.begin(), cppargs.e.end(), 353.9449);
-        int water_idx = -1;
-        if (water_iter != cppargs.e.end()) {
-            water_idx = static_cast<int>(std::distance(cppargs.e.begin(), water_iter));
-            cppargs.s[water_idx] = calc_sigma(t, &calc_water_sigma);
-        }
-
-        try {
-            double p1 = estimate_flash_p(t, Q, x, cppargs);
-            double p2 = estimate_flash_p(Tprime, Q, x, cppargs);
-
-            double slope = (std::log10(p1) - std::log10(p2)) / (1/t - 1/Tprime);
-            double intercept = std::log10(p1) - slope * (1/t);
-            t_guess = slope / (std::log10(p) - intercept);
-            guess_found = true;
-        } catch (const SolutionError&) {
-            t_start -= t_step;
-        }
-    }
-
-    if (!guess_found) {
-        throw SolutionError("an estimate for the VLE temperature could not be found");
-    }
-
-    return t_guess;
-}
-
-double estimate_flash_p(double t, double Q, vector<double> x, const add_args &cppargs) {
-    /**
-    Get a quick estimate of the pressure at which VLE occurs
-    */
-    double p_guess = _HUGE;
-    int ncomp = static_cast<int>(x.size());
-
-    double x_ions = 0.; // overall mole fraction of ions in the system
-    for (int i = 0; i < ncomp; i++) {
-        if (!cppargs.z.empty() && cppargs.z[i] != 0) {
-            x_ions += x[i];
-        }
-    }
-
-    bool guess_found = false;
-    double p_start = 10000;
-    while (!guess_found && p_start < 1e7) {
-        // initialize variables
-        vector<double> fugcoef_l(ncomp), fugcoef_v(ncomp), k(ncomp), u(ncomp), kprime(ncomp);
-        double rhol, rhov;
-        double Pprime = 0.99 * p_start;
-        double p = p_start;
-
-        // calculate initial guess for compositions based on fugacity coefficients and Raoult's Law.
-        rhol = pcsaft_den_cpp(t, p, x, 0, cppargs);
-        rhov = pcsaft_den_cpp(t, p, x, 1, cppargs);
-        if ((rhol - rhov) < 1e-4) {
-            p_start = p_start + 2e5;
-            continue;
-        }
-        fugcoef_l = pcsaft_fugcoef_cpp(t, rhol, x, cppargs);
-        fugcoef_v = pcsaft_fugcoef_cpp(t, rhov, x, cppargs);
-
-        for (int i = 0; i < ncomp; i++) {
-            if (cppargs.z.empty() || cppargs.z[i] == 0) {
-                k[i] = fugcoef_l[i] / fugcoef_v[i];
-            } else {
-                k[i] = 0; // set k to 0 for ionic components
-            }
-        }
-
-        vector<double> xl(ncomp);
-        vector<double> xv(ncomp);
-        double xv_sum = 0;
-        double xl_sum = 0;
-        for (int i = 0; i < ncomp; i++) {
-            xl[i] = x[i] / (1 + Q * (k[i] - 1));
-            xl_sum += xl[i];
-            xv[i] = k[i] * x[i] / (1 + Q * (k[i] - 1));
-            xv_sum += xv[i];
-        }
-
-        if (xv_sum != 1) {
-            for (int i = 0; i < ncomp; i++) {
-                xv[i] = xv[i] / xv_sum;
-            }
-        }
-
-        if (xl_sum != 1) {
-            for (int i = 0; i < ncomp; i++) {
-                xl[i] = xl[i] / xl_sum;
-            }
-        }
-
-        rhol = pcsaft_den_cpp(t, p, xl, 0, cppargs);
-        rhov = pcsaft_den_cpp(t, p, xv, 1, cppargs);
-        if ((rhol - rhov) < 1e-4) {
-            p_start = p_start + 2e5;
-            continue;
-        }
-        fugcoef_l = pcsaft_fugcoef_cpp(t, rhol, xl, cppargs);
-        fugcoef_v = pcsaft_fugcoef_cpp(t, rhov, xv, cppargs);
-        double numer = 0;
-        double denom = 0;
-        for (int i = 0; i < ncomp; i++) {
-            if (cppargs.z.empty() || cppargs.z[i] == 0) {
-                numer += xl[i] * fugcoef_l[i];
-                denom += xv[i] * fugcoef_v[i];
-            }
-        }
-        double ratio = numer / denom;
-
-        rhol = pcsaft_den_cpp(t, Pprime, xl, 0, cppargs);
-        rhov = pcsaft_den_cpp(t, Pprime, xv, 1, cppargs);
-        if ((rhol - rhov) < 1e-4) {
-            p_start = p_start + 2e5;
-            continue;
-        }
-        fugcoef_l = pcsaft_fugcoef_cpp(t, rhol, xl, cppargs);
-        fugcoef_v = pcsaft_fugcoef_cpp(t, rhov, xv, cppargs);
-        numer = 0;
-        denom = 0;
-        for (int i = 0; i < ncomp; i++) {
-            if (cppargs.z.empty() || cppargs.z[i] == 0) {
-                numer += xl[i] * fugcoef_l[i];
-                denom += xv[i] * fugcoef_v[i];
-            }
-        }
-        double ratio_prime = numer / denom;
-
-        double slope = (std::log10(ratio) - std::log10(ratio_prime)) / (std::log10(p) - std::log10(Pprime));
-        double intercept = std::log10(ratio) - slope * std::log10(p);
-        p_guess = pow(10, -intercept / slope);
-
-        guess_found = true;
-    }
-
-    if (!guess_found) {
-        throw SolutionError("an estimate for the VLE pressure could not be found");
-    }
-
-    return p_guess;
-}
-
-
-double reduced_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs) {
+double reduced_density_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs) {
     vector<double> d(ncomp);
     double summ = 0.;
     for (int i = 0; i < ncomp; i++) {
         d[i] = cppargs.s[i]*(1-0.12*std::exp(-3*cppargs.e[i] / t));
         if (!cppargs.z.empty() && is_ion_species(cppargs, i)) {
-            d[i] = compute_ion_diameter(i, t, cppargs);
+            d[i] = ion_diameter_cpp(i, t, cppargs);
         }
         summ += x[i]*cppargs.m[i]*pow(d[i],3.);
     }
@@ -4587,14 +4596,22 @@ double reduced_to_molar(double nu, double t, int ncomp, vector<double> x, const 
     return 6/PI*nu/summ*1.0e30/N_AV;
 }
 
-double pcsaft_dielc_eps_cpp(vector<double> x, const add_args &cppargs) {
-    DielcState state = evaluate_dielc_state(x, cppargs);
+double dielectric_eps_cpp(vector<double> x, const add_args &cppargs) {
+    DielectricState state = dielectric_state_cpp(x, cppargs);
     return state.eps;
 }
 
-vector<double> pcsaft_dielc_diff_cpp(vector<double> x, const add_args &cppargs) {
-    DielcState state = evaluate_dielc_state(x, cppargs);
+vector<double> dielectric_diff_cpp(vector<double> x, const add_args &cppargs) {
+    DielectricState state = dielectric_state_cpp(x, cppargs);
     return state.deps_dx;
+}
+
+double dielc_eps_cpp(vector<double> x, const add_args &cppargs) {
+    return dielectric_eps_cpp(std::move(x), cppargs);
+}
+
+vector<double> dielc_diff_cpp(vector<double> x, const add_args &cppargs) {
+    return dielectric_diff_cpp(std::move(x), cppargs);
 }
 
 double dielc_water(double t) {
@@ -4633,7 +4650,7 @@ double calc_water_sigma(double t) {
     return 3.8395 + 1.2828 * std::exp(-0.0074944 * t) - 1.3939 * std::exp(-0.00056029 * t);
 }
 
-add_args get_single_component(int i, const add_args &cppargs) {
+add_args single_component_args_cpp(int i, const add_args &cppargs) {
     add_args args_single;
     args_single.born_model = cppargs.born_model;
     args_single.born_radius_model = cppargs.born_radius_model;
@@ -4739,32 +4756,32 @@ at least one solution in the interval [a,b].
 @param tol_abs Tolerance (absolute)
 @param maxiter Maximum number of steps allowed.  Will throw a SolutionError if the solution cannot be found
 */
-double BrentRho(double t, double p, vector<double> x, int phase, const add_args &cppargs, double a, double b,
+double density_brent_cpp(double t, double p, vector<double> x, int phase, const add_args &cppargs, double a, double b,
     double macheps, double tol_abs, int maxiter)
 {
     int iter;
     double fa,fb,c,fc,m,tol,d,e,pp,q,s,r;
-    fa = resid_rho(a, t, p, x, cppargs);
-    fb = resid_rho(b, t, p, x, cppargs);
+    fa = ::density_root_residual_cpp(a, t, p, x, cppargs);
+    fb = ::density_root_residual_cpp(b, t, p, x, cppargs);
 
     // If one of the boundaries is to within tolerance, just stop
     if (std::abs(fb) < tol_abs) { return b;}
     if (std::isnan(fb)){
-        throw ValueError("BrentRho's method f(b) is NAN for b");
+        throw ValueError("density root solver f(b) is NAN for b");
     }
     if (std::abs(fa) < tol_abs) { return a;}
     if (std::isnan(fa)){
-        throw ValueError("BrentRho's method f(a) is NAN for a");
+        throw ValueError("density root solver f(a) is NAN for a");
     }
     if (fa*fb>0){
-        throw ValueError("Inputs in BrentRho do not bracket the root");
+        throw ValueError("density root solver inputs do not bracket the root");
     }
 
     c=a;
     fc=fa;
     iter=1;
     if (std::abs(fc)<std::abs(fb)){
-        // Goto ext: from BrentRho ALGOL code
+        // Goto ext: from Brent root solver ALGOL code
         a=b;
         b=c;
         c=a;
@@ -4825,9 +4842,9 @@ double BrentRho(double t, double p, vector<double> x, int phase, const add_args 
         else{
             b+=-tol;
         }
-        fb=resid_rho(b, t, p, x, cppargs);
+        fb=::density_root_residual_cpp(b, t, p, x, cppargs);
         if (std::isnan(fb)){
-            throw ValueError("BrentRho's method f(t) is NAN for t");
+            throw ValueError("density root solver f(t) is NAN for t");
         }
         if (std::abs(fb) < macheps){
             return b;
@@ -4849,13 +4866,13 @@ double BrentRho(double t, double p, vector<double> x, int phase, const add_args 
         tol=2*macheps*std::abs(b)+tol_abs;
         iter+=1;
         if (std::isnan(a)){
-            throw ValueError("BrentRho's method a is NAN");}
+            throw ValueError("density root solver a is NAN");}
         if (std::isnan(b)){
-            throw ValueError("BrentRho's method b is NAN");}
+            throw ValueError("density root solver b is NAN");}
         if (std::isnan(c)){
-            throw ValueError("BrentRho's method c is NAN");}
+            throw ValueError("density root solver c is NAN");}
         if (iter>maxiter){
-            throw SolutionError("BrentRho's method reached maximum number of steps");}
+            throw SolutionError("density root solver reached maximum number of steps");}
         if (std::abs(fb)< 2*macheps*std::abs(b)){
             return b;
         }
@@ -4863,8 +4880,8 @@ double BrentRho(double t, double p, vector<double> x, int phase, const add_args 
     return b;
 }
 
-double resid_rho(double rhomolar, double t, double p, vector<double> x, const add_args &cppargs){
-    double peos = pcsaft_p_cpp(t, rhomolar, x, cppargs);
+double density_root_residual_cpp(double rhomolar, double t, double p, vector<double> x, const add_args &cppargs){
+    double peos = p_cpp(t, rhomolar, x, cppargs);
     double pressure_scale = std::max(std::abs(p), 1e-3);
     double cost = (peos-p)/pressure_scale;
     if (std::isfinite(cost)) {
@@ -4886,7 +4903,7 @@ In the secant function, a 1-D Newton-Raphson solver is implemented.  An initial 
 @param maxiter Maximum number of iterations
 @returns If no errors are found, the solution, otherwise the value _HUGE, the value for infinity
 */
-double BoundedSecantInner(double kb0, double Q, vector<double> u, vector<double> x, const add_args &cppargs, double x0, double xmin,
+double bounded_secant_cpp(double kb0, double Q, vector<double> u, vector<double> x, const add_args &cppargs, double x0, double xmin,
     double xmax, double dx, double tol, int maxiter) {
     double x1=0,x2=0,x3=0,y1=0,y2=0,R,fval=999;
     int iter=1;
@@ -4904,7 +4921,7 @@ double BoundedSecantInner(double kb0, double Q, vector<double> u, vector<double>
           x3 = R;
         }
         else {R=x2;}
-        fval=resid_inner(R, kb0, Q, u, x, cppargs);
+        fval=::secant_residual_cpp(R, kb0, Q, u, x, cppargs);
 
         if (iter==1){y1=fval;}
         else
@@ -4929,7 +4946,7 @@ double BoundedSecantInner(double kb0, double Q, vector<double> u, vector<double>
 
         }
         if (iter>maxiter){
-            throw SolutionError("BoundedSecant reached maximum number of iterations");
+            throw SolutionError("bounded secant solver reached maximum number of iterations");
         }
         iter=iter+1;
     }
@@ -4937,7 +4954,7 @@ double BoundedSecantInner(double kb0, double Q, vector<double> u, vector<double>
 }
 
 namespace miac_detail {
-vector<double> build_miac_gamma_vector(double t, double rho, const vector<double>& x, const add_args& cppargs)
+vector<double> miac_gamma_vector_cpp(double t, double rho, const vector<double>& x, const add_args& cppargs)
 {
     add_args args = cppargs;
     const int ncomp = static_cast<int>(x.size());
@@ -4955,8 +4972,8 @@ vector<double> build_miac_gamma_vector(double t, double rho, const vector<double
         throw ValueError("miac requires a neutral solvent reference.");
     }
 
-    vector<double> fugcoef = pcsaft_fugcoef_cpp(t, rho, x, args);
-    double p = pcsaft_p_cpp(t, rho, x, args);
+    vector<double> fugcoef = fugcoef_cpp(t, rho, x, args);
+    double p = p_cpp(t, rho, x, args);
 
     const double eps = 1e-12;
     vector<double> x_inf(ncomp, eps);
@@ -4984,8 +5001,8 @@ vector<double> build_miac_gamma_vector(double t, double rho, const vector<double
         xi /= x_inf_sum;
     }
 
-    double rho_inf = pcsaft_den_cpp(t, p, x_inf, 0, args);
-    vector<double> fugcoef_inf = pcsaft_fugcoef_cpp(t, rho_inf, x_inf, args);
+    double rho_inf = den_cpp(t, p, x_inf, 0, args);
+    vector<double> fugcoef_inf = fugcoef_cpp(t, rho_inf, x_inf, args);
     vector<double> gamma_i(ncomp, 1.0);
     for (int i = 0; i < ncomp; ++i) {
         gamma_i[i] = fugcoef[i] / fugcoef_inf[i];
@@ -4993,7 +5010,7 @@ vector<double> build_miac_gamma_vector(double t, double rho, const vector<double
     return gamma_i;
 }
 
-vector<double> build_gsolv_values(double t, double rho, const vector<double>& x, const add_args& cppargs)
+vector<double> gsolv_values_cpp(double t, double rho, const vector<double>& x, const add_args& cppargs)
 {
     add_args args = cppargs;
     const int ncomp = static_cast<int>(x.size());
@@ -5033,7 +5050,7 @@ vector<double> build_gsolv_values(double t, double rho, const vector<double>& x,
         }
     }
 
-    double p = pcsaft_p_cpp(t, rho, x_ref, args);
+    double p = p_cpp(t, rho, x_ref, args);
     int phase = (rho < 900.0) ? 1 : 0;
     vector<double> result(ncomp, 0.0);
     const double eps = 1e-12;
@@ -5047,8 +5064,8 @@ vector<double> build_gsolv_values(double t, double rho, const vector<double>& x,
         for (double& xi : x_inf) {
             xi /= sum_inf;
         }
-        double rho_inf = pcsaft_den_cpp(t, p, x_inf, phase, args);
-        vector<double> lnfug_inf = pcsaft_lnfug_cpp(t, rho_inf, x_inf, args);
+        double rho_inf = den_cpp(t, p, x_inf, phase, args);
+        vector<double> lnfug_inf = lnfug_cpp(t, rho_inf, x_inf, args);
         result[i] = 8.31446261815324 * t * lnfug_inf[i];
     }
     return result;
@@ -5119,7 +5136,7 @@ double PCSAFTStateNative::pressure()
         throw ValueError("PCSAFTStateNative cannot compute pressure without density or pressure data.");
     }
     const add_args& args = mixture_->args();
-    p_ = pcsaft_p_cpp(t_, rho_, x_, args);
+    p_ = p_cpp(t_, rho_, x_, args);
     pressure_cached_ = true;
     return p_;
 }
@@ -5133,7 +5150,7 @@ double PCSAFTStateNative::density()
         throw ValueError("PCSAFTStateNative cannot compute density without pressure or density data.");
     }
     const add_args& args = mixture_->args();
-    rho_ = pcsaft_den_cpp(t_, p_, x_, phase_, args);
+    rho_ = den_cpp(t_, p_, x_, phase_, args);
     density_cached_ = true;
     return rho_;
 }
@@ -5141,65 +5158,101 @@ double PCSAFTStateNative::density()
 double PCSAFTStateNative::Z()
 {
     const add_args& args = mixture_->args();
-    return pcsaft_Z_cpp(t_, density(), x_, args);
+    return Z_cpp(t_, density(), x_, args);
+}
+
+double PCSAFTStateNative::a_res()
+{
+    return ares();
 }
 
 double PCSAFTStateNative::ares()
 {
     const add_args& args = mixture_->args();
-    return pcsaft_ares_cpp(t_, density(), x_, args);
+    return ares_cpp(t_, density(), x_, args);
 }
 
 double PCSAFTStateNative::dadt()
 {
     const add_args& args = mixture_->args();
-    return pcsaft_dadt_cpp(t_, density(), x_, args);
+    return dadt_cpp(t_, density(), x_, args);
 }
 
 double PCSAFTStateNative::hres()
 {
     const add_args& args = mixture_->args();
-    return pcsaft_hres_cpp(t_, density(), x_, args);
+    return hres_cpp(t_, density(), x_, args);
+}
+
+double PCSAFTStateNative::h_res()
+{
+    return hres();
 }
 
 double PCSAFTStateNative::sres()
 {
     const add_args& args = mixture_->args();
-    return pcsaft_sres_cpp(t_, density(), x_, args);
+    return sres_cpp(t_, density(), x_, args);
+}
+
+double PCSAFTStateNative::s_res()
+{
+    return sres();
 }
 
 double PCSAFTStateNative::gres()
 {
     const add_args& args = mixture_->args();
-    return pcsaft_gres_cpp(t_, density(), x_, args);
+    return gres_cpp(t_, density(), x_, args);
+}
+
+double PCSAFTStateNative::g_res()
+{
+    return gres();
+}
+
+vector<double> PCSAFTStateNative::mu_res()
+{
+    const add_args& args = mixture_->args();
+    return mures_cpp(t_, density(), x_, args);
+}
+
+vector<double> PCSAFTStateNative::gamma()
+{
+    return fugcoef();
 }
 
 vector<double> PCSAFTStateNative::lnfugcoef()
 {
     const add_args& args = mixture_->args();
-    return pcsaft_lnfug_cpp(t_, density(), x_, args);
+    return lnfug_cpp(t_, density(), x_, args);
 }
 
 vector<double> PCSAFTStateNative::fugcoef()
 {
     const add_args& args = mixture_->args();
-    return pcsaft_fugcoef_cpp(t_, density(), x_, args);
+    return fugcoef_cpp(t_, density(), x_, args);
 }
 
 vector<double> PCSAFTStateNative::lnfugcoef_terms()
 {
     const add_args& args = mixture_->args();
-    return pcsaft_lnfug_terms_cpp(t_, density(), x_, args);
+    return lnfug_terms_cpp(t_, density(), x_, args);
+}
+
+vector<double> PCSAFTStateNative::dielectric_eval()
+{
+    const add_args& args = mixture_->args();
+    vector<double> out;
+    out.push_back(dielectric_eps_cpp(x_, args));
+    vector<double> deps = dielectric_diff_cpp(x_, args);
+    out.insert(out.end(), deps.begin(), deps.end());
+    return out;
 }
 
 vector<double> PCSAFTStateNative::dielc_eval()
 {
-    const add_args& args = mixture_->args();
-    vector<double> out;
-    out.push_back(pcsaft_dielc_eps_cpp(x_, args));
-    vector<double> deps = pcsaft_dielc_diff_cpp(x_, args);
-    out.insert(out.end(), deps.begin(), deps.end());
-    return out;
+    return dielectric_eval();
 }
 
 double PCSAFTStateNative::osmoticC()
@@ -5246,11 +5299,11 @@ double PCSAFTStateNative::osmoticC()
     x0[indx_solvent] = 1.0;
 
     double rho = density();
-    double p = pcsaft_p_cpp(t_, rho, xx, args);
+    double p = p_cpp(t_, rho, xx, args);
     int ph = (rho < 900.0) ? 1 : 0;
-    double rho0 = pcsaft_den_cpp(t_, p, x0, ph, args);
-    vector<double> fugcoef = pcsaft_fugcoef_cpp(t_, rho, xx, args);
-    vector<double> fugcoef0 = pcsaft_fugcoef_cpp(t_, rho0, x0, args);
+    double rho0 = den_cpp(t_, p, x0, ph, args);
+    vector<double> fugcoef = fugcoef_cpp(t_, rho, xx, args);
+    vector<double> fugcoef0 = fugcoef_cpp(t_, rho0, x0, args);
     double gamma = fugcoef[indx_solvent] / fugcoef0[indx_solvent];
     double osmC = -std::log(xx[indx_solvent] * gamma) / (mw_solvent * molality_sum);
     return osmC;
@@ -5259,7 +5312,7 @@ double PCSAFTStateNative::osmoticC()
 vector<double> PCSAFTStateNative::miac_m()
 {
     const add_args& args_ref = mixture_->args();
-    vector<double> gamma_i = build_miac_gamma_vector(t_, density(), x_, args_ref);
+    vector<double> gamma_i = miac_gamma_vector_cpp(t_, density(), x_, args_ref);
     ChargeGroups groups = collect_charge_groups(args_ref, x_.size());
     if (groups.cations.empty() || groups.anions.empty()) {
         throw ValueError("miac_m requires at least one cation and one anion.");
@@ -5324,7 +5377,7 @@ vector<double> PCSAFTStateNative::miac_m()
 vector<double> PCSAFTStateNative::miac()
 {
     const add_args& args_ref = mixture_->args();
-    vector<double> gamma_i = build_miac_gamma_vector(t_, density(), x_, args_ref);
+    vector<double> gamma_i = miac_gamma_vector_cpp(t_, density(), x_, args_ref);
 
     ChargeGroups groups = collect_charge_groups(args_ref, x_.size());
     if (groups.cations.empty() || groups.anions.empty()) {
@@ -5354,7 +5407,7 @@ vector<double> PCSAFTStateNative::miac()
 vector<double> PCSAFTStateNative::gsolv()
 {
     const add_args& args = mixture_->args();
-    return build_gsolv_values(t_, density(), x_, args);
+    return gsolv_values_cpp(t_, density(), x_, args);
 }
 
 FlashResultNative PCSAFTStateNative::flashTQ(double q, bool has_p_guess, double p_guess)
@@ -5403,13 +5456,14 @@ VaporizationResultNative PCSAFTStateNative::Hvap(bool has_p_guess, double p_gues
         payload = flashTQ_cpp(t_, 0.0, x_, args);
     }
     double pvap = payload.empty() ? 0.0 : payload[0];
-    double rho_l = pcsaft_den_cpp(t_, pvap, x_, 0, args);
-    double hres_l = pcsaft_hres_cpp(t_, rho_l, x_, args);
-    double rho_v = pcsaft_den_cpp(t_, pvap, x_, 1, args);
-    double hres_v = pcsaft_hres_cpp(t_, rho_v, x_, args);
+    double rho_l = den_cpp(t_, pvap, x_, 0, args);
+    double hres_l = hres_cpp(t_, rho_l, x_, args);
+    double rho_v = den_cpp(t_, pvap, x_, 1, args);
+    double hres_v = hres_cpp(t_, rho_v, x_, args);
     VaporizationResultNative result;
     result.value = hres_v - hres_l;
     result.pressure = pvap;
     return result;
 }
+
 

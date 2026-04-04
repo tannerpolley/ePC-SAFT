@@ -10,23 +10,26 @@ from libcpp.memory cimport shared_ptr
 from libc.stddef cimport size_t
 
 cdef extern from "pcsaft_electrolyte.h":
-    double pcsaft_p_cpp(double t, double rho, vector[double] x, add_args &cppargs)
-    double pcsaft_Z_cpp(double t, double rho, vector[double] x, add_args &cppargs)
-    vector[double] pcsaft_lnfug_cpp(double t, double rho, vector[double] x, add_args &cppargs)
-    vector[double] pcsaft_lnfug_terms_cpp(double t, double rho, vector[double] x, add_args &cppargs)
-    vector[double] pcsaft_fugcoef_cpp(double t, double rho, vector[double] x, add_args &cppargs)
-    double pcsaft_den_cpp(double t, double p, vector[double] x, int phase, add_args &cppargs) except +
-    double pcsaft_ares_cpp(double t, double rho, vector[double] x, add_args &cppargs)
-    double pcsaft_dadt_cpp(double t, double rho, vector[double] x, add_args &cppargs)
-    double pcsaft_hres_cpp(double t, double rho, vector[double] x, add_args &cppargs)
-    double pcsaft_sres_cpp(double t, double rho, vector[double] x, add_args &cppargs)
-    double pcsaft_gres_cpp(double t, double rho, vector[double] x, add_args &cppargs)
+    double p_cpp(double t, double rho, vector[double] x, add_args &cppargs)
+    double Z_cpp(double t, double rho, vector[double] x, add_args &cppargs)
+    vector[double] mures_cpp(double t, double rho, vector[double] x, add_args &cppargs)
+    vector[double] lnfug_cpp(double t, double rho, vector[double] x, add_args &cppargs)
+    vector[double] lnfug_terms_cpp(double t, double rho, vector[double] x, add_args &cppargs)
+    vector[double] fugcoef_cpp(double t, double rho, vector[double] x, add_args &cppargs)
+    double den_cpp(double t, double p, vector[double] x, int phase, add_args &cppargs) except +
+    double ares_cpp(double t, double rho, vector[double] x, add_args &cppargs)
+    double dadt_cpp(double t, double rho, vector[double] x, add_args &cppargs)
+    double hres_cpp(double t, double rho, vector[double] x, add_args &cppargs)
+    double sres_cpp(double t, double rho, vector[double] x, add_args &cppargs)
+    double gres_cpp(double t, double rho, vector[double] x, add_args &cppargs)
     vector[double] flashTQ_cpp(double t, double Q, vector[double] x, add_args &cppargs) except +
     vector[double] flashTQ_cpp(double t, double Q, vector[double] x, add_args &cppargs, double p_guess) except +
     vector[double] flashPQ_cpp(double p, double Q, vector[double] x, add_args &cppargs) except +
     vector[double] flashPQ_cpp(double p, double Q, vector[double] x, add_args &cppargs, double t_guess) except +
-    double pcsaft_dielc_eps_cpp(vector[double] x, add_args &cppargs)
-    vector[double] pcsaft_dielc_diff_cpp(vector[double] x, add_args &cppargs)
+    double dielectric_eps_cpp(vector[double] x, add_args &cppargs)
+    vector[double] dielectric_diff_cpp(vector[double] x, add_args &cppargs)
+    double dielc_eps_cpp(vector[double] x, add_args &cppargs)
+    vector[double] dielc_diff_cpp(vector[double] x, add_args &cppargs)
 
     ctypedef struct add_args:
         vector[double] m
@@ -95,14 +98,21 @@ cdef extern from "pcsaft_electrolyte.h":
         double pressure()
         double density()
         double Z()
+        double a_res()
         double ares()
         double dadt()
+        double h_res()
         double hres()
+        double s_res()
         double sres()
+        double g_res()
         double gres()
+        vector[double] mu_res()
+        vector[double] gamma()
         vector[double] lnfugcoef()
         vector[double] fugcoef()
         vector[double] lnfugcoef_terms()
+        vector[double] dielectric_eval()
         vector[double] dielc_eval()
         double osmoticC()
         vector[double] miac_m()
@@ -118,3 +128,4 @@ cdef extern from "pcsaft_electrolyte.h":
         shared_ptr[PCSAFTStateNative] state(double t, vector[double] x, int phase,
                                            bool has_p, double p, bool has_rho, double rho)
         size_t ncomp() const
+
