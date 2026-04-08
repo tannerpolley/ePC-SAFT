@@ -21,7 +21,6 @@ from scripts._env import require_pcsaft_install
 require_pcsaft_install()
 
 from pcsaft.parameters import get_prop_dict
-from pcsaft import pcsaft_multiphase_lle
 
 
 P_REF = 1.0e5
@@ -105,39 +104,7 @@ def solve_binary_lle(
     model_mode: str = "epc",
     z_feed: np.ndarray | None = None,
 ) -> dict:
-    species = ["H2O", cation, anion]
-    params = build_params(species, t, use_kij=use_kij, model_mode=model_mode)
-    feed = np.asarray([0.5, 0.25, 0.25] if z_feed is None else z_feed, dtype=float)
-
-    attempt_options = [
-        {
-            "tpdf_global_trials": 500,
-            "tpdf_local_trials": 200,
-            "tpdf_tol": -1e-6,
-            "solver_tol": 1e-9,
-            "max_nfev": 300,
-        },
-        {
-            "tpdf_global_trials": 1500,
-            "tpdf_local_trials": 600,
-            "tpdf_tol": -1e-6,
-            "solver_tol": 1e-10,
-            "max_nfev": 800,
-            "charge_weight": 5000.0,
-            "solver_accept_norm": 0.5,
-            "split_tol": 1e-4,
-        },
-    ]
-
-    last = None
-    for opt in attempt_options:
-        out = pcsaft_multiphase_lle(t, P_REF, feed, params, species, options=opt)
-        last = out
-        if bool(out.get("converged", False)) and int(out.get("n_phases", 0)) == 2:
-            return out
-    if last is None:
-        raise RuntimeError("No LLE attempt executed.")
-    return last
+    raise NotImplementedError("The legacy multiphase LLE workflow has been removed and will be rewritten later.")
 
 
 def split_branches(out: dict) -> tuple[np.ndarray, np.ndarray]:

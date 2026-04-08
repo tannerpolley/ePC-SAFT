@@ -76,6 +76,24 @@ struct VaporizationResultNative {
     double pressure;
 };
 
+struct ActivityCoeffNative {
+    vector<double> gamma_components;
+    vector<double> gamma_mean_ionic_x;
+    vector<double> gamma_mean_ionic_m;
+    vector<double> gsolv;
+    vector<double> pair_molality;
+    vector<double> pair_conversion_factor;
+    vector<int> cation_indices;
+    vector<int> anion_indices;
+    vector<int> solvent_indices;
+    vector<int> pair_cation_indices;
+    vector<int> pair_anion_indices;
+    vector<int> pair_nu_cation;
+    vector<int> pair_nu_anion;
+    int solvent_index;
+    double osmotic_c;
+};
+
 class PCSAFTMixtureNative;
 
 class PCSAFTStateNative {
@@ -110,6 +128,7 @@ public:
     vector<double> miac_m();
     vector<double> miac();
     vector<double> gsolv();
+    ActivityCoeffNative actcoeff(bool has_solvent_override = false, int solvent_override_index = -1);
     FlashResultNative flashTQ(double q, bool has_p_guess = false, double p_guess = 0.0);
     FlashResultNative flashPQ(double p, double q, bool has_t_guess = false, double t_guess = 0.0);
     VaporizationResultNative Hvap(bool has_p_guess = false, double p_guess = 0.0);
@@ -125,6 +144,8 @@ private:
     double rho_;
     bool pressure_cached_;
     bool density_cached_;
+    bool actcoeff_cached_;
+    ActivityCoeffNative actcoeff_cache_;
 };
 
 class PCSAFTMixtureNative : public std::enable_shared_from_this<PCSAFTMixtureNative> {
@@ -134,9 +155,25 @@ public:
     std::shared_ptr<PCSAFTStateNative> state(double t, vector<double> x, int phase,
         bool has_p, double p, bool has_rho, double rho);
     size_t ncomp() const;
+    bool has_ionic() const;
+    const vector<int>& cation_indices() const;
+    const vector<int>& anion_indices() const;
+    const vector<int>& solvent_indices() const;
+    const vector<int>& pair_cation_indices() const;
+    const vector<int>& pair_anion_indices() const;
+    const vector<int>& pair_nu_cation() const;
+    const vector<int>& pair_nu_anion() const;
 
 private:
     add_args args_;
+    bool has_ionic_;
+    vector<int> cation_indices_;
+    vector<int> anion_indices_;
+    vector<int> solvent_indices_;
+    vector<int> pair_cation_indices_;
+    vector<int> pair_anion_indices_;
+    vector<int> pair_nu_cation_;
+    vector<int> pair_nu_anion_;
 };
 
 double Z_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
@@ -168,7 +205,6 @@ vector<double> dXAdt_find(vector<double> delta_ij, double den,
 // helper functions
 inline bool IsNotZero (double x) {return x != 0.0;}
 double reduced_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs);
-double dielc_water(double t);
 double calc_water_sigma(double t);
 inline double calc_sigma(double t, double (*function)(double)){return function(t);} // this can allow us to accept a custom function for a temperature dependent sigma
  add_args single_component_args_cpp(int i, const add_args &cppargs);

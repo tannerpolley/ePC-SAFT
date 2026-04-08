@@ -21,7 +21,7 @@ from scripts._env import require_pcsaft_install
 require_pcsaft_install()
 
 from pcsaft.parameters import get_prop_dict
-from pcsaft import pcsaft_den
+from scripts._pcsaft_oop import pcsaft_den
 
 T_REF = 298.15
 P_REF = 1.0e5

@@ -3,30 +3,35 @@
 
 import math
 import numpy as np
-from scipy.optimize import least_squares
+from libc.math cimport cosh
+from libc.math cimport sinh
 from libcpp.vector cimport vector
 from libcpp.memory cimport shared_ptr
 from copy import deepcopy
 from . cimport pcsaft
 from .parameters import get_prop_dict
+from ._types import ActivityCoeffResult
 from ._types import FlashResult
 from ._types import InputError
-from ._types import MultiphaseLLEResult
 from ._types import PhaseResult
 from ._types import SolutionError
 from ._types import VaporizationResult
-from ._types import ion_labels_from_species
-from ._types import pair_labels_from_species
 from ._types import phase_to_int
 from ._types import vector_to_array
 
 
+cdef inline double _aly_lee(double t, double c0, double c1, double c2, double c3, double c4) noexcept:
+    return (c0 + c1 * (c2 / t / sinh(c2 / t)) ** 2 + c3 * (c4 / t / cosh(c4 / t)) ** 2) / 1000.0
+
+
 cdef class PCSAFTMixture:
+    """Native-backed PC-SAFT parameter model and state factory."""
     cdef shared_ptr[PCSAFTMixtureNative] _native
     cdef object _params
     cdef object _species
 
     def __init__(self, params=None, species=None):
+        """Create a mixture from a resolved parameter payload."""
         self._native = shared_ptr[PCSAFTMixtureNative]()
         self._params = None
         self._species = None
@@ -35,15 +40,17 @@ cdef class PCSAFTMixture:
 
     @classmethod
     def from_params(cls, params, species=None):
+        """Construct a mixture from an already-resolved parameter dict."""
         return cls(params=params, species=species)
 
     @classmethod
     def from_dataset(cls, dataset_name, species, x, T, user_options=None):
+        """Construct a mixture by resolving packaged dataset parameters."""
         params = get_prop_dict(dataset_name, species, x, T, user_options=user_options)
         return cls(params=params, species=species)
 
     cdef void _init_from_params(self, params, species=None):
-        params = deepcopy(params)
+        """Initialize the native mixture from a normalized parameter payload."""
         params = check_association(params)
         cppargs = create_struct(params)
         self._native = shared_ptr[PCSAFTMixtureNative](new PCSAFTMixtureNative(cppargs))
@@ -56,26 +63,32 @@ cdef class PCSAFTMixture:
 
     @property
     def species(self):
+        """Return the species labels in the mixture order."""
         return list(self._species)
 
     @property
     def parameters(self):
+        """Return a deep copy of the resolved parameter payload."""
         return deepcopy(self._params)
 
     @property
     def ncomp(self):
+        """Return the number of components in the mixture."""
         return int(self._native.get().ncomp())
 
     def state(self, T, x, P=None, rho=None, phase="liq"):
+        """Create an immutable thermodynamic state for the mixture."""
         if (P is None) == (rho is None):
             raise InputError("Provide exactly one of P or rho when constructing a state.")
         return PCSAFTState(self, T, x, P=P, rho=rho, phase=phase)
 
     def __repr__(self):
+        """Return a short debugging representation of the mixture."""
         return f"PCSAFTMixture(ncomp={self.ncomp}, species={self._species})"
 
 
 cdef class PCSAFTState:
+    """Immutable thermodynamic state bound to one mixture."""
     cdef shared_ptr[PCSAFTStateNative] _native
     cdef object _mixture
     cdef object _x
@@ -85,10 +98,11 @@ cdef class PCSAFTState:
     cdef int _phase
 
     def __init__(self, mixture, T, x, P=None, rho=None, phase="liq"):
+        """Create a state with exactly one intensive variable fixed."""
         if not isinstance(mixture, PCSAFTMixture):
             raise InputError("mixture must be a PCSAFTMixture instance.")
         cdef PCSAFTMixture mix = mixture
-        x, params = ensure_numpy_input(x, mixture.parameters)
+        x, params = ensure_numpy_input(x, mix._params)
         # ensure_numpy_input may normalize a scalar mixture parameter path, but the
         # state should retain the original mixture data unchanged.
         phase_num = phase_to_int(phase)
@@ -120,54 +134,70 @@ cdef class PCSAFTState:
 
     @property
     def mixture(self):
+        """Return the parent mixture."""
         return self._mixture
 
     @property
     def T(self):
+        """Return the state temperature in kelvin."""
         return self._T
 
     @property
     def x(self):
+        """Return the state composition as a NumPy array."""
         return np.asarray(self._x, dtype=float)
 
     @property
     def phase(self):
+        """Return the native liquid/vapor phase flag."""
         return self._phase
 
     def pressure(self):
+        """Return the pressure of the bound state."""
         return float(self._native.get().pressure())
 
     def density(self):
+        """Return the density of the bound state."""
         return float(self._native.get().density())
 
     def Z(self):
+        """Return the compressibility factor."""
         return float(self._native.get().Z())
 
     def a_res(self):
+        """Return the residual Helmholtz energy."""
         return float(self._native.get().a_res())
 
     def dadt(self):
+        """Return the temperature derivative of the residual Helmholtz energy."""
         return float(self._native.get().dadt())
 
     def h_res(self):
+        """Return the residual enthalpy."""
         return float(self._native.get().h_res())
 
     def s_res(self):
+        """Return the residual entropy."""
         return float(self._native.get().s_res())
 
     def g_res(self):
+        """Return the residual Gibbs energy."""
         return float(self._native.get().g_res())
 
     def mu_res(self):
+        """Return the residual chemical potentials."""
         return vector_to_array(self._native.get().mu_res())
 
     def gamma(self):
+        """Return activity coefficients from the residual chemical potentials."""
         return vector_to_array(self._native.get().gamma())
 
     def lnfugcoef(self):
+        """Return logarithmic fugacity coefficients."""
         return vector_to_array(self._native.get().lnfugcoef())
 
     def lnfugcoef_terms(self):
+        """Return the term-by-term fugacity coefficient decomposition."""
         flat = vector_to_array(self._native.get().lnfugcoef_terms())
         ncomp = int(self._x.size)
         expected = 20 * ncomp + 25
@@ -224,25 +254,66 @@ cdef class PCSAFTState:
         }
 
     def dielectric_eval(self):
+        """Return the dielectric model evaluation for the current state."""
         flat = vector_to_array(self._native.get().dielectric_eval())
         return flat[0], flat[1:]
 
     def osmoticC(self):
+        """Return the osmotic coefficient."""
         return np.asarray([self._native.get().osmoticC()], dtype=float)
 
+    def actcoeff(self, species=None, solvent=None):
+        """Return a bundled activity-coefficient result for the state."""
+        species = self._mixture.species if species is None else [str(s) for s in species]
+        if len(species) != self._x.size:
+            raise InputError("species length ({}) must match composition length ({}).".format(len(species), self._x.size))
+        has_solvent_override, solvent_index = _resolve_solvent_override(self._mixture, species, solvent)
+        cdef bint has_solvent_override_c = bool(has_solvent_override)
+        cdef int solvent_index_c = int(solvent_index)
+        cdef ActivityCoeffNative out = self._native.get().actcoeff(has_solvent_override_c, solvent_index_c)
+        pair_cat = np.asarray(out.pair_cation_indices, dtype=int)
+        pair_an = np.asarray(out.pair_anion_indices, dtype=int)
+        pair_labels = tuple(species[int(ic)] + species[int(ia)] for ic, ia in zip(pair_cat.tolist(), pair_an.tolist()))
+        ion_idx = np.sort(np.unique(np.concatenate([np.asarray(out.cation_indices, dtype=int), np.asarray(out.anion_indices, dtype=int)])))
+        ion_labels = tuple(species[int(i)] for i in ion_idx.tolist())
+        return ActivityCoeffResult(
+            species=tuple(species),
+            component_gamma=np.asarray(out.gamma_components, dtype=float),
+            gsolv_values=np.asarray(out.gsolv, dtype=float),
+            gamma_mean_ionic_x_values=np.asarray(out.gamma_mean_ionic_x, dtype=float),
+            gamma_mean_ionic_m_values=np.asarray(out.gamma_mean_ionic_m, dtype=float),
+            pair_labels=pair_labels,
+            ion_labels=ion_labels,
+            ion_indices=ion_idx,
+            cation_indices=np.asarray(out.cation_indices, dtype=int),
+            anion_indices=np.asarray(out.anion_indices, dtype=int),
+            solvent_indices=np.asarray(out.solvent_indices, dtype=int),
+            pair_cation_indices=pair_cat,
+            pair_anion_indices=pair_an,
+            pair_nu_cation=np.asarray(out.pair_nu_cation, dtype=int),
+            pair_nu_anion=np.asarray(out.pair_nu_anion, dtype=int),
+            pair_molality=np.asarray(out.pair_molality, dtype=float),
+            pair_conversion_factor=np.asarray(out.pair_conversion_factor, dtype=float),
+            solvent_index=int(out.solvent_index),
+            osmotic_c=float(out.osmotic_c),
+        )
+
     def breakdown(self, species=None):
+        """Return a diagnostic dictionary of the main state properties."""
+        cdef PCSAFTMixture mix = self._mixture
         species = self._mixture.species if species is None else species
-        z = np.asarray(self._mixture.parameters.get("z", []), dtype=float).flatten()
+        z = np.asarray(mix._params.get("z", []), dtype=float).flatten()
         has_ions = bool(np.any(np.abs(z) > 1e-12))
         terms = self.lnfugcoef_terms()
         lnfugcoef = self.lnfugcoef()
         gamma = np.exp(lnfugcoef)
         if has_ions:
+            act = self.actcoeff(species=species)
             dielectric_eval = self.dielectric_eval()
-            osmoticC = self.osmoticC()
-            miac_m = self.miac_m(species=species)
-            miac = self.miac(species=species)
-            gsolv = self.gsolv(species=species)
+            osmoticC = np.asarray([act.osmotic_c], dtype=float)
+            miac_m = act.mean_ionic_m()
+            miac = act.mean_ionic_x()
+            gsolv = act.ion()
         else:
             dielectric_eval = None
             osmoticC = None
@@ -272,37 +343,19 @@ cdef class PCSAFTState:
         }
 
     def miac_m(self, species=None):
-        species = self._mixture.species if species is None else species
-        values = vector_to_array(self._native.get().miac_m())
-        labels = pair_labels_from_species(self._mixture.parameters, species)
-        if values.size != len(labels):
-            raise SolutionError("Unexpected miac_m payload size: expected {}, got {}.".format(len(labels), int(values.size)))
-        return {label: float(value) for label, value in zip(labels, values)}
+        """Return mean-ionic activity coefficients on the molality basis."""
+        return self.actcoeff(species=species).mean_ionic_m()
 
     def miac(self, species=None):
-        species = self._mixture.species if species is None else species
-        values = vector_to_array(self._native.get().miac())
-        labels = pair_labels_from_species(self._mixture.parameters, species)
-        if values.size != len(labels):
-            raise SolutionError("Unexpected miac payload size: expected {}, got {}.".format(len(labels), int(values.size)))
-        return {label: float(value) for label, value in zip(labels, values)}
+        """Return mean-ionic activity coefficients on the mole-fraction basis."""
+        return self.actcoeff(species=species).mean_ionic_x()
 
     def gsolv(self, species=None):
-        species = self._mixture.species if species is None else species
-        values = vector_to_array(self._native.get().gsolv())
-        labels = ion_labels_from_species(self._mixture.parameters, species)
-        if values.size != self._x.size:
-            raise SolutionError("Unexpected gsolv payload size: expected {}, got {}.".format(self._x.size, int(values.size)))
-        z = np.asarray(self._mixture.parameters.get("z", []), dtype=float).flatten()
-        ion_idx = np.where(np.abs(z) > 1e-12)[0]
-        if len(labels) != len(ion_idx):
-            raise SolutionError("Unexpected gsolv ion label size: expected {}, got {}.".format(len(ion_idx), len(labels)))
-        result = {}
-        for idx, label in zip(ion_idx, labels):
-            result[label] = float(values[idx])
-        return result
+        """Return ion solvation free-energy values keyed by species."""
+        return self.actcoeff(species=species).ion()
 
     def flashTQ(self, q, p_guess=None):
+        """Solve a temperature-quality flash at the state temperature."""
         if p_guess is None:
             out = self._native.get().flashTQ(float(q), False, 0.0)
         else:
@@ -321,6 +374,7 @@ cdef class PCSAFTState:
         return FlashResult(out.value, phases, "TQ")
 
     def flashPQ(self, p, q, t_guess=None):
+        """Solve a pressure-quality flash with an optional temperature guess."""
         if t_guess is None:
             out = self._native.get().flashPQ(float(p), float(q), False, 0.0)
         else:
@@ -339,6 +393,7 @@ cdef class PCSAFTState:
         return FlashResult(out.value, phases, "PQ")
 
     def Hvap(self, p_guess=None):
+        """Return the vaporization pressure for the current mixture state."""
         if p_guess is None:
             out = self._native.get().Hvap(False, 0.0)
         else:
@@ -346,16 +401,22 @@ cdef class PCSAFTState:
         return VaporizationResult(out.value, out.pressure)
 
     def cp(self, aly_lee_params):
+        """Estimate the isobaric heat capacity using an Aly-Lee fit."""
+        cdef PCSAFTMixture mix = self._mixture
         aly_lee_params = np.asarray(aly_lee_params, dtype=float).flatten()
         if aly_lee_params.size != 5:
             raise InputError("aly_lee_params must have length 5.")
-        cdef PCSAFTMixture mix = self._mixture
-        cdef add_args cppargs = create_struct(mix.parameters)
+        cdef double c0 = float(aly_lee_params[0])
+        cdef double c1 = float(aly_lee_params[1])
+        cdef double c2 = float(aly_lee_params[2])
+        cdef double c3 = float(aly_lee_params[3])
+        cdef double c4 = float(aly_lee_params[4])
+        cdef add_args cppargs = create_struct(check_association(mix._params))
         cdef object x = np.asarray(self._x, dtype=float)
         cdef double t = self._T
         cdef double rho = self.density()
         cdef int ph = 0 if rho > 900 else 1
-        cdef double cp_ideal = aly_lee(t, aly_lee_params)
+        cdef double cp_ideal = _aly_lee(t, c0, c1, c2, c3, c4)
         cdef double p = p_cpp(t, rho, x, cppargs)
         cdef double rho0 = _pcsaft_den_checked(t - 0.001, p, x, ph, cppargs)
         cdef double hres0 = hres_cpp(t - 0.001, rho0, x, cppargs)
@@ -364,10 +425,8 @@ cdef class PCSAFTState:
         cdef double dhdt = (hres1 - hres0) / 0.002
         return float(cp_ideal + dhdt)
 
-    def multiphase_lle(self, z_feed, species=None, options=None):
-        return MultiphaseLLEResult.from_payload(_pcsaft_multiphase_lle_impl(self._T, self.pressure() if self._P is None else self._P, z_feed, self._mixture.parameters, species or self._mixture.species, options=options))
-
     def __repr__(self):
+        """Return a short debugging representation of the state."""
         return f"PCSAFTState(T={self._T}, phase={self._phase}, x={self._x})"
 
 
@@ -394,6 +453,7 @@ def check_input(x, vars):
             raise InputError('{} must be <= 1 and >= 0. {} = {}'.format('Q', 'Q', vars['Q']))
 
 def check_association(params):
+    params = deepcopy(params)
     if ('e_assoc' in params) and ('vol_a' not in params):
         raise InputError('e_assoc was given, but not vol_a.')
     elif ('vol_a' in params) and ('e_assoc' not in params):
@@ -478,2122 +538,32 @@ def _safe_unit_log(values, floor=1e-300):
     return np.log(np.maximum(vals, floor))
 
 
-def _softmax(u):
-    u = np.asarray(u, dtype=float)
-    if u.size == 0:
-        return u
-    um = float(np.max(u))
-    ex = np.exp(np.clip(u - um, -700.0, 700.0))
-    s = float(np.sum(ex))
-    if s <= 0.0 or (not np.isfinite(s)):
-        return np.full(u.shape, 1.0/u.size, dtype=float)
-    return ex/s
-
-
-def _sigmoid(v):
-    if v >= 0:
-        e = math.exp(-v)
-        return 1.0/(1.0 + e)
-    e = math.exp(v)
-    return e/(1.0 + e)
-
-
-def _logit(v):
-    vv = min(max(v, 1e-12), 1.0 - 1e-12)
-    return math.log(vv/(1.0 - vv))
-
-
-def _split_ion_groups(z, z_feed):
-    z = np.asarray(z, dtype=float).flatten()
-    z_feed = np.asarray(z_feed, dtype=float).flatten()
-    if z.size != z_feed.size:
-        raise InputError("z and z_feed must have the same length.")
-    charged_idx = np.where(np.abs(z) > 1e-12)[0]
-    if charged_idx.size == 0:
-        raise InputError("pcsaft_multiphase_lle requires ionic species (non-zero z).")
-    z_ch = z[charged_idx]
-    cat_local = [int(i) for i in np.where(z_ch > 0.0)[0]]
-    an_local = [int(i) for i in np.where(z_ch < 0.0)[0]]
-    if len(cat_local) == 0 or len(an_local) == 0:
-        raise InputError("pcsaft_multiphase_lle needs at least one cation and one anion.")
-    cat_local = sorted(cat_local, key=lambda i: -float(z_feed[charged_idx[i]]))
-    an_local = sorted(an_local, key=lambda i: -float(z_feed[charged_idx[i]]))
-    return {
-        "charged_idx": charged_idx.astype(int),
-        "cat_local": cat_local,
-        "an_local": an_local,
-    }
-
-
-def _build_e_matrix(z, z_feed, species=None):
-    """
-    Build Ascani 2022 E matrix for independent ionic pairs.
-    Returns (E_matrix, info_dict).
-    """
-    split = _split_ion_groups(z, z_feed)
-    charged_idx = split["charged_idx"]
-    cat_local = split["cat_local"]
-    an_local = split["an_local"]
-    z = np.asarray(z, dtype=float).flatten()
-    z_ch = z[charged_idx]
-    n_ch = int(charged_idx.size)
-    n_cat = len(cat_local)
-    n_an = len(an_local)
-    E = np.zeros((n_ch - 1, n_ch), dtype=float)
-
-    if n_cat <= n_an:
-        for k in range(n_an):
-            E[k, cat_local[0]] = 1.0/abs(z_ch[cat_local[0]])
-            E[k, an_local[k]] = 1.0/abs(z_ch[an_local[k]])
-        if n_cat > 1:
-            for k in range(n_cat - 1):
-                row = n_an + k
-                E[row, cat_local[k + 1]] = 1.0/abs(z_ch[cat_local[k + 1]])
-                E[row, an_local[k]] = 1.0/abs(z_ch[an_local[k]])
+def _resolve_solvent_override(mixture, species, solvent):
+    cdef PCSAFTMixture mix = mixture
+    z = np.asarray(mix._params.get("z", []), dtype=float).flatten()
+    if z.size == 0:
+        if solvent is not None:
+            raise InputError("solvent override requires ionic parameters with params['z'].")
+        return False, -1
+    neutral_idx = np.where(np.abs(z) <= 1e-12)[0]
+    if neutral_idx.size == 0:
+        if solvent is not None:
+            raise InputError("solvent override requires at least one neutral solvent species.")
+        return False, -1
+    if solvent is None:
+        return False, -1
+    if isinstance(solvent, (int, np.integer)):
+        idx = int(solvent)
     else:
-        for k in range(n_cat):
-            E[k, an_local[0]] = 1.0/abs(z_ch[an_local[0]])
-            E[k, cat_local[k]] = 1.0/abs(z_ch[cat_local[k]])
-        if n_an > 1:
-            for k in range(n_an - 1):
-                row = n_cat + k
-                E[row, an_local[k + 1]] = 1.0/abs(z_ch[an_local[k + 1]])
-                E[row, cat_local[k]] = 1.0/abs(z_ch[cat_local[k]])
-
-    rank = int(np.linalg.matrix_rank(E))
-    if rank != n_ch - 1:
-        raise SolutionError("Failed to construct full-rank E matrix. rank={} expected={}.".format(rank, n_ch - 1))
-
-    if species is None:
-        species = [str(i) for i in range(z.size)]
-
-    ion_pair_rows = []
-    for r in range(E.shape[0]):
-        cols = np.where(np.abs(E[r]) > 0.0)[0]
-        ion_pair_rows.append({
-            "row": int(r),
-            "charged_local_indices": [int(c) for c in cols.tolist()],
-            "species_indices": [int(charged_idx[c]) for c in cols.tolist()],
-            "species": [species[int(charged_idx[c])] for c in cols.tolist()],
-            "weights": [float(E[r, c]) for c in cols.tolist()],
-        })
-
-    info = {
-        "charged_idx": charged_idx.astype(int),
-        "charged_species": [species[int(i)] for i in charged_idx.tolist()],
-        "rank": rank,
-        "ion_pair_rows": ion_pair_rows,
-    }
-    return E, info
-
-
-def _trial_x_from_n_xi(n_neut, xi, neutral_idx, charged_idx, E, ncomp):
-    x = np.zeros(ncomp, dtype=float)
-    n_neut = np.asarray(n_neut, dtype=float).flatten()
-    xi = np.asarray(xi, dtype=float).flatten()
-    if E.size == 0:
-        n_ch = np.zeros(len(charged_idx), dtype=float)
-    else:
-        n_ch = E.T.dot(xi)
-    n_ch = np.maximum(n_ch, 0.0)
-    denom = float(np.sum(n_neut) + np.sum(n_ch))
-    if denom <= 0.0:
-        raise SolutionError("Trial composition denominator is non-positive.")
-    if len(neutral_idx) > 0:
-        x[np.asarray(neutral_idx, dtype=int)] = n_neut/denom
-    if len(charged_idx) > 0:
-        x[np.asarray(charged_idx, dtype=int)] = n_ch/denom
-    x_sum = float(np.sum(x))
-    if x_sum <= 0.0:
-        raise SolutionError("Trial composition sum is non-positive.")
-    return x/x_sum
-
-
-def _phase_state_liq(t, p, x, params):
-    cppargs = create_struct(params)
-    rho = float(den_cpp(t, p, x, 0, cppargs))
-    lnfugcoef = np.asarray(lnfug_cpp(t, rho, x, cppargs), dtype=float)
-    lnfug = lnfugcoef + _safe_unit_log(x) + math.log(float(p))
-    return {"rho": rho, "lnfugcoef": lnfugcoef, "lnfug": lnfug}
-
-
-def _tpdf_value(t, p, x_trial, lnfug_feed, params):
-    state_trial = _phase_state_liq(t, p, x_trial, params)
-    val = float(np.dot(x_trial, state_trial["lnfug"] - lnfug_feed))
-    return val, state_trial
-
-
-def _find_tpdf_seed(t, p, z_feed, params, neutral_idx, charged_idx, E, options):
-    global_trials = int(options.get("tpdf_global_trials", 4000))
-    local_trials = int(options.get("tpdf_local_trials", 2000))
-    if global_trials <= 0:
-        raise ValueError("tpdf_global_trials must be positive.")
-    if local_trials < 0:
-        raise ValueError("tpdf_local_trials must be >= 0.")
-
-    rng = np.random.default_rng(int(options.get("random_seed", 12345)))
-    ncomp = int(len(z_feed))
-    feed_state = _phase_state_liq(t, p, z_feed, params)
-    lnfug_feed = feed_state["lnfug"]
-
-    n_neut_dim = len(neutral_idx)
-    xi_dim = len(charged_idx) - 1
-    best_val = np.inf
-    best_state = None
-    best_x = None
-    best_n = None
-    best_xi = None
-
-    for _ in range(global_trials):
-        n_neut = rng.random(n_neut_dim) + 1e-14
-        xi = rng.random(xi_dim) + 1e-14
-        try:
-            x_trial = _trial_x_from_n_xi(n_neut, xi, neutral_idx, charged_idx, E, ncomp)
-            tpdf, state = _tpdf_value(t, p, x_trial, lnfug_feed, params)
-        except Exception:
-            continue
-        if np.isfinite(tpdf) and (tpdf < best_val):
-            best_val = tpdf
-            best_state = state
-            best_x = x_trial
-            best_n = n_neut.copy()
-            best_xi = xi.copy()
-
-    if best_x is None:
-        raise SolutionError("TPDF search failed to find a valid trial phase.")
-
-    if local_trials > 0:
-        n_scale = np.maximum(best_n, 1e-3)
-        xi_scale = np.maximum(best_xi, 1e-3)
-        step_n = 0.30*n_scale
-        step_xi = 0.30*xi_scale
-        for itr in range(local_trials):
-            cand_n = np.maximum(best_n + rng.normal(0.0, step_n, size=n_neut_dim), 1e-14)
-            cand_xi = np.maximum(best_xi + rng.normal(0.0, step_xi, size=xi_dim), 1e-14)
-            try:
-                x_trial = _trial_x_from_n_xi(cand_n, cand_xi, neutral_idx, charged_idx, E, ncomp)
-                tpdf, state = _tpdf_value(t, p, x_trial, lnfug_feed, params)
-            except Exception:
-                tpdf = np.inf
-            if np.isfinite(tpdf) and (tpdf < best_val):
-                best_val = tpdf
-                best_state = state
-                best_x = x_trial
-                best_n = cand_n
-                best_xi = cand_xi
-            damp = 0.995 if itr < (local_trials//2) else 0.999
-            step_n *= damp
-            step_xi *= damp
-
-    return {
-        "tpdf_min": float(best_val),
-        "seed_x": np.asarray(best_x, dtype=float),
-        "seed_state": best_state,
-        "feed_state": feed_state,
-        "lnfug_feed": lnfug_feed,
-    }
-
-
-def _residual_two_phase(y, t, p, z_feed, params, z, E, neutral_idx, charged_idx, beta_bounds, charge_weight=1.0, anchor=None):
-    ncomp = int(len(z_feed))
-    nres = ncomp + (1 if anchor is not None else 0)
-    beta_lo, beta_hi = float(beta_bounds[0]), float(beta_bounds[1])
-    x1_logits = np.asarray(y[:ncomp - 1], dtype=float)
-    x1 = _softmax(np.concatenate([x1_logits, np.zeros(1, dtype=float)]))
-    beta = beta_lo + (beta_hi - beta_lo)*_sigmoid(float(y[ncomp - 1]))
-    denom = (1.0 - beta)
-    penalty = np.full(nres, 1e6, dtype=float)
-    if denom <= 0.0:
-        return penalty
-
-    x2 = (z_feed - beta*x1)/denom
-    if np.any(~np.isfinite(x2)):
-        return penalty
-    if np.any(x2 <= 1e-15):
-        return penalty
-    if abs(float(np.sum(x2)) - 1.0) > 1e-8:
-        return penalty
-
-    try:
-        st1 = _phase_state_liq(t, p, x1, params)
-        st2 = _phase_state_liq(t, p, x2, params)
-    except Exception:
-        return penalty
-
-    res_neutral = st1["lnfug"][neutral_idx] - st2["lnfug"][neutral_idx]
-    delta_ch = st1["lnfug"][charged_idx] - st2["lnfug"][charged_idx]
-    res_ionic = E.dot(delta_ch)
-    res_charge = np.array([float(charge_weight*np.dot(z, x1))], dtype=float)
-    res = np.concatenate([res_neutral, res_ionic, res_charge])
-    if anchor is not None:
-        idx = int(anchor["component"])
-        target = float(anchor["target"])
-        weight = float(anchor.get("weight", 1.0))
-        res = np.concatenate([res, np.array([weight*(x1[idx] - target)], dtype=float)])
-    if res.size != nres:
-        out = np.full(nres, 1e6, dtype=float)
-        out[:min(nres, res.size)] = res[:min(nres, res.size)]
-        return out
-    return res
-
-
-def _phase_equilibrium_residual(x1, x2, z, E, neutral_idx, charged_idx, lnfug1, lnfug2):
-    dlnf = np.asarray(lnfug1, dtype=float) - np.asarray(lnfug2, dtype=float)
-    res_neutral = dlnf[neutral_idx]
-    res_ionic = E.dot(dlnf[charged_idx])
-    res_charge = np.array([float(np.dot(z, x1))], dtype=float)
-    return np.concatenate([res_neutral, res_ionic, res_charge])
-
-
-def _solve_two_phase_lle(t, p, z_feed, params, z, E, neutral_idx, charged_idx, seed_x, options):
-    solver_tol = float(options.get("solver_tol", 1e-9))
-    max_nfev = int(options.get("max_nfev", 200))
-    beta_bounds = options.get("beta_bounds", (1e-8, 1.0 - 1e-8))
-    if len(beta_bounds) != 2:
-        raise ValueError("beta_bounds must be a two-element tuple.")
-    beta_lo, beta_hi = float(beta_bounds[0]), float(beta_bounds[1])
-    charge_weight = float(options.get("charge_weight", 1000.0))
-    charge_tol = float(options.get("charge_tol", 1e-6))
-    mass_balance_tol = float(options.get("mass_balance_tol", 1e-8))
-    split_tol = float(options.get("split_tol", 1e-3))
-    solver_accept_norm = float(options.get("solver_accept_norm", 2e-1))
-    if not (0.0 < beta_lo < beta_hi < 1.0):
-        raise ValueError("beta_bounds must satisfy 0 < low < high < 1.")
-
-    ncomp = int(len(z_feed))
-    rng = np.random.default_rng(int(options.get("random_seed", 12345)))
-    starts = []
-    starts.append(np.asarray(seed_x, dtype=float))
-    starts.append(np.asarray(z_feed, dtype=float))
-    starts.append(0.8*np.asarray(seed_x, dtype=float) + 0.2*np.asarray(z_feed, dtype=float))
-    starts.append(0.2*np.asarray(seed_x, dtype=float) + 0.8*np.asarray(z_feed, dtype=float))
-    for _ in range(8):
-        blend = float(rng.uniform(0.1, 0.9))
-        jitter = rng.random(ncomp) + 1e-10
-        starts.append(blend*np.asarray(seed_x, dtype=float) + (1.0 - blend)*jitter/np.sum(jitter))
-
-    candidates = []
-    for x_start in starts:
-        x_start = np.maximum(x_start, 1e-12)
-        x_start = x_start/np.sum(x_start)
-        beta0 = 0.5*(beta_lo + beta_hi)
-        y0 = np.zeros(ncomp, dtype=float)
-        y0[:ncomp - 1] = np.log(np.maximum(x_start[:ncomp - 1], 1e-15)/max(float(x_start[-1]), 1e-15))
-        frac = (beta0 - beta_lo)/(beta_hi - beta_lo)
-        y0[ncomp - 1] = _logit(frac)
-        try:
-            sol = least_squares(
-                _residual_two_phase,
-                y0,
-                args=(t, p, z_feed, params, z, E, neutral_idx, charged_idx, (beta_lo, beta_hi), charge_weight, None),
-                method="trf",
-                ftol=solver_tol,
-                xtol=solver_tol,
-                gtol=solver_tol,
-                max_nfev=max_nfev,
-            )
-        except Exception:
-            continue
-
-        y = sol.x
-        x1 = _softmax(np.concatenate([y[:ncomp - 1], np.zeros(1, dtype=float)]))
-        beta = beta_lo + (beta_hi - beta_lo)*_sigmoid(float(y[ncomp - 1]))
-        if beta <= 0.0 or beta >= 1.0:
-            continue
-        x2 = (z_feed - beta*x1)/(1.0 - beta)
-        if np.any(~np.isfinite(x2)):
-            continue
-        if np.any(x2 <= 1e-15):
-            continue
-        if abs(float(np.sum(x2)) - 1.0) > 1e-8:
-            continue
-        try:
-            st1 = _phase_state_liq(t, p, x1, params)
-            st2 = _phase_state_liq(t, p, x2, params)
-            residual = _phase_equilibrium_residual(x1, x2, z, E, neutral_idx, charged_idx, st1["lnfug"], st2["lnfug"])
-        except Exception:
-            continue
-
-        candidates.append({
-            "sol": sol,
-            "x1": x1,
-            "x2": x2,
-            "beta": float(beta),
-            "st1": st1,
-            "st2": st2,
-            "residual": residual,
-            "residual_norm": float(np.linalg.norm(residual)),
-            "split_norm": float(np.max(np.abs(x1 - x2))),
-        })
-
-    if len(candidates) == 0:
-        return {
-            "converged": False,
-            "status": -1,
-            "message": "least_squares did not produce a candidate solution.",
-            "residual_norm": np.inf,
-            "phases": [],
-            "n_phases": 2,
-        }
-
-    best_res = min(c["residual_norm"] for c in candidates)
-    split_candidates = [
-        c for c in candidates
-        if (c["split_norm"] > 1e-3 and c["residual_norm"] <= max(1e-3, 50.0*best_res))
-    ]
-    if len(split_candidates) > 0:
-        best_cand = min(split_candidates, key=lambda c: (c["residual_norm"], c["sol"].cost))
-    else:
-        best_cand = min(candidates, key=lambda c: (c["residual_norm"], c["sol"].cost))
-
-    # If unconstrained solve falls back to a trivial split, try a seeded anchored solve.
-    if best_cand["split_norm"] <= 1e-4:
-        split_delta = np.abs(np.asarray(seed_x, dtype=float) - np.asarray(z_feed, dtype=float))
-        if split_delta.size > 0 and float(np.max(split_delta)) > 1e-8:
-            anchor_idx = int(np.argmax(split_delta))
-            anchor = {"component": anchor_idx, "target": float(seed_x[anchor_idx]), "weight": 1.0}
-            anchored_candidates = []
-            for x_start in starts:
-                x_start = np.maximum(np.asarray(x_start, dtype=float), 1e-12)
-                x_start = x_start/np.sum(x_start)
-                beta0 = 0.5*(beta_lo + beta_hi)
-                y0 = np.zeros(ncomp, dtype=float)
-                y0[:ncomp - 1] = np.log(np.maximum(x_start[:ncomp - 1], 1e-15)/max(float(x_start[-1]), 1e-15))
-                frac = (beta0 - beta_lo)/(beta_hi - beta_lo)
-                y0[ncomp - 1] = _logit(frac)
-                try:
-                    sol = least_squares(
-                        _residual_two_phase,
-                        y0,
-                        args=(t, p, z_feed, params, z, E, neutral_idx, charged_idx, (beta_lo, beta_hi), charge_weight, anchor),
-                        method="trf",
-                        ftol=solver_tol,
-                        xtol=solver_tol,
-                        gtol=solver_tol,
-                        max_nfev=max_nfev,
-                    )
-                except Exception:
-                    continue
-
-                y = sol.x
-                x1 = _softmax(np.concatenate([y[:ncomp - 1], np.zeros(1, dtype=float)]))
-                beta = beta_lo + (beta_hi - beta_lo)*_sigmoid(float(y[ncomp - 1]))
-                if beta <= 0.0 or beta >= 1.0:
-                    continue
-                x2 = (z_feed - beta*x1)/(1.0 - beta)
-                if np.any(~np.isfinite(x2)):
-                    continue
-                if np.any(x2 <= 1e-15):
-                    continue
-                if abs(float(np.sum(x2)) - 1.0) > 1e-8:
-                    continue
-                try:
-                    st1 = _phase_state_liq(t, p, x1, params)
-                    st2 = _phase_state_liq(t, p, x2, params)
-                    residual = _phase_equilibrium_residual(x1, x2, z, E, neutral_idx, charged_idx, st1["lnfug"], st2["lnfug"])
-                except Exception:
-                    continue
-                anchored_candidates.append({
-                    "sol": sol,
-                    "x1": x1,
-                    "x2": x2,
-                    "beta": float(beta),
-                    "st1": st1,
-                    "st2": st2,
-                    "residual": residual,
-                    "residual_norm": float(np.linalg.norm(residual)),
-                    "split_norm": float(np.max(np.abs(x1 - x2))),
-                })
-
-            anchored_candidates = [c for c in anchored_candidates if c["split_norm"] > 1e-4]
-            if len(anchored_candidates) > 0:
-                best_cand = min(anchored_candidates, key=lambda c: (c["residual_norm"], c["sol"].cost))
-    best = best_cand["sol"]
-    x1 = best_cand["x1"]
-    x2 = best_cand["x2"]
-    beta = best_cand["beta"]
-    st1 = best_cand["st1"]
-    st2 = best_cand["st2"]
-    residual = best_cand["residual"]
-    residual_norm = best_cand["residual_norm"]
-    tol_ok = residual_norm <= max(solver_accept_norm, 1e3*solver_tol)
-    charge_ok = abs(float(np.dot(z, x1))) <= charge_tol and abs(float(np.dot(z, x2))) <= charge_tol
-    mb_ok = np.max(np.abs(z_feed - (beta*x1 + (1.0-beta)*x2))) <= mass_balance_tol
-    frac_ok = (beta > beta_lo) and (beta < beta_hi)
-    split_ok = best_cand["split_norm"] > split_tol
-    converged = bool(charge_ok and mb_ok and frac_ok and split_ok and tol_ok)
-
-    phases = [
-        {
-            "beta": float(beta),
-            "x": np.asarray(x1, dtype=float),
-            "rho": float(st1["rho"]),
-            "lnfugcoef": np.asarray(st1["lnfugcoef"], dtype=float),
-            "lnfug": np.asarray(st1["lnfug"], dtype=float),
-        },
-        {
-            "beta": float(1.0 - beta),
-            "x": np.asarray(x2, dtype=float),
-            "rho": float(st2["rho"]),
-            "lnfugcoef": np.asarray(st2["lnfugcoef"], dtype=float),
-            "lnfug": np.asarray(st2["lnfug"], dtype=float),
-        },
-    ]
-
-    return {
-        "converged": converged,
-        "status": int(best.status),
-        "message": str(best.message),
-        "residual_norm": residual_norm,
-        "phases": phases,
-        "n_phases": 2,
-        "solver_result": best,
-    }
-
-
-def _pcsaft_multiphase_lle_impl(t, p, z_feed, params, species, options=None):
-    """
-    Two-liquid-phase electrolyte flash using Ascani 2022-style mean-ionic conditions.
-
-    Parameters
-    ----------
-    t : float
-        Temperature (K)
-    p : float
-        Pressure (Pa)
-    z_feed : array_like
-        Overall species mole fractions (sum to 1), aligned with `species`.
-    params : dict
-        Standard PC-SAFT/ePC-SAFT parameter dictionary.
-    species : list[str]
-        Species names aligned with `z_feed`.
-    options : dict, optional
-        Solver controls:
-        - tpdf_global_trials (default 4000)
-        - tpdf_local_trials (default 2000)
-        - tpdf_tol (default -1e-8)
-        - beta_bounds (default (1e-8, 1-1e-8))
-        - solver_tol (default 1e-9)
-        - solver_accept_norm (default 2e-1)
-        - max_nfev (default 200)
-        - charge_weight (default 1000.0)
-        - charge_tol (default 1e-6)
-        - mass_balance_tol (default 1e-8)
-        - split_tol (default 1e-3)
-        - debug (default False)
-        - seed_x (optional external composition seed to override the internal TPDF seed)
-        - force_seed_solve (default False; if True and seed_x is provided, attempt the
-          two-phase solve even when the feed stability test reports a single liquid phase)
-
-    Returns
-    -------
-    dict
-        Structured result containing phase compositions, fractions, densities, fugacity
-        diagnostics, TPDF information, and E-matrix metadata.
-    """
-    if options is None:
-        options = {}
-    z_feed = np.asarray(z_feed, dtype=float).flatten()
-    if len(species) != z_feed.size:
-        raise InputError("`species` length ({}) must match z_feed length ({}).".format(len(species), z_feed.size))
-    check_input(z_feed, {"temperature": t, "pressure": p})
-
-    x_dummy, params = ensure_numpy_input(z_feed, params)
-    params = check_association(params)
-    z = np.asarray(params.get("z", []), dtype=float).flatten()
-    if z.size != z_feed.size:
-        raise InputError("params['z'] must be present and aligned with z_feed for pcsaft_multiphase_lle.")
-    if np.allclose(z, 0.0):
-        raise InputError("pcsaft_multiphase_lle requires ionic species (non-zero z).")
-
-    feed_charge = float(np.dot(z, z_feed))
-    if abs(feed_charge) > 1e-8:
-        raise InputError("Feed must be electroneutral. Sum(z_i*z_feed_i) = {}".format(feed_charge))
-
-    neutral_idx = np.where(np.abs(z) <= 1e-12)[0].astype(int)
-    split = _split_ion_groups(z, z_feed)
-    charged_idx = split["charged_idx"].astype(int)
-    if charged_idx.size < 2:
-        raise InputError("At least two charged species are required.")
-    E, e_info = _build_e_matrix(z, z_feed, species=species)
-
-    tpdf = _find_tpdf_seed(t, p, z_feed, params, neutral_idx, charged_idx, E, options)
-    tpdf_tol = float(options.get("tpdf_tol", -1e-8))
-    debug = bool(options.get("debug", False))
-    external_seed = options.get("seed_x", None)
-    force_seed_solve = bool(options.get("force_seed_solve", False))
-    seed_x = np.asarray(external_seed, dtype=float).flatten() if external_seed is not None else None
-    if seed_x is not None:
-        if seed_x.size != z_feed.size:
-            raise InputError("options['seed_x'] length ({}) must match z_feed length ({}).".format(seed_x.size, z_feed.size))
-        if np.any(seed_x <= 0.0):
-            raise InputError("options['seed_x'] must contain only positive entries.")
-        seed_x = seed_x/np.sum(seed_x)
-    if debug:
-        print("[DEBUG multiphase] tpdf_min =", tpdf["tpdf_min"], "tol =", tpdf_tol)
-
-    if tpdf["tpdf_min"] >= tpdf_tol and not (force_seed_solve and seed_x is not None):
-        st = tpdf["feed_state"]
-        return {
-            "n_phases": 1,
-            "phases": [{
-                "beta": 1.0,
-                "x": np.asarray(z_feed, dtype=float),
-                "rho": float(st["rho"]),
-                "lnfugcoef": np.asarray(st["lnfugcoef"], dtype=float),
-                "lnfug": np.asarray(st["lnfug"], dtype=float),
-            }],
-            "tpdf_min": float(tpdf["tpdf_min"]),
-            "tpdf_seed_x": np.asarray(tpdf["seed_x"], dtype=float),
-            "converged": True,
-            "status": 1,
-            "message": "Feed is stable (single liquid phase).",
-            "residual_norm": 0.0,
-            "e_matrix": np.asarray(E, dtype=float),
-            "ion_pair_rows": e_info["ion_pair_rows"],
-            "charged_species": e_info["charged_species"],
-            "charged_species_indices": e_info["charged_idx"],
-        }
-
-    solve = _solve_two_phase_lle(
-        t, p, z_feed, params, z, E, neutral_idx, charged_idx, seed_x if seed_x is not None else tpdf["seed_x"], options
-    )
-
-    result = {
-        "n_phases": int(solve["n_phases"]),
-        "phases": solve["phases"],
-        "tpdf_min": float(tpdf["tpdf_min"]),
-        "tpdf_seed_x": np.asarray(tpdf["seed_x"], dtype=float),
-        "converged": bool(solve["converged"]),
-        "status": int(solve["status"]),
-        "message": solve["message"],
-        "residual_norm": float(solve["residual_norm"]),
-        "e_matrix": np.asarray(E, dtype=float),
-        "ion_pair_rows": e_info["ion_pair_rows"],
-        "charged_species": e_info["charged_species"],
-        "charged_species_indices": e_info["charged_idx"],
-    }
-    return result
-
-
-def pcsaft_p(t, rho, x, params):
-    """
-    Calculate pressure.
-
-    Parameters
-    ----------
-    t : float
-        Temperature (K)
-    rho : float
-        Molar density (mol m\ :sup:`-3`)
-    x : ndarray, shape (n,)
-        Mole fractions of each component. It has a length of n, where n is
-        the number of components in the system.
-    params : dict
-        A dictionary containing PC-SAFT parameters that can be passed for
-        use in PC-SAFT:
-
-        m : ndarray, shape (n,)
-            Segment number for each component.
-        s : ndarray, shape (n,)
-            Segment diameter for each component. For ions this is the diameter of
-            the hydrated ion. Units of Angstrom.
-        e : ndarray, shape (n,)
-            Dispersion energy of each component. For ions this is the dispersion
-            energy of the hydrated ion. Units of K.
-        k_ij : ndarray, shape (n,n)
-            Binary interaction parameters between components in the mixture.
-            (dimensions: ncomp x ncomp)
-        e_assoc : ndarray, shape (n,)
-            Association energy of the associating components. For non associating
-            compounds this is set to 0. Units of K.
-        vol_a : ndarray, shape (n,)
-            Effective association volume of the associating components. For non
-            associating compounds this is set to 0.
-        dipm : ndarray, shape (n,)
-            Dipole moment of the polar components. For components where the dipole
-            term is not used this is set to 0. Units of Debye.
-        dip_num : ndarray, shape (n,)
-            The effective number of dipole functional groups on each component
-            molecule. Generally this is set to 1, but some implementations use this
-            as an adjustable parameter that is fit to data.
-        z : ndarray, shape (n,)
-            Charge number of the ions
-        dielc : ndarray, shape (n,)
-            Component dielectric constants used for electrolyte calculations.
-        MW : ndarray, shape (n,)
-            Molecular weights in kg/mol; required for non-water solvent
-            molality conversion.
-        osmotic_solvent_index : int, optional
-            Explicit solvent index for the molality basis. If omitted, the
-            method chooses a neutral component (z=0) automatically.
-        assoc_scheme : list, shape (n,)
-            The types of association sites for each component. Use `None` for molecules
-            without association sites. If a molecule has multiple association sites,
-            use a nested list for that component to specify the association scheme for
-            each site. The accepted association schemes are those given by Huang and
-            Radosz (1990): 1, 2A, 2B, 3A, 3B, 4A, 4B, 4C. If `e_assoc` and `vol_a` are
-            given but `assoc_scheme` is not, the 2B association scheme is assumed (which
-            would, for example, correspond to one hydroxyl functional group).
-
-    Returns
-    -------
-    P : float
-        Pressure (Pa)
-    """
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {'density':rho, 'temperature':t})
-    params = check_association(params)
-    cppargs = create_struct(params)
-    return p_cpp(t, rho, x, cppargs)
-
-
-def pcsaft_lnfugcoef(t, rho, x, params):
-    """
-    Calculate the natural logarithm of the fugacity coefficients for one phase of the system.
-
-    Parameters
-    ----------
-    t : float
-        Temperature (K)
-    rho : float
-        Molar density (mol m\ :sup:`-3`)
-    x : ndarray, shape (n,)
-        Mole fractions of each component. It has a length of n, where n is
-        the number of components in the system.
-    params : dict
-        A dictionary containing PC-SAFT parameters that can be passed for
-        use in PC-SAFT:
-
-        m : ndarray, shape (n,)
-            Segment number for each component.
-        s : ndarray, shape (n,)
-            Segment diameter for each component. For ions this is the diameter of
-            the hydrated ion. Units of Angstrom.
-        e : ndarray, shape (n,)
-            Dispersion energy of each component. For ions this is the dispersion
-            energy of the hydrated ion. Units of K.
-        k_ij : ndarray, shape (n,n)
-            Binary interaction parameters between components in the mixture.
-            (dimensions: ncomp x ncomp)
-        e_assoc : ndarray, shape (n,)
-            Association energy of the associating components. For non associating
-            compounds this is set to 0. Units of K.
-        vol_a : ndarray, shape (n,)
-            Effective association volume of the associating components. For non
-            associating compounds this is set to 0.
-        dipm : ndarray, shape (n,)
-            Dipole moment of the polar components. For components where the dipole
-            term is not used this is set to 0. Units of Debye.
-        dip_num : ndarray, shape (n,)
-            The effective number of dipole functional groups on each component
-            molecule. Generally this is set to 1, but some implementations use this
-            as an adjustable parameter that is fit to data.
-        z : ndarray, shape (n,)
-            Charge number of the ions
-        dielc : float
-            Dielectric constant of the medium to be used for electrolyte
-            calculations.
-        assoc_scheme : list, shape (n,)
-            The types of association sites for each component. Use `None` for molecules
-            without association sites. If a molecule has multiple association sites,
-            use a nested list for that component to specify the association scheme for
-            each site. The accepted association schemes are those given by Huang and
-            Radosz (1990): 1, 2A, 2B, 3A, 3B, 4A, 4B, 4C. If `e_assoc` and `vol_a` are
-            given but `assoc_scheme` is not, the 2B association scheme is assumed (which
-            would, for example, correspond to one hydroxyl functional group).
-
-    Returns
-    -------
-    lnfugcoef : ndarray, shape (n,)
-        Natural logarithm of the fugacity coefficients for each component.
-    """
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {'density':rho, 'temperature':t})
-    params = check_association(params)
-    cppargs = create_struct(params)
-    return np.asarray(lnfug_cpp(t, rho, x, cppargs))
-
-
-def pcsaft_lnfugcoef_terms(t, rho, x, params):
-    """
-    Calculate per-term residual chemical-potential contributions, per-term residual
-    compressibility-factor pieces, intermediate derivative pieces, and
-    contribution-resolved ln fugacity coefficients.
-
-    Returns
-    -------
-    dict
-        Keys map to arrays of shape (n,):
-        - mu_hc, mu_disp, mu_polar, mu_assoc, mu_ion, mu_born
-        - mu_total (alias: mu_res, mures)
-        - lnfugcoef_hc, lnfugcoef_disp, lnfugcoef_polar, lnfugcoef_assoc
-        - lnfugcoef_ion, lnfugcoef_born
-        - lnfugcoef_total (alias: lnfugcoef)
-        - dadx_hc, dadx_disp, dadx_polar, dadx_assoc, dadx_ion, dadx_born
-        Scalar keys:
-        - a_hc, a_disp, a_polar, a_assoc, a_ion, a_born
-        - sum_x_dadx_hc, sum_x_dadx_disp, sum_x_dadx_polar, sum_x_dadx_assoc
-        - sum_x_dadx_ion, sum_x_dadx_born
-        - z_raw_hc, z_raw_disp, z_raw_polar, z_raw_assoc, z_raw_ion, z_raw_born
-        - z_hc, z_disp, z_polar, z_assoc, z_ion, z_born
-        - z_total
-
-    Notes
-    -----
-    Contribution-resolved solvation and transfer energies should prefer the
-    contribution-level ``lnfugcoef_*`` terms over the raw ``mu_*`` terms.
-    """
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {'density':rho, 'temperature':t})
-    params = check_association(params)
-    cppargs = create_struct(params)
-
-    flat = np.asarray(lnfug_terms_cpp(t, rho, x, cppargs), dtype=float)
-    ncomp = int(np.asarray(x, dtype=float).size)
-    expected = 20 * ncomp + 25
-    if flat.size != expected:
-        raise SolutionError('Unexpected lnfug term payload size: expected {}, got {}.'.format(expected, int(flat.size)))
-
-    blocks = flat[:20 * ncomp].reshape((20, ncomp))
-    scalars = flat[20 * ncomp:]
-    out = {
-        'mu_hc': blocks[0],
-        'mu_disp': blocks[1],
-        'mu_polar': blocks[2],
-        'mu_assoc': blocks[3],
-        'mu_ion': blocks[4],
-        'mu_born': blocks[5],
-        'mu_total': blocks[6],
-        'lnfugcoef_total': blocks[7],
-        'lnfugcoef': blocks[7],
-        'lnfugcoef_hc': blocks[8],
-        'lnfugcoef_disp': blocks[9],
-        'lnfugcoef_polar': blocks[10],
-        'lnfugcoef_assoc': blocks[11],
-        'lnfugcoef_ion': blocks[12],
-        'lnfugcoef_born': blocks[13],
-        'dadx_hc': blocks[14],
-        'dadx_disp': blocks[15],
-        'dadx_polar': blocks[16],
-        'dadx_assoc': blocks[17],
-        'dadx_ion': blocks[18],
-        'dadx_born': blocks[19],
-        'a_hc': float(scalars[0]),
-        'a_disp': float(scalars[1]),
-        'a_polar': float(scalars[2]),
-        'a_assoc': float(scalars[3]),
-        'a_ion': float(scalars[4]),
-        'a_born': float(scalars[5]),
-        'sum_x_dadx_hc': float(scalars[6]),
-        'sum_x_dadx_disp': float(scalars[7]),
-        'sum_x_dadx_polar': float(scalars[8]),
-        'sum_x_dadx_assoc': float(scalars[9]),
-        'sum_x_dadx_ion': float(scalars[10]),
-        'sum_x_dadx_born': float(scalars[11]),
-        'z_raw_hc': float(scalars[12]),
-        'z_raw_disp': float(scalars[13]),
-        'z_raw_polar': float(scalars[14]),
-        'z_raw_assoc': float(scalars[15]),
-        'z_raw_ion': float(scalars[16]),
-        'z_raw_born': float(scalars[17]),
-        'z_hc': float(scalars[18]),
-        'z_disp': float(scalars[19]),
-        'z_polar': float(scalars[20]),
-        'z_assoc': float(scalars[21]),
-        'z_ion': float(scalars[22]),
-        'z_born': float(scalars[23]),
-        'z_total': float(scalars[24]),
-    }
-    return out
-
-
-def pcsaft_fugcoef(t, rho, x, params):
-    """
-    Calculate the fugacity coefficients for one phase of the system.
-
-    Parameters
-    ----------
-    t : float
-        Temperature (K)
-    rho : float
-        Molar density (mol m\ :sup:`-3`)
-    x : ndarray, shape (n,)
-        Mole fractions of each component. It has a length of n, where n is
-        the number of components in the system.
-    params : dict
-        A dictionary containing PC-SAFT parameters that can be passed for
-        use in PC-SAFT:
-
-        m : ndarray, shape (n,)
-            Segment number for each component.
-        s : ndarray, shape (n,)
-            Segment diameter for each component. For ions this is the diameter of
-            the hydrated ion. Units of Angstrom.
-        e : ndarray, shape (n,)
-            Dispersion energy of each component. For ions this is the dispersion
-            energy of the hydrated ion. Units of K.
-        k_ij : ndarray, shape (n,n)
-            Binary interaction parameters between components in the mixture.
-            (dimensions: ncomp x ncomp)
-        e_assoc : ndarray, shape (n,)
-            Association energy of the associating components. For non associating
-            compounds this is set to 0. Units of K.
-        vol_a : ndarray, shape (n,)
-            Effective association volume of the associating components. For non
-            associating compounds this is set to 0.
-        dipm : ndarray, shape (n,)
-            Dipole moment of the polar components. For components where the dipole
-            term is not used this is set to 0. Units of Debye.
-        dip_num : ndarray, shape (n,)
-            The effective number of dipole functional groups on each component
-            molecule. Generally this is set to 1, but some implementations use this
-            as an adjustable parameter that is fit to data.
-        z : ndarray, shape (n,)
-            Charge number of the ions
-        dielc : float
-            Dielectric constant of the medium to be used for electrolyte
-            calculations.
-        assoc_scheme : list, shape (n,)
-            The types of association sites for each component. Use `None` for molecules
-            without association sites. If a molecule has multiple association sites,
-            use a nested list for that component to specify the association scheme for
-            each site. The accepted association schemes are those given by Huang and
-            Radosz (1990): 1, 2A, 2B, 3A, 3B, 4A, 4B, 4C. If `e_assoc` and `vol_a` are
-            given but `assoc_scheme` is not, the 2B association scheme is assumed (which
-            would, for example, correspond to one hydroxyl functional group).
-
-    Returns
-    -------
-    fugcoef : ndarray, shape (n,)
-        Fugacity coefficients of each component.
-    """
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {'density':rho, 'temperature':t})
-    params = check_association(params)
-    cppargs = create_struct(params)
-    return np.asarray(fugcoef_cpp(t, rho, x, cppargs))
-
-
-def pcsaft_Z(t, rho, x, params):
-    """
-    Calculate the compressibility factor.
-
-    Parameters
-    ----------
-    t : float
-        Temperature (K)
-    rho : float
-        Molar density (mol m\ :sup:`-3`)
-    x : ndarray, shape (n,)
-        Mole fractions of each component. It has a length of n, where n is
-        the number of components in the system.
-    params : dict
-        A dictionary containing PC-SAFT parameters that can be passed for
-        use in PC-SAFT:
-
-        m : ndarray, shape (n,)
-            Segment number for each component.
-        s : ndarray, shape (n,)
-            Segment diameter for each component. For ions this is the diameter of
-            the hydrated ion. Units of Angstrom.
-        e : ndarray, shape (n,)
-            Dispersion energy of each component. For ions this is the dispersion
-            energy of the hydrated ion. Units of K.
-        k_ij : ndarray, shape (n,n)
-            Binary interaction parameters between components in the mixture.
-            (dimensions: ncomp x ncomp)
-        e_assoc : ndarray, shape (n,)
-            Association energy of the associating components. For non associating
-            compounds this is set to 0. Units of K.
-        vol_a : ndarray, shape (n,)
-            Effective association volume of the associating components. For non
-            associating compounds this is set to 0.
-        dipm : ndarray, shape (n,)
-            Dipole moment of the polar components. For components where the dipole
-            term is not used this is set to 0. Units of Debye.
-        dip_num : ndarray, shape (n,)
-            The effective number of dipole functional groups on each component
-            molecule. Generally this is set to 1, but some implementations use this
-            as an adjustable parameter that is fit to data.
-        z : ndarray, shape (n,)
-            Charge number of the ions
-        dielc : float
-            Dielectric constant of the medium to be used for electrolyte
-            calculations.
-        assoc_scheme : list, shape (n,)
-            The types of association sites for each component. Use `None` for molecules
-            without association sites. If a molecule has multiple association sites,
-            use a nested list for that component to specify the association scheme for
-            each site. The accepted association schemes are those given by Huang and
-            Radosz (1990): 1, 2A, 2B, 3A, 3B, 4A, 4B, 4C. If `e_assoc` and `vol_a` are
-            given but `assoc_scheme` is not, the 2B association scheme is assumed (which
-            would, for example, correspond to one hydroxyl functional group).
-
-    Returns
-    -------
-    Z : float
-        Compressibility factor
-    """
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {'density':rho, 'temperature':t})
-    params = check_association(params)
-    cppargs = create_struct(params)
-    return Z_cpp(t, rho, x, cppargs)
-
-
-def flashPQ(p, q, x, params, t_guess=None):
-    """
-    Calculate the temperature of the system where vapor and liquid phases are in equilibrium.
-
-    Parameters
-    ----------
-    p : float
-        Pressure (Pa)
-    q : float
-        Mole fraction of the fluid in the vapor phase
-    x : ndarray, shape (n,)
-        Mole fractions of each component. It has a length of n, where n is
-        the number of components in the system.
-    params : dict
-        A dictionary containing PC-SAFT parameters that can be passed for
-        use in PC-SAFT:
-
-        m : ndarray, shape (n,)
-            Segment number for each component.
-        s : ndarray, shape (n,)
-            Segment diameter for each component. For ions this is the diameter of
-            the hydrated ion. Units of Angstrom.
-        e : ndarray, shape (n,)
-            Dispersion energy of each component. For ions this is the dispersion
-            energy of the hydrated ion. Units of K.
-        k_ij : ndarray, shape (n,n)
-            Binary interaction parameters between components in the mixture.
-            (dimensions: ncomp x ncomp)
-        e_assoc : ndarray, shape (n,)
-            Association energy of the associating components. For non associating
-            compounds this is set to 0. Units of K.
-        vol_a : ndarray, shape (n,)
-            Effective association volume of the associating components. For non
-            associating compounds this is set to 0.
-        dipm : ndarray, shape (n,)
-            Dipole moment of the polar components. For components where the dipole
-            term is not used this is set to 0. Units of Debye.
-        dip_num : ndarray, shape (n,)
-            The effective number of dipole functional groups on each component
-            molecule. Generally this is set to 1, but some implementations use this
-            as an adjustable parameter that is fit to data.
-        z : ndarray, shape (n,)
-            Charge number of the ions
-        dielc : float
-            Dielectric constant of the medium to be used for electrolyte
-            calculations.
-        assoc_scheme : list, shape (n,)
-            The types of association sites for each component. Use `None` for molecules
-            without association sites. If a molecule has multiple association sites,
-            use a nested list for that component to specify the association scheme for
-            each site. The accepted association schemes are those given by Huang and
-            Radosz (1990): 1, 2A, 2B, 3A, 3B, 4A, 4B, 4C. If `e_assoc` and `vol_a` are
-            given but `assoc_scheme` is not, the 2B association scheme is assumed (which
-            would, for example, correspond to one hydroxyl functional group).
-
-    t_guess : float
-        Initial guess for the temperature (K) (optional)
-
-    Returns
-    -------
-    t : float
-        Temperature (K)
-    xl : ndarray, shape (n,)
-        Liquid mole fractions after flash
-    xv : ndarray, shape (n,)
-        Vapor mole fractions after flash
-
-    Notes
-    -----
-    To solve the PQ flash the temperature must be varied. This adds additional complexity
-    for water and electrolyte mixtures. For water, a temperature dependent sigma is often
-    used. However, there does not appear to be a way to pass a Python function to the C++
-    code without requiring the user to compile it using Cython. To avoid this, the `flashPQ`
-    function uses the following relationship internally to calculate sigma for water as a
-    function of temperature: ::
-
-        3.8395 + 1.2828 * exp(-0.0074944 * t) - 1.3939 * exp(-0.00056029 * t);
-
-    For electrolyte solutions the dielectric constant is calculated using the `dielc_water`
-    function. This means that the sigma value for water and the dielectric constant given by
-    the user are not used by the `flashPQ` function.
-
-    The code identifies which component is water by the epsilon/k value. Therefore, when
-    using `flashPQ` with water `e` must be exactly 353.9449, if you want the temperature
-    dependence of sigma to be accounted for.
-
-    If you want to use different functions for temperature dependent parameters with `flashPQ`
-    then you will need to modify the source code and recompile it.
-    """
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {'pressure':p, 'Q':q})
-    params = check_association(params)
-    cppargs = create_struct(params)
-    try:
-        if t_guess is not None:
-            result = flashPQ_cpp(p, q, x, cppargs, t_guess)
-        else:
-            result = flashPQ_cpp(p, q, x, cppargs)
-    except:
-        raise SolutionError('A solution was not found for flashPQ. P={}'.format(p))
-
-    t = result[0]
-    xl = np.asarray(result[1:])
-    xl, xv = np.split(xl, 2)
-    return t, xl, xv
-
-
-def flashTQ(t, q, x, params, p_guess=None):
-    """
-    Calculate the pressure of the system where vapor and liquid phases are in equilibrium.
-
-    Parameters
-    ----------
-    t : float
-        Temperature (K)
-    q : float
-        Mole fraction of the fluid in the vapor phase
-    x : ndarray, shape (n,)
-        Mole fractions of each component. It has a length of n, where n is
-        the number of components in the system.
-    params : dict
-        A dictionary containing PC-SAFT parameters that can be passed for
-        use in PC-SAFT:
-
-        m : ndarray, shape (n,)
-            Segment number for each component.
-        s : ndarray, shape (n,)
-            Segment diameter for each component. For ions this is the diameter of
-            the hydrated ion. Units of Angstrom.
-        e : ndarray, shape (n,)
-            Dispersion energy of each component. For ions this is the dispersion
-            energy of the hydrated ion. Units of K.
-        k_ij : ndarray, shape (n,n)
-            Binary interaction parameters between components in the mixture.
-            (dimensions: ncomp x ncomp)
-        e_assoc : ndarray, shape (n,)
-            Association energy of the associating components. For non associating
-            compounds this is set to 0. Units of K.
-        vol_a : ndarray, shape (n,)
-            Effective association volume of the associating components. For non
-            associating compounds this is set to 0.
-        dipm : ndarray, shape (n,)
-            Dipole moment of the polar components. For components where the dipole
-            term is not used this is set to 0. Units of Debye.
-        dip_num : ndarray, shape (n,)
-            The effective number of dipole functional groups on each component
-            molecule. Generally this is set to 1, but some implementations use this
-            as an adjustable parameter that is fit to data.
-        z : ndarray, shape (n,)
-            Charge number of the ions
-        dielc : float
-            Dielectric constant of the medium to be used for electrolyte
-            calculations.
-        assoc_scheme : list, shape (n,)
-            The types of association sites for each component. Use `None` for molecules
-            without association sites. If a molecule has multiple association sites,
-            use a nested list for that component to specify the association scheme for
-            each site. The accepted association schemes are those given by Huang and
-            Radosz (1990): 1, 2A, 2B, 3A, 3B, 4A, 4B, 4C. If `e_assoc` and `vol_a` are
-            given but `assoc_scheme` is not, the 2B association scheme is assumed (which
-            would, for example, correspond to one hydroxyl functional group).
-
-    p_guess : float
-        Initial guess for the pressure (Pa) (optional)
-
-    Returns
-    -------
-    p : float
-        Pressure (Pa)
-    xl : ndarray, shape (n,)
-        Liquid mole fractions after flash
-    xv : ndarray, shape (n,)
-        Vapor mole fractions after flash
-    """
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {'temperature':t, 'Q':q})
-    params = check_association(params)
-    cppargs = create_struct(params)
-    try:
-        if p_guess is not None:
-            result = flashTQ_cpp(t, q, x, cppargs, p_guess)
-        else:
-            result = flashTQ_cpp(t, q, x, cppargs)
-    except:
-        raise SolutionError('A solution was not found for flashTQ. T={}'.format(t))
-
-    p = result[0]
-    xl = np.asarray(result[1:])
-    xl, xv = np.split(xl, 2)
-    return p, xl, xv
-
-def pcsaft_Hvap(t, x, params, p_guess=None):
-    """
-    Calculate the enthalpy of vaporization.
-
-    Parameters
-    ----------
-    t : float
-        Temperature (K)
-    x : ndarray, shape (n,)
-        Mole fractions of each component. It has a length of n, where n is
-        the number of components in the system.
-    params : dict
-        A dictionary containing PC-SAFT parameters that can be passed for
-        use in PC-SAFT:
-
-        m : ndarray, shape (n,)
-            Segment number for each component.
-        s : ndarray, shape (n,)
-            Segment diameter for each component. For ions this is the diameter of
-            the hydrated ion. Units of Angstrom.
-        e : ndarray, shape (n,)
-            Dispersion energy of each component. For ions this is the dispersion
-            energy of the hydrated ion. Units of K.
-        k_ij : ndarray, shape (n,n)
-            Binary interaction parameters between components in the mixture.
-            (dimensions: ncomp x ncomp)
-        e_assoc : ndarray, shape (n,)
-            Association energy of the associating components. For non associating
-            compounds this is set to 0. Units of K.
-        vol_a : ndarray, shape (n,)
-            Effective association volume of the associating components. For non
-            associating compounds this is set to 0.
-        dipm : ndarray, shape (n,)
-            Dipole moment of the polar components. For components where the dipole
-            term is not used this is set to 0. Units of Debye.
-        dip_num : ndarray, shape (n,)
-            The effective number of dipole functional groups on each component
-            molecule. Generally this is set to 1, but some implementations use this
-            as an adjustable parameter that is fit to data.
-        z : ndarray, shape (n,)
-            Charge number of the ions
-        dielc : float
-            Dielectric constant of the medium to be used for electrolyte
-            calculations.
-        assoc_scheme : list, shape (n,)
-            The types of association sites for each component. Use `None` for molecules
-            without association sites. If a molecule has multiple association sites,
-            use a nested list for that component to specify the association scheme for
-            each site. The accepted association schemes are those given by Huang and
-            Radosz (1990): 1, 2A, 2B, 3A, 3B, 4A, 4B, 4C. If `e_assoc` and `vol_a` are
-            given but `assoc_scheme` is not, the 2B association scheme is assumed (which
-            would, for example, correspond to one hydroxyl functional group).
-
-    p_guess : float
-        Guess for the vapor pressure (Pa) (optional)
-
-    Returns
-    -------
-    output : list
-        A list containing the following results:
-            0 : enthalpy of vaporization (J/mol), float
-            1 : vapor pressure (Pa), float
-    """
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {'temperature': t})
-    params = check_association(params)
-    cppargs = create_struct(params)
-
-    q = 0
-    try:
-        if p_guess is not None:
-            result = np.asarray(flashTQ_cpp(t, q, x, cppargs, p_guess))
-            Pvap = result[0]
-        else:
-            result = np.asarray(flashTQ_cpp(t, q, x, cppargs))
-            Pvap = result[0]
-    except:
-        raise SolutionError('A solution was not found for flashTQ. T={}'.format(t))
-
-    rho = _pcsaft_den_checked(t, Pvap, x, 0, cppargs)
-    hres_l = hres_cpp(t, rho, x, cppargs)
-    rho = _pcsaft_den_checked(t, Pvap, x, 1, cppargs)
-    hres_v = hres_cpp(t, rho, x, cppargs)
-    Hvap = hres_v - hres_l
-
-    output = [Hvap, Pvap]
-    return output
-
-
-def pcsaft_osmoticC(t, rho, x, params):
-    """
-    Calculate the osmotic coefficient.
-
-    Parameters
-    ----------
-    t : float
-        Temperature (K)
-    rho : float
-        Molar density (mol m\ :sup:`-3`)
-    x : ndarray, shape (n,)
-        Mole fractions of each component. It has a length of n, where n is
-        the number of components in the system.
-    params : dict
-        A dictionary containing PC-SAFT parameters that can be passed for
-        use in PC-SAFT:
-
-        m : ndarray, shape (n,)
-            Segment number for each component.
-        s : ndarray, shape (n,)
-            Segment diameter for each component. For ions this is the diameter of
-            the hydrated ion. Units of Angstrom.
-        e : ndarray, shape (n,)
-            Dispersion energy of each component. For ions this is the dispersion
-            energy of the hydrated ion. Units of K.
-        k_ij : ndarray, shape (n,n)
-            Binary interaction parameters between components in the mixture.
-            (dimensions: ncomp x ncomp)
-        e_assoc : ndarray, shape (n,)
-            Association energy of the associating components. For non associating
-            compounds this is set to 0. Units of K.
-        vol_a : ndarray, shape (n,)
-            Effective association volume of the associating components. For non
-            associating compounds this is set to 0.
-        dipm : ndarray, shape (n,)
-            Dipole moment of the polar components. For components where the dipole
-            term is not used this is set to 0. Units of Debye.
-        dip_num : ndarray, shape (n,)
-            The effective number of dipole functional groups on each component
-            molecule. Generally this is set to 1, but some implementations use this
-            as an adjustable parameter that is fit to data.
-        z : ndarray, shape (n,)
-            Charge number of the ions
-        dielc : float
-            Dielectric constant of the medium to be used for electrolyte
-            calculations.
-        assoc_scheme : list, shape (n,)
-            The types of association sites for each component. Use `None` for molecules
-            without association sites. If a molecule has multiple association sites,
-            use a nested list for that component to specify the association scheme for
-            each site. The accepted association schemes are those given by Huang and
-            Radosz (1990): 1, 2A, 2B, 3A, 3B, 4A, 4B, 4C. If `e_assoc` and `vol_a` are
-            given but `assoc_scheme` is not, the 2B association scheme is assumed (which
-            would, for example, correspond to one hydroxyl functional group).
-
-    Returns
-    -------
-    osmC : float
-        Molal osmotic coefficient
-    """
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {'density':rho, 'temperature':t})
-    params = check_association(params)
-    cppargs = create_struct(params)
-
-    # Select solvent component for molality basis.
-    if 'osmotic_solvent_index' in params:
-        indx_solvent = int(params['osmotic_solvent_index'])
-        if indx_solvent < 0 or indx_solvent >= len(x):
-            raise InputError('params["osmotic_solvent_index"] is out of bounds.')
-    else:
-        indx_solvent = -1
-        z = np.asarray(params.get('z', []), dtype=float).flatten()
-        if z.size == len(x):
-            idx_sol = np.where(np.abs(z) < 1e-12)[0]
-            if idx_sol.size == 1:
-                indx_solvent = int(idx_sol[0])
-            elif idx_sol.size > 1:
-                # For mixed neutral solvents, default to the dominant neutral component.
-                indx_solvent = int(idx_sol[np.argmax(x[idx_sol])])
-        # Backward-compatible fallback for legacy water-only parameter sets.
-        if indx_solvent < 0 and 'e' in params:
-            idx_water = np.where(np.isclose(np.asarray(params['e'], dtype=float), 353.9449, atol=1e-6))[0]
-            if idx_water.size == 1:
-                indx_solvent = int(idx_water[0])
-        if indx_solvent < 0:
-            raise InputError('pcsaft_osmoticC requires a solvent component. Provide params["osmotic_solvent_index"] or one neutral species (z=0).')
-
-    mw = np.asarray(params.get('MW', []), dtype=float).flatten()
-    if mw.size == len(x):
-        mw_solvent = float(mw[indx_solvent])
-    elif 'e' in params and np.isclose(np.asarray(params['e'], dtype=float)[indx_solvent], 353.9449, atol=1e-6):
-        # Legacy fallback for water if MW is omitted.
-        mw_solvent = 18.0153/1000.
-    else:
-        raise InputError('pcsaft_osmoticC requires params["MW"] to compute molality for non-water solvent.')
-    # If a molar mass in g/mol was passed by mistake, convert to kg/mol.
-    if mw_solvent > 1.0:
-        mw_solvent = mw_solvent/1000.0
-    if mw_solvent <= 0.0:
-        raise InputError('Solvent molecular weight must be positive.')
-    if x[indx_solvent] <= 0.0:
-        raise InputError('Solvent mole fraction must be positive.')
-
-    molality = x/(x[indx_solvent]*mw_solvent)
-    molality[indx_solvent] = 0
-    molality_sum = float(np.sum(molality))
-    if molality_sum <= 0.0:
-        raise InputError('Total molality is zero; osmotic coefficient is undefined.')
-    x0 = np.zeros_like(x)
-    x0[indx_solvent] = 1.
-
-    fugcoef = np.asarray(fugcoef_cpp(t, rho, x, cppargs))
-    p = p_cpp(t, rho, x, cppargs)
-    if rho < 900:
-        ph = 1
-    else:
-        ph = 0
-    rho0 = _pcsaft_den_checked(t, p, x0, ph, cppargs)
-    fugcoef0 = np.asarray(fugcoef_cpp(t, rho0, x0, cppargs))
-    gamma = float(fugcoef[indx_solvent]/fugcoef0[indx_solvent])
-
-    osmC = -np.log(x[indx_solvent]*gamma)/(mw_solvent*molality_sum)
-    # Keep legacy return shape for callers/tests that index result[0].
-    return np.asarray([osmC], dtype=float)
-
-def pcsaft_miac_m(t, rho, x, params, species=None):
-    """
-    Molality-scale mean ionic activity coefficient (MIAC_m).
-    """
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {'density':rho, 'temperature':t})
-    params = check_association(params)
-    cppargs = create_struct(params)
-
-    z = np.asarray(params.get('z', []), dtype=float)
-    if z.size == 0 or np.allclose(z, 0):
-        raise InputError('pcsaft_miac_m requires ionic species (non-zero z).')
-    idx_cat = np.where(z > 0)[0]
-    idx_an = np.where(z < 0)[0]
-    idx_sol = np.where(np.abs(z) < 1e-12)[0]
-    if len(idx_cat) == 0 or len(idx_an) == 0:
-        raise InputError('pcsaft_miac_m needs at least one cation and one anion.')
-    if len(idx_sol) == 0:
-        raise InputError('pcsaft_miac_m needs a neutral solvent to define molality.')
-
-    mw = np.asarray(params['MW'], dtype=float)
-    mass_solvent = float(np.sum(x[idx_sol] * mw[idx_sol]))
-    if mass_solvent <= 0:
-        raise InputError('Solvent mass is zero; check solvent mole fraction and MW.')
-
-    fugcoef = np.asarray(fugcoef_cpp(t, rho, x, cppargs), dtype=float)
-
-    eps = 1e-12
-    x_inf = np.full_like(x, eps)
-    solvent_ref = np.asarray(x[idx_sol], dtype=float)
-    solvent_ref /= np.sum(solvent_ref)
-    solvent_budget = max(1.0 - eps * (len(x) - len(idx_sol)), eps * len(idx_sol))
-    x_inf[idx_sol] = solvent_ref * solvent_budget
-    x_inf /= np.sum(x_inf)
-    rho_inf = _pcsaft_den_checked(t, p_cpp(t, rho, x, cppargs), x_inf, 0, cppargs)
-    fugcoef_inf = np.asarray(fugcoef_cpp(t, rho_inf, x_inf, cppargs), dtype=float)
-    if np.any(fugcoef_inf <= 0):
-        raise SolutionError('Non-positive fugacity at infinite dilution.')
-    gamma_i = fugcoef / fugcoef_inf
-
-    mass_neutral = x[idx_sol] * mw[idx_sol]
-    w_sf = mass_neutral / mass_neutral.sum()
-    M_solvent_mix = 1.0 / np.sum(w_sf / mw[idx_sol])
-
-    if species is None or len(species) != len(x):
-        raise InputError('species list (matching x order) is required to label salts.')
-
-    result = {}
-    for ic in idx_cat:
-        for ia in idx_an:
-            zc = int(round(abs(z[ic])))
-            za = int(round(abs(z[ia])))
-            g = math.gcd(zc, za)
-            nu_cat = za // g
-            nu_an = zc // g
-            n_salt = 0.5 * (x[ic] / nu_cat + x[ia] / nu_an)
-            m_salt = n_salt / mass_solvent
-            sum_nu = float(nu_cat + nu_an)
-            ln_gamma_pm = (nu_cat * math.log(gamma_i[ic]) + nu_an * math.log(gamma_i[ia])) / sum_nu
-            gamma_pm_x = math.exp(ln_gamma_pm)
-            gamma_pm_m = gamma_pm_x / (1.0 + M_solvent_mix * m_salt * sum_nu)
-            salt_name = species[ic] + species[ia]
-            result[salt_name] = gamma_pm_m
-
-    return result
-
-def pcsaft_miac(t, rho, x, params, species=None):
-    """
-    Mole-fraction-scale mean ionic activity coefficient (MIAC).
-    """
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {'density':rho, 'temperature':t})
-    params = check_association(params)
-    cppargs = create_struct(params)
-
-    z = np.asarray(params.get('z', []), dtype=float)
-    if z.size == 0 or np.allclose(z, 0):
-        raise InputError('pcsaft_miac requires ionic species (non-zero z).')
-    idx_cat = np.where(z > 0)[0]
-    idx_an = np.where(z < 0)[0]
-    idx_sol = np.where(np.abs(z) < 1e-12)[0]
-    if len(idx_cat) == 0 or len(idx_an) == 0:
-        raise InputError('pcsaft_miac needs at least one cation and one anion.')
-    if len(idx_sol) == 0:
-        raise InputError('pcsaft_miac needs a neutral solvent reference.')
-
-    fugcoef = np.asarray(fugcoef_cpp(t, rho, x, cppargs), dtype=float)
-
-    eps = 1e-12
-    x_inf = np.full_like(x, eps)
-    solvent_ref = np.asarray(x[idx_sol], dtype=float)
-    solvent_ref /= np.sum(solvent_ref)
-    solvent_budget = max(1.0 - eps * (len(x) - len(idx_sol)), eps * len(idx_sol))
-    x_inf[idx_sol] = solvent_ref * solvent_budget
-    x_inf /= np.sum(x_inf)
-    rho_inf = _pcsaft_den_checked(t, p_cpp(t, rho, x, cppargs), x_inf, 0, cppargs)
-    fugcoef_inf = np.asarray(fugcoef_cpp(t, rho_inf, x_inf, cppargs), dtype=float)
-    if np.any(fugcoef_inf <= 0):
-        raise SolutionError('Non-positive fugacity at infinite dilution.')
-    gamma_i = fugcoef / fugcoef_inf
-
-    if species is None or len(species) != len(x):
-        raise InputError('species list (matching x order) is required to label salts.')
-
-    result = {}
-    for ic in idx_cat:
-        for ia in idx_an:
-            zc = int(round(abs(z[ic])))
-            za = int(round(abs(z[ia])))
-            g = math.gcd(zc, za)
-            nu_cat = za // g
-            nu_an = zc // g
-            sum_nu = float(nu_cat + nu_an)
-            ln_gamma_pm = (nu_cat * math.log(gamma_i[ic]) + nu_an * math.log(gamma_i[ia])) / sum_nu
-            salt_name = species[ic] + species[ia]
-            result[salt_name] = math.exp(ln_gamma_pm)
-
-    return result
-
-def pcsaft_cp(t, rho, aly_lee_params, x, params):
-    """
-    Calculate the specific molar isobaric heat capacity.
-
-    Parameters
-    ----------
-    t : float
-        Temperature (K)
-    rho : float
-        Molar density (mol m\ :sup:`-3`)
-    aly_lee_params : ndarray, shape (5,)
-        Constants for the Aly-Lee equation. Can be substituted with parameters for
-        another equation if the ideal gas heat capacity is given using a different
-        equation.
-    x : ndarray, shape (n,)
-        Mole fractions of each component. It has a length of n, where n is
-        the number of components in the system.
-    params : dict
-        A dictionary containing PC-SAFT parameters that can be passed for
-        use in PC-SAFT:
-
-        m : ndarray, shape (n,)
-            Segment number for each component.
-        s : ndarray, shape (n,)
-            Segment diameter for each compopynent. For ions this is the diameter of
-            the hydrated ion. Units of Angstrom.
-        e : ndarray, shape (n,)
-            Dispersion energy of each component. For ions this is the dispersion
-            energy of the hydrated ion. Units of K.
-        k_ij : ndarray, shape (n,n)
-            Binary interaction parameters between components in the mixture.
-            (dimensions: ncomp x ncomp)
-        e_assoc : ndarray, shape (n,)
-            Association energy of the associating components. For non associating
-            compounds this is set to 0. Units of K.
-        vol_a : ndarray, shape (n,)
-            Effective association volume of the associating components. For non
-            associating compounds this is set to 0.
-        dipm : ndarray, shape (n,)
-            Dipole moment of the polar components. For components where the dipole
-            term is not used this is set to 0. Units of Debye.
-        dip_num : ndarray, shape (n,)
-            The effective number of dipole functional groups on each component
-            molecule. Generally this is set to 1, but some implementations use this
-            as an adjustable parameter that is fit to data.
-        z : ndarray, shape (n,)
-            Charge number of the ions
-        dielc : float
-            Dielectric constant of the medium to be used for electrolyte
-            calculations.
-        assoc_scheme : list, shape (n,)
-            The types of association sites for each component. Use `None` for molecules
-            without association sites. If a molecule has multiple association sites,
-            use a nested list for that component to specify the association scheme for
-            each site. The accepted association schemes are those given by Huang and
-            Radosz (1990): 1, 2A, 2B, 3A, 3B, 4A, 4B, 4C. If `e_assoc` and `vol_a` are
-            given but `assoc_scheme` is not, the 2B association scheme is assumed (which
-            would, for example, correspond to one hydroxyl functional group).
-
-    Returns
-    -------
-    cp : float
-        Specific molar isobaric heat capacity (J mol\ :sup:`-1` K\ :sup:`-1`)
-    """
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {'density':rho, 'temperature':t})
-    params = check_association(params)
-
-    if rho > 900:
-        ph = 0
-    else:
-        ph = 1
-
-    cppargs = create_struct(params)
-
-    cp_ideal = aly_lee(t, aly_lee_params)
-    p = p_cpp(t, rho, x, cppargs)
-    rho0 = _pcsaft_den_checked(t-0.001, p, x, ph, cppargs)
-    hres0 = hres_cpp(t-0.001, rho0, x, cppargs)
-    rho1 = _pcsaft_den_checked(t+0.001, p, x, ph, cppargs)
-    hres1 = hres_cpp(t+0.001, rho1, x, cppargs)
-    dhdt = (hres1-hres0)/0.002 # a numerical derivative is used for now until analytical derivatives are ready
-    return cp_ideal + dhdt
-
-
-def pcsaft_den(t, p, x, params, phase='liq'):
-    """
-    Calculate the molar density.
-
-    Parameters
-    ----------
-    t : float
-        Temperature (K)
-    p : float
-        Pressure (Pa)
-    x : ndarray, shape (n,)
-        Mole fractions of each component. It has a length of n, where n is
-        the number of components in the system.
-    params : dict
-        A dictionary containing PC-SAFT parameters that can be passed for
-        use in PC-SAFT:
-
-        m : ndarray, shape (n,)
-            Segment number for each component.
-        s : ndarray, shape (n,)
-            Segment diameter for each component. For ions this is the diameter of
-            the hydrated ion. Units of Angstrom.
-        e : ndarray, shape (n,)
-            Dispersion energy of each component. For ions this is the dispersion
-            energy of the hydrated ion. Units of K.
-        k_ij : ndarray, shape (n,n)
-            Binary interaction parameters between components in the mixture.
-            (dimensions: ncomp x ncomp)
-        e_assoc : ndarray, shape (n,)
-            Association energy of the associating components. For non associating
-            compounds this is set to 0. Units of K.
-        vol_a : ndarray, shape (n,)
-            Effective association volume of the associating components. For non
-            associating compounds this is set to 0.
-        dipm : ndarray, shape (n,)
-            Dipole moment of the polar components. For components where the dipole
-            term is not used this is set to 0. Units of Debye.
-        dip_num : ndarray, shape (n,)
-            The effective number of dipole functional groups on each component
-            molecule. Generally this is set to 1, but some implementations use this
-            as an adjustable parameter that is fit to data.
-        z : ndarray, shape (n,)
-            Charge number of the ions
-        dielc : float
-            Dielectric constant of the medium to be used for electrolyte
-            calculations.
-        assoc_scheme : list, shape (n,)
-            The types of association sites for each component. Use `None` for molecules
-            without association sites. If a molecule has multiple association sites,
-            use a nested list for that component to specify the association scheme for
-            each site. The accepted association schemes are those given by Huang and
-            Radosz (1990): 1, 2A, 2B, 3A, 3B, 4A, 4B, 4C. If `e_assoc` and `vol_a` are
-            given but `assoc_scheme` is not, the 2B association scheme is assumed (which
-            would, for example, correspond to one hydroxyl functional group).
-
-    phase : string
-        The phase for which the calculation is performed. Options: "liq" (liquid),
-        "vap" (vapor).
-
-    Returns
-    -------
-    rho : float
-        Molar density (mol m\ :sup:`-3`)
-    """
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {'pressure':p, 'temperature':t})
-    params = check_association(params)
-    cppargs = create_struct(params)
-    if phase == 'liq':
-        phase_num = 0
-    else:
-        phase_num = 1
-
-    return _pcsaft_den_checked(t, p, x, phase_num, cppargs)
-
-
-def pcsaft_hres(t, rho, x, params):
-    """
-    Calculate the residual enthalpy for one phase of the system.
-
-    Parameters
-    ----------
-    t : float
-        Temperature (K)
-    rho : float
-        Molar density (mol m\ :sup:`-3`)
-    x : ndarray, shape (n,)
-        Mole fractions of each component. It has a length of n, where n is
-        the number of components in the system.
-    params : dict
-        A dictionary containing PC-SAFT parameters that can be passed for
-        use in PC-SAFT:
-
-        m : ndarray, shape (n,)
-            Segment number for each component.
-        s : ndarray, shape (n,)
-            Segment diameter for each component. For ions this is the diameter of
-            the hydrated ion. Units of Angstrom.
-        e : ndarray, shape (n,)
-            Dispersion energy of each component. For ions this is the dispersion
-            energy of the hydrated ion. Units of K.
-        k_ij : ndarray, shape (n,n)
-            Binary interaction parameters between components in the mixture.
-            (dimensions: ncomp x ncomp)
-        e_assoc : ndarray, shape (n,)
-            Association energy of the associating components. For non associating
-            compounds this is set to 0. Units of K.
-        vol_a : ndarray, shape (n,)
-            Effective association volume of the associating components. For non
-            associating compounds this is set to 0.
-        dipm : ndarray, shape (n,)
-            Dipole moment of the polar components. For components where the dipole
-            term is not used this is set to 0. Units of Debye.
-        dip_num : ndarray, shape (n,)
-            The effective number of dipole functional groups on each component
-            molecule. Generally this is set to 1, but some implementations use this
-            as an adjustable parameter that is fit to data.
-        z : ndarray, shape (n,)
-            Charge number of the ions
-        dielc : float
-            Dielectric constant of the medium to be used for electrolyte
-            calculations.
-        assoc_scheme : list, shape (n,)
-            The types of association sites for each component. Use `None` for molecules
-            without association sites. If a molecule has multiple association sites,
-            use a nested list for that component to specify the association scheme for
-            each site. The accepted association schemes are those given by Huang and
-            Radosz (1990): 1, 2A, 2B, 3A, 3B, 4A, 4B, 4C. If `e_assoc` and `vol_a` are
-            given but `assoc_scheme` is not, the 2B association scheme is assumed (which
-            would, for example, correspond to one hydroxyl functional group).
-
-    Returns
-    -------
-    hres : float
-        Residual enthalpy (J mol\ :sup:`-1`)
-    """
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {'density':rho, 'temperature':t})
-    params = check_association(params)
-    cppargs = create_struct(params)
-    return hres_cpp(t, rho, x, cppargs)
-
-def pcsaft_sres(t, rho, x, params):
-    """
-    Calculate the residual entropy (constant volume) for one phase of the system.
-
-    Parameters
-    ----------
-    t : float
-        Temperature (K)
-    rho : float
-        Molar density (mol m\ :sup:`-3`)
-    x : ndarray, shape (n,)
-        Mole fractions of each component. It has a length of n, where n is
-        the number of components in the system.
-    params : dict
-        A dictionary containing PC-SAFT parameters that can be passed for
-        use in PC-SAFT:
-
-        m : ndarray, shape (n,)
-            Segment number for each component.
-        s : ndarray, shape (n,)
-            Segment diameter for each component. For ions this is the diameter of
-            the hydrated ion. Units of Angstrom.
-        e : ndarray, shape (n,)
-            Dispersion energy of each component. For ions this is the dispersion
-            energy of the hydrated ion. Units of K.
-        k_ij : ndarray, shape (n,n)
-            Binary interaction parameters between components in the mixture.
-            (dimensions: ncomp x ncomp)
-        e_assoc : ndarray, shape (n,)
-            Association energy of the associating components. For non associating
-            compounds this is set to 0. Units of K.
-        vol_a : ndarray, shape (n,)
-            Effective association volume of the associating components. For non
-            associating compounds this is set to 0.
-        dipm : ndarray, shape (n,)
-            Dipole moment of the polar components. For components where the dipole
-            term is not used this is set to 0. Units of Debye.
-        dip_num : ndarray, shape (n,)
-            The effective number of dipole functional groups on each component
-            molecule. Generally this is set to 1, but some implementations use this
-            as an adjustable parameter that is fit to data.
-        z : ndarray, shape (n,)
-            Charge number of the ions
-        dielc : float
-            Dielectric constant of the medium to be used for electrolyte
-            calculations.
-        assoc_scheme : list, shape (n,)
-            The types of association sites for each component. Use `None` for molecules
-            without association sites. If a molecule has multiple association sites,
-            use a nested list for that component to specify the association scheme for
-            each site. The accepted association schemes are those given by Huang and
-            Radosz (1990): 1, 2A, 2B, 3A, 3B, 4A, 4B, 4C. If `e_assoc` and `vol_a` are
-            given but `assoc_scheme` is not, the 2B association scheme is assumed (which
-            would, for example, correspond to one hydroxyl functional group).
-
-    Returns
-    -------
-    sres : float
-        Residual entropy (J mol\ :sup:`-1` K\ :sup:`-1`)
-    """
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {'density':rho, 'temperature':t})
-    params = check_association(params)
-    cppargs = create_struct(params)
-    return sres_cpp(t, rho, x, cppargs)
-
-def pcsaft_gres(t, rho, x, params):
-    """
-    Calculate the residual Gibbs energy for one phase of the system.
-
-    Parameters
-    ----------
-    t : float
-        Temperature (K)
-    rho : float
-        Molar density (mol m\ :sup:`-3`)
-    x : ndarray, shape (n,)
-        Mole fractions of each component. It has a length of n, where n is
-        the number of components in the system.
-    params : dict
-        A dictionary containing PC-SAFT parameters that can be passed for
-        use in PC-SAFT:
-
-        m : ndarray, shape (n,)
-            Segment number for each component.
-        s : ndarray, shape (n,)
-            Segment diameter for each component. For ions this is the diameter of
-            the hydrated ion. Units of Angstrom.
-        e : ndarray, shape (n,)
-            Dispersion energy of each component. For ions this is the dispersion
-            energy of the hydrated ion. Units of K.
-        k_ij : ndarray, shape (n,n)
-            Binary interaction parameters between components in the mixture.
-            (dimensions: ncomp x ncomp)
-        e_assoc : ndarray, shape (n,)
-            Association energy of the associating components. For non associating
-            compounds this is set to 0. Units of K.
-        vol_a : ndarray, shape (n,)
-            Effective association volume of the associating components. For non
-            associating compounds this is set to 0.
-        dipm : ndarray, shape (n,)
-            Dipole moment of the polar components. For components where the dipole
-            term is not used this is set to 0. Units of Debye.
-        dip_num : ndarray, shape (n,)
-            The effective number of dipole functional groups on each component
-            molecule. Generally this is set to 1, but some implementations use this
-            as an adjustable parameter that is fit to data.
-        z : ndarray, shape (n,)
-            Charge number of the ions
-        dielc : float
-            Dielectric constant of the medium to be used for electrolyte
-            calculations.
-        assoc_scheme : list, shape (n,)
-            The types of association sites for each component. Use `None` for molecules
-            without association sites. If a molecule has multiple association sites,
-            use a nested list for that component to specify the association scheme for
-            each site. The accepted association schemes are those given by Huang and
-            Radosz (1990): 1, 2A, 2B, 3A, 3B, 4A, 4B, 4C. If `e_assoc` and `vol_a` are
-            given but `assoc_scheme` is not, the 2B association scheme is assumed (which
-            would, for example, correspond to one hydroxyl functional group).
-
-    Returns
-    -------
-    gres : float
-        Residual Gibbs energy (J mol\ :sup:`-1`)
-    """
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {'density':rho, 'temperature':t})
-    params = check_association(params)
-    cppargs = create_struct(params)
-    return gres_cpp(t, rho, x, cppargs)
-
-
-def pcsaft_a_res(t, rho, x, params):
-    return pcsaft_ares(t, rho, x, params)
-
-
-def pcsaft_h_res(t, rho, x, params):
-    return pcsaft_hres(t, rho, x, params)
-
-
-def pcsaft_s_res(t, rho, x, params):
-    return pcsaft_sres(t, rho, x, params)
-
-
-def pcsaft_g_res(t, rho, x, params):
-    return pcsaft_gres(t, rho, x, params)
-
-
-def pcsaft_gamma(t, rho, x, params):
-    return pcsaft_fugcoef(t, rho, x, params)
-
-
-def pcsaft_mures(t, rho, x, params):
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {'density': rho, 'temperature': t})
-    params = check_association(params)
-    cppargs = create_struct(params)
-    return np.asarray(mures_cpp(t, rho, x, cppargs), dtype=float)
-
-
-def pcsaft_mu_res(t, rho, x, params):
-    return pcsaft_mures(t, rho, x, params)
-
-
-def pcsaft_gsolv(t, rho, x, params, species=None):
-    """
-    Gibbs solvation energy at infinite dilution on the mole-fraction scale for ions.
-    """
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {'density':rho, 'temperature':t})
-    params = check_association(params)
-    cppargs = create_struct(params)
-
-    z = np.asarray(params.get('z', []), dtype=float)
-    idx_ion = np.where(np.abs(z) > 1e-12)[0]
-    if len(idx_ion) == 0:
-        raise InputError('pcsaft_gsolv requires ionic species in params["z"].')
-    if species is None or len(species) != len(x):
-        raise InputError('species list (matching x order) is required to label ions.')
-
-    idx_solv = np.where(np.abs(z) <= 1e-12)[0]
-    if len(idx_solv) == 0:
-        raise InputError('pcsaft_gsolv requires at least one solvent species (z=0).')
-
-    x_ref = np.asarray(x, dtype=float).copy()
-    x_ref[idx_ion] = 0.0
-    solv_sum = np.sum(x_ref[idx_solv])
-    if solv_sum > 0:
-        x_ref[idx_solv] = x_ref[idx_solv] / solv_sum
-    else:
-        x_ref[idx_solv] = 1.0 / len(idx_solv)
-
-    eps = 1e-12
-    p = p_cpp(t, rho, x_ref, cppargs)
-    phase = 1 if rho < 900 else 0
-    result = {}
-    for i in idx_ion:
-        x_inf = x_ref.copy()
-        x_inf[i] = eps
-        x_inf /= np.sum(x_inf)
-        rho_inf = _pcsaft_den_checked(t, p, x_inf, phase, cppargs)
-        lnfug_inf = float(lnfug_cpp(t, rho_inf, x_inf, cppargs)[i])
-        if not np.isfinite(lnfug_inf):
-            raise SolutionError('Non-finite ln(fugacity coefficient) at infinite dilution.')
-        result[species[i]] = 8.31446261815324 * t * lnfug_inf
-    return result
-
-
-def pcsaft_ares(t, rho, x, params):
-    """
-    Calculate the residual Helmholtz energy.
-
-    Parameters
-    ----------
-    t : float
-        Temperature (K)
-    rho : float
-        Molar density (mol m\ :sup:`-3`)
-    x : ndarray, shape (n,)
-        Mole fractions of each component. It has a length of n, where n is
-        the number of components in the system.
-    params : dict
-        A dictionary containing PC-SAFT parameters that can be passed for
-        use in PC-SAFT:
-
-        m : ndarray, shape (n,)
-            Segment number for each component.
-        s : ndarray, shape (n,)
-            Segment diameter for each component. For ions this is the diameter of
-            the hydrated ion. Units of Angstrom.
-        e : ndarray, shape (n,)
-            Dispersion energy of each component. For ions this is the dispersion
-            energy of the hydrated ion. Units of K.
-        k_ij : ndarray, shape (n,n)
-            Binary interaction parameters between components in the mixture.
-            (dimensions: ncomp x ncomp)
-        e_assoc : ndarray, shape (n,)
-            Association energy of the associating components. For non associating
-            compounds this is set to 0. Units of K.
-        vol_a : ndarray, shape (n,)
-            Effective association volume of the associating components. For non
-            associating compounds this is set to 0.
-        dipm : ndarray, shape (n,)
-            Dipole moment of the polar components. For components where the dipole
-            term is not used this is set to 0. Units of Debye.
-        dip_num : ndarray, shape (n,)
-            The effective number of dipole functional groups on each component
-            molecule. Generally this is set to 1, but some implementations use this
-            as an adjustable parameter that is fit to data.
-        z : ndarray, shape (n,)
-            Charge number of the ions
-        dielc : float
-            Dielectric constant of the medium to be used for electrolyte
-            calculations.
-        assoc_scheme : list, shape (n,)
-            The types of association sites for each component. Use `None` for molecules
-            without association sites. If a molecule has multiple association sites,
-            use a nested list for that component to specify the association scheme for
-            each site. The accepted association schemes are those given by Huang and
-            Radosz (1990): 1, 2A, 2B, 3A, 3B, 4A, 4B, 4C. If `e_assoc` and `vol_a` are
-            given but `assoc_scheme` is not, the 2B association scheme is assumed (which
-            would, for example, correspond to one hydroxyl functional group).
-
-    Returns
-    -------
-    ares : float
-        Residual Helmholtz energy (J mol\ :sup:`-1`)
-    """
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {'density':rho, 'temperature':t})
-    params = check_association(params)
-    cppargs = create_struct(params)
-    return ares_cpp(t, rho, x, cppargs)
-
-
-def pcsaft_dadt(t, rho, x, params):
-    """
-    Calculate the temperature derivative of the residual Helmholtz energy.
-
-    Parameters
-    ----------
-    t : float
-        Temperature (K)
-    rho : float
-        Molar density (mol m\ :sup:`-3`)
-    x : ndarray, shape (n,)
-        Mole fractions of each component. It has a length of n, where n is
-        the number of components in the system.
-    params : dict
-        A dictionary containing PC-SAFT parameters that can be passed for
-        use in PC-SAFT:
-
-        m : ndarray, shape (n,)
-            Segment number for each component.
-        s : ndarray, shape (n,)
-            Segment diameter for each component. For ions this is the diameter of
-            the hydrated ion. Units of Angstrom.
-        e : ndarray, shape (n,)
-            Dispersion energy of each component. For ions this is the dispersion
-            energy of the hydrated ion. Units of K.
-        k_ij : ndarray, shape (n,n)
-            Binary interaction parameters between components in the mixture.
-            (dimensions: ncomp x ncomp)
-        e_assoc : ndarray, shape (n,)
-            Association energy of the associating components. For non associating
-            compounds this is set to 0. Units of K.
-        vol_a : ndarray, shape (n,)
-            Effective association volume of the associating components. For non
-            associating compounds this is set to 0.
-        dipm : ndarray, shape (n,)
-            Dipole moment of the polar components. For components where the dipole
-            term is not used this is set to 0. Units of Debye.
-        dip_num : ndarray, shape (n,)
-            The effective number of dipole functional groups on each component
-            molecule. Generally this is set to 1, but some implementations use this
-            as an adjustable parameter that is fit to data.
-        z : ndarray, shape (n,)
-            Charge number of the ions
-        dielc : float
-            Dielectric constant of the medium to be used for electrolyte
-            calculations.
-        assoc_scheme : list, shape (n,)
-            The types of association sites for each component. Use `None` for molecules
-            without association sites. If a molecule has multiple association sites,
-            use a nested list for that component to specify the association scheme for
-            each site. The accepted association schemes are those given by Huang and
-            Radosz (1990): 1, 2A, 2B, 3A, 3B, 4A, 4B, 4C. If `e_assoc` and `vol_a` are
-            given but `assoc_scheme` is not, the 2B association scheme is assumed (which
-            would, for example, correspond to one hydroxyl functional group).
-
-    Returns
-    -------
-    dadt : float
-        Temperature derivative of the residual Helmholtz energy (J mol\ :sup:`-1`)
-    """
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {'density':rho, 'temperature':t})
-    params = check_association(params)
-    cppargs = create_struct(params)
-    return dadt_cpp(t, rho, x, cppargs)
-
-
-def aly_lee(t, c):
-    """
-    Calculate the ideal gas isobaric heat capacity using the Aly-Lee equation.
-
-    Parameters
-    ----------
-    t : float
-        Temperature (K)
-    c : ndarray, shape (5,)
-        Constants for the Aly-Lee equation
-
-    Returns
-    -------
-    cp_ideal : float
-        Ideal gas isobaric heat capacity (J mol\ :sup:`-1` K\ :sup:`-1`)
-
-    References
-    ----------
-    - F. A. Aly and L. L. Lee, “Self-consistent equations for calculating the ideal gas heat capacity, enthalpy, and entropy,” Fluid Phase Equilibria, vol. 6, no. 3–4, pp. 169–179, 1981.
-    """
-    cp_ideal = (c[0] + c[1]*(c[2]/t/np.sinh(c[2]/t))**2 + c[3]*(c[4]/t/np.cosh(c[4]/t))**2)/1000.
-    return cp_ideal
-
-def dielc_water(t):
-    """
-    Return the dielectric constant of water at the given temperature.
-
-    This equation was fit to values given in the reference. For temperatures from
-    263.15 to 368.15 K values at 1 bar were used. For temperatures from 368.15 to
-    443.15 K values at 10 bar were used. Below 263.15 K and above 443.15 K an
-    error is raised.
-
-    Parameters
-    ----------
-    t : float
-        Temperature (K)
-
-    Returns
-    -------
-    dielc : float
-        Dielectric constant of water
-
-    References
-    ----------
-    - D. G. Archer and P. Wang, “The Dielectric Constant of Water and Debye‐Hückel Limiting Law Slopes,” J. Phys. Chem. Ref. Data, vol. 19, no. 2, pp. 371–411, Mar. 1990.
-    """
-    if t < 263.15:
-        raise ValueError('For dielc_water t must be greater than 263.15 K.')
-    elif t > 443.15:
-        raise ValueError('For dielc_water t must be less than 443.15 K.')
-
-    if t <= 368.15:
-        dielc = 7.6555618295E-04*t**2 - 8.1783881423E-01*t + 2.5419616803E+02
-    else:
-        dielc = 0.0005003272124*t**2 - 0.6285556029*t + 220.4467027
-    return dielc
-
+        token = str(solvent)
+        if token not in species:
+            raise InputError("Unknown solvent label '{}'. Available species={}".format(token, list(species)))
+        idx = species.index(token)
+    if idx < 0 or idx >= z.size:
+        raise InputError("solvent index out of bounds: {} (ncomp={})".format(idx, int(z.size)))
+    if abs(float(z[idx])) > 1e-12:
+        raise InputError("solvent override must reference a neutral species (z=0).")
+    return True, idx
 
 def np_to_vector_double(np_array):
     """Take a numpy array and return a C++ vector."""
@@ -2926,52 +896,5 @@ def create_struct(params):
     return cppargs
 
 
-def pcsaft_dielectric_eval(x, params):
-    """
-    Evaluate mixed dielectric constant and composition derivatives using the C++ dielectric engine.
-    """
-    x, params = ensure_numpy_input(x, params)
-    check_input(x, {})
-    params = check_association(params)
-    cppargs = create_struct(params)
-    eps = dielectric_eps_cpp(x, cppargs)
-    deps = np.asarray(dielectric_diff_cpp(x, cppargs))
-    return eps, deps
 
-
-def pcsaft_dielc_eval(x, params):
-    return pcsaft_dielectric_eval(x, params)
-
-
-for _public_thermo_name in (
-    "flashPQ",
-    "flashTQ",
-    "pcsaft_Z",
-    "pcsaft_a_res",
-    "pcsaft_ares",
-    "pcsaft_dadt",
-    "pcsaft_den",
-    "pcsaft_dielectric_eval",
-    "pcsaft_dielc_eval",
-    "pcsaft_fugcoef",
-    "pcsaft_gamma",
-    "pcsaft_g_res",
-    "pcsaft_gres",
-    "pcsaft_Hvap",
-    "pcsaft_h_res",
-    "pcsaft_hres",
-    "pcsaft_lnfugcoef",
-    "pcsaft_lnfugcoef_terms",
-    "pcsaft_miac",
-    "pcsaft_miac_m",
-    "pcsaft_mu_res",
-    "pcsaft_mures",
-    "pcsaft_osmoticC",
-    "pcsaft_p",
-    "pcsaft_s_res",
-    "pcsaft_sres",
-    "pcsaft_cp",
-    "pcsaft_gsolv",
-):
-    globals().pop(_public_thermo_name, None)
 

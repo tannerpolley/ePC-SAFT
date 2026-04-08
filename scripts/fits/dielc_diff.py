@@ -17,7 +17,7 @@ from scripts._env import require_pcsaft_install
 require_pcsaft_install()
 
 from pcsaft.parameters import get_prop_dict
-from pcsaft import pcsaft_dielc_eval
+from scripts._pcsaft_oop import pcsaft_dielc_eval
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt

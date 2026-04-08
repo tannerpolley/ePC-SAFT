@@ -26,7 +26,7 @@ def _fast_machine() -> str:
 
 platform.machine = _fast_machine
 
-from pcsaft import dielc_water, pcsaft_den, pcsaft_fugcoef, pcsaft_p
+from scripts._pcsaft_oop import pcsaft_den, pcsaft_fugcoef, pcsaft_p
 
 T_REF = 298.15
 P_REF = 1.0e5
@@ -60,7 +60,13 @@ def water_sigma(T: float) -> float:
 def water_dielc(T: float) -> float:
     # Held 2014 Section 3.1.1 uses the temperature-dependent water dielectric
     # relation from Held 2008; only the composition dependence is neglected.
-    return float(dielc_water(T))
+    if T < 263.15:
+        raise ValueError("water dielectric relation is only valid above 263.15 K.")
+    if T <= 368.15:
+        return float(7.6555618295e-04 * T**2 - 8.1783881423e-01 * T + 2.5419616803e02)
+    if T <= 443.15:
+        return float(0.0005003272124 * T**2 - 0.6285556029 * T + 220.4467027)
+    raise ValueError("water dielectric relation is only valid below 443.15 K.")
 
 
 def mole_fraction_from_molality_11(molality: float) -> np.ndarray:

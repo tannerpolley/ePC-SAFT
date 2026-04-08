@@ -20,7 +20,7 @@ from scripts._env import require_pcsaft_install
 require_pcsaft_install()
 
 from pcsaft.parameters import get_prop_dict
-from pcsaft import pcsaft_den, pcsaft_miac
+from scripts._pcsaft_oop import pcsaft_den, pcsaft_miac
 from _plot_common import configure_style, save_figure
 
 matplotlib.use("Agg")

@@ -25,7 +25,7 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from figure6b_digitized_reference_replica import _load_digitized_curves
 from figure6b_libr_ethanol_contributions import P_REF, T_REF, _build_params, _molality_for_salt_mole_fraction, _molality_to_species_molefraction
-from pcsaft import pcsaft_den, pcsaft_lnfugcoef_terms
+from scripts._pcsaft_oop import pcsaft_den, pcsaft_lnfugcoef_terms
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt

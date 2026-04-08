@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <numeric>
+#include <limits>
 #include "math.h"
 #include "Eigen/Dense"
 
@@ -442,6 +443,48 @@ ChargeGroups collect_charge_groups(const add_args& args, size_t ncomp) {
         }
     }
     return groups;
+}
+
+void build_charge_metadata_cpp(
+    const add_args& args,
+    bool& has_ionic,
+    vector<int>& cation_indices,
+    vector<int>& anion_indices,
+    vector<int>& solvent_indices,
+    vector<int>& pair_cation_indices,
+    vector<int>& pair_anion_indices,
+    vector<int>& pair_nu_cation,
+    vector<int>& pair_nu_anion
+) {
+    has_ionic = false;
+    cation_indices.clear();
+    anion_indices.clear();
+    solvent_indices.clear();
+    pair_cation_indices.clear();
+    pair_anion_indices.clear();
+    pair_nu_cation.clear();
+    pair_nu_anion.clear();
+
+    if (args.z.empty()) {
+        return;
+    }
+    ChargeGroups groups = collect_charge_groups(args, args.z.size());
+    cation_indices = groups.cations;
+    anion_indices = groups.anions;
+    solvent_indices = groups.solvents;
+    has_ionic = (!cation_indices.empty() || !anion_indices.empty());
+
+    for (int ic : cation_indices) {
+        for (int ia : anion_indices) {
+            int zc = static_cast<int>(std::round(std::abs(args.z[ic])));
+            int za = static_cast<int>(std::round(std::abs(args.z[ia])));
+            int g = gcd_int(zc, za);
+            pair_cation_indices.push_back(ic);
+            pair_anion_indices.push_back(ia);
+            pair_nu_cation.push_back(za / g);
+            pair_nu_anion.push_back(zc / g);
+        }
+    }
 }
 
 double stable_logz_over_zminus1(double Z) {
@@ -4614,38 +4657,6 @@ vector<double> dielc_diff_cpp(vector<double> x, const add_args &cppargs) {
     return dielectric_diff_cpp(std::move(x), cppargs);
 }
 
-double dielc_water(double t) {
-    /**
-    Return the dielectric constant of water at the given temperature.
-
-    t : double
-        Temperature (K)
-
-    This equation was fit to values given in the reference. For temperatures
-    from 263.15 to 368.15 K values at 1 bar were used. For temperatures from
-    368.15 to 443.15 K values at 10 bar were used.
-
-    Reference:
-    D. G. Archer and P. Wang, “The Dielectric Constant of Water and Debye‐Hückel
-    Limiting Law Slopes,” J. Phys. Chem. Ref. Data, vol. 19, no. 2, pp. 371–411,
-    Mar. 1990.
-    */
-    double dielc;
-    if (t < 263.15) {
-        throw ValueError("The current function for the dielectric constant for water is only valid for temperatures above 263.15 K.");
-    }
-    else if (t <= 368.15) {
-        dielc = 7.6555618295E-04*t*t - 8.1783881423E-01*t + 2.5419616803E+02;
-    }
-    else if (t <= 443.15) {
-        dielc = 0.0005003272124*t*t - 0.6285556029*t + 220.4467027;
-    }
-    else {
-        throw ValueError("The current function for the dielectric constant for water is only valid for temperatures less than 443.15 K.");
-    }
-    return dielc;
-}
-
 double calc_water_sigma(double t) {
     return 3.8395 + 1.2828 * std::exp(-0.0074944 * t) - 1.3939 * std::exp(-0.00056029 * t);
 }
@@ -5070,13 +5081,203 @@ vector<double> gsolv_values_cpp(double t, double rho, const vector<double>& x, c
     }
     return result;
 }
+
+int resolve_solvent_index_cpp(const vector<int>& solvent_indices, bool has_solvent_override, int solvent_override_index)
+{
+    if (solvent_indices.empty()) {
+        throw ValueError("actcoeff requires at least one neutral solvent species.");
+    }
+    if (!has_solvent_override || solvent_override_index < 0) {
+        return solvent_indices.front();
+    }
+    if (std::find(solvent_indices.begin(), solvent_indices.end(), solvent_override_index) == solvent_indices.end()) {
+        throw ValueError("solvent_override_index must reference a neutral solvent species.");
+    }
+    return solvent_override_index;
+}
+
+double normalize_mw_cpp(double mw)
+{
+    if (mw > 1.0) {
+        mw /= 1000.0;
+    }
+    return mw;
+}
+
+double solvent_pool_mix_mw_cpp(const vector<double>& x, const add_args& args, const vector<int>& solvent_pool)
+{
+    if (solvent_pool.empty()) {
+        throw ValueError("actcoeff requires a non-empty solvent pool.");
+    }
+    vector<double> mass_neutral(solvent_pool.size(), 0.0);
+    double mass_neutral_sum = 0.0;
+    for (size_t k = 0; k < solvent_pool.size(); ++k) {
+        int idx = solvent_pool[k];
+        double mw = normalize_mw_cpp(args.mw[idx]);
+        if (mw <= 0.0) {
+            throw ValueError("Solvent molecular weight must be positive.");
+        }
+        mass_neutral[k] = x[idx] * mw;
+        mass_neutral_sum += mass_neutral[k];
+    }
+    if (mass_neutral_sum <= 0.0) {
+        throw ValueError("Solvent mass is zero; check solvent mole fraction and MW.");
+    }
+    double mw_mix_inv = 0.0;
+    for (size_t k = 0; k < solvent_pool.size(); ++k) {
+        int idx = solvent_pool[k];
+        double mw = normalize_mw_cpp(args.mw[idx]);
+        double w_sf = mass_neutral[k] / mass_neutral_sum;
+        mw_mix_inv += w_sf / mw;
+    }
+    if (mw_mix_inv <= 0.0) {
+        throw ValueError("Solvent molecular weight mixture is invalid.");
+    }
+    return 1.0 / mw_mix_inv;
+}
+
+ActivityCoeffNative actcoeff_values_cpp(
+    double t,
+    double rho,
+    double p,
+    int phase,
+    const vector<double>& x,
+    const add_args& args,
+    const vector<int>& cation_indices,
+    const vector<int>& anion_indices,
+    const vector<int>& solvent_indices,
+    const vector<int>& pair_cation_indices,
+    const vector<int>& pair_anion_indices,
+    const vector<int>& pair_nu_cation,
+    const vector<int>& pair_nu_anion,
+    bool include_aux,
+    bool has_solvent_override,
+    int solvent_override_index
+) {
+    if (args.z.empty() || std::all_of(args.z.begin(), args.z.end(), [](double v) { return std::abs(v) <= 1e-12; })) {
+        throw ValueError("actcoeff requires ionic species (non-zero z).");
+    }
+    if (args.mw.size() != x.size()) {
+        throw ValueError("actcoeff requires params['MW'] to be present and aligned with x.");
+    }
+    if (cation_indices.empty() || anion_indices.empty()) {
+        throw ValueError("actcoeff requires at least one cation and one anion.");
+    }
+    if (pair_cation_indices.size() != pair_anion_indices.size()
+        || pair_cation_indices.size() != pair_nu_cation.size()
+        || pair_cation_indices.size() != pair_nu_anion.size()) {
+        throw ValueError("Invalid ionic pair metadata for actcoeff.");
+    }
+
+    ActivityCoeffNative out;
+    out.cation_indices = cation_indices;
+    out.anion_indices = anion_indices;
+    out.solvent_indices = solvent_indices;
+    out.pair_cation_indices = pair_cation_indices;
+    out.pair_anion_indices = pair_anion_indices;
+    out.pair_nu_cation = pair_nu_cation;
+    out.pair_nu_anion = pair_nu_anion;
+    out.solvent_index = resolve_solvent_index_cpp(solvent_indices, has_solvent_override, solvent_override_index);
+
+    out.gamma_components = miac_gamma_vector_cpp(t, rho, x, args);
+    if (include_aux) {
+        out.gsolv = gsolv_values_cpp(t, rho, x, args);
+        if (out.gsolv.size() != x.size()) {
+            throw ValueError("Unexpected gsolv payload size in actcoeff.");
+        }
+    } else {
+        out.gsolv.assign(x.size(), std::numeric_limits<double>::quiet_NaN());
+    }
+
+    vector<int> solvent_pool;
+    if (has_solvent_override) {
+        solvent_pool.push_back(out.solvent_index);
+    } else {
+        solvent_pool = solvent_indices;
+    }
+    double mass_solvent = 0.0;
+    for (int idx : solvent_pool) {
+        mass_solvent += x[idx] * normalize_mw_cpp(args.mw[idx]);
+    }
+    if (mass_solvent <= 0.0) {
+        throw ValueError("Solvent mass is zero; check solvent mole fraction and MW.");
+    }
+    double mw_mix = solvent_pool_mix_mw_cpp(x, args, solvent_pool);
+
+    out.gamma_mean_ionic_x.reserve(pair_cation_indices.size());
+    out.gamma_mean_ionic_m.reserve(pair_cation_indices.size());
+    out.pair_molality.reserve(pair_cation_indices.size());
+    out.pair_conversion_factor.reserve(pair_cation_indices.size());
+    for (size_t k = 0; k < pair_cation_indices.size(); ++k) {
+        int ic = pair_cation_indices[k];
+        int ia = pair_anion_indices[k];
+        double nu_cat = static_cast<double>(pair_nu_cation[k]);
+        double nu_an = static_cast<double>(pair_nu_anion[k]);
+        double sum_nu = nu_cat + nu_an;
+        double ln_gamma_pm = (nu_cat * std::log(std::max(out.gamma_components[ic], 1e-300))
+            + nu_an * std::log(std::max(out.gamma_components[ia], 1e-300))) / sum_nu;
+        double gamma_pm_x = std::exp(ln_gamma_pm);
+        double n_salt = 0.5 * (x[ic] / nu_cat + x[ia] / nu_an);
+        double m_salt = n_salt / mass_solvent;
+        double conversion = 1.0 + mw_mix * m_salt * sum_nu;
+        out.gamma_mean_ionic_x.push_back(gamma_pm_x);
+        out.gamma_mean_ionic_m.push_back(gamma_pm_x / conversion);
+        out.pair_molality.push_back(m_salt);
+        out.pair_conversion_factor.push_back(conversion);
+    }
+
+    if (include_aux) {
+        double mw_solvent = normalize_mw_cpp(args.mw[out.solvent_index]);
+        if (mw_solvent <= 0.0) {
+            throw ValueError("Solvent molecular weight must be positive.");
+        }
+        if (x[out.solvent_index] <= 0.0) {
+            throw ValueError("Selected solvent mole fraction must be positive for osmotic coefficient.");
+        }
+        vector<double> x0(x.size(), 0.0);
+        x0[out.solvent_index] = 1.0;
+        int ref_phase = phase;
+        if (ref_phase != 0 && ref_phase != 1) {
+            ref_phase = (rho < 900.0) ? 1 : 0;
+        }
+        vector<double> fugcoef = fugcoef_cpp(t, rho, x, args);
+        double rho0 = den_cpp(t, p, x0, ref_phase, args);
+        vector<double> fugcoef0 = fugcoef_cpp(t, rho0, x0, args);
+        double gamma_solvent = fugcoef[out.solvent_index] / fugcoef0[out.solvent_index];
+        double molality_sum = 0.0;
+        for (size_t i = 0; i < x.size(); ++i) {
+            if (static_cast<int>(i) == out.solvent_index) {
+                continue;
+            }
+            molality_sum += x[i] / (x[out.solvent_index] * mw_solvent);
+        }
+        if (molality_sum <= 0.0) {
+            throw ValueError("Total molality is zero; osmotic coefficient is undefined.");
+        }
+        out.osmotic_c = -std::log(x[out.solvent_index] * gamma_solvent) / (mw_solvent * molality_sum);
+    } else {
+        out.osmotic_c = std::numeric_limits<double>::quiet_NaN();
+    }
+    return out;
+}
 } // namespace miac_detail
 
 using namespace miac_detail;
 
 PCSAFTMixtureNative::PCSAFTMixtureNative(const add_args& args)
-    : args_(args)
+    : args_(args), has_ionic_(false)
 {
+    build_charge_metadata_cpp(
+        args_,
+        has_ionic_,
+        cation_indices_,
+        anion_indices_,
+        solvent_indices_,
+        pair_cation_indices_,
+        pair_anion_indices_,
+        pair_nu_cation_,
+        pair_nu_anion_
+    );
 }
 
 const add_args& PCSAFTMixtureNative::args() const
@@ -5089,6 +5290,46 @@ size_t PCSAFTMixtureNative::ncomp() const
     return args_.m.size();
 }
 
+bool PCSAFTMixtureNative::has_ionic() const
+{
+    return has_ionic_;
+}
+
+const vector<int>& PCSAFTMixtureNative::cation_indices() const
+{
+    return cation_indices_;
+}
+
+const vector<int>& PCSAFTMixtureNative::anion_indices() const
+{
+    return anion_indices_;
+}
+
+const vector<int>& PCSAFTMixtureNative::solvent_indices() const
+{
+    return solvent_indices_;
+}
+
+const vector<int>& PCSAFTMixtureNative::pair_cation_indices() const
+{
+    return pair_cation_indices_;
+}
+
+const vector<int>& PCSAFTMixtureNative::pair_anion_indices() const
+{
+    return pair_anion_indices_;
+}
+
+const vector<int>& PCSAFTMixtureNative::pair_nu_cation() const
+{
+    return pair_nu_cation_;
+}
+
+const vector<int>& PCSAFTMixtureNative::pair_nu_anion() const
+{
+    return pair_nu_anion_;
+}
+
 std::shared_ptr<PCSAFTStateNative> PCSAFTMixtureNative::state(double t, vector<double> x, int phase,
     bool has_p, double p, bool has_rho, double rho)
 {
@@ -5099,7 +5340,7 @@ PCSAFTStateNative::PCSAFTStateNative(std::shared_ptr<PCSAFTMixtureNative> mixtur
     int phase, bool has_p, double p, bool has_rho, double rho)
     : mixture_(std::move(mixture)), t_(t), x_(std::move(x)), phase_(phase),
       has_p_(has_p), has_rho_(has_rho), p_(p), rho_(rho),
-      pressure_cached_(has_p), density_cached_(has_rho)
+      pressure_cached_(has_p), density_cached_(has_rho), actcoeff_cached_(false)
 {
     if (!mixture_) {
         throw ValueError("PCSAFTStateNative requires a valid mixture.");
@@ -5257,157 +5498,53 @@ vector<double> PCSAFTStateNative::dielc_eval()
 
 double PCSAFTStateNative::osmoticC()
 {
-    const add_args& args = mixture_->args();
-    vector<double> xx = x_;
-
-    int indx_solvent = -1;
-    if (args.mw.size() == xx.size()) {
-        for (size_t i = 0; i < xx.size(); ++i) {
-            if (args.z.size() == xx.size() && std::abs(args.z[i]) < 1e-12) {
-                indx_solvent = static_cast<int>(i);
-                break;
-            }
-        }
-    }
-    if (indx_solvent < 0) {
-        throw ValueError("PCSAFTStateNative::osmoticC requires a neutral solvent species.");
-    }
-    double mw_solvent = args.mw[indx_solvent];
-    if (mw_solvent > 1.0) {
-        mw_solvent /= 1000.0;
-    }
-    if (mw_solvent <= 0.0) {
-        throw ValueError("Solvent molecular weight must be positive.");
-    }
-    if (xx[indx_solvent] <= 0.0) {
-        throw ValueError("Solvent mole fraction must be positive.");
-    }
-
-    vector<double> molality(xx.size(), 0.0);
-    double molality_sum = 0.0;
-    for (size_t i = 0; i < xx.size(); ++i) {
-        molality[i] = xx[i] / (xx[indx_solvent] * mw_solvent);
-        if (static_cast<int>(i) != indx_solvent) {
-            molality_sum += molality[i];
-        }
-    }
-    if (molality_sum <= 0.0) {
-        throw ValueError("Total molality is zero; osmotic coefficient is undefined.");
-    }
-
-    vector<double> x0(xx.size(), 0.0);
-    x0[indx_solvent] = 1.0;
-
-    double rho = density();
-    double p = p_cpp(t_, rho, xx, args);
-    int ph = (rho < 900.0) ? 1 : 0;
-    double rho0 = den_cpp(t_, p, x0, ph, args);
-    vector<double> fugcoef = fugcoef_cpp(t_, rho, xx, args);
-    vector<double> fugcoef0 = fugcoef_cpp(t_, rho0, x0, args);
-    double gamma = fugcoef[indx_solvent] / fugcoef0[indx_solvent];
-    double osmC = -std::log(xx[indx_solvent] * gamma) / (mw_solvent * molality_sum);
-    return osmC;
+    return actcoeff(false, -1).osmotic_c;
 }
 
 vector<double> PCSAFTStateNative::miac_m()
 {
-    const add_args& args_ref = mixture_->args();
-    vector<double> gamma_i = miac_gamma_vector_cpp(t_, density(), x_, args_ref);
-    ChargeGroups groups = collect_charge_groups(args_ref, x_.size());
-    if (groups.cations.empty() || groups.anions.empty()) {
-        throw ValueError("miac_m requires at least one cation and one anion.");
-    }
-    if (groups.solvents.empty()) {
-        throw ValueError("miac_m requires a neutral solvent reference.");
-    }
-    if (args_ref.mw.size() != x_.size()) {
-        throw ValueError("miac_m requires params['MW'] to be present and aligned with x.");
-    }
-
-    double mass_solvent = 0.0;
-    for (int i : groups.solvents) {
-        mass_solvent += x_[i] * args_ref.mw[i];
-    }
-    if (mass_solvent <= 0.0) {
-        throw ValueError("Solvent mass is zero; check solvent mole fraction and MW.");
-    }
-
-    vector<double> mass_neutral(groups.solvents.size(), 0.0);
-    for (size_t k = 0; k < groups.solvents.size(); ++k) {
-        mass_neutral[k] = x_[groups.solvents[k]] * args_ref.mw[groups.solvents[k]];
-    }
-    double mass_neutral_sum = std::accumulate(mass_neutral.begin(), mass_neutral.end(), 0.0);
-    if (mass_neutral_sum <= 0.0) {
-        throw ValueError("Solvent mass is zero; check solvent mole fraction and MW.");
-    }
-    double w_sf_sum = 0.0;
-    double M_solvent_mix_inv = 0.0;
-    for (size_t k = 0; k < groups.solvents.size(); ++k) {
-        double w_sf = mass_neutral[k] / mass_neutral_sum;
-        w_sf_sum += w_sf;
-        M_solvent_mix_inv += w_sf / args_ref.mw[groups.solvents[k]];
-    }
-    (void)w_sf_sum;
-    if (M_solvent_mix_inv <= 0.0) {
-        throw ValueError("Solvent molecular weight mixture is invalid.");
-    }
-    double M_solvent_mix = 1.0 / M_solvent_mix_inv;
-
-    vector<double> out;
-    out.reserve(static_cast<size_t>(groups.cations.size() * groups.anions.size()));
-    for (int ic : groups.cations) {
-        for (int ia : groups.anions) {
-            int zc = static_cast<int>(std::round(std::abs(args_ref.z[ic])));
-            int za = static_cast<int>(std::round(std::abs(args_ref.z[ia])));
-            int g = gcd_int(zc, za);
-            int nu_cat = za / g;
-            int nu_an = zc / g;
-            double n_salt = 0.5 * (x_[ic] / static_cast<double>(nu_cat) + x_[ia] / static_cast<double>(nu_an));
-            double m_salt = n_salt / mass_solvent;
-            double sum_nu = static_cast<double>(nu_cat + nu_an);
-            double ln_gamma_pm = (static_cast<double>(nu_cat) * std::log(gamma_i[ic]) + static_cast<double>(nu_an) * std::log(gamma_i[ia])) / sum_nu;
-            double gamma_pm_x = std::exp(ln_gamma_pm);
-            double gamma_pm_m = gamma_pm_x / (1.0 + M_solvent_mix * m_salt * sum_nu);
-            out.push_back(gamma_pm_m);
-        }
-    }
-    return out;
+    return actcoeff(false, -1).gamma_mean_ionic_m;
 }
 
 vector<double> PCSAFTStateNative::miac()
 {
-    const add_args& args_ref = mixture_->args();
-    vector<double> gamma_i = miac_gamma_vector_cpp(t_, density(), x_, args_ref);
-
-    ChargeGroups groups = collect_charge_groups(args_ref, x_.size());
-    if (groups.cations.empty() || groups.anions.empty()) {
-        throw ValueError("miac requires at least one cation and one anion.");
-    }
-    if (groups.solvents.empty()) {
-        throw ValueError("miac requires a neutral solvent reference.");
-    }
-
-    vector<double> out;
-    out.reserve(static_cast<size_t>(groups.cations.size() * groups.anions.size()));
-    for (int ic : groups.cations) {
-        for (int ia : groups.anions) {
-            int zc = static_cast<int>(std::round(std::abs(args_ref.z[ic])));
-            int za = static_cast<int>(std::round(std::abs(args_ref.z[ia])));
-            int g = gcd_int(zc, za);
-            int nu_cat = za / g;
-            int nu_an = zc / g;
-            double sum_nu = static_cast<double>(nu_cat + nu_an);
-            double ln_gamma_pm = (static_cast<double>(nu_cat) * std::log(gamma_i[ic]) + static_cast<double>(nu_an) * std::log(gamma_i[ia])) / sum_nu;
-            out.push_back(std::exp(ln_gamma_pm));
-        }
-    }
-    return out;
+    return actcoeff(false, -1).gamma_mean_ionic_x;
 }
 
 vector<double> PCSAFTStateNative::gsolv()
 {
+    return actcoeff(false, -1).gsolv;
+}
+
+ActivityCoeffNative PCSAFTStateNative::actcoeff(bool has_solvent_override, int solvent_override_index)
+{
+    if (!mixture_->has_ionic()) {
+        throw ValueError("actcoeff requires ionic species (non-zero z).");
+    }
+    if (!has_solvent_override && actcoeff_cached_) {
+        return actcoeff_cache_;
+    }
     const add_args& args = mixture_->args();
-    return gsolv_values_cpp(t_, density(), x_, args);
+    double rho = density();
+    double p = pressure();
+    ActivityCoeffNative out = actcoeff_values_cpp(
+        t_, rho, p, phase_, x_, args,
+        mixture_->cation_indices(),
+        mixture_->anion_indices(),
+        mixture_->solvent_indices(),
+        mixture_->pair_cation_indices(),
+        mixture_->pair_anion_indices(),
+        mixture_->pair_nu_cation(),
+        mixture_->pair_nu_anion(),
+        true,
+        has_solvent_override,
+        solvent_override_index
+    );
+    if (!has_solvent_override) {
+        actcoeff_cache_ = out;
+        actcoeff_cached_ = true;
+    }
+    return out;
 }
 
 FlashResultNative PCSAFTStateNative::flashTQ(double q, bool has_p_guess, double p_guess)

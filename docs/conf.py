@@ -10,19 +10,24 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
-import os
+import re
 import sys
-sys.path.insert(0, os.path.abspath('..'))
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'src'))
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'pcsaft'
-copyright = '2020, Zach Baird'
-author = 'Zach Baird'
+copyright = '2020-2026, Tanner Polley'
+author = 'Tanner Polley'
 
 # The full version, including alpha/beta/rc tags
-release = '1.4.1'
+_pyproject = (ROOT / 'pyproject.toml').read_text(encoding='utf-8')
+_match = re.search(r'^version = "([^"]+)"$', _pyproject, re.MULTILINE)
+release = _match.group(1) if _match else '1.5.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -55,4 +60,4 @@ html_theme = 'alabaster'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = []

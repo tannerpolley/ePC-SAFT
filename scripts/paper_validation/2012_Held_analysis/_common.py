@@ -30,7 +30,7 @@ def _fast_machine() -> str:
 platform.machine = _fast_machine
 
 from pcsaft.parameters import get_prop_dict
-from pcsaft import pcsaft_den, pcsaft_fugcoef, pcsaft_miac, pcsaft_miac_m
+from scripts._pcsaft_oop import pcsaft_den, pcsaft_fugcoef, pcsaft_miac, pcsaft_miac_m
 
 T_REF = 298.15
 P_REF = 1.0e5

@@ -31,7 +31,7 @@ def _fast_machine() -> str:
 
 platform.machine = _fast_machine
 
-import pcsaft as pcs
+import scripts._pcsaft_oop as pcs
 from pcsaft.parameters import get_prop_dict
 
 
@@ -757,31 +757,7 @@ def _solve_formula_feed(temperature_k: float, feed_formula: np.ndarray, seed_for
         )
     best = None
     for options in attempts:
-        out = pcs.pcsaft_multiphase_lle(temperature_k, P_REF, z_feed, params, SPECIES, options=options)
-        if int(out.get("n_phases", 0)) != 2:
-            continue
-        phases = out.get("phases", [])
-        if len(phases) != 2:
-            continue
-        x0 = ion_to_formula_basis(np.asarray(phases[0]["x"], dtype=float))
-        x1 = ion_to_formula_basis(np.asarray(phases[1]["x"], dtype=float))
-        organic, aqueous = (x0, x1) if x0[IDX4["Isobutanol"]] >= x1[IDX4["Isobutanol"]] else (x1, x0)
-        candidate = {
-            "converged": bool(out.get("converged", False)),
-            "status": out.get("status"),
-            "message": out.get("message"),
-            "residual_norm": float(out.get("residual_norm", np.nan)),
-            "feed_formula": np.asarray(feed_formula, dtype=float),
-            "organic_formula": organic,
-            "aqueous_formula": aqueous,
-            "beta_organic": float(phases[0]["beta"] if x0[IDX4["Isobutanol"]] >= x1[IDX4["Isobutanol"]] else phases[1]["beta"]),
-            "beta_aqueous": float(phases[1]["beta"] if x0[IDX4["Isobutanol"]] >= x1[IDX4["Isobutanol"]] else phases[0]["beta"]),
-            "split_norm": float(np.max(np.abs(organic - aqueous))),
-        }
-        if best is None or candidate["split_norm"] > best["split_norm"]:
-            best = candidate
-            if candidate["converged"] and candidate["split_norm"] > 5.0e-3:
-                break
+        raise NotImplementedError("The legacy multiphase LLE workflow has been removed and will be rewritten later.")
     if best is None:
         fallback_options = {
             "tpdf_global_trials": 300,
@@ -793,24 +769,7 @@ def _solve_formula_feed(temperature_k: float, feed_formula: np.ndarray, seed_for
             "split_tol": 1.0e-4,
             "debug": False,
         }
-        out = pcs.pcsaft_multiphase_lle(temperature_k, P_REF, z_feed, params, SPECIES, options=fallback_options)
-        if int(out.get("n_phases", 0)) == 2 and len(out.get("phases", [])) == 2:
-            phases = out.get("phases", [])
-            x0 = ion_to_formula_basis(np.asarray(phases[0]["x"], dtype=float))
-            x1 = ion_to_formula_basis(np.asarray(phases[1]["x"], dtype=float))
-            organic, aqueous = (x0, x1) if x0[IDX4["Isobutanol"]] >= x1[IDX4["Isobutanol"]] else (x1, x0)
-            best = {
-                "converged": bool(out.get("converged", False)),
-                "status": out.get("status"),
-                "message": out.get("message"),
-                "residual_norm": float(out.get("residual_norm", np.nan)),
-                "feed_formula": np.asarray(feed_formula, dtype=float),
-                "organic_formula": organic,
-                "aqueous_formula": aqueous,
-                "beta_organic": float(phases[0]["beta"] if x0[IDX4["Isobutanol"]] >= x1[IDX4["Isobutanol"]] else phases[1]["beta"]),
-                "beta_aqueous": float(phases[1]["beta"] if x0[IDX4["Isobutanol"]] >= x1[IDX4["Isobutanol"]] else phases[0]["beta"]),
-                "split_norm": float(np.max(np.abs(organic - aqueous))),
-            }
+        raise NotImplementedError("The legacy multiphase LLE workflow has been removed and will be rewritten later.")
     return best
 
 
@@ -1278,6 +1237,6 @@ def write_provenance_notes() -> None:
 - Figure 1 salt-free data and the no-salt points in Figures 8-9 were reconstructed from the local paper figures because the Zotero baseline source remained inaccessible in this session.
 - The no-salt baseline is therefore marked as `digitized_local_paper` in the emitted CSV files.
 - Tables 9 and 10 include package-generated ePC-SAFT AAD values and paper-copied eNRTL/ePC-SAFT reference values for comparison.
-- The current package solver can return shallower liquid-liquid splits than the paper for this system; the analysis therefore uses an opt-in external-seed path into `pcsaft_multiphase_lle` while leaving the default solver path unchanged for other workflows.
+- The legacy package solver note is retained here only as historical context; the multiphase LLE workflow is removed from the active Python package and will be rewritten later in native code.
 """
     (ROOT / "provenance_notes.md").write_text(notes, encoding="utf-8")

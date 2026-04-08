@@ -9,7 +9,6 @@ import pytest
 
 import pcsaft
 from pcsaft import DATASET_ROOT
-from pcsaft import aly_lee
 from pcsaft import PCSAFTMixture
 from pcsaft import SolutionError
 from pcsaft.parameters import _resolve_runtime_options
@@ -69,6 +68,7 @@ def _runtime_to_elec_model(runtime):
 def test_package_exports_are_object_first():
     assert hasattr(pcsaft, "PCSAFTMixture")
     assert hasattr(pcsaft, "PCSAFTState")
+    assert hasattr(pcsaft, "ActivityCoeffResult")
     assert not hasattr(pcsaft, "pcsaft_den")
     assert not hasattr(pcsaft, "pcsaft_cp")
     assert not hasattr(pcsaft, "pcsaft_ares")
@@ -178,7 +178,7 @@ def test_state_methods_and_breakdown_match_existing_accessors():
         "e": np.asarray([285.69]),
     })
     cp_state = cp_mix.state(T=325.0, x=np.asarray([1.0]), P=101325.0)
-    cp_expected = aly_lee(cp_state.T, aly)
+    cp_expected = _aly_lee_reference(cp_state.T, aly)
     cp_expected += (
         cp_mix.state(T=cp_state.T + 0.001, x=np.asarray([1.0]), P=101325.0, phase="liq").h_res()
         - cp_mix.state(T=cp_state.T - 0.001, x=np.asarray([1.0]), P=101325.0, phase="liq").h_res()
@@ -271,12 +271,20 @@ def test_dataset_state_methods_and_lle_workflow():
     miac = state.miac(species=species)
     miac_m = state.miac_m(species=species)
     gsolv = state.gsolv(species=species)
+    actcoeff = state.actcoeff(species=species)
     assert list(miac) == ["Na+Cl-"]
     assert list(miac_m) == ["Na+Cl-"]
     assert list(gsolv) == ["Na+", "Cl-"]
     assert np.isfinite(next(iter(miac.values())))
     assert np.isfinite(next(iter(miac_m.values())))
     assert all(np.isfinite(value) for value in gsolv.values())
+    assert actcoeff.mean_ionic_x() == miac
+    assert actcoeff.mean_ionic_m() == miac_m
+    assert actcoeff.ion() == gsolv
+    assert set(actcoeff.component()) == set(species)
+    assert actcoeff.as_basis("x") == miac
+    assert actcoeff.as_basis("molality") == miac_m
+    assert np.isfinite(actcoeff.osmotic_c)
 
     breakdown = state.breakdown(species=species)
     assert breakdown["miac"] == miac
@@ -288,11 +296,10 @@ def test_dataset_state_methods_and_lle_workflow():
     np.testing.assert_allclose(breakdown["dielectric_eval"][0], eps)
     np.testing.assert_allclose(breakdown["dielectric_eval"][1], deps)
 
-    lle = state.multiphase_lle(z_feed, species=species, options={"tpdf_global_trials": 50, "tpdf_local_trials": 20, "tpdf_tol": -1e-6})
-    assert lle.n_phases >= 1
-    assert lle.phases
-    assert lle.e_matrix.shape[1] == len(lle.charged_species)
-    assert lle.charged_species
+    assert not hasattr(state, "multiphase_lle")
+def _aly_lee_reference(t: float, c: np.ndarray) -> float:
+    c = np.asarray(c, dtype=float).flatten()
+    return float((c[0] + c[1] * (c[2] / t / np.sinh(c[2] / t)) ** 2 + c[3] * (c[4] / t / np.cosh(c[4] / t)) ** 2) / 1000.0)
 
 
 def test_missing_public_procedural_api_is_not_exported():

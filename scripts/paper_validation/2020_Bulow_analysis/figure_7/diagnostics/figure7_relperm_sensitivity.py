@@ -35,7 +35,7 @@ from plot_figure_7 import (  # type: ignore
     SOLVENT_MW,
 )
 from _plot_common import configure_style, save_figure  # type: ignore
-from pcsaft import pcsaft_den, pcsaft_miac
+from scripts._pcsaft_oop import pcsaft_den, pcsaft_miac
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt

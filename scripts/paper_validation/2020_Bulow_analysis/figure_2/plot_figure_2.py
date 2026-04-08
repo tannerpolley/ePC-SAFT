@@ -24,7 +24,7 @@ require_pcsaft_install()
 
 import _plot_common as common
 from pcsaft.parameters import get_prop_dict
-from pcsaft import pcsaft_den, pcsaft_gsolv
+from scripts._pcsaft_oop import pcsaft_den, pcsaft_gsolv
 
 
 DATA_PATH = SCRIPT_DIR / "data" / "water_comparisons.csv"

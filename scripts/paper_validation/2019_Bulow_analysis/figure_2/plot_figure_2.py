@@ -21,7 +21,7 @@ from scripts._env import require_pcsaft_install
 require_pcsaft_install()
 
 from _common import build_params
-from pcsaft import pcsaft_den, pcsaft_lnfugcoef_terms
+from scripts._pcsaft_oop import pcsaft_den, pcsaft_lnfugcoef_terms
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt

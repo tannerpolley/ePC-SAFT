@@ -3,7 +3,7 @@
 """
 Created on Thu Jul 19 14:23:00 2018
 
-@author: Zach Baird
+@author: Tanner Polley
 """
 from libcpp.vector cimport vector
 from libcpp.memory cimport shared_ptr
@@ -89,6 +89,23 @@ cdef extern from "pcsaft_electrolyte.h":
         double value
         double pressure
 
+    ctypedef struct ActivityCoeffNative:
+        vector[double] gamma_components
+        vector[double] gamma_mean_ionic_x
+        vector[double] gamma_mean_ionic_m
+        vector[double] gsolv
+        vector[double] pair_molality
+        vector[double] pair_conversion_factor
+        vector[int] cation_indices
+        vector[int] anion_indices
+        vector[int] solvent_indices
+        vector[int] pair_cation_indices
+        vector[int] pair_anion_indices
+        vector[int] pair_nu_cation
+        vector[int] pair_nu_anion
+        int solvent_index
+        double osmotic_c
+
     cdef cppclass PCSAFTStateNative:
         PCSAFTStateNative(shared_ptr[PCSAFTMixtureNative] mixture, double t, vector[double] x,
                           int phase, bint has_p, double p, bint has_rho, double rho) except +
@@ -118,6 +135,7 @@ cdef extern from "pcsaft_electrolyte.h":
         vector[double] miac_m()
         vector[double] miac()
         vector[double] gsolv()
+        ActivityCoeffNative actcoeff(bint has_solvent_override, int solvent_override_index) except +
         FlashResultNative flashTQ(double q, bint has_p_guess, double p_guess)
         FlashResultNative flashPQ(double p, double q, bint has_t_guess, double t_guess)
         VaporizationResultNative Hvap(bint has_p_guess, double p_guess)

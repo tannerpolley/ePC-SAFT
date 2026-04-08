@@ -23,7 +23,7 @@ require_pcsaft_install()
 import _plot_common as common
 import _model_overlay as overlay
 from pcsaft.parameters import get_prop_dict
-from pcsaft import pcsaft_den, pcsaft_lnfugcoef_terms, pcsaft_p
+from scripts._pcsaft_oop import pcsaft_den, pcsaft_lnfugcoef_terms, pcsaft_p
 
 
 DATA_PATH = FIGURE_DIR / "data" / "water_contributions.csv"

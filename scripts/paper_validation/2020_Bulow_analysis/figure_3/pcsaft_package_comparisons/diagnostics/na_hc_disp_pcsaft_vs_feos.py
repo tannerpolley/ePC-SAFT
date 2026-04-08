@@ -33,7 +33,7 @@ from scripts._env import require_pcsaft_install
 require_pcsaft_install()
 
 from pcsaft.parameters import get_prop_dict
-from pcsaft import pcsaft_lnfugcoef_terms
+from scripts._pcsaft_oop import pcsaft_lnfugcoef_terms
 
 
 CSV_PATH = SCRIPT_DIR / "na_hc_disp_pcsaft_vs_feos.csv"

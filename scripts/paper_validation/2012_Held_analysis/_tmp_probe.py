@@ -12,7 +12,7 @@ require_pcsaft_install()
 
 sys.path.insert(0, str(Path('scripts/Held_2012_analysis').resolve()))
 import _common as c
-from pcsaft import pcsaft_den, pcsaft_miac_m
+from scripts._pcsaft_oop import pcsaft_den, pcsaft_miac_m
 
 print('loaded', flush=True)
 for solvent in ('ethanol', 'methanol'):

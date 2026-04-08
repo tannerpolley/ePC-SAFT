@@ -1,26 +1,44 @@
 Documentation for pcsaft
 ========================
 
-.. include:: README.rst
+This documentation is organized around package usage, method groups, and reference material.
 
-.. automodule:: pcsaft
+Quick Start
+-----------
 
-Functions
----------
+.. toctree::
+   :maxdepth: 1
+   :caption: Getting Started
 
-.. autosummary::
-   :toctree: functions
+   README
+   getting_started
 
-   PCSAFTMixture
-   PCSAFTState
-   FlashResult
-   VaporizationResult
-   MultiphaseLLEResult
-   PhaseResult
-   aly_lee
-   dielc_water
+Package Guide
+-------------
 
-.. include:: references.rst
+.. toctree::
+   :maxdepth: 1
+   :caption: Package Guide
+
+   package_guide
+
+API Reference
+-------------
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Reference
+
+   api_reference
+
+Background
+----------
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Background Notes
+
+   references
 
 Indices and tables
 ==================

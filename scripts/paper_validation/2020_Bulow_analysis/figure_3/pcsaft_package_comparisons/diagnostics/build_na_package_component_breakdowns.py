@@ -33,7 +33,7 @@ import _model_overlay as overlay
 from pcsaft.parameters import get_prop_dict
 import figure3_detailed_bookkeeping as repo_diag
 import feos_extractor
-from pcsaft import pcsaft_lnfugcoef_terms
+from scripts._pcsaft_oop import pcsaft_lnfugcoef_terms
 
 try:
     import feos

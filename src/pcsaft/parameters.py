@@ -427,6 +427,7 @@ def _normalize_component(name: str) -> str:
 
 
 def available_datasets() -> list[str]:
+    """Return the packaged dataset names available to the runtime loader."""
     if not DATASET_ROOT.exists():
         return []
     return sorted(p.name for p in DATASET_ROOT.iterdir() if p.is_dir())
@@ -1225,6 +1226,7 @@ def _flatten_model_to_runtime(model: dict) -> dict:
 
 
 def _resolve_runtime_options(user_options=None) -> dict:
+    """Normalize user options into the canonical runtime model schema."""
     if user_options is None:
         user_options = {}
     if not isinstance(user_options, dict):

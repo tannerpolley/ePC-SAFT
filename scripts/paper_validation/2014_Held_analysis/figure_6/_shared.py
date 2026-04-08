@@ -20,7 +20,6 @@ from scripts._env import require_pcsaft_install
 require_pcsaft_install()
 
 from pcsaft.parameters import get_prop_dict
-from pcsaft import pcsaft_multiphase_lle
 
 
 DATA_PATH = Path(__file__).with_name("1-butanol-NH4Cl-water-LLE.csv")
@@ -46,72 +45,7 @@ def _mole_to_mass_fraction(x: np.ndarray) -> np.ndarray:
 
 
 def _solve_lle(feed_mass_fraction: np.ndarray) -> dict | None:
-    z_feed = _mass_to_mole_fraction(feed_mass_fraction)
-    params = get_prop_dict(
-        "2014_Held",
-        SPECIES,
-        z_feed,
-        common.T_REF,
-        user_options={
-            # Section 3.3.2 / Eq. (23): keep the dielectric model "constant" with respect to salt,
-            # while the loader applies a salt-free solvent-only weight average for mixed water/1-butanol phases.
-            "ion_dispersion_mixing_rule": False,
-        },
-    )
-
-    attempt_options = [
-        {
-            "tpdf_global_trials": 80,
-            "tpdf_local_trials": 40,
-            "solver_tol": 1.0e-8,
-            "max_nfev": 100,
-            "debug": False,
-        },
-        {
-            "tpdf_global_trials": 250,
-            "tpdf_local_trials": 120,
-            "solver_tol": 1.0e-9,
-            "max_nfev": 240,
-            "charge_weight": 5000.0,
-            "solver_accept_norm": 0.5,
-            "split_tol": 1.0e-4,
-            "debug": False,
-        },
-    ]
-
-    last = None
-    for options in attempt_options:
-        out = pcsaft_multiphase_lle(common.T_REF, common.P_REF, z_feed, params, SPECIES, options=options)
-        last = out
-        if bool(out.get("converged", False)) and int(out.get("n_phases", 0)) == 2:
-            ph0, ph1 = out["phases"][0], out["phases"][1]
-            organic = ph0 if ph0["x"][IDX["Butanol"]] >= ph1["x"][IDX["Butanol"]] else ph1
-            aqueous = ph1 if organic is ph0 else ph0
-            organic_w = _mole_to_mass_fraction(np.asarray(organic["x"], dtype=float))
-            aqueous_w = _mole_to_mass_fraction(np.asarray(aqueous["x"], dtype=float))
-            return {
-                "feed_mass_fraction": np.asarray(feed_mass_fraction, dtype=float),
-                "organic_mass_fraction": organic_w,
-                "aqueous_mass_fraction": aqueous_w,
-                "beta_organic": float(organic["beta"]),
-                "beta_aqueous": float(aqueous["beta"]),
-                "solver_status": out.get("status"),
-                "solver_message": out.get("message"),
-                "residual_norm": float(out.get("residual_norm", np.nan)),
-            }
-
-    if last is None:
-        return None
-    return {
-        "feed_mass_fraction": np.asarray(feed_mass_fraction, dtype=float),
-        "organic_mass_fraction": None,
-        "aqueous_mass_fraction": None,
-        "beta_organic": np.nan,
-        "beta_aqueous": np.nan,
-        "solver_status": last.get("status"),
-        "solver_message": last.get("message"),
-        "residual_norm": float(last.get("residual_norm", np.nan)),
-    }
+    raise NotImplementedError("The legacy multiphase LLE workflow has been removed and will be rewritten later.")
 
 
 @lru_cache(maxsize=1)

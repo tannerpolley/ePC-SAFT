@@ -15,7 +15,7 @@ from scripts._env import require_pcsaft_install
 
 require_pcsaft_install()
 
-from pcsaft import pcsaft_den, pcsaft_fugcoef, pcsaft_p
+from scripts._pcsaft_oop import as_mixture, pcsaft_den, pcsaft_fugcoef, pcsaft_p
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -193,14 +193,16 @@ def _calc_osmotic_curve(salt, m_values, strategy):
     if strategy not in builders:
         raise ValueError(f"Unsupported strategy: {strategy}")
     params = builders[strategy](salt, T_REF)
+    mixture = as_mixture(params, species=_species_for_salt(salt))
     phi_calc = np.empty_like(m_values, dtype=float)
 
     for i, m_salt in enumerate(m_values):
         # Avoid singular m=0 in osmotic coefficient expression.
         m_eval = max(float(m_salt), 1e-12)
         x = _mole_fraction_from_molality_11(m_eval)
-        rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
-        phi_calc[i] = _osmotic_molality_from_fugacity(T_REF, rho, x, params)
+        state = mixture.state(T=T_REF, x=x, P=P_REF, phase="liq")
+        rho = state.density()
+        phi_calc[i] = _osmotic_molality_from_fugacity(T_REF, rho, x, mixture)
 
     if not np.all(np.isfinite(phi_calc)):
         raise ValueError(f"Non-finite osmotic results for {salt} ({strategy}).")
@@ -208,7 +210,8 @@ def _calc_osmotic_curve(salt, m_values, strategy):
 
 
 def _osmotic_molality_from_fugacity(t, rho, x, params):
-    z = np.asarray(params["z"], dtype=float)
+    params_dict = params.parameters if hasattr(params, "parameters") else params
+    z = np.asarray(params_dict["z"], dtype=float)
     idx_water = np.where(np.abs(z) <= 1e-12)[0]
     if idx_water.size != 1:
         raise ValueError(f"Expected exactly one neutral solvent for osmotic conversion, got {idx_water.size}.")

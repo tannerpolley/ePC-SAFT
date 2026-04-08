@@ -32,7 +32,7 @@ from scripts._env import require_pcsaft_install
 require_pcsaft_install()
 
 from pcsaft.parameters import get_prop_dict
-from pcsaft import pcsaft_den, pcsaft_miac_m
+from scripts._pcsaft_oop import as_mixture
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -568,14 +568,15 @@ def calc_curve(
     species = _species_for_combo(salt, solvent_system)
     user_options = dict(DATASET_VARIANTS[dataset_name].get("user_options", {}))
     params = build_params_for_variant(dataset_name, combo, user_options=user_options)
+    mixture = as_mixture(params, species=species)
     pair_key = _pair_key(salt)
 
     gamma_m = np.empty_like(molal_grid, dtype=float)
     for idx, m in enumerate(molal_grid):
         m_eval = float(m) if m > 0.0 else 1e-12
         x = _molality_to_molefraction_combo(m_eval, salt, solvent_system, comp)
-        rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
-        gamma_m[idx] = pcsaft_miac_m(T_REF, rho, x, params, species=species)[pair_key]
+        state = mixture.state(T=T_REF, x=x, P=P_REF, phase="liq")
+        gamma_m[idx] = float(state.actcoeff(species=species).mean_ionic_m()[pair_key])
 
     if not np.all(np.isfinite(gamma_m)):
         raise ValueError(f"Non-finite MIAC_m values for {salt}/{solvent_system} in dataset {dataset_name}.")

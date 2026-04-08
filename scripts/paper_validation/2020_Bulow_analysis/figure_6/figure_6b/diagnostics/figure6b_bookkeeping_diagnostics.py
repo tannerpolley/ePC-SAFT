@@ -32,7 +32,7 @@ from figure6b_libr_ethanol_contributions import (
     _molality_to_species_molefraction,
     _salt_mole_fraction_from_molality,
 )
-from pcsaft import pcsaft_Z, pcsaft_den, pcsaft_lnfugcoef_terms
+from scripts._pcsaft_oop import pcsaft_Z, pcsaft_den, pcsaft_lnfugcoef_terms
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt

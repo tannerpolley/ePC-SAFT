@@ -22,6 +22,7 @@ class SolutionError(Exception):
 
 
 def phase_to_int(phase):
+    """Normalize a phase token to the native liquid/vapor integer flag."""
     if phase in (0, "liq", "liquid"):
         return 0
     if phase in (1, "vap", "vapor", "gas"):
@@ -30,10 +31,12 @@ def phase_to_int(phase):
 
 
 def vector_to_array(values):
+    """Convert a vector-like payload into a NumPy float array."""
     return np.asarray(values, dtype=float)
 
 
 def pair_labels_from_species(params, species):
+    """Build ordered mean-ionic pair labels from species metadata."""
     z = np.asarray(params.get("z", []), dtype=float).flatten()
     if z.size == 0 or np.allclose(z, 0.0):
         raise InputError("MIAC calculations require ionic species (non-zero z).")
@@ -47,6 +50,7 @@ def pair_labels_from_species(params, species):
 
 
 def ion_labels_from_species(params, species):
+    """Build ordered ion labels from species metadata."""
     z = np.asarray(params.get("z", []), dtype=float).flatten()
     if z.size == 0 or np.allclose(z, 0.0):
         raise InputError("gsolv calculations require ionic species in params['z'].")
@@ -57,6 +61,8 @@ def ion_labels_from_species(params, species):
 
 @dataclass(frozen=True, slots=True)
 class PhaseResult:
+    """Single phase returned by flash and LLE solvers."""
+
     beta: float
     x: np.ndarray = field(repr=False)
     rho: float
@@ -73,6 +79,8 @@ class PhaseResult:
 
 @dataclass(frozen=True, slots=True)
 class FlashResult:
+    """Two-phase flash result with the scalar target value and phase objects."""
+
     value: float
     phases: tuple[PhaseResult, ...]
     kind: str
@@ -84,77 +92,95 @@ class FlashResult:
 
     @property
     def pressure(self):
+        """Return the phase pressure for `TQ` flash results."""
         return self.value if self.kind == "TQ" else None
 
     @property
     def temperature(self):
+        """Return the phase temperature for `PQ` flash results."""
         return self.value if self.kind == "PQ" else None
 
 
 @dataclass(frozen=True, slots=True)
 class VaporizationResult:
+    """Vaporization-pressure result."""
+
     value: float
     pressure: float
 
     def __post_init__(self):
         object.__setattr__(self, "value", float(self.value))
         object.__setattr__(self, "pressure", float(self.pressure))
-
-
 @dataclass(frozen=True, slots=True)
-class MultiphaseLLEResult:
-    n_phases: int
-    phases: tuple[PhaseResult, ...]
-    tpdf_min: float
-    tpdf_seed_x: np.ndarray = field(repr=False)
-    converged: bool
-    status: int
-    message: str
-    residual_norm: float
-    e_matrix: np.ndarray = field(repr=False)
-    ion_pair_rows: tuple = field(default_factory=tuple)
-    charged_species: tuple[str, ...] = field(default_factory=tuple)
-    charged_species_indices: np.ndarray = field(repr=False, default_factory=lambda: np.asarray([], dtype=int))
-    solver_result: object | None = None
+class ActivityCoeffResult:
+    """Bundled activity-coefficient outputs for a single state."""
+
+    species: tuple[str, ...]
+    component_gamma: np.ndarray = field(repr=False)
+    gsolv_values: np.ndarray = field(repr=False)
+    gamma_mean_ionic_x_values: np.ndarray = field(repr=False)
+    gamma_mean_ionic_m_values: np.ndarray = field(repr=False)
+    pair_labels: tuple[str, ...] = field(default_factory=tuple)
+    ion_labels: tuple[str, ...] = field(default_factory=tuple)
+    ion_indices: np.ndarray = field(repr=False, default_factory=lambda: np.asarray([], dtype=int))
+    cation_indices: np.ndarray = field(repr=False, default_factory=lambda: np.asarray([], dtype=int))
+    anion_indices: np.ndarray = field(repr=False, default_factory=lambda: np.asarray([], dtype=int))
+    solvent_indices: np.ndarray = field(repr=False, default_factory=lambda: np.asarray([], dtype=int))
+    pair_cation_indices: np.ndarray = field(repr=False, default_factory=lambda: np.asarray([], dtype=int))
+    pair_anion_indices: np.ndarray = field(repr=False, default_factory=lambda: np.asarray([], dtype=int))
+    pair_nu_cation: np.ndarray = field(repr=False, default_factory=lambda: np.asarray([], dtype=int))
+    pair_nu_anion: np.ndarray = field(repr=False, default_factory=lambda: np.asarray([], dtype=int))
+    pair_molality: np.ndarray = field(repr=False, default_factory=lambda: np.asarray([], dtype=float))
+    pair_conversion_factor: np.ndarray = field(repr=False, default_factory=lambda: np.asarray([], dtype=float))
+    solvent_index: int = -1
+    osmotic_c: float = float("nan")
 
     def __post_init__(self):
-        object.__setattr__(self, "n_phases", int(self.n_phases))
-        object.__setattr__(self, "phases", tuple(self.phases))
-        object.__setattr__(self, "tpdf_min", float(self.tpdf_min))
-        object.__setattr__(self, "tpdf_seed_x", np.asarray(self.tpdf_seed_x, dtype=float))
-        object.__setattr__(self, "converged", bool(self.converged))
-        object.__setattr__(self, "status", int(self.status))
-        object.__setattr__(self, "message", str(self.message))
-        object.__setattr__(self, "residual_norm", float(self.residual_norm))
-        object.__setattr__(self, "e_matrix", np.asarray(self.e_matrix, dtype=float))
-        object.__setattr__(self, "ion_pair_rows", tuple(self.ion_pair_rows))
-        object.__setattr__(self, "charged_species", tuple(self.charged_species))
-        object.__setattr__(self, "charged_species_indices", np.asarray(self.charged_species_indices, dtype=int))
+        object.__setattr__(self, "species", tuple(self.species))
+        object.__setattr__(self, "component_gamma", np.asarray(self.component_gamma, dtype=float))
+        object.__setattr__(self, "gsolv_values", np.asarray(self.gsolv_values, dtype=float))
+        object.__setattr__(self, "gamma_mean_ionic_x_values", np.asarray(self.gamma_mean_ionic_x_values, dtype=float))
+        object.__setattr__(self, "gamma_mean_ionic_m_values", np.asarray(self.gamma_mean_ionic_m_values, dtype=float))
+        object.__setattr__(self, "pair_labels", tuple(self.pair_labels))
+        object.__setattr__(self, "ion_labels", tuple(self.ion_labels))
+        object.__setattr__(self, "ion_indices", np.asarray(self.ion_indices, dtype=int))
+        object.__setattr__(self, "cation_indices", np.asarray(self.cation_indices, dtype=int))
+        object.__setattr__(self, "anion_indices", np.asarray(self.anion_indices, dtype=int))
+        object.__setattr__(self, "solvent_indices", np.asarray(self.solvent_indices, dtype=int))
+        object.__setattr__(self, "pair_cation_indices", np.asarray(self.pair_cation_indices, dtype=int))
+        object.__setattr__(self, "pair_anion_indices", np.asarray(self.pair_anion_indices, dtype=int))
+        object.__setattr__(self, "pair_nu_cation", np.asarray(self.pair_nu_cation, dtype=int))
+        object.__setattr__(self, "pair_nu_anion", np.asarray(self.pair_nu_anion, dtype=int))
+        object.__setattr__(self, "pair_molality", np.asarray(self.pair_molality, dtype=float))
+        object.__setattr__(self, "pair_conversion_factor", np.asarray(self.pair_conversion_factor, dtype=float))
+        object.__setattr__(self, "solvent_index", int(self.solvent_index))
+        object.__setattr__(self, "osmotic_c", float(self.osmotic_c))
 
-    @classmethod
-    def from_payload(cls, payload):
-        phases = tuple(
-            PhaseResult(
-                phase.get("beta", 0.0),
-                phase.get("x", []),
-                phase.get("rho", 0.0),
-                phase.get("lnfugcoef", []),
-                phase.get("lnfug", []),
-            )
-            for phase in payload.get("phases", [])
-        )
-        return cls(
-            n_phases=payload.get("n_phases", 0),
-            phases=phases,
-            tpdf_min=payload.get("tpdf_min", float("nan")),
-            tpdf_seed_x=payload.get("tpdf_seed_x", []),
-            converged=payload.get("converged", False),
-            status=payload.get("status", 0),
-            message=payload.get("message", ""),
-            residual_norm=payload.get("residual_norm", float("nan")),
-            e_matrix=payload.get("e_matrix", []),
-            ion_pair_rows=tuple(payload.get("ion_pair_rows", [])),
-            charged_species=tuple(payload.get("charged_species", [])),
-            charged_species_indices=payload.get("charged_species_indices", []),
-            solver_result=payload.get("solver_result"),
-        )
+    def component(self):
+        """Return component activity values keyed by species label."""
+        return {label: float(value) for label, value in zip(self.species, self.component_gamma)}
+
+    def ion(self):
+        """Return ion solvation/free-energy values keyed by ion label."""
+        out = {}
+        for idx, label in zip(self.ion_indices, self.ion_labels):
+            out[str(label)] = float(self.gsolv_values[int(idx)])
+        return out
+
+    def mean_ionic_x(self):
+        """Return mean-ionic activity values on the mole-fraction basis."""
+        return {label: float(value) for label, value in zip(self.pair_labels, self.gamma_mean_ionic_x_values)}
+
+    def mean_ionic_m(self):
+        """Return mean-ionic activity values on the molality basis."""
+        return {label: float(value) for label, value in zip(self.pair_labels, self.gamma_mean_ionic_m_values)}
+
+    def as_basis(self, basis):
+        """Return the mean-ionic values in the requested basis."""
+        token = str(basis).strip().lower()
+        if token in {"x", "mole_fraction", "molefraction"}:
+            return self.mean_ionic_x()
+        if token in {"m", "molality"}:
+            return self.mean_ionic_m()
+        raise InputError("basis must be one of: 'mole_fraction', 'x', 'molality', 'm'.")
+
