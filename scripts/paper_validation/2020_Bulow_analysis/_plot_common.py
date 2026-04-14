@@ -203,10 +203,11 @@ def add_percent_note(ax: plt.Axes, *, xpos: float = 0.99, ypos: float = 0.01) ->
     ax.text(
         xpos,
         ypos,
-        r"% labels: $(\mathrm{pcsaft} - \mathrm{paper})/|\mathrm{paper}|$",
+        r"% labels: $(\mathrm{epcsaft} - \mathrm{paper})/|\mathrm{paper}|$",
         transform=ax.transAxes,
         ha="right",
         va="bottom",
         fontsize=8,
         bbox={"facecolor": "white", "edgecolor": "0.5", "alpha": 0.9, "boxstyle": "round,pad=0.2"},
     )
+

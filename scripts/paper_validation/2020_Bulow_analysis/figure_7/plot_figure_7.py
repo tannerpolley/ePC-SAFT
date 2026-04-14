@@ -15,12 +15,12 @@ if str(ANALYSIS_ROOT) not in sys.path:
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
-from pcsaft.parameters import get_prop_dict
-from scripts._pcsaft_oop import pcsaft_den, pcsaft_miac
+from epcsaft.parameters import get_prop_dict
+from scripts._epcsaft_oop import epcsaft_activity_coefficient, epcsaft_density
 from _plot_common import configure_style, save_figure
 
 matplotlib.use("Agg")
@@ -94,8 +94,8 @@ def _miac_curve(dataset: str, salt: str, solvent: str, x_grid: np.ndarray) -> np
     m_grid = _molality_for_salt_mole_fraction(x_grid, solvent)
     for idx, m in enumerate(m_grid):
         x = _molality_to_species_molefraction(float(max(m, 1.0e-12)), salt, solvent)
-        rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
-        vals = pcsaft_miac(T_REF, rho, x, params, species=species)
+        rho = epcsaft_density(T_REF, P_REF, x, params, phase="liq")
+        vals = epcsaft_activity_coefficient(T_REF, rho, x, params, species=species, mean_ionic_form=True, basis="mole")
         if pair_key is None:
             pair_key = _resolve_pair_key(vals, salt)
         y[idx] = float(vals[pair_key])
@@ -175,3 +175,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

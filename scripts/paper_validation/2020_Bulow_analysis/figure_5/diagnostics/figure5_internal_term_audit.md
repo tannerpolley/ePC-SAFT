@@ -1,6 +1,6 @@
 # Figure 5 Internal Term Audit
 
-This audit compares the paper Figure 5 transfer bars against the model-side transfer deltas of the internal contribution pieces exposed from `pcsaft_lnfugcoef_terms(...)`.
+This audit compares the paper Figure 5 transfer bars against the model-side transfer deltas of the internal contribution pieces exposed from `epcsaft_lnfugcoef_terms(...)`.
 
 For each contribution $\alpha$, the report tracks the state-level pieces used in the code path:
 
@@ -37,3 +37,4 @@ Transfer deltas are formed as organic minus water at the same infinite-dilution 
 - For `hc`, `disp`, `polar`, `dh`, and `born`, `reconstructed_mu` should match the exposed `mu` branch to numerical precision.
 - The association branch is dumped exactly as the code currently assembles it. In the current implementation, the exposed `dadx_assoc` column is the same direct code-level quantity as `mu_assoc`, not a separate post-processed correction path.
 - The detailed per-ion dump is in `figure5_internal_term_detail.csv`, and the candidate ranking table is in `figure5_internal_term_summary.csv`.
+

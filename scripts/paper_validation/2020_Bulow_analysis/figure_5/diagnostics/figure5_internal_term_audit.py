@@ -259,7 +259,7 @@ def main() -> None:
     with report_path.open("w", encoding="utf-8") as handle:
         handle.write("# Figure 5 Internal Term Audit\n\n")
         handle.write(
-            "This audit compares the paper Figure 5 transfer bars against the model-side transfer deltas of the internal contribution pieces exposed from `pcsaft_lnfugcoef_terms(...)`.\n\n"
+            "This audit compares the paper Figure 5 transfer bars against the model-side transfer deltas of the internal contribution pieces exposed from `epcsaft_fugacity_coefficient_terms(...)`.\n\n"
         )
         handle.write("For each contribution $\\alpha$, the report tracks the state-level pieces used in the code path:\n\n")
         handle.write("- $a^\\alpha$\n")
@@ -290,3 +290,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

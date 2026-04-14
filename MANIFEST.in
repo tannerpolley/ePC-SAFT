@@ -1,9 +1,9 @@
 include LICENSE
 include README.md
-include src/pcsaft/pcsaft.pyx
-include src/pcsaft/pcsaft.pxd
-include src/pcsaft/pcsaft_electrolyte.cpp
-include src/pcsaft/pcsaft_electrolyte.h
-recursive-include src/pcsaft/data *.csv *.json
+include src/epcsaft/epcsaft.pyx
+include src/epcsaft/epcsaft.pxd
+include src/epcsaft/epcsaft_electrolyte.cpp
+include src/epcsaft/epcsaft_electrolyte.h
+recursive-include data/epcsaft_parameters *.csv *.json *.md
 graft externals/eigen/Eigen
 prune .cython_build

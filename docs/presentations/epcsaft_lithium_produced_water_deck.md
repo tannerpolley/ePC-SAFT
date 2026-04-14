@@ -22,14 +22,14 @@ Under **Insert (optional)** are the repo assets you can drop into PowerPoint.
 ---
 
 ## Slide 3 — Model Lineage: 2001 → 2005 → 2008 → 2014 → 2020
-- **2001 (PC-SAFT):** neutral-fluid backbone (hard-chain + dispersion + association)
+- **2001 (ePC-SAFT):** neutral-fluid backbone (hard-chain + dispersion + association)
 - **2005 (ePC-SAFT):** adds Debye–Hückel electrostatics for ion–ion interactions in a dielectric continuum
 - **2008:** expands aqueous salt coverage and MIAC-focused parameter fitting/validation
 - **2014 (revised):** adds explicit cation–anion dispersion to improve concentrated brines and multisolvent behavior
 - **2020 (advanced):** adds dielectric-dependent DH + altered Born term to enable water ↔ organic transferability
 
 Insert (optional):
-- Paper summaries: `docs/papers/md/Gross, Sadowski - 2001 - PC-SAFT An equation of state based on a perturbation theory for chain molec.md`
+- Paper summaries: `docs/papers/md/Gross, Sadowski - 2001 - ePC-SAFT An equation of state based on a perturbation theory for chain molec.md`
 - Paper summaries: `docs/papers/md/Cameretti, Sadowski, Mollerup - 2005 - Modeling of Aqueous Electrolyte Solutions with Perturbed-Chai.md`
 - Paper summaries: `docs/papers/md/Held, Cameretti, Sadowski - 2008 - Modeling aqueous electrolyte solutions. Part 1. Fully dissociated.md`
 - Paper summaries: `docs/papers/md/Held et al. - 2014 - ePC-SAFT Revised.md`
@@ -46,7 +46,7 @@ Insert (optional):
 ---
 
 ## Slide 5 — ePC-SAFT Structure (Where the Electrolyte Physics Lives)
-- Neutral-fluid contributions come from PC-SAFT: hard-chain, dispersion, and association
+- Neutral-fluid contributions come from ePC-SAFT: hard-chain, dispersion, and association
 - Electrolyte contributions are added as explicit long-range terms (DH) and optional solvation (Born)
 - All properties needed for phase equilibrium come from derivatives of the residual Helmholtz energy
 
@@ -151,3 +151,4 @@ Insert (optional):
 - In progress: produced-water composition mapping and two-phase LLE validation for the chosen organic system
 - Next deliverables: phase diagrams, distribution ratios vs salinity/temperature, and sensitivity to competing ions
 - Ask: approve the 2020 baseline and the final validation path to connect thermodynamics to an extraction unit model
+

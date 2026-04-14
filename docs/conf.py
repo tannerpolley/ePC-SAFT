@@ -20,7 +20,7 @@ sys.path.insert(0, str(ROOT / 'src'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'pcsaft'
+project = 'epcsaft'
 copyright = '2020-2026, Tanner Polley'
 author = 'Tanner Polley'
 
@@ -61,3 +61,4 @@ html_theme = 'alabaster'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = []
+

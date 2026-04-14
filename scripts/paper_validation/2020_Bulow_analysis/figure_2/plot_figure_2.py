@@ -18,13 +18,13 @@ if str(ANALYSIS_ROOT) not in sys.path:
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
 import _plot_common as common
-from pcsaft.parameters import get_prop_dict
-from scripts._pcsaft_oop import pcsaft_den, pcsaft_gsolv
+from epcsaft.parameters import get_prop_dict
+from scripts._epcsaft_oop import epcsaft_density, epcsaft_solvation_free_energy
 
 
 DATA_PATH = SCRIPT_DIR / "data" / "water_comparisons.csv"
@@ -36,9 +36,9 @@ SERIES = [
     ("data", "Literature data", "#bdbdbd", None),
     ("SAFT-VR", "SAFT-VR", "#8e63c7", None),
     ("advanced", "ePC-SAFT advanced (paper)", "#2ca02c", None),
-    ("advanced_calc", "ePC-SAFT advanced (pcsaft)", "#2ca02c", "////"),
+    ("advanced_calc", "ePC-SAFT advanced (epcsaft)", "#2ca02c", "////"),
     ("revised", "ePC-SAFT revised (paper)", "#e67e22", None),
-    ("revised_calc", "ePC-SAFT revised (pcsaft)", "#e67e22", "////"),
+    ("revised_calc", "ePC-SAFT revised (epcsaft)", "#e67e22", "////"),
 ]
 
 ADVANCED_CASES = {
@@ -65,8 +65,8 @@ REVISED_CASES = {
 def _compute_gsolv(dataset_name: str, species: list[str], ion: str) -> float:
     x = np.asarray([1.0e-8, 1.0e-8, 1.0 - 2.0e-8], dtype=float)
     params = get_prop_dict(dataset_name, species, x, T_REF, user_options={})
-    rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
-    values = pcsaft_gsolv(T_REF, rho, x, params, species=species)
+    rho = epcsaft_density(T_REF, P_REF, x, params, phase="liq")
+    values = epcsaft_solvation_free_energy(T_REF, rho, x, params, species=species)
     return float(values[ion]) / 1000.0
 
 
@@ -122,7 +122,7 @@ def main() -> None:
     ax.set_xticks(x)
     ax.set_xticklabels(ions)
     ax.set_ylabel(r"$\Delta G_{\mathrm{hyd},i}^{\infty}$ / kJ mol$^{-1}$")
-    ax.set_title("Bulow 2020 Part I Figure 2: Gibbs Energy of Hydration with pcsaft Overlay")
+    ax.set_title("Bulow 2020 Part I Figure 2: Gibbs Energy of Hydration with epcsaft Overlay")
     ax.grid(axis="y", alpha=0.22)
 
     values = np.vstack(list(row_map.values()))
@@ -153,3 +153,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

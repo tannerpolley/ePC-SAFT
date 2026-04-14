@@ -17,9 +17,9 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
@@ -32,7 +32,7 @@ from figure6b_libr_ethanol_contributions import (
     _molality_to_species_molefraction,
     _salt_mole_fraction_from_molality,
 )
-from scripts._pcsaft_oop import pcsaft_Z, pcsaft_den, pcsaft_lnfugcoef_terms
+from scripts._epcsaft_oop import epcsaft_compressibility_factor, epcsaft_density, epcsaft_fugacity_coefficient_terms
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -68,13 +68,13 @@ def run_analysis(
     for m, x_salt in zip(m_grid, x_grid):
         m_eval = float(m) if m > 0.0 else 1e-12
         x = _molality_to_species_molefraction(m_eval)
-        rho = float(pcsaft_den(T_REF, P_REF, x, params, phase="liq"))
-        Z = float(pcsaft_Z(T_REF, rho, x, params))
-        terms = pcsaft_lnfugcoef_terms(T_REF, rho, x, params)
+        rho = float(epcsaft_density(T_REF, P_REF, x, params, phase="liq"))
+        Z = float(epcsaft_compressibility_factor(T_REF, rho, x, params))
+        terms = epcsaft_fugacity_coefficient_terms(T_REF, rho, x, params)
 
         x_inf, rho_inf = _inf_dilution_state(x, rho, params)
-        Z_inf = float(pcsaft_Z(T_REF, rho_inf, x_inf, params))
-        terms_inf = pcsaft_lnfugcoef_terms(T_REF, rho_inf, x_inf, params)
+        Z_inf = float(epcsaft_compressibility_factor(T_REF, rho_inf, x_inf, params))
+        terms_inf = epcsaft_fugacity_coefficient_terms(T_REF, rho_inf, x_inf, params)
 
         hc = _mean_ionic_delta(terms, terms_inf, "mu_hc")
         disp = _mean_ionic_delta(terms, terms_inf, "mu_disp")
@@ -222,3 +222,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

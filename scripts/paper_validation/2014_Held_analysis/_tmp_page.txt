@@ -17,7 +17,7 @@ and modeling alcohol/salt systems. Chem. Eng. Sci. 68,
 328–339.
 Held, C., Carneiro, A., Macedo, E.A., Sadowski, G., 2013. Modeling
 thermodynamic properties of aqueous single-solute and
-multi-solute sugar solutions with PC-SAFT. AIChE J. 59,
+multi-solute sugar solutions with ePC-SAFT. AIChE J. 59,
 4794–4805.
 Held, C., Reschke, T., Müller, R., Kunz, W., Sadowski, G., 2014.
 Measuring and modeling aqueous electrolyte/amino-acid
@@ -109,7 +109,7 @@ Renon, H., Prausnitz, J.M., 1968. Local compositions in
 thermodynamic excess functions for liquid mixtures. AIChE J.
 14, 135–144.
 Rozmus, J., de Hemptinne, J.C., Galindo, A., Dufal, S., Mougin, P.,
-2013. Modeling of strong electrolytes with ePPC-SAFT up to
+2013. Modeling of strong electrolytes with ePePC-SAFT up to
 high temperatures. Ind. Eng. Chem. Res. 52, 9979–9994.
 Sadeghi, M., Held, C., Samieenasab, A., Ghotbi, C., Abdekhodaie,
 M.J., Taghikhani, V., Sadowski, G., 2012. Thermodynamic
@@ -141,3 +141,4 @@ cross-associating mixtures. Ind. Eng. Chem. Res. 37,
 2917–2928.
 
 
+

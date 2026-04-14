@@ -18,13 +18,13 @@ if str(ANALYSIS_ROOT) not in sys.path:
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
 import _plot_common as common
-from pcsaft.parameters import get_prop_dict
-from scripts._pcsaft_oop import pcsaft_den, pcsaft_gsolv
+from epcsaft.parameters import get_prop_dict
+from scripts._epcsaft_oop import epcsaft_density, epcsaft_solvation_free_energy
 
 
 DATASETS = [
@@ -34,9 +34,9 @@ DATASETS = [
 SERIES = [
     ("data median", "Literature median", "#bdbdbd", None),
     ("advanced", "ePC-SAFT advanced (paper)", "#2ca02c", None),
-    ("advanced_calc", "ePC-SAFT advanced (pcsaft)", "#2ca02c", "////"),
+    ("advanced_calc", "ePC-SAFT advanced (epcsaft)", "#2ca02c", "////"),
     ("revised", "ePC-SAFT revised (paper)", "#e67e22", None),
-    ("revised_calc", "ePC-SAFT revised (pcsaft)", "#e67e22", "////"),
+    ("revised_calc", "ePC-SAFT revised (epcsaft)", "#e67e22", "////"),
 ]
 T_REF = 298.15
 P_REF = 1.0e5
@@ -59,8 +59,8 @@ def _gsolv_ion(variant: str, ion: str, solvent: str) -> float:
     dataset_name = VARIANT_DATASET[variant]
     x = np.asarray([EPS, EPS, 1.0 - 2.0 * EPS], dtype=float)
     params = get_prop_dict(dataset_name, species, x, T_REF, user_options={})
-    rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
-    values = pcsaft_gsolv(T_REF, rho, x, params, species=species)
+    rho = epcsaft_density(T_REF, P_REF, x, params, phase="liq")
+    values = epcsaft_solvation_free_energy(T_REF, rho, x, params, species=species)
     return float(values[ion]) / 1000.0
 
 
@@ -167,3 +167,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

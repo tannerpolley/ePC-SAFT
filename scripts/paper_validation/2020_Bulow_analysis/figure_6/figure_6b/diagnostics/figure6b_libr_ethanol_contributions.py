@@ -20,12 +20,12 @@ REPO_ROOT = Path(__file__).resolve().parents[6]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
-from pcsaft.parameters import get_prop_dict
-from scripts._pcsaft_oop import pcsaft_den, pcsaft_lnfugcoef_terms, pcsaft_p
+from epcsaft.parameters import get_prop_dict
+from scripts._epcsaft_oop import epcsaft_density, epcsaft_fugacity_coefficient_terms, epcsaft_pressure
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -198,8 +198,8 @@ def _inf_dilution_state(x: np.ndarray, rho: float, params: Dict[str, object]) ->
     x_inf[idx_solvent] = max(1.0 - eps * (len(x) - 1), eps)
     x_inf /= np.sum(x_inf)
 
-    p_state = pcsaft_p(T_REF, rho, x, params)
-    rho_inf = pcsaft_den(T_REF, p_state, x_inf, params, phase="liq")
+    p_state = epcsaft_pressure(T_REF, rho, x, params)
+    rho_inf = epcsaft_density(T_REF, p_state, x_inf, params, phase="liq")
     return x_inf, float(rho_inf)
 
 
@@ -239,11 +239,11 @@ def _calc_ln_miac_contributions(
     for idx, m in enumerate(m_grid):
         m_eval = float(m) if m > 0.0 else 1e-12
         x = _molality_to_species_molefraction(m_eval)
-        rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
+        rho = epcsaft_density(T_REF, P_REF, x, params, phase="liq")
 
-        terms = pcsaft_lnfugcoef_terms(T_REF, rho, x, params)
+        terms = epcsaft_fugacity_coefficient_terms(T_REF, rho, x, params)
         x_inf, rho_inf = _inf_dilution_state(x, rho, params)
-        terms_inf = pcsaft_lnfugcoef_terms(T_REF, rho_inf, x_inf, params)
+        terms_inf = epcsaft_fugacity_coefficient_terms(T_REF, rho_inf, x_inf, params)
 
         def mean_ionic_delta(a: np.ndarray, b: np.ndarray) -> float:
             return 0.5 * ((a[0] - b[0]) + (a[1] - b[1]))
@@ -433,3 +433,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

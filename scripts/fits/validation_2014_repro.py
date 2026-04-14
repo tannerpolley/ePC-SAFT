@@ -11,11 +11,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
-from scripts._pcsaft_oop import as_mixture, pcsaft_den, pcsaft_fugcoef, pcsaft_p
+from scripts._epcsaft_oop import as_mixture, epcsaft_density, epcsaft_fugacity_coefficient, epcsaft_pressure
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -223,11 +223,11 @@ def _osmotic_molality_from_fugacity(t, rho, x, params):
     x0 = np.zeros_like(x)
     x0[iw] = 1.0
 
-    fugcoef = np.asarray(pcsaft_fugcoef(t, rho, x, params), dtype=float).reshape(-1)
-    p_mix = pcsaft_p(t, rho, x, params)
+    fugcoef = np.asarray(epcsaft_fugacity_coefficient(t, rho, x, params), dtype=float).reshape(-1)
+    p_mix = epcsaft_pressure(t, rho, x, params)
     phase0 = "vap" if rho < 900.0 else "liq"
-    rho0 = pcsaft_den(t, p_mix, x0, params, phase=phase0)
-    fugcoef0 = np.asarray(pcsaft_fugcoef(t, rho0, x0, params), dtype=float).reshape(-1)
+    rho0 = epcsaft_density(t, p_mix, x0, params, phase=phase0)
+    fugcoef0 = np.asarray(epcsaft_fugacity_coefficient(t, rho0, x0, params), dtype=float).reshape(-1)
     gamma_w = fugcoef[iw] / fugcoef0[iw]
 
     phi_m = -1000.0 * np.log(x[iw] * gamma_w) / 18.0153 / np.sum(molality)
@@ -301,3 +301,4 @@ def test_validation_2014_repro():
 
 if __name__ == "__main__":
     run_validation_2014_repro()
+

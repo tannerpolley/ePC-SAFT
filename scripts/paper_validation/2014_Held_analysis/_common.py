@@ -16,9 +16,9 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
 # Avoid WMI stalls from platform.machine() during scipy import on some Windows sessions.
 def _fast_machine() -> str:
@@ -26,7 +26,7 @@ def _fast_machine() -> str:
 
 platform.machine = _fast_machine
 
-from scripts._pcsaft_oop import pcsaft_den, pcsaft_fugcoef, pcsaft_p
+from scripts._epcsaft_oop import epcsaft_density, epcsaft_fugacity_coefficient, epcsaft_pressure
 
 T_REF = 298.15
 P_REF = 1.0e5
@@ -207,11 +207,11 @@ def osmotic_molality_from_fugacity(T: float, rho: float, x: np.ndarray, params: 
     x0 = np.zeros_like(x)
     x0[iw] = 1.0
 
-    fugcoef = np.asarray(pcsaft_fugcoef(T, rho, x, params), dtype=float).reshape(-1)
-    p_mix = pcsaft_p(T, rho, x, params)
+    fugcoef = np.asarray(epcsaft_fugacity_coefficient(T, rho, x, params), dtype=float).reshape(-1)
+    p_mix = epcsaft_pressure(T, rho, x, params)
     phase0 = "vap" if rho < 900.0 else "liq"
-    rho0 = pcsaft_den(T, p_mix, x0, params, phase=phase0)
-    fugcoef0 = np.asarray(pcsaft_fugcoef(T, rho0, x0, params), dtype=float).reshape(-1)
+    rho0 = epcsaft_density(T, p_mix, x0, params, phase=phase0)
+    fugcoef0 = np.asarray(epcsaft_fugacity_coefficient(T, rho0, x0, params), dtype=float).reshape(-1)
     gamma_w = fugcoef[iw] / fugcoef0[iw]
 
     return float(-1000.0 * np.log(x[iw] * gamma_w) / 18.0153 / np.sum(molality))
@@ -223,7 +223,7 @@ def calc_osmotic_curve(salt: str, m_values: np.ndarray, strategy: str, T: float 
     for i, m_salt in enumerate(np.asarray(m_values, dtype=float)):
         m_eval = max(float(m_salt), 1e-12)
         x = mole_fraction_from_molality_11(m_eval)
-        rho = pcsaft_den(T, P_REF, x, params, phase="liq")
+        rho = epcsaft_density(T, P_REF, x, params, phase="liq")
         out[i] = osmotic_molality_from_fugacity(T, rho, x, params)
     return out
 
@@ -260,5 +260,6 @@ def load_osmotic_data(salt: str, m_min: float = 0.0, m_max: float = 4.0) -> tupl
     phi_arr = np.asarray(osmotic, dtype=float)
     order = np.argsort(m_arr)
     return m_arr[order], phi_arr[order]
+
 
 

@@ -17,14 +17,14 @@ if str(ANALYSIS_ROOT) not in sys.path:
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
 import _model_overlay as overlay
 import _plot_common as common
-from pcsaft.parameters import get_prop_dict
-from scripts._pcsaft_oop import pcsaft_den, pcsaft_lnfugcoef_terms, pcsaft_p
+from epcsaft.parameters import get_prop_dict
+from scripts._epcsaft_oop import epcsaft_density, epcsaft_fugacity_coefficient_terms, epcsaft_pressure
 
 
 DATA_PATH = FIGURE_DIR / "data" / "water_contributions.csv"
@@ -123,7 +123,7 @@ def _state_for_ion(ion: str) -> dict[str, object]:
     species = overlay._species_for_ion(ion, "water")
     x = np.asarray([EPS, EPS, 1.0 - 2.0 * EPS], dtype=float)
     params = get_prop_dict("2020_Bulow", species, x, T_REF)
-    rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
+    rho = epcsaft_density(T_REF, P_REF, x, params, phase="liq")
     z = np.asarray(params.get("z", []), dtype=float)
     idx_ion = np.where(np.abs(z) > 1.0e-12)[0]
     idx_solv = np.where(np.abs(z) <= 1.0e-12)[0]
@@ -134,14 +134,14 @@ def _state_for_ion(ion: str) -> dict[str, object]:
         x_ref[idx_solv] /= solv_sum
     else:
         x_ref[idx_solv] = 1.0 / len(idx_solv)
-    p_ref = pcsaft_p(T_REF, rho, x_ref, params)
+    p_ref = epcsaft_pressure(T_REF, rho, x_ref, params)
     x_inf = x_ref.copy()
     ion_idx = species.index(ion)
     x_inf[ion_idx] = EPS_INF
     x_inf /= np.sum(x_inf)
     phase = "vap" if rho < 900.0 else "liq"
-    rho_inf = pcsaft_den(T_REF, p_ref, x_inf, params, phase=phase)
-    terms = pcsaft_lnfugcoef_terms(T_REF, rho_inf, x_inf, params)
+    rho_inf = epcsaft_density(T_REF, p_ref, x_inf, params, phase=phase)
+    terms = epcsaft_fugacity_coefficient_terms(T_REF, rho_inf, x_inf, params)
     return {
         "ion": ion,
         "species": species,
@@ -219,13 +219,13 @@ def _generic_contribution_rows(state: dict[str, object], frame: common.Table, co
         sum_x_dadx_term = float(terms[f"sum_x_dadx_{suffix}"])
         z_quot_red = -z_term * z_weight
         rows.append({
-            "ion": ion, "contr": contribution, "paper_mu": paper_mu, "pcsaft_mu": _kjmol(mu_red),
-            "pcsaft_mu_manual": _kjmol(a_term + z_term + dadx_term - sum_x_dadx_term), "a": _kjmol(a_term),
+            "ion": ion, "contr": contribution, "paper_mu": paper_mu, "epcsaft_mu": _kjmol(mu_red),
+            "epcsaft_mu_manual": _kjmol(a_term + z_term + dadx_term - sum_x_dadx_term), "a": _kjmol(a_term),
             "z": _kjmol(z_term), "dadx": _kjmol(dadx_term), "sum_xj_dadx": _kjmol(sum_x_dadx_term),
-            "z_quot": _kjmol(z_quot_red), "pcsaft_lnfug": _kjmol(lnfug_red), "pcsaft_lnfug_manual": _kjmol(mu_red + z_quot_red),
+            "z_quot": _kjmol(z_quot_red), "epcsaft_lnfug": _kjmol(lnfug_red), "epcsaft_lnfug_manual": _kjmol(mu_red + z_quot_red),
             "lnfug_red": lnfug_red, "lnact_star_red": 0.0, "gamma_star": 1.0, "Ghyd": _kjmol(lnfug_red),
-            "manual_minus_pcsaft_mu": _kjmol(a_term + z_term + dadx_term - sum_x_dadx_term - mu_red),
-            "manual_minus_pcsaft_lnfug": _kjmol((mu_red + z_quot_red) - lnfug_red), "paper_minus_pcsaft_mu": paper_mu - _kjmol(mu_red),
+            "manual_minus_epcsaft_mu": _kjmol(a_term + z_term + dadx_term - sum_x_dadx_term - mu_red),
+            "manual_minus_epcsaft_lnfug": _kjmol((mu_red + z_quot_red) - lnfug_red), "paper_minus_epcsaft_mu": paper_mu - _kjmol(mu_red),
         })
     return rows
 
@@ -235,23 +235,23 @@ def _total_row(ion: str, rows: list[dict[str, object]], total_lnfug_red: float) 
     return {
         "ion": ion, "contr": "total",
         "paper_mu": float(np.sum([float(row["paper_mu"]) for row in rows])),
-        "pcsaft_mu": float(np.sum([float(row["pcsaft_mu"]) for row in rows])),
-        "pcsaft_mu_manual": float(np.sum([float(row["pcsaft_mu_manual"]) for row in rows])),
+        "epcsaft_mu": float(np.sum([float(row["epcsaft_mu"]) for row in rows])),
+        "epcsaft_mu_manual": float(np.sum([float(row["epcsaft_mu_manual"]) for row in rows])),
         "a": float(np.sum([float(row["a"]) for row in rows])),
         "z": float(np.sum([float(row["z"]) for row in rows])),
         "dadx": float(np.sum([float(row["dadx"]) for row in rows])),
         "sum_xj_dadx": float(np.sum([float(row["sum_xj_dadx"]) for row in rows])),
         "z_quot": float(np.sum([float(row["z_quot"]) for row in rows])),
-        "pcsaft_lnfug": float(np.sum([float(row["pcsaft_lnfug"]) for row in rows])),
-        "pcsaft_lnfug_manual": float(np.sum([float(row["pcsaft_lnfug_manual"]) for row in rows])),
+        "epcsaft_lnfug": float(np.sum([float(row["epcsaft_lnfug"]) for row in rows])),
+        "epcsaft_lnfug_manual": float(np.sum([float(row["epcsaft_lnfug_manual"]) for row in rows])),
         "lnfug_red": float(np.sum([float(row["lnfug_red"]) for row in rows])),
         "lnact_star_red": sum_gamma_logs,
         "gamma_star": math.exp(sum_gamma_logs),
         "Ghyd": float(np.sum([float(row["Ghyd"]) for row in rows])),
-        "manual_minus_pcsaft_mu": float(np.sum([float(row["manual_minus_pcsaft_mu"]) for row in rows])),
-        "manual_minus_pcsaft_lnfug": float(np.sum([float(row["manual_minus_pcsaft_lnfug"]) for row in rows])),
-        "paper_minus_pcsaft_mu": float(np.sum([float(row["paper_minus_pcsaft_mu"]) for row in rows])),
-        "pcsaft_total_lnfug_from_api": _kjmol(total_lnfug_red),
+        "manual_minus_epcsaft_mu": float(np.sum([float(row["manual_minus_epcsaft_mu"]) for row in rows])),
+        "manual_minus_epcsaft_lnfug": float(np.sum([float(row["manual_minus_epcsaft_lnfug"]) for row in rows])),
+        "paper_minus_epcsaft_mu": float(np.sum([float(row["paper_minus_epcsaft_mu"]) for row in rows])),
+        "epcsaft_total_lnfug_from_api": _kjmol(total_lnfug_red),
     }
 
 
@@ -313,7 +313,7 @@ def _hc_breakdown(state: dict[str, object], geom: dict[str, object], frame: comm
         mu = float(np.asarray(terms["mu_hc"], dtype=float)[i])
         paper_mu = _paper_value(frame, "hc", ion)
         rows.append({
-            "ion": ion, "paper_mu": paper_mu, "pcsaft_mu": _kjmol(mu), "pcsaft_dadx": _kjmol(dadx),
+            "ion": ion, "paper_mu": paper_mu, "epcsaft_mu": _kjmol(mu), "epcsaft_composition_derivative_residual_helmholtz": _kjmol(dadx),
             "resid_a_plus_z_minus_sumxj_dadx": _kjmol(float(terms["a_hc"]) + float(terms["z_hc"]) - float(terms["sum_x_dadx_hc"])),
             "m_i_ares_hs": _kjmol(term_mi_ares_hs), "m_avg_dahs_dx": _kjmol(term_mavg_dahs), "minus_chain_sum": _kjmol(-term_chain_sum),
             "minus_log_term": _kjmol(-term_log), "dadx_manual": _kjmol(dadx),
@@ -373,7 +373,7 @@ def _disp_breakdown(state: dict[str, object], geom: dict[str, object], frame: co
         mu = float(np.asarray(terms["mu_disp"], dtype=float)[i])
         paper_mu = _paper_value(frame, "disp", ion)
         rows.append({
-            "ion": ion, "paper_mu": paper_mu, "pcsaft_mu": _kjmol(mu), "pcsaft_dadx": _kjmol(dadx),
+            "ion": ion, "paper_mu": paper_mu, "epcsaft_mu": _kjmol(mu), "epcsaft_composition_derivative_residual_helmholtz": _kjmol(dadx),
             "resid_a_plus_z_minus_sumxj_dadx": _kjmol(float(terms["a_disp"]) + float(terms["z_disp"]) - float(terms["sum_x_dadx_disp"])),
             "term_dI1": _kjmol(term_dI1), "term_dm2es3": _kjmol(term_dm2es3), "term_mi_c1_i2": _kjmol(term_mi_c1_i2),
             "term_mavg_dc1_i2": _kjmol(term_mavg_dc1_i2), "term_mavg_c1_di2": _kjmol(term_mavg_c1_di2),
@@ -483,7 +483,7 @@ def _assoc_breakdown(state: dict[str, object], geom: dict[str, object], frame: c
         dadx = float(np.sum(chain_terms) + np.sum(site_terms))
         mu = float(np.asarray(terms["mu_assoc"], dtype=float)[comp])
         row_data: dict[str, object] = {
-            "ion": ion, "paper_mu": _paper_value(frame, "assoc", ion), "pcsaft_mu": _kjmol(mu), "pcsaft_dadx": _kjmol(dadx),
+            "ion": ion, "paper_mu": _paper_value(frame, "assoc", ion), "epcsaft_mu": _kjmol(mu), "epcsaft_composition_derivative_residual_helmholtz": _kjmol(dadx),
             "resid_a_plus_z_minus_sumxj_dadx": _kjmol(float(terms["a_assoc"]) + float(terms["z_assoc"]) - float(terms["sum_x_dadx_assoc"])),
             "chain_term_sum": _kjmol(float(np.sum(chain_terms))), "site_term_sum": _kjmol(float(np.sum(site_terms))),
             "dadx_manual": _kjmol(dadx), "manual_minus_api_dadx": _kjmol(dadx - float(np.asarray(terms["dadx_assoc"], dtype=float)[comp])),
@@ -521,22 +521,22 @@ def main() -> None:
             idx = state["ion_idx"]
             paper_mu = 0.0 if contribution == "dh" else _paper_value(frame, contribution, ion)
             target_rows.append({
-                "ion": ion, "paper_mu": paper_mu, "pcsaft_mu": _kjmol(float(np.asarray(state["terms"][f"mu_{suffix}"], dtype=float)[idx])),
+                "ion": ion, "paper_mu": paper_mu, "epcsaft_mu": _kjmol(float(np.asarray(state["terms"][f"mu_{suffix}"], dtype=float)[idx])),
                 "a": _kjmol(float(state["terms"][f"a_{suffix}"])), "z": _kjmol(float(state["terms"][f"z_{suffix}"])),
                 "dadx": _kjmol(float(np.asarray(state["terms"][f"dadx_{suffix}"], dtype=float)[idx])), "sum_xj_dadx": _kjmol(float(state["terms"][f"sum_x_dadx_{suffix}"])),
                 "resid_a_plus_z_minus_sumxj_dadx": _kjmol(float(state["terms"][f"a_{suffix}"]) + float(state["terms"][f"z_{suffix}"]) - float(state["terms"][f"sum_x_dadx_{suffix}"])),
                 "paper_minus_dadx": paper_mu - _kjmol(float(np.asarray(state["terms"][f"dadx_{suffix}"], dtype=float)[idx])), "paper_minus_mu": paper_mu - _kjmol(float(np.asarray(state["terms"][f"mu_{suffix}"], dtype=float)[idx])),
             })
-    _write_csv(OUTPUT_BOOKKEEPING, ["ion", "contr", "paper_mu", "pcsaft_mu", "pcsaft_mu_manual", "a", "z", "dadx", "sum_xj_dadx", "z_quot", "pcsaft_lnfug", "pcsaft_lnfug_manual", "lnfug_red", "lnact_star_red", "gamma_star", "Ghyd", "manual_minus_pcsaft_mu", "manual_minus_pcsaft_lnfug", "paper_minus_pcsaft_mu", "pcsaft_total_lnfug_from_api"], bookkeeping_rows)
-    _write_csv(OUTPUT_HC, ["ion", "paper_mu", "pcsaft_mu", "pcsaft_dadx", "resid_a_plus_z_minus_sumxj_dadx", "m_i_ares_hs", "m_avg_dahs_dx", "minus_chain_sum", "minus_log_term", "dadx_manual", "manual_minus_api_dadx", "paper_minus_dadx", "paper_minus_mu"], hc_rows)
-    _write_csv(OUTPUT_DISP, ["ion", "paper_mu", "pcsaft_mu", "pcsaft_dadx", "resid_a_plus_z_minus_sumxj_dadx", "term_dI1", "term_dm2es3", "term_mi_c1_i2", "term_mavg_dc1_i2", "term_mavg_c1_di2", "term_mavg_c1_i2_dm2e2s3", "dadx_manual", "manual_minus_api_dadx", "paper_minus_dadx", "paper_minus_mu"], disp_rows)
-    assoc_fields = ["ion", "paper_mu", "pcsaft_mu", "pcsaft_dadx", "resid_a_plus_z_minus_sumxj_dadx", "chain_term_sum", "site_term_sum", "dadx_manual", "manual_minus_api_dadx", "paper_minus_dadx", "paper_minus_mu"]
+    _write_csv(OUTPUT_BOOKKEEPING, ["ion", "contr", "paper_mu", "epcsaft_mu", "epcsaft_mu_manual", "a", "z", "dadx", "sum_xj_dadx", "z_quot", "epcsaft_lnfug", "epcsaft_lnfug_manual", "lnfug_red", "lnact_star_red", "gamma_star", "Ghyd", "manual_minus_epcsaft_mu", "manual_minus_epcsaft_lnfug", "paper_minus_epcsaft_mu", "epcsaft_total_lnfug_from_api"], bookkeeping_rows)
+    _write_csv(OUTPUT_HC, ["ion", "paper_mu", "epcsaft_mu", "epcsaft_composition_derivative_residual_helmholtz", "resid_a_plus_z_minus_sumxj_dadx", "m_i_ares_hs", "m_avg_dahs_dx", "minus_chain_sum", "minus_log_term", "dadx_manual", "manual_minus_api_dadx", "paper_minus_dadx", "paper_minus_mu"], hc_rows)
+    _write_csv(OUTPUT_DISP, ["ion", "paper_mu", "epcsaft_mu", "epcsaft_composition_derivative_residual_helmholtz", "resid_a_plus_z_minus_sumxj_dadx", "term_dI1", "term_dm2es3", "term_mi_c1_i2", "term_mavg_dc1_i2", "term_mavg_c1_di2", "term_mavg_c1_i2_dm2e2s3", "dadx_manual", "manual_minus_api_dadx", "paper_minus_dadx", "paper_minus_mu"], disp_rows)
+    assoc_fields = ["ion", "paper_mu", "epcsaft_mu", "epcsaft_composition_derivative_residual_helmholtz", "resid_a_plus_z_minus_sumxj_dadx", "chain_term_sum", "site_term_sum", "dadx_manual", "manual_minus_api_dadx", "paper_minus_dadx", "paper_minus_mu"]
     max_assoc_sites = max((max(int(key.split("_")[-1]) for key in row if key.startswith("XA_site_")) for row in assoc_rows), default=0)
     for idx in range(1, max_assoc_sites + 1):
         assoc_fields.extend([f"XA_site_{idx}", f"dXA_dx_site_{idx}", f"chain_site_{idx}", f"self_site_{idx}"])
     _write_csv(OUTPUT_ASSOC, assoc_fields, assoc_rows)
-    _write_csv(OUTPUT_DH, ["ion", "paper_mu", "pcsaft_mu", "a", "z", "dadx", "sum_xj_dadx", "resid_a_plus_z_minus_sumxj_dadx", "paper_minus_dadx", "paper_minus_mu"], dh_rows)
-    _write_csv(OUTPUT_BORN, ["ion", "paper_mu", "pcsaft_mu", "a", "z", "dadx", "sum_xj_dadx", "resid_a_plus_z_minus_sumxj_dadx", "paper_minus_dadx", "paper_minus_mu"], born_rows)
+    _write_csv(OUTPUT_DH, ["ion", "paper_mu", "epcsaft_mu", "a", "z", "dadx", "sum_xj_dadx", "resid_a_plus_z_minus_sumxj_dadx", "paper_minus_dadx", "paper_minus_mu"], dh_rows)
+    _write_csv(OUTPUT_BORN, ["ion", "paper_mu", "epcsaft_mu", "a", "z", "dadx", "sum_xj_dadx", "resid_a_plus_z_minus_sumxj_dadx", "paper_minus_dadx", "paper_minus_mu"], born_rows)
     print(f"Wrote {OUTPUT_BOOKKEEPING}", flush=True)
     print(f"Wrote {OUTPUT_HC}", flush=True)
     print(f"Wrote {OUTPUT_DISP}", flush=True)
@@ -547,3 +547,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

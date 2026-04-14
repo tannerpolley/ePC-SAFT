@@ -19,9 +19,9 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
 # Avoid WMI stalls from platform.machine() during scipy import on some Windows sessions.
 def _fast_machine() -> str:
@@ -29,8 +29,8 @@ def _fast_machine() -> str:
 
 platform.machine = _fast_machine
 
-from pcsaft.parameters import get_prop_dict
-from scripts._pcsaft_oop import pcsaft_den, pcsaft_fugcoef, pcsaft_miac, pcsaft_miac_m
+from epcsaft.parameters import get_prop_dict
+from scripts._epcsaft_oop import epcsaft_activity_coefficient, epcsaft_density, epcsaft_fugacity_coefficient
 
 T_REF = 298.15
 P_REF = 1.0e5
@@ -307,8 +307,8 @@ def mean_ionic_activity_curve(
     for idx, m in enumerate(grid):
         m_eval = max(float(m), 1e-12)
         x = molality_to_species_molefraction(m_eval, salt, solvent_system, comp)
-        rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
-        vals = pcsaft_miac_m(T_REF, rho, x, params, species=species)
+        rho = epcsaft_density(T_REF, P_REF, x, params, phase="liq")
+        vals = epcsaft_activity_coefficient(T_REF, rho, x, params, species=species, mean_ionic_form=True, basis="molality")
         key = _resolve_pair_key(vals, salt)
         gamma[idx] = float(vals[key])
 
@@ -332,8 +332,8 @@ def mean_ionic_activity_curve_x(
     for idx, m in enumerate(grid):
         m_eval = max(float(m), 1e-12)
         x = molality_to_species_molefraction(m_eval, salt, solvent_system, comp)
-        rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
-        vals = pcsaft_miac(T_REF, rho, x, params, species=species)
+        rho = epcsaft_density(T_REF, P_REF, x, params, phase="liq")
+        vals = epcsaft_activity_coefficient(T_REF, rho, x, params, species=species, mean_ionic_form=True, basis="mole")
         key = _resolve_pair_key(vals, salt)
         gamma[idx] = float(vals[key])
 
@@ -359,8 +359,8 @@ def solvent_activity_curve(
 
     x_pure = np.zeros(len(species), dtype=float)
     x_pure[solvent_idx] = 1.0
-    rho_pure = pcsaft_den(T_REF, P_REF, x_pure, params, phase="liq")
-    fugcoef_pure = np.asarray(pcsaft_fugcoef(T_REF, rho_pure, x_pure, params), dtype=float)
+    rho_pure = epcsaft_density(T_REF, P_REF, x_pure, params, phase="liq")
+    fugcoef_pure = np.asarray(epcsaft_fugacity_coefficient(T_REF, rho_pure, x_pure, params), dtype=float)
     solvent_ref = float(fugcoef_pure[solvent_idx])
     if solvent_ref <= 0.0 or not math.isfinite(solvent_ref):
         raise ValueError("Pure-solvent fugacity coefficient is not finite and positive.")
@@ -370,8 +370,8 @@ def solvent_activity_curve(
     for idx, m in enumerate(grid):
         m_eval = max(float(m), 1e-12)
         x = molality_to_species_molefraction(m_eval, salt, solvent_system, comp)
-        rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
-        fugcoef = np.asarray(pcsaft_fugcoef(T_REF, rho, x, params), dtype=float)
+        rho = epcsaft_density(T_REF, P_REF, x, params, phase="liq")
+        fugcoef = np.asarray(epcsaft_fugacity_coefficient(T_REF, rho, x, params), dtype=float)
         gamma[idx] = float(fugcoef[solvent_idx] / solvent_ref)
 
     return grid, gamma
@@ -416,5 +416,6 @@ def group_by_signature(entries: List[Dict[str, object]]) -> Dict[Tuple[Tuple[str
     for group in grouped.values():
         group.sort(key=lambda x: float(x["molality"]))
     return dict(grouped)
+
 
 

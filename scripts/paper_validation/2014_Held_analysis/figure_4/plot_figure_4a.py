@@ -16,12 +16,12 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 import _common as common
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
-from pcsaft.parameters import get_prop_dict
-from scripts._pcsaft_oop import pcsaft_den, pcsaft_fugcoef, pcsaft_p
+from epcsaft.parameters import get_prop_dict
+from scripts._epcsaft_oop import epcsaft_density, epcsaft_fugacity_coefficient, epcsaft_pressure
 
 T_REF = 298.15
 P_REF = 1.0e5
@@ -113,7 +113,7 @@ def _calc_osmotic_curve(params: dict, m_kcl: float, m_aa_grid: np.ndarray) -> np
     out = np.empty_like(m_aa_grid, dtype=float)
     for i, m_aa in enumerate(m_aa_grid):
         x = _mole_fraction_from_molalities(m_kcl, float(m_aa))
-        rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
+        rho = epcsaft_density(T_REF, P_REF, x, params, phase="liq")
         out[i] = _osmotic_molality_from_fugacity(T_REF, rho, x, params)
     return out
 
@@ -134,10 +134,10 @@ def _osmotic_molality_from_fugacity(T: float, rho: float, x: np.ndarray, params:
     x0 = np.zeros_like(x)
     x0[idx_water] = 1.0
 
-    fugcoef = np.asarray(pcsaft_fugcoef(T, rho, x, params), dtype=float).reshape(-1)
-    p_mix = pcsaft_p(T, rho, x, params)
-    rho0 = pcsaft_den(T, p_mix, x0, params, phase="liq")
-    fugcoef0 = np.asarray(pcsaft_fugcoef(T, rho0, x0, params), dtype=float).reshape(-1)
+    fugcoef = np.asarray(epcsaft_fugacity_coefficient(T, rho, x, params), dtype=float).reshape(-1)
+    p_mix = epcsaft_pressure(T, rho, x, params)
+    rho0 = epcsaft_density(T, p_mix, x0, params, phase="liq")
+    fugcoef0 = np.asarray(epcsaft_fugacity_coefficient(T, rho0, x0, params), dtype=float).reshape(-1)
     gamma_w = fugcoef[idx_water] / fugcoef0[idx_water]
 
     return float(-1000.0 * np.log(x[idx_water] * gamma_w) / 18.0153 / np.sum(molality))
@@ -190,4 +190,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 

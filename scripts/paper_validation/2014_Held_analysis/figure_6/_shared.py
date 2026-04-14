@@ -15,11 +15,11 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 import _common as common
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
-from pcsaft.parameters import get_prop_dict
+from epcsaft.parameters import get_prop_dict
 
 
 DATA_PATH = Path(__file__).with_name("1-butanol-NH4Cl-water-LLE.csv")
@@ -156,3 +156,4 @@ def solve_model_rows() -> tuple[dict, ...]:
 
     solved_rows.sort(key=lambda item: item["w_nh4cl_aq"])
     return tuple(solved_rows)
+

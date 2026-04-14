@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 
-def require_pcsaft_install() -> None:
+def require_epcsaft_install() -> None:
     try:
-        import pcsaft  # noqa: F401
-        from pcsaft import PCSAFTMixture  # noqa: F401
-        from pcsaft import PCSAFTState  # noqa: F401
-        import pcsaft.parameters  # noqa: F401
+        import epcsaft  # noqa: F401
+        from epcsaft import ePCSAFTMixture  # noqa: F401
+        from epcsaft import ePCSAFTState  # noqa: F401
+        import epcsaft.parameters  # noqa: F401
     except Exception as exc:
         raise RuntimeError(
-            "pcsaft must be importable from the active environment with the OOP API. "
-            "Run `python scripts/build_pcsaft.py` in the PC-SAFT environment, then retry."
+            "epcsaft must be importable from the active environment with the OOP API. "
+            "Run `python scripts/build_epcsaft.py` in the ePC-SAFT environment, then retry."
         ) from exc
+
+

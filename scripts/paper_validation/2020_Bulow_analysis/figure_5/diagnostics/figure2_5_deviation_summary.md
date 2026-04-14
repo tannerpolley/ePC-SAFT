@@ -1,6 +1,6 @@
 # Figure 2-5 Deviation Audit
 
-All deltas are `pcsaft model - paper value` in kJ/mol.
+All deltas are `epcsaft model - paper value` in kJ/mol.
 
 ## Figure 2
 
@@ -111,3 +111,4 @@ All deltas are `pcsaft model - paper value` in kJ/mol.
 | figure_3 | disp | water | K+ | -32.040 | 115.523 | 147.563 |
 | figure_3 | disp | water | F- | -21.928 | 124.946 | 146.874 |
 | figure_5 | hc | methanol | Na+ | -12.279 | 56.043 | 68.323 |
+

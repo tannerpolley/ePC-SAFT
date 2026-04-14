@@ -9,12 +9,12 @@ try:
     from includeigen import get_include as get_eigen_include
 except ImportError as exc:
     raise RuntimeError(
-        "pcsaft now expects Eigen headers from the installed includeigen package. "
+        "epcsaft now expects Eigen headers from the installed includeigen package. "
         "Install it first with `python -m pip install includeigen`."
     ) from exc
 
 
-PACKAGE_ROOT = "src/pcsaft"
+PACKAGE_ROOT = "src/epcsaft"
 
 extra_compile_args = []
 if os.name == "nt":
@@ -22,10 +22,10 @@ if os.name == "nt":
 
 ext_modules = [
     Extension(
-        "pcsaft.pcsaft",
+        "epcsaft.epcsaft",
         sources=[
-            f"{PACKAGE_ROOT}/pcsaft.pyx",
-            f"{PACKAGE_ROOT}/pcsaft_electrolyte.cpp",
+            f"{PACKAGE_ROOT}/epcsaft.pyx",
+            f"{PACKAGE_ROOT}/epcsaft_electrolyte.cpp",
         ],
         language="c++",
         include_dirs=[
@@ -43,3 +43,4 @@ setup(
         language_level="3",
     )
 )
+

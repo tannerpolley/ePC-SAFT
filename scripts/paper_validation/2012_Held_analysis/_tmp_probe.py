@@ -6,13 +6,13 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
 sys.path.insert(0, str(Path('scripts/Held_2012_analysis').resolve()))
 import _common as c
-from scripts._pcsaft_oop import pcsaft_den, pcsaft_miac_m
+from scripts._epcsaft_oop import epcsaft_activity_coefficient, epcsaft_density
 
 print('loaded', flush=True)
 for solvent in ('ethanol', 'methanol'):
@@ -27,8 +27,9 @@ for solvent in ('ethanol', 'methanol'):
     for m in (0.01, 0.1, 0.5, 1.0, 1.6):
         t0 = time.time()
         x = c.molality_to_species_molefraction(m, 'NaI', solvent, comp)
-        rho = pcsaft_den(c.T_REF, c.P_REF, x, params, phase='liq')
-        vals = pcsaft_miac_m(c.T_REF, rho, x, params, species=species)
+        rho = epcsaft_density(c.T_REF, c.P_REF, x, params, phase='liq')
+        vals = epcsaft_activity_coefficient(c.T_REF, rho, x, params, species=species, mean_ionic_form=True, basis="molality")
         key = c._resolve_pair_key(vals, 'NaI')
         print('m', m, 'gamma', vals[key], 'dt', round(time.time() - t0, 4), flush=True)
+
 

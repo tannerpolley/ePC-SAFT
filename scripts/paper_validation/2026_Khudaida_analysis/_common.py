@@ -20,9 +20,9 @@ REPO_ROOT = ROOT.parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
 
 def _fast_machine() -> str:
@@ -31,8 +31,8 @@ def _fast_machine() -> str:
 
 platform.machine = _fast_machine
 
-import scripts._pcsaft_oop as pcs
-from pcsaft.parameters import get_prop_dict
+import scripts._epcsaft_oop as pcs
+from epcsaft.parameters import get_prop_dict
 
 
 P_REF = 1.0e5
@@ -162,7 +162,7 @@ NOMINAL_ETHANOL_FEED_WT = {
     0.10: (0.06, 0.05, 0.04, 0.03, 0.02, 0.01),
 }
 
-EPCSAFT_AAD_REFERENCE = {
+EePCSAFT_AAD_REFERENCE = {
     0.05: {
         293.15: {"grand": 0.0161, "organic": (0.0287, 0.0031, 0.0313, 0.0009), "aqueous": (0.0482, 0.0064, 0.0021, 0.0083)},
         303.15: {"grand": 0.0168, "organic": (0.0305, 0.0027, 0.0336, 0.0005), "aqueous": (0.0495, 0.0061, 0.0026, 0.0088)},
@@ -922,7 +922,7 @@ def _model_rows_for_csv(rows: list[dict]) -> list[dict]:
                     "residual_norm": float(row["residual_norm"]) if np.isfinite(row["residual_norm"]) else "",
                     "objective": float(row["objective"]) if np.isfinite(row["objective"]) else "",
                     "converged": bool(row["converged"]),
-                    "source": "pcsaft_package",
+                    "source": "epcsaft_pressureackage",
                 }
             )
     return out
@@ -1186,7 +1186,7 @@ def _table_rows_for_png(salt_wt: float) -> list[list[str]]:
         fig_dir = ROOT / f"figure_{figure_number_map[(salt_wt, temperature_k)]}"
         model_rows = get_or_build_model_rows(fig_dir, exp_rows, feed_rows=feed_rows, force_recompute=force_recompute)
         ours = _aad_summary(exp_rows, model_rows)
-        paper_epc = EPCSAFT_AAD_REFERENCE[salt_wt][temperature_k]
+        paper_epc = EePCSAFT_AAD_REFERENCE[salt_wt][temperature_k]
         paper_enrtl = ENRTL_AAD_REFERENCE[salt_wt][temperature_k]
         for model_name, summary in (
             ("ePC-SAFT (package)", ours),
@@ -1240,3 +1240,5 @@ def write_provenance_notes() -> None:
 - The legacy package solver note is retained here only as historical context; the multiphase LLE workflow is removed from the active Python package and will be rewritten later in native code.
 """
     (ROOT / "provenance_notes.md").write_text(notes, encoding="utf-8")
+
+

@@ -1,87 +1,15 @@
 # -*- coding: utf-8 -*-
-"""Object-oriented integration tests for the native PC-SAFT runtime."""
-
-import json
-from pathlib import Path
+"""Object-oriented integration tests for the native ePC-SAFT runtime."""
 
 import numpy as np
 import pytest
 
-import pcsaft
-from pcsaft import DATASET_ROOT
-from pcsaft import PCSAFTMixture
-from pcsaft import SolutionError
-from pcsaft.parameters import _resolve_runtime_options
+import epcsaft
+from epcsaft import ePCSAFTMixture
 
 
-def _dataset_file(*parts: str) -> Path:
-    return DATASET_ROOT.joinpath(*parts)
-
-
-def _runtime_to_elec_model(runtime):
-    radius_to_d_born = {1: 0, 2: 1, 3: 2, 4: 3, 5: 3}
-    born_radius_model = int(runtime.get("born_radius_model", 1))
-    born_diff_mode = int(runtime.get("born_diff_mode", 0))
-    born_model = int(runtime.get("born_model", 1))
-    return {
-        "rel_perm": {
-            "rule": int(runtime.get("dielc_rule", 1)),
-            "differential_mode": int(runtime.get("dielc_diff_mode", 0)),
-        },
-        "hc_model": {
-            "dadx_differential_mode": int(runtime.get("hc_dadx_diff_mode", 0)),
-        },
-        "disp_model": {
-            "dadx_differential_mode": int(runtime.get("disp_dadx_diff_mode", 0)),
-        },
-        "assoc_model": {
-            "dadx_differential_mode": int(runtime.get("assoc_dadx_diff_mode", 0)),
-        },
-        "polar_model": {
-            "dadx_differential_mode": int(runtime.get("polar_dadx_diff_mode", 0)),
-        },
-        "DH_model": {
-            "d_ion_mode": int(runtime.get("d_ion_mode", 1)),
-            "bjeruum_treatment": bool(runtime.get("bjeruum_treatment", False)),
-            "mu_DH_model": {
-                "differential_mode": int(runtime.get("mu_DH_diff_mode", 0)),
-                "comp_dep_rel_perm": bool(runtime.get("mu_DH_comp_dep_rel_perm", True)),
-                "include_sum_term": bool(runtime.get("mu_DH_include_sum_term", True)),
-            },
-        },
-        "include_born_model": bool(runtime.get("include_born_model", born_model != 0)),
-        "born_model": {
-            "d_Born_mode": int(runtime.get("d_born_mode", radius_to_d_born.get(born_radius_model, 0))),
-            "solvation_shell_model": bool(runtime.get("born_solvation_shell_model", born_model == 2)),
-            "dielectric_saturation": bool(runtime.get("born_dielectric_saturation", born_model == 2)),
-            "bulk_mode": int(runtime.get("born_bulk_mode", runtime.get("born_eps_mode", 0))),
-            "mu_born_model": {
-                "differential_mode": int(runtime.get("mu_born_diff_mode", 1 if born_diff_mode == 1 else 0)),
-                "comp_dep_rel_perm": bool(runtime.get("mu_born_comp_dep_rel_perm", born_diff_mode != 3)),
-                "include_sum_term": bool(runtime.get("mu_born_include_sum_term", born_diff_mode != 2)),
-                "comp_dep_delta_d": bool(runtime.get("mu_born_comp_dep_delta_d", False)),
-            },
-        },
-    }
-
-
-def test_package_exports_are_object_first():
-    assert hasattr(pcsaft, "PCSAFTMixture")
-    assert hasattr(pcsaft, "PCSAFTState")
-    assert hasattr(pcsaft, "ActivityCoeffResult")
-    assert not hasattr(pcsaft, "pcsaft_den")
-    assert not hasattr(pcsaft, "pcsaft_cp")
-    assert not hasattr(pcsaft, "pcsaft_ares")
-    assert not hasattr(pcsaft, "pcsaft_lnfugcoef")
-    assert not hasattr(pcsaft, "pcsaft_dielectric_eval")
-    with pytest.raises(ImportError):
-        exec("from pcsaft.pcsaft import pcsaft_ares", {})
-
-
-def test_state_properties_match_regression_values():
-    t = 233.15
-    rho = 14330.417110
-    x = np.array([0.1, 0.3, 0.6])
+def _neutral_state():
+    species = ["A", "B", "C"]
     params = {
         "m": np.asarray([1.0000, 1.6069, 2.0020]),
         "s": np.asarray([3.7039, 3.5206, 3.6184]),
@@ -92,148 +20,24 @@ def test_state_properties_match_regression_values():
             [1.15e-2, 5.10e-3, 0.0],
         ]),
     }
-
-    mix = PCSAFTMixture.from_params(params)
-    state = mix.state(T=t, x=x, rho=rho)
-
-    assert state.density() == pytest.approx(rho)
-    assert state.a_res() == pytest.approx(-3.54988543593195, rel=1e-6)
-    assert state.pressure() > 0.0
-    assert state.Z() > 0.0
+    mix = ePCSAFTMixture.from_params(params, species=species)
+    state = mix.state(T=233.15, x=np.array([0.1, 0.3, 0.6]), rho=14330.417110)
+    return state, species
 
 
-def test_state_roundtrip_hres_for_liquid_and_vapor():
-    t = 325.0
-    p = 101325.0
-    x = np.asarray([1.0])
-
-    tol = 1e-2
-
-    # Toluene
-    mix = PCSAFTMixture.from_params({
-        "m": np.asarray([2.8149]),
-        "s": np.asarray([3.7169]),
-        "e": np.asarray([285.69]),
-    })
-
-    liq = mix.state(T=t, x=x, P=p, phase="liq")
-    vap = mix.state(T=t, x=x, P=p, phase="vap")
-
-    assert liq.density() > vap.density()
-    assert liq.h_res() == pytest.approx(-36809.39, rel=tol)
-    assert vap.h_res() == pytest.approx(-362.6777, rel=tol)
-
-
-def test_state_methods_and_breakdown_match_existing_accessors():
-    t = 233.15
-    rho = 14330.417110
-    x = np.array([0.1, 0.3, 0.6])
-    params = {
-        "m": np.asarray([1.0000, 1.6069, 2.0020]),
-        "s": np.asarray([3.7039, 3.5206, 3.6184]),
-        "e": np.asarray([150.03, 191.42, 208.11]),
-        "k_ij": np.asarray([
-            [0.0, 3.0e-4, 1.15e-2],
-            [3.0e-4, 0.0, 5.10e-3],
-            [1.15e-2, 5.10e-3, 0.0],
-        ]),
-    }
-
-    mix = PCSAFTMixture.from_params(params)
-    state = mix.state(T=t, x=x, rho=rho)
-
-    assert not hasattr(state, "ares")
-    assert not hasattr(state, "hres")
-    assert not hasattr(state, "sres")
-    assert not hasattr(state, "gres")
-    assert not hasattr(state, "mures")
-    assert not hasattr(state, "fugcoef")
-    assert not hasattr(state, "dielc_eval")
-    assert np.isfinite(state.a_res())
-    assert np.isfinite(state.h_res())
-    assert np.isfinite(state.s_res())
-    assert np.isfinite(state.g_res())
-    assert np.all(np.isfinite(state.mu_res()))
-    assert np.all(np.isfinite(state.gamma()))
-
-    breakdown = state.breakdown()
-    assert breakdown["miac"] == {}
-    assert breakdown["miac_m"] == {}
-    assert breakdown["gsolv"] == {}
-    assert breakdown["dielectric_eval"] is None
-    assert breakdown["osmoticC"] is None
-    np.testing.assert_allclose(breakdown["a_res"], state.a_res())
-    np.testing.assert_allclose(breakdown["h_res"], state.h_res())
-    np.testing.assert_allclose(breakdown["s_res"], state.s_res())
-    np.testing.assert_allclose(breakdown["g_res"], state.g_res())
-    np.testing.assert_allclose(breakdown["mu_res"], state.mu_res())
-    np.testing.assert_allclose(breakdown["lnfugcoef"], state.lnfugcoef())
-    np.testing.assert_allclose(breakdown["gamma"], state.gamma())
-    assert "fugcoef" not in breakdown
-
-    aly = np.asarray([1.2, 0.8, -0.01, 2.0e-5, -3.0e-8], dtype=float)
-    cp_mix = PCSAFTMixture.from_params({
-        "m": np.asarray([2.8149]),
-        "s": np.asarray([3.7169]),
-        "e": np.asarray([285.69]),
-    })
-    cp_state = cp_mix.state(T=325.0, x=np.asarray([1.0]), P=101325.0)
-    cp_expected = _aly_lee_reference(cp_state.T, aly)
-    cp_expected += (
-        cp_mix.state(T=cp_state.T + 0.001, x=np.asarray([1.0]), P=101325.0, phase="liq").h_res()
-        - cp_mix.state(T=cp_state.T - 0.001, x=np.asarray([1.0]), P=101325.0, phase="liq").h_res()
-    ) / 0.002
-    assert cp_state.cp(aly) == pytest.approx(cp_expected, rel=1e-8, abs=1e-8)
-
-
-def test_flash_and_vaporization_return_structured_results():
-    t = 325.0
-    p = 101325.0
-    x = np.asarray([1.0])
-    mix = PCSAFTMixture.from_params({
-        "m": np.asarray([2.8149]),
-        "s": np.asarray([3.7169]),
-        "e": np.asarray([285.69]),
-    })
-    state = mix.state(T=t, x=x, P=p, phase="liq")
-
-    flash = state.flashTQ(q=0.0)
-    hvap = state.Hvap()
-
-    assert flash.kind == "TQ"
-    assert flash.pressure is not None
-    assert len(flash.phases) == 2
-    assert flash.phases[0].x.shape == (1,)
-    assert hvap.pressure > 0.0
-    assert np.isfinite(hvap.value)
-
-
-def test_state_constructor_rejects_invalid_pressure_and_density():
-    mix = PCSAFTMixture.from_params({
-        "m": np.asarray([1.0]),
-        "s": np.asarray([3.0]),
-        "e": np.asarray([150.0]),
-    })
-
-    with pytest.raises(pcsaft.InputError):
-        mix.state(T=300.0, x=np.asarray([1.0]), P=0.0)
-
-    with pytest.raises(pcsaft.InputError):
-        mix.state(T=300.0, x=np.asarray([1.0]), rho=-1.0)
-
-
-def test_dataset_state_methods_and_lle_workflow():
+def _ionic_state():
     t = 298.15
-    p = 1.0e5
-    species = ["H2O-2B-Li", "Na+", "Cl-"]
+    species = ["water", "Na+", "Cl-"]
+    params = _ionic_params()
+    mix = ePCSAFTMixture.from_params(params, species=species)
+    state = mix.state(T=t, x=np.array([0.9998, 1.0e-4, 1.0e-4]), P=1.0e5)
+    return state, species
 
-    canonical = json.loads(_dataset_file("2020_Bulow", "user_options.json").read_text(encoding="utf-8"))
-    runtime = _resolve_runtime_options(canonical)["runtime"]
-    runtime["dielc_rule"] = 1
-    runtime["dielc_diff_mode"] = 0
 
+def _ionic_params():
+    t = 298.15
     s_water = 2.7927 + 10.11 * np.exp(-0.01775 * t) - 1.417 * np.exp(-0.01146 * t)
-    params = {
+    return {
         "MW": np.asarray([18.01528e-3, 22.98e-3, 35.45e-3]),
         "m": np.asarray([1.2047, 1.0, 1.0]),
         "s": np.asarray([s_water, 2.8232, 2.7560]),
@@ -254,54 +58,333 @@ def test_dataset_state_methods_and_lle_workflow():
         ]),
         "l_ij": np.zeros((3, 3)),
         "k_hb": np.zeros((3, 3)),
-        "elec_model": _runtime_to_elec_model(runtime),
-        "debug": bool(runtime["debug"]),
     }
 
-    z_feed = np.asarray([1.0 / 0.01801528, 1e-4, 1e-4], dtype=float)
-    z_feed /= np.sum(z_feed)
 
-    mix = PCSAFTMixture.from_params(params, species=species)
-    state = mix.state(T=t, x=z_feed, P=p)
-
-    eps, deps = state.dielectric_eval()
-    assert eps > 0.0
-    assert deps.shape == (3,)
-    assert state.osmoticC().shape == (1,)
-    miac = state.miac(species=species)
-    miac_m = state.miac_m(species=species)
-    gsolv = state.gsolv(species=species)
-    actcoeff = state.actcoeff(species=species)
-    assert list(miac) == ["Na+Cl-"]
-    assert list(miac_m) == ["Na+Cl-"]
-    assert list(gsolv) == ["Na+", "Cl-"]
-    assert np.isfinite(next(iter(miac.values())))
-    assert np.isfinite(next(iter(miac_m.values())))
-    assert all(np.isfinite(value) for value in gsolv.values())
-    assert actcoeff.mean_ionic_x() == miac
-    assert actcoeff.mean_ionic_m() == miac_m
-    assert actcoeff.ion() == gsolv
-    assert set(actcoeff.component()) == set(species)
-    assert actcoeff.as_basis("x") == miac
-    assert actcoeff.as_basis("molality") == miac_m
-    assert np.isfinite(actcoeff.osmotic_c)
-
-    breakdown = state.breakdown(species=species)
-    assert breakdown["miac"] == miac
-    assert breakdown["miac_m"] == miac_m
-    assert breakdown["gsolv"] == gsolv
-    np.testing.assert_allclose(breakdown["mu_res"], state.mu_res())
-    np.testing.assert_allclose(breakdown["gamma"], state.gamma())
-    np.testing.assert_allclose(breakdown["lnfugcoef"], state.lnfugcoef())
-    np.testing.assert_allclose(breakdown["dielectric_eval"][0], eps)
-    np.testing.assert_allclose(breakdown["dielectric_eval"][1], deps)
-
-    assert not hasattr(state, "multiphase_lle")
-def _aly_lee_reference(t: float, c: np.ndarray) -> float:
-    c = np.asarray(c, dtype=float).flatten()
-    return float((c[0] + c[1] * (c[2] / t / np.sinh(c[2] / t)) ** 2 + c[3] * (c[4] / t / np.cosh(c[4] / t)) ** 2) / 1000.0)
+def _assert_array(actual, expected, rtol=1e-8, atol=1e-10):
+    np.testing.assert_allclose(np.asarray(actual, dtype=float), np.asarray(expected, dtype=float), rtol=rtol, atol=atol)
 
 
-def test_missing_public_procedural_api_is_not_exported():
+def _sum_term_arrays(terms):
+    total = None
+    for value in terms.values():
+        arr = np.asarray(value, dtype=float)
+        total = arr.copy() if total is None else total + arr
+    return total
+
+
+def test_package_exports_are_available():
+    assert hasattr(epcsaft, "ePCSAFTMixture")
+    assert hasattr(epcsaft, "ePCSAFTState")
+    assert hasattr(epcsaft, "ActivityCoefficientResult")
+
+
+def test_from_params_rejects_legacy_electrolyte_keys():
+    species = ["water", "Na+", "Cl-"]
+    params = _ionic_params()
+    params["dielc_rule"] = 1
+    with pytest.raises(ValueError, match='Flat electrostatic params are no longer supported'):
+        ePCSAFTMixture.from_params(params, species=species)
+
+    params = _ionic_params()
+    params["elec_model"] = {"born_rel_perm": "solvent"}
+    with pytest.raises(ValueError, match='unsupported key'):
+        ePCSAFTMixture.from_params(params, species=species)
+
+
+def test_neutral_scalar_methods_return_expected_values():
+    state, species = _neutral_state()
+
+    assert state.density() == pytest.approx(14330.417110)
+    assert state.density(units="molar") == pytest.approx(14330.417110)
+    assert state.density(units="mol/m^3") == pytest.approx(14330.417110)
+    assert state.molar_density() == pytest.approx(14330.417110)
+    with pytest.raises(epcsaft.InputError, match="density units must be"):
+        state.density(units="weird")
+    with pytest.raises(epcsaft.InputError, match="Mass density requires component molecular weights"):
+        state.mass_density()
+    with pytest.raises(epcsaft.InputError, match="Mass density requires component molecular weights"):
+        state.density(units="mass")
+    assert state.pressure() == pytest.approx(1276374.1152948933)
+    assert state.compressibility_factor() == pytest.approx(0.04594621208078564)
+    assert state.residual_helmholtz() == pytest.approx(-3.54988545131505)
+    assert state.temperature_derivative_residual_helmholtz() == pytest.approx(0.03077401856781036)
+    assert state.residual_enthalpy() == pytest.approx(-15758.229958475444)
+    assert state.residual_entropy() == pytest.approx(-55.751451436621096)
+    assert state.residual_gibbs() == pytest.approx(-2759.779056027235)
+    _assert_array(state.residual_chemical_potential(), [-1.1478687523834008, -3.6543804288405415, -5.488063725572939])
+
+    fugacity_coefficient = state.fugacity_coefficient()
+    fugacity_coefficient_coeff = state.fugacity_coefficient(natural_log=False)
+    _assert_array(fugacity_coefficient, [6.906169322700795, 0.5632134688356544, 0.09001491894620331])
+    _assert_array(fugacity_coefficient_coeff, [998.4153006812405, 1.756307282343719, 1.0941906069746888])
+    np.testing.assert_allclose(np.exp(fugacity_coefficient), fugacity_coefficient_coeff)
+
+
+def test_state_method_aliases_match_canonical_methods():
+    state, species = _ionic_state()
+    aliases = state.method_aliases()
+    assert aliases == {
+        "pressure": "p",
+        "density": "rho",
+        "molar_density": "rho_molar",
+        "mass_density": "rho_mass",
+        "compressibility_factor": "z",
+        "residual_helmholtz": "ares",
+        "temperature_derivative_residual_helmholtz": "dadt",
+        "composition_derivative_residual_helmholtz": "dadx",
+        "residual_enthalpy": "hres",
+        "residual_entropy": "sres",
+        "residual_gibbs": "gres",
+        "residual_chemical_potential": "mures",
+        "activity_coefficient": "gamma",
+        "fugacity_coefficient": "fugcoef",
+        "relative_permittivity": "epsr",
+        "osmotic_coefficient": "osmotic_coef",
+        "state_diagnostics": "diag",
+        "solvation_free_energy": "gsolv",
+    }
+
+    assert state.p() == pytest.approx(state.pressure())
+    assert state.rho() == pytest.approx(state.density())
+    assert state.rho_molar() == pytest.approx(state.molar_density())
+    assert state.rho_mass() == pytest.approx(state.mass_density())
+    assert state.z() == pytest.approx(state.compressibility_factor())
+    assert state.ares() == pytest.approx(state.residual_helmholtz())
+    assert state.dadt() == pytest.approx(state.temperature_derivative_residual_helmholtz())
+    assert state.hres() == pytest.approx(state.residual_enthalpy())
+    assert state.sres() == pytest.approx(state.residual_entropy())
+    assert state.gres() == pytest.approx(state.residual_gibbs())
+    assert state.dadx()["z_total"] == pytest.approx(state.composition_derivative_residual_helmholtz()["z_total"])
+    _assert_array(state.mures(), state.residual_chemical_potential())
+    _assert_array(state.fugcoef(), state.fugacity_coefficient())
+    _assert_array(state.fugcoef(natural_log=False), state.fugacity_coefficient(natural_log=False))
+    assert state.epsr()[0] == pytest.approx(state.relative_permittivity()[0])
+    _assert_array(state.osmotic_coef(), state.osmotic_coefficient())
+    assert state.gamma(species=species) == state.activity_coefficient(species=species)
+    assert state.gamma(species=species, mean_ionic_form=True, basis="molality") == state.activity_coefficient(
+        species=species, mean_ionic_form=True, basis="molality"
+    )
+    assert state.diag(species=species)["pressure"] == pytest.approx(state.state_diagnostics(species=species)["pressure"])
+    assert state.gsolv(species=species) == state.solvation_free_energy(species=species)
     with pytest.raises(AttributeError):
-        getattr(pcsaft, "pcsaft_den")
+        getattr(state, "fugacity_coefficient_terms")
+    with pytest.raises(AttributeError):
+        getattr(state, "lnfug_terms")
+
+
+def test_state_contribution_term_payloads_match_totals():
+    state, species = _ionic_state()
+
+    ares = state.ares(return_contribution_terms=True)
+    assert set(ares) == {"total", "terms"}
+    assert set(ares["terms"]) == {"hc", "disp", "polar", "assoc", "ion", "born"}
+    assert ares["total"] == pytest.approx(state.residual_helmholtz())
+    assert sum(ares["terms"].values()) == pytest.approx(ares["total"])
+
+    z_terms = state.z(return_contribution_terms=True)
+    assert set(z_terms) == {"total", "terms"}
+    assert set(z_terms["terms"]) == {"hc", "disp", "polar", "assoc", "ion", "born", "ideal"}
+    assert z_terms["total"] == pytest.approx(state.compressibility_factor())
+    assert sum(z_terms["terms"].values()) == pytest.approx(z_terms["total"])
+
+    dadt = state.dadt(return_contribution_terms=True)
+    assert set(dadt) == {"total", "terms"}
+    assert set(dadt["terms"]) == {"hc", "disp", "polar", "assoc", "ion", "born"}
+    assert dadt["total"] == pytest.approx(state.temperature_derivative_residual_helmholtz())
+    assert sum(dadt["terms"].values()) == pytest.approx(dadt["total"])
+
+    mures = state.mures(return_contribution_terms=True)
+    assert set(mures) == {"total", "terms"}
+    assert set(mures["terms"]) == {"hc", "disp", "polar", "assoc", "ion", "born"}
+    _assert_array(mures["total"], state.residual_chemical_potential())
+    _assert_array(_sum_term_arrays(mures["terms"]), mures["total"])
+
+    dadx = state.dadx()
+    assert set(dadx) == {"total", "terms", "ares_terms", "sum_x_terms", "z_raw_terms", "z_terms", "z_total"}
+    assert set(dadx["terms"]) == {"hc", "disp", "polar", "assoc", "ion", "born"}
+    assert set(dadx["ares_terms"]) == {"hc", "disp", "polar", "assoc", "ion", "born"}
+    assert set(dadx["sum_x_terms"]) == {"hc", "disp", "polar", "assoc", "ion", "born"}
+    assert set(dadx["z_raw_terms"]) == {"hc", "disp", "polar", "assoc", "ion", "born"}
+    assert set(dadx["z_terms"]) == {"hc", "disp", "polar", "assoc", "ion", "born"}
+    _assert_array(dadx["total"], _sum_term_arrays(dadx["terms"]))
+    assert dadx["z_total"] == pytest.approx(state.compressibility_factor())
+    assert dadx["ares_terms"]["hc"] == pytest.approx(state.ares(return_contribution_terms=True)["terms"]["hc"])
+
+    fugcoef = state.fugcoef(return_contribution_terms=True)
+    fugcoef_coeff = state.fugcoef(natural_log=False, return_contribution_terms=True)
+    assert set(fugcoef) == {"total", "terms", "term_basis", "terms_total_natural_log"}
+    assert set(fugcoef["terms"]) == {"hc", "disp", "polar", "assoc", "ion", "born"}
+    _assert_array(fugcoef["total"], state.fugacity_coefficient())
+    _assert_array(fugcoef_coeff["total"], state.fugacity_coefficient(natural_log=False))
+    _assert_array(_sum_term_arrays(fugcoef["terms"]), fugcoef["terms_total_natural_log"])
+    _assert_array(_sum_term_arrays(fugcoef_coeff["terms"]), fugcoef_coeff["terms_total_natural_log"])
+    assert fugcoef["term_basis"] == "natural_log"
+
+
+def test_neutral_composition_and_fugacity_terms_return_expected_values():
+    state, species = _neutral_state()
+
+    dadx = state.composition_derivative_residual_helmholtz()
+    terms = state.state_diagnostics(species=species)["fugacity_coefficient_terms"]
+    assert set(dadx) == {"total", "terms", "ares_terms", "sum_x_terms", "z_raw_terms", "z_terms", "z_total"}
+    for key in ("hc", "disp", "polar", "assoc", "ion", "born"):
+        np.testing.assert_allclose(dadx["terms"][key], terms[f"dadx_{key}"])
+        np.testing.assert_allclose(dadx["ares_terms"][key], terms[f"a_{key}"])
+        np.testing.assert_allclose(dadx["sum_x_terms"][key], terms[f"sum_x_dadx_{key}"])
+        np.testing.assert_allclose(dadx["z_raw_terms"][key], terms[f"z_raw_{key}"])
+        np.testing.assert_allclose(dadx["z_terms"][key], terms[f"z_{key}"])
+    _assert_array(dadx["terms"]["hc"], [6.883394758977889, 9.511092421642308, 12.258394188218157])
+    _assert_array(dadx["terms"]["disp"], [-7.506335725134188, -12.640545058126808, -17.221530131978034])
+    _assert_array(dadx["terms"]["polar"], [0.0, 0.0, 0.0])
+    _assert_array(dadx["terms"]["assoc"], [0.0, 0.0, 0.0])
+    _assert_array(dadx["terms"]["ion"], [0.0, 0.0, 0.0])
+    _assert_array(dadx["terms"]["born"], [0.0, 0.0, 0.0])
+    assert dadx["z_total"] == pytest.approx(0.04594621208078564)
+    _assert_array(terms["mu_total"], [-1.1478687523834008, -3.6543804288405415, -5.488063725572939])
+    _assert_array(terms["lnfugcoef_total"], [1.9324151168689134, -0.5740965595882255, -2.407779856320623])
+    assert terms["z_total"] == pytest.approx(0.04594621208078564)
+    reconstructed_mu = sum(
+        dadx["ares_terms"][key] + dadx["z_raw_terms"][key] + dadx["terms"][key] - dadx["sum_x_terms"][key]
+        for key in ("hc", "disp", "polar", "assoc", "ion", "born")
+    )
+    np.testing.assert_allclose(reconstructed_mu, state.residual_chemical_potential())
+
+
+def test_ionic_activity_and_solution_methods_return_expected_values():
+    state, species = _ionic_state()
+
+    relative_permittivity = state.relative_permittivity()
+    osmotic_coefficient = state.osmotic_coefficient()
+    component_activity = state.activity_coefficient(species=species)
+    mean_ionic_mole = state.activity_coefficient(species=species, mean_ionic_form=True, basis="mole")
+    mean_ionic_molality = state.activity_coefficient(species=species, mean_ionic_form=True, basis="molality")
+    solvation_free_energy = state.solvation_free_energy(species=species)
+    diagnostics = state.state_diagnostics(species=species)
+
+    assert relative_permittivity[0] == pytest.approx(78.075982)
+    _assert_array(relative_permittivity[1], [78.09, 8.0, 8.0])
+    _assert_array(osmotic_coefficient, [0.9740430244627462])
+    assert component_activity == {
+        "water": pytest.approx(1.0000051724037697),
+        "Na+": pytest.approx(0.9222113778654043),
+        "Cl-": pytest.approx(0.9222258090371313),
+    }
+    assert mean_ionic_mole == {"Na+Cl-": pytest.approx(0.9222185934230398)}
+    assert mean_ionic_molality == {"Na+Cl-": pytest.approx(0.9220341497043553)}
+    assert solvation_free_energy == {
+        "Na+": pytest.approx(-479009.01199608785),
+        "Cl-": pytest.approx(-493120.5112077797),
+    }
+
+    _assert_array(diagnostics["relative_permittivity"][1], [78.09, 8.0, 8.0])
+    _assert_array(diagnostics["osmotic_coefficient"], [0.9740430244627462])
+    assert diagnostics["activity_coefficient"] == component_activity
+    assert diagnostics["mean_ionic_activity_coefficient_mole"] == mean_ionic_mole
+    assert diagnostics["mean_ionic_activity_coefficient_molality"] == mean_ionic_molality
+    assert diagnostics["solvation_free_energy"] == solvation_free_energy
+    _assert_array(diagnostics["fugacity_coefficient"], [1.0319800328347054, 1.0, 1.0])
+    _assert_array(diagnostics["residual_chemical_potential"], [-10.682420304620588, -199.10395742942775, -204.79630395556683])
+    _assert_array(
+        np.exp(state.fugacity_coefficient()),
+        [1.0319800328347054, 1.0, 1.0],
+    )
+    _assert_array(state.fugacity_coefficient(), [0.031479320480256076, 4.651483658942082e-84, 1.568327699253529e-86])
+    _assert_array(state.fugacity_coefficient(natural_log=False), [1.0319800328347054, 1.0, 1.0])
+    assert state.compressibility_factor() == pytest.approx(0.000728884077611683)
+    assert state.residual_helmholtz() == pytest.approx(-9.7214027218058)
+    assert state.temperature_derivative_residual_helmholtz() == pytest.approx(0.055518862215412086)
+    assert state.residual_enthalpy() == pytest.approx(-43511.182740475044)
+    assert state.residual_entropy() == pytest.approx(-116.86423439977183)
+    assert state.residual_gibbs() == pytest.approx(-8668.11125418307)
+    _assert_array(state.residual_chemical_potential(), [-10.682420304620588, -199.10395742942775, -204.79630395556683])
+    assert state.pressure() == pytest.approx(100000.0)
+    assert state.density() == pytest.approx(55344.274540081075)
+    assert state.density(units="molar") == pytest.approx(55344.274540081075)
+    assert state.molar_density() == pytest.approx(55344.274540081075)
+    assert state.density(units="mass") == pytest.approx(997.1665703121223)
+    assert state.density(units="kg/m^3") == pytest.approx(997.1665703121223)
+    assert state.mass_density() == pytest.approx(997.1665703121223)
+    _assert_array(diagnostics["fugacity_coefficient_terms"]["mu_total"], [-10.682420304620588, -199.10395742942775, -204.79630395556683])
+    _assert_array(diagnostics["fugacity_coefficient_terms"]["lnfugcoef_total"], [-3.4584244392944334, -191.87996157767273, -197.5723081063775])
+
+
+def test_state_diagnostics_matches_public_methods():
+    neutral_state, neutral_species = _neutral_state()
+    neutral_diag = neutral_state.state_diagnostics(species=neutral_species)
+    assert neutral_diag["activity_coefficient"] == {}
+    assert neutral_diag["mean_ionic_activity_coefficient_mole"] == {}
+    assert neutral_diag["mean_ionic_activity_coefficient_molality"] == {}
+    assert neutral_diag["solvation_free_energy"] == {}
+    assert neutral_diag["relative_permittivity"] is None
+    assert neutral_diag["osmotic_coefficient"] is None
+    assert neutral_diag["mass_density"] is None
+    assert neutral_diag["pressure"] == pytest.approx(neutral_state.pressure())
+    assert neutral_diag["density"] == pytest.approx(neutral_state.density())
+    assert neutral_diag["density_molar"] == pytest.approx(neutral_state.molar_density())
+    assert neutral_diag["compressibility_factor"] == pytest.approx(neutral_state.compressibility_factor())
+    _assert_array(neutral_diag["residual_chemical_potential"], neutral_state.residual_chemical_potential())
+    _assert_array(neutral_diag["fugacity_coefficient"], neutral_state.fugacity_coefficient(natural_log=False))
+
+    ionic_state, ionic_species = _ionic_state()
+    ionic_diag = ionic_state.state_diagnostics(species=ionic_species)
+    assert ionic_diag["activity_coefficient"] == ionic_state.activity_coefficient(species=ionic_species)
+    assert ionic_diag["density"] == pytest.approx(ionic_state.molar_density())
+    assert ionic_diag["density_molar"] == pytest.approx(ionic_state.molar_density())
+    assert ionic_diag["mass_density"] == pytest.approx(ionic_state.mass_density())
+    assert ionic_diag["mean_ionic_activity_coefficient_mole"] == ionic_state.activity_coefficient(
+        species=ionic_species,
+        mean_ionic_form=True,
+        basis="mole",
+    )
+    assert ionic_diag["mean_ionic_activity_coefficient_molality"] == ionic_state.activity_coefficient(
+        species=ionic_species,
+        mean_ionic_form=True,
+        basis="molality",
+    )
+    assert ionic_diag["solvation_free_energy"] == ionic_state.solvation_free_energy(species=ionic_species)
+    _assert_array(ionic_diag["relative_permittivity"][1], ionic_state.relative_permittivity()[1])
+    _assert_array(ionic_diag["osmotic_coefficient"], ionic_state.osmotic_coefficient())
+    _assert_array(ionic_diag["residual_chemical_potential"], ionic_state.residual_chemical_potential())
+    _assert_array(ionic_diag["fugacity_coefficient"], ionic_state.fugacity_coefficient(natural_log=False))
+
+
+def test_state_constructor_rejects_invalid_pressure_and_density():
+    mix = ePCSAFTMixture.from_params({
+        "m": np.asarray([1.0]),
+        "s": np.asarray([3.0]),
+        "e": np.asarray([150.0]),
+    })
+
+    with pytest.raises(epcsaft.InputError):
+        mix.state(T=300.0, x=np.asarray([1.0]), P=0.0)
+
+    with pytest.raises(epcsaft.InputError):
+        mix.state(T=300.0, x=np.asarray([1.0]), rho=-1.0)
+
+
+def test_pressure_based_state_matches_equivalent_density_state():
+    mix = ePCSAFTMixture.from_params({
+        "m": np.asarray([2.8149]),
+        "s": np.asarray([3.7169]),
+        "e": np.asarray([285.69]),
+    }, species=["Toluene"])
+
+    state_tp = mix.state(T=320.0, x=np.asarray([1.0]), P=101325.0, phase="liq")
+    state_trho = mix.state(T=320.0, x=np.asarray([1.0]), rho=state_tp.density(), phase="liq")
+
+    assert state_tp.density() == pytest.approx(state_trho.density())
+    assert state_tp.pressure() == pytest.approx(state_trho.pressure())
+    assert state_tp.compressibility_factor() == pytest.approx(state_trho.compressibility_factor())
+    assert state_tp.residual_helmholtz() == pytest.approx(state_trho.residual_helmholtz())
+
+
+def test_pressure_based_state_raises_solver_error_during_construction():
+    mix = ePCSAFTMixture.from_params({
+        "m": np.asarray([1.0]),
+        "s": np.asarray([3.0]),
+        "e": np.asarray([150.0]),
+    }, species=["A"])
+
+    with pytest.raises(epcsaft.SolutionError):
+        mix.state(T=300.0, x=np.asarray([1.0]), P=1.0e-12, phase="liq")

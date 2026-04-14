@@ -3,7 +3,7 @@ References
 - J. Gross and G. Sadowski, “Perturbed-Chain SAFT:  An Equation of State Based on a Perturbation Theory for Chain Molecules,” Ind. Eng. Chem. Res., vol. 40, no. 4, pp. 1244–1260, Feb. 2001.
 - M. Kleiner and G. Sadowski, “Modeling of Polar Systems Using PCP-SAFT: An Approach to Account for Induced-Association Interactions,” J. Phys. Chem. C, vol. 111, no. 43, pp. 15544–15553, Nov. 2007.
 - J. Gross Joachim and J. Vrabec, “An equation‐of‐state contribution for polar components: Dipolar molecules,” AIChE J., vol. 52, no. 3, pp. 1194–1204, Feb. 2006.
-- A. J. de Villiers, C. E. Schwarz, and A. J. Burger, “Improving vapour–liquid-equilibria predictions for mixtures with non-associating polar components using sPC-SAFT extended with two dipolar terms,” Fluid Phase Equilibria, vol. 305, no. 2, pp. 174–184, Jun. 2011.
+- A. J. de Villiers, C. E. Schwarz, and A. J. Burger, “Improving vapour–liquid-equilibria predictions for mixtures with non-associating polar components using sePC-SAFT extended with two dipolar terms,” Fluid Phase Equilibria, vol. 305, no. 2, pp. 174–184, Jun. 2011.
 - S. H. Huang and M. Radosz, “Equation of state for small, large, polydisperse, and associating molecules,” Ind. Eng. Chem. Res., vol. 29, no. 11, pp. 2284–2294, Nov. 1990.
 - S. H. Huang and M. Radosz, “Equation of state for small, large, polydisperse, and associating molecules: extension to fluid mixtures,” Ind. Eng. Chem. Res., vol. 30, no. 8, pp. 1994–2005, Aug. 1991.
 - S. H. Huang and M. Radosz, “Equation of state for small, large, polydisperse, and associating molecules: extension to fluid mixtures. [Erratum to document cited in CA115(8):79950j],” Ind. Eng. Chem. Res., vol. 32, no. 4, pp. 762–762, Apr. 1993.
@@ -13,3 +13,4 @@ References
 - C. Held, L. F. Cameretti, and G. Sadowski, “Modeling aqueous electrolyte solutions: Part 1. Fully dissociated electrolytes,” Fluid Phase Equilibria, vol. 270, no. 1, pp. 87–96, Aug. 2008.
 - C. Held, T. Reschke, S. Mohammad, A. Luza, and G. Sadowski, “ePC-SAFT revised,” Chem. Eng. Res. Des., vol. 92, no. 12, pp. 2884–2897, Dec. 2014.
 - H. A. J. Watson, M. Vikse, T. Gundersen, and P. I. Barton, “Reliable Flash Calculations: Part 1. Nonsmooth Inside-Out Algorithms,” Ind. Eng. Chem. Res., vol. 56, no. 4, pp. 960–973, Feb. 2017.
+

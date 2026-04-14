@@ -68,7 +68,7 @@ TITLE_LABELS = {
 }
 METHOD_STYLES = {
     "mu": {
-        "label": r"PC-SAFT contribution from $\Delta \tilde{\mu}^{(\alpha)}$",
+        "label": r"ePC-SAFT contribution from $\Delta \tilde{\mu}^{(\alpha)}$",
         "color": "#1f77b4",
         "linestyle": "--",
         "linewidth": 1.8,
@@ -193,13 +193,13 @@ def run_analysis(
                 linewidth = 1.4
             elif method_name == "model_total":
                 y_model = np.asarray(model_curves_by_method["lnphi"]["total"], dtype=float)
-                label = r"PC-SAFT EOS total from $\Delta \ln\varphi$"
+                label = r"ePC-SAFT EOS total from $\Delta \ln\varphi$"
                 color = "#111111"
                 linestyle = "-"
                 linewidth = 2.2
             elif method_name == "mu_sum":
                 y_model = _sum_contribution_curves(model_curves_by_method["mu"])
-                label = r"Sum of PC-SAFT $\Delta \tilde{\mu}^{(\alpha)}$ contributions"
+                label = r"Sum of ePC-SAFT $\Delta \tilde{\mu}^{(\alpha)}$ contributions"
                 color = "#1f77b4"
                 linestyle = ":"
                 linewidth = 2.1
@@ -260,7 +260,7 @@ def run_analysis(
                 color="#cc5500",
                 linestyle="-",
                 linewidth=1.9,
-                label=r"PC-SAFT Born with $d_{\mathrm{Born}}$ mode 0",
+                label=r"ePC-SAFT Born with $d_{\mathrm{Born}}$ mode 0",
                 zorder=4,
             )
             y_candidates.append(y_model)
@@ -384,5 +384,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
 

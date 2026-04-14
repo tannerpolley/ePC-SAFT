@@ -4,7 +4,7 @@ This audit compares the paper Figure 5 transfer contributions against model-side
 
 ## C++ Contribution Construction
 
-- In [pcsaft_electrolyte.cpp](C:/Users/Tanner/Documents/git/PC-SAFT/pcsaft_electrolyte.cpp), the hard-chain and dispersion branches are built as
+- In [epcsaft_electrolyte.cpp](C:/Users/Tanner/Documents/git/ePC-SAFT/epcsaft_electrolyte.cpp), the hard-chain and dispersion branches are built as
   `mu_hc[i] = ares_hc + Zhc + dahc_dx[i] - sum_j x[j]*dahc_dx[j]`
   `mu_disp[i] = ares_disp + Zdisp + dadisp_dx[i] - sum_j x[j]*dadisp_dx[j]`
 - The Debye-Huckel and Born branches use the same pattern with `a_DH` / `a_born`, `Z_DH` / `Zborn`, and the corresponding `dadx` vectors.
@@ -56,3 +56,4 @@ This audit compares the paper Figure 5 transfer contributions against model-side
 - The Born transfer bar is different: it does **not** match the model well even on the raw-`mu` route, which means Figure 5 is not explained by a single bookkeeping switch the way Figure 3 largely is.
 - Ethanol is the clearest case: the paper short-range bars are close to the raw `mu` transfer values, while the model totals only close when the correct $\ln\varphi$ transfer contributions are used. That is why Figure 4 totals can agree while Figure 5 component bars disagree strongly, including sign flips.
 - The detailed CSV contains the water-side and organic-side state values for each branch, so you can inspect exactly where each sign change enters.
+

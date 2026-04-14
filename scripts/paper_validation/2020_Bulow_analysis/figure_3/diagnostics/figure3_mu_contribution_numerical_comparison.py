@@ -16,14 +16,14 @@ if str(ANALYSIS_ROOT) not in sys.path:
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
 import _plot_common as common
 import _model_overlay as overlay
-from pcsaft.parameters import get_prop_dict
-from scripts._pcsaft_oop import pcsaft_den, pcsaft_lnfugcoef_terms, pcsaft_p
+from epcsaft.parameters import get_prop_dict
+from scripts._epcsaft_oop import epcsaft_density, epcsaft_fugacity_coefficient_terms, epcsaft_pressure
 
 
 DATA_PATH = FIGURE_DIR / "data" / "water_contributions.csv"
@@ -69,7 +69,7 @@ def _terms_for_user_options(ion: str, user_options: dict | None) -> tuple[dict[s
     species = overlay._species_for_ion(ion, "water")
     x = np.asarray([EPS, EPS, 1.0 - 2.0 * EPS], dtype=float)
     params = get_prop_dict("2020_Bulow", species, x, T_REF, user_options=user_options or {})
-    rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
+    rho = epcsaft_density(T_REF, P_REF, x, params, phase="liq")
 
     z = np.asarray(params.get("z", []), dtype=float)
     idx_ion = np.where(np.abs(z) > 1.0e-12)[0]
@@ -82,14 +82,14 @@ def _terms_for_user_options(ion: str, user_options: dict | None) -> tuple[dict[s
     else:
         x_ref[idx_solv] = 1.0 / len(idx_solv)
 
-    p_ref = pcsaft_p(T_REF, rho, x_ref, params)
+    p_ref = epcsaft_pressure(T_REF, rho, x_ref, params)
     x_inf = x_ref.copy()
     ion_idx = species.index(ion)
     x_inf[ion_idx] = EPS_INF
     x_inf /= np.sum(x_inf)
     phase = "vap" if rho < 900.0 else "liq"
-    rho_inf = pcsaft_den(T_REF, p_ref, x_inf, params, phase=phase)
-    return pcsaft_lnfugcoef_terms(T_REF, rho_inf, x_inf, params), ion_idx
+    rho_inf = epcsaft_density(T_REF, p_ref, x_inf, params, phase=phase)
+    return epcsaft_fugacity_coefficient_terms(T_REF, rho_inf, x_inf, params), ion_idx
 
 
 def _extract_terms(terms: dict[str, object], idx: int, suffix: str) -> dict[str, float]:
@@ -127,14 +127,14 @@ def _build_rows() -> list[dict[str, object]]:
                     "ion": ion,
                     "contr": contribution,
                     "paper_mu_contr": paper_mu,
-                    "pcsaft_mu_contr_analytical": analytical["mu"],
-                    "pcsaft_mu_manual_sum_analytical": analytical["manual"],
+                    "epcsaft_mu_contr_analytical": analytical["mu"],
+                    "epcsaft_mu_manual_sum_analytical": analytical["manual"],
                     "a_contr_analytical": analytical["a"],
                     "z_contr_analytical": analytical["z"],
                     "dadx_contr_analytical": analytical["dadx"],
                     "sum_xj_dadx_contr_analytical": analytical["sum_xj_dadx"],
-                    "pcsaft_mu_contr_numerical": numerical["mu"],
-                    "pcsaft_mu_manual_sum_numerical": numerical["manual"],
+                    "epcsaft_mu_contr_numerical": numerical["mu"],
+                    "epcsaft_mu_manual_sum_numerical": numerical["manual"],
                     "a_contr_numerical": numerical["a"],
                     "z_contr_numerical": numerical["z"],
                     "dadx_contr_numerical": numerical["dadx"],
@@ -159,14 +159,14 @@ def main() -> None:
                 "ion",
                 "contr",
                 "paper_mu_contr",
-                "pcsaft_mu_contr_analytical",
-                "pcsaft_mu_manual_sum_analytical",
+                "epcsaft_mu_contr_analytical",
+                "epcsaft_mu_manual_sum_analytical",
                 "a_contr_analytical",
                 "z_contr_analytical",
                 "dadx_contr_analytical",
                 "sum_xj_dadx_contr_analytical",
-                "pcsaft_mu_contr_numerical",
-                "pcsaft_mu_manual_sum_numerical",
+                "epcsaft_mu_contr_numerical",
+                "epcsaft_mu_manual_sum_numerical",
                 "a_contr_numerical",
                 "z_contr_numerical",
                 "dadx_contr_numerical",
@@ -183,3 +183,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -1,0 +1,4 @@
+species,m,s_Angstrom,e_over_k_K,source_workbook,source_sheet,species_cell,m_cell,s_cell,e_cell
+Methane,1.0,3.7039,150.03,workbooks/PC-SAFT Calculations - Hydrocarbon Basis.xlsm,PC-SAFT Liquid,B13,B16,B17,B18
+Ethane,1.6069,3.5206,191.42,workbooks/PC-SAFT Calculations - Hydrocarbon Basis.xlsm,PC-SAFT Liquid,C13,C16,C17,C18
+Propane,2.002,3.6184,208.11,workbooks/PC-SAFT Calculations - Hydrocarbon Basis.xlsm,PC-SAFT Liquid,D13,D16,D17,D18

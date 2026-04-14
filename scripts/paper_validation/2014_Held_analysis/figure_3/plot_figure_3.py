@@ -16,12 +16,12 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 import _common as common
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
-from pcsaft.parameters import get_prop_dict
-from scripts._pcsaft_oop import pcsaft_den
+from epcsaft.parameters import get_prop_dict
+from scripts._epcsaft_oop import epcsaft_density
 
 T_REF = 298.15
 P_REF = 1.0e5
@@ -109,7 +109,7 @@ def _calc_curve(params: dict, m_grid: np.ndarray) -> np.ndarray:
     for i, m in enumerate(m_grid):
         m_eval = max(float(m), 1e-12)
         x = common.mole_fraction_from_molality_11(m_eval)
-        rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
+        rho = epcsaft_density(T_REF, P_REF, x, params, phase="liq")
         out[i] = common.osmotic_molality_from_fugacity(T_REF, rho, x, params)
     return out
 
@@ -171,4 +171,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 

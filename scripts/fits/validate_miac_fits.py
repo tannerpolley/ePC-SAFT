@@ -1,7 +1,7 @@
 """Dataset-driven MIAC fit validation.
 
 This script validates MIAC datasets using parameter sets from the packaged
-`pcsaft.parameters` datasets.
+`epcsaft.parameters` datasets.
 
 Experimental data source is canonical `data/MIAC/**` with `miac` and `miac_m` values.
 
@@ -27,12 +27,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
-from pcsaft.parameters import get_prop_dict
-from scripts._pcsaft_oop import as_mixture
+from epcsaft.parameters import get_prop_dict
+from scripts._epcsaft_oop import as_mixture
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -576,7 +576,7 @@ def calc_curve(
         m_eval = float(m) if m > 0.0 else 1e-12
         x = _molality_to_molefraction_combo(m_eval, salt, solvent_system, comp)
         state = mixture.state(T=T_REF, x=x, P=P_REF, phase="liq")
-        gamma_m[idx] = float(state.actcoeff(species=species).mean_ionic_m()[pair_key])
+        gamma_m[idx] = float(state.activity_coefficient(species=species, mean_ionic_form=True, basis="molality")[pair_key])
 
     if not np.all(np.isfinite(gamma_m)):
         raise ValueError(f"Non-finite MIAC_m values for {salt}/{solvent_system} in dataset {dataset_name}.")
@@ -867,3 +867,4 @@ def test_validate_miac_fits_v2() -> None:
 
 if __name__ == "__main__":
     run_validate_miac_fits_v2()
+

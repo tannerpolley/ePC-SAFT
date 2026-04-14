@@ -17,15 +17,15 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from figure6b_digitized_reference_replica import _load_digitized_curves
 from figure6b_libr_ethanol_contributions import P_REF, T_REF, _build_params, _molality_for_salt_mole_fraction, _molality_to_species_molefraction
-from scripts._pcsaft_oop import pcsaft_den, pcsaft_lnfugcoef_terms
+from scripts._epcsaft_oop import epcsaft_density, epcsaft_fugacity_coefficient_terms
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -50,16 +50,16 @@ def _calc_point_contributions(x_salt: float, params: Dict[str, object], rho_scal
     molality = _molality_for_salt_mole_fraction(x_salt)
     m_eval = molality if molality > 0.0 else 1e-12
     x = _molality_to_species_molefraction(m_eval)
-    rho_base = float(pcsaft_den(T_REF, P_REF, x, params, phase="liq"))
+    rho_base = float(epcsaft_density(T_REF, P_REF, x, params, phase="liq"))
     rho = float(rho_scale) * rho_base
 
-    terms = pcsaft_lnfugcoef_terms(T_REF, rho, x, params)
+    terms = epcsaft_fugacity_coefficient_terms(T_REF, rho, x, params)
     eps = 1e-12
     x_inf = np.full_like(x, eps)
     x_inf[2] = max(1.0 - eps * (len(x) - 1), eps)
     x_inf /= np.sum(x_inf)
-    rho_inf = float(pcsaft_den(T_REF, P_REF, x_inf, params, phase="liq"))
-    terms_inf = pcsaft_lnfugcoef_terms(T_REF, rho_inf, x_inf, params)
+    rho_inf = float(epcsaft_density(T_REF, P_REF, x_inf, params, phase="liq"))
+    terms_inf = epcsaft_fugacity_coefficient_terms(T_REF, rho_inf, x_inf, params)
 
     def mean_ionic_delta(key: str) -> float:
         a = np.asarray(terms[key], dtype=float)
@@ -247,3 +247,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

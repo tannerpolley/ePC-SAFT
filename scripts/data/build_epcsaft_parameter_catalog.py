@@ -16,18 +16,18 @@ from typing import Any, Dict, List, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PAPER_DIR = REPO_ROOT / "docs" / "papers" / "md"
-OUT_DIR = REPO_ROOT / "src" / "pcsaft" / "data" / "pcsaft_parameters" / "catalog"
-OUT_JSON = OUT_DIR / "pcsaft-parameter-catalog.json"
+OUT_DIR = REPO_ROOT / "src" / "epcsaft" / "data" / "epcsaft_parameters" / "catalog"
+OUT_JSON = OUT_DIR / "epcsaft-parameter-catalog.json"
 
 
 SOURCE_NOTES = {
     "2001": {
-        "file": "Gross, Sadowski - 2001 - PC-SAFT An equation of state based on a perturbation theory for chain molec.md",
+        "file": "Gross, Sadowski - 2001 - ePC-SAFT An equation of state based on a perturbation theory for chain molec.md",
         "tables": "non-electrolyte baseline only",
         "notes": "No ion parameter set; scanned for provenance completeness.",
     },
     "2002": {
-        "file": "Gross, Sadowski - 2002 - Application of the PC-SAFT equation of state to associating systems.md",
+        "file": "Gross, Sadowski - 2002 - Application of the ePC-SAFT equation of state to associating systems.md",
         "tables": "Table 1",
         "notes": "Used for associating-solvent parameters (water/methanol/ethanol baseline).",
     },
@@ -486,3 +486,4 @@ def build() -> None:
 
 if __name__ == "__main__":
     build()
+

@@ -12,7 +12,7 @@ Laboratory of Thermodynamics, Department of Biochemical and Chemical Engineering
 Dortmund, Emil-Figge-Str. 70, 44227 Dortmund, Germany
 
 a b s t r a c t
-So far, the electrolyte PC-SAFT equation of state developed in Cameretti et al. (2005) has been applied to model
+So far, the electrolyte ePC-SAFT equation of state developed in Cameretti et al. (2005) has been applied to model
 solution densities, vapor–liquid equilibria (VLE), liquid–liquid equilibria (LLE), and solid–liquid equilibria (SLE) of
 solutions containing electrolytes. For that purpose, two ion-speciﬁc parameters were used to characterize any ion:
 the diameter of the solvated ion and the dispersion-energy parameter between ion and solvent. Dispersion was only
@@ -232,7 +232,7 @@ ePC-SAFT (Cameretti et al., 2005). Within ePC-SAFT, the SR
 
 chemical engineering research and design 9 2 ( 2 0 1 4 ) 2884–2897
 
-forces are described by PC-SAFT (Gross et al., 2001). The LR
+forces are described by ePC-SAFT (Gross et al., 2001). The LR
 forces among ions are described using the approach of Debye
 and Hückel (Held et al., 2008). Accounting for the formation
 of ion pairs, also weak electrolyte solutions could be modeled
@@ -267,8 +267,8 @@ ePC-SAFT equation of state
 
 The model
 
-In this work electrolyte PC-SAFT as proposed by Cameretti
-et al. (2005) was used to model electrolyte solutions. In addition to original PC-SAFT (Gross et al., 2001), the LR forces are
+In this work electrolyte ePC-SAFT as proposed by Cameretti
+et al. (2005) was used to model electrolyte solutions. In addition to original ePC-SAFT (Gross et al., 2001), the LR forces are
 explicitly taken into account within ePC-SAFT. Thus, the residual Helmholtz energy ares of an electrolyte system is calculated
 by ePC-SAFT as:
 ares = ahc + adisp + aassoc + aion
@@ -587,7 +587,7 @@ j)
 
 In order to model water/alcohol mixtures very precisely
 and lij binary parameters were already
-with PC-SAFT, khb
+with ePC-SAFT, khb
 ij
 introduced in previously (Held et al., 2012; Nann et al., 2013a).
 
@@ -710,7 +710,7 @@ Parameter
 NP
 
 
-Table 1 – PC-SAFT parameters for non-charged components used in this work.
+Table 1 – ePC-SAFT parameters for non-charged components used in this work.
 
 =
 
@@ -764,7 +764,7 @@ seg
 Alanine (Held
 et al., 2011)
 
-With this, PC-SAFT allows for a quantitative modeling the
+With this, ePC-SAFT allows for a quantitative modeling the
 binary 1-butanol/water LLE. The so-obtained accuracy is a prerequisite for modeling ternary 1-butanol/water/salt systems.
 
 5.4647
@@ -785,7 +785,7 @@ chemical engineering research and design 9 2 ( 2 0 1 4 ) 2884–2897
 Table 2 – ePC-SAFT parameters for ions as determined in a previous work (Held et al., 2008) (strategy 1, left part of the
 table) and determined in this work (strategy 2, right part of the table). The parameters  ion and uion /kB of strategy 2 are
 independent of the solvent. The ion parameters of strategy 1 and the kion–water values are only valid in combination with
-the PC-SAFT parameters of water listed in Table 1.
+the ePC-SAFT parameters of water listed in Table 1.
 Strategy 1 previous work (Held et al., 2008)
 Ion
 
@@ -1281,9 +1281,9 @@ see Section 3.3). The ion parameters determined in strategy 1
 (Table 2) are limited to solutions containing water as the only
 solvent. These ion parameters (strategy 1) and the kion–water
 parameters (strategy 2) are valid only in combination with the
-PC-SAFT parameters for water listed in Table 1.
+ePC-SAFT parameters for water listed in Table 1.
 Next to the pure-component and binary interaction parameters, expressions for the temperature-dependent diameter of
-a pure component are required for PC-SAFT calculations. In
+a pure component are required for ePC-SAFT calculations. In
 case of the cations and anions in this work, the expression
 dion =
 
@@ -1309,7 +1309,7 @@ kB T
 (22)
 
 The expression in Eq. (22) was used also in the original
-PC-SAFT publication (Gross et al., 2001), and was derived originally from Chen and Kreglewski (1977) in order to describe the
+ePC-SAFT publication (Gross et al., 2001), and was derived originally from Chen and Kreglewski (1977) in order to describe the
 soft repulsion of molecules. Eqs. (21) and (22) differ from each
 other as the pure-dispersion interactions among two equal
 ions were set to zero in ePC-SAFT resulting in a zero ui /kB value
@@ -2073,7 +2073,7 @@ Ternary biomolecule/salt/water solutions
 
 Amino acid/salt/water
 
-The (e)PC-SAFT parameters for amino acids and ions, which
+The (e)ePC-SAFT parameters for amino acids and ions, which
 resulted from ﬁtting to binary amino acid/water (parameters in Table 1) and binary salt/water solutions (parameters
 in Tables 1–3) were used for predicting properties of ternary
 amino acid/salt/water systems. For this purpose, osmotic
@@ -2451,7 +2451,7 @@ and modeling alcohol/salt systems. Chem. Eng. Sci. 68,
 328–339.
 Held, C., Carneiro, A., Macedo, E.A., Sadowski, G., 2013. Modeling
 thermodynamic properties of aqueous single-solute and
-multi-solute sugar solutions with PC-SAFT. AIChE J. 59,
+multi-solute sugar solutions with ePC-SAFT. AIChE J. 59,
 4794–4805.
 Held, C., Reschke, T., Müller, R., Kunz, W., Sadowski, G., 2014.
 Measuring and modeling aqueous electrolyte/amino-acid
@@ -2543,7 +2543,7 @@ Renon, H., Prausnitz, J.M., 1968. Local compositions in
 thermodynamic excess functions for liquid mixtures. AIChE J.
 14, 135–144.
 Rozmus, J., de Hemptinne, J.C., Galindo, A., Dufal, S., Mougin, P.,
-2013. Modeling of strong electrolytes with ePPC-SAFT up to
+2013. Modeling of strong electrolytes with ePePC-SAFT up to
 high temperatures. Ind. Eng. Chem. Res. 52, 9979–9994.
 Sadeghi, M., Held, C., Samieenasab, A., Ghotbi, C., Abdekhodaie,
 M.J., Taghikhani, V., Sadowski, G., 2012. Thermodynamic
@@ -2575,3 +2575,4 @@ cross-associating mixtures. Ind. Eng. Chem. Res. 37,
 2917–2928.
 
 
+

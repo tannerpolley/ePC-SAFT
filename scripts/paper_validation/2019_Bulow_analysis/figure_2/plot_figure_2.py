@@ -16,12 +16,12 @@ if str(ROOT) not in sys.path:
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
 from _common import build_params
-from scripts._pcsaft_oop import pcsaft_den, pcsaft_lnfugcoef_terms
+from scripts._epcsaft_oop import epcsaft_density, epcsaft_fugacity_coefficient_terms
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -98,7 +98,7 @@ def _manual_eps(model_mode: str, x: np.ndarray, params: dict) -> float:
 def _manual_aion_eq8(model_mode: str, x_il: float) -> float:
     params = _figure2_params(model_mode)
     x = _composition_from_x_il(float(x_il))
-    rho = float(pcsaft_den(T_REF, P_REF, x, params, phase='liq'))
+    rho = float(epcsaft_density(T_REF, P_REF, x, params, phase='liq'))
     z = np.asarray(params['z'], dtype=float)
     eps = _manual_eps(model_mode, x, params)
     den = rho * N_AV / 1.0e30
@@ -138,8 +138,8 @@ def _curve_for_mode(model_mode: str, x_il_grid: np.ndarray) -> tuple[np.ndarray,
     for idx, x_il in enumerate(x_il_grid):
         x = _composition_from_x_il(float(x_il))
         try:
-            rho = pcsaft_den(T_REF, P_REF, x, params, phase='liq')
-            terms = pcsaft_lnfugcoef_terms(T_REF, rho, x, params)
+            rho = epcsaft_density(T_REF, P_REF, x, params, phase='liq')
+            terms = epcsaft_fugacity_coefficient_terms(T_REF, rho, x, params)
             dadx_ion = np.asarray(terms['dadx_ion'], dtype=float)
             dadx_cat[idx] = float(dadx_ion[CATION_INDEX])
             dadx_manual[idx] = _manual_dadx_binary_path(model_mode, float(x_il))
@@ -378,3 +378,4 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+

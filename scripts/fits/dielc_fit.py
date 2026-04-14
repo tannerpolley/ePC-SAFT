@@ -12,12 +12,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
-from pcsaft.parameters import get_prop_dict
-from scripts._pcsaft_oop import pcsaft_dielc_eval
+from epcsaft.parameters import get_prop_dict
+from scripts._epcsaft_oop import epcsaft_relative_permittivity
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -66,7 +66,7 @@ def _calc_dielc_curve(x_ion_grid, species, rule, t=298.15):
     for i, x_ion in enumerate(x_ion_grid):
         x = np.asarray([0.5 * x_ion, 0.5 * x_ion, 1.0 - x_ion], dtype=float)
         params = get_prop_dict("2020_Bulow", species, x, t, user_options={"elec_model": {"rel_perm": {"rule": int(rule)}}})
-        dielc[i] = float(pcsaft_dielc_eval(x, params)[0])
+        dielc[i] = float(epcsaft_relative_permittivity(x, params)[0])
 
     if not np.all(np.isfinite(dielc)):
         raise ValueError(f"Non-finite dielectric values for dielc_rule={rule}, species={species}.")
@@ -121,3 +121,4 @@ def test_dielc_fit():
         raise FileNotFoundError(f"Expected plot was not written: {plot_path}")
     if dielc_rule1.size == 0 or dielc_rule4.size == 0:
         raise ValueError("Model line arrays are empty.")
+

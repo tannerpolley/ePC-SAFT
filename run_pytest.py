@@ -19,7 +19,7 @@ def main() -> int:
     args, pytest_args = parser.parse_known_args()
 
     repo_root = Path(__file__).resolve().parent
-    build_script = repo_root / "scripts" / "build_pcsaft.py"
+    build_script = repo_root / "scripts" / "build_epcsaft.py"
     if build_script.exists() and not args.skip_build:
         build_cmd = [sys.executable, str(build_script)]
         if args.force_build:
@@ -29,8 +29,13 @@ def main() -> int:
     elif not build_script.exists():
         print(f"warning: build script not found at {build_script}")
 
-    cmd = [sys.executable, "-m", "pytest", "tests"]
-    cmd.extend(pytest_args)
+    has_positional_target = any(not arg.startswith("-") for arg in pytest_args)
+    cmd = [sys.executable, "-m", "pytest"]
+    if has_positional_target:
+        cmd.extend(pytest_args)
+    else:
+        cmd.append("tests")
+        cmd.extend(pytest_args)
     print("Running:", " ".join(cmd))
     subprocess.run(cmd, cwd=str(repo_root), check=True)
     return 0
@@ -38,3 +43,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

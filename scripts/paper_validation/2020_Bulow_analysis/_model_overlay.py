@@ -4,12 +4,12 @@ from functools import lru_cache
 
 import numpy as np
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
-from pcsaft.parameters import get_prop_dict
-from scripts._pcsaft_oop import pcsaft_den, pcsaft_gsolv, pcsaft_lnfugcoef_terms, pcsaft_p
+from epcsaft.parameters import get_prop_dict
+from scripts._epcsaft_oop import epcsaft_density, epcsaft_solvation_free_energy, epcsaft_fugacity_coefficient_terms, epcsaft_pressure
 
 
 R_GAS = 8.31446261815324
@@ -69,8 +69,8 @@ def gsolv_ion(variant: str, ion: str, solvent: str, d_born_mode: int | None = No
     species = _species_for_ion(ion, solvent)
     x = np.asarray([EPS, EPS, 1.0 - 2.0 * EPS], dtype=float)
     params = get_prop_dict(dataset_name, species, x, T_REF, user_options=_user_options_for_overrides(d_born_mode))
-    rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
-    values = pcsaft_gsolv(T_REF, rho, x, params, species=species)
+    rho = epcsaft_density(T_REF, P_REF, x, params, phase="liq")
+    values = epcsaft_solvation_free_energy(T_REF, rho, x, params, species=species)
     return float(values[ion]) / 1000.0
 
 
@@ -80,7 +80,7 @@ def _infinite_dilution_terms(variant: str, ion: str, solvent: str, d_born_mode: 
     species = _species_for_ion(ion, solvent)
     x = np.asarray([EPS, EPS, 1.0 - 2.0 * EPS], dtype=float)
     params = get_prop_dict(dataset_name, species, x, T_REF, user_options=_user_options_for_overrides(d_born_mode))
-    rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
+    rho = epcsaft_density(T_REF, P_REF, x, params, phase="liq")
 
     z = np.asarray(params.get("z", []), dtype=float)
     idx_ion = np.where(np.abs(z) > 1.0e-12)[0]
@@ -93,14 +93,14 @@ def _infinite_dilution_terms(variant: str, ion: str, solvent: str, d_born_mode: 
     else:
         x_ref[idx_solv] = 1.0 / len(idx_solv)
 
-    p_ref = pcsaft_p(T_REF, rho, x_ref, params)
+    p_ref = epcsaft_pressure(T_REF, rho, x_ref, params)
     x_inf = x_ref.copy()
     ion_idx = species.index(ion)
     x_inf[ion_idx] = EPS_INF
     x_inf /= np.sum(x_inf)
     phase = "vap" if rho < 900.0 else "liq"
-    rho_inf = pcsaft_den(T_REF, p_ref, x_inf, params, phase=phase)
-    terms = pcsaft_lnfugcoef_terms(T_REF, rho_inf, x_inf, params)
+    rho_inf = epcsaft_density(T_REF, p_ref, x_inf, params, phase=phase)
+    terms = epcsaft_fugacity_coefficient_terms(T_REF, rho_inf, x_inf, params)
     return terms, ion_idx
 
 
@@ -145,3 +145,4 @@ def transfer_breakdown(
     organic = contribution_breakdown(variant, ion, organic_solvent, basis=basis, d_born_mode=d_born_mode)
     water = contribution_breakdown(variant, ion, "water", basis=basis, d_born_mode=d_born_mode)
     return {key: organic[key] - water[key] for key in organic}
+

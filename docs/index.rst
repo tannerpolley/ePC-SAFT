@@ -1,42 +1,38 @@
-Documentation for pcsaft
+Documentation for epcsaft
 ========================
 
-This documentation is organized around package usage, method groups, and reference material.
+This documentation is organized around getting started, creating your own parameter files, and looking up reference material.
 
-Quick Start
------------
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Getting Started
-
-   README
-   getting_started
-
-Package Guide
--------------
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Package Guide
-
-   package_guide
-
-API Reference
--------------
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Reference
-
-   api_reference
-
-Background
+Start Here
 ----------
 
 .. toctree::
    :maxdepth: 1
-   :caption: Background Notes
+   :caption: Quick Start
+
+   README
+   getting_started
+
+Create Your Own Data
+--------------------
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Parameter Files
+
+   user_parameter_templates
+   parameter_regression
+   user_options
+
+Reference
+---------
+
+.. toctree::
+   :maxdepth: 1
+   :caption: API and Background
+
+   package_guide
+   api_reference
 
    references
 
@@ -46,3 +42,4 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+

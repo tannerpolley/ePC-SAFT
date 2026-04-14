@@ -1,11 +1,11 @@
 """Extract per-paper binary interaction matrices and pure-component parameter CSVs.
 
 Outputs:
-- src/pcsaft/data/pcsaft_parameters/<dataset_key>/pure/<name>.csv
-- src/pcsaft/data/pcsaft_parameters/<dataset_key>/mixed/binary_interaction/k_ij.csv
+- data/epcsaft_parameters/<dataset_key>/pure/<name>.csv
+- data/epcsaft_parameters/<dataset_key>/mixed/binary_interaction/k_ij.csv
 - optional:
-  - src/pcsaft/data/pcsaft_parameters/<dataset_key>/mixed/binary_interaction/l_ij.csv
-  - src/pcsaft/data/pcsaft_parameters/<dataset_key>/mixed/binary_interaction/khb_ij.csv
+  - data/epcsaft_parameters/<dataset_key>/mixed/binary_interaction/l_ij.csv
+  - data/epcsaft_parameters/<dataset_key>/mixed/binary_interaction/khb_ij.csv
 
 Target papers: 2005, 2008, 2014, 2020, 2021, 2025
 """
@@ -27,12 +27,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
 PAPER_DIR = REPO_ROOT / "docs" / "papers" / "md"
-OUT_BASE_DIR = REPO_ROOT / "src" / "pcsaft" / "data" / "pcsaft_parameters"
+OUT_BASE_DIR = REPO_ROOT / "data" / "epcsaft_parameters"
 OUT_BINARY_DIR = OUT_BASE_DIR / "binary_interaction_parameters"
 OUT_PURE_DIR = OUT_BASE_DIR / "pure_component_parameters"
 LEGACY_FLAT_DIRS = [OUT_BINARY_DIR, OUT_PURE_DIR]
@@ -111,7 +111,7 @@ PAPER_KEY_BY_DATASET = {
     "2025_Figiel": "2025",
 }
 CANONICAL_USER_OPTIONS_SOURCE = "scripts/fits/validate_miac_fits.py"
-RESOLVER_SOURCE = "pcsaft.parameters::_resolve_runtime_options"
+RESOLVER_SOURCE = "epcsaft.parameters::_resolve_runtime_options"
 RUNTIME_REQUIRED_KEYS = {
     "dielc_rule",
     "dielc_diff_mode",
@@ -495,7 +495,7 @@ def _set_cation_anion_kij_one(matrix: Dict[str, Dict[str, str]]) -> None:
             _set_pair(matrix, cat, an, "1.0", allow_override=True)
 
 def _resolve_runtime_payload(canonical_options: Dict[str, Any]) -> Dict[str, Any]:
-    from pcsaft.parameters import _resolve_runtime_options
+    from epcsaft.parameters import _resolve_runtime_options
 
     resolved = _resolve_runtime_options(canonical_options)
     return {
@@ -505,7 +505,7 @@ def _resolve_runtime_payload(canonical_options: Dict[str, Any]) -> Dict[str, Any
 
 
 def _build_user_options_payload(dataset_key: str, canonical_options: Dict[str, Any]) -> Dict[str, Any]:
-    from pcsaft.parameters import minimize_user_options
+    from epcsaft.parameters import minimize_user_options
 
     if dataset_key not in PAPER_KEY_BY_DATASET:
         raise ValueError(f"Missing paper key mapping for dataset {dataset_key}")
@@ -583,7 +583,7 @@ def _extract_2005(lines: Sequence[str], paper_key: str) -> Tuple[Dict[str, Dict[
     matrix = _empty_matrix()
     pure_rows: List[PureRow] = []
 
-    t1 = _markdown_table_after_anchor(lines, "Table 1. PC-SAFT Parameters for Water")
+    t1 = _markdown_table_after_anchor(lines, "Table 1. ePC-SAFT Parameters for Water")
     # Vertical table: parameter | value
     param_map = {
         "segment number": ("m_seg", "-"),
@@ -1244,4 +1244,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 

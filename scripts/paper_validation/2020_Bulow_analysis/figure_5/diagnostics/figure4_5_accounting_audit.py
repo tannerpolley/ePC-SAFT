@@ -253,7 +253,7 @@ def main() -> None:
         handle.write("This audit compares the paper Figure 5 transfer contributions against model-side transfer values formed from exposed `mu`, `lnfug`, and `Z`-share terms at the same infinite-dilution states used for Figure 4.\n\n")
 
         handle.write("## C++ Contribution Construction\n\n")
-        handle.write("- In [pcsaft_electrolyte.cpp](C:/Users/Tanner/Documents/git/PC-SAFT/pcsaft_electrolyte.cpp), the hard-chain and dispersion branches are built as\n")
+        handle.write("- In [epcsaft_electrolyte.cpp](C:/Users/Tanner/Documents/git/ePC-SAFT/epcsaft_electrolyte.cpp), the hard-chain and dispersion branches are built as\n")
         handle.write("  `mu_hc[i] = ares_hc + Zhc + dahc_dx[i] - sum_j x[j]*dahc_dx[j]`\n")
         handle.write("  `mu_disp[i] = ares_disp + Zdisp + dadisp_dx[i] - sum_j x[j]*dadisp_dx[j]`\n")
         handle.write("- The Debye-Huckel and Born branches use the same pattern with `a_DH` / `a_born`, `Z_DH` / `Zborn`, and the corresponding `dadx` vectors.\n")
@@ -305,3 +305,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

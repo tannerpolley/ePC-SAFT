@@ -9,9 +9,9 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pcsaft"
+name = "epcsaft"
 version = "1.5.0"
-description = "The PC-SAFT equation of state, including dipole, association, and ion terms."
+description = "The ePC-SAFT equation of state, including dipole, association, and ion terms."
 readme = "README.md"
 requires-python = ">=3.9"
 license = "GPL-3.0-only"
@@ -32,9 +32,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/tannerpolley/PC-SAFT"
-Documentation = "https://pcsaft.readthedocs.io/en/latest/"
-Repository = "https://github.com/tannerpolley/PC-SAFT"
+Homepage = "https://github.com/tannerpolley/ePC-SAFT"
+Documentation = "https://epcsaft.readthedocs.io/en/latest/"
+Repository = "https://github.com/tannerpolley/ePC-SAFT"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -44,9 +44,7 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-pcsaft = [
-    "data/**/*.csv",
-    "data/**/*.json",
+epcsaft = [
     "*.pyx",
     "*.pxd",
     "*.h",
@@ -55,3 +53,4 @@ pcsaft = [
 
 [tool.pytest.ini_options]
 addopts = "-p no:cacheprovider"
+

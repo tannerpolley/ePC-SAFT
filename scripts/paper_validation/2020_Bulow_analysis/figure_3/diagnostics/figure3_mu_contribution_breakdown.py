@@ -66,7 +66,7 @@ def _build_rows() -> list[dict[str, object]]:
             dadx_term = float(np.asarray(terms[f"dadx_{suffix}"], dtype=float)[idx])
             sum_x_dadx_term = float(terms[f"sum_x_dadx_{suffix}"])
 
-            pcsaft_mu = _kjmol(mu_term)
+            epcsaft_mu = _kjmol(mu_term)
             a_kjmol = _kjmol(a_term)
             z_kjmol = _kjmol(z_term)
             dadx_kjmol = _kjmol(dadx_term)
@@ -78,14 +78,14 @@ def _build_rows() -> list[dict[str, object]]:
                     "ion": ion,
                     "contr": contribution,
                     "paper_mu_contr": paper_mu,
-                    "pcsaft_mu_contr": pcsaft_mu,
-                    "pcsaft_mu_manual_sum": rebuilt_mu,
+                    "epcsaft_mu_contr": epcsaft_mu,
+                    "epcsaft_mu_manual_sum": rebuilt_mu,
                     "a_contr": a_kjmol,
                     "z_contr": z_kjmol,
                     "dadx_contr": dadx_kjmol,
                     "sum_xj_dadx_contr": sum_x_dadx_kjmol,
-                    "manual_minus_pcsaft": rebuilt_mu - pcsaft_mu,
-                    "paper_minus_pcsaft": paper_mu - pcsaft_mu,
+                    "manual_minus_epcsaft": rebuilt_mu - epcsaft_mu,
+                    "paper_minus_epcsaft": paper_mu - epcsaft_mu,
                 }
             )
 
@@ -103,14 +103,14 @@ def main() -> None:
                 "ion",
                 "contr",
                 "paper_mu_contr",
-                "pcsaft_mu_contr",
-                "pcsaft_mu_manual_sum",
+                "epcsaft_mu_contr",
+                "epcsaft_mu_manual_sum",
                 "a_contr",
                 "z_contr",
                 "dadx_contr",
                 "sum_xj_dadx_contr",
-                "manual_minus_pcsaft",
-                "paper_minus_pcsaft",
+                "manual_minus_epcsaft",
+                "paper_minus_epcsaft",
             ],
         )
         writer.writeheader()
@@ -120,3 +120,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

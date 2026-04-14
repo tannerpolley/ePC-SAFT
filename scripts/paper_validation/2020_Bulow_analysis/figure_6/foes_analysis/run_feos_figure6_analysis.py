@@ -18,13 +18,13 @@ FIGURE6B_DIAG_DIR = FIGURE6_DIR / "figure_6b" / "diagnostics"
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 if str(FIGURE6B_DIAG_DIR) not in sys.path:
     sys.path.insert(0, str(FIGURE6B_DIAG_DIR))
 
-from pcsaft.parameters import get_prop_dict
+from epcsaft.parameters import get_prop_dict
 from figure6b_libr_ethanol_contributions import (
     _calc_ln_miac_contributions,
     _load_exp_data,
@@ -38,7 +38,7 @@ try:
     import feos
     import si_units as si
 except ImportError as exc:  # pragma: no cover
-    raise RuntimeError("feos and si_units must be importable in the PC-SAFT environment.") from exc
+    raise RuntimeError("feos and si_units must be importable in the ePC-SAFT environment.") from exc
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -49,9 +49,9 @@ DATA_PATH = REPO_ROOT / "data" / "MIAC" / "ethanol" / "ethanol-LiBr.csv"
 PURE_JSON = SCRIPT_DIR / "feos_libr_ethanol_pure.json"
 BINARY_JSON = SCRIPT_DIR / "feos_libr_ethanol_binary.json"
 CURVES_CSV = SCRIPT_DIR / "figure6_feos_curves.csv"
-STATS_CSV = SCRIPT_DIR / "figure6_feos_vs_pcsaft_stats.csv"
-FIG6A_PNG = SCRIPT_DIR / "figure_6a_feos_vs_pcsaft.png"
-FIG6B_PNG = SCRIPT_DIR / "figure_6b_feos_vs_pcsaft_mu.png"
+STATS_CSV = SCRIPT_DIR / "figure6_feos_vs_epcsaft_stats.csv"
+FIG6A_PNG = SCRIPT_DIR / "figure_6a_feos_vs_epcsaft.png"
+FIG6B_PNG = SCRIPT_DIR / "figure_6b_feos_vs_epcsaft_mu.png"
 BOOKKEEPING_PNG = SCRIPT_DIR / "figure_6b_feos_bookkeeping.png"
 NOTES_MD = SCRIPT_DIR / "feos_analysis_notes.md"
 
@@ -80,8 +80,8 @@ TERM_COLORS = {
     "born": "tab:purple",
     "total": "black",
 }
-PCSAFT_MARKER = "x"
-PCSAFT_MARK_EVERY = 25
+ePCSAFT_MARKER = "x"
+ePCSAFT_MARK_EVERY = 25
 FEOS_LINESTYLE = ":"
 
 
@@ -272,8 +272,8 @@ def _marker_plot(ax, x: np.ndarray, y: np.ndarray, color: str, label: str, zorde
         x,
         y,
         linestyle="None",
-        marker=PCSAFT_MARKER,
-        markevery=PCSAFT_MARK_EVERY,
+        marker=ePCSAFT_MARKER,
+        markevery=ePCSAFT_MARK_EVERY,
         markersize=4.2,
         markeredgewidth=1.0,
         color=color,
@@ -282,39 +282,39 @@ def _marker_plot(ax, x: np.ndarray, y: np.ndarray, color: str, label: str, zorde
     )
 
 
-def _build_stats_rows(pcsaft_curves: dict[str, np.ndarray], feos_curves: dict[str, np.ndarray]) -> list[dict[str, object]]:
+def _build_stats_rows(epcsaft_curves: dict[str, np.ndarray], feos_curves: dict[str, np.ndarray]) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
     for key in COMPARE_KEYS:
-        pc = np.asarray(pcsaft_curves["total"] if key == "total" else pcsaft_curves[key], dtype=float)
+        pc = np.asarray(epcsaft_curves["total"] if key == "total" else epcsaft_curves[key], dtype=float)
         fe = np.asarray(feos_curves["total"] if key == "total" else feos_curves[f"{key}_mu"], dtype=float)
         delta = fe - pc
         denom = np.maximum(np.abs(pc), 1.0e-12)
         rows.append(
             {
                 "series": key,
-                "pcsaft_min": float(np.min(pc)),
-                "pcsaft_max": float(np.max(pc)),
+                "epcsaft_min": float(np.min(pc)),
+                "epcsaft_max": float(np.max(pc)),
                 "feos_min": float(np.min(fe)),
                 "feos_max": float(np.max(fe)),
-                "mean_signed_delta_feos_minus_pcsaft": float(np.mean(delta)),
+                "mean_signed_delta_feos_minus_epcsaft": float(np.mean(delta)),
                 "mean_abs_delta": float(np.mean(np.abs(delta))),
                 "max_abs_delta": float(np.max(np.abs(delta))),
                 "rmse": float(np.sqrt(np.mean(delta * delta))),
-                "mean_abs_percent_delta_vs_pcsaft": float(np.mean(np.abs(delta) / denom) * 100.0),
+                "mean_abs_percent_delta_vs_epcsaft": float(np.mean(np.abs(delta) / denom) * 100.0),
             }
         )
     rows.append(
         {
             "series": "feos_bookkeeping",
-            "pcsaft_min": None,
-            "pcsaft_max": None,
+            "epcsaft_min": None,
+            "epcsaft_max": None,
             "feos_min": None,
             "feos_max": None,
-            "mean_signed_delta_feos_minus_pcsaft": None,
+            "mean_signed_delta_feos_minus_epcsaft": None,
             "mean_abs_delta": float(np.mean(np.abs(feos_curves["closure_total_minus_mu_sum"]))),
             "max_abs_delta": float(np.max(np.abs(feos_curves["closure_total_minus_mu_sum"]))),
             "rmse": float(np.sqrt(np.mean(np.square(feos_curves["closure_total_minus_mu_sum"])))),
-            "mean_abs_percent_delta_vs_pcsaft": None,
+            "mean_abs_percent_delta_vs_epcsaft": None,
         }
     )
     return rows
@@ -324,7 +324,7 @@ def _write_notes(
     x_exp: np.ndarray,
     y_exp: np.ndarray,
     x_grid: np.ndarray,
-    pcsaft_curves: dict[str, np.ndarray],
+    epcsaft_curves: dict[str, np.ndarray],
     feos_curves: dict[str, np.ndarray],
     stats_rows: list[dict[str, object]],
 ) -> None:
@@ -336,15 +336,15 @@ def _write_notes(
         "",
         "- This Figure 6 `feos` run is not independent of this repo's parameter set.",
         "- The custom `feos` ePC-SAFT pure/binary JSON files are built directly from `get_prop_dict(\"2020_Bulow\", [\"Li+\", \"Br-\", \"Ethanol\"], ...)` in this repo.",
-        "- That means the parameter source for the current Figure 6 `feos` comparison is the `PC-SAFT` repo's `2020_Bulow` values, not stock `feos` parameter files.",
+        "- That means the parameter source for the current Figure 6 `feos` comparison is the `ePC-SAFT` repo's `2020_Bulow` values, not stock `feos` parameter files.",
         "- The comparison is still useful for checking implementation behavior and bookkeeping across molality, but it is not an external parameter-set validation in the same sense as the water-only Figure 3 work.",
         "",
         "## Outputs",
         "",
-        "- `figure_6a_feos_vs_pcsaft.png` compares Bulow-2020 experimental points, the current repo total curve, and the `feos` total curve.",
-        "- `figure_6b_feos_vs_pcsaft_mu.png` compares the current repo Figure 6b-style $\\mu$-basis contributions against `feos` $\\mu$-basis contributions.",
+        "- `figure_6a_feos_vs_epcsaft.png` compares Bulow-2020 experimental points, the current repo total curve, and the `feos` total curve.",
+        "- `figure_6b_feos_vs_epcsaft_mu.png` compares the current repo Figure 6b-style $\\mu$-basis contributions against `feos` $\\mu$-basis contributions.",
         "- `figure_6b_feos_bookkeeping.png` shows how the `feos` total compares with the summed `feos` $\\mu$ and reconstructed per-term $\\ln\\varphi$ contributions across molality.",
-        "- `figure6_feos_vs_pcsaft_stats.csv` reports per-series deltas between the `PC-SAFT` and `feos` curves.",
+        "- `figure6_feos_vs_epcsaft_stats.csv` reports per-series deltas between the `ePC-SAFT` and `feos` curves.",
         "",
         "## Important caveat",
         "",
@@ -352,20 +352,20 @@ def _write_notes(
         "",
         "## Fit summary",
         "",
-        f"- Repo total RMSE vs Bulow-2020 data: {_rmse(x_exp, y_exp, x_grid, pcsaft_curves['total']):.4f}",
+        f"- Repo total RMSE vs Bulow-2020 data: {_rmse(x_exp, y_exp, x_grid, epcsaft_curves['total']):.4f}",
         f"- feos total RMSE vs Bulow-2020 data: {_rmse(x_exp, y_exp, x_grid, feos_curves['total']):.4f}",
-        f"- Total mean |feos - pcsaft|: {float(stats_lookup['total']['mean_abs_delta']):.6f}",
-        f"- Total max |feos - pcsaft|: {float(stats_lookup['total']['max_abs_delta']):.6f}",
+        f"- Total mean |feos - epcsaft|: {float(stats_lookup['total']['mean_abs_delta']):.6f}",
+        f"- Total max |feos - epcsaft|: {float(stats_lookup['total']['max_abs_delta']):.6f}",
         f"- Max feos closure gap |total - mu_sum|: {float(np.max(np.abs(feos_curves['closure_total_minus_mu_sum']))):.4f}",
         f"- Max feos closure gap |total - lnfug_sum|: {float(np.max(np.abs(feos_curves['closure_total_minus_lnfug_sum']))):.4f}",
     ]
     NOTES_MD.write_text("\n".join(notes) + "\n", encoding="utf-8")
 
 
-def _plot_figure6a(x_exp: np.ndarray, y_exp: np.ndarray, x_grid: np.ndarray, pcsaft_curves: dict[str, np.ndarray], feos_curves: dict[str, np.ndarray]) -> None:
+def _plot_figure6a(x_exp: np.ndarray, y_exp: np.ndarray, x_grid: np.ndarray, epcsaft_curves: dict[str, np.ndarray], feos_curves: dict[str, np.ndarray]) -> None:
     fig, ax = plt.subplots(figsize=(8.2, 5.6))
     ax.scatter(x_exp, y_exp, color="black", s=34, label="Experimental data (Bulow 2020)", zorder=6)
-    _marker_plot(ax, x_grid, pcsaft_curves["total"], TERM_COLORS["total"], "PC-SAFT total", 4)
+    _marker_plot(ax, x_grid, epcsaft_curves["total"], TERM_COLORS["total"], "ePC-SAFT total", 4)
     ax.plot(x_grid, feos_curves["total"], color=TERM_COLORS["total"], linewidth=2.2, linestyle=FEOS_LINESTYLE, label="feos total", zorder=5)
     ax.set_xlim(0.0, 0.2)
     ax.set_ylim(0.0, 4.0)
@@ -377,7 +377,7 @@ def _plot_figure6a(x_exp: np.ndarray, y_exp: np.ndarray, x_grid: np.ndarray, pcs
     ax.text(
         0.98,
         0.97,
-        f"Repo RMSE={_rmse(x_exp, y_exp, x_grid, pcsaft_curves['total']):.3f}\nfeos RMSE={_rmse(x_exp, y_exp, x_grid, feos_curves['total']):.3f}",
+        f"Repo RMSE={_rmse(x_exp, y_exp, x_grid, epcsaft_curves['total']):.3f}\nfeos RMSE={_rmse(x_exp, y_exp, x_grid, feos_curves['total']):.3f}",
         transform=ax.transAxes,
         ha="right",
         va="top",
@@ -389,16 +389,16 @@ def _plot_figure6a(x_exp: np.ndarray, y_exp: np.ndarray, x_grid: np.ndarray, pcs
     plt.close(fig)
 
 
-def _plot_figure6b(x_exp: np.ndarray, y_exp: np.ndarray, x_grid: np.ndarray, pcsaft_curves: dict[str, np.ndarray], feos_curves: dict[str, np.ndarray]) -> None:
+def _plot_figure6b(x_exp: np.ndarray, y_exp: np.ndarray, x_grid: np.ndarray, epcsaft_curves: dict[str, np.ndarray], feos_curves: dict[str, np.ndarray]) -> None:
     fig, ax = plt.subplots(figsize=(8.8, 6.2))
     ax.scatter(x_exp, y_exp, color="black", s=26, label="Experimental total (Bulow 2020)", zorder=7)
     for term in ("born", "dh", "hc", "disp", "assoc", "total"):
         _marker_plot(
             ax,
             x_grid,
-            pcsaft_curves["total"] if term == "total" else pcsaft_curves[term],
+            epcsaft_curves["total"] if term == "total" else epcsaft_curves[term],
             TERM_COLORS[term],
-            f"PC-SAFT {term}",
+            f"ePC-SAFT {term}",
             4,
         )
         ax.plot(
@@ -453,8 +453,8 @@ def run_analysis() -> None:
     m_grid = np.linspace(0.0, float(np.max(m_exp)), 1201)
     x_grid = _salt_mole_fraction_from_molality(m_grid)
     x_ref = _molality_to_species_molefraction(1.0e-12)
-    pcsaft_params = get_prop_dict("2020_Bulow", REPO_SPECIES, x_ref, T_REF)
-    pcsaft_curves = _calc_ln_miac_contributions(m_grid, pcsaft_params, method="mu")
+    epcsaft_pressurearams = get_prop_dict("2020_Bulow", REPO_SPECIES, x_ref, T_REF)
+    epcsaft_curves = _calc_ln_miac_contributions(m_grid, epcsaft_pressurearams, method="mu")
     feos_curves = _compute_feos_curves(m_grid)
 
     rows: list[dict[str, object]] = []
@@ -462,7 +462,7 @@ def run_analysis() -> None:
         row: dict[str, object] = {
             "molality": float(molality),
             "x_salt": float(x_grid[idx]),
-            "pcsaft_total": float(pcsaft_curves["total"][idx]),
+            "epcsaft_total": float(epcsaft_curves["total"][idx]),
             "feos_total": float(feos_curves["total"][idx]),
             "feos_mu_sum": float(feos_curves["mu_sum"][idx]),
             "feos_lnfug_sum": float(feos_curves["lnfug_sum"][idx]),
@@ -471,18 +471,18 @@ def run_analysis() -> None:
             "feos_closure_total_minus_lnfug_sum": float(feos_curves["closure_total_minus_lnfug_sum"][idx]),
         }
         for term in CONTRIBUTIONS:
-            row[f"pcsaft_{term}_mu"] = float(pcsaft_curves[term][idx])
+            row[f"epcsaft_{term}_mu"] = float(epcsaft_curves[term][idx])
             row[f"feos_{term}_mu"] = float(feos_curves[f"{term}_mu"][idx])
             row[f"feos_{term}_lnfug"] = float(feos_curves[f"{term}_lnfug"][idx])
         rows.append(row)
 
-    stats_rows = _build_stats_rows(pcsaft_curves, feos_curves)
+    stats_rows = _build_stats_rows(epcsaft_curves, feos_curves)
     _write_csv(CURVES_CSV, rows)
     _write_csv(STATS_CSV, stats_rows)
-    _plot_figure6a(x_exp, y_exp, x_grid, pcsaft_curves, feos_curves)
-    _plot_figure6b(x_exp, y_exp, x_grid, pcsaft_curves, feos_curves)
+    _plot_figure6a(x_exp, y_exp, x_grid, epcsaft_curves, feos_curves)
+    _plot_figure6b(x_exp, y_exp, x_grid, epcsaft_curves, feos_curves)
     _plot_bookkeeping(x_grid, feos_curves)
-    _write_notes(x_exp, y_exp, x_grid, pcsaft_curves, feos_curves, stats_rows)
+    _write_notes(x_exp, y_exp, x_grid, epcsaft_curves, feos_curves, stats_rows)
 
     print(f"Wrote {CURVES_CSV}")
     print(f"Wrote {STATS_CSV}")
@@ -494,3 +494,5 @@ def run_analysis() -> None:
 
 if __name__ == "__main__":
     run_analysis()
+
+

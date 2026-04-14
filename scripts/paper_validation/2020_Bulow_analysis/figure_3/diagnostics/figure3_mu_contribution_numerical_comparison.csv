@@ -1,4 +1,4 @@
-ion,contr,paper_mu_contr,pcsaft_mu_contr_analytical,pcsaft_mu_manual_sum_analytical,a_contr_analytical,z_contr_analytical,dadx_contr_analytical,sum_xj_dadx_contr_analytical,pcsaft_mu_contr_numerical,pcsaft_mu_manual_sum_numerical,a_contr_numerical,z_contr_numerical,dadx_contr_numerical,sum_xj_dadx_contr_numerical,num_minus_analytical,paper_minus_analytical,paper_minus_numerical
+ion,contr,paper_mu_contr,epcsaft_mu_contr_analytical,epcsaft_mu_manual_sum_analytical,a_contr_analytical,z_contr_analytical,dadx_contr_analytical,sum_xj_dadx_contr_analytical,epcsaft_mu_contr_numerical,epcsaft_mu_manual_sum_numerical,a_contr_numerical,z_contr_numerical,dadx_contr_numerical,sum_xj_dadx_contr_numerical,num_minus_analytical,paper_minus_analytical,paper_minus_numerical
 Li+,hc,13.46153846,24.76498494,24.76498494,11.27955511,24.87535106,24.76498494,36.15490617,24.76500797,24.76500797,11.27955511,24.87535106,24.76500797,36.15490617,2.30E-05,-11.30344648,-11.30346951
 Na+,hc,13.46153846,24.39854773,24.39854773,11.27955507,24.87535093,24.39854773,36.154906,24.39857,24.39857,11.27955507,24.87535093,24.39857,36.154906,2.23E-05,-10.93700927,-10.93703154
 K+,hc,14.1025641,34.22387625,34.22387625,11.27955495,24.87535053,34.22387625,36.15490548,34.22392404,34.22392404,11.27955495,24.87535053,34.22392404,36.15490548,4.78E-05,-20.12131215,-20.12135994
@@ -34,3 +34,4 @@ F-,born,-880.1282051,-879.9654154,-879.9654154,-8.80E-10,0,-879.9654154,-8.91E-1
 Cl-,born,-565.3631285,-565.527846,-565.527846,-5.66E-10,0,-565.527846,-5.73E-10,-565.527846,-565.527846,-5.66E-10,0,-565.527846,-5.73E-10,0,0.164717547,0.164717547
 Br-,born,-507.8212291,-507.5698517,-507.5698517,-5.08E-10,0,-507.5698517,-5.14E-10,-507.5698517,-507.5698517,-5.08E-10,0,-507.5698517,-5.14E-10,0,-0.25137737,-0.25137737
 I-,born,-425.1396648,-425.0094742,-425.0094742,-4.25E-10,0,-425.0094742,-4.31E-10,-425.0094742,-425.0094742,-4.25E-10,0,-425.0094742,-4.31E-10,0,-0.130190622,-0.130190622
+

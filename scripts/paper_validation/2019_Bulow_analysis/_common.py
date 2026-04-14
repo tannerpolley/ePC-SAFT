@@ -16,11 +16,11 @@ REPO_ROOT = ROOT.parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
-from pcsaft.parameters import get_prop_dict
+from epcsaft.parameters import get_prop_dict
 
 
 P_REF = 1.0e5
@@ -164,4 +164,5 @@ def water_solubility_in_il(cation: str, anion: str, *, t: float = 298.15, use_ki
     except Exception:
         return float("nan")
     return water_mole_fraction(il_rich)
+
 

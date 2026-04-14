@@ -195,7 +195,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--digitized-csv",
         type=Path,
-        default=Path(r"C:\Users\Tanner\Documents\git\PC-SAFT\scripts\paper_validation\2020_Bulow_analysis\figure_6\figure_6b\data\Figure6b_curves.csv"),
+        default=Path(r"C:\Users\Tanner\Documents\git\ePC-SAFT\scripts\paper_validation\2020_Bulow_analysis\figure_6\figure_6b\data\Figure6b_curves.csv"),
     )
     parser.add_argument(
         "--summary-csv",
@@ -222,3 +222,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

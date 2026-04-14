@@ -162,7 +162,7 @@ def main() -> None:
     summary_path = OUTPUT_DIR / "figure2_5_deviation_summary.md"
     with summary_path.open("w", encoding="utf-8") as handle:
         handle.write("# Figure 2-5 Deviation Audit\n\n")
-        handle.write("All deltas are `pcsaft model - paper value` in kJ/mol.\n\n")
+        handle.write("All deltas are `epcsaft model - paper value` in kJ/mol.\n\n")
         for title, keys in summary_specs:
             handle.write(f"## {title}\n\n")
             rows = _summary(detail_rows, keys)
@@ -201,3 +201,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -1,0 +1,12 @@
+set_key,source_file,source_exists,tables,notes
+2001,"C:\Users\Tanner\Documents\git\ePC-SAFT\docs\papers\md\Gross, Sadowski - 2001 - ePC-SAFT An equation of state based on a perturbation theory for chain molec.md",1,non-electrolyte baseline only,No ion parameter set; scanned for provenance completeness.
+2002,"C:\Users\Tanner\Documents\git\ePC-SAFT\docs\papers\md\Gross, Sadowski - 2002 - Application of the ePC-SAFT equation of state to associating systems.md",1,Table 1,Used for associating-solvent parameters (water/methanol/ethanol baseline).
+2005,"C:\Users\Tanner\Documents\git\ePC-SAFT\docs\papers\md\Cameretti, Sadowski, Mollerup - 2005 - Modeling of Aqueous Electrolyte Solutions with Perturbed-Chai.md",1,"Table 1, Table 2",Original ePC-SAFT aqueous electrolyte set; kij=0 convention.
+2008,"C:\Users\Tanner\Documents\git\ePC-SAFT\docs\papers\md\Held, Cameretti, Sadowski - 2008 - Modeling aqueous electrolyte solutions. Part 1. Fully dissociated.md",1,"Table 1, Table 2",Strategy-1 ion parameters and temperature-dependent water sigma.
+2014_s1,C:\Users\Tanner\Documents\git\ePC-SAFT\docs\papers\md\Held et al. - 2014 - ePC-SAFT Revised.md,1,"Table 2 (strategy 1), Table 1 (water)",Strategy-1 values reused from 2008 family.
+2014_s2,C:\Users\Tanner\Documents\git\ePC-SAFT\docs\papers\md\Held et al. - 2014 - ePC-SAFT Revised.md,1,"Table 2 (strategy 2), Table 3",Revised ion set + ion-ion and water-ion kij.
+2019,"C:\Users\Tanner\Documents\git\ePC-SAFT\docs\papers\md\Bülow, Ji, Held - 2019 - Incorporating a concentration-dependent dielectric constant into ePC-SAFT (1).md",0,modeling concept,No new pure-ion set; dielectric concentration dependency focus.
+2020,"C:\Users\Tanner\Documents\git\ePC-SAFT\docs\papers\md\Bülow, Ascani, Held - 2020 - ePC-SAFT advanced - Part I Physical meaning of including a concentratio.md",1,"Table 1, Table 2, Table 3, Table 4",Advanced electrolyte baseline used for transfer to organics.
+2021,"C:\Users\Tanner\Documents\git\ePC-SAFT\docs\papers\md\Bülow, Ascani, Held - 2021 - ePC-SAFT advanced – Part II Application to Salt Solubility in Ionic and.md",1,Table 8,Bjerrum-related ion-organic kij correlation set at 298.15 K.
+2025,"C:\Users\Tanner\Documents\git\ePC-SAFT\docs\papers\md\Figiel, Yu, Held - 2025 - Predicting Thermodynamic Properties of Ions in Single Solvents and in Mixe.md",1,"Table 2, Table 3, Table 4, Table 5",Modified Born treatment with fk and d_born references.
+

@@ -98,8 +98,8 @@ def _curve_bundle(mode: str, *, numerical: bool = False) -> tuple[np.ndarray, di
     ]}
     for idx, xil in enumerate(x):
         comp = fig2._composition_from_x_il(float(xil))
-        rho = float(fig2.pcsaft_den(fig2.T_REF, fig2.P_REF, comp, params, phase='liq'))
-        terms = fig2.pcsaft_lnfugcoef_terms(fig2.T_REF, rho, comp, params)
+        rho = float(fig2.epcsaft_density(fig2.T_REF, fig2.P_REF, comp, params, phase='liq'))
+        terms = fig2.epcsaft_fugacity_coefficient_terms(fig2.T_REF, rho, comp, params)
         dadx = np.asarray(terms['dadx_ion'], dtype=float)
         lnphi = np.asarray(terms['lnfugcoef'], dtype=float)
         lnphi_ion = np.asarray(terms['lnfugcoef_ion'], dtype=float)
@@ -112,8 +112,8 @@ def _curve_bundle(mode: str, *, numerical: bool = False) -> tuple[np.ndarray, di
             vals = []
             for xh in (xil - h, xil + h):
                 comph = fig2._composition_from_x_il(float(xh))
-                rhoh = float(fig2.pcsaft_den(fig2.T_REF, fig2.P_REF, comph, params, phase='liq'))
-                termsh = fig2.pcsaft_lnfugcoef_terms(fig2.T_REF, rhoh, comph, params)
+                rhoh = float(fig2.epcsaft_density(fig2.T_REF, fig2.P_REF, comph, params, phase='liq'))
+                termsh = fig2.epcsaft_fugacity_coefficient_terms(fig2.T_REF, rhoh, comph, params)
                 vals.append(float(termsh['a_ion']))
             out['fd_aion_dxil_resolvedrho'][idx] = (vals[1] - vals[0]) / (2.0 * h)
         lnxcat = math.log(float(comp[fig2.CATION_INDEX]))

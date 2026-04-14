@@ -20,12 +20,12 @@ if str(ANALYSIS_ROOT) not in sys.path:
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
-from pcsaft.parameters import get_prop_dict
-from scripts._pcsaft_oop import pcsaft_den, pcsaft_lnfugcoef_terms, pcsaft_p
+from epcsaft.parameters import get_prop_dict
+from scripts._epcsaft_oop import epcsaft_density, epcsaft_fugacity_coefficient_terms, epcsaft_pressure
 import _plot_common as common
 
 
@@ -38,7 +38,7 @@ EPS = 1.0e-8
 EPS_INF = 1.0e-12
 IONS = ("Li+", "Na+", "K+", "F-", "Cl-", "Br-", "I-")
 SOURCE_WORKBOOK = Path(
-    r"C:\Users\Tanner\Documents\Learning Resources\Classes\0_Spring_2024\PC-SAFT Calculations - Part 1 - Helmholtz Free Energy.xlsm"
+    r"C:\Users\Tanner\Documents\Learning Resources\Classes\0_Spring_2024\ePC-SAFT Calculations - Part 1 - Helmholtz Free Energy.xlsm"
 )
 OUTPUT_WORKBOOK = REPO_ROOT / "workbooks" / "figure3_hc_audit.xlsm"
 DATA_PATH = ANALYSIS_ROOT / "figure_3" / "data" / "water_contributions.csv"
@@ -71,7 +71,7 @@ def _infinite_dilution_state(ion: str, d_ion_mode: int) -> dict[str, object]:
     x = np.asarray([EPS, EPS, 1.0 - 2.0 * EPS], dtype=float)
     user_options = {"elec_model": {"DH_model": {"d_ion_mode": d_ion_mode}}}
     params = get_prop_dict("2020_Bulow", species, x, T_REF, user_options=user_options)
-    rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
+    rho = epcsaft_density(T_REF, P_REF, x, params, phase="liq")
 
     z = np.asarray(params.get("z", []), dtype=float)
     idx_ion = np.where(np.abs(z) > 1.0e-12)[0]
@@ -80,15 +80,15 @@ def _infinite_dilution_state(ion: str, d_ion_mode: int) -> dict[str, object]:
     x_ref = x.copy()
     x_ref[idx_ion] = 0.0
     x_ref[idx_solv] = x_ref[idx_solv] / float(np.sum(x_ref[idx_solv]))
-    p_ref = pcsaft_p(T_REF, rho, x_ref, params)
+    p_ref = epcsaft_pressure(T_REF, rho, x_ref, params)
 
     x_inf = x_ref.copy()
     ion_idx = species.index(ion)
     x_inf[ion_idx] = EPS_INF
     x_inf /= float(np.sum(x_inf))
-    rho_inf = pcsaft_den(T_REF, p_ref, x_inf, params, phase="liq")
+    rho_inf = epcsaft_density(T_REF, p_ref, x_inf, params, phase="liq")
 
-    terms = pcsaft_lnfugcoef_terms(T_REF, rho_inf, x_inf, params)
+    terms = epcsaft_fugacity_coefficient_terms(T_REF, rho_inf, x_inf, params)
     m = np.asarray(params["m"], dtype=float)
     s = np.asarray(params["s"], dtype=float)
     e = np.asarray(params["e"], dtype=float)
@@ -310,3 +310,4 @@ def build_workbook() -> Path:
 if __name__ == "__main__":
     path = build_workbook()
     print(path)
+

@@ -98,9 +98,9 @@ def _plot_total(
 
     bar_specs = [
         (offsets[0], figure2_paper, TOTAL_GREEN, "black", None, 0.9, "Figure 2 advanced total (paper)"),
-        (offsets[1], figure2_model, TOTAL_GREEN, "black", "////", 0.75, "Figure 2 advanced total (pcsaft)"),
+        (offsets[1], figure2_model, TOTAL_GREEN, "black", "////", 0.75, "Figure 2 advanced total (epcsaft)"),
         (offsets[2], figure3_sum_paper, "white", TOTAL_GREEN, None, 1.0, "Figure 3 contribution sum (paper)"),
-        (offsets[3], figure3_sum_model, "white", TOTAL_GREEN, "////", 1.0, "Figure 3 contribution sum (pcsaft)"),
+        (offsets[3], figure3_sum_model, "white", TOTAL_GREEN, "////", 1.0, "Figure 3 contribution sum (epcsaft)"),
     ]
 
     legend_added: set[str] = set()
@@ -138,7 +138,7 @@ def _plot_total(
     ax.text(
         0.99,
         0.12,
-        "Filled green bars: Figure 2 advanced totals\nWhite/green bars: Figure 3 sum\nPaper sum uses published bars; pcsaft sum uses EOS-consistent lnfug contributions",
+        "Filled green bars: Figure 2 advanced totals\nWhite/green bars: Figure 3 sum\nPaper sum uses published bars; epcsaft sum uses EOS-consistent lnfug contributions",
         transform=ax.transAxes,
         ha="right",
         va="bottom",
@@ -208,7 +208,7 @@ def _plot_z_adjusted_total(
         linewidth=0.45,
         hatch="////",
         alpha=0.75,
-        label="Figure 2 advanced total (pcsaft)",
+        label="Figure 2 advanced total (epcsaft)",
     )
     bars5 = ax.bar(
         x + offsets[4],
@@ -217,7 +217,7 @@ def _plot_z_adjusted_total(
         color="white",
         edgecolor="black",
         linewidth=1.0,
-        label=r"Figure 3 pcsaft $\mu$-sum",
+        label=r"Figure 3 epcsaft $\mu$-sum",
     )
     bars6 = ax.bar(
         x + offsets[5],
@@ -228,7 +228,7 @@ def _plot_z_adjusted_total(
         linewidth=0.45,
         hatch="xx",
         alpha=0.85,
-        label=r"Figure 3 pcsaft $\mu$-sum + model $\sum_{\alpha}\left[-\frac{Z^\alpha}{Z-1}\ln Z\right]$",
+        label=r"Figure 3 epcsaft $\mu$-sum + model $\sum_{\alpha}\left[-\frac{Z^\alpha}{Z-1}\ln Z\right]$",
     )
     common.annotate_bar_values(ax, bars1, fontsize=6)
     common.annotate_bar_values(ax, bars2, fontsize=6)
@@ -252,7 +252,7 @@ def _plot_z_adjusted_total(
     ax.set_xticks(x)
     ax.set_xticklabels(ions)
     ax.set_ylabel(r"$\Delta G_{\mathrm{hyd},i}^{\infty}$ / kJ mol$^{-1}$")
-    ax.set_title(r"Figure 3 bookkeeping check: paper and pcsaft sums plus summed $Z$-quotient correction")
+    ax.set_title(r"Figure 3 bookkeeping check: paper and epcsaft sums plus summed $Z$-quotient correction")
     ax.set_ylim(y_min - pad, y_max + 2.5 * pad)
     ax.grid(axis="y", alpha=0.22)
     common.annotate_percent_deltas(ax, x + offsets[2], figure2_paper, adjusted_paper, xs_ref=x + offsets[0], fontsize=7)
@@ -325,7 +325,7 @@ def _plot_one(
         linewidth=0.45,
         hatch="////",
         alpha=0.75,
-        label=f"{term_label} (pcsaft)",
+        label=f"{term_label} (epcsaft)",
     )
     common.annotate_bar_values(ax, paper_bars, fontsize=6)
     common.annotate_bar_values(ax, model_bars, fontsize=6)
@@ -429,7 +429,7 @@ def _plot_comprehensive(
     ax.axhline(0.0, color="black", linewidth=0.8)
     ax.set_ylim(-1000.0, 50.0)
     ax.set_ylabel(r"Contribution to $\Delta G_{\mathrm{hyd},i}^{\infty}$ / kJ mol$^{-1}$ ($\mu$ basis)")
-    ax.set_title("Bulow 2020 Part I Figure 3 Comprehensive: paper vs pcsaft contribution bars ($\\mu$ basis)")
+    ax.set_title("Bulow 2020 Part I Figure 3 Comprehensive: paper vs epcsaft contribution bars ($\\mu$ basis)")
     ax.set_xticks([(px + mx) / 2.0 for px, mx in zip(paper_x, model_x)])
     ax.set_xticklabels(tick_labels, rotation=0)
     ax.grid(axis="y", alpha=0.22)
@@ -443,7 +443,7 @@ def _plot_comprehensive(
     ]
     basis_handles = [
         Patch(facecolor="white", edgecolor="black", label="Paper"),
-        Patch(facecolor="white", edgecolor="black", hatch="////", label="pcsaft"),
+        Patch(facecolor="white", edgecolor="black", hatch="////", label="epcsaft"),
     ]
     legend1 = ax.legend(handles=contribution_handles, loc="upper left", frameon=True, title="Contribution")
     ax.add_artist(legend1)
@@ -492,3 +492,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

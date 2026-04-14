@@ -101,7 +101,7 @@ def _plot_one(
             linewidth=0.45,
             hatch="////",
             alpha=0.75,
-            label=f"{ion} (pcsaft)",
+            label=f"{ion} (epcsaft)",
         )
         common.annotate_bar_values(ax, paper_bars, fontsize=6)
         common.annotate_bar_values(ax, model_bars, fontsize=6)
@@ -150,9 +150,9 @@ def _plot_total(
         color = ion_color_map[ion]
         bar_specs = [
             (offsets[0], figure5_paper[idx], color, "black", None, 0.9, "Figure 5 sum (paper)"),
-            (offsets[1], figure5_model_eos[idx], color, "black", "////", 0.75, "Figure 5 EOS-consistent sum (pcsaft)"),
+            (offsets[1], figure5_model_eos[idx], color, "black", "////", 0.75, "Figure 5 EOS-consistent sum (epcsaft)"),
             (offsets[2], figure4_paper[idx], "white", color, None, 1.0, "Figure 4 total (paper)"),
-            (offsets[3], figure4_model[idx], "white", color, "////", 1.0, "Figure 4 total (pcsaft)"),
+            (offsets[3], figure4_model[idx], "white", color, "////", 1.0, "Figure 4 total (epcsaft)"),
         ]
         for offset, value, facecolor, edgecolor, hatch, alpha, label in bar_specs:
             show_label = label if label not in legend_added else None
@@ -187,7 +187,7 @@ def _plot_total(
     ax.text(
         0.99,
         0.12,
-        "Colored bars: Figure 5 sums\nPaper sum uses published bars; pcsaft sum uses EOS-consistent lnfug contributions\nWhite bars: Figure 4 advanced totals",
+        "Colored bars: Figure 5 sums\nPaper sum uses published bars; epcsaft sum uses EOS-consistent lnfug contributions\nWhite bars: Figure 4 advanced totals",
         transform=ax.transAxes,
         ha="right",
         va="bottom",
@@ -260,3 +260,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -18,12 +18,12 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts._env import require_pcsaft_install
+from scripts._env import require_epcsaft_install
 
-require_pcsaft_install()
+require_epcsaft_install()
 
-from pcsaft.parameters import get_prop_dict
-from scripts._pcsaft_oop import pcsaft_den, pcsaft_gsolv, pcsaft_miac_m
+from epcsaft.parameters import get_prop_dict
+from scripts._epcsaft_oop import epcsaft_activity_coefficient, epcsaft_density, epcsaft_solvation_free_energy
 
 T_REF = 298.15
 P_REF = 1.0e5
@@ -250,8 +250,8 @@ def mean_ionic_activity_curve(
     for idx, m in enumerate(grid):
         m_eval = max(float(m), 1e-12)
         x = molality_to_species_molefraction(m_eval, salt, solvent_system, comp)
-        rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
-        gamma[idx] = pcsaft_miac_m(T_REF, rho, x, params, species=species)[pair_key]
+        rho = epcsaft_density(T_REF, P_REF, x, params, phase="liq")
+        gamma[idx] = epcsaft_activity_coefficient(T_REF, rho, x, params, species=species, mean_ionic_form=True, basis="molality")[pair_key]
     return grid, gamma
 
 
@@ -380,10 +380,10 @@ def gsolv_ion(
     species = species_for_combo(salt, solvent_system)
     x = molality_to_species_molefraction(1e-8, salt, solvent_system, comp)
     params = get_prop_dict(dataset_name, species, x, T_REF, user_options=user_options)
-    rho = pcsaft_den(T_REF, P_REF, x, params, phase="liq")
-    values = pcsaft_gsolv(T_REF, rho, x, params, species=species)
+    rho = epcsaft_density(T_REF, P_REF, x, params, phase="liq")
+    values = epcsaft_solvation_free_energy(T_REF, rho, x, params, species=species)
     if ion not in values:
-        raise KeyError(f"Ion '{ion}' not returned from pcsaft_gsolv for {species}.")
+        raise KeyError(f"Ion '{ion}' not returned from epcsaft_solvation_free_energy for {species}.")
     return float(values[ion]) / 1000.0
 
 
@@ -414,6 +414,7 @@ def literature_gsolv_water() -> Dict[str, float]:
         if ion and value is not None:
             out[f"{ion}+" if ion in {"H", "Li", "Na", "K"} else f"{ion}-" if ion in {"Cl", "Br", "I"} else ion] = value
     return out
+
 
 
 

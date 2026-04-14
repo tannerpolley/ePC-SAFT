@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-import build_pcsaft
+import build_epcsaft
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -27,16 +27,16 @@ def _git_output(*args: str) -> str | None:
 def main() -> int:
     branch = _git_output("branch", "--show-current") or "<unknown>"
     head = _git_output("rev-parse", "--short", "HEAD") or "<unknown>"
-    install_state, install_reason = build_pcsaft._editable_install_state()
-    rebuild_plan = build_pcsaft._rebuild_plan()
-    imported = build_pcsaft._installed_module_path()
+    install_state, install_reason = build_epcsaft._editable_install_state()
+    rebuild_plan = build_epcsaft._rebuild_plan()
+    imported = build_epcsaft._installed_module_path()
 
     print(f"repo_root: {REPO_ROOT}")
     print(f"python: {sys.executable}")
     print(f"conda_env: {os.environ.get('CONDA_DEFAULT_ENV', '<unset>')}")
     print(f"git_branch: {branch}")
     print(f"git_head: {head}")
-    print(f"pcsaft_import: {imported if imported is not None else '<missing>'}")
+    print(f"epcsaft_import: {imported if imported is not None else '<missing>'}")
     print(f"install_state: {install_state}")
     print(f"install_reason: {install_reason}")
 
@@ -52,3 +52,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
