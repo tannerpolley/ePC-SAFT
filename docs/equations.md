@@ -3,7 +3,7 @@
 This file is generated from `docs/latex/equations.tex` by `scripts/sync_equation_registry.py`.
 The LaTeX document remains the current source of truth; this Markdown view and `docs/equations_registry.yaml` stay aligned with it.
 
-## Residual Helmholz Energy
+## Residual Helmholtz Energy
 
 ### `ares_total`
 - Label: `eq:ares_total`
@@ -12,7 +12,7 @@ The LaTeX document remains the current source of truth; this Markdown view and `
 - Description: Provides a residual Helmholtz-energy relation for residual helmholz energy.
 - Change note: No explicit citation on this equation block in the source file.
 - LaTeX: `docs/latex/equations.tex:22`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:94` (AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {), `src/epcsaft/native/epcsaft_ares.cpp:207` (ScalarContributionTerms residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:202` (AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \tilde{a}^{\mathrm{res}}=\tilde{a}^{h c}+\tilde{a}^{\text {disp }}+\tilde{a}^{\text {assoc }}+\tilde{a}^{\text {DH }}+\tilde{a}^{\text {Born }}
@@ -25,7 +25,7 @@ The LaTeX document remains the current source of truth; this Markdown view and `
 - Description: Provides a residual Helmholtz-energy relation for hard-chain reference contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
 - LaTeX: `docs/latex/equations.tex:37`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:94` (AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:8` (double ares_hc_cpp(const ThermoCommonState &thermo, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \tilde{a}^{\mathrm{hc}}=\bar{m} \tilde{a}^{\mathrm{hs}}-\sum_{i} x_{i}\left(m_{i}-1\right) \ln \mathrm{g}_{i i}^{\mathrm{hs}}\left(\sigma_{i i}\right)
@@ -103,7 +103,7 @@ d_{i}=\sigma_{i}\left[1-0.12 \exp \left(-3 \frac{\epsilon_{i}}{k T}\right)\right
 - Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
 - LaTeX: `docs/latex/equations.tex:106`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:94` (AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:26` (double ares_disp_cpp(const ThermoCommonState &thermo) {)
 
 ```tex
 \tilde{a}^{\mathrm{disp}}=-2 \pi \rho I_{1}(\eta, \bar{m}) \overline{m^2 \epsilon \sigma^3}-\pi \rho \bar{m} C_{1} I_{2}(\eta, \bar{m}) \overline{m^2 \epsilon^2 \sigma^3}
@@ -276,7 +276,7 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - Description: Provides a residual Helmholtz-energy relation for association contribution.
 - Change note: Association Helmholtz form is traced to Chapman/Wertheim SAFT association theory, but the exact numbered equation is not present in the local progression PDFs.
 - LaTeX: `docs/latex/equations.tex:256`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:94` (AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:96` (double ares_assoc_cpp(const ThermoCommonState &thermo, double t, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \tilde{a}^{\mathrm{assoc}}= \sum_{i} x_{i}\sum_{\mathrm{A}_{i}}\left(\ln X^{\mathrm{A}_{i}}-\frac{X^{\mathrm{A}_{i}}}{2}+\frac{1}{2}\right)
@@ -374,7 +374,7 @@ d_{i j}=\left(d_{i i}+d_{j j}\right) / 2 .
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
 - LaTeX: `docs/latex/equations.tex:343`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:32` (double dh_ares_only_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {), `src/epcsaft/native/epcsaft_ares.cpp:94` (AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:112` (double ares_ion_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \tilde{a}^{DH}=-\frac{\kappa e^{2}}{12\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}\sum_{i}x_{i}z_{i}^{2}\chi_{i}
@@ -785,7 +785,7 @@ x_{\pm}=(x_{c}^{\nu c}\cdot x_{a}^{\nu a})^{\frac{1}{\nu_{c}+\nu_{a}}}
 - Description: Provides a residual Helmholtz-energy relation for born electrolyte term contribution.
 - Change note: Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation.
 - LaTeX: `docs/latex/equations.tex:720`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:6` (double born_ares_only_cpp(double t, const vector<double> &x, const add_args &cppargs) {), `src/epcsaft/native/epcsaft_ares.cpp:94` (AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:152` (double ares_born_cpp(double t, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \tilde{a}^{\text {Born }}(\varepsilon(x))=-\frac{e^2}{4 \pi \varepsilon_{0} k_{B} T}\left(1-\frac{1}{\varepsilon_{r,\mathrm{bulk}}}\right) \sum_{i} \frac{x_{i} z_{i}^2}{d^{\text{Born}}_{i}}
@@ -938,152 +938,64 @@ f_{mix}=\sum_{k}x_{k}f_{k}
 d^{\text{Born}}_{i} = d^{\text{Born, fitted}}_{i} \qquad i\in\mathcal{I}
 ```
 
-## Pressure (Compressibility Factor)
+## Density Differential
 
-### `pressure_from_z`
-- Label: `eq:pressure_from_z`
-- Source: \cite{Gross2001}, Eq.~(A.21)
-- Status: Adapted implementation form
-- Description: Provides a supporting relation used in pressure (compressibility factor).
-- Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
-- LaTeX: `docs/latex/equations.tex:872`
-- C++: `src/epcsaft/native/epcsaft_Z.cpp:62` (double p_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
-
-```tex
-P=ZkT\rho\left(10^{10}\frac{\hat{\mathrm{A}}}{\mathrm{m}}\right)^{3}
-```
-
-### `z_from_eta`
-- Label: `eq:z_from_eta`
+### `dadrho_hc`
+- Label: `eq:dadrho_hc`
 - Source: \cite{Gross2001}, Eq.~(A.22)
-- Status: Close literature match
-- Description: Provides a differential relation needed for pressure (compressibility factor) calculations.
-- Change note: High textual similarity to a tagged equation in the cited local paper export.
-- LaTeX: `docs/latex/equations.tex:883`
+- Status: Adapted notation
+- Description: Provides a differential relation needed for density differential calculations.
+- Change note: Reframed from the compressibility notation so the weighted density differential is the primary upstream quantity.
+- LaTeX: `docs/latex/equations.tex:875`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
-Z=1+\eta\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\eta}\right)_{T,x_{i}}
-```
-
-### `z_eta_rho_identity`
-- Label: `eq:z_eta_rho_identity`
-- Source: \cite{Gross2001}, Eq.~(A.22)
-- Status: Adapted implementation form
-- Description: Provides a differential relation needed for pressure (compressibility factor) calculations.
-- Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
-- LaTeX: `docs/latex/equations.tex:893`
-- C++: `src/epcsaft/native/epcsaft_dadrho.cpp:6` (DadrhoResult dadrho_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
-
-```tex
-\eta\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\eta}\right)_{T,x_{i}} = \rho\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\rho}\right)_{T,x_{i}}
-```
-
-### `z_from_rho`
-- Label: `eq:z_from_rho`
-- Source: \cite{Gross2001}, Eq.~(A.22)
-- Status: Close literature match
-- Description: Provides a differential relation needed for pressure (compressibility factor) calculations.
-- Change note: High textual similarity to a tagged equation in the cited local paper export.
-- LaTeX: `docs/latex/equations.tex:904`
-- C++: `src/epcsaft/native/epcsaft_Z.cpp:49` (CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
-
-```tex
-Z=1+\rho\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\rho}\right)_{T,x_{i}}
-```
-
-### `z_total`
-- Label: `eq:z_total`
-- Source: \cite{Gross2001}, Eq.~(A.24)
-- Status: Project-specific extension
-- Description: Provides a supporting relation used in pressure (compressibility factor).
-- Change note: Mapped to Eq. (A.24) and extended here by adding association, Debye-Huckel, and Born compressibility contributions.
-- LaTeX: `docs/latex/equations.tex:915`
-- C++: `src/epcsaft/native/epcsaft_Z.cpp:49` (CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
-
-```tex
-Z = 1 + Z^{hc} + Z^{disp} + Z^{assoc} + Z^{DH} + Z^{Born}
-```
-
-### `z_minus_one_sum`
-- Label: `eq:z_minus_one_sum`
-- Source: \cite{Gross2001}, Eq.~(A.24) with the documented ePC-SAFT term decomposition
-- Status: Project-specific extension
-- Description: Gives the explicit residual compressibility identity in pressure (compressibility factor).
-- Change note: Added as the direct $Z-1$ form so later fugacity equations can use only $Z$ and $Z^\alpha$ terms explicitly.
-- LaTeX: `docs/latex/equations.tex:926`
-- C++: `src/epcsaft/native/epcsaft_Z.cpp:49` (CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
-
-```tex
-Z - 1 = Z^{hc} + Z^{disp} + Z^{assoc} + Z^{DH} + Z^{Born}
-```
-
-### `z_alpha`
-- Label: `eq:z_alpha`
-- Source: \cite{Gross2001}, Eq.~(A.22)
-- Status: Adapted notation
-- Description: Provides a differential relation needed for pressure (compressibility factor) calculations.
-- Change note: Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation.
-- LaTeX: `docs/latex/equations.tex:937`
-- C++: `src/epcsaft/native/epcsaft_Z.cpp:49` (CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
-
-```tex
-Z^\alpha =\rho\left(\frac{\partial\tilde{a}^\alpha}{\partial\rho}\right)_{T,x}
+\rho\left(\frac{\partial\tilde{a}^{hc}}{\partial\rho}\right)_{T,x}
+    = Z^{hc}
     .
 ```
 
-### `z_hc`
-- Label: `eq:z_hc`
-- Source: \cite{Gross2001}, Eq.~(A.22)
-- Status: Adapted notation
-- Description: Provides a differential relation needed for hard-chain reference contribution calculations.
-- Change note: Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation.
-- LaTeX: `docs/latex/equations.tex:952`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-Z^{hc} =\rho\left(\frac{\partial\tilde{a}^{hc}}{\partial\rho}\right)_{T,x}
-    .
-```
-
-### `z_hc_explicit`
-- Label: `eq:z_hc_explicit`
+### `dadrho_hc_explicit`
+- Label: `eq:dadrho_hc_explicit`
 - Source: \cite{Gross2001}, Eq.~(A.25)
 - Status: Close literature match
 - Description: Provides a differential relation needed for hard-chain reference contribution calculations.
-- Change note: High textual similarity to a tagged equation in the cited local paper export.
-- LaTeX: `docs/latex/equations.tex:964`
+- Change note: Ownership moved from the Z section to the upstream density-differential section.
+- LaTeX: `docs/latex/equations.tex:888`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
-Z^\mathrm{hc}=\bar{m}Z^\mathrm{hs}-\sum_{i}x_{\mathrm{i}}(m_{i}-1)(g_{ii}^\mathrm{hs})^{-1}\rho\frac{\partial g_{ii}^\mathrm{hs}}{\partial\rho}
+\rho\left(\frac{\partial\tilde{a}^{hc}}{\partial\rho}\right)_{T,x}
+    =\bar{m}Z^\mathrm{hs}-\sum_{i}x_{\mathrm{i}}(m_{i}-1)(g_{ii}^\mathrm{hs})^{-1}\rho\frac{\partial g_{ii}^\mathrm{hs}}{\partial\rho}
 ```
 
-### `z_hs`
-- Label: `eq:z_hs`
+### `dadrho_hs`
+- Label: `eq:dadrho_hs`
 - Source: \cite{Gross2001}, Eq.~(A.26)
 - Status: Manual literature match
 - Description: Provides a differential relation needed for hard-chain reference contribution calculations.
-- Change note: Mapped manually to the hard-sphere compressibility expression.
-- LaTeX: `docs/latex/equations.tex:975`
+- Change note: Reframed from the compressibility notation so the hard-sphere density differential is the primary upstream quantity.
+- LaTeX: `docs/latex/equations.tex:900`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
-Z^{hs} =\rho\left(\frac{\partial\tilde{a}^{hs}}{\partial\rho}\right)_{T,x}
+\rho\left(\frac{\partial\tilde{a}^{hs}}{\partial\rho}\right)_{T,x}
+    = Z^{hs}
     .
 ```
 
-### `z_hs_explicit`
-- Label: `eq:z_hs_explicit`
+### `dadrho_hs_explicit`
+- Label: `eq:dadrho_hs_explicit`
 - Source: \cite{Gross2001}, Eq.~(A.26)
 - Status: Manual literature match
 - Description: Provides a supporting relation used in hard-chain reference contribution.
-- Change note: Mapped manually to the explicit hard-sphere compressibility formula.
-- LaTeX: `docs/latex/equations.tex:987`
+- Change note: Ownership moved from the Z section to the upstream density-differential section.
+- LaTeX: `docs/latex/equations.tex:913`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
-Z^{\mathrm{hs}}=\frac{\zeta_{3}}{(1-\zeta_{3})}+\frac{3\zeta_{1}\zeta_{2}}{\zeta_{0}(1-\zeta_{3})^{2}}+\frac{3\zeta_{2}^{3}-\zeta_{3}\zeta_{2}^{3}}{\zeta_{0}(1-\zeta_{3})^{3}}
+\rho\left(\frac{\partial\tilde{a}^{hs}}{\partial\rho}\right)_{T,x}
+    =\frac{\zeta_{3}}{(1-\zeta_{3})}+\frac{3\zeta_{1}\zeta_{2}}{\zeta_{0}(1-\zeta_{3})^{2}}+\frac{3\zeta_{2}^{3}-\zeta_{3}\zeta_{2}^{3}}{\zeta_{0}(1-\zeta_{3})^{3}}
 ```
 
 ### `dg_hs_drho`
@@ -1092,7 +1004,7 @@ Z^{\mathrm{hs}}=\frac{\zeta_{3}}{(1-\zeta_{3})}+\frac{3\zeta_{1}\zeta_{2}}{\zeta
 - Status: Manual literature match
 - Description: Provides a differential relation needed for hard-chain reference contribution calculations.
 - Change note: Mapped manually to the density derivative of the contact value relation.
-- LaTeX: `docs/latex/equations.tex:998`
+- LaTeX: `docs/latex/equations.tex:925`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1101,32 +1013,33 @@ Z^{\mathrm{hs}}=\frac{\zeta_{3}}{(1-\zeta_{3})}+\frac{3\zeta_{1}\zeta_{2}}{\zeta
     \end{aligned}
 ```
 
-### `z_disp`
-- Label: `eq:z_disp`
+### `dadrho_disp`
+- Label: `eq:dadrho_disp`
 - Source: \cite{Gross2001}, Eq.~(A.28)
 - Status: Manual literature match
 - Description: Provides a differential relation needed for dispersion contribution calculations.
-- Change note: Mapped manually to the dispersion compressibility contribution.
-- LaTeX: `docs/latex/equations.tex:1014`
+- Change note: Reframed from the compressibility notation so the weighted density differential is the primary upstream quantity.
+- LaTeX: `docs/latex/equations.tex:941`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
-Z^{disp} =\rho\left(\frac{\partial\tilde{a}^{disp}}{\partial\rho}\right)_{T,x}
+\rho\left(\frac{\partial\tilde{a}^{disp}}{\partial\rho}\right)_{T,x}
+    = Z^{disp}
     .
 ```
 
-### `z_disp_explicit`
-- Label: `eq:z_disp_explicit`
+### `dadrho_disp_explicit`
+- Label: `eq:dadrho_disp_explicit`
 - Source: \cite{Gross2001}, Eq.~(A.28)
 - Status: Close literature match
 - Description: Provides a differential relation needed for dispersion contribution calculations.
-- Change note: High textual similarity to a tagged equation in the cited local paper export.
-- LaTeX: `docs/latex/equations.tex:1026`
+- Change note: Ownership moved from the Z section to the upstream density-differential section.
+- LaTeX: `docs/latex/equations.tex:954`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
 \begin{aligned}
-        Z^{\mathrm{disp}}
+        \rho\left(\frac{\partial\tilde{a}^{disp}}{\partial\rho}\right)_{T,x}
         &=-2\pi\rho\frac{\partial(\eta I_{1})}{\partial\eta}\overline{m^{2}\epsilon\sigma^{3}}
         \\
         &\quad -\pi\rho\bar{m}\left[C_{1}\frac{\partial(\eta I_{2})}{\partial\eta}+C_{2}\eta I_{2}\right]\overline{m^{2}\epsilon^{2}\sigma^{3}}
@@ -1139,7 +1052,7 @@ Z^{disp} =\rho\left(\frac{\partial\tilde{a}^{disp}}{\partial\rho}\right)_{T,x}
 - Status: Adapted implementation form
 - Description: Provides a differential relation needed for dispersion contribution calculations.
 - Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
-- LaTeX: `docs/latex/equations.tex:1042`
+- LaTeX: `docs/latex/equations.tex:970`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1152,7 +1065,7 @@ Z^{disp} =\rho\left(\frac{\partial\tilde{a}^{disp}}{\partial\rho}\right)_{T,x}
 - Status: Adapted implementation form
 - Description: Provides a differential relation needed for dispersion contribution calculations.
 - Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
-- LaTeX: `docs/latex/equations.tex:1053`
+- LaTeX: `docs/latex/equations.tex:981`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1165,7 +1078,7 @@ Z^{disp} =\rho\left(\frac{\partial\tilde{a}^{disp}}{\partial\rho}\right)_{T,x}
 - Status: Close literature match
 - Description: Provides a differential relation needed for dispersion contribution calculations.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
-- LaTeX: `docs/latex/equations.tex:1064`
+- LaTeX: `docs/latex/equations.tex:992`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1177,31 +1090,33 @@ C_{2}
     \biggr)
 ```
 
-### `z_assoc`
-- Label: `eq:z_assoc`
+### `dadrho_assoc`
+- Label: `eq:dadrho_assoc`
 - Source: \cite{Chapman1990} (exact equation number not available in local PDFs)
 - Status: No direct numbered source in local corpus
 - Description: Provides a differential relation needed for association contribution calculations.
-- Change note: Association compressibility relation is a derivative form from SAFT association theory; exact numbered source is unavailable in local PDFs.
-- LaTeX: `docs/latex/equations.tex:1083`
+- Change note: Reframed from the compressibility notation so the weighted density differential is the primary upstream quantity.
+- LaTeX: `docs/latex/equations.tex:1011`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
-Z^{assoc} =\rho\left(\frac{\partial\tilde{a}^{assoc}}{\partial\rho}\right)_{T,x}
+\rho\left(\frac{\partial\tilde{a}^{assoc}}{\partial\rho}\right)_{T,x}
+    = Z^{assoc}
     .
 ```
 
-### `z_assoc_explicit`
-- Label: `eq:z_assoc_explicit`
+### `dadrho_assoc_explicit`
+- Label: `eq:dadrho_assoc_explicit`
 - Source: \cite{Chapman1990} (exact equation number not available in local PDFs)
 - Status: No direct numbered source in local corpus
 - Description: Provides a differential relation needed for association contribution calculations.
-- Change note: Expanded association compressibility expression; no direct numbered counterpart found in local Chapman-accessible files.
-- LaTeX: `docs/latex/equations.tex:1095`
+- Change note: Ownership moved from the Z section to the upstream density-differential section.
+- LaTeX: `docs/latex/equations.tex:1024`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
-Z^{assoc}=\rho\sum_{i}x_{i}\sum_{A_{i}}\left(\frac{1}{X^{A_{i}}}-\frac{1}{2}\right)\left(\frac{\partial X^{A_{i}}}{\partial\rho}\right)_{T,x}.
+\rho\left(\frac{\partial\tilde{a}^{assoc}}{\partial\rho}\right)_{T,x}
+    =\rho\sum_{i}x_{i}\sum_{A_{i}}\left(\frac{1}{X^{A_{i}}}-\frac{1}{2}\right)\left(\frac{\partial X^{A_{i}}}{\partial\rho}\right)_{T,x}.
 ```
 
 ### `dx_assoc_drho`
@@ -1210,7 +1125,7 @@ Z^{assoc}=\rho\sum_{i}x_{i}\sum_{A_{i}}\left(\frac{1}{X^{A_{i}}}-\frac{1}{2}\rig
 - Status: No direct numbered source in local corpus
 - Description: Provides a differential relation needed for association contribution calculations.
 - Change note: Site-fraction density derivative closure used in association compressibility calculations; exact numbered reference unavailable locally.
-- LaTeX: `docs/latex/equations.tex:1106`
+- LaTeX: `docs/latex/equations.tex:1036`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1234,38 +1149,40 @@ Z^{assoc}=\rho\sum_{i}x_{i}\sum_{A_{i}}\left(\frac{1}{X^{A_{i}}}-\frac{1}{2}\rig
 - Status: No direct numbered source in local corpus
 - Description: Defines the Debye screening quantity used in association contribution.
 - Change note: Derivative of association strength term used in implementation; no direct numbered source in local Chapman files.
-- LaTeX: `docs/latex/equations.tex:1128`
+- LaTeX: `docs/latex/equations.tex:1058`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
 \left(\frac{\partial\Delta^{A_{i}B_{j}}}{\partial\rho}\right)_{T,x}=d_{ij}^3\kappa^{A_{i}B_{j}}\left[\exp(\epsilon^{A_{i}B_{j}}/kT)-1\right]\left(\frac{\partial g_{ij}^{hs}}{\partial\rho}\right)_{T,x}
 ```
 
-### `z_dh`
-- Label: `eq:z_dh`
+### `dadrho_dh`
+- Label: `eq:dadrho_dh`
 - Source: \cite{Cameretti2005}, Eq.~(18)
 - Status: Manual literature match
 - Description: Provides a differential relation needed for debye and huckel electrolyte term contribution calculations.
-- Change note: Mapped manually to the Debye-Huckel pressure contribution form.
-- LaTeX: `docs/latex/equations.tex:1142`
+- Change note: Reframed from the compressibility notation so the weighted density differential is the primary upstream quantity.
+- LaTeX: `docs/latex/equations.tex:1071`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
-Z^{DH} =\rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
+\rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
+    = Z^{DH}
     .
 ```
 
-### `z_dh_explicit`
-- Label: `eq:z_dh_explicit`
+### `dadrho_dh_explicit`
+- Label: `eq:dadrho_dh_explicit`
 - Source: \cite{Cameretti2005}, Eq.~(10)
 - Status: Adapted implementation form
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
-- Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
-- LaTeX: `docs/latex/equations.tex:1155`
+- Change note: Ownership moved from the Z section to the upstream density-differential section.
+- LaTeX: `docs/latex/equations.tex:1085`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
-Z^{DH}=-\frac{\kappa e^2}{24\pi kT\epsilon}\sum_{i}x_{i}z_{i}{}^{2}\sigma_{i}
+\rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
+    =-\frac{\kappa e^2}{24\pi kT\epsilon}\sum_{i}x_{i}z_{i}{}^{2}\sigma_{i}
 ```
 
 ### `sigma_dh`
@@ -1274,24 +1191,25 @@ Z^{DH}=-\frac{\kappa e^2}{24\pi kT\epsilon}\sum_{i}x_{i}z_{i}{}^{2}\sigma_{i}
 - Status: Close literature match
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
-- LaTeX: `docs/latex/equations.tex:1166`
+- LaTeX: `docs/latex/equations.tex:1097`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
 \sigma_{i}=\left(\frac{\partial(\kappa\chi_{i})}{\partial\kappa}\right)_{T,\mathrm{x}}=-2\chi_{i}+\frac{3}{1+\kappa a_{i}}
 ```
 
-### `z_dh_bjerrum`
-- Label: `eq:z_dh_bjerrum`
+### `dadrho_dh_bjerrum`
+- Label: `eq:dadrho_dh_bjerrum`
 - Source: \cite{Bulow2021}, Eq.~(18)
 - Status: Adapted implementation form
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
-- Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
-- LaTeX: `docs/latex/equations.tex:1180`
+- Change note: Ownership moved from the Z section to the upstream density-differential section.
+- LaTeX: `docs/latex/equations.tex:1111`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
-Z^{DH}=-\frac{\kappa e^2}{24\pi kT\epsilon}\sum_{i}\alpha _{i}x_{i}z_{i}{}^{2}\sigma_{i}
+\rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
+    =-\frac{\kappa e^2}{24\pi kT\epsilon}\sum_{i}\alpha _{i}x_{i}z_{i}{}^{2}\sigma_{i}
 ```
 
 ### `sigma_dh_bjerrum`
@@ -1300,117 +1218,54 @@ Z^{DH}=-\frac{\kappa e^2}{24\pi kT\epsilon}\sum_{i}\alpha _{i}x_{i}z_{i}{}^{2}\s
 - Status: Adapted implementation form
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
-- LaTeX: `docs/latex/equations.tex:1191`
+- LaTeX: `docs/latex/equations.tex:1123`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
 \sigma_{i}=\left(\frac{\partial(\kappa\chi_{i})}{\partial\kappa}\right)_{T,\mathrm{x}}=-2\chi_{i}+\frac{3}{1+\kappa R_{i}}
 ```
 
-### `z_born`
-- Label: `eq:z_born`
+### `dadrho_born`
+- Label: `eq:dadrho_born`
 - Source: \cite{Bulow2021a}, Eq.~(4)
 - Status: Manual literature match
 - Description: Provides a differential relation needed for born electrolyte term contribution calculations.
-- Change note: Mapped manually to the Born-pressure-zero relation; this compressibility form is the equivalent EOS representation.
-- LaTeX: `docs/latex/equations.tex:1204`
+- Change note: Reframed from the compressibility notation so the weighted density differential is the primary upstream quantity.
+- LaTeX: `docs/latex/equations.tex:1136`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
-Z^{Born} =\rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}
+\rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}
+    = Z^{Born}
     .
 ```
 
-### `z_born_zero`
-- Label: `eq:z_born_zero`
+### `dadrho_born_zero`
+- Label: `eq:dadrho_born_zero`
 - Source: \cite{Bulow2021a}, Eq.~(4)
 - Status: Manual literature match
 - Description: Provides a supporting relation used in born electrolyte term contribution.
-- Change note: Direct zero Born-pressure statement from the Part I formulation.
-- LaTeX: `docs/latex/equations.tex:1216`
+- Change note: Direct zero-density-differential statement from the Part I formulation.
+- LaTeX: `docs/latex/equations.tex:1149`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
-Z^{Born}= 0
+\rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}= 0
 ```
 
-## Chemical Potential
-
-### `mu_res`
-- Label: `eq:mu_res`
-- Source: \cite{Gross2001}, Eq.~(A.1)
-- Status: Adapted implementation form
-- Description: Gives a chemical-potential contribution in chemical potential.
-- Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
-- LaTeX: `docs/latex/equations.tex:1232`
-- C++: `src/epcsaft/native/epcsaft_mu.cpp:8` (ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
-
-```tex
-\tilde{\mu_{k}}^{\mathrm{res}}=\frac{\mu_{k}^\mathrm{res}}{kT} = \frac{\hat{\mu}_{k}^\mathrm{res}}{RT}
-```
-
-### `mu_res_from_ares`
-- Label: `eq:mu_res_from_ares`
-- Source: \cite{Gross2001}, Eq.~(A.33)
-- Status: Close literature match
-- Description: Gives a chemical-potential contribution in chemical potential.
-- Change note: High textual similarity to a tagged equation in the cited local paper export.
-- LaTeX: `docs/latex/equations.tex:1243`
-- C++: `src/epcsaft/native/epcsaft_mu.cpp:8` (ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
-
-```tex
-\begin{aligned}
-        \tilde{\mu_{k}}^{\mathrm{res}}
-        &=\tilde{a}^{\mathrm{res}}+(\mathrm{Z}-1)
-        +\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial x_{k}}\right)_{T,\nu,x_{i\neq k}}
-        \\
-        &\quad -\sum_{j=1}^{N}\left[x_{j}\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial x_{j}}\right)_{T,\nu,x_{i\neq j}}\right]
-    \end{aligned}
-```
-
-### `mu_res_sum`
-- Label: `eq:mu_res_sum`
-- Source: \cite{Gross2001}, Eq.~(A.33)
-- Status: Manual literature match
-- Description: Gives the explicit residual chemical-potential decomposition in chemical potential.
-- Change note: Written in explicit non-summation form to match the style used for the other property families in this section.
-- LaTeX: `docs/latex/equations.tex:1260`
-- C++: `src/epcsaft/native/epcsaft_mu.cpp:8` (ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
-
-```tex
-\tilde{\mu_{k}}^{\mathrm{res}}=\tilde{\mu_{k}}^{\mathrm{hc}}+\tilde{\mu_{k}}^{\mathrm{disp}}+\tilde{\mu_{k}}^{\mathrm{assoc}}+\tilde{\mu_{k}}^{\mathrm{DH}}+\tilde{\mu_{k}}^{\mathrm{Born}}
-```
+## Composition Differential
 
 ### `zeta_n_xk`
 - Label: `eq:zeta_n_xk`
 - Source: \cite{Gross2001}, Eq.~(A.34)
 - Status: Close literature match
-- Description: Provides a differential relation needed for chemical-potential calculations.
-- Change note: High textual similarity to a tagged equation in the cited local paper export.
-- LaTeX: `docs/latex/equations.tex:1271`
+- Description: Provides a differential relation needed for composition differential calculations.
+- Change note: Ownership moved upstream so the composition derivatives are defined before the downstream property sections that use them.
+- LaTeX: `docs/latex/equations.tex:1165`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
 \zeta_{n,xk}=\left(\frac{\partial\zeta_{n}}{\partial x_{k}}\right)_{T,\boldsymbol{\rho},x_{j\neq k}}=\frac{\pi}{6}\rho m_{k}(d_{k})^{n}\quad n\in\{0,1,2,3\}
-```
-
-### `mu_hc`
-- Label: `eq:mu_hc`
-- Source: \cite{Gross2001}, Eq.~(A.33)
-- Status: Manual literature match
-- Description: Gives a chemical-potential contribution in hard-chain reference contribution.
-- Change note: Eq. (A.33) specialization to the hard-chain contribution.
-- LaTeX: `docs/latex/equations.tex:1285`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\begin{aligned}
-        \tilde{\mu}^{hc}_{k}
-        &=\tilde{a}^{\mathrm{hc}} + Z^{hc}
-        +\left(\frac{\partial\tilde{a}^{\mathrm{hc}}}{\partial x_{k}}\right)_{T,\nu,x_{i\neq k}}
-        \\
-        &\quad -\sum_{j=1}^{N}\left[x_{j}\left(\frac{\partial\tilde{a}^{\mathrm{hc}}}{\partial x_{j}}\right)_{T,\nu,x_{i\neq j}}\right]
-    \end{aligned}
 ```
 
 ### `dares_hc_dxk`
@@ -1419,7 +1274,7 @@ Z^{Born}= 0
 - Status: Manual literature match
 - Description: Provides a differential relation needed for hard-chain reference contribution calculations.
 - Change note: Mapped by appendix sequence between Eq. (A.34) and Eq. (A.36); this line corresponds to the hard-sphere composition derivative expression.
-- LaTeX: `docs/latex/equations.tex:1302`
+- LaTeX: `docs/latex/equations.tex:1179`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1439,7 +1294,7 @@ Z^{Born}= 0
 - Status: Manual literature match
 - Description: Provides a differential relation needed for hard-chain reference contribution calculations.
 - Change note: Mapped manually to the hard-sphere composition derivative expression.
-- LaTeX: `docs/latex/equations.tex:1320`
+- LaTeX: `docs/latex/equations.tex:1197`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1468,7 +1323,7 @@ Z^{Born}= 0
 - Status: Close literature match
 - Description: Provides a differential relation needed for hard-chain reference contribution calculations.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
-- LaTeX: `docs/latex/equations.tex:1347`
+- LaTeX: `docs/latex/equations.tex:1224`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1483,22 +1338,21 @@ Z^{Born}= 0
     \end{aligned}
 ```
 
-### `mu_disp`
-- Label: `eq:mu_disp`
-- Source: \cite{Gross2001}, Eq.~(A.33)
+### `dares_disp_dxk`
+- Label: `eq:dares_disp_dxk`
+- Source: \cite{Gross2001}, Eq.~(A.38) (appendix sequence inference)
 - Status: Manual literature match
-- Description: Gives a chemical-potential contribution in dispersion contribution.
-- Change note: Eq. (A.33) specialization to the dispersion contribution.
-- LaTeX: `docs/latex/equations.tex:1369`
+- Description: Provides a differential relation needed for dispersion contribution calculations.
+- Change note: Ownership moved upstream so the exact dispersion composition differential is defined before the downstream chemical-potential, fugacity, and activity sections.
+- LaTeX: `docs/latex/equations.tex:1246`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
 \begin{aligned}
-        \tilde{\mu}^{disp}_{k}
-        &=\tilde{a}^{\mathrm{disp}} + Z^{disp}
-        +\left(\frac{\partial\tilde{a}^{\mathrm{disp}}}{\partial x_{k}}\right)_{T,\nu,x_{i\neq k}}
-        \\
-        &\quad -\sum_{j=1}^{N}\left[x_{j}\left(\frac{\partial\tilde{a}^{\mathrm{disp}}}{\partial x_{j}}\right)_{T,\nu,x_{i\neq j}}\right]
+        \left(\frac{\partial \tilde{a}^{\mathrm{disp}}}{\partial x_k}\right)_{T,\boldsymbol{\rho},x_{j \neq k}}
+        =& -2 \pi \rho\left[I_{1, x k} \overline{m^2 \epsilon \sigma^3}+I_1 \overline{\left(m^2 \epsilon \sigma^3\right)_{x k}}\right] \\
+        &- \pi \rho\left\{\left[m_k C_1 I_2+\bar{m} C_{1, x k} I_2+\bar{m} C_1 I_{2, x k}\right] \overline{m^2 \epsilon^2 \sigma^3}+\right.
+        \left.\bar{m} C_1 I_2\left(\bar{m}^2 \epsilon^2 \sigma^3\right)_{x k}\right\}
     \end{aligned}
 ```
 
@@ -1508,7 +1362,7 @@ Z^{Born}= 0
 - Status: Manual literature match
 - Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
 - Change note: Mapped by appendix sequence as the first dispersion composition derivative moment.
-- LaTeX: `docs/latex/equations.tex:1395`
+- LaTeX: `docs/latex/equations.tex:1262`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1521,7 +1375,7 @@ Z^{Born}= 0
 - Status: Manual literature match
 - Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
 - Change note: Mapped by appendix sequence as the second dispersion composition derivative moment.
-- LaTeX: `docs/latex/equations.tex:1406`
+- LaTeX: `docs/latex/equations.tex:1273`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1533,8 +1387,8 @@ Z^{Born}= 0
 - Source: \cite{Gross2001}, Eq.~(A.41)
 - Status: Manual literature match
 - Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
-- Change note: Mapped manually to the composition derivative of $C_1$.
-- LaTeX: `docs/latex/equations.tex:1417`
+- Change note: Mapped manually to the composition derivative of \(C_1\).
+- LaTeX: `docs/latex/equations.tex:1284`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1547,7 +1401,7 @@ C_{1,xk}=C_{2}\zeta_{3,xk}-C_{1}^{2}\left\{m_{k}\frac{8\eta-2\eta^{2}}{\left(1-\
 - Status: Close literature match
 - Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
-- LaTeX: `docs/latex/equations.tex:1428`
+- LaTeX: `docs/latex/equations.tex:1295`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1560,7 +1414,7 @@ I_{1,xk}=\sum_{i=0}^{6}[a_{\mathrm{i}}(\bar{m})i\zeta_{3,xk}\eta^{i-1}+a_{\mathr
 - Status: Close literature match
 - Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
-- LaTeX: `docs/latex/equations.tex:1439`
+- LaTeX: `docs/latex/equations.tex:1306`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1573,7 +1427,7 @@ I_{2,xk}=\sum_{i=0}^{6}[b_{\mathrm{i}}(\bar{m})i\zeta_{3,xk}\eta^{i-1}+b_{\mathr
 - Status: Close literature match
 - Description: Provides a supporting relation used in dispersion contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
-- LaTeX: `docs/latex/equations.tex:1450`
+- LaTeX: `docs/latex/equations.tex:1317`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1586,30 +1440,11 @@ a_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}a_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left
 - Status: Close literature match
 - Description: Provides a supporting relation used in dispersion contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
-- LaTeX: `docs/latex/equations.tex:1461`
+- LaTeX: `docs/latex/equations.tex:1328`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
 b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left(3-\frac{4}{\bar{m}}\right)b_{2i}
-```
-
-### `mu_assoc`
-- Label: `eq:mu_assoc`
-- Source: \cite{Chapman1990} (exact equation number not available in local PDFs)
-- Status: No direct numbered source in local corpus
-- Description: Gives a chemical-potential contribution in association contribution.
-- Change note: Association chemical-potential decomposition written in implementation form; exact numbered Chapman equation unavailable in local PDFs.
-- LaTeX: `docs/latex/equations.tex:1475`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\begin{aligned}
-        \tilde{\mu}^{assoc}_{k}
-        &=\tilde{a}^{\mathrm{assoc}} + Z^{assoc}
-        +\left(\frac{\partial\tilde{a}^{\mathrm{assoc}}}{\partial x_{k}}\right)_{T,\nu,x_{i\neq k}}
-        \\
-        &\quad -\sum_{j=1}^{N}\left[x_{j}\left(\frac{\partial\tilde{a}^{\mathrm{assoc}}}{\partial x_{j}}\right)_{T,\nu,x_{i\neq j}}\right]
-    \end{aligned}
 ```
 
 ### `dares_assoc_dxk`
@@ -1617,8 +1452,8 @@ b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left
 - Source: \cite{Chapman1990} (exact equation number not available in local PDFs)
 - Status: No direct numbered source in local corpus
 - Description: Provides a differential relation needed for association contribution calculations.
-- Change note: Composition derivative of association Helmholtz contribution; no direct numbered local Chapman source available.
-- LaTeX: `docs/latex/equations.tex:1492`
+- Change note: Composition derivative of association Helmholtz contribution; no direct numbered Chapman source available.
+- LaTeX: `docs/latex/equations.tex:1342`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1637,7 +1472,7 @@ b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left
 - Status: No direct numbered source in local corpus
 - Description: Provides a differential relation needed for association contribution calculations.
 - Change note: Site-fraction composition derivative closure from SAFT association machinery; local progression PDFs do not provide this as a numbered equation.
-- LaTeX: `docs/latex/equations.tex:1509`
+- LaTeX: `docs/latex/equations.tex:1359`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1665,7 +1500,7 @@ b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left
 - Status: No direct numbered source in local corpus
 - Description: Defines the Debye screening quantity used in association contribution.
 - Change note: Composition derivative of association strength term; no exact numbered Chapman equation available locally.
-- LaTeX: `docs/latex/equations.tex:1535`
+- LaTeX: `docs/latex/equations.tex:1385`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1676,58 +1511,13 @@ b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left
     \left(\frac{\partial g_{ij}^{hs}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
 ```
 
-### `mu_dh`
-- Label: `eq:mu_dh`
-- Source: \cite{Gross2001}, Eq.~(A.33)
-- Status: Adapted implementation form
-- Description: Gives a chemical-potential contribution in debye and huckel electrolyte term contribution.
-- Change note: Chemical-potential contribution written via the generic Eq. (A.33)-style decomposition for the Debye-Huckel term.
-- LaTeX: `docs/latex/equations.tex:1554`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\begin{aligned}
-        \tilde{\mu}^{DH}_{k}
-        &=\tilde{a}^{\mathrm{DH}} + Z^{DH}
-        +\left(\frac{\partial\tilde{a}^{\mathrm{DH}}}{\partial x_{k}}\right)_{T,\nu,x_{i\neq k}}
-        \\
-        &\quad -\sum_{j=1}^{N}\left[x_{j}\left(\frac{\partial\tilde{a}^{\mathrm{DH}}}{\partial x_{j}}\right)_{T,\nu,x_{i\neq j}}\right]
-    \end{aligned}
-```
-
-### `mu_dh_2005`
-- Label: `eq:mu_dh_2005`
-- Source: \cite{Cameretti2005}, Eq.~(11)
-- Status: Original literature form
-- Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
-- Change note: Baseline 2005 formulation retained for comparison to updated derivatives.
-- LaTeX: `docs/latex/equations.tex:1573`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\tilde{\mu}^{DH}_{i}= -\frac{q_{i}^2 \kappa}{24 \pi k T \epsilon}\left[2 \chi_{i}+\frac{\sum_{j} x_{j} q_{j}^2 \sigma_{k}}{\sum_{j} x_{j} q_{j}^2}\right]
-```
-
-### `sigma_dh_2005`
-- Label: `eq:sigma_dh_2005`
-- Source: \cite{Cameretti2005}, Eq.~(20)
-- Status: Close literature match
-- Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
-- Change note: High textual similarity to a tagged equation in the cited local paper export.
-- LaTeX: `docs/latex/equations.tex:1584`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\sigma_{k}=\left(\frac{\partial\left(\kappa \chi_{k}\right)}{\partial \kappa}\right)_{T, \mathrm{~N}}=-2 \chi_{k}+\frac{3}{1+\kappa d_{k}}
-```
-
 ### `dares_dh_dxi`
 - Label: `eq:dares_dh_dxi`
 - Source: \cite{Bulow2019} (equation number unresolved in local corpus)
 - Status: Literature update
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Changed from the 2005 constant-dielectric form to the 2019 concentration-dependent dielectric derivative form.
-- LaTeX: `docs/latex/equations.tex:1597`
+- LaTeX: `docs/latex/equations.tex:1402`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1760,7 +1550,7 @@ b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left
 - Status: Manual literature match
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Mapped manually to the concentration-dependent dielectric derivative of Debye screening parameter.
-- LaTeX: `docs/latex/equations.tex:1628`
+- LaTeX: `docs/latex/equations.tex:1433`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1775,7 +1565,7 @@ b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left
 - Status: Manual literature match
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Mapped manually to the concentration derivative of the chi-function.
-- LaTeX: `docs/latex/equations.tex:1641`
+- LaTeX: `docs/latex/equations.tex:1446`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1790,7 +1580,7 @@ b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left
 - Status: Manual literature match
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Mapped manually to the Bjerrum-treatment composition derivative of reduced Debye-Huckel Helmholtz energy.
-- LaTeX: `docs/latex/equations.tex:1657`
+- LaTeX: `docs/latex/equations.tex:1462`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1821,7 +1611,7 @@ b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left
 - Status: Adapted notation
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation.
-- LaTeX: `docs/latex/equations.tex:1687`
+- LaTeX: `docs/latex/equations.tex:1491`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1836,7 +1626,7 @@ b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left
 - Status: Manual literature match
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Mapped manually to the Bjerrum-treatment chi-function derivative relation.
-- LaTeX: `docs/latex/equations.tex:1700`
+- LaTeX: `docs/latex/equations.tex:1504`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1851,7 +1641,7 @@ b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left
 - Status: Manual literature match
 - Description: Specifies dielectric-property mixing or derivative form for debye and huckel electrolyte term contribution.
 - Change note: Direct derivative of the mole-fraction dielectric mixing rule.
-- LaTeX: `docs/latex/equations.tex:1716`
+- LaTeX: `docs/latex/equations.tex:1520`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1865,7 +1655,7 @@ b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left
 - Status: Manual literature match
 - Description: Specifies dielectric-property mixing or derivative form for debye and huckel electrolyte term contribution.
 - Change note: Direct derivative of the mass-fraction dielectric mixing rule.
-- LaTeX: `docs/latex/equations.tex:1729`
+- LaTeX: `docs/latex/equations.tex:1533`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1880,7 +1670,7 @@ b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left
 - Status: Manual literature match
 - Description: Specifies dielectric-property mixing or derivative form for debye and huckel electrolyte term contribution.
 - Change note: Direct derivative of the mixed solvent-plus-ion dielectric mixing rule.
-- LaTeX: `docs/latex/equations.tex:1743`
+- LaTeX: `docs/latex/equations.tex:1547`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1899,7 +1689,7 @@ b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left
 - Status: New literature extension
 - Description: Provides a supporting relation used in debye and huckel electrolyte term contribution.
 - Change note: Changed from earlier dielectric-mixing rules to the 2025 ion-suppression mixing form.
-- LaTeX: `docs/latex/equations.tex:1761`
+- LaTeX: `docs/latex/equations.tex:1565`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1916,7 +1706,7 @@ b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left
 - Status: Manual literature match
 - Description: Provides a differential relation needed for debye and huckel electrolyte term contribution calculations.
 - Change note: Derivative of the 2025 dielectric mixing rule via chain rule.
-- LaTeX: `docs/latex/equations.tex:1776`
+- LaTeX: `docs/latex/equations.tex:1580`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1934,7 +1724,7 @@ b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left
 - Status: Manual literature match
 - Description: Provides a supporting relation used in debye and huckel electrolyte term contribution.
 - Change note: Mapped manually to the salt-free solvent dielectric mixture definition.
-- LaTeX: `docs/latex/equations.tex:1792`
+- LaTeX: `docs/latex/equations.tex:1596`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1955,7 +1745,7 @@ b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left
 - Status: Manual literature match
 - Description: Provides a differential relation needed for debye and huckel electrolyte term contribution calculations.
 - Change note: Derivative of solvent-mixture dielectric expression in Eq. (12).
-- LaTeX: `docs/latex/equations.tex:1811`
+- LaTeX: `docs/latex/equations.tex:1615`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1976,7 +1766,7 @@ b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left
 - Status: Manual literature match
 - Description: Provides a differential relation needed for debye and huckel electrolyte term contribution calculations.
 - Change note: Ion-fraction helper used in the Eq. (11) differential form.
-- LaTeX: `docs/latex/equations.tex:1830`
+- LaTeX: `docs/latex/equations.tex:1634`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -1996,7 +1786,7 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - Status: Manual literature match
 - Description: Provides a differential relation needed for debye and huckel electrolyte term contribution calculations.
 - Change note: Piecewise closed-form derivative obtained by combining Eq. (11) and Eq. (12).
-- LaTeX: `docs/latex/equations.tex:1848`
+- LaTeX: `docs/latex/equations.tex:1652`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -2012,32 +1802,13 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
     \end{cases}
 ```
 
-### `mu_born`
-- Label: `eq:mu_born`
-- Source: \cite{Gross2001}, Eq.~(A.33) and \cite{Bulow2021a}, Eq.~(3)
-- Status: Manual literature match
-- Description: Gives a chemical-potential contribution in born electrolyte term contribution.
-- Change note: Born chemical-potential contribution written as Eq. (A.33)-style decomposition using the Part I Born composition derivative term.
-- LaTeX: `docs/latex/equations.tex:1872`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\begin{aligned}
-        \tilde{\mu}^{Born}_{k}
-        &=\tilde{a}^{\mathrm{Born}} + Z^{Born}
-        +\left(\frac{\partial\tilde{a}^{\mathrm{Born}}}{\partial x_{k}}\right)_{T,\nu,x_{i\neq k}}
-        \\
-        &\quad -\sum_{j=1}^{N}\left[x_{j}\left(\frac{\partial\tilde{a}^{\mathrm{Born}}}{\partial x_{j}}\right)_{T,\nu,x_{i\neq j}}\right]
-    \end{aligned}
-```
-
 ### `dares_born_dxi_v1`
 - Label: `eq:dares_born_dxi_v1`
 - Source: \cite{Bulow2021a}, Eq.~(3)
 - Status: Adapted notation
 - Description: Specifies dielectric-property mixing or derivative form for born electrolyte term contribution.
 - Change note: Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation.
-- LaTeX: `docs/latex/equations.tex:1892`
+- LaTeX: `docs/latex/equations.tex:1676`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -2050,7 +1821,7 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - Status: Project-specific modification
 - Description: Specifies dielectric-property mixing or derivative form for born electrolyte term contribution.
 - Change note: Changed from Version 1 differential by restoring the composition summation in the dielectric-derivative term.
-- LaTeX: `docs/latex/equations.tex:1905`
+- LaTeX: `docs/latex/equations.tex:1689`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -2063,7 +1834,7 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - Status: Project-specific modification
 - Description: Specifies dielectric-property mixing or derivative form for born electrolyte term contribution.
 - Change note: Changed from earlier Born differential variants toward the SSM+DS implementation path.
-- LaTeX: `docs/latex/equations.tex:1921`
+- LaTeX: `docs/latex/equations.tex:1705`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -2089,8 +1860,8 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - Source: \cite{Figiel2025} (equation number unresolved in local corpus)
 - Status: Project-specific modification
 - Description: Provides a differential relation needed for born electrolyte term contribution calculations.
-- Change note: Changed from Version 3 to the final refactored derivative form with explicit $D_i$ and $\Delta d_m$ terms.
-- LaTeX: `docs/latex/equations.tex:1947`
+- Change note: Changed from Version 3 to the final refactored derivative form with explicit \(D_i\) and \(\Delta d_m\) terms.
+- LaTeX: `docs/latex/equations.tex:1731`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -2128,7 +1899,7 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - Status: Adapted implementation form
 - Description: Provides a differential relation needed for born electrolyte term contribution calculations.
 - Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
-- LaTeX: `docs/latex/equations.tex:1983`
+- LaTeX: `docs/latex/equations.tex:1767`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -2141,532 +1912,22 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - Status: Adapted implementation form
 - Description: Provides a supporting relation used in born electrolyte term contribution.
 - Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
-- LaTeX: `docs/latex/equations.tex:1994`
+- LaTeX: `docs/latex/equations.tex:1778`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
 D_{m}=d_{m}^{\text {Born }}+\Delta d_{m}, \Delta d_{m}=\frac{\left(f_{\text {mix }}-1\right)}{\left|z_{m}\right|} d_{m}^{\text {Born }} .
 ```
 
-## Fugacity Coefficient
-
-### `lnphi_total`
-- Label: `eq:lnphi_total`
-- Source: \cite{Gross2001}, Eq.~(A.32)
-- Status: Manual literature match
-- Description: Gives the total fugacity-coefficient relation in fugacity coefficient.
-- Change note: Mapped manually to the residual-chemical-potential form used in the PC-SAFT appendix.
-- LaTeX: `docs/latex/equations.tex:2008`
-- C++: `src/epcsaft/native/epcsaft_fugcoef.cpp:57` (FugacityContributionResult fugacity_coefficient_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
-
-```tex
-\ln\varphi_{k}
-    =
-    \tilde{\mu}_{k}^{\mathrm{res}}-\ln Z
-    =
-    \frac{\mu_{k}^{\mathrm{res}}}{kT}-\ln Z
-    =
-    \sum_\alpha \ln \varphi^\alpha
-    =
-    \sum_\alpha \mu^\alpha+\sum_\alpha\left[-\frac{Z^\alpha}{Z-1} \ln Z\right]
-```
-
-### `lnphi_total_sum`
-- Label: `eq:lnphi_total_sum`
-- Source: Project decomposition based on Eq.~\eqref{eq:lnphi_total}
-- Status: Project-specific organization
-- Description: Gives the explicit fugacity-coefficient decomposition in fugacity coefficient.
-- Change note: Written in explicit non-summation form to match the contribution-by-contribution structure used throughout this section.
-- LaTeX: `docs/latex/equations.tex:2027`
-- C++: `src/epcsaft/native/epcsaft_fugcoef.cpp:18` (VectorContributionTerms ln_fugacity_terms_from_mu_z_cpp(), `src/epcsaft/native/epcsaft_fugcoef.cpp:57` (FugacityContributionResult fugacity_coefficient_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
-
-```tex
-\ln\varphi_{k}
-    =
-    \ln\varphi_{k}^{hc}
-    +
-    \ln\varphi_{k}^{disp}
-    +
-    \ln\varphi_{k}^{assoc}
-    +
-    \ln\varphi_{k}^{DH}
-    +
-    \ln\varphi_{k}^{Born}
-```
-
-### `lnphi_alpha`
-- Label: `eq:lnphi_alpha`
-- Source: Project decomposition based on Eq.~\eqref{eq:lnphi_total}
-- Status: Project-specific organization
-- Description: Gives the generic contribution fugacity-coefficient relation in fugacity coefficient.
-- Change note: Uses only the explicit $Z^\alpha$ allocation requested for the contribution-resolved fugacity-coefficient terms.
-- LaTeX: `docs/latex/equations.tex:2048`
-- C++: `src/epcsaft/native/epcsaft_fugcoef.cpp:18` (VectorContributionTerms ln_fugacity_terms_from_mu_z_cpp()
-
-```tex
-\ln\varphi_{k}^{\alpha}
-    =
-    \tilde{\mu}_{k}^{\alpha}
-    -
-    \frac{Z^{\alpha}}{Z-1}\ln Z
-```
-
-### `lnphi_alpha_near_ideal`
-- Label: `eq:lnphi_alpha_near_ideal`
-- Source: Derived from Eq.~\eqref{eq:lnphi_alpha}
-- Status: Derived approximation
-- Description: Gives the near-ideal approximation for a contribution fugacity coefficient in fugacity coefficient.
-- Change note: Retained explicitly as an approximation only, using the $Z\rightarrow 1$ limit requested for documentation.
-- LaTeX: `docs/latex/equations.tex:2063`
-- C++: `src/epcsaft/native/epcsaft_fugcoef.cpp:6` (double stable_logz_over_zminus1(double Z) {)
-
-```tex
-\ln\varphi_{k}^{\alpha}
-    \approx
-    \tilde{\mu}_{k}^{\alpha}
-    -
-    Z^{\alpha}
-```
-
-### `lnphi_hc`
-- Label: `eq:lnphi_hc`
-- Source: Project decomposition based on Eq.~\eqref{eq:lnphi_alpha}
-- Status: Project-specific organization
-- Description: Gives the hard-chain fugacity-coefficient contribution in fugacity coefficient.
-- Change note: Hard-chain specialization of the explicit $Z^\alpha$ fugacity-coefficient split.
-- LaTeX: `docs/latex/equations.tex:2080`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\ln\varphi_{k}^{hc}
-    =
-    \tilde{\mu}_{k}^{hc}
-    -
-    \frac{Z^{hc}}{Z-1}\ln Z
-```
-
-### `lnphi_disp`
-- Label: `eq:lnphi_disp`
-- Source: Project decomposition based on Eq.~\eqref{eq:lnphi_alpha}
-- Status: Project-specific organization
-- Description: Gives the dispersion fugacity-coefficient contribution in fugacity coefficient.
-- Change note: Dispersion specialization of the explicit $Z^\alpha$ fugacity-coefficient split.
-- LaTeX: `docs/latex/equations.tex:2097`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\ln\varphi_{k}^{disp}
-    =
-    \tilde{\mu}_{k}^{disp}
-    -
-    \frac{Z^{disp}}{Z-1}\ln Z
-```
-
-### `lnphi_assoc`
-- Label: `eq:lnphi_assoc`
-- Source: Project decomposition based on Eq.~\eqref{eq:lnphi_alpha}
-- Status: Project-specific organization
-- Description: Gives the association fugacity-coefficient contribution in fugacity coefficient.
-- Change note: Association specialization of the explicit $Z^\alpha$ fugacity-coefficient split.
-- LaTeX: `docs/latex/equations.tex:2114`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\ln\varphi_{k}^{assoc}
-    =
-    \tilde{\mu}_{k}^{assoc}
-    -
-    \frac{Z^{assoc}}{Z-1}\ln Z
-```
-
-### `lnphi_dh`
-- Label: `eq:lnphi_dh`
-- Source: Project decomposition based on Eq.~\eqref{eq:lnphi_alpha}
-- Status: Project-specific organization
-- Description: Gives the Debye-Huckel fugacity-coefficient contribution in fugacity coefficient.
-- Change note: Debye-Huckel specialization of the explicit $Z^\alpha$ fugacity-coefficient split.
-- LaTeX: `docs/latex/equations.tex:2131`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\ln\varphi_{k}^{DH}
-    =
-    \tilde{\mu}_{k}^{DH}
-    -
-    \frac{Z^{DH}}{Z-1}\ln Z
-```
-
-### `lnphi_born`
-- Label: `eq:lnphi_born`
-- Source: Project decomposition based on Eq.~\eqref{eq:lnphi_alpha}
-- Status: Project-specific organization
-- Description: Gives the Born fugacity-coefficient contribution in fugacity coefficient.
-- Change note: Born specialization of the explicit $Z^\alpha$ fugacity-coefficient split.
-- LaTeX: `docs/latex/equations.tex:2148`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\ln\varphi_{k}^{Born}
-    =
-    \tilde{\mu}_{k}^{Born}
-    -
-    \frac{Z^{Born}}{Z-1}\ln Z
-```
-
-## Activity Coefficient
-
-### `gamma_sym`
-- Label: `eq:gamma_sym`
-- Source: Standard thermodynamic definition
-- Status: Project-specific organization
-- Description: Gives the symmetric-reference activity-coefficient definition in activity coefficient.
-- Change note: Added explicitly in non-log form so the activity section mirrors the fugacity-coefficient organization.
-- LaTeX: `docs/latex/equations.tex:2166`
-- C++: `src/epcsaft/native/epcsaft_activity.cpp:9` (vector<double> miac_gamma_vector_cpp(double t, double rho, const vector<double>& x, const add_args& cppargs)), `src/epcsaft/native/epcsaft_activity.cpp:305` (ActivityCoefficientNative activity_coefficient_values_cpp()
-
-```tex
-\gamma_{i}
-    =
-    \frac{\varphi_{i}(T,p,\mathbf{x})}{\varphi_{0i}(T,p,x_{i}=1)}
-```
-
-### `gamma_asym_inf`
-- Label: `eq:gamma_asym_inf`
-- Source: Standard thermodynamic definition
-- Status: Project-specific organization
-- Description: Gives the infinite-dilution activity-coefficient definition in activity coefficient.
-- Change note: Added explicitly in non-log form for ions and solutes referenced to infinite dilution.
-- LaTeX: `docs/latex/equations.tex:2179`
-- C++: `src/epcsaft/native/epcsaft_activity.cpp:305` (ActivityCoefficientNative activity_coefficient_values_cpp()
-
-```tex
-\gamma_{i}^{*}
-    =
-    \frac{\varphi_{i}(T,p,\mathbf{x})}{\varphi_{i}^{\infty}(T,p,x_{i}\to 0)}
-```
-
-### `lngamma_sym`
-- Label: `eq:lngamma_sym`
-- Source: Derived from Eq.~\eqref{eq:gamma_sym}
-- Status: Derived relation
-- Description: Gives the symmetric-reference logarithmic activity-coefficient definition in activity coefficient.
-- Change note: Expressed only in terms of fugacity coefficients, as requested for the activity section.
-- LaTeX: `docs/latex/equations.tex:2192`
-- C++: `src/epcsaft/native/epcsaft_activity.cpp:9` (vector<double> miac_gamma_vector_cpp(double t, double rho, const vector<double>& x, const add_args& cppargs)), `src/epcsaft/native/epcsaft_activity.cpp:305` (ActivityCoefficientNative activity_coefficient_values_cpp()
-
-```tex
-\ln\gamma_{i}
-    =
-    \ln\varphi_{i}
-    -
-    \ln\varphi_{0i}
-```
-
-### `lngamma_asym_inf`
-- Label: `eq:lngamma_asym_inf`
-- Source: Derived from Eq.~\eqref{eq:gamma_asym_inf}
-- Status: Derived relation
-- Description: Gives the infinite-dilution logarithmic activity-coefficient definition in activity coefficient.
-- Change note: Expressed only in terms of fugacity coefficients, as requested for the activity section.
-- LaTeX: `docs/latex/equations.tex:2207`
-- C++: `src/epcsaft/native/epcsaft_activity.cpp:305` (ActivityCoefficientNative activity_coefficient_values_cpp()
-
-```tex
-\ln\gamma_{i}^{*}
-    =
-    \ln\varphi_{i}
-    -
-    \ln\varphi_{i}^{\infty}
-```
-
-### `lngamma_asym_sum`
-- Label: `eq:lngamma_asym_sum`
-- Source: Project decomposition based on Eq.~\eqref{eq:lngamma_asym_inf}
-- Status: Project-specific organization
-- Description: Gives the explicit infinite-dilution activity-coefficient decomposition in activity coefficient.
-- Change note: Written in explicit non-summation form to mirror the fugacity-coefficient decomposition.
-- LaTeX: `docs/latex/equations.tex:2222`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\ln\gamma_{k}^{*}
-    =
-    \ln\gamma_{k}^{hc,*}
-    +
-    \ln\gamma_{k}^{disp,*}
-    +
-    \ln\gamma_{k}^{assoc,*}
-    +
-    \ln\gamma_{k}^{DH,*}
-    +
-    \ln\gamma_{k}^{Born,*}
-```
-
-### `gamma_alpha_asym`
-- Label: `eq:gamma_alpha_asym`
-- Source: Project decomposition based on Eq.~\eqref{eq:gamma_asym_inf}
-- Status: Project-specific organization
-- Description: Gives the generic contribution activity-coefficient definition in activity coefficient.
-- Change note: Defined only from contribution fugacity coefficients, not from chemical-potential expressions.
-- LaTeX: `docs/latex/equations.tex:2243`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\gamma_{k}^{\alpha,*}
-    =
-    \frac{\varphi_{k}^{\alpha}}{\varphi_{k}^{\alpha,\infty}}
-```
-
-### `lngamma_alpha_asym`
-- Label: `eq:lngamma_alpha_asym`
-- Source: Derived from Eq.~\eqref{eq:gamma_alpha_asym}
-- Status: Derived relation
-- Description: Gives the generic logarithmic contribution activity-coefficient definition in activity coefficient.
-- Change note: Written only in terms of contribution fugacity coefficients, consistent with the requested section logic.
-- LaTeX: `docs/latex/equations.tex:2256`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\ln\gamma_{k}^{\alpha,*}
-    =
-    \ln\varphi_{k}^{\alpha}
-    -
-    \ln\varphi_{k}^{\alpha,\infty}
-```
-
-### `gamma_pm_asym`
-- Label: `eq:gamma_pm_asym`
-- Source: Standard thermodynamic definition
-- Status: Project-specific organization
-- Description: Gives the mean-ionic infinite-dilution activity coefficient in activity coefficient.
-- Change note: Added in non-log form to parallel the logarithmic mean-ionic relation already used in electrolyte work.
-- LaTeX: `docs/latex/equations.tex:2271`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\gamma_{\pm}^{*}
-    =
-    \left(
-    \left(\gamma_{c}^{*}\right)^{\nu_{c}}
-    \left(\gamma_{a}^{*}\right)^{\nu_{a}}
-    \right)^{\frac{1}{\nu_{c}+\nu_{a}}}
-```
-
-### `lngamma_pm_asym`
-- Label: `eq:lngamma_pm_asym`
-- Source: Derived from Eq.~\eqref{eq:gamma_pm_asym}
-- Status: Derived relation
-- Description: Gives the logarithmic mean-ionic infinite-dilution activity coefficient in activity coefficient.
-- Change note: Written explicitly in the standard stoichiometric-weighted logarithmic form.
-- LaTeX: `docs/latex/equations.tex:2287`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\ln\gamma_{\pm}^{*}
-    =
-    \frac{\nu_{c}\ln\gamma_{c}^{*}+\nu_{a}\ln\gamma_{a}^{*}}{\nu_{c}+\nu_{a}}
-```
-
-### `lngamma_pm_alpha_asym`
-- Label: `eq:lngamma_pm_alpha_asym`
-- Source: Project decomposition based on Eq.~\eqref{eq:lngamma_pm_asym}
-- Status: Project-specific organization
-- Description: Gives the logarithmic contribution mean-ionic activity coefficient in activity coefficient.
-- Change note: Contribution form written directly from the contribution activity-coefficient terms.
-- LaTeX: `docs/latex/equations.tex:2300`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\ln\gamma_{\pm}^{\alpha,*}
-    =
-    \frac{\nu_{c}\ln\gamma_{c}^{\alpha,*}+\nu_{a}\ln\gamma_{a}^{\alpha,*}}{\nu_{c}+\nu_{a}}
-```
-
-### `lngamma_hc_asym`
-- Label: `eq:lngamma_hc_asym`
-- Source: Project decomposition based on Eq.~\eqref{eq:lngamma_alpha_asym}
-- Status: Project-specific organization
-- Description: Gives the hard-chain activity-coefficient contribution in activity coefficient.
-- Change note: Hard-chain specialization of the infinite-dilution contribution activity-coefficient definition.
-- LaTeX: `docs/latex/equations.tex:2315`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\ln\gamma_{k}^{hc,*}
-    =
-    \ln\varphi_{k}^{hc}
-    -
-    \ln\varphi_{k}^{hc,\infty}
-```
-
-### `lngamma_disp_asym`
-- Label: `eq:lngamma_disp_asym`
-- Source: Project decomposition based on Eq.~\eqref{eq:lngamma_alpha_asym}
-- Status: Project-specific organization
-- Description: Gives the dispersion activity-coefficient contribution in activity coefficient.
-- Change note: Dispersion specialization of the infinite-dilution contribution activity-coefficient definition.
-- LaTeX: `docs/latex/equations.tex:2332`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\ln\gamma_{k}^{disp,*}
-    =
-    \ln\varphi_{k}^{disp}
-    -
-    \ln\varphi_{k}^{disp,\infty}
-```
-
-### `lngamma_assoc_asym`
-- Label: `eq:lngamma_assoc_asym`
-- Source: Project decomposition based on Eq.~\eqref{eq:lngamma_alpha_asym}
-- Status: Project-specific organization
-- Description: Gives the association activity-coefficient contribution in activity coefficient.
-- Change note: Association specialization of the infinite-dilution contribution activity-coefficient definition.
-- LaTeX: `docs/latex/equations.tex:2349`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\ln\gamma_{k}^{assoc,*}
-    =
-    \ln\varphi_{k}^{assoc}
-    -
-    \ln\varphi_{k}^{assoc,\infty}
-```
-
-### `lngamma_dh_asym`
-- Label: `eq:lngamma_dh_asym`
-- Source: Project decomposition based on Eq.~\eqref{eq:lngamma_alpha_asym}
-- Status: Project-specific organization
-- Description: Gives the Debye-Huckel activity-coefficient contribution in activity coefficient.
-- Change note: Debye-Huckel specialization of the infinite-dilution contribution activity-coefficient definition.
-- LaTeX: `docs/latex/equations.tex:2366`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\ln\gamma_{k}^{DH,*}
-    =
-    \ln\varphi_{k}^{DH}
-    -
-    \ln\varphi_{k}^{DH,\infty}
-```
-
-### `lngamma_born_asym`
-- Label: `eq:lngamma_born_asym`
-- Source: Project decomposition based on Eq.~\eqref{eq:lngamma_alpha_asym}
-- Status: Project-specific organization
-- Description: Gives the Born activity-coefficient contribution in activity coefficient.
-- Change note: Born specialization of the infinite-dilution contribution activity-coefficient definition.
-- LaTeX: `docs/latex/equations.tex:2383`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\ln\gamma_{k}^{Born,*}
-    =
-    \ln\varphi_{k}^{Born}
-    -
-    \ln\varphi_{k}^{Born,\infty}
-```
-
-## Enthalpy, Entropy, and Gibbs Free Energy
-
-### `h_res`
-- Label: `eq:h_res`
-- Source: \cite{Figiel2025}, Eq.~(13)
-- Status: Adapted implementation form
-- Description: Provides a differential relation needed for entropy calculations.
-- Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
-- LaTeX: `docs/latex/equations.tex:2403`
-- C++: `src/epcsaft/native/epcsaft_dadt.cpp:254` (double hres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
-
-```tex
-\tilde{h}^{\mathrm{res}} = \frac{\hat{h}^{\mathrm{res}}}{RT}=-T\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial T}\right)_{\rho,x_{i}}+(Z-1)
-```
-
-### `s_res_from_s_vol`
-- Label: `eq:s_res_from_s_vol`
-- Source: \cite{Gross2001}, Eq.~(A.47)
-- Status: Manual literature match
-- Description: Provides a supporting relation used in entropy.
-- Change note: Mapped manually to the residual-entropy relation with logarithmic compressibility correction.
-- LaTeX: `docs/latex/equations.tex:2416`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\tilde{s}^{\mathrm{res}} = \frac{\hat{s}^{\mathrm{res}}(P,T)}{R}=\frac{\hat{s}^{\mathrm{res}}(\nu,T)}{R}+\ln(Z)
-```
-
-### `s_res`
-- Label: `eq:s_res`
-- Source: \cite{Gross2001}, Eq.~(A.48)
-- Status: Manual literature match
-- Description: Provides a differential relation needed for entropy calculations.
-- Change note: Mapped manually to the residual-entropy temperature-derivative form.
-- LaTeX: `docs/latex/equations.tex:2427`
-- C++: `src/epcsaft/native/epcsaft_dadt.cpp:268` (double sres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
-
-```tex
-\tilde{s}^{\mathrm{res}} = \frac{\hat{s}^{\mathrm{res}}(P,T)}{R}=-T\left[\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial T}\right)_{\rho,x_{i}}+\frac{\tilde{a}^{\mathrm{res}}}{T}\right]+\ln(Z)
-```
-
-### `g_res_from_hs`
-- Label: `eq:g_res_from_hs`
-- Source: \cite{Gross2001}, Eq.~(A.49)
-- Status: Manual literature match
-- Description: Provides a supporting relation used in gibbs free energy.
-- Change note: Mapped manually to the residual Gibbs relation via enthalpy and entropy.
-- LaTeX: `docs/latex/equations.tex:2440`
-- C++: No `EqID` owner comment has been attached yet.
-
-```tex
-\tilde{g}^{\mathrm{res}}=\frac{\hat{g}^{\mathrm{res}}}{RT}=\frac{\hat{h}^{\mathrm{res}}}{RT}-\frac{\hat{s}^{\mathrm{res}}(P,T)}{R}
-```
-
-### `g_res_from_ares`
-- Label: `eq:g_res_from_ares`
-- Source: \cite{Gross2001}, Eq.~(A.50)
-- Status: Manual literature match
-- Description: Provides a residual Helmholtz-energy relation for gibbs free energy.
-- Change note: Mapped manually to the residual Gibbs relation in Helmholtz/compressibility form.
-- LaTeX: `docs/latex/equations.tex:2451`
-- C++: `src/epcsaft/native/epcsaft_dadt.cpp:261` (double gres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
-
-```tex
-\tilde{g}^{\mathrm{res}}=\tilde{a}^{\mathrm{res}}+(Z-1)-\ln(Z)
-```
-
-### `delta_g_solv_inf_x`
-- Label: `eq:delta_g_solv_inf_x`
-- Source: \cite{Figiel2025}, Eq.~(14)
-- Status: Adapted implementation form
-- Description: Provides a residual Helmholtz-energy relation for gibbs free energy.
-- Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
-- LaTeX: `docs/latex/equations.tex:2464`
-- C++: `src/epcsaft/native/epcsaft_activity.cpp:67` (vector<double> gsolv_values_cpp(double t, double rho, const vector<double>& x, const add_args& cppargs))
-
-```tex
-\Delta^{\mathrm{solv},x}G_{i}^{\infty}(T,p,x_{j\neq i},x_{i}\to0)=RT\ln(\varphi_{i}^{\infty}(T,p,x_{j\neq i},x_{i}\to0))
-```
-
-### `delta_g_transfer_inf`
-- Label: `eq:delta_g_transfer_inf`
-- Source: \cite{Figiel2025}, Eq.~(14)
-- Status: Adapted implementation form
-- Description: Provides a residual Helmholtz-energy relation for gibbs free energy.
-- Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
-- LaTeX: `docs/latex/equations.tex:2476`
-- C++: `src/epcsaft/native/epcsaft_activity.cpp:67` (vector<double> gsolv_values_cpp(double t, double rho, const vector<double>& x, const add_args& cppargs))
-
-```tex
-\Delta^{\mathrm{tr}}G_{i}^{\infty,\mathrm{S}1\to\mathrm{S}2}(T,p,x_{j\neq i},x_{i}\rightarrow0)=RT\ln\left(\frac{\varphi_{i}^{\infty,\mathrm{S}2}}{\varphi_{i}^{\infty,\mathrm{S}1}}\right)
-```
+## Temperature Differential
 
 ### `dares_dT`
 - Label: `eq:dares_dT`
 - Source: \cite{Gross2001}, Eq.~(A.51)
 - Status: Project-specific extension
-- Description: Provides a differential relation needed for temperature differential equations calculations.
+- Description: Provides a differential relation needed for temperature differential calculations.
 - Change note: Mapped to Eq. (A.51) and extended here by including association, Debye-Huckel, and Born derivatives.
-- LaTeX: `docs/latex/equations.tex:2489`
+- LaTeX: `docs/latex/equations.tex:1794`
 - C++: `src/epcsaft/native/epcsaft_dadt.cpp:6` (ScalarContributionTerms temperature_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
 ```tex
@@ -2680,9 +1941,9 @@ D_{m}=d_{m}^{\text {Born }}+\Delta d_{m}, \Delta d_{m}=\frac{\left(f_{\text {mix
 - Label: `eq:dares_hc_dT`
 - Source: \cite{Gross2001}, Eq.~(A.54)
 - Status: Manual literature match
-- Description: Provides a differential relation needed for temperature differential equations calculations.
+- Description: Provides a differential relation needed for temperature differential calculations.
 - Change note: Mapped manually to the hard-chain temperature derivative expression.
-- LaTeX: `docs/latex/equations.tex:2505`
+- LaTeX: `docs/latex/equations.tex:1810`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -2693,9 +1954,9 @@ D_{m}=d_{m}^{\text {Born }}+\Delta d_{m}, \Delta d_{m}=\frac{\left(f_{\text {mix
 - Label: `eq:dares_hs_dT`
 - Source: \cite{Gross2001}, Eq.~(A.55)
 - Status: Manual literature match
-- Description: Provides a differential relation needed for temperature differential equations calculations.
+- Description: Provides a differential relation needed for temperature differential calculations.
 - Change note: Mapped manually to the hard-sphere temperature derivative expression.
-- LaTeX: `docs/latex/equations.tex:2516`
+- LaTeX: `docs/latex/equations.tex:1821`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -2720,9 +1981,9 @@ D_{m}=d_{m}^{\text {Born }}+\Delta d_{m}, \Delta d_{m}=\frac{\left(f_{\text {mix
 - Label: `eq:dg_hs_dT`
 - Source: \cite{Gross2001}, Eq.~(A.57)
 - Status: Manual literature match
-- Description: Provides a differential relation needed for temperature differential equations calculations.
+- Description: Provides a differential relation needed for temperature differential calculations.
 - Change note: Mapped manually to the contact-value temperature derivative expression.
-- LaTeX: `docs/latex/equations.tex:2541`
+- LaTeX: `docs/latex/equations.tex:1846`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -2742,9 +2003,9 @@ D_{m}=d_{m}^{\text {Born }}+\Delta d_{m}, \Delta d_{m}=\frac{\left(f_{\text {mix
 - Label: `eq:d_segment_dT`
 - Source: \cite{Gross2001}, Eq.~(A.9) (derived temperature differential)
 - Status: Manual literature match
-- Description: Provides a differential relation needed for temperature differential equations calculations.
+- Description: Provides a differential relation needed for temperature differential calculations.
 - Change note: Computed by differentiating Eq. (A.9) with respect to temperature.
-- LaTeX: `docs/latex/equations.tex:2561`
+- LaTeX: `docs/latex/equations.tex:1866`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -2755,9 +2016,9 @@ d_{i,T}=\frac{\partial d_{i}}{\partial T}=\sigma_{i}\left(3\frac{\epsilon_{i}}{k
 - Label: `eq:zeta_n_dT`
 - Source: \cite{Gross2001}, Eq.~(A.53)
 - Status: Manual literature match
-- Description: Provides a differential relation needed for temperature differential equations calculations.
+- Description: Provides a differential relation needed for temperature differential calculations.
 - Change note: Mapped manually to the temperature derivative of zeta moments.
-- LaTeX: `docs/latex/equations.tex:2572`
+- LaTeX: `docs/latex/equations.tex:1877`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -2770,7 +2031,7 @@ d_{i,T}=\frac{\partial d_{i}}{\partial T}=\sigma_{i}\left(3\frac{\epsilon_{i}}{k
 - Status: Adapted implementation form
 - Description: Provides a supporting relation used in temperature differential equations.
 - Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
-- LaTeX: `docs/latex/equations.tex:2583`
+- LaTeX: `docs/latex/equations.tex:1888`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -2781,9 +2042,9 @@ d_{i,T}=\frac{\partial d_{i}}{\partial T}=\sigma_{i}\left(3\frac{\epsilon_{i}}{k
 - Label: `eq:dares_disp_dT`
 - Source: \cite{Gross2001}, Eq.~(A.58)
 - Status: Manual literature match
-- Description: Provides a differential relation needed for temperature differential equations calculations.
+- Description: Provides a differential relation needed for temperature differential calculations.
 - Change note: Mapped manually to the dispersion temperature derivative expression.
-- LaTeX: `docs/latex/equations.tex:2596`
+- LaTeX: `docs/latex/equations.tex:1901`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -2798,7 +2059,7 @@ d_{i,T}=\frac{\partial d_{i}}{\partial T}=\sigma_{i}\left(3\frac{\epsilon_{i}}{k
 - Status: Derived from literature equation
 - Description: Defines the Debye screening quantity used in temperature differential equations.
 - Change note: Temperature differential form derived from Debye-Huckel term and chi-function definitions.
-- LaTeX: `docs/latex/equations.tex:2611`
+- LaTeX: `docs/latex/equations.tex:1916`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
@@ -2811,11 +2072,795 @@ d_{i,T}=\frac{\partial d_{i}}{\partial T}=\sigma_{i}\left(3\frac{\epsilon_{i}}{k
 - Status: Derived from literature equation
 - Description: Specifies dielectric-property mixing or derivative form for temperature differential equations.
 - Change note: Temperature derivative of the Born contribution derived from the Part I Born Helmholtz equation.
-- LaTeX: `docs/latex/equations.tex:2624`
+- LaTeX: `docs/latex/equations.tex:1929`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex
 \left(\frac{\partial\tilde{a}^{\mathrm{Born}}}{\partial T}\right)_{\rho,x_{i}}=\frac{e^2}{4 \pi \varepsilon_{0} k_{B} T^2}\left(1-\frac{1}{\varepsilon_{r}}\right) \sum_{i} \frac{x_{i} z_{i}^2}{a_{i}}
+```
+
+## Pressure (Compressibility Factor)
+
+### `pressure_from_z`
+- Label: `eq:pressure_from_z`
+- Source: \cite{Gross2001}, Eq.~(A.21)
+- Status: Adapted implementation form
+- Description: Provides a supporting relation used in pressure (compressibility factor).
+- Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+- LaTeX: `docs/latex/equations.tex:1946`
+- C++: `src/epcsaft/native/epcsaft_Z.cpp:81` (double p_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+
+```tex
+P=ZkT\rho\left(10^{10}\frac{\hat{\mathrm{A}}}{\mathrm{m}}\right)^{3}
+```
+
+### `z_from_eta`
+- Label: `eq:z_from_eta`
+- Source: \cite{Gross2001}, Eq.~(A.22)
+- Status: Close literature match
+- Description: Provides a differential relation needed for pressure (compressibility factor) calculations.
+- Change note: High textual similarity to a tagged equation in the cited local paper export.
+- LaTeX: `docs/latex/equations.tex:1957`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+Z=1+\eta\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\eta}\right)_{T,x_{i}}
+```
+
+### `z_eta_rho_identity`
+- Label: `eq:z_eta_rho_identity`
+- Source: \cite{Gross2001}, Eq.~(A.22)
+- Status: Adapted implementation form
+- Description: Provides a differential relation needed for pressure (compressibility factor) calculations.
+- Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+- LaTeX: `docs/latex/equations.tex:1967`
+- C++: `src/epcsaft/native/epcsaft_dadrho.cpp:6` (DadrhoResult dadrho_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+
+```tex
+\eta\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\eta}\right)_{T,x_{i}} = \rho\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\rho}\right)_{T,x_{i}}
+```
+
+### `z_from_rho`
+- Label: `eq:z_from_rho`
+- Source: \cite{Gross2001}, Eq.~(A.22)
+- Status: Close literature match
+- Description: Provides a differential relation needed for pressure (compressibility factor) calculations.
+- Change note: High textual similarity to a tagged equation in the cited local paper export.
+- LaTeX: `docs/latex/equations.tex:1978`
+- C++: `src/epcsaft/native/epcsaft_Z.cpp:68` (CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+
+```tex
+Z=1+\rho\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\rho}\right)_{T,x_{i}}
+```
+
+### `z_total`
+- Label: `eq:z_total`
+- Source: \cite{Gross2001}, Eq.~(A.24)
+- Status: Project-specific extension
+- Description: Provides a supporting relation used in pressure (compressibility factor).
+- Change note: Mapped to Eq. (A.24) and extended here by adding association, Debye-Huckel, and Born compressibility contributions.
+- LaTeX: `docs/latex/equations.tex:1989`
+- C++: `src/epcsaft/native/epcsaft_Z.cpp:68` (CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+
+```tex
+Z = 1
+    + \rho\left(\frac{\partial\tilde{a}^{hc}}{\partial\rho}\right)_{T,x}
+    + \rho\left(\frac{\partial\tilde{a}^{disp}}{\partial\rho}\right)_{T,x}
+    + \rho\left(\frac{\partial\tilde{a}^{assoc}}{\partial\rho}\right)_{T,x}
+    + \rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
+    + \rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}
+```
+
+### `z_minus_one_sum`
+- Label: `eq:z_minus_one_sum`
+- Source: \cite{Gross2001}, Eq.~(A.24) with the documented ePC-SAFT term decomposition
+- Status: Project-specific extension
+- Description: Gives the explicit residual compressibility identity in pressure (compressibility factor).
+- Change note: Added as the direct $Z-1$ form so later fugacity equations can use only $Z$ and $Z^\alpha$ terms explicitly.
+- LaTeX: `docs/latex/equations.tex:2005`
+- C++: `src/epcsaft/native/epcsaft_Z.cpp:68` (CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+
+```tex
+Z - 1
+    = \rho\left(\frac{\partial\tilde{a}^{hc}}{\partial\rho}\right)_{T,x}
+    + \rho\left(\frac{\partial\tilde{a}^{disp}}{\partial\rho}\right)_{T,x}
+    + \rho\left(\frac{\partial\tilde{a}^{assoc}}{\partial\rho}\right)_{T,x}
+    + \rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
+    + \rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}
+```
+
+### `z_alpha`
+- Label: `eq:z_alpha`
+- Source: \cite{Gross2001}, Eq.~(A.22)
+- Status: Adapted notation
+- Description: Provides a differential relation needed for pressure (compressibility factor) calculations.
+- Change note: Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation.
+- LaTeX: `docs/latex/equations.tex:2021`
+- C++: `src/epcsaft/native/epcsaft_Z.cpp:53` (ScalarContributionTerms compressibility_terms_from_dadrho_cpp(const DadrhoResult &result) {)
+
+```tex
+Z^\alpha =\rho\left(\frac{\partial\tilde{a}^\alpha}{\partial\rho}\right)_{T,x}
+    .
+```
+
+## Chemical Potential
+
+### `mu_res`
+- Label: `eq:mu_res`
+- Source: \cite{Gross2001}, Eq.~(A.1)
+- Status: Adapted implementation form
+- Description: Gives a chemical-potential contribution in chemical potential.
+- Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+- LaTeX: `docs/latex/equations.tex:2039`
+- C++: `src/epcsaft/native/epcsaft_mu.cpp:64` (ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+
+```tex
+\tilde{\mu_{k}}^{\mathrm{res}}=\frac{\mu_{k}^\mathrm{res}}{kT} = \frac{\hat{\mu}_{k}^\mathrm{res}}{RT}
+```
+
+### `mu_res_from_ares`
+- Label: `eq:mu_res_from_ares`
+- Source: \cite{Gross2001}, Eq.~(A.33)
+- Status: Close literature match
+- Description: Gives a chemical-potential contribution in chemical potential.
+- Change note: High textual similarity to a tagged equation in the cited local paper export.
+- LaTeX: `docs/latex/equations.tex:2050`
+- C++: `src/epcsaft/native/epcsaft_mu.cpp:8` (vector<double> mu_contribution_cpp()
+
+```tex
+\begin{aligned}
+        \tilde{\mu_{k}}^{\mathrm{res}}
+        &=\tilde{a}^{\mathrm{res}}+(\mathrm{Z}-1)
+        +\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial x_{k}}\right)_{T,\nu,x_{i\neq k}}
+        \\
+        &\quad -\sum_{j=1}^{N}\left[x_{j}\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial x_{j}}\right)_{T,\nu,x_{i\neq j}}\right]
+    \end{aligned}
+```
+
+### `mu_res_sum`
+- Label: `eq:mu_res_sum`
+- Source: \cite{Gross2001}, Eq.~(A.33)
+- Status: Manual literature match
+- Description: Gives the explicit residual chemical-potential decomposition in chemical potential.
+- Change note: Written in explicit non-summation form to match the style used for the other property families in this section.
+- LaTeX: `docs/latex/equations.tex:2067`
+- C++: `src/epcsaft/native/epcsaft_mu.cpp:64` (ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+
+```tex
+\tilde{\mu_{k}}^{\mathrm{res}}=\tilde{\mu_{k}}^{\mathrm{hc}}+\tilde{\mu_{k}}^{\mathrm{disp}}+\tilde{\mu_{k}}^{\mathrm{assoc}}+\tilde{\mu_{k}}^{\mathrm{DH}}+\tilde{\mu_{k}}^{\mathrm{Born}}
+```
+
+### `mu_hc`
+- Label: `eq:mu_hc`
+- Source: \cite{Gross2001}, Eq.~(A.33)
+- Status: Manual literature match
+- Description: Gives a chemical-potential contribution in hard-chain reference contribution.
+- Change note: Eq. (A.33) specialization to the hard-chain contribution.
+- LaTeX: `docs/latex/equations.tex:2081`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\begin{aligned}
+        \tilde{\mu}^{hc}_{k}
+        &=\tilde{a}^{\mathrm{hc}} + Z^{hc}
+        +\left(\frac{\partial\tilde{a}^{\mathrm{hc}}}{\partial x_{k}}\right)_{T,\nu,x_{i\neq k}}
+        \\
+        &\quad -\sum_{j=1}^{N}\left[x_{j}\left(\frac{\partial\tilde{a}^{\mathrm{hc}}}{\partial x_{j}}\right)_{T,\nu,x_{i\neq j}}\right]
+    \end{aligned}
+```
+
+### `mu_disp`
+- Label: `eq:mu_disp`
+- Source: \cite{Gross2001}, Eq.~(A.33)
+- Status: Manual literature match
+- Description: Gives a chemical-potential contribution in dispersion contribution.
+- Change note: Eq. (A.33) specialization to the dispersion contribution.
+- LaTeX: `docs/latex/equations.tex:2101`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\begin{aligned}
+        \tilde{\mu}^{disp}_{k}
+        &=\tilde{a}^{\mathrm{disp}} + Z^{disp}
+        +\left(\frac{\partial\tilde{a}^{\mathrm{disp}}}{\partial x_{k}}\right)_{T,\nu,x_{i\neq k}}
+        \\
+        &\quad -\sum_{j=1}^{N}\left[x_{j}\left(\frac{\partial\tilde{a}^{\mathrm{disp}}}{\partial x_{j}}\right)_{T,\nu,x_{i\neq j}}\right]
+    \end{aligned}
+```
+
+### `mu_assoc`
+- Label: `eq:mu_assoc`
+- Source: \cite{Chapman1990} (exact equation number not available in local PDFs)
+- Status: No direct numbered source in local corpus
+- Description: Gives a chemical-potential contribution in association contribution.
+- Change note: Association chemical-potential decomposition written in implementation form; exact numbered Chapman equation unavailable in local PDFs.
+- LaTeX: `docs/latex/equations.tex:2121`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\begin{aligned}
+        \tilde{\mu}^{assoc}_{k}
+        &=\tilde{a}^{\mathrm{assoc}} + Z^{assoc}
+        +\left(\frac{\partial\tilde{a}^{\mathrm{assoc}}}{\partial x_{k}}\right)_{T,\nu,x_{i\neq k}}
+        \\
+        &\quad -\sum_{j=1}^{N}\left[x_{j}\left(\frac{\partial\tilde{a}^{\mathrm{assoc}}}{\partial x_{j}}\right)_{T,\nu,x_{i\neq j}}\right]
+    \end{aligned}
+```
+
+### `mu_dh`
+- Label: `eq:mu_dh`
+- Source: \cite{Gross2001}, Eq.~(A.33)
+- Status: Adapted implementation form
+- Description: Gives a chemical-potential contribution in debye and huckel electrolyte term contribution.
+- Change note: Chemical-potential contribution written via the generic Eq. (A.33)-style decomposition for the Debye-Huckel term.
+- LaTeX: `docs/latex/equations.tex:2142`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\begin{aligned}
+        \tilde{\mu}^{DH}_{k}
+        &=\tilde{a}^{\mathrm{DH}} + Z^{DH}
+        +\left(\frac{\partial\tilde{a}^{\mathrm{DH}}}{\partial x_{k}}\right)_{T,\nu,x_{i\neq k}}
+        \\
+        &\quad -\sum_{j=1}^{N}\left[x_{j}\left(\frac{\partial\tilde{a}^{\mathrm{DH}}}{\partial x_{j}}\right)_{T,\nu,x_{i\neq j}}\right]
+    \end{aligned}
+```
+
+### `mu_dh_2005`
+- Label: `eq:mu_dh_2005`
+- Source: \cite{Cameretti2005}, Eq.~(11)
+- Status: Original literature form
+- Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+- Change note: Baseline 2005 formulation retained for comparison to updated derivatives.
+- LaTeX: `docs/latex/equations.tex:2161`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\tilde{\mu}^{DH}_{i}= -\frac{q_{i}^2 \kappa}{24 \pi k T \epsilon}\left[2 \chi_{i}+\frac{\sum_{j} x_{j} q_{j}^2 \sigma_{k}}{\sum_{j} x_{j} q_{j}^2}\right]
+```
+
+### `sigma_dh_2005`
+- Label: `eq:sigma_dh_2005`
+- Source: \cite{Cameretti2005}, Eq.~(20)
+- Status: Close literature match
+- Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+- Change note: High textual similarity to a tagged equation in the cited local paper export.
+- LaTeX: `docs/latex/equations.tex:2172`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\sigma_{k}=\left(\frac{\partial\left(\kappa \chi_{k}\right)}{\partial \kappa}\right)_{T, \mathrm{~N}}=-2 \chi_{k}+\frac{3}{1+\kappa d_{k}}
+```
+
+### `mu_born`
+- Label: `eq:mu_born`
+- Source: \cite{Gross2001}, Eq.~(A.33) and \cite{Bulow2021a}, Eq.~(3)
+- Status: Manual literature match
+- Description: Gives a chemical-potential contribution in born electrolyte term contribution.
+- Change note: Born chemical-potential contribution written as Eq. (A.33)-style decomposition using the Part I Born composition derivative term.
+- LaTeX: `docs/latex/equations.tex:2187`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\begin{aligned}
+        \tilde{\mu}^{Born}_{k}
+        &=\tilde{a}^{\mathrm{Born}} + Z^{Born}
+        +\left(\frac{\partial\tilde{a}^{\mathrm{Born}}}{\partial x_{k}}\right)_{T,\nu,x_{i\neq k}}
+        \\
+        &\quad -\sum_{j=1}^{N}\left[x_{j}\left(\frac{\partial\tilde{a}^{\mathrm{Born}}}{\partial x_{j}}\right)_{T,\nu,x_{i\neq j}}\right]
+    \end{aligned}
+```
+
+## Fugacity Coefficient
+
+### `lnphi_total`
+- Label: `eq:lnphi_total`
+- Source: \cite{Gross2001}, Eq.~(A.32)
+- Status: Manual literature match
+- Description: Gives the total fugacity-coefficient relation in fugacity coefficient.
+- Change note: Mapped manually to the residual-chemical-potential form used in the PC-SAFT appendix.
+- LaTeX: `docs/latex/equations.tex:2210`
+- C++: `src/epcsaft/native/epcsaft_fugcoef.cpp:88` (FugacityContributionResult fugacity_coefficient_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+
+```tex
+\ln\varphi_{k}
+    =
+    \tilde{\mu}_{k}^{\mathrm{res}}-\ln Z
+    =
+    \frac{\mu_{k}^{\mathrm{res}}}{kT}-\ln Z
+    =
+    \sum_\alpha \ln \varphi^\alpha
+    =
+    \sum_\alpha \mu^\alpha+\sum_\alpha\left[-\frac{Z^\alpha}{Z-1} \ln Z\right]
+```
+
+### `lnphi_total_sum`
+- Label: `eq:lnphi_total_sum`
+- Source: Project decomposition based on Eq.~\eqref{eq:lnphi_total}
+- Status: Project-specific organization
+- Description: Gives the explicit fugacity-coefficient decomposition in fugacity coefficient.
+- Change note: Written in explicit non-summation form to match the contribution-by-contribution structure used throughout this section.
+- LaTeX: `docs/latex/equations.tex:2229`
+- C++: `src/epcsaft/native/epcsaft_fugcoef.cpp:88` (FugacityContributionResult fugacity_coefficient_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+
+```tex
+\ln\varphi_{k}
+    =
+    \ln\varphi_{k}^{hc}
+    +
+    \ln\varphi_{k}^{disp}
+    +
+    \ln\varphi_{k}^{assoc}
+    +
+    \ln\varphi_{k}^{DH}
+    +
+    \ln\varphi_{k}^{Born}
+```
+
+### `lnphi_alpha`
+- Label: `eq:lnphi_alpha`
+- Source: Project decomposition based on Eq.~\eqref{eq:lnphi_total}
+- Status: Project-specific organization
+- Description: Gives the generic contribution fugacity-coefficient relation in fugacity coefficient.
+- Change note: Uses only the explicit $Z^\alpha$ allocation requested for the contribution-resolved fugacity-coefficient terms.
+- LaTeX: `docs/latex/equations.tex:2250`
+- C++: `src/epcsaft/native/epcsaft_fugcoef.cpp:33` (vector<double> lnfug_contribution_cpp()
+
+```tex
+\ln\varphi_{k}^{\alpha}
+    =
+    \tilde{\mu}_{k}^{\alpha}
+    -
+    \frac{Z^{\alpha}}{Z-1}\ln Z
+```
+
+### `lnphi_alpha_near_ideal`
+- Label: `eq:lnphi_alpha_near_ideal`
+- Source: Derived from Eq.~\eqref{eq:lnphi_alpha}
+- Status: Derived approximation
+- Description: Gives the near-ideal approximation for a contribution fugacity coefficient in fugacity coefficient.
+- Change note: Retained explicitly as an approximation only, using the $Z\rightarrow 1$ limit requested for documentation.
+- LaTeX: `docs/latex/equations.tex:2265`
+- C++: `src/epcsaft/native/epcsaft_fugcoef.cpp:8` (double stable_logz_over_zminus1(double Z) {)
+
+```tex
+\ln\varphi_{k}^{\alpha}
+    \approx
+    \tilde{\mu}_{k}^{\alpha}
+    -
+    Z^{\alpha}
+```
+
+### `lnphi_hc`
+- Label: `eq:lnphi_hc`
+- Source: Project decomposition based on Eq.~\eqref{eq:lnphi_alpha}
+- Status: Project-specific organization
+- Description: Gives the hard-chain fugacity-coefficient contribution in fugacity coefficient.
+- Change note: Hard-chain specialization of the explicit $Z^\alpha$ fugacity-coefficient split.
+- LaTeX: `docs/latex/equations.tex:2282`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\ln\varphi_{k}^{hc}
+    =
+    \tilde{\mu}_{k}^{hc}
+    -
+    \frac{Z^{hc}}{Z-1}\ln Z
+```
+
+### `lnphi_disp`
+- Label: `eq:lnphi_disp`
+- Source: Project decomposition based on Eq.~\eqref{eq:lnphi_alpha}
+- Status: Project-specific organization
+- Description: Gives the dispersion fugacity-coefficient contribution in fugacity coefficient.
+- Change note: Dispersion specialization of the explicit $Z^\alpha$ fugacity-coefficient split.
+- LaTeX: `docs/latex/equations.tex:2299`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\ln\varphi_{k}^{disp}
+    =
+    \tilde{\mu}_{k}^{disp}
+    -
+    \frac{Z^{disp}}{Z-1}\ln Z
+```
+
+### `lnphi_assoc`
+- Label: `eq:lnphi_assoc`
+- Source: Project decomposition based on Eq.~\eqref{eq:lnphi_alpha}
+- Status: Project-specific organization
+- Description: Gives the association fugacity-coefficient contribution in fugacity coefficient.
+- Change note: Association specialization of the explicit $Z^\alpha$ fugacity-coefficient split.
+- LaTeX: `docs/latex/equations.tex:2316`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\ln\varphi_{k}^{assoc}
+    =
+    \tilde{\mu}_{k}^{assoc}
+    -
+    \frac{Z^{assoc}}{Z-1}\ln Z
+```
+
+### `lnphi_dh`
+- Label: `eq:lnphi_dh`
+- Source: Project decomposition based on Eq.~\eqref{eq:lnphi_alpha}
+- Status: Project-specific organization
+- Description: Gives the Debye-Huckel fugacity-coefficient contribution in fugacity coefficient.
+- Change note: Debye-Huckel specialization of the explicit $Z^\alpha$ fugacity-coefficient split.
+- LaTeX: `docs/latex/equations.tex:2333`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\ln\varphi_{k}^{DH}
+    =
+    \tilde{\mu}_{k}^{DH}
+    -
+    \frac{Z^{DH}}{Z-1}\ln Z
+```
+
+### `lnphi_born`
+- Label: `eq:lnphi_born`
+- Source: Project decomposition based on Eq.~\eqref{eq:lnphi_alpha}
+- Status: Project-specific organization
+- Description: Gives the Born fugacity-coefficient contribution in fugacity coefficient.
+- Change note: Born specialization of the explicit $Z^\alpha$ fugacity-coefficient split.
+- LaTeX: `docs/latex/equations.tex:2350`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\ln\varphi_{k}^{Born}
+    =
+    \tilde{\mu}_{k}^{Born}
+    -
+    \frac{Z^{Born}}{Z-1}\ln Z
+```
+
+## Activity Coefficient
+
+### `gamma_sym`
+- Label: `eq:gamma_sym`
+- Source: Standard thermodynamic definition
+- Status: Project-specific organization
+- Description: Gives the symmetric-reference activity-coefficient definition in activity coefficient.
+- Change note: Added explicitly in non-log form so the activity section mirrors the fugacity-coefficient organization.
+- LaTeX: `docs/latex/equations.tex:2371`
+- C++: `src/epcsaft/native/epcsaft_activity.cpp:9` (vector<double> miac_gamma_vector_cpp(double t, double rho, const vector<double>& x, const add_args& cppargs))
+
+```tex
+\gamma_{i}
+    =
+    \frac{\varphi_{i}(T,p,\mathbf{x})}{\varphi_{0i}(T,p,x_{i}=1)}
+```
+
+### `gamma_asym_inf`
+- Label: `eq:gamma_asym_inf`
+- Source: Standard thermodynamic definition
+- Status: Project-specific organization
+- Description: Gives the infinite-dilution activity-coefficient definition in activity coefficient.
+- Change note: Added explicitly in non-log form for ions and solutes referenced to infinite dilution.
+- LaTeX: `docs/latex/equations.tex:2384`
+- C++: `src/epcsaft/native/epcsaft_activity.cpp:382` (ActivityCoefficientNative activity_coefficient_values_cpp()
+
+```tex
+\gamma_{i}^{*}
+    =
+    \frac{\varphi_{i}(T,p,\mathbf{x})}{\varphi_{i}^{\infty}(T,p,x_{i}\to 0)}
+```
+
+### `lngamma_sym`
+- Label: `eq:lngamma_sym`
+- Source: Derived from Eq.~\eqref{eq:gamma_sym}
+- Status: Derived relation
+- Description: Gives the symmetric-reference logarithmic activity-coefficient definition in activity coefficient.
+- Change note: Expressed only in terms of fugacity coefficients, as requested for the activity section.
+- LaTeX: `docs/latex/equations.tex:2397`
+- C++: `src/epcsaft/native/epcsaft_activity.cpp:9` (vector<double> miac_gamma_vector_cpp(double t, double rho, const vector<double>& x, const add_args& cppargs))
+
+```tex
+\ln\gamma_{i}
+    =
+    \ln\varphi_{i}
+    -
+    \ln\varphi_{0i}
+```
+
+### `lngamma_asym_inf`
+- Label: `eq:lngamma_asym_inf`
+- Source: Derived from Eq.~\eqref{eq:gamma_asym_inf}
+- Status: Derived relation
+- Description: Gives the infinite-dilution logarithmic activity-coefficient definition in activity coefficient.
+- Change note: Expressed only in terms of fugacity coefficients, as requested for the activity section.
+- LaTeX: `docs/latex/equations.tex:2412`
+- C++: `src/epcsaft/native/epcsaft_activity.cpp:382` (ActivityCoefficientNative activity_coefficient_values_cpp()
+
+```tex
+\ln\gamma_{i}^{*}
+    =
+    \ln\varphi_{i}
+    -
+    \ln\varphi_{i}^{\infty}
+```
+
+### `lngamma_asym_sum`
+- Label: `eq:lngamma_asym_sum`
+- Source: Project decomposition based on Eq.~\eqref{eq:lngamma_asym_inf}
+- Status: Project-specific organization
+- Description: Gives the explicit infinite-dilution activity-coefficient decomposition in activity coefficient.
+- Change note: Written in explicit non-summation form to mirror the fugacity-coefficient decomposition.
+- LaTeX: `docs/latex/equations.tex:2427`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\ln\gamma_{k}^{*}
+    =
+    \ln\gamma_{k}^{hc,*}
+    +
+    \ln\gamma_{k}^{disp,*}
+    +
+    \ln\gamma_{k}^{assoc,*}
+    +
+    \ln\gamma_{k}^{DH,*}
+    +
+    \ln\gamma_{k}^{Born,*}
+```
+
+### `gamma_alpha_asym`
+- Label: `eq:gamma_alpha_asym`
+- Source: Project decomposition based on Eq.~\eqref{eq:gamma_asym_inf}
+- Status: Project-specific organization
+- Description: Gives the generic contribution activity-coefficient definition in activity coefficient.
+- Change note: Defined only from contribution fugacity coefficients, not from chemical-potential expressions.
+- LaTeX: `docs/latex/equations.tex:2448`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\gamma_{k}^{\alpha,*}
+    =
+    \frac{\varphi_{k}^{\alpha}}{\varphi_{k}^{\alpha,\infty}}
+```
+
+### `lngamma_alpha_asym`
+- Label: `eq:lngamma_alpha_asym`
+- Source: Derived from Eq.~\eqref{eq:gamma_alpha_asym}
+- Status: Derived relation
+- Description: Gives the generic logarithmic contribution activity-coefficient definition in activity coefficient.
+- Change note: Written only in terms of contribution fugacity coefficients, consistent with the requested section logic.
+- LaTeX: `docs/latex/equations.tex:2461`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\ln\gamma_{k}^{\alpha,*}
+    =
+    \ln\varphi_{k}^{\alpha}
+    -
+    \ln\varphi_{k}^{\alpha,\infty}
+```
+
+### `gamma_pm_asym`
+- Label: `eq:gamma_pm_asym`
+- Source: Standard thermodynamic definition
+- Status: Project-specific organization
+- Description: Gives the mean-ionic infinite-dilution activity coefficient in activity coefficient.
+- Change note: Added in non-log form to parallel the logarithmic mean-ionic relation already used in electrolyte work.
+- LaTeX: `docs/latex/equations.tex:2476`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\gamma_{\pm}^{*}
+    =
+    \left(
+    \left(\gamma_{c}^{*}\right)^{\nu_{c}}
+    \left(\gamma_{a}^{*}\right)^{\nu_{a}}
+    \right)^{\frac{1}{\nu_{c}+\nu_{a}}}
+```
+
+### `lngamma_pm_asym`
+- Label: `eq:lngamma_pm_asym`
+- Source: Derived from Eq.~\eqref{eq:gamma_pm_asym}
+- Status: Derived relation
+- Description: Gives the logarithmic mean-ionic infinite-dilution activity coefficient in activity coefficient.
+- Change note: Written explicitly in the standard stoichiometric-weighted logarithmic form.
+- LaTeX: `docs/latex/equations.tex:2492`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\ln\gamma_{\pm}^{*}
+    =
+    \frac{\nu_{c}\ln\gamma_{c}^{*}+\nu_{a}\ln\gamma_{a}^{*}}{\nu_{c}+\nu_{a}}
+```
+
+### `lngamma_pm_alpha_asym`
+- Label: `eq:lngamma_pm_alpha_asym`
+- Source: Project decomposition based on Eq.~\eqref{eq:lngamma_pm_asym}
+- Status: Project-specific organization
+- Description: Gives the logarithmic contribution mean-ionic activity coefficient in activity coefficient.
+- Change note: Contribution form written directly from the contribution activity-coefficient terms.
+- LaTeX: `docs/latex/equations.tex:2505`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\ln\gamma_{\pm}^{\alpha,*}
+    =
+    \frac{\nu_{c}\ln\gamma_{c}^{\alpha,*}+\nu_{a}\ln\gamma_{a}^{\alpha,*}}{\nu_{c}+\nu_{a}}
+```
+
+### `lngamma_hc_asym`
+- Label: `eq:lngamma_hc_asym`
+- Source: Project decomposition based on Eq.~\eqref{eq:lngamma_alpha_asym}
+- Status: Project-specific organization
+- Description: Gives the hard-chain activity-coefficient contribution in activity coefficient.
+- Change note: Hard-chain specialization of the infinite-dilution contribution activity-coefficient definition.
+- LaTeX: `docs/latex/equations.tex:2520`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\ln\gamma_{k}^{hc,*}
+    =
+    \ln\varphi_{k}^{hc}
+    -
+    \ln\varphi_{k}^{hc,\infty}
+```
+
+### `lngamma_disp_asym`
+- Label: `eq:lngamma_disp_asym`
+- Source: Project decomposition based on Eq.~\eqref{eq:lngamma_alpha_asym}
+- Status: Project-specific organization
+- Description: Gives the dispersion activity-coefficient contribution in activity coefficient.
+- Change note: Dispersion specialization of the infinite-dilution contribution activity-coefficient definition.
+- LaTeX: `docs/latex/equations.tex:2537`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\ln\gamma_{k}^{disp,*}
+    =
+    \ln\varphi_{k}^{disp}
+    -
+    \ln\varphi_{k}^{disp,\infty}
+```
+
+### `lngamma_assoc_asym`
+- Label: `eq:lngamma_assoc_asym`
+- Source: Project decomposition based on Eq.~\eqref{eq:lngamma_alpha_asym}
+- Status: Project-specific organization
+- Description: Gives the association activity-coefficient contribution in activity coefficient.
+- Change note: Association specialization of the infinite-dilution contribution activity-coefficient definition.
+- LaTeX: `docs/latex/equations.tex:2554`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\ln\gamma_{k}^{assoc,*}
+    =
+    \ln\varphi_{k}^{assoc}
+    -
+    \ln\varphi_{k}^{assoc,\infty}
+```
+
+### `lngamma_dh_asym`
+- Label: `eq:lngamma_dh_asym`
+- Source: Project decomposition based on Eq.~\eqref{eq:lngamma_alpha_asym}
+- Status: Project-specific organization
+- Description: Gives the Debye-Huckel activity-coefficient contribution in activity coefficient.
+- Change note: Debye-Huckel specialization of the infinite-dilution contribution activity-coefficient definition.
+- LaTeX: `docs/latex/equations.tex:2571`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\ln\gamma_{k}^{DH,*}
+    =
+    \ln\varphi_{k}^{DH}
+    -
+    \ln\varphi_{k}^{DH,\infty}
+```
+
+### `lngamma_born_asym`
+- Label: `eq:lngamma_born_asym`
+- Source: Project decomposition based on Eq.~\eqref{eq:lngamma_alpha_asym}
+- Status: Project-specific organization
+- Description: Gives the Born activity-coefficient contribution in activity coefficient.
+- Change note: Born specialization of the infinite-dilution contribution activity-coefficient definition.
+- LaTeX: `docs/latex/equations.tex:2588`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\ln\gamma_{k}^{Born,*}
+    =
+    \ln\varphi_{k}^{Born}
+    -
+    \ln\varphi_{k}^{Born,\infty}
+```
+
+## Enthalpy, Entropy, and Gibbs Free Energy
+
+### `h_res`
+- Label: `eq:h_res`
+- Source: \cite{Figiel2025}, Eq.~(13)
+- Status: Adapted implementation form
+- Description: Provides a differential relation needed for entropy calculations.
+- Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+- LaTeX: `docs/latex/equations.tex:2611`
+- C++: `src/epcsaft/native/epcsaft_dadt.cpp:254` (double hres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+
+```tex
+\tilde{h}^{\mathrm{res}} = \frac{\hat{h}^{\mathrm{res}}}{RT}=-T\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial T}\right)_{\rho,x_{i}}+(Z-1)
+```
+
+### `s_res_from_s_vol`
+- Label: `eq:s_res_from_s_vol`
+- Source: \cite{Gross2001}, Eq.~(A.47)
+- Status: Manual literature match
+- Description: Provides a supporting relation used in entropy.
+- Change note: Mapped manually to the residual-entropy relation with logarithmic compressibility correction.
+- LaTeX: `docs/latex/equations.tex:2624`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\tilde{s}^{\mathrm{res}} = \frac{\hat{s}^{\mathrm{res}}(P,T)}{R}=\frac{\hat{s}^{\mathrm{res}}(\nu,T)}{R}+\ln(Z)
+```
+
+### `s_res`
+- Label: `eq:s_res`
+- Source: \cite{Gross2001}, Eq.~(A.48)
+- Status: Manual literature match
+- Description: Provides a differential relation needed for entropy calculations.
+- Change note: Mapped manually to the residual-entropy temperature-derivative form.
+- LaTeX: `docs/latex/equations.tex:2635`
+- C++: `src/epcsaft/native/epcsaft_dadt.cpp:268` (double sres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+
+```tex
+\tilde{s}^{\mathrm{res}} = \frac{\hat{s}^{\mathrm{res}}(P,T)}{R}=-T\left[\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial T}\right)_{\rho,x_{i}}+\frac{\tilde{a}^{\mathrm{res}}}{T}\right]+\ln(Z)
+```
+
+### `g_res_from_hs`
+- Label: `eq:g_res_from_hs`
+- Source: \cite{Gross2001}, Eq.~(A.49)
+- Status: Manual literature match
+- Description: Provides a supporting relation used in gibbs free energy.
+- Change note: Mapped manually to the residual Gibbs relation via enthalpy and entropy.
+- LaTeX: `docs/latex/equations.tex:2648`
+- C++: No `EqID` owner comment has been attached yet.
+
+```tex
+\tilde{g}^{\mathrm{res}}=\frac{\hat{g}^{\mathrm{res}}}{RT}=\frac{\hat{h}^{\mathrm{res}}}{RT}-\frac{\hat{s}^{\mathrm{res}}(P,T)}{R}
+```
+
+### `g_res_from_ares`
+- Label: `eq:g_res_from_ares`
+- Source: \cite{Gross2001}, Eq.~(A.50)
+- Status: Manual literature match
+- Description: Provides a residual Helmholtz-energy relation for gibbs free energy.
+- Change note: Mapped manually to the residual Gibbs relation in Helmholtz/compressibility form.
+- LaTeX: `docs/latex/equations.tex:2659`
+- C++: `src/epcsaft/native/epcsaft_dadt.cpp:261` (double gres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+
+```tex
+\tilde{g}^{\mathrm{res}}=\tilde{a}^{\mathrm{res}}+(Z-1)-\ln(Z)
+```
+
+### `delta_g_solv_inf_x`
+- Label: `eq:delta_g_solv_inf_x`
+- Source: \cite{Figiel2025}, Eq.~(14)
+- Status: Adapted implementation form
+- Description: Provides a residual Helmholtz-energy relation for gibbs free energy.
+- Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+- LaTeX: `docs/latex/equations.tex:2672`
+- C++: `src/epcsaft/native/epcsaft_activity.cpp:67` (vector<double> gsolv_values_cpp(double t, double rho, const vector<double>& x, const add_args& cppargs))
+
+```tex
+\Delta^{\mathrm{solv},x}G_{i}^{\infty}(T,p,x_{j\neq i},x_{i}\to0)=RT\ln(\varphi_{i}^{\infty}(T,p,x_{j\neq i},x_{i}\to0))
+```
+
+### `delta_g_transfer_inf`
+- Label: `eq:delta_g_transfer_inf`
+- Source: \cite{Figiel2025}, Eq.~(14)
+- Status: Adapted implementation form
+- Description: Provides a residual Helmholtz-energy relation for gibbs free energy.
+- Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+- LaTeX: `docs/latex/equations.tex:2684`
+- C++: `src/epcsaft/native/epcsaft_activity.cpp:67` (vector<double> gsolv_values_cpp(double t, double rho, const vector<double>& x, const add_args& cppargs))
+
+```tex
+\Delta^{\mathrm{tr}}G_{i}^{\infty,\mathrm{S}1\to\mathrm{S}2}(T,p,x_{j\neq i},x_{i}\rightarrow0)=RT\ln\left(\frac{\varphi_{i}^{\infty,\mathrm{S}2}}{\varphi_{i}^{\infty,\mathrm{S}1}}\right)
 ```
 
 ## Salt Basis Conversions
@@ -2826,7 +2871,7 @@ d_{i,T}=\frac{\partial d_{i}}{\partial T}=\sigma_{i}\left(3\frac{\epsilon_{i}}{k
 - Status: Close literature match
 - Description: Gives an activity or fugacity-coefficient relation in salt basis conversions.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
-- LaTeX: `docs/latex/equations.tex:2637`
+- LaTeX: `docs/latex/equations.tex:2697`
 - C++: No `EqID` owner comment has been attached yet.
 
 ```tex

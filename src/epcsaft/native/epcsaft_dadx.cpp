@@ -2,54 +2,6 @@
 
 using namespace thermo_detail;
 
-vector<double> born_dadx_fd_cpp(double t, const vector<double> &x, const add_args &cppargs, double a0) {
-    int ncomp = static_cast<int>(x.size());
-    vector<double> dadx_born(ncomp, 0.0);
-    for (int i = 0; i < ncomp; i++) {
-        double h = 1e-6*std::max(1.0, std::abs(x[i]));
-        vector<double> xp = x;
-        xp[i] += h;
-        double fp = born_ares_only_cpp(t, xp, cppargs);
-        if (x[i] - h >= 0.0) {
-            vector<double> xm = x;
-            xm[i] -= h;
-            double fm = born_ares_only_cpp(t, xm, cppargs);
-            dadx_born[i] = (fp - fm)/(2.0*h);
-        }
-        else {
-            dadx_born[i] = (fp - a0)/h;
-        }
-        if (!std::isfinite(dadx_born[i])) {
-            throw ValueError("Non-finite Born finite-difference derivative.");
-        }
-    }
-    return dadx_born;
-}
-
-vector<double> dh_dadx_fd_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, double a0) {
-    int ncomp = static_cast<int>(x.size());
-    vector<double> dadx_dh(ncomp, 0.0);
-    for (int i = 0; i < ncomp; i++) {
-        double h = 1e-6*std::max(1.0, std::abs(x[i]));
-        vector<double> xp = x;
-        xp[i] += h;
-        double fp = dh_ares_only_cpp(t, rho, xp, cppargs);
-        if (x[i] - h >= 0.0) {
-            vector<double> xm = x;
-            xm[i] -= h;
-            double fm = dh_ares_only_cpp(t, rho, xm, cppargs);
-            dadx_dh[i] = (fp - fm)/(2.0*h);
-        }
-        else {
-            dadx_dh[i] = (fp - a0)/h;
-        }
-        if (!std::isfinite(dadx_dh[i])) {
-            throw ValueError("Non-finite DH finite-difference derivative.");
-        }
-    }
-    return dadx_dh;
-}
-
 vector<double> contribution_dadx_fd_cpp(AresContributionKind kind, double t, double rho, const vector<double> &x, const add_args &cppargs, double a0) {
     int ncomp = static_cast<int>(x.size());
     vector<double> dadx(ncomp, 0.0);
@@ -512,7 +464,7 @@ CompositionContributionResult composition_derivative_residual_helmholtz_result_c
             const bool use_dh_deps = (cppargs.mu_DH_comp_dep_rel_perm != 0);
             const double dh_deps_multiplier = (cppargs.mu_DH_include_sum_term != 0) ? Qsum : 1.0;
             if (cppargs.mu_DH_diff_mode == 1) {
-                dadx = dh_dadx_fd_cpp(t, rho, x, cppargs, a_DH);
+                dadx = contribution_dadx_fd_cpp(AresContributionKind::ION, t, rho, x, cppargs, a_DH);
             }
             else {
                 double Aconst = den*E_CHRG*E_CHRG/(kb*t*perm_vac);
@@ -561,7 +513,7 @@ CompositionContributionResult composition_derivative_residual_helmholtz_result_c
             vector<double> ion_part_vec(ncomp, 0.0);
             vector<double> eps_part_vec(ncomp, 0.0);
             if (cppargs.born_diff_mode == 1) {
-                dadx_born = born_dadx_fd_cpp(t, x, cppargs, a_born);
+                dadx_born = contribution_dadx_fd_cpp(AresContributionKind::BORN, t, rho, x, cppargs, a_born);
             }
             else {
                 for (int i = 0; i < ncomp; i++) {
@@ -609,7 +561,7 @@ CompositionContributionResult composition_derivative_residual_helmholtz_result_c
             vector<double> deps_part_vec(ncomp, 0.0);
             vector<double> ddelta_part_vec(ncomp, 0.0);
             if (cppargs.born_diff_mode == 1) {
-                dadx_born = born_dadx_fd_cpp(t, x, cppargs, a_born);
+                dadx_born = contribution_dadx_fd_cpp(AresContributionKind::BORN, t, rho, x, cppargs, a_born);
             }
             else {
                 const double inv_eps2 = 1.0/(eps_born*eps_born);

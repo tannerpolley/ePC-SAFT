@@ -267,10 +267,6 @@ double mixed_dielectric_constant_cpp(const vector<double> &x, const add_args &cp
 double reference_solvent_dielectric_constant_cpp(const vector<double> &x, const add_args &cppargs);
 vector<double> reference_solvent_dielectric_derivative_cpp(const vector<double> &x, const add_args &cppargs);
 BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion);
-double born_ares_only_cpp(double t, const vector<double> &x, const add_args &cppargs);
-vector<double> born_dadx_fd_cpp(double t, const vector<double> &x, const add_args &cppargs, double a0);
-double dh_ares_only_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs);
-vector<double> dh_dadx_fd_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, double a0);
 double ares_contribution_value_cpp(const AresContributions &terms, AresContributionKind kind);
 AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs);
 vector<double> contribution_dadx_fd_cpp(AresContributionKind kind, double t, double rho, const vector<double> &x, const add_args &cppargs, double a0);

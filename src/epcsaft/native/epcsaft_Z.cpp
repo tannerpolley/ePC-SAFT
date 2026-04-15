@@ -16,20 +16,40 @@ double z_term_scale_cpp(const vector<double> &z_term, double increment_total) {
     return increment_total / raw_sum;
 }
 
+double normalized_dadrho_scale_cpp(const ScalarContributionTerms &raw_terms) {
+    vector<double> raw = {
+        raw_terms.hc,
+        raw_terms.disp,
+        raw_terms.polar,
+        raw_terms.assoc,
+        raw_terms.ion,
+        raw_terms.born
+    };
+    return z_term_scale_cpp(raw, raw_terms.total);
+}
+
+double normalized_dadrho_term_cpp(double raw_term, double scale) {
+    return raw_term * scale;
+}
+
+double z_total_cpp(double dadrho_total) {
+    return 1.0 + dadrho_total;
+}
+
 ScalarContributionTerms normalized_dadrho_terms_cpp(const ScalarContributionTerms &raw_terms) {
-    vector<double> raw = {raw_terms.hc, raw_terms.disp, raw_terms.polar, raw_terms.assoc, raw_terms.ion, raw_terms.born};
-    double scale = z_term_scale_cpp(raw, raw_terms.total);
+    double scale = normalized_dadrho_scale_cpp(raw_terms);
     return make_scalar_terms(
-        raw_terms.hc * scale,
-        raw_terms.disp * scale,
-        raw_terms.polar * scale,
-        raw_terms.assoc * scale,
-        raw_terms.ion * scale,
-        raw_terms.born * scale,
+        normalized_dadrho_term_cpp(raw_terms.hc, scale),
+        normalized_dadrho_term_cpp(raw_terms.disp, scale),
+        normalized_dadrho_term_cpp(raw_terms.polar, scale),
+        normalized_dadrho_term_cpp(raw_terms.assoc, scale),
+        normalized_dadrho_term_cpp(raw_terms.ion, scale),
+        normalized_dadrho_term_cpp(raw_terms.born, scale),
         raw_terms.total
     );
 }
 
+// EqID: z_alpha
 ScalarContributionTerms compressibility_terms_from_dadrho_cpp(const DadrhoResult &result) {
     return make_scalar_terms(
         result.terms.hc,
@@ -38,14 +58,13 @@ ScalarContributionTerms compressibility_terms_from_dadrho_cpp(const DadrhoResult
         result.terms.assoc,
         result.terms.ion,
         result.terms.born,
-        1.0 + result.terms.total
+        z_total_cpp(result.terms.total)
     );
 }
 
 // EqID: z_from_rho
 // EqID: z_total
 // EqID: z_minus_one_sum
-// EqID: z_alpha
 CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     DadrhoResult dadrho_result = dadrho_result_cpp(t, rho, std::move(x), cppargs);
     CompressibilityFactorResult result;
