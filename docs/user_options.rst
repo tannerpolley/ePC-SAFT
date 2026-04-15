@@ -27,7 +27,6 @@ A minimal file looks like this:
 Supported top-level options
 ---------------------------
 
-- ``debug``: turn extra runtime debugging on or off
 - ``solvated_ion_diameter_mixing_rule``: enable or disable the ion-diameter mixing rule for solvated ions
 - ``ion_dispersion_mixing_rule``: enable or disable the ion-dispersion mixing rule
 - ``elec_model``: nested electrical-model settings

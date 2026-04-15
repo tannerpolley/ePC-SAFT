@@ -222,6 +222,27 @@ def test_state_contribution_term_payloads_match_totals():
     assert fugcoef["term_basis"] == "natural_log"
 
 
+def test_dadrho_hierarchy_identities_hold_for_neutral_and_ionic_states():
+    for factory in (_neutral_state, _ionic_state):
+        state, species = factory()
+        z_payload = state.z(return_contribution_terms=True)
+        dadx = state.dadx()
+        mures = state.mures()
+        diagnostics = state.state_diagnostics(species=species)
+        lnfug = np.asarray(diagnostics["fugacity_coefficient_terms"]["lnfugcoef_total"], dtype=float)
+
+        z_residual = sum(float(dadx["z_terms"][key]) for key in ("hc", "disp", "polar", "assoc", "ion", "born"))
+        assert z_residual == pytest.approx(state.z() - 1.0)
+        assert z_payload["terms"]["ideal"] + z_residual == pytest.approx(z_payload["total"])
+
+        reconstructed_mu = sum(
+            dadx["ares_terms"][key] + dadx["z_raw_terms"][key] + dadx["terms"][key] - dadx["sum_x_terms"][key]
+            for key in ("hc", "disp", "polar", "assoc", "ion", "born")
+        )
+        np.testing.assert_allclose(reconstructed_mu, mures)
+        np.testing.assert_allclose(lnfug, mures - np.log(state.z()))
+
+
 def test_neutral_composition_and_fugacity_terms_return_expected_values():
     state, species = _neutral_state()
 

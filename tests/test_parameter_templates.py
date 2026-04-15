@@ -44,6 +44,9 @@ def test_runtime_options_reject_legacy_electrolyte_shorthand():
     with pytest.raises(KeyError, match="Unknown user_options key"):
         _resolve_runtime_options({"dielc_rule": "constant"})
 
+    with pytest.raises(KeyError, match="Unknown user_options key"):
+        _resolve_runtime_options({"debug": True})
+
     with pytest.raises(TypeError, match="elec_model\\['DH_model'\\] must be a dict"):
         _resolve_runtime_options({"elec_model": {"DH_model": 2}})
 

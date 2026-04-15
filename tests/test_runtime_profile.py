@@ -182,7 +182,6 @@ def _build_states() -> dict:
                 },
             },
         },
-        "debug": False,
     }
     z_feed = np.asarray([1.0 / 0.01801528, 1.0e-4, 1.0e-4], dtype=float)
     z_feed = z_feed / np.sum(z_feed)
