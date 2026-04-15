@@ -489,6 +489,6 @@ double density_root_residual_cpp(double rhomolar, double t, double p, vector<dou
         return cost;
     }
     else {
-        return _HUGE;
+        return HUGE_DBL;
     }
 }

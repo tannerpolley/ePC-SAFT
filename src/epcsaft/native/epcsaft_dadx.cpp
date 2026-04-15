@@ -403,7 +403,7 @@ CompositionContributionResult composition_derivative_residual_helmholtz_result_c
                     int idxj = iA[j]*ncomp+iA[j];
                     if (cppargs.assoc_matrix[i*num_sites+j] != 0) {
                         double eABij = (cppargs.e_assoc[iA[i]]+cppargs.e_assoc[iA[j]])/2.;
-                        double volABij = _HUGE;
+                        double volABij = HUGE_DBL;
                         if (cppargs.k_hb.empty()) {
                             volABij = sqrt(cppargs.vol_a[iA[i]]*cppargs.vol_a[iA[j]])*pow(sqrt(s_ij[idxi]*
                                 s_ij[idxj])/(0.5*(s_ij[idxi]+s_ij[idxj])), 3);

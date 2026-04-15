@@ -1,6 +1,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <limits>
 
 using std::vector;
 
@@ -11,9 +12,10 @@ const static double E_CHRG = 1.6021766208e-19; // elementary charge, units of co
 const static double perm_vac = 8.854187817e-22; //permittivity in vacuum, C V^-1 Angstrom^-1
 
 #ifndef DBL_EPSILON
-    #include <limits>
     #define DBL_EPSILON std::numeric_limits<double>::epsilon()
 #endif
+
+const static double HUGE_DBL = std::numeric_limits<double>::infinity();
 
 struct add_args {
     vector<double> m;

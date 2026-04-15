@@ -2,6 +2,7 @@
 requires = [
     "setuptools>=69",
     "wheel",
+    "packaging>=24.2",
     "Cython>=3.0",
     "numpy>=2.0",
     "includeigen>=0.1",
@@ -26,9 +27,8 @@ dependencies = [
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: C++",
+    "Operating System :: Microsoft :: Windows",
     "Operating System :: Microsoft :: Windows :: Windows 10",
-    "Operating System :: POSIX :: Linux",
-    "Operating System :: MacOS",
 ]
 
 [project.urls]
