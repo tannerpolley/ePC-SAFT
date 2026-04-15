@@ -15,6 +15,7 @@ except ImportError as exc:
 
 
 PACKAGE_ROOT = "src/epcsaft"
+NATIVE_ROOT = f"{PACKAGE_ROOT}/native"
 
 extra_compile_args = []
 if os.name == "nt":
@@ -25,12 +26,25 @@ ext_modules = [
         "epcsaft.epcsaft",
         sources=[
             f"{PACKAGE_ROOT}/epcsaft.pyx",
-            f"{PACKAGE_ROOT}/epcsaft_electrolyte.cpp",
+            f"{NATIVE_ROOT}/epcsaft_support_common.cpp",
+            f"{NATIVE_ROOT}/epcsaft_support_assoc.cpp",
+            f"{NATIVE_ROOT}/epcsaft_support_electrolyte.cpp",
+            f"{NATIVE_ROOT}/epcsaft_ares.cpp",
+            f"{NATIVE_ROOT}/epcsaft_dadrho.cpp",
+            f"{NATIVE_ROOT}/epcsaft_dadx.cpp",
+            f"{NATIVE_ROOT}/epcsaft_dadt.cpp",
+            f"{NATIVE_ROOT}/epcsaft_Z.cpp",
+            f"{NATIVE_ROOT}/epcsaft_mu.cpp",
+            f"{NATIVE_ROOT}/epcsaft_fugcoef.cpp",
+            f"{NATIVE_ROOT}/epcsaft_activity.cpp",
+            f"{NATIVE_ROOT}/epcsaft_density_solver.cpp",
+            f"{NATIVE_ROOT}/epcsaft_state.cpp",
         ],
         language="c++",
         include_dirs=[
             np.get_include(),
             PACKAGE_ROOT,
+            NATIVE_ROOT,
             get_eigen_include(),
         ],
         extra_compile_args=extra_compile_args,

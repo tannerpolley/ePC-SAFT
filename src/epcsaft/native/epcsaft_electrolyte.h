@@ -58,7 +58,6 @@ struct add_args {
     int born_diff_mode;
     int born_eps_mode;
     int DH_model;
-    int debug;
     vector<int> assoc_num;
     vector<int> assoc_matrix;
     vector<double> k_hb;
@@ -93,6 +92,11 @@ struct ScalarContributionTerms {
     double total = 0.0;
 };
 
+struct CompressibilityFactorResult {
+    ScalarContributionTerms raw;
+    ScalarContributionTerms terms;
+};
+
 struct VectorContributionTerms {
     vector<double> hc;
     vector<double> disp;
@@ -103,7 +107,7 @@ struct VectorContributionTerms {
     vector<double> total;
 };
 
-struct CompositionContributionPayload {
+struct CompositionContributionResult {
     VectorContributionTerms dadx;
     ScalarContributionTerms ares;
     ScalarContributionTerms sum_x_dadx;
@@ -111,10 +115,15 @@ struct CompositionContributionPayload {
     ScalarContributionTerms z;
 };
 
-struct FugacityContributionPayload {
+struct ResidualChemicalPotentialResult {
+    VectorContributionTerms mu;
+    CompositionContributionResult composition;
+};
+
+struct FugacityContributionResult {
     VectorContributionTerms mu;
     VectorContributionTerms lnfugcoef;
-    CompositionContributionPayload composition;
+    CompositionContributionResult composition;
 };
 
 class ePCSAFTMixtureNative;
@@ -131,20 +140,20 @@ public:
     double pressure();
     double density();
     double compressibility_factor();
-    ScalarContributionTerms compressibility_factor_terms();
+    CompressibilityFactorResult compressibility_factor_result();
     double residual_helmholtz();
-    ScalarContributionTerms residual_helmholtz_terms();
+    ScalarContributionTerms residual_helmholtz_result();
     double temperature_derivative_residual_helmholtz();
-    ScalarContributionTerms temperature_derivative_residual_helmholtz_terms();
+    ScalarContributionTerms temperature_derivative_residual_helmholtz_result();
     double residual_enthalpy();
     double residual_entropy();
     double residual_gibbs();
     vector<double> residual_chemical_potential();
-    VectorContributionTerms residual_chemical_potential_terms();
-    CompositionContributionPayload composition_derivative_residual_helmholtz_terms();
+    ResidualChemicalPotentialResult residual_chemical_potential_result();
+    CompositionContributionResult composition_derivative_residual_helmholtz_result();
     vector<double> ln_fugacity_coefficient();
     vector<double> fugacity_coefficient();
-    FugacityContributionPayload fugacity_coefficient_terms();
+    FugacityContributionResult fugacity_coefficient_result();
     vector<double> relative_permittivity();
     double osmotic_coefficient();
     vector<double> solvation_free_energy();
@@ -216,9 +225,6 @@ vector<double> dXAdt_find(vector<double> delta_ij, double den,
 // helper functions
 inline bool IsNotZero (double x) {return x != 0.0;}
 double reduced_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs);
-double calc_water_sigma(double t);
-inline double calc_sigma(double t, double (*function)(double)){return function(t);} // this can allow us to accept a custom function for a temperature dependent sigma
- add_args single_component_args_cpp(int i, const add_args &cppargs);
 double dielectric_eps_cpp(vector<double> x, const add_args &cppargs);
 vector<double> dielectric_diff_cpp(vector<double> x, const add_args &cppargs);
 double dielc_eps_cpp(vector<double> x, const add_args &cppargs);

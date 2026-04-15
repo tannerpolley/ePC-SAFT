@@ -249,18 +249,18 @@ cdef class ePCSAFTState:
             raise InputError("Mass density requires one molecular-weight value per component.")
         return float(self.molar_density() * float(np.dot(np.asarray(self._x, dtype=float), mw)))
 
-    def _temperature_derivative_residual_helmholtz_term_payload(self):
-        cdef ScalarContributionTerms payload = self._native.get().temperature_derivative_residual_helmholtz_terms()
-        return _scalar_terms_dict(payload)
+    def _temperature_derivative_residual_helmholtz_term_result(self):
+        cdef ScalarContributionTerms result = self._native.get().temperature_derivative_residual_helmholtz_result()
+        return _scalar_terms_dict(result)
 
-    def _composition_derivative_residual_helmholtz_payload(self):
+    def _composition_derivative_residual_helmholtz_result(self):
         ncomp = int(self._x.size)
-        cdef CompositionContributionPayload payload = self._native.get().composition_derivative_residual_helmholtz_terms()
-        dadx = _vector_terms_dict(payload.dadx, ncomp, "dadx")
-        ares = _scalar_terms_dict(payload.ares)
-        sum_x = _scalar_terms_dict(payload.sum_x_dadx)
-        z_raw = _scalar_terms_dict(payload.z_raw)
-        z_terms = _scalar_terms_dict(payload.z)
+        cdef CompositionContributionResult result = self._native.get().composition_derivative_residual_helmholtz_result()
+        dadx = _vector_terms_dict(result.dadx, ncomp, "dadx")
+        ares = _scalar_terms_dict(result.ares)
+        sum_x = _scalar_terms_dict(result.sum_x_dadx)
+        z_raw = _scalar_terms_dict(result.z_raw)
+        z_terms = _scalar_terms_dict(result.z)
         terms = {name: np.asarray(dadx[name], dtype=float) for name in _CONTRIBUTION_NAMES}
         return {
             "total": _sum_vector_terms(terms),
@@ -272,16 +272,16 @@ cdef class ePCSAFTState:
             "z_total": float(z_terms["total"]),
         }
 
-    def _fugacity_coefficient_term_payload(self):
+    def _fugacity_coefficient_term_result(self):
         ncomp = int(self._x.size)
-        cdef FugacityContributionPayload payload = self._native.get().fugacity_coefficient_terms()
-        mu = _vector_terms_dict(payload.mu, ncomp, "mu")
-        lnfug = _vector_terms_dict(payload.lnfugcoef, ncomp, "lnfugcoef")
-        dadx = _vector_terms_dict(payload.composition.dadx, ncomp, "dadx")
-        ares = _scalar_terms_dict(payload.composition.ares)
-        sum_x = _scalar_terms_dict(payload.composition.sum_x_dadx)
-        z_raw = _scalar_terms_dict(payload.composition.z_raw)
-        z_terms = _scalar_terms_dict(payload.composition.z)
+        cdef FugacityContributionResult result = self._native.get().fugacity_coefficient_result()
+        mu = _vector_terms_dict(result.mu, ncomp, "mu")
+        lnfug = _vector_terms_dict(result.lnfugcoef, ncomp, "lnfugcoef")
+        dadx = _vector_terms_dict(result.composition.dadx, ncomp, "dadx")
+        ares = _scalar_terms_dict(result.composition.ares)
+        sum_x = _scalar_terms_dict(result.composition.sum_x_dadx)
+        z_raw = _scalar_terms_dict(result.composition.z_raw)
+        z_terms = _scalar_terms_dict(result.composition.z)
         return {
             "mu_hc": mu["hc"],
             "mu_disp": mu["disp"],
@@ -334,8 +334,8 @@ cdef class ePCSAFTState:
         """Return the compressibility factor."""
         if not return_contribution_terms:
             return float(self._native.get().compressibility_factor())
-        cdef ScalarContributionTerms payload = self._native.get().compressibility_factor_terms()
-        payload_dict = _scalar_terms_dict(payload)
+        cdef CompressibilityFactorResult result = self._native.get().compressibility_factor_result()
+        payload_dict = _scalar_terms_dict(result.terms)
         terms = {name: float(payload_dict[name]) for name in _CONTRIBUTION_NAMES}
         terms["ideal"] = 1.0
         return {
@@ -347,8 +347,8 @@ cdef class ePCSAFTState:
         """Return the residual Helmholtz energy."""
         if not return_contribution_terms:
             return float(self._native.get().residual_helmholtz())
-        cdef ScalarContributionTerms payload = self._native.get().residual_helmholtz_terms()
-        payload_dict = _scalar_terms_dict(payload)
+        cdef ScalarContributionTerms result = self._native.get().residual_helmholtz_result()
+        payload_dict = _scalar_terms_dict(result)
         terms = {name: float(payload_dict[name]) for name in _CONTRIBUTION_NAMES}
         return {
             "total": float(payload_dict["total"]),
@@ -359,16 +359,16 @@ cdef class ePCSAFTState:
         """Return the temperature derivative of the residual Helmholtz energy."""
         if not return_contribution_terms:
             return float(self._native.get().temperature_derivative_residual_helmholtz())
-        payload = self._temperature_derivative_residual_helmholtz_term_payload()
-        terms = {name: float(payload[name]) for name in _CONTRIBUTION_NAMES}
+        result = self._temperature_derivative_residual_helmholtz_term_result()
+        terms = {name: float(result[name]) for name in _CONTRIBUTION_NAMES}
         return {
-            "total": float(payload["total"]),
+            "total": float(result["total"]),
             "terms": terms,
         }
 
     def composition_derivative_residual_helmholtz(self):
         """Return the composition-derivative contribution breakdown."""
-        return self._composition_derivative_residual_helmholtz_payload()
+        return self._composition_derivative_residual_helmholtz_result()
 
     def residual_enthalpy(self):
         """Return the residual enthalpy."""
@@ -386,8 +386,8 @@ cdef class ePCSAFTState:
         """Return the residual chemical potentials."""
         if not return_contribution_terms:
             return vector_to_array(self._native.get().residual_chemical_potential())
-        cdef VectorContributionTerms payload = self._native.get().residual_chemical_potential_terms()
-        payload_dict = _vector_terms_dict(payload, int(self._x.size), "mu")
+        cdef ResidualChemicalPotentialResult result = self._native.get().residual_chemical_potential_result()
+        payload_dict = _vector_terms_dict(result.mu, int(self._x.size), "mu")
         terms = {name: np.asarray(payload_dict[name], dtype=float) for name in _CONTRIBUTION_NAMES}
         return {
             "total": np.asarray(payload_dict["total"], dtype=float),
@@ -444,10 +444,10 @@ cdef class ePCSAFTState:
             if natural_log:
                 return public_total
             return np.exp(public_total)
-        payload = self._fugacity_coefficient_term_payload()
-        ln_term_total = np.asarray(payload["lnfugcoef_total"], dtype=float)
+        result = self._fugacity_coefficient_term_result()
+        ln_term_total = np.asarray(result["lnfugcoef_total"], dtype=float)
         public_total = vector_to_array(self._native.get().fugacity_coefficient())
-        terms = {name: np.asarray(payload["lnfugcoef_" + name], dtype=float) for name in _CONTRIBUTION_NAMES}
+        terms = {name: np.asarray(result["lnfugcoef_" + name], dtype=float) for name in _CONTRIBUTION_NAMES}
         out = {
             "total": public_total if natural_log else np.exp(public_total),
             "terms": terms,
@@ -471,7 +471,7 @@ cdef class ePCSAFTState:
         species = self._mixture.species if species is None else species
         z = np.asarray(mix._params.get("z", []), dtype=float).flatten()
         has_ions = bool(np.any(np.abs(z) > 1e-12))
-        terms = self._fugacity_coefficient_term_payload()
+        terms = self._fugacity_coefficient_term_result()
         fugacity_coefficient = self.fugacity_coefficient(natural_log=False)
         if has_ions:
             activity_coefficient = self.activity_coefficient(species=species, mean_ionic_form=False)
@@ -1020,7 +1020,6 @@ def create_struct(params):
         raise ValueError("Bjerrum treatment is reserved and not implemented (DH_model=2).")
     if cppargs.DH_model < 0 or cppargs.DH_model > 2:
         raise ValueError("Unknown DH_model. Supported values are 0, 1, and reserved 2.")
-    cppargs.debug = int(bool(params['debug'])) if 'debug' in params else 0
     if 'assoc_num' in params:
         cppargs.assoc_num = np_to_vector_int(params['assoc_num'])
     if 'assoc_matrix' in params:
