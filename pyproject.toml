@@ -1,8 +1,7 @@
 [build-system]
 requires = [
-    "setuptools>=69",
+    "setuptools>=69,<77",
     "wheel",
-    "packaging>=24.2",
     "Cython>=3.0",
     "numpy>=2.0",
     "includeigen>=0.1",
@@ -15,8 +14,7 @@ version = "1.5.0"
 description = "The ePC-SAFT equation of state, including dipole, association, and ion terms."
 readme = "README.md"
 requires-python = ">=3.9"
-license = "GPL-3.0-only"
-license-files = ["LICENSE"]
+license = { text = "GPL-3.0-only" }
 authors = [
     { name = "Tanner Polley" },
 ]
