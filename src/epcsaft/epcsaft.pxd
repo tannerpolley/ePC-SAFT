@@ -67,7 +67,6 @@ cdef extern from "epcsaft_electrolyte.h":
         int born_diff_mode
         int born_eps_mode
         int DH_model
-        int debug
         vector[int] assoc_num
         vector[int] assoc_matrix
         vector[double] k_hb
@@ -99,6 +98,10 @@ cdef extern from "epcsaft_electrolyte.h":
         double born
         double total
 
+    ctypedef struct CompressibilityFactorResult:
+        ScalarContributionTerms raw
+        ScalarContributionTerms terms
+
     ctypedef struct VectorContributionTerms:
         vector[double] hc
         vector[double] disp
@@ -108,17 +111,21 @@ cdef extern from "epcsaft_electrolyte.h":
         vector[double] born
         vector[double] total
 
-    ctypedef struct CompositionContributionPayload:
+    ctypedef struct CompositionContributionResult:
         VectorContributionTerms dadx
         ScalarContributionTerms ares
         ScalarContributionTerms sum_x_dadx
         ScalarContributionTerms z_raw
         ScalarContributionTerms z
 
-    ctypedef struct FugacityContributionPayload:
+    ctypedef struct ResidualChemicalPotentialResult:
+        VectorContributionTerms mu
+        CompositionContributionResult composition
+
+    ctypedef struct FugacityContributionResult:
         VectorContributionTerms mu
         VectorContributionTerms lnfugcoef
-        CompositionContributionPayload composition
+        CompositionContributionResult composition
 
     cdef cppclass ePCSAFTStateNative:
         ePCSAFTStateNative(shared_ptr[ePCSAFTMixtureNative] mixture, double t, vector[double] x,
@@ -129,20 +136,20 @@ cdef extern from "epcsaft_electrolyte.h":
         double pressure()
         double density()
         double compressibility_factor()
-        ScalarContributionTerms compressibility_factor_terms()
+        CompressibilityFactorResult compressibility_factor_result()
         double residual_helmholtz()
-        ScalarContributionTerms residual_helmholtz_terms()
+        ScalarContributionTerms residual_helmholtz_result()
         double temperature_derivative_residual_helmholtz()
-        ScalarContributionTerms temperature_derivative_residual_helmholtz_terms()
+        ScalarContributionTerms temperature_derivative_residual_helmholtz_result()
         double residual_enthalpy()
         double residual_entropy()
         double residual_gibbs()
         vector[double] residual_chemical_potential()
-        VectorContributionTerms residual_chemical_potential_terms()
-        CompositionContributionPayload composition_derivative_residual_helmholtz_terms()
+        ResidualChemicalPotentialResult residual_chemical_potential_result()
+        CompositionContributionResult composition_derivative_residual_helmholtz_result()
         vector[double] ln_fugacity_coefficient()
         vector[double] fugacity_coefficient()
-        FugacityContributionPayload fugacity_coefficient_terms()
+        FugacityContributionResult fugacity_coefficient_result()
         vector[double] relative_permittivity()
         double osmotic_coefficient()
         vector[double] solvation_free_energy()

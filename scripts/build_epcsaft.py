@@ -10,6 +10,7 @@ from typing import Any, Literal
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_ROOT = REPO_ROOT / "src" / "epcsaft"
+NATIVE_ROOT = PACKAGE_ROOT / "native"
 EXPECTED_PACKAGE_INIT = (PACKAGE_ROOT / "__init__.py").resolve()
 BUILD_ROOT = REPO_ROOT / "build"
 PIP_TEMP_ROOT = BUILD_ROOT / "codex-pip-temp"
@@ -21,8 +22,21 @@ COMPILED_INPUTS = [
     REPO_ROOT / "MANIFEST.in",
     PACKAGE_ROOT / "epcsaft.pyx",
     PACKAGE_ROOT / "epcsaft.pxd",
-    PACKAGE_ROOT / "epcsaft_electrolyte.cpp",
-    PACKAGE_ROOT / "epcsaft_electrolyte.h",
+    NATIVE_ROOT / "epcsaft_electrolyte.h",
+    NATIVE_ROOT / "epcsaft_core_internal.h",
+    NATIVE_ROOT / "epcsaft_support_common.cpp",
+    NATIVE_ROOT / "epcsaft_support_assoc.cpp",
+    NATIVE_ROOT / "epcsaft_support_electrolyte.cpp",
+    NATIVE_ROOT / "epcsaft_ares.cpp",
+    NATIVE_ROOT / "epcsaft_dadrho.cpp",
+    NATIVE_ROOT / "epcsaft_dadx.cpp",
+    NATIVE_ROOT / "epcsaft_dadt.cpp",
+    NATIVE_ROOT / "epcsaft_Z.cpp",
+    NATIVE_ROOT / "epcsaft_mu.cpp",
+    NATIVE_ROOT / "epcsaft_fugcoef.cpp",
+    NATIVE_ROOT / "epcsaft_activity.cpp",
+    NATIVE_ROOT / "epcsaft_density_solver.cpp",
+    NATIVE_ROOT / "epcsaft_state.cpp",
 ]
 
 

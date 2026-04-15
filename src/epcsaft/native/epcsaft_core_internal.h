@@ -1,0 +1,305 @@
+#pragma once
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <limits>
+#include <numeric>
+#include <utility>
+
+#include "Eigen/Dense"
+
+#include "epcsaft_electrolyte.h"
+
+namespace thermo_detail {
+
+enum class AresContributionKind {
+    HC,
+    DISP,
+    POLAR,
+    ASSOC,
+    ION,
+    BORN
+};
+
+struct AresContributions {
+    double hc = 0.0;
+    double disp = 0.0;
+    double polar = 0.0;
+    double assoc = 0.0;
+    double ion = 0.0;
+    double born = 0.0;
+};
+
+struct DadrhoResult {
+    ScalarContributionTerms raw;
+    ScalarContributionTerms terms;
+};
+
+struct ThermoCommonState {
+    vector<double> d;
+    vector<double> dd_dt;
+    vector<double> zeta;
+    vector<double> dzeta_dt;
+    vector<double> e_ij;
+    vector<double> s_ij;
+    vector<double> ghs;
+    vector<double> denghs;
+    double den = 0.0;
+    double eta = 0.0;
+    double m_avg = 0.0;
+    double m2es3 = 0.0;
+    double m2e2s3 = 0.0;
+};
+
+struct DispersionPolynomialState {
+    std::array<double, 7> a{};
+    std::array<double, 7> b{};
+    double I1 = 0.0;
+    double I2 = 0.0;
+    double dI1_deta = 0.0;
+    double dI2_deta = 0.0;
+    double dEtaI1_deta = 0.0;
+    double dEtaI2_deta = 0.0;
+    double C1 = 0.0;
+    double C2 = 0.0;
+};
+
+struct AssociationSetup {
+    vector<int> site_component_index;
+    vector<double> x_assoc;
+    vector<double> delta_ij;
+};
+
+struct ChargeGroups {
+    vector<int> cations;
+    vector<int> anions;
+    vector<int> solvents;
+};
+
+struct DensityScanPoint {
+    double nu = 0.0;
+    double rho = 0.0;
+    double resid = 0.0;
+    bool finite = false;
+};
+
+struct DensityBracket {
+    double nu_lo = 0.0;
+    double nu_hi = 0.0;
+    double resid_lo = 0.0;
+    double resid_hi = 0.0;
+};
+
+struct DensityRootCandidate {
+    double rho_sort = 0.0;
+    double rho = 0.0;
+    double gres = 0.0;
+    double rel_resid = 0.0;
+    double abs_p_error = 0.0;
+    double dpdrho = 0.0;
+    bool valid = false;
+};
+
+struct BornSSMDSData {
+    vector<double> d_born;
+    vector<double> D;
+    vector<double> ddelta_prefac;
+    vector<double> f_k;
+    vector<double> bracket;
+    double sum_bracket = 0.0;
+    double sum_invD = 0.0;
+    double sum_gap = 0.0;
+    double sum_dpref_over_D2 = 0.0;
+};
+
+struct DielectricState {
+    double eps = 0.0;
+    vector<double> deps_dx;
+};
+
+constexpr std::array<double, 7> kDispersionA0 = {
+    0.9105631445, 0.6361281449, 2.6861347891, -26.547362491,
+    97.759208784, -159.59154087, 91.297774084
+};
+constexpr std::array<double, 7> kDispersionA1 = {
+    -0.3084016918, 0.1860531159, -2.5030047259, 21.419793629,
+    -65.255885330, 83.318680481, -33.746922930
+};
+constexpr std::array<double, 7> kDispersionA2 = {
+    -0.0906148351, 0.4527842806, 0.5962700728, -1.7241829131,
+    -4.1302112531, 13.776631870, -8.6728470368
+};
+constexpr std::array<double, 7> kDispersionB0 = {
+    0.7240946941, 2.2382791861, -4.0025849485, -21.003576815,
+    26.855641363, 206.55133841, -355.60235612
+};
+constexpr std::array<double, 7> kDispersionB1 = {
+    -0.5755498075, 0.6995095521, 3.8925673390, -17.215471648,
+    192.67226447, -161.82646165, -165.20769346
+};
+constexpr std::array<double, 7> kDispersionB2 = {
+    0.0976883116, -0.2557574982, -9.1558561530, 20.642075974,
+    -38.804430052, 93.626774077, -29.666905585
+};
+constexpr std::array<double, 5> kDipoleA0 = {0.3043504, -0.1358588, 1.4493329, 0.3556977, -2.0653308};
+constexpr std::array<double, 5> kDipoleA1 = {0.9534641, -1.8396383, 2.0131180, -7.3724958, 8.2374135};
+constexpr std::array<double, 5> kDipoleA2 = {-1.1610080, 4.5258607, 0.9751222, -12.281038, 5.9397575};
+constexpr std::array<double, 5> kDipoleB0 = {0.2187939, -1.1896431, 1.1626889, 0.0, 0.0};
+constexpr std::array<double, 5> kDipoleB1 = {-0.5873164, 1.2489132, -0.5085280, 0.0, 0.0};
+constexpr std::array<double, 5> kDipoleB2 = {3.4869576, -14.915974, 15.372022, 0.0, 0.0};
+constexpr std::array<double, 5> kDipoleC0 = {-0.0646774, 0.1975882, -0.8087562, 0.6902849, 0.0};
+constexpr std::array<double, 5> kDipoleC1 = {-0.9520876, 2.9924258, -2.3802636, -0.2701261, 0.0};
+constexpr std::array<double, 5> kDipoleC2 = {-0.6260979, 1.2924686, 1.6542783, -3.4396744, 0.0};
+constexpr double kDipoleConversion = 7242.702976750923;
+
+template <size_t N>
+double polynomial_value_cpp(const std::array<double, N> &coeffs, double x) {
+    double value = 0.0;
+    for (size_t i = 0; i < N; ++i) {
+        value += coeffs[i] * std::pow(x, static_cast<int>(i));
+    }
+    return value;
+}
+
+template <size_t N>
+double polynomial_derivative_cpp(const std::array<double, N> &coeffs, double x) {
+    double value = 0.0;
+    for (size_t i = 1; i < N; ++i) {
+        value += coeffs[i] * static_cast<double>(i) * std::pow(x, static_cast<int>(i - 1));
+    }
+    return value;
+}
+
+template <size_t N>
+double eta_weighted_derivative_cpp(const std::array<double, N> &coeffs, double x) {
+    double value = 0.0;
+    for (size_t i = 0; i < N; ++i) {
+        value += coeffs[i] * static_cast<double>(i + 1) * std::pow(x, static_cast<int>(i));
+    }
+    return value;
+}
+
+}  // namespace thermo_detail
+
+using thermo_detail::AresContributionKind;
+using thermo_detail::AresContributions;
+using thermo_detail::AssociationSetup;
+using thermo_detail::BornSSMDSData;
+using thermo_detail::ChargeGroups;
+using thermo_detail::DensityBracket;
+using thermo_detail::DadrhoResult;
+using thermo_detail::DensityRootCandidate;
+using thermo_detail::DensityScanPoint;
+using thermo_detail::DielectricState;
+using thermo_detail::DispersionPolynomialState;
+using thermo_detail::ThermoCommonState;
+
+ScalarContributionTerms make_scalar_terms(double hc, double disp, double polar, double assoc, double ion, double born, double total);
+VectorContributionTerms make_vector_terms(
+    const vector<double> &hc,
+    const vector<double> &disp,
+    const vector<double> &polar,
+    const vector<double> &assoc,
+    const vector<double> &ion,
+    const vector<double> &born,
+    const vector<double> &total
+);
+vector<double> exp_vector(const vector<double> &values);
+vector<double> solve_association_site_fractions_cpp(const vector<double> &delta_ij, double den, const vector<double> &x_assoc);
+double pair_sigma_cpp(size_t idx, int i, int j, const add_args &cppargs);
+double pair_epsilon_cpp(size_t idx, int i, int j, const add_args &cppargs);
+double pair_diameter_cpp(double d_i, double d_j);
+double hs_contact_value_cpp(double pair_diameter, double zeta2, double zeta3);
+double hs_contact_density_derivative_cpp(double pair_diameter, double zeta2, double zeta3);
+double hs_contact_time_derivative_cpp(
+    double pair_diameter,
+    double pair_diameter_dt,
+    double zeta2,
+    double zeta3,
+    double dzeta2_dt,
+    double dzeta3_dt
+);
+ThermoCommonState thermo_common_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt);
+DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta);
+vector<double> dipole_coefficients_cpp(const std::array<double, 5> &c0, const std::array<double, 5> &c1, const std::array<double, 5> &c2, double m);
+double dh_kappa_cpp(double den, double t, double eps, double q2_sum);
+double dh_chi_cpp(double kappa, double diameter);
+AssociationSetup association_setup_cpp(const vector<double> &x, const add_args &cppargs, const vector<double> &s_ij, const vector<double> &ghs, double t);
+int gcd_int(int a, int b);
+ChargeGroups collect_charge_groups(const add_args& args, size_t ncomp);
+void build_charge_metadata_cpp(
+    const add_args& args,
+    bool& has_ionic,
+    vector<int>& cation_indices,
+    vector<int>& anion_indices,
+    vector<int>& solvent_indices,
+    vector<int>& pair_cation_indices,
+    vector<int>& pair_anion_indices,
+    vector<int>& pair_nu_cation,
+    vector<int>& pair_nu_anion
+);
+double stable_logz_over_zminus1(double Z);
+double z_term_scale_cpp(const vector<double> &z_term, double target_total);
+ScalarContributionTerms normalized_dadrho_terms_cpp(const ScalarContributionTerms &raw_terms);
+ScalarContributionTerms compressibility_terms_from_dadrho_cpp(const DadrhoResult &result);
+VectorContributionTerms ln_fugacity_terms_from_mu_z_cpp(const VectorContributionTerms &mu_terms, const ScalarContributionTerms &z_raw_terms);
+vector<double> density_scan_grid_cpp();
+DensityScanPoint density_scan_point_cpp(double nu, double t, int ncomp, const vector<double> &x, double p, const add_args &cppargs);
+vector<DensityBracket> density_brackets_cpp(const vector<DensityScanPoint> &points);
+void refine_density_brackets_cpp(
+    const DensityBracket &coarse,
+    double t,
+    int ncomp,
+    const vector<double> &x,
+    double p,
+    const add_args &cppargs,
+    vector<DensityBracket> &refined_brackets
+);
+bool density_root_valid_cpp(double t, double p, const vector<double> &x, const add_args &cppargs, double rho, DensityRootCandidate *candidate);
+inline bool is_ion_species(const add_args &cppargs, int i) { return std::abs(cppargs.z[i]) > 1e-12; }
+double ion_diameter_cpp(int i, double t, const add_args &cppargs);
+double ion_diameter_cpp_dt(int i, double t, const add_args &cppargs);
+double ion_born_radius_cpp(int i, double t, const add_args &cppargs);
+double ion_born_radius_cpp_dt(int i, double t, const add_args &cppargs);
+void dielectric_inputs_valid_cpp(const vector<double> &x, const add_args &cppargs);
+double mixed_dielectric_constant_cpp(const vector<double> &x, const add_args &cppargs);
+double reference_solvent_dielectric_constant_cpp(const vector<double> &x, const add_args &cppargs);
+vector<double> reference_solvent_dielectric_derivative_cpp(const vector<double> &x, const add_args &cppargs);
+BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion);
+double born_ares_only_cpp(double t, const vector<double> &x, const add_args &cppargs);
+vector<double> born_dadx_fd_cpp(double t, const vector<double> &x, const add_args &cppargs, double a0);
+double dh_ares_only_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs);
+vector<double> dh_dadx_fd_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, double a0);
+double ares_contribution_value_cpp(const AresContributions &terms, AresContributionKind kind);
+AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs);
+vector<double> contribution_dadx_fd_cpp(AresContributionKind kind, double t, double rho, const vector<double> &x, const add_args &cppargs, double a0);
+double dielectric_constant_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs);
+vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs);
+vector<double> dielectric_derivative_rule_fd_cpp(int rule, const vector<double> &x, const add_args &cppargs);
+DielectricState dielectric_state_cpp(const vector<double> &x, const add_args &cppargs);
+DadrhoResult dadrho_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+ScalarContributionTerms residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+CompositionContributionResult composition_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+FugacityContributionResult fugacity_coefficient_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+ScalarContributionTerms temperature_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+ActivityCoefficientNative activity_coefficient_values_cpp(
+    double t,
+    double rho,
+    double p,
+    int phase,
+    const vector<double>& x,
+    const add_args& args,
+    const vector<int>& cation_indices,
+    const vector<int>& anion_indices,
+    const vector<int>& solvent_indices,
+    const vector<int>& pair_cation_indices,
+    const vector<int>& pair_anion_indices,
+    const vector<int>& pair_nu_cation,
+    const vector<int>& pair_nu_anion,
+    bool include_aux,
+    bool has_solvent_override,
+    int solvent_override_index
+);
