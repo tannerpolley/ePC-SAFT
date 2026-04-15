@@ -343,7 +343,6 @@ _CANONICAL_ELEC_MODEL = {
     },
 }
 _DEFAULT_USER_OPTIONS = {
-    "debug": False,
     "solvated_ion_diameter_mixing_rule": False,
     "ion_dispersion_mixing_rule": True,
     "elec_model": copy.deepcopy(_CANONICAL_ELEC_MODEL),
@@ -1211,7 +1210,6 @@ def _resolve_runtime_options(user_options=None) -> dict:
         "elec_model",
         "solvated_ion_diameter_mixing_rule",
         "ion_dispersion_mixing_rule",
-        "debug",
     }
     unknown = set(user_options) - allowed
     if unknown:
@@ -1219,7 +1217,6 @@ def _resolve_runtime_options(user_options=None) -> dict:
 
     model = _normalize_elec_model(user_options.get("elec_model", {}))
     runtime = _flatten_model_to_runtime(model)
-    runtime["debug"] = bool(user_options.get("debug", False))
     runtime["solvated_ion_diameter_mixing_rule"] = _coerce_bool(
         user_options.get("solvated_ion_diameter_mixing_rule", False)
     )
@@ -1725,6 +1722,5 @@ def get_prop_dict(dataset_name: str | Path, species: Iterable[str], x, T: float,
     prop_dic["elec_model_dataset"] = dataset_name
     prop_dic["solvated_ion_diameter_mixing_rule"] = bool(runtime["solvated_ion_diameter_mixing_rule"])
     prop_dic["ion_dispersion_mixing_rule"] = bool(runtime["ion_dispersion_mixing_rule"])
-    prop_dic["debug"] = bool(runtime["debug"])
     return prop_dic
 
