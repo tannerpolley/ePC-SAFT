@@ -52,7 +52,6 @@ ext_modules = [
             np.get_include(),
             PACKAGE_ROOT,
             NATIVE_ROOT,
-            f"{NATIVE_ROOT}/third_party",
             f"{NATIVE_ROOT}/contributions",
             get_eigen_include(),
         ],

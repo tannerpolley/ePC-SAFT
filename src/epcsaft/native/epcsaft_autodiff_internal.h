@@ -1,15 +1,35 @@
 #pragma once
 
-#include "third_party/autodiff/dual.hpp"
+#include <cmath>
 
-using AutoDual = autodiff::dual;
+#include <unsupported/Eigen/AutoDiff>
+
+using AutoDualDerivative = Eigen::Matrix<double, 1, 1>;
+using AutoDual = Eigen::AutoDiffScalar<AutoDualDerivative>;
+
+inline AutoDual make_autodiff_scalar(double value, double derivative = 0.0) {
+    AutoDual x;
+    x.value() = value;
+    x.derivatives() = AutoDualDerivative::Constant(derivative);
+    return x;
+}
+
+template <typename Scalar>
+inline Scalar scalar_constant(double value) {
+    return static_cast<Scalar>(value);
+}
+
+template <>
+inline AutoDual scalar_constant<AutoDual>(double value) {
+    return make_autodiff_scalar(value, 0.0);
+}
 
 inline double scalar_value(double x) {
     return x;
 }
 
 inline double scalar_value(const AutoDual &x) {
-    return autodiff::value(x);
+    return x.value();
 }
 
 inline double scalar_derivative(double) {
@@ -17,7 +37,7 @@ inline double scalar_derivative(double) {
 }
 
 inline double scalar_derivative(const AutoDual &x) {
-    return autodiff::derivative(x);
+    return x.derivatives().size() == 0 ? 0.0 : x.derivatives()[0];
 }
 
 inline double scalar_log(double x) {
@@ -25,7 +45,8 @@ inline double scalar_log(double x) {
 }
 
 inline AutoDual scalar_log(const AutoDual &x) {
-    return autodiff::log(x);
+    using std::log;
+    return log(x);
 }
 
 inline double scalar_exp(double x) {
@@ -33,7 +54,8 @@ inline double scalar_exp(double x) {
 }
 
 inline AutoDual scalar_exp(const AutoDual &x) {
-    return autodiff::exp(x);
+    using std::exp;
+    return exp(x);
 }
 
 inline double scalar_sqrt(double x) {
@@ -41,7 +63,8 @@ inline double scalar_sqrt(double x) {
 }
 
 inline AutoDual scalar_sqrt(const AutoDual &x) {
-    return autodiff::sqrt(x);
+    using std::sqrt;
+    return sqrt(x);
 }
 
 inline double scalar_pow(double x, int exponent) {
@@ -49,7 +72,8 @@ inline double scalar_pow(double x, int exponent) {
 }
 
 inline AutoDual scalar_pow(const AutoDual &x, int exponent) {
-    return autodiff::pow(x, exponent);
+    using std::pow;
+    return pow(x, static_cast<double>(exponent));
 }
 
 inline double scalar_pow(double x, double exponent) {
@@ -57,5 +81,6 @@ inline double scalar_pow(double x, double exponent) {
 }
 
 inline AutoDual scalar_pow(const AutoDual &x, double exponent) {
-    return autodiff::pow(x, exponent);
+    using std::pow;
+    return pow(x, exponent);
 }
