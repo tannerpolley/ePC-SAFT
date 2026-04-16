@@ -26,7 +26,6 @@ COMPILED_INPUTS = [
     NATIVE_ROOT / "epcsaft_electrolyte.h",
     NATIVE_ROOT / "epcsaft_core_internal.h",
     NATIVE_ROOT / "epcsaft_autodiff_internal.h",
-    NATIVE_ROOT / "third_party" / "autodiff" / "dual.hpp",
     NATIVE_ROOT / "contributions" / "epcsaft_contrib_internal.h",
     NATIVE_ROOT / "epcsaft_mixture_state.cpp",
     NATIVE_ROOT / "epcsaft_dielectric.cpp",
