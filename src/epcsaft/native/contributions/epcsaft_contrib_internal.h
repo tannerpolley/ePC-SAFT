@@ -13,7 +13,7 @@ struct HardChainState {
 struct AutodiffHardChainState {
     vector<AutoDual> zeta;
     vector<AutoDual> ghs;
-    AutoDual eta = 0.0;
+    AutoDual eta = make_autodiff_scalar(0.0, 0.0);
 };
 
 struct ContributionDadxResult {

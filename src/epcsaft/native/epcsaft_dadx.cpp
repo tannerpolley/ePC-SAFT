@@ -11,17 +11,17 @@ struct AutodiffMixtureState {
     vector<double> s_ij;
     vector<double> e_ij;
     double den = 0.0;
-    AutoDual m_avg = 0.0;
-    AutoDual m2es3 = 0.0;
-    AutoDual m2e2s3 = 0.0;
+    AutoDual m_avg = make_autodiff_scalar(0.0, 0.0);
+    AutoDual m2es3 = make_autodiff_scalar(0.0, 0.0);
+    AutoDual m2e2s3 = make_autodiff_scalar(0.0, 0.0);
 };
 
 struct AutodiffDispersionState {
     std::array<double, 7> a{};
     std::array<double, 7> b{};
-    AutoDual I1 = 0.0;
-    AutoDual I2 = 0.0;
-    AutoDual C1 = 0.0;
+    AutoDual I1 = make_autodiff_scalar(0.0, 0.0);
+    AutoDual I2 = make_autodiff_scalar(0.0, 0.0);
+    AutoDual C1 = make_autodiff_scalar(0.0, 0.0);
 };
 
 AutodiffMixtureState mixture_state_autodiff_cpp(double t, double rho, const vector<AutoDual> &x, const add_args &cppargs) {
@@ -39,7 +39,7 @@ AutodiffMixtureState mixture_state_autodiff_cpp(double t, double rho, const vect
         }
     }
 
-    state.m_avg = 0.0;
+    state.m_avg = make_autodiff_scalar(0.0, 0.0);
     for (int i = 0; i < ncomp; ++i) {
         state.m_avg += x[i] * cppargs.m[i];
     }
@@ -87,12 +87,12 @@ vector<double> contribution_dadx_autodiff_cpp(AresContributionKind kind, double 
 
     vector<double> dadx(ncomp, 0.0);
     for (int i = 0; i < ncomp; ++i) {
-        vector<AutoDual> x_dual(ncomp, AutoDual(0.0, 0.0));
+        vector<AutoDual> x_dual(ncomp, make_autodiff_scalar(0.0, 0.0));
         for (int j = 0; j < ncomp; ++j) {
-            x_dual[j] = AutoDual(x[j], (i == j) ? 1.0 : 0.0);
+            x_dual[j] = make_autodiff_scalar(x[j], (i == j) ? 1.0 : 0.0);
         }
 
-        AutoDual value = 0.0;
+        AutoDual value = make_autodiff_scalar(0.0, 0.0);
         if (kind == AresContributionKind::HC || kind == AresContributionKind::DISP) {
             AutodiffMixtureState thermo = mixture_state_autodiff_cpp(t, rho, x_dual, cppargs);
             AutodiffHardChainState hc_state = hard_chain_state_autodiff_cpp(thermo.den, thermo.d, x_dual, cppargs);
@@ -102,7 +102,7 @@ vector<double> contribution_dadx_autodiff_cpp(AresContributionKind kind, double 
                     + scalar_pow(hc_state.zeta[2], 3) / (hc_state.zeta[3] * scalar_pow(1.0 - hc_state.zeta[3], 2))
                     + (scalar_pow(hc_state.zeta[2], 3) / scalar_pow(hc_state.zeta[3], 2) - hc_state.zeta[0]) * scalar_log(1.0 - hc_state.zeta[3])
                 );
-                AutoDual log_sum = 0.0;
+                AutoDual log_sum = make_autodiff_scalar(0.0, 0.0);
                 for (int k = 0; k < ncomp; ++k) {
                     log_sum += x_dual[k] * (cppargs.m[k] - 1.0) * scalar_log(hc_state.ghs[k * ncomp + k]);
                 }
@@ -113,13 +113,13 @@ vector<double> contribution_dadx_autodiff_cpp(AresContributionKind kind, double 
                     - PI * thermo.den * thermo.m_avg * dispersion.C1 * dispersion.I2 * thermo.m2e2s3;
             }
         } else if (kind == AresContributionKind::ION) {
-            AutoDual q2_sum = 0.0;
+            AutoDual q2_sum = make_autodiff_scalar(0.0, 0.0);
             for (int k = 0; k < ncomp; ++k) {
                 q2_sum += x_dual[k] * cppargs.z[k] * cppargs.z[k];
             }
             AutoDual eps = dielectric_constant_rule_autodiff_cpp(cppargs.dielc_rule, x_dual, cppargs);
             AutoDual kappa = scalar_sqrt((rho * N_AV / 1.0e30) * E_CHRG * E_CHRG / kb / t / perm_vac * q2_sum / eps);
-            AutoDual chi_sum = 0.0;
+            AutoDual chi_sum = make_autodiff_scalar(0.0, 0.0);
             for (int k = 0; k < ncomp; ++k) {
                 double d_k = ion_diameter_cpp(k, t, cppargs);
                 AutoDual ka = kappa * d_k;
@@ -132,7 +132,7 @@ vector<double> contribution_dadx_autodiff_cpp(AresContributionKind kind, double 
             AutoDual eps = (cppargs.born_eps_mode == 1)
                 ? reference_solvent_dielectric_constant_ad_cpp(x_dual, cppargs)
                 : dielectric_constant_rule_autodiff_cpp(cppargs.dielc_rule, x_dual, cppargs);
-            AutoDual charge_radius_sum = 0.0;
+            AutoDual charge_radius_sum = make_autodiff_scalar(0.0, 0.0);
             for (int k = 0; k < ncomp; ++k) {
                 if (is_ion_species(cppargs, k)) {
                     charge_radius_sum += x_dual[k] * cppargs.z[k] * cppargs.z[k] / ion_born_radius_cpp(k, t, cppargs);

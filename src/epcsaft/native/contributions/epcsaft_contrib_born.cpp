@@ -163,10 +163,10 @@ AutoDual reference_solvent_dielectric_constant_ad_cpp(const vector<AutoDual> &x,
         for (int i = 0; i < ncomp; ++i) {
             xd[i] = scalar_value(x[i]);
         }
-        return AutoDual(dielectric_constant_rule_cpp(cppargs.dielc_rule, xd, cppargs), 0.0);
+        return make_autodiff_scalar(dielectric_constant_rule_cpp(cppargs.dielc_rule, xd, cppargs), 0.0);
     }
-    AutoDual x_sol = 0.0;
-    AutoDual eps_sol_num = 0.0;
+    AutoDual x_sol = make_autodiff_scalar(0.0, 0.0);
+    AutoDual eps_sol_num = make_autodiff_scalar(0.0, 0.0);
     for (int i = 0; i < ncomp; i++) {
         if (std::abs(cppargs.z[i]) <= 1e-12) {
             x_sol += x[i];
@@ -178,7 +178,7 @@ AutoDual reference_solvent_dielectric_constant_ad_cpp(const vector<AutoDual> &x,
         for (int i = 0; i < ncomp; ++i) {
             xd[i] = scalar_value(x[i]);
         }
-        return AutoDual(dielectric_constant_rule_cpp(cppargs.dielc_rule, xd, cppargs), 0.0);
+        return make_autodiff_scalar(dielectric_constant_rule_cpp(cppargs.dielc_rule, xd, cppargs), 0.0);
     }
     return eps_sol_num / x_sol;
 }
