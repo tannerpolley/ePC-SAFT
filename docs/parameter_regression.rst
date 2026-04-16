@@ -72,8 +72,6 @@ Fit ``m``, ``s``, and ``e``
        fixed_parameters={
            "MW": 0.0160428,
            "z": 0.0,
-           "dip_num": 1.0,
-           "dipm": 0.0,
            "e_assoc": 0.0,
            "vol_a": 0.0,
            "dielc": 8.0,

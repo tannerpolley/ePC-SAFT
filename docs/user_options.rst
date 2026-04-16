@@ -52,8 +52,8 @@ Only the documented nested keys are supported.
   - ``8`` or ``aqueous-organic``
 - ``differential_mode``: choose ``analytical``, ``numerical``/``finite_difference``, or ``autodiff``
 
-``hc_model``, ``disp_model``, ``assoc_model``, ``polar_model``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+``hc_model``, ``disp_model``, ``assoc_model``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - ``dadx_differential_mode``: choose ``analytical``, ``numerical``/``finite_difference``, or ``autodiff``
 

@@ -12,7 +12,7 @@ The LaTeX document remains the current source of truth; this Markdown view and `
 - Description: Provides a residual Helmholtz-energy relation for residual helmholz energy.
 - Change note: No explicit citation on this equation block in the source file.
 - LaTeX: `docs/latex/equations.tex:22`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:99` (AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:90` (AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \tilde{a}^{\mathrm{res}}=\tilde{a}^{h c}+\tilde{a}^{\text {disp }}+\tilde{a}^{\text {assoc }}+\tilde{a}^{\text {DH }}+\tilde{a}^{\text {Born }}
@@ -276,7 +276,7 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - Description: Provides a residual Helmholtz-energy relation for association contribution.
 - Change note: Association Helmholtz form is traced to Chapman/Wertheim SAFT association theory, but the exact numbered equation is not present in the local progression PDFs.
 - LaTeX: `docs/latex/equations.tex:256`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:42` (double ares_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:35` (double ares_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {)
 
 ```tex
 \tilde{a}^{\mathrm{assoc}}= \sum_{i} x_{i}\sum_{\mathrm{A}_{i}}\left(\ln X^{\mathrm{A}_{i}}-\frac{X^{\mathrm{A}_{i}}}{2}+\frac{1}{2}\right)
@@ -374,7 +374,7 @@ d_{i j}=\left(d_{i i}+d_{j j}\right) / 2 .
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
 - LaTeX: `docs/latex/equations.tex:343`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:55` (double ares_ion_cpp(double t, const IonIntermediateState &ion_state) {)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:48` (double ares_ion_cpp(double t, const IonIntermediateState &ion_state) {)
 
 ```tex
 \tilde{a}^{DH}=-\frac{\kappa e^{2}}{12\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}\sum_{i}x_{i}z_{i}^{2}\chi_{i}
@@ -785,7 +785,7 @@ x_{\pm}=(x_{c}^{\nu c}\cdot x_{a}^{\nu a})^{\frac{1}{\nu_{c}+\nu_{a}}}
 - Description: Provides a residual Helmholtz-energy relation for born electrolyte term contribution.
 - Change note: Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation.
 - LaTeX: `docs/latex/equations.tex:720`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:64` (double ares_born_cpp(double t, const BornIntermediateState &born_state) {)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:57` (double ares_born_cpp(double t, const BornIntermediateState &born_state) {)
 
 ```tex
 \tilde{a}^{\text {Born }}(\varepsilon(x))=-\frac{e^2}{4 \pi \varepsilon_{0} k_{B} T}\left(1-\frac{1}{\varepsilon_{r,\mathrm{bulk}}}\right) \sum_{i} \frac{x_{i} z_{i}^2}{d^{\text{Born}}_{i}}
@@ -1097,7 +1097,7 @@ C_{2}
 - Description: Provides a differential relation needed for association contribution calculations.
 - Change note: Reframed from the compressibility notation so the weighted density differential is the primary upstream quantity.
 - LaTeX: `docs/latex/equations.tex:1011`
-- C++: `src/epcsaft/native/epcsaft_dadrho.cpp:93` (double dadrho_assoc_cpp()
+- C++: `src/epcsaft/native/epcsaft_dadrho.cpp:82` (double dadrho_assoc_cpp()
 
 ```tex
 \rho\left(\frac{\partial\tilde{a}^{assoc}}{\partial\rho}\right)_{T,x}
@@ -1112,7 +1112,7 @@ C_{2}
 - Description: Provides a differential relation needed for association contribution calculations.
 - Change note: Ownership moved from the Z section to the upstream density-differential section.
 - LaTeX: `docs/latex/equations.tex:1024`
-- C++: `src/epcsaft/native/epcsaft_dadrho.cpp:93` (double dadrho_assoc_cpp()
+- C++: `src/epcsaft/native/epcsaft_dadrho.cpp:82` (double dadrho_assoc_cpp()
 
 ```tex
 \rho\left(\frac{\partial\tilde{a}^{assoc}}{\partial\rho}\right)_{T,x}
@@ -1163,7 +1163,7 @@ C_{2}
 - Description: Provides a differential relation needed for debye and huckel electrolyte term contribution calculations.
 - Change note: Reframed from the compressibility notation so the weighted density differential is the primary upstream quantity.
 - LaTeX: `docs/latex/equations.tex:1071`
-- C++: `src/epcsaft/native/epcsaft_dadrho.cpp:142` (double dadrho_ion_cpp(double t, const IonIntermediateState &ion_state) {)
+- C++: `src/epcsaft/native/epcsaft_dadrho.cpp:131` (double dadrho_ion_cpp(double t, const IonIntermediateState &ion_state) {)
 
 ```tex
 \rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
@@ -1178,7 +1178,7 @@ C_{2}
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Ownership moved from the Z section to the upstream density-differential section.
 - LaTeX: `docs/latex/equations.tex:1085`
-- C++: `src/epcsaft/native/epcsaft_dadrho.cpp:142` (double dadrho_ion_cpp(double t, const IonIntermediateState &ion_state) {)
+- C++: `src/epcsaft/native/epcsaft_dadrho.cpp:131` (double dadrho_ion_cpp(double t, const IonIntermediateState &ion_state) {)
 
 ```tex
 \rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
@@ -1232,7 +1232,7 @@ C_{2}
 - Description: Provides a differential relation needed for born electrolyte term contribution calculations.
 - Change note: Reframed from the compressibility notation so the weighted density differential is the primary upstream quantity.
 - LaTeX: `docs/latex/equations.tex:1136`
-- C++: `src/epcsaft/native/epcsaft_dadrho.cpp:151` (double dadrho_born_cpp() {)
+- C++: `src/epcsaft/native/epcsaft_dadrho.cpp:140` (double dadrho_born_cpp() {)
 
 ```tex
 \rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}
@@ -1247,7 +1247,7 @@ C_{2}
 - Description: Provides a supporting relation used in born electrolyte term contribution.
 - Change note: Direct zero-density-differential statement from the Part I formulation.
 - LaTeX: `docs/latex/equations.tex:1149`
-- C++: `src/epcsaft/native/epcsaft_dadrho.cpp:151` (double dadrho_born_cpp() {)
+- C++: `src/epcsaft/native/epcsaft_dadrho.cpp:140` (double dadrho_born_cpp() {)
 
 ```tex
 \rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}= 0
@@ -1454,7 +1454,7 @@ b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left
 - Description: Provides a differential relation needed for association contribution calculations.
 - Change note: Composition derivative of association Helmholtz contribution; no direct numbered Chapman source available.
 - LaTeX: `docs/latex/equations.tex:1342`
-- C++: `src/epcsaft/native/epcsaft_dadx.cpp:436` (ContributionDadxResult dadx_assoc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const AssociationIntermediateState &assoc_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_dadx.cpp:404` (ContributionDadxResult dadx_assoc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const AssociationIntermediateState &assoc_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \left(\frac{\partial \tilde a^{assoc}}{\partial x_{k}}\right)_{T,v,x_{i\neq k}}
@@ -1518,7 +1518,7 @@ b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Changed from the 2005 constant-dielectric form to the 2019 concentration-dependent dielectric derivative form.
 - LaTeX: `docs/latex/equations.tex:1402`
-- C++: `src/epcsaft/native/epcsaft_dadx.cpp:508` (ContributionDadxResult dadx_ion_cpp(const MixtureState &thermo, const IonIntermediateState &ion_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_dadx.cpp:476` (ContributionDadxResult dadx_ion_cpp(const MixtureState &thermo, const IonIntermediateState &ion_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \begin{aligned}
@@ -1928,7 +1928,7 @@ D_{m}=d_{m}^{\text {Born }}+\Delta d_{m}, \Delta d_{m}=\frac{\left(f_{\text {mix
 - Description: Provides a differential relation needed for temperature differential calculations.
 - Change note: Mapped to Eq. (A.51) and extended here by including association, Debye-Huckel, and Born derivatives.
 - LaTeX: `docs/latex/equations.tex:1794`
-- C++: `src/epcsaft/native/epcsaft_dadt.cpp:148` (ScalarContributionTerms temperature_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_dadt.cpp:140` (ScalarContributionTerms temperature_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
 ```tex
 \left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial T}\right)_{\rho,x_{i}} =\left(\frac{\partial\tilde{a}^\mathrm{hc}}{\partial T}\right)_{\rho,x_{i}} +\left(\frac{\partial\tilde{a}^\mathrm{disp}}{\partial T}\right)_{\rho,x_{i}}
@@ -2060,7 +2060,7 @@ d_{i,T}=\frac{\partial d_{i}}{\partial T}=\sigma_{i}\left(3\frac{\epsilon_{i}}{k
 - Description: Defines the Debye screening quantity used in temperature differential equations.
 - Change note: Temperature differential form derived from Debye-Huckel term and chi-function definitions.
 - LaTeX: `docs/latex/equations.tex:1916`
-- C++: `src/epcsaft/native/epcsaft_dadt.cpp:113` (double dadt_ion_cpp(const IonIntermediateState &ion_state, double t, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_dadt.cpp:105` (double dadt_ion_cpp(const IonIntermediateState &ion_state, double t, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \frac{d \tilde{a}^{D H}}{d T}=-\frac{1}{12 \pi k_{B} \varepsilon_{0} \varepsilon_{r}} \sum_{i} x_{i}\left(z_{i} e\right)^2\left[\left(-2 \chi_{i}+\frac{3}{1+\kappa a_{i}}\right)\left(-\frac{\kappa}{2 T^2}\right)-\frac{\kappa \chi_{i}}{T^2}\right]
@@ -2073,7 +2073,7 @@ d_{i,T}=\frac{\partial d_{i}}{\partial T}=\sigma_{i}\left(3\frac{\epsilon_{i}}{k
 - Description: Specifies dielectric-property mixing or derivative form for temperature differential equations.
 - Change note: Temperature derivative of the Born contribution derived from the Part I Born Helmholtz equation.
 - LaTeX: `docs/latex/equations.tex:1929`
-- C++: `src/epcsaft/native/epcsaft_dadt.cpp:130` (double dadt_born_cpp(double t, const BornIntermediateState &born_state) {)
+- C++: `src/epcsaft/native/epcsaft_dadt.cpp:122` (double dadt_born_cpp(double t, const BornIntermediateState &born_state) {)
 
 ```tex
 \left(\frac{\partial\tilde{a}^{\mathrm{Born}}}{\partial T}\right)_{\rho,x_{i}}=\frac{e^2}{4 \pi \varepsilon_{0} k_{B} T^2}\left(1-\frac{1}{\varepsilon_{r}}\right) \sum_{i} \frac{x_{i} z_{i}^2}{a_{i}}
@@ -2088,7 +2088,7 @@ d_{i,T}=\frac{\partial d_{i}}{\partial T}=\sigma_{i}\left(3\frac{\epsilon_{i}}{k
 - Description: Provides a supporting relation used in pressure (compressibility factor).
 - Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
 - LaTeX: `docs/latex/equations.tex:1946`
-- C++: `src/epcsaft/native/epcsaft_Z.cpp:81` (double p_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_Z.cpp:78` (double p_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
 ```tex
 P=ZkT\rho\left(10^{10}\frac{\hat{\mathrm{A}}}{\mathrm{m}}\right)^{3}
@@ -2114,7 +2114,7 @@ Z=1+\eta\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\eta}\right)_{T,x_{i
 - Description: Provides a differential relation needed for pressure (compressibility factor) calculations.
 - Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
 - LaTeX: `docs/latex/equations.tex:1967`
-- C++: `src/epcsaft/native/epcsaft_dadrho.cpp:158` (DadrhoResult dadrho_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_dadrho.cpp:147` (DadrhoResult dadrho_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
 ```tex
 \eta\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\eta}\right)_{T,x_{i}} = \rho\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\rho}\right)_{T,x_{i}}
@@ -2127,7 +2127,7 @@ Z=1+\eta\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\eta}\right)_{T,x_{i
 - Description: Provides a differential relation needed for pressure (compressibility factor) calculations.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
 - LaTeX: `docs/latex/equations.tex:1978`
-- C++: `src/epcsaft/native/epcsaft_Z.cpp:68` (CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_Z.cpp:65` (CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
 ```tex
 Z=1+\rho\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\rho}\right)_{T,x_{i}}
@@ -2140,7 +2140,7 @@ Z=1+\rho\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\rho}\right)_{T,x_{i
 - Description: Provides a supporting relation used in pressure (compressibility factor).
 - Change note: Mapped to Eq. (A.24) and extended here by adding association, Debye-Huckel, and Born compressibility contributions.
 - LaTeX: `docs/latex/equations.tex:1989`
-- C++: `src/epcsaft/native/epcsaft_Z.cpp:68` (CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_Z.cpp:65` (CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
 ```tex
 Z = 1
@@ -2158,7 +2158,7 @@ Z = 1
 - Description: Gives the explicit residual compressibility identity in pressure (compressibility factor).
 - Change note: Added as the direct $Z-1$ form so later fugacity equations can use only $Z$ and $Z^\alpha$ terms explicitly.
 - LaTeX: `docs/latex/equations.tex:2005`
-- C++: `src/epcsaft/native/epcsaft_Z.cpp:68` (CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_Z.cpp:65` (CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
 ```tex
 Z - 1
@@ -2176,7 +2176,7 @@ Z - 1
 - Description: Provides a differential relation needed for pressure (compressibility factor) calculations.
 - Change note: Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation.
 - LaTeX: `docs/latex/equations.tex:2021`
-- C++: `src/epcsaft/native/epcsaft_Z.cpp:53` (ScalarContributionTerms compressibility_terms_from_dadrho_cpp(const DadrhoResult &result) {)
+- C++: `src/epcsaft/native/epcsaft_Z.cpp:51` (ScalarContributionTerms compressibility_terms_from_dadrho_cpp(const DadrhoResult &result) {)
 
 ```tex
 Z^\alpha =\rho\left(\frac{\partial\tilde{a}^\alpha}{\partial\rho}\right)_{T,x}
@@ -2192,7 +2192,7 @@ Z^\alpha =\rho\left(\frac{\partial\tilde{a}^\alpha}{\partial\rho}\right)_{T,x}
 - Description: Gives a chemical-potential contribution in chemical potential.
 - Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
 - LaTeX: `docs/latex/equations.tex:2039`
-- C++: `src/epcsaft/native/epcsaft_mu.cpp:64` (ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_mu.cpp:59` (ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
 ```tex
 \tilde{\mu_{k}}^{\mathrm{res}}=\frac{\mu_{k}^\mathrm{res}}{kT} = \frac{\hat{\mu}_{k}^\mathrm{res}}{RT}
@@ -2224,7 +2224,7 @@ Z^\alpha =\rho\left(\frac{\partial\tilde{a}^\alpha}{\partial\rho}\right)_{T,x}
 - Description: Gives the explicit residual chemical-potential decomposition in chemical potential.
 - Change note: Written in explicit non-summation form to match the style used for the other property families in this section.
 - LaTeX: `docs/latex/equations.tex:2067`
-- C++: `src/epcsaft/native/epcsaft_mu.cpp:64` (ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_mu.cpp:59` (ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
 ```tex
 \tilde{\mu_{k}}^{\mathrm{res}}=\tilde{\mu_{k}}^{\mathrm{hc}}+\tilde{\mu_{k}}^{\mathrm{disp}}+\tilde{\mu_{k}}^{\mathrm{assoc}}+\tilde{\mu_{k}}^{\mathrm{DH}}+\tilde{\mu_{k}}^{\mathrm{Born}}
@@ -2360,7 +2360,7 @@ Z^\alpha =\rho\left(\frac{\partial\tilde{a}^\alpha}{\partial\rho}\right)_{T,x}
 - Description: Gives the total fugacity-coefficient relation in fugacity coefficient.
 - Change note: Mapped manually to the residual-chemical-potential form used in the PC-SAFT appendix.
 - LaTeX: `docs/latex/equations.tex:2210`
-- C++: `src/epcsaft/native/epcsaft_fugcoef.cpp:96` (FugacityContributionResult fugacity_coefficient_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_fugcoef.cpp:90` (FugacityContributionResult fugacity_coefficient_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
 ```tex
 \ln\varphi_{k}
@@ -2381,7 +2381,7 @@ Z^\alpha =\rho\left(\frac{\partial\tilde{a}^\alpha}{\partial\rho}\right)_{T,x}
 - Description: Gives the explicit fugacity-coefficient decomposition in fugacity coefficient.
 - Change note: Written in explicit non-summation form to match the contribution-by-contribution structure used throughout this section.
 - LaTeX: `docs/latex/equations.tex:2229`
-- C++: `src/epcsaft/native/epcsaft_fugcoef.cpp:96` (FugacityContributionResult fugacity_coefficient_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_fugcoef.cpp:90` (FugacityContributionResult fugacity_coefficient_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
 ```tex
 \ln\varphi_{k}
@@ -2404,7 +2404,7 @@ Z^\alpha =\rho\left(\frac{\partial\tilde{a}^\alpha}{\partial\rho}\right)_{T,x}
 - Description: Gives the generic contribution fugacity-coefficient relation in fugacity coefficient.
 - Change note: Uses only the explicit $Z^\alpha$ allocation requested for the contribution-resolved fugacity-coefficient terms.
 - LaTeX: `docs/latex/equations.tex:2250`
-- C++: `src/epcsaft/native/epcsaft_fugcoef.cpp:41` (vector<double> lnfug_contribution_cpp()
+- C++: `src/epcsaft/native/epcsaft_fugcoef.cpp:40` (vector<double> lnfug_contribution_cpp()
 
 ```tex
 \ln\varphi_{k}^{\alpha}

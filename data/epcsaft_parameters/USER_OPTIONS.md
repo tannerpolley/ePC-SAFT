@@ -8,7 +8,6 @@ The loader deep-merges it onto the package defaults defined in
 
 ```json
 {
-  "debug": false,
   "solvated_ion_diameter_mixing_rule": false,
   "ion_dispersion_mixing_rule": true,
   "elec_model": {
@@ -23,9 +22,6 @@ The loader deep-merges it onto the package defaults defined in
       "dadx_differential_mode": "analytical"
     },
     "assoc_model": {
-      "dadx_differential_mode": "analytical"
-    },
-    "polar_model": {
       "dadx_differential_mode": "analytical"
     },
     "DH_model": {
@@ -56,13 +52,12 @@ The loader deep-merges it onto the package defaults defined in
 
 ## Supported keys
 
-- Top level: `debug`, `solvated_ion_diameter_mixing_rule`, `ion_dispersion_mixing_rule`, `elec_model`
+- Top level: `solvated_ion_diameter_mixing_rule`, `ion_dispersion_mixing_rule`, `elec_model`
 - `elec_model.rel_perm.rule`: default `1`; accepts integers and aliases such as `constant`, `linear`, `combined`, `empirical`
 - `elec_model.rel_perm.differential_mode`: default `analytical`; accepts `analytical` or `numerical`
 - `elec_model.hc_model.dadx_differential_mode`: default `analytical`
 - `elec_model.disp_model.dadx_differential_mode`: default `analytical`
 - `elec_model.assoc_model.dadx_differential_mode`: default `analytical`
-- `elec_model.polar_model.dadx_differential_mode`: default `analytical`
 - `elec_model.DH_model.d_ion_mode`: default `1`; accepts `0`, `1`, `2` or `t_indep`, `t_dep_1`, `t_dep_2`
 - `elec_model.DH_model.bjeruum_treatment`: default `false`
 - `elec_model.DH_model.mu_DH_model.differential_mode`: default `analytical`
