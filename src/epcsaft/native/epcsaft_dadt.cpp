@@ -90,6 +90,7 @@ double dadt_disp_cpp(const MixtureState &thermo, double deta_dt, double t, const
         - PI * thermo.den * thermo.m_avg * (dC1_dt * dispersion.I2 + dispersion.C1 * dI2_dt - 2.0 * dispersion.C1 * dispersion.I2 / t) * thermo.m2e2s3;
 }
 
+// EqID: dares_assoc_dT
 double dadt_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {
     if (!assoc_state.active) {
         return 0.0;
