@@ -17,7 +17,7 @@ vector<double> dzeta_dt_cpp(const MixtureState &thermo, const vector<double> &x,
     return dzeta_dt;
 }
 
-// EqID: dares_hs_dT
+// EqID: hs_ares_dT
 double dadt_hs_cpp(const HardChainState &hc_state, const vector<double> &dzeta_dt) {
     const auto &zeta = hc_state.zeta;
     return 1.0 / zeta[0] * (
@@ -30,7 +30,7 @@ double dadt_hs_cpp(const HardChainState &hc_state, const vector<double> &dzeta_d
     );
 }
 
-// EqID: dg_hs_dT
+// EqID: ghs_contact_dT
 double hs_contact_time_derivative_cpp(
     double pair_diameter,
     double pair_diameter_dt,
@@ -70,7 +70,7 @@ vector<double> hc_contact_time_terms_cpp(const MixtureState &thermo, const HardC
     return terms;
 }
 
-// EqID: dares_hc_dT
+// EqID: hc_ares_dT
 double dadt_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const vector<double> &dzeta_dt, const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     vector<double> contact_time_terms = hc_contact_time_terms_cpp(thermo, hc_state, dzeta_dt);
@@ -81,7 +81,7 @@ double dadt_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, c
     return thermo.m_avg * dadt_hs_cpp(hc_state, dzeta_dt) - summ;
 }
 
-// EqID: dares_disp_dT
+// EqID: disp_ares_dT
 double dadt_disp_cpp(const MixtureState &thermo, double deta_dt, double t, const DispersionPolynomialState &dispersion) {
     double dI1_dt = dispersion.dI1_deta * deta_dt;
     double dI2_dt = dispersion.dI2_deta * deta_dt;
@@ -90,7 +90,7 @@ double dadt_disp_cpp(const MixtureState &thermo, double deta_dt, double t, const
         - PI * thermo.den * thermo.m_avg * (dC1_dt * dispersion.I2 + dispersion.C1 * dI2_dt - 2.0 * dispersion.C1 * dispersion.I2 / t) * thermo.m2e2s3;
 }
 
-// EqID: dares_assoc_dT
+// EqID: assoc_ares_dT
 double dadt_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {
     if (!assoc_state.active) {
         return 0.0;
@@ -102,7 +102,7 @@ double dadt_assoc_cpp(const AssociationIntermediateState &assoc_state, const vec
     return value;
 }
 
-// EqID: dares_dh_dT
+// EqID: dh_ares_dT
 double dadt_ion_cpp(const IonIntermediateState &ion_state, double t, const vector<double> &x, const add_args &cppargs) {
     if (!ion_state.active) {
         return 0.0;
@@ -119,7 +119,7 @@ double dadt_ion_cpp(const IonIntermediateState &ion_state, double t, const vecto
     return -1.0 / 12.0 / PI / kb / (ion_state.dielectric.eps * perm_vac) * dadt_ion;
 }
 
-// EqID: dares_born_dT
+// EqID: born_ares_dT
 double dadt_born_cpp(double t, const BornIntermediateState &born_state) {
     if (born_state.model == 0) {
         return 0.0;

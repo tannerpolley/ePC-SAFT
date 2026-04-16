@@ -175,7 +175,7 @@ vector<double> contribution_dadx_fd_cpp(AresContributionKind kind, double t, dou
     return dadx;
 }
 
-// EqID: dg_hs_dxk
+// EqID: ghs_contact_dxk
 double hs_contact_composition_derivative_cpp(
     double pair_diameter,
     double zeta2,
@@ -196,7 +196,7 @@ double hs_contact_composition_derivative_cpp(
 
 namespace {
 
-// EqID: dares_hs_dxk
+// EqID: hs_ares_dxk
 vector<double> dadx_hs_cpp(const MixtureState &thermo, const HardChainState &hc_state, const add_args &cppargs) {
     int ncomp = static_cast<int>(thermo.d.size());
     vector<double> result(ncomp, 0.0);
@@ -231,7 +231,7 @@ vector<double> dadx_hs_cpp(const MixtureState &thermo, const HardChainState &hc_
     return result;
 }
 
-// EqID: dares_hc_dxk
+// EqID: hc_ares_dxk
 vector<double> hc_contact_composition_terms_cpp(const MixtureState &thermo, const HardChainState &hc_state, const add_args &cppargs) {
     int ncomp = static_cast<int>(thermo.d.size());
     vector<double> terms(ncomp * ncomp, 0.0);
@@ -306,7 +306,7 @@ ContributionDadxResult dadx_hc_cpp(const MixtureState &thermo, const HardChainSt
     return result;
 }
 
-// EqID: dares_disp_dxk
+// EqID: disp_ares_dxk
 ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion, double t, double rho, const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     ContributionDadxResult result;
@@ -400,7 +400,7 @@ vector<double> association_site_fraction_composition_terms_cpp(
     return dXA_dx;
 }
 
-// EqID: dares_assoc_dxk
+// EqID: assoc_ares_dxk
 ContributionDadxResult dadx_assoc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const AssociationIntermediateState &assoc_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     ContributionDadxResult result;
@@ -472,7 +472,7 @@ ContributionDadxResult dadx_assoc_cpp(const MixtureState &thermo, const HardChai
     return result;
 }
 
-// EqID: dares_dh_dxi
+// EqID: dh_ares_dxi
 ContributionDadxResult dadx_ion_cpp(const MixtureState &thermo, const IonIntermediateState &ion_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     ContributionDadxResult result;

@@ -5,7 +5,7 @@ using namespace thermo_detail;
 
 namespace {
 
-// EqID: dadrho_hs_explicit
+// EqID: hs_ares_dadrho
 double dadrho_hs_cpp(const HardChainState &hc_state) {
     const auto &zeta = hc_state.zeta;
     return zeta[3] / (1.0 - zeta[3])
@@ -15,7 +15,7 @@ double dadrho_hs_cpp(const HardChainState &hc_state) {
 
 }  // namespace
 
-// EqID: dg_hs_drho
+// EqID: ghs_contact_dadrho
 double hs_contact_density_derivative_cpp(double pair_diameter, double zeta2, double zeta3) {
     return zeta3 / std::pow(1.0 - zeta3, 2.0)
         + pair_diameter * (3.0 * zeta2 / std::pow(1.0 - zeta3, 2.0) + 6.0 * zeta2 * zeta3 / std::pow(1.0 - zeta3, 3.0))
@@ -25,7 +25,7 @@ double hs_contact_density_derivative_cpp(double pair_diameter, double zeta2, dou
 namespace {
 
 // EqID: dadrho_hc
-// EqID: dadrho_hc_explicit
+// EqID: hc_ares_dadrho
 double dadrho_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     double summ = 0.0;
@@ -38,7 +38,7 @@ double dadrho_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state,
 }
 
 // EqID: dadrho_disp
-// EqID: dadrho_disp_explicit
+// EqID: disp_ares_dadrho
 double dadrho_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion) {
     return -2.0 * PI * thermo.den * dispersion.dEtaI1_deta * thermo.m2es3
         - PI * thermo.den * thermo.m_avg * (dispersion.C1 * dispersion.dEtaI2_deta + dispersion.C2 * hc_state.eta * dispersion.I2) * thermo.m2e2s3;
@@ -77,7 +77,7 @@ vector<double> association_site_fraction_density_terms_cpp(
 }
 
 // EqID: dadrho_assoc
-// EqID: dadrho_assoc_explicit
+// EqID: assoc_ares_dadrho
 double dadrho_assoc_cpp(
     const MixtureState &thermo,
     const HardChainState &hc_state,
@@ -135,7 +135,7 @@ double dadrho_ion_cpp(double t, const IonIntermediateState &ion_state) {
 }
 
 // EqID: dadrho_born
-// EqID: dadrho_born_zero
+// EqID: born_ares_dadrho
 double dadrho_born_cpp() {
     return 0.0;
 }
