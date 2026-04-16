@@ -14,6 +14,8 @@ REGISTRY_PATH = REPO_ROOT / "docs" / "equations_registry.yaml"
 NATIVE_ROOT = REPO_ROOT / "src" / "epcsaft" / "native"
 
 SECTION_RE = re.compile(r"\\section\{(.+?)\}")
+SUBSECTION_RE = re.compile(r"\\subsection\{(.+?)\}")
+SUBSUBSECTION_RE = re.compile(r"\\subsubsection\{(.+?)\}")
 EQID_RE = re.compile(r"%\s*EqID:\s*([A-Za-z0-9_]+)")
 META_RE = re.compile(r"%\s*([A-Za-z][A-Za-z ]+):\s*(.*)")
 LABEL_RE = re.compile(r"\\label\{([^}]+)\}")
@@ -25,6 +27,8 @@ def parse_equations(tex_path: Path) -> list[dict]:
     lines = tex_path.read_text(encoding="utf-8").splitlines()
     entries: list[dict] = []
     section = ""
+    subsection = ""
+    subsubsection = ""
     i = 0
     seen_eqids: set[str] = set()
     while i < len(lines):
@@ -32,6 +36,21 @@ def parse_equations(tex_path: Path) -> list[dict]:
         section_match = SECTION_RE.search(line)
         if section_match:
             section = section_match.group(1).strip()
+            subsection = ""
+            subsubsection = ""
+            i += 1
+            continue
+
+        subsection_match = SUBSECTION_RE.search(line)
+        if subsection_match:
+            subsection = subsection_match.group(1).strip()
+            subsubsection = ""
+            i += 1
+            continue
+
+        subsubsection_match = SUBSUBSECTION_RE.search(line)
+        if subsubsection_match:
+            subsubsection = subsubsection_match.group(1).strip()
             i += 1
             continue
 
@@ -48,6 +67,8 @@ def parse_equations(tex_path: Path) -> list[dict]:
         entry: dict[str, object] = {
             "eqid": eqid,
             "section": section,
+            "subsection": subsection,
+            "subsubsection": subsubsection,
             "tex_file": tex_path.relative_to(REPO_ROOT).as_posix(),
             "tex_line": i + 1,
         }
@@ -154,6 +175,8 @@ def render_yaml(entries: list[dict]) -> str:
         out.append(f"- eqid: {yaml_quote(entry['eqid'])}")
         for key in (
             "section",
+            "subsection",
+            "subsubsection",
             "label",
             "source",
             "status",
@@ -189,14 +212,36 @@ def render_markdown(entries: list[dict]) -> str:
     out.append("")
 
     current_section = None
+    current_subsection = None
+    current_subsubsection = None
     for entry in entries:
         section = entry["section"]
         if section != current_section:
             current_section = section
+            current_subsection = None
+            current_subsubsection = None
             out.append(f"## {section}")
             out.append("")
 
-        out.append(f"### `{entry['eqid']}`")
+        subsection = str(entry.get("subsection", "") or "")
+        if subsection and subsection != current_subsection:
+            current_subsection = subsection
+            current_subsubsection = None
+            out.append(f"### {subsection}")
+            out.append("")
+
+        subsubsection = str(entry.get("subsubsection", "") or "")
+        if subsubsection and subsubsection != current_subsubsection:
+            current_subsubsection = subsubsection
+            out.append(f"#### {subsubsection}")
+            out.append("")
+
+        heading_level = 3
+        if subsection:
+            heading_level += 1
+        if subsubsection:
+            heading_level += 1
+        out.append(f"{'#' * heading_level} `{entry['eqid']}`")
         out.append(f"- Label: `{entry.get('label', '')}`")
         if entry.get("source"):
             out.append(f"- Source: {entry['source']}")
