@@ -47,7 +47,6 @@ ScalarContributionTerms normalized_dadrho_terms_cpp(const ScalarContributionTerm
     );
 }
 
-// EqID: z_alpha
 ScalarContributionTerms compressibility_terms_from_dadrho_cpp(const DadrhoResult &result) {
     return make_scalar_terms(
         result.terms.hc,
@@ -61,7 +60,6 @@ ScalarContributionTerms compressibility_terms_from_dadrho_cpp(const DadrhoResult
 
 // EqID: z_from_rho
 // EqID: z_total
-// EqID: z_minus_one_sum
 CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     DadrhoResult dadrho_result = dadrho_result_cpp(t, rho, std::move(x), cppargs);
     CompressibilityFactorResult result;

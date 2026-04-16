@@ -5,7 +5,6 @@ using namespace thermo_detail;
 
 namespace {
 
-// EqID: dadrho_hs
 // EqID: dadrho_hs_explicit
 double dadrho_hs_cpp(const HardChainState &hc_state) {
     const auto &zeta = hc_state.zeta;
