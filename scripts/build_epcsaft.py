@@ -2,6 +2,7 @@ import argparse
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -13,8 +14,8 @@ PACKAGE_ROOT = REPO_ROOT / "src" / "epcsaft"
 NATIVE_ROOT = PACKAGE_ROOT / "native"
 EXPECTED_PACKAGE_INIT = (PACKAGE_ROOT / "__init__.py").resolve()
 BUILD_ROOT = REPO_ROOT / "build"
-PIP_TEMP_ROOT = BUILD_ROOT / "codex-pip-temp"
-PIP_CACHE_ROOT = BUILD_ROOT / "codex-pip-cache"
+PIP_TEMP_ROOT = BUILD_ROOT / "pip-temp"
+PIP_CACHE_ROOT = BUILD_ROOT / "pip-cache"
 BUILD_STAMP = BUILD_ROOT / "epcsaft-editable-build.json"
 COMPILED_INPUTS = [
     REPO_ROOT / "pyproject.toml",
@@ -24,13 +25,24 @@ COMPILED_INPUTS = [
     PACKAGE_ROOT / "epcsaft.pxd",
     NATIVE_ROOT / "epcsaft_electrolyte.h",
     NATIVE_ROOT / "epcsaft_core_internal.h",
-    NATIVE_ROOT / "epcsaft_support_common.cpp",
-    NATIVE_ROOT / "epcsaft_support_assoc.cpp",
-    NATIVE_ROOT / "epcsaft_support_electrolyte.cpp",
+    NATIVE_ROOT / "epcsaft_autodiff_internal.h",
+    NATIVE_ROOT / "third_party" / "autodiff" / "dual.hpp",
+    NATIVE_ROOT / "contributions" / "epcsaft_contrib_internal.h",
+    NATIVE_ROOT / "epcsaft_mixture_state.cpp",
+    NATIVE_ROOT / "epcsaft_dielectric.cpp",
+    NATIVE_ROOT / "contributions" / "epcsaft_contrib_hc.cpp",
+    NATIVE_ROOT / "contributions" / "epcsaft_contrib_disp.cpp",
+    NATIVE_ROOT / "contributions" / "epcsaft_contrib_polar.cpp",
+    NATIVE_ROOT / "contributions" / "epcsaft_contrib_assoc.cpp",
+    NATIVE_ROOT / "contributions" / "epcsaft_contrib_ion.cpp",
+    NATIVE_ROOT / "contributions" / "epcsaft_contrib_born.cpp",
     NATIVE_ROOT / "epcsaft_ares.cpp",
     NATIVE_ROOT / "epcsaft_dadrho.cpp",
     NATIVE_ROOT / "epcsaft_dadx.cpp",
     NATIVE_ROOT / "epcsaft_dadt.cpp",
+    NATIVE_ROOT / "epcsaft_hres.cpp",
+    NATIVE_ROOT / "epcsaft_gres.cpp",
+    NATIVE_ROOT / "epcsaft_sres.cpp",
     NATIVE_ROOT / "epcsaft_Z.cpp",
     NATIVE_ROOT / "epcsaft_mu.cpp",
     NATIVE_ROOT / "epcsaft_fugcoef.cpp",
@@ -44,6 +56,16 @@ def _cleanup_generated_cpp() -> None:
     generated_cpp = PACKAGE_ROOT / "epcsaft.cpp"
     if generated_cpp.exists():
         generated_cpp.unlink()
+
+
+def _cleanup_transient_build_dirs() -> None:
+    if not BUILD_ROOT.exists():
+        return
+    for child in BUILD_ROOT.iterdir():
+        if not child.is_dir():
+            continue
+        if child.name.startswith(("bdist.", "lib.", "temp.")):
+            shutil.rmtree(child, ignore_errors=True)
 
 
 def _installed_module_path() -> Path | None:
@@ -175,6 +197,7 @@ def main() -> int:
     if not args.force and install_state == "current":
         print(f"No rebuild required: {install_reason}.")
         _cleanup_generated_cpp()
+        _cleanup_transient_build_dirs()
         return 0
 
     if args.force:
@@ -185,6 +208,7 @@ def main() -> int:
     _run_editable_install()
     _write_build_stamp()
     _cleanup_generated_cpp()
+    _cleanup_transient_build_dirs()
     return 0
 
 

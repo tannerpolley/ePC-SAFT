@@ -9,6 +9,7 @@ import pytest
 from epcsaft import create_parameter_template
 from epcsaft import ePCSAFTMixture
 from epcsaft.parameters import _resolve_runtime_options
+from epcsaft.parameters import minimize_user_options
 
 
 def test_create_parameter_template_creates_loadable_scaffold(tmp_path):
@@ -55,3 +56,40 @@ def test_runtime_options_reject_legacy_electrolyte_shorthand():
 
     with pytest.raises(KeyError, match="unsupported key"):
         _resolve_runtime_options({"elec_model": {"born_rel_perm": "solvent"}})
+
+
+def test_runtime_options_accept_autodiff_modes_and_preserve_explicit_overrides():
+    user_options = {
+        "elec_model": {
+            "rel_perm": {"differential_mode": "autodiff"},
+            "hc_model": {"dadx_differential_mode": "autodiff"},
+            "disp_model": {"dadx_differential_mode": "autodiff"},
+            "assoc_model": {"dadx_differential_mode": "autodiff"},
+            "polar_model": {"dadx_differential_mode": "autodiff"},
+            "DH_model": {"mu_DH_model": {"differential_mode": "autodiff"}},
+            "born_model": {"mu_born_model": {"differential_mode": "autodiff"}},
+        }
+    }
+
+    resolved = _resolve_runtime_options(user_options)
+    model = resolved["model"]
+    runtime = resolved["runtime"]
+
+    assert model["rel_perm"]["differential_mode"] == 2
+    assert model["hc_model"]["dadx_differential_mode"] == 2
+    assert model["disp_model"]["dadx_differential_mode"] == 2
+    assert model["assoc_model"]["dadx_differential_mode"] == 2
+    assert model["polar_model"]["dadx_differential_mode"] == 2
+    assert model["DH_model"]["mu_DH_model"]["differential_mode"] == 2
+    assert model["born_model"]["mu_born_model"]["differential_mode"] == 2
+
+    assert runtime["dielc_diff_mode"] == 2
+    assert runtime["hc_dadx_diff_mode"] == 2
+    assert runtime["disp_dadx_diff_mode"] == 2
+    assert runtime["assoc_dadx_diff_mode"] == 2
+    assert runtime["polar_dadx_diff_mode"] == 2
+    assert runtime["mu_DH_diff_mode"] == 2
+    assert runtime["mu_born_diff_mode"] == 2
+
+    minimized = minimize_user_options(user_options)
+    assert minimized == user_options

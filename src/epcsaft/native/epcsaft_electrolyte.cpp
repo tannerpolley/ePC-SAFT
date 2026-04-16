@@ -1,9 +1,9 @@
 // Legacy note:
 // The native ePC-SAFT implementation was split out of this former monolithic
 // translation unit into equation- and support-focused files:
-//   - native/epcsaft_support_common.cpp
+//   - native/epcsaft_mixture_state.cpp
 //   - native/epcsaft_support_assoc.cpp
-//   - native/epcsaft_support_electrolyte.cpp
+//   - native/epcsaft_dielectric.cpp
 //   - native/epcsaft_ares.cpp
 //   - native/epcsaft_dadrho.cpp
 //   - native/epcsaft_dadx.cpp

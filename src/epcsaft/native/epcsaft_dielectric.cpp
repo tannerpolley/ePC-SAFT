@@ -1,81 +1,9 @@
 #include "epcsaft_core_internal.h"
+#include "epcsaft_autodiff_internal.h"
 
 using namespace thermo_detail;
 
-double ion_diameter_cpp(int i, double t, const add_args &cppargs) {
-    if (!is_ion_species(cppargs, i)) {
-        return cppargs.s[i];
-    }
-    int mode = cppargs.d_ion_mode;
-    double sigma_i = cppargs.s[i];
-    if (sigma_i <= 0.0) {
-        throw ValueError("DH/ion diameter requires positive ionic sigma_i.");
-    }
-    if (mode == 0) {
-        return sigma_i;
-    }
-    if (mode == 1) {
-        return sigma_i*(1.0 - 0.12);
-    }
-    if (mode == 2) {
-        return sigma_i*(1.0 - 0.12*std::exp(-3.0*cppargs.e[i]/t));
-    }
-    throw ValueError("Unknown d_ion_mode. Supported values are 0, 1, 2.");
-}
-
-double ion_diameter_cpp_dt(int i, double t, const add_args &cppargs) {
-    if (!is_ion_species(cppargs, i)) {
-        return 0.0;
-    }
-    if (cppargs.d_ion_mode == 2) {
-        double sigma_i = cppargs.s[i];
-        double expo = std::exp(-3.0*cppargs.e[i]/t);
-        return -0.36*sigma_i*cppargs.e[i]*expo/(t*t);
-    }
-    return 0.0;
-}
-
-double ion_born_radius_cpp(int i, double t, const add_args &cppargs) {
-    if (!is_ion_species(cppargs, i)) {
-        return cppargs.s[i];
-    }
-    int mode = cppargs.d_born_mode;
-    double sigma_i = cppargs.s[i];
-    if (sigma_i <= 0.0) {
-        throw ValueError("Born term requires positive ionic sigma_i.");
-    }
-    if (mode == 0) {
-        return sigma_i;
-    }
-    if (mode == 1) {
-        return sigma_i*(1.0 - 0.12);
-    }
-    if (mode == 2) {
-        return sigma_i*(1.0 - 0.12*std::exp(-3.0*cppargs.e[i]/t));
-    }
-    if (mode == 3) {
-        if (cppargs.d_born.size() <= static_cast<size_t>(i) || cppargs.d_born[i] <= 0.0) {
-            throw ValueError("d_Born_mode=fitted_param requires positive ionic params['d_born'] values.");
-        }
-        return cppargs.d_born[i];
-    }
-    throw ValueError("Unknown d_Born_mode. Supported values are 0, 1, 2, 3.");
-}
-
-double ion_born_radius_cpp_dt(int i, double t, const add_args &cppargs) {
-    if (!is_ion_species(cppargs, i)) {
-        return 0.0;
-    }
-    if (cppargs.d_born_mode == 2) {
-        double sigma_i = cppargs.s[i];
-        double expo = std::exp(-3.0*cppargs.e[i]/t);
-        return -0.36*sigma_i*cppargs.e[i]*expo/(t*t);
-    }
-    return 0.0;
-}
-
-double dielectric_constant_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs);
-vector<double> dielectric_derivative_rule_fd_cpp(int rule, const vector<double> &x, const add_args &cppargs);
+namespace {
 
 double mixed_dielectric_constant_cpp(const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
@@ -157,119 +85,84 @@ double mixed_dielectric_constant_cpp(const vector<double> &x, const add_args &cp
     return eps_org + ((a_eff * xw_sf + b_eff) * xw_sf + c_eff) * xw_sf;
 }
 
-double reference_solvent_dielectric_constant_cpp(const vector<double> &x, const add_args &cppargs) {
+AutoDual mixed_dielectric_constant_ad_cpp(const vector<AutoDual> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     if (cppargs.z.size() != static_cast<size_t>(ncomp)) {
-        return dielectric_constant_rule_cpp(cppargs.dielc_rule, x, cppargs);
+        throw ValueError("dielc_rule=8 requires params['z'] as an array with length equal to ncomp.");
     }
-    double x_sol = 0.0;
-    double eps_sol_num = 0.0;
-    for (int i = 0; i < ncomp; i++) {
-        if (std::abs(cppargs.z[i]) <= 1e-12) {
-            x_sol += x[i];
-            eps_sol_num += x[i]*cppargs.dielc[i];
-        }
+    if (cppargs.mixed_rel_perm_a.size() != static_cast<size_t>(ncomp) ||
+        cppargs.mixed_rel_perm_b.size() != static_cast<size_t>(ncomp) ||
+        cppargs.mixed_rel_perm_c.size() != static_cast<size_t>(ncomp) ||
+        cppargs.mixed_rel_perm_mask.size() != static_cast<size_t>(ncomp)) {
+        throw ValueError("dielc_rule=8 requires mixed relative-permittivity arrays with length equal to ncomp.");
     }
-    if (x_sol <= 0.0) {
-        return dielectric_constant_rule_cpp(cppargs.dielc_rule, x, cppargs);
-    }
-    return eps_sol_num/x_sol;
-}
 
-vector<double> reference_solvent_dielectric_derivative_cpp(const vector<double> &x, const add_args &cppargs) {
-    int ncomp = static_cast<int>(x.size());
-    vector<double> deps(ncomp, 0.0);
-    if (cppargs.z.size() != static_cast<size_t>(ncomp)) {
-        return deps;
-    }
-    double x_sol = 0.0;
-    double eps_sol_num = 0.0;
-    for (int i = 0; i < ncomp; i++) {
-        if (std::abs(cppargs.z[i]) <= 1e-12) {
-            x_sol += x[i];
-            eps_sol_num += x[i]*cppargs.dielc[i];
-        }
-    }
-    if (x_sol <= 0.0) {
-        return deps;
-    }
-    double inv_xsol2 = 1.0/(x_sol*x_sol);
-    for (int i = 0; i < ncomp; i++) {
-        if (std::abs(cppargs.z[i]) <= 1e-12) {
-            deps[i] = (cppargs.dielc[i]*x_sol - eps_sol_num)*inv_xsol2;
-        }
-    }
-    return deps;
-}
+    AutoDual x_sol = 0.0;
+    AutoDual x_water = 0.0;
+    AutoDual x_org = 0.0;
+    AutoDual eps_org_num = 0.0;
+    AutoDual a_num = 0.0;
+    AutoDual b_num = 0.0;
+    AutoDual c_num = 0.0;
+    bool needs_coeffs = false;
 
-BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion) {
-    int ncomp = static_cast<int>(x.size());
-    const bool use_ssm = (cppargs.born_solvation_shell_model != 0);
-    const bool use_ds = (cppargs.born_dielectric_saturation != 0);
-
-    BornSSMDSData data;
-    data.d_born.assign(ncomp, 1.0);
-    data.D.assign(ncomp, 1.0);
-    data.ddelta_prefac.assign(ncomp, 0.0);
-    data.f_k.assign(ncomp, 1.0);
-    data.bracket.assign(ncomp, 0.0);
-
-    double f_mix = 0.0;
-    for (int i = 0; i < ncomp; i++) {
-        bool is_ion = is_ion_species(cppargs, i);
-        double fi = 1.0;
-        if (!is_ion && cppargs.f_solv.size() > static_cast<size_t>(i)) {
-            fi = cppargs.f_solv[i];
-        }
-        data.f_k[i] = fi;
-        f_mix += x[i]*fi;
-
-        if (is_ion) {
-            data.d_born[i] = ion_born_radius_cpp(i, t, cppargs);
-        }
-        else if (cppargs.d_born.size() > static_cast<size_t>(i) && cppargs.d_born[i] > 0.0) {
-            data.d_born[i] = cppargs.d_born[i];
-        }
-        else if (cppargs.s[i] > 0.0) {
-            data.d_born[i] = cppargs.s[i];
-        }
-        else {
-            throw ValueError("Born model requires positive solvent diameter.");
-        }
-
-        if (is_ion) {
-            data.ddelta_prefac[i] = data.d_born[i]/std::abs(cppargs.z[i]);
-        }
-    }
+    int water_idx = cppargs.mixed_rel_perm_water_index;
+    bool has_water_component = (
+        water_idx >= 0 &&
+        water_idx < ncomp &&
+        std::abs(cppargs.z[water_idx]) <= 1e-12
+    );
 
     for (int i = 0; i < ncomp; i++) {
-        bool is_ion = std::abs(cppargs.z[i]) > 1e-12;
-        if (!is_ion) {
-            data.D[i] = data.d_born[i];
+        if (std::abs(cppargs.z[i]) > 1e-12) {
             continue;
         }
-
-        double delta_di = use_ssm ? ((f_mix - 1.0)*data.ddelta_prefac[i]) : 0.0;
-        data.D[i] = data.d_born[i] + delta_di;
-        if (data.D[i] <= 0.0) {
-            throw ValueError("Born model generated a non-positive d_born + Delta d.");
+        x_sol += x[i];
+        if (has_water_component && i == water_idx) {
+            x_water += x[i];
+            continue;
         }
-
-        double z2 = cppargs.z[i]*cppargs.z[i];
-        double invD = 1.0/data.D[i];
-        double gap = (1.0/data.d_born[i] - invD);
-        double base_term = (1.0 - 1.0/eps_r)*invD;
-        double ds_term = use_ds ? ((1.0 - 1.0/eps_r_ion)*gap) : 0.0;
-
-        data.bracket[i] = base_term + ds_term;
-        data.sum_bracket += x[i]*z2*data.bracket[i];
-        data.sum_invD += x[i]*z2*invD;
-        data.sum_gap += x[i]*z2*gap;
-        if (use_ssm) {
-            data.sum_dpref_over_D2 += x[i]*z2*data.ddelta_prefac[i]*invD*invD;
+        x_org += x[i];
+        eps_org_num += x[i] * cppargs.dielc[i];
+        if (scalar_value(x[i]) > 0.0) {
+            needs_coeffs = true;
+            if (cppargs.mixed_rel_perm_mask[i] == 0) {
+                if (scalar_value(x_water) > 0.0 || has_water_component) {
+                    throw ValueError("dielc_rule=8 is missing mixed relative-permittivity coefficients for an organic solvent.");
+                }
+            } else {
+                a_num += x[i] * cppargs.mixed_rel_perm_a[i];
+                b_num += x[i] * cppargs.mixed_rel_perm_b[i];
+                c_num += x[i] * cppargs.mixed_rel_perm_c[i];
+            }
         }
     }
-    return data;
+
+    if (scalar_value(x_sol) <= 0.0) {
+        throw ValueError("dielc_rule=8 requires at least one solvent species (z=0).");
+    }
+    if (scalar_value(x_org) <= DBL_EPSILON) {
+        if (!has_water_component) {
+            throw ValueError("dielc_rule=8 requires at least one organic solvent or water component.");
+        }
+        return AutoDual(cppargs.dielc[water_idx], 0.0);
+    }
+    if (!has_water_component || scalar_value(x_water) <= DBL_EPSILON) {
+        return eps_org_num / x_org;
+    }
+    if (scalar_value(x_water) >= scalar_value(x_sol) - DBL_EPSILON) {
+        return AutoDual(cppargs.dielc[water_idx], 0.0);
+    }
+    if (!needs_coeffs) {
+        throw ValueError("dielc_rule=8 requires mixed relative-permittivity coefficients for the organic solvent phase.");
+    }
+
+    AutoDual xw_sf = x_water / x_sol;
+    AutoDual eps_org = eps_org_num / x_org;
+    AutoDual a_eff = a_num / x_org;
+    AutoDual b_eff = b_num / x_org;
+    AutoDual c_eff = c_num / x_org;
+    return eps_org + ((a_eff * xw_sf + b_eff) * xw_sf + c_eff) * xw_sf;
 }
 
 void dielectric_inputs_valid_cpp(const vector<double> &x, const add_args &cppargs) {
@@ -277,29 +170,29 @@ void dielectric_inputs_valid_cpp(const vector<double> &x, const add_args &cpparg
     if (cppargs.dielc.size() != static_cast<size_t>(ncomp)) {
         throw ValueError("params['dielc'] must be an array with length equal to ncomp.");
     }
-    if (cppargs.dielc_diff_mode != 0 && cppargs.dielc_diff_mode != 1) {
-        throw ValueError("Unknown dielc_diff_mode. Supported values are 0 (analytic) and 1 (finite-diff).");
+    if (cppargs.dielc_diff_mode != 0 && cppargs.dielc_diff_mode != 1 && cppargs.dielc_diff_mode != 2) {
+        throw ValueError("Unknown dielc_diff_mode. Supported values are 0 (analytic), 1 (finite-diff), and 2 (autodiff).");
     }
-    if (cppargs.hc_dadx_diff_mode != 0 && cppargs.hc_dadx_diff_mode != 1) {
-        throw ValueError("Unknown hc_model dadx_differential_mode. Supported values are analytical/numerical (0/1).");
+    if (cppargs.hc_dadx_diff_mode != 0 && cppargs.hc_dadx_diff_mode != 1 && cppargs.hc_dadx_diff_mode != 2) {
+        throw ValueError("Unknown hc_model dadx_differential_mode. Supported values are analytical/numerical/autodiff (0/1/2).");
     }
-    if (cppargs.disp_dadx_diff_mode != 0 && cppargs.disp_dadx_diff_mode != 1) {
-        throw ValueError("Unknown disp_model dadx_differential_mode. Supported values are analytical/numerical (0/1).");
+    if (cppargs.disp_dadx_diff_mode != 0 && cppargs.disp_dadx_diff_mode != 1 && cppargs.disp_dadx_diff_mode != 2) {
+        throw ValueError("Unknown disp_model dadx_differential_mode. Supported values are analytical/numerical/autodiff (0/1/2).");
     }
-    if (cppargs.assoc_dadx_diff_mode != 0 && cppargs.assoc_dadx_diff_mode != 1) {
-        throw ValueError("Unknown assoc_model dadx_differential_mode. Supported values are analytical/numerical (0/1).");
+    if (cppargs.assoc_dadx_diff_mode != 0 && cppargs.assoc_dadx_diff_mode != 1 && cppargs.assoc_dadx_diff_mode != 2) {
+        throw ValueError("Unknown assoc_model dadx_differential_mode. Supported values are analytical/numerical/autodiff (0/1/2).");
     }
-    if (cppargs.polar_dadx_diff_mode != 0 && cppargs.polar_dadx_diff_mode != 1) {
-        throw ValueError("Unknown polar_model dadx_differential_mode. Supported values are analytical/numerical (0/1).");
+    if (cppargs.polar_dadx_diff_mode != 0 && cppargs.polar_dadx_diff_mode != 1 && cppargs.polar_dadx_diff_mode != 2) {
+        throw ValueError("Unknown polar_model dadx_differential_mode. Supported values are analytical/numerical/autodiff (0/1/2).");
     }
-    if (cppargs.born_diff_mode != 0 && cppargs.born_diff_mode != 1 && cppargs.born_diff_mode != 2 && cppargs.born_diff_mode != 3) {
-        throw ValueError("Unknown born_diff_mode. Supported values are 0 (analytic), 1 (finite-diff), 2 (Eq.133-style), and 3 (no dielectric-concentration term).");
+    if (cppargs.born_diff_mode != 0 && cppargs.born_diff_mode != 1 && cppargs.born_diff_mode != 2 && cppargs.born_diff_mode != 3 && cppargs.born_diff_mode != 4) {
+        throw ValueError("Unknown born_diff_mode. Supported values are 0 (analytic), 1 (finite-diff), 2 (Eq.133-style), 3 (no dielectric-concentration term), and 4 (autodiff).");
     }
     if (cppargs.d_ion_mode < 0 || cppargs.d_ion_mode > 2) {
         throw ValueError("Unknown d_ion_mode. Supported values are 0, 1, 2.");
     }
-    if (cppargs.mu_DH_diff_mode != 0 && cppargs.mu_DH_diff_mode != 1) {
-        throw ValueError("Unknown mu_DH differential_mode. Supported values are analytical/numerical (0/1).");
+    if (cppargs.mu_DH_diff_mode != 0 && cppargs.mu_DH_diff_mode != 1 && cppargs.mu_DH_diff_mode != 2) {
+        throw ValueError("Unknown mu_DH differential_mode. Supported values are analytical/numerical/autodiff (0/1/2).");
     }
     if (cppargs.mu_DH_comp_dep_rel_perm != 0 && cppargs.mu_DH_comp_dep_rel_perm != 1) {
         throw ValueError("mu_DH comp_dep_rel_perm must be 0 or 1.");
@@ -316,8 +209,8 @@ void dielectric_inputs_valid_cpp(const vector<double> &x, const add_args &cpparg
     if (cppargs.born_bulk_mode != 0 && cppargs.born_bulk_mode != 1) {
         throw ValueError("Unknown born bulk_mode. Supported values are mix/solvent (0/1).");
     }
-    if (cppargs.mu_born_diff_mode != 0 && cppargs.mu_born_diff_mode != 1) {
-        throw ValueError("Unknown mu_born differential_mode. Supported values are analytical/numerical (0/1).");
+    if (cppargs.mu_born_diff_mode != 0 && cppargs.mu_born_diff_mode != 1 && cppargs.mu_born_diff_mode != 2) {
+        throw ValueError("Unknown mu_born differential_mode. Supported values are analytical/numerical/autodiff (0/1/2).");
     }
     if (cppargs.born_eps_mode != 0 && cppargs.born_eps_mode != 1) {
         throw ValueError("Unknown born_eps_mode. Supported values are 0 (eps_r,mix) and 1 (eps_r,solvent).");
@@ -368,6 +261,139 @@ void dielectric_inputs_valid_cpp(const vector<double> &x, const add_args &cpparg
             throw ValueError("dielc_rule=8 requires mixed relative-permittivity arrays with length equal to ncomp.");
         }
     }
+}
+
+}  // namespace
+
+AutoDual dielectric_constant_rule_autodiff_cpp(int rule, const vector<AutoDual> &x, const add_args &cppargs) {
+    const double alpha = 7.01;
+    int ncomp = static_cast<int>(x.size());
+    if (rule == 0) {
+        return AutoDual(*std::max_element(cppargs.dielc.begin(), cppargs.dielc.end()), 0.0);
+    }
+    if (rule == 1) {
+        AutoDual eps = 0.0;
+        for (int i = 0; i < ncomp; i++) {
+            eps += x[i] * cppargs.dielc[i];
+        }
+        return eps;
+    }
+    if (rule == 7) {
+        vector<int> idx_sol;
+        vector<int> idx_ion;
+        for (int i = 0; i < ncomp; i++) {
+            if (std::abs(cppargs.z[i]) <= 1e-12) idx_sol.push_back(i);
+            else idx_ion.push_back(i);
+        }
+        if (idx_sol.empty()) {
+            throw ValueError("dielc_rule=7 requires at least one solvent species (z=0).");
+        }
+        if (idx_ion.empty()) {
+            throw ValueError("dielc_rule=7 requires at least one ionic species (z!=0).");
+        }
+        AutoDual x_sol = 0.0;
+        AutoDual eps_sol_num = 0.0;
+        for (int idx : idx_sol) {
+            x_sol += x[idx];
+            eps_sol_num += x[idx] * cppargs.dielc[idx];
+        }
+        AutoDual eps_sol = 0.0;
+        if (scalar_value(x_sol) > 1.0e-16) {
+            eps_sol = eps_sol_num / x_sol;
+        }
+        else {
+            double eps_sol_const = 0.0;
+            for (int idx : idx_sol) eps_sol_const += cppargs.dielc[idx];
+            eps_sol = AutoDual(eps_sol_const / static_cast<double>(idx_sol.size()), 0.0);
+        }
+        double eps_salt = 0.0;
+        for (int idx : idx_ion) eps_salt += cppargs.dielc[idx];
+        eps_salt /= static_cast<double>(idx_ion.size());
+        return eps_sol * x_sol + eps_salt * (1.0 - x_sol);
+    }
+    if (rule == 8) {
+        return mixed_dielectric_constant_ad_cpp(x, cppargs);
+    }
+    if (rule == 2) {
+        AutoDual mw_bar = 0.0;
+        AutoDual num = 0.0;
+        for (int i = 0; i < ncomp; i++) {
+            mw_bar += x[i] * cppargs.mw[i];
+            num += x[i] * cppargs.mw[i] * cppargs.dielc[i];
+        }
+        if (scalar_value(mw_bar) <= 0.0) {
+            throw ValueError("Average molecular weight must be positive for dielc_rule=2.");
+        }
+        return num / mw_bar;
+    }
+    if (rule == 3) {
+        vector<int> idx_sol;
+        vector<int> idx_ion;
+        for (int i = 0; i < ncomp; i++) {
+            if (std::abs(cppargs.z[i]) <= 1e-12) idx_sol.push_back(i);
+            else idx_ion.push_back(i);
+        }
+        if (idx_sol.empty()) {
+            throw ValueError("dielc_rule=3 requires at least one solvent species (z=0).");
+        }
+        AutoDual mw_sol = 0.0;
+        AutoDual eps_sol_num = 0.0;
+        for (int idx : idx_sol) {
+            mw_sol += x[idx] * cppargs.mw[idx];
+            eps_sol_num += x[idx] * cppargs.mw[idx] * cppargs.dielc[idx];
+        }
+        if (scalar_value(mw_sol) <= 0.0) {
+            throw ValueError("Solvent molecular-weight denominator must be positive for dielc_rule=3.");
+        }
+        AutoDual eps_sol_w = eps_sol_num / mw_sol;
+        AutoDual x_sol = 0.0;
+        AutoDual eps_ion = 0.0;
+        for (int idx : idx_sol) x_sol += x[idx];
+        for (int idx : idx_ion) eps_ion += x[idx] * cppargs.dielc[idx];
+        return x_sol * eps_sol_w + eps_ion;
+    }
+    if (rule == 4 || rule == 5) {
+        vector<int> idx_sol;
+        vector<int> idx_ion;
+        for (int i = 0; i < ncomp; i++) {
+            if (std::abs(cppargs.z[i]) <= 1e-12) idx_sol.push_back(i);
+            else idx_ion.push_back(i);
+        }
+        if (idx_sol.empty()) {
+            throw ValueError("dielc_rule requires at least one solvent species (z=0).");
+        }
+        AutoDual mw_sol = 0.0;
+        AutoDual eps_sf_num = 0.0;
+        for (int idx : idx_sol) {
+            mw_sol += x[idx] * cppargs.mw[idx];
+            eps_sf_num += x[idx] * cppargs.mw[idx] * cppargs.dielc[idx];
+        }
+        if (scalar_value(mw_sol) <= 0.0) {
+            throw ValueError("Solvent molecular-weight denominator must be positive for dielc_rule.");
+        }
+        AutoDual eps_sf = eps_sf_num / mw_sol;
+        AutoDual x_ion = 0.0;
+        for (int idx : idx_ion) x_ion += x[idx];
+        return eps_sf / (1.0 + alpha * x_ion);
+    }
+    if (rule == 6) {
+        vector<int> idx_sol;
+        vector<int> idx_ion;
+        for (int i = 0; i < ncomp; i++) {
+            if (std::abs(cppargs.z[i]) <= 1e-12) idx_sol.push_back(i);
+            else idx_ion.push_back(i);
+        }
+        if (idx_sol.empty()) {
+            throw ValueError("dielc_rule=6 requires at least one solvent species (z=0).");
+        }
+        double eps_sf_const = 0.0;
+        for (int idx : idx_sol) eps_sf_const += cppargs.dielc[idx];
+        eps_sf_const /= static_cast<double>(idx_sol.size());
+        AutoDual x_ion = 0.0;
+        for (int idx : idx_ion) x_ion += x[idx];
+        return AutoDual(eps_sf_const, 0.0) / (1.0 + alpha * x_ion);
+    }
+    throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7, 8.");
 }
 
 double dielectric_constant_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {
@@ -666,6 +692,22 @@ vector<double> dielectric_derivative_rule_fd_cpp(int rule, const vector<double> 
     return deps_dx;
 }
 
+vector<double> dielectric_derivative_rule_ad_cpp(int rule, const vector<double> &x, const add_args &cppargs) {
+    int ncomp = static_cast<int>(x.size());
+    vector<double> deps_dx(ncomp, 0.0);
+    for (int i = 0; i < ncomp; ++i) {
+        vector<AutoDual> x_dual(ncomp, AutoDual(0.0, 0.0));
+        for (int j = 0; j < ncomp; ++j) {
+            x_dual[j] = AutoDual(x[j], (i == j) ? 1.0 : 0.0);
+        }
+        deps_dx[i] = scalar_derivative(dielectric_constant_rule_autodiff_cpp(rule, x_dual, cppargs));
+        if (!std::isfinite(deps_dx[i])) {
+            throw ValueError("Non-finite dielectric autodiff derivative.");
+        }
+    }
+    return deps_dx;
+}
+
 DielectricState dielectric_state_cpp(const vector<double> &x, const add_args &cppargs) {
     dielectric_inputs_valid_cpp(x, cppargs);
     DielectricState state;
@@ -673,24 +715,11 @@ DielectricState dielectric_state_cpp(const vector<double> &x, const add_args &cp
     if (cppargs.dielc_diff_mode == 0 && cppargs.dielc_rule != 8) {
         state.deps_dx = dielectric_derivative_rule_cpp(cppargs.dielc_rule, x, cppargs);
     }
+    else if (cppargs.dielc_diff_mode == 2) {
+        state.deps_dx = dielectric_derivative_rule_ad_cpp(cppargs.dielc_rule, x, cppargs);
+    }
     else {
         state.deps_dx = dielectric_derivative_rule_fd_cpp(cppargs.dielc_rule, x, cppargs);
     }
     return state;
-}
-
-double dielectric_eps_cpp(vector<double> x, const add_args &cppargs) {
-    return dielectric_state_cpp(x, cppargs).eps;
-}
-
-vector<double> dielectric_diff_cpp(vector<double> x, const add_args &cppargs) {
-    return dielectric_state_cpp(x, cppargs).deps_dx;
-}
-
-double dielc_eps_cpp(vector<double> x, const add_args &cppargs) {
-    return dielectric_eps_cpp(std::move(x), cppargs);
-}
-
-vector<double> dielc_diff_cpp(vector<double> x, const add_args &cppargs) {
-    return dielectric_diff_cpp(std::move(x), cppargs);
 }

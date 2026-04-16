@@ -4,6 +4,14 @@ using namespace thermo_detail;
 
 namespace {
 
+vector<double> exp_vector(const vector<double> &values) {
+    vector<double> out(values.size(), 0.0);
+    for (int i = 0; i < static_cast<int>(values.size()); ++i) {
+        out[i] = std::exp(values[i]);
+    }
+    return out;
+}
+
 // EqID: lnphi_alpha_near_ideal
 double stable_logz_over_zminus1(double Z) {
     double dz = Z - 1.0;

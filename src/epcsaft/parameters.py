@@ -289,6 +289,14 @@ _DIFF_MODE_ALIASES = {
     "analytical": 0,
     "numeric": 1,
     "numerical": 1,
+    "finite_difference": 1,
+    "finite-difference": 1,
+    "finite difference": 1,
+    "fd": 1,
+    "autodiff": 2,
+    "automatic_differentiation": 2,
+    "automatic-differentiation": 2,
+    "automatic differentiation": 2,
 }
 _D_ION_MODE_ALIASES = {
     "t_indep": 0,

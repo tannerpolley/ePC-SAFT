@@ -10,6 +10,7 @@
 #include "Eigen/Dense"
 
 #include "epcsaft_electrolyte.h"
+#include "epcsaft_autodiff_internal.h"
 
 namespace thermo_detail {
 
@@ -36,17 +37,12 @@ struct DadrhoResult {
     ScalarContributionTerms terms;
 };
 
-struct ThermoCommonState {
+struct MixtureState {
     vector<double> d;
     vector<double> dd_dt;
-    vector<double> zeta;
-    vector<double> dzeta_dt;
     vector<double> e_ij;
     vector<double> s_ij;
-    vector<double> ghs;
-    vector<double> denghs;
     double den = 0.0;
-    double eta = 0.0;
     double m_avg = 0.0;
     double m2es3 = 0.0;
     double m2e2s3 = 0.0;
@@ -193,7 +189,26 @@ using thermo_detail::DensityRootCandidate;
 using thermo_detail::DensityScanPoint;
 using thermo_detail::DielectricState;
 using thermo_detail::DispersionPolynomialState;
-using thermo_detail::ThermoCommonState;
+using thermo_detail::MixtureState;
+
+inline double pair_sigma_cpp(size_t idx, int i, int j, const add_args &cppargs) {
+    double sigma = 0.5 * (cppargs.s[i] + cppargs.s[j]);
+    if (!cppargs.l_ij.empty()) {
+        sigma *= (1.0 - cppargs.l_ij[idx]);
+    }
+    return sigma;
+}
+
+inline double pair_epsilon_cpp(size_t idx, int i, int j, const add_args &cppargs) {
+    if (!cppargs.z.empty() && cppargs.z[i] * cppargs.z[j] > 0.0) {
+        return 0.0;
+    }
+    double epsilon = std::sqrt(cppargs.e[i] * cppargs.e[j]);
+    if (!cppargs.k_ij.empty()) {
+        epsilon *= (1.0 - cppargs.k_ij[idx]);
+    }
+    return epsilon;
+}
 
 ScalarContributionTerms make_scalar_terms(double hc, double disp, double polar, double assoc, double ion, double born, double total);
 VectorContributionTerms make_vector_terms(
@@ -205,45 +220,17 @@ VectorContributionTerms make_vector_terms(
     const vector<double> &born,
     const vector<double> &total
 );
-vector<double> exp_vector(const vector<double> &values);
 vector<double> solve_association_site_fractions_cpp(const vector<double> &delta_ij, double den, const vector<double> &x_assoc);
-double pair_sigma_cpp(size_t idx, int i, int j, const add_args &cppargs);
-double pair_epsilon_cpp(size_t idx, int i, int j, const add_args &cppargs);
-double pair_diameter_cpp(double d_i, double d_j);
-double hs_contact_value_cpp(double pair_diameter, double zeta2, double zeta3);
-double hs_contact_density_derivative_cpp(double pair_diameter, double zeta2, double zeta3);
-double hs_contact_time_derivative_cpp(
-    double pair_diameter,
-    double pair_diameter_dt,
-    double zeta2,
-    double zeta3,
-    double dzeta2_dt,
-    double dzeta3_dt
-);
-ThermoCommonState thermo_common_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt);
+MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt);
 DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta);
 vector<double> dipole_coefficients_cpp(const std::array<double, 5> &c0, const std::array<double, 5> &c1, const std::array<double, 5> &c2, double m);
 double dh_kappa_cpp(double den, double t, double eps, double q2_sum);
 double dh_chi_cpp(double kappa, double diameter);
 AssociationSetup association_setup_cpp(const vector<double> &x, const add_args &cppargs, const vector<double> &s_ij, const vector<double> &ghs, double t);
-int gcd_int(int a, int b);
 ChargeGroups collect_charge_groups(const add_args& args, size_t ncomp);
-void build_charge_metadata_cpp(
-    const add_args& args,
-    bool& has_ionic,
-    vector<int>& cation_indices,
-    vector<int>& anion_indices,
-    vector<int>& solvent_indices,
-    vector<int>& pair_cation_indices,
-    vector<int>& pair_anion_indices,
-    vector<int>& pair_nu_cation,
-    vector<int>& pair_nu_anion
-);
-double stable_logz_over_zminus1(double Z);
 double z_term_scale_cpp(const vector<double> &z_term, double target_total);
 ScalarContributionTerms normalized_dadrho_terms_cpp(const ScalarContributionTerms &raw_terms);
 ScalarContributionTerms compressibility_terms_from_dadrho_cpp(const DadrhoResult &result);
-VectorContributionTerms ln_fugacity_terms_from_mu_z_cpp(const VectorContributionTerms &mu_terms, const ScalarContributionTerms &z_raw_terms);
 vector<double> density_scan_grid_cpp();
 DensityScanPoint density_scan_point_cpp(double nu, double t, int ncomp, const vector<double> &x, double p, const add_args &cppargs);
 vector<DensityBracket> density_brackets_cpp(const vector<DensityScanPoint> &points);
@@ -262,8 +249,6 @@ double ion_diameter_cpp(int i, double t, const add_args &cppargs);
 double ion_diameter_cpp_dt(int i, double t, const add_args &cppargs);
 double ion_born_radius_cpp(int i, double t, const add_args &cppargs);
 double ion_born_radius_cpp_dt(int i, double t, const add_args &cppargs);
-void dielectric_inputs_valid_cpp(const vector<double> &x, const add_args &cppargs);
-double mixed_dielectric_constant_cpp(const vector<double> &x, const add_args &cppargs);
 double reference_solvent_dielectric_constant_cpp(const vector<double> &x, const add_args &cppargs);
 vector<double> reference_solvent_dielectric_derivative_cpp(const vector<double> &x, const add_args &cppargs);
 BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion);
@@ -273,8 +258,27 @@ vector<double> contribution_dadx_fd_cpp(AresContributionKind kind, double t, dou
 double dielectric_constant_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs);
 vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs);
 vector<double> dielectric_derivative_rule_fd_cpp(int rule, const vector<double> &x, const add_args &cppargs);
+AutoDual reference_solvent_dielectric_constant_ad_cpp(const vector<AutoDual> &x, const add_args &cppargs);
+AutoDual dielectric_constant_rule_autodiff_cpp(int rule, const vector<AutoDual> &x, const add_args &cppargs);
+vector<double> dielectric_derivative_rule_ad_cpp(int rule, const vector<double> &x, const add_args &cppargs);
 DielectricState dielectric_state_cpp(const vector<double> &x, const add_args &cppargs);
 DadrhoResult dadrho_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+double hs_contact_density_derivative_cpp(double pair_diameter, double zeta2, double zeta3);
+double hs_contact_time_derivative_cpp(
+    double pair_diameter,
+    double pair_diameter_dt,
+    double zeta2,
+    double zeta3,
+    double dzeta2_dt,
+    double dzeta3_dt
+);
+double hs_contact_composition_derivative_cpp(
+    double pair_diameter,
+    double zeta2,
+    double zeta3,
+    double dzeta2_dx,
+    double dzeta3_dx
+);
 CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 ScalarContributionTerms residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 CompositionContributionResult composition_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);

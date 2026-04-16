@@ -1,210 +1,177 @@
 #include "epcsaft_core_internal.h"
+#include "contributions/epcsaft_contrib_internal.h"
 
 using namespace thermo_detail;
 
+namespace {
+
+// EqID: dadrho_hs
+// EqID: dadrho_hs_explicit
+double dadrho_hs_cpp(const HardChainState &hc_state) {
+    const auto &zeta = hc_state.zeta;
+    return zeta[3] / (1.0 - zeta[3])
+        + 3.0 * zeta[1] * zeta[2] / zeta[0] / std::pow(1.0 - zeta[3], 2.0)
+        + (3.0 * std::pow(zeta[2], 3.0) - zeta[3] * std::pow(zeta[2], 3.0)) / zeta[0] / std::pow(1.0 - zeta[3], 3.0);
+}
+
+}  // namespace
+
+// EqID: dg_hs_drho
+double hs_contact_density_derivative_cpp(double pair_diameter, double zeta2, double zeta3) {
+    return zeta3 / std::pow(1.0 - zeta3, 2.0)
+        + pair_diameter * (3.0 * zeta2 / std::pow(1.0 - zeta3, 2.0) + 6.0 * zeta2 * zeta3 / std::pow(1.0 - zeta3, 3.0))
+        + std::pow(pair_diameter, 2.0) * (4.0 * zeta2 * zeta2 / std::pow(1.0 - zeta3, 3.0) + 6.0 * zeta2 * zeta2 * zeta3 / std::pow(1.0 - zeta3, 4.0));
+}
+
+namespace {
+
+// EqID: dadrho_hc
+// EqID: dadrho_hc_explicit
+double dadrho_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const vector<double> &x, const add_args &cppargs) {
+    int ncomp = static_cast<int>(x.size());
+    double summ = 0.0;
+    for (int i = 0; i < ncomp; ++i) {
+        double pair_diameter = pair_diameter_cpp(thermo.d[i], thermo.d[i]);
+        double dghs_drho = hs_contact_density_derivative_cpp(pair_diameter, hc_state.zeta[2], hc_state.zeta[3]);
+        summ += x[i] * (cppargs.m[i] - 1.0) / hc_state.ghs[i * ncomp + i] * dghs_drho;
+    }
+    return thermo.m_avg * dadrho_hs_cpp(hc_state) - summ;
+}
+
+// EqID: dadrho_disp
+// EqID: dadrho_disp_explicit
+double dadrho_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion) {
+    return -2.0 * PI * thermo.den * dispersion.dEtaI1_deta * thermo.m2es3
+        - PI * thermo.den * thermo.m_avg * (dispersion.C1 * dispersion.dEtaI2_deta + dispersion.C2 * hc_state.eta * dispersion.I2) * thermo.m2e2s3;
+}
+
+double dadrho_polar_cpp(const HardChainState &hc_state, const PolarIntermediateState &polar_state) {
+    if ((!polar_state.active) || (polar_state.second_order == 0.0)) {
+        return 0.0;
+    }
+    return hc_state.eta * (
+        (polar_state.second_order_density_term * (1.0 - polar_state.third_order / polar_state.second_order)
+            + (polar_state.third_order_density_term * polar_state.second_order - polar_state.third_order * polar_state.second_order_density_term) / polar_state.second_order)
+        / std::pow(1.0 - polar_state.third_order / polar_state.second_order, 2.0)
+    );
+}
+
+vector<double> association_site_fraction_density_terms_cpp(
+    const vector<double> &delta_ij,
+    double den,
+    const vector<double> &XA,
+    const vector<double> &ddelta_weighted,
+    const vector<double> &x_assoc
+) {
+    int num_sites = static_cast<int>(XA.size());
+    Eigen::MatrixXd B = Eigen::MatrixXd::Zero(num_sites, 1);
+    Eigen::MatrixXd A = Eigen::MatrixXd::Zero(num_sites, num_sites);
+
+    int ij = 0;
+    for (int i = 0; i < num_sites; ++i) {
+        double summ = 0.0;
+        for (int j = 0; j < num_sites; ++j) {
+            B(i) -= x_assoc[j] * XA[j] * ddelta_weighted[ij];
+            A(i, j) = x_assoc[j] * delta_ij[ij];
+            summ += x_assoc[j] * XA[j] * delta_ij[ij];
+            ++ij;
+        }
+        B(i) -= summ;
+        A(i, i) = std::pow(1.0 + den * summ, 2.0) / den;
+    }
+
+    Eigen::MatrixXd solution = A.lu().solve(B);
+    vector<double> dXA_weighted(num_sites, 0.0);
+    for (int i = 0; i < num_sites; ++i) {
+        dXA_weighted[i] = solution(i);
+    }
+    return dXA_weighted;
+}
+
+// EqID: dadrho_assoc
+// EqID: dadrho_assoc_explicit
+double dadrho_assoc_cpp(
+    const MixtureState &thermo,
+    const HardChainState &hc_state,
+    const AssociationIntermediateState &assoc_state,
+    const vector<double> &x,
+    const add_args &cppargs,
+    double t
+) {
+    if (!assoc_state.active) {
+        return 0.0;
+    }
+
+    const vector<int> &site_component_index = assoc_state.setup.site_component_index;
+    const vector<double> &x_assoc = assoc_state.setup.x_assoc;
+    const vector<double> &delta_ij = assoc_state.setup.delta_ij;
+    int ncomp = static_cast<int>(x.size());
+    int num_sites = static_cast<int>(site_component_index.size());
+    vector<double> ddelta_weighted(num_sites * num_sites, 0.0);
+
+    int ij = 0;
+    for (int i = 0; i < num_sites; ++i) {
+        int comp_i = site_component_index[i];
+        for (int j = 0; j < num_sites; ++j) {
+            int comp_j = site_component_index[j];
+            if (cppargs.assoc_matrix[ij] != 0) {
+                double pair_diameter = pair_diameter_cpp(thermo.d[comp_i], thermo.d[comp_j]);
+                double eABij = 0.5 * (cppargs.e_assoc[comp_i] + cppargs.e_assoc[comp_j]);
+                double volABij = association_volume_cpp(comp_i, comp_j, ncomp, thermo.s_ij, cppargs);
+                ddelta_weighted[ij] = hs_contact_density_derivative_cpp(pair_diameter, hc_state.zeta[2], hc_state.zeta[3])
+                    * (std::exp(eABij / t) - 1.0)
+                    * std::pow(thermo.s_ij[comp_i * ncomp + comp_j], 3.0)
+                    * volABij;
+            }
+            ++ij;
+        }
+    }
+
+    vector<double> dXA_weighted = association_site_fraction_density_terms_cpp(delta_ij, thermo.den, assoc_state.XA, ddelta_weighted, x_assoc);
+
+    double value = 0.0;
+    for (int i = 0; i < num_sites; ++i) {
+        int component_index = site_component_index[i];
+        value += x[component_index] * (1.0 / assoc_state.XA[i] - 0.5) * dXA_weighted[i];
+    }
+    return value;
+}
+
+// EqID: dadrho_dh
+// EqID: dadrho_dh_explicit
+double dadrho_ion_cpp(double t, const IonIntermediateState &ion_state) {
+    if (!ion_state.active) {
+        return 0.0;
+    }
+    return -ion_state.kappa / 24.0 / PI / kb / t / (ion_state.dielectric.eps * perm_vac) * ion_state.sigma_sum * E_CHRG * E_CHRG;
+}
+
+// EqID: dadrho_born
+// EqID: dadrho_born_zero
+double dadrho_born_cpp() {
+    return 0.0;
+}
+
+}  // namespace
+
 // EqID: z_eta_rho_identity
 DadrhoResult dadrho_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
-    int ncomp = static_cast<int>(x.size());
-    ThermoCommonState thermo = thermo_common_state_cpp(t, rho, x, cppargs, false);
-    auto &d = thermo.d;
-    auto &zeta = thermo.zeta;
-    auto &e_ij = thermo.e_ij;
-    auto &s_ij = thermo.s_ij;
-    auto &ghs = thermo.ghs;
-    auto &denghs = thermo.denghs;
-    double den = thermo.den;
-    double eta = thermo.eta;
-    double m_avg = thermo.m_avg;
-    double m2es3 = thermo.m2es3;
-    double m2e2s3 = thermo.m2e2s3;
-    double summ = 0.0;
-    DispersionPolynomialState dispersion = dispersion_polynomials_cpp(m_avg, eta);
-    double detI1_det = dispersion.dEtaI1_deta;
-    double detI2_det = dispersion.dEtaI2_deta;
-    double I2 = dispersion.I2;
-    double C1 = dispersion.C1;
-    double C2 = dispersion.C2;
-    double Zhs = zeta[3]/(1-zeta[3]) + 3.*zeta[1]*zeta[2]/zeta[0]/(1.-zeta[3])/(1.-zeta[3]) +
-        (3.*pow(zeta[2], 3.) - zeta[3]*pow(zeta[2], 3.))/zeta[0]/pow(1.-zeta[3], 3.);
+    MixtureState thermo = mixture_state_cpp(t, rho, x, cppargs, false);
+    HardChainState hc_state = hard_chain_state_cpp(thermo, x, cppargs);
+    DispersionPolynomialState dispersion = dispersion_polynomials_cpp(thermo.m_avg, hc_state.eta);
+    PolarIntermediateState polar_state = polar_intermediate_state_cpp(thermo, hc_state, 0.0, t, x, cppargs, true, false, false);
+    AssociationIntermediateState assoc_state = association_intermediate_state_cpp(thermo, hc_state, t, x, cppargs, false, false);
+    IonIntermediateState ion_state = ion_intermediate_state_cpp(thermo, t, x, cppargs, false);
 
-    summ = 0.0;
-    for (int i = 0; i < ncomp; i++) {
-        summ += x[i]*(cppargs.m[i]-1)/ghs[i*ncomp+i]*denghs[i*ncomp+i];
-    }
+    double hc = dadrho_hc_cpp(thermo, hc_state, x, cppargs);
+    double disp = dadrho_disp_cpp(thermo, hc_state, dispersion);
+    double polar = dadrho_polar_cpp(hc_state, polar_state);
+    double assoc = dadrho_assoc_cpp(thermo, hc_state, assoc_state, x, cppargs, t);
+    double ion = dadrho_ion_cpp(t, ion_state);
+    double born = dadrho_born_cpp();
+    double total = hc + disp + polar + assoc + ion + born;
 
-    double Zhc = m_avg*Zhs - summ;
-    double Zdisp = -2*PI*den*detI1_det*m2es3 - PI*den*m_avg*(C1*detI2_det + C2*eta*I2)*m2e2s3;
-
-    // Dipole term (Gross and Vrabec term) --------------------------------------
-    double Zpolar = 0;
-    if (!cppargs.dipm.empty()) {
-        double A2 = 0.;
-        double A3 = 0.;
-        double dA2_det = 0.;
-        double dA3_det = 0.;
-        vector<double> adip (5, 0);
-        vector<double> bdip (5, 0);
-        vector<double> cdip (5, 0);
-        vector<double> dipmSQ (ncomp, 0);
-        double J2, detJ2_det, J3, detJ3_det;
-
-        const static double conv = 7242.702976750923; // conversion factor, see the note below Table 2 in Gross and Vrabec 2006
-
-        for (int i = 0; i < ncomp; i++) {
-            dipmSQ[i] = pow(cppargs.dipm[i], 2.)/(cppargs.m[i]*cppargs.e[i]*pow(cppargs.s[i],3.))*conv;
-        }
-
-        double m_ij;
-        for (int i = 0; i < ncomp; i++) {
-            for (int j = 0; j < ncomp; j++) {
-                m_ij = sqrt(cppargs.m[i]*cppargs.m[j]);
-                if (m_ij > 2) {
-                    m_ij = 2;
-                }
-                vector<double> adip = dipole_coefficients_cpp(kDipoleA0, kDipoleA1, kDipoleA2, m_ij);
-                vector<double> bdip = dipole_coefficients_cpp(kDipoleB0, kDipoleB1, kDipoleB2, m_ij);
-                J2 = 0.;
-                detJ2_det = 0.;
-                for (int l = 0; l < 5; l++) {
-                    J2 += (adip[l] + bdip[l]*e_ij[i*ncomp+j]/t)*pow(eta, l); // i*ncomp+j needs to be used for e_ij because it is formatted as a 1D vector
-                    detJ2_det += (adip[l] + bdip[l]*e_ij[i*ncomp+j]/t)*(l+1)*pow(eta, l);
-                }
-                A2 += x[i]*x[j]*e_ij[i*ncomp+i]/t*e_ij[j*ncomp+j]/t*pow(s_ij[i*ncomp+i],3)*pow(s_ij[j*ncomp+j],3)/
-                    pow(s_ij[i*ncomp+j],3)*cppargs.dip_num[i]*cppargs.dip_num[j]*dipmSQ[i]*dipmSQ[j]*J2;
-                dA2_det += x[i]*x[j]*e_ij[i*ncomp+i]/t*e_ij[j*ncomp+j]/t*pow(s_ij[i*ncomp+i],3)*
-                    pow(s_ij[j*ncomp+j],3)/pow(s_ij[i*ncomp+j],3)*cppargs.dip_num[i]*cppargs.dip_num[j]*dipmSQ[i]*dipmSQ[j]*detJ2_det;
-            }
-        }
-
-        double m_ijk;
-        for (int i = 0; i < ncomp; i++) {
-            for (int j = 0; j < ncomp; j++) {
-                for (int k = 0; k < ncomp; k++) {
-                    m_ijk = pow((cppargs.m[i]*cppargs.m[j]*cppargs.m[k]),1/3.);
-                    if (m_ijk > 2) {
-                        m_ijk = 2;
-                    }
-                    vector<double> cdip = dipole_coefficients_cpp(kDipoleC0, kDipoleC1, kDipoleC2, m_ijk);
-                    J3 = 0.;
-                    detJ3_det = 0.;
-                    for (int l = 0; l < 5; l++) {
-                        J3 += cdip[l]*pow(eta, l);
-                        detJ3_det += cdip[l]*(l+2)*pow(eta, (l+1));
-                    }
-                    A3 += x[i]*x[j]*x[k]*e_ij[i*ncomp+i]/t*e_ij[j*ncomp+j]/t*e_ij[k*ncomp+k]/t*
-                        pow(s_ij[i*ncomp+i],3)*pow(s_ij[j*ncomp+j],3)*pow(s_ij[k*ncomp+k],3)/s_ij[i*ncomp+j]/s_ij[i*ncomp+k]/
-                        s_ij[j*ncomp+k]*cppargs.dip_num[i]*cppargs.dip_num[j]*cppargs.dip_num[k]*dipmSQ[i]*
-                        dipmSQ[j]*dipmSQ[k]*J3;
-                    dA3_det += x[i]*x[j]*x[k]*e_ij[i*ncomp+i]/t*e_ij[j*ncomp+j]/t*e_ij[k*ncomp+k]/t*
-                        pow(s_ij[i*ncomp+i],3)*pow(s_ij[j*ncomp+j],3)*pow(s_ij[k*ncomp+k],3)/s_ij[i*ncomp+j]/s_ij[i*ncomp+k]/
-                        s_ij[j*ncomp+k]*cppargs.dip_num[i]*cppargs.dip_num[j]*cppargs.dip_num[k]*dipmSQ[i]*
-                        dipmSQ[j]*dipmSQ[k]*detJ3_det;
-                }
-            }
-        }
-
-        A2 = -PI*den*A2;
-        A3 = -4/3.*PI*PI*den*den*A3;
-        dA2_det = -PI*den/eta*dA2_det;
-        dA3_det = -4/3.*PI*PI*den/eta*den/eta*dA3_det;
-
-        if (A2 != 0) { // when the mole fraction of the polar compounds is 0 then A2 = 0 and division by 0 occurs
-            Zpolar = eta*((dA2_det*(1-A3/A2)+(dA3_det*A2-A3*dA2_det)/A2)/(1-A3/A2)/(1-A3/A2));
-        }
-    }
-
-    // Association term -------------------------------------------------------
-    double Zassoc = 0;
-    if (!cppargs.e_assoc.empty()) {
-        AssociationSetup assoc = association_setup_cpp(x, cppargs, s_ij, ghs, t);
-        const vector<int> &iA = assoc.site_component_index;
-        const vector<double> &x_assoc = assoc.x_assoc;
-        const vector<double> &delta_ij = assoc.delta_ij;
-        int num_sites = static_cast<int>(iA.size());
-
-        vector<double> XA(num_sites, 0.0);
-
-        vector<double> ddelta_dx(num_sites * num_sites * ncomp, 0);
-        int idx_ddelta = 0;
-        for (int k = 0; k < ncomp; k++) {
-            for (int i = 0; i < num_sites; i++) {
-                int idxi = iA[i]*ncomp+iA[i];
-                for (int j = 0; j < num_sites; j++) {
-                    int idxj = iA[j]*ncomp+iA[j];
-                    if (cppargs.assoc_matrix[i*num_sites+j] != 0) {
-                        double eABij = (cppargs.e_assoc[iA[i]]+cppargs.e_assoc[iA[j]])/2.;
-                        double volABij = HUGE_DBL;
-                        if (cppargs.k_hb.empty()) {
-                            volABij = sqrt(cppargs.vol_a[iA[i]]*cppargs.vol_a[iA[j]])*pow(sqrt(s_ij[idxi]*
-                                s_ij[idxj])/(0.5*(s_ij[idxi]+s_ij[idxj])), 3);
-                        }
-                        else {
-                            volABij = sqrt(cppargs.vol_a[iA[i]]*cppargs.vol_a[iA[j]])*pow(sqrt(s_ij[idxi]*
-                                s_ij[idxj])/(0.5*(s_ij[idxi]+s_ij[idxj])), 3)*(1-cppargs.k_hb[iA[i]*ncomp+iA[j]]);
-                        }
-                        double dghsd_dx = PI/6.*cppargs.m[k]*(pow(d[k], 3)/(1-zeta[3])/(1-zeta[3]) + 3*d[iA[i]]*d[iA[j]]/
-                            (d[iA[i]]+d[iA[j]])*(d[k]*d[k]/(1-zeta[3])/(1-zeta[3])+2*pow(d[k], 3)*
-                            zeta[2]/pow(1-zeta[3], 3)) + 2*pow((d[iA[i]]*d[iA[j]]/(d[iA[i]]+d[iA[j]])), 2)*
-                            (2*d[k]*d[k]*zeta[2]/pow(1-zeta[3], 3)+3*(pow(d[k], 3)*zeta[2]*zeta[2]
-                            /pow(1-zeta[3], 4))));
-                        ddelta_dx[idx_ddelta] = dghsd_dx*(exp(eABij/t)-1)*pow(s_ij[iA[i]*ncomp+iA[j]], 3)*volABij;
-                    }
-                    idx_ddelta += 1;
-                }
-            }
-        }
-
-        XA = solve_association_site_fractions_cpp(delta_ij, den, x_assoc);
-
-        vector<double> dXA_dx(num_sites*ncomp, 0);
-        dXA_dx = ::association_site_fraction_dx_cpp(cppargs.assoc_num, delta_ij, den, XA, ddelta_dx, x_assoc);
-
-        summ = 0.;
-        int ij = 0;
-        for (int i = 0; i < ncomp; i++) {
-            for (int j = 0; j < num_sites; j++) {
-                summ += x[i]*den*x[iA[j]]*(1/XA[j]-0.5)*dXA_dx[ij];
-                ij += 1;
-            }
-        }
-
-        Zassoc = summ;
-    }
-
-    // Ion term ---------------------------------------------------------------
-    double Zion = 0;
-    double Zborn = 0;
-    if (!cppargs.z.empty()) {
-        DielectricState dielc_state = dielectric_state_cpp(x, cppargs);
-        double eps = dielc_state.eps;
-        double eps_born = (cppargs.born_eps_mode == 1) ? reference_solvent_dielectric_constant_cpp(x, cppargs) : eps;
-        vector<double> q(cppargs.z.begin(), cppargs.z.end());
-        for (int i = 0; i < ncomp; i++) {
-            q[i] = q[i]*E_CHRG;
-        }
-
-        summ = 0.;
-        for (int i = 0; i < ncomp; i++) {
-            summ += cppargs.z[i]*cppargs.z[i]*x[i];
-        }
-
-        double kappa = dh_kappa_cpp(den, t, eps, summ); // the inverse Debye screening length. Equation 4 in Held et al. 2008.
-
-        if (kappa != 0) {
-            double chi, sigma_k;
-            summ = 0.;
-            for (int i = 0; i < ncomp; i++) {
-                chi = dh_chi_cpp(kappa, d[i]);
-                sigma_k = -2*chi+3/(1+kappa*d[i]);
-                summ += q[i]*q[i]*x[i]*sigma_k;
-            }
-            Zion = -1*kappa/24./PI/kb/t/(eps*perm_vac)*summ;
-        }
-    }
-
-    // Born term (Bulow 2021a, non-SSM+DS) has no explicit density dependence.
-    double z_increment = Zhc + Zdisp + Zpolar + Zassoc + Zion + Zborn;
-    ScalarContributionTerms raw_terms = make_scalar_terms(Zhc, Zdisp, Zpolar, Zassoc, Zion, Zborn, z_increment);
+    ScalarContributionTerms raw_terms = make_scalar_terms(hc, disp, polar, assoc, ion, born, total);
     DadrhoResult result;
     result.raw = raw_terms;
     result.terms = normalized_dadrho_terms_cpp(raw_terms);

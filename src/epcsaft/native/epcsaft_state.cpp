@@ -2,6 +2,85 @@
 
 using namespace thermo_detail;
 
+namespace {
+
+int gcd_int(int a, int b) {
+    a = std::abs(a);
+    b = std::abs(b);
+    while (b != 0) {
+        int t = a % b;
+        a = b;
+        b = t;
+    }
+    return a == 0 ? 1 : a;
+}
+
+void build_charge_metadata_cpp(
+    const add_args& args,
+    bool& has_ionic,
+    vector<int>& cation_indices,
+    vector<int>& anion_indices,
+    vector<int>& solvent_indices,
+    vector<int>& pair_cation_indices,
+    vector<int>& pair_anion_indices,
+    vector<int>& pair_nu_cation,
+    vector<int>& pair_nu_anion
+) {
+    has_ionic = false;
+    cation_indices.clear();
+    anion_indices.clear();
+    solvent_indices.clear();
+    pair_cation_indices.clear();
+    pair_anion_indices.clear();
+    pair_nu_cation.clear();
+    pair_nu_anion.clear();
+
+    if (args.z.empty()) {
+        return;
+    }
+    ChargeGroups groups = collect_charge_groups(args, args.z.size());
+    cation_indices = groups.cations;
+    anion_indices = groups.anions;
+    solvent_indices = groups.solvents;
+    has_ionic = (!cation_indices.empty() || !anion_indices.empty());
+
+    for (int ic : cation_indices) {
+        for (int ia : anion_indices) {
+            int zc = static_cast<int>(std::round(std::abs(args.z[ic])));
+            int za = static_cast<int>(std::round(std::abs(args.z[ia])));
+            int g = gcd_int(zc, za);
+            pair_cation_indices.push_back(ic);
+            pair_anion_indices.push_back(ia);
+            pair_nu_cation.push_back(za / g);
+            pair_nu_anion.push_back(zc / g);
+        }
+    }
+}
+
+}  // namespace
+
+ChargeGroups collect_charge_groups(const add_args& args, size_t ncomp) {
+    ChargeGroups groups;
+    groups.cations.reserve(ncomp);
+    groups.anions.reserve(ncomp);
+    groups.solvents.reserve(ncomp);
+    for (size_t i = 0; i < ncomp; ++i) {
+        if (i >= args.z.size()) {
+            throw ValueError("Composition and charge vectors must be aligned.");
+        }
+        if (std::abs(args.z[i]) < 1e-12) {
+            groups.solvents.push_back(static_cast<int>(i));
+        }
+        else if (args.z[i] > 0.0) {
+            groups.cations.push_back(static_cast<int>(i));
+        }
+        else {
+            groups.anions.push_back(static_cast<int>(i));
+        }
+    }
+    return groups;
+}
+
 ePCSAFTMixtureNative::ePCSAFTMixtureNative(const add_args& args)
     : args_(args), has_ionic_(false)
 {
@@ -238,6 +317,22 @@ vector<double> ePCSAFTStateNative::relative_permittivity()
     vector<double> deps = dielectric_diff_cpp(x_, args);
     out.insert(out.end(), deps.begin(), deps.end());
     return out;
+}
+
+double dielectric_eps_cpp(vector<double> x, const add_args &cppargs) {
+    return dielectric_state_cpp(x, cppargs).eps;
+}
+
+vector<double> dielectric_diff_cpp(vector<double> x, const add_args &cppargs) {
+    return dielectric_state_cpp(x, cppargs).deps_dx;
+}
+
+double dielc_eps_cpp(vector<double> x, const add_args &cppargs) {
+    return dielectric_eps_cpp(std::move(x), cppargs);
+}
+
+vector<double> dielc_diff_cpp(vector<double> x, const add_args &cppargs) {
+    return dielectric_diff_cpp(std::move(x), cppargs);
 }
 
 double ePCSAFTStateNative::osmotic_coefficient()

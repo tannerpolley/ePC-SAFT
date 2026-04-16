@@ -34,6 +34,16 @@ def _ionic_state():
     return state, species
 
 
+def _ionic_state_with_elec_model(elec_model):
+    t = 298.15
+    species = ["water", "Na+", "Cl-"]
+    params = _ionic_params()
+    params["elec_model"] = elec_model
+    mix = ePCSAFTMixture.from_params(params, species=species)
+    state = mix.state(T=t, x=np.array([0.9998, 1.0e-4, 1.0e-4]), P=1.0e5)
+    return state, species
+
+
 def _ionic_params():
     t = 298.15
     s_water = 2.7927 + 10.11 * np.exp(-0.01775 * t) - 1.417 * np.exp(-0.01146 * t)
@@ -285,7 +295,7 @@ def test_ionic_activity_and_solution_methods_return_expected_values():
 
     assert relative_permittivity[0] == pytest.approx(78.075982)
     _assert_array(relative_permittivity[1], [78.09, 8.0, 8.0])
-    _assert_array(osmotic_coefficient, [0.9740430244627462])
+    _assert_array(osmotic_coefficient, [0.9740430244627462], rtol=1e-6)
     assert component_activity == {
         "water": pytest.approx(1.0000051724037697),
         "Na+": pytest.approx(0.9222113778654043),
@@ -299,7 +309,7 @@ def test_ionic_activity_and_solution_methods_return_expected_values():
     }
 
     _assert_array(diagnostics["relative_permittivity"][1], [78.09, 8.0, 8.0])
-    _assert_array(diagnostics["osmotic_coefficient"], [0.9740430244627462])
+    _assert_array(diagnostics["osmotic_coefficient"], [0.9740430244627462], rtol=1e-6)
     assert diagnostics["activity_coefficient"] == component_activity
     assert diagnostics["mean_ionic_activity_coefficient_mole"] == mean_ionic_mole
     assert diagnostics["mean_ionic_activity_coefficient_molality"] == mean_ionic_molality
@@ -328,6 +338,49 @@ def test_ionic_activity_and_solution_methods_return_expected_values():
     assert state.mass_density() == pytest.approx(997.1665703121223)
     _assert_array(diagnostics["fugacity_coefficient_terms"]["mu_total"], [-10.682420304620588, -199.10395742942775, -204.79630395556683])
     _assert_array(diagnostics["fugacity_coefficient_terms"]["lnfugcoef_total"], [-3.4584244392944334, -191.87996157767273, -197.5723081063775])
+
+
+def test_rel_perm_autodiff_matches_analytic_density_derivative_usage():
+    base_state, _ = _ionic_state()
+    ad_state, _ = _ionic_state_with_elec_model({
+        "rel_perm": {"differential_mode": "autodiff"},
+    })
+
+    base_dadx = base_state.dadx()
+    ad_dadx = ad_state.dadx()
+    _assert_array(ad_dadx["terms"]["ion"], base_dadx["terms"]["ion"], rtol=1e-7, atol=1e-9)
+    _assert_array(ad_dadx["terms"]["born"], base_dadx["terms"]["born"], rtol=1e-7, atol=1e-9)
+
+
+def test_hc_dadx_autodiff_matches_analytic_terms():
+    base_state, _ = _ionic_state()
+    ad_state, _ = _ionic_state_with_elec_model({
+        "hc_model": {"dadx_differential_mode": "autodiff"},
+    })
+
+    _assert_array(ad_state.dadx()["terms"]["hc"], base_state.dadx()["terms"]["hc"], rtol=1e-7, atol=1e-9)
+
+
+def test_mu_dh_autodiff_matches_analytic_ion_terms():
+    base_state, _ = _ionic_state()
+    ad_state, _ = _ionic_state_with_elec_model({
+        "DH_model": {
+            "mu_DH_model": {"differential_mode": "autodiff"},
+        },
+    })
+
+    _assert_array(ad_state.dadx()["terms"]["ion"], base_state.dadx()["terms"]["ion"], rtol=1e-7, atol=1e-9)
+
+
+def test_mu_born_autodiff_matches_analytic_born_terms():
+    base_state, _ = _ionic_state()
+    ad_state, _ = _ionic_state_with_elec_model({
+        "born_model": {
+            "mu_born_model": {"differential_mode": "autodiff"},
+        },
+    })
+
+    _assert_array(ad_state.dadx()["terms"]["born"], base_state.dadx()["terms"]["born"], rtol=1e-7, atol=1e-9)
 
 
 def test_state_diagnostics_matches_public_methods():

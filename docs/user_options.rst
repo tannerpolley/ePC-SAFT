@@ -50,14 +50,19 @@ Only the documented nested keys are supported.
   - ``4`` or ``empirical``
   - ``7`` or ``linear-saltfraction``
   - ``8`` or ``aqueous-organic``
-- ``differential_mode``: choose ``analytical`` or ``numerical``
+- ``differential_mode``: choose ``analytical``, ``numerical``/``finite_difference``, or ``autodiff``
+
+``hc_model``, ``disp_model``, ``assoc_model``, ``polar_model``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- ``dadx_differential_mode``: choose ``analytical``, ``numerical``/``finite_difference``, or ``autodiff``
 
 ``DH_model``
 ~~~~~~~~~~~~
 
 - ``d_ion_mode``: choose ``0``, ``1``, or ``2``
 - ``bjeruum_treatment``: enable or disable Bjerrum treatment
-- ``mu_DH_model.differential_mode``: choose ``analytical`` or ``numerical``
+- ``mu_DH_model.differential_mode``: choose ``analytical``, ``numerical``/``finite_difference``, or ``autodiff``
 - ``mu_DH_model.comp_dep_rel_perm``: include composition-dependent permittivity in the derivative model
 - ``mu_DH_model.include_sum_term``: include the sum term in the derivative model
 
@@ -68,7 +73,7 @@ Only the documented nested keys are supported.
 - ``solvation_shell_model``: enable or disable the solvation-shell model
 - ``dielectric_saturation``: enable or disable dielectric saturation
 - ``bulk_mode``: choose ``mix`` or ``solvent``
-- ``mu_born_model.differential_mode``: choose ``analytical`` or ``numerical``
+- ``mu_born_model.differential_mode``: choose ``analytical``, ``numerical``/``finite_difference``, or ``autodiff``
 - ``mu_born_model.comp_dep_rel_perm``: include composition-dependent permittivity in the derivative model
 - ``mu_born_model.include_sum_term``: include the sum term in the derivative model
 - ``mu_born_model.comp_dep_delta_d``: include the delta-d composition term
@@ -106,14 +111,14 @@ Use a more advanced Born setup:
      "elec_model": {
        "rel_perm": {
          "rule": "empirical",
-         "differential_mode": "numerical"
+          "differential_mode": "autodiff"
        },
        "born_model": {
          "d_Born_mode": 3,
          "solvation_shell_model": true,
          "dielectric_saturation": true,
          "mu_born_model": {
-           "differential_mode": "numerical",
+            "differential_mode": "autodiff",
            "comp_dep_delta_d": true
          }
        }
