@@ -142,8 +142,6 @@ def _build_states() -> dict:
         "e_assoc": np.asarray([2425.7, 0.0, 0.0]),
         "vol_a": np.asarray([0.04509, 0.0, 0.0]),
         "assoc_scheme": ["2B", None, None],
-        "dipm": np.asarray([0.0, 0.0, 0.0]),
-        "dip_num": np.asarray([1.0, 1.0, 1.0]),
         "z": np.asarray([0.0, 1.0, -1.0]),
         "dielc": np.asarray([78.09, 8.0, 8.0]),
         "d_born": np.asarray([0.0, 3.445, 4.1]),

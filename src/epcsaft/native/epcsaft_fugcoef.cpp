@@ -27,7 +27,6 @@ double lnfug_correction_scale_cpp(const ScalarContributionTerms &z_raw_terms) {
     vector<double> z_terms = {
         z_raw_terms.hc,
         z_raw_terms.disp,
-        z_raw_terms.polar,
         z_raw_terms.assoc,
         z_raw_terms.ion,
         z_raw_terms.born,
@@ -58,10 +57,6 @@ vector<double> lnfug_disp_cpp(const VectorContributionTerms &mu_terms, const Sca
     return lnfug_contribution_cpp(mu_terms.disp, z_raw_terms.disp, z_correction_scale);
 }
 
-vector<double> lnfug_polar_cpp(const VectorContributionTerms &mu_terms, const ScalarContributionTerms &z_raw_terms, double z_correction_scale) {
-    return lnfug_contribution_cpp(mu_terms.polar, z_raw_terms.polar, z_correction_scale);
-}
-
 vector<double> lnfug_assoc_cpp(const VectorContributionTerms &mu_terms, const ScalarContributionTerms &z_raw_terms, double z_correction_scale) {
     return lnfug_contribution_cpp(mu_terms.assoc, z_raw_terms.assoc, z_correction_scale);
 }
@@ -77,14 +72,13 @@ vector<double> lnfug_born_cpp(const VectorContributionTerms &mu_terms, const Sca
 vector<double> lnfug_total_cpp(
     const vector<double> &lnfug_hc,
     const vector<double> &lnfug_disp,
-    const vector<double> &lnfug_polar,
     const vector<double> &lnfug_assoc,
     const vector<double> &lnfug_ion,
     const vector<double> &lnfug_born
 ) {
     vector<double> total(lnfug_hc.size(), 0.0);
     for (int i = 0; i < static_cast<int>(total.size()); ++i) {
-        total[i] = lnfug_hc[i] + lnfug_disp[i] + lnfug_polar[i] + lnfug_assoc[i] + lnfug_ion[i] + lnfug_born[i];
+        total[i] = lnfug_hc[i] + lnfug_disp[i] + lnfug_assoc[i] + lnfug_ion[i] + lnfug_born[i];
     }
     return total;
 }
@@ -99,16 +93,15 @@ FugacityContributionResult fugacity_coefficient_result_cpp(double t, double rho,
 
     vector<double> lnfug_hc = lnfug_hc_cpp(mu_result.mu, mu_result.composition.z_raw, z_correction_scale);
     vector<double> lnfug_disp = lnfug_disp_cpp(mu_result.mu, mu_result.composition.z_raw, z_correction_scale);
-    vector<double> lnfug_polar = lnfug_polar_cpp(mu_result.mu, mu_result.composition.z_raw, z_correction_scale);
     vector<double> lnfug_assoc = lnfug_assoc_cpp(mu_result.mu, mu_result.composition.z_raw, z_correction_scale);
     vector<double> lnfug_ion = lnfug_ion_cpp(mu_result.mu, mu_result.composition.z_raw, z_correction_scale);
     vector<double> lnfug_born = lnfug_born_cpp(mu_result.mu, mu_result.composition.z_raw, z_correction_scale);
-    vector<double> lnfug_total = lnfug_total_cpp(lnfug_hc, lnfug_disp, lnfug_polar, lnfug_assoc, lnfug_ion, lnfug_born);
+    vector<double> lnfug_total = lnfug_total_cpp(lnfug_hc, lnfug_disp, lnfug_assoc, lnfug_ion, lnfug_born);
 
     FugacityContributionResult result;
     result.mu = mu_result.mu;
     result.composition = mu_result.composition;
-    result.lnfugcoef = make_vector_terms(lnfug_hc, lnfug_disp, lnfug_polar, lnfug_assoc, lnfug_ion, lnfug_born, lnfug_total);
+    result.lnfugcoef = make_vector_terms(lnfug_hc, lnfug_disp, lnfug_assoc, lnfug_ion, lnfug_born, lnfug_total);
     return result;
 }
 

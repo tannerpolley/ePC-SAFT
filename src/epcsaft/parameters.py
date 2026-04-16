@@ -28,7 +28,7 @@ import numpy as np
 
 DATASET_ROOT = Path(__file__).resolve().parents[2] / "data" / "epcsaft_parameters"
 
-BASE_KEYS = ["MW", "m", "s", "e", "e_assoc", "vol_a", "assoc_scheme", "dipm", "dip_num", "z", "dielc"]
+BASE_KEYS = ["MW", "m", "s", "e", "e_assoc", "vol_a", "assoc_scheme", "z", "dielc"]
 OPTIONAL_KEYS = ["d_born", "f_solv"]
 
 COMPONENT_ALIASES = {
@@ -79,8 +79,6 @@ _COMPONENT_DEFAULTS = {
         "e_assoc": 2425.7,
         "vol_a": 0.04509,
         "assoc_scheme": "2B",
-        "dipm": 0.0,
-        "dip_num": 1.0,
         "z": 0.0,
         "dielc": 78.09,
         "d_born": 0.0,
@@ -94,8 +92,6 @@ _COMPONENT_DEFAULTS = {
         "e_assoc": 2899.5,
         "vol_a": 0.03518,
         "assoc_scheme": "2B",
-        "dipm": 0.0,
-        "dip_num": 1.0,
         "z": 0.0,
         "dielc": 33.05,
         "d_born": 0.0,
@@ -109,8 +105,6 @@ _COMPONENT_DEFAULTS = {
         "e_assoc": 2653.4,
         "vol_a": 0.03238,
         "assoc_scheme": "2B",
-        "dipm": 0.0,
-        "dip_num": 1.0,
         "z": 0.0,
         "dielc": 24.88,
         "d_born": 0.0,
@@ -124,8 +118,6 @@ _COMPONENT_DEFAULTS = {
         "e_assoc": 2276.78,
         "vol_a": 0.01527,
         "assoc_scheme": "2B",
-        "dipm": 0.0,
-        "dip_num": 1.0,
         "z": 0.0,
         "dielc": 20.47,
         "d_born": 0.0,
@@ -139,8 +131,6 @@ _COMPONENT_DEFAULTS = {
         "e_assoc": 2544.56,
         "vol_a": 0.00669,
         "assoc_scheme": "2B",
-        "dipm": 0.0,
-        "dip_num": 1.0,
         "z": 0.0,
         "dielc": 17.51,
         "d_born": 0.0,
@@ -154,8 +144,6 @@ _COMPONENT_DEFAULTS = {
         "e_assoc": 0.0,
         "vol_a": 0.0,
         "assoc_scheme": "",
-        "dipm": 0.0,
-        "dip_num": 1.0,
         "z": 0.0,
         "dielc": 2.28,
         "d_born": 0.0,
@@ -169,8 +157,6 @@ _COMPONENT_DEFAULTS = {
         "e_assoc": 0.0,
         "vol_a": 0.0,
         "assoc_scheme": "",
-        "dipm": 0.0,
-        "dip_num": 1.0,
         "z": 0.0,
         "dielc": 2.38,
         "d_born": 0.0,
@@ -184,8 +170,6 @@ _COMPONENT_DEFAULTS = {
         "e_assoc": 2598.1,
         "vol_a": 0.0393,
         "assoc_scheme": "2B",
-        "dipm": 0.0,
-        "dip_num": 1.0,
         "z": 0.0,
         "dielc": 8.0,
         "d_born": 0.0,
@@ -199,8 +183,6 @@ _COMPONENT_DEFAULTS = {
         "e_assoc": 3176.6,
         "vol_a": 0.0819,
         "assoc_scheme": "2B",
-        "dipm": 0.0,
-        "dip_num": 1.0,
         "z": 0.0,
         "dielc": 8.0,
         "d_born": 0.0,
@@ -214,8 +196,6 @@ _COMPONENT_DEFAULTS = {
         "e_assoc": 0.0,
         "vol_a": 0.0,
         "assoc_scheme": "",
-        "dipm": 0.0,
-        "dip_num": 1.0,
         "z": 0.0,
         "dielc": 2.0,
         "d_born": 0.0,
@@ -229,8 +209,6 @@ _COMPONENT_DEFAULTS = {
         "e_assoc": 0.0,
         "vol_a": 0.0,
         "assoc_scheme": "",
-        "dipm": 0.0,
-        "dip_num": 1.0,
         "z": 0.0,
         "dielc": 2.0,
         "d_born": 0.0,
@@ -325,7 +303,6 @@ _CANONICAL_ELEC_MODEL = {
     "hc_model": dict(_CANONICAL_CONTRIBUTION_MODEL),
     "disp_model": dict(_CANONICAL_CONTRIBUTION_MODEL),
     "assoc_model": dict(_CANONICAL_CONTRIBUTION_MODEL),
-    "polar_model": dict(_CANONICAL_CONTRIBUTION_MODEL),
     "DH_model": {
         # Preserve current behavior (ionic diameter uses 0.88*sigma by default).
         "d_ion_mode": 1,
@@ -529,6 +506,18 @@ def _read_csv(path: Path) -> list[dict]:
 
 def _load_component_rows(path: Path) -> dict[str, dict[str, str]]:
     rows = _read_csv(path)
+    if rows:
+        allowed_columns = {"component", *BASE_KEYS, *OPTIONAL_KEYS}
+        forbidden_columns = {"dipm", "dip_num"}
+        present_columns = {str(key).strip() for key in rows[0].keys() if key}
+        legacy_columns = sorted(present_columns & forbidden_columns)
+        if legacy_columns:
+            raise ValueError(
+                f"Dataset file '{path}' uses removed polar column(s): {legacy_columns}. Update the active package schema."
+            )
+        unknown_columns = sorted(present_columns - allowed_columns)
+        if unknown_columns:
+            raise ValueError(f"Dataset file '{path}' contains unsupported column(s): {unknown_columns}.")
     mapping: dict[str, dict[str, str]] = {}
     for row in rows:
         comp = _normalize_component(str(row.get("component", "")).strip())
@@ -705,6 +694,11 @@ def _load_canonical_user_options(dataset_dir: Path) -> dict:
 
     if not isinstance(canonical, dict):
         return {}
+    elec_model = canonical.get("elec_model", {})
+    if isinstance(elec_model, dict) and "polar_model" in elec_model:
+        raise ValueError(
+            f"Dataset '{dataset_dir}' canonical_user_options still contains removed key 'elec_model.polar_model'."
+        )
     return _strip_preset_keys(canonical)
 
 
@@ -827,10 +821,8 @@ def _deterministic_default(component: str, prop: str, T: float):
             return 1.0 if component.endswith("+") else -1.0
         if prop == "m":
             return 1.0
-        if prop in {"e_assoc", "vol_a", "dipm", "d_born"}:
+        if prop in {"e_assoc", "vol_a", "d_born"}:
             return 0.0
-        if prop == "dip_num":
-            return 1.0
         if prop == "assoc_scheme":
             return None
         if prop == "dielc":
@@ -1077,7 +1069,7 @@ def _normalize_elec_model(model) -> dict:
 
     _ensure_allowed_keys(
         model,
-        {"rel_perm", "hc_model", "disp_model", "assoc_model", "polar_model", "DH_model", "include_born_model", "born_model"},
+        {"rel_perm", "hc_model", "disp_model", "assoc_model", "DH_model", "include_born_model", "born_model"},
         "elec_model",
     )
 
@@ -1087,7 +1079,7 @@ def _normalize_elec_model(model) -> dict:
         _ensure_allowed_keys(model["rel_perm"], {"rule", "differential_mode"}, "elec_model['rel_perm']")
         out["rel_perm"] = _deep_update(out["rel_perm"], model["rel_perm"])
 
-    for key in ("hc_model", "disp_model", "assoc_model", "polar_model"):
+    for key in ("hc_model", "disp_model", "assoc_model"):
         if key in model:
             if not isinstance(model[key], dict):
                 raise TypeError(f"elec_model['{key}'] must be a dict.")
@@ -1118,7 +1110,7 @@ def _normalize_elec_model(model) -> dict:
     out["rel_perm"]["differential_mode"] = _as_rule_number(
         out["rel_perm"]["differential_mode"], _DIFF_MODE_ALIASES
     )
-    for key in ("hc_model", "disp_model", "assoc_model", "polar_model"):
+    for key in ("hc_model", "disp_model", "assoc_model"):
         out[key]["dadx_differential_mode"] = _as_rule_number(
             out[key]["dadx_differential_mode"], _DIFF_MODE_ALIASES
         )
@@ -1189,7 +1181,6 @@ def _flatten_model_to_runtime(model: dict) -> dict:
         "hc_dadx_diff_mode": int(_as_rule_number(model["hc_model"]["dadx_differential_mode"], _DIFF_MODE_ALIASES)),
         "disp_dadx_diff_mode": int(_as_rule_number(model["disp_model"]["dadx_differential_mode"], _DIFF_MODE_ALIASES)),
         "assoc_dadx_diff_mode": int(_as_rule_number(model["assoc_model"]["dadx_differential_mode"], _DIFF_MODE_ALIASES)),
-        "polar_dadx_diff_mode": int(_as_rule_number(model["polar_model"]["dadx_differential_mode"], _DIFF_MODE_ALIASES)),
         "d_ion_mode": int(_resolve_d_ion_mode(dh_model["d_ion_mode"])),
         "bjeruum_treatment": _coerce_bool(dh_model["bjeruum_treatment"]),
         "mu_DH_diff_mode": int(mu_dh_diff_mode),

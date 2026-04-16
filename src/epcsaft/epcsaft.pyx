@@ -33,7 +33,7 @@ STATE_METHOD_ALIAS_MAP = {
     "solvation_free_energy": "gsolv",
 }
 _STATE_METHOD_ALIAS_LOOKUP = {alias: name for name, alias in STATE_METHOD_ALIAS_MAP.items()}
-_CONTRIBUTION_NAMES = ("hc", "disp", "polar", "assoc", "ion", "born")
+_CONTRIBUTION_NAMES = ("hc", "disp", "assoc", "ion", "born")
 
 
 def _sum_vector_terms(terms):
@@ -48,7 +48,6 @@ cdef dict _scalar_terms_dict(ScalarContributionTerms terms):
     return {
         "hc": float(terms.hc),
         "disp": float(terms.disp),
-        "polar": float(terms.polar),
         "assoc": float(terms.assoc),
         "ion": float(terms.ion),
         "born": float(terms.born),
@@ -61,7 +60,6 @@ cdef dict _vector_terms_dict(VectorContributionTerms terms, Py_ssize_t expected_
     cdef dict blocks = {
         "hc": vector_to_array(terms.hc),
         "disp": vector_to_array(terms.disp),
-        "polar": vector_to_array(terms.polar),
         "assoc": vector_to_array(terms.assoc),
         "ion": vector_to_array(terms.ion),
         "born": vector_to_array(terms.born),
@@ -285,7 +283,6 @@ cdef class ePCSAFTState:
         return {
             "mu_hc": mu["hc"],
             "mu_disp": mu["disp"],
-            "mu_polar": mu["polar"],
             "mu_assoc": mu["assoc"],
             "mu_ion": mu["ion"],
             "mu_born": mu["born"],
@@ -293,37 +290,31 @@ cdef class ePCSAFTState:
             "lnfugcoef_total": lnfug["total"],
             "lnfugcoef_hc": lnfug["hc"],
             "lnfugcoef_disp": lnfug["disp"],
-            "lnfugcoef_polar": lnfug["polar"],
             "lnfugcoef_assoc": lnfug["assoc"],
             "lnfugcoef_ion": lnfug["ion"],
             "lnfugcoef_born": lnfug["born"],
             "dadx_hc": dadx["hc"],
             "dadx_disp": dadx["disp"],
-            "dadx_polar": dadx["polar"],
             "dadx_assoc": dadx["assoc"],
             "dadx_ion": dadx["ion"],
             "dadx_born": dadx["born"],
             "a_hc": ares["hc"],
             "a_disp": ares["disp"],
-            "a_polar": ares["polar"],
             "a_assoc": ares["assoc"],
             "a_ion": ares["ion"],
             "a_born": ares["born"],
             "sum_x_dadx_hc": sum_x["hc"],
             "sum_x_dadx_disp": sum_x["disp"],
-            "sum_x_dadx_polar": sum_x["polar"],
             "sum_x_dadx_assoc": sum_x["assoc"],
             "sum_x_dadx_ion": sum_x["ion"],
             "sum_x_dadx_born": sum_x["born"],
             "z_raw_hc": z_raw["hc"],
             "z_raw_disp": z_raw["disp"],
-            "z_raw_polar": z_raw["polar"],
             "z_raw_assoc": z_raw["assoc"],
             "z_raw_ion": z_raw["ion"],
             "z_raw_born": z_raw["born"],
             "z_hc": z_terms["hc"],
             "z_disp": z_terms["disp"],
-            "z_polar": z_terms["polar"],
             "z_assoc": z_terms["assoc"],
             "z_ion": z_terms["ion"],
             "z_born": z_terms["born"],
@@ -703,6 +694,12 @@ def create_struct(params):
     cdef add_args cppargs
     cdef int ncomp
 
+    for removed_key in ('dipm', 'dip_num'):
+        if removed_key in params:
+            raise ValueError(
+                'Removed polar parameter "{}" is not supported by the active ePC-SAFT package.'.format(removed_key)
+            )
+
     cppargs.mixed_rel_perm_water_index = -1
     cppargs.m = np_to_vector_double(params['m'])
     ncomp = len(np.asarray(params['m']).flatten())
@@ -714,10 +711,6 @@ def create_struct(params):
         cppargs.e_assoc = np_to_vector_double(params['e_assoc'])
     if ('vol_a' in params) and np.any(params['vol_a']):
         cppargs.vol_a = np_to_vector_double(params['vol_a'])
-    if ('dipm' in params) and np.any(params['dip_num']) and np.any(params['dipm']):
-        cppargs.dipm = np_to_vector_double(params['dipm'])
-    if ('dip_num' in params) and np.any(params['dip_num']):
-        cppargs.dip_num = np_to_vector_double(params['dip_num'])
     z_arr = None
     if 'z' in params:
         z_arr = np.asarray(params['z'], dtype=float).flatten()
@@ -790,7 +783,6 @@ def create_struct(params):
                 'hc_model': {'dadx_differential_mode': 'analytical'},
                 'disp_model': {'dadx_differential_mode': 'analytical'},
                 'assoc_model': {'dadx_differential_mode': 'analytical'},
-                'polar_model': {'dadx_differential_mode': 'analytical'},
                 'DH_model': {
                     'd_ion_mode': 1,
                     'bjeruum_treatment': False,
@@ -826,7 +818,7 @@ def create_struct(params):
 
     _reject_unknown_keys(
         elec_model,
-        {'rel_perm', 'hc_model', 'disp_model', 'assoc_model', 'polar_model', 'DH_model', 'include_born_model', 'born_model'},
+        {'rel_perm', 'hc_model', 'disp_model', 'assoc_model', 'DH_model', 'include_born_model', 'born_model'},
         'params["elec_model"]'
     )
 
@@ -910,10 +902,6 @@ def create_struct(params):
     if not isinstance(assoc_model_dict, dict):
         raise ValueError('params["elec_model"]["assoc_model"] must be a dict.')
     _reject_unknown_keys(assoc_model_dict, {'dadx_differential_mode'}, 'params["elec_model"]["assoc_model"]')
-    polar_model_dict = elec_model.get('polar_model', {})
-    if not isinstance(polar_model_dict, dict):
-        raise ValueError('params["elec_model"]["polar_model"] must be a dict.')
-    _reject_unknown_keys(polar_model_dict, {'dadx_differential_mode'}, 'params["elec_model"]["polar_model"]')
     dh_model_dict = elec_model.get('DH_model', {})
     if not isinstance(dh_model_dict, dict):
         raise ValueError('params["elec_model"]["DH_model"] must be a dict.')
@@ -956,9 +944,6 @@ def create_struct(params):
     cppargs.assoc_dadx_diff_mode = _as_int_alias(assoc_model_dict.get('dadx_differential_mode', 'analytical'), diff_alias)
     if cppargs.assoc_dadx_diff_mode not in (0, 1, 2):
         raise ValueError('Unknown assoc_model dadx_differential_mode. Supported values are analytical/numerical/autodiff (0/1/2).')
-    cppargs.polar_dadx_diff_mode = _as_int_alias(polar_model_dict.get('dadx_differential_mode', 'analytical'), diff_alias)
-    if cppargs.polar_dadx_diff_mode not in (0, 1, 2):
-        raise ValueError('Unknown polar_model dadx_differential_mode. Supported values are analytical/numerical/autodiff (0/1/2).')
     if cppargs.dielc_rule < 0 or cppargs.dielc_rule > 8:
         raise ValueError('Unknown rel_perm rule. Supported values are 0..8.')
 

@@ -3,11 +3,10 @@
 
 using namespace thermo_detail;
 
-ScalarContributionTerms make_scalar_terms(double hc, double disp, double polar, double assoc, double ion, double born, double total) {
+ScalarContributionTerms make_scalar_terms(double hc, double disp, double assoc, double ion, double born, double total) {
     ScalarContributionTerms out;
     out.hc = hc;
     out.disp = disp;
-    out.polar = polar;
     out.assoc = assoc;
     out.ion = ion;
     out.born = born;
@@ -18,7 +17,6 @@ ScalarContributionTerms make_scalar_terms(double hc, double disp, double polar, 
 VectorContributionTerms make_vector_terms(
     const vector<double> &hc,
     const vector<double> &disp,
-    const vector<double> &polar,
     const vector<double> &assoc,
     const vector<double> &ion,
     const vector<double> &born,
@@ -27,7 +25,6 @@ VectorContributionTerms make_vector_terms(
     VectorContributionTerms out;
     out.hc = hc;
     out.disp = disp;
-    out.polar = polar;
     out.assoc = assoc;
     out.ion = ion;
     out.born = born;

@@ -78,7 +78,7 @@ AutodiffDispersionState dispersion_state_autodiff_cpp(const AutoDual &m_avg, con
 
 vector<double> contribution_dadx_autodiff_cpp(AresContributionKind kind, double t, double rho, const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
-    if (kind == AresContributionKind::ASSOC || kind == AresContributionKind::POLAR) {
+    if (kind == AresContributionKind::ASSOC) {
         throw ValueError("autodiff differential_mode is not implemented for this contribution yet.");
     }
     if (kind == AresContributionKind::BORN && cppargs.born_model == 2) {
@@ -359,38 +359,6 @@ ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChain
     return result;
 }
 
-ContributionDadxResult dadx_polar_cpp(const HardChainState &hc_state, const PolarIntermediateState &polar_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {
-    int ncomp = static_cast<int>(x.size());
-    ContributionDadxResult result;
-    result.dadx.assign(ncomp, 0.0);
-    if (!polar_state.active) {
-        return result;
-    }
-
-    if (polar_state.second_order != 0.0) {
-        result.ares = polar_state.second_order / (1.0 - polar_state.third_order / polar_state.second_order);
-        for (int i = 0; i < ncomp; ++i) {
-            result.dadx[i] = (polar_state.second_order_composition_terms[i] * (1.0 - polar_state.third_order / polar_state.second_order)
-                + (polar_state.third_order_composition_terms[i] * polar_state.second_order - polar_state.third_order * polar_state.second_order_composition_terms[i]) / polar_state.second_order)
-                / std::pow(1.0 - polar_state.third_order / polar_state.second_order, 2.0);
-        }
-        if (cppargs.polar_dadx_diff_mode == 1) {
-            result.dadx = contribution_dadx_fd_cpp(AresContributionKind::POLAR, t, rho, x, cppargs, result.ares);
-        } else if (cppargs.polar_dadx_diff_mode == 2) {
-            result.dadx = contribution_dadx_autodiff_cpp(AresContributionKind::POLAR, t, rho, x, cppargs);
-        }
-        result.z = hc_state.eta * (
-            (polar_state.second_order_density_term * (1.0 - polar_state.third_order / polar_state.second_order)
-                + (polar_state.third_order_density_term * polar_state.second_order - polar_state.third_order * polar_state.second_order_density_term) / polar_state.second_order)
-            / std::pow(1.0 - polar_state.third_order / polar_state.second_order, 2.0)
-        );
-        for (int i = 0; i < ncomp; ++i) {
-            result.sum_x_dadx += x[i] * result.dadx[i];
-        }
-    }
-    return result;
-}
-
 vector<double> association_site_fraction_composition_terms_cpp(
     const vector<double> &delta_ij,
     double den,
@@ -628,31 +596,29 @@ CompositionContributionResult composition_derivative_residual_helmholtz_result_c
     ScalarContributionTerms z_terms = compressibility_terms_from_dadrho_cpp(dadrho_result);
 
     DispersionPolynomialState dispersion = dispersion_polynomials_cpp(thermo.m_avg, hc_state.eta);
-    PolarIntermediateState polar_state = polar_intermediate_state_cpp(thermo, hc_state, 0.0, t, x, cppargs, true, false, true);
     AssociationIntermediateState assoc_state = association_intermediate_state_cpp(thermo, hc_state, t, x, cppargs, false, false);
     IonIntermediateState ion_state = ion_intermediate_state_cpp(thermo, t, x, cppargs, true);
     BornIntermediateState born_state = born_intermediate_state_cpp(t, x, cppargs, false, true);
 
     ContributionDadxResult hc = dadx_hc_cpp(thermo, hc_state, t, rho, x, cppargs);
     ContributionDadxResult disp = dadx_disp_cpp(thermo, hc_state, dispersion, t, rho, x, cppargs);
-    ContributionDadxResult polar = dadx_polar_cpp(hc_state, polar_state, t, rho, x, cppargs);
     ContributionDadxResult assoc = dadx_assoc_cpp(thermo, hc_state, assoc_state, t, rho, x, cppargs);
     ContributionDadxResult ion = dadx_ion_cpp(thermo, ion_state, t, rho, x, cppargs);
     ContributionDadxResult born = dadx_born_cpp(born_state, t, rho, x, cppargs);
 
     CompositionContributionResult result;
-    result.dadx = make_vector_terms(hc.dadx, disp.dadx, polar.dadx, assoc.dadx, ion.dadx, born.dadx, vector<double>());
-    result.ares = make_scalar_terms(hc.ares, disp.ares, polar.ares, assoc.ares, ion.ares, born.ares,
-        hc.ares + disp.ares + polar.ares + assoc.ares + ion.ares + born.ares);
-    result.sum_x_dadx = make_scalar_terms(hc.sum_x_dadx, disp.sum_x_dadx, polar.sum_x_dadx, assoc.sum_x_dadx,
+    result.dadx = make_vector_terms(hc.dadx, disp.dadx, assoc.dadx, ion.dadx, born.dadx, vector<double>());
+    result.ares = make_scalar_terms(hc.ares, disp.ares, assoc.ares, ion.ares, born.ares,
+        hc.ares + disp.ares + assoc.ares + ion.ares + born.ares);
+    result.sum_x_dadx = make_scalar_terms(hc.sum_x_dadx, disp.sum_x_dadx, assoc.sum_x_dadx,
         ion.sum_x_dadx, born.sum_x_dadx,
-        hc.sum_x_dadx + disp.sum_x_dadx + polar.sum_x_dadx + assoc.sum_x_dadx + ion.sum_x_dadx + born.sum_x_dadx);
+        hc.sum_x_dadx + disp.sum_x_dadx + assoc.sum_x_dadx + ion.sum_x_dadx + born.sum_x_dadx);
     result.z_raw = z_raw_terms;
     result.z = z_terms;
 
     vector<double> total(ncomp, 0.0);
     for (int i = 0; i < ncomp; ++i) {
-        total[i] = hc.dadx[i] + disp.dadx[i] + polar.dadx[i] + assoc.dadx[i] + ion.dadx[i] + born.dadx[i];
+        total[i] = hc.dadx[i] + disp.dadx[i] + assoc.dadx[i] + ion.dadx[i] + born.dadx[i];
     }
     result.dadx.total = total;
     return result;

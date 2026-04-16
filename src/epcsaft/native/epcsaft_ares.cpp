@@ -31,13 +31,6 @@ double ares_disp_cpp(const MixtureState &thermo, const DispersionPolynomialState
         - PI * thermo.den * thermo.m_avg * dispersion.C1 * dispersion.I2 * thermo.m2e2s3;
 }
 
-double ares_polar_cpp(const PolarIntermediateState &polar_state) {
-    if ((!polar_state.active) || (polar_state.second_order == 0.0)) {
-        return 0.0;
-    }
-    return polar_state.second_order / (1.0 - polar_state.third_order / polar_state.second_order);
-}
-
 // EqID: ares_assoc
 double ares_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {
     if (!assoc_state.active) {
@@ -83,8 +76,6 @@ double ares_contribution_value_cpp(const AresContributions &terms, AresContribut
             return terms.hc;
         case AresContributionKind::DISP:
             return terms.disp;
-        case AresContributionKind::POLAR:
-            return terms.polar;
         case AresContributionKind::ASSOC:
             return terms.assoc;
         case AresContributionKind::ION:
@@ -101,14 +92,12 @@ AresContributions ares_contributions_cpp(double t, double rho, const vector<doub
     MixtureState thermo = mixture_state_cpp(t, rho, x, cppargs, false);
     HardChainState hc_state = hard_chain_state_cpp(thermo, x, cppargs);
     DispersionPolynomialState dispersion = dispersion_polynomials_cpp(thermo.m_avg, hc_state.eta);
-    PolarIntermediateState polar_state = polar_intermediate_state_cpp(thermo, hc_state, 0.0, t, x, cppargs, false, false, false);
     AssociationIntermediateState assoc_state = association_intermediate_state_cpp(thermo, hc_state, t, x, cppargs, false, false);
     IonIntermediateState ion_state = ion_intermediate_state_cpp(thermo, t, x, cppargs, false);
     BornIntermediateState born_state = born_intermediate_state_cpp(t, x, cppargs, false, false);
 
     out.hc = ares_hc_cpp(thermo, hc_state, x, cppargs);
     out.disp = ares_disp_cpp(thermo, dispersion);
-    out.polar = ares_polar_cpp(polar_state);
     out.assoc = ares_assoc_cpp(assoc_state, x);
     out.ion = ares_ion_cpp(t, ion_state);
     out.born = ares_born_cpp(t, born_state);
@@ -117,11 +106,10 @@ AresContributions ares_contributions_cpp(double t, double rho, const vector<doub
 
 ScalarContributionTerms residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     AresContributions contributions = ares_contributions_cpp(t, rho, x, cppargs);
-    double ares = contributions.hc + contributions.disp + contributions.polar + contributions.assoc + contributions.ion + contributions.born;
+    double ares = contributions.hc + contributions.disp + contributions.assoc + contributions.ion + contributions.born;
     return make_scalar_terms(
         contributions.hc,
         contributions.disp,
-        contributions.polar,
         contributions.assoc,
         contributions.ion,
         contributions.born,
@@ -131,5 +119,5 @@ ScalarContributionTerms residual_helmholtz_result_cpp(double t, double rho, vect
 
 double ares_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     AresContributions contributions = ares_contributions_cpp(t, rho, x, cppargs);
-    return contributions.hc + contributions.disp + contributions.polar + contributions.assoc + contributions.ion + contributions.born;
+    return contributions.hc + contributions.disp + contributions.assoc + contributions.ion + contributions.born;
 }

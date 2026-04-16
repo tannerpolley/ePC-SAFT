@@ -31,8 +31,6 @@ cdef extern from "epcsaft_electrolyte.h":
         vector[double] k_ij
         vector[double] e_assoc
         vector[double] vol_a
-        vector[double] dipm
-        vector[double] dip_num
         vector[double] z
         vector[double] dielc
         vector[double] mw
@@ -46,7 +44,6 @@ cdef extern from "epcsaft_electrolyte.h":
         int hc_dadx_diff_mode
         int disp_dadx_diff_mode
         int assoc_dadx_diff_mode
-        int polar_dadx_diff_mode
         int d_ion_mode
         int mu_DH_diff_mode
         int mu_DH_comp_dep_rel_perm
@@ -92,7 +89,6 @@ cdef extern from "epcsaft_electrolyte.h":
     ctypedef struct ScalarContributionTerms:
         double hc
         double disp
-        double polar
         double assoc
         double ion
         double born
@@ -105,7 +101,6 @@ cdef extern from "epcsaft_electrolyte.h":
     ctypedef struct VectorContributionTerms:
         vector[double] hc
         vector[double] disp
-        vector[double] polar
         vector[double] assoc
         vector[double] ion
         vector[double] born

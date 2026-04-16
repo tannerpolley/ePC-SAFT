@@ -233,13 +233,6 @@ double den_cpp(double t, double p, vector<double> x, int phase, const add_args &
         vol_a : vector<double>, shape (n,)
             Effective association volume of the associating components. For non
             associating compounds this is set to 0.
-        dipm : vector<double>, shape (n,)
-            Dipole moment of the polar components. For components where the dipole
-            term is not used this is set to 0. Units of Debye.
-        dip_num : vector<double>, shape (n,)
-            The effective number of dipole functional groups on each component
-            molecule. Some implementations use this as an adjustable parameter
-            that is fit to data.
         z : vector<double>, shape (n,)
             Charge number of the ions
         dielc : double

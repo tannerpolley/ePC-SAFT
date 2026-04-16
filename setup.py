@@ -30,7 +30,6 @@ ext_modules = [
             f"{NATIVE_ROOT}/epcsaft_dielectric.cpp",
             f"{NATIVE_ROOT}/contributions/epcsaft_contrib_hc.cpp",
             f"{NATIVE_ROOT}/contributions/epcsaft_contrib_disp.cpp",
-            f"{NATIVE_ROOT}/contributions/epcsaft_contrib_polar.cpp",
             f"{NATIVE_ROOT}/contributions/epcsaft_contrib_assoc.cpp",
             f"{NATIVE_ROOT}/contributions/epcsaft_contrib_ion.cpp",
             f"{NATIVE_ROOT}/contributions/epcsaft_contrib_born.cpp",

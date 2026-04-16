@@ -90,14 +90,6 @@ double dadt_disp_cpp(const MixtureState &thermo, double deta_dt, double t, const
         - PI * thermo.den * thermo.m_avg * (dC1_dt * dispersion.I2 + dispersion.C1 * dI2_dt - 2.0 * dispersion.C1 * dispersion.I2 / t) * thermo.m2e2s3;
 }
 
-double dadt_polar_cpp(const PolarIntermediateState &polar_state) {
-    if ((!polar_state.active) || (polar_state.second_order == 0.0)) {
-        return 0.0;
-    }
-    return (polar_state.second_order_temperature_term - 2.0 * polar_state.third_order / polar_state.second_order * polar_state.second_order_temperature_term + polar_state.third_order_temperature_term)
-        / std::pow(1.0 - polar_state.third_order / polar_state.second_order, 2.0);
-}
-
 double dadt_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {
     if (!assoc_state.active) {
         return 0.0;
@@ -151,19 +143,17 @@ ScalarContributionTerms temperature_derivative_residual_helmholtz_result_cpp(dou
     vector<double> dzeta_dt = dzeta_dt_cpp(thermo, x, cppargs);
     vector<double> dghs_dt = hc_contact_time_terms_cpp(thermo, hc_state, dzeta_dt);
     DispersionPolynomialState dispersion = dispersion_polynomials_cpp(thermo.m_avg, hc_state.eta);
-    PolarIntermediateState polar_state = polar_intermediate_state_cpp(thermo, hc_state, dzeta_dt[3], t, x, cppargs, false, true, false);
     AssociationIntermediateState assoc_state = association_intermediate_state_cpp(thermo, hc_state, t, x, cppargs, true, false, &dghs_dt);
     IonIntermediateState ion_state = ion_intermediate_state_cpp(thermo, t, x, cppargs, false);
     BornIntermediateState born_state = born_intermediate_state_cpp(t, x, cppargs, true, false);
 
     double hc = dadt_hc_cpp(thermo, hc_state, dzeta_dt, x, cppargs);
     double disp = dadt_disp_cpp(thermo, dzeta_dt[3], t, dispersion);
-    double polar = dadt_polar_cpp(polar_state);
     double assoc = dadt_assoc_cpp(assoc_state, x);
     double ion = dadt_ion_cpp(ion_state, t, x, cppargs);
     double born = dadt_born_cpp(t, born_state);
-    double total = hc + disp + assoc + polar + ion + born;
-    return make_scalar_terms(hc, disp, polar, assoc, ion, born, total);
+    double total = hc + disp + assoc + ion + born;
+    return make_scalar_terms(hc, disp, assoc, ion, born, total);
 }
 
 double dadt_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {

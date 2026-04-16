@@ -45,8 +45,6 @@ PURE_NUMERIC_FIELDS = (
     "e",
     "e_assoc",
     "vol_a",
-    "dipm",
-    "dip_num",
     "z",
     "dielc",
     "d_born",
@@ -60,8 +58,6 @@ PURE_REQUIRED_FIELDS = (
     "e",
     "e_assoc",
     "vol_a",
-    "dipm",
-    "dip_num",
     "z",
     "dielc",
     "d_born",
@@ -95,7 +91,6 @@ DEFAULT_BOUNDS = {
     "e": (1.0, 12000.0),
     "e_assoc": (0.0, 20000.0),
     "vol_a": (0.0, 1.0),
-    "dipm": (0.0, 10.0),
     "d_born": (0.1, 10.0),
     "k_ij": (-2.0, 2.0),
     "l_ij": (-2.0, 2.0),
@@ -489,7 +484,6 @@ def _pure_seed_payload(
         if default is not None and default is not _MISSING:
             payload[field] = default
     payload.setdefault("assoc_scheme", assoc_scheme)
-    payload.setdefault("dip_num", 1.0)
     payload.setdefault("z", 0.0)
     payload.setdefault("dielc", 8.0)
     payload.setdefault("d_born", 0.0)

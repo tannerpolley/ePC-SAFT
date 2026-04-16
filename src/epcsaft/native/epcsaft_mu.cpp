@@ -26,10 +26,6 @@ vector<double> mu_disp_cpp(const CompositionContributionResult &composition) {
     return mu_contribution_cpp(composition.ares.disp, composition.z_raw.disp, composition.dadx.disp, composition.sum_x_dadx.disp);
 }
 
-vector<double> mu_polar_cpp(const CompositionContributionResult &composition) {
-    return mu_contribution_cpp(composition.ares.polar, composition.z_raw.polar, composition.dadx.polar, composition.sum_x_dadx.polar);
-}
-
 vector<double> mu_assoc_cpp(const CompositionContributionResult &composition) {
     return mu_contribution_cpp(composition.ares.assoc, composition.z_raw.assoc, composition.dadx.assoc, composition.sum_x_dadx.assoc);
 }
@@ -45,14 +41,13 @@ vector<double> mu_born_cpp(const CompositionContributionResult &composition) {
 vector<double> mu_total_cpp(
     const vector<double> &mu_hc,
     const vector<double> &mu_disp,
-    const vector<double> &mu_polar,
     const vector<double> &mu_assoc,
     const vector<double> &mu_ion,
     const vector<double> &mu_born
 ) {
     vector<double> total(mu_hc.size(), 0.0);
     for (int i = 0; i < static_cast<int>(total.size()); ++i) {
-        total[i] = mu_hc[i] + mu_disp[i] + mu_polar[i] + mu_assoc[i] + mu_ion[i] + mu_born[i];
+        total[i] = mu_hc[i] + mu_disp[i] + mu_assoc[i] + mu_ion[i] + mu_born[i];
     }
     return total;
 }
@@ -66,14 +61,13 @@ ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t,
 
     vector<double> mu_hc = mu_hc_cpp(composition);
     vector<double> mu_disp = mu_disp_cpp(composition);
-    vector<double> mu_polar = mu_polar_cpp(composition);
     vector<double> mu_assoc = mu_assoc_cpp(composition);
     vector<double> mu_ion = mu_ion_cpp(composition);
     vector<double> mu_born = mu_born_cpp(composition);
-    vector<double> mu_total = mu_total_cpp(mu_hc, mu_disp, mu_polar, mu_assoc, mu_ion, mu_born);
+    vector<double> mu_total = mu_total_cpp(mu_hc, mu_disp, mu_assoc, mu_ion, mu_born);
 
     ResidualChemicalPotentialResult result;
-    result.mu = make_vector_terms(mu_hc, mu_disp, mu_polar, mu_assoc, mu_ion, mu_born, mu_total);
+    result.mu = make_vector_terms(mu_hc, mu_disp, mu_assoc, mu_ion, mu_born, mu_total);
     result.composition = std::move(composition);
     return result;
 }

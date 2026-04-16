@@ -24,8 +24,6 @@ struct add_args {
     vector<double> k_ij;
     vector<double> e_assoc;
     vector<double> vol_a;
-    vector<double> dipm;
-    vector<double> dip_num;
     vector<double> z;
     vector<double> dielc;
     vector<double> mw;
@@ -39,7 +37,6 @@ struct add_args {
     int hc_dadx_diff_mode;
     int disp_dadx_diff_mode;
     int assoc_dadx_diff_mode;
-    int polar_dadx_diff_mode;
     int d_ion_mode;
     int mu_DH_diff_mode;
     int mu_DH_comp_dep_rel_perm;
@@ -87,7 +84,6 @@ struct ActivityCoefficientNative {
 struct ScalarContributionTerms {
     double hc = 0.0;
     double disp = 0.0;
-    double polar = 0.0;
     double assoc = 0.0;
     double ion = 0.0;
     double born = 0.0;
@@ -102,7 +98,6 @@ struct CompressibilityFactorResult {
 struct VectorContributionTerms {
     vector<double> hc;
     vector<double> disp;
-    vector<double> polar;
     vector<double> assoc;
     vector<double> ion;
     vector<double> born;

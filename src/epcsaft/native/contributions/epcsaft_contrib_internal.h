@@ -23,18 +23,6 @@ struct ContributionDadxResult {
     double sum_x_dadx = 0.0;
 };
 
-struct PolarIntermediateState {
-    bool active = false;
-    double second_order = 0.0;
-    double third_order = 0.0;
-    double second_order_density_term = 0.0;
-    double third_order_density_term = 0.0;
-    double second_order_temperature_term = 0.0;
-    double third_order_temperature_term = 0.0;
-    vector<double> second_order_composition_terms;
-    vector<double> third_order_composition_terms;
-};
-
 struct AssociationIntermediateState {
     bool active = false;
     AssociationSetup setup;
@@ -73,25 +61,12 @@ using thermo_detail::AssociationIntermediateState;
 using thermo_detail::BornIntermediateState;
 using thermo_detail::ContributionDadxResult;
 using thermo_detail::IonIntermediateState;
-using thermo_detail::PolarIntermediateState;
 
 HardChainState hard_chain_state_cpp(const MixtureState &thermo, const vector<double> &x, const add_args &cppargs);
 AutodiffHardChainState hard_chain_state_autodiff_cpp(double den, const vector<double> &d, const vector<AutoDual> &x, const add_args &cppargs);
 double pair_diameter_cpp(double d_i, double d_j);
 double hs_contact_value_cpp(double pair_diameter, double zeta2, double zeta3);
 double association_volume_cpp(int comp_i, int comp_j, int ncomp, const vector<double> &s_ij, const add_args &cppargs);
-
-PolarIntermediateState polar_intermediate_state_cpp(
-    const MixtureState &thermo,
-    const HardChainState &hc_state,
-    double deta_dt,
-    double t,
-    const vector<double> &x,
-    const add_args &cppargs,
-    bool include_density,
-    bool include_dt,
-    bool include_dx
-);
 
 AssociationIntermediateState association_intermediate_state_cpp(
     const MixtureState &thermo,

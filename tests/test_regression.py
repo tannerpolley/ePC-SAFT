@@ -38,8 +38,6 @@ def _neutral_fixed_parameters(component: str) -> dict[str, float]:
         "MW": HYDROCARBON_FIXED_METADATA[component]["MW"],
         "e_assoc": 0.0,
         "vol_a": 0.0,
-        "dipm": 0.0,
-        "dip_num": 1.0,
         "z": 0.0,
         "dielc": 1.0,
         "d_born": 0.0,

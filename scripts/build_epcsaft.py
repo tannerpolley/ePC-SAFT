@@ -32,7 +32,6 @@ COMPILED_INPUTS = [
     NATIVE_ROOT / "epcsaft_dielectric.cpp",
     NATIVE_ROOT / "contributions" / "epcsaft_contrib_hc.cpp",
     NATIVE_ROOT / "contributions" / "epcsaft_contrib_disp.cpp",
-    NATIVE_ROOT / "contributions" / "epcsaft_contrib_polar.cpp",
     NATIVE_ROOT / "contributions" / "epcsaft_contrib_assoc.cpp",
     NATIVE_ROOT / "contributions" / "epcsaft_contrib_ion.cpp",
     NATIVE_ROOT / "contributions" / "epcsaft_contrib_born.cpp",

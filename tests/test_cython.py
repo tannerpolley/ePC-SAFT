@@ -55,8 +55,6 @@ def _ionic_params():
         "e_assoc": np.asarray([2425.7, 0.0, 0.0]),
         "vol_a": np.asarray([0.04509, 0.0, 0.0]),
         "assoc_scheme": ["2B", None, None],
-        "dipm": np.asarray([0.0, 0.0, 0.0]),
-        "dip_num": np.asarray([1.0, 1.0, 1.0]),
         "z": np.asarray([0.0, 1.0, -1.0]),
         "dielc": np.asarray([78.09, 8.0, 8.0]),
         "d_born": np.asarray([0.0, 3.445, 4.1]),
@@ -188,35 +186,35 @@ def test_state_contribution_term_payloads_match_totals():
 
     ares = state.ares(return_contribution_terms=True)
     assert set(ares) == {"total", "terms"}
-    assert set(ares["terms"]) == {"hc", "disp", "polar", "assoc", "ion", "born"}
+    assert set(ares["terms"]) == {"hc", "disp", "assoc", "ion", "born"}
     assert ares["total"] == pytest.approx(state.residual_helmholtz())
     assert sum(ares["terms"].values()) == pytest.approx(ares["total"])
 
     z_terms = state.z(return_contribution_terms=True)
     assert set(z_terms) == {"total", "terms"}
-    assert set(z_terms["terms"]) == {"hc", "disp", "polar", "assoc", "ion", "born", "ideal"}
+    assert set(z_terms["terms"]) == {"hc", "disp", "assoc", "ion", "born", "ideal"}
     assert z_terms["total"] == pytest.approx(state.compressibility_factor())
     assert sum(z_terms["terms"].values()) == pytest.approx(z_terms["total"])
 
     dadt = state.dadt(return_contribution_terms=True)
     assert set(dadt) == {"total", "terms"}
-    assert set(dadt["terms"]) == {"hc", "disp", "polar", "assoc", "ion", "born"}
+    assert set(dadt["terms"]) == {"hc", "disp", "assoc", "ion", "born"}
     assert dadt["total"] == pytest.approx(state.temperature_derivative_residual_helmholtz())
     assert sum(dadt["terms"].values()) == pytest.approx(dadt["total"])
 
     mures = state.mures(return_contribution_terms=True)
     assert set(mures) == {"total", "terms"}
-    assert set(mures["terms"]) == {"hc", "disp", "polar", "assoc", "ion", "born"}
+    assert set(mures["terms"]) == {"hc", "disp", "assoc", "ion", "born"}
     _assert_array(mures["total"], state.residual_chemical_potential())
     _assert_array(_sum_term_arrays(mures["terms"]), mures["total"])
 
     dadx = state.dadx()
     assert set(dadx) == {"total", "terms", "ares_terms", "sum_x_terms", "z_raw_terms", "z_terms", "z_total"}
-    assert set(dadx["terms"]) == {"hc", "disp", "polar", "assoc", "ion", "born"}
-    assert set(dadx["ares_terms"]) == {"hc", "disp", "polar", "assoc", "ion", "born"}
-    assert set(dadx["sum_x_terms"]) == {"hc", "disp", "polar", "assoc", "ion", "born"}
-    assert set(dadx["z_raw_terms"]) == {"hc", "disp", "polar", "assoc", "ion", "born"}
-    assert set(dadx["z_terms"]) == {"hc", "disp", "polar", "assoc", "ion", "born"}
+    assert set(dadx["terms"]) == {"hc", "disp", "assoc", "ion", "born"}
+    assert set(dadx["ares_terms"]) == {"hc", "disp", "assoc", "ion", "born"}
+    assert set(dadx["sum_x_terms"]) == {"hc", "disp", "assoc", "ion", "born"}
+    assert set(dadx["z_raw_terms"]) == {"hc", "disp", "assoc", "ion", "born"}
+    assert set(dadx["z_terms"]) == {"hc", "disp", "assoc", "ion", "born"}
     _assert_array(dadx["total"], _sum_term_arrays(dadx["terms"]))
     assert dadx["z_total"] == pytest.approx(state.compressibility_factor())
     assert dadx["ares_terms"]["hc"] == pytest.approx(state.ares(return_contribution_terms=True)["terms"]["hc"])
@@ -224,7 +222,7 @@ def test_state_contribution_term_payloads_match_totals():
     fugcoef = state.fugcoef(return_contribution_terms=True)
     fugcoef_coeff = state.fugcoef(natural_log=False, return_contribution_terms=True)
     assert set(fugcoef) == {"total", "terms", "term_basis", "terms_total_natural_log"}
-    assert set(fugcoef["terms"]) == {"hc", "disp", "polar", "assoc", "ion", "born"}
+    assert set(fugcoef["terms"]) == {"hc", "disp", "assoc", "ion", "born"}
     _assert_array(fugcoef["total"], state.fugacity_coefficient())
     _assert_array(fugcoef_coeff["total"], state.fugacity_coefficient(natural_log=False))
     _assert_array(_sum_term_arrays(fugcoef["terms"]), fugcoef["terms_total_natural_log"])
@@ -241,13 +239,13 @@ def test_dadrho_hierarchy_identities_hold_for_neutral_and_ionic_states():
         diagnostics = state.state_diagnostics(species=species)
         lnfug = np.asarray(diagnostics["fugacity_coefficient_terms"]["lnfugcoef_total"], dtype=float)
 
-        z_residual = sum(float(dadx["z_terms"][key]) for key in ("hc", "disp", "polar", "assoc", "ion", "born"))
+        z_residual = sum(float(dadx["z_terms"][key]) for key in ("hc", "disp", "assoc", "ion", "born"))
         assert z_residual == pytest.approx(state.z() - 1.0)
         assert z_payload["terms"]["ideal"] + z_residual == pytest.approx(z_payload["total"])
 
         reconstructed_mu = sum(
             dadx["ares_terms"][key] + dadx["z_raw_terms"][key] + dadx["terms"][key] - dadx["sum_x_terms"][key]
-            for key in ("hc", "disp", "polar", "assoc", "ion", "born")
+            for key in ("hc", "disp", "assoc", "ion", "born")
         )
         np.testing.assert_allclose(reconstructed_mu, mures)
         np.testing.assert_allclose(lnfug, mures - np.log(state.z()))
@@ -259,7 +257,7 @@ def test_neutral_composition_and_fugacity_terms_return_expected_values():
     dadx = state.composition_derivative_residual_helmholtz()
     terms = state.state_diagnostics(species=species)["fugacity_coefficient_terms"]
     assert set(dadx) == {"total", "terms", "ares_terms", "sum_x_terms", "z_raw_terms", "z_terms", "z_total"}
-    for key in ("hc", "disp", "polar", "assoc", "ion", "born"):
+    for key in ("hc", "disp", "assoc", "ion", "born"):
         np.testing.assert_allclose(dadx["terms"][key], terms[f"dadx_{key}"])
         np.testing.assert_allclose(dadx["ares_terms"][key], terms[f"a_{key}"])
         np.testing.assert_allclose(dadx["sum_x_terms"][key], terms[f"sum_x_dadx_{key}"])
@@ -267,7 +265,6 @@ def test_neutral_composition_and_fugacity_terms_return_expected_values():
         np.testing.assert_allclose(dadx["z_terms"][key], terms[f"z_{key}"])
     _assert_array(dadx["terms"]["hc"], [6.883394758977889, 9.511092421642308, 12.258394188218157])
     _assert_array(dadx["terms"]["disp"], [-7.506335725134188, -12.640545058126808, -17.221530131978034])
-    _assert_array(dadx["terms"]["polar"], [0.0, 0.0, 0.0])
     _assert_array(dadx["terms"]["assoc"], [0.0, 0.0, 0.0])
     _assert_array(dadx["terms"]["ion"], [0.0, 0.0, 0.0])
     _assert_array(dadx["terms"]["born"], [0.0, 0.0, 0.0])
@@ -277,7 +274,7 @@ def test_neutral_composition_and_fugacity_terms_return_expected_values():
     assert terms["z_total"] == pytest.approx(0.04594621208078564)
     reconstructed_mu = sum(
         dadx["ares_terms"][key] + dadx["z_raw_terms"][key] + dadx["terms"][key] - dadx["sum_x_terms"][key]
-        for key in ("hc", "disp", "polar", "assoc", "ion", "born")
+        for key in ("hc", "disp", "assoc", "ion", "born")
     )
     np.testing.assert_allclose(reconstructed_mu, state.residual_chemical_potential())
 

@@ -45,17 +45,6 @@ double dadrho_disp_cpp(const MixtureState &thermo, const HardChainState &hc_stat
         - PI * thermo.den * thermo.m_avg * (dispersion.C1 * dispersion.dEtaI2_deta + dispersion.C2 * hc_state.eta * dispersion.I2) * thermo.m2e2s3;
 }
 
-double dadrho_polar_cpp(const HardChainState &hc_state, const PolarIntermediateState &polar_state) {
-    if ((!polar_state.active) || (polar_state.second_order == 0.0)) {
-        return 0.0;
-    }
-    return hc_state.eta * (
-        (polar_state.second_order_density_term * (1.0 - polar_state.third_order / polar_state.second_order)
-            + (polar_state.third_order_density_term * polar_state.second_order - polar_state.third_order * polar_state.second_order_density_term) / polar_state.second_order)
-        / std::pow(1.0 - polar_state.third_order / polar_state.second_order, 2.0)
-    );
-}
-
 vector<double> association_site_fraction_density_terms_cpp(
     const vector<double> &delta_ij,
     double den,
@@ -159,19 +148,17 @@ DadrhoResult dadrho_result_cpp(double t, double rho, vector<double> x, const add
     MixtureState thermo = mixture_state_cpp(t, rho, x, cppargs, false);
     HardChainState hc_state = hard_chain_state_cpp(thermo, x, cppargs);
     DispersionPolynomialState dispersion = dispersion_polynomials_cpp(thermo.m_avg, hc_state.eta);
-    PolarIntermediateState polar_state = polar_intermediate_state_cpp(thermo, hc_state, 0.0, t, x, cppargs, true, false, false);
     AssociationIntermediateState assoc_state = association_intermediate_state_cpp(thermo, hc_state, t, x, cppargs, false, false);
     IonIntermediateState ion_state = ion_intermediate_state_cpp(thermo, t, x, cppargs, false);
 
     double hc = dadrho_hc_cpp(thermo, hc_state, x, cppargs);
     double disp = dadrho_disp_cpp(thermo, hc_state, dispersion);
-    double polar = dadrho_polar_cpp(hc_state, polar_state);
     double assoc = dadrho_assoc_cpp(thermo, hc_state, assoc_state, x, cppargs, t);
     double ion = dadrho_ion_cpp(t, ion_state);
     double born = dadrho_born_cpp();
-    double total = hc + disp + polar + assoc + ion + born;
+    double total = hc + disp + assoc + ion + born;
 
-    ScalarContributionTerms raw_terms = make_scalar_terms(hc, disp, polar, assoc, ion, born, total);
+    ScalarContributionTerms raw_terms = make_scalar_terms(hc, disp, assoc, ion, born, total);
     DadrhoResult result;
     result.raw = raw_terms;
     result.terms = normalized_dadrho_terms_cpp(raw_terms);

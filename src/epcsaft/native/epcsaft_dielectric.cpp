@@ -182,9 +182,6 @@ void dielectric_inputs_valid_cpp(const vector<double> &x, const add_args &cpparg
     if (cppargs.assoc_dadx_diff_mode != 0 && cppargs.assoc_dadx_diff_mode != 1 && cppargs.assoc_dadx_diff_mode != 2) {
         throw ValueError("Unknown assoc_model dadx_differential_mode. Supported values are analytical/numerical/autodiff (0/1/2).");
     }
-    if (cppargs.polar_dadx_diff_mode != 0 && cppargs.polar_dadx_diff_mode != 1 && cppargs.polar_dadx_diff_mode != 2) {
-        throw ValueError("Unknown polar_model dadx_differential_mode. Supported values are analytical/numerical/autodiff (0/1/2).");
-    }
     if (cppargs.born_diff_mode != 0 && cppargs.born_diff_mode != 1 && cppargs.born_diff_mode != 2 && cppargs.born_diff_mode != 3 && cppargs.born_diff_mode != 4) {
         throw ValueError("Unknown born_diff_mode. Supported values are 0 (analytic), 1 (finite-diff), 2 (Eq.133-style), 3 (no dielectric-concentration term), and 4 (autodiff).");
     }
