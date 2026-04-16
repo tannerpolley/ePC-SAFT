@@ -128,7 +128,7 @@
   description: "Provides a supporting relation used in dispersion contribution."
   change_note: "Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 130
+  tex_line: 131
   latex: |
     \sigma_{i j}=\frac{1}{2}\left(\sigma_{i}+\sigma_{j}\right) \cdot \left(1- l_{ij} \right)
   cpp_refs: []
@@ -138,31 +138,30 @@
   subsubsection: ""
   label: "eq:epsilon_ij_mixing"
   source: "\\cite{Gross2001}, Eq.~(A.15)"
-  status: "Project-specific modification"
+  status: "Adapted notation"
   description: "Provides a supporting relation used in dispersion contribution."
-  change_note: "Mapped to Eq. (A.15); this file adds a piecewise ion-specific zero-dispersion branch not written in the original equation."
+  change_note: "This is the base Berthelot-style pair-dispersion combining rule before any ePC-SAFT ionic override is applied."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 141
+  tex_line: 142
   latex: |
-    \epsilon_{ij}=
-        \begin{cases}
-            \sqrt{\epsilon_{i}\,\epsilon_{j}}\left(1-k_{ij}\right), & z_{i} z_{j} \neq 0, \\[6pt]
-            0,                                                  & z_{i} z_{j} = 0 .
-        \end{cases}
+    \epsilon_{ij}^{\mathrm{base}}
+        =
+        \sqrt{\epsilon_{i}\,\epsilon_{j}}\left(1-k_{ij}\right)
   cpp_refs: []
 - eqid: "epsilon_ij_ionic_zero"
   section: "Mixed Parameter"
   subsection: "Dispersion and Association Mixing"
   subsubsection: ""
   label: "eq:epsilon_ij_ionic_zero"
-  source: "\\cite{Gross2001}, Eq.~(A.15)"
+  source: "ePC-SAFT implementation override in \\texttt{pair\\_epsilon\\_cpp(...)} (not a standalone literature equation)"
   status: "Project-specific modification"
   description: "Provides a supporting relation used in dispersion contribution."
-  change_note: "Represents the zero-dispersion limiting branch of the Eq. (A.15) combining rule for selected interaction classes."
+  change_note: "The active implementation suppresses short-range dispersion for same-sign ionic pairs by overriding the base combining rule with zero; this is why the second equation is simply \\(=0\\)."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 156
+  tex_line: 155
   latex: |
-    \epsilon_{i j}= 0
+    \epsilon_{ij}=0
+        \qquad \text{for } z_{i}z_{j}>0,
   cpp_refs: []
 - eqid: "epsilon_assoc_mixing"
   section: "Mixed Parameter"
@@ -174,7 +173,7 @@
   description: "Provides a supporting relation used in association contribution."
   change_note: "Mapped manually to the Gross 2002 cross-association energy combining rule."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 167
+  tex_line: 169
   latex: |
     \varepsilon^{A_{i}B_{j}}=\frac{1}{2}(\varepsilon^{A_{i}B_{i}}+\varepsilon^{A_{j}B_{j}})(1-k_{ij}^{\mathrm{hb}})
   cpp_refs: []
@@ -188,7 +187,7 @@
   description: "Provides a supporting relation used in association contribution."
   change_note: "Mapped manually to the Gross 2002 cross-association volume combining rule."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 178
+  tex_line: 180
   latex: |
     k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_{i}\sigma_{j}}}{1/2(\sigma_{i}+\sigma_{j})}\right)^3
   cpp_refs: []
@@ -202,7 +201,7 @@
   description: "Provides the grouped relative-permittivity mixing rule used by the electrolyte contributions."
   change_note: "Consolidates the documented upstream relative-permittivity options into one visible grouped display while keeping helper quantities upstream."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 192
+  tex_line: 194
   latex: |
     \varepsilon_{r}=
         \begin{cases}
@@ -222,7 +221,7 @@
   description: "Provides a supporting relation used in relative-permittivity calculations for electrolyte contributions."
   change_note: "Algebraic expansion of Eq. (13) introducing explicit solvent-only weighted relative permittivity."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 209
+  tex_line: 211
   latex: |
     \varepsilon_{r,sol}^{(w)} \equiv \sum_{j\in\mathcal S}\varepsilon_{r,j}\,w_{j}^{sol} = \frac{\sum_{j\in\mathcal S}\varepsilon_{r,j}\,x_{j}\,MW_{j}}{\sum_{j\in\mathcal S}x_{j}\,MW_{j}} = \frac{\sum_{j\in\mathcal S}\varepsilon_{r,j}\,x_{j}\,MW_{j}}{\overline{MW}_{sol}}
   cpp_refs: []
@@ -236,7 +235,7 @@
   description: "Provides a supporting relation used in relative-permittivity calculations for electrolyte contributions."
   change_note: "Salt-free solvent-mixture relative permittivity used by the ion-suppressed upstream rule."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 220
+  tex_line: 222
   latex: |
     \varepsilon_{r,\mathrm{solvent,mix}}^{\mathrm{salt-free}}=\sum_{\mathrm{solvent}}w_{\mathrm{solvent}}^{\mathrm{salt-free}}\cdot\varepsilon_{r,\mathrm{solvent}}
   cpp_refs: []
@@ -250,7 +249,7 @@
   description: "Provides a supporting relation used in hard-chain reference contribution."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 239
+  tex_line: 241
   latex: |
     \zeta_{n}=\frac{\pi}{6} \rho \sum_{i} x_{i} m_{i} d_{i}^n \quad n \in\{0,1,2,3\}
   cpp_refs: []
@@ -264,7 +263,7 @@
   description: "Provides the canonical packing-fraction identity used before evaluating contribution expressions."
   change_note: "Makes the \\zeta_3 and \\eta notation equivalence explicit in the new initial-density section."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 250
+  tex_line: 252
   latex: |
     \zeta_{3}=\eta
   cpp_refs: []
@@ -278,7 +277,7 @@
   description: "Provides a supporting relation used in dispersion contribution."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 261
+  tex_line: 263
   latex: |
     \rho=\frac{6}{\pi} \eta\left(\sum_{i} x_{i} m_{i} d_{i}^3\right)^{-1}
   cpp_refs: []
@@ -292,7 +291,7 @@
   description: "Provides a supporting relation used in dispersion contribution."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 272
+  tex_line: 274
   latex: |
     \hat{\rho}=\frac{\rho}{N_{\mathrm{AV}}}\left(10^{10} \frac{A^\circ{}}{\mathrm{~m}}\right)^3\left(10^{-3} \frac{\mathrm{kmol}}{\mathrm{~mol}}\right)
   cpp_refs: []
@@ -306,7 +305,7 @@
   description: "Provides a residual Helmholtz-energy relation for hard-chain reference contribution."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 291
+  tex_line: 293
   latex: |
     \tilde{a}^{\mathrm{hs}} =\frac{1}{\zeta_{0}}\left[\frac{3 \zeta_{1} \zeta_{2}}{\left(1-\zeta_{3}\right)}+\frac{\zeta_{2}^3}{\zeta_{3}\left(1-\zeta_{3}\right)^2}+\left(\frac{\zeta_{2}^3}{\zeta_{3}^2}-\zeta_{0}\right) \ln \left(1-\zeta_{3}\right)\right]
   cpp_refs:
@@ -324,7 +323,7 @@
   description: "Provides a supporting relation used in hard-chain reference contribution."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 302
+  tex_line: 304
   latex: |
     \mathrm{g}_{i j}^{\mathrm{hs}}=\frac{1}{\left(1-\zeta_{3}\right)}+\left(\frac{d_{i} d_{j}}{d_{i}+d_{j}}\right) \frac{3 \zeta_{2}}{\left(1-\zeta_{3}\right)^2} + \left(\frac{d_{i} d_{j}}{d_{i}+d_{j}}\right)^2 \frac{2 \xi_{2}{ }^2}{\left(1-\xi_{3}\right)^3}
   cpp_refs: []
@@ -338,7 +337,7 @@
   description: "Provides a residual Helmholtz-energy relation for dispersion contribution."
   change_note: "Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 321
+  tex_line: 323
   latex: |
     C_{1} = \left(1+\bar{m} \frac{8 \eta-2 \eta^2}{(1-\eta)^4}+\right.\left.\quad(1-\bar{m}) \frac{20 \eta-27 \eta^2+12 \eta^3-2 \eta^4}{[(1-\eta)(2-\eta)]^2}\right)
   cpp_refs: []
@@ -352,7 +351,7 @@
   description: "Provides a residual Helmholtz-energy relation for dispersion contribution."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 332
+  tex_line: 334
   latex: |
     \overline{m^2 \epsilon \sigma^3}=\sum_{i} \sum_{j} x_{i} x_{j} m_{i} m_{j}\left(\frac{\epsilon_{i j}}{k T}\right) \sigma_{i j}^3
   cpp_refs: []
@@ -366,7 +365,7 @@
   description: "Provides a residual Helmholtz-energy relation for dispersion contribution."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 343
+  tex_line: 345
   latex: |
     \overline{m^2 \epsilon^2 \sigma^3}=\sum_{i} \sum_{j} x_{i} x_{j} m_{i} m_{j}\left(\frac{\epsilon_{i j}}{k T}\right)^2 \sigma_{i j}{ }^3
   cpp_refs: []
@@ -380,7 +379,7 @@
   description: "Provides a residual Helmholtz-energy relation for dispersion contribution."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 354
+  tex_line: 356
   latex: |
     I_{1}(\eta, \bar{m})=\sum_{i=0}^6 a_{i}(\bar{m}) \eta^i
   cpp_refs: []
@@ -394,7 +393,7 @@
   description: "Provides a residual Helmholtz-energy relation for dispersion contribution."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 365
+  tex_line: 367
   latex: |
     I_{2}(\eta, \bar{m})=\sum_{i=0}^6 b_{i}(\bar{m}) \eta^i
   cpp_refs: []
@@ -408,7 +407,7 @@
   description: "Provides a supporting relation used in dispersion contribution."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 376
+  tex_line: 378
   latex: |
     a_{i}(\bar{m})=a_{0 i}+\frac{\bar{m}-1}{\bar{m}} a_{1 i}+\frac{\bar{m}-1}{\bar{m}} \frac{\bar{m}-2}{\bar{m}} a_{2 i}
   cpp_refs: []
@@ -422,7 +421,7 @@
   description: "Provides a supporting relation used in dispersion contribution."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 387
+  tex_line: 389
   latex: |
     b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m}} \frac{\bar{m}-2}{\bar{m}} b_{2 i}
   cpp_refs: []
@@ -436,7 +435,7 @@
   description: "Provides a residual Helmholtz-energy relation for association contribution."
   change_note: "Mass-action site-fraction relation from SAFT association theory; exact numbered equation unavailable in the local PDF set."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 406
+  tex_line: 408
   latex: |
     \begin{aligned}
             X^{\mathrm{A}_{i}}
@@ -457,7 +456,7 @@
   description: "Provides a supporting relation used in association contribution."
   change_note: "Component density relation used with association equations; no directly numbered counterpart found in local Chapman-accessible sources."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 424
+  tex_line: 426
   latex: |
     \rho_{j}=X_{j} \rho_{\text {mixture }}
   cpp_refs: []
@@ -471,7 +470,7 @@
   description: "Provides a residual Helmholtz-energy relation for association contribution."
   change_note: "Association strength definition used in SAFT implementations; exact numbered Chapman equation not available in local PDFs."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 435
+  tex_line: 437
   latex: |
     \Delta^{\mathrm{A}, \mathrm{~B}_{j}}=d_{i j}{ }^3 \mathrm{g}_{i j}^{\mathrm{hs}}\left[\exp \left(\frac{\epsilon^{\mathrm{A}, \mathrm{~B}_{j}}}{k T}\right)-1\right]
   cpp_refs: []
@@ -485,7 +484,7 @@
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 453
+  tex_line: 455
   latex: |
     \kappa=\sqrt{\frac{\rho e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\sum_{j}x_{j}z_{j}^{2}}
   cpp_refs: []
@@ -499,7 +498,7 @@
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Mapped manually to the ion-size function definition in the concentration-dependent dielectric derivation."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 464
+  tex_line: 466
   latex: |
     \chi_{i}=\frac{3}{\left(\kappa d_{i}\right)^3}\left[\frac{3}{2}+\ln(1+\kappa d_{i})-2(1+\kappa d_{i})+\frac{1}{2}\left(1+\kappa d_{i}\right)^2\right]
   cpp_refs: []
@@ -513,7 +512,7 @@
   description: "Provides a supporting relation used in born electrolyte term contribution."
   change_note: "The equality $d_i^{\\mathrm{Born}}=d_i$ is a modeling assumption used in implementations; no standalone numbered equation in Part I was found."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 482
+  tex_line: 484
   latex: |
     d^{\text{Born}}_{i} = d_{i} \qquad i\in\mathcal{I}
   cpp_refs: []
@@ -527,7 +526,7 @@
   description: "Provides a supporting relation used in born electrolyte term contribution."
   change_note: "Using fitted Born diameters is discussed as a parameterization choice; the exact identity line here is not separately numbered."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 493
+  tex_line: 495
   latex: |
     d^{\text{Born}}_{i} = d^{\text{Born, fitted}}_{i} \qquad i\in\mathcal{I}
   cpp_refs: []
@@ -541,7 +540,7 @@
   description: "Provides a supporting relation used in born electrolyte term contribution."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 504
+  tex_line: 506
   latex: |
     f_{mix}=\sum_{k}x_{k}f_{k}
   cpp_refs: []
@@ -555,7 +554,7 @@
   description: "Provides a supporting relation used in born electrolyte term contribution."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 515
+  tex_line: 517
   latex: |
     \Delta d_{i}=\frac{(f_{mix}-1)}{|z_{i}|}\cdot d_{i}^{\mathrm{Born}}
   cpp_refs: []
@@ -569,7 +568,7 @@
   description: "Provides the base inverse-diameter term used in the modular Born Helmholtz expression."
   change_note: "Names the base Born inverse-diameter contribution explicitly so the modular Born sum can reference a consistent symbol family."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 526
+  tex_line: 528
   latex: |
     D_{i,\mathrm{Born}}^{(\mathrm{bulk})}
     =
@@ -585,7 +584,7 @@
   description: "Provides the SSM inverse-diameter correction used in the modular Born Helmholtz expression."
   change_note: "Recasts the SSM option in the same inverse-diameter symbol family as the modular Born formulation."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 539
+  tex_line: 541
   latex: |
     D_{i,\mathrm{SSM}}^{(\mathrm{bulk})}
     =
@@ -603,7 +602,7 @@
   description: "Provides the DS inverse-diameter correction used in the modular Born Helmholtz expression."
   change_note: "Recasts the DS option in the same inverse-diameter symbol family as the modular Born formulation."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 554
+  tex_line: 556
   latex: |
     D_{i,\mathrm{DS}}^{(\mathrm{ion})}
     =
@@ -621,7 +620,7 @@
   description: "Provides a residual Helmholtz-energy relation for residual helmholz energy."
   change_note: "No explicit citation on this equation block in the source file."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 582
+  tex_line: 584
   latex: |
     \tilde{a}^{\mathrm{res}}=\tilde{a}^{h c}+\tilde{a}^{\text {disp }}+\tilde{a}^{\text {assoc }}+\tilde{a}^{\text {DH }}+\tilde{a}^{\text {Born }}
   cpp_refs:
@@ -639,7 +638,7 @@
   description: "Provides a residual Helmholtz-energy relation for hard-chain reference contribution."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 596
+  tex_line: 598
   latex: |
     \tilde{a}^{\mathrm{hc}}=\bar{m} \tilde{a}^{\mathrm{hs}}-\sum_{i} x_{i}\left(m_{i}-1\right) \ln \mathrm{g}_{i i}^{\mathrm{hs}}\left(\sigma_{i i}\right)
   cpp_refs:
@@ -657,7 +656,7 @@
   description: "Provides a residual Helmholtz-energy relation for dispersion contribution."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 610
+  tex_line: 612
   latex: |
     \tilde{a}^{\mathrm{disp}}=-2 \pi \rho I_{1}(\eta, \bar{m}) \overline{m^2 \epsilon \sigma^3}-\pi \rho \bar{m} C_{1} I_{2}(\eta, \bar{m}) \overline{m^2 \epsilon^2 \sigma^3}
   cpp_refs:
@@ -675,7 +674,7 @@
   description: "Provides a residual Helmholtz-energy relation for association contribution."
   change_note: "Association Helmholtz form is traced to Chapman/Wertheim SAFT association theory, but the exact numbered equation is not present in the local progression PDFs."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 624
+  tex_line: 626
   latex: |
     \tilde{a}^{\mathrm{assoc}}= \sum_{i} x_{i}\sum_{\mathrm{A}_{i}}\left(\ln X^{\mathrm{A}_{i}}-\frac{X^{\mathrm{A}_{i}}}{2}+\frac{1}{2}\right)
   cpp_refs:
@@ -693,7 +692,7 @@
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 638
+  tex_line: 640
   latex: |
     \tilde{a}^{DH}=-\frac{\kappa e^{2}}{12\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}\sum_{i}x_{i}z_{i}^{2}\chi_{i}
   cpp_refs:
@@ -711,7 +710,7 @@
   description: "Provides a residual Helmholtz-energy relation for born electrolyte term contribution."
   change_note: "Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 652
+  tex_line: 654
   latex: |
     \tilde{a}^{\mathrm{Born}}
     =
@@ -737,7 +736,7 @@
   description: "Defines the set of active Born subterms used in the modular Helmholtz expression."
   change_note: "Documents the current option-driven Born-term set directly rather than the legacy version naming."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 673
+  tex_line: 675
   latex: |
     \mathcal{D}
     =
@@ -759,7 +758,7 @@
   description: "Defines the medium assignment used by each active Born subterm in the modular Helmholtz expression."
   change_note: "Makes the bulk-vs-ion medium choice explicit for the modular Born documentation."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 694
+  tex_line: 696
   latex: |
     m_{\mathrm{Born}}=\mathrm{bulk},
     \qquad
@@ -777,7 +776,7 @@
   description: "Provides a differential relation needed for hard-chain reference contribution calculations."
   change_note: "Ownership moved from the Z section to the upstream density-differential section."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 721
+  tex_line: 723
   latex: |
     \rho\left(\frac{\partial\tilde{a}^{hc}}{\partial\rho}\right)_{T,x}
         =\bar{m}\rho\left(\frac{\partial\tilde{a}^{hs}}{\partial\rho}\right)_{T,x}-\sum_{i}x_{\mathrm{i}}(m_{i}-1)(g_{ii}^\mathrm{hs})^{-1}\rho\frac{\partial g_{ii}^\mathrm{hs}}{\partial\rho}
@@ -796,7 +795,7 @@
   description: "Provides a supporting relation used in hard-chain reference contribution."
   change_note: "Ownership moved from the Z section to the upstream density-differential section."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 733
+  tex_line: 735
   latex: |
     \rho\left(\frac{\partial\tilde{a}^{hs}}{\partial\rho}\right)_{T,x}
         =\frac{\zeta_{3}}{(1-\zeta_{3})}+\frac{3\zeta_{1}\zeta_{2}}{\zeta_{0}(1-\zeta_{3})^{2}}+\frac{3\zeta_{2}^{3}-\zeta_{3}\zeta_{2}^{3}}{\zeta_{0}(1-\zeta_{3})^{3}}
@@ -815,7 +814,7 @@
   description: "Provides a differential relation needed for hard-chain reference contribution calculations."
   change_note: "Mapped manually to the density derivative of the contact value relation."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 745
+  tex_line: 747
   latex: |
     \begin{aligned}
             \rho\frac{\partial g_{ij}^{\mathrm{hs}}}{\partial\rho}=\frac{\zeta_{3}}{\left(1-\zeta_{3}\right)^{2}}+\left(\frac{d_{i}d_{j}}{d_{i}+d_{j}}\right)\left(\frac{3\zeta_{2}}{\left(1-\zeta_{3}\right)^{2}}+\frac{6\zeta_{2}\zeta_{3}}{\left(1-\zeta_{3}\right)^{3}}\right) \\+\left(\frac{d_{i}d_{j}}{d_{i}+d_{j}}\right)^{2}\left(\frac{4{\zeta_{2}}^{2}}{\left(1-{\zeta_{3}}\right)^{3}}+\frac{6{\zeta_{2}}^{2}\zeta_{3}}{\left(1-{\zeta_{3}}\right)^{4}}\right)
@@ -835,7 +834,7 @@
   description: "Provides a differential relation needed for dispersion contribution calculations."
   change_note: "Ownership moved from the Z section to the upstream density-differential section."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 761
+  tex_line: 763
   latex: |
     \begin{aligned}
             \rho\left(\frac{\partial\tilde{a}^{disp}}{\partial\rho}\right)_{T,x}
@@ -858,7 +857,7 @@
   description: "Provides a differential relation needed for dispersion contribution calculations."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 777
+  tex_line: 779
   latex: |
     \frac{\partial(\eta I_{1})}{\partial\eta}=\sum_{j=0}^6a_{j}(\bar{m})(j+1)\eta^j
   cpp_refs: []
@@ -872,7 +871,7 @@
   description: "Provides a differential relation needed for dispersion contribution calculations."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 788
+  tex_line: 790
   latex: |
     \frac{\partial(\eta I_{2})}{\partial\eta}=\sum_{i=0}^6b_{j}(\bar{m})(j+1)\eta^i
   cpp_refs: []
@@ -886,7 +885,7 @@
   description: "Provides a differential relation needed for dispersion contribution calculations."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 799
+  tex_line: 801
   latex: |
     C_{2}
         =\frac{\partial C_{1}}{\partial\eta}
@@ -905,7 +904,7 @@
   description: "Provides a differential relation needed for association contribution calculations."
   change_note: "Ownership moved from the Z section to the upstream density-differential section."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 818
+  tex_line: 820
   latex: |
     \rho\left(\frac{\partial\tilde{a}^{assoc}}{\partial\rho}\right)_{T,x}
         =\rho\sum_{i}x_{i}\sum_{A_{i}}\left(\frac{1}{X^{A_{i}}}-\frac{1}{2}\right)\left(\frac{\partial X^{A_{i}}}{\partial\rho}\right)_{T,x}.
@@ -924,7 +923,7 @@
   description: "Provides a differential relation needed for association contribution calculations."
   change_note: "Site-fraction density derivative closure used in association compressibility calculations; exact numbered reference unavailable locally."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 830
+  tex_line: 832
   latex: |
     \begin{aligned}
             \left(\frac{\partial X^{A_{i}}}{\partial\rho}\right)_{T,x}
@@ -949,7 +948,7 @@
   description: "Defines the Debye screening quantity used in association contribution."
   change_note: "Derivative of association strength term used in implementation; no direct numbered source in local Chapman files."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 852
+  tex_line: 854
   latex: |
     \left(\frac{\partial\Delta^{A_{i}B_{j}}}{\partial\rho}\right)_{T,x}=d_{ij}^3\kappa^{A_{i}B_{j}}\left[\exp(\epsilon^{A_{i}B_{j}}/kT)-1\right]\left(\frac{\partial g_{ij}^{hs}}{\partial\rho}\right)_{T,x}
   cpp_refs: []
@@ -963,7 +962,7 @@
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Ownership moved from the Z section to the upstream density-differential section."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 866
+  tex_line: 868
   latex: |
     \rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
         =-\frac{\kappa e^2}{24\pi kT\epsilon}\sum_{i}x_{i}z_{i}{}^{2}\sigma_{i}
@@ -982,7 +981,7 @@
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 878
+  tex_line: 880
   latex: |
     \sigma_{i}=\left(\frac{\partial(\kappa\chi_{i})}{\partial\kappa}\right)_{T,\mathrm{x}}=-2\chi_{i}+\frac{3}{1+\kappa a_{i}}
   cpp_refs: []
@@ -996,7 +995,7 @@
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Ownership moved from the Z section to the upstream density-differential section."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 892
+  tex_line: 894
   latex: |
     \rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
         =-\frac{\kappa e^2}{24\pi kT\epsilon}\sum_{i}\alpha _{i}x_{i}z_{i}{}^{2}\sigma_{i}
@@ -1011,7 +1010,7 @@
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 904
+  tex_line: 906
   latex: |
     \sigma_{i}=\left(\frac{\partial(\kappa\chi_{i})}{\partial\kappa}\right)_{T,\mathrm{x}}=-2\chi_{i}+\frac{3}{1+\kappa R_{i}}
   cpp_refs: []
@@ -1025,7 +1024,7 @@
   description: "Provides a supporting relation used in born electrolyte term contribution."
   change_note: "Direct zero-density-differential statement from the Part I formulation."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 917
+  tex_line: 919
   latex: |
     \rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}= 0
   cpp_refs:
@@ -1043,7 +1042,7 @@
   description: "Provides a differential relation needed for composition differential calculations."
   change_note: "Ownership moved upstream so the composition derivatives are defined before the downstream property sections that use them."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 933
+  tex_line: 935
   latex: |
     \zeta_{n,xk}=\left(\frac{\partial\zeta_{n}}{\partial x_{k}}\right)_{T,\boldsymbol{\rho},x_{j\neq k}}=\frac{\pi}{6}\rho m_{k}(d_{k})^{n}\quad n\in\{0,1,2,3\}
   cpp_refs: []
@@ -1057,7 +1056,7 @@
   description: "Provides a differential relation needed for hard-chain reference contribution calculations."
   change_note: "Mapped by appendix sequence between Eq. (A.34) and Eq. (A.36); this line corresponds to the hard-sphere composition derivative expression."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 947
+  tex_line: 949
   latex: |
     \begin{aligned}
             \left(\frac{\partial\tilde{a}^{\mathrm{hc}}}{\partial x_{k}}\right)_{T,\boldsymbol{\rho},x_{j\neq k}}
@@ -1082,7 +1081,7 @@
   description: "Provides a differential relation needed for hard-chain reference contribution calculations."
   change_note: "Mapped manually to the hard-sphere composition derivative expression."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 965
+  tex_line: 967
   latex: |
     \begin{aligned}
             \left(\frac{\partial\tilde{a}^{\mathrm{hs}}}{\partial x_{k}}\right)_{T,\boldsymbol{\rho},x_{j\neq k}}
@@ -1116,7 +1115,7 @@
   description: "Provides a differential relation needed for hard-chain reference contribution calculations."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 992
+  tex_line: 994
   latex: |
     \begin{aligned}
             \left(\frac{\partial g_{ij}^{\mathrm{hs}}}{\partial x_{k}}\right)_{T,\boldsymbol{\rho},\boldsymbol{\rho}_{j\neq k}}
@@ -1142,7 +1141,7 @@
   description: "Provides a differential relation needed for dispersion contribution calculations."
   change_note: "Ownership moved upstream so the exact dispersion composition differential is defined before the downstream chemical-potential, fugacity, and activity sections."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1014
+  tex_line: 1016
   latex: |
     \begin{aligned}
             \left(\frac{\partial \tilde{a}^{\mathrm{disp}}}{\partial x_k}\right)_{T,\boldsymbol{\rho},x_{j \neq k}}
@@ -1165,7 +1164,7 @@
   description: "Provides a residual Helmholtz-energy relation for dispersion contribution."
   change_note: "Mapped by appendix sequence as the first dispersion composition derivative moment."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1030
+  tex_line: 1032
   latex: |
     \overline{(m^{2}\epsilon\sigma^{3})}_{xk}=2m_{k}\sum_{j}x_{j}m_{j}\left(\frac{\epsilon_{kj}}{kT}\right)\sigma_{kj}^{3}
   cpp_refs: []
@@ -1179,7 +1178,7 @@
   description: "Provides a residual Helmholtz-energy relation for dispersion contribution."
   change_note: "Mapped by appendix sequence as the second dispersion composition derivative moment."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1041
+  tex_line: 1043
   latex: |
     (\overline{m^2\epsilon^2\sigma^3})_{xk}=2m_{k}\sum_{j}x_{j}m_{j}\left(\frac{\epsilon_{kj}}{kT}\right)^2\sigma_{kj}^3
   cpp_refs: []
@@ -1193,7 +1192,7 @@
   description: "Provides a residual Helmholtz-energy relation for dispersion contribution."
   change_note: "Mapped manually to the composition derivative of \\(C_1\\)."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1052
+  tex_line: 1054
   latex: |
     C_{1,xk}=C_{2}\zeta_{3,xk}-C_{1}^{2}\left\{m_{k}\frac{8\eta-2\eta^{2}}{\left(1-\eta\right)^{4}}-m_{k}\frac{20\eta-27\eta^{2}+12\eta^{3}-2\eta^{4}}{\left[(1-\eta)(2-\eta)\right]^{2}}\right\}
   cpp_refs: []
@@ -1207,7 +1206,7 @@
   description: "Provides a residual Helmholtz-energy relation for dispersion contribution."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1063
+  tex_line: 1065
   latex: |
     I_{1,xk}=\sum_{i=0}^{6}[a_{\mathrm{i}}(\bar{m})i\zeta_{3,xk}\eta^{i-1}+a_{\mathrm{i,x}k}\eta^{i}]
   cpp_refs: []
@@ -1221,7 +1220,7 @@
   description: "Provides a residual Helmholtz-energy relation for dispersion contribution."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1074
+  tex_line: 1076
   latex: |
     I_{2,xk}=\sum_{i=0}^{6}[b_{\mathrm{i}}(\bar{m})i\zeta_{3,xk}\eta^{i-1}+b_{\mathrm{i,xk}}\eta^{i}]
   cpp_refs: []
@@ -1235,7 +1234,7 @@
   description: "Provides a supporting relation used in dispersion contribution."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1085
+  tex_line: 1087
   latex: |
     a_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}a_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left(3-\frac{4}{\bar{m}}\right)a_{2i}
   cpp_refs: []
@@ -1249,7 +1248,7 @@
   description: "Provides a supporting relation used in dispersion contribution."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1096
+  tex_line: 1098
   latex: |
     b_{\mathrm{i},xk}=\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left(3-\frac{4}{\bar{m}}\right)b_{2i}
   cpp_refs: []
@@ -1263,7 +1262,7 @@
   description: "Provides a differential relation needed for association contribution calculations."
   change_note: "Composition derivative of association Helmholtz contribution; no direct numbered Chapman source available."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1110
+  tex_line: 1112
   latex: |
     \left(\frac{\partial \tilde a^{assoc}}{\partial x_{k}}\right)_{T,v,x_{i\neq k}}
         =
@@ -1287,7 +1286,7 @@
   description: "Provides a differential relation needed for association contribution calculations."
   change_note: "Site-fraction composition derivative closure from SAFT association machinery; local progression PDFs do not provide this as a numbered equation."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1127
+  tex_line: 1129
   latex: |
     \begin{aligned}
             \left(\frac{\partial X^{A_{i}}}{\partial x_{k}}\right)_{T,v,x_{j\neq k}}
@@ -1316,7 +1315,7 @@
   description: "Defines the Debye screening quantity used in association contribution."
   change_note: "Composition derivative of association strength term; no exact numbered Chapman equation available locally."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1153
+  tex_line: 1155
   latex: |
     \left(\frac{\partial \Delta^{A_{i}B_{j}}}{\partial x_{k}}\right)_{T,v,x_{j\neq k}}
         =
@@ -1334,7 +1333,7 @@
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Changed from the 2005 constant-dielectric form to the 2019 concentration-dependent dielectric derivative form."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1170
+  tex_line: 1172
   latex: |
     \begin{aligned}
             \left(\frac{\partial \tilde{a}^{DH}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
@@ -1372,7 +1371,7 @@
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Mapped manually to the concentration-dependent dielectric derivative of Debye screening parameter."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1201
+  tex_line: 1203
   latex: |
     \begin{aligned}
              & \left(\frac{\partial\kappa}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}=\frac12\left(\frac{\rho_{N}e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\sum_{j}x_{j}z_{j}^{2}\right)^{-\frac12} \\&\left\{-\frac{\rho_{N}e^2}{k_{B}T\left(\varepsilon_{0}\varepsilon_{r}\right)^2}\varepsilon_{0}\frac{\partial\left(\varepsilon_{r}\right)}{\partial x_{i}}\sum_{j}x_{j}z_{j}^2+\frac{\rho_{N}e^2}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\alpha_{i}z_{i}^2\right\}\\&=\left(\frac{\rho_{N}e^{2}}{k_{B}T}\right)^{\frac{1}{2}}\left\{-\frac{1}{2}\left(\varepsilon_{0}\varepsilon_{r}\right)^{-\frac{3}{2}}\varepsilon_{0}\frac{\partial\left(\varepsilon_{r}\right)}{\partial x_{i}}\left[\sum_{j}x_{j}z_{j}^{2}\right]^{\frac{1}{2}}\right.\\&+\frac{1}{2\sqrt{\varepsilon_{0}\varepsilon_{r}}}\Bigg[\sum_{j}x_{j}z_{j}^2\Bigg]^{-\frac{1}{2}}\alpha_{i}z_{i}^2\Bigg\}
@@ -1388,7 +1387,7 @@
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Mapped manually to the concentration derivative of the chi-function."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1214
+  tex_line: 1216
   latex: |
     \begin{aligned}
             \left(\frac{\partial\chi_{i}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}} & =-\frac{9}{\left(\kappa d_{i}\right)^{4}}\biggl[\frac{3}{2}+\ln(1+\kappa d_{i})-2(1+\kappa d_{i}) \\&+\frac{1}{2}\left(1+\kappa d_{i}\right)^{2}\bigg]d_{i}\frac{\partial\kappa}{\partial x_{i}}+\frac{3}{\left(\kappa d_{i}\right)^{3}}\bigg[\frac{1}{1+\kappa d_{i}}-1+\kappa d_{i}\bigg]\\d_{i}\frac{\partial\kappa}{\partial x_{i}}&= 3\frac{\partial\kappa}{\partial x_{i}}\left\{-\frac{\chi_{i}}{\kappa}+\frac{d_{i}}{\left(\kappa d_{i}\right)^{3}}\biggl[\frac{1}{1+\kappa d_{i}}-1+\kappa d_{i}\biggr]\right\}
@@ -1404,7 +1403,7 @@
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Mapped manually to the Bjerrum-treatment composition derivative of reduced Debye-Huckel Helmholtz energy."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1230
+  tex_line: 1232
   latex: |
     \begin{aligned}
             \left(\frac{\partial \tilde{a}^{DH}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
@@ -1436,7 +1435,7 @@
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1259
+  tex_line: 1261
   latex: |
     \begin{aligned}
              & \left(\frac{\partial\kappa}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}=\frac12\left(\frac{\rho_{N}e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\sum_{j}\alpha_{j}x_{j}z_{j}^{2}\right)^{-\frac12} \\&\left\{-\frac{\rho_{N}e^2}{k_{B}T\left(\varepsilon_{0}\varepsilon_{r}\right)^2}\varepsilon_{0}\frac{\partial\left(\varepsilon_{r}\right)}{\partial x_{i}}\sum_{j}\alpha_{j}x_{j}z_{j}^2+\frac{\rho_{N}e^2}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\alpha_{i}z_{i}^2\right\}\\&=\left(\frac{\rho_{N}e^{2}}{k_{B}T}\right)^{\frac{1}{2}}\left\{-\frac{1}{2}\left(\varepsilon_{0}\varepsilon_{r}\right)^{-\frac{3}{2}}\varepsilon_{0}\frac{\partial\left(\varepsilon_{r}\right)}{\partial x_{i}}\left[\sum_{j}\alpha_{j}x_{j}z_{j}^{2}\right]^{\frac{1}{2}}\right.\\&+\frac{1}{2\sqrt{\varepsilon_{0}\varepsilon_{r}}}\Bigg[\sum_{j}\alpha_{j}x_{j}z_{j}^2\Bigg]^{-\frac{1}{2}}\alpha_{i}z_{i}^2\Bigg\}
@@ -1452,7 +1451,7 @@
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Mapped manually to the Bjerrum-treatment chi-function derivative relation."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1272
+  tex_line: 1274
   latex: |
     \begin{aligned}
             \left(\frac{\partial\chi_{i}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}} & =-\frac{9}{\left(\kappa R_{i}\right)^{4}}\biggl[\frac{3}{2}+\ln(1+\kappa R_{i})-2(1+\kappa R_{i}) \\&+\frac{1}{2}\left(1+\kappa R_{i}\right)^{2}\bigg]R_{i}\frac{\partial\kappa}{\partial x_{i}}+\frac{3}{\left(\kappa R_{i}\right)^{3}}\bigg[\frac{1}{1+\kappa R_{i}}-1+\kappa R_{i}\bigg]\\R_{i}\frac{\partial\kappa}{\partial x_{i}}&= 3\frac{\partial\kappa}{\partial x_{i}}\left\{-\frac{\chi_{i}}{\kappa}+\frac{R_{i}}{\left(\kappa R_{i}\right)^{3}}\biggl[\frac{1}{1+\kappa R_{i}}-1+\kappa R_{i}\biggr]\right\}
@@ -1468,7 +1467,7 @@
   description: "Specifies dielectric-property mixing or derivative form for debye and huckel electrolyte term contribution."
   change_note: "Direct derivative of the mole-fraction dielectric mixing rule."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1288
+  tex_line: 1290
   latex: |
     \left(\frac{\partial \varepsilon_{r}}{\partial x_{i}}\right)_{x_{j\neq i}}
         = \varepsilon_{r, i}
@@ -1483,7 +1482,7 @@
   description: "Specifies dielectric-property mixing or derivative form for debye and huckel electrolyte term contribution."
   change_note: "Direct derivative of the mass-fraction dielectric mixing rule."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1301
+  tex_line: 1303
   latex: |
     \left(\frac{\partial \varepsilon_{r}}{\partial x_{i}}\right)_{x_{j\neq i}}
         =
@@ -1499,7 +1498,7 @@
   description: "Specifies dielectric-property mixing or derivative form for debye and huckel electrolyte term contribution."
   change_note: "Direct derivative of the mixed solvent-plus-ion dielectric mixing rule."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1315
+  tex_line: 1317
   latex: |
     \left(\frac{\partial \varepsilon_{r}}{\partial x_{i}}\right)_{x_{j\neq i}}
         =
@@ -1519,7 +1518,7 @@
   description: "Provides a supporting relation used in debye and huckel electrolyte term contribution."
   change_note: "Changed from earlier dielectric-mixing rules to the 2025 ion-suppression mixing form."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1333
+  tex_line: 1335
   latex: |
     \varepsilon_{r,\mathrm{mix}}(\mathbf{x})
         =
@@ -1537,7 +1536,7 @@
   description: "Provides a differential relation needed for debye and huckel electrolyte term contribution calculations."
   change_note: "Derivative of the 2025 dielectric mixing rule via chain rule."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1348
+  tex_line: 1350
   latex: |
     \left(\frac{\partial \varepsilon_{r,\mathrm{mix}}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
         =
@@ -1556,7 +1555,7 @@
   description: "Provides a supporting relation used in debye and huckel electrolyte term contribution."
   change_note: "Mapped manually to the salt-free solvent dielectric mixture definition."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1364
+  tex_line: 1366
   latex: |
     \varepsilon_{sf}(\mathbf{x})
         =
@@ -1578,7 +1577,7 @@
   description: "Provides a differential relation needed for debye and huckel electrolyte term contribution calculations."
   change_note: "Derivative of solvent-mixture dielectric expression in Eq. (12)."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1383
+  tex_line: 1385
   latex: |
     \left(\frac{\partial \varepsilon_{sf}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
         =
@@ -1600,7 +1599,7 @@
   description: "Provides a differential relation needed for debye and huckel electrolyte term contribution calculations."
   change_note: "Ion-fraction helper used in the Eq. (11) differential form."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1402
+  tex_line: 1404
   latex: |
     x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
         \qquad
@@ -1621,7 +1620,7 @@
   description: "Provides a differential relation needed for debye and huckel electrolyte term contribution calculations."
   change_note: "Piecewise closed-form derivative obtained by combining Eq. (11) and Eq. (12)."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1420
+  tex_line: 1422
   latex: |
     \left(\frac{\partial \varepsilon_{r,\mathrm{mix}}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
         =
@@ -1644,7 +1643,7 @@
   description: "Provides a differential relation needed for born electrolyte term contribution calculations."
   change_note: "Canonical base-Born composition derivative using the full permittivity-sum term and without the legacy version naming."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1445
+  tex_line: 1447
   latex: |
     \begin{aligned}\left(\frac{\partial \tilde{a}^{Born}}{\partial x_{i}}\right)_{T,v_{N},x_{j\neq i}}=-\frac{e^{2}}{4\pi k_{B}T\varepsilon_{0}}\biggl[\left(1-\frac{1}{\varepsilon_{r}}\right)\frac{z_{i}^{2}}{d^{\text{Born}}_{i}} + \left(\frac{1}{\varepsilon_{r}^{2}}\right)\sum_{j} \frac{x_{j} z_{j}^2}{d^{\text{Born}}_{j}} \left(\frac{\partial\varepsilon_{r}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}} \biggr]\end{aligned}
   cpp_refs: []
@@ -1658,7 +1657,7 @@
   description: "Provides a differential relation needed for born electrolyte term contribution calculations."
   change_note: "Canonical SSM/DS Born composition derivative written in the current option-driven form rather than the legacy version naming."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1458
+  tex_line: 1460
   latex: |
     \begin{aligned}
             \left(\frac{\partial \tilde{a}^{\mathrm{Born}}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
@@ -1704,7 +1703,7 @@
   description: "Provides a differential relation needed for born electrolyte term contribution calculations."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1501
+  tex_line: 1503
   latex: |
     \frac{\partial \Delta d_{j}}{\partial x_{i}}=\frac{d_{j}^{\text {Born }}}{\left|z_{j}\right|} \frac{\partial f_{\text {mix }}}{\partial x_{i}}=\frac{d_{j}^{\text {Born }}}{\left|z_{j}\right|} f_{i},
   cpp_refs: []
@@ -1718,7 +1717,7 @@
   description: "Provides a differential relation needed for temperature differential calculations."
   change_note: "Mapped to Eq. (A.51) and extended here by including association, Debye-Huckel, and Born derivatives."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1518
+  tex_line: 1520
   latex: |
     \left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial T}\right)_{\rho,x_{i}} =\left(\frac{\partial\tilde{a}^\mathrm{hc}}{\partial T}\right)_{\rho,x_{i}} +\left(\frac{\partial\tilde{a}^\mathrm{disp}}{\partial T}\right)_{\rho,x_{i}}
         +\left(\frac{\partial\tilde{a}^\mathrm{assoc}}{\partial T}\right)_{\rho,x_{i}}
@@ -1739,7 +1738,7 @@
   description: "Provides a differential relation needed for temperature differential calculations."
   change_note: "Mapped manually to the hard-chain temperature derivative expression."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1534
+  tex_line: 1536
   latex: |
     \left(\frac{\partial\tilde{a}^{\mathrm{hc}}}{\partial T}\right)_{\rho,x_{i}}=\bar{m}\left(\frac{\partial\tilde{a}^{\mathrm{hs}}}{\partial T}\right)_{\rho,x_{i}}-\sum_{i}x_{\mathrm{i}}(m_{\mathrm{i}}-1)(g_{ii}^{\mathrm{hs}})^{-1}\left(\frac{\partial g_{ii}^{\mathrm{hs}}}{\partial T}\right)_{\rho,x_{i}}
   cpp_refs:
@@ -1757,7 +1756,7 @@
   description: "Provides a differential relation needed for temperature differential calculations."
   change_note: "Mapped manually to the hard-sphere temperature derivative expression."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1545
+  tex_line: 1547
   latex: |
     \begin{aligned}
             \left(\frac{\partial\tilde{a}^{hs}}{\partial T}\right)_{\rho,x_{i}}
@@ -1789,7 +1788,7 @@
   description: "Provides a differential relation needed for temperature differential calculations."
   change_note: "Mapped manually to the contact-value temperature derivative expression."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1570
+  tex_line: 1572
   latex: |
     \begin{aligned}
             \frac{\partial g_{ii}^{\mathrm{hs}}}{\partial T}
@@ -1816,7 +1815,7 @@
   description: "Provides a differential relation needed for temperature differential calculations."
   change_note: "Computed by differentiating Eq. (A.9) with respect to temperature."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1590
+  tex_line: 1592
   latex: |
     d_{i,T}=\frac{\partial d_{i}}{\partial T}=\sigma_{i}\left(3\frac{\epsilon_{i}}{kT^2}\right)\left[-0.12\exp\left(-3\frac{\epsilon_{i}}{kT}\right)\right]
   cpp_refs: []
@@ -1830,7 +1829,7 @@
   description: "Provides a differential relation needed for temperature differential calculations."
   change_note: "Mapped manually to the temperature derivative of zeta moments."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1601
+  tex_line: 1603
   latex: |
     \zeta_{n,T}=\frac{\partial\zeta_{n}}{\partial T}=\frac{\pi}{6}\rho\sum_{i}x_{i}m_{i}nd_{i,T}\left(d_{i}\right)^{n-1}\quad n\in\{1,2,3\}
   cpp_refs: []
@@ -1844,7 +1843,7 @@
   description: "Provides a supporting relation used in temperature differential equations."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1612
+  tex_line: 1614
   latex: |
     \frac{1}{2}d_{i}=\left(\frac{d_{i}d_{i}}{d_{i}+d_{i}}\right)
   cpp_refs: []
@@ -1858,7 +1857,7 @@
   description: "Provides a differential relation needed for temperature differential calculations."
   change_note: "Mapped manually to the dispersion temperature derivative expression."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1625
+  tex_line: 1627
   latex: |
     \begin{aligned}
             \left(\frac{\partial\tilde{a}^{\mathrm{disp}}}{\partial T}\right)_{\rho,x_{i}} & =-2\pi\rho\left(\frac{\partial I_{1}}{\partial T}-\frac{I_{1}}{T}\right)\overline{m^{2}\epsilon\sigma^{3}}- \\&\pi\rho\bar{m}\left[\frac{\partial C_{1}}{\partial T}I_{2}+C_{1}\frac{\partial I_{2}}{\partial T}-2C_{1}\frac{I_{2}}{T}\right]\overline{m^{2}\epsilon^{2}\sigma^{3}}
@@ -1878,7 +1877,7 @@
   description: "Defines the Debye screening quantity used in temperature differential equations."
   change_note: "Temperature differential form derived from Debye-Huckel term and chi-function definitions."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1640
+  tex_line: 1642
   latex: |
     \frac{d \tilde{a}^{D H}}{d T}=-\frac{1}{12 \pi k_{B} \varepsilon_{0} \varepsilon_{r}} \sum_{i} x_{i}\left(z_{i} e\right)^2\left[\left(-2 \chi_{i}+\frac{3}{1+\kappa a_{i}}\right)\left(-\frac{\kappa}{2 T^2}\right)-\frac{\kappa \chi_{i}}{T^2}\right]
   cpp_refs:
@@ -1896,7 +1895,7 @@
   description: "Specifies dielectric-property mixing or derivative form for temperature differential equations."
   change_note: "Temperature derivative of the Born contribution derived from the Part I Born Helmholtz equation."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1653
+  tex_line: 1655
   latex: |
     \left(\frac{\partial\tilde{a}^{\mathrm{Born}}}{\partial T}\right)_{\rho,x_{i}}=\frac{e^2}{4 \pi \varepsilon_{0} k_{B} T^2}\left(1-\frac{1}{\varepsilon_{r}}\right) \sum_{i} \frac{x_{i} z_{i}^2}{a_{i}}
   cpp_refs:
@@ -1914,7 +1913,7 @@
   description: "Provides a supporting relation used in pressure (compressibility factor)."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1670
+  tex_line: 1672
   latex: |
     P=ZkT\rho\left(10^{10}\frac{\hat{\mathrm{A}}}{\mathrm{m}}\right)^{3}
   cpp_refs:
@@ -1932,7 +1931,7 @@
   description: "Provides a differential relation needed for pressure (compressibility factor) calculations."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1681
+  tex_line: 1683
   latex: |
     Z=1+\eta\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\eta}\right)_{T,x_{i}}
   cpp_refs: []
@@ -1946,7 +1945,7 @@
   description: "Provides a differential relation needed for pressure (compressibility factor) calculations."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1691
+  tex_line: 1693
   latex: |
     \eta\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\eta}\right)_{T,x_{i}} = \rho\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\rho}\right)_{T,x_{i}}
   cpp_refs:
@@ -1964,7 +1963,7 @@
   description: "Provides a differential relation needed for pressure (compressibility factor) calculations."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1702
+  tex_line: 1704
   latex: |
     Z=1+\rho\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\rho}\right)_{T,x_{i}}
   cpp_refs:
@@ -1982,7 +1981,7 @@
   description: "Provides a supporting relation used in pressure (compressibility factor)."
   change_note: "Mapped to Eq. (A.24) and extended here by adding association, Debye-Huckel, and Born compressibility contributions."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1713
+  tex_line: 1715
   latex: |
     Z = 1
         + \rho\left(\frac{\partial\tilde{a}^{hc}}{\partial\rho}\right)_{T,x}
@@ -2005,7 +2004,7 @@
   description: "Gives the explicit residual compressibility identity in pressure (compressibility factor)."
   change_note: "Added as the direct $Z-1$ form so later fugacity equations can use only $Z$ and $Z^\\alpha$ terms explicitly."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1729
+  tex_line: 1731
   latex: |
     Z - 1
         = \rho\left(\frac{\partial\tilde{a}^{hc}}{\partial\rho}\right)_{T,x}
@@ -2028,7 +2027,7 @@
   description: "Provides a differential relation needed for pressure (compressibility factor) calculations."
   change_note: "Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1745
+  tex_line: 1747
   latex: |
     Z^\alpha =\rho\left(\frac{\partial\tilde{a}^\alpha}{\partial\rho}\right)_{T,x}
         .
@@ -2047,7 +2046,7 @@
   description: "Gives the hard-chain compressibility bridge identity used in pressure (compressibility factor)."
   change_note: "Moved from the density-differential section so the per-contribution \\(Z^\\alpha\\) bridge identities are owned here."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1760
+  tex_line: 1762
   latex: |
     Z^{hc}
         = \rho\left(\frac{\partial\tilde{a}^{hc}}{\partial\rho}\right)_{T,x}
@@ -2067,7 +2066,7 @@
   description: "Gives the hard-sphere compressibility bridge identity used in pressure (compressibility factor)."
   change_note: "Moved from the density-differential section so the per-contribution \\(Z^\\alpha\\) bridge identities are owned here."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1773
+  tex_line: 1775
   latex: |
     Z^{hs}
         = \rho\left(\frac{\partial\tilde{a}^{hs}}{\partial\rho}\right)_{T,x}
@@ -2087,7 +2086,7 @@
   description: "Gives the dispersion compressibility bridge identity used in pressure (compressibility factor)."
   change_note: "Moved from the density-differential section so the per-contribution \\(Z^\\alpha\\) bridge identities are owned here."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1789
+  tex_line: 1791
   latex: |
     Z^{disp}
         = \rho\left(\frac{\partial\tilde{a}^{disp}}{\partial\rho}\right)_{T,x}
@@ -2107,7 +2106,7 @@
   description: "Gives the association compressibility bridge identity used in pressure (compressibility factor)."
   change_note: "Moved from the density-differential section so the per-contribution \\(Z^\\alpha\\) bridge identities are owned here."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1805
+  tex_line: 1807
   latex: |
     Z^{assoc}
         = \rho\left(\frac{\partial\tilde{a}^{assoc}}{\partial\rho}\right)_{T,x}
@@ -2127,7 +2126,7 @@
   description: "Gives the Debye-Huckel compressibility bridge identity used in pressure (compressibility factor)."
   change_note: "Moved from the density-differential section so the per-contribution \\(Z^\\alpha\\) bridge identities are owned here."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1821
+  tex_line: 1823
   latex: |
     Z^{DH}
         = \rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
@@ -2147,7 +2146,7 @@
   description: "Gives the Born compressibility bridge identity used in pressure (compressibility factor)."
   change_note: "Moved from the density-differential section so the per-contribution \\(Z^\\alpha\\) bridge identities are owned here."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1837
+  tex_line: 1839
   latex: |
     Z^{Born}
         = \rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}
@@ -2167,7 +2166,7 @@
   description: "Gives a chemical-potential contribution in chemical potential."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1856
+  tex_line: 1858
   latex: |
     \tilde{\mu_{k}}^{\mathrm{res}}=\frac{\mu_{k}^\mathrm{res}}{kT} = \frac{\hat{\mu}_{k}^\mathrm{res}}{RT}
   cpp_refs:
@@ -2185,7 +2184,7 @@
   description: "Gives a chemical-potential contribution in chemical potential."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1867
+  tex_line: 1869
   latex: |
     \begin{aligned}
             \tilde{\mu_{k}}^{\mathrm{res}}
@@ -2209,7 +2208,7 @@
   description: "Gives the explicit residual chemical-potential decomposition in chemical potential."
   change_note: "Written in explicit non-summation form to match the style used for the other property families in this section."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1884
+  tex_line: 1886
   latex: |
     \tilde{\mu_{k}}^{\mathrm{res}}=\tilde{\mu_{k}}^{\mathrm{hc}}+\tilde{\mu_{k}}^{\mathrm{disp}}+\tilde{\mu_{k}}^{\mathrm{assoc}}+\tilde{\mu_{k}}^{\mathrm{DH}}+\tilde{\mu_{k}}^{\mathrm{Born}}
   cpp_refs:
@@ -2227,7 +2226,7 @@
   description: "Gives a chemical-potential contribution in hard-chain reference contribution."
   change_note: "Eq. (A.33) specialization to the hard-chain contribution."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1898
+  tex_line: 1900
   latex: |
     \begin{aligned}
             \tilde{\mu}^{hc}_{k}
@@ -2247,7 +2246,7 @@
   description: "Gives a chemical-potential contribution in dispersion contribution."
   change_note: "Eq. (A.33) specialization to the dispersion contribution."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1918
+  tex_line: 1920
   latex: |
     \begin{aligned}
             \tilde{\mu}^{disp}_{k}
@@ -2267,7 +2266,7 @@
   description: "Gives a chemical-potential contribution in association contribution."
   change_note: "Association chemical-potential decomposition written in implementation form; exact numbered Chapman equation unavailable in local PDFs."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1938
+  tex_line: 1940
   latex: |
     \begin{aligned}
             \tilde{\mu}^{assoc}_{k}
@@ -2287,7 +2286,7 @@
   description: "Gives a chemical-potential contribution in debye and huckel electrolyte term contribution."
   change_note: "Chemical-potential contribution written via the generic Eq. (A.33)-style decomposition for the Debye-Huckel term."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1959
+  tex_line: 1961
   latex: |
     \begin{aligned}
             \tilde{\mu}^{DH}_{k}
@@ -2307,7 +2306,7 @@
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Baseline 2005 formulation retained for comparison to updated derivatives."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1978
+  tex_line: 1980
   latex: |
     \tilde{\mu}^{DH}_{i}= -\frac{q_{i}^2 \kappa}{24 \pi k T \epsilon}\left[2 \chi_{i}+\frac{\sum_{j} x_{j} q_{j}^2 \sigma_{k}}{\sum_{j} x_{j} q_{j}^2}\right]
   cpp_refs: []
@@ -2321,7 +2320,7 @@
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 1989
+  tex_line: 1991
   latex: |
     \sigma_{k}=\left(\frac{\partial\left(\kappa \chi_{k}\right)}{\partial \kappa}\right)_{T, \mathrm{~N}}=-2 \chi_{k}+\frac{3}{1+\kappa d_{k}}
   cpp_refs: []
@@ -2335,7 +2334,7 @@
   description: "Gives a chemical-potential contribution in born electrolyte term contribution."
   change_note: "Born chemical-potential contribution written as Eq. (A.33)-style decomposition using the Part I Born composition derivative term."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2004
+  tex_line: 2006
   latex: |
     \begin{aligned}
             \tilde{\mu}^{Born}_{k}
@@ -2355,7 +2354,7 @@
   description: "Gives the total fugacity-coefficient relation in fugacity coefficient."
   change_note: "Mapped manually to the residual-chemical-potential form used in the PC-SAFT appendix."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2027
+  tex_line: 2029
   latex: |
     \ln\varphi_{k}
         =
@@ -2381,7 +2380,7 @@
   description: "Gives the explicit fugacity-coefficient decomposition in fugacity coefficient."
   change_note: "Written in explicit non-summation form to match the contribution-by-contribution structure used throughout this section."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2046
+  tex_line: 2048
   latex: |
     \ln\varphi_{k}
         =
@@ -2409,7 +2408,7 @@
   description: "Gives the generic contribution fugacity-coefficient relation in fugacity coefficient."
   change_note: "Uses only the explicit $Z^\\alpha$ allocation requested for the contribution-resolved fugacity-coefficient terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2067
+  tex_line: 2069
   latex: |
     \ln\varphi_{k}^{\alpha}
         =
@@ -2431,7 +2430,7 @@
   description: "Gives the near-ideal approximation for a contribution fugacity coefficient in fugacity coefficient."
   change_note: "Retained explicitly as an approximation only, using the $Z\\rightarrow 1$ limit requested for documentation."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2082
+  tex_line: 2084
   latex: |
     \ln\varphi_{k}^{\alpha}
         \approx
@@ -2453,7 +2452,7 @@
   description: "Gives the hard-chain fugacity-coefficient contribution in fugacity coefficient."
   change_note: "Hard-chain specialization of the explicit $Z^\\alpha$ fugacity-coefficient split."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2099
+  tex_line: 2101
   latex: |
     \ln\varphi_{k}^{hc}
         =
@@ -2471,7 +2470,7 @@
   description: "Gives the dispersion fugacity-coefficient contribution in fugacity coefficient."
   change_note: "Dispersion specialization of the explicit $Z^\\alpha$ fugacity-coefficient split."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2116
+  tex_line: 2118
   latex: |
     \ln\varphi_{k}^{disp}
         =
@@ -2489,7 +2488,7 @@
   description: "Gives the association fugacity-coefficient contribution in fugacity coefficient."
   change_note: "Association specialization of the explicit $Z^\\alpha$ fugacity-coefficient split."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2133
+  tex_line: 2135
   latex: |
     \ln\varphi_{k}^{assoc}
         =
@@ -2507,7 +2506,7 @@
   description: "Gives the Debye-Huckel fugacity-coefficient contribution in fugacity coefficient."
   change_note: "Debye-Huckel specialization of the explicit $Z^\\alpha$ fugacity-coefficient split."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2150
+  tex_line: 2152
   latex: |
     \ln\varphi_{k}^{DH}
         =
@@ -2525,7 +2524,7 @@
   description: "Gives the Born fugacity-coefficient contribution in fugacity coefficient."
   change_note: "Born specialization of the explicit $Z^\\alpha$ fugacity-coefficient split."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2167
+  tex_line: 2169
   latex: |
     \ln\varphi_{k}^{Born}
         =
@@ -2543,7 +2542,7 @@
   description: "Gives the symmetric-reference activity-coefficient definition in activity coefficient."
   change_note: "Added explicitly in non-log form so the activity section mirrors the fugacity-coefficient organization."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2188
+  tex_line: 2190
   latex: |
     \gamma_{i}
         =
@@ -2563,7 +2562,7 @@
   description: "Gives the infinite-dilution activity-coefficient definition in activity coefficient."
   change_note: "Added explicitly in non-log form for ions and solutes referenced to infinite dilution."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2201
+  tex_line: 2203
   latex: |
     \gamma_{i}^{*}
         =
@@ -2583,7 +2582,7 @@
   description: "Gives the symmetric-reference logarithmic activity-coefficient definition in activity coefficient."
   change_note: "Expressed only in terms of fugacity coefficients, as requested for the activity section."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2214
+  tex_line: 2216
   latex: |
     \ln\gamma_{i}
         =
@@ -2605,7 +2604,7 @@
   description: "Gives the infinite-dilution logarithmic activity-coefficient definition in activity coefficient."
   change_note: "Expressed only in terms of fugacity coefficients, as requested for the activity section."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2229
+  tex_line: 2231
   latex: |
     \ln\gamma_{i}^{*}
         =
@@ -2627,7 +2626,7 @@
   description: "Gives the explicit infinite-dilution activity-coefficient decomposition in activity coefficient."
   change_note: "Written in explicit non-summation form to mirror the fugacity-coefficient decomposition."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2244
+  tex_line: 2246
   latex: |
     \ln\gamma_{k}^{*}
         =
@@ -2651,7 +2650,7 @@
   description: "Gives the generic contribution activity-coefficient definition in activity coefficient."
   change_note: "Defined only from contribution fugacity coefficients, not from chemical-potential expressions."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2265
+  tex_line: 2267
   latex: |
     \gamma_{k}^{\alpha,*}
         =
@@ -2667,7 +2666,7 @@
   description: "Gives the generic logarithmic contribution activity-coefficient definition in activity coefficient."
   change_note: "Written only in terms of contribution fugacity coefficients, consistent with the requested section logic."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2278
+  tex_line: 2280
   latex: |
     \ln\gamma_{k}^{\alpha,*}
         =
@@ -2685,7 +2684,7 @@
   description: "Gives the mean-ionic infinite-dilution activity coefficient in activity coefficient."
   change_note: "Added in non-log form to parallel the logarithmic mean-ionic relation already used in electrolyte work."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2293
+  tex_line: 2295
   latex: |
     \gamma_{\pm}^{*}
         =
@@ -2704,7 +2703,7 @@
   description: "Gives the logarithmic mean-ionic infinite-dilution activity coefficient in activity coefficient."
   change_note: "Written explicitly in the standard stoichiometric-weighted logarithmic form."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2309
+  tex_line: 2311
   latex: |
     \ln\gamma_{\pm}^{*}
         =
@@ -2720,7 +2719,7 @@
   description: "Gives the logarithmic contribution mean-ionic activity coefficient in activity coefficient."
   change_note: "Contribution form written directly from the contribution activity-coefficient terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2322
+  tex_line: 2324
   latex: |
     \ln\gamma_{\pm}^{\alpha,*}
         =
@@ -2736,7 +2735,7 @@
   description: "Gives the hard-chain activity-coefficient contribution in activity coefficient."
   change_note: "Hard-chain specialization of the infinite-dilution contribution activity-coefficient definition."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2337
+  tex_line: 2339
   latex: |
     \ln\gamma_{k}^{hc,*}
         =
@@ -2754,7 +2753,7 @@
   description: "Gives the dispersion activity-coefficient contribution in activity coefficient."
   change_note: "Dispersion specialization of the infinite-dilution contribution activity-coefficient definition."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2354
+  tex_line: 2356
   latex: |
     \ln\gamma_{k}^{disp,*}
         =
@@ -2772,7 +2771,7 @@
   description: "Gives the association activity-coefficient contribution in activity coefficient."
   change_note: "Association specialization of the infinite-dilution contribution activity-coefficient definition."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2371
+  tex_line: 2373
   latex: |
     \ln\gamma_{k}^{assoc,*}
         =
@@ -2790,7 +2789,7 @@
   description: "Gives the Debye-Huckel activity-coefficient contribution in activity coefficient."
   change_note: "Debye-Huckel specialization of the infinite-dilution contribution activity-coefficient definition."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2388
+  tex_line: 2390
   latex: |
     \ln\gamma_{k}^{DH,*}
         =
@@ -2808,7 +2807,7 @@
   description: "Gives the Born activity-coefficient contribution in activity coefficient."
   change_note: "Born specialization of the infinite-dilution contribution activity-coefficient definition."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2405
+  tex_line: 2407
   latex: |
     \ln\gamma_{k}^{Born,*}
         =
@@ -2826,7 +2825,7 @@
   description: "Provides a differential relation needed for entropy calculations."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2428
+  tex_line: 2430
   latex: |
     \tilde{h}^{\mathrm{res}} = \frac{\hat{h}^{\mathrm{res}}}{RT}=-T\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial T}\right)_{\rho,x_{i}}+(Z-1)
   cpp_refs:
@@ -2844,7 +2843,7 @@
   description: "Provides a supporting relation used in entropy."
   change_note: "Mapped manually to the residual-entropy relation with logarithmic compressibility correction."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2441
+  tex_line: 2443
   latex: |
     \tilde{s}^{\mathrm{res}} = \frac{\hat{s}^{\mathrm{res}}(P,T)}{R}=\frac{\hat{s}^{\mathrm{res}}(\nu,T)}{R}+\ln(Z)
   cpp_refs: []
@@ -2858,7 +2857,7 @@
   description: "Provides a differential relation needed for entropy calculations."
   change_note: "Mapped manually to the residual-entropy temperature-derivative form."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2452
+  tex_line: 2454
   latex: |
     \tilde{s}^{\mathrm{res}} = \frac{\hat{s}^{\mathrm{res}}(P,T)}{R}=-T\left[\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial T}\right)_{\rho,x_{i}}+\frac{\tilde{a}^{\mathrm{res}}}{T}\right]+\ln(Z)
   cpp_refs:
@@ -2876,7 +2875,7 @@
   description: "Provides a supporting relation used in gibbs free energy."
   change_note: "Mapped manually to the residual Gibbs relation via enthalpy and entropy."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2465
+  tex_line: 2467
   latex: |
     \tilde{g}^{\mathrm{res}}=\frac{\hat{g}^{\mathrm{res}}}{RT}=\frac{\hat{h}^{\mathrm{res}}}{RT}-\frac{\hat{s}^{\mathrm{res}}(P,T)}{R}
   cpp_refs: []
@@ -2890,7 +2889,7 @@
   description: "Provides a residual Helmholtz-energy relation for gibbs free energy."
   change_note: "Mapped manually to the residual Gibbs relation in Helmholtz/compressibility form."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2476
+  tex_line: 2478
   latex: |
     \tilde{g}^{\mathrm{res}}=\tilde{a}^{\mathrm{res}}+(Z-1)-\ln(Z)
   cpp_refs:
@@ -2908,7 +2907,7 @@
   description: "Provides a residual Helmholtz-energy relation for gibbs free energy."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2489
+  tex_line: 2491
   latex: |
     \Delta^{\mathrm{solv},x}G_{i}^{\infty}(T,p,x_{j\neq i},x_{i}\to0)=RT\ln(\varphi_{i}^{\infty}(T,p,x_{j\neq i},x_{i}\to0))
   cpp_refs:
@@ -2926,7 +2925,7 @@
   description: "Provides a residual Helmholtz-energy relation for gibbs free energy."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2501
+  tex_line: 2503
   latex: |
     \Delta^{\mathrm{tr}}G_{i}^{\infty,\mathrm{S}1\to\mathrm{S}2}(T,p,x_{j\neq i},x_{i}\rightarrow0)=RT\ln\left(\frac{\varphi_{i}^{\infty,\mathrm{S}2}}{\varphi_{i}^{\infty,\mathrm{S}1}}\right)
   cpp_refs:
@@ -2944,7 +2943,7 @@
   description: "Gives an activity or fugacity-coefficient relation in salt basis conversions."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2514
+  tex_line: 2516
   latex: |
     \gamma_{\pm}^{*,m}=\frac{\gamma_{\pm}^{*,x}}{1+M_{\mathrm{solvent}}\cdot\tilde{m}_{\mathrm{solute}}\cdot\sum_{i}\nu_{i,\mathrm{ion}}}
   cpp_refs: []
@@ -2958,7 +2957,7 @@
   description: "Provides a supporting relation used in debye and huckel electrolyte term contribution."
   change_note: "Mapped manually to the closest-approach radius selection between ion diameter and Bjerrum length."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2529
+  tex_line: 2531
   latex: |
     R_{i}=
         \begin{cases}
@@ -2976,7 +2975,7 @@
   description: "Specifies dielectric-property mixing or derivative form for debye and huckel electrolyte term contribution."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2544
+  tex_line: 2546
   latex: |
     l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}
   cpp_refs: []
@@ -2990,7 +2989,7 @@
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Mapped manually to the reduced Debye-Huckel Helmholtz form with dissociation degree factors."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2556
+  tex_line: 2558
   latex: |
     \tilde{a}^{DH}=-\frac{\kappa e^{2}}{12\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}\sum_{i}\alpha_{i}x_{i}z_{i}^{2}\chi_{i}
   cpp_refs: []
@@ -3004,7 +3003,7 @@
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Mapped manually to the Bjerrum-treatment Debye screening parameter definition."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2567
+  tex_line: 2569
   latex: |
     \kappa=\sqrt{\frac{\rho e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\sum_{j}\alpha_{j}x_{j}z_{j}^{2}}
   cpp_refs: []
@@ -3018,7 +3017,7 @@
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Mapped manually to the Bjerrum-treatment chi-function definition."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2578
+  tex_line: 2580
   latex: |
     \chi_{i}=\frac{3}{\left(\kappa R_{i}\right)^3}\left[\frac{3}{2}+\ln(1+\kappa R_{i})-2(1+\kappa R_{i})+\frac{1}{2}\left(1+\kappa R_{i}\right)^2\right]
   cpp_refs: []
@@ -3032,7 +3031,7 @@
   description: "Gives an activity or fugacity-coefficient relation in debye and huckel electrolyte term contribution."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2589
+  tex_line: 2591
   latex: |
     \alpha=\frac{-1+\sqrt{1+4x_{\pm} K_{ip}\frac{\left(\gamma_{\pm}^*\left(x_{f}\right)\right)^2}{\gamma_{ip}^*}}}{2x_{\pm} K_{ip}\frac{\left(\gamma_{\pm}^*\left(x_{f}\right)\right)^2}{\gamma_{ip}^*}}
   cpp_refs: []
@@ -3046,7 +3045,7 @@
   description: "Specifies dielectric-property mixing or derivative form for debye and huckel electrolyte term contribution."
   change_note: "This line combines the algebraic ion-pair equilibrium form and the configurational integral expression shown as separate equations in the paper."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2600
+  tex_line: 2602
   latex: |
     K_{ip}(T)=\frac{(1-\alpha)\cdot\gamma_{ip}^{*}}{\alpha^{2}\cdot x_{\pm}\cdot\left(\gamma_{\pm}^{*}(x_{f}(\alpha))\right)^{2}} = 4\pi\rho_{N}\int_{a}^{l_{B}}\exp\left(\frac{\left|z_{i}z_{j}\right|e^2}{4\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}\cdot\frac{1}{r}\right)r^2dr
   cpp_refs: []
@@ -3060,7 +3059,7 @@
   description: "Provides a supporting relation used in debye and huckel electrolyte term contribution."
   change_note: "Assumption $\\gamma_{ip}^* \\approx 1$ is used as a simplifying closure and is not a standalone numbered equation in the source paper."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2611
+  tex_line: 2613
   latex: |
     \gamma_{ip}^* \approx 1
   cpp_refs: []
@@ -3074,7 +3073,7 @@
   description: "Provides a supporting relation used in debye and huckel electrolyte term contribution."
   change_note: "Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2622
+  tex_line: 2624
   latex: |
     x_{\pm} = x_{f} + x_{ip}
   cpp_refs: []
@@ -3088,7 +3087,7 @@
   description: "Provides a supporting relation used in debye and huckel electrolyte term contribution."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2633
+  tex_line: 2635
   latex: |
     x_{\pm} = \alpha x_{f}
   cpp_refs: []
@@ -3102,7 +3101,7 @@
   description: "Provides a supporting relation used in debye and huckel electrolyte term contribution."
   change_note: "Stoichiometric rearrangement used with Eq. (9) during alpha-based ion-pair splitting."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2644
+  tex_line: 2646
   latex: |
     x_{\pm} = (1 - \alpha) x_{ip}
   cpp_refs: []
@@ -3116,7 +3115,7 @@
   description: "Provides a supporting relation used in debye and huckel electrolyte term contribution."
   change_note: "Geometric mean form mirrors the mean-ionic expression pattern and is written here for mole fractions."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2655
+  tex_line: 2657
   latex: |
     x_{\pm}=(x_{c}^{\nu c}\cdot x_{a}^{\nu a})^{\frac{1}{\nu_{c}+\nu_{a}}}
   cpp_refs: []
@@ -3130,7 +3129,7 @@
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2666
+  tex_line: 2668
   latex: |
     \mu_{i}^{DH}\left(x_{f}\right)=\left(\frac{\partial A^{DH}}{\partial\rho_{i}\left(x_{f}\right)}\right)_{T,V,N_{j\neq i}}=-\frac{e^{2}z_{i}^{2}\kappa}{24\pi\varepsilon_{0}\varepsilon_{r}}\left[2\chi_{i}+\frac{\sum_{k}x_{k,f}z_{k}^{2}\sigma_{k}}{\sum_{k}x_{k,f}z_{k}^{2}}\right]
   cpp_refs: []
@@ -3144,7 +3143,7 @@
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Mapped manually to the infinite-dilution ionic activity-coefficient relation."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2677
+  tex_line: 2679
   latex: |
     \ln\gamma_{i}^{*}\left(x_{f,i}\right)=-\frac{e^{2}z_{i}^{2}\kappa}{24\pi\varepsilon_{0}\varepsilon_{r}}\left[2\chi_{i}+\frac{\sum_{k}x_{k,f}z_{k}^{2}\sigma_{k}}{\sum_{k}x_{k,f}z_{k}^{2}}\right]
   cpp_refs: []
@@ -3158,7 +3157,7 @@
   description: "Gives an activity or fugacity-coefficient relation in debye and huckel electrolyte term contribution."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
-  tex_line: 2688
+  tex_line: 2690
   latex: |
     \gamma_{\pm}^{*}=(\gamma_{c}^{*,\nu c}\cdot\gamma_{a}^{*,\nu a})^{\frac{1}{\nu_{c}+\nu_{a}}}
   cpp_refs: []
