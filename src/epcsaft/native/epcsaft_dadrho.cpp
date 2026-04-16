@@ -24,7 +24,6 @@ double hs_contact_density_derivative_cpp(double pair_diameter, double zeta2, dou
 
 namespace {
 
-// EqID: dadrho_hc
 // EqID: hc_ares_dadrho
 double dadrho_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
@@ -37,7 +36,6 @@ double dadrho_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state,
     return thermo.m_avg * dadrho_hs_cpp(hc_state) - summ;
 }
 
-// EqID: dadrho_disp
 // EqID: disp_ares_dadrho
 double dadrho_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion) {
     return -2.0 * PI * thermo.den * dispersion.dEtaI1_deta * thermo.m2es3
@@ -76,7 +74,6 @@ vector<double> association_site_fraction_density_terms_cpp(
     return dXA_weighted;
 }
 
-// EqID: dadrho_assoc
 // EqID: assoc_ares_dadrho
 double dadrho_assoc_cpp(
     const MixtureState &thermo,
@@ -125,7 +122,6 @@ double dadrho_assoc_cpp(
     return value;
 }
 
-// EqID: dadrho_dh
 // EqID: dadrho_dh_explicit
 double dadrho_ion_cpp(double t, const IonIntermediateState &ion_state) {
     if (!ion_state.active) {
@@ -134,7 +130,6 @@ double dadrho_ion_cpp(double t, const IonIntermediateState &ion_state) {
     return -ion_state.kappa / 24.0 / PI / kb / t / (ion_state.dielectric.eps * perm_vac) * ion_state.sigma_sum * E_CHRG * E_CHRG;
 }
 
-// EqID: dadrho_born
 // EqID: born_ares_dadrho
 double dadrho_born_cpp() {
     return 0.0;
