@@ -142,7 +142,6 @@ double dadrho_born_cpp() {
 
 }  // namespace
 
-// EqID: z_eta_rho_identity
 DadrhoResult dadrho_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     MixtureState thermo = mixture_state_cpp(t, rho, x, cppargs, false);
     HardChainState hc_state = hard_chain_state_cpp(thermo, x, cppargs);
