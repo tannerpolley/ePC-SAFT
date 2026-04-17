@@ -1,4 +1,6 @@
 import os
+import sys
+from pathlib import Path
 
 import numpy as np
 from Cython.Build import cythonize
@@ -16,6 +18,37 @@ except ImportError as exc:
 
 PACKAGE_ROOT = "src/epcsaft"
 NATIVE_ROOT = f"{PACKAGE_ROOT}/native"
+
+
+def _ipopt_build_config():
+    prefix = Path(os.environ.get("CONDA_PREFIX", sys.prefix)).resolve()
+    if os.name == "nt":
+        include_root = prefix / "Library" / "include"
+        coin_include = include_root / "coin"
+        lib_root = prefix / "Library" / "lib"
+        header = coin_include / "IpIpoptApplication.hpp"
+        lib = lib_root / "ipopt.lib"
+    else:
+        include_root = prefix / "include"
+        coin_include = include_root / "coin"
+        lib_root = prefix / "lib"
+        header = coin_include / "IpIpoptApplication.hpp"
+        lib = lib_root / "libipopt.so"
+
+    if not header.exists() or not lib.exists():
+        raise RuntimeError(
+            "ePC-SAFT now requires IPOPT headers and libraries in the active environment. "
+            f"Expected {header} and {lib}. Install IPOPT in the ePC-SAFT conda env first."
+        )
+
+    return {
+        "include_dirs": [str(include_root), str(coin_include)],
+        "library_dirs": [str(lib_root)],
+        "libraries": ["ipopt"],
+    }
+
+
+ipopt_build = _ipopt_build_config()
 
 extra_compile_args = []
 if os.name == "nt":
@@ -40,6 +73,7 @@ ext_modules = [
             f"{NATIVE_ROOT}/epcsaft_fugcoef.cpp",
             f"{NATIVE_ROOT}/epcsaft_activity.cpp",
             f"{NATIVE_ROOT}/epcsaft_state.cpp",
+            f"{NATIVE_ROOT}/epcsaft_regression.cpp",
         ],
         language="c++",
         include_dirs=[
@@ -48,7 +82,10 @@ ext_modules = [
             NATIVE_ROOT,
             f"{NATIVE_ROOT}/contributions",
             get_eigen_include(),
+            *ipopt_build["include_dirs"],
         ],
+        library_dirs=ipopt_build["library_dirs"],
+        libraries=ipopt_build["libraries"],
         extra_compile_args=extra_compile_args,
     )
 ]

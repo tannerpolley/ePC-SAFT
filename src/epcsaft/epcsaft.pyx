@@ -726,6 +726,32 @@ def np_to_vector_int(np_array):
 
     return cpp_vector
 
+
+cdef vector[PureNeutralRegressionDensityRecord] _pure_neutral_density_records_vector(density_T, density_P, density_rho_exp, density_phase):
+    cdef vector[PureNeutralRegressionDensityRecord] records
+    cdef PureNeutralRegressionDensityRecord record
+    cdef Py_ssize_t i, n
+    n = len(density_T)
+    for i in range(n):
+        record.t = float(density_T[i])
+        record.p = float(density_P[i])
+        record.rho_exp = float(density_rho_exp[i])
+        record.phase = int(density_phase[i])
+        records.push_back(record)
+    return records
+
+
+cdef vector[PureNeutralRegressionVLERecord] _pure_neutral_vle_records_vector(vle_T, vle_P):
+    cdef vector[PureNeutralRegressionVLERecord] records
+    cdef PureNeutralRegressionVLERecord record
+    cdef Py_ssize_t i, n
+    n = len(vle_T)
+    for i in range(n):
+        record.t = float(vle_T[i])
+        record.p = float(vle_P[i])
+        records.push_back(record)
+    return records
+
 def create_struct(params):
     """Convert ePC-SAFT parameters to a C++ struct."""
     cdef add_args cppargs
@@ -1069,6 +1095,100 @@ def create_struct(params):
         cppargs.l_ij = np_to_vector_double(params['l_ij'])
 
     return cppargs
+
+
+def _fit_pure_neutral_native(
+    fixed_payload,
+    density_T,
+    density_P,
+    density_rho_exp,
+    density_phase,
+    density_scale,
+    vle_T,
+    vle_P,
+    pure_vle_scale,
+    x0,
+    lower,
+    upper,
+    multistart=0,
+    derivative_test=False,
+):
+    cdef add_args cppargs
+    cdef vector[PureNeutralRegressionDensityRecord] density_records
+    cdef vector[PureNeutralRegressionVLERecord] pure_vle_records
+    cdef vector[double] cpp_x0
+    cdef vector[double] cpp_lower
+    cdef vector[double] cpp_upper
+    cdef PureNeutralRegressionResult result
+    params = check_association(dict(fixed_payload))
+    cppargs = create_struct(params)
+    density_records = _pure_neutral_density_records_vector(density_T, density_P, density_rho_exp, density_phase)
+    pure_vle_records = _pure_neutral_vle_records_vector(vle_T, vle_P)
+    cpp_x0 = np_to_vector_double(np.asarray(x0, dtype=float))
+    cpp_lower = np_to_vector_double(np.asarray(lower, dtype=float))
+    cpp_upper = np_to_vector_double(np.asarray(upper, dtype=float))
+    result = fit_pure_neutral_ipopt_cpp(
+        cppargs,
+        density_records,
+        float(density_scale),
+        pure_vle_records,
+        float(pure_vle_scale),
+        cpp_x0,
+        cpp_lower,
+        cpp_upper,
+        int(multistart),
+        bool(derivative_test),
+    )
+    return {
+        "x": vector_to_array(result.x),
+        "cost": float(result.cost),
+        "residual_norm": float(result.residual_norm),
+        "density_metric": float(result.density_metric),
+        "pure_vle_metric": float(result.pure_vle_metric),
+        "success": bool(result.success),
+        "status": int(result.status),
+        "nfev": int(result.nfev),
+        "iterations": int(result.iterations),
+        "message": (<bytes>result.message).decode("utf-8"),
+    }
+
+
+def _fit_pure_neutral_native_debug(
+    fixed_payload,
+    density_T,
+    density_P,
+    density_rho_exp,
+    density_phase,
+    density_scale,
+    vle_T,
+    vle_P,
+    pure_vle_scale,
+    x,
+):
+    cdef add_args cppargs
+    cdef vector[PureNeutralRegressionDensityRecord] density_records
+    cdef vector[PureNeutralRegressionVLERecord] pure_vle_records
+    cdef vector[double] cpp_x
+    cdef PureNeutralRegressionDebugResult result
+    params = check_association(dict(fixed_payload))
+    cppargs = create_struct(params)
+    density_records = _pure_neutral_density_records_vector(density_T, density_P, density_rho_exp, density_phase)
+    pure_vle_records = _pure_neutral_vle_records_vector(vle_T, vle_P)
+    cpp_x = np_to_vector_double(np.asarray(x, dtype=float))
+    result = evaluate_pure_neutral_objective_debug_cpp(
+        cppargs,
+        density_records,
+        float(density_scale),
+        pure_vle_records,
+        float(pure_vle_scale),
+        cpp_x,
+    )
+    return {
+        "objective": float(result.objective),
+        "gradient": vector_to_array(result.gradient),
+        "density_raw_residuals": vector_to_array(result.density_raw_residuals),
+        "pure_vle_raw_residuals": vector_to_array(result.pure_vle_raw_residuals),
+    }
 
 
 

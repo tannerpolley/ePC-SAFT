@@ -6,6 +6,7 @@ from __future__ import annotations
 import csv
 
 import epcsaft
+import numpy as np
 import pytest
 
 from epcsaft import FitProblem
@@ -14,6 +15,7 @@ from epcsaft import create_parameter_template
 from epcsaft import fit_pure_neutral
 from epcsaft import write_fit_result
 from epcsaft._types import InputError
+from epcsaft.regression import _debug_native_pure_neutral_objective
 from epcsaft.regression import fit_binary_pair
 from epcsaft.regression import fit_pure_ion
 
@@ -28,6 +30,13 @@ def _minimal_neutral_metadata(mw: float) -> dict[str, float]:
         "d_born": 0.0,
         "f_solv": 1.0,
     }
+
+
+def _methane_like_records() -> list[dict[str, float | str]]:
+    return [
+        {"T": 110.0, "P": 88130.038, "rho_sat_liq_kg_m3": 424.77725, "phase": "liq"},
+        {"T": 130.0, "P": 367319.94, "rho_sat_liq_kg_m3": 394.35230, "phase": "liq"},
+    ]
 
 
 def test_public_regression_surface_is_neutral_only():
@@ -57,6 +66,45 @@ def test_fit_pure_neutral_rejects_non_phase1_targets():
             fixed_parameters=_minimal_neutral_metadata(92.141e-3),
             initial_guess={"m": 2.8, "s": 3.7, "e_assoc": 1000.0},
         )
+
+
+def test_native_pure_neutral_debug_gradient_matches_finite_difference():
+    theta = {"m": 1.05, "s": 3.68, "e": 151.0}
+
+    def objective_at(m: float, s: float, e: float) -> float:
+        debug = _debug_native_pure_neutral_objective(
+            _methane_like_records(),
+            "Methane",
+            assoc_scheme="",
+            fixed_parameters=_minimal_neutral_metadata(16.043e-3),
+            initial_guess=theta,
+            x={"m": m, "s": s, "e": e},
+        )
+        return float(debug["objective"])
+
+    debug = _debug_native_pure_neutral_objective(
+        _methane_like_records(),
+        "Methane",
+        assoc_scheme="",
+        fixed_parameters=_minimal_neutral_metadata(16.043e-3),
+        initial_guess=theta,
+        x=theta,
+    )
+    exact = np.asarray(debug["gradient"], dtype=float)
+
+    eps = np.asarray([1.0e-6, 1.0e-6, 1.0e-5], dtype=float)
+    fd = np.empty(3, dtype=float)
+    base = np.asarray([theta["m"], theta["s"], theta["e"]], dtype=float)
+    for i in range(3):
+        forward = base.copy()
+        backward = base.copy()
+        forward[i] += eps[i]
+        backward[i] -= eps[i]
+        fd[i] = (
+            objective_at(*forward) - objective_at(*backward)
+        ) / (2.0 * eps[i])
+
+    assert exact == pytest.approx(fd, rel=5.0e-4, abs=5.0e-6)
 
 
 @pytest.mark.parametrize(

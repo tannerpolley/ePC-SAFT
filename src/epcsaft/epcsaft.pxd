@@ -7,6 +7,7 @@ Created on Thu Jul 19 14:23:00 2018
 """
 from libcpp.vector cimport vector
 from libcpp.memory cimport shared_ptr
+from libcpp.string cimport string
 from libc.stddef cimport size_t
 
 cdef extern from "epcsaft_electrolyte.h":
@@ -23,6 +24,26 @@ cdef extern from "epcsaft_electrolyte.h":
     vector[double] dielectric_diff_cpp(vector[double] x, add_args &cppargs)
     double dielc_eps_cpp(vector[double] x, add_args &cppargs)
     vector[double] dielc_diff_cpp(vector[double] x, add_args &cppargs)
+    PureNeutralRegressionResult fit_pure_neutral_ipopt_cpp(
+        const add_args& base_args,
+        const vector[PureNeutralRegressionDensityRecord]& density_records,
+        double density_scale,
+        const vector[PureNeutralRegressionVLERecord]& pure_vle_records,
+        double pure_vle_scale,
+        const vector[double]& x0,
+        const vector[double]& lower,
+        const vector[double]& upper,
+        int multistart,
+        bint derivative_test
+    ) except +
+    PureNeutralRegressionDebugResult evaluate_pure_neutral_objective_debug_cpp(
+        const add_args& base_args,
+        const vector[PureNeutralRegressionDensityRecord]& density_records,
+        double density_scale,
+        const vector[PureNeutralRegressionVLERecord]& pure_vle_records,
+        double pure_vle_scale,
+        const vector[double]& x
+    ) except +
 
     ctypedef struct add_args:
         vector[double] m
@@ -121,6 +142,34 @@ cdef extern from "epcsaft_electrolyte.h":
         VectorContributionTerms mu
         VectorContributionTerms lnfugcoef
         CompositionContributionResult composition
+
+    ctypedef struct PureNeutralRegressionDensityRecord:
+        double t
+        double p
+        double rho_exp
+        int phase
+
+    ctypedef struct PureNeutralRegressionVLERecord:
+        double t
+        double p
+
+    ctypedef struct PureNeutralRegressionDebugResult:
+        double objective
+        vector[double] gradient
+        vector[double] density_raw_residuals
+        vector[double] pure_vle_raw_residuals
+
+    ctypedef struct PureNeutralRegressionResult:
+        vector[double] x
+        double cost
+        double residual_norm
+        double density_metric
+        double pure_vle_metric
+        bint success
+        int status
+        int nfev
+        int iterations
+        string message
 
     cdef cppclass ePCSAFTStateNative:
         ePCSAFTStateNative(shared_ptr[ePCSAFTMixtureNative] mixture, double t, vector[double] x,

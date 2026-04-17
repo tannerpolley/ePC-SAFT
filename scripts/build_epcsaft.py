@@ -41,6 +41,7 @@ COMPILED_INPUTS = [
     NATIVE_ROOT / "epcsaft_fugcoef.cpp",
     NATIVE_ROOT / "epcsaft_activity.cpp",
     NATIVE_ROOT / "epcsaft_state.cpp",
+    NATIVE_ROOT / "epcsaft_regression.cpp",
 ]
 
 
