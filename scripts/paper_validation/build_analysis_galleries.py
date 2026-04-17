@@ -9,6 +9,18 @@ from typing import Iterable
 ROOT = Path(__file__).resolve().parent
 
 
+def should_include_png(analysis_dir: Path, path: Path) -> bool:
+    rel = path.relative_to(analysis_dir)
+    parts_lower = tuple(part.lower() for part in rel.parts)
+    if "__pycache__" in parts_lower:
+        return False
+    if any(part.startswith("_tmp") for part in parts_lower):
+        return False
+    if analysis_dir.name == "2020_Bulow_analysis" and parts_lower[:2] == ("figure_3", "epcsaft_package_comparisons"):
+        return False
+    return True
+
+
 def sort_key(path: Path) -> tuple:
     parts = [part.lower() for part in path.parts]
     return tuple(parts)
@@ -26,8 +38,7 @@ def collect_pngs(analysis_dir: Path) -> list[Path]:
         [
             path
             for path in analysis_dir.rglob("*.png")
-            if "__pycache__" not in path.parts
-            and not any(part.startswith("_tmp") for part in path.parts)
+            if should_include_png(analysis_dir, path)
             and path.name.lower() != "index.html"
         ],
         key=lambda path: sort_key(path.relative_to(analysis_dir)),
