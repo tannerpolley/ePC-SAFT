@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import csv
+import json
 import math
 import sys
 from collections import defaultdict
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
 
@@ -23,7 +25,7 @@ from scripts._env import require_epcsaft_install
 require_epcsaft_install()
 
 from epcsaft.parameters import get_prop_dict
-from scripts._epcsaft_oop import epcsaft_activity_coefficient, epcsaft_density, epcsaft_solvation_free_energy
+from scripts._epcsaft_oop import as_mixture
 
 T_REF = 298.15
 P_REF = 1.0e5
@@ -63,6 +65,23 @@ GRAY_COLOR = "0.45"
 LIGHT_GRAY = "0.82"
 BROWN_COLOR = "#7a1f1f"
 BLUE_COLOR = "#1f4da8"
+
+
+def _freeze_comp(comp: Dict[str, float]) -> Tuple[Tuple[str, float], ...]:
+    return tuple(sorted((str(k), round(float(v), 12)) for k, v in comp.items()))
+
+
+def _thaw_comp(comp_key: Tuple[Tuple[str, float], ...]) -> Dict[str, float]:
+    return {str(k): float(v) for k, v in comp_key}
+
+
+def _freeze_user_options(user_options: dict | None) -> str:
+    return json.dumps(user_options or {}, sort_keys=True, separators=(",", ":"))
+
+
+def _thaw_user_options(user_options_key: str) -> dict | None:
+    data = json.loads(user_options_key)
+    return data if data else None
 
 
 def configure_style() -> None:
@@ -242,16 +261,43 @@ def mean_ionic_activity_curve(
     points: int = 500,
     user_options: dict | None = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
+    comp_key = _freeze_comp(comp)
+    user_options_key = _freeze_user_options(user_options)
+    grid, gamma = _mean_ionic_activity_curve_cached(
+        dataset_name,
+        salt,
+        solvent_system,
+        comp_key,
+        float(m_max),
+        int(points),
+        user_options_key,
+    )
+    return np.asarray(grid, dtype=float).copy(), np.asarray(gamma, dtype=float).copy()
+
+
+@lru_cache(maxsize=256)
+def _mean_ionic_activity_curve_cached(
+    dataset_name: str,
+    salt: str,
+    solvent_system: str,
+    comp_key: Tuple[Tuple[str, float], ...],
+    m_max: float,
+    points: int,
+    user_options_key: str,
+) -> Tuple[np.ndarray, np.ndarray]:
+    comp = _thaw_comp(comp_key)
+    user_options = _thaw_user_options(user_options_key)
     grid = np.linspace(0.0, float(m_max), int(points))
     params = build_params(dataset_name, salt, solvent_system, comp, user_options=user_options)
     species = species_for_combo(salt, solvent_system)
     pair_key = pair_key_for_salt(salt)
+    mixture = as_mixture(params, species=species)
     gamma = np.empty_like(grid)
     for idx, m in enumerate(grid):
         m_eval = max(float(m), 1e-12)
         x = molality_to_species_molefraction(m_eval, salt, solvent_system, comp)
-        rho = epcsaft_density(T_REF, P_REF, x, params, phase="liq")
-        gamma[idx] = epcsaft_activity_coefficient(T_REF, rho, x, params, species=species, mean_ionic_form=True, basis="molality")[pair_key]
+        state = mixture.state(T=T_REF, x=x, P=P_REF, phase="liq")
+        gamma[idx] = state.activity_coefficient(species=species, mean_ionic_form=True, basis="molality")[pair_key]
     return grid, gamma
 
 
@@ -376,12 +422,32 @@ def gsolv_ion(
     comp: Dict[str, float],
     user_options: dict | None = None,
 ) -> float:
+    return _gsolv_ion_cached(
+        dataset_name,
+        ion,
+        solvent_system,
+        _freeze_comp(comp),
+        _freeze_user_options(user_options),
+    )
+
+
+@lru_cache(maxsize=2048)
+def _gsolv_ion_cached(
+    dataset_name: str,
+    ion: str,
+    solvent_system: str,
+    comp_key: Tuple[Tuple[str, float], ...],
+    user_options_key: str,
+) -> float:
+    comp = _thaw_comp(comp_key)
+    user_options = _thaw_user_options(user_options_key)
     salt = ION_TO_REFERENCE_SALT[ion]
     species = species_for_combo(salt, solvent_system)
     x = molality_to_species_molefraction(1e-8, salt, solvent_system, comp)
     params = get_prop_dict(dataset_name, species, x, T_REF, user_options=user_options)
-    rho = epcsaft_density(T_REF, P_REF, x, params, phase="liq")
-    values = epcsaft_solvation_free_energy(T_REF, rho, x, params, species=species)
+    mixture = as_mixture(params, species=species)
+    state = mixture.state(T=T_REF, x=x, P=P_REF, phase="liq")
+    values = state.solvation_free_energy(species=species)
     if ion not in values:
         raise KeyError(f"Ion '{ion}' not returned from epcsaft_solvation_free_energy for {species}.")
     return float(values[ion]) / 1000.0
@@ -394,7 +460,27 @@ def transfer_curve(
     x_org_grid: np.ndarray,
     user_options: dict | None = None,
 ) -> np.ndarray:
-    x_org_arr = np.asarray(x_org_grid, dtype=float)
+    x_org_key = tuple(round(float(v), 12) for v in np.asarray(x_org_grid, dtype=float).tolist())
+    out = _transfer_curve_cached(
+        dataset_name,
+        ion,
+        organic_solvent,
+        x_org_key,
+        _freeze_user_options(user_options),
+    )
+    return np.asarray(out, dtype=float).copy()
+
+
+@lru_cache(maxsize=256)
+def _transfer_curve_cached(
+    dataset_name: str,
+    ion: str,
+    organic_solvent: str,
+    x_org_key: Tuple[float, ...],
+    user_options_key: str,
+) -> np.ndarray:
+    user_options = _thaw_user_options(user_options_key)
+    x_org_arr = np.asarray(x_org_key, dtype=float)
     water_ref = gsolv_ion(dataset_name, ion, "water", {"water": 1.0}, user_options=user_options)
     out = np.empty_like(x_org_arr)
     solvent_system = f"water-{organic_solvent}"
