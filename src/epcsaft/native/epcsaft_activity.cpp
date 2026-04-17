@@ -183,10 +183,18 @@ int resolve_solvent_index_cpp(
         throw ValueError("activity_coefficient requires at least one neutral solvent species.");
     }
     if (!has_solvent_override || solvent_override_index < 0) {
+        int best_index = -1;
+        double best_x = -1.0;
         for (int idx : solvent_indices) {
             if (idx >= 0 && idx < static_cast<int>(x.size()) && x[idx] > 0.0) {
-                return idx;
+                if (x[idx] > best_x) {
+                    best_x = x[idx];
+                    best_index = idx;
+                }
             }
+        }
+        if (best_index >= 0) {
+            return best_index;
         }
         return solvent_indices.front();
     }

@@ -468,17 +468,16 @@ cdef class ePCSAFTState:
 
     def fugacity_coefficient(self, natural_log=True, return_contribution_terms=False):
         """Return fugacity coefficients, defaulting to natural-log form."""
+        ln_total = vector_to_array(self._native.get().ln_fugacity_coefficient())
         if not return_contribution_terms:
-            public_total = vector_to_array(self._native.get().fugacity_coefficient())
             if natural_log:
-                return public_total
-            return np.exp(public_total)
+                return ln_total
+            return np.exp(ln_total)
         result = self._fugacity_coefficient_term_result()
         ln_term_total = np.asarray(result["lnfugcoef_total"], dtype=float)
-        public_total = vector_to_array(self._native.get().fugacity_coefficient())
         terms = {name: np.asarray(result["lnfugcoef_" + name], dtype=float) for name in _CONTRIBUTION_NAMES}
         out = {
-            "total": public_total if natural_log else np.exp(public_total),
+            "total": ln_total if natural_log else np.exp(ln_total),
             "terms": terms,
             "term_basis": "natural_log",
             "terms_total_natural_log": ln_term_total,

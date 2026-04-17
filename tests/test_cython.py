@@ -124,8 +124,8 @@ def test_neutral_scalar_methods_return_expected_values():
 
     fugacity_coefficient = state.fugacity_coefficient()
     fugacity_coefficient_coeff = state.fugacity_coefficient(natural_log=False)
-    _assert_array(fugacity_coefficient, [6.906169322700795, 0.5632134688356544, 0.09001491894620331])
-    _assert_array(fugacity_coefficient_coeff, [998.4153006812405, 1.756307282343719, 1.0941906069746888])
+    _assert_array(fugacity_coefficient, [1.9324151168689134, -0.5740965595882255, -2.407779856320623])
+    _assert_array(fugacity_coefficient_coeff, [6.906169322700795, 0.5632134688356544, 0.09001491894620331])
     np.testing.assert_allclose(np.exp(fugacity_coefficient), fugacity_coefficient_coeff)
 
 
@@ -311,14 +311,14 @@ def test_ionic_activity_and_solution_methods_return_expected_values():
     assert diagnostics["mean_ionic_activity_coefficient_mole"] == mean_ionic_mole
     assert diagnostics["mean_ionic_activity_coefficient_molality"] == mean_ionic_molality
     assert diagnostics["solvation_free_energy"] == solvation_free_energy
-    _assert_array(diagnostics["fugacity_coefficient"], [1.0319800328347054, 1.0, 1.0])
+    _assert_array(diagnostics["fugacity_coefficient"], [0.031479320480733174, 4.651483659012546e-84, 1.5683276992772872e-86])
     _assert_array(diagnostics["residual_chemical_potential"], [-10.682420304620588, -199.10395742942775, -204.79630395556683])
     _assert_array(
         np.exp(state.fugacity_coefficient()),
-        [1.0319800328347054, 1.0, 1.0],
+        [0.031479320480733174, 4.651483659012546e-84, 1.5683276992772872e-86],
     )
-    _assert_array(state.fugacity_coefficient(), [0.031479320480256076, 4.651483658942082e-84, 1.568327699253529e-86])
-    _assert_array(state.fugacity_coefficient(natural_log=False), [1.0319800328347054, 1.0, 1.0])
+    _assert_array(state.fugacity_coefficient(), [-3.458424439279275, -191.8799615776576, -197.57230810636238])
+    _assert_array(state.fugacity_coefficient(natural_log=False), [0.031479320480733174, 4.651483659012546e-84, 1.5683276992772872e-86])
     assert state.compressibility_factor() == pytest.approx(0.000728884077611683)
     assert state.residual_helmholtz() == pytest.approx(-9.7214027218058)
     assert state.temperature_derivative_residual_helmholtz() == pytest.approx(0.055518862215412086)
