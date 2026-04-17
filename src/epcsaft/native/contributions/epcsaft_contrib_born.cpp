@@ -225,3 +225,93 @@ BornIntermediateState born_intermediate_state_cpp(
 
     throw ValueError("Unknown born_model. Supported values are 0, 1, 2.");
 }
+
+// EqID: born_ares_dadrho
+double dadrho_born_cpp() {
+    return 0.0;
+}
+
+// EqID: born_ares_dT
+double dadt_born_cpp(double t, const BornIntermediateState &born_state) {
+    if (born_state.model == 0) {
+        return 0.0;
+    }
+    if (born_state.model == 1) {
+        double born_factor = 1.0 - 1.0 / born_state.eps_value;
+        double prefactor = E_CHRG * E_CHRG / (4.0 * PI * kb * perm_vac);
+        return prefactor * born_factor * (born_state.charge_radius_sum / (t * t) - born_state.charge_radius_sum_dt / t);
+    }
+    if (born_state.model == 2) {
+        return E_CHRG * E_CHRG / (4.0 * PI * kb * perm_vac * t * t) * born_state.shell.sum_bracket;
+    }
+    throw ValueError("Unknown born_model. Supported values are 0, 1, 2.");
+}
+
+ContributionDadxResult dadx_born_cpp(const BornIntermediateState &born_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {
+    int ncomp = static_cast<int>(x.size());
+    ContributionDadxResult result;
+    result.dadx.assign(ncomp, 0.0);
+    if (cppargs.z.empty()) {
+        return result;
+    }
+
+    if (born_state.model == 1) {
+        double Kborn = E_CHRG * E_CHRG / (4.0 * PI * kb * t * perm_vac);
+        result.ares = -Kborn * (1.0 - 1.0 / born_state.eps_value) * born_state.charge_radius_sum;
+
+        if (cppargs.born_diff_mode == 1) {
+            result.dadx = contribution_dadx_fd_cpp(AresContributionKind::BORN, t, rho, x, cppargs, result.ares);
+        } else if (cppargs.born_diff_mode == 4) {
+            result.dadx = contribution_dadx_autodiff_cpp(AresContributionKind::BORN, t, rho, x, cppargs);
+        } else {
+            for (int i = 0; i < ncomp; ++i) {
+                double ion_part = 0.0;
+                if (is_ion_species(cppargs, i)) {
+                    double d_born_i = ion_born_radius_cpp(i, t, cppargs);
+                    ion_part = (1.0 - 1.0 / born_state.eps_value) * cppargs.z[i] * cppargs.z[i] / d_born_i;
+                }
+                double eps_part = 0.0;
+                if (cppargs.born_diff_mode == 2) {
+                    eps_part = born_state.deps_dx[i] / (born_state.eps_value * born_state.eps_value);
+                } else if (cppargs.born_diff_mode == 3) {
+                    eps_part = 0.0;
+                } else {
+                    eps_part = born_state.charge_radius_sum * born_state.deps_dx[i] / (born_state.eps_value * born_state.eps_value);
+                }
+                result.dadx[i] = -Kborn * (ion_part + eps_part);
+            }
+        }
+    } else if (born_state.model == 2) {
+        const double eps_r_ion = 8.0;
+        const double Kborn = E_CHRG * E_CHRG / (4.0 * PI * kb * t * perm_vac);
+        result.ares = -Kborn * born_state.shell.sum_bracket;
+
+        if (cppargs.born_diff_mode == 1) {
+            result.dadx = contribution_dadx_fd_cpp(AresContributionKind::BORN, t, rho, x, cppargs, result.ares);
+        } else if (cppargs.born_diff_mode == 4) {
+            result.dadx = contribution_dadx_autodiff_cpp(AresContributionKind::BORN, t, rho, x, cppargs);
+        } else {
+            const double inv_eps2 = 1.0 / (born_state.eps_value * born_state.eps_value);
+            const double shell_coeff = 1.0 / eps_r_ion - 1.0 / born_state.eps_value;
+            const bool use_deps = (cppargs.mu_born_comp_dep_rel_perm != 0);
+            const bool use_shell_chain = (cppargs.mu_born_comp_dep_delta_d != 0);
+            const double deps_multiplier = (cppargs.mu_born_include_sum_term != 0) ? born_state.shell.sum_gap : 1.0;
+            for (int k = 0; k < ncomp; ++k) {
+                double direct_part = 0.0;
+                if (std::abs(cppargs.z[k]) > 1e-12) {
+                    direct_part = cppargs.z[k] * cppargs.z[k] * born_state.shell.bracket[k];
+                }
+                double deps_part = use_deps ? deps_multiplier * born_state.deps_dx[k] * inv_eps2 : 0.0;
+                double ddelta_part = use_shell_chain ? shell_coeff * born_state.shell.sum_dpref_over_D2 * born_state.shell.f_k[k] : 0.0;
+                result.dadx[k] = -Kborn * (direct_part + deps_part + ddelta_part);
+            }
+        }
+    } else if (born_state.model != 0) {
+        throw ValueError("Unknown born_model. Supported values are 0, 1, 2.");
+    }
+
+    for (int i = 0; i < ncomp; ++i) {
+        result.sum_x_dadx += x[i] * result.dadx[i];
+    }
+    return result;
+}

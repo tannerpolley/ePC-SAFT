@@ -97,3 +97,72 @@ IonIntermediateState ion_intermediate_state_cpp(
 
     return state;
 }
+
+// EqID: dadrho_dh_explicit
+double dadrho_ion_cpp(double t, const IonIntermediateState &ion_state) {
+    if (!ion_state.active) {
+        return 0.0;
+    }
+    return -ion_state.kappa / 24.0 / PI / kb / t / (ion_state.dielectric.eps * perm_vac) * ion_state.sigma_sum * E_CHRG * E_CHRG;
+}
+
+// EqID: dh_ares_dT
+double dadt_ion_cpp(const IonIntermediateState &ion_state, double t, const vector<double> &x, const add_args &cppargs) {
+    if (!ion_state.active) {
+        return 0.0;
+    }
+    vector<double> q(cppargs.z.begin(), cppargs.z.end());
+    for (double &qi : q) {
+        qi *= E_CHRG;
+    }
+    double dkappa_dt = -0.5 * ion_state.kappa / t;
+    double dadt_ion = 0.0;
+    for (int i = 0; i < static_cast<int>(x.size()); ++i) {
+        dadt_ion += x[i] * q[i] * q[i] * (ion_state.sigma_k[i] * dkappa_dt / t - ion_state.chi[i] * ion_state.kappa / (t * t));
+    }
+    return -1.0 / 12.0 / PI / kb / (ion_state.dielectric.eps * perm_vac) * dadt_ion;
+}
+
+// EqID: dh_ares_dxi
+ContributionDadxResult dadx_ion_cpp(const MixtureState &thermo, const IonIntermediateState &ion_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {
+    int ncomp = static_cast<int>(x.size());
+    ContributionDadxResult result;
+    result.dadx.assign(ncomp, 0.0);
+    if (cppargs.z.empty()) {
+        return result;
+    }
+
+    int dh_model = cppargs.DH_model;
+    if (dh_model == 2) {
+        throw ValueError("DH_model=2 (Bjerrum treatment) is reserved and not implemented.");
+    }
+    if ((dh_model != 0) && (dh_model != 1)) {
+        throw ValueError("Unknown DH_model. Supported values are 0, 1, and reserved 2.");
+    }
+    if (!ion_state.active) {
+        return result;
+    }
+
+    double K0 = E_CHRG * E_CHRG / (12.0 * PI * kb * t * perm_vac);
+    result.ares = -K0 * ion_state.kappa / ion_state.dielectric.eps * ion_state.chi_sum;
+    result.z = -ion_state.kappa / 24.0 / PI / kb / t / (ion_state.dielectric.eps * perm_vac) * ion_state.sigma_sum * E_CHRG * E_CHRG;
+
+    if (cppargs.mu_DH_diff_mode == 1) {
+        result.dadx = contribution_dadx_fd_cpp(AresContributionKind::ION, t, rho, x, cppargs, result.ares);
+    } else if (cppargs.mu_DH_diff_mode == 2) {
+        result.dadx = contribution_dadx_autodiff_cpp(AresContributionKind::ION, t, rho, x, cppargs);
+    } else {
+        const bool use_dh_deps = (cppargs.mu_DH_comp_dep_rel_perm != 0);
+        for (int i = 0; i < ncomp; ++i) {
+            double d_inv_eps_dx = use_dh_deps ? -ion_state.dielectric.deps_dx[i] / (ion_state.dielectric.eps * ion_state.dielectric.eps) : 0.0;
+            double term1 = (ion_state.dkappa_dx[i] / ion_state.dielectric.eps + ion_state.kappa * d_inv_eps_dx) * ion_state.chi_sum;
+            double term2 = ion_state.kappa / ion_state.dielectric.eps * ion_state.dchi_sum_dx[i];
+            result.dadx[i] = -K0 * (term1 + term2);
+        }
+    }
+
+    for (int i = 0; i < ncomp; ++i) {
+        result.sum_x_dadx += x[i] * result.dadx[i];
+    }
+    return result;
+}
