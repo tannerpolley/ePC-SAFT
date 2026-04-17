@@ -2,220 +2,102 @@
 
 ## Summary
 
-This document is a handoff plan for replacing the current Python/SciPy regression workflow with a native C++ regression engine built on IPOPT, while keeping a thin Python API wrapper for user-facing calls and results.
+ePC-SAFT now ships a native C++ IPOPT-backed regression path for the public `fit_pure_neutral(...)` workflow.
 
-The first implementation scope is intentionally narrow:
+The package no longer uses a Python/SciPy optimization loop for the supported regression surface. Python remains responsible for record loading, argument normalization, result packaging, and dataset write-back, while the optimization model and solver callbacks live in the native runtime.
 
-- pure-neutral fitting only
+## Implemented v1 Scope
+
+The first supported regression phase is intentionally narrow:
+
+- one nonassociating neutral component only
 - fitted parameters limited to \(m\), \(s\), and \(e\)
-- weighted least-squares objective over liquid-density and pure-VLE fugacity-balance data
-- exact first derivatives in production
-- staged formulation where density remains a nested native solve in v1, with explicit density NLP variables deferred to a later phase
+- weighted least-squares objective over two residual families:
+  - liquid-density residuals
+  - pure-VLE fugacity-balance residuals
+- exact first derivatives
+- density retained as a nested native solve
+- IPOPT configured with limited-memory Hessian approximation
 
-The goal is to make ePC-SAFT own its regression toolkit directly rather than trying to force the runtime into `parmest`. Useful `parmest` ideas should still be borrowed where they improve the workflow, especially typed experiment organization, structured results, and future extensibility for uncertainty analysis.
+Ion regression, binary regression, associating pure-neutral regression, covariance estimation, bootstrap workflows, and explicit density-constrained NLP formulations remain deferred.
 
-## Architecture
+## Native Ownership
 
-### Native Regression Subsystem
+The native regression layer lives in `src/epcsaft/native/epcsaft_regression.cpp` and is linked directly into the main `epcsaft.epcsaft` extension.
 
-Add a dedicated native regression subsystem with the following responsibilities:
+Core responsibilities of that layer:
 
-- typed regression record and residual-family data structures
-- normalized regression problem/config structs
-- residual evaluator that calls the native EOS runtime
-- IPOPT `Ipopt::TNLP` adapter
-- native solver/result payload
+- typed density and pure-VLE record structs
+- deterministic multistart generation
+- IPOPT `Ipopt::TNLP` implementation
+- exact reduced-space objective/gradient evaluation
+- native result payloads for fitted values, family metrics, and solver statistics
 
-This subsystem should live separately from the core EOS property runtime conceptually, even if it reuses the existing native mixture and state code heavily.
+The public Python wrapper in `src/epcsaft/regression.py` now:
 
-### Optional IPOPT-Linked Extension
+- normalizes flat records
+- resolves fixed pure-component metadata
+- prepares bounds and initial guesses
+- marshals payloads into the Cython/native seam
+- repackages the native solver result into `FitResult`
 
-IPOPT support should be compiled as an optional feature. The core EOS extension must remain buildable and importable without IPOPT installed.
+## Exact-Derivative Strategy
 
-The recommended structure is:
+The v1 implementation uses exact first derivatives.
 
-- keep the current core `epcsaft.epcsaft` extension independent of IPOPT
-- add a separate optional regression-linked extension or native bridge that links against IPOPT
-- expose a runtime capability check so regression calls fail clearly when the package was built without IPOPT support
+Parameter sensitivities for \(m\), \(s\), and \(e\) are evaluated through repeated forward-mode autodiff passes in the native property model. Density-coupled terms use implicit differentiation after the nested density closure converges:
 
-This keeps ordinary installs lightweight and avoids making the baseline thermodynamic runtime depend on solver toolchain availability.
+\[
+\frac{\mathrm{d}\rho}{\mathrm{d}\theta}
+=
+-\frac{\partial p / \partial \theta}{\partial p / \partial \rho}
+\]
 
-### Thin Python Wrapper
+That exact \(\partial p / \partial \rho\) path is evaluated in the native regression/property seam rather than reusing the finite-difference validator logic from the density root checker.
 
-Keep the current public Python regression surface, but make it a thin wrapper over the native engine:
+## Failure Handling
+
+The native IPOPT callbacks do not synthesize large penalty residuals. If the EOS or density closure cannot be evaluated safely at a trial point, the native callback reports an evaluation failure to IPOPT.
+
+This keeps invalid thermodynamic regions out of the objective algebra and makes the reduced-space NLP behavior more defensible.
+
+## Build and Packaging
+
+IPOPT is now a required build dependency for the package.
+
+The supported developer path is the active Conda environment, with IPOPT headers and libraries discovered from that environment first. On Windows, the current build resolves IPOPT from locations under `%CONDA_PREFIX%\\Library\\include` and `%CONDA_PREFIX%\\Library\\lib`.
+
+The package build now fails early with an actionable message when IPOPT headers or libraries are missing.
+
+## Public API
+
+The public regression surface remains:
 
 - `fit_pure_neutral(...)`
+- `FitBounds`
 - `FitProblem`
 - `FitResult`
 - `load_regression_records(...)`
 - `write_fit_result(...)`
 
-The Python layer should remain responsible for:
+`FitResult` keeps the existing compatibility fields such as `cost`, `status`, `message`, and `nfev`, and now also reports `backend="ipopt_native"`.
 
-- user-facing argument normalization
-- CSV/tabular record loading
-- result-object rendering
-- dataset write-back helpers
+## Validation
 
-The Python layer should not remain the owner of the optimization loop.
+The current cutover is validated by:
 
-## Optimization Formulation
+- editable build/import of the main extension with IPOPT linked
+- hydrocarbon methane/ethane/propane benchmark parity checks
+- regression API contract tests
+- native exact-gradient validation against finite differences on a representative pure-neutral case
 
-### v1 Decision Variables
+## Deferred Work
 
-The v1 IPOPT model should optimize only the fitted pure-component parameters:
+The main deferred extensions after v1 are:
 
-\[
-\theta = [m, s, e]
-\]
-
-with simple bound constraints.
-
-### Objective
-
-Use weighted least squares over typed residual families:
-
-\[
-\min_{\theta} \; \frac{1}{2} \sum_i w_i r_i(\theta)^2
-\]
-
-where the v1 residual families are:
-
-- density residuals
-- pure-VLE fugacity-balance residuals
-
-The weighting and residual-family bookkeeping should be explicit in the native problem representation, not implied by ad hoc array concatenation.
-
-### Density Handling
-
-Use the staged formulation selected for this effort:
-
-- v1 keeps density as a nested native solve using the existing root-selection and stability logic
-- a later v2 may promote density to an explicit NLP variable with closure constraints
-
-This means IPOPT sees only parameter variables in v1, while the density closure remains internal to the EOS runtime.
-
-### Failure Handling
-
-Do not preserve the current large-penalty style used in the Python regression workflow. Invalid thermodynamic evaluations should instead be treated as solver-evaluation failures, with the implementation relying on:
-
-- conservative parameter bounds
-- reasonable initial guesses
-- record pre-screening
-- deterministic multistart logic outside IPOPT
-
-This avoids hiding invalid regions behind arbitrary penalty residuals.
-
-## Derivatives
-
-### First Derivatives
-
-Production v1 should use exact first derivatives. Do not rely on finite-difference gradients as the main implementation path.
-
-The current native code already contains autodiff infrastructure, but it is mainly oriented around existing composition/dielectric derivative paths rather than direct regression sensitivities. The regression implementation should extend that infrastructure to support parameter sensitivities for:
-
-- \(m\)
-- \(s\)
-- \(e\)
-
-### Density Sensitivities
-
-For density-based residuals, compute \(\mathrm{d}\rho / \mathrm{d}\theta\) through implicit differentiation of the pressure-density closure after the nested density solve converges.
-
-This keeps the v1 formulation reduced-space while still giving exact first derivatives to IPOPT.
-
-### Pure-VLE Sensitivities
-
-For the pure-VLE fugacity-balance residuals, compute exact derivatives by combining:
-
-- native autodiff for direct property sensitivities
-- chain-rule terms through the liquid and vapor density closures
-
-### Second Derivatives
-
-Use IPOPT with limited-memory Hessian approximation in v1:
-
-- `hessian_approximation=limited-memory`
-
-Exact Hessians are explicitly deferred.
-
-## Parmest-Inspired Ideas To Keep
-
-Do not use `parmest` directly, but retain the useful design ideas that fit a native ePC-SAFT workflow:
-
-- typed experiment/record organization
-- explicit residual-family grouping
-- structured fit results with family metrics and solver statistics
-- a clean future seam for covariance, bootstrap, and leave-out workflows
-
-These should be treated as architecture cues, not as a requirement to model the runtime as a Pyomo experiment system.
-
-## Build and Packaging
-
-IPOPT support is optional and should be documented that way.
-
-### Supported Build Path
-
-The primary supported build path should be a Conda environment that already provides IPOPT headers and libraries. This is the most practical route for the current repo and developer environment.
-
-### Non-IPOPT Builds
-
-The package must still:
-
-- build cleanly without IPOPT
-- import cleanly without IPOPT
-- expose a clear actionable error when a regression call requires native IPOPT support but the installed build does not include it
-
-### Build-System Implications
-
-Any native-source split required by the new regression layer must also update the repo’s editable-build tracking, especially:
-
-- `setup.py`
-- `scripts/build_epcsaft.py`
-
-so the tracked translation units and rebuild-stamp logic remain correct.
-
-## Test Plan
-
-### Build and Import
-
-- build without IPOPT installed
-- build with IPOPT installed
-- verify non-regression imports work in both cases
-- verify regression entrypoints raise a clear error in non-IPOPT builds
-
-### Derivative Verification
-
-- compare native exact gradients against finite differences on representative pure-neutral records
-- add a debug-only small-case path that enables IPOPT’s derivative checker
-
-### End-to-End Regression
-
-- run the methane/ethane/propane pure-neutral benchmark through the native IPOPT path
-- require parity with the current expected fit tolerances and residual metrics
-- verify deterministic multistart selection
-
-### API Compatibility
-
-- keep `FitProblem` and `FitResult` close enough to the current public contract that existing downstream usage remains straightforward
-- keep `write_fit_result(...)` working as a Python-side dataset persistence helper
-- keep `fit_pure_ion(...)` and `fit_binary_pair(...)` as explicit deferred surfaces
-
-## Assumptions
-
-- No standalone CLI is included in v1.
-- `write_fit_result(...)` remains Python-side even after optimization moves native.
-- SciPy can remain in the project temporarily during migration and be removed only after the native regression cutover is complete.
-- Electrolyte fitting, binary fitting, covariance estimation, bootstrap workflows, leave-out workflows, and explicit density-constraint NLP formulations are deferred.
-- The handoff target is another implementation-capable thread/worktree, so this document is written to be self-contained without depending on chat context.
-
-## Acceptance Criteria
-
-The first implementation phase is complete when all of the following are true:
-
-- ePC-SAFT has a native IPOPT-backed regression engine for pure-neutral fitting
-- the public Python API remains a thin wrapper rather than the owner of the optimization loop
-- v1 uses exact first derivatives
-- v1 keeps density as a nested native solve
-- IPOPT remains an optional build dependency
-- the methane/ethane/propane benchmark passes through the new path with expected parity
+- associating pure-neutral regression
+- ion and binary regression
+- exact Hessians
+- covariance / bootstrap / uncertainty workflows
+- explicit density-variable NLP formulations
+- broader regression record families beyond liquid density and pure-VLE fugacity balance

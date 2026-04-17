@@ -64,7 +64,7 @@ The main entry points are `ePCSAFTMixture`, `ePCSAFTState`, `create_parameter_te
 
 `create_parameter_template(...)` creates a blank dataset folder with the expected `pure/`, `mixed/`, and `user_options.json` layout. After you fill in the files, `ePCSAFTMixture.from_dataset(...)` can load the folder path you created yourself. If you are working from a checkout of this repository, the example folders under `data/epcsaft_parameters/` are available for inspection and comparison.
 
-Phase 1 of the regression workflow is intentionally narrow: `fit_pure_neutral(...)` fits only neutral-component `m`, `s`, and `e` against liquid-density and vapor-pressure data. Use `write_fit_result(...)` when you want to persist a fit back into a user-owned dataset folder. Ion and binary regression are deferred for now.
+Phase 1 of the regression workflow is intentionally narrow: `fit_pure_neutral(...)` fits only nonassociating neutral-component `m`, `s`, and `e` against liquid-density and vapor-pressure data. The public Python surface stays the same, but the optimizer now runs natively through IPOPT linked into the main package extension. Use `write_fit_result(...)` when you want to persist a fit back into a user-owned dataset folder. Ion and binary regression are deferred for now.
 
 ## Documentation
 

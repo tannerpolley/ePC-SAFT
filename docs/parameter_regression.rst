@@ -6,8 +6,17 @@ Phase 1 of the regression workflow is intentionally narrow:
 - supported workflow: ``fit_pure_neutral(...)``
 - supported targets: ``m``, ``s``, and ``e``
 - supported property basis: liquid density and vapor pressure for one neutral component
+- implementation owner: native C++ IPOPT inside the main ``epcsaft.epcsaft`` extension
+- current model restriction: nonassociating neutral pure-component fits only
 
 Ion and binary regression are deferred until a later phase.
+
+Build prerequisite
+------------------
+
+The package now expects IPOPT to be available at build time. The supported developer path is the active Conda environment, with IPOPT headers and libraries resolved from that environment.
+
+The public Python call shape stays the same, but the optimization loop itself is no longer Python/SciPy-owned.
 
 Current data basis
 ------------------
@@ -85,6 +94,7 @@ Phase-1 rules:
 
 - only ``m``, ``s``, and ``e`` are fitted
 - other pure-component fields are treated as fixed metadata
+- the objective and exact first derivatives are evaluated natively
 - the fit is read-only until you explicitly call ``write_fit_result(...)``
 
 Inspect the result
@@ -93,6 +103,7 @@ Inspect the result
 .. code-block:: python
 
    print(result.success)
+   print(result.backend)
    print(result.fitted_values)
    print(result.metrics_by_term)
 
