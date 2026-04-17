@@ -123,6 +123,23 @@ struct FugacityContributionResult {
     CompositionContributionResult composition;
 };
 
+struct ReferenceStateKey {
+    double t = 0.0;
+    double p = 0.0;
+    int phase = 0;
+    vector<double> x_ref;
+};
+
+struct ReferenceStateValue {
+    double rho = 0.0;
+    vector<double> fugcoef;
+};
+
+struct ReferenceStateCacheEntry {
+    ReferenceStateKey key;
+    ReferenceStateValue value;
+};
+
 class ePCSAFTMixtureNative;
 
 class ePCSAFTStateNative {
@@ -190,6 +207,15 @@ public:
     const vector<int>& pair_anion_indices() const;
     const vector<int>& pair_nu_cation() const;
     const vector<int>& pair_nu_anion() const;
+    double solve_density(double t, double p, const vector<double>& x, int phase);
+    bool lookup_reference_state(const ReferenceStateKey& key, ReferenceStateValue* out);
+    void store_reference_state(const ReferenceStateKey& key, const ReferenceStateValue& value);
+    void clear_runtime_caches();
+    void reset_runtime_cache_stats();
+    size_t reference_state_cache_hits() const;
+    size_t reference_state_cache_misses() const;
+    size_t density_warm_start_hits() const;
+    size_t density_warm_start_fallbacks() const;
 
 private:
     add_args args_;
@@ -201,6 +227,15 @@ private:
     vector<int> pair_anion_indices_;
     vector<int> pair_nu_cation_;
     vector<int> pair_nu_anion_;
+    vector<ReferenceStateCacheEntry> reference_state_cache_;
+    double liquid_density_seed_ = 0.0;
+    double vapor_density_seed_ = 0.0;
+    bool liquid_density_seed_valid_ = false;
+    bool vapor_density_seed_valid_ = false;
+    size_t reference_state_cache_hits_ = 0;
+    size_t reference_state_cache_misses_ = 0;
+    size_t density_warm_start_hits_ = 0;
+    size_t density_warm_start_fallbacks_ = 0;
 };
 
 double Z_cpp(double t, double rho, vector<double> x, const add_args &cppargs);

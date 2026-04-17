@@ -129,6 +129,23 @@ cdef class ePCSAFTMixture:
         """Return the number of components in the mixture."""
         return int(self._native.get().ncomp())
 
+    def clear_runtime_caches(self):
+        """Clear internal runtime caches used for repeated state/reference evaluations."""
+        self._native.get().clear_runtime_caches()
+
+    def reset_runtime_cache_stats(self):
+        """Reset runtime cache hit/fallback counters without clearing cached values."""
+        self._native.get().reset_runtime_cache_stats()
+
+    def runtime_cache_stats(self):
+        """Return native runtime cache counters for profiling and validation."""
+        return {
+            "reference_state_cache_hits": int(self._native.get().reference_state_cache_hits()),
+            "reference_state_cache_misses": int(self._native.get().reference_state_cache_misses()),
+            "density_warm_start_hits": int(self._native.get().density_warm_start_hits()),
+            "density_warm_start_fallbacks": int(self._native.get().density_warm_start_fallbacks()),
+        }
+
     def state(self, T, x, P=None, rho=None, phase="liq"):
         """Create an immutable thermodynamic state for the mixture.
 

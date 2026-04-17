@@ -156,6 +156,12 @@ cdef extern from "epcsaft_electrolyte.h":
         shared_ptr[ePCSAFTStateNative] state(double t, vector[double] x, int phase,
                                            bool has_p, double p, bool has_rho, double rho)
         size_t ncomp() const
+        void clear_runtime_caches()
+        void reset_runtime_cache_stats()
+        size_t reference_state_cache_hits() const
+        size_t reference_state_cache_misses() const
+        size_t density_warm_start_hits() const
+        size_t density_warm_start_fallbacks() const
 
 
 

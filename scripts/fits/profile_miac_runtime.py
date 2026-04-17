@@ -92,6 +92,35 @@ def _bench(name: str, fn: Callable[[], object], repeats: int, warmup: int = 1, m
     return row
 
 
+def _capture_cache_profile(
+    name: str,
+    fn: Callable[[], object],
+    mixture,
+    meta: Dict[str, object] | None = None,
+) -> dict:
+    mixture.clear_runtime_caches()
+    mixture.reset_runtime_cache_stats()
+    t0 = time.perf_counter()
+    fn()
+    elapsed_ms = _to_ms(time.perf_counter() - t0)
+    stats = dict(mixture.runtime_cache_stats())
+    row = {
+        "name": str(name),
+        "repeats": 1,
+        "first_ms": float(elapsed_ms),
+        "mean_ms": float(elapsed_ms),
+        "median_ms": float(elapsed_ms),
+        "p95_ms": float(elapsed_ms),
+        "min_ms": float(elapsed_ms),
+        "max_ms": float(elapsed_ms),
+        "first_over_median": 1.0,
+        **stats,
+    }
+    if meta:
+        row.update(meta)
+    return row
+
+
 def _find_combo(solvent_system: str, salt: str, comp_signature=None) -> Dict[str, object]:
     for combo in vmf.discover_combos(solvent_scope=solvent_system, salt_scope=salt):
         if comp_signature is None:
@@ -130,6 +159,34 @@ def _profile_combo(
             meta={"case": label, "dataset": dataset_name, "category": "payload"},
         )
     ]
+
+    def _state_sweep():
+        for molality in molal_grid:
+            x_eval = vmf._molality_to_molefraction_combo(float(molality), salt, solvent_system, comp)
+            mixture.state(T=vmf.T_REF, x=x_eval, P=vmf.P_REF, phase="liq")
+
+    def _miac_sweep():
+        for molality in molal_grid:
+            x_eval = vmf._molality_to_molefraction_combo(float(molality), salt, solvent_system, comp)
+            state_eval = mixture.state(T=vmf.T_REF, x=x_eval, P=vmf.P_REF, phase="liq")
+            state_eval.activity_coefficient(species=species, mean_ionic_form=True, basis="molality")[pair_key]
+
+    rows.extend(
+        [
+            _capture_cache_profile(
+                f"{label}.sweep.state_from_pressure[{grid_points}]",
+                _state_sweep,
+                mixture,
+                meta={"case": label, "dataset": dataset_name, "category": "cache"},
+            ),
+            _capture_cache_profile(
+                f"{label}.sweep.activity_mean_ionic_molality[{grid_points}]",
+                _miac_sweep,
+                mixture,
+                meta={"case": label, "dataset": dataset_name, "category": "cache"},
+            ),
+        ]
+    )
     payload = vmf.prepare_combo_payload(combo, grid_points=grid_points)
     rows.extend(
         [
@@ -205,13 +262,17 @@ def _profile_combo(
     x_ms = _row_named("point.mole_fraction_conversion")["mean_ms"]
     fug_ms = _row_named("point.fugacity_coefficient")["mean_ms"]
     osm_ms = _row_named("point.osmotic_coefficient")["mean_ms"]
+    sweep_state = _row_named(f"sweep.state_from_pressure[{grid_points}]")
+    sweep_miac = _row_named(f"sweep.activity_mean_ionic_molality[{grid_points}]")
 
     approx_curve_ms = float(grid_points) * (state_ms + gamma_ms)
     notes = [
         f"{label}: prepare_combo_payload[{grid_points}] averages {payload_ms:.1f} ms; the rendered plot itself is only about {plot_ms:.1f} ms, so plotting is not the bottleneck.",
         f"{label}: per-point work is dominated by state_from_pressure ({state_ms:.2f} ms) and activity_mean_ionic_molality ({gamma_ms:.2f} ms); mole-fraction conversion is only {x_ms:.3f} ms.",
-        f"{label}: activity_mean_ionic_molality ({gamma_ms:.2f} ms) is roughly {gamma_ms / max(fug_ms, 1.0e-12):.0f}x the plain fugacity_coefficient call ({fug_ms:.3f} ms), which indicates the internal infinite-dilution reference-state work still dominates the activity path.",
+        f"{label}: activity_mean_ionic_molality ({gamma_ms:.2f} ms) is roughly {gamma_ms / max(fug_ms, 1.0e-12):.0f}x the plain fugacity_coefficient call ({fug_ms:.3f} ms); after cache reuse, the remaining overhead is now the small extra reference/basis algebra rather than repeated reference-state solves.",
         f"{label}: one model curve of {grid_points} points costs about {approx_curve_ms/1000.0:.2f} s from just the repeated pressure-state plus activity calls before Python bookkeeping or plotting.",
+        f"{label}: cached state sweep over {grid_points} points saw {int(sweep_state['density_warm_start_hits'])} density warm-start hits and {int(sweep_state['density_warm_start_fallbacks'])} fallbacks.",
+        f"{label}: cached mean-ionic sweep over {grid_points} points saw {int(sweep_miac['reference_state_cache_hits'])} reference-state cache hits, {int(sweep_miac['reference_state_cache_misses'])} misses, {int(sweep_miac['density_warm_start_hits'])} density warm-start hits, and {int(sweep_miac['density_warm_start_fallbacks'])} fallbacks.",
     ]
     if osm_ms > gamma_ms * 0.5:
         notes.append(f"{label}: osmotic_coefficient remains expensive ({osm_ms:.2f} ms) relative to activity, so any MIAC path that re-enters auxiliary electrolyte properties will be slow.")
@@ -234,6 +295,10 @@ def _write_reports(rows: List[dict], notes: List[str], grid_points: int, repeats
         "min_ms",
         "max_ms",
         "first_over_median",
+        "reference_state_cache_hits",
+        "reference_state_cache_misses",
+        "density_warm_start_hits",
+        "density_warm_start_fallbacks",
     ]
     with REPORT_CSV.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)

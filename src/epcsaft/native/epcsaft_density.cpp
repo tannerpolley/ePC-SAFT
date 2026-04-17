@@ -196,6 +196,133 @@ bool density_root_valid_cpp(
     return true;
 }
 
+bool density_root_from_seed_cpp(
+    double t,
+    double p,
+    const vector<double> &x,
+    int phase,
+    const add_args &cppargs,
+    double rho_seed,
+    DensityRootCandidate *candidate,
+    double *rho_root_out
+) {
+    if (!(std::isfinite(rho_seed) && rho_seed > 0.0)) {
+        return false;
+    }
+
+    const int ncomp = static_cast<int>(x.size());
+    const double nu_min = 1e-13;
+    const double nu_max = 0.7405 - 1e-4;
+    const double rho_min = reduced_density_to_molar(nu_min, t, ncomp, x, cppargs);
+    const double rho_max = reduced_density_to_molar(nu_max, t, ncomp, x, cppargs);
+    if (!(std::isfinite(rho_min) && std::isfinite(rho_max) && rho_max > rho_min)) {
+        return false;
+    }
+
+    auto try_residual = [&](double rho, double *resid_out) -> bool {
+        try {
+            double resid = density_root_residual_cpp(rho, t, p, x, cppargs);
+            if (!std::isfinite(resid)) {
+                return false;
+            }
+            *resid_out = resid;
+            return true;
+        }
+        catch (const std::exception&) {
+            return false;
+        }
+    };
+
+    rho_seed = std::max(rho_min, std::min(rho_seed, rho_max));
+    double resid_seed = 0.0;
+    if (try_residual(rho_seed, &resid_seed)) {
+        DensityRootCandidate seed_candidate;
+        if (density_root_valid_cpp(t, p, x, cppargs, rho_seed, &seed_candidate)) {
+            if (candidate != nullptr) {
+                *candidate = seed_candidate;
+                candidate->rho_sort = rho_seed;
+            }
+            if (rho_root_out != nullptr) {
+                *rho_root_out = rho_seed;
+            }
+            return true;
+        }
+    }
+
+    double rho_lo = std::max(rho_min, rho_seed / 1.5);
+    double rho_hi = std::min(rho_max, rho_seed * 1.5);
+    double resid_lo = 0.0;
+    double resid_hi = 0.0;
+    bool have_lo = try_residual(rho_lo, &resid_lo);
+    bool have_hi = try_residual(rho_hi, &resid_hi);
+
+    const double expand_factor = 1.8;
+    const int max_expansions = 14;
+    bool bracketed = false;
+    for (int iter = 0; iter < max_expansions; ++iter) {
+        if (have_lo && have_hi && resid_lo * resid_hi < 0.0) {
+            bracketed = true;
+            break;
+        }
+        if (have_lo && try_residual(rho_seed, &resid_seed) && resid_lo * resid_seed < 0.0) {
+            rho_hi = rho_seed;
+            resid_hi = resid_seed;
+            bracketed = true;
+            break;
+        }
+        if (have_hi && try_residual(rho_seed, &resid_seed) && resid_seed * resid_hi < 0.0) {
+            rho_lo = rho_seed;
+            resid_lo = resid_seed;
+            bracketed = true;
+            break;
+        }
+
+        bool expanded = false;
+        if (rho_lo > rho_min * (1.0 + 1e-12)) {
+            double next_lo = std::max(rho_min, rho_lo / expand_factor);
+            if (next_lo < rho_lo) {
+                rho_lo = next_lo;
+                have_lo = try_residual(rho_lo, &resid_lo);
+                expanded = true;
+            }
+        }
+        if (rho_hi < rho_max * (1.0 - 1e-12)) {
+            double next_hi = std::min(rho_max, rho_hi * expand_factor);
+            if (next_hi > rho_hi) {
+                rho_hi = next_hi;
+                have_hi = try_residual(rho_hi, &resid_hi);
+                expanded = true;
+            }
+        }
+        if (!expanded) {
+            break;
+        }
+    }
+
+    if (!bracketed) {
+        return false;
+    }
+
+    try {
+        double rho_root = density_brent_cpp(t, p, x, phase, cppargs, rho_lo, rho_hi, DBL_EPSILON, 1e-14, 200);
+        DensityRootCandidate root_candidate;
+        if (!density_root_valid_cpp(t, p, x, cppargs, rho_root, &root_candidate)) {
+            return false;
+        }
+        root_candidate.rho_sort = rho_root;
+        if (candidate != nullptr) {
+            *candidate = root_candidate;
+        }
+        if (rho_root_out != nullptr) {
+            *rho_root_out = rho_root;
+        }
+        return true;
+    }
+    catch (const std::exception&) {
+        return false;
+    }
+}
+
 double den_cpp(double t, double p, vector<double> x, int phase, const add_args &cppargs) {
     /**
     Solve for the molar density when temperature and pressure are given.

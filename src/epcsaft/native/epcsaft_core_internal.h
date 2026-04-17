@@ -229,6 +229,16 @@ void refine_density_brackets_cpp(
     vector<DensityBracket> &refined_brackets
 );
 bool density_root_valid_cpp(double t, double p, const vector<double> &x, const add_args &cppargs, double rho, DensityRootCandidate *candidate);
+bool density_root_from_seed_cpp(
+    double t,
+    double p,
+    const vector<double> &x,
+    int phase,
+    const add_args &cppargs,
+    double rho_seed,
+    DensityRootCandidate *candidate,
+    double *rho_root_out
+);
 inline bool is_ion_species(const add_args &cppargs, int i) { return std::abs(cppargs.z[i]) > 1e-12; }
 double ion_diameter_cpp(int i, double t, const add_args &cppargs);
 double ion_diameter_cpp_dt(int i, double t, const add_args &cppargs);
@@ -271,6 +281,7 @@ ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t,
 FugacityContributionResult fugacity_coefficient_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 ScalarContributionTerms temperature_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 ActivityCoefficientNative activity_coefficient_values_cpp(
+    ePCSAFTMixtureNative* mixture,
     double t,
     double rho,
     double p,

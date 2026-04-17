@@ -4,6 +4,10 @@ using namespace thermo_detail;
 
 namespace {
 
+constexpr double kReferenceCacheScalarTol = 1e-12;
+constexpr double kReferenceCacheVectorTol = 1e-10;
+constexpr size_t kReferenceStateCacheMaxEntries = 32;
+
 int gcd_int(int a, int b) {
     a = std::abs(a);
     b = std::abs(b);
@@ -55,6 +59,33 @@ void build_charge_metadata_cpp(
             pair_nu_anion.push_back(zc / g);
         }
     }
+}
+
+bool nearly_equal_cpp(double a, double b, double atol, double rtol)
+{
+    return std::abs(a - b) <= (atol + rtol * std::max(std::abs(a), std::abs(b)));
+}
+
+bool reference_state_key_matches_cpp(const ReferenceStateKey& lhs, const ReferenceStateKey& rhs)
+{
+    if (lhs.phase != rhs.phase) {
+        return false;
+    }
+    if (!nearly_equal_cpp(lhs.t, rhs.t, kReferenceCacheScalarTol, kReferenceCacheScalarTol)) {
+        return false;
+    }
+    if (!nearly_equal_cpp(lhs.p, rhs.p, kReferenceCacheScalarTol, kReferenceCacheScalarTol)) {
+        return false;
+    }
+    if (lhs.x_ref.size() != rhs.x_ref.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < lhs.x_ref.size(); ++i) {
+        if (!nearly_equal_cpp(lhs.x_ref[i], rhs.x_ref[i], kReferenceCacheVectorTol, kReferenceCacheVectorTol)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 }  // namespace
@@ -153,6 +184,113 @@ std::shared_ptr<ePCSAFTStateNative> ePCSAFTMixtureNative::state(double t, vector
     return std::make_shared<ePCSAFTStateNative>(shared_from_this(), t, std::move(x), phase, has_p, p, has_rho, rho);
 }
 
+double ePCSAFTMixtureNative::solve_density(double t, double p, const vector<double>& x, int phase)
+{
+    const add_args& cppargs = args_;
+    double* seed = nullptr;
+    bool* seed_valid = nullptr;
+    if (phase == 0) {
+        seed = &liquid_density_seed_;
+        seed_valid = &liquid_density_seed_valid_;
+    }
+    else if (phase == 1) {
+        seed = &vapor_density_seed_;
+        seed_valid = &vapor_density_seed_valid_;
+    }
+
+    if (seed != nullptr && seed_valid != nullptr && *seed_valid && std::isfinite(*seed) && *seed > 0.0) {
+        DensityRootCandidate candidate;
+        double rho_root = 0.0;
+        if (density_root_from_seed_cpp(t, p, x, phase, cppargs, *seed, &candidate, &rho_root)) {
+            *seed = rho_root;
+            density_warm_start_hits_ += 1;
+            return rho_root;
+        }
+        density_warm_start_fallbacks_ += 1;
+    }
+
+    double rho = den_cpp(t, p, x, phase, cppargs);
+    if (seed != nullptr && seed_valid != nullptr && std::isfinite(rho) && rho > 0.0) {
+        *seed = rho;
+        *seed_valid = true;
+    }
+    return rho;
+}
+
+bool ePCSAFTMixtureNative::lookup_reference_state(const ReferenceStateKey& key, ReferenceStateValue* out)
+{
+    for (auto it = reference_state_cache_.begin(); it != reference_state_cache_.end(); ++it) {
+        if (!reference_state_key_matches_cpp(it->key, key)) {
+            continue;
+        }
+        ReferenceStateCacheEntry entry = *it;
+        reference_state_cache_.erase(it);
+        reference_state_cache_.push_back(entry);
+        if (out != nullptr) {
+            *out = entry.value;
+        }
+        reference_state_cache_hits_ += 1;
+        return true;
+    }
+    reference_state_cache_misses_ += 1;
+    return false;
+}
+
+void ePCSAFTMixtureNative::store_reference_state(const ReferenceStateKey& key, const ReferenceStateValue& value)
+{
+    for (auto it = reference_state_cache_.begin(); it != reference_state_cache_.end(); ++it) {
+        if (!reference_state_key_matches_cpp(it->key, key)) {
+            continue;
+        }
+        it->value = value;
+        ReferenceStateCacheEntry entry = *it;
+        reference_state_cache_.erase(it);
+        reference_state_cache_.push_back(entry);
+        return;
+    }
+    if (reference_state_cache_.size() >= kReferenceStateCacheMaxEntries) {
+        reference_state_cache_.erase(reference_state_cache_.begin());
+    }
+    reference_state_cache_.push_back(ReferenceStateCacheEntry{key, value});
+}
+
+void ePCSAFTMixtureNative::clear_runtime_caches()
+{
+    reference_state_cache_.clear();
+    liquid_density_seed_ = 0.0;
+    vapor_density_seed_ = 0.0;
+    liquid_density_seed_valid_ = false;
+    vapor_density_seed_valid_ = false;
+}
+
+void ePCSAFTMixtureNative::reset_runtime_cache_stats()
+{
+    reference_state_cache_hits_ = 0;
+    reference_state_cache_misses_ = 0;
+    density_warm_start_hits_ = 0;
+    density_warm_start_fallbacks_ = 0;
+}
+
+size_t ePCSAFTMixtureNative::reference_state_cache_hits() const
+{
+    return reference_state_cache_hits_;
+}
+
+size_t ePCSAFTMixtureNative::reference_state_cache_misses() const
+{
+    return reference_state_cache_misses_;
+}
+
+size_t ePCSAFTMixtureNative::density_warm_start_hits() const
+{
+    return density_warm_start_hits_;
+}
+
+size_t ePCSAFTMixtureNative::density_warm_start_fallbacks() const
+{
+    return density_warm_start_fallbacks_;
+}
+
 ePCSAFTStateNative::ePCSAFTStateNative(std::shared_ptr<ePCSAFTMixtureNative> mixture, double t, vector<double> x,
     int phase, bool has_p, double p, bool has_rho, double rho)
     : mixture_(std::move(mixture)), t_(t), x_(std::move(x)), phase_(phase),
@@ -169,8 +307,7 @@ ePCSAFTStateNative::ePCSAFTStateNative(std::shared_ptr<ePCSAFTMixtureNative> mix
         throw ValueError("phase must be 0 (liquid) or 1 (vapor).");
     }
     if (pressure_cached_ && !density_cached_) {
-        const add_args& args = mixture_->args();
-        rho_ = den_cpp(t_, p_, x_, phase_, args);
+        rho_ = mixture_->solve_density(t_, p_, x_, phase_);
         has_rho_ = true;
         density_cached_ = true;
     }
@@ -213,8 +350,7 @@ double ePCSAFTStateNative::density()
     if (!pressure_cached_) {
         throw ValueError("ePCSAFTStateNative cannot compute density without pressure or density data.");
     }
-    const add_args& args = mixture_->args();
-    rho_ = den_cpp(t_, p_, x_, phase_, args);
+    rho_ = mixture_->solve_density(t_, p_, x_, phase_);
     density_cached_ = true;
     return rho_;
 }
@@ -361,6 +497,7 @@ ActivityCoefficientNative ePCSAFTStateNative::activity_coefficient_native(
     double rho = density();
     double p = pressure();
     ActivityCoefficientNative out = activity_coefficient_values_cpp(
+        mixture_.get(),
         t_, rho, p, phase_, x_, args,
         mixture_->cation_indices(),
         mixture_->anion_indices(),
