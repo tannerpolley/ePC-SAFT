@@ -143,7 +143,7 @@ def _curve_for_mode(model_mode: str, x_il_grid: np.ndarray) -> tuple[np.ndarray,
             dadx_ion = np.asarray(terms['dadx_ion'], dtype=float)
             dadx_cat[idx] = float(dadx_ion[CATION_INDEX])
             dadx_manual[idx] = _manual_dadx_binary_path(model_mode, float(x_il))
-            lnfug_cat[idx] = float(np.asarray(terms['lnfugcoef'], dtype=float)[CATION_INDEX])
+            lnfug_cat[idx] = float(np.asarray(terms['lnfugcoef_total'], dtype=float)[CATION_INDEX])
         except Exception:
             continue
     return dadx_cat, dadx_manual, lnfug_cat
