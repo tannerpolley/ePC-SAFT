@@ -61,7 +61,9 @@ def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
     section_blocks = []
     for index, (name, paths) in enumerate(sections, start=1):
         anchor = f"section-{index}"
-        toc_items.append(f'        <a href="#{anchor}">{html.escape(name)}</a>')
+        toc_items.append(
+            f'        <button type="button" class="section-button" data-target="{html.escape(anchor)}">{html.escape(name)}</button>'
+        )
         cards = []
         for rel_path in paths:
             rel_text = rel_path.as_posix()
@@ -74,13 +76,14 @@ def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
                 "</article>"
             )
         section_blocks.append(
-            f"    <section id=\"{anchor}\">\n"
+            f"    <section id=\"{anchor}\" class=\"gallery-section\">\n"
             f"      <h2>{html.escape(name)}</h2>\n"
             + "\n".join(cards)
             + "\n    </section>"
         )
 
     summary = f"Scrollable local gallery for {len(rel_pngs)} PNG outputs under {analysis_dir.name}."
+    default_section = "section-1" if sections else ""
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -147,14 +150,22 @@ def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
       gap: 0.5rem;
     }}
 
-    nav a {{
-      text-decoration: none;
-      color: var(--accent);
+    .section-button {{
+      appearance: none;
       border: 1px solid var(--border);
       border-radius: 999px;
       padding: 0.35rem 0.8rem;
       font-size: 0.92rem;
       background: #fff;
+      color: var(--accent);
+      cursor: pointer;
+      transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+    }}
+
+    .section-button.is-active {{
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
     }}
 
     .back-link {{
@@ -176,12 +187,17 @@ def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
       padding: 1.25rem;
     }}
 
-    section {{
+    .gallery-section {{
+      display: none;
       margin: 0 0 2.5rem;
       padding-top: 0.25rem;
     }}
 
-    section > h2 {{
+    .gallery-section.is-active {{
+      display: block;
+    }}
+
+    .gallery-section > h2 {{
       margin: 0 0 0.85rem;
       font-size: 1.35rem;
       border-bottom: 2px solid #efefef;
@@ -233,6 +249,37 @@ def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
   <main>
 {chr(10).join(section_blocks)}
   </main>
+  <script>
+    (function() {{
+      const buttons = Array.from(document.querySelectorAll('.section-button'));
+      const sections = Array.from(document.querySelectorAll('.gallery-section'));
+      const defaultSection = {html.escape(repr(default_section))};
+
+      function activateSection(sectionId) {{
+        const targetId = sectionId || defaultSection;
+        sections.forEach((section) => {{
+          section.classList.toggle('is-active', section.id === targetId);
+        }});
+        buttons.forEach((button) => {{
+          button.classList.toggle('is-active', button.dataset.target === targetId);
+        }});
+        if (targetId) {{
+          if (window.location.hash !== '#' + targetId) {{
+            history.replaceState(null, '', '#' + targetId);
+          }}
+          window.scrollTo({{ top: 0, behavior: 'auto' }});
+        }}
+      }}
+
+      buttons.forEach((button) => {{
+        button.addEventListener('click', () => activateSection(button.dataset.target));
+      }});
+
+      const initialHash = window.location.hash ? window.location.hash.slice(1) : '';
+      const hasInitialTarget = sections.some((section) => section.id === initialHash);
+      activateSection(hasInitialTarget ? initialHash : defaultSection);
+    }})();
+  </script>
 </body>
 </html>
 """
