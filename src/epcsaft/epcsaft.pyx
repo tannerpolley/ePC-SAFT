@@ -441,10 +441,30 @@ cdef class ePCSAFTState:
 
     def activity_coefficient(self, species=None, solvent=None, mean_ionic_form=False, basis="mole"):
         """Return activity coefficients in the requested form."""
-        result = self._activity_coefficient_bundle(species=species, solvent=solvent, include_aux=False)
+        species = self._mixture.species if species is None else [str(s) for s in species]
+        if len(species) != self._x.size:
+            raise InputError("species length ({}) must match composition length ({}).".format(len(species), self._x.size))
+        has_solvent_override, solvent_index = _resolve_solvent_override(self._mixture, species, solvent)
+        cdef bint include_aux_c = False
+        cdef bint has_solvent_override_c = bool(has_solvent_override)
+        cdef int solvent_index_c = int(solvent_index)
+        cdef ActivityCoefficientNative out = self._native.get().activity_coefficient_native(include_aux_c, has_solvent_override_c, solvent_index_c)
         if mean_ionic_form:
-            return result.mean_ionic_activity_coefficients_map(basis=basis)
-        return result.component_activity_coefficients_map()
+            token = str(basis).strip().lower()
+            if token in {"mole", "mole_fraction", "molefraction", "x"}:
+                values = np.asarray(out.mean_ionic_activity_coefficients_mole_fraction, dtype=float)
+            elif token in {"molality", "m"}:
+                values = np.asarray(out.mean_ionic_activity_coefficients_molality, dtype=float)
+            else:
+                raise InputError("basis must be one of: 'mole', 'mole_fraction', 'x', 'molality', 'm'.")
+            pair_cat = np.asarray(out.pair_cation_indices, dtype=int)
+            pair_an = np.asarray(out.pair_anion_indices, dtype=int)
+            return {
+                species[int(ic)] + species[int(ia)]: float(value)
+                for ic, ia, value in zip(pair_cat.tolist(), pair_an.tolist(), values.tolist())
+            }
+        values = np.asarray(out.component_activity_coefficients, dtype=float)
+        return {label: float(value) for label, value in zip(species, values.tolist())}
 
     def fugacity_coefficient(self, natural_log=True, return_contribution_terms=False):
         """Return fugacity coefficients, defaulting to natural-log form."""
