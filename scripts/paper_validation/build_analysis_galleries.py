@@ -25,7 +25,9 @@ def collect_pngs(analysis_dir: Path) -> list[Path]:
         [
             path
             for path in analysis_dir.rglob("*.png")
-            if "__pycache__" not in path.parts and path.name.lower() != "index.html"
+            if "__pycache__" not in path.parts
+            and not any(part.startswith("_tmp") for part in path.parts)
+            and path.name.lower() != "index.html"
         ],
         key=lambda path: sort_key(path.relative_to(analysis_dir)),
     )
@@ -155,6 +157,19 @@ def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
       background: #fff;
     }}
 
+    .back-link {{
+      display: inline-flex;
+      align-items: center;
+      text-decoration: none;
+      color: var(--accent);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.35rem 0.8rem;
+      font-size: 0.92rem;
+      background: #fff;
+      margin-bottom: 0.8rem;
+    }}
+
     main {{
       max-width: var(--page-max);
       margin: 0 auto;
@@ -207,6 +222,7 @@ def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
 <body>
   <header>
     <div class="header-inner">
+      <a class="back-link" href="../index.html">Back to Paper Validation Home</a>
       <h1>{html.escape(analysis_dir.name.replace('_', ' '))} Gallery</h1>
       <p class="summary">{html.escape(summary)}</p>
       <nav>
