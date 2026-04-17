@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import json
 from pathlib import Path
 from typing import Iterable
 
@@ -253,7 +254,7 @@ def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
     (function() {{
       const buttons = Array.from(document.querySelectorAll('.section-button'));
       const sections = Array.from(document.querySelectorAll('.gallery-section'));
-      const defaultSection = {html.escape(repr(default_section))};
+      const defaultSection = {json.dumps(default_section)};
 
       function activateSection(sectionId) {{
         const targetId = sectionId || defaultSection;
