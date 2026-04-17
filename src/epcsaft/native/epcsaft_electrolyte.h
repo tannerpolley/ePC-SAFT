@@ -154,7 +154,11 @@ public:
     vector<double> relative_permittivity();
     double osmotic_coefficient();
     vector<double> solvation_free_energy();
-    ActivityCoefficientNative activity_coefficient_native(bool has_solvent_override = false, int solvent_override_index = -1);
+    ActivityCoefficientNative activity_coefficient_native(
+        bool include_aux = true,
+        bool has_solvent_override = false,
+        int solvent_override_index = -1
+    );
 
 private:
     std::shared_ptr<ePCSAFTMixtureNative> mixture_;

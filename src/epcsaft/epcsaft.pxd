@@ -148,7 +148,7 @@ cdef extern from "epcsaft_electrolyte.h":
         vector[double] relative_permittivity()
         double osmotic_coefficient()
         vector[double] solvation_free_energy()
-        ActivityCoefficientNative activity_coefficient_native(bint has_solvent_override, int solvent_override_index) except +
+        ActivityCoefficientNative activity_coefficient_native(bint include_aux, bint has_solvent_override, int solvent_override_index) except +
 
     cdef cppclass ePCSAFTMixtureNative:
         ePCSAFTMixtureNative(const add_args& args) except +

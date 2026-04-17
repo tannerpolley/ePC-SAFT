@@ -385,15 +385,16 @@ cdef class ePCSAFTState:
             "terms": terms,
         }
 
-    def _activity_coefficient_bundle(self, species=None, solvent=None):
+    def _activity_coefficient_bundle(self, species=None, solvent=None, include_aux=False):
         """Build the full activity-coefficient payload for internal reuse."""
         species = self._mixture.species if species is None else [str(s) for s in species]
         if len(species) != self._x.size:
             raise InputError("species length ({}) must match composition length ({}).".format(len(species), self._x.size))
         has_solvent_override, solvent_index = _resolve_solvent_override(self._mixture, species, solvent)
+        cdef bint include_aux_c = bool(include_aux)
         cdef bint has_solvent_override_c = bool(has_solvent_override)
         cdef int solvent_index_c = int(solvent_index)
-        cdef ActivityCoefficientNative out = self._native.get().activity_coefficient_native(has_solvent_override_c, solvent_index_c)
+        cdef ActivityCoefficientNative out = self._native.get().activity_coefficient_native(include_aux_c, has_solvent_override_c, solvent_index_c)
         pair_cat = np.asarray(out.pair_cation_indices, dtype=int)
         pair_an = np.asarray(out.pair_anion_indices, dtype=int)
         pair_labels = tuple(species[int(ic)] + species[int(ia)] for ic, ia in zip(pair_cat.tolist(), pair_an.tolist()))
@@ -423,7 +424,7 @@ cdef class ePCSAFTState:
 
     def activity_coefficient(self, species=None, solvent=None, mean_ionic_form=False, basis="mole"):
         """Return activity coefficients in the requested form."""
-        result = self._activity_coefficient_bundle(species=species, solvent=solvent)
+        result = self._activity_coefficient_bundle(species=species, solvent=solvent, include_aux=False)
         if mean_ionic_form:
             return result.mean_ionic_activity_coefficients_map(basis=basis)
         return result.component_activity_coefficients_map()
@@ -512,7 +513,7 @@ cdef class ePCSAFTState:
 
     def solvation_free_energy(self, species=None):
         """Return ion solvation free-energy values keyed by species."""
-        return self._activity_coefficient_bundle(species=species).solvation_free_energy()
+        return self._activity_coefficient_bundle(species=species, include_aux=True).solvation_free_energy()
 
     def __getattr__(self, name):
         """Resolve supported short scientific aliases for state methods."""

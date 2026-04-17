@@ -337,20 +337,24 @@ vector<double> dielc_diff_cpp(vector<double> x, const add_args &cppargs) {
 
 double ePCSAFTStateNative::osmotic_coefficient()
 {
-    return activity_coefficient_native(false, -1).osmotic_coefficient;
+    return activity_coefficient_native(true, false, -1).osmotic_coefficient;
 }
 
 vector<double> ePCSAFTStateNative::solvation_free_energy()
 {
-    return activity_coefficient_native(false, -1).solvation_free_energy;
+    return activity_coefficient_native(true, false, -1).solvation_free_energy;
 }
 
-ActivityCoefficientNative ePCSAFTStateNative::activity_coefficient_native(bool has_solvent_override, int solvent_override_index)
+ActivityCoefficientNative ePCSAFTStateNative::activity_coefficient_native(
+    bool include_aux,
+    bool has_solvent_override,
+    int solvent_override_index
+)
 {
     if (!mixture_->has_ionic()) {
         throw ValueError("activity_coefficient requires ionic species (non-zero z).");
     }
-    if (!has_solvent_override && activity_coefficient_cached_) {
+    if (include_aux && !has_solvent_override && activity_coefficient_cached_) {
         return activity_coefficient_cache_;
     }
     const add_args& args = mixture_->args();
@@ -365,11 +369,11 @@ ActivityCoefficientNative ePCSAFTStateNative::activity_coefficient_native(bool h
         mixture_->pair_anion_indices(),
         mixture_->pair_nu_cation(),
         mixture_->pair_nu_anion(),
-        true,
+        include_aux,
         has_solvent_override,
         solvent_override_index
     );
-    if (!has_solvent_override) {
+    if (include_aux && !has_solvent_override) {
         activity_coefficient_cache_ = out;
         activity_coefficient_cached_ = true;
     }

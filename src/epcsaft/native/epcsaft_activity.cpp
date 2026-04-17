@@ -125,12 +125,22 @@ vector<double> gsolv_values_cpp(double t, double rho, const vector<double>& x, c
     return result;
 }
 
-int resolve_solvent_index_cpp(const vector<int>& solvent_indices, bool has_solvent_override, int solvent_override_index)
+int resolve_solvent_index_cpp(
+    const vector<int>& solvent_indices,
+    const vector<double>& x,
+    bool has_solvent_override,
+    int solvent_override_index
+)
 {
     if (solvent_indices.empty()) {
         throw ValueError("activity_coefficient requires at least one neutral solvent species.");
     }
     if (!has_solvent_override || solvent_override_index < 0) {
+        for (int idx : solvent_indices) {
+            if (idx >= 0 && idx < static_cast<int>(x.size()) && x[idx] > 0.0) {
+                return idx;
+            }
+        }
         return solvent_indices.front();
     }
     if (std::find(solvent_indices.begin(), solvent_indices.end(), solvent_override_index) == solvent_indices.end()) {
@@ -207,6 +217,7 @@ void validate_activity_inputs_cpp(
 
 void assign_activity_metadata_cpp(
     ActivityCoefficientNative& out,
+    const vector<double>& x,
     const vector<int>& cation_indices,
     const vector<int>& anion_indices,
     const vector<int>& solvent_indices,
@@ -224,7 +235,7 @@ void assign_activity_metadata_cpp(
     out.pair_anion_indices = pair_anion_indices;
     out.pair_nu_cation = pair_nu_cation;
     out.pair_nu_anion = pair_nu_anion;
-    out.solvent_index = resolve_solvent_index_cpp(solvent_indices, has_solvent_override, solvent_override_index);
+    out.solvent_index = resolve_solvent_index_cpp(solvent_indices, x, has_solvent_override, solvent_override_index);
 }
 
 void assign_activity_aux_cpp(
@@ -354,6 +365,7 @@ ActivityCoefficientNative activity_coefficient_values_impl_cpp(
     ActivityCoefficientNative out;
     assign_activity_metadata_cpp(
         out,
+        x,
         cation_indices,
         anion_indices,
         solvent_indices,
