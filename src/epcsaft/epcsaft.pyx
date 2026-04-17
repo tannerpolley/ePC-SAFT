@@ -1149,7 +1149,77 @@ def _fit_pure_neutral_native(
         "status": int(result.status),
         "nfev": int(result.nfev),
         "iterations": int(result.iterations),
+        "objective_evaluations": int(result.objective_evaluations),
+        "gradient_evaluations": int(result.gradient_evaluations),
+        "residual_evaluations": int(result.residual_evaluations),
+        "density_solves": int(result.density_solves),
+        "fused_state_evaluations": int(result.fused_state_evaluations),
+        "callback_wall_time_s": float(result.callback_wall_time_s),
+        "solve_wall_time_s": float(result.solve_wall_time_s),
         "message": (<bytes>result.message).decode("utf-8"),
+        "backend": (<bytes>result.backend).decode("utf-8"),
+    }
+
+
+def _fit_pure_neutral_native_least_squares(
+    fixed_payload,
+    density_T,
+    density_P,
+    density_rho_exp,
+    density_phase,
+    density_scale,
+    vle_T,
+    vle_P,
+    pure_vle_scale,
+    x0,
+    lower,
+    upper,
+    multistart=0,
+):
+    cdef add_args cppargs
+    cdef vector[PureNeutralRegressionDensityRecord] density_records
+    cdef vector[PureNeutralRegressionVLERecord] pure_vle_records
+    cdef vector[double] cpp_x0
+    cdef vector[double] cpp_lower
+    cdef vector[double] cpp_upper
+    cdef PureNeutralRegressionResult result
+    params = check_association(dict(fixed_payload))
+    cppargs = create_struct(params)
+    density_records = _pure_neutral_density_records_vector(density_T, density_P, density_rho_exp, density_phase)
+    pure_vle_records = _pure_neutral_vle_records_vector(vle_T, vle_P)
+    cpp_x0 = np_to_vector_double(np.asarray(x0, dtype=float))
+    cpp_lower = np_to_vector_double(np.asarray(lower, dtype=float))
+    cpp_upper = np_to_vector_double(np.asarray(upper, dtype=float))
+    result = fit_pure_neutral_least_squares_cpp(
+        cppargs,
+        density_records,
+        float(density_scale),
+        pure_vle_records,
+        float(pure_vle_scale),
+        cpp_x0,
+        cpp_lower,
+        cpp_upper,
+        int(multistart),
+    )
+    return {
+        "x": vector_to_array(result.x),
+        "cost": float(result.cost),
+        "residual_norm": float(result.residual_norm),
+        "density_metric": float(result.density_metric),
+        "pure_vle_metric": float(result.pure_vle_metric),
+        "success": bool(result.success),
+        "status": int(result.status),
+        "nfev": int(result.nfev),
+        "iterations": int(result.iterations),
+        "objective_evaluations": int(result.objective_evaluations),
+        "gradient_evaluations": int(result.gradient_evaluations),
+        "residual_evaluations": int(result.residual_evaluations),
+        "density_solves": int(result.density_solves),
+        "fused_state_evaluations": int(result.fused_state_evaluations),
+        "callback_wall_time_s": float(result.callback_wall_time_s),
+        "solve_wall_time_s": float(result.solve_wall_time_s),
+        "message": (<bytes>result.message).decode("utf-8"),
+        "backend": (<bytes>result.backend).decode("utf-8"),
     }
 
 
@@ -1186,8 +1256,15 @@ def _fit_pure_neutral_native_debug(
     return {
         "objective": float(result.objective),
         "gradient": vector_to_array(result.gradient),
+        "residuals": vector_to_array(result.residuals),
+        "jacobian_row_major": vector_to_array(result.jacobian_row_major),
+        "jacobian_shape": (int(result.jacobian_rows), int(result.jacobian_cols)),
         "density_raw_residuals": vector_to_array(result.density_raw_residuals),
         "pure_vle_raw_residuals": vector_to_array(result.pure_vle_raw_residuals),
+        "residual_evaluations": int(result.residual_evaluations),
+        "density_solves": int(result.density_solves),
+        "fused_state_evaluations": int(result.fused_state_evaluations),
+        "callback_wall_time_s": float(result.callback_wall_time_s),
     }
 
 

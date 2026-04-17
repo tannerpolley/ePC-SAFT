@@ -16,6 +16,7 @@ from epcsaft import fit_pure_neutral
 from epcsaft import write_fit_result
 from epcsaft._types import InputError
 from epcsaft.regression import _debug_native_pure_neutral_objective
+from epcsaft.regression import _fit_pure_neutral_least_squares_internal
 from epcsaft.regression import fit_binary_pair
 from epcsaft.regression import fit_pure_ion
 
@@ -105,6 +106,33 @@ def test_native_pure_neutral_debug_gradient_matches_finite_difference():
         ) / (2.0 * eps[i])
 
     assert exact == pytest.approx(fd, rel=5.0e-4, abs=5.0e-6)
+    assert debug["residual_evaluations"] >= 1
+    assert debug["density_solves"] >= 2
+    assert debug["fused_state_evaluations"] >= 2
+    assert debug["callback_wall_time_s"] >= 0.0
+
+
+def test_internal_native_least_squares_backend_matches_methane_reference_band():
+    result = _fit_pure_neutral_least_squares_internal(
+        _methane_like_records(),
+        "Methane",
+        assoc_scheme="",
+        fixed_parameters=_minimal_neutral_metadata(16.043e-3),
+        initial_guess={"m": 1.08, "s": 3.55, "e": 155.0},
+        bounds={
+            "m": (0.5, 3.5),
+            "s": (2.0, 5.0),
+            "e": (50.0, 400.0),
+        },
+    )
+
+    assert result.success, result.message
+    assert result.backend == "least_squares_native"
+    assert result.metrics_by_term["density"] < 0.02
+    assert result.metrics_by_term["pure_vle_fugacity_balance"] < 0.02
+    assert result.fitted_values["m"] == pytest.approx(1.0, rel=0.0, abs=0.05)
+    assert result.fitted_values["s"] == pytest.approx(3.7039, rel=0.0, abs=0.08)
+    assert result.fitted_values["e"] == pytest.approx(150.03, rel=0.0, abs=3.0)
 
 
 @pytest.mark.parametrize(

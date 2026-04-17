@@ -13,6 +13,7 @@ import numpy as np
 from ._types import InputError
 from ._types import phase_to_int
 from .epcsaft import _fit_pure_neutral_native
+from .epcsaft import _fit_pure_neutral_native_least_squares
 from .epcsaft import _fit_pure_neutral_native_debug
 from .parameter_templates import _infer_pure_template_name
 from .parameters import _deterministic_default
@@ -747,28 +748,17 @@ def _deferred_workflow_error(mode: str) -> NotImplementedError:
     )
 
 
-def fit_pure_neutral(
-    records: Any,
-    component: str,
-    *,
-    assoc_scheme: str = "",
-    dataset: str | Path | None = None,
-    pure_set: str | None = None,
-    fit_targets: Iterable[str] | None = None,
-    fixed_parameters: Mapping[str, Any] | None = None,
-    initial_guess: Mapping[str, float] | None = None,
-    bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
-    user_options: Mapping[str, Any] | None = None,
-    multistart: int = 0,
-) -> FitResult:
-    """Fit neutral pure-component m, s, and e parameters."""
-
-    normalized_component = _normalize_component(component)
-    normalized_records = _normalize_records(records)
-    normalized_fit_targets = _normalize_fit_targets(PURE_NEUTRAL_MODE, fit_targets, assoc_scheme=assoc_scheme)
-    for target in normalized_fit_targets:
-        if target not in {"m", "s", "e"}:
-            raise InputError("Phase-1 pure_neutral regression supports only the targets 'm', 's', and 'e'.")
+def _native_pure_neutral_runner_args(
+    normalized_records: Sequence[dict[str, Any]],
+    normalized_component: str,
+    assoc_scheme: str,
+    dataset: str | Path | None,
+    pure_set: str | None,
+    normalized_fit_targets: Sequence[str],
+    fixed_parameters: Mapping[str, Any] | None,
+    initial_guess: Mapping[str, float] | None,
+    bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None,
+):
     fixed_payload, initial_map, bounds_obj, terms, optimization_names, pure_file_hint = _native_pure_neutral_solver_payload(
         normalized_records,
         normalized_component,
@@ -784,41 +774,113 @@ def fit_pure_neutral(
     density_term = next(term for term in terms if term.term_type == TERM_DENSITY)
     pure_vle_term = next(term for term in terms if term.term_type == TERM_PURE_VLE)
     mw_value = float(np.asarray(fixed_payload["MW"], dtype=float)[0])
-    native_result = _fit_pure_neutral_native(
-        fixed_payload,
-        np.asarray([_float_from_record(record, "T", required=True) for record in density_term.records], dtype=float),
-        np.asarray([_float_from_record(record, "P", required=True) for record in density_term.records], dtype=float),
-        np.asarray(
+    return {
+        "fixed_payload": fixed_payload,
+        "initial_map": initial_map,
+        "terms": terms,
+        "optimization_names": optimization_names,
+        "pure_file_hint": pure_file_hint,
+        "lower": lower,
+        "upper": upper,
+        "density_T": np.asarray([_float_from_record(record, "T", required=True) for record in density_term.records], dtype=float),
+        "density_P": np.asarray([_float_from_record(record, "P", required=True) for record in density_term.records], dtype=float),
+        "density_rho_exp": np.asarray(
             [_pure_neutral_density_molar(record, mw_value) for record in density_term.records],
             dtype=float,
         ),
-        np.asarray(
+        "density_phase": np.asarray(
             [phase_to_int(_value_from_record(record, "phase", required=False) or "liq") for record in density_term.records],
             dtype=int,
         ),
-        float(_family_scale(density_term)),
-        np.asarray([_float_from_record(record, "T", required=True) for record in pure_vle_term.records], dtype=float),
-        np.asarray([_float_from_record(record, "P", required=True) for record in pure_vle_term.records], dtype=float),
-        float(_family_scale(pure_vle_term)),
-        np.asarray([initial_map[name] for name in optimization_names], dtype=float),
-        lower,
-        upper,
-        multistart=int(multistart),
-        derivative_test=False,
+        "density_scale": float(_family_scale(density_term)),
+        "vle_T": np.asarray([_float_from_record(record, "T", required=True) for record in pure_vle_term.records], dtype=float),
+        "vle_P": np.asarray([_float_from_record(record, "P", required=True) for record in pure_vle_term.records], dtype=float),
+        "pure_vle_scale": float(_family_scale(pure_vle_term)),
+    }
+
+
+def _fit_pure_neutral_internal(
+    records: Any,
+    component: str,
+    *,
+    assoc_scheme: str = "",
+    dataset: str | Path | None = None,
+    pure_set: str | None = None,
+    fit_targets: Iterable[str] | None = None,
+    fixed_parameters: Mapping[str, Any] | None = None,
+    initial_guess: Mapping[str, float] | None = None,
+    bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
+    multistart: int = 0,
+    backend: str = "ipopt_native",
+) -> FitResult:
+    normalized_component = _normalize_component(component)
+    normalized_records = _normalize_records(records)
+    normalized_fit_targets = _normalize_fit_targets(PURE_NEUTRAL_MODE, fit_targets, assoc_scheme=assoc_scheme)
+    for target in normalized_fit_targets:
+        if target not in {"m", "s", "e"}:
+            raise InputError("Phase-1 pure_neutral regression supports only the targets 'm', 's', and 'e'.")
+
+    payload = _native_pure_neutral_runner_args(
+        normalized_records,
+        normalized_component,
+        assoc_scheme,
+        dataset,
+        pure_set,
+        normalized_fit_targets,
+        fixed_parameters,
+        initial_guess,
+        bounds,
     )
-    vector_map = _normalize_vector_map(optimization_names, native_result["x"])
+    theta0 = np.asarray([payload["initial_map"][name] for name in payload["optimization_names"]], dtype=float)
+    if backend == "ipopt_native":
+        native_result = _fit_pure_neutral_native(
+            payload["fixed_payload"],
+            payload["density_T"],
+            payload["density_P"],
+            payload["density_rho_exp"],
+            payload["density_phase"],
+            payload["density_scale"],
+            payload["vle_T"],
+            payload["vle_P"],
+            payload["pure_vle_scale"],
+            theta0,
+            payload["lower"],
+            payload["upper"],
+            multistart=int(multistart),
+            derivative_test=False,
+        )
+    elif backend == "least_squares_native":
+        native_result = _fit_pure_neutral_native_least_squares(
+            payload["fixed_payload"],
+            payload["density_T"],
+            payload["density_P"],
+            payload["density_rho_exp"],
+            payload["density_phase"],
+            payload["density_scale"],
+            payload["vle_T"],
+            payload["vle_P"],
+            payload["pure_vle_scale"],
+            theta0,
+            payload["lower"],
+            payload["upper"],
+            multistart=int(multistart),
+        )
+    else:
+        raise InputError(f"Unsupported internal native regression backend '{backend}'.")
+
+    vector_map = _normalize_vector_map(payload["optimization_names"], native_result["x"])
     problem = FitProblem(
         mode=PURE_NEUTRAL_MODE,
         records=tuple(normalized_records),
         component=normalized_component,
         dataset=_source_dataset_label(dataset),
         fit_targets=normalized_fit_targets,
-        optimization_parameters=optimization_names,
-        fixed_parameters=fixed_payload,
-        initial_guess=initial_map,
-        assoc_scheme=str(fixed_payload["assoc_scheme"]),
-        terms=terms,
-        pure_file_hint=pure_file_hint,
+        optimization_parameters=payload["optimization_names"],
+        fixed_parameters=payload["fixed_payload"],
+        initial_guess=payload["initial_map"],
+        assoc_scheme=str(payload["fixed_payload"]["assoc_scheme"]),
+        terms=payload["terms"],
+        pure_file_hint=payload["pure_file_hint"],
     )
     rendered = {name: float(vector_map[name]) for name in normalized_fit_targets}
     return FitResult(
@@ -835,7 +897,66 @@ def fit_pure_neutral(
         status=int(native_result["status"]),
         message=str(native_result["message"]),
         nfev=int(native_result["nfev"]),
+        backend=str(native_result.get("backend", backend)),
+    )
+
+
+def fit_pure_neutral(
+    records: Any,
+    component: str,
+    *,
+    assoc_scheme: str = "",
+    dataset: str | Path | None = None,
+    pure_set: str | None = None,
+    fit_targets: Iterable[str] | None = None,
+    fixed_parameters: Mapping[str, Any] | None = None,
+    initial_guess: Mapping[str, float] | None = None,
+    bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
+    user_options: Mapping[str, Any] | None = None,
+    multistart: int = 0,
+) -> FitResult:
+    """Fit neutral pure-component m, s, and e parameters."""
+    return _fit_pure_neutral_internal(
+        records,
+        component,
+        assoc_scheme=assoc_scheme,
+        dataset=dataset,
+        pure_set=pure_set,
+        fit_targets=fit_targets,
+        fixed_parameters=fixed_parameters,
+        initial_guess=initial_guess,
+        bounds=bounds,
+        multistart=multistart,
         backend="ipopt_native",
+    )
+
+
+def _fit_pure_neutral_least_squares_internal(
+    records: Any,
+    component: str,
+    *,
+    assoc_scheme: str = "",
+    dataset: str | Path | None = None,
+    pure_set: str | None = None,
+    fit_targets: Iterable[str] | None = None,
+    fixed_parameters: Mapping[str, Any] | None = None,
+    initial_guess: Mapping[str, float] | None = None,
+    bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
+    multistart: int = 0,
+) -> FitResult:
+    """Internal native least-squares comparison hook for pure-neutral regression."""
+    return _fit_pure_neutral_internal(
+        records,
+        component,
+        assoc_scheme=assoc_scheme,
+        dataset=dataset,
+        pure_set=pure_set,
+        fit_targets=fit_targets,
+        fixed_parameters=fixed_parameters,
+        initial_guess=initial_guess,
+        bounds=bounds,
+        multistart=multistart,
+        backend="least_squares_native",
     )
 
 
@@ -860,7 +981,7 @@ def _debug_native_pure_neutral_objective(
     for target in normalized_fit_targets:
         if target not in {"m", "s", "e"}:
             raise InputError("Phase-1 pure_neutral regression supports only the targets 'm', 's', and 'e'.")
-    fixed_payload, initial_map, _bounds_obj, terms, optimization_names, _pure_file_hint = _native_pure_neutral_solver_payload(
+    payload = _native_pure_neutral_runner_args(
         normalized_records,
         normalized_component,
         assoc_scheme,
@@ -871,35 +992,26 @@ def _debug_native_pure_neutral_objective(
         initial_guess,
         bounds,
     )
-    density_term = next(term for term in terms if term.term_type == TERM_DENSITY)
-    pure_vle_term = next(term for term in terms if term.term_type == TERM_PURE_VLE)
-    mw_value = float(np.asarray(fixed_payload["MW"], dtype=float)[0])
     if x is None:
-        theta = np.asarray([initial_map[name] for name in optimization_names], dtype=float)
+        theta = np.asarray([payload["initial_map"][name] for name in payload["optimization_names"]], dtype=float)
     elif isinstance(x, Mapping):
-        theta = np.asarray([float(x[name]) for name in optimization_names], dtype=float)
+        theta = np.asarray([float(x[name]) for name in payload["optimization_names"]], dtype=float)
     else:
         theta = np.asarray(tuple(x), dtype=float)
-    if theta.size != len(optimization_names):
+    if theta.size != len(payload["optimization_names"]):
         raise InputError(
-            f"Expected {len(optimization_names)} optimization values for native debug evaluation, got {theta.size}."
+            f"Expected {len(payload['optimization_names'])} optimization values for native debug evaluation, got {theta.size}."
         )
     return _fit_pure_neutral_native_debug(
-        fixed_payload,
-        np.asarray([_float_from_record(record, "T", required=True) for record in density_term.records], dtype=float),
-        np.asarray([_float_from_record(record, "P", required=True) for record in density_term.records], dtype=float),
-        np.asarray(
-            [_pure_neutral_density_molar(record, mw_value) for record in density_term.records],
-            dtype=float,
-        ),
-        np.asarray(
-            [phase_to_int(_value_from_record(record, "phase", required=False) or "liq") for record in density_term.records],
-            dtype=int,
-        ),
-        float(_family_scale(density_term)),
-        np.asarray([_float_from_record(record, "T", required=True) for record in pure_vle_term.records], dtype=float),
-        np.asarray([_float_from_record(record, "P", required=True) for record in pure_vle_term.records], dtype=float),
-        float(_family_scale(pure_vle_term)),
+        payload["fixed_payload"],
+        payload["density_T"],
+        payload["density_P"],
+        payload["density_rho_exp"],
+        payload["density_phase"],
+        payload["density_scale"],
+        payload["vle_T"],
+        payload["vle_P"],
+        payload["pure_vle_scale"],
         theta,
     )
 

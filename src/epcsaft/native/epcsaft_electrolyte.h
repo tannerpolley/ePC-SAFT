@@ -155,8 +155,16 @@ struct PureNeutralRegressionVLERecord {
 struct PureNeutralRegressionDebugResult {
     double objective = 0.0;
     vector<double> gradient;
+    vector<double> residuals;
+    vector<double> jacobian_row_major;
+    int jacobian_rows = 0;
+    int jacobian_cols = 0;
     vector<double> density_raw_residuals;
     vector<double> pure_vle_raw_residuals;
+    int residual_evaluations = 0;
+    int density_solves = 0;
+    int fused_state_evaluations = 0;
+    double callback_wall_time_s = 0.0;
 };
 
 struct PureNeutralRegressionResult {
@@ -169,7 +177,15 @@ struct PureNeutralRegressionResult {
     int status = 0;
     int nfev = 0;
     int iterations = 0;
+    int objective_evaluations = 0;
+    int gradient_evaluations = 0;
+    int residual_evaluations = 0;
+    int density_solves = 0;
+    int fused_state_evaluations = 0;
+    double callback_wall_time_s = 0.0;
+    double solve_wall_time_s = 0.0;
     std::string message;
+    std::string backend;
 };
 
 class ePCSAFTMixtureNative;
@@ -308,6 +324,17 @@ PureNeutralRegressionResult fit_pure_neutral_ipopt_cpp(
     const vector<double> &upper,
     int multistart,
     bool derivative_test
+);
+PureNeutralRegressionResult fit_pure_neutral_least_squares_cpp(
+    const add_args &base_args,
+    const vector<PureNeutralRegressionDensityRecord> &density_records,
+    double density_scale,
+    const vector<PureNeutralRegressionVLERecord> &pure_vle_records,
+    double pure_vle_scale,
+    const vector<double> &x0,
+    const vector<double> &lower,
+    const vector<double> &upper,
+    int multistart
 );
 PureNeutralRegressionDebugResult evaluate_pure_neutral_objective_debug_cpp(
     const add_args &base_args,

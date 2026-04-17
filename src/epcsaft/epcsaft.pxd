@@ -36,6 +36,17 @@ cdef extern from "epcsaft_electrolyte.h":
         int multistart,
         bint derivative_test
     ) except +
+    PureNeutralRegressionResult fit_pure_neutral_least_squares_cpp(
+        const add_args& base_args,
+        const vector[PureNeutralRegressionDensityRecord]& density_records,
+        double density_scale,
+        const vector[PureNeutralRegressionVLERecord]& pure_vle_records,
+        double pure_vle_scale,
+        const vector[double]& x0,
+        const vector[double]& lower,
+        const vector[double]& upper,
+        int multistart
+    ) except +
     PureNeutralRegressionDebugResult evaluate_pure_neutral_objective_debug_cpp(
         const add_args& base_args,
         const vector[PureNeutralRegressionDensityRecord]& density_records,
@@ -156,8 +167,16 @@ cdef extern from "epcsaft_electrolyte.h":
     ctypedef struct PureNeutralRegressionDebugResult:
         double objective
         vector[double] gradient
+        vector[double] residuals
+        vector[double] jacobian_row_major
+        int jacobian_rows
+        int jacobian_cols
         vector[double] density_raw_residuals
         vector[double] pure_vle_raw_residuals
+        int residual_evaluations
+        int density_solves
+        int fused_state_evaluations
+        double callback_wall_time_s
 
     ctypedef struct PureNeutralRegressionResult:
         vector[double] x
@@ -169,7 +188,15 @@ cdef extern from "epcsaft_electrolyte.h":
         int status
         int nfev
         int iterations
+        int objective_evaluations
+        int gradient_evaluations
+        int residual_evaluations
+        int density_solves
+        int fused_state_evaluations
+        double callback_wall_time_s
+        double solve_wall_time_s
         string message
+        string backend
 
     cdef cppclass ePCSAFTStateNative:
         ePCSAFTStateNative(shared_ptr[ePCSAFTMixtureNative] mixture, double t, vector[double] x,
