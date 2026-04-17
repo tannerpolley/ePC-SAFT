@@ -638,9 +638,9 @@
             +\frac{3\zeta_{2}^{3}-\zeta_{3}\zeta_{2}^{3}}{\zeta_{0}(1-\zeta_{3})^{3}}
         \end{aligned}
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadrho.cpp"
-      line: 9
-      comment_line: 8
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
+      line: 82
+      comment_line: 81
       context: "double dadrho_hs_cpp(const HardChainState &hc_state) {"
 - eqid: "hs_ares_dxk"
   section: "Contribution Intermediates"
@@ -672,9 +672,9 @@
             \biggr]
         \end{aligned}
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadx.cpp"
-      line: 200
-      comment_line: 199
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
+      line: 103
+      comment_line: 102
       context: "vector<double> dadx_hs_cpp(const MixtureState &thermo, const HardChainState &hc_state, const add_args &cppargs) {"
 - eqid: "hs_ares_dT"
   section: "Contribution Intermediates"
@@ -704,9 +704,9 @@
             \Bigg]
         \end{aligned}
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadt.cpp"
-      line: 21
-      comment_line: 20
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
+      line: 90
+      comment_line: 89
       context: "double dadt_hs_cpp(const HardChainState &hc_state, const vector<double> &dzeta_dt) {"
 - eqid: "g_hs_contact"
   section: "Contribution Intermediates"
@@ -755,9 +755,9 @@
             \right)
         \end{aligned}
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadrho.cpp"
-      line: 19
-      comment_line: 18
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
+      line: 164
+      comment_line: 163
       context: "double hs_contact_density_derivative_cpp(double pair_diameter, double zeta2, double zeta3) {"
 - eqid: "ghs_contact_dxk"
   section: "Contribution Intermediates"
@@ -781,9 +781,9 @@
             \left(\frac{4\zeta_{2}\zeta_{2,x,k}}{(1-\zeta_{3})^{3}}+\frac{6\zeta_{2}^{2}\zeta_{3,x,k}}{(1-\zeta_{3})^{4}}\right)
         \end{aligned}
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadx.cpp"
-      line: 179
-      comment_line: 178
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
+      line: 186
+      comment_line: 185
       context: "double hs_contact_composition_derivative_cpp("
 - eqid: "ghs_contact_dT"
   section: "Contribution Intermediates"
@@ -808,9 +808,9 @@
             &\quad +\left(\frac{1}{2}d_{i}\right)^{2}\left(\frac{4\xi_{2}\xi_{2,T}}{\left(1-\xi_{3}\right)^{3}}+\frac{6\xi_{2}{}^{2}\xi_{3,T}}{\left(1-\xi_{3}\right)^{4}}\right)
         \end{aligned}
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadt.cpp"
-      line: 34
-      comment_line: 33
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
+      line: 171
+      comment_line: 170
       context: "double hs_contact_time_derivative_cpp("
 - eqid: "c1_disp"
   section: "Contribution Intermediates"
@@ -1538,9 +1538,9 @@
         +\left(\frac{\partial\tilde{a}^\mathrm{DH}}{\partial T}\right)_{\rho,x_{i}}
         +\left(\frac{\partial\tilde{a}^\mathrm{Born}}{\partial T}\right)_{\rho,x_{i}}
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadt.cpp"
-      line: 141
-      comment_line: 140
+    - file: "src/epcsaft/native/epcsaft_ares.cpp"
+      line: 147
+      comment_line: 146
       context: "ScalarContributionTerms temperature_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {"
 - eqid: "ares_hc"
   section: "Residual Helmholtz Energy"
@@ -1584,9 +1584,9 @@
             -\sum_{i}x_{\mathrm{i}}(m_{i}-1)(g_{ii}^\mathrm{hs})^{-1}\rho\frac{\partial g_{ii}^\mathrm{hs}}{\partial\rho}
         \end{aligned}
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadrho.cpp"
-      line: 28
-      comment_line: 27
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
+      line: 242
+      comment_line: 241
       context: "double dadrho_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "hc_ares_dxk"
   section: "Residual Helmholtz Energy"
@@ -1609,10 +1609,10 @@
             \left(\frac{\partial g_{ii}^{\mathrm{hs}}}{\partial x_{k}}\right)_{T,\boldsymbol{\rho},x_{j\neq k}}
         \end{aligned}
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadx.cpp"
-      line: 235
-      comment_line: 234
-      context: "vector<double> hc_contact_composition_terms_cpp(const MixtureState &thermo, const HardChainState &hc_state, const add_args &cppargs) {"
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
+      line: 265
+      comment_line: 264
+      context: "ContributionDadxResult dadx_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "hc_ares_dT"
   section: "Residual Helmholtz Energy"
   subsection: "Hard-Chain Reference Contribution"
@@ -1632,9 +1632,9 @@
             -\sum_{i}x_{\mathrm{i}}(m_{\mathrm{i}}-1)(g_{ii}^{\mathrm{hs}})^{-1}\left(\frac{\partial g_{ii}^{\mathrm{hs}}}{\partial T}\right)_{\rho,x_{i}}
         \end{aligned}
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadt.cpp"
-      line: 74
-      comment_line: 73
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
+      line: 254
+      comment_line: 253
       context: "double dadt_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const vector<double> &dzeta_dt, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "ares_disp"
   section: "Residual Helmholtz Energy"
@@ -1673,9 +1673,9 @@
             &\quad -\pi\rho\bar{m}\left[C_{1}\frac{\partial(\eta I_{2})}{\partial\eta}+C_{2}\eta I_{2}\right]\overline{m^{2}\epsilon^{2}\sigma^{3}}
         \end{aligned}
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadrho.cpp"
-      line: 40
-      comment_line: 39
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
+      line: 33
+      comment_line: 32
       context: "double dadrho_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion) {"
 - eqid: "disp_ares_dxk"
   section: "Residual Helmholtz Energy"
@@ -1696,9 +1696,9 @@
             \left.\bar{m} C_1 I_2\left(\bar{m}^2 \epsilon^2 \sigma^3\right)_{x k}\right\}
         \end{aligned}
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadx.cpp"
-      line: 310
-      comment_line: 309
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
+      line: 48
+      comment_line: 47
       context: "ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "disp_ares_dT"
   section: "Residual Helmholtz Energy"
@@ -1718,9 +1718,9 @@
         -\pi\rho\bar{m}\left(C_{1,T}I_{2}+C_{1}I_{2,T}\right)\overline{m^{2}\epsilon^{2}\sigma^{3}}
         -\pi\rho\bar{m}C_{1}I_{2}\overline{m^{2}\epsilon^{2}\sigma^{3}}_{,T}
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadt.cpp"
-      line: 85
-      comment_line: 84
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
+      line: 39
+      comment_line: 38
       context: "double dadt_disp_cpp(const MixtureState &thermo, double deta_dt, double t, const DispersionPolynomialState &dispersion) {"
 - eqid: "ares_assoc"
   section: "Residual Helmholtz Energy"
@@ -1755,9 +1755,9 @@
     \rho\left(\frac{\partial\tilde{a}^{assoc}}{\partial\rho}\right)_{T,x}
         =\rho\sum_{i}x_{i}\sum_{A_{i}}\left(\frac{1}{X^{A_{i}}}-\frac{1}{2}\right)\left(\frac{\partial X^{A_{i}}}{\partial\rho}\right)_{T,x}.
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadrho.cpp"
-      line: 78
-      comment_line: 77
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
+      line: 325
+      comment_line: 324
       context: "double dadrho_assoc_cpp("
 - eqid: "assoc_ares_dxk"
   section: "Residual Helmholtz Energy"
@@ -1779,9 +1779,9 @@
         \left(\frac{1}{X^{A_{i}}}-\frac{1}{2}\right)
         \left(\frac{\partial X^{A_{i}}}{\partial x_{k}}\right)_{T,v,x_{i\neq k}}
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadx.cpp"
-      line: 404
-      comment_line: 403
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
+      line: 385
+      comment_line: 384
       context: "ContributionDadxResult dadx_assoc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const AssociationIntermediateState &assoc_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "assoc_ares_dT"
   section: "Residual Helmholtz Energy"
@@ -1801,9 +1801,9 @@
         \left(\frac{1}{X^{A_i}}-\frac{1}{2}\right)
         \left(\frac{\partial X^{A_i}}{\partial T}\right)_{\rho,x_i}
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadt.cpp"
-      line: 94
-      comment_line: 93
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
+      line: 373
+      comment_line: 372
       context: "double dadt_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {"
 - eqid: "ares_dh"
   section: "Residual Helmholtz Energy"
@@ -1878,9 +1878,9 @@
                 \Bigg]
         \end{aligned}
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadx.cpp"
-      line: 476
-      comment_line: 475
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp"
+      line: 127
+      comment_line: 126
       context: "ContributionDadxResult dadx_ion_cpp(const MixtureState &thermo, const IonIntermediateState &ion_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "dh_ares_dT"
   section: "Residual Helmholtz Energy"
@@ -1898,9 +1898,9 @@
         \approx
         -\frac{\tilde{a}^{DH}}{T}
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadt.cpp"
-      line: 106
-      comment_line: 105
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp"
+      line: 110
+      comment_line: 109
       context: "double dadt_ion_cpp(const IonIntermediateState &ion_state, double t, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "ares_born"
   section: "Residual Helmholtz Energy"
@@ -1942,9 +1942,9 @@
   latex: |
     \rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}= 0
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadrho.cpp"
-      line: 134
-      comment_line: 133
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
+      line: 230
+      comment_line: 229
       context: "double dadrho_born_cpp() {"
 - eqid: "born_ares_dxi"
   section: "Residual Helmholtz Energy"
@@ -2047,9 +2047,9 @@
             \right]
         \end{aligned}
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadt.cpp"
-      line: 123
-      comment_line: 122
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
+      line: 235
+      comment_line: 234
       context: "double dadt_born_cpp(double t, const BornIntermediateState &born_state) {"
 - eqid: "born_mode_set"
   section: "Residual Helmholtz Energy"
@@ -2528,7 +2528,7 @@
   latex: |
     \tilde{h}^{\mathrm{res}} = \frac{\hat{h}^{\mathrm{res}}}{RT}=-T\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial T}\right)_{\rho,x_{i}}+(Z-1)
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_hres.cpp"
+    - file: "src/epcsaft/native/epcsaft_thermo.cpp"
       line: 4
       comment_line: 3
       context: "double hres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {"
@@ -2560,9 +2560,9 @@
   latex: |
     \tilde{s}^{\mathrm{res}} = \frac{\hat{s}^{\mathrm{res}}(P,T)}{R}=-T\left[\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial T}\right)_{\rho,x_{i}}+\frac{\tilde{a}^{\mathrm{res}}}{T}\right]+\ln(Z)
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_sres.cpp"
-      line: 4
-      comment_line: 3
+    - file: "src/epcsaft/native/epcsaft_thermo.cpp"
+      line: 18
+      comment_line: 17
       context: "double sres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {"
 - eqid: "g_res_from_hs"
   section: "Enthalpy, Entropy, and Gibbs Free Energy"
@@ -2592,9 +2592,9 @@
   latex: |
     \tilde{g}^{\mathrm{res}}=\tilde{a}^{\mathrm{res}}+(Z-1)-\ln(Z)
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_gres.cpp"
-      line: 4
-      comment_line: 3
+    - file: "src/epcsaft/native/epcsaft_thermo.cpp"
+      line: 11
+      comment_line: 10
       context: "double gres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {"
 - eqid: "delta_g_solv_inf_x"
   section: "Enthalpy, Entropy, and Gibbs Free Energy"
@@ -2774,9 +2774,9 @@
     \rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
         =-\frac{\kappa e^2}{24\pi kT\epsilon}\sum_{i}x_{i}z_{i}{}^{2}\sigma_{i}
   cpp_refs:
-    - file: "src/epcsaft/native/epcsaft_dadrho.cpp"
-      line: 126
-      comment_line: 125
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp"
+      line: 102
+      comment_line: 101
       context: "double dadrho_ion_cpp(double t, const IonIntermediateState &ion_state) {"
 - eqid: "mu_dh_2005"
   section: "Supplemental"
