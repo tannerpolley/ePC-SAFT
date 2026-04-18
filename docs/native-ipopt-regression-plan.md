@@ -2,7 +2,7 @@
 
 ## Summary
 
-ePC-SAFT now ships a native C++ IPOPT-backed regression path for the public `fit_pure_neutral(...)` workflow.
+ePC-SAFT now ships a native C++ regression workflow where `fit_pure_neutral(...)` uses a native least-squares-first path and retains IPOPT as an internal fallback/refinement solver.
 
 The package no longer uses a Python/SciPy optimization loop for the supported regression surface. Python remains responsible for record loading, argument normalization, result packaging, and dataset write-back, while the optimization model and solver callbacks live in the native runtime.
 
@@ -17,7 +17,7 @@ The first supported regression phase is intentionally narrow:
   - pure-VLE fugacity-balance residuals
 - exact first derivatives
 - density retained as a nested native solve
-- IPOPT configured with limited-memory Hessian approximation
+- IPOPT configured with limited-memory Hessian approximation as the fallback/refinement solver
 
 Ion regression, binary regression, associating pure-neutral regression, covariance estimation, bootstrap workflows, and explicit density-constrained NLP formulations remain deferred.
 
@@ -29,7 +29,8 @@ Core responsibilities of that layer:
 
 - typed density and pure-VLE record structs
 - deterministic multistart generation
-- IPOPT `Ipopt::TNLP` implementation
+- deterministic transformed-space start generation
+- IPOPT `Ipopt::TNLP` implementation for fallback/refinement
 - exact reduced-space objective/gradient evaluation
 - native result payloads for fitted values, family metrics, and solver statistics
 
@@ -80,7 +81,7 @@ The public regression surface remains:
 - `load_regression_records(...)`
 - `write_fit_result(...)`
 
-`FitResult` keeps the existing compatibility fields such as `cost`, `status`, `message`, and `nfev`, and now also reports `backend="ipopt_native"`.
+`FitResult` keeps the existing compatibility fields such as `cost`, `status`, `message`, and `nfev`, and now truthfully reports either `backend="least_squares_native"` or `backend="ipopt_native"` depending on which solver produced the returned fit.
 
 ## Validation
 

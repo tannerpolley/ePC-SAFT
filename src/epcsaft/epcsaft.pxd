@@ -184,10 +184,15 @@ cdef extern from "epcsaft_electrolyte.h":
         double residual_norm
         double density_metric
         double pure_vle_metric
+        double initial_cost
+        double initial_density_metric
+        double initial_pure_vle_metric
         bint success
+        bint fallback_triggered
         int status
         int nfev
         int iterations
+        int starts_tried
         int objective_evaluations
         int gradient_evaluations
         int residual_evaluations

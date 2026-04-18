@@ -137,7 +137,7 @@ def test_hydrocarbon_neutral_regression_matches_literature_from_real_saturation_
         )
 
         assert result.success, result.message
-        assert result.backend == "ipopt_native"
+        assert result.backend in {"least_squares_native", "ipopt_native"}
         assert result.problem.mode == "pure_neutral"
         assert result.metrics_by_term["density"] < 0.01
         assert result.metrics_by_term["pure_vle_fugacity_balance"] < 0.01

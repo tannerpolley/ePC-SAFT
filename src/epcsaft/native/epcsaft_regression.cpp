@@ -27,8 +27,7 @@ using namespace thermo_detail;
 namespace {
 
 constexpr double kRegressionGradientFloor = 1.0e-300;
-constexpr double kPresolveAcceptDensityRms = 1.0e-2;
-constexpr double kPresolveAcceptPureVleRms = 1.0e-2;
+constexpr double kTransformFiniteBound = 25.0;
 constexpr int kThetaSize = 3;
 constexpr int kSeedRho = 0;
 constexpr int kSeedM = 1;
@@ -334,45 +333,6 @@ void append_start_if_distinct_cpp(vector<vector<double>> &starts, vector<double>
     starts.push_back(std::move(point));
 }
 
-vector<vector<double>> candidate_starts_cpp(
-    const vector<double> &x0,
-    const vector<double> &lower,
-    const vector<double> &upper,
-    int multistart
-) {
-    if (x0.size() != lower.size() || x0.size() != upper.size()) {
-        throw ValueError("Initial guess and bounds must have matching lengths for native regression.");
-    }
-    vector<vector<double>> starts;
-    vector<double> first = x0;
-    for (size_t i = 0; i < first.size(); ++i) {
-        first[i] = clip_start_value_cpp(first[i], lower[i], upper[i]);
-    }
-    append_start_if_distinct_cpp(starts, first);
-
-    constexpr std::array<double, kThetaSize> kCounterBiasFactors = {0.93, 1.04, 0.95};
-    vector<double> counter_bias = first;
-    for (size_t i = 0; i < counter_bias.size(); ++i) {
-        counter_bias[i] = clip_start_value_cpp(
-            first[i] * kCounterBiasFactors[i],
-            lower[i],
-            upper[i]
-        );
-    }
-    append_start_if_distinct_cpp(starts, std::move(counter_bias));
-
-    std::mt19937 rng(12345);
-    for (int k = 0; k < multistart; ++k) {
-        vector<double> point(x0.size(), 0.0);
-        for (size_t i = 0; i < x0.size(); ++i) {
-            std::uniform_real_distribution<double> uniform(lower[i], upper[i]);
-            point[i] = clip_start_value_cpp(uniform(rng), lower[i], upper[i]);
-        }
-        append_start_if_distinct_cpp(starts, std::move(point));
-    }
-    return starts;
-}
-
 double rms_metric_cpp(const vector<double> &values) {
     if (values.empty()) {
         return 0.0;
@@ -581,6 +541,14 @@ struct BoundedTransformResult {
     std::array<double, kThetaSize> dxdy{1.0, 1.0, 1.0};
 };
 
+constexpr std::array<std::array<double, kThetaSize>, 5> kDeterministicSeedFactors{{
+    {{1.00, 1.00, 1.00}},
+    {{0.93, 1.04, 0.95}},
+    {{1.07, 0.96, 1.05}},
+    {{0.97, 1.02, 0.98}},
+    {{1.03, 0.98, 1.02}},
+}};
+
 double logistic_cpp(double y) {
     if (y >= 0.0) {
         double exp_neg = std::exp(-y);
@@ -594,6 +562,13 @@ double logit_cpp(double p) {
     return std::log(p / (1.0 - p));
 }
 
+double validate_positive_bound_cpp(double value, const char *label) {
+    if (!(value > 0.0) || !std::isfinite(value)) {
+        throw ValueError(std::string("Native pure-neutral regression requires positive finite ") + label + " bounds.");
+    }
+    return value;
+}
+
 BoundedTransformResult unconstrained_to_bounded_cpp(
     const LMInputVector &y,
     const vector<double> &lower,
@@ -602,12 +577,17 @@ BoundedTransformResult unconstrained_to_bounded_cpp(
     BoundedTransformResult out;
     out.x.resize(kThetaSize, 0.0);
     for (int i = 0; i < kThetaSize; ++i) {
-        double lo = lower[static_cast<size_t>(i)];
-        double hi = upper[static_cast<size_t>(i)];
+        double lo = validate_positive_bound_cpp(lower[static_cast<size_t>(i)], "lower");
+        double hi = validate_positive_bound_cpp(upper[static_cast<size_t>(i)], "upper");
+        if (!(hi > lo)) {
+            throw ValueError("Native pure-neutral regression requires strictly increasing bounds for transformed variables.");
+        }
+        double log_lo = std::log(lo);
+        double log_hi = std::log(hi);
         double sigma = logistic_cpp(y[i]);
-        double width = hi - lo;
-        out.x[static_cast<size_t>(i)] = lo + width * sigma;
-        out.dxdy[static_cast<size_t>(i)] = width * sigma * (1.0 - sigma);
+        double log_x = log_lo + (log_hi - log_lo) * sigma;
+        out.x[static_cast<size_t>(i)] = std::exp(log_x);
+        out.dxdy[static_cast<size_t>(i)] = out.x[static_cast<size_t>(i)] * (log_hi - log_lo) * sigma * (1.0 - sigma);
     }
     return out;
 }
@@ -619,11 +599,15 @@ LMInputVector bounded_to_unconstrained_cpp(
 ) {
     LMInputVector y(kThetaSize);
     for (int i = 0; i < kThetaSize; ++i) {
-        double lo = lower[static_cast<size_t>(i)];
-        double hi = upper[static_cast<size_t>(i)];
+        double lo = validate_positive_bound_cpp(lower[static_cast<size_t>(i)], "lower");
+        double hi = validate_positive_bound_cpp(upper[static_cast<size_t>(i)], "upper");
+        if (!(hi > lo)) {
+            throw ValueError("Native pure-neutral regression requires strictly increasing bounds for transformed variables.");
+        }
         double clipped = clip_start_value_cpp(x[static_cast<size_t>(i)], lo, hi);
-        double width = hi - lo;
-        double p = (clipped - lo) / width;
+        double log_lo = std::log(lo);
+        double log_hi = std::log(hi);
+        double p = (std::log(clipped) - log_lo) / (log_hi - log_lo);
         if (p < 1.0e-12) {
             p = 1.0e-12;
         } else if (p > 1.0 - 1.0e-12) {
@@ -632,6 +616,47 @@ LMInputVector bounded_to_unconstrained_cpp(
         y[i] = logit_cpp(p);
     }
     return y;
+}
+
+vector<vector<double>> candidate_starts_cpp(
+    const vector<double> &x0,
+    const vector<double> &lower,
+    const vector<double> &upper,
+    int multistart
+) {
+    if (x0.size() != lower.size() || x0.size() != upper.size()) {
+        throw ValueError("Initial guess and bounds must have matching lengths for native regression.");
+    }
+    vector<vector<double>> starts;
+    vector<double> first = x0;
+    for (size_t i = 0; i < first.size(); ++i) {
+        first[i] = clip_start_value_cpp(first[i], lower[i], upper[i]);
+    }
+    for (const auto &factors : kDeterministicSeedFactors) {
+        vector<double> point = first;
+        for (int i = 0; i < kThetaSize; ++i) {
+            point[static_cast<size_t>(i)] = clip_start_value_cpp(
+                first[static_cast<size_t>(i)] * factors[static_cast<size_t>(i)],
+                lower[static_cast<size_t>(i)],
+                upper[static_cast<size_t>(i)]
+            );
+        }
+        append_start_if_distinct_cpp(starts, std::move(point));
+    }
+
+    std::mt19937 rng(12345);
+    for (int k = 0; k < multistart; ++k) {
+        vector<double> point(kThetaSize, 0.0);
+        for (int i = 0; i < kThetaSize; ++i) {
+            double lo = validate_positive_bound_cpp(lower[static_cast<size_t>(i)], "lower");
+            double hi = validate_positive_bound_cpp(upper[static_cast<size_t>(i)], "upper");
+            std::uniform_real_distribution<double> uniform(0.0, 1.0);
+            double log_x = std::log(lo) + uniform(rng) * (std::log(hi) - std::log(lo));
+            point[static_cast<size_t>(i)] = std::exp(log_x);
+        }
+        append_start_if_distinct_cpp(starts, std::move(point));
+    }
+    return starts;
 }
 
 class PureNeutralRegressionTNLP : public TNLP {
@@ -653,7 +678,8 @@ public:
           pure_vle_scale_(pure_vle_scale),
           start_(std::move(start)),
           lower_(std::move(lower)),
-          upper_(std::move(upper)) {}
+          upper_(std::move(upper)),
+          start_y_(bounded_to_unconstrained_cpp(start_, lower_, upper_)) {}
 
     bool get_nlp_info(Index &n, Index &m, Index &nnz_jac_g, Index &nnz_h_lag, IndexStyleEnum &index_style) override {
         n = kThetaSize;
@@ -669,8 +695,8 @@ public:
         (void)g_l;
         (void)g_u;
         for (Index i = 0; i < n; ++i) {
-            x_l[i] = lower_[static_cast<size_t>(i)];
-            x_u[i] = upper_[static_cast<size_t>(i)];
+            x_l[i] = -kTransformFiniteBound;
+            x_u[i] = kTransformFiniteBound;
         }
         return true;
     }
@@ -686,7 +712,7 @@ public:
             return false;
         }
         for (Index i = 0; i < n; ++i) {
-            x[i] = start_[static_cast<size_t>(i)];
+            x[i] = start_y_[i];
         }
         return true;
     }
@@ -706,7 +732,7 @@ public:
             return false;
         }
         for (Index i = 0; i < n; ++i) {
-            grad_f[i] = cache_.gradient[static_cast<size_t>(i)];
+            grad_f[i] = cache_.gradient[static_cast<size_t>(i)] * cache_transform_.dxdy[static_cast<size_t>(i)];
         }
         return true;
     }
@@ -767,7 +793,8 @@ public:
     ) override {
         status_ = status;
         obj_value_ = obj_value;
-        solution_.assign(x, x + n);
+        BoundedTransformResult transform = unconstrained_to_bounded_cpp(Eigen::Map<const LMInputVector>(x, n), lower_, upper_);
+        solution_ = transform.x;
         if (!cache_valid_ || last_x_ != solution_) {
             try {
                 cache_ = evaluate_pure_neutral_objective_cpp(
@@ -819,11 +846,14 @@ public:
 private:
     bool ensure_cache(Index n, const Number *x, bool new_x) {
         vector<double> current(static_cast<size_t>(n), 0.0);
+        LMInputVector y(n);
         for (Index i = 0; i < n; ++i) {
-            current[static_cast<size_t>(i)] = x[i];
+            y[i] = x[i];
         }
-        if (!cache_valid_ || new_x || current != last_x_) {
+        if (!cache_valid_ || new_x || last_y_.size() != y.size() || !y.isApprox(last_y_, 0.0)) {
             try {
+                cache_transform_ = unconstrained_to_bounded_cpp(y, lower_, upper_);
+                current = cache_transform_.x;
                 cache_ = evaluate_pure_neutral_objective_cpp(
                     base_args_,
                     density_records_,
@@ -838,6 +868,7 @@ private:
             }
             cache_valid_ = true;
             last_x_ = std::move(current);
+            last_y_ = std::move(y);
         }
         return true;
     }
@@ -850,6 +881,9 @@ private:
     vector<double> start_;
     vector<double> lower_;
     vector<double> upper_;
+    LMInputVector start_y_;
+    LMInputVector last_y_;
+    BoundedTransformResult cache_transform_;
     PureNeutralObjectiveEvaluation cache_;
     vector<double> last_x_;
     vector<double> solution_;
@@ -872,11 +906,17 @@ PureNeutralRegressionResult solve_one_start_ipopt_cpp(
     bool derivative_test
 ) {
     auto solve_start = std::chrono::steady_clock::now();
-    PureNeutralRegressionResult warm_start;
-    bool have_warm_start = false;
-    vector<double> seeded_start = start;
     try {
-        warm_start = fit_pure_neutral_least_squares_cpp(
+        PureNeutralObjectiveEvaluation initial_eval = evaluate_pure_neutral_objective_cpp(
+            base_args,
+            density_records,
+            density_scale,
+            pure_vle_records,
+            pure_vle_scale,
+            start,
+            nullptr
+        );
+        SmartPtr<PureNeutralRegressionTNLP> nlp = new PureNeutralRegressionTNLP(
             base_args,
             density_records,
             density_scale,
@@ -884,65 +924,36 @@ PureNeutralRegressionResult solve_one_start_ipopt_cpp(
             pure_vle_scale,
             start,
             lower,
-            upper,
-            0
+            upper
         );
-        if (warm_start.success && warm_start.x.size() == kThetaSize) {
-            if (
-                warm_start.density_metric < kPresolveAcceptDensityRms
-                && warm_start.pure_vle_metric < kPresolveAcceptPureVleRms
-            ) {
-                warm_start.backend = "ipopt_native";
-                warm_start.message = "Accepted native least-squares presolve solution.";
-                return warm_start;
-            }
-            seeded_start = warm_start.x;
-            have_warm_start = true;
+        SmartPtr<IpoptApplication> app = ::IpoptApplicationFactory();
+        app->Options()->SetStringValue("hessian_approximation", "limited-memory");
+        app->Options()->SetStringValue("mu_strategy", "adaptive");
+        app->Options()->SetStringValue("nlp_scaling_method", "gradient-based");
+        app->Options()->SetStringValue("sb", "yes");
+        app->Options()->SetIntegerValue("print_level", 0);
+        app->Options()->SetIntegerValue("max_iter", 500);
+        app->Options()->SetIntegerValue("acceptable_iter", 3);
+        app->Options()->SetNumericValue("tol", 1.0e-6);
+        app->Options()->SetNumericValue("acceptable_tol", 1.0e-5);
+        if (derivative_test) {
+            app->Options()->SetStringValue("derivative_test", "first-order");
+            app->Options()->SetNumericValue("derivative_test_perturbation", 1.0e-7);
         }
+        ApplicationReturnStatus init_status = app->Initialize();
+        if (init_status != Ipopt::Solve_Succeeded) {
+            throw ValueError("Failed to initialize IPOPT application for native pure-neutral regression.");
+        }
+        app->OptimizeTNLP(GetRawPtr(nlp));
+        PureNeutralRegressionResult out = nlp->result();
+        out.initial_cost = initial_eval.objective;
+        out.initial_density_metric = rms_metric_cpp(initial_eval.density_raw_residuals);
+        out.initial_pure_vle_metric = rms_metric_cpp(initial_eval.pure_vle_raw_residuals);
+        out.solve_wall_time_s = std::chrono::duration<double>(std::chrono::steady_clock::now() - solve_start).count();
+        return out;
     } catch (...) {
+        throw;
     }
-
-    SmartPtr<PureNeutralRegressionTNLP> nlp = new PureNeutralRegressionTNLP(
-        base_args,
-        density_records,
-        density_scale,
-        pure_vle_records,
-        pure_vle_scale,
-        seeded_start,
-        lower,
-        upper
-    );
-    SmartPtr<IpoptApplication> app = ::IpoptApplicationFactory();
-    app->Options()->SetStringValue("hessian_approximation", "limited-memory");
-    app->Options()->SetStringValue("mu_strategy", "adaptive");
-    app->Options()->SetStringValue("nlp_scaling_method", "gradient-based");
-    app->Options()->SetStringValue("sb", "yes");
-    app->Options()->SetIntegerValue("print_level", 0);
-    app->Options()->SetIntegerValue("max_iter", 500);
-    app->Options()->SetIntegerValue("acceptable_iter", 3);
-    app->Options()->SetNumericValue("tol", 1.0e-6);
-    app->Options()->SetNumericValue("acceptable_tol", 1.0e-5);
-    if (derivative_test) {
-        app->Options()->SetStringValue("derivative_test", "first-order");
-        app->Options()->SetNumericValue("derivative_test_perturbation", 1.0e-7);
-    }
-    ApplicationReturnStatus init_status = app->Initialize();
-    if (init_status != Ipopt::Solve_Succeeded) {
-        throw ValueError("Failed to initialize IPOPT application for native pure-neutral regression.");
-    }
-    app->OptimizeTNLP(GetRawPtr(nlp));
-    PureNeutralRegressionResult out = nlp->result();
-    out.solve_wall_time_s = std::chrono::duration<double>(std::chrono::steady_clock::now() - solve_start).count();
-    if (have_warm_start) {
-        out.nfev += warm_start.nfev;
-        out.objective_evaluations += warm_start.objective_evaluations;
-        out.gradient_evaluations += warm_start.gradient_evaluations;
-        out.residual_evaluations += warm_start.residual_evaluations;
-        out.density_solves += warm_start.density_solves;
-        out.fused_state_evaluations += warm_start.fused_state_evaluations;
-        out.callback_wall_time_s += warm_start.callback_wall_time_s;
-    }
-    return out;
 }
 
 struct PureNeutralLeastSquaresFunctor : Eigen::DenseFunctor<double> {
@@ -1035,6 +1046,15 @@ PureNeutralRegressionResult solve_one_start_least_squares_cpp(
     const vector<double> &upper
 ) {
     auto solve_start = std::chrono::steady_clock::now();
+    PureNeutralObjectiveEvaluation initial_eval = evaluate_pure_neutral_objective_cpp(
+        base_args,
+        density_records,
+        density_scale,
+        pure_vle_records,
+        pure_vle_scale,
+        start,
+        nullptr
+    );
     PureNeutralLeastSquaresFunctor functor(
         base_args,
         density_records,
@@ -1057,6 +1077,9 @@ PureNeutralRegressionResult solve_one_start_least_squares_cpp(
 
     PureNeutralRegressionResult out;
     out.x = final_transform.x;
+    out.initial_cost = initial_eval.objective;
+    out.initial_density_metric = rms_metric_cpp(initial_eval.density_raw_residuals);
+    out.initial_pure_vle_metric = rms_metric_cpp(initial_eval.pure_vle_raw_residuals);
     out.success = least_squares_status_success_cpp(status);
     out.status = static_cast<int>(status);
     out.message = least_squares_status_message_cpp(status);
@@ -1205,6 +1228,7 @@ PureNeutralRegressionResult fit_pure_neutral_ipopt_cpp(
     vector<vector<double>> starts = candidate_starts_cpp(x0, lower, upper, multistart);
     bool have_result = false;
     PureNeutralRegressionResult best;
+    int starts_tried = 0;
     for (const auto &start : starts) {
         try {
             PureNeutralRegressionResult candidate = solve_one_start_ipopt_cpp(
@@ -1218,6 +1242,7 @@ PureNeutralRegressionResult fit_pure_neutral_ipopt_cpp(
                 upper,
                 derivative_test
             );
+            ++starts_tried;
             best = choose_better_result_cpp(have_result, best, candidate);
             have_result = true;
         } catch (...) {
@@ -1226,6 +1251,7 @@ PureNeutralRegressionResult fit_pure_neutral_ipopt_cpp(
     if (!have_result) {
         throw ValueError("Native pure-neutral IPOPT regression did not generate any candidate starts.");
     }
+    best.starts_tried = starts_tried;
     return best;
 }
 
@@ -1251,6 +1277,7 @@ PureNeutralRegressionResult fit_pure_neutral_least_squares_cpp(
     vector<vector<double>> starts = candidate_starts_cpp(x0, lower, upper, multistart);
     bool have_result = false;
     PureNeutralRegressionResult best;
+    int starts_tried = 0;
     for (const auto &start : starts) {
         try {
             PureNeutralRegressionResult candidate = solve_one_start_least_squares_cpp(
@@ -1263,6 +1290,7 @@ PureNeutralRegressionResult fit_pure_neutral_least_squares_cpp(
                 lower,
                 upper
             );
+            ++starts_tried;
             best = choose_better_result_cpp(have_result, best, candidate);
             have_result = true;
         } catch (...) {
@@ -1271,5 +1299,6 @@ PureNeutralRegressionResult fit_pure_neutral_least_squares_cpp(
     if (!have_result) {
         throw ValueError("Native pure-neutral least-squares regression did not generate any candidate starts.");
     }
+    best.starts_tried = starts_tried;
     return best;
 }

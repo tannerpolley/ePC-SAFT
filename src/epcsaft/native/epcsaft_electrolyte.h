@@ -173,10 +173,15 @@ struct PureNeutralRegressionResult {
     double residual_norm = HUGE_DBL;
     double density_metric = HUGE_DBL;
     double pure_vle_metric = HUGE_DBL;
+    double initial_cost = HUGE_DBL;
+    double initial_density_metric = HUGE_DBL;
+    double initial_pure_vle_metric = HUGE_DBL;
     bool success = false;
+    bool fallback_triggered = false;
     int status = 0;
     int nfev = 0;
     int iterations = 0;
+    int starts_tried = 0;
     int objective_evaluations = 0;
     int gradient_evaluations = 0;
     int residual_evaluations = 0;
