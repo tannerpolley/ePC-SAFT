@@ -411,6 +411,13 @@ bool least_squares_status_success_cpp(Eigen::LevenbergMarquardtSpace::Status sta
         || status == Status::CosinusTooSmall;
 }
 
+bool regression_metrics_acceptable_cpp(double density_metric, double pure_vle_metric) {
+    return std::isfinite(density_metric)
+        && std::isfinite(pure_vle_metric)
+        && density_metric < 2.0e-2
+        && pure_vle_metric < 2.0e-2;
+}
+
 void validate_fused_state_cpp(const PureNeutralFusedState &state, const char *label) {
     if (!(std::isfinite(state.dpdrho) && std::abs(state.dpdrho) > 0.0)) {
         throw ValueError(std::string("Encountered invalid exact dp/drho during native regression ") + label + " evaluation.");
@@ -1661,6 +1668,8 @@ PureNeutralRegressionResult solve_one_start_ipopt_explicit_cpp(
     app->Options()->SetIntegerValue("acceptable_iter", 3);
     app->Options()->SetNumericValue("tol", 1.0e-6);
     app->Options()->SetNumericValue("acceptable_tol", 1.0e-5);
+    app->Options()->SetNumericValue("bound_push", 1.0e-8);
+    app->Options()->SetNumericValue("bound_frac", 1.0e-8);
     ApplicationReturnStatus init_status = app->Initialize();
     if (init_status != Ipopt::Solve_Succeeded) {
         throw ValueError("Failed to initialize IPOPT application for native explicit-state pure-neutral regression.");
@@ -1671,6 +1680,28 @@ PureNeutralRegressionResult solve_one_start_ipopt_explicit_cpp(
     out.initial_density_metric = rms_metric_cpp(initial_eval.density_raw_residuals);
     out.initial_pure_vle_metric = rms_metric_cpp(initial_eval.pure_vle_raw_residuals);
     out.solve_wall_time_s = std::chrono::duration<double>(std::chrono::steady_clock::now() - solve_start).count();
+    bool initial_acceptable = regression_metrics_acceptable_cpp(
+        out.initial_density_metric,
+        out.initial_pure_vle_metric
+    );
+    bool final_acceptable = regression_metrics_acceptable_cpp(
+        out.density_metric,
+        out.pure_vle_metric
+    );
+    if (initial_acceptable && (!final_acceptable || !out.success || initial_eval.objective < out.cost)) {
+        out.x = start_seed.theta;
+        out.cost = initial_eval.objective;
+        out.residual_norm = std::sqrt(std::max(0.0, 2.0 * initial_eval.objective));
+        out.density_metric = out.initial_density_metric;
+        out.pure_vle_metric = out.initial_pure_vle_metric;
+        out.success = true;
+        std::ostringstream msg;
+        msg << "Accepted square-initialized explicit-state seed because IPOPT did not improve it.";
+        if (!out.message.empty()) {
+            msg << " Final IPOPT status: " << out.message;
+        }
+        out.message = msg.str();
+    }
     return out;
 }
 
