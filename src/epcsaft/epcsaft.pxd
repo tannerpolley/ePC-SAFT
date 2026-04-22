@@ -47,6 +47,17 @@ cdef extern from "epcsaft_electrolyte.h":
         const vector[double]& upper,
         int multistart
     ) except +
+    PureNeutralRegressionResult fit_pure_neutral_ipopt_explicit_cpp(
+        const add_args& base_args,
+        const vector[PureNeutralRegressionDensityRecord]& density_records,
+        double density_scale,
+        const vector[PureNeutralRegressionVLERecord]& pure_vle_records,
+        double pure_vle_scale,
+        const vector[double]& x0,
+        const vector[double]& lower,
+        const vector[double]& upper,
+        int multistart
+    ) except +
     PureNeutralRegressionDebugResult evaluate_pure_neutral_objective_debug_cpp(
         const add_args& base_args,
         const vector[PureNeutralRegressionDensityRecord]& density_records,
@@ -196,7 +207,12 @@ cdef extern from "epcsaft_electrolyte.h":
         int objective_evaluations
         int gradient_evaluations
         int residual_evaluations
+        int constraint_evaluations
+        int jacobian_evaluations
         int density_solves
+        int square_init_density_solves
+        int post_init_density_solves
+        int square_init_failures
         int fused_state_evaluations
         double callback_wall_time_s
         double solve_wall_time_s

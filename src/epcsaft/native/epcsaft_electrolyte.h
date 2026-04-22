@@ -185,7 +185,12 @@ struct PureNeutralRegressionResult {
     int objective_evaluations = 0;
     int gradient_evaluations = 0;
     int residual_evaluations = 0;
+    int constraint_evaluations = 0;
+    int jacobian_evaluations = 0;
     int density_solves = 0;
+    int square_init_density_solves = 0;
+    int post_init_density_solves = 0;
+    int square_init_failures = 0;
     int fused_state_evaluations = 0;
     double callback_wall_time_s = 0.0;
     double solve_wall_time_s = 0.0;
@@ -331,6 +336,17 @@ PureNeutralRegressionResult fit_pure_neutral_ipopt_cpp(
     bool derivative_test
 );
 PureNeutralRegressionResult fit_pure_neutral_least_squares_cpp(
+    const add_args &base_args,
+    const vector<PureNeutralRegressionDensityRecord> &density_records,
+    double density_scale,
+    const vector<PureNeutralRegressionVLERecord> &pure_vle_records,
+    double pure_vle_scale,
+    const vector<double> &x0,
+    const vector<double> &lower,
+    const vector<double> &upper,
+    int multistart
+);
+PureNeutralRegressionResult fit_pure_neutral_ipopt_explicit_cpp(
     const add_args &base_args,
     const vector<PureNeutralRegressionDensityRecord> &density_records,
     double density_scale,

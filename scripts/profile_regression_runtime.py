@@ -30,6 +30,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from epcsaft import fit_pure_neutral
 from epcsaft.regression import _fit_pure_neutral_internal
+from epcsaft.regression import _fit_pure_neutral_ipopt_explicit_internal
 from epcsaft.regression import _fit_pure_neutral_least_squares_internal
 from epcsaft.regression import _fit_pure_neutral_workflow_debug
 from tests.test_regression import _load_workbook_reference_rows
@@ -80,6 +81,8 @@ def _benchmark_current_case(component: str, backend: str) -> dict[str, Any]:
         solve = _fit_pure_neutral_least_squares_internal
     elif backend == "ipopt_native":
         solve = lambda **inner_kwargs: _fit_pure_neutral_internal(**inner_kwargs, backend="ipopt_native")
+    elif backend == "ipopt_explicit_native":
+        solve = _fit_pure_neutral_ipopt_explicit_internal
     else:
         raise ValueError(f"Unsupported benchmark backend {backend!r}")
 
@@ -333,8 +336,11 @@ def run_regression_runtime_profile() -> list[dict[str, Any]]:
     rows.append(_benchmark_current_case("Methane", "public_default"))
     rows.append(_benchmark_current_case("Methane", "least_squares_native"))
     rows.append(_benchmark_current_case("Methane", "ipopt_native"))
+    rows.append(_benchmark_current_case("Methane", "ipopt_explicit_native"))
     rows.append(_benchmark_current_suite("public_default"))
     rows.append(_benchmark_current_suite("least_squares_native"))
+    rows.append(_benchmark_current_suite("ipopt_native"))
+    rows.append(_benchmark_current_suite("ipopt_explicit_native"))
 
     if OLD_WORKTREE.exists() and _include_old_regression():
         rows.append(_benchmark_old_case("Methane"))

@@ -13,6 +13,7 @@ import numpy as np
 from ._types import InputError
 from ._types import phase_to_int
 from .epcsaft import _fit_pure_neutral_native
+from .epcsaft import _fit_pure_neutral_native_explicit
 from .epcsaft import _fit_pure_neutral_native_least_squares
 from .epcsaft import _fit_pure_neutral_native_debug
 from .parameter_templates import _infer_pure_template_name
@@ -918,6 +919,22 @@ def _fit_pure_neutral_internal_with_native(
             multistart=int(multistart),
             derivative_test=False,
         )
+    elif backend == "ipopt_explicit_native":
+        native_result = _fit_pure_neutral_native_explicit(
+            payload["fixed_payload"],
+            payload["density_T"],
+            payload["density_P"],
+            payload["density_rho_exp"],
+            payload["density_phase"],
+            payload["density_scale"],
+            payload["vle_T"],
+            payload["vle_P"],
+            payload["pure_vle_scale"],
+            theta0,
+            payload["lower"],
+            payload["upper"],
+            multistart=int(multistart),
+        )
     elif backend == "least_squares_native":
         native_result = _fit_pure_neutral_native_least_squares(
             payload["fixed_payload"],
@@ -1106,6 +1123,35 @@ def _fit_pure_neutral_least_squares_internal(
         bounds=bounds,
         multistart=multistart,
         backend="least_squares_native",
+    )
+
+
+def _fit_pure_neutral_ipopt_explicit_internal(
+    records: Any,
+    component: str,
+    *,
+    assoc_scheme: str = "",
+    dataset: str | Path | None = None,
+    pure_set: str | None = None,
+    fit_targets: Iterable[str] | None = None,
+    fixed_parameters: Mapping[str, Any] | None = None,
+    initial_guess: Mapping[str, float] | None = None,
+    bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
+    multistart: int = 0,
+) -> FitResult:
+    """Internal native explicit-state IPOPT comparison hook for pure-neutral regression."""
+    return _fit_pure_neutral_internal(
+        records,
+        component,
+        assoc_scheme=assoc_scheme,
+        dataset=dataset,
+        pure_set=pure_set,
+        fit_targets=fit_targets,
+        fixed_parameters=fixed_parameters,
+        initial_guess=initial_guess,
+        bounds=bounds,
+        multistart=multistart,
+        backend="ipopt_explicit_native",
     )
 
 

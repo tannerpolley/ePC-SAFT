@@ -17,6 +17,8 @@ from epcsaft import fit_pure_neutral
 from epcsaft import write_fit_result
 from epcsaft._types import InputError
 from epcsaft.regression import _debug_native_pure_neutral_objective
+from epcsaft.regression import _fit_pure_neutral_internal_with_native
+from epcsaft.regression import _fit_pure_neutral_ipopt_explicit_internal
 from epcsaft.regression import _fit_pure_neutral_least_squares_internal
 from epcsaft.regression import _fit_pure_neutral_workflow_debug
 from epcsaft.regression import fit_binary_pair
@@ -135,6 +137,59 @@ def test_internal_native_least_squares_backend_matches_methane_reference_band():
     assert result.fitted_values["m"] == pytest.approx(1.0, rel=0.0, abs=0.05)
     assert result.fitted_values["s"] == pytest.approx(3.7039, rel=0.0, abs=0.08)
     assert result.fitted_values["e"] == pytest.approx(150.03, rel=0.0, abs=3.0)
+
+
+def test_internal_native_explicit_ipopt_backend_matches_methane_reference_band():
+    result = _fit_pure_neutral_ipopt_explicit_internal(
+        _methane_like_records(),
+        "Methane",
+        assoc_scheme="",
+        fixed_parameters=_minimal_neutral_metadata(16.043e-3),
+        initial_guess={"m": 1.08, "s": 3.55, "e": 155.0},
+        bounds={
+            "m": (0.5, 3.5),
+            "s": (2.0, 5.0),
+            "e": (50.0, 400.0),
+        },
+    )
+
+    assert result.success, result.message
+    assert result.backend == "ipopt_explicit_native"
+    assert result.metrics_by_term["density"] < 0.02
+    assert result.metrics_by_term["pure_vle_fugacity_balance"] < 0.02
+    assert result.fitted_values["m"] == pytest.approx(1.0, rel=0.0, abs=0.06)
+    assert result.fitted_values["s"] == pytest.approx(3.7039, rel=0.0, abs=0.10)
+    assert result.fitted_values["e"] == pytest.approx(150.03, rel=0.0, abs=4.0)
+
+
+def test_explicit_ipopt_initial_objective_matches_reduced_objective_for_same_theta_seed():
+    theta = {"m": 1.08, "s": 3.55, "e": 155.0}
+    _, explicit_native = _fit_pure_neutral_internal_with_native(
+        _methane_like_records(),
+        "Methane",
+        assoc_scheme="",
+        fixed_parameters=_minimal_neutral_metadata(16.043e-3),
+        initial_guess=theta,
+        bounds={
+            "m": (0.5, 3.5),
+            "s": (2.0, 5.0),
+            "e": (50.0, 400.0),
+        },
+        backend="ipopt_explicit_native",
+    )
+    reduced_debug = _debug_native_pure_neutral_objective(
+        _methane_like_records(),
+        "Methane",
+        assoc_scheme="",
+        fixed_parameters=_minimal_neutral_metadata(16.043e-3),
+        initial_guess=theta,
+        x=theta,
+    )
+
+    assert explicit_native["initial_cost"] <= reduced_debug["objective"]
+    assert explicit_native["starts_tried"] >= 1
+    assert explicit_native["post_init_density_solves"] == 0
+    assert explicit_native["square_init_density_solves"] >= 1
 
 
 @pytest.mark.parametrize(

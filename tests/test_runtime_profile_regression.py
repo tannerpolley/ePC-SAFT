@@ -24,4 +24,5 @@ def test_runtime_profile_regression() -> None:
     assert REPORT_CSV.exists(), f"Expected regression runtime profile CSV was not written: {REPORT_CSV}"
     assert REPORT_MD.exists(), f"Expected regression runtime profile Markdown was not written: {REPORT_MD}"
     assert any(str(row.get("backend")) == "ipopt_native" for row in rows)
+    assert any(str(row.get("backend")) == "ipopt_explicit_native" for row in rows)
     assert any(str(row.get("backend")) == "least_squares_native" for row in rows)
