@@ -292,7 +292,7 @@ def test_ionic_activity_and_solution_methods_return_expected_values():
 
     assert relative_permittivity[0] == pytest.approx(78.075982)
     _assert_array(relative_permittivity[1], [78.09, 8.0, 8.0])
-    _assert_array(osmotic_coefficient, [0.9740430244627462], rtol=1e-6)
+    _assert_array(osmotic_coefficient, [0.9739566103279091], rtol=1e-6)
     assert component_activity == {
         "water": pytest.approx(1.0000051724037697),
         "Na+": pytest.approx(0.9222113778654043),
@@ -301,12 +301,12 @@ def test_ionic_activity_and_solution_methods_return_expected_values():
     assert mean_ionic_mole == {"Na+Cl-": pytest.approx(0.9222185934230398)}
     assert mean_ionic_molality == {"Na+Cl-": pytest.approx(0.9220341497043553)}
     assert solvation_free_energy == {
-        "Na+": pytest.approx(-479009.01199608785),
-        "Cl-": pytest.approx(-493120.5112077797),
+        "Na+": pytest.approx(-475461.4260703414),
+        "Cl-": pytest.approx(-489572.50284416083),
     }
 
     _assert_array(diagnostics["relative_permittivity"][1], [78.09, 8.0, 8.0])
-    _assert_array(diagnostics["osmotic_coefficient"], [0.9740430244627462], rtol=1e-6)
+    _assert_array(diagnostics["osmotic_coefficient"], [0.9739566103279091], rtol=1e-6)
     assert diagnostics["activity_coefficient"] == component_activity
     assert diagnostics["mean_ionic_activity_coefficient_mole"] == mean_ionic_mole
     assert diagnostics["mean_ionic_activity_coefficient_molality"] == mean_ionic_molality
@@ -321,10 +321,10 @@ def test_ionic_activity_and_solution_methods_return_expected_values():
     _assert_array(state.fugacity_coefficient(natural_log=False), [0.031479320480733174, 4.651483659012546e-84, 1.5683276992772872e-86])
     assert state.compressibility_factor() == pytest.approx(0.000728884077611683)
     assert state.residual_helmholtz() == pytest.approx(-9.7214027218058)
-    assert state.temperature_derivative_residual_helmholtz() == pytest.approx(0.055518862215412086)
-    assert state.residual_enthalpy() == pytest.approx(-43511.182740475044)
-    assert state.residual_entropy() == pytest.approx(-116.86423439977183)
-    assert state.residual_gibbs() == pytest.approx(-8668.11125418307)
+    assert state.temperature_derivative_residual_helmholtz() == pytest.approx(0.032388021640507005)
+    assert state.residual_enthalpy() == pytest.approx(-26415.160790583413)
+    assert state.residual_entropy() == pytest.approx(-59.523895812302186)
+    assert state.residual_gibbs() == pytest.approx(-8668.111254145517)
     _assert_array(state.residual_chemical_potential(), [-10.682420304620588, -199.10395742942775, -204.79630395556683])
     assert state.pressure() == pytest.approx(100000.0)
     assert state.density() == pytest.approx(55344.274540081075)

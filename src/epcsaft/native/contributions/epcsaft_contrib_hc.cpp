@@ -145,7 +145,7 @@ static vector<double> hc_contact_composition_terms_cpp(const MixtureState &therm
         }
         for (int j = 0; j < ncomp; ++j) {
             ++idx;
-            double pair_diameter = thermo.d[j] * thermo.d[j] / (thermo.d[j] + thermo.d[j]);
+            double pair_diameter = pair_diameter_cpp(thermo.d[j], thermo.d[j]);
             terms[idx] = hs_contact_composition_derivative_cpp(
                 pair_diameter,
                 hc_state.zeta[2],

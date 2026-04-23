@@ -268,7 +268,11 @@ AssociationIntermediateState association_intermediate_state_cpp(
                 if (cppargs.assoc_matrix[i * num_sites + j] != 0) {
                     double eABij = 0.5 * (cppargs.e_assoc[site_component_index[i]] + cppargs.e_assoc[site_component_index[j]]);
                     double volABij = association_volume_cpp(site_component_index[i], site_component_index[j], ncomp, thermo.s_ij, cppargs);
-                    ddelta_dt[i * num_sites + j] = std::pow(thermo.s_ij[idxj], 3) * volABij * (
+                    double pair_diameter = pair_diameter_cpp(
+                        thermo.d[site_component_index[i]],
+                        thermo.d[site_component_index[j]]
+                    );
+                    ddelta_dt[i * num_sites + j] = std::pow(pair_diameter, 3) * volABij * (
                         -eABij / std::pow(t, 2) * std::exp(eABij / t) * hc_state.ghs[site_component_index[i] * ncomp + site_component_index[j]]
                         + (*dghs_dt)[site_component_index[i] * ncomp + site_component_index[j]] * (std::exp(eABij / t) - 1.0)
                     );

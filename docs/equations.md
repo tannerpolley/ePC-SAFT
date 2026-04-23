@@ -1669,7 +1669,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Provides the density differential of the association Helmholtz contribution.
 - Change note: Moved back under the association Helmholtz contribution so Section 4 owns all equations carrying the association contribution label.
 - LaTeX: `docs/latex/equations.tex:1562`
-- C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:316` (double dadrho_assoc_cpp()
+- C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:320` (double dadrho_assoc_cpp()
 
 ```tex
 \rho\left(\frac{\partial\tilde{a}^{assoc}}{\partial\rho}\right)_{T,x}
@@ -1683,7 +1683,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Provides the composition differential of the association Helmholtz contribution.
 - Change note: Moved back under the association Helmholtz contribution so Section 4 owns all equations carrying the association contribution label.
 - LaTeX: `docs/latex/equations.tex:1574`
-- C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:378` (ContributionDadxResult dadx_assoc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const AssociationIntermediateState &assoc_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:382` (ContributionDadxResult dadx_assoc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const AssociationIntermediateState &assoc_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \left(\frac{\partial \tilde a^{assoc}}{\partial x_{k}}\right)_{T,v,x_{i\neq k}}
@@ -1702,7 +1702,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Provides the analytical temperature differential of the association Helmholtz contribution.
 - Change note: Moved back under the association Helmholtz contribution so Section 4 owns all equations carrying the association contribution label.
 - LaTeX: `docs/latex/equations.tex:1591`
-- C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:366` (double dadt_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {)
+- C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:370` (double dadt_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {)
 
 ```tex
 \left(\frac{\partial\tilde{a}^{\mathrm{assoc}}}{\partial T}\right)_{\rho,x_i}
@@ -1825,7 +1825,7 @@ D_{i,\delta}^{(m_\delta)},
 - Description: Provides the density differential of the Born Helmholtz contribution.
 - Change note: Moved back under the Born Helmholtz contribution so Section 4 owns all equations carrying the Born contribution label.
 - LaTeX: `docs/latex/equations.tex:1706`
-- C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:194` (double dadrho_born_cpp() {)
+- C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:202` (double dadrho_born_cpp() {)
 
 ```tex
 \rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}= 0
@@ -1908,7 +1908,7 @@ D_{i,\delta}^{(m_\delta)},
 - Description: Provides the temperature differential of the Born Helmholtz contribution.
 - Change note: Moved back under the Born Helmholtz contribution so Section 4 owns all equations carrying the Born contribution label.
 - LaTeX: `docs/latex/equations.tex:1783`
-- C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:199` (double dadt_born_cpp(double t, const BornIntermediateState &born_state) {)
+- C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:207` (double dadt_born_cpp(double t, const BornIntermediateState &born_state) {)
 
 ```tex
 \begin{aligned}
@@ -2206,7 +2206,7 @@ Z^{\alpha}
 - Description: Gives the infinite-dilution activity-coefficient definition in activity coefficient.
 - Change note: Added explicitly in non-log form for ions and solutes referenced to infinite dilution.
 - LaTeX: `docs/latex/equations.tex:2077`
-- C++: `src/epcsaft/native/epcsaft_activity.cpp:456` (ActivityCoefficientNative activity_coefficient_values_cpp()
+- C++: `src/epcsaft/native/epcsaft_activity.cpp:459` (ActivityCoefficientNative activity_coefficient_values_cpp()
 
 ```tex
 \gamma_{i}^{*}
@@ -2221,7 +2221,7 @@ Z^{\alpha}
 - Description: Gives the infinite-dilution logarithmic activity-coefficient definition in activity coefficient.
 - Change note: Expressed only in terms of fugacity coefficients, as requested for the activity section.
 - LaTeX: `docs/latex/equations.tex:2090`
-- C++: `src/epcsaft/native/epcsaft_activity.cpp:456` (ActivityCoefficientNative activity_coefficient_values_cpp()
+- C++: `src/epcsaft/native/epcsaft_activity.cpp:459` (ActivityCoefficientNative activity_coefficient_values_cpp()
 
 ```tex
 \ln\gamma_{i}^{*}

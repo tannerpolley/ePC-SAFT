@@ -68,6 +68,14 @@ BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, dou
         data.sum_bracket += x[i] * z2 * data.bracket[i];
         data.sum_invD += x[i] * z2 * invD;
         data.sum_gap += x[i] * z2 * gap;
+        double d_born_dt = ion_born_radius_cpp_dt(i, t, cppargs);
+        double d_delta_dt = use_ssm ? ((f_mix - 1.0) * d_born_dt / std::abs(cppargs.z[i])) : 0.0;
+        double dD_dt = d_born_dt + d_delta_dt;
+        double invD_dt = -dD_dt * invD * invD;
+        double gap_dt = -d_born_dt / (data.d_born[i] * data.d_born[i]) - invD_dt;
+        double base_dt = (1.0 - 1.0 / eps_r) * invD_dt;
+        double ds_dt = use_ds ? ((1.0 - 1.0 / eps_r_ion) * gap_dt) : 0.0;
+        data.sum_bracket_dt += x[i] * z2 * (base_dt + ds_dt);
         if (use_ssm) {
             data.sum_dpref_over_D2 += x[i] * z2 * data.ddelta_prefac[i] * invD * invD;
         }
@@ -206,7 +214,8 @@ double dadt_born_cpp(double t, const BornIntermediateState &born_state) {
         return prefactor * born_factor * (born_state.charge_radius_sum / (t * t) - born_state.charge_radius_sum_dt / t);
     }
     if (born_state.model == 2) {
-        return E_CHRG * E_CHRG / (4.0 * PI * kb * perm_vac * t * t) * born_state.shell.sum_bracket;
+        double prefactor = E_CHRG * E_CHRG / (4.0 * PI * kb * perm_vac);
+        return prefactor * (born_state.shell.sum_bracket / (t * t) - born_state.shell.sum_bracket_dt / t);
     }
     throw ValueError("Unknown born_model. Supported values are 0, 1, 2.");
 }

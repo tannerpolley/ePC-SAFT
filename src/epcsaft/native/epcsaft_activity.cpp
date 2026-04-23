@@ -105,6 +105,8 @@ vector<double> gsolv_values_cpp(
     ePCSAFTMixtureNative* mixture,
     double t,
     double rho,
+    double p,
+    int phase,
     const vector<double>& x,
     const add_args& cppargs
 )
@@ -147,8 +149,7 @@ vector<double> gsolv_values_cpp(
         }
     }
 
-    double p = p_cpp(t, rho, x_ref, args);
-    int phase = (rho < 900.0) ? 1 : 0;
+    int ref_phase = (phase == 0 || phase == 1) ? phase : ((rho < 900.0) ? 1 : 0);
     vector<double> result(ncomp, 0.0);
     const double eps = 1e-12;
     for (int i : idx_ion) {
@@ -164,7 +165,7 @@ vector<double> gsolv_values_cpp(
         ReferenceStateKey key;
         key.t = t;
         key.p = p;
-        key.phase = phase;
+        key.phase = ref_phase;
         key.x_ref = x_inf;
         ReferenceStateValue ref = reference_state_from_cache_or_build_cpp(mixture, key, args);
         result[i] = 8.31446261815324 * t * std::log(std::max(ref.fugcoef[i], 1e-300));
@@ -298,13 +299,15 @@ void assign_activity_aux_cpp(
     ePCSAFTMixtureNative* mixture,
     double t,
     double rho,
+    double p,
+    int phase,
     const vector<double>& x,
     const add_args& args,
     bool include_aux
 ) {
     out.component_activity_coefficients = miac_gamma_vector_cpp(mixture, t, rho, x, args);
     if (include_aux) {
-        out.solvation_free_energy = gsolv_values_cpp(mixture, t, rho, x, args);
+        out.solvation_free_energy = gsolv_values_cpp(mixture, t, rho, p, phase, x, args);
         if (out.solvation_free_energy.size() != x.size()) {
             throw ValueError("Unexpected solvation_free_energy payload size in activity_coefficient.");
         }
@@ -438,7 +441,7 @@ ActivityCoefficientNative activity_coefficient_values_impl_cpp(
         has_solvent_override,
         solvent_override_index
     );
-    assign_activity_aux_cpp(out, mixture, t, rho, x, args, include_aux);
+    assign_activity_aux_cpp(out, mixture, t, rho, p, phase, x, args, include_aux);
     assign_pair_activity_cpp(out, x, args, solvent_indices, has_solvent_override);
 
     if (include_aux) {

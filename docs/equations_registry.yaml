@@ -1756,8 +1756,8 @@
         =\rho\sum_{i}x_{i}\sum_{A_{i}}\left(\frac{1}{X^{A_{i}}}-\frac{1}{2}\right)\left(\frac{\partial X^{A_{i}}}{\partial\rho}\right)_{T,x}.
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
-      line: 316
-      comment_line: 315
+      line: 320
+      comment_line: 319
       context: "double dadrho_assoc_cpp("
 - eqid: "assoc_ares_dxk"
   section: "Residual Helmholtz Energy"
@@ -1780,8 +1780,8 @@
         \left(\frac{\partial X^{A_{i}}}{\partial x_{k}}\right)_{T,v,x_{i\neq k}}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
-      line: 378
-      comment_line: 377
+      line: 382
+      comment_line: 381
       context: "ContributionDadxResult dadx_assoc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const AssociationIntermediateState &assoc_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "assoc_ares_dT"
   section: "Residual Helmholtz Energy"
@@ -1802,8 +1802,8 @@
         \left(\frac{\partial X^{A_i}}{\partial T}\right)_{\rho,x_i}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
-      line: 366
-      comment_line: 365
+      line: 370
+      comment_line: 369
       context: "double dadt_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {"
 - eqid: "ares_dh"
   section: "Residual Helmholtz Energy"
@@ -1943,8 +1943,8 @@
     \rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}= 0
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
-      line: 194
-      comment_line: 193
+      line: 202
+      comment_line: 201
       context: "double dadrho_born_cpp() {"
 - eqid: "born_ares_dxi"
   section: "Residual Helmholtz Energy"
@@ -2048,8 +2048,8 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
-      line: 199
-      comment_line: 198
+      line: 207
+      comment_line: 206
       context: "double dadt_born_cpp(double t, const BornIntermediateState &born_state) {"
 - eqid: "born_mode_set"
   section: "Residual Helmholtz Energy"
@@ -2380,8 +2380,8 @@
         \frac{\varphi_{i}(T,p,\mathbf{x})}{\varphi_{i}^{\infty}(T,p,x_{i}\to 0)}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_activity.cpp"
-      line: 456
-      comment_line: 454
+      line: 459
+      comment_line: 457
       context: "ActivityCoefficientNative activity_coefficient_values_cpp("
 - eqid: "lngamma_asym_inf"
   section: "Activity Coefficient"
@@ -2402,8 +2402,8 @@
         \ln\varphi_{i}^{\infty}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_activity.cpp"
-      line: 456
-      comment_line: 455
+      line: 459
+      comment_line: 458
       context: "ActivityCoefficientNative activity_coefficient_values_cpp("
 - eqid: "lngamma_asym_sum"
   section: "Activity Coefficient"

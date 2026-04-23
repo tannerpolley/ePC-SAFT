@@ -105,6 +105,7 @@ struct BornSSMDSData {
     double sum_invD = 0.0;
     double sum_gap = 0.0;
     double sum_dpref_over_D2 = 0.0;
+    double sum_bracket_dt = 0.0;
 };
 
 struct DielectricState {

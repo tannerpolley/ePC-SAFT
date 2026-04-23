@@ -43,6 +43,14 @@ def _next_command(rebuild_plan: tuple[str, str] | None) -> str:
     return "inspect scripts/codex_doctor.py output"
 
 
+def _python_env_name() -> str:
+    parts = Path(sys.executable).resolve().parts
+    for idx, part in enumerate(parts[:-1]):
+        if part.lower() == "envs":
+            return parts[idx + 1]
+    return Path(sys.prefix).resolve().name or "<unknown>"
+
+
 def main() -> int:
     branch = _git_output("branch", "--show-current") or "<unknown>"
     head = _git_output("rev-parse", "--short", "HEAD") or "<unknown>"
@@ -53,7 +61,8 @@ def main() -> int:
 
     print(f"repo_root: {REPO_ROOT}")
     print(f"python: {sys.executable}")
-    print(f"conda_env: {os.environ.get('CONDA_DEFAULT_ENV', '<unset>')}")
+    print(f"python_env: {_python_env_name()}")
+    print(f"conda_env_var: {os.environ.get('CONDA_DEFAULT_ENV', '<unset>')}")
     print(f"git_branch: {branch}")
     print(f"git_head: {head}")
     print(f"epcsaft_import: {imported if imported is not None else '<missing>'}")
