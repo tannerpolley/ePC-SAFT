@@ -34,9 +34,10 @@ For editable development from this source tree:
 
 .. code-block:: bash
 
+   python scripts/install_dev.py
    python scripts/build_epcsaft.py
 
-This rebuilds the in-place Cython/C++ extension when native sources are stale. For a first install or a broken editable link, use ``python scripts/build_epcsaft.py --reinstall-editable``. If you want to call pip directly, use ``pip install -e . --no-build-isolation --config-settings editable_mode=compat``.
+``install_dev.py`` creates or repairs the editable install. ``build_epcsaft.py`` is the fast native/Cython iteration command and rebuilds the in-place extension only when tracked build inputs are stale. Use ``python run_pytest.py`` for tests and ``python scripts/build_dist.py`` for a source distribution, wheel, and wheel smoke check. If you want to call pip directly for the editable install, use ``pip install -e . --no-build-isolation --config-settings editable_mode=compat``.
 
 Then choose the path that matches what you want to do:
 

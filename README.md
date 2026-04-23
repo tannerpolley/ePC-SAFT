@@ -21,22 +21,33 @@ pip install .
 For editable development from this source tree:
 
 ```bash
+python scripts/install_dev.py
 python scripts/build_epcsaft.py
 ```
 
-That command expects an editable checkout to already be importable. It rebuilds the in-place Cython/C++ extension when native sources are stale, and otherwise exits without touching the environment. For a first install or a broken editable link, use:
+`install_dev.py` creates or repairs the editable install. `build_epcsaft.py` is the fast native/Cython iteration command; it rebuilds the in-place extension when tracked build inputs are stale, and otherwise exits without touching the environment.
+
+For tests, use:
 
 ```bash
-python scripts/build_epcsaft.py --reinstall-editable
+python run_pytest.py tests/test_cython.py -q
 ```
 
-If you want to call pip directly, use:
+`run_pytest.py` checks the native build by default. Use `--skip-build` for pytest-only runs, `--force-build` for a forced extension rebuild, or `--reinstall-editable` when the editable install itself needs repair.
+
+If you want to call pip directly for the editable install, use:
 
 ```bash
 pip install -e . --no-build-isolation --config-settings editable_mode=compat
 ```
 
-If you are iterating on the native code, rerun `python scripts/build_epcsaft.py` to refresh the editable install. On Windows, the compiled extension may appear as a `.pyd` during local builds, but it is a build artifact, not a file users normally copy into a project by hand.
+For a package artifact check, use:
+
+```bash
+python scripts/build_dist.py
+```
+
+On Windows, the compiled extension may appear as a `.pyd` during local builds, but it is a build artifact, not a file users normally copy into a project by hand.
 
 ## Example
 

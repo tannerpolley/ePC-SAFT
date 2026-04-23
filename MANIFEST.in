@@ -1,5 +1,6 @@
 include LICENSE
 include README.md
+include build_config.py
 include src/epcsaft/epcsaft.pyx
 include src/epcsaft/epcsaft.pxd
 recursive-include src/epcsaft/native *.cpp *.h
