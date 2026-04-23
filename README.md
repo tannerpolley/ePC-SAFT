@@ -24,10 +24,16 @@ For editable development from this source tree:
 python scripts/build_epcsaft.py
 ```
 
+That command expects an editable checkout to already be importable. It rebuilds the in-place Cython/C++ extension when native sources are stale, and otherwise exits without touching the environment. For a first install or a broken editable link, use:
+
+```bash
+python scripts/build_epcsaft.py --reinstall-editable
+```
+
 If you want to call pip directly, use:
 
 ```bash
-pip install -e . --config-settings editable_mode=compat
+pip install -e . --no-build-isolation --config-settings editable_mode=compat
 ```
 
 If you are iterating on the native code, rerun `python scripts/build_epcsaft.py` to refresh the editable install. On Windows, the compiled extension may appear as a `.pyd` during local builds, but it is a build artifact, not a file users normally copy into a project by hand.

@@ -36,7 +36,7 @@ For editable development from this source tree:
 
    python scripts/build_epcsaft.py
 
-If you want to call pip directly, use ``pip install -e . --config-settings editable_mode=compat``.
+This rebuilds the in-place Cython/C++ extension when native sources are stale. For a first install or a broken editable link, use ``python scripts/build_epcsaft.py --reinstall-editable``. If you want to call pip directly, use ``pip install -e . --no-build-isolation --config-settings editable_mode=compat``.
 
 Then choose the path that matches what you want to do:
 

@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any, Literal
 
@@ -14,8 +15,6 @@ PACKAGE_ROOT = REPO_ROOT / "src" / "epcsaft"
 NATIVE_ROOT = PACKAGE_ROOT / "native"
 EXPECTED_PACKAGE_INIT = (PACKAGE_ROOT / "__init__.py").resolve()
 BUILD_ROOT = REPO_ROOT / "build"
-PIP_TEMP_ROOT = BUILD_ROOT / "pip-temp"
-PIP_CACHE_ROOT = BUILD_ROOT / "pip-cache"
 BUILD_STAMP = BUILD_ROOT / "epcsaft-editable-build.json"
 COMPILED_INPUTS = [
     REPO_ROOT / "pyproject.toml",
@@ -57,7 +56,7 @@ def _cleanup_transient_build_dirs() -> None:
     for child in BUILD_ROOT.iterdir():
         if not child.is_dir():
             continue
-        if child.name.startswith(("bdist.", "lib.", "temp.")):
+        if child.name in {"pip-temp", "pip-cache"} or child.name.startswith(("bdist.", "lib.", "temp.")):
             shutil.rmtree(child, ignore_errors=True)
 
 
@@ -132,15 +131,13 @@ def _editable_install_state() -> tuple[Literal["current", "stale", "other"], str
     return "stale", "editable build stamp is missing or out of date"
 
 
-def _pip_environment() -> dict[str, str]:
-    PIP_TEMP_ROOT.mkdir(parents=True, exist_ok=True)
-    PIP_CACHE_ROOT.mkdir(parents=True, exist_ok=True)
-    env = os.environ.copy()
-    env["TMP"] = str(PIP_TEMP_ROOT.resolve())
-    env["TEMP"] = str(PIP_TEMP_ROOT.resolve())
-    env["PIP_CACHE_DIR"] = str(PIP_CACHE_ROOT.resolve())
-    env.setdefault("PIP_DISABLE_PIP_VERSION_CHECK", "1")
-    return env
+def _rebuild_plan() -> tuple[str, str] | None:
+    install_state, install_reason = _editable_install_state()
+    if install_state == "current":
+        return None
+    if install_state == "other":
+        return "editable-install", install_reason
+    return "build-ext-inplace", install_reason
 
 
 def _run_command(cmd: list[str], env: dict[str, str] | None = None) -> None:
@@ -149,19 +146,32 @@ def _run_command(cmd: list[str], env: dict[str, str] | None = None) -> None:
 
 
 def _run_editable_install() -> None:
-    _run_command(
-        [
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            "-e",
-            ".",
-            "--config-settings",
-            "editable_mode=compat",
-        ],
-        env=_pip_environment(),
-    )
+    with tempfile.TemporaryDirectory(prefix="epcsaft-pip-") as pip_temp, tempfile.TemporaryDirectory(
+        prefix="epcsaft-pip-cache-"
+    ) as pip_cache:
+        env = os.environ.copy()
+        env["TMP"] = pip_temp
+        env["TEMP"] = pip_temp
+        env["PIP_CACHE_DIR"] = pip_cache
+        env.setdefault("PIP_DISABLE_PIP_VERSION_CHECK", "1")
+        _run_command(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "-e",
+                ".",
+                "--no-build-isolation",
+                "--config-settings",
+                "editable_mode=compat",
+            ],
+            env=env,
+        )
+
+
+def _run_inplace_extension_build() -> None:
+    _run_command([sys.executable, "setup.py", "build_ext", "--inplace"])
 
 
 def _write_build_stamp() -> None:
@@ -177,7 +187,12 @@ def main() -> int:
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Reinstall the editable package even when the existing build looks current.",
+        help="Rebuild the native extension even when the existing build looks current.",
+    )
+    parser.add_argument(
+        "--reinstall-editable",
+        action="store_true",
+        help="Run a full editable pip install instead of the faster in-place extension rebuild.",
     )
     args = parser.parse_args()
 
@@ -187,18 +202,26 @@ def main() -> int:
         return 1
 
     install_state, install_reason = _editable_install_state()
-    if not args.force and install_state == "current":
+    if not args.force and not args.reinstall_editable and install_state == "current":
         print(f"No rebuild required: {install_reason}.")
         _cleanup_generated_cpp()
         _cleanup_transient_build_dirs()
         return 0
 
-    if args.force:
-        print("Reinstalling editable package because forced rebuild was requested.")
+    if args.reinstall_editable or install_state == "other":
+        if args.reinstall_editable:
+            print("Reinstalling editable package because --reinstall-editable was requested.")
+        else:
+            print(f"Reinstalling editable package because {install_reason}.")
+        _run_editable_install()
+    elif args.force:
+        print("Rebuilding in-place native extension because forced rebuild was requested.")
+        _run_inplace_extension_build()
     else:
-        print(f"Reinstalling editable package because {install_reason}.")
+        print(f"Rebuilding in-place native extension because {install_reason}.")
+        print("Using in-place native extension rebuild for the existing editable checkout.")
+        _run_inplace_extension_build()
 
-    _run_editable_install()
     _write_build_stamp()
     _cleanup_generated_cpp()
     _cleanup_transient_build_dirs()
