@@ -615,9 +615,9 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_ares.cpp"
-      line: 9
-      comment_line: 8
-      context: "double ares_hs_cpp(const HardChainState &hc_state) {"
+      line: 17
+      comment_line: 16
+      context: "static double ares_hs_cpp(const HardChainState &hc_state) {"
 - eqid: "hs_ares_dadrho"
   section: "Contribution Intermediates"
   subsection: "Hard-Chain"
@@ -641,7 +641,7 @@
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
       line: 82
       comment_line: 81
-      context: "double dadrho_hs_cpp(const HardChainState &hc_state) {"
+      context: "static double dadrho_hs_cpp(const HardChainState &hc_state) {"
 - eqid: "hs_ares_dxk"
   section: "Contribution Intermediates"
   subsection: "Hard-Chain"
@@ -675,7 +675,7 @@
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
       line: 103
       comment_line: 102
-      context: "vector<double> dadx_hs_cpp(const MixtureState &thermo, const HardChainState &hc_state, const add_args &cppargs) {"
+      context: "static vector<double> dadx_hs_cpp(const MixtureState &thermo, const HardChainState &hc_state, const add_args &cppargs) {"
 - eqid: "hs_ares_dT"
   section: "Contribution Intermediates"
   subsection: "Hard-Chain"
@@ -707,7 +707,7 @@
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
       line: 90
       comment_line: 89
-      context: "double dadt_hs_cpp(const HardChainState &hc_state, const vector<double> &dzeta_dt) {"
+      context: "static double dadt_hs_cpp(const HardChainState &hc_state, const vector<double> &dzeta_dt) {"
 - eqid: "g_hs_contact"
   section: "Contribution Intermediates"
   subsection: "Hard-Chain"
@@ -1518,8 +1518,8 @@
     \tilde{a}^{\mathrm{res}}=\tilde{a}^{h c}+\tilde{a}^{\text {disp }}+\tilde{a}^{\text {assoc }}+\tilde{a}^{\text {DH }}+\tilde{a}^{\text {Born }}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_ares.cpp"
-      line: 90
-      comment_line: 89
+      line: 98
+      comment_line: 97
       context: "AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "dares_dT"
   section: "Residual Helmholtz Energy"
@@ -1539,8 +1539,8 @@
         +\left(\frac{\partial\tilde{a}^\mathrm{Born}}{\partial T}\right)_{\rho,x_{i}}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_ares.cpp"
-      line: 147
-      comment_line: 146
+      line: 155
+      comment_line: 154
       context: "ScalarContributionTerms temperature_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {"
 - eqid: "ares_hc"
   section: "Residual Helmholtz Energy"
@@ -1562,9 +1562,9 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_ares.cpp"
-      line: 19
-      comment_line: 18
-      context: "double ares_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const vector<double> &x, const add_args &cppargs) {"
+      line: 27
+      comment_line: 26
+      context: "static double ares_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "hc_ares_dadrho"
   section: "Residual Helmholtz Energy"
   subsection: "Hard-Chain Reference Contribution"
@@ -1651,9 +1651,9 @@
     \tilde{a}^{\mathrm{disp}}=-2 \pi \rho I_{1}(\eta, \bar{m}) \overline{m^2 \epsilon \sigma^3}-\pi \rho \bar{m} C_{1} I_{2}(\eta, \bar{m}) \overline{m^2 \epsilon^2 \sigma^3}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_ares.cpp"
-      line: 29
-      comment_line: 28
-      context: "double ares_disp_cpp(const MixtureState &thermo, const DispersionPolynomialState &dispersion) {"
+      line: 37
+      comment_line: 36
+      context: "static double ares_disp_cpp(const MixtureState &thermo, const DispersionPolynomialState &dispersion) {"
 - eqid: "disp_ares_dadrho"
   section: "Residual Helmholtz Energy"
   subsection: "Dispersion Contribution"
@@ -1737,9 +1737,9 @@
     \tilde{a}^{\mathrm{assoc}}= \sum_{i} x_{i}\sum_{\mathrm{A}_{i}}\left(\ln X^{\mathrm{A}_{i}}-\frac{X^{\mathrm{A}_{i}}}{2}+\frac{1}{2}\right)
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_ares.cpp"
-      line: 35
-      comment_line: 34
-      context: "double ares_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {"
+      line: 43
+      comment_line: 42
+      context: "static double ares_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {"
 - eqid: "assoc_ares_dadrho"
   section: "Residual Helmholtz Energy"
   subsection: "Association Contribution"
@@ -1756,8 +1756,8 @@
         =\rho\sum_{i}x_{i}\sum_{A_{i}}\left(\frac{1}{X^{A_{i}}}-\frac{1}{2}\right)\left(\frac{\partial X^{A_{i}}}{\partial\rho}\right)_{T,x}.
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
-      line: 325
-      comment_line: 324
+      line: 316
+      comment_line: 315
       context: "double dadrho_assoc_cpp("
 - eqid: "assoc_ares_dxk"
   section: "Residual Helmholtz Energy"
@@ -1780,8 +1780,8 @@
         \left(\frac{\partial X^{A_{i}}}{\partial x_{k}}\right)_{T,v,x_{i\neq k}}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
-      line: 385
-      comment_line: 384
+      line: 378
+      comment_line: 377
       context: "ContributionDadxResult dadx_assoc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const AssociationIntermediateState &assoc_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "assoc_ares_dT"
   section: "Residual Helmholtz Energy"
@@ -1802,8 +1802,8 @@
         \left(\frac{\partial X^{A_i}}{\partial T}\right)_{\rho,x_i}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
-      line: 373
-      comment_line: 372
+      line: 366
+      comment_line: 365
       context: "double dadt_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {"
 - eqid: "ares_dh"
   section: "Residual Helmholtz Energy"
@@ -1820,9 +1820,9 @@
     \tilde{a}^{DH}=-\frac{\kappa e^{2}}{12\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}\sum_{i}x_{i}z_{i}^{2}\chi_{i}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_ares.cpp"
-      line: 48
-      comment_line: 47
-      context: "double ares_ion_cpp(double t, const IonIntermediateState &ion_state) {"
+      line: 56
+      comment_line: 55
+      context: "static double ares_ion_cpp(double t, const IonIntermediateState &ion_state) {"
 - eqid: "dh_ares_dadrho"
   section: "Residual Helmholtz Energy"
   subsection: "Debye and Huckel Contribution"
@@ -1879,8 +1879,8 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp"
-      line: 127
-      comment_line: 126
+      line: 96
+      comment_line: 95
       context: "ContributionDadxResult dadx_ion_cpp(const MixtureState &thermo, const IonIntermediateState &ion_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "dh_ares_dT"
   section: "Residual Helmholtz Energy"
@@ -1899,8 +1899,8 @@
         -\frac{\tilde{a}^{DH}}{T}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp"
-      line: 110
-      comment_line: 109
+      line: 79
+      comment_line: 78
       context: "double dadt_ion_cpp(const IonIntermediateState &ion_state, double t, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "ares_born"
   section: "Residual Helmholtz Energy"
@@ -1925,9 +1925,9 @@
     D_{i,\delta}^{(m_\delta)},
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_ares.cpp"
-      line: 57
-      comment_line: 56
-      context: "double ares_born_cpp(double t, const BornIntermediateState &born_state) {"
+      line: 65
+      comment_line: 64
+      context: "static double ares_born_cpp(double t, const BornIntermediateState &born_state) {"
 - eqid: "born_ares_dadrho"
   section: "Residual Helmholtz Energy"
   subsection: "Born Contribution"
@@ -1943,8 +1943,8 @@
     \rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}= 0
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
-      line: 230
-      comment_line: 229
+      line: 194
+      comment_line: 193
       context: "double dadrho_born_cpp() {"
 - eqid: "born_ares_dxi"
   section: "Residual Helmholtz Energy"
@@ -2048,8 +2048,8 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
-      line: 235
-      comment_line: 234
+      line: 199
+      comment_line: 198
       context: "double dadt_born_cpp(double t, const BornIntermediateState &born_state) {"
 - eqid: "born_mode_set"
   section: "Residual Helmholtz Energy"
@@ -2149,8 +2149,8 @@
     \tilde{\mu_{k}}^{\mathrm{res}}=\frac{\mu_{k}^\mathrm{res}}{kT} = \frac{\hat{\mu}_{k}^\mathrm{res}}{RT}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_mu.cpp"
-      line: 59
-      comment_line: 57
+      line: 57
+      comment_line: 55
       context: "ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {"
 - eqid: "mu_res_from_ares"
   section: "Chemical Potential"
@@ -2173,9 +2173,9 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_mu.cpp"
-      line: 8
-      comment_line: 7
-      context: "vector<double> mu_contribution_cpp("
+      line: 6
+      comment_line: 5
+      context: "static vector<double> mu_contribution_cpp("
 - eqid: "mu_res_sum"
   section: "Chemical Potential"
   subsection: ""
@@ -2191,8 +2191,8 @@
     \tilde{\mu_{k}}^{\mathrm{res}}=\tilde{\mu_{k}}^{\mathrm{hc}}+\tilde{\mu_{k}}^{\mathrm{disp}}+\tilde{\mu_{k}}^{\mathrm{assoc}}+\tilde{\mu_{k}}^{\mathrm{DH}}+\tilde{\mu_{k}}^{\mathrm{Born}}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_mu.cpp"
-      line: 59
-      comment_line: 58
+      line: 57
+      comment_line: 56
       context: "ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {"
 - eqid: "mu_alpha"
   section: "Chemical Potential"
@@ -2242,8 +2242,8 @@
         \ln Z
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_fugcoef.cpp"
-      line: 90
-      comment_line: 88
+      line: 88
+      comment_line: 86
       context: "FugacityContributionResult fugacity_coefficient_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {"
 - eqid: "lnphi_total_sum"
   section: "Fugacity Coefficient"
@@ -2270,8 +2270,8 @@
         \ln\varphi_{k}^{Born}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_fugcoef.cpp"
-      line: 90
-      comment_line: 89
+      line: 88
+      comment_line: 87
       context: "FugacityContributionResult fugacity_coefficient_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {"
 - eqid: "lnphi_alpha"
   section: "Fugacity Coefficient"
@@ -2294,9 +2294,9 @@
         \alpha\in\{hc,disp,assoc,DH,Born\}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_fugcoef.cpp"
-      line: 40
-      comment_line: 39
-      context: "vector<double> lnfug_contribution_cpp("
+      line: 38
+      comment_line: 37
+      context: "static vector<double> lnfug_contribution_cpp("
 - eqid: "lnphi_alpha_near_ideal"
   section: "Fugacity Coefficient"
   subsection: ""
@@ -2318,9 +2318,9 @@
         \alpha\in\{hc,disp,assoc,DH,Born\}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_fugcoef.cpp"
-      line: 16
-      comment_line: 15
-      context: "double stable_logz_over_zminus1(double Z) {"
+      line: 14
+      comment_line: 13
+      context: "static double stable_logz_over_zminus1(double Z) {"
 - eqid: "gamma_sym"
   section: "Activity Coefficient"
   subsection: "Symmetric Reference"
@@ -2338,9 +2338,9 @@
         \frac{\varphi_{i}(T,p,\mathbf{x})}{\varphi_{0i}(T,p,x_{i}=1)}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_activity.cpp"
-      line: 9
-      comment_line: 7
-      context: "vector<double> miac_gamma_vector_cpp(double t, double rho, const vector<double>& x, const add_args& cppargs)"
+      line: 60
+      comment_line: 58
+      context: "vector<double> miac_gamma_vector_cpp("
 - eqid: "lngamma_sym"
   section: "Activity Coefficient"
   subsection: "Symmetric Reference"
@@ -2360,9 +2360,9 @@
         \ln\varphi_{0i}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_activity.cpp"
-      line: 9
-      comment_line: 8
-      context: "vector<double> miac_gamma_vector_cpp(double t, double rho, const vector<double>& x, const add_args& cppargs)"
+      line: 60
+      comment_line: 59
+      context: "vector<double> miac_gamma_vector_cpp("
 - eqid: "gamma_asym_inf"
   section: "Activity Coefficient"
   subsection: "Infinite-Dilution Reference"
@@ -2380,8 +2380,8 @@
         \frac{\varphi_{i}(T,p,\mathbf{x})}{\varphi_{i}^{\infty}(T,p,x_{i}\to 0)}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_activity.cpp"
-      line: 382
-      comment_line: 380
+      line: 456
+      comment_line: 454
       context: "ActivityCoefficientNative activity_coefficient_values_cpp("
 - eqid: "lngamma_asym_inf"
   section: "Activity Coefficient"
@@ -2402,8 +2402,8 @@
         \ln\varphi_{i}^{\infty}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_activity.cpp"
-      line: 382
-      comment_line: 381
+      line: 456
+      comment_line: 455
       context: "ActivityCoefficientNative activity_coefficient_values_cpp("
 - eqid: "lngamma_asym_sum"
   section: "Activity Coefficient"
@@ -2611,9 +2611,9 @@
     \Delta^{\mathrm{solv},x}G_{i}^{\infty}(T,p,x_{j\neq i},x_{i}\to0)=RT\ln(\varphi_{i}^{\infty}(T,p,x_{j\neq i},x_{i}\to0))
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_activity.cpp"
-      line: 67
-      comment_line: 65
-      context: "vector<double> gsolv_values_cpp(double t, double rho, const vector<double>& x, const add_args& cppargs)"
+      line: 104
+      comment_line: 102
+      context: "vector<double> gsolv_values_cpp("
 - eqid: "delta_g_transfer_inf"
   section: "Enthalpy, Entropy, and Gibbs Free Energy"
   subsection: "Gibbs Free Energy"
@@ -2629,9 +2629,9 @@
     \Delta^{\mathrm{tr}}G_{i}^{\infty,\mathrm{S}1\to\mathrm{S}2}(T,p,x_{j\neq i},x_{i}\rightarrow0)=RT\ln\left(\frac{\varphi_{i}^{\infty,\mathrm{S}2}}{\varphi_{i}^{\infty,\mathrm{S}1}}\right)
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_activity.cpp"
-      line: 67
-      comment_line: 66
-      context: "vector<double> gsolv_values_cpp(double t, double rho, const vector<double>& x, const add_args& cppargs)"
+      line: 104
+      comment_line: 103
+      context: "vector<double> gsolv_values_cpp("
 - eqid: "mu_pm_charge"
   section: "Conversions"
   subsection: "Mean Ionic Conversions"
@@ -2775,8 +2775,8 @@
         =-\frac{\kappa e^2}{24\pi kT\epsilon}\sum_{i}x_{i}z_{i}{}^{2}\sigma_{i}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp"
-      line: 102
-      comment_line: 101
+      line: 71
+      comment_line: 70
       context: "double dadrho_ion_cpp(double t, const IonIntermediateState &ion_state) {"
 - eqid: "mu_dh_2005"
   section: "Supplemental"

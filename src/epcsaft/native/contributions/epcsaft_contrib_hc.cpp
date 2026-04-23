@@ -1,11 +1,15 @@
 #include "epcsaft_contrib_internal.h"
 
-using namespace thermo_detail;
+using thermo_detail::AutodiffHardChainState;
+using thermo_detail::ContributionDadxResult;
+using thermo_detail::HardChainState;
+using thermo_detail::MixtureState;
+using thermo_detail::parameter_setup_detail::pair_diameter_cpp;
 
-namespace {
+namespace hard_chain_detail {
 
 template <typename Scalar>
-Scalar hs_contact_value_scalar_cpp(double pair_diameter, const Scalar &zeta2, const Scalar &zeta3) {
+static Scalar hs_contact_value_scalar_cpp(double pair_diameter, const Scalar &zeta2, const Scalar &zeta3) {
     const Scalar one = scalar_constant<Scalar>(1.0);
     return one / (one - zeta3)
         + pair_diameter * 3.0 * zeta2 / scalar_pow(one - zeta3, 2)
@@ -20,7 +24,7 @@ struct HardChainStateScalar {
 };
 
 template <typename Scalar>
-HardChainStateScalar<Scalar> hard_chain_state_scalar_cpp(double den, const vector<double> &d, const vector<Scalar> &x, const add_args &cppargs) {
+static HardChainStateScalar<Scalar> hard_chain_state_scalar_cpp(double den, const vector<double> &d, const vector<Scalar> &x, const add_args &cppargs) {
     HardChainStateScalar<Scalar> state;
     int ncomp = static_cast<int>(x.size());
     state.zeta.assign(4, scalar_constant<Scalar>(0.0));
@@ -48,18 +52,14 @@ HardChainStateScalar<Scalar> hard_chain_state_scalar_cpp(double den, const vecto
     return state;
 }
 
-}  // namespace
-
-double pair_diameter_cpp(double d_i, double d_j) {
-    return d_i * d_j / (d_i + d_j);
-}
+}  // namespace hard_chain_detail
 
 double hs_contact_value_cpp(double pair_diameter, double zeta2, double zeta3) {
-    return hs_contact_value_scalar_cpp(pair_diameter, zeta2, zeta3);
+    return hard_chain_detail::hs_contact_value_scalar_cpp(pair_diameter, zeta2, zeta3);
 }
 
 HardChainState hard_chain_state_cpp(const MixtureState &thermo, const vector<double> &x, const add_args &cppargs) {
-    auto scalar_state = hard_chain_state_scalar_cpp(thermo.den, thermo.d, x, cppargs);
+    auto scalar_state = hard_chain_detail::hard_chain_state_scalar_cpp(thermo.den, thermo.d, x, cppargs);
     HardChainState state;
     state.zeta = std::move(scalar_state.zeta);
     state.ghs = std::move(scalar_state.ghs);
@@ -68,7 +68,7 @@ HardChainState hard_chain_state_cpp(const MixtureState &thermo, const vector<dou
 }
 
 AutodiffHardChainState hard_chain_state_autodiff_cpp(double den, const vector<double> &d, const vector<AutoDual> &x, const add_args &cppargs) {
-    auto scalar_state = hard_chain_state_scalar_cpp(den, d, x, cppargs);
+    auto scalar_state = hard_chain_detail::hard_chain_state_scalar_cpp(den, d, x, cppargs);
     AutodiffHardChainState state;
     state.zeta = std::move(scalar_state.zeta);
     state.ghs = std::move(scalar_state.ghs);
@@ -76,10 +76,10 @@ AutodiffHardChainState hard_chain_state_autodiff_cpp(double den, const vector<do
     return state;
 }
 
-namespace {
+namespace hard_chain_detail {
 
 // EqID: hs_ares_dadrho
-double dadrho_hs_cpp(const HardChainState &hc_state) {
+static double dadrho_hs_cpp(const HardChainState &hc_state) {
     const auto &zeta = hc_state.zeta;
     return zeta[3] / (1.0 - zeta[3])
         + 3.0 * zeta[1] * zeta[2] / zeta[0] / std::pow(1.0 - zeta[3], 2.0)
@@ -87,7 +87,7 @@ double dadrho_hs_cpp(const HardChainState &hc_state) {
 }
 
 // EqID: hs_ares_dT
-double dadt_hs_cpp(const HardChainState &hc_state, const vector<double> &dzeta_dt) {
+static double dadt_hs_cpp(const HardChainState &hc_state, const vector<double> &dzeta_dt) {
     const auto &zeta = hc_state.zeta;
     return 1.0 / zeta[0] * (
         3.0 * (dzeta_dt[1] * zeta[2] + zeta[1] * dzeta_dt[2]) / (1.0 - zeta[3])
@@ -100,7 +100,7 @@ double dadt_hs_cpp(const HardChainState &hc_state, const vector<double> &dzeta_d
 }
 
 // EqID: hs_ares_dxk
-vector<double> dadx_hs_cpp(const MixtureState &thermo, const HardChainState &hc_state, const add_args &cppargs) {
+static vector<double> dadx_hs_cpp(const MixtureState &thermo, const HardChainState &hc_state, const add_args &cppargs) {
     int ncomp = static_cast<int>(thermo.d.size());
     vector<double> result(ncomp, 0.0);
     const auto &zeta = hc_state.zeta;
@@ -134,7 +134,7 @@ vector<double> dadx_hs_cpp(const MixtureState &thermo, const HardChainState &hc_
     return result;
 }
 
-vector<double> hc_contact_composition_terms_cpp(const MixtureState &thermo, const HardChainState &hc_state, const add_args &cppargs) {
+static vector<double> hc_contact_composition_terms_cpp(const MixtureState &thermo, const HardChainState &hc_state, const add_args &cppargs) {
     int ncomp = static_cast<int>(thermo.d.size());
     vector<double> terms(ncomp * ncomp, 0.0);
     vector<double> dzeta_dx(4, 0.0);
@@ -158,7 +158,7 @@ vector<double> hc_contact_composition_terms_cpp(const MixtureState &thermo, cons
     return terms;
 }
 
-}  // namespace
+}  // namespace hard_chain_detail
 
 // EqID: ghs_contact_dadrho
 double hs_contact_density_derivative_cpp(double pair_diameter, double zeta2, double zeta3) {
@@ -247,7 +247,7 @@ double dadrho_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state,
         double dghs_drho = hs_contact_density_derivative_cpp(pair_diameter, hc_state.zeta[2], hc_state.zeta[3]);
         summ += x[i] * (cppargs.m[i] - 1.0) / hc_state.ghs[i * ncomp + i] * dghs_drho;
     }
-    return thermo.m_avg * dadrho_hs_cpp(hc_state) - summ;
+    return thermo.m_avg * hard_chain_detail::dadrho_hs_cpp(hc_state) - summ;
 }
 
 // EqID: hc_ares_dT
@@ -258,7 +258,7 @@ double dadt_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, c
     for (int i = 0; i < ncomp; ++i) {
         summ += x[i] * (cppargs.m[i] - 1.0) * contact_time_terms[i * ncomp + i] / hc_state.ghs[i * ncomp + i];
     }
-    return thermo.m_avg * dadt_hs_cpp(hc_state, dzeta_dt) - summ;
+    return thermo.m_avg * hard_chain_detail::dadt_hs_cpp(hc_state, dzeta_dt) - summ;
 }
 
 // EqID: hc_ares_dxk
@@ -279,8 +279,8 @@ ContributionDadxResult dadx_hc_cpp(const MixtureState &thermo, const HardChainSt
     );
     result.ares = thermo.m_avg * ares_hs - log_sum;
 
-    vector<double> dahs_dx = dadx_hs_cpp(thermo, hc_state, cppargs);
-    vector<double> contact_composition_terms = hc_contact_composition_terms_cpp(thermo, hc_state, cppargs);
+    vector<double> dahs_dx = hard_chain_detail::dadx_hs_cpp(thermo, hc_state, cppargs);
+    vector<double> contact_composition_terms = hard_chain_detail::hc_contact_composition_terms_cpp(thermo, hc_state, cppargs);
     for (int i = 0; i < ncomp; ++i) {
         double correction = 0.0;
         for (int j = 0; j < ncomp; ++j) {
@@ -305,6 +305,6 @@ ContributionDadxResult dadx_hc_cpp(const MixtureState &thermo, const HardChainSt
             * hs_contact_density_derivative_cpp(pair_diameter, hc_state.zeta[2], hc_state.zeta[3]);
         result.sum_x_dadx += x[i] * result.dadx[i];
     }
-    result.z = thermo.m_avg * dadrho_hs_cpp(hc_state) - z_correction;
+    result.z = thermo.m_avg * hard_chain_detail::dadrho_hs_cpp(hc_state) - z_correction;
     return result;
 }

@@ -11,10 +11,15 @@
 
 #include <unsupported/Eigen/LevenbergMarquardt>
 
-using namespace thermo_detail;
 using Index = Eigen::Index;
+using thermo_detail::kDispersionA0;
+using thermo_detail::kDispersionA1;
+using thermo_detail::kDispersionA2;
+using thermo_detail::kDispersionB0;
+using thermo_detail::kDispersionB1;
+using thermo_detail::kDispersionB2;
 
-namespace {
+namespace regression_detail {
 
 constexpr double kRegressionGradientFloor = 1.0e-300;
 constexpr double kTransformFiniteBound = 25.0;
@@ -798,7 +803,19 @@ PureNeutralRegressionResult choose_better_result_cpp(
     return best;
 }
 
-}  // namespace
+}  // namespace regression_detail
+
+using regression_detail::PureNeutralObjectiveEvaluation;
+using regression_detail::PureNeutralResidualEvaluation;
+using regression_detail::RegressionProfilingStats;
+using regression_detail::candidate_starts_cpp;
+using regression_detail::choose_better_result_cpp;
+using regression_detail::evaluate_pure_neutral_objective_cpp;
+using regression_detail::evaluate_residual_jacobian_cpp;
+using regression_detail::kThetaSize;
+using regression_detail::objective_from_residual_eval_cpp;
+using regression_detail::solve_one_start_least_squares_cpp;
+using regression_detail::validate_pure_neutral_base_args_cpp;
 
 PureNeutralRegressionDebugResult evaluate_pure_neutral_objective_debug_cpp(
     const add_args &base_args,

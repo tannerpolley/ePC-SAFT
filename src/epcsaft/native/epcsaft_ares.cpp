@@ -1,12 +1,20 @@
 #include "epcsaft_core_internal.h"
 #include "contributions/epcsaft_contrib_internal.h"
 
-using namespace thermo_detail;
+using thermo_detail::AresContributionKind;
+using thermo_detail::AresContributions;
+using thermo_detail::AssociationIntermediateState;
+using thermo_detail::BornIntermediateState;
+using thermo_detail::DadrhoResult;
+using thermo_detail::DispersionPolynomialState;
+using thermo_detail::HardChainState;
+using thermo_detail::IonIntermediateState;
+using thermo_detail::MixtureState;
 
-namespace {
+namespace ares_detail {
 
 // EqID: ares_hs
-double ares_hs_cpp(const HardChainState &hc_state) {
+static double ares_hs_cpp(const HardChainState &hc_state) {
     const auto &zeta = hc_state.zeta;
     return 1.0 / zeta[0] * (
         3.0 * zeta[1] * zeta[2] / (1.0 - zeta[3])
@@ -16,7 +24,7 @@ double ares_hs_cpp(const HardChainState &hc_state) {
 }
 
 // EqID: ares_hc
-double ares_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const vector<double> &x, const add_args &cppargs) {
+static double ares_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     double summ = 0.0;
     for (int i = 0; i < ncomp; ++i) {
@@ -26,13 +34,13 @@ double ares_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, c
 }
 
 // EqID: ares_disp
-double ares_disp_cpp(const MixtureState &thermo, const DispersionPolynomialState &dispersion) {
+static double ares_disp_cpp(const MixtureState &thermo, const DispersionPolynomialState &dispersion) {
     return -2.0 * PI * thermo.den * dispersion.I1 * thermo.m2es3
         - PI * thermo.den * thermo.m_avg * dispersion.C1 * dispersion.I2 * thermo.m2e2s3;
 }
 
 // EqID: ares_assoc
-double ares_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {
+static double ares_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {
     if (!assoc_state.active) {
         return 0.0;
     }
@@ -45,7 +53,7 @@ double ares_assoc_cpp(const AssociationIntermediateState &assoc_state, const vec
 }
 
 // EqID: ares_dh
-double ares_ion_cpp(double t, const IonIntermediateState &ion_state) {
+static double ares_ion_cpp(double t, const IonIntermediateState &ion_state) {
     if (!ion_state.active) {
         return 0.0;
     }
@@ -54,7 +62,7 @@ double ares_ion_cpp(double t, const IonIntermediateState &ion_state) {
 }
 
 // EqID: ares_born
-double ares_born_cpp(double t, const BornIntermediateState &born_state) {
+static double ares_born_cpp(double t, const BornIntermediateState &born_state) {
     if (born_state.model == 0) {
         return 0.0;
     }
@@ -68,7 +76,7 @@ double ares_born_cpp(double t, const BornIntermediateState &born_state) {
     throw ValueError("Unknown born_model. Supported values are 0, 1, 2.");
 }
 
-}  // namespace
+}  // namespace ares_detail
 
 double ares_contribution_value_cpp(const AresContributions &terms, AresContributionKind kind) {
     switch (kind) {
@@ -96,11 +104,11 @@ AresContributions ares_contributions_cpp(double t, double rho, const vector<doub
     IonIntermediateState ion_state = ion_intermediate_state_cpp(thermo, t, x, cppargs, false);
     BornIntermediateState born_state = born_intermediate_state_cpp(t, x, cppargs, false, false);
 
-    out.hc = ares_hc_cpp(thermo, hc_state, x, cppargs);
-    out.disp = ares_disp_cpp(thermo, dispersion);
-    out.assoc = ares_assoc_cpp(assoc_state, x);
-    out.ion = ares_ion_cpp(t, ion_state);
-    out.born = ares_born_cpp(t, born_state);
+    out.hc = ares_detail::ares_hc_cpp(thermo, hc_state, x, cppargs);
+    out.disp = ares_detail::ares_disp_cpp(thermo, dispersion);
+    out.assoc = ares_detail::ares_assoc_cpp(assoc_state, x);
+    out.ion = ares_detail::ares_ion_cpp(t, ion_state);
+    out.born = ares_detail::ares_born_cpp(t, born_state);
     return out;
 }
 

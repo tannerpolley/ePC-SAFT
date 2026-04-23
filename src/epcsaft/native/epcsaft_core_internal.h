@@ -163,20 +163,7 @@ double eta_weighted_derivative_cpp(const std::array<double, N> &coeffs, double x
     return value;
 }
 
-}  // namespace thermo_detail
-
-using thermo_detail::AresContributionKind;
-using thermo_detail::AresContributions;
-using thermo_detail::AssociationSetup;
-using thermo_detail::BornSSMDSData;
-using thermo_detail::ChargeGroups;
-using thermo_detail::DensityBracket;
-using thermo_detail::DadrhoResult;
-using thermo_detail::DensityRootCandidate;
-using thermo_detail::DensityScanPoint;
-using thermo_detail::DielectricState;
-using thermo_detail::DispersionPolynomialState;
-using thermo_detail::MixtureState;
+namespace parameter_setup_detail {
 
 inline double pair_sigma_cpp(size_t idx, int i, int j, const add_args &cppargs) {
     double sigma = 0.5 * (cppargs.s[i] + cppargs.s[j]);
@@ -197,6 +184,30 @@ inline double pair_epsilon_cpp(size_t idx, int i, int j, const add_args &cppargs
     return epsilon;
 }
 
+double pair_diameter_cpp(double d_i, double d_j);
+double association_volume_cpp(int comp_i, int comp_j, int ncomp, const vector<double> &s_ij, const add_args &cppargs);
+double ion_diameter_cpp(int i, double t, const add_args &cppargs);
+double ion_diameter_cpp_dt(int i, double t, const add_args &cppargs);
+double ion_born_radius_cpp(int i, double t, const add_args &cppargs);
+double ion_born_radius_cpp_dt(int i, double t, const add_args &cppargs);
+
+}  // namespace parameter_setup_detail
+
+}  // namespace thermo_detail
+
+using thermo_detail::AresContributionKind;
+using thermo_detail::AresContributions;
+using thermo_detail::AssociationSetup;
+using thermo_detail::BornSSMDSData;
+using thermo_detail::ChargeGroups;
+using thermo_detail::DensityBracket;
+using thermo_detail::DadrhoResult;
+using thermo_detail::DensityRootCandidate;
+using thermo_detail::DensityScanPoint;
+using thermo_detail::DielectricState;
+using thermo_detail::DispersionPolynomialState;
+using thermo_detail::MixtureState;
+
 ScalarContributionTerms make_scalar_terms(double hc, double disp, double assoc, double ion, double born, double total);
 VectorContributionTerms make_vector_terms(
     const vector<double> &hc,
@@ -206,7 +217,6 @@ VectorContributionTerms make_vector_terms(
     const vector<double> &born,
     const vector<double> &total
 );
-vector<double> solve_association_site_fractions_cpp(const vector<double> &delta_ij, double den, const vector<double> &x_assoc);
 MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt);
 DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta);
 double dh_kappa_cpp(double den, double t, double eps, double q2_sum);
@@ -240,10 +250,6 @@ bool density_root_from_seed_cpp(
     double *rho_root_out
 );
 inline bool is_ion_species(const add_args &cppargs, int i) { return std::abs(cppargs.z[i]) > 1e-12; }
-double ion_diameter_cpp(int i, double t, const add_args &cppargs);
-double ion_diameter_cpp_dt(int i, double t, const add_args &cppargs);
-double ion_born_radius_cpp(int i, double t, const add_args &cppargs);
-double ion_born_radius_cpp_dt(int i, double t, const add_args &cppargs);
 double reference_solvent_dielectric_constant_cpp(const vector<double> &x, const add_args &cppargs);
 vector<double> reference_solvent_dielectric_derivative_cpp(const vector<double> &x, const add_args &cppargs);
 BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion);

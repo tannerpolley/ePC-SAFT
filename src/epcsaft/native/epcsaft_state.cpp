@@ -1,14 +1,14 @@
 #include "epcsaft_core_internal.h"
 
-using namespace thermo_detail;
+using thermo_detail::ChargeGroups;
 
-namespace {
+namespace state_detail {
 
 constexpr double kReferenceCacheScalarTol = 1e-12;
 constexpr double kReferenceCacheVectorTol = 1e-10;
 constexpr size_t kReferenceStateCacheMaxEntries = 32;
 
-int gcd_int(int a, int b) {
+static int gcd_int(int a, int b) {
     a = std::abs(a);
     b = std::abs(b);
     while (b != 0) {
@@ -19,7 +19,7 @@ int gcd_int(int a, int b) {
     return a == 0 ? 1 : a;
 }
 
-void build_charge_metadata_cpp(
+static void build_charge_metadata_cpp(
     const add_args& args,
     bool& has_ionic,
     vector<int>& cation_indices,
@@ -61,12 +61,12 @@ void build_charge_metadata_cpp(
     }
 }
 
-bool nearly_equal_cpp(double a, double b, double atol, double rtol)
+static bool nearly_equal_cpp(double a, double b, double atol, double rtol)
 {
     return std::abs(a - b) <= (atol + rtol * std::max(std::abs(a), std::abs(b)));
 }
 
-bool reference_state_key_matches_cpp(const ReferenceStateKey& lhs, const ReferenceStateKey& rhs)
+static bool reference_state_key_matches_cpp(const ReferenceStateKey& lhs, const ReferenceStateKey& rhs)
 {
     if (lhs.phase != rhs.phase) {
         return false;
@@ -88,7 +88,7 @@ bool reference_state_key_matches_cpp(const ReferenceStateKey& lhs, const Referen
     return true;
 }
 
-}  // namespace
+}  // namespace state_detail
 
 ChargeGroups collect_charge_groups(const add_args& args, size_t ncomp) {
     ChargeGroups groups;
@@ -115,7 +115,7 @@ ChargeGroups collect_charge_groups(const add_args& args, size_t ncomp) {
 ePCSAFTMixtureNative::ePCSAFTMixtureNative(const add_args& args)
     : args_(args), has_ionic_(false)
 {
-    build_charge_metadata_cpp(
+    state_detail::build_charge_metadata_cpp(
         args_,
         has_ionic_,
         cation_indices_,
@@ -220,7 +220,7 @@ double ePCSAFTMixtureNative::solve_density(double t, double p, const vector<doub
 bool ePCSAFTMixtureNative::lookup_reference_state(const ReferenceStateKey& key, ReferenceStateValue* out)
 {
     for (auto it = reference_state_cache_.begin(); it != reference_state_cache_.end(); ++it) {
-        if (!reference_state_key_matches_cpp(it->key, key)) {
+        if (!state_detail::reference_state_key_matches_cpp(it->key, key)) {
             continue;
         }
         ReferenceStateCacheEntry entry = *it;
@@ -239,7 +239,7 @@ bool ePCSAFTMixtureNative::lookup_reference_state(const ReferenceStateKey& key, 
 void ePCSAFTMixtureNative::store_reference_state(const ReferenceStateKey& key, const ReferenceStateValue& value)
 {
     for (auto it = reference_state_cache_.begin(); it != reference_state_cache_.end(); ++it) {
-        if (!reference_state_key_matches_cpp(it->key, key)) {
+        if (!state_detail::reference_state_key_matches_cpp(it->key, key)) {
             continue;
         }
         it->value = value;
@@ -248,7 +248,7 @@ void ePCSAFTMixtureNative::store_reference_state(const ReferenceStateKey& key, c
         reference_state_cache_.push_back(entry);
         return;
     }
-    if (reference_state_cache_.size() >= kReferenceStateCacheMaxEntries) {
+    if (reference_state_cache_.size() >= state_detail::kReferenceStateCacheMaxEntries) {
         reference_state_cache_.erase(reference_state_cache_.begin());
     }
     reference_state_cache_.push_back(ReferenceStateCacheEntry{key, value});

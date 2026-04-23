@@ -2,9 +2,13 @@
 #include "epcsaft_autodiff_internal.h"
 #include "contributions/epcsaft_contrib_internal.h"
 
-using namespace thermo_detail;
+using thermo_detail::AresContributionKind;
+using thermo_detail::DielectricState;
+using thermo_detail::DispersionPolynomialState;
+using thermo_detail::MixtureState;
 
-namespace {
+namespace thermo_detail {
+namespace parameter_setup_detail {
 
 template <typename Scalar>
 Scalar mixed_dielectric_constant_scalar_cpp(const vector<Scalar> &x, const add_args &cppargs) {
@@ -376,7 +380,110 @@ AutodiffDispersionState dispersion_state_autodiff_cpp(const AutoDual &m_avg, con
     return state;
 }
 
-}  // namespace
+double pair_diameter_cpp(double d_i, double d_j) {
+    return d_i * d_j / (d_i + d_j);
+}
+
+double association_volume_cpp(int comp_i, int comp_j, int ncomp, const vector<double> &s_ij, const add_args &cppargs) {
+    int idxi = comp_i * ncomp + comp_i;
+    int idxj = comp_j * ncomp + comp_j;
+    double volume = std::sqrt(cppargs.vol_a[comp_i] * cppargs.vol_a[comp_j]) * std::pow(
+        std::sqrt(s_ij[idxi] * s_ij[idxj]) / (0.5 * (s_ij[idxi] + s_ij[idxj])),
+        3.0
+    );
+    if (!cppargs.k_hb.empty()) {
+        volume *= (1.0 - cppargs.k_hb[comp_i * ncomp + comp_j]);
+    }
+    return volume;
+}
+
+double ion_diameter_cpp(int i, double t, const add_args &cppargs) {
+    if (!is_ion_species(cppargs, i)) {
+        return cppargs.s[i];
+    }
+    int mode = cppargs.d_ion_mode;
+    double sigma_i = cppargs.s[i];
+    if (sigma_i <= 0.0) {
+        throw ValueError("DH/ion diameter requires positive ionic sigma_i.");
+    }
+    if (mode == 0) {
+        return sigma_i;
+    }
+    if (mode == 1) {
+        return sigma_i * (1.0 - 0.12);
+    }
+    if (mode == 2) {
+        return sigma_i * (1.0 - 0.12 * std::exp(-3.0 * cppargs.e[i] / t));
+    }
+    throw ValueError("Unknown d_ion_mode. Supported values are 0, 1, 2.");
+}
+
+double ion_diameter_cpp_dt(int i, double t, const add_args &cppargs) {
+    if (!is_ion_species(cppargs, i)) {
+        return 0.0;
+    }
+    if (cppargs.d_ion_mode == 2) {
+        double sigma_i = cppargs.s[i];
+        double expo = std::exp(-3.0 * cppargs.e[i] / t);
+        return -0.36 * sigma_i * cppargs.e[i] * expo / (t * t);
+    }
+    return 0.0;
+}
+
+double ion_born_radius_cpp(int i, double t, const add_args &cppargs) {
+    if (!is_ion_species(cppargs, i)) {
+        return cppargs.s[i];
+    }
+    int mode = cppargs.d_born_mode;
+    double sigma_i = cppargs.s[i];
+    if (sigma_i <= 0.0) {
+        throw ValueError("Born term requires positive ionic sigma_i.");
+    }
+    if (mode == 0) {
+        return sigma_i;
+    }
+    if (mode == 1) {
+        return sigma_i * (1.0 - 0.12);
+    }
+    if (mode == 2) {
+        return sigma_i * (1.0 - 0.12 * std::exp(-3.0 * cppargs.e[i] / t));
+    }
+    if (mode == 3) {
+        if (cppargs.d_born.size() <= static_cast<size_t>(i) || cppargs.d_born[i] <= 0.0) {
+            throw ValueError("d_Born_mode=fitted_param requires positive ionic params['d_born'] values.");
+        }
+        return cppargs.d_born[i];
+    }
+    throw ValueError("Unknown d_Born_mode. Supported values are 0, 1, 2, 3.");
+}
+
+double ion_born_radius_cpp_dt(int i, double t, const add_args &cppargs) {
+    if (!is_ion_species(cppargs, i)) {
+        return 0.0;
+    }
+    if (cppargs.d_born_mode == 2) {
+        double sigma_i = cppargs.s[i];
+        double expo = std::exp(-3.0 * cppargs.e[i] / t);
+        return -0.36 * sigma_i * cppargs.e[i] * expo / (t * t);
+    }
+    return 0.0;
+}
+
+}  // namespace parameter_setup_detail
+}  // namespace thermo_detail
+
+using thermo_detail::parameter_setup_detail::AutodiffDispersionState;
+using thermo_detail::parameter_setup_detail::AutodiffMixtureState;
+using thermo_detail::parameter_setup_detail::dielectric_constant_rule_scalar_cpp;
+using thermo_detail::parameter_setup_detail::dielectric_inputs_valid_cpp;
+using thermo_detail::parameter_setup_detail::dispersion_state_autodiff_cpp;
+using thermo_detail::parameter_setup_detail::ion_born_radius_cpp;
+using thermo_detail::parameter_setup_detail::ion_diameter_cpp;
+using thermo_detail::parameter_setup_detail::ion_diameter_cpp_dt;
+using thermo_detail::parameter_setup_detail::mixed_dielectric_constant_scalar_cpp;
+using thermo_detail::parameter_setup_detail::mixture_state_autodiff_cpp;
+using thermo_detail::parameter_setup_detail::pair_epsilon_cpp;
+using thermo_detail::parameter_setup_detail::pair_sigma_cpp;
 
 ScalarContributionTerms make_scalar_terms(double hc, double disp, double assoc, double ion, double born, double total) {
     ScalarContributionTerms out;

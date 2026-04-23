@@ -64,9 +64,7 @@ using thermo_detail::IonIntermediateState;
 
 HardChainState hard_chain_state_cpp(const MixtureState &thermo, const vector<double> &x, const add_args &cppargs);
 AutodiffHardChainState hard_chain_state_autodiff_cpp(double den, const vector<double> &d, const vector<AutoDual> &x, const add_args &cppargs);
-double pair_diameter_cpp(double d_i, double d_j);
 double hs_contact_value_cpp(double pair_diameter, double zeta2, double zeta3);
-double association_volume_cpp(int comp_i, int comp_j, int ncomp, const vector<double> &s_ij, const add_args &cppargs);
 
 AssociationIntermediateState association_intermediate_state_cpp(
     const MixtureState &thermo,

@@ -1,45 +1,9 @@
 #include "epcsaft_contrib_internal.h"
 
-using namespace thermo_detail;
-
-double ion_born_radius_cpp(int i, double t, const add_args &cppargs) {
-    if (!is_ion_species(cppargs, i)) {
-        return cppargs.s[i];
-    }
-    int mode = cppargs.d_born_mode;
-    double sigma_i = cppargs.s[i];
-    if (sigma_i <= 0.0) {
-        throw ValueError("Born term requires positive ionic sigma_i.");
-    }
-    if (mode == 0) {
-        return sigma_i;
-    }
-    if (mode == 1) {
-        return sigma_i * (1.0 - 0.12);
-    }
-    if (mode == 2) {
-        return sigma_i * (1.0 - 0.12 * std::exp(-3.0 * cppargs.e[i] / t));
-    }
-    if (mode == 3) {
-        if (cppargs.d_born.size() <= static_cast<size_t>(i) || cppargs.d_born[i] <= 0.0) {
-            throw ValueError("d_Born_mode=fitted_param requires positive ionic params['d_born'] values.");
-        }
-        return cppargs.d_born[i];
-    }
-    throw ValueError("Unknown d_Born_mode. Supported values are 0, 1, 2, 3.");
-}
-
-double ion_born_radius_cpp_dt(int i, double t, const add_args &cppargs) {
-    if (!is_ion_species(cppargs, i)) {
-        return 0.0;
-    }
-    if (cppargs.d_born_mode == 2) {
-        double sigma_i = cppargs.s[i];
-        double expo = std::exp(-3.0 * cppargs.e[i] / t);
-        return -0.36 * sigma_i * cppargs.e[i] * expo / (t * t);
-    }
-    return 0.0;
-}
+using thermo_detail::BornIntermediateState;
+using thermo_detail::BornSSMDSData;
+using thermo_detail::parameter_setup_detail::ion_born_radius_cpp;
+using thermo_detail::parameter_setup_detail::ion_born_radius_cpp_dt;
 
 BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion) {
     int ncomp = static_cast<int>(x.size());

@@ -1,6 +1,9 @@
 #include "epcsaft_core_internal.h"
 
-using namespace thermo_detail;
+using thermo_detail::DensityBracket;
+using thermo_detail::DensityRootCandidate;
+using thermo_detail::DensityScanPoint;
+using thermo_detail::parameter_setup_detail::ion_diameter_cpp;
 
 vector<double> density_scan_grid_cpp() {
     const double nu_min = 1e-13;

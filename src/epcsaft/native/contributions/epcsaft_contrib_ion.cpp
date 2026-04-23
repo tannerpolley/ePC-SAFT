@@ -1,39 +1,8 @@
 #include "epcsaft_contrib_internal.h"
 
-using namespace thermo_detail;
-
-double ion_diameter_cpp(int i, double t, const add_args &cppargs) {
-    if (!is_ion_species(cppargs, i)) {
-        return cppargs.s[i];
-    }
-    int mode = cppargs.d_ion_mode;
-    double sigma_i = cppargs.s[i];
-    if (sigma_i <= 0.0) {
-        throw ValueError("DH/ion diameter requires positive ionic sigma_i.");
-    }
-    if (mode == 0) {
-        return sigma_i;
-    }
-    if (mode == 1) {
-        return sigma_i * (1.0 - 0.12);
-    }
-    if (mode == 2) {
-        return sigma_i * (1.0 - 0.12 * std::exp(-3.0 * cppargs.e[i] / t));
-    }
-    throw ValueError("Unknown d_ion_mode. Supported values are 0, 1, 2.");
-}
-
-double ion_diameter_cpp_dt(int i, double t, const add_args &cppargs) {
-    if (!is_ion_species(cppargs, i)) {
-        return 0.0;
-    }
-    if (cppargs.d_ion_mode == 2) {
-        double sigma_i = cppargs.s[i];
-        double expo = std::exp(-3.0 * cppargs.e[i] / t);
-        return -0.36 * sigma_i * cppargs.e[i] * expo / (t * t);
-    }
-    return 0.0;
-}
+using thermo_detail::DielectricState;
+using thermo_detail::IonIntermediateState;
+using thermo_detail::parameter_setup_detail::ion_diameter_cpp;
 
 double dh_kappa_cpp(double den, double t, double eps, double q2_sum) {
     return std::sqrt(den * E_CHRG * E_CHRG / kb / t / (eps * perm_vac) * q2_sum);

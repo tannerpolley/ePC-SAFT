@@ -1,10 +1,8 @@
 #include "epcsaft_core_internal.h"
 
-using namespace thermo_detail;
+namespace fugcoef_detail {
 
-namespace {
-
-vector<double> exp_vector(const vector<double> &values) {
+static vector<double> exp_vector(const vector<double> &values) {
     vector<double> out(values.size(), 0.0);
     for (int i = 0; i < static_cast<int>(values.size()); ++i) {
         out[i] = std::exp(values[i]);
@@ -13,7 +11,7 @@ vector<double> exp_vector(const vector<double> &values) {
 }
 
 // EqID: lnphi_alpha_near_ideal
-double stable_logz_over_zminus1(double Z) {
+static double stable_logz_over_zminus1(double Z) {
     double dz = Z - 1.0;
     if (std::abs(dz) < 1e-8) {
         double dz2 = dz * dz;
@@ -23,7 +21,7 @@ double stable_logz_over_zminus1(double Z) {
     return std::log(Z) / dz;
 }
 
-double lnfug_correction_scale_cpp(const ScalarContributionTerms &z_raw_terms) {
+static double lnfug_correction_scale_cpp(const ScalarContributionTerms &z_raw_terms) {
     vector<double> z_terms = {
         z_raw_terms.hc,
         z_raw_terms.disp,
@@ -37,7 +35,7 @@ double lnfug_correction_scale_cpp(const ScalarContributionTerms &z_raw_terms) {
 }
 
 // EqID: lnphi_alpha
-vector<double> lnfug_contribution_cpp(
+static vector<double> lnfug_contribution_cpp(
     const vector<double> &mu_term,
     double z_value,
     double z_correction_scale
@@ -49,27 +47,27 @@ vector<double> lnfug_contribution_cpp(
     return out;
 }
 
-vector<double> lnfug_hc_cpp(const VectorContributionTerms &mu_terms, const ScalarContributionTerms &z_raw_terms, double z_correction_scale) {
+static vector<double> lnfug_hc_cpp(const VectorContributionTerms &mu_terms, const ScalarContributionTerms &z_raw_terms, double z_correction_scale) {
     return lnfug_contribution_cpp(mu_terms.hc, z_raw_terms.hc, z_correction_scale);
 }
 
-vector<double> lnfug_disp_cpp(const VectorContributionTerms &mu_terms, const ScalarContributionTerms &z_raw_terms, double z_correction_scale) {
+static vector<double> lnfug_disp_cpp(const VectorContributionTerms &mu_terms, const ScalarContributionTerms &z_raw_terms, double z_correction_scale) {
     return lnfug_contribution_cpp(mu_terms.disp, z_raw_terms.disp, z_correction_scale);
 }
 
-vector<double> lnfug_assoc_cpp(const VectorContributionTerms &mu_terms, const ScalarContributionTerms &z_raw_terms, double z_correction_scale) {
+static vector<double> lnfug_assoc_cpp(const VectorContributionTerms &mu_terms, const ScalarContributionTerms &z_raw_terms, double z_correction_scale) {
     return lnfug_contribution_cpp(mu_terms.assoc, z_raw_terms.assoc, z_correction_scale);
 }
 
-vector<double> lnfug_ion_cpp(const VectorContributionTerms &mu_terms, const ScalarContributionTerms &z_raw_terms, double z_correction_scale) {
+static vector<double> lnfug_ion_cpp(const VectorContributionTerms &mu_terms, const ScalarContributionTerms &z_raw_terms, double z_correction_scale) {
     return lnfug_contribution_cpp(mu_terms.ion, z_raw_terms.ion, z_correction_scale);
 }
 
-vector<double> lnfug_born_cpp(const VectorContributionTerms &mu_terms, const ScalarContributionTerms &z_raw_terms, double z_correction_scale) {
+static vector<double> lnfug_born_cpp(const VectorContributionTerms &mu_terms, const ScalarContributionTerms &z_raw_terms, double z_correction_scale) {
     return lnfug_contribution_cpp(mu_terms.born, z_raw_terms.born, z_correction_scale);
 }
 
-vector<double> lnfug_total_cpp(
+static vector<double> lnfug_total_cpp(
     const vector<double> &lnfug_hc,
     const vector<double> &lnfug_disp,
     const vector<double> &lnfug_assoc,
@@ -83,20 +81,20 @@ vector<double> lnfug_total_cpp(
     return total;
 }
 
-}  // namespace
+}  // namespace fugcoef_detail
 
 // EqID: lnphi_total
 // EqID: lnphi_total_sum
 FugacityContributionResult fugacity_coefficient_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     ResidualChemicalPotentialResult mu_result = residual_chemical_potential_result_cpp(t, rho, std::move(x), cppargs);
-    double z_correction_scale = lnfug_correction_scale_cpp(mu_result.composition.z_raw);
+    double z_correction_scale = fugcoef_detail::lnfug_correction_scale_cpp(mu_result.composition.z_raw);
 
-    vector<double> lnfug_hc = lnfug_hc_cpp(mu_result.mu, mu_result.composition.z_raw, z_correction_scale);
-    vector<double> lnfug_disp = lnfug_disp_cpp(mu_result.mu, mu_result.composition.z_raw, z_correction_scale);
-    vector<double> lnfug_assoc = lnfug_assoc_cpp(mu_result.mu, mu_result.composition.z_raw, z_correction_scale);
-    vector<double> lnfug_ion = lnfug_ion_cpp(mu_result.mu, mu_result.composition.z_raw, z_correction_scale);
-    vector<double> lnfug_born = lnfug_born_cpp(mu_result.mu, mu_result.composition.z_raw, z_correction_scale);
-    vector<double> lnfug_total = lnfug_total_cpp(lnfug_hc, lnfug_disp, lnfug_assoc, lnfug_ion, lnfug_born);
+    vector<double> lnfug_hc = fugcoef_detail::lnfug_hc_cpp(mu_result.mu, mu_result.composition.z_raw, z_correction_scale);
+    vector<double> lnfug_disp = fugcoef_detail::lnfug_disp_cpp(mu_result.mu, mu_result.composition.z_raw, z_correction_scale);
+    vector<double> lnfug_assoc = fugcoef_detail::lnfug_assoc_cpp(mu_result.mu, mu_result.composition.z_raw, z_correction_scale);
+    vector<double> lnfug_ion = fugcoef_detail::lnfug_ion_cpp(mu_result.mu, mu_result.composition.z_raw, z_correction_scale);
+    vector<double> lnfug_born = fugcoef_detail::lnfug_born_cpp(mu_result.mu, mu_result.composition.z_raw, z_correction_scale);
+    vector<double> lnfug_total = fugcoef_detail::lnfug_total_cpp(lnfug_hc, lnfug_disp, lnfug_assoc, lnfug_ion, lnfug_born);
 
     FugacityContributionResult result;
     result.mu = mu_result.mu;
@@ -110,5 +108,5 @@ vector<double> lnfug_cpp(double t, double rho, vector<double> x, const add_args 
 }
 
 vector<double> fugcoef_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
-    return exp_vector(lnfug_cpp(t, rho, std::move(x), cppargs));
+    return fugcoef_detail::exp_vector(lnfug_cpp(t, rho, std::move(x), cppargs));
 }
