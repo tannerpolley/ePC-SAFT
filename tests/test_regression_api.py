@@ -9,7 +9,6 @@ import epcsaft
 import numpy as np
 import pytest
 
-import epcsaft.regression as regression_module
 from epcsaft import FitProblem
 from epcsaft import FitResult
 from epcsaft import create_parameter_template
@@ -17,10 +16,7 @@ from epcsaft import fit_pure_neutral
 from epcsaft import write_fit_result
 from epcsaft._types import InputError
 from epcsaft.regression import _debug_native_pure_neutral_objective
-from epcsaft.regression import _fit_pure_neutral_internal_with_native
-from epcsaft.regression import _fit_pure_neutral_ipopt_explicit_internal
 from epcsaft.regression import _fit_pure_neutral_least_squares_internal
-from epcsaft.regression import _fit_pure_neutral_workflow_debug
 from epcsaft.regression import fit_binary_pair
 from epcsaft.regression import fit_pure_ion
 
@@ -139,58 +135,6 @@ def test_internal_native_least_squares_backend_matches_methane_reference_band():
     assert result.fitted_values["e"] == pytest.approx(150.03, rel=0.0, abs=3.0)
 
 
-def test_internal_native_explicit_ipopt_backend_matches_methane_reference_band():
-    result = _fit_pure_neutral_ipopt_explicit_internal(
-        _methane_like_records(),
-        "Methane",
-        assoc_scheme="",
-        fixed_parameters=_minimal_neutral_metadata(16.043e-3),
-        initial_guess={"m": 1.08, "s": 3.55, "e": 155.0},
-        bounds={
-            "m": (0.5, 3.5),
-            "s": (2.0, 5.0),
-            "e": (50.0, 400.0),
-        },
-    )
-
-    assert result.success, result.message
-    assert result.backend == "ipopt_explicit_native"
-    assert result.metrics_by_term["density"] < 0.02
-    assert result.metrics_by_term["pure_vle_fugacity_balance"] < 0.02
-    assert result.fitted_values["m"] == pytest.approx(1.0, rel=0.0, abs=0.06)
-    assert result.fitted_values["s"] == pytest.approx(3.7039, rel=0.0, abs=0.10)
-    assert result.fitted_values["e"] == pytest.approx(150.03, rel=0.0, abs=4.0)
-
-
-def test_explicit_ipopt_initial_objective_matches_reduced_objective_for_same_theta_seed():
-    theta = {"m": 1.08, "s": 3.55, "e": 155.0}
-    _, explicit_native = _fit_pure_neutral_internal_with_native(
-        _methane_like_records(),
-        "Methane",
-        assoc_scheme="",
-        fixed_parameters=_minimal_neutral_metadata(16.043e-3),
-        initial_guess=theta,
-        bounds={
-            "m": (0.5, 3.5),
-            "s": (2.0, 5.0),
-            "e": (50.0, 400.0),
-        },
-        backend="ipopt_explicit_native",
-    )
-    reduced_debug = _debug_native_pure_neutral_objective(
-        _methane_like_records(),
-        "Methane",
-        assoc_scheme="",
-        fixed_parameters=_minimal_neutral_metadata(16.043e-3),
-        initial_guess=theta,
-        x=theta,
-    )
-
-    assert explicit_native["initial_cost"] <= reduced_debug["objective"]
-    assert explicit_native["starts_tried"] >= 1
-    assert explicit_native["post_init_density_solves"] == 0
-    assert explicit_native["square_init_density_solves"] >= 1
-
 
 @pytest.mark.parametrize(
     "initial_guess",
@@ -220,85 +164,6 @@ def test_public_pure_neutral_regression_is_robust_to_distinct_initial_guesses(in
     assert result.fitted_values["s"] == pytest.approx(3.7039, rel=0.0, abs=0.10)
     assert result.fitted_values["e"] == pytest.approx(150.03, rel=0.0, abs=4.0)
 
-
-def test_public_workflow_accepts_least_squares_when_quality_gate_is_met():
-    diagnostics = _fit_pure_neutral_workflow_debug(
-        _methane_like_records(),
-        "Methane",
-        assoc_scheme="",
-        fixed_parameters=_minimal_neutral_metadata(16.043e-3),
-        initial_guess={"m": 1.08, "s": 3.55, "e": 155.0},
-        bounds={
-            "m": (0.5, 3.5),
-            "s": (2.0, 5.0),
-            "e": (50.0, 400.0),
-        },
-    )
-    assert diagnostics["fallback_triggered"] is False
-    assert diagnostics["chosen_backend"] == "least_squares_native"
-    assert diagnostics["selected"] == "least_squares"
-
-
-def test_public_workflow_can_trigger_ipopt_fallback(monkeypatch):
-    def fake_runner(*args, backend: str, **kwargs):
-        if backend == "least_squares_native":
-            return (
-                FitResult(
-                    problem=FitProblem(mode="pure_neutral", component="Methane"),
-                    fitted_values={"m": 1.0, "s": 3.7, "e": 150.0},
-                    rendered_values={"m": 1.0, "s": 3.7, "e": 150.0},
-                    metrics_by_term={"density": 0.05, "pure_vle_fugacity_balance": 0.05},
-                    cost=1.0,
-                    success=True,
-                    backend="least_squares_native",
-                ),
-                {
-                    "backend": "least_squares_native",
-                    "success": True,
-                    "cost": 1.0,
-                    "density_metric": 0.05,
-                    "pure_vle_metric": 0.05,
-                    "initial_cost": 1.1,
-                    "starts_tried": 5,
-                },
-            )
-        return (
-            FitResult(
-                problem=FitProblem(mode="pure_neutral", component="Methane"),
-                fitted_values={"m": 1.01, "s": 3.69, "e": 149.5},
-                rendered_values={"m": 1.01, "s": 3.69, "e": 149.5},
-                metrics_by_term={"density": 0.005, "pure_vle_fugacity_balance": 0.004},
-                cost=0.1,
-                success=True,
-                backend="ipopt_native",
-            ),
-            {
-                "backend": "ipopt_native",
-                "success": True,
-                "cost": 0.1,
-                "density_metric": 0.005,
-                "pure_vle_metric": 0.004,
-                "initial_cost": 1.0,
-                "starts_tried": 1,
-            },
-        )
-
-    monkeypatch.setattr(regression_module, "_fit_pure_neutral_internal_with_native", fake_runner)
-    diagnostics = _fit_pure_neutral_workflow_debug(
-        _methane_like_records(),
-        "Methane",
-        assoc_scheme="",
-        fixed_parameters=_minimal_neutral_metadata(16.043e-3),
-        initial_guess={"m": 1.08, "s": 3.55, "e": 155.0},
-        bounds={
-            "m": (0.5, 3.5),
-            "s": (2.0, 5.0),
-            "e": (50.0, 400.0),
-        },
-    )
-    assert diagnostics["fallback_triggered"] is True
-    assert "ipopt" in diagnostics
-    assert diagnostics["ipopt"]["backend"] == "ipopt_native"
 
 
 @pytest.mark.parametrize(

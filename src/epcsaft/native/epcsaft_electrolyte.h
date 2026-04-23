@@ -177,7 +177,6 @@ struct PureNeutralRegressionResult {
     double initial_density_metric = HUGE_DBL;
     double initial_pure_vle_metric = HUGE_DBL;
     bool success = false;
-    bool fallback_triggered = false;
     int status = 0;
     int nfev = 0;
     int iterations = 0;
@@ -185,12 +184,7 @@ struct PureNeutralRegressionResult {
     int objective_evaluations = 0;
     int gradient_evaluations = 0;
     int residual_evaluations = 0;
-    int constraint_evaluations = 0;
-    int jacobian_evaluations = 0;
     int density_solves = 0;
-    int square_init_density_solves = 0;
-    int post_init_density_solves = 0;
-    int square_init_failures = 0;
     int fused_state_evaluations = 0;
     double callback_wall_time_s = 0.0;
     double solve_wall_time_s = 0.0;
@@ -323,30 +317,7 @@ double dielectric_eps_cpp(vector<double> x, const add_args &cppargs);
 vector<double> dielectric_diff_cpp(vector<double> x, const add_args &cppargs);
 double dielc_eps_cpp(vector<double> x, const add_args &cppargs);
 vector<double> dielc_diff_cpp(vector<double> x, const add_args &cppargs);
-PureNeutralRegressionResult fit_pure_neutral_ipopt_cpp(
-    const add_args &base_args,
-    const vector<PureNeutralRegressionDensityRecord> &density_records,
-    double density_scale,
-    const vector<PureNeutralRegressionVLERecord> &pure_vle_records,
-    double pure_vle_scale,
-    const vector<double> &x0,
-    const vector<double> &lower,
-    const vector<double> &upper,
-    int multistart,
-    bool derivative_test
-);
 PureNeutralRegressionResult fit_pure_neutral_least_squares_cpp(
-    const add_args &base_args,
-    const vector<PureNeutralRegressionDensityRecord> &density_records,
-    double density_scale,
-    const vector<PureNeutralRegressionVLERecord> &pure_vle_records,
-    double pure_vle_scale,
-    const vector<double> &x0,
-    const vector<double> &lower,
-    const vector<double> &upper,
-    int multistart
-);
-PureNeutralRegressionResult fit_pure_neutral_ipopt_explicit_cpp(
     const add_args &base_args,
     const vector<PureNeutralRegressionDensityRecord> &density_records,
     double density_scale,

@@ -1097,80 +1097,6 @@ def create_struct(params):
     return cppargs
 
 
-def _fit_pure_neutral_native(
-    fixed_payload,
-    density_T,
-    density_P,
-    density_rho_exp,
-    density_phase,
-    density_scale,
-    vle_T,
-    vle_P,
-    pure_vle_scale,
-    x0,
-    lower,
-    upper,
-    multistart=0,
-    derivative_test=False,
-):
-    cdef add_args cppargs
-    cdef vector[PureNeutralRegressionDensityRecord] density_records
-    cdef vector[PureNeutralRegressionVLERecord] pure_vle_records
-    cdef vector[double] cpp_x0
-    cdef vector[double] cpp_lower
-    cdef vector[double] cpp_upper
-    cdef PureNeutralRegressionResult result
-    params = check_association(dict(fixed_payload))
-    cppargs = create_struct(params)
-    density_records = _pure_neutral_density_records_vector(density_T, density_P, density_rho_exp, density_phase)
-    pure_vle_records = _pure_neutral_vle_records_vector(vle_T, vle_P)
-    cpp_x0 = np_to_vector_double(np.asarray(x0, dtype=float))
-    cpp_lower = np_to_vector_double(np.asarray(lower, dtype=float))
-    cpp_upper = np_to_vector_double(np.asarray(upper, dtype=float))
-    result = fit_pure_neutral_ipopt_cpp(
-        cppargs,
-        density_records,
-        float(density_scale),
-        pure_vle_records,
-        float(pure_vle_scale),
-        cpp_x0,
-        cpp_lower,
-        cpp_upper,
-        int(multistart),
-        bool(derivative_test),
-    )
-    return {
-        "x": vector_to_array(result.x),
-        "cost": float(result.cost),
-        "residual_norm": float(result.residual_norm),
-        "density_metric": float(result.density_metric),
-        "pure_vle_metric": float(result.pure_vle_metric),
-        "initial_cost": float(result.initial_cost),
-        "initial_density_metric": float(result.initial_density_metric),
-        "initial_pure_vle_metric": float(result.initial_pure_vle_metric),
-        "success": bool(result.success),
-        "fallback_triggered": bool(result.fallback_triggered),
-        "status": int(result.status),
-        "nfev": int(result.nfev),
-        "iterations": int(result.iterations),
-        "starts_tried": int(result.starts_tried),
-        "objective_evaluations": int(result.objective_evaluations),
-        "gradient_evaluations": int(result.gradient_evaluations),
-        "residual_evaluations": int(result.residual_evaluations),
-        "constraint_evaluations": int(result.constraint_evaluations),
-        "jacobian_evaluations": int(result.jacobian_evaluations),
-        "density_solves": int(result.density_solves),
-        "square_init_density_solves": int(result.square_init_density_solves),
-        "post_init_density_solves": int(result.post_init_density_solves),
-        "square_init_failures": int(result.square_init_failures),
-        "fused_state_evaluations": int(result.fused_state_evaluations),
-        "callback_wall_time_s": float(result.callback_wall_time_s),
-        "solve_wall_time_s": float(result.solve_wall_time_s),
-        "message": (<bytes>result.message).decode("utf-8"),
-        "backend": (<bytes>result.backend).decode("utf-8"),
-    }
-
-
 def _fit_pure_neutral_native_least_squares(
     fixed_payload,
     density_T,
@@ -1221,7 +1147,6 @@ def _fit_pure_neutral_native_least_squares(
         "initial_density_metric": float(result.initial_density_metric),
         "initial_pure_vle_metric": float(result.initial_pure_vle_metric),
         "success": bool(result.success),
-        "fallback_triggered": bool(result.fallback_triggered),
         "status": int(result.status),
         "nfev": int(result.nfev),
         "iterations": int(result.iterations),
@@ -1229,84 +1154,7 @@ def _fit_pure_neutral_native_least_squares(
         "objective_evaluations": int(result.objective_evaluations),
         "gradient_evaluations": int(result.gradient_evaluations),
         "residual_evaluations": int(result.residual_evaluations),
-        "constraint_evaluations": int(result.constraint_evaluations),
-        "jacobian_evaluations": int(result.jacobian_evaluations),
         "density_solves": int(result.density_solves),
-        "square_init_density_solves": int(result.square_init_density_solves),
-        "post_init_density_solves": int(result.post_init_density_solves),
-        "square_init_failures": int(result.square_init_failures),
-        "fused_state_evaluations": int(result.fused_state_evaluations),
-        "callback_wall_time_s": float(result.callback_wall_time_s),
-        "solve_wall_time_s": float(result.solve_wall_time_s),
-        "message": (<bytes>result.message).decode("utf-8"),
-        "backend": (<bytes>result.backend).decode("utf-8"),
-    }
-
-
-def _fit_pure_neutral_native_explicit(
-    fixed_payload,
-    density_T,
-    density_P,
-    density_rho_exp,
-    density_phase,
-    density_scale,
-    vle_T,
-    vle_P,
-    pure_vle_scale,
-    x0,
-    lower,
-    upper,
-    multistart=0,
-):
-    cdef add_args cppargs
-    cdef vector[PureNeutralRegressionDensityRecord] density_records
-    cdef vector[PureNeutralRegressionVLERecord] pure_vle_records
-    cdef vector[double] cpp_x0
-    cdef vector[double] cpp_lower
-    cdef vector[double] cpp_upper
-    cdef PureNeutralRegressionResult result
-    params = check_association(dict(fixed_payload))
-    cppargs = create_struct(params)
-    density_records = _pure_neutral_density_records_vector(density_T, density_P, density_rho_exp, density_phase)
-    pure_vle_records = _pure_neutral_vle_records_vector(vle_T, vle_P)
-    cpp_x0 = np_to_vector_double(np.asarray(x0, dtype=float))
-    cpp_lower = np_to_vector_double(np.asarray(lower, dtype=float))
-    cpp_upper = np_to_vector_double(np.asarray(upper, dtype=float))
-    result = fit_pure_neutral_ipopt_explicit_cpp(
-        cppargs,
-        density_records,
-        float(density_scale),
-        pure_vle_records,
-        float(pure_vle_scale),
-        cpp_x0,
-        cpp_lower,
-        cpp_upper,
-        int(multistart),
-    )
-    return {
-        "x": vector_to_array(result.x),
-        "cost": float(result.cost),
-        "residual_norm": float(result.residual_norm),
-        "density_metric": float(result.density_metric),
-        "pure_vle_metric": float(result.pure_vle_metric),
-        "initial_cost": float(result.initial_cost),
-        "initial_density_metric": float(result.initial_density_metric),
-        "initial_pure_vle_metric": float(result.initial_pure_vle_metric),
-        "success": bool(result.success),
-        "fallback_triggered": bool(result.fallback_triggered),
-        "status": int(result.status),
-        "nfev": int(result.nfev),
-        "iterations": int(result.iterations),
-        "starts_tried": int(result.starts_tried),
-        "objective_evaluations": int(result.objective_evaluations),
-        "gradient_evaluations": int(result.gradient_evaluations),
-        "residual_evaluations": int(result.residual_evaluations),
-        "constraint_evaluations": int(result.constraint_evaluations),
-        "jacobian_evaluations": int(result.jacobian_evaluations),
-        "density_solves": int(result.density_solves),
-        "square_init_density_solves": int(result.square_init_density_solves),
-        "post_init_density_solves": int(result.post_init_density_solves),
-        "square_init_failures": int(result.square_init_failures),
         "fused_state_evaluations": int(result.fused_state_evaluations),
         "callback_wall_time_s": float(result.callback_wall_time_s),
         "solve_wall_time_s": float(result.solve_wall_time_s),

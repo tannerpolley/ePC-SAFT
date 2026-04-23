@@ -12,8 +12,6 @@ import numpy as np
 
 from ._types import InputError
 from ._types import phase_to_int
-from .epcsaft import _fit_pure_neutral_native
-from .epcsaft import _fit_pure_neutral_native_explicit
 from .epcsaft import _fit_pure_neutral_native_least_squares
 from .epcsaft import _fit_pure_neutral_native_debug
 from .parameter_templates import _infer_pure_template_name
@@ -200,7 +198,7 @@ class FitResult:
     status: int = 0
     message: str = ""
     nfev: int = 0
-    backend: str = "ipopt_native"
+    backend: str = "least_squares_native"
 
     def __post_init__(self) -> None:
         self.fitted_values = {str(k): float(v) for k, v in self.fitted_values.items()}
@@ -728,45 +726,6 @@ def _source_dataset_label(dataset: str | Path | None) -> str | None:
     return str(dataset)
 
 
-def _native_result_is_acceptable(native_result: Mapping[str, Any]) -> bool:
-    if not bool(native_result.get("success", False)):
-        return False
-    cost = float(native_result.get("cost", np.inf))
-    initial_cost = float(native_result.get("initial_cost", np.inf))
-    density_metric = float(native_result.get("density_metric", np.inf))
-    pure_vle_metric = float(native_result.get("pure_vle_metric", np.inf))
-    if not np.isfinite(cost):
-        return False
-    if density_metric < 1.0e-2 and pure_vle_metric < 1.0e-2:
-        return True
-    if not np.isfinite(initial_cost) or initial_cost <= 0.0:
-        return False
-    improvement = max(0.0, (initial_cost - cost) / initial_cost)
-    return improvement >= 0.90 and density_metric < 3.0e-2 and pure_vle_metric < 3.0e-2
-
-
-def _choose_better_native_result(lhs: Mapping[str, Any] | None, rhs: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
-    if lhs is None:
-        return rhs
-    if rhs is None:
-        return lhs
-    lhs_success = bool(lhs.get("success", False))
-    rhs_success = bool(rhs.get("success", False))
-    if rhs_success and not lhs_success:
-        return rhs
-    if lhs_success and not rhs_success:
-        return lhs
-    lhs_score = (
-        float(lhs.get("cost", np.inf)),
-        float(lhs.get("density_metric", np.inf)) + float(lhs.get("pure_vle_metric", np.inf)),
-    )
-    rhs_score = (
-        float(rhs.get("cost", np.inf)),
-        float(rhs.get("density_metric", np.inf)) + float(rhs.get("pure_vle_metric", np.inf)),
-    )
-    return rhs if rhs_score < lhs_score else lhs
-
-
 def _ensure_native_vector_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
     normalized = dict(payload)
     for key in ("m", "s", "e", "e_assoc", "vol_a", "z", "dielc", "d_born", "f_solv", "MW"):
@@ -851,7 +810,6 @@ def _fit_pure_neutral_internal(
     initial_guess: Mapping[str, float] | None = None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
     multistart: int = 0,
-    backend: str = "ipopt_native",
 ) -> FitResult:
     fit_result, _ = _fit_pure_neutral_internal_with_native(
         records,
@@ -864,7 +822,6 @@ def _fit_pure_neutral_internal(
         initial_guess=initial_guess,
         bounds=bounds,
         multistart=multistart,
-        backend=backend,
     )
     return fit_result
 
@@ -881,7 +838,6 @@ def _fit_pure_neutral_internal_with_native(
     initial_guess: Mapping[str, float] | None = None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
     multistart: int = 0,
-    backend: str = "ipopt_native",
 ) -> tuple[FitResult, dict[str, Any]]:
     normalized_component = _normalize_component(component)
     normalized_records = _normalize_records(records)
@@ -902,57 +858,21 @@ def _fit_pure_neutral_internal_with_native(
         bounds,
     )
     theta0 = np.asarray([payload["initial_map"][name] for name in payload["optimization_names"]], dtype=float)
-    if backend == "ipopt_native":
-        native_result = _fit_pure_neutral_native(
-            payload["fixed_payload"],
-            payload["density_T"],
-            payload["density_P"],
-            payload["density_rho_exp"],
-            payload["density_phase"],
-            payload["density_scale"],
-            payload["vle_T"],
-            payload["vle_P"],
-            payload["pure_vle_scale"],
-            theta0,
-            payload["lower"],
-            payload["upper"],
-            multistart=int(multistart),
-            derivative_test=False,
-        )
-    elif backend == "ipopt_explicit_native":
-        native_result = _fit_pure_neutral_native_explicit(
-            payload["fixed_payload"],
-            payload["density_T"],
-            payload["density_P"],
-            payload["density_rho_exp"],
-            payload["density_phase"],
-            payload["density_scale"],
-            payload["vle_T"],
-            payload["vle_P"],
-            payload["pure_vle_scale"],
-            theta0,
-            payload["lower"],
-            payload["upper"],
-            multistart=int(multistart),
-        )
-    elif backend == "least_squares_native":
-        native_result = _fit_pure_neutral_native_least_squares(
-            payload["fixed_payload"],
-            payload["density_T"],
-            payload["density_P"],
-            payload["density_rho_exp"],
-            payload["density_phase"],
-            payload["density_scale"],
-            payload["vle_T"],
-            payload["vle_P"],
-            payload["pure_vle_scale"],
-            theta0,
-            payload["lower"],
-            payload["upper"],
-            multistart=int(multistart),
-        )
-    else:
-        raise InputError(f"Unsupported internal native regression backend '{backend}'.")
+    native_result = _fit_pure_neutral_native_least_squares(
+        payload["fixed_payload"],
+        payload["density_T"],
+        payload["density_P"],
+        payload["density_rho_exp"],
+        payload["density_phase"],
+        payload["density_scale"],
+        payload["vle_T"],
+        payload["vle_P"],
+        payload["pure_vle_scale"],
+        theta0,
+        payload["lower"],
+        payload["upper"],
+        multistart=int(multistart),
+    )
 
     vector_map = _normalize_vector_map(payload["optimization_names"], native_result["x"])
     problem = FitProblem(
@@ -983,68 +903,9 @@ def _fit_pure_neutral_internal_with_native(
         status=int(native_result["status"]),
         message=str(native_result["message"]),
         nfev=int(native_result["nfev"]),
-        backend=str(native_result.get("backend", backend)),
-    )
-    return fit_result, native_result
-
-
-def _fit_pure_neutral_workflow_debug(
-    records: Any,
-    component: str,
-    *,
-    assoc_scheme: str = "",
-    dataset: str | Path | None = None,
-    pure_set: str | None = None,
-    fit_targets: Iterable[str] | None = None,
-    fixed_parameters: Mapping[str, Any] | None = None,
-    initial_guess: Mapping[str, float] | None = None,
-    bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
-    multistart: int = 0,
-) -> dict[str, Any]:
-    ls_result, ls_native = _fit_pure_neutral_internal_with_native(
-        records,
-        component,
-        assoc_scheme=assoc_scheme,
-        dataset=dataset,
-        pure_set=pure_set,
-        fit_targets=fit_targets,
-        fixed_parameters=fixed_parameters,
-        initial_guess=initial_guess,
-        bounds=bounds,
-        multistart=multistart,
         backend="least_squares_native",
     )
-    diagnostics: dict[str, Any] = {
-        "least_squares": ls_native,
-        "fallback_triggered": False,
-        "chosen_backend": ls_result.backend,
-    }
-    if _native_result_is_acceptable(ls_native):
-        diagnostics["chosen_backend"] = ls_result.backend
-        diagnostics["selected"] = "least_squares"
-        return diagnostics
-
-    ipopt_result, ipopt_native = _fit_pure_neutral_internal_with_native(
-        records,
-        component,
-        assoc_scheme=assoc_scheme,
-        dataset=dataset,
-        pure_set=pure_set,
-        fit_targets=fit_targets,
-        fixed_parameters=fixed_parameters,
-        initial_guess=ls_result.fitted_values,
-        bounds=bounds,
-        multistart=0,
-        backend="ipopt_native",
-    )
-    ipopt_native = dict(ipopt_native)
-    ipopt_native["fallback_triggered"] = True
-    diagnostics["fallback_triggered"] = True
-    diagnostics["ipopt"] = ipopt_native
-    chosen_native = _choose_better_native_result(ls_native, ipopt_native)
-    diagnostics["selected"] = "ipopt" if chosen_native is ipopt_native else "least_squares"
-    diagnostics["chosen_backend"] = ipopt_result.backend if chosen_native is ipopt_native else ls_result.backend
-    return diagnostics
+    return fit_result, native_result
 
 
 def fit_pure_neutral(
@@ -1062,7 +923,7 @@ def fit_pure_neutral(
     multistart: int = 0,
 ) -> FitResult:
     """Fit neutral pure-component m, s, and e parameters."""
-    ls_result, ls_native = _fit_pure_neutral_internal_with_native(
+    return _fit_pure_neutral_internal(
         records,
         component,
         assoc_scheme=assoc_scheme,
@@ -1073,28 +934,7 @@ def fit_pure_neutral(
         initial_guess=initial_guess,
         bounds=bounds,
         multistart=multistart,
-        backend="least_squares_native",
     )
-    if _native_result_is_acceptable(ls_native):
-        return ls_result
-
-    ipopt_result, ipopt_native = _fit_pure_neutral_internal_with_native(
-        records,
-        component,
-        assoc_scheme=assoc_scheme,
-        dataset=dataset,
-        pure_set=pure_set,
-        fit_targets=fit_targets,
-        fixed_parameters=fixed_parameters,
-        initial_guess=ls_result.fitted_values,
-        bounds=bounds,
-        multistart=0,
-        backend="ipopt_native",
-    )
-    ipopt_native = dict(ipopt_native)
-    ipopt_native["fallback_triggered"] = True
-    best_native = _choose_better_native_result(ls_native, ipopt_native)
-    return ipopt_result if best_native is ipopt_native else ls_result
 
 
 def _fit_pure_neutral_least_squares_internal(
@@ -1122,36 +962,6 @@ def _fit_pure_neutral_least_squares_internal(
         initial_guess=initial_guess,
         bounds=bounds,
         multistart=multistart,
-        backend="least_squares_native",
-    )
-
-
-def _fit_pure_neutral_ipopt_explicit_internal(
-    records: Any,
-    component: str,
-    *,
-    assoc_scheme: str = "",
-    dataset: str | Path | None = None,
-    pure_set: str | None = None,
-    fit_targets: Iterable[str] | None = None,
-    fixed_parameters: Mapping[str, Any] | None = None,
-    initial_guess: Mapping[str, float] | None = None,
-    bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
-    multistart: int = 0,
-) -> FitResult:
-    """Internal native explicit-state IPOPT comparison hook for pure-neutral regression."""
-    return _fit_pure_neutral_internal(
-        records,
-        component,
-        assoc_scheme=assoc_scheme,
-        dataset=dataset,
-        pure_set=pure_set,
-        fit_targets=fit_targets,
-        fixed_parameters=fixed_parameters,
-        initial_guess=initial_guess,
-        bounds=bounds,
-        multistart=multistart,
-        backend="ipopt_explicit_native",
     )
 
 

@@ -1,104 +1,43 @@
-# Native IPOPT Regression Toolkit for ePC-SAFT
+# Archived IPOPT Regression Note
 
-## Summary
+This note is retained only as historical context.
 
-ePC-SAFT now ships a native C++ regression workflow where `fit_pure_neutral(...)` uses a native least-squares-first path and retains IPOPT as an internal fallback/refinement solver.
+## Current state
 
-The package no longer uses a Python/SciPy optimization loop for the supported regression surface. Python remains responsible for record loading, argument normalization, result packaging, and dataset write-back, while the optimization model and solver callbacks live in the native runtime.
+ePC-SAFT no longer ships an IPOPT-based regression backend.
 
-## Implemented v1 Scope
+The supported regression workflow is now:
 
-The first supported regression phase is intentionally narrow:
+- native C++ least-squares ownership inside the main `epcsaft.epcsaft` extension
+- public Python surface kept at `fit_pure_neutral(...)`, `FitBounds`, `FitResult`, `load_regression_records(...)`, and `write_fit_result(...)`
+- no IPOPT build dependency for the package
 
-- one nonassociating neutral component only
-- fitted parameters limited to \(m\), \(s\), and \(e\)
-- weighted least-squares objective over two residual families:
-  - liquid-density residuals
-  - pure-VLE fugacity-balance residuals
-- exact first derivatives
-- density retained as a nested native solve
-- IPOPT configured with limited-memory Hessian approximation as the fallback/refinement solver
+## Why IPOPT was removed
 
-Ion regression, binary regression, associating pure-neutral regression, covariance estimation, bootstrap workflows, and explicit density-constrained NLP formulations remain deferred.
+Two native IPOPT formulations were implemented and benchmarked:
 
-## Native Ownership
+1. reduced-space callback IPOPT
+2. explicit-state IPOPT with pressure-closure constraints and square initialization
 
-The native regression layer lives in `src/epcsaft/native/epcsaft_regression.cpp` and is linked directly into the main `epcsaft.epcsaft` extension.
+Neither formulation beat the native least-squares workflow on the current pure-neutral benchmark surface.
 
-Core responsibilities of that layer:
+Observed failure modes included:
 
-- typed density and pure-VLE record structs
-- deterministic multistart generation
-- deterministic transformed-space start generation
-- IPOPT `Ipopt::TNLP` implementation for fallback/refinement
-- exact reduced-space objective/gradient evaluation
-- native result payloads for fitted values, family metrics, and solver statistics
+- excessive iteration count and solve time relative to least-squares
+- strong basin sensitivity
+- explicit-state drift away from good square-initialized feasible points
+- a local Pyomo/`parmest` comparison that also did not outperform least-squares on the same methane case
 
-The public Python wrapper in `src/epcsaft/regression.py` now:
+Because the package already had a fast native least-squares workflow with better practical behavior, the IPOPT implementation was removed rather than kept as dead or misleading complexity.
 
-- normalizes flat records
-- resolves fixed pure-component metadata
-- prepares bounds and initial guesses
-- marshals payloads into the Cython/native seam
-- repackages the native solver result into `FitResult`
+## What would justify reintroduction
 
-## Exact-Derivative Strategy
+Any future IPOPT reintroduction should clear a higher bar than simple parity.
 
-The v1 implementation uses exact first derivatives.
+It should demonstrate at least one of:
 
-Parameter sensitivities for \(m\), \(s\), and \(e\) are evaluated through repeated forward-mode autodiff passes in the native property model. Density-coupled terms use implicit differentiation after the nested density closure converges:
+- materially better fit quality on the benchmark suite
+- materially better runtime on the benchmark suite
+- support for a constrained regression surface that least-squares cannot handle cleanly
 
-\[
-\frac{\mathrm{d}\rho}{\mathrm{d}\theta}
-=
--\frac{\partial p / \partial \theta}{\partial p / \partial \rho}
-\]
-
-That exact \(\partial p / \partial \rho\) path is evaluated in the native regression/property seam rather than reusing the finite-difference validator logic from the density root checker.
-
-## Failure Handling
-
-The native IPOPT callbacks do not synthesize large penalty residuals. If the EOS or density closure cannot be evaluated safely at a trial point, the native callback reports an evaluation failure to IPOPT.
-
-This keeps invalid thermodynamic regions out of the objective algebra and makes the reduced-space NLP behavior more defensible.
-
-## Build and Packaging
-
-IPOPT is now a required build dependency for the package.
-
-The supported developer path is the active Conda environment, with IPOPT headers and libraries discovered from that environment first. On Windows, the current build resolves IPOPT from locations under `%CONDA_PREFIX%\\Library\\include` and `%CONDA_PREFIX%\\Library\\lib`.
-
-The package build now fails early with an actionable message when IPOPT headers or libraries are missing.
-
-## Public API
-
-The public regression surface remains:
-
-- `fit_pure_neutral(...)`
-- `FitBounds`
-- `FitProblem`
-- `FitResult`
-- `load_regression_records(...)`
-- `write_fit_result(...)`
-
-`FitResult` keeps the existing compatibility fields such as `cost`, `status`, `message`, and `nfev`, and now truthfully reports either `backend="least_squares_native"` or `backend="ipopt_native"` depending on which solver produced the returned fit.
-
-## Validation
-
-The current cutover is validated by:
-
-- editable build/import of the main extension with IPOPT linked
-- hydrocarbon methane/ethane/propane benchmark parity checks
-- regression API contract tests
-- native exact-gradient validation against finite differences on a representative pure-neutral case
-
-## Deferred Work
-
-The main deferred extensions after v1 are:
-
-- associating pure-neutral regression
-- ion and binary regression
-- exact Hessians
-- covariance / bootstrap / uncertainty workflows
-- explicit density-variable NLP formulations
-- broader regression record families beyond liquid density and pure-VLE fugacity balance
+Until that bar is met, least-squares remains the authoritative regression engine for the package.
