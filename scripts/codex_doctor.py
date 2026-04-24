@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib.util
-import os
 import shutil
 import subprocess
 import sys
@@ -51,7 +50,6 @@ def main() -> int:
     print(f"repo_root: {REPO_ROOT}")
     print(f"python: {sys.executable}")
     print(f"python_prefix: {sys.prefix}")
-    print(f"conda_env_var: {os.environ.get('CONDA_DEFAULT_ENV', '<unset>')}")
     print(f"git_branch: {branch}")
     print(f"git_head: {head}")
     print(f"uv: {_tool_path('uv')}")

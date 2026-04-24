@@ -15,8 +15,6 @@ venv/
 *.pyd
 *.dll
 *.dylib
-.cython_build/
-src/epcsaft/epcsaft.cpp
 artifacts/
 outputs/
 data/MIAC/*/plot_fits/
