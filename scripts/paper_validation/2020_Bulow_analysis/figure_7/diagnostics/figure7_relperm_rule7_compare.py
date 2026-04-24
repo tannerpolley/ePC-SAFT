@@ -16,6 +16,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts._env import require_epcsaft_install
+from scripts.plot_outputs import paper_validation_dir
 
 require_epcsaft_install()
 
@@ -27,7 +28,7 @@ from _plot_common import configure_style, save_figure
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-OUT_DIR = Path(__file__).resolve().parent
+OUT_DIR = paper_validation_dir(__file__)
 
 
 def _read_paper_points(panel: dict[str, object]) -> tuple[np.ndarray, np.ndarray]:

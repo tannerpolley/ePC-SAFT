@@ -6,8 +6,8 @@ This script validates MIAC datasets using parameter sets from the packaged
 Experimental data source is canonical `data/MIAC/**` with `miac` and `miac_m` values.
 
 It writes fit plots to:
-  data/MIAC/<solvent_system>/miac_m_fits/maic_m_<solvent_system>_<rank>_<Salt>[_composition].png
-  data/MIAC/<solvent_system>/miac_fits/miac_<solvent_system>_<rank>_<Salt>[_composition].png
+  docs/plots/fits/miac/<solvent_system>/miac_m/maic_m_<solvent_system>_<rank>_<Salt>[_composition].png
+  docs/plots/fits/miac/<solvent_system>/miac/miac_<solvent_system>_<rank>_<Salt>[_composition].png
 """
 
 from __future__ import annotations
@@ -34,6 +34,7 @@ require_epcsaft_install()
 
 from epcsaft.parameters import get_prop_dict
 from scripts._epcsaft_oop import as_mixture
+from scripts.plot_outputs import fits_plot_path
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -410,8 +411,8 @@ def discover_combos(solvent_scope: str | None = None, salt_scope: str | None = N
                 comp = _extract_comp({}, solvent_system)
                 comp_groups[_comp_signature(comp, solvent_system)] = comp
 
-            output_dir_miac_m = path.parent / "miac_m_fits"
-            output_dir_miac = path.parent / "miac_fits"
+            output_dir_miac_m = fits_plot_path("miac", solvent_system, "miac_m", "_placeholder").parent
+            output_dir_miac = fits_plot_path("miac", solvent_system, "miac", "_placeholder").parent
             for sig, comp in sorted(comp_groups.items()):
                 suffix = _comp_suffix(comp, solvent_system)
                 stem = f"{solvent_system}_{_salt_rank(salt)}_{salt}"
@@ -859,7 +860,7 @@ def plot_combo(
 
 
 def _grid_output_path(solvent_system: str) -> Path:
-    return REPO_ROOT / "data" / "MIAC" / solvent_system / "miac_m_fits" / f"maic_m_{solvent_system}_grid_3x3.png"
+    return fits_plot_path("miac", solvent_system, "miac_m", f"maic_m_{solvent_system}_grid_3x3.png")
 
 
 def plot_single_solvent_grid(

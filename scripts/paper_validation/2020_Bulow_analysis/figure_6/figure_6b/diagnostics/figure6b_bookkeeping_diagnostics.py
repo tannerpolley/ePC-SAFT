@@ -18,6 +18,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts._env import require_epcsaft_install
+from scripts.plot_outputs import paper_validation_path
 
 require_epcsaft_install()
 if str(SCRIPT_DIR) not in sys.path:
@@ -37,7 +38,7 @@ from scripts._epcsaft_oop import epcsaft_compressibility_factor, epcsaft_density
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-OUTPUT_ROOT = REPO_ROOT / "scripts" / "paper_validation" / "2020_Bulow_analysis" / "figure_6" / "figure_6b" / "diagnostics" / "output"
+OUTPUT_ROOT = paper_validation_path(Path(__file__).resolve().parent, "output")
 OUTPUT_DATA_DIR = OUTPUT_ROOT / "data"
 OUTPUT_PLOTS_DIR = OUTPUT_ROOT / "plots"
 

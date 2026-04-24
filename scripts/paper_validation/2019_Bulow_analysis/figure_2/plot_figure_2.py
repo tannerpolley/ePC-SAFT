@@ -22,6 +22,7 @@ require_epcsaft_install()
 
 from _common import build_params
 from scripts._epcsaft_oop import epcsaft_density, epcsaft_fugacity_coefficient_terms
+from scripts.plot_outputs import paper_validation_path
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -261,7 +262,7 @@ def main() -> None:
         epc_manual=dadx_epc_manual,
     )
     ax_a.legend(fontsize=8)
-    out_a = THIS_DIR / 'figure_2a.png'
+    out_a = paper_validation_path(__file__, 'figure_2a.png')
     fig_a.tight_layout()
     fig_a.savefig(out_a, dpi=220)
     plt.close(fig_a)
@@ -291,7 +292,7 @@ def main() -> None:
         epc_manual=dadx_epc_manual,
     )
     ax_a_full.legend(fontsize=8)
-    out_a_full = THIS_DIR / 'figure_2a_fullrange.png'
+    out_a_full = paper_validation_path(__file__, 'figure_2a_fullrange.png')
     fig_a_full.tight_layout()
     fig_a_full.savefig(out_a_full, dpi=220)
     plt.close(fig_a_full)
@@ -309,7 +310,7 @@ def main() -> None:
         ylim=(-2.0, 14.0),
     )
     ax_b.legend(fontsize=8)
-    out_b = THIS_DIR / 'figure_2b.png'
+    out_b = paper_validation_path(__file__, 'figure_2b.png')
     fig_b.tight_layout()
     fig_b.savefig(out_b, dpi=220)
     plt.close(fig_b)
@@ -333,7 +334,7 @@ def main() -> None:
         ylim=ylim_b_full,
     )
     ax_b_full.legend(fontsize=8)
-    out_b_full = THIS_DIR / 'figure_2b_fullrange.png'
+    out_b_full = paper_validation_path(__file__, 'figure_2b_fullrange.png')
     fig_b_full.tight_layout()
     fig_b_full.savefig(out_b_full, dpi=220)
     plt.close(fig_b_full)
@@ -365,7 +366,7 @@ def main() -> None:
         ylim=(-2.0, 14.0),
     )
     axes[1].legend(fontsize=8, loc='best')
-    out = THIS_DIR / 'figure_2.png'
+    out = paper_validation_path(__file__, 'figure_2.png')
     fig.tight_layout()
     fig.savefig(out, dpi=220)
     plt.close(fig)

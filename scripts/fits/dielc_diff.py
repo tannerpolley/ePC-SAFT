@@ -21,6 +21,7 @@ from scripts._epcsaft_oop import epcsaft_relative_permittivity
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from scripts.plot_outputs import fits_plot_path
 
 
 def _load_xion_range():
@@ -74,9 +75,7 @@ def test_dielc_diff():
     style_map = {1: "--", 2: "--", 3: "--", 4: "--", 5: "--", 6: "--"}
     curves = {rule: _calc_dielc_diff_curve(x_ion_grid, rule=rule) for rule in rules}
 
-    out_dir = Path(__file__).resolve().parents[2] / "data" / "dielc" / "plot_fits"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    plot_path = out_dir / "test_dielc_diff_salts_in_water_fit.png"
+    plot_path = fits_plot_path("dielectric", "test_dielc_diff_salts_in_water_fit.png")
 
     fig, ax = plt.subplots(figsize=(7.5, 5.0))
     for rule in rules:

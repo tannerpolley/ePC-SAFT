@@ -2,10 +2,17 @@ from __future__ import annotations
 
 import csv
 import math
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from scripts.plot_outputs import paper_validation_output_path
 
 
 FIG_DPI = 300
@@ -65,7 +72,9 @@ def load_indexed_csv(path: Path) -> Table:
 
 
 def save_figure(fig: plt.Figure, output_path: Path) -> None:
+    output_path = paper_validation_output_path(output_path)
     fig.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=FIG_DPI, bbox_inches="tight")
 
 

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fits / Miac</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page-max: 1200px;
+      --nav-bg: rgba(255, 255, 255, 0.96);
+      --border: #d9d9d9;
+      --text: #1b1b1b;
+      --muted: #5f5f5f;
+      --accent: #0f5fbf;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text);
+      background: #ffffff;
+      line-height: 1.45;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--nav-bg);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+    }
+    .header-inner {
+      max-width: var(--page-max);
+      margin: 0 auto;
+      padding: 1rem 1.25rem 0.85rem;
+    }
+    h1 { margin: 0 0 0.35rem; font-size: 1.5rem; font-weight: 700; }
+    .summary { margin: 0 0 0.8rem; color: var(--muted); font-size: 0.95rem; }
+    nav, .child-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .section-button, .back-link, .child-card {
+      appearance: none;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.35rem 0.8rem;
+      font-size: 0.92rem;
+      background: #fff;
+      color: var(--accent);
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+    }
+    .section-button.is-active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .child-card { display: inline-flex; gap: 0.5rem; align-items: center; }
+    .child-card strong { color: var(--muted); font-weight: 500; }
+    .back-link { display: inline-flex; margin-bottom: 0.8rem; }
+    main { max-width: var(--page-max); margin: 0 auto; padding: 1.25rem; }
+    .child-section { margin: 0 0 1.25rem; }
+    .child-section h2, .gallery-section > h2 {
+      margin: 0 0 0.85rem;
+      font-size: 1.35rem;
+      border-bottom: 2px solid #efefef;
+      padding-bottom: 0.4rem;
+    }
+    .gallery-section { display: none; margin: 0 0 2.5rem; padding-top: 0.25rem; }
+    .gallery-section.is-active { display: block; }
+    .image-card {
+      margin: 0 0 1.5rem;
+      padding: 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fcfcfc;
+    }
+    .caption {
+      margin: 0 0 0.6rem;
+      font-size: 0.92rem;
+      color: var(--muted);
+      font-family: Consolas, "Courier New", monospace;
+      word-break: break-word;
+    }
+    .image-link { display: block; text-decoration: none; }
+    img { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 8px; background: #fff; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a class="back-link" href="../index.html">Back</a>
+      <h1>Fits / Miac</h1>
+      <p class="summary">Browsable gallery for 130 PNG files under docs/plots/fits/miac.</p>
+      <nav>
+        <button type="button" class="section-button" data-target="section-1">2025 Presentation (8)</button>
+        <button type="button" class="section-button" data-target="section-2">2025 Solvent Comparison (9)</button>
+        <button type="button" class="section-button" data-target="section-3">Ethanol (13)</button>
+        <button type="button" class="section-button" data-target="section-4">Methanol (19)</button>
+        <button type="button" class="section-button" data-target="section-5">Water (19)</button>
+        <button type="button" class="section-button" data-target="section-6">Water-Ethanol (26)</button>
+        <button type="button" class="section-button" data-target="section-7">Water-Methanol (20)</button>
+        <button type="button" class="section-button" data-target="section-8">Water-Methanol-Ethanol (16)</button>
+      </nav>
+    </div>
+  </header>
+  <main>
+    <section class="child-section">
+      <h2>Subfolders</h2>
+      <div class="child-grid">
+        <a class="child-card" href="2025_presentation/index.html"><span>2025 Presentation</span><strong>8 PNGs</strong></a>
+        <a class="child-card" href="2025_solvent_comparison/index.html"><span>2025 Solvent Comparison</span><strong>9 PNGs</strong></a>
+        <a class="child-card" href="ethanol/index.html"><span>Ethanol</span><strong>13 PNGs</strong></a>
+        <a class="child-card" href="methanol/index.html"><span>Methanol</span><strong>19 PNGs</strong></a>
+        <a class="child-card" href="water/index.html"><span>Water</span><strong>19 PNGs</strong></a>
+        <a class="child-card" href="water-ethanol/index.html"><span>Water-Ethanol</span><strong>26 PNGs</strong></a>
+        <a class="child-card" href="water-methanol/index.html"><span>Water-Methanol</span><strong>20 PNGs</strong></a>
+        <a class="child-card" href="water-methanol-ethanol/index.html"><span>Water-Methanol-Ethanol</span><strong>16 PNGs</strong></a>
+      </div>
+    </section>
+    <section id="section-1" class="gallery-section">
+      <h2>2025 Presentation</h2>
+      <article class="image-card"><p class="caption">2025_presentation/miac_m_2025_present_ethanol_sodium_salts.png</p><a class="image-link" href="2025_presentation/miac_m_2025_present_ethanol_sodium_salts.png"><img src="2025_presentation/miac_m_2025_present_ethanol_sodium_salts.png" alt="miac m 2025 present ethanol sodium salts"></a></article>
+      <article class="image-card"><p class="caption">2025_presentation/miac_m_2025_present_libr_nonaqueous.png</p><a class="image-link" href="2025_presentation/miac_m_2025_present_libr_nonaqueous.png"><img src="2025_presentation/miac_m_2025_present_libr_nonaqueous.png" alt="miac m 2025 present libr nonaqueous"></a></article>
+      <article class="image-card"><p class="caption">2025_presentation/miac_m_2025_present_lii_solvents.png</p><a class="image-link" href="2025_presentation/miac_m_2025_present_lii_solvents.png"><img src="2025_presentation/miac_m_2025_present_lii_solvents.png" alt="miac m 2025 present lii solvents"></a></article>
+      <article class="image-card"><p class="caption">2025_presentation/miac_m_2025_present_methanol_chlorides.png</p><a class="image-link" href="2025_presentation/miac_m_2025_present_methanol_chlorides.png"><img src="2025_presentation/miac_m_2025_present_methanol_chlorides.png" alt="miac m 2025 present methanol chlorides"></a></article>
+      <article class="image-card"><p class="caption">2025_presentation/miac_m_2025_present_methanol_iodides.png</p><a class="image-link" href="2025_presentation/miac_m_2025_present_methanol_iodides.png"><img src="2025_presentation/miac_m_2025_present_methanol_iodides.png" alt="miac m 2025 present methanol iodides"></a></article>
+      <article class="image-card"><p class="caption">2025_presentation/miac_m_2025_present_nabr_solvents.png</p><a class="image-link" href="2025_presentation/miac_m_2025_present_nabr_solvents.png"><img src="2025_presentation/miac_m_2025_present_nabr_solvents.png" alt="miac m 2025 present nabr solvents"></a></article>
+      <article class="image-card"><p class="caption">2025_presentation/miac_m_2025_present_nacl_solvents.png</p><a class="image-link" href="2025_presentation/miac_m_2025_present_nacl_solvents.png"><img src="2025_presentation/miac_m_2025_present_nacl_solvents.png" alt="miac m 2025 present nacl solvents"></a></article>
+      <article class="image-card"><p class="caption">2025_presentation/miac_m_2025_present_water_potassium_halides.png</p><a class="image-link" href="2025_presentation/miac_m_2025_present_water_potassium_halides.png"><img src="2025_presentation/miac_m_2025_present_water_potassium_halides.png" alt="miac m 2025 present water potassium halides"></a></article>
+    </section>
+    <section id="section-2" class="gallery-section">
+      <h2>2025 Solvent Comparison</h2>
+      <article class="image-card"><p class="caption">2025_solvent_comparison/miac_m_2025_KBr_solvent_comparison.png</p><a class="image-link" href="2025_solvent_comparison/miac_m_2025_KBr_solvent_comparison.png"><img src="2025_solvent_comparison/miac_m_2025_KBr_solvent_comparison.png" alt="miac m 2025 KBr solvent comparison"></a></article>
+      <article class="image-card"><p class="caption">2025_solvent_comparison/miac_m_2025_KCl_solvent_comparison.png</p><a class="image-link" href="2025_solvent_comparison/miac_m_2025_KCl_solvent_comparison.png"><img src="2025_solvent_comparison/miac_m_2025_KCl_solvent_comparison.png" alt="miac m 2025 KCl solvent comparison"></a></article>
+      <article class="image-card"><p class="caption">2025_solvent_comparison/miac_m_2025_KI_solvent_comparison.png</p><a class="image-link" href="2025_solvent_comparison/miac_m_2025_KI_solvent_comparison.png"><img src="2025_solvent_comparison/miac_m_2025_KI_solvent_comparison.png" alt="miac m 2025 KI solvent comparison"></a></article>
+      <article class="image-card"><p class="caption">2025_solvent_comparison/miac_m_2025_LiBr_solvent_comparison.png</p><a class="image-link" href="2025_solvent_comparison/miac_m_2025_LiBr_solvent_comparison.png"><img src="2025_solvent_comparison/miac_m_2025_LiBr_solvent_comparison.png" alt="miac m 2025 LiBr solvent comparison"></a></article>
+      <article class="image-card"><p class="caption">2025_solvent_comparison/miac_m_2025_LiCl_solvent_comparison.png</p><a class="image-link" href="2025_solvent_comparison/miac_m_2025_LiCl_solvent_comparison.png"><img src="2025_solvent_comparison/miac_m_2025_LiCl_solvent_comparison.png" alt="miac m 2025 LiCl solvent comparison"></a></article>
+      <article class="image-card"><p class="caption">2025_solvent_comparison/miac_m_2025_LiI_solvent_comparison.png</p><a class="image-link" href="2025_solvent_comparison/miac_m_2025_LiI_solvent_comparison.png"><img src="2025_solvent_comparison/miac_m_2025_LiI_solvent_comparison.png" alt="miac m 2025 LiI solvent comparison"></a></article>
+      <article class="image-card"><p class="caption">2025_solvent_comparison/miac_m_2025_NaBr_solvent_comparison.png</p><a class="image-link" href="2025_solvent_comparison/miac_m_2025_NaBr_solvent_comparison.png"><img src="2025_solvent_comparison/miac_m_2025_NaBr_solvent_comparison.png" alt="miac m 2025 NaBr solvent comparison"></a></article>
+      <article class="image-card"><p class="caption">2025_solvent_comparison/miac_m_2025_NaCl_solvent_comparison.png</p><a class="image-link" href="2025_solvent_comparison/miac_m_2025_NaCl_solvent_comparison.png"><img src="2025_solvent_comparison/miac_m_2025_NaCl_solvent_comparison.png" alt="miac m 2025 NaCl solvent comparison"></a></article>
+      <article class="image-card"><p class="caption">2025_solvent_comparison/miac_m_2025_NaI_solvent_comparison.png</p><a class="image-link" href="2025_solvent_comparison/miac_m_2025_NaI_solvent_comparison.png"><img src="2025_solvent_comparison/miac_m_2025_NaI_solvent_comparison.png" alt="miac m 2025 NaI solvent comparison"></a></article>
+    </section>
+    <section id="section-3" class="gallery-section">
+      <h2>Ethanol</h2>
+      <article class="image-card"><p class="caption">ethanol/miac/miac_ethanol_1_LiCl.png</p><a class="image-link" href="ethanol/miac/miac_ethanol_1_LiCl.png"><img src="ethanol/miac/miac_ethanol_1_LiCl.png" alt="miac ethanol 1 LiCl"></a></article>
+      <article class="image-card"><p class="caption">ethanol/miac/miac_ethanol_2_LiBr.png</p><a class="image-link" href="ethanol/miac/miac_ethanol_2_LiBr.png"><img src="ethanol/miac/miac_ethanol_2_LiBr.png" alt="miac ethanol 2 LiBr"></a></article>
+      <article class="image-card"><p class="caption">ethanol/miac/miac_ethanol_3_LiI.png</p><a class="image-link" href="ethanol/miac/miac_ethanol_3_LiI.png"><img src="ethanol/miac/miac_ethanol_3_LiI.png" alt="miac ethanol 3 LiI"></a></article>
+      <article class="image-card"><p class="caption">ethanol/miac/miac_ethanol_4_NaCl.png</p><a class="image-link" href="ethanol/miac/miac_ethanol_4_NaCl.png"><img src="ethanol/miac/miac_ethanol_4_NaCl.png" alt="miac ethanol 4 NaCl"></a></article>
+      <article class="image-card"><p class="caption">ethanol/miac/miac_ethanol_5_NaBr.png</p><a class="image-link" href="ethanol/miac/miac_ethanol_5_NaBr.png"><img src="ethanol/miac/miac_ethanol_5_NaBr.png" alt="miac ethanol 5 NaBr"></a></article>
+      <article class="image-card"><p class="caption">ethanol/miac/miac_ethanol_6_NaI.png</p><a class="image-link" href="ethanol/miac/miac_ethanol_6_NaI.png"><img src="ethanol/miac/miac_ethanol_6_NaI.png" alt="miac ethanol 6 NaI"></a></article>
+      <article class="image-card"><p class="caption">ethanol/miac_m/maic_m_ethanol_1_LiCl.png</p><a class="image-link" href="ethanol/miac_m/maic_m_ethanol_1_LiCl.png"><img src="ethanol/miac_m/maic_m_ethanol_1_LiCl.png" alt="maic m ethanol 1 LiCl"></a></article>
+      <article class="image-card"><p class="caption">ethanol/miac_m/maic_m_ethanol_2_LiBr.png</p><a class="image-link" href="ethanol/miac_m/maic_m_ethanol_2_LiBr.png"><img src="ethanol/miac_m/maic_m_ethanol_2_LiBr.png" alt="maic m ethanol 2 LiBr"></a></article>
+      <article class="image-card"><p class="caption">ethanol/miac_m/maic_m_ethanol_3_LiI.png</p><a class="image-link" href="ethanol/miac_m/maic_m_ethanol_3_LiI.png"><img src="ethanol/miac_m/maic_m_ethanol_3_LiI.png" alt="maic m ethanol 3 LiI"></a></article>
+      <article class="image-card"><p class="caption">ethanol/miac_m/maic_m_ethanol_4_NaCl.png</p><a class="image-link" href="ethanol/miac_m/maic_m_ethanol_4_NaCl.png"><img src="ethanol/miac_m/maic_m_ethanol_4_NaCl.png" alt="maic m ethanol 4 NaCl"></a></article>
+      <article class="image-card"><p class="caption">ethanol/miac_m/maic_m_ethanol_5_NaBr.png</p><a class="image-link" href="ethanol/miac_m/maic_m_ethanol_5_NaBr.png"><img src="ethanol/miac_m/maic_m_ethanol_5_NaBr.png" alt="maic m ethanol 5 NaBr"></a></article>
+      <article class="image-card"><p class="caption">ethanol/miac_m/maic_m_ethanol_6_NaI.png</p><a class="image-link" href="ethanol/miac_m/maic_m_ethanol_6_NaI.png"><img src="ethanol/miac_m/maic_m_ethanol_6_NaI.png" alt="maic m ethanol 6 NaI"></a></article>
+      <article class="image-card"><p class="caption">ethanol/miac_m/maic_m_ethanol_grid_3x3.png</p><a class="image-link" href="ethanol/miac_m/maic_m_ethanol_grid_3x3.png"><img src="ethanol/miac_m/maic_m_ethanol_grid_3x3.png" alt="maic m ethanol grid 3x3"></a></article>
+    </section>
+    <section id="section-4" class="gallery-section">
+      <h2>Methanol</h2>
+      <article class="image-card"><p class="caption">methanol/miac/miac_methanol_1_LiCl.png</p><a class="image-link" href="methanol/miac/miac_methanol_1_LiCl.png"><img src="methanol/miac/miac_methanol_1_LiCl.png" alt="miac methanol 1 LiCl"></a></article>
+      <article class="image-card"><p class="caption">methanol/miac/miac_methanol_2_LiBr.png</p><a class="image-link" href="methanol/miac/miac_methanol_2_LiBr.png"><img src="methanol/miac/miac_methanol_2_LiBr.png" alt="miac methanol 2 LiBr"></a></article>
+      <article class="image-card"><p class="caption">methanol/miac/miac_methanol_3_LiI.png</p><a class="image-link" href="methanol/miac/miac_methanol_3_LiI.png"><img src="methanol/miac/miac_methanol_3_LiI.png" alt="miac methanol 3 LiI"></a></article>
+      <article class="image-card"><p class="caption">methanol/miac/miac_methanol_4_NaCl.png</p><a class="image-link" href="methanol/miac/miac_methanol_4_NaCl.png"><img src="methanol/miac/miac_methanol_4_NaCl.png" alt="miac methanol 4 NaCl"></a></article>
+      <article class="image-card"><p class="caption">methanol/miac/miac_methanol_5_NaBr.png</p><a class="image-link" href="methanol/miac/miac_methanol_5_NaBr.png"><img src="methanol/miac/miac_methanol_5_NaBr.png" alt="miac methanol 5 NaBr"></a></article>
+      <article class="image-card"><p class="caption">methanol/miac/miac_methanol_6_NaI.png</p><a class="image-link" href="methanol/miac/miac_methanol_6_NaI.png"><img src="methanol/miac/miac_methanol_6_NaI.png" alt="miac methanol 6 NaI"></a></article>
+      <article class="image-card"><p class="caption">methanol/miac/miac_methanol_7_KCl.png</p><a class="image-link" href="methanol/miac/miac_methanol_7_KCl.png"><img src="methanol/miac/miac_methanol_7_KCl.png" alt="miac methanol 7 KCl"></a></article>
+      <article class="image-card"><p class="caption">methanol/miac/miac_methanol_8_KBr.png</p><a class="image-link" href="methanol/miac/miac_methanol_8_KBr.png"><img src="methanol/miac/miac_methanol_8_KBr.png" alt="miac methanol 8 KBr"></a></article>
+      <article class="image-card"><p class="caption">methanol/miac/miac_methanol_9_KI.png</p><a class="image-link" href="methanol/miac/miac_methanol_9_KI.png"><img src="methanol/miac/miac_methanol_9_KI.png" alt="miac methanol 9 KI"></a></article>
+      <article class="image-card"><p class="caption">methanol/miac_m/maic_m_methanol_1_LiCl.png</p><a class="image-link" href="methanol/miac_m/maic_m_methanol_1_LiCl.png"><img src="methanol/miac_m/maic_m_methanol_1_LiCl.png" alt="maic m methanol 1 LiCl"></a></article>
+      <article class="image-card"><p class="caption">methanol/miac_m/maic_m_methanol_2_LiBr.png</p><a class="image-link" href="methanol/miac_m/maic_m_methanol_2_LiBr.png"><img src="methanol/miac_m/maic_m_methanol_2_LiBr.png" alt="maic m methanol 2 LiBr"></a></article>
+      <article class="image-card"><p class="caption">methanol/miac_m/maic_m_methanol_3_LiI.png</p><a class="image-link" href="methanol/miac_m/maic_m_methanol_3_LiI.png"><img src="methanol/miac_m/maic_m_methanol_3_LiI.png" alt="maic m methanol 3 LiI"></a></article>
+      <article class="image-card"><p class="caption">methanol/miac_m/maic_m_methanol_4_NaCl.png</p><a class="image-link" href="methanol/miac_m/maic_m_methanol_4_NaCl.png"><img src="methanol/miac_m/maic_m_methanol_4_NaCl.png" alt="maic m methanol 4 NaCl"></a></article>
+      <article class="image-card"><p class="caption">methanol/miac_m/maic_m_methanol_5_NaBr.png</p><a class="image-link" href="methanol/miac_m/maic_m_methanol_5_NaBr.png"><img src="methanol/miac_m/maic_m_methanol_5_NaBr.png" alt="maic m methanol 5 NaBr"></a></article>
+      <article class="image-card"><p class="caption">methanol/miac_m/maic_m_methanol_6_NaI.png</p><a class="image-link" href="methanol/miac_m/maic_m_methanol_6_NaI.png"><img src="methanol/miac_m/maic_m_methanol_6_NaI.png" alt="maic m methanol 6 NaI"></a></article>
+      <article class="image-card"><p class="caption">methanol/miac_m/maic_m_methanol_7_KCl.png</p><a class="image-link" href="methanol/miac_m/maic_m_methanol_7_KCl.png"><img src="methanol/miac_m/maic_m_methanol_7_KCl.png" alt="maic m methanol 7 KCl"></a></article>
+      <article class="image-card"><p class="caption">methanol/miac_m/maic_m_methanol_8_KBr.png</p><a class="image-link" href="methanol/miac_m/maic_m_methanol_8_KBr.png"><img src="methanol/miac_m/maic_m_methanol_8_KBr.png" alt="maic m methanol 8 KBr"></a></article>
+      <article class="image-card"><p class="caption">methanol/miac_m/maic_m_methanol_9_KI.png</p><a class="image-link" href="methanol/miac_m/maic_m_methanol_9_KI.png"><img src="methanol/miac_m/maic_m_methanol_9_KI.png" alt="maic m methanol 9 KI"></a></article>
+      <article class="image-card"><p class="caption">methanol/miac_m/maic_m_methanol_grid_3x3.png</p><a class="image-link" href="methanol/miac_m/maic_m_methanol_grid_3x3.png"><img src="methanol/miac_m/maic_m_methanol_grid_3x3.png" alt="maic m methanol grid 3x3"></a></article>
+    </section>
+    <section id="section-5" class="gallery-section">
+      <h2>Water</h2>
+      <article class="image-card"><p class="caption">water/miac/miac_water_1_LiCl.png</p><a class="image-link" href="water/miac/miac_water_1_LiCl.png"><img src="water/miac/miac_water_1_LiCl.png" alt="miac water 1 LiCl"></a></article>
+      <article class="image-card"><p class="caption">water/miac/miac_water_2_LiBr.png</p><a class="image-link" href="water/miac/miac_water_2_LiBr.png"><img src="water/miac/miac_water_2_LiBr.png" alt="miac water 2 LiBr"></a></article>
+      <article class="image-card"><p class="caption">water/miac/miac_water_3_LiI.png</p><a class="image-link" href="water/miac/miac_water_3_LiI.png"><img src="water/miac/miac_water_3_LiI.png" alt="miac water 3 LiI"></a></article>
+      <article class="image-card"><p class="caption">water/miac/miac_water_4_NaCl.png</p><a class="image-link" href="water/miac/miac_water_4_NaCl.png"><img src="water/miac/miac_water_4_NaCl.png" alt="miac water 4 NaCl"></a></article>
+      <article class="image-card"><p class="caption">water/miac/miac_water_5_NaBr.png</p><a class="image-link" href="water/miac/miac_water_5_NaBr.png"><img src="water/miac/miac_water_5_NaBr.png" alt="miac water 5 NaBr"></a></article>
+      <article class="image-card"><p class="caption">water/miac/miac_water_6_NaI.png</p><a class="image-link" href="water/miac/miac_water_6_NaI.png"><img src="water/miac/miac_water_6_NaI.png" alt="miac water 6 NaI"></a></article>
+      <article class="image-card"><p class="caption">water/miac/miac_water_7_KCl.png</p><a class="image-link" href="water/miac/miac_water_7_KCl.png"><img src="water/miac/miac_water_7_KCl.png" alt="miac water 7 KCl"></a></article>
+      <article class="image-card"><p class="caption">water/miac/miac_water_8_KBr.png</p><a class="image-link" href="water/miac/miac_water_8_KBr.png"><img src="water/miac/miac_water_8_KBr.png" alt="miac water 8 KBr"></a></article>
+      <article class="image-card"><p class="caption">water/miac/miac_water_9_KI.png</p><a class="image-link" href="water/miac/miac_water_9_KI.png"><img src="water/miac/miac_water_9_KI.png" alt="miac water 9 KI"></a></article>
+      <article class="image-card"><p class="caption">water/miac_m/maic_m_water_1_LiCl.png</p><a class="image-link" href="water/miac_m/maic_m_water_1_LiCl.png"><img src="water/miac_m/maic_m_water_1_LiCl.png" alt="maic m water 1 LiCl"></a></article>
+      <article class="image-card"><p class="caption">water/miac_m/maic_m_water_2_LiBr.png</p><a class="image-link" href="water/miac_m/maic_m_water_2_LiBr.png"><img src="water/miac_m/maic_m_water_2_LiBr.png" alt="maic m water 2 LiBr"></a></article>
+      <article class="image-card"><p class="caption">water/miac_m/maic_m_water_3_LiI.png</p><a class="image-link" href="water/miac_m/maic_m_water_3_LiI.png"><img src="water/miac_m/maic_m_water_3_LiI.png" alt="maic m water 3 LiI"></a></article>
+      <article class="image-card"><p class="caption">water/miac_m/maic_m_water_4_NaCl.png</p><a class="image-link" href="water/miac_m/maic_m_water_4_NaCl.png"><img src="water/miac_m/maic_m_water_4_NaCl.png" alt="maic m water 4 NaCl"></a></article>
+      <article class="image-card"><p class="caption">water/miac_m/maic_m_water_5_NaBr.png</p><a class="image-link" href="water/miac_m/maic_m_water_5_NaBr.png"><img src="water/miac_m/maic_m_water_5_NaBr.png" alt="maic m water 5 NaBr"></a></article>
+      <article class="image-card"><p class="caption">water/miac_m/maic_m_water_6_NaI.png</p><a class="image-link" href="water/miac_m/maic_m_water_6_NaI.png"><img src="water/miac_m/maic_m_water_6_NaI.png" alt="maic m water 6 NaI"></a></article>
+      <article class="image-card"><p class="caption">water/miac_m/maic_m_water_7_KCl.png</p><a class="image-link" href="water/miac_m/maic_m_water_7_KCl.png"><img src="water/miac_m/maic_m_water_7_KCl.png" alt="maic m water 7 KCl"></a></article>
+      <article class="image-card"><p class="caption">water/miac_m/maic_m_water_8_KBr.png</p><a class="image-link" href="water/miac_m/maic_m_water_8_KBr.png"><img src="water/miac_m/maic_m_water_8_KBr.png" alt="maic m water 8 KBr"></a></article>
+      <article class="image-card"><p class="caption">water/miac_m/maic_m_water_9_KI.png</p><a class="image-link" href="water/miac_m/maic_m_water_9_KI.png"><img src="water/miac_m/maic_m_water_9_KI.png" alt="maic m water 9 KI"></a></article>
+      <article class="image-card"><p class="caption">water/miac_m/maic_m_water_grid_3x3.png</p><a class="image-link" href="water/miac_m/maic_m_water_grid_3x3.png"><img src="water/miac_m/maic_m_water_grid_3x3.png" alt="maic m water grid 3x3"></a></article>
+    </section>
+    <section id="section-6" class="gallery-section">
+      <h2>Water-Ethanol</h2>
+      <article class="image-card"><p class="caption">water-ethanol/miac/miac_water-ethanol_4_NaCl_h2o22_etoh78.png</p><a class="image-link" href="water-ethanol/miac/miac_water-ethanol_4_NaCl_h2o22_etoh78.png"><img src="water-ethanol/miac/miac_water-ethanol_4_NaCl_h2o22_etoh78.png" alt="miac water-ethanol 4 NaCl h2o22 etoh78"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac/miac_water-ethanol_4_NaCl_h2o39_etoh61.png</p><a class="image-link" href="water-ethanol/miac/miac_water-ethanol_4_NaCl_h2o39_etoh61.png"><img src="water-ethanol/miac/miac_water-ethanol_4_NaCl_h2o39_etoh61.png" alt="miac water-ethanol 4 NaCl h2o39 etoh61"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac/miac_water-ethanol_4_NaCl_h2o52_etoh48.png</p><a class="image-link" href="water-ethanol/miac/miac_water-ethanol_4_NaCl_h2o52_etoh48.png"><img src="water-ethanol/miac/miac_water-ethanol_4_NaCl_h2o52_etoh48.png" alt="miac water-ethanol 4 NaCl h2o52 etoh48"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac/miac_water-ethanol_4_NaCl_h2o63_etoh37.png</p><a class="image-link" href="water-ethanol/miac/miac_water-ethanol_4_NaCl_h2o63_etoh37.png"><img src="water-ethanol/miac/miac_water-ethanol_4_NaCl_h2o63_etoh37.png" alt="miac water-ethanol 4 NaCl h2o63 etoh37"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac/miac_water-ethanol_4_NaCl_h2o79_etoh21.png</p><a class="image-link" href="water-ethanol/miac/miac_water-ethanol_4_NaCl_h2o79_etoh21.png"><img src="water-ethanol/miac/miac_water-ethanol_4_NaCl_h2o79_etoh21.png" alt="miac water-ethanol 4 NaCl h2o79 etoh21"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac/miac_water-ethanol_4_NaCl_h2o91_etoh09.png</p><a class="image-link" href="water-ethanol/miac/miac_water-ethanol_4_NaCl_h2o91_etoh09.png"><img src="water-ethanol/miac/miac_water-ethanol_4_NaCl_h2o91_etoh09.png" alt="miac water-ethanol 4 NaCl h2o91 etoh09"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o00_etoh100.png</p><a class="image-link" href="water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o00_etoh100.png"><img src="water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o00_etoh100.png" alt="miac water-ethanol 5 NaBr h2o00 etoh100"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o10_etoh90.png</p><a class="image-link" href="water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o10_etoh90.png"><img src="water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o10_etoh90.png" alt="miac water-ethanol 5 NaBr h2o10 etoh90"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o20_etoh80.png</p><a class="image-link" href="water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o20_etoh80.png"><img src="water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o20_etoh80.png" alt="miac water-ethanol 5 NaBr h2o20 etoh80"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o40_etoh60.png</p><a class="image-link" href="water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o40_etoh60.png"><img src="water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o40_etoh60.png" alt="miac water-ethanol 5 NaBr h2o40 etoh60"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o60_etoh40.png</p><a class="image-link" href="water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o60_etoh40.png"><img src="water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o60_etoh40.png" alt="miac water-ethanol 5 NaBr h2o60 etoh40"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o80_etoh20.png</p><a class="image-link" href="water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o80_etoh20.png"><img src="water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o80_etoh20.png" alt="miac water-ethanol 5 NaBr h2o80 etoh20"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o90_etoh10.png</p><a class="image-link" href="water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o90_etoh10.png"><img src="water-ethanol/miac/miac_water-ethanol_5_NaBr_h2o90_etoh10.png" alt="miac water-ethanol 5 NaBr h2o90 etoh10"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac_m/maic_m_water-ethanol_4_NaCl_h2o22_etoh78.png</p><a class="image-link" href="water-ethanol/miac_m/maic_m_water-ethanol_4_NaCl_h2o22_etoh78.png"><img src="water-ethanol/miac_m/maic_m_water-ethanol_4_NaCl_h2o22_etoh78.png" alt="maic m water-ethanol 4 NaCl h2o22 etoh78"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac_m/maic_m_water-ethanol_4_NaCl_h2o39_etoh61.png</p><a class="image-link" href="water-ethanol/miac_m/maic_m_water-ethanol_4_NaCl_h2o39_etoh61.png"><img src="water-ethanol/miac_m/maic_m_water-ethanol_4_NaCl_h2o39_etoh61.png" alt="maic m water-ethanol 4 NaCl h2o39 etoh61"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac_m/maic_m_water-ethanol_4_NaCl_h2o52_etoh48.png</p><a class="image-link" href="water-ethanol/miac_m/maic_m_water-ethanol_4_NaCl_h2o52_etoh48.png"><img src="water-ethanol/miac_m/maic_m_water-ethanol_4_NaCl_h2o52_etoh48.png" alt="maic m water-ethanol 4 NaCl h2o52 etoh48"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac_m/maic_m_water-ethanol_4_NaCl_h2o63_etoh37.png</p><a class="image-link" href="water-ethanol/miac_m/maic_m_water-ethanol_4_NaCl_h2o63_etoh37.png"><img src="water-ethanol/miac_m/maic_m_water-ethanol_4_NaCl_h2o63_etoh37.png" alt="maic m water-ethanol 4 NaCl h2o63 etoh37"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac_m/maic_m_water-ethanol_4_NaCl_h2o79_etoh21.png</p><a class="image-link" href="water-ethanol/miac_m/maic_m_water-ethanol_4_NaCl_h2o79_etoh21.png"><img src="water-ethanol/miac_m/maic_m_water-ethanol_4_NaCl_h2o79_etoh21.png" alt="maic m water-ethanol 4 NaCl h2o79 etoh21"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac_m/maic_m_water-ethanol_4_NaCl_h2o91_etoh09.png</p><a class="image-link" href="water-ethanol/miac_m/maic_m_water-ethanol_4_NaCl_h2o91_etoh09.png"><img src="water-ethanol/miac_m/maic_m_water-ethanol_4_NaCl_h2o91_etoh09.png" alt="maic m water-ethanol 4 NaCl h2o91 etoh09"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o00_etoh100.png</p><a class="image-link" href="water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o00_etoh100.png"><img src="water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o00_etoh100.png" alt="maic m water-ethanol 5 NaBr h2o00 etoh100"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o10_etoh90.png</p><a class="image-link" href="water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o10_etoh90.png"><img src="water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o10_etoh90.png" alt="maic m water-ethanol 5 NaBr h2o10 etoh90"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o20_etoh80.png</p><a class="image-link" href="water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o20_etoh80.png"><img src="water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o20_etoh80.png" alt="maic m water-ethanol 5 NaBr h2o20 etoh80"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o40_etoh60.png</p><a class="image-link" href="water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o40_etoh60.png"><img src="water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o40_etoh60.png" alt="maic m water-ethanol 5 NaBr h2o40 etoh60"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o60_etoh40.png</p><a class="image-link" href="water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o60_etoh40.png"><img src="water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o60_etoh40.png" alt="maic m water-ethanol 5 NaBr h2o60 etoh40"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o80_etoh20.png</p><a class="image-link" href="water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o80_etoh20.png"><img src="water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o80_etoh20.png" alt="maic m water-ethanol 5 NaBr h2o80 etoh20"></a></article>
+      <article class="image-card"><p class="caption">water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o90_etoh10.png</p><a class="image-link" href="water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o90_etoh10.png"><img src="water-ethanol/miac_m/maic_m_water-ethanol_5_NaBr_h2o90_etoh10.png" alt="maic m water-ethanol 5 NaBr h2o90 etoh10"></a></article>
+    </section>
+    <section id="section-7" class="gallery-section">
+      <h2>Water-Methanol</h2>
+      <article class="image-card"><p class="caption">water-methanol/miac/miac_water-methanol_4_NaCl_h2o31_meoh69.png</p><a class="image-link" href="water-methanol/miac/miac_water-methanol_4_NaCl_h2o31_meoh69.png"><img src="water-methanol/miac/miac_water-methanol_4_NaCl_h2o31_meoh69.png" alt="miac water-methanol 4 NaCl h2o31 meoh69"></a></article>
+      <article class="image-card"><p class="caption">water-methanol/miac/miac_water-methanol_4_NaCl_h2o50_meoh50.png</p><a class="image-link" href="water-methanol/miac/miac_water-methanol_4_NaCl_h2o50_meoh50.png"><img src="water-methanol/miac/miac_water-methanol_4_NaCl_h2o50_meoh50.png" alt="miac water-methanol 4 NaCl h2o50 meoh50"></a></article>
+      <article class="image-card"><p class="caption">water-methanol/miac/miac_water-methanol_5_NaBr_h2o00_meoh100.png</p><a class="image-link" href="water-methanol/miac/miac_water-methanol_5_NaBr_h2o00_meoh100.png"><img src="water-methanol/miac/miac_water-methanol_5_NaBr_h2o00_meoh100.png" alt="miac water-methanol 5 NaBr h2o00 meoh100"></a></article>
+      <article class="image-card"><p class="caption">water-methanol/miac/miac_water-methanol_5_NaBr_h2o100_meoh00.png</p><a class="image-link" href="water-methanol/miac/miac_water-methanol_5_NaBr_h2o100_meoh00.png"><img src="water-methanol/miac/miac_water-methanol_5_NaBr_h2o100_meoh00.png" alt="miac water-methanol 5 NaBr h2o100 meoh00"></a></article>
+      <article class="image-card"><p class="caption">water-methanol/miac/miac_water-methanol_5_NaBr_h2o10_meoh90.png</p><a class="image-link" href="water-methanol/miac/miac_water-methanol_5_NaBr_h2o10_meoh90.png"><img src="water-methanol/miac/miac_water-methanol_5_NaBr_h2o10_meoh90.png" alt="miac water-methanol 5 NaBr h2o10 meoh90"></a></article>
+      <article class="image-card"><p class="caption">water-methanol/miac/miac_water-methanol_5_NaBr_h2o20_meoh80.png</p><a class="image-link" href="water-methanol/miac/miac_water-methanol_5_NaBr_h2o20_meoh80.png"><img src="water-methanol/miac/miac_water-methanol_5_NaBr_h2o20_meoh80.png" alt="miac water-methanol 5 NaBr h2o20 meoh80"></a></article>
+      <article class="image-card"><p class="caption">water-methanol/miac/miac_water-methanol_5_NaBr_h2o40_meoh60.png</p><a class="image-link" href="water-methanol/miac/miac_water-methanol_5_NaBr_h2o40_meoh60.png"><img src="water-methanol/miac/miac_water-methanol_5_NaBr_h2o40_meoh60.png" alt="miac water-methanol 5 NaBr h2o40 meoh60"></a></article>
+      <article class="image-card"><p class="caption">water-methanol/miac/miac_water-methanol_5_NaBr_h2o60_meoh40.png</p><a class="image-link" href="water-methanol/miac/miac_water-methanol_5_NaBr_h2o60_meoh40.png"><img src="water-methanol/miac/miac_water-methanol_5_NaBr_h2o60_meoh40.png" alt="miac water-methanol 5 NaBr h2o60 meoh40"></a></article>
+      <article class="image-card"><p class="caption">water-methanol/miac/miac_water-methanol_5_NaBr_h2o80_meoh20.png</p><a class="image-link" href="water-methanol/miac/miac_water-methanol_5_NaBr_h2o80_meoh20.png"><img src="water-methanol/miac/miac_water-methanol_5_NaBr_h2o80_meoh20.png" alt="miac water-methanol 5 NaBr h2o80 meoh20"></a></article>
+      <article class="image-card"><p class="caption">water-methanol/miac/miac_water-methanol_5_NaBr_h2o90_meoh10.png</p><a class="image-link" href="water-methanol/miac/miac_water-methanol_5_NaBr_h2o90_meoh10.png"><img src="water-methanol/miac/miac_water-methanol_5_NaBr_h2o90_meoh10.png" alt="miac water-methanol 5 NaBr h2o90 meoh10"></a></article>
+      <article class="image-card"><p class="caption">water-methanol/miac_m/maic_m_water-methanol_4_NaCl_h2o31_meoh69.png</p><a class="image-link" href="water-methanol/miac_m/maic_m_water-methanol_4_NaCl_h2o31_meoh69.png"><img src="water-methanol/miac_m/maic_m_water-methanol_4_NaCl_h2o31_meoh69.png" alt="maic m water-methanol 4 NaCl h2o31 meoh69"></a></article>
+      <article class="image-card"><p class="caption">water-methanol/miac_m/maic_m_water-methanol_4_NaCl_h2o50_meoh50.png</p><a class="image-link" href="water-methanol/miac_m/maic_m_water-methanol_4_NaCl_h2o50_meoh50.png"><img src="water-methanol/miac_m/maic_m_water-methanol_4_NaCl_h2o50_meoh50.png" alt="maic m water-methanol 4 NaCl h2o50 meoh50"></a></article>
+      <article class="image-card"><p class="caption">water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o00_meoh100.png</p><a class="image-link" href="water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o00_meoh100.png"><img src="water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o00_meoh100.png" alt="maic m water-methanol 5 NaBr h2o00 meoh100"></a></article>
+      <article class="image-card"><p class="caption">water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o100_meoh00.png</p><a class="image-link" href="water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o100_meoh00.png"><img src="water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o100_meoh00.png" alt="maic m water-methanol 5 NaBr h2o100 meoh00"></a></article>
+      <article class="image-card"><p class="caption">water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o10_meoh90.png</p><a class="image-link" href="water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o10_meoh90.png"><img src="water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o10_meoh90.png" alt="maic m water-methanol 5 NaBr h2o10 meoh90"></a></article>
+      <article class="image-card"><p class="caption">water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o20_meoh80.png</p><a class="image-link" href="water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o20_meoh80.png"><img src="water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o20_meoh80.png" alt="maic m water-methanol 5 NaBr h2o20 meoh80"></a></article>
+      <article class="image-card"><p class="caption">water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o40_meoh60.png</p><a class="image-link" href="water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o40_meoh60.png"><img src="water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o40_meoh60.png" alt="maic m water-methanol 5 NaBr h2o40 meoh60"></a></article>
+      <article class="image-card"><p class="caption">water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o60_meoh40.png</p><a class="image-link" href="water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o60_meoh40.png"><img src="water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o60_meoh40.png" alt="maic m water-methanol 5 NaBr h2o60 meoh40"></a></article>
+      <article class="image-card"><p class="caption">water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o80_meoh20.png</p><a class="image-link" href="water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o80_meoh20.png"><img src="water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o80_meoh20.png" alt="maic m water-methanol 5 NaBr h2o80 meoh20"></a></article>
+      <article class="image-card"><p class="caption">water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o90_meoh10.png</p><a class="image-link" href="water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o90_meoh10.png"><img src="water-methanol/miac_m/maic_m_water-methanol_5_NaBr_h2o90_meoh10.png" alt="maic m water-methanol 5 NaBr h2o90 meoh10"></a></article>
+    </section>
+    <section id="section-8" class="gallery-section">
+      <h2>Water-Methanol-Ethanol</h2>
+      <article class="image-card"><p class="caption">water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o76_meoh14_etoh10.png</p><a class="image-link" href="water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o76_meoh14_etoh10.png"><img src="water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o76_meoh14_etoh10.png" alt="miac water-methanol-ethanol 4 NaCl h2o76 meoh14 etoh10"></a></article>
+      <article class="image-card"><p class="caption">water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o77_meoh11_etoh13.png</p><a class="image-link" href="water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o77_meoh11_etoh13.png"><img src="water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o77_meoh11_etoh13.png" alt="miac water-methanol-ethanol 4 NaCl h2o77 meoh11 etoh13"></a></article>
+      <article class="image-card"><p class="caption">water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o78_meoh07_etoh15.png</p><a class="image-link" href="water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o78_meoh07_etoh15.png"><img src="water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o78_meoh07_etoh15.png" alt="miac water-methanol-ethanol 4 NaCl h2o78 meoh07 etoh15"></a></article>
+      <article class="image-card"><p class="caption">water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o83_meoh10_etoh07.png</p><a class="image-link" href="water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o83_meoh10_etoh07.png"><img src="water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o83_meoh10_etoh07.png" alt="miac water-methanol-ethanol 4 NaCl h2o83 meoh10 etoh07"></a></article>
+      <article class="image-card"><p class="caption">water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o89_meoh06_etoh04.png</p><a class="image-link" href="water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o89_meoh06_etoh04.png"><img src="water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o89_meoh06_etoh04.png" alt="miac water-methanol-ethanol 4 NaCl h2o89 meoh06 etoh04"></a></article>
+      <article class="image-card"><p class="caption">water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o92_meoh06_etoh02.png</p><a class="image-link" href="water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o92_meoh06_etoh02.png"><img src="water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o92_meoh06_etoh02.png" alt="miac water-methanol-ethanol 4 NaCl h2o92 meoh06 etoh02"></a></article>
+      <article class="image-card"><p class="caption">water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o93_meoh03_etoh04.png</p><a class="image-link" href="water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o93_meoh03_etoh04.png"><img src="water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o93_meoh03_etoh04.png" alt="miac water-methanol-ethanol 4 NaCl h2o93 meoh03 etoh04"></a></article>
+      <article class="image-card"><p class="caption">water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o95_meoh03_etoh02.png</p><a class="image-link" href="water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o95_meoh03_etoh02.png"><img src="water-methanol-ethanol/miac/miac_water-methanol-ethanol_4_NaCl_h2o95_meoh03_etoh02.png" alt="miac water-methanol-ethanol 4 NaCl h2o95 meoh03 etoh02"></a></article>
+      <article class="image-card"><p class="caption">water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o76_meoh14_etoh10.png</p><a class="image-link" href="water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o76_meoh14_etoh10.png"><img src="water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o76_meoh14_etoh10.png" alt="maic m water-methanol-ethanol 4 NaCl h2o76 meoh14 etoh10"></a></article>
+      <article class="image-card"><p class="caption">water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o77_meoh11_etoh13.png</p><a class="image-link" href="water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o77_meoh11_etoh13.png"><img src="water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o77_meoh11_etoh13.png" alt="maic m water-methanol-ethanol 4 NaCl h2o77 meoh11 etoh13"></a></article>
+      <article class="image-card"><p class="caption">water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o78_meoh07_etoh15.png</p><a class="image-link" href="water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o78_meoh07_etoh15.png"><img src="water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o78_meoh07_etoh15.png" alt="maic m water-methanol-ethanol 4 NaCl h2o78 meoh07 etoh15"></a></article>
+      <article class="image-card"><p class="caption">water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o83_meoh10_etoh07.png</p><a class="image-link" href="water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o83_meoh10_etoh07.png"><img src="water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o83_meoh10_etoh07.png" alt="maic m water-methanol-ethanol 4 NaCl h2o83 meoh10 etoh07"></a></article>
+      <article class="image-card"><p class="caption">water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o89_meoh06_etoh04.png</p><a class="image-link" href="water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o89_meoh06_etoh04.png"><img src="water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o89_meoh06_etoh04.png" alt="maic m water-methanol-ethanol 4 NaCl h2o89 meoh06 etoh04"></a></article>
+      <article class="image-card"><p class="caption">water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o92_meoh06_etoh02.png</p><a class="image-link" href="water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o92_meoh06_etoh02.png"><img src="water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o92_meoh06_etoh02.png" alt="maic m water-methanol-ethanol 4 NaCl h2o92 meoh06 etoh02"></a></article>
+      <article class="image-card"><p class="caption">water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o93_meoh03_etoh04.png</p><a class="image-link" href="water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o93_meoh03_etoh04.png"><img src="water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o93_meoh03_etoh04.png" alt="maic m water-methanol-ethanol 4 NaCl h2o93 meoh03 etoh04"></a></article>
+      <article class="image-card"><p class="caption">water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o95_meoh03_etoh02.png</p><a class="image-link" href="water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o95_meoh03_etoh02.png"><img src="water-methanol-ethanol/miac_m/maic_m_water-methanol-ethanol_4_NaCl_h2o95_meoh03_etoh02.png" alt="maic m water-methanol-ethanol 4 NaCl h2o95 meoh03 etoh02"></a></article>
+    </section>
+  </main>
+  <script>
+    (function() {
+      const buttons = Array.from(document.querySelectorAll('.section-button'));
+      const sections = Array.from(document.querySelectorAll('.gallery-section'));
+      const defaultSection = "section-1";
+
+      function activateSection(sectionId) {
+        const targetId = sectionId || defaultSection;
+        sections.forEach((section) => section.classList.toggle('is-active', section.id === targetId));
+        buttons.forEach((button) => button.classList.toggle('is-active', button.dataset.target === targetId));
+        if (targetId) {
+          if (window.location.hash !== '#' + targetId) {
+            history.replaceState(null, '', '#' + targetId);
+          }
+          window.scrollTo({ top: 0, behavior: 'auto' });
+        }
+      }
+
+      buttons.forEach((button) => button.addEventListener('click', () => activateSection(button.dataset.target)));
+      const initialHash = window.location.hash ? window.location.hash.slice(1) : '';
+      const hasInitialTarget = sections.some((section) => section.id === initialHash);
+      activateSection(hasInitialTarget ? initialHash : defaultSection);
+    })();
+  </script>
+</body>
+</html>

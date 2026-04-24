@@ -2,6 +2,8 @@
 
 This folder contains research and validation scripts, not the core package build workflow.
 
+Generated PNG outputs belong under `docs/plots/fits/**`, not under `data/**` or this scripts folder. Rebuild the browsable plot gallery with `uv run python scripts/paper_validation/tools/build_analysis_galleries.py`.
+
 ## Active Validation
 
 - `validate_miac_fits.py`: main dataset-driven MIAC validation and plot generator.

@@ -13,6 +13,8 @@ if str(REPO_ROOT) not in sys.path:
 if str(DIAGNOSTICS_DIR) not in sys.path:
     sys.path.insert(0, str(DIAGNOSTICS_DIR))
 
+from scripts.plot_outputs import paper_validation_path
+
 try:
     from figure6a_libr_ethanol_analysis import run_analysis
 except ModuleNotFoundError:
@@ -20,8 +22,8 @@ except ModuleNotFoundError:
 
 
 def main() -> None:
+    output_path = paper_validation_path(__file__, "figure_6a.png")
     if run_analysis is None:
-        output_path = SCRIPT_DIR / "figure_6a.png"
         if output_path.exists():
             print(
                 "[skip] figure_6a helper source is unavailable; "
@@ -34,7 +36,7 @@ def main() -> None:
 
     run_analysis(
         data_path=REPO_ROOT / "data" / "MIAC" / "ethanol" / "ethanol-LiBr.csv",
-        output_path=SCRIPT_DIR / "figure_6a.png",
+        output_path=output_path,
         x_min=0.0,
         x_max=0.2,
         y_min=0.0,

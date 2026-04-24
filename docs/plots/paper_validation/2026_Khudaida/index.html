@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Paper Validation / 2026 Khudaida</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page-max: 1200px;
+      --nav-bg: rgba(255, 255, 255, 0.96);
+      --border: #d9d9d9;
+      --text: #1b1b1b;
+      --muted: #5f5f5f;
+      --accent: #0f5fbf;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text);
+      background: #ffffff;
+      line-height: 1.45;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--nav-bg);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+    }
+    .header-inner {
+      max-width: var(--page-max);
+      margin: 0 auto;
+      padding: 1rem 1.25rem 0.85rem;
+    }
+    h1 { margin: 0 0 0.35rem; font-size: 1.5rem; font-weight: 700; }
+    .summary { margin: 0 0 0.8rem; color: var(--muted); font-size: 0.95rem; }
+    nav, .child-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .section-button, .back-link, .child-card {
+      appearance: none;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.35rem 0.8rem;
+      font-size: 0.92rem;
+      background: #fff;
+      color: var(--accent);
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+    }
+    .section-button.is-active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .child-card { display: inline-flex; gap: 0.5rem; align-items: center; }
+    .child-card strong { color: var(--muted); font-weight: 500; }
+    .back-link { display: inline-flex; margin-bottom: 0.8rem; }
+    main { max-width: var(--page-max); margin: 0 auto; padding: 1.25rem; }
+    .child-section { margin: 0 0 1.25rem; }
+    .child-section h2, .gallery-section > h2 {
+      margin: 0 0 0.85rem;
+      font-size: 1.35rem;
+      border-bottom: 2px solid #efefef;
+      padding-bottom: 0.4rem;
+    }
+    .gallery-section { display: none; margin: 0 0 2.5rem; padding-top: 0.25rem; }
+    .gallery-section.is-active { display: block; }
+    .image-card {
+      margin: 0 0 1.5rem;
+      padding: 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fcfcfc;
+    }
+    .caption {
+      margin: 0 0 0.6rem;
+      font-size: 0.92rem;
+      color: var(--muted);
+      font-family: Consolas, "Courier New", monospace;
+      word-break: break-word;
+    }
+    .image-link { display: block; text-decoration: none; }
+    img { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 8px; background: #fff; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a class="back-link" href="../index.html">Back</a>
+      <h1>Paper Validation / 2026 Khudaida</h1>
+      <p class="summary">Browsable gallery for 17 PNG files under docs/plots/paper_validation/2026_Khudaida.</p>
+      <nav>
+        <button type="button" class="section-button" data-target="section-1">Figure 1 (1)</button>
+        <button type="button" class="section-button" data-target="section-2">Figure 2 (2)</button>
+        <button type="button" class="section-button" data-target="section-3">Figure 3 (2)</button>
+        <button type="button" class="section-button" data-target="section-4">Figure 4 (2)</button>
+        <button type="button" class="section-button" data-target="section-5">Figure 5 (2)</button>
+        <button type="button" class="section-button" data-target="section-6">Figure 6 (2)</button>
+        <button type="button" class="section-button" data-target="section-7">Figure 7 (2)</button>
+        <button type="button" class="section-button" data-target="section-8">Figure 8 (1)</button>
+        <button type="button" class="section-button" data-target="section-9">Figure 9 (1)</button>
+        <button type="button" class="section-button" data-target="section-10">Tables 9 10 (2)</button>
+      </nav>
+    </div>
+  </header>
+  <main>
+    <section class="child-section">
+      <h2>Subfolders</h2>
+      <div class="child-grid">
+        <a class="child-card" href="figure_1/index.html"><span>Figure 1</span><strong>1 PNGs</strong></a>
+        <a class="child-card" href="figure_2/index.html"><span>Figure 2</span><strong>2 PNGs</strong></a>
+        <a class="child-card" href="figure_3/index.html"><span>Figure 3</span><strong>2 PNGs</strong></a>
+        <a class="child-card" href="figure_4/index.html"><span>Figure 4</span><strong>2 PNGs</strong></a>
+        <a class="child-card" href="figure_5/index.html"><span>Figure 5</span><strong>2 PNGs</strong></a>
+        <a class="child-card" href="figure_6/index.html"><span>Figure 6</span><strong>2 PNGs</strong></a>
+        <a class="child-card" href="figure_7/index.html"><span>Figure 7</span><strong>2 PNGs</strong></a>
+        <a class="child-card" href="figure_8/index.html"><span>Figure 8</span><strong>1 PNGs</strong></a>
+        <a class="child-card" href="figure_9/index.html"><span>Figure 9</span><strong>1 PNGs</strong></a>
+        <a class="child-card" href="tables_9_10/index.html"><span>Tables 9 10</span><strong>2 PNGs</strong></a>
+      </div>
+    </section>
+    <section id="section-1" class="gallery-section">
+      <h2>Figure 1</h2>
+      <article class="image-card"><p class="caption">figure_1/figure_1.png</p><a class="image-link" href="figure_1/figure_1.png"><img src="figure_1/figure_1.png" alt="figure 1"></a></article>
+    </section>
+    <section id="section-2" class="gallery-section">
+      <h2>Figure 2</h2>
+      <article class="image-card"><p class="caption">figure_2/figure_2.png</p><a class="image-link" href="figure_2/figure_2.png"><img src="figure_2/figure_2.png" alt="figure 2"></a></article>
+      <article class="image-card"><p class="caption">figure_2/figure_2_scaled.png</p><a class="image-link" href="figure_2/figure_2_scaled.png"><img src="figure_2/figure_2_scaled.png" alt="figure 2 scaled"></a></article>
+    </section>
+    <section id="section-3" class="gallery-section">
+      <h2>Figure 3</h2>
+      <article class="image-card"><p class="caption">figure_3/figure_3.png</p><a class="image-link" href="figure_3/figure_3.png"><img src="figure_3/figure_3.png" alt="figure 3"></a></article>
+      <article class="image-card"><p class="caption">figure_3/figure_3_scaled.png</p><a class="image-link" href="figure_3/figure_3_scaled.png"><img src="figure_3/figure_3_scaled.png" alt="figure 3 scaled"></a></article>
+    </section>
+    <section id="section-4" class="gallery-section">
+      <h2>Figure 4</h2>
+      <article class="image-card"><p class="caption">figure_4/figure_4.png</p><a class="image-link" href="figure_4/figure_4.png"><img src="figure_4/figure_4.png" alt="figure 4"></a></article>
+      <article class="image-card"><p class="caption">figure_4/figure_4_scaled.png</p><a class="image-link" href="figure_4/figure_4_scaled.png"><img src="figure_4/figure_4_scaled.png" alt="figure 4 scaled"></a></article>
+    </section>
+    <section id="section-5" class="gallery-section">
+      <h2>Figure 5</h2>
+      <article class="image-card"><p class="caption">figure_5/figure_5.png</p><a class="image-link" href="figure_5/figure_5.png"><img src="figure_5/figure_5.png" alt="figure 5"></a></article>
+      <article class="image-card"><p class="caption">figure_5/figure_5_scaled.png</p><a class="image-link" href="figure_5/figure_5_scaled.png"><img src="figure_5/figure_5_scaled.png" alt="figure 5 scaled"></a></article>
+    </section>
+    <section id="section-6" class="gallery-section">
+      <h2>Figure 6</h2>
+      <article class="image-card"><p class="caption">figure_6/figure_6.png</p><a class="image-link" href="figure_6/figure_6.png"><img src="figure_6/figure_6.png" alt="figure 6"></a></article>
+      <article class="image-card"><p class="caption">figure_6/figure_6_scaled.png</p><a class="image-link" href="figure_6/figure_6_scaled.png"><img src="figure_6/figure_6_scaled.png" alt="figure 6 scaled"></a></article>
+    </section>
+    <section id="section-7" class="gallery-section">
+      <h2>Figure 7</h2>
+      <article class="image-card"><p class="caption">figure_7/figure_7.png</p><a class="image-link" href="figure_7/figure_7.png"><img src="figure_7/figure_7.png" alt="figure 7"></a></article>
+      <article class="image-card"><p class="caption">figure_7/figure_7_scaled.png</p><a class="image-link" href="figure_7/figure_7_scaled.png"><img src="figure_7/figure_7_scaled.png" alt="figure 7 scaled"></a></article>
+    </section>
+    <section id="section-8" class="gallery-section">
+      <h2>Figure 8</h2>
+      <article class="image-card"><p class="caption">figure_8/figure_8.png</p><a class="image-link" href="figure_8/figure_8.png"><img src="figure_8/figure_8.png" alt="figure 8"></a></article>
+    </section>
+    <section id="section-9" class="gallery-section">
+      <h2>Figure 9</h2>
+      <article class="image-card"><p class="caption">figure_9/figure_9.png</p><a class="image-link" href="figure_9/figure_9.png"><img src="figure_9/figure_9.png" alt="figure 9"></a></article>
+    </section>
+    <section id="section-10" class="gallery-section">
+      <h2>Tables 9 10</h2>
+      <article class="image-card"><p class="caption">tables_9_10/table_10.png</p><a class="image-link" href="tables_9_10/table_10.png"><img src="tables_9_10/table_10.png" alt="table 10"></a></article>
+      <article class="image-card"><p class="caption">tables_9_10/table_9.png</p><a class="image-link" href="tables_9_10/table_9.png"><img src="tables_9_10/table_9.png" alt="table 9"></a></article>
+    </section>
+  </main>
+  <script>
+    (function() {
+      const buttons = Array.from(document.querySelectorAll('.section-button'));
+      const sections = Array.from(document.querySelectorAll('.gallery-section'));
+      const defaultSection = "section-1";
+
+      function activateSection(sectionId) {
+        const targetId = sectionId || defaultSection;
+        sections.forEach((section) => section.classList.toggle('is-active', section.id === targetId));
+        buttons.forEach((button) => button.classList.toggle('is-active', button.dataset.target === targetId));
+        if (targetId) {
+          if (window.location.hash !== '#' + targetId) {
+            history.replaceState(null, '', '#' + targetId);
+          }
+          window.scrollTo({ top: 0, behavior: 'auto' });
+        }
+      }
+
+      buttons.forEach((button) => button.addEventListener('click', () => activateSection(button.dataset.target)));
+      const initialHash = window.location.hash ? window.location.hash.slice(1) : '';
+      const hasInitialTarget = sections.some((section) => section.id === initialHash);
+      activateSection(hasInitialTarget ? initialHash : defaultSection);
+    })();
+  </script>
+</body>
+</html>

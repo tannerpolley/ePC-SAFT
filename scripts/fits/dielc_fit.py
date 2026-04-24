@@ -21,6 +21,7 @@ from scripts._epcsaft_oop import epcsaft_relative_permittivity
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from scripts.plot_outputs import fits_plot_path
 
 
 def _load_dielc_data():
@@ -85,9 +86,7 @@ def test_dielc_fit():
     dielc_rule1 = _calc_dielc_curve(x_ion_grid, species_ref, rule=1)
     dielc_rule4 = _calc_dielc_curve(x_ion_grid, species_ref, rule=4)
 
-    out_dir = Path(__file__).resolve().parents[2] / "data" / "dielc" / "plot_fits"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    plot_path = out_dir / "test_dielc_fit_salts_in_water_fit.png"
+    plot_path = fits_plot_path("dielectric", "test_dielc_fit_salts_in_water_fit.png")
 
     fig, ax = plt.subplots(figsize=(7.5, 5.0))
     marker_map = {"NaCl": "o", "NaBr": "s", "LiCl": "^"}

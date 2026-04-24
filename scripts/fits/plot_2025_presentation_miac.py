@@ -15,8 +15,9 @@ import numpy as np
 from matplotlib.lines import Line2D
 
 from scripts.fits import validate_miac_fits as vmf
+from scripts.plot_outputs import fits_plot_path
 
-OUT_DIR = REPO_ROOT / 'docs' / 'plots'
+OUT_DIR = fits_plot_path("miac", "2025_presentation", "_placeholder").parent
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 SOLVENT_COLORS = {

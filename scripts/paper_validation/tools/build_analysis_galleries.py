@@ -6,12 +6,12 @@ from pathlib import Path
 from typing import Iterable
 
 
-ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
+PLOTS_ROOT = REPO_ROOT / "docs" / "plots"
 
 
-def should_include_png(analysis_dir: Path, path: Path) -> bool:
-    rel = path.relative_to(analysis_dir)
-    parts_lower = tuple(part.lower() for part in rel.parts)
+def should_include_png(path: Path) -> bool:
+    parts_lower = tuple(part.lower() for part in path.relative_to(PLOTS_ROOT).parts)
     if "__pycache__" in parts_lower:
         return False
     if any(part.startswith("_tmp") for part in parts_lower):
@@ -19,39 +19,61 @@ def should_include_png(analysis_dir: Path, path: Path) -> bool:
     return True
 
 
-def sort_key(path: Path) -> tuple:
-    parts = [part.lower() for part in path.parts]
-    return tuple(parts)
+def sort_key(path: Path) -> tuple[str, ...]:
+    return tuple(part.lower() for part in path.parts)
 
 
-def iter_analysis_dirs() -> list[Path]:
+def collect_pngs(root: Path) -> list[Path]:
+    if not root.exists():
+        return []
     return sorted(
-        [path for path in ROOT.iterdir() if path.is_dir() and path.name.endswith("_analysis")],
-        key=lambda path: path.name.lower(),
+        [path for path in root.rglob("*.png") if should_include_png(path)],
+        key=lambda path: sort_key(path.relative_to(root)),
     )
 
 
-def collect_pngs(analysis_dir: Path) -> list[Path]:
+def iter_gallery_dirs() -> list[Path]:
+    dirs = {PLOTS_ROOT}
+    for png in collect_pngs(PLOTS_ROOT):
+        dirs.update(png.parents)
     return sorted(
-        [
-            path
-            for path in analysis_dir.rglob("*.png")
-            if should_include_png(analysis_dir, path)
-            and path.name.lower() != "index.html"
-        ],
-        key=lambda path: sort_key(path.relative_to(analysis_dir)),
+        [path for path in dirs if path == PLOTS_ROOT or PLOTS_ROOT in path.parents],
+        key=lambda path: (len(path.relative_to(PLOTS_ROOT).parts), path.as_posix().lower()),
     )
 
 
 def group_name(rel_path: Path) -> str:
     if len(rel_path.parts) <= 1:
         return "Top Level"
-    first = rel_path.parts[0]
-    return first.replace("_", " ").title()
+    return rel_path.parts[0].replace("_", " ").title()
 
 
-def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
-    rel_pngs = [path.relative_to(analysis_dir) for path in pngs]
+def page_title(gallery_dir: Path) -> str:
+    if gallery_dir == PLOTS_ROOT:
+        return "ePC-SAFT Plot Gallery"
+    rel = gallery_dir.relative_to(PLOTS_ROOT)
+    return " / ".join(part.replace("_", " ").title() for part in rel.parts)
+
+
+def back_href(gallery_dir: Path) -> str | None:
+    if gallery_dir == PLOTS_ROOT:
+        return None
+    return "../index.html"
+
+
+def child_gallery_links(gallery_dir: Path) -> list[tuple[str, str, int]]:
+    children = []
+    for child in sorted([p for p in gallery_dir.iterdir() if p.is_dir()], key=lambda p: p.name.lower()):
+        count = len(collect_pngs(child))
+        if count:
+            children.append((child.name.replace("_", " ").title(), f"{child.name}/index.html", count))
+    return children
+
+
+def render_gallery_page(gallery_dir: Path, pngs: Iterable[Path]) -> str:
+    rel_pngs = [path.relative_to(gallery_dir) for path in pngs]
+    child_links = child_gallery_links(gallery_dir)
+
     sections: list[tuple[str, list[Path]]] = []
     current_name = None
     current_paths: list[Path] = []
@@ -59,21 +81,31 @@ def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
         name = group_name(rel_path)
         if name != current_name:
             if current_paths:
-                sections.append((current_name, current_paths))
+                sections.append((current_name or "Top Level", current_paths))
             current_name = name
             current_paths = [rel_path]
         else:
             current_paths.append(rel_path)
     if current_paths:
-        sections.append((current_name, current_paths))
+        sections.append((current_name or "Top Level", current_paths))
 
     toc_items = []
-    section_blocks = []
     for index, (name, paths) in enumerate(sections, start=1):
         anchor = f"section-{index}"
         toc_items.append(
-            f'        <button type="button" class="section-button" data-target="{html.escape(anchor)}">{html.escape(name)}</button>'
+            f'        <button type="button" class="section-button" data-target="{html.escape(anchor)}">'
+            f"{html.escape(name)} ({len(paths)})</button>"
         )
+
+    child_items = [
+        f'        <a class="child-card" href="{html.escape(href)}">'
+        f"<span>{html.escape(name)}</span><strong>{count} PNGs</strong></a>"
+        for name, href, count in child_links
+    ]
+
+    section_blocks = []
+    for index, (name, paths) in enumerate(sections, start=1):
+        anchor = f"section-{index}"
         cards = []
         for rel_path in paths:
             rel_text = rel_path.as_posix()
@@ -92,14 +124,19 @@ def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
             + "\n    </section>"
         )
 
-    summary = f"Scrollable local gallery for {len(rel_pngs)} PNG outputs under {analysis_dir.name}."
+    title = page_title(gallery_dir)
+    rel_label = "." if gallery_dir == PLOTS_ROOT else gallery_dir.relative_to(PLOTS_ROOT).as_posix()
+    summary = f"Browsable gallery for {len(rel_pngs)} PNG files under docs/plots/{rel_label}."
     default_section = "section-1" if sections else ""
+    back = back_href(gallery_dir)
+    back_link = f'      <a class="back-link" href="{back}">Back</a>\n' if back else ""
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{html.escape(analysis_dir.name.replace('_', ' '))} Gallery</title>
+  <title>{html.escape(title)}</title>
   <style>
     :root {{
       color-scheme: light;
@@ -111,14 +148,8 @@ def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
       --accent: #0f5fbf;
     }}
 
-    * {{
-      box-sizing: border-box;
-    }}
-
-    html {{
-      scroll-behavior: smooth;
-    }}
-
+    * {{ box-sizing: border-box; }}
+    html {{ scroll-behavior: smooth; }}
     body {{
       margin: 0;
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -126,7 +157,6 @@ def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
       background: #ffffff;
       line-height: 1.45;
     }}
-
     header {{
       position: sticky;
       top: 0;
@@ -135,32 +165,15 @@ def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
       border-bottom: 1px solid var(--border);
       backdrop-filter: blur(8px);
     }}
-
     .header-inner {{
       max-width: var(--page-max);
       margin: 0 auto;
       padding: 1rem 1.25rem 0.85rem;
     }}
-
-    h1 {{
-      margin: 0 0 0.35rem;
-      font-size: 1.5rem;
-      font-weight: 700;
-    }}
-
-    .summary {{
-      margin: 0 0 0.8rem;
-      color: var(--muted);
-      font-size: 0.95rem;
-    }}
-
-    nav {{
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }}
-
-    .section-button {{
+    h1 {{ margin: 0 0 0.35rem; font-size: 1.5rem; font-weight: 700; }}
+    .summary {{ margin: 0 0 0.8rem; color: var(--muted); font-size: 0.95rem; }}
+    nav, .child-grid {{ display: flex; flex-wrap: wrap; gap: 0.5rem; }}
+    .section-button, .back-link, .child-card {{
       appearance: none;
       border: 1px solid var(--border);
       border-radius: 999px;
@@ -169,51 +182,23 @@ def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
       background: #fff;
       color: var(--accent);
       cursor: pointer;
+      text-decoration: none;
       transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
     }}
-
-    .section-button.is-active {{
-      background: var(--accent);
-      color: #fff;
-      border-color: var(--accent);
-    }}
-
-    .back-link {{
-      display: inline-flex;
-      align-items: center;
-      text-decoration: none;
-      color: var(--accent);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 0.35rem 0.8rem;
-      font-size: 0.92rem;
-      background: #fff;
-      margin-bottom: 0.8rem;
-    }}
-
-    main {{
-      max-width: var(--page-max);
-      margin: 0 auto;
-      padding: 1.25rem;
-    }}
-
-    .gallery-section {{
-      display: none;
-      margin: 0 0 2.5rem;
-      padding-top: 0.25rem;
-    }}
-
-    .gallery-section.is-active {{
-      display: block;
-    }}
-
-    .gallery-section > h2 {{
+    .section-button.is-active {{ background: var(--accent); color: #fff; border-color: var(--accent); }}
+    .child-card {{ display: inline-flex; gap: 0.5rem; align-items: center; }}
+    .child-card strong {{ color: var(--muted); font-weight: 500; }}
+    .back-link {{ display: inline-flex; margin-bottom: 0.8rem; }}
+    main {{ max-width: var(--page-max); margin: 0 auto; padding: 1.25rem; }}
+    .child-section {{ margin: 0 0 1.25rem; }}
+    .child-section h2, .gallery-section > h2 {{
       margin: 0 0 0.85rem;
       font-size: 1.35rem;
       border-bottom: 2px solid #efefef;
       padding-bottom: 0.4rem;
     }}
-
+    .gallery-section {{ display: none; margin: 0 0 2.5rem; padding-top: 0.25rem; }}
+    .gallery-section.is-active {{ display: block; }}
     .image-card {{
       margin: 0 0 1.5rem;
       padding: 0.85rem;
@@ -221,7 +206,6 @@ def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
       border-radius: 12px;
       background: #fcfcfc;
     }}
-
     .caption {{
       margin: 0 0 0.6rem;
       font-size: 0.92rem;
@@ -229,27 +213,15 @@ def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
       font-family: Consolas, "Courier New", monospace;
       word-break: break-word;
     }}
-
-    .image-link {{
-      display: block;
-      text-decoration: none;
-    }}
-
-    img {{
-      display: block;
-      width: 100%;
-      max-width: 100%;
-      height: auto;
-      border-radius: 8px;
-      background: #fff;
-    }}
+    .image-link {{ display: block; text-decoration: none; }}
+    img {{ display: block; width: 100%; max-width: 100%; height: auto; border-radius: 8px; background: #fff; }}
   </style>
 </head>
 <body>
   <header>
     <div class="header-inner">
-      <a class="back-link" href="../index.html">Back to Paper Validation Home</a>
-      <h1>{html.escape(analysis_dir.name.replace('_', ' '))} Gallery</h1>
+{back_link}\
+      <h1>{html.escape(title)}</h1>
       <p class="summary">{html.escape(summary)}</p>
       <nav>
 {chr(10).join(toc_items)}
@@ -257,6 +229,12 @@ def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
     </div>
   </header>
   <main>
+    <section class="child-section">
+      <h2>Subfolders</h2>
+      <div class="child-grid">
+{chr(10).join(child_items) if child_items else '        <span class="summary">No child galleries.</span>'}
+      </div>
+    </section>
 {chr(10).join(section_blocks)}
   </main>
   <script>
@@ -267,12 +245,8 @@ def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
 
       function activateSection(sectionId) {{
         const targetId = sectionId || defaultSection;
-        sections.forEach((section) => {{
-          section.classList.toggle('is-active', section.id === targetId);
-        }});
-        buttons.forEach((button) => {{
-          button.classList.toggle('is-active', button.dataset.target === targetId);
-        }});
+        sections.forEach((section) => section.classList.toggle('is-active', section.id === targetId));
+        buttons.forEach((button) => button.classList.toggle('is-active', button.dataset.target === targetId));
         if (targetId) {{
           if (window.location.hash !== '#' + targetId) {{
             history.replaceState(null, '', '#' + targetId);
@@ -281,10 +255,7 @@ def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
         }}
       }}
 
-      buttons.forEach((button) => {{
-        button.addEventListener('click', () => activateSection(button.dataset.target));
-      }});
-
+      buttons.forEach((button) => button.addEventListener('click', () => activateSection(button.dataset.target)));
       const initialHash = window.location.hash ? window.location.hash.slice(1) : '';
       const hasInitialTarget = sections.some((section) => section.id === initialHash);
       activateSection(hasInitialTarget ? initialHash : defaultSection);
@@ -295,102 +266,22 @@ def render_analysis_page(analysis_dir: Path, pngs: Iterable[Path]) -> str:
 """
 
 
-def render_root_page(analysis_dirs: Iterable[Path]) -> str:
-    items = []
-    for analysis_dir in analysis_dirs:
-        png_count = len(collect_pngs(analysis_dir))
-        items.append(
-            "      <li>"
-            f"<a href=\"{html.escape(analysis_dir.name)}/index.html\">{html.escape(analysis_dir.name.replace('_', ' '))}</a>"
-            f"<span>{png_count} PNGs</span>"
-            "</li>"
-        )
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Paper Validation Galleries</title>
-  <style>
-    body {{
-      margin: 0;
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background: #ffffff;
-      color: #1b1b1b;
-    }}
-
-    main {{
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 2rem 1.25rem 3rem;
-    }}
-
-    h1 {{
-      margin: 0 0 0.5rem;
-      font-size: 1.8rem;
-    }}
-
-    p {{
-      margin: 0 0 1.5rem;
-      color: #5f5f5f;
-    }}
-
-    ul {{
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: grid;
-      gap: 0.8rem;
-    }}
-
-    li {{
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 1rem;
-      border: 1px solid #d9d9d9;
-      border-radius: 12px;
-      padding: 0.85rem 1rem;
-      background: #fcfcfc;
-    }}
-
-    a {{
-      color: #0f5fbf;
-      text-decoration: none;
-      font-weight: 600;
-    }}
-
-    span {{
-      color: #5f5f5f;
-      font-size: 0.92rem;
-      white-space: nowrap;
-    }}
-  </style>
-</head>
-<body>
-  <main>
-    <h1>Paper Validation Galleries</h1>
-    <p>Static local galleries for all paper-validation analysis folders.</p>
-    <ul>
-{chr(10).join(items)}
-    </ul>
-  </main>
-</body>
-</html>
-"""
+def remove_stale_indexes(valid_dirs: set[Path]) -> None:
+    for index_path in PLOTS_ROOT.rglob("index.html"):
+        if index_path.parent not in valid_dirs:
+            index_path.unlink()
 
 
 def main() -> None:
-    analysis_dirs = iter_analysis_dirs()
-    for analysis_dir in analysis_dirs:
-        pngs = collect_pngs(analysis_dir)
-        if not pngs:
+    PLOTS_ROOT.mkdir(parents=True, exist_ok=True)
+    gallery_dirs = iter_gallery_dirs()
+    valid_dirs = set(gallery_dirs)
+    remove_stale_indexes(valid_dirs)
+    for gallery_dir in gallery_dirs:
+        pngs = collect_pngs(gallery_dir)
+        if not pngs and gallery_dir != PLOTS_ROOT:
             continue
-        (analysis_dir / "index.html").write_text(
-            render_analysis_page(analysis_dir, pngs),
-            encoding="utf-8",
-        )
-    (ROOT / "index.html").write_text(render_root_page(analysis_dirs), encoding="utf-8")
+        (gallery_dir / "index.html").write_text(render_gallery_page(gallery_dir, pngs), encoding="utf-8")
 
 
 if __name__ == "__main__":

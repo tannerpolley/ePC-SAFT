@@ -11,6 +11,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from _common import scan_temperature_branch
+from scripts.plot_outputs import paper_validation_path
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -40,7 +41,7 @@ def main() -> None:
     ax.set_title("Bulow 2019 Figure 5 style: water + [C4mim][NTf2]")
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=8)
-    out = Path(__file__).resolve().parent / "figure_5.png"
+    out = paper_validation_path(__file__, "figure_5.png")
     fig.tight_layout()
     fig.savefig(out, dpi=220)
     plt.close(fig)

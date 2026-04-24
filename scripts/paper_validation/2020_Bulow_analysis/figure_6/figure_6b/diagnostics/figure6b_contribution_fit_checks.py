@@ -29,6 +29,7 @@ if str(REPO_ROOT) not in sys.path:
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+from scripts.plot_outputs import paper_validation_path
 from figure6b_libr_ethanol_contributions import (
     AXIS_LABEL_SIZE,
     AXIS_TICK_SIZE,
@@ -45,7 +46,7 @@ from figure6b_digitized_reference_replica import (
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-OUTPUT_ROOT = REPO_ROOT / "scripts" / "paper_validation" / "2020_Bulow_analysis" / "figure_6" / "figure_6b" / "diagnostics" / "output"
+OUTPUT_ROOT = paper_validation_path(Path(__file__).resolve().parent, "output")
 OUTPUT_DATA_DIR = OUTPUT_ROOT / "data"
 OUTPUT_PLOTS_DIR = OUTPUT_ROOT / "plots"
 
