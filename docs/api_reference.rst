@@ -36,7 +36,7 @@ Activity results
 Regression helpers
 ------------------
 
-The regression API remains Python-facing, but ``fit_pure_neutral(...)`` now delegates to the native least-squares regression engine linked into ``epcsaft.epcsaft``. The shipped v1 scope is a nonassociating neutral pure-component fit of \(m\), \(s\), and \(e\) against liquid-density and pure-VLE records.
+The regression API remains Python-facing, but ``fit_pure_neutral(...)`` now delegates to the native least-squares regression engine exposed through ``epcsaft._core``. The shipped v1 scope is a nonassociating neutral pure-component fit of \(m\), \(s\), and \(e\) against liquid-density and pure-VLE records.
 
 .. autoclass:: epcsaft.FitBounds
    :members:

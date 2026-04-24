@@ -6,7 +6,7 @@ Phase 1 of the regression workflow is intentionally narrow:
 - supported workflow: ``fit_pure_neutral(...)``
 - supported targets: ``m``, ``s``, and ``e``
 - supported property basis: liquid density and vapor pressure for one neutral component
-- implementation owner: native least-squares workflow inside the main ``epcsaft.epcsaft`` extension
+- implementation owner: native least-squares workflow inside the private ``epcsaft._core`` extension
 - current model restriction: nonassociating neutral pure-component fits only
 
 Ion and binary regression are deferred until a later phase.
@@ -15,7 +15,12 @@ The public Python call shape stays the same, but the optimization loop itself is
 Build prerequisite
 ------------------
 
-There is no IPOPT prerequisite for the current package build. The supported developer path is the active Conda environment with the normal package build dependencies only.
+There is no IPOPT prerequisite for the current package build. The supported developer path is the uv-managed environment plus the direct CMake/pybind11 native build:
+
+.. code-block:: powershell
+
+   uv sync --no-install-project
+   uv run python scripts\build_epcsaft.py
 
 The public Python call shape stays the same, but the optimization loop itself is no longer Python/SciPy-owned. The current public workflow is fully native and least-squares-only.
 
