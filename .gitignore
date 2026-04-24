@@ -23,6 +23,7 @@ data/MIAC_combined/
 Makefile
 make.bat
 .idea/
+.agents/
 .codex_tmp/
 wheelhouse/
 CMakeFiles/
