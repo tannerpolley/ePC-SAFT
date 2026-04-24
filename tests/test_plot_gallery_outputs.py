@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 
 from scripts import plot_outputs
 from scripts.paper_validation.tools import build_analysis_galleries
+from scripts.paper_validation.tools import serve_plot_gallery
 
 
 def test_save_plot_figure_writes_csv_backing_data(tmp_path: Path) -> None:
@@ -73,3 +74,15 @@ def test_docs_plot_pngs_have_companion_csv_data() -> None:
         if not csv_path.exists():
             missing.append(png_path.as_posix())
     assert missing == []
+
+
+def test_plot_gallery_server_skips_busy_preferred_port() -> None:
+    import socket
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as occupied:
+        occupied.bind(("127.0.0.1", 0))
+        preferred_port = occupied.getsockname()[1]
+        available_port = serve_plot_gallery.find_available_port("127.0.0.1", preferred_port, attempts=3)
+
+    assert available_port != preferred_port
+    assert preferred_port < available_port <= preferred_port + 2
