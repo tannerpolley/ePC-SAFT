@@ -6,12 +6,30 @@ import uuid
 from pathlib import Path
 
 
+GENERIC_TEST_TARGETS = (
+    "tests/test_runtime.py",
+    "tests/test_parameter_templates.py",
+    "tests/test_equation_registry.py",
+    "tests/test_regression.py",
+    "tests/test_regression_api.py",
+)
+
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parent
 
 
 def _pytest_temp(repo_root: Path) -> Path:
-    path = repo_root / "build" / "pytest-temp" / f"run-{os.getpid()}-{uuid.uuid4().hex[:8]}"
+    configured_root = os.environ.get("EPCSAFT_PYTEST_TEMP_ROOT")
+    if configured_root is not None:
+        root = Path(configured_root).expanduser()
+        if not root.is_absolute():
+            root = (repo_root / root).resolve()
+        root = root / "pytest-temp"
+    else:
+        root = repo_root / "build" / "pytest-temp"
+
+    path = root / f"run-{os.getpid()}-{uuid.uuid4().hex[:8]}"
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -24,15 +42,19 @@ def _pytest_env(pytest_temp: Path) -> dict[str, str]:
     return env
 
 
-def _pytest_args(pytest_args: list[str], pytest_temp: Path) -> list[str]:
+def _pytest_args(pytest_args: list[str], pytest_temp: Path, generic: bool = False) -> list[str]:
     cmd: list[str] = []
-    has_positional_target = any(not arg.startswith("-") for arg in pytest_args)
-    if has_positional_target:
+    if generic:
+        cmd.extend(GENERIC_TEST_TARGETS)
         cmd.extend(pytest_args)
     else:
-        cmd.append("tests")
-        cmd.extend(pytest_args)
-    if not any(arg == "--basetemp" or arg.startswith("--basetemp=") for arg in pytest_args):
+        has_positional_target = any(not arg.startswith("-") for arg in pytest_args)
+        if has_positional_target:
+            cmd.extend(pytest_args)
+        else:
+            cmd.append("tests")
+            cmd.extend(pytest_args)
+    if not any(arg == "--basetemp" or arg.startswith("--basetemp=") for arg in cmd):
         cmd.extend(["--basetemp", str(pytest_temp)])
     return cmd
 
@@ -64,6 +86,7 @@ def _patch_pytest_cleanup() -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--generic", action="store_true", help="Run the core generic test slice")
     args, pytest_args = parser.parse_known_args()
 
     repo_root = _repo_root()
@@ -73,7 +96,7 @@ def main() -> int:
     sys.path.insert(0, str(src_root))
     env["PYTHONPATH"] = str(src_root)
 
-    cmd = _pytest_args(pytest_args, pytest_temp)
+    cmd = _pytest_args(pytest_args, pytest_temp, args.generic)
     print("Running:", f"{sys.executable} -m pytest", " ".join(cmd), flush=True)
     os.environ.update(env)
 

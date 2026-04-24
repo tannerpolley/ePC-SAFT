@@ -8,8 +8,8 @@
   "configurePresets": [
     {
       "name": "dev-mingw",
-      "displayName": "Developer build (uv Python, MinGW)",
-      "description": "Build epcsaft._core in-place using the uv-managed Python environment.",
+      "displayName": "Optional IDE build (Windows MinGW)",
+      "description": "Optional Windows MinGW preset for IDE/manual CMake use. The canonical local native build is uv run python scripts/build_epcsaft.py.",
       "generator": "MinGW Makefiles",
       "binaryDir": "${sourceDir}/build/dev",
       "cacheVariables": {
@@ -24,7 +24,7 @@
   "buildPresets": [
     {
       "name": "dev-mingw",
-      "displayName": "Build developer extension",
+      "displayName": "Optional IDE extension build",
       "configurePreset": "dev-mingw"
     }
   ]

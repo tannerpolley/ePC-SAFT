@@ -17,7 +17,7 @@ For development from this source tree, use ``uv`` and the direct CMake build loo
 .. code-block:: bash
 
    uv sync --no-install-project
-   uv run python scripts/build_epcsaft.py --clean
+   uv run python scripts/build_epcsaft.py
    uv run python scripts/codex_doctor.py
 
 For tests, use:
@@ -25,6 +25,18 @@ For tests, use:
 .. code-block:: bash
 
    uv run python run_pytest.py tests/test_runtime.py -q
+
+Direct pytest also works:
+
+.. code-block:: bash
+
+   uv run python -m pytest tests/test_runtime.py -q
+
+For Codex and Windows work, prefer ``uv run python run_pytest.py ...`` because the wrapper manages pytest temporary directories more predictably. Set ``EPCSAFT_PYTEST_TEMP_ROOT`` when you want the wrapper to use an opt-in external pytest temp root instead of its default repo-local generated temp area.
+
+Use ``uv run python scripts/build_epcsaft.py --clean`` only as a repair step for stale CMake state or stale/locked ``_core`` artifacts. If a ``_core*.pyd`` is locked, stop the importing Python/test/IDE process before running the clean repair.
+
+``CMakePresets.json`` is optional Windows MinGW convenience for IDEs and manual CMake use. The canonical local native build remains ``uv run python scripts/build_epcsaft.py``.
 
 For package artifacts, use:
 
