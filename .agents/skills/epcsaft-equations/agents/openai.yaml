@@ -1,0 +1,4 @@
+interface:
+  display_name: "ePC-SAFT Equations"
+  short_description: "ePC-SAFT equation theory and code mapping"
+  default_prompt: "Use the ePC-SAFT equations skill to trace equation-of-state theory, equation ownership, and native implementation paths."
