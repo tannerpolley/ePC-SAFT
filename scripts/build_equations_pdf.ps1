@@ -17,12 +17,23 @@ if (-not (Test-Path $sourceTex)) {
 
 Push-Location $latexDir
 try {
-    & latexmk -g -pdf "equations.tex"
+    & latexmk -pdf "equations.tex"
     if (-not (Test-Path $builtPdf)) {
         throw "Expected built PDF not found: $builtPdf"
     }
-    Copy-Item -Force $builtPdf $trackedPdf
-    Write-Output "Updated tracked equations PDF: $trackedPdf"
+    $shouldCopy = $true
+    if (Test-Path $trackedPdf) {
+        $builtHash = (Get-FileHash -LiteralPath $builtPdf -Algorithm SHA256).Hash
+        $trackedHash = (Get-FileHash -LiteralPath $trackedPdf -Algorithm SHA256).Hash
+        $shouldCopy = $builtHash -ne $trackedHash
+    }
+    if ($shouldCopy) {
+        Copy-Item -Force $builtPdf $trackedPdf
+        Write-Output "Updated tracked equations PDF: $trackedPdf"
+    }
+    else {
+        Write-Output "Tracked equations PDF already up to date: $trackedPdf"
+    }
 }
 finally {
     Pop-Location

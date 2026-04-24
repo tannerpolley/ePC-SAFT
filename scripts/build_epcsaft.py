@@ -36,9 +36,22 @@ def _env() -> dict[str, str]:
 def _clean() -> None:
     shutil.rmtree(BUILD_DIR, ignore_errors=True)
     for artifact in PACKAGE_DIR.glob("_core*.pyd"):
-        artifact.unlink()
+        _remove_extension_artifact(artifact)
     for artifact in PACKAGE_DIR.glob("_core*.so"):
+        _remove_extension_artifact(artifact)
+
+
+def _remove_extension_artifact(artifact: Path) -> None:
+    try:
         artifact.unlink()
+    except PermissionError as exc:
+        message = (
+            f"Unable to remove {artifact}. The compiled extension is probably "
+            "loaded by an active Python process. Close Python terminals, IDE "
+            "test runners, or Codex subagents that imported epcsaft._core, "
+            "then rerun the build."
+        )
+        raise PermissionError(message) from exc
 
 
 def _configure(env: dict[str, str]) -> None:

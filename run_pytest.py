@@ -1,5 +1,6 @@
 import argparse
 import os
+import shutil
 import sys
 import uuid
 from pathlib import Path
@@ -81,7 +82,12 @@ def main() -> int:
 
     import pytest
 
-    return int(pytest.main(cmd))
+    exit_code = int(pytest.main(cmd))
+    if exit_code == 0:
+        shutil.rmtree(pytest_temp, ignore_errors=True)
+    else:
+        print(f"Keeping pytest temp directory for failed run: {pytest_temp}", flush=True)
+    return exit_code
 
 
 if __name__ == "__main__":
