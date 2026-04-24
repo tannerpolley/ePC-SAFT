@@ -8,7 +8,7 @@ Use:
 uv run python scripts/paper_validation/tools/build_analysis_galleries.py
 ```
 
-Open `docs/plots/index.html` to browse all generated plot groups.
+Open `docs/plots/index.html` to browse all generated plot groups. The gallery is a single-page file explorer: expand folders in the left sidebar, check one or more folders, and the page displays every PNG in those selected subtrees without navigating to separate folder pages.
 
 To rebuild the gallery and serve it as a localhost site:
 

@@ -33,35 +33,40 @@ def test_save_plot_figure_writes_csv_backing_data(tmp_path: Path) -> None:
     assert any(row["artist_label"] == "line" and row["x"] == "1" and row["y"] == "3" for row in rows)
 
 
-def test_root_gallery_lists_subfolders_without_showing_descendant_pngs(tmp_path: Path, monkeypatch) -> None:
+def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monkeypatch) -> None:
     root = tmp_path / "plots"
     child = root / "paper_validation" / "Example" / "figure_1"
     child.mkdir(parents=True)
     (child / "figure_1.png").write_bytes(b"png")
     monkeypatch.setattr(build_analysis_galleries, "PLOTS_ROOT", root)
 
-    html = build_analysis_galleries.render_gallery_page(root, build_analysis_galleries.direct_pngs(root))
+    html = build_analysis_galleries.render_gallery_page(root, build_analysis_galleries.collect_pngs(root))
 
-    assert "paper_validation/index.html" in html
-    assert "<img " not in html
-    assert '<button type="button" class="section-button"' not in html
-    assert "No plots are shown until you open a folder that contains PNG files." in html
+    assert 'data-testid="folder-tree"' in html
+    assert 'data-testid="gallery-grid"' in html
+    assert "paper_validation/index.html" not in html
+    assert "paper_validation/Example/figure_1/figure_1.png" in html
+    assert "Select folders on the left" in html
 
 
-def test_leaf_gallery_shows_only_direct_pngs(tmp_path: Path, monkeypatch) -> None:
+def test_plot_gallery_main_writes_only_root_index_and_removes_nested_indexes(tmp_path: Path, monkeypatch) -> None:
     root = tmp_path / "plots"
     leaf = root / "paper_validation" / "Example" / "figure_1"
     nested = leaf / "diagnostics"
     nested.mkdir(parents=True)
     (leaf / "figure_1.png").write_bytes(b"png")
     (nested / "diagnostic.png").write_bytes(b"png")
+    (leaf / "index.html").write_text("stale nested page", encoding="utf-8")
     monkeypatch.setattr(build_analysis_galleries, "PLOTS_ROOT", root)
 
-    html = build_analysis_galleries.render_gallery_page(leaf, build_analysis_galleries.direct_pngs(leaf))
+    build_analysis_galleries.main()
+    html = (root / "index.html").read_text(encoding="utf-8")
 
-    assert 'src="figure_1.png"' in html
-    assert 'src="diagnostics/diagnostic.png"' not in html
-    assert "diagnostics/index.html" in html
+    assert (root / "index.html").exists()
+    assert not (leaf / "index.html").exists()
+    assert "paper_validation/Example/figure_1/figure_1.png" in html
+    assert "paper_validation/Example/figure_1/diagnostics/diagnostic.png" in html
+    assert "/index.html" not in html
 
 
 def test_docs_plot_pngs_have_companion_csv_data() -> None:

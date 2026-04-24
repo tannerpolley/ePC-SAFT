@@ -3,7 +3,6 @@ from __future__ import annotations
 import html
 import json
 from pathlib import Path
-from typing import Iterable
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -41,121 +40,36 @@ def direct_pngs(root: Path) -> list[Path]:
     )
 
 
-def iter_gallery_dirs() -> list[Path]:
-    dirs = {PLOTS_ROOT}
-    for png in collect_pngs(PLOTS_ROOT):
-        dirs.update(png.parents)
-    return sorted(
-        [path for path in dirs if path == PLOTS_ROOT or PLOTS_ROOT in path.parents],
-        key=lambda path: (len(path.relative_to(PLOTS_ROOT).parts), path.as_posix().lower()),
-    )
+def page_title() -> str:
+    return "ePC-SAFT Plot Gallery"
 
 
-def group_name(rel_path: Path) -> str:
-    return "Plots"
-
-
-def page_title(gallery_dir: Path) -> str:
-    if gallery_dir == PLOTS_ROOT:
-        return "ePC-SAFT Plot Gallery"
-    rel = gallery_dir.relative_to(PLOTS_ROOT)
-    return " / ".join(part.replace("_", " ").title() for part in rel.parts)
-
-
-def back_href(gallery_dir: Path) -> str | None:
-    if gallery_dir == PLOTS_ROOT:
-        return None
-    return "../index.html"
-
-
-def child_gallery_links(gallery_dir: Path) -> list[tuple[str, str, int]]:
-    children = []
-    for child in sorted([p for p in gallery_dir.iterdir() if p.is_dir()], key=lambda p: p.name.lower()):
-        count = len(collect_pngs(child))
-        if count:
-            children.append((child.name.replace("_", " ").title(), f"{child.name}/index.html", count))
-    return children
-
-
-def _folder_options(gallery_dir: Path) -> str:
-    options = []
-    if gallery_dir != PLOTS_ROOT:
-        options.append('        <option value="../index.html">..</option>')
-    for name, href, count in child_gallery_links(gallery_dir):
-        options.append(f'        <option value="{html.escape(href)}">{html.escape(name)} ({count})</option>')
-    if not options:
-        return '        <option value="">No subfolders</option>'
-    return "\n".join(options)
-
-
-def render_gallery_page(gallery_dir: Path, pngs: Iterable[Path]) -> str:
-    rel_pngs = [path.relative_to(gallery_dir) for path in pngs]
-    child_links = child_gallery_links(gallery_dir)
-
-    sections: list[tuple[str, list[Path]]] = []
-    current_name = None
-    current_paths: list[Path] = []
-    for rel_path in rel_pngs:
-        name = group_name(rel_path)
-        if name != current_name:
-            if current_paths:
-                sections.append((current_name or "Top Level", current_paths))
-            current_name = name
-            current_paths = [rel_path]
-        else:
-            current_paths.append(rel_path)
-    if current_paths:
-        sections.append((current_name or "Top Level", current_paths))
-
-    toc_items = []
-    for index, (name, paths) in enumerate(sections, start=1):
-        anchor = f"section-{index}"
-        toc_items.append(
-            f'        <button type="button" class="section-button" data-target="{html.escape(anchor)}">'
-            f"{html.escape(name)} ({len(paths)})</button>"
+def _image_manifest(pngs: list[Path]) -> list[dict[str, str]]:
+    manifest = []
+    for png in pngs:
+        rel_path = png.relative_to(PLOTS_ROOT).as_posix()
+        folder = str(Path(rel_path).parent).replace("\\", "/")
+        if folder == ".":
+            folder = ""
+        manifest.append(
+            {
+                "path": rel_path,
+                "folder": folder,
+                "name": png.name,
+                "title": png.stem.replace("_", " ").replace("-", " "),
+            }
         )
+    return manifest
 
-    child_items = [
-        f'        <a class="child-card" href="{html.escape(href)}">'
-        f"<span>{html.escape(name)}</span><strong>{count} PNGs</strong></a>"
-        for name, href, count in child_links
-    ]
 
-    section_blocks = []
-    for index, (name, paths) in enumerate(sections, start=1):
-        anchor = f"section-{index}"
-        cards = []
-        for rel_path in paths:
-            rel_text = rel_path.as_posix()
-            alt = rel_path.stem.replace("_", " ")
-            cards.append(
-                "      <article class=\"image-card\">"
-                f"<p class=\"caption\">{html.escape(rel_text)}</p>"
-                f"<a class=\"image-link\" href=\"{html.escape(rel_text)}\">"
-                f"<img src=\"{html.escape(rel_text)}\" alt=\"{html.escape(alt)}\"></a>"
-                "</article>"
-            )
-        section_blocks.append(
-            f"    <section id=\"{anchor}\" class=\"gallery-section\">\n"
-            f"      <h2>{html.escape(name)}</h2>\n"
-            + "\n".join(cards)
-            + "\n    </section>"
-        )
+def _safe_json(data: object) -> str:
+    return json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
 
-    title = page_title(gallery_dir)
-    rel_label = "." if gallery_dir == PLOTS_ROOT else gallery_dir.relative_to(PLOTS_ROOT).as_posix()
-    summary = f"Browsable gallery for {len(rel_pngs)} PNG files under docs/plots/{rel_label}."
-    default_section = ""
-    back = back_href(gallery_dir)
-    back_link = f'      <a class="back-link" href="{back}">Back</a>\n' if back else ""
-    empty_message = ""
-    if not section_blocks:
-        empty_message = (
-            '    <section class="empty-state">\n'
-            "      <h2>No plots in this folder</h2>\n"
-            "      <p>No plots are shown until you open a folder that contains PNG files.</p>\n"
-            "    </section>"
-        )
+
+def render_gallery_page(root: Path, pngs: list[Path]) -> str:
+    manifest = _image_manifest(pngs)
+    title = page_title()
+    summary = f"{len(manifest)} PNG files under docs/plots. Select folders on the left to show every image in that subtree."
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -166,161 +80,573 @@ def render_gallery_page(gallery_dir: Path, pngs: Iterable[Path]) -> str:
   <style>
     :root {{
       color-scheme: light;
-      --page-max: 1200px;
-      --nav-bg: rgba(255, 255, 255, 0.96);
-      --border: #d9d9d9;
-      --text: #1b1b1b;
-      --muted: #5f5f5f;
-      --accent: #0f5fbf;
-      --surface: #f7f8fa;
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --panel-2: #f9fafb;
+      --text: #17202a;
+      --muted: #607086;
+      --border: #d9e1ea;
+      --border-strong: #b8c5d3;
+      --blue: #195fb8;
+      --blue-soft: #e8f1ff;
+      --teal: #137d72;
+      --shadow: 0 8px 24px rgba(25, 43, 65, 0.08);
+      --sidebar: clamp(280px, 27vw, 420px);
+      --radius: 8px;
     }}
 
     * {{ box-sizing: border-box; }}
-    html {{ scroll-behavior: smooth; }}
+    html, body {{ height: 100%; }}
     body {{
       margin: 0;
+      overflow: hidden;
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       color: var(--text);
-      background: #ffffff;
-      line-height: 1.45;
+      background: var(--bg);
+      line-height: 1.4;
     }}
-    header {{
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      background: var(--nav-bg);
+    button, input {{ font: inherit; }}
+    .app-shell {{
+      display: grid;
+      grid-template-columns: var(--sidebar) minmax(0, 1fr);
+      height: 100vh;
+    }}
+    .sidebar {{
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      background: var(--panel);
+    }}
+    .brand {{
+      padding: 18px 18px 14px;
       border-bottom: 1px solid var(--border);
-      backdrop-filter: blur(8px);
     }}
-    .header-inner {{
-      max-width: var(--page-max);
-      margin: 0 auto;
-      padding: 1rem 1.25rem 0.85rem;
+    h1 {{
+      margin: 0;
+      font-size: 1.18rem;
+      line-height: 1.2;
+      letter-spacing: 0;
     }}
-    h1 {{ margin: 0 0 0.35rem; font-size: 1.5rem; font-weight: 700; }}
-    .summary {{ margin: 0 0 0.8rem; color: var(--muted); font-size: 0.95rem; }}
-    .folder-nav, nav, .child-grid {{ display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }}
-    .folder-nav {{ margin-bottom: 0.75rem; }}
-    .folder-nav label {{ font-weight: 600; font-size: 0.92rem; }}
-    .folder-select {{
-      min-width: min(28rem, 100%);
+    .summary {{
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }}
+    .toolbar {{
+      display: grid;
+      gap: 10px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel-2);
+    }}
+    .search {{
+      width: 100%;
+      min-height: 34px;
       border: 1px solid var(--border);
       border-radius: 6px;
-      padding: 0.42rem 0.55rem;
+      padding: 7px 10px;
       background: #fff;
       color: var(--text);
-      font: inherit;
     }}
-    .section-button, .back-link, .child-card {{
-      appearance: none;
+    .actions {{
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }}
+    .icon-button {{
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--text);
+      cursor: pointer;
+    }}
+    .icon-button:hover {{ border-color: var(--blue); color: var(--blue); }}
+    .tree-wrap {{
+      min-height: 0;
+      overflow: auto;
+      padding: 10px 8px 18px;
+    }}
+    .tree {{
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      font-size: 0.91rem;
+    }}
+    .tree ul {{
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }}
+    .folder-row {{
+      display: grid;
+      grid-template-columns: 24px 22px minmax(0, 1fr) auto;
+      align-items: center;
+      min-height: 31px;
+      gap: 4px;
+      padding-right: 6px;
+      border-radius: 6px;
+    }}
+    .folder-row:hover {{ background: #eef4fb; }}
+    .folder-row.is-selected {{ background: var(--blue-soft); }}
+    .toggle {{
+      width: 22px;
+      height: 22px;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }}
+    .toggle:disabled {{
+      cursor: default;
+      opacity: 0.2;
+    }}
+    .folder-check {{
+      width: 15px;
+      height: 15px;
+      accent-color: var(--blue);
+    }}
+    .folder-name {{
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+    }}
+    .folder-count {{
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-variant-numeric: tabular-nums;
+    }}
+    .content {{
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      min-width: 0;
+      height: 100vh;
+    }}
+    .content-header {{
+      display: grid;
+      gap: 12px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(8px);
+    }}
+    .content-title-row {{
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+    }}
+    h2 {{
+      margin: 0;
+      font-size: 1.16rem;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }}
+    .meta {{
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }}
+    .view-tools {{
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }}
+    .range {{
+      width: 140px;
+      accent-color: var(--teal);
+    }}
+    .chips {{
+      display: flex;
+      gap: 8px;
+      min-height: 28px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }}
+    .chip {{
+      flex: 0 0 auto;
       border: 1px solid var(--border);
       border-radius: 999px;
-      padding: 0.35rem 0.8rem;
-      font-size: 0.92rem;
+      padding: 4px 10px;
       background: #fff;
-      color: var(--accent);
-      cursor: pointer;
-      text-decoration: none;
-      transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+      color: var(--muted);
+      font-size: 0.82rem;
     }}
-    .section-button.is-active {{ background: var(--accent); color: #fff; border-color: var(--accent); }}
-    .child-card {{ display: inline-flex; gap: 0.5rem; align-items: center; }}
-    .child-card strong {{ color: var(--muted); font-weight: 500; }}
-    .back-link {{ display: inline-flex; margin-bottom: 0.8rem; }}
-    main {{ max-width: var(--page-max); margin: 0 auto; padding: 1.25rem; }}
-    .child-section {{ margin: 0 0 1.25rem; }}
-    .child-section h2, .gallery-section > h2 {{
-      margin: 0 0 0.85rem;
-      font-size: 1.35rem;
-      border-bottom: 2px solid #efefef;
-      padding-bottom: 0.4rem;
+    .gallery-scroll {{
+      min-height: 0;
+      overflow: auto;
+      padding: 20px;
     }}
-    .gallery-section {{ display: none; margin: 0 0 2.5rem; padding-top: 0.25rem; }}
-    .gallery-section.is-active {{ display: block; }}
-    .empty-state {{
-      max-width: 46rem;
-      padding: 1rem;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: var(--surface);
+    .gallery-grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(var(--card-min, 280px), 1fr));
+      gap: 16px;
+      align-items: start;
     }}
-    .empty-state p {{ margin: 0; color: var(--muted); }}
     .image-card {{
-      margin: 0 0 1.5rem;
-      padding: 0.85rem;
+      min-width: 0;
+      overflow: hidden;
       border: 1px solid var(--border);
-      border-radius: 12px;
-      background: #fcfcfc;
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
     }}
-    .caption {{
-      margin: 0 0 0.6rem;
-      font-size: 0.92rem;
+    .image-head {{
+      display: grid;
+      gap: 3px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel-2);
+    }}
+    .image-title {{
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 0.91rem;
+      font-weight: 650;
+    }}
+    .image-path {{
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
       color: var(--muted);
       font-family: Consolas, "Courier New", monospace;
-      word-break: break-word;
+      font-size: 0.76rem;
     }}
-    .image-link {{ display: block; text-decoration: none; }}
-    img {{ display: block; width: 100%; max-width: 100%; height: auto; border-radius: 8px; background: #fff; }}
+    .image-link {{
+      display: block;
+      min-height: 220px;
+      padding: 12px;
+      background:
+        linear-gradient(45deg, #f7f9fb 25%, transparent 25%),
+        linear-gradient(-45deg, #f7f9fb 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #f7f9fb 75%),
+        linear-gradient(-45deg, transparent 75%, #f7f9fb 75%);
+      background-color: #fff;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+      background-size: 16px 16px;
+    }}
+    .image-link:focus-visible {{
+      outline: 3px solid rgba(25, 95, 184, 0.35);
+      outline-offset: -3px;
+    }}
+    img {{
+      display: block;
+      width: 100%;
+      min-height: 180px;
+      max-height: 620px;
+      height: auto;
+      object-fit: contain;
+      border-radius: 6px;
+      background: #fff;
+    }}
+    .empty-state {{
+      max-width: 560px;
+      border: 1px dashed var(--border-strong);
+      border-radius: var(--radius);
+      padding: 18px;
+      background: #fff;
+      color: var(--muted);
+    }}
+    .empty-state strong {{
+      display: block;
+      margin-bottom: 4px;
+      color: var(--text);
+    }}
+    .hidden {{ display: none !important; }}
+
+    @media (max-width: 860px) {{
+      body {{ overflow: auto; }}
+      .app-shell {{
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: 100vh;
+      }}
+      .sidebar, .content {{ height: auto; }}
+      .sidebar {{ border-right: 0; border-bottom: 1px solid var(--border); }}
+      .tree-wrap {{ max-height: 42vh; }}
+      .content {{ display: block; }}
+      .gallery-scroll {{ overflow: visible; padding: 14px; }}
+      .content-title-row {{ align-items: start; flex-direction: column; }}
+      .view-tools {{ width: 100%; justify-content: space-between; }}
+      .range {{ width: min(180px, 48vw); }}
+    }}
   </style>
 </head>
 <body>
-  <header>
-    <div class="header-inner">
-{back_link}\
-      <h1>{html.escape(title)}</h1>
-      <p class="summary">{html.escape(summary)}</p>
-      <div class="folder-nav">
-        <label for="folder-select">Subfolder</label>
-        <select id="folder-select" class="folder-select">
-          <option value="">Choose a folder</option>
-{_folder_options(gallery_dir)}
-        </select>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Plot folders">
+      <div class="brand">
+        <h1>{html.escape(title)}</h1>
+        <p class="summary">{html.escape(summary)}</p>
       </div>
-      <nav>
-{chr(10).join(toc_items)}
-      </nav>
-    </div>
-  </header>
-  <main>
-    <section class="child-section">
-      <h2>Subfolders</h2>
-      <div class="child-grid">
-{chr(10).join(child_items) if child_items else '        <span class="summary">No child galleries.</span>'}
+      <div class="toolbar">
+        <input id="search" class="search" type="search" placeholder="Filter visible images" aria-label="Filter visible images">
+        <div class="actions">
+          <button id="expand-all" class="icon-button" type="button" title="Expand all folders" aria-label="Expand all folders">+</button>
+          <button id="collapse-all" class="icon-button" type="button" title="Collapse all folders" aria-label="Collapse all folders">-</button>
+          <button id="clear-selection" class="icon-button" type="button" title="Clear selected folders" aria-label="Clear selected folders">x</button>
+        </div>
       </div>
-    </section>
-{chr(10).join(section_blocks)}
-{empty_message}
-  </main>
-  <script>
-    (function() {{
-      const folderSelect = document.getElementById('folder-select');
-      const buttons = Array.from(document.querySelectorAll('.section-button'));
-      const sections = Array.from(document.querySelectorAll('.gallery-section'));
-      const defaultSection = {json.dumps(default_section)};
+      <div class="tree-wrap">
+        <ul id="folder-tree" class="tree" data-testid="folder-tree"></ul>
+      </div>
+    </aside>
+    <main class="content">
+      <header class="content-header">
+        <div class="content-title-row">
+          <div>
+            <h2 id="gallery-title">Selected plots</h2>
+            <p id="gallery-meta" class="meta"></p>
+          </div>
+          <label class="view-tools">
+            Tile width
+            <input id="tile-size" class="range" type="range" min="220" max="520" step="20" value="320">
+          </label>
+        </div>
+        <div id="selected-chips" class="chips" aria-label="Selected folders"></div>
+      </header>
+      <section class="gallery-scroll" aria-label="Plot images">
+        <div id="gallery-grid" class="gallery-grid" data-testid="gallery-grid"></div>
+        <div id="empty-state" class="empty-state hidden">
+          <strong>No images to show</strong>
+          <span>Select a folder checkbox on the left, or change the image filter.</span>
+        </div>
+      </section>
+    </main>
+  </div>
 
-      function activateSection(sectionId) {{
-        const targetId = sectionId || '';
-        sections.forEach((section) => section.classList.toggle('is-active', section.id === targetId));
-        buttons.forEach((button) => button.classList.toggle('is-active', button.dataset.target === targetId));
-        if (targetId) {{
-          if (window.location.hash !== '#' + targetId) {{
-            history.replaceState(null, '', '#' + targetId);
+  <script id="plot-data" type="application/json">{_safe_json(manifest)}</script>
+  <script>
+    (() => {{
+      const images = JSON.parse(document.getElementById("plot-data").textContent);
+      const treeEl = document.getElementById("folder-tree");
+      const gridEl = document.getElementById("gallery-grid");
+      const emptyEl = document.getElementById("empty-state");
+      const searchEl = document.getElementById("search");
+      const tileSizeEl = document.getElementById("tile-size");
+      const titleEl = document.getElementById("gallery-title");
+      const metaEl = document.getElementById("gallery-meta");
+      const chipsEl = document.getElementById("selected-chips");
+      const selected = new Set([""]);
+      const expanded = new Set([""]);
+      const folderMap = new Map();
+
+      function folderName(path) {{
+        if (!path) return "docs/plots";
+        return path.split("/").at(-1).replaceAll("_", " ");
+      }}
+
+      function makeFolder(path, parent = null) {{
+        if (folderMap.has(path)) return folderMap.get(path);
+        const folder = {{ path, parent, children: new Map(), images: [], total: 0 }};
+        folderMap.set(path, folder);
+        return folder;
+      }}
+
+      const root = makeFolder("");
+      for (const image of images) {{
+        const parts = image.folder ? image.folder.split("/") : [];
+        let node = root;
+        node.total += 1;
+        let currentPath = "";
+        for (const part of parts) {{
+          currentPath = currentPath ? `${{currentPath}}/${{part}}` : part;
+          const child = makeFolder(currentPath, node);
+          node.children.set(part, child);
+          node = child;
+          node.total += 1;
+        }}
+        node.images.push(image);
+      }}
+
+      function sortedChildren(node) {{
+        return Array.from(node.children.values()).sort((a, b) => folderName(a.path).localeCompare(folderName(b.path)));
+      }}
+
+      function renderTreeNode(node, depth = 0) {{
+        const childNodes = sortedChildren(node);
+        const li = document.createElement("li");
+        const row = document.createElement("div");
+        row.className = "folder-row";
+        row.dataset.path = node.path;
+        row.style.paddingLeft = `${{depth * 14}}px`;
+
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "toggle";
+        toggle.textContent = expanded.has(node.path) ? "-" : "+";
+        toggle.disabled = childNodes.length === 0;
+        toggle.title = expanded.has(node.path) ? "Collapse folder" : "Expand folder";
+        toggle.setAttribute("aria-label", toggle.title);
+        toggle.addEventListener("click", () => {{
+          if (expanded.has(node.path)) expanded.delete(node.path);
+          else expanded.add(node.path);
+          renderTree();
+        }});
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.className = "folder-check";
+        checkbox.checked = selected.has(node.path);
+        checkbox.setAttribute("aria-label", `Show ${{folderName(node.path)}}`);
+        checkbox.addEventListener("change", () => {{
+          if (checkbox.checked) {{
+            if (!node.path) {{
+              selected.clear();
+              selected.add("");
+            }} else {{
+              selected.delete("");
+              selected.add(node.path);
+            }}
+          }} else {{
+            selected.delete(node.path);
           }}
-          window.scrollTo({{ top: 0, behavior: 'auto' }});
+          renderTree();
+          renderGallery();
+        }});
+
+        const label = document.createElement("span");
+        label.className = "folder-name";
+        label.textContent = folderName(node.path);
+        label.title = node.path || "docs/plots";
+        label.addEventListener("click", () => {{
+          if (childNodes.length) {{
+            if (expanded.has(node.path)) expanded.delete(node.path);
+            else expanded.add(node.path);
+            renderTree();
+          }}
+        }});
+
+        const count = document.createElement("span");
+        count.className = "folder-count";
+        count.textContent = node.total;
+
+        if (selected.has(node.path)) row.classList.add("is-selected");
+        row.append(toggle, checkbox, label, count);
+        li.append(row);
+
+        if (expanded.has(node.path) && childNodes.length) {{
+          const ul = document.createElement("ul");
+          for (const child of childNodes) ul.append(renderTreeNode(child, depth + 1));
+          li.append(ul);
+        }}
+        return li;
+      }}
+
+      function renderTree() {{
+        treeEl.replaceChildren(renderTreeNode(root));
+      }}
+
+      function isInSelectedFolder(image) {{
+        if (selected.size === 0) return false;
+        for (const folder of selected) {{
+          if (!folder || image.folder === folder || image.folder.startsWith(`${{folder}}/`)) return true;
+        }}
+        return false;
+      }}
+
+      function selectedLabels() {{
+        return Array.from(selected)
+          .sort((a, b) => a.localeCompare(b))
+          .map((path) => path || "docs/plots");
+      }}
+
+      function imageMatchesFilter(image, filterText) {{
+        if (!filterText) return true;
+        const haystack = `${{image.path}} ${{image.title}}`.toLowerCase();
+        return haystack.includes(filterText);
+      }}
+
+      function renderChips(labels) {{
+        chipsEl.replaceChildren();
+        if (!labels.length) {{
+          const chip = document.createElement("span");
+          chip.className = "chip";
+          chip.textContent = "No folders selected";
+          chipsEl.append(chip);
+          return;
+        }}
+        for (const label of labels) {{
+          const chip = document.createElement("span");
+          chip.className = "chip";
+          chip.textContent = label;
+          chipsEl.append(chip);
         }}
       }}
 
-      buttons.forEach((button) => button.addEventListener('click', () => activateSection(button.dataset.target)));
-      if (folderSelect) {{
-        folderSelect.addEventListener('change', () => {{
-          if (folderSelect.value) {{
-            window.location.href = folderSelect.value;
-          }}
-        }});
+      function renderGallery() {{
+        const filterText = searchEl.value.trim().toLowerCase();
+        const visible = images.filter((image) => isInSelectedFolder(image) && imageMatchesFilter(image, filterText));
+        const labels = selectedLabels();
+
+        gridEl.replaceChildren();
+        renderChips(labels);
+        titleEl.textContent = labels.length === 1 ? labels[0] : "Selected plot folders";
+        metaEl.textContent = `${{visible.length}} visible image${{visible.length === 1 ? "" : "s"}} from ${{selected.size}} selected folder${{selected.size === 1 ? "" : "s"}}`;
+        emptyEl.classList.toggle("hidden", visible.length !== 0);
+
+        const fragment = document.createDocumentFragment();
+        for (const image of visible) {{
+          const card = document.createElement("article");
+          card.className = "image-card";
+
+          const head = document.createElement("div");
+          head.className = "image-head";
+          const imageTitle = document.createElement("div");
+          imageTitle.className = "image-title";
+          imageTitle.textContent = image.title;
+          const imagePath = document.createElement("div");
+          imagePath.className = "image-path";
+          imagePath.textContent = image.path;
+          head.append(imageTitle, imagePath);
+
+          const link = document.createElement("a");
+          link.className = "image-link";
+          link.href = image.path;
+          link.target = "_blank";
+          link.rel = "noopener";
+
+          const img = document.createElement("img");
+          img.loading = "lazy";
+          img.decoding = "async";
+          img.src = image.path;
+          img.alt = image.title;
+          link.append(img);
+
+          card.append(head, link);
+          fragment.append(card);
+        }}
+        gridEl.append(fragment);
       }}
-      const initialHash = window.location.hash ? window.location.hash.slice(1) : '';
-      const hasInitialTarget = sections.some((section) => section.id === initialHash);
-      activateSection(hasInitialTarget ? initialHash : '');
+
+      document.getElementById("expand-all").addEventListener("click", () => {{
+        for (const folder of folderMap.values()) expanded.add(folder.path);
+        renderTree();
+      }});
+      document.getElementById("collapse-all").addEventListener("click", () => {{
+        expanded.clear();
+        expanded.add("");
+        renderTree();
+      }});
+      document.getElementById("clear-selection").addEventListener("click", () => {{
+        selected.clear();
+        renderTree();
+        renderGallery();
+      }});
+      searchEl.addEventListener("input", renderGallery);
+      tileSizeEl.addEventListener("input", () => {{
+        gridEl.style.setProperty("--card-min", `${{tileSizeEl.value}}px`);
+      }});
+
+      renderTree();
+      renderGallery();
     }})();
   </script>
 </body>
@@ -328,22 +654,17 @@ def render_gallery_page(gallery_dir: Path, pngs: Iterable[Path]) -> str:
 """
 
 
-def remove_stale_indexes(valid_dirs: set[Path]) -> None:
+def remove_stale_indexes() -> None:
     for index_path in PLOTS_ROOT.rglob("index.html"):
-        if index_path.parent not in valid_dirs:
+        if index_path != PLOTS_ROOT / "index.html":
             index_path.unlink()
 
 
 def main() -> None:
     PLOTS_ROOT.mkdir(parents=True, exist_ok=True)
-    gallery_dirs = iter_gallery_dirs()
-    valid_dirs = set(gallery_dirs)
-    remove_stale_indexes(valid_dirs)
-    for gallery_dir in gallery_dirs:
-        pngs = direct_pngs(gallery_dir)
-        if not pngs and not child_gallery_links(gallery_dir) and gallery_dir != PLOTS_ROOT:
-            continue
-        (gallery_dir / "index.html").write_text(render_gallery_page(gallery_dir, pngs), encoding="utf-8")
+    pngs = collect_pngs(PLOTS_ROOT)
+    remove_stale_indexes()
+    (PLOTS_ROOT / "index.html").write_text(render_gallery_page(PLOTS_ROOT, pngs), encoding="utf-8")
 
 
 if __name__ == "__main__":
