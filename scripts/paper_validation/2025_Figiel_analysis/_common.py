@@ -11,7 +11,6 @@ from typing import Dict, Iterable, List, Tuple
 
 import matplotlib
 import numpy as np
-from openpyxl import load_workbook
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -19,6 +18,9 @@ import matplotlib.pyplot as plt
 REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+SRC_ROOT = REPO_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
 
 from scripts._env import require_epcsaft_install
 from scripts.plot_outputs import paper_validation_output_path
@@ -166,6 +168,8 @@ def read_csv_rows(path: Path) -> Tuple[List[str], List[Dict[str, str]]]:
 
 
 def write_xlsx_to_csv(xlsx_path: Path, csv_path: Path | None = None) -> Path:
+    from openpyxl import load_workbook
+
     if csv_path is None:
         csv_path = xlsx_path.with_suffix(".csv")
     wb = load_workbook(xlsx_path, data_only=True)

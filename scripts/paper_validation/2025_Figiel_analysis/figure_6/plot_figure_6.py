@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 import sys
 
@@ -12,6 +13,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import _common as common
+import figure_data
 
 OUTPUT = Path(__file__).with_name('figure_6.png')
 OUTPUT_METHANOL = Path(__file__).with_name('figure_6_methanol.png')
@@ -22,12 +24,11 @@ OUTPUTS = [
     Path(__file__).with_name('figure_6c.png'),
     Path(__file__).with_name('figure_6d.png'),
 ]
-DATA_ROOT = Path(__file__).with_name('data') / 'G_trans' / 'water'
 PANELS = [
-    ('a)', 'K+', 'methanol', DATA_ROOT / 'methanol' / 'K.csv', r'$x_{MeOH}$ / -', (0.0, 12.5)),
-    ('b)', 'Br-', 'methanol', DATA_ROOT / 'methanol' / 'Br.csv', r'$x_{MeOH}$ / -', (0.0, 12.0)),
-    ('c)', 'Na+', 'ethanol', DATA_ROOT / 'ethanol' / 'Na.csv', r'$x_{EtOH}$ / -', (0.0, 20.0)),
-    ('d)', 'Cl-', 'ethanol', DATA_ROOT / 'ethanol' / 'Cl.csv', r'$x_{EtOH}$ / -', (0.0, 30.0)),
+    ('a)', 'K+', 'methanol', r'$x_{MeOH}$ / -', (0.0, 12.5)),
+    ('b)', 'Br-', 'methanol', r'$x_{MeOH}$ / -', (0.0, 12.0)),
+    ('c)', 'Na+', 'ethanol', r'$x_{EtOH}$ / -', (0.0, 20.0)),
+    ('d)', 'Cl-', 'ethanol', r'$x_{EtOH}$ / -', (0.0, 30.0)),
 ]
 
 
@@ -36,25 +37,15 @@ TITLE_METHANOL = 'Gibbs energies of transfer at infinite dilution from water to 
 TITLE_ETHANOL = 'Gibbs energies of transfer at infinite dilution from water to water + $\\mathbf{ethanol}$ systems\n$\\Delta G_i^{trans,\\infty}$ of different ions at 298.15 K and 1 bar.'
 
 
-def _load_xy(path: Path):
-    fields, rows = common.read_csv_rows(path)
-    x_key = fields[0]
-    y_key = fields[1]
-    xs, ys = [], []
-    for row in rows:
-        x = common.parse_float(row.get(x_key))
-        y = common.parse_float(row.get(y_key))
-        if x is None or y is None:
-            continue
-        xs.append(x)
-        ys.append(y)
-    return np.asarray(xs, dtype=float), np.asarray(ys, dtype=float)
+@lru_cache(maxsize=1)
+def _payload():
+    return tuple(figure_data.read_payload('figure_6'))
 
 
-def _plot_panel(ax, label, ion, organic, csv_path, xlabel, ylim) -> None:
-    x_data, y_data = _load_xy(csv_path)
-    x_grid = np.linspace(0.0, 1.0, 401)
-    y_model = common.transfer_curve('2025_Figiel', ion, organic, x_grid)
+def _plot_panel(ax, label, ion, organic, xlabel, ylim) -> None:
+    rows = list(_payload())
+    x_data, y_data = figure_data.xy(figure_data.select_rows(rows, panel_id=label, series_id=f'data_{ion}_{organic}'))
+    x_grid, y_model = figure_data.xy(figure_data.select_rows(rows, panel_id=label, series_id=f'model_{ion}_{organic}'))
     ax.plot(x_grid, y_model, color='black', linewidth=1.5)
     ax.scatter(x_data, y_data, s=24, facecolor=common.LIGHT_GRAY, edgecolor=common.GRAY_COLOR, linewidth=0.8)
     ax.set_xlim(0.0, 1.0)

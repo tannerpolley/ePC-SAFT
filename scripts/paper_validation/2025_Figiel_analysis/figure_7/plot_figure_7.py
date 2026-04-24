@@ -10,27 +10,18 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import _common as common
+import figure_data
 
 OUTPUT = Path(__file__).with_name("figure_7.png")
-DATA = Path(__file__).with_name("data") / "methanol" / "methanol-NaBr.csv"
 
 
 def main() -> None:
     common.configure_style()
-    data = common.read_miac_dataset(DATA, "methanol")
-    x_data = [row["molality"] for row in data]
-    y_data = [row["miac_m"] for row in data]
-    m_max = max(float(row["molality"]) for row in data)
-    m_grid, y_default = common.mean_ionic_activity_curve("2025_Figiel", "NaBr", "methanol", {"methanol": 1.0}, m_max, points=500)
-    _, y_linear = common.mean_ionic_activity_curve(
-        "2025_Figiel",
-        "NaBr",
-        "methanol",
-        {"methanol": 1.0},
-        m_max,
-        points=500,
-        user_options={"elec_model": {"rel_perm": {"rule": 1}}},
-    )
+    rows = figure_data.read_payload("figure_7")
+    x_data, y_data = figure_data.xy(figure_data.select_rows(rows, series_id="data_NaBr_methanol"))
+    m_grid, y_default = figure_data.xy(figure_data.select_rows(rows, series_id="model_default"))
+    _, y_linear = figure_data.xy(figure_data.select_rows(rows, series_id="model_rule1"))
+    m_max = max(x_data)
 
     fig, ax = plt.subplots(figsize=(3.4, 2.8))
     ax.scatter(x_data, y_data, s=24, facecolor=common.LIGHT_GRAY, edgecolor=common.GRAY_COLOR, linewidth=0.8, label="Literature")

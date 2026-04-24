@@ -12,6 +12,24 @@ uv run python scripts/paper_validation/tools/build_analysis_galleries.py
 
 The generator writes the master gallery to `docs/plots/index.html` and nested galleries under `docs/plots/**/index.html`. Open `docs/plots/index.html` locally to browse generated PNG outputs.
 
+## CSV-Backed Figure Data
+
+`2025_Figiel_analysis` is the first validation slice where model/literature figure payloads are stored as tracked CSV artifacts under `docs/plots/paper_validation/2025_Figiel/<figure>/data/`.
+
+Regenerate the CSV baseline with:
+
+```powershell
+uv run python scripts/paper_validation/2025_Figiel_analysis/generate_figure_data.py
+```
+
+Validate the committed CSV baseline, regenerate the PNGs from CSV, and rebuild the gallery with:
+
+```powershell
+uv run python scripts/paper_validation/2025_Figiel_analysis/validate_figure_data.py
+```
+
+The 2025 Figiel plot scripts should read these generated CSV payloads and should not call ePC-SAFT model evaluation directly. Keep source/literature CSV inputs under the analysis folder; generated numeric figure payloads belong under `docs/plots`.
+
 ## Folder Roles
 
 - `tools/`: shared tooling for paper-validation maintenance, starting with the gallery generator.
