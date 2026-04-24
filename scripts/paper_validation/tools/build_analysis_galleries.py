@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Iterable
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def should_include_png(analysis_dir: Path, path: Path) -> bool:
@@ -26,7 +26,7 @@ def sort_key(path: Path) -> tuple:
 
 def iter_analysis_dirs() -> list[Path]:
     return sorted(
-        [path for path in ROOT.iterdir() if path.is_dir() and not path.name.startswith("__")],
+        [path for path in ROOT.iterdir() if path.is_dir() and path.name.endswith("_analysis")],
         key=lambda path: path.name.lower(),
     )
 
