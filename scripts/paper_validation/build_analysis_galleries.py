@@ -16,8 +16,6 @@ def should_include_png(analysis_dir: Path, path: Path) -> bool:
         return False
     if any(part.startswith("_tmp") for part in parts_lower):
         return False
-    if analysis_dir.name == "2020_Bulow_analysis" and parts_lower[:2] == ("figure_3", "epcsaft_package_comparisons"):
-        return False
     return True
 
 

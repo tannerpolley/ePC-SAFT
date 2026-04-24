@@ -14,7 +14,7 @@ The package includes a compiled C++ extension. Wheels are preferred for end user
 
 ## Development
 
-This repository uses `uv` for Python environment management and direct CMake for the local native build loop. Do not use Conda, shell activation, editable pip installs, or `python -m venv` for the default workflow.
+This repository uses `uv` for Python environment management and direct CMake for the local native build loop.
 
 `uv.toml` routes uv's cache into `build/uv-cache` so Codex/Windows sandbox runs do not touch `%LOCALAPPDATA%\uv\cache`.
 

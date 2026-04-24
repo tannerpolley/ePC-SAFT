@@ -38,7 +38,7 @@ For package artifacts:
 
    uv build
 
-The default development workflow uses ``uv`` for dependency management and direct CMake for the in-place native extension build. Conda and editable pip installs are not required for ordinary development.
+The default development workflow uses ``uv`` for dependency management and direct CMake for the in-place native extension build.
 
 Then choose the path that matches what you want to do:
 
