@@ -64,13 +64,13 @@ Phase 1 of the regression workflow is intentionally narrow: `fit_pure_neutral(..
 
 ## Documentation
 
-- [Start here](docs/README.rst)
-- [Getting started](docs/getting_started.rst)
-- [Create your own parameter folder](docs/user_parameter_templates.rst)
-- [Parameter regression guide](docs/parameter_regression.rst)
-- [User options reference](docs/user_options.rst)
-- [Task-based package guide](docs/package_guide.rst)
-- [API reference](docs/api_reference.rst)
+- [Start here](docs/pages/README.rst)
+- [Getting started](docs/pages/getting_started.rst)
+- [Create your own parameter folder](docs/pages/user_parameter_templates.rst)
+- [Parameter regression guide](docs/pages/parameter_regression.rst)
+- [User options reference](docs/pages/user_options.rst)
+- [Task-based package guide](docs/pages/package_guide.rst)
+- [API reference](docs/pages/api_reference.rst)
 
 ## License
 

@@ -47,7 +47,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 autosummary_generate = True
 
-master_doc = 'index'
+master_doc = 'pages/index'
 
 
 # -- Options for HTML output -------------------------------------------------

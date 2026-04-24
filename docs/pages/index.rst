@@ -1,5 +1,5 @@
 Documentation for epcsaft
-========================
+=========================
 
 This documentation is organized around getting started, creating your own parameter files, and looking up reference material.
 
