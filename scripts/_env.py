@@ -10,7 +10,7 @@ def require_epcsaft_install() -> None:
     except Exception as exc:
         raise RuntimeError(
             "epcsaft must be importable from the active environment with the OOP API. "
-            "Run `python scripts/build_epcsaft.py` in the ePC-SAFT environment, then retry."
+            "Run `uv sync --no-install-project`, then `uv run python scripts/build_epcsaft.py`, then retry."
         ) from exc
 
 

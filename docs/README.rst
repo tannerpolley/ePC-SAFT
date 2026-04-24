@@ -11,7 +11,7 @@ Overview
 .. image:: https://readthedocs.org/projects/epcsaft/badge/?version=latest
    :target: http://epcsaft.readthedocs.io/?badge=latest
 
-``epcsaft`` is a Cython/C++ implementation of the ePC-SAFT equation of state with dipole, association, and electrolyte terms.
+``epcsaft`` is a Python package with a pybind11/C++ implementation of the ePC-SAFT equation of state with association and electrolyte terms.
 
 Where to start
 --------------
@@ -22,22 +22,23 @@ Most users should install from PyPI:
 
    pip install epcsaft
 
-``epcsaft`` includes a compiled Cython/C++ extension. If a wheel is available for your Python version and platform, pip installs it automatically. If a wheel is not available, pip falls back to a source build, which requires a working native build toolchain.
+``epcsaft`` includes a compiled C++ extension. If a wheel is available for your Python version and platform, pip installs it automatically. If a wheel is not available, pip falls back to a source build, which requires a working native build toolchain.
 
-For a source checkout of this repository:
-
-.. code-block:: bash
-
-   pip install .
-
-For editable development from this source tree:
+For development from this source tree:
 
 .. code-block:: bash
 
-   python scripts/install_dev.py
-   python scripts/build_epcsaft.py
+   uv sync --no-install-project
+   uv run python scripts/build_epcsaft.py --clean
+   uv run python run_pytest.py tests/test_runtime.py -q
 
-``install_dev.py`` creates or repairs the editable install. ``build_epcsaft.py`` is the fast native/Cython iteration command and rebuilds the in-place extension only when tracked build inputs are stale. Use ``python run_pytest.py`` for tests and ``python scripts/build_dist.py`` for a source distribution, wheel, and wheel smoke check. If you want to call pip directly for the editable install, use ``pip install -e . --no-build-isolation --config-settings editable_mode=compat``.
+For package artifacts:
+
+.. code-block:: bash
+
+   uv build
+
+The default development workflow uses ``uv`` for dependency management and direct CMake for the in-place native extension build. Conda and editable pip installs are not required for ordinary development.
 
 Then choose the path that matches what you want to do:
 
@@ -71,7 +72,7 @@ Simple example
 Project Layout
 --------------
 
-- ``src/epcsaft/``: installable runtime package and Cython/C++ sources
+- ``src/epcsaft/``: installable runtime package, pybind11 binding source, and native C++ sources
 - ``data/epcsaft_parameters/``: source-checkout example parameter datasets for inspection, comparison, and tests
 - ``data/``: other datasets and figures that are not required by the package
 - ``docs/``: user documentation and reference material

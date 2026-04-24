@@ -9,7 +9,7 @@ This compares:
 Run directly with:
 
     set ePCSAFT_RUN_PERF=1
-    C:\ProgramData\Miniconda3\envs\ePC-SAFT\python.exe scripts\profile_regression_runtime.py
+    uv run python scripts\profile_regression_runtime.py
 """
 
 from __future__ import annotations

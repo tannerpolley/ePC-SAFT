@@ -1,11 +1,7 @@
 # -*- coding: utf-8 -*-
-# setuptools: language=c++
-
 import numpy as np
-from libcpp.vector cimport vector
-from libcpp.memory cimport shared_ptr
 from copy import deepcopy
-from . cimport epcsaft
+from . import _core
 from ._types import ActivityCoefficientResult
 from ._types import InputError
 from ._types import SolutionError
@@ -44,7 +40,7 @@ def _sum_vector_terms(terms):
     return total
 
 
-cdef dict _scalar_terms_dict(ScalarContributionTerms terms):
+def _scalar_terms_dict(terms):
     return {
         "hc": float(terms.hc),
         "disp": float(terms.disp),
@@ -55,9 +51,9 @@ cdef dict _scalar_terms_dict(ScalarContributionTerms terms):
     }
 
 
-cdef dict _vector_terms_dict(VectorContributionTerms terms, Py_ssize_t expected_size, str label):
-    cdef dict out = {}
-    cdef dict blocks = {
+def _vector_terms_dict(terms, expected_size, label):
+    out = {}
+    blocks = {
         "hc": vector_to_array(terms.hc),
         "disp": vector_to_array(terms.disp),
         "assoc": vector_to_array(terms.assoc),
@@ -65,8 +61,6 @@ cdef dict _vector_terms_dict(VectorContributionTerms terms, Py_ssize_t expected_
         "born": vector_to_array(terms.born),
         "total": vector_to_array(terms.total),
     }
-    cdef object name
-    cdef object arr
     for name, arr in blocks.items():
         arr = np.asarray(arr, dtype=float)
         if arr.size != expected_size:
@@ -75,15 +69,12 @@ cdef dict _vector_terms_dict(VectorContributionTerms terms, Py_ssize_t expected_
     return out
 
 
-cdef class ePCSAFTMixture:
+class ePCSAFTMixture:
     """Native-backed ePC-SAFT parameter model and state factory."""
-    cdef shared_ptr[ePCSAFTMixtureNative] _native
-    cdef object _params
-    cdef object _species
 
     def __init__(self, params=None, species=None):
         """Create a mixture from a resolved parameter payload."""
-        self._native = shared_ptr[ePCSAFTMixtureNative]()
+        self._native = None
         self._params = None
         self._species = None
         if params is not None:
@@ -102,11 +93,11 @@ cdef class ePCSAFTMixture:
         params = get_prop_dict(dataset_name, species, x, T, user_options=user_options)
         return cls(params=params, species=species)
 
-    cdef void _init_from_params(self, params, species=None):
+    def _init_from_params(self, params, species=None):
         """Initialize the native mixture from a normalized parameter payload."""
         params = check_association(params)
         cppargs = create_struct(params)
-        self._native = shared_ptr[ePCSAFTMixtureNative](new ePCSAFTMixtureNative(cppargs))
+        self._native = _core.NativeMixture(cppargs)
         self._params = params
         if species is None:
             ncomp = int(np.asarray(params["m"], dtype=float).size)
@@ -127,23 +118,23 @@ cdef class ePCSAFTMixture:
     @property
     def ncomp(self):
         """Return the number of components in the mixture."""
-        return int(self._native.get().ncomp())
+        return int(self._native.ncomp())
 
     def clear_runtime_caches(self):
         """Clear internal runtime caches used for repeated state/reference evaluations."""
-        self._native.get().clear_runtime_caches()
+        self._native.clear_runtime_caches()
 
     def reset_runtime_cache_stats(self):
         """Reset runtime cache hit/fallback counters without clearing cached values."""
-        self._native.get().reset_runtime_cache_stats()
+        self._native.reset_runtime_cache_stats()
 
     def runtime_cache_stats(self):
         """Return native runtime cache counters for profiling and validation."""
         return {
-            "reference_state_cache_hits": int(self._native.get().reference_state_cache_hits()),
-            "reference_state_cache_misses": int(self._native.get().reference_state_cache_misses()),
-            "density_warm_start_hits": int(self._native.get().density_warm_start_hits()),
-            "density_warm_start_fallbacks": int(self._native.get().density_warm_start_fallbacks()),
+            "reference_state_cache_hits": int(self._native.reference_state_cache_hits()),
+            "reference_state_cache_misses": int(self._native.reference_state_cache_misses()),
+            "density_warm_start_hits": int(self._native.density_warm_start_hits()),
+            "density_warm_start_fallbacks": int(self._native.density_warm_start_fallbacks()),
         }
 
     def state(self, T, x, P=None, rho=None, phase="liq"):
@@ -160,15 +151,8 @@ cdef class ePCSAFTMixture:
         return f"ePCSAFTMixture(ncomp={self.ncomp}, species={self._species})"
 
 
-cdef class ePCSAFTState:
+class ePCSAFTState:
     """Immutable thermodynamic state bound to one mixture."""
-    cdef shared_ptr[ePCSAFTStateNative] _native
-    cdef object _mixture
-    cdef object _x
-    cdef double _T
-    cdef object _P
-    cdef object _rho
-    cdef int _phase
 
     def __init__(self, mixture, T, x, P=None, rho=None, phase="liq"):
         """Create a state with exactly one intensive variable fixed.
@@ -177,7 +161,7 @@ cdef class ePCSAFTState:
         """
         if not isinstance(mixture, ePCSAFTMixture):
             raise InputError("mixture must be a ePCSAFTMixture instance.")
-        cdef ePCSAFTMixture mix = mixture
+        mix = mixture
         x, params = ensure_numpy_input(x, mix._params)
         # ensure_numpy_input may normalize a scalar mixture parameter path, but the
         # state should retain the original mixture data unchanged.
@@ -192,7 +176,7 @@ cdef class ePCSAFTState:
             check_input(x, {"temperature": T, "density": rho})
         cpp_x = np_to_vector_double(x)
         try:
-            self._native = shared_ptr[ePCSAFTStateNative](new ePCSAFTStateNative(
+            self._native = _core.NativeState(
                 mix._native,
                 float(T),
                 cpp_x,
@@ -201,7 +185,7 @@ cdef class ePCSAFTState:
                 float(P) if P is not None else 0.0,
                 has_rho,
                 float(rho) if rho is not None else 0.0,
-            ))
+            )
         except Exception as exc:
             if has_p:
                 raise SolutionError(str(exc))
@@ -239,24 +223,24 @@ cdef class ePCSAFTState:
 
     def pressure(self):
         """Return the pressure of the bound state."""
-        return float(self._native.get().pressure())
+        return float(self._native.pressure())
 
     def density(self, units="molar"):
         """Return the state density in the requested units."""
         token = str(units or "molar").strip().lower()
         if token in {"molar", "mol", "molar_density", "mol/m^3", "mol/m3"}:
-            return float(self._native.get().density())
+            return float(self._native.density())
         if token in {"mass", "mass_density", "kg/m^3", "kg/m3"}:
             return self.mass_density()
         raise InputError("density units must be 'molar'/'mol/m^3' or 'mass'/'kg/m^3'.")
 
     def molar_density(self):
         """Return the molar density of the bound state in mol/m^3."""
-        return float(self._native.get().density())
+        return float(self._native.density())
 
     def mass_density(self):
         """Return the mass density of the bound state in kg/m^3."""
-        cdef ePCSAFTMixture mix = self._mixture
+        mix = self._mixture
         mw = np.asarray(mix._params.get("MW", []), dtype=float).flatten()
         if mw.size == 0:
             raise InputError("Mass density requires component molecular weights in kg/mol.")
@@ -265,12 +249,12 @@ cdef class ePCSAFTState:
         return float(self.molar_density() * float(np.dot(np.asarray(self._x, dtype=float), mw)))
 
     def _temperature_derivative_residual_helmholtz_term_result(self):
-        cdef ScalarContributionTerms result = self._native.get().temperature_derivative_residual_helmholtz_result()
+        result = self._native.temperature_derivative_residual_helmholtz_result()
         return _scalar_terms_dict(result)
 
     def _composition_derivative_residual_helmholtz_result(self):
         ncomp = int(self._x.size)
-        cdef CompositionContributionResult result = self._native.get().composition_derivative_residual_helmholtz_result()
+        result = self._native.composition_derivative_residual_helmholtz_result()
         dadx = _vector_terms_dict(result.dadx, ncomp, "dadx")
         ares = _scalar_terms_dict(result.ares)
         sum_x = _scalar_terms_dict(result.sum_x_dadx)
@@ -289,7 +273,7 @@ cdef class ePCSAFTState:
 
     def _fugacity_coefficient_term_result(self):
         ncomp = int(self._x.size)
-        cdef FugacityContributionResult result = self._native.get().fugacity_coefficient_result()
+        result = self._native.fugacity_coefficient_result()
         mu = _vector_terms_dict(result.mu, ncomp, "mu")
         lnfug = _vector_terms_dict(result.lnfugcoef, ncomp, "lnfugcoef")
         dadx = _vector_terms_dict(result.composition.dadx, ncomp, "dadx")
@@ -341,8 +325,8 @@ cdef class ePCSAFTState:
     def compressibility_factor(self, return_contribution_terms=False):
         """Return the compressibility factor."""
         if not return_contribution_terms:
-            return float(self._native.get().compressibility_factor())
-        cdef CompressibilityFactorResult result = self._native.get().compressibility_factor_result()
+            return float(self._native.compressibility_factor())
+        result = self._native.compressibility_factor_result()
         payload_dict = _scalar_terms_dict(result.terms)
         terms = {name: float(payload_dict[name]) for name in _CONTRIBUTION_NAMES}
         terms["ideal"] = 1.0
@@ -354,8 +338,8 @@ cdef class ePCSAFTState:
     def residual_helmholtz(self, return_contribution_terms=False):
         """Return the residual Helmholtz energy."""
         if not return_contribution_terms:
-            return float(self._native.get().residual_helmholtz())
-        cdef ScalarContributionTerms result = self._native.get().residual_helmholtz_result()
+            return float(self._native.residual_helmholtz())
+        result = self._native.residual_helmholtz_result()
         payload_dict = _scalar_terms_dict(result)
         terms = {name: float(payload_dict[name]) for name in _CONTRIBUTION_NAMES}
         return {
@@ -366,7 +350,7 @@ cdef class ePCSAFTState:
     def temperature_derivative_residual_helmholtz(self, return_contribution_terms=False):
         """Return the temperature derivative of the residual Helmholtz energy."""
         if not return_contribution_terms:
-            return float(self._native.get().temperature_derivative_residual_helmholtz())
+            return float(self._native.temperature_derivative_residual_helmholtz())
         result = self._temperature_derivative_residual_helmholtz_term_result()
         terms = {name: float(result[name]) for name in _CONTRIBUTION_NAMES}
         return {
@@ -380,21 +364,21 @@ cdef class ePCSAFTState:
 
     def residual_enthalpy(self):
         """Return the residual enthalpy."""
-        return float(self._native.get().residual_enthalpy())
+        return float(self._native.residual_enthalpy())
 
     def residual_entropy(self):
         """Return the residual entropy."""
-        return float(self._native.get().residual_entropy())
+        return float(self._native.residual_entropy())
 
     def residual_gibbs(self):
         """Return the residual Gibbs energy."""
-        return float(self._native.get().residual_gibbs())
+        return float(self._native.residual_gibbs())
 
     def residual_chemical_potential(self, return_contribution_terms=False):
         """Return the residual chemical potentials."""
         if not return_contribution_terms:
-            return vector_to_array(self._native.get().residual_chemical_potential())
-        cdef ResidualChemicalPotentialResult result = self._native.get().residual_chemical_potential_result()
+            return vector_to_array(self._native.residual_chemical_potential())
+        result = self._native.residual_chemical_potential_result()
         payload_dict = _vector_terms_dict(result.mu, int(self._x.size), "mu")
         terms = {name: np.asarray(payload_dict[name], dtype=float) for name in _CONTRIBUTION_NAMES}
         return {
@@ -408,10 +392,10 @@ cdef class ePCSAFTState:
         if len(species) != self._x.size:
             raise InputError("species length ({}) must match composition length ({}).".format(len(species), self._x.size))
         has_solvent_override, solvent_index = _resolve_solvent_override(self._mixture, species, solvent)
-        cdef bint include_aux_c = bool(include_aux)
-        cdef bint has_solvent_override_c = bool(has_solvent_override)
-        cdef int solvent_index_c = int(solvent_index)
-        cdef ActivityCoefficientNative out = self._native.get().activity_coefficient_native(include_aux_c, has_solvent_override_c, solvent_index_c)
+        include_aux_c = bool(include_aux)
+        has_solvent_override_c = bool(has_solvent_override)
+        solvent_index_c = int(solvent_index)
+        out = self._native.activity_coefficient_native(include_aux_c, has_solvent_override_c, solvent_index_c)
         pair_cat = np.asarray(out.pair_cation_indices, dtype=int)
         pair_an = np.asarray(out.pair_anion_indices, dtype=int)
         pair_labels = tuple(species[int(ic)] + species[int(ia)] for ic, ia in zip(pair_cat.tolist(), pair_an.tolist()))
@@ -445,10 +429,10 @@ cdef class ePCSAFTState:
         if len(species) != self._x.size:
             raise InputError("species length ({}) must match composition length ({}).".format(len(species), self._x.size))
         has_solvent_override, solvent_index = _resolve_solvent_override(self._mixture, species, solvent)
-        cdef bint include_aux_c = False
-        cdef bint has_solvent_override_c = bool(has_solvent_override)
-        cdef int solvent_index_c = int(solvent_index)
-        cdef ActivityCoefficientNative out = self._native.get().activity_coefficient_native(include_aux_c, has_solvent_override_c, solvent_index_c)
+        include_aux_c = False
+        has_solvent_override_c = bool(has_solvent_override)
+        solvent_index_c = int(solvent_index)
+        out = self._native.activity_coefficient_native(include_aux_c, has_solvent_override_c, solvent_index_c)
         if mean_ionic_form:
             token = str(basis).strip().lower()
             if token in {"mole", "mole_fraction", "molefraction", "x"}:
@@ -468,7 +452,7 @@ cdef class ePCSAFTState:
 
     def fugacity_coefficient(self, natural_log=True, return_contribution_terms=False):
         """Return fugacity coefficients, defaulting to natural-log form."""
-        ln_total = vector_to_array(self._native.get().ln_fugacity_coefficient())
+        ln_total = vector_to_array(self._native.ln_fugacity_coefficient())
         if not return_contribution_terms:
             if natural_log:
                 return ln_total
@@ -486,16 +470,16 @@ cdef class ePCSAFTState:
 
     def relative_permittivity(self):
         """Return the dielectric model evaluation for the current state."""
-        flat = vector_to_array(self._native.get().relative_permittivity())
+        flat = vector_to_array(self._native.relative_permittivity())
         return flat[0], flat[1:]
 
     def osmotic_coefficient(self):
         """Return the osmotic coefficient."""
-        return np.asarray([self._native.get().osmotic_coefficient()], dtype=float)
+        return np.asarray([self._native.osmotic_coefficient()], dtype=float)
 
     def state_diagnostics(self, species=None):
         """Return a diagnostic dictionary of the main state properties."""
-        cdef ePCSAFTMixture mix = self._mixture
+        mix = self._mixture
         species = self._mixture.species if species is None else species
         z = np.asarray(mix._params.get("z", []), dtype=float).flatten()
         has_ions = bool(np.any(np.abs(z) > 1e-12))
@@ -562,12 +546,6 @@ cdef class ePCSAFTState:
         """Return a short debugging representation of the state."""
         return f"ePCSAFTState(T={self._T}, phase={self._phase}, x={self._x})"
 
-
-cdef double _epcsaft_density_checked(double t, double p, vector[double] x, int phase, add_args &cppargs) except *:
-    try:
-        return den_cpp(t, p, x, phase, cppargs)
-    except Exception as exc:
-        raise SolutionError(str(exc))
 
 def check_input(x, vars):
     if abs(np.sum(x) - 1) > 1e-7:
@@ -672,8 +650,7 @@ def _safe_unit_log(values, floor=1e-300):
 
 
 def _resolve_solvent_override(mixture, species, solvent):
-    cdef ePCSAFTMixture mix = mixture
-    z = np.asarray(mix._params.get("z", []), dtype=float).flatten()
+    z = np.asarray(mixture._params.get("z", []), dtype=float).flatten()
     if z.size == 0:
         if solvent is not None:
             raise InputError("solvent override requires ionic parameters with params['z'].")
@@ -700,62 +677,42 @@ def _resolve_solvent_override(mixture, species, solvent):
 
 def np_to_vector_double(np_array):
     """Take a numpy array and return a C++ vector."""
-    cdef vector[double] cpp_vector
+    cpp_vector = []
 
     try:
         np_array = np_array.flatten()
         N = np_array.shape[0]
         for i in range(N):
-            cpp_vector.push_back(np_array[i])
+            cpp_vector.append(float(np_array[i]))
     except TypeError:
-        cpp_vector.push_back(np_array)
+        cpp_vector.append(float(np_array))
 
     return cpp_vector
 
 def np_to_vector_int(np_array):
     """Take a numpy array and return a C++ vector."""
-    cdef vector[int] cpp_vector
+    cpp_vector = []
 
     try:
         np_array = np_array.flatten()
         N = np_array.shape[0]
         for i in range(N):
-            cpp_vector.push_back(np_array[i])
+            cpp_vector.append(int(np_array[i]))
     except TypeError:
-        cpp_vector.push_back(np_array)
+        cpp_vector.append(int(np_array))
 
     return cpp_vector
 
 
-cdef vector[PureNeutralRegressionDensityRecord] _pure_neutral_density_records_vector(density_T, density_P, density_rho_exp, density_phase):
-    cdef vector[PureNeutralRegressionDensityRecord] records
-    cdef PureNeutralRegressionDensityRecord record
-    cdef Py_ssize_t i, n
-    n = len(density_T)
-    for i in range(n):
-        record.t = float(density_T[i])
-        record.p = float(density_P[i])
-        record.rho_exp = float(density_rho_exp[i])
-        record.phase = int(density_phase[i])
-        records.push_back(record)
-    return records
+def _pure_neutral_density_records_vector(density_T, density_P, density_rho_exp, density_phase):
+    return None
 
-
-cdef vector[PureNeutralRegressionVLERecord] _pure_neutral_vle_records_vector(vle_T, vle_P):
-    cdef vector[PureNeutralRegressionVLERecord] records
-    cdef PureNeutralRegressionVLERecord record
-    cdef Py_ssize_t i, n
-    n = len(vle_T)
-    for i in range(n):
-        record.t = float(vle_T[i])
-        record.p = float(vle_P[i])
-        records.push_back(record)
-    return records
-
+def _pure_neutral_vle_records_vector(vle_T, vle_P):
+    return None
 def create_struct(params):
     """Convert ePC-SAFT parameters to a C++ struct."""
-    cdef add_args cppargs
-    cdef int ncomp
+
+    cppargs = _core.NativeArgs()
 
     for removed_key in ('dipm', 'dip_num'):
         if removed_key in params:
@@ -813,7 +770,7 @@ def create_struct(params):
         cppargs.mixed_rel_perm_mask = np_to_vector_int(mixed_mask_arr)
     if 'mixed_rel_perm_water_index' in params:
         cppargs.mixed_rel_perm_water_index = int(params['mixed_rel_perm_water_index'])
-    if cppargs.z.size() > 0 and cppargs.dielc.size() == 0:
+    if len(cppargs.z) > 0 and len(cppargs.dielc) == 0:
         raise ValueError('Electrolyte parameters require params["dielc"] as a per-species array.')
     d_born_arr = None
     if 'd_born' in params:
@@ -839,7 +796,7 @@ def create_struct(params):
 
     elec_model = params.get('elec_model', None)
     if elec_model is None:
-        if cppargs.z.size() > 0:
+        if len(cppargs.z) > 0:
             # Apply the canonical electrolyte defaults when ionic parameters are present.
             elec_model = {
                 'rel_perm': {'rule': 1, 'differential_mode': 'analytical'},
@@ -1096,7 +1053,6 @@ def create_struct(params):
 
     return cppargs
 
-
 def _fit_pure_neutral_native_least_squares(
     fixed_payload,
     density_T,
@@ -1112,54 +1068,46 @@ def _fit_pure_neutral_native_least_squares(
     upper,
     multistart=0,
 ):
-    cdef add_args cppargs
-    cdef vector[PureNeutralRegressionDensityRecord] density_records
-    cdef vector[PureNeutralRegressionVLERecord] pure_vle_records
-    cdef vector[double] cpp_x0
-    cdef vector[double] cpp_lower
-    cdef vector[double] cpp_upper
-    cdef PureNeutralRegressionResult result
     params = check_association(dict(fixed_payload))
     cppargs = create_struct(params)
-    density_records = _pure_neutral_density_records_vector(density_T, density_P, density_rho_exp, density_phase)
-    pure_vle_records = _pure_neutral_vle_records_vector(vle_T, vle_P)
-    cpp_x0 = np_to_vector_double(np.asarray(x0, dtype=float))
-    cpp_lower = np_to_vector_double(np.asarray(lower, dtype=float))
-    cpp_upper = np_to_vector_double(np.asarray(upper, dtype=float))
-    result = fit_pure_neutral_least_squares_cpp(
+    result = _core._fit_pure_neutral_native_least_squares(
         cppargs,
-        density_records,
+        np.asarray(density_T, dtype=float),
+        np.asarray(density_P, dtype=float),
+        np.asarray(density_rho_exp, dtype=float),
+        np.asarray(density_phase, dtype=int),
         float(density_scale),
-        pure_vle_records,
+        np.asarray(vle_T, dtype=float),
+        np.asarray(vle_P, dtype=float),
         float(pure_vle_scale),
-        cpp_x0,
-        cpp_lower,
-        cpp_upper,
+        np.asarray(x0, dtype=float),
+        np.asarray(lower, dtype=float),
+        np.asarray(upper, dtype=float),
         int(multistart),
     )
     return {
-        "x": vector_to_array(result.x),
-        "cost": float(result.cost),
-        "residual_norm": float(result.residual_norm),
-        "density_metric": float(result.density_metric),
-        "pure_vle_metric": float(result.pure_vle_metric),
-        "initial_cost": float(result.initial_cost),
-        "initial_density_metric": float(result.initial_density_metric),
-        "initial_pure_vle_metric": float(result.initial_pure_vle_metric),
-        "success": bool(result.success),
-        "status": int(result.status),
-        "nfev": int(result.nfev),
-        "iterations": int(result.iterations),
-        "starts_tried": int(result.starts_tried),
-        "objective_evaluations": int(result.objective_evaluations),
-        "gradient_evaluations": int(result.gradient_evaluations),
-        "residual_evaluations": int(result.residual_evaluations),
-        "density_solves": int(result.density_solves),
-        "fused_state_evaluations": int(result.fused_state_evaluations),
-        "callback_wall_time_s": float(result.callback_wall_time_s),
-        "solve_wall_time_s": float(result.solve_wall_time_s),
-        "message": (<bytes>result.message).decode("utf-8"),
-        "backend": (<bytes>result.backend).decode("utf-8"),
+        "x": vector_to_array(result["x"]),
+        "cost": float(result["cost"]),
+        "residual_norm": float(result["residual_norm"]),
+        "density_metric": float(result["density_metric"]),
+        "pure_vle_metric": float(result["pure_vle_metric"]),
+        "initial_cost": float(result["initial_cost"]),
+        "initial_density_metric": float(result["initial_density_metric"]),
+        "initial_pure_vle_metric": float(result["initial_pure_vle_metric"]),
+        "success": bool(result["success"]),
+        "status": int(result["status"]),
+        "nfev": int(result["nfev"]),
+        "iterations": int(result["iterations"]),
+        "starts_tried": int(result["starts_tried"]),
+        "objective_evaluations": int(result["objective_evaluations"]),
+        "gradient_evaluations": int(result["gradient_evaluations"]),
+        "residual_evaluations": int(result["residual_evaluations"]),
+        "density_solves": int(result["density_solves"]),
+        "fused_state_evaluations": int(result["fused_state_evaluations"]),
+        "callback_wall_time_s": float(result["callback_wall_time_s"]),
+        "solve_wall_time_s": float(result["solve_wall_time_s"]),
+        "message": result["message"],
+        "backend": result["backend"],
     }
 
 
@@ -1175,36 +1123,32 @@ def _fit_pure_neutral_native_debug(
     pure_vle_scale,
     x,
 ):
-    cdef add_args cppargs
-    cdef vector[PureNeutralRegressionDensityRecord] density_records
-    cdef vector[PureNeutralRegressionVLERecord] pure_vle_records
-    cdef vector[double] cpp_x
-    cdef PureNeutralRegressionDebugResult result
     params = check_association(dict(fixed_payload))
     cppargs = create_struct(params)
-    density_records = _pure_neutral_density_records_vector(density_T, density_P, density_rho_exp, density_phase)
-    pure_vle_records = _pure_neutral_vle_records_vector(vle_T, vle_P)
-    cpp_x = np_to_vector_double(np.asarray(x, dtype=float))
-    result = evaluate_pure_neutral_objective_debug_cpp(
+    result = _core._fit_pure_neutral_native_debug(
         cppargs,
-        density_records,
+        np.asarray(density_T, dtype=float),
+        np.asarray(density_P, dtype=float),
+        np.asarray(density_rho_exp, dtype=float),
+        np.asarray(density_phase, dtype=int),
         float(density_scale),
-        pure_vle_records,
+        np.asarray(vle_T, dtype=float),
+        np.asarray(vle_P, dtype=float),
         float(pure_vle_scale),
-        cpp_x,
+        np.asarray(x, dtype=float),
     )
     return {
-        "objective": float(result.objective),
-        "gradient": vector_to_array(result.gradient),
-        "residuals": vector_to_array(result.residuals),
-        "jacobian_row_major": vector_to_array(result.jacobian_row_major),
-        "jacobian_shape": (int(result.jacobian_rows), int(result.jacobian_cols)),
-        "density_raw_residuals": vector_to_array(result.density_raw_residuals),
-        "pure_vle_raw_residuals": vector_to_array(result.pure_vle_raw_residuals),
-        "residual_evaluations": int(result.residual_evaluations),
-        "density_solves": int(result.density_solves),
-        "fused_state_evaluations": int(result.fused_state_evaluations),
-        "callback_wall_time_s": float(result.callback_wall_time_s),
+        "objective": float(result["objective"]),
+        "gradient": vector_to_array(result["gradient"]),
+        "residuals": vector_to_array(result["residuals"]),
+        "jacobian_row_major": vector_to_array(result["jacobian_row_major"]),
+        "jacobian_shape": (result["jacobian_shape"]),
+        "density_raw_residuals": vector_to_array(result["density_raw_residuals"]),
+        "pure_vle_raw_residuals": vector_to_array(result["pure_vle_raw_residuals"]),
+        "residual_evaluations": int(result["residual_evaluations"]),
+        "density_solves": int(result["density_solves"]),
+        "fused_state_evaluations": int(result["fused_state_evaluations"]),
+        "callback_wall_time_s": float(result["callback_wall_time_s"]),
     }
 
 

@@ -10,40 +10,29 @@ Most users install the published package from PyPI:
 
    pip install epcsaft
 
-``epcsaft`` includes a compiled Cython/C++ extension. If a wheel is available for your Python version and platform, pip installs it automatically. If a wheel is not available, pip falls back to a source build, which requires a working native build toolchain.
+``epcsaft`` includes a compiled C++ extension exposed through pybind11. If a wheel is available for your Python version and platform, pip installs it automatically. If a wheel is not available, pip falls back to a source build, which requires a working native build toolchain.
 
-To install the package from a source checkout of this repository:
-
-.. code-block:: bash
-
-   pip install .
-
-For editable development from this source tree:
+For development from this source tree, use ``uv`` and the direct CMake build loop:
 
 .. code-block:: bash
 
-   python scripts/install_dev.py
-   python scripts/build_epcsaft.py
-
-``install_dev.py`` creates or repairs the editable install. ``build_epcsaft.py`` is the fast native/Cython iteration command; it rebuilds the in-place extension when tracked build inputs are stale, and otherwise exits without touching the environment.
+   uv sync --no-install-project
+   uv run python scripts/build_epcsaft.py --clean
+   uv run python scripts/codex_doctor.py
 
 For tests, use:
 
 .. code-block:: bash
 
-   python run_pytest.py tests/test_cython.py -q
+   uv run python run_pytest.py tests/test_runtime.py -q
 
-``run_pytest.py`` checks the native build by default. Use ``--skip-build`` for pytest-only runs, ``--force-build`` for a forced extension rebuild, or ``--reinstall-editable`` when the editable install itself needs repair.
-
-On Windows, a compiled ``.pyd`` file may appear during local builds. That file is a build artifact and is normally produced by the installer or build backend, not copied into a project manually.
-
-If you want to call pip directly for the editable install, use:
+For package artifacts, use:
 
 .. code-block:: bash
 
-   pip install -e . --no-build-isolation --config-settings editable_mode=compat
+   uv build
 
-If you change the Cython or C++ sources, rerun ``python scripts/build_epcsaft.py`` to refresh the editable install. For a package artifact check, run ``python scripts/build_dist.py``.
+On Windows, a compiled ``.pyd`` file may appear during local builds. That file is a build artifact and is normally produced by the installer or build backend, not copied into a project manually.
 
 Create your own parameter folder
 --------------------------------

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Object-oriented integration tests for the native ePC-SAFT runtime."""
+"""Object-oriented integration tests for the pybind11 native ePC-SAFT runtime."""
 
 import numpy as np
 import pytest

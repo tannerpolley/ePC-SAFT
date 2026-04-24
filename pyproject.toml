@@ -1,12 +1,12 @@
 [build-system]
 requires = [
-    "setuptools>=77",
-    "wheel",
-    "Cython>=3.0",
+    "scikit-build-core>=0.12",
+    "pybind11>=3.0",
     "numpy>=2.0",
     "includeigen>=0.1",
 ]
-build-backend = "setuptools.build_meta"
+build-backend = "epcsaft_build_backend"
+backend-path = ["build_backend"]
 
 [project]
 name = "epcsaft"
@@ -26,7 +26,8 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: C++",
     "Operating System :: Microsoft :: Windows",
-    "Operating System :: Microsoft :: Windows :: Windows 10",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
 ]
 
 [project.urls]
@@ -34,21 +35,45 @@ Homepage = "https://github.com/tannerpolley/ePC-SAFT"
 Documentation = "https://epcsaft.readthedocs.io/en/latest/"
 Repository = "https://github.com/tannerpolley/ePC-SAFT"
 
-[tool.setuptools]
-package-dir = {"" = "src"}
-include-package-data = true
+[dependency-groups]
+test = [
+    "matplotlib>=3.8",
+    "pytest>=8.0",
+]
+build = [
+    "build>=1.2",
+    "cibuildwheel>=2.23",
+    "cmake>=3.20",
+    "includeigen>=0.1",
+    "ninja>=1.11",
+    "pybind11>=3.0",
+    "scikit-build-core>=0.12",
+]
+dev = [
+    { include-group = "test" },
+    { include-group = "build" },
+]
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.uv]
+package = false
+default-groups = ["dev"]
 
-[tool.setuptools.package-data]
-epcsaft = [
-    "*.pyx",
-    "*.pxd",
-    "*.h",
-    "*.cpp",
+[tool.scikit-build]
+minimum-version = "0.12"
+build-dir = "build/{wheel_tag}"
+wheel.packages = ["src/epcsaft"]
+cmake.version = ">=3.20"
+ninja.version = ">=1.11"
+
+[tool.scikit-build.sdist]
+include = [
+    "CMakeLists.txt",
+    "build_backend/*.py",
+    "src/epcsaft/**/*.py",
+    "src/epcsaft/**/*.cpp",
+    "src/epcsaft/**/*.h",
+    "tests/**/*.py",
 ]
 
 [tool.pytest.ini_options]
-addopts = "-p no:cacheprovider"
-
+addopts = "-ra -p no:cacheprovider"

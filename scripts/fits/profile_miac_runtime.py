@@ -7,7 +7,7 @@ evaluation, and plotting.
 Run directly with:
 
     set ePCSAFT_RUN_PERF=1
-    C:\ProgramData\Miniconda3\envs\ePC-SAFT\python.exe scripts\fits\profile_miac_runtime.py
+    uv run python scripts\fits\profile_miac_runtime.py
 """
 
 from __future__ import annotations

@@ -3,32 +3,18 @@ param(
     [string[]]$PythonArgs
 )
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = "Stop"
 
 if (-not $PythonArgs -or $PythonArgs.Count -eq 0) {
-    throw 'Usage: scripts/run_in_repo_env.ps1 <python-args...>'
+    throw "Usage: scripts/run_in_repo_env.ps1 <python-args...>"
 }
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$envName = Split-Path -Leaf $repoRoot
+Set-Location $repoRoot
 
-$pythonCandidates = @(
-    "C:\ProgramData\Miniconda3\envs\$envName\python.exe",
-    "C:\ProgramData\miniconda3\envs\$envName\python.exe",
-    ($env:USERPROFILE + "\miniconda3\envs\$envName\python.exe"),
-    ($env:USERPROFILE + "\anaconda3\envs\$envName\python.exe")
-)
-
-foreach ($candidate in $pythonCandidates) {
-    if (Test-Path $candidate) {
-        & $candidate @PythonArgs
-        exit $LASTEXITCODE
-    }
+if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+    throw "uv is not installed or is not on PATH. Install uv first, then run scripts/bootstrap_uv.ps1."
 }
 
-if (Get-Command conda -ErrorAction SilentlyContinue) {
-    & conda run -n $envName python @PythonArgs
-    exit $LASTEXITCODE
-}
-
-throw "Could not locate python.exe for conda environment '$envName'."
+& uv run python @PythonArgs
+exit $LASTEXITCODE

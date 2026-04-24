@@ -1,6 +1,5 @@
 import argparse
 import os
-import subprocess
 import sys
 import uuid
 from pathlib import Path
@@ -22,25 +21,6 @@ def _pytest_env(pytest_temp: Path) -> dict[str, str]:
     env["TEMP"] = str(pytest_temp.resolve())
     env["TMPDIR"] = str(pytest_temp.resolve())
     return env
-
-
-def _run_install_dev(repo_root: Path, env: dict[str, str]) -> None:
-    install_script = repo_root / "scripts" / "install_dev.py"
-    print("Running:", f"{sys.executable} {install_script}", flush=True)
-    subprocess.run([sys.executable, str(install_script)], cwd=str(repo_root), check=True, env=env)
-
-
-def _run_build(repo_root: Path, env: dict[str, str], *, force: bool) -> None:
-    build_script = repo_root / "scripts" / "build_epcsaft.py"
-    if not build_script.exists():
-        print(f"warning: build script not found at {build_script}")
-        return
-
-    build_cmd = [sys.executable, str(build_script)]
-    if force:
-        build_cmd.append("--force")
-    print("Running:", " ".join(build_cmd), flush=True)
-    subprocess.run(build_cmd, cwd=str(repo_root), check=True, env=env)
 
 
 def _pytest_args(pytest_args: list[str], pytest_temp: Path) -> list[str]:
@@ -83,31 +63,14 @@ def _patch_pytest_cleanup() -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--skip-build",
-        action="store_true",
-        help="Run pytest without checking whether the editable install needs a rebuild.",
-    )
-    parser.add_argument(
-        "--force-build",
-        action="store_true",
-        help="Force a native extension rebuild before running pytest.",
-    )
-    parser.add_argument(
-        "--reinstall-editable",
-        action="store_true",
-        help="Repair/recreate the editable install before running pytest.",
-    )
     args, pytest_args = parser.parse_known_args()
 
     repo_root = _repo_root()
     pytest_temp = _pytest_temp(repo_root)
     env = _pytest_env(pytest_temp)
-
-    if args.reinstall_editable:
-        _run_install_dev(repo_root, env)
-    elif not args.skip_build:
-        _run_build(repo_root, env, force=args.force_build)
+    src_root = repo_root / "src"
+    sys.path.insert(0, str(src_root))
+    env["PYTHONPATH"] = str(src_root)
 
     cmd = _pytest_args(pytest_args, pytest_temp)
     print("Running:", f"{sys.executable} -m pytest", " ".join(cmd), flush=True)

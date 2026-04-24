@@ -5,8 +5,16 @@ __pycache__
 tests/__pycache__
 *.egg-info
 *.pytest_cache
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+.env/
 *.so
 *.pyd
+*.dll
+*.dylib
 .cython_build/
 src/epcsaft/epcsaft.cpp
 artifacts/
@@ -18,3 +26,10 @@ Makefile
 make.bat
 .idea/
 .codex_tmp/
+wheelhouse/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+.ninja_deps
+.ninja_log
+compile_commands.json
