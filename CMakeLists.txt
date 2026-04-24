@@ -61,6 +61,8 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Cl
 endif()
 
 if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(epcsaft_native PRIVATE -Wa,-mbig-obj)
+    target_compile_options(_core PRIVATE -Wa,-mbig-obj)
     target_link_options(_core PRIVATE -static -static-libgcc -static-libstdc++)
 endif()
 

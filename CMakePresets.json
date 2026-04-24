@@ -1,0 +1,31 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "dev-mingw",
+      "displayName": "Developer build (uv Python, MinGW)",
+      "description": "Build epcsaft._core in-place using the uv-managed Python environment.",
+      "generator": "MinGW Makefiles",
+      "binaryDir": "${sourceDir}/build/dev",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_TRY_COMPILE_TARGET_TYPE": "STATIC_LIBRARY",
+        "EPCSAFT_DEV_INPLACE": "ON",
+        "Python_EXECUTABLE": "${sourceDir}/.venv/Scripts/python.exe",
+        "pybind11_DIR": "${sourceDir}/.venv/Lib/site-packages/pybind11/share/cmake/pybind11"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "dev-mingw",
+      "displayName": "Build developer extension",
+      "configurePreset": "dev-mingw"
+    }
+  ]
+}
