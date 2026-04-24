@@ -34,11 +34,13 @@ def _env() -> dict[str, str]:
 
 
 def _clean() -> None:
-    shutil.rmtree(BUILD_DIR, ignore_errors=True)
+    # Remove the importable extension first. If Windows has it locked, fail
+    # before deleting the reusable CMake build tree.
     for artifact in PACKAGE_DIR.glob("_core*.pyd"):
         _remove_extension_artifact(artifact)
     for artifact in PACKAGE_DIR.glob("_core*.so"):
         _remove_extension_artifact(artifact)
+    shutil.rmtree(BUILD_DIR, ignore_errors=True)
 
 
 def _remove_extension_artifact(artifact: Path) -> None:
