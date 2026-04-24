@@ -12,6 +12,8 @@ uv run python scripts/paper_validation/tools/build_analysis_galleries.py
 
 The generator writes the master gallery to `docs/plots/index.html` and nested galleries under `docs/plots/**/index.html`. Open `docs/plots/index.html` locally to browse generated PNG outputs.
 
+The master page and parent folders show only navigation. A page renders PNGs only for files directly inside the current folder; use the subfolder dropdown or folder links to drill down.
+
 ## CSV-Backed Figure Data
 
 `2025_Figiel_analysis` is the first validation slice where model/literature figure payloads are stored as tracked CSV artifacts under `docs/plots/paper_validation/2025_Figiel/<figure>/data/`.
@@ -29,6 +31,8 @@ uv run python scripts/paper_validation/2025_Figiel_analysis/validate_figure_data
 ```
 
 The 2025 Figiel plot scripts should read these generated CSV payloads and should not call ePC-SAFT model evaluation directly. Keep source/literature CSV inputs under the analysis folder; generated numeric figure payloads belong under `docs/plots`.
+
+All generated PNGs under `docs/plots/**` should also have a companion `data/<png-stem>_plot_data.csv`. The shared `scripts.plot_outputs.save_plot_figure(...)` helper writes this CSV when a script saves a Matplotlib figure. Legacy or unavailable outputs may use an `existing_png_backfill` row until their source workflow is made reproducible again.
 
 ## Folder Roles
 

@@ -21,7 +21,7 @@ from scripts._epcsaft_oop import epcsaft_relative_permittivity
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from scripts.plot_outputs import fits_plot_path
+from scripts.plot_outputs import fits_plot_path, save_plot_figure
 
 
 def _load_xion_range():
@@ -93,7 +93,7 @@ def test_dielc_diff():
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=8)
     fig.tight_layout()
-    fig.savefig(plot_path, dpi=220)
+    save_plot_figure(fig, plot_path, dpi=220, bbox_inches=None)
     plt.close(fig)
 
     if not plot_path.exists():

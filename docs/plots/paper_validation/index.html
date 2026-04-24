@@ -13,6 +13,7 @@
       --text: #1b1b1b;
       --muted: #5f5f5f;
       --accent: #0f5fbf;
+      --surface: #f7f8fa;
     }
 
     * { box-sizing: border-box; }
@@ -39,7 +40,18 @@
     }
     h1 { margin: 0 0 0.35rem; font-size: 1.5rem; font-weight: 700; }
     .summary { margin: 0 0 0.8rem; color: var(--muted); font-size: 0.95rem; }
-    nav, .child-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .folder-nav, nav, .child-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .folder-nav { margin-bottom: 0.75rem; }
+    .folder-nav label { font-weight: 600; font-size: 0.92rem; }
+    .folder-select {
+      min-width: min(28rem, 100%);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.42rem 0.55rem;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+    }
     .section-button, .back-link, .child-card {
       appearance: none;
       border: 1px solid var(--border);
@@ -66,6 +78,14 @@
     }
     .gallery-section { display: none; margin: 0 0 2.5rem; padding-top: 0.25rem; }
     .gallery-section.is-active { display: block; }
+    .empty-state {
+      max-width: 46rem;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+    .empty-state p { margin: 0; color: var(--muted); }
     .image-card {
       margin: 0 0 1.5rem;
       padding: 0.85rem;
@@ -89,14 +109,22 @@
     <div class="header-inner">
       <a class="back-link" href="../index.html">Back</a>
       <h1>Paper Validation</h1>
-      <p class="summary">Browsable gallery for 133 PNG files under docs/plots/paper_validation.</p>
+      <p class="summary">Browsable gallery for 0 PNG files under docs/plots/paper_validation.</p>
+      <div class="folder-nav">
+        <label for="folder-select">Subfolder</label>
+        <select id="folder-select" class="folder-select">
+          <option value="">Choose a folder</option>
+        <option value="../index.html">..</option>
+        <option value="2012_Held/index.html">2012 Held (11)</option>
+        <option value="2014_Held/index.html">2014 Held (8)</option>
+        <option value="2019_Bulow/index.html">2019 Bulow (14)</option>
+        <option value="2020_Bulow/index.html">2020 Bulow (56)</option>
+        <option value="2025_Figiel/index.html">2025 Figiel (27)</option>
+        <option value="2026_Khudaida/index.html">2026 Khudaida (17)</option>
+        </select>
+      </div>
       <nav>
-        <button type="button" class="section-button" data-target="section-1">2012 Held (11)</button>
-        <button type="button" class="section-button" data-target="section-2">2014 Held (8)</button>
-        <button type="button" class="section-button" data-target="section-3">2019 Bulow (14)</button>
-        <button type="button" class="section-button" data-target="section-4">2020 Bulow (56)</button>
-        <button type="button" class="section-button" data-target="section-5">2025 Figiel (27)</button>
-        <button type="button" class="section-button" data-target="section-6">2026 Khudaida (17)</button>
+
       </nav>
     </div>
   </header>
@@ -112,166 +140,21 @@
         <a class="child-card" href="2026_Khudaida/index.html"><span>2026 Khudaida</span><strong>17 PNGs</strong></a>
       </div>
     </section>
-    <section id="section-1" class="gallery-section">
-      <h2>2012 Held</h2>
-      <article class="image-card"><p class="caption">2012_Held/figure_2d/figure_2d.png</p><a class="image-link" href="2012_Held/figure_2d/figure_2d.png"><img src="2012_Held/figure_2d/figure_2d.png" alt="figure 2d"></a></article>
-      <article class="image-card"><p class="caption">2012_Held/figure_2d/figure_2d_paper.png</p><a class="image-link" href="2012_Held/figure_2d/figure_2d_paper.png"><img src="2012_Held/figure_2d/figure_2d_paper.png" alt="figure 2d paper"></a></article>
-      <article class="image-card"><p class="caption">2012_Held/figure_3/figure_3.png</p><a class="image-link" href="2012_Held/figure_3/figure_3.png"><img src="2012_Held/figure_3/figure_3.png" alt="figure 3"></a></article>
-      <article class="image-card"><p class="caption">2012_Held/figure_3/figure_3_paper.png</p><a class="image-link" href="2012_Held/figure_3/figure_3_paper.png"><img src="2012_Held/figure_3/figure_3_paper.png" alt="figure 3 paper"></a></article>
-      <article class="image-card"><p class="caption">2012_Held/figure_5/figure_5.png</p><a class="image-link" href="2012_Held/figure_5/figure_5.png"><img src="2012_Held/figure_5/figure_5.png" alt="figure 5"></a></article>
-      <article class="image-card"><p class="caption">2012_Held/figure_5/figure_5_paper.png</p><a class="image-link" href="2012_Held/figure_5/figure_5_paper.png"><img src="2012_Held/figure_5/figure_5_paper.png" alt="figure 5 paper"></a></article>
-      <article class="image-card"><p class="caption">2012_Held/figure_6/figure_6.png</p><a class="image-link" href="2012_Held/figure_6/figure_6.png"><img src="2012_Held/figure_6/figure_6.png" alt="figure 6"></a></article>
-      <article class="image-card"><p class="caption">2012_Held/figure_6/figure_6_m5_diagnostic.png</p><a class="image-link" href="2012_Held/figure_6/figure_6_m5_diagnostic.png"><img src="2012_Held/figure_6/figure_6_m5_diagnostic.png" alt="figure 6 m5 diagnostic"></a></article>
-      <article class="image-card"><p class="caption">2012_Held/figure_6/figure_6_paper.png</p><a class="image-link" href="2012_Held/figure_6/figure_6_paper.png"><img src="2012_Held/figure_6/figure_6_paper.png" alt="figure 6 paper"></a></article>
-      <article class="image-card"><p class="caption">2012_Held/figure_7/figure_7.png</p><a class="image-link" href="2012_Held/figure_7/figure_7.png"><img src="2012_Held/figure_7/figure_7.png" alt="figure 7"></a></article>
-      <article class="image-card"><p class="caption">2012_Held/figure_7/figure_7_paper.png</p><a class="image-link" href="2012_Held/figure_7/figure_7_paper.png"><img src="2012_Held/figure_7/figure_7_paper.png" alt="figure 7 paper"></a></article>
-    </section>
-    <section id="section-2" class="gallery-section">
-      <h2>2014 Held</h2>
-      <article class="image-card"><p class="caption">2014_Held/figure_1/figure_1.png</p><a class="image-link" href="2014_Held/figure_1/figure_1.png"><img src="2014_Held/figure_1/figure_1.png" alt="figure 1"></a></article>
-      <article class="image-card"><p class="caption">2014_Held/figure_2/figure_2.png</p><a class="image-link" href="2014_Held/figure_2/figure_2.png"><img src="2014_Held/figure_2/figure_2.png" alt="figure 2"></a></article>
-      <article class="image-card"><p class="caption">2014_Held/figure_3/figure_3.png</p><a class="image-link" href="2014_Held/figure_3/figure_3.png"><img src="2014_Held/figure_3/figure_3.png" alt="figure 3"></a></article>
-      <article class="image-card"><p class="caption">2014_Held/figure_4/figure_4a.png</p><a class="image-link" href="2014_Held/figure_4/figure_4a.png"><img src="2014_Held/figure_4/figure_4a.png" alt="figure 4a"></a></article>
-      <article class="image-card"><p class="caption">2014_Held/figure_4/figure_4b.png</p><a class="image-link" href="2014_Held/figure_4/figure_4b.png"><img src="2014_Held/figure_4/figure_4b.png" alt="figure 4b"></a></article>
-      <article class="image-card"><p class="caption">2014_Held/figure_5/figure_5.png</p><a class="image-link" href="2014_Held/figure_5/figure_5.png"><img src="2014_Held/figure_5/figure_5.png" alt="figure 5"></a></article>
-      <article class="image-card"><p class="caption">2014_Held/figure_6/figure_6a.png</p><a class="image-link" href="2014_Held/figure_6/figure_6a.png"><img src="2014_Held/figure_6/figure_6a.png" alt="figure 6a"></a></article>
-      <article class="image-card"><p class="caption">2014_Held/figure_6/figure_6b.png</p><a class="image-link" href="2014_Held/figure_6/figure_6b.png"><img src="2014_Held/figure_6/figure_6b.png" alt="figure 6b"></a></article>
-    </section>
-    <section id="section-3" class="gallery-section">
-      <h2>2019 Bulow</h2>
-      <article class="image-card"><p class="caption">2019_Bulow/figure_1/figure_1.png</p><a class="image-link" href="2019_Bulow/figure_1/figure_1.png"><img src="2019_Bulow/figure_1/figure_1.png" alt="figure 1"></a></article>
-      <article class="image-card"><p class="caption">2019_Bulow/figure_2/diagnostics/figure2a_candidate_overlay.png</p><a class="image-link" href="2019_Bulow/figure_2/diagnostics/figure2a_candidate_overlay.png"><img src="2019_Bulow/figure_2/diagnostics/figure2a_candidate_overlay.png" alt="figure2a candidate overlay"></a></article>
-      <article class="image-card"><p class="caption">2019_Bulow/figure_2/diagnostics/figure2b_candidate_overlay.png</p><a class="image-link" href="2019_Bulow/figure_2/diagnostics/figure2b_candidate_overlay.png"><img src="2019_Bulow/figure_2/diagnostics/figure2b_candidate_overlay.png" alt="figure2b candidate overlay"></a></article>
-      <article class="image-card"><p class="caption">2019_Bulow/figure_2/figure_2.png</p><a class="image-link" href="2019_Bulow/figure_2/figure_2.png"><img src="2019_Bulow/figure_2/figure_2.png" alt="figure 2"></a></article>
-      <article class="image-card"><p class="caption">2019_Bulow/figure_2/figure_2a.png</p><a class="image-link" href="2019_Bulow/figure_2/figure_2a.png"><img src="2019_Bulow/figure_2/figure_2a.png" alt="figure 2a"></a></article>
-      <article class="image-card"><p class="caption">2019_Bulow/figure_2/figure_2a_fullrange.png</p><a class="image-link" href="2019_Bulow/figure_2/figure_2a_fullrange.png"><img src="2019_Bulow/figure_2/figure_2a_fullrange.png" alt="figure 2a fullrange"></a></article>
-      <article class="image-card"><p class="caption">2019_Bulow/figure_2/figure_2b.png</p><a class="image-link" href="2019_Bulow/figure_2/figure_2b.png"><img src="2019_Bulow/figure_2/figure_2b.png" alt="figure 2b"></a></article>
-      <article class="image-card"><p class="caption">2019_Bulow/figure_2/figure_2b_fullrange.png</p><a class="image-link" href="2019_Bulow/figure_2/figure_2b_fullrange.png"><img src="2019_Bulow/figure_2/figure_2b_fullrange.png" alt="figure 2b fullrange"></a></article>
-      <article class="image-card"><p class="caption">2019_Bulow/figure_3/figure_3.png</p><a class="image-link" href="2019_Bulow/figure_3/figure_3.png"><img src="2019_Bulow/figure_3/figure_3.png" alt="figure 3"></a></article>
-      <article class="image-card"><p class="caption">2019_Bulow/figure_4/figure_4.png</p><a class="image-link" href="2019_Bulow/figure_4/figure_4.png"><img src="2019_Bulow/figure_4/figure_4.png" alt="figure 4"></a></article>
-      <article class="image-card"><p class="caption">2019_Bulow/figure_5/figure_5.png</p><a class="image-link" href="2019_Bulow/figure_5/figure_5.png"><img src="2019_Bulow/figure_5/figure_5.png" alt="figure 5"></a></article>
-      <article class="image-card"><p class="caption">2019_Bulow/figure_6/figure_6a.png</p><a class="image-link" href="2019_Bulow/figure_6/figure_6a.png"><img src="2019_Bulow/figure_6/figure_6a.png" alt="figure 6a"></a></article>
-      <article class="image-card"><p class="caption">2019_Bulow/figure_6/figure_6b.png</p><a class="image-link" href="2019_Bulow/figure_6/figure_6b.png"><img src="2019_Bulow/figure_6/figure_6b.png" alt="figure 6b"></a></article>
-      <article class="image-card"><p class="caption">2019_Bulow/figure_7/figure_7.png</p><a class="image-link" href="2019_Bulow/figure_7/figure_7.png"><img src="2019_Bulow/figure_7/figure_7.png" alt="figure 7"></a></article>
-    </section>
-    <section id="section-4" class="gallery-section">
-      <h2>2020 Bulow</h2>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_2/figure_2.png</p><a class="image-link" href="2020_Bulow/figure_2/figure_2.png"><img src="2020_Bulow/figure_2/figure_2.png" alt="figure 2"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_3/figure_3_assoc.png</p><a class="image-link" href="2020_Bulow/figure_3/figure_3_assoc.png"><img src="2020_Bulow/figure_3/figure_3_assoc.png" alt="figure 3 assoc"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_3/figure_3_born.png</p><a class="image-link" href="2020_Bulow/figure_3/figure_3_born.png"><img src="2020_Bulow/figure_3/figure_3_born.png" alt="figure 3 born"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_3/figure_3_comprehensive.png</p><a class="image-link" href="2020_Bulow/figure_3/figure_3_comprehensive.png"><img src="2020_Bulow/figure_3/figure_3_comprehensive.png" alt="figure 3 comprehensive"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_3/figure_3_dh.png</p><a class="image-link" href="2020_Bulow/figure_3/figure_3_dh.png"><img src="2020_Bulow/figure_3/figure_3_dh.png" alt="figure 3 dh"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_3/figure_3_disp.png</p><a class="image-link" href="2020_Bulow/figure_3/figure_3_disp.png"><img src="2020_Bulow/figure_3/figure_3_disp.png" alt="figure 3 disp"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_3/figure_3_hc.png</p><a class="image-link" href="2020_Bulow/figure_3/figure_3_hc.png"><img src="2020_Bulow/figure_3/figure_3_hc.png" alt="figure 3 hc"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_3/figure_3_total.png</p><a class="image-link" href="2020_Bulow/figure_3/figure_3_total.png"><img src="2020_Bulow/figure_3/figure_3_total.png" alt="figure 3 total"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_3/figure_3_zquotient_total.png</p><a class="image-link" href="2020_Bulow/figure_3/figure_3_zquotient_total.png"><img src="2020_Bulow/figure_3/figure_3_zquotient_total.png" alt="figure 3 zquotient total"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_4/figure_4a.png</p><a class="image-link" href="2020_Bulow/figure_4/figure_4a.png"><img src="2020_Bulow/figure_4/figure_4a.png" alt="figure 4a"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_4/figure_4b.png</p><a class="image-link" href="2020_Bulow/figure_4/figure_4b.png"><img src="2020_Bulow/figure_4/figure_4b.png" alt="figure 4b"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_5/figure_5a_assoc.png</p><a class="image-link" href="2020_Bulow/figure_5/figure_5a_assoc.png"><img src="2020_Bulow/figure_5/figure_5a_assoc.png" alt="figure 5a assoc"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_5/figure_5a_born.png</p><a class="image-link" href="2020_Bulow/figure_5/figure_5a_born.png"><img src="2020_Bulow/figure_5/figure_5a_born.png" alt="figure 5a born"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_5/figure_5a_dh.png</p><a class="image-link" href="2020_Bulow/figure_5/figure_5a_dh.png"><img src="2020_Bulow/figure_5/figure_5a_dh.png" alt="figure 5a dh"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_5/figure_5a_disp.png</p><a class="image-link" href="2020_Bulow/figure_5/figure_5a_disp.png"><img src="2020_Bulow/figure_5/figure_5a_disp.png" alt="figure 5a disp"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_5/figure_5a_hc.png</p><a class="image-link" href="2020_Bulow/figure_5/figure_5a_hc.png"><img src="2020_Bulow/figure_5/figure_5a_hc.png" alt="figure 5a hc"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_5/figure_5a_total.png</p><a class="image-link" href="2020_Bulow/figure_5/figure_5a_total.png"><img src="2020_Bulow/figure_5/figure_5a_total.png" alt="figure 5a total"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_5/figure_5b_assoc.png</p><a class="image-link" href="2020_Bulow/figure_5/figure_5b_assoc.png"><img src="2020_Bulow/figure_5/figure_5b_assoc.png" alt="figure 5b assoc"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_5/figure_5b_born.png</p><a class="image-link" href="2020_Bulow/figure_5/figure_5b_born.png"><img src="2020_Bulow/figure_5/figure_5b_born.png" alt="figure 5b born"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_5/figure_5b_dh.png</p><a class="image-link" href="2020_Bulow/figure_5/figure_5b_dh.png"><img src="2020_Bulow/figure_5/figure_5b_dh.png" alt="figure 5b dh"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_5/figure_5b_disp.png</p><a class="image-link" href="2020_Bulow/figure_5/figure_5b_disp.png"><img src="2020_Bulow/figure_5/figure_5b_disp.png" alt="figure 5b disp"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_5/figure_5b_hc.png</p><a class="image-link" href="2020_Bulow/figure_5/figure_5b_hc.png"><img src="2020_Bulow/figure_5/figure_5b_hc.png" alt="figure 5b hc"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_5/figure_5b_total.png</p><a class="image-link" href="2020_Bulow/figure_5/figure_5b_total.png"><img src="2020_Bulow/figure_5/figure_5b_total.png" alt="figure 5b total"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_6/figure_6a/figure_6a.png</p><a class="image-link" href="2020_Bulow/figure_6/figure_6a/figure_6a.png"><img src="2020_Bulow/figure_6/figure_6a/figure_6a.png" alt="figure 6a"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_density_scan_rmse.png</p><a class="image-link" href="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_density_scan_rmse.png"><img src="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_density_scan_rmse.png" alt="figure6b density scan rmse"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_digitized_reference_replica.png</p><a class="image-link" href="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_digitized_reference_replica.png"><img src="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_digitized_reference_replica.png" alt="figure6b digitized reference replica"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks/figure6b_fit_association.png</p><a class="image-link" href="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks/figure6b_fit_association.png"><img src="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks/figure6b_fit_association.png" alt="figure6b fit association"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks/figure6b_fit_born.png</p><a class="image-link" href="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks/figure6b_fit_born.png"><img src="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks/figure6b_fit_born.png" alt="figure6b fit born"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks/figure6b_fit_dh.png</p><a class="image-link" href="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks/figure6b_fit_dh.png"><img src="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks/figure6b_fit_dh.png" alt="figure6b fit dh"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks/figure6b_fit_dispersion.png</p><a class="image-link" href="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks/figure6b_fit_dispersion.png"><img src="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks/figure6b_fit_dispersion.png" alt="figure6b fit dispersion"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks/figure6b_fit_hard_chain.png</p><a class="image-link" href="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks/figure6b_fit_hard_chain.png"><img src="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks/figure6b_fit_hard_chain.png" alt="figure6b fit hard chain"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks/figure6b_fit_total.png</p><a class="image-link" href="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks/figure6b_fit_total.png"><img src="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks/figure6b_fit_total.png" alt="figure6b fit total"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_association.png</p><a class="image-link" href="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_association.png"><img src="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_association.png" alt="figure6b adjusted fit association"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_born.png</p><a class="image-link" href="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_born.png"><img src="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_born.png" alt="figure6b adjusted fit born"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_dh.png</p><a class="image-link" href="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_dh.png"><img src="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_dh.png" alt="figure6b adjusted fit dh"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_dispersion.png</p><a class="image-link" href="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_dispersion.png"><img src="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_dispersion.png" alt="figure6b adjusted fit dispersion"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_hard_chain.png</p><a class="image-link" href="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_hard_chain.png"><img src="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_hard_chain.png" alt="figure6b adjusted fit hard chain"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_libr_ethanol_2020_contributions.png</p><a class="image-link" href="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_libr_ethanol_2020_contributions.png"><img src="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_libr_ethanol_2020_contributions.png" alt="figure6b libr ethanol 2020 contributions"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_relperm_rule7_comparison.png</p><a class="image-link" href="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_relperm_rule7_comparison.png"><img src="2020_Bulow/figure_6/figure_6b/diagnostics/output/plots/figure6b_relperm_rule7_comparison.png" alt="figure6b relperm rule7 comparison"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_6/figure_6b/figure6b_paper.png</p><a class="image-link" href="2020_Bulow/figure_6/figure_6b/figure6b_paper.png"><img src="2020_Bulow/figure_6/figure_6b/figure6b_paper.png" alt="figure6b paper"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_6/figure_6b/figure_6b.png</p><a class="image-link" href="2020_Bulow/figure_6/figure_6b/figure_6b.png"><img src="2020_Bulow/figure_6/figure_6b/figure_6b.png" alt="figure 6b"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_7/diagnostics/figure7a_li_br_scan.png</p><a class="image-link" href="2020_Bulow/figure_7/diagnostics/figure7a_li_br_scan.png"><img src="2020_Bulow/figure_7/diagnostics/figure7a_li_br_scan.png" alt="figure7a li br scan"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_7/diagnostics/figure7a_li_solvent_scan.png</p><a class="image-link" href="2020_Bulow/figure_7/diagnostics/figure7a_li_solvent_scan.png"><img src="2020_Bulow/figure_7/diagnostics/figure7a_li_solvent_scan.png" alt="figure7a li solvent scan"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_7/diagnostics/figure7c_li_solvent_scan.png</p><a class="image-link" href="2020_Bulow/figure_7/diagnostics/figure7c_li_solvent_scan.png"><img src="2020_Bulow/figure_7/diagnostics/figure7c_li_solvent_scan.png" alt="figure7c li solvent scan"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_7/diagnostics/figure_7a_relperm_rule7.png</p><a class="image-link" href="2020_Bulow/figure_7/diagnostics/figure_7a_relperm_rule7.png"><img src="2020_Bulow/figure_7/diagnostics/figure_7a_relperm_rule7.png" alt="figure 7a relperm rule7"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_7/diagnostics/figure_7a_relperm_scan.png</p><a class="image-link" href="2020_Bulow/figure_7/diagnostics/figure_7a_relperm_scan.png"><img src="2020_Bulow/figure_7/diagnostics/figure_7a_relperm_scan.png" alt="figure 7a relperm scan"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_7/diagnostics/figure_7b_relperm_rule7.png</p><a class="image-link" href="2020_Bulow/figure_7/diagnostics/figure_7b_relperm_rule7.png"><img src="2020_Bulow/figure_7/diagnostics/figure_7b_relperm_rule7.png" alt="figure 7b relperm rule7"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_7/diagnostics/figure_7b_relperm_scan.png</p><a class="image-link" href="2020_Bulow/figure_7/diagnostics/figure_7b_relperm_scan.png"><img src="2020_Bulow/figure_7/diagnostics/figure_7b_relperm_scan.png" alt="figure 7b relperm scan"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_7/diagnostics/figure_7c_relperm_rule7.png</p><a class="image-link" href="2020_Bulow/figure_7/diagnostics/figure_7c_relperm_rule7.png"><img src="2020_Bulow/figure_7/diagnostics/figure_7c_relperm_rule7.png" alt="figure 7c relperm rule7"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_7/diagnostics/figure_7c_relperm_scan.png</p><a class="image-link" href="2020_Bulow/figure_7/diagnostics/figure_7c_relperm_scan.png"><img src="2020_Bulow/figure_7/diagnostics/figure_7c_relperm_scan.png" alt="figure 7c relperm scan"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_7/diagnostics/figure_7d_relperm_rule7.png</p><a class="image-link" href="2020_Bulow/figure_7/diagnostics/figure_7d_relperm_rule7.png"><img src="2020_Bulow/figure_7/diagnostics/figure_7d_relperm_rule7.png" alt="figure 7d relperm rule7"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_7/diagnostics/figure_7d_relperm_scan.png</p><a class="image-link" href="2020_Bulow/figure_7/diagnostics/figure_7d_relperm_scan.png"><img src="2020_Bulow/figure_7/diagnostics/figure_7d_relperm_scan.png" alt="figure 7d relperm scan"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_7/figure_7a.png</p><a class="image-link" href="2020_Bulow/figure_7/figure_7a.png"><img src="2020_Bulow/figure_7/figure_7a.png" alt="figure 7a"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_7/figure_7b.png</p><a class="image-link" href="2020_Bulow/figure_7/figure_7b.png"><img src="2020_Bulow/figure_7/figure_7b.png" alt="figure 7b"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_7/figure_7c.png</p><a class="image-link" href="2020_Bulow/figure_7/figure_7c.png"><img src="2020_Bulow/figure_7/figure_7c.png" alt="figure 7c"></a></article>
-      <article class="image-card"><p class="caption">2020_Bulow/figure_7/figure_7d.png</p><a class="image-link" href="2020_Bulow/figure_7/figure_7d.png"><img src="2020_Bulow/figure_7/figure_7d.png" alt="figure 7d"></a></article>
-    </section>
-    <section id="section-5" class="gallery-section">
-      <h2>2025 Figiel</h2>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_4/figure_4.png</p><a class="image-link" href="2025_Figiel/figure_4/figure_4.png"><img src="2025_Figiel/figure_4/figure_4.png" alt="figure 4"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_4/figure_4_combined.png</p><a class="image-link" href="2025_Figiel/figure_4/figure_4_combined.png"><img src="2025_Figiel/figure_4/figure_4_combined.png" alt="figure 4 combined"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_4/figure_4a.png</p><a class="image-link" href="2025_Figiel/figure_4/figure_4a.png"><img src="2025_Figiel/figure_4/figure_4a.png" alt="figure 4a"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_4/figure_4b.png</p><a class="image-link" href="2025_Figiel/figure_4/figure_4b.png"><img src="2025_Figiel/figure_4/figure_4b.png" alt="figure 4b"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_5/figure_5.png</p><a class="image-link" href="2025_Figiel/figure_5/figure_5.png"><img src="2025_Figiel/figure_5/figure_5.png" alt="figure 5"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_5/figure_5a.png</p><a class="image-link" href="2025_Figiel/figure_5/figure_5a.png"><img src="2025_Figiel/figure_5/figure_5a.png" alt="figure 5a"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_5/figure_5b.png</p><a class="image-link" href="2025_Figiel/figure_5/figure_5b.png"><img src="2025_Figiel/figure_5/figure_5b.png" alt="figure 5b"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_6/figure_6.png</p><a class="image-link" href="2025_Figiel/figure_6/figure_6.png"><img src="2025_Figiel/figure_6/figure_6.png" alt="figure 6"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_6/figure_6_ethanol.png</p><a class="image-link" href="2025_Figiel/figure_6/figure_6_ethanol.png"><img src="2025_Figiel/figure_6/figure_6_ethanol.png" alt="figure 6 ethanol"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_6/figure_6_methanol.png</p><a class="image-link" href="2025_Figiel/figure_6/figure_6_methanol.png"><img src="2025_Figiel/figure_6/figure_6_methanol.png" alt="figure 6 methanol"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_6/figure_6a.png</p><a class="image-link" href="2025_Figiel/figure_6/figure_6a.png"><img src="2025_Figiel/figure_6/figure_6a.png" alt="figure 6a"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_6/figure_6b.png</p><a class="image-link" href="2025_Figiel/figure_6/figure_6b.png"><img src="2025_Figiel/figure_6/figure_6b.png" alt="figure 6b"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_6/figure_6c.png</p><a class="image-link" href="2025_Figiel/figure_6/figure_6c.png"><img src="2025_Figiel/figure_6/figure_6c.png" alt="figure 6c"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_6/figure_6d.png</p><a class="image-link" href="2025_Figiel/figure_6/figure_6d.png"><img src="2025_Figiel/figure_6/figure_6d.png" alt="figure 6d"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_7/figure_7.png</p><a class="image-link" href="2025_Figiel/figure_7/figure_7.png"><img src="2025_Figiel/figure_7/figure_7.png" alt="figure 7"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_8/figure_8.png</p><a class="image-link" href="2025_Figiel/figure_8/figure_8.png"><img src="2025_Figiel/figure_8/figure_8.png" alt="figure 8"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_8/figure_8a.png</p><a class="image-link" href="2025_Figiel/figure_8/figure_8a.png"><img src="2025_Figiel/figure_8/figure_8a.png" alt="figure 8a"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_8/figure_8b.png</p><a class="image-link" href="2025_Figiel/figure_8/figure_8b.png"><img src="2025_Figiel/figure_8/figure_8b.png" alt="figure 8b"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_8/figure_8c.png</p><a class="image-link" href="2025_Figiel/figure_8/figure_8c.png"><img src="2025_Figiel/figure_8/figure_8c.png" alt="figure 8c"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_9/figure_9.png</p><a class="image-link" href="2025_Figiel/figure_9/figure_9.png"><img src="2025_Figiel/figure_9/figure_9.png" alt="figure 9"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_9/figure_9_40wt_combined.png</p><a class="image-link" href="2025_Figiel/figure_9/figure_9_40wt_combined.png"><img src="2025_Figiel/figure_9/figure_9_40wt_combined.png" alt="figure 9 40wt combined"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_9/figure_9_ethanol_40wt.png</p><a class="image-link" href="2025_Figiel/figure_9/figure_9_ethanol_40wt.png"><img src="2025_Figiel/figure_9/figure_9_ethanol_40wt.png" alt="figure 9 ethanol 40wt"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_9/figure_9_methanol_40wt.png</p><a class="image-link" href="2025_Figiel/figure_9/figure_9_methanol_40wt.png"><img src="2025_Figiel/figure_9/figure_9_methanol_40wt.png" alt="figure 9 methanol 40wt"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_9/figure_9a.png</p><a class="image-link" href="2025_Figiel/figure_9/figure_9a.png"><img src="2025_Figiel/figure_9/figure_9a.png" alt="figure 9a"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_9/figure_9b.png</p><a class="image-link" href="2025_Figiel/figure_9/figure_9b.png"><img src="2025_Figiel/figure_9/figure_9b.png" alt="figure 9b"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_9/figure_9c.png</p><a class="image-link" href="2025_Figiel/figure_9/figure_9c.png"><img src="2025_Figiel/figure_9/figure_9c.png" alt="figure 9c"></a></article>
-      <article class="image-card"><p class="caption">2025_Figiel/figure_9/figure_9d.png</p><a class="image-link" href="2025_Figiel/figure_9/figure_9d.png"><img src="2025_Figiel/figure_9/figure_9d.png" alt="figure 9d"></a></article>
-    </section>
-    <section id="section-6" class="gallery-section">
-      <h2>2026 Khudaida</h2>
-      <article class="image-card"><p class="caption">2026_Khudaida/figure_1/figure_1.png</p><a class="image-link" href="2026_Khudaida/figure_1/figure_1.png"><img src="2026_Khudaida/figure_1/figure_1.png" alt="figure 1"></a></article>
-      <article class="image-card"><p class="caption">2026_Khudaida/figure_2/figure_2.png</p><a class="image-link" href="2026_Khudaida/figure_2/figure_2.png"><img src="2026_Khudaida/figure_2/figure_2.png" alt="figure 2"></a></article>
-      <article class="image-card"><p class="caption">2026_Khudaida/figure_2/figure_2_scaled.png</p><a class="image-link" href="2026_Khudaida/figure_2/figure_2_scaled.png"><img src="2026_Khudaida/figure_2/figure_2_scaled.png" alt="figure 2 scaled"></a></article>
-      <article class="image-card"><p class="caption">2026_Khudaida/figure_3/figure_3.png</p><a class="image-link" href="2026_Khudaida/figure_3/figure_3.png"><img src="2026_Khudaida/figure_3/figure_3.png" alt="figure 3"></a></article>
-      <article class="image-card"><p class="caption">2026_Khudaida/figure_3/figure_3_scaled.png</p><a class="image-link" href="2026_Khudaida/figure_3/figure_3_scaled.png"><img src="2026_Khudaida/figure_3/figure_3_scaled.png" alt="figure 3 scaled"></a></article>
-      <article class="image-card"><p class="caption">2026_Khudaida/figure_4/figure_4.png</p><a class="image-link" href="2026_Khudaida/figure_4/figure_4.png"><img src="2026_Khudaida/figure_4/figure_4.png" alt="figure 4"></a></article>
-      <article class="image-card"><p class="caption">2026_Khudaida/figure_4/figure_4_scaled.png</p><a class="image-link" href="2026_Khudaida/figure_4/figure_4_scaled.png"><img src="2026_Khudaida/figure_4/figure_4_scaled.png" alt="figure 4 scaled"></a></article>
-      <article class="image-card"><p class="caption">2026_Khudaida/figure_5/figure_5.png</p><a class="image-link" href="2026_Khudaida/figure_5/figure_5.png"><img src="2026_Khudaida/figure_5/figure_5.png" alt="figure 5"></a></article>
-      <article class="image-card"><p class="caption">2026_Khudaida/figure_5/figure_5_scaled.png</p><a class="image-link" href="2026_Khudaida/figure_5/figure_5_scaled.png"><img src="2026_Khudaida/figure_5/figure_5_scaled.png" alt="figure 5 scaled"></a></article>
-      <article class="image-card"><p class="caption">2026_Khudaida/figure_6/figure_6.png</p><a class="image-link" href="2026_Khudaida/figure_6/figure_6.png"><img src="2026_Khudaida/figure_6/figure_6.png" alt="figure 6"></a></article>
-      <article class="image-card"><p class="caption">2026_Khudaida/figure_6/figure_6_scaled.png</p><a class="image-link" href="2026_Khudaida/figure_6/figure_6_scaled.png"><img src="2026_Khudaida/figure_6/figure_6_scaled.png" alt="figure 6 scaled"></a></article>
-      <article class="image-card"><p class="caption">2026_Khudaida/figure_7/figure_7.png</p><a class="image-link" href="2026_Khudaida/figure_7/figure_7.png"><img src="2026_Khudaida/figure_7/figure_7.png" alt="figure 7"></a></article>
-      <article class="image-card"><p class="caption">2026_Khudaida/figure_7/figure_7_scaled.png</p><a class="image-link" href="2026_Khudaida/figure_7/figure_7_scaled.png"><img src="2026_Khudaida/figure_7/figure_7_scaled.png" alt="figure 7 scaled"></a></article>
-      <article class="image-card"><p class="caption">2026_Khudaida/figure_8/figure_8.png</p><a class="image-link" href="2026_Khudaida/figure_8/figure_8.png"><img src="2026_Khudaida/figure_8/figure_8.png" alt="figure 8"></a></article>
-      <article class="image-card"><p class="caption">2026_Khudaida/figure_9/figure_9.png</p><a class="image-link" href="2026_Khudaida/figure_9/figure_9.png"><img src="2026_Khudaida/figure_9/figure_9.png" alt="figure 9"></a></article>
-      <article class="image-card"><p class="caption">2026_Khudaida/tables_9_10/table_10.png</p><a class="image-link" href="2026_Khudaida/tables_9_10/table_10.png"><img src="2026_Khudaida/tables_9_10/table_10.png" alt="table 10"></a></article>
-      <article class="image-card"><p class="caption">2026_Khudaida/tables_9_10/table_9.png</p><a class="image-link" href="2026_Khudaida/tables_9_10/table_9.png"><img src="2026_Khudaida/tables_9_10/table_9.png" alt="table 9"></a></article>
+
+    <section class="empty-state">
+      <h2>No plots in this folder</h2>
+      <p>No plots are shown until you open a folder that contains PNG files.</p>
     </section>
   </main>
   <script>
     (function() {
+      const folderSelect = document.getElementById('folder-select');
       const buttons = Array.from(document.querySelectorAll('.section-button'));
       const sections = Array.from(document.querySelectorAll('.gallery-section'));
-      const defaultSection = "section-1";
+      const defaultSection = "";
 
       function activateSection(sectionId) {
-        const targetId = sectionId || defaultSection;
+        const targetId = sectionId || '';
         sections.forEach((section) => section.classList.toggle('is-active', section.id === targetId));
         buttons.forEach((button) => button.classList.toggle('is-active', button.dataset.target === targetId));
         if (targetId) {
@@ -283,9 +166,16 @@
       }
 
       buttons.forEach((button) => button.addEventListener('click', () => activateSection(button.dataset.target)));
+      if (folderSelect) {
+        folderSelect.addEventListener('change', () => {
+          if (folderSelect.value) {
+            window.location.href = folderSelect.value;
+          }
+        });
+      }
       const initialHash = window.location.hash ? window.location.hash.slice(1) : '';
       const hasInitialTarget = sections.some((section) => section.id === initialHash);
-      activateSection(hasInitialTarget ? initialHash : defaultSection);
+      activateSection(hasInitialTarget ? initialHash : '');
     })();
   </script>
 </body>

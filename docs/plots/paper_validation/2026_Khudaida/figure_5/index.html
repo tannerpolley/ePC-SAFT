@@ -13,6 +13,7 @@
       --text: #1b1b1b;
       --muted: #5f5f5f;
       --accent: #0f5fbf;
+      --surface: #f7f8fa;
     }
 
     * { box-sizing: border-box; }
@@ -39,7 +40,18 @@
     }
     h1 { margin: 0 0 0.35rem; font-size: 1.5rem; font-weight: 700; }
     .summary { margin: 0 0 0.8rem; color: var(--muted); font-size: 0.95rem; }
-    nav, .child-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .folder-nav, nav, .child-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .folder-nav { margin-bottom: 0.75rem; }
+    .folder-nav label { font-weight: 600; font-size: 0.92rem; }
+    .folder-select {
+      min-width: min(28rem, 100%);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.42rem 0.55rem;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+    }
     .section-button, .back-link, .child-card {
       appearance: none;
       border: 1px solid var(--border);
@@ -66,6 +78,14 @@
     }
     .gallery-section { display: none; margin: 0 0 2.5rem; padding-top: 0.25rem; }
     .gallery-section.is-active { display: block; }
+    .empty-state {
+      max-width: 46rem;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+    .empty-state p { margin: 0; color: var(--muted); }
     .image-card {
       margin: 0 0 1.5rem;
       padding: 0.85rem;
@@ -90,8 +110,15 @@
       <a class="back-link" href="../index.html">Back</a>
       <h1>Paper Validation / 2026 Khudaida / Figure 5</h1>
       <p class="summary">Browsable gallery for 2 PNG files under docs/plots/paper_validation/2026_Khudaida/figure_5.</p>
+      <div class="folder-nav">
+        <label for="folder-select">Subfolder</label>
+        <select id="folder-select" class="folder-select">
+          <option value="">Choose a folder</option>
+        <option value="../index.html">..</option>
+        </select>
+      </div>
       <nav>
-        <button type="button" class="section-button" data-target="section-1">Top Level (2)</button>
+        <button type="button" class="section-button" data-target="section-1">Plots (2)</button>
       </nav>
     </div>
   </header>
@@ -103,19 +130,21 @@
       </div>
     </section>
     <section id="section-1" class="gallery-section">
-      <h2>Top Level</h2>
+      <h2>Plots</h2>
       <article class="image-card"><p class="caption">figure_5.png</p><a class="image-link" href="figure_5.png"><img src="figure_5.png" alt="figure 5"></a></article>
       <article class="image-card"><p class="caption">figure_5_scaled.png</p><a class="image-link" href="figure_5_scaled.png"><img src="figure_5_scaled.png" alt="figure 5 scaled"></a></article>
     </section>
+
   </main>
   <script>
     (function() {
+      const folderSelect = document.getElementById('folder-select');
       const buttons = Array.from(document.querySelectorAll('.section-button'));
       const sections = Array.from(document.querySelectorAll('.gallery-section'));
-      const defaultSection = "section-1";
+      const defaultSection = "";
 
       function activateSection(sectionId) {
-        const targetId = sectionId || defaultSection;
+        const targetId = sectionId || '';
         sections.forEach((section) => section.classList.toggle('is-active', section.id === targetId));
         buttons.forEach((button) => button.classList.toggle('is-active', button.dataset.target === targetId));
         if (targetId) {
@@ -127,9 +156,16 @@
       }
 
       buttons.forEach((button) => button.addEventListener('click', () => activateSection(button.dataset.target)));
+      if (folderSelect) {
+        folderSelect.addEventListener('change', () => {
+          if (folderSelect.value) {
+            window.location.href = folderSelect.value;
+          }
+        });
+      }
       const initialHash = window.location.hash ? window.location.hash.slice(1) : '';
       const hasInitialTarget = sections.some((section) => section.id === initialHash);
-      activateSection(hasInitialTarget ? initialHash : defaultSection);
+      activateSection(hasInitialTarget ? initialHash : '');
     })();
   </script>
 </body>

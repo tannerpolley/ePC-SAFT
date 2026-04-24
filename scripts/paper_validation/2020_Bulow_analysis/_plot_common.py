@@ -12,7 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.plot_outputs import paper_validation_output_path
+from scripts.plot_outputs import paper_validation_output_path, save_plot_figure
 
 
 FIG_DPI = 300
@@ -75,7 +75,7 @@ def save_figure(fig: plt.Figure, output_path: Path) -> None:
     output_path = paper_validation_output_path(output_path)
     fig.tight_layout()
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=FIG_DPI, bbox_inches="tight")
+    save_plot_figure(fig, output_path, dpi=FIG_DPI)
 
 
 def percent_delta(model_value: float, paper_value: float) -> float:

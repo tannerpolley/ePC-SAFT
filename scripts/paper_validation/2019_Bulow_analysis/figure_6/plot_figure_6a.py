@@ -11,7 +11,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from _common import IMIDAZOLIUM_NTF2, scan_temperature_branch
-from scripts.plot_outputs import paper_validation_path
+from scripts.plot_outputs import paper_validation_path, save_plot_figure
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -38,7 +38,7 @@ def main() -> None:
     ax.legend(fontsize=8, title="[Cnmim][NTf2]")
     out = paper_validation_path(__file__, "figure_6a.png")
     fig.tight_layout()
-    fig.savefig(out, dpi=220)
+    save_plot_figure(fig, out, dpi=220, bbox_inches=None)
     plt.close(fig)
     print(f"Wrote: {out}")
 

@@ -20,7 +20,7 @@ REPO_ROOT = Path(__file__).resolve().parents[6]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.plot_outputs import paper_validation_path
+from scripts.plot_outputs import paper_validation_path, save_plot_figure
 
 OUTPUT_ROOT = paper_validation_path(Path(__file__).resolve().parent, "output")
 OUTPUT_DATA_DIR = OUTPUT_ROOT / "data"
@@ -96,7 +96,7 @@ def run_analysis(bookkeeping_csv: Path, digitized_csv: Path, weights_csv: Path, 
             bbox={"facecolor": "white", "edgecolor": "black", "boxstyle": "round,pad=0.25"},
         )
         fig.tight_layout()
-        fig.savefig(output_dir / f"figure6b_adjusted_fit_{FILE_LABELS[key]}.png", dpi=220)
+        save_plot_figure(fig, output_dir / f"figure6b_adjusted_fit_{FILE_LABELS[key]}.png", dpi=220, bbox_inches=None)
         plt.close(fig)
 
     print(f"Wrote adjusted fit checks to {output_dir}")

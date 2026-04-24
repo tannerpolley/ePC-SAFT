@@ -1,0 +1,9 @@
+figure_file,axes_index,axes_title,artist_type,artist_label,series_index,point_index,x,y,width,height
+figure_5b_assoc.png,0,"Bulow 2020 Part I Figure 5b: Water to methanol, Association ($\mu$ basis)",line,,0,0,0,0,,
+figure_5b_assoc.png,0,"Bulow 2020 Part I Figure 5b: Water to methanol, Association ($\mu$ basis)",line,,0,1,1,0,,
+figure_5b_assoc.png,0,"Bulow 2020 Part I Figure 5b: Water to methanol, Association ($\mu$ basis)",bar,,0,0,-0.17000000000000001,0,0.34000000000000002,3.1627906979999998
+figure_5b_assoc.png,0,"Bulow 2020 Part I Figure 5b: Water to methanol, Association ($\mu$ basis)",bar,,1,0,0.17000000000000001,0,0.33999999999999997,1.880213310901798
+figure_5b_assoc.png,0,"Bulow 2020 Part I Figure 5b: Water to methanol, Association ($\mu$ basis)",bar,,2,0,0.82999999999999985,0,0.33999999999999997,2.9767441859999999
+figure_5b_assoc.png,0,"Bulow 2020 Part I Figure 5b: Water to methanol, Association ($\mu$ basis)",bar,,3,0,1.1699999999999999,0,0.34000000000000008,1.7623393719741689
+figure_5b_assoc.png,0,"Bulow 2020 Part I Figure 5b: Water to methanol, Association ($\mu$ basis)",bar,,4,0,1.8300000000000001,0,0.33999999999999986,4.6829268290000003
+figure_5b_assoc.png,0,"Bulow 2020 Part I Figure 5b: Water to methanol, Association ($\mu$ basis)",bar,,5,0,2.1699999999999999,0,0.33999999999999986,3.8268974038250203

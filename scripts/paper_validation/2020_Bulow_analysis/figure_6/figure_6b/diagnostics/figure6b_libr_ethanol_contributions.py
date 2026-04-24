@@ -21,7 +21,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts._env import require_epcsaft_install
-from scripts.plot_outputs import paper_validation_path
+from scripts.plot_outputs import paper_validation_path, save_plot_figure
 
 require_epcsaft_install()
 
@@ -359,7 +359,7 @@ def run_analysis(
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.tight_layout()
-    fig.savefig(output_path, dpi=220)
+    save_plot_figure(fig, output_path, dpi=220, bbox_inches=None)
     plt.close(fig)
 
     if not output_path.exists():

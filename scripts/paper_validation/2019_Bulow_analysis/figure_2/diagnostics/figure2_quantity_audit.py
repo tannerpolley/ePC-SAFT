@@ -10,7 +10,7 @@ import numpy as np
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from scripts.plot_outputs import paper_validation_path
+from scripts.plot_outputs import paper_validation_path, save_plot_figure
 
 FIG2_DIR = Path(__file__).resolve().parents[1]
 PLOT_SCRIPT = FIG2_DIR / 'plot_figure_2.py'
@@ -207,7 +207,7 @@ def main() -> None:
     axes_a[0].set_ylabel(r'candidate value / -')
     axes_a[-1].legend(fontsize=7, loc='best')
     fig_a.tight_layout()
-    fig_a.savefig(OUT_PLOT_A, dpi=220)
+    save_plot_figure(fig_a, OUT_PLOT_A, dpi=220, bbox_inches=None)
     plt.close(fig_a)
 
     fig_b, axes_b = plt.subplots(1, 3, figsize=(14.5, 4.2), sharey=False)
@@ -224,7 +224,7 @@ def main() -> None:
     axes_b[0].set_ylabel(r'candidate value / -')
     axes_b[-1].legend(fontsize=7, loc='best')
     fig_b.tight_layout()
-    fig_b.savefig(OUT_PLOT_B, dpi=220)
+    save_plot_figure(fig_b, OUT_PLOT_B, dpi=220, bbox_inches=None)
     plt.close(fig_b)
 
     print(f'Wrote: {OUT_CSV}')

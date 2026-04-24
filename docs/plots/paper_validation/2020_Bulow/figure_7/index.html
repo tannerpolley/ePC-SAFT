@@ -13,6 +13,7 @@
       --text: #1b1b1b;
       --muted: #5f5f5f;
       --accent: #0f5fbf;
+      --surface: #f7f8fa;
     }
 
     * { box-sizing: border-box; }
@@ -39,7 +40,18 @@
     }
     h1 { margin: 0 0 0.35rem; font-size: 1.5rem; font-weight: 700; }
     .summary { margin: 0 0 0.8rem; color: var(--muted); font-size: 0.95rem; }
-    nav, .child-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .folder-nav, nav, .child-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .folder-nav { margin-bottom: 0.75rem; }
+    .folder-nav label { font-weight: 600; font-size: 0.92rem; }
+    .folder-select {
+      min-width: min(28rem, 100%);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.42rem 0.55rem;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+    }
     .section-button, .back-link, .child-card {
       appearance: none;
       border: 1px solid var(--border);
@@ -66,6 +78,14 @@
     }
     .gallery-section { display: none; margin: 0 0 2.5rem; padding-top: 0.25rem; }
     .gallery-section.is-active { display: block; }
+    .empty-state {
+      max-width: 46rem;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+    .empty-state p { margin: 0; color: var(--muted); }
     .image-card {
       margin: 0 0 1.5rem;
       padding: 0.85rem;
@@ -89,10 +109,17 @@
     <div class="header-inner">
       <a class="back-link" href="../index.html">Back</a>
       <h1>Paper Validation / 2020 Bulow / Figure 7</h1>
-      <p class="summary">Browsable gallery for 15 PNG files under docs/plots/paper_validation/2020_Bulow/figure_7.</p>
+      <p class="summary">Browsable gallery for 4 PNG files under docs/plots/paper_validation/2020_Bulow/figure_7.</p>
+      <div class="folder-nav">
+        <label for="folder-select">Subfolder</label>
+        <select id="folder-select" class="folder-select">
+          <option value="">Choose a folder</option>
+        <option value="../index.html">..</option>
+        <option value="diagnostics/index.html">Diagnostics (11)</option>
+        </select>
+      </div>
       <nav>
-        <button type="button" class="section-button" data-target="section-1">Diagnostics (11)</button>
-        <button type="button" class="section-button" data-target="section-2">Top Level (4)</button>
+        <button type="button" class="section-button" data-target="section-1">Plots (4)</button>
       </nav>
     </div>
   </header>
@@ -104,35 +131,23 @@
       </div>
     </section>
     <section id="section-1" class="gallery-section">
-      <h2>Diagnostics</h2>
-      <article class="image-card"><p class="caption">diagnostics/figure7a_li_br_scan.png</p><a class="image-link" href="diagnostics/figure7a_li_br_scan.png"><img src="diagnostics/figure7a_li_br_scan.png" alt="figure7a li br scan"></a></article>
-      <article class="image-card"><p class="caption">diagnostics/figure7a_li_solvent_scan.png</p><a class="image-link" href="diagnostics/figure7a_li_solvent_scan.png"><img src="diagnostics/figure7a_li_solvent_scan.png" alt="figure7a li solvent scan"></a></article>
-      <article class="image-card"><p class="caption">diagnostics/figure7c_li_solvent_scan.png</p><a class="image-link" href="diagnostics/figure7c_li_solvent_scan.png"><img src="diagnostics/figure7c_li_solvent_scan.png" alt="figure7c li solvent scan"></a></article>
-      <article class="image-card"><p class="caption">diagnostics/figure_7a_relperm_rule7.png</p><a class="image-link" href="diagnostics/figure_7a_relperm_rule7.png"><img src="diagnostics/figure_7a_relperm_rule7.png" alt="figure 7a relperm rule7"></a></article>
-      <article class="image-card"><p class="caption">diagnostics/figure_7a_relperm_scan.png</p><a class="image-link" href="diagnostics/figure_7a_relperm_scan.png"><img src="diagnostics/figure_7a_relperm_scan.png" alt="figure 7a relperm scan"></a></article>
-      <article class="image-card"><p class="caption">diagnostics/figure_7b_relperm_rule7.png</p><a class="image-link" href="diagnostics/figure_7b_relperm_rule7.png"><img src="diagnostics/figure_7b_relperm_rule7.png" alt="figure 7b relperm rule7"></a></article>
-      <article class="image-card"><p class="caption">diagnostics/figure_7b_relperm_scan.png</p><a class="image-link" href="diagnostics/figure_7b_relperm_scan.png"><img src="diagnostics/figure_7b_relperm_scan.png" alt="figure 7b relperm scan"></a></article>
-      <article class="image-card"><p class="caption">diagnostics/figure_7c_relperm_rule7.png</p><a class="image-link" href="diagnostics/figure_7c_relperm_rule7.png"><img src="diagnostics/figure_7c_relperm_rule7.png" alt="figure 7c relperm rule7"></a></article>
-      <article class="image-card"><p class="caption">diagnostics/figure_7c_relperm_scan.png</p><a class="image-link" href="diagnostics/figure_7c_relperm_scan.png"><img src="diagnostics/figure_7c_relperm_scan.png" alt="figure 7c relperm scan"></a></article>
-      <article class="image-card"><p class="caption">diagnostics/figure_7d_relperm_rule7.png</p><a class="image-link" href="diagnostics/figure_7d_relperm_rule7.png"><img src="diagnostics/figure_7d_relperm_rule7.png" alt="figure 7d relperm rule7"></a></article>
-      <article class="image-card"><p class="caption">diagnostics/figure_7d_relperm_scan.png</p><a class="image-link" href="diagnostics/figure_7d_relperm_scan.png"><img src="diagnostics/figure_7d_relperm_scan.png" alt="figure 7d relperm scan"></a></article>
-    </section>
-    <section id="section-2" class="gallery-section">
-      <h2>Top Level</h2>
+      <h2>Plots</h2>
       <article class="image-card"><p class="caption">figure_7a.png</p><a class="image-link" href="figure_7a.png"><img src="figure_7a.png" alt="figure 7a"></a></article>
       <article class="image-card"><p class="caption">figure_7b.png</p><a class="image-link" href="figure_7b.png"><img src="figure_7b.png" alt="figure 7b"></a></article>
       <article class="image-card"><p class="caption">figure_7c.png</p><a class="image-link" href="figure_7c.png"><img src="figure_7c.png" alt="figure 7c"></a></article>
       <article class="image-card"><p class="caption">figure_7d.png</p><a class="image-link" href="figure_7d.png"><img src="figure_7d.png" alt="figure 7d"></a></article>
     </section>
+
   </main>
   <script>
     (function() {
+      const folderSelect = document.getElementById('folder-select');
       const buttons = Array.from(document.querySelectorAll('.section-button'));
       const sections = Array.from(document.querySelectorAll('.gallery-section'));
-      const defaultSection = "section-1";
+      const defaultSection = "";
 
       function activateSection(sectionId) {
-        const targetId = sectionId || defaultSection;
+        const targetId = sectionId || '';
         sections.forEach((section) => section.classList.toggle('is-active', section.id === targetId));
         buttons.forEach((button) => button.classList.toggle('is-active', button.dataset.target === targetId));
         if (targetId) {
@@ -144,9 +159,16 @@
       }
 
       buttons.forEach((button) => button.addEventListener('click', () => activateSection(button.dataset.target)));
+      if (folderSelect) {
+        folderSelect.addEventListener('change', () => {
+          if (folderSelect.value) {
+            window.location.href = folderSelect.value;
+          }
+        });
+      }
       const initialHash = window.location.hash ? window.location.hash.slice(1) : '';
       const hasInitialTarget = sections.some((section) => section.id === initialHash);
-      activateSection(hasInitialTarget ? initialHash : defaultSection);
+      activateSection(hasInitialTarget ? initialHash : '');
     })();
   </script>
 </body>

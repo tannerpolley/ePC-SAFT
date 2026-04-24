@@ -13,6 +13,7 @@
       --text: #1b1b1b;
       --muted: #5f5f5f;
       --accent: #0f5fbf;
+      --surface: #f7f8fa;
     }
 
     * { box-sizing: border-box; }
@@ -39,7 +40,18 @@
     }
     h1 { margin: 0 0 0.35rem; font-size: 1.5rem; font-weight: 700; }
     .summary { margin: 0 0 0.8rem; color: var(--muted); font-size: 0.95rem; }
-    nav, .child-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .folder-nav, nav, .child-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .folder-nav { margin-bottom: 0.75rem; }
+    .folder-nav label { font-weight: 600; font-size: 0.92rem; }
+    .folder-select {
+      min-width: min(28rem, 100%);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.42rem 0.55rem;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+    }
     .section-button, .back-link, .child-card {
       appearance: none;
       border: 1px solid var(--border);
@@ -66,6 +78,14 @@
     }
     .gallery-section { display: none; margin: 0 0 2.5rem; padding-top: 0.25rem; }
     .gallery-section.is-active { display: block; }
+    .empty-state {
+      max-width: 46rem;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+    .empty-state p { margin: 0; color: var(--muted); }
     .image-card {
       margin: 0 0 1.5rem;
       padding: 0.85rem;
@@ -89,14 +109,22 @@
     <div class="header-inner">
       <a class="back-link" href="../index.html">Back</a>
       <h1>Paper Validation / 2025 Figiel</h1>
-      <p class="summary">Browsable gallery for 27 PNG files under docs/plots/paper_validation/2025_Figiel.</p>
+      <p class="summary">Browsable gallery for 0 PNG files under docs/plots/paper_validation/2025_Figiel.</p>
+      <div class="folder-nav">
+        <label for="folder-select">Subfolder</label>
+        <select id="folder-select" class="folder-select">
+          <option value="">Choose a folder</option>
+        <option value="../index.html">..</option>
+        <option value="figure_4/index.html">Figure 4 (4)</option>
+        <option value="figure_5/index.html">Figure 5 (3)</option>
+        <option value="figure_6/index.html">Figure 6 (7)</option>
+        <option value="figure_7/index.html">Figure 7 (1)</option>
+        <option value="figure_8/index.html">Figure 8 (4)</option>
+        <option value="figure_9/index.html">Figure 9 (8)</option>
+        </select>
+      </div>
       <nav>
-        <button type="button" class="section-button" data-target="section-1">Figure 4 (4)</button>
-        <button type="button" class="section-button" data-target="section-2">Figure 5 (3)</button>
-        <button type="button" class="section-button" data-target="section-3">Figure 6 (7)</button>
-        <button type="button" class="section-button" data-target="section-4">Figure 7 (1)</button>
-        <button type="button" class="section-button" data-target="section-5">Figure 8 (4)</button>
-        <button type="button" class="section-button" data-target="section-6">Figure 9 (8)</button>
+
       </nav>
     </div>
   </header>
@@ -112,60 +140,21 @@
         <a class="child-card" href="figure_9/index.html"><span>Figure 9</span><strong>8 PNGs</strong></a>
       </div>
     </section>
-    <section id="section-1" class="gallery-section">
-      <h2>Figure 4</h2>
-      <article class="image-card"><p class="caption">figure_4/figure_4.png</p><a class="image-link" href="figure_4/figure_4.png"><img src="figure_4/figure_4.png" alt="figure 4"></a></article>
-      <article class="image-card"><p class="caption">figure_4/figure_4_combined.png</p><a class="image-link" href="figure_4/figure_4_combined.png"><img src="figure_4/figure_4_combined.png" alt="figure 4 combined"></a></article>
-      <article class="image-card"><p class="caption">figure_4/figure_4a.png</p><a class="image-link" href="figure_4/figure_4a.png"><img src="figure_4/figure_4a.png" alt="figure 4a"></a></article>
-      <article class="image-card"><p class="caption">figure_4/figure_4b.png</p><a class="image-link" href="figure_4/figure_4b.png"><img src="figure_4/figure_4b.png" alt="figure 4b"></a></article>
-    </section>
-    <section id="section-2" class="gallery-section">
-      <h2>Figure 5</h2>
-      <article class="image-card"><p class="caption">figure_5/figure_5.png</p><a class="image-link" href="figure_5/figure_5.png"><img src="figure_5/figure_5.png" alt="figure 5"></a></article>
-      <article class="image-card"><p class="caption">figure_5/figure_5a.png</p><a class="image-link" href="figure_5/figure_5a.png"><img src="figure_5/figure_5a.png" alt="figure 5a"></a></article>
-      <article class="image-card"><p class="caption">figure_5/figure_5b.png</p><a class="image-link" href="figure_5/figure_5b.png"><img src="figure_5/figure_5b.png" alt="figure 5b"></a></article>
-    </section>
-    <section id="section-3" class="gallery-section">
-      <h2>Figure 6</h2>
-      <article class="image-card"><p class="caption">figure_6/figure_6.png</p><a class="image-link" href="figure_6/figure_6.png"><img src="figure_6/figure_6.png" alt="figure 6"></a></article>
-      <article class="image-card"><p class="caption">figure_6/figure_6_ethanol.png</p><a class="image-link" href="figure_6/figure_6_ethanol.png"><img src="figure_6/figure_6_ethanol.png" alt="figure 6 ethanol"></a></article>
-      <article class="image-card"><p class="caption">figure_6/figure_6_methanol.png</p><a class="image-link" href="figure_6/figure_6_methanol.png"><img src="figure_6/figure_6_methanol.png" alt="figure 6 methanol"></a></article>
-      <article class="image-card"><p class="caption">figure_6/figure_6a.png</p><a class="image-link" href="figure_6/figure_6a.png"><img src="figure_6/figure_6a.png" alt="figure 6a"></a></article>
-      <article class="image-card"><p class="caption">figure_6/figure_6b.png</p><a class="image-link" href="figure_6/figure_6b.png"><img src="figure_6/figure_6b.png" alt="figure 6b"></a></article>
-      <article class="image-card"><p class="caption">figure_6/figure_6c.png</p><a class="image-link" href="figure_6/figure_6c.png"><img src="figure_6/figure_6c.png" alt="figure 6c"></a></article>
-      <article class="image-card"><p class="caption">figure_6/figure_6d.png</p><a class="image-link" href="figure_6/figure_6d.png"><img src="figure_6/figure_6d.png" alt="figure 6d"></a></article>
-    </section>
-    <section id="section-4" class="gallery-section">
-      <h2>Figure 7</h2>
-      <article class="image-card"><p class="caption">figure_7/figure_7.png</p><a class="image-link" href="figure_7/figure_7.png"><img src="figure_7/figure_7.png" alt="figure 7"></a></article>
-    </section>
-    <section id="section-5" class="gallery-section">
-      <h2>Figure 8</h2>
-      <article class="image-card"><p class="caption">figure_8/figure_8.png</p><a class="image-link" href="figure_8/figure_8.png"><img src="figure_8/figure_8.png" alt="figure 8"></a></article>
-      <article class="image-card"><p class="caption">figure_8/figure_8a.png</p><a class="image-link" href="figure_8/figure_8a.png"><img src="figure_8/figure_8a.png" alt="figure 8a"></a></article>
-      <article class="image-card"><p class="caption">figure_8/figure_8b.png</p><a class="image-link" href="figure_8/figure_8b.png"><img src="figure_8/figure_8b.png" alt="figure 8b"></a></article>
-      <article class="image-card"><p class="caption">figure_8/figure_8c.png</p><a class="image-link" href="figure_8/figure_8c.png"><img src="figure_8/figure_8c.png" alt="figure 8c"></a></article>
-    </section>
-    <section id="section-6" class="gallery-section">
-      <h2>Figure 9</h2>
-      <article class="image-card"><p class="caption">figure_9/figure_9.png</p><a class="image-link" href="figure_9/figure_9.png"><img src="figure_9/figure_9.png" alt="figure 9"></a></article>
-      <article class="image-card"><p class="caption">figure_9/figure_9_40wt_combined.png</p><a class="image-link" href="figure_9/figure_9_40wt_combined.png"><img src="figure_9/figure_9_40wt_combined.png" alt="figure 9 40wt combined"></a></article>
-      <article class="image-card"><p class="caption">figure_9/figure_9_ethanol_40wt.png</p><a class="image-link" href="figure_9/figure_9_ethanol_40wt.png"><img src="figure_9/figure_9_ethanol_40wt.png" alt="figure 9 ethanol 40wt"></a></article>
-      <article class="image-card"><p class="caption">figure_9/figure_9_methanol_40wt.png</p><a class="image-link" href="figure_9/figure_9_methanol_40wt.png"><img src="figure_9/figure_9_methanol_40wt.png" alt="figure 9 methanol 40wt"></a></article>
-      <article class="image-card"><p class="caption">figure_9/figure_9a.png</p><a class="image-link" href="figure_9/figure_9a.png"><img src="figure_9/figure_9a.png" alt="figure 9a"></a></article>
-      <article class="image-card"><p class="caption">figure_9/figure_9b.png</p><a class="image-link" href="figure_9/figure_9b.png"><img src="figure_9/figure_9b.png" alt="figure 9b"></a></article>
-      <article class="image-card"><p class="caption">figure_9/figure_9c.png</p><a class="image-link" href="figure_9/figure_9c.png"><img src="figure_9/figure_9c.png" alt="figure 9c"></a></article>
-      <article class="image-card"><p class="caption">figure_9/figure_9d.png</p><a class="image-link" href="figure_9/figure_9d.png"><img src="figure_9/figure_9d.png" alt="figure 9d"></a></article>
+
+    <section class="empty-state">
+      <h2>No plots in this folder</h2>
+      <p>No plots are shown until you open a folder that contains PNG files.</p>
     </section>
   </main>
   <script>
     (function() {
+      const folderSelect = document.getElementById('folder-select');
       const buttons = Array.from(document.querySelectorAll('.section-button'));
       const sections = Array.from(document.querySelectorAll('.gallery-section'));
-      const defaultSection = "section-1";
+      const defaultSection = "";
 
       function activateSection(sectionId) {
-        const targetId = sectionId || defaultSection;
+        const targetId = sectionId || '';
         sections.forEach((section) => section.classList.toggle('is-active', section.id === targetId));
         buttons.forEach((button) => button.classList.toggle('is-active', button.dataset.target === targetId));
         if (targetId) {
@@ -177,9 +166,16 @@
       }
 
       buttons.forEach((button) => button.addEventListener('click', () => activateSection(button.dataset.target)));
+      if (folderSelect) {
+        folderSelect.addEventListener('change', () => {
+          if (folderSelect.value) {
+            window.location.href = folderSelect.value;
+          }
+        });
+      }
       const initialHash = window.location.hash ? window.location.hash.slice(1) : '';
       const hasInitialTarget = sections.some((section) => section.id === initialHash);
-      activateSection(hasInitialTarget ? initialHash : defaultSection);
+      activateSection(hasInitialTarget ? initialHash : '');
     })();
   </script>
 </body>

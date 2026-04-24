@@ -13,6 +13,7 @@
       --text: #1b1b1b;
       --muted: #5f5f5f;
       --accent: #0f5fbf;
+      --surface: #f7f8fa;
     }
 
     * { box-sizing: border-box; }
@@ -39,7 +40,18 @@
     }
     h1 { margin: 0 0 0.35rem; font-size: 1.5rem; font-weight: 700; }
     .summary { margin: 0 0 0.8rem; color: var(--muted); font-size: 0.95rem; }
-    nav, .child-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .folder-nav, nav, .child-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .folder-nav { margin-bottom: 0.75rem; }
+    .folder-nav label { font-weight: 600; font-size: 0.92rem; }
+    .folder-select {
+      min-width: min(28rem, 100%);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.42rem 0.55rem;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+    }
     .section-button, .back-link, .child-card {
       appearance: none;
       border: 1px solid var(--border);
@@ -66,6 +78,14 @@
     }
     .gallery-section { display: none; margin: 0 0 2.5rem; padding-top: 0.25rem; }
     .gallery-section.is-active { display: block; }
+    .empty-state {
+      max-width: 46rem;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+    .empty-state p { margin: 0; color: var(--muted); }
     .image-card {
       margin: 0 0 1.5rem;
       padding: 0.85rem;
@@ -89,9 +109,17 @@
     <div class="header-inner">
       <a class="back-link" href="../index.html">Back</a>
       <h1>Paper Validation / 2020 Bulow / Figure 6 / Figure 6B / Diagnostics</h1>
-      <p class="summary">Browsable gallery for 15 PNG files under docs/plots/paper_validation/2020_Bulow/figure_6/figure_6b/diagnostics.</p>
+      <p class="summary">Browsable gallery for 0 PNG files under docs/plots/paper_validation/2020_Bulow/figure_6/figure_6b/diagnostics.</p>
+      <div class="folder-nav">
+        <label for="folder-select">Subfolder</label>
+        <select id="folder-select" class="folder-select">
+          <option value="">Choose a folder</option>
+        <option value="../index.html">..</option>
+        <option value="output/index.html">Output (15)</option>
+        </select>
+      </div>
       <nav>
-        <button type="button" class="section-button" data-target="section-1">Output (15)</button>
+
       </nav>
     </div>
   </header>
@@ -102,33 +130,21 @@
         <a class="child-card" href="output/index.html"><span>Output</span><strong>15 PNGs</strong></a>
       </div>
     </section>
-    <section id="section-1" class="gallery-section">
-      <h2>Output</h2>
-      <article class="image-card"><p class="caption">output/plots/figure6b_density_scan_rmse.png</p><a class="image-link" href="output/plots/figure6b_density_scan_rmse.png"><img src="output/plots/figure6b_density_scan_rmse.png" alt="figure6b density scan rmse"></a></article>
-      <article class="image-card"><p class="caption">output/plots/figure6b_digitized_reference_replica.png</p><a class="image-link" href="output/plots/figure6b_digitized_reference_replica.png"><img src="output/plots/figure6b_digitized_reference_replica.png" alt="figure6b digitized reference replica"></a></article>
-      <article class="image-card"><p class="caption">output/plots/figure6b_fit_checks/figure6b_fit_association.png</p><a class="image-link" href="output/plots/figure6b_fit_checks/figure6b_fit_association.png"><img src="output/plots/figure6b_fit_checks/figure6b_fit_association.png" alt="figure6b fit association"></a></article>
-      <article class="image-card"><p class="caption">output/plots/figure6b_fit_checks/figure6b_fit_born.png</p><a class="image-link" href="output/plots/figure6b_fit_checks/figure6b_fit_born.png"><img src="output/plots/figure6b_fit_checks/figure6b_fit_born.png" alt="figure6b fit born"></a></article>
-      <article class="image-card"><p class="caption">output/plots/figure6b_fit_checks/figure6b_fit_dh.png</p><a class="image-link" href="output/plots/figure6b_fit_checks/figure6b_fit_dh.png"><img src="output/plots/figure6b_fit_checks/figure6b_fit_dh.png" alt="figure6b fit dh"></a></article>
-      <article class="image-card"><p class="caption">output/plots/figure6b_fit_checks/figure6b_fit_dispersion.png</p><a class="image-link" href="output/plots/figure6b_fit_checks/figure6b_fit_dispersion.png"><img src="output/plots/figure6b_fit_checks/figure6b_fit_dispersion.png" alt="figure6b fit dispersion"></a></article>
-      <article class="image-card"><p class="caption">output/plots/figure6b_fit_checks/figure6b_fit_hard_chain.png</p><a class="image-link" href="output/plots/figure6b_fit_checks/figure6b_fit_hard_chain.png"><img src="output/plots/figure6b_fit_checks/figure6b_fit_hard_chain.png" alt="figure6b fit hard chain"></a></article>
-      <article class="image-card"><p class="caption">output/plots/figure6b_fit_checks/figure6b_fit_total.png</p><a class="image-link" href="output/plots/figure6b_fit_checks/figure6b_fit_total.png"><img src="output/plots/figure6b_fit_checks/figure6b_fit_total.png" alt="figure6b fit total"></a></article>
-      <article class="image-card"><p class="caption">output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_association.png</p><a class="image-link" href="output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_association.png"><img src="output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_association.png" alt="figure6b adjusted fit association"></a></article>
-      <article class="image-card"><p class="caption">output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_born.png</p><a class="image-link" href="output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_born.png"><img src="output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_born.png" alt="figure6b adjusted fit born"></a></article>
-      <article class="image-card"><p class="caption">output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_dh.png</p><a class="image-link" href="output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_dh.png"><img src="output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_dh.png" alt="figure6b adjusted fit dh"></a></article>
-      <article class="image-card"><p class="caption">output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_dispersion.png</p><a class="image-link" href="output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_dispersion.png"><img src="output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_dispersion.png" alt="figure6b adjusted fit dispersion"></a></article>
-      <article class="image-card"><p class="caption">output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_hard_chain.png</p><a class="image-link" href="output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_hard_chain.png"><img src="output/plots/figure6b_fit_checks_best_scalar_zfits/figure6b_adjusted_fit_hard_chain.png" alt="figure6b adjusted fit hard chain"></a></article>
-      <article class="image-card"><p class="caption">output/plots/figure6b_libr_ethanol_2020_contributions.png</p><a class="image-link" href="output/plots/figure6b_libr_ethanol_2020_contributions.png"><img src="output/plots/figure6b_libr_ethanol_2020_contributions.png" alt="figure6b libr ethanol 2020 contributions"></a></article>
-      <article class="image-card"><p class="caption">output/plots/figure6b_relperm_rule7_comparison.png</p><a class="image-link" href="output/plots/figure6b_relperm_rule7_comparison.png"><img src="output/plots/figure6b_relperm_rule7_comparison.png" alt="figure6b relperm rule7 comparison"></a></article>
+
+    <section class="empty-state">
+      <h2>No plots in this folder</h2>
+      <p>No plots are shown until you open a folder that contains PNG files.</p>
     </section>
   </main>
   <script>
     (function() {
+      const folderSelect = document.getElementById('folder-select');
       const buttons = Array.from(document.querySelectorAll('.section-button'));
       const sections = Array.from(document.querySelectorAll('.gallery-section'));
-      const defaultSection = "section-1";
+      const defaultSection = "";
 
       function activateSection(sectionId) {
-        const targetId = sectionId || defaultSection;
+        const targetId = sectionId || '';
         sections.forEach((section) => section.classList.toggle('is-active', section.id === targetId));
         buttons.forEach((button) => button.classList.toggle('is-active', button.dataset.target === targetId));
         if (targetId) {
@@ -140,9 +156,16 @@
       }
 
       buttons.forEach((button) => button.addEventListener('click', () => activateSection(button.dataset.target)));
+      if (folderSelect) {
+        folderSelect.addEventListener('change', () => {
+          if (folderSelect.value) {
+            window.location.href = folderSelect.value;
+          }
+        });
+      }
       const initialHash = window.location.hash ? window.location.hash.slice(1) : '';
       const hasInitialTarget = sections.some((section) => section.id === initialHash);
-      activateSection(hasInitialTarget ? initialHash : defaultSection);
+      activateSection(hasInitialTarget ? initialHash : '');
     })();
   </script>
 </body>

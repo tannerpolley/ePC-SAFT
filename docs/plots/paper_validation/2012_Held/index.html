@@ -13,6 +13,7 @@
       --text: #1b1b1b;
       --muted: #5f5f5f;
       --accent: #0f5fbf;
+      --surface: #f7f8fa;
     }
 
     * { box-sizing: border-box; }
@@ -39,7 +40,18 @@
     }
     h1 { margin: 0 0 0.35rem; font-size: 1.5rem; font-weight: 700; }
     .summary { margin: 0 0 0.8rem; color: var(--muted); font-size: 0.95rem; }
-    nav, .child-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .folder-nav, nav, .child-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .folder-nav { margin-bottom: 0.75rem; }
+    .folder-nav label { font-weight: 600; font-size: 0.92rem; }
+    .folder-select {
+      min-width: min(28rem, 100%);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.42rem 0.55rem;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+    }
     .section-button, .back-link, .child-card {
       appearance: none;
       border: 1px solid var(--border);
@@ -66,6 +78,14 @@
     }
     .gallery-section { display: none; margin: 0 0 2.5rem; padding-top: 0.25rem; }
     .gallery-section.is-active { display: block; }
+    .empty-state {
+      max-width: 46rem;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+    .empty-state p { margin: 0; color: var(--muted); }
     .image-card {
       margin: 0 0 1.5rem;
       padding: 0.85rem;
@@ -89,13 +109,21 @@
     <div class="header-inner">
       <a class="back-link" href="../index.html">Back</a>
       <h1>Paper Validation / 2012 Held</h1>
-      <p class="summary">Browsable gallery for 11 PNG files under docs/plots/paper_validation/2012_Held.</p>
+      <p class="summary">Browsable gallery for 0 PNG files under docs/plots/paper_validation/2012_Held.</p>
+      <div class="folder-nav">
+        <label for="folder-select">Subfolder</label>
+        <select id="folder-select" class="folder-select">
+          <option value="">Choose a folder</option>
+        <option value="../index.html">..</option>
+        <option value="figure_2d/index.html">Figure 2D (2)</option>
+        <option value="figure_3/index.html">Figure 3 (2)</option>
+        <option value="figure_5/index.html">Figure 5 (2)</option>
+        <option value="figure_6/index.html">Figure 6 (3)</option>
+        <option value="figure_7/index.html">Figure 7 (2)</option>
+        </select>
+      </div>
       <nav>
-        <button type="button" class="section-button" data-target="section-1">Figure 2D (2)</button>
-        <button type="button" class="section-button" data-target="section-2">Figure 3 (2)</button>
-        <button type="button" class="section-button" data-target="section-3">Figure 5 (2)</button>
-        <button type="button" class="section-button" data-target="section-4">Figure 6 (3)</button>
-        <button type="button" class="section-button" data-target="section-5">Figure 7 (2)</button>
+
       </nav>
     </div>
   </header>
@@ -110,41 +138,21 @@
         <a class="child-card" href="figure_7/index.html"><span>Figure 7</span><strong>2 PNGs</strong></a>
       </div>
     </section>
-    <section id="section-1" class="gallery-section">
-      <h2>Figure 2D</h2>
-      <article class="image-card"><p class="caption">figure_2d/figure_2d.png</p><a class="image-link" href="figure_2d/figure_2d.png"><img src="figure_2d/figure_2d.png" alt="figure 2d"></a></article>
-      <article class="image-card"><p class="caption">figure_2d/figure_2d_paper.png</p><a class="image-link" href="figure_2d/figure_2d_paper.png"><img src="figure_2d/figure_2d_paper.png" alt="figure 2d paper"></a></article>
-    </section>
-    <section id="section-2" class="gallery-section">
-      <h2>Figure 3</h2>
-      <article class="image-card"><p class="caption">figure_3/figure_3.png</p><a class="image-link" href="figure_3/figure_3.png"><img src="figure_3/figure_3.png" alt="figure 3"></a></article>
-      <article class="image-card"><p class="caption">figure_3/figure_3_paper.png</p><a class="image-link" href="figure_3/figure_3_paper.png"><img src="figure_3/figure_3_paper.png" alt="figure 3 paper"></a></article>
-    </section>
-    <section id="section-3" class="gallery-section">
-      <h2>Figure 5</h2>
-      <article class="image-card"><p class="caption">figure_5/figure_5.png</p><a class="image-link" href="figure_5/figure_5.png"><img src="figure_5/figure_5.png" alt="figure 5"></a></article>
-      <article class="image-card"><p class="caption">figure_5/figure_5_paper.png</p><a class="image-link" href="figure_5/figure_5_paper.png"><img src="figure_5/figure_5_paper.png" alt="figure 5 paper"></a></article>
-    </section>
-    <section id="section-4" class="gallery-section">
-      <h2>Figure 6</h2>
-      <article class="image-card"><p class="caption">figure_6/figure_6.png</p><a class="image-link" href="figure_6/figure_6.png"><img src="figure_6/figure_6.png" alt="figure 6"></a></article>
-      <article class="image-card"><p class="caption">figure_6/figure_6_m5_diagnostic.png</p><a class="image-link" href="figure_6/figure_6_m5_diagnostic.png"><img src="figure_6/figure_6_m5_diagnostic.png" alt="figure 6 m5 diagnostic"></a></article>
-      <article class="image-card"><p class="caption">figure_6/figure_6_paper.png</p><a class="image-link" href="figure_6/figure_6_paper.png"><img src="figure_6/figure_6_paper.png" alt="figure 6 paper"></a></article>
-    </section>
-    <section id="section-5" class="gallery-section">
-      <h2>Figure 7</h2>
-      <article class="image-card"><p class="caption">figure_7/figure_7.png</p><a class="image-link" href="figure_7/figure_7.png"><img src="figure_7/figure_7.png" alt="figure 7"></a></article>
-      <article class="image-card"><p class="caption">figure_7/figure_7_paper.png</p><a class="image-link" href="figure_7/figure_7_paper.png"><img src="figure_7/figure_7_paper.png" alt="figure 7 paper"></a></article>
+
+    <section class="empty-state">
+      <h2>No plots in this folder</h2>
+      <p>No plots are shown until you open a folder that contains PNG files.</p>
     </section>
   </main>
   <script>
     (function() {
+      const folderSelect = document.getElementById('folder-select');
       const buttons = Array.from(document.querySelectorAll('.section-button'));
       const sections = Array.from(document.querySelectorAll('.gallery-section'));
-      const defaultSection = "section-1";
+      const defaultSection = "";
 
       function activateSection(sectionId) {
-        const targetId = sectionId || defaultSection;
+        const targetId = sectionId || '';
         sections.forEach((section) => section.classList.toggle('is-active', section.id === targetId));
         buttons.forEach((button) => button.classList.toggle('is-active', button.dataset.target === targetId));
         if (targetId) {
@@ -156,9 +164,16 @@
       }
 
       buttons.forEach((button) => button.addEventListener('click', () => activateSection(button.dataset.target)));
+      if (folderSelect) {
+        folderSelect.addEventListener('change', () => {
+          if (folderSelect.value) {
+            window.location.href = folderSelect.value;
+          }
+        });
+      }
       const initialHash = window.location.hash ? window.location.hash.slice(1) : '';
       const hasInitialTarget = sections.some((section) => section.id === initialHash);
-      activateSection(hasInitialTarget ? initialHash : defaultSection);
+      activateSection(hasInitialTarget ? initialHash : '');
     })();
   </script>
 </body>

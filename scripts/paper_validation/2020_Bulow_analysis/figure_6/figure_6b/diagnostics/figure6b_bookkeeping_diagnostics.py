@@ -18,7 +18,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts._env import require_epcsaft_install
-from scripts.plot_outputs import paper_validation_path
+from scripts.plot_outputs import paper_validation_path, save_plot_figure
 
 require_epcsaft_install()
 if str(SCRIPT_DIR) not in sys.path:
@@ -175,7 +175,7 @@ def run_analysis(
     ax.grid(True, alpha=0.3, color="0.7")
     ax.legend(fontsize=9)
     fig.tight_layout()
-    fig.savefig(output_plot, dpi=220)
+    save_plot_figure(fig, output_plot, dpi=220, bbox_inches=None)
     plt.close(fig)
 
     print(f"Wrote bookkeeping CSV: {output_csv}")

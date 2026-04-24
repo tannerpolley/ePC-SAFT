@@ -32,6 +32,15 @@ def collect_pngs(root: Path) -> list[Path]:
     )
 
 
+def direct_pngs(root: Path) -> list[Path]:
+    if not root.exists():
+        return []
+    return sorted(
+        [path for path in root.glob("*.png") if should_include_png(path)],
+        key=lambda path: sort_key(path.relative_to(root)),
+    )
+
+
 def iter_gallery_dirs() -> list[Path]:
     dirs = {PLOTS_ROOT}
     for png in collect_pngs(PLOTS_ROOT):
@@ -43,9 +52,7 @@ def iter_gallery_dirs() -> list[Path]:
 
 
 def group_name(rel_path: Path) -> str:
-    if len(rel_path.parts) <= 1:
-        return "Top Level"
-    return rel_path.parts[0].replace("_", " ").title()
+    return "Plots"
 
 
 def page_title(gallery_dir: Path) -> str:
@@ -68,6 +75,17 @@ def child_gallery_links(gallery_dir: Path) -> list[tuple[str, str, int]]:
         if count:
             children.append((child.name.replace("_", " ").title(), f"{child.name}/index.html", count))
     return children
+
+
+def _folder_options(gallery_dir: Path) -> str:
+    options = []
+    if gallery_dir != PLOTS_ROOT:
+        options.append('        <option value="../index.html">..</option>')
+    for name, href, count in child_gallery_links(gallery_dir):
+        options.append(f'        <option value="{html.escape(href)}">{html.escape(name)} ({count})</option>')
+    if not options:
+        return '        <option value="">No subfolders</option>'
+    return "\n".join(options)
 
 
 def render_gallery_page(gallery_dir: Path, pngs: Iterable[Path]) -> str:
@@ -127,9 +145,17 @@ def render_gallery_page(gallery_dir: Path, pngs: Iterable[Path]) -> str:
     title = page_title(gallery_dir)
     rel_label = "." if gallery_dir == PLOTS_ROOT else gallery_dir.relative_to(PLOTS_ROOT).as_posix()
     summary = f"Browsable gallery for {len(rel_pngs)} PNG files under docs/plots/{rel_label}."
-    default_section = "section-1" if sections else ""
+    default_section = ""
     back = back_href(gallery_dir)
     back_link = f'      <a class="back-link" href="{back}">Back</a>\n' if back else ""
+    empty_message = ""
+    if not section_blocks:
+        empty_message = (
+            '    <section class="empty-state">\n'
+            "      <h2>No plots in this folder</h2>\n"
+            "      <p>No plots are shown until you open a folder that contains PNG files.</p>\n"
+            "    </section>"
+        )
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -146,6 +172,7 @@ def render_gallery_page(gallery_dir: Path, pngs: Iterable[Path]) -> str:
       --text: #1b1b1b;
       --muted: #5f5f5f;
       --accent: #0f5fbf;
+      --surface: #f7f8fa;
     }}
 
     * {{ box-sizing: border-box; }}
@@ -172,7 +199,18 @@ def render_gallery_page(gallery_dir: Path, pngs: Iterable[Path]) -> str:
     }}
     h1 {{ margin: 0 0 0.35rem; font-size: 1.5rem; font-weight: 700; }}
     .summary {{ margin: 0 0 0.8rem; color: var(--muted); font-size: 0.95rem; }}
-    nav, .child-grid {{ display: flex; flex-wrap: wrap; gap: 0.5rem; }}
+    .folder-nav, nav, .child-grid {{ display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }}
+    .folder-nav {{ margin-bottom: 0.75rem; }}
+    .folder-nav label {{ font-weight: 600; font-size: 0.92rem; }}
+    .folder-select {{
+      min-width: min(28rem, 100%);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.42rem 0.55rem;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+    }}
     .section-button, .back-link, .child-card {{
       appearance: none;
       border: 1px solid var(--border);
@@ -199,6 +237,14 @@ def render_gallery_page(gallery_dir: Path, pngs: Iterable[Path]) -> str:
     }}
     .gallery-section {{ display: none; margin: 0 0 2.5rem; padding-top: 0.25rem; }}
     .gallery-section.is-active {{ display: block; }}
+    .empty-state {{
+      max-width: 46rem;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+    }}
+    .empty-state p {{ margin: 0; color: var(--muted); }}
     .image-card {{
       margin: 0 0 1.5rem;
       padding: 0.85rem;
@@ -223,6 +269,13 @@ def render_gallery_page(gallery_dir: Path, pngs: Iterable[Path]) -> str:
 {back_link}\
       <h1>{html.escape(title)}</h1>
       <p class="summary">{html.escape(summary)}</p>
+      <div class="folder-nav">
+        <label for="folder-select">Subfolder</label>
+        <select id="folder-select" class="folder-select">
+          <option value="">Choose a folder</option>
+{_folder_options(gallery_dir)}
+        </select>
+      </div>
       <nav>
 {chr(10).join(toc_items)}
       </nav>
@@ -236,15 +289,17 @@ def render_gallery_page(gallery_dir: Path, pngs: Iterable[Path]) -> str:
       </div>
     </section>
 {chr(10).join(section_blocks)}
+{empty_message}
   </main>
   <script>
     (function() {{
+      const folderSelect = document.getElementById('folder-select');
       const buttons = Array.from(document.querySelectorAll('.section-button'));
       const sections = Array.from(document.querySelectorAll('.gallery-section'));
       const defaultSection = {json.dumps(default_section)};
 
       function activateSection(sectionId) {{
-        const targetId = sectionId || defaultSection;
+        const targetId = sectionId || '';
         sections.forEach((section) => section.classList.toggle('is-active', section.id === targetId));
         buttons.forEach((button) => button.classList.toggle('is-active', button.dataset.target === targetId));
         if (targetId) {{
@@ -256,9 +311,16 @@ def render_gallery_page(gallery_dir: Path, pngs: Iterable[Path]) -> str:
       }}
 
       buttons.forEach((button) => button.addEventListener('click', () => activateSection(button.dataset.target)));
+      if (folderSelect) {{
+        folderSelect.addEventListener('change', () => {{
+          if (folderSelect.value) {{
+            window.location.href = folderSelect.value;
+          }}
+        }});
+      }}
       const initialHash = window.location.hash ? window.location.hash.slice(1) : '';
       const hasInitialTarget = sections.some((section) => section.id === initialHash);
-      activateSection(hasInitialTarget ? initialHash : defaultSection);
+      activateSection(hasInitialTarget ? initialHash : '');
     }})();
   </script>
 </body>
@@ -278,8 +340,8 @@ def main() -> None:
     valid_dirs = set(gallery_dirs)
     remove_stale_indexes(valid_dirs)
     for gallery_dir in gallery_dirs:
-        pngs = collect_pngs(gallery_dir)
-        if not pngs and gallery_dir != PLOTS_ROOT:
+        pngs = direct_pngs(gallery_dir)
+        if not pngs and not child_gallery_links(gallery_dir) and gallery_dir != PLOTS_ROOT:
             continue
         (gallery_dir / "index.html").write_text(render_gallery_page(gallery_dir, pngs), encoding="utf-8")
 

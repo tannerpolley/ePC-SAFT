@@ -34,7 +34,7 @@ require_epcsaft_install()
 
 from epcsaft.parameters import get_prop_dict
 from scripts._epcsaft_oop import as_mixture
-from scripts.plot_outputs import fits_plot_path
+from scripts.plot_outputs import fits_plot_path, save_plot_figure
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -836,7 +836,7 @@ def plot_combo(
             output_path = Path(combo[output_key])
         output_path.parent.mkdir(parents=True, exist_ok=True)
         fig.tight_layout()
-        fig.savefig(output_path, dpi=220)
+        save_plot_figure(fig, output_path, dpi=220, bbox_inches=None)
         if not output_path.exists():
             raise FileNotFoundError(f"Expected plot was not written: {output_path}")
 
@@ -930,7 +930,7 @@ def plot_single_solvent_grid(
 
     out = _grid_output_path(solvent_system)
     out.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out, dpi=220)
+    save_plot_figure(fig, out, dpi=220, bbox_inches=None)
     if close:
         plt.close(fig)
     return out
