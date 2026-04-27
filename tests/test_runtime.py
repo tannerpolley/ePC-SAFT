@@ -434,6 +434,17 @@ def test_state_constructor_rejects_invalid_pressure_and_density():
         mix.state(T=300.0, x=np.asarray([1.0]), rho=-1.0)
 
 
+def test_state_constructor_rejects_composition_length_mismatch_before_native_call():
+    mix = ePCSAFTMixture.from_params({
+        "m": np.asarray([1.0]),
+        "s": np.asarray([3.0]),
+        "e": np.asarray([150.0]),
+    })
+
+    with pytest.raises(epcsaft.InputError, match="composition length"):
+        mix.state(T=300.0, x=np.asarray([0.5, 0.5]), rho=100.0)
+
+
 def test_pressure_based_state_matches_equivalent_density_state():
     mix = ePCSAFTMixture.from_params({
         "m": np.asarray([2.8149]),
@@ -457,5 +468,13 @@ def test_pressure_based_state_raises_solver_error_during_construction():
         "e": np.asarray([150.0]),
     }, species=["A"])
 
-    with pytest.raises(epcsaft.SolutionError):
+    with pytest.raises(epcsaft.SolutionError) as excinfo:
         mix.state(T=300.0, x=np.asarray([1.0]), P=1.0e-12, phase="liq")
+
+    message = str(excinfo.value)
+    assert "pressure-based state solve failed" in message
+    assert "T=300.0" in message
+    assert "P=1e-12" in message
+    assert "phase=liq" in message
+    assert "x=[1.0]" in message
+    assert excinfo.value.__cause__ is not None

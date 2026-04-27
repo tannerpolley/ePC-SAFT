@@ -163,6 +163,10 @@ class ePCSAFTState:
             raise InputError("mixture must be a ePCSAFTMixture instance.")
         mix = mixture
         x, params = ensure_numpy_input(x, mix._params)
+        x = np.asarray(x, dtype=float).flatten()
+        ncomp = int(mix.ncomp)
+        if x.size != ncomp:
+            raise InputError("State composition length ({}) must match mixture component count ({}).".format(int(x.size), ncomp))
         # ensure_numpy_input may normalize a scalar mixture parameter path, but the
         # state should retain the original mixture data unchanged.
         phase_num = phase_to_int(phase)
@@ -188,7 +192,17 @@ class ePCSAFTState:
             )
         except Exception as exc:
             if has_p:
-                raise SolutionError(str(exc))
+                message = (
+                    "pressure-based state solve failed for "
+                    "T={}, P={}, phase={}, x={}: {}".format(
+                        float(T),
+                        float(P),
+                        phase,
+                        x.tolist(),
+                        exc,
+                    )
+                )
+                raise SolutionError(message) from exc
             raise
         self._mixture = mixture
         self._x = np.asarray(x, dtype=float)

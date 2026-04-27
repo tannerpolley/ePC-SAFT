@@ -27,6 +27,20 @@ uv run python run_pytest.py tests\test_runtime.py -q
 
 Direct pytest also works, for example `uv run python -m pytest tests\test_runtime.py -q`, but `uv run python run_pytest.py ...` is preferred for Codex and Windows runs because it manages pytest temporary directories more predictably. Set `EPCSAFT_PYTEST_TEMP_ROOT` when you want the wrapper to use an opt-in external pytest temp root instead of its default repo-local generated temp area.
 
+For the standard Codex validation loops:
+
+```powershell
+uv run python run_pytest.py --generic -q
+uv run python run_pytest.py --confidence -q
+```
+
+`--generic` runs the fast core runtime, parameter-template, equation-registry, and regression API slice. `--confidence` runs that same slice plus the native runtime contract tests. To keep pytest temp files outside the repo for an opt-in run, set `EPCSAFT_PYTEST_TEMP_ROOT`, for example:
+
+```powershell
+$env:EPCSAFT_PYTEST_TEMP_ROOT = Join-Path $env:TEMP 'epcsaft-pytest'
+uv run python run_pytest.py --confidence -q
+```
+
 Use `uv run python scripts\build_epcsaft.py --clean` only as a repair step for stale CMake state or stale/locked `_core` artifacts. If a `_core*.pyd` is locked, stop the importing Python/test/IDE process before running the clean repair.
 
 `CMakePresets.json` is optional Windows MinGW convenience for IDEs and manual CMake use. The canonical local native build remains `uv run python scripts\build_epcsaft.py`.

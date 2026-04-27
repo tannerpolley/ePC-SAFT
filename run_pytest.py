@@ -13,6 +13,7 @@ GENERIC_TEST_TARGETS = (
     "tests/test_regression.py",
     "tests/test_regression_api.py",
 )
+CONFIDENCE_TEST_TARGETS = GENERIC_TEST_TARGETS + ("tests/test_native_runtime_contracts.py",)
 
 
 def _repo_root() -> Path:
@@ -42,10 +43,17 @@ def _pytest_env(pytest_temp: Path) -> dict[str, str]:
     return env
 
 
-def _pytest_args(pytest_args: list[str], pytest_temp: Path, generic: bool = False) -> list[str]:
+def _pytest_args(
+    pytest_args: list[str], pytest_temp: Path, generic: bool = False, confidence: bool = False
+) -> list[str]:
     cmd: list[str] = []
-    if generic:
+    has_predefined_targets = generic or confidence
+    if confidence:
+        cmd.extend(CONFIDENCE_TEST_TARGETS)
+    elif generic:
         cmd.extend(GENERIC_TEST_TARGETS)
+
+    if has_predefined_targets:
         cmd.extend(pytest_args)
     else:
         has_positional_target = any(not arg.startswith("-") for arg in pytest_args)
@@ -54,6 +62,7 @@ def _pytest_args(pytest_args: list[str], pytest_temp: Path, generic: bool = Fals
         else:
             cmd.append("tests")
             cmd.extend(pytest_args)
+
     if not any(arg == "--basetemp" or arg.startswith("--basetemp=") for arg in cmd):
         cmd.extend(["--basetemp", str(pytest_temp)])
     return cmd
@@ -84,9 +93,25 @@ def _patch_pytest_cleanup() -> None:
         pass
 
 
+def _failure_message(pytest_temp: Path) -> str:
+    cleanup_path = str(pytest_temp.resolve())
+    return (
+        "Pytest failed; keeping temp directory for triage: "
+        f"{cleanup_path}\n"
+        "Cleanup with: "
+        f"Remove-Item -Recurse -Force '{cleanup_path}' (PowerShell)\n"
+        f"or rm -rf {cleanup_path} (POSIX shells)"
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--generic", action="store_true", help="Run the core generic test slice")
+    parser.add_argument(
+        "--confidence",
+        action="store_true",
+        help="Run generic tests plus native runtime contract tests",
+    )
     args, pytest_args = parser.parse_known_args()
 
     repo_root = _repo_root()
@@ -96,7 +121,7 @@ def main() -> int:
     sys.path.insert(0, str(src_root))
     env["PYTHONPATH"] = str(src_root)
 
-    cmd = _pytest_args(pytest_args, pytest_temp, args.generic)
+    cmd = _pytest_args(pytest_args, pytest_temp, args.generic, confidence=args.confidence)
     print("Running:", f"{sys.executable} -m pytest", " ".join(cmd), flush=True)
     os.environ.update(env)
 
@@ -109,7 +134,7 @@ def main() -> int:
     if exit_code == 0:
         shutil.rmtree(pytest_temp, ignore_errors=True)
     else:
-        print(f"Keeping pytest temp directory for failed run: {pytest_temp}", flush=True)
+        print(_failure_message(pytest_temp), flush=True)
     return exit_code
 
 
