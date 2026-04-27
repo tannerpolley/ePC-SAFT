@@ -514,7 +514,11 @@
   tex_line: 479
   latex: |
     \rho=\frac{6}{\pi} \eta\left(\sum_{i} x_{i} m_{i} d_{i}^3\right)^{-1}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_density.cpp"
+      line: 458
+      comment_line: 456
+      context: "double reduced_density_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs) {"
 - eqid: "rho_reduced"
   section: "Density"
   subsection: "Density Conversion"
@@ -530,7 +534,11 @@
     \rho_{N}=N_{\mathrm{AV}}\rho,
         \qquad
         \hat{\rho}=\rho_{N}\cdot 10^{-30}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_density.cpp"
+      line: 458
+      comment_line: 457
+      context: "double reduced_density_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs) {"
 - eqid: "pressure_from_z"
   section: "Density"
   subsection: "Pressure-Density Closure"
@@ -590,7 +598,11 @@
         Z(T,\rho,\mathbf{x})RT\rho
         =
         0
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_density.cpp"
+      line: 610
+      comment_line: 609
+      context: "double density_root_residual_cpp(double rhomolar, double t, double p, vector<double> x, const add_args &cppargs){"
 - eqid: "ares_hs"
   section: "Contribution Intermediates"
   subsection: "Hard-Chain"

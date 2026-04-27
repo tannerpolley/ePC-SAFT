@@ -39,13 +39,19 @@ def test_codex_actions_name_standard_confidence_suite() -> None:
     assert "Test Standard Confidence Suite" in actions
     assert "run_pytest.py --confidence -q" in actions["Test Standard Confidence Suite"]
     assert "Test Confidence Suite (External Temp)" in actions
+    assert actions["Fast Native Rebuild"] == "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+    assert actions["Runtime Profile"] == "uv run python run_pytest.py --profile -q"
+    assert actions["Build Distribution + Smoke Import"] == "uv run python scripts/build_dist.py"
 
 
 def test_docs_make_confidence_suite_the_default_runtime_check() -> None:
     readme = _read("README.md")
     getting_started = _read("docs/pages/getting_started.rst")
+    docs_index = _read("docs/pages/index.rst")
 
     assert "default new-agent validation sequence" in readme
     assert "`--confidence` is the default runtime-confidence check" in readme
     assert "default new-agent validation sequence" in getting_started
     assert "``--confidence`` is the default runtime-confidence check" in getting_started
+    assert "native_debugging" in docs_index
+    assert "native/equation debugging guide" in getting_started

@@ -453,6 +453,8 @@ double den_cpp(double t, double p, vector<double> x, int phase, const add_args &
     throw SolutionError("No valid density root found for liquid phase.");
 }
 
+// EqID: rho_from_eta
+// EqID: rho_reduced
 double reduced_density_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs) {
     vector<double> d(ncomp);
     double summ = 0.;
@@ -604,6 +606,7 @@ double density_brent_cpp(double t, double p, vector<double> x, int phase, const 
     return b;
 }
 
+// EqID: density_solve_residual
 double density_root_residual_cpp(double rhomolar, double t, double p, vector<double> x, const add_args &cppargs){
     double peos = p_cpp(t, rhomolar, x, cppargs);
     double pressure_scale = std::max(std::abs(p), 1e-3);

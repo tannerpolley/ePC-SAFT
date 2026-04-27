@@ -14,6 +14,10 @@ GENERIC_TEST_TARGETS = (
     "tests/test_regression_api.py",
 )
 CONFIDENCE_TEST_TARGETS = GENERIC_TEST_TARGETS + ("tests/test_native_runtime_contracts.py",)
+RUNTIME_TEST_TARGETS = ("tests/test_runtime.py", "tests/test_native_runtime_contracts.py")
+API_TEST_TARGETS = ("tests/test_runtime.py", "tests/test_parameter_templates.py", "tests/test_regression_api.py")
+NATIVE_TEST_TARGETS = ("tests/test_native_runtime_contracts.py",)
+PROFILE_TEST_TARGETS = ("tests/test_runtime_profile.py",)
 
 
 def _repo_root() -> Path:
@@ -35,23 +39,41 @@ def _pytest_temp(repo_root: Path) -> Path:
     return path
 
 
-def _pytest_env(pytest_temp: Path) -> dict[str, str]:
+def _pytest_env(pytest_temp: Path, profile: bool = False) -> dict[str, str]:
     env = os.environ.copy()
     env["TMP"] = str(pytest_temp.resolve())
     env["TEMP"] = str(pytest_temp.resolve())
     env["TMPDIR"] = str(pytest_temp.resolve())
+    if profile:
+        env["EPCSAFT_RUN_PERF"] = "1"
+        env["ePCSAFT_RUN_PERF"] = "1"
     return env
 
 
 def _pytest_args(
-    pytest_args: list[str], pytest_temp: Path, generic: bool = False, confidence: bool = False
+    pytest_args: list[str],
+    pytest_temp: Path,
+    generic: bool = False,
+    confidence: bool = False,
+    runtime: bool = False,
+    api: bool = False,
+    native: bool = False,
+    profile: bool = False,
 ) -> list[str]:
     cmd: list[str] = []
-    has_predefined_targets = generic or confidence
+    has_predefined_targets = generic or confidence or runtime or api or native or profile
     if confidence:
         cmd.extend(CONFIDENCE_TEST_TARGETS)
     elif generic:
         cmd.extend(GENERIC_TEST_TARGETS)
+    elif runtime:
+        cmd.extend(RUNTIME_TEST_TARGETS)
+    elif api:
+        cmd.extend(API_TEST_TARGETS)
+    elif native:
+        cmd.extend(NATIVE_TEST_TARGETS)
+    elif profile:
+        cmd.extend(PROFILE_TEST_TARGETS)
 
     if has_predefined_targets:
         cmd.extend(pytest_args)
@@ -106,22 +128,36 @@ def _failure_message(pytest_temp: Path) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--generic", action="store_true", help="Run the core generic test slice")
-    parser.add_argument(
+    predefined = parser.add_mutually_exclusive_group()
+    predefined.add_argument("--generic", action="store_true", help="Run the core generic test slice")
+    predefined.add_argument(
         "--confidence",
         action="store_true",
         help="Run generic tests plus native runtime contract tests",
     )
+    predefined.add_argument("--runtime", action="store_true", help="Run runtime API and native contract tests")
+    predefined.add_argument("--api", action="store_true", help="Run public API and regression API tests")
+    predefined.add_argument("--native", action="store_true", help="Run native runtime contract tests")
+    predefined.add_argument("--profile", action="store_true", help="Run the opt-in runtime profile test")
     args, pytest_args = parser.parse_known_args()
 
     repo_root = _repo_root()
     pytest_temp = _pytest_temp(repo_root)
-    env = _pytest_env(pytest_temp)
+    env = _pytest_env(pytest_temp, profile=args.profile)
     src_root = repo_root / "src"
     sys.path.insert(0, str(src_root))
     env["PYTHONPATH"] = str(src_root)
 
-    cmd = _pytest_args(pytest_args, pytest_temp, args.generic, confidence=args.confidence)
+    cmd = _pytest_args(
+        pytest_args,
+        pytest_temp,
+        args.generic,
+        confidence=args.confidence,
+        runtime=args.runtime,
+        api=args.api,
+        native=args.native,
+        profile=args.profile,
+    )
     print("Running:", f"{sys.executable} -m pytest", " ".join(cmd), flush=True)
     os.environ.update(env)
 

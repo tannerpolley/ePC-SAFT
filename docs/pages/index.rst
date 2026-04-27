@@ -33,6 +33,7 @@ Reference
 
    package_guide
    api_reference
+   native_debugging
 
    references
 

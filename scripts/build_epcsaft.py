@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 
@@ -83,18 +84,45 @@ def _build(env: dict[str, str], parallel: str | None) -> None:
     _run(cmd, env=env)
 
 
-def main() -> int:
+def _timed(label: str, action) -> float:
+    start = time.perf_counter()
+    action()
+    elapsed = time.perf_counter() - start
+    print(f"Timing: {label} completed in {elapsed:.2f}s", flush=True)
+    return elapsed
+
+
+def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Build epcsaft._core in-place with direct CMake.")
     parser.add_argument("--clean", action="store_true", help="Remove build/dev and any in-place _core artifact first.")
+    parser.add_argument("--configure-only", action="store_true", help="Configure the CMake dev build tree without building.")
+    parser.add_argument("--build-only", action="store_true", help="Build the existing CMake dev build tree without reconfiguring.")
     parser.add_argument("--parallel", help="Optional CMake build parallelism value.")
-    args = parser.parse_args()
+    return parser
 
+
+def main() -> int:
+    parser = _parser()
+    args = parser.parse_args()
+    if args.clean and args.build_only:
+        parser.error("--clean cannot be combined with --build-only")
+    if args.configure_only and args.build_only:
+        parser.error("--configure-only cannot be combined with --build-only")
+
+    total_start = time.perf_counter()
     if args.clean:
-        _clean()
+        _timed("clean", _clean)
 
     env = _env()
-    _configure(env)
-    _build(env, args.parallel)
+    if not args.build_only:
+        _timed("configure", lambda: _configure(env))
+    else:
+        print("Timing: configure skipped (--build-only)", flush=True)
+    if not args.configure_only:
+        _timed("build", lambda: _build(env, args.parallel))
+    else:
+        print("Timing: build skipped (--configure-only)", flush=True)
+    print(f"Timing: total completed in {time.perf_counter() - total_start:.2f}s", flush=True)
     return 0
 
 
