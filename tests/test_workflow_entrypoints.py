@@ -47,11 +47,23 @@ def test_codex_actions_name_standard_confidence_suite() -> None:
 def test_docs_make_confidence_suite_the_default_runtime_check() -> None:
     readme = _read("README.md")
     getting_started = _read("docs/pages/getting_started.rst")
+    overview = _read("docs/pages/README.rst")
     docs_index = _read("docs/pages/index.rst")
+    codex_workflows = _read("docs/pages/codex_workflows.rst")
 
     assert "default new-agent validation sequence" in readme
     assert "`--confidence` is the default runtime-confidence check" in readme
+    assert "Codex workflow guide" in readme
     assert "default new-agent validation sequence" in getting_started
     assert "``--confidence`` is the default runtime-confidence check" in getting_started
+    assert "uv run python run_pytest.py --confidence -q" in overview
+    assert "run_pytest.py tests/test_runtime.py -q" not in overview
+    assert "codex_workflows" in docs_index
     assert "native_debugging" in docs_index
     assert "native/equation debugging guide" in getting_started
+    assert "Start every new Codex thread with this sequence" in codex_workflows
+    assert "uv run python scripts/build_epcsaft.py --build-only --parallel 10" in codex_workflows
+    assert "uv run python run_pytest.py --runtime -q" in codex_workflows
+    assert "uv run python run_pytest.py --profile -q" in codex_workflows
+    assert "uv run python scripts/build_dist.py" in codex_workflows
+    assert "Do not use ``--clean`` for routine validation" in codex_workflows

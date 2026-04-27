@@ -29,14 +29,18 @@ Direct pytest also works, for example `uv run python -m pytest tests\test_runtim
 
 The default new-agent validation sequence is sync, normal native build, doctor, then `uv run python run_pytest.py --confidence -q`.
 
+For future Codex agents and maintainers, the [Codex workflow guide](docs/pages/codex_workflows.rst) is the source-of-truth command matrix for setup, fast rebuilds, focused tests, profiling, packaging, and repair-only cleanup.
+
 For the standard Codex validation loops:
 
 ```powershell
+uv run python run_pytest.py --runtime -q
 uv run python run_pytest.py --generic -q
 uv run python run_pytest.py --confidence -q
+uv run python run_pytest.py --profile -q
 ```
 
-`--generic` runs the fast core runtime, parameter-template, equation-registry, and regression API slice. `--confidence` is the default runtime-confidence check; it runs that same slice plus the native runtime contract tests. To keep pytest temp files outside the repo for an opt-in run, set `EPCSAFT_PYTEST_TEMP_ROOT`, for example:
+`--runtime` runs runtime API plus native contract tests. `--generic` runs the fast core runtime, parameter-template, equation-registry, and regression API slice. `--confidence` is the default runtime-confidence check; it runs that same slice plus the native runtime contract tests. `--profile` enables and runs the opt-in runtime profiling check. To keep pytest temp files outside the repo for an opt-in run, set `EPCSAFT_PYTEST_TEMP_ROOT`, for example:
 
 ```powershell
 $env:EPCSAFT_PYTEST_TEMP_ROOT = Join-Path $env:TEMP 'epcsaft-pytest'
@@ -50,7 +54,7 @@ Use `uv run python scripts\build_epcsaft.py --clean` only as a repair step for s
 Build distributable artifacts at the packaging boundary:
 
 ```powershell
-uv build
+uv run python scripts\build_dist.py
 ```
 
 ## Example
@@ -88,6 +92,7 @@ Phase 1 of the regression workflow is intentionally narrow: `fit_pure_neutral(..
 
 - [Start here](docs/pages/README.rst)
 - [Getting started](docs/pages/getting_started.rst)
+- [Codex workflow guide](docs/pages/codex_workflows.rst)
 - [Create your own parameter folder](docs/pages/user_parameter_templates.rst)
 - [Parameter regression guide](docs/pages/parameter_regression.rst)
 - [User options reference](docs/pages/user_options.rst)

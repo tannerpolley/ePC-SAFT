@@ -24,11 +24,13 @@ For development from this source tree, use ``uv`` and the direct CMake build loo
 This is the default new-agent validation sequence: sync, normal native build,
 doctor, then the confidence suite.
 
+For the full source-checkout command matrix, see :doc:`codex_workflows`.
+
 For tests, use:
 
 .. code-block:: bash
 
-   uv run python run_pytest.py tests/test_runtime.py -q
+   uv run python run_pytest.py --confidence -q
 
 Direct pytest also works:
 
@@ -50,7 +52,7 @@ For package artifacts, use:
 
 .. code-block:: bash
 
-   uv build
+   uv run python scripts/build_dist.py
 
 On Windows, a compiled ``.pyd`` file may appear during local builds. That file is a build artifact and is normally produced by the installer or build backend, not copied into a project manually.
 

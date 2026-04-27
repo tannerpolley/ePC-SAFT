@@ -30,9 +30,12 @@ For development from this source tree:
 
    uv sync --no-install-project
    uv run python scripts/build_epcsaft.py
-   uv run python run_pytest.py tests/test_runtime.py -q
+   uv run python scripts/codex_doctor.py
+   uv run python run_pytest.py --confidence -q
 
 Direct pytest also works, for example ``uv run python -m pytest tests/test_runtime.py -q``. For Codex and Windows work, prefer ``uv run python run_pytest.py ...`` because the wrapper manages pytest temporary directories more predictably. Set ``EPCSAFT_PYTEST_TEMP_ROOT`` when you want the wrapper to use an opt-in external pytest temp root instead of its default repo-local generated temp area.
+
+For future Codex agents, :doc:`codex_workflows` is the explicit command matrix for setup, fast native rebuilds, focused tests, profiling, packaging, and repair-only cleanup.
 
 Use ``uv run python scripts/build_epcsaft.py --clean`` only as a repair step for stale CMake state or stale/locked ``_core`` artifacts. If a ``_core*.pyd`` is locked, stop the importing Python/test/IDE process before running the clean repair.
 
@@ -42,13 +45,14 @@ For package artifacts:
 
 .. code-block:: bash
 
-   uv build
+   uv run python scripts/build_dist.py
 
 The default development workflow uses ``uv`` for dependency management and direct CMake for the in-place native extension build.
 
 Then choose the path that matches what you want to do:
 
 - :doc:`getting_started` for the quickest first run
+- :doc:`codex_workflows` for the exact Codex build/test/debug command matrix
 - :doc:`user_parameter_templates` to build your own parameter folder
 - :doc:`parameter_regression` for the phase-1 neutral ``m/s/e`` regression workflow
 - :doc:`user_options` to see every supported ``user_options.json`` setting
