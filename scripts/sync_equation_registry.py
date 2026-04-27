@@ -21,6 +21,14 @@ META_RE = re.compile(r"%\s*([A-Za-z][A-Za-z ]+):\s*(.*)")
 LABEL_RE = re.compile(r"\\label\{([^}]+)\}")
 CODE_EQID_RE = re.compile(r"//\s*EqID:\s*([A-Za-z0-9_]+)")
 BEGIN_ENV_RE = re.compile(r"\\begin\{([A-Za-z*]+)\}")
+DOCUMENTATION_ONLY_STATUSES = {
+    "documentation-only",
+    "documentation_only",
+    "docs-only",
+    "docs_only",
+    "reference-only",
+    "reference_only",
+}
 
 
 def parse_equations(tex_path: Path) -> list[dict]:
@@ -163,6 +171,35 @@ def attach_code_refs(entries: list[dict], code_refs: dict[str, list[dict]]) -> N
         entry["cpp_refs"] = code_refs.get(entry["eqid"], [])
 
 
+def _status_token(entry: dict) -> str:
+    return str(entry.get("status", "")).strip().lower()
+
+
+def is_documentation_only(entry: dict) -> bool:
+    return _status_token(entry) in DOCUMENTATION_ONLY_STATUSES
+
+
+def missing_cpp_ref_entries(entries: list[dict]) -> list[dict]:
+    return [
+        entry
+        for entry in entries
+        if not entry.get("cpp_refs") and not is_documentation_only(entry)
+    ]
+
+
+def render_traceability_report(entries: list[dict]) -> str:
+    if not entries:
+        return "Equation traceability: all implementation equations have C++ owner comments."
+
+    lines = [
+        "Equation traceability warning: EqIDs without C++ owner comments:",
+    ]
+    for entry in entries:
+        lines.append(f"- {entry.get('eqid', '<unknown>')} ({entry.get('tex_file', '<unknown>')}:{entry.get('tex_line', '<unknown>')})")
+    lines.append("Mark documentation-only equations with status: Documentation-only.")
+    return "\n".join(lines)
+
+
 def yaml_quote(value: object) -> str:
     return json.dumps("" if value is None else value, ensure_ascii=False)
 
@@ -300,6 +337,7 @@ def main() -> None:
     code_refs = parse_code_refs(NATIVE_ROOT)
     validate_links(entries, code_refs)
     attach_code_refs(entries, code_refs)
+    traceability_report = render_traceability_report(missing_cpp_ref_entries(entries))
 
     yaml_text = render_yaml(entries)
     markdown_text = render_markdown(entries)
@@ -308,6 +346,7 @@ def main() -> None:
         check_matches(REGISTRY_PATH, yaml_text)
         check_matches(MARKDOWN_PATH, markdown_text)
         print("Equation registry outputs are up to date.")
+        print(traceability_report)
         return
 
     changed_yaml = write_if_changed(REGISTRY_PATH, yaml_text)
@@ -316,6 +355,7 @@ def main() -> None:
         print("Updated equation registry outputs.")
     else:
         print("Equation registry outputs already up to date.")
+    print(traceability_report)
 
 
 if __name__ == "__main__":

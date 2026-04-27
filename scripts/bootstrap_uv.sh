@@ -13,8 +13,6 @@ fi
 uv --version
 uv python pin 3.12
 uv sync --no-install-project
-uv run python scripts/build_epcsaft.py --clean
+uv run python scripts/build_epcsaft.py
 uv run python scripts/codex_doctor.py
-uv run python run_pytest.py tests/test_runtime.py -q
-uv run python run_pytest.py tests/test_parameter_templates.py -q
-uv run python run_pytest.py tests/test_equation_registry.py -q
+uv run python run_pytest.py --confidence -q

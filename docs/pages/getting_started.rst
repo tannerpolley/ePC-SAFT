@@ -19,6 +19,10 @@ For development from this source tree, use ``uv`` and the direct CMake build loo
    uv sync --no-install-project
    uv run python scripts/build_epcsaft.py
    uv run python scripts/codex_doctor.py
+   uv run python run_pytest.py --confidence -q
+
+This is the default new-agent validation sequence: sync, normal native build,
+doctor, then the confidence suite.
 
 For tests, use:
 
@@ -33,6 +37,8 @@ Direct pytest also works:
    uv run python -m pytest tests/test_runtime.py -q
 
 For Codex and Windows work, prefer ``uv run python run_pytest.py ...`` because the wrapper manages pytest temporary directories more predictably. Set ``EPCSAFT_PYTEST_TEMP_ROOT`` when you want the wrapper to use an opt-in external pytest temp root instead of its default repo-local generated temp area.
+
+``--generic`` is the faster validation slice. ``--confidence`` is the default runtime-confidence check because it also runs the native runtime contract tests.
 
 Use ``uv run python scripts/build_epcsaft.py --clean`` only as a repair step for stale CMake state or stale/locked ``_core`` artifacts. If a ``_core*.pyd`` is locked, stop the importing Python/test/IDE process before running the clean repair.
 

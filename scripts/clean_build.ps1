@@ -4,6 +4,8 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Split-Path -Parent $ScriptDir
 Set-Location $RepoRoot
 
+Write-Warning "REPAIR-ONLY: this removes build/cache/native artifacts. Use normal build and confidence tests for routine validation."
+
 function Remove-PathIfPresent {
     param([Parameter(Mandatory = $true)][string]$Path)
 

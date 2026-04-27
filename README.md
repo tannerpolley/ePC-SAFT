@@ -22,10 +22,12 @@ This repository uses `uv` for Python environment management and direct CMake for
 uv sync --no-install-project
 uv run python scripts\build_epcsaft.py
 uv run python scripts\codex_doctor.py
-uv run python run_pytest.py tests\test_runtime.py -q
+uv run python run_pytest.py --confidence -q
 ```
 
 Direct pytest also works, for example `uv run python -m pytest tests\test_runtime.py -q`, but `uv run python run_pytest.py ...` is preferred for Codex and Windows runs because it manages pytest temporary directories more predictably. Set `EPCSAFT_PYTEST_TEMP_ROOT` when you want the wrapper to use an opt-in external pytest temp root instead of its default repo-local generated temp area.
+
+The default new-agent validation sequence is sync, normal native build, doctor, then `uv run python run_pytest.py --confidence -q`.
 
 For the standard Codex validation loops:
 
@@ -34,7 +36,7 @@ uv run python run_pytest.py --generic -q
 uv run python run_pytest.py --confidence -q
 ```
 
-`--generic` runs the fast core runtime, parameter-template, equation-registry, and regression API slice. `--confidence` runs that same slice plus the native runtime contract tests. To keep pytest temp files outside the repo for an opt-in run, set `EPCSAFT_PYTEST_TEMP_ROOT`, for example:
+`--generic` runs the fast core runtime, parameter-template, equation-registry, and regression API slice. `--confidence` is the default runtime-confidence check; it runs that same slice plus the native runtime contract tests. To keep pytest temp files outside the repo for an opt-in run, set `EPCSAFT_PYTEST_TEMP_ROOT`, for example:
 
 ```powershell
 $env:EPCSAFT_PYTEST_TEMP_ROOT = Join-Path $env:TEMP 'epcsaft-pytest'
