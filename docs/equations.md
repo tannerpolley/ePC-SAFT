@@ -111,7 +111,7 @@ d_{i}=\sigma_{i}\left[1-0.12 \exp \left(-3 \frac{\epsilon_{i}}{k T}\right)\right
 - Description: Provides a supporting relation used in temperature differential equations.
 - Change note: Moved into the upstream diameter setup block so this simple diameter identity is defined with the other diameter relations before it is reused downstream.
 - LaTeX: `docs/latex/equations.tex:113`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 \frac{1}{2}d_{i}=\left(\frac{d_{i}d_{i}}{d_{i}+d_{i}}\right)
@@ -147,7 +147,7 @@ d_{\mathrm{ion},i}\equiv d_{i}=
 - Description: Provides a supporting relation used in association contribution.
 - Change note: Mapped to the arithmetic combining rule form; this file writes it for effective diameters in association context.
 - LaTeX: `docs/latex/equations.tex:147`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 d_{i j}=\left(d_{i i}+d_{j j}\right) / 2 .
@@ -2360,7 +2360,7 @@ Z^{\alpha}
 - Description: Provides a supporting relation used in entropy.
 - Change note: Mapped manually to the residual-entropy relation with logarithmic compressibility correction.
 - LaTeX: `docs/latex/equations.tex:2221`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 \tilde{s}^{\mathrm{res}} = \frac{\hat{s}^{\mathrm{res}}(P,T)}{R}=\frac{\hat{s}^{\mathrm{res}}(\nu,T)}{R}+\ln(Z)
@@ -2388,7 +2388,7 @@ Z^{\alpha}
 - Description: Provides a supporting relation used in gibbs free energy.
 - Change note: Mapped manually to the residual Gibbs relation via enthalpy and entropy.
 - LaTeX: `docs/latex/equations.tex:2245`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 \tilde{g}^{\mathrm{res}}=\frac{\hat{g}^{\mathrm{res}}}{RT}=\frac{\hat{h}^{\mathrm{res}}}{RT}-\frac{\hat{s}^{\mathrm{res}}(P,T)}{R}
@@ -2444,7 +2444,7 @@ Z^{\alpha}
 - Description: Gives the mean-ionic chemical-potential conversion from cation and anion chemical potentials.
 - Change note: Added to gather the general mean-ionic property conversions in one dedicated section.
 - LaTeX: `docs/latex/equations.tex:2298`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 \mu_{\pm}
@@ -2460,7 +2460,7 @@ Z^{\alpha}
 - Description: Gives the mean-ionic fugacity conversion from cation and anion fugacities.
 - Change note: Added to gather the general mean-ionic property conversions in one dedicated section.
 - LaTeX: `docs/latex/equations.tex:2312`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 f_{\pm}
@@ -2478,7 +2478,7 @@ f_{\pm}
 - Description: Gives the mean-ionic activity conversion from cation and anion activities.
 - Change note: Added to gather the general mean-ionic property conversions in one dedicated section.
 - LaTeX: `docs/latex/equations.tex:2328`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 a_{\pm}
@@ -2496,7 +2496,7 @@ a_{\pm}
 - Description: Gives the mean-ionic fugacity-coefficient conversion from cation and anion fugacity coefficients.
 - Change note: Added to gather the general mean-ionic property conversions in one dedicated section.
 - LaTeX: `docs/latex/equations.tex:2344`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 \varphi_{\pm}
@@ -2588,7 +2588,7 @@ a_{\pm}
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Baseline 2005 formulation retained for comparison to the reorganized active chemical-potential presentation.
 - LaTeX: `docs/latex/equations.tex:2431`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 \tilde{\mu}^{DH}_{i}= -\frac{q_{i}^2 \kappa}{24 \pi k T \epsilon}\left[2 \chi_{i}+\frac{\sum_{j} x_{j} q_{j}^2 \sigma_{k}}{\sum_{j} x_{j} q_{j}^2}\right]
@@ -2601,7 +2601,7 @@ a_{\pm}
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Retained beside Eq.~\eqref{eq:mu_dh_2005} so the original 2005 chemical-potential form stays self-contained in the legacy comparison block.
 - LaTeX: `docs/latex/equations.tex:2442`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 \sigma_{k}=\left(\frac{\partial\left(\kappa \chi_{k}\right)}{\partial \kappa}\right)_{T, \mathrm{~N}}=-2 \chi_{k}+\frac{3}{1+\kappa d_{k}}
@@ -2618,7 +2618,7 @@ a_{\pm}
 - Description: Provides a supporting relation used in debye and huckel electrolyte term contribution.
 - Change note: Mapped manually to the closest-approach radius selection between ion diameter and Bjerrum length.
 - LaTeX: `docs/latex/equations.tex:2459`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 R_{i}=
@@ -2635,7 +2635,7 @@ R_{i}=
 - Description: Specifies dielectric-property mixing or derivative form for debye and huckel electrolyte term contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
 - LaTeX: `docs/latex/equations.tex:2474`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}
@@ -2648,7 +2648,7 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Mapped manually to the reduced Debye-Huckel Helmholtz form with dissociation degree factors.
 - LaTeX: `docs/latex/equations.tex:2485`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 \tilde{a}^{DH}=-\frac{\kappa e^{2}}{12\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}\sum_{i}\alpha_{i}x_{i}z_{i}^{2}\chi_{i}
@@ -2661,7 +2661,7 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Mapped manually to the Bjerrum-treatment Debye screening parameter definition.
 - LaTeX: `docs/latex/equations.tex:2496`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 \kappa=\sqrt{\frac{\rho e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\sum_{j}\alpha_{j}x_{j}z_{j}^{2}}
@@ -2674,7 +2674,7 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Mapped manually to the Bjerrum-treatment chi-function definition.
 - LaTeX: `docs/latex/equations.tex:2507`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 \chi_{i}=\frac{3}{\left(\kappa R_{i}\right)^3}\left[\frac{3}{2}+\ln(1+\kappa R_{i})-2(1+\kappa R_{i})+\frac{1}{2}\left(1+\kappa R_{i}\right)^2\right]
@@ -2689,7 +2689,7 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Grouped under the supplemental Bjerrum-treatment section so the main density-differential section stays focused on the base Debye-Huckel formulation.
 - LaTeX: `docs/latex/equations.tex:2520`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 \rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
@@ -2703,7 +2703,7 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Grouped under the supplemental Bjerrum-treatment section so the Bjerrum-specific sigma relation stays beside the other extended Debye-Huckel helpers.
 - LaTeX: `docs/latex/equations.tex:2532`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 \sigma_{i}=\left(\frac{\partial(\kappa\chi_{i})}{\partial\kappa}\right)_{T,\mathrm{x}}=-2\chi_{i}+\frac{3}{1+\kappa R_{i}}
@@ -2718,7 +2718,7 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Grouped under the supplemental Bjerrum-treatment section so the composition-derivative variant stays with the rest of the extended Bjerrum relations.
 - LaTeX: `docs/latex/equations.tex:2545`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 \begin{aligned}
@@ -2749,7 +2749,7 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Grouped under the supplemental Bjerrum-treatment section so the auxiliary composition derivative for \kappa stays adjacent to the Bjerrum-specific Helmholtz relation.
 - LaTeX: `docs/latex/equations.tex:2574`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 \begin{aligned}
@@ -2764,7 +2764,7 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Grouped under the supplemental Bjerrum-treatment section so the Bjerrum-specific chi derivative remains adjacent to the other extended Debye-Huckel derivatives.
 - LaTeX: `docs/latex/equations.tex:2587`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 \begin{aligned}
@@ -2781,7 +2781,7 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
 - Description: Gives an activity or fugacity-coefficient relation in debye and huckel electrolyte term contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
 - LaTeX: `docs/latex/equations.tex:2602`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 \alpha=\frac{-1+\sqrt{1+4x_{\pm} K_{ip}\frac{\left(\gamma_{\pm}^*\left(x_{f}\right)\right)^2}{\gamma_{ip}^*}}}{2x_{\pm} K_{ip}\frac{\left(\gamma_{\pm}^*\left(x_{f}\right)\right)^2}{\gamma_{ip}^*}}
@@ -2794,7 +2794,7 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
 - Description: Specifies dielectric-property mixing or derivative form for debye and huckel electrolyte term contribution.
 - Change note: This line combines the algebraic ion-pair equilibrium form and the configurational integral expression shown as separate equations in the paper.
 - LaTeX: `docs/latex/equations.tex:2613`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 K_{ip}(T)=\frac{(1-\alpha)\cdot\gamma_{ip}^{*}}{\alpha^{2}\cdot x_{\pm}\cdot\left(\gamma_{\pm}^{*}(x_{f}(\alpha))\right)^{2}} = 4\pi\rho_{N}\int_{a}^{l_{B}}\exp\left(\frac{\left|z_{i}z_{j}\right|e^2}{4\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}\cdot\frac{1}{r}\right)r^2dr
@@ -2807,7 +2807,7 @@ K_{ip}(T)=\frac{(1-\alpha)\cdot\gamma_{ip}^{*}}{\alpha^{2}\cdot x_{\pm}\cdot\lef
 - Description: Provides a supporting relation used in debye and huckel electrolyte term contribution.
 - Change note: Assumption $\gamma_{ip}^* \approx 1$ is used as a simplifying closure and is not a standalone numbered equation in the source paper.
 - LaTeX: `docs/latex/equations.tex:2624`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 \gamma_{ip}^* \approx 1
@@ -2820,7 +2820,7 @@ K_{ip}(T)=\frac{(1-\alpha)\cdot\gamma_{ip}^{*}}{\alpha^{2}\cdot x_{\pm}\cdot\lef
 - Description: Provides a supporting relation used in debye and huckel electrolyte term contribution.
 - Change note: Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation.
 - LaTeX: `docs/latex/equations.tex:2635`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 x_{\pm} = x_{f} + x_{ip}
@@ -2833,7 +2833,7 @@ x_{\pm} = x_{f} + x_{ip}
 - Description: Provides a supporting relation used in debye and huckel electrolyte term contribution.
 - Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
 - LaTeX: `docs/latex/equations.tex:2646`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 x_{\pm} = \alpha x_{f}
@@ -2846,7 +2846,7 @@ x_{\pm} = \alpha x_{f}
 - Description: Provides a supporting relation used in debye and huckel electrolyte term contribution.
 - Change note: Stoichiometric rearrangement used with Eq. (9) during alpha-based ion-pair splitting.
 - LaTeX: `docs/latex/equations.tex:2657`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 x_{\pm} = (1 - \alpha) x_{ip}
@@ -2859,7 +2859,7 @@ x_{\pm} = (1 - \alpha) x_{ip}
 - Description: Provides a supporting relation used in debye and huckel electrolyte term contribution.
 - Change note: Geometric mean form mirrors the mean-ionic expression pattern and is written here for mole fractions.
 - LaTeX: `docs/latex/equations.tex:2668`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 x_{\pm}=(x_{c}^{\nu c}\cdot x_{a}^{\nu a})^{\frac{1}{\nu_{c}+\nu_{a}}}
@@ -2872,7 +2872,7 @@ x_{\pm}=(x_{c}^{\nu c}\cdot x_{a}^{\nu a})^{\frac{1}{\nu_{c}+\nu_{a}}}
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
 - LaTeX: `docs/latex/equations.tex:2679`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 \mu_{i}^{DH}\left(x_{f}\right)=\left(\frac{\partial A^{DH}}{\partial\rho_{i}\left(x_{f}\right)}\right)_{T,V,N_{j\neq i}}=-\frac{e^{2}z_{i}^{2}\kappa}{24\pi\varepsilon_{0}\varepsilon_{r}}\left[2\chi_{i}+\frac{\sum_{k}x_{k,f}z_{k}^{2}\sigma_{k}}{\sum_{k}x_{k,f}z_{k}^{2}}\right]
@@ -2885,7 +2885,7 @@ x_{\pm}=(x_{c}^{\nu c}\cdot x_{a}^{\nu a})^{\frac{1}{\nu_{c}+\nu_{a}}}
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Mapped manually to the infinite-dilution ionic activity-coefficient relation.
 - LaTeX: `docs/latex/equations.tex:2690`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 \ln\gamma_{i}^{*}\left(x_{f,i}\right)=-\frac{e^{2}z_{i}^{2}\kappa}{24\pi\varepsilon_{0}\varepsilon_{r}}\left[2\chi_{i}+\frac{\sum_{k}x_{k,f}z_{k}^{2}\sigma_{k}}{\sum_{k}x_{k,f}z_{k}^{2}}\right]
@@ -2898,7 +2898,7 @@ x_{\pm}=(x_{c}^{\nu c}\cdot x_{a}^{\nu a})^{\frac{1}{\nu_{c}+\nu_{a}}}
 - Description: Gives an activity or fugacity-coefficient relation in debye and huckel electrolyte term contribution.
 - Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
 - LaTeX: `docs/latex/equations.tex:2701`
-- C++: No `EqID` owner comment has been attached yet.
+- C++: Documentation-only: no direct native owner expected.
 
 ```tex
 \gamma_{\pm}^{*}=(\gamma_{c}^{*,\nu c}\cdot\gamma_{a}^{*,\nu a})^{\frac{1}{\nu_{c}+\nu_{a}}}

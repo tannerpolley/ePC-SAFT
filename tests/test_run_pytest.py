@@ -1,4 +1,6 @@
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import run_pytest
@@ -87,3 +89,40 @@ def test_full_profile_runtime_note_sets_expected_timeout_floor():
     assert run_pytest.FULL_PROFILE_MIN_TIMEOUT_SECONDS >= 120
     assert "about a minute" in run_pytest.FULL_PROFILE_RUNTIME_NOTE
     assert "allow at least 120 seconds" in run_pytest.FULL_PROFILE_RUNTIME_NOTE
+
+
+def test_slice_listing_text_names_all_targets():
+    listing = run_pytest._slice_listing_text()
+
+    assert run_pytest.SLICE_SELECTION_NOTE in listing
+    for name, targets in run_pytest.SLICE_TARGETS.items():
+        assert f"{name}:" in listing
+        for target in targets:
+            assert target in listing
+
+
+def test_list_slices_exits_without_running_pytest():
+    result = subprocess.run(
+        [sys.executable, "run_pytest.py", "--list-slices"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Available slices:" in result.stdout
+    assert "Running:" not in result.stdout
+
+
+def test_help_mentions_slice_append_semantics():
+    result = subprocess.run(
+        [sys.executable, "run_pytest.py", "--help"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Slice flags are mutually exclusive" in result.stdout
+    assert "Extra positional pytest targets" in result.stdout
+    assert "appended and will run in addition" in result.stdout

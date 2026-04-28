@@ -23,10 +23,23 @@ FULL_PROFILE_TEST_TARGETS = (
     "tests/test_runtime_profile_miac.py",
     "tests/test_runtime_profile_regression.py",
 )
+SLICE_TARGETS = {
+    "generic": GENERIC_TEST_TARGETS,
+    "confidence": CONFIDENCE_TEST_TARGETS,
+    "runtime": RUNTIME_TEST_TARGETS,
+    "api": API_TEST_TARGETS,
+    "native": NATIVE_TEST_TARGETS,
+    "profile": PROFILE_TEST_TARGETS,
+    "profile-full": FULL_PROFILE_TEST_TARGETS,
+}
 FULL_PROFILE_MIN_TIMEOUT_SECONDS = 120
 FULL_PROFILE_RUNTIME_NOTE = (
     "--profile-full runs runtime, MIAC, and regression profiling; "
     f"it can take about a minute locally, so allow at least {FULL_PROFILE_MIN_TIMEOUT_SECONDS} seconds."
+)
+SLICE_SELECTION_NOTE = (
+    "Slice flags are mutually exclusive. Extra positional pytest targets after a slice "
+    "are appended and will run in addition to that slice."
 )
 
 
@@ -103,6 +116,15 @@ def _pytest_args(
     return cmd
 
 
+def _slice_listing_text() -> str:
+    lines = [SLICE_SELECTION_NOTE, "", "Available slices:"]
+    for name, targets in SLICE_TARGETS.items():
+        lines.append(f"{name}:")
+        for target in targets:
+            lines.append(f"  {target}")
+    return "\n".join(lines)
+
+
 def _patch_windows_pytest_temp_acl() -> None:
     if os.name != "nt":
         return
@@ -140,7 +162,7 @@ def _failure_message(pytest_temp: Path) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=SLICE_SELECTION_NOTE)
     predefined = parser.add_mutually_exclusive_group()
     predefined.add_argument("--generic", action="store_true", help="Run the core generic test slice")
     predefined.add_argument(
@@ -157,7 +179,12 @@ def main() -> int:
         action="store_true",
         help="Run all opt-in runtime, MIAC, and regression profile tests",
     )
+    parser.add_argument("--list-slices", action="store_true", help="Print named test slices and exit without running pytest")
     args, pytest_args = parser.parse_known_args()
+
+    if args.list_slices:
+        print(_slice_listing_text())
+        return 0
 
     repo_root = _repo_root()
     pytest_temp = _pytest_temp(repo_root)

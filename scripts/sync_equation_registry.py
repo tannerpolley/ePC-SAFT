@@ -188,6 +188,10 @@ def missing_cpp_ref_entries(entries: list[dict]) -> list[dict]:
     ]
 
 
+def docs_only_entries(entries: list[dict]) -> list[dict]:
+    return [entry for entry in entries if is_documentation_only(entry)]
+
+
 def render_traceability_report(entries: list[dict]) -> str:
     if not entries:
         return "Equation traceability: all implementation equations have C++ owner comments."
@@ -204,6 +208,31 @@ def render_traceability_report(entries: list[dict]) -> str:
         for entry in section_entries:
             lines.append(f"  - {entry.get('eqid', '<unknown>')} ({entry.get('tex_file', '<unknown>')}:{entry.get('tex_line', '<unknown>')})")
     lines.append("Mark documentation-only equations with status: Documentation-only.")
+    return "\n".join(lines)
+
+
+def render_docs_only_audit(entries: list[dict]) -> str:
+    docs_entries = docs_only_entries(entries)
+    if not docs_entries:
+        return "Documentation-only EqID audit: no documentation-only EqIDs found."
+
+    lines = [
+        f"Documentation-only EqID audit: {len(docs_entries)} EqIDs are exempt from strict C++ owner enforcement.",
+        "Reason: these equations are reference material, notation, derivation, or explanatory context with no direct native owner.",
+    ]
+    grouped: dict[str, list[dict]] = defaultdict(list)
+    for entry in docs_entries:
+        grouped[str(entry.get("section", "<unknown>") or "<unknown>")].append(entry)
+    for section in sorted(grouped):
+        section_entries = grouped[section]
+        lines.append(f"- {section}: {len(section_entries)}")
+        for entry in section_entries:
+            description = str(entry.get("description", "") or "").strip()
+            suffix = f" - {description}" if description else ""
+            lines.append(
+                f"  - {entry.get('eqid', '<unknown>')} "
+                f"({entry.get('tex_file', '<unknown>')}:{entry.get('tex_line', '<unknown>')}){suffix}"
+            )
     return "\n".join(lines)
 
 
@@ -308,6 +337,8 @@ def render_markdown(entries: list[dict]) -> str:
                 for ref in entry["cpp_refs"]
             )
             out.append(f"- C++: {refs}")
+        elif is_documentation_only(entry):
+            out.append("- C++: Documentation-only: no direct native owner expected.")
         else:
             out.append("- C++: No `EqID` owner comment has been attached yet.")
         out.append("")
@@ -349,6 +380,11 @@ def main() -> None:
         action="store_true",
         help="Fail when any non-documentation-only EqID lacks a C++ owner comment.",
     )
+    parser.add_argument(
+        "--docs-only-audit",
+        action="store_true",
+        help="Print a non-failing audit of documentation-only EqIDs grouped by section.",
+    )
     args = parser.parse_args()
 
     entries = parse_equations(TEX_PATH)
@@ -365,12 +401,16 @@ def main() -> None:
         check_matches(MARKDOWN_PATH, markdown_text)
         print("Equation registry outputs are up to date.")
         print(traceability_report)
+        if args.docs_only_audit:
+            print(render_docs_only_audit(entries))
         if args.strict_traceability:
             enforce_traceability(entries)
         return
 
     if args.strict_traceability:
         enforce_traceability(entries)
+    if args.docs_only_audit:
+        print(render_docs_only_audit(entries))
 
     changed_yaml = write_if_changed(REGISTRY_PATH, yaml_text)
     changed_md = write_if_changed(MARKDOWN_PATH, markdown_text)

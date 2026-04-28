@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 
 import epcsaft
+import epcsaft.epcsaft as epcsaft_module
 from epcsaft import ePCSAFTMixture
 
 
@@ -477,4 +478,32 @@ def test_pressure_based_state_raises_solver_error_during_construction():
     assert "P=1e-12" in message
     assert "phase=liq" in message
     assert "x=[1.0]" in message
+    assert excinfo.value.__cause__ is not None
+
+
+def test_density_based_native_constructor_failure_raises_public_solution_error(monkeypatch):
+    mix = ePCSAFTMixture.from_params({
+        "m": np.asarray([1.0]),
+        "s": np.asarray([3.0]),
+        "e": np.asarray([150.0]),
+    }, species=["A"])
+
+    original_native_state = epcsaft_module._core.NativeState
+
+    def raising_native_state(*args, **kwargs):
+        raise RuntimeError("simulated density native failure")
+
+    monkeypatch.setattr(epcsaft_module._core, "NativeState", raising_native_state)
+    with pytest.raises(epcsaft.SolutionError) as excinfo:
+        mix.state(T=300.0, x=np.asarray([1.0]), rho=100.0, phase="liq")
+    monkeypatch.setattr(epcsaft_module._core, "NativeState", original_native_state)
+
+    message = str(excinfo.value)
+    assert "density-based state solve failed" in message
+    assert "T=300.0" in message
+    assert "rho=100.0" in message
+    assert "phase=liq" in message
+    assert "ncomp=1" in message
+    assert "x=[1.0]" in message
+    assert "simulated density native failure" in message
     assert excinfo.value.__cause__ is not None

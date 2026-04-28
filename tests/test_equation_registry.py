@@ -29,6 +29,7 @@ EQUATION_FAMILY_COVERAGE = {
     ],
     "reference-state and density cache behavior": [
         "test_runtime_cache_stats_track_density_and_reference_state_reuse",
+        "test_activity_coefficient_cache_behavior_distinguishes_aux_cache_from_solvent_override",
         "test_miac_activity_cache_reuse_keeps_results_stable",
     ],
 }
@@ -93,6 +94,52 @@ def test_strict_traceability_allows_documentation_only_entries() -> None:
     sync_equation_registry.enforce_traceability(entries)
 
 
+def test_docs_only_audit_lists_exempt_entries_by_section() -> None:
+    entries = [
+        {
+            "eqid": "documentation_helper",
+            "section": "Runtime",
+            "status": "Documentation-only",
+            "tex_file": "docs/latex/equations.tex",
+            "tex_line": 10,
+            "description": "notation helper",
+            "cpp_refs": [],
+        },
+        {"eqid": "implemented_with_owner", "section": "Runtime", "status": "Implemented", "cpp_refs": [{"file": "x.cpp"}]},
+    ]
+
+    audit = sync_equation_registry.render_docs_only_audit(entries)
+
+    assert "1 EqIDs are exempt from strict C++ owner enforcement" in audit
+    assert "Runtime: 1" in audit
+    assert "documentation_helper" in audit
+    assert "notation helper" in audit
+    assert "implemented_with_owner" not in audit
+
+
+def test_generated_markdown_explains_documentation_only_cpp_owner_absence() -> None:
+    entries = [
+        {
+            "eqid": "documentation_helper",
+            "section": "Runtime",
+            "subsection": "",
+            "subsubsection": "",
+            "label": "",
+            "status": "Documentation-only",
+            "description": "notation helper",
+            "tex_file": "docs/latex/equations.tex",
+            "tex_line": 10,
+            "latex": "a=b",
+            "cpp_refs": [],
+        },
+    ]
+
+    markdown = sync_equation_registry.render_markdown(entries)
+
+    assert "Documentation-only: no direct native owner expected" in markdown
+    assert "No `EqID` owner comment has been attached yet" not in markdown
+
+
 def test_strict_traceability_fails_missing_implemented_owner() -> None:
     entries = [
         {"eqid": "implemented_without_owner", "section": "Runtime", "status": "Implemented", "cpp_refs": []},
@@ -123,6 +170,7 @@ def test_sync_equation_registry_help_includes_strict_traceability_flag() -> None
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "--strict-traceability" in result.stdout
+    assert "--docs-only-audit" in result.stdout
 
 
 def test_native_equation_family_coverage_matrix_is_documented_and_complete() -> None:

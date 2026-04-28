@@ -88,15 +88,24 @@ Test selection rules
 
 Use the smallest relevant test first, then run ``--confidence`` before handoff.
 
-- Python wrapper/API changes: ``--api`` first, then ``--confidence``.
-- Native C++ changes: fast rebuild, ``--runtime``, then ``--confidence``.
+- Python wrapper/API changes: ``uv run python run_pytest.py --api -q`` first, then ``uv run python run_pytest.py --confidence -q``.
+- Native/equation changes: ``uv run python scripts/build_epcsaft.py --build-only --parallel 10`` first, then ``uv run python run_pytest.py --runtime -q``, then ``uv run python run_pytest.py --confidence -q``.
 - Equation traceability changes: ``uv run python scripts/sync_equation_registry.py --check --strict-traceability`` then ``uv run python run_pytest.py tests/test_equation_registry.py -q``.
-- Performance claims: ``--profile`` is the quick runtime-only profile; ``--profile-full`` runs runtime, MIAC, and regression profiles and can take about a minute locally. Read the generated ``build/runtime_profile/*.md`` reports. Do not rely on skipped profile tests or code inspection alone.
+- Performance claims: ``uv run python run_pytest.py --profile -q -s`` is the quick runtime-only profile; use ``uv run python run_pytest.py --profile-full -q -s`` only for broad speed claims. Read the generated ``build/runtime_profile/*.md`` reports. Do not rely on skipped profile tests or code inspection alone.
 
 ``--profile`` is the quick runtime-only profile. ``--profile-full`` runs runtime, MIAC, and regression profiles and is the preferred evidence path for comprehensive speed reviews; use a timeout of at least 120 seconds.
 - Packaging changes: ``scripts/build_dist.py``.
 
 Keep generated plot/gallery and generated CSV workflows out of normal validation unless the task explicitly asks for them.
+
+Use ``uv run python run_pytest.py --list-slices`` when you need to inspect what each named slice runs before choosing a validation command.
+
+For parallel Codex sessions, leave the default repo-local temp behavior alone unless it causes contention. When running concurrent pytest lanes, set ``EPCSAFT_PYTEST_TEMP_ROOT`` to an external temp root for the extra lanes so each run gets an isolated ``pytest-temp`` child.
+
+Runtime speed rule
+------------------
+
+For repeated runtime calls, build ``ePCSAFTMixture`` and ``ePCSAFTState`` once and reuse them inside hot loops. The quick profile report compares reused-state activity-coefficient calls against full rebuild calls and flags the ratio when rebuilds dominate runtime.
 
 Troubleshooting
 ---------------

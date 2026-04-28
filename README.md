@@ -34,6 +34,7 @@ For future Codex agents and maintainers, the [Codex workflow guide](docs/pages/c
 For the standard Codex validation loops:
 
 ```powershell
+uv run python run_pytest.py --list-slices
 uv run python run_pytest.py --runtime -q
 uv run python run_pytest.py --generic -q
 uv run python run_pytest.py --confidence -q
@@ -47,6 +48,8 @@ uv run python run_pytest.py --profile-full -q -s
 $env:EPCSAFT_PYTEST_TEMP_ROOT = Join-Path $env:TEMP 'epcsaft-pytest'
 uv run python run_pytest.py --confidence -q
 ```
+
+For repeated calculations, create an `ePCSAFTMixture` and `ePCSAFTState` once and reuse them inside loops. The profile report flags full rebuilds when they dominate runtime.
 
 Use `uv run python scripts\build_epcsaft.py --clean` only as a repair step for stale CMake state or stale/locked `_core` artifacts. If a `_core*.pyd` is locked, stop the importing Python/test/IDE process before running the clean repair.
 

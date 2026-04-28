@@ -44,6 +44,10 @@ For Codex and Windows work, prefer ``uv run python run_pytest.py ...`` because t
 
 For speed checks, use ``uv run python run_pytest.py --profile -q`` for the quick runtime-only profile. Use ``uv run python run_pytest.py --profile-full -q -s`` when you need the slower runtime, MIAC, and regression profile suite.
 
+Use ``uv run python run_pytest.py --list-slices`` to print the named test slices without running pytest. In parallel Codex sessions, set ``EPCSAFT_PYTEST_TEMP_ROOT`` for extra pytest lanes when the default repo-local ``build/pytest-temp`` area becomes noisy or contended.
+
+For repeated thermodynamic calls, reuse an ``ePCSAFTMixture`` and its ``ePCSAFTState`` objects instead of rebuilding them inside loops. The runtime profile reports the cost difference between reused-state calls and full rebuild calls.
+
 For native/equation work, use the native/equation debugging guide after the normal build and confidence sequence.
 
 Use ``uv run python scripts/build_epcsaft.py --clean`` only as a repair step for stale CMake state or stale/locked ``_core`` artifacts. If a ``_core*.pyd`` is locked, stop the importing Python/test/IDE process before running the clean repair.

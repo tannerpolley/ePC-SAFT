@@ -32,6 +32,22 @@ _STATE_METHOD_ALIAS_LOOKUP = {alias: name for name, alias in STATE_METHOD_ALIAS_
 _CONTRIBUTION_NAMES = ("hc", "disp", "assoc", "ion", "born")
 
 
+def _state_construction_error_message(T, x, phase, ncomp, mode_name, variable_name, variable_value, exc):
+    return (
+        "{}-based state solve failed for "
+        "T={}, {}={}, phase={}, ncomp={}, x={}: {}".format(
+            mode_name,
+            float(T),
+            variable_name,
+            float(variable_value),
+            phase,
+            ncomp,
+            x.tolist(),
+            exc,
+        )
+    )
+
+
 def _sum_vector_terms(terms):
     total = None
     for name in _CONTRIBUTION_NAMES:
@@ -191,20 +207,11 @@ class ePCSAFTState:
                 float(rho) if rho is not None else 0.0,
             )
         except Exception as exc:
-            if has_p:
-                message = (
-                    "pressure-based state solve failed for "
-                    "T={}, P={}, phase={}, ncomp={}, x={}: {}".format(
-                        float(T),
-                        float(P),
-                        phase,
-                        ncomp,
-                        x.tolist(),
-                        exc,
-                    )
-                )
-                raise SolutionError(message) from exc
-            raise
+            variable_name = "P" if has_p else "rho"
+            mode_name = "pressure" if has_p else "density"
+            variable_value = P if has_p else rho
+            message = _state_construction_error_message(T, x, phase, ncomp, mode_name, variable_name, variable_value, exc)
+            raise SolutionError(message) from exc
         self._mixture = mixture
         self._x = np.asarray(x, dtype=float)
         self._T = float(T)
@@ -719,11 +726,6 @@ def np_to_vector_int(np_array):
     return cpp_vector
 
 
-def _pure_neutral_density_records_vector(density_T, density_P, density_rho_exp, density_phase):
-    return None
-
-def _pure_neutral_vle_records_vector(vle_T, vle_P):
-    return None
 def create_struct(params):
     """Convert ePC-SAFT parameters to a C++ struct."""
 

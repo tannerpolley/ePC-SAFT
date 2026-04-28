@@ -67,6 +67,9 @@ def test_docs_make_confidence_suite_the_default_runtime_check() -> None:
     assert "uv run python run_pytest.py --runtime -q" in codex_workflows
     assert "uv run python run_pytest.py --profile -q" in codex_workflows
     assert "uv run python run_pytest.py --profile-full -q -s" in codex_workflows
+    assert "uv run python run_pytest.py --list-slices" in codex_workflows
+    assert "EPCSAFT_PYTEST_TEMP_ROOT" in codex_workflows
+    assert "reuse them inside hot loops" in codex_workflows
     assert "``--profile`` is the quick runtime-only profile" in codex_workflows
     assert "``--profile-full`` runs runtime, MIAC, and regression profiles" in codex_workflows
     assert "allow at least 120 seconds" in codex_workflows

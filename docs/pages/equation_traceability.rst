@@ -20,6 +20,24 @@ Place each ``// EqID: <id>`` comment immediately above the C++ function or expre
 
 Use ``Documentation-only`` only when there is no direct implemented owner. Do not use it to hide missing traceability for active formulas.
 
+Documentation-only audit
+------------------------
+
+Documentation-only EqIDs are exempt from strict C++ owner enforcement, but they should still be easy to understand. Use this command when reviewing theory/docs traceability:
+
+.. code-block:: powershell
+
+   uv run python scripts/sync_equation_registry.py --check --strict-traceability --docs-only-audit
+
+The generated Markdown view labels these entries as documentation-only instead of implying a missing owner.
+
+Common documentation-only clusters:
+
+- helper identities such as ``half_d_identity`` and ``d_ij``: notation or intermediate definitions used by nearby implemented contribution helpers.
+- residual-property identities such as ``s_res_from_s_vol`` and ``g_res_from_hs``: thermodynamic reference formulas used to explain public residual-property outputs.
+- mean-ionic charge-conversion formulas such as ``mu_pm_charge``, ``f_pm_charge``, and ``a_pm_charge``: explanatory conversion context for activity-coefficient outputs.
+- Bjerrum and ion-pairing formulas such as ``ares_dh_bjerrum``, ``chi_dh_bjerrum``, ``alpha_ion_pair``, and ``mu_dh_infinite_dilution``: theory context for variants that may not have a direct active native owner.
+
 Validate
 --------
 

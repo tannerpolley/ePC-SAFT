@@ -112,6 +112,13 @@ def _write_reports(rows: list[dict], bottleneck_notes: list[str]) -> None:
     REPORT_MD.write_text("\n".join(lines), encoding="utf-8")
 
 
+def _full_rebuild_reuse_note(rebuild_row: dict, reuse_row: dict, ratio: float) -> str:
+    return (
+        "Full rebuild vs reused-state MIAC ratio: {:.2f}x ({} / {}). "
+        "Optimization hint: reuse ePCSAFTMixture and ePCSAFTState objects in hot loops instead of rebuilding them."
+    ).format(ratio, rebuild_row["name"], reuse_row["name"])
+
+
 def _public_callables(cls) -> set[str]:
     names = set()
     for name, member in inspect.getmembers(cls, predicate=callable):
@@ -340,11 +347,7 @@ def test_runtime_profile_oop_methods():
     reuse_row = next((row for row in rows if row["name"] == "ionic.activity_coefficient.mean_ionic_molality"), None)
     if rebuild_row is not None and reuse_row is not None and reuse_row["mean_ms"] > 0.0:
         ratio = rebuild_row["mean_ms"] / reuse_row["mean_ms"]
-        bottleneck_notes.append(
-            "Full rebuild vs reused-state MIAC ratio: {:.2f}x ({} / {}).".format(
-                ratio, "ionic.activity_coefficient.mean_ionic_molality.full_rebuild", "ionic.activity_coefficient.mean_ionic_molality"
-            )
-        )
+        bottleneck_notes.append(_full_rebuild_reuse_note(rebuild_row, reuse_row, ratio))
 
     _write_reports(rows, bottleneck_notes)
 
@@ -362,5 +365,8 @@ def test_runtime_profile_oop_methods():
     assert len(rows) >= 20
     assert REPORT_CSV.exists()
     assert REPORT_MD.exists()
+    report_text = REPORT_MD.read_text(encoding="utf-8")
+    assert "Full rebuild vs reused-state MIAC ratio" in report_text
+    assert "reuse ePCSAFTMixture and ePCSAFTState objects in hot loops" in report_text
 
 

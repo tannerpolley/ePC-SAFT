@@ -318,6 +318,31 @@ def test_runtime_cache_stats_track_density_and_reference_state_reuse() -> None:
     assert stats["reference_state_cache_hits"] >= 2
 
 
+def test_activity_coefficient_cache_behavior_distinguishes_aux_cache_from_solvent_override() -> None:
+    mix, species, pressure, _, temperature, composition = _ionic_state()
+    state = mix.state(T=temperature, x=composition, P=pressure, phase="liq")
+    mix.clear_runtime_caches()
+    mix.reset_runtime_cache_stats()
+
+    first_solvation = state.solvation_free_energy(species=species)
+    after_first_solvation = mix.runtime_cache_stats()
+    second_solvation = state.solvation_free_energy(species=species)
+    after_second_solvation = mix.runtime_cache_stats()
+
+    assert second_solvation == pytest.approx(first_solvation)
+    assert after_second_solvation == after_first_solvation
+
+    first_override = state.activity_coefficient(species=species, solvent="water")
+    after_first_override = mix.runtime_cache_stats()
+    second_override = state.activity_coefficient(species=species, solvent="water")
+    after_second_override = mix.runtime_cache_stats()
+
+    assert second_override == pytest.approx(first_override)
+    assert after_first_override["reference_state_cache_hits"] > after_second_solvation["reference_state_cache_hits"]
+    assert after_second_override["reference_state_cache_hits"] > after_first_override["reference_state_cache_hits"]
+    assert after_second_override["reference_state_cache_misses"] == after_first_override["reference_state_cache_misses"]
+
+
 def test_runtime_cache_stats_track_warm_start_fallbacks_without_hiding_failures() -> None:
     mix, _, pressure, _, temperature, composition = _ionic_state()
     mix.clear_runtime_caches()
