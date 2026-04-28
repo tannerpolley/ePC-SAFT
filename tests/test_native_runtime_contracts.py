@@ -6,6 +6,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from epcsaft import SolutionError
 from epcsaft import ePCSAFTMixture
 
 
@@ -88,6 +89,37 @@ def test_pressure_based_and_density_based_states_match_for_ionic_system() -> Non
     assert from_p.ares() == pytest.approx(from_rho.ares())
 
 
+def test_pressure_density_edge_cases_cover_vapor_and_liquid_extremes() -> None:
+    mix, _, _, _, _, composition = _neutral_state()
+
+    vapor = mix.state(T=600.0, x=composition, P=1.0, phase="vap")
+    liquid = mix.state(T=220.0, x=composition, P=5.0e7, phase="liq")
+
+    assert vapor.phase == 1
+    assert liquid.phase == 0
+    assert vapor.density() == pytest.approx(2.0045400150430712e-4, rel=1e-10)
+    assert liquid.density() == pytest.approx(16076.977238412512, rel=1e-10)
+    assert vapor.pressure() == pytest.approx(1.0)
+    assert liquid.pressure() == pytest.approx(5.0e7)
+    assert np.isfinite(vapor.z())
+    assert np.isfinite(liquid.z())
+
+
+def test_pressure_density_failure_reports_state_context_and_native_outcome() -> None:
+    mix, _, _, _, temperature, composition = _ionic_state()
+
+    with pytest.raises(SolutionError) as excinfo:
+        mix.state(T=temperature, x=composition, P=1.0e-12, phase="liq")
+
+    message = str(excinfo.value)
+    assert "pressure-based state solve failed" in message
+    assert "T=298.15" in message
+    assert "P=1e-12" in message
+    assert "phase=liq" in message
+    assert "ncomp=3" in message
+    assert "No valid density root found for liquid phase" in message
+
+
 def test_native_residual_helmholtz_and_compressibility_contributions_match_neutral_contract() -> None:
     mix, _, _, density, temperature, composition = _neutral_state()
     state = mix.state(T=temperature, x=composition, rho=density)
@@ -136,6 +168,53 @@ def test_native_residual_helmholtz_and_compressibility_contributions_match_ionic
         "born": 0.0,
         "ideal": 1.0,
     })
+
+
+def test_temperature_derivative_matches_neutral_finite_difference() -> None:
+    mix, _, _, density, temperature, composition = _neutral_state()
+    state = mix.state(T=temperature, x=composition, rho=density)
+    delta_t = 1.0e-3
+
+    plus = mix.state(T=temperature + delta_t, x=composition, rho=density)
+    minus = mix.state(T=temperature - delta_t, x=composition, rho=density)
+    finite_difference = (plus.ares() - minus.ares()) / (2.0 * delta_t)
+    derivative = state.temperature_derivative_residual_helmholtz(return_contribution_terms=True)
+
+    assert derivative["total"] == pytest.approx(finite_difference, rel=1e-9, abs=1e-11)
+    assert sum(derivative["terms"].values()) == pytest.approx(derivative["total"])
+
+
+def test_composition_derivative_contribution_terms_are_accounted_for() -> None:
+    for state_factory in (_neutral_state, _ionic_state):
+        mix, _, _, density, temperature, composition = state_factory()
+        state = mix.state(T=temperature, x=composition, rho=density)
+        derivative = state.composition_derivative_residual_helmholtz()
+
+        total_from_terms = sum(derivative["terms"].values())
+        np.testing.assert_allclose(total_from_terms, derivative["total"])
+        assert derivative["z_total"] == pytest.approx(1.0 + sum(derivative["z_terms"].values()))
+        assert set(derivative["terms"]) == {"hc", "disp", "assoc", "ion", "born"}
+
+
+def test_runtime_cache_stats_track_density_and_reference_state_reuse() -> None:
+    mix, species, pressure, _, temperature, composition = _ionic_state()
+    mix.clear_runtime_caches()
+    mix.reset_runtime_cache_stats()
+
+    first = mix.state(T=temperature, x=composition, P=pressure, phase="liq")
+    second = mix.state(T=temperature, x=composition, P=pressure, phase="liq")
+
+    assert first.density() == pytest.approx(second.density())
+    stats = mix.runtime_cache_stats()
+    assert stats["density_warm_start_hits"] >= 1
+    assert stats["density_warm_start_fallbacks"] == 0
+
+    for _ in range(3):
+        second.activity_coefficient(species=species, mean_ionic_form=True, basis="molality")
+
+    stats = mix.runtime_cache_stats()
+    assert stats["reference_state_cache_misses"] == 1
+    assert stats["reference_state_cache_hits"] >= 2
 
 
 def test_public_methods_expose_eqid_owned_contribution_groups() -> None:

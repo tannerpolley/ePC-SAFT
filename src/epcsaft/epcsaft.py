@@ -194,10 +194,11 @@ class ePCSAFTState:
             if has_p:
                 message = (
                     "pressure-based state solve failed for "
-                    "T={}, P={}, phase={}, x={}: {}".format(
+                    "T={}, P={}, phase={}, ncomp={}, x={}: {}".format(
                         float(T),
                         float(P),
                         phase,
+                        ncomp,
                         x.tolist(),
                         exc,
                     )

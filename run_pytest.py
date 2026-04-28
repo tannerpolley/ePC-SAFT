@@ -18,6 +18,11 @@ RUNTIME_TEST_TARGETS = ("tests/test_runtime.py", "tests/test_native_runtime_cont
 API_TEST_TARGETS = ("tests/test_runtime.py", "tests/test_parameter_templates.py", "tests/test_regression_api.py")
 NATIVE_TEST_TARGETS = ("tests/test_native_runtime_contracts.py",)
 PROFILE_TEST_TARGETS = ("tests/test_runtime_profile.py",)
+FULL_PROFILE_TEST_TARGETS = (
+    "tests/test_runtime_profile.py",
+    "tests/test_runtime_profile_miac.py",
+    "tests/test_runtime_profile_regression.py",
+)
 
 
 def _repo_root() -> Path:
@@ -59,9 +64,10 @@ def _pytest_args(
     api: bool = False,
     native: bool = False,
     profile: bool = False,
+    profile_full: bool = False,
 ) -> list[str]:
     cmd: list[str] = []
-    has_predefined_targets = generic or confidence or runtime or api or native or profile
+    has_predefined_targets = generic or confidence or runtime or api or native or profile or profile_full
     if confidence:
         cmd.extend(CONFIDENCE_TEST_TARGETS)
     elif generic:
@@ -74,6 +80,8 @@ def _pytest_args(
         cmd.extend(NATIVE_TEST_TARGETS)
     elif profile:
         cmd.extend(PROFILE_TEST_TARGETS)
+    elif profile_full:
+        cmd.extend(FULL_PROFILE_TEST_TARGETS)
 
     if has_predefined_targets:
         cmd.extend(pytest_args)
@@ -138,12 +146,17 @@ def main() -> int:
     predefined.add_argument("--runtime", action="store_true", help="Run runtime API and native contract tests")
     predefined.add_argument("--api", action="store_true", help="Run public API and regression API tests")
     predefined.add_argument("--native", action="store_true", help="Run native runtime contract tests")
-    predefined.add_argument("--profile", action="store_true", help="Run the opt-in runtime profile test")
+    predefined.add_argument("--profile", action="store_true", help="Run the opt-in runtime-only profile test")
+    predefined.add_argument(
+        "--profile-full",
+        action="store_true",
+        help="Run all opt-in runtime, MIAC, and regression profile tests",
+    )
     args, pytest_args = parser.parse_known_args()
 
     repo_root = _repo_root()
     pytest_temp = _pytest_temp(repo_root)
-    env = _pytest_env(pytest_temp, profile=args.profile)
+    env = _pytest_env(pytest_temp, profile=args.profile or args.profile_full)
     src_root = repo_root / "src"
     sys.path.insert(0, str(src_root))
     env["PYTHONPATH"] = str(src_root)
@@ -157,6 +170,7 @@ def main() -> int:
         api=args.api,
         native=args.native,
         profile=args.profile,
+        profile_full=args.profile_full,
     )
     print("Running:", f"{sys.executable} -m pytest", " ".join(cmd), flush=True)
     os.environ.update(env)

@@ -40,7 +40,8 @@ def test_codex_actions_name_standard_confidence_suite() -> None:
     assert "run_pytest.py --confidence -q" in actions["Test Standard Confidence Suite"]
     assert "Test Confidence Suite (External Temp)" in actions
     assert actions["Fast Native Rebuild"] == "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
-    assert actions["Runtime Profile"] == "uv run python run_pytest.py --profile -q"
+    assert actions["Runtime Profile (Quick)"] == "uv run python run_pytest.py --profile -q"
+    assert actions["Runtime Profile (Full)"] == "uv run python run_pytest.py --profile-full -q -s"
     assert actions["Build Distribution + Smoke Import"] == "uv run python scripts/build_dist.py"
 
 
@@ -65,5 +66,8 @@ def test_docs_make_confidence_suite_the_default_runtime_check() -> None:
     assert "uv run python scripts/build_epcsaft.py --build-only --parallel 10" in codex_workflows
     assert "uv run python run_pytest.py --runtime -q" in codex_workflows
     assert "uv run python run_pytest.py --profile -q" in codex_workflows
+    assert "uv run python run_pytest.py --profile-full -q -s" in codex_workflows
+    assert "``--profile`` is the quick runtime-only profile" in codex_workflows
+    assert "``--profile-full`` runs runtime, MIAC, and regression profiles" in codex_workflows
     assert "uv run python scripts/build_dist.py" in codex_workflows
     assert "Do not use ``--clean`` for routine validation" in codex_workflows

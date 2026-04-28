@@ -510,7 +510,7 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - Description: Provides a supporting relation used in dispersion contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
 - LaTeX: `docs/latex/equations.tex:479`
-- C++: `src/epcsaft/native/epcsaft_density.cpp:458` (double reduced_density_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_density.cpp:472` (double reduced_density_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs) {)
 
 ```tex
 \rho=\frac{6}{\pi} \eta\left(\sum_{i} x_{i} m_{i} d_{i}^3\right)^{-1}
@@ -523,7 +523,7 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - Description: Provides a supporting relation used in dispersion contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
 - LaTeX: `docs/latex/equations.tex:490`
-- C++: `src/epcsaft/native/epcsaft_density.cpp:458` (double reduced_density_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_density.cpp:472` (double reduced_density_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs) {)
 
 ```tex
 \rho_{N}=N_{\mathrm{AV}}\rho,
@@ -570,7 +570,7 @@ Z
 - Description: Provides the explicit scalar residual used to locate density roots at specified \(T\), \(P\), and \(\mathbf{x}\).
 - Change note: Added as a solver-facing closeout equation so the initial-density section ends with the actual root-finding constraint rather than only helper relations.
 - LaTeX: `docs/latex/equations.tex:534`
-- C++: `src/epcsaft/native/epcsaft_density.cpp:610` (double density_root_residual_cpp(double rhomolar, double t, double p, vector<double> x, const add_args &cppargs){)
+- C++: `src/epcsaft/native/epcsaft_density.cpp:624` (double density_root_residual_cpp(double rhomolar, double t, double p, vector<double> x, const add_args &cppargs){)
 
 ```tex
 R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)

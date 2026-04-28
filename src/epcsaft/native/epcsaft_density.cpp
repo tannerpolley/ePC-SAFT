@@ -57,6 +57,16 @@ DensityScanPoint density_scan_point_cpp(double nu, double t, int ncomp, const ve
     return point;
 }
 
+std::string density_failure_message_cpp(const std::string &outcome, double t, double p, const vector<double> &x, int phase) {
+    std::string phase_name = (phase == 1) ? "vapor" : "liquid";
+    return outcome
+        + " (phase=" + phase_name
+        + ", T=" + std::to_string(t)
+        + ", P=" + std::to_string(p)
+        + ", ncomp=" + std::to_string(x.size())
+        + ").";
+}
+
 vector<DensityBracket> density_brackets_cpp(const vector<DensityScanPoint> &points) {
     vector<DensityBracket> brackets;
     if (points.size() < 2) {
@@ -389,7 +399,8 @@ double den_cpp(double t, double p, vector<double> x, int phase, const add_args &
     }
 
     if (refined_brackets.empty()) {
-        throw SolutionError("No continuous density root brackets were found for the requested state.");
+        throw SolutionError(density_failure_message_cpp(
+            "No continuous density root brackets were found for the requested state", t, p, x, phase));
     }
 
     vector<DensityRootCandidate> candidates;
@@ -412,7 +423,8 @@ double den_cpp(double t, double p, vector<double> x, int phase, const add_args &
     }
 
     if (candidates.empty()) {
-        throw SolutionError("Density solver did not produce any candidate roots.");
+        throw SolutionError(density_failure_message_cpp(
+            "Density solver did not produce any candidate roots", t, p, x, phase));
     }
 
     std::sort(candidates.begin(), candidates.end(), [](const DensityRootCandidate &a, const DensityRootCandidate &b) {
@@ -434,7 +446,8 @@ double den_cpp(double t, double p, vector<double> x, int phase, const add_args &
         if (best != nullptr) {
             return best->rho;
         }
-        throw SolutionError("No valid density root found for vapor phase.");
+        throw SolutionError(density_failure_message_cpp(
+            "No valid density root found for vapor phase", t, p, x, phase));
     }
 
     const double rho_extreme = candidates.back().rho_sort;
@@ -450,7 +463,8 @@ double den_cpp(double t, double p, vector<double> x, int phase, const add_args &
     if (best != nullptr) {
         return best->rho;
     }
-    throw SolutionError("No valid density root found for liquid phase.");
+    throw SolutionError(density_failure_message_cpp(
+        "No valid density root found for liquid phase", t, p, x, phase));
 }
 
 // EqID: rho_from_eta

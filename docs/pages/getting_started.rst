@@ -42,6 +42,8 @@ For Codex and Windows work, prefer ``uv run python run_pytest.py ...`` because t
 
 ``--generic`` is the faster validation slice. ``--confidence`` is the default runtime-confidence check because it also runs the native runtime contract tests.
 
+For speed checks, use ``uv run python run_pytest.py --profile -q`` for the quick runtime-only profile. Use ``uv run python run_pytest.py --profile-full -q -s`` when you need the slower runtime, MIAC, and regression profile suite.
+
 For native/equation work, use the native/equation debugging guide after the normal build and confidence sequence.
 
 Use ``uv run python scripts/build_epcsaft.py --clean`` only as a repair step for stale CMake state or stale/locked ``_core`` artifacts. If a ``_core*.pyd`` is locked, stop the importing Python/test/IDE process before running the clean repair.
