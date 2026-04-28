@@ -60,6 +60,9 @@ Debugging checklist
 -------------------
 
 - Reproduce the behavior through a public ``ePCSAFTMixture`` / ``ePCSAFTState`` call before debugging private native functions.
-- Compare pressure-created and density-created states when investigating density closure.
+- Compare pressure-created and density-created states when investigating density closure. Start with the same ``T`` and ``x`` and compare density, pressure, ``z()``, and ``ares()``.
+- Inspect ``src/epcsaft/native/epcsaft_density.cpp`` and ``src/epcsaft/native/epcsaft_state.cpp`` for pressure-to-density root selection, warm-start behavior, and phase-branch policy before changing contribution code.
 - Request contribution terms with ``return_contribution_terms=True`` when debugging residual Helmholtz, compressibility factor, chemical potential, or fugacity totals.
+- Request contribution terms and compare ``hc``, ``disp``, ``assoc``, ``ion``, and ``born`` totals before adding temporary native instrumentation.
+- Run ``uv run python scripts/sync_equation_registry.py --check --strict-traceability`` before making equation ownership claims. If that check passes but registry entries still show ``cpp_refs: []``, treat those EqIDs as documentation or supplemental equations unless the task proves they should map to implementation code.
 - Use ``tests/test_native_runtime_contracts.py`` for fast neutral and ionic contribution-map regression coverage.

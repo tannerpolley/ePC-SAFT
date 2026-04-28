@@ -70,6 +70,16 @@ Use ``--build-only --parallel 10`` only after the CMake tree already exists. Use
 
 Do not use ``--clean`` for routine validation. ``uv run python scripts/build_epcsaft.py --clean`` is a repair action for stale CMake state or stale/locked ``_core`` artifacts. If Windows reports that ``_core*.pyd`` is locked, stop Python REPLs, tests, IDE run configurations, or Codex sub-agents that imported ``epcsaft._core`` before retrying.
 
+Parallel agent safety
+---------------------
+
+The dev build tree and temp/profile outputs under ``build/`` are shared disposable state. In multi-agent sessions, keep native rebuild, clean, and repair coordination on the main thread unless that work is explicitly assigned.
+
+- Do not run clean or repair actions while tests, REPLs, IDE run configurations, or other agents may import ``epcsaft._core``.
+- Prefer one native builder at a time for ``build/dev`` and the in-place ``_core`` extension.
+- Let sub-agents run focused test slices for their lane, and reserve full build, doctor, and ``--confidence`` validation for coordinated handoff checks.
+- Use ``uv run python run_pytest.py --profile -q -s`` only for speed claims, then read ``build/runtime_profile/*.md`` before reporting method-runtime conclusions.
+
 Test selection rules
 --------------------
 
@@ -78,7 +88,7 @@ Use the smallest relevant test first, then run ``--confidence`` before handoff.
 - Python wrapper/API changes: ``--api`` first, then ``--confidence``.
 - Native C++ changes: fast rebuild, ``--runtime``, then ``--confidence``.
 - Equation traceability changes: ``uv run python scripts/sync_equation_registry.py --check --strict-traceability`` then ``uv run python run_pytest.py tests/test_equation_registry.py -q``.
-- Performance claims: ``--profile``. Do not rely on skipped profile tests.
+- Performance claims: ``--profile`` and the generated ``build/runtime_profile/*.md`` report. Do not rely on skipped profile tests or code inspection alone.
 - Packaging changes: ``scripts/build_dist.py``.
 
 Keep generated plot/gallery and generated CSV workflows out of normal validation unless the task explicitly asks for them.
