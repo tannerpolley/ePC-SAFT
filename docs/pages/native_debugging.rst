@@ -42,7 +42,7 @@ For method-speed checks:
 
    uv run python run_pytest.py --profile -q
 
-Use ``uv run python run_pytest.py --profile-full -q -s`` when you need the full runtime, MIAC, and regression profile suite before making broad method-speed claims.
+Use ``uv run python run_pytest.py --profile-full -q -s`` when you need the full runtime, MIAC, and regression profile suite before making broad method-speed claims. It can take about a minute locally, so allow at least 120 seconds.
 
 Equation traceability
 ---------------------

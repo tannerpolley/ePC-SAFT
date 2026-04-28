@@ -23,6 +23,11 @@ FULL_PROFILE_TEST_TARGETS = (
     "tests/test_runtime_profile_miac.py",
     "tests/test_runtime_profile_regression.py",
 )
+FULL_PROFILE_MIN_TIMEOUT_SECONDS = 120
+FULL_PROFILE_RUNTIME_NOTE = (
+    "--profile-full runs runtime, MIAC, and regression profiling; "
+    f"it can take about a minute locally, so allow at least {FULL_PROFILE_MIN_TIMEOUT_SECONDS} seconds."
+)
 
 
 def _repo_root() -> Path:
@@ -173,6 +178,8 @@ def main() -> int:
         profile_full=args.profile_full,
     )
     print("Running:", f"{sys.executable} -m pytest", " ".join(cmd), flush=True)
+    if args.profile_full:
+        print(FULL_PROFILE_RUNTIME_NOTE, flush=True)
     os.environ.update(env)
 
     _patch_windows_pytest_temp_acl()

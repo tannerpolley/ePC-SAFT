@@ -81,3 +81,9 @@ def test_pytest_env_overrides_perf_flag_only_for_profile_modes(monkeypatch):
     assert normal_env["EPCSAFT_RUN_PERF"] == "0"
     assert profile_env["EPCSAFT_RUN_PERF"] == "1"
     assert profile_env["ePCSAFT_RUN_PERF"] == "1"
+
+
+def test_full_profile_runtime_note_sets_expected_timeout_floor():
+    assert run_pytest.FULL_PROFILE_MIN_TIMEOUT_SECONDS >= 120
+    assert "about a minute" in run_pytest.FULL_PROFILE_RUNTIME_NOTE
+    assert "allow at least 120 seconds" in run_pytest.FULL_PROFILE_RUNTIME_NOTE

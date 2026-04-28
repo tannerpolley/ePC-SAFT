@@ -52,7 +52,7 @@ Command matrix
      - Runtime-only profiling. The wrapper enables the required performance environment flag.
    * - Full method-speed check
      - ``uv run python run_pytest.py --profile-full -q -s``
-     - Comprehensive runtime, MIAC, and regression profiling before making broad speed claims.
+     - Comprehensive runtime, MIAC, and regression profiling before making broad speed claims. This can take about a minute locally; allow at least 120 seconds.
    * - Package boundary
      - ``uv run python scripts/build_dist.py``
      - Wheel/sdist and smoke-import validation.
@@ -81,7 +81,7 @@ The dev build tree and temp/profile outputs under ``build/`` are shared disposab
 - Do not run clean or repair actions while tests, REPLs, IDE run configurations, or other agents may import ``epcsaft._core``.
 - Prefer one native builder at a time for ``build/dev`` and the in-place ``_core`` extension.
 - Let sub-agents run focused test slices for their lane, and reserve full build, doctor, and ``--confidence`` validation for coordinated handoff checks.
-- Use ``uv run python run_pytest.py --profile -q`` for quick runtime-only speed claims. Use ``uv run python run_pytest.py --profile-full -q -s`` before broad method-speed claims, then read ``build/runtime_profile/*.md`` before reporting conclusions.
+- Use ``uv run python run_pytest.py --profile -q`` for quick runtime-only speed claims. Use ``uv run python run_pytest.py --profile-full -q -s`` before broad method-speed claims, allow at least 120 seconds, then read ``build/runtime_profile/*.md`` before reporting conclusions.
 
 Test selection rules
 --------------------
@@ -91,9 +91,9 @@ Use the smallest relevant test first, then run ``--confidence`` before handoff.
 - Python wrapper/API changes: ``--api`` first, then ``--confidence``.
 - Native C++ changes: fast rebuild, ``--runtime``, then ``--confidence``.
 - Equation traceability changes: ``uv run python scripts/sync_equation_registry.py --check --strict-traceability`` then ``uv run python run_pytest.py tests/test_equation_registry.py -q``.
-- Performance claims: ``--profile`` is the quick runtime-only profile; ``--profile-full`` runs runtime, MIAC, and regression profiles. Read the generated ``build/runtime_profile/*.md`` reports. Do not rely on skipped profile tests or code inspection alone.
+- Performance claims: ``--profile`` is the quick runtime-only profile; ``--profile-full`` runs runtime, MIAC, and regression profiles and can take about a minute locally. Read the generated ``build/runtime_profile/*.md`` reports. Do not rely on skipped profile tests or code inspection alone.
 
-``--profile`` is the quick runtime-only profile. ``--profile-full`` runs runtime, MIAC, and regression profiles and is the preferred evidence path for comprehensive speed reviews.
+``--profile`` is the quick runtime-only profile. ``--profile-full`` runs runtime, MIAC, and regression profiles and is the preferred evidence path for comprehensive speed reviews; use a timeout of at least 120 seconds.
 - Packaging changes: ``scripts/build_dist.py``.
 
 Keep generated plot/gallery and generated CSV workflows out of normal validation unless the task explicitly asks for them.

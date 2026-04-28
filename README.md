@@ -41,7 +41,7 @@ uv run python run_pytest.py --profile -q
 uv run python run_pytest.py --profile-full -q -s
 ```
 
-`--runtime` runs runtime API plus native contract tests. `--generic` runs the fast core runtime, parameter-template, equation-registry, and regression API slice. `--confidence` is the default runtime-confidence check; it runs that same slice plus the native runtime contract tests. `--profile` enables and runs the quick opt-in runtime-only profiling check. `--profile-full` runs the slower opt-in runtime, MIAC, and regression profile suite. To keep pytest temp files outside the repo for an opt-in run, set `EPCSAFT_PYTEST_TEMP_ROOT`, for example:
+`--runtime` runs runtime API plus native contract tests. `--generic` runs the fast core runtime, parameter-template, equation-registry, and regression API slice. `--confidence` is the default runtime-confidence check; it runs that same slice plus the native runtime contract tests. `--profile` enables and runs the quick opt-in runtime-only profiling check. `--profile-full` runs the slower opt-in runtime, MIAC, and regression profile suite; it can take about a minute locally, so use a runner timeout of at least 120 seconds. To keep pytest temp files outside the repo for an opt-in run, set `EPCSAFT_PYTEST_TEMP_ROOT`, for example:
 
 ```powershell
 $env:EPCSAFT_PYTEST_TEMP_ROOT = Join-Path $env:TEMP 'epcsaft-pytest'
