@@ -39,3 +39,22 @@ Before handoff after native/equation changes, also run:
    uv run python run_pytest.py --runtime -q
    uv run python run_pytest.py --confidence -q
 
+Equation-Family Coverage Matrix
+-------------------------------
+
+Native/equation coverage is tracked by equation family plus targeted edge-case
+contracts. Do not require one test per EqID; require every implemented runtime
+family to have at least one deterministic contract that exercises the public
+Python API through the pybind/native path.
+
+Current coverage families:
+
+- density closure / root solving
+- residual Helmholtz energy
+- compressibility factor
+- temperature derivative
+- composition derivative
+- residual chemical potential
+- fugacity coefficient
+- Debye-Huckel / Born / ionic activity coefficient
+- reference-state and density cache behavior

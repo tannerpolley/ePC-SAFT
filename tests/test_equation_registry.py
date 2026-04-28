@@ -11,6 +11,28 @@ from scripts import sync_equation_registry
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TEX_PATH = REPO_ROOT / "docs" / "latex" / "equations.tex"
 
+EQUATION_FAMILY_COVERAGE = {
+    "density closure / root solving": [
+        "test_pressure_density_edge_cases_cover_vapor_and_liquid_extremes",
+        "test_pressure_density_phase_branches_do_not_cross_at_two_phase_like_state",
+        "test_ionic_high_pressure_liquid_density_branch_remains_stable",
+    ],
+    "residual Helmholtz energy": ["test_native_residual_helmholtz_and_compressibility_contributions_match_neutral_contract"],
+    "compressibility factor": ["test_native_residual_helmholtz_and_compressibility_contributions_match_ionic_contract"],
+    "temperature derivative": ["test_temperature_derivative_matches_neutral_finite_difference_across_density_branches"],
+    "composition derivative": ["test_composition_derivative_matches_constrained_composition_finite_difference"],
+    "residual chemical potential": ["test_public_methods_expose_eqid_owned_contribution_groups"],
+    "fugacity coefficient": ["test_public_methods_expose_eqid_owned_contribution_groups"],
+    "Debye-Huckel / Born / ionic activity coefficient": [
+        "test_miac_electrolyte_variants_cover_water_nonaqueous_and_mixed_solvents",
+        "test_nonionic_state_rejects_electrolyte_only_activity_methods",
+    ],
+    "reference-state and density cache behavior": [
+        "test_runtime_cache_stats_track_density_and_reference_state_reuse",
+        "test_miac_activity_cache_reuse_keeps_results_stable",
+    ],
+}
+
 
 def test_equation_registry_outputs_are_synced() -> None:
     if not TEX_PATH.exists():
@@ -101,3 +123,14 @@ def test_sync_equation_registry_help_includes_strict_traceability_flag() -> None
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "--strict-traceability" in result.stdout
+
+
+def test_native_equation_family_coverage_matrix_is_documented_and_complete() -> None:
+    docs = (REPO_ROOT / "docs" / "pages" / "equation_traceability.rst").read_text(encoding="utf-8")
+    native_contracts = (REPO_ROOT / "tests" / "test_native_runtime_contracts.py").read_text(encoding="utf-8")
+
+    assert "Equation-Family Coverage Matrix" in docs
+    for family, tests in EQUATION_FAMILY_COVERAGE.items():
+        assert family in docs
+        for test_name in tests:
+            assert test_name in native_contracts

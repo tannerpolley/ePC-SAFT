@@ -81,7 +81,7 @@ The dev build tree and temp/profile outputs under ``build/`` are shared disposab
 - Do not run clean or repair actions while tests, REPLs, IDE run configurations, or other agents may import ``epcsaft._core``.
 - Prefer one native builder at a time for ``build/dev`` and the in-place ``_core`` extension.
 - Let sub-agents run focused test slices for their lane, and reserve full build, doctor, and ``--confidence`` validation for coordinated handoff checks.
-- Use ``uv run python run_pytest.py --profile -q -s`` for quick runtime-only speed claims. Use ``uv run python run_pytest.py --profile-full -q -s`` before broad method-speed claims, then read ``build/runtime_profile/*.md`` before reporting conclusions.
+- Use ``uv run python run_pytest.py --profile -q`` for quick runtime-only speed claims. Use ``uv run python run_pytest.py --profile-full -q -s`` before broad method-speed claims, then read ``build/runtime_profile/*.md`` before reporting conclusions.
 
 Test selection rules
 --------------------

@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 import run_pytest
@@ -55,3 +56,28 @@ def test_full_profile_shortcut_sets_perf_environment_flag(monkeypatch):
 
     assert env["EPCSAFT_RUN_PERF"] == "1"
     assert env["ePCSAFT_RUN_PERF"] == "1"
+
+
+def test_pytest_temp_root_prefers_configured_root_and_normalizes_relative_paths(monkeypatch, tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    monkeypatch.setenv("EPCSAFT_PYTEST_TEMP_ROOT", "external-temp")
+
+    pytest_temp = run_pytest._pytest_temp(repo_root)
+
+    assert pytest_temp.is_dir()
+    assert pytest_temp.parent == repo_root / "external-temp" / "pytest-temp"
+    shutil.rmtree(repo_root / "external-temp", ignore_errors=True)
+
+
+def test_pytest_env_overrides_perf_flag_only_for_profile_modes(monkeypatch):
+    pytest_temp = Path("build") / "pytest-temp" / "run-test"
+    monkeypatch.setenv("EPCSAFT_RUN_PERF", "0")
+    monkeypatch.setenv("ePCSAFT_RUN_PERF", "0")
+
+    normal_env = run_pytest._pytest_env(pytest_temp, profile=False)
+    profile_env = run_pytest._pytest_env(pytest_temp, profile=True)
+
+    assert normal_env["EPCSAFT_RUN_PERF"] == "0"
+    assert profile_env["EPCSAFT_RUN_PERF"] == "1"
+    assert profile_env["ePCSAFT_RUN_PERF"] == "1"
