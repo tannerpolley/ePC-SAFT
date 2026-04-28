@@ -12,6 +12,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts._env import require_epcsaft_install
+from scripts.plot_outputs import fits_plot_path, save_plot_figure
 
 require_epcsaft_install()
 
@@ -235,9 +236,7 @@ def _osmotic_molality_from_fugacity(t, rho, x, params):
 
 
 def run_validation_2014_repro():
-    out_dir = REPO_ROOT / "data" / "osmotic" / "water" / "plot_fits"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    plot_path = out_dir / "validation_2014_repro_NaCl_KBr_fit.png"
+    plot_path = fits_plot_path("osmotic", "water", "validation_2014_repro_NaCl_KBr_fit.png")
     # Start above zero to avoid the m -> 0 osmotic singularity in model curves.
     m_plot = np.linspace(0.01, 4.0, 101)
 
@@ -289,7 +288,7 @@ def run_validation_2014_repro():
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=8, ncol=2)
     fig.tight_layout()
-    fig.savefig(plot_path, dpi=220)
+    save_plot_figure(fig, plot_path, dpi=220, bbox_inches=None)
     plt.close(fig)
 
     if not plot_path.exists():

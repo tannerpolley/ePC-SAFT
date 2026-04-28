@@ -16,8 +16,6 @@ PURE_TEMPLATE_COLUMNS = [
     "e_assoc",
     "vol_a",
     "assoc_scheme",
-    "dipm",
-    "dip_num",
     "z",
     "dielc",
     "d_born",

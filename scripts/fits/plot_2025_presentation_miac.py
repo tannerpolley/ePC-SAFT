@@ -15,8 +15,9 @@ import numpy as np
 from matplotlib.lines import Line2D
 
 from scripts.fits import validate_miac_fits as vmf
+from scripts.plot_outputs import fits_plot_path, save_plot_figure
 
-OUT_DIR = REPO_ROOT / 'docs' / 'plots'
+OUT_DIR = fits_plot_path("miac", "2025_presentation", "_placeholder").parent
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 SOLVENT_COLORS = {
@@ -240,7 +241,7 @@ def make_plot(group: dict[str, object], combo_map: dict[tuple[str, str], dict[st
 
     out = OUT_DIR / f"miac_m_2025_present_{group['slug']}.png"
     fig.tight_layout()
-    fig.savefig(out, dpi=240)
+    save_plot_figure(fig, out, dpi=240, bbox_inches=None)
     plt.close(fig)
     return out
 

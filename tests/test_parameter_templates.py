@@ -22,7 +22,7 @@ def test_create_parameter_template_creates_loadable_scaffold(tmp_path):
     pure_path = root / "pure" / "water.csv"
     assert pure_path.exists()
     pure_lines = pure_path.read_text(encoding="utf-8").splitlines()
-    assert pure_lines[0] == "component,m,s,e,e_assoc,vol_a,assoc_scheme,dipm,dip_num,z,dielc,d_born,f_solv,MW"
+    assert pure_lines[0] == "component,m,s,e,e_assoc,vol_a,assoc_scheme,z,dielc,d_born,f_solv,MW"
     assert pure_lines[1].startswith("H2O,")
 
     for filename in ("k_ij.csv", "l_ij.csv", "k_hb_ij.csv"):
@@ -65,7 +65,6 @@ def test_runtime_options_accept_autodiff_modes_and_preserve_explicit_overrides()
             "hc_model": {"dadx_differential_mode": "autodiff"},
             "disp_model": {"dadx_differential_mode": "autodiff"},
             "assoc_model": {"dadx_differential_mode": "autodiff"},
-            "polar_model": {"dadx_differential_mode": "autodiff"},
             "DH_model": {"mu_DH_model": {"differential_mode": "autodiff"}},
             "born_model": {"mu_born_model": {"differential_mode": "autodiff"}},
         }
@@ -79,7 +78,6 @@ def test_runtime_options_accept_autodiff_modes_and_preserve_explicit_overrides()
     assert model["hc_model"]["dadx_differential_mode"] == 2
     assert model["disp_model"]["dadx_differential_mode"] == 2
     assert model["assoc_model"]["dadx_differential_mode"] == 2
-    assert model["polar_model"]["dadx_differential_mode"] == 2
     assert model["DH_model"]["mu_DH_model"]["differential_mode"] == 2
     assert model["born_model"]["mu_born_model"]["differential_mode"] == 2
 
@@ -87,9 +85,13 @@ def test_runtime_options_accept_autodiff_modes_and_preserve_explicit_overrides()
     assert runtime["hc_dadx_diff_mode"] == 2
     assert runtime["disp_dadx_diff_mode"] == 2
     assert runtime["assoc_dadx_diff_mode"] == 2
-    assert runtime["polar_dadx_diff_mode"] == 2
     assert runtime["mu_DH_diff_mode"] == 2
     assert runtime["mu_born_diff_mode"] == 2
 
     minimized = minimize_user_options(user_options)
     assert minimized == user_options
+
+
+def test_runtime_options_reject_removed_polar_model():
+    with pytest.raises(KeyError, match="unsupported key"):
+        _resolve_runtime_options({"elec_model": {"polar_model": {"dadx_differential_mode": "autodiff"}}})

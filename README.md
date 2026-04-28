@@ -1,6 +1,6 @@
 # ePC-SAFT
 
-`epcsaft` is a Cython/C++ implementation of the ePC-SAFT equation of state with dipole, association, and electrolyte terms.
+`epcsaft` is a Python package for the ePC-SAFT equation of state with association and electrolyte terms. The public API is Python; the performance-critical thermodynamic runtime is native C++ exposed through a private pybind11 module, `epcsaft._core`.
 
 ## Install
 
@@ -10,27 +10,56 @@ Most users should install from PyPI:
 pip install epcsaft
 ```
 
-`epcsaft` includes a compiled Cython/C++ extension. If a wheel is available for your Python version and platform, pip installs it automatically. If a wheel is not available, pip falls back to a source build, which requires a working native build toolchain.
+The package includes a compiled C++ extension. Wheels are preferred for end users; source builds require a working C++ toolchain, CMake, and Ninja.
 
-For a source checkout of this repository:
+## Development
 
-```bash
-pip install .
+This repository uses `uv` for Python environment management and direct CMake for the local native build loop.
+
+`uv.toml` routes uv's cache into `build/uv-cache` so Codex/Windows sandbox runs do not touch `%LOCALAPPDATA%\uv\cache`.
+
+```powershell
+uv sync --no-install-project
+uv run python scripts\build_epcsaft.py
+uv run python scripts\codex_doctor.py
+uv run python run_pytest.py --confidence -q
 ```
 
-For editable development from this source tree:
+Direct pytest also works, for example `uv run python -m pytest tests\test_runtime.py -q`, but `uv run python run_pytest.py ...` is preferred for Codex and Windows runs because it manages pytest temporary directories more predictably. Set `EPCSAFT_PYTEST_TEMP_ROOT` when you want the wrapper to use an opt-in external pytest temp root instead of its default repo-local generated temp area.
 
-```bash
-python scripts/build_epcsaft.py
+The default new-agent validation sequence is sync, normal native build, doctor, then `uv run python run_pytest.py --confidence -q`.
+
+For future Codex agents and maintainers, the [Codex workflow guide](docs/pages/codex_workflows.rst) is the source-of-truth command matrix for setup, fast rebuilds, focused tests, profiling, packaging, and repair-only cleanup.
+
+For the standard Codex validation loops:
+
+```powershell
+uv run python run_pytest.py --list-slices
+uv run python run_pytest.py --runtime -q
+uv run python run_pytest.py --generic -q
+uv run python run_pytest.py --confidence -q
+uv run python run_pytest.py --profile -q
+uv run python run_pytest.py --profile-full -q -s
 ```
 
-If you want to call pip directly, use:
+`--runtime` runs runtime API plus native contract tests. `--generic` runs the fast core runtime, parameter-template, equation-registry, and regression API slice. `--confidence` is the default runtime-confidence check; it runs that same slice plus the native runtime contract tests. `--profile` enables and runs the quick opt-in runtime-only profiling check. `--profile-full` runs the slower opt-in runtime, MIAC, and regression profile suite; it can take about a minute locally, so use a runner timeout of at least 120 seconds. To keep pytest temp files outside the repo for an opt-in run, set `EPCSAFT_PYTEST_TEMP_ROOT`, for example:
 
-```bash
-pip install -e . --config-settings editable_mode=compat
+```powershell
+$env:EPCSAFT_PYTEST_TEMP_ROOT = Join-Path $env:TEMP 'epcsaft-pytest'
+uv run python run_pytest.py --confidence -q
 ```
 
-If you are iterating on the native code, rerun `python scripts/build_epcsaft.py` to refresh the editable install. On Windows, the compiled extension may appear as a `.pyd` during local builds, but it is a build artifact, not a file users normally copy into a project by hand.
+For repeated calculations, create an `ePCSAFTMixture` and `ePCSAFTState` once and reuse them inside loops. The profile report flags full rebuilds when they dominate runtime.
+
+Use `uv run python scripts\build_epcsaft.py --clean` only as a repair step for stale CMake state or stale/locked `_core` artifacts. If a `_core*.pyd` is locked, stop the importing Python/test/IDE process before running the clean repair.
+
+`CMakePresets.json` is optional Windows MinGW convenience for IDEs and manual CMake use. The canonical local native build remains `uv run python scripts\build_epcsaft.py`.
+
+Build distributable artifacts at the packaging boundary:
+
+```powershell
+uv run python scripts\build_dist.py
+```
 
 ## Example
 
@@ -43,45 +72,37 @@ mixture = ePCSAFTMixture.from_params(
     species=["Toluene"],
 )
 state = mixture.state(T=320.0, x=np.asarray([1.0]), P=101325.0)
-# Pressure-based states solve and cache density during construction.
-print(state.density())               # mol/m^3 by default
-print(state.density(units="mass"))   # kg/m^3 when MW is available
-print(state.molar_density())         # explicit molar-density alias
-print(state.ares())                  # short alias for residual_helmholtz()
+print(state.density())
+print(state.ares())
 print(state.ares(return_contribution_terms=True)["terms"]["hc"])
 ```
 
 ## Package Layout
 
-- `src/epcsaft/`: installable runtime package and Cython/C++ sources
+- `src/epcsaft/`: Python package, pybind11 binding source, and native C++ equation code
 - `data/epcsaft_parameters/`: source-checkout example parameter datasets for inspection, comparison, and tests
-- `data/`: other datasets and figures that are not required by the package
 - `docs/`: user documentation and reference material
+- `scripts/`: uv/CMake build, doctor, and validation helpers
 
 ## Public API
 
 The main entry points are `ePCSAFTMixture`, `ePCSAFTState`, `create_parameter_template`, `fit_pure_neutral(...)`, and the structured result objects returned by solver-style methods.
 
-`create_parameter_template(...)` creates a blank dataset folder with the expected `pure/`, `mixed/`, and `user_options.json` layout. After you fill in the files, `ePCSAFTMixture.from_dataset(...)` can load the folder path you created yourself. If you are working from a checkout of this repository, the example folders under `data/epcsaft_parameters/` are available for inspection and comparison.
+`create_parameter_template(...)` creates a blank dataset folder with the expected `pure/`, `mixed/`, and `user_options.json` layout. After you fill in the files, `ePCSAFTMixture.from_dataset(...)` can load the folder path you created yourself.
 
-Phase 1 of the regression workflow is intentionally narrow: `fit_pure_neutral(...)` fits only neutral-component `m`, `s`, and `e` against liquid-density and vapor-pressure data. Use `write_fit_result(...)` when you want to persist a fit back into a user-owned dataset folder. Ion and binary regression are deferred for now.
+Phase 1 of the regression workflow is intentionally narrow: `fit_pure_neutral(...)` fits only nonassociating neutral-component `m`, `s`, and `e` against liquid-density and vapor-pressure data. Use `write_fit_result(...)` when you want to persist a fit back into a user-owned dataset folder. Ion and binary regression are deferred for now.
 
 ## Documentation
 
-- [Start here](docs/README.rst)
-- [Getting started](docs/getting_started.rst)
-- [Create your own parameter folder](docs/user_parameter_templates.rst)
-- [Parameter regression guide](docs/parameter_regression.rst)
-- [User options reference](docs/user_options.rst)
-- [Task-based package guide](docs/package_guide.rst)
-- [API reference](docs/api_reference.rst)
-
-## Author
-
-Tanner Polley
+- [Start here](docs/pages/README.rst)
+- [Getting started](docs/pages/getting_started.rst)
+- [Codex workflow guide](docs/pages/codex_workflows.rst)
+- [Create your own parameter folder](docs/pages/user_parameter_templates.rst)
+- [Parameter regression guide](docs/pages/parameter_regression.rst)
+- [User options reference](docs/pages/user_options.rst)
+- [Task-based package guide](docs/pages/package_guide.rst)
+- [API reference](docs/pages/api_reference.rst)
 
 ## License
 
 GNU General Public License v3.0
-
-

@@ -15,8 +15,9 @@ import numpy as np
 from matplotlib.lines import Line2D
 
 from scripts.fits import validate_miac_fits as vmf
+from scripts.plot_outputs import fits_plot_path, save_plot_figure
 
-OUT_DIR = REPO_ROOT / "docs" / "plots"
+OUT_DIR = fits_plot_path("miac", "2025_solvent_comparison", "_placeholder").parent
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 SOLVENT_ORDER = ["water", "methanol", "ethanol"]
@@ -148,7 +149,7 @@ def make_plot_for_salt(salt: str) -> Path:
 
     out = OUT_DIR / f"miac_m_2025_{salt}_solvent_comparison.png"
     fig.tight_layout()
-    fig.savefig(out, dpi=220)
+    save_plot_figure(fig, out, dpi=220, bbox_inches=None)
     plt.close(fig)
     return out
 

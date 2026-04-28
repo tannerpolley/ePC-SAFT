@@ -17,6 +17,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts._env import require_epcsaft_install
+from scripts.plot_outputs import paper_validation_output_path, save_plot_figure
 
 require_epcsaft_install()
 
@@ -49,8 +50,9 @@ def configure_style() -> None:
 
 
 def save_figure(fig, path: Path) -> None:
+    path = paper_validation_output_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path, dpi=300, bbox_inches="tight")
+    save_plot_figure(fig, path, dpi=300)
 
 
 def water_sigma(T: float) -> float:
@@ -260,6 +262,7 @@ def load_osmotic_data(salt: str, m_min: float = 0.0, m_max: float = 4.0) -> tupl
     phi_arr = np.asarray(osmotic, dtype=float)
     order = np.argsort(m_arr)
     return m_arr[order], phi_arr[order]
+
 
 
 

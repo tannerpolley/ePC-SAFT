@@ -22,6 +22,7 @@ require_epcsaft_install()
 
 from _common import build_params
 from scripts._epcsaft_oop import epcsaft_density, epcsaft_fugacity_coefficient_terms
+from scripts.plot_outputs import paper_validation_path, save_plot_figure
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -143,7 +144,7 @@ def _curve_for_mode(model_mode: str, x_il_grid: np.ndarray) -> tuple[np.ndarray,
             dadx_ion = np.asarray(terms['dadx_ion'], dtype=float)
             dadx_cat[idx] = float(dadx_ion[CATION_INDEX])
             dadx_manual[idx] = _manual_dadx_binary_path(model_mode, float(x_il))
-            lnfug_cat[idx] = float(np.asarray(terms['lnfugcoef'], dtype=float)[CATION_INDEX])
+            lnfug_cat[idx] = float(np.asarray(terms['lnfugcoef_total'], dtype=float)[CATION_INDEX])
         except Exception:
             continue
     return dadx_cat, dadx_manual, lnfug_cat
@@ -261,9 +262,9 @@ def main() -> None:
         epc_manual=dadx_epc_manual,
     )
     ax_a.legend(fontsize=8)
-    out_a = THIS_DIR / 'figure_2a.png'
+    out_a = paper_validation_path(__file__, 'figure_2a.png')
     fig_a.tight_layout()
-    fig_a.savefig(out_a, dpi=220)
+    save_plot_figure(fig_a, out_a, dpi=220, bbox_inches=None)
     plt.close(fig_a)
 
     fig_a_full, ax_a_full = plt.subplots(figsize=(6.4, 4.8))
@@ -291,9 +292,9 @@ def main() -> None:
         epc_manual=dadx_epc_manual,
     )
     ax_a_full.legend(fontsize=8)
-    out_a_full = THIS_DIR / 'figure_2a_fullrange.png'
+    out_a_full = paper_validation_path(__file__, 'figure_2a_fullrange.png')
     fig_a_full.tight_layout()
-    fig_a_full.savefig(out_a_full, dpi=220)
+    save_plot_figure(fig_a_full, out_a_full, dpi=220, bbox_inches=None)
     plt.close(fig_a_full)
 
     fig_b, ax_b = plt.subplots(figsize=(6.4, 4.8))
@@ -309,9 +310,9 @@ def main() -> None:
         ylim=(-2.0, 14.0),
     )
     ax_b.legend(fontsize=8)
-    out_b = THIS_DIR / 'figure_2b.png'
+    out_b = paper_validation_path(__file__, 'figure_2b.png')
     fig_b.tight_layout()
-    fig_b.savefig(out_b, dpi=220)
+    save_plot_figure(fig_b, out_b, dpi=220, bbox_inches=None)
     plt.close(fig_b)
 
     fig_b_full, ax_b_full = plt.subplots(figsize=(6.4, 4.8))
@@ -333,9 +334,9 @@ def main() -> None:
         ylim=ylim_b_full,
     )
     ax_b_full.legend(fontsize=8)
-    out_b_full = THIS_DIR / 'figure_2b_fullrange.png'
+    out_b_full = paper_validation_path(__file__, 'figure_2b_fullrange.png')
     fig_b_full.tight_layout()
-    fig_b_full.savefig(out_b_full, dpi=220)
+    save_plot_figure(fig_b_full, out_b_full, dpi=220, bbox_inches=None)
     plt.close(fig_b_full)
 
     fig, axes = plt.subplots(1, 2, figsize=(12.4, 4.8), sharex=False)
@@ -365,9 +366,9 @@ def main() -> None:
         ylim=(-2.0, 14.0),
     )
     axes[1].legend(fontsize=8, loc='best')
-    out = THIS_DIR / 'figure_2.png'
+    out = paper_validation_path(__file__, 'figure_2.png')
     fig.tight_layout()
-    fig.savefig(out, dpi=220)
+    save_plot_figure(fig, out, dpi=220, bbox_inches=None)
     plt.close(fig)
     print(f'Wrote: {out_a}')
     print(f'Wrote: {out_a_full}')

@@ -1,0 +1,31 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "dev-mingw",
+      "displayName": "Optional IDE build (Windows MinGW)",
+      "description": "Optional Windows MinGW preset for IDE/manual CMake use. The canonical local native build is uv run python scripts/build_epcsaft.py.",
+      "generator": "MinGW Makefiles",
+      "binaryDir": "${sourceDir}/build/dev",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_TRY_COMPILE_TARGET_TYPE": "STATIC_LIBRARY",
+        "EPCSAFT_DEV_INPLACE": "ON",
+        "Python_EXECUTABLE": "${sourceDir}/.venv/Scripts/python.exe",
+        "pybind11_DIR": "${sourceDir}/.venv/Lib/site-packages/pybind11/share/cmake/pybind11"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "dev-mingw",
+      "displayName": "Optional IDE extension build",
+      "configurePreset": "dev-mingw"
+    }
+  ]
+}

@@ -24,8 +24,6 @@ struct add_args {
     vector<double> k_ij;
     vector<double> e_assoc;
     vector<double> vol_a;
-    vector<double> dipm;
-    vector<double> dip_num;
     vector<double> z;
     vector<double> dielc;
     vector<double> mw;
@@ -39,7 +37,6 @@ struct add_args {
     int hc_dadx_diff_mode;
     int disp_dadx_diff_mode;
     int assoc_dadx_diff_mode;
-    int polar_dadx_diff_mode;
     int d_ion_mode;
     int mu_DH_diff_mode;
     int mu_DH_comp_dep_rel_perm;
@@ -87,7 +84,6 @@ struct ActivityCoefficientNative {
 struct ScalarContributionTerms {
     double hc = 0.0;
     double disp = 0.0;
-    double polar = 0.0;
     double assoc = 0.0;
     double ion = 0.0;
     double born = 0.0;
@@ -102,7 +98,6 @@ struct CompressibilityFactorResult {
 struct VectorContributionTerms {
     vector<double> hc;
     vector<double> disp;
-    vector<double> polar;
     vector<double> assoc;
     vector<double> ion;
     vector<double> born;
@@ -126,6 +121,75 @@ struct FugacityContributionResult {
     VectorContributionTerms mu;
     VectorContributionTerms lnfugcoef;
     CompositionContributionResult composition;
+};
+
+struct ReferenceStateKey {
+    double t = 0.0;
+    double p = 0.0;
+    int phase = 0;
+    vector<double> x_ref;
+};
+
+struct ReferenceStateValue {
+    double rho = 0.0;
+    vector<double> fugcoef;
+};
+
+struct ReferenceStateCacheEntry {
+    ReferenceStateKey key;
+    ReferenceStateValue value;
+};
+
+struct PureNeutralRegressionDensityRecord {
+    double t = 0.0;
+    double p = 0.0;
+    double rho_exp = 0.0;
+    int phase = 0;
+};
+
+struct PureNeutralRegressionVLERecord {
+    double t = 0.0;
+    double p = 0.0;
+};
+
+struct PureNeutralRegressionDebugResult {
+    double objective = 0.0;
+    vector<double> gradient;
+    vector<double> residuals;
+    vector<double> jacobian_row_major;
+    int jacobian_rows = 0;
+    int jacobian_cols = 0;
+    vector<double> density_raw_residuals;
+    vector<double> pure_vle_raw_residuals;
+    int residual_evaluations = 0;
+    int density_solves = 0;
+    int fused_state_evaluations = 0;
+    double callback_wall_time_s = 0.0;
+};
+
+struct PureNeutralRegressionResult {
+    vector<double> x;
+    double cost = HUGE_DBL;
+    double residual_norm = HUGE_DBL;
+    double density_metric = HUGE_DBL;
+    double pure_vle_metric = HUGE_DBL;
+    double initial_cost = HUGE_DBL;
+    double initial_density_metric = HUGE_DBL;
+    double initial_pure_vle_metric = HUGE_DBL;
+    bool success = false;
+    int status = 0;
+    int nfev = 0;
+    int iterations = 0;
+    int starts_tried = 0;
+    int objective_evaluations = 0;
+    int gradient_evaluations = 0;
+    int residual_evaluations = 0;
+    int density_solves = 0;
+    int fused_state_evaluations = 0;
+    double callback_wall_time_s = 0.0;
+    double solve_wall_time_s = 0.0;
+    std::string message;
+    std::string backend;
 };
 
 class ePCSAFTMixtureNative;
@@ -159,7 +223,11 @@ public:
     vector<double> relative_permittivity();
     double osmotic_coefficient();
     vector<double> solvation_free_energy();
-    ActivityCoefficientNative activity_coefficient_native(bool has_solvent_override = false, int solvent_override_index = -1);
+    ActivityCoefficientNative activity_coefficient_native(
+        bool include_aux = true,
+        bool has_solvent_override = false,
+        int solvent_override_index = -1
+    );
 
 private:
     std::shared_ptr<ePCSAFTMixtureNative> mixture_;
@@ -191,6 +259,15 @@ public:
     const vector<int>& pair_anion_indices() const;
     const vector<int>& pair_nu_cation() const;
     const vector<int>& pair_nu_anion() const;
+    double solve_density(double t, double p, const vector<double>& x, int phase);
+    bool lookup_reference_state(const ReferenceStateKey& key, ReferenceStateValue* out);
+    void store_reference_state(const ReferenceStateKey& key, const ReferenceStateValue& value);
+    void clear_runtime_caches();
+    void reset_runtime_cache_stats();
+    size_t reference_state_cache_hits() const;
+    size_t reference_state_cache_misses() const;
+    size_t density_warm_start_hits() const;
+    size_t density_warm_start_fallbacks() const;
 
 private:
     add_args args_;
@@ -202,6 +279,15 @@ private:
     vector<int> pair_anion_indices_;
     vector<int> pair_nu_cation_;
     vector<int> pair_nu_anion_;
+    vector<ReferenceStateCacheEntry> reference_state_cache_;
+    double liquid_density_seed_ = 0.0;
+    double vapor_density_seed_ = 0.0;
+    bool liquid_density_seed_valid_ = false;
+    bool vapor_density_seed_valid_ = false;
+    size_t reference_state_cache_hits_ = 0;
+    size_t reference_state_cache_misses_ = 0;
+    size_t density_warm_start_hits_ = 0;
+    size_t density_warm_start_fallbacks_ = 0;
 };
 
 double Z_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
@@ -231,6 +317,25 @@ double dielectric_eps_cpp(vector<double> x, const add_args &cppargs);
 vector<double> dielectric_diff_cpp(vector<double> x, const add_args &cppargs);
 double dielc_eps_cpp(vector<double> x, const add_args &cppargs);
 vector<double> dielc_diff_cpp(vector<double> x, const add_args &cppargs);
+PureNeutralRegressionResult fit_pure_neutral_least_squares_cpp(
+    const add_args &base_args,
+    const vector<PureNeutralRegressionDensityRecord> &density_records,
+    double density_scale,
+    const vector<PureNeutralRegressionVLERecord> &pure_vle_records,
+    double pure_vle_scale,
+    const vector<double> &x0,
+    const vector<double> &lower,
+    const vector<double> &upper,
+    int multistart
+);
+PureNeutralRegressionDebugResult evaluate_pure_neutral_objective_debug_cpp(
+    const add_args &base_args,
+    const vector<PureNeutralRegressionDensityRecord> &density_records,
+    double density_scale,
+    const vector<PureNeutralRegressionVLERecord> &pure_vle_records,
+    double pure_vle_scale,
+    const vector<double> &x
+);
 
 class ValueError: public std::exception
 {

@@ -13,13 +13,14 @@ if str(REPO_ROOT) not in sys.path:
 if str(DIAGNOSTICS_DIR) not in sys.path:
     sys.path.insert(0, str(DIAGNOSTICS_DIR))
 
+from scripts.plot_outputs import paper_validation_path
 from figure6b_libr_ethanol_contributions import run_analysis
 
 
 def main() -> None:
     run_analysis(
         data_path=REPO_ROOT / "data" / "MIAC" / "ethanol" / "ethanol-LiBr.csv",
-        output_path=SCRIPT_DIR / "figure_6b.png",
+        output_path=paper_validation_path(__file__, "figure_6b.png"),
         x_min=0.0,
         x_max=0.2,
         y_min=-3.0,

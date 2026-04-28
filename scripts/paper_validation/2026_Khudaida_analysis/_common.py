@@ -21,6 +21,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts._env import require_epcsaft_install
+from scripts.plot_outputs import paper_validation_output_path, save_plot_figure
 
 require_epcsaft_install()
 
@@ -75,8 +76,9 @@ def configure_style() -> None:
 
 
 def save_figure(fig: plt.Figure, path: Path) -> None:
+    path = paper_validation_output_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path, dpi=300, bbox_inches="tight")
+    save_plot_figure(fig, path, dpi=300)
 
 
 def add_figure_caption(fig: plt.Figure, caption: str, *, left: float = 0.09, y: float = 0.02, fontsize: float = 9.0) -> None:

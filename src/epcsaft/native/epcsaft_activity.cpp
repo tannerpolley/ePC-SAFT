@@ -4,9 +4,66 @@ using namespace thermo_detail;
 
 namespace miac_detail {
 
+vector<double> build_infinite_dilution_reference_cpp(
+    const vector<double>& x,
+    const ChargeGroups& groups,
+    double eps
+) {
+    const int ncomp = static_cast<int>(x.size());
+    vector<double> x_inf(ncomp, eps);
+    vector<double> solvent_ref(groups.solvents.size(), 0.0);
+    double solvent_sum = 0.0;
+    for (size_t k = 0; k < groups.solvents.size(); ++k) {
+        solvent_ref[k] = x[groups.solvents[k]];
+        solvent_sum += solvent_ref[k];
+    }
+    if (solvent_sum <= 0.0) {
+        throw ValueError("miac requires a positive solvent fraction.");
+    }
+    for (size_t k = 0; k < groups.solvents.size(); ++k) {
+        x_inf[groups.solvents[k]] = solvent_ref[k] / solvent_sum;
+    }
+    double solvent_budget = std::max(
+        1.0 - eps * static_cast<double>(ncomp - groups.solvents.size()),
+        eps * static_cast<double>(groups.solvents.size())
+    );
+    for (size_t k = 0; k < groups.solvents.size(); ++k) {
+        x_inf[groups.solvents[k]] *= solvent_budget;
+    }
+    double x_inf_sum = std::accumulate(x_inf.begin(), x_inf.end(), 0.0);
+    for (double& xi : x_inf) {
+        xi /= x_inf_sum;
+    }
+    return x_inf;
+}
+
+ReferenceStateValue reference_state_from_cache_or_build_cpp(
+    ePCSAFTMixtureNative* mixture,
+    const ReferenceStateKey& key,
+    const add_args& args
+) {
+    if (mixture == nullptr) {
+        throw ValueError("activity_coefficient requires a valid mixture cache owner.");
+    }
+    ReferenceStateValue value;
+    if (mixture->lookup_reference_state(key, &value)) {
+        return value;
+    }
+    value.rho = mixture->solve_density(key.t, key.p, key.x_ref, key.phase);
+    value.fugcoef = fugcoef_cpp(key.t, value.rho, key.x_ref, args);
+    mixture->store_reference_state(key, value);
+    return value;
+}
+
 // EqID: gamma_sym
 // EqID: lngamma_sym
-vector<double> miac_gamma_vector_cpp(double t, double rho, const vector<double>& x, const add_args& cppargs)
+vector<double> miac_gamma_vector_cpp(
+    ePCSAFTMixtureNative* mixture,
+    double t,
+    double rho,
+    const vector<double>& x,
+    const add_args& cppargs
+)
 {
     add_args args = cppargs;
     const int ncomp = static_cast<int>(x.size());
@@ -28,43 +85,31 @@ vector<double> miac_gamma_vector_cpp(double t, double rho, const vector<double>&
     double p = p_cpp(t, rho, x, args);
 
     const double eps = 1e-12;
-    vector<double> x_inf(ncomp, eps);
-    vector<double> solvent_ref(groups.solvents.size(), 0.0);
-    double solvent_sum = 0.0;
-    for (size_t k = 0; k < groups.solvents.size(); ++k) {
-        solvent_ref[k] = x[groups.solvents[k]];
-        solvent_sum += solvent_ref[k];
-    }
-    if (solvent_sum <= 0.0) {
-        throw ValueError("miac requires a positive solvent fraction.");
-    }
-    for (size_t k = 0; k < groups.solvents.size(); ++k) {
-        x_inf[groups.solvents[k]] = solvent_ref[k] / solvent_sum;
-    }
-    double solvent_budget = std::max(1.0 - eps * static_cast<double>(ncomp - groups.solvents.size()), eps * static_cast<double>(groups.solvents.size()));
-    for (size_t k = 0; k < groups.solvents.size(); ++k) {
-        x_inf[groups.solvents[k]] *= solvent_budget;
-    }
-    double x_inf_sum = 0.0;
-    for (double xi : x_inf) {
-        x_inf_sum += xi;
-    }
-    for (double& xi : x_inf) {
-        xi /= x_inf_sum;
-    }
-
-    double rho_inf = den_cpp(t, p, x_inf, 0, args);
-    vector<double> fugcoef_inf = fugcoef_cpp(t, rho_inf, x_inf, args);
+    vector<double> x_inf = build_infinite_dilution_reference_cpp(x, groups, eps);
+    ReferenceStateKey key;
+    key.t = t;
+    key.p = p;
+    key.phase = 0;
+    key.x_ref = x_inf;
+    ReferenceStateValue ref = reference_state_from_cache_or_build_cpp(mixture, key, args);
     vector<double> gamma_i(ncomp, 1.0);
     for (int i = 0; i < ncomp; ++i) {
-        gamma_i[i] = fugcoef[i] / fugcoef_inf[i];
+        gamma_i[i] = fugcoef[i] / ref.fugcoef[i];
     }
     return gamma_i;
 }
 
 // EqID: delta_g_solv_inf_x
 // EqID: delta_g_transfer_inf
-vector<double> gsolv_values_cpp(double t, double rho, const vector<double>& x, const add_args& cppargs)
+vector<double> gsolv_values_cpp(
+    ePCSAFTMixtureNative* mixture,
+    double t,
+    double rho,
+    double p,
+    int phase,
+    const vector<double>& x,
+    const add_args& cppargs
+)
 {
     add_args args = cppargs;
     const int ncomp = static_cast<int>(x.size());
@@ -104,8 +149,7 @@ vector<double> gsolv_values_cpp(double t, double rho, const vector<double>& x, c
         }
     }
 
-    double p = p_cpp(t, rho, x_ref, args);
-    int phase = (rho < 900.0) ? 1 : 0;
+    int ref_phase = (phase == 0 || phase == 1) ? phase : ((rho < 900.0) ? 1 : 0);
     vector<double> result(ncomp, 0.0);
     const double eps = 1e-12;
     for (int i : idx_ion) {
@@ -118,19 +162,41 @@ vector<double> gsolv_values_cpp(double t, double rho, const vector<double>& x, c
         for (double& xi : x_inf) {
             xi /= sum_inf;
         }
-        double rho_inf = den_cpp(t, p, x_inf, phase, args);
-        vector<double> lnfug_inf = lnfug_cpp(t, rho_inf, x_inf, args);
-        result[i] = 8.31446261815324 * t * lnfug_inf[i];
+        ReferenceStateKey key;
+        key.t = t;
+        key.p = p;
+        key.phase = ref_phase;
+        key.x_ref = x_inf;
+        ReferenceStateValue ref = reference_state_from_cache_or_build_cpp(mixture, key, args);
+        result[i] = 8.31446261815324 * t * std::log(std::max(ref.fugcoef[i], 1e-300));
     }
     return result;
 }
 
-int resolve_solvent_index_cpp(const vector<int>& solvent_indices, bool has_solvent_override, int solvent_override_index)
+int resolve_solvent_index_cpp(
+    const vector<int>& solvent_indices,
+    const vector<double>& x,
+    bool has_solvent_override,
+    int solvent_override_index
+)
 {
     if (solvent_indices.empty()) {
         throw ValueError("activity_coefficient requires at least one neutral solvent species.");
     }
     if (!has_solvent_override || solvent_override_index < 0) {
+        int best_index = -1;
+        double best_x = -1.0;
+        for (int idx : solvent_indices) {
+            if (idx >= 0 && idx < static_cast<int>(x.size()) && x[idx] > 0.0) {
+                if (x[idx] > best_x) {
+                    best_x = x[idx];
+                    best_index = idx;
+                }
+            }
+        }
+        if (best_index >= 0) {
+            return best_index;
+        }
         return solvent_indices.front();
     }
     if (std::find(solvent_indices.begin(), solvent_indices.end(), solvent_override_index) == solvent_indices.end()) {
@@ -207,6 +273,7 @@ void validate_activity_inputs_cpp(
 
 void assign_activity_metadata_cpp(
     ActivityCoefficientNative& out,
+    const vector<double>& x,
     const vector<int>& cation_indices,
     const vector<int>& anion_indices,
     const vector<int>& solvent_indices,
@@ -224,20 +291,23 @@ void assign_activity_metadata_cpp(
     out.pair_anion_indices = pair_anion_indices;
     out.pair_nu_cation = pair_nu_cation;
     out.pair_nu_anion = pair_nu_anion;
-    out.solvent_index = resolve_solvent_index_cpp(solvent_indices, has_solvent_override, solvent_override_index);
+    out.solvent_index = resolve_solvent_index_cpp(solvent_indices, x, has_solvent_override, solvent_override_index);
 }
 
 void assign_activity_aux_cpp(
     ActivityCoefficientNative& out,
+    ePCSAFTMixtureNative* mixture,
     double t,
     double rho,
+    double p,
+    int phase,
     const vector<double>& x,
     const add_args& args,
     bool include_aux
 ) {
-    out.component_activity_coefficients = miac_gamma_vector_cpp(t, rho, x, args);
+    out.component_activity_coefficients = miac_gamma_vector_cpp(mixture, t, rho, x, args);
     if (include_aux) {
-        out.solvation_free_energy = gsolv_values_cpp(t, rho, x, args);
+        out.solvation_free_energy = gsolv_values_cpp(mixture, t, rho, p, phase, x, args);
         if (out.solvation_free_energy.size() != x.size()) {
             throw ValueError("Unexpected solvation_free_energy payload size in activity_coefficient.");
         }
@@ -287,6 +357,7 @@ void assign_pair_activity_cpp(
 }
 
 double osmotic_coefficient_cpp(
+    ePCSAFTMixtureNative* mixture,
     double t,
     double rho,
     double p,
@@ -306,9 +377,13 @@ double osmotic_coefficient_cpp(
     x0[solvent_index] = 1.0;
     int ref_phase = (phase == 0 || phase == 1) ? phase : ((rho < 900.0) ? 1 : 0);
     vector<double> fugcoef = fugcoef_cpp(t, rho, x, args);
-    double rho0 = den_cpp(t, p, x0, ref_phase, args);
-    vector<double> fugcoef0 = fugcoef_cpp(t, rho0, x0, args);
-    double gamma_solvent = fugcoef[solvent_index] / fugcoef0[solvent_index];
+    ReferenceStateKey key;
+    key.t = t;
+    key.p = p;
+    key.phase = ref_phase;
+    key.x_ref = x0;
+    ReferenceStateValue ref = reference_state_from_cache_or_build_cpp(mixture, key, args);
+    double gamma_solvent = fugcoef[solvent_index] / ref.fugcoef[solvent_index];
     double molality_sum = 0.0;
     for (size_t i = 0; i < x.size(); ++i) {
         if (static_cast<int>(i) == solvent_index) {
@@ -322,7 +397,17 @@ double osmotic_coefficient_cpp(
     return -std::log(x[solvent_index] * gamma_solvent) / (mw_solvent * molality_sum);
 }
 
+// EqID: lngamma_asym_sum
+// EqID: gamma_alpha_asym
+// EqID: lngamma_alpha_asym
+// EqID: gamma_pm_asym
+// EqID: lngamma_pm_asym
+// EqID: lngamma_pm_alpha_asym
+// EqID: gamma_pm_charge
+// EqID: gamma_pm_molality
+// EqID: lngamma_pm_molality
 ActivityCoefficientNative activity_coefficient_values_impl_cpp(
+    ePCSAFTMixtureNative* mixture,
     double t,
     double rho,
     double p,
@@ -354,6 +439,7 @@ ActivityCoefficientNative activity_coefficient_values_impl_cpp(
     ActivityCoefficientNative out;
     assign_activity_metadata_cpp(
         out,
+        x,
         cation_indices,
         anion_indices,
         solvent_indices,
@@ -364,11 +450,11 @@ ActivityCoefficientNative activity_coefficient_values_impl_cpp(
         has_solvent_override,
         solvent_override_index
     );
-    assign_activity_aux_cpp(out, t, rho, x, args, include_aux);
+    assign_activity_aux_cpp(out, mixture, t, rho, p, phase, x, args, include_aux);
     assign_pair_activity_cpp(out, x, args, solvent_indices, has_solvent_override);
 
     if (include_aux) {
-        out.osmotic_coefficient = osmotic_coefficient_cpp(t, rho, p, phase, x, args, out.solvent_index);
+        out.osmotic_coefficient = osmotic_coefficient_cpp(mixture, t, rho, p, phase, x, args, out.solvent_index);
     } else {
         out.osmotic_coefficient = std::numeric_limits<double>::quiet_NaN();
     }
@@ -380,6 +466,7 @@ ActivityCoefficientNative activity_coefficient_values_impl_cpp(
 // EqID: gamma_asym_inf
 // EqID: lngamma_asym_inf
 ActivityCoefficientNative activity_coefficient_values_cpp(
+    ePCSAFTMixtureNative* mixture,
     double t,
     double rho,
     double p,
@@ -398,6 +485,7 @@ ActivityCoefficientNative activity_coefficient_values_cpp(
     int solvent_override_index
 ) {
     return miac_detail::activity_coefficient_values_impl_cpp(
+        mixture,
         t,
         rho,
         p,

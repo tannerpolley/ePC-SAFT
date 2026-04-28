@@ -72,8 +72,8 @@ a^{res} = a^{hc} + a^{disp} + a^{assoc} + a^{DH} + a^{Born}
 - This is the key ingredient for credible water → alcohol/organic electrolyte predictions
 
 Insert (optional):
-- Dielectric fits: `data/dielc/plot_fits/test_dielc_fit_salts_in_water_fit.png`
-- Dielectric derivative check: `data/dielc/plot_fits/test_dielc_diff_salts_in_water_fit.png`
+- Dielectric fits: `docs/plots/fits/dielectric/test_dielc_fit_salts_in_water_fit.png`
+- Dielectric derivative check: `docs/plots/fits/dielectric/test_dielc_diff_salts_in_water_fit.png`
 
 ---
 
@@ -102,8 +102,8 @@ Insert (optional):
 - These fits establish the ion parameter base before moving into mixed-solvent and extraction scenarios
 
 Insert (optional):
-- Water MIAC fits: `data/MIAC/water/miac_m_fits/maic_m_water_*.png`
-- Osmotic validation: `data/osmotic/water/plot_fits/validation_2014_repro_NaCl_KBr_fit.png`
+- Water MIAC fits: `docs/plots/fits/miac/water/miac_m/maic_m_water_*.png`
+- Osmotic validation: `docs/plots/fits/osmotic/water/validation_2014_repro_NaCl_KBr_fit.png`
 
 ---
 
@@ -114,8 +114,8 @@ Insert (optional):
 - The non-aqueous performance is where the 2020 dielectric-dependent Born treatment shows its value
 
 Insert (optional):
-- Methanol MIAC fits: `data/MIAC/methanol/miac_m_fits/maic_m_methanol_*.png`
-- Ethanol MIAC fits: `data/MIAC/ethanol/miac_m_fits/maic_m_ethanol_*.png`
+- Methanol MIAC fits: `docs/plots/fits/miac/methanol/miac_m/maic_m_methanol_*.png`
+- Ethanol MIAC fits: `docs/plots/fits/miac/ethanol/miac_m/maic_m_ethanol_*.png`
 
 ---
 
@@ -126,7 +126,7 @@ Insert (optional):
 - Sets the right foundation for LLE coupling because electrostatics respond correctly to solvent composition
 
 Insert (optional):
-- DH/Born model comparisons: `data/DH_born_models/water/plot_fits/test_DH_born_models_water_*_all_fit.png`
+- DH/Born model comparisons: historical generated plots should be placed under `docs/plots/fits/` if regenerated.
 
 ---
 

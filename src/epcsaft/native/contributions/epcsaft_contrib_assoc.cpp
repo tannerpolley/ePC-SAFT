@@ -1,8 +1,17 @@
 #include "epcsaft_contrib_internal.h"
 
-using namespace thermo_detail;
+using thermo_detail::AssociationIntermediateState;
+using thermo_detail::AssociationSetup;
+using thermo_detail::ContributionDadxResult;
+using thermo_detail::HardChainState;
+using thermo_detail::MixtureState;
+using thermo_detail::parameter_setup_detail::association_volume_cpp;
+using thermo_detail::parameter_setup_detail::pair_diameter_cpp;
 
-vector<double> association_site_fractions_cpp(vector<double> XA_guess, vector<double> delta_ij, double den, vector<double> x) {
+namespace assoc_detail {
+
+// EqID: x_assoc_site
+static vector<double> association_site_fractions_cpp(vector<double> XA_guess, vector<double> delta_ij, double den, vector<double> x) {
     int num_sites = static_cast<int>(XA_guess.size());
     vector<double> XA = XA_guess;
 
@@ -19,7 +28,8 @@ vector<double> association_site_fractions_cpp(vector<double> XA_guess, vector<do
     return XA;
 }
 
-vector<double> association_site_fraction_dt_cpp(vector<double> delta_ij, double den, vector<double> XA, vector<double> ddelta_dt, vector<double> x) {
+// EqID: dx_assoc_drho
+static vector<double> association_site_fraction_dt_cpp(vector<double> delta_ij, double den, vector<double> XA, vector<double> ddelta_dt, vector<double> x) {
     int num_sites = static_cast<int>(XA.size());
     Eigen::MatrixXd B = Eigen::MatrixXd::Zero(num_sites, 1);
     Eigen::MatrixXd A = Eigen::MatrixXd::Zero(num_sites, num_sites);
@@ -44,7 +54,8 @@ vector<double> association_site_fraction_dt_cpp(vector<double> delta_ij, double 
     return dXA_dt;
 }
 
-vector<double> association_site_fraction_dx_cpp(vector<int> assoc_num, vector<double> delta_ij, double den, vector<double> XA, vector<double> ddelta_dx, vector<double> x) {
+// EqID: dx_assoc_dxk
+static vector<double> association_site_fraction_dx_cpp(vector<int> assoc_num, vector<double> delta_ij, double den, vector<double> XA, vector<double> ddelta_dx, vector<double> x) {
     int num_sites = static_cast<int>(XA.size());
     int ncomp = static_cast<int>(assoc_num.size());
     Eigen::MatrixXd B(num_sites * ncomp, 1);
@@ -80,7 +91,7 @@ vector<double> association_site_fraction_dx_cpp(vector<int> assoc_num, vector<do
     return dXA_dx;
 }
 
-vector<double> solve_association_site_fractions_cpp(const vector<double> &delta_ij, double den, const vector<double> &x_assoc) {
+static vector<double> solve_association_site_fractions_cpp(const vector<double> &delta_ij, double den, const vector<double> &x_assoc) {
     int num_sites = static_cast<int>(x_assoc.size());
     vector<double> XA(num_sites, 0.0);
     for (int i = 0; i < num_sites; ++i) {
@@ -108,6 +119,10 @@ vector<double> solve_association_site_fractions_cpp(const vector<double> &delta_
     return XA;
 }
 
+}  // namespace assoc_detail
+
+// EqID: rho_j_assoc
+// EqID: delta_assoc
 AssociationSetup association_setup_cpp(const vector<double> &x, const add_args &cppargs, const vector<double> &s_ij, const vector<double> &ghs, double t) {
     int ncomp = static_cast<int>(x.size());
     AssociationSetup setup;
@@ -133,13 +148,7 @@ AssociationSetup association_setup_cpp(const vector<double> &x, const add_args &
             int idxj = comp_j * ncomp + comp_j;
             if (cppargs.assoc_matrix[idxa] != 0) {
                 double eABij = 0.5 * (cppargs.e_assoc[comp_i] + cppargs.e_assoc[comp_j]);
-                double volABij = std::sqrt(cppargs.vol_a[comp_i] * cppargs.vol_a[comp_j]) * std::pow(
-                    std::sqrt(s_ij[idxi] * s_ij[idxj]) / (0.5 * (s_ij[idxi] + s_ij[idxj])),
-                    3.0
-                );
-                if (!cppargs.k_hb.empty()) {
-                    volABij *= (1.0 - cppargs.k_hb[comp_i * ncomp + comp_j]);
-                }
+                double volABij = association_volume_cpp(comp_i, comp_j, ncomp, s_ij, cppargs);
                 setup.delta_ij[idxa] = ghs[comp_i * ncomp + comp_j] * (std::exp(eABij / t) - 1.0)
                     * std::pow(s_ij[comp_i * ncomp + comp_j], 3.0) * volABij;
             }
@@ -150,18 +159,84 @@ AssociationSetup association_setup_cpp(const vector<double> &x, const add_args &
     return setup;
 }
 
-double association_volume_cpp(int comp_i, int comp_j, int ncomp, const vector<double> &s_ij, const add_args &cppargs) {
-    int idxi = comp_i * ncomp + comp_i;
-    int idxj = comp_j * ncomp + comp_j;
-    double volume = std::sqrt(cppargs.vol_a[comp_i] * cppargs.vol_a[comp_j]) * std::pow(
-        std::sqrt(s_ij[idxi] * s_ij[idxj]) / (0.5 * (s_ij[idxi] + s_ij[idxj])),
-        3.0
-    );
-    if (!cppargs.k_hb.empty()) {
-        volume *= (1.0 - cppargs.k_hb[comp_i * ncomp + comp_j]);
+namespace assoc_detail {
+
+// EqID: ddelta_assoc_drho
+static vector<double> association_site_fraction_density_terms_cpp(
+    const vector<double> &delta_ij,
+    double den,
+    const vector<double> &XA,
+    const vector<double> &ddelta_weighted,
+    const vector<double> &x_assoc
+) {
+    int num_sites = static_cast<int>(XA.size());
+    Eigen::MatrixXd B = Eigen::MatrixXd::Zero(num_sites, 1);
+    Eigen::MatrixXd A = Eigen::MatrixXd::Zero(num_sites, num_sites);
+
+    int ij = 0;
+    for (int i = 0; i < num_sites; ++i) {
+        double summ = 0.0;
+        for (int j = 0; j < num_sites; ++j) {
+            B(i) -= x_assoc[j] * XA[j] * ddelta_weighted[ij];
+            A(i, j) = x_assoc[j] * delta_ij[ij];
+            summ += x_assoc[j] * XA[j] * delta_ij[ij];
+            ++ij;
+        }
+        B(i) -= summ;
+        A(i, i) = std::pow(1.0 + den * summ, 2.0) / den;
     }
-    return volume;
+
+    Eigen::MatrixXd solution = A.lu().solve(B);
+    vector<double> dXA_weighted(num_sites, 0.0);
+    for (int i = 0; i < num_sites; ++i) {
+        dXA_weighted[i] = solution(i);
+    }
+    return dXA_weighted;
 }
+
+// EqID: ddelta_assoc_dxk
+static vector<double> association_site_fraction_composition_terms_cpp(
+    const vector<double> &delta_ij,
+    double den,
+    const vector<double> &XA,
+    const vector<double> &ddelta_dx,
+    const vector<int> &site_component_index,
+    const vector<double> &x_assoc,
+    int ncomp
+) {
+    int num_sites = static_cast<int>(XA.size());
+    vector<double> dXA_dx(ncomp * num_sites, 0.0);
+
+    for (int k = 0; k < ncomp; ++k) {
+        Eigen::MatrixXd B = Eigen::MatrixXd::Zero(num_sites, 1);
+        Eigen::MatrixXd A = Eigen::MatrixXd::Zero(num_sites, num_sites);
+
+        int ij = 0;
+        for (int i = 0; i < num_sites; ++i) {
+            double direct_sum = 0.0;
+            double delta_sum = 0.0;
+            for (int j = 0; j < num_sites; ++j) {
+                if (site_component_index[j] == k) {
+                    direct_sum += XA[j] * delta_ij[ij];
+                }
+                delta_sum += x_assoc[j] * XA[j] * ddelta_dx[k * num_sites * num_sites + ij];
+                A(i, j) = x_assoc[j] * delta_ij[ij];
+                ++ij;
+            }
+            B(i) = -(direct_sum + delta_sum);
+            A(i, i) += 1.0 / (den * XA[i] * XA[i]);
+        }
+
+        Eigen::MatrixXd solution = A.lu().solve(B);
+        for (int i = 0; i < num_sites; ++i) {
+            dXA_dx[k * num_sites + i] = solution(i);
+        }
+    }
+
+    return dXA_dx;
+}
+
+}  // namespace assoc_detail
 
 AssociationIntermediateState association_intermediate_state_cpp(
     const MixtureState &thermo,
@@ -185,7 +260,7 @@ AssociationIntermediateState association_intermediate_state_cpp(
     int ncomp = static_cast<int>(x.size());
     int num_sites = static_cast<int>(site_component_index.size());
 
-    state.XA = solve_association_site_fractions_cpp(delta_ij, thermo.den, x_assoc);
+    state.XA = assoc_detail::solve_association_site_fractions_cpp(delta_ij, thermo.den, x_assoc);
 
     if (include_dt) {
         vector<double> ddelta_dt(num_sites * num_sites, 0.0);
@@ -200,7 +275,11 @@ AssociationIntermediateState association_intermediate_state_cpp(
                 if (cppargs.assoc_matrix[i * num_sites + j] != 0) {
                     double eABij = 0.5 * (cppargs.e_assoc[site_component_index[i]] + cppargs.e_assoc[site_component_index[j]]);
                     double volABij = association_volume_cpp(site_component_index[i], site_component_index[j], ncomp, thermo.s_ij, cppargs);
-                    ddelta_dt[i * num_sites + j] = std::pow(thermo.s_ij[idxj], 3) * volABij * (
+                    double pair_diameter = pair_diameter_cpp(
+                        thermo.d[site_component_index[i]],
+                        thermo.d[site_component_index[j]]
+                    );
+                    ddelta_dt[i * num_sites + j] = std::pow(pair_diameter, 3) * volABij * (
                         -eABij / std::pow(t, 2) * std::exp(eABij / t) * hc_state.ghs[site_component_index[i] * ncomp + site_component_index[j]]
                         + (*dghs_dt)[site_component_index[i] * ncomp + site_component_index[j]] * (std::exp(eABij / t) - 1.0)
                     );
@@ -208,7 +287,7 @@ AssociationIntermediateState association_intermediate_state_cpp(
             }
         }
 
-        state.dXA_dt = association_site_fraction_dt_cpp(delta_ij, thermo.den, state.XA, ddelta_dt, x_assoc);
+        state.dXA_dt = assoc_detail::association_site_fraction_dt_cpp(delta_ij, thermo.den, state.XA, ddelta_dt, x_assoc);
     }
 
     if (include_dx) {
@@ -238,8 +317,142 @@ AssociationIntermediateState association_intermediate_state_cpp(
             }
         }
 
-        state.dXA_dx = association_site_fraction_dx_cpp(cppargs.assoc_num, delta_ij, thermo.den, state.XA, ddelta_dx, x_assoc);
+        state.dXA_dx = assoc_detail::association_site_fraction_dx_cpp(cppargs.assoc_num, delta_ij, thermo.den, state.XA, ddelta_dx, x_assoc);
     }
 
     return state;
+}
+
+// EqID: assoc_ares_dadrho
+double dadrho_assoc_cpp(
+    const MixtureState &thermo,
+    const HardChainState &hc_state,
+    const AssociationIntermediateState &assoc_state,
+    const vector<double> &x,
+    const add_args &cppargs,
+    double t
+) {
+    if (!assoc_state.active) {
+        return 0.0;
+    }
+
+    const vector<int> &site_component_index = assoc_state.setup.site_component_index;
+    const vector<double> &x_assoc = assoc_state.setup.x_assoc;
+    const vector<double> &delta_ij = assoc_state.setup.delta_ij;
+    int ncomp = static_cast<int>(x.size());
+    int num_sites = static_cast<int>(site_component_index.size());
+    vector<double> ddelta_weighted(num_sites * num_sites, 0.0);
+
+    int ij = 0;
+    for (int i = 0; i < num_sites; ++i) {
+        int comp_i = site_component_index[i];
+        for (int j = 0; j < num_sites; ++j) {
+            int comp_j = site_component_index[j];
+            if (cppargs.assoc_matrix[ij] != 0) {
+                double pair_diameter = pair_diameter_cpp(thermo.d[comp_i], thermo.d[comp_j]);
+                double eABij = 0.5 * (cppargs.e_assoc[comp_i] + cppargs.e_assoc[comp_j]);
+                double volABij = association_volume_cpp(comp_i, comp_j, ncomp, thermo.s_ij, cppargs);
+                ddelta_weighted[ij] = hs_contact_density_derivative_cpp(pair_diameter, hc_state.zeta[2], hc_state.zeta[3])
+                    * (std::exp(eABij / t) - 1.0)
+                    * std::pow(thermo.s_ij[comp_i * ncomp + comp_j], 3.0)
+                    * volABij;
+            }
+            ++ij;
+        }
+    }
+
+    vector<double> dXA_weighted = assoc_detail::association_site_fraction_density_terms_cpp(
+        delta_ij, thermo.den, assoc_state.XA, ddelta_weighted, x_assoc
+    );
+
+    double value = 0.0;
+    for (int i = 0; i < num_sites; ++i) {
+        int component_index = site_component_index[i];
+        value += x[component_index] * (1.0 / assoc_state.XA[i] - 0.5) * dXA_weighted[i];
+    }
+    return value;
+}
+
+// EqID: assoc_ares_dT
+double dadt_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {
+    if (!assoc_state.active) {
+        return 0.0;
+    }
+    double value = 0.0;
+    for (int i = 0; i < static_cast<int>(assoc_state.setup.site_component_index.size()); ++i) {
+        value += x[assoc_state.setup.site_component_index[i]] * (1.0 / assoc_state.XA[i] - 0.5) * assoc_state.dXA_dt[i];
+    }
+    return value;
+}
+
+// EqID: assoc_ares_dxk
+ContributionDadxResult dadx_assoc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const AssociationIntermediateState &assoc_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {
+    int ncomp = static_cast<int>(x.size());
+    ContributionDadxResult result;
+    result.dadx.assign(ncomp, 0.0);
+    if (!assoc_state.active) {
+        return result;
+    }
+
+    int num_sites = static_cast<int>(assoc_state.setup.site_component_index.size());
+    vector<double> ddelta_dx(num_sites * num_sites * ncomp, 0.0);
+    int idx_ddelta = 0;
+    for (int k = 0; k < ncomp; ++k) {
+        for (int i = 0; i < num_sites; ++i) {
+            int comp_i = assoc_state.setup.site_component_index[i];
+            for (int j = 0; j < num_sites; ++j) {
+                int comp_j = assoc_state.setup.site_component_index[j];
+                if (cppargs.assoc_matrix[i * num_sites + j] != 0) {
+                    double pair_diameter = pair_diameter_cpp(thermo.d[comp_i], thermo.d[comp_j]);
+                    double dzeta2_dx = PI / 6.0 * thermo.den * cppargs.m[k] * std::pow(thermo.d[k], 2);
+                    double dzeta3_dx = PI / 6.0 * thermo.den * cppargs.m[k] * std::pow(thermo.d[k], 3);
+                    double dghsd_dx = hs_contact_composition_derivative_cpp(
+                        pair_diameter,
+                        hc_state.zeta[2],
+                        hc_state.zeta[3],
+                        dzeta2_dx,
+                        dzeta3_dx
+                    );
+                    double eABij = 0.5 * (cppargs.e_assoc[comp_i] + cppargs.e_assoc[comp_j]);
+                    double volABij = association_volume_cpp(comp_i, comp_j, ncomp, thermo.s_ij, cppargs);
+                    ddelta_dx[idx_ddelta] = dghsd_dx * (std::exp(eABij / t) - 1.0)
+                        * std::pow(thermo.s_ij[comp_i * ncomp + comp_j], 3.0) * volABij;
+                }
+                ++idx_ddelta;
+            }
+        }
+    }
+
+    vector<double> dXA_dx = assoc_detail::association_site_fraction_composition_terms_cpp(
+        assoc_state.setup.delta_ij,
+        thermo.den,
+        assoc_state.XA,
+        ddelta_dx,
+        assoc_state.setup.site_component_index,
+        assoc_state.setup.x_assoc,
+        ncomp
+    );
+
+    for (int i = 0; i < ncomp; ++i) {
+        for (int j = 0; j < num_sites; ++j) {
+            result.dadx[i] += x[assoc_state.setup.site_component_index[j]] * dXA_dx[i * num_sites + j] * (1.0 / assoc_state.XA[j] - 0.5);
+        }
+    }
+
+    for (int i = 0; i < num_sites; ++i) {
+        int component_index = assoc_state.setup.site_component_index[i];
+        result.dadx[component_index] += std::log(assoc_state.XA[i]) - 0.5 * assoc_state.XA[i] + 0.5;
+        result.ares += x[component_index] * (std::log(assoc_state.XA[i]) - 0.5 * assoc_state.XA[i] + 0.5);
+    }
+
+    if (cppargs.assoc_dadx_diff_mode == 1) {
+        result.dadx = contribution_dadx_fd_cpp(AresContributionKind::ASSOC, t, rho, x, cppargs, result.ares);
+    } else if (cppargs.assoc_dadx_diff_mode == 2) {
+        result.dadx = contribution_dadx_autodiff_cpp(AresContributionKind::ASSOC, t, rho, x, cppargs);
+    }
+
+    for (int i = 0; i < ncomp; ++i) {
+        result.sum_x_dadx += x[i] * result.dadx[i];
+    }
+    return result;
 }

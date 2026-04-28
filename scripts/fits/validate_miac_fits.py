@@ -6,8 +6,8 @@ This script validates MIAC datasets using parameter sets from the packaged
 Experimental data source is canonical `data/MIAC/**` with `miac` and `miac_m` values.
 
 It writes fit plots to:
-  data/MIAC/<solvent_system>/miac_m_fits/maic_m_<solvent_system>_<rank>_<Salt>[_composition].png
-  data/MIAC/<solvent_system>/miac_fits/miac_<solvent_system>_<rank>_<Salt>[_composition].png
+  docs/plots/fits/miac/<solvent_system>/miac_m/maic_m_<solvent_system>_<rank>_<Salt>[_composition].png
+  docs/plots/fits/miac/<solvent_system>/miac/miac_<solvent_system>_<rank>_<Salt>[_composition].png
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ import csv
 import math
 import os
 import sys
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from collections import OrderedDict
 from pathlib import Path
 from typing import Dict, Iterable, List, Literal, Tuple
@@ -33,6 +34,7 @@ require_epcsaft_install()
 
 from epcsaft.parameters import get_prop_dict
 from scripts._epcsaft_oop import as_mixture
+from scripts.plot_outputs import fits_plot_path, save_plot_figure
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -124,6 +126,30 @@ def _requested_quantities() -> List[Literal["miac_m", "miac"]]:
     if token in {"miac_m", "miac"}:
         return [token]
     raise ValueError("MIAC_QUANTITY must be one of: all, miac_m, miac.")
+
+
+def _requested_grid_points() -> int:
+    token = os.getenv("MIAC_GRID_POINTS", "701").strip()
+    try:
+        value = int(token)
+    except ValueError as exc:
+        raise ValueError("MIAC_GRID_POINTS must be an integer.") from exc
+    if value < 11:
+        raise ValueError("MIAC_GRID_POINTS must be at least 11.")
+    return value
+
+
+def _requested_workers(total_jobs: int) -> int:
+    token = os.getenv("MIAC_WORKERS", "").strip()
+    if not token:
+        return max(1, min(total_jobs, os.cpu_count() or 1))
+    try:
+        value = int(token)
+    except ValueError as exc:
+        raise ValueError("MIAC_WORKERS must be an integer.") from exc
+    if value < 1:
+        raise ValueError("MIAC_WORKERS must be at least 1.")
+    return min(total_jobs, value)
 
 
 def _canonical_salt_token(salt: str) -> str:
@@ -385,8 +411,8 @@ def discover_combos(solvent_scope: str | None = None, salt_scope: str | None = N
                 comp = _extract_comp({}, solvent_system)
                 comp_groups[_comp_signature(comp, solvent_system)] = comp
 
-            output_dir_miac_m = path.parent / "miac_m_fits"
-            output_dir_miac = path.parent / "miac_fits"
+            output_dir_miac_m = fits_plot_path("miac", solvent_system, "miac_m", "_placeholder").parent
+            output_dir_miac = fits_plot_path("miac", solvent_system, "miac", "_placeholder").parent
             for sig, comp in sorted(comp_groups.items()):
                 suffix = _comp_suffix(comp, solvent_system)
                 stem = f"{solvent_system}_{_salt_rank(salt)}_{salt}"
@@ -550,17 +576,41 @@ def load_exp_data(
     return molal_arr[order], values_arr[order], x_plot_arr[order], src_arr[order]
 
 
+def _filter_exp_series(
+    molal_exp_raw: np.ndarray,
+    values_exp_raw: np.ndarray,
+    x_exp_raw: np.ndarray,
+    source_exp_raw: np.ndarray,
+) -> Dict[str, object]:
+    keep = _high_outlier_mask(values_exp_raw)
+    removed = int(np.count_nonzero(~keep))
+    if np.any(keep):
+        return {
+            "molality_exp": molal_exp_raw[keep],
+            "values_exp": values_exp_raw[keep],
+            "x_exp": x_exp_raw[keep],
+            "source_exp": source_exp_raw[keep],
+            "removed": removed,
+        }
+    return {
+        "molality_exp": molal_exp_raw,
+        "values_exp": values_exp_raw,
+        "x_exp": x_exp_raw,
+        "source_exp": source_exp_raw,
+        "removed": 0,
+    }
+
+
 def build_params_for_variant(dataset_name: str, combo: Dict[str, object], user_options: dict | None = None) -> Dict[str, object]:
     x_ref = _molality_to_molefraction_combo(1e-8, str(combo["salt"]), str(combo["solvent_system"]), dict(combo.get("comp", {})))
     species = _species_for_combo(str(combo["salt"]), str(combo["solvent_system"]))
     return get_prop_dict(dataset_name, species, x_ref, T_REF, user_options=user_options)
 
 
-def calc_curve(
+def calc_gamma_m_curve(
     combo: Dict[str, object],
     dataset_name: str,
     molal_grid: np.ndarray,
-    quantity: Literal["miac_m", "miac"] = "miac_m",
 ) -> np.ndarray:
     salt = str(combo["salt"])
     solvent_system = str(combo["solvent_system"])
@@ -580,15 +630,74 @@ def calc_curve(
 
     if not np.all(np.isfinite(gamma_m)):
         raise ValueError(f"Non-finite MIAC_m values for {salt}/{solvent_system} in dataset {dataset_name}.")
+    return gamma_m
 
+
+def calc_curve(
+    combo: Dict[str, object],
+    dataset_name: str,
+    molal_grid: np.ndarray,
+    quantity: Literal["miac_m", "miac"] = "miac_m",
+) -> np.ndarray:
+    gamma_m = calc_gamma_m_curve(combo, dataset_name, molal_grid)
     if quantity == "miac_m":
         return gamma_m
 
+    salt = str(combo["salt"])
+    solvent_system = str(combo["solvent_system"])
+    comp = dict(combo.get("comp", {}))
     factor = _miac_conversion_factor(molal_grid, salt, solvent_system, comp)
     gamma = gamma_m * factor
     if not np.all(np.isfinite(gamma)):
         raise ValueError(f"Non-finite MIAC values for {salt}/{solvent_system} in dataset {dataset_name}.")
     return gamma
+
+
+def prepare_combo_payload(combo: Dict[str, object], grid_points: int = 701) -> Dict[str, object]:
+    salt = str(combo["salt"])
+    solvent_system = str(combo["solvent_system"])
+    comp = dict(combo.get("comp", {}))
+
+    exp_miac_m = _filter_exp_series(*load_exp_data(combo, quantity="miac_m"))
+    exp_miac = _filter_exp_series(*load_exp_data(combo, quantity="miac"))
+
+    max_molality = max(
+        float(np.max(np.asarray(exp_miac_m["molality_exp"], dtype=float))),
+        float(np.max(np.asarray(exp_miac["molality_exp"], dtype=float))),
+    )
+    m_upper = _molality_axis_upper(max_molality)
+    molal_grid = np.linspace(0.0, m_upper, grid_points)
+    x_grid_miac = _salt_mole_fraction_from_molality(molal_grid, solvent_system, comp)
+
+    curves_gamma_m: Dict[str, np.ndarray] = {}
+    curves_miac: Dict[str, np.ndarray] = {}
+    active_variants: List[str] = []
+    for dataset_name in _variant_names_for_solvent_system(solvent_system):
+        try:
+            gamma_m = calc_gamma_m_curve(combo, dataset_name, molal_grid)
+        except Exception:
+            continue
+        curves_gamma_m[dataset_name] = gamma_m
+        curves_miac[dataset_name] = gamma_m * _miac_conversion_factor(molal_grid, salt, solvent_system, comp)
+        active_variants.append(dataset_name)
+
+    return {
+        "combo": combo,
+        "molality_grid": molal_grid,
+        "x_grids": {
+            "miac_m": molal_grid,
+            "miac": x_grid_miac,
+        },
+        "exp": {
+            "miac_m": exp_miac_m,
+            "miac": exp_miac,
+        },
+        "curves": {
+            "miac_m": curves_gamma_m,
+            "miac": curves_miac,
+        },
+        "active_variants": active_variants,
+    }
 
 
 def plot_combo(
@@ -599,39 +708,31 @@ def plot_combo(
     ax=None,
     show_legend: bool = True,
     quantity: Literal["miac_m", "miac"] = "miac_m",
+    payload: Dict[str, object] | None = None,
 ):
     salt = str(combo["salt"])
     solvent_system = str(combo["solvent_system"])
     comp = dict(combo.get("comp", {}))
-    molal_exp_raw, values_exp_raw, x_exp_raw, source_exp_raw = load_exp_data(combo, quantity=quantity)
 
-    keep = _high_outlier_mask(values_exp_raw)
-    removed = int(np.count_nonzero(~keep))
-    if np.any(keep):
-        molal_exp = molal_exp_raw[keep]
-        values_exp = values_exp_raw[keep]
-        x_exp = x_exp_raw[keep]
-        source_exp = source_exp_raw[keep]
-    else:
-        molal_exp = molal_exp_raw
-        values_exp = values_exp_raw
-        x_exp = x_exp_raw
-        source_exp = source_exp_raw
-        removed = 0
+    if payload is None:
+        payload = prepare_combo_payload(combo)
+    exp_payload = dict(payload["exp"][quantity])
+    molal_exp = np.asarray(exp_payload["molality_exp"], dtype=float)
+    values_exp = np.asarray(exp_payload["values_exp"], dtype=float)
+    x_exp = np.asarray(exp_payload["x_exp"], dtype=float)
+    source_exp = np.asarray(exp_payload["source_exp"], dtype=object)
+    removed = int(exp_payload["removed"])
 
     if removed > 0:
         print(f"[outlier-filter] {salt}/{solvent_system} [{quantity}] removed {removed} high outlier experimental point(s).")
 
-    max_molality = float(np.max(molal_exp))
-    m_upper = _molality_axis_upper(max_molality)
-    molal_grid = np.linspace(0.0, m_upper, 701)
-
+    molal_grid = np.asarray(payload["molality_grid"], dtype=float)
     if quantity == "miac_m":
         x_grid = molal_grid
-        x_upper = m_upper
+        x_upper = float(molal_grid[-1])
         x_label = r"molality, $m$ / mol kg$^{-1}$"
     else:
-        x_grid = _salt_mole_fraction_from_molality(molal_grid, solvent_system, comp)
+        x_grid = np.asarray(payload["x_grids"]["miac"], dtype=float)
         x_upper = _mole_fraction_axis_upper(float(np.max(x_exp)))
         x_label = r"salt mole fraction, $x_{salt}$"
 
@@ -640,17 +741,8 @@ def plot_combo(
         visible_mask = np.ones_like(x_exp, dtype=bool)
     ymax = float(max(1, int(math.ceil(float(np.max(values_exp[visible_mask]))))))
 
-    variant_names = _variant_names_for_solvent_system(solvent_system)
-
-    curves = {}
-    active_variants = []
-    for dataset_name in variant_names:
-        try:
-            curves[dataset_name] = calc_curve(combo, dataset_name, molal_grid, quantity=quantity)
-            active_variants.append(dataset_name)
-        except Exception:
-            # Skip variant if dataset lacks required solvent parameters for this combo.
-            continue
+    curves = dict(payload["curves"][quantity])
+    active_variants = list(payload["active_variants"])
 
     created_fig = False
     if ax is None:
@@ -744,7 +836,7 @@ def plot_combo(
             output_path = Path(combo[output_key])
         output_path.parent.mkdir(parents=True, exist_ok=True)
         fig.tight_layout()
-        fig.savefig(output_path, dpi=220)
+        save_plot_figure(fig, output_path, dpi=220, bbox_inches=None)
         if not output_path.exists():
             raise FileNotFoundError(f"Expected plot was not written: {output_path}")
 
@@ -768,13 +860,14 @@ def plot_combo(
 
 
 def _grid_output_path(solvent_system: str) -> Path:
-    return REPO_ROOT / "data" / "MIAC" / solvent_system / "miac_m_fits" / f"maic_m_{solvent_system}_grid_3x3.png"
+    return fits_plot_path("miac", solvent_system, "miac_m", f"maic_m_{solvent_system}_grid_3x3.png")
 
 
 def plot_single_solvent_grid(
     solvent_system: str,
     combos: List[Dict[str, object]],
     close: bool = True,
+    payload_map: Dict[Tuple[str, str], Dict[str, object]] | None = None,
 ) -> Path:
     combo_map = {
         str(combo["salt"]): combo
@@ -800,6 +893,9 @@ def plot_single_solvent_grid(
                 ax.axis("off")
                 continue
 
+            payload = None
+            if payload_map is not None:
+                payload = payload_map.get((solvent_system, salt))
             plot_combo(
                 combo,
                 save=False,
@@ -807,6 +903,7 @@ def plot_single_solvent_grid(
                 ax=ax,
                 show_legend=False,
                 quantity="miac_m",
+                payload=payload,
             )
             if legend_handles is None:
                 legend_handles, legend_labels = ax.get_legend_handles_labels()
@@ -833,28 +930,68 @@ def plot_single_solvent_grid(
 
     out = _grid_output_path(solvent_system)
     out.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out, dpi=220)
+    save_plot_figure(fig, out, dpi=220, bbox_inches=None)
     if close:
         plt.close(fig)
     return out
+
+
+def _render_combo_outputs(
+    combo: Dict[str, object],
+    quantities: List[Literal["miac_m", "miac"]],
+    grid_points: int,
+) -> Dict[str, object]:
+    payload = prepare_combo_payload(combo, grid_points=grid_points)
+    generated = []
+    for quantity in quantities:
+        result = plot_combo(combo, save=True, close=True, quantity=quantity, payload=payload)
+        generated.append(Path(result["output_path"]))
+    grid_payload = None
+    if not combo.get("comp_signature") and str(combo["solvent_system"]) in {"water", "methanol", "ethanol"}:
+        grid_payload = {
+            "key": (str(combo["solvent_system"]), str(combo["salt"])),
+            "payload": payload,
+        }
+    return {"generated": generated, "grid_payload": grid_payload}
+
+
 def run_validate_miac_fits_v2() -> List[Path]:
     combos = discover_combos()
     quantities = _requested_quantities()
+    grid_points = _requested_grid_points()
+    workers = _requested_workers(len(combos))
     generated: List[Path] = []
+    grid_payload_map: Dict[Tuple[str, str], Dict[str, object]] = {}
 
-    for combo in combos:
-        for quantity in quantities:
-            result = plot_combo(combo, save=True, close=True, quantity=quantity)
-            generated.append(Path(result["output_path"]))
+    if workers == 1:
+        for combo in combos:
+            result = _render_combo_outputs(combo, quantities, grid_points)
+            generated.extend(Path(p) for p in result["generated"])
+            grid_payload = result["grid_payload"]
+            if grid_payload is not None:
+                grid_payload_map[tuple(grid_payload["key"])] = dict(grid_payload["payload"])
+    else:
+        with ProcessPoolExecutor(max_workers=workers) as pool:
+            futures = [pool.submit(_render_combo_outputs, combo, quantities, grid_points) for combo in combos]
+            for future in as_completed(futures):
+                result = future.result()
+                generated.extend(Path(p) for p in result["generated"])
+                grid_payload = result["grid_payload"]
+                if grid_payload is not None:
+                    grid_payload_map[tuple(grid_payload["key"])] = dict(grid_payload["payload"])
 
     if "miac_m" in quantities:
         for solvent_system in ("water", "methanol", "ethanol"):
             if any(str(combo["solvent_system"]) == solvent_system and not combo.get("comp_signature") for combo in combos):
-                generated.append(plot_single_solvent_grid(solvent_system, combos, close=True))
+                generated.append(plot_single_solvent_grid(solvent_system, combos, close=True, payload_map=grid_payload_map))
+
+    generated = sorted(generated, key=lambda path: str(path))
 
     print("Dataset variants:")
     for dataset_name, cfg in DATASET_VARIANTS.items():
         print(f"- {dataset_name} -> {cfg['label']}")
+    print(f"Workers: {workers}")
+    print(f"Grid points: {grid_points}")
     print("Generated validation plots:")
     for path in generated:
         print(f"- {path}")

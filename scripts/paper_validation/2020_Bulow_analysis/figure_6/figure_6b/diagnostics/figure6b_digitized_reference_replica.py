@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -15,7 +16,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 REPO_ROOT = Path(__file__).resolve().parents[6]
-OUTPUT_ROOT = REPO_ROOT / "scripts" / "paper_validation" / "2020_Bulow_analysis" / "figure_6" / "figure_6b" / "diagnostics" / "output"
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from scripts.plot_outputs import paper_validation_path, save_plot_figure
+
+OUTPUT_ROOT = paper_validation_path(Path(__file__).resolve().parent, "output")
 OUTPUT_PLOTS_DIR = OUTPUT_ROOT / "plots"
 
 AXIS_LABEL_SIZE = 12
@@ -161,7 +167,7 @@ def run_analysis(
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.tight_layout()
-    fig.savefig(output_path, dpi=220)
+    save_plot_figure(fig, output_path, dpi=220, bbox_inches=None)
     plt.close(fig)
 
     print(f"Loaded digitized series from {data_path}")

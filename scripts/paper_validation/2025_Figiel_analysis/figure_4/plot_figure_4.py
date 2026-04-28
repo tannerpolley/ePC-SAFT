@@ -11,38 +11,24 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import _common as common
+import figure_data
 
 OUTPUT = Path(__file__).with_name('figure_4.png')
 OUTPUT_COMBINED = Path(__file__).with_name('figure_4_combined.png')
 OUTPUT_A = Path(__file__).with_name('figure_4a.png')
 OUTPUT_B = Path(__file__).with_name('figure_4b.png')
-DATA = Path(__file__).with_name('data') / 'water.csv'
-
-
-def _load_literature() -> dict[str, float]:
-    _, rows = common.read_csv_rows(DATA)
-    out: dict[str, float] = {}
-    for row in rows:
-        ion = str(row.get('Ion', '')).strip()
-        value = common.parse_float(row.get('Gsolv (kJ/mol)'))
-        if ion and value is not None:
-            out[f'{ion}+' if ion in {'H', 'Li', 'Na', 'K'} else f'{ion}-' if ion in {'Cl', 'Br', 'I'} else ion] = value
-    return out
-
-
-def _safe_model(dataset: str, ion: str) -> float:
-    try:
-        return -common.gsolv_ion(dataset, ion, 'water', {'water': 1.0})
-    except Exception as exc:
-        print(f'[figure_4] skipping {dataset} {ion}: {exc}')
-        return float('nan')
-
 
 def _bar_values(ions):
-    literature = _load_literature()
-    lit_vals = np.array([-literature.get(ion, np.nan) for ion in ions], dtype=float)
-    figiel_vals = np.array([_safe_model('2025_Figiel', ion) for ion in ions], dtype=float)
-    bulow_vals = np.array([_safe_model('2020_Bulow', ion) for ion in ions], dtype=float)
+    rows = figure_data.read_payload('figure_4')
+    by_series = figure_data.rows_by_key(rows, 'series_id')
+
+    def series_values(series_id: str) -> np.ndarray:
+        lookup = {row['category']: float(row['y_value']) for row in by_series[series_id]}
+        return np.array([lookup.get(ion, np.nan) for ion in ions], dtype=float)
+
+    lit_vals = series_values('literature')
+    figiel_vals = series_values('model_2025_Figiel')
+    bulow_vals = series_values('model_2020_Bulow')
     return lit_vals, figiel_vals, bulow_vals
 
 

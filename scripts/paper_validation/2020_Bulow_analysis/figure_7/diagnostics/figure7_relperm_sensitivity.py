@@ -20,6 +20,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts._env import require_epcsaft_install
+from scripts.plot_outputs import paper_validation_dir
 
 require_epcsaft_install()
 
@@ -40,7 +41,7 @@ from scripts._epcsaft_oop import epcsaft_activity_coefficient, epcsaft_density
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-OUT_DIR = THIS_DIR
+OUT_DIR = paper_validation_dir(__file__)
 
 SCAN_BOUNDS = {
     'ethanol': np.linspace(18.0, 32.0, 57),

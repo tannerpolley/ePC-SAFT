@@ -38,8 +38,6 @@ def _neutral_fixed_parameters(component: str) -> dict[str, float]:
         "MW": HYDROCARBON_FIXED_METADATA[component]["MW"],
         "e_assoc": 0.0,
         "vol_a": 0.0,
-        "dipm": 0.0,
-        "dip_num": 1.0,
         "z": 0.0,
         "dielc": 1.0,
         "d_born": 0.0,
@@ -139,6 +137,7 @@ def test_hydrocarbon_neutral_regression_matches_literature_from_real_saturation_
         )
 
         assert result.success, result.message
+        assert result.backend == "least_squares_native"
         assert result.problem.mode == "pure_neutral"
         assert result.metrics_by_term["density"] < 0.01
         assert result.metrics_by_term["pure_vle_fugacity_balance"] < 0.01

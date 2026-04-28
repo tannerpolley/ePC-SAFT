@@ -29,6 +29,7 @@ if str(REPO_ROOT) not in sys.path:
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+from scripts.plot_outputs import paper_validation_path, save_plot_figure
 from figure6b_libr_ethanol_contributions import (
     AXIS_LABEL_SIZE,
     AXIS_TICK_SIZE,
@@ -45,7 +46,7 @@ from figure6b_digitized_reference_replica import (
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-OUTPUT_ROOT = REPO_ROOT / "scripts" / "paper_validation" / "2020_Bulow_analysis" / "figure_6" / "figure_6b" / "diagnostics" / "output"
+OUTPUT_ROOT = paper_validation_path(Path(__file__).resolve().parent, "output")
 OUTPUT_DATA_DIR = OUTPUT_ROOT / "data"
 OUTPUT_PLOTS_DIR = OUTPUT_ROOT / "plots"
 
@@ -301,7 +302,7 @@ def run_analysis(
 
         out_path = output_dir / f"figure6b_fit_{FILE_LABELS[name]}.png"
         fig.tight_layout()
-        fig.savefig(out_path, dpi=220)
+        save_plot_figure(fig, out_path, dpi=220, bbox_inches=None)
         plt.close(fig)
         ranked_methods = tuple(method_name for method_name in method_names if method_name != "paper_total_line")
         best_method = min(ranked_methods, key=lambda method_name: float(results[name][f"{method_name}_rmse"]))

@@ -1,0 +1,938 @@
+#include "epcsaft_core_internal.h"
+
+#include <algorithm>
+#include <array>
+#include <chrono>
+#include <cmath>
+#include <limits>
+#include <random>
+#include <sstream>
+#include <string>
+
+#include <unsupported/Eigen/LevenbergMarquardt>
+
+using Index = Eigen::Index;
+using thermo_detail::kDispersionA0;
+using thermo_detail::kDispersionA1;
+using thermo_detail::kDispersionA2;
+using thermo_detail::kDispersionB0;
+using thermo_detail::kDispersionB1;
+using thermo_detail::kDispersionB2;
+
+namespace regression_detail {
+
+constexpr double kRegressionGradientFloor = 1.0e-300;
+constexpr double kTransformFiniteBound = 25.0;
+constexpr int kThetaSize = 3;
+constexpr int kSeedRho = 0;
+constexpr int kSeedM = 1;
+constexpr int kSeedS = 2;
+constexpr int kSeedE = 3;
+constexpr int kSeedCount = 4;
+
+using ParamDerivative = Eigen::VectorXd;
+using ParamDual = Eigen::AutoDiffScalar<ParamDerivative>;
+using ResidualVector = Eigen::VectorXd;
+using ResidualJacobian = Eigen::MatrixXd;
+using LMInputVector = Eigen::VectorXd;
+
+ParamDual make_param_dual(double value, int seed_index = -1);
+
+template <typename Scalar>
+Scalar regression_scalar_constant(double value) {
+    return scalar_constant<Scalar>(value);
+}
+
+template <>
+AutoDual regression_scalar_constant<AutoDual>(double value) {
+    return make_autodiff_scalar(value, 0.0);
+}
+
+template <>
+ParamDual regression_scalar_constant<ParamDual>(double value) {
+    return make_param_dual(value);
+}
+
+template <typename Scalar>
+struct PureNeutralStateScalar {
+    Scalar den = regression_scalar_constant<Scalar>(0.0);
+    Scalar d = regression_scalar_constant<Scalar>(0.0);
+    Scalar zeta0 = regression_scalar_constant<Scalar>(0.0);
+    Scalar zeta1 = regression_scalar_constant<Scalar>(0.0);
+    Scalar zeta2 = regression_scalar_constant<Scalar>(0.0);
+    Scalar zeta3 = regression_scalar_constant<Scalar>(0.0);
+    Scalar eta = regression_scalar_constant<Scalar>(0.0);
+    Scalar pair_diameter = regression_scalar_constant<Scalar>(0.0);
+    Scalar ghs = regression_scalar_constant<Scalar>(0.0);
+    Scalar ares_hs = regression_scalar_constant<Scalar>(0.0);
+    Scalar ares_hc = regression_scalar_constant<Scalar>(0.0);
+    Scalar I1 = regression_scalar_constant<Scalar>(0.0);
+    Scalar I2 = regression_scalar_constant<Scalar>(0.0);
+    Scalar dEtaI1_deta = regression_scalar_constant<Scalar>(0.0);
+    Scalar dEtaI2_deta = regression_scalar_constant<Scalar>(0.0);
+    Scalar C1 = regression_scalar_constant<Scalar>(0.0);
+    Scalar C2 = regression_scalar_constant<Scalar>(0.0);
+    Scalar m2es3 = regression_scalar_constant<Scalar>(0.0);
+    Scalar m2e2s3 = regression_scalar_constant<Scalar>(0.0);
+    Scalar ares_disp = regression_scalar_constant<Scalar>(0.0);
+    Scalar ares_total = regression_scalar_constant<Scalar>(0.0);
+    Scalar zraw_hc = regression_scalar_constant<Scalar>(0.0);
+    Scalar zraw_disp = regression_scalar_constant<Scalar>(0.0);
+    Scalar zraw_total = regression_scalar_constant<Scalar>(0.0);
+    Scalar Z = regression_scalar_constant<Scalar>(0.0);
+    Scalar pressure = regression_scalar_constant<Scalar>(0.0);
+    Scalar lnfug = regression_scalar_constant<Scalar>(0.0);
+};
+
+struct RegressionProfilingStats {
+    int objective_evaluations = 0;
+    int gradient_evaluations = 0;
+    int residual_evaluations = 0;
+    int density_solves = 0;
+    int fused_state_evaluations = 0;
+    double callback_wall_time_s = 0.0;
+};
+
+struct PureNeutralFusedState {
+    double pressure = 0.0;
+    double lnfug = 0.0;
+    double Z = 0.0;
+    double dpdrho = 0.0;
+    double dlnfug_drho = 0.0;
+    std::array<double, kThetaSize> dpdtheta{0.0, 0.0, 0.0};
+    std::array<double, kThetaSize> dlnfugdtheta{0.0, 0.0, 0.0};
+};
+
+struct PureNeutralResidualEvaluation {
+    ResidualVector residuals;
+    ResidualJacobian jacobian;
+    vector<double> density_raw_residuals;
+    vector<double> pure_vle_raw_residuals;
+};
+
+struct PureNeutralObjectiveEvaluation {
+    double objective = 0.0;
+    std::array<double, kThetaSize> gradient{0.0, 0.0, 0.0};
+    vector<double> density_raw_residuals;
+    vector<double> pure_vle_raw_residuals;
+};
+
+ParamDual make_param_dual(double value, int seed_index) {
+    ParamDual x;
+    x.value() = value;
+    x.derivatives() = ParamDerivative::Zero(kThetaSize);
+    if (seed_index >= 0) {
+        x.derivatives()[seed_index] = 1.0;
+    }
+    return x;
+}
+
+double scalar_derivative_at(double, int) {
+    return 0.0;
+}
+
+double scalar_derivative_at(const AutoDual &x, int idx) {
+    return idx == 0 ? scalar_derivative(x) : 0.0;
+}
+
+double scalar_derivative_at(const ParamDual &x, int idx) {
+    return (idx < x.derivatives().size()) ? x.derivatives()[idx] : 0.0;
+}
+
+void validate_pure_neutral_base_args_cpp(const add_args &base_args) {
+    if (base_args.m.size() != 1 || base_args.s.size() != 1 || base_args.e.size() != 1) {
+        throw ValueError("Native pure-neutral regression requires exactly one component.");
+    }
+    if (!base_args.z.empty() && (base_args.z.size() != 1 || std::abs(base_args.z[0]) > 1.0e-12)) {
+        throw ValueError("Native pure-neutral regression currently supports only neutral single-component models.");
+    }
+    if (!base_args.assoc_num.empty() || !base_args.assoc_matrix.empty() || !base_args.k_hb.empty() || !base_args.e_assoc.empty() || !base_args.vol_a.empty()) {
+        throw ValueError("Native pure-neutral regression currently supports only nonassociating single-component models.");
+    }
+    if (base_args.mw.size() != 1) {
+        throw ValueError("Native pure-neutral regression requires a single MW value in the fixed parameter payload.");
+    }
+}
+
+template <typename Scalar>
+PureNeutralStateScalar<Scalar> pure_neutral_state_scalar_cpp(
+    double t,
+    const Scalar &rho,
+    const Scalar &m,
+    const Scalar &s,
+    const Scalar &e
+) {
+    PureNeutralStateScalar<Scalar> state;
+    const Scalar s2 = s * s;
+    const Scalar s3 = s2 * s;
+    state.den = rho * (N_AV / 1.0e30);
+    state.d = s * (1.0 - 0.12 * scalar_exp(-3.0 * e / t));
+    const Scalar d2 = state.d * state.d;
+    const Scalar d3 = d2 * state.d;
+
+    const Scalar prefactor = PI / 6.0 * state.den * m;
+    state.zeta0 = prefactor;
+    state.zeta1 = prefactor * state.d;
+    state.zeta2 = prefactor * d2;
+    state.zeta3 = prefactor * d3;
+    state.eta = state.zeta3;
+    state.pair_diameter = state.d / 2.0;
+    const Scalar pair_diameter2 = state.pair_diameter * state.pair_diameter;
+    const Scalar zeta2_sq = state.zeta2 * state.zeta2;
+    const Scalar zeta2_cu = zeta2_sq * state.zeta2;
+    const Scalar zeta3_sq = state.zeta3 * state.zeta3;
+    state.ghs = 1.0 / (1.0 - state.zeta3)
+        + state.pair_diameter * 3.0 * state.zeta2 / scalar_pow(1.0 - state.zeta3, 2.0)
+        + pair_diameter2 * 2.0 * zeta2_sq / scalar_pow(1.0 - state.zeta3, 3.0);
+
+    state.ares_hs = 1.0 / state.zeta0 * (
+        3.0 * state.zeta1 * state.zeta2 / (1.0 - state.zeta3)
+        + zeta2_cu / (state.zeta3 * scalar_pow(1.0 - state.zeta3, 2.0))
+        + (zeta2_cu / zeta3_sq - state.zeta0) * scalar_log(1.0 - state.zeta3)
+    );
+    state.ares_hc = m * state.ares_hs - (m - 1.0) * scalar_log(state.ghs);
+
+    const Scalar c1 = (m - 1.0) / m;
+    const Scalar c2 = (m - 2.0) / m;
+    for (size_t i = 0; i < kDispersionA0.size(); ++i) {
+        Scalar a_i = kDispersionA0[i] + c1 * kDispersionA1[i] + c1 * c2 * kDispersionA2[i];
+        Scalar b_i = kDispersionB0[i] + c1 * kDispersionB1[i] + c1 * c2 * kDispersionB2[i];
+        state.I1 += a_i * scalar_pow(state.eta, static_cast<int>(i));
+        state.I2 += b_i * scalar_pow(state.eta, static_cast<int>(i));
+        state.dEtaI1_deta += a_i * static_cast<double>(i + 1) * scalar_pow(state.eta, static_cast<int>(i));
+        state.dEtaI2_deta += b_i * static_cast<double>(i + 1) * scalar_pow(state.eta, static_cast<int>(i));
+    }
+
+    state.C1 = 1.0 / (
+        1.0
+        + m * (8.0 * state.eta - 2.0 * state.eta * state.eta) / scalar_pow(1.0 - state.eta, 4.0)
+        + (1.0 - m) * (
+            20.0 * state.eta
+            - 27.0 * state.eta * state.eta
+            + 12.0 * scalar_pow(state.eta, 3.0)
+            - 2.0 * scalar_pow(state.eta, 4.0)
+        ) / scalar_pow((1.0 - state.eta) * (2.0 - state.eta), 2.0)
+    );
+    state.C2 = -state.C1 * state.C1 * (
+        m * (-4.0 * state.eta * state.eta + 20.0 * state.eta + 8.0) / scalar_pow(1.0 - state.eta, 5.0)
+        + (1.0 - m) * (
+            2.0 * scalar_pow(state.eta, 3.0)
+            + 12.0 * state.eta * state.eta
+            - 48.0 * state.eta
+            + 40.0
+        ) / scalar_pow((1.0 - state.eta) * (2.0 - state.eta), 3.0)
+    );
+
+    const Scalar e_over_t = e / t;
+    const Scalar e_over_t2 = e_over_t * e_over_t;
+    state.m2es3 = m * m * e_over_t * s3;
+    state.m2e2s3 = m * m * e_over_t2 * s3;
+    state.ares_disp = -2.0 * PI * state.den * state.I1 * state.m2es3
+        - PI * state.den * m * state.C1 * state.I2 * state.m2e2s3;
+    state.ares_total = state.ares_hc + state.ares_disp;
+
+    const Scalar dghs_drho = state.zeta3 / scalar_pow(1.0 - state.zeta3, 2.0)
+        + state.pair_diameter * (
+            3.0 * state.zeta2 / scalar_pow(1.0 - state.zeta3, 2.0)
+            + 6.0 * state.zeta2 * state.zeta3 / scalar_pow(1.0 - state.zeta3, 3.0)
+        )
+        + pair_diameter2 * (
+            4.0 * zeta2_sq / scalar_pow(1.0 - state.zeta3, 3.0)
+            + 6.0 * zeta2_sq * state.zeta3 / scalar_pow(1.0 - state.zeta3, 4.0)
+        );
+    const Scalar dadrho_hs = state.zeta3 / (1.0 - state.zeta3)
+        + 3.0 * state.zeta1 * state.zeta2 / state.zeta0 / scalar_pow(1.0 - state.zeta3, 2.0)
+        + (3.0 * zeta2_cu - state.zeta3 * zeta2_cu)
+            / state.zeta0 / scalar_pow(1.0 - state.zeta3, 3.0);
+    state.zraw_hc = m * dadrho_hs - (m - 1.0) * dghs_drho / state.ghs;
+    state.zraw_disp = -2.0 * PI * state.den * state.dEtaI1_deta * state.m2es3
+        - PI * state.den * m * (state.C1 * state.dEtaI2_deta + state.C2 * state.eta * state.I2) * state.m2e2s3;
+    state.zraw_total = state.zraw_hc + state.zraw_disp;
+    state.Z = 1.0 + state.zraw_total;
+    if (!(scalar_value(state.Z) > 0.0)) {
+        throw ValueError("Encountered non-positive compressibility factor during native regression evaluation.");
+    }
+    state.pressure = state.Z * kb * t * state.den * 1.0e30;
+    state.lnfug = state.ares_total + state.zraw_total - scalar_log(state.Z);
+    return state;
+}
+
+PureNeutralFusedState evaluate_fused_state_cpp(double t, double rho, const vector<double> &x) {
+    AutoDual rho_dual = make_autodiff_scalar(rho, 1.0);
+    auto rho_state = pure_neutral_state_scalar_cpp<AutoDual>(t, rho_dual, x[0], x[1], x[2]);
+    constexpr std::array<double, kThetaSize> kParameterSteps = {1.0e-6, 1.0e-6, 1.0e-5};
+
+    PureNeutralFusedState out;
+    out.pressure = scalar_value(rho_state.pressure);
+    out.lnfug = scalar_value(rho_state.lnfug);
+    out.Z = scalar_value(rho_state.Z);
+    out.dpdrho = scalar_derivative_at(rho_state.pressure, 0);
+    out.dlnfug_drho = scalar_derivative_at(rho_state.lnfug, 0);
+    for (int j = 0; j < kThetaSize; ++j) {
+        vector<double> x_forward = x;
+        vector<double> x_backward = x;
+        x_forward[static_cast<size_t>(j)] += kParameterSteps[static_cast<size_t>(j)];
+        x_backward[static_cast<size_t>(j)] -= kParameterSteps[static_cast<size_t>(j)];
+        auto forward_state = pure_neutral_state_scalar_cpp<double>(t, rho, x_forward[0], x_forward[1], x_forward[2]);
+        auto backward_state = pure_neutral_state_scalar_cpp<double>(t, rho, x_backward[0], x_backward[1], x_backward[2]);
+        out.dpdtheta[static_cast<size_t>(j)] =
+            (forward_state.pressure - backward_state.pressure) / (2.0 * kParameterSteps[static_cast<size_t>(j)]);
+        out.dlnfugdtheta[static_cast<size_t>(j)] =
+            (forward_state.lnfug - backward_state.lnfug) / (2.0 * kParameterSteps[static_cast<size_t>(j)]);
+    }
+    return out;
+}
+
+add_args pure_neutral_args_with_theta_cpp(const add_args &base_args, const vector<double> &x) {
+    if (x.size() != kThetaSize) {
+        throw ValueError("Native pure-neutral regression expects exactly three optimization variables.");
+    }
+    add_args args = base_args;
+    args.m[0] = x[0];
+    args.s[0] = x[1];
+    args.e[0] = x[2];
+    return args;
+}
+
+double clip_start_value_cpp(double value, double lower, double upper) {
+    double clipped = value;
+    double margin = 1.0e-8 * std::max(1.0, std::abs(value));
+    if (clipped <= lower) {
+        clipped = lower + margin;
+    }
+    if (clipped >= upper) {
+        clipped = upper - margin;
+    }
+    return clipped;
+}
+
+bool same_start_cpp(const vector<double> &a, const vector<double> &b) {
+    if (a.size() != b.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < a.size(); ++i) {
+        double scale = std::max({1.0, std::abs(a[i]), std::abs(b[i])});
+        if (std::abs(a[i] - b[i]) > 1.0e-12 * scale) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void append_start_if_distinct_cpp(vector<vector<double>> &starts, vector<double> point) {
+    for (const auto &existing : starts) {
+        if (same_start_cpp(existing, point)) {
+            return;
+        }
+    }
+    starts.push_back(std::move(point));
+}
+
+double rms_metric_cpp(const vector<double> &values) {
+    if (values.empty()) {
+        return 0.0;
+    }
+    double accum = 0.0;
+    for (double value : values) {
+        accum += value * value;
+    }
+    return std::sqrt(accum / static_cast<double>(values.size()));
+}
+
+std::string least_squares_status_message_cpp(Eigen::LevenbergMarquardtSpace::Status status) {
+    using Eigen::LevenbergMarquardtSpace::Status;
+    switch (status) {
+        case Status::RelativeReductionTooSmall:
+            return "Levenberg-Marquardt terminated because the relative reduction became small.";
+        case Status::RelativeErrorTooSmall:
+            return "Levenberg-Marquardt terminated because the relative step became small.";
+        case Status::RelativeErrorAndReductionTooSmall:
+            return "Levenberg-Marquardt terminated because the relative step and reduction became small.";
+        case Status::CosinusTooSmall:
+            return "Levenberg-Marquardt terminated because the gradient cosine became small.";
+        case Status::TooManyFunctionEvaluation:
+            return "Levenberg-Marquardt exceeded the maximum function evaluation count.";
+        case Status::FtolTooSmall:
+            return "Levenberg-Marquardt ftol is too small for further progress.";
+        case Status::XtolTooSmall:
+            return "Levenberg-Marquardt xtol is too small for further progress.";
+        case Status::GtolTooSmall:
+            return "Levenberg-Marquardt gtol is too small for further progress.";
+        case Status::ImproperInputParameters:
+            return "Levenberg-Marquardt reported improper input parameters.";
+        case Status::UserAsked:
+            return "Levenberg-Marquardt terminated early by user request.";
+        case Status::Running:
+        case Status::NotStarted:
+        default:
+            return "Levenberg-Marquardt terminated without a clear success code.";
+    }
+}
+
+bool least_squares_status_success_cpp(Eigen::LevenbergMarquardtSpace::Status status) {
+    using Eigen::LevenbergMarquardtSpace::Status;
+    return status == Status::RelativeReductionTooSmall
+        || status == Status::RelativeErrorTooSmall
+        || status == Status::RelativeErrorAndReductionTooSmall
+        || status == Status::CosinusTooSmall;
+}
+
+void validate_fused_state_cpp(const PureNeutralFusedState &state, const char *label) {
+    if (!(std::isfinite(state.dpdrho) && std::abs(state.dpdrho) > 0.0)) {
+        throw ValueError(std::string("Encountered invalid exact dp/drho during native regression ") + label + " evaluation.");
+    }
+    if (!(std::isfinite(state.dlnfug_drho) && std::isfinite(state.pressure) && std::isfinite(state.lnfug) && std::isfinite(state.Z) && state.Z > 0.0)) {
+        throw ValueError(std::string("Encountered invalid fused state during native regression ") + label + " evaluation.");
+    }
+}
+
+PureNeutralResidualEvaluation evaluate_residual_jacobian_cpp(
+    const add_args &base_args,
+    const vector<PureNeutralRegressionDensityRecord> &density_records,
+    double density_scale,
+    const vector<PureNeutralRegressionVLERecord> &pure_vle_records,
+    double pure_vle_scale,
+    const vector<double> &x,
+    RegressionProfilingStats *stats
+) {
+    auto callback_start = std::chrono::steady_clock::now();
+    if (stats != nullptr) {
+        ++stats->residual_evaluations;
+    }
+
+    PureNeutralResidualEvaluation eval;
+    const vector<double> one_x = {1.0};
+    add_args args = pure_neutral_args_with_theta_cpp(base_args, x);
+
+    const Index density_count = static_cast<Index>(density_records.size());
+    const Index pure_vle_count = static_cast<Index>(pure_vle_records.size());
+    const Index total_count = density_count + pure_vle_count;
+    eval.residuals = ResidualVector::Zero(total_count);
+    eval.jacobian = ResidualJacobian::Zero(total_count, kThetaSize);
+    eval.density_raw_residuals.reserve(density_records.size());
+    eval.pure_vle_raw_residuals.reserve(pure_vle_records.size());
+
+    Index row = 0;
+    for (const auto &record : density_records) {
+        double rho_calc = den_cpp(record.t, record.p, one_x, record.phase, args);
+        if (stats != nullptr) {
+            ++stats->density_solves;
+        }
+        double denom = std::max(std::abs(record.rho_exp), kRegressionGradientFloor);
+        double raw = (rho_calc - record.rho_exp) / denom;
+        eval.density_raw_residuals.push_back(raw);
+        eval.residuals[row] = density_scale * raw;
+
+        PureNeutralFusedState state = evaluate_fused_state_cpp(record.t, rho_calc, x);
+        if (stats != nullptr) {
+            ++stats->fused_state_evaluations;
+        }
+        validate_fused_state_cpp(state, "density residual");
+        for (int j = 0; j < kThetaSize; ++j) {
+            double drho_dtheta = -state.dpdtheta[static_cast<size_t>(j)] / state.dpdrho;
+            eval.jacobian(row, j) = density_scale * (drho_dtheta / denom);
+        }
+        ++row;
+    }
+
+    for (const auto &record : pure_vle_records) {
+        double rho_liq = den_cpp(record.t, record.p, one_x, 0, args);
+        double rho_vap = den_cpp(record.t, record.p, one_x, 1, args);
+        if (stats != nullptr) {
+            stats->density_solves += 2;
+        }
+
+        PureNeutralFusedState liq = evaluate_fused_state_cpp(record.t, rho_liq, x);
+        PureNeutralFusedState vap = evaluate_fused_state_cpp(record.t, rho_vap, x);
+        if (stats != nullptr) {
+            stats->fused_state_evaluations += 2;
+        }
+        validate_fused_state_cpp(liq, "liquid fugacity-balance");
+        validate_fused_state_cpp(vap, "vapor fugacity-balance");
+
+        double raw = liq.lnfug - vap.lnfug;
+        eval.pure_vle_raw_residuals.push_back(raw);
+        eval.residuals[row] = pure_vle_scale * raw;
+
+        for (int j = 0; j < kThetaSize; ++j) {
+            double drho_liq_dtheta = -liq.dpdtheta[static_cast<size_t>(j)] / liq.dpdrho;
+            double drho_vap_dtheta = -vap.dpdtheta[static_cast<size_t>(j)] / vap.dpdrho;
+            double total_grad =
+                liq.dlnfugdtheta[static_cast<size_t>(j)] + liq.dlnfug_drho * drho_liq_dtheta
+                - vap.dlnfugdtheta[static_cast<size_t>(j)] - vap.dlnfug_drho * drho_vap_dtheta;
+            eval.jacobian(row, j) = pure_vle_scale * total_grad;
+        }
+        ++row;
+    }
+
+    if (stats != nullptr) {
+        stats->callback_wall_time_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - callback_start).count();
+    }
+    return eval;
+}
+
+PureNeutralObjectiveEvaluation objective_from_residual_eval_cpp(const PureNeutralResidualEvaluation &residual_eval) {
+    PureNeutralObjectiveEvaluation out;
+    out.objective = 0.5 * residual_eval.residuals.squaredNorm();
+    Eigen::Matrix<double, kThetaSize, 1> gradient = residual_eval.jacobian.transpose() * residual_eval.residuals;
+    for (int j = 0; j < kThetaSize; ++j) {
+        out.gradient[static_cast<size_t>(j)] = gradient[j];
+    }
+    out.density_raw_residuals = residual_eval.density_raw_residuals;
+    out.pure_vle_raw_residuals = residual_eval.pure_vle_raw_residuals;
+    return out;
+}
+
+PureNeutralObjectiveEvaluation evaluate_pure_neutral_objective_cpp(
+    const add_args &base_args,
+    const vector<PureNeutralRegressionDensityRecord> &density_records,
+    double density_scale,
+    const vector<PureNeutralRegressionVLERecord> &pure_vle_records,
+    double pure_vle_scale,
+    const vector<double> &x,
+    RegressionProfilingStats *stats
+) {
+    PureNeutralResidualEvaluation residual_eval = evaluate_residual_jacobian_cpp(
+        base_args,
+        density_records,
+        density_scale,
+        pure_vle_records,
+        pure_vle_scale,
+        x,
+        stats
+    );
+    return objective_from_residual_eval_cpp(residual_eval);
+}
+
+struct BoundedTransformResult {
+    vector<double> x;
+    std::array<double, kThetaSize> dxdy{1.0, 1.0, 1.0};
+};
+
+constexpr std::array<std::array<double, kThetaSize>, 5> kDeterministicSeedFactors{{
+    {{1.00, 1.00, 1.00}},
+    {{0.93, 1.04, 0.95}},
+    {{1.07, 0.96, 1.05}},
+    {{0.97, 1.02, 0.98}},
+    {{1.03, 0.98, 1.02}},
+}};
+
+double logistic_cpp(double y) {
+    if (y >= 0.0) {
+        double exp_neg = std::exp(-y);
+        return 1.0 / (1.0 + exp_neg);
+    }
+    double exp_pos = std::exp(y);
+    return exp_pos / (1.0 + exp_pos);
+}
+
+double logit_cpp(double p) {
+    return std::log(p / (1.0 - p));
+}
+
+double validate_positive_bound_cpp(double value, const char *label) {
+    if (!(value > 0.0) || !std::isfinite(value)) {
+        throw ValueError(std::string("Native pure-neutral regression requires positive finite ") + label + " bounds.");
+    }
+    return value;
+}
+
+BoundedTransformResult unconstrained_to_bounded_cpp(
+    const LMInputVector &y,
+    const vector<double> &lower,
+    const vector<double> &upper
+) {
+    BoundedTransformResult out;
+    out.x.resize(kThetaSize, 0.0);
+    for (int i = 0; i < kThetaSize; ++i) {
+        double lo = validate_positive_bound_cpp(lower[static_cast<size_t>(i)], "lower");
+        double hi = validate_positive_bound_cpp(upper[static_cast<size_t>(i)], "upper");
+        if (!(hi > lo)) {
+            throw ValueError("Native pure-neutral regression requires strictly increasing bounds for transformed variables.");
+        }
+        double log_lo = std::log(lo);
+        double log_hi = std::log(hi);
+        double sigma = logistic_cpp(y[i]);
+        double log_x = log_lo + (log_hi - log_lo) * sigma;
+        out.x[static_cast<size_t>(i)] = std::exp(log_x);
+        out.dxdy[static_cast<size_t>(i)] = out.x[static_cast<size_t>(i)] * (log_hi - log_lo) * sigma * (1.0 - sigma);
+    }
+    return out;
+}
+
+LMInputVector bounded_to_unconstrained_cpp(
+    const vector<double> &x,
+    const vector<double> &lower,
+    const vector<double> &upper
+) {
+    LMInputVector y(kThetaSize);
+    for (int i = 0; i < kThetaSize; ++i) {
+        double lo = validate_positive_bound_cpp(lower[static_cast<size_t>(i)], "lower");
+        double hi = validate_positive_bound_cpp(upper[static_cast<size_t>(i)], "upper");
+        if (!(hi > lo)) {
+            throw ValueError("Native pure-neutral regression requires strictly increasing bounds for transformed variables.");
+        }
+        double clipped = clip_start_value_cpp(x[static_cast<size_t>(i)], lo, hi);
+        double log_lo = std::log(lo);
+        double log_hi = std::log(hi);
+        double p = (std::log(clipped) - log_lo) / (log_hi - log_lo);
+        if (p < 1.0e-12) {
+            p = 1.0e-12;
+        } else if (p > 1.0 - 1.0e-12) {
+            p = 1.0 - 1.0e-12;
+        }
+        y[i] = logit_cpp(p);
+    }
+    return y;
+}
+
+vector<vector<double>> candidate_starts_cpp(
+    const vector<double> &x0,
+    const vector<double> &lower,
+    const vector<double> &upper,
+    int multistart
+) {
+    if (x0.size() != lower.size() || x0.size() != upper.size()) {
+        throw ValueError("Initial guess and bounds must have matching lengths for native regression.");
+    }
+    vector<vector<double>> starts;
+    vector<double> first = x0;
+    for (size_t i = 0; i < first.size(); ++i) {
+        first[i] = clip_start_value_cpp(first[i], lower[i], upper[i]);
+    }
+    for (const auto &factors : kDeterministicSeedFactors) {
+        vector<double> point = first;
+        for (int i = 0; i < kThetaSize; ++i) {
+            point[static_cast<size_t>(i)] = clip_start_value_cpp(
+                first[static_cast<size_t>(i)] * factors[static_cast<size_t>(i)],
+                lower[static_cast<size_t>(i)],
+                upper[static_cast<size_t>(i)]
+            );
+        }
+        append_start_if_distinct_cpp(starts, std::move(point));
+    }
+
+    std::mt19937 rng(12345);
+    for (int k = 0; k < multistart; ++k) {
+        vector<double> point(kThetaSize, 0.0);
+        for (int i = 0; i < kThetaSize; ++i) {
+            double lo = validate_positive_bound_cpp(lower[static_cast<size_t>(i)], "lower");
+            double hi = validate_positive_bound_cpp(upper[static_cast<size_t>(i)], "upper");
+            std::uniform_real_distribution<double> uniform(0.0, 1.0);
+            double log_x = std::log(lo) + uniform(rng) * (std::log(hi) - std::log(lo));
+            point[static_cast<size_t>(i)] = std::exp(log_x);
+        }
+        append_start_if_distinct_cpp(starts, std::move(point));
+    }
+    return starts;
+}
+
+struct PureNeutralLeastSquaresFunctor : Eigen::DenseFunctor<double> {
+    PureNeutralLeastSquaresFunctor(
+        add_args base_args,
+        vector<PureNeutralRegressionDensityRecord> density_records,
+        double density_scale,
+        vector<PureNeutralRegressionVLERecord> pure_vle_records,
+        double pure_vle_scale,
+        vector<double> lower,
+        vector<double> upper
+    )
+        : Eigen::DenseFunctor<double>(
+              kThetaSize,
+              static_cast<int>(density_records.size() + pure_vle_records.size())
+          ),
+          base_args(std::move(base_args)),
+          density_records(std::move(density_records)),
+          density_scale(density_scale),
+          pure_vle_records(std::move(pure_vle_records)),
+          pure_vle_scale(pure_vle_scale),
+          lower(std::move(lower)),
+          upper(std::move(upper)) {}
+
+    int operator()(const LMInputVector &y, ResidualVector &fvec) {
+        if (!ensure_cache(y)) {
+            return -1;
+        }
+        fvec = cache_eval.residuals;
+        return 0;
+    }
+
+    int df(const LMInputVector &y, ResidualJacobian &fjac) {
+        if (!ensure_cache(y)) {
+            return -1;
+        }
+        fjac = cache_eval.jacobian;
+        for (int j = 0; j < kThetaSize; ++j) {
+            fjac.col(j) *= cache_transform.dxdy[static_cast<size_t>(j)];
+        }
+        return 0;
+    }
+
+    RegressionProfilingStats profiling;
+    BoundedTransformResult cache_transform;
+    PureNeutralResidualEvaluation cache_eval;
+    bool cache_valid = false;
+    LMInputVector last_y = LMInputVector::Zero(kThetaSize);
+
+private:
+    bool ensure_cache(const LMInputVector &y) {
+        if (!cache_valid || !y.isApprox(last_y, 0.0)) {
+            try {
+                cache_transform = unconstrained_to_bounded_cpp(y, lower, upper);
+                cache_eval = evaluate_residual_jacobian_cpp(
+                    base_args,
+                    density_records,
+                    density_scale,
+                    pure_vle_records,
+                    pure_vle_scale,
+                    cache_transform.x,
+                    &profiling
+                );
+            } catch (...) {
+                return false;
+            }
+            cache_valid = true;
+            last_y = y;
+        }
+        return true;
+    }
+
+    add_args base_args;
+    vector<PureNeutralRegressionDensityRecord> density_records;
+    double density_scale = 1.0;
+    vector<PureNeutralRegressionVLERecord> pure_vle_records;
+    double pure_vle_scale = 1.0;
+    vector<double> lower;
+    vector<double> upper;
+};
+
+PureNeutralRegressionResult solve_one_start_least_squares_cpp(
+    const add_args &base_args,
+    const vector<PureNeutralRegressionDensityRecord> &density_records,
+    double density_scale,
+    const vector<PureNeutralRegressionVLERecord> &pure_vle_records,
+    double pure_vle_scale,
+    const vector<double> &start,
+    const vector<double> &lower,
+    const vector<double> &upper
+) {
+    auto solve_start = std::chrono::steady_clock::now();
+    PureNeutralObjectiveEvaluation initial_eval = evaluate_pure_neutral_objective_cpp(
+        base_args,
+        density_records,
+        density_scale,
+        pure_vle_records,
+        pure_vle_scale,
+        start,
+        nullptr
+    );
+    PureNeutralLeastSquaresFunctor functor(
+        base_args,
+        density_records,
+        density_scale,
+        pure_vle_records,
+        pure_vle_scale,
+        lower,
+        upper
+    );
+    Eigen::LevenbergMarquardt<PureNeutralLeastSquaresFunctor> lm(functor);
+    lm.setFtol(1.0e-6);
+    lm.setXtol(1.0e-6);
+    lm.setGtol(0.0);
+    lm.setFactor(10.0);
+    lm.setMaxfev(200);
+
+    LMInputVector y = bounded_to_unconstrained_cpp(start, lower, upper);
+    Eigen::LevenbergMarquardtSpace::Status status = lm.minimize(y);
+    BoundedTransformResult final_transform = unconstrained_to_bounded_cpp(y, lower, upper);
+
+    PureNeutralRegressionResult out;
+    out.x = final_transform.x;
+    out.initial_cost = initial_eval.objective;
+    out.initial_density_metric = rms_metric_cpp(initial_eval.density_raw_residuals);
+    out.initial_pure_vle_metric = rms_metric_cpp(initial_eval.pure_vle_raw_residuals);
+    out.success = least_squares_status_success_cpp(status);
+    out.status = static_cast<int>(status);
+    out.message = least_squares_status_message_cpp(status);
+    out.nfev = static_cast<int>(lm.nfev() + lm.njev());
+    out.iterations = static_cast<int>(lm.iterations());
+    out.objective_evaluations = static_cast<int>(lm.nfev());
+    out.gradient_evaluations = static_cast<int>(lm.njev());
+    out.residual_evaluations = functor.profiling.residual_evaluations;
+    out.density_solves = functor.profiling.density_solves;
+    out.fused_state_evaluations = functor.profiling.fused_state_evaluations;
+    out.callback_wall_time_s = functor.profiling.callback_wall_time_s;
+    out.backend = "least_squares_native";
+    out.solve_wall_time_s = std::chrono::duration<double>(std::chrono::steady_clock::now() - solve_start).count();
+
+    PureNeutralResidualEvaluation final_eval = evaluate_residual_jacobian_cpp(
+        base_args,
+        density_records,
+        density_scale,
+        pure_vle_records,
+        pure_vle_scale,
+        out.x,
+        &functor.profiling
+    );
+    PureNeutralObjectiveEvaluation final_objective = objective_from_residual_eval_cpp(final_eval);
+    out.cost = final_objective.objective;
+    out.residual_norm = std::sqrt(std::max(0.0, 2.0 * final_objective.objective));
+    out.density_metric = rms_metric_cpp(final_objective.density_raw_residuals);
+    out.pure_vle_metric = rms_metric_cpp(final_objective.pure_vle_raw_residuals);
+    out.residual_evaluations = functor.profiling.residual_evaluations;
+    out.density_solves = functor.profiling.density_solves;
+    out.fused_state_evaluations = functor.profiling.fused_state_evaluations;
+    out.callback_wall_time_s = functor.profiling.callback_wall_time_s;
+    return out;
+}
+
+PureNeutralRegressionResult choose_better_result_cpp(
+    bool have_result,
+    const PureNeutralRegressionResult &best,
+    const PureNeutralRegressionResult &candidate
+) {
+    if (!have_result) {
+        return candidate;
+    }
+    if (candidate.success && !best.success) {
+        return candidate;
+    }
+    if (candidate.success == best.success && candidate.cost < best.cost) {
+        return candidate;
+    }
+    return best;
+}
+
+}  // namespace regression_detail
+
+using regression_detail::PureNeutralObjectiveEvaluation;
+using regression_detail::PureNeutralResidualEvaluation;
+using regression_detail::RegressionProfilingStats;
+using regression_detail::candidate_starts_cpp;
+using regression_detail::choose_better_result_cpp;
+using regression_detail::evaluate_pure_neutral_objective_cpp;
+using regression_detail::evaluate_residual_jacobian_cpp;
+using regression_detail::kThetaSize;
+using regression_detail::objective_from_residual_eval_cpp;
+using regression_detail::solve_one_start_least_squares_cpp;
+using regression_detail::validate_pure_neutral_base_args_cpp;
+
+PureNeutralRegressionDebugResult evaluate_pure_neutral_objective_debug_cpp(
+    const add_args &base_args,
+    const vector<PureNeutralRegressionDensityRecord> &density_records,
+    double density_scale,
+    const vector<PureNeutralRegressionVLERecord> &pure_vle_records,
+    double pure_vle_scale,
+    const vector<double> &x
+) {
+    validate_pure_neutral_base_args_cpp(base_args);
+    constexpr std::array<double, kThetaSize> kObjectiveSteps = {1.0e-6, 1.0e-6, 1.0e-5};
+    RegressionProfilingStats profiling;
+    PureNeutralResidualEvaluation residual_eval = evaluate_residual_jacobian_cpp(
+        base_args,
+        density_records,
+        density_scale,
+        pure_vle_records,
+        pure_vle_scale,
+        x,
+        &profiling
+    );
+    PureNeutralObjectiveEvaluation eval = objective_from_residual_eval_cpp(residual_eval);
+    PureNeutralRegressionDebugResult out;
+    out.objective = eval.objective;
+    out.gradient.assign(static_cast<size_t>(kThetaSize), 0.0);
+    for (int j = 0; j < kThetaSize; ++j) {
+        vector<double> x_forward = x;
+        vector<double> x_backward = x;
+        x_forward[static_cast<size_t>(j)] += kObjectiveSteps[static_cast<size_t>(j)];
+        x_backward[static_cast<size_t>(j)] -= kObjectiveSteps[static_cast<size_t>(j)];
+        PureNeutralObjectiveEvaluation forward_eval = evaluate_pure_neutral_objective_cpp(
+            base_args,
+            density_records,
+            density_scale,
+            pure_vle_records,
+            pure_vle_scale,
+            x_forward,
+            nullptr
+        );
+        PureNeutralObjectiveEvaluation backward_eval = evaluate_pure_neutral_objective_cpp(
+            base_args,
+            density_records,
+            density_scale,
+            pure_vle_records,
+            pure_vle_scale,
+            x_backward,
+            nullptr
+        );
+        out.gradient[static_cast<size_t>(j)] =
+            (forward_eval.objective - backward_eval.objective) / (2.0 * kObjectiveSteps[static_cast<size_t>(j)]);
+    }
+    out.residuals.assign(
+        residual_eval.residuals.data(),
+        residual_eval.residuals.data() + residual_eval.residuals.size()
+    );
+    out.jacobian_rows = static_cast<int>(residual_eval.jacobian.rows());
+    out.jacobian_cols = static_cast<int>(residual_eval.jacobian.cols());
+    out.jacobian_row_major.resize(static_cast<size_t>(residual_eval.jacobian.size()));
+    for (Eigen::Index i = 0; i < residual_eval.jacobian.rows(); ++i) {
+        for (Eigen::Index j = 0; j < residual_eval.jacobian.cols(); ++j) {
+            out.jacobian_row_major[static_cast<size_t>(i * residual_eval.jacobian.cols() + j)] = residual_eval.jacobian(i, j);
+        }
+    }
+    out.density_raw_residuals = std::move(eval.density_raw_residuals);
+    out.pure_vle_raw_residuals = std::move(eval.pure_vle_raw_residuals);
+    out.residual_evaluations = profiling.residual_evaluations;
+    out.density_solves = profiling.density_solves;
+    out.fused_state_evaluations = profiling.fused_state_evaluations;
+    out.callback_wall_time_s = profiling.callback_wall_time_s;
+    return out;
+}
+
+PureNeutralRegressionResult fit_pure_neutral_least_squares_cpp(
+    const add_args &base_args,
+    const vector<PureNeutralRegressionDensityRecord> &density_records,
+    double density_scale,
+    const vector<PureNeutralRegressionVLERecord> &pure_vle_records,
+    double pure_vle_scale,
+    const vector<double> &x0,
+    const vector<double> &lower,
+    const vector<double> &upper,
+    int multistart
+) {
+    validate_pure_neutral_base_args_cpp(base_args);
+    if (density_records.empty() || pure_vle_records.empty()) {
+        throw ValueError("Native pure-neutral regression requires both density and pure-VLE record families.");
+    }
+    if (x0.size() != kThetaSize || lower.size() != kThetaSize || upper.size() != kThetaSize) {
+        throw ValueError("Native pure-neutral regression requires 3-variable starts and bounds for m, s, and e.");
+    }
+
+    vector<vector<double>> starts = candidate_starts_cpp(x0, lower, upper, multistart);
+    bool have_result = false;
+    PureNeutralRegressionResult best;
+    int starts_tried = 0;
+    for (const auto &start : starts) {
+        try {
+            PureNeutralRegressionResult candidate = solve_one_start_least_squares_cpp(
+                base_args,
+                density_records,
+                density_scale,
+                pure_vle_records,
+                pure_vle_scale,
+                start,
+                lower,
+                upper
+            );
+            ++starts_tried;
+            best = choose_better_result_cpp(have_result, best, candidate);
+            have_result = true;
+        } catch (...) {
+        }
+    }
+    if (!have_result) {
+        throw ValueError("Native pure-neutral least-squares regression did not generate any candidate starts.");
+    }
+    best.starts_tried = starts_tried;
+    return best;
+}
+

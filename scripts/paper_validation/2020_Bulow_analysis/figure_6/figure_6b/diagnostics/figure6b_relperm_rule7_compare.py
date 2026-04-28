@@ -10,9 +10,6 @@ import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[6]
 DIAG_DIR = Path(__file__).resolve().parent
-OUTPUT_ROOT = DIAG_DIR / 'output'
-OUTPUT_DATA = OUTPUT_ROOT / 'data'
-OUTPUT_PLOTS = OUTPUT_ROOT / 'plots'
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 if str(DIAG_DIR) not in sys.path:
@@ -22,8 +19,13 @@ ANALYSIS_ROOT = FIG6_DIR.parent.parent
 if str(ANALYSIS_ROOT) not in sys.path:
     sys.path.insert(0, str(ANALYSIS_ROOT))
 
+from scripts.plot_outputs import paper_validation_path
 from figure6b_libr_ethanol_contributions import _calc_ln_miac_contributions, _build_params, _salt_mole_fraction_from_molality
 from _plot_common import configure_style, save_figure
+
+OUTPUT_ROOT = paper_validation_path(DIAG_DIR, 'output')
+OUTPUT_DATA = OUTPUT_ROOT / 'data'
+OUTPUT_PLOTS = OUTPUT_ROOT / 'plots'
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt

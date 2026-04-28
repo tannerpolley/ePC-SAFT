@@ -10,6 +10,7 @@ import numpy as np
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from scripts.plot_outputs import paper_validation_path, save_plot_figure
 
 FIG2_DIR = Path(__file__).resolve().parents[1]
 PLOT_SCRIPT = FIG2_DIR / 'plot_figure_2.py'
@@ -20,8 +21,8 @@ spec.loader.exec_module(fig2)
 THIS_DIR = Path(__file__).resolve().parent
 OUT_CSV = THIS_DIR / 'figure2_quantity_fit_summary.csv'
 OUT_MD = THIS_DIR / 'figure2_quantity_fit_notes.md'
-OUT_PLOT_A = THIS_DIR / 'figure2a_candidate_overlay.png'
-OUT_PLOT_B = THIS_DIR / 'figure2b_candidate_overlay.png'
+OUT_PLOT_A = paper_validation_path(__file__, 'figure2a_candidate_overlay.png')
+OUT_PLOT_B = paper_validation_path(__file__, 'figure2b_candidate_overlay.png')
 R = 8.31446261815324
 SERIES = [('orig_water', 'water', 'tab:blue'), ('epc', 'mixed', 'green'), ('orig_il', 'il', 'tab:orange')]
 
@@ -206,7 +207,7 @@ def main() -> None:
     axes_a[0].set_ylabel(r'candidate value / -')
     axes_a[-1].legend(fontsize=7, loc='best')
     fig_a.tight_layout()
-    fig_a.savefig(OUT_PLOT_A, dpi=220)
+    save_plot_figure(fig_a, OUT_PLOT_A, dpi=220, bbox_inches=None)
     plt.close(fig_a)
 
     fig_b, axes_b = plt.subplots(1, 3, figsize=(14.5, 4.2), sharey=False)
@@ -223,7 +224,7 @@ def main() -> None:
     axes_b[0].set_ylabel(r'candidate value / -')
     axes_b[-1].legend(fontsize=7, loc='best')
     fig_b.tight_layout()
-    fig_b.savefig(OUT_PLOT_B, dpi=220)
+    save_plot_figure(fig_b, OUT_PLOT_B, dpi=220, bbox_inches=None)
     plt.close(fig_b)
 
     print(f'Wrote: {OUT_CSV}')

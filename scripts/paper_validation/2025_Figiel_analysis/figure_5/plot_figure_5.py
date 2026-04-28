@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 import sys
 
@@ -10,12 +11,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import _common as common
+import figure_data
 
 OUTPUT = Path(__file__).with_name('figure_5.png')
 OUTPUT_A = Path(__file__).with_name('figure_5a.png')
 OUTPUT_B = Path(__file__).with_name('figure_5b.png')
-DATA_ROOT = Path(__file__).with_name('data') / 'water'
-
 SERIES = {
     'Li': {'color': common.ORGANIC_COLOR, 'marker': '^'},
     'Na': {'color': common.GREEN_COLOR, 'marker': 's'},
@@ -27,14 +27,18 @@ PANELS = [
 ]
 
 
+@lru_cache(maxsize=1)
+def _payload():
+    return tuple(figure_data.read_payload('figure_5'))
+
+
 def _plot_panel(ax, label, salts, title):
+    rows = list(_payload())
     for salt in salts:
         cation = salt.split('C')[0] if 'Cl' in salt else salt.split('B')[0]
         style = SERIES[cation]
-        data = common.read_miac_dataset(DATA_ROOT / f'water-{salt}.csv', 'water')
-        x_data = [row['molality'] for row in data]
-        y_data = [row['miac_m'] for row in data]
-        m_grid, y_model = common.mean_ionic_activity_curve('2025_Figiel', salt, 'water', {'water': 1.0}, 6.0, points=600)
+        x_data, y_data = figure_data.xy(figure_data.select_rows(rows, panel_id=label, series_id=f'data_{salt}'))
+        m_grid, y_model = figure_data.xy(figure_data.select_rows(rows, panel_id=label, series_id=f'model_{salt}'))
         ax.plot(m_grid, y_model, color=style['color'], linewidth=1.8)
         ax.scatter(x_data, y_data, marker=style['marker'], s=26, facecolor='none', edgecolor=style['color'], linewidth=1.0, label=salt)
     ax.set_title(title, fontsize=10)

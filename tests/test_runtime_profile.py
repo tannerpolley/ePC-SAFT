@@ -112,6 +112,13 @@ def _write_reports(rows: list[dict], bottleneck_notes: list[str]) -> None:
     REPORT_MD.write_text("\n".join(lines), encoding="utf-8")
 
 
+def _full_rebuild_reuse_note(rebuild_row: dict, reuse_row: dict, ratio: float) -> str:
+    return (
+        "Full rebuild vs reused-state MIAC ratio: {:.2f}x ({} / {}). "
+        "Optimization hint: reuse ePCSAFTMixture and ePCSAFTState objects in hot loops instead of rebuilding them."
+    ).format(ratio, rebuild_row["name"], reuse_row["name"])
+
+
 def _public_callables(cls) -> set[str]:
     names = set()
     for name, member in inspect.getmembers(cls, predicate=callable):
@@ -142,8 +149,6 @@ def _build_states() -> dict:
         "e_assoc": np.asarray([2425.7, 0.0, 0.0]),
         "vol_a": np.asarray([0.04509, 0.0, 0.0]),
         "assoc_scheme": ["2B", None, None],
-        "dipm": np.asarray([0.0, 0.0, 0.0]),
-        "dip_num": np.asarray([1.0, 1.0, 1.0]),
         "z": np.asarray([0.0, 1.0, -1.0]),
         "dielc": np.asarray([78.09, 8.0, 8.0]),
         "d_born": np.asarray([0.0, 3.445, 4.1]),
@@ -219,10 +224,15 @@ def test_runtime_profile_oop_methods():
     benches = [
         ("ctor.from_params", lambda: ePCSAFTMixture.from_params(deepcopy(ctx["neutral_params"]), species=ctx["neutral_species"]), 3, 0),
         ("ctor.from_dataset.water", lambda: ePCSAFTMixture.from_dataset("2012_Held", ["Water"], np.asarray([1.0]), 298.15), 3, 0),
+        ("mixture.clear_runtime_caches", lambda: ctx["neutral_mix"].clear_runtime_caches(), 10, 1),
+        ("mixture.reset_runtime_cache_stats", lambda: ctx["neutral_mix"].reset_runtime_cache_stats(), 10, 1),
+        ("mixture.runtime_cache_stats", lambda: ctx["neutral_mix"].runtime_cache_stats(), 10, 1),
         ("state.from_P", lambda: ctx["neutral_mix"].state(T=325.0, x=np.asarray([1.0]), P=101325.0, phase="liq"), 8, 1),
         ("state.from_rho", lambda: ctx["neutral_mix"].state(T=325.0, x=np.asarray([1.0]), rho=neutral_state_tp.density(), phase="liq"), 8, 1),
         ("state.pressure", lambda: neutral_state_trho.pressure(), 25, 2),
         ("state.density", lambda: neutral_state_tp.density(), 25, 2),
+        ("state.molar_density", lambda: neutral_state_trho.molar_density(), 25, 2),
+        ("ionic.mass_density", lambda: ionic_state_trho.mass_density(), 25, 2),
         ("state.method_aliases", lambda: neutral_state_trho.method_aliases(), 25, 2),
         ("state.compressibility_factor", lambda: neutral_state_trho.compressibility_factor(), 20, 2),
         ("state.compressibility_factor.terms", lambda: neutral_state_trho.compressibility_factor(return_contribution_terms=True), 10, 1),
@@ -260,9 +270,14 @@ def test_runtime_profile_oop_methods():
     profiled_aliases = {
         "ePCSAFTMixture.from_params": "ctor.from_params",
         "ePCSAFTMixture.from_dataset": "ctor.from_dataset.water",
+        "ePCSAFTMixture.clear_runtime_caches": "mixture.clear_runtime_caches",
+        "ePCSAFTMixture.reset_runtime_cache_stats": "mixture.reset_runtime_cache_stats",
+        "ePCSAFTMixture.runtime_cache_stats": "mixture.runtime_cache_stats",
         "ePCSAFTMixture.state": "state.from_P",
         "ePCSAFTState.pressure": "state.pressure",
         "ePCSAFTState.density": "state.density",
+        "ePCSAFTState.molar_density": "state.molar_density",
+        "ePCSAFTState.mass_density": "ionic.mass_density",
         "ePCSAFTState.method_aliases": "state.method_aliases",
         "ePCSAFTState.compressibility_factor": "state.compressibility_factor",
         "ePCSAFTState.residual_helmholtz": "state.residual_helmholtz",
@@ -332,11 +347,7 @@ def test_runtime_profile_oop_methods():
     reuse_row = next((row for row in rows if row["name"] == "ionic.activity_coefficient.mean_ionic_molality"), None)
     if rebuild_row is not None and reuse_row is not None and reuse_row["mean_ms"] > 0.0:
         ratio = rebuild_row["mean_ms"] / reuse_row["mean_ms"]
-        bottleneck_notes.append(
-            "Full rebuild vs reused-state MIAC ratio: {:.2f}x ({} / {}).".format(
-                ratio, "ionic.activity_coefficient.mean_ionic_molality.full_rebuild", "ionic.activity_coefficient.mean_ionic_molality"
-            )
-        )
+        bottleneck_notes.append(_full_rebuild_reuse_note(rebuild_row, reuse_row, ratio))
 
     _write_reports(rows, bottleneck_notes)
 
@@ -354,5 +365,8 @@ def test_runtime_profile_oop_methods():
     assert len(rows) >= 20
     assert REPORT_CSV.exists()
     assert REPORT_MD.exists()
+    report_text = REPORT_MD.read_text(encoding="utf-8")
+    assert "Full rebuild vs reused-state MIAC ratio" in report_text
+    assert "reuse ePCSAFTMixture and ePCSAFTState objects in hot loops" in report_text
 
 

@@ -1,0 +1,101 @@
+name: wheels
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: test / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install Python
+        run: uv python install 3.12
+
+      - name: Sync dependencies
+        run: uv sync --locked --no-install-project
+
+      - name: Build native extension
+        run: uv run --locked python scripts/build_epcsaft.py --clean
+
+      - name: Run focused tests
+        run: |
+          uv run --locked python run_pytest.py tests/test_runtime.py -q
+          uv run --locked python run_pytest.py tests/test_parameter_templates.py -q
+          uv run --locked python run_pytest.py tests/test_equation_registry.py -q
+          uv run --locked python run_pytest.py tests/test_regression.py tests/test_regression_api.py -q
+
+  build:
+    name: build wheels / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install Python
+        run: uv python install 3.12
+
+      - name: Sync dependencies
+        run: uv sync --locked --no-install-project
+
+      - name: Build wheels
+        run: uv run --locked cibuildwheel --output-dir wheelhouse
+        env:
+          CIBW_BUILD: "cp312-*"
+          CIBW_SKIP: "pp* *-win32 *-musllinux*"
+          CIBW_TEST_REQUIRES: "numpy"
+          CIBW_TEST_COMMAND: "python -c \"import numpy as np; import epcsaft; import epcsaft._core; m=epcsaft.ePCSAFTMixture.from_params({'m': np.asarray([1.0]), 's': np.asarray([3.7039]), 'e': np.asarray([150.03])}); s=m.state(T=300.0, x=np.asarray([1.0]), rho=100.0); print(s.compressibility_factor())\""
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}
+          path: wheelhouse/*.whl
+
+  sdist:
+    name: build sdist
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install Python
+        run: uv python install 3.12
+
+      - name: Build sdist
+        run: uv build --sdist
+
+      - name: Upload sdist
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz

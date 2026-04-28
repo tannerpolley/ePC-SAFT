@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 import sys
 
@@ -10,6 +11,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import _common as common
+import figure_data
 
 OUTPUT = Path(__file__).with_name('figure_8.png')
 OUTPUTS = [
@@ -17,27 +19,22 @@ OUTPUTS = [
     Path(__file__).with_name('figure_8b.png'),
     Path(__file__).with_name('figure_8c.png'),
 ]
-DATA_ROOT = Path(__file__).with_name('data')
-PANELS = [
-    ('a)', 'LiBr', 5.0, 3.0),
-    ('b)', 'NaI', 1.5, 1.125),
-    ('c)', 'NaBr', 1.5, 1.125),
-]
-CURVE_MAX_OVERRIDES = {
-    ('NaI', 'methanol'): 0.77,
-    ('NaBr', 'ethanol'): 0.195,
-}
+PANELS = figure_data.FIG8_PANELS
+
+
+@lru_cache(maxsize=1)
+def _payload():
+    return tuple(figure_data.read_payload('figure_8'))
 
 
 def _plot_panel(ax, label, salt, m_max, y_max, include_legend: bool = False):
-    methanol_data = common.read_miac_dataset(DATA_ROOT / 'methanol' / f'methanol-{salt}.csv', 'methanol')
-    ethanol_data = common.read_miac_dataset(DATA_ROOT / 'ethanol' / f'ethanol-{salt}.csv', 'ethanol')
-    meoh_curve_max = CURVE_MAX_OVERRIDES.get((salt, 'methanol'), m_max)
-    etoh_curve_max = CURVE_MAX_OVERRIDES.get((salt, 'ethanol'), m_max)
-    m_grid_meoh, y_meoh = common.mean_ionic_activity_curve('2025_Figiel', salt, 'methanol', {'methanol': 1.0}, meoh_curve_max, points=600)
-    m_grid_etoh, y_etoh = common.mean_ionic_activity_curve('2025_Figiel', salt, 'ethanol', {'ethanol': 1.0}, etoh_curve_max, points=600)
-    ax.scatter([r['molality'] for r in methanol_data], [r['miac_m'] for r in methanol_data], s=24, facecolor='none', edgecolor=common.GRAY_COLOR, linewidth=0.9, label='Methanol data')
-    ax.scatter([r['molality'] for r in ethanol_data], [r['miac_m'] for r in ethanol_data], s=24, marker='s', facecolor=common.GREEN_COLOR, edgecolor=common.GREEN_COLOR, linewidth=0.8, label='Ethanol data')
+    rows = list(_payload())
+    x_data_meoh, y_data_meoh = figure_data.xy(figure_data.select_rows(rows, panel_id=label, series_id=f'data_{salt}_methanol'))
+    x_data_etoh, y_data_etoh = figure_data.xy(figure_data.select_rows(rows, panel_id=label, series_id=f'data_{salt}_ethanol'))
+    m_grid_meoh, y_meoh = figure_data.xy(figure_data.select_rows(rows, panel_id=label, series_id=f'model_{salt}_methanol'))
+    m_grid_etoh, y_etoh = figure_data.xy(figure_data.select_rows(rows, panel_id=label, series_id=f'model_{salt}_ethanol'))
+    ax.scatter(x_data_meoh, y_data_meoh, s=24, facecolor='none', edgecolor=common.GRAY_COLOR, linewidth=0.9, label='Methanol data')
+    ax.scatter(x_data_etoh, y_data_etoh, s=24, marker='s', facecolor=common.GREEN_COLOR, edgecolor=common.GREEN_COLOR, linewidth=0.8, label='Ethanol data')
     ax.plot(m_grid_meoh, y_meoh, color=common.GRAY_COLOR, linewidth=1.5, label='Methanol model')
     ax.plot(m_grid_etoh, y_etoh, color='black', linewidth=1.5, label='Ethanol model')
     ax.set_xlim(0.0, m_max)

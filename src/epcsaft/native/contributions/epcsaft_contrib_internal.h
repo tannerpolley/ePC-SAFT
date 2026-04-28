@@ -13,7 +13,7 @@ struct HardChainState {
 struct AutodiffHardChainState {
     vector<AutoDual> zeta;
     vector<AutoDual> ghs;
-    AutoDual eta = 0.0;
+    AutoDual eta = make_autodiff_scalar(0.0, 0.0);
 };
 
 struct ContributionDadxResult {
@@ -21,18 +21,6 @@ struct ContributionDadxResult {
     double ares = 0.0;
     double z = 0.0;
     double sum_x_dadx = 0.0;
-};
-
-struct PolarIntermediateState {
-    bool active = false;
-    double second_order = 0.0;
-    double third_order = 0.0;
-    double second_order_density_term = 0.0;
-    double third_order_density_term = 0.0;
-    double second_order_temperature_term = 0.0;
-    double third_order_temperature_term = 0.0;
-    vector<double> second_order_composition_terms;
-    vector<double> third_order_composition_terms;
 };
 
 struct AssociationIntermediateState {
@@ -73,25 +61,10 @@ using thermo_detail::AssociationIntermediateState;
 using thermo_detail::BornIntermediateState;
 using thermo_detail::ContributionDadxResult;
 using thermo_detail::IonIntermediateState;
-using thermo_detail::PolarIntermediateState;
 
 HardChainState hard_chain_state_cpp(const MixtureState &thermo, const vector<double> &x, const add_args &cppargs);
 AutodiffHardChainState hard_chain_state_autodiff_cpp(double den, const vector<double> &d, const vector<AutoDual> &x, const add_args &cppargs);
-double pair_diameter_cpp(double d_i, double d_j);
 double hs_contact_value_cpp(double pair_diameter, double zeta2, double zeta3);
-double association_volume_cpp(int comp_i, int comp_j, int ncomp, const vector<double> &s_ij, const add_args &cppargs);
-
-PolarIntermediateState polar_intermediate_state_cpp(
-    const MixtureState &thermo,
-    const HardChainState &hc_state,
-    double deta_dt,
-    double t,
-    const vector<double> &x,
-    const add_args &cppargs,
-    bool include_density,
-    bool include_dt,
-    bool include_dx
-);
 
 AssociationIntermediateState association_intermediate_state_cpp(
     const MixtureState &thermo,
@@ -118,4 +91,107 @@ BornIntermediateState born_intermediate_state_cpp(
     const add_args &cppargs,
     bool include_dt,
     bool include_dx
+);
+
+vector<double> dzeta_dt_cpp(const MixtureState &thermo, const vector<double> &x, const add_args &cppargs);
+double hs_contact_density_derivative_cpp(double pair_diameter, double zeta2, double zeta3);
+double hs_contact_time_derivative_cpp(
+    double pair_diameter,
+    double pair_diameter_dt,
+    double zeta2,
+    double zeta3,
+    double dzeta2_dt,
+    double dzeta3_dt
+);
+double hs_contact_composition_derivative_cpp(
+    double pair_diameter,
+    double zeta2,
+    double zeta3,
+    double dzeta2_dx,
+    double dzeta3_dx
+);
+vector<double> hc_contact_time_terms_cpp(const MixtureState &thermo, const HardChainState &hc_state, const vector<double> &dzeta_dt);
+double dadrho_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const vector<double> &x, const add_args &cppargs);
+double dadt_hc_cpp(
+    const MixtureState &thermo,
+    const HardChainState &hc_state,
+    const vector<double> &dzeta_dt,
+    const vector<double> &x,
+    const add_args &cppargs
+);
+ContributionDadxResult dadx_hc_cpp(
+    const MixtureState &thermo,
+    const HardChainState &hc_state,
+    double t,
+    double rho,
+    const vector<double> &x,
+    const add_args &cppargs
+);
+
+double dadrho_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion);
+double dadt_disp_cpp(const MixtureState &thermo, double deta_dt, double t, const DispersionPolynomialState &dispersion);
+ContributionDadxResult dadx_disp_cpp(
+    const MixtureState &thermo,
+    const HardChainState &hc_state,
+    const DispersionPolynomialState &dispersion,
+    double t,
+    double rho,
+    const vector<double> &x,
+    const add_args &cppargs
+);
+
+double dadrho_assoc_cpp(
+    const MixtureState &thermo,
+    const HardChainState &hc_state,
+    const AssociationIntermediateState &assoc_state,
+    const vector<double> &x,
+    const add_args &cppargs,
+    double t
+);
+double dadt_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x);
+ContributionDadxResult dadx_assoc_cpp(
+    const MixtureState &thermo,
+    const HardChainState &hc_state,
+    const AssociationIntermediateState &assoc_state,
+    double t,
+    double rho,
+    const vector<double> &x,
+    const add_args &cppargs
+);
+
+double dadrho_ion_cpp(double t, const IonIntermediateState &ion_state);
+double dadt_ion_cpp(const IonIntermediateState &ion_state, double t, const vector<double> &x, const add_args &cppargs);
+ContributionDadxResult dadx_ion_cpp(
+    const MixtureState &thermo,
+    const IonIntermediateState &ion_state,
+    double t,
+    double rho,
+    const vector<double> &x,
+    const add_args &cppargs
+);
+
+double dadrho_born_cpp();
+double dadt_born_cpp(double t, const BornIntermediateState &born_state);
+ContributionDadxResult dadx_born_cpp(
+    const BornIntermediateState &born_state,
+    double t,
+    double rho,
+    const vector<double> &x,
+    const add_args &cppargs
+);
+
+vector<double> contribution_dadx_autodiff_cpp(
+    AresContributionKind kind,
+    double t,
+    double rho,
+    const vector<double> &x,
+    const add_args &cppargs
+);
+vector<double> contribution_dadx_fd_cpp(
+    AresContributionKind kind,
+    double t,
+    double rho,
+    const vector<double> &x,
+    const add_args &cppargs,
+    double a0
 );

@@ -20,6 +20,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts._env import require_epcsaft_install
+from scripts.plot_outputs import paper_validation_output_path, save_plot_figure
 
 require_epcsaft_install()
 
@@ -75,17 +76,18 @@ def configure_style() -> None:
 
 
 def save_figure(fig, path: Path) -> None:
+    path = paper_validation_output_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        fig.savefig(path, dpi=300, bbox_inches="tight")
+        save_plot_figure(fig, path, dpi=300)
     except MemoryError:
         # Fallback for intermittent Agg allocator spikes on high-DPI tight bboxes.
-        fig.savefig(path, dpi=180)
+        save_plot_figure(fig, path, dpi=180, bbox_inches=None)
     except RuntimeError as exc:
         if "bad allocation" not in str(exc).lower():
             raise
         # Fallback for intermittent Agg allocator spikes on high-DPI tight bboxes.
-        fig.savefig(path, dpi=180)
+        save_plot_figure(fig, path, dpi=180, bbox_inches=None)
 
 
 def parse_float(value) -> float | None:

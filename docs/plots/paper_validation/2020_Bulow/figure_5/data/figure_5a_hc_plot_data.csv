@@ -1,0 +1,9 @@
+figure_file,axes_index,axes_title,artist_type,artist_label,series_index,point_index,x,y,width,height
+figure_5a_hc.png,0,"Bulow 2020 Part I Figure 5a: Water to ethanol, Hard chain ($\mu$ basis)",line,,0,0,0,0,,
+figure_5a_hc.png,0,"Bulow 2020 Part I Figure 5a: Water to ethanol, Hard chain ($\mu$ basis)",line,,0,1,1,0,,
+figure_5a_hc.png,0,"Bulow 2020 Part I Figure 5a: Water to ethanol, Hard chain ($\mu$ basis)",bar,,0,0,-0.17000000000000001,0,0.34000000000000002,-11.78571429
+figure_5a_hc.png,0,"Bulow 2020 Part I Figure 5a: Water to ethanol, Hard chain ($\mu$ basis)",bar,,1,0,0.17000000000000001,0,0.33999999999999997,-12.127079121731237
+figure_5a_hc.png,0,"Bulow 2020 Part I Figure 5a: Water to ethanol, Hard chain ($\mu$ basis)",bar,,2,0,0.82999999999999985,0,0.33999999999999997,-11.07142857
+figure_5a_hc.png,0,"Bulow 2020 Part I Figure 5a: Water to ethanol, Hard chain ($\mu$ basis)",bar,,3,0,1.1699999999999999,0,0.34000000000000008,-11.50159304824893
+figure_5a_hc.png,0,"Bulow 2020 Part I Figure 5a: Water to ethanol, Hard chain ($\mu$ basis)",bar,,4,0,1.8300000000000001,0,0.33999999999999986,-21.955307260000001
+figure_5a_hc.png,0,"Bulow 2020 Part I Figure 5a: Water to ethanol, Hard chain ($\mu$ basis)",bar,,5,0,2.1699999999999999,0,0.33999999999999986,-22.018910012694544

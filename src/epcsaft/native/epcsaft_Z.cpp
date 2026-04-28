@@ -20,7 +20,6 @@ double normalized_dadrho_scale_cpp(const ScalarContributionTerms &raw_terms) {
     vector<double> raw = {
         raw_terms.hc,
         raw_terms.disp,
-        raw_terms.polar,
         raw_terms.assoc,
         raw_terms.ion,
         raw_terms.born
@@ -41,7 +40,6 @@ ScalarContributionTerms normalized_dadrho_terms_cpp(const ScalarContributionTerm
     return make_scalar_terms(
         normalized_dadrho_term_cpp(raw_terms.hc, scale),
         normalized_dadrho_term_cpp(raw_terms.disp, scale),
-        normalized_dadrho_term_cpp(raw_terms.polar, scale),
         normalized_dadrho_term_cpp(raw_terms.assoc, scale),
         normalized_dadrho_term_cpp(raw_terms.ion, scale),
         normalized_dadrho_term_cpp(raw_terms.born, scale),
@@ -54,7 +52,6 @@ ScalarContributionTerms compressibility_terms_from_dadrho_cpp(const DadrhoResult
     return make_scalar_terms(
         result.terms.hc,
         result.terms.disp,
-        result.terms.polar,
         result.terms.assoc,
         result.terms.ion,
         result.terms.born,
@@ -64,7 +61,6 @@ ScalarContributionTerms compressibility_terms_from_dadrho_cpp(const DadrhoResult
 
 // EqID: z_from_rho
 // EqID: z_total
-// EqID: z_minus_one_sum
 CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     DadrhoResult dadrho_result = dadrho_result_cpp(t, rho, std::move(x), cppargs);
     CompressibilityFactorResult result;
