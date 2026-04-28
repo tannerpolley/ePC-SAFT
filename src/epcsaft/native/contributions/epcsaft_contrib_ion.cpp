@@ -4,15 +4,22 @@ using thermo_detail::DielectricState;
 using thermo_detail::IonIntermediateState;
 using thermo_detail::parameter_setup_detail::ion_diameter_cpp;
 
+// EqID: kappa_dh
+// EqID: dkappa_dh_drho
 double dh_kappa_cpp(double den, double t, double eps, double q2_sum) {
     return std::sqrt(den * E_CHRG * E_CHRG / kb / t / (eps * perm_vac) * q2_sum);
 }
 
+// EqID: chi_dh
+// EqID: sigma_dh
+// EqID: dchi_dh_drho
 double dh_chi_cpp(double kappa, double diameter) {
     double ka = kappa * diameter;
     return 3.0 / std::pow(ka, 3.0) * (1.5 + std::log(1.0 + ka) - 2.0 * (1.0 + ka) + 0.5 * std::pow(1.0 + ka, 2.0));
 }
 
+// EqID: dkappa_dh_dxi
+// EqID: dchi_dh_dxi
 IonIntermediateState ion_intermediate_state_cpp(
     const MixtureState &thermo,
     double t,
@@ -68,6 +75,7 @@ IonIntermediateState ion_intermediate_state_cpp(
 }
 
 // EqID: dadrho_dh_explicit
+// EqID: dh_ares_dadrho
 double dadrho_ion_cpp(double t, const IonIntermediateState &ion_state) {
     if (!ion_state.active) {
         return 0.0;

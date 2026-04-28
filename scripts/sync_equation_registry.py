@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import defaultdict
 import difflib
 import json
 import re
@@ -192,12 +193,24 @@ def render_traceability_report(entries: list[dict]) -> str:
         return "Equation traceability: all implementation equations have C++ owner comments."
 
     lines = [
-        "Equation traceability warning: EqIDs without C++ owner comments:",
+        f"Equation traceability warning: {len(entries)} EqIDs without C++ owner comments:",
     ]
+    grouped: dict[str, list[dict]] = defaultdict(list)
     for entry in entries:
-        lines.append(f"- {entry.get('eqid', '<unknown>')} ({entry.get('tex_file', '<unknown>')}:{entry.get('tex_line', '<unknown>')})")
+        grouped[str(entry.get("section", "<unknown>") or "<unknown>")].append(entry)
+    for section in sorted(grouped):
+        section_entries = grouped[section]
+        lines.append(f"- {section}: {len(section_entries)}")
+        for entry in section_entries:
+            lines.append(f"  - {entry.get('eqid', '<unknown>')} ({entry.get('tex_file', '<unknown>')}:{entry.get('tex_line', '<unknown>')})")
     lines.append("Mark documentation-only equations with status: Documentation-only.")
     return "\n".join(lines)
+
+
+def enforce_traceability(entries: list[dict]) -> None:
+    missing_entries = missing_cpp_ref_entries(entries)
+    if missing_entries:
+        raise SystemExit(render_traceability_report(missing_entries))
 
 
 def yaml_quote(value: object) -> str:
@@ -331,6 +344,11 @@ def check_matches(path: Path, expected: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate equation registry and Markdown index from docs/latex/equations.tex.")
     parser.add_argument("--check", action="store_true", help="Validate that generated outputs are up to date.")
+    parser.add_argument(
+        "--strict-traceability",
+        action="store_true",
+        help="Fail when any non-documentation-only EqID lacks a C++ owner comment.",
+    )
     args = parser.parse_args()
 
     entries = parse_equations(TEX_PATH)
@@ -347,7 +365,12 @@ def main() -> None:
         check_matches(MARKDOWN_PATH, markdown_text)
         print("Equation registry outputs are up to date.")
         print(traceability_report)
+        if args.strict_traceability:
+            enforce_traceability(entries)
         return
+
+    if args.strict_traceability:
+        enforce_traceability(entries)
 
     changed_yaml = write_if_changed(REGISTRY_PATH, yaml_text)
     changed_md = write_if_changed(MARKDOWN_PATH, markdown_text)

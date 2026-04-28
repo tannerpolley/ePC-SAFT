@@ -51,7 +51,10 @@ Native owner comments use ``// EqID: <id>`` near the implementing C++ function. 
 
 .. code-block:: powershell
 
+   uv run python scripts/sync_equation_registry.py --check --strict-traceability
    uv run python run_pytest.py tests/test_equation_registry.py -q
+
+See :doc:`equation_traceability` for the EqID classification and owner-comment checklist.
 
 Debugging checklist
 -------------------

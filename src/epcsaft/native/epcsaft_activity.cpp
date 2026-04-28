@@ -397,6 +397,15 @@ double osmotic_coefficient_cpp(
     return -std::log(x[solvent_index] * gamma_solvent) / (mw_solvent * molality_sum);
 }
 
+// EqID: lngamma_asym_sum
+// EqID: gamma_alpha_asym
+// EqID: lngamma_alpha_asym
+// EqID: gamma_pm_asym
+// EqID: lngamma_pm_asym
+// EqID: lngamma_pm_alpha_asym
+// EqID: gamma_pm_charge
+// EqID: gamma_pm_molality
+// EqID: lngamma_pm_molality
 ActivityCoefficientNative activity_coefficient_values_impl_cpp(
     ePCSAFTMixtureNative* mixture,
     double t,

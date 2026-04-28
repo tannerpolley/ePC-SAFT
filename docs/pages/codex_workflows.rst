@@ -77,7 +77,7 @@ Use the smallest relevant test first, then run ``--confidence`` before handoff.
 
 - Python wrapper/API changes: ``--api`` first, then ``--confidence``.
 - Native C++ changes: fast rebuild, ``--runtime``, then ``--confidence``.
-- Equation traceability changes: ``uv run python run_pytest.py tests/test_equation_registry.py -q``.
+- Equation traceability changes: ``uv run python scripts/sync_equation_registry.py --check --strict-traceability`` then ``uv run python run_pytest.py tests/test_equation_registry.py -q``.
 - Performance claims: ``--profile``. Do not rely on skipped profile tests.
 - Packaging changes: ``scripts/build_dist.py``.
 

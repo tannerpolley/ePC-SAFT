@@ -5,6 +5,12 @@ using thermo_detail::BornSSMDSData;
 using thermo_detail::parameter_setup_detail::ion_born_radius_cpp;
 using thermo_detail::parameter_setup_detail::ion_born_radius_cpp_dt;
 
+// EqID: f_mix
+// EqID: delta_d_born
+// EqID: ddelta_d_dxi
+// EqID: dterm_born
+// EqID: dterm_ssm
+// EqID: dterm_ds
 BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion) {
     int ncomp = static_cast<int>(x.size());
     const bool use_ssm = (cppargs.born_solvation_shell_model != 0);
@@ -155,6 +161,8 @@ AutoDual reference_solvent_dielectric_constant_ad_cpp(const vector<AutoDual> &x,
     return eps_sol_num / x_sol;
 }
 
+// EqID: born_mode_set
+// EqID: born_mode_medium
 BornIntermediateState born_intermediate_state_cpp(
     double t,
     const vector<double> &x,
@@ -220,6 +228,8 @@ double dadt_born_cpp(double t, const BornIntermediateState &born_state) {
     throw ValueError("Unknown born_model. Supported values are 0, 1, 2.");
 }
 
+// EqID: born_ares_dxi
+// EqID: born_ares_ssmds_dxi
 ContributionDadxResult dadx_born_cpp(const BornIntermediateState &born_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     ContributionDadxResult result;

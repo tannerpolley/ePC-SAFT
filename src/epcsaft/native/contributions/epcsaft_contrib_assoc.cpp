@@ -10,6 +10,7 @@ using thermo_detail::parameter_setup_detail::pair_diameter_cpp;
 
 namespace assoc_detail {
 
+// EqID: x_assoc_site
 static vector<double> association_site_fractions_cpp(vector<double> XA_guess, vector<double> delta_ij, double den, vector<double> x) {
     int num_sites = static_cast<int>(XA_guess.size());
     vector<double> XA = XA_guess;
@@ -27,6 +28,7 @@ static vector<double> association_site_fractions_cpp(vector<double> XA_guess, ve
     return XA;
 }
 
+// EqID: dx_assoc_drho
 static vector<double> association_site_fraction_dt_cpp(vector<double> delta_ij, double den, vector<double> XA, vector<double> ddelta_dt, vector<double> x) {
     int num_sites = static_cast<int>(XA.size());
     Eigen::MatrixXd B = Eigen::MatrixXd::Zero(num_sites, 1);
@@ -52,6 +54,7 @@ static vector<double> association_site_fraction_dt_cpp(vector<double> delta_ij, 
     return dXA_dt;
 }
 
+// EqID: dx_assoc_dxk
 static vector<double> association_site_fraction_dx_cpp(vector<int> assoc_num, vector<double> delta_ij, double den, vector<double> XA, vector<double> ddelta_dx, vector<double> x) {
     int num_sites = static_cast<int>(XA.size());
     int ncomp = static_cast<int>(assoc_num.size());
@@ -118,6 +121,8 @@ static vector<double> solve_association_site_fractions_cpp(const vector<double> 
 
 }  // namespace assoc_detail
 
+// EqID: rho_j_assoc
+// EqID: delta_assoc
 AssociationSetup association_setup_cpp(const vector<double> &x, const add_args &cppargs, const vector<double> &s_ij, const vector<double> &ghs, double t) {
     int ncomp = static_cast<int>(x.size());
     AssociationSetup setup;
@@ -156,6 +161,7 @@ AssociationSetup association_setup_cpp(const vector<double> &x, const add_args &
 
 namespace assoc_detail {
 
+// EqID: ddelta_assoc_drho
 static vector<double> association_site_fraction_density_terms_cpp(
     const vector<double> &delta_ij,
     double den,
@@ -188,6 +194,7 @@ static vector<double> association_site_fraction_density_terms_cpp(
     return dXA_weighted;
 }
 
+// EqID: ddelta_assoc_dxk
 static vector<double> association_site_fraction_composition_terms_cpp(
     const vector<double> &delta_ij,
     double den,

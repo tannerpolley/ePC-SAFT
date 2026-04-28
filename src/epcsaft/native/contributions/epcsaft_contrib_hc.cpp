@@ -24,6 +24,9 @@ struct HardChainStateScalar {
 };
 
 template <typename Scalar>
+// EqID: zeta_n
+// EqID: zeta_n_xk
+// EqID: zeta3_eta
 static HardChainStateScalar<Scalar> hard_chain_state_scalar_cpp(double den, const vector<double> &d, const vector<Scalar> &x, const add_args &cppargs) {
     HardChainStateScalar<Scalar> state;
     int ncomp = static_cast<int>(x.size());
@@ -54,6 +57,7 @@ static HardChainStateScalar<Scalar> hard_chain_state_scalar_cpp(double den, cons
 
 }  // namespace hard_chain_detail
 
+// EqID: g_hs_contact
 double hs_contact_value_cpp(double pair_diameter, double zeta2, double zeta3) {
     return hard_chain_detail::hs_contact_value_scalar_cpp(pair_diameter, zeta2, zeta3);
 }
@@ -201,6 +205,7 @@ double hs_contact_composition_derivative_cpp(
         );
 }
 
+// EqID: zeta_n_dT
 vector<double> dzeta_dt_cpp(const MixtureState &thermo, const vector<double> &x, const add_args &cppargs) {
     vector<double> dzeta_dt(4, 0.0);
     for (int k = 1; k < 4; ++k) {

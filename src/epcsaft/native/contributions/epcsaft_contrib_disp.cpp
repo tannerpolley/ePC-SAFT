@@ -2,6 +2,14 @@
 
 using namespace thermo_detail;
 
+// EqID: c1_disp
+// EqID: c2_disp
+// EqID: i1_disp
+// EqID: deta_i1_deta
+// EqID: i2_disp
+// EqID: deta_i2_deta
+// EqID: a_i_mbar
+// EqID: b_i_mbar
 DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta) {
     DispersionPolynomialState state;
     double c1 = (m_avg - 1.0) / m_avg;
@@ -45,6 +53,13 @@ double dadt_disp_cpp(const MixtureState &thermo, double deta_dt, double t, const
 }
 
 // EqID: disp_ares_dxk
+// EqID: c1_xk
+// EqID: m2epssigma3_xk
+// EqID: m2eps2sigma3_xk
+// EqID: i1_xk
+// EqID: i2_xk
+// EqID: a_i_xk
+// EqID: b_i_xk
 ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion, double t, double rho, const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     ContributionDadxResult result;

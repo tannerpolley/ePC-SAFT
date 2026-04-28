@@ -16,6 +16,7 @@ static vector<double> mu_contribution_cpp(
     return out;
 }
 
+// EqID: mu_alpha
 static vector<double> mu_hc_cpp(const CompositionContributionResult &composition) {
     return mu_contribution_cpp(composition.ares.hc, composition.z_raw.hc, composition.dadx.hc, composition.sum_x_dadx.hc);
 }

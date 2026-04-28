@@ -136,3 +136,19 @@ def test_native_residual_helmholtz_and_compressibility_contributions_match_ionic
         "born": 0.0,
         "ideal": 1.0,
     })
+
+
+def test_public_methods_expose_eqid_owned_contribution_groups() -> None:
+    mix, _, _, density, temperature, composition = _ionic_state()
+    state = mix.state(T=temperature, x=composition, rho=density)
+    contribution_families = {"hc", "disp", "assoc", "ion", "born"}
+
+    ares = state.ares(return_contribution_terms=True)
+    mures = state.residual_chemical_potential(return_contribution_terms=True)
+    fugcoef = state.fugacity_coefficient(return_contribution_terms=True)
+
+    assert set(ares["terms"]) == contribution_families
+    assert set(mures["terms"]) == contribution_families
+    assert set(fugcoef["terms"]) == contribution_families
+    np.testing.assert_allclose(sum(mures["terms"].values()), mures["total"])
+    np.testing.assert_allclose(fugcoef["terms_total_natural_log"], sum(fugcoef["terms"].values()))

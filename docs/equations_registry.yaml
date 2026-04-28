@@ -13,7 +13,11 @@
   tex_line: 27
   latex: |
     \bar{m}=\sum_{i} x_{i} m_{i}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 539
+      comment_line: 530
+      context: "MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {"
 - eqid: "mw_bar"
   section: "Parameter Setup"
   subsection: "Base Mixture Quantities"
@@ -27,7 +31,11 @@
   tex_line: 38
   latex: |
     \overline{MW}=\sum_{j=1}^{N_{c}} x_{j}\,MW_{j}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 105
+      comment_line: 97
+      context: "Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, const add_args &cppargs) {"
 - eqid: "mw_solvent_bar"
   section: "Parameter Setup"
   subsection: "Base Mixture Quantities"
@@ -41,7 +49,11 @@
   tex_line: 49
   latex: |
     \overline{MW}_{sol}=\sum_{j\in\mathcal S}x_{j}\,MW_{j}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 105
+      comment_line: 98
+      context: "Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, const add_args &cppargs) {"
 - eqid: "solvent_ion_sets"
   section: "Parameter Setup"
   subsection: "Base Mixture Quantities"
@@ -55,7 +67,11 @@
   tex_line: 60
   latex: |
     \mathcal S=\{j:\,z_{j}=0\},\qquad \mathcal I=\{j:\,z_{j}\neq 0\}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 105
+      comment_line: 99
+      context: "Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, const add_args &cppargs) {"
 - eqid: "x_solvent_total"
   section: "Parameter Setup"
   subsection: "Base Mixture Quantities"
@@ -69,7 +85,11 @@
   tex_line: 71
   latex: |
     x_{sol}=\sum_{j\in\mathcal S}x_{j}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 105
+      comment_line: 100
+      context: "Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, const add_args &cppargs) {"
 - eqid: "d_segment"
   section: "Parameter Setup"
   subsection: "Size and Diameter Rules"
@@ -83,7 +103,11 @@
   tex_line: 89
   latex: |
     d_{i}=\sigma_{i}\left[1-0.12 \exp \left(-3 \frac{\epsilon_{i}}{k T}\right)\right]
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 539
+      comment_line: 531
+      context: "MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {"
 - eqid: "d_segment_dT"
   section: "Parameter Setup"
   subsection: "Size and Diameter Rules"
@@ -99,14 +123,18 @@
     \left(\frac{\partial d_i}{\partial T}\right)_{\rho,x}
         \equiv d_{i,T}
         =\sigma_{i}\left(3\frac{\epsilon_{i}}{kT^2}\right)\left[-0.12\exp\left(-3\frac{\epsilon_{i}}{kT}\right)\right]
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 539
+      comment_line: 532
+      context: "MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {"
 - eqid: "half_d_identity"
   section: "Parameter Setup"
   subsection: "Size and Diameter Rules"
   subsubsection: "Segment Diameter"
   label: "eq:half_d_identity"
   source: "\\cite{Figiel2025}, Eq.~(20)"
-  status: "Adapted implementation form"
+  status: "Documentation-only"
   description: "Provides a supporting relation used in temperature differential equations."
   change_note: "Moved into the upstream diameter setup block so this simple diameter identity is defined with the other diameter relations before it is reused downstream."
   tex_file: "docs/latex/equations.tex"
@@ -133,14 +161,18 @@
             \left[1-0.12 \exp \left(-3 \frac{\epsilon_{i}}{k T}\right)\right]\sigma_{i}, & \text{Barker-Henderson rule},
         \end{cases}
         \qquad i\in\mathcal{I}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 539
+      comment_line: 533
+      context: "MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {"
 - eqid: "d_ij"
   section: "Parameter Setup"
   subsection: "Pair Mixing Rules"
   subsubsection: ""
   label: "eq:d_ij"
   source: "\\cite{Gross2001}, Eq.~(A.14)"
-  status: "Adapted notation"
+  status: "Documentation-only"
   description: "Provides a supporting relation used in association contribution."
   change_note: "Mapped to the arithmetic combining rule form; this file writes it for effective diameters in association context."
   tex_file: "docs/latex/equations.tex"
@@ -161,7 +193,11 @@
   tex_line: 158
   latex: |
     \sigma_{i j}=\frac{1}{2}\left(\sigma_{i}+\sigma_{j}\right) \cdot \left(1- l_{ij} \right)
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 539
+      comment_line: 534
+      context: "MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {"
 - eqid: "epsilon_ij_mixing"
   section: "Parameter Setup"
   subsection: "Pair Mixing Rules"
@@ -177,7 +213,11 @@
     \epsilon_{ij}^{\mathrm{base}}
         =
         \sqrt{\epsilon_{i}\,\epsilon_{j}}\left(1-k_{ij}\right)
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 539
+      comment_line: 535
+      context: "MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {"
 - eqid: "epsilon_ij_ionic_zero"
   section: "Parameter Setup"
   subsection: "Pair Mixing Rules"
@@ -192,7 +232,11 @@
   latex: |
     \epsilon_{ij}=0
         \qquad \text{for } z_{i}z_{j}>0,
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 539
+      comment_line: 536
+      context: "MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {"
 - eqid: "epsilon_assoc_mixing"
   section: "Parameter Setup"
   subsection: "Pair Mixing Rules"
@@ -206,7 +250,11 @@
   tex_line: 196
   latex: |
     \varepsilon^{A_{i}B_{j}}=\frac{1}{2}(\varepsilon^{A_{i}B_{i}}+\varepsilon^{A_{j}B_{j}})(1-k_{ij}^{\mathrm{hb}})
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 399
+      comment_line: 397
+      context: "double association_volume_cpp(int comp_i, int comp_j, int ncomp, const vector<double> &s_ij, const add_args &cppargs) {"
 - eqid: "kappa_assoc_mixing"
   section: "Parameter Setup"
   subsection: "Pair Mixing Rules"
@@ -220,7 +268,11 @@
   tex_line: 207
   latex: |
     k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_{i}\sigma_{j}}}{1/2(\sigma_{i}+\sigma_{j})}\right)^3
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 399
+      comment_line: 398
+      context: "double association_volume_cpp(int comp_i, int comp_j, int ncomp, const vector<double> &s_ij, const add_args &cppargs) {"
 - eqid: "epsr_mix_rule"
   section: "Parameter Setup"
   subsection: "Relative Permittivity"
@@ -240,7 +292,11 @@
             x_{sol}\,\varepsilon_{r,sol}^{(w)} + \sum_{j\in\mathcal I}\varepsilon_{r,j}\,x_{j}, & \text{solvent-ion rule}, \\[10pt]
             \dfrac{\varepsilon_{r,\mathrm{solvent,mix}}^{\mathrm{salt-free}}}{1+7.01\,x_{\mathrm{ion}}}, & \text{ion-suppressed rule}.
         \end{cases}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 16
+      comment_line: 14
+      context: "Scalar mixed_dielectric_constant_scalar_cpp(const vector<Scalar> &x, const add_args &cppargs) {"
 - eqid: "depsr_dxi_mole"
   section: "Parameter Setup"
   subsection: "Relative Permittivity"
@@ -255,7 +311,11 @@
   latex: |
     \left(\frac{\partial \varepsilon_{r}}{\partial x_{i}}\right)_{x_{j\neq i}}
         = \varepsilon_{r, i}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 595
+      comment_line: 589
+      context: "vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "depsr_dxi_mass"
   section: "Parameter Setup"
   subsection: "Relative Permittivity"
@@ -271,7 +331,11 @@
     \left(\frac{\partial \varepsilon_{r}}{\partial x_{i}}\right)_{x_{j\neq i}}
         =
         \frac{MW_{i}}{\overline{MW}}\left(\varepsilon_{r,i}-\varepsilon_{r}\right)
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 595
+      comment_line: 590
+      context: "vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "depsr_dxi_combo"
   section: "Parameter Setup"
   subsection: "Relative Permittivity"
@@ -291,7 +355,11 @@
         x_{sol}\,\frac{MW_{i}}{\overline{MW}_{sol}}
         \left(\varepsilon_{r,i}-\varepsilon_{r,sol}^{(w)}\right),
         \qquad i\in\mathcal S
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 595
+      comment_line: 591
+      context: "vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "epsr_solvent_mass"
   section: "Parameter Setup"
   subsection: "Relative Permittivity"
@@ -305,7 +373,11 @@
   tex_line: 290
   latex: |
     \varepsilon_{r,sol}^{(w)} \equiv \sum_{j\in\mathcal S}\varepsilon_{r,j}\,w_{j}^{sol} = \frac{\sum_{j\in\mathcal S}\varepsilon_{r,j}\,x_{j}\,MW_{j}}{\sum_{j\in\mathcal S}x_{j}\,MW_{j}} = \frac{\sum_{j\in\mathcal S}\varepsilon_{r,j}\,x_{j}\,MW_{j}}{\overline{MW}_{sol}}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 105
+      comment_line: 101
+      context: "Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, const add_args &cppargs) {"
 - eqid: "epsr_salt_free"
   section: "Parameter Setup"
   subsection: "Relative Permittivity"
@@ -319,7 +391,11 @@
   tex_line: 304
   latex: |
     \varepsilon_{r,\mathrm{solvent,mix}}^{\mathrm{salt-free}}=\sum_{\mathrm{solvent}}w_{\mathrm{solvent}}^{\mathrm{salt-free}}\cdot\varepsilon_{r,\mathrm{solvent}}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 105
+      comment_line: 102
+      context: "Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, const add_args &cppargs) {"
 - eqid: "epsr_mix_suppressed"
   section: "Parameter Setup"
   subsection: "Relative Permittivity"
@@ -337,7 +413,11 @@
         \frac{\varepsilon_{sf}(\mathbf{x})}{1+7.01\,x_{\mathrm{ion}}(\mathbf{x})},
         \qquad
         \varepsilon_{sf}\equiv \varepsilon_{r,\mathrm{solvent,mix}}^{\mathrm{salt\text{-}free}} .
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 16
+      comment_line: 15
+      context: "Scalar mixed_dielectric_constant_scalar_cpp(const vector<Scalar> &x, const add_args &cppargs) {"
 - eqid: "epsr_sf"
   section: "Parameter Setup"
   subsection: "Relative Permittivity"
@@ -359,7 +439,11 @@
         \frac{x_{s} M_{s}}{\displaystyle \sum_{m\in\mathcal{S}} x_{m} M_{m}},
         \qquad
         D\equiv \sum_{m\in\mathcal{S}} x_{m} M_{m} .
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 105
+      comment_line: 103
+      context: "Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, const add_args &cppargs) {"
 - eqid: "x_ion_total"
   section: "Parameter Setup"
   subsection: "Relative Permittivity"
@@ -380,7 +464,11 @@
             1, & i\in\mathcal{I},    \\
             0, & i\notin\mathcal{I}.
         \end{cases}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 105
+      comment_line: 104
+      context: "Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, const add_args &cppargs) {"
 - eqid: "depsr_sf_dxi"
   section: "Parameter Setup"
   subsection: "Relative Permittivity"
@@ -402,7 +490,11 @@
             \dfrac{M_{i}}{D}\left(\varepsilon_{r,i}-\varepsilon_{sf}\right), & i\in\mathcal{S},    \\[10pt]
             0,                                                             & i\notin\mathcal{S}.
         \end{cases}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 595
+      comment_line: 592
+      context: "vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "depsr_mix_dxi"
   section: "Parameter Setup"
   subsection: "Relative Permittivity"
@@ -421,7 +513,11 @@
         \left(\frac{\partial \varepsilon_{sf}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
         -\frac{7.01\,\varepsilon_{sf}}{\left(1+7.01\,x_{\mathrm{ion}}\right)^2}
         \left(\frac{\partial x_{\mathrm{ion}}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}} .
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 595
+      comment_line: 593
+      context: "vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "depsr_mix_dxi_piecewise"
   section: "Parameter Setup"
   subsection: "Relative Permittivity"
@@ -444,7 +540,11 @@
             -\dfrac{7.01\,\varepsilon_{sf}}{\left(1+7.01\,x_{\mathrm{ion}}\right)^{2}},
              & i\in\mathcal{I}.
         \end{cases}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 595
+      comment_line: 594
+      context: "vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "zeta_n"
   section: "Density"
   subsection: "Packing-Fraction Moments"
@@ -458,7 +558,11 @@
   tex_line: 429
   latex: |
     \zeta_{n}=\frac{\pi}{6} \rho \sum_{i} x_{i} m_{i} d_{i}^n \quad n \in\{0,1,2,3\}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
+      line: 30
+      comment_line: 27
+      context: "static HardChainStateScalar<Scalar> hard_chain_state_scalar_cpp(double den, const vector<double> &d, const vector<Scalar> &x, const add_args &cppargs) {"
 - eqid: "zeta_n_xk"
   section: "Density"
   subsection: "Packing-Fraction Moments"
@@ -472,7 +576,11 @@
   tex_line: 440
   latex: |
     \zeta_{n,xk}=\left(\frac{\partial\zeta_{n}}{\partial x_{k}}\right)_{T,\boldsymbol{\rho},x_{j\neq k}}=\frac{\pi}{6}\rho m_{k}(d_{k})^{n}\quad n\in\{0,1,2,3\}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
+      line: 30
+      comment_line: 28
+      context: "static HardChainStateScalar<Scalar> hard_chain_state_scalar_cpp(double den, const vector<double> &d, const vector<Scalar> &x, const add_args &cppargs) {"
 - eqid: "zeta_n_dT"
   section: "Density"
   subsection: "Packing-Fraction Moments"
@@ -486,7 +594,11 @@
   tex_line: 451
   latex: |
     \zeta_{n,T}=\frac{\partial\zeta_{n}}{\partial T}=\frac{\pi}{6}\rho\sum_{i}x_{i}m_{i}nd_{i,T}\left(d_{i}\right)^{n-1}\quad n\in\{1,2,3\}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
+      line: 209
+      comment_line: 208
+      context: "vector<double> dzeta_dt_cpp(const MixtureState &thermo, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "zeta3_eta"
   section: "Density"
   subsection: "Packing Fraction"
@@ -500,7 +612,11 @@
   tex_line: 465
   latex: |
     \eta=\zeta_{3}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
+      line: 30
+      comment_line: 29
+      context: "static HardChainStateScalar<Scalar> hard_chain_state_scalar_cpp(double den, const vector<double> &d, const vector<Scalar> &x, const add_args &cppargs) {"
 - eqid: "rho_from_eta"
   section: "Density"
   subsection: "Density Conversion"
@@ -554,8 +670,8 @@
     P = ZRT\rho = Zk_{B}T\rho_{N}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_Z.cpp"
-      line: 76
-      comment_line: 75
+      line: 77
+      comment_line: 76
       context: "double p_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {"
 - eqid: "z_from_rho"
   section: "Density"
@@ -576,8 +692,8 @@
         1+\rho\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\rho}\right)_{T,x_{i}}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_Z.cpp"
-      line: 63
-      comment_line: 61
+      line: 64
+      comment_line: 62
       context: "CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {"
 - eqid: "density_solve_residual"
   section: "Density"
@@ -651,8 +767,8 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
-      line: 82
-      comment_line: 81
+      line: 86
+      comment_line: 85
       context: "static double dadrho_hs_cpp(const HardChainState &hc_state) {"
 - eqid: "hs_ares_dxk"
   section: "Contribution Intermediates"
@@ -685,8 +801,8 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
-      line: 103
-      comment_line: 102
+      line: 107
+      comment_line: 106
       context: "static vector<double> dadx_hs_cpp(const MixtureState &thermo, const HardChainState &hc_state, const add_args &cppargs) {"
 - eqid: "hs_ares_dT"
   section: "Contribution Intermediates"
@@ -717,8 +833,8 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
-      line: 90
-      comment_line: 89
+      line: 94
+      comment_line: 93
       context: "static double dadt_hs_cpp(const HardChainState &hc_state, const vector<double> &dzeta_dt) {"
 - eqid: "g_hs_contact"
   section: "Contribution Intermediates"
@@ -733,7 +849,11 @@
   tex_line: 654
   latex: |
     \mathrm{g}_{i j}^{\mathrm{hs}}=\frac{1}{\left(1-\zeta_{3}\right)}+\left(\frac{d_{i} d_{j}}{d_{i}+d_{j}}\right) \frac{3 \zeta_{2}}{\left(1-\zeta_{3}\right)^2} + \left(\frac{d_{i} d_{j}}{d_{i}+d_{j}}\right)^2 \frac{2 \xi_{2}{ }^2}{\left(1-\xi_{3}\right)^3}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
+      line: 61
+      comment_line: 60
+      context: "double hs_contact_value_cpp(double pair_diameter, double zeta2, double zeta3) {"
 - eqid: "ghs_contact_dadrho"
   section: "Contribution Intermediates"
   subsection: "Hard-Chain"
@@ -768,8 +888,8 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
-      line: 164
-      comment_line: 163
+      line: 168
+      comment_line: 167
       context: "double hs_contact_density_derivative_cpp(double pair_diameter, double zeta2, double zeta3) {"
 - eqid: "ghs_contact_dxk"
   section: "Contribution Intermediates"
@@ -794,8 +914,8 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
-      line: 186
-      comment_line: 185
+      line: 190
+      comment_line: 189
       context: "double hs_contact_composition_derivative_cpp("
 - eqid: "ghs_contact_dT"
   section: "Contribution Intermediates"
@@ -821,8 +941,8 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
-      line: 171
-      comment_line: 170
+      line: 175
+      comment_line: 174
       context: "double hs_contact_time_derivative_cpp("
 - eqid: "c1_disp"
   section: "Contribution Intermediates"
@@ -837,7 +957,11 @@
   tex_line: 742
   latex: |
     C_{1} = \left(1+\bar{m} \frac{8 \eta-2 \eta^2}{(1-\eta)^4}+\right.\left.\quad(1-\bar{m}) \frac{20 \eta-27 \eta^2+12 \eta^3-2 \eta^4}{[(1-\eta)(2-\eta)]^2}\right)
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
+      line: 13
+      comment_line: 5
+      context: "DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta) {"
 - eqid: "c2_disp"
   section: "Contribution Intermediates"
   subsection: "Dispersion"
@@ -856,7 +980,11 @@
         \bar{m}\frac{-4\eta^{2}+20\eta+8}{\left(1-\eta\right)^{5}}
         +(1-\bar{m})\frac{2\eta^{3}+12\eta^{2}-48\eta+40}{\left[(1-\eta)(2-\eta)\right]^{3}}
         \biggr)
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
+      line: 13
+      comment_line: 6
+      context: "DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta) {"
 - eqid: "c1_xk"
   section: "Contribution Intermediates"
   subsection: "Dispersion"
@@ -872,7 +1000,11 @@
     \left(\frac{\partial C_{1}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
         \equiv C_{1,xk}
         =C_{2}\zeta_{3,xk}-C_{1}^{2}\left\{m_{k}\frac{8\eta-2\eta^{2}}{\left(1-\eta\right)^{4}}-m_{k}\frac{20\eta-27\eta^{2}+12\eta^{3}-2\eta^{4}}{\left[(1-\eta)(2-\eta)\right]^{2}}\right\}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
+      line: 63
+      comment_line: 56
+      context: "ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "m2epssigma3_bar"
   section: "Contribution Intermediates"
   subsection: "Dispersion"
@@ -886,7 +1018,11 @@
   tex_line: 785
   latex: |
     \overline{m^2 \epsilon \sigma^3}=\sum_{i} \sum_{j} x_{i} x_{j} m_{i} m_{j}\left(\frac{\epsilon_{i j}}{k T}\right) \sigma_{i j}^3
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 539
+      comment_line: 537
+      context: "MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {"
 - eqid: "m2epssigma3_xk"
   section: "Contribution Intermediates"
   subsection: "Dispersion"
@@ -902,7 +1038,11 @@
     \left(\frac{\partial\overline{m^{2}\epsilon\sigma^{3}}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
         \equiv \overline{(m^{2}\epsilon\sigma^{3})}_{xk}
         =2m_{k}\sum_{j}x_{j}m_{j}\left(\frac{\epsilon_{kj}}{kT}\right)\sigma_{kj}^{3}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
+      line: 63
+      comment_line: 57
+      context: "ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "m2eps2sigma3_bar"
   section: "Contribution Intermediates"
   subsection: "Dispersion"
@@ -916,7 +1056,11 @@
   tex_line: 812
   latex: |
     \overline{m^2 \epsilon^2 \sigma^3}=\sum_{i} \sum_{j} x_{i} x_{j} m_{i} m_{j}\left(\frac{\epsilon_{i j}}{k T}\right)^2 \sigma_{i j}{ }^3
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 539
+      comment_line: 538
+      context: "MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {"
 - eqid: "m2eps2sigma3_xk"
   section: "Contribution Intermediates"
   subsection: "Dispersion"
@@ -932,7 +1076,11 @@
     \left(\frac{\partial\overline{m^{2}\epsilon^{2}\sigma^{3}}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
         \equiv (\overline{m^2\epsilon^2\sigma^3})_{xk}
         =2m_{k}\sum_{j}x_{j}m_{j}\left(\frac{\epsilon_{kj}}{kT}\right)^2\sigma_{kj}^3
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
+      line: 63
+      comment_line: 58
+      context: "ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "i1_disp"
   section: "Contribution Intermediates"
   subsection: "Dispersion"
@@ -946,7 +1094,11 @@
   tex_line: 839
   latex: |
     I_{1}(\eta, \bar{m})=\sum_{i=0}^6 a_{i}(\bar{m}) \eta^i
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
+      line: 13
+      comment_line: 7
+      context: "DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta) {"
 - eqid: "deta_i1_deta"
   section: "Contribution Intermediates"
   subsection: "Dispersion"
@@ -960,7 +1112,11 @@
   tex_line: 850
   latex: |
     \frac{\partial(\eta I_{1})}{\partial\eta}=\sum_{j=0}^6a_{j}(\bar{m})(j+1)\eta^j
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
+      line: 13
+      comment_line: 8
+      context: "DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta) {"
 - eqid: "i1_xk"
   section: "Contribution Intermediates"
   subsection: "Dispersion"
@@ -976,7 +1132,11 @@
     \left(\frac{\partial I_{1}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
         \equiv I_{1,xk}
         =\sum_{i=0}^{6}[a_{\mathrm{i}}(\bar{m})i\zeta_{3,xk}\eta^{i-1}+a_{\mathrm{i,x}k}\eta^{i}]
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
+      line: 63
+      comment_line: 59
+      context: "ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "i2_disp"
   section: "Contribution Intermediates"
   subsection: "Dispersion"
@@ -990,7 +1150,11 @@
   tex_line: 877
   latex: |
     I_{2}(\eta, \bar{m})=\sum_{i=0}^6 b_{i}(\bar{m}) \eta^i
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
+      line: 13
+      comment_line: 9
+      context: "DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta) {"
 - eqid: "deta_i2_deta"
   section: "Contribution Intermediates"
   subsection: "Dispersion"
@@ -1004,7 +1168,11 @@
   tex_line: 888
   latex: |
     \frac{\partial(\eta I_{2})}{\partial\eta}=\sum_{i=0}^6b_{j}(\bar{m})(j+1)\eta^i
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
+      line: 13
+      comment_line: 10
+      context: "DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta) {"
 - eqid: "i2_xk"
   section: "Contribution Intermediates"
   subsection: "Dispersion"
@@ -1020,7 +1188,11 @@
     \left(\frac{\partial I_{2}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
         \equiv I_{2,xk}
         =\sum_{i=0}^{6}[b_{\mathrm{i}}(\bar{m})i\zeta_{3,xk}\eta^{i-1}+b_{\mathrm{i,xk}}\eta^{i}]
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
+      line: 63
+      comment_line: 60
+      context: "ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "a_i_mbar"
   section: "Contribution Intermediates"
   subsection: "Dispersion"
@@ -1034,7 +1206,11 @@
   tex_line: 915
   latex: |
     a_{i}(\bar{m})=a_{0 i}+\frac{\bar{m}-1}{\bar{m}} a_{1 i}+\frac{\bar{m}-1}{\bar{m}} \frac{\bar{m}-2}{\bar{m}} a_{2 i}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
+      line: 13
+      comment_line: 11
+      context: "DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta) {"
 - eqid: "a_i_xk"
   section: "Contribution Intermediates"
   subsection: "Dispersion"
@@ -1050,7 +1226,11 @@
     \left(\frac{\partial a_{i}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
         \equiv a_{\mathrm{i},xk}
         =\frac{m_{k}}{\bar{m}^{2}}a_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left(3-\frac{4}{\bar{m}}\right)a_{2i}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
+      line: 63
+      comment_line: 61
+      context: "ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "b_i_mbar"
   section: "Contribution Intermediates"
   subsection: "Dispersion"
@@ -1064,7 +1244,11 @@
   tex_line: 942
   latex: |
     b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m}} \frac{\bar{m}-2}{\bar{m}} b_{2 i}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
+      line: 13
+      comment_line: 12
+      context: "DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta) {"
 - eqid: "b_i_xk"
   section: "Contribution Intermediates"
   subsection: "Dispersion"
@@ -1080,7 +1264,11 @@
     \left(\frac{\partial b_{i}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
         \equiv b_{\mathrm{i},xk}
         =\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left(3-\frac{4}{\bar{m}}\right)b_{2i}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
+      line: 63
+      comment_line: 62
+      context: "ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "x_assoc_site"
   section: "Contribution Intermediates"
   subsection: "Association"
@@ -1101,7 +1289,11 @@
             \\
             &\text{and }\sum_{j}\text{ over all components.}
         \end{aligned}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
+      line: 14
+      comment_line: 13
+      context: "static vector<double> association_site_fractions_cpp(vector<double> XA_guess, vector<double> delta_ij, double den, vector<double> x) {"
 - eqid: "dx_assoc_drho"
   section: "Contribution Intermediates"
   subsection: "Association"
@@ -1126,7 +1318,11 @@
             \Bigg)
             \Bigg]
         \end{aligned}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
+      line: 32
+      comment_line: 31
+      context: "static vector<double> association_site_fraction_dt_cpp(vector<double> delta_ij, double den, vector<double> XA, vector<double> ddelta_dt, vector<double> x) {"
 - eqid: "dx_assoc_dxk"
   section: "Contribution Intermediates"
   subsection: "Association"
@@ -1155,7 +1351,11 @@
             \right)
             \Bigg]
         \end{aligned}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
+      line: 58
+      comment_line: 57
+      context: "static vector<double> association_site_fraction_dx_cpp(vector<int> assoc_num, vector<double> delta_ij, double den, vector<double> XA, vector<double> ddelta_dx, vector<double> x) {"
 - eqid: "rho_j_assoc"
   section: "Contribution Intermediates"
   subsection: "Association"
@@ -1169,7 +1369,11 @@
   tex_line: 1043
   latex: |
     \rho_{j}=x_{j}\rho_{\mathrm{mixture}}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
+      line: 126
+      comment_line: 124
+      context: "AssociationSetup association_setup_cpp(const vector<double> &x, const add_args &cppargs, const vector<double> &s_ij, const vector<double> &ghs, double t) {"
 - eqid: "delta_assoc"
   section: "Contribution Intermediates"
   subsection: "Association"
@@ -1183,7 +1387,11 @@
   tex_line: 1057
   latex: |
     \Delta^{\mathrm{A}, \mathrm{~B}_{j}}=d_{i j}{ }^3 \mathrm{g}_{i j}^{\mathrm{hs}}\left[\exp \left(\frac{\epsilon^{\mathrm{A}, \mathrm{~B}_{j}}}{k T}\right)-1\right]
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
+      line: 126
+      comment_line: 125
+      context: "AssociationSetup association_setup_cpp(const vector<double> &x, const add_args &cppargs, const vector<double> &s_ij, const vector<double> &ghs, double t) {"
 - eqid: "ddelta_assoc_drho"
   section: "Contribution Intermediates"
   subsection: "Association"
@@ -1197,7 +1405,11 @@
   tex_line: 1068
   latex: |
     \left(\frac{\partial\Delta^{A_{i}B_{j}}}{\partial\rho}\right)_{T,x}=d_{ij}^3\kappa^{A_{i}B_{j}}\left[\exp(\epsilon^{A_{i}B_{j}}/kT)-1\right]\left(\frac{\partial g_{ij}^{hs}}{\partial\rho}\right)_{T,x}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
+      line: 165
+      comment_line: 164
+      context: "static vector<double> association_site_fraction_density_terms_cpp("
 - eqid: "ddelta_assoc_dxk"
   section: "Contribution Intermediates"
   subsection: "Association"
@@ -1215,7 +1427,11 @@
         d_{ij}^{3}\kappa^{A_{i}B_{j}}
         \left[\exp\!\left(\frac{\epsilon^{A_{i}B_{j}}}{kT}\right)-1\right]
         \left(\frac{\partial g_{ij}^{hs}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
+      line: 198
+      comment_line: 197
+      context: "static vector<double> association_site_fraction_composition_terms_cpp("
 - eqid: "kappa_dh"
   section: "Contribution Intermediates"
   subsection: "Debye Huckel"
@@ -1229,7 +1445,11 @@
   tex_line: 1102
   latex: |
     \kappa=\sqrt{\frac{\rho e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\sum_{j}x_{j}z_{j}^{2}}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp"
+      line: 9
+      comment_line: 7
+      context: "double dh_kappa_cpp(double den, double t, double eps, double q2_sum) {"
 - eqid: "dkappa_dh_drho"
   section: "Contribution Intermediates"
   subsection: "Debye Huckel"
@@ -1272,7 +1492,11 @@
             \qquad
             \text{when }\left(\frac{\partial \varepsilon_{r}}{\partial \rho}\right)_{T,x}=0
         \end{aligned}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp"
+      line: 9
+      comment_line: 8
+      context: "double dh_kappa_cpp(double den, double t, double eps, double q2_sum) {"
 - eqid: "dkappa_dh_dxi"
   section: "Contribution Intermediates"
   subsection: "Debye Huckel"
@@ -1313,7 +1537,11 @@
                 \alpha_{i}z_{i}^2
             \Biggr\}
         \end{aligned}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp"
+      line: 23
+      comment_line: 21
+      context: "IonIntermediateState ion_intermediate_state_cpp("
 - eqid: "chi_dh"
   section: "Contribution Intermediates"
   subsection: "Debye Huckel"
@@ -1327,7 +1555,11 @@
   tex_line: 1194
   latex: |
     \chi_{i}=\frac{3}{\left(\kappa d_{i}\right)^3}\left[\frac{3}{2}+\ln(1+\kappa d_{i})-2(1+\kappa d_{i})+\frac{1}{2}\left(1+\kappa d_{i}\right)^2\right]
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp"
+      line: 16
+      comment_line: 13
+      context: "double dh_chi_cpp(double kappa, double diameter) {"
 - eqid: "sigma_dh"
   section: "Contribution Intermediates"
   subsection: "Debye Huckel"
@@ -1341,7 +1573,11 @@
   tex_line: 1205
   latex: |
     \sigma_{i}=\left(\frac{\partial(\kappa\chi_{i})}{\partial\kappa}\right)_{T,\mathrm{x}}=-2\chi_{i}+\frac{3}{1+\kappa a_{i}}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp"
+      line: 16
+      comment_line: 14
+      context: "double dh_chi_cpp(double kappa, double diameter) {"
 - eqid: "dchi_dh_drho"
   section: "Contribution Intermediates"
   subsection: "Debye Huckel"
@@ -1357,7 +1593,11 @@
     \rho\left(\frac{\partial \chi_i}{\partial \rho}\right)_{T,x}
         =
         \frac{\sigma_i-\chi_i}{2}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp"
+      line: 16
+      comment_line: 15
+      context: "double dh_chi_cpp(double kappa, double diameter) {"
 - eqid: "dchi_dh_dxi"
   section: "Contribution Intermediates"
   subsection: "Debye Huckel"
@@ -1398,7 +1638,11 @@
                 \Biggr]
             \right\}
         \end{aligned}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp"
+      line: 23
+      comment_line: 22
+      context: "IonIntermediateState ion_intermediate_state_cpp("
 - eqid: "d_born_rule"
   section: "Contribution Intermediates"
   subsection: "Born"
@@ -1418,7 +1662,11 @@
             d^{\text{Born, fitted}}_{i}, & \text{fitted Born-diameter rule},
         \end{cases}
         \qquad i\in\mathcal{I}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      line: 446
+      comment_line: 445
+      context: "double ion_born_radius_cpp(int i, double t, const add_args &cppargs) {"
 - eqid: "f_mix"
   section: "Contribution Intermediates"
   subsection: "Born"
@@ -1432,7 +1680,11 @@
   tex_line: 1295
   latex: |
     f_{mix}=\sum_{k}x_{k}f_{k}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
+      line: 14
+      comment_line: 8
+      context: "BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion) {"
 - eqid: "delta_d_born"
   section: "Contribution Intermediates"
   subsection: "Born"
@@ -1446,7 +1698,11 @@
   tex_line: 1309
   latex: |
     \Delta d_{i}=\frac{(f_{mix}-1)}{|z_{i}|}\cdot d_{i}^{\mathrm{Born}}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
+      line: 14
+      comment_line: 9
+      context: "BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion) {"
 - eqid: "ddelta_d_dxi"
   section: "Contribution Intermediates"
   subsection: "Born"
@@ -1462,7 +1718,11 @@
     \left(\frac{\partial \Delta d_{j}}{\partial x_{i}}\right)_{T,\rho,x_{k\neq i}}
         =\frac{d_{j}^{\text {Born }}}{\left|z_{j}\right|} \left(\frac{\partial f_{\text {mix }}}{\partial x_{i}}\right)_{T,\rho,x_{k\neq i}}
         =\frac{d_{j}^{\text {Born }}}{\left|z_{j}\right|} f_{i},
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
+      line: 14
+      comment_line: 10
+      context: "BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion) {"
 - eqid: "dterm_born"
   section: "Contribution Intermediates"
   subsection: "Born"
@@ -1478,7 +1738,11 @@
     D_{i,\mathrm{Born}}^{(\mathrm{bulk})}
     =
     \frac{1}{d_i^{\mathrm{Born}}},
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
+      line: 14
+      comment_line: 11
+      context: "BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion) {"
 - eqid: "dterm_ssm"
   section: "Contribution Intermediates"
   subsection: "Born"
@@ -1496,7 +1760,11 @@
     \frac{1}{d_i^{\mathrm{Born}}+\Delta d_i}
     -
     \frac{1}{d_i^{\mathrm{Born}}},
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
+      line: 14
+      comment_line: 12
+      context: "BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion) {"
 - eqid: "dterm_ds"
   section: "Contribution Intermediates"
   subsection: "Born"
@@ -1514,7 +1782,11 @@
     \frac{1}{d_i^{\mathrm{Born}}}
     -
     \frac{1}{d_i^{\mathrm{Born}}+\Delta d_i}.
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
+      line: 14
+      comment_line: 13
+      context: "BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion) {"
 - eqid: "ares_total"
   section: "Residual Helmholtz Energy"
   subsection: ""
@@ -1597,8 +1869,8 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
-      line: 242
-      comment_line: 241
+      line: 247
+      comment_line: 246
       context: "double dadrho_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "hc_ares_dxk"
   section: "Residual Helmholtz Energy"
@@ -1622,8 +1894,8 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
-      line: 265
-      comment_line: 264
+      line: 270
+      comment_line: 269
       context: "ContributionDadxResult dadx_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "hc_ares_dT"
   section: "Residual Helmholtz Energy"
@@ -1645,8 +1917,8 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
-      line: 254
-      comment_line: 253
+      line: 259
+      comment_line: 258
       context: "double dadt_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const vector<double> &dzeta_dt, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "ares_disp"
   section: "Residual Helmholtz Energy"
@@ -1686,8 +1958,8 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
-      line: 33
-      comment_line: 32
+      line: 41
+      comment_line: 40
       context: "double dadrho_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion) {"
 - eqid: "disp_ares_dxk"
   section: "Residual Helmholtz Energy"
@@ -1709,8 +1981,8 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
-      line: 48
-      comment_line: 47
+      line: 63
+      comment_line: 55
       context: "ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "disp_ares_dT"
   section: "Residual Helmholtz Energy"
@@ -1731,8 +2003,8 @@
         -\pi\rho\bar{m}C_{1}I_{2}\overline{m^{2}\epsilon^{2}\sigma^{3}}_{,T}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
-      line: 39
-      comment_line: 38
+      line: 47
+      comment_line: 46
       context: "double dadt_disp_cpp(const MixtureState &thermo, double deta_dt, double t, const DispersionPolynomialState &dispersion) {"
 - eqid: "ares_assoc"
   section: "Residual Helmholtz Energy"
@@ -1768,8 +2040,8 @@
         =\rho\sum_{i}x_{i}\sum_{A_{i}}\left(\frac{1}{X^{A_{i}}}-\frac{1}{2}\right)\left(\frac{\partial X^{A_{i}}}{\partial\rho}\right)_{T,x}.
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
-      line: 320
-      comment_line: 319
+      line: 327
+      comment_line: 326
       context: "double dadrho_assoc_cpp("
 - eqid: "assoc_ares_dxk"
   section: "Residual Helmholtz Energy"
@@ -1792,8 +2064,8 @@
         \left(\frac{\partial X^{A_{i}}}{\partial x_{k}}\right)_{T,v,x_{i\neq k}}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
-      line: 382
-      comment_line: 381
+      line: 389
+      comment_line: 388
       context: "ContributionDadxResult dadx_assoc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const AssociationIntermediateState &assoc_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "assoc_ares_dT"
   section: "Residual Helmholtz Energy"
@@ -1814,8 +2086,8 @@
         \left(\frac{\partial X^{A_i}}{\partial T}\right)_{\rho,x_i}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
-      line: 370
-      comment_line: 369
+      line: 377
+      comment_line: 376
       context: "double dadt_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {"
 - eqid: "ares_dh"
   section: "Residual Helmholtz Energy"
@@ -1855,7 +2127,11 @@
             +
             \kappa\sum_i x_i z_i^2 \rho\left(\frac{\partial \chi_i}{\partial \rho}\right)_{T,x}
         \right]
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp"
+      line: 79
+      comment_line: 78
+      context: "double dadrho_ion_cpp(double t, const IonIntermediateState &ion_state) {"
 - eqid: "dh_ares_dxi"
   section: "Residual Helmholtz Energy"
   subsection: "Debye and Huckel Contribution"
@@ -1891,8 +2167,8 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp"
-      line: 96
-      comment_line: 95
+      line: 104
+      comment_line: 103
       context: "ContributionDadxResult dadx_ion_cpp(const MixtureState &thermo, const IonIntermediateState &ion_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "dh_ares_dT"
   section: "Residual Helmholtz Energy"
@@ -1911,8 +2187,8 @@
         -\frac{\tilde{a}^{DH}}{T}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp"
-      line: 79
-      comment_line: 78
+      line: 87
+      comment_line: 86
       context: "double dadt_ion_cpp(const IonIntermediateState &ion_state, double t, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "ares_born"
   section: "Residual Helmholtz Energy"
@@ -1955,8 +2231,8 @@
     \rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}= 0
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
-      line: 202
-      comment_line: 201
+      line: 210
+      comment_line: 209
       context: "double dadrho_born_cpp() {"
 - eqid: "born_ares_dxi"
   section: "Residual Helmholtz Energy"
@@ -1983,7 +2259,11 @@
                 \left(\frac{\partial\varepsilon_{r}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
             \Biggr]
         \end{aligned}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
+      line: 233
+      comment_line: 231
+      context: "ContributionDadxResult dadx_born_cpp(const BornIntermediateState &born_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "born_ares_ssmds_dxi"
   section: "Residual Helmholtz Energy"
   subsection: "Born Contribution"
@@ -2029,7 +2309,11 @@
                 \Bigg)
                 \Bigg],
         \end{aligned}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
+      line: 233
+      comment_line: 232
+      context: "ContributionDadxResult dadx_born_cpp(const BornIntermediateState &born_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "born_ares_dT"
   section: "Residual Helmholtz Energy"
   subsection: "Born Contribution"
@@ -2060,8 +2344,8 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
-      line: 207
-      comment_line: 206
+      line: 215
+      comment_line: 214
       context: "double dadt_born_cpp(double t, const BornIntermediateState &born_state) {"
 - eqid: "born_mode_set"
   section: "Residual Helmholtz Energy"
@@ -2084,7 +2368,11 @@
     \mathcal{D}_{\mathrm{add}}
     \subseteq
     \{\mathrm{SSM},\mathrm{DS}\},
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
+      line: 166
+      comment_line: 164
+      context: "BornIntermediateState born_intermediate_state_cpp("
 - eqid: "born_mode_medium"
   section: "Residual Helmholtz Energy"
   subsection: "Born Contribution"
@@ -2103,7 +2391,11 @@
             \mathrm{bulk}, & \delta\in\{\mathrm{Born},\mathrm{SSM}\}, \\
             \mathrm{ion},  & \delta=\mathrm{DS}.
         \end{cases}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
+      line: 166
+      comment_line: 165
+      context: "BornIntermediateState born_intermediate_state_cpp("
 - eqid: "z_total"
   section: "Compressibility Factor"
   subsection: ""
@@ -2124,8 +2416,8 @@
         + \rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_Z.cpp"
-      line: 63
-      comment_line: 62
+      line: 64
+      comment_line: 63
       context: "CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {"
 - eqid: "z_alpha"
   section: "Compressibility Factor"
@@ -2145,7 +2437,11 @@
         ,
         \qquad
         \alpha\in\{hc,disp,assoc,DH,Born\}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_Z.cpp"
+      line: 51
+      comment_line: 50
+      context: "ScalarContributionTerms compressibility_terms_from_dadrho_cpp(const DadrhoResult &result) {"
 - eqid: "mu_res"
   section: "Chemical Potential"
   subsection: ""
@@ -2161,8 +2457,8 @@
     \tilde{\mu_{k}}^{\mathrm{res}}=\frac{\mu_{k}^\mathrm{res}}{kT} = \frac{\hat{\mu}_{k}^\mathrm{res}}{RT}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_mu.cpp"
-      line: 57
-      comment_line: 55
+      line: 58
+      comment_line: 56
       context: "ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {"
 - eqid: "mu_res_from_ares"
   section: "Chemical Potential"
@@ -2203,8 +2499,8 @@
     \tilde{\mu_{k}}^{\mathrm{res}}=\tilde{\mu_{k}}^{\mathrm{hc}}+\tilde{\mu_{k}}^{\mathrm{disp}}+\tilde{\mu_{k}}^{\mathrm{assoc}}+\tilde{\mu_{k}}^{\mathrm{DH}}+\tilde{\mu_{k}}^{\mathrm{Born}}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_mu.cpp"
-      line: 57
-      comment_line: 56
+      line: 58
+      comment_line: 57
       context: "ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {"
 - eqid: "mu_alpha"
   section: "Chemical Potential"
@@ -2230,7 +2526,11 @@
             \qquad
             \alpha\in\{hc,disp,assoc,DH,Born\}
         \end{aligned}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_mu.cpp"
+      line: 20
+      comment_line: 19
+      context: "static vector<double> mu_hc_cpp(const CompositionContributionResult &composition) {"
 - eqid: "lnphi_total"
   section: "Fugacity Coefficient"
   subsection: ""
@@ -2392,8 +2692,8 @@
         \frac{\varphi_{i}(T,p,\mathbf{x})}{\varphi_{i}^{\infty}(T,p,x_{i}\to 0)}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_activity.cpp"
-      line: 459
-      comment_line: 457
+      line: 468
+      comment_line: 466
       context: "ActivityCoefficientNative activity_coefficient_values_cpp("
 - eqid: "lngamma_asym_inf"
   section: "Activity Coefficient"
@@ -2414,8 +2714,8 @@
         \ln\varphi_{i}^{\infty}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_activity.cpp"
-      line: 459
-      comment_line: 458
+      line: 468
+      comment_line: 467
       context: "ActivityCoefficientNative activity_coefficient_values_cpp("
 - eqid: "lngamma_asym_sum"
   section: "Activity Coefficient"
@@ -2440,7 +2740,11 @@
         \ln\gamma_{k}^{DH,*}
         +
         \ln\gamma_{k}^{Born,*}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_activity.cpp"
+      line: 409
+      comment_line: 400
+      context: "ActivityCoefficientNative activity_coefficient_values_impl_cpp("
 - eqid: "gamma_alpha_asym"
   section: "Activity Coefficient"
   subsection: "Infinite-Dilution Reference"
@@ -2456,7 +2760,11 @@
     \gamma_{k}^{\alpha,*}
         =
         \frac{\varphi_{k}^{\alpha}}{\varphi_{k}^{\alpha,\infty}}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_activity.cpp"
+      line: 409
+      comment_line: 401
+      context: "ActivityCoefficientNative activity_coefficient_values_impl_cpp("
 - eqid: "lngamma_alpha_asym"
   section: "Activity Coefficient"
   subsection: "Infinite-Dilution Reference"
@@ -2474,7 +2782,11 @@
         \ln\varphi_{k}^{\alpha}
         -
         \ln\varphi_{k}^{\alpha,\infty}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_activity.cpp"
+      line: 409
+      comment_line: 402
+      context: "ActivityCoefficientNative activity_coefficient_values_impl_cpp("
 - eqid: "gamma_pm_asym"
   section: "Activity Coefficient"
   subsection: "Mean Ionic Activity Coefficient"
@@ -2493,7 +2805,11 @@
         \left(\gamma_{c}^{*}\right)^{\nu_{c}}
         \left(\gamma_{a}^{*}\right)^{\nu_{a}}
         \right)^{\frac{1}{\nu_{c}+\nu_{a}}}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_activity.cpp"
+      line: 409
+      comment_line: 403
+      context: "ActivityCoefficientNative activity_coefficient_values_impl_cpp("
 - eqid: "lngamma_pm_asym"
   section: "Activity Coefficient"
   subsection: "Mean Ionic Activity Coefficient"
@@ -2509,7 +2825,11 @@
     \ln\gamma_{\pm}^{*}
         =
         \frac{\nu_{c}\ln\gamma_{c}^{*}+\nu_{a}\ln\gamma_{a}^{*}}{\nu_{c}+\nu_{a}}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_activity.cpp"
+      line: 409
+      comment_line: 404
+      context: "ActivityCoefficientNative activity_coefficient_values_impl_cpp("
 - eqid: "lngamma_pm_alpha_asym"
   section: "Activity Coefficient"
   subsection: "Mean Ionic Activity Coefficient"
@@ -2525,7 +2845,11 @@
     \ln\gamma_{\pm}^{\alpha,*}
         =
         \frac{\nu_{c}\ln\gamma_{c}^{\alpha,*}+\nu_{a}\ln\gamma_{a}^{\alpha,*}}{\nu_{c}+\nu_{a}}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_activity.cpp"
+      line: 409
+      comment_line: 405
+      context: "ActivityCoefficientNative activity_coefficient_values_impl_cpp("
 - eqid: "h_res"
   section: "Enthalpy, Entropy, and Gibbs Free Energy"
   subsection: "Entropy"
@@ -2550,7 +2874,7 @@
   subsubsection: ""
   label: "eq:s_res_from_s_vol"
   source: "\\cite{Gross2001}, Eq.~(A.47)"
-  status: "Manual literature match"
+  status: "Documentation-only"
   description: "Provides a supporting relation used in entropy."
   change_note: "Mapped manually to the residual-entropy relation with logarithmic compressibility correction."
   tex_file: "docs/latex/equations.tex"
@@ -2582,7 +2906,7 @@
   subsubsection: ""
   label: "eq:g_res_from_hs"
   source: "\\cite{Gross2001}, Eq.~(A.49)"
-  status: "Manual literature match"
+  status: "Documentation-only"
   description: "Provides a supporting relation used in gibbs free energy."
   change_note: "Mapped manually to the residual Gibbs relation via enthalpy and entropy."
   tex_file: "docs/latex/equations.tex"
@@ -2650,7 +2974,7 @@
   subsubsection: ""
   label: "eq:mu_pm_charge"
   source: "\\cite{Ascani2022}, Eq.~(16)"
-  status: "Close literature match"
+  status: "Documentation-only"
   description: "Gives the mean-ionic chemical-potential conversion from cation and anion chemical potentials."
   change_note: "Added to gather the general mean-ionic property conversions in one dedicated section."
   tex_file: "docs/latex/equations.tex"
@@ -2667,7 +2991,7 @@
   subsubsection: ""
   label: "eq:f_pm_charge"
   source: "\\cite{Ascani2022}, Eq.~(17)"
-  status: "Close literature match"
+  status: "Documentation-only"
   description: "Gives the mean-ionic fugacity conversion from cation and anion fugacities."
   change_note: "Added to gather the general mean-ionic property conversions in one dedicated section."
   tex_file: "docs/latex/equations.tex"
@@ -2686,7 +3010,7 @@
   subsubsection: ""
   label: "eq:a_pm_charge"
   source: "\\cite{Ascani2022}, Eq.~(18)"
-  status: "Close literature match"
+  status: "Documentation-only"
   description: "Gives the mean-ionic activity conversion from cation and anion activities."
   change_note: "Added to gather the general mean-ionic property conversions in one dedicated section."
   tex_file: "docs/latex/equations.tex"
@@ -2705,7 +3029,7 @@
   subsubsection: ""
   label: "eq:phi_pm_charge"
   source: "\\cite{Ascani2022}, Eq.~(19)"
-  status: "Close literature match"
+  status: "Documentation-only"
   description: "Gives the mean-ionic fugacity-coefficient conversion from cation and anion fugacity coefficients."
   change_note: "Added to gather the general mean-ionic property conversions in one dedicated section."
   tex_file: "docs/latex/equations.tex"
@@ -2736,7 +3060,11 @@
             \left(\gamma_{\mathrm{cat}}\right)^{1/|z_{\mathrm{cat}}|}
             \left(\gamma_{\mathrm{an}}\right)^{1/|z_{\mathrm{an}}|}
         \right]^{\!\left[\left(1/|z_{\mathrm{cat}}|\right)+\left(1/|z_{\mathrm{an}}|\right)\right]^{-1}}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_activity.cpp"
+      line: 409
+      comment_line: 406
+      context: "ActivityCoefficientNative activity_coefficient_values_impl_cpp("
 - eqid: "gamma_pm_molality"
   section: "Conversions"
   subsection: "Mole-Fraction and Molality Basis"
@@ -2752,7 +3080,11 @@
     \gamma_{\pm}^{*,m}
         =
         \frac{\gamma_{\pm}^{*,x}}{1+M_{\mathrm{solvent}}\cdot\tilde{m}_{\mathrm{solute}}\cdot\sum_{i}\nu_{i,\mathrm{ion}}}
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_activity.cpp"
+      line: 409
+      comment_line: 407
+      context: "ActivityCoefficientNative activity_coefficient_values_impl_cpp("
 - eqid: "lngamma_pm_molality"
   section: "Conversions"
   subsection: "Mole-Fraction and Molality Basis"
@@ -2770,7 +3102,11 @@
         \ln\gamma_{\pm}^{*,x}
         -
         \ln\left(1+M_{\mathrm{solvent}}\cdot\tilde{m}_{\mathrm{solute}}\cdot\sum_{i}\nu_{i,\mathrm{ion}}\right)
-  cpp_refs: []
+  cpp_refs:
+    - file: "src/epcsaft/native/epcsaft_activity.cpp"
+      line: 409
+      comment_line: 408
+      context: "ActivityCoefficientNative activity_coefficient_values_impl_cpp("
 - eqid: "dadrho_dh_explicit"
   section: "Supplemental"
   subsection: "Legacy / Paper-Direct Expressions"
@@ -2787,8 +3123,8 @@
         =-\frac{\kappa e^2}{24\pi kT\epsilon}\sum_{i}x_{i}z_{i}{}^{2}\sigma_{i}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp"
-      line: 71
-      comment_line: 70
+      line: 79
+      comment_line: 77
       context: "double dadrho_ion_cpp(double t, const IonIntermediateState &ion_state) {"
 - eqid: "mu_dh_2005"
   section: "Supplemental"
@@ -2796,7 +3132,7 @@
   subsubsection: "Cameretti 2005 Chemical-Potential Forms"
   label: "eq:mu_dh_2005"
   source: "\\cite{Cameretti2005}, Eq.~(11)"
-  status: "Original literature form"
+  status: "Documentation-only"
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Baseline 2005 formulation retained for comparison to the reorganized active chemical-potential presentation."
   tex_file: "docs/latex/equations.tex"
@@ -2810,7 +3146,7 @@
   subsubsection: "Cameretti 2005 Chemical-Potential Forms"
   label: "eq:sigma_dh_2005"
   source: "\\cite{Cameretti2005}, Eq.~(20)"
-  status: "Close literature match"
+  status: "Documentation-only"
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Retained beside Eq.~\\eqref{eq:mu_dh_2005} so the original 2005 chemical-potential form stays self-contained in the legacy comparison block."
   tex_file: "docs/latex/equations.tex"
@@ -2824,7 +3160,7 @@
   subsubsection: "State and Residual Helmholtz Relations"
   label: "eq:r_ion_bjerrum"
   source: "\\cite{Bulow2021}, Eq.~(16)"
-  status: "Manual literature match"
+  status: "Documentation-only"
   description: "Provides a supporting relation used in debye and huckel electrolyte term contribution."
   change_note: "Mapped manually to the closest-approach radius selection between ion diameter and Bjerrum length."
   tex_file: "docs/latex/equations.tex"
@@ -2842,7 +3178,7 @@
   subsubsection: "State and Residual Helmholtz Relations"
   label: "eq:bjerrum_length"
   source: "\\cite{Bulow2021}, Eq.~(10)"
-  status: "Close literature match"
+  status: "Documentation-only"
   description: "Specifies dielectric-property mixing or derivative form for debye and huckel electrolyte term contribution."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
@@ -2856,7 +3192,7 @@
   subsubsection: "State and Residual Helmholtz Relations"
   label: "eq:ares_dh_bjerrum"
   source: "\\cite{Bulow2021}, Eq.~(20)"
-  status: "Manual literature match"
+  status: "Documentation-only"
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Mapped manually to the reduced Debye-Huckel Helmholtz form with dissociation degree factors."
   tex_file: "docs/latex/equations.tex"
@@ -2870,7 +3206,7 @@
   subsubsection: "State and Residual Helmholtz Relations"
   label: "eq:kappa_dh_bjerrum"
   source: "\\cite{Bulow2021}, Eq.~(18)"
-  status: "Manual literature match"
+  status: "Documentation-only"
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Mapped manually to the Bjerrum-treatment Debye screening parameter definition."
   tex_file: "docs/latex/equations.tex"
@@ -2884,7 +3220,7 @@
   subsubsection: "State and Residual Helmholtz Relations"
   label: "eq:chi_dh_bjerrum"
   source: "\\cite{Bulow2021}, Eq.~(19)"
-  status: "Manual literature match"
+  status: "Documentation-only"
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Mapped manually to the Bjerrum-treatment chi-function definition."
   tex_file: "docs/latex/equations.tex"
@@ -2898,7 +3234,7 @@
   subsubsection: "Density Differential"
   label: "eq:dadrho_dh_bjerrum"
   source: "\\cite{Bulow2021}, Eq.~(18)"
-  status: "Adapted implementation form"
+  status: "Documentation-only"
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Grouped under the supplemental Bjerrum-treatment section so the main density-differential section stays focused on the base Debye-Huckel formulation."
   tex_file: "docs/latex/equations.tex"
@@ -2913,7 +3249,7 @@
   subsubsection: "Density Differential"
   label: "eq:sigma_dh_bjerrum"
   source: "\\cite{Bulow2021}, Eq.~(26)"
-  status: "Adapted implementation form"
+  status: "Documentation-only"
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Grouped under the supplemental Bjerrum-treatment section so the Bjerrum-specific sigma relation stays beside the other extended Debye-Huckel helpers."
   tex_file: "docs/latex/equations.tex"
@@ -2927,7 +3263,7 @@
   subsubsection: "Composition Differential"
   label: "eq:dares_dh_dxi_bjerrum"
   source: "\\cite{Bulow2021}, Eq.~(21)"
-  status: "Manual literature match"
+  status: "Documentation-only"
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Grouped under the supplemental Bjerrum-treatment section so the composition-derivative variant stays with the rest of the extended Bjerrum relations."
   tex_file: "docs/latex/equations.tex"
@@ -2959,7 +3295,7 @@
   subsubsection: "Composition Differential"
   label: "eq:dkappa_dh_dxi_bjerrum"
   source: "\\cite{Bulow2021}, Eq.~(22)"
-  status: "Adapted notation"
+  status: "Documentation-only"
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Grouped under the supplemental Bjerrum-treatment section so the auxiliary composition derivative for \\kappa stays adjacent to the Bjerrum-specific Helmholtz relation."
   tex_file: "docs/latex/equations.tex"
@@ -2975,7 +3311,7 @@
   subsubsection: "Composition Differential"
   label: "eq:dchi_dh_dxi_bjerrum"
   source: "\\cite{Bulow2021}, Eq.~(23)"
-  status: "Manual literature match"
+  status: "Documentation-only"
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Grouped under the supplemental Bjerrum-treatment section so the Bjerrum-specific chi derivative remains adjacent to the other extended Debye-Huckel derivatives."
   tex_file: "docs/latex/equations.tex"
@@ -2991,7 +3327,7 @@
   subsubsection: "Ion-Pairing Relations"
   label: "eq:alpha_ion_pair"
   source: "\\cite{Bulow2021}, Eq.~(14)"
-  status: "Close literature match"
+  status: "Documentation-only"
   description: "Gives an activity or fugacity-coefficient relation in debye and huckel electrolyte term contribution."
   change_note: "High textual similarity to a tagged equation in the cited local paper export."
   tex_file: "docs/latex/equations.tex"
@@ -3005,7 +3341,7 @@
   subsubsection: "Ion-Pairing Relations"
   label: "eq:k_ion_pair"
   source: "\\cite{Bulow2021}, Eq.~(9) and Eq.~(11)"
-  status: "Manual literature match"
+  status: "Documentation-only"
   description: "Specifies dielectric-property mixing or derivative form for debye and huckel electrolyte term contribution."
   change_note: "This line combines the algebraic ion-pair equilibrium form and the configurational integral expression shown as separate equations in the paper."
   tex_file: "docs/latex/equations.tex"
@@ -3019,7 +3355,7 @@
   subsubsection: "Ion-Pairing Relations"
   label: "eq:gamma_ion_pair_unity"
   source: "\\cite{Bulow2021} (approximation not explicitly numbered)"
-  status: "Project-specific approximation"
+  status: "Documentation-only"
   description: "Provides a supporting relation used in debye and huckel electrolyte term contribution."
   change_note: "Assumption $\\gamma_{ip}^* \\approx 1$ is used as a simplifying closure and is not a standalone numbered equation in the source paper."
   tex_file: "docs/latex/equations.tex"
@@ -3033,7 +3369,7 @@
   subsubsection: "Ion-Pairing Relations"
   label: "eq:x_pm_balance"
   source: "\\cite{Bulow2021}, Eq.~(15)"
-  status: "Adapted notation"
+  status: "Documentation-only"
   description: "Provides a supporting relation used in debye and huckel electrolyte term contribution."
   change_note: "Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation."
   tex_file: "docs/latex/equations.tex"
@@ -3047,7 +3383,7 @@
   subsubsection: "Ion-Pairing Relations"
   label: "eq:x_free_ion_from_alpha"
   source: "\\cite{Bulow2021}, Eq.~(15)"
-  status: "Adapted implementation form"
+  status: "Documentation-only"
   description: "Provides a supporting relation used in debye and huckel electrolyte term contribution."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
@@ -3061,7 +3397,7 @@
   subsubsection: "Ion-Pairing Relations"
   label: "eq:x_ion_pair_from_alpha"
   source: "\\cite{Bulow2021}, Eq.~(9) (derived stoichiometric form)"
-  status: "Derived from literature equation"
+  status: "Documentation-only"
   description: "Provides a supporting relation used in debye and huckel electrolyte term contribution."
   change_note: "Stoichiometric rearrangement used with Eq. (9) during alpha-based ion-pair splitting."
   tex_file: "docs/latex/equations.tex"
@@ -3075,7 +3411,7 @@
   subsubsection: "Ion-Pairing Relations"
   label: "eq:x_pm_stoich"
   source: "\\cite{Bulow2021}, Eq.~(7) (adapted variable form)"
-  status: "Derived from literature equation"
+  status: "Documentation-only"
   description: "Provides a supporting relation used in debye and huckel electrolyte term contribution."
   change_note: "Geometric mean form mirrors the mean-ionic expression pattern and is written here for mole fractions."
   tex_file: "docs/latex/equations.tex"
@@ -3089,7 +3425,7 @@
   subsubsection: "Ion-Pairing Relations"
   label: "eq:mu_dh_infinite_dilution"
   source: "\\cite{Bulow2021}, Eq.~(25)"
-  status: "Adapted implementation form"
+  status: "Documentation-only"
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"
@@ -3103,7 +3439,7 @@
   subsubsection: "Ion-Pairing Relations"
   label: "eq:lngamma_i_infinite_dilution"
   source: "\\cite{Bulow2021}, Eq.~(13)"
-  status: "Manual literature match"
+  status: "Documentation-only"
   description: "Defines the Debye screening quantity used in debye and huckel electrolyte term contribution."
   change_note: "Mapped manually to the infinite-dilution ionic activity-coefficient relation."
   tex_file: "docs/latex/equations.tex"
@@ -3117,7 +3453,7 @@
   subsubsection: "Ion-Pairing Relations"
   label: "eq:gamma_pm_x"
   source: "\\cite{Bulow2021}, Eq.~(26)"
-  status: "Adapted implementation form"
+  status: "Documentation-only"
   description: "Gives an activity or fugacity-coefficient relation in debye and huckel electrolyte term contribution."
   change_note: "Lower similarity; likely algebraically adapted for implementation or combined terms."
   tex_file: "docs/latex/equations.tex"

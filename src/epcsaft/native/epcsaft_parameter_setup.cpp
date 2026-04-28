@@ -11,6 +11,8 @@ namespace thermo_detail {
 namespace parameter_setup_detail {
 
 template <typename Scalar>
+// EqID: epsr_mix_rule
+// EqID: epsr_mix_suppressed
 Scalar mixed_dielectric_constant_scalar_cpp(const vector<Scalar> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     if (cppargs.z.size() != static_cast<size_t>(ncomp)) {
@@ -92,6 +94,14 @@ Scalar mixed_dielectric_constant_scalar_cpp(const vector<Scalar> &x, const add_a
 }
 
 template <typename Scalar>
+// EqID: mw_bar
+// EqID: mw_solvent_bar
+// EqID: solvent_ion_sets
+// EqID: x_solvent_total
+// EqID: epsr_solvent_mass
+// EqID: epsr_salt_free
+// EqID: epsr_sf
+// EqID: x_ion_total
 Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, const add_args &cppargs) {
     const double alpha = 7.01;
     const Scalar one = scalar_constant<Scalar>(1.0);
@@ -384,6 +394,8 @@ double pair_diameter_cpp(double d_i, double d_j) {
     return d_i * d_j / (d_i + d_j);
 }
 
+// EqID: epsilon_assoc_mixing
+// EqID: kappa_assoc_mixing
 double association_volume_cpp(int comp_i, int comp_j, int ncomp, const vector<double> &s_ij, const add_args &cppargs) {
     int idxi = comp_i * ncomp + comp_i;
     int idxj = comp_j * ncomp + comp_j;
@@ -430,6 +442,7 @@ double ion_diameter_cpp_dt(int i, double t, const add_args &cppargs) {
     return 0.0;
 }
 
+// EqID: d_born_rule
 double ion_born_radius_cpp(int i, double t, const add_args &cppargs) {
     if (!is_ion_species(cppargs, i)) {
         return cppargs.s[i];
@@ -514,6 +527,15 @@ VectorContributionTerms make_vector_terms(
     return out;
 }
 
+// EqID: m_bar
+// EqID: d_segment
+// EqID: d_segment_dT
+// EqID: d_ion_rule
+// EqID: sigma_ij
+// EqID: epsilon_ij_mixing
+// EqID: epsilon_ij_ionic_zero
+// EqID: m2epssigma3_bar
+// EqID: m2eps2sigma3_bar
 MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {
     MixtureState state;
     int ncomp = static_cast<int>(x.size());
@@ -564,6 +586,12 @@ double dielectric_constant_rule_cpp(int rule, const vector<double> &x, const add
     return dielectric_constant_rule_scalar_cpp(rule, x, cppargs);
 }
 
+// EqID: depsr_dxi_mole
+// EqID: depsr_dxi_mass
+// EqID: depsr_dxi_combo
+// EqID: depsr_sf_dxi
+// EqID: depsr_mix_dxi
+// EqID: depsr_mix_dxi_piecewise
 vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {
     const double alpha = 7.01;
     int ncomp = static_cast<int>(x.size());

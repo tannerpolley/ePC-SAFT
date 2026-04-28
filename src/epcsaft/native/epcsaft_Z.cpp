@@ -47,6 +47,7 @@ ScalarContributionTerms normalized_dadrho_terms_cpp(const ScalarContributionTerm
     );
 }
 
+// EqID: z_alpha
 ScalarContributionTerms compressibility_terms_from_dadrho_cpp(const DadrhoResult &result) {
     return make_scalar_terms(
         result.terms.hc,
