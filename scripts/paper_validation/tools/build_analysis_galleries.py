@@ -269,7 +269,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
     }}
     .folder-row {{
       display: grid;
-      grid-template-columns: 24px 22px minmax(0, 1fr) auto;
+      grid-template-columns: 24px 22px minmax(0, 1fr) auto auto;
       align-items: center;
       min-height: 31px;
       gap: 4px;
@@ -278,6 +278,10 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
     }}
     .folder-row:hover {{ background: #eef4fb; }}
     .folder-row.is-selected {{ background: var(--blue-soft); }}
+    .folder-row.has-hidden-selection {{
+      background: #f3f8ff;
+      box-shadow: inset 3px 0 0 var(--blue);
+    }}
     .toggle {{
       width: 22px;
       height: 22px;
@@ -306,6 +310,17 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       color: var(--muted);
       font-size: 0.78rem;
       font-variant-numeric: tabular-nums;
+    }}
+    .hidden-selection-pill {{
+      border: 1px solid #9ac3f5;
+      border-radius: 999px;
+      background: #e6f1ff;
+      color: var(--blue);
+      font-size: 0.72rem;
+      font-weight: 650;
+      line-height: 1;
+      padding: 4px 7px;
+      white-space: nowrap;
     }}
     .content {{
       display: grid;
@@ -795,8 +810,23 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         return Array.from(node.children.values()).sort((a, b) => folderName(a.path).localeCompare(folderName(b.path)));
       }}
 
+      function isDescendantFolder(path, possibleAncestor) {{
+        if (!path || path === possibleAncestor) return false;
+        if (!possibleAncestor) return true;
+        return path.startsWith(`${{possibleAncestor}}/`);
+      }}
+
+      function selectedDescendantCount(path) {{
+        let count = 0;
+        for (const folder of selected) {{
+          if (isDescendantFolder(folder, path)) count += 1;
+        }}
+        return count;
+      }}
+
       function renderTreeNode(node, depth = 0) {{
         const childNodes = sortedChildren(node);
+        const hiddenSelectedCount = expanded.has(node.path) ? 0 : selectedDescendantCount(node.path);
         const li = document.createElement("li");
         const row = document.createElement("div");
         row.className = "folder-row";
@@ -854,7 +884,18 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         count.textContent = node.total;
 
         if (selected.has(node.path)) row.classList.add("is-selected");
-        row.append(toggle, checkbox, label, count);
+        if (hiddenSelectedCount > 0) row.classList.add("has-hidden-selection");
+
+        row.append(toggle, checkbox, label);
+        if (hiddenSelectedCount > 0) {{
+          const hiddenSelection = document.createElement("span");
+          hiddenSelection.className = "hidden-selection-pill";
+          hiddenSelection.textContent = `${{hiddenSelectedCount}} selected`;
+          hiddenSelection.title = `${{hiddenSelectedCount}} selected folder${{hiddenSelectedCount === 1 ? "" : "s"}} hidden inside this collapsed folder`;
+          hiddenSelection.setAttribute("aria-label", hiddenSelection.title);
+          row.append(hiddenSelection);
+        }}
+        row.append(count);
         li.append(row);
 
         if (expanded.has(node.path) && childNodes.length) {{

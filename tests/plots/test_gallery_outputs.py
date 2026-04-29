@@ -158,6 +158,11 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     assert "startSidebarResize" in html
     assert "finishSidebarResize" in html
     assert "col-resize" in html
+    assert "has-hidden-selection" in html
+    assert "hidden-selection-pill" in html
+    assert "function selectedDescendantCount" in html
+    assert "function isDescendantFolder" in html
+    assert "hidden inside this collapsed folder" in html
     assert "grid-template-columns: var(--sidebar) var(--sidebar-resizer) minmax(0, 1fr);" in html
     assert ".sidebar-resizer" in html
     assert "sidebar-resizing" in html
