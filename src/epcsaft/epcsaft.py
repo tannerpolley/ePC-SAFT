@@ -162,6 +162,16 @@ class ePCSAFTMixture:
             raise InputError("Provide exactly one of P or rho when constructing a state.")
         return ePCSAFTState(self, T, x, P=P, rho=rho, phase=phase)
 
+    def equilibrium(self, kind="tp_flash", T=None, P=None, z=None, options=None, backend=None):
+        """Run a V1 equilibrium calculation for this mixture."""
+        from .equilibrium import tp_flash
+
+        if kind != "tp_flash":
+            raise InputError("Only kind='tp_flash' is supported by V1 equilibrium.")
+        if backend not in (None, "neutral_vle"):
+            raise InputError("V1 equilibrium backend must be None or 'neutral_vle'.")
+        return tp_flash(self, T=T, P=P, z=z, options=options)
+
     def __repr__(self):
         """Return a short debugging representation of the mixture."""
         return f"ePCSAFTMixture(ncomp={self.ncomp}, species={self._species})"
