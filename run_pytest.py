@@ -29,8 +29,12 @@ FULL_PROFILE_TEST_TARGETS = (
 )
 PLOT_TEST_TARGETS = (
     "tests/plots/test_gallery_outputs.py",
-    "tests/plots/test_equilibrium_outputs.py",
-    "tests/plots/test_reference_comparison_outputs.py",
+    "tests/plots/test_api_parity_plot_outputs.py",
+    "tests/plots/test_contribution_plot_outputs.py",
+    "tests/plots/test_equilibrium_plot_outputs.py",
+    "tests/plots/test_native_plot_outputs.py",
+    "tests/plots/test_property_plot_outputs.py",
+    "tests/plots/test_regression_plot_outputs.py",
 )
 SLICE_TARGETS = {
     "generic": GENERIC_TEST_TARGETS,

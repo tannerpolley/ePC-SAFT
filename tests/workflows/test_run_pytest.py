@@ -44,13 +44,16 @@ def test_named_shortcuts_expand_to_expected_targets_and_keep_pytest_arg_ordering
 
 
 def test_plot_slice_stays_out_of_generic_and_confidence_targets():
-    assert "tests/plots/test_equilibrium_outputs.py" in run_pytest.PLOT_TEST_TARGETS
-    assert "tests/plots/test_reference_comparison_outputs.py" in run_pytest.PLOT_TEST_TARGETS
+    assert "tests/plots/test_equilibrium_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
+    assert "tests/plots/test_property_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
+    assert "tests/plots/test_contribution_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
+    assert "tests/plots/test_regression_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
+    assert "tests/plots/test_native_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
+    assert "tests/plots/test_api_parity_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
     assert all(target.startswith("tests/plots/") for target in run_pytest.PLOT_TEST_TARGETS)
-    assert "tests/plots/test_equilibrium_outputs.py" not in run_pytest.GENERIC_TEST_TARGETS
-    assert "tests/plots/test_equilibrium_outputs.py" not in run_pytest.CONFIDENCE_TEST_TARGETS
-    assert "tests/plots/test_reference_comparison_outputs.py" not in run_pytest.GENERIC_TEST_TARGETS
-    assert "tests/plots/test_reference_comparison_outputs.py" not in run_pytest.CONFIDENCE_TEST_TARGETS
+    for target in run_pytest.PLOT_TEST_TARGETS:
+        assert target not in run_pytest.GENERIC_TEST_TARGETS
+        assert target not in run_pytest.CONFIDENCE_TEST_TARGETS
 
 
 def test_slice_targets_use_grouped_test_subpackages():

@@ -1,0 +1,66 @@
+figure_file,axes_index,axes_title,artist_type,artist_label,series_index,point_index,x,y,width,height
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,line,,0,0,0,0,,
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,line,,0,1,1,0,,
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,scatter,Reported total,0,0,0,-3.54988545131505,,
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,scatter,Reported total,0,1,1,0.045946212080785642,,
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,scatter,Reported total,0,2,2,0.030774018567810361,,
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,scatter,Reported total,0,3,3,-1.1478687523834026,,
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,scatter,Reported total,0,4,4,-3.6543804288405433,,
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,scatter,Reported total,0,5,5,-5.4880637255729319,,
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,scatter,Reported total,0,6,6,1.9324151168689134,,
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,scatter,Reported total,0,7,7,-0.57409655958822725,,
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,scatter,Reported total,0,8,8,-2.4077798563206159,,
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,0,0,-0.3125,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,1,0,0.6875,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,2,0,1.6875,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,3,0,2.6875,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,4,0,3.6875,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,5,0,4.6875,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,6,0,5.6875,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,7,0,6.6875,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,8,0,7.6875,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,9,0,-0.1875,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,10,0,0.8125,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,11,0,1.8125,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,12,0,2.8125,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,13,0,3.8125,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,14,0,4.8125,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,15,0,5.8125,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,16,0,6.8125,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,17,0,7.8125,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,18,0,-0.0625,0,0.125,-7.3241153025296839
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,19,0,0.9375,0,0.125,-8.0765276553586656
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,20,0,1.9375,0,0.125,0.032955018848241084
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,21,0,2.9375,0,0.125,-8.031263515291073
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,22,0,3.9375,0,0.125,-13.165472848873641
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,23,0,4.9375,0,0.125,-17.746457919495249
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,24,0,5.9375,0,0.125,18.044832163371147
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,25,0,6.9375,0,0.125,12.910622829788579
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,26,0,7.9375,0,0.125,8.329637759166971
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,27,0,0.0625,0,0.125,3.7742298512146339
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,28,0,1.0625,0,0.125,7.1224738674394512
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,29,0,2.0625,0,0.125,-0.0021810002804307227
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,30,0,3.0625,0,0.125,6.8833947629076704
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,31,0,4.0625,0,0.125,9.5110924200330977
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,32,0,5.0625,0,0.125,12.258394193922317
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,33,0,6.0625,0,0.125,-16.112417046502234
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,34,0,7.0625,0,0.125,-13.484719389376806
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,35,0,8.0625,0,0.125,-10.737417615487587
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,36,0,0.1875,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,37,0,1.1875,0,0.125,1
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,38,0,2.1875,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,39,0,3.1875,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,40,0,4.1875,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,41,0,5.1875,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,42,0,6.1875,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,43,0,7.1875,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,44,0,8.1875,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,45,0,0.3125,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,46,0,1.3125,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,47,0,2.3125,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,48,0,3.3125,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,49,0,4.3125,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,50,0,5.3125,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,51,0,6.3125,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,52,0,7.3125,0,0.125,0
+runtime_neutral_contribution_term_breakdown.png,0,Neutral contribution term breakdown by reported quantity,bar,,53,0,8.3125,0,0.125,0

@@ -57,7 +57,41 @@ def fits_plot_path(*parts: str | Path) -> Path:
     return target
 
 
-def test_plot_path(source_path: str | Path, filename: str | Path) -> Path:
+def _test_plot_category_parts(category: str | Path | Iterable[str | Path] | None) -> list[str] | None:
+    if category is None:
+        return None
+    raw_parts: list[str | Path]
+    if isinstance(category, (str, Path)):
+        raw_parts = [category]
+    else:
+        raw_parts = list(category)
+
+    parts: list[str] = []
+    for raw_part in raw_parts:
+        path_part = Path(raw_part)
+        if path_part.is_absolute():
+            raise ValueError(f"test plot category must be relative: {raw_part}")
+        for part in path_part.parts:
+            if part in ("", "."):
+                continue
+            if part == "..":
+                raise ValueError(f"test plot category cannot contain '..': {raw_part}")
+            parts.append(part)
+    return parts
+
+
+def test_plot_path(
+    source_path: str | Path,
+    filename: str | Path,
+    *,
+    category: str | Path | Iterable[str | Path] | None = None,
+) -> Path:
+    category_parts = _test_plot_category_parts(category)
+    if category_parts is not None:
+        target = TEST_PLOTS_ROOT.joinpath(*category_parts) / Path(filename)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        return target
+
     source = Path(source_path)
     parts = list(source.parts)
     try:
