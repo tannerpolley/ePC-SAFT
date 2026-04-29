@@ -67,6 +67,8 @@ def image_manifest(pngs: list[Path]) -> list[dict[str, str]]:
     manifest = []
     for png in pngs:
         output_path = png.relative_to(PLOTS_ROOT).as_posix()
+        svg = png.with_suffix(".svg")
+        data = png.parent / "data" / f"{png.stem}_plot_data.csv"
         source_path = _source_path_for_output(output_path)
         manifest.append(
             {
@@ -74,6 +76,8 @@ def image_manifest(pngs: list[Path]) -> list[dict[str, str]]:
                 "folder": _folder_for(source_path),
                 "output_path": output_path,
                 "output_folder": _folder_for(output_path),
+                "svg_path": svg.relative_to(PLOTS_ROOT).as_posix() if svg.exists() else "",
+                "data_path": data.relative_to(PLOTS_ROOT).as_posix() if data.exists() else "",
                 "source_path": source_path,
                 "source_folder": _folder_for(source_path),
                 "name": png.name,
@@ -363,6 +367,34 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       font-family: Consolas, "Courier New", monospace;
       font-size: 0.76rem;
     }}
+    .image-actions {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding-top: 4px;
+    }}
+    .resource-link {{
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 2px 7px;
+      background: #fff;
+      color: var(--blue);
+      font-size: 0.74rem;
+      font-weight: 650;
+      text-decoration: none;
+    }}
+    .resource-link:hover {{
+      border-color: var(--blue);
+      background: var(--blue-soft);
+    }}
+    .resource-link.is-disabled {{
+      color: var(--muted);
+      opacity: 0.45;
+      pointer-events: none;
+    }}
     .image-link {{
       display: block;
       min-height: 220px;
@@ -626,7 +658,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
 
       function imageMatchesFilter(image, filterText) {{
         if (!filterText) return true;
-        const haystack = `${{image.output_path}} ${{image.source_path}} ${{image.title}}`.toLowerCase();
+        const haystack = `${{image.output_path}} ${{image.source_path}} ${{image.svg_path || ""}} ${{image.data_path || ""}} ${{image.title}}`.toLowerCase();
         return haystack.includes(filterText);
       }}
 
@@ -672,7 +704,28 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
           imagePath.className = "image-path";
           imagePath.textContent = image.source_path;
           imagePath.title = `Output: ${{image.output_path}}`;
-          head.append(imageTitle, imagePath);
+          const actions = document.createElement("div");
+          actions.className = "image-actions";
+          for (const resource of [
+            ["PNG", image.output_path],
+            ["SVG", image.svg_path],
+            ["CSV", image.data_path],
+          ]) {{
+            const resourceLink = document.createElement("a");
+            resourceLink.className = "resource-link";
+            resourceLink.textContent = resource[0];
+            if (resource[1]) {{
+              resourceLink.href = resource[1];
+              resourceLink.target = "_blank";
+              resourceLink.rel = "noopener";
+            }} else {{
+              resourceLink.href = "#";
+              resourceLink.classList.add("is-disabled");
+              resourceLink.setAttribute("aria-disabled", "true");
+            }}
+            actions.append(resourceLink);
+          }}
+          head.append(imageTitle, imagePath, actions);
 
           const link = document.createElement("a");
           link.className = "image-link";

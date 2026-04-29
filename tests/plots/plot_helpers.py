@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import textwrap
 from typing import Iterable
 
 import matplotlib
@@ -8,6 +9,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+
+matplotlib.rcParams["svg.fonttype"] = "none"
 
 from epcsaft import ePCSAFTMixture
 from epcsaft.regression import _debug_native_pure_neutral_objective
@@ -50,9 +53,93 @@ def methanol_cyclohexane_mixture() -> ePCSAFTMixture:
 
 def assert_plot_with_data(path: Path) -> None:
     csv_path = path.parent / "data" / f"{path.stem}_plot_data.csv"
+    svg_path = path.with_suffix(".svg")
     assert path.exists()
+    assert svg_path.exists()
     assert csv_path.exists()
     assert csv_path.stat().st_size > 0
+
+
+def _wrap_label(label: str, width: int = 18) -> str:
+    return "\n".join(textwrap.wrap(str(label), width=width, break_long_words=False, break_on_hyphens=False)) or str(label)
+
+
+def _wrapped_labels(labels: Iterable[str], *, width: int = 18) -> list[str]:
+    return [_wrap_label(label, width=width) for label in labels]
+
+
+def _max_wrapped_lines(labels: Iterable[str], *, width: int = 18) -> int:
+    wrapped = _wrapped_labels(labels, width=width)
+    return max((label.count("\n") + 1 for label in wrapped), default=1)
+
+
+def _comparison_size(labels: list[str], *, relative_error: bool) -> tuple[float, float]:
+    label_count = max(len(labels), 1)
+    longest = max((len(label) for label in labels), default=1)
+    width = max(7.5, min(18.0, label_count * 0.92 + longest * 0.08))
+    height = (5.8 if relative_error else 4.5) + min(2.2, 0.22 * _max_wrapped_lines(labels))
+    return width, height
+
+
+def _maybe_use_symmetric_log_scale(ax, values: np.ndarray) -> None:
+    finite = np.abs(values[np.isfinite(values)])
+    nonzero = finite[finite > 0.0]
+    if nonzero.size == 0:
+        return
+    if float(np.max(nonzero) / np.min(nonzero)) <= 1.0e4:
+        return
+    linthresh = max(float(np.min(nonzero)) * 0.5, 1.0e-12)
+    ax.set_yscale("symlog", linthresh=linthresh)
+    ax.text(
+        0.995,
+        0.04,
+        "symlog scale",
+        transform=ax.transAxes,
+        ha="right",
+        va="bottom",
+        fontsize="x-small",
+        color="0.35",
+    )
+
+
+def _maybe_use_symmetric_log_x_scale(ax, values: np.ndarray) -> None:
+    finite = np.abs(values[np.isfinite(values)])
+    nonzero = finite[finite > 0.0]
+    if nonzero.size == 0:
+        return
+    if float(np.max(nonzero) / np.min(nonzero)) <= 1.0e4:
+        return
+    linthresh = max(float(np.min(nonzero)) * 0.5, 1.0e-12)
+    ax.set_xscale("symlog", linthresh=linthresh)
+    ax.text(
+        0.98,
+        0.04,
+        "symlog scale",
+        transform=ax.transAxes,
+        ha="right",
+        va="bottom",
+        fontsize="x-small",
+        color="0.35",
+    )
+
+
+def _finish_figure(fig) -> None:
+    fig.align_labels()
+    fig.tight_layout(pad=1.35)
+
+
+def assert_figure_text_is_inside_canvas(fig, *, margin_px: float = 1.0) -> None:
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    canvas = fig.bbox
+    for text in fig.findobj(match=lambda artist: hasattr(artist, "get_window_extent") and hasattr(artist, "get_text")):
+        if not text.get_visible() or not text.get_text():
+            continue
+        bbox = text.get_window_extent(renderer=renderer)
+        assert bbox.x0 >= canvas.x0 - margin_px
+        assert bbox.y0 >= canvas.y0 - margin_px
+        assert bbox.x1 <= canvas.x1 + margin_px
+        assert bbox.y1 <= canvas.y1 + margin_px
 
 
 def save_comparison_plot(
@@ -68,33 +155,75 @@ def save_comparison_plot(
 ) -> Path:
     actual = np.asarray(actual, dtype=float)
     expected = np.asarray(expected, dtype=float)
-    x = np.arange(len(labels), dtype=float)
-    fig_height = 5.6 if relative_error else 4.4
-    if relative_error:
-        fig, axes = plt.subplots(2, 1, figsize=(max(7.0, len(labels) * 0.68), fig_height), height_ratios=[3, 1.35])
-        ax, err_ax = axes
+    is_dense = len(labels) > 12 or max((len(label) for label in labels), default=0) > 22
+    if is_dense:
+        wrapped_labels = _wrapped_labels(labels, width=24)
+        y = np.arange(len(labels), dtype=float)
+        fig_height = max(6.8, min(13.5, 1.8 + 0.38 * len(labels)))
+        if relative_error:
+            fig, axes = plt.subplots(1, 2, figsize=(14.8, fig_height), width_ratios=[2.3, 1.05])
+            ax, err_ax = axes
+        else:
+            fig, ax = plt.subplots(figsize=(10.5, fig_height))
+            err_ax = None
+
+        ax.barh(y - 0.18, actual, height=0.36, label="Actual")
+        ax.barh(y + 0.18, expected, height=0.36, label="Expected")
+        ax.set_title(title)
+        ax.set_xlabel(ylabel)
+        ax.set_yticks(y)
+        ax.set_yticklabels(wrapped_labels, fontsize="small")
+        ax.invert_yaxis()
+        ax.grid(axis="x", color="0.88", linewidth=0.7)
+        ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.02), ncol=2, frameon=False)
+        ax.axvline(0.0, color="0.82", linewidth=0.8)
+        _maybe_use_symmetric_log_x_scale(ax, np.concatenate([actual, expected]))
+
+        if err_ax is not None:
+            scale = np.maximum(np.abs(expected), 1.0e-30)
+            err_ax.barh(y, (actual - expected) / scale, height=0.55, label="Relative error")
+            err_ax.axvline(0.0, color="0.25", linewidth=0.8)
+            err_ax.set_xlabel("Rel. err.")
+            err_ax.set_yticks(y)
+            err_ax.set_yticklabels([])
+            err_ax.invert_yaxis()
+            err_ax.grid(axis="x", color="0.9", linewidth=0.7)
     else:
-        fig, ax = plt.subplots(figsize=(max(7.0, len(labels) * 0.68), fig_height))
-        err_ax = None
+        x = np.arange(len(labels), dtype=float)
+        wrapped_labels = _wrapped_labels(labels)
+        figsize = _comparison_size(labels, relative_error=relative_error)
+        if relative_error:
+            fig, axes = plt.subplots(2, 1, figsize=figsize, height_ratios=[3, 1.45])
+            ax, err_ax = axes
+        else:
+            fig, ax = plt.subplots(figsize=figsize)
+            err_ax = None
 
-    ax.bar(x - 0.18, actual, width=0.36, label="Actual")
-    ax.bar(x + 0.18, expected, width=0.36, label="Expected")
-    ax.set_title(title)
-    ax.set_ylabel(ylabel)
-    ax.set_xticks(x, labels, rotation=35, ha="right")
-    ax.legend()
-    ax.axhline(0.0, color="0.82", linewidth=0.8)
+        ax.bar(x - 0.18, actual, width=0.36, label="Actual")
+        ax.bar(x + 0.18, expected, width=0.36, label="Expected")
+        ax.set_title(title)
+        ax.set_ylabel(ylabel)
+        ax.set_xticks(x)
+        ax.set_xticklabels([] if err_ax is not None else wrapped_labels, rotation=0, ha="center")
+        ax.tick_params(axis="x", length=0 if err_ax is not None else 3)
+        ax.grid(axis="y", color="0.88", linewidth=0.7)
+        ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.14), ncol=2, frameon=False)
+        ax.axhline(0.0, color="0.82", linewidth=0.8)
+        _maybe_use_symmetric_log_scale(ax, np.concatenate([actual, expected]))
 
-    if err_ax is not None:
-        scale = np.maximum(np.abs(expected), 1.0e-30)
-        err_ax.bar(x, (actual - expected) / scale, width=0.5, label="Relative error")
-        err_ax.axhline(0.0, color="0.25", linewidth=0.8)
-        err_ax.set_ylabel("Rel. err.")
-        err_ax.set_xticks(x, labels, rotation=35, ha="right")
+        if err_ax is not None:
+            scale = np.maximum(np.abs(expected), 1.0e-30)
+            err_ax.bar(x, (actual - expected) / scale, width=0.5, label="Relative error")
+            err_ax.axhline(0.0, color="0.25", linewidth=0.8)
+            err_ax.set_ylabel("Rel. err.")
+            err_ax.grid(axis="y", color="0.9", linewidth=0.7)
+            err_ax.set_xticks(x)
+            err_ax.set_xticklabels(wrapped_labels, rotation=0, ha="center", fontsize="small")
 
     output_path = plot_outputs.test_plot_path(__file__, filename, category=category)
     try:
-        plot_outputs.save_plot_figure(fig, output_path, dpi=120)
+        _finish_figure(fig)
+        plot_outputs.save_plot_figure(fig, output_path, dpi=120, svg_companion=True)
     finally:
         plt.close(fig)
     assert_plot_with_data(output_path)
@@ -118,7 +247,9 @@ def save_parity_plot(
     plot_actual = actual[finite]
     plot_expected = expected[finite]
 
-    fig, axes = plt.subplots(1, 2, figsize=(12.0, 4.8), width_ratios=[2.2, 1.5])
+    wrapped_labels = _wrapped_labels(labels, width=22)
+    fig_height = max(5.2, min(11.0, 1.6 + 0.28 * len(labels)))
+    fig, axes = plt.subplots(1, 2, figsize=(13.2, fig_height), width_ratios=[2.3, 1.9])
     ax, err_ax = axes
     ax.scatter(plot_expected, plot_actual, label="Comparison points")
     if plot_expected.size:
@@ -129,18 +260,24 @@ def save_parity_plot(
     ax.set_title(title)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
-    ax.legend()
+    ax.grid(color="0.9", linewidth=0.7)
+    ax.legend(loc="best", frameon=False)
 
-    x = np.arange(len(labels), dtype=float)
     scale = np.maximum(np.abs(expected), 1.0e-30)
-    err_ax.bar(x, (actual - expected) / scale, width=0.55)
-    err_ax.axhline(0.0, color="0.25", linewidth=0.8)
+    y = np.arange(len(labels), dtype=float)
+    err_ax.barh(y, (actual - expected) / scale, height=0.55)
+    err_ax.axvline(0.0, color="0.25", linewidth=0.8)
     err_ax.set_title("Relative error")
-    err_ax.set_xticks(x, labels, rotation=45, ha="right")
+    err_ax.set_xlabel("Relative error")
+    err_ax.set_yticks(y)
+    err_ax.set_yticklabels(wrapped_labels, fontsize="small")
+    err_ax.invert_yaxis()
+    err_ax.grid(axis="x", color="0.9", linewidth=0.7)
 
     output_path = plot_outputs.test_plot_path(__file__, filename, category=category)
     try:
-        plot_outputs.save_plot_figure(fig, output_path, dpi=120)
+        _finish_figure(fig)
+        plot_outputs.save_plot_figure(fig, output_path, dpi=120, svg_companion=True)
     finally:
         plt.close(fig)
     assert_plot_with_data(output_path)
@@ -177,38 +314,47 @@ def save_contribution_closure_plot(
     category: Iterable[str],
 ) -> Path:
     labels = [str(row["label"]) for row in rows]
+    wrapped_labels = _wrapped_labels(labels, width=18)
     term_names = sorted({name for row in rows for name in row["terms"]})
-    x = np.arange(len(rows), dtype=float)
+    y = np.arange(len(rows), dtype=float)
 
-    fig, axes = plt.subplots(2, 1, figsize=(max(8.0, len(rows) * 0.72), 7.0), height_ratios=[3.0, 1.4])
+    fig_height = max(7.0, min(12.0, 2.2 + 0.48 * len(rows)))
+    fig, axes = plt.subplots(1, 2, figsize=(13.2, fig_height), width_ratios=[2.4, 1.25])
     ax, err_ax = axes
-    positive_bottom = np.zeros(len(rows), dtype=float)
-    negative_bottom = np.zeros(len(rows), dtype=float)
+    positive_left = np.zeros(len(rows), dtype=float)
+    negative_left = np.zeros(len(rows), dtype=float)
     for term_name in term_names:
         values = np.asarray([float(row["terms"].get(term_name, 0.0)) for row in rows], dtype=float)
-        bottoms = np.where(values >= 0.0, positive_bottom, negative_bottom)
-        ax.bar(x, values, bottom=bottoms, width=0.58, label=term_name)
-        positive_bottom += np.where(values >= 0.0, values, 0.0)
-        negative_bottom += np.where(values < 0.0, values, 0.0)
+        lefts = np.where(values >= 0.0, positive_left, negative_left)
+        ax.barh(y, values, left=lefts, height=0.58, label=term_name)
+        positive_left += np.where(values >= 0.0, values, 0.0)
+        negative_left += np.where(values < 0.0, values, 0.0)
 
     totals = np.asarray([float(row["total"]) for row in rows], dtype=float)
     term_sums = np.asarray([sum(float(value) for value in row["terms"].values()) for row in rows], dtype=float)
-    ax.scatter(x, totals, marker="x", color="black", label="Reported total", zorder=5)
+    ax.scatter(totals, y, marker="x", color="black", label="Reported total", zorder=5)
     ax.set_title(title)
-    ax.set_ylabel("Contribution value")
-    ax.set_xticks(x, labels, rotation=35, ha="right")
-    ax.axhline(0.0, color="0.82", linewidth=0.8)
-    ax.legend(ncol=min(3, max(1, len(term_names))), fontsize="small")
+    ax.set_xlabel("Contribution value")
+    ax.set_yticks(y)
+    ax.set_yticklabels(wrapped_labels, fontsize="small")
+    ax.invert_yaxis()
+    ax.axvline(0.0, color="0.82", linewidth=0.8)
+    ax.grid(axis="x", color="0.9", linewidth=0.7)
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.02), ncol=min(4, max(1, len(term_names))), fontsize="small", frameon=False)
 
     scale = np.maximum(np.abs(totals), 1.0e-30)
-    err_ax.bar(x, (term_sums - totals) / scale, width=0.55, label="Closure error")
-    err_ax.axhline(0.0, color="0.25", linewidth=0.8)
-    err_ax.set_ylabel("Rel. closure")
-    err_ax.set_xticks(x, labels, rotation=35, ha="right")
+    err_ax.barh(y, (term_sums - totals) / scale, height=0.55, label="Closure error")
+    err_ax.axvline(0.0, color="0.25", linewidth=0.8)
+    err_ax.set_xlabel("Rel. closure")
+    err_ax.set_yticks(y)
+    err_ax.set_yticklabels([])
+    err_ax.invert_yaxis()
+    err_ax.grid(axis="x", color="0.9", linewidth=0.7)
 
     output_path = plot_outputs.test_plot_path(__file__, filename, category=category)
     try:
-        plot_outputs.save_plot_figure(fig, output_path, dpi=120)
+        _finish_figure(fig)
+        plot_outputs.save_plot_figure(fig, output_path, dpi=120, svg_companion=True)
     finally:
         plt.close(fig)
     assert_plot_with_data(output_path)
@@ -223,26 +369,32 @@ def save_contribution_term_breakdown_plot(
     category: Iterable[str],
 ) -> Path:
     labels = [str(row["label"]) for row in rows]
+    wrapped_labels = _wrapped_labels(labels, width=18)
     term_names = sorted({name for row in rows for name in row["terms"]})
-    x = np.arange(len(rows), dtype=float)
-    width = min(0.75 / max(len(term_names), 1), 0.18)
-    offsets = (np.arange(len(term_names), dtype=float) - (len(term_names) - 1) / 2.0) * width
+    y = np.arange(len(rows), dtype=float)
+    height = min(0.75 / max(len(term_names), 1), 0.18)
+    offsets = (np.arange(len(term_names), dtype=float) - (len(term_names) - 1) / 2.0) * height
 
-    fig, ax = plt.subplots(figsize=(max(9.0, len(rows) * 0.8), 4.8))
+    fig_height = max(6.4, min(12.0, 1.8 + 0.46 * len(rows)))
+    fig, ax = plt.subplots(figsize=(12.4, fig_height))
     for offset, term_name in zip(offsets, term_names, strict=False):
         values = np.asarray([float(row["terms"].get(term_name, 0.0)) for row in rows], dtype=float)
-        ax.bar(x + offset, values, width=width, label=term_name)
+        ax.barh(y + offset, values, height=height, label=term_name)
 
-    ax.scatter(x, [float(row["total"]) for row in rows], marker="x", color="black", label="Reported total", zorder=5)
+    ax.scatter([float(row["total"]) for row in rows], y, marker="x", color="black", label="Reported total", zorder=5)
     ax.set_title(title)
-    ax.set_ylabel("Term contribution")
-    ax.set_xticks(x, labels, rotation=35, ha="right")
-    ax.axhline(0.0, color="0.82", linewidth=0.8)
-    ax.legend(ncol=min(4, max(1, len(term_names))), fontsize="small")
+    ax.set_xlabel("Term contribution")
+    ax.set_yticks(y)
+    ax.set_yticklabels(wrapped_labels, fontsize="small")
+    ax.invert_yaxis()
+    ax.axvline(0.0, color="0.82", linewidth=0.8)
+    ax.grid(axis="x", color="0.9", linewidth=0.7)
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.02), ncol=min(4, max(1, len(term_names))), fontsize="small", frameon=False)
 
     output_path = plot_outputs.test_plot_path(__file__, filename, category=category)
     try:
-        plot_outputs.save_plot_figure(fig, output_path, dpi=120)
+        _finish_figure(fig)
+        plot_outputs.save_plot_figure(fig, output_path, dpi=120, svg_companion=True)
     finally:
         plt.close(fig)
     assert_plot_with_data(output_path)

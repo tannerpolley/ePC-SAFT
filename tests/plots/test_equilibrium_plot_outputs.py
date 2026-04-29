@@ -38,7 +38,7 @@ def test_equilibrium_vle_composition_plot_is_written_to_gallery() -> None:
         category=("equilibrium", "vle"),
     )
     try:
-        plot_outputs.save_plot_figure(fig, output_path, dpi=120)
+        plot_outputs.save_plot_figure(fig, output_path, dpi=120, svg_companion=True)
     finally:
         plt.close(fig)
 
@@ -137,7 +137,7 @@ def test_equilibrium_lle_tie_line_plot_is_written_to_gallery() -> None:
         category=("equilibrium", "lle"),
     )
     try:
-        plot_outputs.save_plot_figure(fig, output_path, dpi=120)
+        plot_outputs.save_plot_figure(fig, output_path, dpi=120, svg_companion=True)
     finally:
         plt.close(fig)
 

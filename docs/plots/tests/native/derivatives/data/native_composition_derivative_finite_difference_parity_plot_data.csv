@@ -2,16 +2,16 @@ figure_file,axes_index,axes_title,artist_type,artist_label,series_index,point_in
 native_composition_derivative_finite_difference_parity.png,0,Native composition derivative vs constrained finite difference,line,Parity,0,0,-13.548732732656868,-13.548732732656868,,
 native_composition_derivative_finite_difference_parity.png,0,Native composition derivative vs constrained finite difference,line,Parity,0,1,209.49629969348732,209.49629969348732,,
 native_composition_derivative_finite_difference_parity.png,1,Relative error,line,,0,0,0,0,,
-native_composition_derivative_finite_difference_parity.png,1,Relative error,line,,0,1,1,0,,
+native_composition_derivative_finite_difference_parity.png,1,Relative error,line,,0,1,0,1,,
 native_composition_derivative_finite_difference_parity.png,0,Native composition derivative vs constrained finite difference,scatter,Comparison points,0,0,2.5065116757705397,2.5065116764571416,,
 native_composition_derivative_finite_difference_parity.png,0,Native composition derivative vs constrained finite difference,scatter,Comparison points,0,1,1.8336832969811923,1.8336832967323886,,
 native_composition_derivative_finite_difference_parity.png,0,Native composition derivative vs constrained finite difference,scatter,Comparison points,0,2,4.3401949758603564,4.3401949731895302,,
 native_composition_derivative_finite_difference_parity.png,0,Native composition derivative vs constrained finite difference,scatter,Comparison points,0,3,188.42153705023179,188.42153713492579,,
 native_composition_derivative_finite_difference_parity.png,0,Native composition derivative vs constrained finite difference,scatter,Comparison points,0,4,5.6923465328040379,5.6923465291722835,,
 native_composition_derivative_finite_difference_parity.png,0,Native composition derivative vs constrained finite difference,scatter,Comparison points,0,5,194.11388357504222,194.11388366409807,,
-native_composition_derivative_finite_difference_parity.png,1,Relative error,bar,,0,0,0,0,0.55000000000000004,2.7392726437071612e-10
-native_composition_derivative_finite_difference_parity.png,1,Relative error,bar,,1,0,1,0,0.55000000000000004,-1.3568517789487648e-10
-native_composition_derivative_finite_difference_parity.png,1,Relative error,bar,,2,0,2,0,0.55000000000000004,-6.1537010242671739e-10
-native_composition_derivative_finite_difference_parity.png,1,Relative error,bar,,3,0,3,0,0.55000000000000004,4.4949210884331794e-10
-native_composition_derivative_finite_difference_parity.png,1,Relative error,bar,,4,0,4,0,0.55000000000000004,-6.3800656404125482e-10
-native_composition_derivative_finite_difference_parity.png,1,Relative error,bar,,5,0,5,0,0.55000000000000004,4.5878143141860715e-10
+native_composition_derivative_finite_difference_parity.png,1,Relative error,bar,,0,0,1.3696363218535806e-10,-0.27500000000000002,2.7392726437071612e-10,0.55000000000000004
+native_composition_derivative_finite_difference_parity.png,1,Relative error,bar,,1,0,-6.784258894743824e-11,0.72499999999999998,-1.3568517789487648e-10,0.55000000000000004
+native_composition_derivative_finite_difference_parity.png,1,Relative error,bar,,2,0,-3.0768505121335869e-10,1.7250000000000001,-6.1537010242671739e-10,0.55000000000000004
+native_composition_derivative_finite_difference_parity.png,1,Relative error,bar,,3,0,2.2474605442165897e-10,2.7250000000000001,4.4949210884331794e-10,0.55000000000000004
+native_composition_derivative_finite_difference_parity.png,1,Relative error,bar,,4,0,-3.1900328202062741e-10,3.7250000000000001,-6.3800656404125482e-10,0.55000000000000004
+native_composition_derivative_finite_difference_parity.png,1,Relative error,bar,,5,0,2.2939071570930358e-10,4.7249999999999996,4.5878143141860715e-10,0.55000000000000004

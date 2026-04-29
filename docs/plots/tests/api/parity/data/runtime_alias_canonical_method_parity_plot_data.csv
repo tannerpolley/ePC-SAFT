@@ -2,7 +2,7 @@ figure_file,axes_index,axes_title,artist_type,artist_label,series_index,point_in
 runtime_alias_canonical_method_parity.png,0,State aliases vs canonical public methods,line,Parity,0,0,-536738.30307197408,-536738.30307197408,,
 runtime_alias_canonical_method_parity.png,0,State aliases vs canonical public methods,line,Parity,0,1,147165.80022755364,147165.80022755364,,
 runtime_alias_canonical_method_parity.png,1,Relative error,line,,0,0,0,0,,
-runtime_alias_canonical_method_parity.png,1,Relative error,line,,0,1,1,0,,
+runtime_alias_canonical_method_parity.png,1,Relative error,line,,0,1,0,1,,
 runtime_alias_canonical_method_parity.png,0,State aliases vs canonical public methods,scatter,Comparison points,0,0,100000,100000,,
 runtime_alias_canonical_method_parity.png,0,State aliases vs canonical public methods,scatter,Comparison points,0,1,55344.274540081067,55344.274540081067,,
 runtime_alias_canonical_method_parity.png,0,State aliases vs canonical public methods,scatter,Comparison points,0,2,55344.274540081067,55344.274540081067,,
@@ -27,27 +27,27 @@ runtime_alias_canonical_method_parity.png,0,State aliases vs canonical public me
 runtime_alias_canonical_method_parity.png,0,State aliases vs canonical public methods,scatter,Comparison points,0,21,100000,100000,,
 runtime_alias_canonical_method_parity.png,0,State aliases vs canonical public methods,scatter,Comparison points,0,22,-475461.42607060104,-475461.42607060104,,
 runtime_alias_canonical_method_parity.png,0,State aliases vs canonical public methods,scatter,Comparison points,0,23,-489572.50284442049,-489572.50284442049,,
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,0,0,0,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,1,0,1,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,2,0,2,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,3,0,3,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,4,0,4,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,5,0,5,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,6,0,6,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,7,0,7,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,8,0,8,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,9,0,9,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,10,0,10,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,11,0,11,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,12,0,12,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,13,0,13,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,14,0,14,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,15,0,15,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,16,0,16,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,17,0,17,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,18,0,18,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,19,0,19,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,20,0,20,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,21,0,21,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,22,0,22,0,0.55000000000000004,0
-runtime_alias_canonical_method_parity.png,1,Relative error,bar,,23,0,23,0,0.55000000000000004,0
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,0,0,0,-0.27500000000000002,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,1,0,0,0.72499999999999998,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,2,0,0,1.7250000000000001,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,3,0,0,2.7250000000000001,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,4,0,0,3.7250000000000001,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,5,0,0,4.7249999999999996,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,6,0,0,5.7249999999999996,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,7,0,0,6.7249999999999996,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,8,0,0,7.7249999999999996,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,9,0,0,8.7249999999999996,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,10,0,0,9.7249999999999996,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,11,0,0,10.725,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,12,0,0,11.725,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,13,0,0,12.725,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,14,0,0,13.725,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,15,0,0,14.725,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,16,0,0,15.725,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,17,0,0,16.725000000000001,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,18,0,0,17.725000000000001,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,19,0,0,18.725000000000001,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,20,0,0,19.725000000000001,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,21,0,0,20.725000000000001,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,22,0,0,21.725000000000001,0,0.55000000000000004
+runtime_alias_canonical_method_parity.png,1,Relative error,bar,,23,0,0,22.725000000000001,0,0.55000000000000004

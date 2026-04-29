@@ -114,6 +114,11 @@ def plot_data_path(image_path: str | Path) -> Path:
     return image.parent / "data" / f"{image.stem}_plot_data.csv"
 
 
+def plot_svg_path(image_path: str | Path) -> Path:
+    image = Path(image_path)
+    return image.with_suffix(".svg")
+
+
 def _format_cell(value: Any) -> str:
     if value is None:
         return ""
@@ -248,12 +253,24 @@ def export_plot_data(fig: Any, image_path: str | Path) -> Path:
     return path
 
 
-def save_plot_figure(fig: Any, path: str | Path, *, dpi: int = 300, bbox_inches: str | None = "tight", **savefig_kwargs: Any) -> Path:
+def save_plot_figure(
+    fig: Any,
+    path: str | Path,
+    *,
+    dpi: int = 300,
+    bbox_inches: str | None = "tight",
+    svg_companion: bool = False,
+    **savefig_kwargs: Any,
+) -> Path:
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     kwargs = dict(savefig_kwargs)
     if bbox_inches is not None:
         kwargs["bbox_inches"] = bbox_inches
     fig.savefig(output_path, dpi=dpi, **kwargs)
+    if svg_companion:
+        svg_path = plot_svg_path(output_path)
+        svg_kwargs = dict(kwargs)
+        fig.savefig(svg_path, format="svg", **svg_kwargs)
     export_plot_data(fig, output_path)
     return output_path
