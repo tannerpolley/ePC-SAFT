@@ -7,6 +7,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PLOTS_ROOT = REPO_ROOT / "docs" / "plots"
+CSV_BACKFILL_MARKER = 'epcsaft-interactive-source="csv_backfill"'
 
 
 def should_include_png(path: Path) -> bool:
@@ -63,12 +64,26 @@ def _folder_for(path: str) -> str:
     return "" if folder == "." else folder
 
 
+def _interactive_source(html_path: Path) -> str:
+    if not html_path.exists():
+        return "static_only"
+    try:
+        head = html_path.read_text(encoding="utf-8", errors="ignore")[:2000]
+    except OSError:
+        return "native_plotly"
+    is_csv_backfill = CSV_BACKFILL_MARKER in head or (
+        "epcsaft-interactive-source" in head and 'content="csv_backfill"' in head
+    )
+    return "csv_backfill" if is_csv_backfill else "native_plotly"
+
+
 def image_manifest(pngs: list[Path]) -> list[dict[str, str]]:
     manifest = []
     for png in pngs:
         output_path = png.relative_to(PLOTS_ROOT).as_posix()
         svg = png.with_suffix(".svg")
         interactive_html = png.with_suffix(".html")
+        interactive_source = _interactive_source(interactive_html)
         data = png.parent / "data" / f"{png.stem}_plot_data.csv"
         source_path = _source_path_for_output(output_path)
         manifest.append(
@@ -79,6 +94,7 @@ def image_manifest(pngs: list[Path]) -> list[dict[str, str]]:
                 "output_folder": _folder_for(output_path),
                 "svg_path": svg.relative_to(PLOTS_ROOT).as_posix() if svg.exists() else "",
                 "html_path": interactive_html.relative_to(PLOTS_ROOT).as_posix() if interactive_html.exists() else "",
+                "interactive_source": interactive_source,
                 "data_path": data.relative_to(PLOTS_ROOT).as_posix() if data.exists() else "",
                 "source_path": source_path,
                 "source_folder": _folder_for(source_path),
@@ -1070,12 +1086,17 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
           if (image.output_path) actions.append(makeAssetButton("PNG", image.output_path, image));
           if (image.svg_path) actions.append(makeAssetButton("SVG", image.svg_path, image));
           if (image.data_path) actions.append(makeDataButton(image));
-          if (!image.html_path) {{
-            const badge = document.createElement("span");
-            badge.className = "asset-badge";
+          const badge = document.createElement("span");
+          badge.className = "asset-badge";
+          if (image.interactive_source === "csv_backfill") {{
+            badge.textContent = "CSV interactive";
+            badge.title = "CSV-backed interactive reconstruction from plot data";
+          }} else if (image.interactive_source === "native_plotly") {{
+            badge.textContent = "Interactive";
+          }} else {{
             badge.textContent = "Static only";
-            actions.append(badge);
           }}
+          actions.append(badge);
           head.append(imageTitle, imagePath, actions);
 
           card.append(head, renderPlotPreview(image));

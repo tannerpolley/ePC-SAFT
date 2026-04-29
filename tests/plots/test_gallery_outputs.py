@@ -109,7 +109,10 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     child.mkdir(parents=True)
     (child / "figure_1.png").write_bytes(b"png")
     (child / "figure_1.svg").write_text("<svg></svg>", encoding="utf-8")
-    (child / "figure_1.html").write_text("<html></html>", encoding="utf-8")
+    (child / "figure_1.html").write_text(
+        '<html><meta name="epcsaft-interactive-source" content="csv_backfill"></html>',
+        encoding="utf-8",
+    )
     (child / "data").mkdir()
     (child / "data" / "figure_1_plot_data.csv").write_text("x,y\n0,0\n", encoding="utf-8")
     for test_child in (
@@ -132,6 +135,7 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     assert '"output_path":"paper_validation/Example/figure_1/figure_1.png"' in html
     assert '"svg_path":"paper_validation/Example/figure_1/figure_1.svg"' in html
     assert '"html_path":"paper_validation/Example/figure_1/figure_1.html"' in html
+    assert '"interactive_source":"csv_backfill"' in html
     assert '"data_path":"paper_validation/Example/figure_1/data/figure_1_plot_data.csv"' in html
     assert '"source_path":"scripts/paper_validation/Example_analysis/figure_1/figure_1.png"' in html
     assert '"source_path":"tests/equilibrium/vle/vle.png"' in html
@@ -162,6 +166,9 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     assert "parseCsv" in html
     assert 'button.textContent = "Data";' in html
     assert 'badge.textContent = "Static only";' in html
+    assert 'badge.textContent = "CSV interactive";' in html
+    assert 'badge.textContent = "Interactive";' in html
+    assert "CSV-backed interactive reconstruction from plot data" in html
     assert "resource-link is-disabled" not in html
     assert 'target = "_blank"' not in html
     assert 'className = "image-link"' not in html
@@ -180,6 +187,10 @@ def test_gallery_manifest_keeps_output_and_source_paths(tmp_path: Path, monkeypa
         path.write_bytes(b"png")
     paths[2].with_suffix(".svg").write_text("<svg></svg>", encoding="utf-8")
     paths[2].with_suffix(".html").write_text("<html></html>", encoding="utf-8")
+    paths[0].with_suffix(".html").write_text(
+        '<html><meta name="epcsaft-interactive-source" content="csv_backfill"></html>',
+        encoding="utf-8",
+    )
     data_path = paths[2].parent / "data" / "equilibrium_vle_compositions_plot_data.csv"
     data_path.parent.mkdir(parents=True, exist_ok=True)
     data_path.write_text("x,y\n0,0\n", encoding="utf-8")
@@ -201,6 +212,11 @@ def test_gallery_manifest_keeps_output_and_source_paths(tmp_path: Path, monkeypa
     assert by_output["tests/equilibrium/vle/equilibrium_vle_compositions.png"]["html_path"] == (
         "tests/equilibrium/vle/equilibrium_vle_compositions.html"
     )
+    assert by_output["tests/equilibrium/vle/equilibrium_vle_compositions.png"]["interactive_source"] == (
+        "native_plotly"
+    )
+    assert by_output["paper_validation/Example/figure_1/figure_1.png"]["interactive_source"] == "csv_backfill"
+    assert by_output["fits/miac/water/miac.png"]["interactive_source"] == "static_only"
     assert by_output["tests/equilibrium/vle/equilibrium_vle_compositions.png"]["data_path"] == (
         "tests/equilibrium/vle/data/equilibrium_vle_compositions_plot_data.csv"
     )
