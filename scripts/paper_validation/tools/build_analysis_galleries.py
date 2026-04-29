@@ -307,6 +307,19 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       align-items: center;
       color: var(--muted);
       font-size: 0.86rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }}
+    .tile-control {{
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+    }}
+    .plot-mode-buttons {{
+      display: inline-grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      min-width: 190px;
     }}
     .range {{
       width: 140px;
@@ -378,6 +391,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
     .resource-link {{
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       min-height: 24px;
       border: 1px solid var(--border);
       border-radius: 5px;
@@ -387,17 +401,28 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       font-size: 0.74rem;
       font-weight: 650;
       text-decoration: none;
+      cursor: pointer;
     }}
     .resource-link:hover {{
       border-color: var(--blue);
       background: var(--blue-soft);
     }}
-    .resource-link.is-disabled {{
-      color: var(--muted);
-      opacity: 0.45;
-      pointer-events: none;
+    button.resource-link {{
+      font: inherit;
     }}
-    .image-link {{
+    .asset-badge {{
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      border: 1px solid #c9d5e2;
+      border-radius: 5px;
+      padding: 2px 7px;
+      background: #eef3f8;
+      color: var(--muted);
+      font-size: 0.74rem;
+      font-weight: 650;
+    }}
+    .plot-preview {{
       display: block;
       min-height: 220px;
       padding: 12px;
@@ -410,9 +435,27 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       background-position: 0 0, 0 8px, 8px -8px, -8px 0;
       background-size: 16px 16px;
     }}
-    .image-link:focus-visible {{
-      outline: 3px solid rgba(25, 95, 184, 0.35);
-      outline-offset: -3px;
+    .plot-preview.is-interactive {{
+      min-height: 430px;
+      padding: 0;
+      background: #fff;
+    }}
+    .interactive-frame {{
+      display: block;
+      width: 100%;
+      height: clamp(430px, 54vw, 760px);
+      min-height: 430px;
+      border: 0;
+      background: #fff;
+    }}
+    .interactive-placeholder {{
+      display: grid;
+      min-height: 430px;
+      place-items: center;
+      padding: 22px;
+      background: #fff;
+      color: var(--muted);
+      text-align: center;
     }}
     img {{
       display: block;
@@ -437,6 +480,74 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       margin-bottom: 4px;
       color: var(--text);
     }}
+    .data-modal {{
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(23, 32, 42, 0.42);
+    }}
+    .data-dialog {{
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      width: min(1100px, 96vw);
+      max-height: min(760px, 92vh);
+      overflow: hidden;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: 0 22px 70px rgba(23, 32, 42, 0.28);
+    }}
+    .data-dialog-head {{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel-2);
+    }}
+    .data-dialog-title {{
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 650;
+    }}
+    .data-dialog-body {{
+      min-height: 0;
+      overflow: auto;
+      padding: 12px 14px 16px;
+    }}
+    .data-note {{
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }}
+    .data-table {{
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }}
+    .data-table th,
+    .data-table td {{
+      max-width: 260px;
+      border: 1px solid var(--border);
+      padding: 4px 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: left;
+    }}
+    .data-table th {{
+      position: sticky;
+      top: 0;
+      background: var(--blue-soft);
+      color: var(--text);
+      z-index: 1;
+    }}
     .hidden {{ display: none !important; }}
 
     @media (max-width: 860px) {{
@@ -453,6 +564,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       .gallery-scroll {{ overflow: visible; padding: 14px; }}
       .content-title-row {{ align-items: start; flex-direction: column; }}
       .view-tools {{ width: 100%; justify-content: space-between; }}
+      .plot-mode-buttons {{ min-width: min(190px, 48vw); }}
       .range {{ width: min(180px, 48vw); }}
     }}
   </style>
@@ -487,10 +599,16 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
             <h2 id="gallery-title">Selected plots</h2>
             <p id="gallery-meta" class="meta"></p>
           </div>
-          <label class="view-tools">
-            Tile width
-            <input id="tile-size" class="range" type="range" min="220" max="520" step="20" value="320">
-          </label>
+          <div class="view-tools">
+            <div class="plot-mode-buttons" aria-label="Plot display mode">
+              <button id="interactive-view" class="mode-button is-active" type="button">Interactive</button>
+              <button id="static-view" class="mode-button" type="button">Static</button>
+            </div>
+            <label class="tile-control">
+              Tile width
+              <input id="tile-size" class="range" type="range" min="220" max="620" step="20" value="360">
+            </label>
+          </div>
         </div>
         <div id="selected-chips" class="chips" aria-label="Selected folders"></div>
       </header>
@@ -502,6 +620,15 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         </div>
       </section>
     </main>
+  </div>
+  <div id="data-modal" class="data-modal hidden" role="dialog" aria-modal="true" aria-labelledby="data-dialog-title">
+    <div class="data-dialog">
+      <div class="data-dialog-head">
+        <div id="data-dialog-title" class="data-dialog-title">Plot data</div>
+        <button id="data-close" class="icon-button" type="button" title="Close data table" aria-label="Close data table">x</button>
+      </div>
+      <div id="data-dialog-body" class="data-dialog-body"></div>
+    </div>
   </div>
 
   <script id="plot-data" type="application/json">{_safe_json(manifest)}</script>
@@ -518,9 +645,17 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       const chipsEl = document.getElementById("selected-chips");
       const sourceModeEl = document.getElementById("source-mode");
       const outputModeEl = document.getElementById("output-mode");
+      const interactiveViewEl = document.getElementById("interactive-view");
+      const staticViewEl = document.getElementById("static-view");
+      const dataModalEl = document.getElementById("data-modal");
+      const dataTitleEl = document.getElementById("data-dialog-title");
+      const dataBodyEl = document.getElementById("data-dialog-body");
+      const dataCloseEl = document.getElementById("data-close");
+      const plotViewStorageKey = "plotGalleryViewMode";
       const selected = new Set([""]);
       const expanded = new Set([""]);
       let treeMode = "source";
+      let plotViewMode = localStorage.getItem(plotViewStorageKey) === "static" ? "static" : "interactive";
       let folderMap = new Map();
       let root = null;
 
@@ -681,6 +816,157 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         }}
       }}
 
+      function setPlotViewMode(mode) {{
+        plotViewMode = mode === "static" ? "static" : "interactive";
+        localStorage.setItem(plotViewStorageKey, plotViewMode);
+        interactiveViewEl.classList.toggle("is-active", plotViewMode === "interactive");
+        staticViewEl.classList.toggle("is-active", plotViewMode === "static");
+        renderGallery();
+      }}
+
+      function makeAssetLink(label, path) {{
+        const link = document.createElement("a");
+        link.className = "resource-link";
+        link.textContent = label;
+        link.href = path;
+        return link;
+      }}
+
+      function makeDataButton(image) {{
+        const button = document.createElement("button");
+        button.className = "resource-link";
+        button.type = "button";
+        button.textContent = "Data";
+        button.addEventListener("click", () => showDataTable(image));
+        return button;
+      }}
+
+      function parseCsv(text) {{
+        const rows = [];
+        let row = [];
+        let value = "";
+        let quoted = false;
+        for (let index = 0; index < text.length; index += 1) {{
+          const char = text[index];
+          const next = text[index + 1];
+          if (quoted) {{
+            if (char === '"' && next === '"') {{
+              value += '"';
+              index += 1;
+            }} else if (char === '"') {{
+              quoted = false;
+            }} else {{
+              value += char;
+            }}
+          }} else if (char === '"') {{
+            quoted = true;
+          }} else if (char === ",") {{
+            row.push(value);
+            value = "";
+          }} else if (char === "\\n") {{
+            row.push(value);
+            rows.push(row);
+            row = [];
+            value = "";
+          }} else if (char !== "\\r") {{
+            value += char;
+          }}
+        }}
+        if (value || row.length) {{
+          row.push(value);
+          rows.push(row);
+        }}
+        return rows;
+      }}
+
+      function renderDataRows(rows, path) {{
+        dataBodyEl.replaceChildren();
+        if (!rows.length) {{
+          const note = document.createElement("p");
+          note.className = "data-note";
+          note.textContent = `No rows found in ${{path}}.`;
+          dataBodyEl.append(note);
+          return;
+        }}
+        const maxRows = 200;
+        const [headers, ...dataRows] = rows;
+        const shownRows = dataRows.slice(0, maxRows);
+        const note = document.createElement("p");
+        note.className = "data-note";
+        note.textContent = `Showing ${{shownRows.length}} of ${{dataRows.length}} data row${{dataRows.length === 1 ? "" : "s"}} from ${{path}}.`;
+        const table = document.createElement("table");
+        table.className = "data-table";
+        const thead = document.createElement("thead");
+        const headRow = document.createElement("tr");
+        for (const header of headers) {{
+          const th = document.createElement("th");
+          th.textContent = header;
+          headRow.append(th);
+        }}
+        thead.append(headRow);
+        const tbody = document.createElement("tbody");
+        for (const sourceRow of shownRows) {{
+          const tr = document.createElement("tr");
+          for (let column = 0; column < headers.length; column += 1) {{
+            const td = document.createElement("td");
+            td.textContent = sourceRow[column] ?? "";
+            tr.append(td);
+          }}
+          tbody.append(tr);
+        }}
+        table.append(thead, tbody);
+        dataBodyEl.append(note, table);
+      }}
+
+      async function showDataTable(image) {{
+        dataTitleEl.textContent = image.title;
+        dataBodyEl.replaceChildren();
+        const loading = document.createElement("p");
+        loading.className = "data-note";
+        loading.textContent = `Loading ${{image.data_path}}...`;
+        dataBodyEl.append(loading);
+        dataModalEl.classList.remove("hidden");
+        try {{
+          const response = await fetch(image.data_path);
+          if (!response.ok) throw new Error(`HTTP ${{response.status}}`);
+          renderDataRows(parseCsv(await response.text()), image.data_path);
+        }} catch (error) {{
+          dataBodyEl.replaceChildren();
+          const note = document.createElement("p");
+          note.className = "data-note";
+          note.textContent = `Could not load ${{image.data_path}}: ${{error.message}}`;
+          dataBodyEl.append(note);
+        }}
+      }}
+
+      function closeDataTable() {{
+        dataModalEl.classList.add("hidden");
+        dataBodyEl.replaceChildren();
+      }}
+
+      function renderPlotPreview(image) {{
+        const preview = document.createElement("div");
+        preview.className = "plot-preview";
+        if (plotViewMode === "interactive" && image.html_path) {{
+          preview.classList.add("is-interactive");
+          const frame = document.createElement("iframe");
+          frame.className = "interactive-frame";
+          frame.loading = "lazy";
+          frame.title = image.title;
+          frame.src = image.html_path;
+          preview.append(frame);
+          return preview;
+        }}
+
+        const img = document.createElement("img");
+        img.loading = "lazy";
+        img.decoding = "async";
+        img.src = image.output_path;
+        img.alt = image.title;
+        preview.append(img);
+        return preview;
+      }}
+
       function renderGallery() {{
         const filterText = searchEl.value.trim().toLowerCase();
         const visible = images.filter((image) => isInSelectedFolder(image) && imageMatchesFilter(image, filterText));
@@ -708,42 +994,18 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
           imagePath.title = `Output: ${{image.output_path}}`;
           const actions = document.createElement("div");
           actions.className = "image-actions";
-          for (const resource of [
-            ["PNG", image.output_path],
-            ["SVG", image.svg_path],
-            ["HTML", image.html_path],
-            ["CSV", image.data_path],
-          ]) {{
-            const resourceLink = document.createElement("a");
-            resourceLink.className = "resource-link";
-            resourceLink.textContent = resource[0];
-            if (resource[1]) {{
-              resourceLink.href = resource[1];
-              resourceLink.target = "_blank";
-              resourceLink.rel = "noopener";
-            }} else {{
-              resourceLink.href = "#";
-              resourceLink.classList.add("is-disabled");
-              resourceLink.setAttribute("aria-disabled", "true");
-            }}
-            actions.append(resourceLink);
+          if (image.output_path) actions.append(makeAssetLink("PNG", image.output_path));
+          if (image.svg_path) actions.append(makeAssetLink("SVG", image.svg_path));
+          if (image.data_path) actions.append(makeDataButton(image));
+          if (!image.html_path) {{
+            const badge = document.createElement("span");
+            badge.className = "asset-badge";
+            badge.textContent = "Static only";
+            actions.append(badge);
           }}
           head.append(imageTitle, imagePath, actions);
 
-          const link = document.createElement("a");
-          link.className = "image-link";
-          link.href = image.output_path;
-          link.target = "_blank";
-          link.rel = "noopener";
-
-          const img = document.createElement("img");
-          img.loading = "lazy";
-          img.decoding = "async";
-          img.src = image.output_path;
-          img.alt = image.title;
-          link.append(img);
-
-          card.append(head, link);
+          card.append(head, renderPlotPreview(image));
           fragment.append(card);
         }}
         gridEl.append(fragment);
@@ -776,11 +1038,23 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       }}
       sourceModeEl.addEventListener("click", () => setTreeMode("source"));
       outputModeEl.addEventListener("click", () => setTreeMode("output"));
+      interactiveViewEl.addEventListener("click", () => setPlotViewMode("interactive"));
+      staticViewEl.addEventListener("click", () => setPlotViewMode("static"));
+      dataCloseEl.addEventListener("click", closeDataTable);
+      dataModalEl.addEventListener("click", (event) => {{
+        if (event.target === dataModalEl) closeDataTable();
+      }});
+      document.addEventListener("keydown", (event) => {{
+        if (event.key === "Escape" && !dataModalEl.classList.contains("hidden")) closeDataTable();
+      }});
       searchEl.addEventListener("input", renderGallery);
       tileSizeEl.addEventListener("input", () => {{
         gridEl.style.setProperty("--card-min", `${{tileSizeEl.value}}px`);
       }});
 
+      interactiveViewEl.classList.toggle("is-active", plotViewMode === "interactive");
+      staticViewEl.classList.toggle("is-active", plotViewMode === "static");
+      gridEl.style.setProperty("--card-min", `${{tileSizeEl.value}}px`);
       renderTree();
       renderGallery();
     }})();

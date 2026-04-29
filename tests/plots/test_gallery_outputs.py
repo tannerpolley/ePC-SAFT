@@ -143,6 +143,22 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     assert "tests/plots/reference_comparison_outputs" not in html
     assert "Source tree" in html
     assert "Output tree" in html
+    assert "Interactive" in html
+    assert "Static" in html
+    assert "plotGalleryViewMode" in html
+    assert 'id="data-modal"' in html
+    assert 'id="interactive-view"' in html
+    assert 'id="static-view"' in html
+    assert "interactive-frame" in html
+    assert 'frame.src = image.html_path;' in html
+    assert 'img.src = image.output_path;' in html
+    assert "function showDataTable" in html
+    assert "parseCsv" in html
+    assert 'button.textContent = "Data";' in html
+    assert 'badge.textContent = "Static only";' in html
+    assert "resource-link is-disabled" not in html
+    assert 'target = "_blank"' not in html
+    assert 'className = "image-link"' not in html
     assert "Select folders on the left" in html
 
 
