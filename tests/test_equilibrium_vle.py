@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+import epcsaft
 from epcsaft import ePCSAFTMixture
 
 
@@ -53,6 +54,9 @@ def test_ternary_hydrocarbon_basis_tp_flash_closes_material_and_fugacity_balance
     np.testing.assert_allclose(reconstructed, feed, atol=1.0e-10)
     assert result.diagnostics["material_balance_error"] < 1.0e-10
     assert result.diagnostics["fugacity_residual_norm"] < 1.0e-6
+    assert result.diagnostics["stability_analysis"] == "neutral_tpd"
+    assert np.isfinite(result.diagnostics["min_tpd"])
+    assert result.diagnostics["unstable_trial_count"] >= 1
 
     fugacity_residual = (
         np.log(vapor.composition)
@@ -73,3 +77,21 @@ def test_tp_flash_reports_no_split_when_rachford_rice_has_no_bracket() -> None:
     assert len(result.phases) == 1
     assert result.phases[0].label in {"liq", "vap"}
     assert "no two-phase Rachford-Rice bracket" in result.diagnostics["message"]
+    assert result.diagnostics["stability_analysis"] == "neutral_tpd"
+    assert np.isfinite(result.diagnostics["min_tpd"])
+
+
+def test_tp_flash_can_skip_stability_precheck_for_debug_workflows() -> None:
+    mix = _hydrocarbon_basis_mixture()
+
+    result = mix.equilibrium(
+        kind="tp_flash",
+        T=300.0,
+        P=1.0e5,
+        z=[0.1, 0.3, 0.6],
+        options=epcsaft.EquilibriumOptions(stability_precheck=False),
+    )
+
+    assert result.split_detected is False
+    assert result.diagnostics["stability_analysis"] == "not_run"
+    assert "min_tpd" not in result.diagnostics

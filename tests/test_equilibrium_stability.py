@@ -84,6 +84,23 @@ def test_stability_returns_structured_result_and_json_like_dict() -> None:
     _assert_json_like(result.to_dict())
 
 
+def test_explicit_stability_runs_even_when_equilibrium_precheck_is_disabled() -> None:
+    mix = _hydrocarbon_mixture()
+
+    result = mix.equilibrium(
+        kind="stability",
+        T=300.0,
+        P=1.0e5,
+        z=[0.1, 0.3, 0.6],
+        parent_phase="vap",
+        trial_phases=("vap",),
+        options=epcsaft.EquilibriumOptions(stability_precheck=False),
+    )
+
+    assert result.diagnostics["stability_analysis"] == "neutral_tpd"
+    assert result.diagnostics["trial_count"] > 0
+
+
 def test_methanol_cyclohexane_liquid_parent_detects_liquid_instability() -> None:
     mix = _methanol_cyclohexane_mixture()
 

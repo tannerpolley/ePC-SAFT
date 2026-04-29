@@ -85,7 +85,12 @@ def test_methanol_cyclohexane_lle_flash_closes_material_and_fugacity_balance() -
     assert result.diagnostics["phase_distance"] > 0.65
     assert result.diagnostics["seed_name"] == "user"
     assert result.diagnostics["attempt_count"] == 1
-    assert result.diagnostics["stability_analysis"] == "not_run"
+    assert result.diagnostics["stability_analysis"] == "neutral_tpd"
+    assert result.diagnostics["stable"] is False
+    assert result.diagnostics["min_tpd"] < -1.0e-4
+    assert result.diagnostics["parent_phase"] == "liq"
+    assert result.diagnostics["trial_phase"] == "liq"
+    assert result.diagnostics["unstable_trial_count"] >= 1
 
     reconstructed = liq1.phase_fraction * liq1.composition + liq2.phase_fraction * liq2.composition
     np.testing.assert_allclose(reconstructed, feed, atol=1.0e-10)
@@ -126,7 +131,8 @@ def test_lle_flash_without_initial_phases_finds_methanol_cyclohexane_split() -> 
     assert result.diagnostics["material_balance_error"] < 1.0e-10
     assert result.diagnostics["fugacity_residual_norm"] < 1.0e-9
     assert result.diagnostics["phase_distance"] > 0.65
-    assert result.diagnostics["stability_analysis"] == "not_run"
+    assert result.diagnostics["stability_analysis"] == "neutral_tpd"
+    assert result.diagnostics["min_tpd"] < -1.0e-4
     assert result.diagnostics["attempt_count"] >= 1
     assert isinstance(result.diagnostics["seed_name"], str)
 
@@ -149,7 +155,26 @@ def test_lle_flash_reports_no_split_for_identical_initial_phases() -> None:
     assert "no V2 LLE split" in result.diagnostics["message"]
     assert result.diagnostics["seed_name"] == "user"
     assert result.diagnostics["attempt_count"] == 1
+    assert result.diagnostics["stability_analysis"] == "neutral_tpd"
+    assert np.isfinite(result.diagnostics["min_tpd"])
+
+
+def test_lle_flash_can_skip_stability_precheck_for_debug_workflows() -> None:
+    mix = _methanol_cyclohexane_mixture()
+    feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
+
+    result = mix.equilibrium(
+        kind="lle_flash",
+        T=298.15,
+        P=1.013e5,
+        z=feed,
+        initial_phases={"liq1": feed, "liq2": feed, "phase_fraction": 0.5},
+        options=epcsaft.EquilibriumOptions(stability_precheck=False),
+    )
+
+    assert result.split_detected is False
     assert result.diagnostics["stability_analysis"] == "not_run"
+    assert "min_tpd" not in result.diagnostics
 
 
 def test_lle_flash_distinct_stalled_seed_raises_solution_error() -> None:
@@ -176,6 +201,7 @@ def test_lle_flash_distinct_stalled_seed_raises_solution_error() -> None:
         (epcsaft.EquilibriumOptions(damping=float("inf")), "damping"),
         (epcsaft.EquilibriumOptions(min_composition=float("nan")), "min_composition"),
         (epcsaft.EquilibriumOptions(include_phase_diagnostics="yes"), "include_phase_diagnostics"),
+        (epcsaft.EquilibriumOptions(stability_precheck="yes"), "stability_precheck"),
     ],
 )
 def test_lle_flash_rejects_invalid_options_through_public_api(options, match) -> None:

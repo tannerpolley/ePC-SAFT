@@ -20,6 +20,7 @@ class EquilibriumOptions:
     damping: float = 0.5
     min_composition: float = 1.0e-12
     include_phase_diagnostics: bool = False
+    stability_precheck: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -190,6 +191,15 @@ def tp_flash(mixture: Any, *, T: float, P: float, z: Any, options: EquilibriumOp
 
     liquid_seed = _phase_state(mixture, temperature, pressure, feed, "liq", opts, "TP flash")
     vapor_seed = _phase_state(mixture, temperature, pressure, feed, "vap", opts, "TP flash")
+    stability_diagnostics = _equilibrium_stability_precheck(
+        mixture,
+        T=temperature,
+        P=pressure,
+        feed=feed,
+        options=opts,
+        parent_phase=None,
+        trial_phases=("liq", "vap"),
+    )
     ln_k = liquid_seed["ln_phi"] - vapor_seed["ln_phi"]
 
     split, beta, no_split_message = _rachford_rice_beta(feed, np.exp(ln_k))
@@ -203,19 +213,21 @@ def tp_flash(mixture: Any, *, T: float, P: float, z: Any, options: EquilibriumOp
             state_payload,
             opts,
         )
+        diagnostics = {
+            "iterations": 0,
+            "fugacity_residual_norm": 0.0,
+            "material_balance_error": 0.0,
+            "vapor_fraction": float(beta),
+            "message": no_split_message,
+        }
+        diagnostics.update(stability_diagnostics)
         return EquilibriumResult(
             backend="neutral_vle",
             problem_kind="tp_flash",
             phases=(phase,),
             stable=True,
             split_detected=False,
-            diagnostics={
-                "iterations": 0,
-                "fugacity_residual_norm": 0.0,
-                "material_balance_error": 0.0,
-                "vapor_fraction": float(beta),
-                "message": no_split_message,
-            },
+            diagnostics=diagnostics,
         )
 
     best: dict[str, Any] | None = None
@@ -247,7 +259,7 @@ def tp_flash(mixture: Any, *, T: float, P: float, z: Any, options: EquilibriumOp
             "material_error": material_error,
         }
         if residual_norm <= opts.tolerance and material_error <= max(opts.tolerance, 1.0e-10):
-            return _two_phase_result(best, opts, "converged")
+            return _two_phase_result(best, opts, "converged", stability_diagnostics)
         ln_k_target = liquid["ln_phi"] - vapor["ln_phi"]
         ln_k = (1.0 - opts.damping) * ln_k + opts.damping * ln_k_target
 
@@ -276,6 +288,15 @@ def lle_flash(
     _reject_ion_containing_mixture(mixture)
     temperature = _positive_scalar(T, "T", "lle_flash")
     pressure = _positive_scalar(P, "P", "lle_flash")
+    stability_diagnostics = _equilibrium_stability_precheck(
+        mixture,
+        T=temperature,
+        P=pressure,
+        feed=feed,
+        options=opts,
+        parent_phase="liq",
+        trial_phases=("liq",),
+    )
     seeds = _initial_lle_guesses(initial_phases, feed, opts)
     state_feed = _phase_state(mixture, temperature, pressure, feed, "liq", opts, "LLE flash")
 
@@ -298,6 +319,7 @@ def lle_flash(
                 "converged",
                 seed["seed_name"],
                 attempt_count,
+                stability_diagnostics,
             )
         if attempt["status"] == "degenerate":
             degenerate_attempts.append(attempt)
@@ -333,6 +355,7 @@ def lle_flash(
         best["comp2"],
         best_degenerate["seed_name"],
         best_degenerate["attempt_count"],
+        stability_diagnostics,
     )
 
 
@@ -422,13 +445,51 @@ def _normalize_options(options: EquilibriumOptions | None) -> EquilibriumOptions
         raise InputError("options.min_composition must be positive.")
     if not isinstance(options.include_phase_diagnostics, bool):
         raise InputError("options.include_phase_diagnostics must be boolean.")
+    if not isinstance(options.stability_precheck, bool):
+        raise InputError("options.stability_precheck must be boolean.")
     return EquilibriumOptions(
         max_iterations=max_iterations,
         tolerance=tolerance,
         damping=damping,
         min_composition=min_composition,
         include_phase_diagnostics=options.include_phase_diagnostics,
+        stability_precheck=options.stability_precheck,
     )
+
+
+def _equilibrium_stability_precheck(
+    mixture: Any,
+    *,
+    T: float,
+    P: float,
+    feed: np.ndarray,
+    options: EquilibriumOptions,
+    parent_phase: Any,
+    trial_phases: Any,
+) -> dict[str, Any]:
+    if not options.stability_precheck:
+        return {"stability_analysis": "not_run"}
+    stability_mixture = type(mixture).from_params(mixture.parameters, species=mixture.species)
+    result = neutral_stability(
+        stability_mixture,
+        T=T,
+        P=P,
+        z=feed,
+        options=options,
+        parent_phase=parent_phase,
+        trial_phases=trial_phases,
+    )
+    unstable_trial_count = sum(1 for trial in result.trials if trial.unstable)
+    return {
+        "stability_analysis": "neutral_tpd",
+        "stable": bool(result.stable),
+        "min_tpd": float(result.min_tpd),
+        "parent_phase": result.parent_phase,
+        "trial_phase": result.trial_phase,
+        "trial_composition": result.trial_composition.tolist(),
+        "unstable_trial_count": int(unstable_trial_count),
+        "trial_count": len(result.trials),
+    }
 
 
 def _finite_float_option(value: Any, label: str) -> float:
@@ -661,24 +722,31 @@ def _phase_from_state(
     )
 
 
-def _two_phase_result(best: dict[str, Any], options: EquilibriumOptions, message: str) -> EquilibriumResult:
+def _two_phase_result(
+    best: dict[str, Any],
+    options: EquilibriumOptions,
+    message: str,
+    stability_diagnostics: dict[str, Any],
+) -> EquilibriumResult:
     beta = best["beta"]
     liquid_phase = _phase_from_state("liq", best["x_liq"], 1.0 - beta, best["liquid"], options)
     vapor_phase = _phase_from_state("vap", best["y_vap"], beta, best["vapor"], options)
+    diagnostics = {
+        "iterations": int(best["iteration"]),
+        "fugacity_residual_norm": float(best["residual_norm"]),
+        "fugacity_residual": best["fugacity_residual"].tolist(),
+        "material_balance_error": float(best["material_error"]),
+        "vapor_fraction": float(beta),
+        "message": message,
+    }
+    diagnostics.update(stability_diagnostics)
     return EquilibriumResult(
         backend="neutral_vle",
         problem_kind="tp_flash",
         phases=(liquid_phase, vapor_phase),
         stable=False,
         split_detected=True,
-        diagnostics={
-            "iterations": int(best["iteration"]),
-            "fugacity_residual_norm": float(best["residual_norm"]),
-            "fugacity_residual": best["fugacity_residual"].tolist(),
-            "material_balance_error": float(best["material_error"]),
-            "vapor_fraction": float(beta),
-            "message": message,
-        },
+        diagnostics=diagnostics,
     )
 
 
@@ -989,28 +1057,30 @@ def _lle_two_phase_result(
     message: str,
     seed_name: str,
     attempt_count: int,
+    stability_diagnostics: dict[str, Any],
 ) -> EquilibriumResult:
     beta = best["beta"]
     phase1 = _phase_from_state("liq1", best["comp1"], 1.0 - beta, best["state1"], options)
     phase2 = _phase_from_state("liq2", best["comp2"], beta, best["state2"], options)
+    diagnostics = {
+        "iterations": int(best["iteration"]),
+        "fugacity_residual_norm": float(best["fugacity_residual_norm"]),
+        "fugacity_residual": best["fugacity_residual"].tolist(),
+        "material_balance_error": float(best["material_error"]),
+        "liquid2_phase_fraction": float(beta),
+        "phase_distance": _phase_distance(best["comp1"], best["comp2"]),
+        "seed_name": str(seed_name),
+        "attempt_count": int(attempt_count),
+        "message": message,
+    }
+    diagnostics.update(stability_diagnostics)
     return EquilibriumResult(
         backend="neutral_lle",
         problem_kind="lle_flash",
         phases=(phase1, phase2),
         stable=False,
         split_detected=True,
-        diagnostics={
-            "iterations": int(best["iteration"]),
-            "fugacity_residual_norm": float(best["fugacity_residual_norm"]),
-            "fugacity_residual": best["fugacity_residual"].tolist(),
-            "material_balance_error": float(best["material_error"]),
-            "liquid2_phase_fraction": float(beta),
-            "phase_distance": _phase_distance(best["comp1"], best["comp2"]),
-            "seed_name": str(seed_name),
-            "attempt_count": int(attempt_count),
-            "stability_analysis": "not_run",
-            "message": message,
-        },
+        diagnostics=diagnostics,
     )
 
 
@@ -1027,25 +1097,27 @@ def _lle_no_split_result(
     comp2: np.ndarray,
     seed_name: str,
     attempt_count: int,
+    stability_diagnostics: dict[str, Any],
 ) -> EquilibriumResult:
     phase = _phase_from_state("liq", feed, 1.0, state_feed, options)
+    diagnostics = {
+        "iterations": int(iterations),
+        "fugacity_residual_norm": float(residual_norm),
+        "material_balance_error": float(material_error),
+        "liquid2_phase_fraction": float(beta),
+        "phase_distance": _phase_distance(comp1, comp2),
+        "seed_name": str(seed_name),
+        "attempt_count": int(attempt_count),
+        "message": message,
+    }
+    diagnostics.update(stability_diagnostics)
     return EquilibriumResult(
         backend="neutral_lle",
         problem_kind="lle_flash",
         phases=(phase,),
         stable=True,
         split_detected=False,
-        diagnostics={
-            "iterations": int(iterations),
-            "fugacity_residual_norm": float(residual_norm),
-            "material_balance_error": float(material_error),
-            "liquid2_phase_fraction": float(beta),
-            "phase_distance": _phase_distance(comp1, comp2),
-            "seed_name": str(seed_name),
-            "attempt_count": int(attempt_count),
-            "stability_analysis": "not_run",
-            "message": message,
-        },
+        diagnostics=diagnostics,
     )
 
 
