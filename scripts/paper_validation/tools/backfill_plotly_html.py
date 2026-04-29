@@ -16,6 +16,28 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 PLOTS_ROOT = REPO_ROOT / "docs" / "plots"
 DEFAULT_ROOTS = ("fits", "paper_validation")
 BACKFILL_MARKER = 'epcsaft-interactive-source="csv_backfill"'
+MATPLOTLIB_COLORWAY = (
+    "#1f77b4",
+    "#ff7f0e",
+    "#2ca02c",
+    "#d62728",
+    "#9467bd",
+    "#8c564b",
+    "#e377c2",
+    "#7f7f7f",
+    "#bcbd22",
+    "#17becf",
+)
+LINE_DASH_MAP = {
+    "--": "dash",
+    "-.": "dashdot",
+    ":": "dot",
+    "dashed": "dash",
+    "dashdot": "dashdot",
+    "dotted": "dot",
+    "solid": "solid",
+    "-": "solid",
+}
 
 
 @dataclass(frozen=True)
@@ -82,6 +104,30 @@ def _trace_name(row: dict[str, str]) -> str:
     return f"{artist_type} {series_index}".strip()
 
 
+def _style_color(row: dict[str, str]) -> str | None:
+    color = (row.get("color") or "").strip()
+    return color or None
+
+
+def _line_width(row: dict[str, str]) -> float | None:
+    width = _as_float(row.get("linewidth"))
+    if width is None or width <= 0.0:
+        return None
+    return width
+
+
+def _line_dash(row: dict[str, str]) -> str | None:
+    style = (row.get("linestyle") or "").strip()
+    return LINE_DASH_MAP.get(style)
+
+
+def _line_mode(row: dict[str, str], artist_type: str) -> str:
+    if artist_type != "line":
+        return "markers"
+    marker = (row.get("marker") or "").strip()
+    return "lines+markers" if marker else "lines"
+
+
 def _title_from_png(png_path: Path) -> str:
     return png_path.stem.replace("_", " ").replace("-", " ")
 
@@ -93,11 +139,34 @@ def _axis_title(rows: list[dict[str, str]], axes_index: int) -> str:
     return f"Axis {axes_index + 1}"
 
 
+def _axis_label(rows: list[dict[str, str]], axes_index: int, field: str, fallback: str) -> str:
+    for row in rows:
+        if _as_int(row.get("axes_index")) == axes_index and (row.get(field) or "").strip():
+            return str(row[field])
+    return fallback
+
+
 def _add_trace(fig: go.Figure, trace: go.BaseTraceType, *, row: int | None, col: int | None) -> None:
     if row is None or col is None:
         fig.add_trace(trace)
     else:
         fig.add_trace(trace, row=row, col=col)
+
+
+def _update_axes(
+    fig: go.Figure,
+    *,
+    x_title: str,
+    y_title: str,
+    row: int | None,
+    col: int | None,
+) -> None:
+    if row is None or col is None:
+        fig.update_xaxes(title_text=x_title, automargin=True)
+        fig.update_yaxes(title_text=y_title, automargin=True)
+    else:
+        fig.update_xaxes(title_text=x_title, automargin=True, row=row, col=col)
+        fig.update_yaxes(title_text=y_title, automargin=True, row=row, col=col)
 
 
 def _add_group_trace(
@@ -119,12 +188,25 @@ def _add_group_trace(
         if not valid:
             return
         x, y = zip(*valid, strict=True)
-        mode = "lines+markers" if artist_type == "line" else "markers"
+        line_style: dict[str, object] = {}
+        marker_style: dict[str, object] = {}
+        color = _style_color(first)
+        if color:
+            line_style["color"] = color
+            marker_style["color"] = color
+        width = _line_width(first)
+        if width is not None:
+            line_style["width"] = width
+        dash = _line_dash(first)
+        if dash is not None:
+            line_style["dash"] = dash
         trace = go.Scatter(
             x=list(x),
             y=list(y),
-            mode=mode,
+            mode=_line_mode(first, artist_type),
             name=name,
+            line=line_style or None,
+            marker=marker_style or None,
             hovertemplate=f"{name}<br>x=%{{x:.6g}}<br>y=%{{y:.6g}}<extra></extra>",
         )
         _add_trace(fig, trace, row=row, col=col)
@@ -141,6 +223,7 @@ def _add_group_trace(
             x=list(x),
             y=list(height),
             name=name,
+            marker_color=_style_color(first),
             hovertemplate=f"{name}<br>x=%{{x:.6g}}<br>height=%{{y:.6g}}<extra></extra>",
         )
         _add_trace(fig, trace, row=row, col=col)
@@ -187,12 +270,28 @@ def figure_from_plot_csv(csv_path: Path, png_path: Path) -> go.Figure | None:
     fig.update_layout(
         title=_title_from_png(png_path),
         template="plotly_white",
-        margin={"l": 72, "r": 32, "t": 72, "b": 56},
+        colorway=MATPLOTLIB_COLORWAY,
+        margin={"l": 76, "r": 34, "t": 88, "b": 104},
         hovermode="closest",
-        legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "center", "x": 0.5},
+        title_font={"size": 16},
+        legend={
+            "title": {"text": "Trace"},
+            "orientation": "h",
+            "yanchor": "top",
+            "y": -0.18,
+            "xanchor": "center",
+            "x": 0.5,
+            "font": {"size": 11},
+        },
     )
-    fig.update_xaxes(title_text="x")
-    fig.update_yaxes(title_text="value")
+    for axes_index, (subplot_row, subplot_col) in axis_positions.items():
+        _update_axes(
+            fig,
+            x_title=_axis_label(rows, axes_index, "x_label", "x"),
+            y_title=_axis_label(rows, axes_index, "y_label", "value"),
+            row=subplot_row,
+            col=subplot_col,
+        )
     return fig
 
 
@@ -201,6 +300,7 @@ def write_backfill_html(fig: go.Figure, html_path: Path) -> Path:
     fig.write_html(
         html_path,
         include_plotlyjs="cdn",
+        include_mathjax="cdn",
         full_html=True,
         config={"displaylogo": False, "responsive": True},
     )

@@ -10,8 +10,14 @@ FIELDNAMES = [
     "figure_file",
     "axes_index",
     "axes_title",
+    "x_label",
+    "y_label",
     "artist_type",
     "artist_label",
+    "color",
+    "linestyle",
+    "marker",
+    "linewidth",
     "series_index",
     "point_index",
     "x",
@@ -43,8 +49,14 @@ def test_backfill_numeric_csv_generates_marked_plotly_html(tmp_path: Path) -> No
                 "figure_file": "figure.png",
                 "axes_index": 0,
                 "axes_title": "Line axis",
+                "x_label": "mole fraction",
+                "y_label": "property value",
                 "artist_type": "line",
                 "artist_label": "line series",
+                "color": "#123456",
+                "linestyle": "--",
+                "marker": "o",
+                "linewidth": 2.5,
                 "series_index": 0,
                 "point_index": 0,
                 "x": 0.0,
@@ -54,8 +66,14 @@ def test_backfill_numeric_csv_generates_marked_plotly_html(tmp_path: Path) -> No
                 "figure_file": "figure.png",
                 "axes_index": 0,
                 "axes_title": "Line axis",
+                "x_label": "mole fraction",
+                "y_label": "property value",
                 "artist_type": "line",
                 "artist_label": "line series",
+                "color": "#123456",
+                "linestyle": "--",
+                "marker": "o",
+                "linewidth": 2.5,
                 "series_index": 0,
                 "point_index": 1,
                 "x": 1.0,
@@ -65,8 +83,11 @@ def test_backfill_numeric_csv_generates_marked_plotly_html(tmp_path: Path) -> No
                 "figure_file": "figure.png",
                 "axes_index": 1,
                 "axes_title": "Bar axis",
+                "x_label": "case",
+                "y_label": "bar value",
                 "artist_type": "bar",
                 "artist_label": "bar series",
+                "color": "#abcdef",
                 "series_index": 1,
                 "point_index": 0,
                 "x": 2.0,
@@ -100,6 +121,12 @@ def test_backfill_numeric_csv_generates_marked_plotly_html(tmp_path: Path) -> No
     assert "line series" in html
     assert "bar series" in html
     assert "points" in html
+    assert "#123456" in html
+    assert "#abcdef" in html
+    assert "dash" in html
+    assert "mole fraction" in html
+    assert "property value" in html
+    assert "Trace" in html
 
 
 def test_backfill_skips_placeholders_and_dry_run_does_not_write(tmp_path: Path) -> None:

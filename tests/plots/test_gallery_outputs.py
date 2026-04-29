@@ -19,8 +19,10 @@ from tests.plots.plot_helpers import save_comparison_plot
 def test_save_plot_figure_writes_csv_backing_data(tmp_path: Path) -> None:
     output_path = tmp_path / "figure.png"
     fig, ax = plt.subplots()
-    ax.plot([0.0, 1.0], [2.0, 3.0], label="line")
-    ax.scatter([0.5], [2.5], label="point")
+    ax.set_xlabel("composition")
+    ax.set_ylabel("value")
+    ax.plot([0.0, 1.0], [2.0, 3.0], color="#123456", linestyle="--", marker="o", label="line")
+    ax.scatter([0.5], [2.5], color="#abcdef", label="point")
 
     try:
         plot_outputs.save_plot_figure(fig, output_path, dpi=72, svg_companion=True)
@@ -36,6 +38,14 @@ def test_save_plot_figure_writes_csv_backing_data(tmp_path: Path) -> None:
         rows = list(csv.DictReader(handle))
     assert {row["artist_type"] for row in rows} >= {"line", "scatter"}
     assert any(row["artist_label"] == "line" and row["x"] == "1" and row["y"] == "3" for row in rows)
+    line_row = next(row for row in rows if row["artist_type"] == "line")
+    scatter_row = next(row for row in rows if row["artist_type"] == "scatter")
+    assert line_row["x_label"] == "composition"
+    assert line_row["y_label"] == "value"
+    assert line_row["color"] == "#123456"
+    assert line_row["linestyle"] == "--"
+    assert line_row["marker"] == "o"
+    assert scatter_row["color"] == "#abcdef"
 
 
 def test_plot_html_path_uses_plot_stem() -> None:
@@ -86,6 +96,27 @@ def test_readable_plot_helper_wraps_dense_labels_without_clipping(tmp_path: Path
 
     assert output_path.exists()
     assert output_path.with_suffix(".svg").exists()
+
+
+def test_plotly_companion_uses_browser_readable_math_labels(tmp_path: Path, monkeypatch) -> None:
+    root = tmp_path / "plots"
+    monkeypatch.setattr(plot_outputs, "PLOTS_ROOT", root)
+    monkeypatch.setattr(plot_outputs, "TEST_PLOTS_ROOT", root / "tests")
+
+    output_path = save_comparison_plot(
+        "plotly_math_labels.png",
+        "Plotly math label readability regression",
+        ["rho", "ares", "lnphi water"],
+        np.asarray([1.0, 2.0, 3.0], dtype=float),
+        np.asarray([1.0, 2.0, 3.0], dtype=float),
+        category=("tests", "readability"),
+    )
+    html = output_path.with_suffix(".html").read_text(encoding="utf-8")
+
+    assert "$\\rho$" not in html
+    assert "\\ln \\phi" not in html
+    assert "rho (\\u03c1)" in html
+    assert "ln phi (ln \\u03c6)_H2O" in html
 
 
 def test_text_canvas_check_detects_clipped_labels() -> None:
