@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-04-29T15:21:52.203183</dc:date>
+    <dc:date>2026-04-29T16:11:45.955879</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -534,7 +534,18 @@ L 912.719404 22.318125
       </g>
      </g>
      <g id="text_32">
-      <text style="font-size: 8.33px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: end" x="564.992547" y="68.553962" transform="rotate(-0 564.992547 68.553962)">rho state</text>
+      <!-- $\rho$ state -->
+      <g transform="translate(535.920847 68.545501)">
+       <text>
+        <tspan x="0" y="-0.375" style="font-style: oblique; font-size: 8.33px; font-family: 'DejaVu Sans'">ρ</tspan>
+        <tspan x="5.316162" y="-0.375" style="font-size: 8.33px; font-family: 'DejaVu Sans'"> </tspan>
+        <tspan x="7.978333" y="-0.375" style="font-size: 8.33px; font-family: 'DejaVu Sans'">s</tspan>
+        <tspan x="12.341675" y="-0.375" style="font-size: 8.33px; font-family: 'DejaVu Sans'">t</tspan>
+        <tspan x="15.625427" y="-0.375" style="font-size: 8.33px; font-family: 'DejaVu Sans'">a</tspan>
+        <tspan x="20.757568" y="-0.375" style="font-size: 8.33px; font-family: 'DejaVu Sans'">t</tspan>
+        <tspan x="24.041321" y="-0.375" style="font-size: 8.33px; font-family: 'DejaVu Sans'">e</tspan>
+       </text>
+      </g>
      </g>
     </g>
     <g id="ytick_10">

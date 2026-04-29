@@ -76,10 +76,111 @@ def save_plotly_html(fig: go.Figure, image_path: Path) -> Path:
     fig.write_html(
         html_path,
         include_plotlyjs="cdn",
+        include_mathjax="cdn",
         full_html=True,
         config={"displaylogo": False, "responsive": True},
     )
     return html_path
+
+
+_SPECIES_LABELS = {
+    "A": r"A",
+    "B": r"B",
+    "C": r"C",
+    "water": r"\mathrm{H_2O}",
+    "Na": r"\mathrm{Na^+}",
+    "Cl": r"\mathrm{Cl^-}",
+    "methane": r"\mathrm{CH_4}",
+    "ethane": r"\mathrm{C_2H_6}",
+    "propane": r"\mathrm{C_3H_8}",
+    "methanol": r"\mathrm{MeOH}",
+    "cyclohexane": r"\mathrm{C_6H_{12}}",
+}
+
+_EXACT_MATH_LABELS = {
+    "p": r"$P$",
+    "P": r"$P$",
+    "pressure": r"$P$",
+    "diag pressure": r"diagnostics $P$",
+    "rho": r"$\rho$",
+    "rho_molar": r"$\rho$ (molar)",
+    "rho_mass": r"$\rho_{\mathrm{mass}}$",
+    "rho mass": r"$\rho_{\mathrm{mass}}$",
+    "density": r"$\rho$",
+    "z": r"$Z$",
+    "Z": r"$Z$",
+    "ares": r"$A^{res}$",
+    "dadt": r"$\partial{}A^{res}/\partial{}T$",
+    "hres": r"$h^{res}$",
+    "sres": r"$s^{res}$",
+    "gres": r"$g^{res}$",
+    "epsr": r"$\epsilon_r$",
+    "epsr mixture": r"$\epsilon_r$ mixture",
+    "osmotic": r"$\phi_{\mathrm{osm}}$",
+    "osmotic_coef": r"$\phi_{\mathrm{osm}}$",
+    "material balance": "material balance",
+    "material tolerance": "material balance tolerance",
+    "fugacity residual": r"$\ln f_i$ residual",
+    "fugacity tolerance": r"$\ln f_i$ tolerance",
+    "mean gamma x": r"$\gamma_{\pm}^{(x)}$",
+    "mean gamma m": r"$\gamma_{\pm}^{(m)}$",
+    "ionic mean gamma mole": r"ionic $\gamma_{\pm}^{(x)}$",
+    "ionic mean gamma molality": r"ionic $\gamma_{\pm}^{(m)}$",
+    "stable min TPD": r"stable $\min(\mathrm{TPD})$",
+    "unstable min TPD": r"unstable $\min(\mathrm{TPD})$",
+    "sigma": r"$\sigma$",
+    "epsilon": r"$\epsilon/k_B$",
+    "m": r"$m$",
+}
+
+
+def math_label(label: object) -> str:
+    text = str(label)
+    if text in _EXACT_MATH_LABELS:
+        return _EXACT_MATH_LABELS[text]
+    if text in _SPECIES_LABELS:
+        return f"${_SPECIES_LABELS[text]}$"
+    if text.lower() in _SPECIES_LABELS:
+        return f"${_SPECIES_LABELS[text.lower()]}$"
+
+    for prefix, rendered_prefix in (("mures", r"$\mu^{res}"), ("lnphi", r"$\ln \phi")):
+        if text.startswith(f"{prefix}[") and text.endswith("]"):
+            index = text[len(prefix) + 1 : -1]
+            return f"{rendered_prefix}_{{{index}}}$"
+
+    for prefix in ("neutral", "ionic", "vap", "liq", "stable", "unstable"):
+        marker = f"{prefix} "
+        if text.startswith(marker):
+            return f"{prefix} {math_label(text[len(marker):])}"
+
+    for prefix, rendered_prefix in (("beta", r"$\beta"), ("gamma", r"$\gamma"), ("mean gamma", r"$\gamma_{\pm}"), ("mures", r"$\mu^{res}"), ("lnphi", r"$\ln \phi"), ("phi", r"$\phi"), ("fugcoef", r"$\ln \phi"), ("gsolv", r"$\Delta G^{solv}")):
+        marker = f"{prefix} "
+        if text.startswith(marker):
+            species = text[len(marker):]
+            species_label = _SPECIES_LABELS.get(species, rf"\mathrm{{{species}}}")
+            return f"{rendered_prefix}_{{{species_label}}}$"
+
+    for suffix in ("total", "hc", "disp", "branch", "extreme"):
+        marker = f" {suffix}"
+        if text.endswith(marker):
+            return f"{math_label(text[: -len(marker)])} {suffix}"
+
+    if text.startswith("d") and "-d" in text:
+        return rf"$\Delta(\partial{{}}A^{{res}}/\partial{{}}x)$ {text}"
+
+    words = text.split()
+    if len(words) > 1:
+        return " ".join(
+            math_label(word)
+            if word in _EXACT_MATH_LABELS or word in _SPECIES_LABELS or word.lower() in _SPECIES_LABELS
+            else word
+            for word in words
+        )
+    return text
+
+
+def math_labels(labels: Iterable[object]) -> list[str]:
+    return [math_label(label) for label in labels]
 
 
 def _wrap_label(label: str, width: int = 18) -> str:
@@ -182,6 +283,7 @@ def _save_interactive_comparison_plot(
     ylabel: str,
     relative_error: bool,
 ) -> Path:
+    display_labels = math_labels(labels)
     if relative_error:
         fig = make_subplots(
             rows=1,
@@ -195,13 +297,13 @@ def _save_interactive_comparison_plot(
     values = np.concatenate([actual, expected])
     scale = np.maximum(np.abs(expected), 1.0e-30)
     rel_error = (actual - expected) / scale
-    orientation = "h" if len(labels) > 8 or max((len(label) for label in labels), default=0) > 18 else "v"
+    orientation = "h" if len(display_labels) > 8 or max((len(label) for label in display_labels), default=0) > 18 else "v"
 
     if orientation == "h":
-        fig.add_trace(go.Bar(y=labels, x=actual, name="Actual", orientation="h"), row=1 if relative_error else None, col=1 if relative_error else None)
-        fig.add_trace(go.Bar(y=labels, x=expected, name="Expected", orientation="h"), row=1 if relative_error else None, col=1 if relative_error else None)
+        fig.add_trace(go.Bar(y=display_labels, x=actual, name="Actual", orientation="h"), row=1 if relative_error else None, col=1 if relative_error else None)
+        fig.add_trace(go.Bar(y=display_labels, x=expected, name="Expected", orientation="h"), row=1 if relative_error else None, col=1 if relative_error else None)
         if relative_error:
-            fig.add_trace(go.Bar(y=labels, x=rel_error, name="Relative error", orientation="h"), row=1, col=2)
+            fig.add_trace(go.Bar(y=display_labels, x=rel_error, name="Relative error", orientation="h"), row=1, col=2)
             fig.update_yaxes(autorange="reversed", row=1, col=1)
             fig.update_yaxes(autorange="reversed", showticklabels=False, row=1, col=2)
             fig.update_xaxes(title_text=ylabel, type=_plotly_axis_type(values[values > 0.0]), row=1, col=1)
@@ -210,10 +312,10 @@ def _save_interactive_comparison_plot(
             fig.update_yaxes(autorange="reversed")
             fig.update_xaxes(title_text=ylabel, type=_plotly_axis_type(values[values > 0.0]))
     else:
-        fig.add_trace(go.Bar(x=labels, y=actual, name="Actual"), row=1 if relative_error else None, col=1 if relative_error else None)
-        fig.add_trace(go.Bar(x=labels, y=expected, name="Expected"), row=1 if relative_error else None, col=1 if relative_error else None)
+        fig.add_trace(go.Bar(x=display_labels, y=actual, name="Actual"), row=1 if relative_error else None, col=1 if relative_error else None)
+        fig.add_trace(go.Bar(x=display_labels, y=expected, name="Expected"), row=1 if relative_error else None, col=1 if relative_error else None)
         if relative_error:
-            fig.add_trace(go.Bar(x=labels, y=rel_error, name="Relative error"), row=1, col=2)
+            fig.add_trace(go.Bar(x=display_labels, y=rel_error, name="Relative error"), row=1, col=2)
             fig.update_yaxes(title_text=ylabel, type=_plotly_axis_type(values[values > 0.0]), row=1, col=1)
             fig.update_yaxes(title_text="Relative error", row=1, col=2)
         else:
@@ -237,6 +339,7 @@ def _save_interactive_parity_plot(
     xlabel: str,
     ylabel: str,
 ) -> Path:
+    display_labels = math_labels(labels)
     finite = np.isfinite(actual) & np.isfinite(expected)
     scale = np.maximum(np.abs(expected), 1.0e-30)
     rel_error = (actual - expected) / scale
@@ -246,7 +349,7 @@ def _save_interactive_parity_plot(
             x=expected[finite],
             y=actual[finite],
             mode="markers",
-            text=np.asarray(labels, dtype=object)[finite],
+            text=np.asarray(display_labels, dtype=object)[finite],
             name="Comparison points",
             hovertemplate="%{text}<br>expected=%{x:.6g}<br>actual=%{y:.6g}<extra></extra>",
         ),
@@ -258,7 +361,7 @@ def _save_interactive_parity_plot(
         hi = float(max(np.max(expected[finite]), np.max(actual[finite])))
         pad = max((hi - lo) * 0.08, 1.0e-12)
         fig.add_trace(go.Scatter(x=[lo - pad, hi + pad], y=[lo - pad, hi + pad], mode="lines", name="Parity"), row=1, col=1)
-    fig.add_trace(go.Bar(y=labels, x=rel_error, orientation="h", name="Relative error"), row=1, col=2)
+    fig.add_trace(go.Bar(y=display_labels, x=rel_error, orientation="h", name="Relative error"), row=1, col=2)
     fig.update_xaxes(title_text=xlabel, row=1, col=1)
     fig.update_yaxes(title_text=ylabel, row=1, col=1)
     fig.update_xaxes(title_text="Relative error", row=1, col=2)
@@ -273,7 +376,7 @@ def _save_interactive_contribution_plot(
     *,
     breakdown: bool,
 ) -> Path:
-    labels = [str(row["label"]) for row in rows]
+    labels = math_labels(str(row["label"]) for row in rows)
     term_names = sorted({name for row in rows for name in row["terms"]})
     totals = np.asarray([float(row["total"]) for row in rows], dtype=float)
     fig = go.Figure()
@@ -304,9 +407,10 @@ def save_comparison_plot(
 ) -> Path:
     actual = np.asarray(actual, dtype=float)
     expected = np.asarray(expected, dtype=float)
-    is_dense = len(labels) > 12 or max((len(label) for label in labels), default=0) > 22
+    display_labels = math_labels(labels)
+    is_dense = len(display_labels) > 12 or max((len(label) for label in display_labels), default=0) > 22
     if is_dense:
-        wrapped_labels = _wrapped_labels(labels, width=24)
+        wrapped_labels = _wrapped_labels(display_labels, width=24)
         y = np.arange(len(labels), dtype=float)
         fig_height = max(6.8, min(13.5, 1.8 + 0.38 * len(labels)))
         if relative_error:
@@ -338,9 +442,9 @@ def save_comparison_plot(
             err_ax.invert_yaxis()
             err_ax.grid(axis="x", color="0.9", linewidth=0.7)
     else:
-        x = np.arange(len(labels), dtype=float)
-        wrapped_labels = _wrapped_labels(labels)
-        figsize = _comparison_size(labels, relative_error=relative_error)
+        x = np.arange(len(display_labels), dtype=float)
+        wrapped_labels = _wrapped_labels(display_labels)
+        figsize = _comparison_size(display_labels, relative_error=relative_error)
         if relative_error:
             fig, axes = plt.subplots(2, 1, figsize=figsize, height_ratios=[3, 1.45])
             ax, err_ax = axes
@@ -376,7 +480,7 @@ def save_comparison_plot(
         _save_interactive_comparison_plot(
             output_path,
             title,
-            labels,
+            display_labels,
             actual,
             expected,
             ylabel=ylabel,
@@ -405,7 +509,8 @@ def save_parity_plot(
     plot_actual = actual[finite]
     plot_expected = expected[finite]
 
-    wrapped_labels = _wrapped_labels(labels, width=22)
+    display_labels = math_labels(labels)
+    wrapped_labels = _wrapped_labels(display_labels, width=22)
     fig_height = max(5.2, min(11.0, 1.6 + 0.28 * len(labels)))
     fig, axes = plt.subplots(1, 2, figsize=(13.2, fig_height), width_ratios=[2.3, 1.9])
     ax, err_ax = axes
@@ -422,7 +527,7 @@ def save_parity_plot(
     ax.legend(loc="best", frameon=False)
 
     scale = np.maximum(np.abs(expected), 1.0e-30)
-    y = np.arange(len(labels), dtype=float)
+    y = np.arange(len(display_labels), dtype=float)
     err_ax.barh(y, (actual - expected) / scale, height=0.55)
     err_ax.axvline(0.0, color="0.25", linewidth=0.8)
     err_ax.set_title("Relative error")
@@ -436,7 +541,7 @@ def save_parity_plot(
     try:
         _finish_figure(fig)
         plot_outputs.save_plot_figure(fig, output_path, dpi=120, svg_companion=True)
-        _save_interactive_parity_plot(output_path, title, labels, actual, expected, xlabel=xlabel, ylabel=ylabel)
+        _save_interactive_parity_plot(output_path, title, display_labels, actual, expected, xlabel=xlabel, ylabel=ylabel)
     finally:
         plt.close(fig)
     assert_plot_with_data(output_path)
@@ -472,7 +577,7 @@ def save_contribution_closure_plot(
     *,
     category: Iterable[str],
 ) -> Path:
-    labels = [str(row["label"]) for row in rows]
+    labels = math_labels(str(row["label"]) for row in rows)
     wrapped_labels = _wrapped_labels(labels, width=18)
     term_names = sorted({name for row in rows for name in row["terms"]})
     y = np.arange(len(rows), dtype=float)
@@ -528,7 +633,7 @@ def save_contribution_term_breakdown_plot(
     *,
     category: Iterable[str],
 ) -> Path:
-    labels = [str(row["label"]) for row in rows]
+    labels = math_labels(str(row["label"]) for row in rows)
     wrapped_labels = _wrapped_labels(labels, width=18)
     term_names = sorted({name for row in rows for name in row["terms"]})
     y = np.arange(len(rows), dtype=float)

@@ -1,23 +1,23 @@
 figure_file,axes_index,axes_title,artist_type,artist_label,series_index,point_index,x,y,width,height
 runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,line,,0,0,0,0,,
-runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,line,,0,1,1,0,,
+runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,line,,0,1,0,1,,
 runtime_residual_energy_property_family.png,1,,line,,0,0,0,0,,
-runtime_residual_energy_property_family.png,1,,line,,0,1,1,0,,
-runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,0,0,-0.17999999999999999,0,0.35999999999999999,0.045946212080785642
-runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,1,0,0.82000000000000006,0,0.35999999999999999,-3.54988545131505
-runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,2,0,1.8200000000000001,0,0.35999999999999999,0.030774018567810361
-runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,3,0,2.8199999999999998,0,0.35999999999999999,-15758.229958475444
-runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,4,0,3.8199999999999998,0,0.35999999999999999,-55.751451436621096
-runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,5,0,4.8200000000000003,0,0.35999999999999999,-2759.7790560272351
-runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,6,0,0.17999999999999999,0,0.36000000000000004,0.045946212080785642
-runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,7,0,1.1799999999999999,0,0.36000000000000004,-3.54988545131505
-runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,8,0,2.1800000000000002,0,0.36000000000000004,0.030774018567810361
-runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,9,0,3.1800000000000002,0,0.36000000000000004,-15758.229958475444
-runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,10,0,4.1799999999999997,0,0.36000000000000004,-55.751451436621096
-runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,11,0,5.1799999999999997,0,0.36000000000000004,-2759.7790560272351
-runtime_residual_energy_property_family.png,1,,bar,,0,0,0,0,0.5,0
-runtime_residual_energy_property_family.png,1,,bar,,1,0,1,0,0.5,0
-runtime_residual_energy_property_family.png,1,,bar,,2,0,2,0,0.5,0
-runtime_residual_energy_property_family.png,1,,bar,,3,0,3,0,0.5,0
-runtime_residual_energy_property_family.png,1,,bar,,4,0,4,0,0.5,0
-runtime_residual_energy_property_family.png,1,,bar,,5,0,5,0,0.5,0
+runtime_residual_energy_property_family.png,1,,line,,0,1,0,1,,
+runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,0,0,0.022973106040392821,-0.35999999999999999,0.045946212080785642,0.35999999999999999
+runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,1,0,-1.774942725657525,0.64000000000000012,-3.54988545131505,0.35999999999999999
+runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,2,0,0.015387009283905181,1.6400000000000001,0.030774018567810361,0.35999999999999999
+runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,3,0,-7879.1149792377219,2.6399999999999997,-15758.229958475444,0.35999999999999999
+runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,4,0,-27.875725718310548,3.6399999999999997,-55.751451436621096,0.35999999999999999
+runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,5,0,-1379.8895280136176,4.6400000000000006,-2759.7790560272351,0.35999999999999999
+runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,6,0,0.022973106040392821,-2.7755575615628914e-17,0.045946212080785642,0.36000000000000004
+runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,7,0,-1.774942725657525,0.99999999999999989,-3.54988545131505,0.36000000000000004
+runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,8,0,0.015387009283905181,2,0.030774018567810361,0.36000000000000004
+runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,9,0,-7879.1149792377219,3,-15758.229958475444,0.36000000000000004
+runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,10,0,-27.875725718310548,3.9999999999999996,-55.751451436621096,0.36000000000000004
+runtime_residual_energy_property_family.png,0,Residual energy property family vs pinned expected values,bar,,11,0,-1379.8895280136176,5,-2759.7790560272351,0.36000000000000004
+runtime_residual_energy_property_family.png,1,,bar,,0,0,0,-0.27500000000000002,0,0.55000000000000004
+runtime_residual_energy_property_family.png,1,,bar,,1,0,0,0.72499999999999998,0,0.55000000000000004
+runtime_residual_energy_property_family.png,1,,bar,,2,0,0,1.7250000000000001,0,0.55000000000000004
+runtime_residual_energy_property_family.png,1,,bar,,3,0,0,2.7250000000000001,0,0.55000000000000004
+runtime_residual_energy_property_family.png,1,,bar,,4,0,0,3.7250000000000001,0,0.55000000000000004
+runtime_residual_energy_property_family.png,1,,bar,,5,0,0,4.7249999999999996,0,0.55000000000000004
