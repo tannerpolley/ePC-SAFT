@@ -11,6 +11,40 @@ from epcsaft.parameters import get_prop_dict
 MW_WATER_BUTANOL = np.asarray([18.01528e-3, 74.1216e-3], dtype=float)
 
 
+def _methanol_cyclohexane_mixture() -> ePCSAFTMixture:
+    # Gross/Sadowski 2002 methanol parameters and kij; Gross/Sadowski 2001 cyclohexane parameters.
+    params = {
+        "MW": np.asarray([32.042e-3, 84.147e-3]),
+        "m": np.asarray([1.5255, 2.5303]),
+        "s": np.asarray([3.2300, 3.8499]),
+        "e": np.asarray([188.90, 278.11]),
+        "e_assoc": np.asarray([2899.5, 0.0]),
+        "vol_a": np.asarray([0.035176, 0.0]),
+        "assoc_scheme": ["2B", None],
+        "k_ij": np.asarray(
+            [
+                [0.0, 0.051],
+                [0.051, 0.0],
+            ]
+        ),
+        "z": np.asarray([0.0, 0.0]),
+        "dielc": np.asarray([33.05, 2.02]),
+    }
+    return ePCSAFTMixture.from_params(params, species=["Methanol", "Cyclohexane"])
+
+
+def _methanol_cyclohexane_lle_benchmark() -> tuple[np.ndarray, dict[str, object]]:
+    methanol_poor = np.asarray([0.05, 0.95], dtype=float)
+    methanol_rich = np.asarray([0.85, 0.15], dtype=float)
+    feed = 0.5 * methanol_poor + 0.5 * methanol_rich
+    initial_phases = {
+        "liq1": methanol_poor,
+        "liq2": methanol_rich,
+        "phase_fraction": 0.5,
+    }
+    return feed, initial_phases
+
+
 def _mass_to_mole_fraction(mass_fraction: list[float]) -> np.ndarray:
     moles = np.asarray(mass_fraction, dtype=float) / MW_WATER_BUTANOL
     return moles / np.sum(moles)
@@ -46,10 +80,60 @@ def _assert_json_like(value):
         assert not isinstance(value, np.ndarray)
 
 
+def test_methanol_cyclohexane_lle_flash_closes_material_and_fugacity_balance() -> None:
+    mix = _methanol_cyclohexane_mixture()
+    feed, initial_phases = _methanol_cyclohexane_lle_benchmark()
+
+    result = mix.equilibrium(
+        kind="lle_flash",
+        T=298.15,
+        P=1.013e5,
+        z=feed,
+        backend="neutral_lle",
+        initial_phases=initial_phases,
+        options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10, damping=0.5),
+    )
+
+    assert result.split_detected is True
+    assert result.stable is False
+    assert result.backend == "neutral_lle"
+    assert result.problem_kind == "lle_flash"
+    assert result.phase_labels == ["liq1", "liq2"]
+    liq1, liq2 = result.phases
+    assert 0.0 < liq1.phase_fraction < 1.0
+    assert 0.0 < liq2.phase_fraction < 1.0
+    np.testing.assert_allclose(liq1.composition.sum(), 1.0)
+    np.testing.assert_allclose(liq2.composition.sum(), 1.0)
+    assert np.all(liq1.composition > 0.0)
+    assert np.all(liq2.composition > 0.0)
+
+    np.testing.assert_allclose(liq1.composition, [0.1175783826, 0.8824216174], atol=5.0e-8)
+    np.testing.assert_allclose(liq2.composition, [0.7985874309, 0.2014125691], atol=5.0e-8)
+    np.testing.assert_allclose(liq2.phase_fraction, 0.4881309848, atol=5.0e-8)
+    assert result.diagnostics["phase_distance"] > 0.65
+
+    reconstructed = liq1.phase_fraction * liq1.composition + liq2.phase_fraction * liq2.composition
+    np.testing.assert_allclose(reconstructed, feed, atol=1.0e-10)
+    assert result.diagnostics["material_balance_error"] < 1.0e-10
+    assert result.diagnostics["fugacity_residual_norm"] < 1.0e-9
+
+    fugacity_residual = (
+        np.log(liq2.composition)
+        + liq2.fugacity_coefficient
+        - np.log(liq1.composition)
+        - liq1.fugacity_coefficient
+    )
+    np.testing.assert_allclose(fugacity_residual, np.zeros_like(feed), atol=1.0e-9)
+
+    payload = result.to_dict()
+    assert payload["phase_labels"] == ["liq1", "liq2"]
+    _assert_json_like(payload)
+
+
 @pytest.mark.xfail(
     reason=(
         "The current 2022_Ascani neutral water/1-butanol surface collapses "
-        "to one liquid phase; keep this as the V2 split-acceptance target."
+        "to one liquid phase; keep this as a blocker regression, not the main V2 benchmark."
     ),
     strict=True,
 )
