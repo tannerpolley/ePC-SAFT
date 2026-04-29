@@ -1,0 +1,6 @@
+figure_file,axes_index,axes_title,artist_type,artist_label,series_index,point_index,x,y,width,height
+equilibrium_lle_tie_line.png,0,Methanol/cyclohexane LLE tie line,line,Tie line,0,0,0.11757838260662883,0,,
+equilibrium_lle_tie_line.png,0,Methanol/cyclohexane LLE tie line,line,Tie line,0,1,0.79858743089581141,0,,
+equilibrium_lle_tie_line.png,0,Methanol/cyclohexane LLE tie line,scatter,Feed,0,0,0.45000000000000001,0,,
+equilibrium_lle_tie_line.png,0,Methanol/cyclohexane LLE tie line,scatter,Liquid 1,1,0,0.11757838260662883,0,,
+equilibrium_lle_tie_line.png,0,Methanol/cyclohexane LLE tie line,scatter,Liquid 2,2,0,0.79858743089581141,0,,

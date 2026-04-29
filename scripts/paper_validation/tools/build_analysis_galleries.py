@@ -44,17 +44,38 @@ def page_title() -> str:
     return "ePC-SAFT Plot Gallery"
 
 
-def _image_manifest(pngs: list[Path]) -> list[dict[str, str]]:
+def _source_path_for_output(rel_path: str) -> str:
+    parts = rel_path.split("/")
+    if not parts:
+        return rel_path
+    if parts[0] == "paper_validation" and len(parts) >= 2:
+        source_study = parts[1] if parts[1].endswith("_analysis") else f"{parts[1]}_analysis"
+        return "/".join(["scripts", "paper_validation", source_study, *parts[2:]])
+    if parts[0] == "fits":
+        return "/".join(["scripts", *parts])
+    if parts[0] == "tests":
+        return rel_path
+    return "/".join(["docs", "plots", *parts])
+
+
+def _folder_for(path: str) -> str:
+    folder = str(Path(path).parent).replace("\\", "/")
+    return "" if folder == "." else folder
+
+
+def image_manifest(pngs: list[Path]) -> list[dict[str, str]]:
     manifest = []
     for png in pngs:
-        rel_path = png.relative_to(PLOTS_ROOT).as_posix()
-        folder = str(Path(rel_path).parent).replace("\\", "/")
-        if folder == ".":
-            folder = ""
+        output_path = png.relative_to(PLOTS_ROOT).as_posix()
+        source_path = _source_path_for_output(output_path)
         manifest.append(
             {
-                "path": rel_path,
-                "folder": folder,
+                "path": output_path,
+                "folder": _folder_for(source_path),
+                "output_path": output_path,
+                "output_folder": _folder_for(output_path),
+                "source_path": source_path,
+                "source_folder": _folder_for(source_path),
                 "name": png.name,
                 "title": png.stem.replace("_", " ").replace("-", " "),
             }
@@ -62,12 +83,15 @@ def _image_manifest(pngs: list[Path]) -> list[dict[str, str]]:
     return manifest
 
 
+_image_manifest = image_manifest
+
+
 def _safe_json(data: object) -> str:
     return json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
 
 
 def render_gallery_page(root: Path, pngs: list[Path]) -> str:
-    manifest = _image_manifest(pngs)
+    manifest = image_manifest(pngs)
     title = page_title()
     summary = f"{len(manifest)} PNG files under docs/plots. Select folders on the left to show every image in that subtree."
 
@@ -153,6 +177,26 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       display: flex;
       gap: 8px;
       align-items: center;
+    }}
+    .mode-buttons {{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }}
+    .mode-button {{
+      min-height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.82rem;
+    }}
+    .mode-button.is-active {{
+      border-color: var(--blue);
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-weight: 650;
     }}
     .icon-button {{
       width: 34px;
@@ -393,6 +437,10 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
           <button id="collapse-all" class="icon-button" type="button" title="Collapse all folders" aria-label="Collapse all folders">-</button>
           <button id="clear-selection" class="icon-button" type="button" title="Clear selected folders" aria-label="Clear selected folders">x</button>
         </div>
+        <div class="mode-buttons" aria-label="Tree mode">
+          <button id="source-mode" class="mode-button is-active" type="button">Source tree</button>
+          <button id="output-mode" class="mode-button" type="button">Output tree</button>
+        </div>
       </div>
       <div class="tree-wrap">
         <ul id="folder-tree" class="tree" data-testid="folder-tree"></ul>
@@ -434,12 +482,20 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       const titleEl = document.getElementById("gallery-title");
       const metaEl = document.getElementById("gallery-meta");
       const chipsEl = document.getElementById("selected-chips");
+      const sourceModeEl = document.getElementById("source-mode");
+      const outputModeEl = document.getElementById("output-mode");
       const selected = new Set([""]);
       const expanded = new Set([""]);
-      const folderMap = new Map();
+      let treeMode = "source";
+      let folderMap = new Map();
+      let root = null;
+
+      function rootLabel() {{
+        return treeMode === "source" ? "Project source" : "docs/plots";
+      }}
 
       function folderName(path) {{
-        if (!path) return "docs/plots";
+        if (!path) return rootLabel();
         return path.split("/").at(-1).replaceAll("_", " ");
       }}
 
@@ -450,20 +506,28 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         return folder;
       }}
 
-      const root = makeFolder("");
-      for (const image of images) {{
-        const parts = image.folder ? image.folder.split("/") : [];
-        let node = root;
-        node.total += 1;
-        let currentPath = "";
-        for (const part of parts) {{
-          currentPath = currentPath ? `${{currentPath}}/${{part}}` : part;
-          const child = makeFolder(currentPath, node);
-          node.children.set(part, child);
-          node = child;
+      function activeFolder(image) {{
+        return treeMode === "source" ? image.source_folder : image.output_folder;
+      }}
+
+      function buildFolderMap() {{
+        folderMap = new Map();
+        root = makeFolder("");
+        for (const image of images) {{
+          const folder = activeFolder(image);
+          const parts = folder ? folder.split("/") : [];
+          let node = root;
           node.total += 1;
+          let currentPath = "";
+          for (const part of parts) {{
+            currentPath = currentPath ? `${{currentPath}}/${{part}}` : part;
+            const child = makeFolder(currentPath, node);
+            node.children.set(part, child);
+            node = child;
+            node.total += 1;
+          }}
+          node.images.push(image);
         }}
-        node.images.push(image);
       }}
 
       function sortedChildren(node) {{
@@ -515,7 +579,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         const label = document.createElement("span");
         label.className = "folder-name";
         label.textContent = folderName(node.path);
-        label.title = node.path || "docs/plots";
+        label.title = node.path || rootLabel();
         label.addEventListener("click", () => {{
           if (childNodes.length) {{
             if (expanded.has(node.path)) expanded.delete(node.path);
@@ -541,13 +605,15 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       }}
 
       function renderTree() {{
+        buildFolderMap();
         treeEl.replaceChildren(renderTreeNode(root));
       }}
 
       function isInSelectedFolder(image) {{
         if (selected.size === 0) return false;
+        const folderPath = activeFolder(image);
         for (const folder of selected) {{
-          if (!folder || image.folder === folder || image.folder.startsWith(`${{folder}}/`)) return true;
+          if (!folder || folderPath === folder || folderPath.startsWith(`${{folder}}/`)) return true;
         }}
         return false;
       }}
@@ -555,12 +621,12 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       function selectedLabels() {{
         return Array.from(selected)
           .sort((a, b) => a.localeCompare(b))
-          .map((path) => path || "docs/plots");
+          .map((path) => path || rootLabel());
       }}
 
       function imageMatchesFilter(image, filterText) {{
         if (!filterText) return true;
-        const haystack = `${{image.path}} ${{image.title}}`.toLowerCase();
+        const haystack = `${{image.output_path}} ${{image.source_path}} ${{image.title}}`.toLowerCase();
         return haystack.includes(filterText);
       }}
 
@@ -604,19 +670,20 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
           imageTitle.textContent = image.title;
           const imagePath = document.createElement("div");
           imagePath.className = "image-path";
-          imagePath.textContent = image.path;
+          imagePath.textContent = image.source_path;
+          imagePath.title = `Output: ${{image.output_path}}`;
           head.append(imageTitle, imagePath);
 
           const link = document.createElement("a");
           link.className = "image-link";
-          link.href = image.path;
+          link.href = image.output_path;
           link.target = "_blank";
           link.rel = "noopener";
 
           const img = document.createElement("img");
           img.loading = "lazy";
           img.decoding = "async";
-          img.src = image.path;
+          img.src = image.output_path;
           img.alt = image.title;
           link.append(img);
 
@@ -640,6 +707,19 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         renderTree();
         renderGallery();
       }});
+      function setTreeMode(mode) {{
+        treeMode = mode;
+        selected.clear();
+        selected.add("");
+        expanded.clear();
+        expanded.add("");
+        sourceModeEl.classList.toggle("is-active", treeMode === "source");
+        outputModeEl.classList.toggle("is-active", treeMode === "output");
+        renderTree();
+        renderGallery();
+      }}
+      sourceModeEl.addEventListener("click", () => setTreeMode("source"));
+      outputModeEl.addEventListener("click", () => setTreeMode("output"));
       searchEl.addEventListener("input", renderGallery);
       tileSizeEl.addEventListener("input", () => {{
         gridEl.style.setProperty("--card-min", `${{tileSizeEl.value}}px`);

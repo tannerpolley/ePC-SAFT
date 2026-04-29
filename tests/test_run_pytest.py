@@ -27,17 +27,26 @@ def test_named_shortcuts_expand_to_expected_targets_and_keep_pytest_arg_ordering
     native_args = run_pytest._pytest_args(["-q"], pytest_temp, native=True)
     profile_args = run_pytest._pytest_args(["-q"], pytest_temp, profile=True)
     profile_full_args = run_pytest._pytest_args(["-q"], pytest_temp, profile_full=True)
+    plots_args = run_pytest._pytest_args(["-q"], pytest_temp, plots=True)
 
     assert runtime_args[:len(run_pytest.RUNTIME_TEST_TARGETS)] == list(run_pytest.RUNTIME_TEST_TARGETS)
     assert api_args[:len(run_pytest.API_TEST_TARGETS)] == list(run_pytest.API_TEST_TARGETS)
     assert native_args[:len(run_pytest.NATIVE_TEST_TARGETS)] == list(run_pytest.NATIVE_TEST_TARGETS)
     assert profile_args[:len(run_pytest.PROFILE_TEST_TARGETS)] == list(run_pytest.PROFILE_TEST_TARGETS)
     assert profile_full_args[:len(run_pytest.FULL_PROFILE_TEST_TARGETS)] == list(run_pytest.FULL_PROFILE_TEST_TARGETS)
+    assert plots_args[:len(run_pytest.PLOT_TEST_TARGETS)] == list(run_pytest.PLOT_TEST_TARGETS)
     assert runtime_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert api_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert native_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert profile_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert profile_full_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
+    assert plots_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
+
+
+def test_plot_slice_stays_out_of_generic_and_confidence_targets():
+    assert "tests/test_equilibrium_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
+    assert "tests/test_equilibrium_plot_outputs.py" not in run_pytest.GENERIC_TEST_TARGETS
+    assert "tests/test_equilibrium_plot_outputs.py" not in run_pytest.CONFIDENCE_TEST_TARGETS
 
 
 def test_profile_shortcut_sets_perf_environment_flag(monkeypatch):

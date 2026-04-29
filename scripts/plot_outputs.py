@@ -11,6 +11,7 @@ PLOTS_ROOT = REPO_ROOT / "docs" / "plots"
 PAPER_VALIDATION_SOURCE_ROOT = REPO_ROOT / "scripts" / "paper_validation"
 PAPER_VALIDATION_PLOTS_ROOT = PLOTS_ROOT / "paper_validation"
 FITS_PLOTS_ROOT = PLOTS_ROOT / "fits"
+TEST_PLOTS_ROOT = PLOTS_ROOT / "tests"
 
 
 def _clean_analysis_name(name: str) -> str:
@@ -52,6 +53,14 @@ def paper_validation_output_path(path: str | Path) -> Path:
 
 def fits_plot_path(*parts: str | Path) -> Path:
     target = FITS_PLOTS_ROOT.joinpath(*(str(part) for part in parts))
+    target.parent.mkdir(parents=True, exist_ok=True)
+    return target
+
+
+def test_plot_path(source_path: str | Path, filename: str | Path) -> Path:
+    source = Path(source_path)
+    module_name = source.stem
+    target = TEST_PLOTS_ROOT / module_name / Path(filename)
     target.parent.mkdir(parents=True, exist_ok=True)
     return target
 

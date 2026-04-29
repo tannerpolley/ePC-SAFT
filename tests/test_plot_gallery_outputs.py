@@ -33,11 +33,25 @@ def test_save_plot_figure_writes_csv_backing_data(tmp_path: Path) -> None:
     assert any(row["artist_label"] == "line" and row["x"] == "1" and row["y"] == "3" for row in rows)
 
 
+def test_test_plot_path_maps_test_file_to_docked_plots_folder(tmp_path: Path, monkeypatch) -> None:
+    root = tmp_path / "plots"
+    monkeypatch.setattr(plot_outputs, "PLOTS_ROOT", root)
+    monkeypatch.setattr(plot_outputs, "TEST_PLOTS_ROOT", root / "tests")
+
+    output_path = plot_outputs.test_plot_path("tests/test_equilibrium_plot_outputs.py", "vle.png")
+
+    assert output_path == root / "tests" / "test_equilibrium_plot_outputs" / "vle.png"
+    assert output_path.parent.is_dir()
+
+
 def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monkeypatch) -> None:
     root = tmp_path / "plots"
     child = root / "paper_validation" / "Example" / "figure_1"
     child.mkdir(parents=True)
     (child / "figure_1.png").write_bytes(b"png")
+    test_child = root / "tests" / "test_equilibrium_plot_outputs"
+    test_child.mkdir(parents=True)
+    (test_child / "equilibrium_vle_compositions.png").write_bytes(b"png")
     monkeypatch.setattr(build_analysis_galleries, "PLOTS_ROOT", root)
 
     html = build_analysis_galleries.render_gallery_page(root, build_analysis_galleries.collect_pngs(root))
@@ -45,8 +59,42 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     assert 'data-testid="folder-tree"' in html
     assert 'data-testid="gallery-grid"' in html
     assert "paper_validation/index.html" not in html
-    assert "paper_validation/Example/figure_1/figure_1.png" in html
+    assert '"output_path":"paper_validation/Example/figure_1/figure_1.png"' in html
+    assert '"source_path":"scripts/paper_validation/Example_analysis/figure_1/figure_1.png"' in html
+    assert '"source_path":"tests/test_equilibrium_plot_outputs/equilibrium_vle_compositions.png"' in html
+    assert "Source tree" in html
+    assert "Output tree" in html
     assert "Select folders on the left" in html
+
+
+def test_gallery_manifest_keeps_output_and_source_paths(tmp_path: Path, monkeypatch) -> None:
+    root = tmp_path / "plots"
+    paths = [
+        root / "paper_validation" / "Example" / "figure_1" / "figure_1.png",
+        root / "fits" / "miac" / "water" / "miac.png",
+        root / "tests" / "test_equilibrium_plot_outputs" / "equilibrium_vle_compositions.png",
+    ]
+    for path in paths:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"png")
+    monkeypatch.setattr(build_analysis_galleries, "PLOTS_ROOT", root)
+
+    manifest = build_analysis_galleries.image_manifest(build_analysis_galleries.collect_pngs(root))
+
+    by_output = {item["output_path"]: item for item in manifest}
+    assert by_output["paper_validation/Example/figure_1/figure_1.png"]["source_path"] == (
+        "scripts/paper_validation/Example_analysis/figure_1/figure_1.png"
+    )
+    assert by_output["fits/miac/water/miac.png"]["source_path"] == "scripts/fits/miac/water/miac.png"
+    assert by_output["tests/test_equilibrium_plot_outputs/equilibrium_vle_compositions.png"]["source_path"] == (
+        "tests/test_equilibrium_plot_outputs/equilibrium_vle_compositions.png"
+    )
+    assert by_output["paper_validation/Example/figure_1/figure_1.png"]["folder"] == (
+        "scripts/paper_validation/Example_analysis/figure_1"
+    )
+    assert by_output["paper_validation/Example/figure_1/figure_1.png"]["output_folder"] == (
+        "paper_validation/Example/figure_1"
+    )
 
 
 def test_plot_gallery_main_writes_only_root_index_and_removes_nested_indexes(tmp_path: Path, monkeypatch) -> None:
@@ -64,8 +112,8 @@ def test_plot_gallery_main_writes_only_root_index_and_removes_nested_indexes(tmp
 
     assert (root / "index.html").exists()
     assert not (leaf / "index.html").exists()
-    assert "paper_validation/Example/figure_1/figure_1.png" in html
-    assert "paper_validation/Example/figure_1/diagnostics/diagnostic.png" in html
+    assert '"output_path":"paper_validation/Example/figure_1/figure_1.png"' in html
+    assert '"output_path":"paper_validation/Example/figure_1/diagnostics/diagnostic.png"' in html
     assert "/index.html" not in html
 
 

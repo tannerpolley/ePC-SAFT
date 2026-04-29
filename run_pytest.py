@@ -27,6 +27,10 @@ FULL_PROFILE_TEST_TARGETS = (
     "tests/test_runtime_profile_miac.py",
     "tests/test_runtime_profile_regression.py",
 )
+PLOT_TEST_TARGETS = (
+    "tests/test_plot_gallery_outputs.py",
+    "tests/test_equilibrium_plot_outputs.py",
+)
 SLICE_TARGETS = {
     "generic": GENERIC_TEST_TARGETS,
     "confidence": CONFIDENCE_TEST_TARGETS,
@@ -35,6 +39,7 @@ SLICE_TARGETS = {
     "native": NATIVE_TEST_TARGETS,
     "profile": PROFILE_TEST_TARGETS,
     "profile-full": FULL_PROFILE_TEST_TARGETS,
+    "plots": PLOT_TEST_TARGETS,
 }
 FULL_PROFILE_MIN_TIMEOUT_SECONDS = 120
 FULL_PROFILE_RUNTIME_NOTE = (
@@ -87,9 +92,10 @@ def _pytest_args(
     native: bool = False,
     profile: bool = False,
     profile_full: bool = False,
+    plots: bool = False,
 ) -> list[str]:
     cmd: list[str] = []
-    has_predefined_targets = generic or confidence or runtime or api or native or profile or profile_full
+    has_predefined_targets = generic or confidence or runtime or api or native or profile or profile_full or plots
     if confidence:
         cmd.extend(CONFIDENCE_TEST_TARGETS)
     elif generic:
@@ -104,6 +110,8 @@ def _pytest_args(
         cmd.extend(PROFILE_TEST_TARGETS)
     elif profile_full:
         cmd.extend(FULL_PROFILE_TEST_TARGETS)
+    elif plots:
+        cmd.extend(PLOT_TEST_TARGETS)
 
     if has_predefined_targets:
         cmd.extend(pytest_args)
@@ -183,6 +191,7 @@ def main() -> int:
         action="store_true",
         help="Run all opt-in runtime, MIAC, and regression profile tests",
     )
+    predefined.add_argument("--plots", action="store_true", help="Run opt-in generated plot gallery tests")
     parser.add_argument("--list-slices", action="store_true", help="Print named test slices and exit without running pytest")
     args, pytest_args = parser.parse_known_args()
 
@@ -207,6 +216,7 @@ def main() -> int:
         native=args.native,
         profile=args.profile,
         profile_full=args.profile_full,
+        plots=args.plots,
     )
     print("Running:", f"{sys.executable} -m pytest", " ".join(cmd), flush=True)
     if args.profile_full:
