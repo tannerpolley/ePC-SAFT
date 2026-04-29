@@ -1,0 +1,77 @@
+figure_file,axes_index,axes_title,artist_type,artist_label,series_index,point_index,x,y,width,height
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,line,,0,0,0,0,,
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,line,,0,1,1,0,,
+runtime_ionic_contribution_closure.png,1,,line,,0,0,0,0,,
+runtime_ionic_contribution_closure.png,1,,line,,0,1,1,0,,
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,scatter,Reported total,0,0,0,-9.7214027218057932,,
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,scatter,Reported total,0,1,1,0.00072888407763216367,,
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,scatter,Reported total,0,2,2,0.032388021640506963,,
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,scatter,Reported total,0,3,3,-10.68242029564826,,
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,scatter,Reported total,0,4,4,-199.10395743057404,,
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,scatter,Reported total,0,5,5,-204.79630395974633,,
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,scatter,Reported total,0,6,6,-3.4584244414545866,,
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,scatter,Reported total,0,7,7,-191.87996157638037,,
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,scatter,Reported total,0,8,8,-197.57230810555265,,
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,0,0,0,0,0.57999999999999996,-5.3693576756329806
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,1,0,1,0,0.57999999999999996,-3.0767358436684225
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,2,0,2,0,0.57999999999999996,0.0032659862738105916
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,3,0,3,0,0.57999999999999996,-8.4475315961287869
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,4,0,4,0,0.57999999999999996,-1.2969900983104914
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,5,0,5,0,0.57999999999999996,-1.2173048201047525
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,6,0,6,0,0.57999999999999996,13.795007615658559
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,7,0,7,0,0.57999999999999996,20.945549113476854
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,8,0,8,0,0.57999999999999996,21.025234391682595
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,9,0,0,-5.3693576756329806,0.57999999999999996,-0.039673173417049235
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,10,0,1,0,0.57999999999999996,0
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,11,0,2,0.0032659862738105916,0.57999999999999996,0.00013306447565675228
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,12,0,3,-8.4475315961287869,0.57999999999999996,-9.2415852748217731e-08
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,13,0,4,-1.2969900983104914,0.57999999999999996,-195.97614028119952
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,14,0,5,-1.2173048201047525,0.57999999999999996,-200.75466991560182
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,15,0,6,0,0.57999999999999996,-9.2415852748217731e-08
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,16,0,7,0,0.57999999999999996,-195.97614028119952
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,17,0,8,0,0.57999999999999996,-200.75466991560182
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,18,0,0,-5.4090308490500298,0.57999999999999996,-8.8621949410257379
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,19,0,1,-3.0767358436684225,0.57999999999999996,-7.9562833474853356
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,20,0,2,0.0033990507494673066,0.57999999999999996,0.030218234731079541
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,21,0,3,-8.4475316885446396,0.57999999999999996,-16.819469660694672
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,22,0,4,-197.27313037951001,0.57999999999999996,-11.589987547840398
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,23,0,5,-201.97197473570657,0.57999999999999996,-12.135229937595266
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,24,0,6,13.795007615658559,0.57999999999999996,40.698612270425116
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,25,0,7,20.945549113476854,0.57999999999999996,45.928094383279387
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,26,0,8,21.025234391682595,0.57999999999999996,45.382851993524525
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,27,0,0,0,0.57999999999999996,4.5498342977047077
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,28,0,1,0,0.57999999999999996,10.033753448769595
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,29,0,2,0,0.57999999999999996,-0.0012293195266841396
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,30,0,3,0,0.57999999999999996,14.584581050610103
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,31,0,4,0,0.57999999999999996,9.842161213448124
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,32,0,5,0,0.57999999999999996,9.3939595297552234
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,33,0,6,-9.2415852560867595e-08,0.57999999999999996,-57.952083084835827
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,34,0,7,-195.97614028119952,0.57999999999999996,-62.69450292199781
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,35,0,8,-200.75466991560182,0.57999999999999996,-63.14270460569071
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,36,0,0,4.5498342977047077,0.57999999999999996,0
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,37,0,1,10.033753448769595,0.57999999999999996,1
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,38,0,2,0.033617285480547016,0.57999999999999996,0
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,39,0,3,14.584581050610103,0.57999999999999996,0
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,40,0,4,9.842161213448124,0.57999999999999996,0
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,41,0,5,9.3939595297552234,0.57999999999999996,0
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,42,0,6,54.493619886083678,0.57999999999999996,0
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,43,0,7,66.873643496756245,0.57999999999999996,0
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,44,0,8,66.408086385207127,0.57999999999999996,0
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,45,0,0,-14.271225790075768,0.57999999999999996,-1.1229434731419019e-05
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,46,0,1,-11.033019191153759,0.57999999999999996,-5.3735382028463619e-06
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,47,0,2,0.033617285480547016,0.57999999999999996,5.5686644628849535e-08
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,48,0,3,14.584581050610103,0.57999999999999996,2.9809488211185453e-09
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,49,0,4,-208.8631179273504,0.57999999999999996,-0.083000716671760344
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,50,0,5,-214.10720467330182,0.57999999999999996,-0.083058816199711671
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,51,0,6,54.493619886083678,0.57999999999999996,3.8849713419608634e-05
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,52,0,7,-258.6706432031973,0.57999999999999996,-0.082961869939289556
+runtime_ionic_contribution_closure.png,0,Ionic contribution closure: term sums vs reported totals,bar,,53,0,8,-263.89737452129253,0.57999999999999996,-0.083019969467240884
+runtime_ionic_contribution_closure.png,1,,bar,,0,0,0,0,0.55000000000000004,1.8272639147185586e-16
+runtime_ionic_contribution_closure.png,1,,bar,,1,0,1,0,0.55000000000000004,-7.2142892099343872e-14
+runtime_ionic_contribution_closure.png,1,,bar,,2,0,2,0,0.55000000000000004,0
+runtime_ionic_contribution_closure.png,1,,bar,,3,0,3,0,0.55000000000000004,0
+runtime_ionic_contribution_closure.png,1,,bar,,4,0,4,0,0.55000000000000004,0
+runtime_ionic_contribution_closure.png,1,,bar,,5,0,5,0,0.55000000000000004,0
+runtime_ionic_contribution_closure.png,1,,bar,,6,0,6,0,0.55000000000000004,1.2840795494241941e-16
+runtime_ionic_contribution_closure.png,1,,bar,,7,0,7,0,0.55000000000000004,0
+runtime_ionic_contribution_closure.png,1,,bar,,8,0,8,0,0.55000000000000004,0

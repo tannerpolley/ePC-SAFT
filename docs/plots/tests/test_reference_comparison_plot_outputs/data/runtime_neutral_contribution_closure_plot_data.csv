@@ -1,0 +1,77 @@
+figure_file,axes_index,axes_title,artist_type,artist_label,series_index,point_index,x,y,width,height
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,line,,0,0,0,0,,
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,line,,0,1,1,0,,
+runtime_neutral_contribution_closure.png,1,,line,,0,0,0,0,,
+runtime_neutral_contribution_closure.png,1,,line,,0,1,1,0,,
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,scatter,Reported total,0,0,0,-3.54988545131505,,
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,scatter,Reported total,0,1,1,0.045946212080785642,,
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,scatter,Reported total,0,2,2,0.030774018567810361,,
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,scatter,Reported total,0,3,3,-1.1478687523834026,,
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,scatter,Reported total,0,4,4,-3.6543804288405433,,
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,scatter,Reported total,0,5,5,-5.4880637255729319,,
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,scatter,Reported total,0,6,6,1.9324151168689134,,
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,scatter,Reported total,0,7,7,-0.57409655958822725,,
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,scatter,Reported total,0,8,8,-2.4077798563206159,,
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,0,0,0,0,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,1,0,1,0,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,2,0,2,0,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,3,0,3,0,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,4,0,4,0,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,5,0,5,0,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,6,0,6,0,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,7,0,7,0,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,8,0,8,0,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,9,0,0,0,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,10,0,1,0,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,11,0,2,0,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,12,0,3,0,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,13,0,4,0,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,14,0,5,0,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,15,0,6,0,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,16,0,7,0,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,17,0,8,0,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,18,0,0,0,0.57999999999999996,-7.3241153025296839
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,19,0,1,0,0.57999999999999996,-8.0765276553586656
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,20,0,2,0,0.57999999999999996,0.032955018848241084
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,21,0,3,0,0.57999999999999996,-8.031263515291073
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,22,0,4,0,0.57999999999999996,-13.165472848873641
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,23,0,5,0,0.57999999999999996,-17.746457919495249
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,24,0,6,0,0.57999999999999996,18.044832163371147
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,25,0,7,0,0.57999999999999996,12.910622829788579
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,26,0,8,0,0.57999999999999996,8.329637759166971
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,27,0,0,0,0.57999999999999996,3.7742298512146339
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,28,0,1,0,0.57999999999999996,7.1224738674394512
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,29,0,2,0,0.57999999999999996,-0.0021810002804307227
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,30,0,3,0,0.57999999999999996,6.8833947629076704
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,31,0,4,0,0.57999999999999996,9.5110924200330977
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,32,0,5,0,0.57999999999999996,12.258394193922317
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,33,0,6,0,0.57999999999999996,-16.112417046502234
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,34,0,7,0,0.57999999999999996,-13.484719389376806
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,35,0,8,0,0.57999999999999996,-10.737417615487587
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,36,0,0,3.7742298512146339,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,37,0,1,7.1224738674394512,0.57999999999999996,1
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,38,0,2,0.032955018848241084,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,39,0,3,6.8833947629076704,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,40,0,4,9.5110924200330977,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,41,0,5,12.258394193922317,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,42,0,6,18.044832163371147,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,43,0,7,12.910622829788579,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,44,0,8,8.329637759166971,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,45,0,0,3.7742298512146339,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,46,0,1,8.1224738674394512,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,47,0,2,0.032955018848241084,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,48,0,3,6.8833947629076704,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,49,0,4,9.5110924200330977,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,50,0,5,12.258394193922317,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,51,0,6,18.044832163371147,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,52,0,7,12.910622829788579,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,0,Neutral contribution closure: term sums vs reported totals,bar,,53,0,8,8.329637759166971,0.57999999999999996,0
+runtime_neutral_contribution_closure.png,1,,bar,,0,0,0,0,0.55000000000000004,0
+runtime_neutral_contribution_closure.png,1,,bar,,1,0,1,0,0.55000000000000004,0
+runtime_neutral_contribution_closure.png,1,,bar,,2,0,2,0,0.55000000000000004,0
+runtime_neutral_contribution_closure.png,1,,bar,,3,0,3,0,0.55000000000000004,0
+runtime_neutral_contribution_closure.png,1,,bar,,4,0,4,0,0.55000000000000004,0
+runtime_neutral_contribution_closure.png,1,,bar,,5,0,5,0,0.55000000000000004,0
+runtime_neutral_contribution_closure.png,1,,bar,,6,0,6,0,0.55000000000000004,0
+runtime_neutral_contribution_closure.png,1,,bar,,7,0,7,0,0.55000000000000004,0
+runtime_neutral_contribution_closure.png,1,,bar,,8,0,8,0,0.55000000000000004,0

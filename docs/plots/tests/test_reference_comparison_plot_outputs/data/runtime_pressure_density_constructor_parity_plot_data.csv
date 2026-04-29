@@ -1,0 +1,21 @@
+figure_file,axes_index,axes_title,artist_type,artist_label,series_index,point_index,x,y,width,height
+runtime_pressure_density_constructor_parity.png,0,Pressure-constructed vs density-constructed state parity,line,Parity,0,0,-102120.428338531,-102120.428338531,,
+runtime_pressure_density_constructor_parity.png,0,Pressure-constructed vs density-constructed state parity,line,Parity,0,1,1378484.8222307025,1378484.8222307025,,
+runtime_pressure_density_constructor_parity.png,1,Relative error,line,,0,0,0,0,,
+runtime_pressure_density_constructor_parity.png,1,Relative error,line,,0,1,1,0,,
+runtime_pressure_density_constructor_parity.png,0,Pressure-constructed vs density-constructed state parity,scatter,Comparison points,0,0,14330.41711,14330.417109999997,,
+runtime_pressure_density_constructor_parity.png,0,Pressure-constructed vs density-constructed state parity,scatter,Comparison points,0,1,1276374.1152948933,1276374.1152948933,,
+runtime_pressure_density_constructor_parity.png,0,Pressure-constructed vs density-constructed state parity,scatter,Comparison points,0,2,0.045946212080785642,0.045946212080785642,,
+runtime_pressure_density_constructor_parity.png,0,Pressure-constructed vs density-constructed state parity,scatter,Comparison points,0,3,-3.54988545131505,-3.54988545131505,,
+runtime_pressure_density_constructor_parity.png,0,Pressure-constructed vs density-constructed state parity,scatter,Comparison points,0,4,55344.274540081075,55344.274540081067,,
+runtime_pressure_density_constructor_parity.png,0,Pressure-constructed vs density-constructed state parity,scatter,Comparison points,0,5,99999.999998264015,100000,,
+runtime_pressure_density_constructor_parity.png,0,Pressure-constructed vs density-constructed state parity,scatter,Comparison points,0,6,0.00072888407759574836,0.00072888407763216367,,
+runtime_pressure_density_constructor_parity.png,0,Pressure-constructed vs density-constructed state parity,scatter,Comparison points,0,7,-9.7214027218058003,-9.7214027218057932,,
+runtime_pressure_density_constructor_parity.png,1,Relative error,bar,,0,0,0,0,0.55000000000000004,-2.5386412545892135e-16
+runtime_pressure_density_constructor_parity.png,1,Relative error,bar,,1,0,1,0,0.55000000000000004,0
+runtime_pressure_density_constructor_parity.png,1,Relative error,bar,,2,0,2,0,0.55000000000000004,0
+runtime_pressure_density_constructor_parity.png,1,Relative error,bar,,3,0,3,0,0.55000000000000004,0
+runtime_pressure_density_constructor_parity.png,1,Relative error,bar,,4,0,4,0,0.55000000000000004,-1.3146721453389145e-16
+runtime_pressure_density_constructor_parity.png,1,Relative error,bar,,5,0,5,0,0.55000000000000004,1.7359852791133885e-11
+runtime_pressure_density_constructor_parity.png,1,Relative error,bar,,6,0,6,0,0.55000000000000004,4.9960365889487429e-11
+runtime_pressure_density_constructor_parity.png,1,Relative error,bar,,7,0,7,0,0.55000000000000004,7.3090556588742295e-16

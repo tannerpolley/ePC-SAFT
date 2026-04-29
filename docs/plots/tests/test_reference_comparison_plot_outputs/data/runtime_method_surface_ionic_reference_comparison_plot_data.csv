@@ -1,0 +1,71 @@
+figure_file,axes_index,axes_title,artist_type,artist_label,series_index,point_index,x,y,width,height
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,line,,0,0,0,0,,
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,line,,0,1,1,0,,
+runtime_method_surface_ionic_reference_comparison.png,1,,line,,0,0,0,0,,
+runtime_method_surface_ionic_reference_comparison.png,1,,line,,0,1,1,0,,
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,0,0,-0.17999999999999999,0,0.35999999999999999,100000
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,1,0,0.82000000000000006,0,0.35999999999999999,55344.274540081067
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,2,0,1.8200000000000001,0,0.35999999999999999,997.16657031212219
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,3,0,2.8199999999999998,0,0.35999999999999999,0.00072888407763216367
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,4,0,3.8199999999999998,0,0.35999999999999999,-9.7214027218057932
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,5,0,4.8200000000000003,0,0.35999999999999999,0.032388021640506963
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,6,0,5.8200000000000003,0,0.35999999999999999,-26415.160790583304
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,7,0,6.8200000000000003,0,0.35999999999999999,-59.523895811942488
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,8,0,7.8200000000000003,0,0.35999999999999999,-8668.1112542526535
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,9,0,8.8200000000000003,0,0.35999999999999999,-10.68242029564826
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,10,0,9.8200000000000003,0,0.35999999999999999,-199.10395743057404
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,11,0,10.82,0,0.35999999999999999,-204.79630395974633
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,12,0,11.82,0,0.35999999999999999,-3.4584244414545866
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,13,0,12.82,0,0.35999999999999999,-191.87996157638037
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,14,0,13.82,0,0.35999999999999999,-197.57230810555265
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,15,0,14.82,0,0.35999999999999999,1.0000051724487415
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,16,0,15.82,0,0.35999999999999999,0.9222113779068436
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,17,0,16.82,0,0.35999999999999999,0.92222580907859752
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,18,0,17.82,0,0.35999999999999999,78.075981999999996
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,19,0,18.82,0,0.35999999999999999,0.9739563029226268
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,20,0,19.82,0,0.35999999999999999,-475461.42607060104
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,21,0,20.82,0,0.35999999999999999,-489572.50284442049
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,22,0,0.17999999999999999,0,0.36000000000000004,100000
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,23,0,1.1799999999999999,0,0.36000000000000004,55344.274540081075
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,24,0,2.1800000000000002,0,0.36000000000000004,997.1665703121223
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,25,0,3.1800000000000002,0,0.36000000000000004,0.00072888407761168299
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,26,0,4.1799999999999997,0,0.36000000000000004,-9.7214027218058003
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,27,0,5.1799999999999997,0,0.36000000000000004,0.032388021640507005
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,28,0,6.1799999999999997,0,0.36000000000000004,-26415.160790583413
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,29,0,7.1799999999999997,0,0.36000000000000004,-59.523895812302186
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,30,0,8.1799999999999997,0,0.36000000000000004,-8668.1112541455168
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,31,0,9.1799999999999997,0,0.36000000000000004,-10.682420304620589
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,32,0,10.18,0,0.36000000000000004,-199.10395742942774
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,33,0,11.18,0,0.36000000000000004,-204.79630395556683
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,34,0,12.18,0,0.36000000000000004,-3.4584244392792751
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,35,0,13.18,0,0.36000000000000004,-191.87996157765761
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,36,0,14.18,0,0.36000000000000004,-197.57230810636239
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,37,0,15.18,0,0.36000000000000004,1.0000051724037697
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,38,0,16.18,0,0.36000000000000004,0.9222113778654043
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,39,0,17.18,0,0.36000000000000004,0.92222580903713125
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,40,0,18.18,0,0.36000000000000004,78.075981999999996
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,41,0,19.18,0,0.36000000000000004,0.97395661032790914
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,42,0,20.18,0,0.36000000000000004,-475461.42607034137
+runtime_method_surface_ionic_reference_comparison.png,0,Ionic public method surface vs pinned expected values,bar,,43,0,21.18,0,0.36000000000000004,-489572.50284416083
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,0,0,0,0,0.5,0
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,1,0,1,0,0.5,-1.3146721453389145e-16
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,2,0,2,0,0.5,-1.1400987669094342e-16
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,3,0,3,0,0.5,2.8098689609981613e-11
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,4,0,4,0,0.5,7.3090556588742295e-16
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,5,0,5,0,0.5,-1.2854555886603897e-15
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,6,0,6,0,0.5,4.1316941084703844e-15
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,7,0,7,0,0.5,6.0429184651837659e-12
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,8,0,8,0,0.5,-1.2359861766680647e-11
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,9,0,9,0,0.5,8.3991533771969813e-10
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,10,0,10,0,0.5,-5.7573159245383722e-12
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,11,0,11,0,0.5,-2.0408071611370466e-11
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,12,0,12,0,0.5,-6.2898916101510664e-10
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,13,0,13,0,0.5,6.6564699596106607e-12
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,14,0,14,0,0.5,4.0984210258671086e-12
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,15,0,15,0,0.5,4.4971571447365528e-11
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,16,0,16,0,0.5,4.4934705245836723e-11
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,17,0,17,0,0.5,4.4963255692801526e-11
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,18,0,18,0,0.5,0
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,19,0,19,0,0.5,-3.1562523328109582e-07
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,20,0,20,0,0.5,-5.4613131811993189e-13
+runtime_method_surface_ionic_reference_comparison.png,1,,bar,,21,0,21,0,0.5,-5.3039003176539435e-13
