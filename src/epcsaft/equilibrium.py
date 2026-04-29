@@ -191,7 +191,7 @@ def tp_flash(mixture: Any, *, T: float, P: float, z: Any, options: EquilibriumOp
 
     liquid_seed = _phase_state(mixture, temperature, pressure, feed, "liq", opts, "TP flash")
     vapor_seed = _phase_state(mixture, temperature, pressure, feed, "vap", opts, "TP flash")
-    stability_diagnostics = _equilibrium_stability_precheck(
+    stability_precheck = _equilibrium_stability_precheck(
         mixture,
         T=temperature,
         P=pressure,
@@ -200,6 +200,7 @@ def tp_flash(mixture: Any, *, T: float, P: float, z: Any, options: EquilibriumOp
         parent_phase=None,
         trial_phases=("liq", "vap"),
     )
+    stability_diagnostics = stability_precheck["diagnostics"]
     ln_k = liquid_seed["ln_phi"] - vapor_seed["ln_phi"]
 
     split, beta, no_split_message = _rachford_rice_beta(feed, np.exp(ln_k))
@@ -219,13 +220,15 @@ def tp_flash(mixture: Any, *, T: float, P: float, z: Any, options: EquilibriumOp
             "material_balance_error": 0.0,
             "vapor_fraction": float(beta),
             "message": no_split_message,
+            "point_solver_split_detected": False,
+            "point_solver_message": no_split_message,
         }
         diagnostics.update(stability_diagnostics)
         return EquilibriumResult(
             backend="neutral_vle",
             problem_kind="tp_flash",
             phases=(phase,),
-            stable=True,
+            stable=_no_split_stable_from_precheck(stability_diagnostics),
             split_detected=False,
             diagnostics=diagnostics,
         )
@@ -288,7 +291,7 @@ def lle_flash(
     _reject_ion_containing_mixture(mixture)
     temperature = _positive_scalar(T, "T", "lle_flash")
     pressure = _positive_scalar(P, "P", "lle_flash")
-    stability_diagnostics = _equilibrium_stability_precheck(
+    stability_precheck = _equilibrium_stability_precheck(
         mixture,
         T=temperature,
         P=pressure,
@@ -297,7 +300,8 @@ def lle_flash(
         parent_phase="liq",
         trial_phases=("liq",),
     )
-    seeds = _initial_lle_guesses(initial_phases, feed, opts)
+    stability_diagnostics = stability_precheck["diagnostics"]
+    seeds = _initial_lle_guesses(initial_phases, feed, opts, stability_precheck)
     state_feed = _phase_state(mixture, temperature, pressure, feed, "liq", opts, "LLE flash")
 
     degenerate_attempts: list[dict[str, Any]] = []
@@ -457,6 +461,17 @@ def _normalize_options(options: EquilibriumOptions | None) -> EquilibriumOptions
     )
 
 
+def _stability_precheck_options(options: EquilibriumOptions) -> EquilibriumOptions:
+    return EquilibriumOptions(
+        max_iterations=min(int(options.max_iterations), 40),
+        tolerance=max(float(options.tolerance), 1.0e-8),
+        damping=options.damping,
+        min_composition=options.min_composition,
+        include_phase_diagnostics=False,
+        stability_precheck=True,
+    )
+
+
 def _equilibrium_stability_precheck(
     mixture: Any,
     *,
@@ -468,28 +483,43 @@ def _equilibrium_stability_precheck(
     trial_phases: Any,
 ) -> dict[str, Any]:
     if not options.stability_precheck:
-        return {"stability_analysis": "not_run"}
+        return {
+            "diagnostics": {"stability_analysis": "not_run"},
+            "unstable_trial_composition": None,
+        }
+    precheck_options = _stability_precheck_options(options)
     stability_mixture = type(mixture).from_params(mixture.parameters, species=mixture.species)
     result = neutral_stability(
         stability_mixture,
         T=T,
         P=P,
         z=feed,
-        options=options,
+        options=precheck_options,
         parent_phase=parent_phase,
         trial_phases=trial_phases,
     )
     unstable_trial_count = sum(1 for trial in result.trials if trial.unstable)
+    unstable_trials = [trial for trial in result.trials if trial.unstable]
+    best_unstable_trial = min(unstable_trials, key=lambda trial: trial.tpd) if unstable_trials else None
     return {
-        "stability_analysis": "neutral_tpd",
-        "stable": bool(result.stable),
-        "min_tpd": float(result.min_tpd),
-        "parent_phase": result.parent_phase,
-        "trial_phase": result.trial_phase,
-        "trial_composition": result.trial_composition.tolist(),
-        "unstable_trial_count": int(unstable_trial_count),
-        "trial_count": len(result.trials),
+        "diagnostics": {
+            "stability_analysis": "neutral_tpd",
+            "stability_stable": bool(result.stable),
+            "min_tpd": float(result.min_tpd),
+            "parent_phase": result.parent_phase,
+            "trial_phase": result.trial_phase,
+            "trial_composition": result.trial_composition.tolist(),
+            "unstable_trial_count": int(unstable_trial_count),
+            "trial_count": len(result.trials),
+            "stability_max_iterations": int(precheck_options.max_iterations),
+            "stability_tolerance": float(precheck_options.tolerance),
+        },
+        "unstable_trial_composition": None if best_unstable_trial is None else best_unstable_trial.composition.copy(),
     }
+
+
+def _no_split_stable_from_precheck(stability_diagnostics: dict[str, Any]) -> bool:
+    return bool(stability_diagnostics.get("stability_stable", True))
 
 
 def _finite_float_option(value: Any, label: str) -> float:
@@ -738,6 +768,8 @@ def _two_phase_result(
         "material_balance_error": float(best["material_error"]),
         "vapor_fraction": float(beta),
         "message": message,
+        "point_solver_split_detected": True,
+        "point_solver_message": message,
     }
     diagnostics.update(stability_diagnostics)
     return EquilibriumResult(
@@ -750,10 +782,19 @@ def _two_phase_result(
     )
 
 
-def _initial_lle_guesses(initial_phases: Any, feed: np.ndarray, options: EquilibriumOptions) -> list[dict[str, Any]]:
+def _initial_lle_guesses(
+    initial_phases: Any,
+    feed: np.ndarray,
+    options: EquilibriumOptions,
+    stability_precheck: dict[str, Any],
+) -> list[dict[str, Any]]:
     if not isinstance(initial_phases, dict):
         if initial_phases is None:
-            return _default_lle_guesses(feed, options)
+            guesses = _default_lle_guesses(feed, options)
+            tpd_seed = _tpd_lle_guess(feed, stability_precheck.get("unstable_trial_composition"), options)
+            if tpd_seed is not None:
+                return [tpd_seed, *guesses]
+            return guesses
         raise InputError("initial_phases must be a dict with 'liq1', 'liq2', and 'phase_fraction'.")
     missing = {"liq1", "liq2", "phase_fraction"} - set(initial_phases)
     if missing:
@@ -764,6 +805,34 @@ def _initial_lle_guesses(initial_phases: Any, feed: np.ndarray, options: Equilib
     if not np.isfinite(beta) or not (0.0 < beta < 1.0):
         raise InputError("initial_phases phase_fraction must be > 0 and < 1.")
     return [{"seed_name": "user", "beta": beta, "comp1": comp1, "comp2": comp2}]
+
+
+def _tpd_lle_guess(
+    feed: np.ndarray,
+    trial_composition: Any,
+    options: EquilibriumOptions,
+) -> dict[str, Any] | None:
+    if trial_composition is None:
+        return None
+    comp2 = _clip_normalize_composition(np.asarray(trial_composition, dtype=float), options.min_composition)
+    if comp2.size != feed.size or _phase_distance(feed, comp2) <= _split_distance_tolerance(options):
+        return None
+    for beta in (0.5, 0.25, 0.75, 0.1, 0.9):
+        comp1_raw = (feed - beta * comp2) / (1.0 - beta)
+        if np.all(np.isfinite(comp1_raw)) and np.all(comp1_raw >= options.min_composition):
+            comp1 = _clip_normalize_composition(comp1_raw, options.min_composition)
+            if _phase_distance(comp1, comp2) > _split_distance_tolerance(options):
+                return {"seed_name": "tpd_liq_trial", "beta": float(beta), "comp1": comp1, "comp2": comp2}
+    lean_index = int(np.argmin(comp2 - feed))
+    comp1 = _blend_lle_seed(
+        feed,
+        _component_rich_lle_composition(feed.size, lean_index, options.min_composition),
+        0.9,
+        options.min_composition,
+    )
+    if _phase_distance(comp1, comp2) <= _split_distance_tolerance(options):
+        return None
+    return {"seed_name": "tpd_liq_trial", "beta": 0.5, "comp1": comp1, "comp2": comp2}
 
 
 def _default_lle_guesses(feed: np.ndarray, options: EquilibriumOptions) -> list[dict[str, Any]]:
@@ -1072,6 +1141,8 @@ def _lle_two_phase_result(
         "seed_name": str(seed_name),
         "attempt_count": int(attempt_count),
         "message": message,
+        "point_solver_split_detected": True,
+        "point_solver_message": message,
     }
     diagnostics.update(stability_diagnostics)
     return EquilibriumResult(
@@ -1109,13 +1180,15 @@ def _lle_no_split_result(
         "seed_name": str(seed_name),
         "attempt_count": int(attempt_count),
         "message": message,
+        "point_solver_split_detected": False,
+        "point_solver_message": message,
     }
     diagnostics.update(stability_diagnostics)
     return EquilibriumResult(
         backend="neutral_lle",
         problem_kind="lle_flash",
         phases=(phase,),
-        stable=True,
+        stable=_no_split_stable_from_precheck(stability_diagnostics),
         split_detected=False,
         diagnostics=diagnostics,
     )

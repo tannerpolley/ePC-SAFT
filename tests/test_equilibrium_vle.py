@@ -55,6 +55,7 @@ def test_ternary_hydrocarbon_basis_tp_flash_closes_material_and_fugacity_balance
     assert result.diagnostics["material_balance_error"] < 1.0e-10
     assert result.diagnostics["fugacity_residual_norm"] < 1.0e-6
     assert result.diagnostics["stability_analysis"] == "neutral_tpd"
+    assert isinstance(result.diagnostics["stability_stable"], bool)
     assert np.isfinite(result.diagnostics["min_tpd"])
     assert result.diagnostics["unstable_trial_count"] >= 1
 
@@ -73,11 +74,14 @@ def test_tp_flash_reports_no_split_when_rachford_rice_has_no_bracket() -> None:
     result = mix.equilibrium(kind="tp_flash", T=300.0, P=1.0e5, z=[0.1, 0.3, 0.6])
 
     assert result.split_detected is False
-    assert result.stable is True
+    assert result.stable is False
     assert len(result.phases) == 1
     assert result.phases[0].label in {"liq", "vap"}
     assert "no two-phase Rachford-Rice bracket" in result.diagnostics["message"]
+    assert result.diagnostics["point_solver_split_detected"] is False
+    assert "no two-phase Rachford-Rice bracket" in result.diagnostics["point_solver_message"]
     assert result.diagnostics["stability_analysis"] == "neutral_tpd"
+    assert result.diagnostics["stability_stable"] is False
     assert np.isfinite(result.diagnostics["min_tpd"])
 
 
@@ -93,5 +97,7 @@ def test_tp_flash_can_skip_stability_precheck_for_debug_workflows() -> None:
     )
 
     assert result.split_detected is False
+    assert result.stable is True
     assert result.diagnostics["stability_analysis"] == "not_run"
+    assert result.diagnostics["point_solver_split_detected"] is False
     assert "min_tpd" not in result.diagnostics

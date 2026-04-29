@@ -86,11 +86,13 @@ def test_methanol_cyclohexane_lle_flash_closes_material_and_fugacity_balance() -
     assert result.diagnostics["seed_name"] == "user"
     assert result.diagnostics["attempt_count"] == 1
     assert result.diagnostics["stability_analysis"] == "neutral_tpd"
-    assert result.diagnostics["stable"] is False
+    assert result.diagnostics["stability_stable"] is False
     assert result.diagnostics["min_tpd"] < -1.0e-4
     assert result.diagnostics["parent_phase"] == "liq"
     assert result.diagnostics["trial_phase"] == "liq"
     assert result.diagnostics["unstable_trial_count"] >= 1
+    assert result.diagnostics["stability_max_iterations"] == 40
+    assert result.diagnostics["stability_tolerance"] == pytest.approx(1.0e-8)
 
     reconstructed = liq1.phase_fraction * liq1.composition + liq2.phase_fraction * liq2.composition
     np.testing.assert_allclose(reconstructed, feed, atol=1.0e-10)
@@ -133,8 +135,8 @@ def test_lle_flash_without_initial_phases_finds_methanol_cyclohexane_split() -> 
     assert result.diagnostics["phase_distance"] > 0.65
     assert result.diagnostics["stability_analysis"] == "neutral_tpd"
     assert result.diagnostics["min_tpd"] < -1.0e-4
-    assert result.diagnostics["attempt_count"] >= 1
-    assert isinstance(result.diagnostics["seed_name"], str)
+    assert result.diagnostics["attempt_count"] == 1
+    assert result.diagnostics["seed_name"] == "tpd_liq_trial"
 
 
 def test_lle_flash_reports_no_split_for_identical_initial_phases() -> None:
@@ -150,12 +152,15 @@ def test_lle_flash_reports_no_split_for_identical_initial_phases() -> None:
     )
 
     assert result.split_detected is False
-    assert result.stable is True
+    assert result.stable is False
     assert result.phase_labels == ["liq"]
     assert "no V2 LLE split" in result.diagnostics["message"]
+    assert result.diagnostics["point_solver_split_detected"] is False
+    assert "no V2 LLE split" in result.diagnostics["point_solver_message"]
     assert result.diagnostics["seed_name"] == "user"
     assert result.diagnostics["attempt_count"] == 1
     assert result.diagnostics["stability_analysis"] == "neutral_tpd"
+    assert result.diagnostics["stability_stable"] is False
     assert np.isfinite(result.diagnostics["min_tpd"])
 
 
@@ -173,7 +178,9 @@ def test_lle_flash_can_skip_stability_precheck_for_debug_workflows() -> None:
     )
 
     assert result.split_detected is False
+    assert result.stable is True
     assert result.diagnostics["stability_analysis"] == "not_run"
+    assert result.diagnostics["point_solver_split_detected"] is False
     assert "min_tpd" not in result.diagnostics
 
 

@@ -101,6 +101,23 @@ def test_explicit_stability_runs_even_when_equilibrium_precheck_is_disabled() ->
     assert result.diagnostics["trial_count"] > 0
 
 
+def test_explicit_stability_uses_user_iteration_and_tolerance_options() -> None:
+    mix = _methanol_cyclohexane_mixture()
+
+    result = mix.equilibrium(
+        kind="stability",
+        T=298.15,
+        P=1.013e5,
+        z=[0.45, 0.55],
+        parent_phase="liq",
+        trial_phases=("liq",),
+        options=epcsaft.EquilibriumOptions(max_iterations=1, tolerance=1.0e-5, stability_precheck=False),
+    )
+
+    assert result.diagnostics["tpd_threshold"] == pytest.approx(1.0e-5)
+    assert all(trial.iterations <= 1 for trial in result.trials)
+
+
 def test_methanol_cyclohexane_liquid_parent_detects_liquid_instability() -> None:
     mix = _methanol_cyclohexane_mixture()
 
