@@ -150,6 +150,17 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     assert "Interactive" in html
     assert "Static" in html
     assert "plotGalleryViewMode" in html
+    assert "plotGallerySidebarWidth" in html
+    assert 'id="sidebar-resizer"' in html
+    assert 'role="separator"' in html
+    assert 'aria-label="Resize plot folder sidebar"' in html
+    assert "function setSidebarWidth" in html
+    assert "startSidebarResize" in html
+    assert "finishSidebarResize" in html
+    assert "col-resize" in html
+    assert "grid-template-columns: var(--sidebar) var(--sidebar-resizer) minmax(0, 1fr);" in html
+    assert ".sidebar-resizer" in html
+    assert "sidebar-resizing" in html
     assert 'id="data-modal"' in html
     assert 'id="asset-modal"' in html
     assert 'id="interactive-view"' in html

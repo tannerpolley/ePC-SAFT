@@ -19,6 +19,9 @@
       --teal: #137d72;
       --shadow: 0 8px 24px rgba(25, 43, 65, 0.08);
       --sidebar: clamp(280px, 27vw, 420px);
+      --sidebar-min: 220px;
+      --sidebar-max: min(620px, 55vw);
+      --sidebar-resizer: 8px;
       --radius: 8px;
     }
 
@@ -33,17 +36,35 @@
       line-height: 1.4;
     }
     button, input { font: inherit; }
+    body.sidebar-resizing {
+      cursor: col-resize;
+      user-select: none;
+    }
     .app-shell {
       display: grid;
-      grid-template-columns: var(--sidebar) minmax(0, 1fr);
+      grid-template-columns: var(--sidebar) var(--sidebar-resizer) minmax(0, 1fr);
       height: 100vh;
     }
     .sidebar {
       display: flex;
       min-width: 0;
       flex-direction: column;
-      border-right: 1px solid var(--border);
       background: var(--panel);
+    }
+    .sidebar-resizer {
+      position: relative;
+      width: var(--sidebar-resizer);
+      border-inline: 1px solid transparent;
+      background: linear-gradient(to right, transparent 0, transparent 3px, var(--border) 3px, var(--border) 4px, transparent 4px);
+      cursor: col-resize;
+      touch-action: none;
+    }
+    .sidebar-resizer:hover,
+    .sidebar-resizer:focus,
+    body.sidebar-resizing .sidebar-resizer {
+      border-inline-color: rgba(25, 95, 184, 0.28);
+      background: linear-gradient(to right, transparent 0, transparent 2px, var(--blue) 2px, var(--blue) 5px, transparent 5px);
+      outline: none;
     }
     .brand {
       padding: 18px 18px 14px;
@@ -484,6 +505,7 @@
       }
       .sidebar, .content { height: auto; }
       .sidebar { border-right: 0; border-bottom: 1px solid var(--border); }
+      .sidebar-resizer { display: none; }
       .tree-wrap { max-height: 42vh; }
       .content { display: block; }
       .gallery-scroll { overflow: visible; padding: 14px; }
@@ -517,6 +539,16 @@
         <ul id="folder-tree" class="tree" data-testid="folder-tree"></ul>
       </div>
     </aside>
+    <div
+      id="sidebar-resizer"
+      class="sidebar-resizer"
+      role="separator"
+      aria-label="Resize plot folder sidebar"
+      aria-orientation="vertical"
+      aria-valuemin="220"
+      aria-valuemax="620"
+      tabindex="0"
+    ></div>
     <main class="content">
       <header class="content-header">
         <div class="content-title-row">
@@ -581,6 +613,7 @@
       const outputModeEl = document.getElementById("output-mode");
       const interactiveViewEl = document.getElementById("interactive-view");
       const staticViewEl = document.getElementById("static-view");
+      const sidebarResizerEl = document.getElementById("sidebar-resizer");
       const dataModalEl = document.getElementById("data-modal");
       const dataTitleEl = document.getElementById("data-dialog-title");
       const dataBodyEl = document.getElementById("data-dialog-body");
@@ -590,12 +623,14 @@
       const assetBodyEl = document.getElementById("asset-dialog-body");
       const assetCloseEl = document.getElementById("asset-close");
       const plotViewStorageKey = "plotGalleryViewMode";
+      const sidebarWidthStorageKey = "plotGallerySidebarWidth";
       const selected = new Set([""]);
       const expanded = new Set([""]);
       let treeMode = "source";
       let plotViewMode = localStorage.getItem(plotViewStorageKey) === "static" ? "static" : "interactive";
       let folderMap = new Map();
       let root = null;
+      let sidebarResizeActive = false;
 
       function rootLabel() {
         return treeMode === "source" ? "Project source" : "docs/plots";
@@ -760,6 +795,49 @@
         interactiveViewEl.classList.toggle("is-active", plotViewMode === "interactive");
         staticViewEl.classList.toggle("is-active", plotViewMode === "static");
         renderGallery();
+      }
+
+      function sidebarWidthBounds() {
+        const minimum = 220;
+        const maximum = Math.max(minimum, Math.min(620, Math.floor(window.innerWidth * 0.55)));
+        return { minimum, maximum };
+      }
+
+      function setSidebarWidth(width, { persist = true } = {}) {
+        const { minimum, maximum } = sidebarWidthBounds();
+        const clamped = Math.max(minimum, Math.min(maximum, Math.round(width)));
+        document.documentElement.style.setProperty("--sidebar", `${clamped}px`);
+        sidebarResizerEl.setAttribute("aria-valuenow", String(clamped));
+        sidebarResizerEl.setAttribute("aria-valuemax", String(maximum));
+        if (persist) localStorage.setItem(sidebarWidthStorageKey, String(clamped));
+        return clamped;
+      }
+
+      function restoreSidebarWidth() {
+        const stored = Number(localStorage.getItem(sidebarWidthStorageKey));
+        if (Number.isFinite(stored) && stored > 0) setSidebarWidth(stored, { persist: false });
+        else sidebarResizerEl.setAttribute("aria-valuenow", String(Math.round(sidebarResizerEl.getBoundingClientRect().left)));
+      }
+
+      function startSidebarResize(event) {
+        if (event.button !== undefined && event.button !== 0) return;
+        sidebarResizeActive = true;
+        document.body.classList.add("sidebar-resizing");
+        sidebarResizerEl.setPointerCapture?.(event.pointerId);
+        setSidebarWidth(event.clientX);
+        event.preventDefault();
+      }
+
+      function updateSidebarResize(event) {
+        if (!sidebarResizeActive) return;
+        setSidebarWidth(event.clientX);
+      }
+
+      function finishSidebarResize(event) {
+        if (!sidebarResizeActive) return;
+        sidebarResizeActive = false;
+        document.body.classList.remove("sidebar-resizing");
+        if (event?.pointerId !== undefined) sidebarResizerEl.releasePointerCapture?.(event.pointerId);
       }
 
       function makeAssetButton(label, path, image) {
@@ -1015,6 +1093,26 @@
       outputModeEl.addEventListener("click", () => setTreeMode("output"));
       interactiveViewEl.addEventListener("click", () => setPlotViewMode("interactive"));
       staticViewEl.addEventListener("click", () => setPlotViewMode("static"));
+      sidebarResizerEl.addEventListener("pointerdown", startSidebarResize);
+      sidebarResizerEl.addEventListener("pointermove", updateSidebarResize);
+      sidebarResizerEl.addEventListener("pointerup", finishSidebarResize);
+      sidebarResizerEl.addEventListener("pointercancel", finishSidebarResize);
+      sidebarResizerEl.addEventListener("dblclick", () => {
+        localStorage.removeItem(sidebarWidthStorageKey);
+        document.documentElement.style.removeProperty("--sidebar");
+        restoreSidebarWidth();
+      });
+      sidebarResizerEl.addEventListener("keydown", (event) => {
+        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+        const current = Number(sidebarResizerEl.getAttribute("aria-valuenow")) || sidebarResizerEl.getBoundingClientRect().left;
+        const delta = event.key === "ArrowLeft" ? -24 : 24;
+        setSidebarWidth(current + delta);
+        event.preventDefault();
+      });
+      window.addEventListener("resize", () => {
+        const current = Number(sidebarResizerEl.getAttribute("aria-valuenow"));
+        if (Number.isFinite(current) && current > 0) setSidebarWidth(current, { persist: false });
+      });
       dataCloseEl.addEventListener("click", closeDataTable);
       assetCloseEl.addEventListener("click", closeAssetPreview);
       dataModalEl.addEventListener("click", (event) => {
@@ -1034,6 +1132,7 @@
 
       interactiveViewEl.classList.toggle("is-active", plotViewMode === "interactive");
       staticViewEl.classList.toggle("is-active", plotViewMode === "static");
+      restoreSidebarWidth();
       gridEl.style.setProperty("--card-min", `${tileSizeEl.value}px`);
       renderTree();
       renderGallery();
