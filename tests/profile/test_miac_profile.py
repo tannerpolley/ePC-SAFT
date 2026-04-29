@@ -3,7 +3,7 @@
 Run with:
 
     set ePCSAFT_RUN_PERF=1
-    python -m pytest tests/test_runtime_profile_miac.py -s
+    python -m pytest tests/profile/test_miac_profile.py -s
 """
 
 from __future__ import annotations

@@ -7,7 +7,7 @@ Generated PNG outputs belong under `docs/plots/fits/**`, not under `data/**` or 
 ## Active Validation
 
 - `validate_miac_fits.py`: main dataset-driven MIAC validation and plot generator.
-- `profile_miac_runtime.py`: opt-in runtime profiler used by `tests/test_runtime_profile_miac.py`.
+- `profile_miac_runtime.py`: opt-in runtime profiler used by `tests/profile/test_miac_profile.py`.
 
 ## Retained Analysis Helpers
 

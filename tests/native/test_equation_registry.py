@@ -8,7 +8,7 @@ import pytest
 from scripts import sync_equation_registry
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 TEX_PATH = REPO_ROOT / "docs" / "latex" / "equations.tex"
 
 EQUATION_FAMILY_COVERAGE = {
@@ -175,7 +175,7 @@ def test_sync_equation_registry_help_includes_strict_traceability_flag() -> None
 
 def test_native_equation_family_coverage_matrix_is_documented_and_complete() -> None:
     docs = (REPO_ROOT / "docs" / "pages" / "equation_traceability.rst").read_text(encoding="utf-8")
-    native_contracts = (REPO_ROOT / "tests" / "test_native_runtime_contracts.py").read_text(encoding="utf-8")
+    native_contracts = (REPO_ROOT / "tests" / "native" / "test_runtime_contracts.py").read_text(encoding="utf-8")
 
     assert "Equation-Family Coverage Matrix" in docs
     for family, tests in EQUATION_FAMILY_COVERAGE.items():

@@ -13,9 +13,9 @@ def test_confidence_slice_extends_generic_targets_without_changing_generic():
     confidence_args = run_pytest._pytest_args(["-q"], pytest_temp, confidence=True)
 
     assert generic_args[:len(run_pytest.GENERIC_TEST_TARGETS)] == list(run_pytest.GENERIC_TEST_TARGETS)
-    assert "tests/test_native_runtime_contracts.py" not in generic_args
+    assert "tests/native/test_runtime_contracts.py" not in generic_args
     assert confidence_args[:len(run_pytest.CONFIDENCE_TEST_TARGETS)] == list(run_pytest.CONFIDENCE_TEST_TARGETS)
-    assert "tests/test_native_runtime_contracts.py" in confidence_args
+    assert "tests/native/test_runtime_contracts.py" in confidence_args
     assert confidence_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
 
 
@@ -44,12 +44,34 @@ def test_named_shortcuts_expand_to_expected_targets_and_keep_pytest_arg_ordering
 
 
 def test_plot_slice_stays_out_of_generic_and_confidence_targets():
-    assert "tests/test_equilibrium_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
-    assert "tests/test_reference_comparison_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
-    assert "tests/test_equilibrium_plot_outputs.py" not in run_pytest.GENERIC_TEST_TARGETS
-    assert "tests/test_equilibrium_plot_outputs.py" not in run_pytest.CONFIDENCE_TEST_TARGETS
-    assert "tests/test_reference_comparison_plot_outputs.py" not in run_pytest.GENERIC_TEST_TARGETS
-    assert "tests/test_reference_comparison_plot_outputs.py" not in run_pytest.CONFIDENCE_TEST_TARGETS
+    assert "tests/plots/test_equilibrium_outputs.py" in run_pytest.PLOT_TEST_TARGETS
+    assert "tests/plots/test_reference_comparison_outputs.py" in run_pytest.PLOT_TEST_TARGETS
+    assert all(target.startswith("tests/plots/") for target in run_pytest.PLOT_TEST_TARGETS)
+    assert "tests/plots/test_equilibrium_outputs.py" not in run_pytest.GENERIC_TEST_TARGETS
+    assert "tests/plots/test_equilibrium_outputs.py" not in run_pytest.CONFIDENCE_TEST_TARGETS
+    assert "tests/plots/test_reference_comparison_outputs.py" not in run_pytest.GENERIC_TEST_TARGETS
+    assert "tests/plots/test_reference_comparison_outputs.py" not in run_pytest.CONFIDENCE_TEST_TARGETS
+
+
+def test_slice_targets_use_grouped_test_subpackages():
+    all_targets = [
+        *run_pytest.GENERIC_TEST_TARGETS,
+        *run_pytest.CONFIDENCE_TEST_TARGETS,
+        *run_pytest.RUNTIME_TEST_TARGETS,
+        *run_pytest.API_TEST_TARGETS,
+        *run_pytest.NATIVE_TEST_TARGETS,
+        *run_pytest.PROFILE_TEST_TARGETS,
+        *run_pytest.FULL_PROFILE_TEST_TARGETS,
+        *run_pytest.PLOT_TEST_TARGETS,
+    ]
+
+    assert all(target.startswith("tests/") for target in all_targets)
+    assert all(target.count("/") >= 2 for target in all_targets)
+    assert "tests/api/test_runtime.py" in run_pytest.API_TEST_TARGETS
+    assert "tests/equilibrium/test_vle.py" in run_pytest.GENERIC_TEST_TARGETS
+    assert "tests/native/test_equation_registry.py" in run_pytest.GENERIC_TEST_TARGETS
+    assert "tests/regression/test_hydrocarbon.py" in run_pytest.GENERIC_TEST_TARGETS
+    assert "tests/workflows/test_run_pytest.py" not in run_pytest.GENERIC_TEST_TARGETS
 
 
 def test_profile_shortcut_sets_perf_environment_flag(monkeypatch):

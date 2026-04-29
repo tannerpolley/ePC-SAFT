@@ -13,15 +13,15 @@ from epcsaft import ePCSAFTMixture
 from epcsaft.regression import _debug_native_pure_neutral_objective
 from epcsaft.regression import _fit_pure_neutral_least_squares_internal
 from scripts import plot_outputs
-from tests.test_native_runtime_contracts import _ionic_state as _native_ionic_state
-from tests.test_native_runtime_contracts import _neutral_state as _native_neutral_state
-from tests.test_regression import _load_workbook_reference_rows
-from tests.test_regression import _neutral_fixed_parameters
-from tests.test_regression import _real_saturation_records
-from tests.test_regression_api import _methane_like_records
-from tests.test_regression_api import _minimal_neutral_metadata
-from tests.test_runtime import _ionic_state
-from tests.test_runtime import _neutral_state
+from tests.helpers.native_cases import _ionic_state as _native_ionic_state
+from tests.helpers.native_cases import _neutral_state as _native_neutral_state
+from tests.helpers.regression_cases import _load_workbook_reference_rows
+from tests.helpers.regression_cases import _methane_like_records
+from tests.helpers.regression_cases import _minimal_neutral_metadata
+from tests.helpers.regression_cases import _neutral_fixed_parameters
+from tests.helpers.regression_cases import _real_saturation_records
+from tests.helpers.runtime_cases import _ionic_state
+from tests.helpers.runtime_cases import _neutral_state
 
 
 def _hydrocarbon_basis_mixture() -> ePCSAFTMixture:

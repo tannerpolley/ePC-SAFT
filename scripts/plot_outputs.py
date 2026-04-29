@@ -59,8 +59,18 @@ def fits_plot_path(*parts: str | Path) -> Path:
 
 def test_plot_path(source_path: str | Path, filename: str | Path) -> Path:
     source = Path(source_path)
-    module_name = source.stem
-    target = TEST_PLOTS_ROOT / module_name / Path(filename)
+    parts = list(source.parts)
+    try:
+        tests_index = max(index for index, part in enumerate(parts) if part == "tests")
+        rel_parts = parts[tests_index + 1 :]
+    except ValueError:
+        rel_parts = [source.name]
+    if rel_parts and Path(rel_parts[-1]).suffix:
+        module_name = Path(rel_parts[-1]).stem
+        if module_name.startswith("test_"):
+            module_name = module_name.removeprefix("test_")
+        rel_parts = [*rel_parts[:-1], module_name]
+    target = TEST_PLOTS_ROOT.joinpath(*rel_parts) / Path(filename)
     target.parent.mkdir(parents=True, exist_ok=True)
     return target
 

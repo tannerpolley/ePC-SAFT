@@ -8,7 +8,7 @@ from pathlib import Path
 from epcsaft.__main__ import main
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_python_m_epcsaft_reports_package_and_core_status(capsys) -> None:

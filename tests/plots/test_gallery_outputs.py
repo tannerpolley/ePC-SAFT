@@ -38,9 +38,9 @@ def test_test_plot_path_maps_test_file_to_docked_plots_folder(tmp_path: Path, mo
     monkeypatch.setattr(plot_outputs, "PLOTS_ROOT", root)
     monkeypatch.setattr(plot_outputs, "TEST_PLOTS_ROOT", root / "tests")
 
-    output_path = plot_outputs.test_plot_path("tests/test_equilibrium_plot_outputs.py", "vle.png")
+    output_path = plot_outputs.test_plot_path("tests/plots/test_reference_comparison_outputs.py", "x.png")
 
-    assert output_path == root / "tests" / "test_equilibrium_plot_outputs" / "vle.png"
+    assert output_path == root / "tests" / "plots" / "reference_comparison_outputs" / "x.png"
     assert output_path.parent.is_dir()
 
 
@@ -49,7 +49,7 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     child = root / "paper_validation" / "Example" / "figure_1"
     child.mkdir(parents=True)
     (child / "figure_1.png").write_bytes(b"png")
-    test_child = root / "tests" / "test_equilibrium_plot_outputs"
+    test_child = root / "tests" / "plots" / "equilibrium_outputs"
     test_child.mkdir(parents=True)
     (test_child / "equilibrium_vle_compositions.png").write_bytes(b"png")
     monkeypatch.setattr(build_analysis_galleries, "PLOTS_ROOT", root)
@@ -61,7 +61,7 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     assert "paper_validation/index.html" not in html
     assert '"output_path":"paper_validation/Example/figure_1/figure_1.png"' in html
     assert '"source_path":"scripts/paper_validation/Example_analysis/figure_1/figure_1.png"' in html
-    assert '"source_path":"tests/test_equilibrium_plot_outputs/equilibrium_vle_compositions.png"' in html
+    assert '"source_path":"tests/plots/equilibrium_outputs/equilibrium_vle_compositions.png"' in html
     assert "Source tree" in html
     assert "Output tree" in html
     assert "Select folders on the left" in html
@@ -72,7 +72,7 @@ def test_gallery_manifest_keeps_output_and_source_paths(tmp_path: Path, monkeypa
     paths = [
         root / "paper_validation" / "Example" / "figure_1" / "figure_1.png",
         root / "fits" / "miac" / "water" / "miac.png",
-        root / "tests" / "test_equilibrium_plot_outputs" / "equilibrium_vle_compositions.png",
+        root / "tests" / "plots" / "equilibrium_outputs" / "equilibrium_vle_compositions.png",
     ]
     for path in paths:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -86,8 +86,8 @@ def test_gallery_manifest_keeps_output_and_source_paths(tmp_path: Path, monkeypa
         "scripts/paper_validation/Example_analysis/figure_1/figure_1.png"
     )
     assert by_output["fits/miac/water/miac.png"]["source_path"] == "scripts/fits/miac/water/miac.png"
-    assert by_output["tests/test_equilibrium_plot_outputs/equilibrium_vle_compositions.png"]["source_path"] == (
-        "tests/test_equilibrium_plot_outputs/equilibrium_vle_compositions.png"
+    assert by_output["tests/plots/equilibrium_outputs/equilibrium_vle_compositions.png"]["source_path"] == (
+        "tests/plots/equilibrium_outputs/equilibrium_vle_compositions.png"
     )
     assert by_output["paper_validation/Example/figure_1/figure_1.png"]["folder"] == (
         "scripts/paper_validation/Example_analysis/figure_1"

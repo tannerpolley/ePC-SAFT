@@ -29,9 +29,9 @@ if str(REPO_ROOT) not in sys.path:
 
 from epcsaft import fit_pure_neutral
 from epcsaft.regression import _fit_pure_neutral_least_squares_internal
-from tests.test_regression import _load_workbook_reference_rows
-from tests.test_regression import _neutral_fixed_parameters
-from tests.test_regression import _real_saturation_records
+from tests.helpers.regression_cases import _load_workbook_reference_rows
+from tests.helpers.regression_cases import _neutral_fixed_parameters
+from tests.helpers.regression_cases import _real_saturation_records
 
 
 REPORT_DIR = REPO_ROOT / "build" / "runtime_profile"
@@ -152,7 +152,7 @@ def _benchmark_old_case(component: str) -> dict[str, Any]:
 import json, sys, time
 sys.path.insert(0, {old_root!r})
 sys.path.insert(0, {old_src!r})
-from tests.test_regression import _load_workbook_reference_rows, _neutral_fixed_parameters, _real_saturation_records
+from tests.helpers.regression_cases import _load_workbook_reference_rows, _neutral_fixed_parameters, _real_saturation_records
 from epcsaft import fit_pure_neutral
 ref = _load_workbook_reference_rows()[{component!r}]
 records = _real_saturation_records({component!r})
@@ -194,7 +194,7 @@ def _benchmark_old_suite() -> dict[str, Any]:
 import json, sys, time
 sys.path.insert(0, {old_root!r})
 sys.path.insert(0, {old_src!r})
-from tests.test_regression import _load_workbook_reference_rows, _neutral_fixed_parameters, _real_saturation_records
+from tests.helpers.regression_cases import _load_workbook_reference_rows, _neutral_fixed_parameters, _real_saturation_records
 from epcsaft import fit_pure_neutral
 refs = _load_workbook_reference_rows()
 rows = []

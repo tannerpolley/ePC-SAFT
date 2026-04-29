@@ -7,30 +7,30 @@ from pathlib import Path
 
 
 GENERIC_TEST_TARGETS = (
-    "tests/test_runtime.py",
-    "tests/test_equilibrium_api.py",
-    "tests/test_equilibrium_vle.py",
-    "tests/test_equilibrium_lle.py",
-    "tests/test_equilibrium_stability.py",
-    "tests/test_parameter_templates.py",
-    "tests/test_equation_registry.py",
-    "tests/test_regression.py",
-    "tests/test_regression_api.py",
+    "tests/api/test_runtime.py",
+    "tests/equilibrium/test_api.py",
+    "tests/equilibrium/test_vle.py",
+    "tests/equilibrium/test_lle.py",
+    "tests/equilibrium/test_stability.py",
+    "tests/api/test_parameter_templates.py",
+    "tests/native/test_equation_registry.py",
+    "tests/regression/test_hydrocarbon.py",
+    "tests/api/test_regression_api.py",
 )
-CONFIDENCE_TEST_TARGETS = GENERIC_TEST_TARGETS + ("tests/test_native_runtime_contracts.py",)
-RUNTIME_TEST_TARGETS = ("tests/test_runtime.py", "tests/test_native_runtime_contracts.py")
-API_TEST_TARGETS = ("tests/test_runtime.py", "tests/test_parameter_templates.py", "tests/test_regression_api.py")
-NATIVE_TEST_TARGETS = ("tests/test_native_runtime_contracts.py",)
-PROFILE_TEST_TARGETS = ("tests/test_runtime_profile.py",)
+CONFIDENCE_TEST_TARGETS = GENERIC_TEST_TARGETS + ("tests/native/test_runtime_contracts.py",)
+RUNTIME_TEST_TARGETS = ("tests/api/test_runtime.py", "tests/native/test_runtime_contracts.py")
+API_TEST_TARGETS = ("tests/api/test_runtime.py", "tests/api/test_parameter_templates.py", "tests/api/test_regression_api.py")
+NATIVE_TEST_TARGETS = ("tests/native/test_runtime_contracts.py",)
+PROFILE_TEST_TARGETS = ("tests/profile/test_runtime_profile.py",)
 FULL_PROFILE_TEST_TARGETS = (
-    "tests/test_runtime_profile.py",
-    "tests/test_runtime_profile_miac.py",
-    "tests/test_runtime_profile_regression.py",
+    "tests/profile/test_runtime_profile.py",
+    "tests/profile/test_miac_profile.py",
+    "tests/profile/test_regression_profile.py",
 )
 PLOT_TEST_TARGETS = (
-    "tests/test_plot_gallery_outputs.py",
-    "tests/test_equilibrium_plot_outputs.py",
-    "tests/test_reference_comparison_plot_outputs.py",
+    "tests/plots/test_gallery_outputs.py",
+    "tests/plots/test_equilibrium_outputs.py",
+    "tests/plots/test_reference_comparison_outputs.py",
 )
 SLICE_TARGETS = {
     "generic": GENERIC_TEST_TARGETS,

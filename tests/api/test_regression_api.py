@@ -19,25 +19,8 @@ from epcsaft.regression import _debug_native_pure_neutral_objective
 from epcsaft.regression import _fit_pure_neutral_least_squares_internal
 from epcsaft.regression import fit_binary_pair
 from epcsaft.regression import fit_pure_ion
-
-
-def _minimal_neutral_metadata(mw: float) -> dict[str, float]:
-    return {
-        "MW": mw,
-        "e_assoc": 0.0,
-        "vol_a": 0.0,
-        "z": 0.0,
-        "dielc": 1.0,
-        "d_born": 0.0,
-        "f_solv": 1.0,
-    }
-
-
-def _methane_like_records() -> list[dict[str, float | str]]:
-    return [
-        {"T": 110.0, "P": 88130.038, "rho_sat_liq_kg_m3": 424.77725, "phase": "liq"},
-        {"T": 130.0, "P": 367319.94, "rho_sat_liq_kg_m3": 394.35230, "phase": "liq"},
-    ]
+from tests.helpers.regression_cases import _methane_like_records
+from tests.helpers.regression_cases import _minimal_neutral_metadata
 
 
 def test_public_regression_surface_is_neutral_only():

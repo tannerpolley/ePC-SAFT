@@ -3,7 +3,7 @@
 This module is intentionally opt-in. Run with:
 
     set ePCSAFT_RUN_PERF=1
-    python -m pytest tests/test_runtime_profile.py -s
+    python -m pytest tests/profile/test_runtime_profile.py -s
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ import pytest
 from epcsaft import ePCSAFTMixture
 
 
-REPORT_DIR = Path(__file__).resolve().parents[1] / "build" / "runtime_profile"
+REPORT_DIR = Path(__file__).resolve().parents[2] / "build" / "runtime_profile"
 REPORT_CSV = REPORT_DIR / "runtime_profile.csv"
 REPORT_MD = REPORT_DIR / "runtime_profile.md"
 
@@ -306,7 +306,7 @@ def test_runtime_profile_oop_methods():
     }
     missing_variant_benches = sorted(required_variant_benches - bench_names)
     assert not missing_variant_benches, (
-        "Missing contribution-term benchmark coverage; extend tests/test_runtime_profile.py: "
+            "Missing contribution-term benchmark coverage; extend tests/profile/test_runtime_profile.py: "
         + ", ".join(missing_variant_benches)
     )
 
@@ -319,11 +319,11 @@ def test_runtime_profile_oop_methods():
         method for method in expected_mixture_methods if f"ePCSAFTMixture.{method}" not in profiled_aliases
     )
     assert not missing_state_methods, (
-        "Unprofiled public ePCSAFTState methods found; extend tests/test_runtime_profile.py: "
+            "Unprofiled public ePCSAFTState methods found; extend tests/profile/test_runtime_profile.py: "
         + ", ".join(missing_state_methods)
     )
     assert not missing_mixture_methods, (
-        "Unprofiled public ePCSAFTMixture methods found; extend tests/test_runtime_profile.py: "
+            "Unprofiled public ePCSAFTMixture methods found; extend tests/profile/test_runtime_profile.py: "
         + ", ".join(missing_mixture_methods)
     )
 
