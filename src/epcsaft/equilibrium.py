@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from numbers import Integral, Real
 from typing import Any
 
 import numpy as np
@@ -195,101 +196,63 @@ def lle_flash(
     _reject_ion_containing_mixture(mixture)
     temperature = _positive_scalar(T, "T", "lle_flash")
     pressure = _positive_scalar(P, "P", "lle_flash")
-    beta, comp1, comp2 = _initial_lle_guess(initial_phases, feed, opts)
+    seeds = _initial_lle_guesses(initial_phases, feed, opts)
     state_feed = _phase_state(mixture, temperature, pressure, feed, "liq", opts, "LLE flash")
 
-    if _phase_distance(comp1, comp2) <= _split_distance_tolerance(opts):
-        return _lle_no_split_result(
+    degenerate_attempts: list[dict[str, Any]] = []
+    failed_attempts: list[dict[str, Any]] = []
+    for attempt_count, seed in enumerate(seeds, start=1):
+        attempt = _solve_lle_attempt(
+            mixture,
+            temperature,
+            pressure,
             feed,
-            state_feed,
             opts,
-            "no V2 LLE split found; initial liquid phases are compositionally identical",
-            0,
-            0.0,
-            0.0,
-            beta,
-            comp1,
-            comp2,
+            seed,
+            attempt_count,
         )
-
-    variables = _pack_lle_variables(beta, comp1, comp2)
-    best: dict[str, Any] | None = None
-    best_objective = np.inf
-    stalled = False
-    for iteration in range(1, opts.max_iterations + 1):
-        current = _evaluate_lle_variables(mixture, temperature, pressure, feed, variables, opts)
-        objective = _lle_objective(current["residual"])
-        if objective < best_objective:
-            best = current | {"iteration": iteration, "objective": objective}
-            best_objective = objective
-
-        if _lle_converged(current, opts):
-            return _lle_two_phase_result(current | {"iteration": iteration}, opts, "converged")
-        if _lle_degenerate(current, opts):
-            return _lle_no_split_result(
-                feed,
-                state_feed,
+        if attempt["status"] == "converged":
+            return _lle_two_phase_result(
+                attempt["candidate"],
                 opts,
-                "no V2 LLE split found; phase split collapsed during iteration",
-                iteration,
-                current["fugacity_residual_norm"],
-                current["material_error"],
-                current["beta"],
-                current["comp1"],
-                current["comp2"],
+                "converged",
+                seed["seed_name"],
+                attempt_count,
             )
+        if attempt["status"] == "degenerate":
+            degenerate_attempts.append(attempt)
+        else:
+            failed_attempts.append(attempt)
 
-        step = _lle_newton_step(
-            lambda candidate: _evaluate_lle_variables(mixture, temperature, pressure, feed, candidate, opts)["residual"],
-            variables,
-            current["residual"],
+    if failed_attempts:
+        best_failed = min(failed_attempts, key=lambda item: item["candidate"]["objective"])
+        best = best_failed["candidate"]
+        raise SolutionError(
+            "neutral LLE flash did not converge after {} attempt(s); best_seed={}, reason={}, residual_norm={}, material_balance_error={}, phase_distance={}".format(
+                len(seeds),
+                best_failed["seed_name"],
+                best_failed["message"],
+                best["fugacity_residual_norm"],
+                best["material_error"],
+                _phase_distance(best["comp1"], best["comp2"]),
+            )
         )
-        accepted: np.ndarray | None = None
-        for scale in _damping_schedule(opts.damping):
-            candidate = variables + scale * step
-            candidate_eval = _evaluate_lle_variables(mixture, temperature, pressure, feed, candidate, opts)
-            if _lle_objective(candidate_eval["residual"]) < objective:
-                accepted = candidate
-                break
-        if accepted is None:
-            stalled = True
-            break
-        variables = accepted
 
-    assert best is not None
-    if stalled:
-        return _lle_no_split_result(
-            feed,
-            state_feed,
-            opts,
-            "no V2 LLE split found; residual improvement stalled",
-            int(best["iteration"]),
-            best["fugacity_residual_norm"],
-            best["material_error"],
-            best["beta"],
-            best["comp1"],
-            best["comp2"],
-        )
-    if _lle_degenerate(best, opts):
-        return _lle_no_split_result(
-            feed,
-            state_feed,
-            opts,
-            "no V2 LLE split found; best candidate collapsed to one liquid phase",
-            int(best["iteration"]),
-            best["fugacity_residual_norm"],
-            best["material_error"],
-            best["beta"],
-            best["comp1"],
-            best["comp2"],
-        )
-    raise SolutionError(
-        "neutral LLE flash did not converge after {} iterations; residual_norm={}, material_balance_error={}, phase_distance={}".format(
-            opts.max_iterations,
-            best["fugacity_residual_norm"],
-            best["material_error"],
-            _phase_distance(best["comp1"], best["comp2"]),
-        )
+    best_degenerate = min(degenerate_attempts, key=lambda item: item["candidate"]["objective"])
+    best = best_degenerate["candidate"]
+    return _lle_no_split_result(
+        feed,
+        state_feed,
+        opts,
+        best_degenerate["message"],
+        int(best["iteration"]),
+        best["fugacity_residual_norm"],
+        best["material_error"],
+        best["beta"],
+        best["comp1"],
+        best["comp2"],
+        best_degenerate["seed_name"],
+        best_degenerate["attempt_count"],
     )
 
 
@@ -298,15 +261,38 @@ def _normalize_options(options: EquilibriumOptions | None) -> EquilibriumOptions
         return EquilibriumOptions()
     if not isinstance(options, EquilibriumOptions):
         raise InputError("options must be an EquilibriumOptions instance.")
-    if options.max_iterations <= 0:
-        raise InputError("options.max_iterations must be positive.")
-    if options.tolerance <= 0.0:
+    if isinstance(options.max_iterations, bool) or not isinstance(options.max_iterations, Integral):
+        raise InputError("options.max_iterations must be an integer greater than zero.")
+    max_iterations = int(options.max_iterations)
+    if max_iterations <= 0:
+        raise InputError("options.max_iterations must be an integer greater than zero.")
+    tolerance = _finite_float_option(options.tolerance, "tolerance")
+    if tolerance <= 0.0:
         raise InputError("options.tolerance must be positive.")
-    if not (0.0 < options.damping <= 1.0):
+    damping = _finite_float_option(options.damping, "damping")
+    if not (0.0 < damping <= 1.0):
         raise InputError("options.damping must be > 0 and <= 1.")
-    if options.min_composition <= 0.0:
+    min_composition = _finite_float_option(options.min_composition, "min_composition")
+    if min_composition <= 0.0:
         raise InputError("options.min_composition must be positive.")
-    return options
+    if not isinstance(options.include_phase_diagnostics, bool):
+        raise InputError("options.include_phase_diagnostics must be boolean.")
+    return EquilibriumOptions(
+        max_iterations=max_iterations,
+        tolerance=tolerance,
+        damping=damping,
+        min_composition=min_composition,
+        include_phase_diagnostics=options.include_phase_diagnostics,
+    )
+
+
+def _finite_float_option(value: Any, label: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, Real):
+        raise InputError("options.{} must be a finite real number.".format(label))
+    out = float(value)
+    if not np.isfinite(out):
+        raise InputError("options.{} must be finite.".format(label))
+    return out
 
 
 def _normalize_feed(z: Any, ncomp: int, min_composition: float, kind: str) -> np.ndarray:
@@ -438,21 +424,10 @@ def _two_phase_result(best: dict[str, Any], options: EquilibriumOptions, message
     )
 
 
-def _initial_lle_guess(initial_phases: Any, feed: np.ndarray, options: EquilibriumOptions) -> tuple[float, np.ndarray, np.ndarray]:
-    if initial_phases is None:
-        delta = min(0.2, 0.5 * float(np.min(feed)))
-        comp1 = feed.copy()
-        comp2 = feed.copy()
-        if feed.size > 1 and delta > options.min_composition:
-            comp1[0] = max(options.min_composition, comp1[0] - delta)
-            comp1[1] = comp1[1] + delta
-            comp2[0] = comp2[0] + delta
-            comp2[1] = max(options.min_composition, comp2[1] - delta)
-            comp1 = comp1 / np.sum(comp1)
-            comp2 = comp2 / np.sum(comp2)
-        return 0.5, comp1, comp2
-
+def _initial_lle_guesses(initial_phases: Any, feed: np.ndarray, options: EquilibriumOptions) -> list[dict[str, Any]]:
     if not isinstance(initial_phases, dict):
+        if initial_phases is None:
+            return _default_lle_guesses(feed, options)
         raise InputError("initial_phases must be a dict with 'liq1', 'liq2', and 'phase_fraction'.")
     missing = {"liq1", "liq2", "phase_fraction"} - set(initial_phases)
     if missing:
@@ -462,7 +437,68 @@ def _initial_lle_guess(initial_phases: Any, feed: np.ndarray, options: Equilibri
     beta = float(initial_phases["phase_fraction"])
     if not np.isfinite(beta) or not (0.0 < beta < 1.0):
         raise InputError("initial_phases phase_fraction must be > 0 and < 1.")
-    return beta, comp1, comp2
+    return [{"seed_name": "user", "beta": beta, "comp1": comp1, "comp2": comp2}]
+
+
+def _default_lle_guesses(feed: np.ndarray, options: EquilibriumOptions) -> list[dict[str, Any]]:
+    guesses: list[dict[str, Any]] = []
+    ncomp = int(feed.size)
+    if ncomp > 1:
+        for strength in (0.9, 0.7):
+            for component1 in range(ncomp):
+                for component2 in range(ncomp):
+                    if component1 == component2:
+                        continue
+                    comp1 = _blend_lle_seed(
+                        feed,
+                        _component_rich_lle_composition(ncomp, component2, options.min_composition),
+                        strength,
+                        options.min_composition,
+                    )
+                    comp2 = _blend_lle_seed(
+                        feed,
+                        _component_rich_lle_composition(ncomp, component1, options.min_composition),
+                        strength,
+                        options.min_composition,
+                    )
+                    guesses.append(
+                        {
+                            "seed_name": "auto_pair_{}_{}_s{}".format(component2, component1, int(100 * strength)),
+                            "beta": 0.5,
+                            "comp1": comp1,
+                            "comp2": comp2,
+                        }
+                    )
+
+    comp1, comp2 = _feed_perturb_lle_guess(feed, options)
+    guesses.append({"seed_name": "auto_feed_perturb", "beta": 0.5, "comp1": comp1, "comp2": comp2})
+    return guesses
+
+
+def _component_rich_lle_composition(ncomp: int, rich_index: int, min_composition: float) -> np.ndarray:
+    composition = np.full(int(ncomp), float(min_composition), dtype=float)
+    composition[int(rich_index)] = max(float(min_composition), 1.0 - float(min_composition) * (int(ncomp) - 1))
+    return composition / np.sum(composition)
+
+
+def _blend_lle_seed(feed: np.ndarray, target: np.ndarray, strength: float, min_composition: float) -> np.ndarray:
+    composition = (1.0 - float(strength)) * feed + float(strength) * target
+    composition = np.maximum(composition, min_composition)
+    return composition / np.sum(composition)
+
+
+def _feed_perturb_lle_guess(feed: np.ndarray, options: EquilibriumOptions) -> tuple[np.ndarray, np.ndarray]:
+    delta = min(0.2, 0.5 * float(np.min(feed)))
+    comp1 = feed.copy()
+    comp2 = feed.copy()
+    if feed.size > 1 and delta > options.min_composition:
+        comp1[0] = max(options.min_composition, comp1[0] - delta)
+        comp1[1] = comp1[1] + delta
+        comp2[0] = comp2[0] + delta
+        comp2[1] = max(options.min_composition, comp2[1] - delta)
+        comp1 = comp1 / np.sum(comp1)
+        comp2 = comp2 / np.sum(comp2)
+    return comp1, comp2
 
 
 def _normalize_initial_phase(value: Any, ncomp: int, min_composition: float, label: str) -> np.ndarray:
@@ -544,6 +580,104 @@ def _evaluate_lle_variables(
     }
 
 
+def _solve_lle_attempt(
+    mixture: Any,
+    T: float,
+    P: float,
+    feed: np.ndarray,
+    options: EquilibriumOptions,
+    seed: dict[str, Any],
+    attempt_count: int,
+) -> dict[str, Any]:
+    beta = float(seed["beta"])
+    comp1 = seed["comp1"]
+    comp2 = seed["comp2"]
+    seed_name = str(seed["seed_name"])
+
+    if _phase_distance(comp1, comp2) <= _split_distance_tolerance(options):
+        return {
+            "status": "degenerate",
+            "seed_name": seed_name,
+            "attempt_count": int(attempt_count),
+            "message": "no V2 LLE split found; initial liquid phases are compositionally identical",
+            "candidate": {
+                "iteration": 0,
+                "objective": 0.0,
+                "fugacity_residual_norm": 0.0,
+                "material_error": 0.0,
+                "beta": beta,
+                "comp1": comp1,
+                "comp2": comp2,
+            },
+        }
+
+    variables = _pack_lle_variables(beta, comp1, comp2)
+    best: dict[str, Any] | None = None
+    best_objective = np.inf
+    for iteration in range(1, options.max_iterations + 1):
+        current = _evaluate_lle_variables(mixture, T, P, feed, variables, options)
+        objective = _lle_objective(current["residual"])
+        if objective < best_objective:
+            best = current | {"iteration": iteration, "objective": objective}
+            best_objective = objective
+
+        if _lle_converged(current, options):
+            return {
+                "status": "converged",
+                "seed_name": seed_name,
+                "attempt_count": int(attempt_count),
+                "candidate": current | {"iteration": iteration, "objective": objective},
+            }
+        if _lle_degenerate(current, options):
+            return {
+                "status": "degenerate",
+                "seed_name": seed_name,
+                "attempt_count": int(attempt_count),
+                "message": "no V2 LLE split found; phase split collapsed during iteration",
+                "candidate": current | {"iteration": iteration, "objective": objective},
+            }
+
+        step = _lle_newton_step(
+            lambda candidate: _evaluate_lle_variables(mixture, T, P, feed, candidate, options)["residual"],
+            variables,
+            current["residual"],
+        )
+        accepted: np.ndarray | None = None
+        for scale in _damping_schedule(options.damping):
+            candidate = variables + scale * step
+            candidate_eval = _evaluate_lle_variables(mixture, T, P, feed, candidate, options)
+            if _lle_objective(candidate_eval["residual"]) < objective:
+                accepted = candidate
+                break
+        if accepted is None:
+            assert best is not None
+            return {
+                "status": "failed",
+                "seed_name": seed_name,
+                "attempt_count": int(attempt_count),
+                "message": "residual improvement stalled",
+                "candidate": best,
+            }
+        variables = accepted
+
+    assert best is not None
+    if _lle_degenerate(best, options):
+        return {
+            "status": "degenerate",
+            "seed_name": seed_name,
+            "attempt_count": int(attempt_count),
+            "message": "no V2 LLE split found; best candidate collapsed to one liquid phase",
+            "candidate": best,
+        }
+    return {
+        "status": "failed",
+        "seed_name": seed_name,
+        "attempt_count": int(attempt_count),
+        "message": "maximum iterations reached",
+        "candidate": best,
+    }
+
+
 def _lle_newton_step(residual_fn: Any, variables: np.ndarray, residual: np.ndarray) -> np.ndarray:
     jacobian = np.empty((residual.size, variables.size), dtype=float)
     for column in range(variables.size):
@@ -591,7 +725,13 @@ def _lle_degenerate(candidate: dict[str, Any], options: EquilibriumOptions) -> b
     )
 
 
-def _lle_two_phase_result(best: dict[str, Any], options: EquilibriumOptions, message: str) -> EquilibriumResult:
+def _lle_two_phase_result(
+    best: dict[str, Any],
+    options: EquilibriumOptions,
+    message: str,
+    seed_name: str,
+    attempt_count: int,
+) -> EquilibriumResult:
     beta = best["beta"]
     phase1 = _phase_from_state("liq1", best["comp1"], 1.0 - beta, best["state1"], options)
     phase2 = _phase_from_state("liq2", best["comp2"], beta, best["state2"], options)
@@ -608,6 +748,9 @@ def _lle_two_phase_result(best: dict[str, Any], options: EquilibriumOptions, mes
             "material_balance_error": float(best["material_error"]),
             "liquid2_phase_fraction": float(beta),
             "phase_distance": _phase_distance(best["comp1"], best["comp2"]),
+            "seed_name": str(seed_name),
+            "attempt_count": int(attempt_count),
+            "stability_analysis": "not_run",
             "message": message,
         },
     )
@@ -624,6 +767,8 @@ def _lle_no_split_result(
     beta: float,
     comp1: np.ndarray,
     comp2: np.ndarray,
+    seed_name: str,
+    attempt_count: int,
 ) -> EquilibriumResult:
     phase = _phase_from_state("liq", feed, 1.0, state_feed, options)
     return EquilibriumResult(
@@ -638,6 +783,9 @@ def _lle_no_split_result(
             "material_balance_error": float(material_error),
             "liquid2_phase_fraction": float(beta),
             "phase_distance": _phase_distance(comp1, comp2),
+            "seed_name": str(seed_name),
+            "attempt_count": int(attempt_count),
+            "stability_analysis": "not_run",
             "message": message,
         },
     )

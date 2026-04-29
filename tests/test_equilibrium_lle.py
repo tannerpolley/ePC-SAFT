@@ -83,6 +83,9 @@ def test_methanol_cyclohexane_lle_flash_closes_material_and_fugacity_balance() -
     np.testing.assert_allclose(liq2.composition, [0.7985874309, 0.2014125691], atol=5.0e-8)
     np.testing.assert_allclose(liq2.phase_fraction, 0.4881309848, atol=5.0e-8)
     assert result.diagnostics["phase_distance"] > 0.65
+    assert result.diagnostics["seed_name"] == "user"
+    assert result.diagnostics["attempt_count"] == 1
+    assert result.diagnostics["stability_analysis"] == "not_run"
 
     reconstructed = liq1.phase_fraction * liq1.composition + liq2.phase_fraction * liq2.composition
     np.testing.assert_allclose(reconstructed, feed, atol=1.0e-10)
@@ -102,6 +105,32 @@ def test_methanol_cyclohexane_lle_flash_closes_material_and_fugacity_balance() -
     _assert_json_like(payload)
 
 
+def test_lle_flash_without_initial_phases_finds_methanol_cyclohexane_split() -> None:
+    mix = _methanol_cyclohexane_mixture()
+    feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
+
+    result = mix.equilibrium(
+        kind="lle_flash",
+        T=298.15,
+        P=1.013e5,
+        z=feed,
+        options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10, damping=0.5),
+    )
+
+    assert result.split_detected is True
+    assert result.phase_labels == ["liq1", "liq2"]
+    liq1, liq2 = result.phases
+    np.testing.assert_allclose(liq1.composition, [0.1175783826, 0.8824216174], atol=5.0e-8)
+    np.testing.assert_allclose(liq2.composition, [0.7985874309, 0.2014125691], atol=5.0e-8)
+    np.testing.assert_allclose(liq2.phase_fraction, 0.4881309848, atol=5.0e-8)
+    assert result.diagnostics["material_balance_error"] < 1.0e-10
+    assert result.diagnostics["fugacity_residual_norm"] < 1.0e-9
+    assert result.diagnostics["phase_distance"] > 0.65
+    assert result.diagnostics["stability_analysis"] == "not_run"
+    assert result.diagnostics["attempt_count"] >= 1
+    assert isinstance(result.diagnostics["seed_name"], str)
+
+
 def test_lle_flash_reports_no_split_for_identical_initial_phases() -> None:
     mix = _methanol_cyclohexane_mixture()
     feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
@@ -118,6 +147,50 @@ def test_lle_flash_reports_no_split_for_identical_initial_phases() -> None:
     assert result.stable is True
     assert result.phase_labels == ["liq"]
     assert "no V2 LLE split" in result.diagnostics["message"]
+    assert result.diagnostics["seed_name"] == "user"
+    assert result.diagnostics["attempt_count"] == 1
+    assert result.diagnostics["stability_analysis"] == "not_run"
+
+
+def test_lle_flash_distinct_stalled_seed_raises_solution_error() -> None:
+    mix = _methanol_cyclohexane_mixture()
+    feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
+
+    with pytest.raises(epcsaft.SolutionError, match="neutral LLE flash did not converge|residual improvement stalled"):
+        mix.equilibrium(
+            kind="lle_flash",
+            T=298.15,
+            P=1.013e5,
+            z=feed,
+            initial_phases={"liq1": [0.25, 0.75], "liq2": [0.65, 0.35], "phase_fraction": 0.5},
+            options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-6, damping=0.5),
+        )
+
+
+@pytest.mark.parametrize(
+    ("options", "match"),
+    [
+        (epcsaft.EquilibriumOptions(max_iterations=1.5), "max_iterations"),
+        (epcsaft.EquilibriumOptions(max_iterations=True), "max_iterations"),
+        (epcsaft.EquilibriumOptions(tolerance=float("nan")), "tolerance"),
+        (epcsaft.EquilibriumOptions(damping=float("inf")), "damping"),
+        (epcsaft.EquilibriumOptions(min_composition=float("nan")), "min_composition"),
+        (epcsaft.EquilibriumOptions(include_phase_diagnostics="yes"), "include_phase_diagnostics"),
+    ],
+)
+def test_lle_flash_rejects_invalid_options_through_public_api(options, match) -> None:
+    mix = _methanol_cyclohexane_mixture()
+    feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
+
+    with pytest.raises(epcsaft.InputError, match=match):
+        mix.equilibrium(
+            kind="lle_flash",
+            T=298.15,
+            P=1.013e5,
+            z=feed,
+            initial_phases={"liq1": feed, "liq2": feed, "phase_fraction": 0.5},
+            options=options,
+        )
 
 
 @pytest.mark.parametrize(
