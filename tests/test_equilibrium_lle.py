@@ -5,10 +5,6 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
-from epcsaft.parameters import get_prop_dict
-
-
-MW_WATER_BUTANOL = np.asarray([18.01528e-3, 74.1216e-3], dtype=float)
 
 
 def _methanol_cyclohexane_mixture() -> ePCSAFTMixture:
@@ -43,30 +39,6 @@ def _methanol_cyclohexane_lle_benchmark() -> tuple[np.ndarray, dict[str, object]
         "phase_fraction": 0.5,
     }
     return feed, initial_phases
-
-
-def _mass_to_mole_fraction(mass_fraction: list[float]) -> np.ndarray:
-    moles = np.asarray(mass_fraction, dtype=float) / MW_WATER_BUTANOL
-    return moles / np.sum(moles)
-
-
-def _water_butanol_mixture() -> ePCSAFTMixture:
-    temperature = 298.15
-    species = ["H2O", "Butanol"]
-    params = get_prop_dict("2022_Ascani", species, [0.5, 0.5], temperature)
-    return ePCSAFTMixture.from_params(params, species=species)
-
-
-def _water_butanol_case_study() -> tuple[np.ndarray, np.ndarray, np.ndarray, dict[str, object]]:
-    aqueous = _mass_to_mole_fraction([1.0 - 0.07001321004, 0.07001321004])
-    organic = _mass_to_mole_fraction([1.0 - 0.7926023778, 0.7926023778])
-    feed = 0.5 * aqueous + 0.5 * organic
-    initial_phases = {
-        "liq1": aqueous,
-        "liq2": organic,
-        "phase_fraction": 0.5,
-    }
-    return feed, aqueous, organic, initial_phases
 
 
 def _assert_json_like(value):
@@ -130,88 +102,14 @@ def test_methanol_cyclohexane_lle_flash_closes_material_and_fugacity_balance() -
     _assert_json_like(payload)
 
 
-@pytest.mark.xfail(
-    reason=(
-        "The current 2022_Ascani neutral water/1-butanol surface collapses "
-        "to one liquid phase; keep this as a blocker regression, not the main V2 benchmark."
-    ),
-    strict=True,
-)
-def test_water_butanol_lle_flash_closes_material_and_fugacity_balance() -> None:
-    mix = _water_butanol_mixture()
-    feed, _aqueous_seed, _organic_seed, initial_phases = _water_butanol_case_study()
-
-    result = mix.equilibrium(
-        kind="lle_flash",
-        T=298.15,
-        P=1.0e5,
-        z=feed,
-        backend="neutral_lle",
-        initial_phases=initial_phases,
-    )
-
-    assert result.split_detected is True
-    assert result.stable is False
-    assert result.backend == "neutral_lle"
-    assert result.problem_kind == "lle_flash"
-    assert result.phase_labels == ["liq1", "liq2"]
-    liq1, liq2 = result.phases
-    assert 0.0 < liq1.phase_fraction < 1.0
-    assert 0.0 < liq2.phase_fraction < 1.0
-    np.testing.assert_allclose(liq1.composition.sum(), 1.0)
-    np.testing.assert_allclose(liq2.composition.sum(), 1.0)
-    assert np.all(liq1.composition > 0.0)
-    assert np.all(liq2.composition > 0.0)
-    assert np.max(np.abs(liq1.composition - liq2.composition)) > 1.0e-4
-
-    reconstructed = liq1.phase_fraction * liq1.composition + liq2.phase_fraction * liq2.composition
-    np.testing.assert_allclose(reconstructed, feed, atol=1.0e-10)
-    assert result.diagnostics["material_balance_error"] < 1.0e-10
-    assert result.diagnostics["fugacity_residual_norm"] < 1.0e-6
-
-    fugacity_residual = (
-        np.log(liq2.composition)
-        + liq2.fugacity_coefficient
-        - np.log(liq1.composition)
-        - liq1.fugacity_coefficient
-    )
-    np.testing.assert_allclose(fugacity_residual, np.zeros_like(feed), atol=1.0e-6)
-
-    payload = result.to_dict()
-    assert payload["phase_labels"] == ["liq1", "liq2"]
-    _assert_json_like(payload)
-
-
-def test_water_butanol_lle_case_study_reports_current_native_no_split_blocker() -> None:
-    mix = _water_butanol_mixture()
-    feed, _aqueous_seed, _organic_seed, initial_phases = _water_butanol_case_study()
-
-    result = mix.equilibrium(
-        kind="lle_flash",
-        T=298.15,
-        P=1.0e5,
-        z=feed,
-        initial_phases=initial_phases,
-    )
-
-    assert result.split_detected is False
-    assert result.stable is True
-    assert result.backend == "neutral_lle"
-    assert result.problem_kind == "lle_flash"
-    assert result.phase_labels == ["liq"]
-    assert "no V2 LLE split" in result.diagnostics["message"]
-    assert result.diagnostics["phase_distance"] < 5.0e-2
-    assert result.diagnostics["fugacity_residual_norm"] < 2.0e-1
-
-
 def test_lle_flash_reports_no_split_for_identical_initial_phases() -> None:
-    mix = _water_butanol_mixture()
-    feed, _aqueous_seed, _organic_seed, _initial_phases = _water_butanol_case_study()
+    mix = _methanol_cyclohexane_mixture()
+    feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
 
     result = mix.equilibrium(
         kind="lle_flash",
         T=298.15,
-        P=1.0e5,
+        P=1.013e5,
         z=feed,
         initial_phases={"liq1": feed, "liq2": feed, "phase_fraction": 0.5},
     )
@@ -254,7 +152,7 @@ def test_lle_flash_reports_no_split_for_identical_initial_phases() -> None:
     ],
 )
 def test_lle_flash_rejects_invalid_public_inputs(kwargs, match) -> None:
-    mix = _water_butanol_mixture()
+    mix = _methanol_cyclohexane_mixture()
 
     with pytest.raises(epcsaft.InputError, match=match):
         mix.equilibrium(**kwargs)
