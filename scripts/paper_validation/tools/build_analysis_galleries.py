@@ -68,6 +68,7 @@ def image_manifest(pngs: list[Path]) -> list[dict[str, str]]:
     for png in pngs:
         output_path = png.relative_to(PLOTS_ROOT).as_posix()
         svg = png.with_suffix(".svg")
+        interactive_html = png.with_suffix(".html")
         data = png.parent / "data" / f"{png.stem}_plot_data.csv"
         source_path = _source_path_for_output(output_path)
         manifest.append(
@@ -77,6 +78,7 @@ def image_manifest(pngs: list[Path]) -> list[dict[str, str]]:
                 "output_path": output_path,
                 "output_folder": _folder_for(output_path),
                 "svg_path": svg.relative_to(PLOTS_ROOT).as_posix() if svg.exists() else "",
+                "html_path": interactive_html.relative_to(PLOTS_ROOT).as_posix() if interactive_html.exists() else "",
                 "data_path": data.relative_to(PLOTS_ROOT).as_posix() if data.exists() else "",
                 "source_path": source_path,
                 "source_folder": _folder_for(source_path),
@@ -658,7 +660,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
 
       function imageMatchesFilter(image, filterText) {{
         if (!filterText) return true;
-        const haystack = `${{image.output_path}} ${{image.source_path}} ${{image.svg_path || ""}} ${{image.data_path || ""}} ${{image.title}}`.toLowerCase();
+        const haystack = `${{image.output_path}} ${{image.source_path}} ${{image.svg_path || ""}} ${{image.html_path || ""}} ${{image.data_path || ""}} ${{image.title}}`.toLowerCase();
         return haystack.includes(filterText);
       }}
 
@@ -709,6 +711,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
           for (const resource of [
             ["PNG", image.output_path],
             ["SVG", image.svg_path],
+            ["HTML", image.html_path],
             ["CSV", image.data_path],
           ]) {{
             const resourceLink = document.createElement("a");

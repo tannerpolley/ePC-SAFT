@@ -9,8 +9,11 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 matplotlib.rcParams["svg.fonttype"] = "none"
+matplotlib.rcParams["svg.hashsalt"] = "epcsaft-test-plots"
 
 from epcsaft import ePCSAFTMixture
 from epcsaft.regression import _debug_native_pure_neutral_objective
@@ -54,10 +57,29 @@ def methanol_cyclohexane_mixture() -> ePCSAFTMixture:
 def assert_plot_with_data(path: Path) -> None:
     csv_path = path.parent / "data" / f"{path.stem}_plot_data.csv"
     svg_path = path.with_suffix(".svg")
+    html_path = path.with_suffix(".html")
     assert path.exists()
     assert svg_path.exists()
+    assert html_path.exists()
     assert csv_path.exists()
     assert csv_path.stat().st_size > 0
+
+
+def save_plotly_html(fig: go.Figure, image_path: Path) -> Path:
+    html_path = plot_outputs.plot_html_path(image_path)
+    html_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.update_layout(
+        template="plotly_white",
+        margin={"l": 72, "r": 32, "t": 72, "b": 56},
+        hovermode="closest",
+    )
+    fig.write_html(
+        html_path,
+        include_plotlyjs="cdn",
+        full_html=True,
+        config={"displaylogo": False, "responsive": True},
+    )
+    return html_path
 
 
 def _wrap_label(label: str, width: int = 18) -> str:
@@ -142,6 +164,133 @@ def assert_figure_text_is_inside_canvas(fig, *, margin_px: float = 1.0) -> None:
         assert bbox.y1 <= canvas.y1 + margin_px
 
 
+def _plotly_axis_type(values: np.ndarray) -> str:
+    finite = np.abs(values[np.isfinite(values)])
+    nonzero = finite[finite > 0.0]
+    if nonzero.size == 0:
+        return "linear"
+    return "log" if float(np.max(nonzero) / np.min(nonzero)) > 1.0e4 and np.all(values > 0.0) else "linear"
+
+
+def _save_interactive_comparison_plot(
+    image_path: Path,
+    title: str,
+    labels: list[str],
+    actual: np.ndarray,
+    expected: np.ndarray,
+    *,
+    ylabel: str,
+    relative_error: bool,
+) -> Path:
+    if relative_error:
+        fig = make_subplots(
+            rows=1,
+            cols=2,
+            subplot_titles=(title, "Relative error"),
+            column_widths=[0.72, 0.28],
+        )
+    else:
+        fig = go.Figure()
+
+    values = np.concatenate([actual, expected])
+    scale = np.maximum(np.abs(expected), 1.0e-30)
+    rel_error = (actual - expected) / scale
+    orientation = "h" if len(labels) > 8 or max((len(label) for label in labels), default=0) > 18 else "v"
+
+    if orientation == "h":
+        fig.add_trace(go.Bar(y=labels, x=actual, name="Actual", orientation="h"), row=1 if relative_error else None, col=1 if relative_error else None)
+        fig.add_trace(go.Bar(y=labels, x=expected, name="Expected", orientation="h"), row=1 if relative_error else None, col=1 if relative_error else None)
+        if relative_error:
+            fig.add_trace(go.Bar(y=labels, x=rel_error, name="Relative error", orientation="h"), row=1, col=2)
+            fig.update_yaxes(autorange="reversed", row=1, col=1)
+            fig.update_yaxes(autorange="reversed", showticklabels=False, row=1, col=2)
+            fig.update_xaxes(title_text=ylabel, type=_plotly_axis_type(values[values > 0.0]), row=1, col=1)
+            fig.update_xaxes(title_text="Relative error", row=1, col=2)
+        else:
+            fig.update_yaxes(autorange="reversed")
+            fig.update_xaxes(title_text=ylabel, type=_plotly_axis_type(values[values > 0.0]))
+    else:
+        fig.add_trace(go.Bar(x=labels, y=actual, name="Actual"), row=1 if relative_error else None, col=1 if relative_error else None)
+        fig.add_trace(go.Bar(x=labels, y=expected, name="Expected"), row=1 if relative_error else None, col=1 if relative_error else None)
+        if relative_error:
+            fig.add_trace(go.Bar(x=labels, y=rel_error, name="Relative error"), row=1, col=2)
+            fig.update_yaxes(title_text=ylabel, type=_plotly_axis_type(values[values > 0.0]), row=1, col=1)
+            fig.update_yaxes(title_text="Relative error", row=1, col=2)
+        else:
+            fig.update_yaxes(title_text=ylabel, type=_plotly_axis_type(values[values > 0.0]))
+
+    fig.update_layout(
+        title=title if not relative_error else None,
+        barmode="group",
+        legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "center", "x": 0.5},
+    )
+    return save_plotly_html(fig, image_path)
+
+
+def _save_interactive_parity_plot(
+    image_path: Path,
+    title: str,
+    labels: list[str],
+    actual: np.ndarray,
+    expected: np.ndarray,
+    *,
+    xlabel: str,
+    ylabel: str,
+) -> Path:
+    finite = np.isfinite(actual) & np.isfinite(expected)
+    scale = np.maximum(np.abs(expected), 1.0e-30)
+    rel_error = (actual - expected) / scale
+    fig = make_subplots(rows=1, cols=2, subplot_titles=(title, "Relative error"), column_widths=[0.62, 0.38])
+    fig.add_trace(
+        go.Scatter(
+            x=expected[finite],
+            y=actual[finite],
+            mode="markers",
+            text=np.asarray(labels, dtype=object)[finite],
+            name="Comparison points",
+            hovertemplate="%{text}<br>expected=%{x:.6g}<br>actual=%{y:.6g}<extra></extra>",
+        ),
+        row=1,
+        col=1,
+    )
+    if np.any(finite):
+        lo = float(min(np.min(expected[finite]), np.min(actual[finite])))
+        hi = float(max(np.max(expected[finite]), np.max(actual[finite])))
+        pad = max((hi - lo) * 0.08, 1.0e-12)
+        fig.add_trace(go.Scatter(x=[lo - pad, hi + pad], y=[lo - pad, hi + pad], mode="lines", name="Parity"), row=1, col=1)
+    fig.add_trace(go.Bar(y=labels, x=rel_error, orientation="h", name="Relative error"), row=1, col=2)
+    fig.update_xaxes(title_text=xlabel, row=1, col=1)
+    fig.update_yaxes(title_text=ylabel, row=1, col=1)
+    fig.update_xaxes(title_text="Relative error", row=1, col=2)
+    fig.update_yaxes(autorange="reversed", row=1, col=2)
+    return save_plotly_html(fig, image_path)
+
+
+def _save_interactive_contribution_plot(
+    image_path: Path,
+    title: str,
+    rows: list[dict[str, object]],
+    *,
+    breakdown: bool,
+) -> Path:
+    labels = [str(row["label"]) for row in rows]
+    term_names = sorted({name for row in rows for name in row["terms"]})
+    totals = np.asarray([float(row["total"]) for row in rows], dtype=float)
+    fig = go.Figure()
+    for term_name in term_names:
+        values = [float(row["terms"].get(term_name, 0.0)) for row in rows]
+        fig.add_trace(go.Bar(y=labels, x=values, orientation="h", name=term_name))
+    fig.add_trace(go.Scatter(y=labels, x=totals, mode="markers", marker_symbol="x", marker_size=10, name="Reported total"))
+    fig.update_layout(
+        title=title,
+        barmode="relative" if not breakdown else "group",
+        xaxis_title="Contribution value" if not breakdown else "Term contribution",
+        yaxis={"autorange": "reversed"},
+        legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "center", "x": 0.5},
+    )
+    return save_plotly_html(fig, image_path)
+
+
 def save_comparison_plot(
     filename: str,
     title: str,
@@ -224,6 +373,15 @@ def save_comparison_plot(
     try:
         _finish_figure(fig)
         plot_outputs.save_plot_figure(fig, output_path, dpi=120, svg_companion=True)
+        _save_interactive_comparison_plot(
+            output_path,
+            title,
+            labels,
+            actual,
+            expected,
+            ylabel=ylabel,
+            relative_error=relative_error,
+        )
     finally:
         plt.close(fig)
     assert_plot_with_data(output_path)
@@ -278,6 +436,7 @@ def save_parity_plot(
     try:
         _finish_figure(fig)
         plot_outputs.save_plot_figure(fig, output_path, dpi=120, svg_companion=True)
+        _save_interactive_parity_plot(output_path, title, labels, actual, expected, xlabel=xlabel, ylabel=ylabel)
     finally:
         plt.close(fig)
     assert_plot_with_data(output_path)
@@ -355,6 +514,7 @@ def save_contribution_closure_plot(
     try:
         _finish_figure(fig)
         plot_outputs.save_plot_figure(fig, output_path, dpi=120, svg_companion=True)
+        _save_interactive_contribution_plot(output_path, title, rows, breakdown=False)
     finally:
         plt.close(fig)
     assert_plot_with_data(output_path)
@@ -395,6 +555,7 @@ def save_contribution_term_breakdown_plot(
     try:
         _finish_figure(fig)
         plot_outputs.save_plot_figure(fig, output_path, dpi=120, svg_companion=True)
+        _save_interactive_contribution_plot(output_path, title, rows, breakdown=True)
     finally:
         plt.close(fig)
     assert_plot_with_data(output_path)

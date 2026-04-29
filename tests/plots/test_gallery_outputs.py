@@ -38,6 +38,12 @@ def test_save_plot_figure_writes_csv_backing_data(tmp_path: Path) -> None:
     assert any(row["artist_label"] == "line" and row["x"] == "1" and row["y"] == "3" for row in rows)
 
 
+def test_plot_html_path_uses_plot_stem() -> None:
+    assert plot_outputs.plot_html_path("docs/plots/tests/api/parity/example.png").as_posix().endswith(
+        "docs/plots/tests/api/parity/example.html"
+    )
+
+
 def test_test_plot_path_maps_test_file_to_docked_plots_folder(tmp_path: Path, monkeypatch) -> None:
     root = tmp_path / "plots"
     monkeypatch.setattr(plot_outputs, "PLOTS_ROOT", root)
@@ -103,6 +109,7 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     child.mkdir(parents=True)
     (child / "figure_1.png").write_bytes(b"png")
     (child / "figure_1.svg").write_text("<svg></svg>", encoding="utf-8")
+    (child / "figure_1.html").write_text("<html></html>", encoding="utf-8")
     (child / "data").mkdir()
     (child / "data" / "figure_1_plot_data.csv").write_text("x,y\n0,0\n", encoding="utf-8")
     for test_child in (
@@ -124,6 +131,7 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     assert "paper_validation/index.html" not in html
     assert '"output_path":"paper_validation/Example/figure_1/figure_1.png"' in html
     assert '"svg_path":"paper_validation/Example/figure_1/figure_1.svg"' in html
+    assert '"html_path":"paper_validation/Example/figure_1/figure_1.html"' in html
     assert '"data_path":"paper_validation/Example/figure_1/data/figure_1_plot_data.csv"' in html
     assert '"source_path":"scripts/paper_validation/Example_analysis/figure_1/figure_1.png"' in html
     assert '"source_path":"tests/equilibrium/vle/vle.png"' in html
@@ -149,6 +157,7 @@ def test_gallery_manifest_keeps_output_and_source_paths(tmp_path: Path, monkeypa
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"png")
     paths[2].with_suffix(".svg").write_text("<svg></svg>", encoding="utf-8")
+    paths[2].with_suffix(".html").write_text("<html></html>", encoding="utf-8")
     data_path = paths[2].parent / "data" / "equilibrium_vle_compositions_plot_data.csv"
     data_path.parent.mkdir(parents=True, exist_ok=True)
     data_path.write_text("x,y\n0,0\n", encoding="utf-8")
@@ -166,6 +175,9 @@ def test_gallery_manifest_keeps_output_and_source_paths(tmp_path: Path, monkeypa
     )
     assert by_output["tests/equilibrium/vle/equilibrium_vle_compositions.png"]["svg_path"] == (
         "tests/equilibrium/vle/equilibrium_vle_compositions.svg"
+    )
+    assert by_output["tests/equilibrium/vle/equilibrium_vle_compositions.png"]["html_path"] == (
+        "tests/equilibrium/vle/equilibrium_vle_compositions.html"
     )
     assert by_output["tests/equilibrium/vle/equilibrium_vle_compositions.png"]["data_path"] == (
         "tests/equilibrium/vle/data/equilibrium_vle_compositions_plot_data.csv"
@@ -218,6 +230,18 @@ def test_docs_test_plot_pngs_have_companion_svg_data() -> None:
             continue
         svg_path = png_path.with_suffix(".svg")
         if not svg_path.exists():
+            missing.append(png_path.as_posix())
+    assert missing == []
+
+
+def test_docs_test_plot_pngs_have_interactive_html_companions() -> None:
+    plots_root = Path("docs/plots/tests")
+    missing = []
+    for png_path in plots_root.rglob("*.png"):
+        if "__pycache__" in png_path.parts:
+            continue
+        html_path = png_path.with_suffix(".html")
+        if not html_path.exists():
             missing.append(png_path.as_posix())
     assert missing == []
 

@@ -119,6 +119,19 @@ def plot_svg_path(image_path: str | Path) -> Path:
     return image.with_suffix(".svg")
 
 
+def plot_html_path(image_path: str | Path) -> Path:
+    image = Path(image_path)
+    return image.with_suffix(".html")
+
+
+def _strip_trailing_whitespace(path: Path) -> None:
+    text = path.read_text(encoding="utf-8")
+    normalized = "\n".join(line.rstrip() for line in text.splitlines())
+    if text.endswith("\n"):
+        normalized += "\n"
+    path.write_text(normalized, encoding="utf-8", newline="\n")
+
+
 def _format_cell(value: Any) -> str:
     if value is None:
         return ""
@@ -272,5 +285,6 @@ def save_plot_figure(
         svg_path = plot_svg_path(output_path)
         svg_kwargs = dict(kwargs)
         fig.savefig(svg_path, format="svg", **svg_kwargs)
+        _strip_trailing_whitespace(svg_path)
     export_plot_data(fig, output_path)
     return output_path
