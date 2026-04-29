@@ -147,12 +147,18 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     assert "Static" in html
     assert "plotGalleryViewMode" in html
     assert 'id="data-modal"' in html
+    assert 'id="asset-modal"' in html
     assert 'id="interactive-view"' in html
     assert 'id="static-view"' in html
     assert "interactive-frame" in html
     assert 'frame.src = image.html_path;' in html
     assert 'img.src = image.output_path;' in html
     assert "function showDataTable" in html
+    assert "function showAssetPreview" in html
+    assert "function makeAssetButton" in html
+    assert "function makeAssetLink" not in html
+    assert 'button.addEventListener("click", () => showAssetPreview(label, path, image));' in html
+    assert '.sort((a, b) =>' in html
     assert "parseCsv" in html
     assert 'button.textContent = "Data";' in html
     assert 'badge.textContent = "Static only";' in html

@@ -480,6 +480,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       margin-bottom: 4px;
       color: var(--text);
     }}
+    .asset-modal,
     .data-modal {{
       position: fixed;
       inset: 0;
@@ -489,6 +490,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       padding: 24px;
       background: rgba(23, 32, 42, 0.42);
     }}
+    .asset-dialog,
     .data-dialog {{
       display: grid;
       grid-template-rows: auto minmax(0, 1fr);
@@ -500,6 +502,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       background: var(--panel);
       box-shadow: 0 22px 70px rgba(23, 32, 42, 0.28);
     }}
+    .asset-dialog-head,
     .data-dialog-head {{
       display: flex;
       align-items: center;
@@ -509,6 +512,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       border-bottom: 1px solid var(--border);
       background: var(--panel-2);
     }}
+    .asset-dialog-title,
     .data-dialog-title {{
       min-width: 0;
       overflow: hidden;
@@ -516,10 +520,34 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       white-space: nowrap;
       font-weight: 650;
     }}
+    .asset-dialog-body,
     .data-dialog-body {{
       min-height: 0;
       overflow: auto;
       padding: 12px 14px 16px;
+    }}
+    .asset-dialog-body {{
+      display: grid;
+      place-items: center;
+      background: #fff;
+    }}
+    .asset-preview-image {{
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      min-height: 0;
+      max-height: 72vh;
+      object-fit: contain;
+      border-radius: 6px;
+      background: #fff;
+    }}
+    .asset-preview-frame {{
+      display: block;
+      width: 100%;
+      height: min(72vh, 760px);
+      min-height: 420px;
+      border: 0;
+      background: #fff;
     }}
     .data-note {{
       margin: 0 0 10px;
@@ -630,6 +658,15 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       <div id="data-dialog-body" class="data-dialog-body"></div>
     </div>
   </div>
+  <div id="asset-modal" class="asset-modal hidden" role="dialog" aria-modal="true" aria-labelledby="asset-dialog-title">
+    <div class="asset-dialog">
+      <div class="asset-dialog-head">
+        <div id="asset-dialog-title" class="asset-dialog-title">Plot preview</div>
+        <button id="asset-close" class="icon-button" type="button" title="Close plot preview" aria-label="Close plot preview">x</button>
+      </div>
+      <div id="asset-dialog-body" class="asset-dialog-body"></div>
+    </div>
+  </div>
 
   <script id="plot-data" type="application/json">{_safe_json(manifest)}</script>
   <script>
@@ -651,6 +688,10 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       const dataTitleEl = document.getElementById("data-dialog-title");
       const dataBodyEl = document.getElementById("data-dialog-body");
       const dataCloseEl = document.getElementById("data-close");
+      const assetModalEl = document.getElementById("asset-modal");
+      const assetTitleEl = document.getElementById("asset-dialog-title");
+      const assetBodyEl = document.getElementById("asset-dialog-body");
+      const assetCloseEl = document.getElementById("asset-close");
       const plotViewStorageKey = "plotGalleryViewMode";
       const selected = new Set([""]);
       const expanded = new Set([""]);
@@ -824,12 +865,13 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         renderGallery();
       }}
 
-      function makeAssetLink(label, path) {{
-        const link = document.createElement("a");
-        link.className = "resource-link";
-        link.textContent = label;
-        link.href = path;
-        return link;
+      function makeAssetButton(label, path, image) {{
+        const button = document.createElement("button");
+        button.className = "resource-link";
+        button.type = "button";
+        button.textContent = label;
+        button.addEventListener("click", () => showAssetPreview(label, path, image));
+        return button;
       }}
 
       function makeDataButton(image) {{
@@ -944,6 +986,30 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         dataBodyEl.replaceChildren();
       }}
 
+      function showAssetPreview(label, path, image) {{
+        assetTitleEl.textContent = `${{label}} preview: ${{image.title}}`;
+        assetBodyEl.replaceChildren();
+        if (label === "SVG") {{
+          const frame = document.createElement("iframe");
+          frame.className = "asset-preview-frame";
+          frame.title = `${{image.title}} SVG`;
+          frame.src = path;
+          assetBodyEl.append(frame);
+        }} else {{
+          const img = document.createElement("img");
+          img.className = "asset-preview-image";
+          img.src = path;
+          img.alt = image.title;
+          assetBodyEl.append(img);
+        }}
+        assetModalEl.classList.remove("hidden");
+      }}
+
+      function closeAssetPreview() {{
+        assetModalEl.classList.add("hidden");
+        assetBodyEl.replaceChildren();
+      }}
+
       function renderPlotPreview(image) {{
         const preview = document.createElement("div");
         preview.className = "plot-preview";
@@ -969,7 +1035,14 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
 
       function renderGallery() {{
         const filterText = searchEl.value.trim().toLowerCase();
-        const visible = images.filter((image) => isInSelectedFolder(image) && imageMatchesFilter(image, filterText));
+        const visible = images
+          .filter((image) => isInSelectedFolder(image) && imageMatchesFilter(image, filterText))
+          .sort((a, b) => {{
+            if (plotViewMode === "interactive" && Boolean(a.html_path) !== Boolean(b.html_path)) {{
+              return a.html_path ? -1 : 1;
+            }}
+            return a.source_path.localeCompare(b.source_path);
+          }});
         const labels = selectedLabels();
 
         gridEl.replaceChildren();
@@ -994,8 +1067,8 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
           imagePath.title = `Output: ${{image.output_path}}`;
           const actions = document.createElement("div");
           actions.className = "image-actions";
-          if (image.output_path) actions.append(makeAssetLink("PNG", image.output_path));
-          if (image.svg_path) actions.append(makeAssetLink("SVG", image.svg_path));
+          if (image.output_path) actions.append(makeAssetButton("PNG", image.output_path, image));
+          if (image.svg_path) actions.append(makeAssetButton("SVG", image.svg_path, image));
           if (image.data_path) actions.append(makeDataButton(image));
           if (!image.html_path) {{
             const badge = document.createElement("span");
@@ -1041,11 +1114,16 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       interactiveViewEl.addEventListener("click", () => setPlotViewMode("interactive"));
       staticViewEl.addEventListener("click", () => setPlotViewMode("static"));
       dataCloseEl.addEventListener("click", closeDataTable);
+      assetCloseEl.addEventListener("click", closeAssetPreview);
       dataModalEl.addEventListener("click", (event) => {{
         if (event.target === dataModalEl) closeDataTable();
       }});
+      assetModalEl.addEventListener("click", (event) => {{
+        if (event.target === assetModalEl) closeAssetPreview();
+      }});
       document.addEventListener("keydown", (event) => {{
         if (event.key === "Escape" && !dataModalEl.classList.contains("hidden")) closeDataTable();
+        if (event.key === "Escape" && !assetModalEl.classList.contains("hidden")) closeAssetPreview();
       }});
       searchEl.addEventListener("input", renderGallery);
       tileSizeEl.addEventListener("input", () => {{
