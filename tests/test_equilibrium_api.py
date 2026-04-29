@@ -49,6 +49,8 @@ def test_equilibrium_public_exports_are_available() -> None:
     assert hasattr(epcsaft, "EquilibriumOptions")
     assert hasattr(epcsaft, "EquilibriumPhase")
     assert hasattr(epcsaft, "EquilibriumResult")
+    assert hasattr(epcsaft, "StabilityTrial")
+    assert hasattr(epcsaft, "StabilityResult")
 
 
 def test_tp_flash_returns_structured_result_and_json_like_dict() -> None:

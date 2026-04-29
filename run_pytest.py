@@ -11,6 +11,7 @@ GENERIC_TEST_TARGETS = (
     "tests/test_equilibrium_api.py",
     "tests/test_equilibrium_vle.py",
     "tests/test_equilibrium_lle.py",
+    "tests/test_equilibrium_stability.py",
     "tests/test_parameter_templates.py",
     "tests/test_equation_registry.py",
     "tests/test_regression.py",

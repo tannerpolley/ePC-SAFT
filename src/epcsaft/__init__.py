@@ -8,6 +8,8 @@ from .epcsaft import SolutionError
 from .equilibrium import EquilibriumOptions
 from .equilibrium import EquilibriumPhase
 from .equilibrium import EquilibriumResult
+from .equilibrium import StabilityResult
+from .equilibrium import StabilityTrial
 from .parameters import DATASET_ROOT
 from .parameters import available_datasets
 from .parameters import get_prop_dict
@@ -29,6 +31,8 @@ __all__ = [
     "EquilibriumOptions",
     "EquilibriumPhase",
     "EquilibriumResult",
+    "StabilityResult",
+    "StabilityTrial",
     "ePCSAFTMixture",
     "ePCSAFTState",
     "SolutionError",

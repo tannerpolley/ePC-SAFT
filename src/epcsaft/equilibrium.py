@@ -100,6 +100,86 @@ class EquilibriumResult:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class StabilityTrial:
+    """One tangent-plane-distance trial calculation."""
+
+    parent_phase: str
+    trial_phase: str
+    seed_name: str
+    composition: np.ndarray
+    tpd: float
+    iterations: int
+    converged: bool
+    unstable: bool
+    diagnostics: dict[str, Any]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "parent_phase", str(self.parent_phase))
+        object.__setattr__(self, "trial_phase", str(self.trial_phase))
+        object.__setattr__(self, "seed_name", str(self.seed_name))
+        object.__setattr__(self, "composition", np.asarray(self.composition, dtype=float))
+        object.__setattr__(self, "tpd", float(self.tpd))
+        object.__setattr__(self, "iterations", int(self.iterations))
+        object.__setattr__(self, "converged", bool(self.converged))
+        object.__setattr__(self, "unstable", bool(self.unstable))
+        object.__setattr__(self, "diagnostics", dict(self.diagnostics))
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-like stability-trial payload."""
+        return {
+            "parent_phase": self.parent_phase,
+            "trial_phase": self.trial_phase,
+            "seed_name": self.seed_name,
+            "composition": self.composition.tolist(),
+            "tpd": self.tpd,
+            "iterations": self.iterations,
+            "converged": self.converged,
+            "unstable": self.unstable,
+            "diagnostics": _json_like(self.diagnostics),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class StabilityResult:
+    """Structured result returned by neutral TPD stability analysis."""
+
+    backend: str
+    problem_kind: str
+    stable: bool
+    min_tpd: float
+    parent_phase: str
+    trial_phase: str
+    trial_composition: np.ndarray
+    trials: tuple[StabilityTrial, ...]
+    diagnostics: dict[str, Any]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "backend", str(self.backend))
+        object.__setattr__(self, "problem_kind", str(self.problem_kind))
+        object.__setattr__(self, "stable", bool(self.stable))
+        object.__setattr__(self, "min_tpd", float(self.min_tpd))
+        object.__setattr__(self, "parent_phase", str(self.parent_phase))
+        object.__setattr__(self, "trial_phase", str(self.trial_phase))
+        object.__setattr__(self, "trial_composition", np.asarray(self.trial_composition, dtype=float))
+        object.__setattr__(self, "trials", tuple(self.trials))
+        object.__setattr__(self, "diagnostics", dict(self.diagnostics))
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-like stability-result payload."""
+        return {
+            "backend": self.backend,
+            "problem_kind": self.problem_kind,
+            "stable": self.stable,
+            "min_tpd": self.min_tpd,
+            "parent_phase": self.parent_phase,
+            "trial_phase": self.trial_phase,
+            "trial_composition": self.trial_composition.tolist(),
+            "trials": [trial.to_dict() for trial in self.trials],
+            "diagnostics": _json_like(self.diagnostics),
+        }
+
+
 def tp_flash(mixture: Any, *, T: float, P: float, z: Any, options: EquilibriumOptions | None = None) -> EquilibriumResult:
     """Solve a V1 neutral TP flash with Rachford-Rice and fugacity updates."""
     opts = _normalize_options(options)
@@ -256,6 +336,71 @@ def lle_flash(
     )
 
 
+def neutral_stability(
+    mixture: Any,
+    *,
+    T: float,
+    P: float,
+    z: Any,
+    options: EquilibriumOptions | None = None,
+    parent_phase: Any = None,
+    trial_phases: Any = None,
+) -> StabilityResult:
+    """Run V3 neutral tangent-plane-distance stability analysis."""
+    opts = _normalize_options(options)
+    feed = _normalize_feed(z, mixture.ncomp, opts.min_composition, "stability")
+    _reject_ion_containing_mixture(mixture)
+    temperature = _positive_scalar(T, "T", "stability")
+    pressure = _positive_scalar(P, "P", "stability")
+    parent_tokens = _normalize_parent_phases(parent_phase)
+    trial_tokens = _normalize_trial_phases(trial_phases)
+    threshold = _tpd_instability_threshold(opts)
+
+    trials: list[StabilityTrial] = []
+    seeds = _tpd_trial_seeds(feed, opts)
+    for parent_token in parent_tokens:
+        parent = _phase_state(mixture, temperature, pressure, feed, parent_token, opts, "TPD stability parent")
+        for trial_token in trial_tokens:
+            for seed in seeds:
+                trials.append(
+                    _solve_tpd_trial(
+                        mixture,
+                        temperature,
+                        pressure,
+                        feed,
+                        parent["ln_phi"],
+                        parent_token,
+                        trial_token,
+                        seed,
+                        opts,
+                        threshold,
+                    )
+                )
+
+    best = min(trials, key=lambda trial: trial.tpd)
+    stable = not any(trial.unstable for trial in trials)
+    return StabilityResult(
+        backend="neutral_tpd",
+        problem_kind="stability",
+        stable=stable,
+        min_tpd=best.tpd,
+        parent_phase=best.parent_phase,
+        trial_phase=best.trial_phase,
+        trial_composition=best.composition,
+        trials=tuple(trials),
+        diagnostics={
+            "stability_analysis": "neutral_tpd",
+            "parent_phases": list(parent_tokens),
+            "trial_phases": list(trial_tokens),
+            "trial_count": len(trials),
+            "seed_count": len(seeds),
+            "tpd_threshold": threshold,
+            "min_seed_name": best.seed_name,
+            "message": "unstable trial phase detected" if not stable else "no negative TPD trial found",
+        },
+    )
+
+
 def _normalize_options(options: EquilibriumOptions | None) -> EquilibriumOptions:
     if options is None:
         return EquilibriumOptions()
@@ -351,6 +496,119 @@ def _phase_state(
         "density": float(state.density()),
         "diagnostics": diagnostics,
     }
+
+
+def _normalize_parent_phases(parent_phase: Any) -> tuple[str, ...]:
+    if parent_phase is None:
+        return ("liq", "vap")
+    return (_normalize_phase_token(parent_phase, "parent_phase"),)
+
+
+def _normalize_trial_phases(trial_phases: Any) -> tuple[str, ...]:
+    if trial_phases is None:
+        return ("liq", "vap")
+    if isinstance(trial_phases, str):
+        return (_normalize_phase_token(trial_phases, "trial_phases"),)
+    try:
+        tokens = tuple(_normalize_phase_token(item, "trial_phases") for item in trial_phases)
+    except TypeError as exc:
+        raise InputError("trial_phases must be None, a phase string, or an iterable of phase strings.") from exc
+    if not tokens:
+        raise InputError("trial_phases must contain at least one phase.")
+    return tokens
+
+
+def _normalize_phase_token(value: Any, label: str) -> str:
+    token = str(value).strip().lower()
+    if token not in {"liq", "vap"}:
+        raise InputError("{} must be None, 'liq', or 'vap'.".format(label))
+    return token
+
+
+def _tpd_instability_threshold(options: EquilibriumOptions) -> float:
+    return max(float(options.tolerance), 1.0e-8)
+
+
+def _tpd_trial_seeds(feed: np.ndarray, options: EquilibriumOptions) -> list[dict[str, Any]]:
+    seeds = [{"seed_name": "feed", "composition": np.asarray(feed, dtype=float)}]
+    for index in range(int(feed.size)):
+        seeds.append(
+            {
+                "seed_name": "component_{}_rich".format(index),
+                "composition": _component_rich_lle_composition(feed.size, index, options.min_composition),
+            }
+        )
+    return seeds
+
+
+def _solve_tpd_trial(
+    mixture: Any,
+    T: float,
+    P: float,
+    feed: np.ndarray,
+    parent_ln_phi: np.ndarray,
+    parent_phase: str,
+    trial_phase: str,
+    seed: dict[str, Any],
+    options: EquilibriumOptions,
+    threshold: float,
+) -> StabilityTrial:
+    composition = _clip_normalize_composition(seed["composition"], options.min_composition)
+    best_tpd = np.inf
+    best_composition = composition.copy()
+    best_iteration = 0
+    converged = False
+    max_delta = np.inf
+    for iteration in range(1, options.max_iterations + 1):
+        trial = _phase_state(mixture, T, P, composition, trial_phase, options, "TPD stability trial")
+        tpd_value = _tpd_value(composition, trial["ln_phi"], feed, parent_ln_phi)
+        if tpd_value < best_tpd:
+            best_tpd = tpd_value
+            best_composition = composition.copy()
+            best_iteration = iteration
+
+        target = _composition_from_log_weights(np.log(feed) + parent_ln_phi - trial["ln_phi"], options.min_composition)
+        next_composition = _clip_normalize_composition(
+            (1.0 - options.damping) * composition + options.damping * target,
+            options.min_composition,
+        )
+        max_delta = float(np.max(np.abs(next_composition - composition)))
+        if max_delta <= max(options.tolerance, 1.0e-10):
+            converged = True
+            break
+        composition = next_composition
+
+    return StabilityTrial(
+        parent_phase=parent_phase,
+        trial_phase=trial_phase,
+        seed_name=seed["seed_name"],
+        composition=best_composition,
+        tpd=best_tpd,
+        iterations=best_iteration,
+        converged=converged,
+        unstable=best_tpd < -threshold,
+        diagnostics={
+            "tpd_threshold": threshold,
+            "final_max_composition_delta": max_delta,
+            "message": "negative TPD trial" if best_tpd < -threshold else "non-negative TPD trial",
+        },
+    )
+
+
+def _tpd_value(composition: np.ndarray, trial_ln_phi: np.ndarray, feed: np.ndarray, parent_ln_phi: np.ndarray) -> float:
+    return float(np.sum(composition * (np.log(composition) + trial_ln_phi - np.log(feed) - parent_ln_phi)))
+
+
+def _composition_from_log_weights(log_weights: np.ndarray, min_composition: float) -> np.ndarray:
+    shifted = np.asarray(log_weights, dtype=float)
+    shifted = shifted - float(np.max(shifted))
+    weights = np.exp(np.clip(shifted, -700.0, 700.0))
+    return _clip_normalize_composition(weights, min_composition)
+
+
+def _clip_normalize_composition(composition: np.ndarray, min_composition: float) -> np.ndarray:
+    clipped = np.maximum(np.asarray(composition, dtype=float), float(min_composition))
+    return clipped / float(np.sum(clipped))
 
 
 def _rachford_rice_beta(feed: np.ndarray, k_values: np.ndarray) -> tuple[bool, float, str]:
