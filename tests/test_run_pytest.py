@@ -45,8 +45,11 @@ def test_named_shortcuts_expand_to_expected_targets_and_keep_pytest_arg_ordering
 
 def test_plot_slice_stays_out_of_generic_and_confidence_targets():
     assert "tests/test_equilibrium_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
+    assert "tests/test_reference_comparison_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
     assert "tests/test_equilibrium_plot_outputs.py" not in run_pytest.GENERIC_TEST_TARGETS
     assert "tests/test_equilibrium_plot_outputs.py" not in run_pytest.CONFIDENCE_TEST_TARGETS
+    assert "tests/test_reference_comparison_plot_outputs.py" not in run_pytest.GENERIC_TEST_TARGETS
+    assert "tests/test_reference_comparison_plot_outputs.py" not in run_pytest.CONFIDENCE_TEST_TARGETS
 
 
 def test_profile_shortcut_sets_perf_environment_flag(monkeypatch):

@@ -1,0 +1,35 @@
+figure_file,axes_index,axes_title,artist_type,artist_label,series_index,point_index,x,y,width,height
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,line,,0,0,0,0,,
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,line,,0,1,1,0,,
+equilibrium_vle_reference_comparison.png,1,,line,,0,0,0,0,,
+equilibrium_vle_reference_comparison.png,1,,line,,0,1,1,0,,
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,bar,,0,0,-0.17999999999999999,0,0.35999999999999999,0.071767373562435788
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,bar,,1,0,0.82000000000000006,0,0.35999999999999999,0.92823262643756421
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,bar,,2,0,1.8200000000000001,0,0.35999999999999999,0.0012963789214619132
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,bar,,3,0,2.8199999999999998,0,0.35999999999999999,0.065344267599356937
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,bar,,4,0,3.8199999999999998,0,0.35999999999999999,0.9333593534791812
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,bar,,5,0,4.8200000000000003,0,0.35999999999999999,0.10763138403472723
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,bar,,6,0,5.8200000000000003,0,0.35999999999999999,0.31814267795175011
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,bar,,7,0,6.8200000000000003,0,0.35999999999999999,0.57422593801352262
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,bar,,8,0,7.8200000000000003,0,0.35999999999999999,5.5511151231257827e-17
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,bar,,9,0,8.8200000000000003,0,0.35999999999999999,5.2751222057167979e-07
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,bar,,10,0,0.17999999999999999,0,0.36000000000000004,0.071767373562435802
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,bar,,11,0,1.1799999999999999,0,0.36000000000000004,0.92823262643756421
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,bar,,12,0,2.1800000000000002,0,0.36000000000000004,0.0012963789214619132
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,bar,,13,0,3.1800000000000002,0,0.36000000000000004,0.065344267599356937
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,bar,,14,0,4.1799999999999997,0,0.36000000000000004,0.9333593534791812
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,bar,,15,0,5.1799999999999997,0,0.36000000000000004,0.10763138403472723
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,bar,,16,0,6.1799999999999997,0,0.36000000000000004,0.31814267795175011
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,bar,,17,0,7.1799999999999997,0,0.36000000000000004,0.57422593801352262
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,bar,,18,0,8.1799999999999997,0,0.36000000000000004,1e-10
+equilibrium_vle_reference_comparison.png,0,Hydrocarbon VLE benchmark vs pinned expected values,bar,,19,0,9.1799999999999997,0,0.36000000000000004,9.9999999999999995e-07
+equilibrium_vle_reference_comparison.png,1,,bar,,0,0,0,0,0.5,-1.9337182230503576e-16
+equilibrium_vle_reference_comparison.png,1,,bar,,1,0,1,0,0.5,0
+equilibrium_vle_reference_comparison.png,1,,bar,,2,0,2,0,0.5,0
+equilibrium_vle_reference_comparison.png,1,,bar,,3,0,3,0,0.5,0
+equilibrium_vle_reference_comparison.png,1,,bar,,4,0,4,0,0.5,0
+equilibrium_vle_reference_comparison.png,1,,bar,,5,0,5,0,0.5,0
+equilibrium_vle_reference_comparison.png,1,,bar,,6,0,6,0,0.5,0
+equilibrium_vle_reference_comparison.png,1,,bar,,7,0,7,0,0.5,0
+equilibrium_vle_reference_comparison.png,1,,bar,,8,0,8,0,0.5,-0.99999944488848769
+equilibrium_vle_reference_comparison.png,1,,bar,,9,0,9,0,0.5,-0.47248777942832021

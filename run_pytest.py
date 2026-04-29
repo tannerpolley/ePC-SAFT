@@ -30,6 +30,7 @@ FULL_PROFILE_TEST_TARGETS = (
 PLOT_TEST_TARGETS = (
     "tests/test_plot_gallery_outputs.py",
     "tests/test_equilibrium_plot_outputs.py",
+    "tests/test_reference_comparison_plot_outputs.py",
 )
 SLICE_TARGETS = {
     "generic": GENERIC_TEST_TARGETS,

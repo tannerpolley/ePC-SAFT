@@ -1,0 +1,29 @@
+figure_file,axes_index,axes_title,artist_type,artist_label,series_index,point_index,x,y,width,height
+runtime_neutral_scalar_reference_comparison.png,0,Neutral runtime scalar outputs vs pinned expected values,line,,0,0,0,0,,
+runtime_neutral_scalar_reference_comparison.png,0,Neutral runtime scalar outputs vs pinned expected values,line,,0,1,1,0,,
+runtime_neutral_scalar_reference_comparison.png,1,,line,,0,0,0,0,,
+runtime_neutral_scalar_reference_comparison.png,1,,line,,0,1,1,0,,
+runtime_neutral_scalar_reference_comparison.png,0,Neutral runtime scalar outputs vs pinned expected values,bar,,0,0,-0.17999999999999999,0,0.35999999999999999,14330.41711
+runtime_neutral_scalar_reference_comparison.png,0,Neutral runtime scalar outputs vs pinned expected values,bar,,1,0,0.82000000000000006,0,0.35999999999999999,1276374.1152948933
+runtime_neutral_scalar_reference_comparison.png,0,Neutral runtime scalar outputs vs pinned expected values,bar,,2,0,1.8200000000000001,0,0.35999999999999999,0.045946212080785642
+runtime_neutral_scalar_reference_comparison.png,0,Neutral runtime scalar outputs vs pinned expected values,bar,,3,0,2.8199999999999998,0,0.35999999999999999,-3.54988545131505
+runtime_neutral_scalar_reference_comparison.png,0,Neutral runtime scalar outputs vs pinned expected values,bar,,4,0,3.8199999999999998,0,0.35999999999999999,0.030774018567810361
+runtime_neutral_scalar_reference_comparison.png,0,Neutral runtime scalar outputs vs pinned expected values,bar,,5,0,4.8200000000000003,0,0.35999999999999999,-15758.229958475444
+runtime_neutral_scalar_reference_comparison.png,0,Neutral runtime scalar outputs vs pinned expected values,bar,,6,0,5.8200000000000003,0,0.35999999999999999,-55.751451436621096
+runtime_neutral_scalar_reference_comparison.png,0,Neutral runtime scalar outputs vs pinned expected values,bar,,7,0,6.8200000000000003,0,0.35999999999999999,-2759.7790560272351
+runtime_neutral_scalar_reference_comparison.png,0,Neutral runtime scalar outputs vs pinned expected values,bar,,8,0,0.17999999999999999,0,0.36000000000000004,14330.41711
+runtime_neutral_scalar_reference_comparison.png,0,Neutral runtime scalar outputs vs pinned expected values,bar,,9,0,1.1799999999999999,0,0.36000000000000004,1276374.1152948933
+runtime_neutral_scalar_reference_comparison.png,0,Neutral runtime scalar outputs vs pinned expected values,bar,,10,0,2.1800000000000002,0,0.36000000000000004,0.045946212080785642
+runtime_neutral_scalar_reference_comparison.png,0,Neutral runtime scalar outputs vs pinned expected values,bar,,11,0,3.1800000000000002,0,0.36000000000000004,-3.54988545131505
+runtime_neutral_scalar_reference_comparison.png,0,Neutral runtime scalar outputs vs pinned expected values,bar,,12,0,4.1799999999999997,0,0.36000000000000004,0.030774018567810361
+runtime_neutral_scalar_reference_comparison.png,0,Neutral runtime scalar outputs vs pinned expected values,bar,,13,0,5.1799999999999997,0,0.36000000000000004,-15758.229958475444
+runtime_neutral_scalar_reference_comparison.png,0,Neutral runtime scalar outputs vs pinned expected values,bar,,14,0,6.1799999999999997,0,0.36000000000000004,-55.751451436621096
+runtime_neutral_scalar_reference_comparison.png,0,Neutral runtime scalar outputs vs pinned expected values,bar,,15,0,7.1799999999999997,0,0.36000000000000004,-2759.7790560272351
+runtime_neutral_scalar_reference_comparison.png,1,,bar,,0,0,0,0,0.5,0
+runtime_neutral_scalar_reference_comparison.png,1,,bar,,1,0,1,0,0.5,0
+runtime_neutral_scalar_reference_comparison.png,1,,bar,,2,0,2,0,0.5,0
+runtime_neutral_scalar_reference_comparison.png,1,,bar,,3,0,3,0,0.5,0
+runtime_neutral_scalar_reference_comparison.png,1,,bar,,4,0,4,0,0.5,0
+runtime_neutral_scalar_reference_comparison.png,1,,bar,,5,0,5,0,0.5,0
+runtime_neutral_scalar_reference_comparison.png,1,,bar,,6,0,6,0,0.5,0
+runtime_neutral_scalar_reference_comparison.png,1,,bar,,7,0,7,0,0.5,0

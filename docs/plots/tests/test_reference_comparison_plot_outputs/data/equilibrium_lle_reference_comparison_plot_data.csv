@@ -1,0 +1,26 @@
+figure_file,axes_index,axes_title,artist_type,artist_label,series_index,point_index,x,y,width,height
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,line,,0,0,0,0,,
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,line,,0,1,1,0,,
+equilibrium_lle_reference_comparison.png,1,,line,,0,0,0,0,,
+equilibrium_lle_reference_comparison.png,1,,line,,0,1,1,0,,
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,bar,,0,0,-0.17999999999999999,0,0.35999999999999999,0.11757838260662883
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,bar,,1,0,0.82000000000000006,0,0.35999999999999999,0.8824216173933711
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,bar,,2,0,1.8200000000000001,0,0.35999999999999999,0.79858743089581141
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,bar,,3,0,2.8199999999999998,0,0.35999999999999999,0.2014125691041885
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,bar,,4,0,3.8199999999999998,0,0.35999999999999999,0.48813098480536354
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,bar,,5,0,4.8200000000000003,0,0.35999999999999999,9.3909324760943491e-12
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,bar,,6,0,5.8200000000000003,0,0.35999999999999999,9.4231511482689712e-11
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,bar,,7,0,0.17999999999999999,0,0.36000000000000004,0.1175783826
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,bar,,8,0,1.1799999999999999,0,0.36000000000000004,0.88242161740000002
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,bar,,9,0,2.1800000000000002,0,0.36000000000000004,0.79858743089999995
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,bar,,10,0,3.1800000000000002,0,0.36000000000000004,0.20141256909999999
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,bar,,11,0,4.1799999999999997,0,0.36000000000000004,0.4881309848
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,bar,,12,0,5.1799999999999997,0,0.36000000000000004,1e-10
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,bar,,13,0,6.1799999999999997,0,0.36000000000000004,1.0000000000000001e-09
+equilibrium_lle_reference_comparison.png,1,,bar,,0,0,0,0,0.5,5.637790165449367e-11
+equilibrium_lle_reference_comparison.png,1,,bar,,1,0,1,0,0.5,-7.5121908900686061e-12
+equilibrium_lle_reference_comparison.png,1,,bar,,2,0,2,0,0.5,-5.2449340459602376e-12
+equilibrium_lle_reference_comparison.png,1,,bar,,3,0,3,0,0.5,2.0795676596271135e-11
+equilibrium_lle_reference_comparison.png,1,,bar,,4,0,4,0,0.5,1.098791740358983e-11
+equilibrium_lle_reference_comparison.png,1,,bar,,5,0,5,0,0.5,-0.90609067523905651
+equilibrium_lle_reference_comparison.png,1,,bar,,6,0,6,0,0.5,-0.90576848851731029
