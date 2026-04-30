@@ -49,7 +49,7 @@ def test_equilibrium_vle_composition_plot_is_written_to_gallery() -> None:
     ax.bar(x + 0.18, vapor.composition, width=0.36, label="Vapor")
     ax.set_xticks(x, species)
     ax.set_ylim(0.0, 1.0)
-    ax.set_ylabel("Mole fraction")
+    ax.set_ylabel(r"Mole fraction, $x_i$ or $y_i$")
     ax.set_title("Hydrocarbon TP flash phase compositions")
     ax.legend()
 
@@ -67,7 +67,7 @@ def test_equilibrium_vle_composition_plot_is_written_to_gallery() -> None:
             title="Hydrocarbon TP flash phase compositions",
             barmode="group",
             xaxis_title="Species",
-            yaxis_title="Mole fraction",
+            yaxis_title=r"Mole fraction, $x_i$ or $y_i$",
             yaxis_range=[0.0, 1.0],
         )
         save_plotly_html(interactive, Path(output_path))
@@ -159,7 +159,7 @@ def test_equilibrium_lle_tie_line_plot_is_written_to_gallery() -> None:
     ax.scatter([liq2.composition[0]], [0.0], label="Liquid 2")
     ax.set_xlim(0.0, 1.0)
     ax.set_yticks([])
-    ax.set_xlabel("Methanol mole fraction")
+    ax.set_xlabel(r"Methanol mole fraction, $x_{\mathrm{MeOH}}$")
     ax.set_title("Methanol/cyclohexane LLE tie line")
     ax.legend(loc="upper center", ncol=4)
 
@@ -178,13 +178,13 @@ def test_equilibrium_lle_tie_line_plot_is_written_to_gallery() -> None:
                 mode="lines+markers",
                 name="Tie line",
                 text=["Liquid 1", "Liquid 2"],
-                hovertemplate="%{text}<br>methanol mole fraction=%{x:.6g}<extra></extra>",
+                hovertemplate=r"%{text}<br>$x_{\mathrm{MeOH}}$=%{x:.6g}<extra></extra>",
             )
         )
         interactive.add_trace(go.Scatter(x=[feed[0]], y=[0.0], mode="markers", name="Feed"))
         interactive.update_layout(
             title="Methanol/cyclohexane LLE tie line",
-            xaxis_title="Methanol mole fraction",
+            xaxis_title=r"Methanol mole fraction, $x_{\mathrm{MeOH}}$",
             xaxis_range=[0.0, 1.0],
             yaxis_visible=False,
         )
@@ -283,7 +283,7 @@ def test_equilibrium_electrolyte_lle_phase_composition_plot() -> None:
     ax.bar(x + 0.24, phases["org"].composition, width=0.24, label="Organic phase")
     ax.set_xticks(x, species)
     ax.set_ylim(0.0, 1.0)
-    ax.set_ylabel("Mole fraction")
+    ax.set_ylabel(r"Mole fraction, $x_i$")
     ax.set_title("V4 electrolyte LLE phase compositions")
     ax.legend(loc="upper right")
 
@@ -302,7 +302,7 @@ def test_equilibrium_electrolyte_lle_phase_composition_plot() -> None:
             title="V4 electrolyte LLE phase compositions",
             barmode="group",
             xaxis_title="Species",
-            yaxis_title="Mole fraction",
+            yaxis_title=r"Mole fraction, $x_i$",
             yaxis_range=[0.0, 1.0],
         )
         save_plotly_html(interactive, Path(output_path))

@@ -7,6 +7,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PLOTS_ROOT = REPO_ROOT / "docs" / "plots"
+CSV_BACKFILL_MARKER = 'epcsaft-interactive-source="csv_backfill"'
+STATIC_WRAPPER_MARKER = 'epcsaft-interactive-source="static_png_wrapper"'
 
 
 def should_include_png(path: Path) -> bool:
@@ -63,12 +65,31 @@ def _folder_for(path: str) -> str:
     return "" if folder == "." else folder
 
 
+def _interactive_source(html_path: Path) -> str:
+    if not html_path.exists():
+        return "static_only"
+    try:
+        head = html_path.read_text(encoding="utf-8", errors="ignore")[:2000]
+    except OSError:
+        return "native_plotly"
+    is_static_wrapper = STATIC_WRAPPER_MARKER in head or (
+        "epcsaft-interactive-source" in head and 'content="static_png_wrapper"' in head
+    )
+    if is_static_wrapper:
+        return "static_png_wrapper"
+    is_csv_backfill = CSV_BACKFILL_MARKER in head or (
+        "epcsaft-interactive-source" in head and 'content="csv_backfill"' in head
+    )
+    return "csv_backfill" if is_csv_backfill else "native_plotly"
+
+
 def image_manifest(pngs: list[Path]) -> list[dict[str, str]]:
     manifest = []
     for png in pngs:
         output_path = png.relative_to(PLOTS_ROOT).as_posix()
         svg = png.with_suffix(".svg")
         interactive_html = png.with_suffix(".html")
+        interactive_source = _interactive_source(interactive_html)
         data = png.parent / "data" / f"{png.stem}_plot_data.csv"
         source_path = _source_path_for_output(output_path)
         manifest.append(
@@ -79,6 +100,7 @@ def image_manifest(pngs: list[Path]) -> list[dict[str, str]]:
                 "output_folder": _folder_for(output_path),
                 "svg_path": svg.relative_to(PLOTS_ROOT).as_posix() if svg.exists() else "",
                 "html_path": interactive_html.relative_to(PLOTS_ROOT).as_posix() if interactive_html.exists() else "",
+                "interactive_source": interactive_source,
                 "data_path": data.relative_to(PLOTS_ROOT).as_posix() if data.exists() else "",
                 "source_path": source_path,
                 "source_folder": _folder_for(source_path),
@@ -122,6 +144,10 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       --teal: #137d72;
       --shadow: 0 8px 24px rgba(25, 43, 65, 0.08);
       --sidebar: clamp(280px, 27vw, 420px);
+      --sidebar-min: 220px;
+      --sidebar-max: min(620px, 55vw);
+      --sidebar-resizer: 8px;
+      --interactive-card-height: clamp(330px, 42vw, 560px);
       --radius: 8px;
     }}
 
@@ -136,17 +162,35 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       line-height: 1.4;
     }}
     button, input {{ font: inherit; }}
+    body.sidebar-resizing {{
+      cursor: col-resize;
+      user-select: none;
+    }}
     .app-shell {{
       display: grid;
-      grid-template-columns: var(--sidebar) minmax(0, 1fr);
+      grid-template-columns: var(--sidebar) var(--sidebar-resizer) minmax(0, 1fr);
       height: 100vh;
     }}
     .sidebar {{
       display: flex;
       min-width: 0;
       flex-direction: column;
-      border-right: 1px solid var(--border);
       background: var(--panel);
+    }}
+    .sidebar-resizer {{
+      position: relative;
+      width: var(--sidebar-resizer);
+      border-inline: 1px solid transparent;
+      background: linear-gradient(to right, transparent 0, transparent 3px, var(--border) 3px, var(--border) 4px, transparent 4px);
+      cursor: col-resize;
+      touch-action: none;
+    }}
+    .sidebar-resizer:hover,
+    .sidebar-resizer:focus,
+    body.sidebar-resizing .sidebar-resizer {{
+      border-inline-color: rgba(25, 95, 184, 0.28);
+      background: linear-gradient(to right, transparent 0, transparent 2px, var(--blue) 2px, var(--blue) 5px, transparent 5px);
+      outline: none;
     }}
     .brand {{
       padding: 18px 18px 14px;
@@ -232,7 +276,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
     }}
     .folder-row {{
       display: grid;
-      grid-template-columns: 24px 22px minmax(0, 1fr) auto;
+      grid-template-columns: 24px 22px minmax(0, 1fr) auto auto;
       align-items: center;
       min-height: 31px;
       gap: 4px;
@@ -241,6 +285,10 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
     }}
     .folder-row:hover {{ background: #eef4fb; }}
     .folder-row.is-selected {{ background: var(--blue-soft); }}
+    .folder-row.has-hidden-selection {{
+      background: #f3f8ff;
+      box-shadow: inset 3px 0 0 var(--blue);
+    }}
     .toggle {{
       width: 22px;
       height: 22px;
@@ -269,6 +317,17 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       color: var(--muted);
       font-size: 0.78rem;
       font-variant-numeric: tabular-nums;
+    }}
+    .hidden-selection-pill {{
+      border: 1px solid #9ac3f5;
+      border-radius: 999px;
+      background: #e6f1ff;
+      color: var(--blue);
+      font-size: 0.72rem;
+      font-weight: 650;
+      line-height: 1;
+      padding: 4px 7px;
+      white-space: nowrap;
     }}
     .content {{
       display: grid;
@@ -436,15 +495,15 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       background-size: 16px 16px;
     }}
     .plot-preview.is-interactive {{
-      min-height: 430px;
+      min-height: var(--interactive-card-height);
       padding: 0;
       background: #fff;
     }}
     .interactive-frame {{
       display: block;
       width: 100%;
-      height: clamp(430px, 54vw, 760px);
-      min-height: 430px;
+      height: var(--interactive-card-height);
+      min-height: var(--interactive-card-height);
       border: 0;
       background: #fff;
     }}
@@ -587,6 +646,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       }}
       .sidebar, .content {{ height: auto; }}
       .sidebar {{ border-right: 0; border-bottom: 1px solid var(--border); }}
+      .sidebar-resizer {{ display: none; }}
       .tree-wrap {{ max-height: 42vh; }}
       .content {{ display: block; }}
       .gallery-scroll {{ overflow: visible; padding: 14px; }}
@@ -620,6 +680,16 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         <ul id="folder-tree" class="tree" data-testid="folder-tree"></ul>
       </div>
     </aside>
+    <div
+      id="sidebar-resizer"
+      class="sidebar-resizer"
+      role="separator"
+      aria-label="Resize plot folder sidebar"
+      aria-orientation="vertical"
+      aria-valuemin="220"
+      aria-valuemax="620"
+      tabindex="0"
+    ></div>
     <main class="content">
       <header class="content-header">
         <div class="content-title-row">
@@ -684,6 +754,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       const outputModeEl = document.getElementById("output-mode");
       const interactiveViewEl = document.getElementById("interactive-view");
       const staticViewEl = document.getElementById("static-view");
+      const sidebarResizerEl = document.getElementById("sidebar-resizer");
       const dataModalEl = document.getElementById("data-modal");
       const dataTitleEl = document.getElementById("data-dialog-title");
       const dataBodyEl = document.getElementById("data-dialog-body");
@@ -693,12 +764,14 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       const assetBodyEl = document.getElementById("asset-dialog-body");
       const assetCloseEl = document.getElementById("asset-close");
       const plotViewStorageKey = "plotGalleryViewMode";
-      const selected = new Set([""]);
+      const sidebarWidthStorageKey = "plotGallerySidebarWidth";
+      const selected = new Set();
       const expanded = new Set([""]);
       let treeMode = "source";
       let plotViewMode = localStorage.getItem(plotViewStorageKey) === "static" ? "static" : "interactive";
       let folderMap = new Map();
       let root = null;
+      let sidebarResizeActive = false;
 
       function rootLabel() {{
         return treeMode === "source" ? "Project source" : "docs/plots";
@@ -744,8 +817,23 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         return Array.from(node.children.values()).sort((a, b) => folderName(a.path).localeCompare(folderName(b.path)));
       }}
 
+      function isDescendantFolder(path, possibleAncestor) {{
+        if (!path || path === possibleAncestor) return false;
+        if (!possibleAncestor) return true;
+        return path.startsWith(`${{possibleAncestor}}/`);
+      }}
+
+      function selectedDescendantCount(path) {{
+        let count = 0;
+        for (const folder of selected) {{
+          if (isDescendantFolder(folder, path)) count += 1;
+        }}
+        return count;
+      }}
+
       function renderTreeNode(node, depth = 0) {{
         const childNodes = sortedChildren(node);
+        const hiddenSelectedCount = expanded.has(node.path) ? 0 : selectedDescendantCount(node.path);
         const li = document.createElement("li");
         const row = document.createElement("div");
         row.className = "folder-row";
@@ -803,7 +891,18 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         count.textContent = node.total;
 
         if (selected.has(node.path)) row.classList.add("is-selected");
-        row.append(toggle, checkbox, label, count);
+        if (hiddenSelectedCount > 0) row.classList.add("has-hidden-selection");
+
+        row.append(toggle, checkbox, label);
+        if (hiddenSelectedCount > 0) {{
+          const hiddenSelection = document.createElement("span");
+          hiddenSelection.className = "hidden-selection-pill";
+          hiddenSelection.textContent = `${{hiddenSelectedCount}} selected`;
+          hiddenSelection.title = `${{hiddenSelectedCount}} selected folder${{hiddenSelectedCount === 1 ? "" : "s"}} hidden inside this collapsed folder`;
+          hiddenSelection.setAttribute("aria-label", hiddenSelection.title);
+          row.append(hiddenSelection);
+        }}
+        row.append(count);
         li.append(row);
 
         if (expanded.has(node.path) && childNodes.length) {{
@@ -863,6 +962,49 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         interactiveViewEl.classList.toggle("is-active", plotViewMode === "interactive");
         staticViewEl.classList.toggle("is-active", plotViewMode === "static");
         renderGallery();
+      }}
+
+      function sidebarWidthBounds() {{
+        const minimum = 220;
+        const maximum = Math.max(minimum, Math.min(620, Math.floor(window.innerWidth * 0.55)));
+        return {{ minimum, maximum }};
+      }}
+
+      function setSidebarWidth(width, {{ persist = true }} = {{}}) {{
+        const {{ minimum, maximum }} = sidebarWidthBounds();
+        const clamped = Math.max(minimum, Math.min(maximum, Math.round(width)));
+        document.documentElement.style.setProperty("--sidebar", `${{clamped}}px`);
+        sidebarResizerEl.setAttribute("aria-valuenow", String(clamped));
+        sidebarResizerEl.setAttribute("aria-valuemax", String(maximum));
+        if (persist) localStorage.setItem(sidebarWidthStorageKey, String(clamped));
+        return clamped;
+      }}
+
+      function restoreSidebarWidth() {{
+        const stored = Number(localStorage.getItem(sidebarWidthStorageKey));
+        if (Number.isFinite(stored) && stored > 0) setSidebarWidth(stored, {{ persist: false }});
+        else sidebarResizerEl.setAttribute("aria-valuenow", String(Math.round(sidebarResizerEl.getBoundingClientRect().left)));
+      }}
+
+      function startSidebarResize(event) {{
+        if (event.button !== undefined && event.button !== 0) return;
+        sidebarResizeActive = true;
+        document.body.classList.add("sidebar-resizing");
+        sidebarResizerEl.setPointerCapture?.(event.pointerId);
+        setSidebarWidth(event.clientX);
+        event.preventDefault();
+      }}
+
+      function updateSidebarResize(event) {{
+        if (!sidebarResizeActive) return;
+        setSidebarWidth(event.clientX);
+      }}
+
+      function finishSidebarResize(event) {{
+        if (!sidebarResizeActive) return;
+        sidebarResizeActive = false;
+        document.body.classList.remove("sidebar-resizing");
+        if (event?.pointerId !== undefined) sidebarResizerEl.releasePointerCapture?.(event.pointerId);
       }}
 
       function makeAssetButton(label, path, image) {{
@@ -1070,12 +1212,20 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
           if (image.output_path) actions.append(makeAssetButton("PNG", image.output_path, image));
           if (image.svg_path) actions.append(makeAssetButton("SVG", image.svg_path, image));
           if (image.data_path) actions.append(makeDataButton(image));
-          if (!image.html_path) {{
-            const badge = document.createElement("span");
-            badge.className = "asset-badge";
+          const badge = document.createElement("span");
+          badge.className = "asset-badge";
+          if (image.interactive_source === "csv_backfill") {{
+            badge.textContent = "CSV interactive";
+            badge.title = "CSV-backed interactive reconstruction from plot data";
+          }} else if (image.interactive_source === "static_png_wrapper") {{
+            badge.textContent = "Static HTML";
+            badge.title = "Static HTML/SVG wrapper around the PNG because no numeric plot artists were available";
+          }} else if (image.interactive_source === "native_plotly") {{
+            badge.textContent = "Interactive";
+          }} else {{
             badge.textContent = "Static only";
-            actions.append(badge);
           }}
+          actions.append(badge);
           head.append(imageTitle, imagePath, actions);
 
           card.append(head, renderPlotPreview(image));
@@ -1101,7 +1251,6 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       function setTreeMode(mode) {{
         treeMode = mode;
         selected.clear();
-        selected.add("");
         expanded.clear();
         expanded.add("");
         sourceModeEl.classList.toggle("is-active", treeMode === "source");
@@ -1113,6 +1262,26 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       outputModeEl.addEventListener("click", () => setTreeMode("output"));
       interactiveViewEl.addEventListener("click", () => setPlotViewMode("interactive"));
       staticViewEl.addEventListener("click", () => setPlotViewMode("static"));
+      sidebarResizerEl.addEventListener("pointerdown", startSidebarResize);
+      sidebarResizerEl.addEventListener("pointermove", updateSidebarResize);
+      sidebarResizerEl.addEventListener("pointerup", finishSidebarResize);
+      sidebarResizerEl.addEventListener("pointercancel", finishSidebarResize);
+      sidebarResizerEl.addEventListener("dblclick", () => {{
+        localStorage.removeItem(sidebarWidthStorageKey);
+        document.documentElement.style.removeProperty("--sidebar");
+        restoreSidebarWidth();
+      }});
+      sidebarResizerEl.addEventListener("keydown", (event) => {{
+        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+        const current = Number(sidebarResizerEl.getAttribute("aria-valuenow")) || sidebarResizerEl.getBoundingClientRect().left;
+        const delta = event.key === "ArrowLeft" ? -24 : 24;
+        setSidebarWidth(current + delta);
+        event.preventDefault();
+      }});
+      window.addEventListener("resize", () => {{
+        const current = Number(sidebarResizerEl.getAttribute("aria-valuenow"));
+        if (Number.isFinite(current) && current > 0) setSidebarWidth(current, {{ persist: false }});
+      }});
       dataCloseEl.addEventListener("click", closeDataTable);
       assetCloseEl.addEventListener("click", closeAssetPreview);
       dataModalEl.addEventListener("click", (event) => {{
@@ -1132,6 +1301,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
 
       interactiveViewEl.classList.toggle("is-active", plotViewMode === "interactive");
       staticViewEl.classList.toggle("is-active", plotViewMode === "static");
+      restoreSidebarWidth();
       gridEl.style.setProperty("--card-min", `${{tileSizeEl.value}}px`);
       renderTree();
       renderGallery();

@@ -11,6 +11,8 @@ import numpy as np
 
 from scripts import plot_outputs
 from scripts.paper_validation.tools import build_analysis_galleries
+from scripts.paper_validation.tools import ensure_plot_companions
+from scripts.paper_validation.tools import report_plot_companions
 from scripts.paper_validation.tools import serve_plot_gallery
 from tests.plots.plot_helpers import assert_figure_text_is_inside_canvas
 from tests.plots.plot_helpers import save_comparison_plot
@@ -19,8 +21,10 @@ from tests.plots.plot_helpers import save_comparison_plot
 def test_save_plot_figure_writes_csv_backing_data(tmp_path: Path) -> None:
     output_path = tmp_path / "figure.png"
     fig, ax = plt.subplots()
-    ax.plot([0.0, 1.0], [2.0, 3.0], label="line")
-    ax.scatter([0.5], [2.5], label="point")
+    ax.set_xlabel("composition")
+    ax.set_ylabel("value")
+    ax.plot([0.0, 1.0], [2.0, 3.0], color="#123456", linestyle="--", marker="o", label="line")
+    ax.scatter([0.5], [2.5], color="#abcdef", label="point")
 
     try:
         plot_outputs.save_plot_figure(fig, output_path, dpi=72, svg_companion=True)
@@ -36,6 +40,14 @@ def test_save_plot_figure_writes_csv_backing_data(tmp_path: Path) -> None:
         rows = list(csv.DictReader(handle))
     assert {row["artist_type"] for row in rows} >= {"line", "scatter"}
     assert any(row["artist_label"] == "line" and row["x"] == "1" and row["y"] == "3" for row in rows)
+    line_row = next(row for row in rows if row["artist_type"] == "line")
+    scatter_row = next(row for row in rows if row["artist_type"] == "scatter")
+    assert line_row["x_label"] == "composition"
+    assert line_row["y_label"] == "value"
+    assert line_row["color"] == "#123456"
+    assert line_row["linestyle"] == "--"
+    assert line_row["marker"] == "o"
+    assert scatter_row["color"] == "#abcdef"
 
 
 def test_plot_html_path_uses_plot_stem() -> None:
@@ -88,6 +100,48 @@ def test_readable_plot_helper_wraps_dense_labels_without_clipping(tmp_path: Path
     assert output_path.with_suffix(".svg").exists()
 
 
+def test_plotly_companion_uses_browser_readable_math_labels(tmp_path: Path, monkeypatch) -> None:
+    root = tmp_path / "plots"
+    monkeypatch.setattr(plot_outputs, "PLOTS_ROOT", root)
+    monkeypatch.setattr(plot_outputs, "TEST_PLOTS_ROOT", root / "tests")
+
+    output_path = save_comparison_plot(
+        "plotly_math_labels.png",
+        "Plotly math label readability regression",
+        ["rho", "ares", "lnphi water"],
+        np.asarray([1.0, 2.0, 3.0], dtype=float),
+        np.asarray([1.0, 2.0, 3.0], dtype=float),
+        category=("tests", "readability"),
+    )
+    html = output_path.with_suffix(".html").read_text(encoding="utf-8")
+
+    assert "$\\rho$" not in html
+    assert "\\ln \\phi" not in html
+    assert "rho (\\u03c1)" in html
+    assert "ln phi (ln \\u03c6)_H2O" in html
+
+
+def test_plotly_companion_translates_axis_math_labels(tmp_path: Path, monkeypatch) -> None:
+    root = tmp_path / "plots"
+    monkeypatch.setattr(plot_outputs, "PLOTS_ROOT", root)
+    monkeypatch.setattr(plot_outputs, "TEST_PLOTS_ROOT", root / "tests")
+
+    output_path = save_comparison_plot(
+        "plotly_axis_math_labels.png",
+        "Plotly axis label readability regression",
+        ["rho"],
+        np.asarray([1.0], dtype=float),
+        np.asarray([1.0], dtype=float),
+        category=("tests", "readability"),
+        ylabel=r"Residual Helmholtz energy, $A^{res}$",
+        relative_error=False,
+    )
+    html = output_path.with_suffix(".html").read_text(encoding="utf-8")
+
+    assert "$A^{res}$" not in html
+    assert "Residual Helmholtz energy, A^res" in html
+
+
 def test_text_canvas_check_detects_clipped_labels() -> None:
     fig, ax = plt.subplots(figsize=(3.0, 2.0))
     ax.text(-0.35, 0.5, "clipped", transform=ax.transAxes)
@@ -109,7 +163,10 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     child.mkdir(parents=True)
     (child / "figure_1.png").write_bytes(b"png")
     (child / "figure_1.svg").write_text("<svg></svg>", encoding="utf-8")
-    (child / "figure_1.html").write_text("<html></html>", encoding="utf-8")
+    (child / "figure_1.html").write_text(
+        '<html><meta name="epcsaft-interactive-source" content="csv_backfill"></html>',
+        encoding="utf-8",
+    )
     (child / "data").mkdir()
     (child / "data" / "figure_1_plot_data.csv").write_text("x,y\n0,0\n", encoding="utf-8")
     for test_child in (
@@ -132,6 +189,7 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     assert '"output_path":"paper_validation/Example/figure_1/figure_1.png"' in html
     assert '"svg_path":"paper_validation/Example/figure_1/figure_1.svg"' in html
     assert '"html_path":"paper_validation/Example/figure_1/figure_1.html"' in html
+    assert '"interactive_source":"csv_backfill"' in html
     assert '"data_path":"paper_validation/Example/figure_1/data/figure_1_plot_data.csv"' in html
     assert '"source_path":"scripts/paper_validation/Example_analysis/figure_1/figure_1.png"' in html
     assert '"source_path":"tests/equilibrium/vle/vle.png"' in html
@@ -143,14 +201,35 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     assert "tests/plots/reference_comparison_outputs" not in html
     assert "Source tree" in html
     assert "Output tree" in html
+    assert "const selected = new Set();" in html
+    assert 'const selected = new Set([""]);' not in html
     assert "Interactive" in html
     assert "Static" in html
     assert "plotGalleryViewMode" in html
+    assert "plotGallerySidebarWidth" in html
+    assert 'id="sidebar-resizer"' in html
+    assert 'role="separator"' in html
+    assert 'aria-label="Resize plot folder sidebar"' in html
+    assert "function setSidebarWidth" in html
+    assert "startSidebarResize" in html
+    assert "finishSidebarResize" in html
+    assert "col-resize" in html
+    assert "has-hidden-selection" in html
+    assert "hidden-selection-pill" in html
+    assert "function selectedDescendantCount" in html
+    assert "function isDescendantFolder" in html
+    assert "hidden inside this collapsed folder" in html
+    assert "grid-template-columns: var(--sidebar) var(--sidebar-resizer) minmax(0, 1fr);" in html
+    assert ".sidebar-resizer" in html
+    assert "sidebar-resizing" in html
     assert 'id="data-modal"' in html
     assert 'id="asset-modal"' in html
     assert 'id="interactive-view"' in html
     assert 'id="static-view"' in html
     assert "interactive-frame" in html
+    assert "--interactive-card-height: clamp(330px, 42vw, 560px);" in html
+    assert "height: var(--interactive-card-height);" in html
+    assert "min-height: var(--interactive-card-height);" in html
     assert 'frame.src = image.html_path;' in html
     assert 'img.src = image.output_path;' in html
     assert "function showDataTable" in html
@@ -162,10 +241,83 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     assert "parseCsv" in html
     assert 'button.textContent = "Data";' in html
     assert 'badge.textContent = "Static only";' in html
+    assert 'badge.textContent = "Static HTML";' in html
+    assert 'badge.textContent = "CSV interactive";' in html
+    assert 'badge.textContent = "Interactive";' in html
+    assert "CSV-backed interactive reconstruction from plot data" in html
     assert "resource-link is-disabled" not in html
     assert 'target = "_blank"' not in html
     assert 'className = "image-link"' not in html
     assert "Select folders on the left" in html
+
+
+def test_ensure_plot_companions_adds_static_html_svg_and_csv(tmp_path: Path, monkeypatch) -> None:
+    root = tmp_path / "plots"
+    png = root / "paper_validation" / "Example" / "figure_1" / "figure_1.png"
+    png.parent.mkdir(parents=True)
+    png.write_bytes(
+        b"\x89PNG\r\n\x1a\n"
+        b"\x00\x00\x00\rIHDR"
+        b"\x00\x00\x00\x10\x00\x00\x00\x08"
+        b"\x08\x02\x00\x00\x00"
+        b"\x00\x00\x00\x00"
+    )
+    monkeypatch.setattr(build_analysis_galleries, "PLOTS_ROOT", root)
+
+    result = ensure_plot_companions.ensure_companions(root)
+
+    assert result.csv_created == 1
+    assert result.html_created == 1
+    assert result.svg_created == 1
+    assert (png.parent / "data" / "figure_1_plot_data.csv").exists()
+    assert ensure_plot_companions.STATIC_WRAPPER_MARKER in png.with_suffix(".html").read_text(encoding="utf-8")
+    assert 'href="figure_1.png"' in png.with_suffix(".svg").read_text(encoding="utf-8")
+
+
+def test_plot_companion_report_lists_interactive_and_static_plots(tmp_path: Path, monkeypatch) -> None:
+    root = tmp_path / "plots"
+    interactive = root / "paper_validation" / "Example" / "figure_1" / "figure_1.png"
+    static = root / "paper_validation" / "Example" / "figure_2" / "figure_2.png"
+    interactive.parent.mkdir(parents=True)
+    static.parent.mkdir(parents=True)
+    interactive.write_bytes(b"png")
+    static.write_bytes(b"png")
+    interactive.with_suffix(".html").write_text(
+        '<html><meta name="epcsaft-interactive-source" content="csv_backfill"></html>',
+        encoding="utf-8",
+    )
+    static.with_suffix(".html").write_text(
+        '<html><meta name="epcsaft-interactive-source" content="static_png_wrapper"></html>',
+        encoding="utf-8",
+    )
+    interactive.with_suffix(".svg").write_text("<svg></svg>", encoding="utf-8")
+    static.with_suffix(".svg").write_text("<svg></svg>", encoding="utf-8")
+    (interactive.parent / "data").mkdir()
+    (interactive.parent / "data" / "figure_1_plot_data.csv").write_text("x,y\n0,0\n", encoding="utf-8")
+    (static.parent / "data").mkdir()
+    (static.parent / "data" / "figure_2_plot_data.csv").write_text(
+        "figure_file,artist_type\nfigure_2.png,existing_png_backfill\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(build_analysis_galleries, "PLOTS_ROOT", root)
+
+    output = tmp_path / "report.csv"
+    rows = report_plot_companions.companion_rows(root)
+    report_plot_companions.write_report(output, root)
+    report = output.read_text(encoding="utf-8")
+
+    by_output = {row["output_path"]: row for row in rows}
+    assert by_output["paper_validation/Example/figure_1/figure_1.png"]["interactive_status"] == "interactive"
+    assert by_output["paper_validation/Example/figure_1/figure_1.png"]["bundle_complete"] == "true"
+    assert by_output["paper_validation/Example/figure_1/figure_1.png"]["interactive_source"] == "csv_backfill"
+    assert by_output["paper_validation/Example/figure_2/figure_2.png"]["interactive_status"] == "static_only"
+    assert by_output["paper_validation/Example/figure_2/figure_2.png"]["html_status"] == "static_html"
+    assert by_output["paper_validation/Example/figure_2/figure_2.png"]["bundle_complete"] == "true"
+    assert by_output["paper_validation/Example/figure_2/figure_2.png"]["static_reason"] == "no_numeric_artists"
+    assert "bundle_complete" in report
+    assert "has_html" in report
+    assert "has_plotly_html" in report
+    assert "static_reason" in report
 
 
 def test_gallery_manifest_keeps_output_and_source_paths(tmp_path: Path, monkeypatch) -> None:
@@ -180,6 +332,10 @@ def test_gallery_manifest_keeps_output_and_source_paths(tmp_path: Path, monkeypa
         path.write_bytes(b"png")
     paths[2].with_suffix(".svg").write_text("<svg></svg>", encoding="utf-8")
     paths[2].with_suffix(".html").write_text("<html></html>", encoding="utf-8")
+    paths[0].with_suffix(".html").write_text(
+        '<html><meta name="epcsaft-interactive-source" content="csv_backfill"></html>',
+        encoding="utf-8",
+    )
     data_path = paths[2].parent / "data" / "equilibrium_vle_compositions_plot_data.csv"
     data_path.parent.mkdir(parents=True, exist_ok=True)
     data_path.write_text("x,y\n0,0\n", encoding="utf-8")
@@ -201,6 +357,11 @@ def test_gallery_manifest_keeps_output_and_source_paths(tmp_path: Path, monkeypa
     assert by_output["tests/equilibrium/vle/equilibrium_vle_compositions.png"]["html_path"] == (
         "tests/equilibrium/vle/equilibrium_vle_compositions.html"
     )
+    assert by_output["tests/equilibrium/vle/equilibrium_vle_compositions.png"]["interactive_source"] == (
+        "native_plotly"
+    )
+    assert by_output["paper_validation/Example/figure_1/figure_1.png"]["interactive_source"] == "csv_backfill"
+    assert by_output["fits/miac/water/miac.png"]["interactive_source"] == "static_only"
     assert by_output["tests/equilibrium/vle/equilibrium_vle_compositions.png"]["data_path"] == (
         "tests/equilibrium/vle/data/equilibrium_vle_compositions_plot_data.csv"
     )
@@ -242,6 +403,34 @@ def test_docs_plot_pngs_have_companion_csv_data() -> None:
         if not csv_path.exists():
             missing.append(png_path.as_posix())
     assert missing == []
+
+
+def test_docs_plot_pngs_have_gallery_manifest_entries() -> None:
+    plots_root = build_analysis_galleries.PLOTS_ROOT
+    pngs = build_analysis_galleries.collect_pngs(plots_root)
+    manifest = build_analysis_galleries.image_manifest(pngs)
+
+    assert len(manifest) == len(pngs)
+    for item in manifest:
+        png_path = plots_root / item["output_path"]
+        assert png_path.exists()
+        assert item["path"] == item["output_path"]
+        assert item["source_path"]
+        assert item["interactive_source"] in {
+            "native_plotly",
+            "csv_backfill",
+            "static_png_wrapper",
+            "static_only",
+        }
+        if item["html_path"]:
+            assert (plots_root / item["html_path"]).exists()
+            assert item["interactive_source"] != "static_only"
+        else:
+            assert item["interactive_source"] == "static_only"
+        if item["svg_path"]:
+            assert (plots_root / item["svg_path"]).exists()
+        if item["data_path"]:
+            assert (plots_root / item["data_path"]).exists()
 
 
 def test_docs_test_plot_pngs_have_companion_svg_data() -> None:
