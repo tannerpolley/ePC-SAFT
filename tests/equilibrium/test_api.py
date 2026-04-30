@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import pytest
 
@@ -64,7 +66,22 @@ def test_tp_flash_returns_structured_result_and_json_like_dict() -> None:
     assert result.phase_labels == ["liq", "vap"]
     payload = result.to_dict()
     assert payload["phase_labels"] == ["liq", "vap"]
+    json.dumps(payload, allow_nan=False)
     _assert_json_like(payload)
+
+
+def test_equilibrium_phase_exposes_explicit_ln_fugacity_alias() -> None:
+    mix = _hydrocarbon_mixture()
+
+    result = mix.equilibrium(kind="tp_flash", T=220.0, P=1.0e5, z=np.asarray([0.1, 0.3, 0.6]))
+
+    phase = result.phases[0]
+    np.testing.assert_allclose(phase.ln_fugacity_coefficient, phase.fugacity_coefficient)
+    payload = phase.to_dict()
+    assert "ln_fugacity_coefficient" in payload
+    assert "fugacity_coefficient" in payload
+    np.testing.assert_allclose(payload["ln_fugacity_coefficient"], payload["fugacity_coefficient"])
+    json.dumps(result.to_dict(), allow_nan=False)
 
 
 @pytest.mark.parametrize(

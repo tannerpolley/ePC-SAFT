@@ -1,0 +1,172 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.3 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{nty/global//global/global/global}
+    \entry{Ascani2022}{article}{}{}
+      \name{author}{6}{}{%
+        {{hash=3f5a0e0cb2f74742d542f10583189e18}{%
+           family={Ascani},
+           familyi={A\bibinitperiod},
+           given={Moreno},
+           giveni={M\bibinitperiod}}}%
+        {{hash=6509169a136fa417f448ab5f29e942d3}{%
+           family={Pabsch},
+           familyi={P\bibinitperiod},
+           given={Daniel},
+           giveni={D\bibinitperiod}}}%
+        {{hash=a6a62875c8aeb143f92953bd72b3a82a}{%
+           family={Klinksiek},
+           familyi={K\bibinitperiod},
+           given={Marcel},
+           giveni={M\bibinitperiod}}}%
+        {{hash=b76c047fb7e2a1a97b2f419b95f9ce44}{%
+           family={{Gajardo-Parra}},
+           familyi={G\bibinitperiod},
+           given={Nicolás},
+           giveni={N\bibinitperiod}}}%
+        {{hash=514f4d00b73b85e58ac1cde274edd2ad}{%
+           family={Sadowski},
+           familyi={S\bibinitperiod},
+           given={Gabriele},
+           giveni={G\bibinitperiod}}}%
+        {{hash=0df40982dd9d7815c1a59002af415abd}{%
+           family={Held},
+           familyi={H\bibinitperiod},
+           given={Christoph},
+           giveni={C\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {The Royal Society of Chemistry}%
+      }
+      \strng{namehash}{09d68f9edebee76a49d40eeed453efb4}
+      \strng{fullhash}{25e1cf2c38ee211cd0b61e598372c83d}
+      \strng{fullhashraw}{25e1cf2c38ee211cd0b61e598372c83d}
+      \strng{bibnamehash}{09d68f9edebee76a49d40eeed453efb4}
+      \strng{authorbibnamehash}{09d68f9edebee76a49d40eeed453efb4}
+      \strng{authornamehash}{09d68f9edebee76a49d40eeed453efb4}
+      \strng{authorfullhash}{25e1cf2c38ee211cd0b61e598372c83d}
+      \strng{authorfullhashraw}{25e1cf2c38ee211cd0b61e598372c83d}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{Proton activity, which is usually expressed as a pH value, is among the most important properties in the design of chemical and biochemical processes as it determines the dissociation of species in aqueous mixtures. This article addresses the prediction of pH values in multiphase systems based on the IUPAC definition via proton activity. The required proton activity coefficients were predicted using the thermodynamic equation of state ePC-SAFT advanced. The developed framework considers reaction equilibria and phase equilibria (vapor--liquid and liquid--liquid) to predict pH in the equilibrated liquid phases.}
+      \field{issn}{1364-548X}
+      \field{journaltitle}{Chemical Communications}
+      \field{month}{7}
+      \field{number}{60}
+      \field{title}{Prediction of {{pH}} in Multiphase Multicomponent Systems with {{ePC-SAFT}} Advanced}
+      \field{urlday}{9}
+      \field{urlmonth}{12}
+      \field{urlyear}{2025}
+      \field{volume}{58}
+      \field{year}{2022}
+      \field{urldateera}{ce}
+      \field{pages}{8436\bibrangedash 8439}
+      \range{pages}{4}
+      \verb{doi}
+      \verb 10.1039/D2CC02943J
+      \endverb
+    \endentry
+    \entry{Figiel2025}{article}{}{}
+      \name{author}{3}{}{%
+        {{hash=2d00d58607ca3486ec1296756a756345}{%
+           family={Figiel},
+           familyi={F\bibinitperiod},
+           given={Paul},
+           giveni={P\bibinitperiod}}}%
+        {{hash=982db43b1cc9b2ed91c99f7b60540d09}{%
+           family={Yu},
+           familyi={Y\bibinitperiod},
+           given={Gangqiang},
+           giveni={G\bibinitperiod}}}%
+        {{hash=0df40982dd9d7815c1a59002af415abd}{%
+           family={Held},
+           familyi={H\bibinitperiod},
+           given={Christoph},
+           giveni={C\bibinitperiod}}}%
+      }
+      \strng{namehash}{982d388f8fc7d4de88ab15483df08132}
+      \strng{fullhash}{982d388f8fc7d4de88ab15483df08132}
+      \strng{fullhashraw}{982d388f8fc7d4de88ab15483df08132}
+      \strng{bibnamehash}{982d388f8fc7d4de88ab15483df08132}
+      \strng{authorbibnamehash}{982d388f8fc7d4de88ab15483df08132}
+      \strng{authornamehash}{982d388f8fc7d4de88ab15483df08132}
+      \strng{authorfullhash}{982d388f8fc7d4de88ab15483df08132}
+      \strng{authorfullhashraw}{982d388f8fc7d4de88ab15483df08132}
+      \field{sortinit}{F}
+      \field{sortinithash}{2638baaa20439f1b5a8f80c6c08a13b4}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{In this work, the EoS ePC-SAFT was further developed by modifying the Born term and introducing a new mixing rule for the dielectric constant of electrolyte solutions. The modified Born term considers the solvent solvation-shell volume of ions and accounts for the radial dependence of the dielectric constant near a central ion. This required one additional parameter per ion and one per solvent, while other pure-component parameters were inherited from the literature. The performance of ePC-SAFT was validated against experimental literature data: Gibbs energies of solvation and of transfer and MIACs in pure water, methanol, ethanol, and in their mixtures. The new modeling approach improves the accuracy of Gibbs energies at infinite dilution while retaining the ability to model properties of concentrated electrolyte systems. Additionally, ePC-SAFT parameters for V3+ and VO2+ ions were fitted to density and osmotic-coefficient data of VCl3 and VOSO4 in water using the new approach.}
+      \field{issn}{15205045}
+      \field{journaltitle}{Industrial and Engineering Chemistry Research}
+      \field{title}{Predicting {{Thermodynamic Properties}} of {{Ions}} in {{Single Solvents}} and in {{Mixed Solvents Using}} a {{Modified Born Term}} within the {{ePC-SAFT Framework}}}
+      \field{year}{2025}
+      \verb{doi}
+      \verb 10.1021/acs.iecr.5c00475
+      \endverb
+    \endentry
+    \entry{Gross2001}{article}{}{}
+      \name{author}{2}{}{%
+        {{hash=d039ee785963d74cf7ea3c7a18f9c865}{%
+           family={Gross},
+           familyi={G\bibinitperiod},
+           given={Joachim},
+           giveni={J\bibinitperiod}}}%
+        {{hash=514f4d00b73b85e58ac1cde274edd2ad}{%
+           family={Sadowski},
+           familyi={S\bibinitperiod},
+           given={Gabriele},
+           giveni={G\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {American Chemical Society}%
+      }
+      \strng{namehash}{fb4f674f1462b0b34907dc49f8a8d0fa}
+      \strng{fullhash}{fb4f674f1462b0b34907dc49f8a8d0fa}
+      \strng{fullhashraw}{fb4f674f1462b0b34907dc49f8a8d0fa}
+      \strng{bibnamehash}{fb4f674f1462b0b34907dc49f8a8d0fa}
+      \strng{authorbibnamehash}{fb4f674f1462b0b34907dc49f8a8d0fa}
+      \strng{authornamehash}{fb4f674f1462b0b34907dc49f8a8d0fa}
+      \strng{authorfullhash}{fb4f674f1462b0b34907dc49f8a8d0fa}
+      \strng{authorfullhashraw}{fb4f674f1462b0b34907dc49f8a8d0fa}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{A modified SAFT equation of state is developed by applying the perturbation theory of Barker and Henderson to a hard-chain reference fluid. With conventional one-fluid mixing rules, the equation of state is applicable to mixtures of small spherical molecules such as gases, nonspherical solvents, and chainlike polymers. The three pure-component parameters required for nonassociating molecules were identified for 78 substances by correlating vapor pressures and liquid volumes. The equation of state gives good fits to these properties and agrees well with caloric properties. When applied to vapor-liquid equilibria of mixtures, the equation of state shows substantial predictive capabilities and good precision for correlating mixtures. Comparisons to the SAFT version of Huang and Radosz reveal a clear improvement of the proposed model. A brief comparison with the Peng-Robinson model is also given for vapor-liquid equilibria of binary systems, confirming the good performance of the suggested equation of state. The applicability of the proposed model to polymer systems was demonstrated for high-pressure liquid-liquid equilibria of a polyethylene mixture. The pure-component parameters of polyethylene were obtained by extrapolating pure-component parameters of the n-alkane series to high molecular weights.}
+      \field{issn}{08885885}
+      \field{journaltitle}{Industrial and Engineering Chemistry Research}
+      \field{month}{2}
+      \field{number}{4}
+      \field{title}{{{PC-SAFT}}: {{An}} Equation of State Based on a Perturbation Theory for Chain Molecules}
+      \field{volume}{40}
+      \field{year}{2001}
+      \field{pages}{1244\bibrangedash 1260}
+      \range{pages}{17}
+      \verb{doi}
+      \verb 10.1021/ie0003887
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+

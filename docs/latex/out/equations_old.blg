@@ -1,0 +1,15 @@
+[0] Config.pm:328> INFO - This is Biber 2.21
+[0] Config.pm:331> INFO - Logfile is 'out/equations_old.blg'
+[89] biber-MSWIN64:342> INFO - === 
+[117] Biber.pm:421> INFO - Reading 'out/equations_old.bcf'
+[205] Biber.pm:1002> INFO - Found 8 citekeys in bib section 0
+[216] Biber.pm:4487> INFO - Processing section 0
+[226] Biber.pm:4678> INFO - Looking for bibtex file 'library.bib' for section 0
+[280] bibtex.pm:1713> INFO - LaTeX decoding ...
+[683] bibtex.pm:1519> INFO - Found BibTeX data source 'library.bib'
+[769] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
+[769] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
+[769] Biber.pm:4307> INFO - Sorting list 'nty/global//global/global/global' of type 'entry' with template 'nty' and locale 'en-US'
+[769] Biber.pm:4313> INFO - No sort tailoring available for locale 'en-US'
+[776] bbl.pm:676> INFO - Writing 'out/equations_old.bbl' with encoding 'UTF-8'
+[782] bbl.pm:779> INFO - Output to out/equations_old.bbl

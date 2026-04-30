@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import pytest
 
@@ -61,9 +63,9 @@ def test_ternary_hydrocarbon_basis_tp_flash_closes_material_and_fugacity_balance
 
     fugacity_residual = (
         np.log(vapor.composition)
-        + vapor.fugacity_coefficient
+        + vapor.ln_fugacity_coefficient
         - np.log(liquid.composition)
-        - liquid.fugacity_coefficient
+        - liquid.ln_fugacity_coefficient
     )
     np.testing.assert_allclose(fugacity_residual, np.zeros_like(feed), atol=1.0e-6)
 
@@ -97,7 +99,30 @@ def test_tp_flash_can_skip_stability_precheck_for_debug_workflows() -> None:
     )
 
     assert result.split_detected is False
-    assert result.stable is True
+    assert result.stable is False
     assert result.diagnostics["stability_analysis"] == "not_run"
+    assert result.diagnostics["stability_checked"] is False
+    assert result.diagnostics["stability_stable"] is None
+    assert "stability precheck skipped" in result.diagnostics["stability_message"]
     assert result.diagnostics["point_solver_split_detected"] is False
     assert "min_tpd" not in result.diagnostics
+
+
+def test_tp_flash_phase_diagnostics_are_json_serializable_when_requested() -> None:
+    mix = _hydrocarbon_basis_mixture()
+
+    result = mix.equilibrium(
+        kind="tp_flash",
+        T=220.0,
+        P=1.0e5,
+        z=[0.1, 0.3, 0.6],
+        options=epcsaft.EquilibriumOptions(include_phase_diagnostics=True),
+    )
+
+    payload = result.to_dict()
+    json.dumps(payload, allow_nan=False)
+    for phase, phase_payload in zip(result.phases, payload["phases"]):
+        assert phase.diagnostics is not None
+        assert "phase" in phase_payload["diagnostics"]
+        assert "density" in phase_payload["diagnostics"]
+        assert "fugacity_coefficient_terms" in phase_payload["diagnostics"]

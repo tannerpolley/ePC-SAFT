@@ -1,0 +1,386 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.3 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{nty/global//global/global/global}
+    \entry{Ascani2021}{article}{}{}
+      \name{author}{2}{}{%
+        {{hash=3f5a0e0cb2f74742d542f10583189e18}{%
+           family={Ascani},
+           familyi={A\bibinitperiod},
+           given={Moreno},
+           giveni={M\bibinitperiod}}}%
+        {{hash=0df40982dd9d7815c1a59002af415abd}{%
+           family={Held},
+           familyi={H\bibinitperiod},
+           given={Christoph},
+           giveni={C\bibinitperiod}}}%
+      }
+      \strng{namehash}{19eb7cce53b5649ec03104d438691fe0}
+      \strng{fullhash}{19eb7cce53b5649ec03104d438691fe0}
+      \strng{fullhashraw}{19eb7cce53b5649ec03104d438691fe0}
+      \strng{bibnamehash}{19eb7cce53b5649ec03104d438691fe0}
+      \strng{authorbibnamehash}{19eb7cce53b5649ec03104d438691fe0}
+      \strng{authornamehash}{19eb7cce53b5649ec03104d438691fe0}
+      \strng{authorfullhash}{19eb7cce53b5649ec03104d438691fe0}
+      \strng{authorfullhashraw}{19eb7cce53b5649ec03104d438691fe0}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{Knowledge on phase equilibria is of crucial importance in designing industrial processes. However, modeling phase equilibria in liquid-liquid two-phase systems (LLTPS) containing electrolytes is still a challenge for electrolyte thermodynamic models and modeling still requires a lot of experimental input data. Further, modeling electrolyte solutions requires accounting for different physical effects in the electrolyte theory, especially the change of the dielectric properties of the medium at different compositions and the related change of solvation free energy of the dissolved ions. In a previous work, the Born term was altered by combining it with a concentration-dependent dielectric constant within the framework of electrolyte Perturbed-Chain Statistical Associating Fluid Theory (ePC-SAFT), and hence called `ePC-SAFT advanced'. In the present work, ePC-SAFT advanced was validated against liquid-liquid equilibria (LLE) of LLTPS water+organic solvents+alkali halides as well as aqueous two-phase systems containing the phase formers poly (propylene glycol) and an ionic liquid. All the ePC-SAFT parameters were used as published in the literature, and each binary interaction parameter between ion-solvent was set to zero. ePC-SAFT advanced allowed quantitatively predicting the salt effect on LLTPS without adjusting binary interaction parameters, while classical ePC-SAFT or meaningless mixing rules for the dielectric constant term failed in predicting the phase behavior of the LLTPS.}
+      \field{issn}{15213749}
+      \field{journaltitle}{Zeitschrift fur Anorganische und Allgemeine Chemie}
+      \field{number}{12}
+      \field{title}{Prediction of Salting-out in Liquid-Liquid Two-Phase Systems with {{ePC-SAFT}}: {{Effect}} of the {{Born}} Term and of a Concentration-Dependent Dielectric Constant}
+      \field{volume}{647}
+      \field{year}{2021}
+      \field{pages}{1305\bibrangedash 1314}
+      \range{pages}{10}
+      \verb{doi}
+      \verb 10.1002/zaac.202100032
+      \endverb
+      \keyw{ATPS,electrolyte thermodynamics,ionic liquids,liquid-liquid equilibria,partition coefficient}
+    \endentry
+    \entry{Bulow2021}{article}{}{}
+      \name{author}{3}{}{%
+        {{hash=23b2a8886c9a809912fc9f43f5c797c2}{%
+           family={Bülow},
+           familyi={B\bibinitperiod},
+           given={Mark},
+           giveni={M\bibinitperiod}}}%
+        {{hash=3f5a0e0cb2f74742d542f10583189e18}{%
+           family={Ascani},
+           familyi={A\bibinitperiod},
+           given={Moreno},
+           giveni={M\bibinitperiod}}}%
+        {{hash=0df40982dd9d7815c1a59002af415abd}{%
+           family={Held},
+           familyi={H\bibinitperiod},
+           given={Christoph},
+           giveni={C\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Elsevier B.V.}%
+      }
+      \strng{namehash}{215a9e52a76bd60ade55c01b1011a57e}
+      \strng{fullhash}{215a9e52a76bd60ade55c01b1011a57e}
+      \strng{fullhashraw}{215a9e52a76bd60ade55c01b1011a57e}
+      \strng{bibnamehash}{215a9e52a76bd60ade55c01b1011a57e}
+      \strng{authorbibnamehash}{215a9e52a76bd60ade55c01b1011a57e}
+      \strng{authornamehash}{215a9e52a76bd60ade55c01b1011a57e}
+      \strng{authorfullhash}{215a9e52a76bd60ade55c01b1011a57e}
+      \strng{authorfullhashraw}{215a9e52a76bd60ade55c01b1011a57e}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{The applications of electrolyte thermodynamic models to non-aqueous systems is of great value to reduce experimental effort and gain inside into molecular interactions. A large-scale application is for example the design of advanced battery electrolytes. For non-aqueous electrolyte systems, the Born term was found to be important, as it accounts for the transfer of ions from water into non-aqueous medium. In part one of this study [Bülow et al., Fluid Phase Equilibria 2021, 112967] the Born term was combined with a concentration-dependent dielectric constant within the ePC-SAFT framework (electrolyte Perturbed-Chain Statistical Associating Fluid Theory). In the present work, the Bjerrum treatment for ion pairing was included in the Debye-Hückel framework within ePC-SAFT. The approach was validated by experimental data for the dissociation of salts in organic solvents derived from conductivity measurements. Further, solubility was modeled of alkali halides in organic solvents and in ionic liquids. Modeling solubility required access to the solubility product KSP, which does not depend on the solvent. The approach within this work was to first determine KSP using experimental solubility data in water and the respective ePC-SAFT predicted activity coefficients prior to predict activity coefficients in non-aqueous medium, finally yielding solubility. The so-determined solubility values were found to be in reasonable agreement with the experimental data without fitting model parameters to any data of the non-aqueous solutions. The solubility product requires the solid form of the precipitating salt to be equal for all solvents; as alkali salts precipitate from aqueous solutions as hydrates, the method cannot be applied. Therefore, a methodology is presented to extrapolate the high-temperature KSP of anhydrates to lower temperature. Using the so-extrapolated KSP allowed predicting solubility of non-solvates in other solvents.}
+      \field{issn}{03783812}
+      \field{journaltitle}{Fluid Phase Equilibria}
+      \field{title}{{{ePC-SAFT}} Advanced -- {{Part II}}: {{Application}} to {{Salt Solubility}} in {{Ionic}} and {{Organic Solvents}} and the {{Impact}} of {{Ion Pairing}}}
+      \field{volume}{537}
+      \field{year}{2021}
+      \field{pages}{112989}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.1016/j.fluid.2021.112989
+      \endverb
+      \keyw{Bjerrum,Born,electrolyte thermodynamics,ionic liquids,predictions,solubility product}
+    \endentry
+    \entry{Bulow2019}{article}{}{}
+      \name{author}{3}{}{%
+        {{hash=23b2a8886c9a809912fc9f43f5c797c2}{%
+           family={Bülow},
+           familyi={B\bibinitperiod},
+           given={Mark},
+           giveni={M\bibinitperiod}}}%
+        {{hash=c73176f8d1e8fb16513098fff2c12a61}{%
+           family={Ji},
+           familyi={J\bibinitperiod},
+           given={Xiaoyan},
+           giveni={X\bibinitperiod}}}%
+        {{hash=0df40982dd9d7815c1a59002af415abd}{%
+           family={Held},
+           familyi={H\bibinitperiod},
+           given={Christoph},
+           giveni={C\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Elsevier Ltd}%
+      }
+      \strng{namehash}{288008ed60a16d9b2b39a6c0be746313}
+      \strng{fullhash}{288008ed60a16d9b2b39a6c0be746313}
+      \strng{fullhashraw}{288008ed60a16d9b2b39a6c0be746313}
+      \strng{bibnamehash}{288008ed60a16d9b2b39a6c0be746313}
+      \strng{authorbibnamehash}{288008ed60a16d9b2b39a6c0be746313}
+      \strng{authornamehash}{288008ed60a16d9b2b39a6c0be746313}
+      \strng{authorfullhash}{288008ed60a16d9b2b39a6c0be746313}
+      \strng{authorfullhashraw}{288008ed60a16d9b2b39a6c0be746313}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{Primitive thermodynamic models for electrolyte solutions require the dielectric constant {$\varepsilon$}. This property strongly depends on the concentration of the electrolytes in the mixture. Neglecting this dependency might be reasonable for modeling solutions at low electrolyte concentrations. However, in solutions containing ionic liquids (ILs) and especially for the calculation of liquid-liquid equilibria (LLE) of systems with ILs, liquid phases often contain high IL concentrations. At such conditions, neglecting the influence of concentration on {$\varepsilon$} is an oversimplification. In this work, an approach to account for the concentration-dependent dielectric constant within the Debye-Hückel theory was implemented into electrolyte Perturbed-Chain Statistical Associating Fluid Theory (original ePC-SAFT). This new approach was then applied to model LLE of binary mixtures containing water and commonly used hydrophobic ILs. These common ILs are comprised of the IL-cations [C n mim] + , [C n py] + , [C n mpy] + , [C n mpyr] + , [C 4 m 4 py] + and the IL-anions [BF 4 ] - , [NTf 2 ] - , [PF 6 ] - , [TFO] - . The LLE of binary mixtures water + IL were modeled at ambient pressure and different temperatures with the new ePC-SAFT and with the original ePC-SAFT [Ji et al. DOI: 10.1016/j.fluid.2012.05.029] without the concentration-dependent {$\varepsilon$}. Overall, the new approach within ePC-SAFT shows superior modeling as well as correlation capability compared to original ePC-SAFT, which was concluded by comparing both models with LLE data from literature.}
+      \field{issn}{03783812}
+      \field{journaltitle}{Fluid Phase Equilibria}
+      \field{title}{Incorporating a Concentration-Dependent Dielectric Constant into {{ePC-SAFT}}. {{An}} Application to Binary Mixtures Containing Ionic Liquids}
+      \field{volume}{492}
+      \field{year}{2019}
+      \field{pages}{26\bibrangedash 33}
+      \range{pages}{8}
+      \verb{doi}
+      \verb 10.1016/j.fluid.2019.03.010
+      \endverb
+      \keyw{Electrolytes,Liquid-liquid equilibria,Prediction,Thermodynamics}
+    \endentry
+    \entry{Bulow2021a}{article}{}{}
+      \name{author}{5}{}{%
+        {{hash=23b2a8886c9a809912fc9f43f5c797c2}{%
+           family={Bülow},
+           familyi={B\bibinitperiod},
+           given={Mark},
+           giveni={M\bibinitperiod}}}%
+        {{hash=6486fc2893f1086d80dfc4dce178733b}{%
+           family={Ince},
+           familyi={I\bibinitperiod},
+           given={Nevin\bibnamedelima Gerek},
+           giveni={N\bibinitperiod\bibinitdelim G\bibinitperiod}}}%
+        {{hash=cca4a26c7a67059f8c2d0b46d564bbc8}{%
+           family={Hirohama},
+           familyi={H\bibinitperiod},
+           given={Seiya},
+           giveni={S\bibinitperiod}}}%
+        {{hash=514f4d00b73b85e58ac1cde274edd2ad}{%
+           family={Sadowski},
+           familyi={S\bibinitperiod},
+           given={Gabriele},
+           giveni={G\bibinitperiod}}}%
+        {{hash=0df40982dd9d7815c1a59002af415abd}{%
+           family={Held},
+           familyi={H\bibinitperiod},
+           given={Christoph},
+           giveni={C\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {American Chemical Society}%
+      }
+      \strng{namehash}{b52d1844b99057c262e2982667c7a5e8}
+      \strng{fullhash}{4d0e459c71f9e3f06fbd5bc501ad6709}
+      \strng{fullhashraw}{4d0e459c71f9e3f06fbd5bc501ad6709}
+      \strng{bibnamehash}{b52d1844b99057c262e2982667c7a5e8}
+      \strng{authorbibnamehash}{b52d1844b99057c262e2982667c7a5e8}
+      \strng{authornamehash}{b52d1844b99057c262e2982667c7a5e8}
+      \strng{authorfullhash}{4d0e459c71f9e3f06fbd5bc501ad6709}
+      \strng{authorfullhashraw}{4d0e459c71f9e3f06fbd5bc501ad6709}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{Sour-gas absorption is the main unit operation used in refineries and petrochemical and natural gas processing plants for the effective reduction of climate-wrecking gases, mainly CO2 and H2S. Absorption is typically accomplished in an aqueous solvent mixture. The solvent mixture is vastly dependent on the application range; it might contain chemical solvents (amines), activators, and physical solvents. In this work, the vapor-liquid equilibria for absorption of the sour gases CO2 and H2S was investigated in systems containing the chemical solvent methyl diethanolamine (MDEA) and the physical solvents tetrahydrothiophene-1,1-dioxide (sulfolane) or the ionic liquid 1-butyl-3-methylimidazolium acetate. The solubilities of CO2 and H2S were predicted and validated using experimental literature data in a broad range of temperature (313-373 K), sour-gas loading (up to 2 moles gas per moles of MDEA), and pressure (up to 180 bar) at constant MDEA weight fraction (20.9 wt \%) and sulfolane weight fraction (30.5 wt \%). The equation-of-state electrolyte perturbed-chain statistical associating fluid theory (ePC-SAFT) was utilized in this work for the predictions combined with the Born term to physically correctly describe the Gibbs energy of solvation of ions in the aqueous mixture of chemical and physical solvents; this was introduced in a recent work [Bülow, M. et al. Fluid Phase Equilib. 2021, 535, 112967]. Using this approach allowed reducing the total number of binary interaction parameters in these systems of maximum 11 species to a minimum; these parameters were fitted exclusively to data of binary mixtures. The ePC-SAFT predictions of the gas solubility were most accurate at low sour-gas loadings and high temperatures. This work provides a thermodynamic framework for the solvent selection for sour-gas absorption in a broad range of conditions. This enables a realistic decrease in experimental effort for solvent selection in sour-gas absorption.}
+      \field{issn}{15205045}
+      \field{journaltitle}{Industrial and Engineering Chemistry Research}
+      \field{month}{5}
+      \field{number}{17}
+      \field{title}{Predicting Vapor-liquid Equilibria for Sour-Gas Absorption in Aqueous Mixtures of Chemical and Physical Solvents or Ionic Liquids with {{EPC-SAFT}}}
+      \field{volume}{60}
+      \field{year}{2021}
+      \field{pages}{6327\bibrangedash 6336}
+      \range{pages}{10}
+      \verb{doi}
+      \verb 10.1021/acs.iecr.1c00176
+      \endverb
+    \endentry
+    \entry{Cameretti2005}{article}{}{}
+      \name{author}{3}{}{%
+        {{hash=65d497ea57cdcf276ca7db7cb02480a5}{%
+           family={Cameretti},
+           familyi={C\bibinitperiod},
+           given={Luca\bibnamedelima F.},
+           giveni={L\bibinitperiod\bibinitdelim F\bibinitperiod}}}%
+        {{hash=514f4d00b73b85e58ac1cde274edd2ad}{%
+           family={Sadowski},
+           familyi={S\bibinitperiod},
+           given={Gabriele},
+           giveni={G\bibinitperiod}}}%
+        {{hash=b0b73ddd156d922b0929ea550e6f9fa1}{%
+           family={Mollerup},
+           familyi={M\bibinitperiod},
+           given={J{ø}rgen\bibnamedelima M.},
+           giveni={J\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+      }
+      \strng{namehash}{bff897bac0df4627d9b5fdd3a0a8f2e1}
+      \strng{fullhash}{bff897bac0df4627d9b5fdd3a0a8f2e1}
+      \strng{fullhashraw}{bff897bac0df4627d9b5fdd3a0a8f2e1}
+      \strng{bibnamehash}{bff897bac0df4627d9b5fdd3a0a8f2e1}
+      \strng{authorbibnamehash}{bff897bac0df4627d9b5fdd3a0a8f2e1}
+      \strng{authornamehash}{bff897bac0df4627d9b5fdd3a0a8f2e1}
+      \strng{authorfullhash}{bff897bac0df4627d9b5fdd3a0a8f2e1}
+      \strng{authorfullhashraw}{bff897bac0df4627d9b5fdd3a0a8f2e1}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{The vapor pressures and liquid densities of single-salt electrolyte solutions containing NaCl, LiCl, KCl, NaBr, LiBr, KBr, NaI, LiI, KI, Li 2SO4, Na2SO4, and K 2SO4 were modeled with an equation of state based on perturbed-chain statistical associated fluid theory (PC-SAFT). The PC-SAFT model was extended to charged compounds using a Debye-Hückel term for the electrostatic interactions. Two model parameters for each ion were fitted to experimental pVT and vapor-pressure data. The model is able to excellently reproduce the experimental data up to high salt molalities and even to predict vapor pressures in mixed-salt solutions. ©{} 2005 American Chemical Society.}
+      \field{issn}{08885885}
+      \field{journaltitle}{Industrial and Engineering Chemistry Research}
+      \field{month}{4}
+      \field{number}{9}
+      \field{title}{Modeling of {{Aqueous Electrolyte Solutions}} with {{Perturbed-Chain Statistical Associated Fluid Theory}}}
+      \field{volume}{44}
+      \field{year}{2005}
+      \field{pages}{3355\bibrangedash 3362}
+      \range{pages}{8}
+      \verb{doi}
+      \verb 10.1021/ie0488142
+      \endverb
+    \endentry
+    \entry{Chapman1990}{report}{}{}
+      \name{author}{4}{}{%
+        {{hash=69d3d859aa19e820885cd744ed16764b}{%
+           family={Chapman},
+           familyi={C\bibinitperiod},
+           given={Walter\bibnamedelima G},
+           giveni={W\bibinitperiod\bibinitdelim G\bibinitperiod}}}%
+        {{hash=cd59f73e2d46a01047eea03349a34cb1}{%
+           family={Gubbins},
+           familyi={G\bibinitperiod},
+           given={Keith\bibnamedelima E},
+           giveni={K\bibinitperiod\bibinitdelim E\bibinitperiod}}}%
+        {{hash=d12dfc62696df7cb2c5fd509f120451c}{%
+           family={Jackson},
+           familyi={J\bibinitperiod},
+           given={George},
+           giveni={G\bibinitperiod}}}%
+        {{hash=9f86c98c4ad6a51188cdc5925be717db}{%
+           family={Radosz},
+           familyi={R\bibinitperiod},
+           given={Maciej},
+           giveni={M\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {NATO}%
+      }
+      \strng{namehash}{9423153b821cf47c87de0a28d1dbb6a6}
+      \strng{fullhash}{68e60afe7d6d7d5e894a9d89a7572d53}
+      \strng{fullhashraw}{68e60afe7d6d7d5e894a9d89a7572d53}
+      \strng{bibnamehash}{9423153b821cf47c87de0a28d1dbb6a6}
+      \strng{authorbibnamehash}{9423153b821cf47c87de0a28d1dbb6a6}
+      \strng{authornamehash}{9423153b821cf47c87de0a28d1dbb6a6}
+      \strng{authorfullhash}{68e60afe7d6d7d5e894a9d89a7572d53}
+      \strng{authorfullhashraw}{68e60afe7d6d7d5e894a9d89a7572d53}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{1989. Ugelstad, J.; Mork, P. C.; Mfutakamba, H. R.; Soleimany, E.; Nor-dhuus, I.; Nustad, K.; Schmid, R.; Berge, A.; Ellingsen, T.; Aune, O. An equation of state for associating liquids is presented as a sum of three Helmholtz energy terms: Lennard-Lones (LJ) segment (temperature-dependent hard sphere + dispersion), chain (increment due to chain formation), and association (increment due to association). This equation of state has been developed by extending Wertheim's theory obtained from a resummed cluster expansion. Pure component molecules are characterized by segment diameter, segment-segment interaction energy, for example, Lennard-Jones and c, and chain length expressed as the number of segments. There are also two association parameters, the association energy and volume, characteristic of each site-site pair. The agreement with molecular simulation data is shown to be excellent at all the stages of development for associating spheres, mixtures of associating spheres, and nonassociating chains. The model has been shown to reproduce experimental phase equilibrium data for a few selected real pure compounds.}
+      \field{journaltitle}{J. Colloid Interface Sci}
+      \field{number}{3}
+      \field{title}{Phase {{Equilibria}} in {{Polymer-Liquid}} 1-{{Liquid}} 2 {{Systems}}}
+      \field{type}{techreport}
+      \field{volume}{29}
+      \field{year}{1990}
+      \field{pages}{51\bibrangedash 59}
+      \range{pages}{9}
+    \endentry
+    \entry{Figiel2025}{article}{}{}
+      \name{author}{3}{}{%
+        {{hash=2d00d58607ca3486ec1296756a756345}{%
+           family={Figiel},
+           familyi={F\bibinitperiod},
+           given={Paul},
+           giveni={P\bibinitperiod}}}%
+        {{hash=982db43b1cc9b2ed91c99f7b60540d09}{%
+           family={Yu},
+           familyi={Y\bibinitperiod},
+           given={Gangqiang},
+           giveni={G\bibinitperiod}}}%
+        {{hash=0df40982dd9d7815c1a59002af415abd}{%
+           family={Held},
+           familyi={H\bibinitperiod},
+           given={Christoph},
+           giveni={C\bibinitperiod}}}%
+      }
+      \strng{namehash}{982d388f8fc7d4de88ab15483df08132}
+      \strng{fullhash}{982d388f8fc7d4de88ab15483df08132}
+      \strng{fullhashraw}{982d388f8fc7d4de88ab15483df08132}
+      \strng{bibnamehash}{982d388f8fc7d4de88ab15483df08132}
+      \strng{authorbibnamehash}{982d388f8fc7d4de88ab15483df08132}
+      \strng{authornamehash}{982d388f8fc7d4de88ab15483df08132}
+      \strng{authorfullhash}{982d388f8fc7d4de88ab15483df08132}
+      \strng{authorfullhashraw}{982d388f8fc7d4de88ab15483df08132}
+      \field{sortinit}{F}
+      \field{sortinithash}{2638baaa20439f1b5a8f80c6c08a13b4}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{In this work, the EoS ePC-SAFT was further developed by modifying the Born term and introducing a new mixing rule for the dielectric constant of electrolyte solutions. The modified Born term considers the solvent solvation-shell volume of ions and accounts for the radial dependence of the dielectric constant near a central ion. This required one additional parameter per ion and one per solvent, while other pure-component parameters were inherited from the literature. The performance of ePC-SAFT was validated against experimental literature data: Gibbs energies of solvation and of transfer and MIACs in pure water, methanol, ethanol, and in their mixtures. The new modeling approach improves the accuracy of Gibbs energies at infinite dilution while retaining the ability to model properties of concentrated electrolyte systems. Additionally, ePC-SAFT parameters for V3+ and VO2+ ions were fitted to density and osmotic-coefficient data of VCl3 and VOSO4 in water using the new approach.}
+      \field{issn}{15205045}
+      \field{journaltitle}{Industrial and Engineering Chemistry Research}
+      \field{title}{Predicting {{Thermodynamic Properties}} of {{Ions}} in {{Single Solvents}} and in {{Mixed Solvents Using}} a {{Modified Born Term}} within the {{ePC-SAFT Framework}}}
+      \field{year}{2025}
+      \verb{doi}
+      \verb 10.1021/acs.iecr.5c00475
+      \endverb
+    \endentry
+    \entry{Gross2001}{article}{}{}
+      \name{author}{2}{}{%
+        {{hash=d039ee785963d74cf7ea3c7a18f9c865}{%
+           family={Gross},
+           familyi={G\bibinitperiod},
+           given={Joachim},
+           giveni={J\bibinitperiod}}}%
+        {{hash=514f4d00b73b85e58ac1cde274edd2ad}{%
+           family={Sadowski},
+           familyi={S\bibinitperiod},
+           given={Gabriele},
+           giveni={G\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {American Chemical Society}%
+      }
+      \strng{namehash}{fb4f674f1462b0b34907dc49f8a8d0fa}
+      \strng{fullhash}{fb4f674f1462b0b34907dc49f8a8d0fa}
+      \strng{fullhashraw}{fb4f674f1462b0b34907dc49f8a8d0fa}
+      \strng{bibnamehash}{fb4f674f1462b0b34907dc49f8a8d0fa}
+      \strng{authorbibnamehash}{fb4f674f1462b0b34907dc49f8a8d0fa}
+      \strng{authornamehash}{fb4f674f1462b0b34907dc49f8a8d0fa}
+      \strng{authorfullhash}{fb4f674f1462b0b34907dc49f8a8d0fa}
+      \strng{authorfullhashraw}{fb4f674f1462b0b34907dc49f8a8d0fa}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{A modified SAFT equation of state is developed by applying the perturbation theory of Barker and Henderson to a hard-chain reference fluid. With conventional one-fluid mixing rules, the equation of state is applicable to mixtures of small spherical molecules such as gases, nonspherical solvents, and chainlike polymers. The three pure-component parameters required for nonassociating molecules were identified for 78 substances by correlating vapor pressures and liquid volumes. The equation of state gives good fits to these properties and agrees well with caloric properties. When applied to vapor-liquid equilibria of mixtures, the equation of state shows substantial predictive capabilities and good precision for correlating mixtures. Comparisons to the SAFT version of Huang and Radosz reveal a clear improvement of the proposed model. A brief comparison with the Peng-Robinson model is also given for vapor-liquid equilibria of binary systems, confirming the good performance of the suggested equation of state. The applicability of the proposed model to polymer systems was demonstrated for high-pressure liquid-liquid equilibria of a polyethylene mixture. The pure-component parameters of polyethylene were obtained by extrapolating pure-component parameters of the n-alkane series to high molecular weights.}
+      \field{issn}{08885885}
+      \field{journaltitle}{Industrial and Engineering Chemistry Research}
+      \field{month}{2}
+      \field{number}{4}
+      \field{title}{{{PC-SAFT}}: {{An}} Equation of State Based on a Perturbation Theory for Chain Molecules}
+      \field{volume}{40}
+      \field{year}{2001}
+      \field{pages}{1244\bibrangedash 1260}
+      \range{pages}{17}
+      \verb{doi}
+      \verb 10.1021/ie0003887
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+
