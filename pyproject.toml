@@ -38,6 +38,7 @@ Repository = "https://github.com/tannerpolley/ePC-SAFT"
 [dependency-groups]
 test = [
     "matplotlib>=3.8",
+    "plotly>=6.0",
     "pytest>=8.0",
 ]
 build = [

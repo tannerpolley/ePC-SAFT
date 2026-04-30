@@ -1,0 +1,26 @@
+figure_file,axes_index,axes_title,x_label,y_label,artist_type,artist_label,color,linestyle,marker,linewidth,series_index,point_index,x,y,width,height
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,"Composition, fraction, or residual",,line,,#d1d1d1,-,,0.80000000000000004,0,0,0,0,,
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,"Composition, fraction, or residual",,line,,#d1d1d1,-,,0.80000000000000004,0,1,0,1,,
+equilibrium_lle_reference_comparison.png,1,,Rel. err.,,line,,#404040,-,,0.80000000000000004,0,0,0,0,,
+equilibrium_lle_reference_comparison.png,1,,Rel. err.,,line,,#404040,-,,0.80000000000000004,0,1,0,1,,
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,"Composition, fraction, or residual",,bar,,#1f77b4,,,1,0,0,0.058789191303314413,-0.35999999999999999,0.11757838260662883,0.35999999999999999
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,"Composition, fraction, or residual",,bar,,#1f77b4,,,1,1,0,0.44121080869668555,0.64000000000000012,0.8824216173933711,0.35999999999999999
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,"Composition, fraction, or residual",,bar,,#1f77b4,,,1,2,0,0.39929371544790571,1.6400000000000001,0.79858743089581141,0.35999999999999999
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,"Composition, fraction, or residual",,bar,,#1f77b4,,,1,3,0,0.10070628455209425,2.6399999999999997,0.2014125691041885,0.35999999999999999
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,"Composition, fraction, or residual",,bar,,#1f77b4,,,1,4,0,0.24406549240268177,3.6399999999999997,0.48813098480536354,0.35999999999999999
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,"Composition, fraction, or residual",,bar,,#1f77b4,,,1,5,0,4.6954662380471746e-12,4.6400000000000006,9.3909324760943491e-12,0.35999999999999999
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,"Composition, fraction, or residual",,bar,,#1f77b4,,,1,6,0,4.7115755741344856e-11,5.6400000000000006,9.4231511482689712e-11,0.35999999999999999
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,"Composition, fraction, or residual",,bar,,#ff7f0e,,,1,7,0,0.058789191300000002,-2.7755575615628914e-17,0.1175783826,0.36000000000000004
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,"Composition, fraction, or residual",,bar,,#ff7f0e,,,1,8,0,0.44121080870000001,0.99999999999999989,0.88242161740000002,0.36000000000000004
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,"Composition, fraction, or residual",,bar,,#ff7f0e,,,1,9,0,0.39929371544999998,2,0.79858743089999995,0.36000000000000004
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,"Composition, fraction, or residual",,bar,,#ff7f0e,,,1,10,0,0.10070628455,3,0.20141256909999999,0.36000000000000004
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,"Composition, fraction, or residual",,bar,,#ff7f0e,,,1,11,0,0.2440654924,3.9999999999999996,0.4881309848,0.36000000000000004
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,"Composition, fraction, or residual",,bar,,#ff7f0e,,,1,12,0,5.0000000000000002e-11,5,1e-10,0.36000000000000004
+equilibrium_lle_reference_comparison.png,0,Methanol/cyclohexane LLE benchmark vs pinned expected values,"Composition, fraction, or residual",,bar,,#ff7f0e,,,1,13,0,5.0000000000000003e-10,6,1.0000000000000001e-09,0.36000000000000004
+equilibrium_lle_reference_comparison.png,1,,Rel. err.,,bar,,#1f77b4,,,1,0,0,2.8188950827246835e-11,-0.27500000000000002,5.637790165449367e-11,0.55000000000000004
+equilibrium_lle_reference_comparison.png,1,,Rel. err.,,bar,,#1f77b4,,,1,1,0,-3.756095445034303e-12,0.72499999999999998,-7.5121908900686061e-12,0.55000000000000004
+equilibrium_lle_reference_comparison.png,1,,Rel. err.,,bar,,#1f77b4,,,1,2,0,-2.6224670229801188e-12,1.7250000000000001,-5.2449340459602376e-12,0.55000000000000004
+equilibrium_lle_reference_comparison.png,1,,Rel. err.,,bar,,#1f77b4,,,1,3,0,1.0397838298135567e-11,2.7250000000000001,2.0795676596271135e-11,0.55000000000000004
+equilibrium_lle_reference_comparison.png,1,,Rel. err.,,bar,,#1f77b4,,,1,4,0,5.4939587017949151e-12,3.7250000000000001,1.098791740358983e-11,0.55000000000000004
+equilibrium_lle_reference_comparison.png,1,,Rel. err.,,bar,,#1f77b4,,,1,5,0,-0.45304533761952825,4.7249999999999996,-0.90609067523905651,0.55000000000000004
+equilibrium_lle_reference_comparison.png,1,,Rel. err.,,bar,,#1f77b4,,,1,6,0,-0.45288424425865514,5.7249999999999996,-0.90576848851731029,0.55000000000000004

@@ -7,6 +7,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PLOTS_ROOT = REPO_ROOT / "docs" / "plots"
+CSV_BACKFILL_MARKER = 'epcsaft-interactive-source="csv_backfill"'
 
 
 def should_include_png(path: Path) -> bool:
@@ -44,17 +45,59 @@ def page_title() -> str:
     return "ePC-SAFT Plot Gallery"
 
 
-def _image_manifest(pngs: list[Path]) -> list[dict[str, str]]:
+def _source_path_for_output(rel_path: str) -> str:
+    parts = rel_path.split("/")
+    if not parts:
+        return rel_path
+    if parts[0] == "paper_validation" and len(parts) >= 2:
+        source_study = parts[1] if parts[1].endswith("_analysis") else f"{parts[1]}_analysis"
+        return "/".join(["scripts", "paper_validation", source_study, *parts[2:]])
+    if parts[0] == "fits":
+        return "/".join(["scripts", *parts])
+    if parts[0] == "tests":
+        return rel_path
+    return "/".join(["docs", "plots", *parts])
+
+
+def _folder_for(path: str) -> str:
+    folder = str(Path(path).parent).replace("\\", "/")
+    return "" if folder == "." else folder
+
+
+def _interactive_source(html_path: Path) -> str:
+    if not html_path.exists():
+        return "static_only"
+    try:
+        head = html_path.read_text(encoding="utf-8", errors="ignore")[:2000]
+    except OSError:
+        return "native_plotly"
+    is_csv_backfill = CSV_BACKFILL_MARKER in head or (
+        "epcsaft-interactive-source" in head and 'content="csv_backfill"' in head
+    )
+    return "csv_backfill" if is_csv_backfill else "native_plotly"
+
+
+def image_manifest(pngs: list[Path]) -> list[dict[str, str]]:
     manifest = []
     for png in pngs:
-        rel_path = png.relative_to(PLOTS_ROOT).as_posix()
-        folder = str(Path(rel_path).parent).replace("\\", "/")
-        if folder == ".":
-            folder = ""
+        output_path = png.relative_to(PLOTS_ROOT).as_posix()
+        svg = png.with_suffix(".svg")
+        interactive_html = png.with_suffix(".html")
+        interactive_source = _interactive_source(interactive_html)
+        data = png.parent / "data" / f"{png.stem}_plot_data.csv"
+        source_path = _source_path_for_output(output_path)
         manifest.append(
             {
-                "path": rel_path,
-                "folder": folder,
+                "path": output_path,
+                "folder": _folder_for(source_path),
+                "output_path": output_path,
+                "output_folder": _folder_for(output_path),
+                "svg_path": svg.relative_to(PLOTS_ROOT).as_posix() if svg.exists() else "",
+                "html_path": interactive_html.relative_to(PLOTS_ROOT).as_posix() if interactive_html.exists() else "",
+                "interactive_source": interactive_source,
+                "data_path": data.relative_to(PLOTS_ROOT).as_posix() if data.exists() else "",
+                "source_path": source_path,
+                "source_folder": _folder_for(source_path),
                 "name": png.name,
                 "title": png.stem.replace("_", " ").replace("-", " "),
             }
@@ -62,12 +105,15 @@ def _image_manifest(pngs: list[Path]) -> list[dict[str, str]]:
     return manifest
 
 
+_image_manifest = image_manifest
+
+
 def _safe_json(data: object) -> str:
     return json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
 
 
 def render_gallery_page(root: Path, pngs: list[Path]) -> str:
-    manifest = _image_manifest(pngs)
+    manifest = image_manifest(pngs)
     title = page_title()
     summary = f"{len(manifest)} PNG files under docs/plots. Select folders on the left to show every image in that subtree."
 
@@ -92,6 +138,9 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       --teal: #137d72;
       --shadow: 0 8px 24px rgba(25, 43, 65, 0.08);
       --sidebar: clamp(280px, 27vw, 420px);
+      --sidebar-min: 220px;
+      --sidebar-max: min(620px, 55vw);
+      --sidebar-resizer: 8px;
       --radius: 8px;
     }}
 
@@ -106,17 +155,35 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       line-height: 1.4;
     }}
     button, input {{ font: inherit; }}
+    body.sidebar-resizing {{
+      cursor: col-resize;
+      user-select: none;
+    }}
     .app-shell {{
       display: grid;
-      grid-template-columns: var(--sidebar) minmax(0, 1fr);
+      grid-template-columns: var(--sidebar) var(--sidebar-resizer) minmax(0, 1fr);
       height: 100vh;
     }}
     .sidebar {{
       display: flex;
       min-width: 0;
       flex-direction: column;
-      border-right: 1px solid var(--border);
       background: var(--panel);
+    }}
+    .sidebar-resizer {{
+      position: relative;
+      width: var(--sidebar-resizer);
+      border-inline: 1px solid transparent;
+      background: linear-gradient(to right, transparent 0, transparent 3px, var(--border) 3px, var(--border) 4px, transparent 4px);
+      cursor: col-resize;
+      touch-action: none;
+    }}
+    .sidebar-resizer:hover,
+    .sidebar-resizer:focus,
+    body.sidebar-resizing .sidebar-resizer {{
+      border-inline-color: rgba(25, 95, 184, 0.28);
+      background: linear-gradient(to right, transparent 0, transparent 2px, var(--blue) 2px, var(--blue) 5px, transparent 5px);
+      outline: none;
     }}
     .brand {{
       padding: 18px 18px 14px;
@@ -154,6 +221,26 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       gap: 8px;
       align-items: center;
     }}
+    .mode-buttons {{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }}
+    .mode-button {{
+      min-height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.82rem;
+    }}
+    .mode-button.is-active {{
+      border-color: var(--blue);
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-weight: 650;
+    }}
     .icon-button {{
       width: 34px;
       height: 34px;
@@ -182,7 +269,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
     }}
     .folder-row {{
       display: grid;
-      grid-template-columns: 24px 22px minmax(0, 1fr) auto;
+      grid-template-columns: 24px 22px minmax(0, 1fr) auto auto;
       align-items: center;
       min-height: 31px;
       gap: 4px;
@@ -191,6 +278,10 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
     }}
     .folder-row:hover {{ background: #eef4fb; }}
     .folder-row.is-selected {{ background: var(--blue-soft); }}
+    .folder-row.has-hidden-selection {{
+      background: #f3f8ff;
+      box-shadow: inset 3px 0 0 var(--blue);
+    }}
     .toggle {{
       width: 22px;
       height: 22px;
@@ -219,6 +310,17 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       color: var(--muted);
       font-size: 0.78rem;
       font-variant-numeric: tabular-nums;
+    }}
+    .hidden-selection-pill {{
+      border: 1px solid #9ac3f5;
+      border-radius: 999px;
+      background: #e6f1ff;
+      color: var(--blue);
+      font-size: 0.72rem;
+      font-weight: 650;
+      line-height: 1;
+      padding: 4px 7px;
+      white-space: nowrap;
     }}
     .content {{
       display: grid;
@@ -257,6 +359,19 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       align-items: center;
       color: var(--muted);
       font-size: 0.86rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }}
+    .tile-control {{
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+    }}
+    .plot-mode-buttons {{
+      display: inline-grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      min-width: 190px;
     }}
     .range {{
       width: 140px;
@@ -319,7 +434,47 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       font-family: Consolas, "Courier New", monospace;
       font-size: 0.76rem;
     }}
-    .image-link {{
+    .image-actions {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding-top: 4px;
+    }}
+    .resource-link {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 24px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 2px 7px;
+      background: #fff;
+      color: var(--blue);
+      font-size: 0.74rem;
+      font-weight: 650;
+      text-decoration: none;
+      cursor: pointer;
+    }}
+    .resource-link:hover {{
+      border-color: var(--blue);
+      background: var(--blue-soft);
+    }}
+    button.resource-link {{
+      font: inherit;
+    }}
+    .asset-badge {{
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      border: 1px solid #c9d5e2;
+      border-radius: 5px;
+      padding: 2px 7px;
+      background: #eef3f8;
+      color: var(--muted);
+      font-size: 0.74rem;
+      font-weight: 650;
+    }}
+    .plot-preview {{
       display: block;
       min-height: 220px;
       padding: 12px;
@@ -332,9 +487,27 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       background-position: 0 0, 0 8px, 8px -8px, -8px 0;
       background-size: 16px 16px;
     }}
-    .image-link:focus-visible {{
-      outline: 3px solid rgba(25, 95, 184, 0.35);
-      outline-offset: -3px;
+    .plot-preview.is-interactive {{
+      min-height: 430px;
+      padding: 0;
+      background: #fff;
+    }}
+    .interactive-frame {{
+      display: block;
+      width: 100%;
+      height: clamp(430px, 54vw, 760px);
+      min-height: 430px;
+      border: 0;
+      background: #fff;
+    }}
+    .interactive-placeholder {{
+      display: grid;
+      min-height: 430px;
+      place-items: center;
+      padding: 22px;
+      background: #fff;
+      color: var(--muted);
+      text-align: center;
     }}
     img {{
       display: block;
@@ -359,6 +532,102 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       margin-bottom: 4px;
       color: var(--text);
     }}
+    .asset-modal,
+    .data-modal {{
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(23, 32, 42, 0.42);
+    }}
+    .asset-dialog,
+    .data-dialog {{
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      width: min(1100px, 96vw);
+      max-height: min(760px, 92vh);
+      overflow: hidden;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: 0 22px 70px rgba(23, 32, 42, 0.28);
+    }}
+    .asset-dialog-head,
+    .data-dialog-head {{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel-2);
+    }}
+    .asset-dialog-title,
+    .data-dialog-title {{
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 650;
+    }}
+    .asset-dialog-body,
+    .data-dialog-body {{
+      min-height: 0;
+      overflow: auto;
+      padding: 12px 14px 16px;
+    }}
+    .asset-dialog-body {{
+      display: grid;
+      place-items: center;
+      background: #fff;
+    }}
+    .asset-preview-image {{
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      min-height: 0;
+      max-height: 72vh;
+      object-fit: contain;
+      border-radius: 6px;
+      background: #fff;
+    }}
+    .asset-preview-frame {{
+      display: block;
+      width: 100%;
+      height: min(72vh, 760px);
+      min-height: 420px;
+      border: 0;
+      background: #fff;
+    }}
+    .data-note {{
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }}
+    .data-table {{
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }}
+    .data-table th,
+    .data-table td {{
+      max-width: 260px;
+      border: 1px solid var(--border);
+      padding: 4px 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: left;
+    }}
+    .data-table th {{
+      position: sticky;
+      top: 0;
+      background: var(--blue-soft);
+      color: var(--text);
+      z-index: 1;
+    }}
     .hidden {{ display: none !important; }}
 
     @media (max-width: 860px) {{
@@ -370,11 +639,13 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       }}
       .sidebar, .content {{ height: auto; }}
       .sidebar {{ border-right: 0; border-bottom: 1px solid var(--border); }}
+      .sidebar-resizer {{ display: none; }}
       .tree-wrap {{ max-height: 42vh; }}
       .content {{ display: block; }}
       .gallery-scroll {{ overflow: visible; padding: 14px; }}
       .content-title-row {{ align-items: start; flex-direction: column; }}
       .view-tools {{ width: 100%; justify-content: space-between; }}
+      .plot-mode-buttons {{ min-width: min(190px, 48vw); }}
       .range {{ width: min(180px, 48vw); }}
     }}
   </style>
@@ -393,11 +664,25 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
           <button id="collapse-all" class="icon-button" type="button" title="Collapse all folders" aria-label="Collapse all folders">-</button>
           <button id="clear-selection" class="icon-button" type="button" title="Clear selected folders" aria-label="Clear selected folders">x</button>
         </div>
+        <div class="mode-buttons" aria-label="Tree mode">
+          <button id="source-mode" class="mode-button is-active" type="button">Source tree</button>
+          <button id="output-mode" class="mode-button" type="button">Output tree</button>
+        </div>
       </div>
       <div class="tree-wrap">
         <ul id="folder-tree" class="tree" data-testid="folder-tree"></ul>
       </div>
     </aside>
+    <div
+      id="sidebar-resizer"
+      class="sidebar-resizer"
+      role="separator"
+      aria-label="Resize plot folder sidebar"
+      aria-orientation="vertical"
+      aria-valuemin="220"
+      aria-valuemax="620"
+      tabindex="0"
+    ></div>
     <main class="content">
       <header class="content-header">
         <div class="content-title-row">
@@ -405,10 +690,16 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
             <h2 id="gallery-title">Selected plots</h2>
             <p id="gallery-meta" class="meta"></p>
           </div>
-          <label class="view-tools">
-            Tile width
-            <input id="tile-size" class="range" type="range" min="220" max="520" step="20" value="320">
-          </label>
+          <div class="view-tools">
+            <div class="plot-mode-buttons" aria-label="Plot display mode">
+              <button id="interactive-view" class="mode-button is-active" type="button">Interactive</button>
+              <button id="static-view" class="mode-button" type="button">Static</button>
+            </div>
+            <label class="tile-control">
+              Tile width
+              <input id="tile-size" class="range" type="range" min="220" max="620" step="20" value="360">
+            </label>
+          </div>
         </div>
         <div id="selected-chips" class="chips" aria-label="Selected folders"></div>
       </header>
@@ -420,6 +711,24 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         </div>
       </section>
     </main>
+  </div>
+  <div id="data-modal" class="data-modal hidden" role="dialog" aria-modal="true" aria-labelledby="data-dialog-title">
+    <div class="data-dialog">
+      <div class="data-dialog-head">
+        <div id="data-dialog-title" class="data-dialog-title">Plot data</div>
+        <button id="data-close" class="icon-button" type="button" title="Close data table" aria-label="Close data table">x</button>
+      </div>
+      <div id="data-dialog-body" class="data-dialog-body"></div>
+    </div>
+  </div>
+  <div id="asset-modal" class="asset-modal hidden" role="dialog" aria-modal="true" aria-labelledby="asset-dialog-title">
+    <div class="asset-dialog">
+      <div class="asset-dialog-head">
+        <div id="asset-dialog-title" class="asset-dialog-title">Plot preview</div>
+        <button id="asset-close" class="icon-button" type="button" title="Close plot preview" aria-label="Close plot preview">x</button>
+      </div>
+      <div id="asset-dialog-body" class="asset-dialog-body"></div>
+    </div>
   </div>
 
   <script id="plot-data" type="application/json">{_safe_json(manifest)}</script>
@@ -434,12 +743,35 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       const titleEl = document.getElementById("gallery-title");
       const metaEl = document.getElementById("gallery-meta");
       const chipsEl = document.getElementById("selected-chips");
+      const sourceModeEl = document.getElementById("source-mode");
+      const outputModeEl = document.getElementById("output-mode");
+      const interactiveViewEl = document.getElementById("interactive-view");
+      const staticViewEl = document.getElementById("static-view");
+      const sidebarResizerEl = document.getElementById("sidebar-resizer");
+      const dataModalEl = document.getElementById("data-modal");
+      const dataTitleEl = document.getElementById("data-dialog-title");
+      const dataBodyEl = document.getElementById("data-dialog-body");
+      const dataCloseEl = document.getElementById("data-close");
+      const assetModalEl = document.getElementById("asset-modal");
+      const assetTitleEl = document.getElementById("asset-dialog-title");
+      const assetBodyEl = document.getElementById("asset-dialog-body");
+      const assetCloseEl = document.getElementById("asset-close");
+      const plotViewStorageKey = "plotGalleryViewMode";
+      const sidebarWidthStorageKey = "plotGallerySidebarWidth";
       const selected = new Set([""]);
       const expanded = new Set([""]);
-      const folderMap = new Map();
+      let treeMode = "source";
+      let plotViewMode = localStorage.getItem(plotViewStorageKey) === "static" ? "static" : "interactive";
+      let folderMap = new Map();
+      let root = null;
+      let sidebarResizeActive = false;
+
+      function rootLabel() {{
+        return treeMode === "source" ? "Project source" : "docs/plots";
+      }}
 
       function folderName(path) {{
-        if (!path) return "docs/plots";
+        if (!path) return rootLabel();
         return path.split("/").at(-1).replaceAll("_", " ");
       }}
 
@@ -450,28 +782,51 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         return folder;
       }}
 
-      const root = makeFolder("");
-      for (const image of images) {{
-        const parts = image.folder ? image.folder.split("/") : [];
-        let node = root;
-        node.total += 1;
-        let currentPath = "";
-        for (const part of parts) {{
-          currentPath = currentPath ? `${{currentPath}}/${{part}}` : part;
-          const child = makeFolder(currentPath, node);
-          node.children.set(part, child);
-          node = child;
+      function activeFolder(image) {{
+        return treeMode === "source" ? image.source_folder : image.output_folder;
+      }}
+
+      function buildFolderMap() {{
+        folderMap = new Map();
+        root = makeFolder("");
+        for (const image of images) {{
+          const folder = activeFolder(image);
+          const parts = folder ? folder.split("/") : [];
+          let node = root;
           node.total += 1;
+          let currentPath = "";
+          for (const part of parts) {{
+            currentPath = currentPath ? `${{currentPath}}/${{part}}` : part;
+            const child = makeFolder(currentPath, node);
+            node.children.set(part, child);
+            node = child;
+            node.total += 1;
+          }}
+          node.images.push(image);
         }}
-        node.images.push(image);
       }}
 
       function sortedChildren(node) {{
         return Array.from(node.children.values()).sort((a, b) => folderName(a.path).localeCompare(folderName(b.path)));
       }}
 
+      function isDescendantFolder(path, possibleAncestor) {{
+        if (!path || path === possibleAncestor) return false;
+        if (!possibleAncestor) return true;
+        return path.startsWith(`${{possibleAncestor}}/`);
+      }}
+
+      function selectedDescendantCount(path) {{
+        let count = 0;
+        for (const folder of selected) {{
+          if (isDescendantFolder(folder, path)) count += 1;
+        }}
+        return count;
+      }}
+
       function renderTreeNode(node, depth = 0) {{
         const childNodes = sortedChildren(node);
+        const hiddenSelectedCount = expanded.has(node.path) ? 0 : selectedDescendantCount(node.path);
         const li = document.createElement("li");
         const row = document.createElement("div");
         row.className = "folder-row";
@@ -515,7 +870,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         const label = document.createElement("span");
         label.className = "folder-name";
         label.textContent = folderName(node.path);
-        label.title = node.path || "docs/plots";
+        label.title = node.path || rootLabel();
         label.addEventListener("click", () => {{
           if (childNodes.length) {{
             if (expanded.has(node.path)) expanded.delete(node.path);
@@ -529,7 +884,18 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         count.textContent = node.total;
 
         if (selected.has(node.path)) row.classList.add("is-selected");
-        row.append(toggle, checkbox, label, count);
+        if (hiddenSelectedCount > 0) row.classList.add("has-hidden-selection");
+
+        row.append(toggle, checkbox, label);
+        if (hiddenSelectedCount > 0) {{
+          const hiddenSelection = document.createElement("span");
+          hiddenSelection.className = "hidden-selection-pill";
+          hiddenSelection.textContent = `${{hiddenSelectedCount}} selected`;
+          hiddenSelection.title = `${{hiddenSelectedCount}} selected folder${{hiddenSelectedCount === 1 ? "" : "s"}} hidden inside this collapsed folder`;
+          hiddenSelection.setAttribute("aria-label", hiddenSelection.title);
+          row.append(hiddenSelection);
+        }}
+        row.append(count);
         li.append(row);
 
         if (expanded.has(node.path) && childNodes.length) {{
@@ -541,13 +907,15 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       }}
 
       function renderTree() {{
+        buildFolderMap();
         treeEl.replaceChildren(renderTreeNode(root));
       }}
 
       function isInSelectedFolder(image) {{
         if (selected.size === 0) return false;
+        const folderPath = activeFolder(image);
         for (const folder of selected) {{
-          if (!folder || image.folder === folder || image.folder.startsWith(`${{folder}}/`)) return true;
+          if (!folder || folderPath === folder || folderPath.startsWith(`${{folder}}/`)) return true;
         }}
         return false;
       }}
@@ -555,12 +923,12 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       function selectedLabels() {{
         return Array.from(selected)
           .sort((a, b) => a.localeCompare(b))
-          .map((path) => path || "docs/plots");
+          .map((path) => path || rootLabel());
       }}
 
       function imageMatchesFilter(image, filterText) {{
         if (!filterText) return true;
-        const haystack = `${{image.path}} ${{image.title}}`.toLowerCase();
+        const haystack = `${{image.output_path}} ${{image.source_path}} ${{image.svg_path || ""}} ${{image.html_path || ""}} ${{image.data_path || ""}} ${{image.title}}`.toLowerCase();
         return haystack.includes(filterText);
       }}
 
@@ -581,9 +949,235 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         }}
       }}
 
+      function setPlotViewMode(mode) {{
+        plotViewMode = mode === "static" ? "static" : "interactive";
+        localStorage.setItem(plotViewStorageKey, plotViewMode);
+        interactiveViewEl.classList.toggle("is-active", plotViewMode === "interactive");
+        staticViewEl.classList.toggle("is-active", plotViewMode === "static");
+        renderGallery();
+      }}
+
+      function sidebarWidthBounds() {{
+        const minimum = 220;
+        const maximum = Math.max(minimum, Math.min(620, Math.floor(window.innerWidth * 0.55)));
+        return {{ minimum, maximum }};
+      }}
+
+      function setSidebarWidth(width, {{ persist = true }} = {{}}) {{
+        const {{ minimum, maximum }} = sidebarWidthBounds();
+        const clamped = Math.max(minimum, Math.min(maximum, Math.round(width)));
+        document.documentElement.style.setProperty("--sidebar", `${{clamped}}px`);
+        sidebarResizerEl.setAttribute("aria-valuenow", String(clamped));
+        sidebarResizerEl.setAttribute("aria-valuemax", String(maximum));
+        if (persist) localStorage.setItem(sidebarWidthStorageKey, String(clamped));
+        return clamped;
+      }}
+
+      function restoreSidebarWidth() {{
+        const stored = Number(localStorage.getItem(sidebarWidthStorageKey));
+        if (Number.isFinite(stored) && stored > 0) setSidebarWidth(stored, {{ persist: false }});
+        else sidebarResizerEl.setAttribute("aria-valuenow", String(Math.round(sidebarResizerEl.getBoundingClientRect().left)));
+      }}
+
+      function startSidebarResize(event) {{
+        if (event.button !== undefined && event.button !== 0) return;
+        sidebarResizeActive = true;
+        document.body.classList.add("sidebar-resizing");
+        sidebarResizerEl.setPointerCapture?.(event.pointerId);
+        setSidebarWidth(event.clientX);
+        event.preventDefault();
+      }}
+
+      function updateSidebarResize(event) {{
+        if (!sidebarResizeActive) return;
+        setSidebarWidth(event.clientX);
+      }}
+
+      function finishSidebarResize(event) {{
+        if (!sidebarResizeActive) return;
+        sidebarResizeActive = false;
+        document.body.classList.remove("sidebar-resizing");
+        if (event?.pointerId !== undefined) sidebarResizerEl.releasePointerCapture?.(event.pointerId);
+      }}
+
+      function makeAssetButton(label, path, image) {{
+        const button = document.createElement("button");
+        button.className = "resource-link";
+        button.type = "button";
+        button.textContent = label;
+        button.addEventListener("click", () => showAssetPreview(label, path, image));
+        return button;
+      }}
+
+      function makeDataButton(image) {{
+        const button = document.createElement("button");
+        button.className = "resource-link";
+        button.type = "button";
+        button.textContent = "Data";
+        button.addEventListener("click", () => showDataTable(image));
+        return button;
+      }}
+
+      function parseCsv(text) {{
+        const rows = [];
+        let row = [];
+        let value = "";
+        let quoted = false;
+        for (let index = 0; index < text.length; index += 1) {{
+          const char = text[index];
+          const next = text[index + 1];
+          if (quoted) {{
+            if (char === '"' && next === '"') {{
+              value += '"';
+              index += 1;
+            }} else if (char === '"') {{
+              quoted = false;
+            }} else {{
+              value += char;
+            }}
+          }} else if (char === '"') {{
+            quoted = true;
+          }} else if (char === ",") {{
+            row.push(value);
+            value = "";
+          }} else if (char === "\\n") {{
+            row.push(value);
+            rows.push(row);
+            row = [];
+            value = "";
+          }} else if (char !== "\\r") {{
+            value += char;
+          }}
+        }}
+        if (value || row.length) {{
+          row.push(value);
+          rows.push(row);
+        }}
+        return rows;
+      }}
+
+      function renderDataRows(rows, path) {{
+        dataBodyEl.replaceChildren();
+        if (!rows.length) {{
+          const note = document.createElement("p");
+          note.className = "data-note";
+          note.textContent = `No rows found in ${{path}}.`;
+          dataBodyEl.append(note);
+          return;
+        }}
+        const maxRows = 200;
+        const [headers, ...dataRows] = rows;
+        const shownRows = dataRows.slice(0, maxRows);
+        const note = document.createElement("p");
+        note.className = "data-note";
+        note.textContent = `Showing ${{shownRows.length}} of ${{dataRows.length}} data row${{dataRows.length === 1 ? "" : "s"}} from ${{path}}.`;
+        const table = document.createElement("table");
+        table.className = "data-table";
+        const thead = document.createElement("thead");
+        const headRow = document.createElement("tr");
+        for (const header of headers) {{
+          const th = document.createElement("th");
+          th.textContent = header;
+          headRow.append(th);
+        }}
+        thead.append(headRow);
+        const tbody = document.createElement("tbody");
+        for (const sourceRow of shownRows) {{
+          const tr = document.createElement("tr");
+          for (let column = 0; column < headers.length; column += 1) {{
+            const td = document.createElement("td");
+            td.textContent = sourceRow[column] ?? "";
+            tr.append(td);
+          }}
+          tbody.append(tr);
+        }}
+        table.append(thead, tbody);
+        dataBodyEl.append(note, table);
+      }}
+
+      async function showDataTable(image) {{
+        dataTitleEl.textContent = image.title;
+        dataBodyEl.replaceChildren();
+        const loading = document.createElement("p");
+        loading.className = "data-note";
+        loading.textContent = `Loading ${{image.data_path}}...`;
+        dataBodyEl.append(loading);
+        dataModalEl.classList.remove("hidden");
+        try {{
+          const response = await fetch(image.data_path);
+          if (!response.ok) throw new Error(`HTTP ${{response.status}}`);
+          renderDataRows(parseCsv(await response.text()), image.data_path);
+        }} catch (error) {{
+          dataBodyEl.replaceChildren();
+          const note = document.createElement("p");
+          note.className = "data-note";
+          note.textContent = `Could not load ${{image.data_path}}: ${{error.message}}`;
+          dataBodyEl.append(note);
+        }}
+      }}
+
+      function closeDataTable() {{
+        dataModalEl.classList.add("hidden");
+        dataBodyEl.replaceChildren();
+      }}
+
+      function showAssetPreview(label, path, image) {{
+        assetTitleEl.textContent = `${{label}} preview: ${{image.title}}`;
+        assetBodyEl.replaceChildren();
+        if (label === "SVG") {{
+          const frame = document.createElement("iframe");
+          frame.className = "asset-preview-frame";
+          frame.title = `${{image.title}} SVG`;
+          frame.src = path;
+          assetBodyEl.append(frame);
+        }} else {{
+          const img = document.createElement("img");
+          img.className = "asset-preview-image";
+          img.src = path;
+          img.alt = image.title;
+          assetBodyEl.append(img);
+        }}
+        assetModalEl.classList.remove("hidden");
+      }}
+
+      function closeAssetPreview() {{
+        assetModalEl.classList.add("hidden");
+        assetBodyEl.replaceChildren();
+      }}
+
+      function renderPlotPreview(image) {{
+        const preview = document.createElement("div");
+        preview.className = "plot-preview";
+        if (plotViewMode === "interactive" && image.html_path) {{
+          preview.classList.add("is-interactive");
+          const frame = document.createElement("iframe");
+          frame.className = "interactive-frame";
+          frame.loading = "lazy";
+          frame.title = image.title;
+          frame.src = image.html_path;
+          preview.append(frame);
+          return preview;
+        }}
+
+        const img = document.createElement("img");
+        img.loading = "lazy";
+        img.decoding = "async";
+        img.src = image.output_path;
+        img.alt = image.title;
+        preview.append(img);
+        return preview;
+      }}
+
       function renderGallery() {{
         const filterText = searchEl.value.trim().toLowerCase();
-        const visible = images.filter((image) => isInSelectedFolder(image) && imageMatchesFilter(image, filterText));
+        const visible = images
+          .filter((image) => isInSelectedFolder(image) && imageMatchesFilter(image, filterText))
+          .sort((a, b) => {{
+            if (plotViewMode === "interactive" && Boolean(a.html_path) !== Boolean(b.html_path)) {{
+              return a.html_path ? -1 : 1;
+            }}
+            return a.source_path.localeCompare(b.source_path);
+          }});
         const labels = selectedLabels();
 
         gridEl.replaceChildren();
@@ -604,23 +1198,27 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
           imageTitle.textContent = image.title;
           const imagePath = document.createElement("div");
           imagePath.className = "image-path";
-          imagePath.textContent = image.path;
-          head.append(imageTitle, imagePath);
+          imagePath.textContent = image.source_path;
+          imagePath.title = `Output: ${{image.output_path}}`;
+          const actions = document.createElement("div");
+          actions.className = "image-actions";
+          if (image.output_path) actions.append(makeAssetButton("PNG", image.output_path, image));
+          if (image.svg_path) actions.append(makeAssetButton("SVG", image.svg_path, image));
+          if (image.data_path) actions.append(makeDataButton(image));
+          const badge = document.createElement("span");
+          badge.className = "asset-badge";
+          if (image.interactive_source === "csv_backfill") {{
+            badge.textContent = "CSV interactive";
+            badge.title = "CSV-backed interactive reconstruction from plot data";
+          }} else if (image.interactive_source === "native_plotly") {{
+            badge.textContent = "Interactive";
+          }} else {{
+            badge.textContent = "Static only";
+          }}
+          actions.append(badge);
+          head.append(imageTitle, imagePath, actions);
 
-          const link = document.createElement("a");
-          link.className = "image-link";
-          link.href = image.path;
-          link.target = "_blank";
-          link.rel = "noopener";
-
-          const img = document.createElement("img");
-          img.loading = "lazy";
-          img.decoding = "async";
-          img.src = image.path;
-          img.alt = image.title;
-          link.append(img);
-
-          card.append(head, link);
+          card.append(head, renderPlotPreview(image));
           fragment.append(card);
         }}
         gridEl.append(fragment);
@@ -640,11 +1238,62 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         renderTree();
         renderGallery();
       }});
+      function setTreeMode(mode) {{
+        treeMode = mode;
+        selected.clear();
+        selected.add("");
+        expanded.clear();
+        expanded.add("");
+        sourceModeEl.classList.toggle("is-active", treeMode === "source");
+        outputModeEl.classList.toggle("is-active", treeMode === "output");
+        renderTree();
+        renderGallery();
+      }}
+      sourceModeEl.addEventListener("click", () => setTreeMode("source"));
+      outputModeEl.addEventListener("click", () => setTreeMode("output"));
+      interactiveViewEl.addEventListener("click", () => setPlotViewMode("interactive"));
+      staticViewEl.addEventListener("click", () => setPlotViewMode("static"));
+      sidebarResizerEl.addEventListener("pointerdown", startSidebarResize);
+      sidebarResizerEl.addEventListener("pointermove", updateSidebarResize);
+      sidebarResizerEl.addEventListener("pointerup", finishSidebarResize);
+      sidebarResizerEl.addEventListener("pointercancel", finishSidebarResize);
+      sidebarResizerEl.addEventListener("dblclick", () => {{
+        localStorage.removeItem(sidebarWidthStorageKey);
+        document.documentElement.style.removeProperty("--sidebar");
+        restoreSidebarWidth();
+      }});
+      sidebarResizerEl.addEventListener("keydown", (event) => {{
+        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+        const current = Number(sidebarResizerEl.getAttribute("aria-valuenow")) || sidebarResizerEl.getBoundingClientRect().left;
+        const delta = event.key === "ArrowLeft" ? -24 : 24;
+        setSidebarWidth(current + delta);
+        event.preventDefault();
+      }});
+      window.addEventListener("resize", () => {{
+        const current = Number(sidebarResizerEl.getAttribute("aria-valuenow"));
+        if (Number.isFinite(current) && current > 0) setSidebarWidth(current, {{ persist: false }});
+      }});
+      dataCloseEl.addEventListener("click", closeDataTable);
+      assetCloseEl.addEventListener("click", closeAssetPreview);
+      dataModalEl.addEventListener("click", (event) => {{
+        if (event.target === dataModalEl) closeDataTable();
+      }});
+      assetModalEl.addEventListener("click", (event) => {{
+        if (event.target === assetModalEl) closeAssetPreview();
+      }});
+      document.addEventListener("keydown", (event) => {{
+        if (event.key === "Escape" && !dataModalEl.classList.contains("hidden")) closeDataTable();
+        if (event.key === "Escape" && !assetModalEl.classList.contains("hidden")) closeAssetPreview();
+      }});
       searchEl.addEventListener("input", renderGallery);
       tileSizeEl.addEventListener("input", () => {{
         gridEl.style.setProperty("--card-min", `${{tileSizeEl.value}}px`);
       }});
 
+      interactiveViewEl.classList.toggle("is-active", plotViewMode === "interactive");
+      staticViewEl.classList.toggle("is-active", plotViewMode === "static");
+      restoreSidebarWidth();
+      gridEl.style.setProperty("--card-min", `${{tileSizeEl.value}}px`);
       renderTree();
       renderGallery();
     }})();

@@ -7,21 +7,35 @@ from pathlib import Path
 
 
 GENERIC_TEST_TARGETS = (
-    "tests/test_runtime.py",
-    "tests/test_parameter_templates.py",
-    "tests/test_equation_registry.py",
-    "tests/test_regression.py",
-    "tests/test_regression_api.py",
+    "tests/api/test_runtime.py",
+    "tests/equilibrium/test_api.py",
+    "tests/equilibrium/test_vle.py",
+    "tests/equilibrium/test_lle.py",
+    "tests/equilibrium/test_stability.py",
+    "tests/api/test_parameter_templates.py",
+    "tests/native/test_equation_registry.py",
+    "tests/regression/test_hydrocarbon.py",
+    "tests/api/test_regression_api.py",
 )
-CONFIDENCE_TEST_TARGETS = GENERIC_TEST_TARGETS + ("tests/test_native_runtime_contracts.py",)
-RUNTIME_TEST_TARGETS = ("tests/test_runtime.py", "tests/test_native_runtime_contracts.py")
-API_TEST_TARGETS = ("tests/test_runtime.py", "tests/test_parameter_templates.py", "tests/test_regression_api.py")
-NATIVE_TEST_TARGETS = ("tests/test_native_runtime_contracts.py",)
-PROFILE_TEST_TARGETS = ("tests/test_runtime_profile.py",)
+CONFIDENCE_TEST_TARGETS = GENERIC_TEST_TARGETS + ("tests/native/test_runtime_contracts.py",)
+RUNTIME_TEST_TARGETS = ("tests/api/test_runtime.py", "tests/native/test_runtime_contracts.py")
+API_TEST_TARGETS = ("tests/api/test_runtime.py", "tests/api/test_parameter_templates.py", "tests/api/test_regression_api.py")
+NATIVE_TEST_TARGETS = ("tests/native/test_runtime_contracts.py",)
+PROFILE_TEST_TARGETS = ("tests/profile/test_runtime_profile.py",)
 FULL_PROFILE_TEST_TARGETS = (
-    "tests/test_runtime_profile.py",
-    "tests/test_runtime_profile_miac.py",
-    "tests/test_runtime_profile_regression.py",
+    "tests/profile/test_runtime_profile.py",
+    "tests/profile/test_miac_profile.py",
+    "tests/profile/test_regression_profile.py",
+)
+PLOT_TEST_TARGETS = (
+    "tests/plots/test_gallery_outputs.py",
+    "tests/plots/test_plotly_backfill.py",
+    "tests/plots/test_api_parity_plot_outputs.py",
+    "tests/plots/test_contribution_plot_outputs.py",
+    "tests/plots/test_equilibrium_plot_outputs.py",
+    "tests/plots/test_native_plot_outputs.py",
+    "tests/plots/test_property_plot_outputs.py",
+    "tests/plots/test_regression_plot_outputs.py",
 )
 SLICE_TARGETS = {
     "generic": GENERIC_TEST_TARGETS,
@@ -31,6 +45,7 @@ SLICE_TARGETS = {
     "native": NATIVE_TEST_TARGETS,
     "profile": PROFILE_TEST_TARGETS,
     "profile-full": FULL_PROFILE_TEST_TARGETS,
+    "plots": PLOT_TEST_TARGETS,
 }
 FULL_PROFILE_MIN_TIMEOUT_SECONDS = 120
 FULL_PROFILE_RUNTIME_NOTE = (
@@ -83,9 +98,10 @@ def _pytest_args(
     native: bool = False,
     profile: bool = False,
     profile_full: bool = False,
+    plots: bool = False,
 ) -> list[str]:
     cmd: list[str] = []
-    has_predefined_targets = generic or confidence or runtime or api or native or profile or profile_full
+    has_predefined_targets = generic or confidence or runtime or api or native or profile or profile_full or plots
     if confidence:
         cmd.extend(CONFIDENCE_TEST_TARGETS)
     elif generic:
@@ -100,6 +116,8 @@ def _pytest_args(
         cmd.extend(PROFILE_TEST_TARGETS)
     elif profile_full:
         cmd.extend(FULL_PROFILE_TEST_TARGETS)
+    elif plots:
+        cmd.extend(PLOT_TEST_TARGETS)
 
     if has_predefined_targets:
         cmd.extend(pytest_args)
@@ -179,6 +197,7 @@ def main() -> int:
         action="store_true",
         help="Run all opt-in runtime, MIAC, and regression profile tests",
     )
+    predefined.add_argument("--plots", action="store_true", help="Run opt-in generated plot gallery tests")
     parser.add_argument("--list-slices", action="store_true", help="Print named test slices and exit without running pytest")
     args, pytest_args = parser.parse_known_args()
 
@@ -203,6 +222,7 @@ def main() -> int:
         native=args.native,
         profile=args.profile,
         profile_full=args.profile_full,
+        plots=args.plots,
     )
     print("Running:", f"{sys.executable} -m pytest", " ".join(cmd), flush=True)
     if args.profile_full:

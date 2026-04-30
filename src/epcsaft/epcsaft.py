@@ -162,6 +162,53 @@ class ePCSAFTMixture:
             raise InputError("Provide exactly one of P or rho when constructing a state.")
         return ePCSAFTState(self, T, x, P=P, rho=rho, phase=phase)
 
+    def equilibrium(
+        self,
+        kind="tp_flash",
+        T=None,
+        P=None,
+        z=None,
+        options=None,
+        backend=None,
+        initial_phases=None,
+        parent_phase=None,
+        trial_phases=None,
+    ):
+        """Run a Python-first equilibrium calculation for this mixture."""
+        from .equilibrium import lle_flash
+        from .equilibrium import neutral_stability
+        from .equilibrium import tp_flash
+
+        if kind == "tp_flash":
+            if initial_phases is not None:
+                raise InputError("initial_phases is only supported for kind='lle_flash'.")
+            if parent_phase is not None or trial_phases is not None:
+                raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
+            if backend not in (None, "neutral_vle"):
+                raise InputError("TP flash backend must be None or 'neutral_vle'.")
+            return tp_flash(self, T=T, P=P, z=z, options=options)
+        if kind == "lle_flash":
+            if parent_phase is not None or trial_phases is not None:
+                raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
+            if backend not in (None, "neutral_lle"):
+                raise InputError("LLE flash backend must be None or 'neutral_lle'.")
+            return lle_flash(self, T=T, P=P, z=z, options=options, initial_phases=initial_phases)
+        if kind == "stability":
+            if initial_phases is not None:
+                raise InputError("initial_phases is only supported for kind='lle_flash'.")
+            if backend not in (None, "neutral_tpd"):
+                raise InputError("Stability backend must be None or 'neutral_tpd'.")
+            return neutral_stability(
+                self,
+                T=T,
+                P=P,
+                z=z,
+                options=options,
+                parent_phase=parent_phase,
+                trial_phases=trial_phases,
+            )
+        raise InputError("Only kind='tp_flash', kind='lle_flash', or kind='stability' is supported by equilibrium.")
+
     def __repr__(self):
         """Return a short debugging representation of the mixture."""
         return f"ePCSAFTMixture(ncomp={self.ncomp}, species={self._species})"

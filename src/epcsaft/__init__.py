@@ -5,6 +5,11 @@ from .epcsaft import ActivityCoefficientResult
 from .epcsaft import ePCSAFTMixture
 from .epcsaft import ePCSAFTState
 from .epcsaft import SolutionError
+from .equilibrium import EquilibriumOptions
+from .equilibrium import EquilibriumPhase
+from .equilibrium import EquilibriumResult
+from .equilibrium import StabilityResult
+from .equilibrium import StabilityTrial
 from .parameters import DATASET_ROOT
 from .parameters import available_datasets
 from .parameters import get_prop_dict
@@ -23,6 +28,11 @@ __all__ = [
     "DATASET_ROOT",
     "ActivityCoefficientResult",
     "InputError",
+    "EquilibriumOptions",
+    "EquilibriumPhase",
+    "EquilibriumResult",
+    "StabilityResult",
+    "StabilityTrial",
     "ePCSAFTMixture",
     "ePCSAFTState",
     "SolutionError",

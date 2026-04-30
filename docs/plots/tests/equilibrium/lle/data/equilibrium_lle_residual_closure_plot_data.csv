@@ -1,0 +1,7 @@
+figure_file,axes_index,axes_title,x_label,y_label,artist_type,artist_label,color,linestyle,marker,linewidth,series_index,point_index,x,y,width,height
+equilibrium_lle_residual_closure.png,0,Methanol/cyclohexane LLE residual closure vs test tolerances,,Residual norm,line,,#d1d1d1,-,,0.80000000000000004,0,0,0,0,,
+equilibrium_lle_residual_closure.png,0,Methanol/cyclohexane LLE residual closure vs test tolerances,,Residual norm,line,,#d1d1d1,-,,0.80000000000000004,0,1,1,0,,
+equilibrium_lle_residual_closure.png,0,Methanol/cyclohexane LLE residual closure vs test tolerances,,Residual norm,bar,,#1f77b4,,,1,0,0,-0.17999999999999999,0,0.35999999999999999,9.3909324760943491e-12
+equilibrium_lle_residual_closure.png,0,Methanol/cyclohexane LLE residual closure vs test tolerances,,Residual norm,bar,,#1f77b4,,,1,1,0,0.82000000000000006,0,0.35999999999999999,9.4231511482689712e-11
+equilibrium_lle_residual_closure.png,0,Methanol/cyclohexane LLE residual closure vs test tolerances,,Residual norm,bar,,#ff7f0e,,,1,2,0,0.17999999999999999,0,0.36000000000000004,1e-10
+equilibrium_lle_residual_closure.png,0,Methanol/cyclohexane LLE residual closure vs test tolerances,,Residual norm,bar,,#ff7f0e,,,1,3,0,1.1799999999999999,0,0.36000000000000004,1.0000000000000001e-09

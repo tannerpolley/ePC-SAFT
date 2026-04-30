@@ -1,0 +1,11 @@
+figure_file,axes_index,axes_title,x_label,y_label,artist_type,artist_label,color,linestyle,marker,linewidth,series_index,point_index,x,y,width,height
+regression_gradient_finite_difference_parity.png,0,Native regression gradient vs finite difference,Expected,Actual,line,Parity,#404040,-,,1,0,0,-0.09478457617115299,-0.09478457617115299,,
+regression_gradient_finite_difference_parity.png,0,Native regression gradient vs finite difference,Expected,Actual,line,Parity,#404040,-,,1,0,1,1.4780535869042266,1.4780535869042266,,
+regression_gradient_finite_difference_parity.png,1,Relative error,Relative error,,line,,#404040,-,,0.80000000000000004,0,0,0,0,,
+regression_gradient_finite_difference_parity.png,1,Relative error,Relative error,,line,,#404040,-,,0.80000000000000004,0,1,0,1,,
+regression_gradient_finite_difference_parity.png,0,Native regression gradient vs finite difference,Expected,Actual,scatter,Comparison points,#1f77b4,,,[1.],0,0,1.3695819894507522,1.3695819894507522,,
+regression_gradient_finite_difference_parity.png,0,Native regression gradient vs finite difference,Expected,Actual,scatter,Comparison points,#1f77b4,,,[1.],0,1,0.22418355332537443,0.22418355332537443,,
+regression_gradient_finite_difference_parity.png,0,Native regression gradient vs finite difference,Expected,Actual,scatter,Comparison points,#1f77b4,,,[1.],0,2,0.013687021282321464,0.013687021282321464,,
+regression_gradient_finite_difference_parity.png,1,Relative error,Relative error,,bar,,#1f77b4,,,1,0,0,0,-0.27500000000000002,0,0.55000000000000004
+regression_gradient_finite_difference_parity.png,1,Relative error,Relative error,,bar,,#1f77b4,,,1,1,0,0,0.72499999999999998,0,0.55000000000000004
+regression_gradient_finite_difference_parity.png,1,Relative error,Relative error,,bar,,#1f77b4,,,1,2,0,0,1.7250000000000001,0,0.55000000000000004

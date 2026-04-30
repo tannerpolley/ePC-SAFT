@@ -1,0 +1,66 @@
+figure_file,axes_index,axes_title,x_label,y_label,artist_type,artist_label,color,linestyle,marker,linewidth,series_index,point_index,x,y,width,height
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,line,,#d1d1d1,-,,0.80000000000000004,0,0,0,0,,
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,line,,#d1d1d1,-,,0.80000000000000004,0,1,0,1,,
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,scatter,Reported total,#000000,,,[1.5],0,0,-9.7214027218057932,0,,
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,scatter,Reported total,#000000,,,[1.5],0,1,0.00072888407763216367,1,,
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,scatter,Reported total,#000000,,,[1.5],0,2,0.032388021640506963,2,,
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,scatter,Reported total,#000000,,,[1.5],0,3,-10.68242029564826,3,,
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,scatter,Reported total,#000000,,,[1.5],0,4,-199.10395743057404,4,,
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,scatter,Reported total,#000000,,,[1.5],0,5,-204.79630395974633,5,,
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,scatter,Reported total,#000000,,,[1.5],0,6,-3.4584244414545866,6,,
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,scatter,Reported total,#000000,,,[1.5],0,7,-191.87996157638037,7,,
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,scatter,Reported total,#000000,,,[1.5],0,8,-197.57230810555265,8,,
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#1f77b4,,,1,0,0,-2.6846788378164903,-0.375,-5.3693576756329806,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#1f77b4,,,1,1,0,-1.5383679218342112,0.625,-3.0767358436684225,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#1f77b4,,,1,2,0,0.0016329931369052958,1.625,0.0032659862738105916,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#1f77b4,,,1,3,0,-4.2237657980643935,2.625,-8.4475315961287869,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#1f77b4,,,1,4,0,-0.6484950491552457,3.625,-1.2969900983104914,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#1f77b4,,,1,5,0,-0.60865241005237625,4.625,-1.2173048201047525,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#1f77b4,,,1,6,0,6.8975038078292794,5.625,13.795007615658559,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#1f77b4,,,1,7,0,10.472774556738427,6.625,20.945549113476854,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#1f77b4,,,1,8,0,10.512617195841298,7.625,21.025234391682595,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#ff7f0e,,,1,9,0,-0.019836586708524766,-0.25,-0.039673173417049533,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#ff7f0e,,,1,10,0,0,0.75,0,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#ff7f0e,,,1,11,0,6.6532237828357437e-05,1.75,0.00013306447565671487,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#ff7f0e,,,1,12,0,-4.6207926280433798e-08,2.75,-9.2415852560867595e-08,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#ff7f0e,,,1,13,0,-97.98807014059976,3.75,-195.97614028119952,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#ff7f0e,,,1,14,0,-100.37733495780091,4.75,-200.75466991560182,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#ff7f0e,,,1,15,0,-4.6207926280433798e-08,5.75,-9.2415852560867595e-08,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#ff7f0e,,,1,16,0,-97.98807014059976,6.75,-195.97614028119952,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#ff7f0e,,,1,17,0,-100.37733495780091,7.75,-200.75466991560182,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#2ca02c,,,1,18,0,-4.431097470512869,-0.125,-8.8621949410257379,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#2ca02c,,,1,19,0,-3.9781416737426682,0.875,-7.9562833474853365,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#2ca02c,,,1,20,0,0.015109117365539854,1.875,0.030218234731079707,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#2ca02c,,,1,21,0,-8.409734830347336,2.875,-16.819469660694672,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#2ca02c,,,1,22,0,-5.7949937739201998,3.875,-11.5899875478404,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#2ca02c,,,1,23,0,-6.0676149687976322,4.875,-12.135229937595264,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#2ca02c,,,1,24,0,20.349306135212558,5.875,40.698612270425116,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#2ca02c,,,1,25,0,22.964047191639693,6.875,45.928094383279387,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#2ca02c,,,1,26,0,22.691425996762263,7.875,45.382851993524525,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#d62728,,,1,27,0,2.2749171488523539,0,4.5498342977047077,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#d62728,,,1,28,0,5.0168767243847974,1,10.033753448769595,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#d62728,,,1,29,0,-0.00061465976334206982,2,-0.0012293195266841396,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#d62728,,,1,30,0,7.2922905253050514,3,14.584581050610103,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#d62728,,,1,31,0,4.921080606724062,4,9.842161213448124,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#d62728,,,1,32,0,4.6969797648776117,5,9.3939595297552234,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#d62728,,,1,33,0,-28.976041542417914,6,-57.952083084835827,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#d62728,,,1,34,0,-31.347251460998905,7,-62.69450292199781,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#d62728,,,1,35,0,-31.571352302845355,8,-63.14270460569071,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#9467bd,,,1,36,0,0,0.125,0,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#9467bd,,,1,37,0,0.5,1.125,1,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#9467bd,,,1,38,0,0,2.125,0,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#9467bd,,,1,39,0,0,3.125,0,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#9467bd,,,1,40,0,0,4.125,0,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#9467bd,,,1,41,0,0,5.125,0,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#9467bd,,,1,42,0,0,6.125,0,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#9467bd,,,1,43,0,0,7.125,0,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#9467bd,,,1,44,0,0,8.125,0,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#8c564b,,,1,45,0,-5.6147173656241286e-06,0.25,-1.1229434731248257e-05,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#8c564b,,,1,46,0,-2.6867691018380395e-06,1.25,-5.3735382036760789e-06,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#8c564b,,,1,47,0,2.7843322044146126e-08,2.25,5.5686644088292253e-08,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#8c564b,,,1,48,0,1.4904742062769486e-09,3.25,2.9809484125538973e-09,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#8c564b,,,1,49,0,-0.041500358335880443,4.25,-0.083000716671760885,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#8c564b,,,1,50,0,-0.041529408099855586,5.25,-0.083058816199711172,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#8c564b,,,1,51,0,1.9424856709442823e-05,6.25,3.8849713418885647e-05,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#8c564b,,,1,52,0,-0.041480934969645208,7.25,-0.082961869939290417,0.125
+runtime_ionic_contribution_term_breakdown.png,0,Ionic contribution term breakdown by reported quantity,Term contribution,,bar,,#8c564b,,,1,53,0,-0.041509984733620352,8.25,-0.083019969467240703,0.125
