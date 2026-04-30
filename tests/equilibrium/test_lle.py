@@ -262,7 +262,6 @@ def test_lle_flash_rejects_invalid_options_through_public_api(options, match) ->
 @pytest.mark.parametrize(
     ("kwargs", "match"),
     [
-        ({"kind": "lle_flash", "T": 298.15, "P": 1.0e5, "z": [0.5, 0.5], "backend": "native"}, "backend"),
         ({"kind": "lle_flash", "P": 1.0e5, "z": [0.5, 0.5]}, "T"),
         ({"kind": "lle_flash", "T": 298.15, "z": [0.5, 0.5]}, "P"),
         ({"kind": "lle_flash", "T": 298.15, "P": 1.0e5}, "z"),

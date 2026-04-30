@@ -13,6 +13,8 @@ project(${SKBUILD_PROJECT_NAME}
 )
 
 option(EPCSAFT_DEV_INPLACE "Copy the compiled extension into src/epcsaft for local development" OFF)
+option(EPCSAFT_ENABLE_CERES "Enable Ceres Solver support for native equilibrium nonlinear solves" OFF)
+option(EPCSAFT_USE_SYSTEM_CERES "Use an installed Ceres Solver package instead of FetchContent" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -20,6 +22,23 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(PYBIND11_FINDPYTHON ON)
 
 find_package(pybind11 CONFIG REQUIRED)
+
+if(EPCSAFT_ENABLE_CERES)
+    if(EPCSAFT_USE_SYSTEM_CERES)
+        find_package(Ceres CONFIG REQUIRED)
+    else()
+        include(FetchContent)
+        set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+        set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+        set(BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+        FetchContent_Declare(
+            ceres-solver
+            GIT_REPOSITORY https://ceres-solver.googlesource.com/ceres-solver
+            GIT_TAG 2.2.0
+        )
+        FetchContent_MakeAvailable(ceres-solver)
+    endif()
+endif()
 
 execute_process(
     COMMAND "${Python_EXECUTABLE}" -c "import includeigen; print(includeigen.get_include())"
@@ -42,6 +61,11 @@ target_include_directories(epcsaft_native
 )
 target_compile_features(epcsaft_native PUBLIC cxx_std_17)
 set_target_properties(epcsaft_native PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+if(EPCSAFT_ENABLE_CERES)
+    target_link_libraries(epcsaft_native PUBLIC Ceres::ceres)
+    target_compile_definitions(epcsaft_native PUBLIC EPCSAFT_HAS_CERES=1)
+endif()
 
 pybind11_add_module(_core src/epcsaft/bindings.cpp)
 target_link_libraries(_core PRIVATE epcsaft_native)

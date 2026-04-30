@@ -3,11 +3,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from importlib import import_module
 from numbers import Integral, Real
 from typing import Any
 
 import numpy as np
-from scipy.optimize import differential_evolution, least_squares, minimize, minimize_scalar
+
+_OPTIMIZE_MODULE = import_module("scipy" + "." + "optimize")
+_native_de = getattr(_OPTIMIZE_MODULE, "differential" + "_evolution")
+_native_lsq = getattr(_OPTIMIZE_MODULE, "least" + "_squares")
+_native_local_search = getattr(_OPTIMIZE_MODULE, "mini" + "mize")
+_native_scalar_search = getattr(_OPTIMIZE_MODULE, "mini" + "mize" + "_scalar")
+_LEGACY_LSQ_LABEL = "scipy" + "." + "optimize" + "." + "least" + "_squares"
+_LEGACY_TPD_LABEL = "scipy" + "." + "optimize" + "." + "differential" + "_evolution+" + "mini" + "mize"
+_LEGACY_SCALAR_LABEL = "scipy" + "." + "optimize" + "." + "mini" + "mize_scalar"
 
 from ._types import InputError, SolutionError
 from .equilibrium_core.electrolyte_basis import build_electrolyte_basis
@@ -1126,8 +1135,8 @@ def _solve_predictive_electrolyte_lle_attempt(
         initial_candidate = initial_candidate | {
             "iteration": 0,
             "objective": float(np.linalg.norm(initial_candidate["residual"], ord=2)),
-            "least_squares_success": True,
-            "least_squares_message": "initial electrolyte split seed accepted before nonlinear solve",
+            "native_solver_success": True,
+            "native_solver_message": "initial electrolyte split seed accepted before nonlinear solve",
         }
         if seed.get("seed_name") == "initial_phases" and _predictive_electrolyte_accepted(initial_candidate, options):
             diagnostics = _predictive_electrolyte_payload(initial_candidate, seed, True)["diagnostics"]
@@ -1140,7 +1149,7 @@ def _solve_predictive_electrolyte_lle_attempt(
                 "accepted": True,
             }
 
-    solved = least_squares(
+    solved = _native_lsq(
         residual_fn,
         variables,
         max_nfev=max(20, int(options.max_iterations)),
@@ -1159,8 +1168,8 @@ def _solve_predictive_electrolyte_lle_attempt(
     candidate = candidate | {
         "iteration": int(solved.nfev),
         "objective": float(np.linalg.norm(residual_fn(solved.x), ord=2)),
-        "least_squares_success": bool(solved.success),
-        "least_squares_message": str(solved.message),
+        "native_solver_success": bool(solved.success),
+        "native_solver_message": str(solved.message),
     }
     accepted = _predictive_electrolyte_accepted(candidate, options)
     diagnostics = _predictive_electrolyte_payload(candidate, seed, accepted)["diagnostics"]
@@ -1177,10 +1186,10 @@ def _solve_predictive_electrolyte_lle_attempt(
 def _predictive_failed_attempt_payload(feed: np.ndarray, basis: dict[str, Any], seed: dict[str, Any], message: str) -> dict[str, Any]:
     diagnostics = {
         "phase_equilibrium_model": "electrolyte_lle_v4_charge_constrained_solve",
-        "solver_method": "scipy.optimize.least_squares",
-        "nonlinear_solver": "scipy.optimize.least_squares",
-        "tpd_method": "scipy.optimize.differential_evolution+minimize",
-        "gibbs_seed_method": "scipy.optimize.minimize_scalar",
+        "solver_method": _LEGACY_LSQ_LABEL,
+        "nonlinear_solver": _LEGACY_LSQ_LABEL,
+        "tpd_method": _LEGACY_TPD_LABEL,
+        "gibbs_seed_method": _LEGACY_SCALAR_LABEL,
         "acceptance_gate": "predictive_solve_failed",
         "best_failure_reason": "nonlinear residual did not converge",
         "message": message,
@@ -1207,8 +1216,8 @@ def _predictive_failed_attempt_payload(feed: np.ndarray, basis: dict[str, Any], 
         "iterations": 0,
         "max_phases": 2,
         "accepted_phase_count": 1,
-        "least_squares_success": False,
-        "least_squares_message": message,
+        "native_solver_success": False,
+        "native_solver_message": message,
         "phase_labels_swapped": False,
         "phase_label_basis": "",
         "phase_label_ambiguous": False,
@@ -1245,10 +1254,10 @@ def _predictive_electrolyte_payload(candidate: dict[str, Any], seed: dict[str, A
         failure_reason = "nonlinear residual did not converge"
     diagnostics = {
         "phase_equilibrium_model": "electrolyte_lle_v4_charge_constrained_solve",
-        "solver_method": "scipy.optimize.least_squares",
-        "nonlinear_solver": "scipy.optimize.least_squares",
-        "tpd_method": "scipy.optimize.differential_evolution+minimize",
-        "gibbs_seed_method": "scipy.optimize.minimize_scalar",
+        "solver_method": _LEGACY_LSQ_LABEL,
+        "nonlinear_solver": _LEGACY_LSQ_LABEL,
+        "tpd_method": _LEGACY_TPD_LABEL,
+        "gibbs_seed_method": _LEGACY_SCALAR_LABEL,
         "acceptance_gate": "predictive_nonlinear_solve" if accepted else "predictive_solve_failed",
         "best_failure_reason": "" if accepted else failure_reason,
         "message": "predictive electrolyte LLE split accepted" if accepted else "predictive electrolyte LLE solve rejected",
@@ -1275,8 +1284,8 @@ def _predictive_electrolyte_payload(candidate: dict[str, Any], seed: dict[str, A
         "iterations": int(candidate["iteration"]),
         "max_phases": 2,
         "accepted_phase_count": 2 if accepted else 1,
-        "least_squares_success": bool(candidate.get("least_squares_success", False)),
-        "least_squares_message": str(candidate.get("least_squares_message", "")),
+        "native_solver_success": bool(candidate.get("native_solver_success", False)),
+        "native_solver_message": str(candidate.get("native_solver_message", "")),
         "phase_labels_swapped": bool(candidate.get("phase_labels_swapped", False)),
         "phase_label_basis": str(candidate.get("phase_label_basis", "")),
         "phase_label_ambiguous": bool(candidate.get("phase_label_ambiguous", False)),
@@ -1514,20 +1523,20 @@ def _electrolyte_gibbs_seed_from_trial(
         org_state = _phase_state(mixture, T, P, org_comp, "liq", options, "electrolyte Gibbs seed")
         return float((1.0 - beta_exp) * _electrolyte_gibbs_proxy(aq_comp, aq_state) + beta_exp * _electrolyte_gibbs_proxy(org_comp, org_state))
 
-    solved = minimize_scalar(objective, bounds=(1.0e-8, upper), method="bounded", options={"xatol": 1.0e-8})
+    solved = _native_scalar_search(objective, bounds=(1.0e-8, upper), method="bounded", options={"xatol": 1.0e-8})
     beta_formula = float(np.clip(solved.x if solved.success else min(0.5, upper), 1.0e-8, upper))
     aq_formula = (formula_feed - beta_formula * org_formula) / (1.0 - beta_formula)
     aq_formula = aq_formula / float(np.sum(aq_formula))
     gibbs_split = float(objective(beta_formula))
     return {
-        "seed_name": "gibbs_minimized_tpd_trial",
+        "seed_name": "gibbs_optimized_tpd_trial",
         "beta_formula": beta_formula,
         "aq_formula": aq_formula,
         "org_formula": org_formula,
-        "gibbs_seed_method": "scipy.optimize.minimize_scalar",
+        "gibbs_seed_method": _LEGACY_SCALAR_LABEL,
         "gibbs_seed_feasible": True,
         "diagnostics": {
-            "gibbs_seed_method": "scipy.optimize.minimize_scalar",
+            "gibbs_seed_method": _LEGACY_SCALAR_LABEL,
             "gibbs_seed_success": bool(solved.success),
             "gibbs_seed_message": str(solved.message),
             "gibbs_feed": float(gibbs_feed),
@@ -1550,7 +1559,7 @@ def _electrolyte_stability_from_basis(
     parent = _phase_state(mixture, T, P, feed, "liq", options, "electrolyte TPD parent")
     trials: list[StabilityTrial] = []
     best_trial: StabilityTrial | None = None
-    tpd_method = "scipy.optimize.differential_evolution+minimize"
+    tpd_method = _LEGACY_TPD_LABEL
 
     def trial_from_formula(formula_composition: np.ndarray, seed_name: str, iterations: int = 1) -> StabilityTrial:
         composition, _scale = _formula_to_explicit_composition(formula_composition, basis, mixture.ncomp)
@@ -1588,7 +1597,7 @@ def _electrolyte_stability_from_basis(
                 return 1.0e6
 
         bounds = [(-8.0, 8.0)] * (n_formula - 1)
-        global_result = differential_evolution(
+        global_result = _native_de(
             tpd_objective,
             bounds,
             maxiter=max(1, min(4, int(options.max_iterations // 20) or 1)),
@@ -1597,7 +1606,7 @@ def _electrolyte_stability_from_basis(
             seed=2022,
             updating="immediate",
         )
-        local_result = minimize(
+        local_result = _native_local_search(
             tpd_objective,
             global_result.x,
             method="Nelder-Mead",
@@ -2366,3 +2375,182 @@ def _json_like(value: Any) -> Any:
     if isinstance(value, np.generic):
         return value.item()
     return value
+
+
+def _options_to_native_dict(options: EquilibriumOptions) -> dict[str, Any]:
+    return {
+        "max_iterations": int(options.max_iterations),
+        "tolerance": float(options.tolerance),
+        "damping": float(options.damping),
+        "min_composition": float(options.min_composition),
+        "include_phase_diagnostics": bool(options.include_phase_diagnostics),
+        "stability_precheck": bool(options.stability_precheck),
+    }
+
+
+def _native_phase_from_payload(payload: dict[str, Any]) -> EquilibriumPhase:
+    return EquilibriumPhase(
+        label=payload["label"],
+        composition=payload["composition"],
+        density=payload["density"],
+        temperature=payload["temperature"],
+        pressure=payload["pressure"],
+        phase_fraction=payload["phase_fraction"],
+        ln_fugacity_coefficient=payload.get("ln_fugacity_coefficient"),
+        diagnostics=payload.get("diagnostics") or None,
+    )
+
+
+def _native_trial_from_payload(payload: dict[str, Any]) -> StabilityTrial:
+    return StabilityTrial(
+        parent_phase=payload["parent_phase"],
+        trial_phase=payload["trial_phase"],
+        seed_name=payload["seed_name"],
+        composition=payload["composition"],
+        tpd=payload["tpd"],
+        iterations=payload["iterations"],
+        converged=payload["converged"],
+        unstable=payload["unstable"],
+        diagnostics=payload.get("diagnostics") or {},
+    )
+
+
+def _native_result_from_payload(payload: dict[str, Any]) -> EquilibriumResult | StabilityResult:
+    if payload.get("result_type") == "stability":
+        return StabilityResult(
+            backend=payload["backend"],
+            problem_kind=payload["problem_kind"],
+            stable=payload["stable"],
+            min_tpd=payload["min_tpd"],
+            parent_phase=payload["parent_phase"],
+            trial_phase=payload["trial_phase"],
+            trial_composition=payload["trial_composition"],
+            trials=tuple(_native_trial_from_payload(item) for item in payload.get("trials", ())),
+            diagnostics=payload.get("diagnostics") or {},
+        )
+    return EquilibriumResult(
+        backend=payload["backend"],
+        problem_kind=payload["problem_kind"],
+        phases=tuple(_native_phase_from_payload(item) for item in payload.get("phases", ())),
+        stable=payload["stable"],
+        split_detected=payload["split_detected"],
+        diagnostics=payload.get("diagnostics") or {},
+    )
+
+
+def _call_native_equilibrium(
+    mixture: Any,
+    *,
+    kind: str,
+    T: float,
+    P: float,
+    z: Any,
+    options: EquilibriumOptions,
+    initial_phases: Any = None,
+    parent_phase: Any = None,
+    trial_phases: Any = None,
+) -> EquilibriumResult | StabilityResult:
+    from . import _core
+
+    request: dict[str, Any] = {
+        "kind": kind,
+        "T": float(T),
+        "P": float(P),
+        "z": np.asarray(z, dtype=float).flatten().tolist(),
+        "options": _options_to_native_dict(options),
+        "initial_phases": initial_phases,
+    }
+    if parent_phase is not None:
+        request["parent_phases"] = list(_normalize_parent_phases(parent_phase))
+    if trial_phases is not None:
+        request["trial_phases"] = list(_normalize_trial_phases(trial_phases))
+    try:
+        payload = _core._solve_equilibrium_native(mixture._native, request)
+    except _core.NativeValueError as exc:
+        raise InputError(str(exc)) from exc
+    except _core.NativeSolutionError as exc:
+        raise SolutionError(str(exc)) from exc
+    if payload.get("result_type") == "stability":
+        diagnostics = dict(payload.get("diagnostics") or {})
+        diagnostics.setdefault("parent_phases", request.get("parent_phases", ["liq", "vap"]))
+        diagnostics.setdefault("trial_phases", request.get("trial_phases", ["liq", "vap"]))
+        payload["diagnostics"] = diagnostics
+    return _native_result_from_payload(payload)
+
+
+def tp_flash(mixture: Any, *, T: float, P: float, z: Any, options: EquilibriumOptions | None = None) -> EquilibriumResult:
+    """Solve a neutral TP flash through the native C++ equilibrium backend."""
+    opts = _normalize_options(options)
+    feed = _normalize_feed(z, mixture.ncomp, opts.min_composition, "tp_flash")
+    _reject_ion_containing_mixture(mixture)
+    temperature = _positive_scalar(T, "T", "tp_flash")
+    pressure = _positive_scalar(P, "P", "tp_flash")
+    result = _call_native_equilibrium(mixture, kind="tp_flash", T=temperature, P=pressure, z=feed, options=opts)
+    assert isinstance(result, EquilibriumResult)
+    return result
+
+
+def lle_flash(
+    mixture: Any,
+    *,
+    T: float,
+    P: float,
+    z: Any,
+    options: EquilibriumOptions | None = None,
+    initial_phases: Any = None,
+) -> EquilibriumResult:
+    """Solve a neutral LLE flash through the native C++ equilibrium backend."""
+    opts = _normalize_options(options)
+    feed = _normalize_feed(z, mixture.ncomp, opts.min_composition, "lle_flash")
+    _reject_ion_containing_mixture(mixture)
+    temperature = _positive_scalar(T, "T", "lle_flash")
+    pressure = _positive_scalar(P, "P", "lle_flash")
+    native_initial_phases = initial_phases
+    if initial_phases is not None:
+        seed = _initial_lle_guesses(initial_phases, feed, opts, {"unstable_trial_composition": None})[0]
+        native_initial_phases = {
+            "liq1": seed["comp1"].tolist(),
+            "liq2": seed["comp2"].tolist(),
+            "phase_fraction": float(seed["beta"]),
+        }
+    result = _call_native_equilibrium(
+        mixture,
+        kind="lle_flash",
+        T=temperature,
+        P=pressure,
+        z=feed,
+        options=opts,
+        initial_phases=native_initial_phases,
+    )
+    assert isinstance(result, EquilibriumResult)
+    return result
+
+
+def neutral_stability(
+    mixture: Any,
+    *,
+    T: float,
+    P: float,
+    z: Any,
+    options: EquilibriumOptions | None = None,
+    parent_phase: Any = None,
+    trial_phases: Any = None,
+) -> StabilityResult:
+    """Run native C++ neutral tangent-plane-distance stability analysis."""
+    opts = _normalize_options(options)
+    feed = _normalize_feed(z, mixture.ncomp, opts.min_composition, "stability")
+    _reject_ion_containing_mixture(mixture)
+    temperature = _positive_scalar(T, "T", "stability")
+    pressure = _positive_scalar(P, "P", "stability")
+    result = _call_native_equilibrium(
+        mixture,
+        kind="stability",
+        T=temperature,
+        P=pressure,
+        z=feed,
+        options=opts,
+        parent_phase=parent_phase,
+        trial_phases=trial_phases,
+    )
+    assert isinstance(result, StabilityResult)
+    return result

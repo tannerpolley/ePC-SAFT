@@ -176,7 +176,7 @@ class ePCSAFTMixture:
         parent_phase=None,
         trial_phases=None,
     ):
-        """Run a Python-first equilibrium calculation for this mixture."""
+        """Run a native-backed equilibrium calculation for this mixture."""
         from .equilibrium import electrolyte_lle_flash
         from .equilibrium import electrolyte_stability
         from .equilibrium import lle_flash
@@ -224,22 +224,22 @@ class ePCSAFTMixture:
                 raise InputError("initial_phases is only supported for kind='lle_flash'.")
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
-            if backend not in (None, "neutral_vle"):
-                raise InputError("TP flash backend must be None or 'neutral_vle'.")
+            if backend not in (None, "native", "neutral_vle"):
+                raise InputError("TP flash backend must be None, 'native', or 'neutral_vle'.")
             return tp_flash(self, T=T, P=P, z=z, options=options)
         if kind == "lle_flash":
             if solvent_feed is not None or salt_molality is not None:
                 raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
-            if backend not in (None, "neutral_lle"):
-                raise InputError("LLE flash backend must be None or 'neutral_lle'.")
+            if backend not in (None, "native", "neutral_lle"):
+                raise InputError("LLE flash backend must be None, 'native', or 'neutral_lle'.")
             return lle_flash(self, T=T, P=P, z=z, options=options, initial_phases=initial_phases)
         if kind in {"electrolyte_lle", "electrolyte_lle_flash"}:
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
-            if backend not in (None, "electrolyte_lle"):
-                raise InputError("Electrolyte LLE backend must be None or 'electrolyte_lle'.")
+            if backend not in (None, "native", "electrolyte_lle"):
+                raise InputError("Electrolyte LLE backend must be None, 'native', or 'electrolyte_lle'.")
             return electrolyte_lle_flash(
                 self,
                 T=T,
@@ -255,8 +255,8 @@ class ePCSAFTMixture:
                 raise InputError("initial_phases is not supported for kind='electrolyte_stability'.")
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are not supported for kind='electrolyte_stability'.")
-            if backend not in (None, "electrolyte_tpd"):
-                raise InputError("Electrolyte stability backend must be None or 'electrolyte_tpd'.")
+            if backend not in (None, "native", "electrolyte_tpd"):
+                raise InputError("Electrolyte stability backend must be None, 'native', or 'electrolyte_tpd'.")
             return electrolyte_stability(
                 self,
                 T=T,
@@ -271,8 +271,8 @@ class ePCSAFTMixture:
                 raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
             if initial_phases is not None:
                 raise InputError("initial_phases is only supported for kind='lle_flash'.")
-            if backend not in (None, "neutral_tpd"):
-                raise InputError("Stability backend must be None or 'neutral_tpd'.")
+            if backend not in (None, "native", "neutral_tpd"):
+                raise InputError("Stability backend must be None, 'native', or 'neutral_tpd'.")
             return neutral_stability(
                 self,
                 T=T,

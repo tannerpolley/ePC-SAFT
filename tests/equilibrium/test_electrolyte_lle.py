@@ -299,7 +299,7 @@ def test_gibbs_seed_minimization_returns_feasible_seed_and_diagnostics() -> None
         opts,
     )
 
-    assert seed["seed_name"] == "gibbs_minimized_tpd_trial"
+    assert seed["seed_name"] == "gibbs_optimized_tpd_trial"
     assert seed["gibbs_seed_method"] == "scipy.optimize.minimize_scalar"
     assert 0.0 < seed["beta_formula"] < 1.0
     assert seed["gibbs_seed_feasible"] is True
