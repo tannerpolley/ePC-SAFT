@@ -33,19 +33,27 @@ def companion_rows(plots_root: Path = build_analysis_galleries.PLOTS_ROOT) -> li
         svg_path = png_path.with_suffix(".svg")
         data_path = png_path.parent / "data" / f"{png_path.stem}_plot_data.csv"
         interactive_source = item["interactive_source"]
+        has_html = html_path.exists()
+        has_svg = svg_path.exists()
+        has_csv = data_path.exists()
         rows.append(
             {
                 "output_path": output_path,
                 "source_path": item["source_path"],
                 "interactive_source": interactive_source,
-                "interactive_status": "interactive" if html_path.exists() else "static_only",
+                "html_status": "missing_html"
+                if not has_html
+                else ("static_html" if interactive_source == "static_png_wrapper" else "interactive"),
+                "interactive_status": "interactive" if has_html and interactive_source != "static_png_wrapper" else "static_only",
                 "html_path": item["html_path"],
                 "svg_path": item["svg_path"],
                 "data_path": item["data_path"],
-                "has_plotly_html": str(html_path.exists()).lower(),
-                "has_svg": str(svg_path.exists()).lower(),
-                "has_csv": str(data_path.exists()).lower(),
-                "static_reason": "" if html_path.exists() else _backfill_status(png_path),
+                "has_html": str(has_html).lower(),
+                "has_plotly_html": str(has_html and interactive_source != "static_png_wrapper").lower(),
+                "has_svg": str(has_svg).lower(),
+                "has_csv": str(has_csv).lower(),
+                "bundle_complete": str(has_html and has_svg and has_csv).lower(),
+                "static_reason": _backfill_status(png_path) if interactive_source == "static_png_wrapper" or not has_html else "",
             }
         )
     return rows
@@ -58,13 +66,16 @@ def write_report(output: Path, plots_root: Path = build_analysis_galleries.PLOTS
         "output_path",
         "source_path",
         "interactive_source",
+        "html_status",
         "interactive_status",
         "html_path",
         "svg_path",
         "data_path",
+        "has_html",
         "has_plotly_html",
         "has_svg",
         "has_csv",
+        "bundle_complete",
         "static_reason",
     ]
     with output.open("w", newline="", encoding="utf-8") as handle:
@@ -85,12 +96,14 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     rows = companion_rows(args.root)
     write_report(args.output, args.root)
-    interactive = sum(1 for row in rows if row["has_plotly_html"] == "true")
-    static_only = len(rows) - interactive
+    interactive = sum(1 for row in rows if row["interactive_status"] == "interactive")
+    static_html = sum(1 for row in rows if row["html_status"] == "static_html")
     svg = sum(1 for row in rows if row["has_svg"] == "true")
+    complete = sum(1 for row in rows if row["bundle_complete"] == "true")
     print(
         f"Wrote {args.output} with {len(rows)} PNG plot(s): "
-        f"{interactive} interactive HTML, {static_only} static-only, {svg} SVG companions."
+        f"{interactive} interactive HTML, {static_html} static HTML, {svg} SVG companions, "
+        f"{complete} complete bundles."
     )
     return 0
 

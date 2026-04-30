@@ -8,6 +8,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PLOTS_ROOT = REPO_ROOT / "docs" / "plots"
 CSV_BACKFILL_MARKER = 'epcsaft-interactive-source="csv_backfill"'
+STATIC_WRAPPER_MARKER = 'epcsaft-interactive-source="static_png_wrapper"'
 
 
 def should_include_png(path: Path) -> bool:
@@ -71,6 +72,11 @@ def _interactive_source(html_path: Path) -> str:
         head = html_path.read_text(encoding="utf-8", errors="ignore")[:2000]
     except OSError:
         return "native_plotly"
+    is_static_wrapper = STATIC_WRAPPER_MARKER in head or (
+        "epcsaft-interactive-source" in head and 'content="static_png_wrapper"' in head
+    )
+    if is_static_wrapper:
+        return "static_png_wrapper"
     is_csv_backfill = CSV_BACKFILL_MARKER in head or (
         "epcsaft-interactive-source" in head and 'content="csv_backfill"' in head
     )
@@ -1211,6 +1217,9 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
           if (image.interactive_source === "csv_backfill") {{
             badge.textContent = "CSV interactive";
             badge.title = "CSV-backed interactive reconstruction from plot data";
+          }} else if (image.interactive_source === "static_png_wrapper") {{
+            badge.textContent = "Static HTML";
+            badge.title = "Static HTML/SVG wrapper around the PNG because no numeric plot artists were available";
           }} else if (image.interactive_source === "native_plotly") {{
             badge.textContent = "Interactive";
           }} else {{

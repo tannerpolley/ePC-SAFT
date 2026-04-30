@@ -11,6 +11,7 @@ import numpy as np
 
 from scripts import plot_outputs
 from scripts.paper_validation.tools import build_analysis_galleries
+from scripts.paper_validation.tools import ensure_plot_companions
 from scripts.paper_validation.tools import report_plot_companions
 from scripts.paper_validation.tools import serve_plot_gallery
 from tests.plots.plot_helpers import assert_figure_text_is_inside_canvas
@@ -240,6 +241,7 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     assert "parseCsv" in html
     assert 'button.textContent = "Data";' in html
     assert 'badge.textContent = "Static only";' in html
+    assert 'badge.textContent = "Static HTML";' in html
     assert 'badge.textContent = "CSV interactive";' in html
     assert 'badge.textContent = "Interactive";' in html
     assert "CSV-backed interactive reconstruction from plot data" in html
@@ -247,6 +249,29 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     assert 'target = "_blank"' not in html
     assert 'className = "image-link"' not in html
     assert "Select folders on the left" in html
+
+
+def test_ensure_plot_companions_adds_static_html_svg_and_csv(tmp_path: Path, monkeypatch) -> None:
+    root = tmp_path / "plots"
+    png = root / "paper_validation" / "Example" / "figure_1" / "figure_1.png"
+    png.parent.mkdir(parents=True)
+    png.write_bytes(
+        b"\x89PNG\r\n\x1a\n"
+        b"\x00\x00\x00\rIHDR"
+        b"\x00\x00\x00\x10\x00\x00\x00\x08"
+        b"\x08\x02\x00\x00\x00"
+        b"\x00\x00\x00\x00"
+    )
+    monkeypatch.setattr(build_analysis_galleries, "PLOTS_ROOT", root)
+
+    result = ensure_plot_companions.ensure_companions(root)
+
+    assert result.csv_created == 1
+    assert result.html_created == 1
+    assert result.svg_created == 1
+    assert (png.parent / "data" / "figure_1_plot_data.csv").exists()
+    assert ensure_plot_companions.STATIC_WRAPPER_MARKER in png.with_suffix(".html").read_text(encoding="utf-8")
+    assert 'href="figure_1.png"' in png.with_suffix(".svg").read_text(encoding="utf-8")
 
 
 def test_plot_companion_report_lists_interactive_and_static_plots(tmp_path: Path, monkeypatch) -> None:
@@ -261,6 +286,12 @@ def test_plot_companion_report_lists_interactive_and_static_plots(tmp_path: Path
         '<html><meta name="epcsaft-interactive-source" content="csv_backfill"></html>',
         encoding="utf-8",
     )
+    static.with_suffix(".html").write_text(
+        '<html><meta name="epcsaft-interactive-source" content="static_png_wrapper"></html>',
+        encoding="utf-8",
+    )
+    interactive.with_suffix(".svg").write_text("<svg></svg>", encoding="utf-8")
+    static.with_suffix(".svg").write_text("<svg></svg>", encoding="utf-8")
     (interactive.parent / "data").mkdir()
     (interactive.parent / "data" / "figure_1_plot_data.csv").write_text("x,y\n0,0\n", encoding="utf-8")
     (static.parent / "data").mkdir()
@@ -277,9 +308,14 @@ def test_plot_companion_report_lists_interactive_and_static_plots(tmp_path: Path
 
     by_output = {row["output_path"]: row for row in rows}
     assert by_output["paper_validation/Example/figure_1/figure_1.png"]["interactive_status"] == "interactive"
+    assert by_output["paper_validation/Example/figure_1/figure_1.png"]["bundle_complete"] == "true"
     assert by_output["paper_validation/Example/figure_1/figure_1.png"]["interactive_source"] == "csv_backfill"
     assert by_output["paper_validation/Example/figure_2/figure_2.png"]["interactive_status"] == "static_only"
+    assert by_output["paper_validation/Example/figure_2/figure_2.png"]["html_status"] == "static_html"
+    assert by_output["paper_validation/Example/figure_2/figure_2.png"]["bundle_complete"] == "true"
     assert by_output["paper_validation/Example/figure_2/figure_2.png"]["static_reason"] == "no_numeric_artists"
+    assert "bundle_complete" in report
+    assert "has_html" in report
     assert "has_plotly_html" in report
     assert "static_reason" in report
 
@@ -366,6 +402,21 @@ def test_docs_plot_pngs_have_companion_csv_data() -> None:
         csv_path = png_path.parent / "data" / f"{png_path.stem}_plot_data.csv"
         if not csv_path.exists():
             missing.append(png_path.as_posix())
+    assert missing == []
+
+
+def test_docs_plot_pngs_have_complete_html_svg_csv_bundles() -> None:
+    plots_root = Path("docs/plots")
+    missing = []
+    for png_path in plots_root.rglob("*.png"):
+        if "__pycache__" in png_path.parts:
+            continue
+        expected = [
+            png_path.with_suffix(".html"),
+            png_path.with_suffix(".svg"),
+            png_path.parent / "data" / f"{png_path.stem}_plot_data.csv",
+        ]
+        missing.extend(path.as_posix() for path in expected if not path.exists())
     assert missing == []
 
 
