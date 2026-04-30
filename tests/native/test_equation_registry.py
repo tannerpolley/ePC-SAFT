@@ -36,8 +36,7 @@ EQUATION_FAMILY_COVERAGE = {
 
 
 def test_equation_registry_outputs_are_synced() -> None:
-    if not TEX_PATH.exists():
-        pytest.skip("docs/latex/equations.tex is unavailable because the docs submodule is not checked out")
+    assert TEX_PATH.exists(), "docs/latex/equations.tex must be present as a tracked repo file"
 
     result = subprocess.run(
         [sys.executable, "scripts/sync_equation_registry.py", "--check"],
@@ -50,8 +49,7 @@ def test_equation_registry_outputs_are_synced() -> None:
 
 
 def test_equation_registry_strict_traceability_passes_current_registry() -> None:
-    if not TEX_PATH.exists():
-        pytest.skip("docs/latex/equations.tex is unavailable because the docs submodule is not checked out")
+    assert TEX_PATH.exists(), "docs/latex/equations.tex must be present as a tracked repo file"
 
     result = subprocess.run(
         [sys.executable, "scripts/sync_equation_registry.py", "--check", "--strict-traceability"],

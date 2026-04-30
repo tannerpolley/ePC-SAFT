@@ -1,0 +1,2714 @@
+\documentclass[12pt, letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{fullpage}
+\usepackage{setspace}
+\usepackage{biblatex}
+\usepackage{mathtools}
+\usepackage{appendix}
+\usepackage[version=4]{mhchem}
+\usepackage[export]{adjustbox}
+\usepackage{pdflscape}
+\usepackage{amssymb}
+\usepackage{listings}
+\usepackage[hidelinks]{hyperref}
+\usepackage{pdfpages}
+\addbibresource{library.bib}
+\doublespacing{}
+\begin{document}
+
+\section{Parameter Setup}
+\label{sec:parameter_setup}
+
+This section collects mixture quantities that can be evaluated from the parameter set together with \(T\) and \(\mathbf{x}\), without solving for density first.
+
+\subsection{Base Mixture Quantities}
+
+% EqID: m_bar
+% Source: \cite{Gross2001}, Eq.~(A.5)
+% Status: Close literature match
+% Description: Provides a supporting relation used in hard-chain reference contribution.
+% Change note: High textual similarity to a tagged equation in the cited local paper export.
+
+\begin{equation}
+    \bar{m}=\sum_{i} x_{i} m_{i}
+    \label{eq:m_bar}
+\end{equation}
+
+% EqID: mw_bar
+% Source: \cite{Figiel2025}, Eq.~(12) (derived helper)
+% Status: Derived helper relation
+% Description: Provides a supporting relation used in relative-permittivity and electrolyte reference calculations.
+% Change note: This mean-molecular-weight helper is used to evaluate weighted relative-permittivity rules but is not a separately numbered equation in the paper.
+
+\begin{equation}
+    \overline{MW}=\sum_{j=1}^{N_{c}} x_{j}\,MW_{j}
+    \label{eq:mw_bar}
+\end{equation}
+
+% EqID: mw_solvent_bar
+% Source: \cite{Figiel2025}, Eq.~(16)
+% Status: Adapted implementation form
+% Description: Provides a supporting relation used in relative-permittivity and electrolyte reference calculations.
+% Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+
+\begin{equation}
+    \overline{MW}_{sol}=\sum_{j\in\mathcal S}x_{j}\,MW_{j}
+    \label{eq:mw_solvent_bar}
+\end{equation}
+
+% EqID: solvent_ion_sets
+% Source: \cite{Figiel2025}, Eq.~(11) (set-definition helper)
+% Status: Derived helper relation
+% Description: Provides a supporting relation used in relative-permittivity and electrolyte reference calculations.
+% Change note: This solvent/ion index-set definition is implementation notation introduced in this documentation.
+
+\begin{equation}
+    \mathcal S=\{j:\,z_{j}=0\},\qquad \mathcal I=\{j:\,z_{j}\neq 0\}
+    \label{eq:solvent_ion_sets}
+\end{equation}
+
+% EqID: x_solvent_total
+% Source: \cite{Figiel2025}, Eq.~(16)
+% Status: Adapted implementation form
+% Description: Provides a supporting relation used in relative-permittivity and electrolyte reference calculations.
+% Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+
+\begin{equation}
+    x_{sol}=\sum_{j\in\mathcal S}x_{j}
+    \label{eq:x_solvent_total}
+\end{equation}
+
+\subsection{Size and Diameter Rules}
+
+This subsection collects the single-component diameter rules that are selected before any \(ij\)-mixing is applied.
+
+\subsubsection{Segment Diameter}
+
+The neutral-segment diameter is the base hard-chain size parameter used in the packing moments and in the pair-contact relations.
+% EqID: d_segment
+% Source: \cite{Gross2001}, Eq.~(A.9)
+% Status: Close literature match
+% Description: Provides a supporting relation used in hard-chain reference contribution.
+% Change note: High textual similarity to a tagged equation in the cited local paper export.
+
+\begin{equation}
+    d_{i}=\sigma_{i}\left[1-0.12 \exp \left(-3 \frac{\epsilon_{i}}{k T}\right)\right]
+    \label{eq:d_segment}
+\end{equation}
+
+% EqID: d_segment_dT
+% Source: \cite{Gross2001}, Eq.~(A.9) (derived temperature differential)
+% Status: Manual literature match
+% Description: Provides a differential relation needed for temperature differential calculations.
+% Change note: Computed by differentiating Eq. (A.9) with respect to temperature.
+
+\begin{equation}
+    \left(\frac{\partial d_i}{\partial T}\right)_{\rho,x}
+    \equiv d_{i,T}
+    =\sigma_{i}\left(3\frac{\epsilon_{i}}{kT^2}\right)\left[-0.12\exp\left(-3\frac{\epsilon_{i}}{kT}\right)\right]
+    \label{eq:d_segment_dT}
+\end{equation}
+
+% EqID: half_d_identity
+% Source: \cite{Figiel2025}, Eq.~(20)
+% Status: Documentation-only
+% Description: Provides a supporting relation used in temperature differential equations.
+% Change note: Moved into the upstream diameter setup block so this simple diameter identity is defined with the other diameter relations before it is reused downstream.
+
+\begin{equation}
+    \frac{1}{2}d_{i}=\left(\frac{d_{i}d_{i}}{d_{i}+d_{i}}\right)
+    \label{eq:half_d_identity}
+\end{equation}
+
+\subsubsection{Ion Diameter Rule}
+
+The ion-diameter rule selects the effective ionic hard-core size used by the Debye-Huckel and Born electrolyte terms.
+% EqID: d_ion_rule
+% Source: \cite{Bulow2019}, Eq.~(3)
+% Status: Adapted implementation form
+% Description: Provides the grouped ion-diameter rule used in Debye-Huckel electrolyte calculations.
+% Change note: Consolidates the documented sigma, constant-factor, and Barker-Henderson ion-diameter options into one visible case-set presentation.
+
+\begin{equation}
+    d_{\mathrm{ion},i}\equiv d_{i}=
+    \begin{cases}
+        \sigma_{i}, & \text{sigma rule}, \\[6pt]
+        \left(1-0.12\right)\sigma_{i}=0.88\sigma_{i}, & \text{constant-factor rule}, \\[6pt]
+        \left[1-0.12 \exp \left(-3 \frac{\epsilon_{i}}{k T}\right)\right]\sigma_{i}, & \text{Barker-Henderson rule},
+    \end{cases}
+    \qquad i\in\mathcal{I}
+    \label{eq:d_ion_rule}
+\end{equation}
+
+\subsection{Pair Mixing Rules}
+
+The ordering in this subsection is: pair-diameter and pair-size rules first, pair-energy mixing second, the active ePC-SAFT ionic dispersion override third, and the cross-association mixing rules last.
+% EqID: d_ij
+% Source: \cite{Gross2001}, Eq.~(A.14)
+% Status: Documentation-only
+% Description: Provides a supporting relation used in association contribution.
+% Change note: Mapped to the arithmetic combining rule form; this file writes it for effective diameters in association context.
+
+\begin{equation}
+    d_{i j}=\left(d_{i i}+d_{j j}\right) / 2 .
+    \label{eq:d_ij}
+\end{equation}
+
+% EqID: sigma_ij
+% Source: \cite{Gross2001}, Eq.~(A.15)
+% Status: Adapted notation
+% Description: Provides a supporting relation used in dispersion contribution.
+% Change note: Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation.
+
+\begin{equation}
+    \sigma_{i j}=\frac{1}{2}\left(\sigma_{i}+\sigma_{j}\right) \cdot \left(1- l_{ij} \right)
+    \label{eq:sigma_ij}
+\end{equation}
+
+% EqID: epsilon_ij_mixing
+% Source: \cite{Gross2001}, Eq.~(A.15)
+% Status: Adapted notation
+% Description: Provides a supporting relation used in dispersion contribution.
+% Change note: This is the base Berthelot-style pair-dispersion combining rule before any ePC-SAFT ionic override is applied.
+
+\begin{equation}
+    \epsilon_{ij}^{\mathrm{base}}
+    =
+    \sqrt{\epsilon_{i}\,\epsilon_{j}}\left(1-k_{ij}\right)
+    \label{eq:epsilon_ij_mixing}
+\end{equation}
+
+% EqID: epsilon_ij_ionic_zero
+% Source: ePC-SAFT implementation override in \texttt{pair\_epsilon\_cpp(...)} (not a standalone literature equation)
+% Status: Project-specific modification
+% Description: Provides a supporting relation used in dispersion contribution.
+% Change note: The active implementation suppresses short-range dispersion for same-sign ionic pairs by overriding the base combining rule with zero; this is why the second equation is simply \(=0\).
+
+The active ePC-SAFT implementation then applies a same-sign ionic override to the base rule above. This zero branch does not come from a separate numbered PC-SAFT equation; it comes from the documented native implementation choice in \texttt{pair\_epsilon\_cpp(...)} and is used to remove short-range dispersion for selected ionic pair classes.
+
+\begin{equation}
+    \epsilon_{ij}=0
+    \qquad \text{for } z_{i}z_{j}>0,
+\label{eq:epsilon_ij_ionic_zero}
+\end{equation}
+
+% EqID: epsilon_assoc_mixing
+% Source: \cite{Gross2002}, Eq.~(2)
+% Status: Manual literature match
+% Description: Provides a supporting relation used in association contribution.
+% Change note: Mapped manually to the Gross 2002 cross-association energy combining rule.
+
+\begin{equation}
+    \varepsilon^{A_{i}B_{j}}=\frac{1}{2}(\varepsilon^{A_{i}B_{i}}+\varepsilon^{A_{j}B_{j}})(1-k_{ij}^{\mathrm{hb}})
+    \label{eq:epsilon_assoc_mixing}
+\end{equation}
+
+% EqID: kappa_assoc_mixing
+% Source: \cite{Gross2002}, Eq.~(3)
+% Status: Manual literature match
+% Description: Provides a supporting relation used in association contribution.
+% Change note: Mapped manually to the Gross 2002 cross-association volume combining rule.
+
+\begin{equation}
+    k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_{i}\sigma_{j}}}{1/2(\sigma_{i}+\sigma_{j})}\right)^3
+    \label{eq:kappa_assoc_mixing}
+\end{equation}
+
+\subsection{Relative Permittivity}
+
+The available upstream relative-permittivity rules are grouped first, and the rule-specific supporting expressions then appear in their own subsubsections.
+
+% EqID: epsr_mix_rule
+% Source: \cite{Ascani2021}, Eq.~(3), Eq.~(11), Eq.~(13); \cite{Figiel2025}, Eq.~(11)
+% Status: Adapted implementation form
+% Description: Provides the grouped relative-permittivity mixing rule used by the electrolyte contributions.
+% Change note: Consolidates the documented upstream relative-permittivity options into one visible grouped display while keeping helper quantities upstream.
+
+\begin{equation}
+    \varepsilon_{r}=
+    \begin{cases}
+        \sum_{j=1}^{N_{c}}\varepsilon_{r,j}x_{j}, & \text{mole-fraction rule}, \\[10pt]
+        \dfrac{\sum_{j=1}^{N_{c}}\varepsilon_{r,j}\,x_{j}\,MW_{j}}{\overline{MW}}, & \text{mass-fraction rule}, \\[12pt]
+        x_{sol}\,\varepsilon_{r,sol}^{(w)} + \sum_{j\in\mathcal I}\varepsilon_{r,j}\,x_{j}, & \text{solvent-ion rule}, \\[10pt]
+        \dfrac{\varepsilon_{r,\mathrm{solvent,mix}}^{\mathrm{salt-free}}}{1+7.01\,x_{\mathrm{ion}}}, & \text{ion-suppressed rule}.
+    \end{cases}
+    \label{eq:epsr_mix_rule}
+\end{equation}
+
+\subsubsection{Mole-Fraction Rule}
+
+This branch uses the direct mole-fraction average of the pure-component relative permittivities.
+% EqID: depsr_dxi_mole
+% Source: \cite{Ascani2021}, Eq.~(11) (derived differential)
+% Status: Manual literature match
+% Description: Specifies dielectric-property mixing or derivative form for debye and huckel electrolyte term contribution.
+% Change note: Direct derivative of the mole-fraction dielectric mixing rule.
+
+\begin{equation}
+    \left(\frac{\partial \varepsilon_{r}}{\partial x_{i}}\right)_{x_{j\neq i}}
+    = \varepsilon_{r, i}
+    \label{eq:depsr_dxi_mole}
+\end{equation}
+
+\subsubsection{Mass-Fraction Rule}
+
+This branch uses the molar composition together with molar masses to form the mass-weighted relative permittivity.
+% EqID: depsr_dxi_mass
+% Source: \cite{Ascani2021}, Eq.~(12) (derived differential)
+% Status: Manual literature match
+% Description: Specifies dielectric-property mixing or derivative form for debye and huckel electrolyte term contribution.
+% Change note: Direct derivative of the mass-fraction dielectric mixing rule.
+
+\begin{equation}
+    \left(\frac{\partial \varepsilon_{r}}{\partial x_{i}}\right)_{x_{j\neq i}}
+    =
+    \frac{MW_{i}}{\overline{MW}}\left(\varepsilon_{r,i}-\varepsilon_{r}\right)
+    \label{eq:depsr_dxi_mass}
+\end{equation}
+
+\subsubsection{Solvent-Ion Rule}
+
+This branch uses the solvent-only weighted relative permittivity together with the explicit ionic contributions.
+% EqID: depsr_dxi_combo
+% Source: \cite{Ascani2021}, Eq.~(13) (derived differential)
+% Status: Manual literature match
+% Description: Specifies dielectric-property mixing or derivative form for debye and huckel electrolyte term contribution.
+% Change note: Direct derivative of the mixed solvent-plus-ion dielectric mixing rule.
+
+\begin{equation}
+    \left(\frac{\partial \varepsilon_{r}}{\partial x_{i}}\right)_{x_{j\neq i}}
+    =
+    \varepsilon_{r,sol}^{(w)}
+    +
+    x_{sol}\,\frac{MW_{i}}{\overline{MW}_{sol}}
+    \left(\varepsilon_{r,i}-\varepsilon_{r,sol}^{(w)}\right),
+    \qquad i\in\mathcal S
+    \label{eq:depsr_dxi_combo}
+\end{equation}
+
+% EqID: epsr_solvent_mass
+% Source: \cite{Ascani2021}, Eq.~(13)
+% Status: Adapted notation
+% Description: Provides a supporting relation used in relative-permittivity calculations for electrolyte contributions.
+% Change note: Algebraic expansion of Eq. (13) introducing explicit solvent-only weighted relative permittivity.
+
+\begin{equation}
+    \varepsilon_{r,sol}^{(w)} \equiv \sum_{j\in\mathcal S}\varepsilon_{r,j}\,w_{j}^{sol} = \frac{\sum_{j\in\mathcal S}\varepsilon_{r,j}\,x_{j}\,MW_{j}}{\sum_{j\in\mathcal S}x_{j}\,MW_{j}} = \frac{\sum_{j\in\mathcal S}\varepsilon_{r,j}\,x_{j}\,MW_{j}}{\overline{MW}_{sol}}
+    \label{eq:epsr_solvent_mass}
+\end{equation}
+
+\subsubsection{Ion-Suppressed Empirical Rule}
+
+These relations define the optional ion-suppressed empirical relative-permittivity rule and its supporting composition derivatives.
+% EqID: epsr_salt_free
+% Source: \cite{Figiel2025}, Eq.~(12)
+% Status: New literature extension
+% Description: Provides a supporting relation used in relative-permittivity calculations for electrolyte contributions.
+% Change note: Salt-free solvent-mixture relative permittivity used by the ion-suppressed upstream rule.
+
+\begin{equation}
+    \varepsilon_{r,\mathrm{solvent,mix}}^{\mathrm{salt-free}}=\sum_{\mathrm{solvent}}w_{\mathrm{solvent}}^{\mathrm{salt-free}}\cdot\varepsilon_{r,\mathrm{solvent}}
+    \label{eq:epsr_salt_free}
+\end{equation}
+
+% EqID: epsr_mix_suppressed
+% Source: \cite{Bulow2021} (equation number unresolved in local corpus)
+% Status: New literature extension
+% Description: Provides a supporting relation used in debye and huckel electrolyte term contribution.
+% Change note: Changed from earlier dielectric-mixing rules to the 2025 ion-suppression mixing form.
+
+\begin{equation}
+    \varepsilon_{r,\mathrm{mix}}(\mathbf{x})
+    =
+    \frac{\varepsilon_{sf}(\mathbf{x})}{1+7.01\,x_{\mathrm{ion}}(\mathbf{x})},
+    \qquad
+    \varepsilon_{sf}\equiv \varepsilon_{r,\mathrm{solvent,mix}}^{\mathrm{salt\text{-}free}} .
+    \label{eq:epsr_mix_suppressed}
+\end{equation}
+
+% EqID: epsr_sf
+% Source: \cite{Figiel2025}, Eq.~(12)
+% Status: Manual literature match
+% Description: Provides a supporting relation used in debye and huckel electrolyte term contribution.
+% Change note: Mapped manually to the salt-free solvent dielectric mixture definition.
+
+\begin{equation}
+    \varepsilon_{sf}(\mathbf{x})
+    =
+    \sum_{s\in\mathcal{S}} w_{s}^{sf}\,\varepsilon_{r,s},
+    \qquad
+    w_{s}^{sf}
+    =
+    \frac{x_{s} M_{s}}{\displaystyle \sum_{m\in\mathcal{S}} x_{m} M_{m}},
+    \qquad
+    D\equiv \sum_{m\in\mathcal{S}} x_{m} M_{m} .
+    \label{eq:epsr_sf}
+\end{equation}
+
+% EqID: x_ion_total
+% Source: \cite{Figiel2025}, Eq.~(11) (derived helper)
+% Status: Manual literature match
+% Description: Provides a differential relation needed for debye and huckel electrolyte term contribution calculations.
+% Change note: Ion-fraction helper used in the Eq. (11) differential form.
+
+\begin{equation}
+    x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
+    \qquad
+    \left(\frac{\partial x_{\mathrm{ion}}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+    =
+    \begin{cases}
+        1, & i\in\mathcal{I},    \\
+        0, & i\notin\mathcal{I}.
+    \end{cases}
+    \label{eq:x_ion_total}
+\end{equation}
+% EqID: depsr_sf_dxi
+% Source: \cite{Figiel2025}, Eq.~(12) (derived differential)
+% Status: Manual literature match
+% Description: Provides a differential relation needed for debye and huckel electrolyte term contribution calculations.
+% Change note: Derivative of solvent-mixture dielectric expression in Eq. (12).
+
+\begin{equation}
+    \left(\frac{\partial \varepsilon_{sf}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+    =
+    \sum_{s\in\mathcal{S}} \varepsilon_{r,s}
+    \left(\frac{\partial w_{s}^{sf}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+    =
+    \begin{cases}
+        \dfrac{M_{i}}{D}\left(\varepsilon_{r,i}-\varepsilon_{sf}\right), & i\in\mathcal{S},    \\[10pt]
+        0,                                                             & i\notin\mathcal{S}.
+    \end{cases}
+    \label{eq:depsr_sf_dxi}
+\end{equation}
+
+% EqID: depsr_mix_dxi
+% Source: \cite{Figiel2025}, Eq.~(11)-Eq.~(12) (derived differential)
+% Status: Manual literature match
+% Description: Provides a differential relation needed for debye and huckel electrolyte term contribution calculations.
+% Change note: Derivative of the 2025 dielectric mixing rule via chain rule.
+
+\begin{equation}
+    \left(\frac{\partial \varepsilon_{r,\mathrm{mix}}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+    =
+    \frac{1}{1+7.01\,x_{\mathrm{ion}}}
+    \left(\frac{\partial \varepsilon_{sf}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+    -\frac{7.01\,\varepsilon_{sf}}{\left(1+7.01\,x_{\mathrm{ion}}\right)^2}
+    \left(\frac{\partial x_{\mathrm{ion}}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}} .
+    \label{eq:depsr_mix_dxi}
+\end{equation}
+
+% EqID: depsr_mix_dxi_piecewise
+% Source: \cite{Figiel2025}, Eq.~(11)-Eq.~(12) (derived closed form)
+% Status: Manual literature match
+% Description: Provides a differential relation needed for debye and huckel electrolyte term contribution calculations.
+% Change note: Piecewise closed-form derivative obtained by combining Eq. (11) and Eq. (12).
+
+\begin{equation}
+    \left(\frac{\partial \varepsilon_{r,\mathrm{mix}}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+    =
+    \begin{cases}
+        \dfrac{1}{1+7.01\,x_{\mathrm{ion}}}\;
+        \dfrac{M_{i}}{\displaystyle \sum_{m\in\mathcal{S}} x_{m} M_{m}}
+        \left(\varepsilon_{r,i}-\varepsilon_{sf}\right),
+         & i\in\mathcal{S}, \\[14pt]
+        -\dfrac{7.01\,\varepsilon_{sf}}{\left(1+7.01\,x_{\mathrm{ion}}\right)^{2}},
+         & i\in\mathcal{I}.
+    \end{cases}
+    \label{eq:depsr_mix_dxi_piecewise}
+\end{equation}
+
+\section{Density}
+\label{sec:initial_density_solve}
+
+This section collects the density-state relations used downstream. Here \(\rho\) is the molar density, \(\rho_{N}\) is the number density in \(\mathrm{m}^{-3}\), and \(\hat{\rho}\) is the same number density written in \(\mathrm{\AA}^{-3}\).
+
+\subsection{Packing-Fraction Moments}
+
+The hard-chain packing moments are constructed first from the current density state, and their composition and temperature differentials are kept with the same block.
+% EqID: zeta_n
+% Source: \cite{Gross2001}, Eq.~(A.8)
+% Status: Close literature match
+% Description: Provides a supporting relation used in hard-chain reference contribution.
+% Change note: High textual similarity to a tagged equation in the cited local paper export.
+
+\begin{equation}
+    \zeta_{n}=\frac{\pi}{6} \rho \sum_{i} x_{i} m_{i} d_{i}^n \quad n \in\{0,1,2,3\}
+    \label{eq:zeta_n}
+\end{equation}
+
+% EqID: zeta_n_xk
+% Source: \cite{Gross2001}, Eq.~(A.34)
+% Status: Close literature match
+% Description: Provides a differential relation needed for composition differential calculations.
+% Change note: Ownership moved upstream so the composition derivatives are defined before the downstream property sections that use them.
+
+\begin{equation}
+    \zeta_{n,xk}=\left(\frac{\partial\zeta_{n}}{\partial x_{k}}\right)_{T,\boldsymbol{\rho},x_{j\neq k}}=\frac{\pi}{6}\rho m_{k}(d_{k})^{n}\quad n\in\{0,1,2,3\}
+    \label{eq:zeta_n_xk}
+\end{equation}
+
+% EqID: zeta_n_dT
+% Source: \cite{Gross2001}, Eq.~(A.53)
+% Status: Manual literature match
+% Description: Provides a differential relation needed for temperature differential calculations.
+% Change note: Mapped manually to the temperature derivative of zeta moments.
+
+\begin{equation}
+    \zeta_{n,T}=\frac{\partial\zeta_{n}}{\partial T}=\frac{\pi}{6}\rho\sum_{i}x_{i}m_{i}nd_{i,T}\left(d_{i}\right)^{n-1}\quad n\in\{1,2,3\}
+    \label{eq:zeta_n_dT}
+\end{equation}
+
+\subsection{Packing Fraction}
+
+The third packing moment is the packing fraction used throughout the hard-chain and dispersion relations.
+% EqID: zeta3_eta
+% Source: \cite{Gross2001}, Eq.~(A.20)-Eq.~(A.22) (identity in notation)
+% Status: Derived helper relation
+% Description: Provides the canonical packing-fraction identity used before evaluating contribution expressions.
+% Change note: Makes the \zeta_3 and \eta notation equivalence explicit in the new initial-density section.
+
+\begin{equation}
+    \eta=\zeta_{3}
+    \label{eq:zeta3_eta}
+\end{equation}
+
+\subsection{Density Conversion}
+
+The packing fraction then provides the direct conversion from \(\eta\) to molar density and then to the number-density forms used in the native implementation.
+% EqID: rho_from_eta
+% Source: \cite{Gross2001}, Eq.~(A.20)
+% Status: Close literature match
+% Description: Provides a supporting relation used in dispersion contribution.
+% Change note: High textual similarity to a tagged equation in the cited local paper export.
+
+\begin{equation}
+    \rho=\frac{6}{\pi} \eta\left(\sum_{i} x_{i} m_{i} d_{i}^3\right)^{-1}
+    \label{eq:rho_from_eta}
+\end{equation}
+
+% EqID: rho_reduced
+% Source: \cite{Gross2001}, Eq.~(A.21)
+% Status: Close literature match
+% Description: Provides a supporting relation used in dispersion contribution.
+% Change note: High textual similarity to a tagged equation in the cited local paper export.
+
+\begin{equation}
+    \rho_{N}=N_{\mathrm{AV}}\rho,
+    \qquad
+    \hat{\rho}=\rho_{N}\cdot 10^{-30}
+    \label{eq:rho_reduced}
+\end{equation}
+
+\subsection{Pressure-Density Closure}
+
+This final block introduces the pressure-density closure and the residual used for the density root solve.
+% EqID: pressure_from_z
+% Source: \cite{Gross2001}, Eq.~(A.21)
+% Status: Adapted implementation form
+% Description: Provides the pressure closure used in the initial density solve.
+% Change note: Moved upstream from the pressure section so the density-solver closure lives with the rest of the initial density-setup equations.
+
+\begin{equation}
+    P = ZRT\rho = Zk_{B}T\rho_{N}
+    \label{eq:pressure_from_z}
+\end{equation}
+
+% EqID: z_from_rho
+% Source: \cite{Gross2001}, Eq.~(A.22)
+% Status: Close literature match
+% Description: Provides the combined compressibility-factor closure used in the initial density solve.
+% Change note: The packing-fraction and density forms are now shown together in one equation so the closure reads as one relation instead of three separate displayed identities.
+
+\begin{equation}
+    Z
+    =
+    1+\eta\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\eta}\right)_{T,x_{i}}
+    =
+    1+\rho\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\rho}\right)_{T,x_{i}}
+    \label{eq:z_from_rho}
+\end{equation}
+
+In solver form, the density root is the \(\rho\) that drives the specified-pressure residual to zero.
+
+% EqID: density_solve_residual
+% Source: Derived from Eq.~\eqref{eq:pressure_from_z}
+% Status: Derived solver relation
+% Description: Provides the explicit scalar residual used to locate density roots at specified \(T\), \(P\), and \(\mathbf{x}\).
+% Change note: Added as a solver-facing closeout equation so the initial-density section ends with the actual root-finding constraint rather than only helper relations.
+
+\begin{equation}
+    R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
+    =
+    P^{\mathrm{spec}}
+    -
+    Z(T,\rho,\mathbf{x})RT\rho
+    =
+    0
+    \label{eq:density_solve_residual}
+\end{equation}
+
+\section{Contribution Intermediates}
+\label{sec:contribution_intermediates}
+
+\subsection{Hard-Chain}
+\label{sec:hard_chain}
+
+This subsection now groups each hard-chain baseline relation with the exact analytical differentials that stem from it.
+
+\subsubsection{Hard-Sphere Helmholtz Term \texorpdfstring{\(\tilde{a}^{\mathrm{hs}}\)}{a_hs}}
+
+The hard-sphere Helmholtz term is the upstream excluded-volume reference used inside the hard-chain contribution.
+% EqID: ares_hs
+% Source: \cite{Gross2001}, Eq.~(A.6)
+% Status: Close literature match
+% Description: Provides a residual Helmholtz-energy relation for hard-chain reference contribution.
+% Change note: High textual similarity to a tagged equation in the cited local paper export.
+
+\begin{equation}
+    \begin{aligned}
+        \tilde{a}^{\mathrm{hs}}
+        &=
+        \frac{1}{\zeta_{0}}
+        \left[
+            \frac{3 \zeta_{1} \zeta_{2}}{\left(1-\zeta_{3}\right)}
+            +\frac{\zeta_{2}^3}{\zeta_{3}\left(1-\zeta_{3}\right)^2}
+            +\left(\frac{\zeta_{2}^3}{\zeta_{3}^2}-\zeta_{0}\right) \ln \left(1-\zeta_{3}\right)
+        \right]
+    \end{aligned}
+    \label{eq:ares_hs}
+\end{equation}
+
+% EqID: hs_ares_dadrho
+% Source: \cite{Gross2001}, Eq.~(A.26)
+% Status: Manual literature match
+% Description: Provides the density differential of the hard-sphere Helmholtz term.
+% Change note: Renamed and re-homed so the hard-sphere density differential sits directly below the owning hard-sphere expression.
+
+\begin{equation}
+    \begin{aligned}
+        \rho\left(\frac{\partial\tilde{a}^{hs}}{\partial\rho}\right)_{T,x}
+        &=
+        \frac{\zeta_{3}}{(1-\zeta_{3})}
+        +\frac{3\zeta_{1}\zeta_{2}}{\zeta_{0}(1-\zeta_{3})^{2}}
+        +\frac{3\zeta_{2}^{3}-\zeta_{3}\zeta_{2}^{3}}{\zeta_{0}(1-\zeta_{3})^{3}}
+    \end{aligned}
+    \label{eq:hs_ares_dadrho}
+\end{equation}
+
+% EqID: hs_ares_dxk
+% Source: \cite{Gross2001}, Eq.~(A.36)
+% Status: Manual literature match
+% Description: Provides the composition differential of the hard-sphere Helmholtz term.
+% Change note: Renamed and re-homed so the hard-sphere composition differential sits directly below the owning hard-sphere expression.
+
+\begin{equation}
+    \begin{aligned}
+        \left(\frac{\partial\tilde{a}^{\mathrm{hs}}}{\partial x_{k}}\right)_{T,\boldsymbol{\rho},x_{j\neq k}}
+        &=- \frac{\zeta_{0,xk}}{\zeta_{0}}\tilde{a}^{\mathrm{hs}}+\frac{1}{\zeta_{0}}\biggl[
+        \frac{3(\zeta_{1,xk}\zeta_{2}+\zeta_{1}\zeta_{2,xk})}{(1-\zeta_{3})}
+        +\frac{3\zeta_{1}\zeta_{2}\zeta_{3,xk}}{\left(1-\zeta_{3}\right)^{2}}
+        \\
+        &\quad +\frac{3\zeta_{2}^{2}\zeta_{2,xk}}{\zeta_{3}(1-\zeta_{3})^{2}}
+        +\frac{\zeta_{2}^{3}\zeta_{3,xk}(3\zeta_{3}-1)}{\zeta_{3}^{2}(1-\zeta_{3})^{3}}
+        \\
+        &\quad +\left(
+        \frac{3{\zeta_{2}}^{2}{\zeta_{2,xk}}{\zeta_{3}}-2{\zeta_{2}}^{3}{\zeta_{3,xk}}}{{\zeta_{3}}^{3}}
+        -{\zeta_{0,xk}}
+        \right)\ln(1-{\zeta_{3}})
+        \\
+        &\quad +\left(\zeta_{0}-\frac{\zeta_{2}^{3}}{\zeta_{3}^{2}}\right)\frac{\zeta_{3,xk}}{(1-\zeta_{3})}
+        \biggr]
+    \end{aligned}
+    \label{eq:hs_ares_dxk}
+\end{equation}
+
+% EqID: hs_ares_dT
+% Source: \cite{Gross2001}, Eq.~(A.55)
+% Status: Manual literature match
+% Description: Provides the temperature differential of the hard-sphere Helmholtz term.
+% Change note: Renamed and re-homed so the hard-sphere temperature differential sits directly below the owning hard-sphere expression.
+
+\begin{equation}
+    \begin{aligned}
+        \left(\frac{\partial\tilde{a}^{hs}}{\partial T}\right)_{\rho,x_{i}}
+        &=\frac{1}{\zeta_{0}}\Bigg[
+        \frac{3(\zeta_{1,T}\zeta_{2}+\zeta_{1}\zeta_{2,T})}{(1-\zeta_{3})}
+        +\frac{3\zeta_{1}\zeta_{2}\zeta_{3,T}}{(1-\zeta_{3})^{2}}
+        \\
+        &\quad
+        +\frac{3{\zeta_{2}}^{2}{\zeta_{2,T}}}{\zeta_{3}{(1-\zeta_{3})}^{2}}
+        +\frac{{\zeta_{2}}^{3}{\zeta_{3,T}}(3{\zeta_{3}}-1)}{{\zeta_{3}}^{2}{(1-\zeta_{3})}^{3}}
+        \\
+        &\quad
+        +\left(\frac{3{\zeta_{2}}^{2}{\zeta_{2,T}}{\zeta_{3}}-2{\zeta_{2}}^{3}{\zeta_{3,T}}}{{\zeta_{3}}^{3}}\right)\ln(1-{\zeta_{3}})
+        +\left({\zeta_{0}}-\frac{{\zeta_{2}}^{3}}{{\zeta_{3}}^{2}}\right)\frac{\zeta_{3,T}}{(1-\zeta_{3})}
+        \Bigg]
+    \end{aligned}
+    \label{eq:hs_ares_dT}
+\end{equation}
+
+\subsubsection{Hard-Sphere Contact Value \texorpdfstring{\(\mathrm{g}_{ij}^{\mathrm{hs}}\)}{g_hs}}
+
+The hard-sphere contact value carries the pair-contact geometry used by both the hard-chain Helmholtz expression and the association strength.
+% EqID: g_hs_contact
+% Source: \cite{Gross2001}, Eq.~(A.7)
+% Status: Close literature match
+% Description: Provides a supporting relation used in hard-chain reference contribution.
+% Change note: High textual similarity to a tagged equation in the cited local paper export.
+
+\begin{equation}
+    \mathrm{g}_{i j}^{\mathrm{hs}}=\frac{1}{\left(1-\zeta_{3}\right)}+\left(\frac{d_{i} d_{j}}{d_{i}+d_{j}}\right) \frac{3 \zeta_{2}}{\left(1-\zeta_{3}\right)^2} + \left(\frac{d_{i} d_{j}}{d_{i}+d_{j}}\right)^2 \frac{2 \xi_{2}{ }^2}{\left(1-\xi_{3}\right)^3}
+    \label{eq:g_hs_contact}
+\end{equation}
+
+% EqID: ghs_contact_dadrho
+% Source: \cite{Gross2001}, Eq.~(A.27)
+% Status: Manual literature match
+% Description: Provides the density differential of the hard-sphere contact value.
+% Change note: Renamed and re-homed so the contact-value density differential sits directly below the owning contact-value relation.
+
+\begin{equation}
+    \begin{aligned}
+        \rho\left(\frac{\partial g_{ij}^{\mathrm{hs}}}{\partial\rho}\right)_{T,x}
+        &=
+        \frac{\zeta_{3}}{\left(1-\zeta_{3}\right)^{2}}
+        +
+        \left(\frac{d_{i}d_{j}}{d_{i}+d_{j}}\right)
+        \left(
+            \frac{3\zeta_{2}}{\left(1-\zeta_{3}\right)^{2}}
+            +
+            \frac{6\zeta_{2}\zeta_{3}}{\left(1-\zeta_{3}\right)^{3}}
+        \right)
+        \\
+        &\quad +
+        \left(\frac{d_{i}d_{j}}{d_{i}+d_{j}}\right)^{2}
+        \left(
+            \frac{4{\zeta_{2}}^{2}}{\left(1-{\zeta_{3}}\right)^{3}}
+            +
+            \frac{6{\zeta_{2}}^{2}\zeta_{3}}{\left(1-{\zeta_{3}}\right)^{4}}
+        \right)
+    \end{aligned}
+    \label{eq:ghs_contact_dadrho}
+\end{equation}
+
+% EqID: ghs_contact_dxk
+% Source: \cite{Gross2001}, Eq.~(A.37)
+% Status: Close literature match
+% Description: Provides the composition differential of the hard-sphere contact value.
+% Change note: Renamed and re-homed so the contact-value composition differential sits directly below the owning contact-value relation.
+
+\begin{equation}
+    \begin{aligned}
+        \left(\frac{\partial g_{ij}^{\mathrm{hs}}}{\partial x_{k}}\right)_{T,\boldsymbol{\rho},\boldsymbol{\rho}_{j\neq k}}
+        &=\frac{\zeta_{3,x,k}}{\left(1-\zeta_{3}\right)^{2}}
+        +\left(\frac{d_{i}d_{j}}{d_{i}+d_{j}}\right)
+        \left(\frac{3\zeta_{2,x,k}}{(1-\zeta_{3})^{2}}+\frac{6\zeta_{2}\zeta_{3,x,k}}{(1-\zeta_{3})^{3}}\right)
+        \\
+        &\quad +\left(\frac{d_{i}d_{j}}{d_{i}+d_{j}}\right)^{2}
+        \left(\frac{4\zeta_{2}\zeta_{2,x,k}}{(1-\zeta_{3})^{3}}+\frac{6\zeta_{2}^{2}\zeta_{3,x,k}}{(1-\zeta_{3})^{4}}\right)
+    \end{aligned}
+    \label{eq:ghs_contact_dxk}
+\end{equation}
+
+% EqID: ghs_contact_dT
+% Source: \cite{Gross2001}, Eq.~(A.57)
+% Status: Manual literature match
+% Description: Provides the temperature differential of the hard-sphere contact value.
+% Change note: Renamed and re-homed so the contact-value temperature differential sits directly below the owning contact-value relation.
+
+\begin{equation}
+    \begin{aligned}
+        \left(\frac{\partial g_{ii}^{\mathrm{hs}}}{\partial T}\right)_{\rho,x}
+        &=\frac{\zeta_{3,T}}{\left(1-\zeta_{3}\right)^{2}}
+        +\left(\frac{1}{2}d_{i,T}\right)\frac{3\zeta_{2}}{\left(1-\zeta_{3}\right)^{2}}
+        \\
+        &\quad +\left(\frac{1}{2}d_{i}\right)\left(\frac{3\zeta_{2,T}}{\left(1-\zeta_{3}\right)^{2}}+\frac{6\zeta_{2}\zeta_{3,T}}{\left(1-\zeta_{3}\right)^{3}}\right)
+        +\left(\frac{1}{2}d_{i}d_{i,T}\right)\frac{2\zeta_{2}^{2}}{\left(1-\zeta_{3}\right)^{3}}
+        \\
+        &\quad +\left(\frac{1}{2}d_{i}\right)^{2}\left(\frac{4\xi_{2}\xi_{2,T}}{\left(1-\xi_{3}\right)^{3}}+\frac{6\xi_{2}{}^{2}\xi_{3,T}}{\left(1-\xi_{3}\right)^{4}}\right)
+    \end{aligned}
+    \label{eq:ghs_contact_dT}
+\end{equation}
+
+\subsection{Dispersion}
+\label{sec:dispersion}
+
+This subsection groups the dispersion helper polynomials and mixed moments in one place \cite{Gross2001}.
+
+\subsubsection{First-Order Compressibility Prefactor}
+
+The \(C_1\) prefactor enters the second-order dispersion term and its density and composition derivatives.
+% EqID: c1_disp
+% Source: \cite{Gross2001}, Eq.~(A.11)
+% Status: Adapted notation
+% Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
+% Change note: Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation.
+
+\begin{equation}
+    C_{1} = \left(1+\bar{m} \frac{8 \eta-2 \eta^2}{(1-\eta)^4}+\right.\left.\quad(1-\bar{m}) \frac{20 \eta-27 \eta^2+12 \eta^3-2 \eta^4}{[(1-\eta)(2-\eta)]^2}\right)
+    \label{eq:c1_disp}
+\end{equation}
+
+% EqID: c2_disp
+% Source: \cite{Gross2001}, Eq.~(A.31)
+% Status: Close literature match
+% Description: Provides a differential relation needed for dispersion contribution calculations.
+% Change note: High textual similarity to a tagged equation in the cited local paper export.
+
+\begin{equation}
+    C_{2}
+    =\frac{\partial C_{1}}{\partial\eta}
+    =- C_{1}^{2}\biggl(
+    \bar{m}\frac{-4\eta^{2}+20\eta+8}{\left(1-\eta\right)^{5}}
+    +(1-\bar{m})\frac{2\eta^{3}+12\eta^{2}-48\eta+40}{\left[(1-\eta)(2-\eta)\right]^{3}}
+    \biggr)
+    \label{eq:c2_disp}
+\end{equation}
+
+% EqID: c1_xk
+% Source: \cite{Gross2001}, Eq.~(A.41)
+% Status: Manual literature match
+% Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
+% Change note: Mapped manually to the composition derivative of \(C_1\).
+
+\begin{equation}
+    \left(\frac{\partial C_{1}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
+    \equiv C_{1,xk}
+    =C_{2}\zeta_{3,xk}-C_{1}^{2}\left\{m_{k}\frac{8\eta-2\eta^{2}}{\left(1-\eta\right)^{4}}-m_{k}\frac{20\eta-27\eta^{2}+12\eta^{3}-2\eta^{4}}{\left[(1-\eta)(2-\eta)\right]^{2}}\right\}
+    \label{eq:c1_xk}
+\end{equation}
+
+\subsubsection{First Mixed Dispersion Moment}
+
+The first mixed dispersion moment carries the \(m^2\epsilon\sigma^3\) energy-size average.
+% EqID: m2epssigma3_bar
+% Source: \cite{Gross2001}, Eq.~(A.13)
+% Status: Adapted implementation form
+% Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
+% Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+
+\begin{equation}
+    \overline{m^2 \epsilon \sigma^3}=\sum_{i} \sum_{j} x_{i} x_{j} m_{i} m_{j}\left(\frac{\epsilon_{i j}}{k T}\right) \sigma_{i j}^3
+    \label{eq:m2epssigma3_bar}
+\end{equation}
+
+% EqID: m2epssigma3_xk
+% Source: \cite{Gross2001}, Eq.~(A.39) (appendix sequence inference)
+% Status: Manual literature match
+% Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
+% Change note: Mapped by appendix sequence as the first dispersion composition derivative moment.
+
+\begin{equation}
+    \left(\frac{\partial\overline{m^{2}\epsilon\sigma^{3}}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
+    \equiv \overline{(m^{2}\epsilon\sigma^{3})}_{xk}
+    =2m_{k}\sum_{j}x_{j}m_{j}\left(\frac{\epsilon_{kj}}{kT}\right)\sigma_{kj}^{3}
+    \label{eq:m2epssigma3_xk}
+\end{equation}
+
+\subsubsection{Second Mixed Dispersion Moment}
+
+The second mixed dispersion moment carries the \(m^2\epsilon^2\sigma^3\) energy-size average.
+% EqID: m2eps2sigma3_bar
+% Source: \cite{Gross2001}, Eq.~(A.13)
+% Status: Adapted implementation form
+% Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
+% Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+
+\begin{equation}
+    \overline{m^2 \epsilon^2 \sigma^3}=\sum_{i} \sum_{j} x_{i} x_{j} m_{i} m_{j}\left(\frac{\epsilon_{i j}}{k T}\right)^2 \sigma_{i j}{ }^3
+    \label{eq:m2eps2sigma3_bar}
+\end{equation}
+
+% EqID: m2eps2sigma3_xk
+% Source: \cite{Gross2001}, Eq.~(A.40) (appendix sequence inference)
+% Status: Manual literature match
+% Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
+% Change note: Mapped by appendix sequence as the second dispersion composition derivative moment.
+
+\begin{equation}
+    \left(\frac{\partial\overline{m^{2}\epsilon^{2}\sigma^{3}}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
+    \equiv (\overline{m^2\epsilon^2\sigma^3})_{xk}
+    =2m_{k}\sum_{j}x_{j}m_{j}\left(\frac{\epsilon_{kj}}{kT}\right)^2\sigma_{kj}^3
+    \label{eq:m2eps2sigma3_xk}
+\end{equation}
+
+\subsubsection{First Packing Polynomial}
+
+The first packing polynomial \(I_1\) is the \(\eta\)-series used in the leading dispersion term.
+% EqID: i1_disp
+% Source: \cite{Gross2001}, Eq.~(A.17)
+% Status: Adapted implementation form
+% Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
+% Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+
+\begin{equation}
+    I_{1}(\eta, \bar{m})=\sum_{i=0}^6 a_{i}(\bar{m}) \eta^i
+    \label{eq:i1_disp}
+\end{equation}
+
+% EqID: deta_i1_deta
+% Source: \cite{Gross2001}, Eq.~(A.30)
+% Status: Adapted implementation form
+% Description: Provides a differential relation needed for dispersion contribution calculations.
+% Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+
+\begin{equation}
+    \frac{\partial(\eta I_{1})}{\partial\eta}=\sum_{j=0}^6a_{j}(\bar{m})(j+1)\eta^j
+    \label{eq:deta_i1_deta}
+\end{equation}
+
+% EqID: i1_xk
+% Source: \cite{Gross2001}, Eq.~(A.42)
+% Status: Close literature match
+% Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
+% Change note: High textual similarity to a tagged equation in the cited local paper export.
+
+\begin{equation}
+    \left(\frac{\partial I_{1}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
+    \equiv I_{1,xk}
+    =\sum_{i=0}^{6}[a_{\mathrm{i}}(\bar{m})i\zeta_{3,xk}\eta^{i-1}+a_{\mathrm{i,x}k}\eta^{i}]
+    \label{eq:i1_xk}
+\end{equation}
+
+\subsubsection{Second Packing Polynomial}
+
+The second packing polynomial \(I_2\) is the \(\eta\)-series used in the \(C_1 I_2\) dispersion term.
+% EqID: i2_disp
+% Source: \cite{Gross2001}, Eq.~(A.17)
+% Status: Adapted implementation form
+% Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
+% Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+
+\begin{equation}
+    I_{2}(\eta, \bar{m})=\sum_{i=0}^6 b_{i}(\bar{m}) \eta^i
+    \label{eq:i2_disp}
+\end{equation}
+
+% EqID: deta_i2_deta
+% Source: \cite{Gross2001}, Eq.~(A.30)
+% Status: Adapted implementation form
+% Description: Provides a differential relation needed for dispersion contribution calculations.
+% Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+
+\begin{equation}
+    \frac{\partial(\eta I_{2})}{\partial\eta}=\sum_{i=0}^6b_{j}(\bar{m})(j+1)\eta^i
+    \label{eq:deta_i2_deta}
+\end{equation}
+
+% EqID: i2_xk
+% Source: \cite{Gross2001}, Eq.~(A.43)
+% Status: Close literature match
+% Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
+% Change note: High textual similarity to a tagged equation in the cited local paper export.
+
+\begin{equation}
+    \left(\frac{\partial I_{2}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
+    \equiv I_{2,xk}
+    =\sum_{i=0}^{6}[b_{\mathrm{i}}(\bar{m})i\zeta_{3,xk}\eta^{i-1}+b_{\mathrm{i,xk}}\eta^{i}]
+    \label{eq:i2_xk}
+\end{equation}
+
+\subsubsection{Dispersion Polynomial Coefficients \(a_i(\bar m)\)}
+
+These coefficients define the \(\bar m\)-dependent part of the \(I_1\) polynomial.
+% EqID: a_i_mbar
+% Source: \cite{Gross2001}, Eq.~(A.19)
+% Status: Adapted implementation form
+% Description: Provides a supporting relation used in dispersion contribution.
+% Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+
+\begin{equation}
+    a_{i}(\bar{m})=a_{0 i}+\frac{\bar{m}-1}{\bar{m}} a_{1 i}+\frac{\bar{m}-1}{\bar{m}} \frac{\bar{m}-2}{\bar{m}} a_{2 i}
+    \label{eq:a_i_mbar}
+\end{equation}
+
+% EqID: a_i_xk
+% Source: \cite{Gross2001}, Eq.~(A.44)
+% Status: Close literature match
+% Description: Provides a supporting relation used in dispersion contribution.
+% Change note: High textual similarity to a tagged equation in the cited local paper export.
+
+\begin{equation}
+    \left(\frac{\partial a_{i}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
+    \equiv a_{\mathrm{i},xk}
+    =\frac{m_{k}}{\bar{m}^{2}}a_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left(3-\frac{4}{\bar{m}}\right)a_{2i}
+    \label{eq:a_i_xk}
+\end{equation}
+
+\subsubsection{Dispersion Polynomial Coefficients \(b_i(\bar m)\)}
+
+These coefficients define the \(\bar m\)-dependent part of the \(I_2\) polynomial.
+% EqID: b_i_mbar
+% Source: \cite{Gross2001}, Eq.~(A.19)
+% Status: Adapted implementation form
+% Description: Provides a supporting relation used in dispersion contribution.
+% Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+
+\begin{equation}
+    b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m}} \frac{\bar{m}-2}{\bar{m}} b_{2 i}
+    \label{eq:b_i_mbar}
+\end{equation}
+
+% EqID: b_i_xk
+% Source: \cite{Gross2001}, Eq.~(A.45)
+% Status: Close literature match
+% Description: Provides a supporting relation used in dispersion contribution.
+% Change note: High textual similarity to a tagged equation in the cited local paper export.
+
+\begin{equation}
+    \left(\frac{\partial b_{i}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
+    \equiv b_{\mathrm{i},xk}
+    =\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left(3-\frac{4}{\bar{m}}\right)b_{2i}
+    \label{eq:b_i_xk}
+\end{equation}
+
+\subsection{Association}
+\label{sec:association}
+
+This subsection collects the association site balances, the association-strength relation, and the local differentials that stem from them.
+
+\subsubsection{Association Site Fraction}
+
+The site-fraction variable \(X^{A_i}\) is the fraction of molecules whose site \(A_i\) remains unbonded. It is implicit because the unknown site fractions appear on both sides of the mass-action balance, so the full site-fraction vector is solved iteratively at each trial \((T,\rho,\mathbf{x})\) state.
+% EqID: x_assoc_site
+% Source: \cite{Chapman1990} (exact equation number not available in local PDFs)
+% Status: No direct numbered source in local corpus
+% Description: Provides a residual Helmholtz-energy relation for association contribution.
+% Change note: Mass-action site-fraction relation from SAFT association theory; exact numbered equation unavailable in the local PDF set.
+
+\begin{equation}
+    \begin{aligned}
+        X^{\mathrm{A}_{i}}
+        &=\left[1+ \sum_{j} \sum_{\mathrm{B}_{j}} \rho x_{j}X^{\mathrm{B}_{j}} \Delta^{\mathrm{A}_{i} \mathrm{~B}_{j}}\right]^{-1},
+        \\
+        &\text{with }\sum_{\mathrm{B}_{j}}\text{ over all sites on molecule }j\ (\mathrm{A}_{j},\mathrm{B}_{j},\mathrm{C}_{j},\ldots),
+        \\
+        &\text{and }\sum_{j}\text{ over all components.}
+    \end{aligned}
+    \label{eq:x_assoc_site}
+\end{equation}
+
+% EqID: dx_assoc_drho
+% Source: \cite{Chapman1990} (exact equation number not available in local PDFs)
+% Status: No direct numbered source in local corpus
+% Description: Provides a differential relation needed for association contribution calculations.
+% Change note: Site-fraction density derivative closure used in association compressibility calculations; exact numbered reference unavailable locally.
+
+\begin{equation}
+    \begin{aligned}
+        \left(\frac{\partial X^{A_{i}}}{\partial\rho}\right)_{T,x}
+        &=-(X^{A_{i}})^{2}\sum_{j}\sum_{B_{j}}x_{j}
+        \Bigg[
+        X^{B_{j}}\Delta^{A_{i}B_{j}}
+        \\
+        &\quad +\rho\Bigg(
+        \Delta^{A_{i}B_{j}}\left(\frac{\partial X^{B_{j}}}{\partial\rho}\right)_{T,x}
+        +X^{B_{j}}\left(\frac{\partial\Delta^{A_{i}B_{j}}}{\partial\rho}\right)_{T,x}
+        \Bigg)
+        \Bigg]
+    \end{aligned}
+    \label{eq:dx_assoc_drho}
+\end{equation}
+
+% EqID: dx_assoc_dxk
+% Source: \cite{Chapman1990} (exact equation number not available in local PDFs)
+% Status: No direct numbered source in local corpus
+% Description: Provides a differential relation needed for association contribution calculations.
+% Change note: Site-fraction composition derivative closure from SAFT association machinery; local progression PDFs do not provide this as a numbered equation.
+
+\begin{equation}
+    \begin{aligned}
+        \left(\frac{\partial X^{A_{i}}}{\partial x_{k}}\right)_{T,v,x_{j\neq k}}
+        &=
+        -(X^{A_{i}})^{2}\,\rho
+        \Bigg[
+        \sum_{B_{k}}X^{B_{k}}\Delta^{A_{i}B_{k}}
+        \\
+        &\quad +
+        \sum_{j}x_{j}\sum_{B_{j}}
+        \left(
+        \Delta^{A_{i}B_{j}}\left(\frac{\partial X^{B_{j}}}{\partial x_{k}}\right)_{T,v,x_{j\neq k}}
+        +
+        X^{B_{j}}\left(\frac{\partial \Delta^{A_{i}B_{j}}}{\partial x_{k}}\right)_{T,v,x_{j\neq k}}
+        \right)
+        \Bigg]
+    \end{aligned}
+    \label{eq:dx_assoc_dxk}
+\end{equation}
+
+\subsubsection{Component Site Density}
+
+The component density \(\rho_j\) is the per-component site-density factor used inside the association site balances.
+% EqID: rho_j_assoc
+% Source: \cite{Chapman1990} (exact equation number not available in local PDFs)
+% Status: No direct numbered source in local corpus
+% Description: Provides a supporting relation used in association contribution.
+% Change note: Component density relation used with association equations; no directly numbered counterpart found in local Chapman-accessible sources.
+
+\begin{equation}
+    \rho_{j}=x_{j}\rho_{\mathrm{mixture}}
+    \label{eq:rho_j_assoc}
+\end{equation}
+
+\subsubsection{Association Strength}
+
+The association strength \(\Delta^{A_iB_j}\) collects the pair-diameter, association-volume, Boltzmann, and hard-sphere contact terms into one site-pair interaction measure.
+% EqID: delta_assoc
+% Source: \cite{Chapman1990} (exact equation number not available in local PDFs)
+% Status: No direct numbered source in local corpus
+% Description: Provides a residual Helmholtz-energy relation for association contribution.
+% Change note: Association strength definition used in SAFT implementations; exact numbered Chapman equation not available in local PDFs.
+
+\begin{equation}
+    \Delta^{\mathrm{A}, \mathrm{~B}_{j}}=d_{i j}{ }^3 \mathrm{g}_{i j}^{\mathrm{hs}}\left[\exp \left(\frac{\epsilon^{\mathrm{A}, \mathrm{~B}_{j}}}{k T}\right)-1\right]
+    \label{eq:delta_assoc}
+\end{equation}
+
+% EqID: ddelta_assoc_drho
+% Source: \cite{Chapman1990} (exact equation number not available in local PDFs)
+% Status: No direct numbered source in local corpus
+% Description: Defines the density differential of the association strength term.
+% Change note: Re-homed under the association-strength definition so the \(\Delta^{A_iB_j}\) density derivative stays local to its owning baseline.
+
+\begin{equation}
+    \left(\frac{\partial\Delta^{A_{i}B_{j}}}{\partial\rho}\right)_{T,x}=d_{ij}^3\kappa^{A_{i}B_{j}}\left[\exp(\epsilon^{A_{i}B_{j}}/kT)-1\right]\left(\frac{\partial g_{ij}^{hs}}{\partial\rho}\right)_{T,x}
+    \label{eq:ddelta_assoc_drho}
+\end{equation}
+
+% EqID: ddelta_assoc_dxk
+% Source: \cite{Chapman1990} (exact equation number not available in local PDFs)
+% Status: No direct numbered source in local corpus
+% Description: Defines the composition differential of the association strength term.
+% Change note: Re-homed under the association-strength definition so the \(\Delta^{A_iB_j}\) composition derivative stays local to its owning baseline.
+
+\begin{equation}
+    \left(\frac{\partial \Delta^{A_{i}B_{j}}}{\partial x_{k}}\right)_{T,v,x_{j\neq k}}
+    =
+    d_{ij}^{3}\kappa^{A_{i}B_{j}}
+    \left[\exp\!\left(\frac{\epsilon^{A_{i}B_{j}}}{kT}\right)-1\right]
+    \left(\frac{\partial g_{ij}^{hs}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
+    \label{eq:ddelta_assoc_dxk}
+\end{equation}
+
+\subsection{Debye Huckel}
+\label{sec:debye_huckel}
+
+This subsection groups the Debye-Huckel screening expressions with the density, composition, and temperature differentials that stem from them.
+
+\subsubsection{Screening Parameter \(\kappa\)}
+
+The screening parameter \(\kappa\) is the inverse Debye length used by the Debye-Huckel contribution.
+% EqID: kappa_dh
+% Source: \cite{Bulow2019}, Eq.~(2)
+% Status: Adapted implementation form
+% Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+% Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+
+\begin{equation}
+    \kappa=\sqrt{\frac{\rho e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\sum_{j}x_{j}z_{j}^{2}}
+    \label{eq:kappa_dh}
+\end{equation}
+
+% EqID: dkappa_dh_drho
+% Source: Derived from Eq.~\eqref{eq:kappa_dh}
+% Status: Derived relation
+% Description: Provides the explicit density derivative of the Debye screening parameter in debye and huckel electrolyte term contribution.
+% Change note: Re-homed under the screening-parameter definition so the \(\kappa\) density derivative is owned locally.
+
+\begin{equation}
+    \begin{aligned}
+        \rho\left(\frac{\partial \kappa}{\partial \rho}\right)_{T,x}
+        &=
+        \frac{\rho}{2}
+        \left[
+            \frac{\rho e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}
+            \sum_{j}x_{j}z_{j}^{2}
+        \right]^{-1/2}
+        \Biggl[
+            \frac{e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\sum_{j}x_{j}z_{j}^{2}
+            -
+            \frac{\rho e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}^{2}}
+            \left(\frac{\partial \varepsilon_{r}}{\partial \rho}\right)_{T,x}
+            \sum_{j}x_{j}z_{j}^{2}
+        \Biggr]
+        \\
+        &=
+        \frac{\kappa}{2}
+        \left[
+            1
+            -
+            \frac{\rho}{\varepsilon_{r}}
+            \left(\frac{\partial \varepsilon_{r}}{\partial \rho}\right)_{T,x}
+        \right]
+        \\
+        &=
+        \frac{\kappa}{2}
+        \qquad
+        \text{when }\left(\frac{\partial \varepsilon_{r}}{\partial \rho}\right)_{T,x}=0
+    \end{aligned}
+    \label{eq:dkappa_dh_drho}
+\end{equation}
+
+% EqID: dkappa_dh_dxi
+% Source: \cite{Bulow2019}, Eq.~(13)
+% Status: Manual literature match
+% Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+% Change note: Re-homed under the screening-parameter definition so the \(\kappa\) composition differential is owned locally.
+
+\begin{equation}
+    \begin{aligned}
+        \left(\frac{\partial\kappa}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+        &=
+        \frac12
+        \left(\frac{\rho_{N}e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\sum_{j}x_{j}z_{j}^{2}\right)^{-\frac12}
+        \Biggl\{
+            -\frac{\rho_{N}e^2}{k_{B}T\left(\varepsilon_{0}\varepsilon_{r}\right)^2}
+            \varepsilon_{0}\frac{\partial\left(\varepsilon_{r}\right)}{\partial x_{i}}
+            \sum_{j}x_{j}z_{j}^2
+            +
+            \frac{\rho_{N}e^2}{k_{B}T\varepsilon_{0}\varepsilon_{r}}
+            \alpha_{i}z_{i}^2
+        \Biggr\}
+        \\
+        &=
+        \left(\frac{\rho_{N}e^{2}}{k_{B}T}\right)^{\frac{1}{2}}
+        \Biggl\{
+            -\frac{1}{2}\left(\varepsilon_{0}\varepsilon_{r}\right)^{-\frac{3}{2}}
+            \varepsilon_{0}\frac{\partial\left(\varepsilon_{r}\right)}{\partial x_{i}}
+            \left[\sum_{j}x_{j}z_{j}^{2}\right]^{\frac{1}{2}}
+            \\
+            &\qquad\qquad
+            +
+            \frac{1}{2\sqrt{\varepsilon_{0}\varepsilon_{r}}}
+            \Biggl[\sum_{j}x_{j}z_{j}^2\Biggr]^{-\frac{1}{2}}
+            \alpha_{i}z_{i}^2
+        \Biggr\}
+    \end{aligned}
+    \label{eq:dkappa_dh_dxi}
+\end{equation}
+
+\subsubsection{Finite-Size Correction \(\chi_i\)}
+
+The finite-size correction \(\chi_i\) modifies the Debye-Huckel free energy for finite ion size, and \(\sigma_i\) is the local \(\kappa\chi_i\) derivative helper used by the density and temperature differentials.
+% EqID: chi_dh
+% Source: \cite{Bulow2019}, Eq.~(10)
+% Status: Manual literature match
+% Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+% Change note: Mapped manually to the ion-size function definition in the concentration-dependent dielectric derivation.
+
+\begin{equation}
+    \chi_{i}=\frac{3}{\left(\kappa d_{i}\right)^3}\left[\frac{3}{2}+\ln(1+\kappa d_{i})-2(1+\kappa d_{i})+\frac{1}{2}\left(1+\kappa d_{i}\right)^2\right]
+    \label{eq:chi_dh}
+\end{equation}
+
+% EqID: sigma_dh
+% Source: \cite{Cameretti2005}, Eq.~(20)
+% Status: Close literature match
+% Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+% Change note: High textual similarity to a tagged equation in the cited local paper export.
+
+\begin{equation}
+    \sigma_{i}=\left(\frac{\partial(\kappa\chi_{i})}{\partial\kappa}\right)_{T,\mathrm{x}}=-2\chi_{i}+\frac{3}{1+\kappa a_{i}}
+    \label{eq:sigma_dh}
+\end{equation}
+
+% EqID: dchi_dh_drho
+% Source: Derived from Eq.~\eqref{eq:chi_dh}, Eq.~\eqref{eq:sigma_dh}, and Eq.~\eqref{eq:dkappa_dh_drho}
+% Status: Derived relation
+% Description: Provides the explicit density derivative of the Debye-Huckel \(\chi_i\) function.
+% Change note: Re-homed under the finite-size-correction definition so the \(\chi_i\) density derivative is owned locally.
+
+\begin{equation}
+    \rho\left(\frac{\partial \chi_i}{\partial \rho}\right)_{T,x}
+    =
+    \frac{\sigma_i-\chi_i}{2}
+    \label{eq:dchi_dh_drho}
+\end{equation}
+
+% EqID: dchi_dh_dxi
+% Source: \cite{Bulow2019}, Eq.~(14)
+% Status: Manual literature match
+% Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+% Change note: Re-homed under the finite-size-correction definition so the \(\chi_i\) composition differential is owned locally.
+
+\begin{equation}
+    \begin{aligned}
+        \left(\frac{\partial\chi_{i}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+        &=
+        -\frac{9}{\left(\kappa d_{i}\right)^{4}}
+        \Biggl[
+            \frac{3}{2}+\ln(1+\kappa d_{i})-2(1+\kappa d_{i})
+            +\frac{1}{2}\left(1+\kappa d_{i}\right)^{2}
+        \Biggr]
+        d_{i}\frac{\partial\kappa}{\partial x_{i}}
+        \\
+        &\quad +
+        \frac{3}{\left(\kappa d_{i}\right)^{3}}
+        \Biggl[
+            \frac{1}{1+\kappa d_{i}}-1+\kappa d_{i}
+        \Biggr]
+        d_{i}\frac{\partial\kappa}{\partial x_{i}}
+        \\
+        &=
+        3\frac{\partial\kappa}{\partial x_{i}}
+        \left\{
+            -\frac{\chi_{i}}{\kappa}
+            +
+            \frac{d_{i}}{\left(\kappa d_{i}\right)^{3}}
+            \Biggl[
+                \frac{1}{1+\kappa d_{i}}-1+\kappa d_{i}
+            \Biggr]
+        \right\}
+    \end{aligned}
+    \label{eq:dchi_dh_dxi}
+\end{equation}
+
+\subsection{Born}
+\label{sec:born}
+
+This subsection collects the Born-model support and the local differentials that stem from the selected Born-mode inputs.
+
+\subsubsection{Born Diameter Rule}
+
+The Born-diameter rule selects the reference radius used by the base Born and optional SSM/DS terms.
+% EqID: d_born_rule
+% Source: \cite{Bulow2021a}; \cite{Figiel2025}, Eq.~(6)-Eq.~(8) (parameterization choices)
+% Status: Project-specific grouped presentation
+% Description: Provides the selectable Born-diameter rule used in born electrolyte term contribution.
+% Change note: Groups the repeated-left-hand-side Born-diameter setup equations into one visible case set so the selectable diameter definition is documented as one variable with alternative parameterization choices.
+
+\begin{equation}
+    d^{\text{Born}}_{i}
+    =
+    \begin{cases}
+        d_{i}, & \text{default Born-diameter rule}, \\
+        d^{\text{Born, fitted}}_{i}, & \text{fitted Born-diameter rule},
+    \end{cases}
+    \qquad i\in\mathcal{I}
+    \label{eq:d_born_rule}
+\end{equation}
+
+\subsubsection{Born Mixing Function}
+
+The mixing function \(f_{mix}\) is the composition-weighted shell-scaling factor used by the optional SSM/DS geometry.
+% EqID: f_mix
+% Source: \cite{Figiel2025}, Eq.~(10)
+% Status: Close literature match
+% Description: Provides a supporting relation used in born electrolyte term contribution.
+% Change note: High textual similarity to a tagged equation in the cited local paper export.
+
+\begin{equation}
+    f_{mix}=\sum_{k}x_{k}f_{k}
+    \label{eq:f_mix}
+\end{equation}
+
+\subsubsection{Born Shell Shift}
+
+The shell shift \(\Delta d_i\) is the optional diameter offset used by the SSM and DS inverse-diameter terms.
+% EqID: delta_d_born
+% Source: \cite{Figiel2025}, Eq.~(8)
+% Status: Close literature match
+% Description: Provides a supporting relation used in born electrolyte term contribution.
+% Change note: High textual similarity to a tagged equation in the cited local paper export.
+
+\begin{equation}
+    \Delta d_{i}=\frac{(f_{mix}-1)}{|z_{i}|}\cdot d_{i}^{\mathrm{Born}}
+    \label{eq:delta_d_born}
+\end{equation}
+
+% EqID: ddelta_d_dxi
+% Source: \cite{Figiel2025}, Eq.~(6)
+% Status: Adapted implementation form
+% Description: Provides a differential relation needed for born electrolyte term contribution calculations.
+% Change note: Re-homed under the shell-shift definition so the \(\Delta d_i\) composition differential is owned locally.
+
+\begin{equation}
+    \left(\frac{\partial \Delta d_{j}}{\partial x_{i}}\right)_{T,\rho,x_{k\neq i}}
+    =\frac{d_{j}^{\text {Born }}}{\left|z_{j}\right|} \left(\frac{\partial f_{\text {mix }}}{\partial x_{i}}\right)_{T,\rho,x_{k\neq i}}
+    =\frac{d_{j}^{\text {Born }}}{\left|z_{j}\right|} f_{i},
+    \label{eq:ddelta_d_dxi}
+\end{equation}
+
+\subsubsection{Base Inverse-Diameter Term}
+
+The base inverse-diameter term is the core radius term used by the baseline Born model.
+% EqID: dterm_born
+% Source: \cite{Bulow2021a}, Eq.~(2) (base inverse-diameter term)
+% Status: Adapted notation
+% Description: Provides the base inverse-diameter term used in the modular Born Helmholtz expression.
+% Change note: Names the base Born inverse-diameter contribution explicitly so the modular Born sum can reference a consistent symbol family.
+
+\begin{equation}
+D_{i,\mathrm{Born}}^{(\mathrm{bulk})}
+=
+\frac{1}{d_i^{\mathrm{Born}}},
+\label{eq:D_born}
+\end{equation}
+
+\subsubsection{Solvation-Shell Inverse-Diameter Term}
+
+The SSM term applies the shell-shifted inverse-diameter correction in the bulk medium.
+% EqID: dterm_ssm
+% Source: \cite{Figiel2025}, Eq.~(7)-Eq.~(8) (derived option term)
+% Status: Project-specific modification
+% Description: Provides the SSM inverse-diameter correction used in the modular Born Helmholtz expression.
+% Change note: Restored as its own named option term because the SSM and DS contributions are distinct quantities rather than alternative definitions of one variable.
+
+\begin{equation}
+D_{i,\mathrm{SSM}}^{(\mathrm{bulk})}
+=
+\frac{1}{d_i^{\mathrm{Born}}+\Delta d_i}
+-
+\frac{1}{d_i^{\mathrm{Born}}},
+\label{eq:D_ssm}
+\end{equation}
+
+\subsubsection{Dielectric-Saturation Inverse-Diameter Term}
+
+The DS term applies the complementary inverse-diameter correction in the ion medium.
+% EqID: dterm_ds
+% Source: \cite{Figiel2025}, Eq.~(7)-Eq.~(8) (derived option term)
+% Status: Project-specific modification
+% Description: Provides the DS inverse-diameter correction used in the modular Born Helmholtz expression.
+% Change note: Restored as its own named option term because the SSM and DS contributions are distinct quantities rather than alternative definitions of one variable.
+
+\begin{equation}
+D_{i,\mathrm{DS}}^{(\mathrm{ion})}
+=
+\frac{1}{d_i^{\mathrm{Born}}}
+-
+\frac{1}{d_i^{\mathrm{Born}}+\Delta d_i}.
+\label{eq:D_ds}
+\end{equation}
+
+\section{Residual Helmholtz Energy}
+\label{sec:ares}
+
+This section keeps the final residual Helmholtz contribution expressions together with the five contribution-level density, composition, and temperature differentials assembled from the upstream setup and intermediate blocks.
+
+% EqID: ares_total
+% Source: No explicit citation in equations.tex context
+% Status: Project summary relation
+% Description: Provides a residual Helmholtz-energy relation for residual helmholz energy.
+% Change note: No explicit citation on this equation block in the source file.
+
+\begin{align}
+    \tilde{a}^{\mathrm{res}}=\tilde{a}^{h c}+\tilde{a}^{\text {disp }}+\tilde{a}^{\text {assoc }}+\tilde{a}^{\text {DH }}+\tilde{a}^{\text {Born }}
+    \label{eq:ares_total}
+\end{align}
+
+The total temperature derivative is assembled from the five contribution-level temperature differentials documented in this section.
+% EqID: dares_dT
+% Source: \cite{Gross2001}, Eq.~(A.51)
+% Status: Project-specific extension
+% Description: Provides the total temperature differential of the residual Helmholtz energy.
+% Change note: Moved here from the removed standalone temperature-differential section so one downstream total-\(d\tilde a^\mathrm{res}/dT\) summary relation remains available.
+
+\begin{equation}
+    \left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial T}\right)_{\rho,x_{i}} =\left(\frac{\partial\tilde{a}^\mathrm{hc}}{\partial T}\right)_{\rho,x_{i}} +\left(\frac{\partial\tilde{a}^\mathrm{disp}}{\partial T}\right)_{\rho,x_{i}}
+    +\left(\frac{\partial\tilde{a}^\mathrm{assoc}}{\partial T}\right)_{\rho,x_{i}}
+    +\left(\frac{\partial\tilde{a}^\mathrm{DH}}{\partial T}\right)_{\rho,x_{i}}
+    +\left(\frac{\partial\tilde{a}^\mathrm{Born}}{\partial T}\right)_{\rho,x_{i}}
+    \label{eq:dares_dT}
+\end{equation}
+
+\subsection{Hard-Chain Reference Contribution}
+
+% EqID: ares_hc
+% Source: \cite{Gross2001}, Eq.~(A.4)
+% Status: Close literature match
+% Description: Provides a residual Helmholtz-energy relation for hard-chain reference contribution.
+% Change note: High textual similarity to a tagged equation in the cited local paper export.
+
+\begin{equation}
+    \begin{aligned}
+        \mathmakebox[11.5em][l]{\tilde{a}^{\mathrm{hc}}}
+        &=
+        \bar{m} \tilde{a}^{\mathrm{hs}}
+        -\sum_{i} x_{i}\left(m_{i}-1\right) \ln \mathrm{g}_{i i}^{\mathrm{hs}}\left(\sigma_{i i}\right)
+    \end{aligned}
+    \label{eq:ares_hc}
+\end{equation}
+
+
+% EqID: hc_ares_dadrho
+% Source: \cite{Gross2001}, Eq.~(A.25)
+% Status: Close literature match
+% Description: Provides the density differential of the hard-chain Helmholtz contribution.
+% Change note: Moved back under the hard-chain Helmholtz contribution so Section 4 owns all equations carrying the hard-chain contribution label.
+
+\begin{equation}
+    \begin{aligned}
+        \mathmakebox[11.5em][l]{\rho\left(\frac{\partial\tilde{a}^{hc}}{\partial\rho}\right)_{T,x}}
+        &=
+        \bar{m}\rho\left(\frac{\partial\tilde{a}^{hs}}{\partial\rho}\right)_{T,x}
+        -\sum_{i}x_{\mathrm{i}}(m_{i}-1)(g_{ii}^\mathrm{hs})^{-1}\rho\frac{\partial g_{ii}^\mathrm{hs}}{\partial\rho}
+    \end{aligned}
+    \label{eq:hc_ares_dadrho}
+\end{equation}
+
+% EqID: hc_ares_dxk
+% Source: \cite{Gross2001}, Eq.~(A.35) (appendix sequence inference)
+% Status: Manual literature match
+% Description: Provides the composition differential of the hard-chain Helmholtz contribution.
+% Change note: Moved back under the hard-chain Helmholtz contribution so Section 4 owns all equations carrying the hard-chain contribution label.
+
+\begin{equation}
+    \begin{aligned}
+        \mathmakebox[11.5em][l]{\left(\frac{\partial\tilde{a}^{\mathrm{hc}}}{\partial x_{k}}\right)_{T,\boldsymbol{\rho},x_{j\neq k}}}
+        &=m_{k}\tilde{a}^{\mathrm{hs}}
+        +\bar{m}\left(\frac{\partial\tilde{a}^{\mathrm{hs}}}{\partial x_{k}}\right)_{T,\boldsymbol{\rho},x_{j\neq k}}
+        \\
+        &\quad -\sum_{i}x_{i}(m_{i}-1)(g_{ii}^{\mathrm{hs}})^{-1}
+        \left(\frac{\partial g_{ii}^{\mathrm{hs}}}{\partial x_{k}}\right)_{T,\boldsymbol{\rho},x_{j\neq k}}
+    \end{aligned}
+    \label{eq:hc_ares_dxk}
+\end{equation}
+
+% EqID: hc_ares_dT
+% Source: \cite{Gross2001}, Eq.~(A.54)
+% Status: Manual literature match
+% Description: Provides the temperature differential of the hard-chain Helmholtz contribution.
+% Change note: Moved back under the hard-chain Helmholtz contribution so Section 4 owns all equations carrying the hard-chain contribution label.
+
+\begin{equation}
+    \begin{aligned}
+        \mathmakebox[11.5em][l]{\left(\frac{\partial\tilde{a}^{\mathrm{hc}}}{\partial T}\right)_{\rho,x_{i}}}
+        &=
+        \bar{m}\left(\frac{\partial\tilde{a}^{\mathrm{hs}}}{\partial T}\right)_{\rho,x_{i}}
+        -\sum_{i}x_{\mathrm{i}}(m_{\mathrm{i}}-1)(g_{ii}^{\mathrm{hs}})^{-1}\left(\frac{\partial g_{ii}^{\mathrm{hs}}}{\partial T}\right)_{\rho,x_{i}}
+    \end{aligned}
+    \label{eq:hc_ares_dT}
+\end{equation}
+
+
+\subsection{Dispersion Contribution}
+
+% EqID: ares_disp
+% Source: \cite{Gross2001}, Eq.~(A.10)
+% Status: Close literature match
+% Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
+% Change note: High textual similarity to a tagged equation in the cited local paper export.
+
+\begin{equation}
+    \tilde{a}^{\mathrm{disp}}=-2 \pi \rho I_{1}(\eta, \bar{m}) \overline{m^2 \epsilon \sigma^3}-\pi \rho \bar{m} C_{1} I_{2}(\eta, \bar{m}) \overline{m^2 \epsilon^2 \sigma^3}
+    \label{eq:ares_disp}
+\end{equation}
+
+
+% EqID: disp_ares_dadrho
+% Source: \cite{Gross2001}, Eq.~(A.28)
+% Status: Close literature match
+% Description: Provides the density differential of the dispersion Helmholtz contribution.
+% Change note: Moved back under the dispersion Helmholtz contribution so Section 4 owns all equations carrying the dispersion contribution label.
+
+\begin{equation}
+    \begin{aligned}
+        \rho\left(\frac{\partial\tilde{a}^{disp}}{\partial\rho}\right)_{T,x}
+        &=-2\pi\rho\frac{\partial(\eta I_{1})}{\partial\eta}\overline{m^{2}\epsilon\sigma^{3}}
+        \\
+        &\quad -\pi\rho\bar{m}\left[C_{1}\frac{\partial(\eta I_{2})}{\partial\eta}+C_{2}\eta I_{2}\right]\overline{m^{2}\epsilon^{2}\sigma^{3}}
+    \end{aligned}
+    \label{eq:disp_ares_dadrho}
+\end{equation}
+
+% EqID: disp_ares_dxk
+% Source: \cite{Gross2001}, Eq.~(A.38) (appendix sequence inference)
+% Status: Manual literature match
+% Description: Provides the composition differential of the dispersion Helmholtz contribution.
+% Change note: Moved back under the dispersion Helmholtz contribution so Section 4 owns all equations carrying the dispersion contribution label.
+
+\begin{equation}
+    \begin{aligned}
+        \left(\frac{\partial \tilde{a}^{\mathrm{disp}}}{\partial x_k}\right)_{T,\boldsymbol{\rho},x_{j \neq k}}
+        =& -2 \pi \rho\left[I_{1, x k} \overline{m^2 \epsilon \sigma^3}+I_1 \overline{\left(m^2 \epsilon \sigma^3\right)_{x k}}\right] \\
+        &- \pi \rho\left\{\left[m_k C_1 I_2+\bar{m} C_{1, x k} I_2+\bar{m} C_1 I_{2, x k}\right] \overline{m^2 \epsilon^2 \sigma^3}+\right.
+        \left.\bar{m} C_1 I_2\left(\bar{m}^2 \epsilon^2 \sigma^3\right)_{x k}\right\}
+    \end{aligned}
+    \label{eq:disp_ares_dxk}
+\end{equation}
+
+% EqID: disp_ares_dT
+% Source: \cite{Gross2001}, Eq.~(A.58)
+% Status: Manual literature match
+% Description: Provides the temperature differential of the dispersion Helmholtz contribution.
+% Change note: Moved back under the dispersion Helmholtz contribution so Section 4 owns all equations carrying the dispersion contribution label.
+
+\begin{equation}
+    \left(\frac{\partial\tilde{a}^{disp}}{\partial T}\right)_{\rho,x_{i}}
+    =
+    -2\pi\rho\left(I_{1,T}\overline{m^{2}\epsilon\sigma^{3}}+I_{1}\overline{m^{2}\epsilon\sigma^{3}}_{,T}\right)
+    -\pi\rho\bar{m}\left(C_{1,T}I_{2}+C_{1}I_{2,T}\right)\overline{m^{2}\epsilon^{2}\sigma^{3}}
+    -\pi\rho\bar{m}C_{1}I_{2}\overline{m^{2}\epsilon^{2}\sigma^{3}}_{,T}
+    \label{eq:disp_ares_dT}
+\end{equation}
+
+
+\subsection{Association Contribution}
+
+% EqID: ares_assoc
+% Source: \cite{Chapman1990} (exact equation number not available in local PDFs)
+% Status: No direct numbered source in local corpus
+% Description: Provides a residual Helmholtz-energy relation for association contribution.
+% Change note: Association Helmholtz form is traced to Chapman/Wertheim SAFT association theory, but the exact numbered equation is not present in the local progression PDFs.
+
+\begin{equation}
+    \tilde{a}^{\mathrm{assoc}}= \sum_{i} x_{i}\sum_{\mathrm{A}_{i}}\left(\ln X^{\mathrm{A}_{i}}-\frac{X^{\mathrm{A}_{i}}}{2}+\frac{1}{2}\right)
+    \label{eq:ares_assoc}
+\end{equation}
+
+
+% EqID: assoc_ares_dadrho
+% Source: \cite{Chapman1990} (exact equation number not available in local PDFs)
+% Status: No direct numbered source in local corpus
+% Description: Provides the density differential of the association Helmholtz contribution.
+% Change note: Moved back under the association Helmholtz contribution so Section 4 owns all equations carrying the association contribution label.
+
+\begin{equation}
+    \rho\left(\frac{\partial\tilde{a}^{assoc}}{\partial\rho}\right)_{T,x}
+    =\rho\sum_{i}x_{i}\sum_{A_{i}}\left(\frac{1}{X^{A_{i}}}-\frac{1}{2}\right)\left(\frac{\partial X^{A_{i}}}{\partial\rho}\right)_{T,x}.
+    \label{eq:assoc_ares_dadrho}
+\end{equation}
+
+% EqID: assoc_ares_dxk
+% Source: \cite{Chapman1990} (exact equation number not available in local PDFs)
+% Status: No direct numbered source in local corpus
+% Description: Provides the composition differential of the association Helmholtz contribution.
+% Change note: Moved back under the association Helmholtz contribution so Section 4 owns all equations carrying the association contribution label.
+
+\begin{equation}
+    \left(\frac{\partial \tilde a^{assoc}}{\partial x_{k}}\right)_{T,v,x_{i\neq k}}
+    =
+    \sum_{A_{k}}\left(\ln X^{A_{k}}-\frac{X^{A_{k}}}{2}+\frac{1}{2}\right)
+    +
+    \sum_{i} x_{i}\sum_{A_{i}}
+    \left(\frac{1}{X^{A_{i}}}-\frac{1}{2}\right)
+    \left(\frac{\partial X^{A_{i}}}{\partial x_{k}}\right)_{T,v,x_{i\neq k}}
+    \label{eq:assoc_ares_dxk}
+\end{equation}
+
+% EqID: assoc_ares_dT
+% Source: Native implementation owner \texttt{dadt\_assoc\_cpp(...)}
+% Status: Implementation-owned equation
+% Description: Provides the analytical temperature differential of the association Helmholtz contribution.
+% Change note: Moved back under the association Helmholtz contribution so Section 4 owns all equations carrying the association contribution label.
+
+\begin{equation}
+    \left(\frac{\partial\tilde{a}^{\mathrm{assoc}}}{\partial T}\right)_{\rho,x_i}
+    =
+    \sum_i x_i \sum_{A_i}
+    \left(\frac{1}{X^{A_i}}-\frac{1}{2}\right)
+    \left(\frac{\partial X^{A_i}}{\partial T}\right)_{\rho,x_i}
+    \label{eq:assoc_ares_dT}
+\end{equation}
+
+
+\subsection{Debye and Huckel Contribution}
+
+% EqID: ares_dh
+% Source: \cite{Bulow2019}, Eq.~(2)
+% Status: Adapted implementation form
+% Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+% Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+
+\begin{equation}
+    \tilde{a}^{DH}=-\frac{\kappa e^{2}}{12\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}\sum_{i}x_{i}z_{i}^{2}\chi_{i}
+    \label{eq:ares_dh}
+\end{equation}
+
+
+% EqID: dh_ares_dadrho
+% Source: Derived from Eq.~\eqref{eq:ares_dh}, Eq.~\eqref{eq:dkappa_dh_drho}, and Eq.~\eqref{eq:dchi_dh_drho}
+% Status: Derived relation
+% Description: Provides the explicit density differential of the Debye-Huckel Helmholtz contribution in chain-rule form.
+% Change note: Moved back under the Debye-Huckel Helmholtz contribution so Section 4 owns all equations carrying the Debye-Huckel contribution label.
+
+\begin{equation}
+    \rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
+    =
+    -\frac{e^2}{12\pi\varepsilon_0\varepsilon_r k_B T}
+    \left[
+        \rho\left(\frac{\partial \kappa}{\partial \rho}\right)_{T,x}\sum_i x_i z_i^2 \chi_i
+        +
+        \kappa\sum_i x_i z_i^2 \rho\left(\frac{\partial \chi_i}{\partial \rho}\right)_{T,x}
+    \right]
+    \label{eq:dh_ares_dadrho}
+\end{equation}
+
+% EqID: dh_ares_dxi
+% Source: \cite{Bulow2019} (equation number unresolved in local corpus)
+% Status: Literature update
+% Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+% Change note: Moved back under the Debye-Huckel Helmholtz contribution so Section 4 owns all equations carrying the Debye-Huckel contribution label.
+
+\begin{equation}
+    \begin{aligned}
+        \left(\frac{\partial \tilde{a}^{DH}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+        =
+        -\frac{e^{2}}{12\pi\varepsilon_{0}k_{B}T}
+        \Bigg[
+          & \frac{1}{\varepsilon_{r}}\left(\frac{\partial\kappa}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+            \sum_{j}x_{j}z_{j}^{2}\chi_{j}
+        \\
+        - & \frac{\kappa}{\varepsilon_{r}^{2}}
+            \left(\frac{\partial\varepsilon_{r}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+            \sum_{j}x_{j}z_{j}^{2}\chi_{j}
+        \\
+        + & \frac{\kappa}{\varepsilon_{r}}
+            \sum_{j}\chi_{j}z_{j}^{2}
+            \left(\frac{\partial x_{j}}{\partial x_{i}}\right)_{T,v,x_{k\neq i}}
+        \\
+        + & \frac{\kappa}{\varepsilon_{r}}
+            \sum_{j}x_{j}z_{j}^{2}
+            \left(\frac{\partial\chi_{j}}{\partial x_{i}}\right)_{T,v,x_{k\neq i}}
+            \Bigg]
+    \end{aligned}
+    \label{eq:dh_ares_dxi}
+\end{equation}
+
+% EqID: dh_ares_dT
+% Source: \cite{Cameretti2005}, Eq.~(13)-Eq.~(14) (derived temperature differential)
+% Status: Derived from literature equation
+% Description: Provides the temperature differential of the Debye-Huckel Helmholtz contribution.
+% Change note: Moved back under the Debye-Huckel Helmholtz contribution so Section 4 owns all equations carrying the Debye-Huckel contribution label.
+
+\begin{equation}
+    \left(\frac{\partial \tilde{a}^{DH}}{\partial T}\right)_{\rho,x_i}
+    \approx
+    -\frac{\tilde{a}^{DH}}{T}
+    \label{eq:dh_ares_dT}
+\end{equation}
+
+
+\subsection{Born Contribution}
+
+% EqID: ares_born
+% Source: \cite{Bulow2021a}, Eq.~(2)
+% Status: Adapted notation
+% Description: Provides a residual Helmholtz-energy relation for born electrolyte term contribution.
+% Change note: Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation.
+
+\begin{equation}
+\tilde{a}^{\mathrm{Born}}
+=
+-\frac{e^2}{4\pi\varepsilon_0 k_{\mathrm{B}} T}
+\sum_i x_i z_i^2
+\sum_{\delta \in \mathcal{D}}
+\left(
+1-\frac{1}{\varepsilon_{r,m_\delta}}
+\right)
+D_{i,\delta}^{(m_\delta)},
+\label{eq:ares_born_modular}
+\end{equation}
+
+
+% EqID: born_ares_dadrho
+% Source: \cite{Bulow2021a}, Eq.~(4)
+% Status: Manual literature match
+% Description: Provides the density differential of the Born Helmholtz contribution.
+% Change note: Moved back under the Born Helmholtz contribution so Section 4 owns all equations carrying the Born contribution label.
+
+\begin{equation}
+    \rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}= 0
+    \label{eq:born_ares_dadrho}
+\end{equation}
+
+% EqID: born_ares_dxi
+% Source: \cite{Bulow2021a}, Eq.~(3)
+% Status: Project-specific modification
+% Description: Provides a differential relation needed for born electrolyte term contribution calculations.
+% Change note: Moved back under the Born Helmholtz contribution so Section 4 owns all equations carrying the Born contribution label.
+
+\begin{equation}
+    \begin{aligned}
+        \left(\frac{\partial \tilde{a}^{Born}}{\partial x_{i}}\right)_{T,v_{N},x_{j\neq i}}
+        &=
+        -\frac{e^{2}}{4\pi k_{B}T\varepsilon_{0}}
+        \Biggl[
+            \left(1-\frac{1}{\varepsilon_{r}}\right)\frac{z_{i}^{2}}{d^{\text{Born}}_{i}}
+            \\
+            &\qquad\qquad
+            +
+            \left(\frac{1}{\varepsilon_{r}^{2}}\right)\sum_{j} \frac{x_{j} z_{j}^2}{d^{\text{Born}}_{j}}
+            \left(\frac{\partial\varepsilon_{r}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+        \Biggr]
+    \end{aligned}
+    \label{eq:born_ares_dxi}
+\end{equation}
+
+% EqID: born_ares_ssmds_dxi
+% Source: \cite{Figiel2025} (equation number unresolved in local corpus)
+% Status: Project-specific modification
+% Description: Provides a differential relation needed for born electrolyte term contribution calculations.
+% Change note: Moved back under the Born Helmholtz contribution so Section 4 owns all equations carrying the Born contribution label.
+
+\begin{equation}
+    \begin{aligned}
+        \left(\frac{\partial \tilde{a}^{\mathrm{Born}}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+         & =
+        -\frac{e^2}{4\pi\varepsilon_{0} k_{B} T}
+        \Bigg[
+            z_{i}^2\!\left(
+            \left(1-\frac{1}{\varepsilon_{r,\mathrm{bulk}}}\right)
+            \left[D_{i,\mathrm{Born}}^{(\mathrm{bulk})}+D_{i,\mathrm{SSM}}^{(\mathrm{bulk})}\right]
+            +
+            \left(1-\frac{1}{\varepsilon_{r,\mathrm{ion}}}\right)D_{i,\mathrm{DS}}^{(\mathrm{ion})}
+            \right)
+        \\
+         & \qquad\qquad
+            +\sum_{j} x_{j} z_{j}^2
+            \Bigg(
+            \frac{1}{\varepsilon_{r,\mathrm{bulk}}^2}
+            \frac{\partial \varepsilon_{r,\mathrm{bulk}}}{\partial x_{i}}
+            \left[D_{j,\mathrm{Born}}^{(\mathrm{bulk})}+D_{j,\mathrm{SSM}}^{(\mathrm{bulk})}\right]
+            \\
+         & \qquad\qquad\qquad\qquad
+            +
+            \frac{1}{\varepsilon_{r,\mathrm{ion}}^2}
+            \frac{\partial \varepsilon_{r,\mathrm{ion}}}{\partial x_{i}}
+            D_{j,\mathrm{DS}}^{(\mathrm{ion})}
+            \\
+         & \qquad\qquad\qquad\qquad
+            +
+            \left(\frac{1}{\varepsilon_{r,\mathrm{ion}}}-\frac{1}{\varepsilon_{r,\mathrm{bulk}}}\right)
+            \frac{1}{\left(d_{j}^{\mathrm{Born}}+\Delta d_{j}\right)^2}
+            \frac{\partial \Delta d_{j}}{\partial x_{i}}
+            \Bigg)
+            \Bigg],
+    \end{aligned}
+    \label{eq:born_ares_ssmds_dxi}
+\end{equation}
+
+% EqID: born_ares_dT
+% Source: \cite{Bulow2021a}, Eq.~(2) (derived temperature differential)
+% Status: Derived from literature equation
+% Description: Provides the temperature differential of the Born Helmholtz contribution.
+% Change note: Moved back under the Born Helmholtz contribution so Section 4 owns all equations carrying the Born contribution label.
+
+\begin{equation}
+    \begin{aligned}
+        \left(\frac{\partial\tilde{a}^{\mathrm{Born}}}{\partial T}\right)_{\rho,x_i}
+        &=
+        -\frac{\tilde{a}^{\mathrm{Born}}}{T}
+        \\
+        &\quad -\frac{e^2}{4\pi\varepsilon_0 k_{\mathrm{B}} T}
+        \sum_i x_i z_i^2
+        \sum_{\delta \in \mathcal{D}}
+        \left[
+            \frac{D_{i,\delta}^{(m_\delta)}}{\varepsilon_{r,m_\delta}^{2}}
+            \left(\frac{\partial \varepsilon_{r,m_\delta}}{\partial T}\right)_{\rho,x}
+            +
+            \left(1-\frac{1}{\varepsilon_{r,m_\delta}}\right)
+            \left(\frac{\partial D_{i,\delta}^{(m_\delta)}}{\partial T}\right)_{\rho,x}
+        \right]
+    \end{aligned}
+    \label{eq:born_ares_dT}
+\end{equation}
+
+
+The modular Born form is evaluated with the following selectors.
+
+% EqID: born_mode_set
+% Source: \cite{Figiel2025}, Eq.~(7) (option-driven reformulation)
+% Status: Project-specific modification
+% Description: Defines the set of active Born subterms used in the modular Helmholtz expression.
+% Change note: Documents the current option-driven Born-term set directly rather than the legacy version naming.
+
+\begin{equation}
+\mathcal{D}
+=
+\{\mathrm{Born}\}
+\cup
+\mathcal{D}_{\mathrm{add}},
+\qquad
+\mathcal{D}_{\mathrm{add}}
+\subseteq
+\{\mathrm{SSM},\mathrm{DS}\},
+\label{eq:born_mode_set}
+\end{equation}
+
+% EqID: born_mode_medium
+% Source: \cite{Bulow2021a}, Eq.~(2); \cite{Figiel2025}, Eq.~(7) (option-driven reformulation)
+% Status: Project-specific modification
+% Description: Defines the medium assignment used by each active Born subterm in the modular Helmholtz expression.
+% Change note: Makes the bulk-vs-ion medium choice explicit for the modular Born documentation.
+
+\begin{equation}
+    m_\delta
+    =
+    \begin{cases}
+        \mathrm{bulk}, & \delta\in\{\mathrm{Born},\mathrm{SSM}\}, \\
+        \mathrm{ion},  & \delta=\mathrm{DS}.
+    \end{cases}
+    \label{eq:born_mode_medium}
+\end{equation}
+
+\begin{itemize}
+    \item \(\mathcal{D}\) always contains the base Born term.
+    \item \(\mathcal{D}_{\mathrm{add}}=\varnothing\) gives the baseline Born model, \(\{\mathrm{SSM}\}\) activates only the solvation-shell correction, \(\{\mathrm{DS}\}\) activates only the dielectric-saturation correction, and \(\{\mathrm{SSM},\mathrm{DS}\}\) activates both optional add-ons.
+    \item \(m_\delta\) selects the relative-permittivity medium used by each active subterm: bulk for \(\delta\in\{\mathrm{Born},\mathrm{SSM}\}\) and ion for \(\delta=\mathrm{DS}\).
+\end{itemize}
+
+
+
+
+\section{Compressibility Factor}
+\label{sec:pressure_compressibility_factor}
+
+The explicit analytical density differentials now live with their owning setup and contribution-intermediate blocks. This section collects the downstream \(Z\) identities using one generic contribution bridge.
+% EqID: z_total
+% Source: \cite{Gross2001}, Eq.~(A.24)
+% Status: Project-specific extension
+% Description: Provides a supporting relation used in pressure (compressibility factor).
+% Change note: Mapped to Eq. (A.24) and extended here by adding association, Debye-Huckel, and Born compressibility contributions.
+
+\begin{equation}
+    Z = 1
+    + \rho\left(\frac{\partial\tilde{a}^{hc}}{\partial\rho}\right)_{T,x}
+    + \rho\left(\frac{\partial\tilde{a}^{disp}}{\partial\rho}\right)_{T,x}
+    + \rho\left(\frac{\partial\tilde{a}^{assoc}}{\partial\rho}\right)_{T,x}
+    + \rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
+    + \rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}
+    \label{eq:z_total}
+\end{equation}
+
+% EqID: z_alpha
+% Source: Project bridge identity based on the contribution-resolved \(Z\) split
+% Status: Project-specific organization
+% Description: Gives the generic contribution compressibility bridge identity in compressibility factor.
+% Change note: Replaces the five redundant contribution-specific bridge equations with one generic \(Z^\alpha\) form covering \(\alpha\in\{hc,disp,assoc,DH,Born\}\).
+
+\begin{equation}
+    Z^{\alpha}
+    =
+    \rho\left(\frac{\partial\tilde{a}^{\alpha}}{\partial\rho}\right)_{T,x}
+    ,
+    \qquad
+    \alpha\in\{hc,disp,assoc,DH,Born\}
+    \label{eq:z_alpha}
+\end{equation}
+
+\section{Chemical Potential}
+\label{sec:chemical_potential}
+
+This section uses the upstream residual Helmholtz equations together with the colocated density and composition differentials from Sections~\ref{sec:ares}, \ref{sec:parameter_setup}, \ref{sec:initial_density_solve}, and \ref{sec:contribution_intermediates}.
+
+% EqID: mu_res
+% Source: \cite{Gross2001}, Eq.~(A.1)
+% Status: Adapted implementation form
+% Description: Gives a chemical-potential contribution in chemical potential.
+% Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+
+\begin{equation}
+    \tilde{\mu_{k}}^{\mathrm{res}}=\frac{\mu_{k}^\mathrm{res}}{kT} = \frac{\hat{\mu}_{k}^\mathrm{res}}{RT}
+    \label{eq:mu_res}
+\end{equation}
+
+% EqID: mu_res_from_ares
+% Source: \cite{Gross2001}, Eq.~(A.33)
+% Status: Close literature match
+% Description: Gives a chemical-potential contribution in chemical potential.
+% Change note: High textual similarity to a tagged equation in the cited local paper export.
+
+\begin{equation}
+    \begin{aligned}
+        \tilde{\mu_{k}}^{\mathrm{res}}
+        &=\tilde{a}^{\mathrm{res}}+(\mathrm{Z}-1)
+        +\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial x_{k}}\right)_{T,\nu,x_{i\neq k}}
+        \\
+        &\quad -\sum_{j=1}^{N}\left[x_{j}\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial x_{j}}\right)_{T,\nu,x_{i\neq j}}\right]
+    \end{aligned}
+    \label{eq:mu_res_from_ares}
+\end{equation}
+
+% EqID: mu_res_sum
+% Source: \cite{Gross2001}, Eq.~(A.33)
+% Status: Manual literature match
+% Description: Gives the explicit residual chemical-potential decomposition in chemical potential.
+% Change note: Written in explicit non-summation form to match the style used for the other property families in this section.
+
+\begin{equation}
+    \tilde{\mu_{k}}^{\mathrm{res}}=\tilde{\mu_{k}}^{\mathrm{hc}}+\tilde{\mu_{k}}^{\mathrm{disp}}+\tilde{\mu_{k}}^{\mathrm{assoc}}+\tilde{\mu_{k}}^{\mathrm{DH}}+\tilde{\mu_{k}}^{\mathrm{Born}}
+    \label{eq:mu_res_sum}
+\end{equation}
+
+% EqID: mu_alpha
+% Source: \cite{Gross2001}, Eq.~(A.33)
+% Status: Project-specific organization
+% Description: Gives the generic contribution chemical-potential relation in chemical potential.
+% Change note: Replaces the five redundant contribution-specific chemical-potential equations with one generic \(\alpha\)-form covering \(\alpha\in\{hc,disp,assoc,DH,Born\}\).
+
+\begin{equation}
+    \begin{aligned}
+        \tilde{\mu}^{\alpha}_{k}
+        &=
+        \tilde{a}^{\alpha}
+        + Z^{\alpha}
+        +\left(\frac{\partial\tilde{a}^{\alpha}}{\partial x_{k}}\right)_{T,\nu,x_{i\neq k}}
+        \\
+        &\quad
+        -\sum_{j=1}^{N}\left[x_{j}\left(\frac{\partial\tilde{a}^{\alpha}}{\partial x_{j}}\right)_{T,\nu,x_{i\neq j}}\right],
+        \qquad
+        \alpha\in\{hc,disp,assoc,DH,Born\}
+    \end{aligned}
+    \label{eq:mu_alpha}
+\end{equation}
+
+\section{Fugacity Coefficient}
+\label{sec:fugacity_coefficient}
+
+This section uses the upstream chemical-potential and compressibility identities from Sections~\ref{sec:chemical_potential} and \ref{sec:pressure_compressibility_factor}.
+% EqID: lnphi_total
+% Source: \cite{Gross2001}, Eq.~(A.32)
+% Status: Manual literature match
+% Description: Gives the total fugacity-coefficient relation in fugacity coefficient.
+% Change note: Mapped manually to the residual-chemical-potential form used in the PC-SAFT appendix.
+
+\begin{equation}
+    \ln\varphi_{k}
+    =
+    \tilde{\mu}_{k}^{\mathrm{res}}
+    -
+    \ln Z
+    =
+    \frac{\mu_{k}^{\mathrm{res}}}{kT}
+    -
+    \ln Z
+    \label{eq:lnphi_total}
+\end{equation}
+
+Using the contribution split for \(\tilde{\mu}_{k}^{\mathrm{res}}\) together with the matching \(Z^\alpha\) allocation from Section~\ref{sec:pressure_compressibility_factor}, the total log fugacity coefficient is decomposed as
+
+% EqID: lnphi_total_sum
+% Source: Project decomposition based on Eq.~\eqref{eq:lnphi_total}
+% Status: Project-specific organization
+% Description: Gives the explicit fugacity-coefficient decomposition in fugacity coefficient.
+% Change note: Written in explicit non-summation form to match the contribution-by-contribution structure used throughout this section.
+
+\begin{equation}
+    \ln\varphi_{k}
+    =
+    \ln\varphi_{k}^{hc}
+    +
+    \ln\varphi_{k}^{disp}
+    +
+    \ln\varphi_{k}^{assoc}
+    +
+    \ln\varphi_{k}^{DH}
+    +
+    \ln\varphi_{k}^{Born}
+    \label{eq:lnphi_total_sum}
+\end{equation}
+
+% EqID: lnphi_alpha
+% Source: Project decomposition based on Eq.~\eqref{eq:lnphi_total}
+% Status: Project-specific organization
+% Description: Gives the generic contribution fugacity-coefficient relation in fugacity coefficient.
+% Change note: Uses only the explicit $Z^\alpha$ allocation requested for the contribution-resolved fugacity-coefficient terms.
+
+\begin{equation}
+    \ln\varphi_{k}^{\alpha}
+    =
+    \tilde{\mu}_{k}^{\alpha}
+    -
+    \frac{Z^{\alpha}}{Z-1}\ln Z,
+    \qquad
+    \alpha\in\{hc,disp,assoc,DH,Born\}
+    \label{eq:lnphi_alpha}
+\end{equation}
+
+% EqID: lnphi_alpha_near_ideal
+% Source: Derived from Eq.~\eqref{eq:lnphi_alpha}
+% Status: Derived approximation
+% Description: Gives the near-ideal approximation for a contribution fugacity coefficient in fugacity coefficient.
+% Change note: Retained explicitly as an approximation only, using the $Z\rightarrow 1$ limit requested for documentation.
+
+The approximation below is the \(Z\to 1\) limit of Eq.~\eqref{eq:lnphi_alpha}. In that limit, \(\ln Z/(Z-1)\to 1\), so the compressibility correction collapses to \(Z^\alpha\). It is only a near-ideal simplification, not the general expression.
+
+\begin{equation}
+    \ln\varphi_{k}^{\alpha}
+    \approx
+    \tilde{\mu}_{k}^{\alpha}
+    -
+    Z^{\alpha},
+    \qquad
+    \alpha\in\{hc,disp,assoc,DH,Born\}
+    \label{eq:lnphi_alpha_near_ideal}
+\end{equation}
+
+\section{Activity Coefficient}
+\label{sec:activity_coefficient}
+
+This section uses the downstream fugacity-coefficient relations from Section~\ref{sec:fugacity_coefficient} together with the selected reference-state definitions.
+
+\subsection{Symmetric Reference}
+
+% EqID: gamma_sym
+% Source: Standard thermodynamic definition
+% Status: Project-specific organization
+% Description: Gives the symmetric-reference activity-coefficient definition in activity coefficient.
+% Change note: Added explicitly in non-log form so the activity section mirrors the fugacity-coefficient organization.
+
+\begin{equation}
+    \gamma_{i}
+    =
+    \frac{\varphi_{i}(T,p,\mathbf{x})}{\varphi_{0i}(T,p,x_{i}=1)}
+    \label{eq:gamma_sym}
+\end{equation}
+
+% EqID: lngamma_sym
+% Source: Derived from Eq.~\eqref{eq:gamma_sym}
+% Status: Derived relation
+% Description: Gives the symmetric-reference logarithmic activity-coefficient definition in activity coefficient.
+% Change note: Expressed only in terms of fugacity coefficients, as requested for the activity section.
+
+\begin{equation}
+    \ln\gamma_{i}
+    =
+    \ln\varphi_{i}
+    -
+    \ln\varphi_{0i}
+    \label{eq:lngamma_sym}
+\end{equation}
+
+\subsection{Infinite-Dilution Reference}
+
+% EqID: gamma_asym_inf
+% Source: Standard thermodynamic definition
+% Status: Project-specific organization
+% Description: Gives the infinite-dilution activity-coefficient definition in activity coefficient.
+% Change note: Added explicitly in non-log form for ions and solutes referenced to infinite dilution.
+
+\begin{equation}
+    \gamma_{i}^{*}
+    =
+    \frac{\varphi_{i}(T,p,\mathbf{x})}{\varphi_{i}^{\infty}(T,p,x_{i}\to 0)}
+    \label{eq:gamma_asym_inf}
+\end{equation}
+
+% EqID: lngamma_asym_inf
+% Source: Derived from Eq.~\eqref{eq:gamma_asym_inf}
+% Status: Derived relation
+% Description: Gives the infinite-dilution logarithmic activity-coefficient definition in activity coefficient.
+% Change note: Expressed only in terms of fugacity coefficients, as requested for the activity section.
+
+\begin{equation}
+    \ln\gamma_{i}^{*}
+    =
+    \ln\varphi_{i}
+    -
+    \ln\varphi_{i}^{\infty}
+    \label{eq:lngamma_asym_inf}
+\end{equation}
+
+The infinite-dilution reference is the one used for electrolyte solutes and for the contribution-resolved activity-coefficient split below.
+
+% EqID: lngamma_asym_sum
+% Source: Project decomposition based on Eq.~\eqref{eq:lngamma_asym_inf}
+% Status: Project-specific organization
+% Description: Gives the explicit infinite-dilution activity-coefficient decomposition in activity coefficient.
+% Change note: Written in explicit non-summation form to mirror the fugacity-coefficient decomposition.
+
+\begin{equation}
+    \ln\gamma_{k}^{*}
+    =
+    \ln\gamma_{k}^{hc,*}
+    +
+    \ln\gamma_{k}^{disp,*}
+    +
+    \ln\gamma_{k}^{assoc,*}
+    +
+    \ln\gamma_{k}^{DH,*}
+    +
+    \ln\gamma_{k}^{Born,*}
+    \label{eq:lngamma_asym_sum}
+\end{equation}
+
+% EqID: gamma_alpha_asym
+% Source: Project decomposition based on Eq.~\eqref{eq:gamma_asym_inf}
+% Status: Project-specific organization
+% Description: Gives the generic contribution activity-coefficient definition in activity coefficient.
+% Change note: Defined only from contribution fugacity coefficients, not from chemical-potential expressions.
+
+\begin{equation}
+    \gamma_{k}^{\alpha,*}
+    =
+    \frac{\varphi_{k}^{\alpha}}{\varphi_{k}^{\alpha,\infty}}
+    \label{eq:gamma_alpha_asym}
+\end{equation}
+
+% EqID: lngamma_alpha_asym
+% Source: Derived from Eq.~\eqref{eq:gamma_alpha_asym}
+% Status: Derived relation
+% Description: Gives the generic logarithmic contribution activity-coefficient definition in activity coefficient.
+% Change note: Written only in terms of contribution fugacity coefficients, consistent with the requested section logic.
+
+\begin{equation}
+    \ln\gamma_{k}^{\alpha,*}
+    =
+    \ln\varphi_{k}^{\alpha}
+    -
+    \ln\varphi_{k}^{\alpha,\infty}
+    \label{eq:lngamma_alpha_asym}
+\end{equation}
+
+\subsection{Mean Ionic Activity Coefficient}
+
+% EqID: gamma_pm_asym
+% Source: Standard thermodynamic definition
+% Status: Project-specific organization
+% Description: Gives the mean-ionic infinite-dilution activity coefficient in activity coefficient.
+% Change note: Added in non-log form to parallel the logarithmic mean-ionic relation already used in electrolyte work.
+
+\begin{equation}
+    \gamma_{\pm}^{*}
+    =
+    \left(
+    \left(\gamma_{c}^{*}\right)^{\nu_{c}}
+    \left(\gamma_{a}^{*}\right)^{\nu_{a}}
+    \right)^{\frac{1}{\nu_{c}+\nu_{a}}}
+    \label{eq:gamma_pm_asym}
+\end{equation}
+
+% EqID: lngamma_pm_asym
+% Source: Derived from Eq.~\eqref{eq:gamma_pm_asym}
+% Status: Derived relation
+% Description: Gives the logarithmic mean-ionic infinite-dilution activity coefficient in activity coefficient.
+% Change note: Written explicitly in the standard stoichiometric-weighted logarithmic form.
+
+\begin{equation}
+    \ln\gamma_{\pm}^{*}
+    =
+    \frac{\nu_{c}\ln\gamma_{c}^{*}+\nu_{a}\ln\gamma_{a}^{*}}{\nu_{c}+\nu_{a}}
+    \label{eq:lngamma_pm_asym}
+\end{equation}
+
+% EqID: lngamma_pm_alpha_asym
+% Source: Project decomposition based on Eq.~\eqref{eq:lngamma_pm_asym}
+% Status: Project-specific organization
+% Description: Gives the logarithmic contribution mean-ionic activity coefficient in activity coefficient.
+% Change note: Contribution form written directly from the contribution activity-coefficient terms.
+
+\begin{equation}
+    \ln\gamma_{\pm}^{\alpha,*}
+    =
+    \frac{\nu_{c}\ln\gamma_{c}^{\alpha,*}+\nu_{a}\ln\gamma_{a}^{\alpha,*}}{\nu_{c}+\nu_{a}}
+    \label{eq:lngamma_pm_alpha_asym}
+\end{equation}
+
+
+\section{Enthalpy, Entropy, and Gibbs Free Energy}
+\label{sec:thermo_derived_properties}
+
+This section uses the upstream residual Helmholtz, compressibility, and colocated temperature-differential identities from Sections~\ref{sec:ares}, \ref{sec:pressure_compressibility_factor}, and \ref{sec:contribution_intermediates}.
+
+\subsection{Entropy}
+
+% EqID: h_res
+% Source: \cite{Figiel2025}, Eq.~(13)
+% Status: Adapted implementation form
+% Description: Provides a differential relation needed for entropy calculations.
+% Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+
+\begin{equation}
+    \tilde{h}^{\mathrm{res}} = \frac{\hat{h}^{\mathrm{res}}}{RT}=-T\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial T}\right)_{\rho,x_{i}}+(Z-1)
+    \label{eq:h_res}
+\end{equation}
+
+\subsection{Entropy}
+
+% EqID: s_res_from_s_vol
+% Source: \cite{Gross2001}, Eq.~(A.47)
+% Status: Documentation-only
+% Description: Provides a supporting relation used in entropy.
+% Change note: Mapped manually to the residual-entropy relation with logarithmic compressibility correction.
+
+\begin{equation}
+    \tilde{s}^{\mathrm{res}} = \frac{\hat{s}^{\mathrm{res}}(P,T)}{R}=\frac{\hat{s}^{\mathrm{res}}(\nu,T)}{R}+\ln(Z)
+    \label{eq:s_res_from_s_vol}
+\end{equation}
+
+% EqID: s_res
+% Source: \cite{Gross2001}, Eq.~(A.48)
+% Status: Manual literature match
+% Description: Provides a differential relation needed for entropy calculations.
+% Change note: Mapped manually to the residual-entropy temperature-derivative form.
+
+\begin{equation}
+    \tilde{s}^{\mathrm{res}} = \frac{\hat{s}^{\mathrm{res}}(P,T)}{R}=-T\left[\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial T}\right)_{\rho,x_{i}}+\frac{\tilde{a}^{\mathrm{res}}}{T}\right]+\ln(Z)
+    \label{eq:s_res}
+\end{equation}
+
+\subsection{Gibbs Free Energy}
+
+% EqID: g_res_from_hs
+% Source: \cite{Gross2001}, Eq.~(A.49)
+% Status: Documentation-only
+% Description: Provides a supporting relation used in gibbs free energy.
+% Change note: Mapped manually to the residual Gibbs relation via enthalpy and entropy.
+
+\begin{equation}
+    \tilde{g}^{\mathrm{res}}=\frac{\hat{g}^{\mathrm{res}}}{RT}=\frac{\hat{h}^{\mathrm{res}}}{RT}-\frac{\hat{s}^{\mathrm{res}}(P,T)}{R}
+    \label{eq:g_res_from_hs}
+\end{equation}
+
+% EqID: g_res_from_ares
+% Source: \cite{Gross2001}, Eq.~(A.50)
+% Status: Manual literature match
+% Description: Provides a residual Helmholtz-energy relation for gibbs free energy.
+% Change note: Mapped manually to the residual Gibbs relation in Helmholtz/compressibility form.
+
+\begin{equation}
+    \tilde{g}^{\mathrm{res}}=\tilde{a}^{\mathrm{res}}+(Z-1)-\ln(Z)
+    \label{eq:g_res_from_ares}
+\end{equation}
+
+Gibbs Energy of Solvation
+
+% EqID: delta_g_solv_inf_x
+% Source: \cite{Figiel2025}, Eq.~(14)
+% Status: Adapted implementation form
+% Description: Provides a residual Helmholtz-energy relation for gibbs free energy.
+% Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+
+\begin{equation}
+    \Delta^{\mathrm{solv},x}G_{i}^{\infty}(T,p,x_{j\neq i},x_{i}\to0)=RT\ln(\varphi_{i}^{\infty}(T,p,x_{j\neq i},x_{i}\to0))
+    \label{eq:delta_g_solv_inf_x}
+\end{equation}
+
+Gibbs Energy of Transfer at Infinite Dilution from solvent S1 to solvent S2
+% EqID: delta_g_transfer_inf
+% Source: \cite{Figiel2025}, Eq.~(14)
+% Status: Adapted implementation form
+% Description: Provides a residual Helmholtz-energy relation for gibbs free energy.
+% Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+
+\begin{equation}
+    \Delta^{\mathrm{tr}}G_{i}^{\infty,\mathrm{S}1\to\mathrm{S}2}(T,p,x_{j\neq i},x_{i}\rightarrow0)=RT\ln\left(\frac{\varphi_{i}^{\infty,\mathrm{S}2}}{\varphi_{i}^{\infty,\mathrm{S}1}}\right)
+    \label{eq:delta_g_transfer_inf}
+\end{equation}
+
+\section{Conversions}
+
+\subsection{Mean Ionic Conversions}
+
+This subsection collects the general cation-anion to mean-ionic property conversions used for charged species \cite{Ascani2022}. The charge-based forms below are the general definitions; for electroneutral salts they reduce to the more familiar stoichiometric mean-ionic expressions used elsewhere in this document.
+
+% EqID: mu_pm_charge
+% Source: \cite{Ascani2022}, Eq.~(16)
+% Status: Documentation-only
+% Description: Gives the mean-ionic chemical-potential conversion from cation and anion chemical potentials.
+% Change note: Added to gather the general mean-ionic property conversions in one dedicated section.
+
+\begin{equation}
+    \mu_{\pm}
+    =
+    \frac{\dfrac{1}{|z_{\mathrm{cat}}|}\mu_{\mathrm{cat}}+\dfrac{1}{|z_{\mathrm{an}}|}\mu_{\mathrm{an}}}
+    {\dfrac{1}{|z_{\mathrm{cat}}|}+\dfrac{1}{|z_{\mathrm{an}}|}}
+    \label{eq:mu_pm_charge}
+\end{equation}
+
+% EqID: f_pm_charge
+% Source: \cite{Ascani2022}, Eq.~(17)
+% Status: Documentation-only
+% Description: Gives the mean-ionic fugacity conversion from cation and anion fugacities.
+% Change note: Added to gather the general mean-ionic property conversions in one dedicated section.
+
+\begin{equation}
+    f_{\pm}
+    =
+    \left[
+        \left(f_{\mathrm{cat}}\right)^{1/|z_{\mathrm{cat}}|}
+        \left(f_{\mathrm{an}}\right)^{1/|z_{\mathrm{an}}|}
+    \right]^{\!\left[\left(1/|z_{\mathrm{cat}}|\right)+\left(1/|z_{\mathrm{an}}|\right)\right]^{-1}}
+    \label{eq:f_pm_charge}
+\end{equation}
+
+% EqID: a_pm_charge
+% Source: \cite{Ascani2022}, Eq.~(18)
+% Status: Documentation-only
+% Description: Gives the mean-ionic activity conversion from cation and anion activities.
+% Change note: Added to gather the general mean-ionic property conversions in one dedicated section.
+
+\begin{equation}
+    a_{\pm}
+    =
+    \left[
+        \left(a_{\mathrm{cat}}\right)^{1/|z_{\mathrm{cat}}|}
+        \left(a_{\mathrm{an}}\right)^{1/|z_{\mathrm{an}}|}
+    \right]^{\!\left[\left(1/|z_{\mathrm{cat}}|\right)+\left(1/|z_{\mathrm{an}}|\right)\right]^{-1}}
+    \label{eq:a_pm_charge}
+\end{equation}
+
+% EqID: phi_pm_charge
+% Source: \cite{Ascani2022}, Eq.~(19)
+% Status: Documentation-only
+% Description: Gives the mean-ionic fugacity-coefficient conversion from cation and anion fugacity coefficients.
+% Change note: Added to gather the general mean-ionic property conversions in one dedicated section.
+
+\begin{equation}
+    \varphi_{\pm}
+    =
+    \left[
+        \left(\varphi_{\mathrm{cat}}\right)^{1/|z_{\mathrm{cat}}|}
+        \left(\varphi_{\mathrm{an}}\right)^{1/|z_{\mathrm{an}}|}
+    \right]^{\!\left[\left(1/|z_{\mathrm{cat}}|\right)+\left(1/|z_{\mathrm{an}}|\right)\right]^{-1}}
+    \label{eq:phi_pm_charge}
+\end{equation}
+
+% EqID: gamma_pm_charge
+% Source: \cite{Ascani2022}, Eq.~(20)
+% Status: Close literature match
+% Description: Gives the mean-ionic activity-coefficient conversion from cation and anion activity coefficients.
+% Change note: Added to gather the general mean-ionic property conversions in one dedicated section.
+
+\begin{equation}
+    \gamma_{\pm}
+    =
+    \left[
+        \left(\gamma_{\mathrm{cat}}\right)^{1/|z_{\mathrm{cat}}|}
+        \left(\gamma_{\mathrm{an}}\right)^{1/|z_{\mathrm{an}}|}
+    \right]^{\!\left[\left(1/|z_{\mathrm{cat}}|\right)+\left(1/|z_{\mathrm{an}}|\right)\right]^{-1}}
+    \label{eq:gamma_pm_charge}
+\end{equation}
+
+\subsection{Mole-Fraction and Molality Basis}
+
+This subsection collects the basis changes between mole-fraction and molality conventions for mean-ionic electrolyte quantities \cite{Figiel2025}.
+
+% EqID: gamma_pm_molality
+% Source: \cite{Figiel2025}, Eq.~(22)
+% Status: Close literature match
+% Description: Gives the mean-ionic activity-coefficient conversion from mole-fraction to molality basis.
+% Change note: Kept as the primary mole-fraction to molality conversion for mean-ionic activity coefficients.
+
+\begin{equation}
+    \gamma_{\pm}^{*,m}
+    =
+    \frac{\gamma_{\pm}^{*,x}}{1+M_{\mathrm{solvent}}\cdot\tilde{m}_{\mathrm{solute}}\cdot\sum_{i}\nu_{i,\mathrm{ion}}}
+    \label{eq:gamma_pm_molality}
+\end{equation}
+
+% EqID: lngamma_pm_molality
+% Source: Derived from Eq.~\eqref{eq:gamma_pm_molality}
+% Status: Derived relation
+% Description: Gives the logarithmic mean-ionic activity-coefficient conversion from mole-fraction to molality basis.
+% Change note: Added as the direct log-form companion to the existing salt-basis \(\gamma_{\pm}\) conversion.
+
+\begin{equation}
+    \ln\gamma_{\pm}^{*,m}
+    =
+    \ln\gamma_{\pm}^{*,x}
+    -
+    \ln\left(1+M_{\mathrm{solvent}}\cdot\tilde{m}_{\mathrm{solute}}\cdot\sum_{i}\nu_{i,\mathrm{ion}}\right)
+    \label{eq:lngamma_pm_molality}
+\end{equation}
+
+\section{Supplemental}
+
+\subsection{Legacy / Paper-Direct Expressions}
+\label{sec:supp_legacy_paper_direct}
+
+These expressions are retained for traceability to the original literature forms and older derivations. They are useful for comparison to the published equations, but they are not the preferred active documentation path when the main sections above now use reorganized or explicitly derived forms.
+
+\subsubsection{Debye-Huckel Density Differential}
+
+% EqID: dadrho_dh_explicit
+% Source: \cite{Cameretti2005}, Eq.~(10)
+% Status: Original literature form
+% Description: Gives the compact paper-direct Debye-Huckel density differential retained for traceability.
+% Change note: Moved out of the main density-differential section because the active document now shows the explicit \(\kappa\)- and \(\chi_i\)-based chain-rule construction there.
+
+\begin{equation}
+    \rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
+    =-\frac{\kappa e^2}{24\pi kT\epsilon}\sum_{i}x_{i}z_{i}{}^{2}\sigma_{i}
+    \label{eq:dadrho_dh_explicit}
+\end{equation}
+
+\subsubsection{Cameretti 2005 Chemical-Potential Forms}
+
+% EqID: mu_dh_2005
+% Source: \cite{Cameretti2005}, Eq.~(11)
+% Status: Documentation-only
+% Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+% Change note: Baseline 2005 formulation retained for comparison to the reorganized active chemical-potential presentation.
+
+\begin{equation}
+    \tilde{\mu}^{DH}_{i}= -\frac{q_{i}^2 \kappa}{24 \pi k T \epsilon}\left[2 \chi_{i}+\frac{\sum_{j} x_{j} q_{j}^2 \sigma_{k}}{\sum_{j} x_{j} q_{j}^2}\right]
+    \label{eq:mu_dh_2005}
+\end{equation}
+
+% EqID: sigma_dh_2005
+% Source: \cite{Cameretti2005}, Eq.~(20)
+% Status: Documentation-only
+% Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+% Change note: Retained beside Eq.~\eqref{eq:mu_dh_2005} so the original 2005 chemical-potential form stays self-contained in the legacy comparison block.
+
+\begin{equation}
+    \sigma_{k}=\left(\frac{\partial\left(\kappa \chi_{k}\right)}{\partial \kappa}\right)_{T, \mathrm{~N}}=-2 \chi_{k}+\frac{3}{1+\kappa d_{k}}
+    \label{eq:sigma_dh_2005}
+\end{equation}
+
+\subsection{Bjerrum Treatment}
+\label{sec:supp_bjerrum}
+\label{sec:supp_bjerrum}
+
+\subsubsection{State and Residual Helmholtz Relations}
+
+% EqID: r_ion_bjerrum
+% Source: \cite{Bulow2021}, Eq.~(16)
+% Status: Documentation-only
+% Description: Provides a supporting relation used in debye and huckel electrolyte term contribution.
+% Change note: Mapped manually to the closest-approach radius selection between ion diameter and Bjerrum length.
+
+\begin{equation}
+    R_{i}=
+    \begin{cases}
+        d_{\mathrm{ion},i}, & d_{\mathrm{ion},i}>l_{B}, \\
+        l_{B},              & d_{\mathrm{ion},i}<l_{B}.
+    \end{cases}
+    \label{eq:r_ion_bjerrum}
+\end{equation}
+
+% EqID: bjerrum_length
+% Source: \cite{Bulow2021}, Eq.~(10)
+% Status: Documentation-only
+% Description: Specifies dielectric-property mixing or derivative form for debye and huckel electrolyte term contribution.
+% Change note: High textual similarity to a tagged equation in the cited local paper export.
+
+\begin{equation}
+    l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}
+    \label{eq:bjerrum_length}
+\end{equation}
+
+% EqID: ares_dh_bjerrum
+% Source: \cite{Bulow2021}, Eq.~(20)
+% Status: Documentation-only
+% Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+% Change note: Mapped manually to the reduced Debye-Huckel Helmholtz form with dissociation degree factors.
+
+\begin{equation}
+    \tilde{a}^{DH}=-\frac{\kappa e^{2}}{12\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}\sum_{i}\alpha_{i}x_{i}z_{i}^{2}\chi_{i}
+    \label{eq:ares_dh_bjerrum}
+\end{equation}
+
+% EqID: kappa_dh_bjerrum
+% Source: \cite{Bulow2021}, Eq.~(18)
+% Status: Documentation-only
+% Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+% Change note: Mapped manually to the Bjerrum-treatment Debye screening parameter definition.
+
+\begin{equation}
+    \kappa=\sqrt{\frac{\rho e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\sum_{j}\alpha_{j}x_{j}z_{j}^{2}}
+    \label{eq:kappa_dh_bjerrum}
+\end{equation}
+
+% EqID: chi_dh_bjerrum
+% Source: \cite{Bulow2021}, Eq.~(19)
+% Status: Documentation-only
+% Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+% Change note: Mapped manually to the Bjerrum-treatment chi-function definition.
+
+\begin{equation}
+    \chi_{i}=\frac{3}{\left(\kappa R_{i}\right)^3}\left[\frac{3}{2}+\ln(1+\kappa R_{i})-2(1+\kappa R_{i})+\frac{1}{2}\left(1+\kappa R_{i}\right)^2\right]
+    \label{eq:chi_dh_bjerrum}
+\end{equation}
+
+\subsubsection{Density Differential}
+
+% EqID: dadrho_dh_bjerrum
+% Source: \cite{Bulow2021}, Eq.~(18)
+% Status: Documentation-only
+% Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+% Change note: Grouped under the supplemental Bjerrum-treatment section so the main density-differential section stays focused on the base Debye-Huckel formulation.
+
+\begin{equation}
+    \rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
+    =-\frac{\kappa e^2}{24\pi kT\epsilon}\sum_{i}\alpha _{i}x_{i}z_{i}{}^{2}\sigma_{i}
+    \label{eq:dadrho_dh_bjerrum}
+\end{equation}
+
+% EqID: sigma_dh_bjerrum
+% Source: \cite{Bulow2021}, Eq.~(26)
+% Status: Documentation-only
+% Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+% Change note: Grouped under the supplemental Bjerrum-treatment section so the Bjerrum-specific sigma relation stays beside the other extended Debye-Huckel helpers.
+
+\begin{equation}
+    \sigma_{i}=\left(\frac{\partial(\kappa\chi_{i})}{\partial\kappa}\right)_{T,\mathrm{x}}=-2\chi_{i}+\frac{3}{1+\kappa R_{i}}
+    \label{eq:sigma_dh_bjerrum}
+\end{equation}
+
+\subsubsection{Composition Differential}
+
+% EqID: dares_dh_dxi_bjerrum
+% Source: \cite{Bulow2021}, Eq.~(21)
+% Status: Documentation-only
+% Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+% Change note: Grouped under the supplemental Bjerrum-treatment section so the composition-derivative variant stays with the rest of the extended Bjerrum relations.
+
+\begin{equation}
+    \begin{aligned}
+        \left(\frac{\partial \tilde{a}^{DH}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+        =
+        -\frac{e^{2}}{12\pi\varepsilon_{0}k_{B}T}
+        \Bigg[
+          & \frac{1}{\varepsilon_{r}}\left(\frac{\partial\kappa}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+            \sum_{j}\alpha_{j}x_{j}z_{j}^{2}\chi_{j}
+        \\
+        - & \frac{\kappa}{\varepsilon_{r}^{2}}
+            \left(\frac{\partial\varepsilon_{r}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+            \sum_{j}\alpha_{j}x_{j}z_{j}^{2}\chi_{j}
+        \\
+        + & \frac{\kappa}{\varepsilon_{r}}\alpha_{i}z_{i}^{2}\chi_{i}
+        \\
+        + & \frac{\kappa}{\varepsilon_{r}}
+            \sum_{j}\alpha_{j}x_{j}z_{j}^{2}
+            \left(\frac{\partial\chi_{j}}{\partial x_{i}}\right)_{T,v,x_{k\neq i}}
+            \Bigg]
+    \end{aligned}
+    \label{eq:dares_dh_dxi_bjerrum}
+\end{equation}
+
+% EqID: dkappa_dh_dxi_bjerrum
+% Source: \cite{Bulow2021}, Eq.~(22)
+% Status: Documentation-only
+% Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+% Change note: Grouped under the supplemental Bjerrum-treatment section so the auxiliary composition derivative for \kappa stays adjacent to the Bjerrum-specific Helmholtz relation.
+
+\begin{equation}
+    \begin{aligned}
+         & \left(\frac{\partial\kappa}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}=\frac12\left(\frac{\rho_{N}e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\sum_{j}\alpha_{j}x_{j}z_{j}^{2}\right)^{-\frac12} \\&\left\{-\frac{\rho_{N}e^2}{k_{B}T\left(\varepsilon_{0}\varepsilon_{r}\right)^2}\varepsilon_{0}\frac{\partial\left(\varepsilon_{r}\right)}{\partial x_{i}}\sum_{j}\alpha_{j}x_{j}z_{j}^2+\frac{\rho_{N}e^2}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\alpha_{i}z_{i}^2\right\}\\&=\left(\frac{\rho_{N}e^{2}}{k_{B}T}\right)^{\frac{1}{2}}\left\{-\frac{1}{2}\left(\varepsilon_{0}\varepsilon_{r}\right)^{-\frac{3}{2}}\varepsilon_{0}\frac{\partial\left(\varepsilon_{r}\right)}{\partial x_{i}}\left[\sum_{j}\alpha_{j}x_{j}z_{j}^{2}\right]^{\frac{1}{2}}\right.\\&+\frac{1}{2\sqrt{\varepsilon_{0}\varepsilon_{r}}}\Bigg[\sum_{j}\alpha_{j}x_{j}z_{j}^2\Bigg]^{-\frac{1}{2}}\alpha_{i}z_{i}^2\Bigg\}
+    \end{aligned}
+    \label{eq:dkappa_dh_dxi_bjerrum}
+\end{equation}
+
+% EqID: dchi_dh_dxi_bjerrum
+% Source: \cite{Bulow2021}, Eq.~(23)
+% Status: Documentation-only
+% Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+% Change note: Grouped under the supplemental Bjerrum-treatment section so the Bjerrum-specific chi derivative remains adjacent to the other extended Debye-Huckel derivatives.
+
+\begin{equation}
+    \begin{aligned}
+        \left(\frac{\partial\chi_{i}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}} & =-\frac{9}{\left(\kappa R_{i}\right)^{4}}\biggl[\frac{3}{2}+\ln(1+\kappa R_{i})-2(1+\kappa R_{i}) \\&+\frac{1}{2}\left(1+\kappa R_{i}\right)^{2}\bigg]R_{i}\frac{\partial\kappa}{\partial x_{i}}+\frac{3}{\left(\kappa R_{i}\right)^{3}}\bigg[\frac{1}{1+\kappa R_{i}}-1+\kappa R_{i}\bigg]\\R_{i}\frac{\partial\kappa}{\partial x_{i}}&= 3\frac{\partial\kappa}{\partial x_{i}}\left\{-\frac{\chi_{i}}{\kappa}+\frac{R_{i}}{\left(\kappa R_{i}\right)^{3}}\biggl[\frac{1}{1+\kappa R_{i}}-1+\kappa R_{i}\biggr]\right\}
+    \end{aligned}
+    \label{eq:dchi_dh_dxi_bjerrum}
+\end{equation}
+
+\subsubsection{Ion-Pairing Relations}
+
+% EqID: alpha_ion_pair
+% Source: \cite{Bulow2021}, Eq.~(14)
+% Status: Documentation-only
+% Description: Gives an activity or fugacity-coefficient relation in debye and huckel electrolyte term contribution.
+% Change note: High textual similarity to a tagged equation in the cited local paper export.
+
+\begin{equation}
+    \alpha=\frac{-1+\sqrt{1+4x_{\pm} K_{ip}\frac{\left(\gamma_{\pm}^*\left(x_{f}\right)\right)^2}{\gamma_{ip}^*}}}{2x_{\pm} K_{ip}\frac{\left(\gamma_{\pm}^*\left(x_{f}\right)\right)^2}{\gamma_{ip}^*}}
+    \label{eq:alpha_ion_pair}
+\end{equation}
+
+% EqID: k_ion_pair
+% Source: \cite{Bulow2021}, Eq.~(9) and Eq.~(11)
+% Status: Documentation-only
+% Description: Specifies dielectric-property mixing or derivative form for debye and huckel electrolyte term contribution.
+% Change note: This line combines the algebraic ion-pair equilibrium form and the configurational integral expression shown as separate equations in the paper.
+
+\begin{equation}
+    K_{ip}(T)=\frac{(1-\alpha)\cdot\gamma_{ip}^{*}}{\alpha^{2}\cdot x_{\pm}\cdot\left(\gamma_{\pm}^{*}(x_{f}(\alpha))\right)^{2}} = 4\pi\rho_{N}\int_{a}^{l_{B}}\exp\left(\frac{\left|z_{i}z_{j}\right|e^2}{4\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}\cdot\frac{1}{r}\right)r^2dr
+    \label{eq:k_ion_pair}
+\end{equation}
+
+% EqID: gamma_ion_pair_unity
+% Source: \cite{Bulow2021} (approximation not explicitly numbered)
+% Status: Documentation-only
+% Description: Provides a supporting relation used in debye and huckel electrolyte term contribution.
+% Change note: Assumption $\gamma_{ip}^* \approx 1$ is used as a simplifying closure and is not a standalone numbered equation in the source paper.
+
+\begin{equation}
+    \gamma_{ip}^* \approx 1
+    \label{eq:gamma_ion_pair_unity}
+\end{equation}
+
+% EqID: x_pm_balance
+% Source: \cite{Bulow2021}, Eq.~(15)
+% Status: Documentation-only
+% Description: Provides a supporting relation used in debye and huckel electrolyte term contribution.
+% Change note: Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation.
+
+\begin{equation}
+    x_{\pm} = x_{f} + x_{ip}
+    \label{eq:x_pm_balance}
+\end{equation}
+
+% EqID: x_free_ion_from_alpha
+% Source: \cite{Bulow2021}, Eq.~(15)
+% Status: Documentation-only
+% Description: Provides a supporting relation used in debye and huckel electrolyte term contribution.
+% Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+
+\begin{equation}
+    x_{\pm} = \alpha x_{f}
+    \label{eq:x_free_ion_from_alpha}
+\end{equation}
+
+% EqID: x_ion_pair_from_alpha
+% Source: \cite{Bulow2021}, Eq.~(9) (derived stoichiometric form)
+% Status: Documentation-only
+% Description: Provides a supporting relation used in debye and huckel electrolyte term contribution.
+% Change note: Stoichiometric rearrangement used with Eq. (9) during alpha-based ion-pair splitting.
+
+\begin{equation}
+    x_{\pm} = (1 - \alpha) x_{ip}
+    \label{eq:x_ion_pair_from_alpha}
+\end{equation}
+
+% EqID: x_pm_stoich
+% Source: \cite{Bulow2021}, Eq.~(7) (adapted variable form)
+% Status: Documentation-only
+% Description: Provides a supporting relation used in debye and huckel electrolyte term contribution.
+% Change note: Geometric mean form mirrors the mean-ionic expression pattern and is written here for mole fractions.
+
+\begin{equation}
+    x_{\pm}=(x_{c}^{\nu c}\cdot x_{a}^{\nu a})^{\frac{1}{\nu_{c}+\nu_{a}}}
+    \label{eq:x_pm_stoich}
+\end{equation}
+
+% EqID: mu_dh_infinite_dilution
+% Source: \cite{Bulow2021}, Eq.~(25)
+% Status: Documentation-only
+% Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+% Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+
+\begin{equation}
+    \mu_{i}^{DH}\left(x_{f}\right)=\left(\frac{\partial A^{DH}}{\partial\rho_{i}\left(x_{f}\right)}\right)_{T,V,N_{j\neq i}}=-\frac{e^{2}z_{i}^{2}\kappa}{24\pi\varepsilon_{0}\varepsilon_{r}}\left[2\chi_{i}+\frac{\sum_{k}x_{k,f}z_{k}^{2}\sigma_{k}}{\sum_{k}x_{k,f}z_{k}^{2}}\right]
+    \label{eq:mu_dh_infinite_dilution}
+\end{equation}
+
+% EqID: lngamma_i_infinite_dilution
+% Source: \cite{Bulow2021}, Eq.~(13)
+% Status: Documentation-only
+% Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
+% Change note: Mapped manually to the infinite-dilution ionic activity-coefficient relation.
+
+\begin{equation}
+    \ln\gamma_{i}^{*}\left(x_{f,i}\right)=-\frac{e^{2}z_{i}^{2}\kappa}{24\pi\varepsilon_{0}\varepsilon_{r}}\left[2\chi_{i}+\frac{\sum_{k}x_{k,f}z_{k}^{2}\sigma_{k}}{\sum_{k}x_{k,f}z_{k}^{2}}\right]
+    \label{eq:lngamma_i_infinite_dilution}
+\end{equation}
+
+% EqID: gamma_pm_x
+% Source: \cite{Bulow2021}, Eq.~(26)
+% Status: Documentation-only
+% Description: Gives an activity or fugacity-coefficient relation in debye and huckel electrolyte term contribution.
+% Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
+
+\begin{equation}
+    \gamma_{\pm}^{*}=(\gamma_{c}^{*,\nu c}\cdot\gamma_{a}^{*,\nu a})^{\frac{1}{\nu_{c}+\nu_{a}}}
+    \label{eq:gamma_pm_x}
+\end{equation}
+
+
+
+\printbibliography\end{document}

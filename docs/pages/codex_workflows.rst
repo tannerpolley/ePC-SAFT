@@ -73,6 +73,25 @@ Use ``--build-only --parallel 10`` only after the CMake tree already exists. Use
 
 Do not use ``--clean`` for routine validation. ``uv run python scripts/build_epcsaft.py --clean`` is a repair action for stale CMake state or stale/locked ``_core`` artifacts. If Windows reports that ``_core*.pyd`` is locked, stop Python REPLs, tests, IDE run configurations, or Codex sub-agents that imported ``epcsaft._core`` before retrying.
 
+LaTeX and Overleaf mirror
+-------------------------
+
+``docs/latex`` is normal tracked repo content and is the source of truth for equation-heavy LaTeX files. It is not a Git submodule.
+
+Use this once to create or validate the external Overleaf checkout:
+
+.. code-block:: powershell
+
+   .\scripts\setup_latex_mirror.ps1
+
+After LaTeX edits are committed or ready to publish, mirror the current ``docs/latex`` tree to Overleaf:
+
+.. code-block:: powershell
+
+   .\scripts\sync_latex_mirror.ps1
+
+The mirror lives at ``C:\Users\Tanner\Documents\git\ePC-SAFT-LaTeX`` and owns the Overleaf Git remote. The sync script copies the current files exactly, including ``docs/latex/out``, then commits and pushes the mirror by default.
+
 Parallel agent safety
 ---------------------
 
