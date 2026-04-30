@@ -405,6 +405,7 @@ def electrolyte_lle_flash(
     z: Any = None,
     solvent_feed: Any = None,
     salt_molality: Any = None,
+    initial_phases: Any = None,
     options: EquilibriumOptions | None = None,
 ) -> EquilibriumResult:
     """Run a V4 electrolyte-aware two-liquid split with electroneutral ion partitioning.
@@ -430,7 +431,7 @@ def electrolyte_lle_flash(
     _require_charge_neutral(feed, charges, "electrolyte_lle feed")
     formula = _electrolyte_formula_basis(mixture, feed, feed_diagnostics)
     try:
-        solved = _solve_electrolyte_lle_charge_constrained(mixture, temperature, pressure, feed, formula, opts)
+        solved = _solve_electrolyte_lle_charge_constrained(mixture, temperature, pressure, feed, formula, opts, initial_phases=initial_phases)
     except SolutionError as exc:
         if getattr(exc, "diagnostics", None) is not None:
             diagnostics = dict(exc.diagnostics)
@@ -960,6 +961,47 @@ def _explicit_to_formula_composition(composition: np.ndarray, basis: dict[str, A
     return out / total
 
 
+def _electrolyte_initial_phase_seed(
+    mixture: Any,
+    feed: np.ndarray,
+    basis: dict[str, Any],
+    initial_phases: Any,
+    options: EquilibriumOptions,
+) -> dict[str, Any]:
+    if not isinstance(initial_phases, dict):
+        raise InputError("initial_phases for electrolyte_lle must be a dict with 'aq', 'org', and 'phase_fraction'.")
+    required = {"aq", "org", "phase_fraction"}
+    keys = set(initial_phases)
+    if keys != required:
+        raise InputError("initial_phases for electrolyte_lle must contain exactly 'aq', 'org', and 'phase_fraction'.")
+    aq_comp = _normalize_initial_phase(initial_phases["aq"], mixture.ncomp, options.min_composition, "aq")
+    org_comp = _normalize_initial_phase(initial_phases["org"], mixture.ncomp, options.min_composition, "org")
+    beta_org = float(initial_phases["phase_fraction"])
+    if not np.isfinite(beta_org) or beta_org <= 0.0 or beta_org >= 1.0:
+        raise InputError("initial_phases phase_fraction must be > 0 and < 1.")
+    charges = _mixture_charges(mixture)
+    phase_charge_error = max(abs(float(np.dot(aq_comp, charges))), abs(float(np.dot(org_comp, charges))))
+    if phase_charge_error > 1.0e-8:
+        raise InputError("initial_phases aq and org must be charge neutral for electrolyte_lle.")
+    material_error = float(np.max(np.abs((1.0 - beta_org) * aq_comp + beta_org * org_comp - feed)))
+    if material_error > 1.0e-7:
+        raise InputError("initial_phases aq/org/phase_fraction must reconstruct the electrolyte_lle feed.")
+    aq_formula = _explicit_to_formula_composition(aq_comp, basis)
+    org_formula = _explicit_to_formula_composition(org_comp, basis)
+    beta_formula = _explicit_beta_to_formula_beta(beta_org, aq_formula, org_formula, basis, mixture.ncomp)
+    return {
+        "seed_name": "initial_phases",
+        "beta_formula": beta_formula,
+        "aq_formula": aq_formula,
+        "org_formula": org_formula,
+        "fixture": None,
+        "diagnostics": {
+            "initial_phase_material_balance_error": material_error,
+            "initial_phase_charge_balance_error": phase_charge_error,
+        },
+    }
+
+
 def _solve_electrolyte_lle_charge_constrained(
     mixture: Any,
     T: float,
@@ -967,6 +1009,8 @@ def _solve_electrolyte_lle_charge_constrained(
     feed: np.ndarray,
     basis: dict[str, Any],
     options: EquilibriumOptions,
+    *,
+    initial_phases: Any = None,
 ) -> dict[str, Any]:
     stability = _electrolyte_stability_from_basis(mixture, T, P, feed, basis, options)
     stability_diagnostics = {
@@ -991,7 +1035,7 @@ def _solve_electrolyte_lle_charge_constrained(
         "salt_pairs": [dict(pair) for pair in basis["salt_pairs"]],
     }
     diagnostics_base.update(stability_diagnostics)
-    seeds = _predictive_electrolyte_lle_seeds(mixture, T, P, feed, basis, stability, options)
+    seeds = _predictive_electrolyte_lle_seeds(mixture, T, P, feed, basis, stability, options, initial_phases=initial_phases)
     if options.max_iterations <= 1:
         failed_attempt = _predictive_failed_attempt_payload(
             feed,
@@ -1030,8 +1074,12 @@ def _predictive_electrolyte_lle_seeds(
     basis: dict[str, Any],
     stability: StabilityResult,
     options: EquilibriumOptions,
+    *,
+    initial_phases: Any = None,
 ) -> list[dict[str, Any]]:
     seeds: list[dict[str, Any]] = []
+    if initial_phases is not None:
+        seeds.append(_electrolyte_initial_phase_seed(mixture, feed, basis, initial_phases, options))
     try:
         seeds.append(_electrolyte_gibbs_seed_from_trial(mixture, T, P, feed, basis, stability.trial_composition, options))
     except SolutionError as exc:
@@ -1060,14 +1108,37 @@ def _solve_predictive_electrolyte_lle_attempt(
     options: EquilibriumOptions,
 ) -> dict[str, Any]:
     variables = _pack_predictive_electrolyte_variables(seed["beta_formula"], seed["org_formula"])
+    context = _predictive_electrolyte_context(mixture, T, P, feed, basis, options)
 
     def residual_fn(candidate: np.ndarray) -> np.ndarray:
         try:
-            evaluated = _evaluate_predictive_electrolyte_variables(mixture, T, P, feed, basis, candidate, options)
+            evaluated = _evaluate_predictive_electrolyte_variables(mixture, T, P, feed, basis, candidate, options, context=context)
         except SolutionError:
-            nres = len(basis["neutral_indices"]) + len(basis["salt_pairs"])
-            return np.full(nres, 1.0e3, dtype=float)
+            return _predictive_infeasible_residual(candidate, basis, options)
         return np.asarray(evaluated["residual"], dtype=float)
+
+    try:
+        initial_candidate = _evaluate_predictive_electrolyte_variables(mixture, T, P, feed, basis, variables, options, context=context)
+    except SolutionError:
+        initial_candidate = None
+    if initial_candidate is not None:
+        initial_candidate = _canonicalize_predictive_electrolyte_candidate(mixture, feed, basis, initial_candidate)
+        initial_candidate = initial_candidate | {
+            "iteration": 0,
+            "objective": float(np.linalg.norm(initial_candidate["residual"], ord=2)),
+            "least_squares_success": True,
+            "least_squares_message": "initial electrolyte split seed accepted before nonlinear solve",
+        }
+        if seed.get("seed_name") == "initial_phases" and _predictive_electrolyte_accepted(initial_candidate, options):
+            diagnostics = _predictive_electrolyte_payload(initial_candidate, seed, True)["diagnostics"]
+            return {
+                "aq_comp": initial_candidate["aq_comp"],
+                "org_comp": initial_candidate["org_comp"],
+                "beta_org": float(initial_candidate["beta_org"]),
+                "diagnostics": diagnostics,
+                "objective": float(initial_candidate["objective"]),
+                "accepted": True,
+            }
 
     solved = least_squares(
         residual_fn,
@@ -1078,12 +1149,13 @@ def _solve_predictive_electrolyte_lle_attempt(
         gtol=max(float(options.tolerance), 1.0e-10),
     )
     try:
-        candidate = _evaluate_predictive_electrolyte_variables(mixture, T, P, feed, basis, solved.x, options)
+        candidate = _evaluate_predictive_electrolyte_variables(mixture, T, P, feed, basis, solved.x, options, context=context)
     except SolutionError as exc:
         try:
-            candidate = _evaluate_predictive_electrolyte_variables(mixture, T, P, feed, basis, variables, options)
+            candidate = _evaluate_predictive_electrolyte_variables(mixture, T, P, feed, basis, variables, options, context=context)
         except SolutionError:
             return _predictive_failed_attempt_payload(feed, basis, seed, str(exc))
+    candidate = _canonicalize_predictive_electrolyte_candidate(mixture, feed, basis, candidate)
     candidate = candidate | {
         "iteration": int(solved.nfev),
         "objective": float(np.linalg.norm(residual_fn(solved.x), ord=2)),
@@ -1137,6 +1209,9 @@ def _predictive_failed_attempt_payload(feed: np.ndarray, basis: dict[str, Any], 
         "accepted_phase_count": 1,
         "least_squares_success": False,
         "least_squares_message": message,
+        "phase_labels_swapped": False,
+        "phase_label_basis": "",
+        "phase_label_ambiguous": False,
     }
     return {
         "aq_comp": np.asarray(feed, dtype=float),
@@ -1202,6 +1277,9 @@ def _predictive_electrolyte_payload(candidate: dict[str, Any], seed: dict[str, A
         "accepted_phase_count": 2 if accepted else 1,
         "least_squares_success": bool(candidate.get("least_squares_success", False)),
         "least_squares_message": str(candidate.get("least_squares_message", "")),
+        "phase_labels_swapped": bool(candidate.get("phase_labels_swapped", False)),
+        "phase_label_basis": str(candidate.get("phase_label_basis", "")),
+        "phase_label_ambiguous": bool(candidate.get("phase_label_ambiguous", False)),
     }
     return {
         "aq_comp": candidate["aq_comp"],
@@ -1231,6 +1309,45 @@ def _unpack_predictive_electrolyte_variables(variables: np.ndarray, nformula: in
     return beta, _logits_to_composition(raw[1:])
 
 
+def _predictive_infeasible_residual(variables: np.ndarray, basis: dict[str, Any], options: EquilibriumOptions) -> np.ndarray:
+    nres = len(basis["neutral_indices"]) + len(basis["salt_pairs"])
+    try:
+        beta_formula, org_formula = _unpack_predictive_electrolyte_variables(variables, len(basis["formula_feed"]))
+        formula_feed = np.asarray(basis["formula_feed"], dtype=float)
+        aq_formula_raw = (formula_feed - beta_formula * org_formula) / (1.0 - beta_formula)
+    except SolutionError:
+        return np.full(nres, 1.0e3, dtype=float)
+    if not np.all(np.isfinite(aq_formula_raw)):
+        return np.full(nres, 1.0e3, dtype=float)
+    deficits = np.maximum(float(options.min_composition) - aq_formula_raw, 0.0)
+    total_error = abs(float(np.sum(aq_formula_raw)) - 1.0)
+    distance = np.concatenate([deficits, np.asarray([total_error], dtype=float)])
+    if distance.size < nres:
+        distance = np.pad(distance, (0, nres - distance.size))
+    return 10.0 + 1.0e4 * distance[:nres]
+
+
+def _predictive_electrolyte_context(
+    mixture: Any,
+    T: float,
+    P: float,
+    feed: np.ndarray,
+    basis: dict[str, Any],
+    options: EquilibriumOptions,
+) -> dict[str, Any]:
+    charges = _mixture_charges(mixture)
+    feed_state = _phase_state(mixture, T, P, feed, "liq", options, "electrolyte feed")
+    aq_index, org_index = _aqueous_organic_solvent_indices(mixture, feed)
+    return {
+        "charges": charges,
+        "feed_state": feed_state,
+        "gibbs_feed": _electrolyte_gibbs_proxy(feed, feed_state),
+        "species": list(mixture.species),
+        "aq_index": int(aq_index),
+        "org_index": int(org_index),
+    }
+
+
 def _evaluate_predictive_electrolyte_variables(
     mixture: Any,
     T: float,
@@ -1239,7 +1356,10 @@ def _evaluate_predictive_electrolyte_variables(
     basis: dict[str, Any],
     variables: np.ndarray,
     options: EquilibriumOptions,
+    *,
+    context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    ctx = context or _predictive_electrolyte_context(mixture, T, P, feed, basis, options)
     beta_formula, org_formula = _unpack_predictive_electrolyte_variables(variables, len(basis["formula_feed"]))
     formula_feed = np.asarray(basis["formula_feed"], dtype=float)
     aq_formula_raw = (formula_feed - beta_formula * org_formula) / (1.0 - beta_formula)
@@ -1251,19 +1371,19 @@ def _evaluate_predictive_electrolyte_variables(
     beta_org = beta_formula * org_scale / ((1.0 - beta_formula) * aq_scale + beta_formula * org_scale)
     aq_state = _phase_state(mixture, T, P, aq_comp, "liq", options, "predictive electrolyte LLE")
     org_state = _phase_state(mixture, T, P, org_comp, "liq", options, "predictive electrolyte LLE")
-    neutral_residuals, mean_ionic_residuals = _electrolyte_fugacity_residuals(aq_comp, org_comp, aq_state, org_state, basis, mixture.species)
+    neutral_residuals, mean_ionic_residuals = _electrolyte_fugacity_residuals(aq_comp, org_comp, aq_state, org_state, basis, ctx["species"])
     residual = np.asarray([*neutral_residuals.values(), *mean_ionic_residuals.values()], dtype=float)
     material_residual = (1.0 - beta_org) * aq_comp + beta_org * org_comp - feed
+    charges = np.asarray(ctx["charges"], dtype=float)
     charge_errors = np.asarray(
         [
-            np.dot(feed, _mixture_charges(mixture)),
-            np.dot(aq_comp, _mixture_charges(mixture)),
-            np.dot(org_comp, _mixture_charges(mixture)),
+            np.dot(feed, charges),
+            np.dot(aq_comp, charges),
+            np.dot(org_comp, charges),
         ],
         dtype=float,
     )
-    feed_state = _phase_state(mixture, T, P, feed, "liq", options, "electrolyte feed")
-    gibbs_feed = _electrolyte_gibbs_proxy(feed, feed_state)
+    gibbs_feed = float(ctx["gibbs_feed"])
     gibbs_split = (1.0 - beta_org) * _electrolyte_gibbs_proxy(aq_comp, aq_state) + beta_org * _electrolyte_gibbs_proxy(org_comp, org_state)
     return {
         "beta_org": float(beta_org),
@@ -1285,6 +1405,80 @@ def _evaluate_predictive_electrolyte_variables(
         "gibbs_delta": float(gibbs_split - gibbs_feed),
         "phase_distance": _phase_distance(aq_comp, org_comp),
     }
+
+
+def _canonicalize_predictive_electrolyte_candidate(
+    mixture: Any,
+    feed: np.ndarray,
+    basis: dict[str, Any],
+    candidate: dict[str, Any],
+) -> dict[str, Any]:
+    original_aq = np.asarray(candidate["aq_comp"], dtype=float)
+    original_org = np.asarray(candidate["org_comp"], dtype=float)
+    swap, label_basis, ambiguous = _electrolyte_phase_label_decision(mixture, feed, original_aq, original_org)
+    if not swap:
+        candidate["phase_labels_swapped"] = False
+        candidate["phase_label_basis"] = label_basis
+        candidate["phase_label_ambiguous"] = ambiguous
+        return candidate
+
+    aq_comp = original_org
+    org_comp = original_aq
+    aq_formula = np.asarray(candidate["org_formula"], dtype=float)
+    org_formula = np.asarray(candidate["aq_formula"], dtype=float)
+    beta_org = 1.0 - float(candidate["beta_org"])
+    beta_formula = 1.0 - float(candidate["beta_formula"])
+    neutral_residuals = {key: -float(value) for key, value in candidate["neutral_fugacity_residuals"].items()}
+    mean_ionic_residuals = {key: -float(value) for key, value in candidate["mean_ionic_fugacity_residuals"].items()}
+    residual = -np.asarray(candidate["residual"], dtype=float)
+    phase_charge_balance = dict(candidate["phase_charge_balance"])
+    return candidate | {
+        "beta_org": float(beta_org),
+        "beta_formula": float(beta_formula),
+        "aq_comp": aq_comp,
+        "org_comp": org_comp,
+        "aq_formula": aq_formula,
+        "org_formula": org_formula,
+        "neutral_fugacity_residuals": neutral_residuals,
+        "mean_ionic_fugacity_residuals": mean_ionic_residuals,
+        "residual": residual,
+        "phase_charge_balance": {
+            "feed": float(phase_charge_balance.get("feed", 0.0)),
+            "aq": float(phase_charge_balance.get("org", 0.0)),
+            "org": float(phase_charge_balance.get("aq", 0.0)),
+        },
+        "phase_labels_swapped": True,
+        "phase_label_basis": label_basis,
+        "phase_label_ambiguous": ambiguous,
+    }
+
+
+def _electrolyte_phase_label_decision(
+    mixture: Any,
+    feed: np.ndarray,
+    comp_a: np.ndarray,
+    comp_b: np.ndarray,
+) -> tuple[bool, str, bool]:
+    aq_index, org_index = _aqueous_organic_solvent_indices(mixture, feed)
+    species = [str(item).lower() for item in mixture.species]
+    aq_name = str(mixture.species[aq_index])
+    tol = 1.0e-8
+    aq_delta = float(comp_a[aq_index] - comp_b[aq_index])
+    if abs(aq_delta) > tol:
+        if species[aq_index] in {"h2o", "water"}:
+            return aq_delta < 0.0, "water_rich:{}".format(aq_name), False
+        return aq_delta < 0.0, "high_dielectric_rich:{}".format(aq_name), False
+
+    charges = _mixture_charges(mixture)
+    ion_indices = [i for i, charge in enumerate(charges) if abs(float(charge)) > 1.0e-12]
+    ion_delta = float(np.sum(comp_a[ion_indices]) - np.sum(comp_b[ion_indices])) if ion_indices else 0.0
+    if abs(ion_delta) > tol:
+        return ion_delta < 0.0, "ion_rich", False
+
+    org_delta = float(comp_a[org_index] - comp_b[org_index])
+    if abs(org_delta) > tol:
+        return org_delta > 0.0, "organic_rich_tie_break:{}".format(mixture.species[org_index]), False
+    return False, "ambiguous_original_order", True
 
 
 def _electrolyte_gibbs_seed_from_trial(

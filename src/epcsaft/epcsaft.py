@@ -195,6 +195,7 @@ class ePCSAFTMixture:
                         z=z,
                         solvent_feed=solvent_feed,
                         salt_molality=salt_molality,
+                        initial_phases=initial_phases,
                         options=options,
                     )
                 except SolutionError as exc:
@@ -237,8 +238,6 @@ class ePCSAFTMixture:
         if kind in {"electrolyte_lle", "electrolyte_lle_flash"}:
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
-            if initial_phases is not None:
-                raise InputError("initial_phases is not supported for kind='electrolyte_lle'.")
             if backend not in (None, "electrolyte_lle"):
                 raise InputError("Electrolyte LLE backend must be None or 'electrolyte_lle'.")
             return electrolyte_lle_flash(
@@ -248,6 +247,7 @@ class ePCSAFTMixture:
                 z=z,
                 solvent_feed=solvent_feed,
                 salt_molality=salt_molality,
+                initial_phases=initial_phases,
                 options=options,
             )
         if kind == "electrolyte_stability":

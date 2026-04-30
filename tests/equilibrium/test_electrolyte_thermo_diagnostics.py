@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 import numpy as np
+import pytest
 
 from epcsaft.equilibrium_core.thermo_diagnostics import (
     compare_khudaida_aad_tables,
@@ -115,4 +116,29 @@ def test_khudaida_solver_gate_reports_algorithm_or_thermo_failure() -> None:
     }
     assert "ascani_case2_fixture_regression" not in json.dumps(diagnostics)
     assert "v4_partition_seed_api_compatibility" not in json.dumps(diagnostics)
+    json.dumps(diagnostics, allow_nan=False)
+
+
+@pytest.mark.xfail(reason="Unseeded Khudaida feed recovery remains a tracked v4 robustness follow-up.")
+def test_khudaida_unseeded_solver_gate_is_not_yet_an_acceptance_test() -> None:
+    diagnostics = evaluate_khudaida_solver_gate(figure=2, tie_line=1, source="package")
+
+    assert diagnostics["solver_outcome"] == "accepted"
+    assert diagnostics["acceptance_gate"] == "predictive_nonlinear_solve"
+    assert diagnostics["decision"] == "solver_accepts_package_fixed_tieline_feed"
+
+
+def test_khudaida_package_tieline_seeded_solver_gate_accepts_known_split() -> None:
+    diagnostics = evaluate_khudaida_solver_gate(figure=2, tie_line=1, source="package", seeded=True)
+
+    assert diagnostics["source"] == "epcsaft_package"
+    assert diagnostics["fixed_phase_residual_norm"] <= 1.0e-6
+    assert diagnostics["gibbs_delta"] < 0.0
+    assert diagnostics["solver_outcome"] == "accepted"
+    assert diagnostics["acceptance_gate"] == "predictive_nonlinear_solve"
+    assert diagnostics["decision"] == "solver_accepts_package_fixed_tieline_feed"
+    assert diagnostics["solver_diagnostics"]["solver_seed_name"] == "initial_phases"
+    assert diagnostics["solver_diagnostics"]["solver_residual_norm"] <= 1.0e-6
+    assert diagnostics["solver_diagnostics"]["gibbs_delta"] < 0.0
+    assert diagnostics["solver_diagnostics"]["phase_labels_swapped"] is False
     json.dumps(diagnostics, allow_nan=False)

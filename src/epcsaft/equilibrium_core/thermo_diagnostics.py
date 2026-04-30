@@ -240,12 +240,19 @@ def summarize_khudaida_matrix() -> dict[str, Any]:
     )
 
 
-def evaluate_khudaida_solver_gate(*, figure: int, tie_line: int, source: str = "package") -> dict[str, Any]:
+def evaluate_khudaida_solver_gate(*, figure: int, tie_line: int, source: str = "package", seeded: bool = False) -> dict[str, Any]:
     """Try the public v4 solver from a fixed tie-line feed and classify rejection."""
     fixed = evaluate_khudaida_tieline(figure=figure, tie_line=tie_line, source=source)
     case = load_khudaida_tieline_case(figure=figure, tie_line=tie_line)
     phase_payload = _source_from_case(case, source)
     mixture = _khudaida_mixture(phase_payload["feed_composition"], float(case["temperature_K"]))
+    initial_phases = None
+    if seeded:
+        initial_phases = {
+            "aq": phase_payload["aqueous_composition"],
+            "org": phase_payload["organic_composition"],
+            "phase_fraction": phase_payload["organic_phase_fraction"],
+        }
     solver_diagnostics: dict[str, Any]
     try:
         result = mixture.equilibrium(
@@ -253,6 +260,7 @@ def evaluate_khudaida_solver_gate(*, figure: int, tie_line: int, source: str = "
             T=float(case["temperature_K"]),
             P=PRESSURE_PA,
             z=phase_payload["feed_composition"],
+            initial_phases=initial_phases,
             options=EquilibriumOptions(max_iterations=40, include_phase_diagnostics=False),
         )
     except SolutionError as exc:
@@ -278,6 +286,7 @@ def evaluate_khudaida_solver_gate(*, figure: int, tie_line: int, source: str = "
             "source": fixed["source"],
             "figure": int(figure),
             "tie_line": int(tie_line),
+            "seeded": bool(seeded),
             "fixed_phase_residual_norm": fixed["fixed_phase_residual_norm"],
             "gibbs_delta": fixed["gibbs_delta"],
             "solver_outcome": solver_outcome,
@@ -511,6 +520,9 @@ def _sanitize_solver_diagnostics(diagnostics: dict[str, Any]) -> dict[str, Any]:
         "phase_distance",
         "equilibrium_route",
         "phase_equilibrium_model",
+        "solver_seed_name",
+        "phase_labels_swapped",
+        "phase_label_basis",
     ):
         if key in diagnostics:
             out[key] = diagnostics[key]

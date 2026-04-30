@@ -124,7 +124,55 @@ def test_electrolyte_lle_molality_feed_solves_predictive_split() -> None:
     assert diagnostics["charge_balance_error"] <= 1.0e-8
     assert diagnostics["gibbs_delta"] < 0.0
     assert all(float(phase.composition[2]) > 0.0 and float(phase.composition[3]) > 0.0 for phase in result.phases)
+    phases = {phase.label: phase for phase in result.phases}
+    assert phases["aq"].composition[0] > phases["org"].composition[0]
+    assert phases["aq"].composition[2] > phases["org"].composition[2]
+    assert phases["aq"].composition[3] > phases["org"].composition[3]
+    assert phases["org"].composition[1] > phases["aq"].composition[1]
+    assert diagnostics["phase_label_basis"]
+    assert isinstance(diagnostics["phase_labels_swapped"], bool)
     json.dumps(diagnostics, allow_nan=False)
+
+
+def test_electrolyte_lle_accepts_strict_aq_org_initial_phases() -> None:
+    mix = _ascani_water_butanol_nacl_mixture()
+    aq = np.asarray([0.798324680201737, 0.016320352824141723, 0.09267748348706063, 0.09267748348706063], dtype=float)
+    org = np.asarray([0.37006036048879404, 0.6214918588210971, 0.004223890345054407, 0.004223890345054407], dtype=float)
+    beta_org = 0.613766575013417
+    feed = (1.0 - beta_org) * aq + beta_org * org
+
+    result = mix.equilibrium(
+        kind="electrolyte_lle",
+        T=298.15,
+        P=1.013e5,
+        z=feed,
+        initial_phases={"aq": aq, "org": org, "phase_fraction": beta_org},
+        options=epcsaft.EquilibriumOptions(include_phase_diagnostics=True),
+    )
+
+    diagnostics = result.diagnostics
+    phases = {phase.label: phase for phase in result.phases}
+    assert result.split_detected is True
+    assert diagnostics["solver_seed_name"] == "initial_phases"
+    assert diagnostics["acceptance_gate"] == "predictive_nonlinear_solve"
+    assert diagnostics["solver_residual_norm"] <= 1.0e-6
+    assert diagnostics["gibbs_delta"] < 0.0
+    assert phases["aq"].composition[0] > phases["org"].composition[0]
+    assert phases["org"].composition[1] > phases["aq"].composition[1]
+
+
+def test_electrolyte_lle_rejects_neutral_lle_initial_phase_labels() -> None:
+    mix = _ascani_water_butanol_nacl_mixture()
+    feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
+
+    with np.testing.assert_raises_regex(epcsaft.InputError, "aq.*org.*phase_fraction"):
+        mix.equilibrium(
+            kind="electrolyte_lle",
+            T=298.15,
+            P=1.013e5,
+            z=feed,
+            initial_phases={"liq1": feed, "liq2": feed, "phase_fraction": 0.5},
+        )
 
 
 def test_ascani_case2_mixed_salt_solves_without_local_model_fixture() -> None:
