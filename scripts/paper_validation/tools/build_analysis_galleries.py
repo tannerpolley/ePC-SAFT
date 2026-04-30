@@ -759,7 +759,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       const assetCloseEl = document.getElementById("asset-close");
       const plotViewStorageKey = "plotGalleryViewMode";
       const sidebarWidthStorageKey = "plotGallerySidebarWidth";
-      const selected = new Set([""]);
+      const selected = new Set();
       const expanded = new Set([""]);
       let treeMode = "source";
       let plotViewMode = localStorage.getItem(plotViewStorageKey) === "static" ? "static" : "interactive";
@@ -1242,7 +1242,6 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       function setTreeMode(mode) {{
         treeMode = mode;
         selected.clear();
-        selected.add("");
         expanded.clear();
         expanded.add("");
         sourceModeEl.classList.toggle("is-active", treeMode === "source");

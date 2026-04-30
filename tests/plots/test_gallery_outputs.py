@@ -11,6 +11,7 @@ import numpy as np
 
 from scripts import plot_outputs
 from scripts.paper_validation.tools import build_analysis_galleries
+from scripts.paper_validation.tools import report_plot_companions
 from scripts.paper_validation.tools import serve_plot_gallery
 from tests.plots.plot_helpers import assert_figure_text_is_inside_canvas
 from tests.plots.plot_helpers import save_comparison_plot
@@ -199,6 +200,8 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     assert "tests/plots/reference_comparison_outputs" not in html
     assert "Source tree" in html
     assert "Output tree" in html
+    assert "const selected = new Set();" in html
+    assert 'const selected = new Set([""]);' not in html
     assert "Interactive" in html
     assert "Static" in html
     assert "plotGalleryViewMode" in html
@@ -244,6 +247,41 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     assert 'target = "_blank"' not in html
     assert 'className = "image-link"' not in html
     assert "Select folders on the left" in html
+
+
+def test_plot_companion_report_lists_interactive_and_static_plots(tmp_path: Path, monkeypatch) -> None:
+    root = tmp_path / "plots"
+    interactive = root / "paper_validation" / "Example" / "figure_1" / "figure_1.png"
+    static = root / "paper_validation" / "Example" / "figure_2" / "figure_2.png"
+    interactive.parent.mkdir(parents=True)
+    static.parent.mkdir(parents=True)
+    interactive.write_bytes(b"png")
+    static.write_bytes(b"png")
+    interactive.with_suffix(".html").write_text(
+        '<html><meta name="epcsaft-interactive-source" content="csv_backfill"></html>',
+        encoding="utf-8",
+    )
+    (interactive.parent / "data").mkdir()
+    (interactive.parent / "data" / "figure_1_plot_data.csv").write_text("x,y\n0,0\n", encoding="utf-8")
+    (static.parent / "data").mkdir()
+    (static.parent / "data" / "figure_2_plot_data.csv").write_text(
+        "figure_file,artist_type\nfigure_2.png,existing_png_backfill\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(build_analysis_galleries, "PLOTS_ROOT", root)
+
+    output = tmp_path / "report.csv"
+    rows = report_plot_companions.companion_rows(root)
+    report_plot_companions.write_report(output, root)
+    report = output.read_text(encoding="utf-8")
+
+    by_output = {row["output_path"]: row for row in rows}
+    assert by_output["paper_validation/Example/figure_1/figure_1.png"]["interactive_status"] == "interactive"
+    assert by_output["paper_validation/Example/figure_1/figure_1.png"]["interactive_source"] == "csv_backfill"
+    assert by_output["paper_validation/Example/figure_2/figure_2.png"]["interactive_status"] == "static_only"
+    assert by_output["paper_validation/Example/figure_2/figure_2.png"]["static_reason"] == "no_numeric_artists"
+    assert "has_plotly_html" in report
+    assert "static_reason" in report
 
 
 def test_gallery_manifest_keeps_output_and_source_paths(tmp_path: Path, monkeypatch) -> None:
