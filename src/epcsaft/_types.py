@@ -16,9 +16,13 @@ class InputError(Exception):
 class SolutionError(Exception):
     """Exception raised when a solver fails to converge or returns invalid data."""
 
-    def __init__(self, message):
+    def __init__(self, message, diagnostics=None):
         self.message = message
-        super().__init__(message)
+        self.diagnostics = diagnostics
+        if diagnostics is None:
+            super().__init__(message)
+        else:
+            super().__init__(message, diagnostics)
 
 
 def phase_to_int(phase):

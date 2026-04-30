@@ -102,6 +102,17 @@ The dev build tree and temp/profile outputs under ``build/`` are shared disposab
 - Let sub-agents run focused test slices for their lane, and reserve full build, doctor, and ``--confidence`` validation for coordinated handoff checks.
 - Use ``uv run python run_pytest.py --profile -q`` for quick runtime-only speed claims. Use ``uv run python run_pytest.py --profile-full -q -s`` before broad method-speed claims, allow at least 120 seconds, then read ``build/runtime_profile/*.md`` before reporting conclusions.
 
+Project-local Git worktrees
+---------------------------
+
+Use ``scripts/create_codex_worktree.ps1`` from the primary checkout instead of raw ``git worktree add`` when a Codex agent needs a project-local worktree under ``.worktrees/``. The helper creates ``.worktrees/<name>`` and registers the new checkout path as a Git ``safe.directory`` so future Git commands inside that worktree do not fail on Windows because Codex runs as a sandbox user.
+
+.. code-block:: powershell
+
+   .\scripts\create_codex_worktree.ps1 -Name equilibrium-v3 -Branch codex/equilibrium-v3
+
+``.worktrees/`` must stay ignored in ``.gitignore`` before using the helper. The ``safe.directory`` registration is intentionally path-specific and global to the current Windows user; Codex may still ask for approval because that is a persistent Git trust change. Use ``-SkipSafeDirectory`` only when you plan to use per-command ``git -c safe.directory=<path> ...`` overrides instead.
+
 Test selection rules
 --------------------
 

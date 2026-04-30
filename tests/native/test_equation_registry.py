@@ -61,6 +61,26 @@ def test_equation_registry_strict_traceability_passes_current_registry() -> None
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+def test_sync_equation_registry_missing_latex_submodule_reports_actionable_message() -> None:
+    if TEX_PATH.exists():
+        pytest.skip("docs/latex/equations.tex is available, so the missing-submodule path is not active")
+
+    result = subprocess.run(
+        [sys.executable, "scripts/sync_equation_registry.py", "--check"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    combined = result.stdout + result.stderr
+    assert result.returncode == 1, combined
+    assert "docs/latex/equations.tex" in combined
+    assert "docs submodule is not checked out" in combined
+    assert "git submodule update --init docs/latex" in combined
+    assert "Traceback" not in combined
+
+
 def test_traceability_report_flags_missing_cpp_refs_except_documentation_only() -> None:
     entries = [
         {"eqid": "implemented_without_owner", "section": "Runtime", "status": "Implemented", "cpp_refs": []},

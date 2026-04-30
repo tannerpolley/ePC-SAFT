@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import pytest
 
@@ -81,7 +83,9 @@ def test_stability_returns_structured_result_and_json_like_dict() -> None:
     assert result.diagnostics["stability_analysis"] == "neutral_tpd"
     assert result.diagnostics["parent_phases"] == ["vap"]
     assert result.diagnostics["trial_phases"] == ["vap"]
-    _assert_json_like(result.to_dict())
+    payload = result.to_dict()
+    json.dumps(payload, allow_nan=False)
+    _assert_json_like(payload)
 
 
 def test_explicit_stability_runs_even_when_equilibrium_precheck_is_disabled() -> None:
