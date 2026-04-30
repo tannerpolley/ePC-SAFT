@@ -141,6 +141,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       --sidebar-min: 220px;
       --sidebar-max: min(620px, 55vw);
       --sidebar-resizer: 8px;
+      --interactive-card-height: clamp(330px, 42vw, 560px);
       --radius: 8px;
     }}
 
@@ -488,15 +489,15 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       background-size: 16px 16px;
     }}
     .plot-preview.is-interactive {{
-      min-height: 430px;
+      min-height: var(--interactive-card-height);
       padding: 0;
       background: #fff;
     }}
     .interactive-frame {{
       display: block;
       width: 100%;
-      height: clamp(430px, 54vw, 760px);
-      min-height: 430px;
+      height: var(--interactive-card-height);
+      min-height: var(--interactive-card-height);
       border: 0;
       background: #fff;
     }}

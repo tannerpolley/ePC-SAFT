@@ -119,6 +119,27 @@ def test_plotly_companion_uses_browser_readable_math_labels(tmp_path: Path, monk
     assert "ln phi (ln \\u03c6)_H2O" in html
 
 
+def test_plotly_companion_translates_axis_math_labels(tmp_path: Path, monkeypatch) -> None:
+    root = tmp_path / "plots"
+    monkeypatch.setattr(plot_outputs, "PLOTS_ROOT", root)
+    monkeypatch.setattr(plot_outputs, "TEST_PLOTS_ROOT", root / "tests")
+
+    output_path = save_comparison_plot(
+        "plotly_axis_math_labels.png",
+        "Plotly axis label readability regression",
+        ["rho"],
+        np.asarray([1.0], dtype=float),
+        np.asarray([1.0], dtype=float),
+        category=("tests", "readability"),
+        ylabel=r"Residual Helmholtz energy, $A^{res}$",
+        relative_error=False,
+    )
+    html = output_path.with_suffix(".html").read_text(encoding="utf-8")
+
+    assert "$A^{res}$" not in html
+    assert "Residual Helmholtz energy, A^res" in html
+
+
 def test_text_canvas_check_detects_clipped_labels() -> None:
     fig, ax = plt.subplots(figsize=(3.0, 2.0))
     ax.text(-0.35, 0.5, "clipped", transform=ax.transAxes)
@@ -202,6 +223,9 @@ def test_root_gallery_embeds_single_page_explorer_manifest(tmp_path: Path, monke
     assert 'id="interactive-view"' in html
     assert 'id="static-view"' in html
     assert "interactive-frame" in html
+    assert "--interactive-card-height: clamp(330px, 42vw, 560px);" in html
+    assert "height: var(--interactive-card-height);" in html
+    assert "min-height: var(--interactive-card-height);" in html
     assert 'frame.src = image.html_path;' in html
     assert 'img.src = image.output_path;' in html
     assert "function showDataTable" in html

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 import textwrap
 from typing import Iterable
 
@@ -81,10 +82,11 @@ def assert_plot_with_data(path: Path) -> None:
 def save_plotly_html(fig: go.Figure, image_path: Path) -> Path:
     html_path = plot_outputs.plot_html_path(image_path)
     html_path.parent.mkdir(parents=True, exist_ok=True)
+    _translate_plotly_axis_titles(fig)
     fig.update_layout(
         template="plotly_white",
         colorway=MATPLOTLIB_COLORWAY,
-        margin={"l": 76, "r": 34, "t": 88, "b": 104},
+        margin={"l": 72, "r": 30, "t": 74, "b": 88},
         hovermode="closest",
         title_font={"size": 16},
         legend={
@@ -95,6 +97,7 @@ def save_plotly_html(fig: go.Figure, image_path: Path) -> Path:
             "x": 0.5,
             "font": {"size": 11},
         },
+        height=390,
     )
     fig.update_xaxes(automargin=True, title_standoff=12)
     fig.update_yaxes(automargin=True, title_standoff=12)
@@ -316,6 +319,43 @@ def plotly_label(label: object) -> str:
 
 def plotly_labels(labels: Iterable[object]) -> list[str]:
     return [plotly_label(label) for label in labels]
+
+
+def plotly_axis_label(label: object) -> str:
+    text = str(label)
+    replacements = {
+        r"$\rho$": "rho (ρ)",
+        r"$A^{res}$": "A^res",
+        r"$h^{res}$": "h^res",
+        r"$s^{res}$": "s^res",
+        r"$g^{res}$": "g^res",
+        r"$Z$": "Z",
+        r"$\ln \phi$": "ln φ",
+        r"$\phi$": "φ",
+        r"$\beta$": "β",
+        r"$\gamma$": "γ",
+        r"$x_i$": "x_i",
+        r"$y_i$": "y_i",
+        r"$\gamma_{\pm}$": "γ±",
+        r"$\phi_{\mathrm{osm}}$": "φ_osm",
+        r"$\Delta G^{solv}$": "ΔG^solv",
+    }
+    for source, replacement in replacements.items():
+        text = text.replace(source, replacement)
+    text = re.sub(r"\$x_\{\\mathrm\{([^}]+)\}\}\$", r"x_\1", text)
+    text = re.sub(r"\$y_\{\\mathrm\{([^}]+)\}\}\$", r"y_\1", text)
+    text = re.sub(r"\$\\ln\s+\\phi_\{\\mathrm\{([^}]+)\}\}\$", r"ln φ_\1", text)
+    text = text.replace(r"\mathrm{", "").replace("}", "")
+    return text.replace("$", "")
+
+
+def _translate_plotly_axis_titles(fig: go.Figure) -> None:
+    for axis_name in fig.layout:
+        if not (str(axis_name).startswith("xaxis") or str(axis_name).startswith("yaxis")):
+            continue
+        axis = fig.layout[axis_name]
+        if axis.title and axis.title.text:
+            axis.title.text = plotly_axis_label(axis.title.text)
 
 
 def _wrap_label(label: str, width: int = 18) -> str:

@@ -100,8 +100,14 @@ def _trace_name(row: dict[str, str]) -> str:
     if label:
         return label
     artist_type = row.get("artist_type", "trace")
-    series_index = row.get("series_index", "")
-    return f"{artist_type} {series_index}".strip()
+    series_number = _as_int(row.get("series_index")) + 1
+    if artist_type == "line":
+        return f"Curve {series_number}"
+    if artist_type == "scatter":
+        return f"Data points {series_number}"
+    if artist_type == "bar":
+        return f"Bar series {series_number}"
+    return f"Trace {series_number}"
 
 
 def _style_color(row: dict[str, str]) -> str | None:
@@ -139,10 +145,52 @@ def _axis_title(rows: list[dict[str, str]], axes_index: int) -> str:
     return f"Axis {axes_index + 1}"
 
 
-def _axis_label(rows: list[dict[str, str]], axes_index: int, field: str, fallback: str) -> str:
+def _path_context(png_path: Path, rows: list[dict[str, str]], axes_index: int) -> str:
+    title = _axis_title(rows, axes_index)
+    return f"{png_path.as_posix()} {png_path.stem} {title}".lower()
+
+
+def _inferred_axis_label(
+    png_path: Path,
+    rows: list[dict[str, str]],
+    axes_index: int,
+    field: str,
+    fallback: str,
+) -> str:
+    context = _path_context(png_path, rows, axes_index)
+    if field == "x_label":
+        if any(token in context for token in ("miac", "activity coefficient", "osmotic", "molality")):
+            return "Molality, m / mol kg^-1"
+        if any(token in context for token in ("composition", "mole fraction", "x_")):
+            return "Mole fraction, x_i"
+        if "density" in context:
+            return "Density, rho"
+        if any(token in context for token in ("figure_3", "figure 3", "contribution", "bar")):
+            return "Reference case index"
+        return "Independent variable, x"
+    if any(token in context for token in ("miac_m", "maic_m", "mean ionic activity")):
+        return "Mean ionic activity coefficient, γ±"
+    if any(token in context for token in ("activity coefficient", "miac")):
+        return "Activity coefficient, γ"
+    if "osmotic" in context:
+        return "Osmotic coefficient, φ_osm"
+    if "solvation" in context:
+        return "Solvation free energy, ΔG^solv"
+    if any(token in context for token in ("fugacity", "lnphi", "ln phi")):
+        return "Fugacity coefficient, ln φ"
+    if any(token in context for token in ("contribution", "born", "debye", "hard-chain", "figure_3", "figure 3")):
+        return "Contribution value"
+    if "density" in context:
+        return "Density or pressure response"
+    return fallback
+
+
+def _axis_label(rows: list[dict[str, str]], axes_index: int, field: str, fallback: str, *, png_path: Path) -> str:
     for row in rows:
         if _as_int(row.get("axes_index")) == axes_index and (row.get(field) or "").strip():
             return str(row[field])
+    if fallback in {"x", "value"}:
+        return _inferred_axis_label(png_path, rows, axes_index, field, fallback)
     return fallback
 
 
@@ -287,8 +335,8 @@ def figure_from_plot_csv(csv_path: Path, png_path: Path) -> go.Figure | None:
     for axes_index, (subplot_row, subplot_col) in axis_positions.items():
         _update_axes(
             fig,
-            x_title=_axis_label(rows, axes_index, "x_label", "x"),
-            y_title=_axis_label(rows, axes_index, "y_label", "value"),
+            x_title=_axis_label(rows, axes_index, "x_label", "x", png_path=png_path),
+            y_title=_axis_label(rows, axes_index, "y_label", "value", png_path=png_path),
             row=subplot_row,
             col=subplot_col,
         )
