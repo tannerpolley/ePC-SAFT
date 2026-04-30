@@ -7,6 +7,7 @@ import struct
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterable
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
@@ -80,9 +81,9 @@ def _write_placeholder_csv(png_path: Path, *, dry_run: bool) -> bool:
     return True
 
 
-def _write_static_html(png_path: Path, *, plots_root: Path, dry_run: bool) -> bool:
+def _write_static_html(png_path: Path, *, plots_root: Path, dry_run: bool, force: bool = False) -> bool:
     html_path = png_path.with_suffix(".html")
-    if html_path.exists():
+    if html_path.exists() and not force:
         return False
     if dry_run:
         return True
@@ -132,9 +133,9 @@ def _write_static_html(png_path: Path, *, plots_root: Path, dry_run: bool) -> bo
     return True
 
 
-def _write_static_svg(png_path: Path, *, dry_run: bool) -> bool:
+def _write_static_svg(png_path: Path, *, dry_run: bool, force: bool = False) -> bool:
     svg_path = png_path.with_suffix(".svg")
-    if svg_path.exists():
+    if svg_path.exists() and not force:
         return False
     if dry_run:
         return True
@@ -154,20 +155,32 @@ def _write_static_svg(png_path: Path, *, dry_run: bool) -> bool:
     return True
 
 
-def ensure_companions(plots_root: Path = PLOTS_ROOT, *, dry_run: bool = False) -> CompanionResult:
+def ensure_png_companions(
+    png_paths: Iterable[Path],
+    plots_root: Path = PLOTS_ROOT,
+    *,
+    dry_run: bool = False,
+    create_missing_csv: bool = True,
+    force_html: bool = False,
+) -> CompanionResult:
     csv_created = html_created = svg_created = 0
     skipped_existing_html = skipped_existing_svg = skipped_existing_csv = 0
-    for png_path in build_analysis_galleries.collect_pngs(plots_root):
+    for png_path in sorted({Path(path) for path in png_paths}, key=lambda path: path.as_posix().lower()):
         csv_path = _plot_data_path(png_path)
         html_path = png_path.with_suffix(".html")
         svg_path = png_path.with_suffix(".svg")
         if csv_path.exists():
             skipped_existing_csv += 1
-        elif _write_placeholder_csv(png_path, dry_run=dry_run):
+        elif create_missing_csv and _write_placeholder_csv(png_path, dry_run=dry_run):
             csv_created += 1
-        if html_path.exists():
+        if html_path.exists() and not force_html:
             skipped_existing_html += 1
-        elif _write_static_html(png_path, plots_root=plots_root, dry_run=dry_run):
+        if (not html_path.exists() or force_html) and _write_static_html(
+            png_path,
+            plots_root=plots_root,
+            dry_run=dry_run,
+            force=force_html,
+        ):
             html_created += 1
         if svg_path.exists():
             skipped_existing_svg += 1
@@ -181,6 +194,10 @@ def ensure_companions(plots_root: Path = PLOTS_ROOT, *, dry_run: bool = False) -
         skipped_existing_svg=skipped_existing_svg,
         skipped_existing_csv=skipped_existing_csv,
     )
+
+
+def ensure_companions(plots_root: Path = PLOTS_ROOT, *, dry_run: bool = False) -> CompanionResult:
+    return ensure_png_companions(build_analysis_galleries.collect_pngs(plots_root), plots_root, dry_run=dry_run)
 
 
 def build_parser() -> argparse.ArgumentParser:
