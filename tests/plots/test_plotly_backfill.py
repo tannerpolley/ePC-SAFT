@@ -126,12 +126,12 @@ def test_backfill_numeric_csv_generates_marked_plotly_html(tmp_path: Path) -> No
     assert "dash" in html
     assert "mole fraction" in html
     assert "property value" in html
-    assert "Trace" in html
+    assert "Trace" not in html
 
 
 def test_backfill_infers_readable_labels_when_csv_metadata_is_sparse(tmp_path: Path) -> None:
     png_path = tmp_path / "docs" / "plots" / "fits" / "miac" / "case" / "miac_m_ethanol_NaCl.png"
-    _write_plot_csv(
+    csv_path = _write_plot_csv(
         png_path,
         [
             {
@@ -159,7 +159,7 @@ def test_backfill_infers_readable_labels_when_csv_metadata_is_sparse(tmp_path: P
                 "axes_index": 0,
                 "axes_title": "Sodium chloride in ethanol",
                 "artist_type": "scatter",
-                "series_index": 1,
+                "series_index": 0,
                 "point_index": 0,
                 "x": 0.5,
                 "y": 0.9,
@@ -169,16 +169,94 @@ def test_backfill_infers_readable_labels_when_csv_metadata_is_sparse(tmp_path: P
 
     result = backfill_plotly_html.backfill_plotly_html(tmp_path / "docs" / "plots", roots=("fits",))
 
+    fig = backfill_plotly_html.figure_from_plot_csv(csv_path, png_path)
     html = png_path.with_suffix(".html").read_text(encoding="utf-8")
     assert result.created == 1
-    assert "Molality, m" in html
-    assert "Mean ionic activity coefficient" in html
+    assert fig is not None
+    assert fig.layout.xaxis.title.text == "m / mol kg⁻¹"
+    assert fig.layout.yaxis.title.text == "γ±"
+    assert "\\u03b3\\u00b1" in html
     assert "gamma" not in html
-    assert "\\u03b3" in html
-    assert "Curve 1" in html
-    assert "Data points 2" in html
+    assert "NaCl fit" in html
+    assert "NaCl data" in html
+    assert "Curve 1" not in html
+    assert "Data points 1" not in html
     assert "line 0" not in html
-    assert "scatter 1" not in html
+    assert "scatter 0" not in html
+    assert fig.data[0].line.color == fig.data[1].marker.color
+
+
+def test_backfill_infers_presentation_series_names_and_pairs_colors(tmp_path: Path) -> None:
+    png_path = tmp_path / "docs" / "plots" / "fits" / "miac" / "case" / "miac_m_2025_present_ethanol_sodium_salts.png"
+    csv_path = _write_plot_csv(
+        png_path,
+        [
+            {
+                "figure_file": png_path.name,
+                "axes_index": 0,
+                "axes_title": "Sodium salts in ethanol",
+                "artist_type": "line",
+                "series_index": 1,
+                "point_index": 0,
+                "x": 0.0,
+                "y": 1.0,
+            },
+            {
+                "figure_file": png_path.name,
+                "axes_index": 0,
+                "axes_title": "Sodium salts in ethanol",
+                "artist_type": "line",
+                "series_index": 1,
+                "point_index": 1,
+                "x": 1.0,
+                "y": 0.8,
+            },
+            {
+                "figure_file": png_path.name,
+                "axes_index": 0,
+                "axes_title": "Sodium salts in ethanol",
+                "artist_type": "scatter",
+                "series_index": 1,
+                "point_index": 0,
+                "x": 0.5,
+                "y": 0.9,
+            },
+        ],
+    )
+
+    fig = backfill_plotly_html.figure_from_plot_csv(csv_path, png_path)
+
+    assert fig is not None
+    assert [trace.name for trace in fig.data] == ["NaBr fit", "NaBr data"]
+    assert fig.data[0].line.color == fig.data[1].marker.color
+
+
+def test_backfill_groups_sparse_grouped_bars_into_readable_series(tmp_path: Path) -> None:
+    png_path = tmp_path / "docs" / "plots" / "paper_validation" / "2025_Figiel" / "figure_4" / "figure_4.png"
+    rows: list[dict[str, object]] = []
+    for category_index in range(3):
+        for series_index, offset in enumerate((-0.22, 0.0, 0.22)):
+            rows.append(
+                {
+                    "figure_file": png_path.name,
+                    "axes_index": 0,
+                    "axes_title": "Gibbs energy of solvation at infinite dilution in water",
+                    "artist_type": "bar",
+                    "series_index": category_index * 3 + series_index,
+                    "point_index": 0,
+                    "x": category_index + offset,
+                    "width": 0.22,
+                    "height": 100.0 + 10.0 * category_index + series_index,
+                }
+            )
+    csv_path = _write_plot_csv(png_path, rows)
+
+    fig = backfill_plotly_html.figure_from_plot_csv(csv_path, png_path)
+
+    assert fig is not None
+    assert [trace.name for trace in fig.data] == ["Literature", "ePC-SAFT 2025", "ePC-SAFT 2020"]
+    assert all("Bar series" not in str(trace.name) for trace in fig.data)
+    assert list(fig.data[0].x) == ["Li+", "Na+", "K+"]
 
 
 def test_backfill_skips_placeholders_and_dry_run_does_not_write(tmp_path: Path) -> None:

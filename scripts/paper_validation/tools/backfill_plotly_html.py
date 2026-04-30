@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import csv
 import math
+import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -70,6 +71,10 @@ def _as_int(value: object, default: int = 0) -> int:
     return default if numeric is None else int(numeric)
 
 
+def _series_key(row: dict[str, str]) -> int:
+    return _as_int(row.get("series_index"))
+
+
 def _read_rows(csv_path: Path) -> list[dict[str, str]]:
     with csv_path.open("r", newline="", encoding="utf-8-sig") as handle:
         return list(csv.DictReader(handle))
@@ -95,24 +100,120 @@ def _skip_reason(rows: list[dict[str, str]]) -> str | None:
     return None
 
 
-def _trace_name(row: dict[str, str]) -> str:
+def _latex_to_plotly_text(label: str) -> str:
+    replacements = {
+        r"$\gamma_{\pm}^{m,*}$": "γ±",
+        r"$\gamma_{\pm}$": "γ±",
+        r"$\phi_m$": "φ_m",
+        r"$\Delta G_i^{solv,\infty,x}$": "ΔG_i^solv,∞,x",
+        r"$\Delta G_{\mathrm{hyd},i}^{\infty}$": "ΔG_hyd,i^∞",
+        r"$m$": "m",
+        r"mol kg$^{-1}$": "mol kg⁻¹",
+        r"mol$^{-1}$": "mol⁻¹",
+    }
+    out = label
+    for source, replacement in replacements.items():
+        out = out.replace(source, replacement)
+    out = re.sub(r"\$([A-Za-z0-9_{}\\,^+\-\s]+)\$", lambda match: match.group(1), out)
+    out = out.replace(r"\mathrm{", "").replace("}", "").replace("{", "").replace("\\", "")
+    return out
+
+
+def _context_text(png_path: Path, rows: list[dict[str, str]], axes_index: int = 0) -> str:
+    return f"{png_path.as_posix()} {png_path.stem} {_axis_title(rows, axes_index)}".lower()
+
+
+def _presentation_series_labels(context: str) -> list[str] | None:
+    rules: tuple[tuple[tuple[str, ...], list[str]], ...] = (
+        (("sodium salts in ethanol", "ethanol_sodium_salts"), ["NaCl", "NaBr", "NaI"]),
+        (("chlorides in methanol", "methanol_chlorides"), ["LiCl", "NaCl", "KCl"]),
+        (("iodides in methanol", "methanol_iodides"), ["LiI", "NaI", "KI"]),
+        (("potassium halides in water", "water_potassium_halides"), ["KCl", "KBr", "KI"]),
+        (("nacl in water, methanol, and ethanol", "nacl_solvents"), ["Water", "Methanol", "Ethanol"]),
+        (("nabr in water, methanol, and ethanol", "nabr_solvents"), ["Water", "Methanol", "Ethanol"]),
+        (("lii in water, methanol, and ethanol", "lii_solvents"), ["Water", "Methanol", "Ethanol"]),
+        (("libr in methanol and ethanol", "libr_nonaqueous"), ["Methanol", "Ethanol"]),
+    )
+    for tokens, labels in rules:
+        if any(token in context for token in tokens):
+            return labels
+    return None
+
+
+def _formula_from_context(context: str) -> str | None:
+    for formula in ("LiCl", "LiBr", "LiI", "NaCl", "NaBr", "NaI", "KCl", "KBr", "KI"):
+        if formula.lower() in context:
+            return formula
+    words = {
+        "sodium chloride": "NaCl",
+        "sodium bromide": "NaBr",
+        "sodium iodide": "NaI",
+        "lithium chloride": "LiCl",
+        "lithium bromide": "LiBr",
+        "lithium iodide": "LiI",
+        "potassium chloride": "KCl",
+        "potassium bromide": "KBr",
+        "potassium iodide": "KI",
+    }
+    for phrase, formula in words.items():
+        if phrase in context:
+            return formula
+    return None
+
+
+def _inferred_series_base(row: dict[str, str], rows: list[dict[str, str]], png_path: Path) -> str | None:
     label = (row.get("artist_label") or "").strip()
     if label:
-        return label
+        return _latex_to_plotly_text(label)
+    axes_index = _as_int(row.get("axes_index"))
+    context = _context_text(png_path, rows, axes_index)
+    labels = _presentation_series_labels(context)
+    series_index = _series_key(row)
+    if labels is not None and 0 <= series_index < len(labels):
+        return labels[series_index]
+    formula = _formula_from_context(context)
+    if formula is not None:
+        return formula
+    return None
+
+
+def _trace_name(row: dict[str, str], rows: list[dict[str, str]], png_path: Path, *, bar_group_index: int | None = None) -> str:
     artist_type = row.get("artist_type", "trace")
-    series_number = _as_int(row.get("series_index")) + 1
+    if artist_type == "bar" and bar_group_index is not None:
+        label = _bar_group_label(rows, png_path, _as_int(row.get("axes_index")), bar_group_index)
+        if label is not None:
+            return label
+    explicit_label = (row.get("artist_label") or "").strip()
+    base = _inferred_series_base(row, rows, png_path)
+    if explicit_label:
+        return base or _latex_to_plotly_text(explicit_label)
+    series_number = _series_key(row) + 1
+    if base:
+        if artist_type == "line":
+            return f"{base} fit"
+        if artist_type == "scatter":
+            return f"{base} data"
+        return base
     if artist_type == "line":
-        return f"Curve {series_number}"
+        return f"Fit {series_number}"
     if artist_type == "scatter":
-        return f"Data points {series_number}"
+        return f"Data {series_number}"
     if artist_type == "bar":
-        return f"Bar series {series_number}"
-    return f"Trace {series_number}"
+        return f"Set {series_number}"
+    return f"Series {series_number}"
 
 
 def _style_color(row: dict[str, str]) -> str | None:
     color = (row.get("color") or "").strip()
     return color or None
+
+
+def _fallback_series_color(row: dict[str, str]) -> str:
+    return MATPLOTLIB_COLORWAY[_series_key(row) % len(MATPLOTLIB_COLORWAY)]
+
+
+def _trace_color(row: dict[str, str]) -> str:
+    return _style_color(row) or _fallback_series_color(row)
 
 
 def _line_width(row: dict[str, str]) -> float | None:
@@ -145,11 +246,6 @@ def _axis_title(rows: list[dict[str, str]], axes_index: int) -> str:
     return f"Axis {axes_index + 1}"
 
 
-def _path_context(png_path: Path, rows: list[dict[str, str]], axes_index: int) -> str:
-    title = _axis_title(rows, axes_index)
-    return f"{png_path.as_posix()} {png_path.stem} {title}".lower()
-
-
 def _inferred_axis_label(
     png_path: Path,
     rows: list[dict[str, str]],
@@ -157,41 +253,123 @@ def _inferred_axis_label(
     field: str,
     fallback: str,
 ) -> str:
-    context = _path_context(png_path, rows, axes_index)
+    context = _context_text(png_path, rows, axes_index)
     if field == "x_label":
         if any(token in context for token in ("miac", "activity coefficient", "osmotic", "molality")):
-            return "Molality, m / mol kg^-1"
+            return "m / mol kg⁻¹"
         if any(token in context for token in ("composition", "mole fraction", "x_")):
-            return "Mole fraction, x_i"
+            return "x_i"
         if "density" in context:
-            return "Density, rho"
+            return "ρ"
         if any(token in context for token in ("figure_3", "figure 3", "contribution", "bar")):
             return "Reference case index"
         return "Independent variable, x"
     if any(token in context for token in ("miac_m", "maic_m", "mean ionic activity")):
-        return "Mean ionic activity coefficient, γ±"
+        return "γ±"
     if any(token in context for token in ("activity coefficient", "miac")):
-        return "Activity coefficient, γ"
+        return "γ"
     if "osmotic" in context:
-        return "Osmotic coefficient, φ_osm"
+        return "φ_m"
     if "solvation" in context:
-        return "Solvation free energy, ΔG^solv"
+        return "ΔG_i^solv,∞"
     if any(token in context for token in ("fugacity", "lnphi", "ln phi")):
-        return "Fugacity coefficient, ln φ"
+        return "ln φ_i"
     if any(token in context for token in ("contribution", "born", "debye", "hard-chain", "figure_3", "figure 3")):
         return "Contribution value"
     if "density" in context:
-        return "Density or pressure response"
+        return "ρ or P"
     return fallback
 
 
 def _axis_label(rows: list[dict[str, str]], axes_index: int, field: str, fallback: str, *, png_path: Path) -> str:
     for row in rows:
         if _as_int(row.get("axes_index")) == axes_index and (row.get(field) or "").strip():
-            return str(row[field])
+            return _latex_to_plotly_text(str(row[field]))
     if fallback in {"x", "value"}:
         return _inferred_axis_label(png_path, rows, axes_index, field, fallback)
     return fallback
+
+
+def _supported_rows_for_axis(rows: list[dict[str, str]], axes_index: int, artist_type: str | None = None) -> list[dict[str, str]]:
+    return [
+        row
+        for row in rows
+        if _is_supported_row(row)
+        and _as_int(row.get("axes_index")) == axes_index
+        and (artist_type is None or row.get("artist_type") == artist_type)
+    ]
+
+
+def _bar_offset(row: dict[str, str]) -> float:
+    x = _as_float(row.get("x")) or 0.0
+    return round(x - round(x), 6)
+
+
+def _bar_offsets(rows: list[dict[str, str]], axes_index: int) -> list[float]:
+    return sorted({_bar_offset(row) for row in _supported_rows_for_axis(rows, axes_index, "bar")})
+
+
+def _bar_group_index(row: dict[str, str], rows: list[dict[str, str]]) -> int | None:
+    if row.get("artist_type") != "bar" or (row.get("artist_label") or "").strip():
+        return None
+    offsets = _bar_offsets(rows, _as_int(row.get("axes_index")))
+    if len(offsets) <= 1:
+        return None
+    try:
+        return offsets.index(_bar_offset(row))
+    except ValueError:
+        return None
+
+
+def _bar_group_label(rows: list[dict[str, str]], png_path: Path, axes_index: int, group_index: int) -> str | None:
+    context = _context_text(png_path, rows, axes_index)
+    if "figure_4" in context and "solvation" in context:
+        labels = ["Literature", "ePC-SAFT 2025", "ePC-SAFT 2020"]
+        return labels[group_index] if group_index < len(labels) else None
+    if "figure_3_total" in context or "total check" in context:
+        labels = [
+            "Figure 2 total (paper)",
+            "Figure 2 total (ePC-SAFT)",
+            "Figure 3 sum (paper)",
+            "Figure 3 sum (ePC-SAFT)",
+        ]
+        return labels[group_index] if group_index < len(labels) else None
+    return f"Set {group_index + 1}"
+
+
+def _bar_category_labels(rows: list[dict[str, str]], png_path: Path, axes_index: int) -> list[str] | None:
+    bar_rows = _supported_rows_for_axis(rows, axes_index, "bar")
+    if not bar_rows:
+        return None
+    category_count = len({_bar_category_index(row) for row in bar_rows})
+    context = _context_text(png_path, rows, axes_index)
+    if "solvation" in context:
+        labels = ["Li+", "Na+", "K+", "Cl-", "Br-", "I-"]
+        return labels[:category_count] if category_count <= len(labels) else None
+    return None
+
+
+def _bar_category_index(row: dict[str, str]) -> int:
+    return int(round((_as_float(row.get("x")) or 0.0) - _bar_offset(row)))
+
+
+def _bar_x_value(row: dict[str, str], rows: list[dict[str, str]], png_path: Path) -> float | str:
+    axes_index = _as_int(row.get("axes_index"))
+    category_index = _bar_category_index(row)
+    labels = _bar_category_labels(rows, png_path, axes_index)
+    if labels is not None and 0 <= category_index < len(labels):
+        return labels[category_index]
+    return category_index
+
+
+def _hide_unlabeled_geometry(row: dict[str, str], rows: list[dict[str, str]], png_path: Path) -> bool:
+    if row.get("artist_type") != "line" or (row.get("artist_label") or "").strip():
+        return False
+    context = _context_text(png_path, rows, _as_int(row.get("axes_index")))
+    if "2026_khudaida" not in context:
+        return False
+    axis_rows = _supported_rows_for_axis(rows, _as_int(row.get("axes_index")), "line")
+    return len(axis_rows) > 20
 
 
 def _add_trace(fig: go.Figure, trace: go.BaseTraceType, *, row: int | None, col: int | None) -> None:
@@ -221,13 +399,20 @@ def _add_group_trace(
     fig: go.Figure,
     rows: list[dict[str, str]],
     *,
+    all_rows: list[dict[str, str]],
+    png_path: Path,
     row: int | None,
     col: int | None,
 ) -> None:
     first = rows[0]
     artist_type = first.get("artist_type", "")
-    name = _trace_name(first)
+    bar_group = _bar_group_index(first, all_rows)
+    name = _trace_name(first, all_rows, png_path, bar_group_index=bar_group)
     sorted_rows = sorted(rows, key=lambda item: _as_int(item.get("point_index")))
+    axes_index = _as_int(first.get("axes_index"))
+    x_label = _axis_label(all_rows, axes_index, "x_label", "x", png_path=png_path)
+    y_label = _axis_label(all_rows, axes_index, "y_label", "value", png_path=png_path)
+    showlegend = not _hide_unlabeled_geometry(first, all_rows, png_path)
 
     if artist_type in {"line", "scatter"}:
         x_values = [_as_float(item.get("x")) for item in sorted_rows]
@@ -238,7 +423,7 @@ def _add_group_trace(
         x, y = zip(*valid, strict=True)
         line_style: dict[str, object] = {}
         marker_style: dict[str, object] = {}
-        color = _style_color(first)
+        color = _trace_color(first)
         if color:
             line_style["color"] = color
             marker_style["color"] = color
@@ -255,13 +440,18 @@ def _add_group_trace(
             name=name,
             line=line_style or None,
             marker=marker_style or None,
-            hovertemplate=f"{name}<br>x=%{{x:.6g}}<br>y=%{{y:.6g}}<extra></extra>",
+            showlegend=showlegend,
+            hovertemplate=f"{name}<br>{x_label}=%{{x:.6g}}<br>{y_label}=%{{y:.6g}}<extra></extra>",
         )
         _add_trace(fig, trace, row=row, col=col)
         return
 
     if artist_type == "bar":
-        x_values = [_as_float(item.get("x")) for item in sorted_rows]
+        if bar_group is not None:
+            sorted_rows = sorted(rows, key=_bar_category_index)
+            x_values = [_bar_x_value(item, all_rows, png_path) for item in sorted_rows]
+        else:
+            x_values = [_as_float(item.get("x")) for item in sorted_rows]
         heights = [_as_float(item.get("height")) for item in sorted_rows]
         valid_bar = [(x, height) for x, height in zip(x_values, heights, strict=False) if x is not None and height is not None]
         if not valid_bar:
@@ -271,8 +461,8 @@ def _add_group_trace(
             x=list(x),
             y=list(height),
             name=name,
-            marker_color=_style_color(first),
-            hovertemplate=f"{name}<br>x=%{{x:.6g}}<br>height=%{{y:.6g}}<extra></extra>",
+            marker_color=_trace_color(first),
+            hovertemplate=f"{name}<br>{x_label}=%{{x}}<br>{y_label}=%{{y:.6g}}<extra></extra>",
         )
         _add_trace(fig, trace, row=row, col=col)
 
@@ -298,19 +488,21 @@ def figure_from_plot_csv(csv_path: Path, png_path: Path) -> go.Figure | None:
         )
         axis_positions = {axes_index: (index + 1, 1) for index, axes_index in enumerate(axes_indexes)}
 
-    grouped: dict[tuple[int, str, int, str], list[dict[str, str]]] = defaultdict(list)
+    grouped: dict[tuple[int, str, int, str | int | None], list[dict[str, str]]] = defaultdict(list)
     for row in rows:
         if not _is_supported_row(row):
             continue
         axes_index = _as_int(row.get("axes_index"))
         artist_type = row.get("artist_type", "")
-        series_index = _as_int(row.get("series_index"))
+        bar_group = _bar_group_index(row, rows)
+        series_index = bar_group if bar_group is not None else _as_int(row.get("series_index"))
         label = row.get("artist_label", "")
-        grouped[(axes_index, artist_type, series_index, label)].append(row)
+        group_label = label if bar_group is None else f"bar:{bar_group}"
+        grouped[(axes_index, artist_type, series_index, group_label)].append(row)
 
     for (axes_index, _artist_type, _series_index, _label), group_rows in sorted(grouped.items()):
         subplot_row, subplot_col = axis_positions[axes_index]
-        _add_group_trace(fig, group_rows, row=subplot_row, col=subplot_col)
+        _add_group_trace(fig, group_rows, all_rows=rows, png_path=png_path, row=subplot_row, col=subplot_col)
 
     if not fig.data:
         return None
@@ -323,7 +515,6 @@ def figure_from_plot_csv(csv_path: Path, png_path: Path) -> go.Figure | None:
         hovermode="closest",
         title_font={"size": 16},
         legend={
-            "title": {"text": "Trace"},
             "orientation": "h",
             "yanchor": "top",
             "y": -0.18,
