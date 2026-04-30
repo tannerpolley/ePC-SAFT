@@ -283,7 +283,7 @@ def test_equilibrium_electrolyte_lle_phase_composition_plot() -> None:
     ax.bar(x + 0.24, phases["org"].composition, width=0.24, label="Organic phase")
     ax.set_xticks(x, species)
     ax.set_ylim(0.0, 1.0)
-    ax.set_ylabel("Mole fraction")
+    ax.set_ylabel(r"Mole fraction, $x_i$")
     ax.set_title("V4 electrolyte LLE phase compositions")
     ax.legend(loc="upper right")
 
@@ -302,7 +302,7 @@ def test_equilibrium_electrolyte_lle_phase_composition_plot() -> None:
             title="V4 electrolyte LLE phase compositions",
             barmode="group",
             xaxis_title="Species",
-            yaxis_title="Mole fraction",
+            yaxis_title=r"Mole fraction, $x_i$",
             yaxis_range=[0.0, 1.0],
         )
         save_plotly_html(interactive, Path(output_path))

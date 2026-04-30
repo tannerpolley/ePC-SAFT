@@ -405,19 +405,32 @@ def test_docs_plot_pngs_have_companion_csv_data() -> None:
     assert missing == []
 
 
-def test_docs_plot_pngs_have_complete_html_svg_csv_bundles() -> None:
-    plots_root = Path("docs/plots")
-    missing = []
-    for png_path in plots_root.rglob("*.png"):
-        if "__pycache__" in png_path.parts:
-            continue
-        expected = [
-            png_path.with_suffix(".html"),
-            png_path.with_suffix(".svg"),
-            png_path.parent / "data" / f"{png_path.stem}_plot_data.csv",
-        ]
-        missing.extend(path.as_posix() for path in expected if not path.exists())
-    assert missing == []
+def test_docs_plot_pngs_have_gallery_manifest_entries() -> None:
+    plots_root = build_analysis_galleries.PLOTS_ROOT
+    pngs = build_analysis_galleries.collect_pngs(plots_root)
+    manifest = build_analysis_galleries.image_manifest(pngs)
+
+    assert len(manifest) == len(pngs)
+    for item in manifest:
+        png_path = plots_root / item["output_path"]
+        assert png_path.exists()
+        assert item["path"] == item["output_path"]
+        assert item["source_path"]
+        assert item["interactive_source"] in {
+            "native_plotly",
+            "csv_backfill",
+            "static_png_wrapper",
+            "static_only",
+        }
+        if item["html_path"]:
+            assert (plots_root / item["html_path"]).exists()
+            assert item["interactive_source"] != "static_only"
+        else:
+            assert item["interactive_source"] == "static_only"
+        if item["svg_path"]:
+            assert (plots_root / item["svg_path"]).exists()
+        if item["data_path"]:
+            assert (plots_root / item["data_path"]).exists()
 
 
 def test_docs_test_plot_pngs_have_companion_svg_data() -> None:

@@ -560,19 +560,17 @@ def _iter_candidate_pngs(plots_root: Path, roots: Iterable[str]) -> Iterable[Pat
         yield from sorted(root.rglob("*.png"), key=lambda path: path.relative_to(plots_root).as_posix().lower())
 
 
-def backfill_plotly_html(
-    plots_root: str | Path = PLOTS_ROOT,
+def backfill_plotly_html_for_pngs(
+    png_paths: Iterable[Path],
     *,
-    roots: Iterable[str] = DEFAULT_ROOTS,
     force: bool = False,
     dry_run: bool = False,
 ) -> PlotlyBackfillResult:
-    root = Path(plots_root)
     counters: Counter[str] = Counter()
     created = 0
     candidates = 0
 
-    for png_path in _iter_candidate_pngs(root, roots):
+    for png_path in sorted({Path(path) for path in png_paths}, key=lambda path: path.as_posix().lower()):
         data_path = _plot_data_path(png_path)
         html_path = _html_path(png_path)
         if not data_path.exists():
@@ -598,6 +596,17 @@ def backfill_plotly_html(
             write_backfill_html(fig, html_path)
 
     return PlotlyBackfillResult(candidates=candidates, created=created, skipped=dict(sorted(counters.items())))
+
+
+def backfill_plotly_html(
+    plots_root: str | Path = PLOTS_ROOT,
+    *,
+    roots: Iterable[str] = DEFAULT_ROOTS,
+    force: bool = False,
+    dry_run: bool = False,
+) -> PlotlyBackfillResult:
+    root = Path(plots_root)
+    return backfill_plotly_html_for_pngs(_iter_candidate_pngs(root, roots), force=force, dry_run=dry_run)
 
 
 def _format_result(result: PlotlyBackfillResult, *, dry_run: bool) -> str:
