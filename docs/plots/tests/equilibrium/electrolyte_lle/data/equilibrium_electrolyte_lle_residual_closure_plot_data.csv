@@ -1,0 +1,11 @@
+figure_file,axes_index,axes_title,artist_type,artist_label,series_index,point_index,x,y,width,height
+equilibrium_electrolyte_lle_residual_closure.png,0,V4 electrolyte LLE residual closure vs acceptance tolerances,line,,0,0,0,0,,
+equilibrium_electrolyte_lle_residual_closure.png,0,V4 electrolyte LLE residual closure vs acceptance tolerances,line,,0,1,1,0,,
+equilibrium_electrolyte_lle_residual_closure.png,0,V4 electrolyte LLE residual closure vs acceptance tolerances,bar,,0,0,-0.17999999999999999,0,0.35999999999999999,8.507640814059414e-09
+equilibrium_electrolyte_lle_residual_closure.png,0,V4 electrolyte LLE residual closure vs acceptance tolerances,bar,,1,0,0.82000000000000006,0,0.35999999999999999,5.5511151231257827e-17
+equilibrium_electrolyte_lle_residual_closure.png,0,V4 electrolyte LLE residual closure vs acceptance tolerances,bar,,2,0,1.8200000000000001,0,0.35999999999999999,0
+equilibrium_electrolyte_lle_residual_closure.png,0,V4 electrolyte LLE residual closure vs acceptance tolerances,bar,,3,0,2.8199999999999998,0,0.35999999999999999,0
+equilibrium_electrolyte_lle_residual_closure.png,0,V4 electrolyte LLE residual closure vs acceptance tolerances,bar,,4,0,0.17999999999999999,0,0.36000000000000004,9.9999999999999995e-07
+equilibrium_electrolyte_lle_residual_closure.png,0,V4 electrolyte LLE residual closure vs acceptance tolerances,bar,,5,0,1.1799999999999999,0,0.36000000000000004,1e-10
+equilibrium_electrolyte_lle_residual_closure.png,0,V4 electrolyte LLE residual closure vs acceptance tolerances,bar,,6,0,2.1800000000000002,0,0.36000000000000004,1e-08
+equilibrium_electrolyte_lle_residual_closure.png,0,V4 electrolyte LLE residual closure vs acceptance tolerances,bar,,7,0,3.1800000000000002,0,0.36000000000000004,1.0000000000000001e-15

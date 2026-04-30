@@ -5,6 +5,7 @@ from collections import defaultdict
 import difflib
 import json
 import re
+import sys
 from pathlib import Path
 
 
@@ -126,6 +127,20 @@ def parse_equations(tex_path: Path) -> list[dict]:
         i += 1
 
     return entries
+
+
+def require_equations_tex(tex_path: Path = TEX_PATH) -> None:
+    """Exit with an actionable message when the private docs submodule is absent."""
+    if tex_path.exists():
+        return
+    rel_path = tex_path.relative_to(REPO_ROOT).as_posix()
+    print(
+        "{} is missing; the docs submodule is not checked out. Run `git submodule update --init docs/latex` from the repo root and retry.".format(
+            rel_path,
+        ),
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
 
 
 def parse_code_refs(native_root: Path) -> dict[str, list[dict]]:
@@ -387,6 +402,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    require_equations_tex()
     entries = parse_equations(TEX_PATH)
     code_refs = parse_code_refs(NATIVE_ROOT)
     validate_links(entries, code_refs)

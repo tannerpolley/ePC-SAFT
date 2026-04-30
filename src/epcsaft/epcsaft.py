@@ -168,6 +168,8 @@ class ePCSAFTMixture:
         T=None,
         P=None,
         z=None,
+        solvent_feed=None,
+        salt_molality=None,
         options=None,
         backend=None,
         initial_phases=None,
@@ -175,11 +177,49 @@ class ePCSAFTMixture:
         trial_phases=None,
     ):
         """Run a Python-first equilibrium calculation for this mixture."""
+        from .equilibrium import electrolyte_lle_flash
+        from .equilibrium import electrolyte_stability
         from .equilibrium import lle_flash
         from .equilibrium import neutral_stability
         from .equilibrium import tp_flash
+        from .equilibrium_core.classify import classify_equilibrium_route
 
+        if kind == "auto":
+            route = classify_equilibrium_route(self, kind, backend)
+            if route["route"] == "electrolyte_lle":
+                try:
+                    result = electrolyte_lle_flash(
+                        self,
+                        T=T,
+                        P=P,
+                        z=z,
+                        solvent_feed=solvent_feed,
+                        salt_molality=salt_molality,
+                        initial_phases=initial_phases,
+                        options=options,
+                    )
+                except SolutionError as exc:
+                    diagnostics = dict(getattr(exc, "diagnostics", None) or {})
+                    diagnostics["equilibrium_route"] = route["route"]
+                    diagnostics["route_reason"] = route["reason"]
+                    raise SolutionError(exc.message, diagnostics) from exc
+                diagnostics = dict(result.diagnostics)
+                diagnostics["equilibrium_route"] = route["route"]
+                diagnostics["route_reason"] = route["reason"]
+                return type(result)(
+                    backend=result.backend,
+                    problem_kind=result.problem_kind,
+                    phases=result.phases,
+                    stable=result.stable,
+                    split_detected=result.split_detected,
+                    diagnostics=diagnostics,
+                )
+            if route["route"] == "neutral_lle":
+                return lle_flash(self, T=T, P=P, z=z, options=options, initial_phases=initial_phases)
+            return tp_flash(self, T=T, P=P, z=z, options=options)
         if kind == "tp_flash":
+            if solvent_feed is not None or salt_molality is not None:
+                raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
             if initial_phases is not None:
                 raise InputError("initial_phases is only supported for kind='lle_flash'.")
             if parent_phase is not None or trial_phases is not None:
@@ -188,12 +228,47 @@ class ePCSAFTMixture:
                 raise InputError("TP flash backend must be None or 'neutral_vle'.")
             return tp_flash(self, T=T, P=P, z=z, options=options)
         if kind == "lle_flash":
+            if solvent_feed is not None or salt_molality is not None:
+                raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
             if backend not in (None, "neutral_lle"):
                 raise InputError("LLE flash backend must be None or 'neutral_lle'.")
             return lle_flash(self, T=T, P=P, z=z, options=options, initial_phases=initial_phases)
+        if kind in {"electrolyte_lle", "electrolyte_lle_flash"}:
+            if parent_phase is not None or trial_phases is not None:
+                raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
+            if backend not in (None, "electrolyte_lle"):
+                raise InputError("Electrolyte LLE backend must be None or 'electrolyte_lle'.")
+            return electrolyte_lle_flash(
+                self,
+                T=T,
+                P=P,
+                z=z,
+                solvent_feed=solvent_feed,
+                salt_molality=salt_molality,
+                initial_phases=initial_phases,
+                options=options,
+            )
+        if kind == "electrolyte_stability":
+            if initial_phases is not None:
+                raise InputError("initial_phases is not supported for kind='electrolyte_stability'.")
+            if parent_phase is not None or trial_phases is not None:
+                raise InputError("parent_phase and trial_phases are not supported for kind='electrolyte_stability'.")
+            if backend not in (None, "electrolyte_tpd"):
+                raise InputError("Electrolyte stability backend must be None or 'electrolyte_tpd'.")
+            return electrolyte_stability(
+                self,
+                T=T,
+                P=P,
+                z=z,
+                solvent_feed=solvent_feed,
+                salt_molality=salt_molality,
+                options=options,
+            )
         if kind == "stability":
+            if solvent_feed is not None or salt_molality is not None:
+                raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
             if initial_phases is not None:
                 raise InputError("initial_phases is only supported for kind='lle_flash'.")
             if backend not in (None, "neutral_tpd"):
@@ -207,7 +282,9 @@ class ePCSAFTMixture:
                 parent_phase=parent_phase,
                 trial_phases=trial_phases,
             )
-        raise InputError("Only kind='tp_flash', kind='lle_flash', or kind='stability' is supported by equilibrium.")
+        raise InputError(
+            "Only kind='tp_flash', kind='auto', kind='lle_flash', kind='electrolyte_lle', kind='electrolyte_stability', or kind='stability' is supported by equilibrium."
+        )
 
     def __repr__(self):
         """Return a short debugging representation of the mixture."""
