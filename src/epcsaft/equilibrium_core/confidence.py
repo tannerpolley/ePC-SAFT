@@ -127,6 +127,7 @@ class ConfidenceReport:
     stress_csv: Path
     residual_gate_plot: Path
     error_plot: Path
+    all_tielines_plot: Path
     continuation_plot: Path
     sensitivity_plot: Path
 
@@ -290,6 +291,7 @@ def run_confidence_suite(
         stress_csv=out_dir / "stress_cases.csv",
         residual_gate_plot=out_dir / "residual_gate_summary.png",
         error_plot=out_dir / "per_species_error_summary.png",
+        all_tielines_plot=out_dir / "khudaida_2026_all_tielines.png",
         continuation_plot=out_dir / "continuation_smoothness.png",
         sensitivity_plot=out_dir / "parameter_sensitivity_summary.png",
     )
@@ -759,6 +761,7 @@ def _write_plots(
         max((item.metrics.max_abs_error for item in accepted if item.metrics), default=math.nan),
     ]
     _bar_plot(report.error_plot, "Khudaida benchmark composition errors", error_labels, error_values, "Mole fraction error")
+    _all_tielines_plot(report.all_tielines_plot, predictions)
 
     cont_labels = [row.to_case for row in continuation]
     cont_values = [row.composition_jump_norm if np.isfinite(row.composition_jump_norm) else 0.0 for row in continuation]
@@ -770,7 +773,7 @@ def _write_plots(
     _bar_plot(report.sensitivity_plot, "Parameter sensitivity summary", sens_labels, sens_values, "Max composition delta")
 
     plt.close("all")
-    for png in (report.residual_gate_plot, report.error_plot, report.continuation_plot, report.sensitivity_plot):
+    for png in (report.residual_gate_plot, report.error_plot, report.all_tielines_plot, report.continuation_plot, report.sensitivity_plot):
         _write_html_companion(png)
 
 
@@ -823,6 +826,98 @@ def _line_plot(path: Path, title: str, labels: Sequence[str], values: Sequence[f
     _write_plot_data(path, [("value", labels, values)])
 
 
+def _all_tielines_plot(path: Path, predictions: Sequence[BenchmarkPrediction]) -> None:
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(8.4, 6.0))
+    rows: list[dict[str, Any]] = []
+    status_colors = {"accepted": "#2ca02c", "diagnostic_failure": "#d62728"}
+    grouped: dict[int, list[BenchmarkPrediction]] = {}
+    for prediction in predictions:
+        grouped.setdefault(prediction.case.figure, []).append(prediction)
+
+    for figure, group in sorted(grouped.items()):
+        color = plt.cm.tab10((figure - 1) % 10)
+        for prediction in sorted(group, key=lambda item: item.case.tie_line):
+            case = prediction.case
+            exp_org = case.experimental_organic_formula
+            exp_aq = case.experimental_aqueous_formula
+            label = f"Fig. {figure} experimental" if case.tie_line == min(item.case.tie_line for item in group) else None
+            ax.plot(
+                [exp_aq[1], exp_org[1]],
+                [exp_aq[2], exp_org[2]],
+                color=color,
+                alpha=0.55,
+                linewidth=1.2,
+                marker="o",
+                markersize=3.0,
+                label=label,
+            )
+            rows.extend(
+                [
+                    _tieline_plot_row(case, "experimental_aqueous", prediction.status, exp_aq),
+                    _tieline_plot_row(case, "experimental_organic", prediction.status, exp_org),
+                    _tieline_plot_row(case, "feed", prediction.status, case.feed_formula),
+                ]
+            )
+            ax.scatter(
+                [case.feed_formula[1]],
+                [case.feed_formula[2]],
+                color=status_colors.get(prediction.status, "#7f7f7f"),
+                marker="x",
+                s=24,
+                linewidths=1.2,
+                alpha=0.8,
+            )
+            if prediction.status == "accepted" and prediction.organic_formula is not None and prediction.aqueous_formula is not None:
+                ax.plot(
+                    [prediction.aqueous_formula[1], prediction.organic_formula[1]],
+                    [prediction.aqueous_formula[2], prediction.organic_formula[2]],
+                    color="#111111",
+                    linestyle="--",
+                    linewidth=1.0,
+                    alpha=0.75,
+                )
+                rows.extend(
+                    [
+                        _tieline_plot_row(case, "native_aqueous", prediction.status, prediction.aqueous_formula),
+                        _tieline_plot_row(case, "native_organic", prediction.status, prediction.organic_formula),
+                    ]
+                )
+
+    ax.scatter([], [], color=status_colors["accepted"], marker="x", label="native accepted feed")
+    ax.scatter([], [], color=status_colors["diagnostic_failure"], marker="x", label="native diagnostic failure feed")
+    ax.set_xlabel(r"$x_{\mathrm{ethanol}}$")
+    ax.set_ylabel(r"$x_{\mathrm{isobutanol}}$")
+    ax.set_title("Khudaida 2026 electrolyte LLE tie-lines and native result status")
+    ax.grid(True, alpha=0.25)
+    ax.legend(loc="best", fontsize=8)
+    fig.tight_layout()
+    fig.savefig(path, dpi=140)
+    fig.savefig(path.with_suffix(".svg"))
+    plt.close(fig)
+    _write_csv(
+        path.parent / "data" / f"{path.stem}_plot_data.csv",
+        ["case_key", "figure", "tie_line", "point_type", "status", "x_water", "x_ethanol", "x_isobutanol", "x_nacl"],
+        rows,
+    )
+
+
+def _tieline_plot_row(case: BenchmarkCase, point_type: str, status: str, composition: Sequence[float]) -> dict[str, Any]:
+    values = list(composition)
+    return {
+        "case_key": case.case_key,
+        "figure": case.figure,
+        "tie_line": case.tie_line,
+        "point_type": point_type,
+        "status": status,
+        "x_water": values[0],
+        "x_ethanol": values[1],
+        "x_isobutanol": values[2],
+        "x_nacl": values[3],
+    }
+
+
 def _write_plot_data(path: Path, series_rows: Sequence[tuple[str, Sequence[str], Sequence[float]]]) -> None:
     rows = []
     for series, labels, values in series_rows:
@@ -850,6 +945,7 @@ def _write_report_index(report: ConfidenceReport) -> None:
                 f"<p><a href='{report.benchmark_csv.name}'>benchmark_predictions.csv</a></p>",
                 f"<p><a href='{report.residual_gate_plot.with_suffix('.html').name}'>residual gate plot</a></p>",
                 f"<p><a href='{report.error_plot.with_suffix('.html').name}'>error plot</a></p>",
+                f"<p><a href='{report.all_tielines_plot.with_suffix('.html').name}'>all Khudaida tie-lines plot</a></p>",
                 f"<p><a href='{report.continuation_plot.with_suffix('.html').name}'>continuation plot</a></p>",
                 f"<p><a href='{report.sensitivity_plot.with_suffix('.html').name}'>sensitivity plot</a></p>",
             ]
@@ -861,7 +957,7 @@ def _write_report_index(report: ConfidenceReport) -> None:
 def _write_gallery_copies(report: ConfidenceReport) -> None:
     gallery_dir = REPO_ROOT / "docs" / "plots" / "tests" / "equilibrium" / "electrolyte_lle_confidence"
     gallery_dir.mkdir(parents=True, exist_ok=True)
-    for path in (report.residual_gate_plot, report.error_plot, report.continuation_plot, report.sensitivity_plot):
+    for path in (report.residual_gate_plot, report.error_plot, report.all_tielines_plot, report.continuation_plot, report.sensitivity_plot):
         target = gallery_dir / path.name
         target.write_bytes(path.read_bytes())
         target.with_suffix(".svg").write_bytes(path.with_suffix(".svg").read_bytes())

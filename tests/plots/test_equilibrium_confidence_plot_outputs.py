@@ -12,10 +12,10 @@ def test_electrolyte_lle_confidence_plots_are_written_to_gallery(tmp_path: Path)
     for path in (
         report.residual_gate_plot,
         report.error_plot,
+        report.all_tielines_plot,
         report.continuation_plot,
         report.sensitivity_plot,
     ):
         gallery_path = Path("docs") / "plots" / "tests" / "equilibrium" / "electrolyte_lle_confidence" / path.name
         assert_plot_with_data(gallery_path)
         assert gallery_path.with_suffix(".html").is_file()
-
