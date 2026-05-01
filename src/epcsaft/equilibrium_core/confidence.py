@@ -773,8 +773,6 @@ def _write_plots(
     _bar_plot(report.sensitivity_plot, "Parameter sensitivity summary", sens_labels, sens_values, "Max composition delta")
 
     plt.close("all")
-    for png in (report.residual_gate_plot, report.error_plot, report.all_tielines_plot, report.continuation_plot, report.sensitivity_plot):
-        _write_html_companion(png)
 
 
 def _bar_comparison_plot(path: Path, title: str, labels: Sequence[str], actual: Sequence[float], expected: Sequence[float]) -> None:
@@ -926,15 +924,6 @@ def _write_plot_data(path: Path, series_rows: Sequence[tuple[str, Sequence[str],
     _write_csv(path.parent / "data" / f"{path.stem}_plot_data.csv", ["plot", "series", "label", "value"], rows)
 
 
-def _write_html_companion(png_path: Path) -> None:
-    html = png_path.with_suffix(".html")
-    html.write_text(
-        "<!doctype html><meta charset='utf-8'>"
-        f"<title>{png_path.stem}</title><img src='{png_path.name}' alt='{png_path.stem}' style='max-width:100%;height:auto'>",
-        encoding="utf-8",
-    )
-
-
 def _write_report_index(report: ConfidenceReport) -> None:
     (report.output_dir / "index.html").write_text(
         "\n".join(
@@ -943,11 +932,11 @@ def _write_report_index(report: ConfidenceReport) -> None:
                 "<h1>Electrolyte LLE Confidence Report</h1>",
                 f"<p><a href='{report.summary_path.name}'>summary.json</a></p>",
                 f"<p><a href='{report.benchmark_csv.name}'>benchmark_predictions.csv</a></p>",
-                f"<p><a href='{report.residual_gate_plot.with_suffix('.html').name}'>residual gate plot</a></p>",
-                f"<p><a href='{report.error_plot.with_suffix('.html').name}'>error plot</a></p>",
-                f"<p><a href='{report.all_tielines_plot.with_suffix('.html').name}'>all Khudaida tie-lines plot</a></p>",
-                f"<p><a href='{report.continuation_plot.with_suffix('.html').name}'>continuation plot</a></p>",
-                f"<p><a href='{report.sensitivity_plot.with_suffix('.html').name}'>sensitivity plot</a></p>",
+                f"<p><a href='{report.residual_gate_plot.name}'>residual gate plot</a></p>",
+                f"<p><a href='{report.error_plot.name}'>error plot</a></p>",
+                f"<p><a href='{report.all_tielines_plot.name}'>all Khudaida tie-lines plot</a></p>",
+                f"<p><a href='{report.continuation_plot.name}'>continuation plot</a></p>",
+                f"<p><a href='{report.sensitivity_plot.name}'>sensitivity plot</a></p>",
             ]
         ),
         encoding="utf-8",
@@ -961,7 +950,6 @@ def _write_gallery_copies(report: ConfidenceReport) -> None:
         target = gallery_dir / path.name
         target.write_bytes(path.read_bytes())
         target.with_suffix(".svg").write_bytes(path.with_suffix(".svg").read_bytes())
-        target.with_suffix(".html").write_text(path.with_suffix(".html").read_text(encoding="utf-8"), encoding="utf-8")
         source_csv = path.parent / "data" / f"{path.stem}_plot_data.csv"
         target_csv = gallery_dir / "data" / f"{path.stem}_plot_data.csv"
         target_csv.parent.mkdir(parents=True, exist_ok=True)
