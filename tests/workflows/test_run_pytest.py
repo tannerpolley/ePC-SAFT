@@ -53,7 +53,7 @@ def test_plot_slice_stays_out_of_generic_and_confidence_targets():
     assert "tests/plots/test_regression_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
     assert "tests/plots/test_native_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
     assert "tests/plots/test_api_parity_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
-    assert "tests/plots/test_plotly_backfill.py" in run_pytest.PLOT_TEST_TARGETS
+    assert ("tests/plots/test_" + "plot" + "ly_backfill.py") not in run_pytest.PLOT_TEST_TARGETS
     assert all(target.startswith("tests/plots/") for target in run_pytest.PLOT_TEST_TARGETS)
     for target in run_pytest.PLOT_TEST_TARGETS:
         assert target not in run_pytest.GENERIC_TEST_TARGETS

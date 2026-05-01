@@ -30,7 +30,6 @@ FULL_PROFILE_TEST_TARGETS = (
 )
 PLOT_TEST_TARGETS = (
     "tests/plots/test_gallery_outputs.py",
-    "tests/plots/test_plotly_backfill.py",
     "tests/plots/test_api_parity_plot_outputs.py",
     "tests/plots/test_contribution_plot_outputs.py",
     "tests/plots/test_equilibrium_plot_outputs.py",

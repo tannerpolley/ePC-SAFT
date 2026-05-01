@@ -12,10 +12,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.paper_validation.tools import backfill_plotly_html
 from scripts.paper_validation.tools import build_analysis_galleries
 from scripts.paper_validation.tools import ensure_plot_companions
-from scripts.paper_validation.tools import report_plot_companions
+from scripts.paper_validation.tools import render_plot_data_csv
+from scripts.paper_validation.tools import report_plot_assets
 from tests.plots import plot_registry
 
 
@@ -32,8 +32,7 @@ class GalleryBuildResult:
     plot_targets: tuple[str, ...]
     output_dirs: tuple[str, ...]
     png_count: int
-    plotly_html_created: int = 0
-    static_html_created: int = 0
+    rendered_from_csv: int = 0
     svg_created: int = 0
     index_path: Path | None = None
     report_path: Path | None = None
@@ -68,10 +67,6 @@ def _missing_csvs(pngs: Iterable[Path]) -> list[Path]:
     return [png_path for png_path in pngs if not _plot_data_path(png_path).exists()]
 
 
-def _can_backfill_plotly(png_path: Path) -> bool:
-    return backfill_plotly_html.figure_from_plot_csv(_plot_data_path(png_path), png_path) is not None
-
-
 def _write_gallery_index(plots_root: Path, *, dry_run: bool) -> Path:
     index_path = plots_root / "index.html"
     if dry_run:
@@ -87,11 +82,11 @@ def _write_gallery_index(plots_root: Path, *, dry_run: bool) -> Path:
 
 
 def _write_report(plots_root: Path, *, dry_run: bool) -> Path:
-    report_path = plots_root / "plotly_companion_report.csv"
+    report_path = plots_root / "plot_asset_report.csv"
     if dry_run:
         return report_path
     with _gallery_root(plots_root):
-        report_plot_companions.write_report(report_path, plots_root)
+        report_plot_assets.write_report(report_path, plots_root)
     return report_path
 
 
@@ -104,13 +99,24 @@ def _run_plot_producers(plot_targets: tuple[str, ...], *, repo_root: Path, dry_r
         raise PlotGalleryBuildError(f"Plot producer pytest failed with exit code {completed.returncode}: {' '.join(cmd)}")
 
 
+def _render_missing_static_assets(pngs: Iterable[Path], *, dry_run: bool, force_render: bool) -> int:
+    rendered = 0
+    for png_path in pngs:
+        csv_path = _plot_data_path(png_path)
+        if force_render or not png_path.exists() or not png_path.with_suffix(".svg").exists():
+            rendered += 1
+            if not dry_run:
+                render_plot_data_csv.render_csv_to_static_assets(csv_path, png_path)
+    return rendered
+
+
 def build_gallery(
     recipes: Iterable[plot_registry.PlotRecipe],
     *,
     repo_root: Path = REPO_ROOT,
     plots_root: Path = PLOTS_ROOT,
     dry_run: bool = False,
-    force_html: bool = False,
+    force_render: bool = False,
     skip_pytest: bool = False,
 ) -> GalleryBuildResult:
     selected_recipes = tuple(recipes)
@@ -128,20 +134,8 @@ def build_gallery(
         missing = "\n".join(f"  - {path.as_posix()}" for path in missing_csv)
         raise PlotGalleryBuildError(f"Missing CSV companions for generated PNG plot(s):\n{missing}")
 
-    backfill = backfill_plotly_html.backfill_plotly_html_for_pngs(pngs, force=force_html, dry_run=dry_run)
-    static_candidates = tuple(
-        path
-        for path in pngs
-        if (force_html or not path.with_suffix(".html").exists()) and not _can_backfill_plotly(path)
-    )
-    static = ensure_plot_companions.ensure_png_companions(
-        list(static_candidates),
-        plots_root,
-        dry_run=dry_run,
-        create_missing_csv=False,
-        force_html=force_html,
-    )
-    svg_candidates = tuple(path for path in pngs if path not in static_candidates and not path.with_suffix(".svg").exists())
+    rendered = _render_missing_static_assets(pngs, dry_run=dry_run, force_render=force_render)
+    svg_candidates = tuple(path for path in pngs if not path.with_suffix(".svg").exists())
     svg = ensure_plot_companions.ensure_png_companions(
         list(svg_candidates),
         plots_root,
@@ -157,9 +151,8 @@ def build_gallery(
         plot_targets=plot_targets,
         output_dirs=output_dirs,
         png_count=len(pngs),
-        plotly_html_created=backfill.created,
-        static_html_created=static.html_created,
-        svg_created=static.svg_created + svg.svg_created,
+        rendered_from_csv=rendered,
+        svg_created=svg.svg_created,
         index_path=index_path,
         report_path=report_path,
         dry_run=dry_run,
@@ -171,24 +164,23 @@ def _format_result(result: GalleryBuildResult) -> str:
     targets = ", ".join(result.plot_targets)
     folders = ", ".join(f"tests/{folder}" for folder in result.output_dirs)
     return (
-        f"{action} gallery artifacts for {result.recipe_count} recipe(s).\n"
+        f"{action} static gallery artifacts for {result.recipe_count} recipe(s).\n"
         f"Plot producers: {targets}\n"
         f"Output folders: {folders}\n"
-        f"PNG files: {result.png_count}; Plotly HTML created: {result.plotly_html_created}; "
-        f"static HTML created: {result.static_html_created}; SVG created: {result.svg_created}\n"
+        f"PNG files: {result.png_count}; rendered from CSV: {result.rendered_from_csv}; SVG created: {result.svg_created}\n"
         f"Gallery index: {result.index_path}\n"
-        f"Companion report: {result.report_path}"
+        f"Asset report: {result.report_path}"
     )
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Build gallery-ready plot artifacts for registered test plot recipes.",
+        description="Build static PNG/SVG/CSV gallery artifacts for registered test plot recipes.",
     )
     parser.add_argument("targets", nargs="*", help="Source test file, test directory, or pytest node id.")
     parser.add_argument("--all", action="store_true", help="Build every registered test plot recipe.")
     parser.add_argument("--dry-run", action="store_true", help="Report intended work without running pytest or writing files.")
-    parser.add_argument("--force-html", action="store_true", help="Regenerate HTML companions even when they already exist.")
+    parser.add_argument("--force-render", action="store_true", help="Regenerate PNG and SVG assets from CSV companions.")
     parser.add_argument("--skip-pytest", action="store_true", help="Use existing PNG/CSV outputs without running plot producer tests.")
     parser.add_argument("--plots-root", type=Path, default=PLOTS_ROOT, help=argparse.SUPPRESS)
     return parser
@@ -206,10 +198,10 @@ def main(argv: list[str] | None = None) -> int:
             repo_root=REPO_ROOT,
             plots_root=args.plots_root,
             dry_run=args.dry_run,
-            force_html=args.force_html,
+            force_render=args.force_render,
             skip_pytest=args.skip_pytest,
         )
-    except (plot_registry.PlotRecipeLookupError, PlotGalleryBuildError) as exc:
+    except (plot_registry.PlotRecipeLookupError, PlotGalleryBuildError, render_plot_data_csv.PlotDataRenderError) as exc:
         print(exc, file=sys.stderr)
         return 1
     print(_format_result(result))

@@ -59,7 +59,30 @@ WATER_COLOR = "#2f6fb3"
 ETHANOL_COLOR = "#c25a14"
 ISOBUTANOL_COLOR = "#5f8f1f"
 
-SCALED_FIGURE_OVERRIDES: dict[int, dict] = {}
+ORGANIC_SIDE_SCALED_RANGE_5WT = {
+    "water_min": 0.30,
+    "water_max": 0.50,
+    "ethanol_min": 0.00,
+    "ethanol_max": 0.20,
+    "isobutanol_min": 0.40,
+    "isobutanol_max": 0.60,
+}
+ORGANIC_SIDE_SCALED_RANGE_10WT = {
+    "water_min": 0.20,
+    "water_max": 0.40,
+    "ethanol_min": 0.00,
+    "ethanol_max": 0.20,
+    "isobutanol_min": 0.55,
+    "isobutanol_max": 0.75,
+}
+SCALED_FIGURE_OVERRIDES: dict[int, dict] = {
+    2: dict(ORGANIC_SIDE_SCALED_RANGE_5WT),
+    3: dict(ORGANIC_SIDE_SCALED_RANGE_5WT),
+    4: dict(ORGANIC_SIDE_SCALED_RANGE_5WT),
+    5: dict(ORGANIC_SIDE_SCALED_RANGE_10WT),
+    6: dict(ORGANIC_SIDE_SCALED_RANGE_10WT),
+    7: dict(ORGANIC_SIDE_SCALED_RANGE_10WT),
+}
 
 
 def configure_style() -> None:
@@ -721,6 +744,55 @@ def _plot_feed_points(
     ax.scatter(xs, ys, s=markersize, marker=marker, facecolors=color, edgecolors=color, linewidths=0.5, zorder=5)
 
 
+def _scaled_ranges_for_figure(
+    figure_number: int,
+    exp_rows: list[dict],
+    model_rows: list[dict],
+    feed_rows: list[dict],
+) -> dict[str, float]:
+    override = SCALED_FIGURE_OVERRIDES.get(figure_number)
+    if override is not None:
+        return dict(override)
+    return _rounded_display_ranges(_display_scaled_ranges_from_rows(exp_rows, model_rows, feed_rows))
+
+
+def _formula_in_display_scaled_ranges(x_formula: np.ndarray, ranges: dict[str, float], *, tolerance: float = 0.005) -> bool:
+    salt_free = salt_free_from_formula(x_formula)
+    checks = (
+        ("water", float(salt_free[0])),
+        ("ethanol", float(salt_free[1])),
+        ("isobutanol", float(salt_free[2])),
+    )
+    return all(ranges[f"{name}_min"] - tolerance <= value <= ranges[f"{name}_max"] + tolerance for name, value in checks)
+
+
+def _plot_phase_points(
+    ax: plt.Axes,
+    rows: list[dict],
+    phase: str,
+    color: str,
+    marker: str,
+    *,
+    markersize: float = 22.0,
+    xy_transform=ternary_xy_from_formula,
+    display_ranges: dict[str, float] | None = None,
+) -> None:
+    xs = []
+    ys = []
+    key = f"{phase}_formula"
+    for row in rows:
+        x_formula = row[key]
+        if not np.all(np.isfinite(x_formula)):
+            continue
+        if display_ranges is not None and not _formula_in_display_scaled_ranges(x_formula, display_ranges):
+            continue
+        x_coord, y_coord = xy_transform(x_formula)
+        xs.append(x_coord)
+        ys.append(y_coord)
+    if xs:
+        ax.scatter(xs, ys, s=markersize, marker=marker, facecolors=color, edgecolors=color, linewidths=0.5, zorder=4)
+
+
 def _candidate_formula_feeds(exp_row: dict, target_feed_formula: np.ndarray | None = None) -> list[np.ndarray]:
     feeds = []
     if target_feed_formula is not None and np.all(np.isfinite(target_feed_formula)):
@@ -1035,26 +1107,31 @@ def plot_lle_figure(fig_dir: Path, figure_number: int, temperature_k: float, sal
 
     fig_scaled, ax_scaled = plt.subplots(figsize=(6.1, 5.9))
     fig_scaled.subplots_adjust(left=0.08, right=0.98, top=0.98, bottom=0.18)
-    water_min = _scaled_water_min_from_rows(exp_rows, valid_model_rows, feed_rows)
-    scaled_axis_scale = 1.0 - water_min
-    _draw_scaled_ternary_axes(
+    scaled_ranges = _scaled_ranges_for_figure(figure_number, exp_rows, valid_model_rows, feed_rows)
+    _draw_display_scaled_axes(
         ax_scaled,
-        water_min=water_min,
-        ethanol_max=scaled_axis_scale,
-        isobutanol_max=scaled_axis_scale,
-        tick_format=".3f",
+        water_min=scaled_ranges["water_min"],
+        water_max=scaled_ranges["water_max"],
+        ethanol_min=scaled_ranges["ethanol_min"],
+        ethanol_max=scaled_ranges["ethanol_max"],
+        isobutanol_min=scaled_ranges["isobutanol_min"],
+        isobutanol_max=scaled_ranges["isobutanol_max"],
+        tick_format=".2f",
     )
-    scaled_xy_transform = lambda x_formula, scale=scaled_axis_scale: _scaled_xy_from_formula(
+    scaled_xy_transform = lambda x_formula, ranges=scaled_ranges: _display_scaled_xy_from_formula(
         x_formula,
-        ethanol_max=scale,
-        isobutanol_max=scale,
+        water_min=ranges["water_min"],
+        water_max=ranges["water_max"],
+        ethanol_min=ranges["ethanol_min"],
+        ethanol_max=ranges["ethanol_max"],
+        isobutanol_min=ranges["isobutanol_min"],
+        isobutanol_max=ranges["isobutanol_max"],
     )
-    _plot_tie_lines(ax_scaled, exp_rows, BLACK, "o", "Exp.", linestyle="-", xy_transform=scaled_xy_transform)
-    _plot_tie_lines(ax_scaled, valid_model_rows, RED, "o", "ePC-SAFT", linestyle="--", xy_transform=scaled_xy_transform)
-    _plot_feed_points(ax_scaled, feed_rows, xy_transform=scaled_xy_transform)
+    _plot_phase_points(ax_scaled, exp_rows, "organic", BLACK, "o", xy_transform=scaled_xy_transform, display_ranges=scaled_ranges)
+    _plot_phase_points(ax_scaled, valid_model_rows, "organic", RED, "o", xy_transform=scaled_xy_transform, display_ranges=scaled_ranges)
     add_figure_caption(
         fig_scaled,
-        f"Figure {figure_number} (scaled). LLE for the system water + ethanol + isobutanol + {int(round(salt_wt * 100))} wt % NaCl at {temperature_k:.2f} K and atmospheric pressure expressed as salt-free composition, zoomed to the water-rich corner: black (exp), {model_caption}, and green (feed compositions).",
+        f"Figure {figure_number} (scaled). Organic-phase LLE compositions for the system water + ethanol + isobutanol + {int(round(salt_wt * 100))} wt % NaCl at {temperature_k:.2f} K and atmospheric pressure expressed as salt-free composition, zoomed to water {scaled_ranges['water_min']:.2f}-{scaled_ranges['water_max']:.2f}, ethanol {scaled_ranges['ethanol_min']:.2f}-{scaled_ranges['ethanol_max']:.2f}, and isobutanol {scaled_ranges['isobutanol_min']:.2f}-{scaled_ranges['isobutanol_max']:.2f}: black (exp organic), red ({len(valid_model_rows)}/{len(model_rows)} accepted native ePC-SAFT organic compositions).",
     )
     save_figure(fig_scaled, fig_dir / f"figure_{figure_number}_scaled.png")
     plt.close(fig_scaled)
