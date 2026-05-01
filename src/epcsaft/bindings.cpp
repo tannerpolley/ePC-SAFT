@@ -213,6 +213,14 @@ py::dict native_stability_to_dict(const StabilityResultNative& result) {
         result.diagnostics_string,
         result.diagnostics_vector
     );
+    if (result.backend == "electrolyte_tpd") {
+        py::dict diagnostics = out["diagnostics"].cast<py::dict>();
+        py::dict charge_balance;
+        charge_balance["feed"] = diagnostics.contains("phase_charge_balance_feed") ? diagnostics["phase_charge_balance_feed"] : py::float_(0.0);
+        charge_balance["trial"] = diagnostics.contains("phase_charge_balance_trial") ? diagnostics["phase_charge_balance_trial"] : py::float_(0.0);
+        diagnostics["phase_charge_balance"] = charge_balance;
+        out["diagnostics"] = diagnostics;
+    }
     return out;
 }
 
@@ -317,6 +325,41 @@ py::dict solve_equilibrium_native_binding(
             result = neutral_stability_native(mixture, t, p, feed, options, parent_phases, trial_phases);
         }
         return native_stability_to_dict(result);
+    }
+    if (kind == "electrolyte_stability" || kind == "electrolyte_tpd") {
+        std::vector<std::string> species;
+        if (request.contains("species") && !request["species"].is_none()) {
+            species = request["species"].cast<std::vector<std::string>>();
+        }
+        StabilityResultNative result;
+        {
+            py::gil_scoped_release release;
+            result = electrolyte_stability_native(mixture, t, p, feed, options, species);
+        }
+        return native_stability_to_dict(result);
+    }
+    if (kind == "electrolyte_lle" || kind == "electrolyte_lle_flash") {
+        std::vector<std::string> species;
+        if (request.contains("species") && !request["species"].is_none()) {
+            species = request["species"].cast<std::vector<std::string>>();
+        }
+        std::vector<double> aq;
+        std::vector<double> org;
+        double beta_org = 0.5;
+        bool has_initial = false;
+        if (request.contains("initial_phases") && !request["initial_phases"].is_none()) {
+            py::dict initial = request["initial_phases"].cast<py::dict>();
+            aq = initial["aq"].cast<std::vector<double>>();
+            org = initial["org"].cast<std::vector<double>>();
+            beta_org = initial["phase_fraction"].cast<double>();
+            has_initial = true;
+        }
+        EquilibriumResultNative result;
+        {
+            py::gil_scoped_release release;
+            result = electrolyte_lle_native(mixture, t, p, feed, options, species, aq, org, beta_org, has_initial);
+        }
+        return native_equilibrium_to_dict(result);
     }
     throw ValueError("Native equilibrium kind is not implemented: " + kind);
 }

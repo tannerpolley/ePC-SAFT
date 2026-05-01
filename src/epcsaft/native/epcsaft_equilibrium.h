@@ -80,6 +80,15 @@ StabilityResultNative neutral_stability_native(
     const std::vector<std::string>& trial_phases
 );
 
+StabilityResultNative electrolyte_stability_native(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const EquilibriumOptionsNative& options,
+    const std::vector<std::string>& species
+);
+
 EquilibriumResultNative tp_flash_native(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
     double t,
@@ -97,5 +106,18 @@ EquilibriumResultNative lle_flash_native(
     const std::vector<double>& initial_liq1 = {},
     const std::vector<double>& initial_liq2 = {},
     double initial_beta = 0.5,
+    bool has_initial_phases = false
+);
+
+EquilibriumResultNative electrolyte_lle_native(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const EquilibriumOptionsNative& options,
+    const std::vector<std::string>& species,
+    const std::vector<double>& initial_aq = {},
+    const std::vector<double>& initial_org = {},
+    double initial_beta_org = 0.5,
     bool has_initial_phases = false
 );

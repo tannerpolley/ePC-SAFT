@@ -28,6 +28,11 @@ def _hydrocarbon_mixture() -> ePCSAFTMixture:
     return ePCSAFTMixture.from_params(params, species=["Methane", "Ethane", "Propane"])
 
 
+def _electrolyte_mixture() -> ePCSAFTMixture:
+    feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
+    return ePCSAFTMixture.from_dataset("2022_Ascani", ["H2O", "Butanol", "Na+", "Cl-"], feed, 298.15)
+
+
 def test_native_equilibrium_entrypoint_is_exposed() -> None:
     assert hasattr(_core, "_solve_equilibrium_native")
 
@@ -41,6 +46,74 @@ def test_public_equilibrium_result_comes_from_native_backend() -> None:
     assert result.backend == "neutral_vle"
     assert result.diagnostics["solver_language"] == "c++"
     assert result.diagnostics["native_entrypoint"] == "_solve_equilibrium_native"
+
+
+def test_native_electrolyte_stability_entrypoint_runs_in_cpp() -> None:
+    mix = _electrolyte_mixture()
+    request = {
+        "kind": "electrolyte_stability",
+        "T": 298.15,
+        "P": 1.013e5,
+        "z": [0.55, 0.40, 0.025, 0.025],
+        "species": mix.species,
+        "options": {
+            "max_iterations": 60,
+            "tolerance": 1.0e-8,
+            "damping": 0.5,
+            "min_composition": 1.0e-12,
+            "include_phase_diagnostics": False,
+            "stability_precheck": True,
+        },
+    }
+
+    payload = _core._solve_equilibrium_native(mix._native, request)
+
+    assert payload["result_type"] == "stability"
+    assert payload["backend"] == "electrolyte_tpd"
+    assert payload["diagnostics"]["solver_language"] == "c++"
+    assert payload["diagnostics"]["native_entrypoint"] == "_solve_equilibrium_native"
+    assert payload["diagnostics"]["tpd_method"] == "native_tpd_global_search"
+
+
+def test_public_electrolyte_stability_uses_native_backend() -> None:
+    mix = _electrolyte_mixture()
+
+    result = mix.equilibrium(
+        kind="electrolyte_stability",
+        T=298.15,
+        P=1.013e5,
+        z=[0.55, 0.40, 0.025, 0.025],
+        backend="native",
+        options=epcsaft.EquilibriumOptions(max_iterations=60, tolerance=1.0e-8),
+    )
+
+    assert result.backend == "electrolyte_tpd"
+    assert result.diagnostics["solver_language"] == "c++"
+    assert result.diagnostics["native_entrypoint"] == "_solve_equilibrium_native"
+
+
+def test_public_electrolyte_lle_uses_native_backend_with_initial_phases() -> None:
+    mix = _electrolyte_mixture()
+    aq = np.asarray([0.798324680201737, 0.016320352824141723, 0.09267748348706063, 0.09267748348706063], dtype=float)
+    org = np.asarray([0.37006036048879404, 0.6214918588210971, 0.004223890345054407, 0.004223890345054407], dtype=float)
+    beta_org = 0.613766575013417
+    feed = (1.0 - beta_org) * aq + beta_org * org
+
+    result = mix.equilibrium(
+        kind="electrolyte_lle",
+        T=298.15,
+        P=1.013e5,
+        z=feed,
+        backend="native",
+        initial_phases={"aq": aq, "org": org, "phase_fraction": beta_org},
+        options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8),
+    )
+
+    assert result.backend == "electrolyte_lle"
+    assert result.split_detected is True
+    assert result.diagnostics["solver_language"] == "c++"
+    assert result.diagnostics["native_entrypoint"] == "_solve_equilibrium_native"
+    assert result.diagnostics["solver_method"] == "native_transformed_newton"
 
 
 def test_equilibrium_runtime_does_not_import_scipy_optimizers() -> None:

@@ -273,7 +273,7 @@ def test_equilibrium_electrolyte_lle_phase_composition_plot() -> None:
 
     assert result.split_detected is True
     assert diagnostics["acceptance_gate"] == "predictive_nonlinear_solve"
-    assert diagnostics["phase_equilibrium_model"] == "electrolyte_lle_v4_charge_constrained_solve"
+    assert diagnostics["phase_equilibrium_model"] == "electrolyte_lle_v5_native_charge_constrained_solve"
     assert phases["aq"].composition[0] > phases["org"].composition[0]
     assert phases["org"].composition[1] > phases["aq"].composition[1]
 

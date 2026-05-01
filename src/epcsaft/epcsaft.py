@@ -177,7 +177,7 @@ class ePCSAFTMixture:
         trial_phases=None,
     ):
         """Run a native-backed equilibrium calculation for this mixture."""
-        from .equilibrium import electrolyte_lle_flash
+        from .equilibrium import electrolyte_lle_flash_native
         from .equilibrium import electrolyte_stability
         from .equilibrium import lle_flash
         from .equilibrium import neutral_stability
@@ -188,7 +188,7 @@ class ePCSAFTMixture:
             route = classify_equilibrium_route(self, kind, backend)
             if route["route"] == "electrolyte_lle":
                 try:
-                    result = electrolyte_lle_flash(
+                    result = electrolyte_lle_flash_native(
                         self,
                         T=T,
                         P=P,
@@ -240,7 +240,9 @@ class ePCSAFTMixture:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
             if backend not in (None, "native", "electrolyte_lle"):
                 raise InputError("Electrolyte LLE backend must be None, 'native', or 'electrolyte_lle'.")
-            return electrolyte_lle_flash(
+            from .equilibrium import electrolyte_lle_flash_native
+
+            return electrolyte_lle_flash_native(
                 self,
                 T=T,
                 P=P,
