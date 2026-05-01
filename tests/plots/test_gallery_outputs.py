@@ -198,6 +198,10 @@ def test_root_gallery_embeds_static_single_page_manifest(tmp_path: Path, monkeyp
     assert "startSidebarResize" in html
     assert "finishSidebarResize" in html
     assert "col-resize" in html
+    assert ".tree-wrap { flex: 1 1 auto; min-height: 0; overflow: auto;" in html
+    assert "const inFolder = folders.length > 0 && folders.some" in html
+    assert "No folders selected" in html
+    assert "Check one or more folders on the left to show plots." in html
     assert 'id="data-modal"' in html
     assert 'id="asset-modal"' in html
     assert 'img.src = image.output_path;' in html

@@ -140,7 +140,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       grid-template-columns: var(--sidebar) var(--sidebar-resizer) minmax(0, 1fr);
       height: 100vh;
     }}
-    .sidebar {{ display: flex; min-width: 0; flex-direction: column; background: var(--panel); }}
+    .sidebar {{ display: flex; min-width: 0; height: 100vh; overflow: hidden; flex-direction: column; background: var(--panel); }}
     .sidebar-resizer {{
       width: var(--sidebar-resizer);
       border-inline: 1px solid transparent;
@@ -173,7 +173,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
     .mode-button {{ padding: 0 10px; }}
     .mode-button.is-active {{ border-color: var(--blue); background: var(--blue-soft); color: var(--blue); font-weight: 650; }}
     .icon-button {{ width: 34px; height: 34px; color: var(--text); }}
-    .tree-wrap {{ min-height: 0; overflow: auto; padding: 10px 8px 18px; }}
+    .tree-wrap {{ flex: 1 1 auto; min-height: 0; overflow: auto; padding: 10px 8px 18px; }}
     .tree, .tree ul {{ margin: 0; padding: 0; list-style: none; font-size: 0.91rem; }}
     .folder-row {{
       display: grid;
@@ -471,7 +471,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         const query = searchEl.value.trim().toLowerCase();
         const folders = selectedFolders();
         return images.filter((image) => {{
-          const inFolder = !folders.length || folders.some((folder) => imageMatchesFolder(image, folder));
+          const inFolder = folders.length > 0 && folders.some((folder) => imageMatchesFolder(image, folder));
           const haystack = `${{image.output_path}} ${{image.source_path}} ${{image.svg_path}} ${{image.data_path}} ${{image.title}}`.toLowerCase();
           return inFolder && (!query || haystack.includes(query));
         }});
@@ -551,11 +551,15 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       function renderGallery() {{
         const items = visibleImages();
         galleryEl.style.setProperty("--card-min-local", `${{tileSizeEl.value}}px`);
-        titleEl.textContent = items.length ? `${{items.length}} plot${{items.length === 1 ? "" : "s"}}` : "No matching plots";
+        titleEl.textContent = items.length
+          ? `${{items.length}} plot${{items.length === 1 ? "" : "s"}}`
+          : (selected.size ? "No matching plots" : "No folders selected");
         if (!items.length) {{
           const empty = document.createElement("div");
           empty.className = "empty-state";
-          empty.textContent = "Select folders on the left or adjust the search filter.";
+          empty.textContent = selected.size
+            ? "No plots match the checked folders and search filter."
+            : "Check one or more folders on the left to show plots.";
           galleryEl.replaceChildren(empty);
           return;
         }}
