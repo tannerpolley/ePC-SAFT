@@ -184,6 +184,11 @@ def test_root_gallery_embeds_static_single_page_manifest(tmp_path: Path, monkeyp
     assert "Source tree" in html
     assert "Output tree" in html
     assert "plotGallerySidebarWidth" in html
+    assert "plotGalleryStaticStateV1" in html
+    assert "function saveGalleryState" in html
+    assert "function restoreGalleryState" in html
+    assert "function expandAncestors" in html
+    assert "localStorage.setItem(galleryStateStorageKey" in html
     assert 'id="sidebar-resizer"' in html
     assert 'role="separator"' in html
     assert 'aria-label="Resize plot folder sidebar"' in html
