@@ -1,0 +1,5 @@
+plot,series,label,value
+per_species_error_summary.png,value,organic AAD,
+per_species_error_summary.png,value,aqueous AAD,
+per_species_error_summary.png,value,grand AAD,
+per_species_error_summary.png,value,max abs error,

@@ -1,0 +1,12 @@
+{
+  "solver_residual_norm": 1e-6,
+  "fugacity_residual_norm": 1e-6,
+  "material_balance_error": 1e-10,
+  "charge_balance_error": 1e-8,
+  "phase_distance": 1e-4,
+  "grand_aad_green": 0.02,
+  "grand_aad_yellow": 0.05,
+  "max_abs_error_yellow": 0.15,
+  "continuation_jump_yellow": 0.25,
+  "beta_jump_yellow": 0.35
+}

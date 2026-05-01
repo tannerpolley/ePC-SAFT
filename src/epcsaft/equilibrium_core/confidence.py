@@ -1,0 +1,903 @@
+"""Opt-in electrolyte LLE confidence validation helpers.
+
+These helpers intentionally call the public ``ePCSAFTMixture.equilibrium`` facade
+so the confidence suite validates the same route a user exercises.
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import json
+import math
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Iterable, Mapping, Sequence
+
+import numpy as np
+
+from epcsaft._types import SolutionError
+from epcsaft.epcsaft import ePCSAFTMixture
+from epcsaft.equilibrium import EquilibriumOptions
+from epcsaft.equilibrium import _phase_state
+
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+BENCHMARK_ROOT = REPO_ROOT / "data" / "equilibrium_benchmarks" / "electrolyte_lle"
+DEFAULT_OUTPUT_ROOT = REPO_ROOT / "build" / "equilibrium_confidence"
+PRESSURE_PA = 100000.0
+FORMULA_SPECIES = ("H2O", "Ethanol", "Butanol", "NaCl")
+EXPLICIT_SPECIES = ("H2O", "Ethanol", "Butanol", "Na+", "Cl-")
+CHARGES = np.asarray([0.0, 0.0, 0.0, 1.0, -1.0], dtype=float)
+CSV_FLOAT_FORMAT = ".17g"
+
+
+@dataclass(frozen=True)
+class BenchmarkCase:
+    suite: str
+    case_key: str
+    tie_line: int
+    figure: int
+    temperature_K: float
+    salt_wtfrac: float
+    feed_formula: np.ndarray
+    experimental_organic_formula: np.ndarray
+    experimental_aqueous_formula: np.ndarray
+    source: str
+
+
+@dataclass(frozen=True)
+class BenchmarkSuite:
+    name: str
+    species: tuple[str, ...]
+    formula_species: tuple[str, ...]
+    dataset: str
+    thresholds: dict[str, float]
+    cases: tuple[BenchmarkCase, ...]
+
+
+@dataclass(frozen=True)
+class NativeBenchmarkInputs:
+    feed: np.ndarray
+    initial_aq: np.ndarray
+    initial_org: np.ndarray
+    beta_org: float
+
+
+@dataclass(frozen=True)
+class BenchmarkMetrics:
+    grand_aad: float
+    max_abs_error: float
+    organic_aad: float
+    aqueous_aad: float
+    phase_distance: float
+
+
+@dataclass(frozen=True)
+class BenchmarkPrediction:
+    case: BenchmarkCase
+    status: str
+    diagnostics: dict[str, Any]
+    metrics: BenchmarkMetrics | None
+    organic_formula: np.ndarray | None
+    aqueous_formula: np.ndarray | None
+    beta_org: float | None
+
+
+@dataclass(frozen=True)
+class ContinuationMetrics:
+    series_key: str
+    from_case: str
+    to_case: str
+    composition_jump_norm: float
+    beta_jump: float
+    phase_label_swapped: bool
+    branch_collapse_flag: bool
+
+
+@dataclass(frozen=True)
+class OracleCheck:
+    case_key: str
+    native_status: str
+    native_gibbs_delta: float
+    oracle_gibbs_delta: float
+    native_minus_oracle_gibbs_delta: float
+    oracle_flags_native: bool
+
+
+@dataclass(frozen=True)
+class SensitivityMetrics:
+    case_key: str
+    parameter: str
+    perturbation: float
+    status: str
+    max_composition_delta: float
+    solver_residual_norm: float
+    gibbs_delta: float
+
+
+@dataclass(frozen=True)
+class ConfidenceReport:
+    output_dir: Path
+    summary_path: Path
+    benchmark_csv: Path
+    continuation_csv: Path
+    oracle_csv: Path
+    sensitivity_csv: Path
+    stress_csv: Path
+    residual_gate_plot: Path
+    error_plot: Path
+    continuation_plot: Path
+    sensitivity_plot: Path
+
+
+def load_benchmark_suite(name: str = "khudaida_2026") -> BenchmarkSuite:
+    if name != "khudaida_2026":
+        raise ValueError("Only the khudaida_2026 electrolyte LLE benchmark suite is available.")
+    root = BENCHMARK_ROOT / name
+    metadata = _read_json(root / "metadata.json")
+    thresholds = {str(k): float(v) for k, v in _read_json(root / "thresholds.json").items()}
+    experimental = _load_phase_rows(root / "experimental_tielines.csv")
+    feeds = _load_feed_rows(root / "feed_compositions.csv")
+    cases: list[BenchmarkCase] = []
+    for case_key in sorted(experimental, key=_case_sort_key):
+        phases = experimental[case_key]
+        feed = feeds[case_key]
+        cases.append(
+            BenchmarkCase(
+                suite=name,
+                case_key=case_key,
+                tie_line=int(feed["tie_line"]),
+                figure=int(feed["figure"]),
+                temperature_K=float(feed["temperature_K"]),
+                salt_wtfrac=float(feed["salt_wtfrac"]),
+                feed_formula=_normalize(np.asarray(feed["formula"], dtype=float)),
+                experimental_organic_formula=_normalize(np.asarray(phases["organic"], dtype=float)),
+                experimental_aqueous_formula=_normalize(np.asarray(phases["aqueous"], dtype=float)),
+                source=str(feed["source"]),
+            )
+        )
+    return BenchmarkSuite(
+        name=name,
+        species=tuple(metadata["species"]),
+        formula_species=tuple(metadata["formula_species"]),
+        dataset=str(metadata["parameter_dataset"]),
+        thresholds=thresholds,
+        cases=tuple(cases),
+    )
+
+
+def benchmark_case_to_native_inputs(case: BenchmarkCase) -> NativeBenchmarkInputs:
+    feed = formula_to_explicit(case.feed_formula)
+    organic_hint = formula_to_explicit(case.experimental_organic_formula)
+    aqueous_hint = formula_to_explicit(case.experimental_aqueous_formula)
+    initial_aq, initial_org, beta_org = material_balanced_initial_phases(feed, organic_hint, aqueous_hint)
+    return NativeBenchmarkInputs(feed=feed, initial_aq=initial_aq, initial_org=initial_org, beta_org=beta_org)
+
+
+def material_balanced_initial_phases(
+    feed: Sequence[float],
+    organic_hint: Sequence[float],
+    aqueous_hint: Sequence[float],
+    *,
+    phase_fraction: float = 0.5,
+    min_composition: float = 1.0e-8,
+) -> tuple[np.ndarray, np.ndarray, float]:
+    feed_arr = _normalize(np.asarray(feed, dtype=float))
+    direction = np.asarray(organic_hint, dtype=float) - np.asarray(aqueous_hint, dtype=float)
+    direction = direction - float(np.sum(direction)) / direction.size
+    direction = direction - CHARGES * (float(np.dot(direction, CHARGES)) / float(np.dot(CHARGES, CHARGES)))
+    if np.max(np.abs(direction)) <= 1.0e-14:
+        direction = np.asarray([-0.2, 0.1, 0.1, 0.0, 0.0], dtype=float)
+    beta = float(np.clip(phase_fraction, 1.0e-8, 1.0 - 1.0e-8))
+    max_scale = 1.0
+    for i, value in enumerate(direction):
+        if value > 0.0:
+            max_scale = min(max_scale, (feed_arr[i] - min_composition) * (1.0 - beta) / (beta * value))
+        elif value < 0.0:
+            max_scale = min(max_scale, (feed_arr[i] - min_composition) * beta / ((1.0 - beta) * -value))
+    scale = max(0.0, min(0.2, 0.8 * max_scale))
+    organic = feed_arr + ((1.0 - beta) / beta) * scale * direction
+    aqueous = feed_arr - scale * direction
+    return _normalize(aqueous), _normalize(organic), beta
+
+
+def run_smoke_cases(suite: BenchmarkSuite, case_keys: Sequence[str]) -> list[BenchmarkPrediction]:
+    case_map = {case.case_key: case for case in suite.cases}
+    return [predict_case(suite, case_map[key], max_iterations=5) for key in case_keys]
+
+
+def predict_case(
+    suite: BenchmarkSuite,
+    case: BenchmarkCase,
+    *,
+    max_iterations: int = 180,
+    tolerance: float = 1.0e-8,
+    damping: float = 0.5,
+    params_override: Mapping[str, Any] | None = None,
+) -> BenchmarkPrediction:
+    native = benchmark_case_to_native_inputs(case)
+    if params_override is None:
+        mixture = ePCSAFTMixture.from_dataset(suite.dataset, suite.species, native.feed, case.temperature_K)
+    else:
+        mixture = ePCSAFTMixture.from_params(dict(params_override), species=suite.species)
+    try:
+        result = mixture.equilibrium(
+            kind="electrolyte_lle",
+            T=case.temperature_K,
+            P=PRESSURE_PA,
+            z=native.feed,
+            initial_phases={
+                "aq": native.initial_aq,
+                "org": native.initial_org,
+                "phase_fraction": native.beta_org,
+            },
+            options=EquilibriumOptions(
+                max_iterations=max_iterations,
+                tolerance=tolerance,
+                damping=damping,
+                include_phase_diagnostics=True,
+            ),
+        )
+    except SolutionError as exc:
+        diagnostics = _diagnostics_from_exception(exc)
+        return BenchmarkPrediction(case, "diagnostic_failure", diagnostics, None, None, None, None)
+
+    diagnostics = dict(result.diagnostics)
+    phases = {phase.label: phase for phase in result.phases}
+    if "aq" not in phases or "org" not in phases:
+        diagnostics["best_failure_reason"] = "native result did not contain aq/org phase labels"
+        return BenchmarkPrediction(case, "diagnostic_failure", diagnostics, None, None, None, None)
+    aq_formula = explicit_to_formula(phases["aq"].composition)
+    org_formula = explicit_to_formula(phases["org"].composition)
+    metrics = _metrics(case, org_formula, aq_formula, diagnostics)
+    return BenchmarkPrediction(
+        case=case,
+        status="accepted",
+        diagnostics=diagnostics,
+        metrics=metrics,
+        organic_formula=org_formula,
+        aqueous_formula=aq_formula,
+        beta_org=float(phases["org"].phase_fraction),
+    )
+
+
+def run_confidence_suite(
+    suite: str | BenchmarkSuite = "khudaida_2026",
+    *,
+    mode: str = "full",
+    output_root: str | Path | None = None,
+    write_gallery: bool = False,
+) -> ConfidenceReport:
+    benchmark_suite = load_benchmark_suite(suite) if isinstance(suite, str) else suite
+    out_dir = Path(output_root) if output_root is not None else DEFAULT_OUTPUT_ROOT
+    out_dir = out_dir / benchmark_suite.name
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    predictions = [predict_case(benchmark_suite, case, max_iterations=5) for case in benchmark_suite.cases]
+    continuation = continuation_metrics(predictions)
+    oracle = oracle_checks(benchmark_suite, predictions[: min(6, len(predictions))])
+    stress = stress_cases(benchmark_suite)
+    sensitivity = sensitivity_metrics(benchmark_suite, _preferred_case(benchmark_suite, "0.10:303.15:1"))
+
+    report = ConfidenceReport(
+        output_dir=out_dir,
+        summary_path=out_dir / "summary.json",
+        benchmark_csv=out_dir / "benchmark_predictions.csv",
+        continuation_csv=out_dir / "continuation_metrics.csv",
+        oracle_csv=out_dir / "oracle_checks.csv",
+        sensitivity_csv=out_dir / "sensitivity_metrics.csv",
+        stress_csv=out_dir / "stress_cases.csv",
+        residual_gate_plot=out_dir / "residual_gate_summary.png",
+        error_plot=out_dir / "per_species_error_summary.png",
+        continuation_plot=out_dir / "continuation_smoothness.png",
+        sensitivity_plot=out_dir / "parameter_sensitivity_summary.png",
+    )
+
+    _write_benchmark_csv(report.benchmark_csv, predictions)
+    _write_continuation_csv(report.continuation_csv, continuation)
+    _write_oracle_csv(report.oracle_csv, oracle)
+    _write_sensitivity_csv(report.sensitivity_csv, sensitivity)
+    _write_stress_csv(report.stress_csv, stress)
+    _write_summary(report.summary_path, benchmark_suite, mode, predictions, continuation, oracle, sensitivity, stress)
+    _write_plots(report, benchmark_suite, predictions, continuation, sensitivity)
+    _write_report_index(report)
+    if write_gallery:
+        _write_gallery_copies(report)
+    return report
+
+
+def continuation_metrics(predictions: Sequence[BenchmarkPrediction]) -> list[ContinuationMetrics]:
+    grouped: dict[str, list[BenchmarkPrediction]] = {}
+    for prediction in predictions:
+        key = f"{prediction.case.salt_wtfrac:.2f}:{prediction.case.temperature_K:.2f}"
+        grouped.setdefault(key, []).append(prediction)
+    rows: list[ContinuationMetrics] = []
+    for series_key, series in grouped.items():
+        ordered = sorted(series, key=lambda item: item.case.tie_line)
+        for left, right in zip(ordered, ordered[1:]):
+            if left.status != "accepted" or right.status != "accepted":
+                rows.append(ContinuationMetrics(series_key, left.case.case_key, right.case.case_key, math.nan, math.nan, False, True))
+                continue
+            assert left.organic_formula is not None and left.aqueous_formula is not None
+            assert right.organic_formula is not None and right.aqueous_formula is not None
+            jump = max(
+                float(np.max(np.abs(right.organic_formula - left.organic_formula))),
+                float(np.max(np.abs(right.aqueous_formula - left.aqueous_formula))),
+            )
+            beta_jump = abs(float((right.beta_org or 0.0) - (left.beta_org or 0.0)))
+            phase_distance = min(
+                float(left.diagnostics.get("phase_distance", math.inf)),
+                float(right.diagnostics.get("phase_distance", math.inf)),
+            )
+            rows.append(
+                ContinuationMetrics(
+                    series_key=series_key,
+                    from_case=left.case.case_key,
+                    to_case=right.case.case_key,
+                    composition_jump_norm=jump,
+                    beta_jump=beta_jump,
+                    phase_label_swapped=bool(right.diagnostics.get("phase_labels_swapped", False)),
+                    branch_collapse_flag=phase_distance < 1.0e-4 or jump > 0.25 or beta_jump > 0.35,
+                )
+            )
+    return rows
+
+
+def oracle_checks(suite: BenchmarkSuite, predictions: Sequence[BenchmarkPrediction]) -> list[OracleCheck]:
+    checks: list[OracleCheck] = []
+    for prediction in predictions:
+        case = prediction.case
+        native_delta = float(prediction.diagnostics.get("gibbs_delta", math.nan))
+        oracle_delta = fixed_phase_gibbs_delta(suite, case, case.experimental_organic_formula, case.experimental_aqueous_formula)
+        checks.append(
+            OracleCheck(
+                case_key=case.case_key,
+                native_status=prediction.status,
+                native_gibbs_delta=native_delta,
+                oracle_gibbs_delta=oracle_delta,
+                native_minus_oracle_gibbs_delta=float(native_delta - oracle_delta) if np.isfinite(native_delta) else math.nan,
+                oracle_flags_native=bool(np.isfinite(native_delta) and native_delta - oracle_delta > 1.0e-6),
+            )
+        )
+    return checks
+
+
+def fixed_phase_gibbs_delta(
+    suite: BenchmarkSuite,
+    case: BenchmarkCase,
+    organic_formula: np.ndarray,
+    aqueous_formula: np.ndarray,
+) -> float:
+    native = benchmark_case_to_native_inputs(case)
+    org = formula_to_explicit(organic_formula)
+    aq = formula_to_explicit(aqueous_formula)
+    beta = _best_phase_fraction(native.feed, org, aq)
+    mixture = ePCSAFTMixture.from_dataset(suite.dataset, suite.species, native.feed, case.temperature_K)
+    options = EquilibriumOptions(include_phase_diagnostics=False)
+    feed_state = _phase_state(mixture, case.temperature_K, PRESSURE_PA, native.feed, "liq", options, "oracle_feed")["state"]
+    org_state = _phase_state(mixture, case.temperature_K, PRESSURE_PA, org, "liq", options, "oracle_org")["state"]
+    aq_state = _phase_state(mixture, case.temperature_K, PRESSURE_PA, aq, "liq", options, "oracle_aq")["state"]
+    g_feed = _gibbs_proxy(native.feed, feed_state.fugacity_coefficient())
+    g_org = _gibbs_proxy(org, org_state.fugacity_coefficient())
+    g_aq = _gibbs_proxy(aq, aq_state.fugacity_coefficient())
+    return float(beta * g_org + (1.0 - beta) * g_aq - g_feed)
+
+
+def stress_cases(suite: BenchmarkSuite) -> list[BenchmarkPrediction]:
+    base = _preferred_case(suite, "0.10:303.15:1")
+    formulas = {
+        "very_dilute_salt": _with_salt(base.feed_formula, 1.0e-6),
+        "high_salt": _with_salt(base.feed_formula, 0.12),
+        "trace_organic": _normalize(np.asarray([0.86, 0.001, 0.05, 0.089], dtype=float)),
+        "near_plait_like": _normalize(0.5 * (base.experimental_organic_formula + base.experimental_aqueous_formula)),
+        "nearly_identical_phases": _normalize(base.feed_formula + np.asarray([1.0e-5, -5.0e-6, -5.0e-6, 0.0])),
+    }
+    predictions: list[BenchmarkPrediction] = []
+    for name, feed in formulas.items():
+        case = BenchmarkCase(
+            suite=base.suite,
+            case_key=f"stress:{name}",
+            tie_line=base.tie_line,
+            figure=base.figure,
+            temperature_K=base.temperature_K,
+            salt_wtfrac=base.salt_wtfrac,
+            feed_formula=feed,
+            experimental_organic_formula=base.experimental_organic_formula,
+            experimental_aqueous_formula=base.experimental_aqueous_formula,
+            source="synthetic_stress",
+        )
+        predictions.append(predict_case(suite, case, max_iterations=5, tolerance=1.0e-8))
+    return predictions
+
+
+def sensitivity_metrics(suite: BenchmarkSuite, case: BenchmarkCase) -> list[SensitivityMetrics]:
+    native = benchmark_case_to_native_inputs(case)
+    baseline_mix = ePCSAFTMixture.from_dataset(suite.dataset, suite.species, native.feed, case.temperature_K)
+    baseline_params = _copy_params(baseline_mix.parameters)
+    baseline = predict_case(suite, case, params_override=baseline_params, max_iterations=5)
+    rows = [
+        SensitivityMetrics(
+            case_key=case.case_key,
+            parameter="baseline",
+            perturbation=0.0,
+            status=baseline.status,
+            max_composition_delta=0.0,
+            solver_residual_norm=float(baseline.diagnostics.get("solver_residual_norm", math.nan)),
+            gibbs_delta=float(baseline.diagnostics.get("gibbs_delta", math.nan)),
+        )
+    ]
+    perturbations = (
+        ("k_ij", 0.01),
+        ("l_ij", 0.01),
+        ("k_hb", 0.01),
+        ("s", 0.005),
+        ("e", 0.01),
+        ("d_born", 0.01),
+        ("dielc", 0.01),
+    )
+    for parameter, scale in perturbations:
+        for sign in (-1.0, 1.0):
+            perturbed = _copy_params(baseline_params)
+            _perturb_parameter(perturbed, parameter, sign * scale)
+            pred = predict_case(suite, case, params_override=perturbed, max_iterations=5)
+            rows.append(
+                SensitivityMetrics(
+                    case_key=case.case_key,
+                    parameter=parameter,
+                    perturbation=sign * scale,
+                    status=pred.status,
+                    max_composition_delta=_composition_delta(baseline, pred),
+                    solver_residual_norm=float(pred.diagnostics.get("solver_residual_norm", math.nan)),
+                    gibbs_delta=float(pred.diagnostics.get("gibbs_delta", math.nan)),
+                )
+            )
+    return rows
+
+
+def formula_to_explicit(formula: Sequence[float]) -> np.ndarray:
+    x = _normalize(np.asarray(formula, dtype=float))
+    expanded = np.asarray([x[0], x[1], x[2], x[3], x[3]], dtype=float)
+    return _normalize(expanded)
+
+
+def explicit_to_formula(explicit: Sequence[float]) -> np.ndarray:
+    x = _normalize(np.asarray(explicit, dtype=float))
+    salt = 0.5 * (x[3] + x[4])
+    return _normalize(np.asarray([x[0], x[1], x[2], salt], dtype=float))
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Run opt-in electrolyte LLE confidence validation.")
+    parser.add_argument("--suite", default="khudaida_2026")
+    parser.add_argument("--mode", choices=("smoke", "full"), default="full")
+    parser.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
+    parser.add_argument("--write-gallery", action="store_true")
+    args = parser.parse_args(argv)
+    report = run_confidence_suite(args.suite, mode=args.mode, output_root=args.output_root, write_gallery=args.write_gallery)
+    print(f"Wrote electrolyte LLE confidence report: {report.output_dir}")
+    return 0
+
+
+def _read_json(path: Path) -> dict[str, Any]:
+    with path.open(encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _load_phase_rows(path: Path) -> dict[str, dict[str, np.ndarray]]:
+    grouped: dict[str, dict[str, np.ndarray]] = {}
+    with path.open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            grouped.setdefault(row["case_key"], {})[row["phase"]] = np.asarray(
+                [float(row["x_water"]), float(row["x_ethanol"]), float(row["x_isobutanol"]), float(row["x_nacl"])],
+                dtype=float,
+            )
+    return grouped
+
+
+def _load_feed_rows(path: Path) -> dict[str, dict[str, Any]]:
+    rows: dict[str, dict[str, Any]] = {}
+    with path.open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            rows[row["case_key"]] = {
+                "tie_line": int(row["tie_line"]),
+                "figure": int(row["figure"]),
+                "temperature_K": float(row["temperature_K"]),
+                "salt_wtfrac": float(row["salt_wtfrac"]),
+                "formula": np.asarray(
+                    [
+                        float(row["x_water_total"]),
+                        float(row["x_ethanol_total"]),
+                        float(row["x_isobutanol_total"]),
+                        float(row["x_nacl_total"]),
+                    ],
+                    dtype=float,
+                ),
+                "source": row["source"],
+            }
+    return rows
+
+
+def _case_sort_key(case_key: str) -> tuple[float, float, int]:
+    salt, temperature, tie_line = case_key.split(":")
+    return float(salt), float(temperature), int(tie_line)
+
+
+def _normalize(values: np.ndarray) -> np.ndarray:
+    total = float(np.sum(values))
+    if not np.isfinite(total) or total <= 0.0:
+        raise ValueError("composition total must be positive")
+    clipped = np.clip(np.asarray(values, dtype=float), 0.0, None)
+    return clipped / float(np.sum(clipped))
+
+
+def _best_phase_fraction(feed: np.ndarray, organic: np.ndarray, aqueous: np.ndarray) -> float:
+    direction = organic - aqueous
+    denom = float(np.dot(direction, direction))
+    if denom <= 0.0:
+        return 0.5
+    return float(np.clip(np.dot(feed - aqueous, direction) / denom, 1.0e-8, 1.0 - 1.0e-8))
+
+
+def _metrics(case: BenchmarkCase, organic: np.ndarray, aqueous: np.ndarray, diagnostics: Mapping[str, Any]) -> BenchmarkMetrics:
+    organic_delta = np.abs(organic - case.experimental_organic_formula)
+    aqueous_delta = np.abs(aqueous - case.experimental_aqueous_formula)
+    return BenchmarkMetrics(
+        grand_aad=float((np.sum(organic_delta) + np.sum(aqueous_delta)) / 8.0),
+        max_abs_error=float(max(np.max(organic_delta), np.max(aqueous_delta))),
+        organic_aad=float(np.mean(organic_delta)),
+        aqueous_aad=float(np.mean(aqueous_delta)),
+        phase_distance=float(diagnostics.get("phase_distance", np.max(np.abs(organic - aqueous)))),
+    )
+
+
+def _diagnostics_from_exception(exc: SolutionError) -> dict[str, Any]:
+    diagnostics = getattr(exc, "diagnostics", None)
+    if diagnostics is None and len(exc.args) > 1 and isinstance(exc.args[1], dict):
+        diagnostics = exc.args[1]
+    return dict(diagnostics or {"message": str(exc), "acceptance_gate": "predictive_solve_failed"})
+
+
+def _gibbs_proxy(composition: np.ndarray, ln_phi: Sequence[float]) -> float:
+    comp = np.clip(np.asarray(composition, dtype=float), 1.0e-300, 1.0)
+    return float(np.sum(comp * (np.log(comp) + np.asarray(ln_phi, dtype=float))))
+
+
+def _preferred_case(suite: BenchmarkSuite, case_key: str) -> BenchmarkCase:
+    for case in suite.cases:
+        if case.case_key == case_key:
+            return case
+    return suite.cases[0]
+
+
+def _with_salt(feed_formula: np.ndarray, salt: float) -> np.ndarray:
+    neutrals = _normalize(np.asarray(feed_formula[:3], dtype=float))
+    return _normalize(np.asarray([*(neutrals * (1.0 - salt)), salt], dtype=float))
+
+
+def _copy_params(params: Mapping[str, Any]) -> dict[str, Any]:
+    copied: dict[str, Any] = {}
+    for key, value in params.items():
+        if isinstance(value, np.ndarray):
+            copied[key] = np.array(value, dtype=value.dtype, copy=True)
+        elif isinstance(value, dict):
+            copied[key] = json.loads(json.dumps(value))
+        elif isinstance(value, list):
+            copied[key] = list(value)
+        else:
+            copied[key] = value
+    return copied
+
+
+def _perturb_parameter(params: dict[str, Any], key: str, perturbation: float) -> None:
+    if key not in params or not isinstance(params[key], np.ndarray):
+        return
+    arr = np.array(params[key], dtype=float, copy=True)
+    if arr.ndim == 2:
+        mask = ~np.eye(arr.shape[0], dtype=bool)
+        arr[mask] += perturbation
+    else:
+        charged = np.asarray([False, False, False, True, True])
+        arr[charged] *= 1.0 + perturbation
+    params[key] = arr
+
+
+def _composition_delta(left: BenchmarkPrediction, right: BenchmarkPrediction) -> float:
+    if left.status != "accepted" or right.status != "accepted":
+        return math.nan
+    assert left.organic_formula is not None and left.aqueous_formula is not None
+    assert right.organic_formula is not None and right.aqueous_formula is not None
+    return float(
+        max(
+            np.max(np.abs(left.organic_formula - right.organic_formula)),
+            np.max(np.abs(left.aqueous_formula - right.aqueous_formula)),
+        )
+    )
+
+
+def _write_benchmark_csv(path: Path, predictions: Sequence[BenchmarkPrediction]) -> None:
+    fieldnames = [
+        "case_key",
+        "status",
+        "temperature_K",
+        "salt_wtfrac",
+        "tie_line",
+        "grand_aad",
+        "max_abs_error",
+        "organic_aad",
+        "aqueous_aad",
+        "beta_org",
+        "solver_residual_norm",
+        "material_balance_error",
+        "charge_balance_error",
+        "gibbs_delta",
+        "phase_distance",
+        "tpd_trial_count",
+        "tpd_multistart_count",
+        "tpd_polish_iterations",
+        "acceptance_gate",
+        "best_failure_reason",
+    ]
+    rows = []
+    for prediction in predictions:
+        diag = prediction.diagnostics
+        metrics = prediction.metrics
+        rows.append(
+            {
+                "case_key": prediction.case.case_key,
+                "status": prediction.status,
+                "temperature_K": prediction.case.temperature_K,
+                "salt_wtfrac": prediction.case.salt_wtfrac,
+                "tie_line": prediction.case.tie_line,
+                "grand_aad": metrics.grand_aad if metrics else math.nan,
+                "max_abs_error": metrics.max_abs_error if metrics else math.nan,
+                "organic_aad": metrics.organic_aad if metrics else math.nan,
+                "aqueous_aad": metrics.aqueous_aad if metrics else math.nan,
+                "beta_org": prediction.beta_org if prediction.beta_org is not None else math.nan,
+                "solver_residual_norm": diag.get("solver_residual_norm", math.nan),
+                "material_balance_error": diag.get("material_balance_error", math.nan),
+                "charge_balance_error": diag.get("charge_balance_error", math.nan),
+                "gibbs_delta": diag.get("gibbs_delta", math.nan),
+                "phase_distance": diag.get("phase_distance", math.nan),
+                "tpd_trial_count": diag.get("tpd_trial_count", math.nan),
+                "tpd_multistart_count": diag.get("tpd_multistart_count", math.nan),
+                "tpd_polish_iterations": diag.get("tpd_polish_iterations", math.nan),
+                "acceptance_gate": diag.get("acceptance_gate", ""),
+                "best_failure_reason": diag.get("best_failure_reason", ""),
+            }
+        )
+    _write_csv(path, fieldnames, rows)
+
+
+def _write_continuation_csv(path: Path, rows: Sequence[ContinuationMetrics]) -> None:
+    _write_csv(path, list(ContinuationMetrics.__dataclass_fields__), [row.__dict__ for row in rows])
+
+
+def _write_oracle_csv(path: Path, rows: Sequence[OracleCheck]) -> None:
+    _write_csv(path, list(OracleCheck.__dataclass_fields__), [row.__dict__ for row in rows])
+
+
+def _write_sensitivity_csv(path: Path, rows: Sequence[SensitivityMetrics]) -> None:
+    _write_csv(path, list(SensitivityMetrics.__dataclass_fields__), [row.__dict__ for row in rows])
+
+
+def _write_stress_csv(path: Path, rows: Sequence[BenchmarkPrediction]) -> None:
+    _write_csv(
+        path,
+        ["case_key", "status", "acceptance_gate", "best_failure_reason", "solver_residual_norm", "gibbs_delta", "phase_distance"],
+        [
+            {
+                "case_key": row.case.case_key,
+                "status": row.status,
+                "acceptance_gate": row.diagnostics.get("acceptance_gate", ""),
+                "best_failure_reason": row.diagnostics.get("best_failure_reason", ""),
+                "solver_residual_norm": row.diagnostics.get("solver_residual_norm", math.nan),
+                "gibbs_delta": row.diagnostics.get("gibbs_delta", math.nan),
+                "phase_distance": row.diagnostics.get("phase_distance", math.nan),
+            }
+            for row in rows
+        ],
+    )
+
+
+def _write_summary(
+    path: Path,
+    suite: BenchmarkSuite,
+    mode: str,
+    predictions: Sequence[BenchmarkPrediction],
+    continuation: Sequence[ContinuationMetrics],
+    oracle: Sequence[OracleCheck],
+    sensitivity: Sequence[SensitivityMetrics],
+    stress: Sequence[BenchmarkPrediction],
+) -> None:
+    accepted = [item for item in predictions if item.status == "accepted"]
+    summary = {
+        "suite": suite.name,
+        "mode": mode,
+        "case_count": len(predictions),
+        "accepted_count": len(accepted),
+        "diagnostic_failure_count": len(predictions) - len(accepted),
+        "max_grand_aad": max((item.metrics.grand_aad for item in accepted if item.metrics), default=math.nan),
+        "max_abs_error": max((item.metrics.max_abs_error for item in accepted if item.metrics), default=math.nan),
+        "continuation_rows": len(continuation),
+        "continuation_branch_flags": sum(1 for row in continuation if row.branch_collapse_flag),
+        "oracle_rows": len(oracle),
+        "oracle_flags": sum(1 for row in oracle if row.oracle_flags_native),
+        "sensitivity_rows": len(sensitivity),
+        "stress_rows": len(stress),
+        "ceres_reported": "ceres" in json.dumps([item.diagnostics for item in predictions], default=str).lower(),
+    }
+    path.write_text(json.dumps(_json_ready(summary), indent=2, allow_nan=False), encoding="utf-8")
+
+
+def _write_plots(
+    report: ConfidenceReport,
+    suite: BenchmarkSuite,
+    predictions: Sequence[BenchmarkPrediction],
+    continuation: Sequence[ContinuationMetrics],
+    sensitivity: Sequence[SensitivityMetrics],
+) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    accepted = [item for item in predictions if item.status == "accepted"]
+    residual_labels = ["solver_residual_norm", "material_balance_error", "charge_balance_error", "phase_distance"]
+    residual_values = [
+        max((float(item.diagnostics.get(label, math.nan)) for item in predictions if np.isfinite(float(item.diagnostics.get(label, math.nan)))), default=math.nan)
+        for label in residual_labels
+    ]
+    threshold_values = [suite.thresholds.get(label, math.nan) for label in residual_labels]
+    _bar_comparison_plot(report.residual_gate_plot, "Electrolyte LLE residual gate summary", residual_labels, residual_values, threshold_values)
+
+    error_labels = ["organic AAD", "aqueous AAD", "grand AAD", "max abs error"]
+    error_values = [
+        max((item.metrics.organic_aad for item in accepted if item.metrics), default=math.nan),
+        max((item.metrics.aqueous_aad for item in accepted if item.metrics), default=math.nan),
+        max((item.metrics.grand_aad for item in accepted if item.metrics), default=math.nan),
+        max((item.metrics.max_abs_error for item in accepted if item.metrics), default=math.nan),
+    ]
+    _bar_plot(report.error_plot, "Khudaida benchmark composition errors", error_labels, error_values, "Mole fraction error")
+
+    cont_labels = [row.to_case for row in continuation]
+    cont_values = [row.composition_jump_norm if np.isfinite(row.composition_jump_norm) else 0.0 for row in continuation]
+    _line_plot(report.continuation_plot, "Khudaida continuation smoothness", cont_labels, cont_values, "Adjacent composition jump")
+
+    sens = [row for row in sensitivity if row.parameter != "baseline"]
+    sens_labels = [f"{row.parameter} {row.perturbation:+.3g}" for row in sens]
+    sens_values = [row.max_composition_delta if np.isfinite(row.max_composition_delta) else 0.0 for row in sens]
+    _bar_plot(report.sensitivity_plot, "Parameter sensitivity summary", sens_labels, sens_values, "Max composition delta")
+
+    plt.close("all")
+    for png in (report.residual_gate_plot, report.error_plot, report.continuation_plot, report.sensitivity_plot):
+        _write_html_companion(png)
+
+
+def _bar_comparison_plot(path: Path, title: str, labels: Sequence[str], actual: Sequence[float], expected: Sequence[float]) -> None:
+    import matplotlib.pyplot as plt
+
+    x = np.arange(len(labels))
+    fig, ax = plt.subplots(figsize=(8.0, 4.6))
+    ax.bar(x - 0.18, actual, width=0.36, label="Actual max")
+    ax.bar(x + 0.18, expected, width=0.36, label="Report threshold")
+    ax.set_yscale("log")
+    ax.set_xticks(x, labels, rotation=30, ha="right")
+    ax.set_title(title)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(path, dpi=140)
+    fig.savefig(path.with_suffix(".svg"))
+    plt.close(fig)
+    _write_plot_data(path, [("actual", labels, actual), ("threshold", labels, expected)])
+
+
+def _bar_plot(path: Path, title: str, labels: Sequence[str], values: Sequence[float], ylabel: str) -> None:
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(8.0, 4.6))
+    ax.bar(np.arange(len(labels)), values)
+    ax.set_xticks(np.arange(len(labels)), labels, rotation=30, ha="right")
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+    fig.tight_layout()
+    fig.savefig(path, dpi=140)
+    fig.savefig(path.with_suffix(".svg"))
+    plt.close(fig)
+    _write_plot_data(path, [("value", labels, values)])
+
+
+def _line_plot(path: Path, title: str, labels: Sequence[str], values: Sequence[float], ylabel: str) -> None:
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(9.0, 4.6))
+    ax.plot(np.arange(len(labels)), values, marker="o")
+    step = max(1, len(labels) // 8)
+    ax.set_xticks(np.arange(0, len(labels), step), [labels[i] for i in range(0, len(labels), step)], rotation=30, ha="right")
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+    fig.tight_layout()
+    fig.savefig(path, dpi=140)
+    fig.savefig(path.with_suffix(".svg"))
+    plt.close(fig)
+    _write_plot_data(path, [("value", labels, values)])
+
+
+def _write_plot_data(path: Path, series_rows: Sequence[tuple[str, Sequence[str], Sequence[float]]]) -> None:
+    rows = []
+    for series, labels, values in series_rows:
+        for label, value in zip(labels, values):
+            rows.append({"plot": path.name, "series": series, "label": label, "value": value})
+    _write_csv(path.parent / "data" / f"{path.stem}_plot_data.csv", ["plot", "series", "label", "value"], rows)
+
+
+def _write_html_companion(png_path: Path) -> None:
+    html = png_path.with_suffix(".html")
+    html.write_text(
+        "<!doctype html><meta charset='utf-8'>"
+        f"<title>{png_path.stem}</title><img src='{png_path.name}' alt='{png_path.stem}' style='max-width:100%;height:auto'>",
+        encoding="utf-8",
+    )
+
+
+def _write_report_index(report: ConfidenceReport) -> None:
+    (report.output_dir / "index.html").write_text(
+        "\n".join(
+            [
+                "<!doctype html><meta charset='utf-8'><title>Electrolyte LLE Confidence Report</title>",
+                "<h1>Electrolyte LLE Confidence Report</h1>",
+                f"<p><a href='{report.summary_path.name}'>summary.json</a></p>",
+                f"<p><a href='{report.benchmark_csv.name}'>benchmark_predictions.csv</a></p>",
+                f"<p><a href='{report.residual_gate_plot.with_suffix('.html').name}'>residual gate plot</a></p>",
+                f"<p><a href='{report.error_plot.with_suffix('.html').name}'>error plot</a></p>",
+                f"<p><a href='{report.continuation_plot.with_suffix('.html').name}'>continuation plot</a></p>",
+                f"<p><a href='{report.sensitivity_plot.with_suffix('.html').name}'>sensitivity plot</a></p>",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
+def _write_gallery_copies(report: ConfidenceReport) -> None:
+    gallery_dir = REPO_ROOT / "docs" / "plots" / "tests" / "equilibrium" / "electrolyte_lle_confidence"
+    gallery_dir.mkdir(parents=True, exist_ok=True)
+    for path in (report.residual_gate_plot, report.error_plot, report.continuation_plot, report.sensitivity_plot):
+        target = gallery_dir / path.name
+        target.write_bytes(path.read_bytes())
+        target.with_suffix(".svg").write_bytes(path.with_suffix(".svg").read_bytes())
+        target.with_suffix(".html").write_text(path.with_suffix(".html").read_text(encoding="utf-8"), encoding="utf-8")
+        source_csv = path.parent / "data" / f"{path.stem}_plot_data.csv"
+        target_csv = gallery_dir / "data" / f"{path.stem}_plot_data.csv"
+        target_csv.parent.mkdir(parents=True, exist_ok=True)
+        target_csv.write_text(source_csv.read_text(encoding="utf-8"), encoding="utf-8")
+
+
+def _write_csv(path: Path, fieldnames: Sequence[str], rows: Iterable[Mapping[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(fieldnames))
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({key: _csv_value(row.get(key, "")) for key in fieldnames})
+
+
+def _csv_value(value: Any) -> Any:
+    if isinstance(value, float):
+        if not np.isfinite(value):
+            return ""
+        return format(value, CSV_FLOAT_FORMAT)
+    return value
+
+
+def _json_ready(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(key): _json_ready(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_ready(item) for item in value]
+    if isinstance(value, np.ndarray):
+        return _json_ready(value.tolist())
+    if isinstance(value, np.generic):
+        return _json_ready(value.item())
+    if isinstance(value, float) and not np.isfinite(value):
+        return None
+    return value

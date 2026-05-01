@@ -44,6 +44,11 @@ PLOT_RECIPES: tuple[PlotRecipe, ...] = (
         output_dirs=("equilibrium/electrolyte_lle",),
     ),
     PlotRecipe(
+        source_tests=("tests/equilibrium/test_electrolyte_lle_confidence.py",),
+        plot_targets=("tests/plots/test_equilibrium_confidence_plot_outputs.py",),
+        output_dirs=("equilibrium/electrolyte_lle_confidence",),
+    ),
+    PlotRecipe(
         source_tests=(
             "tests/api/test_runtime.py",
             "tests/api/test_package_main.py",

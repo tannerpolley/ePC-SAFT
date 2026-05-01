@@ -18,6 +18,7 @@ GENERIC_TEST_TARGETS = (
     "tests/api/test_regression_api.py",
 )
 CONFIDENCE_TEST_TARGETS = GENERIC_TEST_TARGETS + ("tests/native/test_runtime_contracts.py",)
+EQUILIBRIUM_CONFIDENCE_TEST_TARGETS = ("tests/equilibrium/test_electrolyte_lle_confidence.py",)
 RUNTIME_TEST_TARGETS = ("tests/api/test_runtime.py", "tests/native/test_runtime_contracts.py")
 API_TEST_TARGETS = ("tests/api/test_runtime.py", "tests/api/test_parameter_templates.py", "tests/api/test_regression_api.py")
 NATIVE_TEST_TARGETS = ("tests/native/test_runtime_contracts.py",)
@@ -33,6 +34,7 @@ PLOT_TEST_TARGETS = (
     "tests/plots/test_api_parity_plot_outputs.py",
     "tests/plots/test_contribution_plot_outputs.py",
     "tests/plots/test_equilibrium_plot_outputs.py",
+    "tests/plots/test_equilibrium_confidence_plot_outputs.py",
     "tests/plots/test_native_plot_outputs.py",
     "tests/plots/test_property_plot_outputs.py",
     "tests/plots/test_regression_plot_outputs.py",
@@ -40,6 +42,7 @@ PLOT_TEST_TARGETS = (
 SLICE_TARGETS = {
     "generic": GENERIC_TEST_TARGETS,
     "confidence": CONFIDENCE_TEST_TARGETS,
+    "equilibrium-confidence": EQUILIBRIUM_CONFIDENCE_TEST_TARGETS,
     "runtime": RUNTIME_TEST_TARGETS,
     "api": API_TEST_TARGETS,
     "native": NATIVE_TEST_TARGETS,
@@ -93,6 +96,7 @@ def _pytest_args(
     pytest_temp: Path,
     generic: bool = False,
     confidence: bool = False,
+    equilibrium_confidence: bool = False,
     runtime: bool = False,
     api: bool = False,
     native: bool = False,
@@ -101,9 +105,11 @@ def _pytest_args(
     plots: bool = False,
 ) -> list[str]:
     cmd: list[str] = []
-    has_predefined_targets = generic or confidence or runtime or api or native or profile or profile_full or plots
+    has_predefined_targets = generic or confidence or equilibrium_confidence or runtime or api or native or profile or profile_full or plots
     if confidence:
         cmd.extend(CONFIDENCE_TEST_TARGETS)
+    elif equilibrium_confidence:
+        cmd.extend(EQUILIBRIUM_CONFIDENCE_TEST_TARGETS)
     elif generic:
         cmd.extend(GENERIC_TEST_TARGETS)
     elif runtime:
@@ -188,6 +194,11 @@ def main() -> int:
         action="store_true",
         help="Run generic tests plus native runtime contract tests",
     )
+    predefined.add_argument(
+        "--equilibrium-confidence",
+        action="store_true",
+        help="Run opt-in electrolyte equilibrium confidence checks",
+    )
     predefined.add_argument("--runtime", action="store_true", help="Run runtime API and native contract tests")
     predefined.add_argument("--api", action="store_true", help="Run public API and regression API tests")
     predefined.add_argument("--native", action="store_true", help="Run native runtime contract tests")
@@ -208,6 +219,8 @@ def main() -> int:
     repo_root = _repo_root()
     pytest_temp = _pytest_temp(repo_root)
     env = _pytest_env(pytest_temp, profile=args.profile or args.profile_full)
+    if args.equilibrium_confidence:
+        env["EPCSAFT_EQUILIBRIUM_CONFIDENCE"] = "1"
     src_root = repo_root / "src"
     sys.path.insert(0, str(src_root))
     env["PYTHONPATH"] = str(src_root)
@@ -217,6 +230,7 @@ def main() -> int:
         pytest_temp,
         args.generic,
         confidence=args.confidence,
+        equilibrium_confidence=args.equilibrium_confidence,
         runtime=args.runtime,
         api=args.api,
         native=args.native,

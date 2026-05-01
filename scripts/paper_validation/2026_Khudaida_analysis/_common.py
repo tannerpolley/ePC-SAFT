@@ -33,6 +33,10 @@ def _fast_machine() -> str:
 platform.machine = _fast_machine
 
 import scripts._epcsaft_oop as pcs
+import epcsaft
+from epcsaft.equilibrium_core.confidence import explicit_to_formula
+from epcsaft.equilibrium_core.confidence import formula_to_explicit
+from epcsaft.equilibrium_core.confidence import material_balanced_initial_phases
 from epcsaft.parameters import get_prop_dict
 
 
@@ -732,7 +736,6 @@ def _candidate_formula_feeds(exp_row: dict, target_feed_formula: np.ndarray | No
 
 def _solve_formula_feed(temperature_k: float, feed_formula: np.ndarray, seed_formula_candidates: list[np.ndarray]) -> dict | None:
     z_feed = formula_to_ion_basis(feed_formula)
-    params = get_prop_dict(PARAMETER_DATASET, SPECIES, z_feed, temperature_k)
     unique_seed_candidates: list[np.ndarray] = []
     for seed_formula in seed_formula_candidates:
         seed_formula = np.asarray(seed_formula, dtype=float)
@@ -741,38 +744,59 @@ def _solve_formula_feed(temperature_k: float, feed_formula: np.ndarray, seed_for
         seed_formula = seed_formula / np.sum(seed_formula)
         if not any(np.allclose(seed_formula, prior, atol=1e-10) for prior in unique_seed_candidates):
             unique_seed_candidates.append(seed_formula)
-    attempts = []
-    for seed_formula in unique_seed_candidates[:2]:
-        attempts.append(
-            {
-                "seed_x": formula_to_ion_basis(seed_formula),
-                "force_seed_solve": True,
-                "tpdf_global_trials": 300,
-                "tpdf_local_trials": 120,
-                "solver_tol": 1.0e-9,
-                "max_nfev": 180,
-                "charge_weight": 2500.0,
-                "solver_accept_norm": 0.5,
-                "split_tol": 1.0e-4,
-                "debug": False,
-            }
+    if len(unique_seed_candidates) < 2:
+        return None
+
+    org_hint = formula_to_explicit(unique_seed_candidates[0])
+    aq_hint = formula_to_explicit(unique_seed_candidates[1])
+    aq_seed, org_seed, beta_org = material_balanced_initial_phases(z_feed, org_hint, aq_hint)
+    mixture = epcsaft.ePCSAFTMixture.from_dataset(PARAMETER_DATASET, SPECIES, z_feed, temperature_k)
+    try:
+        result = mixture.equilibrium(
+            kind="electrolyte_lle",
+            T=float(temperature_k),
+            P=P_REF,
+            z=z_feed,
+            initial_phases={"aq": aq_seed, "org": org_seed, "phase_fraction": beta_org},
+            options=epcsaft.EquilibriumOptions(max_iterations=5, tolerance=1.0e-8, damping=0.5),
         )
-    best = None
-    for options in attempts:
-        raise NotImplementedError("The legacy multiphase LLE workflow has been removed and will be rewritten later.")
-    if best is None:
-        fallback_options = {
-            "tpdf_global_trials": 300,
-            "tpdf_local_trials": 120,
-            "solver_tol": 1.0e-9,
-            "max_nfev": 180,
-            "charge_weight": 2500.0,
-            "solver_accept_norm": 0.5,
-            "split_tol": 1.0e-4,
-            "debug": False,
+    except epcsaft.SolutionError as exc:
+        diagnostics = getattr(exc, "diagnostics", None) or (exc.args[1] if len(exc.args) > 1 and isinstance(exc.args[1], dict) else {})
+        return {
+            "converged": False,
+            "status": None,
+            "message": str(exc.args[0] if exc.args else exc),
+            "residual_norm": float(diagnostics.get("solver_residual_norm", np.nan)),
+            "feed_formula": ion_to_formula_basis(z_feed),
+            "organic_formula": np.full(4, np.nan),
+            "aqueous_formula": np.full(4, np.nan),
+            "beta_organic": np.nan,
+            "beta_aqueous": np.nan,
+            "split_norm": float(diagnostics.get("phase_distance", np.nan)),
+            "objective": np.nan,
+            "source": "epcsaft_native_v5",
         }
-        raise NotImplementedError("The legacy multiphase LLE workflow has been removed and will be rewritten later.")
-    return best
+
+    phases = {phase.label: phase for phase in result.phases}
+    if "org" not in phases or "aq" not in phases:
+        return None
+    org_formula = explicit_to_formula(phases["org"].composition)
+    aq_formula = explicit_to_formula(phases["aq"].composition)
+    residual_norm = float(result.diagnostics.get("solver_residual_norm", np.nan))
+    return {
+        "converged": True,
+        "status": "accepted",
+        "message": None,
+        "residual_norm": residual_norm,
+        "feed_formula": ion_to_formula_basis(z_feed),
+        "organic_formula": org_formula,
+        "aqueous_formula": aq_formula,
+        "beta_organic": float(phases["org"].phase_fraction),
+        "beta_aqueous": float(phases["aq"].phase_fraction),
+        "split_norm": float(result.diagnostics.get("phase_distance", np.max(np.abs(org_formula - aq_formula)))),
+        "objective": float(np.sum(np.abs(org_formula - unique_seed_candidates[0])) + np.sum(np.abs(aq_formula - unique_seed_candidates[1]))),
+        "source": "epcsaft_native_v5",
+    }
 
 
 def solve_model_rows(exp_rows: list[dict], feed_rows: list[dict] | None = None) -> list[dict]:
@@ -924,7 +948,7 @@ def _model_rows_for_csv(rows: list[dict]) -> list[dict]:
                     "residual_norm": float(row["residual_norm"]) if np.isfinite(row["residual_norm"]) else "",
                     "objective": float(row["objective"]) if np.isfinite(row["objective"]) else "",
                     "converged": bool(row["converged"]),
-                    "source": "epcsaft_pressureackage",
+                    "source": str(row.get("source", "epcsaft_native_v5")),
                 }
             )
     return out

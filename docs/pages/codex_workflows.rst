@@ -47,6 +47,9 @@ Command matrix
    * - Native contract only
      - ``uv run python run_pytest.py --native -q``
      - Fast check for pressure-vs-density and contribution-map contracts.
+   * - Electrolyte LLE confidence
+     - ``uv run python run_pytest.py --equilibrium-confidence -q -s``
+     - Opt-in Khudaida electrolyte LLE benchmark/report suite; slower than standard confidence and writes reports under ``build/equilibrium_confidence``.
    * - Quick method-speed check
      - ``uv run python run_pytest.py --profile -q``
      - Runtime-only profiling. The wrapper enables the required performance environment flag.
