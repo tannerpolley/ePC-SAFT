@@ -19,8 +19,9 @@ uv run python scripts/paper_validation/tools/serve_plot_gallery.py
 ```
 
 The server serves `docs/plots/index.html` at `http://127.0.0.1:8765/` by default, or the next available port if that port is already busy.
+Browser refreshes are treated like a lightweight dev-server refresh: the server rebuilds the root gallery index when `/` or `/index.html` is requested and sends no-cache headers for the static PNG/SVG/CSV assets. Use `--no-auto-build` only when you intentionally want to serve the current files without refresh-time index rebuilding.
 
-In the Codex app, use the docs environment action `Serve Plot Gallery (Rebuild)` to rebuild and serve the gallery, then open the printed `http://127.0.0.1:<port>/` URL with Browser Use. Use `Serve Plot Gallery (Existing)` when you only want to reopen the existing `index.html` without rebuilding.
+In the Codex app, use the docs environment action `Serve Plot Gallery (Rebuild)` to rebuild and serve the gallery, then open the printed `http://127.0.0.1:<port>/` URL with Browser Use. Use `Serve Plot Gallery (Existing)` when you only want to skip the startup rebuild; the normal server still refreshes the root index on browser reload unless `--no-auto-build` is passed.
 
 Folder roles:
 

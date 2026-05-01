@@ -4,6 +4,7 @@ import argparse
 import socket
 import sys
 from functools import partial
+from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -32,12 +33,35 @@ def build_gallery() -> None:
     build_analysis_galleries.main()
 
 
-def serve_gallery(host: str, port: int) -> None:
-    handler = partial(SimpleHTTPRequestHandler, directory=str(PLOTS_ROOT))
+class PlotGalleryRequestHandler(SimpleHTTPRequestHandler):
+    def __init__(self, *args, auto_build: bool = True, **kwargs) -> None:
+        self.auto_build = auto_build
+        super().__init__(*args, **kwargs)
+
+    def end_headers(self) -> None:
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
+        super().end_headers()
+
+    def send_head(self):
+        if self.auto_build and self.path.split("?", 1)[0] in {"/", "/index.html"}:
+            try:
+                build_gallery()
+            except Exception as exc:  # pragma: no cover - exercised through manual server use.
+                self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR, f"Could not rebuild plot gallery: {exc}")
+                return None
+        return super().send_head()
+
+
+def serve_gallery(host: str, port: int, *, auto_build: bool = True) -> None:
+    handler = partial(PlotGalleryRequestHandler, directory=str(PLOTS_ROOT), auto_build=auto_build)
     server = ThreadingHTTPServer((host, port), handler)
     url = f"http://{host}:{port}/"
     print(f"Serving ePC-SAFT plot gallery at {url}", flush=True)
     print(f"Root index: {PLOTS_ROOT / 'index.html'}", flush=True)
+    if auto_build:
+        print("Auto-rebuilding root index on browser refresh.", flush=True)
     print("Press Ctrl+C to stop.", flush=True)
     try:
         server.serve_forever()
@@ -57,6 +81,11 @@ def parse_args() -> argparse.Namespace:
         help="Serve the existing gallery without rebuilding docs/plots/**/index.html first.",
     )
     parser.add_argument(
+        "--no-auto-build",
+        action="store_true",
+        help="Do not rebuild docs/plots/index.html when the browser requests the root page.",
+    )
+    parser.add_argument(
         "--strict-port",
         action="store_true",
         help="Fail instead of choosing the next free port when the preferred port is busy.",
@@ -69,7 +98,7 @@ def main() -> None:
     if not args.no_build:
         build_gallery()
     port = args.port if args.strict_port else find_available_port(args.host, args.port)
-    serve_gallery(args.host, port)
+    serve_gallery(args.host, port, auto_build=not args.no_auto_build)
 
 
 if __name__ == "__main__":

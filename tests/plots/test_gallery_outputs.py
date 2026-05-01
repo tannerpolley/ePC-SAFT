@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import csv
+import threading
+import urllib.request
 from pathlib import Path
 
 import matplotlib
@@ -379,3 +381,43 @@ def test_plot_gallery_server_skips_busy_preferred_port() -> None:
 
     assert available_port != preferred_port
     assert preferred_port < available_port <= preferred_port + 2
+
+
+def test_plot_gallery_server_rebuilds_index_on_refresh(tmp_path: Path, monkeypatch) -> None:
+    import socket
+    from functools import partial
+    from http.server import ThreadingHTTPServer
+
+    root = tmp_path / "plots"
+    root.mkdir()
+    index = root / "index.html"
+    index.write_text("old", encoding="utf-8")
+
+    def fake_build_gallery() -> None:
+        index.write_text("fresh", encoding="utf-8")
+
+    monkeypatch.setattr(serve_plot_gallery, "build_gallery", fake_build_gallery)
+    handler = partial(
+        serve_plot_gallery.PlotGalleryRequestHandler,
+        directory=str(root),
+        auto_build=True,
+    )
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+
+    server = ThreadingHTTPServer(("127.0.0.1", port), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=5) as response:
+            body = response.read().decode("utf-8")
+            cache_control = response.headers["Cache-Control"]
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert body == "fresh"
+    assert "no-cache" in cache_control
+    assert "no-store" in cache_control
