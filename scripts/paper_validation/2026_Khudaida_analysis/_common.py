@@ -758,7 +758,7 @@ def _solve_formula_feed(temperature_k: float, feed_formula: np.ndarray, seed_for
             P=P_REF,
             z=z_feed,
             initial_phases={"aq": aq_seed, "org": org_seed, "phase_fraction": beta_org},
-            options=epcsaft.EquilibriumOptions(max_iterations=5, tolerance=1.0e-8, damping=0.5),
+            options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8, damping=0.5),
         )
     except epcsaft.SolutionError as exc:
         diagnostics = getattr(exc, "diagnostics", None) or (exc.args[1] if len(exc.args) > 1 and isinstance(exc.args[1], dict) else {})

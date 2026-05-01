@@ -59,18 +59,20 @@ def test_khudaida_smoke_cases_return_results_or_diagnostic_failures() -> None:
 
 def test_khudaida_paper_validation_recompute_uses_native_lle() -> None:
     common = importlib.import_module("scripts.paper_validation.2026_Khudaida_analysis._common")
-    exp_row = common._experimental_rows(0.10, 303.15)[0]
-    feed_row = common._digitized_feed_rows_for_figure(6, 303.15, 0.10)[0]
+    exp_row = common._experimental_rows(0.05, 293.15)[0]
+    feed_row = common._digitized_feed_rows_for_figure(2, 293.15, 0.05)[0]
     result = common._solve_formula_feed(
-        303.15,
+        293.15,
         feed_row["feed_formula"],
         [exp_row["organic_formula"], exp_row["aqueous_formula"]],
     )
 
     assert result is not None
     assert result["source"] == "epcsaft_native_v5"
-    assert result["converged"] in {True, False}
-    assert result["residual_norm"] >= 0.0
+    assert result["converged"] is True
+    assert result["residual_norm"] <= 1.0e-6
+    assert np.all(np.isfinite(result["organic_formula"]))
+    assert np.all(np.isfinite(result["aqueous_formula"]))
 
 
 @pytest.mark.skipif(
@@ -96,4 +98,3 @@ def test_opt_in_confidence_report_generates_full_outputs(tmp_path: Path) -> None
     assert summary["case_count"] >= 35
     assert summary["accepted_count"] + summary["diagnostic_failure_count"] == summary["case_count"]
     assert summary["ceres_reported"] is False
-
