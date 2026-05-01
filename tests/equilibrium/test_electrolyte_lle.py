@@ -176,6 +176,12 @@ def test_electrolyte_lle_rejects_neutral_lle_initial_phase_labels() -> None:
         )
 
 
+def test_equilibrium_options_default_iteration_budget_is_robust_for_electrolyte_lle() -> None:
+    options = epcsaft.EquilibriumOptions()
+
+    assert options.max_iterations == 180
+
+
 def test_ascani_case2_mixed_salt_solves_without_local_model_fixture() -> None:
     mix = _case2_mixture()
 

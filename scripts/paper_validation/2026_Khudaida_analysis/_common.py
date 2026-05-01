@@ -105,7 +105,7 @@ def configure_style() -> None:
 def save_figure(fig: plt.Figure, path: Path) -> None:
     path = paper_validation_output_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    save_plot_figure(fig, path, dpi=300)
+    save_plot_figure(fig, path, dpi=300, svg_companion=True)
 
 
 def add_figure_caption(fig: plt.Figure, caption: str, *, left: float = 0.09, y: float = 0.02, fontsize: float = 9.0) -> None:
@@ -731,17 +731,87 @@ def _plot_feed_points(
     color: str = LIGHT_GREEN,
     marker: str = "^",
     markersize: float = 24.0,
+    label: str | None = None,
     xy_transform=ternary_xy_from_formula,
+    display_ranges: dict[str, float] | None = None,
 ) -> None:
     if not rows:
         return
     xs = []
     ys = []
     for row in rows:
+        if display_ranges is not None and not _formula_in_display_scaled_ranges(row["feed_formula"], display_ranges):
+            continue
         x_coord, y_coord = xy_transform(row["feed_formula"])
         xs.append(x_coord)
         ys.append(y_coord)
-    ax.scatter(xs, ys, s=markersize, marker=marker, facecolors=color, edgecolors=color, linewidths=0.5, zorder=5)
+    if xs:
+        ax.scatter(xs, ys, s=markersize, marker=marker, facecolors=color, edgecolors=color, linewidths=0.5, zorder=5, label=label)
+
+
+def _paper_epcsaft_digitized_rows(fig_dir: Path, temperature_k: float, salt_wt: float) -> list[dict]:
+    path = fig_dir / "data" / "paper_epcsaft_digitized.csv"
+    if not path.exists():
+        return []
+    rows = []
+    with path.open("r", newline="", encoding="utf-8-sig") as handle:
+        reader = csv.DictReader(handle)
+        for raw in reader:
+            salt_free = np.asarray(
+                [
+                    float(raw["x_water_salt_free"]),
+                    float(raw["x_ethanol_salt_free"]),
+                    float(raw["x_isobutanol_salt_free"]),
+                ],
+                dtype=float,
+            )
+            salt_free = salt_free / float(np.sum(salt_free))
+            formula = np.asarray([salt_free[0], salt_free[1], salt_free[2], 0.0], dtype=float)
+            rows.append(
+                {
+                    "tie_line": int(raw["point_id"]),
+                    "temperature_K": float(temperature_k),
+                    "salt_wtfrac": float(salt_wt),
+                    "organic_formula": formula,
+                    "source": raw.get("source", "digitized_user_supplied") or "digitized_user_supplied",
+                }
+            )
+    return rows
+
+
+def _plot_formula_series(
+    ax: plt.Axes,
+    rows: list[dict],
+    key: str,
+    color: str,
+    marker: str,
+    label: str,
+    *,
+    linewidth: float = 1.0,
+    markersize: float = 18.0,
+    linestyle: str = "-",
+    xy_transform=ternary_xy_from_formula,
+    display_ranges: dict[str, float] | None = None,
+) -> None:
+    xs = []
+    ys = []
+    for row in rows:
+        x_formula = row[key]
+        if not np.all(np.isfinite(x_formula)):
+            continue
+        if display_ranges is not None and not _formula_in_display_scaled_ranges(x_formula, display_ranges):
+            continue
+        x_coord, y_coord = xy_transform(x_formula)
+        xs.append(x_coord)
+        ys.append(y_coord)
+    if not xs:
+        return
+    if len(xs) > 1 and linestyle:
+        ax.plot(xs, ys, color=color, linewidth=linewidth, linestyle=linestyle, zorder=3, label=label)
+        scatter_label = None
+    else:
+        scatter_label = label
+    ax.scatter(xs, ys, s=markersize, marker=marker, facecolors=color, edgecolors=color, linewidths=0.5, zorder=4, label=scatter_label)
 
 
 def _scaled_ranges_for_figure(
@@ -774,6 +844,7 @@ def _plot_phase_points(
     marker: str,
     *,
     markersize: float = 22.0,
+    label: str | None = None,
     xy_transform=ternary_xy_from_formula,
     display_ranges: dict[str, float] | None = None,
 ) -> None:
@@ -790,7 +861,7 @@ def _plot_phase_points(
         xs.append(x_coord)
         ys.append(y_coord)
     if xs:
-        ax.scatter(xs, ys, s=markersize, marker=marker, facecolors=color, edgecolors=color, linewidths=0.5, zorder=4)
+        ax.scatter(xs, ys, s=markersize, marker=marker, facecolors=color, edgecolors=color, linewidths=0.5, zorder=4, label=label)
 
 
 def _candidate_formula_feeds(exp_row: dict, target_feed_formula: np.ndarray | None = None) -> list[np.ndarray]:
@@ -1068,6 +1139,7 @@ def plot_lle_figure(fig_dir: Path, figure_number: int, temperature_k: float, sal
     feed_rows = _digitized_feed_rows_for_figure(figure_number, temperature_k, salt_wt) or _derived_feed_rows(salt_wt, temperature_k)
     force_recompute = os.environ.get("KHUDAIDA_FORCE_RECOMPUTE", "").strip().lower() in {"1", "true", "yes", "on"}
     model_rows = get_or_build_model_rows(fig_dir, exp_rows, feed_rows=feed_rows, force_recompute=force_recompute)
+    paper_rows = _paper_epcsaft_digitized_rows(fig_dir, temperature_k, salt_wt)
     write_csv_rows(
         fig_dir / "data" / "feed_compositions.csv",
         [
@@ -1092,15 +1164,18 @@ def plot_lle_figure(fig_dir: Path, figure_number: int, temperature_k: float, sal
     _draw_ternary_axes(ax)
     _plot_tie_lines(ax, exp_rows, BLACK, "o", "Exp.", linestyle="-")
     valid_model_rows = [row for row in model_rows if np.all(np.isfinite(row["organic_formula"])) and np.all(np.isfinite(row["aqueous_formula"]))]
-    _plot_tie_lines(ax, valid_model_rows, RED, "o", "ePC-SAFT", linestyle="--")
-    _plot_feed_points(ax, feed_rows)
+    _plot_tie_lines(ax, valid_model_rows, RED, "o", "model ePC-SAFT", linestyle="--")
+    _plot_formula_series(ax, paper_rows, "organic_formula", BLUE, "s", "paper ePC-SAFT", linestyle="-")
+    _plot_feed_points(ax, feed_rows, label="Feed")
+    ax.legend(loc="upper right", fontsize=8)
     if valid_model_rows:
         model_caption = f"red dashed (accepted native ePC-SAFT, {len(valid_model_rows)}/{len(model_rows)} tie-lines)"
     else:
         model_caption = "native ePC-SAFT rejected all model tie-lines; no red model tie-lines are drawn"
+    paper_caption = f"blue squares (digitized paper ePC-SAFT organic branch, {len(paper_rows)} points)"
     add_figure_caption(
         fig,
-        f"Figure {figure_number}. LLE for the system water + ethanol + isobutanol + {int(round(salt_wt * 100))} wt % NaCl at {temperature_k:.2f} K and atmospheric pressure expressed as salt-free composition: black (exp), {model_caption}, and green (feed compositions).",
+        f"Figure {figure_number}. LLE for the system water + ethanol + isobutanol + {int(round(salt_wt * 100))} wt % NaCl at {temperature_k:.2f} K and atmospheric pressure expressed as salt-free composition: black (exp), {model_caption}, {paper_caption}, and green (feed compositions).",
     )
     save_figure(fig, fig_dir / f"figure_{figure_number}.png")
     plt.close(fig)
@@ -1127,11 +1202,47 @@ def plot_lle_figure(fig_dir: Path, figure_number: int, temperature_k: float, sal
         isobutanol_min=ranges["isobutanol_min"],
         isobutanol_max=ranges["isobutanol_max"],
     )
-    _plot_phase_points(ax_scaled, exp_rows, "organic", BLACK, "o", xy_transform=scaled_xy_transform, display_ranges=scaled_ranges)
-    _plot_phase_points(ax_scaled, valid_model_rows, "organic", RED, "o", xy_transform=scaled_xy_transform, display_ranges=scaled_ranges)
+    _plot_phase_points(
+        ax_scaled,
+        exp_rows,
+        "organic",
+        BLACK,
+        "o",
+        label="Exp. organic",
+        xy_transform=scaled_xy_transform,
+        display_ranges=scaled_ranges,
+    )
+    _plot_phase_points(
+        ax_scaled,
+        valid_model_rows,
+        "organic",
+        RED,
+        "o",
+        label="model ePC-SAFT organic",
+        xy_transform=scaled_xy_transform,
+        display_ranges=scaled_ranges,
+    )
+    _plot_phase_points(
+        ax_scaled,
+        paper_rows,
+        "organic",
+        BLUE,
+        "s",
+        label="paper ePC-SAFT organic",
+        xy_transform=scaled_xy_transform,
+        display_ranges=scaled_ranges,
+    )
+    _plot_feed_points(
+        ax_scaled,
+        feed_rows,
+        label="Feed",
+        xy_transform=scaled_xy_transform,
+        display_ranges=scaled_ranges,
+    )
+    ax_scaled.legend(loc="upper right", fontsize=8)
     add_figure_caption(
         fig_scaled,
-        f"Figure {figure_number} (scaled). Organic-phase LLE compositions for the system water + ethanol + isobutanol + {int(round(salt_wt * 100))} wt % NaCl at {temperature_k:.2f} K and atmospheric pressure expressed as salt-free composition, zoomed to water {scaled_ranges['water_min']:.2f}-{scaled_ranges['water_max']:.2f}, ethanol {scaled_ranges['ethanol_min']:.2f}-{scaled_ranges['ethanol_max']:.2f}, and isobutanol {scaled_ranges['isobutanol_min']:.2f}-{scaled_ranges['isobutanol_max']:.2f}: black (exp organic), red ({len(valid_model_rows)}/{len(model_rows)} accepted native ePC-SAFT organic compositions).",
+        f"Figure {figure_number} (scaled). Organic-phase LLE compositions for the system water + ethanol + isobutanol + {int(round(salt_wt * 100))} wt % NaCl at {temperature_k:.2f} K and atmospheric pressure expressed as salt-free composition, zoomed to water {scaled_ranges['water_min']:.2f}-{scaled_ranges['water_max']:.2f}, ethanol {scaled_ranges['ethanol_min']:.2f}-{scaled_ranges['ethanol_max']:.2f}, and isobutanol {scaled_ranges['isobutanol_min']:.2f}-{scaled_ranges['isobutanol_max']:.2f}: black (exp organic), red ({len(valid_model_rows)}/{len(model_rows)} accepted native ePC-SAFT organic compositions), blue (paper ePC-SAFT organic), and green (feed compositions).",
     )
     save_figure(fig_scaled, fig_dir / f"figure_{figure_number}_scaled.png")
     plt.close(fig_scaled)

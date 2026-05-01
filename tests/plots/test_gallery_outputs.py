@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import csv
+import importlib
+import shutil
 import threading
 import urllib.request
 from pathlib import Path
@@ -215,6 +217,27 @@ def test_root_gallery_embeds_static_single_page_manifest(tmp_path: Path, monkeyp
     assert ("native_" + "plot" + "ly") not in html
     assert ("csv_" + "backfill") not in html
     assert ("static_png_" + "wrapper") not in html
+
+
+def test_khudaida_lle_plots_include_model_paper_experiment_and_feed_series(tmp_path: Path) -> None:
+    common = importlib.import_module("scripts.paper_validation.2026_Khudaida_analysis._common")
+    source_dir = Path("scripts/paper_validation/2026_Khudaida_analysis/figure_2").resolve()
+    figure_dir = tmp_path / "figure_2"
+    shutil.copytree(source_dir / "data", figure_dir / "data")
+
+    common.plot_lle_figure(figure_dir, 2, 293.15, 0.05)
+
+    with (figure_dir / "data" / "figure_2_plot_data.csv").open("r", newline="", encoding="utf-8-sig") as handle:
+        full_labels = {row["artist_label"] for row in csv.DictReader(handle)}
+    with (figure_dir / "data" / "figure_2_scaled_plot_data.csv").open("r", newline="", encoding="utf-8-sig") as handle:
+        scaled_labels = {row["artist_label"] for row in csv.DictReader(handle)}
+
+    assert {"Exp.", "model ePC-SAFT", "paper ePC-SAFT", "Feed"} <= full_labels
+    assert {
+        "Exp. organic",
+        "model ePC-SAFT organic",
+        "paper ePC-SAFT organic",
+    } <= scaled_labels
 
 
 def test_ensure_plot_companions_adds_svg_and_csv(tmp_path: Path, monkeypatch) -> None:

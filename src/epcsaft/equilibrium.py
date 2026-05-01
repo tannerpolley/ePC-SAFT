@@ -23,7 +23,7 @@ _ASCANI_2022_REFERENCE = {
 class EquilibriumOptions:
     """Numerical controls for equilibrium solvers."""
 
-    max_iterations: int = 80
+    max_iterations: int = 180
     tolerance: float = 1.0e-6
     damping: float = 0.5
     min_composition: float = 1.0e-12

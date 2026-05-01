@@ -101,6 +101,16 @@ def test_khudaida_full_matrix_fixture_is_complete_and_charge_neutral() -> None:
     json.dumps(diagnostics, allow_nan=False)
 
 
+def test_khudaida_model_tielines_are_all_finite_after_native_recompute() -> None:
+    diagnostics = summarize_khudaida_matrix()
+
+    assert diagnostics["case_count"] == 39
+    assert diagnostics["package_invalid_model_count"] == 0
+    assert diagnostics["package_cached_converged_count"] == 39
+    assert diagnostics["package_cached_residual_norm_max"] <= 1.0e-6
+    json.dumps(diagnostics, allow_nan=False)
+
+
 def test_khudaida_digitized_paper_epcsaft_series_loads_from_figure_folders() -> None:
     rows = load_khudaida_digitized_paper_epcsaft(figure=2)
 
