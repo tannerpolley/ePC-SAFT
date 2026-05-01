@@ -12,6 +12,8 @@ namespace py = pybind11;
 
 namespace {
 
+py::object native_solution_error_type;
+
 std::vector<double> array_to_double_vector(const py::array& array) {
     py::array_t<double, py::array::forcecast> casted(array);
     py::buffer_info info = casted.request();
@@ -246,6 +248,24 @@ py::dict native_equilibrium_to_dict(const EquilibriumResultNative& result) {
     return out;
 }
 
+[[noreturn]] void raise_native_solution_error_with_diagnostics(
+    const std::string& message,
+    const EquilibriumResultNative& result
+) {
+    py::dict diagnostics = native_diagnostics_to_dict(
+        result.diagnostics_double,
+        result.diagnostics_int,
+        result.diagnostics_bool,
+        result.diagnostics_string,
+        result.diagnostics_vector
+    );
+    py::tuple args(2);
+    args[0] = py::str(message);
+    args[1] = diagnostics;
+    PyErr_SetObject(native_solution_error_type.ptr(), args.ptr());
+    throw py::error_already_set();
+}
+
 EquilibriumOptionsNative options_from_request(const py::dict& request) {
     EquilibriumOptionsNative options;
     if (!request.contains("options") || request["options"].is_none()) {
@@ -359,6 +379,9 @@ py::dict solve_equilibrium_native_binding(
             py::gil_scoped_release release;
             result = electrolyte_lle_native(mixture, t, p, feed, options, species, aq, org, beta_org, has_initial);
         }
+        if (!result.split_detected && result.diagnostics_string["acceptance_gate"] == "predictive_solve_failed") {
+            raise_native_solution_error_with_diagnostics("electrolyte LLE flash did not converge", result);
+        }
         return native_equilibrium_to_dict(result);
     }
     throw ValueError("Native equilibrium kind is not implemented: " + kind);
@@ -439,6 +462,7 @@ PYBIND11_MODULE(_core, m) {
 
     py::register_exception<ValueError>(m, "NativeValueError");
     py::register_exception<SolutionError>(m, "NativeSolutionError");
+    native_solution_error_type = m.attr("NativeSolutionError");
 
     py::class_<add_args>(m, "NativeArgs")
         .def(py::init<>())

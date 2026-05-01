@@ -64,6 +64,12 @@ struct ElectrolyteBasisNative {
     std::string variable_model = "ascani_transformed_salt_pairs";
 };
 
+struct ElectrolyteTpdSearchNative {
+    std::vector<StabilityTrialNative> trials;
+    int multistart_count = 0;
+    int polish_iterations = 0;
+};
+
 bool rachford_rice_beta(const std::vector<double>& feed, const std::vector<double>& k_values, double& beta, std::string& message);
 std::pair<std::vector<double>, std::vector<double>> phase_compositions(
     const std::vector<double>& feed,
@@ -753,6 +759,184 @@ std::vector<double> damping_schedule(double damping) {
     return {start, start * 0.5, start * 0.25, start * 0.1, start * 0.05, start * 0.01, start * 0.001};
 }
 
+std::vector<std::pair<std::string, std::vector<double>>> deterministic_formula_multistart_variables(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    const std::vector<double>& feed,
+    const ElectrolyteBasisNative& basis,
+    const EquilibriumOptionsNative& options
+) {
+    std::vector<std::pair<std::string, std::vector<double>>> starts;
+    for (const auto& seed : electrolyte_formula_seeds(mixture, feed, basis, options)) {
+        starts.push_back({seed.first, composition_to_logits(clip_normalize(seed.second, options.min_composition))});
+    }
+    const std::size_t nvar = basis.formula_feed.empty() ? 0 : basis.formula_feed.size() - 1;
+    starts.push_back({"logit_center", std::vector<double>(nvar, 0.0)});
+    for (std::size_t i = 0; i < nvar; ++i) {
+        for (double magnitude : {2.0, 4.0}) {
+            std::vector<double> positive(nvar, 0.0);
+            positive[i] = magnitude;
+            starts.push_back({"logit_axis_" + std::to_string(i) + "_pos_" + std::to_string(static_cast<int>(magnitude)), positive});
+            std::vector<double> negative(nvar, 0.0);
+            negative[i] = -magnitude;
+            starts.push_back({"logit_axis_" + std::to_string(i) + "_neg_" + std::to_string(static_cast<int>(magnitude)), negative});
+        }
+    }
+    return starts;
+}
+
+std::pair<std::vector<double>, int> polish_formula_tpd_variables(
+    const std::function<double(const std::vector<double>&)>& objective,
+    const std::vector<double>& start,
+    int max_iterations
+) {
+    if (start.empty() || max_iterations <= 0) {
+        return {start, 0};
+    }
+    const std::size_t n = start.size();
+    std::vector<std::vector<double>> simplex(n + 1, start);
+    for (std::size_t i = 0; i < n; ++i) {
+        simplex[i + 1][i] += 0.75;
+    }
+    std::vector<double> values(n + 1, 0.0);
+    auto refresh = [&]() {
+        for (std::size_t i = 0; i < simplex.size(); ++i) {
+            values[i] = objective(simplex[i]);
+        }
+    };
+    refresh();
+    int iterations = 0;
+    for (; iterations < max_iterations; ++iterations) {
+        std::vector<std::size_t> order(simplex.size());
+        std::iota(order.begin(), order.end(), 0);
+        std::sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) { return values[a] < values[b]; });
+        std::vector<std::vector<double>> sorted_simplex;
+        std::vector<double> sorted_values;
+        for (std::size_t idx : order) {
+            sorted_simplex.push_back(simplex[idx]);
+            sorted_values.push_back(values[idx]);
+        }
+        simplex = sorted_simplex;
+        values = sorted_values;
+        double spread = 0.0;
+        for (double value : values) {
+            spread = std::max(spread, std::abs(value - values.front()));
+        }
+        if (spread <= 1.0e-10) {
+            break;
+        }
+        std::vector<double> centroid(n, 0.0);
+        for (std::size_t i = 0; i < n; ++i) {
+            for (std::size_t row = 0; row < n; ++row) {
+                centroid[i] += simplex[row][i];
+            }
+            centroid[i] /= static_cast<double>(n);
+        }
+        std::vector<double> reflected(n, 0.0);
+        for (std::size_t i = 0; i < n; ++i) {
+            reflected[i] = centroid[i] + (centroid[i] - simplex.back()[i]);
+        }
+        double reflected_value = objective(reflected);
+        if (reflected_value < values.front()) {
+            std::vector<double> expanded(n, 0.0);
+            for (std::size_t i = 0; i < n; ++i) {
+                expanded[i] = centroid[i] + 2.0 * (reflected[i] - centroid[i]);
+            }
+            double expanded_value = objective(expanded);
+            simplex.back() = expanded_value < reflected_value ? expanded : reflected;
+            values.back() = std::min(expanded_value, reflected_value);
+            continue;
+        }
+        if (reflected_value < values[n - 1]) {
+            simplex.back() = reflected;
+            values.back() = reflected_value;
+            continue;
+        }
+        std::vector<double> contracted(n, 0.0);
+        for (std::size_t i = 0; i < n; ++i) {
+            contracted[i] = centroid[i] + 0.5 * (simplex.back()[i] - centroid[i]);
+        }
+        double contracted_value = objective(contracted);
+        if (contracted_value < values.back()) {
+            simplex.back() = contracted;
+            values.back() = contracted_value;
+            continue;
+        }
+        for (std::size_t row = 1; row < simplex.size(); ++row) {
+            for (std::size_t i = 0; i < n; ++i) {
+                simplex[row][i] = simplex.front()[i] + 0.5 * (simplex[row][i] - simplex.front()[i]);
+            }
+        }
+        refresh();
+    }
+    std::size_t best = static_cast<std::size_t>(std::min_element(values.begin(), values.end()) - values.begin());
+    return {simplex[best], iterations};
+}
+
+ElectrolyteTpdSearchNative electrolyte_tpd_global_search(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const PhaseStateNative& parent,
+    const ElectrolyteBasisNative& basis,
+    const EquilibriumOptionsNative& options,
+    double threshold
+) {
+    ElectrolyteTpdSearchNative search;
+    auto starts = deterministic_formula_multistart_variables(mixture, feed, basis, options);
+    search.multistart_count = static_cast<int>(starts.size());
+    int trial_index = 0;
+    auto objective = [&](const std::vector<double>& variables) {
+        try {
+            return electrolyte_trial_from_formula(
+                mixture,
+                t,
+                p,
+                feed,
+                parent,
+                basis,
+                logits_to_composition(variables),
+                "tpd_objective",
+                1,
+                threshold
+            ).tpd;
+        } catch (const std::exception&) {
+            return 1.0e6;
+        }
+    };
+    for (const auto& start : starts) {
+        trial_index += 1;
+        search.trials.push_back(electrolyte_trial_from_formula(
+            mixture,
+            t,
+            p,
+            feed,
+            parent,
+            basis,
+            logits_to_composition(start.second),
+            start.first,
+            trial_index,
+            threshold
+        ));
+        auto polished = polish_formula_tpd_variables(objective, start.second, options.max_iterations);
+        search.polish_iterations += polished.second;
+        trial_index += std::max(1, polished.second);
+        search.trials.push_back(electrolyte_trial_from_formula(
+            mixture,
+            t,
+            p,
+            feed,
+            parent,
+            basis,
+            logits_to_composition(polished.first),
+            "polished_" + start.first,
+            trial_index,
+            threshold
+        ));
+    }
+    return search;
+}
+
 LLEAttemptNative solve_lle_attempt(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
     double t,
@@ -962,39 +1146,19 @@ StabilityResultNative electrolyte_stability_native(
         throw ValueError("electrolyte_stability feed must be charge neutral.");
     }
     ElectrolyteBasisNative basis = build_electrolyte_basis_native(mixture, feed, species);
-    EquilibriumOptionsNative solver_options = options;
-    if (solver_options.max_iterations > 1) {
-        solver_options.max_iterations = std::max(solver_options.max_iterations, 180);
-    }
     PhaseStateNative parent = phase_state(mixture, t, p, feed, "liq");
     double threshold = std::max(options.tolerance, 1.0e-8);
-    std::vector<StabilityTrialNative> trials;
-    int iteration_count = 0;
-    for (const auto& seed : electrolyte_formula_seeds(mixture, feed, basis, options)) {
-        iteration_count += 1;
-        trials.push_back(electrolyte_trial_from_formula(
-            mixture,
-            t,
-            p,
-            feed,
-            parent,
-            basis,
-            clip_normalize(seed.second, options.min_composition),
-            seed.first,
-            iteration_count,
-            threshold
-        ));
-    }
-    if (trials.empty()) {
+    ElectrolyteTpdSearchNative search = electrolyte_tpd_global_search(mixture, t, p, feed, parent, basis, options, threshold);
+    if (search.trials.empty()) {
         throw SolutionError("electrolyte TPD could not generate a trial phase.");
     }
-    auto best_iter = std::min_element(trials.begin(), trials.end(), [](const auto& a, const auto& b) {
+    auto best_iter = std::min_element(search.trials.begin(), search.trials.end(), [](const auto& a, const auto& b) {
         return a.tpd < b.tpd;
     });
     StabilityResultNative result;
     result.backend = "electrolyte_tpd";
     result.problem_kind = "electrolyte_stability";
-    result.trials = trials;
+    result.trials = search.trials;
     result.stable = best_iter->tpd >= -threshold;
     result.min_tpd = best_iter->tpd;
     result.parent_phase = "liq";
@@ -1006,6 +1170,7 @@ StabilityResultNative electrolyte_stability_native(
     result.diagnostics_string["tpd_method"] = "native_tpd_global_search";
     result.diagnostics_string["variable_model"] = basis.variable_model;
     result.diagnostics_string["seed_name"] = best_iter->seed_name;
+    result.diagnostics_string["tpd_best_seed_name"] = best_iter->seed_name;
     result.diagnostics_string["solver_language"] = "c++";
     result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
     result.diagnostics_double["tpd_threshold"] = threshold;
@@ -1014,7 +1179,12 @@ StabilityResultNative electrolyte_stability_native(
     result.diagnostics_double["phase_charge_balance_feed"] = feed_charge;
     result.diagnostics_double["phase_charge_balance_trial"] = composition_charge(best_iter->composition, charges);
     result.diagnostics_int["basis_rank"] = basis.basis_rank;
-    result.diagnostics_int["trial_count"] = static_cast<int>(trials.size());
+    result.diagnostics_int["trial_count"] = static_cast<int>(search.trials.size());
+    result.diagnostics_int["tpd_trial_count"] = static_cast<int>(search.trials.size());
+    result.diagnostics_int["tpd_multistart_count"] = search.multistart_count;
+    result.diagnostics_int["tpd_polish_iterations"] = search.polish_iterations;
+    result.diagnostics_int["requested_max_iterations"] = options.max_iterations;
+    result.diagnostics_int["effective_max_iterations"] = options.max_iterations;
     return result;
 }
 
@@ -1350,6 +1520,75 @@ bool predictive_electrolyte_accepted(const ElectrolyteCandidateNative& candidate
         && candidate.phase_distance_value > std::max(1.0e-4, split_distance_tolerance(options));
 }
 
+std::string electrolyte_failure_reason(const ElectrolyteCandidateNative& candidate, const EquilibriumOptionsNative& options, bool has_best) {
+    if (!has_best) {
+        return "no electrolyte LLE candidate was evaluated";
+    }
+    if (candidate.solver_residual_norm > options.tolerance) {
+        return "nonlinear residual did not converge";
+    }
+    if (candidate.material_error > std::max(options.tolerance, 1.0e-10)) {
+        return "material balance residual did not converge";
+    }
+    if (candidate.charge_balance_error > 1.0e-8) {
+        return "charge balance residual did not converge";
+    }
+    if (candidate.gibbs_delta >= 0.0) {
+        return "Gibbs split was not favored by current thermodynamic surface";
+    }
+    return "candidate collapsed to one phase";
+}
+
+EquilibriumResultNative electrolyte_lle_failure_result(
+    const std::vector<double>& feed,
+    const ElectrolyteBasisNative& basis,
+    const StabilityResultNative& stability,
+    const ElectrolyteCandidateNative& best,
+    const std::string& best_seed,
+    bool has_best,
+    const EquilibriumOptionsNative& options
+) {
+    EquilibriumResultNative result;
+    result.backend = "electrolyte_lle";
+    result.problem_kind = "electrolyte_lle_flash";
+    result.stable = true;
+    result.split_detected = false;
+    std::string reason = electrolyte_failure_reason(best, options, has_best);
+    result.diagnostics_string["phase_equilibrium_model"] = "electrolyte_lle_v5_native_charge_constrained_solve";
+    result.diagnostics_string["equilibrium_route"] = "electrolyte_lle";
+    result.diagnostics_string["route_reason"] = "ion-containing mixture";
+    result.diagnostics_string["stability_analysis"] = "electrolyte_tpd";
+    result.diagnostics_string["variable_model"] = basis.variable_model;
+    result.diagnostics_string["acceptance_gate"] = "predictive_solve_failed";
+    result.diagnostics_string["solver_seed_name"] = best_seed;
+    result.diagnostics_string["solver_method"] = "native_transformed_newton";
+    result.diagnostics_string["solver_language"] = "c++";
+    result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
+    result.diagnostics_string["tpd_method"] = "native_tpd_global_search";
+    result.diagnostics_string["gibbs_seed_method"] = "native_golden_section";
+    result.diagnostics_string["best_failure_reason"] = reason;
+    result.diagnostics_string["message"] = "electrolyte LLE flash did not converge";
+    result.diagnostics_bool["stability_checked"] = true;
+    result.diagnostics_bool["stability_stable"] = stability.stable;
+    result.diagnostics_int["basis_rank"] = basis.basis_rank;
+    result.diagnostics_int["iterations"] = has_best ? best.iteration : 0;
+    result.diagnostics_int["repeated_stability_iterations"] = 1;
+    result.diagnostics_int["requested_max_iterations"] = options.max_iterations;
+    result.diagnostics_int["effective_max_iterations"] = options.max_iterations;
+    result.diagnostics_double["solver_residual_norm"] = has_best ? best.solver_residual_norm : 1.0e300;
+    result.diagnostics_double["fugacity_residual_norm"] = has_best ? best.solver_residual_norm : 1.0e300;
+    result.diagnostics_double["material_balance_error"] = has_best ? best.material_error : 1.0e300;
+    result.diagnostics_double["charge_balance_error"] = has_best ? best.charge_balance_error : 1.0e300;
+    result.diagnostics_double["gibbs_feed"] = has_best ? best.gibbs_feed : 0.0;
+    result.diagnostics_double["gibbs_split"] = has_best ? best.gibbs_split : 0.0;
+    result.diagnostics_double["gibbs_delta"] = has_best ? best.gibbs_delta : 0.0;
+    result.diagnostics_double["phase_distance"] = has_best ? best.phase_distance_value : 0.0;
+    result.diagnostics_double["stability_min_tpd"] = stability.min_tpd;
+    result.diagnostics_vector["feed_composition"] = feed;
+    result.diagnostics_vector["fugacity_residual"] = best.residual;
+    return result;
+}
+
 std::vector<double> nelder_mead_variables(
     const std::function<double(const std::vector<double>&)>& objective,
     const std::vector<double>& start,
@@ -1588,9 +1827,6 @@ EquilibriumResultNative electrolyte_lle_native(
     }
     ElectrolyteBasisNative basis = build_electrolyte_basis_native(mixture, feed, species);
     EquilibriumOptionsNative solver_options = options;
-    if (solver_options.max_iterations > 1) {
-        solver_options.max_iterations = std::max(solver_options.max_iterations, 180);
-    }
     PhaseStateNative feed_state = phase_state(mixture, t, p, feed, "liq");
     double gibbs_feed = electrolyte_gibbs_proxy(feed, feed_state);
     std::vector<std::pair<std::string, std::vector<double>>> seed_variables;
@@ -1638,9 +1874,6 @@ EquilibriumResultNative electrolyte_lle_native(
     for (const auto& seed : electrolyte_formula_seeds(mixture, feed, basis, solver_options)) {
         seed_variables.emplace_back(seed.first, pack_predictive_electrolyte_variables(0.5, seed.second));
     }
-    if (solver_options.max_iterations <= 1) {
-        throw SolutionError("electrolyte LLE flash did not converge");
-    }
     ElectrolyteCandidateNative best;
     std::string best_seed;
     bool has_best = false;
@@ -1669,7 +1902,7 @@ EquilibriumResultNative electrolyte_lle_native(
         }
     }
     if (!has_best || !accepted) {
-        throw SolutionError("electrolyte LLE flash did not converge");
+        return electrolyte_lle_failure_result(feed, basis, stability, best, best_seed, has_best, solver_options);
     }
     bool labels_swapped = false;
     std::string phase_label_basis = "composition_order";
@@ -1725,6 +1958,8 @@ EquilibriumResultNative electrolyte_lle_native(
     result.diagnostics_int["basis_rank"] = basis.basis_rank;
     result.diagnostics_int["iterations"] = best.iteration;
     result.diagnostics_int["repeated_stability_iterations"] = 1;
+    result.diagnostics_int["requested_max_iterations"] = options.max_iterations;
+    result.diagnostics_int["effective_max_iterations"] = solver_options.max_iterations;
     result.diagnostics_double["solver_residual_norm"] = best.solver_residual_norm;
     result.diagnostics_double["fugacity_residual_norm"] = best.solver_residual_norm;
     result.diagnostics_double["material_balance_error"] = best.material_error;

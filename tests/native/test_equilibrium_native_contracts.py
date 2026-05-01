@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 import epcsaft
 from epcsaft import _core
@@ -73,6 +75,35 @@ def test_native_electrolyte_stability_entrypoint_runs_in_cpp() -> None:
     assert payload["diagnostics"]["solver_language"] == "c++"
     assert payload["diagnostics"]["native_entrypoint"] == "_solve_equilibrium_native"
     assert payload["diagnostics"]["tpd_method"] == "native_tpd_global_search"
+    assert payload["diagnostics"]["tpd_trial_count"] == len(payload["trials"])
+    assert payload["diagnostics"]["tpd_multistart_count"] > 0
+    assert payload["diagnostics"]["tpd_polish_iterations"] > 0
+    assert payload["diagnostics"]["tpd_best_seed_name"] == payload["diagnostics"]["seed_name"]
+    assert payload["diagnostics"]["phase_charge_balance"]["trial"] == pytest.approx(0.0, abs=1.0e-8)
+
+
+def test_native_electrolyte_stability_honors_explicit_max_iterations() -> None:
+    mix = _electrolyte_mixture()
+    request = {
+        "kind": "electrolyte_stability",
+        "T": 298.15,
+        "P": 1.013e5,
+        "z": [0.55, 0.40, 0.025, 0.025],
+        "species": mix.species,
+        "options": {
+            "max_iterations": 2,
+            "tolerance": 1.0e-8,
+            "damping": 0.5,
+            "min_composition": 1.0e-12,
+            "include_phase_diagnostics": False,
+            "stability_precheck": True,
+        },
+    }
+
+    payload = _core._solve_equilibrium_native(mix._native, request)
+
+    assert payload["diagnostics"]["requested_max_iterations"] == 2
+    assert payload["diagnostics"]["effective_max_iterations"] == 2
 
 
 def test_public_electrolyte_stability_uses_native_backend() -> None:
@@ -114,12 +145,21 @@ def test_public_electrolyte_lle_uses_native_backend_with_initial_phases() -> Non
     assert result.diagnostics["solver_language"] == "c++"
     assert result.diagnostics["native_entrypoint"] == "_solve_equilibrium_native"
     assert result.diagnostics["solver_method"] == "native_transformed_newton"
+    assert "ceres" not in json.dumps(result.diagnostics).lower()
 
 
 def test_equilibrium_runtime_does_not_import_scipy_optimizers() -> None:
     source = (REPO_ROOT / "src" / "epcsaft" / "equilibrium.py").read_text(encoding="utf-8")
 
-    forbidden = ("scipy.optimize", "least_squares", "differential_evolution", "minimize_scalar")
+    forbidden = (
+        "scipy.optimize",
+        "least_squares",
+        "differential_evolution",
+        "minimize_scalar",
+        "_solve_predictive_electrolyte",
+        "_electrolyte_gibbs_seed_from_trial",
+        "_electrolyte_stability_from_basis",
+    )
 
     for token in forbidden:
         assert token not in source

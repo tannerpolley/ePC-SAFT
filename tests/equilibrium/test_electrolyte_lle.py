@@ -333,7 +333,22 @@ def test_electrolyte_lle_solver_failure_reports_json_diagnostics() -> None:
 
     diagnostics = excinfo.value.args[1]
     assert diagnostics["phase_equilibrium_model"] == "electrolyte_lle_v5_native_charge_constrained_solve"
-    assert diagnostics["solver_residual_norm"] > 1.0e-6
+    assert diagnostics["acceptance_gate"] == "predictive_solve_failed"
+    assert diagnostics["solver_seed_name"]
+    assert diagnostics["best_failure_reason"]
+    assert diagnostics["requested_max_iterations"] == 1
+    assert diagnostics["effective_max_iterations"] == 1
+    assert diagnostics["iterations"] == 1
+    assert np.isfinite(diagnostics["solver_residual_norm"])
+    assert diagnostics["solver_residual_norm"] >= 0.0
+    assert diagnostics["solver_residual_norm"] != pytest.approx(1.0)
+    assert diagnostics["fugacity_residual_norm"] == pytest.approx(diagnostics["solver_residual_norm"])
+    assert diagnostics["material_balance_error"] >= 0.0
+    assert diagnostics["charge_balance_error"] >= 0.0
+    assert np.isfinite(diagnostics["gibbs_delta"])
+    assert diagnostics["phase_distance"] >= 0.0
+    assert len(diagnostics["feed_composition"]) == mix.ncomp
+    assert len(diagnostics["fugacity_residual"]) > 0
     json.dumps(diagnostics, allow_nan=False)
 
 

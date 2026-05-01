@@ -12,8 +12,6 @@ import numpy as np
 from epcsaft._types import SolutionError
 from epcsaft.epcsaft import ePCSAFTMixture
 from epcsaft.equilibrium import EquilibriumOptions
-from epcsaft.equilibrium import _electrolyte_fugacity_residuals
-from epcsaft.equilibrium import _electrolyte_gibbs_proxy
 from epcsaft.equilibrium import _json_like
 from epcsaft.equilibrium import _phase_state
 from epcsaft.equilibrium_core.electrolyte_basis import build_electrolyte_basis
@@ -28,6 +26,33 @@ FORMULA_SPECIES = ["H2O", "Ethanol", "Butanol", "NaCl"]
 CHARGES = np.asarray([0.0, 0.0, 0.0, 1.0, -1.0], dtype=float)
 PRESSURE_PA = 100000.0
 RESIDUAL_TOL = 1.0e-6
+
+
+def _fixed_phase_electrolyte_fugacity_residuals(
+    aq_comp: np.ndarray,
+    org_comp: np.ndarray,
+    aq_state: dict[str, Any],
+    org_state: dict[str, Any],
+    basis: dict[str, Any],
+    species: list[str],
+) -> tuple[dict[str, float], dict[str, float]]:
+    aq_lnf = np.log(aq_comp) + aq_state["ln_phi"]
+    org_lnf = np.log(org_comp) + org_state["ln_phi"]
+    neutral_residuals = {
+        str(species[index]): float(org_lnf[int(index)] - aq_lnf[int(index)])
+        for index in basis["neutral_indices"]
+    }
+    salt_residuals = {}
+    for pair in basis["salt_pairs"]:
+        cation_i = int(pair["cation"])
+        anion_i = int(pair["anion"])
+        salt_residuals[str(pair["label"])] = float((org_lnf[cation_i] + org_lnf[anion_i]) - (aq_lnf[cation_i] + aq_lnf[anion_i]))
+    return neutral_residuals, salt_residuals
+
+
+def _fixed_phase_gibbs_proxy(composition: np.ndarray, state_payload: dict[str, Any]) -> float:
+    comp = np.asarray(composition, dtype=float)
+    return float(np.sum(comp * (np.log(comp) + np.asarray(state_payload["ln_phi"], dtype=float))))
 
 
 def load_khudaida_tieline_case(*, figure: int, tie_line: int) -> dict[str, Any]:
@@ -68,7 +93,7 @@ def evaluate_khudaida_tieline(*, figure: int, tie_line: int, source: str) -> dic
     aq_state = _state_payload(mixture, temperature, np.asarray(phase_payload["aqueous_composition"], dtype=float), options, "aqueous")
 
     basis = build_electrolyte_basis(SPECIES, CHARGES, phase_payload["feed_composition"], salt_labels=("NaCl",)).to_dict()
-    neutral_residuals, mean_ionic_residuals = _electrolyte_fugacity_residuals(
+    neutral_residuals, mean_ionic_residuals = _fixed_phase_electrolyte_fugacity_residuals(
         np.asarray(phase_payload["aqueous_composition"], dtype=float),
         np.asarray(phase_payload["organic_composition"], dtype=float),
         aq_state,
@@ -80,9 +105,9 @@ def evaluate_khudaida_tieline(*, figure: int, tie_line: int, source: str) -> dic
     residual_norm = float(np.max(np.abs(residual_values))) if residual_values else 0.0
 
     beta = float(phase_payload["organic_phase_fraction"])
-    g_feed = _electrolyte_gibbs_proxy(np.asarray(phase_payload["feed_composition"], dtype=float), feed_state)
-    g_org = _electrolyte_gibbs_proxy(np.asarray(phase_payload["organic_composition"], dtype=float), org_state)
-    g_aq = _electrolyte_gibbs_proxy(np.asarray(phase_payload["aqueous_composition"], dtype=float), aq_state)
+    g_feed = _fixed_phase_gibbs_proxy(np.asarray(phase_payload["feed_composition"], dtype=float), feed_state)
+    g_org = _fixed_phase_gibbs_proxy(np.asarray(phase_payload["organic_composition"], dtype=float), org_state)
+    g_aq = _fixed_phase_gibbs_proxy(np.asarray(phase_payload["aqueous_composition"], dtype=float), aq_state)
     g_split = float(beta * g_org + (1.0 - beta) * g_aq)
     charge_error = _max_charge_error(phase_payload)
     material_error = _material_balance_error(phase_payload)
