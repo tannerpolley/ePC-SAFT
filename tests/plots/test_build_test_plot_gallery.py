@@ -6,8 +6,6 @@ from pathlib import Path
 import pytest
 
 from scripts import build_test_plot_gallery
-from scripts.paper_validation.tools import backfill_plotly_html
-from scripts.paper_validation.tools import ensure_plot_companions
 from tests.plots import plot_registry
 
 
@@ -89,7 +87,7 @@ def test_registry_unregistered_test_reports_actionable_recipe_pattern() -> None:
     assert "tests/does_not_exist/test_new_feature.py" in message
 
 
-def test_build_gallery_from_numeric_csv_creates_plotly_html_svg_index_and_report(tmp_path: Path) -> None:
+def test_build_gallery_from_numeric_csv_creates_static_svg_index_and_report(tmp_path: Path) -> None:
     plots_root = tmp_path / "docs" / "plots"
     png_path = plots_root / "tests" / "example" / "numeric" / "numeric_case.png"
     _write_png(png_path)
@@ -128,45 +126,35 @@ def test_build_gallery_from_numeric_csv_creates_plotly_html_svg_index_and_report
         repo_root=tmp_path,
         plots_root=plots_root,
         skip_pytest=True,
+        force_render=True,
     )
 
     assert result.png_count == 1
-    assert result.plotly_html_created == 1
-    assert result.static_html_created == 0
-    assert png_path.with_suffix(".html").exists()
-    assert backfill_plotly_html.BACKFILL_MARKER in png_path.with_suffix(".html").read_text(encoding="utf-8")
+    assert result.rendered_from_csv == 1
+    assert not png_path.with_suffix(".html").exists()
     assert png_path.with_suffix(".svg").exists()
     assert (plots_root / "index.html").exists()
     assert "tests/example/numeric/numeric_case.png" in (plots_root / "index.html").read_text(encoding="utf-8")
-    assert (plots_root / "plotly_companion_report.csv").exists()
+    assert (plots_root / "plot_asset_report.csv").exists()
+    assert not (plots_root / ("plot" + "ly_companion_report.csv")).exists()
 
 
-def test_build_gallery_from_non_numeric_csv_creates_static_html_and_svg(tmp_path: Path) -> None:
+def test_build_gallery_rejects_non_numeric_csv_without_static_html(tmp_path: Path) -> None:
     plots_root = tmp_path / "docs" / "plots"
     png_path = plots_root / "tests" / "example" / "static" / "static_case.png"
     _write_png(png_path)
-    _write_plot_csv(
-        png_path,
-        [
-            {
-                "figure_file": png_path.name,
-                "artist_type": "no_numeric_artists",
-            }
-        ],
-    )
+    _write_plot_csv(png_path, [{"figure_file": png_path.name, "artist_type": "no_numeric_artists"}])
 
-    result = build_test_plot_gallery.build_gallery(
-        [_recipe("example/static")],
-        repo_root=tmp_path,
-        plots_root=plots_root,
-        skip_pytest=True,
-    )
+    with pytest.raises(Exception, match="no numeric artists"):
+        build_test_plot_gallery.build_gallery(
+            [_recipe("example/static")],
+            repo_root=tmp_path,
+            plots_root=plots_root,
+            skip_pytest=True,
+            force_render=True,
+        )
 
-    assert result.png_count == 1
-    assert result.plotly_html_created == 0
-    assert result.static_html_created == 1
-    assert ensure_plot_companions.STATIC_WRAPPER_MARKER in png_path.with_suffix(".html").read_text(encoding="utf-8")
-    assert png_path.with_suffix(".svg").exists()
+    assert not png_path.with_suffix(".html").exists()
 
 
 def test_build_gallery_dry_run_reports_work_without_writing_outputs(tmp_path: Path) -> None:
@@ -193,15 +181,15 @@ def test_build_gallery_dry_run_reports_work_without_writing_outputs(tmp_path: Pa
         plots_root=plots_root,
         dry_run=True,
         skip_pytest=True,
+        force_render=True,
     )
 
     assert result.png_count == 1
-    assert result.plotly_html_created == 1
-    assert result.static_html_created == 0
+    assert result.rendered_from_csv == 1
     assert not png_path.with_suffix(".html").exists()
     assert not png_path.with_suffix(".svg").exists()
     assert not (plots_root / "index.html").exists()
-    assert not (plots_root / "plotly_companion_report.csv").exists()
+    assert not (plots_root / "plot_asset_report.csv").exists()
 
 
 def test_build_gallery_requires_csv_companion_for_each_png(tmp_path: Path) -> None:

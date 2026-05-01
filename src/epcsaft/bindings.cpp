@@ -6,11 +6,13 @@
 #include <string>
 #include <vector>
 
-#include "epcsaft_electrolyte.h"
+#include "epcsaft_equilibrium.h"
 
 namespace py = pybind11;
 
 namespace {
+
+py::object native_solution_error_type;
 
 std::vector<double> array_to_double_vector(const py::array& array) {
     py::array_t<double, py::array::forcecast> casted(array);
@@ -123,6 +125,268 @@ py::dict regression_debug_to_dict(const PureNeutralRegressionDebugResult& result
     return out;
 }
 
+py::dict native_diagnostics_to_dict(
+    const std::map<std::string, double>& doubles,
+    const std::map<std::string, int>& ints,
+    const std::map<std::string, bool>& bools,
+    const std::map<std::string, std::string>& strings,
+    const std::map<std::string, std::vector<double>>& vectors
+) {
+    py::dict out;
+    for (const auto& item : doubles) {
+        out[py::str(item.first)] = item.second;
+    }
+    for (const auto& item : ints) {
+        out[py::str(item.first)] = item.second;
+    }
+    for (const auto& item : bools) {
+        out[py::str(item.first)] = item.second;
+    }
+    for (const auto& item : strings) {
+        out[py::str(item.first)] = item.second;
+    }
+    for (const auto& item : vectors) {
+        out[py::str(item.first)] = item.second;
+    }
+    if (strings.find("stability_analysis") != strings.end() && strings.at("stability_analysis") == "not_run") {
+        out["stability_stable"] = py::none();
+    }
+    return out;
+}
+
+py::dict native_phase_to_dict(const EquilibriumPhaseNative& phase) {
+    py::dict out;
+    out["label"] = phase.label;
+    out["composition"] = phase.composition;
+    out["density"] = phase.density;
+    out["temperature"] = phase.temperature;
+    out["pressure"] = phase.pressure;
+    out["phase_fraction"] = phase.phase_fraction;
+    out["ln_fugacity_coefficient"] = phase.ln_fugacity_coefficient;
+    out["diagnostics"] = native_diagnostics_to_dict(
+        phase.diagnostics_double,
+        {},
+        {},
+        phase.diagnostics_string,
+        {}
+    );
+    return out;
+}
+
+py::dict native_trial_to_dict(const StabilityTrialNative& trial) {
+    py::dict out;
+    out["parent_phase"] = trial.parent_phase;
+    out["trial_phase"] = trial.trial_phase;
+    out["seed_name"] = trial.seed_name;
+    out["composition"] = trial.composition;
+    out["tpd"] = trial.tpd;
+    out["iterations"] = trial.iterations;
+    out["converged"] = trial.converged;
+    out["unstable"] = trial.unstable;
+    out["diagnostics"] = native_diagnostics_to_dict(
+        trial.diagnostics_double,
+        {},
+        {},
+        trial.diagnostics_string,
+        {}
+    );
+    return out;
+}
+
+py::dict native_stability_to_dict(const StabilityResultNative& result) {
+    py::dict out;
+    out["result_type"] = "stability";
+    out["backend"] = result.backend;
+    out["problem_kind"] = result.problem_kind;
+    out["stable"] = result.stable;
+    out["min_tpd"] = result.min_tpd;
+    out["parent_phase"] = result.parent_phase;
+    out["trial_phase"] = result.trial_phase;
+    out["trial_composition"] = result.trial_composition;
+    py::list trials;
+    for (const auto& trial : result.trials) {
+        trials.append(native_trial_to_dict(trial));
+    }
+    out["trials"] = trials;
+    out["diagnostics"] = native_diagnostics_to_dict(
+        result.diagnostics_double,
+        result.diagnostics_int,
+        result.diagnostics_bool,
+        result.diagnostics_string,
+        result.diagnostics_vector
+    );
+    if (result.backend == "electrolyte_tpd") {
+        py::dict diagnostics = out["diagnostics"].cast<py::dict>();
+        py::dict charge_balance;
+        charge_balance["feed"] = diagnostics.contains("phase_charge_balance_feed") ? diagnostics["phase_charge_balance_feed"] : py::float_(0.0);
+        charge_balance["trial"] = diagnostics.contains("phase_charge_balance_trial") ? diagnostics["phase_charge_balance_trial"] : py::float_(0.0);
+        diagnostics["phase_charge_balance"] = charge_balance;
+        out["diagnostics"] = diagnostics;
+    }
+    return out;
+}
+
+py::dict native_equilibrium_to_dict(const EquilibriumResultNative& result) {
+    py::dict out;
+    out["result_type"] = "equilibrium";
+    out["backend"] = result.backend;
+    out["problem_kind"] = result.problem_kind;
+    py::list phases;
+    for (const auto& phase : result.phases) {
+        phases.append(native_phase_to_dict(phase));
+    }
+    out["phases"] = phases;
+    out["stable"] = result.stable;
+    out["split_detected"] = result.split_detected;
+    out["diagnostics"] = native_diagnostics_to_dict(
+        result.diagnostics_double,
+        result.diagnostics_int,
+        result.diagnostics_bool,
+        result.diagnostics_string,
+        result.diagnostics_vector
+    );
+    return out;
+}
+
+[[noreturn]] void raise_native_solution_error_with_diagnostics(
+    const std::string& message,
+    const EquilibriumResultNative& result
+) {
+    py::dict diagnostics = native_diagnostics_to_dict(
+        result.diagnostics_double,
+        result.diagnostics_int,
+        result.diagnostics_bool,
+        result.diagnostics_string,
+        result.diagnostics_vector
+    );
+    py::tuple args(2);
+    args[0] = py::str(message);
+    args[1] = diagnostics;
+    PyErr_SetObject(native_solution_error_type.ptr(), args.ptr());
+    throw py::error_already_set();
+}
+
+EquilibriumOptionsNative options_from_request(const py::dict& request) {
+    EquilibriumOptionsNative options;
+    if (!request.contains("options") || request["options"].is_none()) {
+        return options;
+    }
+    py::dict input = request["options"].cast<py::dict>();
+    if (input.contains("max_iterations")) {
+        options.max_iterations = input["max_iterations"].cast<int>();
+    }
+    if (input.contains("tolerance")) {
+        options.tolerance = input["tolerance"].cast<double>();
+    }
+    if (input.contains("damping")) {
+        options.damping = input["damping"].cast<double>();
+    }
+    if (input.contains("min_composition")) {
+        options.min_composition = input["min_composition"].cast<double>();
+    }
+    if (input.contains("include_phase_diagnostics")) {
+        options.include_phase_diagnostics = input["include_phase_diagnostics"].cast<bool>();
+    }
+    if (input.contains("stability_precheck")) {
+        options.stability_precheck = input["stability_precheck"].cast<bool>();
+    }
+    return options;
+}
+
+std::vector<std::string> string_vector_from_request(const py::dict& request, const char* key, std::vector<std::string> fallback) {
+    if (!request.contains(key) || request[key].is_none()) {
+        return fallback;
+    }
+    return request[key].cast<std::vector<std::string>>();
+}
+
+py::dict solve_equilibrium_native_binding(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    const py::dict& request
+) {
+    std::string kind = request["kind"].cast<std::string>();
+    double t = request["T"].cast<double>();
+    double p = request["P"].cast<double>();
+    std::vector<double> feed = request["z"].cast<std::vector<double>>();
+    EquilibriumOptionsNative options = options_from_request(request);
+    if (kind == "tp_flash" || kind == "neutral_vle") {
+        EquilibriumResultNative result;
+        {
+            py::gil_scoped_release release;
+            result = tp_flash_native(mixture, t, p, feed, options);
+        }
+        return native_equilibrium_to_dict(result);
+    }
+    if (kind == "lle_flash" || kind == "neutral_lle") {
+        std::vector<double> liq1;
+        std::vector<double> liq2;
+        double beta = 0.5;
+        bool has_initial = false;
+        if (request.contains("initial_phases") && !request["initial_phases"].is_none()) {
+            py::dict initial = request["initial_phases"].cast<py::dict>();
+            liq1 = initial["liq1"].cast<std::vector<double>>();
+            liq2 = initial["liq2"].cast<std::vector<double>>();
+            beta = initial["phase_fraction"].cast<double>();
+            has_initial = true;
+        }
+        EquilibriumResultNative result;
+        {
+            py::gil_scoped_release release;
+            result = lle_flash_native(mixture, t, p, feed, options, liq1, liq2, beta, has_initial);
+        }
+        return native_equilibrium_to_dict(result);
+    }
+    if (kind == "stability" || kind == "neutral_tpd") {
+        std::vector<std::string> parent_phases = string_vector_from_request(request, "parent_phases", {"liq", "vap"});
+        std::vector<std::string> trial_phases = string_vector_from_request(request, "trial_phases", {"liq", "vap"});
+        StabilityResultNative result;
+        {
+            py::gil_scoped_release release;
+            result = neutral_stability_native(mixture, t, p, feed, options, parent_phases, trial_phases);
+        }
+        return native_stability_to_dict(result);
+    }
+    if (kind == "electrolyte_stability" || kind == "electrolyte_tpd") {
+        std::vector<std::string> species;
+        if (request.contains("species") && !request["species"].is_none()) {
+            species = request["species"].cast<std::vector<std::string>>();
+        }
+        StabilityResultNative result;
+        {
+            py::gil_scoped_release release;
+            result = electrolyte_stability_native(mixture, t, p, feed, options, species);
+        }
+        return native_stability_to_dict(result);
+    }
+    if (kind == "electrolyte_lle" || kind == "electrolyte_lle_flash") {
+        std::vector<std::string> species;
+        if (request.contains("species") && !request["species"].is_none()) {
+            species = request["species"].cast<std::vector<std::string>>();
+        }
+        std::vector<double> aq;
+        std::vector<double> org;
+        double beta_org = 0.5;
+        bool has_initial = false;
+        if (request.contains("initial_phases") && !request["initial_phases"].is_none()) {
+            py::dict initial = request["initial_phases"].cast<py::dict>();
+            aq = initial["aq"].cast<std::vector<double>>();
+            org = initial["org"].cast<std::vector<double>>();
+            beta_org = initial["phase_fraction"].cast<double>();
+            has_initial = true;
+        }
+        EquilibriumResultNative result;
+        {
+            py::gil_scoped_release release;
+            result = electrolyte_lle_native(mixture, t, p, feed, options, species, aq, org, beta_org, has_initial);
+        }
+        if (!result.split_detected && result.diagnostics_string["acceptance_gate"] == "predictive_solve_failed") {
+            raise_native_solution_error_with_diagnostics("electrolyte LLE flash did not converge", result);
+        }
+        return native_equilibrium_to_dict(result);
+    }
+    throw ValueError("Native equilibrium kind is not implemented: " + kind);
+}
+
 py::dict fit_pure_neutral_native_least_squares_binding(
     const add_args& args,
     const py::array& density_t,
@@ -198,6 +462,7 @@ PYBIND11_MODULE(_core, m) {
 
     py::register_exception<ValueError>(m, "NativeValueError");
     py::register_exception<SolutionError>(m, "NativeSolutionError");
+    native_solution_error_type = m.attr("NativeSolutionError");
 
     py::class_<add_args>(m, "NativeArgs")
         .def(py::init<>())
@@ -343,4 +608,5 @@ PYBIND11_MODULE(_core, m) {
 
     m.def("_fit_pure_neutral_native_least_squares", &fit_pure_neutral_native_least_squares_binding);
     m.def("_fit_pure_neutral_native_debug", &evaluate_pure_neutral_objective_debug_binding);
+    m.def("_solve_equilibrium_native", &solve_equilibrium_native_binding);
 }

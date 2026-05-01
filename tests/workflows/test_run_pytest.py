@@ -25,6 +25,7 @@ def test_named_shortcuts_expand_to_expected_targets_and_keep_pytest_arg_ordering
     runtime_args = run_pytest._pytest_args(["-q"], pytest_temp, runtime=True)
     api_args = run_pytest._pytest_args(["-q"], pytest_temp, api=True)
     native_args = run_pytest._pytest_args(["-q"], pytest_temp, native=True)
+    equilibrium_confidence_args = run_pytest._pytest_args(["-q"], pytest_temp, equilibrium_confidence=True)
     profile_args = run_pytest._pytest_args(["-q"], pytest_temp, profile=True)
     profile_full_args = run_pytest._pytest_args(["-q"], pytest_temp, profile_full=True)
     plots_args = run_pytest._pytest_args(["-q"], pytest_temp, plots=True)
@@ -32,12 +33,14 @@ def test_named_shortcuts_expand_to_expected_targets_and_keep_pytest_arg_ordering
     assert runtime_args[:len(run_pytest.RUNTIME_TEST_TARGETS)] == list(run_pytest.RUNTIME_TEST_TARGETS)
     assert api_args[:len(run_pytest.API_TEST_TARGETS)] == list(run_pytest.API_TEST_TARGETS)
     assert native_args[:len(run_pytest.NATIVE_TEST_TARGETS)] == list(run_pytest.NATIVE_TEST_TARGETS)
+    assert equilibrium_confidence_args[:len(run_pytest.EQUILIBRIUM_CONFIDENCE_TEST_TARGETS)] == list(run_pytest.EQUILIBRIUM_CONFIDENCE_TEST_TARGETS)
     assert profile_args[:len(run_pytest.PROFILE_TEST_TARGETS)] == list(run_pytest.PROFILE_TEST_TARGETS)
     assert profile_full_args[:len(run_pytest.FULL_PROFILE_TEST_TARGETS)] == list(run_pytest.FULL_PROFILE_TEST_TARGETS)
     assert plots_args[:len(run_pytest.PLOT_TEST_TARGETS)] == list(run_pytest.PLOT_TEST_TARGETS)
     assert runtime_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert api_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert native_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
+    assert equilibrium_confidence_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert profile_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert profile_full_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert plots_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
@@ -50,7 +53,7 @@ def test_plot_slice_stays_out_of_generic_and_confidence_targets():
     assert "tests/plots/test_regression_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
     assert "tests/plots/test_native_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
     assert "tests/plots/test_api_parity_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
-    assert "tests/plots/test_plotly_backfill.py" in run_pytest.PLOT_TEST_TARGETS
+    assert ("tests/plots/test_" + "plot" + "ly_backfill.py") not in run_pytest.PLOT_TEST_TARGETS
     assert all(target.startswith("tests/plots/") for target in run_pytest.PLOT_TEST_TARGETS)
     for target in run_pytest.PLOT_TEST_TARGETS:
         assert target not in run_pytest.GENERIC_TEST_TARGETS
@@ -64,6 +67,7 @@ def test_slice_targets_use_grouped_test_subpackages():
         *run_pytest.RUNTIME_TEST_TARGETS,
         *run_pytest.API_TEST_TARGETS,
         *run_pytest.NATIVE_TEST_TARGETS,
+        *run_pytest.EQUILIBRIUM_CONFIDENCE_TEST_TARGETS,
         *run_pytest.PROFILE_TEST_TARGETS,
         *run_pytest.FULL_PROFILE_TEST_TARGETS,
         *run_pytest.PLOT_TEST_TARGETS,
@@ -86,6 +90,18 @@ def test_profile_shortcut_sets_perf_environment_flag(monkeypatch):
 
     assert env["EPCSAFT_RUN_PERF"] == "1"
     assert env["ePCSAFT_RUN_PERF"] == "1"
+
+
+def test_equilibrium_confidence_slice_is_listed():
+    result = subprocess.run(
+        [sys.executable, "run_pytest.py", "--equilibrium-confidence", "--list-slices"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "equilibrium-confidence:" in result.stdout
 
 
 def test_full_profile_shortcut_sets_perf_environment_flag(monkeypatch):

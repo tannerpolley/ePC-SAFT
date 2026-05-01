@@ -7,8 +7,6 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PLOTS_ROOT = REPO_ROOT / "docs" / "plots"
-CSV_BACKFILL_MARKER = 'epcsaft-interactive-source="csv_backfill"'
-STATIC_WRAPPER_MARKER = 'epcsaft-interactive-source="static_png_wrapper"'
 
 
 def should_include_png(path: Path) -> bool:
@@ -65,31 +63,11 @@ def _folder_for(path: str) -> str:
     return "" if folder == "." else folder
 
 
-def _interactive_source(html_path: Path) -> str:
-    if not html_path.exists():
-        return "static_only"
-    try:
-        head = html_path.read_text(encoding="utf-8", errors="ignore")[:2000]
-    except OSError:
-        return "native_plotly"
-    is_static_wrapper = STATIC_WRAPPER_MARKER in head or (
-        "epcsaft-interactive-source" in head and 'content="static_png_wrapper"' in head
-    )
-    if is_static_wrapper:
-        return "static_png_wrapper"
-    is_csv_backfill = CSV_BACKFILL_MARKER in head or (
-        "epcsaft-interactive-source" in head and 'content="csv_backfill"' in head
-    )
-    return "csv_backfill" if is_csv_backfill else "native_plotly"
-
-
 def image_manifest(pngs: list[Path]) -> list[dict[str, str]]:
     manifest = []
     for png in pngs:
         output_path = png.relative_to(PLOTS_ROOT).as_posix()
         svg = png.with_suffix(".svg")
-        interactive_html = png.with_suffix(".html")
-        interactive_source = _interactive_source(interactive_html)
         data = png.parent / "data" / f"{png.stem}_plot_data.csv"
         source_path = _source_path_for_output(output_path)
         manifest.append(
@@ -99,8 +77,6 @@ def image_manifest(pngs: list[Path]) -> list[dict[str, str]]:
                 "output_path": output_path,
                 "output_folder": _folder_for(output_path),
                 "svg_path": svg.relative_to(PLOTS_ROOT).as_posix() if svg.exists() else "",
-                "html_path": interactive_html.relative_to(PLOTS_ROOT).as_posix() if interactive_html.exists() else "",
-                "interactive_source": interactive_source,
                 "data_path": data.relative_to(PLOTS_ROOT).as_posix() if data.exists() else "",
                 "source_path": source_path,
                 "source_folder": _folder_for(source_path),
@@ -141,16 +117,12 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       --border-strong: #b8c5d3;
       --blue: #195fb8;
       --blue-soft: #e8f1ff;
-      --teal: #137d72;
       --shadow: 0 8px 24px rgba(25, 43, 65, 0.08);
       --sidebar: clamp(280px, 27vw, 420px);
-      --sidebar-min: 220px;
-      --sidebar-max: min(620px, 55vw);
       --sidebar-resizer: 8px;
-      --interactive-card-height: clamp(330px, 42vw, 560px);
+      --card-min: 340px;
       --radius: 8px;
     }}
-
     * {{ box-sizing: border-box; }}
     html, body {{ height: 100%; }}
     body {{
@@ -162,23 +134,14 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       line-height: 1.4;
     }}
     button, input {{ font: inherit; }}
-    body.sidebar-resizing {{
-      cursor: col-resize;
-      user-select: none;
-    }}
+    body.sidebar-resizing {{ cursor: col-resize; user-select: none; }}
     .app-shell {{
       display: grid;
       grid-template-columns: var(--sidebar) var(--sidebar-resizer) minmax(0, 1fr);
       height: 100vh;
     }}
-    .sidebar {{
-      display: flex;
-      min-width: 0;
-      flex-direction: column;
-      background: var(--panel);
-    }}
+    .sidebar {{ display: flex; min-width: 0; height: 100vh; overflow: hidden; flex-direction: column; background: var(--panel); }}
     .sidebar-resizer {{
-      position: relative;
       width: var(--sidebar-resizer);
       border-inline: 1px solid transparent;
       background: linear-gradient(to right, transparent 0, transparent 3px, var(--border) 3px, var(--border) 4px, transparent 4px);
@@ -192,48 +155,13 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       background: linear-gradient(to right, transparent 0, transparent 2px, var(--blue) 2px, var(--blue) 5px, transparent 5px);
       outline: none;
     }}
-    .brand {{
-      padding: 18px 18px 14px;
-      border-bottom: 1px solid var(--border);
-    }}
-    h1 {{
-      margin: 0;
-      font-size: 1.18rem;
-      line-height: 1.2;
-      letter-spacing: 0;
-    }}
-    .summary {{
-      margin: 7px 0 0;
-      color: var(--muted);
-      font-size: 0.88rem;
-    }}
-    .toolbar {{
-      display: grid;
-      gap: 10px;
-      padding: 12px 14px;
-      border-bottom: 1px solid var(--border);
-      background: var(--panel-2);
-    }}
-    .search {{
-      width: 100%;
-      min-height: 34px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 7px 10px;
-      background: #fff;
-      color: var(--text);
-    }}
-    .actions {{
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }}
-    .mode-buttons {{
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }}
-    .mode-button {{
+    .brand {{ padding: 18px 18px 14px; border-bottom: 1px solid var(--border); }}
+    h1 {{ margin: 0; font-size: 1.18rem; line-height: 1.2; letter-spacing: 0; }}
+    .summary {{ margin: 7px 0 0; color: var(--muted); font-size: 0.88rem; }}
+    .toolbar {{ display: grid; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border); background: var(--panel-2); }}
+    .search {{ width: 100%; min-height: 34px; border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; background: #fff; color: var(--text); }}
+    .actions, .mode-buttons {{ display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }}
+    .mode-button, .icon-button {{
       min-height: 32px;
       border: 1px solid var(--border);
       border-radius: 6px;
@@ -242,41 +170,14 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       cursor: pointer;
       font-size: 0.82rem;
     }}
-    .mode-button.is-active {{
-      border-color: var(--blue);
-      background: var(--blue-soft);
-      color: var(--blue);
-      font-weight: 650;
-    }}
-    .icon-button {{
-      width: 34px;
-      height: 34px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: #fff;
-      color: var(--text);
-      cursor: pointer;
-    }}
-    .icon-button:hover {{ border-color: var(--blue); color: var(--blue); }}
-    .tree-wrap {{
-      min-height: 0;
-      overflow: auto;
-      padding: 10px 8px 18px;
-    }}
-    .tree {{
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      font-size: 0.91rem;
-    }}
-    .tree ul {{
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }}
+    .mode-button {{ padding: 0 10px; }}
+    .mode-button.is-active {{ border-color: var(--blue); background: var(--blue-soft); color: var(--blue); font-weight: 650; }}
+    .icon-button {{ width: 34px; height: 34px; color: var(--text); }}
+    .tree-wrap {{ flex: 1 1 auto; min-height: 0; overflow: auto; padding: 10px 8px 18px; }}
+    .tree, .tree ul {{ margin: 0; padding: 0; list-style: none; font-size: 0.91rem; }}
     .folder-row {{
       display: grid;
-      grid-template-columns: 24px 22px minmax(0, 1fr) auto auto;
+      grid-template-columns: 24px 22px minmax(0, 1fr) auto;
       align-items: center;
       min-height: 31px;
       gap: 4px;
@@ -285,969 +186,413 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
     }}
     .folder-row:hover {{ background: #eef4fb; }}
     .folder-row.is-selected {{ background: var(--blue-soft); }}
-    .folder-row.has-hidden-selection {{
-      background: #f3f8ff;
-      box-shadow: inset 3px 0 0 var(--blue);
-    }}
-    .toggle {{
-      width: 22px;
-      height: 22px;
-      border: 0;
-      border-radius: 4px;
-      background: transparent;
-      color: var(--muted);
-      cursor: pointer;
-    }}
-    .toggle:disabled {{
-      cursor: default;
-      opacity: 0.2;
-    }}
-    .folder-check {{
-      width: 15px;
-      height: 15px;
-      accent-color: var(--blue);
-    }}
-    .folder-name {{
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      cursor: pointer;
-    }}
-    .folder-count {{
-      color: var(--muted);
-      font-size: 0.78rem;
-      font-variant-numeric: tabular-nums;
-    }}
-    .hidden-selection-pill {{
-      border: 1px solid #9ac3f5;
-      border-radius: 999px;
-      background: #e6f1ff;
-      color: var(--blue);
-      font-size: 0.72rem;
-      font-weight: 650;
-      line-height: 1;
-      padding: 4px 7px;
-      white-space: nowrap;
-    }}
-    .content {{
-      display: grid;
-      grid-template-rows: auto minmax(0, 1fr);
-      min-width: 0;
-      height: 100vh;
-    }}
-    .content-header {{
-      display: grid;
-      gap: 12px;
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
-      background: rgba(255, 255, 255, 0.9);
-      backdrop-filter: blur(8px);
-    }}
-    .content-title-row {{
-      display: flex;
-      align-items: end;
-      justify-content: space-between;
-      gap: 16px;
-    }}
-    h2 {{
-      margin: 0;
-      font-size: 1.16rem;
-      line-height: 1.2;
-      letter-spacing: 0;
-    }}
-    .meta {{
-      margin: 4px 0 0;
-      color: var(--muted);
-      font-size: 0.9rem;
-    }}
-    .view-tools {{
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      color: var(--muted);
-      font-size: 0.86rem;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }}
-    .tile-control {{
-      display: inline-flex;
-      gap: 8px;
-      align-items: center;
-    }}
-    .plot-mode-buttons {{
-      display: inline-grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      min-width: 190px;
-    }}
-    .range {{
-      width: 140px;
-      accent-color: var(--teal);
-    }}
-    .chips {{
-      display: flex;
-      gap: 8px;
-      min-height: 28px;
-      overflow-x: auto;
-      padding-bottom: 2px;
-    }}
-    .chip {{
-      flex: 0 0 auto;
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 4px 10px;
-      background: #fff;
-      color: var(--muted);
-      font-size: 0.82rem;
-    }}
-    .gallery-scroll {{
-      min-height: 0;
-      overflow: auto;
-      padding: 20px;
-    }}
+    .toggle {{ width: 22px; height: 22px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; }}
+    .toggle:disabled {{ cursor: default; opacity: 0.2; }}
+    .folder-check {{ width: 15px; height: 15px; accent-color: var(--blue); }}
+    .folder-name {{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }}
+    .folder-count {{ color: var(--muted); font-size: 0.78rem; font-variant-numeric: tabular-nums; }}
+    .content {{ min-width: 0; min-height: 0; overflow: auto; padding: 18px; }}
+    .content-head {{ display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 14px; }}
+    .content-title {{ margin: 0; font-size: 1rem; }}
+    .tile-control {{ display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 0.84rem; }}
     .gallery-grid {{
+      --card-min-local: var(--card-min);
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(var(--card-min, 280px), 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(var(--card-min-local), 1fr));
       gap: 16px;
-      align-items: start;
     }}
-    .image-card {{
-      min-width: 0;
-      overflow: hidden;
+    .plot-card {{ min-width: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); box-shadow: var(--shadow); overflow: hidden; }}
+    .plot-head {{ display: grid; gap: 5px; padding: 12px 12px 10px; border-bottom: 1px solid var(--border); }}
+    .plot-title {{ margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.95rem; }}
+    .plot-path {{ color: var(--muted); font-size: 0.78rem; overflow-wrap: anywhere; }}
+    .image-actions {{ display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 4px; }}
+    .asset-button {{
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--panel);
-      box-shadow: var(--shadow);
-    }}
-    .image-head {{
-      display: grid;
-      gap: 3px;
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
-      background: var(--panel-2);
-    }}
-    .image-title {{
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-size: 0.91rem;
-      font-weight: 650;
-    }}
-    .image-path {{
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      color: var(--muted);
-      font-family: Consolas, "Courier New", monospace;
-      font-size: 0.76rem;
-    }}
-    .image-actions {{
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      padding-top: 4px;
-    }}
-    .resource-link {{
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 24px;
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      padding: 2px 7px;
-      background: #fff;
-      color: var(--blue);
-      font-size: 0.74rem;
-      font-weight: 650;
-      text-decoration: none;
-      cursor: pointer;
-    }}
-    .resource-link:hover {{
-      border-color: var(--blue);
-      background: var(--blue-soft);
-    }}
-    button.resource-link {{
-      font: inherit;
-    }}
-    .asset-badge {{
-      display: inline-flex;
-      align-items: center;
-      min-height: 24px;
-      border: 1px solid #c9d5e2;
-      border-radius: 5px;
-      padding: 2px 7px;
-      background: #eef3f8;
-      color: var(--muted);
-      font-size: 0.74rem;
-      font-weight: 650;
-    }}
-    .plot-preview {{
-      display: block;
-      min-height: 220px;
-      padding: 12px;
-      background:
-        linear-gradient(45deg, #f7f9fb 25%, transparent 25%),
-        linear-gradient(-45deg, #f7f9fb 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, #f7f9fb 75%),
-        linear-gradient(-45deg, transparent 75%, #f7f9fb 75%);
-      background-color: #fff;
-      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
-      background-size: 16px 16px;
-    }}
-    .plot-preview.is-interactive {{
-      min-height: var(--interactive-card-height);
-      padding: 0;
-      background: #fff;
-    }}
-    .interactive-frame {{
-      display: block;
-      width: 100%;
-      height: var(--interactive-card-height);
-      min-height: var(--interactive-card-height);
-      border: 0;
-      background: #fff;
-    }}
-    .interactive-placeholder {{
-      display: grid;
-      min-height: 430px;
-      place-items: center;
-      padding: 22px;
-      background: #fff;
-      color: var(--muted);
-      text-align: center;
-    }}
-    img {{
-      display: block;
-      width: 100%;
-      min-height: 180px;
-      max-height: 620px;
-      height: auto;
-      object-fit: contain;
       border-radius: 6px;
       background: #fff;
+      color: var(--blue);
+      cursor: pointer;
+      padding: 4px 8px;
+      font-size: 0.8rem;
     }}
-    .empty-state {{
-      max-width: 560px;
-      border: 1px dashed var(--border-strong);
-      border-radius: var(--radius);
-      padding: 18px;
-      background: #fff;
-      color: var(--muted);
-    }}
-    .empty-state strong {{
-      display: block;
-      margin-bottom: 4px;
-      color: var(--text);
-    }}
-    .asset-modal,
-    .data-modal {{
+    .asset-button:disabled {{ color: var(--muted); cursor: default; background: #f4f6f8; }}
+    .plot-preview {{ display: grid; place-items: center; min-height: 220px; padding: 10px; background: #f7f9fc; }}
+    .plot-preview img {{ display: block; max-width: 100%; max-height: 520px; object-fit: contain; background: #fff; border: 1px solid var(--border); border-radius: 6px; }}
+    .empty-state {{ padding: 28px; color: var(--muted); text-align: center; border: 1px dashed var(--border-strong); border-radius: var(--radius); background: #fff; }}
+    .asset-modal, .data-modal {{
       position: fixed;
       inset: 0;
-      z-index: 20;
+      z-index: 10;
       display: grid;
       place-items: center;
-      padding: 24px;
-      background: rgba(23, 32, 42, 0.42);
+      padding: 20px;
+      background: rgba(13, 25, 43, 0.55);
     }}
-    .asset-dialog,
-    .data-dialog {{
+    .asset-modal.hidden, .data-modal.hidden {{ display: none; }}
+    .dialog {{
       display: grid;
       grid-template-rows: auto minmax(0, 1fr);
-      width: min(1100px, 96vw);
-      max-height: min(760px, 92vh);
-      overflow: hidden;
-      border: 1px solid var(--border-strong);
-      border-radius: var(--radius);
-      background: var(--panel);
-      box-shadow: 0 22px 70px rgba(23, 32, 42, 0.28);
-    }}
-    .asset-dialog-head,
-    .data-dialog-head {{
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 12px 14px;
-      border-bottom: 1px solid var(--border);
-      background: var(--panel-2);
-    }}
-    .asset-dialog-title,
-    .data-dialog-title {{
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-weight: 650;
-    }}
-    .asset-dialog-body,
-    .data-dialog-body {{
-      min-height: 0;
-      overflow: auto;
-      padding: 12px 14px 16px;
-    }}
-    .asset-dialog-body {{
-      display: grid;
-      place-items: center;
+      width: min(1180px, 96vw);
+      max-height: 92vh;
       background: #fff;
-    }}
-    .asset-preview-image {{
-      display: block;
-      width: 100%;
-      max-width: 100%;
-      min-height: 0;
-      max-height: 72vh;
-      object-fit: contain;
-      border-radius: 6px;
-      background: #fff;
-    }}
-    .asset-preview-frame {{
-      display: block;
-      width: 100%;
-      height: min(72vh, 760px);
-      min-height: 420px;
-      border: 0;
-      background: #fff;
-    }}
-    .data-note {{
-      margin: 0 0 10px;
-      color: var(--muted);
-      font-size: 0.84rem;
-    }}
-    .data-table {{
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.78rem;
-    }}
-    .data-table th,
-    .data-table td {{
-      max-width: 260px;
-      border: 1px solid var(--border);
-      padding: 4px 6px;
+      border-radius: 8px;
       overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      text-align: left;
+      box-shadow: 0 18px 48px rgba(11, 22, 37, 0.28);
     }}
-    .data-table th {{
-      position: sticky;
-      top: 0;
-      background: var(--blue-soft);
-      color: var(--text);
-      z-index: 1;
-    }}
-    .hidden {{ display: none !important; }}
-
-    @media (max-width: 860px) {{
-      body {{ overflow: auto; }}
-      .app-shell {{
-        grid-template-columns: 1fr;
-        height: auto;
-        min-height: 100vh;
-      }}
-      .sidebar, .content {{ height: auto; }}
-      .sidebar {{ border-right: 0; border-bottom: 1px solid var(--border); }}
-      .sidebar-resizer {{ display: none; }}
-      .tree-wrap {{ max-height: 42vh; }}
-      .content {{ display: block; }}
-      .gallery-scroll {{ overflow: visible; padding: 14px; }}
-      .content-title-row {{ align-items: start; flex-direction: column; }}
-      .view-tools {{ width: 100%; justify-content: space-between; }}
-      .plot-mode-buttons {{ min-width: min(190px, 48vw); }}
-      .range {{ width: min(180px, 48vw); }}
-    }}
+    .dialog-head {{ display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--border); }}
+    .dialog-title {{ margin: 0; font-size: 0.98rem; }}
+    .dialog-body {{ min-height: 0; overflow: auto; padding: 14px; }}
+    .dialog-close {{ border: 1px solid var(--border); border-radius: 6px; background: #fff; cursor: pointer; padding: 4px 8px; }}
+    .asset-preview {{ display: grid; place-items: center; min-height: 50vh; }}
+    .asset-preview img {{ max-width: 100%; max-height: 78vh; object-fit: contain; }}
+    table {{ width: 100%; border-collapse: collapse; font-size: 0.82rem; }}
+    th, td {{ border: 1px solid var(--border); padding: 4px 6px; text-align: left; vertical-align: top; }}
+    th {{ position: sticky; top: 0; background: #eef4fb; }}
   </style>
 </head>
 <body>
   <div class="app-shell">
-    <aside class="sidebar" aria-label="Plot folders">
+    <aside class="sidebar">
       <div class="brand">
         <h1>{html.escape(title)}</h1>
         <p class="summary">{html.escape(summary)}</p>
       </div>
       <div class="toolbar">
-        <input id="search" class="search" type="search" placeholder="Filter visible images" aria-label="Filter visible images">
-        <div class="actions">
-          <button id="expand-all" class="icon-button" type="button" title="Expand all folders" aria-label="Expand all folders">+</button>
-          <button id="collapse-all" class="icon-button" type="button" title="Collapse all folders" aria-label="Collapse all folders">-</button>
-          <button id="clear-selection" class="icon-button" type="button" title="Clear selected folders" aria-label="Clear selected folders">x</button>
-        </div>
-        <div class="mode-buttons" aria-label="Tree mode">
+        <input id="search" class="search" type="search" placeholder="Search plots, folders, or source paths">
+        <div class="mode-buttons" aria-label="Folder tree mode">
           <button id="source-mode" class="mode-button is-active" type="button">Source tree</button>
           <button id="output-mode" class="mode-button" type="button">Output tree</button>
         </div>
+        <div class="actions">
+          <button id="expand-all" class="icon-button" type="button" title="Expand all">+</button>
+          <button id="collapse-all" class="icon-button" type="button" title="Collapse all">-</button>
+          <button id="clear-selection" class="mode-button" type="button">Clear</button>
+        </div>
       </div>
-      <div class="tree-wrap">
-        <ul id="folder-tree" class="tree" data-testid="folder-tree"></ul>
-      </div>
+      <div class="tree-wrap"><ul id="folder-tree" class="tree" data-testid="folder-tree"></ul></div>
     </aside>
-    <div
-      id="sidebar-resizer"
-      class="sidebar-resizer"
-      role="separator"
-      aria-label="Resize plot folder sidebar"
-      aria-orientation="vertical"
-      aria-valuemin="220"
-      aria-valuemax="620"
-      tabindex="0"
-    ></div>
+    <div id="sidebar-resizer" class="sidebar-resizer" role="separator" aria-label="Resize plot folder sidebar" tabindex="0"></div>
     <main class="content">
-      <header class="content-header">
-        <div class="content-title-row">
-          <div>
-            <h2 id="gallery-title">Selected plots</h2>
-            <p id="gallery-meta" class="meta"></p>
-          </div>
-          <div class="view-tools">
-            <div class="plot-mode-buttons" aria-label="Plot display mode">
-              <button id="interactive-view" class="mode-button is-active" type="button">Interactive</button>
-              <button id="static-view" class="mode-button" type="button">Static</button>
-            </div>
-            <label class="tile-control">
-              Tile width
-              <input id="tile-size" class="range" type="range" min="220" max="620" step="20" value="360">
-            </label>
-          </div>
-        </div>
-        <div id="selected-chips" class="chips" aria-label="Selected folders"></div>
-      </header>
-      <section class="gallery-scroll" aria-label="Plot images">
-        <div id="gallery-grid" class="gallery-grid" data-testid="gallery-grid"></div>
-        <div id="empty-state" class="empty-state hidden">
-          <strong>No images to show</strong>
-          <span>Select a folder checkbox on the left, or change the image filter.</span>
-        </div>
-      </section>
+      <div class="content-head">
+        <h2 id="content-title" class="content-title">Select folders on the left</h2>
+        <label class="tile-control">Tile size <input id="tile-size" type="range" min="260" max="560" value="340"></label>
+      </div>
+      <div id="gallery-grid" class="gallery-grid" data-testid="gallery-grid"></div>
     </main>
   </div>
   <div id="data-modal" class="data-modal hidden" role="dialog" aria-modal="true" aria-labelledby="data-dialog-title">
-    <div class="data-dialog">
-      <div class="data-dialog-head">
-        <div id="data-dialog-title" class="data-dialog-title">Plot data</div>
-        <button id="data-close" class="icon-button" type="button" title="Close data table" aria-label="Close data table">x</button>
-      </div>
-      <div id="data-dialog-body" class="data-dialog-body"></div>
+    <div class="dialog">
+      <div class="dialog-head"><h2 id="data-dialog-title" class="dialog-title">CSV data</h2><button id="data-close" class="dialog-close" type="button">Close</button></div>
+      <div id="data-body" class="dialog-body"></div>
     </div>
   </div>
   <div id="asset-modal" class="asset-modal hidden" role="dialog" aria-modal="true" aria-labelledby="asset-dialog-title">
-    <div class="asset-dialog">
-      <div class="asset-dialog-head">
-        <div id="asset-dialog-title" class="asset-dialog-title">Plot preview</div>
-        <button id="asset-close" class="icon-button" type="button" title="Close plot preview" aria-label="Close plot preview">x</button>
-      </div>
-      <div id="asset-dialog-body" class="asset-dialog-body"></div>
+    <div class="dialog">
+      <div class="dialog-head"><h2 id="asset-dialog-title" class="dialog-title">Asset preview</h2><button id="asset-close" class="dialog-close" type="button">Close</button></div>
+      <div id="asset-body" class="dialog-body asset-preview"></div>
     </div>
   </div>
-
-  <script id="plot-data" type="application/json">{_safe_json(manifest)}</script>
   <script>
     (() => {{
-      const images = JSON.parse(document.getElementById("plot-data").textContent);
-      const treeEl = document.getElementById("folder-tree");
-      const gridEl = document.getElementById("gallery-grid");
-      const emptyEl = document.getElementById("empty-state");
-      const searchEl = document.getElementById("search");
-      const tileSizeEl = document.getElementById("tile-size");
-      const titleEl = document.getElementById("gallery-title");
-      const metaEl = document.getElementById("gallery-meta");
-      const chipsEl = document.getElementById("selected-chips");
-      const sourceModeEl = document.getElementById("source-mode");
-      const outputModeEl = document.getElementById("output-mode");
-      const interactiveViewEl = document.getElementById("interactive-view");
-      const staticViewEl = document.getElementById("static-view");
-      const sidebarResizerEl = document.getElementById("sidebar-resizer");
-      const dataModalEl = document.getElementById("data-modal");
-      const dataTitleEl = document.getElementById("data-dialog-title");
-      const dataBodyEl = document.getElementById("data-dialog-body");
-      const dataCloseEl = document.getElementById("data-close");
-      const assetModalEl = document.getElementById("asset-modal");
-      const assetTitleEl = document.getElementById("asset-dialog-title");
-      const assetBodyEl = document.getElementById("asset-dialog-body");
-      const assetCloseEl = document.getElementById("asset-close");
-      const plotViewStorageKey = "plotGalleryViewMode";
-      const sidebarWidthStorageKey = "plotGallerySidebarWidth";
+      const images = {_safe_json(manifest)};
       const selected = new Set();
       const expanded = new Set([""]);
+      const folderTreeEl = document.getElementById("folder-tree");
+      const galleryEl = document.getElementById("gallery-grid");
+      const searchEl = document.getElementById("search");
+      const titleEl = document.getElementById("content-title");
+      const tileSizeEl = document.getElementById("tile-size");
+      const sourceModeEl = document.getElementById("source-mode");
+      const outputModeEl = document.getElementById("output-mode");
+      const dataModalEl = document.getElementById("data-modal");
+      const dataBodyEl = document.getElementById("data-body");
+      const dataCloseEl = document.getElementById("data-close");
+      const assetModalEl = document.getElementById("asset-modal");
+      const assetBodyEl = document.getElementById("asset-body");
+      const assetCloseEl = document.getElementById("asset-close");
+      const sidebarResizerEl = document.getElementById("sidebar-resizer");
+      const sidebarWidthStorageKey = "plotGallerySidebarWidth";
+      const galleryStateStorageKey = "plotGalleryStaticStateV1";
       let treeMode = "source";
-      let plotViewMode = localStorage.getItem(plotViewStorageKey) === "static" ? "static" : "interactive";
-      let folderMap = new Map();
-      let root = null;
-      let sidebarResizeActive = false;
+      let resizing = false;
 
-      function rootLabel() {{
-        return treeMode === "source" ? "Project source" : "docs/plots";
-      }}
-
-      function folderName(path) {{
-        if (!path) return rootLabel();
-        return path.split("/").at(-1).replaceAll("_", " ");
-      }}
-
-      function makeFolder(path, parent = null) {{
-        if (folderMap.has(path)) return folderMap.get(path);
-        const folder = {{ path, parent, children: new Map(), images: [], total: 0 }};
-        folderMap.set(path, folder);
-        return folder;
-      }}
-
-      function activeFolder(image) {{
-        return treeMode === "source" ? image.source_folder : image.output_folder;
-      }}
-
-      function buildFolderMap() {{
-        folderMap = new Map();
-        root = makeFolder("");
+      function folderPath(image) {{ return treeMode === "source" ? image.source_folder : image.output_folder; }}
+      function makeFolderMap() {{
+        const map = new Map([["", {{ path: "", name: "All plots", children: new Set(), count: images.length }}]]);
         for (const image of images) {{
-          const folder = activeFolder(image);
+          const folder = folderPath(image);
           const parts = folder ? folder.split("/") : [];
-          let node = root;
-          node.total += 1;
-          let currentPath = "";
+          let current = "";
           for (const part of parts) {{
-            currentPath = currentPath ? `${{currentPath}}/${{part}}` : part;
-            const child = makeFolder(currentPath, node);
-            node.children.set(part, child);
-            node = child;
-            node.total += 1;
+            const parent = current;
+            current = current ? `${{current}}/${{part}}` : part;
+            if (!map.has(current)) map.set(current, {{ path: current, name: part, children: new Set(), count: 0 }});
+            map.get(parent).children.add(current);
           }}
-          node.images.push(image);
+          const allFolders = [""];
+          current = "";
+          for (const part of parts) {{
+            current = current ? `${{current}}/${{part}}` : part;
+            allFolders.push(current);
+          }}
+          for (const path of allFolders) map.get(path).count += path === "" ? 0 : 1;
+        }}
+        return map;
+      }}
+
+      function saveGalleryState() {{
+        const state = {{
+          treeMode,
+          selected: [...selected],
+          expanded: [...expanded],
+          search: searchEl.value,
+          tileSize: tileSizeEl.value,
+          contentScrollTop: document.querySelector(".content").scrollTop,
+        }};
+        localStorage.setItem(galleryStateStorageKey, JSON.stringify(state));
+      }}
+
+      function expandAncestors(path) {{
+        const parts = path ? path.split("/") : [];
+        let current = "";
+        expanded.add("");
+        for (const part of parts.slice(0, -1)) {{
+          current = current ? `${{current}}/${{part}}` : part;
+          expanded.add(current);
         }}
       }}
 
-      function sortedChildren(node) {{
-        return Array.from(node.children.values()).sort((a, b) => folderName(a.path).localeCompare(folderName(b.path)));
-      }}
-
-      function isDescendantFolder(path, possibleAncestor) {{
-        if (!path || path === possibleAncestor) return false;
-        if (!possibleAncestor) return true;
-        return path.startsWith(`${{possibleAncestor}}/`);
-      }}
-
-      function selectedDescendantCount(path) {{
-        let count = 0;
-        for (const folder of selected) {{
-          if (isDescendantFolder(folder, path)) count += 1;
+      function restoreGalleryState() {{
+        let state = null;
+        try {{
+          state = JSON.parse(localStorage.getItem(galleryStateStorageKey) || "null");
+        }} catch (_error) {{
+          state = null;
         }}
-        return count;
-      }}
-
-      function renderTreeNode(node, depth = 0) {{
-        const childNodes = sortedChildren(node);
-        const hiddenSelectedCount = expanded.has(node.path) ? 0 : selectedDescendantCount(node.path);
-        const li = document.createElement("li");
-        const row = document.createElement("div");
-        row.className = "folder-row";
-        row.dataset.path = node.path;
-        row.style.paddingLeft = `${{depth * 14}}px`;
-
-        const toggle = document.createElement("button");
-        toggle.type = "button";
-        toggle.className = "toggle";
-        toggle.textContent = expanded.has(node.path) ? "-" : "+";
-        toggle.disabled = childNodes.length === 0;
-        toggle.title = expanded.has(node.path) ? "Collapse folder" : "Expand folder";
-        toggle.setAttribute("aria-label", toggle.title);
-        toggle.addEventListener("click", () => {{
-          if (expanded.has(node.path)) expanded.delete(node.path);
-          else expanded.add(node.path);
-          renderTree();
-        }});
-
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.className = "folder-check";
-        checkbox.checked = selected.has(node.path);
-        checkbox.setAttribute("aria-label", `Show ${{folderName(node.path)}}`);
-        checkbox.addEventListener("change", () => {{
-          if (checkbox.checked) {{
-            if (!node.path) {{
-              selected.clear();
-              selected.add("");
-            }} else {{
-              selected.delete("");
-              selected.add(node.path);
+        if (!state || typeof state !== "object") return;
+        if (state.treeMode === "source" || state.treeMode === "output") treeMode = state.treeMode;
+        if (typeof state.search === "string") searchEl.value = state.search;
+        if (typeof state.tileSize === "string" && state.tileSize) tileSizeEl.value = state.tileSize;
+        const map = makeFolderMap();
+        if (Array.isArray(state.expanded)) {{
+          expanded.clear();
+          expanded.add("");
+          for (const path of state.expanded) if (typeof path === "string" && map.has(path)) expanded.add(path);
+        }}
+        if (Array.isArray(state.selected)) {{
+          selected.clear();
+          for (const path of state.selected) {{
+            if (typeof path === "string" && map.has(path)) {{
+              selected.add(path);
+              expandAncestors(path);
             }}
-          }} else {{
-            selected.delete(node.path);
           }}
-          renderTree();
-          renderGallery();
-        }});
-
-        const label = document.createElement("span");
-        label.className = "folder-name";
-        label.textContent = folderName(node.path);
-        label.title = node.path || rootLabel();
-        label.addEventListener("click", () => {{
-          if (childNodes.length) {{
-            if (expanded.has(node.path)) expanded.delete(node.path);
-            else expanded.add(node.path);
-            renderTree();
-          }}
-        }});
-
-        const count = document.createElement("span");
-        count.className = "folder-count";
-        count.textContent = node.total;
-
-        if (selected.has(node.path)) row.classList.add("is-selected");
-        if (hiddenSelectedCount > 0) row.classList.add("has-hidden-selection");
-
-        row.append(toggle, checkbox, label);
-        if (hiddenSelectedCount > 0) {{
-          const hiddenSelection = document.createElement("span");
-          hiddenSelection.className = "hidden-selection-pill";
-          hiddenSelection.textContent = `${{hiddenSelectedCount}} selected`;
-          hiddenSelection.title = `${{hiddenSelectedCount}} selected folder${{hiddenSelectedCount === 1 ? "" : "s"}} hidden inside this collapsed folder`;
-          hiddenSelection.setAttribute("aria-label", hiddenSelection.title);
-          row.append(hiddenSelection);
         }}
-        row.append(count);
-        li.append(row);
-
-        if (expanded.has(node.path) && childNodes.length) {{
-          const ul = document.createElement("ul");
-          for (const child of childNodes) ul.append(renderTreeNode(child, depth + 1));
-          li.append(ul);
+        sourceModeEl.classList.toggle("is-active", treeMode === "source");
+        outputModeEl.classList.toggle("is-active", treeMode === "output");
+        if (Number.isFinite(Number(state.contentScrollTop))) {{
+          requestAnimationFrame(() => {{ document.querySelector(".content").scrollTop = Number(state.contentScrollTop); }});
         }}
-        return li;
+      }}
+
+      function descendants(folder) {{
+        const map = makeFolderMap();
+        const result = [];
+        for (const path of map.keys()) {{
+          if (path === folder || (folder && path.startsWith(`${{folder}}/`)) || folder === "") result.push(path);
+        }}
+        return result;
       }}
 
       function renderTree() {{
-        buildFolderMap();
-        treeEl.replaceChildren(renderTreeNode(root));
-      }}
-
-      function isInSelectedFolder(image) {{
-        if (selected.size === 0) return false;
-        const folderPath = activeFolder(image);
-        for (const folder of selected) {{
-          if (!folder || folderPath === folder || folderPath.startsWith(`${{folder}}/`)) return true;
+        const map = makeFolderMap();
+        function renderNode(path) {{
+          const node = map.get(path);
+          const li = document.createElement("li");
+          const row = document.createElement("div");
+          row.className = "folder-row";
+          row.style.paddingLeft = `${{path ? path.split("/").length * 12 : 0}}px`;
+          if (selected.has(path)) row.classList.add("is-selected");
+          const toggle = document.createElement("button");
+          toggle.className = "toggle";
+          toggle.type = "button";
+          toggle.textContent = node.children.size ? (expanded.has(path) ? "▾" : "▸") : "";
+          toggle.disabled = !node.children.size;
+          toggle.addEventListener("click", () => {{
+            if (expanded.has(path)) expanded.delete(path);
+            else expanded.add(path);
+            renderTree();
+          }});
+          const check = document.createElement("input");
+          check.className = "folder-check";
+          check.type = "checkbox";
+          check.checked = selected.has(path);
+          check.addEventListener("change", () => {{
+            if (check.checked) selected.add(path);
+            else selected.delete(path);
+            expandAncestors(path);
+            saveGalleryState();
+            renderTree();
+            renderGallery();
+          }});
+          const name = document.createElement("span");
+          name.className = "folder-name";
+          name.textContent = node.name;
+          name.title = path || "All plots";
+          name.addEventListener("click", () => {{
+            if (selected.has(path)) selected.delete(path);
+            else selected.add(path);
+            expandAncestors(path);
+            saveGalleryState();
+            renderTree();
+            renderGallery();
+          }});
+          const count = document.createElement("span");
+          count.className = "folder-count";
+          count.textContent = node.count;
+          row.append(toggle, check, name, count);
+          li.append(row);
+          if (expanded.has(path) && node.children.size) {{
+            const ul = document.createElement("ul");
+            for (const child of [...node.children].sort()) ul.append(renderNode(child));
+            li.append(ul);
+          }}
+          return li;
         }}
-        return false;
+        folderTreeEl.replaceChildren(renderNode(""));
       }}
 
-      function selectedLabels() {{
-        return Array.from(selected)
-          .sort((a, b) => a.localeCompare(b))
-          .map((path) => path || rootLabel());
+      function selectedFolders() {{ return selected.size ? [...selected] : []; }}
+      function imageMatchesFolder(image, folder) {{
+        const path = folderPath(image);
+        return folder === "" || path === folder || path.startsWith(`${{folder}}/`);
       }}
-
-      function imageMatchesFilter(image, filterText) {{
-        if (!filterText) return true;
-        const haystack = `${{image.output_path}} ${{image.source_path}} ${{image.svg_path || ""}} ${{image.html_path || ""}} ${{image.data_path || ""}} ${{image.title}}`.toLowerCase();
-        return haystack.includes(filterText);
-      }}
-
-      function renderChips(labels) {{
-        chipsEl.replaceChildren();
-        if (!labels.length) {{
-          const chip = document.createElement("span");
-          chip.className = "chip";
-          chip.textContent = "No folders selected";
-          chipsEl.append(chip);
-          return;
-        }}
-        for (const label of labels) {{
-          const chip = document.createElement("span");
-          chip.className = "chip";
-          chip.textContent = label;
-          chipsEl.append(chip);
-        }}
-      }}
-
-      function setPlotViewMode(mode) {{
-        plotViewMode = mode === "static" ? "static" : "interactive";
-        localStorage.setItem(plotViewStorageKey, plotViewMode);
-        interactiveViewEl.classList.toggle("is-active", plotViewMode === "interactive");
-        staticViewEl.classList.toggle("is-active", plotViewMode === "static");
-        renderGallery();
-      }}
-
-      function sidebarWidthBounds() {{
-        const minimum = 220;
-        const maximum = Math.max(minimum, Math.min(620, Math.floor(window.innerWidth * 0.55)));
-        return {{ minimum, maximum }};
-      }}
-
-      function setSidebarWidth(width, {{ persist = true }} = {{}}) {{
-        const {{ minimum, maximum }} = sidebarWidthBounds();
-        const clamped = Math.max(minimum, Math.min(maximum, Math.round(width)));
-        document.documentElement.style.setProperty("--sidebar", `${{clamped}}px`);
-        sidebarResizerEl.setAttribute("aria-valuenow", String(clamped));
-        sidebarResizerEl.setAttribute("aria-valuemax", String(maximum));
-        if (persist) localStorage.setItem(sidebarWidthStorageKey, String(clamped));
-        return clamped;
-      }}
-
-      function restoreSidebarWidth() {{
-        const stored = Number(localStorage.getItem(sidebarWidthStorageKey));
-        if (Number.isFinite(stored) && stored > 0) setSidebarWidth(stored, {{ persist: false }});
-        else sidebarResizerEl.setAttribute("aria-valuenow", String(Math.round(sidebarResizerEl.getBoundingClientRect().left)));
-      }}
-
-      function startSidebarResize(event) {{
-        if (event.button !== undefined && event.button !== 0) return;
-        sidebarResizeActive = true;
-        document.body.classList.add("sidebar-resizing");
-        sidebarResizerEl.setPointerCapture?.(event.pointerId);
-        setSidebarWidth(event.clientX);
-        event.preventDefault();
-      }}
-
-      function updateSidebarResize(event) {{
-        if (!sidebarResizeActive) return;
-        setSidebarWidth(event.clientX);
-      }}
-
-      function finishSidebarResize(event) {{
-        if (!sidebarResizeActive) return;
-        sidebarResizeActive = false;
-        document.body.classList.remove("sidebar-resizing");
-        if (event?.pointerId !== undefined) sidebarResizerEl.releasePointerCapture?.(event.pointerId);
+      function visibleImages() {{
+        const query = searchEl.value.trim().toLowerCase();
+        const folders = selectedFolders();
+        return images.filter((image) => {{
+          const inFolder = folders.length > 0 && folders.some((folder) => imageMatchesFolder(image, folder));
+          const haystack = `${{image.output_path}} ${{image.source_path}} ${{image.svg_path}} ${{image.data_path}} ${{image.title}}`.toLowerCase();
+          return inFolder && (!query || haystack.includes(query));
+        }});
       }}
 
       function makeAssetButton(label, path, image) {{
         const button = document.createElement("button");
-        button.className = "resource-link";
+        button.className = "asset-button";
         button.type = "button";
         button.textContent = label;
-        button.addEventListener("click", () => showAssetPreview(label, path, image));
+        button.disabled = !path;
+        button.addEventListener("click", () => {{
+          if (!path) return;
+          showAssetPreview(label, path, image);
+        }});
         return button;
       }}
-
       function makeDataButton(image) {{
         const button = document.createElement("button");
-        button.className = "resource-link";
+        button.className = "asset-button";
         button.type = "button";
         button.textContent = "Data";
+        button.disabled = !image.data_path;
         button.addEventListener("click", () => showDataTable(image));
         return button;
       }}
-
       function parseCsv(text) {{
         const rows = [];
-        let row = [];
-        let value = "";
-        let quoted = false;
-        for (let index = 0; index < text.length; index += 1) {{
-          const char = text[index];
-          const next = text[index + 1];
+        let row = [], field = "", quoted = false;
+        for (let i = 0; i < text.length; i++) {{
+          const char = text[i];
           if (quoted) {{
-            if (char === '"' && next === '"') {{
-              value += '"';
-              index += 1;
-            }} else if (char === '"') {{
-              quoted = false;
-            }} else {{
-              value += char;
-            }}
-          }} else if (char === '"') {{
-            quoted = true;
-          }} else if (char === ",") {{
-            row.push(value);
-            value = "";
-          }} else if (char === "\\n") {{
-            row.push(value);
-            rows.push(row);
-            row = [];
-            value = "";
-          }} else if (char !== "\\r") {{
-            value += char;
-          }}
+            if (char === '"' && text[i + 1] === '"') {{ field += '"'; i++; }}
+            else if (char === '"') quoted = false;
+            else field += char;
+          }} else if (char === '"') quoted = true;
+          else if (char === ",") {{ row.push(field); field = ""; }}
+          else if (char === "\\n") {{ row.push(field); rows.push(row); row = []; field = ""; }}
+          else if (char !== "\\r") field += char;
         }}
-        if (value || row.length) {{
-          row.push(value);
-          rows.push(row);
-        }}
+        if (field || row.length) {{ row.push(field); rows.push(row); }}
         return rows;
       }}
-
-      function renderDataRows(rows, path) {{
-        dataBodyEl.replaceChildren();
-        if (!rows.length) {{
-          const note = document.createElement("p");
-          note.className = "data-note";
-          note.textContent = `No rows found in ${{path}}.`;
-          dataBodyEl.append(note);
-          return;
-        }}
-        const maxRows = 200;
-        const [headers, ...dataRows] = rows;
-        const shownRows = dataRows.slice(0, maxRows);
-        const note = document.createElement("p");
-        note.className = "data-note";
-        note.textContent = `Showing ${{shownRows.length}} of ${{dataRows.length}} data row${{dataRows.length === 1 ? "" : "s"}} from ${{path}}.`;
-        const table = document.createElement("table");
-        table.className = "data-table";
-        const thead = document.createElement("thead");
-        const headRow = document.createElement("tr");
-        for (const header of headers) {{
-          const th = document.createElement("th");
-          th.textContent = header;
-          headRow.append(th);
-        }}
-        thead.append(headRow);
-        const tbody = document.createElement("tbody");
-        for (const sourceRow of shownRows) {{
-          const tr = document.createElement("tr");
-          for (let column = 0; column < headers.length; column += 1) {{
-            const td = document.createElement("td");
-            td.textContent = sourceRow[column] ?? "";
-            tr.append(td);
-          }}
-          tbody.append(tr);
-        }}
-        table.append(thead, tbody);
-        dataBodyEl.append(note, table);
-      }}
-
       async function showDataTable(image) {{
-        dataTitleEl.textContent = image.title;
-        dataBodyEl.replaceChildren();
-        const loading = document.createElement("p");
-        loading.className = "data-note";
-        loading.textContent = `Loading ${{image.data_path}}...`;
-        dataBodyEl.append(loading);
-        dataModalEl.classList.remove("hidden");
-        try {{
-          const response = await fetch(image.data_path);
-          if (!response.ok) throw new Error(`HTTP ${{response.status}}`);
-          renderDataRows(parseCsv(await response.text()), image.data_path);
-        }} catch (error) {{
-          dataBodyEl.replaceChildren();
-          const note = document.createElement("p");
-          note.className = "data-note";
-          note.textContent = `Could not load ${{image.data_path}}: ${{error.message}}`;
-          dataBodyEl.append(note);
+        if (!image.data_path) return;
+        const response = await fetch(image.data_path);
+        const text = await response.text();
+        const rows = parseCsv(text);
+        const table = document.createElement("table");
+        for (const [index, cells] of rows.entries()) {{
+          const tr = document.createElement("tr");
+          for (const cell of cells) {{
+            const el = document.createElement(index === 0 ? "th" : "td");
+            el.textContent = cell;
+            tr.append(el);
+          }}
+          table.append(tr);
         }}
+        document.getElementById("data-dialog-title").textContent = image.data_path;
+        dataBodyEl.replaceChildren(table);
+        dataModalEl.classList.remove("hidden");
       }}
-
-      function closeDataTable() {{
-        dataModalEl.classList.add("hidden");
-        dataBodyEl.replaceChildren();
-      }}
-
+      function closeDataTable() {{ dataModalEl.classList.add("hidden"); dataBodyEl.replaceChildren(); }}
       function showAssetPreview(label, path, image) {{
-        assetTitleEl.textContent = `${{label}} preview: ${{image.title}}`;
+        document.getElementById("asset-dialog-title").textContent = `${{label}}: ${{path}}`;
         assetBodyEl.replaceChildren();
-        if (label === "SVG") {{
-          const frame = document.createElement("iframe");
-          frame.className = "asset-preview-frame";
-          frame.title = `${{image.title}} SVG`;
-          frame.src = path;
-          assetBodyEl.append(frame);
-        }} else {{
+        if (label === "PNG" || label === "SVG") {{
           const img = document.createElement("img");
-          img.className = "asset-preview-image";
           img.src = path;
           img.alt = image.title;
           assetBodyEl.append(img);
         }}
         assetModalEl.classList.remove("hidden");
       }}
-
-      function closeAssetPreview() {{
-        assetModalEl.classList.add("hidden");
-        assetBodyEl.replaceChildren();
-      }}
-
-      function renderPlotPreview(image) {{
-        const preview = document.createElement("div");
-        preview.className = "plot-preview";
-        if (plotViewMode === "interactive" && image.html_path) {{
-          preview.classList.add("is-interactive");
-          const frame = document.createElement("iframe");
-          frame.className = "interactive-frame";
-          frame.loading = "lazy";
-          frame.title = image.title;
-          frame.src = image.html_path;
-          preview.append(frame);
-          return preview;
-        }}
-
-        const img = document.createElement("img");
-        img.loading = "lazy";
-        img.decoding = "async";
-        img.src = image.output_path;
-        img.alt = image.title;
-        preview.append(img);
-        return preview;
-      }}
+      function closeAssetPreview() {{ assetModalEl.classList.add("hidden"); assetBodyEl.replaceChildren(); }}
 
       function renderGallery() {{
-        const filterText = searchEl.value.trim().toLowerCase();
-        const visible = images
-          .filter((image) => isInSelectedFolder(image) && imageMatchesFilter(image, filterText))
-          .sort((a, b) => {{
-            if (plotViewMode === "interactive" && Boolean(a.html_path) !== Boolean(b.html_path)) {{
-              return a.html_path ? -1 : 1;
-            }}
-            return a.source_path.localeCompare(b.source_path);
-          }});
-        const labels = selectedLabels();
-
-        gridEl.replaceChildren();
-        renderChips(labels);
-        titleEl.textContent = labels.length === 1 ? labels[0] : "Selected plot folders";
-        metaEl.textContent = `${{visible.length}} visible image${{visible.length === 1 ? "" : "s"}} from ${{selected.size}} selected folder${{selected.size === 1 ? "" : "s"}}`;
-        emptyEl.classList.toggle("hidden", visible.length !== 0);
-
+        const items = visibleImages();
+        galleryEl.style.setProperty("--card-min-local", `${{tileSizeEl.value}}px`);
+        titleEl.textContent = items.length
+          ? `${{items.length}} plot${{items.length === 1 ? "" : "s"}}`
+          : (selected.size ? "No matching plots" : "No folders selected");
+        if (!items.length) {{
+          const empty = document.createElement("div");
+          empty.className = "empty-state";
+          empty.textContent = selected.size
+            ? "No plots match the checked folders and search filter."
+            : "Check one or more folders on the left to show plots.";
+          galleryEl.replaceChildren(empty);
+          return;
+        }}
         const fragment = document.createDocumentFragment();
-        for (const image of visible) {{
+        for (const image of items.sort((a, b) => a.output_path.localeCompare(b.output_path))) {{
           const card = document.createElement("article");
-          card.className = "image-card";
-
+          card.className = "plot-card";
           const head = document.createElement("div");
-          head.className = "image-head";
-          const imageTitle = document.createElement("div");
-          imageTitle.className = "image-title";
+          head.className = "plot-head";
+          const imageTitle = document.createElement("h3");
+          imageTitle.className = "plot-title";
           imageTitle.textContent = image.title;
           const imagePath = document.createElement("div");
-          imagePath.className = "image-path";
-          imagePath.textContent = image.source_path;
-          imagePath.title = `Output: ${{image.output_path}}`;
+          imagePath.className = "plot-path";
+          imagePath.textContent = image.output_path;
           const actions = document.createElement("div");
           actions.className = "image-actions";
-          if (image.output_path) actions.append(makeAssetButton("PNG", image.output_path, image));
-          if (image.svg_path) actions.append(makeAssetButton("SVG", image.svg_path, image));
-          if (image.data_path) actions.append(makeDataButton(image));
-          const badge = document.createElement("span");
-          badge.className = "asset-badge";
-          if (image.interactive_source === "csv_backfill") {{
-            badge.textContent = "CSV interactive";
-            badge.title = "CSV-backed interactive reconstruction from plot data";
-          }} else if (image.interactive_source === "static_png_wrapper") {{
-            badge.textContent = "Static HTML";
-            badge.title = "Static HTML/SVG wrapper around the PNG because no numeric plot artists were available";
-          }} else if (image.interactive_source === "native_plotly") {{
-            badge.textContent = "Interactive";
-          }} else {{
-            badge.textContent = "Static only";
-          }}
-          actions.append(badge);
+          actions.append(makeAssetButton("PNG", image.output_path, image));
+          actions.append(makeAssetButton("SVG", image.svg_path, image));
+          actions.append(makeDataButton(image));
+          const preview = document.createElement("div");
+          preview.className = "plot-preview";
+          const img = document.createElement("img");
+          img.src = image.output_path;
+          img.alt = image.title;
+          preview.append(img);
           head.append(imageTitle, imagePath, actions);
-
-          card.append(head, renderPlotPreview(image));
+          card.append(head, preview);
           fragment.append(card);
         }}
-        gridEl.append(fragment);
+        galleryEl.replaceChildren(fragment);
       }}
 
-      document.getElementById("expand-all").addEventListener("click", () => {{
-        for (const folder of folderMap.values()) expanded.add(folder.path);
-        renderTree();
-      }});
-      document.getElementById("collapse-all").addEventListener("click", () => {{
-        expanded.clear();
-        expanded.add("");
-        renderTree();
-      }});
-      document.getElementById("clear-selection").addEventListener("click", () => {{
-        selected.clear();
-        renderTree();
-        renderGallery();
-      }});
       function setTreeMode(mode) {{
         treeMode = mode;
         selected.clear();
@@ -1255,54 +600,49 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
         expanded.add("");
         sourceModeEl.classList.toggle("is-active", treeMode === "source");
         outputModeEl.classList.toggle("is-active", treeMode === "output");
+        saveGalleryState();
         renderTree();
         renderGallery();
       }}
+      function restoreSidebarWidth() {{
+        const saved = Number(localStorage.getItem(sidebarWidthStorageKey));
+        if (Number.isFinite(saved) && saved > 180) document.documentElement.style.setProperty("--sidebar", `${{saved}}px`);
+      }}
+      function setSidebarWidth(clientX, persist = true) {{
+        const shellLeft = document.querySelector(".app-shell").getBoundingClientRect().left;
+        const width = Math.min(Math.max(clientX - shellLeft, 220), Math.min(window.innerWidth * 0.55, 620));
+        document.documentElement.style.setProperty("--sidebar", `${{width}}px`);
+        sidebarResizerEl.setAttribute("aria-valuenow", String(Math.round(width)));
+        if (persist) localStorage.setItem(sidebarWidthStorageKey, String(Math.round(width)));
+      }}
+      function startSidebarResize(event) {{ resizing = true; document.body.classList.add("sidebar-resizing"); sidebarResizerEl.setPointerCapture(event.pointerId); }}
+      function updateSidebarResize(event) {{ if (resizing) setSidebarWidth(event.clientX); }}
+      function finishSidebarResize(event) {{ if (!resizing) return; resizing = false; document.body.classList.remove("sidebar-resizing"); sidebarResizerEl.releasePointerCapture(event.pointerId); }}
+
+      document.getElementById("expand-all").addEventListener("click", () => {{ for (const folder of makeFolderMap().keys()) expanded.add(folder); saveGalleryState(); renderTree(); }});
+      document.getElementById("collapse-all").addEventListener("click", () => {{ expanded.clear(); expanded.add(""); saveGalleryState(); renderTree(); }});
+      document.getElementById("clear-selection").addEventListener("click", () => {{ selected.clear(); saveGalleryState(); renderTree(); renderGallery(); }});
       sourceModeEl.addEventListener("click", () => setTreeMode("source"));
       outputModeEl.addEventListener("click", () => setTreeMode("output"));
-      interactiveViewEl.addEventListener("click", () => setPlotViewMode("interactive"));
-      staticViewEl.addEventListener("click", () => setPlotViewMode("static"));
       sidebarResizerEl.addEventListener("pointerdown", startSidebarResize);
       sidebarResizerEl.addEventListener("pointermove", updateSidebarResize);
       sidebarResizerEl.addEventListener("pointerup", finishSidebarResize);
       sidebarResizerEl.addEventListener("pointercancel", finishSidebarResize);
-      sidebarResizerEl.addEventListener("dblclick", () => {{
-        localStorage.removeItem(sidebarWidthStorageKey);
-        document.documentElement.style.removeProperty("--sidebar");
-        restoreSidebarWidth();
-      }});
-      sidebarResizerEl.addEventListener("keydown", (event) => {{
-        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-        const current = Number(sidebarResizerEl.getAttribute("aria-valuenow")) || sidebarResizerEl.getBoundingClientRect().left;
-        const delta = event.key === "ArrowLeft" ? -24 : 24;
-        setSidebarWidth(current + delta);
-        event.preventDefault();
-      }});
-      window.addEventListener("resize", () => {{
-        const current = Number(sidebarResizerEl.getAttribute("aria-valuenow"));
-        if (Number.isFinite(current) && current > 0) setSidebarWidth(current, {{ persist: false }});
+      searchEl.addEventListener("input", () => {{ saveGalleryState(); renderGallery(); }});
+      tileSizeEl.addEventListener("input", () => {{ saveGalleryState(); renderGallery(); }});
+      document.querySelector(".content").addEventListener("scroll", () => {{
+        clearTimeout(window.plotGalleryScrollSaveTimer);
+        window.plotGalleryScrollSaveTimer = setTimeout(saveGalleryState, 120);
       }});
       dataCloseEl.addEventListener("click", closeDataTable);
       assetCloseEl.addEventListener("click", closeAssetPreview);
-      dataModalEl.addEventListener("click", (event) => {{
-        if (event.target === dataModalEl) closeDataTable();
-      }});
-      assetModalEl.addEventListener("click", (event) => {{
-        if (event.target === assetModalEl) closeAssetPreview();
-      }});
+      dataModalEl.addEventListener("click", (event) => {{ if (event.target === dataModalEl) closeDataTable(); }});
+      assetModalEl.addEventListener("click", (event) => {{ if (event.target === assetModalEl) closeAssetPreview(); }});
       document.addEventListener("keydown", (event) => {{
-        if (event.key === "Escape" && !dataModalEl.classList.contains("hidden")) closeDataTable();
-        if (event.key === "Escape" && !assetModalEl.classList.contains("hidden")) closeAssetPreview();
+        if (event.key === "Escape") {{ closeDataTable(); closeAssetPreview(); }}
       }});
-      searchEl.addEventListener("input", renderGallery);
-      tileSizeEl.addEventListener("input", () => {{
-        gridEl.style.setProperty("--card-min", `${{tileSizeEl.value}}px`);
-      }});
-
-      interactiveViewEl.classList.toggle("is-active", plotViewMode === "interactive");
-      staticViewEl.classList.toggle("is-active", plotViewMode === "static");
       restoreSidebarWidth();
-      gridEl.style.setProperty("--card-min", `${{tileSizeEl.value}}px`);
+      restoreGalleryState();
       renderTree();
       renderGallery();
     }})();

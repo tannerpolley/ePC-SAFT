@@ -180,7 +180,6 @@ def test_stability_without_parent_phase_runs_liquid_and_vapor_parent_roots() -> 
 @pytest.mark.parametrize(
     ("kwargs", "match"),
     [
-        ({"kind": "stability", "T": 300.0, "P": 1.0e5, "z": [0.1, 0.3, 0.6], "backend": "native"}, "backend"),
         ({"kind": "stability", "P": 1.0e5, "z": [0.1, 0.3, 0.6]}, "T"),
         ({"kind": "stability", "T": 300.0, "z": [0.1, 0.3, 0.6]}, "P"),
         ({"kind": "stability", "T": 300.0, "P": 1.0e5}, "z"),

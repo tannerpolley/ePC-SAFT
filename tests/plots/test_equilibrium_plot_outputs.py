@@ -7,7 +7,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-import plotly.graph_objects as go
 
 import epcsaft
 from epcsaft.equilibrium_core.thermo_diagnostics import evaluate_khudaida_solver_gate
@@ -16,7 +15,6 @@ from tests.plots.plot_helpers import assert_plot_with_data
 from tests.plots.plot_helpers import hydrocarbon_basis_mixture
 from tests.plots.plot_helpers import methanol_cyclohexane_mixture
 from tests.plots.plot_helpers import save_comparison_plot
-from tests.plots.plot_helpers import save_plotly_html
 
 
 def _ascani_electrolyte_lle_result() -> tuple[epcsaft.ePCSAFTMixture, epcsaft.EquilibriumResult]:
@@ -60,17 +58,6 @@ def test_equilibrium_vle_composition_plot_is_written_to_gallery() -> None:
     )
     try:
         plot_outputs.save_plot_figure(fig, output_path, dpi=120, svg_companion=True)
-        interactive = go.Figure()
-        interactive.add_trace(go.Bar(x=species.tolist(), y=liquid.composition.tolist(), name="Liquid"))
-        interactive.add_trace(go.Bar(x=species.tolist(), y=vapor.composition.tolist(), name="Vapor"))
-        interactive.update_layout(
-            title="Hydrocarbon TP flash phase compositions",
-            barmode="group",
-            xaxis_title="Species",
-            yaxis_title=r"Mole fraction, $x_i$ or $y_i$",
-            yaxis_range=[0.0, 1.0],
-        )
-        save_plotly_html(interactive, Path(output_path))
     finally:
         plt.close(fig)
 
@@ -170,25 +157,6 @@ def test_equilibrium_lle_tie_line_plot_is_written_to_gallery() -> None:
     )
     try:
         plot_outputs.save_plot_figure(fig, output_path, dpi=120, svg_companion=True)
-        interactive = go.Figure()
-        interactive.add_trace(
-            go.Scatter(
-                x=[liq1.composition[0], liq2.composition[0]],
-                y=[0.0, 0.0],
-                mode="lines+markers",
-                name="Tie line",
-                text=["Liquid 1", "Liquid 2"],
-                hovertemplate=r"%{text}<br>$x_{\mathrm{MeOH}}$=%{x:.6g}<extra></extra>",
-            )
-        )
-        interactive.add_trace(go.Scatter(x=[feed[0]], y=[0.0], mode="markers", name="Feed"))
-        interactive.update_layout(
-            title="Methanol/cyclohexane LLE tie line",
-            xaxis_title=r"Methanol mole fraction, $x_{\mathrm{MeOH}}$",
-            xaxis_range=[0.0, 1.0],
-            yaxis_visible=False,
-        )
-        save_plotly_html(interactive, Path(output_path))
     finally:
         plt.close(fig)
 
@@ -273,7 +241,7 @@ def test_equilibrium_electrolyte_lle_phase_composition_plot() -> None:
 
     assert result.split_detected is True
     assert diagnostics["acceptance_gate"] == "predictive_nonlinear_solve"
-    assert diagnostics["phase_equilibrium_model"] == "electrolyte_lle_v4_charge_constrained_solve"
+    assert diagnostics["phase_equilibrium_model"] == "electrolyte_lle_v5_native_charge_constrained_solve"
     assert phases["aq"].composition[0] > phases["org"].composition[0]
     assert phases["org"].composition[1] > phases["aq"].composition[1]
 
@@ -294,18 +262,6 @@ def test_equilibrium_electrolyte_lle_phase_composition_plot() -> None:
     )
     try:
         plot_outputs.save_plot_figure(fig, output_path, dpi=120, svg_companion=True)
-        interactive = go.Figure()
-        interactive.add_trace(go.Bar(x=species.tolist(), y=diagnostics["feed_composition"], name="Feed"))
-        interactive.add_trace(go.Bar(x=species.tolist(), y=phases["aq"].composition.tolist(), name="Aqueous phase"))
-        interactive.add_trace(go.Bar(x=species.tolist(), y=phases["org"].composition.tolist(), name="Organic phase"))
-        interactive.update_layout(
-            title="V4 electrolyte LLE phase compositions",
-            barmode="group",
-            xaxis_title="Species",
-            yaxis_title=r"Mole fraction, $x_i$",
-            yaxis_range=[0.0, 1.0],
-        )
-        save_plotly_html(interactive, Path(output_path))
     finally:
         plt.close(fig)
 

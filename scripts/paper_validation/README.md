@@ -10,9 +10,9 @@ Regenerate the local PNG browser with:
 uv run python scripts/paper_validation/tools/build_analysis_galleries.py
 ```
 
-The generator writes the master gallery to `docs/plots/index.html` and nested galleries under `docs/plots/**/index.html`. Open `docs/plots/index.html` locally to browse generated PNG outputs.
+The generator writes the master gallery to `docs/plots/index.html`. Open `docs/plots/index.html` locally to browse generated PNG outputs.
 
-The master page and parent folders show only navigation. A page renders PNGs only for files directly inside the current folder; use the subfolder dropdown or folder links to drill down.
+The gallery is a single root page. It renders all PNG outputs from `docs/plots/**` and links the matching SVG and CSV assets when they exist.
 
 ## CSV-Backed Figure Data
 

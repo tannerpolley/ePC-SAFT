@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-04-30T15:16:54.750292</dc:date>
+    <dc:date>2026-04-30T23:41:08.151776</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -72,64 +72,64 @@ z
    <g id="patch_7">
     <path d="M 91.415795 266.254125
 L 118.252159 266.254125
-L 118.252159 71.513996
-L 91.415795 71.513996
+L 118.252159 71.513988
+L 91.415795 71.513988
 z
 " clip-path="url(#p4b3eaab4a0)" style="fill: #ff7f0e"/>
    </g>
    <g id="patch_8">
     <path d="M 203.233977 266.254125
 L 230.070341 266.254125
-L 230.070341 262.273003
-L 203.233977 262.273003
+L 230.070341 262.273004
+L 203.233977 262.273004
 z
 " clip-path="url(#p4b3eaab4a0)" style="fill: #ff7f0e"/>
    </g>
    <g id="patch_9">
     <path d="M 315.052159 266.254125
 L 341.888523 266.254125
-L 341.888523 243.64675
-L 315.052159 243.64675
+L 341.888523 243.646754
+L 315.052159 243.646754
 z
 " clip-path="url(#p4b3eaab4a0)" style="fill: #ff7f0e"/>
    </g>
    <g id="patch_10">
     <path d="M 426.870341 266.254125
 L 453.706705 266.254125
-L 453.706705 243.64675
-L 426.870341 243.64675
+L 453.706705 243.646754
+L 426.870341 243.646754
 z
 " clip-path="url(#p4b3eaab4a0)" style="fill: #ff7f0e"/>
    </g>
    <g id="patch_11">
     <path d="M 118.252159 266.254125
 L 145.088523 266.254125
-L 145.088523 175.98308
-L 118.252159 175.98308
+L 145.088523 175.983109
+L 118.252159 175.983109
 z
 " clip-path="url(#p4b3eaab4a0)" style="fill: #2ca02c"/>
    </g>
    <g id="patch_12">
     <path d="M 230.070341 266.254125
 L 256.906705 266.254125
-L 256.906705 114.649888
-L 230.070341 114.649888
+L 256.906705 114.649854
+L 230.070341 114.649854
 z
 " clip-path="url(#p4b3eaab4a0)" style="fill: #2ca02c"/>
    </g>
    <g id="patch_13">
     <path d="M 341.888523 266.254125
 L 368.724886 266.254125
-L 368.724886 265.223766
-L 341.888523 265.223766
+L 368.724886 265.223769
+L 341.888523 265.223769
 z
 " clip-path="url(#p4b3eaab4a0)" style="fill: #2ca02c"/>
    </g>
    <g id="patch_14">
     <path d="M 453.706705 266.254125
 L 480.543068 266.254125
-L 480.543068 265.223766
-L 453.706705 265.223766
+L 480.543068 265.223769
+L 453.706705 265.223769
 z
 " clip-path="url(#p4b3eaab4a0)" style="fill: #2ca02c"/>
    </g>
@@ -247,7 +247,28 @@ L -3.5 0
      </g>
     </g>
     <g id="text_11">
-     <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle" x="14.798437" y="144.286125" transform="rotate(-90 14.798437 144.286125)">Mole fraction</text>
+     <!-- Mole fraction, $x_i$ -->
+     <g transform="translate(14.798437 184.186125) rotate(-90)">
+      <text>
+       <tspan x="0" y="-0.40625" style="font-size: 10px; font-family: 'DejaVu Sans'">M</tspan>
+       <tspan x="8.62793" y="-0.40625" style="font-size: 10px; font-family: 'DejaVu Sans'">o</tspan>
+       <tspan x="14.746094" y="-0.40625" style="font-size: 10px; font-family: 'DejaVu Sans'">l</tspan>
+       <tspan x="17.524414" y="-0.40625" style="font-size: 10px; font-family: 'DejaVu Sans'">e</tspan>
+       <tspan x="23.676758" y="-0.40625" style="font-size: 10px; font-family: 'DejaVu Sans'"> </tspan>
+       <tspan x="26.855469" y="-0.40625" style="font-size: 10px; font-family: 'DejaVu Sans'">f</tspan>
+       <tspan x="30.375977" y="-0.40625" style="font-size: 10px; font-family: 'DejaVu Sans'">r</tspan>
+       <tspan x="34.487305" y="-0.40625" style="font-size: 10px; font-family: 'DejaVu Sans'">a</tspan>
+       <tspan x="40.615234" y="-0.40625" style="font-size: 10px; font-family: 'DejaVu Sans'">c</tspan>
+       <tspan x="46.113281" y="-0.40625" style="font-size: 10px; font-family: 'DejaVu Sans'">t</tspan>
+       <tspan x="50.03418" y="-0.40625" style="font-size: 10px; font-family: 'DejaVu Sans'">i</tspan>
+       <tspan x="52.8125" y="-0.40625" style="font-size: 10px; font-family: 'DejaVu Sans'">o</tspan>
+       <tspan x="58.930664" y="-0.40625" style="font-size: 10px; font-family: 'DejaVu Sans'">n</tspan>
+       <tspan x="65.268555" y="-0.40625" style="font-size: 10px; font-family: 'DejaVu Sans'">,</tspan>
+       <tspan x="68.447266" y="-0.40625" style="font-size: 10px; font-family: 'DejaVu Sans'"> </tspan>
+       <tspan x="71.625977" y="-0.40625" style="font-style: oblique; font-size: 10px; font-family: 'DejaVu Sans'">x</tspan>
+       <tspan x="77.543945" y="1.234375" style="font-style: oblique; font-size: 7px; font-family: 'DejaVu Sans'">i</tspan>
+      </text>
+     </g>
     </g>
    </g>
    <g id="patch_15">

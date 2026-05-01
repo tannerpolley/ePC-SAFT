@@ -12,8 +12,6 @@ import numpy as np
 from epcsaft._types import SolutionError
 from epcsaft.epcsaft import ePCSAFTMixture
 from epcsaft.equilibrium import EquilibriumOptions
-from epcsaft.equilibrium import _electrolyte_fugacity_residuals
-from epcsaft.equilibrium import _electrolyte_gibbs_proxy
 from epcsaft.equilibrium import _json_like
 from epcsaft.equilibrium import _phase_state
 from epcsaft.equilibrium_core.electrolyte_basis import build_electrolyte_basis
@@ -28,6 +26,33 @@ FORMULA_SPECIES = ["H2O", "Ethanol", "Butanol", "NaCl"]
 CHARGES = np.asarray([0.0, 0.0, 0.0, 1.0, -1.0], dtype=float)
 PRESSURE_PA = 100000.0
 RESIDUAL_TOL = 1.0e-6
+
+
+def _fixed_phase_electrolyte_fugacity_residuals(
+    aq_comp: np.ndarray,
+    org_comp: np.ndarray,
+    aq_state: dict[str, Any],
+    org_state: dict[str, Any],
+    basis: dict[str, Any],
+    species: list[str],
+) -> tuple[dict[str, float], dict[str, float]]:
+    aq_lnf = np.log(aq_comp) + aq_state["ln_phi"]
+    org_lnf = np.log(org_comp) + org_state["ln_phi"]
+    neutral_residuals = {
+        str(species[index]): float(org_lnf[int(index)] - aq_lnf[int(index)])
+        for index in basis["neutral_indices"]
+    }
+    salt_residuals = {}
+    for pair in basis["salt_pairs"]:
+        cation_i = int(pair["cation"])
+        anion_i = int(pair["anion"])
+        salt_residuals[str(pair["label"])] = float((org_lnf[cation_i] + org_lnf[anion_i]) - (aq_lnf[cation_i] + aq_lnf[anion_i]))
+    return neutral_residuals, salt_residuals
+
+
+def _fixed_phase_gibbs_proxy(composition: np.ndarray, state_payload: dict[str, Any]) -> float:
+    comp = np.asarray(composition, dtype=float)
+    return float(np.sum(comp * (np.log(comp) + np.asarray(state_payload["ln_phi"], dtype=float))))
 
 
 def load_khudaida_tieline_case(*, figure: int, tie_line: int) -> dict[str, Any]:
@@ -68,7 +93,7 @@ def evaluate_khudaida_tieline(*, figure: int, tie_line: int, source: str) -> dic
     aq_state = _state_payload(mixture, temperature, np.asarray(phase_payload["aqueous_composition"], dtype=float), options, "aqueous")
 
     basis = build_electrolyte_basis(SPECIES, CHARGES, phase_payload["feed_composition"], salt_labels=("NaCl",)).to_dict()
-    neutral_residuals, mean_ionic_residuals = _electrolyte_fugacity_residuals(
+    neutral_residuals, mean_ionic_residuals = _fixed_phase_electrolyte_fugacity_residuals(
         np.asarray(phase_payload["aqueous_composition"], dtype=float),
         np.asarray(phase_payload["organic_composition"], dtype=float),
         aq_state,
@@ -80,9 +105,9 @@ def evaluate_khudaida_tieline(*, figure: int, tie_line: int, source: str) -> dic
     residual_norm = float(np.max(np.abs(residual_values))) if residual_values else 0.0
 
     beta = float(phase_payload["organic_phase_fraction"])
-    g_feed = _electrolyte_gibbs_proxy(np.asarray(phase_payload["feed_composition"], dtype=float), feed_state)
-    g_org = _electrolyte_gibbs_proxy(np.asarray(phase_payload["organic_composition"], dtype=float), org_state)
-    g_aq = _electrolyte_gibbs_proxy(np.asarray(phase_payload["aqueous_composition"], dtype=float), aq_state)
+    g_feed = _fixed_phase_gibbs_proxy(np.asarray(phase_payload["feed_composition"], dtype=float), feed_state)
+    g_org = _fixed_phase_gibbs_proxy(np.asarray(phase_payload["organic_composition"], dtype=float), org_state)
+    g_aq = _fixed_phase_gibbs_proxy(np.asarray(phase_payload["aqueous_composition"], dtype=float), aq_state)
     g_split = float(beta * g_org + (1.0 - beta) * g_aq)
     charge_error = _max_charge_error(phase_payload)
     material_error = _material_balance_error(phase_payload)
@@ -146,24 +171,30 @@ def compare_khudaida_aad_tables() -> dict[str, Any]:
     rows_compared = []
     max_package = 0.0
     max_paper = 0.0
+    package_missing = 0
     for table_name in ("table_9", "table_10"):
         rows = _read_csv(table_dir / f"{table_name}.csv")
         by_temp = {}
         for row in rows:
             key = float(row["T / K"])
-            by_temp.setdefault(key, {})[row["Model"]] = float(row["Grand AAD"])
+            by_temp.setdefault(key, {})[row["Model"]] = _optional_finite_float(row["Grand AAD"])
         for temperature, models in sorted(by_temp.items()):
             package = models["ePC-SAFT (package)"]
             paper = models["ePC-SAFT (paper)"]
-            max_package = max(max_package, package)
-            max_paper = max(max_paper, paper)
+            if package is None:
+                package_missing += 1
+            else:
+                max_package = max(max_package, package)
+            if paper is not None:
+                max_paper = max(max_paper, paper)
             rows_compared.append(
                 {
                     "table": table_name,
                     "temperature_K": temperature,
                     "package_grand_aad": package,
                     "paper_epcsaft_grand_aad": paper,
-                    "package_minus_paper": package - paper,
+                    "package_minus_paper": package - paper if package is not None and paper is not None else None,
+                    "package_status": "finite" if package is not None else "missing_or_rejected",
                 }
             )
 
@@ -172,6 +203,7 @@ def compare_khudaida_aad_tables() -> dict[str, Any]:
             "dataset": DATASET,
             "tables": ["table_9", "table_10"],
             "rows_compared": len(rows_compared),
+            "package_missing_count": package_missing,
             "max_package_grand_aad": max_package,
             "max_paper_epcsaft_grand_aad": max_paper,
             "rows": rows_compared,
@@ -179,6 +211,202 @@ def compare_khudaida_aad_tables() -> dict[str, Any]:
                 "package_aad_exceeds_paper_epcsaft_reference"
                 if max_package > max_paper
                 else "package_aad_does_not_exceed_paper_epcsaft_reference"
+            ),
+        }
+    )
+
+
+def load_khudaida_digitized_paper_epcsaft(*, figure: int) -> list[dict[str, Any]]:
+    """Load a figure's digitized paper ePC-SAFT organic-branch points.
+
+    The imported ``paper_epcsaft_digitized.csv`` files store only the ternary
+    salt-free coordinates visible in Figures 2-7. They are therefore a
+    salt-free organic-phase plotting/shape reference, not full NaCl phase
+    compositions.
+    """
+    figure_dir = _figure_data_dir(figure)
+    raw_rows = _read_csv(figure_dir / "paper_epcsaft_digitized.csv")
+    feed_by_tie = {int(row["tie_line"]): row for row in _read_csv(figure_dir / "feed_compositions.csv")}
+    rows = []
+    for raw in raw_rows:
+        point_id = int(raw["point_id"])
+        feed_row = feed_by_tie.get(point_id) or next(iter(feed_by_tie.values()))
+        salt_free = _normalize_formula(
+            np.asarray(
+                [
+                    float(raw["x_water_salt_free"]),
+                    float(raw["x_ethanol_salt_free"]),
+                    float(raw["x_isobutanol_salt_free"]),
+                ],
+                dtype=float,
+            )
+        )
+        rows.append(
+            {
+                "dataset": DATASET,
+                "figure": int(figure),
+                "point_id": point_id,
+                "tie_line": point_id,
+                "temperature_K": float(feed_row["temperature_K"]),
+                "salt_wtfrac": float(feed_row["salt_wtfrac"]),
+                "salt_free_components": ["H2O", "Ethanol", "Butanol"],
+                "salt_free_composition": salt_free,
+                "source": raw.get("source", "digitized_user_supplied") or "digitized_user_supplied",
+                "series_label": raw.get("series_label", "paper-epcsaft") or "paper-epcsaft",
+            }
+        )
+    return _json_like(rows)
+
+
+def compare_khudaida_digitized_paper_to_package(*, figure: int) -> dict[str, Any]:
+    """Compare native/package organic predictions to digitized paper ePC-SAFT points."""
+    figure_dir = _figure_data_dir(figure)
+    digitized_rows = load_khudaida_digitized_paper_epcsaft(figure=figure)
+    model_csv_rows = _read_csv(figure_dir / "model_tielines.csv")
+    model_by_tie = {
+        int(row["tie_line"]): row
+        for row in model_csv_rows
+        if str(row.get("phase", "")).strip().lower() == "organic"
+    }
+    rows = []
+    errors = []
+    invalid_count = 0
+    for digitized in digitized_rows:
+        tie_line = int(digitized["tie_line"])
+        model_row = model_by_tie.get(tie_line)
+        paper = np.asarray(digitized["salt_free_composition"], dtype=float)
+        base_row = {
+            "figure": int(figure),
+            "paper_epcsaft_point_id": int(digitized["point_id"]),
+            "paper_epcsaft_tie_line": tie_line,
+            "temperature_K": float(digitized["temperature_K"]),
+            "salt_wtfrac": float(digitized["salt_wtfrac"]),
+            "paper_water_salt_free": float(paper[0]),
+            "paper_ethanol_salt_free": float(paper[1]),
+            "paper_isobutanol_salt_free": float(paper[2]),
+        }
+        if model_row is None:
+            invalid_count += 1
+            rows.append(
+                {
+                    **base_row,
+                    "comparison_status": "missing_package_model_row",
+                    "package_converged": None,
+                    "package_residual_norm": None,
+                }
+            )
+            continue
+        try:
+            package = _salt_free_from_formula(_phase_row_to_formula(model_row))
+        except ValueError:
+            invalid_count += 1
+            rows.append(
+                {
+                    **base_row,
+                    "comparison_status": "invalid_package_model_row",
+                    "package_converged": _optional_bool(model_row.get("converged")),
+                    "package_residual_norm": _optional_finite_float(model_row.get("residual_norm")),
+                }
+            )
+            continue
+        abs_error = np.abs(package - paper)
+        errors.append(abs_error)
+        rows.append(
+            {
+                **base_row,
+                "comparison_status": "compared",
+                "package_water_salt_free": float(package[0]),
+                "package_ethanol_salt_free": float(package[1]),
+                "package_isobutanol_salt_free": float(package[2]),
+                "water_abs_error": float(abs_error[0]),
+                "ethanol_abs_error": float(abs_error[1]),
+                "isobutanol_abs_error": float(abs_error[2]),
+                "max_abs_error": float(np.max(abs_error)),
+                "aad": float(np.mean(abs_error)),
+                "package_converged": _optional_bool(model_row.get("converged")),
+                "package_residual_norm": _optional_finite_float(model_row.get("residual_norm")),
+            }
+        )
+    error_arr = np.vstack(errors) if errors else np.empty((0, 3), dtype=float)
+    component_aad = np.mean(error_arr, axis=0) if errors else np.full(3, np.nan)
+    grand_aad = float(np.mean(error_arr)) if errors else None
+    max_abs_error = float(np.max(error_arr)) if errors else None
+    source = str(digitized_rows[0]["source"]) if digitized_rows else ""
+    package_source = str(next(iter(model_by_tie.values())).get("source", "")) if model_by_tie else ""
+    tolerance = 2.0e-2
+    return _json_like(
+        {
+            "dataset": DATASET,
+            "figure": int(figure),
+            "source": source,
+            "package_source": package_source,
+            "basis": "organic_phase_salt_free_ternary",
+            "digitized_rows": len(digitized_rows),
+            "rows_compared": len(rows),
+            "finite_rows_compared": len(errors),
+            "package_missing_or_invalid_rows": invalid_count,
+            "component_aad": {
+                "water": _finite_or_none(component_aad[0]),
+                "ethanol": _finite_or_none(component_aad[1]),
+                "isobutanol": _finite_or_none(component_aad[2]),
+            },
+            "organic_salt_free_grand_aad": grand_aad,
+            "organic_salt_free_max_abs_error": max_abs_error,
+            "rows": rows,
+            "decision": (
+                "package_matches_digitized_paper_epcsaft_on_salt_free_basis"
+                if max_abs_error is not None and max_abs_error <= tolerance
+                else "package_differs_from_digitized_paper_epcsaft_on_salt_free_basis"
+            ),
+        }
+    )
+
+
+def summarize_khudaida_digitized_paper_matrix() -> dict[str, Any]:
+    """Summarize package-vs-digitized-paper comparisons over Figures 2-7."""
+    figures = [2, 3, 4, 5, 6, 7]
+    missing_data: list[str] = []
+    comparisons = []
+    for figure in figures:
+        try:
+            comparisons.append(compare_khudaida_digitized_paper_to_package(figure=figure))
+        except Exception as exc:  # pragma: no cover - surfaced through diagnostics.
+            missing_data.append(f"figure_{figure}: {exc}")
+    max_grand = max(
+        (
+            float(item["organic_salt_free_grand_aad"])
+            for item in comparisons
+            if item["organic_salt_free_grand_aad"] is not None
+        ),
+        default=None,
+    )
+    max_abs = max(
+        (
+            float(item["organic_salt_free_max_abs_error"])
+            for item in comparisons
+            if item["organic_salt_free_max_abs_error"] is not None
+        ),
+        default=None,
+    )
+    rows_compared = int(sum(int(item["rows_compared"]) for item in comparisons))
+    finite_rows_compared = int(sum(int(item["finite_rows_compared"]) for item in comparisons))
+    invalid_rows = int(sum(int(item["package_missing_or_invalid_rows"]) for item in comparisons))
+    tolerance = 2.0e-2
+    return _json_like(
+        {
+            "dataset": DATASET,
+            "figures": figures,
+            "missing_data": missing_data,
+            "rows_compared": rows_compared,
+            "finite_rows_compared": finite_rows_compared,
+            "package_missing_or_invalid_rows": invalid_rows,
+            "max_organic_salt_free_grand_aad": max_grand,
+            "max_organic_salt_free_max_abs_error": max_abs,
+            "per_figure": comparisons,
+            "decision": (
+                "package_matches_digitized_paper_epcsaft_on_salt_free_basis"
+                if not missing_data and max_abs is not None and max_abs <= tolerance
+                else "package_differs_from_digitized_paper_epcsaft_on_salt_free_basis"
             ),
         }
     )
@@ -194,35 +422,58 @@ def summarize_khudaida_matrix() -> dict[str, Any]:
     max_charge = 0.0
     package_cached_residuals: list[float] = []
     package_converged = 0
+    package_invalid_count = 0
+    digitized_feed_figures: list[int] = []
+    digitized_paper_epcsaft_figures: list[int] = []
     for figure in figures:
+        figure_dir = _figure_data_dir(figure)
+        if (figure_dir / "feed_compositions_digitized.csv").is_file():
+            digitized_feed_figures.append(figure)
+        if (figure_dir / "paper_epcsaft_digitized.csv").is_file():
+            digitized_paper_epcsaft_figures.append(figure)
         try:
-            feed_rows = _read_csv(_figure_data_dir(figure) / "feed_compositions.csv")
+            feed_rows = _read_csv(figure_dir / "feed_compositions.csv")
         except Exception as exc:  # pragma: no cover - surfaced through diagnostics.
             missing_data.append(f"figure_{figure}: {exc}")
             continue
         for feed_row in feed_rows:
             tie_line = int(feed_row["tie_line"])
+            case_count += 1
+            temperatures.add(float(feed_row["temperature_K"]))
+            salt_wtfracs.add(float(feed_row["salt_wtfrac"]))
             try:
-                case = load_khudaida_tieline_case(figure=figure, tie_line=tie_line)
+                exp_rows = _phase_rows(_read_csv(figure_dir / "experimental_tielines.csv"), tie_line)
+                reference_feed = _feed_row_to_formula(feed_row)
+                experimental = _source_payload(exp_rows, reference_feed, beta=None)
             except Exception as exc:  # pragma: no cover - surfaced through diagnostics.
                 missing_data.append(f"figure_{figure} tie_line {tie_line}: {exc}")
                 continue
-            case_count += 1
-            temperatures.add(float(case["temperature_K"]))
-            salt_wtfracs.add(float(case["salt_wtfrac"]))
-            for source in ("experimental", "package"):
-                payload = case[source]
+            max_charge = max(
+                max_charge,
+                abs(float(experimental["feed_charge_balance"])),
+                abs(float(experimental["organic_charge_balance"])),
+                abs(float(experimental["aqueous_charge_balance"])),
+            )
+            try:
+                package_rows = _phase_rows(_read_csv(figure_dir / "model_tielines.csv"), tie_line)
+                package = _source_payload(package_rows, reference_feed, beta=_phase_beta(package_rows))
                 max_charge = max(
                     max_charge,
-                    abs(float(payload["feed_charge_balance"])),
-                    abs(float(payload["organic_charge_balance"])),
-                    abs(float(payload["aqueous_charge_balance"])),
+                    abs(float(package["feed_charge_balance"])),
+                    abs(float(package["organic_charge_balance"])),
+                    abs(float(package["aqueous_charge_balance"])),
                 )
-            cached_residual = case["package"].get("cached_model_residual_norm")
+                cached_residual = package.get("cached_model_residual_norm")
+                if package.get("cached_model_converged"):
+                    package_converged += 1
+            except ValueError:
+                package_invalid_count += 1
+                package_rows = _phase_rows(_read_csv(figure_dir / "model_tielines.csv"), tie_line)
+                cached_residual = _optional_finite_float(package_rows["organic"].get("residual_norm"))
+                if _optional_bool(package_rows["organic"].get("converged")):
+                    package_converged += 1
             if cached_residual is not None:
                 package_cached_residuals.append(float(cached_residual))
-            if case["package"].get("cached_model_converged"):
-                package_converged += 1
 
     return _json_like(
         {
@@ -234,8 +485,11 @@ def summarize_khudaida_matrix() -> dict[str, Any]:
             "max_charge_balance_error": max_charge,
             "missing_data": missing_data,
             "package_cached_converged_count": package_converged,
+            "package_invalid_model_count": package_invalid_count,
             "package_cached_residual_norm_max": max(package_cached_residuals) if package_cached_residuals else None,
             "package_cached_residual_norm_min": min(package_cached_residuals) if package_cached_residuals else None,
+            "digitized_feed_figures": digitized_feed_figures,
+            "digitized_paper_epcsaft_figures": digitized_paper_epcsaft_figures,
         }
     )
 
@@ -335,6 +589,17 @@ def _optional_float(value: Any) -> float | None:
     return float(value)
 
 
+def _finite_or_none(value: Any) -> float | None:
+    numeric = float(value)
+    return numeric if np.isfinite(numeric) else None
+
+
+def _optional_finite_float(value: Any) -> float | None:
+    if value in (None, ""):
+        return None
+    return _finite_or_none(value)
+
+
 def _optional_bool(value: Any) -> bool | None:
     if value in (None, ""):
         return None
@@ -395,6 +660,11 @@ def _phase_row_to_formula(row: dict[str, str]) -> np.ndarray:
             dtype=float,
         )
     )
+
+
+def _salt_free_from_formula(row: np.ndarray) -> np.ndarray:
+    formula = _normalize_formula(np.asarray(row, dtype=float))
+    return _normalize_formula(formula[:3])
 
 
 def _normalize_formula(value: np.ndarray) -> np.ndarray:

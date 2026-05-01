@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-import re
 import textwrap
 from typing import Iterable
 
@@ -10,8 +9,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 matplotlib.rcParams["svg.fonttype"] = "none"
 matplotlib.rcParams["svg.hashsalt"] = "epcsaft-test-plots"
@@ -71,44 +68,10 @@ def methanol_cyclohexane_mixture() -> ePCSAFTMixture:
 def assert_plot_with_data(path: Path) -> None:
     csv_path = path.parent / "data" / f"{path.stem}_plot_data.csv"
     svg_path = path.with_suffix(".svg")
-    html_path = path.with_suffix(".html")
     assert path.exists()
     assert svg_path.exists()
-    assert html_path.exists()
     assert csv_path.exists()
     assert csv_path.stat().st_size > 0
-
-
-def save_plotly_html(fig: go.Figure, image_path: Path) -> Path:
-    html_path = plot_outputs.plot_html_path(image_path)
-    html_path.parent.mkdir(parents=True, exist_ok=True)
-    _translate_plotly_axis_titles(fig)
-    fig.update_layout(
-        template="plotly_white",
-        colorway=MATPLOTLIB_COLORWAY,
-        margin={"l": 72, "r": 30, "t": 74, "b": 88},
-        hovermode="closest",
-        title_font={"size": 16},
-        legend={
-            "orientation": "h",
-            "yanchor": "top",
-            "y": -0.18,
-            "xanchor": "center",
-            "x": 0.5,
-            "font": {"size": 11},
-        },
-        height=390,
-    )
-    fig.update_xaxes(automargin=True, title_standoff=12)
-    fig.update_yaxes(automargin=True, title_standoff=12)
-    fig.write_html(
-        html_path,
-        include_plotlyjs="cdn",
-        include_mathjax="cdn",
-        full_html=True,
-        config={"displaylogo": False, "responsive": True},
-    )
-    return html_path
 
 
 _SPECIES_LABELS = {
@@ -161,56 +124,6 @@ _EXACT_MATH_LABELS = {
     "m": r"$m$",
 }
 
-_PLOTLY_EXACT_LABELS = {
-    "p": "P",
-    "P": "P",
-    "pressure": "P",
-    "diag pressure": "diagnostics P",
-    "rho": "rho (ρ)",
-    "rho_molar": "rho (ρ, molar)",
-    "rho_mass": "rho_mass (ρ_mass)",
-    "rho mass": "rho_mass (ρ_mass)",
-    "density": "rho (ρ)",
-    "z": "Z",
-    "Z": "Z",
-    "ares": "A^res",
-    "dadt": "dA^res/dT",
-    "hres": "h^res",
-    "sres": "s^res",
-    "gres": "g^res",
-    "epsr": "epsilon_r (ε_r)",
-    "epsr mixture": "epsilon_r (ε_r) mixture",
-    "osmotic": "phi_osm (φ_osm)",
-    "osmotic_coef": "phi_osm (φ_osm)",
-    "material balance": "material balance",
-    "material tolerance": "material balance tolerance",
-    "fugacity residual": "ln f_i residual",
-    "fugacity tolerance": "ln f_i tolerance",
-    "mean gamma x": "gamma_pm^(x)",
-    "mean gamma m": "gamma_pm^(m)",
-    "ionic mean gamma mole": "ionic gamma_pm^(x)",
-    "ionic mean gamma molality": "ionic gamma_pm^(m)",
-    "stable min TPD": "stable min(TPD)",
-    "unstable min TPD": "unstable min(TPD)",
-    "sigma": "sigma",
-    "epsilon": "epsilon/kB",
-    "m": "m",
-}
-
-_PLOTLY_SPECIES_LABELS = {
-    "A": "A",
-    "B": "B",
-    "C": "C",
-    "water": "H2O",
-    "Na": "Na+",
-    "Cl": "Cl-",
-    "methane": "CH4",
-    "ethane": "C2H6",
-    "propane": "C3H8",
-    "methanol": "MeOH",
-    "cyclohexane": "C6H12",
-}
-
 
 def math_label(label: object) -> str:
     text = str(label)
@@ -259,103 +172,6 @@ def math_label(label: object) -> str:
 
 def math_labels(labels: Iterable[object]) -> list[str]:
     return [math_label(label) for label in labels]
-
-
-def plotly_label(label: object) -> str:
-    text = str(label)
-    if text in _PLOTLY_EXACT_LABELS:
-        return _PLOTLY_EXACT_LABELS[text]
-    if text in _PLOTLY_SPECIES_LABELS:
-        return _PLOTLY_SPECIES_LABELS[text]
-    if text.lower() in _PLOTLY_SPECIES_LABELS:
-        return _PLOTLY_SPECIES_LABELS[text.lower()]
-
-    for prefix, rendered_prefix in (("mures", "mu^res"), ("lnphi", "ln phi")):
-        if text.startswith(f"{prefix}[") and text.endswith("]"):
-            index = text[len(prefix) + 1 : -1]
-            return f"{rendered_prefix}_{index}"
-
-    for prefix in ("neutral", "ionic", "vap", "liq", "stable", "unstable"):
-        marker = f"{prefix} "
-        if text.startswith(marker):
-            return f"{prefix} {plotly_label(text[len(marker):])}"
-
-    for prefix, rendered_prefix in (
-        ("beta", "beta (β)"),
-        ("gamma", "gamma (γ)"),
-        ("mean gamma", "gamma_pm (γ_pm)"),
-        ("mures", "mu^res (μ^res)"),
-        ("lnphi", "ln phi (ln φ)"),
-        ("phi", "phi (φ)"),
-        ("fugcoef", "ln phi"),
-        ("gsolv", "Delta G^solv (ΔG^solv)"),
-    ):
-        marker = f"{prefix} "
-        if text.startswith(marker):
-            species = text[len(marker):]
-            species_label = _PLOTLY_SPECIES_LABELS.get(species, species)
-            return f"{rendered_prefix}_{species_label}"
-
-    for suffix in ("total", "hc", "disp", "branch", "extreme"):
-        marker = f" {suffix}"
-        if text.endswith(marker):
-            return f"{plotly_label(text[: -len(marker)])} {suffix}"
-
-    if text.startswith("d") and "-d" in text:
-        return f"Delta(dA^res/dx) {text}"
-
-    words = text.split()
-    if len(words) > 1:
-        return " ".join(
-            plotly_label(word)
-            if word in _PLOTLY_EXACT_LABELS
-            or word in _PLOTLY_SPECIES_LABELS
-            or word.lower() in _PLOTLY_SPECIES_LABELS
-            else word
-            for word in words
-        )
-    return text.replace("$", "")
-
-
-def plotly_labels(labels: Iterable[object]) -> list[str]:
-    return [plotly_label(label) for label in labels]
-
-
-def plotly_axis_label(label: object) -> str:
-    text = str(label)
-    replacements = {
-        r"$\rho$": "rho (ρ)",
-        r"$A^{res}$": "A^res",
-        r"$h^{res}$": "h^res",
-        r"$s^{res}$": "s^res",
-        r"$g^{res}$": "g^res",
-        r"$Z$": "Z",
-        r"$\ln \phi$": "ln φ",
-        r"$\phi$": "φ",
-        r"$\beta$": "β",
-        r"$\gamma$": "γ",
-        r"$x_i$": "x_i",
-        r"$y_i$": "y_i",
-        r"$\gamma_{\pm}$": "γ±",
-        r"$\phi_{\mathrm{osm}}$": "φ_osm",
-        r"$\Delta G^{solv}$": "ΔG^solv",
-    }
-    for source, replacement in replacements.items():
-        text = text.replace(source, replacement)
-    text = re.sub(r"\$x_\{\\mathrm\{([^}]+)\}\}\$", r"x_\1", text)
-    text = re.sub(r"\$y_\{\\mathrm\{([^}]+)\}\}\$", r"y_\1", text)
-    text = re.sub(r"\$\\ln\s+\\phi_\{\\mathrm\{([^}]+)\}\}\$", r"ln φ_\1", text)
-    text = text.replace(r"\mathrm{", "").replace("}", "")
-    return text.replace("$", "")
-
-
-def _translate_plotly_axis_titles(fig: go.Figure) -> None:
-    for axis_name in fig.layout:
-        if not (str(axis_name).startswith("xaxis") or str(axis_name).startswith("yaxis")):
-            continue
-        axis = fig.layout[axis_name]
-        if axis.title and axis.title.text:
-            axis.title.text = plotly_axis_label(axis.title.text)
 
 
 def _wrap_label(label: str, width: int = 18) -> str:
@@ -438,170 +254,6 @@ def assert_figure_text_is_inside_canvas(fig, *, margin_px: float = 1.0) -> None:
         assert bbox.y0 >= canvas.y0 - margin_px
         assert bbox.x1 <= canvas.x1 + margin_px
         assert bbox.y1 <= canvas.y1 + margin_px
-
-
-def _plotly_axis_type(values: np.ndarray) -> str:
-    finite = np.abs(values[np.isfinite(values)])
-    nonzero = finite[finite > 0.0]
-    if nonzero.size == 0:
-        return "linear"
-    return "log" if float(np.max(nonzero) / np.min(nonzero)) > 1.0e4 and np.all(values > 0.0) else "linear"
-
-
-def _save_interactive_comparison_plot(
-    image_path: Path,
-    title: str,
-    labels: list[str],
-    actual: np.ndarray,
-    expected: np.ndarray,
-    *,
-    ylabel: str,
-    relative_error: bool,
-) -> Path:
-    display_labels = plotly_labels(labels)
-    if relative_error:
-        fig = make_subplots(
-            rows=1,
-            cols=2,
-            subplot_titles=(title, "Relative error"),
-            column_widths=[0.72, 0.28],
-        )
-    else:
-        fig = go.Figure()
-
-    values = np.concatenate([actual, expected])
-    scale = np.maximum(np.abs(expected), 1.0e-30)
-    rel_error = (actual - expected) / scale
-    orientation = "h" if len(display_labels) > 8 or max((len(label) for label in display_labels), default=0) > 18 else "v"
-
-    if orientation == "h":
-        fig.add_trace(
-            go.Bar(y=display_labels, x=actual, name="Actual model output", orientation="h"),
-            row=1 if relative_error else None,
-            col=1 if relative_error else None,
-        )
-        fig.add_trace(
-            go.Bar(y=display_labels, x=expected, name="Expected/reference", orientation="h"),
-            row=1 if relative_error else None,
-            col=1 if relative_error else None,
-        )
-        if relative_error:
-            fig.add_trace(go.Bar(y=display_labels, x=rel_error, name="Relative error", orientation="h"), row=1, col=2)
-            fig.update_yaxes(autorange="reversed", row=1, col=1)
-            fig.update_yaxes(autorange="reversed", showticklabels=False, row=1, col=2)
-            fig.update_xaxes(title_text=ylabel, type=_plotly_axis_type(values[values > 0.0]), row=1, col=1)
-            fig.update_xaxes(title_text="Relative error", row=1, col=2)
-        else:
-            fig.update_yaxes(autorange="reversed")
-            fig.update_xaxes(title_text=ylabel, type=_plotly_axis_type(values[values > 0.0]))
-    else:
-        fig.add_trace(
-            go.Bar(x=display_labels, y=actual, name="Actual model output"),
-            row=1 if relative_error else None,
-            col=1 if relative_error else None,
-        )
-        fig.add_trace(
-            go.Bar(x=display_labels, y=expected, name="Expected/reference"),
-            row=1 if relative_error else None,
-            col=1 if relative_error else None,
-        )
-        if relative_error:
-            fig.add_trace(go.Bar(x=display_labels, y=rel_error, name="Relative error"), row=1, col=2)
-            fig.update_yaxes(title_text=ylabel, type=_plotly_axis_type(values[values > 0.0]), row=1, col=1)
-            fig.update_yaxes(title_text="Relative error", row=1, col=2)
-        else:
-            fig.update_yaxes(title_text=ylabel, type=_plotly_axis_type(values[values > 0.0]))
-
-    fig.update_layout(
-        title=title if not relative_error else None,
-        barmode="group",
-    )
-    return save_plotly_html(fig, image_path)
-
-
-def _save_interactive_parity_plot(
-    image_path: Path,
-    title: str,
-    labels: list[str],
-    actual: np.ndarray,
-    expected: np.ndarray,
-    *,
-    xlabel: str,
-    ylabel: str,
-) -> Path:
-    display_labels = plotly_labels(labels)
-    finite = np.isfinite(actual) & np.isfinite(expected)
-    scale = np.maximum(np.abs(expected), 1.0e-30)
-    rel_error = (actual - expected) / scale
-    fig = make_subplots(rows=1, cols=2, subplot_titles=(title, "Relative error"), column_widths=[0.62, 0.38])
-    fig.add_trace(
-        go.Scatter(
-            x=expected[finite],
-            y=actual[finite],
-            mode="markers",
-            text=np.asarray(display_labels, dtype=object)[finite],
-            name="Actual vs expected points",
-            marker={"color": MATPLOTLIB_COLORWAY[0]},
-            hovertemplate="%{text}<br>expected=%{x:.6g}<br>actual=%{y:.6g}<extra></extra>",
-        ),
-        row=1,
-        col=1,
-    )
-    if np.any(finite):
-        lo = float(min(np.min(expected[finite]), np.min(actual[finite])))
-        hi = float(max(np.max(expected[finite]), np.max(actual[finite])))
-        pad = max((hi - lo) * 0.08, 1.0e-12)
-        fig.add_trace(
-            go.Scatter(
-                x=[lo - pad, hi + pad],
-                y=[lo - pad, hi + pad],
-                mode="lines",
-                name="Parity line (actual = expected)",
-                line={"color": "#404040", "width": 1.2},
-            ),
-            row=1,
-            col=1,
-        )
-    fig.add_trace(go.Bar(y=display_labels, x=rel_error, orientation="h", name="Relative error"), row=1, col=2)
-    fig.update_xaxes(title_text=xlabel, row=1, col=1)
-    fig.update_yaxes(title_text=ylabel, row=1, col=1)
-    fig.update_xaxes(title_text="Relative error", row=1, col=2)
-    fig.update_yaxes(autorange="reversed", row=1, col=2)
-    return save_plotly_html(fig, image_path)
-
-
-def _save_interactive_contribution_plot(
-    image_path: Path,
-    title: str,
-    rows: list[dict[str, object]],
-    *,
-    breakdown: bool,
-) -> Path:
-    labels = plotly_labels(str(row["label"]) for row in rows)
-    term_names = sorted({name for row in rows for name in row["terms"]})
-    totals = np.asarray([float(row["total"]) for row in rows], dtype=float)
-    fig = go.Figure()
-    for term_name in term_names:
-        values = [float(row["terms"].get(term_name, 0.0)) for row in rows]
-        fig.add_trace(go.Bar(y=labels, x=values, orientation="h", name=f"Term: {term_name}"))
-    fig.add_trace(
-        go.Scatter(
-            y=labels,
-            x=totals,
-            mode="markers",
-            marker_symbol="x",
-            marker_size=10,
-            marker={"color": "#111111"},
-            name="Reported total",
-        )
-    )
-    fig.update_layout(
-        title=title,
-        barmode="relative" if not breakdown else "group",
-        xaxis_title="Contribution value" if not breakdown else "Term contribution",
-        yaxis={"autorange": "reversed"},
-    )
-    return save_plotly_html(fig, image_path)
 
 
 def save_comparison_plot(
@@ -687,15 +339,6 @@ def save_comparison_plot(
     try:
         _finish_figure(fig)
         plot_outputs.save_plot_figure(fig, output_path, dpi=120, svg_companion=True)
-        _save_interactive_comparison_plot(
-            output_path,
-            title,
-            labels,
-            actual,
-            expected,
-            ylabel=ylabel,
-            relative_error=relative_error,
-        )
     finally:
         plt.close(fig)
     assert_plot_with_data(output_path)
@@ -751,7 +394,6 @@ def save_parity_plot(
     try:
         _finish_figure(fig)
         plot_outputs.save_plot_figure(fig, output_path, dpi=120, svg_companion=True)
-        _save_interactive_parity_plot(output_path, title, labels, actual, expected, xlabel=xlabel, ylabel=ylabel)
     finally:
         plt.close(fig)
     assert_plot_with_data(output_path)
@@ -829,7 +471,6 @@ def save_contribution_closure_plot(
     try:
         _finish_figure(fig)
         plot_outputs.save_plot_figure(fig, output_path, dpi=120, svg_companion=True)
-        _save_interactive_contribution_plot(output_path, title, rows, breakdown=False)
     finally:
         plt.close(fig)
     assert_plot_with_data(output_path)
@@ -870,7 +511,6 @@ def save_contribution_term_breakdown_plot(
     try:
         _finish_figure(fig)
         plot_outputs.save_plot_figure(fig, output_path, dpi=120, svg_companion=True)
-        _save_interactive_contribution_plot(output_path, title, rows, breakdown=True)
     finally:
         plt.close(fig)
     assert_plot_with_data(output_path)

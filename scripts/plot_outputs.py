@@ -121,11 +121,6 @@ def plot_svg_path(image_path: str | Path) -> Path:
     return image.with_suffix(".svg")
 
 
-def plot_html_path(image_path: str | Path) -> Path:
-    image = Path(image_path)
-    return image.with_suffix(".html")
-
-
 def _strip_trailing_whitespace(path: Path) -> None:
     text = path.read_text(encoding="utf-8")
     normalized = "\n".join(line.rstrip() for line in text.splitlines())

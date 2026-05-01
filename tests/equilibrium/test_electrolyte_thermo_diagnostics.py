@@ -6,10 +6,13 @@ import numpy as np
 import pytest
 
 from epcsaft.equilibrium_core.thermo_diagnostics import (
+    compare_khudaida_digitized_paper_to_package,
     compare_khudaida_aad_tables,
     evaluate_khudaida_solver_gate,
     evaluate_khudaida_tieline,
+    load_khudaida_digitized_paper_epcsaft,
     load_khudaida_tieline_case,
+    summarize_khudaida_digitized_paper_matrix,
     summarize_khudaida_matrix,
 )
 
@@ -39,7 +42,7 @@ def test_khudaida_fixture_loads_charge_neutral_explicit_ions() -> None:
 def test_khudaida_package_tieline_fixed_phase_residual_is_internally_consistent() -> None:
     diagnostics = evaluate_khudaida_tieline(figure=2, tie_line=1, source="package")
 
-    assert diagnostics["source"] == "epcsaft_package"
+    assert diagnostics["source"] == "epcsaft_native_v5"
     assert diagnostics["material_balance_error"] <= 1.0e-10
     assert diagnostics["charge_balance_error"] <= 1.0e-8
     assert diagnostics["cached_model_residual_norm"] <= 1.0e-6
@@ -78,6 +81,7 @@ def test_khudaida_aad_matrix_records_package_surface_gap_to_paper() -> None:
     assert diagnostics["tables"] == ["table_9", "table_10"]
     assert diagnostics["max_package_grand_aad"] > diagnostics["max_paper_epcsaft_grand_aad"]
     assert diagnostics["rows_compared"] == 6
+    assert "package_missing_count" in diagnostics
     json.dumps(diagnostics, allow_nan=False)
 
 
@@ -91,13 +95,74 @@ def test_khudaida_full_matrix_fixture_is_complete_and_charge_neutral() -> None:
     assert diagnostics["case_count"] > 0
     assert diagnostics["max_charge_balance_error"] <= 1.0e-12
     assert diagnostics["missing_data"] == []
+    assert "package_invalid_model_count" in diagnostics
+    assert diagnostics["digitized_feed_figures"] == [2, 3, 4, 5, 6, 7]
+    assert diagnostics["digitized_paper_epcsaft_figures"] == [2, 3, 4, 5, 6, 7]
+    json.dumps(diagnostics, allow_nan=False)
+
+
+def test_khudaida_model_tielines_are_all_finite_after_native_recompute() -> None:
+    diagnostics = summarize_khudaida_matrix()
+
+    assert diagnostics["case_count"] == 39
+    assert diagnostics["package_invalid_model_count"] == 0
+    assert diagnostics["package_cached_converged_count"] == 39
+    assert diagnostics["package_cached_residual_norm_max"] <= 1.0e-6
+    json.dumps(diagnostics, allow_nan=False)
+
+
+def test_khudaida_digitized_paper_epcsaft_series_loads_from_figure_folders() -> None:
+    rows = load_khudaida_digitized_paper_epcsaft(figure=2)
+
+    assert len(rows) == 8
+    assert rows[0]["figure"] == 2
+    assert rows[0]["point_id"] == 1
+    assert rows[0]["tie_line"] == 1
+    assert rows[0]["source"] == "digitized_user_supplied"
+    np.testing.assert_allclose(np.sum(rows[0]["salt_free_composition"]), 1.0)
+    assert set(rows[0]["salt_free_components"]) == {"H2O", "Ethanol", "Butanol"}
+    json.dumps(rows, allow_nan=False)
+
+
+def test_khudaida_digitized_paper_epcsaft_compares_to_package_model_rows() -> None:
+    diagnostics = compare_khudaida_digitized_paper_to_package(figure=2)
+
+    assert diagnostics["dataset"] == "2026_Khudaida"
+    assert diagnostics["figure"] == 2
+    assert diagnostics["rows_compared"] == 8
+    assert diagnostics["finite_rows_compared"] == 8
+    assert diagnostics["source"] == "digitized_user_supplied"
+    assert diagnostics["package_source"] == "epcsaft_native_v5"
+    assert np.isfinite(diagnostics["organic_salt_free_grand_aad"])
+    assert np.isfinite(diagnostics["organic_salt_free_max_abs_error"])
+    assert diagnostics["organic_salt_free_max_abs_error"] >= diagnostics["organic_salt_free_grand_aad"]
+    assert diagnostics["rows"][0]["paper_epcsaft_tie_line"] == 1
+    assert {"water_abs_error", "ethanol_abs_error", "isobutanol_abs_error"} <= set(diagnostics["rows"][0])
+    json.dumps(diagnostics, allow_nan=False)
+
+
+def test_khudaida_digitized_paper_epcsaft_matrix_summary_covers_all_lle_figures() -> None:
+    diagnostics = summarize_khudaida_digitized_paper_matrix()
+
+    assert diagnostics["dataset"] == "2026_Khudaida"
+    assert diagnostics["figures"] == [2, 3, 4, 5, 6, 7]
+    assert diagnostics["missing_data"] == []
+    assert diagnostics["rows_compared"] == 39
+    assert 0 < diagnostics["finite_rows_compared"] <= diagnostics["rows_compared"]
+    assert diagnostics["package_missing_or_invalid_rows"] == diagnostics["rows_compared"] - diagnostics["finite_rows_compared"]
+    assert np.isfinite(diagnostics["max_organic_salt_free_grand_aad"])
+    assert np.isfinite(diagnostics["max_organic_salt_free_max_abs_error"])
+    assert diagnostics["decision"] in {
+        "package_matches_digitized_paper_epcsaft_on_salt_free_basis",
+        "package_differs_from_digitized_paper_epcsaft_on_salt_free_basis",
+    }
     json.dumps(diagnostics, allow_nan=False)
 
 
 def test_khudaida_solver_gate_reports_algorithm_or_thermo_failure() -> None:
     diagnostics = evaluate_khudaida_solver_gate(figure=2, tie_line=1, source="package")
 
-    assert diagnostics["source"] == "epcsaft_package"
+    assert diagnostics["source"] == "epcsaft_native_v5"
     assert np.isfinite(diagnostics["fixed_phase_residual_norm"])
     assert diagnostics["solver_outcome"] in {"accepted", "rejected"}
     assert diagnostics["acceptance_gate"] in {
@@ -131,7 +196,7 @@ def test_khudaida_unseeded_solver_gate_is_not_yet_an_acceptance_test() -> None:
 def test_khudaida_package_tieline_seeded_solver_gate_accepts_known_split() -> None:
     diagnostics = evaluate_khudaida_solver_gate(figure=2, tie_line=1, source="package", seeded=True)
 
-    assert diagnostics["source"] == "epcsaft_package"
+    assert diagnostics["source"] == "epcsaft_native_v5"
     assert diagnostics["fixed_phase_residual_norm"] <= 1.0e-6
     assert diagnostics["gibbs_delta"] < 0.0
     assert diagnostics["solver_outcome"] == "accepted"

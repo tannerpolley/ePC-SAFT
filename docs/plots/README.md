@@ -19,8 +19,9 @@ uv run python scripts/paper_validation/tools/serve_plot_gallery.py
 ```
 
 The server serves `docs/plots/index.html` at `http://127.0.0.1:8765/` by default, or the next available port if that port is already busy.
+Browser refreshes are treated like a lightweight dev-server refresh: the server rebuilds the root gallery index when `/` or `/index.html` is requested and sends no-cache headers for the static PNG/SVG/CSV assets. Use `--no-auto-build` only when you intentionally want to serve the current files without refresh-time index rebuilding.
 
-In the Codex app, use the docs environment action `Serve Plot Gallery (Rebuild)` to rebuild and serve the gallery, then open the printed `http://127.0.0.1:<port>/` URL with Browser Use. Use `Serve Plot Gallery (Existing)` when you only want to reopen the existing `index.html` without rebuilding.
+In the Codex app, use the docs environment action `Serve Plot Gallery (Rebuild)` to rebuild and serve the gallery, then open the printed `http://127.0.0.1:<port>/` URL with Browser Use. Use `Serve Plot Gallery (Existing)` when you only want to skip the startup rebuild; the normal server still refreshes the root index on browser reload unless `--no-auto-build` is passed.
 
 Folder roles:
 
@@ -30,10 +31,10 @@ Folder roles:
 
 Plot notation conventions:
 
-- Use proper thermodynamic/math notation whenever a standard symbol exists. Prefer Matplotlib/Plotly LaTeX-style labels over plain text labels like `h-res`, `A-res`, `rho`, `fugacity coefficient`, or `activity coefficient`.
+- Use proper thermodynamic/math notation whenever a standard symbol exists. Prefer Matplotlib LaTeX-style labels over plain text labels like `h-res`, `A-res`, `rho`, `fugacity coefficient`, or `activity coefficient`.
 - Common labels should use forms such as `r"$A^{res}$"`, `r"$h^{res}$"`, `r"$g^{res}$"`, `r"$s^{res}$"`, `r"$\rho$"`, `r"$Z$"`, `r"$\phi_i$"` or `r"$\varphi_i$"` for fugacity coefficient, `r"$\gamma_i$"` / `r"$\gamma_{\pm}$"` for activity coefficients, `r"$\mu_i^{res}$"` for residual chemical potential, and `r"$\epsilon_r$"` for relative permittivity.
 - Keep units outside the math expression where practical, for example `r"$\rho$ / mol m$^{-3}$"` or `r"$P$ / Pa"`.
-- Apply this to plot titles, axes, legends, colorbars, hover labels, and generated interactive companions. If a reproduced paper figure uses a specific published notation, follow the paper unless it makes the project plot unclear.
+- Apply this to plot titles, axes, legends, and colorbars. If a reproduced paper figure uses a specific published notation, follow the paper unless it makes the project plot unclear.
 
 To rebuild the gallery bundle for one source test that has an explicit plot recipe:
 
@@ -41,13 +42,13 @@ To rebuild the gallery bundle for one source test that has an explicit plot reci
 uv run python scripts/build_test_plot_gallery.py tests/equilibrium/test_electrolyte_lle.py
 ```
 
-The command resolves the source test through `tests/plots/plot_registry.py`, runs the registered plot-producing pytest target, validates that every affected PNG under `docs/plots/tests/**` has a sibling `data/<stem>_plot_data.csv`, creates missing SVG and HTML companions, refreshes `docs/plots/index.html`, and rewrites `docs/plots/plotly_companion_report.csv`. Numeric CSV rows become Plotly HTML; non-numeric placeholder rows get a static HTML/SVG wrapper so the plot stays visible in the gallery. Unregistered tests fail with a recipe snippet instead of generating placeholder scientific plots.
+The command resolves the source test through `tests/plots/plot_registry.py`, runs the registered plot-producing pytest target, validates that every affected PNG under `docs/plots/tests/**` has a sibling `data/<stem>_plot_data.csv`, creates missing SVG companions, refreshes `docs/plots/index.html`, and rewrites `docs/plots/plot_asset_report.csv`. Numeric CSV rows can be rendered back into PNG/SVG with `scripts/paper_validation/tools/render_plot_data_csv.py`; non-numeric placeholder rows fail clearly instead of generating placeholder scientific plots.
 
 Useful options:
 
 ```powershell
 uv run python scripts/build_test_plot_gallery.py tests/equilibrium --dry-run
-uv run python scripts/build_test_plot_gallery.py tests/equilibrium/test_electrolyte_lle.py --force-html
+uv run python scripts/build_test_plot_gallery.py tests/equilibrium/test_electrolyte_lle.py --force-render
 uv run python scripts/build_test_plot_gallery.py --all
 ```
 

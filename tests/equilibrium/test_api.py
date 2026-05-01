@@ -88,7 +88,6 @@ def test_equilibrium_phase_exposes_explicit_ln_fugacity_alias() -> None:
     ("kwargs", "match"),
     [
         ({"kind": "bubble_point", "T": 220.0, "P": 1.0e5, "z": [0.1, 0.3, 0.6]}, "Only kind='tp_flash'"),
-        ({"kind": "tp_flash", "T": 220.0, "P": 1.0e5, "z": [0.1, 0.3, 0.6], "backend": "native"}, "backend"),
         ({"kind": "tp_flash", "P": 1.0e5, "z": [0.1, 0.3, 0.6]}, "T"),
         ({"kind": "tp_flash", "T": 220.0, "z": [0.1, 0.3, 0.6]}, "P"),
         ({"kind": "tp_flash", "T": 220.0, "P": 1.0e5}, "z"),

@@ -1,0 +1,10 @@
+{
+  "name": "khudaida_2026",
+  "parameter_dataset": "2026_Khudaida",
+  "species": ["H2O", "Ethanol", "Butanol", "Na+", "Cl-"],
+  "formula_species": ["H2O", "Ethanol", "Isobutanol", "NaCl"],
+  "pressure_Pa": 100000.0,
+  "composition_basis": "formula mole fraction for fixture rows; expanded explicit-ion mole fraction for native calls",
+  "source": "Khudaida et al. 2026 paper-validation tables and digitized feed points already curated in scripts/paper_validation/2026_Khudaida_analysis",
+  "gate_level": "report_plus_smoke"
+}
