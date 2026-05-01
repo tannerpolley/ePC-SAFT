@@ -1022,9 +1022,13 @@ def plot_lle_figure(fig_dir: Path, figure_number: int, temperature_k: float, sal
     valid_model_rows = [row for row in model_rows if np.all(np.isfinite(row["organic_formula"])) and np.all(np.isfinite(row["aqueous_formula"]))]
     _plot_tie_lines(ax, valid_model_rows, RED, "o", "ePC-SAFT", linestyle="--")
     _plot_feed_points(ax, feed_rows)
+    if valid_model_rows:
+        model_caption = f"red dashed (accepted native ePC-SAFT, {len(valid_model_rows)}/{len(model_rows)} tie-lines)"
+    else:
+        model_caption = "native ePC-SAFT rejected all model tie-lines; no red model tie-lines are drawn"
     add_figure_caption(
         fig,
-        f"Figure {figure_number}. LLE for the system water + ethanol + isobutanol + {int(round(salt_wt * 100))} wt % NaCl at {temperature_k:.2f} K and atmospheric pressure expressed as salt-free composition: black (exp), red (ePC-SAFT), and green (feed compositions).",
+        f"Figure {figure_number}. LLE for the system water + ethanol + isobutanol + {int(round(salt_wt * 100))} wt % NaCl at {temperature_k:.2f} K and atmospheric pressure expressed as salt-free composition: black (exp), {model_caption}, and green (feed compositions).",
     )
     save_figure(fig, fig_dir / f"figure_{figure_number}.png")
     plt.close(fig)
@@ -1050,7 +1054,7 @@ def plot_lle_figure(fig_dir: Path, figure_number: int, temperature_k: float, sal
     _plot_feed_points(ax_scaled, feed_rows, xy_transform=scaled_xy_transform)
     add_figure_caption(
         fig_scaled,
-        f"Figure {figure_number} (scaled). LLE for the system water + ethanol + isobutanol + {int(round(salt_wt * 100))} wt % NaCl at {temperature_k:.2f} K and atmospheric pressure expressed as salt-free composition, zoomed to the water-rich corner: black (exp), red (ePC-SAFT), and green (feed compositions).",
+        f"Figure {figure_number} (scaled). LLE for the system water + ethanol + isobutanol + {int(round(salt_wt * 100))} wt % NaCl at {temperature_k:.2f} K and atmospheric pressure expressed as salt-free composition, zoomed to the water-rich corner: black (exp), {model_caption}, and green (feed compositions).",
     )
     save_figure(fig_scaled, fig_dir / f"figure_{figure_number}_scaled.png")
     plt.close(fig_scaled)
