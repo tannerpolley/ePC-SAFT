@@ -21,7 +21,9 @@ from .regression import FitBounds
 from .regression import FitProblem
 from .regression import FitResult
 from .regression import FitTerm
+from .regression import fit_binary_pair
 from .regression import fit_pure_neutral
+from .regression import fit_pure_ion
 from .regression import load_regression_records
 from .regression import write_fit_result
 
@@ -44,7 +46,9 @@ __all__ = [
     "FitProblem",
     "FitResult",
     "FitTerm",
+    "fit_binary_pair",
     "fit_pure_neutral",
+    "fit_pure_ion",
     "get_prop_dict",
     "load_regression_records",
     "molality_to_molefraction",
