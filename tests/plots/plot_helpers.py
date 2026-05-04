@@ -66,7 +66,7 @@ def methanol_cyclohexane_mixture() -> ePCSAFTMixture:
 
 
 def assert_plot_with_data(path: Path) -> None:
-    csv_path = path.parent / "data" / f"{path.stem}_plot_data.csv"
+    csv_path = path.parent / f"{path.stem}_plot_data.csv"
     svg_path = path.with_suffix(".svg")
     assert path.exists()
     assert svg_path.exists()

@@ -87,11 +87,11 @@ print(state.ares(return_contribution_terms=True)["terms"]["hc"])
 
 ## Public API
 
-The main entry points are `ePCSAFTMixture`, `ePCSAFTState`, `create_parameter_template`, `fit_pure_neutral(...)`, and the structured result objects returned by solver-style methods.
+The main entry points are `ePCSAFTMixture`, `ePCSAFTState`, `create_parameter_template`, `fit_pure_neutral(...)`, `fit_pure_ion(...)`, `fit_binary_pair(...)`, and the structured result objects returned by solver-style methods.
 
 `create_parameter_template(...)` creates a blank dataset folder with the expected `pure/`, `mixed/`, and `user_options.json` layout. After you fill in the files, `ePCSAFTMixture.from_dataset(...)` can load the folder path you created yourself.
 
-Phase 1 of the regression workflow is intentionally narrow: `fit_pure_neutral(...)` fits only nonassociating neutral-component `m`, `s`, and `e` against liquid-density and vapor-pressure data. Use `write_fit_result(...)` when you want to persist a fit back into a user-owned dataset folder. Ion and binary regression are deferred for now.
+The regression workflow is record-driven: `fit_pure_neutral(...)` fits nonassociating neutral-component `m`, `s`, and `e`; `fit_pure_ion(...)` fits ion `s`/`e` and optional `d_born`; and `fit_binary_pair(...)` fits V1 VLE `k_ij` values. Use `write_fit_result(...)` when you want to persist a fit back into a user-owned dataset folder.
 
 ## Documentation
 

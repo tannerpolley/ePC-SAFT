@@ -6,8 +6,8 @@ This script validates MIAC datasets using parameter sets from the packaged
 Experimental data source is canonical `data/MIAC/**` with `miac` and `miac_m` values.
 
 It writes fit plots to:
-  docs/plots/fits/miac/<solvent_system>/miac_m/maic_m_<solvent_system>_<rank>_<Salt>[_composition].png
-  docs/plots/fits/miac/<solvent_system>/miac/miac_<solvent_system>_<rank>_<Salt>[_composition].png
+  scripts/fits/out/miac/<solvent_system>/miac_m/maic_m_<solvent_system>_<rank>_<Salt>[_composition].png
+  scripts/fits/out/miac/<solvent_system>/miac/miac_<solvent_system>_<rank>_<Salt>[_composition].png
 """
 
 from __future__ import annotations

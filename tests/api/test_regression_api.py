@@ -9,24 +9,24 @@ import epcsaft
 import numpy as np
 import pytest
 
+from epcsaft import ePCSAFTMixture
 from epcsaft import FitProblem
 from epcsaft import FitResult
 from epcsaft import create_parameter_template
 from epcsaft import fit_pure_neutral
+from epcsaft import molality_to_molefraction
 from epcsaft import write_fit_result
 from epcsaft._types import InputError
 from epcsaft.regression import _debug_native_pure_neutral_objective
 from epcsaft.regression import _fit_pure_neutral_least_squares_internal
-from epcsaft.regression import fit_binary_pair
-from epcsaft.regression import fit_pure_ion
 from tests.helpers.regression_cases import _methane_like_records
 from tests.helpers.regression_cases import _minimal_neutral_metadata
 
 
-def test_public_regression_surface_is_neutral_only():
+def test_public_regression_surface_includes_ion_and_binary_v1():
     assert hasattr(epcsaft, "fit_pure_neutral")
-    assert not hasattr(epcsaft, "fit_pure_ion")
-    assert not hasattr(epcsaft, "fit_binary_pair")
+    assert hasattr(epcsaft, "fit_pure_ion")
+    assert hasattr(epcsaft, "fit_binary_pair")
 
 
 def test_fit_pure_neutral_requires_pressure_for_density_records():
@@ -149,30 +149,140 @@ def test_public_pure_neutral_regression_is_robust_to_distinct_initial_guesses(in
 
 
 
-@pytest.mark.parametrize(
-    "fn, kwargs",
-    [
-        (
-            fit_pure_ion,
+def _nacl_records(*, user_options=None):
+    species = ["H2O", "Na+", "Cl-"]
+    records = []
+    for molality in (0.1, 0.2):
+        x = molality_to_molefraction(molality, species=species, solvent="H2O")
+        mixture = ePCSAFTMixture.from_dataset("2026_Khudaida", species, x, 298.15, user_options=user_options)
+        state = mixture.state(298.15, x, P=101325.0, phase="liq")
+        miac = state.activity_coefficient(species=species, mean_ionic_form=True, basis="molality")
+        records.append(
             {
-                "records": [{"T": 298.15, "P": 1.0e5}],
-                "component": "Na+",
-                "dataset": "2012_Held",
+                "T": 298.15,
+                "P": 101325.0,
+                "molality": molality,
+                "osmotic_coefficient": float(state.osmotic_coefficient()[0]),
+                "mean_ionic_activity": float(miac["Na+Cl-"]),
+            }
+        )
+    return records
+
+
+def test_fit_pure_ion_requires_composition_and_activity_or_osmotic_records():
+    with pytest.raises(InputError, match="composition"):
+        epcsaft.fit_pure_ion(
+            [{"T": 298.15, "P": 101325.0, "osmotic_coefficient": 0.93}],
+            "Na+",
+            dataset="2026_Khudaida",
+        )
+
+    with pytest.raises(InputError, match="osmotic|mean-ionic|mean ionic"):
+        epcsaft.fit_pure_ion(
+            [{"T": 298.15, "P": 101325.0, "molality": 0.1}],
+            "Na+",
+            dataset="2026_Khudaida",
+            species=["H2O", "Na+", "Cl-"],
+            solvent="H2O",
+        )
+
+
+def test_fit_pure_ion_default_s_e_bounds_and_deterministic_multistart():
+    result = epcsaft.fit_pure_ion(
+        _nacl_records(),
+        "Na+",
+        dataset="2026_Khudaida",
+        species=["H2O", "Na+", "Cl-"],
+        solvent="H2O",
+        initial_guess={"s": 2.6, "e": 210.0},
+        bounds={"s": (2.4, 3.2), "e": (150.0, 300.0)},
+        multistart=3,
+    )
+    repeat = epcsaft.fit_pure_ion(
+        _nacl_records(),
+        "Na+",
+        dataset="2026_Khudaida",
+        species=["H2O", "Na+", "Cl-"],
+        solvent="H2O",
+        initial_guess={"s": 2.6, "e": 210.0},
+        bounds={"s": (2.4, 3.2), "e": (150.0, 300.0)},
+        multistart=3,
+    )
+
+    assert result.success, result.message
+    assert result.backend == "least_squares_python"
+    assert result.problem.mode == "pure_ion"
+    assert result.problem.fit_targets == ("s", "e")
+    assert result.metrics_by_term["osmotic_coefficient"] < 1.0e-3
+    assert result.metrics_by_term["mean_ionic_activity"] < 2.0e-3
+    assert result.fitted_values == pytest.approx(repeat.fitted_values, rel=0.0, abs=1.0e-12)
+
+
+def test_fit_pure_ion_accepts_d_born_and_born_user_options():
+    user_options = {
+        "elec_model": {
+            "rel_perm": {"rule": "empirical", "differential_mode": "numerical"},
+            "born_model": {
+                "d_Born_mode": 3,
+                "solvation_shell_model": True,
+                "dielectric_saturation": True,
+                "mu_born_model": {"differential_mode": "numerical", "comp_dep_delta_d": True},
             },
-        ),
-        (
-            fit_binary_pair,
-            {
-                "records": [{"T": 360.0, "P": 1.0e5}],
-                "pair": ["Benzene", "Toluene"],
-                "dataset": "2012_Held",
-            },
-        ),
-    ],
-)
-def test_deferred_regression_workflows_raise(fn, kwargs):
-    with pytest.raises(NotImplementedError, match="Phase 1 supports only neutral-component fitting of m, s, and e"):
-        fn(**kwargs)
+        }
+    }
+    result = epcsaft.fit_pure_ion(
+        _nacl_records(user_options=user_options),
+        "Na+",
+        dataset="2026_Khudaida",
+        species=["H2O", "Na+", "Cl-"],
+        solvent="H2O",
+        fit_targets=("d_born",),
+        initial_guess={"d_born": 3.2},
+        bounds={"d_born": (2.0, 5.0)},
+        user_options=user_options,
+    )
+
+    assert result.success, result.message
+    assert result.backend == "least_squares_python"
+    assert result.problem.fit_targets == ("d_born",)
+    assert result.metrics_by_term["osmotic_coefficient"] < 1.0e-3
+
+
+def test_fit_binary_pair_vle_kij_only_and_rejects_future_targets():
+    records = [
+        {"T": 330.0, "P": 101325.0, "x_H2O": 0.7, "x_Ethanol": 0.3, "y_H2O": 0.5, "y_Ethanol": 0.5},
+        {"T": 340.0, "P": 101325.0, "x_H2O": 0.6, "x_Ethanol": 0.4, "y_H2O": 0.4, "y_Ethanol": 0.6},
+    ]
+    result = epcsaft.fit_binary_pair(
+        records,
+        ("H2O", "Ethanol"),
+        dataset="2026_Khudaida",
+        initial_guess={"k_ij": -0.02},
+        bounds={"k_ij": (-0.2, 0.2)},
+        multistart=2,
+    )
+
+    assert result.success, result.message
+    assert result.backend == "least_squares_python"
+    assert result.problem.mode == "binary_pair"
+    assert result.problem.fit_targets == ("k_ij",)
+    assert set(result.fitted_values) == {"k_ij"}
+    assert "binary_vle_fugacity_balance" in result.metrics_by_term
+
+    with pytest.raises(InputError, match="k_ij"):
+        epcsaft.fit_binary_pair(
+            records,
+            ("H2O", "Ethanol"),
+            dataset="2026_Khudaida",
+            fit_targets=("l_ij",),
+        )
+    with pytest.raises(InputError, match="temperature_model"):
+        epcsaft.fit_binary_pair(
+            records,
+            ("H2O", "Ethanol"),
+            dataset="2026_Khudaida",
+            temperature_model="linear",
+        )
 
 
 def test_write_fit_result_updates_only_target_pure_row(tmp_path):
@@ -203,3 +313,53 @@ def test_write_fit_result_updates_only_target_pure_row(tmp_path):
     assert other_row["m"] == ""
     assert other_row["s"] == ""
     assert other_row["e"] == ""
+
+
+def test_write_fit_result_updates_ion_row_and_binary_matrix_symmetrically(tmp_path):
+    ion_root = create_parameter_template(tmp_path, "ion_case", ["H2O", "Na+"])
+    ion_result = FitResult(
+        problem=FitProblem(
+            mode="pure_ion",
+            component="Na+",
+            fit_targets=("s", "e"),
+            optimization_parameters=("s", "e"),
+        ),
+        fitted_values={"s": 2.84, "e": 231.2},
+        rendered_values={"s": 2.84, "e": 231.2},
+        success=True,
+    )
+
+    written = write_fit_result(ion_result, ion_root, overwrite=False)
+    assert written == [ion_root / "pure" / "water.csv"]
+    with (ion_root / "pure" / "water.csv").open("r", encoding="utf-8-sig", newline="") as handle:
+        ion_rows = list(csv.DictReader(handle))
+    ion_row = next(row for row in ion_rows if row["component"] == "Na+")
+    assert ion_row["s"] == "2.84"
+    assert ion_row["e"] == "231.2"
+
+    binary_root = create_parameter_template(tmp_path, "binary_case", ["H2O", "Ethanol"])
+    binary_result = FitResult(
+        problem=FitProblem(
+            mode="binary_pair",
+            pair=("H2O", "Ethanol"),
+            fit_targets=("k_ij",),
+            optimization_parameters=("k_ij",),
+        ),
+        fitted_values={"k_ij": -0.06167},
+        rendered_values={"k_ij": -0.06167},
+        success=True,
+    )
+
+    written = write_fit_result(binary_result, binary_root, overwrite=False)
+    assert written == [binary_root / "mixed" / "binary_interaction" / "k_ij.csv"]
+    with (binary_root / "mixed" / "binary_interaction" / "k_ij.csv").open("r", encoding="utf-8-sig", newline="") as handle:
+        rows = list(csv.reader(handle))
+    header = rows[0]
+    h2o_col = header.index("H2O")
+    ethanol_col = header.index("Ethanol")
+    h2o_row = next(row for row in rows if row[0] == "H2O")
+    ethanol_row = next(row for row in rows if row[0] == "Ethanol")
+    assert h2o_row[ethanol_col] == "-0.06167"
+    assert ethanol_row[h2o_col] == "-0.06167"
+    with pytest.raises(InputError, match="overwrite"):
+        write_fit_result(binary_result, binary_root, overwrite=False)

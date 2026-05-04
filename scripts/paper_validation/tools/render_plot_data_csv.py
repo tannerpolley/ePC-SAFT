@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import math
 from collections import defaultdict
 from pathlib import Path
@@ -11,6 +10,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 class PlotDataRenderError(ValueError):
@@ -19,8 +19,8 @@ class PlotDataRenderError(ValueError):
 
 def _default_output_path(csv_path: Path) -> Path:
     stem = csv_path.stem
-    if stem.endswith("_plot_data") and csv_path.parent.name == "data":
-        return csv_path.parent.parent / f"{stem.removesuffix('_plot_data')}.png"
+    if stem.endswith("_plot_data"):
+        return csv_path.parent / f"{stem.removesuffix('_plot_data')}.png"
     return csv_path.with_suffix(".png")
 
 
@@ -40,8 +40,8 @@ def _float_cell(row: dict[str, str], field: str, *, required: bool = True) -> fl
 
 
 def _read_rows(csv_path: Path) -> list[dict[str, str]]:
-    with csv_path.open(newline="", encoding="utf-8") as handle:
-        return list(csv.DictReader(handle))
+    frame = pd.read_csv(csv_path, dtype=str, keep_default_na=False)
+    return frame.to_dict(orient="records")
 
 
 def _axes_key(row: dict[str, str]) -> int:

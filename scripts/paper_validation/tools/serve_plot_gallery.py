@@ -11,6 +11,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PLOTS_ROOT = REPO_ROOT / "docs" / "plots"
+GALLERY_INDEX = PLOTS_ROOT / "index.html"
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
@@ -45,21 +46,24 @@ class PlotGalleryRequestHandler(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def send_head(self):
-        if self.auto_build and self.path.split("?", 1)[0] in {"/", "/index.html"}:
+        request_path = self.path.split("?", 1)[0]
+        if self.auto_build and request_path in {"/", "/index.html", "/docs/plots/", "/docs/plots/index.html"}:
             try:
                 build_gallery()
             except Exception as exc:  # pragma: no cover - exercised through manual server use.
                 self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR, f"Could not rebuild plot gallery: {exc}")
                 return None
+            if request_path in {"/", "/index.html"}:
+                self.path = "/docs/plots/index.html"
         return super().send_head()
 
 
 def serve_gallery(host: str, port: int, *, auto_build: bool = True) -> None:
-    handler = partial(PlotGalleryRequestHandler, directory=str(PLOTS_ROOT), auto_build=auto_build)
+    handler = partial(PlotGalleryRequestHandler, directory=str(REPO_ROOT), auto_build=auto_build)
     server = ThreadingHTTPServer((host, port), handler)
-    url = f"http://{host}:{port}/"
+    url = f"http://{host}:{port}/docs/plots/index.html"
     print(f"Serving ePC-SAFT plot gallery at {url}", flush=True)
-    print(f"Root index: {PLOTS_ROOT / 'index.html'}", flush=True)
+    print(f"Root index: {GALLERY_INDEX}", flush=True)
     if auto_build:
         print("Auto-rebuilding root index on browser refresh.", flush=True)
     print("Press Ctrl+C to stop.", flush=True)

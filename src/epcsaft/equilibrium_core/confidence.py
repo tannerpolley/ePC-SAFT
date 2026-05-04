@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 import numpy as np
+import pandas as pd
 
 from epcsaft._types import SolutionError
 from epcsaft.epcsaft import ePCSAFTMixture
@@ -24,7 +25,7 @@ from epcsaft.equilibrium import _phase_state
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 BENCHMARK_ROOT = REPO_ROOT / "data" / "equilibrium_benchmarks" / "electrolyte_lle"
-DEFAULT_OUTPUT_ROOT = REPO_ROOT / "build" / "equilibrium_confidence"
+DEFAULT_OUTPUT_ROOT = Path(__file__).resolve().parent / "out"
 PRESSURE_PA = 100000.0
 FORMULA_SPECIES = ("H2O", "Ethanol", "Butanol", "NaCl")
 EXPLICIT_SPECIES = ("H2O", "Ethanol", "Butanol", "Na+", "Cl-")
@@ -895,7 +896,7 @@ def _all_tielines_plot(path: Path, predictions: Sequence[BenchmarkPrediction]) -
     fig.savefig(path.with_suffix(".svg"))
     plt.close(fig)
     _write_csv(
-        path.parent / "data" / f"{path.stem}_plot_data.csv",
+        path.parent / f"{path.stem}_plot_data.csv",
         ["case_key", "figure", "tie_line", "point_type", "status", "x_water", "x_ethanol", "x_isobutanol", "x_nacl"],
         rows,
     )
@@ -921,7 +922,7 @@ def _write_plot_data(path: Path, series_rows: Sequence[tuple[str, Sequence[str],
     for series, labels, values in series_rows:
         for label, value in zip(labels, values):
             rows.append({"plot": path.name, "series": series, "label": label, "value": value})
-    _write_csv(path.parent / "data" / f"{path.stem}_plot_data.csv", ["plot", "series", "label", "value"], rows)
+    _write_csv(path.parent / f"{path.stem}_plot_data.csv", ["plot", "series", "label", "value"], rows)
 
 
 def _write_report_index(report: ConfidenceReport) -> None:
@@ -944,25 +945,14 @@ def _write_report_index(report: ConfidenceReport) -> None:
 
 
 def _write_gallery_copies(report: ConfidenceReport) -> None:
-    gallery_dir = REPO_ROOT / "docs" / "plots" / "tests" / "equilibrium" / "electrolyte_lle_confidence"
-    gallery_dir.mkdir(parents=True, exist_ok=True)
-    for path in (report.residual_gate_plot, report.error_plot, report.all_tielines_plot, report.continuation_plot, report.sensitivity_plot):
-        target = gallery_dir / path.name
-        target.write_bytes(path.read_bytes())
-        target.with_suffix(".svg").write_bytes(path.with_suffix(".svg").read_bytes())
-        source_csv = path.parent / "data" / f"{path.stem}_plot_data.csv"
-        target_csv = gallery_dir / "data" / f"{path.stem}_plot_data.csv"
-        target_csv.parent.mkdir(parents=True, exist_ok=True)
-        target_csv.write_text(source_csv.read_text(encoding="utf-8"), encoding="utf-8")
+    # The gallery now indexes package-local out folders directly.
+    return None
 
 
 def _write_csv(path: Path, fieldnames: Sequence[str], rows: Iterable[Mapping[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(fieldnames))
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({key: _csv_value(row.get(key, "")) for key in fieldnames})
+    frame = pd.DataFrame([{key: _csv_value(row.get(key, "")) for key in fieldnames} for row in rows], columns=list(fieldnames))
+    frame.to_csv(path, index=False)
 
 
 def _csv_value(value: Any) -> Any:

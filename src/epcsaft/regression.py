@@ -9,9 +9,11 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 import numpy as np
+from scipy.optimize import least_squares
 
 from ._types import InputError
 from ._types import phase_to_int
+from .epcsaft import ePCSAFTMixture
 from .epcsaft import _fit_pure_neutral_native_least_squares
 from .epcsaft import _fit_pure_neutral_native_debug
 from .parameter_templates import _infer_pure_template_name
@@ -24,6 +26,7 @@ from .parameters import _normalize_component
 from .parameters import _resolve_component_field_with_source
 from .parameters import _solvent_token_for_component
 from .parameters import get_prop_dict
+from .parameters import molality_to_molefraction
 
 
 PURE_NEUTRAL_MODE = "pure_neutral"
@@ -628,7 +631,11 @@ def _pure_neutral_density_molar(record: Mapping[str, Any], molecular_weight: flo
 
 
 def _build_pure_ion_terms(records: Sequence[dict[str, Any]]) -> tuple[FitTerm, ...]:
-    density_records = [record for record in records if _value_from_record(record, "rho", required=False) is not None]
+    density_records = [
+        record
+        for record in records
+        if _value_from_record(record, *PURE_DENSITY_KEYS_MOLAR, *PURE_DENSITY_KEYS_MASS, required=False) is not None
+    ]
     osmotic_records = [
         record
         for record in records
@@ -646,14 +653,14 @@ def _build_pure_ion_terms(records: Sequence[dict[str, Any]]) -> tuple[FitTerm, .
         )
         is not None
     ]
-    if not density_records:
-        raise InputError("pure_ion regression requires density records with a 'rho' value.")
     if not osmotic_records and not miac_records:
         raise InputError("pure_ion regression requires osmotic and/or mean-ionic activity records.")
     _require_record_value(density_records, PURE_ION_MODE, "P")
     _require_record_value(osmotic_records, PURE_ION_MODE, "P")
     _require_record_value(miac_records, PURE_ION_MODE, "P")
-    terms = [_term_summary(density_records, TERM_DENSITY, 1.0, len(density_records))]
+    terms: list[FitTerm] = []
+    if density_records:
+        terms.append(_term_summary(density_records, TERM_DENSITY, 1.0, len(density_records)))
     if osmotic_records:
         terms.append(_term_summary(osmotic_records, TERM_OSMOTIC, 1.0, len(osmotic_records)))
     if miac_records:
@@ -666,16 +673,14 @@ def _build_binary_terms(records: Sequence[dict[str, Any]]) -> tuple[FitTerm, ...
     lle_records = [
         record for record in records if _prefixed_species_values(record, "x_alpha_") and _prefixed_species_values(record, "x_beta_")
     ]
-    if not vle_records and not lle_records:
-        raise InputError("binary_pair regression requires VLE records with y_* columns and/or LLE records with x_alpha_* and x_beta_* columns.")
-    _require_record_value(vle_records, BINARY_PAIR_MODE, "P")
-    _require_record_value(lle_records, BINARY_PAIR_MODE, "P")
-    terms: list[FitTerm] = []
-    if vle_records:
-        terms.append(_term_summary(vle_records, TERM_BINARY_VLE, 1.0, 2 * len(vle_records)))
     if lle_records:
-        terms.append(_term_summary(lle_records, TERM_BINARY_LLE, 1.0, 2 * len(lle_records)))
-    return tuple(terms)
+        raise InputError("binary_pair V1 supports only VLE x/y records; LLE records are not supported yet.")
+    if not vle_records:
+        raise InputError("binary_pair regression requires VLE records with y_* columns.")
+    _require_record_value(vle_records, BINARY_PAIR_MODE, "P")
+    return (_term_summary(vle_records, TERM_BINARY_VLE, 1.0, 2 * len(vle_records)),)
+
+
 def _native_pure_neutral_solver_payload(
     normalized_records: Sequence[dict[str, Any]],
     normalized_component: str,
@@ -741,9 +746,353 @@ def _ensure_native_vector_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
     return normalized
 
 
-def _deferred_workflow_error(mode: str) -> NotImplementedError:
-    return NotImplementedError(
-        f"{mode} regression is deferred. Phase 1 supports only neutral-component fitting of m, s, and e."
+def _normalize_species_list(species: Iterable[str] | None) -> tuple[str, ...] | None:
+    if species is None:
+        return None
+    normalized = tuple(_normalize_component(str(name)) for name in species)
+    if not normalized:
+        raise InputError("species must include at least one component.")
+    return normalized
+
+
+def _normalize_pair(pair: Sequence[str]) -> tuple[str, str]:
+    names = tuple(_normalize_component(str(name)) for name in pair)
+    if len(names) != 2:
+        raise InputError("binary_pair regression requires exactly two pair components.")
+    if names[0] == names[1]:
+        raise InputError("binary_pair regression requires two distinct pair components.")
+    return names
+
+
+def _record_has_molality(record: Mapping[str, Any]) -> bool:
+    return _value_from_record(record, "molality", "m_salt", "salt_molality", required=False) is not None
+
+
+def _ion_species_from_records(records: Sequence[Mapping[str, Any]], species: Iterable[str] | None) -> tuple[str, ...]:
+    normalized = _normalize_species_list(species)
+    if normalized is not None:
+        return normalized
+    if any(_prefixed_species_values(record, "x_") for record in records):
+        return _infer_species_union(records, ("x_",))
+    if any(_record_has_molality(record) for record in records):
+        raise InputError("molality-driven pure_ion records require explicit species and solvent arguments.")
+    raise InputError("pure_ion records require composition columns with prefix 'x_' or molality with species and solvent.")
+
+
+def _binary_species_from_records(
+    records: Sequence[Mapping[str, Any]],
+    pair: tuple[str, str],
+    species: Iterable[str] | None,
+) -> tuple[str, ...]:
+    normalized = _normalize_species_list(species)
+    inferred = _infer_species_union(records, ("x_", "y_"))
+    if normalized is None:
+        normalized = inferred
+    missing_pair = [name for name in pair if name not in normalized]
+    if missing_pair:
+        raise InputError(f"binary_pair species must include fitted pair components: {', '.join(missing_pair)}.")
+    missing_records = [name for name in normalized if name not in inferred]
+    if missing_records:
+        raise InputError(f"binary_pair VLE records are missing x_/y_ columns for: {', '.join(missing_records)}.")
+    return normalized
+
+
+def _ion_composition_from_record(record: Mapping[str, Any], species: Sequence[str], solvent: str | None) -> np.ndarray:
+    if _prefixed_species_values(record, "x_"):
+        return _composition_from_record(record, "x_", species)
+    molality = _float_from_record(record, "molality", "m_salt", "salt_molality", required=False)
+    if molality is None:
+        raise InputError("pure_ion records require composition columns with prefix 'x_' or a molality value.")
+    if solvent is None:
+        raise InputError("molality-driven pure_ion records require a solvent argument.")
+    try:
+        return np.asarray(molality_to_molefraction(molality, species=species, solvent=solvent), dtype=float)
+    except ValueError as exc:
+        raise InputError(str(exc)) from exc
+
+
+def _density_residual(state: Any, record: Mapping[str, Any]) -> tuple[str, float] | None:
+    rho_molar = _float_from_record(record, *PURE_DENSITY_KEYS_MOLAR, required=False)
+    if rho_molar is not None:
+        return TERM_DENSITY, _relative_residual(float(state.molar_density()), rho_molar)
+    rho_mass = _float_from_record(record, *PURE_DENSITY_KEYS_MASS, required=False)
+    if rho_mass is not None:
+        return TERM_DENSITY, _relative_residual(float(state.mass_density()), rho_mass)
+    return None
+
+
+def _build_mixture(
+    dataset: str | Path,
+    species: Sequence[str],
+    x: np.ndarray,
+    T: float,
+    user_options: Mapping[str, Any] | None,
+    *,
+    component: str | None = None,
+    component_values: Mapping[str, float] | None = None,
+    pair: tuple[str, str] | None = None,
+    binary_values: Mapping[str, float] | None = None,
+) -> ePCSAFTMixture:
+    params = get_prop_dict(dataset, species, x, T, user_options=_copy_mapping(user_options))
+    if component is not None and component_values is not None:
+        params = _apply_component_overrides(params, species, component, component_values)
+    if pair is not None and binary_values is not None:
+        params = _apply_binary_overrides(params, species, pair, binary_values)
+    return ePCSAFTMixture.from_params(params, species=species)
+
+
+def _least_squares_starts(theta0: np.ndarray, lower: np.ndarray, upper: np.ndarray, multistart: int) -> list[np.ndarray]:
+    starts = [np.clip(np.asarray(theta0, dtype=float), lower, upper)]
+    if int(multistart) <= 0:
+        return starts
+    finite = np.isfinite(lower) & np.isfinite(upper)
+    fractions = (0.25, 0.5, 0.75, 0.1, 0.9)
+    for fraction in fractions:
+        if len(starts) > int(multistart):
+            break
+        candidate = starts[0].copy()
+        candidate[finite] = lower[finite] + fraction * (upper[finite] - lower[finite])
+        starts.append(np.clip(candidate, lower, upper))
+    return starts
+
+
+def _run_python_least_squares(
+    residual_fn: Any,
+    theta0: np.ndarray,
+    lower: np.ndarray,
+    upper: np.ndarray,
+    multistart: int,
+) -> Any:
+    best = None
+    nfev = 0
+    for start in _least_squares_starts(theta0, lower, upper, multistart):
+        result = least_squares(residual_fn, start, bounds=(lower, upper))
+        nfev += int(result.nfev)
+        if best is None or float(result.cost) < float(best.cost):
+            best = result
+    assert best is not None
+    best.nfev = nfev
+    return best
+
+
+def _fit_pure_ion_internal(
+    records: Any,
+    component: str,
+    *,
+    dataset: str | Path,
+    solvent: str | None = None,
+    species: Iterable[str] | None = None,
+    fit_targets: Iterable[str] | None = None,
+    initial_guess: Mapping[str, float] | None = None,
+    bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
+    user_options: Mapping[str, Any] | None = None,
+    multistart: int = 0,
+) -> FitResult:
+    normalized_component = _normalize_component(component)
+    normalized_solvent = None if solvent is None else _normalize_component(solvent)
+    normalized_records = _normalize_records(records)
+    normalized_species = _ion_species_from_records(normalized_records, species)
+    if normalized_component not in normalized_species:
+        raise InputError(f"pure_ion species must include fitted component '{normalized_component}'.")
+    if normalized_solvent is not None and normalized_solvent not in normalized_species:
+        raise InputError(f"solvent '{normalized_solvent}' is not present in species.")
+
+    normalized_fit_targets = _normalize_fit_targets(PURE_ION_MODE, fit_targets)
+    unsupported = [target for target in normalized_fit_targets if target not in {"s", "e", "d_born"}]
+    if unsupported:
+        raise InputError("pure_ion V1 supports only the targets 's', 'e', and 'd_born'.")
+    terms = _build_pure_ion_terms(normalized_records)
+
+    T_ref = float(np.mean([_float_from_record(record, "T", required=True) for record in normalized_records]))
+    seed_payload, source_key = _pure_seed_payload(normalized_component, T_ref, "", dataset, None)
+    initial = _copy_mapping(initial_guess)
+    initial_map = {target: _seed_value(target, initial, seed_payload) for target in normalized_fit_targets}
+    optimization_names = _optimization_parameter_names(PURE_ION_MODE, normalized_fit_targets, "constant")
+    bounds_obj = _coerce_bounds(bounds)
+    lower, upper = bounds_obj.arrays_for(optimization_names)
+    theta0 = np.asarray([initial_map[name] for name in optimization_names], dtype=float)
+
+    def evaluate(theta: Sequence[float]) -> tuple[np.ndarray, dict[str, list[float]]]:
+        vector_map = _normalize_vector_map(optimization_names, theta)
+        raw_by_term: dict[str, list[float]] = {term.term_type: [] for term in terms}
+        scaled: list[float] = []
+        for term in terms:
+            scale = _family_scale(term)
+            for record in term.records:
+                T = _float_from_record(record, "T", required=True)
+                P = _float_from_record(record, "P", required=True)
+                assert T is not None and P is not None
+                x = _ion_composition_from_record(record, normalized_species, normalized_solvent)
+                phase = _value_from_record(record, "phase", required=False) or "liq"
+                mixture = _build_mixture(
+                    dataset,
+                    normalized_species,
+                    x,
+                    T,
+                    user_options,
+                    component=normalized_component,
+                    component_values=vector_map,
+                )
+                state = mixture.state(T, x, P=P, phase=phase)
+                if term.term_type == TERM_DENSITY:
+                    item = _density_residual(state, record)
+                    if item is None:
+                        continue
+                    _, residual = item
+                elif term.term_type == TERM_OSMOTIC:
+                    exp = _float_from_record(record, "osmotic_coefficient", "osmotic", required=True)
+                    residual = _relative_or_absolute_residual(float(state.osmotic_coefficient()[0]), float(exp))
+                elif term.term_type == TERM_MIAC:
+                    exp = _float_from_record(
+                        record,
+                        "mean_ionic_activity",
+                        "mean_ionic_activity_coefficient",
+                        "miac",
+                        required=True,
+                    )
+                    mapping = state.activity_coefficient(
+                        species=normalized_species,
+                        solvent=normalized_solvent,
+                        mean_ionic_form=True,
+                        basis=str(_value_from_record(record, "activity_basis", "miac_basis", required=False) or "molality"),
+                    )
+                    residual = _relative_or_absolute_residual(_best_pair_label(mapping, record), float(exp))
+                else:
+                    continue
+                raw_by_term[term.term_type].append(float(residual))
+                scaled.append(scale * float(residual))
+        return np.asarray(scaled, dtype=float), raw_by_term
+
+    result = _run_python_least_squares(lambda theta: evaluate(theta)[0], theta0, lower, upper, int(multistart))
+    vector_map = _normalize_vector_map(optimization_names, result.x)
+    final_scaled, raw_by_term = evaluate(result.x)
+    rendered = {name: float(vector_map[name]) for name in normalized_fit_targets}
+    problem = FitProblem(
+        mode=PURE_ION_MODE,
+        records=tuple(normalized_records),
+        component=normalized_component,
+        solvent=normalized_solvent,
+        dataset=_source_dataset_label(dataset),
+        fit_targets=normalized_fit_targets,
+        optimization_parameters=optimization_names,
+        fixed_parameters=seed_payload,
+        initial_guess=initial_map,
+        terms=terms,
+        pure_file_hint=f"{source_key}.csv" if source_key is not None else _infer_pure_template_name([normalized_component]),
+    )
+    return FitResult(
+        problem=problem,
+        fitted_values=vector_map,
+        rendered_values=rendered,
+        metrics_by_term=_family_metrics(raw_by_term),
+        cost=float(0.5 * np.dot(final_scaled, final_scaled)),
+        residual_norm=float(np.linalg.norm(final_scaled)),
+        success=bool(result.success),
+        status=int(result.status),
+        message=str(result.message),
+        nfev=int(result.nfev),
+        backend="least_squares_python",
+    )
+
+
+def _fit_binary_pair_internal(
+    records: Any,
+    pair: Sequence[str],
+    *,
+    dataset: str | Path,
+    species: Iterable[str] | None = None,
+    fit_targets: Iterable[str] | None = None,
+    temperature_model: str = "constant",
+    initial_guess: Mapping[str, float] | None = None,
+    bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
+    user_options: Mapping[str, Any] | None = None,
+    multistart: int = 0,
+) -> FitResult:
+    normalized_pair = _normalize_pair(pair)
+    normalized_records = _normalize_records(records)
+    normalized_species = _binary_species_from_records(normalized_records, normalized_pair, species)
+    normalized_temperature_model = _normalize_temperature_model(temperature_model)
+    if normalized_temperature_model != "constant":
+        raise InputError("binary_pair V1 supports only temperature_model='constant'.")
+    normalized_fit_targets = _normalize_fit_targets(BINARY_PAIR_MODE, fit_targets)
+    if normalized_fit_targets != ("k_ij",):
+        raise InputError("binary_pair V1 supports only the target 'k_ij'.")
+    terms = _build_binary_terms(normalized_records)
+
+    T_ref = float(np.mean([_float_from_record(record, "T", required=True) for record in normalized_records]))
+    current = {"k_ij": _matrix_value(_load_dataset(dataset), "k_ij", normalized_pair[0], normalized_pair[1], T_ref)}
+    initial_map = {}
+    for target in normalized_fit_targets:
+        initial_map.update(_binary_seed_value(target, normalized_temperature_model, _copy_mapping(initial_guess), current))
+    optimization_names = _optimization_parameter_names(BINARY_PAIR_MODE, normalized_fit_targets, normalized_temperature_model)
+    bounds_obj = _coerce_bounds(bounds)
+    lower, upper = bounds_obj.arrays_for(optimization_names)
+    theta0 = np.asarray([initial_map[name] for name in optimization_names], dtype=float)
+    pair_indices = tuple(normalized_species.index(name) for name in normalized_pair)
+
+    def evaluate(theta: Sequence[float]) -> tuple[np.ndarray, dict[str, list[float]]]:
+        vector_map = _normalize_vector_map(optimization_names, theta)
+        raw_by_term: dict[str, list[float]] = {term.term_type: [] for term in terms}
+        scaled: list[float] = []
+        for term in terms:
+            scale = _family_scale(term)
+            for record in term.records:
+                T = _float_from_record(record, "T", required=True)
+                P = _float_from_record(record, "P", required=True)
+                assert T is not None and P is not None
+                x_liq = _composition_from_record(record, "x_", normalized_species)
+                y_vap = _composition_from_record(record, "y_", normalized_species)
+                target_values = _binary_target_values(vector_map, normalized_fit_targets, normalized_temperature_model, T)
+                mixture = _build_mixture(
+                    dataset,
+                    normalized_species,
+                    x_liq,
+                    T,
+                    user_options,
+                    pair=normalized_pair,
+                    binary_values=target_values,
+                )
+                liquid = mixture.state(T, x_liq, P=P, phase="liq")
+                vapor = mixture.state(T, y_vap, P=P, phase="vap")
+                lnphi_liq = np.asarray(liquid.fugacity_coefficient(natural_log=True), dtype=float)
+                lnphi_vap = np.asarray(vapor.fugacity_coefficient(natural_log=True), dtype=float)
+                for index in pair_indices:
+                    residual = (
+                        _safe_log_fraction(float(x_liq[index]))
+                        + float(lnphi_liq[index])
+                        - _safe_log_fraction(float(y_vap[index]))
+                        - float(lnphi_vap[index])
+                    )
+                    raw_by_term[term.term_type].append(float(residual))
+                    scaled.append(scale * float(residual))
+        return np.asarray(scaled, dtype=float), raw_by_term
+
+    result = _run_python_least_squares(lambda theta: evaluate(theta)[0], theta0, lower, upper, int(multistart))
+    vector_map = _normalize_vector_map(optimization_names, result.x)
+    final_scaled, raw_by_term = evaluate(result.x)
+    problem = FitProblem(
+        mode=BINARY_PAIR_MODE,
+        records=tuple(normalized_records),
+        pair=normalized_pair,
+        dataset=_source_dataset_label(dataset),
+        fit_targets=normalized_fit_targets,
+        optimization_parameters=optimization_names,
+        initial_guess=initial_map,
+        temperature_model=normalized_temperature_model,
+        terms=terms,
+    )
+    return FitResult(
+        problem=problem,
+        fitted_values=vector_map,
+        rendered_values=_render_binary_values(vector_map, normalized_fit_targets, normalized_temperature_model),
+        metrics_by_term=_family_metrics(raw_by_term),
+        cost=float(0.5 * np.dot(final_scaled, final_scaled)),
+        residual_norm=float(np.linalg.norm(final_scaled)),
+        success=bool(result.success),
+        status=int(result.status),
+        message=str(result.message),
+        nfev=int(result.nfev),
+        backend="least_squares_python",
     )
 
 
@@ -1027,15 +1376,26 @@ def fit_pure_ion(
     *,
     dataset: str | Path,
     solvent: str | None = None,
+    species: Iterable[str] | None = None,
     fit_targets: Iterable[str] | None = None,
     initial_guess: Mapping[str, float] | None = None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
     user_options: Mapping[str, Any] | None = None,
     multistart: int = 0,
 ) -> FitResult:
-    """Deferred until a later regression phase."""
-
-    raise _deferred_workflow_error(PURE_ION_MODE)
+    """Fit ion pure-component parameters against electrolyte records."""
+    return _fit_pure_ion_internal(
+        records,
+        component,
+        dataset=dataset,
+        solvent=solvent,
+        species=species,
+        fit_targets=fit_targets,
+        initial_guess=initial_guess,
+        bounds=bounds,
+        user_options=user_options,
+        multistart=multistart,
+    )
 
 
 def fit_binary_pair(
@@ -1043,6 +1403,7 @@ def fit_binary_pair(
     pair: Sequence[str],
     *,
     dataset: str | Path,
+    species: Iterable[str] | None = None,
     fit_targets: Iterable[str] | None = None,
     temperature_model: str = "constant",
     initial_guess: Mapping[str, float] | None = None,
@@ -1050,9 +1411,19 @@ def fit_binary_pair(
     user_options: Mapping[str, Any] | None = None,
     multistart: int = 0,
 ) -> FitResult:
-    """Deferred until a later regression phase."""
-
-    raise _deferred_workflow_error(BINARY_PAIR_MODE)
+    """Fit V1 binary interaction parameters against VLE x/y records."""
+    return _fit_binary_pair_internal(
+        records,
+        pair,
+        dataset=dataset,
+        species=species,
+        fit_targets=fit_targets,
+        temperature_model=temperature_model,
+        initial_guess=initial_guess,
+        bounds=bounds,
+        user_options=user_options,
+        multistart=multistart,
+    )
 
 
 def _find_matching_pure_files(dataset_root: Path, component: str) -> list[Path]:
@@ -1195,7 +1566,8 @@ def write_fit_result(
         bi_dir = root / "mixed" / "binary_interaction"
         if not bi_dir.exists():
             raise FileNotFoundError(f"Dataset folder '{root}' does not contain mixed/binary_interaction/.")
-        assert problem.pair is not None
+        if problem.pair is None:
+            raise InputError("binary_pair fit results require problem.pair before writing.")
         for target in problem.fit_targets:
             path = bi_dir / MATRIX_FILE_NAMES[target]
             if not path.exists():

@@ -8,12 +8,24 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PLOTS_ROOT = REPO_ROOT / "docs" / "plots"
 
+def gallery_repo_root() -> Path:
+    if PLOTS_ROOT.name == "plots" and PLOTS_ROOT.parent.name == "docs":
+        return PLOTS_ROOT.parent.parent
+    return REPO_ROOT
+
+
+def asset_roots() -> tuple[Path, ...]:
+    root = gallery_repo_root()
+    return (root / "scripts", root / "tests", root / "src")
+
 
 def should_include_png(path: Path) -> bool:
-    parts_lower = tuple(part.lower() for part in path.relative_to(PLOTS_ROOT).parts)
+    parts_lower = tuple(part.lower() for part in path.parts)
     if "__pycache__" in parts_lower:
         return False
     if any(part.startswith("_tmp") for part in parts_lower):
+        return False
+    if "out" not in parts_lower:
         return False
     return True
 
@@ -23,11 +35,15 @@ def sort_key(path: Path) -> tuple[str, ...]:
 
 
 def collect_pngs(root: Path) -> list[Path]:
-    if not root.exists():
-        return []
+    roots = asset_roots() if root == PLOTS_ROOT else (root,)
+    pngs: list[Path] = []
+    for asset_root in roots:
+        if not asset_root.exists():
+            continue
+        pngs.extend(path for path in asset_root.rglob("out/**/*.png") if should_include_png(path))
     return sorted(
-        [path for path in root.rglob("*.png") if should_include_png(path)],
-        key=lambda path: sort_key(path.relative_to(root)),
+        pngs,
+        key=lambda path: sort_key(path.relative_to(REPO_ROOT)),
     )
 
 
@@ -45,17 +61,11 @@ def page_title() -> str:
 
 
 def _source_path_for_output(rel_path: str) -> str:
-    parts = rel_path.split("/")
-    if not parts:
+    parts = Path(rel_path).parts
+    if "out" not in parts:
         return rel_path
-    if parts[0] == "paper_validation" and len(parts) >= 2:
-        source_study = parts[1] if parts[1].endswith("_analysis") else f"{parts[1]}_analysis"
-        return "/".join(["scripts", "paper_validation", source_study, *parts[2:]])
-    if parts[0] == "fits":
-        return "/".join(["scripts", *parts])
-    if parts[0] == "tests":
-        return rel_path
-    return "/".join(["docs", "plots", *parts])
+    out_index = parts.index("out")
+    return Path(*parts[:out_index], *parts[out_index + 1 :]).as_posix()
 
 
 def _folder_for(path: str) -> str:
@@ -66,18 +76,20 @@ def _folder_for(path: str) -> str:
 def image_manifest(pngs: list[Path]) -> list[dict[str, str]]:
     manifest = []
     for png in pngs:
-        output_path = png.relative_to(PLOTS_ROOT).as_posix()
+        repo_root = gallery_repo_root()
+        output_path = png.relative_to(repo_root).as_posix()
+        asset_path = Path("../../") / output_path
         svg = png.with_suffix(".svg")
-        data = png.parent / "data" / f"{png.stem}_plot_data.csv"
+        data = png.parent / f"{png.stem}_plot_data.csv"
         source_path = _source_path_for_output(output_path)
         manifest.append(
             {
-                "path": output_path,
+                "path": asset_path.as_posix(),
                 "folder": _folder_for(source_path),
                 "output_path": output_path,
                 "output_folder": _folder_for(output_path),
-                "svg_path": svg.relative_to(PLOTS_ROOT).as_posix() if svg.exists() else "",
-                "data_path": data.relative_to(PLOTS_ROOT).as_posix() if data.exists() else "",
+                "svg_path": (Path("../../") / svg.relative_to(repo_root)).as_posix() if svg.exists() else "",
+                "data_path": (Path("../../") / data.relative_to(repo_root)).as_posix() if data.exists() else "",
                 "source_path": source_path,
                 "source_folder": _folder_for(source_path),
                 "name": png.name,
@@ -97,7 +109,7 @@ def _safe_json(data: object) -> str:
 def render_gallery_page(root: Path, pngs: list[Path]) -> str:
     manifest = image_manifest(pngs)
     title = page_title()
-    summary = f"{len(manifest)} PNG files under docs/plots. Select folders on the left to show every image in that subtree."
+    summary = f"{len(manifest)} PNG files under source-local out folders. Select folders on the left to show every image in that subtree."
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -577,13 +589,13 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
           imagePath.textContent = image.output_path;
           const actions = document.createElement("div");
           actions.className = "image-actions";
-          actions.append(makeAssetButton("PNG", image.output_path, image));
+          actions.append(makeAssetButton("PNG", image.path, image));
           actions.append(makeAssetButton("SVG", image.svg_path, image));
           actions.append(makeDataButton(image));
           const preview = document.createElement("div");
           preview.className = "plot-preview";
           const img = document.createElement("img");
-          img.src = image.output_path;
+          img.src = image.path;
           img.alt = image.title;
           preview.append(img);
           head.append(imageTitle, imagePath, actions);
@@ -653,9 +665,12 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
 
 
 def remove_stale_indexes() -> None:
-    for index_path in PLOTS_ROOT.rglob("index.html"):
-        if index_path != PLOTS_ROOT / "index.html":
-            index_path.unlink()
+    for root in (PLOTS_ROOT, *asset_roots()):
+        if not root.exists():
+            continue
+        for index_path in root.rglob("index.html"):
+            if index_path != PLOTS_ROOT / "index.html":
+                index_path.unlink()
 
 
 def main() -> None:

@@ -28,7 +28,7 @@ class CompanionResult:
 
 
 def _plot_data_path(png_path: Path) -> Path:
-    return png_path.parent / "data" / f"{png_path.stem}_plot_data.csv"
+    return png_path.parent / f"{png_path.stem}_plot_data.csv"
 
 
 def _png_dimensions(png_path: Path) -> tuple[int, int]:
@@ -125,7 +125,7 @@ def ensure_companions(plots_root: Path = PLOTS_ROOT, *, dry_run: bool = False) -
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Ensure every docs/plots PNG has CSV and SVG companions.")
+    parser = argparse.ArgumentParser(description="Ensure every source-local out PNG has CSV and SVG companions.")
     parser.add_argument("--root", type=Path, default=PLOTS_ROOT, help="Plot gallery root.")
     parser.add_argument("--dry-run", action="store_true", help="Report work without writing companions.")
     return parser
