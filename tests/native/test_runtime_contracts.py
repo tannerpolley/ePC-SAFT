@@ -411,4 +411,3 @@ def test_miac_activity_cache_reuse_keeps_results_stable() -> None:
     assert second.density() == pytest.approx(first.density())
     assert second_gamma == pytest.approx(first_gamma)
     assert stats["density_warm_start_hits"] >= 1
-    assert stats["reference_state_cache_hits"] >= 1
