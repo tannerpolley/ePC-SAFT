@@ -50,17 +50,17 @@ def _gallery_root(root: Path):
 
 
 def _plot_data_path(png_path: Path) -> Path:
-    return png_path.parent / "data" / f"{png_path.stem}_plot_data.csv"
+    return png_path.parent / f"{png_path.stem}_plot_data.csv"
 
 
-def _candidate_pngs(plots_root: Path, output_dirs: Iterable[str]) -> tuple[Path, ...]:
-    tests_root = plots_root / "tests"
+def _candidate_pngs(plots_root: Path, output_dirs: Iterable[str], *, repo_root: Path = REPO_ROOT) -> tuple[Path, ...]:
+    tests_root = repo_root / "tests" / "plots" / "out"
     pngs: list[Path] = []
     for output_dir in output_dirs:
         root = tests_root / output_dir
         if root.exists():
             pngs.extend(path for path in root.rglob("*.png") if "__pycache__" not in path.parts)
-    return tuple(sorted(set(pngs), key=lambda path: path.relative_to(plots_root).as_posix().lower()))
+    return tuple(sorted(set(pngs), key=lambda path: path.relative_to(repo_root).as_posix().lower()))
 
 
 def _missing_csvs(pngs: Iterable[Path]) -> list[Path]:
@@ -81,8 +81,8 @@ def _write_gallery_index(plots_root: Path, *, dry_run: bool) -> Path:
     return index_path
 
 
-def _write_report(plots_root: Path, *, dry_run: bool) -> Path:
-    report_path = plots_root / "plot_asset_report.csv"
+def _write_report(plots_root: Path, *, repo_root: Path = REPO_ROOT, dry_run: bool) -> Path:
+    report_path = repo_root / "tests" / "plots" / "out" / "plot_asset_report.csv"
     if dry_run:
         return report_path
     with _gallery_root(plots_root):
@@ -128,7 +128,7 @@ def build_gallery(
 
     _run_plot_producers(plot_targets, repo_root=repo_root, dry_run=dry_run, skip_pytest=skip_pytest)
 
-    pngs = _candidate_pngs(plots_root, output_dirs)
+    pngs = _candidate_pngs(plots_root, output_dirs, repo_root=repo_root)
     missing_csv = _missing_csvs(pngs)
     if missing_csv:
         missing = "\n".join(f"  - {path.as_posix()}" for path in missing_csv)
@@ -144,7 +144,7 @@ def build_gallery(
     )
 
     index_path = _write_gallery_index(plots_root, dry_run=dry_run)
-    report_path = _write_report(plots_root, dry_run=dry_run)
+    report_path = _write_report(plots_root, repo_root=repo_root, dry_run=dry_run)
 
     return GalleryBuildResult(
         recipe_count=len(selected_recipes),

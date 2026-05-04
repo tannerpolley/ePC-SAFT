@@ -37,7 +37,7 @@ def test_save_plot_figure_writes_csv_backing_data(tmp_path: Path) -> None:
     finally:
         plt.close(fig)
 
-    csv_path = tmp_path / "data" / "figure_plot_data.csv"
+    csv_path = tmp_path / "figure_plot_data.csv"
     svg_path = tmp_path / "figure.svg"
     assert output_path.exists()
     assert svg_path.exists()
@@ -59,7 +59,7 @@ def test_save_plot_figure_writes_csv_backing_data(tmp_path: Path) -> None:
 def test_test_plot_path_maps_test_file_to_docked_plots_folder(tmp_path: Path, monkeypatch) -> None:
     root = tmp_path / "plots"
     monkeypatch.setattr(plot_outputs, "PLOTS_ROOT", root)
-    monkeypatch.setattr(plot_outputs, "TEST_PLOTS_ROOT", root / "tests")
+    monkeypatch.setattr(plot_outputs, "TEST_PLOTS_ROOT", root / "tests" / "out")
 
     output_path = plot_outputs.test_plot_path("tests/plots/test_reference_comparison_outputs.py", "x.png")
     semantic_path = plot_outputs.test_plot_path(
@@ -68,8 +68,8 @@ def test_test_plot_path_maps_test_file_to_docked_plots_folder(tmp_path: Path, mo
         category=("properties", "residual_energy"),
     )
 
-    assert output_path == root / "tests" / "plots" / "reference_comparison_outputs" / "x.png"
-    assert semantic_path == root / "tests" / "properties" / "residual_energy" / "residual.png"
+    assert output_path == root / "tests" / "out" / "plots" / "reference_comparison_outputs" / "x.png"
+    assert semantic_path == root / "tests" / "out" / "properties" / "residual_energy" / "residual.png"
     assert output_path.parent.is_dir()
     assert semantic_path.parent.is_dir()
 
@@ -77,7 +77,7 @@ def test_test_plot_path_maps_test_file_to_docked_plots_folder(tmp_path: Path, mo
 def test_readable_plot_helper_wraps_dense_labels_without_clipping(tmp_path: Path, monkeypatch) -> None:
     root = tmp_path / "plots"
     monkeypatch.setattr(plot_outputs, "PLOTS_ROOT", root)
-    monkeypatch.setattr(plot_outputs, "TEST_PLOTS_ROOT", root / "tests")
+    monkeypatch.setattr(plot_outputs, "TEST_PLOTS_ROOT", root / "tests" / "out")
 
     labels = [
         "very long residual Helmholtz label",
@@ -117,8 +117,7 @@ def test_text_canvas_check_detects_clipped_labels() -> None:
 
 
 def test_render_plot_data_csv_writes_png_and_svg(tmp_path: Path) -> None:
-    csv_path = tmp_path / "data" / "example_plot_data.csv"
-    csv_path.parent.mkdir()
+    csv_path = tmp_path / "example_plot_data.csv"
     csv_path.write_text(
         "\n".join(
             [
@@ -141,8 +140,7 @@ def test_render_plot_data_csv_writes_png_and_svg(tmp_path: Path) -> None:
 
 
 def test_render_plot_data_csv_rejects_placeholder_rows(tmp_path: Path) -> None:
-    csv_path = tmp_path / "data" / "placeholder_plot_data.csv"
-    csv_path.parent.mkdir()
+    csv_path = tmp_path / "placeholder_plot_data.csv"
     csv_path.write_text("figure_file,artist_type\nplaceholder.png,no_numeric_artists\n", encoding="utf-8")
 
     with pytest.raises(render_plot_data_csv.PlotDataRenderError, match="no numeric artists"):
@@ -150,20 +148,19 @@ def test_render_plot_data_csv_rejects_placeholder_rows(tmp_path: Path) -> None:
 
 
 def test_root_gallery_embeds_static_single_page_manifest(tmp_path: Path, monkeypatch) -> None:
-    root = tmp_path / "plots"
-    child = root / "paper_validation" / "Example" / "figure_1"
+    root = tmp_path / "docs" / "plots"
+    child = tmp_path / "scripts" / "paper_validation" / "Example_analysis" / "figure_1" / "out"
     child.mkdir(parents=True)
     (child / "figure_1.png").write_bytes(b"png")
     (child / "figure_1.svg").write_text("<svg></svg>", encoding="utf-8")
-    (child / "data").mkdir()
-    (child / "data" / "figure_1_plot_data.csv").write_text("x,y\n0,0\n", encoding="utf-8")
+    (child / "figure_1_plot_data.csv").write_text("x,y\n0,0\n", encoding="utf-8")
     for test_child in (
-        root / "tests" / "equilibrium" / "vle",
-        root / "tests" / "properties" / "residual_energy",
-        root / "tests" / "properties" / "activity_fugacity",
-        root / "tests" / "contributions" / "neutral",
-        root / "tests" / "regression" / "hydrocarbon",
-        root / "tests" / "native" / "derivatives",
+        tmp_path / "tests" / "plots" / "out" / "equilibrium" / "vle",
+        tmp_path / "tests" / "plots" / "out" / "properties" / "residual_energy",
+        tmp_path / "tests" / "plots" / "out" / "properties" / "activity_fugacity",
+        tmp_path / "tests" / "plots" / "out" / "contributions" / "neutral",
+        tmp_path / "tests" / "plots" / "out" / "regression" / "hydrocarbon",
+        tmp_path / "tests" / "plots" / "out" / "native" / "derivatives",
     ):
         test_child.mkdir(parents=True)
         (test_child / f"{test_child.name}.png").write_bytes(b"png")
@@ -174,16 +171,12 @@ def test_root_gallery_embeds_static_single_page_manifest(tmp_path: Path, monkeyp
     assert 'data-testid="folder-tree"' in html
     assert 'data-testid="gallery-grid"' in html
     assert "paper_validation/index.html" not in html
-    assert '"output_path":"paper_validation/Example/figure_1/figure_1.png"' in html
-    assert '"svg_path":"paper_validation/Example/figure_1/figure_1.svg"' in html
-    assert '"data_path":"paper_validation/Example/figure_1/data/figure_1_plot_data.csv"' in html
+    assert '"output_path":"scripts/paper_validation/Example_analysis/figure_1/out/figure_1.png"' in html
+    assert '"svg_path":"../../scripts/paper_validation/Example_analysis/figure_1/out/figure_1.svg"' in html
+    assert '"data_path":"../../scripts/paper_validation/Example_analysis/figure_1/out/figure_1_plot_data.csv"' in html
     assert '"source_path":"scripts/paper_validation/Example_analysis/figure_1/figure_1.png"' in html
-    assert '"source_path":"tests/equilibrium/vle/vle.png"' in html
-    assert '"source_folder":"tests/properties/residual_energy"' in html
-    assert '"source_folder":"tests/properties/activity_fugacity"' in html
-    assert '"source_folder":"tests/contributions/neutral"' in html
-    assert '"source_folder":"tests/regression/hydrocarbon"' in html
-    assert '"source_folder":"tests/native/derivatives"' in html
+    assert '"source_path":"tests/plots/equilibrium/vle/vle.png"' in html
+    assert '"source_folder":"tests/plots/properties/residual_energy"' in html
     assert "tests/plots/reference_comparison_outputs" not in html
     assert "Source tree" in html
     assert "Output tree" in html
@@ -206,7 +199,7 @@ def test_root_gallery_embeds_static_single_page_manifest(tmp_path: Path, monkeyp
     assert "Check one or more folders on the left to show plots." in html
     assert 'id="data-modal"' in html
     assert 'id="asset-modal"' in html
-    assert 'img.src = image.output_path;' in html
+    assert 'img.src = image.path;' in html
     assert "function showDataTable" in html
     assert "function showAssetPreview" in html
     assert "function makeAssetButton" in html
@@ -227,9 +220,9 @@ def test_khudaida_lle_plots_include_model_paper_experiment_and_feed_series(tmp_p
 
     common.plot_lle_figure(figure_dir, 2, 293.15, 0.05)
 
-    with (figure_dir / "data" / "figure_2_plot_data.csv").open("r", newline="", encoding="utf-8-sig") as handle:
+    with (figure_dir / "out" / "figure_2_plot_data.csv").open("r", newline="", encoding="utf-8-sig") as handle:
         full_labels = {row["artist_label"] for row in csv.DictReader(handle)}
-    with (figure_dir / "data" / "figure_2_scaled_plot_data.csv").open("r", newline="", encoding="utf-8-sig") as handle:
+    with (figure_dir / "out" / "figure_2_scaled_plot_data.csv").open("r", newline="", encoding="utf-8-sig") as handle:
         scaled_labels = {row["artist_label"] for row in csv.DictReader(handle)}
 
     assert {"Exp.", "model ePC-SAFT", "paper ePC-SAFT", "Feed"} <= full_labels
@@ -241,8 +234,8 @@ def test_khudaida_lle_plots_include_model_paper_experiment_and_feed_series(tmp_p
 
 
 def test_ensure_plot_companions_adds_svg_and_csv(tmp_path: Path, monkeypatch) -> None:
-    root = tmp_path / "plots"
-    png = root / "paper_validation" / "Example" / "figure_1" / "figure_1.png"
+    root = tmp_path / "docs" / "plots"
+    png = tmp_path / "scripts" / "paper_validation" / "Example_analysis" / "figure_1" / "out" / "figure_1.png"
     png.parent.mkdir(parents=True)
     png.write_bytes(
         b"\x89PNG\r\n\x1a\n"
@@ -257,22 +250,21 @@ def test_ensure_plot_companions_adds_svg_and_csv(tmp_path: Path, monkeypatch) ->
 
     assert result.csv_created == 1
     assert result.svg_created == 1
-    assert (png.parent / "data" / "figure_1_plot_data.csv").exists()
+    assert (png.parent / "figure_1_plot_data.csv").exists()
     assert not png.with_suffix(".html").exists()
     assert 'href="figure_1.png"' in png.with_suffix(".svg").read_text(encoding="utf-8")
 
 
 def test_plot_asset_report_lists_static_png_svg_csv_bundles(tmp_path: Path, monkeypatch) -> None:
-    root = tmp_path / "plots"
-    complete = root / "paper_validation" / "Example" / "figure_1" / "figure_1.png"
-    incomplete = root / "paper_validation" / "Example" / "figure_2" / "figure_2.png"
+    root = tmp_path / "docs" / "plots"
+    complete = tmp_path / "scripts" / "paper_validation" / "Example_analysis" / "figure_1" / "out" / "figure_1.png"
+    incomplete = tmp_path / "scripts" / "paper_validation" / "Example_analysis" / "figure_2" / "out" / "figure_2.png"
     complete.parent.mkdir(parents=True)
     incomplete.parent.mkdir(parents=True)
     complete.write_bytes(b"png")
     incomplete.write_bytes(b"png")
     complete.with_suffix(".svg").write_text("<svg></svg>", encoding="utf-8")
-    (complete.parent / "data").mkdir()
-    (complete.parent / "data" / "figure_1_plot_data.csv").write_text("x,y\n0,0\n", encoding="utf-8")
+    (complete.parent / "figure_1_plot_data.csv").write_text("x,y\n0,0\n", encoding="utf-8")
     monkeypatch.setattr(build_analysis_galleries, "PLOTS_ROOT", root)
 
     output = tmp_path / "report.csv"
@@ -281,8 +273,8 @@ def test_plot_asset_report_lists_static_png_svg_csv_bundles(tmp_path: Path, monk
     report = output.read_text(encoding="utf-8")
 
     by_output = {row["output_path"]: row for row in rows}
-    assert by_output["paper_validation/Example/figure_1/figure_1.png"]["bundle_complete"] == "true"
-    assert by_output["paper_validation/Example/figure_2/figure_2.png"]["bundle_complete"] == "false"
+    assert by_output["scripts/paper_validation/Example_analysis/figure_1/out/figure_1.png"]["bundle_complete"] == "true"
+    assert by_output["scripts/paper_validation/Example_analysis/figure_2/out/figure_2.png"]["bundle_complete"] == "false"
     assert "bundle_complete" in report
     assert "has_svg" in report
     assert "has_csv" in report
@@ -290,49 +282,45 @@ def test_plot_asset_report_lists_static_png_svg_csv_bundles(tmp_path: Path, monk
 
 
 def test_gallery_manifest_keeps_output_and_source_paths(tmp_path: Path, monkeypatch) -> None:
-    root = tmp_path / "plots"
+    root = tmp_path / "docs" / "plots"
     paths = [
-        root / "paper_validation" / "Example" / "figure_1" / "figure_1.png",
-        root / "fits" / "miac" / "water" / "miac.png",
-        root / "tests" / "equilibrium" / "vle" / "equilibrium_vle_compositions.png",
+        tmp_path / "scripts" / "paper_validation" / "Example_analysis" / "figure_1" / "out" / "figure_1.png",
+        tmp_path / "scripts" / "fits" / "out" / "miac" / "water" / "miac.png",
+        tmp_path / "tests" / "plots" / "out" / "equilibrium" / "vle" / "equilibrium_vle_compositions.png",
     ]
     for path in paths:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"png")
     paths[2].with_suffix(".svg").write_text("<svg></svg>", encoding="utf-8")
-    data_path = paths[2].parent / "data" / "equilibrium_vle_compositions_plot_data.csv"
-    data_path.parent.mkdir(parents=True, exist_ok=True)
+    data_path = paths[2].parent / "equilibrium_vle_compositions_plot_data.csv"
     data_path.write_text("x,y\n0,0\n", encoding="utf-8")
     monkeypatch.setattr(build_analysis_galleries, "PLOTS_ROOT", root)
 
     manifest = build_analysis_galleries.image_manifest(build_analysis_galleries.collect_pngs(root))
 
     by_output = {item["output_path"]: item for item in manifest}
-    assert by_output["paper_validation/Example/figure_1/figure_1.png"]["source_path"] == (
+    test_output = "tests/plots/out/equilibrium/vle/equilibrium_vle_compositions.png"
+    assert by_output["scripts/paper_validation/Example_analysis/figure_1/out/figure_1.png"]["source_path"] == (
         "scripts/paper_validation/Example_analysis/figure_1/figure_1.png"
     )
-    assert by_output["fits/miac/water/miac.png"]["source_path"] == "scripts/fits/miac/water/miac.png"
-    assert by_output["tests/equilibrium/vle/equilibrium_vle_compositions.png"]["source_path"] == (
-        "tests/equilibrium/vle/equilibrium_vle_compositions.png"
+    assert by_output["scripts/fits/out/miac/water/miac.png"]["source_path"] == "scripts/fits/miac/water/miac.png"
+    assert by_output[test_output]["source_path"] == "tests/plots/equilibrium/vle/equilibrium_vle_compositions.png"
+    assert by_output[test_output]["svg_path"] == "../../tests/plots/out/equilibrium/vle/equilibrium_vle_compositions.svg"
+    assert ("html" + "_path") not in by_output[test_output]
+    assert by_output[test_output]["data_path"] == (
+        "../../tests/plots/out/equilibrium/vle/equilibrium_vle_compositions_plot_data.csv"
     )
-    assert by_output["tests/equilibrium/vle/equilibrium_vle_compositions.png"]["svg_path"] == (
-        "tests/equilibrium/vle/equilibrium_vle_compositions.svg"
-    )
-    assert ("html" + "_path") not in by_output["tests/equilibrium/vle/equilibrium_vle_compositions.png"]
-    assert by_output["tests/equilibrium/vle/equilibrium_vle_compositions.png"]["data_path"] == (
-        "tests/equilibrium/vle/data/equilibrium_vle_compositions_plot_data.csv"
-    )
-    assert by_output["paper_validation/Example/figure_1/figure_1.png"]["folder"] == (
+    assert by_output["scripts/paper_validation/Example_analysis/figure_1/out/figure_1.png"]["folder"] == (
         "scripts/paper_validation/Example_analysis/figure_1"
     )
-    assert by_output["paper_validation/Example/figure_1/figure_1.png"]["output_folder"] == (
-        "paper_validation/Example/figure_1"
+    assert by_output["scripts/paper_validation/Example_analysis/figure_1/out/figure_1.png"]["output_folder"] == (
+        "scripts/paper_validation/Example_analysis/figure_1/out"
     )
 
 
 def test_plot_gallery_main_writes_only_root_index_and_removes_nested_indexes(tmp_path: Path, monkeypatch) -> None:
-    root = tmp_path / "plots"
-    leaf = root / "paper_validation" / "Example" / "figure_1"
+    root = tmp_path / "docs" / "plots"
+    leaf = tmp_path / "scripts" / "paper_validation" / "Example_analysis" / "figure_1" / "out"
     nested = leaf / "diagnostics"
     nested.mkdir(parents=True)
     (leaf / "figure_1.png").write_bytes(b"png")
@@ -345,18 +333,18 @@ def test_plot_gallery_main_writes_only_root_index_and_removes_nested_indexes(tmp
 
     assert (root / "index.html").exists()
     assert not (leaf / "index.html").exists()
-    assert '"output_path":"paper_validation/Example/figure_1/figure_1.png"' in html
-    assert '"output_path":"paper_validation/Example/figure_1/diagnostics/diagnostic.png"' in html
+    assert '"output_path":"scripts/paper_validation/Example_analysis/figure_1/out/figure_1.png"' in html
+    assert '"output_path":"scripts/paper_validation/Example_analysis/figure_1/out/diagnostics/diagnostic.png"' in html
     assert "/index.html" not in html
 
 
 def test_docs_plot_pngs_have_companion_csv_data() -> None:
-    plots_root = Path("docs/plots")
+    plots_root = build_analysis_galleries.PLOTS_ROOT
     missing = []
-    for png_path in plots_root.rglob("*.png"):
+    for png_path in build_analysis_galleries.collect_pngs(plots_root):
         if "__pycache__" in png_path.parts:
             continue
-        csv_path = png_path.parent / "data" / f"{png_path.stem}_plot_data.csv"
+        csv_path = png_path.parent / f"{png_path.stem}_plot_data.csv"
         if not csv_path.exists():
             missing.append(png_path.as_posix())
     assert missing == []
@@ -369,22 +357,22 @@ def test_docs_plot_pngs_have_gallery_manifest_entries() -> None:
 
     assert len(manifest) == len(pngs)
     for item in manifest:
-        png_path = plots_root / item["output_path"]
+        png_path = build_analysis_galleries.gallery_repo_root() / item["output_path"]
         assert png_path.exists()
-        assert item["path"] == item["output_path"]
+        assert item["path"] == (Path("../../") / item["output_path"]).as_posix()
         assert item["source_path"]
         assert ("html" + "_path") not in item
         assert ("interactive" + "_source") not in item
         if item["svg_path"]:
-            assert (plots_root / item["svg_path"]).exists()
+            assert (plots_root / item["svg_path"]).resolve().exists()
         if item["data_path"]:
-            assert (plots_root / item["data_path"]).exists()
+            assert (plots_root / item["data_path"]).resolve().exists()
 
 
 def test_docs_test_plot_pngs_have_companion_svg_data() -> None:
-    plots_root = Path("docs/plots/tests")
+    plots_root = build_analysis_galleries.PLOTS_ROOT
     missing = []
-    for png_path in plots_root.rglob("*.png"):
+    for png_path in build_analysis_galleries.collect_pngs(plots_root):
         if "__pycache__" in png_path.parts:
             continue
         svg_path = png_path.with_suffix(".svg")
@@ -415,9 +403,9 @@ def test_plot_gallery_server_rebuilds_index_on_refresh(tmp_path: Path, monkeypat
     from functools import partial
     from http.server import ThreadingHTTPServer
 
-    root = tmp_path / "plots"
-    root.mkdir()
-    index = root / "index.html"
+    root = tmp_path
+    index = root / "docs" / "plots" / "index.html"
+    index.parent.mkdir(parents=True)
     index.write_text("old", encoding="utf-8")
 
     def fake_build_gallery() -> None:

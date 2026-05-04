@@ -10,6 +10,7 @@ from typing import Iterable
 
 import matplotlib
 import numpy as np
+import pandas as pd
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -114,11 +115,11 @@ def add_figure_caption(fig: plt.Figure, caption: str, *, left: float = 0.09, y: 
 
 def write_csv_rows(path: Path, fieldnames: Iterable[str], rows: Iterable[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(fieldnames))
-        writer.writeheader()
-        for row in rows:
-            writer.writerow(row)
+    pd.DataFrame(list(rows), columns=list(fieldnames)).to_csv(path, index=False)
+
+
+def out_path(fig_dir: Path, filename: str) -> Path:
+    return fig_dir / "out" / filename
 
 
 EXPERIMENTAL_CASES: dict[tuple[float, float], list[tuple[int, tuple[float, ...], tuple[float, ...]]]] = {
@@ -1034,7 +1035,7 @@ def _load_model_rows_from_csv(path: Path) -> list[dict]:
 
 
 def _model_cache_path(fig_dir: Path) -> Path:
-    return fig_dir / "data" / "model_tielines.csv"
+    return out_path(fig_dir, "model_tielines.csv")
 
 
 def get_or_build_model_rows(fig_dir: Path, exp_rows: list[dict], feed_rows: list[dict] | None = None, force_recompute: bool = False) -> list[dict]:
@@ -1128,9 +1129,9 @@ def _feed_rows_for_csv(rows: list[dict]) -> list[dict]:
 
 def write_case_data(fig_dir: Path, exp_rows: list[dict], model_rows: list[dict]) -> None:
     fieldnames = ["tie_line", "phase", "temperature_K", "salt_wtfrac", "x_water", "x_ethanol", "x_isobutanol", "x_nacl", "source"]
-    write_csv_rows(fig_dir / "data" / "experimental_tielines.csv", fieldnames, _phase_rows_for_csv(exp_rows, "paper_table"))
+    write_csv_rows(out_path(fig_dir, "experimental_tielines.csv"), fieldnames, _phase_rows_for_csv(exp_rows, "paper_table"))
     model_fieldnames = fieldnames[:-1] + ["beta", "residual_norm", "objective", "converged", "source"]
-    write_csv_rows(fig_dir / "data" / "model_tielines.csv", model_fieldnames, _model_rows_for_csv(model_rows))
+    write_csv_rows(out_path(fig_dir, "model_tielines.csv"), model_fieldnames, _model_rows_for_csv(model_rows))
 
 
 def plot_lle_figure(fig_dir: Path, figure_number: int, temperature_k: float, salt_wt: float) -> None:
@@ -1141,7 +1142,7 @@ def plot_lle_figure(fig_dir: Path, figure_number: int, temperature_k: float, sal
     model_rows = get_or_build_model_rows(fig_dir, exp_rows, feed_rows=feed_rows, force_recompute=force_recompute)
     paper_rows = _paper_epcsaft_digitized_rows(fig_dir, temperature_k, salt_wt)
     write_csv_rows(
-        fig_dir / "data" / "feed_compositions.csv",
+        out_path(fig_dir, "feed_compositions.csv"),
         [
             "tie_line",
             "temperature_K",
@@ -1273,9 +1274,9 @@ def plot_figure_1(fig_dir: Path) -> None:
     five_rows = _experimental_rows(0.05, 293.15)
     ten_rows = _experimental_rows(0.10, 293.15)
     fieldnames = ["tie_line", "phase", "temperature_K", "salt_wtfrac", "x_water", "x_ethanol", "x_isobutanol", "x_nacl", "source"]
-    write_csv_rows(fig_dir / "data" / "without_nacl_29315_digitized.csv", fieldnames, _phase_rows_for_csv(no_salt_rows, "digitized_local_paper"))
-    write_csv_rows(fig_dir / "data" / "with_5wt_nacl_29315.csv", fieldnames, _phase_rows_for_csv(five_rows, "paper_table"))
-    write_csv_rows(fig_dir / "data" / "with_10wt_nacl_29315.csv", fieldnames, _phase_rows_for_csv(ten_rows, "paper_table"))
+    write_csv_rows(out_path(fig_dir, "without_nacl_29315_digitized.csv"), fieldnames, _phase_rows_for_csv(no_salt_rows, "digitized_local_paper"))
+    write_csv_rows(out_path(fig_dir, "with_5wt_nacl_29315.csv"), fieldnames, _phase_rows_for_csv(five_rows, "paper_table"))
+    write_csv_rows(out_path(fig_dir, "with_10wt_nacl_29315.csv"), fieldnames, _phase_rows_for_csv(ten_rows, "paper_table"))
 
     fig, ax = plt.subplots(figsize=(6.1, 5.9))
     fig.subplots_adjust(left=0.08, right=0.98, top=0.98, bottom=0.18)
@@ -1344,7 +1345,7 @@ def _metric_marker(salt_wt: float) -> str:
 def _plot_metric_figure(fig_dir: Path, figure_number: int, y_key: str, y_label: str, y_max: float) -> None:
     configure_style()
     rows = _metric_dataset()
-    write_csv_rows(fig_dir / "data" / f"figure_{figure_number}_metrics.csv", ["temperature_K", "salt_wtfrac", "x_ethanol_aq", "distribution", "separation", "source"], rows)
+    write_csv_rows(out_path(fig_dir, f"figure_{figure_number}_metrics.csv"), ["temperature_K", "salt_wtfrac", "x_ethanol_aq", "distribution", "separation", "source"], rows)
 
     fig, ax = plt.subplots(figsize=(6.0, 4.4))
     fig.subplots_adjust(left=0.13, right=0.98, top=0.97, bottom=0.24)
@@ -1435,7 +1436,7 @@ def plot_tables_9_10(fig_dir: Path) -> None:
     for table_number, salt_wt in ((9, 0.05), (10, 0.10)):
         rows = _table_rows_for_png(salt_wt)
         csv_rows = [dict(zip(columns, row)) for row in rows]
-        write_csv_rows(fig_dir / "data" / f"table_{table_number}.csv", columns, csv_rows)
+        write_csv_rows(out_path(fig_dir, f"table_{table_number}.csv"), columns, csv_rows)
         fig, ax = plt.subplots(figsize=(13.0, 3.0 + 0.28 * len(rows)))
         ax.axis("off")
         table = ax.table(cellText=rows, colLabels=columns, loc="center", cellLoc="center")

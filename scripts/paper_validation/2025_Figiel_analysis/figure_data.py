@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Iterable
 
 import numpy as np
+import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -17,9 +18,7 @@ if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import _common as common
-from scripts.plot_outputs import PAPER_VALIDATION_PLOTS_ROOT
 
-DATA_ROOT = PAPER_VALIDATION_PLOTS_ROOT / "2025_Figiel"
 SOURCE_ROOT = Path(__file__).resolve().parent
 DATASET = "2025_Figiel"
 
@@ -80,7 +79,7 @@ FIG9_CURVE_MAX_BY_PANEL = {
 
 
 def payload_path(figure_id: str) -> Path:
-    return DATA_ROOT / figure_id / "data" / f"{figure_id}_series.csv"
+    return SOURCE_ROOT / figure_id / "out" / f"{figure_id}_series.csv"
 
 
 def _format_value(value: object) -> str:
@@ -168,10 +167,7 @@ def _row(
 def _write_payload(figure_id: str, rows: list[dict[str, str]]) -> Path:
     path = payload_path(figure_id)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=FIELDNAMES, lineterminator="\n")
-        writer.writeheader()
-        writer.writerows(rows)
+    pd.DataFrame(rows, columns=FIELDNAMES).to_csv(path, index=False)
     return path
 
 
