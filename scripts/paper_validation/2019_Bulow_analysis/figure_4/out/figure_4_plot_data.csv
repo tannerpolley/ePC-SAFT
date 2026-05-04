@@ -1,9 +1,0 @@
-figure_file,axes_index,axes_title,artist_type,artist_label,series_index,point_index,x,y,width,height
-figure_4.png,0,Bulow 2019 Figure 4 style,line,original ePC-SAFT ($\varepsilon_r=80$),0,0,0,nan,,
-figure_4.png,0,Bulow 2019 Figure 4 style,line,original ePC-SAFT ($\varepsilon_r=80$),0,1,1,nan,,
-figure_4.png,0,Bulow 2019 Figure 4 style,line,original ePC-SAFT ($\varepsilon_r=80$),0,2,2,nan,,
-figure_4.png,0,Bulow 2019 Figure 4 style,line,original ePC-SAFT ($\varepsilon_r=80$),0,3,3,nan,,
-figure_4.png,0,Bulow 2019 Figure 4 style,bar,,0,0,0,0,0.55000000000000004,nan
-figure_4.png,0,Bulow 2019 Figure 4 style,bar,,1,0,1,0,0.55000000000000004,nan
-figure_4.png,0,Bulow 2019 Figure 4 style,bar,,2,0,2,0,0.55000000000000004,nan
-figure_4.png,0,Bulow 2019 Figure 4 style,bar,,3,0,3,0,0.55000000000000004,nan

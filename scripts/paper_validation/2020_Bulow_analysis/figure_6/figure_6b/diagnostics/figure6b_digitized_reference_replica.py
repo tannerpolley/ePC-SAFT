@@ -19,9 +19,9 @@ REPO_ROOT = Path(__file__).resolve().parents[6]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.plot_outputs import paper_validation_path, save_plot_figure
+from scripts.plot_outputs import paper_validation_dir, save_plot_figure
 
-OUTPUT_ROOT = paper_validation_path(Path(__file__).resolve().parent, "output")
+OUTPUT_ROOT = paper_validation_dir(Path(__file__).resolve().parent)
 OUTPUT_PLOTS_DIR = OUTPUT_ROOT / "plots"
 
 AXIS_LABEL_SIZE = 12
@@ -182,7 +182,9 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--data",
         type=Path,
-        default=Path(r"C:\Users\Tanner\Documents\git\ePC-SAFT\scripts\paper_validation\2020_Bulow_analysis\figure_6\figure_6b\data\Figure6b_curves.csv"),
+        default=Path(
+            r"C:\Users\Tanner\Documents\git\ePC-SAFT\scripts\paper_validation\2020_Bulow_analysis\figure_6\figure_6b\data\Figure6b_curves.csv"
+        ),
         help="Digitized Figure 6b CSV with repeated x/y column pairs.",
     )
     parser.add_argument(
@@ -210,4 +212,3 @@ if __name__ == "__main__":
         y_max=float(args.y_max),
         interp_points=int(args.interp_points),
     )
-

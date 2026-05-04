@@ -1,19 +1,20 @@
 # Generated Plot Gallery
 
-`docs/plots/index.html` is the single tracked gallery entrypoint. Generated PNG,
-SVG, CSV, and related plot assets live in source-local `out/` folders beside the
-scripts, tests, or package modules that create them.
+`docs/plots/index.html` and `docs/plots/manifest.json` are the only tracked
+gallery files. Generated PNG, SVG, CSV, and related plot assets live in ignored
+source-local `out/` folders beside the scripts, tests, or package modules that
+create them.
 
 Use:
 
 ```powershell
+uv run python scripts/build_plot_manifest.py --check
 uv run python scripts/paper_validation/tools/build_analysis_galleries.py
 ```
 
-Open `docs/plots/index.html` to browse all generated plot groups. The gallery is
-a single-page file explorer: expand folders in the left sidebar, check one or
-more folders, and the page displays every PNG in those selected subtrees without
-navigating to separate folder pages.
+Open `docs/plots/index.html` to browse manifest plot groups. When local assets
+are missing, the gallery shows a generate-local state instead of requiring the
+PNG/SVG/CSV files to be tracked.
 
 To rebuild and serve the gallery as a localhost site:
 
@@ -47,5 +48,6 @@ uv run python scripts/build_test_plot_gallery.py tests/equilibrium/test_electrol
 The command resolves the source test through `tests/plots/plot_registry.py`,
 runs the registered plot-producing pytest target, validates that every affected
 PNG under `tests/plots/out/**` has a sibling `<stem>_plot_data.csv`, creates
-missing SVG companions, refreshes `docs/plots/index.html`, and writes the asset
-report under `tests/plots/out/plot_asset_report.csv`.
+missing SVG companions, refreshes `docs/plots/manifest.json` and
+`docs/plots/index.html`, and writes the asset report under
+`build/plot_gallery/plot_asset_report.csv`.

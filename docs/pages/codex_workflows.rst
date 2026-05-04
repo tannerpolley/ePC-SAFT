@@ -12,10 +12,9 @@ Start every new Codex thread with this sequence:
 
    uv sync --no-install-project
    uv run python scripts/build_epcsaft.py
-   uv run python scripts/codex_doctor.py
-   uv run python run_pytest.py --confidence -q
+   uv run python scripts/codex_check.py quick
 
-This is the expected healthy baseline. It creates the uv environment, builds the in-place pybind11 ``epcsaft._core`` extension, verifies imports and tool paths, then runs the standard confidence suite.
+This is the expected healthy baseline. It creates the uv environment, builds the in-place pybind11 ``epcsaft._core`` extension, verifies imports/tool paths/manifests, then runs the fast generic contract suite. Use ``uv run python scripts/codex_check.py confidence`` before handoff when native runtime contracts should be included.
 
 Use ``uv run python run_pytest.py ...`` for repo validation. Direct ``uv run python -m pytest ...`` works, but the wrapper sets ``src`` on the import path and uses a per-run pytest temp directory that is safer for Codex and Windows runs.
 
@@ -33,10 +32,10 @@ Command matrix
      - ``uv sync --no-install-project`` then ``uv run python scripts/build_epcsaft.py`` then ``uv run python scripts/codex_doctor.py``
      - Starting a fresh thread, after dependency changes, or after a failed import.
    * - Handoff validation
-     - ``uv run python run_pytest.py --confidence -q``
-     - Before claiming repo runtime confidence. This includes the generic slice plus native runtime contracts.
+     - ``uv run python scripts/codex_check.py confidence``
+     - Before claiming repo runtime confidence. This includes doctor, the confidence slice, and the plot manifest check.
    * - Fast generic validation
-     - ``uv run python run_pytest.py --generic -q``
+     - ``uv run python scripts/codex_check.py quick``
      - Quick checks for Python/runtime/regression API changes when native contract coverage is not required yet.
    * - Python API work
      - ``uv run python run_pytest.py --api -q``
@@ -49,7 +48,13 @@ Command matrix
      - Fast check for pressure-vs-density and contribution-map contracts.
    * - Electrolyte LLE confidence
      - ``uv run python run_pytest.py --equilibrium-confidence -q -s``
-     - Opt-in Khudaida electrolyte LLE benchmark/report suite; slower than standard confidence and writes reports under ``build/equilibrium_confidence``.
+     - Opt-in Khudaida electrolyte LLE full-report suite; slower than standard confidence and writes reports under ``build/equilibrium_confidence``.
+   * - Docs check
+     - ``uv run python scripts/codex_check.py docs``
+     - Validate the tracked plot manifest and build Sphinx HTML under ``build/docs-html``.
+   * - Plot/gallery rebuild
+     - ``uv run python scripts/codex_check.py plots``
+     - Opt-in generated plot producers, manifest refresh, and gallery index rebuild.
    * - Quick method-speed check
      - ``uv run python run_pytest.py --profile -q``
      - Runtime-only profiling. The wrapper enables the required performance environment flag.
@@ -93,7 +98,7 @@ After LaTeX edits are committed or ready to publish, mirror the current ``docs/l
 
    .\scripts\sync_latex_mirror.ps1
 
-The mirror lives at ``C:\Users\Tanner\Documents\git\ePC-SAFT-LaTeX`` and owns the Overleaf Git remote. The sync script copies the current files exactly, including ``docs/latex/out``, then commits and pushes the mirror by default.
+The mirror lives at ``C:\Users\Tanner\Documents\git\ePC-SAFT-LaTeX`` and owns the Overleaf Git remote. The sync script copies the current LaTeX source tree and intentional top-level artifacts; generated ``docs/latex/out`` build products remain ignored in this repo.
 
 Parallel agent safety
 ---------------------
@@ -119,18 +124,18 @@ Use ``scripts/create_codex_worktree.ps1`` from the primary checkout instead of r
 Test selection rules
 --------------------
 
-Use the smallest relevant test first, then run ``--confidence`` before handoff.
+Use the smallest relevant test first, then run ``scripts/codex_check.py confidence`` before handoff.
 
 - Python wrapper/API changes: ``uv run python run_pytest.py --api -q`` first, then ``uv run python run_pytest.py --confidence -q``.
 - Native/equation changes: ``uv run python scripts/build_epcsaft.py --build-only --parallel 10`` first, then ``uv run python run_pytest.py --runtime -q``, then ``uv run python run_pytest.py --confidence -q``.
 - Equation traceability changes: ``uv run python scripts/sync_equation_registry.py --check --strict-traceability`` then ``uv run python run_pytest.py tests/native/test_equation_registry.py -q``.
 - Performance claims: ``uv run python run_pytest.py --profile -q -s`` is the quick runtime-only profile; use ``uv run python run_pytest.py --profile-full -q -s`` only for broad speed claims. Read the generated ``build/runtime_profile/*.md`` reports. Do not rely on skipped profile tests or code inspection alone.
-- Plot/gallery changes: ``uv run python run_pytest.py --plots -q`` first, then rebuild the browser index with ``uv run python scripts/paper_validation/tools/build_analysis_galleries.py``.
+- Plot/gallery changes: ``uv run python scripts/build_plot_manifest.py --check`` first. Use ``uv run python scripts/codex_check.py plots`` only when regenerating local plot outputs is explicitly part of the task.
 
 ``--profile`` is the quick runtime-only profile. ``--profile-full`` runs runtime, MIAC, and regression profiles and is the preferred evidence path for comprehensive speed reviews; use a timeout of at least 120 seconds.
 - Packaging changes: ``scripts/build_dist.py``.
 
-Keep generated plot/gallery and generated CSV workflows out of normal validation unless the task explicitly asks for them. Use ``--plots`` for the opt-in gallery/test-plot slice.
+Keep generated plot/gallery and generated CSV workflows out of normal validation unless the task explicitly asks for them. Use ``--plots`` or ``scripts/codex_check.py plots`` for the opt-in gallery/test-plot slice.
 
 Use ``uv run python run_pytest.py --list-slices`` when you need to inspect what each named slice runs before choosing a validation command.
 
@@ -144,6 +149,6 @@ For repeated runtime calls, build ``ePCSAFTMixture`` and ``ePCSAFTState`` once a
 Troubleshooting
 ---------------
 
-Run ``uv run python scripts/codex_doctor.py`` whenever imports, tool paths, or ``_core`` state are unclear. It reports the active Python, git ref, uv/cmake/ninja paths, ``epcsaft`` import path, ``epcsaft._core`` path, and the next recommended command.
+Run ``uv run python scripts/codex_doctor.py`` whenever imports, tool paths, ``_core`` state, generated-output tracking, or plot manifests are unclear. It reports the active Python, git ref, uv/cmake/ninja paths, ``epcsaft`` import path, ``epcsaft._core`` path, generated artifact state, and the next recommended command.
 
 If ``scripts/build_epcsaft.py`` appears slow, wait for the configured timeout before treating it as broken. Full configure/build can take far longer than the fast rebuild path; incremental ``--build-only --parallel 10`` is the intended C++ edit loop.

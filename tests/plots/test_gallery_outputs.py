@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import importlib
+import json
 import shutil
 import threading
 import urllib.request
@@ -15,6 +16,7 @@ import numpy as np
 import pytest
 
 from scripts import plot_outputs
+from scripts import build_plot_manifest
 from scripts.paper_validation.tools import build_analysis_galleries
 from scripts.paper_validation.tools import ensure_plot_companions
 from scripts.paper_validation.tools import render_plot_data_csv
@@ -199,7 +201,7 @@ def test_root_gallery_embeds_static_single_page_manifest(tmp_path: Path, monkeyp
     assert "Check one or more folders on the left to show plots." in html
     assert 'id="data-modal"' in html
     assert 'id="asset-modal"' in html
-    assert 'img.src = image.path;' in html
+    assert "img.src = image.path;" in html
     assert "function showDataTable" in html
     assert "function showAssetPreview" in html
     assert "function makeAssetButton" in html
@@ -274,7 +276,9 @@ def test_plot_asset_report_lists_static_png_svg_csv_bundles(tmp_path: Path, monk
 
     by_output = {row["output_path"]: row for row in rows}
     assert by_output["scripts/paper_validation/Example_analysis/figure_1/out/figure_1.png"]["bundle_complete"] == "true"
-    assert by_output["scripts/paper_validation/Example_analysis/figure_2/out/figure_2.png"]["bundle_complete"] == "false"
+    assert (
+        by_output["scripts/paper_validation/Example_analysis/figure_2/out/figure_2.png"]["bundle_complete"] == "false"
+    )
     assert "bundle_complete" in report
     assert "has_svg" in report
     assert "has_csv" in report
@@ -305,7 +309,9 @@ def test_gallery_manifest_keeps_output_and_source_paths(tmp_path: Path, monkeypa
     )
     assert by_output["scripts/fits/out/miac/water/miac.png"]["source_path"] == "scripts/fits/miac/water/miac.png"
     assert by_output[test_output]["source_path"] == "tests/plots/equilibrium/vle/equilibrium_vle_compositions.png"
-    assert by_output[test_output]["svg_path"] == "../../tests/plots/out/equilibrium/vle/equilibrium_vle_compositions.svg"
+    assert (
+        by_output[test_output]["svg_path"] == "../../tests/plots/out/equilibrium/vle/equilibrium_vle_compositions.svg"
+    )
     assert ("html" + "_path") not in by_output[test_output]
     assert by_output[test_output]["data_path"] == (
         "../../tests/plots/out/equilibrium/vle/equilibrium_vle_compositions_plot_data.csv"
@@ -338,47 +344,32 @@ def test_plot_gallery_main_writes_only_root_index_and_removes_nested_indexes(tmp
     assert "/index.html" not in html
 
 
-def test_docs_plot_pngs_have_companion_csv_data() -> None:
-    plots_root = build_analysis_galleries.PLOTS_ROOT
-    missing = []
-    for png_path in build_analysis_galleries.collect_pngs(plots_root):
-        if "__pycache__" in png_path.parts:
-            continue
-        csv_path = png_path.parent / f"{png_path.stem}_plot_data.csv"
-        if not csv_path.exists():
-            missing.append(png_path.as_posix())
-    assert missing == []
+def test_docs_plot_manifest_is_valid_without_requiring_generated_assets() -> None:
+    assert build_plot_manifest.validate_manifest() == []
 
 
-def test_docs_plot_pngs_have_gallery_manifest_entries() -> None:
-    plots_root = build_analysis_galleries.PLOTS_ROOT
-    pngs = build_analysis_galleries.collect_pngs(plots_root)
-    manifest = build_analysis_galleries.image_manifest(pngs)
+def test_docs_plot_manifest_entries_are_source_owned_and_static() -> None:
+    payload = json.loads(build_plot_manifest.DEFAULT_MANIFEST.read_text(encoding="utf-8"))
+    items = payload["items"]
 
-    assert len(manifest) == len(pngs)
-    for item in manifest:
-        png_path = build_analysis_galleries.gallery_repo_root() / item["output_path"]
-        assert png_path.exists()
+    assert items
+    for item in items:
         assert item["path"] == (Path("../../") / item["output_path"]).as_posix()
         assert item["source_path"]
+        assert item["output_path"].startswith(("scripts/", "tests/", "src/"))
+        assert "/out/" in item["output_path"]
+        assert not item["output_path"].startswith("docs/plots/")
         assert ("html" + "_path") not in item
         assert ("interactive" + "_source") not in item
-        if item["svg_path"]:
-            assert (plots_root / item["svg_path"]).resolve().exists()
-        if item["data_path"]:
-            assert (plots_root / item["data_path"]).resolve().exists()
 
 
-def test_docs_test_plot_pngs_have_companion_svg_data() -> None:
-    plots_root = build_analysis_galleries.PLOTS_ROOT
-    missing = []
-    for png_path in build_analysis_galleries.collect_pngs(plots_root):
-        if "__pycache__" in png_path.parts:
-            continue
-        svg_path = png_path.with_suffix(".svg")
-        if not svg_path.exists():
-            missing.append(png_path.as_posix())
-    assert missing == []
+def test_docs_plot_manifest_is_embedded_in_root_gallery() -> None:
+    payload = json.loads(build_plot_manifest.DEFAULT_MANIFEST.read_text(encoding="utf-8"))
+    html = build_analysis_galleries.MANIFEST_PATH.with_name("index.html").read_text(encoding="utf-8")
+
+    assert "Generate locally" in html
+    assert f"{len(payload['items'])} manifest entries" in html
+    assert payload["items"][0]["output_path"] in html
 
 
 def test_docs_plots_have_only_root_gallery_html() -> None:

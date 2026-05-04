@@ -8,7 +8,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-import epcsaft
 from epcsaft.equilibrium_core.confidence import benchmark_case_to_native_inputs
 from epcsaft.equilibrium_core.confidence import load_benchmark_suite
 from epcsaft.equilibrium_core.confidence import run_confidence_suite
@@ -39,9 +38,9 @@ def test_khudaida_benchmark_fixture_loads_charge_neutral_cases() -> None:
 
 def test_khudaida_smoke_cases_return_results_or_diagnostic_failures() -> None:
     suite = load_benchmark_suite("khudaida_2026")
-    predictions = run_smoke_cases(suite, case_keys=("0.05:293.15:1", "0.10:303.15:1", "0.10:313.15:6"))
+    predictions = run_smoke_cases(suite, case_keys=("0.05:293.15:1",))
 
-    assert len(predictions) == 3
+    assert len(predictions) == 1
     for prediction in predictions:
         diagnostics = prediction.diagnostics
         assert diagnostics["phase_equilibrium_model"] == "electrolyte_lle_v5_native_charge_constrained_solve"

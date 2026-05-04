@@ -7,7 +7,7 @@ import csv
 import math
 import sys
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, List, Tuple
 
 import matplotlib
 import numpy as np
@@ -18,20 +18,26 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts._env import require_epcsaft_install
-from scripts.plot_outputs import paper_validation_path, save_plot_figure
+from scripts.plot_outputs import paper_validation_dir, save_plot_figure
 
 require_epcsaft_install()
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from figure6b_digitized_reference_replica import _load_digitized_curves
-from figure6b_libr_ethanol_contributions import P_REF, T_REF, _build_params, _molality_for_salt_mole_fraction, _molality_to_species_molefraction
+from figure6b_libr_ethanol_contributions import (
+    P_REF,
+    T_REF,
+    _build_params,
+    _molality_for_salt_mole_fraction,
+    _molality_to_species_molefraction,
+)
 from scripts._epcsaft_oop import epcsaft_density, epcsaft_fugacity_coefficient_terms
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-OUTPUT_ROOT = paper_validation_path(Path(__file__).resolve().parent, "output")
+OUTPUT_ROOT = paper_validation_dir(Path(__file__).resolve().parent)
 OUTPUT_DATA_DIR = OUTPUT_ROOT / "data"
 OUTPUT_PLOTS_DIR = OUTPUT_ROOT / "plots"
 
@@ -210,7 +216,14 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--digitized",
         type=Path,
-        default=REPO_ROOT / "scripts" / "paper_validation" / "2020_Bulow_analysis" / "figure_6" / "figure_6b" / "data" / "Figure6b_curves.csv",
+        default=REPO_ROOT
+        / "scripts"
+        / "paper_validation"
+        / "2020_Bulow_analysis"
+        / "figure_6"
+        / "figure_6b"
+        / "data"
+        / "Figure6b_curves.csv",
     )
     parser.add_argument(
         "--out-csv",
@@ -248,4 +261,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
