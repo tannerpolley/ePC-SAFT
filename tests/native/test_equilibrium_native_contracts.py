@@ -10,7 +10,6 @@ import epcsaft
 from epcsaft import _core
 from epcsaft import ePCSAFTMixture
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 

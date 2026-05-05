@@ -29,7 +29,9 @@ def _run(args: list[str]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Validate 2025 Figiel CSV-backed plot payloads.")
-    parser.add_argument("--skip-backend", action="store_true", help="Skip native build, doctor, and runtime smoke tests.")
+    parser.add_argument(
+        "--skip-backend", action="store_true", help="Skip native build, doctor, and runtime smoke tests."
+    )
     parser.add_argument("--skip-plots", action="store_true", help="Skip PNG/gallery regeneration.")
     parser.add_argument("--rtol", type=float, default=1e-9)
     parser.add_argument("--atol", type=float, default=1e-10)

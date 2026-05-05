@@ -21,9 +21,11 @@ from scripts.plot_outputs import paper_validation_output_path, save_plot_figure
 
 require_epcsaft_install()
 
+
 # Avoid WMI stalls from platform.machine() during scipy import on some Windows sessions.
 def _fast_machine() -> str:
     return os.environ.get("PROCESSOR_ARCHITECTURE", "AMD64")
+
 
 platform.machine = _fast_machine
 
@@ -32,6 +34,8 @@ from scripts._epcsaft_oop import epcsaft_density, epcsaft_fugacity_coefficient, 
 T_REF = 298.15
 P_REF = 1.0e5
 MW_WATER = 18.0153e-3
+
+
 def configure_style() -> None:
     plt.rcParams.update(
         {
@@ -262,7 +266,3 @@ def load_osmotic_data(salt: str, m_min: float = 0.0, m_max: float = 4.0) -> tupl
     phi_arr = np.asarray(osmotic, dtype=float)
     order = np.argsort(m_arr)
     return m_arr[order], phi_arr[order]
-
-
-
-

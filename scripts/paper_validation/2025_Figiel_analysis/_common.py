@@ -229,7 +229,9 @@ def salt_mole_fraction_from_molality(molality: np.ndarray, solvent_system: str, 
     return np.where(denom > 0.0, m / denom, 0.0)
 
 
-def molality_to_species_molefraction(molality: float, salt: str, solvent_system: str, comp: Dict[str, float]) -> np.ndarray:
+def molality_to_species_molefraction(
+    molality: float, salt: str, solvent_system: str, comp: Dict[str, float]
+) -> np.ndarray:
     species = species_for_combo(salt, solvent_system)
     solvents = [s for s in solvent_system.split("-") if s]
     solvent_species = species[2:]
@@ -248,7 +250,9 @@ def molality_to_species_molefraction(molality: float, salt: str, solvent_system:
     return np.asarray([n_totals[sp] / total for sp in species], dtype=float)
 
 
-def build_params(dataset_name: str, salt: str, solvent_system: str, comp: Dict[str, float], user_options: dict | None = None) -> dict:
+def build_params(
+    dataset_name: str, salt: str, solvent_system: str, comp: Dict[str, float], user_options: dict | None = None
+) -> dict:
     x_ref = molality_to_species_molefraction(1e-8, salt, solvent_system, comp)
     return get_prop_dict(dataset_name, species_for_combo(salt, solvent_system), x_ref, T_REF, user_options=user_options)
 
@@ -371,7 +375,9 @@ def read_miac_dataset(path: Path, solvent_system: str) -> List[Dict[str, object]
     return data
 
 
-def group_by_signature(entries: List[Dict[str, object]]) -> Dict[Tuple[Tuple[str, float], ...], List[Dict[str, object]]]:
+def group_by_signature(
+    entries: List[Dict[str, object]],
+) -> Dict[Tuple[Tuple[str, float], ...], List[Dict[str, object]]]:
     grouped: Dict[Tuple[Tuple[str, float], ...], List[Dict[str, object]]] = defaultdict(list)
     for entry in entries:
         grouped[entry["signature"]].append(entry)
@@ -403,7 +409,9 @@ def target_weight_fraction_to_comp(solvent_system: str, target_w_org: float) -> 
     return {"water": 1.0 - x_org, organic: x_org}
 
 
-def closest_group_to_weight_fraction(entries: List[Dict[str, object]], solvent_system: str, target_w_org: float) -> Tuple[List[Dict[str, object]], Dict[str, float], float]:
+def closest_group_to_weight_fraction(
+    entries: List[Dict[str, object]], solvent_system: str, target_w_org: float
+) -> Tuple[List[Dict[str, object]], Dict[str, float], float]:
     grouped = group_by_signature(entries)
     candidates: List[Tuple[float, List[Dict[str, object]], Dict[str, float], float]] = []
     for rows in grouped.values():
@@ -506,7 +514,3 @@ def literature_gsolv_water() -> Dict[str, float]:
         if ion and value is not None:
             out[f"{ion}+" if ion in {"H", "Li", "Na", "K"} else f"{ion}-" if ion in {"Cl", "Br", "I"} else ion] = value
     return out
-
-
-
-

@@ -131,9 +131,9 @@ def missing_recipe_message(targets: Iterable[str]) -> str:
         f"{', '.join(target_list) or '<none>'}.\n"
         "Add an explicit recipe in tests/plots/plot_registry.py, for example:\n\n"
         "    PlotRecipe(\n"
-        f"        source_tests=(\"{target}\",),\n"
-        "        plot_targets=(\"tests/plots/test_<feature>_plot_outputs.py\",),\n"
-        "        output_dirs=(\"<gallery-subfolder>\",),\n"
+        f'        source_tests=("{target}",),\n'
+        '        plot_targets=("tests/plots/test_<feature>_plot_outputs.py",),\n'
+        '        output_dirs=("<gallery-subfolder>",),\n'
         "    )\n\n"
         "The workflow does not synthesize placeholder scientific plots."
     )

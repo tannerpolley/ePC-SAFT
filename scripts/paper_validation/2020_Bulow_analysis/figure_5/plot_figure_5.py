@@ -22,7 +22,6 @@ if str(REPO_ROOT) not in sys.path:
 import _plot_common as common
 import _model_overlay as overlay
 
-
 DATASETS = [
     ("a", "ethanol", SCRIPT_DIR / "data" / "water-ethanol-contributions.csv"),
     ("b", "methanol", SCRIPT_DIR / "data" / "water-methanol-contributions.csv"),
@@ -180,7 +179,9 @@ def _plot_total(
     ax.set_xticks(x)
     ax.set_xticklabels(ions)
     ax.set_ylabel(r"$\Delta G_{\mathrm{tr},i}^{\infty}$ / kJ mol$^{-1}$ (EOS total / EOS-sum check)")
-    ax.set_title(f"Bulow 2020 Part I Figure 5{panel_tag}: Water to {solvent}, summed contribution bars vs Figure 4 total")
+    ax.set_title(
+        f"Bulow 2020 Part I Figure 5{panel_tag}: Water to {solvent}, summed contribution bars vs Figure 4 total"
+    )
     ax.set_ylim(y_min - pad, y_max + 2.7 * pad)
     ax.grid(axis="y", alpha=0.22)
     common.annotate_percent_deltas(ax, x + offsets[1], figure5_paper, figure5_model_eos, xs_ref=x + offsets[0])
@@ -238,9 +239,9 @@ def main() -> None:
         model_total_eos = np.asarray(
             [
                 sum(
-                    overlay.transfer_breakdown(
-                        "advanced", ion, solvent, basis="lnfug", d_born_mode=args.d_born_mode
-                    )[key]
+                    overlay.transfer_breakdown("advanced", ion, solvent, basis="lnfug", d_born_mode=args.d_born_mode)[
+                        key
+                    ]
                     for key in ("hc", "disp", "assoc", "dh", "born")
                 )
                 for ion in ions
@@ -260,4 +261,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

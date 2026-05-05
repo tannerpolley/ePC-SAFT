@@ -25,7 +25,6 @@ import _model_overlay as overlay
 from epcsaft.parameters import get_prop_dict
 from scripts._epcsaft_oop import epcsaft_density, epcsaft_fugacity_coefficient_terms, epcsaft_pressure
 
-
 DATA_PATH = FIGURE_DIR / "data" / "water_contributions.csv"
 OUTPUT_CSV = SCRIPT_DIR / "figure3_mu_contribution_numerical_comparison.csv"
 T_REF = overlay.T_REF
@@ -183,4 +182,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

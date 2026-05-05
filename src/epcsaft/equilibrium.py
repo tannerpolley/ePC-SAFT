@@ -11,13 +11,13 @@ import numpy as np
 from ._types import InputError, SolutionError
 from .equilibrium_core.electrolyte_basis import build_electrolyte_basis
 
-
 _ASCANI_2022_REFERENCE = {
     "authors": "Ascani, Sadowski, and Held",
     "year": 2022,
     "title": "Calculation of Multiphase Equilibria Containing Mixed Solvents and Mixed Electrolytes",
     "doi": "10.1021/acs.jced.1c00866",
 }
+
 
 @dataclass(frozen=True, slots=True)
 class EquilibriumOptions:
@@ -214,7 +214,9 @@ class StabilityResult:
         }
 
 
-def tp_flash(mixture: Any, *, T: float, P: float, z: Any, options: EquilibriumOptions | None = None) -> EquilibriumResult:
+def tp_flash(
+    mixture: Any, *, T: float, P: float, z: Any, options: EquilibriumOptions | None = None
+) -> EquilibriumResult:
     """Solve a V1 neutral TP flash with Rachford-Rice and fugacity updates."""
     opts = _normalize_options(options)
     feed = _normalize_feed(z, mixture.ncomp, opts.min_composition, "tp_flash")
@@ -418,6 +420,7 @@ def electrolyte_lle_flash(
         initial_phases=initial_phases,
         options=options,
     )
+
 
 def electrolyte_feed_from_molality(
     mixture: Any,
@@ -640,7 +643,9 @@ def _normalize_feed(z: Any, ncomp: int, min_composition: float, kind: str) -> np
         raise InputError("z is required for kind='{}'.".format(kind))
     feed = np.asarray(z, dtype=float).flatten()
     if feed.size != int(ncomp):
-        raise InputError("Feed composition length ({}) must match mixture component count ({}).".format(feed.size, ncomp))
+        raise InputError(
+            "Feed composition length ({}) must match mixture component count ({}).".format(feed.size, ncomp)
+        )
     if not np.all(np.isfinite(feed)):
         raise InputError("Feed composition z must contain only finite values.")
     if np.any(feed < 0.0):
@@ -728,9 +733,7 @@ def _normalize_solvent_feed(species: list[str], charges: np.ndarray, solvent_fee
     else:
         values = np.asarray(solvent_feed, dtype=float).flatten()
         if values.size != len(neutral_indices):
-            raise InputError(
-                "solvent_feed must be a dict or a vector with one entry per neutral solvent species."
-            )
+            raise InputError("solvent_feed must be a dict or a vector with one entry per neutral solvent species.")
         for index, value in zip(neutral_indices, values):
             solvent_x[index] = float(value)
     if not np.all(np.isfinite(solvent_x)) or np.any(solvent_x < 0.0):
@@ -794,7 +797,10 @@ def _electrolyte_formula_basis(mixture: Any, feed: np.ndarray, feed_diagnostics:
         pairs = [_species_pair_for_salt(species, charges, label) for label in salt_labels]
     else:
         pairs = [(cation_i, anion_i) for cation_i in cation_indices]
-    if any(abs(float(charges[cation_i]) - 1.0) > 1.0e-12 or abs(float(charges[pair_anion_i]) + 1.0) > 1.0e-12 for cation_i, pair_anion_i in pairs):
+    if any(
+        abs(float(charges[cation_i]) - 1.0) > 1.0e-12 or abs(float(charges[pair_anion_i]) + 1.0) > 1.0e-12
+        for cation_i, pair_anion_i in pairs
+    ):
         raise InputError("V4 electrolyte_lle currently supports only 1:1 salts.")
     cation_sum = float(sum(feed[cation_i] for cation_i, _ in pairs))
     if abs(cation_sum - float(feed[anion_i])) > 1.0e-8:
@@ -814,7 +820,9 @@ def _electrolyte_formula_basis(mixture: Any, feed: np.ndarray, feed_diagnostics:
     }
 
 
-def _formula_to_explicit_composition(formula_composition: np.ndarray, basis: dict[str, Any], ncomp: int) -> tuple[np.ndarray, float]:
+def _formula_to_explicit_composition(
+    formula_composition: np.ndarray, basis: dict[str, Any], ncomp: int
+) -> tuple[np.ndarray, float]:
     formula = np.asarray(formula_composition, dtype=float)
     explicit = np.zeros(int(ncomp), dtype=float)
     neutral_indices = basis["neutral_indices"]
@@ -884,7 +892,9 @@ def _electrolyte_initial_phase_seed(
     }
 
 
-def _explicit_beta_to_formula_beta(beta_explicit: float, aq_formula: np.ndarray, org_formula: np.ndarray, basis: dict[str, Any], ncomp: int) -> float:
+def _explicit_beta_to_formula_beta(
+    beta_explicit: float, aq_formula: np.ndarray, org_formula: np.ndarray, basis: dict[str, Any], ncomp: int
+) -> float:
     _aq_exp, aq_scale = _formula_to_explicit_composition(aq_formula, basis, ncomp)
     _org_exp, org_scale = _formula_to_explicit_composition(org_formula, basis, ncomp)
     numerator = float(beta_explicit) / org_scale
@@ -1052,7 +1062,9 @@ def _rachford_rice_beta(feed: np.ndarray, k_values: np.ndarray) -> tuple[bool, f
     return True, 0.5 * (lo + hi), ""
 
 
-def _phase_compositions(feed: np.ndarray, k_values: np.ndarray, beta: float, min_composition: float) -> tuple[np.ndarray, np.ndarray]:
+def _phase_compositions(
+    feed: np.ndarray, k_values: np.ndarray, beta: float, min_composition: float
+) -> tuple[np.ndarray, np.ndarray]:
     x_liq = feed / (1.0 + beta * (k_values - 1.0))
     y_vap = k_values * x_liq
     x_liq = np.maximum(x_liq, min_composition)
@@ -1228,7 +1240,11 @@ def _feed_perturb_lle_guess(feed: np.ndarray, options: EquilibriumOptions) -> tu
 def _normalize_initial_phase(value: Any, ncomp: int, min_composition: float, label: str) -> np.ndarray:
     composition = np.asarray(value, dtype=float).flatten()
     if composition.size != int(ncomp):
-        raise InputError("initial_phases {} length ({}) must match mixture component count ({}).".format(label, composition.size, ncomp))
+        raise InputError(
+            "initial_phases {} length ({}) must match mixture component count ({}).".format(
+                label, composition.size, ncomp
+            )
+        )
     if not np.all(np.isfinite(composition)):
         raise InputError("initial_phases {} must contain only finite values.".format(label))
     if np.any(composition < 0.0):
@@ -1639,7 +1655,9 @@ def _call_native_equilibrium(
     return _native_result_from_payload(payload)
 
 
-def tp_flash(mixture: Any, *, T: float, P: float, z: Any, options: EquilibriumOptions | None = None) -> EquilibriumResult:
+def tp_flash(
+    mixture: Any, *, T: float, P: float, z: Any, options: EquilibriumOptions | None = None
+) -> EquilibriumResult:
     """Solve a neutral TP flash through the native C++ equilibrium backend."""
     opts = _normalize_options(options)
     feed = _normalize_feed(z, mixture.ncomp, opts.min_composition, "tp_flash")

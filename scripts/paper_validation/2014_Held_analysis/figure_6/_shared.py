@@ -21,7 +21,6 @@ require_epcsaft_install()
 
 from epcsaft.parameters import get_prop_dict
 
-
 DATA_PATH = Path(__file__).with_name("1-butanol-NH4Cl-water-LLE.csv")
 SPECIES = ["H2O", "Butanol", "NH4+", "Cl-"]
 MW = np.asarray([18.0153e-3, 74.1216e-3, 18.038e-3, 35.453e-3], dtype=float)
@@ -156,4 +155,3 @@ def solve_model_rows() -> tuple[dict, ...]:
 
     solved_rows.sort(key=lambda item: item["w_nh4cl_aq"])
     return tuple(solved_rows)
-

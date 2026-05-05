@@ -24,7 +24,15 @@ def main() -> None:
     m_max = max(x_data)
 
     fig, ax = plt.subplots(figsize=(3.4, 2.8))
-    ax.scatter(x_data, y_data, s=24, facecolor=common.LIGHT_GRAY, edgecolor=common.GRAY_COLOR, linewidth=0.8, label="Literature")
+    ax.scatter(
+        x_data,
+        y_data,
+        s=24,
+        facecolor=common.LIGHT_GRAY,
+        edgecolor=common.GRAY_COLOR,
+        linewidth=0.8,
+        label="Literature",
+    )
     ax.plot(m_grid, y_default, color="black", linewidth=1.5, label="Figiel 2025")
     ax.plot(m_grid, y_linear, color="black", linewidth=1.3, linestyle="--", label="Rule 1")
     ax.set_xlim(0.0, m_max)

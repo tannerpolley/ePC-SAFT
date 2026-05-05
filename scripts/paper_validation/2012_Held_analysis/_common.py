@@ -24,9 +24,11 @@ from scripts.plot_outputs import paper_validation_output_path, save_plot_figure
 
 require_epcsaft_install()
 
+
 # Avoid WMI stalls from platform.machine() during scipy import on some Windows sessions.
 def _fast_machine() -> str:
-    return os.environ.get('PROCESSOR_ARCHITECTURE', 'AMD64')
+    return os.environ.get("PROCESSOR_ARCHITECTURE", "AMD64")
+
 
 platform.machine = _fast_machine
 
@@ -248,7 +250,9 @@ def mw_mix(solvent_system: str, comp: Dict[str, float]) -> float:
     return sum(frac[s] * SOLVENT_MW[s] for s in frac)
 
 
-def molality_to_species_molefraction(molality: float, salt: str, solvent_system: str, comp: Dict[str, float]) -> np.ndarray:
+def molality_to_species_molefraction(
+    molality: float, salt: str, solvent_system: str, comp: Dict[str, float]
+) -> np.ndarray:
     species = species_for_combo(salt, solvent_system)
     solvents = [s for s in solvent_system.split("-") if s]
     solvent_species = species[2:]
@@ -287,9 +291,13 @@ def _resolve_pair_key(result: Dict[str, float], salt: str) -> str:
     raise KeyError(f"Could not resolve mean-ionic key for salt {salt}. Keys={list(result.keys())}")
 
 
-def build_params(dataset: str, salt: str, solvent_system: str, comp: Dict[str, float], user_options: dict | None = None) -> dict:
+def build_params(
+    dataset: str, salt: str, solvent_system: str, comp: Dict[str, float], user_options: dict | None = None
+) -> dict:
     x_ref = molality_to_species_molefraction(1e-8, salt, solvent_system, comp)
-    return get_prop_dict(dataset, species_for_combo(salt, solvent_system), x_ref, T_REF, user_options=user_options or {})
+    return get_prop_dict(
+        dataset, species_for_combo(salt, solvent_system), x_ref, T_REF, user_options=user_options or {}
+    )
 
 
 def mean_ionic_activity_curve(
@@ -310,7 +318,9 @@ def mean_ionic_activity_curve(
         m_eval = max(float(m), 1e-12)
         x = molality_to_species_molefraction(m_eval, salt, solvent_system, comp)
         rho = epcsaft_density(T_REF, P_REF, x, params, phase="liq")
-        vals = epcsaft_activity_coefficient(T_REF, rho, x, params, species=species, mean_ionic_form=True, basis="molality")
+        vals = epcsaft_activity_coefficient(
+            T_REF, rho, x, params, species=species, mean_ionic_form=True, basis="molality"
+        )
         key = _resolve_pair_key(vals, salt)
         gamma[idx] = float(vals[key])
 
@@ -411,13 +421,12 @@ def read_miac_dataset(path: Path, solvent_system: str) -> List[Dict[str, object]
     return data
 
 
-def group_by_signature(entries: List[Dict[str, object]]) -> Dict[Tuple[Tuple[str, float], ...], List[Dict[str, object]]]:
+def group_by_signature(
+    entries: List[Dict[str, object]],
+) -> Dict[Tuple[Tuple[str, float], ...], List[Dict[str, object]]]:
     grouped: Dict[Tuple[Tuple[str, float], ...], List[Dict[str, object]]] = defaultdict(list)
     for entry in entries:
         grouped[entry["signature"]].append(entry)
     for group in grouped.values():
         group.sort(key=lambda x: float(x["molality"]))
     return dict(grouped)
-
-
-

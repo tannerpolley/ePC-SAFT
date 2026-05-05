@@ -22,7 +22,6 @@ if str(REPO_ROOT) not in sys.path:
 import _plot_common as common
 import _model_overlay as overlay
 
-
 DATA_PATH = SCRIPT_DIR / "data" / "water_contributions.csv"
 FIGURE2_TOTALS_PATH = ANALYSIS_ROOT / "figure_2" / "data" / "water_comparisons.csv"
 CONTRIBUTIONS = [
@@ -51,7 +50,9 @@ PAPER_RANGE_ROW_KEYS = {
 def _model_values(ions: list[str], term_key: str, basis: str = "mu", d_born_mode: int | None = None) -> np.ndarray:
     out = np.empty(len(ions), dtype=float)
     for idx, ion in enumerate(ions):
-        out[idx] = overlay.contribution_breakdown("advanced", ion, "water", basis=basis, d_born_mode=d_born_mode)[term_key]
+        out[idx] = overlay.contribution_breakdown("advanced", ion, "water", basis=basis, d_born_mode=d_born_mode)[
+            term_key
+        ]
     return out
 
 
@@ -59,7 +60,9 @@ def _paper_values(frame: common.Table, term_key: str, ions: list[str]) -> np.nda
     for row_key in PAPER_ROW_KEYS.get(term_key, (term_key,)):
         if row_key in frame.index:
             return frame.values(row_key, ions)
-    raise KeyError(f"Missing paper row for Figure 3 term '{term_key}'. Tried: {PAPER_ROW_KEYS.get(term_key, (term_key,))}")
+    raise KeyError(
+        f"Missing paper row for Figure 3 term '{term_key}'. Tried: {PAPER_ROW_KEYS.get(term_key, (term_key,))}"
+    )
 
 
 def _paper_range(frame: common.Table, term_key: str, ions: list[str]) -> tuple[np.ndarray, np.ndarray] | None:
@@ -130,7 +133,9 @@ def _plot_total(
     ax.set_xticks(x)
     ax.set_xticklabels(ions)
     ax.set_ylabel(r"$\Delta G_{\mathrm{hyd},i}^{\infty}$ / kJ mol$^{-1}$ (EOS total / EOS-sum check)")
-    ax.set_title("Bulow 2020 Part I Figure 3 Total Check: Figure 2 advanced totals vs summed Figure 3 contribution bars")
+    ax.set_title(
+        "Bulow 2020 Part I Figure 3 Total Check: Figure 2 advanced totals vs summed Figure 3 contribution bars"
+    )
     ax.set_ylim(y_min - pad, y_max + 2.7 * pad)
     ax.grid(axis="y", alpha=0.22)
     common.annotate_percent_deltas(ax, x + offsets[1], figure2_paper, figure2_model, xs_ref=x + offsets[0])
@@ -237,7 +242,9 @@ def _plot_z_adjusted_total(
     common.annotate_bar_values(ax, bars5, fontsize=6)
     common.annotate_bar_values(ax, bars6, fontsize=6)
 
-    stacked = np.vstack([figure2_paper, figure3_sum_paper, adjusted_paper, figure2_model, figure3_mu_sum_model, adjusted_model])
+    stacked = np.vstack(
+        [figure2_paper, figure3_sum_paper, adjusted_paper, figure2_model, figure3_mu_sum_model, adjusted_model]
+    )
     y_min = float(np.nanmin(stacked))
     y_max = float(np.nanmax(stacked))
     pad = max(3.0, 0.10 * max(abs(y_min), abs(y_max), 1.0))
@@ -438,8 +445,7 @@ def _plot_comprehensive(
         ax.text(center, -985.0, ion, ha="center", va="bottom", fontsize=9, fontweight="bold")
 
     contribution_handles = [
-        Patch(facecolor=term_meta[key][1], edgecolor="black", label=term_meta[key][0])
-        for key in COMPREHENSIVE_KEYS
+        Patch(facecolor=term_meta[key][1], edgecolor="black", label=term_meta[key][0]) for key in COMPREHENSIVE_KEYS
     ]
     basis_handles = [
         Patch(facecolor="white", edgecolor="black", label="Paper"),
@@ -487,9 +493,10 @@ def main() -> None:
     figure3_sum_model = sum(_model_values(ions, key, basis="lnfug") for key, _, _ in CONTRIBUTIONS)
     zquotient_sum_model = _model_zquotient_sum(ions)
     _plot_total(ions, figure2_paper, figure2_model, figure3_sum_paper, figure3_sum_model)
-    _plot_z_adjusted_total(ions, figure2_paper, figure2_model, figure3_sum_paper, figure3_mu_sum_model, zquotient_sum_model)
+    _plot_z_adjusted_total(
+        ions, figure2_paper, figure2_model, figure3_sum_paper, figure3_mu_sum_model, zquotient_sum_model
+    )
 
 
 if __name__ == "__main__":
     main()
-

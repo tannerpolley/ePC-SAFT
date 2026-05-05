@@ -31,10 +31,10 @@ def main() -> None:
     # -----------------------------
     # Physical constants (SI)
     # -----------------------------
-    e_charge = 1.602176634e-19       # C
-    kB = 1.380649e-23                # J/K
-    eps0 = 8.8541878128e-12          # F/m
-    NA = 6.02214076e23               # 1/mol
+    e_charge = 1.602176634e-19  # C
+    kB = 1.380649e-23  # J/K
+    eps0 = 8.8541878128e-12  # F/m
+    NA = 6.02214076e23  # 1/mol
     pi = np.pi
 
     # -----------------------------
@@ -45,15 +45,13 @@ def main() -> None:
     m = np.asarray([1.0, 1.0, 1.2047], dtype=float)  # not used here, included for completeness
     s = np.asarray([2.8232, 2.7599589, 0.0], dtype=float)  # segment diameters [Å]
     E = np.asarray([230.00, 170.00, 353.9449], dtype=float)  # not used here
-    volAB = np.asarray([0.0, 0.0, 0.0451], dtype=float)      # not used here
-    eAB = np.asarray([0.0, 0.0, 2425.67], dtype=float)       # not used here
-    k_ij = np.asarray([[0.0, 0.317, 0.0],
-                       [0.317, 0.0, -0.25],
-                       [0.0, -0.25, 0.0]], dtype=float)      # not used here
+    volAB = np.asarray([0.0, 0.0, 0.0451], dtype=float)  # not used here
+    eAB = np.asarray([0.0, 0.0, 2425.67], dtype=float)  # not used here
+    k_ij = np.asarray([[0.0, 0.317, 0.0], [0.317, 0.0, -0.25], [0.0, -0.25, 0.0]], dtype=float)  # not used here
     z = np.asarray([1.0, -1.0, 0.0], dtype=float)
 
     ref = 1.116  # not used here
-    T = 293.15   # K
+    T = 293.15  # K
 
     # Temperature-dependent segment diameter for water (Å)
     s[2] = 2.7927 + 10.11 * np.exp(-0.01775 * T) - 1.417 * np.exp(-0.01146 * T)

@@ -72,7 +72,9 @@ def build_electrolyte_basis(
     if rank != len(charged_indices) - 1:
         raise InputError("electrolyte counterion-pair matrix is rank deficient.")
 
-    formula_moles = np.asarray([*(x[i] for i in neutral_indices), *(x[int(pair["cation"])] for pair in pairs)], dtype=float)
+    formula_moles = np.asarray(
+        [*(x[i] for i in neutral_indices), *(x[int(pair["cation"])] for pair in pairs)], dtype=float
+    )
     formula_total = float(np.sum(formula_moles))
     if formula_total <= 0.0:
         raise InputError("electrolyte formula-basis feed has non-positive total.")

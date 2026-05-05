@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 _SRC_PACKAGE = Path(__file__).resolve().parents[1] / "src" / "epcsaft"
 if not _SRC_PACKAGE.is_dir():
     raise ModuleNotFoundError("Cannot find source package at src/epcsaft.")

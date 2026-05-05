@@ -15,7 +15,6 @@ if str(REPO_ROOT) not in sys.path:
 
 from scripts.paper_validation.tools import build_analysis_galleries
 
-
 PLOTS_ROOT = build_analysis_galleries.PLOTS_ROOT
 
 

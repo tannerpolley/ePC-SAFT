@@ -82,7 +82,14 @@ def main() -> None:
 
         x, y = data[(kind, "alanine")]
         xd, yd = _dense_xy(x, y)
-        ax.plot(xd, yd, color="0.55" if kind == "strategy1" else "0.45", linewidth=width, linestyle=style, label=f"Alanine model ({kind})")
+        ax.plot(
+            xd,
+            yd,
+            color="0.55" if kind == "strategy1" else "0.45",
+            linewidth=width,
+            linestyle=style,
+            label=f"Alanine model ({kind})",
+        )
 
     ax.set_xlim(0.0, 3.2)
     ax.set_ylim(1.5, 3.8)
@@ -98,4 +105,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

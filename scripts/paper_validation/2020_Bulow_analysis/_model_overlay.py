@@ -9,8 +9,12 @@ from scripts._env import require_epcsaft_install
 require_epcsaft_install()
 
 from epcsaft.parameters import get_prop_dict
-from scripts._epcsaft_oop import epcsaft_density, epcsaft_solvation_free_energy, epcsaft_fugacity_coefficient_terms, epcsaft_pressure
-
+from scripts._epcsaft_oop import (
+    epcsaft_density,
+    epcsaft_solvation_free_energy,
+    epcsaft_fugacity_coefficient_terms,
+    epcsaft_pressure,
+)
 
 R_GAS = 8.31446261815324
 T_REF = 298.15
@@ -120,10 +124,7 @@ def contribution_breakdown(
     else:
         raise ValueError(f"Unsupported contribution basis '{basis}'.")
 
-    out = {
-        key: float(R_GAS * T_REF * terms[term_key][idx] / 1000.0)
-        for key, term_key in key_map.items()
-    }
+    out = {key: float(R_GAS * T_REF * terms[term_key][idx] / 1000.0) for key, term_key in key_map.items()}
     total_key = "lnfugcoef_total" if basis == "lnfug" else "mu_total"
     out["total"] = float(R_GAS * T_REF * terms[total_key][idx] / 1000.0)
     return out
@@ -145,4 +146,3 @@ def transfer_breakdown(
     organic = contribution_breakdown(variant, ion, organic_solvent, basis=basis, d_born_mode=d_born_mode)
     water = contribution_breakdown(variant, ion, "water", basis=basis, d_born_mode=d_born_mode)
     return {key: organic[key] - water[key] for key in organic}
-

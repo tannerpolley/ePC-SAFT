@@ -16,7 +16,6 @@ from scripts.plot_outputs import paper_validation_path, save_plot_figure
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-
 COLORS = ["0.5", "tab:orange", "black", "green"]
 
 
