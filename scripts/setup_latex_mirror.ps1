@@ -1,5 +1,5 @@
 param(
-    [string]$MirrorRoot = "C:\Users\Tanner\Documents\git\ePC-SAFT-LaTeX",
+    [string]$MirrorRoot = "C:\Users\Tanner\Documents\git\LaTeX-Projects\ePC-SAFT",
     [string]$RemoteUrl = "https://git@git.overleaf.com/686d837e6bb7fceea660fb5b",
     [string]$Branch = "master"
 )

@@ -98,7 +98,7 @@ After LaTeX edits are committed or ready to publish, mirror the current ``docs/l
 
    .\scripts\sync_latex_mirror.ps1
 
-The mirror lives at ``C:\Users\Tanner\Documents\git\ePC-SAFT-LaTeX`` and owns the Overleaf Git remote. The sync script copies the current LaTeX source tree and intentional top-level artifacts; generated ``docs/latex/out`` build products remain ignored in this repo.
+The mirror lives at ``C:\Users\Tanner\Documents\git\LaTeX-Projects\ePC-SAFT`` and owns the Overleaf Git remote. The sync script copies the current LaTeX source tree and intentional top-level artifacts; generated ``docs/latex/out`` build products remain ignored in this repo.
 
 Parallel agent safety
 ---------------------
