@@ -1356,3 +1356,72 @@ def _fit_pure_neutral_native_debug(
         "fused_state_evaluations": int(result["fused_state_evaluations"]),
         "callback_wall_time_s": float(result["callback_wall_time_s"]),
     }
+
+
+def _native_args_sequence(payloads):
+    return [create_struct(check_association(dict(payload))) for payload in payloads]
+
+
+def _fit_generic_native_least_squares(
+    fixed_payloads,
+    records,
+    target_kinds,
+    target_indices,
+    target_indices_2,
+    x0,
+    lower,
+    upper,
+    multistart=0,
+    max_nfev=200,
+):
+    result = _core._fit_generic_native_least_squares(
+        _native_args_sequence(fixed_payloads),
+        list(records),
+        np.asarray(target_kinds, dtype=int),
+        np.asarray(target_indices, dtype=int),
+        np.asarray(target_indices_2, dtype=int),
+        np.asarray(x0, dtype=float),
+        np.asarray(lower, dtype=float),
+        np.asarray(upper, dtype=float),
+        int(multistart),
+        int(max_nfev),
+    )
+    return {
+        "x": vector_to_array(result["x"]),
+        "cost": float(result["cost"]),
+        "residual_norm": float(result["residual_norm"]),
+        "initial_cost": float(result["initial_cost"]),
+        "initial_residual_norm": float(result["initial_residual_norm"]),
+        "metrics_by_term": {str(k): float(v) for k, v in dict(result["metrics_by_term"]).items()},
+        "success": bool(result["success"]),
+        "status": int(result["status"]),
+        "nfev": int(result["nfev"]),
+        "iterations": int(result["iterations"]),
+        "starts_tried": int(result["starts_tried"]),
+        "message": str(result["message"]),
+        "backend": str(result["backend"]),
+    }
+
+
+def _evaluate_generic_native_debug(
+    fixed_payloads,
+    records,
+    target_kinds,
+    target_indices,
+    target_indices_2,
+    x,
+):
+    result = _core._evaluate_generic_native_debug(
+        _native_args_sequence(fixed_payloads),
+        list(records),
+        np.asarray(target_kinds, dtype=int),
+        np.asarray(target_indices, dtype=int),
+        np.asarray(target_indices_2, dtype=int),
+        np.asarray(x, dtype=float),
+    )
+    return {
+        "cost": float(result["cost"]),
+        "residual_norm": float(result["residual_norm"]),
+        "residuals": vector_to_array(result["residuals"]),
+        "metrics_by_term": {str(k): float(v) for k, v in dict(result["metrics_by_term"]).items()},
+    }

@@ -9,11 +9,10 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 import numpy as np
-from scipy.optimize import least_squares
 
 from ._types import InputError
 from ._types import phase_to_int
-from .epcsaft import ePCSAFTMixture
+from .epcsaft import _fit_generic_native_least_squares
 from .epcsaft import _fit_pure_neutral_native_least_squares
 from .epcsaft import _fit_pure_neutral_native_debug
 from .parameter_templates import _infer_pure_template_name
@@ -38,22 +37,12 @@ TERM_OSMOTIC = "osmotic_coefficient"
 TERM_MIAC = "mean_ionic_activity"
 TERM_BINARY_VLE = "binary_vle_fugacity_balance"
 TERM_BINARY_LLE = "binary_lle_fugacity_balance"
+TERM_MEA_CO2_H2O_DENSITY = "mea_co2_h2o_density"
+TERM_MEA_CO2_H2O_CO2_FUGACITY = "mea_co2_h2o_co2_fugacity"
+TERM_MEA_CO2_H2O_OSMOTIC = "mea_co2_h2o_osmotic_coefficient"
 
 PURE_DENSITY_KEYS_MOLAR = ("rho",)
 PURE_DENSITY_KEYS_MASS = ("rho_kg_m3", "rho_mass_kg_m3", "rho_liq_kg_m3", "rho_sat_liq_kg_m3")
-
-PURE_NUMERIC_FIELDS = (
-    "m",
-    "s",
-    "e",
-    "e_assoc",
-    "vol_a",
-    "z",
-    "dielc",
-    "d_born",
-    "f_solv",
-    "MW",
-)
 
 PURE_REQUIRED_FIELDS = (
     "m",
@@ -73,12 +62,6 @@ MATRIX_FILE_NAMES = {
     "l_ij": "l_ij.csv",
     "k_hb_ij": "k_hb_ij.csv",
 }
-MATRIX_PARAM_NAMES = {
-    "k_ij": "k_ij",
-    "l_ij": "l_ij",
-    "k_hb_ij": "k_hb",
-}
-
 DEFAULT_TARGETS = {
     PURE_NEUTRAL_MODE: {
         "nonassociating": ("m", "s", "e"),
@@ -106,7 +89,28 @@ DEFAULT_BOUNDS = {
     "k_hb_ij_intercept": (-2.0, 2.0),
 }
 
-SMALL_VALUE_FLOOR = 1.0e-8
+NATIVE_TARGET_KINDS = {
+    "m": 0,
+    "s": 1,
+    "e": 2,
+    "e_assoc": 3,
+    "vol_a": 4,
+    "d_born": 5,
+    "k_ij": 6,
+    "l_ij": 7,
+    "k_hb_ij": 8,
+}
+
+NATIVE_TERM_KINDS = {
+    TERM_DENSITY: 1,
+    TERM_PURE_VLE: 2,
+    TERM_OSMOTIC: 3,
+    TERM_MIAC: 4,
+    TERM_BINARY_VLE: 5,
+    TERM_MEA_CO2_H2O_DENSITY: 1,
+    TERM_MEA_CO2_H2O_OSMOTIC: 3,
+    TERM_MEA_CO2_H2O_CO2_FUGACITY: 6,
+}
 
 
 def _copy_mapping(mapping: Mapping[str, Any] | None) -> dict[str, Any]:
@@ -402,17 +406,6 @@ def _family_scale(term: FitTerm) -> float:
     return math.sqrt(float(term.weight) / float(term.residual_count))
 
 
-def _relative_residual(calc: float, exp: float) -> float:
-    denom = max(abs(exp), SMALL_VALUE_FLOOR)
-    return (calc - exp) / denom
-
-
-def _relative_or_absolute_residual(calc: float, exp: float) -> float:
-    if abs(exp) <= SMALL_VALUE_FLOOR:
-        return calc - exp
-    return (calc - exp) / abs(exp)
-
-
 def _safe_log_fraction(value: float) -> float:
     if value <= 0.0:
         raise InputError("Fugacity-balance records require strictly positive composition values.")
@@ -514,78 +507,8 @@ def _build_single_component_params(component: str, values: Mapping[str, Any], as
     return params
 
 
-def _apply_component_overrides(
-    params: dict[str, Any], species: Sequence[str], component: str, updates: Mapping[str, float]
-) -> dict[str, Any]:
-    out = {
-        key: (
-            np.asarray(value, dtype=float).copy()
-            if isinstance(value, np.ndarray)
-            else value.copy() if isinstance(value, list) else value
-        )
-        for key, value in params.items()
-    }
-    idx = [str(name) for name in species].index(str(component))
-    for field, value in updates.items():
-        if field not in PURE_NUMERIC_FIELDS:
-            continue
-        if field not in out:
-            continue
-        arr = np.asarray(out[field], dtype=float).copy()
-        if arr.size == 0:
-            if field == "z":
-                arr = np.zeros(len(species), dtype=float)
-            else:
-                raise InputError(f"Cannot override parameter '{field}' because it is missing in the resolved payload.")
-        arr[idx] = float(value)
-        out[field] = arr
-    return out
-
-
-def _apply_binary_overrides(
-    params: dict[str, Any],
-    species: Sequence[str],
-    pair: tuple[str, str],
-    target_values: Mapping[str, float],
-) -> dict[str, Any]:
-    out = {
-        key: (
-            np.asarray(value, dtype=float).copy()
-            if isinstance(value, np.ndarray)
-            else value.copy() if isinstance(value, list) else value
-        )
-        for key, value in params.items()
-    }
-    names = [str(name) for name in species]
-    i = names.index(str(pair[0]))
-    j = names.index(str(pair[1]))
-    for public_name, matrix_key in MATRIX_PARAM_NAMES.items():
-        if public_name not in target_values:
-            continue
-        matrix = np.asarray(out[matrix_key], dtype=float).copy()
-        matrix[i, j] = float(target_values[public_name])
-        matrix[j, i] = float(target_values[public_name])
-        out[matrix_key] = matrix
-    return out
-
-
 def _normalize_vector_map(names: Sequence[str], values: Sequence[float]) -> dict[str, float]:
     return {str(name): float(value) for name, value in zip(names, values)}
-
-
-def _binary_target_values(
-    vector_map: Mapping[str, float], fit_targets: Sequence[str], temperature_model: str, T: float
-) -> dict[str, float]:
-    values: dict[str, float] = {}
-    if temperature_model == "constant":
-        for target in fit_targets:
-            values[str(target)] = float(vector_map[str(target)])
-        return values
-    for target in fit_targets:
-        slope = float(vector_map[f"{target}_slope"])
-        intercept = float(vector_map[f"{target}_intercept"])
-        values[str(target)] = slope * float(T) + intercept
-    return values
 
 
 def _render_binary_values(
@@ -843,70 +766,117 @@ def _ion_composition_from_record(record: Mapping[str, Any], species: Sequence[st
         raise InputError(str(exc)) from exc
 
 
-def _density_residual(state: Any, record: Mapping[str, Any]) -> tuple[str, float] | None:
-    rho_molar = _float_from_record(record, *PURE_DENSITY_KEYS_MOLAR, required=False)
-    if rho_molar is not None:
-        return TERM_DENSITY, _relative_residual(float(state.molar_density()), rho_molar)
-    rho_mass = _float_from_record(record, *PURE_DENSITY_KEYS_MASS, required=False)
-    if rho_mass is not None:
-        return TERM_DENSITY, _relative_residual(float(state.mass_density()), rho_mass)
-    return None
-
-
-def _build_mixture(
+def _params_for_native_record(
     dataset: str | Path,
     species: Sequence[str],
     x: np.ndarray,
     T: float,
     user_options: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    return get_prop_dict(dataset, species, x, T, user_options=_copy_mapping(user_options))
+
+
+def _native_target_payload(
+    optimization_names: Sequence[str],
+    species: Sequence[str],
     *,
     component: str | None = None,
-    component_values: Mapping[str, float] | None = None,
     pair: tuple[str, str] | None = None,
-    binary_values: Mapping[str, float] | None = None,
-) -> ePCSAFTMixture:
-    params = get_prop_dict(dataset, species, x, T, user_options=_copy_mapping(user_options))
-    if component is not None and component_values is not None:
-        params = _apply_component_overrides(params, species, component, component_values)
-    if pair is not None and binary_values is not None:
-        params = _apply_binary_overrides(params, species, pair, binary_values)
-    return ePCSAFTMixture.from_params(params, species=species)
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    kinds: list[int] = []
+    indices: list[int] = []
+    indices_2: list[int] = []
+    for name in optimization_names:
+        if name not in NATIVE_TARGET_KINDS:
+            raise InputError(f"Native regression does not support optimization parameter '{name}'.")
+        kinds.append(NATIVE_TARGET_KINDS[name])
+        if name in {"k_ij", "l_ij", "k_hb_ij"}:
+            if pair is None:
+                raise InputError(f"Native {name} regression requires a fitted pair.")
+            indices.append(species.index(pair[0]))
+            indices_2.append(species.index(pair[1]))
+        else:
+            if component is None:
+                raise InputError(f"Native pure-parameter regression requires a component for '{name}'.")
+            indices.append(species.index(component))
+            indices_2.append(-1)
+    return (
+        np.asarray(kinds, dtype=int),
+        np.asarray(indices, dtype=int),
+        np.asarray(indices_2, dtype=int),
+    )
 
 
-def _least_squares_starts(
-    theta0: np.ndarray, lower: np.ndarray, upper: np.ndarray, multistart: int
-) -> list[np.ndarray]:
-    starts = [np.clip(np.asarray(theta0, dtype=float), lower, upper)]
-    if int(multistart) <= 0:
-        return starts
-    finite = np.isfinite(lower) & np.isfinite(upper)
-    fractions = (0.25, 0.5, 0.75, 0.1, 0.9)
-    for fraction in fractions:
-        if len(starts) > int(multistart):
-            break
-        candidate = starts[0].copy()
-        candidate[finite] = lower[finite] + fraction * (upper[finite] - lower[finite])
-        starts.append(np.clip(candidate, lower, upper))
-    return starts
+def _native_density_record(
+    term_name: str,
+    record: Mapping[str, Any],
+    x: np.ndarray,
+    scale: float,
+    *,
+    phase: str | None = None,
+) -> dict[str, Any] | None:
+    rho_molar = _float_from_record(record, *PURE_DENSITY_KEYS_MOLAR, required=False)
+    rho_mass = _float_from_record(record, *PURE_DENSITY_KEYS_MASS, required=False)
+    if rho_molar is None and rho_mass is None:
+        return None
+    target = rho_molar if rho_molar is not None else rho_mass
+    return {
+        "term_name": term_name,
+        "term": NATIVE_TERM_KINDS[term_name],
+        "T": _float_from_record(record, "T", required=True),
+        "P": _float_from_record(record, "P", required=True),
+        "phase": phase_to_int(phase or _value_from_record(record, "phase", required=False) or "liq"),
+        "x": np.asarray(x, dtype=float).tolist(),
+        "target": float(target),
+        "density_kind": 0 if rho_molar is not None else 1,
+        "scale": scale,
+    }
 
 
-def _run_python_least_squares(
-    residual_fn: Any,
+def _native_miac_pair_indices(record: Mapping[str, Any], species: Sequence[str]) -> tuple[int, int]:
+    explicit = _value_from_record(record, "pair_label", "mean_ionic_label", "salt_label", required=False)
+    if explicit is None:
+        return -1, -1
+    label = str(explicit)
+    for i, left in enumerate(species):
+        for j, right in enumerate(species):
+            if f"{left}{right}" == label:
+                return i, j
+    raise InputError(f"Requested mean-ionic label '{label}' is not present in the fitted species list.")
+
+
+def _run_native_generic_least_squares(
+    fixed_payloads: Sequence[Mapping[str, Any]],
+    native_records: Sequence[Mapping[str, Any]],
+    optimization_names: Sequence[str],
+    species: Sequence[str],
     theta0: np.ndarray,
     lower: np.ndarray,
     upper: np.ndarray,
-    multistart: int,
-) -> Any:
-    best = None
-    nfev = 0
-    for start in _least_squares_starts(theta0, lower, upper, multistart):
-        result = least_squares(residual_fn, start, bounds=(lower, upper))
-        nfev += int(result.nfev)
-        if best is None or float(result.cost) < float(best.cost):
-            best = result
-    assert best is not None
-    best.nfev = nfev
-    return best
+    *,
+    component: str | None = None,
+    pair: tuple[str, str] | None = None,
+    multistart: int = 0,
+    max_nfev: int = 200,
+) -> dict[str, Any]:
+    target_kinds, target_indices, target_indices_2 = _native_target_payload(
+        optimization_names,
+        species,
+        component=component,
+        pair=pair,
+    )
+    return _fit_generic_native_least_squares(
+        [dict(payload) for payload in fixed_payloads],
+        [dict(record) for record in native_records],
+        target_kinds,
+        target_indices,
+        target_indices_2,
+        theta0,
+        lower,
+        upper,
+        multistart=int(multistart),
+        max_nfev=int(max_nfev),
+    )
 
 
 def _fit_pure_ion_internal(
@@ -946,62 +916,75 @@ def _fit_pure_ion_internal(
     lower, upper = bounds_obj.arrays_for(optimization_names)
     theta0 = np.asarray([initial_map[name] for name in optimization_names], dtype=float)
 
-    def evaluate(theta: Sequence[float]) -> tuple[np.ndarray, dict[str, list[float]]]:
-        vector_map = _normalize_vector_map(optimization_names, theta)
-        raw_by_term: dict[str, list[float]] = {term.term_type: [] for term in terms}
-        scaled: list[float] = []
-        for term in terms:
-            scale = _family_scale(term)
-            for record in term.records:
-                T = _float_from_record(record, "T", required=True)
-                P = _float_from_record(record, "P", required=True)
-                assert T is not None and P is not None
-                x = _ion_composition_from_record(record, normalized_species, normalized_solvent)
-                phase = _value_from_record(record, "phase", required=False) or "liq"
-                mixture = _build_mixture(
-                    dataset,
-                    normalized_species,
-                    x,
-                    T,
-                    user_options,
-                    component=normalized_component,
-                    component_values=vector_map,
+    native_records: list[dict[str, Any]] = []
+    fixed_payloads: list[dict[str, Any]] = []
+    solvent_index = -1 if normalized_solvent is None else normalized_species.index(normalized_solvent)
+    for term in terms:
+        scale = _family_scale(term)
+        for record in term.records:
+            T = _float_from_record(record, "T", required=True)
+            P = _float_from_record(record, "P", required=True)
+            assert T is not None and P is not None
+            x = _ion_composition_from_record(record, normalized_species, normalized_solvent)
+            if term.term_type == TERM_DENSITY:
+                native_record = _native_density_record(term.term_type, record, x, scale)
+                if native_record is None:
+                    continue
+            elif term.term_type == TERM_OSMOTIC:
+                native_record = {
+                    "term_name": term.term_type,
+                    "term": NATIVE_TERM_KINDS[term.term_type],
+                    "T": T,
+                    "P": P,
+                    "phase": phase_to_int(_value_from_record(record, "phase", required=False) or "liq"),
+                    "x": x.tolist(),
+                    "target": _float_from_record(record, "osmotic_coefficient", "osmotic", required=True),
+                    "scale": scale,
+                }
+            elif term.term_type == TERM_MIAC:
+                basis = (
+                    str(_value_from_record(record, "activity_basis", "miac_basis", required=False) or "molality")
+                    .strip()
+                    .lower()
                 )
-                state = mixture.state(T, x, P=P, phase=phase)
-                if term.term_type == TERM_DENSITY:
-                    item = _density_residual(state, record)
-                    if item is None:
-                        continue
-                    _, residual = item
-                elif term.term_type == TERM_OSMOTIC:
-                    exp = _float_from_record(record, "osmotic_coefficient", "osmotic", required=True)
-                    residual = _relative_or_absolute_residual(float(state.osmotic_coefficient()[0]), float(exp))
-                elif term.term_type == TERM_MIAC:
-                    exp = _float_from_record(
+                miac_i, miac_j = _native_miac_pair_indices(record, normalized_species)
+                native_record = {
+                    "term_name": term.term_type,
+                    "term": NATIVE_TERM_KINDS[term.term_type],
+                    "T": T,
+                    "P": P,
+                    "phase": phase_to_int(_value_from_record(record, "phase", required=False) or "liq"),
+                    "x": x.tolist(),
+                    "target": _float_from_record(
                         record,
                         "mean_ionic_activity",
                         "mean_ionic_activity_coefficient",
                         "miac",
                         required=True,
-                    )
-                    mapping = state.activity_coefficient(
-                        species=normalized_species,
-                        solvent=normalized_solvent,
-                        mean_ionic_form=True,
-                        basis=str(
-                            _value_from_record(record, "activity_basis", "miac_basis", required=False) or "molality"
-                        ),
-                    )
-                    residual = _relative_or_absolute_residual(_best_pair_label(mapping, record), float(exp))
-                else:
-                    continue
-                raw_by_term[term.term_type].append(float(residual))
-                scaled.append(scale * float(residual))
-        return np.asarray(scaled, dtype=float), raw_by_term
+                    ),
+                    "target_index": miac_i,
+                    "target_index_2": miac_j,
+                    "activity_basis": 1 if basis in {"molality", "m"} else 0,
+                    "solvent_index": solvent_index,
+                    "scale": scale,
+                }
+            else:
+                continue
+            fixed_payloads.append(_params_for_native_record(dataset, normalized_species, x, T, user_options))
+            native_records.append(native_record)
 
-    result = _run_python_least_squares(lambda theta: evaluate(theta)[0], theta0, lower, upper, int(multistart))
-    vector_map = _normalize_vector_map(optimization_names, result.x)
-    final_scaled, raw_by_term = evaluate(result.x)
+    result = _run_native_generic_least_squares(
+        fixed_payloads,
+        native_records,
+        optimization_names,
+        normalized_species,
+        theta0,
+        lower,
+        upper,
+        component=normalized_component,
+        multistart=int(multistart),
+    )
+    vector_map = _normalize_vector_map(optimization_names, result["x"])
     rendered = {name: float(vector_map[name]) for name in normalized_fit_targets}
     problem = FitProblem(
         mode=PURE_ION_MODE,
@@ -1022,14 +1005,14 @@ def _fit_pure_ion_internal(
         problem=problem,
         fitted_values=vector_map,
         rendered_values=rendered,
-        metrics_by_term=_family_metrics(raw_by_term),
-        cost=float(0.5 * np.dot(final_scaled, final_scaled)),
-        residual_norm=float(np.linalg.norm(final_scaled)),
-        success=bool(result.success),
-        status=int(result.status),
-        message=str(result.message),
-        nfev=int(result.nfev),
-        backend="least_squares_python",
+        metrics_by_term=result["metrics_by_term"],
+        cost=float(result["cost"]),
+        residual_norm=float(result["residual_norm"]),
+        success=bool(result["success"]),
+        status=int(result["status"]),
+        message=str(result["message"]),
+        nfev=int(result["nfev"]),
+        backend=str(result["backend"]),
     )
 
 
@@ -1053,12 +1036,19 @@ def _fit_binary_pair_internal(
     if normalized_temperature_model != "constant":
         raise InputError("binary_pair V1 supports only temperature_model='constant'.")
     normalized_fit_targets = _normalize_fit_targets(BINARY_PAIR_MODE, fit_targets)
-    if normalized_fit_targets != ("k_ij",):
-        raise InputError("binary_pair V1 supports only the target 'k_ij'.")
+    unsupported_targets = [target for target in normalized_fit_targets if target not in {"k_ij", "l_ij", "k_hb_ij"}]
+    if unsupported_targets:
+        raise InputError("binary_pair regression supports only the targets 'k_ij', 'l_ij', and 'k_hb_ij'.")
     terms = _build_binary_terms(normalized_records)
 
     T_ref = float(np.mean([_float_from_record(record, "T", required=True) for record in normalized_records]))
-    current = {"k_ij": _matrix_value(_load_dataset(dataset), "k_ij", normalized_pair[0], normalized_pair[1], T_ref)}
+    dataset_obj = _load_dataset(dataset)
+    current = {
+        target: _matrix_value(
+            dataset_obj, "k_hb" if target == "k_hb_ij" else target, normalized_pair[0], normalized_pair[1], T_ref
+        )
+        for target in normalized_fit_targets
+    }
     initial_map = {}
     for target in normalized_fit_targets:
         initial_map.update(
@@ -1072,48 +1062,46 @@ def _fit_binary_pair_internal(
     theta0 = np.asarray([initial_map[name] for name in optimization_names], dtype=float)
     pair_indices = tuple(normalized_species.index(name) for name in normalized_pair)
 
-    def evaluate(theta: Sequence[float]) -> tuple[np.ndarray, dict[str, list[float]]]:
-        vector_map = _normalize_vector_map(optimization_names, theta)
-        raw_by_term: dict[str, list[float]] = {term.term_type: [] for term in terms}
-        scaled: list[float] = []
-        for term in terms:
-            scale = _family_scale(term)
-            for record in term.records:
-                T = _float_from_record(record, "T", required=True)
-                P = _float_from_record(record, "P", required=True)
-                assert T is not None and P is not None
-                x_liq = _composition_from_record(record, "x_", normalized_species)
-                y_vap = _composition_from_record(record, "y_", normalized_species)
-                target_values = _binary_target_values(
-                    vector_map, normalized_fit_targets, normalized_temperature_model, T
-                )
-                mixture = _build_mixture(
-                    dataset,
-                    normalized_species,
-                    x_liq,
-                    T,
-                    user_options,
-                    pair=normalized_pair,
-                    binary_values=target_values,
-                )
-                liquid = mixture.state(T, x_liq, P=P, phase="liq")
-                vapor = mixture.state(T, y_vap, P=P, phase="vap")
-                lnphi_liq = np.asarray(liquid.fugacity_coefficient(natural_log=True), dtype=float)
-                lnphi_vap = np.asarray(vapor.fugacity_coefficient(natural_log=True), dtype=float)
-                for index in pair_indices:
-                    residual = (
-                        _safe_log_fraction(float(x_liq[index]))
-                        + float(lnphi_liq[index])
-                        - _safe_log_fraction(float(y_vap[index]))
-                        - float(lnphi_vap[index])
-                    )
-                    raw_by_term[term.term_type].append(float(residual))
-                    scaled.append(scale * float(residual))
-        return np.asarray(scaled, dtype=float), raw_by_term
+    native_records: list[dict[str, Any]] = []
+    fixed_payloads: list[dict[str, Any]] = []
+    for term in terms:
+        scale = _family_scale(term)
+        for record in term.records:
+            T = _float_from_record(record, "T", required=True)
+            P = _float_from_record(record, "P", required=True)
+            assert T is not None and P is not None
+            x_liq = _composition_from_record(record, "x_", normalized_species)
+            y_vap = _composition_from_record(record, "y_", normalized_species)
+            for index in pair_indices:
+                _safe_log_fraction(float(x_liq[index]))
+                _safe_log_fraction(float(y_vap[index]))
+            native_records.append(
+                {
+                    "term_name": term.term_type,
+                    "term": NATIVE_TERM_KINDS[term.term_type],
+                    "T": T,
+                    "P": P,
+                    "x": x_liq.tolist(),
+                    "y": y_vap.tolist(),
+                    "target_index": pair_indices[0],
+                    "target_index_2": pair_indices[1],
+                    "scale": scale,
+                }
+            )
+            fixed_payloads.append(_params_for_native_record(dataset, normalized_species, x_liq, T, user_options))
 
-    result = _run_python_least_squares(lambda theta: evaluate(theta)[0], theta0, lower, upper, int(multistart))
-    vector_map = _normalize_vector_map(optimization_names, result.x)
-    final_scaled, raw_by_term = evaluate(result.x)
+    result = _run_native_generic_least_squares(
+        fixed_payloads,
+        native_records,
+        optimization_names,
+        normalized_species,
+        theta0,
+        lower,
+        upper,
+        pair=normalized_pair,
+        multistart=int(multistart),
+    )
+    vector_map = _normalize_vector_map(optimization_names, result["x"])
     problem = FitProblem(
         mode=BINARY_PAIR_MODE,
         records=tuple(normalized_records),
@@ -1129,14 +1117,14 @@ def _fit_binary_pair_internal(
         problem=problem,
         fitted_values=vector_map,
         rendered_values=_render_binary_values(vector_map, normalized_fit_targets, normalized_temperature_model),
-        metrics_by_term=_family_metrics(raw_by_term),
-        cost=float(0.5 * np.dot(final_scaled, final_scaled)),
-        residual_norm=float(np.linalg.norm(final_scaled)),
-        success=bool(result.success),
-        status=int(result.status),
-        message=str(result.message),
-        nfev=int(result.nfev),
-        backend="least_squares_python",
+        metrics_by_term=result["metrics_by_term"],
+        cost=float(result["cost"]),
+        residual_norm=float(result["residual_norm"]),
+        success=bool(result["success"]),
+        status=int(result["status"]),
+        message=str(result["message"]),
+        nfev=int(result["nfev"]),
+        backend=str(result["backend"]),
     )
 
 
@@ -1371,6 +1359,139 @@ def _fit_pure_neutral_least_squares_internal(
     )
 
 
+def _associating_pure_payload(
+    component: str,
+    T_ref: float,
+    assoc_scheme: str,
+    fixed_parameters: Mapping[str, Any] | None,
+    initial_guess: Mapping[str, float] | None,
+) -> dict[str, Any]:
+    payload, _ = _pure_seed_payload(component, T_ref, assoc_scheme, None, None)
+    payload.update(_copy_mapping(fixed_parameters))
+    initial = _copy_mapping(initial_guess)
+    for field in PURE_REQUIRED_FIELDS:
+        if field in payload and payload[field] not in (None, ""):
+            continue
+        if field in initial:
+            payload[field] = initial[field]
+    payload["assoc_scheme"] = assoc_scheme
+    payload.setdefault("z", 0.0)
+    payload.setdefault("dielc", 8.0)
+    payload.setdefault("d_born", 0.0)
+    payload.setdefault("f_solv", 1.0)
+    missing = [field for field in PURE_REQUIRED_FIELDS if field not in payload or payload[field] in (None, "")]
+    if missing:
+        raise InputError(f"Associating pure-neutral regression is missing fixed values for: {', '.join(missing)}.")
+    return payload
+
+
+def _fit_pure_neutral_associating_python(
+    records: Any,
+    component: str,
+    *,
+    assoc_scheme: str,
+    fit_targets: Iterable[str] | None = None,
+    fixed_parameters: Mapping[str, Any] | None = None,
+    initial_guess: Mapping[str, float] | None = None,
+    bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
+    multistart: int = 0,
+    max_nfev: int = 1,
+) -> FitResult:
+    """Internal associating pure-neutral regression path kept for benchmark compatibility."""
+
+    if not _assoc_is_enabled(assoc_scheme):
+        raise InputError("Associating pure-neutral Python regression requires an association scheme.")
+    normalized_component = _normalize_component(component)
+    normalized_records = _normalize_records(records)
+    normalized_fit_targets = (
+        tuple(DEFAULT_TARGETS[PURE_NEUTRAL_MODE]["associating"])
+        if fit_targets is None
+        else _normalize_fit_targets(PURE_NEUTRAL_MODE, fit_targets, assoc_scheme=assoc_scheme)
+    )
+    unsupported = [target for target in normalized_fit_targets if target not in {"m", "s", "e", "e_assoc", "vol_a"}]
+    if unsupported:
+        raise InputError("Associating pure-neutral regression supports only m, s, e, e_assoc, and vol_a.")
+    terms = _build_pure_neutral_terms(normalized_records)
+    T_ref = float(np.mean([_float_from_record(record, "T", required=True) for record in normalized_records]))
+    seed_payload = _associating_pure_payload(
+        normalized_component,
+        T_ref,
+        str(assoc_scheme),
+        fixed_parameters,
+        initial_guess,
+    )
+    initial = _copy_mapping(initial_guess)
+    initial_map = {target: _seed_value(target, initial, seed_payload) for target in normalized_fit_targets}
+    lower, upper = _coerce_bounds(bounds).arrays_for(normalized_fit_targets)
+    theta0 = np.asarray([initial_map[name] for name in normalized_fit_targets], dtype=float)
+
+    params = _build_single_component_params(normalized_component, seed_payload, str(assoc_scheme))
+    fixed_payloads: list[dict[str, Any]] = []
+    native_records: list[dict[str, Any]] = []
+    x_single = np.asarray([1.0], dtype=float)
+    for term in terms:
+        scale = _family_scale(term)
+        for record in term.records:
+            if term.term_type == TERM_DENSITY:
+                native_record = _native_density_record(term.term_type, record, x_single, scale)
+                if native_record is None:
+                    continue
+            elif term.term_type == TERM_PURE_VLE:
+                native_record = {
+                    "term_name": term.term_type,
+                    "term": NATIVE_TERM_KINDS[term.term_type],
+                    "T": _float_from_record(record, "T", required=True),
+                    "P": _float_from_record(record, "P", required=True),
+                    "x": x_single.tolist(),
+                    "scale": scale,
+                }
+            else:
+                continue
+            fixed_payloads.append(params)
+            native_records.append(native_record)
+
+    result = _run_native_generic_least_squares(
+        fixed_payloads,
+        native_records,
+        normalized_fit_targets,
+        (normalized_component,),
+        theta0,
+        lower,
+        upper,
+        component=normalized_component,
+        multistart=int(multistart),
+        max_nfev=int(max_nfev),
+    )
+    vector_map = _normalize_vector_map(normalized_fit_targets, result["x"])
+    metrics = dict(result["metrics_by_term"])
+    metrics["initial_residual_norm"] = float(result["initial_residual_norm"])
+    problem = FitProblem(
+        mode=PURE_NEUTRAL_MODE,
+        records=tuple(normalized_records),
+        component=normalized_component,
+        fit_targets=normalized_fit_targets,
+        optimization_parameters=normalized_fit_targets,
+        fixed_parameters=seed_payload,
+        initial_guess=initial_map,
+        assoc_scheme=str(assoc_scheme),
+        terms=tuple(terms),
+        pure_file_hint=_infer_pure_template_name([normalized_component]),
+    )
+    return FitResult(
+        problem=problem,
+        fitted_values=vector_map,
+        rendered_values={name: float(vector_map[name]) for name in normalized_fit_targets},
+        metrics_by_term=metrics,
+        cost=float(result["cost"]),
+        residual_norm=float(result["residual_norm"]),
+        success=bool(result["success"]),
+        status=int(result["status"]),
+        message=str(result["message"]),
+        nfev=int(result["nfev"]),
+        backend=str(result["backend"]),
+    )
+
+
 def _debug_native_pure_neutral_objective(
     records: Any,
     component: str,
@@ -1594,6 +1715,232 @@ def _update_matrix_file(
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
         writer.writerows(rows)
+
+
+def _mea_co2_h2o_species_from_records(
+    records: Sequence[Mapping[str, Any]], species: Iterable[str] | None
+) -> tuple[str, ...]:
+    normalized = _normalize_species_list(species)
+    inferred = _infer_species_union(records, ("x_",))
+    if normalized is None:
+        normalized = inferred
+    required = ("H2O", "MEA", "CO2", "MEAH+", "MEACOO-", "HCO3-")
+    missing_required = [name for name in required if name not in normalized]
+    if missing_required:
+        raise InputError(f"MEA-CO2-H2O benchmark species are missing: {', '.join(missing_required)}.")
+    missing_records = [name for name in normalized if name not in inferred]
+    if missing_records:
+        raise InputError(f"MEA-CO2-H2O benchmark records are missing x_ columns for: {', '.join(missing_records)}.")
+    return normalized
+
+
+def _build_mea_co2_h2o_terms(records: Sequence[dict[str, Any]]) -> tuple[FitTerm, ...]:
+    density_records = [
+        record
+        for record in records
+        if _value_from_record(record, *PURE_DENSITY_KEYS_MOLAR, *PURE_DENSITY_KEYS_MASS, required=False) is not None
+    ]
+    co2_records = [
+        record
+        for record in records
+        if _value_from_record(record, "lnphi_CO2", "ln_fugacity_coefficient_CO2", required=False) is not None
+    ]
+    osmotic_records = [
+        record
+        for record in records
+        if _value_from_record(record, "osmotic_coefficient", "osmotic", required=False) is not None
+    ]
+    if not density_records and not co2_records and not osmotic_records:
+        raise InputError("MEA-CO2-H2O benchmark records require density, CO2 fugacity, and/or osmotic targets.")
+    _require_record_value(density_records, "MEA-CO2-H2O benchmark", "P")
+    _require_record_value(co2_records, "MEA-CO2-H2O benchmark", "P")
+    _require_record_value(osmotic_records, "MEA-CO2-H2O benchmark", "P")
+    terms: list[FitTerm] = []
+    if density_records:
+        terms.append(_term_summary(density_records, TERM_MEA_CO2_H2O_DENSITY, 1.0, len(density_records)))
+    if co2_records:
+        terms.append(_term_summary(co2_records, TERM_MEA_CO2_H2O_CO2_FUGACITY, 1.0, len(co2_records)))
+    if osmotic_records:
+        terms.append(_term_summary(osmotic_records, TERM_MEA_CO2_H2O_OSMOTIC, 1.0, len(osmotic_records)))
+    return tuple(terms)
+
+
+def _target_bounds(
+    targets: Sequence[str], bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None
+) -> tuple[np.ndarray, np.ndarray]:
+    return _coerce_bounds(bounds).arrays_for(targets)
+
+
+def _benchmark_seed_payloads(
+    dataset: str | Path,
+    species: Sequence[str],
+    T_ref: float,
+    components: Sequence[str],
+) -> tuple[dict[str, dict[str, Any]], dict[str, str | None]]:
+    payloads: dict[str, dict[str, Any]] = {}
+    hints: dict[str, str | None] = {}
+    for component in components:
+        payload, source_key = _pure_seed_payload(component, T_ref, "", dataset, None)
+        payloads[component] = payload
+        hints[component] = f"{source_key}.csv" if source_key is not None else _infer_pure_template_name(list(species))
+    return payloads, hints
+
+
+def _benchmark_vector_map(targets: Sequence[str], theta: Sequence[float]) -> dict[str, float]:
+    return {name: float(value) for name, value in zip(targets, theta)}
+
+
+def _fit_mea_co2_h2o_component(
+    records: Sequence[dict[str, Any]],
+    component: str,
+    *,
+    dataset: str | Path,
+    species: Sequence[str],
+    fit_targets: Sequence[str],
+    seed_payload: Mapping[str, Any],
+    pure_file_hint: str | None,
+    terms: Sequence[FitTerm],
+    initial_guess: Mapping[str, float] | None,
+    bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None,
+    user_options: Mapping[str, Any] | None,
+    multistart: int,
+    max_nfev: int,
+) -> FitResult:
+    initial = _copy_mapping(initial_guess)
+    initial_map = {target: _seed_value(target, initial, seed_payload) for target in fit_targets}
+    lower, upper = _target_bounds(fit_targets, bounds)
+    theta0 = np.asarray([initial_map[name] for name in fit_targets], dtype=float)
+
+    native_records: list[dict[str, Any]] = []
+    fixed_payloads: list[dict[str, Any]] = []
+    co2_index = species.index("CO2")
+    for term in terms:
+        scale = _family_scale(term)
+        for record in term.records:
+            T = _float_from_record(record, "T", required=True)
+            P = _float_from_record(record, "P", required=True)
+            assert T is not None and P is not None
+            x = _composition_from_record(record, "x_", species)
+            if term.term_type == TERM_MEA_CO2_H2O_DENSITY:
+                native_record = _native_density_record(term.term_type, record, x, scale)
+                if native_record is None:
+                    continue
+            elif term.term_type == TERM_MEA_CO2_H2O_CO2_FUGACITY:
+                native_record = {
+                    "term_name": term.term_type,
+                    "term": NATIVE_TERM_KINDS[term.term_type],
+                    "T": T,
+                    "P": P,
+                    "phase": phase_to_int(_value_from_record(record, "phase", required=False) or "liq"),
+                    "x": x.tolist(),
+                    "target": _float_from_record(record, "lnphi_CO2", "ln_fugacity_coefficient_CO2", required=True),
+                    "target_index": co2_index,
+                    "scale": scale,
+                }
+            elif term.term_type == TERM_MEA_CO2_H2O_OSMOTIC:
+                native_record = {
+                    "term_name": term.term_type,
+                    "term": NATIVE_TERM_KINDS[term.term_type],
+                    "T": T,
+                    "P": P,
+                    "phase": phase_to_int(_value_from_record(record, "phase", required=False) or "liq"),
+                    "x": x.tolist(),
+                    "target": _float_from_record(record, "osmotic_coefficient", "osmotic", required=True),
+                    "scale": scale,
+                }
+            else:
+                continue
+            fixed_payloads.append(_params_for_native_record(dataset, species, x, T, user_options))
+            native_records.append(native_record)
+
+    result = _run_native_generic_least_squares(
+        fixed_payloads,
+        native_records,
+        fit_targets,
+        species,
+        theta0,
+        lower,
+        upper,
+        component=component,
+        multistart=int(multistart),
+        max_nfev=int(max_nfev),
+    )
+    vector_map = _benchmark_vector_map(fit_targets, result["x"])
+    mode = PURE_ION_MODE if abs(float(seed_payload.get("z", 0.0))) > 1.0e-12 else PURE_NEUTRAL_MODE
+    problem = FitProblem(
+        mode=mode,
+        records=tuple(records),
+        component=component,
+        dataset=_source_dataset_label(dataset),
+        fit_targets=tuple(fit_targets),
+        optimization_parameters=tuple(fit_targets),
+        fixed_parameters=seed_payload,
+        initial_guess=initial_map,
+        assoc_scheme=str(seed_payload.get("assoc_scheme", "")),
+        terms=tuple(terms),
+        pure_file_hint=pure_file_hint,
+    )
+    metrics = dict(result["metrics_by_term"])
+    metrics["initial_residual_norm"] = float(result["initial_residual_norm"])
+    return FitResult(
+        problem=problem,
+        fitted_values=vector_map,
+        rendered_values={name: float(vector_map[name]) for name in fit_targets},
+        metrics_by_term=metrics,
+        cost=float(result["cost"]),
+        residual_norm=float(result["residual_norm"]),
+        success=bool(result["success"]),
+        status=int(result["status"]),
+        message=str(result["message"]),
+        nfev=int(result["nfev"]),
+        backend=str(result["backend"]),
+    )
+
+
+def _fit_mea_co2_h2o_pure_parameter_benchmark(
+    records: Any,
+    *,
+    dataset: str | Path,
+    species: Iterable[str] | None = None,
+    user_options: Mapping[str, Any] | None = None,
+    initial_guess: Mapping[str, Mapping[str, float]] | None = None,
+    bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
+    multistart: int = 0,
+    max_nfev: int = 1,
+) -> dict[str, FitResult]:
+    """Internal opt-in benchmark hook for MEA-CO2-H2O pure-parameter fitting."""
+
+    normalized_records = _normalize_records(records)
+    normalized_species = _mea_co2_h2o_species_from_records(normalized_records, species)
+    terms = _build_mea_co2_h2o_terms(normalized_records)
+    components = ("MEA", "MEAH+", "MEACOO-", "HCO3-")
+    T_ref = float(np.mean([_float_from_record(record, "T", required=True) for record in normalized_records]))
+    seed_payloads, pure_file_hints = _benchmark_seed_payloads(dataset, normalized_species, T_ref, components)
+    fit_targets = {
+        "MEA": ("m", "s", "e", "e_assoc", "vol_a"),
+        "MEAH+": ("s", "e", "d_born"),
+        "MEACOO-": ("s", "e", "d_born"),
+        "HCO3-": ("s", "e", "d_born"),
+    }
+    guesses = initial_guess or {}
+    return {
+        component: _fit_mea_co2_h2o_component(
+            normalized_records,
+            component,
+            dataset=dataset,
+            species=normalized_species,
+            fit_targets=fit_targets[component],
+            seed_payload=seed_payloads[component],
+            pure_file_hint=pure_file_hints[component],
+            terms=terms,
+            initial_guess=guesses.get(component, {}),
+            bounds=bounds,
+            user_options=user_options,
+            multistart=multistart,
+            max_nfev=max_nfev,
+        )
+        for component in components
+    }
 
 
 def write_fit_result(

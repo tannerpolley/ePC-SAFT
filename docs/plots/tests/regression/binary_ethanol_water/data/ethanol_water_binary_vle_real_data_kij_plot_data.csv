@@ -1,0 +1,6 @@
+figure_file,axes_index,axes_title,x_label,y_label,artist_type,artist_label,color,linestyle,marker,linewidth,series_index,point_index,x,y,width,height
+ethanol_water_binary_vle_real_data_kij.png,0,Ethanol/water native binary regression from real JCED VLE records,,$k_{ij}$,line,,#404040,-,,0.80000000000000004,0,0,0,0,,
+ethanol_water_binary_vle_real_data_kij.png,0,Ethanol/water native binary regression from real JCED VLE records,,$k_{ij}$,line,,#404040,-,,0.80000000000000004,0,1,1,0,,
+ethanol_water_binary_vle_real_data_kij.png,0,Ethanol/water native binary regression from real JCED VLE records,,$k_{ij}$,bar,,#6b7280,,,1,0,0,0,0,0.80000000000000004,-0.049000000000000002
+ethanol_water_binary_vle_real_data_kij.png,0,Ethanol/water native binary regression from real JCED VLE records,,$k_{ij}$,bar,,#2563eb,,,1,1,0,1,0,0.80000000000000004,-0.028543195990580819
+ethanol_water_binary_vle_real_data_kij.png,0,Ethanol/water native binary regression from real JCED VLE records,,$k_{ij}$,bar,,#111827,,,1,2,0,2,0,0.80000000000000004,-0.0269
