@@ -28,7 +28,6 @@ from .parameters import _solvent_token_for_component
 from .parameters import get_prop_dict
 from .parameters import molality_to_molefraction
 
-
 PURE_NEUTRAL_MODE = "pure_neutral"
 PURE_ION_MODE = "pure_ion"
 BINARY_PAIR_MODE = "binary_pair"
@@ -207,7 +206,9 @@ class FitResult:
         self.fitted_values = {str(k): float(v) for k, v in self.fitted_values.items()}
         rendered: dict[str, str | float] = {}
         for key, value in self.rendered_values.items():
-            rendered[str(key)] = float(value) if isinstance(value, (int, float, np.integer, np.floating)) else str(value)
+            rendered[str(key)] = (
+                float(value) if isinstance(value, (int, float, np.integer, np.floating)) else str(value)
+            )
         self.rendered_values = rendered
         self.metrics_by_term = {str(k): float(v) for k, v in self.metrics_by_term.items()}
         self.cost = float(self.cost)
@@ -341,7 +342,7 @@ def _prefixed_species_values(record: Mapping[str, Any], prefix: str) -> dict[str
     for key, raw in record.items():
         if not str(key).startswith(prefix):
             continue
-        name = _normalize_component(str(key)[len(prefix):])
+        name = _normalize_component(str(key)[len(prefix) :])
         if not name:
             continue
         try:
@@ -513,9 +514,15 @@ def _build_single_component_params(component: str, values: Mapping[str, Any], as
     return params
 
 
-def _apply_component_overrides(params: dict[str, Any], species: Sequence[str], component: str, updates: Mapping[str, float]) -> dict[str, Any]:
+def _apply_component_overrides(
+    params: dict[str, Any], species: Sequence[str], component: str, updates: Mapping[str, float]
+) -> dict[str, Any]:
     out = {
-        key: (np.asarray(value, dtype=float).copy() if isinstance(value, np.ndarray) else value.copy() if isinstance(value, list) else value)
+        key: (
+            np.asarray(value, dtype=float).copy()
+            if isinstance(value, np.ndarray)
+            else value.copy() if isinstance(value, list) else value
+        )
         for key, value in params.items()
     }
     idx = [str(name) for name in species].index(str(component))
@@ -542,7 +549,11 @@ def _apply_binary_overrides(
     target_values: Mapping[str, float],
 ) -> dict[str, Any]:
     out = {
-        key: (np.asarray(value, dtype=float).copy() if isinstance(value, np.ndarray) else value.copy() if isinstance(value, list) else value)
+        key: (
+            np.asarray(value, dtype=float).copy()
+            if isinstance(value, np.ndarray)
+            else value.copy() if isinstance(value, list) else value
+        )
         for key, value in params.items()
     }
     names = [str(name) for name in species]
@@ -562,7 +573,9 @@ def _normalize_vector_map(names: Sequence[str], values: Sequence[float]) -> dict
     return {str(name): float(value) for name, value in zip(names, values)}
 
 
-def _binary_target_values(vector_map: Mapping[str, float], fit_targets: Sequence[str], temperature_model: str, T: float) -> dict[str, float]:
+def _binary_target_values(
+    vector_map: Mapping[str, float], fit_targets: Sequence[str], temperature_model: str, T: float
+) -> dict[str, float]:
     values: dict[str, float] = {}
     if temperature_model == "constant":
         for target in fit_targets:
@@ -575,7 +588,9 @@ def _binary_target_values(vector_map: Mapping[str, float], fit_targets: Sequence
     return values
 
 
-def _render_binary_values(vector_map: Mapping[str, float], fit_targets: Sequence[str], temperature_model: str) -> dict[str, str | float]:
+def _render_binary_values(
+    vector_map: Mapping[str, float], fit_targets: Sequence[str], temperature_model: str
+) -> dict[str, str | float]:
     rendered: dict[str, str | float] = {}
     if temperature_model == "constant":
         for target in fit_targets:
@@ -612,7 +627,9 @@ def _build_pure_neutral_terms(records: Sequence[dict[str, Any]]) -> tuple[FitTer
             "mass-density value such as 'rho_kg_m3' or 'rho_sat_liq_kg_m3'."
         )
     if not saturation_records:
-        raise InputError("pure_neutral regression requires at least one saturation record with an experimental 'P' value.")
+        raise InputError(
+            "pure_neutral regression requires at least one saturation record with an experimental 'P' value."
+        )
     _require_record_value(density_records, PURE_NEUTRAL_MODE, "P")
     return (
         _term_summary(density_records, TERM_DENSITY, 1.0, len(density_records)),
@@ -671,7 +688,9 @@ def _build_pure_ion_terms(records: Sequence[dict[str, Any]]) -> tuple[FitTerm, .
 def _build_binary_terms(records: Sequence[dict[str, Any]]) -> tuple[FitTerm, ...]:
     vle_records = [record for record in records if _prefixed_species_values(record, "y_")]
     lle_records = [
-        record for record in records if _prefixed_species_values(record, "x_alpha_") and _prefixed_species_values(record, "x_beta_")
+        record
+        for record in records
+        if _prefixed_species_values(record, "x_alpha_") and _prefixed_species_values(record, "x_beta_")
     ]
     if lle_records:
         raise InputError("binary_pair V1 supports only VLE x/y records; LLE records are not supported yet.")
@@ -702,7 +721,9 @@ def _native_pure_neutral_solver_payload(
     fixed_payload.update(_copy_mapping(fixed_parameters))
     fixed_payload["assoc_scheme"] = str(assoc_scheme or fixed_payload.get("assoc_scheme", ""))
     if "MW" not in fixed_payload or fixed_payload["MW"] in (None, ""):
-        raise InputError("pure_neutral regression requires a fixed MW value, either from the dataset or fixed_parameters.")
+        raise InputError(
+            "pure_neutral regression requires a fixed MW value, either from the dataset or fixed_parameters."
+        )
     if "z" not in fixed_payload or fixed_payload["z"] in (None, ""):
         fixed_payload["z"] = 0.0
 
@@ -713,8 +734,17 @@ def _native_pure_neutral_solver_payload(
         if name in initial_map:
             fixed_payload[name] = float(initial_map[name])
     terms = _build_pure_neutral_terms(normalized_records)
-    pure_file_hint = f"{source_key}.csv" if source_key is not None else _infer_pure_template_name([normalized_component])
-    return _ensure_native_vector_payload(fixed_payload), initial_map, bounds_obj, terms, optimization_names, pure_file_hint
+    pure_file_hint = (
+        f"{source_key}.csv" if source_key is not None else _infer_pure_template_name([normalized_component])
+    )
+    return (
+        _ensure_native_vector_payload(fixed_payload),
+        initial_map,
+        bounds_obj,
+        terms,
+        optimization_names,
+        pure_file_hint,
+    )
 
 
 def _family_metrics(raw_residuals_by_term: Mapping[str, Sequence[float]]) -> dict[str, float]:
@@ -776,7 +806,9 @@ def _ion_species_from_records(records: Sequence[Mapping[str, Any]], species: Ite
         return _infer_species_union(records, ("x_",))
     if any(_record_has_molality(record) for record in records):
         raise InputError("molality-driven pure_ion records require explicit species and solvent arguments.")
-    raise InputError("pure_ion records require composition columns with prefix 'x_' or molality with species and solvent.")
+    raise InputError(
+        "pure_ion records require composition columns with prefix 'x_' or molality with species and solvent."
+    )
 
 
 def _binary_species_from_records(
@@ -841,7 +873,9 @@ def _build_mixture(
     return ePCSAFTMixture.from_params(params, species=species)
 
 
-def _least_squares_starts(theta0: np.ndarray, lower: np.ndarray, upper: np.ndarray, multistart: int) -> list[np.ndarray]:
+def _least_squares_starts(
+    theta0: np.ndarray, lower: np.ndarray, upper: np.ndarray, multistart: int
+) -> list[np.ndarray]:
     starts = [np.clip(np.asarray(theta0, dtype=float), lower, upper)]
     if int(multistart) <= 0:
         return starts
@@ -954,7 +988,9 @@ def _fit_pure_ion_internal(
                         species=normalized_species,
                         solvent=normalized_solvent,
                         mean_ionic_form=True,
-                        basis=str(_value_from_record(record, "activity_basis", "miac_basis", required=False) or "molality"),
+                        basis=str(
+                            _value_from_record(record, "activity_basis", "miac_basis", required=False) or "molality"
+                        ),
                     )
                     residual = _relative_or_absolute_residual(_best_pair_label(mapping, record), float(exp))
                 else:
@@ -978,7 +1014,9 @@ def _fit_pure_ion_internal(
         fixed_parameters=seed_payload,
         initial_guess=initial_map,
         terms=terms,
-        pure_file_hint=f"{source_key}.csv" if source_key is not None else _infer_pure_template_name([normalized_component]),
+        pure_file_hint=(
+            f"{source_key}.csv" if source_key is not None else _infer_pure_template_name([normalized_component])
+        ),
     )
     return FitResult(
         problem=problem,
@@ -1023,8 +1061,12 @@ def _fit_binary_pair_internal(
     current = {"k_ij": _matrix_value(_load_dataset(dataset), "k_ij", normalized_pair[0], normalized_pair[1], T_ref)}
     initial_map = {}
     for target in normalized_fit_targets:
-        initial_map.update(_binary_seed_value(target, normalized_temperature_model, _copy_mapping(initial_guess), current))
-    optimization_names = _optimization_parameter_names(BINARY_PAIR_MODE, normalized_fit_targets, normalized_temperature_model)
+        initial_map.update(
+            _binary_seed_value(target, normalized_temperature_model, _copy_mapping(initial_guess), current)
+        )
+    optimization_names = _optimization_parameter_names(
+        BINARY_PAIR_MODE, normalized_fit_targets, normalized_temperature_model
+    )
     bounds_obj = _coerce_bounds(bounds)
     lower, upper = bounds_obj.arrays_for(optimization_names)
     theta0 = np.asarray([initial_map[name] for name in optimization_names], dtype=float)
@@ -1042,7 +1084,9 @@ def _fit_binary_pair_internal(
                 assert T is not None and P is not None
                 x_liq = _composition_from_record(record, "x_", normalized_species)
                 y_vap = _composition_from_record(record, "y_", normalized_species)
-                target_values = _binary_target_values(vector_map, normalized_fit_targets, normalized_temperature_model, T)
+                target_values = _binary_target_values(
+                    vector_map, normalized_fit_targets, normalized_temperature_model, T
+                )
                 mixture = _build_mixture(
                     dataset,
                     normalized_species,
@@ -1107,16 +1151,18 @@ def _native_pure_neutral_runner_args(
     initial_guess: Mapping[str, float] | None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None,
 ):
-    fixed_payload, initial_map, bounds_obj, terms, optimization_names, pure_file_hint = _native_pure_neutral_solver_payload(
-        normalized_records,
-        normalized_component,
-        assoc_scheme,
-        dataset,
-        pure_set,
-        normalized_fit_targets,
-        fixed_parameters,
-        initial_guess,
-        bounds,
+    fixed_payload, initial_map, bounds_obj, terms, optimization_names, pure_file_hint = (
+        _native_pure_neutral_solver_payload(
+            normalized_records,
+            normalized_component,
+            assoc_scheme,
+            dataset,
+            pure_set,
+            normalized_fit_targets,
+            fixed_parameters,
+            initial_guess,
+            bounds,
+        )
     )
     lower, upper = bounds_obj.arrays_for(optimization_names)
     density_term = next(term for term in terms if term.term_type == TERM_DENSITY)
@@ -1130,19 +1176,30 @@ def _native_pure_neutral_runner_args(
         "pure_file_hint": pure_file_hint,
         "lower": lower,
         "upper": upper,
-        "density_T": np.asarray([_float_from_record(record, "T", required=True) for record in density_term.records], dtype=float),
-        "density_P": np.asarray([_float_from_record(record, "P", required=True) for record in density_term.records], dtype=float),
+        "density_T": np.asarray(
+            [_float_from_record(record, "T", required=True) for record in density_term.records], dtype=float
+        ),
+        "density_P": np.asarray(
+            [_float_from_record(record, "P", required=True) for record in density_term.records], dtype=float
+        ),
         "density_rho_exp": np.asarray(
             [_pure_neutral_density_molar(record, mw_value) for record in density_term.records],
             dtype=float,
         ),
         "density_phase": np.asarray(
-            [phase_to_int(_value_from_record(record, "phase", required=False) or "liq") for record in density_term.records],
+            [
+                phase_to_int(_value_from_record(record, "phase", required=False) or "liq")
+                for record in density_term.records
+            ],
             dtype=int,
         ),
         "density_scale": float(_family_scale(density_term)),
-        "vle_T": np.asarray([_float_from_record(record, "T", required=True) for record in pure_vle_term.records], dtype=float),
-        "vle_P": np.asarray([_float_from_record(record, "P", required=True) for record in pure_vle_term.records], dtype=float),
+        "vle_T": np.asarray(
+            [_float_from_record(record, "T", required=True) for record in pure_vle_term.records], dtype=float
+        ),
+        "vle_P": np.asarray(
+            [_float_from_record(record, "P", required=True) for record in pure_vle_term.records], dtype=float
+        ),
         "pure_vle_scale": float(_family_scale(pure_vle_term)),
     }
 

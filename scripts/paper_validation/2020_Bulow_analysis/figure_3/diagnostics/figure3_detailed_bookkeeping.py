@@ -26,7 +26,6 @@ import _plot_common as common
 from epcsaft.parameters import get_prop_dict
 from scripts._epcsaft_oop import epcsaft_density, epcsaft_fugacity_coefficient_terms, epcsaft_pressure
 
-
 DATA_PATH = FIGURE_DIR / "data" / "water_contributions.csv"
 OUTPUT_BOOKKEEPING = SCRIPT_DIR / "figure3_detailed_bookkeeping.csv"
 OUTPUT_HC = SCRIPT_DIR / "figure3_hc_dadx_components.csv"
@@ -52,12 +51,24 @@ CONTRIBUTION_MAP = {
     "born": {"paper_rows": ("born avg", "born"), "suffix": "born"},
 }
 
-A0 = np.asarray([0.9105631445, 0.6361281449, 2.6861347891, -26.547362491, 97.759208784, -159.59154087, 91.297774084], dtype=float)
-A1 = np.asarray([-0.3084016918, 0.1860531159, -2.5030047259, 21.419793629, -65.255885330, 83.318680481, -33.746922930], dtype=float)
-A2 = np.asarray([-0.0906148351, 0.4527842806, 0.5962700728, -1.7241829131, -4.1302112531, 13.776631870, -8.6728470368], dtype=float)
-B0 = np.asarray([0.7240946941, 2.2382791861, -4.0025849485, -21.003576815, 26.855641363, 206.55133841, -355.60235612], dtype=float)
-B1 = np.asarray([-0.5755498075, 0.6995095521, 3.8925673390, -17.215471648, 192.67226447, -161.82646165, -165.20769346], dtype=float)
-B2 = np.asarray([0.0976883116, -0.2557574982, -9.1558561530, 20.642075974, -38.804430052, 93.626774077, -29.666905585], dtype=float)
+A0 = np.asarray(
+    [0.9105631445, 0.6361281449, 2.6861347891, -26.547362491, 97.759208784, -159.59154087, 91.297774084], dtype=float
+)
+A1 = np.asarray(
+    [-0.3084016918, 0.1860531159, -2.5030047259, 21.419793629, -65.255885330, 83.318680481, -33.746922930], dtype=float
+)
+A2 = np.asarray(
+    [-0.0906148351, 0.4527842806, 0.5962700728, -1.7241829131, -4.1302112531, 13.776631870, -8.6728470368], dtype=float
+)
+B0 = np.asarray(
+    [0.7240946941, 2.2382791861, -4.0025849485, -21.003576815, 26.855641363, 206.55133841, -355.60235612], dtype=float
+)
+B1 = np.asarray(
+    [-0.5755498075, 0.6995095521, 3.8925673390, -17.215471648, 192.67226447, -161.82646165, -165.20769346], dtype=float
+)
+B2 = np.asarray(
+    [0.0976883116, -0.2557574982, -9.1558561530, 20.642075974, -38.804430052, 93.626774077, -29.666905585], dtype=float
+)
 
 
 def _kjmol(value: float) -> float:
@@ -168,7 +179,7 @@ def _mixture_geometry(state: dict[str, object]) -> dict[str, object]:
     den = rho * N_AV / 1.0e30
     zeta = np.zeros(4, dtype=float)
     for order in range(4):
-        zeta[order] = PI / 6.0 * den * np.sum(x * m * (d ** order))
+        zeta[order] = PI / 6.0 * den * np.sum(x * m * (d**order))
     eta = float(zeta[3])
     m_avg = float(np.sum(x * m))
     s_ij = np.zeros((ncomp, ncomp), dtype=float)
@@ -187,30 +198,83 @@ def _mixture_geometry(state: dict[str, object]) -> dict[str, object]:
             m2es3 += x[i] * x[j] * m[i] * m[j] * (e_ij[i, j] / T_REF) * (s_ij[i, j] ** 3)
             m2e2s3 += x[i] * x[j] * m[i] * m[j] * ((e_ij[i, j] / T_REF) ** 2) * (s_ij[i, j] ** 3)
             dij = d[i] * d[j] / (d[i] + d[j])
-            ghs[i, j] = 1.0 / (1.0 - zeta[3]) + dij * 3.0 * zeta[2] / (1.0 - zeta[3]) ** 2 + (dij ** 2) * 2.0 * (zeta[2] ** 2) / (1.0 - zeta[3]) ** 3
-    ares_hs = 1.0 / zeta[0] * (3.0 * zeta[1] * zeta[2] / (1.0 - zeta[3]) + (zeta[2] ** 3) / (zeta[3] * (1.0 - zeta[3]) ** 2) + (((zeta[2] ** 3) / (zeta[3] ** 2)) - zeta[0]) * math.log(1.0 - zeta[3]))
-    zhs = zeta[3] / (1.0 - zeta[3]) + 3.0 * zeta[1] * zeta[2] / zeta[0] / (1.0 - zeta[3]) ** 2 + (3.0 * (zeta[2] ** 3) - zeta[3] * (zeta[2] ** 3)) / zeta[0] / (1.0 - zeta[3]) ** 3
+            ghs[i, j] = (
+                1.0 / (1.0 - zeta[3])
+                + dij * 3.0 * zeta[2] / (1.0 - zeta[3]) ** 2
+                + (dij**2) * 2.0 * (zeta[2] ** 2) / (1.0 - zeta[3]) ** 3
+            )
+    ares_hs = (
+        1.0
+        / zeta[0]
+        * (
+            3.0 * zeta[1] * zeta[2] / (1.0 - zeta[3])
+            + (zeta[2] ** 3) / (zeta[3] * (1.0 - zeta[3]) ** 2)
+            + (((zeta[2] ** 3) / (zeta[3] ** 2)) - zeta[0]) * math.log(1.0 - zeta[3])
+        )
+    )
+    zhs = (
+        zeta[3] / (1.0 - zeta[3])
+        + 3.0 * zeta[1] * zeta[2] / zeta[0] / (1.0 - zeta[3]) ** 2
+        + (3.0 * (zeta[2] ** 3) - zeta[3] * (zeta[2] ** 3)) / zeta[0] / (1.0 - zeta[3]) ** 3
+    )
     a = A0 + (m_avg - 1.0) / m_avg * A1 + (m_avg - 1.0) / m_avg * (m_avg - 2.0) / m_avg * A2
     b = B0 + (m_avg - 1.0) / m_avg * B1 + (m_avg - 1.0) / m_avg * (m_avg - 2.0) / m_avg * B2
     i1 = float(np.sum(a * (eta ** np.arange(7))))
     i2 = float(np.sum(b * (eta ** np.arange(7))))
-    c1 = 1.0 / (1.0 + m_avg * (8.0 * eta - 2.0 * eta * eta) / (1.0 - eta) ** 4 + (1.0 - m_avg) * (20.0 * eta - 27.0 * eta * eta + 12.0 * eta**3 - 2.0 * eta**4) / ((1.0 - eta) * (2.0 - eta)) ** 2)
-    c2 = -(c1**2) * (m_avg * (-4.0 * eta * eta + 20.0 * eta + 8.0) / (1.0 - eta) ** 5 + (1.0 - m_avg) * (2.0 * eta**3 + 12.0 * eta * eta - 48.0 * eta + 40.0) / ((1.0 - eta) * (2.0 - eta)) ** 3)
+    c1 = 1.0 / (
+        1.0
+        + m_avg * (8.0 * eta - 2.0 * eta * eta) / (1.0 - eta) ** 4
+        + (1.0 - m_avg)
+        * (20.0 * eta - 27.0 * eta * eta + 12.0 * eta**3 - 2.0 * eta**4)
+        / ((1.0 - eta) * (2.0 - eta)) ** 2
+    )
+    c2 = -(c1**2) * (
+        m_avg * (-4.0 * eta * eta + 20.0 * eta + 8.0) / (1.0 - eta) ** 5
+        + (1.0 - m_avg) * (2.0 * eta**3 + 12.0 * eta * eta - 48.0 * eta + 40.0) / ((1.0 - eta) * (2.0 - eta)) ** 3
+    )
     return {
-        "x": x, "rho": rho, "den": den, "m": m, "s": s, "e": e, "z": z, "d": d, "zeta": zeta, "eta": eta, "m_avg": m_avg,
-        "s_ij": s_ij, "e_ij": e_ij, "ghs": ghs, "m2es3": m2es3, "m2e2s3": m2e2s3, "ares_hs": float(ares_hs),
-        "zhs": float(zhs), "a_coeffs": a, "b_coeffs": b, "i1": i1, "i2": i2, "c1": float(c1), "c2": float(c2), "params": params,
+        "x": x,
+        "rho": rho,
+        "den": den,
+        "m": m,
+        "s": s,
+        "e": e,
+        "z": z,
+        "d": d,
+        "zeta": zeta,
+        "eta": eta,
+        "m_avg": m_avg,
+        "s_ij": s_ij,
+        "e_ij": e_ij,
+        "ghs": ghs,
+        "m2es3": m2es3,
+        "m2e2s3": m2e2s3,
+        "ares_hs": float(ares_hs),
+        "zhs": float(zhs),
+        "a_coeffs": a,
+        "b_coeffs": b,
+        "i1": i1,
+        "i2": i2,
+        "c1": float(c1),
+        "c2": float(c2),
+        "params": params,
     }
 
 
-def _generic_contribution_rows(state: dict[str, object], frame: common.Table, contribution: str) -> list[dict[str, object]]:
+def _generic_contribution_rows(
+    state: dict[str, object], frame: common.Table, contribution: str
+) -> list[dict[str, object]]:
     terms = state["terms"]
     z_weight = _stable_logz_over_zminus1(float(terms["z_total"]))
     rows: list[dict[str, object]] = []
     suffix = CONTRIBUTION_MAP[contribution]["suffix"]
     zvals = np.asarray(state["params"]["z"], dtype=float)
     for idx, ion in enumerate(state["species"]):
-        paper_mu = 0.0 if contribution == "dh" else (_paper_value(frame, contribution, ion) if abs(zvals[idx]) > 1.0e-12 else 0.0)
+        paper_mu = (
+            0.0
+            if contribution == "dh"
+            else (_paper_value(frame, contribution, ion) if abs(zvals[idx]) > 1.0e-12 else 0.0)
+        )
         mu_red = float(np.asarray(terms[f"mu_{suffix}"], dtype=float)[idx])
         lnfug_red = float(np.asarray(terms[f"lnfugcoef_{suffix}"], dtype=float)[idx])
         a_term = float(terms[f"a_{suffix}"])
@@ -218,22 +282,37 @@ def _generic_contribution_rows(state: dict[str, object], frame: common.Table, co
         dadx_term = float(np.asarray(terms[f"dadx_{suffix}"], dtype=float)[idx])
         sum_x_dadx_term = float(terms[f"sum_x_dadx_{suffix}"])
         z_quot_red = -z_term * z_weight
-        rows.append({
-            "ion": ion, "contr": contribution, "paper_mu": paper_mu, "epcsaft_mu": _kjmol(mu_red),
-            "epcsaft_mu_manual": _kjmol(a_term + z_term + dadx_term - sum_x_dadx_term), "a": _kjmol(a_term),
-            "z": _kjmol(z_term), "dadx": _kjmol(dadx_term), "sum_xj_dadx": _kjmol(sum_x_dadx_term),
-            "z_quot": _kjmol(z_quot_red), "epcsaft_lnfug": _kjmol(lnfug_red), "epcsaft_lnfug_manual": _kjmol(mu_red + z_quot_red),
-            "lnfug_red": lnfug_red, "lnact_star_red": 0.0, "gamma_star": 1.0, "Ghyd": _kjmol(lnfug_red),
-            "manual_minus_epcsaft_mu": _kjmol(a_term + z_term + dadx_term - sum_x_dadx_term - mu_red),
-            "manual_minus_epcsaft_lnfug": _kjmol((mu_red + z_quot_red) - lnfug_red), "paper_minus_epcsaft_mu": paper_mu - _kjmol(mu_red),
-        })
+        rows.append(
+            {
+                "ion": ion,
+                "contr": contribution,
+                "paper_mu": paper_mu,
+                "epcsaft_mu": _kjmol(mu_red),
+                "epcsaft_mu_manual": _kjmol(a_term + z_term + dadx_term - sum_x_dadx_term),
+                "a": _kjmol(a_term),
+                "z": _kjmol(z_term),
+                "dadx": _kjmol(dadx_term),
+                "sum_xj_dadx": _kjmol(sum_x_dadx_term),
+                "z_quot": _kjmol(z_quot_red),
+                "epcsaft_lnfug": _kjmol(lnfug_red),
+                "epcsaft_lnfug_manual": _kjmol(mu_red + z_quot_red),
+                "lnfug_red": lnfug_red,
+                "lnact_star_red": 0.0,
+                "gamma_star": 1.0,
+                "Ghyd": _kjmol(lnfug_red),
+                "manual_minus_epcsaft_mu": _kjmol(a_term + z_term + dadx_term - sum_x_dadx_term - mu_red),
+                "manual_minus_epcsaft_lnfug": _kjmol((mu_red + z_quot_red) - lnfug_red),
+                "paper_minus_epcsaft_mu": paper_mu - _kjmol(mu_red),
+            }
+        )
     return rows
 
 
 def _total_row(ion: str, rows: list[dict[str, object]], total_lnfug_red: float) -> dict[str, object]:
     sum_gamma_logs = float(np.sum([float(row["lnact_star_red"]) for row in rows]))
     return {
-        "ion": ion, "contr": "total",
+        "ion": ion,
+        "contr": "total",
         "paper_mu": float(np.sum([float(row["paper_mu"]) for row in rows])),
         "epcsaft_mu": float(np.sum([float(row["epcsaft_mu"]) for row in rows])),
         "epcsaft_mu_manual": float(np.sum([float(row["epcsaft_mu_manual"]) for row in rows])),
@@ -286,19 +365,24 @@ def _hc_breakdown(state: dict[str, object], geom: dict[str, object], frame: comm
             dghsii_dx[i, j] = (
                 dzeta_dx[3] / (1.0 - zeta[3]) ** 2
                 + djj * (3.0 * dzeta_dx[2] / (1.0 - zeta[3]) ** 2 + 6.0 * zeta[2] * dzeta_dx[3] / (1.0 - zeta[3]) ** 3)
-                + (djj**2) * (4.0 * zeta[2] * dzeta_dx[2] / (1.0 - zeta[3]) ** 3 + 6.0 * zeta[2] * zeta[2] * dzeta_dx[3] / (1.0 - zeta[3]) ** 4)
+                + (djj**2)
+                * (
+                    4.0 * zeta[2] * dzeta_dx[2] / (1.0 - zeta[3]) ** 3
+                    + 6.0 * zeta[2] * zeta[2] * dzeta_dx[3] / (1.0 - zeta[3]) ** 4
+                )
             )
-        dahs_dx[i] = (
-            -dzeta_dx[0] / zeta[0] * ares_hs
-            + 1.0 / zeta[0]
+        dahs_dx[i] = -dzeta_dx[0] / zeta[0] * ares_hs + 1.0 / zeta[0] * (
+            3.0 * (dzeta_dx[1] * zeta[2] + zeta[1] * dzeta_dx[2]) / (1.0 - zeta[3])
+            + 3.0 * zeta[1] * zeta[2] * dzeta_dx[3] / (1.0 - zeta[3]) ** 2
+            + 3.0 * zeta[2] * zeta[2] * dzeta_dx[2] / zeta[3] / (1.0 - zeta[3]) ** 2
+            + (zeta[2] ** 3) * dzeta_dx[3] * (3.0 * zeta[3] - 1.0) / (zeta[3] ** 2) / (1.0 - zeta[3]) ** 3
+            + math.log(1.0 - zeta[3])
             * (
-                3.0 * (dzeta_dx[1] * zeta[2] + zeta[1] * dzeta_dx[2]) / (1.0 - zeta[3])
-                + 3.0 * zeta[1] * zeta[2] * dzeta_dx[3] / (1.0 - zeta[3]) ** 2
-                + 3.0 * zeta[2] * zeta[2] * dzeta_dx[2] / zeta[3] / (1.0 - zeta[3]) ** 2
-                + (zeta[2] ** 3) * dzeta_dx[3] * (3.0 * zeta[3] - 1.0) / (zeta[3] ** 2) / (1.0 - zeta[3]) ** 3
-                + math.log(1.0 - zeta[3]) * (((3.0 * zeta[2] * zeta[2] * dzeta_dx[2] * zeta[3]) - 2.0 * (zeta[2] ** 3) * dzeta_dx[3]) / (zeta[3] ** 3) - dzeta_dx[0])
-                + (zeta[0] - (zeta[2] ** 3) / (zeta[3] ** 2)) * dzeta_dx[3] / (1.0 - zeta[3])
+                ((3.0 * zeta[2] * zeta[2] * dzeta_dx[2] * zeta[3]) - 2.0 * (zeta[2] ** 3) * dzeta_dx[3])
+                / (zeta[3] ** 3)
+                - dzeta_dx[0]
             )
+            + (zeta[0] - (zeta[2] ** 3) / (zeta[3] ** 2)) * dzeta_dx[3] / (1.0 - zeta[3])
         )
     rows: list[dict[str, object]] = []
     zvals = np.asarray(state["params"]["z"], dtype=float)
@@ -312,14 +396,25 @@ def _hc_breakdown(state: dict[str, object], geom: dict[str, object], frame: comm
         dadx = term_mi_ares_hs + term_mavg_dahs - term_chain_sum - term_log
         mu = float(np.asarray(terms["mu_hc"], dtype=float)[i])
         paper_mu = _paper_value(frame, "hc", ion)
-        rows.append({
-            "ion": ion, "paper_mu": paper_mu, "epcsaft_mu": _kjmol(mu), "epcsaft_composition_derivative_residual_helmholtz": _kjmol(dadx),
-            "resid_a_plus_z_minus_sumxj_dadx": _kjmol(float(terms["a_hc"]) + float(terms["z_hc"]) - float(terms["sum_x_dadx_hc"])),
-            "m_i_ares_hs": _kjmol(term_mi_ares_hs), "m_avg_dahs_dx": _kjmol(term_mavg_dahs), "minus_chain_sum": _kjmol(-term_chain_sum),
-            "minus_log_term": _kjmol(-term_log), "dadx_manual": _kjmol(dadx),
-            "manual_minus_api_dadx": _kjmol(dadx - float(np.asarray(terms["dadx_hc"], dtype=float)[i])),
-            "paper_minus_dadx": paper_mu - _kjmol(dadx), "paper_minus_mu": paper_mu - _kjmol(mu),
-        })
+        rows.append(
+            {
+                "ion": ion,
+                "paper_mu": paper_mu,
+                "epcsaft_mu": _kjmol(mu),
+                "epcsaft_composition_derivative_residual_helmholtz": _kjmol(dadx),
+                "resid_a_plus_z_minus_sumxj_dadx": _kjmol(
+                    float(terms["a_hc"]) + float(terms["z_hc"]) - float(terms["sum_x_dadx_hc"])
+                ),
+                "m_i_ares_hs": _kjmol(term_mi_ares_hs),
+                "m_avg_dahs_dx": _kjmol(term_mavg_dahs),
+                "minus_chain_sum": _kjmol(-term_chain_sum),
+                "minus_log_term": _kjmol(-term_log),
+                "dadx_manual": _kjmol(dadx),
+                "manual_minus_api_dadx": _kjmol(dadx - float(np.asarray(terms["dadx_hc"], dtype=float)[i])),
+                "paper_minus_dadx": paper_mu - _kjmol(dadx),
+                "paper_minus_mu": paper_mu - _kjmol(mu),
+            }
+        )
     return rows
 
 
@@ -361,7 +456,10 @@ def _disp_breakdown(state: dict[str, object], geom: dict[str, object], frame: co
             dm2e2s3_dx += x[j] * m[j] * ((e_ij[i, j] / T_REF) ** 2) * (s_ij[i, j] ** 3)
         dm2es3_dx *= 2.0 * m[i]
         dm2e2s3_dx *= 2.0 * m[i]
-        dC1_dx = geom["c2"] * dzeta3_dx - (c1**2) * (m[i] * (8.0 * eta - 2.0 * eta * eta) / (1.0 - eta) ** 4 - m[i] * (20.0 * eta - 27.0 * eta * eta + 12.0 * eta**3 - 2.0 * eta**4) / ((1.0 - eta) * (2.0 - eta)) ** 2)
+        dC1_dx = geom["c2"] * dzeta3_dx - (c1**2) * (
+            m[i] * (8.0 * eta - 2.0 * eta * eta) / (1.0 - eta) ** 4
+            - m[i] * (20.0 * eta - 27.0 * eta * eta + 12.0 * eta**3 - 2.0 * eta**4) / ((1.0 - eta) * (2.0 - eta)) ** 2
+        )
         term_dI1 = -2.0 * PI * den * dI1_dx * m2es3
         term_dm2es3 = -2.0 * PI * den * i1 * dm2es3_dx
         prefactor = -PI * den
@@ -372,15 +470,27 @@ def _disp_breakdown(state: dict[str, object], geom: dict[str, object], frame: co
         dadx = term_dI1 + term_dm2es3 + term_mi_c1_i2 + term_mavg_dc1_i2 + term_mavg_c1_di2 + term_mavg_c1_i2_dm2
         mu = float(np.asarray(terms["mu_disp"], dtype=float)[i])
         paper_mu = _paper_value(frame, "disp", ion)
-        rows.append({
-            "ion": ion, "paper_mu": paper_mu, "epcsaft_mu": _kjmol(mu), "epcsaft_composition_derivative_residual_helmholtz": _kjmol(dadx),
-            "resid_a_plus_z_minus_sumxj_dadx": _kjmol(float(terms["a_disp"]) + float(terms["z_disp"]) - float(terms["sum_x_dadx_disp"])),
-            "term_dI1": _kjmol(term_dI1), "term_dm2es3": _kjmol(term_dm2es3), "term_mi_c1_i2": _kjmol(term_mi_c1_i2),
-            "term_mavg_dc1_i2": _kjmol(term_mavg_dc1_i2), "term_mavg_c1_di2": _kjmol(term_mavg_c1_di2),
-            "term_mavg_c1_i2_dm2e2s3": _kjmol(term_mavg_c1_i2_dm2), "dadx_manual": _kjmol(dadx),
-            "manual_minus_api_dadx": _kjmol(dadx - float(np.asarray(terms["dadx_disp"], dtype=float)[i])),
-            "paper_minus_dadx": paper_mu - _kjmol(dadx), "paper_minus_mu": paper_mu - _kjmol(mu),
-        })
+        rows.append(
+            {
+                "ion": ion,
+                "paper_mu": paper_mu,
+                "epcsaft_mu": _kjmol(mu),
+                "epcsaft_composition_derivative_residual_helmholtz": _kjmol(dadx),
+                "resid_a_plus_z_minus_sumxj_dadx": _kjmol(
+                    float(terms["a_disp"]) + float(terms["z_disp"]) - float(terms["sum_x_dadx_disp"])
+                ),
+                "term_dI1": _kjmol(term_dI1),
+                "term_dm2es3": _kjmol(term_dm2es3),
+                "term_mi_c1_i2": _kjmol(term_mi_c1_i2),
+                "term_mavg_dc1_i2": _kjmol(term_mavg_dc1_i2),
+                "term_mavg_c1_di2": _kjmol(term_mavg_c1_di2),
+                "term_mavg_c1_i2_dm2e2s3": _kjmol(term_mavg_c1_i2_dm2),
+                "dadx_manual": _kjmol(dadx),
+                "manual_minus_api_dadx": _kjmol(dadx - float(np.asarray(terms["dadx_disp"], dtype=float)[i])),
+                "paper_minus_dadx": paper_mu - _kjmol(dadx),
+                "paper_minus_mu": paper_mu - _kjmol(mu),
+            }
+        )
     return rows
 
 
@@ -415,15 +525,32 @@ def _assoc_breakdown(state: dict[str, object], geom: dict[str, object], frame: c
                 continue
             cj = iA[sj]
             eABij = 0.5 * (e_assoc[ci] + e_assoc[cj])
-            volABij = math.sqrt(vol_a[ci] * vol_a[cj]) * (math.sqrt(s_ij[ci, ci] * s_ij[cj, cj]) / (0.5 * (s_ij[ci, ci] + s_ij[cj, cj]))) ** 3
+            volABij = (
+                math.sqrt(vol_a[ci] * vol_a[cj])
+                * (math.sqrt(s_ij[ci, ci] * s_ij[cj, cj]) / (0.5 * (s_ij[ci, ci] + s_ij[cj, cj]))) ** 3
+            )
             if np.any(k_hb):
                 volABij *= 1.0 - k_hb[ci, cj]
             delta_ij[si, sj] = ghs[ci, cj] * (math.exp(eABij / T_REF) - 1.0) * (s_ij[ci, cj] ** 3) * volABij
             for k in range(ncomp):
-                dghsd_dx = PI / 6.0 * geom["m"][k] * (
-                    (d[k] ** 3) / (1.0 - zeta[3]) ** 2
-                    + 3.0 * d[ci] * d[cj] / (d[ci] + d[cj]) * ((d[k] ** 2) / (1.0 - zeta[3]) ** 2 + 2.0 * (d[k] ** 3) * zeta[2] / (1.0 - zeta[3]) ** 3)
-                    + 2.0 * ((d[ci] * d[cj] / (d[ci] + d[cj])) ** 2) * (2.0 * (d[k] ** 2) * zeta[2] / (1.0 - zeta[3]) ** 3 + 3.0 * (d[k] ** 3) * (zeta[2] ** 2) / (1.0 - zeta[3]) ** 4)
+                dghsd_dx = (
+                    PI
+                    / 6.0
+                    * geom["m"][k]
+                    * (
+                        (d[k] ** 3) / (1.0 - zeta[3]) ** 2
+                        + 3.0
+                        * d[ci]
+                        * d[cj]
+                        / (d[ci] + d[cj])
+                        * ((d[k] ** 2) / (1.0 - zeta[3]) ** 2 + 2.0 * (d[k] ** 3) * zeta[2] / (1.0 - zeta[3]) ** 3)
+                        + 2.0
+                        * ((d[ci] * d[cj] / (d[ci] + d[cj])) ** 2)
+                        * (
+                            2.0 * (d[k] ** 2) * zeta[2] / (1.0 - zeta[3]) ** 3
+                            + 3.0 * (d[k] ** 3) * (zeta[2] ** 2) / (1.0 - zeta[3]) ** 4
+                        )
+                    )
                 )
                 ddelta_dx[k, si, sj] = dghsd_dx * (math.exp(eABij / T_REF) - 1.0) * (s_ij[ci, cj] ** 3) * volABij
     xa = np.zeros(num_sites, dtype=float)
@@ -456,7 +583,9 @@ def _assoc_breakdown(state: dict[str, object], geom: dict[str, object], frame: c
             sum1 = 0.0
             for site_k in range(num_sites):
                 sum1 += den * x_assoc[site_k] * xa[site_k] * ddelta_dx[comp, site_j, site_k]
-                amat[row, comp * num_sites + site_k] = (xa[site_j] ** 2) * den * x_assoc[site_k] * delta_ij[site_j, site_k]
+                amat[row, comp * num_sites + site_k] = (
+                    (xa[site_j] ** 2) * den * x_assoc[site_k] * delta_ij[site_j, site_k]
+                )
             sum2 = 0.0
             for l in range(int(assoc_num[comp])):
                 sum2 += xa[idx1 + l] * delta_ij[idx1 + l, site_j]
@@ -483,11 +612,19 @@ def _assoc_breakdown(state: dict[str, object], geom: dict[str, object], frame: c
         dadx = float(np.sum(chain_terms) + np.sum(site_terms))
         mu = float(np.asarray(terms["mu_assoc"], dtype=float)[comp])
         row_data: dict[str, object] = {
-            "ion": ion, "paper_mu": _paper_value(frame, "assoc", ion), "epcsaft_mu": _kjmol(mu), "epcsaft_composition_derivative_residual_helmholtz": _kjmol(dadx),
-            "resid_a_plus_z_minus_sumxj_dadx": _kjmol(float(terms["a_assoc"]) + float(terms["z_assoc"]) - float(terms["sum_x_dadx_assoc"])),
-            "chain_term_sum": _kjmol(float(np.sum(chain_terms))), "site_term_sum": _kjmol(float(np.sum(site_terms))),
-            "dadx_manual": _kjmol(dadx), "manual_minus_api_dadx": _kjmol(dadx - float(np.asarray(terms["dadx_assoc"], dtype=float)[comp])),
-            "paper_minus_dadx": _paper_value(frame, "assoc", ion) - _kjmol(dadx), "paper_minus_mu": _paper_value(frame, "assoc", ion) - _kjmol(mu),
+            "ion": ion,
+            "paper_mu": _paper_value(frame, "assoc", ion),
+            "epcsaft_mu": _kjmol(mu),
+            "epcsaft_composition_derivative_residual_helmholtz": _kjmol(dadx),
+            "resid_a_plus_z_minus_sumxj_dadx": _kjmol(
+                float(terms["a_assoc"]) + float(terms["z_assoc"]) - float(terms["sum_x_dadx_assoc"])
+            ),
+            "chain_term_sum": _kjmol(float(np.sum(chain_terms))),
+            "site_term_sum": _kjmol(float(np.sum(site_terms))),
+            "dadx_manual": _kjmol(dadx),
+            "manual_minus_api_dadx": _kjmol(dadx - float(np.asarray(terms["dadx_assoc"], dtype=float)[comp])),
+            "paper_minus_dadx": _paper_value(frame, "assoc", ion) - _kjmol(dadx),
+            "paper_minus_mu": _paper_value(frame, "assoc", ion) - _kjmol(mu),
         }
         for site_idx in range(num_sites):
             row_data[f"XA_site_{site_idx+1}"] = float(xa[site_idx])
@@ -509,7 +646,10 @@ def main() -> None:
     for ion in frame.columns:
         state = _state_for_ion(ion)
         geom = _mixture_geometry(state)
-        ion_rows = [next(row for row in _generic_contribution_rows(state, frame, contr) if row["ion"] == ion) for contr in CONTRIBUTION_MAP]
+        ion_rows = [
+            next(row for row in _generic_contribution_rows(state, frame, contr) if row["ion"] == ion)
+            for contr in CONTRIBUTION_MAP
+        ]
         bookkeeping_rows.extend(ion_rows)
         total_lnfug_red = float(np.asarray(state["terms"]["lnfugcoef_total"], dtype=float)[state["ion_idx"]])
         bookkeeping_rows.append(_total_row(ion, ion_rows, total_lnfug_red))
@@ -520,23 +660,143 @@ def main() -> None:
             suffix = CONTRIBUTION_MAP[contribution]["suffix"]
             idx = state["ion_idx"]
             paper_mu = 0.0 if contribution == "dh" else _paper_value(frame, contribution, ion)
-            target_rows.append({
-                "ion": ion, "paper_mu": paper_mu, "epcsaft_mu": _kjmol(float(np.asarray(state["terms"][f"mu_{suffix}"], dtype=float)[idx])),
-                "a": _kjmol(float(state["terms"][f"a_{suffix}"])), "z": _kjmol(float(state["terms"][f"z_{suffix}"])),
-                "dadx": _kjmol(float(np.asarray(state["terms"][f"dadx_{suffix}"], dtype=float)[idx])), "sum_xj_dadx": _kjmol(float(state["terms"][f"sum_x_dadx_{suffix}"])),
-                "resid_a_plus_z_minus_sumxj_dadx": _kjmol(float(state["terms"][f"a_{suffix}"]) + float(state["terms"][f"z_{suffix}"]) - float(state["terms"][f"sum_x_dadx_{suffix}"])),
-                "paper_minus_dadx": paper_mu - _kjmol(float(np.asarray(state["terms"][f"dadx_{suffix}"], dtype=float)[idx])), "paper_minus_mu": paper_mu - _kjmol(float(np.asarray(state["terms"][f"mu_{suffix}"], dtype=float)[idx])),
-            })
-    _write_csv(OUTPUT_BOOKKEEPING, ["ion", "contr", "paper_mu", "epcsaft_mu", "epcsaft_mu_manual", "a", "z", "dadx", "sum_xj_dadx", "z_quot", "epcsaft_lnfug", "epcsaft_lnfug_manual", "lnfug_red", "lnact_star_red", "gamma_star", "Ghyd", "manual_minus_epcsaft_mu", "manual_minus_epcsaft_lnfug", "paper_minus_epcsaft_mu", "epcsaft_total_lnfug_from_api"], bookkeeping_rows)
-    _write_csv(OUTPUT_HC, ["ion", "paper_mu", "epcsaft_mu", "epcsaft_composition_derivative_residual_helmholtz", "resid_a_plus_z_minus_sumxj_dadx", "m_i_ares_hs", "m_avg_dahs_dx", "minus_chain_sum", "minus_log_term", "dadx_manual", "manual_minus_api_dadx", "paper_minus_dadx", "paper_minus_mu"], hc_rows)
-    _write_csv(OUTPUT_DISP, ["ion", "paper_mu", "epcsaft_mu", "epcsaft_composition_derivative_residual_helmholtz", "resid_a_plus_z_minus_sumxj_dadx", "term_dI1", "term_dm2es3", "term_mi_c1_i2", "term_mavg_dc1_i2", "term_mavg_c1_di2", "term_mavg_c1_i2_dm2e2s3", "dadx_manual", "manual_minus_api_dadx", "paper_minus_dadx", "paper_minus_mu"], disp_rows)
-    assoc_fields = ["ion", "paper_mu", "epcsaft_mu", "epcsaft_composition_derivative_residual_helmholtz", "resid_a_plus_z_minus_sumxj_dadx", "chain_term_sum", "site_term_sum", "dadx_manual", "manual_minus_api_dadx", "paper_minus_dadx", "paper_minus_mu"]
-    max_assoc_sites = max((max(int(key.split("_")[-1]) for key in row if key.startswith("XA_site_")) for row in assoc_rows), default=0)
+            target_rows.append(
+                {
+                    "ion": ion,
+                    "paper_mu": paper_mu,
+                    "epcsaft_mu": _kjmol(float(np.asarray(state["terms"][f"mu_{suffix}"], dtype=float)[idx])),
+                    "a": _kjmol(float(state["terms"][f"a_{suffix}"])),
+                    "z": _kjmol(float(state["terms"][f"z_{suffix}"])),
+                    "dadx": _kjmol(float(np.asarray(state["terms"][f"dadx_{suffix}"], dtype=float)[idx])),
+                    "sum_xj_dadx": _kjmol(float(state["terms"][f"sum_x_dadx_{suffix}"])),
+                    "resid_a_plus_z_minus_sumxj_dadx": _kjmol(
+                        float(state["terms"][f"a_{suffix}"])
+                        + float(state["terms"][f"z_{suffix}"])
+                        - float(state["terms"][f"sum_x_dadx_{suffix}"])
+                    ),
+                    "paper_minus_dadx": paper_mu
+                    - _kjmol(float(np.asarray(state["terms"][f"dadx_{suffix}"], dtype=float)[idx])),
+                    "paper_minus_mu": paper_mu
+                    - _kjmol(float(np.asarray(state["terms"][f"mu_{suffix}"], dtype=float)[idx])),
+                }
+            )
+    _write_csv(
+        OUTPUT_BOOKKEEPING,
+        [
+            "ion",
+            "contr",
+            "paper_mu",
+            "epcsaft_mu",
+            "epcsaft_mu_manual",
+            "a",
+            "z",
+            "dadx",
+            "sum_xj_dadx",
+            "z_quot",
+            "epcsaft_lnfug",
+            "epcsaft_lnfug_manual",
+            "lnfug_red",
+            "lnact_star_red",
+            "gamma_star",
+            "Ghyd",
+            "manual_minus_epcsaft_mu",
+            "manual_minus_epcsaft_lnfug",
+            "paper_minus_epcsaft_mu",
+            "epcsaft_total_lnfug_from_api",
+        ],
+        bookkeeping_rows,
+    )
+    _write_csv(
+        OUTPUT_HC,
+        [
+            "ion",
+            "paper_mu",
+            "epcsaft_mu",
+            "epcsaft_composition_derivative_residual_helmholtz",
+            "resid_a_plus_z_minus_sumxj_dadx",
+            "m_i_ares_hs",
+            "m_avg_dahs_dx",
+            "minus_chain_sum",
+            "minus_log_term",
+            "dadx_manual",
+            "manual_minus_api_dadx",
+            "paper_minus_dadx",
+            "paper_minus_mu",
+        ],
+        hc_rows,
+    )
+    _write_csv(
+        OUTPUT_DISP,
+        [
+            "ion",
+            "paper_mu",
+            "epcsaft_mu",
+            "epcsaft_composition_derivative_residual_helmholtz",
+            "resid_a_plus_z_minus_sumxj_dadx",
+            "term_dI1",
+            "term_dm2es3",
+            "term_mi_c1_i2",
+            "term_mavg_dc1_i2",
+            "term_mavg_c1_di2",
+            "term_mavg_c1_i2_dm2e2s3",
+            "dadx_manual",
+            "manual_minus_api_dadx",
+            "paper_minus_dadx",
+            "paper_minus_mu",
+        ],
+        disp_rows,
+    )
+    assoc_fields = [
+        "ion",
+        "paper_mu",
+        "epcsaft_mu",
+        "epcsaft_composition_derivative_residual_helmholtz",
+        "resid_a_plus_z_minus_sumxj_dadx",
+        "chain_term_sum",
+        "site_term_sum",
+        "dadx_manual",
+        "manual_minus_api_dadx",
+        "paper_minus_dadx",
+        "paper_minus_mu",
+    ]
+    max_assoc_sites = max(
+        (max(int(key.split("_")[-1]) for key in row if key.startswith("XA_site_")) for row in assoc_rows), default=0
+    )
     for idx in range(1, max_assoc_sites + 1):
         assoc_fields.extend([f"XA_site_{idx}", f"dXA_dx_site_{idx}", f"chain_site_{idx}", f"self_site_{idx}"])
     _write_csv(OUTPUT_ASSOC, assoc_fields, assoc_rows)
-    _write_csv(OUTPUT_DH, ["ion", "paper_mu", "epcsaft_mu", "a", "z", "dadx", "sum_xj_dadx", "resid_a_plus_z_minus_sumxj_dadx", "paper_minus_dadx", "paper_minus_mu"], dh_rows)
-    _write_csv(OUTPUT_BORN, ["ion", "paper_mu", "epcsaft_mu", "a", "z", "dadx", "sum_xj_dadx", "resid_a_plus_z_minus_sumxj_dadx", "paper_minus_dadx", "paper_minus_mu"], born_rows)
+    _write_csv(
+        OUTPUT_DH,
+        [
+            "ion",
+            "paper_mu",
+            "epcsaft_mu",
+            "a",
+            "z",
+            "dadx",
+            "sum_xj_dadx",
+            "resid_a_plus_z_minus_sumxj_dadx",
+            "paper_minus_dadx",
+            "paper_minus_mu",
+        ],
+        dh_rows,
+    )
+    _write_csv(
+        OUTPUT_BORN,
+        [
+            "ion",
+            "paper_mu",
+            "epcsaft_mu",
+            "a",
+            "z",
+            "dadx",
+            "sum_xj_dadx",
+            "resid_a_plus_z_minus_sumxj_dadx",
+            "paper_minus_dadx",
+            "paper_minus_mu",
+        ],
+        born_rows,
+    )
     print(f"Wrote {OUTPUT_BOOKKEEPING}", flush=True)
     print(f"Wrote {OUTPUT_HC}", flush=True)
     print(f"Wrote {OUTPUT_DISP}", flush=True)
@@ -547,4 +807,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

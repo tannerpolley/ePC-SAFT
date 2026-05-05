@@ -437,7 +437,9 @@ def generate_figure_7() -> list[dict[str, str]]:
         ("model_default", "Figiel 2025", None),
         ("model_rule1", "Rule 1", {"elec_model": {"rel_perm": {"rule": 1}}}),
     ):
-        m_grid, y_model = common.mean_ionic_activity_curve(DATASET, "NaBr", "methanol", {"methanol": 1.0}, m_max, points=500, user_options=options)
+        m_grid, y_model = common.mean_ionic_activity_curve(
+            DATASET, "NaBr", "methanol", {"methanol": 1.0}, m_max, points=500, user_options=options
+        )
         for m, y in zip(m_grid, y_model):
             rows.append(
                 _row(
@@ -500,7 +502,9 @@ def generate_figure_8() -> list[dict[str, str]]:
                 )
                 order += 1
             curve_max = FIG8_CURVE_MAX_OVERRIDES.get((salt, solvent), m_max)
-            m_grid, y_model = common.mean_ionic_activity_curve(DATASET, salt, solvent, {solvent: 1.0}, curve_max, points=600)
+            m_grid, y_model = common.mean_ionic_activity_curve(
+                DATASET, salt, solvent, {solvent: 1.0}, curve_max, points=600
+            )
             for m, y in zip(m_grid, y_model):
                 rows.append(
                     _row(
@@ -539,8 +543,12 @@ def _read_weight_fraction_dataset(path: Path, solvent_system: str) -> list[dict[
         raise ValueError(f"Missing columns in {path}")
     organic = [s for s in solvent_system.split("-") if s != "water"][0]
     w_org_key = lookup.get(f"w_{organic}_salt_free".lower()) or lookup.get(f"w_{organic}".lower())
-    w_water_key = lookup.get("w_h2o_salt_free") or lookup.get("w_water_salt_free") or lookup.get("w_h2o") or lookup.get("w_water")
-    org_key = lookup.get(f"x_{organic}".lower()) or (lookup.get("x_methanol") if organic == "methanol" else lookup.get("x_ethanol"))
+    w_water_key = (
+        lookup.get("w_h2o_salt_free") or lookup.get("w_water_salt_free") or lookup.get("w_h2o") or lookup.get("w_water")
+    )
+    org_key = lookup.get(f"x_{organic}".lower()) or (
+        lookup.get("x_methanol") if organic == "methanol" else lookup.get("x_ethanol")
+    )
     water_key = lookup.get("x_h2o") or lookup.get("x_water")
     out = []
     for row in raw_rows:
@@ -569,7 +577,9 @@ def _read_weight_fraction_dataset(path: Path, solvent_system: str) -> list[dict[
     return out
 
 
-def _group_by_weight(entries: Iterable[dict[str, object]]) -> dict[tuple[tuple[str, float], ...], list[dict[str, object]]]:
+def _group_by_weight(
+    entries: Iterable[dict[str, object]],
+) -> dict[tuple[tuple[str, float], ...], list[dict[str, object]]]:
     grouped: dict[tuple[tuple[str, float], ...], list[dict[str, object]]] = {}
     for entry in entries:
         grouped.setdefault(entry["weight_signature"], []).append(entry)
@@ -578,7 +588,9 @@ def _group_by_weight(entries: Iterable[dict[str, object]]) -> dict[tuple[tuple[s
     return grouped
 
 
-def _closest_group(entries: list[dict[str, object]], target_w_org: float, tol: float = FIG9_DATA_TOL) -> list[dict[str, object]] | None:
+def _closest_group(
+    entries: list[dict[str, object]], target_w_org: float, tol: float = FIG9_DATA_TOL
+) -> list[dict[str, object]] | None:
     candidates = []
     for values in _group_by_weight(entries).values():
         w_org = float(values[0]["w_org"])
@@ -630,7 +642,9 @@ def generate_figure_9() -> list[dict[str, str]]:
                     order += 1
             curve_max = _figure9_curve_m_max(panel_id, target_w_org, m_max)
             comp_model = common.target_weight_fraction_to_comp(solvent_system, target_w_org)
-            m_grid, y_model = common.mean_ionic_activity_curve(DATASET, salt, solvent_system, comp_model, curve_max, points=600)
+            m_grid, y_model = common.mean_ionic_activity_curve(
+                DATASET, salt, solvent_system, comp_model, curve_max, points=600
+            )
             for m, y in zip(m_grid, y_model):
                 rows.append(
                     _row(
@@ -659,7 +673,10 @@ def generate_figure_9() -> list[dict[str, str]]:
                 )
                 order += 1
 
-    for solvent_system, salts, x_max in (("water-methanol", ["NaBr", "NaCl"], 3.3), ("water-ethanol", ["NaBr", "NaCl"], 4.4)):
+    for solvent_system, salts, x_max in (
+        ("water-methanol", ["NaBr", "NaCl"], 3.3),
+        ("water-ethanol", ["NaBr", "NaCl"], 4.4),
+    ):
         comp_model = common.target_weight_fraction_to_comp(solvent_system, 0.4)
         for salt in salts:
             source = source_root / solvent_system / f"{solvent_system}-{salt}.csv"
@@ -693,7 +710,9 @@ def generate_figure_9() -> list[dict[str, str]]:
                 )
                 order += 1
             curve_max = min(x_max, max(float(entry["molality"]) for entry in selected) * 1.1)
-            m_grid, y_model = common.mean_ionic_activity_curve(DATASET, salt, solvent_system, comp_model, curve_max, points=600)
+            m_grid, y_model = common.mean_ionic_activity_curve(
+                DATASET, salt, solvent_system, comp_model, curve_max, points=600
+            )
             for m, y in zip(m_grid, y_model):
                 rows.append(
                     _row(

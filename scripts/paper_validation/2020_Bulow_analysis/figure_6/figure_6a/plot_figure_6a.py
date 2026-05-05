@@ -25,10 +25,7 @@ def main() -> None:
     output_path = paper_validation_path(__file__, "figure_6a.png")
     if run_analysis is None:
         if output_path.exists():
-            print(
-                "[skip] figure_6a helper source is unavailable; "
-                f"keeping existing output at {output_path}"
-            )
+            print("[skip] figure_6a helper source is unavailable; " f"keeping existing output at {output_path}")
             return
         raise ModuleNotFoundError(
             "figure6a_libr_ethanol_analysis is unavailable and no existing figure_6a.png was found."
@@ -48,4 +45,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

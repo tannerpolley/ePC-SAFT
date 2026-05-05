@@ -19,7 +19,6 @@ import math
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 SOLVENT_MW = {
@@ -295,7 +294,9 @@ def _solve_and_normalize_rows(
     return normalized, skipped
 
 
-def merge_and_sync(target_csv: Path, merge_csvs: List[Path], solvent_system: str | None = None, salt: str | None = None) -> Dict[str, int]:
+def merge_and_sync(
+    target_csv: Path, merge_csvs: List[Path], solvent_system: str | None = None, salt: str | None = None
+) -> Dict[str, int]:
     target_csv = target_csv.resolve()
     if not target_csv.exists():
         raise FileNotFoundError(f"Target CSV not found: {target_csv}")
@@ -307,7 +308,14 @@ def merge_and_sync(target_csv: Path, merge_csvs: List[Path], solvent_system: str
 
     if not salt:
         raise ValueError("Could not infer salt from target CSV stem; pass --salt.")
-    if solvent_system not in {"water", "methanol", "ethanol", "water-methanol", "water-ethanol", "water-methanol-ethanol"}:
+    if solvent_system not in {
+        "water",
+        "methanol",
+        "ethanol",
+        "water-methanol",
+        "water-ethanol",
+        "water-methanol-ethanol",
+    }:
         raise ValueError("Unsupported solvent_system; pass --solvent-system explicitly.")
 
     target_fields, target_rows = _read_rows(target_csv)

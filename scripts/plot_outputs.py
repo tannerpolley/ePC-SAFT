@@ -7,7 +7,6 @@ from typing import Any, Iterable
 import pandas as pd
 from matplotlib import colors as mcolors
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PLOTS_ROOT = REPO_ROOT / "docs" / "plots"
 PAPER_VALIDATION_SOURCE_ROOT = REPO_ROOT / "scripts" / "paper_validation"
@@ -333,7 +332,9 @@ def export_plot_data(fig: Any, image_path: str | Path) -> Path:
         "width",
         "height",
     ]
-    frame = pd.DataFrame([{field: _format_cell(row.get(field, "")) for field in fieldnames} for row in rows], columns=fieldnames)
+    frame = pd.DataFrame(
+        [{field: _format_cell(row.get(field, "")) for field in fieldnames} for row in rows], columns=fieldnames
+    )
     frame.to_csv(path, index=False)
     return path
 

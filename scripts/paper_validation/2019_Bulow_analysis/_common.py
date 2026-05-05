@@ -22,7 +22,6 @@ require_epcsaft_install()
 
 from epcsaft.parameters import get_prop_dict
 
-
 P_REF = 1.0e5
 DATASET = "2019_Bulow"
 WATER_DIELC = 78.09
@@ -157,12 +156,12 @@ def scan_temperature_branch(
     }
 
 
-def water_solubility_in_il(cation: str, anion: str, *, t: float = 298.15, use_kij: bool = True, model_mode: str = "epc") -> float:
+def water_solubility_in_il(
+    cation: str, anion: str, *, t: float = 298.15, use_kij: bool = True, model_mode: str = "epc"
+) -> float:
     try:
         out = solve_binary_lle(cation, anion, t, use_kij=use_kij, model_mode=model_mode)
         il_rich, _ = split_branches(out)
     except Exception:
         return float("nan")
     return water_mole_fraction(il_rich)
-
-

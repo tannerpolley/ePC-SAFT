@@ -25,12 +25,12 @@ def test_from_params_rejects_legacy_electrolyte_keys():
     species = ["water", "Na+", "Cl-"]
     params = _ionic_params()
     params["dielc_rule"] = 1
-    with pytest.raises(ValueError, match='Flat electrostatic params are no longer supported'):
+    with pytest.raises(ValueError, match="Flat electrostatic params are no longer supported"):
         ePCSAFTMixture.from_params(params, species=species)
 
     params = _ionic_params()
     params["elec_model"] = {"born_rel_perm": "solvent"}
-    with pytest.raises(ValueError, match='unsupported key'):
+    with pytest.raises(ValueError, match="unsupported key"):
         ePCSAFTMixture.from_params(params, species=species)
 
 
@@ -107,7 +107,9 @@ def test_state_method_aliases_match_canonical_methods():
     assert state.gamma(species=species, mean_ionic_form=True, basis="molality") == state.activity_coefficient(
         species=species, mean_ionic_form=True, basis="molality"
     )
-    assert state.diag(species=species)["pressure"] == pytest.approx(state.state_diagnostics(species=species)["pressure"])
+    assert state.diag(species=species)["pressure"] == pytest.approx(
+        state.state_diagnostics(species=species)["pressure"]
+    )
     assert state.gsolv(species=species) == state.solvation_free_energy(species=species)
     with pytest.raises(AttributeError):
         getattr(state, "fugacity_coefficient_terms")
@@ -245,14 +247,21 @@ def test_ionic_activity_and_solution_methods_return_expected_values():
     assert diagnostics["mean_ionic_activity_coefficient_mole"] == mean_ionic_mole
     assert diagnostics["mean_ionic_activity_coefficient_molality"] == mean_ionic_molality
     assert diagnostics["solvation_free_energy"] == solvation_free_energy
-    _assert_array(diagnostics["fugacity_coefficient"], [0.031479320480733174, 4.651483659012546e-84, 1.5683276992772872e-86])
-    _assert_array(diagnostics["residual_chemical_potential"], [-10.682420304620588, -199.10395742942775, -204.79630395556683])
+    _assert_array(
+        diagnostics["fugacity_coefficient"], [0.031479320480733174, 4.651483659012546e-84, 1.5683276992772872e-86]
+    )
+    _assert_array(
+        diagnostics["residual_chemical_potential"], [-10.682420304620588, -199.10395742942775, -204.79630395556683]
+    )
     _assert_array(
         np.exp(state.fugacity_coefficient()),
         [0.031479320480733174, 4.651483659012546e-84, 1.5683276992772872e-86],
     )
     _assert_array(state.fugacity_coefficient(), [-3.458424439279275, -191.8799615776576, -197.57230810636238])
-    _assert_array(state.fugacity_coefficient(natural_log=False), [0.031479320480733174, 4.651483659012546e-84, 1.5683276992772872e-86])
+    _assert_array(
+        state.fugacity_coefficient(natural_log=False),
+        [0.031479320480733174, 4.651483659012546e-84, 1.5683276992772872e-86],
+    )
     assert state.compressibility_factor() == pytest.approx(0.000728884077611683)
     assert state.residual_helmholtz() == pytest.approx(-9.7214027218058)
     assert state.temperature_derivative_residual_helmholtz() == pytest.approx(0.032388021640507005)
@@ -267,15 +276,23 @@ def test_ionic_activity_and_solution_methods_return_expected_values():
     assert state.density(units="mass") == pytest.approx(997.1665703121223)
     assert state.density(units="kg/m^3") == pytest.approx(997.1665703121223)
     assert state.mass_density() == pytest.approx(997.1665703121223)
-    _assert_array(diagnostics["fugacity_coefficient_terms"]["mu_total"], [-10.682420304620588, -199.10395742942775, -204.79630395556683])
-    _assert_array(diagnostics["fugacity_coefficient_terms"]["lnfugcoef_total"], [-3.4584244392944334, -191.87996157767273, -197.5723081063775])
+    _assert_array(
+        diagnostics["fugacity_coefficient_terms"]["mu_total"],
+        [-10.682420304620588, -199.10395742942775, -204.79630395556683],
+    )
+    _assert_array(
+        diagnostics["fugacity_coefficient_terms"]["lnfugcoef_total"],
+        [-3.4584244392944334, -191.87996157767273, -197.5723081063775],
+    )
 
 
 def test_rel_perm_autodiff_matches_analytic_density_derivative_usage():
     base_state, _ = _ionic_state()
-    ad_state, _ = _ionic_state_with_elec_model({
-        "rel_perm": {"differential_mode": "autodiff"},
-    })
+    ad_state, _ = _ionic_state_with_elec_model(
+        {
+            "rel_perm": {"differential_mode": "autodiff"},
+        }
+    )
 
     base_dadx = base_state.dadx()
     ad_dadx = ad_state.dadx()
@@ -285,31 +302,37 @@ def test_rel_perm_autodiff_matches_analytic_density_derivative_usage():
 
 def test_hc_dadx_autodiff_matches_analytic_terms():
     base_state, _ = _ionic_state()
-    ad_state, _ = _ionic_state_with_elec_model({
-        "hc_model": {"dadx_differential_mode": "autodiff"},
-    })
+    ad_state, _ = _ionic_state_with_elec_model(
+        {
+            "hc_model": {"dadx_differential_mode": "autodiff"},
+        }
+    )
 
     _assert_array(ad_state.dadx()["terms"]["hc"], base_state.dadx()["terms"]["hc"], rtol=1e-7, atol=1e-9)
 
 
 def test_mu_dh_autodiff_matches_analytic_ion_terms():
     base_state, _ = _ionic_state()
-    ad_state, _ = _ionic_state_with_elec_model({
-        "DH_model": {
-            "mu_DH_model": {"differential_mode": "autodiff"},
-        },
-    })
+    ad_state, _ = _ionic_state_with_elec_model(
+        {
+            "DH_model": {
+                "mu_DH_model": {"differential_mode": "autodiff"},
+            },
+        }
+    )
 
     _assert_array(ad_state.dadx()["terms"]["ion"], base_state.dadx()["terms"]["ion"], rtol=1e-7, atol=1e-9)
 
 
 def test_mu_born_autodiff_matches_analytic_born_terms():
     base_state, _ = _ionic_state()
-    ad_state, _ = _ionic_state_with_elec_model({
-        "born_model": {
-            "mu_born_model": {"differential_mode": "autodiff"},
-        },
-    })
+    ad_state, _ = _ionic_state_with_elec_model(
+        {
+            "born_model": {
+                "mu_born_model": {"differential_mode": "autodiff"},
+            },
+        }
+    )
 
     _assert_array(ad_state.dadx()["terms"]["born"], base_state.dadx()["terms"]["born"], rtol=1e-7, atol=1e-9)
 
@@ -355,11 +378,13 @@ def test_state_diagnostics_matches_public_methods():
 
 
 def test_state_constructor_rejects_invalid_pressure_and_density():
-    mix = ePCSAFTMixture.from_params({
-        "m": np.asarray([1.0]),
-        "s": np.asarray([3.0]),
-        "e": np.asarray([150.0]),
-    })
+    mix = ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([1.0]),
+            "s": np.asarray([3.0]),
+            "e": np.asarray([150.0]),
+        }
+    )
 
     with pytest.raises(epcsaft.InputError):
         mix.state(T=300.0, x=np.asarray([1.0]), P=0.0)
@@ -369,22 +394,27 @@ def test_state_constructor_rejects_invalid_pressure_and_density():
 
 
 def test_state_constructor_rejects_composition_length_mismatch_before_native_call():
-    mix = ePCSAFTMixture.from_params({
-        "m": np.asarray([1.0]),
-        "s": np.asarray([3.0]),
-        "e": np.asarray([150.0]),
-    })
+    mix = ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([1.0]),
+            "s": np.asarray([3.0]),
+            "e": np.asarray([150.0]),
+        }
+    )
 
     with pytest.raises(epcsaft.InputError, match="composition length"):
         mix.state(T=300.0, x=np.asarray([0.5, 0.5]), rho=100.0)
 
 
 def test_pressure_based_state_matches_equivalent_density_state():
-    mix = ePCSAFTMixture.from_params({
-        "m": np.asarray([2.8149]),
-        "s": np.asarray([3.7169]),
-        "e": np.asarray([285.69]),
-    }, species=["Toluene"])
+    mix = ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([2.8149]),
+            "s": np.asarray([3.7169]),
+            "e": np.asarray([285.69]),
+        },
+        species=["Toluene"],
+    )
 
     state_tp = mix.state(T=320.0, x=np.asarray([1.0]), P=101325.0, phase="liq")
     state_trho = mix.state(T=320.0, x=np.asarray([1.0]), rho=state_tp.density(), phase="liq")
@@ -396,11 +426,14 @@ def test_pressure_based_state_matches_equivalent_density_state():
 
 
 def test_pressure_based_state_raises_solver_error_during_construction():
-    mix = ePCSAFTMixture.from_params({
-        "m": np.asarray([1.0]),
-        "s": np.asarray([3.0]),
-        "e": np.asarray([150.0]),
-    }, species=["A"])
+    mix = ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([1.0]),
+            "s": np.asarray([3.0]),
+            "e": np.asarray([150.0]),
+        },
+        species=["A"],
+    )
 
     with pytest.raises(epcsaft.SolutionError) as excinfo:
         mix.state(T=300.0, x=np.asarray([1.0]), P=1.0e-12, phase="liq")
@@ -415,11 +448,14 @@ def test_pressure_based_state_raises_solver_error_during_construction():
 
 
 def test_density_based_native_constructor_failure_raises_public_solution_error(monkeypatch):
-    mix = ePCSAFTMixture.from_params({
-        "m": np.asarray([1.0]),
-        "s": np.asarray([3.0]),
-        "e": np.asarray([150.0]),
-    }, species=["A"])
+    mix = ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([1.0]),
+            "s": np.asarray([3.0]),
+            "e": np.asarray([150.0]),
+        },
+        species=["A"],
+    )
 
     original_native_state = epcsaft_module._core.NativeState
 

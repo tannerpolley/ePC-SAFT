@@ -144,10 +144,19 @@ def math_label(label: object) -> str:
         if text.startswith(marker):
             return f"{prefix} {math_label(text[len(marker):])}"
 
-    for prefix, rendered_prefix in (("beta", r"$\beta"), ("gamma", r"$\gamma"), ("mean gamma", r"$\gamma_{\pm}"), ("mures", r"$\mu^{res}"), ("lnphi", r"$\ln \phi"), ("phi", r"$\phi"), ("fugcoef", r"$\ln \phi"), ("gsolv", r"$\Delta G^{solv}")):
+    for prefix, rendered_prefix in (
+        ("beta", r"$\beta"),
+        ("gamma", r"$\gamma"),
+        ("mean gamma", r"$\gamma_{\pm}"),
+        ("mures", r"$\mu^{res}"),
+        ("lnphi", r"$\ln \phi"),
+        ("phi", r"$\phi"),
+        ("fugcoef", r"$\ln \phi"),
+        ("gsolv", r"$\Delta G^{solv}"),
+    ):
         marker = f"{prefix} "
         if text.startswith(marker):
-            species = text[len(marker):]
+            species = text[len(marker) :]
             species_label = _SPECIES_LABELS.get(species, rf"\mathrm{{{species}}}")
             return f"{rendered_prefix}_{{{species_label}}}$"
 
@@ -162,9 +171,11 @@ def math_label(label: object) -> str:
     words = text.split()
     if len(words) > 1:
         return " ".join(
-            math_label(word)
-            if word in _EXACT_MATH_LABELS or word in _SPECIES_LABELS or word.lower() in _SPECIES_LABELS
-            else word
+            (
+                math_label(word)
+                if word in _EXACT_MATH_LABELS or word in _SPECIES_LABELS or word.lower() in _SPECIES_LABELS
+                else word
+            )
             for word in words
         )
     return text
@@ -175,7 +186,9 @@ def math_labels(labels: Iterable[object]) -> list[str]:
 
 
 def _wrap_label(label: str, width: int = 18) -> str:
-    return "\n".join(textwrap.wrap(str(label), width=width, break_long_words=False, break_on_hyphens=False)) or str(label)
+    return "\n".join(textwrap.wrap(str(label), width=width, break_long_words=False, break_on_hyphens=False)) or str(
+        label
+    )
 
 
 def _wrapped_labels(labels: Iterable[str], *, width: int = 18) -> list[str]:
@@ -456,7 +469,13 @@ def save_contribution_closure_plot(
     ax.invert_yaxis()
     ax.axvline(0.0, color="0.82", linewidth=0.8)
     ax.grid(axis="x", color="0.9", linewidth=0.7)
-    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.02), ncol=min(4, max(1, len(term_names))), fontsize="small", frameon=False)
+    ax.legend(
+        loc="lower center",
+        bbox_to_anchor=(0.5, 1.02),
+        ncol=min(4, max(1, len(term_names))),
+        fontsize="small",
+        frameon=False,
+    )
 
     scale = np.maximum(np.abs(totals), 1.0e-30)
     err_ax.barh(y, (term_sums - totals) / scale, height=0.55, label="Closure error")
@@ -505,7 +524,13 @@ def save_contribution_term_breakdown_plot(
     ax.invert_yaxis()
     ax.axvline(0.0, color="0.82", linewidth=0.8)
     ax.grid(axis="x", color="0.9", linewidth=0.7)
-    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.02), ncol=min(4, max(1, len(term_names))), fontsize="small", frameon=False)
+    ax.legend(
+        loc="lower center",
+        bbox_to_anchor=(0.5, 1.02),
+        ncol=min(4, max(1, len(term_names))),
+        fontsize="small",
+        frameon=False,
+    )
 
     output_path = plot_outputs.test_plot_path(__file__, filename, category=category)
     try:

@@ -7,7 +7,6 @@ import json
 from pathlib import Path
 from typing import Iterable
 
-
 PURE_TEMPLATE_COLUMNS = [
     "component",
     "m",
@@ -59,7 +58,9 @@ def _infer_pure_template_name(species: list[str]) -> str:
         "butanol": "butanol",
         "isobutanol": "butanol",
     }
-    neutrals = [name.strip().lower() for name in species if not name.strip().endswith("+") and not name.strip().endswith("-")]
+    neutrals = [
+        name.strip().lower() for name in species if not name.strip().endswith("+") and not name.strip().endswith("-")
+    ]
     if len(neutrals) == 1 and neutrals[0] in solvent_aliases:
         return f"{solvent_aliases[neutrals[0]]}.csv"
     return "any_solvent.csv"

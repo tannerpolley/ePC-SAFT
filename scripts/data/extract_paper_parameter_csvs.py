@@ -22,7 +22,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
@@ -151,7 +150,11 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
     "2005_Cameretti": {
         "elec_model": {
             "rel_perm": {"rule": "constant", "differential_mode": "analytical"},
-            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False, "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True}},
+            "DH_model": {
+                "d_ion_mode": 1,
+                "bjeruum_treatment": False,
+                "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True},
+            },
             "include_born_model": False,
             "born_model": {
                 "d_Born_mode": 0,
@@ -171,7 +174,11 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
     "2008_Held": {
         "elec_model": {
             "rel_perm": {"rule": "constant", "differential_mode": "analytical"},
-            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False, "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True}},
+            "DH_model": {
+                "d_ion_mode": 1,
+                "bjeruum_treatment": False,
+                "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True},
+            },
             "include_born_model": False,
             "born_model": {
                 "d_Born_mode": 0,
@@ -191,7 +198,11 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
     "2014_Held": {
         "elec_model": {
             "rel_perm": {"rule": "constant", "differential_mode": "analytical"},
-            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False, "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True}},
+            "DH_model": {
+                "d_ion_mode": 1,
+                "bjeruum_treatment": False,
+                "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True},
+            },
             "include_born_model": False,
             "born_model": {
                 "d_Born_mode": 0,
@@ -211,7 +222,11 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
     "2020_Bulow": {
         "elec_model": {
             "rel_perm": {"rule": 1, "differential_mode": "analytical"},
-            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False, "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True}},
+            "DH_model": {
+                "d_ion_mode": 1,
+                "bjeruum_treatment": False,
+                "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True},
+            },
             "include_born_model": True,
             "born_model": {
                 "d_Born_mode": 1,
@@ -231,7 +246,11 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
     "2021_Bulow": {
         "elec_model": {
             "rel_perm": {"rule": 3, "differential_mode": "analytical"},
-            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False, "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True}},
+            "DH_model": {
+                "d_ion_mode": 1,
+                "bjeruum_treatment": False,
+                "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True},
+            },
             "include_born_model": True,
             "born_model": {
                 "d_Born_mode": 0,
@@ -251,7 +270,11 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
     "2025_Figiel": {
         "elec_model": {
             "rel_perm": {"rule": "empirical", "differential_mode": "numerical"},
-            "DH_model": {"d_ion_mode": 1, "bjeruum_treatment": False, "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True}},
+            "DH_model": {
+                "d_ion_mode": 1,
+                "bjeruum_treatment": False,
+                "mu_DH_model": {"differential_mode": "analytical", "comp_dep_rel_perm": True, "include_sum_term": True},
+            },
             "include_born_model": True,
             "born_model": {
                 "d_Born_mode": 3,
@@ -494,6 +517,7 @@ def _set_cation_anion_kij_one(matrix: Dict[str, Dict[str, str]]) -> None:
         for an in anions:
             _set_pair(matrix, cat, an, "1.0", allow_override=True)
 
+
 def _resolve_runtime_payload(canonical_options: Dict[str, Any]) -> Dict[str, Any]:
     from epcsaft.parameters import _resolve_runtime_options
 
@@ -516,9 +540,7 @@ def _assert_runtime_sentinels(dataset_key: str, runtime_options: Dict[str, Any])
     for key, expected_value in RUNTIME_SENTINELS[dataset_key].items():
         actual_value = runtime_options.get(key)
         if actual_value != expected_value:
-            raise ValueError(
-                f"{dataset_key}: runtime sentinel mismatch for {key}: {actual_value} != {expected_value}"
-            )
+            raise ValueError(f"{dataset_key}: runtime sentinel mismatch for {key}: {actual_value} != {expected_value}")
 
 
 def _validate_user_options_payload(dataset_key: str, payload: Dict[str, Any]) -> None:
@@ -527,9 +549,7 @@ def _validate_user_options_payload(dataset_key: str, payload: Dict[str, Any]) ->
     runtime_options = _resolve_runtime_payload(payload)["runtime_options"]
     missing = RUNTIME_REQUIRED_KEYS - set(runtime_options.keys())
     if missing:
-        raise ValueError(
-            f"{dataset_key}: runtime_options missing required keys: {sorted(missing)}"
-        )
+        raise ValueError(f"{dataset_key}: runtime_options missing required keys: {sorted(missing)}")
     _assert_runtime_sentinels(dataset_key, runtime_options)
 
 
@@ -545,8 +565,7 @@ def _write_binary_csv(path: Path, matrix: Dict[str, Dict[str, str]]) -> None:
         writer.writerow(["component"] + DISPLAY_COMPONENT_ORDER)
         for row_comp in COMPONENT_ORDER:
             writer.writerow(
-                [_display_component(row_comp)]
-                + [matrix[row_comp][col_comp] for col_comp in COMPONENT_ORDER]
+                [_display_component(row_comp)] + [matrix[row_comp][col_comp] for col_comp in COMPONENT_ORDER]
             )
 
 
@@ -603,9 +622,7 @@ def _extract_2005(lines: Sequence[str], paper_key: str) -> Tuple[Dict[str, Dict[
         key = p_raw.replace("å", "a").replace("Å", "a")
         if key in param_map:
             p_name, unit = param_map[key]
-            pure_rows.append(
-                PureRow("water", p_name, v_raw, unit, "Table 1", paper_key, "")
-            )
+            pure_rows.append(PureRow("water", p_name, v_raw, unit, "Table 1", paper_key, ""))
 
     t2 = _markdown_table_after_anchor(lines, "Table 2. Optimized ePC-SAFT Parameters for Alkali Halide Ions")
     for row in t2[1:]:
@@ -643,7 +660,9 @@ def _extract_2008(lines: Sequence[str], paper_key: str) -> Tuple[Dict[str, Dict[
         elif "segment diameter" in param and "sigma" in abbrev:
             pure_rows.append(PureRow("water", "sigma", value, "A", "Table 1", paper_key, ""))
         elif abbrev in {"t_dep, 1", "t_dep, 2", "t_dep, 3", "t_dep, 4"}:
-            pure_rows.append(PureRow("water", abbrev.replace(", ", "_"), value, row[1].strip(), "Table 1", paper_key, ""))
+            pure_rows.append(
+                PureRow("water", abbrev.replace(", ", "_"), value, row[1].strip(), "Table 1", paper_key, "")
+            )
         elif "dispersion energy" in param:
             pure_rows.append(PureRow("water", "u_over_kb", value, "K", "Table 1", paper_key, ""))
         elif "association sites" in param:
@@ -694,17 +713,49 @@ def _extract_2014(text: str, paper_key: str) -> Tuple[Dict[str, Dict[str, str]],
     sigma_expr_match = re.search(r"The expression \$\\sigma=([^$]+)\$ was used", text)
 
     if m_match:
-        pure_rows.append(PureRow("water", "m_seg", _normalize_value(m_match.group(1)) or "", "-", "Table 1", paper_key, ""))
+        pure_rows.append(
+            PureRow("water", "m_seg", _normalize_value(m_match.group(1)) or "", "-", "Table 1", paper_key, "")
+        )
     if u_match:
-        pure_rows.append(PureRow("water", "u_over_kb", _normalize_value(u_match.group(1)) or "", "K", "Table 1", paper_key, ""))
+        pure_rows.append(
+            PureRow("water", "u_over_kb", _normalize_value(u_match.group(1)) or "", "K", "Table 1", paper_key, "")
+        )
     if n_match:
-        pure_rows.append(PureRow("water", "association_sites", _normalize_value(n_match.group(1)) or "", "-", "Table 1", paper_key, ""))
+        pure_rows.append(
+            PureRow(
+                "water", "association_sites", _normalize_value(n_match.group(1)) or "", "-", "Table 1", paper_key, ""
+            )
+        )
     if e_assoc_match:
-        pure_rows.append(PureRow("water", "association_energy", _normalize_value(e_assoc_match.group(1)) or "", "K", "Table 1", paper_key, ""))
+        pure_rows.append(
+            PureRow(
+                "water",
+                "association_energy",
+                _normalize_value(e_assoc_match.group(1)) or "",
+                "K",
+                "Table 1",
+                paper_key,
+                "",
+            )
+        )
     if v_assoc_match:
-        pure_rows.append(PureRow("water", "association_volume", _normalize_value(v_assoc_match.group(1)) or "", "-", "Table 1", paper_key, ""))
+        pure_rows.append(
+            PureRow(
+                "water",
+                "association_volume",
+                _normalize_value(v_assoc_match.group(1)) or "",
+                "-",
+                "Table 1",
+                paper_key,
+                "",
+            )
+        )
     if sigma_expr_match:
-        pure_rows.append(PureRow("water", "sigma_expr", _clean_cell(sigma_expr_match.group(1)), "A", "Table 1", paper_key, "footnote a"))
+        pure_rows.append(
+            PureRow(
+                "water", "sigma_expr", _clean_cell(sigma_expr_match.group(1)), "A", "Table 1", paper_key, "footnote a"
+            )
+        )
 
     lines = text.splitlines()
 
@@ -837,7 +888,9 @@ def _extract_2020(lines: Sequence[str], paper_key: str) -> Tuple[Dict[str, Dict[
 
     for line in lines:
         if line.strip().startswith("* ") and "sigma=" in line:
-            pure_rows.append(PureRow("water", "sigma_expr", _clean_cell(line.strip()[2:]), "A", "Table 1", paper_key, "footnote"))
+            pure_rows.append(
+                PureRow("water", "sigma_expr", _clean_cell(line.strip()[2:]), "A", "Table 1", paper_key, "footnote")
+            )
             break
 
     t2 = _markdown_table_after_anchor(lines, "Table 2")
@@ -1068,6 +1121,7 @@ def _extract_for_paper(
     optional_interactions = _extract_optional_interactions(paper_key, text)
     return matrix, pure_rows, optional_interactions
 
+
 def _validate_outputs(
     data_by_paper: Dict[str, Tuple[Dict[str, Dict[str, str]], List[PureRow], Dict[str, Dict[str, Dict[str, str]]]]],
     user_options_by_dataset: Dict[str, Dict[str, Any]],
@@ -1153,7 +1207,9 @@ def _validate_outputs(
             optional_present = data_by_paper[dataset_key][2]
             for interaction_type in OPTIONAL_INTERACTION_TYPES:
                 path = bin_dir / f"{interaction_type}.csv"
-                should_exist = interaction_type in optional_present and _matrix_has_parameter_data(optional_present[interaction_type])
+                should_exist = interaction_type in optional_present and _matrix_has_parameter_data(
+                    optional_present[interaction_type]
+                )
                 if should_exist and not path.exists():
                     raise ValueError(f"Missing optional {interaction_type}.csv for {dataset_key}")
                 if (not should_exist) and path.exists():
@@ -1244,5 +1300,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

@@ -20,7 +20,6 @@ import pytest
 
 from epcsaft import ePCSAFTMixture
 
-
 REPORT_DIR = Path(__file__).resolve().parents[2] / "build" / "runtime_profile"
 REPORT_CSV = REPORT_DIR / "runtime_profile.csv"
 REPORT_MD = REPORT_DIR / "runtime_profile.md"
@@ -240,8 +239,18 @@ def test_runtime_profile_oop_methods():
     z_feed = ctx["z_feed"]
 
     benches = [
-        ("ctor.from_params", lambda: ePCSAFTMixture.from_params(deepcopy(ctx["neutral_params"]), species=ctx["neutral_species"]), 3, 0),
-        ("ctor.from_dataset.water", lambda: ePCSAFTMixture.from_dataset("2012_Held", ["Water"], np.asarray([1.0]), 298.15), 3, 0),
+        (
+            "ctor.from_params",
+            lambda: ePCSAFTMixture.from_params(deepcopy(ctx["neutral_params"]), species=ctx["neutral_species"]),
+            3,
+            0,
+        ),
+        (
+            "ctor.from_dataset.water",
+            lambda: ePCSAFTMixture.from_dataset("2012_Held", ["Water"], np.asarray([1.0]), 298.15),
+            3,
+            0,
+        ),
         ("mixture.clear_runtime_caches", lambda: ctx["neutral_mix"].clear_runtime_caches(), 10, 1),
         ("mixture.reset_runtime_cache_stats", lambda: ctx["neutral_mix"].reset_runtime_cache_stats(), 10, 1),
         ("mixture.runtime_cache_stats", lambda: ctx["neutral_mix"].runtime_cache_stats(), 10, 1),
@@ -257,33 +266,100 @@ def test_runtime_profile_oop_methods():
             0,
         ),
         ("state.from_P", lambda: ctx["neutral_mix"].state(T=325.0, x=np.asarray([1.0]), P=101325.0, phase="liq"), 8, 1),
-        ("state.from_rho", lambda: ctx["neutral_mix"].state(T=325.0, x=np.asarray([1.0]), rho=neutral_state_tp.density(), phase="liq"), 8, 1),
+        (
+            "state.from_rho",
+            lambda: ctx["neutral_mix"].state(T=325.0, x=np.asarray([1.0]), rho=neutral_state_tp.density(), phase="liq"),
+            8,
+            1,
+        ),
         ("state.pressure", lambda: neutral_state_trho.pressure(), 25, 2),
         ("state.density", lambda: neutral_state_tp.density(), 25, 2),
         ("state.molar_density", lambda: neutral_state_trho.molar_density(), 25, 2),
         ("ionic.mass_density", lambda: ionic_state_trho.mass_density(), 25, 2),
         ("state.method_aliases", lambda: neutral_state_trho.method_aliases(), 25, 2),
         ("state.compressibility_factor", lambda: neutral_state_trho.compressibility_factor(), 20, 2),
-        ("state.compressibility_factor.terms", lambda: neutral_state_trho.compressibility_factor(return_contribution_terms=True), 10, 1),
+        (
+            "state.compressibility_factor.terms",
+            lambda: neutral_state_trho.compressibility_factor(return_contribution_terms=True),
+            10,
+            1,
+        ),
         ("state.residual_helmholtz", lambda: neutral_state_trho.residual_helmholtz(), 20, 2),
-        ("state.residual_helmholtz.terms", lambda: neutral_state_trho.residual_helmholtz(return_contribution_terms=True), 10, 1),
-        ("state.temperature_derivative_residual_helmholtz", lambda: neutral_state_trho.temperature_derivative_residual_helmholtz(), 12, 2),
-        ("state.temperature_derivative_residual_helmholtz.terms", lambda: neutral_state_trho.temperature_derivative_residual_helmholtz(return_contribution_terms=True), 8, 1),
+        (
+            "state.residual_helmholtz.terms",
+            lambda: neutral_state_trho.residual_helmholtz(return_contribution_terms=True),
+            10,
+            1,
+        ),
+        (
+            "state.temperature_derivative_residual_helmholtz",
+            lambda: neutral_state_trho.temperature_derivative_residual_helmholtz(),
+            12,
+            2,
+        ),
+        (
+            "state.temperature_derivative_residual_helmholtz.terms",
+            lambda: neutral_state_trho.temperature_derivative_residual_helmholtz(return_contribution_terms=True),
+            8,
+            1,
+        ),
         ("state.residual_enthalpy", lambda: neutral_state_trho.residual_enthalpy(), 20, 2),
         ("state.residual_entropy", lambda: neutral_state_trho.residual_entropy(), 20, 2),
         ("state.residual_gibbs", lambda: neutral_state_trho.residual_gibbs(), 20, 2),
-        ("state.composition_derivative_residual_helmholtz", lambda: neutral_state_trho.composition_derivative_residual_helmholtz(), 10, 1),
+        (
+            "state.composition_derivative_residual_helmholtz",
+            lambda: neutral_state_trho.composition_derivative_residual_helmholtz(),
+            10,
+            1,
+        ),
         ("state.residual_chemical_potential", lambda: neutral_state_trho.residual_chemical_potential(), 20, 2),
-        ("state.residual_chemical_potential.terms", lambda: neutral_state_trho.residual_chemical_potential(return_contribution_terms=True), 10, 1),
+        (
+            "state.residual_chemical_potential.terms",
+            lambda: neutral_state_trho.residual_chemical_potential(return_contribution_terms=True),
+            10,
+            1,
+        ),
         ("state.fugacity_coefficient", lambda: neutral_state_trho.fugacity_coefficient(), 20, 2),
-        ("state.fugacity_coefficient.coefficient", lambda: neutral_state_trho.fugacity_coefficient(natural_log=False), 20, 2),
-        ("state.fugacity_coefficient.terms", lambda: neutral_state_trho.fugacity_coefficient(return_contribution_terms=True), 8, 1),
-        ("state.state_diagnostics.neutral", lambda: neutral_state_trho.state_diagnostics(species=ctx["neutral_species"]), 6, 1),
+        (
+            "state.fugacity_coefficient.coefficient",
+            lambda: neutral_state_trho.fugacity_coefficient(natural_log=False),
+            20,
+            2,
+        ),
+        (
+            "state.fugacity_coefficient.terms",
+            lambda: neutral_state_trho.fugacity_coefficient(return_contribution_terms=True),
+            8,
+            1,
+        ),
+        (
+            "state.state_diagnostics.neutral",
+            lambda: neutral_state_trho.state_diagnostics(species=ctx["neutral_species"]),
+            6,
+            1,
+        ),
         ("ionic.relative_permittivity", lambda: ionic_state_tp.relative_permittivity(), 10, 1),
         ("ionic.osmotic_coefficient", lambda: ionic_state_tp.osmotic_coefficient(), 10, 1),
-        ("ionic.activity_coefficient.component", lambda: ionic_state_tp.activity_coefficient(species=ionic_species), 10, 1),
-        ("ionic.activity_coefficient.mean_ionic_molality", lambda: ionic_state_trho.activity_coefficient(species=ionic_species, mean_ionic_form=True, basis="molality"), 8, 1),
-        ("ionic.activity_coefficient.mean_ionic_mole", lambda: ionic_state_trho.activity_coefficient(species=ionic_species, mean_ionic_form=True, basis="mole"), 8, 1),
+        (
+            "ionic.activity_coefficient.component",
+            lambda: ionic_state_tp.activity_coefficient(species=ionic_species),
+            10,
+            1,
+        ),
+        (
+            "ionic.activity_coefficient.mean_ionic_molality",
+            lambda: ionic_state_trho.activity_coefficient(
+                species=ionic_species, mean_ionic_form=True, basis="molality"
+            ),
+            8,
+            1,
+        ),
+        (
+            "ionic.activity_coefficient.mean_ionic_mole",
+            lambda: ionic_state_trho.activity_coefficient(species=ionic_species, mean_ionic_form=True, basis="mole"),
+            8,
+            1,
+        ),
         ("ionic.solvation_free_energy", lambda: ionic_state_trho.solvation_free_energy(species=ionic_species), 8, 1),
         ("ionic.state_diagnostics", lambda: ionic_state_tp.state_diagnostics(species=ionic_species), 4, 0),
         (
@@ -335,9 +411,10 @@ def test_runtime_profile_oop_methods():
         "state.fugacity_coefficient.terms",
     }
     missing_variant_benches = sorted(required_variant_benches - bench_names)
-    assert not missing_variant_benches, (
-            "Missing contribution-term benchmark coverage; extend tests/profile/test_runtime_profile.py: "
-        + ", ".join(missing_variant_benches)
+    assert (
+        not missing_variant_benches
+    ), "Missing contribution-term benchmark coverage; extend tests/profile/test_runtime_profile.py: " + ", ".join(
+        missing_variant_benches
     )
 
     expected_state_methods = _public_callables(type(neutral_state_tp))
@@ -348,13 +425,15 @@ def test_runtime_profile_oop_methods():
     missing_mixture_methods = sorted(
         method for method in expected_mixture_methods if f"ePCSAFTMixture.{method}" not in profiled_aliases
     )
-    assert not missing_state_methods, (
-            "Unprofiled public ePCSAFTState methods found; extend tests/profile/test_runtime_profile.py: "
-        + ", ".join(missing_state_methods)
+    assert (
+        not missing_state_methods
+    ), "Unprofiled public ePCSAFTState methods found; extend tests/profile/test_runtime_profile.py: " + ", ".join(
+        missing_state_methods
     )
-    assert not missing_mixture_methods, (
-            "Unprofiled public ePCSAFTMixture methods found; extend tests/profile/test_runtime_profile.py: "
-        + ", ".join(missing_mixture_methods)
+    assert (
+        not missing_mixture_methods
+    ), "Unprofiled public ePCSAFTMixture methods found; extend tests/profile/test_runtime_profile.py: " + ", ".join(
+        missing_mixture_methods
     )
 
     rows = [_bench(name, fn, repeats=repeats, warmup=warmup) for name, fn, repeats, warmup in benches]
@@ -370,10 +449,14 @@ def test_runtime_profile_oop_methods():
     if init_heavy:
         bottleneck_notes.append(
             "High first-call overhead (first/median >= 3): "
-            + ", ".join(row["name"] for row in sorted(init_heavy, key=lambda item: item["first_over_median"], reverse=True)[:8])
+            + ", ".join(
+                row["name"] for row in sorted(init_heavy, key=lambda item: item["first_over_median"], reverse=True)[:8]
+            )
         )
 
-    rebuild_row = next((row for row in rows if row["name"] == "ionic.activity_coefficient.mean_ionic_molality.full_rebuild"), None)
+    rebuild_row = next(
+        (row for row in rows if row["name"] == "ionic.activity_coefficient.mean_ionic_molality.full_rebuild"), None
+    )
     reuse_row = next((row for row in rows if row["name"] == "ionic.activity_coefficient.mean_ionic_molality"), None)
     if rebuild_row is not None and reuse_row is not None and reuse_row["mean_ms"] > 0.0:
         ratio = rebuild_row["mean_ms"] / reuse_row["mean_ms"]
@@ -398,5 +481,3 @@ def test_runtime_profile_oop_methods():
     report_text = REPORT_MD.read_text(encoding="utf-8")
     assert "Full rebuild vs reused-state MIAC ratio" in report_text
     assert "reuse ePCSAFTMixture and ePCSAFTState objects in hot loops" in report_text
-
-

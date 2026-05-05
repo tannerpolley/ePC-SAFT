@@ -11,7 +11,6 @@ import epcsaft
 from epcsaft import ePCSAFTMixture
 from epcsaft.equilibrium_core.electrolyte_basis import build_electrolyte_basis
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ASCANI_CASE2 = REPO_ROOT / "data" / "multiphase" / "ascani_case2_model_comparison.csv"
 

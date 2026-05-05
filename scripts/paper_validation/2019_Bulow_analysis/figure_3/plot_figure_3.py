@@ -35,7 +35,9 @@ def main() -> None:
     _plot_branch(ax, il11, color="tab:orange", label=r"original ePC-SAFT ($\varepsilon_r=11$)")
     if water80["T"].size and il11["T"].size:
         ax.plot(water80["x_il_water_rich"], water80["T"], color="0.5", linewidth=1.8)
-        ax.plot(il11["x_il_il_rich"], il11["T"], color="0.5", linewidth=1.8, label=r"phase-dependent $\varepsilon$ approx.")
+        ax.plot(
+            il11["x_il_il_rich"], il11["T"], color="0.5", linewidth=1.8, label=r"phase-dependent $\varepsilon$ approx."
+        )
     _plot_branch(ax, epc, color="green", label="ePC-SAFT")
     ax.set_xlabel(r"IL mole fraction, $x_{IL}$")
     ax.set_ylabel("temperature / K")

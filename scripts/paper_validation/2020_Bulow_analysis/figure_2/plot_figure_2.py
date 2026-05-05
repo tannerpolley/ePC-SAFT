@@ -26,7 +26,6 @@ import _plot_common as common
 from epcsaft.parameters import get_prop_dict
 from scripts._epcsaft_oop import epcsaft_density, epcsaft_solvation_free_energy
 
-
 DATA_PATH = SCRIPT_DIR / "data" / "water_comparisons.csv"
 OUTPUT_PATH = SCRIPT_DIR / "figure_2.png"
 T_REF = 298.15
@@ -153,4 +152,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

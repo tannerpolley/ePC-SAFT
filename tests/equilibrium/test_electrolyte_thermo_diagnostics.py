@@ -157,7 +157,10 @@ def test_khudaida_digitized_paper_epcsaft_matrix_summary_covers_all_lle_figures(
     assert diagnostics["missing_data"] == []
     assert diagnostics["rows_compared"] == 39
     assert 0 < diagnostics["finite_rows_compared"] <= diagnostics["rows_compared"]
-    assert diagnostics["package_missing_or_invalid_rows"] == diagnostics["rows_compared"] - diagnostics["finite_rows_compared"]
+    assert (
+        diagnostics["package_missing_or_invalid_rows"]
+        == diagnostics["rows_compared"] - diagnostics["finite_rows_compared"]
+    )
     assert np.isfinite(diagnostics["max_organic_salt_free_grand_aad"])
     assert np.isfinite(diagnostics["max_organic_salt_free_max_abs_error"])
     assert diagnostics["decision"] in {

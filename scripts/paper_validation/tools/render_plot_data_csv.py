@@ -28,14 +28,20 @@ def _float_cell(row: dict[str, str], field: str, *, required: bool = True) -> fl
     value = row.get(field, "")
     if value == "":
         if required:
-            raise PlotDataRenderError(f"Missing numeric field {field!r} in row for {row.get('figure_file', '<unknown>')}.")
+            raise PlotDataRenderError(
+                f"Missing numeric field {field!r} in row for {row.get('figure_file', '<unknown>')}."
+            )
         return math.nan
     try:
         numeric = float(value)
     except ValueError as exc:
-        raise PlotDataRenderError(f"Non-numeric field {field!r}={value!r} in row for {row.get('figure_file', '<unknown>')}.") from exc
+        raise PlotDataRenderError(
+            f"Non-numeric field {field!r}={value!r} in row for {row.get('figure_file', '<unknown>')}."
+        ) from exc
     if not math.isfinite(numeric):
-        raise PlotDataRenderError(f"Non-finite field {field!r}={value!r} in row for {row.get('figure_file', '<unknown>')}.")
+        raise PlotDataRenderError(
+            f"Non-finite field {field!r}={value!r} in row for {row.get('figure_file', '<unknown>')}."
+        )
     return numeric
 
 
@@ -160,7 +166,9 @@ def render_csv_to_static_assets(csv_path: Path, output_path: Path | None = None,
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Render a canonical plot-data CSV file to static PNG and SVG assets.")
-    parser.add_argument("csv_paths", nargs="+", type=Path, help="CSV files using scripts.plot_outputs.export_plot_data schema.")
+    parser.add_argument(
+        "csv_paths", nargs="+", type=Path, help="CSV files using scripts.plot_outputs.export_plot_data schema."
+    )
     parser.add_argument("--output", type=Path, help="Output PNG path. Only valid with one CSV input.")
     parser.add_argument("--dpi", type=int, default=140, help="PNG output DPI.")
     return parser

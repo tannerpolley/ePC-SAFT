@@ -16,7 +16,6 @@ from epcsaft.equilibrium import _json_like
 from epcsaft.equilibrium import _phase_state
 from epcsaft.equilibrium_core.electrolyte_basis import build_electrolyte_basis
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 KHUIDAIDA_ANALYSIS = REPO_ROOT / "scripts" / "paper_validation" / "2026_Khudaida_analysis"
 KHUIDAIDA_PARAMS = REPO_ROOT / "data" / "epcsaft_parameters" / "2026_Khudaida"
@@ -40,14 +39,15 @@ def _fixed_phase_electrolyte_fugacity_residuals(
     aq_lnf = np.log(aq_comp) + aq_state["ln_phi"]
     org_lnf = np.log(org_comp) + org_state["ln_phi"]
     neutral_residuals = {
-        str(species[index]): float(org_lnf[int(index)] - aq_lnf[int(index)])
-        for index in basis["neutral_indices"]
+        str(species[index]): float(org_lnf[int(index)] - aq_lnf[int(index)]) for index in basis["neutral_indices"]
     }
     salt_residuals = {}
     for pair in basis["salt_pairs"]:
         cation_i = int(pair["cation"])
         anion_i = int(pair["anion"])
-        salt_residuals[str(pair["label"])] = float((org_lnf[cation_i] + org_lnf[anion_i]) - (aq_lnf[cation_i] + aq_lnf[anion_i]))
+        salt_residuals[str(pair["label"])] = float(
+            (org_lnf[cation_i] + org_lnf[anion_i]) - (aq_lnf[cation_i] + aq_lnf[anion_i])
+        )
     return neutral_residuals, salt_residuals
 
 
@@ -89,11 +89,19 @@ def evaluate_khudaida_tieline(*, figure: int, tie_line: int, source: str) -> dic
     temperature = float(case["temperature_K"])
     mixture = _khudaida_mixture(phase_payload["feed_composition"], temperature)
     options = EquilibriumOptions(include_phase_diagnostics=True)
-    feed_state = _state_payload(mixture, temperature, np.asarray(phase_payload["feed_composition"], dtype=float), options, "feed")
-    org_state = _state_payload(mixture, temperature, np.asarray(phase_payload["organic_composition"], dtype=float), options, "organic")
-    aq_state = _state_payload(mixture, temperature, np.asarray(phase_payload["aqueous_composition"], dtype=float), options, "aqueous")
+    feed_state = _state_payload(
+        mixture, temperature, np.asarray(phase_payload["feed_composition"], dtype=float), options, "feed"
+    )
+    org_state = _state_payload(
+        mixture, temperature, np.asarray(phase_payload["organic_composition"], dtype=float), options, "organic"
+    )
+    aq_state = _state_payload(
+        mixture, temperature, np.asarray(phase_payload["aqueous_composition"], dtype=float), options, "aqueous"
+    )
 
-    basis = build_electrolyte_basis(SPECIES, CHARGES, phase_payload["feed_composition"], salt_labels=("NaCl",)).to_dict()
+    basis = build_electrolyte_basis(
+        SPECIES, CHARGES, phase_payload["feed_composition"], salt_labels=("NaCl",)
+    ).to_dict()
     neutral_residuals, mean_ionic_residuals = _fixed_phase_electrolyte_fugacity_residuals(
         np.asarray(phase_payload["aqueous_composition"], dtype=float),
         np.asarray(phase_payload["organic_composition"], dtype=float),
@@ -112,7 +120,9 @@ def evaluate_khudaida_tieline(*, figure: int, tie_line: int, source: str) -> dic
     g_split = float(beta * g_org + (1.0 - beta) * g_aq)
     charge_error = _max_charge_error(phase_payload)
     material_error = _material_balance_error(phase_payload)
-    consistent = residual_norm <= RESIDUAL_TOL and material_error <= 1.0e-10 and charge_error <= 1.0e-8 and g_split < g_feed
+    consistent = (
+        residual_norm <= RESIDUAL_TOL and material_error <= 1.0e-10 and charge_error <= 1.0e-8 and g_split < g_feed
+    )
 
     return _json_like(
         {
@@ -265,9 +275,7 @@ def compare_khudaida_digitized_paper_to_package(*, figure: int) -> dict[str, Any
     digitized_rows = load_khudaida_digitized_paper_epcsaft(figure=figure)
     model_csv_rows = _read_csv(figure_dir / "model_tielines.csv")
     model_by_tie = {
-        int(row["tie_line"]): row
-        for row in model_csv_rows
-        if str(row.get("phase", "")).strip().lower() == "organic"
+        int(row["tie_line"]): row for row in model_csv_rows if str(row.get("phase", "")).strip().lower() == "organic"
     }
     rows = []
     errors = []
@@ -494,10 +502,7 @@ def summarize_khudaida_matrix() -> dict[str, Any]:
         sum(residual <= RESIDUAL_TOL for residual in package_cached_residuals)
     )
     package_cached_diagnostic_residual_over_envelope_count = int(
-        sum(
-            residual > KHUIDAIDA_CACHED_MATRIX_DIAGNOSTIC_RESIDUAL_ENVELOPE
-            for residual in package_cached_residuals
-        )
+        sum(residual > KHUIDAIDA_CACHED_MATRIX_DIAGNOSTIC_RESIDUAL_ENVELOPE for residual in package_cached_residuals)
     )
 
     return _json_like(
@@ -523,7 +528,9 @@ def summarize_khudaida_matrix() -> dict[str, Any]:
     )
 
 
-def evaluate_khudaida_solver_gate(*, figure: int, tie_line: int, source: str = "package", seeded: bool = False) -> dict[str, Any]:
+def evaluate_khudaida_solver_gate(
+    *, figure: int, tie_line: int, source: str = "package", seeded: bool = False
+) -> dict[str, Any]:
     """Try the public v4 solver from a fixed tie-line feed and classify rejection."""
     fixed = evaluate_khudaida_tieline(figure=figure, tie_line=tie_line, source=source)
     case = load_khudaida_tieline_case(figure=figure, tie_line=tie_line)
@@ -635,7 +642,9 @@ def _optional_bool(value: Any) -> bool | None:
     return str(value).strip().lower() in {"true", "1", "yes"}
 
 
-def _source_payload(rows: dict[str, dict[str, str]], reference_feed_formula: np.ndarray, beta: float | None) -> dict[str, Any]:
+def _source_payload(
+    rows: dict[str, dict[str, str]], reference_feed_formula: np.ndarray, beta: float | None
+) -> dict[str, Any]:
     organic_formula = _phase_row_to_formula(rows["organic"])
     aqueous_formula = _phase_row_to_formula(rows["aqueous"])
     organic = _formula_to_explicit(organic_formula)
@@ -757,7 +766,9 @@ def _state_payload(
     options: EquilibriumOptions,
     label: str,
 ) -> dict[str, Any]:
-    payload = _phase_state(mixture, float(temperature), PRESSURE_PA, composition, "liq", options, f"khudaida_{label}_diagnostic")
+    payload = _phase_state(
+        mixture, float(temperature), PRESSURE_PA, composition, "liq", options, f"khudaida_{label}_diagnostic"
+    )
     state = payload["state"]
     terms = state.fugacity_coefficient(return_contribution_terms=True)["terms"]
     epsilon, epsilon_derivatives = state.relative_permittivity()
@@ -803,8 +814,16 @@ def _charge(composition: Any) -> float:
 
 def _fixed_tieline_decision(source: str, consistent: bool) -> str:
     if source == "package":
-        return "package_fixed_tieline_internally_consistent" if consistent else "no_fixed_tieline_satisfies_current_surface"
-    return "experimental_tieline_matches_current_surface" if consistent else "thermodynamic_surface_differs_from_reference_tieline"
+        return (
+            "package_fixed_tieline_internally_consistent"
+            if consistent
+            else "no_fixed_tieline_satisfies_current_surface"
+        )
+    return (
+        "experimental_tieline_matches_current_surface"
+        if consistent
+        else "thermodynamic_surface_differs_from_reference_tieline"
+    )
 
 
 def _sanitize_solver_diagnostics(diagnostics: dict[str, Any]) -> dict[str, Any]:
