@@ -11,6 +11,7 @@ from .equilibrium import EquilibriumResult
 from .equilibrium import StabilityResult
 from .equilibrium import StabilityTrial
 from .equilibrium import electrolyte_feed_from_molality
+from .equilibrium import initial_phases_from_result
 from .parameters import DATASET_ROOT
 from .parameters import available_datasets
 from .parameters import get_prop_dict
@@ -37,6 +38,7 @@ __all__ = [
     "StabilityResult",
     "StabilityTrial",
     "electrolyte_feed_from_molality",
+    "initial_phases_from_result",
     "ePCSAFTMixture",
     "ePCSAFTState",
     "SolutionError",

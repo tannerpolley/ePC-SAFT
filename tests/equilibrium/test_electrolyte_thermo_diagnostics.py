@@ -101,12 +101,13 @@ def test_khudaida_full_matrix_fixture_is_complete_and_charge_neutral() -> None:
     json.dumps(diagnostics, allow_nan=False)
 
 
-def test_khudaida_model_tielines_are_all_finite_after_native_recompute() -> None:
+def test_khudaida_model_tielines_cached_package_rows_are_finite() -> None:
     diagnostics = summarize_khudaida_matrix()
 
     assert diagnostics["case_count"] == 39
     assert diagnostics["package_invalid_model_count"] == 0
     assert diagnostics["package_cached_converged_count"] == 39
+    assert np.isfinite(diagnostics["package_cached_residual_norm_max"])
     assert diagnostics["package_cached_strict_residual_pass_count"] >= 1
     assert diagnostics["package_cached_diagnostic_residual_envelope"] == 5.0e-2
     assert diagnostics["package_cached_diagnostic_residual_over_envelope_count"] == 0

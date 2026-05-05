@@ -282,9 +282,6 @@ void dielectric_inputs_valid_cpp(const vector<double> &x, const add_args &cpparg
     if (cppargs.born_radius_model < 1 || cppargs.born_radius_model > 5) {
         throw ValueError("Unknown born_radius_model. Supported values are 1, 2, 3, 4, 5.");
     }
-    if (cppargs.born_model == 1 && cppargs.born_radius_model == 5) {
-        throw ValueError("born_model=1 supports born_radius_model values 1, 2, 3, 4.");
-    }
     if (cppargs.born_model > 0 && (cppargs.born_radius_model == 4 || cppargs.born_radius_model == 5)) {
         if (cppargs.z.size() != static_cast<size_t>(ncomp)) {
             throw ValueError("born_radius_model 4/5 requires ionic charge array params['z'] with length ncomp.");

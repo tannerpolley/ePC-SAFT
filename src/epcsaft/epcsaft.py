@@ -289,6 +289,29 @@ class ePCSAFTMixture:
             "Only kind='tp_flash', kind='auto', kind='lle_flash', kind='electrolyte_lle', kind='electrolyte_stability', or kind='stability' is supported by equilibrium."
         )
 
+    def equilibrium_curve(self, points, *, kind="electrolyte_lle", T=None, P=None, options=None, initial_phases=None):
+        """Solve an ordered equilibrium curve, reusing each accepted split as the next seed."""
+        from .equilibrium import initial_phases_from_result
+
+        results = []
+        seed = initial_phases
+        for point in points:
+            payload = dict(point)
+            if "z" not in payload and "solvent_feed" not in payload:
+                raise InputError("equilibrium_curve points must provide z or solvent_feed.")
+            result = self.equilibrium(
+                kind=kind,
+                T=payload.pop("T", T),
+                P=payload.pop("P", P),
+                options=payload.pop("options", options),
+                initial_phases=seed,
+                **payload,
+            )
+            results.append(result)
+            if result.split_detected:
+                seed = initial_phases_from_result(result)
+        return results
+
     def __repr__(self):
         """Return a short debugging representation of the mixture."""
         return f"ePCSAFTMixture(ncomp={self.ncomp}, species={self._species})"
@@ -342,7 +365,16 @@ class ePCSAFTState:
             message = _state_construction_error_message(
                 T, x, phase, ncomp, mode_name, variable_name, variable_value, exc
             )
-            raise SolutionError(message) from exc
+            diagnostics = None
+            if has_p and hasattr(mix._native, "last_density_diagnostics"):
+                diagnostics = dict(mix._native.last_density_diagnostics())
+                for context in diagnostics.get("density_failure_contexts", []):
+                    context["phase_label"] = "state"
+                    context["phase_kind"] = "vap" if phase_num == 1 else "liq"
+                if diagnostics.get("density_scan_summary"):
+                    diagnostics["density_scan_summary"]["phase_label"] = "state"
+                    diagnostics["density_scan_summary"]["phase_kind"] = "vap" if phase_num == 1 else "liq"
+            raise SolutionError(message, diagnostics) from exc
         self._mixture = mixture
         self._x = np.asarray(x, dtype=float)
         self._T = float(T)
