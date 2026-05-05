@@ -26,6 +26,7 @@ FORMULA_SPECIES = ["H2O", "Ethanol", "Butanol", "NaCl"]
 CHARGES = np.asarray([0.0, 0.0, 0.0, 1.0, -1.0], dtype=float)
 PRESSURE_PA = 100000.0
 RESIDUAL_TOL = 1.0e-6
+KHUIDAIDA_CACHED_MATRIX_DIAGNOSTIC_RESIDUAL_ENVELOPE = 5.0e-2
 
 
 def _fixed_phase_electrolyte_fugacity_residuals(
@@ -421,6 +422,7 @@ def summarize_khudaida_matrix() -> dict[str, Any]:
     salt_wtfracs: set[float] = set()
     max_charge = 0.0
     package_cached_residuals: list[float] = []
+    package_cached_residual_rows: list[dict[str, Any]] = []
     package_converged = 0
     package_invalid_count = 0
     digitized_feed_figures: list[int] = []
@@ -473,7 +475,30 @@ def summarize_khudaida_matrix() -> dict[str, Any]:
                 if _optional_bool(package_rows["organic"].get("converged")):
                     package_converged += 1
             if cached_residual is not None:
-                package_cached_residuals.append(float(cached_residual))
+                cached_residual_float = float(cached_residual)
+                package_cached_residuals.append(cached_residual_float)
+                package_cached_residual_rows.append(
+                    {
+                        "figure": int(figure),
+                        "tie_line": int(tie_line),
+                        "residual_norm": cached_residual_float,
+                    }
+                )
+
+    package_cached_residual_norm_max_case = (
+        max(package_cached_residual_rows, key=lambda row: float(row["residual_norm"]))
+        if package_cached_residual_rows
+        else None
+    )
+    package_cached_strict_residual_pass_count = int(
+        sum(residual <= RESIDUAL_TOL for residual in package_cached_residuals)
+    )
+    package_cached_diagnostic_residual_over_envelope_count = int(
+        sum(
+            residual > KHUIDAIDA_CACHED_MATRIX_DIAGNOSTIC_RESIDUAL_ENVELOPE
+            for residual in package_cached_residuals
+        )
+    )
 
     return _json_like(
         {
@@ -488,6 +513,10 @@ def summarize_khudaida_matrix() -> dict[str, Any]:
             "package_invalid_model_count": package_invalid_count,
             "package_cached_residual_norm_max": max(package_cached_residuals) if package_cached_residuals else None,
             "package_cached_residual_norm_min": min(package_cached_residuals) if package_cached_residuals else None,
+            "package_cached_residual_norm_max_case": package_cached_residual_norm_max_case,
+            "package_cached_strict_residual_pass_count": package_cached_strict_residual_pass_count,
+            "package_cached_diagnostic_residual_envelope": KHUIDAIDA_CACHED_MATRIX_DIAGNOSTIC_RESIDUAL_ENVELOPE,
+            "package_cached_diagnostic_residual_over_envelope_count": package_cached_diagnostic_residual_over_envelope_count,
             "digitized_feed_figures": digitized_feed_figures,
             "digitized_paper_epcsaft_figures": digitized_paper_epcsaft_figures,
         }

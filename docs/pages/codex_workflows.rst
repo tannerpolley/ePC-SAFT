@@ -14,7 +14,7 @@ Start every new Codex thread with this sequence:
    uv run python scripts/build_epcsaft.py
    uv run python scripts/codex_check.py quick
 
-This is the expected healthy baseline. It creates the uv environment, builds the in-place pybind11 ``epcsaft._core`` extension, verifies imports/tool paths/manifests, then runs the fast generic contract suite. Use ``uv run python scripts/codex_check.py confidence`` before handoff when native runtime contracts should be included.
+This is the expected healthy baseline. It creates the uv environment, builds the in-place pybind11 ``epcsaft._core`` extension, verifies imports/tool paths, generated-output state, and plot manifest presence/schema through doctor, then runs the fast generic contract suite. Use ``uv run python scripts/codex_check.py confidence`` before handoff when native runtime contracts and full plot manifest path validation should be included.
 
 Use ``uv run python run_pytest.py ...`` for repo validation. Direct ``uv run python -m pytest ...`` works, but the wrapper sets ``src`` on the import path and uses a per-run pytest temp directory that is safer for Codex and Windows runs.
 

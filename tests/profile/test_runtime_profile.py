@@ -140,6 +140,22 @@ def _build_states() -> dict:
     neutral_state_tp = neutral_mix.state(T=325.0, x=np.asarray([1.0]), P=101325.0, phase="liq")
     neutral_state_trho = neutral_mix.state(T=325.0, x=np.asarray([1.0]), rho=neutral_state_tp.density(), phase="liq")
 
+    equilibrium_species = ["Methane", "Ethane", "Propane"]
+    equilibrium_params = {
+        "m": np.asarray([1.0, 1.6069, 2.0020]),
+        "s": np.asarray([3.7039, 3.5206, 3.6184]),
+        "e": np.asarray([150.03, 191.42, 208.11]),
+        "k_ij": np.asarray(
+            [
+                [0.0, 3.0e-4, 1.15e-2],
+                [3.0e-4, 0.0, 5.10e-3],
+                [1.15e-2, 5.10e-3, 0.0],
+            ]
+        ),
+    }
+    equilibrium_mix = ePCSAFTMixture.from_params(deepcopy(equilibrium_params), species=equilibrium_species)
+    equilibrium_feed = np.asarray([0.1, 0.3, 0.6], dtype=float)
+
     ionic_species = ["H2O-2B-Li", "Na+", "Cl-"]
     ionic_params = {
         "MW": np.asarray([18.01528e-3, 22.98e-3, 35.45e-3]),
@@ -200,6 +216,8 @@ def _build_states() -> dict:
         "neutral_mix": neutral_mix,
         "neutral_state_tp": neutral_state_tp,
         "neutral_state_trho": neutral_state_trho,
+        "equilibrium_mix": equilibrium_mix,
+        "equilibrium_feed": equilibrium_feed,
         "ionic_species": ionic_species,
         "ionic_params": ionic_params,
         "ionic_mix": ionic_mix,
@@ -227,6 +245,17 @@ def test_runtime_profile_oop_methods():
         ("mixture.clear_runtime_caches", lambda: ctx["neutral_mix"].clear_runtime_caches(), 10, 1),
         ("mixture.reset_runtime_cache_stats", lambda: ctx["neutral_mix"].reset_runtime_cache_stats(), 10, 1),
         ("mixture.runtime_cache_stats", lambda: ctx["neutral_mix"].runtime_cache_stats(), 10, 1),
+        (
+            "mixture.equilibrium.tp_flash",
+            lambda: ctx["equilibrium_mix"].equilibrium(
+                kind="tp_flash",
+                T=220.0,
+                P=1.0e5,
+                z=ctx["equilibrium_feed"],
+            ),
+            3,
+            0,
+        ),
         ("state.from_P", lambda: ctx["neutral_mix"].state(T=325.0, x=np.asarray([1.0]), P=101325.0, phase="liq"), 8, 1),
         ("state.from_rho", lambda: ctx["neutral_mix"].state(T=325.0, x=np.asarray([1.0]), rho=neutral_state_tp.density(), phase="liq"), 8, 1),
         ("state.pressure", lambda: neutral_state_trho.pressure(), 25, 2),
@@ -273,6 +302,7 @@ def test_runtime_profile_oop_methods():
         "ePCSAFTMixture.clear_runtime_caches": "mixture.clear_runtime_caches",
         "ePCSAFTMixture.reset_runtime_cache_stats": "mixture.reset_runtime_cache_stats",
         "ePCSAFTMixture.runtime_cache_stats": "mixture.runtime_cache_stats",
+        "ePCSAFTMixture.equilibrium": "mixture.equilibrium.tp_flash",
         "ePCSAFTMixture.state": "state.from_P",
         "ePCSAFTState.pressure": "state.pressure",
         "ePCSAFTState.density": "state.density",

@@ -112,7 +112,7 @@ def main() -> int:
         return 1
     if core_path is None:
         print("install_state: missing-core")
-        print("next_command: uv run python scripts\\build_epcsaft.py --clean")
+        print("next_command: uv run python scripts\\build_epcsaft.py")
         return 1
     if manifest_next != "none":
         print("install_state: missing-plot-manifest")
