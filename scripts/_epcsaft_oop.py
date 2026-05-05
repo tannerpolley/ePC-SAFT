@@ -55,7 +55,9 @@ def epcsaft_pressure(t, rho, x, params_or_mixture, phase="liq", species=None):
 
 
 def epcsaft_compressibility_factor(t, rho, x, params_or_mixture, phase="liq", species=None):
-    return float(state_from_params(t, x, params_or_mixture, species=species, rho=rho, phase=phase).compressibility_factor())
+    return float(
+        state_from_params(t, x, params_or_mixture, species=species, rho=rho, phase=phase).compressibility_factor()
+    )
 
 
 def epcsaft_residual_helmholtz(t, rho, x, params_or_mixture, phase="liq", species=None):
@@ -63,11 +65,17 @@ def epcsaft_residual_helmholtz(t, rho, x, params_or_mixture, phase="liq", specie
 
 
 def epcsaft_temperature_derivative_residual_helmholtz(t, rho, x, params_or_mixture, phase="liq", species=None):
-    return float(state_from_params(t, x, params_or_mixture, species=species, rho=rho, phase=phase).temperature_derivative_residual_helmholtz())
+    return float(
+        state_from_params(
+            t, x, params_or_mixture, species=species, rho=rho, phase=phase
+        ).temperature_derivative_residual_helmholtz()
+    )
 
 
 def epcsaft_composition_derivative_residual_helmholtz(t, rho, x, params_or_mixture, phase="liq", species=None):
-    return state_from_params(t, x, params_or_mixture, species=species, rho=rho, phase=phase).composition_derivative_residual_helmholtz()
+    return state_from_params(
+        t, x, params_or_mixture, species=species, rho=rho, phase=phase
+    ).composition_derivative_residual_helmholtz()
 
 
 def epcsaft_residual_enthalpy(t, rho, x, params_or_mixture, phase="liq", species=None):
@@ -83,11 +91,15 @@ def epcsaft_residual_gibbs(t, rho, x, params_or_mixture, phase="liq", species=No
 
 
 def epcsaft_residual_chemical_potential(t, rho, x, params_or_mixture, phase="liq", species=None):
-    return state_from_params(t, x, params_or_mixture, species=species, rho=rho, phase=phase).residual_chemical_potential()
+    return state_from_params(
+        t, x, params_or_mixture, species=species, rho=rho, phase=phase
+    ).residual_chemical_potential()
 
 
 def epcsaft_fugacity_coefficient(t, rho, x, params_or_mixture, phase="liq", species=None, natural_log=False):
-    return state_from_params(t, x, params_or_mixture, species=species, rho=rho, phase=phase).fugacity_coefficient(natural_log=natural_log)
+    return state_from_params(t, x, params_or_mixture, species=species, rho=rho, phase=phase).fugacity_coefficient(
+        natural_log=natural_log
+    )
 
 
 def epcsaft_fugacity_coefficient_terms(t, rho, x, params_or_mixture, phase="liq", species=None):
@@ -170,7 +182,9 @@ def epcsaft_activity_coefficient(
 
 
 def epcsaft_solvation_free_energy(t, rho, x, params_or_mixture, species=None, phase="liq"):
-    return state_from_params(t, x, params_or_mixture, species=species, rho=rho, phase=phase).solvation_free_energy(species=species)
+    return state_from_params(t, x, params_or_mixture, species=species, rho=rho, phase=phase).solvation_free_energy(
+        species=species
+    )
 
 
 def epcsaft_osmotic_coefficient(t, rho, x, params_or_mixture, species=None, phase="liq"):

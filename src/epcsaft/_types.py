@@ -61,6 +61,8 @@ def ion_labels_from_species(params, species):
     if species is None or len(species) != len(z):
         raise InputError("species list (matching x order) is required to label ions.")
     return [species[i] for i in np.where(np.abs(z) > 1e-12)[0]]
+
+
 @dataclass(frozen=True, slots=True)
 class ActivityCoefficientResult:
     """Bundled activity-coefficient outputs for a single state."""
@@ -87,10 +89,22 @@ class ActivityCoefficientResult:
 
     def __post_init__(self):
         object.__setattr__(self, "species", tuple(self.species))
-        object.__setattr__(self, "component_activity_coefficients", np.asarray(self.component_activity_coefficients, dtype=float))
-        object.__setattr__(self, "solvation_free_energy_values", np.asarray(self.solvation_free_energy_values, dtype=float))
-        object.__setattr__(self, "mean_ionic_activity_coefficients_mole_fraction_values", np.asarray(self.mean_ionic_activity_coefficients_mole_fraction_values, dtype=float))
-        object.__setattr__(self, "mean_ionic_activity_coefficients_molality_values", np.asarray(self.mean_ionic_activity_coefficients_molality_values, dtype=float))
+        object.__setattr__(
+            self, "component_activity_coefficients", np.asarray(self.component_activity_coefficients, dtype=float)
+        )
+        object.__setattr__(
+            self, "solvation_free_energy_values", np.asarray(self.solvation_free_energy_values, dtype=float)
+        )
+        object.__setattr__(
+            self,
+            "mean_ionic_activity_coefficients_mole_fraction_values",
+            np.asarray(self.mean_ionic_activity_coefficients_mole_fraction_values, dtype=float),
+        )
+        object.__setattr__(
+            self,
+            "mean_ionic_activity_coefficients_molality_values",
+            np.asarray(self.mean_ionic_activity_coefficients_molality_values, dtype=float),
+        )
         object.__setattr__(self, "pair_labels", tuple(self.pair_labels))
         object.__setattr__(self, "ion_labels", tuple(self.ion_labels))
         object.__setattr__(self, "ion_indices", np.asarray(self.ion_indices, dtype=int))
@@ -127,5 +141,3 @@ class ActivityCoefficientResult:
         else:
             raise InputError("basis must be one of: 'mole', 'mole_fraction', 'x', 'molality', 'm'.")
         return {label: float(value) for label, value in zip(self.pair_labels, values)}
-
-

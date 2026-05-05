@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 from scripts import sync_equation_registry
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TEX_PATH = REPO_ROOT / "docs" / "latex" / "equations.tex"
 
@@ -17,7 +16,9 @@ EQUATION_FAMILY_COVERAGE = {
         "test_pressure_density_phase_branches_do_not_cross_at_two_phase_like_state",
         "test_ionic_high_pressure_liquid_density_branch_remains_stable",
     ],
-    "residual Helmholtz energy": ["test_native_residual_helmholtz_and_compressibility_contributions_match_neutral_contract"],
+    "residual Helmholtz energy": [
+        "test_native_residual_helmholtz_and_compressibility_contributions_match_neutral_contract"
+    ],
     "compressibility factor": ["test_native_residual_helmholtz_and_compressibility_contributions_match_ionic_contract"],
     "temperature derivative": ["test_temperature_derivative_matches_neutral_finite_difference_across_density_branches"],
     "composition derivative": ["test_composition_derivative_matches_constrained_composition_finite_difference"],
@@ -86,7 +87,12 @@ def test_traceability_report_flags_missing_cpp_refs_except_documentation_only() 
         {"eqid": "implemented_without_owner", "section": "Runtime", "status": "Implemented", "cpp_refs": []},
         {"eqid": "other_missing_owner", "section": "Parameter Setup", "status": "Implemented", "cpp_refs": []},
         {"eqid": "documentation_helper", "section": "Runtime", "status": "Documentation-only", "cpp_refs": []},
-        {"eqid": "implemented_with_owner", "section": "Runtime", "status": "Implemented", "cpp_refs": [{"file": "x.cpp"}]},
+        {
+            "eqid": "implemented_with_owner",
+            "section": "Runtime",
+            "status": "Implemented",
+            "cpp_refs": [{"file": "x.cpp"}],
+        },
     ]
 
     missing = sync_equation_registry.missing_cpp_ref_entries(entries)
@@ -123,7 +129,12 @@ def test_docs_only_audit_lists_exempt_entries_by_section() -> None:
             "description": "notation helper",
             "cpp_refs": [],
         },
-        {"eqid": "implemented_with_owner", "section": "Runtime", "status": "Implemented", "cpp_refs": [{"file": "x.cpp"}]},
+        {
+            "eqid": "implemented_with_owner",
+            "section": "Runtime",
+            "status": "Implemented",
+            "cpp_refs": [{"file": "x.cpp"}],
+        },
     ]
 
     audit = sync_equation_registry.render_docs_only_audit(entries)

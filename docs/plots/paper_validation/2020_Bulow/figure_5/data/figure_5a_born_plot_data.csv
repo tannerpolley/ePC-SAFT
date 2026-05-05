@@ -1,9 +1,0 @@
-figure_file,axes_index,axes_title,artist_type,artist_label,series_index,point_index,x,y,width,height
-figure_5a_born.png,0,"Bulow 2020 Part I Figure 5a: Water to ethanol, Born ($\mu$ basis)",line,,0,0,0,0,,
-figure_5a_born.png,0,"Bulow 2020 Part I Figure 5a: Water to ethanol, Born ($\mu$ basis)",line,,0,1,1,0,,
-figure_5a_born.png,0,"Bulow 2020 Part I Figure 5a: Water to ethanol, Born ($\mu$ basis)",bar,,0,0,-0.17000000000000001,0,0.34000000000000002,9.9107142859999993
-figure_5a_born.png,0,"Bulow 2020 Part I Figure 5a: Water to ethanol, Born ($\mu$ basis)",bar,,1,0,0.17000000000000001,0,0.33999999999999997,15.315684068362202
-figure_5a_born.png,0,"Bulow 2020 Part I Figure 5a: Water to ethanol, Born ($\mu$ basis)",bar,,2,0,0.82999999999999985,0,0.33999999999999997,10.17857143
-figure_5a_born.png,0,"Bulow 2020 Part I Figure 5a: Water to ethanol, Born ($\mu$ basis)",bar,,3,0,1.1699999999999999,0,0.34000000000000008,15.689128904862173
-figure_5a_born.png,0,"Bulow 2020 Part I Figure 5a: Water to ethanol, Born ($\mu$ basis)",bar,,4,0,1.8300000000000001,0,0.33999999999999986,7.541899441
-figure_5a_born.png,0,"Bulow 2020 Part I Figure 5a: Water to ethanol, Born ($\mu$ basis)",bar,,5,0,2.1699999999999999,0,0.33999999999999986,11.790804772523927

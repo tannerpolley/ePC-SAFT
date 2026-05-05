@@ -29,12 +29,7 @@ pi = np.pi
 
 def chi(kappa: float, a_i: float) -> float:
     y = kappa * a_i
-    return (3.0 / (y**3)) * (
-        1.5
-        + np.log(1.0 + y)
-        - 2.0 * (1.0 + y)
-        + 0.5 * (1.0 + y) ** 2
-    )
+    return (3.0 / (y**3)) * (1.5 + np.log(1.0 + y) - 2.0 * (1.0 + y) + 0.5 * (1.0 + y) ** 2)
 
 
 def sigma_from_chi(kappa: float, a_i: float, chi_i: float) -> float:
@@ -85,8 +80,8 @@ def main() -> None:
     Tsum = np.sum(x * z**2 * sigma_i)
 
     # constants
-    C = e_charge**2 / (12.0 * pi * kB * T * eps)     # includes 1/(eps0*epsr)
-    K0 = e_charge**2 / (12.0 * pi * kB * T)          # excludes dielectric
+    C = e_charge**2 / (12.0 * pi * kB * T * eps)  # includes 1/(eps0*epsr)
+    K0 = e_charge**2 / (12.0 * pi * kB * T)  # excludes dielectric
 
     # -------------------------
     # V1: closed-form (valid when depsr_dx = 0)
@@ -124,6 +119,7 @@ def main() -> None:
         """
         depsr_dx: array([d eps_r / dx_Na, d eps_r / dx_Cl])  (per mole fraction)
         """
+
         def dkappa_dx(i: int) -> float:
             dQ = z[i] ** 2
             # 2*kappa*dk = A*( dQ/(eps0*epsr) - Q*(eps0*depsr_dx)/(eps0*epsr)^2 )
@@ -183,7 +179,9 @@ def main() -> None:
         v2 = mu_comp_const(i)
         v3 = mu_comp_epsr(i, depsr_dx_0)
         v4 = mu_comp_epsr(i, depsr_dx_8)
-        print(f"{nm:3s}  V1(closed)={v1:.15g}  V2(comp_const)={v2:.15g}  V3(comp_epsr,deps=0)={v3:.15g}  V4(comp_epsr,deps=8)={v4:.15g}")
+        print(
+            f"{nm:3s}  V1(closed)={v1:.15g}  V2(comp_const)={v2:.15g}  V3(comp_epsr,deps=0)={v3:.15g}  V4(comp_epsr,deps=8)={v4:.15g}"
+        )
         print(f"     diffs: V2-V1={v2-v1:.3g}, V3-V1={v3-v1:.3g}, V4-V1={v4-v1:.6g}")
 
     print("\nNote: depsr_dx has units of 'per mole fraction' (eps_r is dimensionless).")

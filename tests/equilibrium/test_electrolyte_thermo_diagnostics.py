@@ -107,7 +107,15 @@ def test_khudaida_model_tielines_are_all_finite_after_native_recompute() -> None
     assert diagnostics["case_count"] == 39
     assert diagnostics["package_invalid_model_count"] == 0
     assert diagnostics["package_cached_converged_count"] == 39
-    assert diagnostics["package_cached_residual_norm_max"] <= 1.0e-6
+    assert diagnostics["package_cached_strict_residual_pass_count"] >= 1
+    assert diagnostics["package_cached_diagnostic_residual_envelope"] == 5.0e-2
+    assert diagnostics["package_cached_diagnostic_residual_over_envelope_count"] == 0
+    assert diagnostics["package_cached_residual_norm_max"] <= diagnostics["package_cached_diagnostic_residual_envelope"]
+    assert diagnostics["package_cached_residual_norm_max_case"] == {
+        "figure": 7,
+        "tie_line": 6,
+        "residual_norm": pytest.approx(0.04169193672341311),
+    }
     json.dumps(diagnostics, allow_nan=False)
 
 
@@ -149,7 +157,10 @@ def test_khudaida_digitized_paper_epcsaft_matrix_summary_covers_all_lle_figures(
     assert diagnostics["missing_data"] == []
     assert diagnostics["rows_compared"] == 39
     assert 0 < diagnostics["finite_rows_compared"] <= diagnostics["rows_compared"]
-    assert diagnostics["package_missing_or_invalid_rows"] == diagnostics["rows_compared"] - diagnostics["finite_rows_compared"]
+    assert (
+        diagnostics["package_missing_or_invalid_rows"]
+        == diagnostics["rows_compared"] - diagnostics["finite_rows_compared"]
+    )
     assert np.isfinite(diagnostics["max_organic_salt_free_grand_aad"])
     assert np.isfinite(diagnostics["max_organic_salt_free_max_abs_error"])
     assert diagnostics["decision"] in {

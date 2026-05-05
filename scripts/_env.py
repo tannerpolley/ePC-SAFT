@@ -12,5 +12,3 @@ def require_epcsaft_install() -> None:
             "epcsaft must be importable from the active environment with the OOP API. "
             "Run `uv sync --no-install-project`, then `uv run python scripts/build_epcsaft.py`, then retry."
         ) from exc
-
-

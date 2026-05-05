@@ -21,6 +21,7 @@ authors = [
 ]
 dependencies = [
     "numpy>=2.0",
+    "pandas>=2.2",
     "scipy>=1.13.1",
 ]
 classifiers = [
@@ -41,6 +42,13 @@ test = [
     "matplotlib>=3.8",
     "pytest>=8.0",
 ]
+style = [
+    "black>=24.0",
+    "ruff>=0.5",
+]
+docs = [
+    "sphinx>=7.0",
+]
 build = [
     "build>=1.2",
     "cibuildwheel>=2.23",
@@ -53,6 +61,8 @@ build = [
 dev = [
     { include-group = "test" },
     { include-group = "build" },
+    { include-group = "style" },
+    { include-group = "docs" },
 ]
 
 [tool.uv]
@@ -79,3 +89,33 @@ include = [
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 addopts = "-ra -p no:cacheprovider"
+
+[tool.black]
+line-length = 120
+target-version = ["py39"]
+extend-exclude = '''
+(
+  ^/build/
+  | ^/dist/
+  | ^/docs/_build/
+  | ^/docs/latex/out/
+  | ^/docs/papers/
+  | /out/
+)
+'''
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+extend-exclude = [
+    "build",
+    "dist",
+    "docs/_build",
+    "docs/latex/out",
+    "docs/papers",
+    "**/out",
+]
+
+[tool.ruff.lint]
+select = ["E9", "F63", "F7", "F82"]
+ignore = ["E402", "E501"]

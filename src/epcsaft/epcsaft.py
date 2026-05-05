@@ -33,18 +33,15 @@ _CONTRIBUTION_NAMES = ("hc", "disp", "assoc", "ion", "born")
 
 
 def _state_construction_error_message(T, x, phase, ncomp, mode_name, variable_name, variable_value, exc):
-    return (
-        "{}-based state solve failed for "
-        "T={}, {}={}, phase={}, ncomp={}, x={}: {}".format(
-            mode_name,
-            float(T),
-            variable_name,
-            float(variable_value),
-            phase,
-            ncomp,
-            x.tolist(),
-            exc,
-        )
+    return "{}-based state solve failed for " "T={}, {}={}, phase={}, ncomp={}, x={}: {}".format(
+        mode_name,
+        float(T),
+        variable_name,
+        float(variable_value),
+        phase,
+        ncomp,
+        x.tolist(),
+        exc,
     )
 
 
@@ -80,7 +77,11 @@ def _vector_terms_dict(terms, expected_size, label):
     for name, arr in blocks.items():
         arr = np.asarray(arr, dtype=float)
         if arr.size != expected_size:
-            raise SolutionError("Unexpected {} payload size for {}: expected {}, got {}.".format(label, name, int(expected_size), int(arr.size)))
+            raise SolutionError(
+                "Unexpected {} payload size for {}: expected {}, got {}.".format(
+                    label, name, int(expected_size), int(arr.size)
+                )
+            )
         out[name] = arr
     return out
 
@@ -308,7 +309,9 @@ class ePCSAFTState:
         x = np.asarray(x, dtype=float).flatten()
         ncomp = int(mix.ncomp)
         if x.size != ncomp:
-            raise InputError("State composition length ({}) must match mixture component count ({}).".format(int(x.size), ncomp))
+            raise InputError(
+                "State composition length ({}) must match mixture component count ({}).".format(int(x.size), ncomp)
+            )
         # ensure_numpy_input may normalize a scalar mixture parameter path, but the
         # state should retain the original mixture data unchanged.
         phase_num = phase_to_int(phase)
@@ -336,7 +339,9 @@ class ePCSAFTState:
             variable_name = "P" if has_p else "rho"
             mode_name = "pressure" if has_p else "density"
             variable_value = P if has_p else rho
-            message = _state_construction_error_message(T, x, phase, ncomp, mode_name, variable_name, variable_value, exc)
+            message = _state_construction_error_message(
+                T, x, phase, ncomp, mode_name, variable_name, variable_value, exc
+            )
             raise SolutionError(message) from exc
         self._mixture = mixture
         self._x = np.asarray(x, dtype=float)
@@ -538,7 +543,9 @@ class ePCSAFTState:
         """Build the full activity-coefficient payload for internal reuse."""
         species = self._mixture.species if species is None else [str(s) for s in species]
         if len(species) != self._x.size:
-            raise InputError("species length ({}) must match composition length ({}).".format(len(species), self._x.size))
+            raise InputError(
+                "species length ({}) must match composition length ({}).".format(len(species), self._x.size)
+            )
         has_solvent_override, solvent_index = _resolve_solvent_override(self._mixture, species, solvent)
         include_aux_c = bool(include_aux)
         has_solvent_override_c = bool(has_solvent_override)
@@ -547,14 +554,22 @@ class ePCSAFTState:
         pair_cat = np.asarray(out.pair_cation_indices, dtype=int)
         pair_an = np.asarray(out.pair_anion_indices, dtype=int)
         pair_labels = tuple(species[int(ic)] + species[int(ia)] for ic, ia in zip(pair_cat.tolist(), pair_an.tolist()))
-        ion_idx = np.sort(np.unique(np.concatenate([np.asarray(out.cation_indices, dtype=int), np.asarray(out.anion_indices, dtype=int)])))
+        ion_idx = np.sort(
+            np.unique(
+                np.concatenate([np.asarray(out.cation_indices, dtype=int), np.asarray(out.anion_indices, dtype=int)])
+            )
+        )
         ion_labels = tuple(species[int(i)] for i in ion_idx.tolist())
         return ActivityCoefficientResult(
             species=tuple(species),
             component_activity_coefficients=np.asarray(out.component_activity_coefficients, dtype=float),
             solvation_free_energy_values=np.asarray(out.solvation_free_energy, dtype=float),
-            mean_ionic_activity_coefficients_mole_fraction_values=np.asarray(out.mean_ionic_activity_coefficients_mole_fraction, dtype=float),
-            mean_ionic_activity_coefficients_molality_values=np.asarray(out.mean_ionic_activity_coefficients_molality, dtype=float),
+            mean_ionic_activity_coefficients_mole_fraction_values=np.asarray(
+                out.mean_ionic_activity_coefficients_mole_fraction, dtype=float
+            ),
+            mean_ionic_activity_coefficients_molality_values=np.asarray(
+                out.mean_ionic_activity_coefficients_molality, dtype=float
+            ),
             pair_labels=pair_labels,
             ion_labels=ion_labels,
             ion_indices=ion_idx,
@@ -575,7 +590,9 @@ class ePCSAFTState:
         """Return activity coefficients in the requested form."""
         species = self._mixture.species if species is None else [str(s) for s in species]
         if len(species) != self._x.size:
-            raise InputError("species length ({}) must match composition length ({}).".format(len(species), self._x.size))
+            raise InputError(
+                "species length ({}) must match composition length ({}).".format(len(species), self._x.size)
+            )
         has_solvent_override, solvent_index = _resolve_solvent_override(self._mixture, species, solvent)
         include_aux_c = False
         has_solvent_override_c = bool(has_solvent_override)
@@ -697,56 +714,64 @@ class ePCSAFTState:
 
 def check_input(x, vars):
     if abs(np.sum(x) - 1) > 1e-7:
-        raise InputError('The mole fractions do not sum to 1. x = {}'.format(x))
-    if 'temperature' in vars:
-        if vars['temperature'] <= 0:
-            raise InputError('The {} must be a positive number. {} = {}'.format('temperature', 'temperature', vars['temperature']))
-    if 'density' in vars:
-        if vars['density'] <= 0:
-            raise InputError('The {} must be a positive number. {} = {}'.format('density', 'density', vars['density']))
-    if 'pressure' in vars:
-        if vars['pressure'] <= 0:
-            raise InputError('The {} must be a positive number. {} = {}'.format('pressure', 'pressure', vars['pressure']))
-    if 'Q' in vars:
-        if (vars['Q'] < 0) or (vars['Q'] > 1):
-            raise InputError('{} must be <= 1 and >= 0. {} = {}'.format('Q', 'Q', vars['Q']))
+        raise InputError("The mole fractions do not sum to 1. x = {}".format(x))
+    if "temperature" in vars:
+        if vars["temperature"] <= 0:
+            raise InputError(
+                "The {} must be a positive number. {} = {}".format("temperature", "temperature", vars["temperature"])
+            )
+    if "density" in vars:
+        if vars["density"] <= 0:
+            raise InputError("The {} must be a positive number. {} = {}".format("density", "density", vars["density"]))
+    if "pressure" in vars:
+        if vars["pressure"] <= 0:
+            raise InputError(
+                "The {} must be a positive number. {} = {}".format("pressure", "pressure", vars["pressure"])
+            )
+    if "Q" in vars:
+        if (vars["Q"] < 0) or (vars["Q"] > 1):
+            raise InputError("{} must be <= 1 and >= 0. {} = {}".format("Q", "Q", vars["Q"]))
+
 
 def check_association(params):
     params = deepcopy(params)
-    if ('e_assoc' in params) and ('vol_a' not in params):
-        raise InputError('e_assoc was given, but not vol_a.')
-    elif ('vol_a' in params) and ('e_assoc' not in params):
-        raise InputError('vol_a was given, but not e_assoc.')
+    if ("e_assoc" in params) and ("vol_a" not in params):
+        raise InputError("e_assoc was given, but not vol_a.")
+    elif ("vol_a" in params) and ("e_assoc" not in params):
+        raise InputError("vol_a was given, but not e_assoc.")
 
-    if ('e_assoc' in params) and ('assoc_scheme' not in params):
-        params['assoc_scheme'] = []
-        for a in params['vol_a']:
+    if ("e_assoc" in params) and ("assoc_scheme" not in params):
+        params["assoc_scheme"] = []
+        for a in params["vol_a"]:
             if a != 0:
-                params['assoc_scheme'].append('2b')
+                params["assoc_scheme"].append("2b")
             else:
-                params['assoc_scheme'].append(None)
+                params["assoc_scheme"].append(None)
 
-    if ('e_assoc' in params):
+    if "e_assoc" in params:
         params = create_assoc_matrix(params)
 
     return params
 
+
 def create_assoc_matrix(params):
-    charge = [] # whether the association site has a partial positive charge (i.e. hydrogen), negative charge, or elements of both (e.g. for acids modelled as type 1)
+    charge = (
+        []
+    )  # whether the association site has a partial positive charge (i.e. hydrogen), negative charge, or elements of both (e.g. for acids modelled as type 1)
 
     scheme_charges = {
-        '1': [0],
-        '2a': [0, 0],
-        '2b': [-1, 1],
-        '3a': [0, 0, 0],
-        '3b': [-1, -1, 1],
-        '4a': [0, 0, 0, 0],
-        '4b': [1, 1, 1, -1],
-        '4c': [-1, -1, 1, 1]
+        "1": [0],
+        "2a": [0, 0],
+        "2b": [-1, 1],
+        "3a": [0, 0, 0],
+        "3b": [-1, -1, 1],
+        "4a": [0, 0, 0, 0],
+        "4b": [1, 1, 1, -1],
+        "4c": [-1, -1, 1, 1],
     }
 
     assoc_num = []
-    for comp in params['assoc_scheme']:
+    for comp in params["assoc_scheme"]:
         if comp is None:
             assoc_num.append(0)
             pass
@@ -754,43 +779,45 @@ def create_assoc_matrix(params):
             num = 0
             for site in comp:
                 if site.lower() not in scheme_charges:
-                    raise InputError('{} is not a valid association type.'.format(site))
+                    raise InputError("{} is not a valid association type.".format(site))
                 charge.extend(scheme_charges[site.lower()])
                 num += len(scheme_charges[site.lower()])
             assoc_num.append(num)
         else:
             if comp.lower() not in scheme_charges:
-                raise InputError('{} is not a valid association type.'.format(comp))
+                raise InputError("{} is not a valid association type.".format(comp))
             charge.extend(scheme_charges[comp.lower()])
             assoc_num.append(len(scheme_charges[comp.lower()]))
-    params['assoc_num'] = np.asarray(assoc_num)
+    params["assoc_num"] = np.asarray(assoc_num)
 
-    params['assoc_matrix'] = np.zeros((len(charge)*len(charge)))
+    params["assoc_matrix"] = np.zeros((len(charge) * len(charge)))
     ctr = 0
     for c1 in charge:
         for c2 in charge:
-            if (c1 == 0 or c2 == 0):
-                params['assoc_matrix'][ctr] = 1;
-            elif (c1 == 1 and c2 == -1):
-                params['assoc_matrix'][ctr] = 1;
-            elif (c1 == -1 and c2 == 1):
-                params['assoc_matrix'][ctr] = 1;
+            if c1 == 0 or c2 == 0:
+                params["assoc_matrix"][ctr] = 1
+            elif c1 == 1 and c2 == -1:
+                params["assoc_matrix"][ctr] = 1
+            elif c1 == -1 and c2 == 1:
+                params["assoc_matrix"][ctr] = 1
             else:
-                params['assoc_matrix'][ctr] = 0;
+                params["assoc_matrix"][ctr] = 0
             ctr += 1
 
     return params
 
+
 def ensure_numpy_input(x, params):
     if np.isscalar(x):
         x = np.asarray([x], dtype=float)
-    if np.isscalar(params['m']):
-        params['m'] = np.asarray([params['m']], dtype=float)
-    if np.isscalar(params['s']):
-        params['s'] = np.asarray([params['s']], dtype=float)
-    if np.isscalar(params['e']):
-        params['e'] = np.asarray([params['e']], dtype=float)
+    if np.isscalar(params["m"]):
+        params["m"] = np.asarray([params["m"]], dtype=float)
+    if np.isscalar(params["s"]):
+        params["s"] = np.asarray([params["s"]], dtype=float)
+    if np.isscalar(params["e"]):
+        params["e"] = np.asarray([params["e"]], dtype=float)
     return x, params
+
 
 def _safe_unit_log(values, floor=1e-300):
     vals = np.asarray(values, dtype=float)
@@ -823,6 +850,7 @@ def _resolve_solvent_override(mixture, species, solvent):
         raise InputError("solvent override must reference a neutral species (z=0).")
     return True, idx
 
+
 def np_to_vector_double(np_array):
     """Take a numpy array and return a C++ vector."""
     cpp_vector = []
@@ -836,6 +864,7 @@ def np_to_vector_double(np_array):
         cpp_vector.append(float(np_array))
 
     return cpp_vector
+
 
 def np_to_vector_int(np_array):
     """Take a numpy array and return a C++ vector."""
@@ -857,115 +886,132 @@ def create_struct(params):
 
     cppargs = _core.NativeArgs()
 
-    for removed_key in ('dipm', 'dip_num'):
+    for removed_key in ("dipm", "dip_num"):
         if removed_key in params:
             raise ValueError(
                 'Removed polar parameter "{}" is not supported by the active ePC-SAFT package.'.format(removed_key)
             )
 
     cppargs.mixed_rel_perm_water_index = -1
-    cppargs.m = np_to_vector_double(params['m'])
-    ncomp = len(np.asarray(params['m']).flatten())
-    cppargs.s = np_to_vector_double(params['s'])
-    cppargs.e = np_to_vector_double(params['e'])
-    if 'k_ij' in params:
-        cppargs.k_ij = np_to_vector_double(params['k_ij'])
-    if ('e_assoc' in params) and np.any(params['e_assoc']):
-        cppargs.e_assoc = np_to_vector_double(params['e_assoc'])
-    if ('vol_a' in params) and np.any(params['vol_a']):
-        cppargs.vol_a = np_to_vector_double(params['vol_a'])
+    cppargs.m = np_to_vector_double(params["m"])
+    ncomp = len(np.asarray(params["m"]).flatten())
+    cppargs.s = np_to_vector_double(params["s"])
+    cppargs.e = np_to_vector_double(params["e"])
+    if "k_ij" in params:
+        cppargs.k_ij = np_to_vector_double(params["k_ij"])
+    if ("e_assoc" in params) and np.any(params["e_assoc"]):
+        cppargs.e_assoc = np_to_vector_double(params["e_assoc"])
+    if ("vol_a" in params) and np.any(params["vol_a"]):
+        cppargs.vol_a = np_to_vector_double(params["vol_a"])
     z_arr = None
-    if 'z' in params:
-        z_arr = np.asarray(params['z'], dtype=float).flatten()
+    if "z" in params:
+        z_arr = np.asarray(params["z"], dtype=float).flatten()
         if z_arr.size not in (0, ncomp):
             raise ValueError('params["z"] must have length {} (or be empty), got {}.'.format(ncomp, z_arr.size))
         if z_arr.size == ncomp:
             cppargs.z = np_to_vector_double(z_arr)
-    if 'dielc' in params:
-        dielc_arr = np.asarray(params['dielc'], dtype=float).flatten()
+    if "dielc" in params:
+        dielc_arr = np.asarray(params["dielc"], dtype=float).flatten()
         if dielc_arr.size != ncomp:
             raise ValueError('params["dielc"] must have length {}, got {}.'.format(ncomp, dielc_arr.size))
         cppargs.dielc = np_to_vector_double(dielc_arr)
-    if 'MW' in params:
-        mw_arr = np.asarray(params['MW'], dtype=float).flatten()
+    if "MW" in params:
+        mw_arr = np.asarray(params["MW"], dtype=float).flatten()
         if mw_arr.size != ncomp:
             raise ValueError('params["MW"] must have length {}, got {}.'.format(ncomp, mw_arr.size))
         cppargs.mw = np_to_vector_double(mw_arr)
-    if 'mixed_rel_perm_a' in params:
-        mixed_a_arr = np.asarray(params['mixed_rel_perm_a'], dtype=float).flatten()
+    if "mixed_rel_perm_a" in params:
+        mixed_a_arr = np.asarray(params["mixed_rel_perm_a"], dtype=float).flatten()
         if mixed_a_arr.size != ncomp:
             raise ValueError('params["mixed_rel_perm_a"] must have length {}, got {}.'.format(ncomp, mixed_a_arr.size))
         cppargs.mixed_rel_perm_a = np_to_vector_double(mixed_a_arr)
-    if 'mixed_rel_perm_b' in params:
-        mixed_b_arr = np.asarray(params['mixed_rel_perm_b'], dtype=float).flatten()
+    if "mixed_rel_perm_b" in params:
+        mixed_b_arr = np.asarray(params["mixed_rel_perm_b"], dtype=float).flatten()
         if mixed_b_arr.size != ncomp:
             raise ValueError('params["mixed_rel_perm_b"] must have length {}, got {}.'.format(ncomp, mixed_b_arr.size))
         cppargs.mixed_rel_perm_b = np_to_vector_double(mixed_b_arr)
-    if 'mixed_rel_perm_c' in params:
-        mixed_c_arr = np.asarray(params['mixed_rel_perm_c'], dtype=float).flatten()
+    if "mixed_rel_perm_c" in params:
+        mixed_c_arr = np.asarray(params["mixed_rel_perm_c"], dtype=float).flatten()
         if mixed_c_arr.size != ncomp:
             raise ValueError('params["mixed_rel_perm_c"] must have length {}, got {}.'.format(ncomp, mixed_c_arr.size))
         cppargs.mixed_rel_perm_c = np_to_vector_double(mixed_c_arr)
-    if 'mixed_rel_perm_mask' in params:
-        mixed_mask_arr = np.asarray(params['mixed_rel_perm_mask'], dtype=int).flatten()
+    if "mixed_rel_perm_mask" in params:
+        mixed_mask_arr = np.asarray(params["mixed_rel_perm_mask"], dtype=int).flatten()
         if mixed_mask_arr.size != ncomp:
-            raise ValueError('params["mixed_rel_perm_mask"] must have length {}, got {}.'.format(ncomp, mixed_mask_arr.size))
+            raise ValueError(
+                'params["mixed_rel_perm_mask"] must have length {}, got {}.'.format(ncomp, mixed_mask_arr.size)
+            )
         cppargs.mixed_rel_perm_mask = np_to_vector_int(mixed_mask_arr)
-    if 'mixed_rel_perm_water_index' in params:
-        cppargs.mixed_rel_perm_water_index = int(params['mixed_rel_perm_water_index'])
+    if "mixed_rel_perm_water_index" in params:
+        cppargs.mixed_rel_perm_water_index = int(params["mixed_rel_perm_water_index"])
     if len(cppargs.z) > 0 and len(cppargs.dielc) == 0:
         raise ValueError('Electrolyte parameters require params["dielc"] as a per-species array.')
     d_born_arr = None
-    if 'd_born' in params:
-        d_born_arr = np.asarray(params['d_born'], dtype=float).flatten()
+    if "d_born" in params:
+        d_born_arr = np.asarray(params["d_born"], dtype=float).flatten()
         if d_born_arr.size != ncomp:
             raise ValueError('params["d_born"] must have length {}, got {}.'.format(ncomp, d_born_arr.size))
         cppargs.d_born = np_to_vector_double(d_born_arr)
-    if 'f_solv' in params:
-        cppargs.f_solv = np_to_vector_double(np.asarray(params['f_solv'], dtype=float))
+    if "f_solv" in params:
+        cppargs.f_solv = np_to_vector_double(np.asarray(params["f_solv"], dtype=float))
 
     unsupported_flat_elec_keys = {
-        'dielc_rule', 'dielc_diff_mode', 'born_model', 'born_radius_model',
-        'born_diff_mode', 'born_eps_mode', 'DH_model', 'bjeruum_treatment',
-        'd_ion_mode', 'include_born_model', 'd_Born_mode',
-        'born_solvation_shell_model', 'born_dielectric_saturation', 'born_bulk_mode',
-        'mu_DH_diff_mode', 'mu_DH_comp_dep_rel_perm', 'mu_DH_include_sum_term',
-        'mu_born_diff_mode', 'mu_born_comp_dep_rel_perm', 'mu_born_include_sum_term', 'mu_born_comp_dep_delta_d'
+        "dielc_rule",
+        "dielc_diff_mode",
+        "born_model",
+        "born_radius_model",
+        "born_diff_mode",
+        "born_eps_mode",
+        "DH_model",
+        "bjeruum_treatment",
+        "d_ion_mode",
+        "include_born_model",
+        "d_Born_mode",
+        "born_solvation_shell_model",
+        "born_dielectric_saturation",
+        "born_bulk_mode",
+        "mu_DH_diff_mode",
+        "mu_DH_comp_dep_rel_perm",
+        "mu_DH_include_sum_term",
+        "mu_born_diff_mode",
+        "mu_born_comp_dep_rel_perm",
+        "mu_born_include_sum_term",
+        "mu_born_comp_dep_delta_d",
     }
     if any((k in params) for k in unsupported_flat_elec_keys):
         raise ValueError(
             'Flat electrostatic params are no longer supported; provide nested params["elec_model"] schema.'
         )
 
-    elec_model = params.get('elec_model', None)
+    elec_model = params.get("elec_model", None)
     if elec_model is None:
         if len(cppargs.z) > 0:
             # Apply the canonical electrolyte defaults when ionic parameters are present.
             elec_model = {
-                'rel_perm': {'rule': 1, 'differential_mode': 'analytical'},
-                'hc_model': {'dadx_differential_mode': 'analytical'},
-                'disp_model': {'dadx_differential_mode': 'analytical'},
-                'assoc_model': {'dadx_differential_mode': 'analytical'},
-                'DH_model': {
-                    'd_ion_mode': 1,
-                    'bjeruum_treatment': False,
-                    'mu_DH_model': {
-                        'differential_mode': 'analytical',
-                        'comp_dep_rel_perm': True,
-                        'include_sum_term': True,
+                "rel_perm": {"rule": 1, "differential_mode": "analytical"},
+                "hc_model": {"dadx_differential_mode": "analytical"},
+                "disp_model": {"dadx_differential_mode": "analytical"},
+                "assoc_model": {"dadx_differential_mode": "analytical"},
+                "DH_model": {
+                    "d_ion_mode": 1,
+                    "bjeruum_treatment": False,
+                    "mu_DH_model": {
+                        "differential_mode": "analytical",
+                        "comp_dep_rel_perm": True,
+                        "include_sum_term": True,
                     },
                 },
-                'include_born_model': True,
-                'born_model': {
-                    'd_Born_mode': 0,
-                    'solvation_shell_model': False,
-                    'dielectric_saturation': False,
-                    'bulk_mode': 'mix',
-                    'mu_born_model': {
-                        'differential_mode': 'analytical',
-                        'comp_dep_rel_perm': True,
-                        'include_sum_term': True,
-                        'comp_dep_delta_d': False,
+                "include_born_model": True,
+                "born_model": {
+                    "d_Born_mode": 0,
+                    "solvation_shell_model": False,
+                    "dielectric_saturation": False,
+                    "bulk_mode": "mix",
+                    "mu_born_model": {
+                        "differential_mode": "analytical",
+                        "comp_dep_rel_perm": True,
+                        "include_sum_term": True,
+                        "comp_dep_delta_d": False,
                     },
                 },
             }
@@ -977,12 +1023,12 @@ def create_struct(params):
     def _reject_unknown_keys(mapping, allowed, label):
         unknown = sorted(set(mapping) - set(allowed))
         if unknown:
-            raise ValueError('{} contains unsupported key(s): {}.'.format(label, unknown))
+            raise ValueError("{} contains unsupported key(s): {}.".format(label, unknown))
 
     _reject_unknown_keys(
         elec_model,
-        {'rel_perm', 'hc_model', 'disp_model', 'assoc_model', 'DH_model', 'include_born_model', 'born_model'},
-        'params["elec_model"]'
+        {"rel_perm", "hc_model", "disp_model", "assoc_model", "DH_model", "include_born_model", "born_model"},
+        'params["elec_model"]',
     )
 
     def _as_bool(v):
@@ -992,11 +1038,11 @@ def create_struct(params):
             return bool(v)
         if isinstance(v, str):
             s = v.strip().lower()
-            if s in {'1', 'true', 'yes', 'y', 'on'}:
+            if s in {"1", "true", "yes", "y", "on"}:
                 return True
-            if s in {'0', 'false', 'no', 'n', 'off'}:
+            if s in {"0", "false", "no", "n", "off"}:
                 return False
-        raise ValueError('Could not coerce value to bool: {}'.format(v))
+        raise ValueError("Could not coerce value to bool: {}".format(v))
 
     def _as_int_alias(v, aliases):
         if isinstance(v, (int, np.integer)):
@@ -1005,134 +1051,148 @@ def create_struct(params):
             s = v.strip().lower()
             if s in aliases:
                 return int(aliases[s])
-            if s.isdigit() or (s.startswith('-') and s[1:].isdigit()):
+            if s.isdigit() or (s.startswith("-") and s[1:].isdigit()):
                 return int(s)
-        raise ValueError('Unknown option value: {}'.format(v))
+        raise ValueError("Unknown option value: {}".format(v))
 
     rule_alias = {
-        'constant': 0,
-        'rule0': 0,
-        'linear': 1,
-        'linear-molefraction': 1,
-        'linear-mixing-mole': 1,
-        'rule1': 1,
-        'linear-massfraction': 2,
-        'linear-mixing-weight': 2,
-        'rule2': 2,
-        'combined': 3,
-        'rule3': 3,
-        'empirical': 4,
-        'rule4': 4,
-        'rule5': 5,
-        'rule6': 6,
-        'aqueous-organic': 8,
-        'aqueous_organic': 8,
-        'mixed-aqueous-organic': 8,
-        'mixed_aqueous_organic': 8,
-        'rule8': 8,
+        "constant": 0,
+        "rule0": 0,
+        "linear": 1,
+        "linear-molefraction": 1,
+        "linear-mixing-mole": 1,
+        "rule1": 1,
+        "linear-massfraction": 2,
+        "linear-mixing-weight": 2,
+        "rule2": 2,
+        "combined": 3,
+        "rule3": 3,
+        "empirical": 4,
+        "rule4": 4,
+        "rule5": 5,
+        "rule6": 6,
+        "aqueous-organic": 8,
+        "aqueous_organic": 8,
+        "mixed-aqueous-organic": 8,
+        "mixed_aqueous_organic": 8,
+        "rule8": 8,
     }
     diff_alias = {
-        'analytic': 0,
-        'analytical': 0,
-        'numeric': 1,
-        'numerical': 1,
-        'finite_difference': 1,
-        'finite-difference': 1,
-        'finite difference': 1,
-        'fd': 1,
-        'autodiff': 2,
-        'automatic_differentiation': 2,
-        'automatic-differentiation': 2,
-        'automatic differentiation': 2,
+        "analytic": 0,
+        "analytical": 0,
+        "numeric": 1,
+        "numerical": 1,
+        "finite_difference": 1,
+        "finite-difference": 1,
+        "finite difference": 1,
+        "fd": 1,
+        "autodiff": 2,
+        "automatic_differentiation": 2,
+        "automatic-differentiation": 2,
+        "automatic differentiation": 2,
     }
-    d_ion_alias = {'t_indep': 0, 't_dep_1': 1, 't_dep_2': 2}
-    d_born_alias = {'t_indep': 0, 't_dep_1': 1, 't_dep_2': 2, 'fitted_param': 3}
-    bulk_alias = {'mix': 0, 'bulk': 0, 'solvent': 1}
+    d_ion_alias = {"t_indep": 0, "t_dep_1": 1, "t_dep_2": 2}
+    d_born_alias = {"t_indep": 0, "t_dep_1": 1, "t_dep_2": 2, "fitted_param": 3}
+    bulk_alias = {"mix": 0, "bulk": 0, "solvent": 1}
 
-    rel_perm = elec_model.get('rel_perm', {})
+    rel_perm = elec_model.get("rel_perm", {})
     if not isinstance(rel_perm, dict):
         raise ValueError('params["elec_model"]["rel_perm"] must be a dict.')
-    _reject_unknown_keys(rel_perm, {'rule', 'differential_mode'}, 'params["elec_model"]["rel_perm"]')
-    hc_model_dict = elec_model.get('hc_model', {})
+    _reject_unknown_keys(rel_perm, {"rule", "differential_mode"}, 'params["elec_model"]["rel_perm"]')
+    hc_model_dict = elec_model.get("hc_model", {})
     if not isinstance(hc_model_dict, dict):
         raise ValueError('params["elec_model"]["hc_model"] must be a dict.')
-    _reject_unknown_keys(hc_model_dict, {'dadx_differential_mode'}, 'params["elec_model"]["hc_model"]')
-    disp_model_dict = elec_model.get('disp_model', {})
+    _reject_unknown_keys(hc_model_dict, {"dadx_differential_mode"}, 'params["elec_model"]["hc_model"]')
+    disp_model_dict = elec_model.get("disp_model", {})
     if not isinstance(disp_model_dict, dict):
         raise ValueError('params["elec_model"]["disp_model"] must be a dict.')
-    _reject_unknown_keys(disp_model_dict, {'dadx_differential_mode'}, 'params["elec_model"]["disp_model"]')
-    assoc_model_dict = elec_model.get('assoc_model', {})
+    _reject_unknown_keys(disp_model_dict, {"dadx_differential_mode"}, 'params["elec_model"]["disp_model"]')
+    assoc_model_dict = elec_model.get("assoc_model", {})
     if not isinstance(assoc_model_dict, dict):
         raise ValueError('params["elec_model"]["assoc_model"] must be a dict.')
-    _reject_unknown_keys(assoc_model_dict, {'dadx_differential_mode'}, 'params["elec_model"]["assoc_model"]')
-    dh_model_dict = elec_model.get('DH_model', {})
+    _reject_unknown_keys(assoc_model_dict, {"dadx_differential_mode"}, 'params["elec_model"]["assoc_model"]')
+    dh_model_dict = elec_model.get("DH_model", {})
     if not isinstance(dh_model_dict, dict):
         raise ValueError('params["elec_model"]["DH_model"] must be a dict.')
-    _reject_unknown_keys(dh_model_dict, {'d_ion_mode', 'bjeruum_treatment', 'mu_DH_model'}, 'params["elec_model"]["DH_model"]')
-    born_model_dict = elec_model.get('born_model', {})
+    _reject_unknown_keys(
+        dh_model_dict, {"d_ion_mode", "bjeruum_treatment", "mu_DH_model"}, 'params["elec_model"]["DH_model"]'
+    )
+    born_model_dict = elec_model.get("born_model", {})
     if not isinstance(born_model_dict, dict):
         raise ValueError('params["elec_model"]["born_model"] must be a dict.')
     _reject_unknown_keys(
         born_model_dict,
-        {'d_Born_mode', 'solvation_shell_model', 'dielectric_saturation', 'bulk_mode', 'mu_born_model'},
-        'params["elec_model"]["born_model"]'
+        {"d_Born_mode", "solvation_shell_model", "dielectric_saturation", "bulk_mode", "mu_born_model"},
+        'params["elec_model"]["born_model"]',
     )
-    mu_dh = dh_model_dict.get('mu_DH_model', {})
+    mu_dh = dh_model_dict.get("mu_DH_model", {})
     if not isinstance(mu_dh, dict):
         raise ValueError('params["elec_model"]["DH_model"]["mu_DH_model"] must be a dict.')
     _reject_unknown_keys(
         mu_dh,
-        {'differential_mode', 'comp_dep_rel_perm', 'include_sum_term'},
-        'params["elec_model"]["DH_model"]["mu_DH_model"]'
+        {"differential_mode", "comp_dep_rel_perm", "include_sum_term"},
+        'params["elec_model"]["DH_model"]["mu_DH_model"]',
     )
-    mu_born = born_model_dict.get('mu_born_model', {})
+    mu_born = born_model_dict.get("mu_born_model", {})
     if not isinstance(mu_born, dict):
         raise ValueError('params["elec_model"]["born_model"]["mu_born_model"] must be a dict.')
     _reject_unknown_keys(
         mu_born,
-        {'differential_mode', 'comp_dep_rel_perm', 'include_sum_term', 'comp_dep_delta_d'},
-        'params["elec_model"]["born_model"]["mu_born_model"]'
+        {"differential_mode", "comp_dep_rel_perm", "include_sum_term", "comp_dep_delta_d"},
+        'params["elec_model"]["born_model"]["mu_born_model"]',
     )
 
-    cppargs.dielc_rule = _as_int_alias(rel_perm.get('rule', 1), rule_alias)
-    cppargs.dielc_diff_mode = _as_int_alias(rel_perm.get('differential_mode', 'analytical'), diff_alias)
+    cppargs.dielc_rule = _as_int_alias(rel_perm.get("rule", 1), rule_alias)
+    cppargs.dielc_diff_mode = _as_int_alias(rel_perm.get("differential_mode", "analytical"), diff_alias)
     if cppargs.dielc_diff_mode not in (0, 1, 2):
-        raise ValueError('Unknown rel_perm differential_mode. Supported values are analytical/numerical/autodiff (0/1/2).')
-    cppargs.hc_dadx_diff_mode = _as_int_alias(hc_model_dict.get('dadx_differential_mode', 'analytical'), diff_alias)
+        raise ValueError(
+            "Unknown rel_perm differential_mode. Supported values are analytical/numerical/autodiff (0/1/2)."
+        )
+    cppargs.hc_dadx_diff_mode = _as_int_alias(hc_model_dict.get("dadx_differential_mode", "analytical"), diff_alias)
     if cppargs.hc_dadx_diff_mode not in (0, 1, 2):
-        raise ValueError('Unknown hc_model dadx_differential_mode. Supported values are analytical/numerical/autodiff (0/1/2).')
-    cppargs.disp_dadx_diff_mode = _as_int_alias(disp_model_dict.get('dadx_differential_mode', 'analytical'), diff_alias)
+        raise ValueError(
+            "Unknown hc_model dadx_differential_mode. Supported values are analytical/numerical/autodiff (0/1/2)."
+        )
+    cppargs.disp_dadx_diff_mode = _as_int_alias(disp_model_dict.get("dadx_differential_mode", "analytical"), diff_alias)
     if cppargs.disp_dadx_diff_mode not in (0, 1, 2):
-        raise ValueError('Unknown disp_model dadx_differential_mode. Supported values are analytical/numerical/autodiff (0/1/2).')
-    cppargs.assoc_dadx_diff_mode = _as_int_alias(assoc_model_dict.get('dadx_differential_mode', 'analytical'), diff_alias)
+        raise ValueError(
+            "Unknown disp_model dadx_differential_mode. Supported values are analytical/numerical/autodiff (0/1/2)."
+        )
+    cppargs.assoc_dadx_diff_mode = _as_int_alias(
+        assoc_model_dict.get("dadx_differential_mode", "analytical"), diff_alias
+    )
     if cppargs.assoc_dadx_diff_mode not in (0, 1, 2):
-        raise ValueError('Unknown assoc_model dadx_differential_mode. Supported values are analytical/numerical/autodiff (0/1/2).')
+        raise ValueError(
+            "Unknown assoc_model dadx_differential_mode. Supported values are analytical/numerical/autodiff (0/1/2)."
+        )
     if cppargs.dielc_rule < 0 or cppargs.dielc_rule > 8:
-        raise ValueError('Unknown rel_perm rule. Supported values are 0..8.')
+        raise ValueError("Unknown rel_perm rule. Supported values are 0..8.")
 
-    cppargs.d_ion_mode = _as_int_alias(dh_model_dict.get('d_ion_mode', 1), d_ion_alias)
+    cppargs.d_ion_mode = _as_int_alias(dh_model_dict.get("d_ion_mode", 1), d_ion_alias)
     if cppargs.d_ion_mode not in (0, 1, 2):
-        raise ValueError('Unknown d_ion_mode. Supported values are 0,1,2.')
-    bjeruum = _as_bool(dh_model_dict.get('bjeruum_treatment', False))
-    cppargs.mu_DH_diff_mode = _as_int_alias(mu_dh.get('differential_mode', 'analytical'), diff_alias)
+        raise ValueError("Unknown d_ion_mode. Supported values are 0,1,2.")
+    bjeruum = _as_bool(dh_model_dict.get("bjeruum_treatment", False))
+    cppargs.mu_DH_diff_mode = _as_int_alias(mu_dh.get("differential_mode", "analytical"), diff_alias)
     if cppargs.mu_DH_diff_mode not in (0, 1, 2):
-        raise ValueError('Unknown mu_DH differential_mode. Supported values are analytical/numerical/autodiff (0/1/2).')
-    cppargs.mu_DH_comp_dep_rel_perm = int(_as_bool(mu_dh.get('comp_dep_rel_perm', True)))
-    cppargs.mu_DH_include_sum_term = int(_as_bool(mu_dh.get('include_sum_term', True)))
+        raise ValueError("Unknown mu_DH differential_mode. Supported values are analytical/numerical/autodiff (0/1/2).")
+    cppargs.mu_DH_comp_dep_rel_perm = int(_as_bool(mu_dh.get("comp_dep_rel_perm", True)))
+    cppargs.mu_DH_include_sum_term = int(_as_bool(mu_dh.get("include_sum_term", True)))
 
-    cppargs.include_born_model = int(_as_bool(elec_model.get('include_born_model', True)))
-    cppargs.d_born_mode = _as_int_alias(born_model_dict.get('d_Born_mode', 0), d_born_alias)
+    cppargs.include_born_model = int(_as_bool(elec_model.get("include_born_model", True)))
+    cppargs.d_born_mode = _as_int_alias(born_model_dict.get("d_Born_mode", 0), d_born_alias)
     if cppargs.d_born_mode not in (0, 1, 2, 3):
-        raise ValueError('Unknown d_Born_mode. Supported values are 0,1,2,3.')
-    cppargs.born_solvation_shell_model = int(_as_bool(born_model_dict.get('solvation_shell_model', False)))
-    cppargs.born_dielectric_saturation = int(_as_bool(born_model_dict.get('dielectric_saturation', False)))
-    cppargs.born_bulk_mode = _as_int_alias(born_model_dict.get('bulk_mode', 'mix'), bulk_alias)
-    cppargs.mu_born_diff_mode = _as_int_alias(mu_born.get('differential_mode', 'analytical'), diff_alias)
+        raise ValueError("Unknown d_Born_mode. Supported values are 0,1,2,3.")
+    cppargs.born_solvation_shell_model = int(_as_bool(born_model_dict.get("solvation_shell_model", False)))
+    cppargs.born_dielectric_saturation = int(_as_bool(born_model_dict.get("dielectric_saturation", False)))
+    cppargs.born_bulk_mode = _as_int_alias(born_model_dict.get("bulk_mode", "mix"), bulk_alias)
+    cppargs.mu_born_diff_mode = _as_int_alias(mu_born.get("differential_mode", "analytical"), diff_alias)
     if cppargs.mu_born_diff_mode not in (0, 1, 2):
-        raise ValueError('Unknown mu_born differential_mode. Supported values are analytical/numerical/autodiff (0/1/2).')
-    cppargs.mu_born_comp_dep_rel_perm = int(_as_bool(mu_born.get('comp_dep_rel_perm', True)))
-    cppargs.mu_born_include_sum_term = int(_as_bool(mu_born.get('include_sum_term', True)))
-    cppargs.mu_born_comp_dep_delta_d = int(_as_bool(mu_born.get('comp_dep_delta_d', False)))
+        raise ValueError(
+            "Unknown mu_born differential_mode. Supported values are analytical/numerical/autodiff (0/1/2)."
+        )
+    cppargs.mu_born_comp_dep_rel_perm = int(_as_bool(mu_born.get("comp_dep_rel_perm", True)))
+    cppargs.mu_born_include_sum_term = int(_as_bool(mu_born.get("include_sum_term", True)))
+    cppargs.mu_born_comp_dep_delta_d = int(_as_bool(mu_born.get("comp_dep_delta_d", False)))
 
     if cppargs.include_born_model == 0:
         cppargs.born_model = 0
@@ -1169,7 +1229,9 @@ def create_struct(params):
             cppargs.born_diff_mode = 0
 
     if cppargs.born_model == 1 and cppargs.born_radius_model == 5:
-        raise ValueError('d_Born_mode="fitted_param" requires SSM/DS Born path (include_born_model=true and SSM or DS true).')
+        raise ValueError(
+            'd_Born_mode="fitted_param" requires SSM/DS Born path (include_born_model=true and SSM or DS true).'
+        )
 
     if cppargs.born_model > 0 and cppargs.born_radius_model in (4, 5):
         if z_arr is None:
@@ -1185,16 +1247,17 @@ def create_struct(params):
         raise ValueError("Bjerrum treatment is reserved and not implemented (DH_model=2).")
     if cppargs.DH_model < 0 or cppargs.DH_model > 2:
         raise ValueError("Unknown DH_model. Supported values are 0, 1, and reserved 2.")
-    if 'assoc_num' in params:
-        cppargs.assoc_num = np_to_vector_int(params['assoc_num'])
-    if 'assoc_matrix' in params:
-        cppargs.assoc_matrix = np_to_vector_int(params['assoc_matrix'])
-    if 'k_hb' in params:
-        cppargs.k_hb = np_to_vector_double(params['k_hb'])
-    if 'l_ij' in params:
-        cppargs.l_ij = np_to_vector_double(params['l_ij'])
+    if "assoc_num" in params:
+        cppargs.assoc_num = np_to_vector_int(params["assoc_num"])
+    if "assoc_matrix" in params:
+        cppargs.assoc_matrix = np_to_vector_int(params["assoc_matrix"])
+    if "k_hb" in params:
+        cppargs.k_hb = np_to_vector_double(params["k_hb"])
+    if "l_ij" in params:
+        cppargs.l_ij = np_to_vector_double(params["l_ij"])
 
     return cppargs
+
 
 def _fit_pure_neutral_native_least_squares(
     fixed_payload,
@@ -1362,9 +1425,3 @@ def _evaluate_generic_native_debug(
         "residuals": vector_to_array(result["residuals"]),
         "metrics_by_term": {str(k): float(v) for k, v in dict(result["metrics_by_term"]).items()},
     }
-
-
-
-
-
-

@@ -7,7 +7,6 @@ from pathlib import Path
 
 import numpy as np
 
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 FIGURE_DIR = SCRIPT_DIR.parent
 ANALYSIS_ROOT = FIGURE_DIR.parent
@@ -21,7 +20,6 @@ if str(REPO_ROOT) not in sys.path:
 
 import _model_overlay as overlay
 import _plot_common as common
-
 
 R_GAS = 8.31446261815324
 T_REF = 298.15
@@ -94,9 +92,7 @@ def main() -> None:
     paper_total = fig2.values("advanced", ions)
     paper_born = _paper_values(fig3, "born", ions)
     paper_short = (
-        _paper_values(fig3, "hc", ions)
-        + _paper_values(fig3, "disp", ions)
-        + _paper_values(fig3, "assoc", ions)
+        _paper_values(fig3, "hc", ions) + _paper_values(fig3, "disp", ions) + _paper_values(fig3, "assoc", ions)
     )
     paper_sum4 = paper_short + paper_born
     paper_missing_to_total = paper_total - paper_sum4
@@ -242,7 +238,9 @@ def main() -> None:
 
     with summary_path.open("w", encoding="utf-8") as handle:
         handle.write("# Figure 2-3 Accounting Audit\n\n")
-        handle.write("This audit compares the paper Figure 3 hydration contributions against several model-side intermediate quantities at the same infinite-dilution state used for Figure 2.\n\n")
+        handle.write(
+            "This audit compares the paper Figure 3 hydration contributions against several model-side intermediate quantities at the same infinite-dilution state used for Figure 2.\n\n"
+        )
 
         handle.write("## Main Findings\n\n")
         handle.write(
@@ -280,7 +278,9 @@ def main() -> None:
         handle.write("\n")
 
         handle.write("## Ion-Level Total Check\n\n")
-        handle.write("| ion | paper Fig2 total | paper Fig3 sum | missing to total | paper total - born | model short sum lnfug |\n")
+        handle.write(
+            "| ion | paper Fig2 total | paper Fig3 sum | missing to total | paper total - born | model short sum lnfug |\n"
+        )
         handle.write("| --- | --- | --- | --- | --- | --- |\n")
         for row in ion_summary_rows:
             handle.write(

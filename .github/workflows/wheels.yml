@@ -32,11 +32,7 @@ jobs:
         run: uv run --locked python scripts/build_epcsaft.py --clean
 
       - name: Run focused tests
-        run: |
-          uv run --locked python run_pytest.py tests/test_runtime.py -q
-          uv run --locked python run_pytest.py tests/test_parameter_templates.py -q
-          uv run --locked python run_pytest.py tests/test_equation_registry.py -q
-          uv run --locked python run_pytest.py tests/test_regression.py tests/test_regression_api.py -q
+        run: uv run --locked python run_pytest.py --confidence -q
 
   build:
     name: build wheels / ${{ matrix.os }}

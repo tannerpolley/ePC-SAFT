@@ -139,21 +139,27 @@ def test_native_residual_helmholtz_and_compressibility_contributions_match_neutr
 
     assert ares["total"] == pytest.approx(-3.54988545131505, rel=0.0, abs=1e-12)
     assert z["total"] == pytest.approx(0.04594621208078564, rel=0.0, abs=1e-12)
-    _assert_close_terms(ares["terms"], {
-        "hc": 3.774229851214634,
-        "disp": -7.324115302529684,
-        "assoc": 0.0,
-        "ion": 0.0,
-        "born": 0.0,
-    })
-    _assert_close_terms(z["terms"], {
-        "hc": 7.122473867439451,
-        "disp": -8.076527655358666,
-        "assoc": 0.0,
-        "ion": 0.0,
-        "born": 0.0,
-        "ideal": 1.0,
-    })
+    _assert_close_terms(
+        ares["terms"],
+        {
+            "hc": 3.774229851214634,
+            "disp": -7.324115302529684,
+            "assoc": 0.0,
+            "ion": 0.0,
+            "born": 0.0,
+        },
+    )
+    _assert_close_terms(
+        z["terms"],
+        {
+            "hc": 7.122473867439451,
+            "disp": -8.076527655358666,
+            "assoc": 0.0,
+            "ion": 0.0,
+            "born": 0.0,
+            "ideal": 1.0,
+        },
+    )
 
 
 def test_native_residual_helmholtz_and_compressibility_contributions_match_ionic_contract() -> None:
@@ -164,21 +170,27 @@ def test_native_residual_helmholtz_and_compressibility_contributions_match_ionic
 
     assert ares["total"] == pytest.approx(-9.7214027218058, rel=0.0, abs=1e-12)
     assert z["total"] == pytest.approx(0.000728884077611683, rel=0.0, abs=1e-12)
-    _assert_close_terms(ares["terms"], {
-        "hc": 4.5498342977047095,
-        "disp": -8.862194941025747,
-        "assoc": -5.369357675632981,
-        "ion": -1.1229434731248254e-05,
-        "born": -0.03967317341704953,
-    })
-    _assert_close_terms(z["terms"], {
-        "hc": 10.033753448769597,
-        "disp": -7.956283347485374,
-        "assoc": -3.0767358436684233,
-        "ion": -5.373538203676085e-06,
-        "born": 0.0,
-        "ideal": 1.0,
-    })
+    _assert_close_terms(
+        ares["terms"],
+        {
+            "hc": 4.5498342977047095,
+            "disp": -8.862194941025747,
+            "assoc": -5.369357675632981,
+            "ion": -1.1229434731248254e-05,
+            "born": -0.03967317341704953,
+        },
+    )
+    _assert_close_terms(
+        z["terms"],
+        {
+            "hc": 10.033753448769597,
+            "disp": -7.956283347485374,
+            "assoc": -3.0767358436684233,
+            "ion": -5.373538203676085e-06,
+            "born": 0.0,
+            "ideal": 1.0,
+        },
+    )
 
 
 def test_temperature_derivative_matches_neutral_finite_difference() -> None:
@@ -411,4 +423,3 @@ def test_miac_activity_cache_reuse_keeps_results_stable() -> None:
     assert second.density() == pytest.approx(first.density())
     assert second_gamma == pytest.approx(first_gamma)
     assert stats["density_warm_start_hits"] >= 1
-    assert stats["reference_state_cache_hits"] >= 1

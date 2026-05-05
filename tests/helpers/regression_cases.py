@@ -3,7 +3,6 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
-
 DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "pure_component"
 REFERENCE_CSV = DATA_DIR / "hydrocarbon_basis_workbook_reference.csv"
 

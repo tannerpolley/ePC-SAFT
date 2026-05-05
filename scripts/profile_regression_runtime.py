@@ -33,7 +33,6 @@ from tests.helpers.regression_cases import _load_workbook_reference_rows
 from tests.helpers.regression_cases import _neutral_fixed_parameters
 from tests.helpers.regression_cases import _real_saturation_records
 
-
 REPORT_DIR = REPO_ROOT / "build" / "runtime_profile"
 REPORT_CSV = REPORT_DIR / "regression_runtime_profile.csv"
 REPORT_MD = REPORT_DIR / "regression_runtime_profile.md"

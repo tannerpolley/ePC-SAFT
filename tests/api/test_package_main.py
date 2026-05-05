@@ -7,7 +7,6 @@ from pathlib import Path
 
 from epcsaft.__main__ import main
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 

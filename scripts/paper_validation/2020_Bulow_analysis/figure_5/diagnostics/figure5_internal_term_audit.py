@@ -7,7 +7,6 @@ from pathlib import Path
 
 import numpy as np
 
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 FIGURE_DIR = SCRIPT_DIR.parent
 ANALYSIS_ROOT = FIGURE_DIR.parent
@@ -21,7 +20,6 @@ if str(REPO_ROOT) not in sys.path:
 
 import _model_overlay as overlay
 import _plot_common as common
-
 
 R_GAS = 8.31446261815324
 T_REF = 298.15
@@ -261,14 +259,18 @@ def main() -> None:
         handle.write(
             "This audit compares the paper Figure 5 transfer bars against the model-side transfer deltas of the internal contribution pieces exposed from `epcsaft_fugacity_coefficient_terms(...)`.\n\n"
         )
-        handle.write("For each contribution $\\alpha$, the report tracks the state-level pieces used in the code path:\n\n")
+        handle.write(
+            "For each contribution $\\alpha$, the report tracks the state-level pieces used in the code path:\n\n"
+        )
         handle.write("- $a^\\alpha$\n")
         handle.write("- $Z^\\alpha_{\\mathrm{raw}}$\n")
         handle.write("- $(\\partial a^\\alpha/\\partial x_i)$ at the ion index\n")
         handle.write("- $\\sum_j x_j (\\partial a^\\alpha/\\partial x_j)$\n")
         handle.write("- the final code-level $\\mu_i^\\alpha$\n")
         handle.write("- the final $\\ln\\varphi_i^\\alpha$\n\n")
-        handle.write("Transfer deltas are formed as organic minus water at the same infinite-dilution reference states used for Figure 4 and Figure 5.\n\n")
+        handle.write(
+            "Transfer deltas are formed as organic minus water at the same infinite-dilution reference states used for Figure 4 and Figure 5.\n\n"
+        )
 
         handle.write("## Best-Matching Candidate By Solvent and Contribution\n\n")
         for solvent in ("ethanol", "methanol"):
@@ -282,12 +284,19 @@ def main() -> None:
             handle.write("\n")
 
         handle.write("## Notes\n\n")
-        handle.write("- `reconstructed_mu` is $\\Delta a^\\alpha + \\Delta Z^\\alpha_{raw} + \\Delta(\\partial a^\\alpha/\\partial x_i) - \\Delta\\sum_j x_j (\\partial a^\\alpha/\\partial x_j)$.\n")
-        handle.write("- For `hc`, `disp`, `polar`, `dh`, and `born`, `reconstructed_mu` should match the exposed `mu` branch to numerical precision.\n")
-        handle.write("- The association branch is dumped exactly as the code currently assembles it. In the current implementation, the exposed `dadx_assoc` column is the same direct code-level quantity as `mu_assoc`, not a separate post-processed correction path.\n")
-        handle.write("- The detailed per-ion dump is in `figure5_internal_term_detail.csv`, and the candidate ranking table is in `figure5_internal_term_summary.csv`.\n")
+        handle.write(
+            "- `reconstructed_mu` is $\\Delta a^\\alpha + \\Delta Z^\\alpha_{raw} + \\Delta(\\partial a^\\alpha/\\partial x_i) - \\Delta\\sum_j x_j (\\partial a^\\alpha/\\partial x_j)$.\n"
+        )
+        handle.write(
+            "- For `hc`, `disp`, `polar`, `dh`, and `born`, `reconstructed_mu` should match the exposed `mu` branch to numerical precision.\n"
+        )
+        handle.write(
+            "- The association branch is dumped exactly as the code currently assembles it. In the current implementation, the exposed `dadx_assoc` column is the same direct code-level quantity as `mu_assoc`, not a separate post-processed correction path.\n"
+        )
+        handle.write(
+            "- The detailed per-ion dump is in `figure5_internal_term_detail.csv`, and the candidate ranking table is in `figure5_internal_term_summary.csv`.\n"
+        )
 
 
 if __name__ == "__main__":
     main()
-

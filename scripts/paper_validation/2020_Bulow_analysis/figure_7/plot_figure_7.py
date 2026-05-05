@@ -42,10 +42,38 @@ SALT_SPECS = {
 }
 
 PANELS = [
-    {"id": "7a", "salt": "LiBr", "solvent": "ethanol", "data": DATA_DIR / "ethanol-LiBr.csv", "xlim": (0.0, 0.2), "ylim": (0.0, 4.0)},
-    {"id": "7b", "salt": "NaBr", "solvent": "ethanol", "data": DATA_DIR / "ethanol-NaBr.csv", "xlim": (0.0, 0.01), "ylim": (0.0, 1.0)},
-    {"id": "7c", "salt": "LiCl", "solvent": "methanol", "data": DATA_DIR / "methanol-LiCl.csv", "xlim": (0.0, 0.15), "ylim": (0.0, 2.0)},
-    {"id": "7d", "salt": "NaBr", "solvent": "methanol", "data": DATA_DIR / "methanol-NaBr.csv", "xlim": (0.0, 0.05), "ylim": (0.0, 1.0)},
+    {
+        "id": "7a",
+        "salt": "LiBr",
+        "solvent": "ethanol",
+        "data": DATA_DIR / "ethanol-LiBr.csv",
+        "xlim": (0.0, 0.2),
+        "ylim": (0.0, 4.0),
+    },
+    {
+        "id": "7b",
+        "salt": "NaBr",
+        "solvent": "ethanol",
+        "data": DATA_DIR / "ethanol-NaBr.csv",
+        "xlim": (0.0, 0.01),
+        "ylim": (0.0, 1.0),
+    },
+    {
+        "id": "7c",
+        "salt": "LiCl",
+        "solvent": "methanol",
+        "data": DATA_DIR / "methanol-LiCl.csv",
+        "xlim": (0.0, 0.15),
+        "ylim": (0.0, 2.0),
+    },
+    {
+        "id": "7d",
+        "salt": "NaBr",
+        "solvent": "methanol",
+        "data": DATA_DIR / "methanol-NaBr.csv",
+        "xlim": (0.0, 0.05),
+        "ylim": (0.0, 1.0),
+    },
 ]
 
 
@@ -175,4 +203,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -7,7 +7,6 @@ from pathlib import Path
 
 import numpy as np
 
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 FIGURE_DIR = SCRIPT_DIR.parent
 ANALYSIS_ROOT = FIGURE_DIR.parent
@@ -21,7 +20,6 @@ if str(REPO_ROOT) not in sys.path:
 
 import _model_overlay as overlay
 import _plot_common as common
-
 
 R_GAS = 8.31446261815324
 T_REF = 298.15
@@ -250,22 +248,38 @@ def main() -> None:
     report_path = OUTPUT_DIR / "figure4_5_accounting_audit.md"
     with report_path.open("w", encoding="utf-8") as handle:
         handle.write("# Figure 4-5 Accounting Audit\n\n")
-        handle.write("This audit compares the paper Figure 5 transfer contributions against model-side transfer values formed from exposed `mu`, `lnfug`, and `Z`-share terms at the same infinite-dilution states used for Figure 4.\n\n")
+        handle.write(
+            "This audit compares the paper Figure 5 transfer contributions against model-side transfer values formed from exposed `mu`, `lnfug`, and `Z`-share terms at the same infinite-dilution states used for Figure 4.\n\n"
+        )
 
         handle.write("## C++ Contribution Construction\n\n")
-        handle.write("- In [epcsaft_electrolyte.cpp](C:/Users/Tanner/Documents/git/ePC-SAFT/epcsaft_electrolyte.cpp), the hard-chain and dispersion branches are built as\n")
+        handle.write(
+            "- In [epcsaft_electrolyte.cpp](C:/Users/Tanner/Documents/git/ePC-SAFT/epcsaft_electrolyte.cpp), the hard-chain and dispersion branches are built as\n"
+        )
         handle.write("  `mu_hc[i] = ares_hc + Zhc + dahc_dx[i] - sum_j x[j]*dahc_dx[j]`\n")
         handle.write("  `mu_disp[i] = ares_disp + Zdisp + dadisp_dx[i] - sum_j x[j]*dadisp_dx[j]`\n")
-        handle.write("- The Debye-Huckel and Born branches use the same pattern with `a_DH` / `a_born`, `Z_DH` / `Zborn`, and the corresponding `dadx` vectors.\n")
-        handle.write("- The current public API already exposes the downstream `mu_*`, `lnfugcoef_*`, and `z_*` terms, but it does **not** yet expose the internal `a^alpha`, `dadx^alpha`, or `sum_x dadx^alpha` pieces separately. This audit therefore uses the fully exposed downstream pieces first.\n\n")
+        handle.write(
+            "- The Debye-Huckel and Born branches use the same pattern with `a_DH` / `a_born`, `Z_DH` / `Zborn`, and the corresponding `dadx` vectors.\n"
+        )
+        handle.write(
+            "- The current public API already exposes the downstream `mu_*`, `lnfugcoef_*`, and `z_*` terms, but it does **not** yet expose the internal `a^alpha`, `dadx^alpha`, or `sum_x dadx^alpha` pieces separately. This audit therefore uses the fully exposed downstream pieces first.\n\n"
+        )
 
         handle.write("## Main Findings\n\n")
         for solvent in ("methanol", "ethanol"):
             handle.write(f"### {solvent.capitalize()}\n\n")
             for term in TERMS:
                 best = best_rows[(solvent, term)]
-                mu_row = next(row for row in summary_rows if row["solvent"] == solvent and row["term"] == term and row["candidate"] == "mu")
-                lnf_row = next(row for row in summary_rows if row["solvent"] == solvent and row["term"] == term and row["candidate"] == "lnfug")
+                mu_row = next(
+                    row
+                    for row in summary_rows
+                    if row["solvent"] == solvent and row["term"] == term and row["candidate"] == "mu"
+                )
+                lnf_row = next(
+                    row
+                    for row in summary_rows
+                    if row["solvent"] == solvent and row["term"] == term and row["candidate"] == "lnfug"
+                )
                 handle.write(
                     f"- `{term}`: best exposed match is `{best['candidate']}` with RMSE `{best['rmse']:.3f}` kJ/mol; `mu` RMSE is `{mu_row['rmse']:.3f}` and `lnfug` RMSE is `{lnf_row['rmse']:.3f}`.\n"
                 )
@@ -283,7 +297,9 @@ def main() -> None:
         handle.write("\n")
 
         handle.write("## Figure 4 vs Figure 5 Cross-Check\n\n")
-        handle.write("| solvent | ion | paper total (Fig 4) | paper total - born | model short sum lnfug | model short sum mu | model born lnfug |\n")
+        handle.write(
+            "| solvent | ion | paper total (Fig 4) | paper total - born | model short sum lnfug | model short sum mu | model born lnfug |\n"
+        )
         handle.write("| --- | --- | --- | --- | --- | --- | --- |\n")
         for row in total_rows:
             handle.write(
@@ -292,10 +308,18 @@ def main() -> None:
         handle.write("\n")
 
         handle.write("## Interpretation\n\n")
-        handle.write("- For both alcohols, the paper `hc`, `disp`, and `assoc` bars are much closer to the transfer in raw $\\Delta\\tilde{\\mu}^\\alpha$ than to the transfer in $\\Delta\\ln\\varphi^\\alpha$.\n")
-        handle.write("- The Born transfer bar is different: it does **not** match the model well even on the raw-`mu` route, which means Figure 5 is not explained by a single bookkeeping switch the way Figure 3 largely is.\n")
-        handle.write("- Ethanol is the clearest case: the paper short-range bars are close to the raw `mu` transfer values, while the model totals only close when the correct $\\ln\\varphi$ transfer contributions are used. That is why Figure 4 totals can agree while Figure 5 component bars disagree strongly, including sign flips.\n")
-        handle.write("- The detailed CSV contains the water-side and organic-side state values for each branch, so you can inspect exactly where each sign change enters.\n")
+        handle.write(
+            "- For both alcohols, the paper `hc`, `disp`, and `assoc` bars are much closer to the transfer in raw $\\Delta\\tilde{\\mu}^\\alpha$ than to the transfer in $\\Delta\\ln\\varphi^\\alpha$.\n"
+        )
+        handle.write(
+            "- The Born transfer bar is different: it does **not** match the model well even on the raw-`mu` route, which means Figure 5 is not explained by a single bookkeeping switch the way Figure 3 largely is.\n"
+        )
+        handle.write(
+            "- Ethanol is the clearest case: the paper short-range bars are close to the raw `mu` transfer values, while the model totals only close when the correct $\\ln\\varphi$ transfer contributions are used. That is why Figure 4 totals can agree while Figure 5 component bars disagree strongly, including sign flips.\n"
+        )
+        handle.write(
+            "- The detailed CSV contains the water-side and organic-side state values for each branch, so you can inspect exactly where each sign change enters.\n"
+        )
 
     print(f"Wrote {detail_path}")
     print(f"Wrote {summary_path}")
@@ -305,4 +329,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

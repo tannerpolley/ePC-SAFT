@@ -1,9 +1,0 @@
-plot,series,label,value
-residual_gate_summary.png,actual,solver_residual_norm,2.1094086477546625e-09
-residual_gate_summary.png,actual,material_balance_error,2.2204460492503131e-16
-residual_gate_summary.png,actual,charge_balance_error,0
-residual_gate_summary.png,actual,phase_distance,1.2142675753779031e-10
-residual_gate_summary.png,threshold,solver_residual_norm,9.9999999999999995e-07
-residual_gate_summary.png,threshold,material_balance_error,1e-10
-residual_gate_summary.png,threshold,charge_balance_error,1e-08
-residual_gate_summary.png,threshold,phase_distance,0.0001

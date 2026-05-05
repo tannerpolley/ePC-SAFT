@@ -52,7 +52,11 @@ def _load_grouped_data() -> dict[float, list[dict[str, float]]]:
     for row in rows:
         w_methanol = common.parse_float(row.get("x_Methanol"))
         molality = common.parse_float(row.get("molality"))
-        gamma = common.parse_float(row.get("miac_m")) or common.parse_float(row.get("gamma")) or common.parse_float(row.get("miac"))
+        gamma = (
+            common.parse_float(row.get("miac_m"))
+            or common.parse_float(row.get("gamma"))
+            or common.parse_float(row.get("miac"))
+        )
         if w_methanol is None or molality is None or gamma is None:
             continue
         key = round(float(w_methanol), 6)

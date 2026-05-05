@@ -55,7 +55,9 @@ def _calc_dielc_diff_curve(x_ion_grid, rule, t=298.15):
 
     for i, x_ion in enumerate(x_ion_grid):
         x = np.asarray([0.5 * x_ion, 0.5 * x_ion, 1.0 - x_ion], dtype=float)
-        params = get_prop_dict("2020_Bulow", species, x, t, user_options={"elec_model": {"rel_perm": {"rule": int(rule)}}})
+        params = get_prop_dict(
+            "2020_Bulow", species, x, t, user_options={"elec_model": {"rel_perm": {"rule": int(rule)}}}
+        )
         deps_dx = np.asarray(epcsaft_relative_permittivity(x, params)[1], dtype=float)
         # Chain-rule projection onto x_ion path:
         # d/dx_ion = 0.5*d/dx_cation + 0.5*d/dx_anion - d/dx_solvent
@@ -101,4 +103,3 @@ def test_dielc_diff():
     for rule in rules:
         if curves[rule].size == 0:
             raise ValueError(f"Empty dielc_diff curve for rule {rule}.")
-

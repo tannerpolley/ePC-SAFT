@@ -18,6 +18,10 @@ venv/
 *.dylib
 artifacts/
 outputs/
+scripts/**/out/
+tests/plots/out/
+src/**/out/
+docs/latex/out/
 data/MIAC/*/plot_fits/
 data/MIAC_m/
 data/MIAC_combined/

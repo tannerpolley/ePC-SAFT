@@ -9,6 +9,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -137,7 +138,18 @@ def make_plot_for_salt(salt: str) -> Path:
     legend_handles = []
     for solvent in plotted_solvents:
         color = SOLVENT_COLORS[solvent]
-        legend_handles.append(Line2D([0], [0], color=color, marker="o", markerfacecolor="white", markeredgecolor=color, linewidth=2.0, label=solvent.capitalize()))
+        legend_handles.append(
+            Line2D(
+                [0],
+                [0],
+                color=color,
+                marker="o",
+                markerfacecolor="white",
+                markeredgecolor=color,
+                linewidth=2.0,
+                label=solvent.capitalize(),
+            )
+        )
     if legend_handles:
         legend = ax.legend(handles=legend_handles, title="Solvent", fontsize=9, title_fontsize=9, loc="best")
         legend.get_frame().set_facecolor("white")

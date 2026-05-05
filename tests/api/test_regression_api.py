@@ -84,9 +84,7 @@ def test_native_pure_neutral_debug_gradient_matches_finite_difference():
         backward = base.copy()
         forward[i] += eps[i]
         backward[i] -= eps[i]
-        fd[i] = (
-            objective_at(*forward) - objective_at(*backward)
-        ) / (2.0 * eps[i])
+        fd[i] = (objective_at(*forward) - objective_at(*backward)) / (2.0 * eps[i])
 
     assert exact == pytest.approx(fd, rel=5.0e-4, abs=5.0e-6)
     assert debug["residual_evaluations"] >= 1
@@ -118,7 +116,6 @@ def test_internal_native_least_squares_backend_matches_methane_reference_band():
     assert result.fitted_values["e"] == pytest.approx(150.03, rel=0.0, abs=3.0)
 
 
-
 @pytest.mark.parametrize(
     "initial_guess",
     [
@@ -146,7 +143,6 @@ def test_public_pure_neutral_regression_is_robust_to_distinct_initial_guesses(in
     assert result.fitted_values["m"] == pytest.approx(1.0, rel=0.0, abs=0.06)
     assert result.fitted_values["s"] == pytest.approx(3.7039, rel=0.0, abs=0.10)
     assert result.fitted_values["e"] == pytest.approx(150.03, rel=0.0, abs=4.0)
-
 
 
 def _nacl_records(*, user_options=None):
@@ -404,7 +400,9 @@ def test_write_fit_result_updates_ion_row_and_binary_matrix_symmetrically(tmp_pa
         binary_root / "mixed" / "binary_interaction" / "k_hb_ij.csv",
     ]
     for filename, expected in (("k_ij.csv", "-0.06167"), ("l_ij.csv", "0.0123"), ("k_hb_ij.csv", "-0.0345")):
-        with (binary_root / "mixed" / "binary_interaction" / filename).open("r", encoding="utf-8-sig", newline="") as handle:
+        with (binary_root / "mixed" / "binary_interaction" / filename).open(
+            "r", encoding="utf-8-sig", newline=""
+        ) as handle:
             rows = list(csv.reader(handle))
         header = rows[0]
         h2o_col = header.index("H2O")

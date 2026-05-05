@@ -10,6 +10,7 @@ from typing import Iterable
 
 import matplotlib
 import numpy as np
+import pandas as pd
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -38,7 +39,6 @@ from epcsaft.equilibrium_core.confidence import explicit_to_formula
 from epcsaft.equilibrium_core.confidence import formula_to_explicit
 from epcsaft.equilibrium_core.confidence import material_balanced_initial_phases
 from epcsaft.parameters import get_prop_dict
-
 
 P_REF = 1.0e5
 PARAMETER_DATASET = "2026_Khudaida"
@@ -108,17 +108,19 @@ def save_figure(fig: plt.Figure, path: Path) -> None:
     save_plot_figure(fig, path, dpi=300, svg_companion=True)
 
 
-def add_figure_caption(fig: plt.Figure, caption: str, *, left: float = 0.09, y: float = 0.02, fontsize: float = 9.0) -> None:
+def add_figure_caption(
+    fig: plt.Figure, caption: str, *, left: float = 0.09, y: float = 0.02, fontsize: float = 9.0
+) -> None:
     fig.text(left, y, caption, ha="left", va="bottom", fontsize=fontsize, wrap=True)
 
 
 def write_csv_rows(path: Path, fieldnames: Iterable[str], rows: Iterable[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(fieldnames))
-        writer.writeheader()
-        for row in rows:
-            writer.writerow(row)
+    pd.DataFrame(list(rows), columns=list(fieldnames)).to_csv(path, index=False)
+
+
+def out_path(fig_dir: Path, filename: str) -> Path:
+    return fig_dir / "out" / filename
 
 
 EXPERIMENTAL_CASES: dict[tuple[float, float], list[tuple[int, tuple[float, ...], tuple[float, ...]]]] = {
@@ -193,27 +195,75 @@ NOMINAL_ETHANOL_FEED_WT = {
 
 EePCSAFT_AAD_REFERENCE = {
     0.05: {
-        293.15: {"grand": 0.0161, "organic": (0.0287, 0.0031, 0.0313, 0.0009), "aqueous": (0.0482, 0.0064, 0.0021, 0.0083)},
-        303.15: {"grand": 0.0168, "organic": (0.0305, 0.0027, 0.0336, 0.0005), "aqueous": (0.0495, 0.0061, 0.0026, 0.0088)},
-        313.15: {"grand": 0.0203, "organic": (0.0245, 0.0033, 0.0276, 0.0006), "aqueous": (0.0487, 0.0052, 0.0025, 0.0081)},
+        293.15: {
+            "grand": 0.0161,
+            "organic": (0.0287, 0.0031, 0.0313, 0.0009),
+            "aqueous": (0.0482, 0.0064, 0.0021, 0.0083),
+        },
+        303.15: {
+            "grand": 0.0168,
+            "organic": (0.0305, 0.0027, 0.0336, 0.0005),
+            "aqueous": (0.0495, 0.0061, 0.0026, 0.0088),
+        },
+        313.15: {
+            "grand": 0.0203,
+            "organic": (0.0245, 0.0033, 0.0276, 0.0006),
+            "aqueous": (0.0487, 0.0052, 0.0025, 0.0081),
+        },
     },
     0.10: {
-        293.15: {"grand": 0.0342, "organic": (0.0729, 0.0096, 0.0739, 0.0005), "aqueous": (0.0975, 0.0020, 0.0007, 0.0161)},
-        303.15: {"grand": 0.0341, "organic": (0.0760, 0.0021, 0.0774, 0.0005), "aqueous": (0.0973, 0.0023, 0.0008, 0.0165)},
-        313.15: {"grand": 0.0357, "organic": (0.0801, 0.0039, 0.0783, 0.0002), "aqueous": (0.1021, 0.0025, 0.0003, 0.0179)},
+        293.15: {
+            "grand": 0.0342,
+            "organic": (0.0729, 0.0096, 0.0739, 0.0005),
+            "aqueous": (0.0975, 0.0020, 0.0007, 0.0161),
+        },
+        303.15: {
+            "grand": 0.0341,
+            "organic": (0.0760, 0.0021, 0.0774, 0.0005),
+            "aqueous": (0.0973, 0.0023, 0.0008, 0.0165),
+        },
+        313.15: {
+            "grand": 0.0357,
+            "organic": (0.0801, 0.0039, 0.0783, 0.0002),
+            "aqueous": (0.1021, 0.0025, 0.0003, 0.0179),
+        },
     },
 }
 
 ENRTL_AAD_REFERENCE = {
     0.05: {
-        293.15: {"grand": 0.0046, "organic": (0.0059, 0.0048, 0.0010, 0.0011), "aqueous": (0.0102, 0.0025, 0.0080, 0.0029)},
-        303.15: {"grand": 0.0047, "organic": (0.0053, 0.0040, 0.0015, 0.0007), "aqueous": (0.0120, 0.0029, 0.0097, 0.0012)},
-        313.15: {"grand": 0.0078, "organic": (0.0147, 0.0117, 0.0041, 0.0011), "aqueous": (0.0128, 0.0030, 0.0126, 0.0027)},
+        293.15: {
+            "grand": 0.0046,
+            "organic": (0.0059, 0.0048, 0.0010, 0.0011),
+            "aqueous": (0.0102, 0.0025, 0.0080, 0.0029),
+        },
+        303.15: {
+            "grand": 0.0047,
+            "organic": (0.0053, 0.0040, 0.0015, 0.0007),
+            "aqueous": (0.0120, 0.0029, 0.0097, 0.0012),
+        },
+        313.15: {
+            "grand": 0.0078,
+            "organic": (0.0147, 0.0117, 0.0041, 0.0011),
+            "aqueous": (0.0128, 0.0030, 0.0126, 0.0027),
+        },
     },
     0.10: {
-        293.15: {"grand": 0.0086, "organic": (0.0010, 0.0026, 0.0022, 0.0007), "aqueous": (0.0312, 0.0008, 0.0062, 0.0241)},
-        303.15: {"grand": 0.0083, "organic": (0.0011, 0.0022, 0.0033, 0.0022), "aqueous": (0.0289, 0.0006, 0.0079, 0.0204)},
-        313.15: {"grand": 0.0091, "organic": (0.0011, 0.0035, 0.0028, 0.0004), "aqueous": (0.0323, 0.0020, 0.0098, 0.0205)},
+        293.15: {
+            "grand": 0.0086,
+            "organic": (0.0010, 0.0026, 0.0022, 0.0007),
+            "aqueous": (0.0312, 0.0008, 0.0062, 0.0241),
+        },
+        303.15: {
+            "grand": 0.0083,
+            "organic": (0.0011, 0.0022, 0.0033, 0.0022),
+            "aqueous": (0.0289, 0.0006, 0.0079, 0.0204),
+        },
+        313.15: {
+            "grand": 0.0091,
+            "organic": (0.0011, 0.0035, 0.0028, 0.0004),
+            "aqueous": (0.0323, 0.0020, 0.0098, 0.0205),
+        },
     },
 }
 
@@ -244,7 +294,9 @@ def _digitized_feed_rows_for_figure(figure_number: int, temperature_k: float, sa
             ethanol = float(raw["x_ethanol_salt_free"])
             isobutanol = float(raw["x_isobutanol_salt_free"])
             water = float(raw["x_water_salt_free"])
-            feed_formula = build_feed_formula_from_salt_free_molefractions(np.asarray([water, ethanol, isobutanol], dtype=float), salt_wt)
+            feed_formula = build_feed_formula_from_salt_free_molefractions(
+                np.asarray([water, ethanol, isobutanol], dtype=float), salt_wt
+            )
             rows.append(
                 {
                     "tie_line": idx,
@@ -411,10 +463,22 @@ def _draw_ternary_axes(ax: plt.Axes) -> None:
         if 0.0 < frac < 1.0:
             # Left edge shows water decreasing from 1 at the lower-left corner to 0 at the apex.
             left_point = np.asarray([0.5 * frac, SQRT3_OVER_2 * frac], dtype=float) + left_tick_offset * left_normal
-            ax.text(left_point[0], left_point[1], f"{1.0 - frac:.1f}", color=WATER_COLOR, ha="right", va="center", fontsize=8)
+            ax.text(
+                left_point[0],
+                left_point[1],
+                f"{1.0 - frac:.1f}",
+                color=WATER_COLOR,
+                ha="right",
+                va="center",
+                fontsize=8,
+            )
             # Right edge shows ethanol increasing from 0 at the lower-right corner to 1 at the apex.
-            right_point = np.asarray([1.0 - 0.5 * frac, SQRT3_OVER_2 * frac], dtype=float) + right_tick_offset * right_normal
-            ax.text(right_point[0], right_point[1], f"{frac:.1f}", color=ETHANOL_COLOR, ha="left", va="center", fontsize=8)
+            right_point = (
+                np.asarray([1.0 - 0.5 * frac, SQRT3_OVER_2 * frac], dtype=float) + right_tick_offset * right_normal
+            )
+            ax.text(
+                right_point[0], right_point[1], f"{frac:.1f}", color=ETHANOL_COLOR, ha="left", va="center", fontsize=8
+            )
     left_bottom = np.asarray([0.0, 0.0], dtype=float) + left_tick_offset * left_normal
     left_top = np.asarray([0.5, SQRT3_OVER_2], dtype=float) + left_tick_offset * left_normal
     right_bottom = np.asarray([1.0, 0.0], dtype=float) + right_tick_offset * right_normal
@@ -485,20 +549,60 @@ def _draw_scaled_ternary_axes(
         ethanol = ethanol_max * frac
         water = 1.0 - (1.0 - water_min) * frac
         if frac < 1.0:
-            ax.text(frac, -0.03, format(isobutanol, tick_format), color=ISOBUTANOL_COLOR, ha="center", va="top", fontsize=7)
+            ax.text(
+                frac, -0.03, format(isobutanol, tick_format), color=ISOBUTANOL_COLOR, ha="center", va="top", fontsize=7
+            )
         if 0.0 < frac < 1.0:
             left_point = np.asarray([0.5 * frac, SQRT3_OVER_2 * frac], dtype=float) + left_tick_offset * left_normal
-            ax.text(left_point[0], left_point[1], format(water, tick_format), color=WATER_COLOR, ha="right", va="center", fontsize=7)
-            right_point = np.asarray([1.0 - 0.5 * frac, SQRT3_OVER_2 * frac], dtype=float) + right_tick_offset * right_normal
-            ax.text(right_point[0], right_point[1], format(ethanol, tick_format), color=ETHANOL_COLOR, ha="left", va="center", fontsize=7)
+            ax.text(
+                left_point[0],
+                left_point[1],
+                format(water, tick_format),
+                color=WATER_COLOR,
+                ha="right",
+                va="center",
+                fontsize=7,
+            )
+            right_point = (
+                np.asarray([1.0 - 0.5 * frac, SQRT3_OVER_2 * frac], dtype=float) + right_tick_offset * right_normal
+            )
+            ax.text(
+                right_point[0],
+                right_point[1],
+                format(ethanol, tick_format),
+                color=ETHANOL_COLOR,
+                ha="left",
+                va="center",
+                fontsize=7,
+            )
     left_bottom = np.asarray([0.0, 0.0], dtype=float) + left_tick_offset * left_normal
     left_top = np.asarray([0.5, SQRT3_OVER_2], dtype=float) + left_tick_offset * left_normal
     right_bottom = np.asarray([1.0, 0.0], dtype=float) + right_tick_offset * right_normal
     right_top = np.asarray([0.5, SQRT3_OVER_2], dtype=float) + right_tick_offset * right_normal
-    ax.text(left_bottom[0], left_bottom[1], format(1.0, tick_format), color=WATER_COLOR, ha="right", va="center", fontsize=7)
-    ax.text(left_top[0], left_top[1], format(water_min, tick_format), color=WATER_COLOR, ha="right", va="center", fontsize=7)
-    ax.text(right_bottom[0], right_bottom[1], format(0.0, tick_format), color=ETHANOL_COLOR, ha="left", va="center", fontsize=7)
-    ax.text(right_top[0], right_top[1], format(ethanol_max, tick_format), color=ETHANOL_COLOR, ha="left", va="center", fontsize=7)
+    ax.text(
+        left_bottom[0], left_bottom[1], format(1.0, tick_format), color=WATER_COLOR, ha="right", va="center", fontsize=7
+    )
+    ax.text(
+        left_top[0], left_top[1], format(water_min, tick_format), color=WATER_COLOR, ha="right", va="center", fontsize=7
+    )
+    ax.text(
+        right_bottom[0],
+        right_bottom[1],
+        format(0.0, tick_format),
+        color=ETHANOL_COLOR,
+        ha="left",
+        va="center",
+        fontsize=7,
+    )
+    ax.text(
+        right_top[0],
+        right_top[1],
+        format(ethanol_max, tick_format),
+        color=ETHANOL_COLOR,
+        ha="left",
+        va="center",
+        fontsize=7,
+    )
     ax.set_xlim(-0.12, 1.14)
     ax.set_ylim(-0.10, SQRT3_OVER_2 + 0.08)
     ax.set_aspect("equal")
@@ -561,20 +665,66 @@ def _draw_display_scaled_axes(
         ethanol = ethanol_min + frac * (ethanol_max - ethanol_min)
         isobutanol = isobutanol_min + frac * (isobutanol_max - isobutanol_min)
         if frac < 1.0:
-            ax.text(frac, -0.03, format(isobutanol, tick_format), color=ISOBUTANOL_COLOR, ha="center", va="top", fontsize=7)
+            ax.text(
+                frac, -0.03, format(isobutanol, tick_format), color=ISOBUTANOL_COLOR, ha="center", va="top", fontsize=7
+            )
         if 0.0 < frac < 1.0:
             left_point = np.asarray([0.5 * frac, SQRT3_OVER_2 * frac], dtype=float) + left_tick_offset * left_normal
-            ax.text(left_point[0], left_point[1], format(water, tick_format), color=WATER_COLOR, ha="right", va="center", fontsize=7)
-            right_point = np.asarray([1.0 - 0.5 * frac, SQRT3_OVER_2 * frac], dtype=float) + right_tick_offset * right_normal
-            ax.text(right_point[0], right_point[1], format(ethanol, tick_format), color=ETHANOL_COLOR, ha="left", va="center", fontsize=7)
+            ax.text(
+                left_point[0],
+                left_point[1],
+                format(water, tick_format),
+                color=WATER_COLOR,
+                ha="right",
+                va="center",
+                fontsize=7,
+            )
+            right_point = (
+                np.asarray([1.0 - 0.5 * frac, SQRT3_OVER_2 * frac], dtype=float) + right_tick_offset * right_normal
+            )
+            ax.text(
+                right_point[0],
+                right_point[1],
+                format(ethanol, tick_format),
+                color=ETHANOL_COLOR,
+                ha="left",
+                va="center",
+                fontsize=7,
+            )
     left_bottom = np.asarray([0.0, 0.0], dtype=float) + left_tick_offset * left_normal
     left_top = np.asarray([0.5, SQRT3_OVER_2], dtype=float) + left_tick_offset * left_normal
     right_bottom = np.asarray([1.0, 0.0], dtype=float) + right_tick_offset * right_normal
     right_top = np.asarray([0.5, SQRT3_OVER_2], dtype=float) + right_tick_offset * right_normal
-    ax.text(left_bottom[0], left_bottom[1], format(water_max, tick_format), color=WATER_COLOR, ha="right", va="center", fontsize=7)
-    ax.text(left_top[0], left_top[1], format(water_min, tick_format), color=WATER_COLOR, ha="right", va="center", fontsize=7)
-    ax.text(right_bottom[0], right_bottom[1], format(ethanol_min, tick_format), color=ETHANOL_COLOR, ha="left", va="center", fontsize=7)
-    ax.text(right_top[0], right_top[1], format(ethanol_max, tick_format), color=ETHANOL_COLOR, ha="left", va="center", fontsize=7)
+    ax.text(
+        left_bottom[0],
+        left_bottom[1],
+        format(water_max, tick_format),
+        color=WATER_COLOR,
+        ha="right",
+        va="center",
+        fontsize=7,
+    )
+    ax.text(
+        left_top[0], left_top[1], format(water_min, tick_format), color=WATER_COLOR, ha="right", va="center", fontsize=7
+    )
+    ax.text(
+        right_bottom[0],
+        right_bottom[1],
+        format(ethanol_min, tick_format),
+        color=ETHANOL_COLOR,
+        ha="left",
+        va="center",
+        fontsize=7,
+    )
+    ax.text(
+        right_top[0],
+        right_top[1],
+        format(ethanol_max, tick_format),
+        color=ETHANOL_COLOR,
+        ha="left",
+        va="center",
+        fontsize=7,
+    )
     ax.set_xlim(-0.12, 1.14)
     ax.set_ylim(-0.10, SQRT3_OVER_2 + 0.08)
     ax.set_aspect("equal")
@@ -584,10 +734,20 @@ def _draw_display_scaled_axes(
 def _scaled_axis_scale_from_rows(exp_rows: list[dict], model_rows: list[dict], feed_rows: list[dict]) -> float:
     ethanol_values = []
     for row in exp_rows:
-        ethanol_values.extend([float(salt_free_from_formula(row["organic_formula"])[1]), float(salt_free_from_formula(row["aqueous_formula"])[1])])
+        ethanol_values.extend(
+            [
+                float(salt_free_from_formula(row["organic_formula"])[1]),
+                float(salt_free_from_formula(row["aqueous_formula"])[1]),
+            ]
+        )
     for row in model_rows:
         if np.all(np.isfinite(row["organic_formula"])) and np.all(np.isfinite(row["aqueous_formula"])):
-            ethanol_values.extend([float(salt_free_from_formula(row["organic_formula"])[1]), float(salt_free_from_formula(row["aqueous_formula"])[1])])
+            ethanol_values.extend(
+                [
+                    float(salt_free_from_formula(row["organic_formula"])[1]),
+                    float(salt_free_from_formula(row["aqueous_formula"])[1]),
+                ]
+            )
     for row in feed_rows:
         ethanol_values.append(float(salt_free_from_formula(row["feed_formula"])[1]))
     max_ethanol = max(ethanol_values) if ethanol_values else 0.2
@@ -597,17 +757,29 @@ def _scaled_axis_scale_from_rows(exp_rows: list[dict], model_rows: list[dict], f
 def _scaled_water_min_from_rows(exp_rows: list[dict], model_rows: list[dict], feed_rows: list[dict]) -> float:
     water_values = []
     for row in exp_rows:
-        water_values.extend([float(salt_free_from_formula(row["organic_formula"])[0]), float(salt_free_from_formula(row["aqueous_formula"])[0])])
+        water_values.extend(
+            [
+                float(salt_free_from_formula(row["organic_formula"])[0]),
+                float(salt_free_from_formula(row["aqueous_formula"])[0]),
+            ]
+        )
     for row in model_rows:
         if np.all(np.isfinite(row["organic_formula"])) and np.all(np.isfinite(row["aqueous_formula"])):
-            water_values.extend([float(salt_free_from_formula(row["organic_formula"])[0]), float(salt_free_from_formula(row["aqueous_formula"])[0])])
+            water_values.extend(
+                [
+                    float(salt_free_from_formula(row["organic_formula"])[0]),
+                    float(salt_free_from_formula(row["aqueous_formula"])[0]),
+                ]
+            )
     for row in feed_rows:
         water_values.append(float(salt_free_from_formula(row["feed_formula"])[0]))
     min_water = min(water_values) if water_values else 0.0
     return max(0.0, min(0.9, math.floor(min_water * 10.0) / 10.0))
 
 
-def _display_scaled_ranges_from_rows(exp_rows: list[dict], model_rows: list[dict], feed_rows: list[dict]) -> dict[str, float]:
+def _display_scaled_ranges_from_rows(
+    exp_rows: list[dict], model_rows: list[dict], feed_rows: list[dict]
+) -> dict[str, float]:
     water_values = []
     ethanol_values = []
     isobutanol_values = []
@@ -647,7 +819,11 @@ def _rounded_display_ranges(ranges: dict[str, float]) -> dict[str, float]:
         "isobutanol_min": max(0.0, math.floor(ranges["isobutanol_min"] * 10.0) / 10.0),
         "isobutanol_max": min(1.0, math.ceil(ranges["isobutanol_max"] * 10.0) / 10.0),
     }
-    for key_min, key_max in (("water_min", "water_max"), ("ethanol_min", "ethanol_max"), ("isobutanol_min", "isobutanol_max")):
+    for key_min, key_max in (
+        ("water_min", "water_max"),
+        ("ethanol_min", "ethanol_max"),
+        ("isobutanol_min", "isobutanol_max"),
+    ):
         if rounded[key_max] <= rounded[key_min]:
             rounded[key_max] = min(1.0, rounded[key_min] + 0.1)
     return rounded
@@ -679,11 +855,22 @@ def _plot_tie_lines(
             zorder=3,
             label=label if idx == 0 else None,
         )
-        ax.scatter([aq_xy[0], org_xy[0]], [aq_xy[1], org_xy[1]], s=markersize, marker=marker, facecolors=color, edgecolors=color, linewidths=0.5, zorder=4)
+        ax.scatter(
+            [aq_xy[0], org_xy[0]],
+            [aq_xy[1], org_xy[1]],
+            s=markersize,
+            marker=marker,
+            facecolors=color,
+            edgecolors=color,
+            linewidths=0.5,
+            zorder=4,
+        )
 
 
 def _model_objective(exp_row: dict, pred_org: np.ndarray, pred_aq: np.ndarray) -> float:
-    return float(np.sum(np.abs(pred_org - exp_row["organic_formula"])) + np.sum(np.abs(pred_aq - exp_row["aqueous_formula"])))
+    return float(
+        np.sum(np.abs(pred_org - exp_row["organic_formula"])) + np.sum(np.abs(pred_aq - exp_row["aqueous_formula"]))
+    )
 
 
 def build_feed_formula_from_total_feed_weights(ethanol_wt: float, salt_wt: float) -> np.ndarray:
@@ -746,7 +933,17 @@ def _plot_feed_points(
         xs.append(x_coord)
         ys.append(y_coord)
     if xs:
-        ax.scatter(xs, ys, s=markersize, marker=marker, facecolors=color, edgecolors=color, linewidths=0.5, zorder=5, label=label)
+        ax.scatter(
+            xs,
+            ys,
+            s=markersize,
+            marker=marker,
+            facecolors=color,
+            edgecolors=color,
+            linewidths=0.5,
+            zorder=5,
+            label=label,
+        )
 
 
 def _paper_epcsaft_digitized_rows(fig_dir: Path, temperature_k: float, salt_wt: float) -> list[dict]:
@@ -811,7 +1008,17 @@ def _plot_formula_series(
         scatter_label = None
     else:
         scatter_label = label
-    ax.scatter(xs, ys, s=markersize, marker=marker, facecolors=color, edgecolors=color, linewidths=0.5, zorder=4, label=scatter_label)
+    ax.scatter(
+        xs,
+        ys,
+        s=markersize,
+        marker=marker,
+        facecolors=color,
+        edgecolors=color,
+        linewidths=0.5,
+        zorder=4,
+        label=scatter_label,
+    )
 
 
 def _scaled_ranges_for_figure(
@@ -826,14 +1033,18 @@ def _scaled_ranges_for_figure(
     return _rounded_display_ranges(_display_scaled_ranges_from_rows(exp_rows, model_rows, feed_rows))
 
 
-def _formula_in_display_scaled_ranges(x_formula: np.ndarray, ranges: dict[str, float], *, tolerance: float = 0.005) -> bool:
+def _formula_in_display_scaled_ranges(
+    x_formula: np.ndarray, ranges: dict[str, float], *, tolerance: float = 0.005
+) -> bool:
     salt_free = salt_free_from_formula(x_formula)
     checks = (
         ("water", float(salt_free[0])),
         ("ethanol", float(salt_free[1])),
         ("isobutanol", float(salt_free[2])),
     )
-    return all(ranges[f"{name}_min"] - tolerance <= value <= ranges[f"{name}_max"] + tolerance for name, value in checks)
+    return all(
+        ranges[f"{name}_min"] - tolerance <= value <= ranges[f"{name}_max"] + tolerance for name, value in checks
+    )
 
 
 def _plot_phase_points(
@@ -861,7 +1072,17 @@ def _plot_phase_points(
         xs.append(x_coord)
         ys.append(y_coord)
     if xs:
-        ax.scatter(xs, ys, s=markersize, marker=marker, facecolors=color, edgecolors=color, linewidths=0.5, zorder=4, label=label)
+        ax.scatter(
+            xs,
+            ys,
+            s=markersize,
+            marker=marker,
+            facecolors=color,
+            edgecolors=color,
+            linewidths=0.5,
+            zorder=4,
+            label=label,
+        )
 
 
 def _candidate_formula_feeds(exp_row: dict, target_feed_formula: np.ndarray | None = None) -> list[np.ndarray]:
@@ -877,7 +1098,9 @@ def _candidate_formula_feeds(exp_row: dict, target_feed_formula: np.ndarray | No
     return unique
 
 
-def _solve_formula_feed(temperature_k: float, feed_formula: np.ndarray, seed_formula_candidates: list[np.ndarray]) -> dict | None:
+def _solve_formula_feed(
+    temperature_k: float, feed_formula: np.ndarray, seed_formula_candidates: list[np.ndarray]
+) -> dict | None:
     z_feed = formula_to_ion_basis(feed_formula)
     unique_seed_candidates: list[np.ndarray] = []
     for seed_formula in seed_formula_candidates:
@@ -904,7 +1127,9 @@ def _solve_formula_feed(temperature_k: float, feed_formula: np.ndarray, seed_for
             options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8, damping=0.5),
         )
     except epcsaft.SolutionError as exc:
-        diagnostics = getattr(exc, "diagnostics", None) or (exc.args[1] if len(exc.args) > 1 and isinstance(exc.args[1], dict) else {})
+        diagnostics = getattr(exc, "diagnostics", None) or (
+            exc.args[1] if len(exc.args) > 1 and isinstance(exc.args[1], dict) else {}
+        )
         return {
             "converged": False,
             "status": None,
@@ -937,7 +1162,10 @@ def _solve_formula_feed(temperature_k: float, feed_formula: np.ndarray, seed_for
         "beta_organic": float(phases["org"].phase_fraction),
         "beta_aqueous": float(phases["aq"].phase_fraction),
         "split_norm": float(result.diagnostics.get("phase_distance", np.max(np.abs(org_formula - aq_formula)))),
-        "objective": float(np.sum(np.abs(org_formula - unique_seed_candidates[0])) + np.sum(np.abs(aq_formula - unique_seed_candidates[1]))),
+        "objective": float(
+            np.sum(np.abs(org_formula - unique_seed_candidates[0]))
+            + np.sum(np.abs(aq_formula - unique_seed_candidates[1]))
+        ),
         "source": "epcsaft_native_v5",
     }
 
@@ -975,7 +1203,14 @@ def solve_model_rows(exp_rows: list[dict], feed_rows: list[dict] | None = None) 
                 "split_norm": np.nan,
                 "objective": np.nan,
             }
-        solved.append({"tie_line": exp_row["tie_line"], "temperature_K": exp_row["temperature_K"], "salt_wtfrac": exp_row["salt_wtfrac"], **best})
+        solved.append(
+            {
+                "tie_line": exp_row["tie_line"],
+                "temperature_K": exp_row["temperature_K"],
+                "salt_wtfrac": exp_row["salt_wtfrac"],
+                **best,
+            }
+        )
     return solved
 
 
@@ -1034,10 +1269,12 @@ def _load_model_rows_from_csv(path: Path) -> list[dict]:
 
 
 def _model_cache_path(fig_dir: Path) -> Path:
-    return fig_dir / "data" / "model_tielines.csv"
+    return out_path(fig_dir, "model_tielines.csv")
 
 
-def get_or_build_model_rows(fig_dir: Path, exp_rows: list[dict], feed_rows: list[dict] | None = None, force_recompute: bool = False) -> list[dict]:
+def get_or_build_model_rows(
+    fig_dir: Path, exp_rows: list[dict], feed_rows: list[dict] | None = None, force_recompute: bool = False
+) -> list[dict]:
     cache_path = _model_cache_path(fig_dir)
     if not force_recompute and cache_path.exists():
         cached = _load_model_rows_from_csv(cache_path)
@@ -1127,21 +1364,35 @@ def _feed_rows_for_csv(rows: list[dict]) -> list[dict]:
 
 
 def write_case_data(fig_dir: Path, exp_rows: list[dict], model_rows: list[dict]) -> None:
-    fieldnames = ["tie_line", "phase", "temperature_K", "salt_wtfrac", "x_water", "x_ethanol", "x_isobutanol", "x_nacl", "source"]
-    write_csv_rows(fig_dir / "data" / "experimental_tielines.csv", fieldnames, _phase_rows_for_csv(exp_rows, "paper_table"))
+    fieldnames = [
+        "tie_line",
+        "phase",
+        "temperature_K",
+        "salt_wtfrac",
+        "x_water",
+        "x_ethanol",
+        "x_isobutanol",
+        "x_nacl",
+        "source",
+    ]
+    write_csv_rows(
+        out_path(fig_dir, "experimental_tielines.csv"), fieldnames, _phase_rows_for_csv(exp_rows, "paper_table")
+    )
     model_fieldnames = fieldnames[:-1] + ["beta", "residual_norm", "objective", "converged", "source"]
-    write_csv_rows(fig_dir / "data" / "model_tielines.csv", model_fieldnames, _model_rows_for_csv(model_rows))
+    write_csv_rows(out_path(fig_dir, "model_tielines.csv"), model_fieldnames, _model_rows_for_csv(model_rows))
 
 
 def plot_lle_figure(fig_dir: Path, figure_number: int, temperature_k: float, salt_wt: float) -> None:
     configure_style()
     exp_rows = _experimental_rows(salt_wt, temperature_k)
-    feed_rows = _digitized_feed_rows_for_figure(figure_number, temperature_k, salt_wt) or _derived_feed_rows(salt_wt, temperature_k)
+    feed_rows = _digitized_feed_rows_for_figure(figure_number, temperature_k, salt_wt) or _derived_feed_rows(
+        salt_wt, temperature_k
+    )
     force_recompute = os.environ.get("KHUDAIDA_FORCE_RECOMPUTE", "").strip().lower() in {"1", "true", "yes", "on"}
     model_rows = get_or_build_model_rows(fig_dir, exp_rows, feed_rows=feed_rows, force_recompute=force_recompute)
     paper_rows = _paper_epcsaft_digitized_rows(fig_dir, temperature_k, salt_wt)
     write_csv_rows(
-        fig_dir / "data" / "feed_compositions.csv",
+        out_path(fig_dir, "feed_compositions.csv"),
         [
             "tie_line",
             "temperature_K",
@@ -1163,7 +1414,11 @@ def plot_lle_figure(fig_dir: Path, figure_number: int, temperature_k: float, sal
     fig.subplots_adjust(left=0.08, right=0.98, top=0.98, bottom=0.18)
     _draw_ternary_axes(ax)
     _plot_tie_lines(ax, exp_rows, BLACK, "o", "Exp.", linestyle="-")
-    valid_model_rows = [row for row in model_rows if np.all(np.isfinite(row["organic_formula"])) and np.all(np.isfinite(row["aqueous_formula"]))]
+    valid_model_rows = [
+        row
+        for row in model_rows
+        if np.all(np.isfinite(row["organic_formula"])) and np.all(np.isfinite(row["aqueous_formula"]))
+    ]
     _plot_tie_lines(ax, valid_model_rows, RED, "o", "model ePC-SAFT", linestyle="--")
     _plot_formula_series(ax, paper_rows, "organic_formula", BLUE, "s", "paper ePC-SAFT", linestyle="-")
     _plot_feed_points(ax, feed_rows, label="Feed")
@@ -1263,7 +1518,15 @@ def _no_salt_digitized_rows() -> list[dict]:
         org = org / np.sum(org)
         aq = np.asarray([x1_aq, x2_aq, x3_aq, 0.0], dtype=float)
         aq = aq / np.sum(aq)
-        rows.append({"tie_line": idx, "temperature_K": 293.15, "salt_wtfrac": 0.0, "organic_formula": org, "aqueous_formula": aq})
+        rows.append(
+            {
+                "tie_line": idx,
+                "temperature_K": 293.15,
+                "salt_wtfrac": 0.0,
+                "organic_formula": org,
+                "aqueous_formula": aq,
+            }
+        )
     return rows
 
 
@@ -1272,10 +1535,28 @@ def plot_figure_1(fig_dir: Path) -> None:
     no_salt_rows = _no_salt_digitized_rows()
     five_rows = _experimental_rows(0.05, 293.15)
     ten_rows = _experimental_rows(0.10, 293.15)
-    fieldnames = ["tie_line", "phase", "temperature_K", "salt_wtfrac", "x_water", "x_ethanol", "x_isobutanol", "x_nacl", "source"]
-    write_csv_rows(fig_dir / "data" / "without_nacl_29315_digitized.csv", fieldnames, _phase_rows_for_csv(no_salt_rows, "digitized_local_paper"))
-    write_csv_rows(fig_dir / "data" / "with_5wt_nacl_29315.csv", fieldnames, _phase_rows_for_csv(five_rows, "paper_table"))
-    write_csv_rows(fig_dir / "data" / "with_10wt_nacl_29315.csv", fieldnames, _phase_rows_for_csv(ten_rows, "paper_table"))
+    fieldnames = [
+        "tie_line",
+        "phase",
+        "temperature_K",
+        "salt_wtfrac",
+        "x_water",
+        "x_ethanol",
+        "x_isobutanol",
+        "x_nacl",
+        "source",
+    ]
+    write_csv_rows(
+        out_path(fig_dir, "without_nacl_29315_digitized.csv"),
+        fieldnames,
+        _phase_rows_for_csv(no_salt_rows, "digitized_local_paper"),
+    )
+    write_csv_rows(
+        out_path(fig_dir, "with_5wt_nacl_29315.csv"), fieldnames, _phase_rows_for_csv(five_rows, "paper_table")
+    )
+    write_csv_rows(
+        out_path(fig_dir, "with_10wt_nacl_29315.csv"), fieldnames, _phase_rows_for_csv(ten_rows, "paper_table")
+    )
 
     fig, ax = plt.subplots(figsize=(6.1, 5.9))
     fig.subplots_adjust(left=0.08, right=0.98, top=0.98, bottom=0.18)
@@ -1344,12 +1625,23 @@ def _metric_marker(salt_wt: float) -> str:
 def _plot_metric_figure(fig_dir: Path, figure_number: int, y_key: str, y_label: str, y_max: float) -> None:
     configure_style()
     rows = _metric_dataset()
-    write_csv_rows(fig_dir / "data" / f"figure_{figure_number}_metrics.csv", ["temperature_K", "salt_wtfrac", "x_ethanol_aq", "distribution", "separation", "source"], rows)
+    write_csv_rows(
+        out_path(fig_dir, f"figure_{figure_number}_metrics.csv"),
+        ["temperature_K", "salt_wtfrac", "x_ethanol_aq", "distribution", "separation", "source"],
+        rows,
+    )
 
     fig, ax = plt.subplots(figsize=(6.0, 4.4))
     fig.subplots_adjust(left=0.13, right=0.98, top=0.97, bottom=0.24)
     for row in rows:
-        ax.scatter(row["x_ethanol_aq"], row[y_key], color=_metric_color(row["temperature_K"]), marker=_metric_marker(row["salt_wtfrac"]), s=22, linewidths=0.6)
+        ax.scatter(
+            row["x_ethanol_aq"],
+            row[y_key],
+            color=_metric_color(row["temperature_K"]),
+            marker=_metric_marker(row["salt_wtfrac"]),
+            s=22,
+            linewidths=0.6,
+        )
     ax.set_xlim(0.0, 0.042)
     ax.set_ylim(0.0, y_max)
     ax.set_xlabel(r"$x$ ethanol in aqueous phase")
@@ -1372,7 +1664,11 @@ def plot_figure_9(fig_dir: Path) -> None:
 
 
 def _aad_summary(exp_rows: list[dict], model_rows: list[dict]) -> dict:
-    valid = [row for row in model_rows if np.all(np.isfinite(row["organic_formula"])) and np.all(np.isfinite(row["aqueous_formula"]))]
+    valid = [
+        row
+        for row in model_rows
+        if np.all(np.isfinite(row["organic_formula"])) and np.all(np.isfinite(row["aqueous_formula"]))
+    ]
     if not valid:
         nan4 = (np.nan, np.nan, np.nan, np.nan)
         return {"organic": nan4, "aqueous": nan4, "grand": np.nan}
@@ -1396,11 +1692,20 @@ def _aad_summary(exp_rows: list[dict], model_rows: list[dict]) -> dict:
 def _table_rows_for_png(salt_wt: float) -> list[list[str]]:
     rows = []
     temps = sorted({key[1] for key in EXPERIMENTAL_CASES if abs(key[0] - salt_wt) < 1e-9})
-    figure_number_map = {(0.05, 293.15): 2, (0.05, 303.15): 3, (0.05, 313.15): 4, (0.10, 293.15): 5, (0.10, 303.15): 6, (0.10, 313.15): 7}
+    figure_number_map = {
+        (0.05, 293.15): 2,
+        (0.05, 303.15): 3,
+        (0.05, 313.15): 4,
+        (0.10, 293.15): 5,
+        (0.10, 303.15): 6,
+        (0.10, 313.15): 7,
+    }
     force_recompute = os.environ.get("KHUDAIDA_FORCE_RECOMPUTE", "").strip().lower() in {"1", "true", "yes", "on"}
     for temperature_k in temps:
         exp_rows = _experimental_rows(salt_wt, temperature_k)
-        feed_rows = _digitized_feed_rows_for_figure(figure_number_map[(salt_wt, temperature_k)], temperature_k, salt_wt) or _derived_feed_rows(salt_wt, temperature_k)
+        feed_rows = _digitized_feed_rows_for_figure(
+            figure_number_map[(salt_wt, temperature_k)], temperature_k, salt_wt
+        ) or _derived_feed_rows(salt_wt, temperature_k)
         fig_dir = ROOT / f"figure_{figure_number_map[(salt_wt, temperature_k)]}"
         model_rows = get_or_build_model_rows(fig_dir, exp_rows, feed_rows=feed_rows, force_recompute=force_recompute)
         ours = _aad_summary(exp_rows, model_rows)
@@ -1431,18 +1736,32 @@ def _table_rows_for_png(salt_wt: float) -> list[list[str]]:
 
 def plot_tables_9_10(fig_dir: Path) -> None:
     configure_style()
-    columns = ["T / K", "Model", "Org x1", "Org x2", "Org x3", "Org x4", "Aq x1", "Aq x2", "Aq x3", "Aq x4", "Grand AAD"]
+    columns = [
+        "T / K",
+        "Model",
+        "Org x1",
+        "Org x2",
+        "Org x3",
+        "Org x4",
+        "Aq x1",
+        "Aq x2",
+        "Aq x3",
+        "Aq x4",
+        "Grand AAD",
+    ]
     for table_number, salt_wt in ((9, 0.05), (10, 0.10)):
         rows = _table_rows_for_png(salt_wt)
         csv_rows = [dict(zip(columns, row)) for row in rows]
-        write_csv_rows(fig_dir / "data" / f"table_{table_number}.csv", columns, csv_rows)
+        write_csv_rows(out_path(fig_dir, f"table_{table_number}.csv"), columns, csv_rows)
         fig, ax = plt.subplots(figsize=(13.0, 3.0 + 0.28 * len(rows)))
         ax.axis("off")
         table = ax.table(cellText=rows, colLabels=columns, loc="center", cellLoc="center")
         table.auto_set_font_size(False)
         table.set_fontsize(8)
         table.scale(1.0, 1.2)
-        ax.set_title(f"Table {table_number}: AAD comparison for {int(round(salt_wt * 100))} wt% NaCl", fontsize=11, pad=12)
+        ax.set_title(
+            f"Table {table_number}: AAD comparison for {int(round(salt_wt * 100))} wt% NaCl", fontsize=11, pad=12
+        )
         save_figure(fig, fig_dir / f"table_{table_number}.png")
         plt.close(fig)
 
@@ -1458,5 +1777,3 @@ def write_provenance_notes() -> None:
 - The legacy package solver note is retained here only as historical context; the multiphase LLE workflow is removed from the active Python package and will be rewritten later in native code.
 """
     (ROOT / "provenance_notes.md").write_text(notes, encoding="utf-8")
-
-
