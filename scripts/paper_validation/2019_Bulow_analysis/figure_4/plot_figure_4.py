@@ -20,7 +20,9 @@ import matplotlib.pyplot as plt
 def main() -> None:
     labels = [cation.replace("+", "") for cation in IMIDAZOLIUM_NTF2]
     epc = [water_solubility_in_il(cation, "NTf2-", use_kij=False, model_mode="epc") for cation in IMIDAZOLIUM_NTF2]
-    orig = [water_solubility_in_il(cation, "NTf2-", use_kij=False, model_mode="orig_water") for cation in IMIDAZOLIUM_NTF2]
+    orig = [
+        water_solubility_in_il(cation, "NTf2-", use_kij=False, model_mode="orig_water") for cation in IMIDAZOLIUM_NTF2
+    ]
     xpos = np.arange(len(labels))
 
     fig, ax = plt.subplots(figsize=(7.0, 4.8))

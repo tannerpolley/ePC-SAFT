@@ -168,7 +168,17 @@ def main() -> None:
     _, m_gly, phi_gly = data["glycine"]
 
     ax.scatter(m_gly, phi_gly, marker="s", s=35, color="black", label="Glycine data", zorder=6)
-    ax.scatter(m_ala, phi_ala, marker="o", s=54, facecolors="0.85", edgecolors="black", linewidths=0.9, label="Alanine data", zorder=6)
+    ax.scatter(
+        m_ala,
+        phi_ala,
+        marker="o",
+        s=54,
+        facecolors="0.85",
+        edgecolors="black",
+        linewidths=0.9,
+        label="Alanine data",
+        zorder=6,
+    )
 
     ax.plot(m_grid, phi_s2_gly, color="black", linewidth=2.2, label="Glycine model (strategy 2)")
     ax.plot(m_grid, phi_s2_ala, color="0.45", linewidth=2.2, label="Alanine model (strategy 2)")
@@ -190,6 +200,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
-

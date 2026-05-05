@@ -14,7 +14,6 @@ if str(REPO_ROOT) not in sys.path:
 
 from scripts.plot_outputs import paper_validation_output_path, save_plot_figure
 
-
 FIG_DPI = 300
 
 
@@ -63,10 +62,7 @@ def load_indexed_csv(path: Path) -> Table:
     rows: dict[str, dict[str, float]] = {}
     for raw_row in raw_rows[1:]:
         row_key = str(raw_row[0]).strip()
-        rows[row_key] = {
-            column: float(value)
-            for column, value in zip(header, raw_row[1:], strict=False)
-        }
+        rows[row_key] = {column: float(value) for column, value in zip(header, raw_row[1:], strict=False)}
 
     return Table(header, rows)
 
@@ -219,4 +215,3 @@ def add_percent_note(ax: plt.Axes, *, xpos: float = 0.99, ypos: float = 0.01) ->
         fontsize=8,
         bbox={"facecolor": "white", "edgecolor": "0.5", "alpha": 0.9, "boxstyle": "round,pad=0.2"},
     )
-

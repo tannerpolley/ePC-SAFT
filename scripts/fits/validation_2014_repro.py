@@ -21,11 +21,11 @@ from scripts._epcsaft_oop import as_mixture, epcsaft_density, epcsaft_fugacity_c
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-
 T_REF = 298.15
 P_REF = 1.0e5
 DIELC_CONST = 78.09
 MW_WATER = 18.0153e-3  # kg/mol
+
 
 def _elec_model_no_born_constant():
     return {
@@ -298,6 +298,6 @@ def run_validation_2014_repro():
 def test_validation_2014_repro():
     run_validation_2014_repro()
 
+
 if __name__ == "__main__":
     run_validation_2014_repro()
-

@@ -720,9 +720,7 @@ def _load_dataset(dataset_name_or_path) -> dict:
         pure_map = pure_sets[pure_default_key]
 
     if not pure_map and not pure_sets:
-        raise FileNotFoundError(
-            f"Dataset '{dataset_name}' must include pure/*.csv component-parameter files."
-        )
+        raise FileNotFoundError(f"Dataset '{dataset_name}' must include pure/*.csv component-parameter files.")
 
     mixed_dir = dataset_dir / "mixed"
     bi_dir = mixed_dir / "binary_interaction"
@@ -877,9 +875,7 @@ def _parse_cell_value(raw, *, dataset: str, component: str, field: str, T: float
     if len(numbers) == 1:
         return float(numbers[0])
 
-    raise ValueError(
-        f"Unsupported value in dataset '{dataset}', component '{component}', field '{field}': '{text}'."
-    )
+    raise ValueError(f"Unsupported value in dataset '{dataset}', component '{component}', field '{field}': '{text}'.")
 
 
 def _resolve_component_field(dataset: dict, component: str, field: str, T: float, pure_set_key: str | None = None):
@@ -1089,7 +1085,9 @@ def _normalize_elec_model(model) -> dict:
     if "DH_model" in model:
         if not isinstance(model["DH_model"], dict):
             raise TypeError("elec_model['DH_model'] must be a dict.")
-        _ensure_allowed_keys(model["DH_model"], {"d_ion_mode", "bjeruum_treatment", "mu_DH_model"}, "elec_model['DH_model']")
+        _ensure_allowed_keys(
+            model["DH_model"], {"d_ion_mode", "bjeruum_treatment", "mu_DH_model"}, "elec_model['DH_model']"
+        )
         out["DH_model"] = _deep_update(out["DH_model"], model["DH_model"])
 
     if "include_born_model" in model:
@@ -1107,13 +1105,9 @@ def _normalize_elec_model(model) -> dict:
 
     # Canonical coercions.
     out["rel_perm"]["rule"] = _as_rule_number(out["rel_perm"]["rule"], _REL_PERM_RULE_ALIASES)
-    out["rel_perm"]["differential_mode"] = _as_rule_number(
-        out["rel_perm"]["differential_mode"], _DIFF_MODE_ALIASES
-    )
+    out["rel_perm"]["differential_mode"] = _as_rule_number(out["rel_perm"]["differential_mode"], _DIFF_MODE_ALIASES)
     for key in ("hc_model", "disp_model", "assoc_model"):
-        out[key]["dadx_differential_mode"] = _as_rule_number(
-            out[key]["dadx_differential_mode"], _DIFF_MODE_ALIASES
-        )
+        out[key]["dadx_differential_mode"] = _as_rule_number(out[key]["dadx_differential_mode"], _DIFF_MODE_ALIASES)
     out["DH_model"]["d_ion_mode"] = _resolve_d_ion_mode(out["DH_model"]["d_ion_mode"])
     out["DH_model"]["bjeruum_treatment"] = _coerce_bool(out["DH_model"]["bjeruum_treatment"])
     mu_dh_model = out["DH_model"].get("mu_DH_model", {})
@@ -1180,7 +1174,9 @@ def _flatten_model_to_runtime(model: dict) -> dict:
         "dielc_diff_mode": int(rel_perm["differential_mode"]),
         "hc_dadx_diff_mode": int(_as_rule_number(model["hc_model"]["dadx_differential_mode"], _DIFF_MODE_ALIASES)),
         "disp_dadx_diff_mode": int(_as_rule_number(model["disp_model"]["dadx_differential_mode"], _DIFF_MODE_ALIASES)),
-        "assoc_dadx_diff_mode": int(_as_rule_number(model["assoc_model"]["dadx_differential_mode"], _DIFF_MODE_ALIASES)),
+        "assoc_dadx_diff_mode": int(
+            _as_rule_number(model["assoc_model"]["dadx_differential_mode"], _DIFF_MODE_ALIASES)
+        ),
         "d_ion_mode": int(_resolve_d_ion_mode(dh_model["d_ion_mode"])),
         "bjeruum_treatment": _coerce_bool(dh_model["bjeruum_treatment"]),
         "mu_DH_diff_mode": int(mu_dh_diff_mode),
@@ -1219,9 +1215,7 @@ def _resolve_runtime_options(user_options=None) -> dict:
     runtime["solvated_ion_diameter_mixing_rule"] = _coerce_bool(
         user_options.get("solvated_ion_diameter_mixing_rule", False)
     )
-    runtime["ion_dispersion_mixing_rule"] = _coerce_bool(
-        user_options.get("ion_dispersion_mixing_rule", True)
-    )
+    runtime["ion_dispersion_mixing_rule"] = _coerce_bool(user_options.get("ion_dispersion_mixing_rule", True))
 
     return {
         "runtime": runtime,
@@ -1480,9 +1474,7 @@ def _apply_mixed_solvent_ion_sigma(
         for idx, frac in zip(neutral_idx, neutral_sf):
             solvent = components[int(idx)]
             pure_key = _normalize_pure_set_key(solvent)
-            sigma_value, source_key = _resolve_component_field_with_source(
-                dataset, comp, "s", T, pure_set_key=pure_key
-            )
+            sigma_value, source_key = _resolve_component_field_with_source(dataset, comp, "s", T, pure_set_key=pure_key)
             sigma_mix += float(frac) * float(sigma_value)
             resolved_key = source_key or pure_key
             source_name = f"pure/{resolved_key}.csv"
@@ -1528,9 +1520,7 @@ def _apply_mixed_solvent_ion_dispersion(
         for idx, frac in zip(neutral_idx, neutral_sf):
             solvent = components[int(idx)]
             pure_key = _normalize_pure_set_key(solvent)
-            e_value, source_key = _resolve_component_field_with_source(
-                dataset, comp, "e", T, pure_set_key=pure_key
-            )
+            e_value, source_key = _resolve_component_field_with_source(dataset, comp, "e", T, pure_set_key=pure_key)
             e_mix += float(frac) * float(e_value)
             resolved_key = source_key or pure_key
             source_name = f"pure/{resolved_key}.csv"
@@ -1628,7 +1618,9 @@ def molefraction_to_molality(x, species):
     return float(x_arr[cation_idx[0]] / (x_arr[solvent_i] * mw_solvent))
 
 
-def get_prop_dict(dataset_name: str | Path, species: Iterable[str], x, T: float, user_options: dict | None = None) -> dict:
+def get_prop_dict(
+    dataset_name: str | Path, species: Iterable[str], x, T: float, user_options: dict | None = None
+) -> dict:
     """Build a runtime parameter dictionary from a repository dataset or path."""
     dataset = _load_dataset(dataset_name)
     species = list(species)
@@ -1722,4 +1714,3 @@ def get_prop_dict(dataset_name: str | Path, species: Iterable[str], x, T: float,
     prop_dic["solvated_ion_diameter_mixing_rule"] = bool(runtime["solvated_ion_diameter_mixing_rule"])
     prop_dic["ion_dispersion_mixing_rule"] = bool(runtime["ion_dispersion_mixing_rule"])
     return prop_dic
-

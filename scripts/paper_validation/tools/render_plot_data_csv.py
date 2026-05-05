@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import math
 from collections import defaultdict
 from pathlib import Path
@@ -11,6 +10,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 class PlotDataRenderError(ValueError):
@@ -19,8 +19,8 @@ class PlotDataRenderError(ValueError):
 
 def _default_output_path(csv_path: Path) -> Path:
     stem = csv_path.stem
-    if stem.endswith("_plot_data") and csv_path.parent.name == "data":
-        return csv_path.parent.parent / f"{stem.removesuffix('_plot_data')}.png"
+    if stem.endswith("_plot_data"):
+        return csv_path.parent / f"{stem.removesuffix('_plot_data')}.png"
     return csv_path.with_suffix(".png")
 
 
@@ -28,20 +28,26 @@ def _float_cell(row: dict[str, str], field: str, *, required: bool = True) -> fl
     value = row.get(field, "")
     if value == "":
         if required:
-            raise PlotDataRenderError(f"Missing numeric field {field!r} in row for {row.get('figure_file', '<unknown>')}.")
+            raise PlotDataRenderError(
+                f"Missing numeric field {field!r} in row for {row.get('figure_file', '<unknown>')}."
+            )
         return math.nan
     try:
         numeric = float(value)
     except ValueError as exc:
-        raise PlotDataRenderError(f"Non-numeric field {field!r}={value!r} in row for {row.get('figure_file', '<unknown>')}.") from exc
+        raise PlotDataRenderError(
+            f"Non-numeric field {field!r}={value!r} in row for {row.get('figure_file', '<unknown>')}."
+        ) from exc
     if not math.isfinite(numeric):
-        raise PlotDataRenderError(f"Non-finite field {field!r}={value!r} in row for {row.get('figure_file', '<unknown>')}.")
+        raise PlotDataRenderError(
+            f"Non-finite field {field!r}={value!r} in row for {row.get('figure_file', '<unknown>')}."
+        )
     return numeric
 
 
 def _read_rows(csv_path: Path) -> list[dict[str, str]]:
-    with csv_path.open(newline="", encoding="utf-8") as handle:
-        return list(csv.DictReader(handle))
+    frame = pd.read_csv(csv_path, dtype=str, keep_default_na=False)
+    return frame.to_dict(orient="records")
 
 
 def _axes_key(row: dict[str, str]) -> int:
@@ -160,7 +166,9 @@ def render_csv_to_static_assets(csv_path: Path, output_path: Path | None = None,
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Render a canonical plot-data CSV file to static PNG and SVG assets.")
-    parser.add_argument("csv_paths", nargs="+", type=Path, help="CSV files using scripts.plot_outputs.export_plot_data schema.")
+    parser.add_argument(
+        "csv_paths", nargs="+", type=Path, help="CSV files using scripts.plot_outputs.export_plot_data schema."
+    )
     parser.add_argument("--output", type=Path, help="Output PNG path. Only valid with one CSV input.")
     parser.add_argument("--dpi", type=int, default=140, help="PNG output DPI.")
     return parser

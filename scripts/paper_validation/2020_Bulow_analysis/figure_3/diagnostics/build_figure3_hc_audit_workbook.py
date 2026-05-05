@@ -9,7 +9,6 @@ import numpy as np
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 FIGURE_DIR = SCRIPT_DIR.parent
 ANALYSIS_ROOT = FIGURE_DIR.parent
@@ -27,7 +26,6 @@ require_epcsaft_install()
 from epcsaft.parameters import get_prop_dict
 from scripts._epcsaft_oop import epcsaft_density, epcsaft_fugacity_coefficient_terms, epcsaft_pressure
 import _plot_common as common
-
 
 R_GAS = 8.31446261815324
 N_AV = 6.022140857e23
@@ -267,7 +265,9 @@ def build_workbook() -> Path:
     ws["A3"] = "Audit basis:"
     ws["B3"] = "Infinite-dilution water hydration path used by the 2020 Figure 3 scripts"
     ws["A4"] = "Notes:"
-    ws["B4"] = "This workbook keeps only the active 2020 setting d_ion_mode = 1. The detail section compares workbook-style hard-chain equations against package values at the same infinite-dilution state."
+    ws["B4"] = (
+        "This workbook keeps only the active 2020 setting d_ion_mode = 1. The detail section compares workbook-style hard-chain equations against package values at the same infinite-dilution state."
+    )
     ws["A2"].font = ws["A3"].font = ws["A4"].font = Font(bold=True)
     ws["B3"].alignment = Alignment(wrap_text=True)
     ws["B4"].alignment = Alignment(wrap_text=True)
@@ -310,4 +310,3 @@ def build_workbook() -> Path:
 if __name__ == "__main__":
     path = build_workbook()
     print(path)
-

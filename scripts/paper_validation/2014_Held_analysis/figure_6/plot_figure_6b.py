@@ -25,20 +25,58 @@ def _to_xy(phase_mass_fraction: np.ndarray) -> tuple[float, float]:
 
 def _draw_grid(ax: plt.Axes) -> None:
     for frac in np.linspace(0.2, 0.8, 4):
-        p1 = _to_xy(np.asarray([1.0 - frac, 0.0, frac * (_shared.MW[2] / _shared.MW_NH4CL), frac * (_shared.MW[3] / _shared.MW_NH4CL)], dtype=float))
-        p2 = _to_xy(np.asarray([0.0, 1.0 - frac, frac * (_shared.MW[2] / _shared.MW_NH4CL), frac * (_shared.MW[3] / _shared.MW_NH4CL)], dtype=float))
+        p1 = _to_xy(
+            np.asarray(
+                [1.0 - frac, 0.0, frac * (_shared.MW[2] / _shared.MW_NH4CL), frac * (_shared.MW[3] / _shared.MW_NH4CL)],
+                dtype=float,
+            )
+        )
+        p2 = _to_xy(
+            np.asarray(
+                [0.0, 1.0 - frac, frac * (_shared.MW[2] / _shared.MW_NH4CL), frac * (_shared.MW[3] / _shared.MW_NH4CL)],
+                dtype=float,
+            )
+        )
         ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color="0.82", linewidth=1.0, zorder=0)
 
         p1 = _to_xy(np.asarray([frac, 1.0 - frac, 0.0, 0.0], dtype=float))
-        p2 = _to_xy(np.asarray([frac, 0.0, (1.0 - frac) * (_shared.MW[2] / _shared.MW_NH4CL), (1.0 - frac) * (_shared.MW[3] / _shared.MW_NH4CL)], dtype=float))
+        p2 = _to_xy(
+            np.asarray(
+                [
+                    frac,
+                    0.0,
+                    (1.0 - frac) * (_shared.MW[2] / _shared.MW_NH4CL),
+                    (1.0 - frac) * (_shared.MW[3] / _shared.MW_NH4CL),
+                ],
+                dtype=float,
+            )
+        )
         ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color="0.82", linewidth=1.0, zorder=0)
 
         p1 = _to_xy(np.asarray([1.0 - frac, frac, 0.0, 0.0], dtype=float))
-        p2 = _to_xy(np.asarray([0.0, frac, (1.0 - frac) * (_shared.MW[2] / _shared.MW_NH4CL), (1.0 - frac) * (_shared.MW[3] / _shared.MW_NH4CL)], dtype=float))
+        p2 = _to_xy(
+            np.asarray(
+                [
+                    0.0,
+                    frac,
+                    (1.0 - frac) * (_shared.MW[2] / _shared.MW_NH4CL),
+                    (1.0 - frac) * (_shared.MW[3] / _shared.MW_NH4CL),
+                ],
+                dtype=float,
+            )
+        )
         ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color="0.82", linewidth=1.0, zorder=0)
 
 
-def _plot_tie_lines(ax: plt.Axes, rows: tuple[dict, ...], line_color: str, marker_face: str, marker_edge: str, label_prefix: str, zbase: int) -> None:
+def _plot_tie_lines(
+    ax: plt.Axes,
+    rows: tuple[dict, ...],
+    line_color: str,
+    marker_face: str,
+    marker_edge: str,
+    label_prefix: str,
+    zbase: int,
+) -> None:
     aqueous_pts = []
     organic_pts = []
     for idx, row in enumerate(rows):
@@ -100,7 +138,9 @@ def main() -> None:
     tri = np.asarray(
         [
             _to_xy(np.asarray([1.0, 0.0, 0.0, 0.0], dtype=float)),
-            _to_xy(np.asarray([0.0, 0.0, _shared.MW[2] / _shared.MW_NH4CL, _shared.MW[3] / _shared.MW_NH4CL], dtype=float)),
+            _to_xy(
+                np.asarray([0.0, 0.0, _shared.MW[2] / _shared.MW_NH4CL, _shared.MW[3] / _shared.MW_NH4CL], dtype=float)
+            ),
             _to_xy(np.asarray([0.0, 1.0, 0.0, 0.0], dtype=float)),
             _to_xy(np.asarray([1.0, 0.0, 0.0, 0.0], dtype=float)),
         ],
@@ -109,17 +149,31 @@ def main() -> None:
     ax.plot(tri[:, 0], tri[:, 1], color="black", linewidth=1.4, zorder=2)
     _draw_grid(ax)
 
-    _plot_tie_lines(ax, exp_rows, line_color="0.60", marker_face="white", marker_edge="0.25", label_prefix="Data", zbase=3)
+    _plot_tie_lines(
+        ax, exp_rows, line_color="0.60", marker_face="white", marker_edge="0.25", label_prefix="Data", zbase=3
+    )
     if model_rows:
-        _plot_tie_lines(ax, model_rows, line_color="black", marker_face="0.75", marker_edge="0.10", label_prefix="Model", zbase=6)
+        _plot_tie_lines(
+            ax, model_rows, line_color="black", marker_face="0.75", marker_edge="0.10", label_prefix="Model", zbase=6
+        )
 
     ax.text(-0.06, -0.03, r"$H_2O$", fontsize=12)
     ax.text(1.00, -0.03, "BuOH", fontsize=12, ha="left")
     ax.text(0.50, SQRT3_OVER_2 + 0.03, r"$NH_4Cl$", fontsize=12, ha="center")
 
     for frac in np.linspace(0.2, 0.8, 4):
-        left = _to_xy(np.asarray([1.0 - frac, 0.0, frac * (_shared.MW[2] / _shared.MW_NH4CL), frac * (_shared.MW[3] / _shared.MW_NH4CL)], dtype=float))
-        right = _to_xy(np.asarray([0.0, 1.0 - frac, frac * (_shared.MW[2] / _shared.MW_NH4CL), frac * (_shared.MW[3] / _shared.MW_NH4CL)], dtype=float))
+        left = _to_xy(
+            np.asarray(
+                [1.0 - frac, 0.0, frac * (_shared.MW[2] / _shared.MW_NH4CL), frac * (_shared.MW[3] / _shared.MW_NH4CL)],
+                dtype=float,
+            )
+        )
+        right = _to_xy(
+            np.asarray(
+                [0.0, 1.0 - frac, frac * (_shared.MW[2] / _shared.MW_NH4CL), frac * (_shared.MW[3] / _shared.MW_NH4CL)],
+                dtype=float,
+            )
+        )
         bottom = _to_xy(np.asarray([1.0 - frac, frac, 0.0, 0.0], dtype=float))
         ax.text(left[0] - 0.03, left[1], f"{1.0 - frac:.1f}", fontsize=8, ha="right", va="center")
         ax.text(right[0] + 0.03, right[1], f"{frac:.1f}", fontsize=8, ha="left", va="center")

@@ -126,6 +126,98 @@ py::dict regression_debug_to_dict(const PureNeutralRegressionDebugResult& result
     return out;
 }
 
+py::dict generic_regression_result_to_dict(const GenericRegressionResult& result) {
+    py::dict out;
+    out["x"] = result.x;
+    out["cost"] = result.cost;
+    out["residual_norm"] = result.residual_norm;
+    out["initial_cost"] = result.initial_cost;
+    out["initial_residual_norm"] = result.initial_residual_norm;
+    py::dict metrics;
+    for (const auto& item : result.metrics_by_term) {
+        metrics[py::str(item.first)] = item.second;
+    }
+    out["metrics_by_term"] = metrics;
+    out["success"] = result.success;
+    out["status"] = result.status;
+    out["nfev"] = result.nfev;
+    out["iterations"] = result.iterations;
+    out["starts_tried"] = result.starts_tried;
+    out["message"] = result.message;
+    out["backend"] = result.backend;
+    return out;
+}
+
+py::dict generic_regression_debug_to_dict(const GenericRegressionDebugResult& result) {
+    py::dict out;
+    out["cost"] = result.cost;
+    out["residual_norm"] = result.residual_norm;
+    out["residuals"] = result.residuals;
+    py::dict metrics;
+    for (const auto& item : result.metrics_by_term) {
+        metrics[py::str(item.first)] = item.second;
+    }
+    out["metrics_by_term"] = metrics;
+    return out;
+}
+
+GenericRegressionRecord generic_record_from_dict(const py::dict& input) {
+    GenericRegressionRecord record;
+    if (input.contains("term_name") && !input["term_name"].is_none()) {
+        record.term_name = input["term_name"].cast<std::string>();
+    }
+    record.term = input["term"].cast<int>();
+    record.t = input["T"].cast<double>();
+    record.p = input["P"].cast<double>();
+    record.phase = input.contains("phase") ? input["phase"].cast<int>() : 0;
+    if (input.contains("x") && !input["x"].is_none()) {
+        record.x = input["x"].cast<std::vector<double>>();
+    }
+    if (input.contains("y") && !input["y"].is_none()) {
+        record.y = input["y"].cast<std::vector<double>>();
+    }
+    if (input.contains("target") && !input["target"].is_none()) {
+        record.target = input["target"].cast<double>();
+    }
+    if (input.contains("target_index") && !input["target_index"].is_none()) {
+        record.target_index = input["target_index"].cast<int>();
+    }
+    if (input.contains("target_index_2") && !input["target_index_2"].is_none()) {
+        record.target_index_2 = input["target_index_2"].cast<int>();
+    }
+    if (input.contains("density_kind") && !input["density_kind"].is_none()) {
+        record.density_kind = input["density_kind"].cast<int>();
+    }
+    if (input.contains("activity_basis") && !input["activity_basis"].is_none()) {
+        record.activity_basis = input["activity_basis"].cast<int>();
+    }
+    if (input.contains("solvent_index") && !input["solvent_index"].is_none()) {
+        record.solvent_index = input["solvent_index"].cast<int>();
+    }
+    if (input.contains("scale") && !input["scale"].is_none()) {
+        record.scale = input["scale"].cast<double>();
+    }
+    return record;
+}
+
+std::vector<GenericRegressionRecord> generic_records_from_list(const py::list& records) {
+    std::vector<GenericRegressionRecord> out;
+    out.reserve(static_cast<std::size_t>(py::len(records)));
+    for (py::handle item : records) {
+        out.push_back(generic_record_from_dict(item.cast<py::dict>()));
+    }
+    return out;
+}
+
+std::vector<add_args> native_args_from_list(const py::list& args_by_record) {
+    std::vector<add_args> out;
+    out.reserve(static_cast<std::size_t>(py::len(args_by_record)));
+    for (py::handle item : args_by_record) {
+        out.push_back(item.cast<add_args>());
+    }
+    return out;
+}
+
 py::dict native_diagnostics_to_dict(
     const std::map<std::string, double>& doubles,
     const std::map<std::string, int>& ints,
@@ -578,6 +670,74 @@ py::dict evaluate_pure_neutral_objective_debug_binding(
     return regression_debug_to_dict(result);
 }
 
+py::dict fit_generic_native_least_squares_binding(
+    const py::list& args_by_record,
+    const py::list& records,
+    const py::array& target_kinds,
+    const py::array& target_indices,
+    const py::array& target_indices_2,
+    const py::array& x0,
+    const py::array& lower,
+    const py::array& upper,
+    int multistart,
+    int max_nfev
+) {
+    auto cpp_args = native_args_from_list(args_by_record);
+    auto cpp_records = generic_records_from_list(records);
+    auto cpp_target_kinds = array_to_int_vector(target_kinds);
+    auto cpp_target_indices = array_to_int_vector(target_indices);
+    auto cpp_target_indices_2 = array_to_int_vector(target_indices_2);
+    auto cpp_x0 = array_to_double_vector(x0);
+    auto cpp_lower = array_to_double_vector(lower);
+    auto cpp_upper = array_to_double_vector(upper);
+    GenericRegressionResult result;
+    {
+        py::gil_scoped_release release;
+        result = fit_generic_least_squares_cpp(
+            cpp_args,
+            cpp_records,
+            cpp_target_kinds,
+            cpp_target_indices,
+            cpp_target_indices_2,
+            cpp_x0,
+            cpp_lower,
+            cpp_upper,
+            multistart,
+            max_nfev
+        );
+    }
+    return generic_regression_result_to_dict(result);
+}
+
+py::dict evaluate_generic_native_debug_binding(
+    const py::list& args_by_record,
+    const py::list& records,
+    const py::array& target_kinds,
+    const py::array& target_indices,
+    const py::array& target_indices_2,
+    const py::array& x
+) {
+    auto cpp_args = native_args_from_list(args_by_record);
+    auto cpp_records = generic_records_from_list(records);
+    auto cpp_target_kinds = array_to_int_vector(target_kinds);
+    auto cpp_target_indices = array_to_int_vector(target_indices);
+    auto cpp_target_indices_2 = array_to_int_vector(target_indices_2);
+    auto cpp_x = array_to_double_vector(x);
+    GenericRegressionDebugResult result;
+    {
+        py::gil_scoped_release release;
+        result = evaluate_generic_regression_debug_cpp(
+            cpp_args,
+            cpp_records,
+            cpp_target_kinds,
+            cpp_target_indices,
+            cpp_target_indices_2,
+            cpp_x
+        );
+    }
+    return generic_regression_debug_to_dict(result);
+}
+
 }  // namespace
 
 PYBIND11_MODULE(_core, m) {
@@ -734,5 +894,7 @@ PYBIND11_MODULE(_core, m) {
 
     m.def("_fit_pure_neutral_native_least_squares", &fit_pure_neutral_native_least_squares_binding);
     m.def("_fit_pure_neutral_native_debug", &evaluate_pure_neutral_objective_debug_binding);
+    m.def("_fit_generic_native_least_squares", &fit_generic_native_least_squares_binding);
+    m.def("_evaluate_generic_native_debug", &evaluate_generic_native_debug_binding);
     m.def("_solve_equilibrium_native", &solve_equilibrium_native_binding);
 }

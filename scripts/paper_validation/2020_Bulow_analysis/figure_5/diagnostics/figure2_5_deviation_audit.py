@@ -88,7 +88,9 @@ def main() -> None:
             paper = np.zeros(len(ions), dtype=float)
         else:
             paper = _figure3_paper_values(fig3, term, ions)
-        model = np.asarray([overlay.contribution_breakdown("advanced", ion, "water")[term] for ion in ions], dtype=float)
+        model = np.asarray(
+            [overlay.contribution_breakdown("advanced", ion, "water")[term] for ion in ions], dtype=float
+        )
         for ion, paper_val, model_val in zip(ions, paper, model, strict=False):
             detail_rows.append(
                 {
@@ -166,7 +168,9 @@ def main() -> None:
         for title, keys in summary_specs:
             handle.write(f"## {title}\n\n")
             rows = _summary(detail_rows, keys)
-            header = " | ".join([*keys, "count", "mean_delta", "mean_abs_delta", "rmse", "max_abs_delta", "positive_fraction"])
+            header = " | ".join(
+                [*keys, "count", "mean_delta", "mean_abs_delta", "rmse", "max_abs_delta", "positive_fraction"]
+            )
             sep = " | ".join(["---"] * (len(keys) + 5))
             handle.write(f"| {header} |\n")
             handle.write(f"| {sep} |\n")
@@ -201,4 +205,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -11,18 +11,16 @@ if str(REPO_ROOT) not in sys.path:
 
 from scripts.paper_validation.tools import build_analysis_galleries
 
-
-DEFAULT_REPORT = build_analysis_galleries.PLOTS_ROOT / "plot_asset_report.csv"
+DEFAULT_REPORT = REPO_ROOT / "build" / "plot_gallery" / "plot_asset_report.csv"
 
 
 def asset_rows(plots_root: Path = build_analysis_galleries.PLOTS_ROOT) -> list[dict[str, str]]:
-    pngs = build_analysis_galleries.collect_pngs(plots_root)
     rows: list[dict[str, str]] = []
-    for item in build_analysis_galleries.image_manifest(pngs):
+    for item in build_analysis_galleries.gallery_entries(plots_root):
         output_path = item["output_path"]
-        png_path = plots_root / output_path
+        png_path = build_analysis_galleries.gallery_repo_root() / output_path
         svg_path = png_path.with_suffix(".svg")
-        data_path = png_path.parent / "data" / f"{png_path.stem}_plot_data.csv"
+        data_path = png_path.parent / f"{png_path.stem}_plot_data.csv"
         has_svg = svg_path.exists()
         has_csv = data_path.exists()
         rows.append(
@@ -59,7 +57,9 @@ def write_report(output: Path, plots_root: Path = build_analysis_galleries.PLOTS
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Report PNG/SVG/CSV static plot assets under docs/plots.")
+    parser = argparse.ArgumentParser(
+        description="Report PNG/SVG/CSV static plot assets under source-local out folders."
+    )
     parser.add_argument("--root", type=Path, default=build_analysis_galleries.PLOTS_ROOT, help="Plot gallery root.")
     parser.add_argument("--output", type=Path, default=DEFAULT_REPORT, help="CSV report path.")
     return parser

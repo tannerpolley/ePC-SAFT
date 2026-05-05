@@ -6,8 +6,8 @@ This script validates MIAC datasets using parameter sets from the packaged
 Experimental data source is canonical `data/MIAC/**` with `miac` and `miac_m` values.
 
 It writes fit plots to:
-  docs/plots/fits/miac/<solvent_system>/miac_m/maic_m_<solvent_system>_<rank>_<Salt>[_composition].png
-  docs/plots/fits/miac/<solvent_system>/miac/miac_<solvent_system>_<rank>_<Salt>[_composition].png
+  scripts/fits/out/miac/<solvent_system>/miac_m/miac_m_<solvent_system>_<rank>_<Salt>[_composition].png
+  scripts/fits/out/miac/<solvent_system>/miac/miac_<solvent_system>_<rank>_<Salt>[_composition].png
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from collections import OrderedDict
 from pathlib import Path
-from typing import Dict, Iterable, List, Literal, Tuple
+from typing import Dict, List, Literal, Tuple
 
 import matplotlib
 import numpy as np
@@ -39,12 +39,21 @@ from scripts.plot_outputs import fits_plot_path, save_plot_figure
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-
 T_REF = 298.15
 P_REF = 1.0e5
 AXIS_LABEL_SIZE = 13
 AXIS_TICK_SIZE = 11
-SOURCE_COLOR_CYCLE = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:pink", "tab:olive", "tab:cyan"]
+SOURCE_COLOR_CYCLE = [
+    "tab:blue",
+    "tab:orange",
+    "tab:green",
+    "tab:red",
+    "tab:purple",
+    "tab:brown",
+    "tab:pink",
+    "tab:olive",
+    "tab:cyan",
+]
 
 SALT_SPECS = {
     "LiBr": {"cation": "Li+", "anion": "Br-", "z_cation": 1, "z_anion": -1},
@@ -426,7 +435,7 @@ def discover_combos(solvent_scope: str | None = None, salt_scope: str | None = N
                         "comp_signature": sig,
                         "comp": comp,
                         "comp_label": _comp_label(comp, solvent_system),
-                        "output_miac_m": output_dir_miac_m / f"maic_m_{stem}.png",
+                        "output_miac_m": output_dir_miac_m / f"miac_m_{stem}.png",
                         "output_miac": output_dir_miac / f"miac_{stem}.png",
                     }
                 )
@@ -460,7 +469,9 @@ def _pair_key(salt: str) -> str:
     return f"{salt_spec['cation']}{salt_spec['anion']}"
 
 
-def _molality_to_molefraction_combo(molality: float, salt: str, solvent_system: str, comp: Dict[str, float]) -> np.ndarray:
+def _molality_to_molefraction_combo(
+    molality: float, salt: str, solvent_system: str, comp: Dict[str, float]
+) -> np.ndarray:
     species = _species_for_combo(salt, solvent_system)
     solvents = [s for s in solvent_system.split("-") if s]
     solvent_species = species[2:]
@@ -555,7 +566,9 @@ def load_exp_data(
                 except (TypeError, ValueError):
                     x_val = None
             if x_val is None:
-                x_val = float(_salt_mole_fraction_from_molality(np.asarray([m], dtype=float), solvent_system, comp_ref)[0])
+                x_val = float(
+                    _salt_mole_fraction_from_molality(np.asarray([m], dtype=float), solvent_system, comp_ref)[0]
+                )
             x_plot.append(x_val)
         else:
             x_plot.append(m)
@@ -601,8 +614,12 @@ def _filter_exp_series(
     }
 
 
-def build_params_for_variant(dataset_name: str, combo: Dict[str, object], user_options: dict | None = None) -> Dict[str, object]:
-    x_ref = _molality_to_molefraction_combo(1e-8, str(combo["salt"]), str(combo["solvent_system"]), dict(combo.get("comp", {})))
+def build_params_for_variant(
+    dataset_name: str, combo: Dict[str, object], user_options: dict | None = None
+) -> Dict[str, object]:
+    x_ref = _molality_to_molefraction_combo(
+        1e-8, str(combo["salt"]), str(combo["solvent_system"]), dict(combo.get("comp", {}))
+    )
     species = _species_for_combo(str(combo["salt"]), str(combo["solvent_system"]))
     return get_prop_dict(dataset_name, species, x_ref, T_REF, user_options=user_options)
 
@@ -626,7 +643,9 @@ def calc_gamma_m_curve(
         m_eval = float(m) if m > 0.0 else 1e-12
         x = _molality_to_molefraction_combo(m_eval, salt, solvent_system, comp)
         state = mixture.state(T=T_REF, x=x, P=P_REF, phase="liq")
-        gamma_m[idx] = float(state.activity_coefficient(species=species, mean_ionic_form=True, basis="molality")[pair_key])
+        gamma_m[idx] = float(
+            state.activity_coefficient(species=species, mean_ionic_form=True, basis="molality")[pair_key]
+        )
 
     if not np.all(np.isfinite(gamma_m)):
         raise ValueError(f"Non-finite MIAC_m values for {salt}/{solvent_system} in dataset {dataset_name}.")
@@ -712,7 +731,6 @@ def plot_combo(
 ):
     salt = str(combo["salt"])
     solvent_system = str(combo["solvent_system"])
-    comp = dict(combo.get("comp", {}))
 
     if payload is None:
         payload = prepare_combo_payload(combo)
@@ -724,7 +742,9 @@ def plot_combo(
     removed = int(exp_payload["removed"])
 
     if removed > 0:
-        print(f"[outlier-filter] {salt}/{solvent_system} [{quantity}] removed {removed} high outlier experimental point(s).")
+        print(
+            f"[outlier-filter] {salt}/{solvent_system} [{quantity}] removed {removed} high outlier experimental point(s)."
+        )
 
     molal_grid = np.asarray(payload["molality_grid"], dtype=float)
     if quantity == "miac_m":
@@ -860,7 +880,7 @@ def plot_combo(
 
 
 def _grid_output_path(solvent_system: str) -> Path:
-    return fits_plot_path("miac", solvent_system, "miac_m", f"maic_m_{solvent_system}_grid_3x3.png")
+    return fits_plot_path("miac", solvent_system, "miac_m", f"miac_m_{solvent_system}_grid_3x3.png")
 
 
 def plot_single_solvent_grid(
@@ -982,8 +1002,12 @@ def run_validate_miac_fits_v2() -> List[Path]:
 
     if "miac_m" in quantities:
         for solvent_system in ("water", "methanol", "ethanol"):
-            if any(str(combo["solvent_system"]) == solvent_system and not combo.get("comp_signature") for combo in combos):
-                generated.append(plot_single_solvent_grid(solvent_system, combos, close=True, payload_map=grid_payload_map))
+            if any(
+                str(combo["solvent_system"]) == solvent_system and not combo.get("comp_signature") for combo in combos
+            ):
+                generated.append(
+                    plot_single_solvent_grid(solvent_system, combos, close=True, payload_map=grid_payload_map)
+                )
 
     generated = sorted(generated, key=lambda path: str(path))
 
@@ -1004,4 +1028,3 @@ def test_validate_miac_fits_v2() -> None:
 
 if __name__ == "__main__":
     run_validate_miac_fits_v2()
-

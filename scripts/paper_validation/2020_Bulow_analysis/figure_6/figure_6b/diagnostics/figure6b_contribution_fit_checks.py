@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import argparse
 import csv
-import math
 import sys
 from pathlib import Path
 from typing import Dict, Tuple
@@ -29,7 +28,7 @@ if str(REPO_ROOT) not in sys.path:
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from scripts.plot_outputs import paper_validation_path, save_plot_figure
+from scripts.plot_outputs import paper_validation_dir, save_plot_figure
 from figure6b_libr_ethanol_contributions import (
     AXIS_LABEL_SIZE,
     AXIS_TICK_SIZE,
@@ -46,7 +45,7 @@ from figure6b_digitized_reference_replica import (
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-OUTPUT_ROOT = paper_validation_path(Path(__file__).resolve().parent, "output")
+OUTPUT_ROOT = paper_validation_dir(Path(__file__).resolve().parent)
 OUTPUT_DATA_DIR = OUTPUT_ROOT / "data"
 OUTPUT_PLOTS_DIR = OUTPUT_ROOT / "plots"
 
@@ -77,7 +76,9 @@ METHOD_STYLES = {
 }
 
 
-def _metric_summary(x_data: np.ndarray, y_data: np.ndarray, x_model: np.ndarray, y_model: np.ndarray) -> Tuple[float, float, float]:
+def _metric_summary(
+    x_data: np.ndarray, y_data: np.ndarray, x_model: np.ndarray, y_model: np.ndarray
+) -> Tuple[float, float, float]:
     y_interp = np.interp(x_data, x_model, y_model)
     delta = y_interp - y_data
     rmse = float(np.sqrt(np.mean(delta * delta)))
@@ -148,22 +149,14 @@ def run_analysis(
         x_data, y_data = digitized[name]
         if name == "total":
             method_names = tuple(
-                method_name for method_name in ("paper_total_line", "model_total", "mu_sum")
-                if (
-                    method_name == "paper_total_line"
-                ) or (
-                    method_name == "model_total"
-                    and "lnphi" in model_curves_by_method
-                ) or (
-                    method_name == "mu_sum"
-                    and "mu" in model_curves_by_method
-                )
+                method_name
+                for method_name in ("paper_total_line", "model_total", "mu_sum")
+                if (method_name == "paper_total_line")
+                or (method_name == "model_total" and "lnphi" in model_curves_by_method)
+                or (method_name == "mu_sum" and "mu" in model_curves_by_method)
             )
         else:
-            method_names = tuple(
-                method_name for method_name in ("mu",)
-                if method_name in model_curves_by_method
-            )
+            method_names = tuple(method_name for method_name in ("mu",) if method_name in model_curves_by_method)
         results[name] = {"n_points": float(len(x_data))}
         metric_lines = []
 
@@ -385,6 +378,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
-

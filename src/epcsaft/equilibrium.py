@@ -12,13 +12,13 @@ import numpy as np
 from ._types import InputError, SolutionError
 from .equilibrium_core.electrolyte_basis import build_electrolyte_basis
 
-
 _ASCANI_2022_REFERENCE = {
     "authors": "Ascani, Sadowski, and Held",
     "year": 2022,
     "title": "Calculation of Multiphase Equilibria Containing Mixed Solvents and Mixed Electrolytes",
     "doi": "10.1021/acs.jced.1c00866",
 }
+
 
 @dataclass(frozen=True, slots=True)
 class EquilibriumOptions:
@@ -222,7 +222,9 @@ class StabilityResult:
         }
 
 
-def tp_flash(mixture: Any, *, T: float, P: float, z: Any, options: EquilibriumOptions | None = None) -> EquilibriumResult:
+def tp_flash(
+    mixture: Any, *, T: float, P: float, z: Any, options: EquilibriumOptions | None = None
+) -> EquilibriumResult:
     """Solve a V1 neutral TP flash with Rachford-Rice and fugacity updates."""
     opts = _normalize_options(options)
     feed = _normalize_feed(z, mixture.ncomp, opts.min_composition, "tp_flash")
@@ -427,6 +429,7 @@ def electrolyte_lle_flash(
         options=options,
     )
 
+
 def electrolyte_feed_from_molality(
     mixture: Any,
     *,
@@ -596,13 +599,19 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
     legacy_candidate_mode = str(options.legacy_candidate_mode).strip().lower()
     if legacy_candidate_mode not in {"auto", "off"}:
         raise InputError("options.legacy_candidate_mode must be 'auto' or 'off'.")
-    legacy_candidate_residual_tolerance = _finite_float_option(options.legacy_candidate_residual_tolerance, "legacy_candidate_residual_tolerance")
+    legacy_candidate_residual_tolerance = _finite_float_option(
+        options.legacy_candidate_residual_tolerance, "legacy_candidate_residual_tolerance"
+    )
     if legacy_candidate_residual_tolerance <= 0.0:
         raise InputError("options.legacy_candidate_residual_tolerance must be positive.")
-    legacy_candidate_split_tolerance = _finite_float_option(options.legacy_candidate_split_tolerance, "legacy_candidate_split_tolerance")
+    legacy_candidate_split_tolerance = _finite_float_option(
+        options.legacy_candidate_split_tolerance, "legacy_candidate_split_tolerance"
+    )
     if legacy_candidate_split_tolerance <= 0.0:
         raise InputError("options.legacy_candidate_split_tolerance must be positive.")
-    if isinstance(options.legacy_candidate_max_iterations, bool) or not isinstance(options.legacy_candidate_max_iterations, Integral):
+    if isinstance(options.legacy_candidate_max_iterations, bool) or not isinstance(
+        options.legacy_candidate_max_iterations, Integral
+    ):
         raise InputError("options.legacy_candidate_max_iterations must be an integer greater than zero.")
     legacy_candidate_max_iterations = int(options.legacy_candidate_max_iterations)
     if legacy_candidate_max_iterations <= 0:
@@ -715,7 +724,9 @@ def _normalize_feed(z: Any, ncomp: int, min_composition: float, kind: str) -> np
         raise InputError("z is required for kind='{}'.".format(kind))
     feed = np.asarray(z, dtype=float).flatten()
     if feed.size != int(ncomp):
-        raise InputError("Feed composition length ({}) must match mixture component count ({}).".format(feed.size, ncomp))
+        raise InputError(
+            "Feed composition length ({}) must match mixture component count ({}).".format(feed.size, ncomp)
+        )
     if not np.all(np.isfinite(feed)):
         raise InputError("Feed composition z must contain only finite values.")
     if np.any(feed < 0.0):
@@ -803,9 +814,7 @@ def _normalize_solvent_feed(species: list[str], charges: np.ndarray, solvent_fee
     else:
         values = np.asarray(solvent_feed, dtype=float).flatten()
         if values.size != len(neutral_indices):
-            raise InputError(
-                "solvent_feed must be a dict or a vector with one entry per neutral solvent species."
-            )
+            raise InputError("solvent_feed must be a dict or a vector with one entry per neutral solvent species.")
         for index, value in zip(neutral_indices, values):
             solvent_x[index] = float(value)
     if not np.all(np.isfinite(solvent_x)) or np.any(solvent_x < 0.0):
@@ -871,7 +880,10 @@ def _salt_stoichiometry(cation_charge: float, anion_charge: float) -> tuple[int,
     anion_int = int(round(abs(float(anion_charge))))
     if cation_int <= 0 or anion_int <= 0:
         raise InputError("electrolyte salt stoichiometry requires non-zero ion charges.")
-    if abs(float(cation_int) - abs(float(cation_charge))) > 1.0e-12 or abs(float(anion_int) - abs(float(anion_charge))) > 1.0e-12:
+    if (
+        abs(float(cation_int) - abs(float(cation_charge))) > 1.0e-12
+        or abs(float(anion_int) - abs(float(anion_charge))) > 1.0e-12
+    ):
         raise InputError("electrolyte salt stoichiometry currently requires integer ion charges.")
     gcd = int(np.gcd(cation_int, anion_int))
     return anion_int // gcd, cation_int // gcd
@@ -903,7 +915,9 @@ def _electrolyte_formula_basis(mixture: Any, feed: np.ndarray, feed_diagnostics:
     }
 
 
-def _formula_to_explicit_composition(formula_composition: np.ndarray, basis: dict[str, Any], ncomp: int) -> tuple[np.ndarray, float]:
+def _formula_to_explicit_composition(
+    formula_composition: np.ndarray, basis: dict[str, Any], ncomp: int
+) -> tuple[np.ndarray, float]:
     formula = np.asarray(formula_composition, dtype=float)
     explicit = np.zeros(int(ncomp), dtype=float)
     neutral_indices = basis["neutral_indices"]
@@ -924,7 +938,9 @@ def _formula_to_explicit_composition(formula_composition: np.ndarray, basis: dic
 def _explicit_to_formula_composition(composition: np.ndarray, basis: dict[str, Any]) -> np.ndarray:
     comp = np.asarray(composition, dtype=float)
     values = [float(comp[index]) for index in basis["neutral_indices"]]
-    values.extend(float(comp[int(pair["cation"])]) / float(pair.get("cation_stoich", 1.0)) for pair in basis["salt_pairs"])
+    values.extend(
+        float(comp[int(pair["cation"])]) / float(pair.get("cation_stoich", 1.0)) for pair in basis["salt_pairs"]
+    )
     out = np.asarray(values, dtype=float)
     total = float(np.sum(out))
     if total <= 0.0:
@@ -973,7 +989,9 @@ def _electrolyte_initial_phase_seed(
     }
 
 
-def _explicit_beta_to_formula_beta(beta_explicit: float, aq_formula: np.ndarray, org_formula: np.ndarray, basis: dict[str, Any], ncomp: int) -> float:
+def _explicit_beta_to_formula_beta(
+    beta_explicit: float, aq_formula: np.ndarray, org_formula: np.ndarray, basis: dict[str, Any], ncomp: int
+) -> float:
     _aq_exp, aq_scale = _formula_to_explicit_composition(aq_formula, basis, ncomp)
     _org_exp, org_scale = _formula_to_explicit_composition(org_formula, basis, ncomp)
     numerator = float(beta_explicit) / org_scale
@@ -1141,7 +1159,9 @@ def _rachford_rice_beta(feed: np.ndarray, k_values: np.ndarray) -> tuple[bool, f
     return True, 0.5 * (lo + hi), ""
 
 
-def _phase_compositions(feed: np.ndarray, k_values: np.ndarray, beta: float, min_composition: float) -> tuple[np.ndarray, np.ndarray]:
+def _phase_compositions(
+    feed: np.ndarray, k_values: np.ndarray, beta: float, min_composition: float
+) -> tuple[np.ndarray, np.ndarray]:
     x_liq = feed / (1.0 + beta * (k_values - 1.0))
     y_vap = k_values * x_liq
     x_liq = np.maximum(x_liq, min_composition)
@@ -1317,7 +1337,11 @@ def _feed_perturb_lle_guess(feed: np.ndarray, options: EquilibriumOptions) -> tu
 def _normalize_initial_phase(value: Any, ncomp: int, min_composition: float, label: str) -> np.ndarray:
     composition = np.asarray(value, dtype=float).flatten()
     if composition.size != int(ncomp):
-        raise InputError("initial_phases {} length ({}) must match mixture component count ({}).".format(label, composition.size, ncomp))
+        raise InputError(
+            "initial_phases {} length ({}) must match mixture component count ({}).".format(
+                label, composition.size, ncomp
+            )
+        )
     if not np.all(np.isfinite(composition)):
         raise InputError("initial_phases {} must contain only finite values.".format(label))
     if np.any(composition < 0.0):
@@ -1779,7 +1803,9 @@ def _diagnostics_with_legacy_candidate(
         return out
     if str(options.legacy_candidate_mode) != "auto":
         out.setdefault("legacy_candidate_found", False)
-        out.setdefault("legacy_candidate_message", "legacy candidate fallback disabled by options.legacy_candidate_mode")
+        out.setdefault(
+            "legacy_candidate_message", "legacy candidate fallback disabled by options.legacy_candidate_mode"
+        )
         return out
     min_tpd = out.get("stability_min_tpd", out.get("min_tpd"))
     try:
@@ -1819,7 +1845,9 @@ def initial_phases_from_result(result: EquilibriumResult) -> dict[str, object]:
     }
 
 
-def tp_flash(mixture: Any, *, T: float, P: float, z: Any, options: EquilibriumOptions | None = None) -> EquilibriumResult:
+def tp_flash(
+    mixture: Any, *, T: float, P: float, z: Any, options: EquilibriumOptions | None = None
+) -> EquilibriumResult:
     """Solve a neutral TP flash through the native C++ equilibrium backend."""
     opts = _normalize_options(options)
     feed = _normalize_feed(z, mixture.ncomp, opts.min_composition, "tp_flash")

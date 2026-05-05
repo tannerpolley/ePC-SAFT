@@ -8,7 +8,6 @@ import sys
 import time
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BUILD_DIR = REPO_ROOT / "build" / "dev"
 PACKAGE_DIR = REPO_ROOT / "src" / "epcsaft"
@@ -95,8 +94,12 @@ def _timed(label: str, action) -> float:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Build epcsaft._core in-place with direct CMake.")
     parser.add_argument("--clean", action="store_true", help="Remove build/dev and any in-place _core artifact first.")
-    parser.add_argument("--configure-only", action="store_true", help="Configure the CMake dev build tree without building.")
-    parser.add_argument("--build-only", action="store_true", help="Build the existing CMake dev build tree without reconfiguring.")
+    parser.add_argument(
+        "--configure-only", action="store_true", help="Configure the CMake dev build tree without building."
+    )
+    parser.add_argument(
+        "--build-only", action="store_true", help="Build the existing CMake dev build tree without reconfiguring."
+    )
     parser.add_argument("--parallel", help="Optional CMake build parallelism value.")
     return parser
 

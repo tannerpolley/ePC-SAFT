@@ -26,7 +26,6 @@ import _plot_common as common
 from epcsaft.parameters import get_prop_dict
 from scripts._epcsaft_oop import epcsaft_density, epcsaft_solvation_free_energy
 
-
 DATASETS = [
     ("a", "Water to methanol", "methanol", SCRIPT_DIR / "data" / "water-methanol-comparison.csv"),
     ("b", "Water to ethanol", "ethanol", SCRIPT_DIR / "data" / "water-ethanol-comparison.csv"),
@@ -167,4 +166,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -8,7 +8,6 @@ import re
 import sys
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TEX_PATH = REPO_ROOT / "docs" / "latex" / "equations.tex"
 MARKDOWN_PATH = REPO_ROOT / "docs" / "equations.md"
@@ -196,11 +195,7 @@ def is_documentation_only(entry: dict) -> bool:
 
 
 def missing_cpp_ref_entries(entries: list[dict]) -> list[dict]:
-    return [
-        entry
-        for entry in entries
-        if not entry.get("cpp_refs") and not is_documentation_only(entry)
-    ]
+    return [entry for entry in entries if not entry.get("cpp_refs") and not is_documentation_only(entry)]
 
 
 def docs_only_entries(entries: list[dict]) -> list[dict]:
@@ -221,7 +216,9 @@ def render_traceability_report(entries: list[dict]) -> str:
         section_entries = grouped[section]
         lines.append(f"- {section}: {len(section_entries)}")
         for entry in section_entries:
-            lines.append(f"  - {entry.get('eqid', '<unknown>')} ({entry.get('tex_file', '<unknown>')}:{entry.get('tex_line', '<unknown>')})")
+            lines.append(
+                f"  - {entry.get('eqid', '<unknown>')} ({entry.get('tex_file', '<unknown>')}:{entry.get('tex_line', '<unknown>')})"
+            )
     lines.append("Mark documentation-only equations with status: Documentation-only.")
     return "\n".join(lines)
 
@@ -302,7 +299,9 @@ def render_markdown(entries: list[dict]) -> str:
     out.append("# Equation Index")
     out.append("")
     out.append("This file is generated from `docs/latex/equations.tex` by `scripts/sync_equation_registry.py`.")
-    out.append("The LaTeX document remains the current source of truth; this Markdown view and `docs/equations_registry.yaml` stay aligned with it.")
+    out.append(
+        "The LaTeX document remains the current source of truth; this Markdown view and `docs/equations_registry.yaml` stay aligned with it."
+    )
     out.append("")
 
     current_section = None
@@ -347,10 +346,7 @@ def render_markdown(entries: list[dict]) -> str:
             out.append(f"- Change note: {entry['change_note']}")
         out.append(f"- LaTeX: `{entry['tex_file']}:{entry['tex_line']}`")
         if entry["cpp_refs"]:
-            refs = ", ".join(
-                f"`{ref['file']}:{ref['line']}` ({ref['context']})"
-                for ref in entry["cpp_refs"]
-            )
+            refs = ", ".join(f"`{ref['file']}:{ref['line']}` ({ref['context']})" for ref in entry["cpp_refs"])
             out.append(f"- C++: {refs}")
         elif is_documentation_only(entry):
             out.append("- C++: Documentation-only: no direct native owner expected.")
@@ -388,7 +384,9 @@ def check_matches(path: Path, expected: str) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate equation registry and Markdown index from docs/latex/equations.tex.")
+    parser = argparse.ArgumentParser(
+        description="Generate equation registry and Markdown index from docs/latex/equations.tex."
+    )
     parser.add_argument("--check", action="store_true", help="Validate that generated outputs are up to date.")
     parser.add_argument(
         "--strict-traceability",

@@ -38,6 +38,7 @@ SALT_SPECS = {
     "KAc": ("K+", "Ac-"),
 }
 
+
 def _load_digitized() -> dict[str, tuple[np.ndarray, np.ndarray]]:
     raw_path = next((path for path in RAW_DATA_SOURCES if path.exists()), None)
     if raw_path is not None:
@@ -171,5 +172,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

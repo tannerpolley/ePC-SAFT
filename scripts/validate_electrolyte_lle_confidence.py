@@ -10,6 +10,5 @@ if str(SRC) not in sys.path:
 
 from epcsaft.equilibrium_core.confidence import main
 
-
 if __name__ == "__main__":
     raise SystemExit(main())

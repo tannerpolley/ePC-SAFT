@@ -8,7 +8,6 @@ import pytest
 from scripts import build_test_plot_gallery
 from tests.plots import plot_registry
 
-
 FIELDNAMES = [
     "figure_file",
     "axes_index",
@@ -42,7 +41,7 @@ def _write_png(path: Path) -> None:
 
 
 def _write_plot_csv(png_path: Path, rows: list[dict[str, object]]) -> Path:
-    csv_path = png_path.parent / "data" / f"{png_path.stem}_plot_data.csv"
+    csv_path = png_path.parent / f"{png_path.stem}_plot_data.csv"
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     with csv_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=FIELDNAMES, lineterminator="\n")
@@ -89,7 +88,7 @@ def test_registry_unregistered_test_reports_actionable_recipe_pattern() -> None:
 
 def test_build_gallery_from_numeric_csv_creates_static_svg_index_and_report(tmp_path: Path) -> None:
     plots_root = tmp_path / "docs" / "plots"
-    png_path = plots_root / "tests" / "example" / "numeric" / "numeric_case.png"
+    png_path = tmp_path / "tests" / "plots" / "out" / "example" / "numeric" / "numeric_case.png"
     _write_png(png_path)
     _write_plot_csv(
         png_path,
@@ -134,14 +133,14 @@ def test_build_gallery_from_numeric_csv_creates_static_svg_index_and_report(tmp_
     assert not png_path.with_suffix(".html").exists()
     assert png_path.with_suffix(".svg").exists()
     assert (plots_root / "index.html").exists()
-    assert "tests/example/numeric/numeric_case.png" in (plots_root / "index.html").read_text(encoding="utf-8")
-    assert (plots_root / "plot_asset_report.csv").exists()
+    assert "tests/plots/out/example/numeric/numeric_case.png" in (plots_root / "index.html").read_text(encoding="utf-8")
+    assert (tmp_path / "build" / "plot_gallery" / "plot_asset_report.csv").exists()
     assert not (plots_root / ("plot" + "ly_companion_report.csv")).exists()
 
 
 def test_build_gallery_rejects_non_numeric_csv_without_static_html(tmp_path: Path) -> None:
     plots_root = tmp_path / "docs" / "plots"
-    png_path = plots_root / "tests" / "example" / "static" / "static_case.png"
+    png_path = tmp_path / "tests" / "plots" / "out" / "example" / "static" / "static_case.png"
     _write_png(png_path)
     _write_plot_csv(png_path, [{"figure_file": png_path.name, "artist_type": "no_numeric_artists"}])
 
@@ -159,7 +158,7 @@ def test_build_gallery_rejects_non_numeric_csv_without_static_html(tmp_path: Pat
 
 def test_build_gallery_dry_run_reports_work_without_writing_outputs(tmp_path: Path) -> None:
     plots_root = tmp_path / "docs" / "plots"
-    png_path = plots_root / "tests" / "example" / "dry_run" / "dry_run_case.png"
+    png_path = tmp_path / "tests" / "plots" / "out" / "example" / "dry_run" / "dry_run_case.png"
     _write_png(png_path)
     _write_plot_csv(
         png_path,
@@ -189,12 +188,12 @@ def test_build_gallery_dry_run_reports_work_without_writing_outputs(tmp_path: Pa
     assert not png_path.with_suffix(".html").exists()
     assert not png_path.with_suffix(".svg").exists()
     assert not (plots_root / "index.html").exists()
-    assert not (plots_root / "plot_asset_report.csv").exists()
+    assert not (tmp_path / "build" / "plot_gallery" / "plot_asset_report.csv").exists()
 
 
 def test_build_gallery_requires_csv_companion_for_each_png(tmp_path: Path) -> None:
     plots_root = tmp_path / "docs" / "plots"
-    png_path = plots_root / "tests" / "example" / "missing_csv" / "missing_csv_case.png"
+    png_path = tmp_path / "tests" / "plots" / "out" / "example" / "missing_csv" / "missing_csv_case.png"
     _write_png(png_path)
 
     with pytest.raises(build_test_plot_gallery.PlotGalleryBuildError) as excinfo:

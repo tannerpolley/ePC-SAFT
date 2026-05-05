@@ -21,7 +21,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts._env import require_epcsaft_install
-from scripts.plot_outputs import paper_validation_path, save_plot_figure
+from scripts.plot_outputs import paper_validation_dir, save_plot_figure
 
 require_epcsaft_install()
 
@@ -31,7 +31,7 @@ from scripts._epcsaft_oop import epcsaft_density, epcsaft_fugacity_coefficient_t
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-OUTPUT_ROOT = paper_validation_path(Path(__file__).resolve().parent, "output")
+OUTPUT_ROOT = paper_validation_dir(Path(__file__).resolve().parent)
 OUTPUT_PLOTS_DIR = OUTPUT_ROOT / "plots"
 
 
@@ -318,8 +318,12 @@ def run_analysis(
     ax.plot(x_grid, curves["born"], color="orange", linewidth=1.9, linestyle="-", label="Born contribution", zorder=4)
     ax.plot(x_grid, curves["dh"], color="tab:blue", linewidth=1.9, linestyle="-", label="DH contribution", zorder=4)
     ax.plot(x_grid, curves["hc"], color="gray", linewidth=1.8, linestyle="-", label="Hard-chain contribution", zorder=3)
-    ax.plot(x_grid, curves["disp"], color="gray", linewidth=1.8, linestyle="--", label="Dispersion contribution", zorder=3)
-    ax.plot(x_grid, curves["assoc"], color="gray", linewidth=1.8, linestyle="-.", label="Association contribution", zorder=3)
+    ax.plot(
+        x_grid, curves["disp"], color="gray", linewidth=1.8, linestyle="--", label="Dispersion contribution", zorder=3
+    )
+    ax.plot(
+        x_grid, curves["assoc"], color="gray", linewidth=1.8, linestyle="-.", label="Association contribution", zorder=3
+    )
     ax.plot(x_grid, curves["total"], color="green", linewidth=2.1, linestyle="-", label="Total (2020)", zorder=5)
 
     ax.set_xlim(float(x_min), float(x_max))
@@ -434,4 +438,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

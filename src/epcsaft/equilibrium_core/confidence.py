@@ -15,16 +15,16 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 import numpy as np
+import pandas as pd
 
 from epcsaft._types import SolutionError
 from epcsaft.epcsaft import ePCSAFTMixture
 from epcsaft.equilibrium import EquilibriumOptions
 from epcsaft.equilibrium import _phase_state
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 BENCHMARK_ROOT = REPO_ROOT / "data" / "equilibrium_benchmarks" / "electrolyte_lle"
-DEFAULT_OUTPUT_ROOT = REPO_ROOT / "build" / "equilibrium_confidence"
+DEFAULT_OUTPUT_ROOT = Path(__file__).resolve().parent / "out"
 PRESSURE_PA = 100000.0
 FORMULA_SPECIES = ("H2O", "Ethanol", "Butanol", "NaCl")
 EXPLICIT_SPECIES = ("H2O", "Ethanol", "Butanol", "Na+", "Cl-")
@@ -319,7 +319,11 @@ def continuation_metrics(predictions: Sequence[BenchmarkPrediction]) -> list[Con
         ordered = sorted(series, key=lambda item: item.case.tie_line)
         for left, right in zip(ordered, ordered[1:]):
             if left.status != "accepted" or right.status != "accepted":
-                rows.append(ContinuationMetrics(series_key, left.case.case_key, right.case.case_key, math.nan, math.nan, False, True))
+                rows.append(
+                    ContinuationMetrics(
+                        series_key, left.case.case_key, right.case.case_key, math.nan, math.nan, False, True
+                    )
+                )
                 continue
             assert left.organic_formula is not None and left.aqueous_formula is not None
             assert right.organic_formula is not None and right.aqueous_formula is not None
@@ -351,14 +355,18 @@ def oracle_checks(suite: BenchmarkSuite, predictions: Sequence[BenchmarkPredicti
     for prediction in predictions:
         case = prediction.case
         native_delta = float(prediction.diagnostics.get("gibbs_delta", math.nan))
-        oracle_delta = fixed_phase_gibbs_delta(suite, case, case.experimental_organic_formula, case.experimental_aqueous_formula)
+        oracle_delta = fixed_phase_gibbs_delta(
+            suite, case, case.experimental_organic_formula, case.experimental_aqueous_formula
+        )
         checks.append(
             OracleCheck(
                 case_key=case.case_key,
                 native_status=prediction.status,
                 native_gibbs_delta=native_delta,
                 oracle_gibbs_delta=oracle_delta,
-                native_minus_oracle_gibbs_delta=float(native_delta - oracle_delta) if np.isfinite(native_delta) else math.nan,
+                native_minus_oracle_gibbs_delta=(
+                    float(native_delta - oracle_delta) if np.isfinite(native_delta) else math.nan
+                ),
                 oracle_flags_native=bool(np.isfinite(native_delta) and native_delta - oracle_delta > 1.0e-6),
             )
         )
@@ -377,7 +385,9 @@ def fixed_phase_gibbs_delta(
     beta = _best_phase_fraction(native.feed, org, aq)
     mixture = ePCSAFTMixture.from_dataset(suite.dataset, suite.species, native.feed, case.temperature_K)
     options = EquilibriumOptions(include_phase_diagnostics=False)
-    feed_state = _phase_state(mixture, case.temperature_K, PRESSURE_PA, native.feed, "liq", options, "oracle_feed")["state"]
+    feed_state = _phase_state(mixture, case.temperature_K, PRESSURE_PA, native.feed, "liq", options, "oracle_feed")[
+        "state"
+    ]
     org_state = _phase_state(mixture, case.temperature_K, PRESSURE_PA, org, "liq", options, "oracle_org")["state"]
     aq_state = _phase_state(mixture, case.temperature_K, PRESSURE_PA, aq, "liq", options, "oracle_aq")["state"]
     g_feed = _gibbs_proxy(native.feed, feed_state.fugacity_coefficient())
@@ -476,7 +486,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
     parser.add_argument("--write-gallery", action="store_true")
     args = parser.parse_args(argv)
-    report = run_confidence_suite(args.suite, mode=args.mode, output_root=args.output_root, write_gallery=args.write_gallery)
+    report = run_confidence_suite(
+        args.suite, mode=args.mode, output_root=args.output_root, write_gallery=args.write_gallery
+    )
     print(f"Wrote electrolyte LLE confidence report: {report.output_dir}")
     return 0
 
@@ -541,7 +553,9 @@ def _best_phase_fraction(feed: np.ndarray, organic: np.ndarray, aqueous: np.ndar
     return float(np.clip(np.dot(feed - aqueous, direction) / denom, 1.0e-8, 1.0 - 1.0e-8))
 
 
-def _metrics(case: BenchmarkCase, organic: np.ndarray, aqueous: np.ndarray, diagnostics: Mapping[str, Any]) -> BenchmarkMetrics:
+def _metrics(
+    case: BenchmarkCase, organic: np.ndarray, aqueous: np.ndarray, diagnostics: Mapping[str, Any]
+) -> BenchmarkMetrics:
     organic_delta = np.abs(organic - case.experimental_organic_formula)
     aqueous_delta = np.abs(aqueous - case.experimental_aqueous_formula)
     return BenchmarkMetrics(
@@ -686,7 +700,15 @@ def _write_sensitivity_csv(path: Path, rows: Sequence[SensitivityMetrics]) -> No
 def _write_stress_csv(path: Path, rows: Sequence[BenchmarkPrediction]) -> None:
     _write_csv(
         path,
-        ["case_key", "status", "acceptance_gate", "best_failure_reason", "solver_residual_norm", "gibbs_delta", "phase_distance"],
+        [
+            "case_key",
+            "status",
+            "acceptance_gate",
+            "best_failure_reason",
+            "solver_residual_norm",
+            "gibbs_delta",
+            "phase_distance",
+        ],
         [
             {
                 "case_key": row.case.case_key,
@@ -747,11 +769,24 @@ def _write_plots(
     accepted = [item for item in predictions if item.status == "accepted"]
     residual_labels = ["solver_residual_norm", "material_balance_error", "charge_balance_error", "phase_distance"]
     residual_values = [
-        max((float(item.diagnostics.get(label, math.nan)) for item in predictions if np.isfinite(float(item.diagnostics.get(label, math.nan)))), default=math.nan)
+        max(
+            (
+                float(item.diagnostics.get(label, math.nan))
+                for item in predictions
+                if np.isfinite(float(item.diagnostics.get(label, math.nan)))
+            ),
+            default=math.nan,
+        )
         for label in residual_labels
     ]
     threshold_values = [suite.thresholds.get(label, math.nan) for label in residual_labels]
-    _bar_comparison_plot(report.residual_gate_plot, "Electrolyte LLE residual gate summary", residual_labels, residual_values, threshold_values)
+    _bar_comparison_plot(
+        report.residual_gate_plot,
+        "Electrolyte LLE residual gate summary",
+        residual_labels,
+        residual_values,
+        threshold_values,
+    )
 
     error_labels = ["organic AAD", "aqueous AAD", "grand AAD", "max abs error"]
     error_values = [
@@ -760,22 +795,34 @@ def _write_plots(
         max((item.metrics.grand_aad for item in accepted if item.metrics), default=math.nan),
         max((item.metrics.max_abs_error for item in accepted if item.metrics), default=math.nan),
     ]
-    _bar_plot(report.error_plot, "Khudaida benchmark composition errors", error_labels, error_values, "Mole fraction error")
+    _bar_plot(
+        report.error_plot, "Khudaida benchmark composition errors", error_labels, error_values, "Mole fraction error"
+    )
     _all_tielines_plot(report.all_tielines_plot, predictions)
 
     cont_labels = [row.to_case for row in continuation]
     cont_values = [row.composition_jump_norm if np.isfinite(row.composition_jump_norm) else 0.0 for row in continuation]
-    _line_plot(report.continuation_plot, "Khudaida continuation smoothness", cont_labels, cont_values, "Adjacent composition jump")
+    _line_plot(
+        report.continuation_plot,
+        "Khudaida continuation smoothness",
+        cont_labels,
+        cont_values,
+        "Adjacent composition jump",
+    )
 
     sens = [row for row in sensitivity if row.parameter != "baseline"]
     sens_labels = [f"{row.parameter} {row.perturbation:+.3g}" for row in sens]
     sens_values = [row.max_composition_delta if np.isfinite(row.max_composition_delta) else 0.0 for row in sens]
-    _bar_plot(report.sensitivity_plot, "Parameter sensitivity summary", sens_labels, sens_values, "Max composition delta")
+    _bar_plot(
+        report.sensitivity_plot, "Parameter sensitivity summary", sens_labels, sens_values, "Max composition delta"
+    )
 
     plt.close("all")
 
 
-def _bar_comparison_plot(path: Path, title: str, labels: Sequence[str], actual: Sequence[float], expected: Sequence[float]) -> None:
+def _bar_comparison_plot(
+    path: Path, title: str, labels: Sequence[str], actual: Sequence[float], expected: Sequence[float]
+) -> None:
     import matplotlib.pyplot as plt
 
     x = np.arange(len(labels))
@@ -814,7 +861,9 @@ def _line_plot(path: Path, title: str, labels: Sequence[str], values: Sequence[f
     fig, ax = plt.subplots(figsize=(9.0, 4.6))
     ax.plot(np.arange(len(labels)), values, marker="o")
     step = max(1, len(labels) // 8)
-    ax.set_xticks(np.arange(0, len(labels), step), [labels[i] for i in range(0, len(labels), step)], rotation=30, ha="right")
+    ax.set_xticks(
+        np.arange(0, len(labels), step), [labels[i] for i in range(0, len(labels), step)], rotation=30, ha="right"
+    )
     ax.set_ylabel(ylabel)
     ax.set_title(title)
     fig.tight_layout()
@@ -840,7 +889,9 @@ def _all_tielines_plot(path: Path, predictions: Sequence[BenchmarkPrediction]) -
             case = prediction.case
             exp_org = case.experimental_organic_formula
             exp_aq = case.experimental_aqueous_formula
-            label = f"Fig. {figure} experimental" if case.tie_line == min(item.case.tie_line for item in group) else None
+            label = (
+                f"Fig. {figure} experimental" if case.tie_line == min(item.case.tie_line for item in group) else None
+            )
             ax.plot(
                 [exp_aq[1], exp_org[1]],
                 [exp_aq[2], exp_org[2]],
@@ -867,7 +918,11 @@ def _all_tielines_plot(path: Path, predictions: Sequence[BenchmarkPrediction]) -
                 linewidths=1.2,
                 alpha=0.8,
             )
-            if prediction.status == "accepted" and prediction.organic_formula is not None and prediction.aqueous_formula is not None:
+            if (
+                prediction.status == "accepted"
+                and prediction.organic_formula is not None
+                and prediction.aqueous_formula is not None
+            ):
                 ax.plot(
                     [prediction.aqueous_formula[1], prediction.organic_formula[1]],
                     [prediction.aqueous_formula[2], prediction.organic_formula[2]],
@@ -895,13 +950,15 @@ def _all_tielines_plot(path: Path, predictions: Sequence[BenchmarkPrediction]) -
     fig.savefig(path.with_suffix(".svg"))
     plt.close(fig)
     _write_csv(
-        path.parent / "data" / f"{path.stem}_plot_data.csv",
+        path.parent / f"{path.stem}_plot_data.csv",
         ["case_key", "figure", "tie_line", "point_type", "status", "x_water", "x_ethanol", "x_isobutanol", "x_nacl"],
         rows,
     )
 
 
-def _tieline_plot_row(case: BenchmarkCase, point_type: str, status: str, composition: Sequence[float]) -> dict[str, Any]:
+def _tieline_plot_row(
+    case: BenchmarkCase, point_type: str, status: str, composition: Sequence[float]
+) -> dict[str, Any]:
     values = list(composition)
     return {
         "case_key": case.case_key,
@@ -921,7 +978,7 @@ def _write_plot_data(path: Path, series_rows: Sequence[tuple[str, Sequence[str],
     for series, labels, values in series_rows:
         for label, value in zip(labels, values):
             rows.append({"plot": path.name, "series": series, "label": label, "value": value})
-    _write_csv(path.parent / "data" / f"{path.stem}_plot_data.csv", ["plot", "series", "label", "value"], rows)
+    _write_csv(path.parent / f"{path.stem}_plot_data.csv", ["plot", "series", "label", "value"], rows)
 
 
 def _write_report_index(report: ConfidenceReport) -> None:
@@ -944,25 +1001,16 @@ def _write_report_index(report: ConfidenceReport) -> None:
 
 
 def _write_gallery_copies(report: ConfidenceReport) -> None:
-    gallery_dir = REPO_ROOT / "docs" / "plots" / "tests" / "equilibrium" / "electrolyte_lle_confidence"
-    gallery_dir.mkdir(parents=True, exist_ok=True)
-    for path in (report.residual_gate_plot, report.error_plot, report.all_tielines_plot, report.continuation_plot, report.sensitivity_plot):
-        target = gallery_dir / path.name
-        target.write_bytes(path.read_bytes())
-        target.with_suffix(".svg").write_bytes(path.with_suffix(".svg").read_bytes())
-        source_csv = path.parent / "data" / f"{path.stem}_plot_data.csv"
-        target_csv = gallery_dir / "data" / f"{path.stem}_plot_data.csv"
-        target_csv.parent.mkdir(parents=True, exist_ok=True)
-        target_csv.write_text(source_csv.read_text(encoding="utf-8"), encoding="utf-8")
+    # The gallery now indexes package-local out folders directly.
+    return None
 
 
 def _write_csv(path: Path, fieldnames: Sequence[str], rows: Iterable[Mapping[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(fieldnames))
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({key: _csv_value(row.get(key, "")) for key in fieldnames})
+    frame = pd.DataFrame(
+        [{key: _csv_value(row.get(key, "")) for key in fieldnames} for row in rows], columns=list(fieldnames)
+    )
+    frame.to_csv(path, index=False)
 
 
 def _csv_value(value: Any) -> Any:

@@ -1,0 +1,4 @@
+series,field,n_solved,aard_percent,reported_table2_aad_percent,within_reported_aad
+MEA 2B,P_Pa,21,0.26969641364982677,0.62,True
+MEA 3B,P_Pa,21,1.1530521875872193,1.75,True
+MEA 4C,P_Pa,21,0.2980040910116436,0.24,True

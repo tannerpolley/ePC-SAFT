@@ -19,7 +19,6 @@ if str(REPO_ROOT) not in sys.path:
 import _plot_common as common
 import _model_overlay as overlay
 
-
 DATA_PATH = FIGURE_DIR / "data" / "water_contributions.csv"
 OUTPUT_CSV = SCRIPT_DIR / "figure3_mu_contribution_breakdown.csv"
 R_GAS = overlay.R_GAS
@@ -120,4 +119,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

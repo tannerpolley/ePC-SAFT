@@ -1,19 +1,19 @@
 from __future__ import annotations
 
-import csv
 import math
 from pathlib import Path
 from typing import Any, Iterable
 
+import pandas as pd
 from matplotlib import colors as mcolors
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PLOTS_ROOT = REPO_ROOT / "docs" / "plots"
 PAPER_VALIDATION_SOURCE_ROOT = REPO_ROOT / "scripts" / "paper_validation"
-PAPER_VALIDATION_PLOTS_ROOT = PLOTS_ROOT / "paper_validation"
-FITS_PLOTS_ROOT = PLOTS_ROOT / "fits"
-TEST_PLOTS_ROOT = PLOTS_ROOT / "tests"
+PAPER_VALIDATION_PLOTS_ROOT = PAPER_VALIDATION_SOURCE_ROOT
+FITS_PLOTS_ROOT = REPO_ROOT / "scripts" / "fits" / "out"
+TEST_PLOTS_ROOT = REPO_ROOT / "tests" / "plots" / "out"
+OUTPUT_DIR_NAME = "out"
 
 
 def _clean_analysis_name(name: str) -> str:
@@ -23,11 +23,8 @@ def _clean_analysis_name(name: str) -> str:
 def paper_validation_path(source_path: str | Path, filename: str | None = None) -> Path:
     source = Path(source_path).resolve()
     source_dir = source if source.is_dir() else source.parent
-    rel_dir = source_dir.relative_to(PAPER_VALIDATION_SOURCE_ROOT)
-    rel_parts = list(rel_dir.parts)
-    if rel_parts:
-        rel_parts[0] = _clean_analysis_name(rel_parts[0])
-    target_dir = PAPER_VALIDATION_PLOTS_ROOT.joinpath(*rel_parts)
+    source_dir.relative_to(PAPER_VALIDATION_SOURCE_ROOT)
+    target_dir = source_dir / OUTPUT_DIR_NAME
     target = target_dir / (filename if filename is not None else source.name)
     target.parent.mkdir(parents=True, exist_ok=True)
     return target
@@ -36,11 +33,8 @@ def paper_validation_path(source_path: str | Path, filename: str | None = None) 
 def paper_validation_dir(source_path: str | Path) -> Path:
     source = Path(source_path).resolve()
     source_dir = source if source.is_dir() else source.parent
-    rel_dir = source_dir.relative_to(PAPER_VALIDATION_SOURCE_ROOT)
-    rel_parts = list(rel_dir.parts)
-    if rel_parts:
-        rel_parts[0] = _clean_analysis_name(rel_parts[0])
-    target = PAPER_VALIDATION_PLOTS_ROOT.joinpath(*rel_parts)
+    source_dir.relative_to(PAPER_VALIDATION_SOURCE_ROOT)
+    target = source_dir / OUTPUT_DIR_NAME
     target.mkdir(parents=True, exist_ok=True)
     return target
 
@@ -49,8 +43,12 @@ def paper_validation_output_path(path: str | Path) -> Path:
     source = Path(path).resolve()
     if source.is_relative_to(PAPER_VALIDATION_SOURCE_ROOT):
         return paper_validation_path(source.parent, source.name)
-    source.parent.mkdir(parents=True, exist_ok=True)
-    return source
+    if source.parent.name == OUTPUT_DIR_NAME:
+        target = source
+    else:
+        target = source.parent / OUTPUT_DIR_NAME / source.name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    return target
 
 
 def fits_plot_path(*parts: str | Path) -> Path:
@@ -113,7 +111,7 @@ def test_plot_path(
 
 def plot_data_path(image_path: str | Path) -> Path:
     image = Path(image_path)
-    return image.parent / "data" / f"{image.stem}_plot_data.csv"
+    return image.parent / f"{image.stem}_plot_data.csv"
 
 
 def plot_svg_path(image_path: str | Path) -> Path:
@@ -334,11 +332,10 @@ def export_plot_data(fig: Any, image_path: str | Path) -> Path:
         "width",
         "height",
     ]
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames, lineterminator="\n")
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({field: _format_cell(row.get(field, "")) for field in fieldnames})
+    frame = pd.DataFrame(
+        [{field: _format_cell(row.get(field, "")) for field in fieldnames} for row in rows], columns=fieldnames
+    )
+    frame.to_csv(path, index=False)
     return path
 
 

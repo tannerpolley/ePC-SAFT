@@ -229,6 +229,46 @@ struct PureNeutralRegressionResult {
     std::string backend;
 };
 
+struct GenericRegressionRecord {
+    std::string term_name;
+    int term = 0;
+    double t = 0.0;
+    double p = 0.0;
+    int phase = 0;
+    vector<double> x;
+    vector<double> y;
+    double target = 0.0;
+    int target_index = -1;
+    int target_index_2 = -1;
+    int density_kind = 0;
+    int activity_basis = 0;
+    int solvent_index = -1;
+    double scale = 1.0;
+};
+
+struct GenericRegressionDebugResult {
+    double cost = HUGE_DBL;
+    double residual_norm = HUGE_DBL;
+    vector<double> residuals;
+    std::map<std::string, double> metrics_by_term;
+};
+
+struct GenericRegressionResult {
+    vector<double> x;
+    double cost = HUGE_DBL;
+    double residual_norm = HUGE_DBL;
+    double initial_cost = HUGE_DBL;
+    double initial_residual_norm = HUGE_DBL;
+    std::map<std::string, double> metrics_by_term;
+    bool success = false;
+    int status = 0;
+    int nfev = 0;
+    int iterations = 0;
+    int starts_tried = 0;
+    std::string message;
+    std::string backend;
+};
+
 class ePCSAFTMixtureNative;
 
 class ePCSAFTStateNative {
@@ -376,6 +416,26 @@ PureNeutralRegressionDebugResult evaluate_pure_neutral_objective_debug_cpp(
     const vector<PureNeutralRegressionVLERecord> &pure_vle_records,
     double pure_vle_scale,
     const vector<double> &x
+);
+GenericRegressionDebugResult evaluate_generic_regression_debug_cpp(
+    const vector<add_args> &base_args_by_record,
+    const vector<GenericRegressionRecord> &records,
+    const vector<int> &target_kinds,
+    const vector<int> &target_indices,
+    const vector<int> &target_indices_2,
+    const vector<double> &x
+);
+GenericRegressionResult fit_generic_least_squares_cpp(
+    const vector<add_args> &base_args_by_record,
+    const vector<GenericRegressionRecord> &records,
+    const vector<int> &target_kinds,
+    const vector<int> &target_indices,
+    const vector<int> &target_indices_2,
+    const vector<double> &x0,
+    const vector<double> &lower,
+    const vector<double> &upper,
+    int multistart,
+    int max_nfev
 );
 
 class ValueError: public std::exception

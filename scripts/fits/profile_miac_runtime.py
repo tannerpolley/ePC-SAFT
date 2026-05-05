@@ -29,7 +29,6 @@ if str(REPO_ROOT) not in sys.path:
 from scripts.fits import validate_miac_fits as vmf
 from scripts._epcsaft_oop import as_mixture
 
-
 REPORT_DIR = Path(__file__).resolve().parents[2] / "build" / "runtime_profile"
 REPORT_CSV = REPORT_DIR / "miac_runtime_profile.csv"
 REPORT_MD = REPORT_DIR / "miac_runtime_profile.md"
@@ -61,7 +60,9 @@ def _to_ms(seconds: float) -> float:
     return 1000.0 * float(seconds)
 
 
-def _bench(name: str, fn: Callable[[], object], repeats: int, warmup: int = 1, meta: Dict[str, object] | None = None) -> dict:
+def _bench(
+    name: str, fn: Callable[[], object], repeats: int, warmup: int = 1, meta: Dict[str, object] | None = None
+) -> dict:
     for _ in range(max(0, int(warmup))):
         fn()
 
@@ -227,7 +228,9 @@ def _profile_combo(
             ),
             _bench(
                 f"{label}.point.activity_mean_ionic_molality",
-                lambda: state_probe.activity_coefficient(species=species, mean_ionic_form=True, basis="molality")[pair_key],
+                lambda: state_probe.activity_coefficient(species=species, mean_ionic_form=True, basis="molality")[
+                    pair_key
+                ],
                 repeats=max(3, repeats),
                 warmup=1,
                 meta={"case": label, "dataset": dataset_name, "category": "point"},
@@ -275,7 +278,9 @@ def _profile_combo(
         f"{label}: cached mean-ionic sweep over {grid_points} points saw {int(sweep_miac['reference_state_cache_hits'])} reference-state cache hits, {int(sweep_miac['reference_state_cache_misses'])} misses, {int(sweep_miac['density_warm_start_hits'])} density warm-start hits, and {int(sweep_miac['density_warm_start_fallbacks'])} fallbacks.",
     ]
     if osm_ms > gamma_ms * 0.5:
-        notes.append(f"{label}: osmotic_coefficient remains expensive ({osm_ms:.2f} ms) relative to activity, so any MIAC path that re-enters auxiliary electrolyte properties will be slow.")
+        notes.append(
+            f"{label}: osmotic_coefficient remains expensive ({osm_ms:.2f} ms) relative to activity, so any MIAC path that re-enters auxiliary electrolyte properties will be slow."
+        )
     return rows, notes
 
 
@@ -320,9 +325,7 @@ def _write_reports(rows: List[dict], notes: List[str], grid_points: int, repeats
         "|---|---:|---:|---:|---|",
     ]
     for row in sorted(rows, key=lambda item: item["mean_ms"], reverse=True)[:20]:
-        lines.append(
-            "| {name} | {mean_ms:.3f} | {median_ms:.3f} | {p95_ms:.3f} | {category} |".format(**row)
-        )
+        lines.append("| {name} | {mean_ms:.3f} | {median_ms:.3f} | {p95_ms:.3f} | {category} |".format(**row))
 
     lines.extend(["", "## Notes", ""])
     for note in notes:

@@ -70,6 +70,11 @@ PLOT_RECIPES: tuple[PlotRecipe, ...] = (
         output_dirs=("regression/gradients", "regression/hydrocarbon"),
     ),
     PlotRecipe(
+        source_tests=("tests/regression/test_ethanol_water_binary_vle_regression.py",),
+        plot_targets=("tests/plots/test_regression_plot_outputs.py",),
+        output_dirs=("regression/binary_ethanol_water",),
+    ),
+    PlotRecipe(
         source_tests=("tests/api/test_runtime.py",),
         plot_targets=("tests/plots/test_property_plot_outputs.py",),
         output_dirs=("properties/activity_fugacity", "properties/residual_energy"),
@@ -131,9 +136,9 @@ def missing_recipe_message(targets: Iterable[str]) -> str:
         f"{', '.join(target_list) or '<none>'}.\n"
         "Add an explicit recipe in tests/plots/plot_registry.py, for example:\n\n"
         "    PlotRecipe(\n"
-        f"        source_tests=(\"{target}\",),\n"
-        "        plot_targets=(\"tests/plots/test_<feature>_plot_outputs.py\",),\n"
-        "        output_dirs=(\"<gallery-subfolder>\",),\n"
+        f'        source_tests=("{target}",),\n'
+        '        plot_targets=("tests/plots/test_<feature>_plot_outputs.py",),\n'
+        '        output_dirs=("<gallery-subfolder>",),\n'
         "    )\n\n"
         "The workflow does not synthesize placeholder scientific plots."
     )
