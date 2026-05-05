@@ -1,0 +1,2 @@
+row_index,seed_name,beta_org,aq_H2O,aq_TBP,aq_[emim][tcb],aq_Li+,aq_Cl-,org_H2O,org_TBP,org_[emim][tcb],org_Li+,org_Cl-
+0,row0_manual_org_rich,0.05,0.97622536591281261,0.014753086358215557,0.0010868905774899537,0.0039673285757409566,0.0039673285757409566,0.55,0.30,0.10,0.025,0.025

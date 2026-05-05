@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from numbers import Integral, Real
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 
@@ -29,6 +30,13 @@ class EquilibriumOptions:
     min_composition: float = 1.0e-12
     include_phase_diagnostics: bool = False
     stability_precheck: bool = True
+    legacy_candidate_mode: str = "auto"
+    legacy_candidate_residual_tolerance: float = 2.0e-1
+    legacy_candidate_split_tolerance: float = 1.0e-4
+    legacy_candidate_max_iterations: int = 80
+    ignored_legacy_options: tuple[str, ...] = ()
+    density_diagnostics: Literal["auto", "off", "full"] = "auto"
+    experimental_coupled_density_lle: bool = False
 
 
 @dataclass(frozen=True, slots=True, init=False)
@@ -524,9 +532,47 @@ def neutral_stability(
     )
 
 
-def _normalize_options(options: EquilibriumOptions | None) -> EquilibriumOptions:
+def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -> EquilibriumOptions:
     if options is None:
         return EquilibriumOptions()
+    if isinstance(options, Mapping):
+        raw = dict(options)
+        ignored_keys = []
+        translated: dict[str, Any] = {}
+        legacy_map = {
+            "max_nfev": "max_iterations",
+            "solver_tol": "tolerance",
+            "split_tol": "legacy_candidate_split_tolerance",
+            "solver_accept_norm": "legacy_candidate_residual_tolerance",
+        }
+        for source, target in legacy_map.items():
+            if source in raw:
+                translated[target] = raw.pop(source)
+        ignored_legacy = {"tpdf_global_trials", "tpdf_local_trials", "charge_weight", "seed_x", "force_seed_solve"}
+        for key in sorted(ignored_legacy):
+            if key in raw:
+                raw.pop(key)
+                ignored_keys.append(key)
+        allowed = {
+            "max_iterations",
+            "tolerance",
+            "damping",
+            "min_composition",
+            "include_phase_diagnostics",
+            "stability_precheck",
+            "legacy_candidate_mode",
+            "legacy_candidate_residual_tolerance",
+            "legacy_candidate_split_tolerance",
+            "legacy_candidate_max_iterations",
+            "density_diagnostics",
+            "experimental_coupled_density_lle",
+        }
+        unknown = sorted(set(raw) - allowed)
+        if unknown:
+            raise InputError("Unknown equilibrium option key(s): {}.".format(", ".join(unknown)))
+        translated.update(raw)
+        translated["ignored_legacy_options"] = tuple(ignored_keys)
+        options = EquilibriumOptions(**translated)
     if not isinstance(options, EquilibriumOptions):
         raise InputError("options must be an EquilibriumOptions instance.")
     if isinstance(options.max_iterations, bool) or not isinstance(options.max_iterations, Integral):
@@ -547,6 +593,26 @@ def _normalize_options(options: EquilibriumOptions | None) -> EquilibriumOptions
         raise InputError("options.include_phase_diagnostics must be boolean.")
     if not isinstance(options.stability_precheck, bool):
         raise InputError("options.stability_precheck must be boolean.")
+    legacy_candidate_mode = str(options.legacy_candidate_mode).strip().lower()
+    if legacy_candidate_mode not in {"auto", "off"}:
+        raise InputError("options.legacy_candidate_mode must be 'auto' or 'off'.")
+    legacy_candidate_residual_tolerance = _finite_float_option(options.legacy_candidate_residual_tolerance, "legacy_candidate_residual_tolerance")
+    if legacy_candidate_residual_tolerance <= 0.0:
+        raise InputError("options.legacy_candidate_residual_tolerance must be positive.")
+    legacy_candidate_split_tolerance = _finite_float_option(options.legacy_candidate_split_tolerance, "legacy_candidate_split_tolerance")
+    if legacy_candidate_split_tolerance <= 0.0:
+        raise InputError("options.legacy_candidate_split_tolerance must be positive.")
+    if isinstance(options.legacy_candidate_max_iterations, bool) or not isinstance(options.legacy_candidate_max_iterations, Integral):
+        raise InputError("options.legacy_candidate_max_iterations must be an integer greater than zero.")
+    legacy_candidate_max_iterations = int(options.legacy_candidate_max_iterations)
+    if legacy_candidate_max_iterations <= 0:
+        raise InputError("options.legacy_candidate_max_iterations must be an integer greater than zero.")
+    ignored_legacy_options = tuple(str(item) for item in options.ignored_legacy_options)
+    density_diagnostics = str(options.density_diagnostics).strip().lower()
+    if density_diagnostics not in {"auto", "off", "full"}:
+        raise InputError("options.density_diagnostics must be 'auto', 'off', or 'full'.")
+    if not isinstance(options.experimental_coupled_density_lle, bool):
+        raise InputError("options.experimental_coupled_density_lle must be boolean.")
     return EquilibriumOptions(
         max_iterations=max_iterations,
         tolerance=tolerance,
@@ -554,6 +620,13 @@ def _normalize_options(options: EquilibriumOptions | None) -> EquilibriumOptions
         min_composition=min_composition,
         include_phase_diagnostics=options.include_phase_diagnostics,
         stability_precheck=options.stability_precheck,
+        legacy_candidate_mode=legacy_candidate_mode,
+        legacy_candidate_residual_tolerance=legacy_candidate_residual_tolerance,
+        legacy_candidate_split_tolerance=legacy_candidate_split_tolerance,
+        legacy_candidate_max_iterations=legacy_candidate_max_iterations,
+        ignored_legacy_options=ignored_legacy_options,
+        density_diagnostics=density_diagnostics,  # type: ignore[arg-type]
+        experimental_coupled_density_lle=options.experimental_coupled_density_lle,
     )
 
 
@@ -565,6 +638,8 @@ def _stability_precheck_options(options: EquilibriumOptions) -> EquilibriumOptio
         min_composition=options.min_composition,
         include_phase_diagnostics=False,
         stability_precheck=True,
+        density_diagnostics=options.density_diagnostics,
+        experimental_coupled_density_lle=options.experimental_coupled_density_lle,
     )
 
 
@@ -760,7 +835,15 @@ def _species_pair_for_salt(species: list[str], charges: np.ndarray, salt_label: 
     matches: list[tuple[int, int]] = []
     for cation_i in cation_indices:
         for anion_i in anion_indices:
-            pair_label = _salt_label_token(_ion_stem(species[cation_i]) + _ion_stem(species[anion_i]))
+            cation_stoich, anion_stoich = _salt_stoichiometry(charges[cation_i], charges[anion_i])
+            cation_label = _ion_stem(species[cation_i], charges[cation_i])
+            anion_label = _ion_stem(species[anion_i], charges[anion_i])
+            pair_label = _salt_label_token(
+                cation_label
+                + ("" if cation_stoich == 1 else str(cation_stoich))
+                + anion_label
+                + ("" if anion_stoich == 1 else str(anion_stoich))
+            )
             if pair_label == normalized:
                 matches.append((cation_i, anion_i))
     if len(matches) != 1:
@@ -772,8 +855,26 @@ def _salt_label_token(label: Any) -> str:
     return "".join(ch for ch in str(label) if ch.isalnum()).lower()
 
 
-def _ion_stem(label: str) -> str:
-    return str(label).replace("+", "").replace("-", "")
+def _ion_stem(label: str, charge: float | None = None) -> str:
+    text = str(label)
+    stripped = text.replace("+", "").replace("-", "")
+    if charge is not None and ("+" in text or "-" in text):
+        charge_int = int(round(abs(float(charge))))
+        suffix = str(charge_int)
+        if charge_int > 1 and stripped.endswith(suffix):
+            stripped = stripped[: -len(suffix)]
+    return stripped
+
+
+def _salt_stoichiometry(cation_charge: float, anion_charge: float) -> tuple[int, int]:
+    cation_int = int(round(abs(float(cation_charge))))
+    anion_int = int(round(abs(float(anion_charge))))
+    if cation_int <= 0 or anion_int <= 0:
+        raise InputError("electrolyte salt stoichiometry requires non-zero ion charges.")
+    if abs(float(cation_int) - abs(float(cation_charge))) > 1.0e-12 or abs(float(anion_int) - abs(float(anion_charge))) > 1.0e-12:
+        raise InputError("electrolyte salt stoichiometry currently requires integer ion charges.")
+    gcd = int(np.gcd(cation_int, anion_int))
+    return anion_int // gcd, cation_int // gcd
 
 
 def _electrolyte_formula_basis(mixture: Any, feed: np.ndarray, feed_diagnostics: dict[str, Any]) -> dict[str, Any]:
@@ -786,19 +887,7 @@ def _electrolyte_formula_basis(mixture: Any, feed: np.ndarray, feed_diagnostics:
         raise InputError("electrolyte_lle requires at least two neutral solvent species.")
     if not cation_indices or not anion_indices:
         raise InputError("electrolyte_lle requires at least one cation and one anion.")
-    if len(anion_indices) != 1:
-        raise InputError("V4 electrolyte_lle currently supports 1:1 salts with one shared anion.")
-    anion_i = anion_indices[0]
     salt_labels = tuple(feed_diagnostics.get("salt_molality", {}).keys())
-    if salt_labels:
-        pairs = [_species_pair_for_salt(species, charges, label) for label in salt_labels]
-    else:
-        pairs = [(cation_i, anion_i) for cation_i in cation_indices]
-    if any(abs(float(charges[cation_i]) - 1.0) > 1.0e-12 or abs(float(charges[pair_anion_i]) + 1.0) > 1.0e-12 for cation_i, pair_anion_i in pairs):
-        raise InputError("V4 electrolyte_lle currently supports only 1:1 salts.")
-    cation_sum = float(sum(feed[cation_i] for cation_i, _ in pairs))
-    if abs(cation_sum - float(feed[anion_i])) > 1.0e-8:
-        raise InputError("electrolyte_lle feed must map to charge-neutral 1:1 salt pairs.")
     basis = build_electrolyte_basis(species, charges, feed, salt_labels=tuple(salt_labels))
     payload = basis.to_dict()
     return {
@@ -824,8 +913,8 @@ def _formula_to_explicit_composition(formula_composition: np.ndarray, basis: dic
     offset = len(neutral_indices)
     for salt_pos, pair in enumerate(salt_pairs):
         amount = float(formula[offset + salt_pos])
-        explicit[int(pair["cation"])] += amount
-        explicit[int(pair["anion"])] += amount
+        explicit[int(pair["cation"])] += amount * float(pair.get("cation_stoich", 1.0))
+        explicit[int(pair["anion"])] += amount * float(pair.get("anion_stoich", 1.0))
     total = float(np.sum(explicit))
     if total <= 0.0:
         raise SolutionError("Formula-basis electrolyte phase expanded to a non-positive explicit composition.")
@@ -835,7 +924,7 @@ def _formula_to_explicit_composition(formula_composition: np.ndarray, basis: dic
 def _explicit_to_formula_composition(composition: np.ndarray, basis: dict[str, Any]) -> np.ndarray:
     comp = np.asarray(composition, dtype=float)
     values = [float(comp[index]) for index in basis["neutral_indices"]]
-    values.extend(float(comp[int(pair["cation"])]) for pair in basis["salt_pairs"])
+    values.extend(float(comp[int(pair["cation"])]) / float(pair.get("cation_stoich", 1.0)) for pair in basis["salt_pairs"])
     out = np.asarray(values, dtype=float)
     total = float(np.sum(out))
     if total <= 0.0:
@@ -1543,6 +1632,8 @@ def _options_to_native_dict(options: EquilibriumOptions) -> dict[str, Any]:
         "min_composition": float(options.min_composition),
         "include_phase_diagnostics": bool(options.include_phase_diagnostics),
         "stability_precheck": bool(options.stability_precheck),
+        "density_diagnostics": str(options.density_diagnostics),
+        "experimental_coupled_density_lle": bool(options.experimental_coupled_density_lle),
     }
 
 
@@ -1630,13 +1721,102 @@ def _call_native_equilibrium(
     except _core.NativeSolutionError as exc:
         message = str(exc.args[0]) if getattr(exc, "args", ()) else str(exc)
         diagnostics = exc.args[1] if len(getattr(exc, "args", ())) > 1 and isinstance(exc.args[1], dict) else None
+        diagnostics = _diagnostics_with_legacy_candidate(
+            mixture,
+            kind=kind,
+            T=float(T),
+            P=float(P),
+            feed=np.asarray(z, dtype=float).flatten(),
+            options=options,
+            diagnostics=diagnostics,
+        )
         raise SolutionError(message, diagnostics) from exc
+    if kind in {"electrolyte_lle", "electrolyte_lle_flash"}:
+        diagnostics = dict(payload.get("diagnostics") or {})
+        _add_legacy_option_diagnostics(diagnostics, options)
+        payload["diagnostics"] = diagnostics
     if payload.get("result_type") == "stability":
         diagnostics = dict(payload.get("diagnostics") or {})
         diagnostics.setdefault("parent_phases", request.get("parent_phases", ["liq", "vap"]))
         diagnostics.setdefault("trial_phases", request.get("trial_phases", ["liq", "vap"]))
         payload["diagnostics"] = diagnostics
     return _native_result_from_payload(payload)
+
+
+def _add_legacy_option_diagnostics(diagnostics: dict[str, Any], options: EquilibriumOptions) -> None:
+    diagnostics.setdefault("legacy_candidate_mode", str(options.legacy_candidate_mode))
+    diagnostics.setdefault("legacy_candidate_residual_tolerance", float(options.legacy_candidate_residual_tolerance))
+    diagnostics.setdefault("legacy_candidate_split_tolerance", float(options.legacy_candidate_split_tolerance))
+    diagnostics.setdefault("ignored_legacy_options", list(options.ignored_legacy_options))
+    diagnostics.setdefault("density_diagnostics_mode", str(options.density_diagnostics))
+    diagnostics.setdefault("experimental_coupled_density_lle", bool(options.experimental_coupled_density_lle))
+    diagnostics.setdefault("density_failure_count", 0)
+    diagnostics.setdefault("density_failure_contexts", [])
+    diagnostics.setdefault("density_scan_summary", {})
+    diagnostics.setdefault("density_candidate_roots", [])
+    diagnostics.setdefault("density_best_near_root", {})
+    diagnostics.setdefault("density_fallback_used", False)
+    diagnostics.setdefault("density_fallback_rejected_reason", "")
+    diagnostics.setdefault("density_warm_start_source", "")
+    diagnostics.setdefault("density_validity_gate", "not_evaluated")
+
+
+def _diagnostics_with_legacy_candidate(
+    mixture: Any,
+    *,
+    kind: str,
+    T: float,
+    P: float,
+    feed: np.ndarray,
+    options: EquilibriumOptions,
+    diagnostics: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if diagnostics is None:
+        return None
+    out = dict(diagnostics)
+    _add_legacy_option_diagnostics(out, options)
+    if kind not in {"electrolyte_lle", "electrolyte_lle_flash"}:
+        return out
+    if str(options.legacy_candidate_mode) != "auto":
+        out.setdefault("legacy_candidate_found", False)
+        out.setdefault("legacy_candidate_message", "legacy candidate fallback disabled by options.legacy_candidate_mode")
+        return out
+    min_tpd = out.get("stability_min_tpd", out.get("min_tpd"))
+    try:
+        unstable = float(min_tpd) < -max(float(options.tolerance), 1.0e-8)
+    except (TypeError, ValueError):
+        unstable = out.get("acceptance_gate") == "predictive_solve_failed"
+    collapsed_or_failed = (
+        out.get("best_failure_reason") == "candidate collapsed to one phase"
+        or out.get("acceptance_gate") == "predictive_solve_failed"
+    )
+    if not unstable or not collapsed_or_failed:
+        out.setdefault("legacy_candidate_found", False)
+        out.setdefault("legacy_candidate_message", "legacy candidate fallback was not triggered")
+        return out
+    try:
+        from .equilibrium_core.legacy_electrolyte_candidate import legacy_electrolyte_lle_candidate
+
+        legacy = legacy_electrolyte_lle_candidate(mixture, T=T, P=P, feed=feed, options=options)
+    except Exception as exc:
+        legacy = {
+            "legacy_candidate_found": False,
+            "legacy_candidate_message": "legacy candidate fallback failed: {}".format(exc),
+        }
+    out.update(_json_like(legacy))
+    return out
+
+
+def initial_phases_from_result(result: EquilibriumResult) -> dict[str, object]:
+    """Build electrolyte LLE ``initial_phases`` from an accepted aq/org result."""
+    phases = {phase.label: phase for phase in result.phases}
+    if "aq" not in phases or "org" not in phases:
+        raise InputError("initial_phases_from_result requires an electrolyte LLE result with aq and org phases.")
+    return {
+        "aq": phases["aq"].composition.copy(),
+        "org": phases["org"].composition.copy(),
+        "phase_fraction": float(phases["org"].phase_fraction),
+    }
 
 
 def tp_flash(mixture: Any, *, T: float, P: float, z: Any, options: EquilibriumOptions | None = None) -> EquilibriumResult:
@@ -1846,6 +2026,15 @@ def electrolyte_lle_flash_native(
             "best_failure_reason": str(exc),
         }
         diagnostics.update(feed_diagnostics)
+        diagnostics = _diagnostics_with_legacy_candidate(
+            mixture,
+            kind="electrolyte_lle",
+            T=temperature,
+            P=pressure,
+            feed=feed,
+            options=opts,
+            diagnostics=diagnostics,
+        )
         raise SolutionError("electrolyte LLE flash did not converge", _json_like(diagnostics)) from exc
     assert isinstance(result, EquilibriumResult)
     diagnostics = dict(result.diagnostics)

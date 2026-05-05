@@ -52,6 +52,10 @@ struct ElectrolyteSaltPairNative {
     std::string label;
     int cation = -1;
     int anion = -1;
+    int cation_stoich = 1;
+    int anion_stoich = 1;
+    double cation_charge = 1.0;
+    double anion_charge = -1.0;
 };
 
 struct ElectrolyteBasisNative {
@@ -158,13 +162,30 @@ PhaseStateNative phase_state(
     double t,
     double p,
     const std::vector<double>& composition,
-    const std::string& phase
+    const std::string& phase,
+    const std::string& label = ""
 ) {
     PhaseStateNative out;
-    out.state = mixture->state(t, composition, phase_token_to_int(phase), true, p, false, 0.0);
+    int phase_int = phase_token_to_int(phase);
+    double rho = mixture->solve_density_scoped(t, p, composition, phase_int, label.empty() ? phase : label);
+    out.state = mixture->state(t, composition, phase_int, false, 0.0, true, rho);
     out.ln_phi = out.state->ln_fugacity_coefficient();
     out.density = out.state->density();
     return out;
+}
+
+void append_last_density_failure(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    std::vector<DensitySolveDiagnostics>* failures
+) {
+    if (failures == nullptr) {
+        return;
+    }
+    DensitySolveDiagnostics diagnostics = mixture->last_density_diagnostics();
+    if (diagnostics.validity_gate != "failed") {
+        return;
+    }
+    failures->push_back(diagnostics);
 }
 
 EquilibriumPhaseNative phase_from_state(
@@ -286,14 +307,33 @@ std::vector<std::pair<std::string, std::vector<double>>> tpd_seeds(const std::ve
     return seeds;
 }
 
-std::string ion_stem(const std::string& label) {
+std::string ion_stem(const std::string& label, double charge = 0.0) {
     std::string out;
     for (char ch : label) {
         if (ch != '+' && ch != '-') {
             out.push_back(ch);
         }
     }
+    int charge_int = static_cast<int>(std::round(std::abs(charge)));
+    if (charge_int > 1 && (label.find('+') != std::string::npos || label.find('-') != std::string::npos)) {
+        std::string suffix = std::to_string(charge_int);
+        if (out.size() >= suffix.size() && out.substr(out.size() - suffix.size()) == suffix) {
+            out.erase(out.size() - suffix.size());
+        }
+    }
     return out;
+}
+
+std::pair<int, int> neutral_salt_stoichiometry(double cation_charge, double anion_charge) {
+    int cation_z = static_cast<int>(std::round(std::abs(cation_charge)));
+    int anion_z = static_cast<int>(std::round(std::abs(anion_charge)));
+    if (cation_z <= 0 || anion_z <= 0
+        || std::abs(static_cast<double>(cation_z) - std::abs(cation_charge)) > 1.0e-12
+        || std::abs(static_cast<double>(anion_z) - std::abs(anion_charge)) > 1.0e-12) {
+        throw ValueError("electrolyte salt stoichiometry currently requires integer ion charges.");
+    }
+    int divisor = std::gcd(cation_z, anion_z);
+    return {anion_z / divisor, cation_z / divisor};
 }
 
 ElectrolyteBasisNative build_electrolyte_basis_native(
@@ -318,37 +358,108 @@ ElectrolyteBasisNative build_electrolyte_basis_native(
     if (basis.neutral_indices.size() < 2 || basis.cation_indices.empty() || basis.anion_indices.empty()) {
         throw ValueError("electrolyte_lle requires at least two neutral species plus cations and anions.");
     }
-    if (basis.anion_indices.size() != 1) {
-        throw ValueError("V5 electrolyte equilibrium currently supports 1:1 salts with one shared anion.");
-    }
-    int anion = basis.anion_indices[0];
-    double cation_sum = 0.0;
-    for (int cation : basis.cation_indices) {
-        if (std::abs(charges[static_cast<std::size_t>(cation)] - 1.0) > 1.0e-12
-            || std::abs(charges[static_cast<std::size_t>(anion)] + 1.0) > 1.0e-12) {
-            throw ValueError("V5 electrolyte equilibrium currently supports only 1:1 salts.");
+    if (basis.anion_indices.size() == 1) {
+        int anion = basis.anion_indices[0];
+        for (int cation : basis.cation_indices) {
+            auto stoich = neutral_salt_stoichiometry(charges[static_cast<std::size_t>(cation)], charges[static_cast<std::size_t>(anion)]);
+            ElectrolyteSaltPairNative pair;
+            std::string cat_label = species.size() == feed.size() ? species[static_cast<std::size_t>(cation)] : std::to_string(cation);
+            std::string an_label = species.size() == feed.size() ? species[static_cast<std::size_t>(anion)] : std::to_string(anion);
+            pair.cation = cation;
+            pair.anion = anion;
+            pair.cation_stoich = stoich.first;
+            pair.anion_stoich = stoich.second;
+            pair.cation_charge = charges[static_cast<std::size_t>(cation)];
+            pair.anion_charge = charges[static_cast<std::size_t>(anion)];
+            pair.label = ion_stem(cat_label, pair.cation_charge)
+                + (pair.cation_stoich == 1 ? "" : std::to_string(pair.cation_stoich))
+                + ion_stem(an_label, pair.anion_charge)
+                + (pair.anion_stoich == 1 ? "" : std::to_string(pair.anion_stoich));
+            basis.salt_pairs.push_back(pair);
         }
-        ElectrolyteSaltPairNative pair;
-        std::string cat_label = species.size() == feed.size() ? species[static_cast<std::size_t>(cation)] : std::to_string(cation);
-        std::string an_label = species.size() == feed.size() ? species[static_cast<std::size_t>(anion)] : std::to_string(anion);
-        pair.label = ion_stem(cat_label) + ion_stem(an_label);
-        pair.cation = cation;
-        pair.anion = anion;
-        basis.salt_pairs.push_back(pair);
-        cation_sum += feed[static_cast<std::size_t>(cation)];
+    } else if (basis.cation_indices.size() == 1) {
+        int cation = basis.cation_indices[0];
+        for (int anion : basis.anion_indices) {
+            auto stoich = neutral_salt_stoichiometry(charges[static_cast<std::size_t>(cation)], charges[static_cast<std::size_t>(anion)]);
+            ElectrolyteSaltPairNative pair;
+            std::string cat_label = species.size() == feed.size() ? species[static_cast<std::size_t>(cation)] : std::to_string(cation);
+            std::string an_label = species.size() == feed.size() ? species[static_cast<std::size_t>(anion)] : std::to_string(anion);
+            pair.cation = cation;
+            pair.anion = anion;
+            pair.cation_stoich = stoich.first;
+            pair.anion_stoich = stoich.second;
+            pair.cation_charge = charges[static_cast<std::size_t>(cation)];
+            pair.anion_charge = charges[static_cast<std::size_t>(anion)];
+            pair.label = ion_stem(cat_label, pair.cation_charge)
+                + (pair.cation_stoich == 1 ? "" : std::to_string(pair.cation_stoich))
+                + ion_stem(an_label, pair.anion_charge)
+                + (pair.anion_stoich == 1 ? "" : std::to_string(pair.anion_stoich));
+            basis.salt_pairs.push_back(pair);
+        }
+    } else {
+        int anchor_anion = basis.anion_indices[0];
+        for (int cation : basis.cation_indices) {
+            auto stoich = neutral_salt_stoichiometry(charges[static_cast<std::size_t>(cation)], charges[static_cast<std::size_t>(anchor_anion)]);
+            ElectrolyteSaltPairNative pair;
+            std::string cat_label = species.size() == feed.size() ? species[static_cast<std::size_t>(cation)] : std::to_string(cation);
+            std::string an_label = species.size() == feed.size() ? species[static_cast<std::size_t>(anchor_anion)] : std::to_string(anchor_anion);
+            pair.cation = cation;
+            pair.anion = anchor_anion;
+            pair.cation_stoich = stoich.first;
+            pair.anion_stoich = stoich.second;
+            pair.cation_charge = charges[static_cast<std::size_t>(cation)];
+            pair.anion_charge = charges[static_cast<std::size_t>(anchor_anion)];
+            pair.label = ion_stem(cat_label, pair.cation_charge)
+                + (pair.cation_stoich == 1 ? "" : std::to_string(pair.cation_stoich))
+                + ion_stem(an_label, pair.anion_charge)
+                + (pair.anion_stoich == 1 ? "" : std::to_string(pair.anion_stoich));
+            basis.salt_pairs.push_back(pair);
+        }
+        int anchor_cation = basis.cation_indices[0];
+        for (std::size_t pos = 1; pos < basis.anion_indices.size(); ++pos) {
+            int anion = basis.anion_indices[pos];
+            auto stoich = neutral_salt_stoichiometry(charges[static_cast<std::size_t>(anchor_cation)], charges[static_cast<std::size_t>(anion)]);
+            ElectrolyteSaltPairNative pair;
+            std::string cat_label = species.size() == feed.size() ? species[static_cast<std::size_t>(anchor_cation)] : std::to_string(anchor_cation);
+            std::string an_label = species.size() == feed.size() ? species[static_cast<std::size_t>(anion)] : std::to_string(anion);
+            pair.cation = anchor_cation;
+            pair.anion = anion;
+            pair.cation_stoich = stoich.first;
+            pair.anion_stoich = stoich.second;
+            pair.cation_charge = charges[static_cast<std::size_t>(anchor_cation)];
+            pair.anion_charge = charges[static_cast<std::size_t>(anion)];
+            pair.label = ion_stem(cat_label, pair.cation_charge)
+                + (pair.cation_stoich == 1 ? "" : std::to_string(pair.cation_stoich))
+                + ion_stem(an_label, pair.anion_charge)
+                + (pair.anion_stoich == 1 ? "" : std::to_string(pair.anion_stoich));
+            basis.salt_pairs.push_back(pair);
+        }
     }
-    if (std::abs(cation_sum - feed[static_cast<std::size_t>(anion)]) > 1.0e-8) {
-        throw ValueError("electrolyte_lle feed must map to charge-neutral 1:1 salt pairs.");
+    std::vector<double> reconstructed_charged(feed.size(), 0.0);
+    for (const auto& pair : basis.salt_pairs) {
+        double amount = feed[static_cast<std::size_t>(pair.cation)] / static_cast<double>(pair.cation_stoich);
+        reconstructed_charged[static_cast<std::size_t>(pair.cation)] += amount * static_cast<double>(pair.cation_stoich);
+        reconstructed_charged[static_cast<std::size_t>(pair.anion)] += amount * static_cast<double>(pair.anion_stoich);
+    }
+    for (int index : basis.cation_indices) {
+        if (std::abs(reconstructed_charged[static_cast<std::size_t>(index)] - feed[static_cast<std::size_t>(index)]) > 1.0e-8) {
+            throw ValueError("electrolyte_lle feed cannot be represented on the charge-constrained salt basis.");
+        }
+    }
+    for (int index : basis.anion_indices) {
+        if (std::abs(reconstructed_charged[static_cast<std::size_t>(index)] - feed[static_cast<std::size_t>(index)]) > 1.0e-8) {
+            throw ValueError("electrolyte_lle feed cannot be represented on the charge-constrained salt basis.");
+        }
     }
     std::vector<double> formula_moles;
     for (int index : basis.neutral_indices) {
         formula_moles.push_back(feed[static_cast<std::size_t>(index)]);
     }
     for (const auto& pair : basis.salt_pairs) {
-        formula_moles.push_back(feed[static_cast<std::size_t>(pair.cation)]);
+        formula_moles.push_back(feed[static_cast<std::size_t>(pair.cation)] / static_cast<double>(pair.cation_stoich));
     }
     basis.formula_feed = clip_normalize(formula_moles, 1.0e-300);
-    basis.basis_rank = static_cast<int>(basis.cation_indices.size());
+    basis.basis_rank = static_cast<int>(basis.salt_pairs.size());
     return basis;
 }
 
@@ -365,8 +476,8 @@ std::pair<std::vector<double>, double> formula_to_explicit(
     for (std::size_t salt_pos = 0; salt_pos < basis.salt_pairs.size(); ++salt_pos) {
         double amount = formula[offset + salt_pos];
         const auto& pair = basis.salt_pairs[salt_pos];
-        explicit_x[static_cast<std::size_t>(pair.cation)] += amount;
-        explicit_x[static_cast<std::size_t>(pair.anion)] += amount;
+        explicit_x[static_cast<std::size_t>(pair.cation)] += amount * static_cast<double>(pair.cation_stoich);
+        explicit_x[static_cast<std::size_t>(pair.anion)] += amount * static_cast<double>(pair.anion_stoich);
     }
     double total = std::accumulate(explicit_x.begin(), explicit_x.end(), 0.0);
     if (total <= 0.0 || !std::isfinite(total)) {
@@ -384,7 +495,7 @@ std::vector<double> explicit_to_formula(const std::vector<double>& composition, 
         values.push_back(composition[static_cast<std::size_t>(index)]);
     }
     for (const auto& pair : basis.salt_pairs) {
-        values.push_back(composition[static_cast<std::size_t>(pair.cation)]);
+        values.push_back(composition[static_cast<std::size_t>(pair.cation)] / static_cast<double>(pair.cation_stoich));
     }
     return clip_normalize(values, 1.0e-300);
 }
@@ -420,8 +531,10 @@ std::vector<double> electrolyte_residual_vector(
     for (const auto& pair : basis.salt_pairs) {
         std::size_t c = static_cast<std::size_t>(pair.cation);
         std::size_t a = static_cast<std::size_t>(pair.anion);
-        double org_pair = std::log(org_comp[c]) + org_state.ln_phi[c] + std::log(org_comp[a]) + org_state.ln_phi[a];
-        double aq_pair = std::log(aq_comp[c]) + aq_state.ln_phi[c] + std::log(aq_comp[a]) + aq_state.ln_phi[a];
+        double org_pair = pair.cation_stoich * (std::log(org_comp[c]) + org_state.ln_phi[c])
+            + pair.anion_stoich * (std::log(org_comp[a]) + org_state.ln_phi[a]);
+        double aq_pair = pair.cation_stoich * (std::log(aq_comp[c]) + aq_state.ln_phi[c])
+            + pair.anion_stoich * (std::log(aq_comp[a]) + aq_state.ln_phi[a]);
         residuals.push_back(org_pair - aq_pair);
     }
     return residuals;
@@ -487,6 +600,34 @@ std::vector<std::pair<std::string, std::vector<double>>> electrolyte_formula_see
     if (rachford_rice_beta(feed, k, beta, message)) {
         auto comps = phase_compositions(feed, k, beta, options.min_composition);
         seeds.push_back({"partition_seed", explicit_to_formula(comps.second, basis)});
+    }
+    return seeds;
+}
+
+std::vector<std::pair<std::string, std::vector<double>>> electrolyte_endpoint_phase_seeds(
+    const ElectrolyteBasisNative& basis,
+    const EquilibriumOptionsNative& options
+) {
+    std::vector<std::pair<std::string, std::vector<double>>> seeds;
+    if (basis.neutral_indices.size() < 2 || basis.salt_pairs.empty()) {
+        return seeds;
+    }
+    const std::size_t n_formula = basis.formula_feed.size();
+    const std::size_t aq_index = 0;
+    const std::size_t org_index = 1;
+    const std::size_t salt_index = basis.neutral_indices.size();
+    for (double salt_share : {0.001, 0.01, 0.05, 0.15}) {
+        std::vector<double> org_formula(n_formula, options.min_composition);
+        org_formula[org_index] = 0.80;
+        org_formula[aq_index] = 0.20;
+        org_formula[salt_index] = salt_share;
+        seeds.push_back({"org_endpoint_salt_" + std::to_string(static_cast<int>(salt_share * 1000)), clip_normalize(org_formula, options.min_composition)});
+
+        std::vector<double> aq_formula(n_formula, options.min_composition);
+        aq_formula[aq_index] = 0.95;
+        aq_formula[org_index] = 0.05;
+        aq_formula[salt_index] = salt_share;
+        seeds.push_back({"aq_endpoint_salt_" + std::to_string(static_cast<int>(salt_share * 1000)), clip_normalize(aq_formula, options.min_composition)});
     }
     return seeds;
 }
@@ -1474,8 +1615,8 @@ ElectrolyteCandidateNative evaluate_predictive_electrolyte_variables(
     double aq_scale = aq_expanded.second;
     double org_scale = org_expanded.second;
     out.beta_org = out.beta_formula * org_scale / ((1.0 - out.beta_formula) * aq_scale + out.beta_formula * org_scale);
-    out.aq_state = phase_state(mixture, t, p, out.aq_comp, "liq");
-    out.org_state = phase_state(mixture, t, p, out.org_comp, "liq");
+    out.aq_state = phase_state(mixture, t, p, out.aq_comp, "liq", "aq");
+    out.org_state = phase_state(mixture, t, p, out.org_comp, "liq", "org");
     out.residual = electrolyte_residual_vector(out.aq_comp, out.org_comp, out.aq_state, out.org_state, basis);
     out.material_residual.resize(feed.size(), 0.0);
     for (std::size_t i = 0; i < feed.size(); ++i) {
@@ -1539,6 +1680,25 @@ std::string electrolyte_failure_reason(const ElectrolyteCandidateNative& candida
     return "candidate collapsed to one phase";
 }
 
+EquilibriumAttemptDiagnosticsNative electrolyte_attempt_diagnostics(
+    const std::string& seed_name,
+    const ElectrolyteCandidateNative& candidate,
+    const EquilibriumOptionsNative& options,
+    bool accepted
+) {
+    EquilibriumAttemptDiagnosticsNative out;
+    out.seed_name = seed_name;
+    out.rejection_reason = accepted ? "accepted" : electrolyte_failure_reason(candidate, options, true);
+    out.beta_org = candidate.beta_org;
+    out.phase_distance = candidate.phase_distance_value;
+    out.solver_residual_norm = candidate.solver_residual_norm;
+    out.material_balance_error = candidate.material_error;
+    out.charge_balance_error = candidate.charge_balance_error;
+    out.gibbs_delta = candidate.gibbs_delta;
+    out.iterations = candidate.iteration;
+    return out;
+}
+
 EquilibriumResultNative electrolyte_lle_failure_result(
     const std::vector<double>& feed,
     const ElectrolyteBasisNative& basis,
@@ -1546,7 +1706,8 @@ EquilibriumResultNative electrolyte_lle_failure_result(
     const ElectrolyteCandidateNative& best,
     const std::string& best_seed,
     bool has_best,
-    const EquilibriumOptionsNative& options
+    const EquilibriumOptionsNative& options,
+    const std::vector<EquilibriumAttemptDiagnosticsNative>& attempts
 ) {
     EquilibriumResultNative result;
     result.backend = "electrolyte_lle";
@@ -1568,9 +1729,19 @@ EquilibriumResultNative electrolyte_lle_failure_result(
     result.diagnostics_string["gibbs_seed_method"] = "native_golden_section";
     result.diagnostics_string["best_failure_reason"] = reason;
     result.diagnostics_string["message"] = "electrolyte LLE flash did not converge";
+    result.diagnostics_string["density_diagnostics_mode"] = options.density_diagnostics;
+    result.diagnostics_string["density_validity_gate"] = "not_evaluated";
+    result.diagnostics_string["density_warm_start_source"] = "";
+    result.diagnostics_bool["experimental_coupled_density_lle"] = options.experimental_coupled_density_lle;
+    result.diagnostics_bool["coupled_density_lle_attempted"] = options.experimental_coupled_density_lle;
+    result.diagnostics_bool["density_fallback_used"] = false;
+    result.diagnostics_int["density_failure_count"] = 0;
     result.diagnostics_bool["stability_checked"] = true;
     result.diagnostics_bool["stability_stable"] = stability.stable;
+    result.diagnostics_bool["unstable_feed_collapsed_all_candidates"] = stability.min_tpd < -std::max(options.tolerance, 1.0e-8)
+        && reason == "candidate collapsed to one phase";
     result.diagnostics_int["basis_rank"] = basis.basis_rank;
+    result.diagnostics_int["seed_attempt_count"] = static_cast<int>(attempts.size());
     result.diagnostics_int["iterations"] = has_best ? best.iteration : 0;
     result.diagnostics_int["repeated_stability_iterations"] = 1;
     result.diagnostics_int["requested_max_iterations"] = options.max_iterations;
@@ -1586,6 +1757,14 @@ EquilibriumResultNative electrolyte_lle_failure_result(
     result.diagnostics_double["stability_min_tpd"] = stability.min_tpd;
     result.diagnostics_vector["feed_composition"] = feed;
     result.diagnostics_vector["fugacity_residual"] = best.residual;
+    if (has_best && best.phase_distance_value > std::max(1.0e-4, split_distance_tolerance(options))) {
+        result.diagnostics_vector["best_noncollapsed_candidate_aq"] = best.aq_comp;
+        result.diagnostics_vector["best_noncollapsed_candidate_org"] = best.org_comp;
+        result.diagnostics_string["best_noncollapsed_candidate"] = "available";
+    } else {
+        result.diagnostics_string["best_noncollapsed_candidate"] = "none";
+    }
+    result.attempt_diagnostics = attempts;
     return result;
 }
 
@@ -1703,8 +1882,8 @@ std::vector<double> gibbs_seed_variables_from_trial(
         auto aq_expanded = formula_to_explicit(aq_formula, basis, feed.size());
         auto org_expanded = formula_to_explicit(org_formula, basis, feed.size());
         double beta_org = beta_formula * org_expanded.second / ((1.0 - beta_formula) * aq_expanded.second + beta_formula * org_expanded.second);
-        PhaseStateNative aq_state = phase_state(mixture, t, p, aq_expanded.first, "liq");
-        PhaseStateNative org_state = phase_state(mixture, t, p, org_expanded.first, "liq");
+        PhaseStateNative aq_state = phase_state(mixture, t, p, aq_expanded.first, "liq", "aq");
+        PhaseStateNative org_state = phase_state(mixture, t, p, org_expanded.first, "liq", "org");
         return (1.0 - beta_org) * electrolyte_gibbs_proxy(aq_expanded.first, aq_state)
             + beta_org * electrolyte_gibbs_proxy(org_expanded.first, org_state);
     };
@@ -1742,13 +1921,15 @@ ElectrolyteCandidateNative solve_predictive_electrolyte_attempt(
     const ElectrolyteBasisNative& basis,
     const EquilibriumOptionsNative& options,
     const std::vector<double>& seed_variables,
-    double gibbs_feed
+    double gibbs_feed,
+    std::vector<DensitySolveDiagnostics>* density_failures
 ) {
     std::vector<double> variables = seed_variables;
     auto objective_fn = [&](const std::vector<double>& candidate) {
         try {
             return l2_norm(evaluate_predictive_electrolyte_variables(mixture, t, p, feed, basis, candidate, options, gibbs_feed).residual);
         } catch (const SolutionError&) {
+            append_last_density_failure(mixture, density_failures);
             return l2_norm(predictive_infeasible_residual(candidate, basis, options));
         }
     };
@@ -1762,6 +1943,7 @@ ElectrolyteCandidateNative solve_predictive_electrolyte_attempt(
         try {
             current = evaluate_predictive_electrolyte_variables(mixture, t, p, feed, basis, variables, options, gibbs_feed);
         } catch (const SolutionError&) {
+            append_last_density_failure(mixture, density_failures);
             std::vector<double> residual = predictive_infeasible_residual(variables, basis, options);
             current.objective = l2_norm(residual);
             current.residual = residual;
@@ -1778,6 +1960,7 @@ ElectrolyteCandidateNative solve_predictive_electrolyte_attempt(
             try {
                 return evaluate_predictive_electrolyte_variables(mixture, t, p, feed, basis, candidate, options, gibbs_feed).residual;
             } catch (const SolutionError&) {
+                append_last_density_failure(mixture, density_failures);
                 return predictive_infeasible_residual(candidate, basis, options);
             }
         };
@@ -1827,7 +2010,7 @@ EquilibriumResultNative electrolyte_lle_native(
     }
     ElectrolyteBasisNative basis = build_electrolyte_basis_native(mixture, feed, species);
     EquilibriumOptionsNative solver_options = options;
-    PhaseStateNative feed_state = phase_state(mixture, t, p, feed, "liq");
+    PhaseStateNative feed_state = phase_state(mixture, t, p, feed, "liq", "feed");
     double gibbs_feed = electrolyte_gibbs_proxy(feed, feed_state);
     std::vector<std::pair<std::string, std::vector<double>>> seed_variables;
     if (has_initial_phases) {
@@ -1872,12 +2055,21 @@ EquilibriumResultNative electrolyte_lle_native(
         }
     }
     for (const auto& seed : electrolyte_formula_seeds(mixture, feed, basis, solver_options)) {
-        seed_variables.emplace_back(seed.first, pack_predictive_electrolyte_variables(0.5, seed.second));
+        for (double beta : {0.02, 0.05, 0.10, 0.25, 0.50, 0.75, 0.90}) {
+            seed_variables.emplace_back(seed.first + "_b" + std::to_string(static_cast<int>(100 * beta)), pack_predictive_electrolyte_variables(beta, seed.second));
+        }
+    }
+    for (const auto& seed : electrolyte_endpoint_phase_seeds(basis, solver_options)) {
+        for (double beta : {0.02, 0.05, 0.10, 0.25, 0.50}) {
+            seed_variables.emplace_back(seed.first + "_b" + std::to_string(static_cast<int>(100 * beta)), pack_predictive_electrolyte_variables(beta, seed.second));
+        }
     }
     ElectrolyteCandidateNative best;
     std::string best_seed;
     bool has_best = false;
     bool accepted = false;
+    std::vector<EquilibriumAttemptDiagnosticsNative> attempts;
+    std::vector<DensitySolveDiagnostics> density_failures;
     for (const auto& seed : seed_variables) {
         ElectrolyteCandidateNative candidate = solve_predictive_electrolyte_attempt(
             mixture,
@@ -1887,14 +2079,17 @@ EquilibriumResultNative electrolyte_lle_native(
             basis,
             solver_options,
             seed.second,
-            gibbs_feed
+            gibbs_feed,
+            &density_failures
         );
+        bool candidate_accepted = predictive_electrolyte_accepted(candidate, solver_options);
+        attempts.push_back(electrolyte_attempt_diagnostics(seed.first, candidate, solver_options, candidate_accepted));
         if (!has_best || candidate.objective < best.objective) {
             best = candidate;
             best_seed = seed.first;
             has_best = true;
         }
-        if (predictive_electrolyte_accepted(candidate, solver_options)) {
+        if (candidate_accepted) {
             best = candidate;
             best_seed = seed.first;
             accepted = true;
@@ -1902,7 +2097,9 @@ EquilibriumResultNative electrolyte_lle_native(
         }
     }
     if (!has_best || !accepted) {
-        return electrolyte_lle_failure_result(feed, basis, stability, best, best_seed, has_best, solver_options);
+        EquilibriumResultNative result = electrolyte_lle_failure_result(feed, basis, stability, best, best_seed, has_best, solver_options, attempts);
+        result.density_diagnostics = density_failures;
+        return result;
     }
     bool labels_swapped = false;
     std::string phase_label_basis = "composition_order";
@@ -1952,10 +2149,18 @@ EquilibriumResultNative electrolyte_lle_native(
     result.diagnostics_string["tpd_method"] = "native_tpd_global_search";
     result.diagnostics_string["gibbs_seed_method"] = "native_golden_section";
     result.diagnostics_string["phase_label_basis"] = phase_label_basis;
+    result.diagnostics_string["density_diagnostics_mode"] = options.density_diagnostics;
+    result.diagnostics_string["density_validity_gate"] = "passed";
+    result.diagnostics_string["density_warm_start_source"] = mixture->last_density_diagnostics().warm_start_source;
     result.diagnostics_bool["phase_labels_swapped"] = labels_swapped;
+    result.diagnostics_bool["experimental_coupled_density_lle"] = options.experimental_coupled_density_lle;
+    result.diagnostics_bool["coupled_density_lle_attempted"] = options.experimental_coupled_density_lle;
+    result.diagnostics_bool["density_fallback_used"] = false;
     result.diagnostics_bool["stability_checked"] = true;
     result.diagnostics_bool["stability_stable"] = stability.stable;
     result.diagnostics_int["basis_rank"] = basis.basis_rank;
+    result.diagnostics_int["seed_attempt_count"] = static_cast<int>(attempts.size());
+    result.diagnostics_int["density_failure_count"] = 0;
     result.diagnostics_int["iterations"] = best.iteration;
     result.diagnostics_int["repeated_stability_iterations"] = 1;
     result.diagnostics_int["requested_max_iterations"] = options.max_iterations;
@@ -1971,5 +2176,8 @@ EquilibriumResultNative electrolyte_lle_native(
     result.diagnostics_double["stability_min_tpd"] = stability.min_tpd;
     result.diagnostics_vector["feed_composition"] = feed;
     result.diagnostics_vector["fugacity_residual"] = best.residual;
+    result.diagnostics_string["best_noncollapsed_candidate"] = "accepted";
+    result.attempt_diagnostics = attempts;
+    result.density_diagnostics = density_failures;
     return result;
 }

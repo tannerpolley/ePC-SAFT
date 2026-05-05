@@ -229,6 +229,7 @@ ScalarContributionTerms normalized_dadrho_terms_cpp(const ScalarContributionTerm
 ScalarContributionTerms compressibility_terms_from_dadrho_cpp(const DadrhoResult &result);
 vector<double> density_scan_grid_cpp();
 DensityScanPoint density_scan_point_cpp(double nu, double t, int ncomp, const vector<double> &x, double p, const add_args &cppargs);
+std::string density_failure_message_cpp(const std::string &outcome, double t, double p, const vector<double> &x, int phase);
 vector<DensityBracket> density_brackets_cpp(const vector<DensityScanPoint> &points);
 void refine_density_brackets_cpp(
     const DensityBracket &coarse,
@@ -240,6 +241,7 @@ void refine_density_brackets_cpp(
     vector<DensityBracket> &refined_brackets
 );
 bool density_root_valid_cpp(double t, double p, const vector<double> &x, const add_args &cppargs, double rho, DensityRootCandidate *candidate);
+DensitySolveResult density_solve_report_cpp(double t, double p, vector<double> x, int phase, const add_args &cppargs);
 bool density_root_from_seed_cpp(
     double t,
     double p,

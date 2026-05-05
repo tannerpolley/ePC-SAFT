@@ -65,14 +65,17 @@ def build_electrolyte_basis(
     e_matrix = np.zeros((len(charged_indices) - 1, len(charged_indices)), dtype=float)
     charged_pos = {index: pos for pos, index in enumerate(charged_indices)}
     for row, pair in enumerate(pairs):
-        e_matrix[row, charged_pos[int(pair["cation"])]] = 1.0 / abs(float(z[int(pair["cation"])]))
-        e_matrix[row, charged_pos[int(pair["anion"])]] = 1.0 / abs(float(z[int(pair["anion"])]))
+        e_matrix[row, charged_pos[int(pair["cation"])]] = float(pair["cation_stoich"])
+        e_matrix[row, charged_pos[int(pair["anion"])]] = float(pair["anion_stoich"])
 
     rank = int(np.linalg.matrix_rank(e_matrix, tol=1.0e-12))
     if rank != len(charged_indices) - 1:
         raise InputError("electrolyte counterion-pair matrix is rank deficient.")
 
-    formula_moles = np.asarray([*(x[i] for i in neutral_indices), *(x[int(pair["cation"])] for pair in pairs)], dtype=float)
+    formula_moles = np.asarray(
+        [*(x[i] for i in neutral_indices), *(x[int(pair["cation"])] / float(pair["cation_stoich"]) for pair in pairs)],
+        dtype=float,
+    )
     formula_total = float(np.sum(formula_moles))
     if formula_total <= 0.0:
         raise InputError("electrolyte formula-basis feed has non-positive total.")
@@ -106,22 +109,22 @@ def _independent_counterion_pairs(
     if len(anion_indices) == 1:
         anion_i = anion_indices[0]
         for cation_i in cation_indices:
-            pairs.append(_pair_payload(species, cation_i, anion_i))
+            pairs.append(_pair_payload(species, charges, cation_i, anion_i))
         return pairs
     if len(cation_indices) == 1:
         cation_i = cation_indices[0]
         for anion_i in anion_indices:
-            pairs.append(_pair_payload(species, cation_i, anion_i))
+            pairs.append(_pair_payload(species, charges, cation_i, anion_i))
         return pairs
 
     cations = sorted(cation_indices, key=lambda idx: (-float(feed[idx]), int(idx)))
     anions = sorted(anion_indices, key=lambda idx: (-float(feed[idx]), int(idx)))
     anchor_cation = cations[0]
     for anion_i in anions:
-        pairs.append(_pair_payload(species, anchor_cation, anion_i))
+        pairs.append(_pair_payload(species, charges, anchor_cation, anion_i))
     anchor_anion = anions[0]
     for cation_i in cations[1:]:
-        pairs.append(_pair_payload(species, cation_i, anchor_anion))
+        pairs.append(_pair_payload(species, charges, cation_i, anchor_anion))
     return pairs
 
 
@@ -136,21 +139,31 @@ def _pair_for_salt_label(
     matches = []
     for cation_i in cation_indices:
         for anion_i in anion_indices:
-            if _salt_token(_ion_stem(species[cation_i]) + _ion_stem(species[anion_i])) == token:
+            candidate = _pair_payload(species, charges, cation_i, anion_i)
+            if _salt_token(candidate["label"]) == token:
                 matches.append((cation_i, anion_i))
     if len(matches) != 1:
         raise InputError("Could not uniquely map salt '{}' onto independent electrolyte ions.".format(salt_label))
     cation_i, anion_i = matches[0]
-    if abs(float(charges[cation_i]) + float(charges[anion_i])) > 1.0e-12:
-        raise InputError("salt '{}' is not a charge-balanced 1:1 ion pair.".format(salt_label))
-    return _pair_payload(species, cation_i, anion_i)
+    return _pair_payload(species, charges, cation_i, anion_i)
 
 
-def _pair_payload(species: tuple[str, ...], cation_i: int, anion_i: int) -> dict[str, Any]:
+def _pair_payload(species: tuple[str, ...], charges: np.ndarray, cation_i: int, anion_i: int) -> dict[str, Any]:
+    cation_charge = abs(float(charges[int(cation_i)]))
+    anion_charge = abs(float(charges[int(anion_i)]))
+    cation_stoich, anion_stoich = _neutral_stoichiometry(cation_charge, anion_charge)
+    cation_label = _ion_stem(species[int(cation_i)], cation_charge)
+    anion_label = _ion_stem(species[int(anion_i)], anion_charge)
+    cation_suffix = "" if cation_stoich == 1 else str(cation_stoich)
+    anion_suffix = "" if anion_stoich == 1 else str(anion_stoich)
     return {
-        "label": _ion_stem(species[int(cation_i)]) + _ion_stem(species[int(anion_i)]),
+        "label": cation_label + cation_suffix + anion_label + anion_suffix,
         "cation": int(cation_i),
         "anion": int(anion_i),
+        "cation_stoich": int(cation_stoich),
+        "anion_stoich": int(anion_stoich),
+        "cation_charge": float(charges[int(cation_i)]),
+        "anion_charge": float(charges[int(anion_i)]),
     }
 
 
@@ -158,5 +171,23 @@ def _salt_token(label: Any) -> str:
     return "".join(ch for ch in str(label) if ch.isalnum()).lower()
 
 
-def _ion_stem(label: str) -> str:
-    return str(label).replace("+", "").replace("-", "")
+def _neutral_stoichiometry(cation_charge: float, anion_charge: float) -> tuple[int, int]:
+    cation_int = int(round(cation_charge))
+    anion_int = int(round(anion_charge))
+    if cation_int <= 0 or anion_int <= 0:
+        raise InputError("electrolyte salt stoichiometry requires non-zero ion charges.")
+    if abs(float(cation_int) - cation_charge) > 1.0e-12 or abs(float(anion_int) - anion_charge) > 1.0e-12:
+        raise InputError("electrolyte salt stoichiometry currently requires integer ion charges.")
+    gcd = int(np.gcd(cation_int, anion_int))
+    return anion_int // gcd, cation_int // gcd
+
+
+def _ion_stem(label: str, charge_magnitude: float | None = None) -> str:
+    text = str(label)
+    stripped = text.replace("+", "").replace("-", "")
+    if charge_magnitude is not None and ("+" in text or "-" in text):
+        charge_int = int(round(abs(float(charge_magnitude))))
+        suffix = str(charge_int)
+        if charge_int > 1 and stripped.endswith(suffix):
+            stripped = stripped[: -len(suffix)]
+    return stripped

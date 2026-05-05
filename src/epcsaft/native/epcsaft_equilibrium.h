@@ -14,6 +14,8 @@ struct EquilibriumOptionsNative {
     double min_composition = 1.0e-12;
     bool include_phase_diagnostics = false;
     bool stability_precheck = true;
+    std::string density_diagnostics = "auto";
+    bool experimental_coupled_density_lle = false;
 };
 
 struct EquilibriumPhaseNative {
@@ -57,6 +59,18 @@ struct StabilityResultNative {
     std::map<std::string, std::vector<double>> diagnostics_vector;
 };
 
+struct EquilibriumAttemptDiagnosticsNative {
+    std::string seed_name;
+    std::string rejection_reason;
+    double beta_org = 0.0;
+    double phase_distance = 0.0;
+    double solver_residual_norm = 0.0;
+    double material_balance_error = 0.0;
+    double charge_balance_error = 0.0;
+    double gibbs_delta = 0.0;
+    int iterations = 0;
+};
+
 struct EquilibriumResultNative {
     std::string backend;
     std::string problem_kind;
@@ -68,6 +82,8 @@ struct EquilibriumResultNative {
     std::map<std::string, bool> diagnostics_bool;
     std::map<std::string, std::string> diagnostics_string;
     std::map<std::string, std::vector<double>> diagnostics_vector;
+    std::vector<EquilibriumAttemptDiagnosticsNative> attempt_diagnostics;
+    std::vector<DensitySolveDiagnostics> density_diagnostics;
 };
 
 StabilityResultNative neutral_stability_native(

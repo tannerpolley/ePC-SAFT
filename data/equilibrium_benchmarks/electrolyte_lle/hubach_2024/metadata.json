@@ -1,0 +1,9 @@
+{
+  "dataset": "2024_Hubach",
+  "source": "Hubach, Er, Held 2024 Table S11 / Figure 7 lithium extraction",
+  "species": ["H2O", "TBP", "[emim][tcb]", "Li+", "Cl-"],
+  "temperature_K": 294.15,
+  "pressure_Pa": 101300.0,
+  "salt_pairs": ["LiCl"],
+  "scope": "fixed-species electrolyte LLE convergence fixture; not a chemical/speciation equilibrium benchmark"
+}

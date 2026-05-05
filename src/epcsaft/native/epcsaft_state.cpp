@@ -186,6 +186,11 @@ std::shared_ptr<ePCSAFTStateNative> ePCSAFTMixtureNative::state(double t, vector
 
 double ePCSAFTMixtureNative::solve_density(double t, double p, const vector<double>& x, int phase)
 {
+    return solve_density_scoped(t, p, x, phase, "");
+}
+
+double ePCSAFTMixtureNative::solve_density_scoped(double t, double p, const vector<double>& x, int phase, const std::string& scope)
+{
     const add_args& cppargs = args_;
     double* seed = nullptr;
     bool* seed_valid = nullptr;
@@ -198,23 +203,69 @@ double ePCSAFTMixtureNative::solve_density(double t, double p, const vector<doub
         seed_valid = &vapor_density_seed_valid_;
     }
 
+    std::string scoped_key;
+    if (!scope.empty()) {
+        scoped_key = std::to_string(phase) + ":" + scope;
+        auto scoped = scoped_density_seeds_.find(scoped_key);
+        if (scoped != scoped_density_seeds_.end() && std::isfinite(scoped->second) && scoped->second > 0.0) {
+            DensityRootCandidate candidate;
+            double rho_root = 0.0;
+            if (density_root_from_seed_cpp(t, p, x, phase, cppargs, scoped->second, &candidate, &rho_root)) {
+                scoped->second = rho_root;
+                last_density_diagnostics_.warm_start_source = "scoped:" + scope;
+                last_density_diagnostics_.validity_gate = "passed";
+                density_warm_start_hits_ += 1;
+                return rho_root;
+            }
+            density_warm_start_fallbacks_ += 1;
+            last_density_diagnostics_.warm_start_source = "scoped_fallback:" + scope;
+        }
+    }
+
     if (seed != nullptr && seed_valid != nullptr && *seed_valid && std::isfinite(*seed) && *seed > 0.0) {
         DensityRootCandidate candidate;
         double rho_root = 0.0;
         if (density_root_from_seed_cpp(t, p, x, phase, cppargs, *seed, &candidate, &rho_root)) {
             *seed = rho_root;
+            last_density_diagnostics_.warm_start_source = (phase == 1) ? "phase_global:vap" : "phase_global:liq";
+            last_density_diagnostics_.validity_gate = "passed";
             density_warm_start_hits_ += 1;
             return rho_root;
         }
         density_warm_start_fallbacks_ += 1;
     }
 
-    double rho = den_cpp(t, p, x, phase, cppargs);
+    DensitySolveResult solved = density_solve_report_cpp(t, p, x, phase, cppargs);
+    last_density_diagnostics_ = solved.diagnostics;
+    if (!scope.empty()) {
+        last_density_diagnostics_.phase_label = scope;
+    }
+    last_density_diagnostics_.warm_start_source = last_density_diagnostics_.warm_start_source.empty()
+        ? "scan"
+        : last_density_diagnostics_.warm_start_source;
+    if (!solved.valid) {
+        throw SolutionError(density_failure_message_cpp(
+            solved.diagnostics.rejection_reason.empty() ? "Density root failed" : solved.diagnostics.rejection_reason,
+            t,
+            p,
+            x,
+            phase
+        ));
+    }
+    double rho = solved.rho;
     if (seed != nullptr && seed_valid != nullptr && std::isfinite(rho) && rho > 0.0) {
         *seed = rho;
         *seed_valid = true;
     }
+    if (!scoped_key.empty() && std::isfinite(rho) && rho > 0.0) {
+        scoped_density_seeds_[scoped_key] = rho;
+    }
     return rho;
+}
+
+const DensitySolveDiagnostics& ePCSAFTMixtureNative::last_density_diagnostics() const
+{
+    return last_density_diagnostics_;
 }
 
 bool ePCSAFTMixtureNative::lookup_reference_state(const ReferenceStateKey& key, ReferenceStateValue* out)
@@ -261,6 +312,8 @@ void ePCSAFTMixtureNative::clear_runtime_caches()
     vapor_density_seed_ = 0.0;
     liquid_density_seed_valid_ = false;
     vapor_density_seed_valid_ = false;
+    scoped_density_seeds_.clear();
+    last_density_diagnostics_ = DensitySolveDiagnostics{};
 }
 
 void ePCSAFTMixtureNative::reset_runtime_cache_stats()

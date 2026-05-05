@@ -336,6 +336,231 @@ bool density_root_from_seed_cpp(
     }
 }
 
+DensityRootCandidate density_near_root_candidate_cpp(
+    double t,
+    double p,
+    const vector<double> &x,
+    const add_args &cppargs,
+    double rho
+) {
+    DensityRootCandidate candidate;
+    candidate.rho = rho;
+    candidate.rho_sort = rho;
+    candidate.abs_p_error = 1.0e300;
+    candidate.rel_resid = 1.0e300;
+    candidate.dpdrho = 1.0e300;
+    candidate.gres = 1.0e300;
+    try {
+        double p_calc = p_cpp(t, rho, x, cppargs);
+        if (std::isfinite(p_calc)) {
+            candidate.abs_p_error = std::abs(p_calc - p);
+            candidate.rel_resid = candidate.abs_p_error / std::max(std::abs(p), 1e-300);
+        }
+    }
+    catch (const std::exception&) {
+    }
+    try {
+        double h = std::max(1e-12, std::abs(rho) * 1e-6);
+        double p_plus = p_cpp(t, rho + h, x, cppargs);
+        if (std::isfinite(p_plus)) {
+            if (rho > h) {
+                double p_minus = p_cpp(t, rho - h, x, cppargs);
+                if (std::isfinite(p_minus)) {
+                    candidate.dpdrho = (p_plus - p_minus) / (2.0 * h);
+                }
+            }
+            else {
+                double p_calc = p_cpp(t, rho, x, cppargs);
+                if (std::isfinite(p_calc)) {
+                    candidate.dpdrho = (p_plus - p_calc) / h;
+                }
+            }
+        }
+    }
+    catch (const std::exception&) {
+    }
+    try {
+        double gres = gres_cpp(t, rho, x, cppargs);
+        if (std::isfinite(gres)) {
+            candidate.gres = gres;
+        }
+    }
+    catch (const std::exception&) {
+    }
+    candidate.valid = std::isfinite(candidate.abs_p_error)
+        && std::isfinite(candidate.dpdrho)
+        && candidate.dpdrho > 0.0
+        && std::isfinite(candidate.gres);
+    return candidate;
+}
+
+DensityCandidateDiagnostics density_candidate_diagnostics_cpp(const DensityRootCandidate &candidate) {
+    DensityCandidateDiagnostics out;
+    out.rho_sort = candidate.rho_sort;
+    out.rho = candidate.rho;
+    out.gres = candidate.gres;
+    out.rel_resid = candidate.rel_resid;
+    out.abs_p_error = candidate.abs_p_error;
+    out.dpdrho = candidate.dpdrho;
+    out.valid = candidate.valid;
+    return out;
+}
+
+DensitySolveResult density_solve_report_cpp(double t, double p, vector<double> x, int phase, const add_args &cppargs) {
+    DensitySolveResult out;
+    DensitySolveDiagnostics diagnostics;
+    diagnostics.phase_kind = (phase == 1) ? "vap" : "liq";
+    diagnostics.t = t;
+    diagnostics.p = p;
+    diagnostics.composition = x;
+    diagnostics.validity_gate = "failed";
+    diagnostics.best_near_root.abs_p_error = 1.0e300;
+    diagnostics.best_near_root.rel_resid = 1.0e300;
+    diagnostics.best_near_root.dpdrho = 1.0e300;
+    diagnostics.best_near_root.gres = 1.0e300;
+
+    int ncomp = static_cast<int>(x.size());
+    vector<double> scan_grid = density_scan_grid_cpp();
+    vector<DensityScanPoint> scan_points;
+    scan_points.reserve(scan_grid.size());
+    for (double nu : scan_grid) {
+        DensityScanPoint point = density_scan_point_cpp(nu, t, ncomp, x, p, cppargs);
+        scan_points.push_back(point);
+        if (point.finite) {
+            diagnostics.finite_point_count += 1;
+            DensityRootCandidate near_candidate = density_near_root_candidate_cpp(t, p, x, cppargs, point.rho);
+            if (near_candidate.abs_p_error < diagnostics.best_near_root.abs_p_error) {
+                diagnostics.best_near_root = density_candidate_diagnostics_cpp(near_candidate);
+            }
+        }
+    }
+    diagnostics.scan_point_count = static_cast<int>(scan_points.size());
+
+    vector<DensityBracket> coarse_brackets = density_brackets_cpp(scan_points);
+    diagnostics.coarse_bracket_count = static_cast<int>(coarse_brackets.size());
+    vector<DensityBracket> refined_brackets;
+    for (const DensityBracket &coarse : coarse_brackets) {
+        refine_density_brackets_cpp(coarse, t, ncomp, x, p, cppargs, refined_brackets);
+    }
+    diagnostics.refined_bracket_count = static_cast<int>(refined_brackets.size());
+
+    if (refined_brackets.empty()) {
+        diagnostics.fallback_used = true;
+        if (std::isfinite(diagnostics.best_near_root.rho) && diagnostics.best_near_root.rho > 0.0) {
+            DensityRootCandidate fallback_candidate;
+            double rho_root = 0.0;
+            if (density_root_from_seed_cpp(t, p, x, phase, cppargs, diagnostics.best_near_root.rho, &fallback_candidate, &rho_root)) {
+                diagnostics.candidate_roots.push_back(density_candidate_diagnostics_cpp(fallback_candidate));
+                diagnostics.candidate_root_count = static_cast<int>(diagnostics.candidate_roots.size());
+                diagnostics.validity_gate = "passed";
+                diagnostics.rejection_reason = "";
+                out.rho = rho_root;
+                out.valid = true;
+                out.diagnostics = diagnostics;
+                return out;
+            }
+        }
+        diagnostics.fallback_rejected_reason = "no refined density brackets";
+        diagnostics.rejection_reason = "No continuous density root brackets were found for the requested state";
+        out.diagnostics = diagnostics;
+        return out;
+    }
+
+    vector<DensityRootCandidate> candidates;
+    candidates.reserve(refined_brackets.size());
+    for (const DensityBracket &bracket : refined_brackets) {
+        DensityRootCandidate candidate;
+        candidate.rho_sort = ::reduced_density_to_molar(0.5 * (bracket.nu_lo + bracket.nu_hi), t, ncomp, x, cppargs);
+        candidate.abs_p_error = 1.0e300;
+        candidate.rel_resid = 1.0e300;
+        candidate.dpdrho = 1.0e300;
+        candidate.gres = 1.0e300;
+        try {
+            double rho_lo = ::reduced_density_to_molar(bracket.nu_lo, t, ncomp, x, cppargs);
+            double rho_hi = ::reduced_density_to_molar(bracket.nu_hi, t, ncomp, x, cppargs);
+            double rho_root = ::density_brent_cpp(t, p, x, phase, cppargs, rho_lo, rho_hi, DBL_EPSILON, 1e-14, 200);
+            if (!density_root_valid_cpp(t, p, x, cppargs, rho_root, &candidate)) {
+                candidate = density_near_root_candidate_cpp(t, p, x, cppargs, rho_root);
+            }
+            candidate.rho_sort = candidate.rho;
+        }
+        catch (const std::exception&) {
+            candidate.valid = false;
+        }
+        if (candidate.abs_p_error < diagnostics.best_near_root.abs_p_error) {
+            diagnostics.best_near_root = density_candidate_diagnostics_cpp(candidate);
+        }
+        candidates.push_back(candidate);
+    }
+
+    diagnostics.candidate_root_count = static_cast<int>(candidates.size());
+    for (const DensityRootCandidate &candidate : candidates) {
+        diagnostics.candidate_roots.push_back(density_candidate_diagnostics_cpp(candidate));
+    }
+    if (candidates.empty()) {
+        diagnostics.rejection_reason = "Density solver did not produce any candidate roots";
+        out.diagnostics = diagnostics;
+        return out;
+    }
+
+    std::sort(candidates.begin(), candidates.end(), [](const DensityRootCandidate &a, const DensityRootCandidate &b) {
+        return a.rho_sort < b.rho_sort;
+    });
+
+    const double rho_tol = 1e-8;
+    DensityRootCandidate *best = nullptr;
+    if (phase == 1) {
+        const double rho_extreme = candidates.front().rho_sort;
+        for (DensityRootCandidate &candidate : candidates) {
+            if (std::abs(candidate.rho_sort - rho_extreme) > rho_tol * std::max(1.0, std::abs(rho_extreme))) {
+                break;
+            }
+            if (candidate.valid && (best == nullptr || candidate.gres < best->gres)) {
+                best = &candidate;
+            }
+        }
+        diagnostics.rejection_reason = "No valid density root found for vapor phase";
+    }
+    else {
+        const double rho_extreme = candidates.back().rho_sort;
+        for (auto it = candidates.rbegin(); it != candidates.rend(); ++it) {
+            if (std::abs(it->rho_sort - rho_extreme) > rho_tol * std::max(1.0, std::abs(rho_extreme))) {
+                break;
+            }
+            if (it->valid && (best == nullptr || it->gres < best->gres)) {
+                best = &(*it);
+            }
+        }
+        diagnostics.rejection_reason = "No valid density root found for liquid phase";
+    }
+    if (best != nullptr) {
+        out.rho = best->rho;
+        out.valid = true;
+        diagnostics.validity_gate = "passed";
+        diagnostics.rejection_reason = "";
+        out.diagnostics = diagnostics;
+        return out;
+    }
+    diagnostics.fallback_used = true;
+    if (std::isfinite(diagnostics.best_near_root.rho) && diagnostics.best_near_root.rho > 0.0) {
+        DensityRootCandidate fallback_candidate;
+        double rho_root = 0.0;
+        if (density_root_from_seed_cpp(t, p, x, phase, cppargs, diagnostics.best_near_root.rho, &fallback_candidate, &rho_root)) {
+            diagnostics.candidate_roots.push_back(density_candidate_diagnostics_cpp(fallback_candidate));
+            diagnostics.candidate_root_count = static_cast<int>(diagnostics.candidate_roots.size());
+            diagnostics.validity_gate = "passed";
+            diagnostics.rejection_reason = "";
+            out.rho = rho_root;
+            out.valid = true;
+            out.diagnostics = diagnostics;
+            return out;
+        }
+    }
+    diagnostics.fallback_rejected_reason = diagnostics.rejection_reason;
+    out.diagnostics = diagnostics;
+    return out;
+}
+
 double den_cpp(double t, double p, vector<double> x, int phase, const add_args &cppargs) {
     /**
     Solve for the molar density when temperature and pressure are given.

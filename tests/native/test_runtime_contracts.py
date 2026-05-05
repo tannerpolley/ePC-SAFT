@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import pytest
 
@@ -97,15 +99,35 @@ def test_pressure_density_failure_reports_state_context_and_native_outcome() -> 
     mix, _, _, _, temperature, composition = _ionic_state()
 
     with pytest.raises(SolutionError) as excinfo:
-        mix.state(T=temperature, x=composition, P=1.0e-12, phase="liq")
+        mix.state(T=temperature, x=composition, P=1.0e12, phase="liq")
 
     message = str(excinfo.value)
     assert "pressure-based state solve failed" in message
     assert "T=298.15" in message
-    assert "P=1e-12" in message
+    assert "P=1000000000000.0" in message
     assert "phase=liq" in message
     assert "ncomp=3" in message
-    assert "No valid density root found for liquid phase" in message
+    assert "No continuous density root brackets were found" in message
+    diagnostics = excinfo.value.diagnostics
+    assert diagnostics["density_failure_count"] == 1
+    assert diagnostics["density_validity_gate"] == "failed"
+    assert diagnostics["density_fallback_used"] in {True, False}
+    context = diagnostics["density_failure_contexts"][0]
+    assert context["phase_label"] == "state"
+    assert context["phase_kind"] == "liq"
+    assert context["T"] == pytest.approx(temperature)
+    assert context["P"] == pytest.approx(1.0e12)
+    assert context["composition"] == pytest.approx(composition.tolist())
+    assert context["scan_point_count"] > 0
+    assert context["finite_point_count"] >= 0
+    assert context["coarse_bracket_count"] >= 0
+    assert context["refined_bracket_count"] >= 0
+    assert context["candidate_root_count"] >= 0
+    assert "best_near_root_pressure_error" in context
+    assert "dpdrho" in context
+    assert "gres" in context
+    assert context["rejection_reason"]
+    json.dumps(diagnostics, allow_nan=False)
 
 
 def test_pressure_density_invalid_inputs_fail_before_native_density_search() -> None:

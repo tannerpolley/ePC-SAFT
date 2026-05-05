@@ -33,6 +33,7 @@ Reference
    :caption: API and Background
 
    package_guide
+   electrolyte_lle_workflow
    api_reference
    native_debugging
    equation_traceability

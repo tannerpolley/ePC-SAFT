@@ -10,6 +10,8 @@ import pytest
 import epcsaft
 from epcsaft import ePCSAFTMixture
 from epcsaft.equilibrium_core.electrolyte_basis import build_electrolyte_basis
+from epcsaft.equilibrium import _explicit_to_formula_composition
+from epcsaft.equilibrium import _formula_to_explicit_composition
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -92,6 +94,8 @@ def test_electrolyte_lle_direct_feed_solves_native_predictive_split() -> None:
     assert diagnostics["material_balance_error"] <= 1.0e-10
     assert diagnostics["charge_balance_error"] <= 1.0e-8
     assert diagnostics["gibbs_delta"] < 0.0
+    assert diagnostics["seed_attempt_count"] == len(diagnostics["seed_attempts"])
+    assert diagnostics["seed_attempts"]
     assert "v4_partition_seed_api_compatibility" not in json.dumps(diagnostics)
     json.dumps(diagnostics, allow_nan=False)
 
@@ -182,6 +186,16 @@ def test_equilibrium_options_default_iteration_budget_is_robust_for_electrolyte_
     assert options.max_iterations == 180
 
 
+def test_equilibrium_options_expose_density_robustness_controls() -> None:
+    options = epcsaft.EquilibriumOptions(
+        density_diagnostics="full",
+        experimental_coupled_density_lle=True,
+    )
+
+    assert options.density_diagnostics == "full"
+    assert options.experimental_coupled_density_lle is True
+
+
 def test_ascani_case2_mixed_salt_solves_without_local_model_fixture() -> None:
     mix = _case2_mixture()
 
@@ -245,6 +259,63 @@ def test_ascani_counterion_basis_has_expected_rank_and_preserves_charge() -> Non
     charged_delta = basis.e_matrix.T @ xi
     charged_charges = np.asarray([mix.parameters["z"][i] for i in basis.charged_indices], dtype=float)
     assert abs(float(np.dot(charged_delta, charged_charges))) <= 1.0e-12
+
+
+def test_divalent_two_to_one_salt_basis_reconstructs_charge_neutral_formula() -> None:
+    species = ["H2O", "TBP", "Mg2+", "Cl-"]
+    charges = np.asarray([0.0, 0.0, 2.0, -1.0], dtype=float)
+    feed = np.asarray([0.80, 0.10, 0.02, 0.04], dtype=float)
+    feed = feed / float(np.sum(feed))
+
+    basis = build_electrolyte_basis(species, charges, feed)
+    payload = basis.to_dict()
+    basis_dict = {
+        "neutral_indices": tuple(payload["neutral_indices"]),
+        "salt_pairs": tuple(payload["salt_pairs"]),
+    }
+    formula = _explicit_to_formula_composition(feed, basis_dict)
+    explicit, _scale = _formula_to_explicit_composition(formula, basis_dict, len(species))
+
+    assert payload["salt_pairs"][0]["label"] == "MgCl2"
+    assert payload["salt_pairs"][0]["cation_stoich"] == 1
+    assert payload["salt_pairs"][0]["anion_stoich"] == 2
+    np.testing.assert_allclose(explicit, feed, atol=1.0e-12)
+    assert abs(float(np.dot(explicit, charges))) <= 1.0e-12
+
+
+def test_one_to_two_salt_basis_reconstructs_charge_neutral_formula() -> None:
+    species = ["H2O", "TBP", "Na+", "SO4--"]
+    charges = np.asarray([0.0, 0.0, 1.0, -2.0], dtype=float)
+    feed = np.asarray([0.80, 0.10, 0.04, 0.02], dtype=float)
+    feed = feed / float(np.sum(feed))
+
+    basis = build_electrolyte_basis(species, charges, feed)
+    payload = basis.to_dict()
+    basis_dict = {
+        "neutral_indices": tuple(payload["neutral_indices"]),
+        "salt_pairs": tuple(payload["salt_pairs"]),
+    }
+    formula = _explicit_to_formula_composition(feed, basis_dict)
+    explicit, _scale = _formula_to_explicit_composition(formula, basis_dict, len(species))
+
+    assert payload["salt_pairs"][0]["label"] == "Na2SO4"
+    assert payload["salt_pairs"][0]["cation_stoich"] == 2
+    assert payload["salt_pairs"][0]["anion_stoich"] == 1
+    np.testing.assert_allclose(explicit, feed, atol=1.0e-12)
+    assert abs(float(np.dot(explicit, charges))) <= 1.0e-12
+
+
+def test_mixed_monovalent_divalent_shared_anion_basis_builds() -> None:
+    species = ["H2O", "TBP", "Li+", "Mg2+", "Cl-"]
+    charges = np.asarray([0.0, 0.0, 1.0, 2.0, -1.0], dtype=float)
+    feed = np.asarray([0.80, 0.10, 0.02, 0.01, 0.04], dtype=float)
+    feed = feed / float(np.sum(feed))
+
+    basis = build_electrolyte_basis(species, charges, feed)
+    labels = [pair["label"] for pair in basis.salt_pairs]
+
+    assert labels == ["LiCl", "MgCl2"]
+    assert basis.rank == 2
 
 
 def test_electrolyte_stability_payload_is_json_serializable() -> None:
@@ -334,7 +405,7 @@ def test_electrolyte_lle_solver_failure_reports_json_diagnostics() -> None:
             T=298.15,
             P=1.0e5,
             z=_case2_feed(),
-            options=epcsaft.EquilibriumOptions(max_iterations=1, tolerance=1.0e-12),
+            options=epcsaft.EquilibriumOptions(max_iterations=1, tolerance=1.0e-12, legacy_candidate_mode="off"),
         )
 
     diagnostics = excinfo.value.args[1]
@@ -355,6 +426,77 @@ def test_electrolyte_lle_solver_failure_reports_json_diagnostics() -> None:
     assert diagnostics["phase_distance"] >= 0.0
     assert len(diagnostics["feed_composition"]) == mix.ncomp
     assert len(diagnostics["fugacity_residual"]) > 0
+    assert diagnostics["seed_attempt_count"] == len(diagnostics["seed_attempts"])
+    assert diagnostics["seed_attempts"]
+    assert all(attempt["seed_name"] for attempt in diagnostics["seed_attempts"])
+    assert all(attempt["rejection_reason"] for attempt in diagnostics["seed_attempts"])
+    assert diagnostics["density_diagnostics_mode"] == "auto"
+    assert diagnostics["experimental_coupled_density_lle"] is False
+    assert diagnostics["density_failure_count"] >= 0
+    assert diagnostics["density_validity_gate"] in {"passed", "failed", "not_evaluated"}
+    json.dumps(diagnostics, allow_nan=False)
+
+
+def test_experimental_coupled_density_lle_option_is_reported_without_changing_default_gate() -> None:
+    mix = _case2_mixture()
+
+    with pytest.raises(epcsaft.SolutionError) as excinfo:
+        mix.equilibrium(
+            kind="electrolyte_lle",
+            T=298.15,
+            P=1.0e5,
+            z=_case2_feed(),
+            options=epcsaft.EquilibriumOptions(
+                max_iterations=1,
+                tolerance=1.0e-12,
+                legacy_candidate_mode="off",
+                density_diagnostics="full",
+                experimental_coupled_density_lle=True,
+            ),
+        )
+
+    diagnostics = excinfo.value.args[1]
+    assert diagnostics["density_diagnostics_mode"] == "full"
+    assert diagnostics["experimental_coupled_density_lle"] is True
+    assert diagnostics["coupled_density_lle_attempted"] is True
+    assert diagnostics["acceptance_gate"] == "predictive_solve_failed"
+    json.dumps(diagnostics, allow_nan=False)
+
+
+def test_electrolyte_lle_accepts_legacy_option_dict_and_reports_ignored_keys() -> None:
+    mix = _case2_mixture()
+
+    with pytest.raises(epcsaft.SolutionError) as excinfo:
+        mix.equilibrium(
+            kind="electrolyte_lle",
+            T=298.15,
+            P=1.0e5,
+            z=_case2_feed(),
+            options={
+                "max_nfev": 1,
+                "solver_tol": 1.0e-12,
+                "split_tol": 1.0e-4,
+                "solver_accept_norm": 0.5,
+                "legacy_candidate_mode": "off",
+                "tpdf_global_trials": 1200,
+                "tpdf_local_trials": 600,
+                "charge_weight": 1000.0,
+                "seed_x": [0.55, 0.40, 0.025, 0.025],
+                "force_seed_solve": True,
+            },
+        )
+
+    diagnostics = excinfo.value.args[1]
+    assert diagnostics["requested_max_iterations"] == 1
+    assert diagnostics["legacy_candidate_residual_tolerance"] == pytest.approx(0.5)
+    assert diagnostics["legacy_candidate_split_tolerance"] == pytest.approx(1.0e-4)
+    assert diagnostics["ignored_legacy_options"] == [
+        "charge_weight",
+        "force_seed_solve",
+        "seed_x",
+        "tpdf_global_trials",
+        "tpdf_local_trials",
+    ]
     json.dumps(diagnostics, allow_nan=False)
 
 
