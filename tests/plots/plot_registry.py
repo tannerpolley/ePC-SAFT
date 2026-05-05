@@ -70,6 +70,11 @@ PLOT_RECIPES: tuple[PlotRecipe, ...] = (
         output_dirs=("regression/gradients", "regression/hydrocarbon"),
     ),
     PlotRecipe(
+        source_tests=("tests/regression/test_ethanol_water_binary_vle_regression.py",),
+        plot_targets=("tests/plots/test_regression_plot_outputs.py",),
+        output_dirs=("regression/binary_ethanol_water",),
+    ),
+    PlotRecipe(
         source_tests=("tests/api/test_runtime.py",),
         plot_targets=("tests/plots/test_property_plot_outputs.py",),
         output_dirs=("properties/activity_fugacity", "properties/residual_energy"),

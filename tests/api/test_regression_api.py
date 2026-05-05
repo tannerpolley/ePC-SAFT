@@ -210,7 +210,7 @@ def test_fit_pure_ion_default_s_e_bounds_and_deterministic_multistart():
     )
 
     assert result.success, result.message
-    assert result.backend == "least_squares_python"
+    assert result.backend == "least_squares_native"
     assert result.problem.mode == "pure_ion"
     assert result.problem.fit_targets == ("s", "e")
     assert result.metrics_by_term["osmotic_coefficient"] < 1.0e-3
@@ -243,12 +243,29 @@ def test_fit_pure_ion_accepts_d_born_and_born_user_options():
     )
 
     assert result.success, result.message
-    assert result.backend == "least_squares_python"
+    assert result.backend == "least_squares_native"
     assert result.problem.fit_targets == ("d_born",)
     assert result.metrics_by_term["osmotic_coefficient"] < 1.0e-3
 
 
-def test_fit_binary_pair_vle_kij_only_and_rejects_future_targets():
+def test_fit_pure_ion_passes_explicit_mean_ionic_pair_label_to_native_backend():
+    records = [dict(record, pair_label="Na+Cl-") for record in _nacl_records()]
+    result = epcsaft.fit_pure_ion(
+        records,
+        "Na+",
+        dataset="2026_Khudaida",
+        species=["H2O", "Na+", "Cl-"],
+        solvent="H2O",
+        initial_guess={"s": 2.6, "e": 210.0},
+        bounds={"s": (2.4, 3.2), "e": (150.0, 300.0)},
+    )
+
+    assert result.success, result.message
+    assert result.backend == "least_squares_native"
+    assert result.metrics_by_term["mean_ionic_activity"] < 2.0e-3
+
+
+def test_fit_binary_pair_vle_kij_default_and_rejects_temperature_models():
     records = [
         {"T": 330.0, "P": 101325.0, "x_H2O": 0.7, "x_Ethanol": 0.3, "y_H2O": 0.5, "y_Ethanol": 0.5},
         {"T": 340.0, "P": 101325.0, "x_H2O": 0.6, "x_Ethanol": 0.4, "y_H2O": 0.4, "y_Ethanol": 0.6},
@@ -263,25 +280,55 @@ def test_fit_binary_pair_vle_kij_only_and_rejects_future_targets():
     )
 
     assert result.success, result.message
-    assert result.backend == "least_squares_python"
+    assert result.backend == "least_squares_native"
     assert result.problem.mode == "binary_pair"
     assert result.problem.fit_targets == ("k_ij",)
     assert set(result.fitted_values) == {"k_ij"}
     assert "binary_vle_fugacity_balance" in result.metrics_by_term
 
-    with pytest.raises(InputError, match="k_ij"):
-        epcsaft.fit_binary_pair(
-            records,
-            ("H2O", "Ethanol"),
-            dataset="2026_Khudaida",
-            fit_targets=("l_ij",),
-        )
     with pytest.raises(InputError, match="temperature_model"):
         epcsaft.fit_binary_pair(
             records,
             ("H2O", "Ethanol"),
             dataset="2026_Khudaida",
             temperature_model="linear",
+        )
+
+
+def test_fit_binary_pair_can_fit_all_constant_binary_interaction_targets():
+    records = [
+        {"T": 330.0, "P": 101325.0, "x_H2O": 0.7, "x_Ethanol": 0.3, "y_H2O": 0.5, "y_Ethanol": 0.5},
+        {"T": 340.0, "P": 101325.0, "x_H2O": 0.6, "x_Ethanol": 0.4, "y_H2O": 0.4, "y_Ethanol": 0.6},
+    ]
+
+    result = epcsaft.fit_binary_pair(
+        records,
+        ("H2O", "Ethanol"),
+        dataset="2026_Khudaida",
+        fit_targets=("k_ij", "l_ij", "k_hb_ij"),
+        initial_guess={"k_ij": -0.02, "l_ij": 0.01, "k_hb_ij": 0.02},
+        bounds={"k_ij": (-0.2, 0.2), "l_ij": (-0.2, 0.2), "k_hb_ij": (-0.2, 0.2)},
+        multistart=1,
+    )
+
+    assert result.success, result.message
+    assert result.backend == "least_squares_native"
+    assert result.problem.fit_targets == ("k_ij", "l_ij", "k_hb_ij")
+    assert set(result.fitted_values) == {"k_ij", "l_ij", "k_hb_ij"}
+    assert all(np.isfinite(value) for value in result.fitted_values.values())
+    assert "binary_vle_fugacity_balance" in result.metrics_by_term
+
+
+def test_fit_binary_pair_rejects_nonpositive_vle_fractions_before_native_solve():
+    records = [
+        {"T": 330.0, "P": 101325.0, "x_H2O": 0.7, "x_Ethanol": 0.3, "y_H2O": 0.0, "y_Ethanol": 1.0},
+    ]
+    with pytest.raises(InputError, match="strictly positive"):
+        epcsaft.fit_binary_pair(
+            records,
+            ("H2O", "Ethanol"),
+            dataset="2026_Khudaida",
+            initial_guess={"k_ij": -0.02},
         )
 
 
@@ -342,24 +389,29 @@ def test_write_fit_result_updates_ion_row_and_binary_matrix_symmetrically(tmp_pa
         problem=FitProblem(
             mode="binary_pair",
             pair=("H2O", "Ethanol"),
-            fit_targets=("k_ij",),
-            optimization_parameters=("k_ij",),
+            fit_targets=("k_ij", "l_ij", "k_hb_ij"),
+            optimization_parameters=("k_ij", "l_ij", "k_hb_ij"),
         ),
-        fitted_values={"k_ij": -0.06167},
-        rendered_values={"k_ij": -0.06167},
+        fitted_values={"k_ij": -0.06167, "l_ij": 0.0123, "k_hb_ij": -0.0345},
+        rendered_values={"k_ij": -0.06167, "l_ij": 0.0123, "k_hb_ij": -0.0345},
         success=True,
     )
 
     written = write_fit_result(binary_result, binary_root, overwrite=False)
-    assert written == [binary_root / "mixed" / "binary_interaction" / "k_ij.csv"]
-    with (binary_root / "mixed" / "binary_interaction" / "k_ij.csv").open("r", encoding="utf-8-sig", newline="") as handle:
-        rows = list(csv.reader(handle))
-    header = rows[0]
-    h2o_col = header.index("H2O")
-    ethanol_col = header.index("Ethanol")
-    h2o_row = next(row for row in rows if row[0] == "H2O")
-    ethanol_row = next(row for row in rows if row[0] == "Ethanol")
-    assert h2o_row[ethanol_col] == "-0.06167"
-    assert ethanol_row[h2o_col] == "-0.06167"
+    assert written == [
+        binary_root / "mixed" / "binary_interaction" / "k_ij.csv",
+        binary_root / "mixed" / "binary_interaction" / "l_ij.csv",
+        binary_root / "mixed" / "binary_interaction" / "k_hb_ij.csv",
+    ]
+    for filename, expected in (("k_ij.csv", "-0.06167"), ("l_ij.csv", "0.0123"), ("k_hb_ij.csv", "-0.0345")):
+        with (binary_root / "mixed" / "binary_interaction" / filename).open("r", encoding="utf-8-sig", newline="") as handle:
+            rows = list(csv.reader(handle))
+        header = rows[0]
+        h2o_col = header.index("H2O")
+        ethanol_col = header.index("Ethanol")
+        h2o_row = next(row for row in rows if row[0] == "H2O")
+        ethanol_row = next(row for row in rows if row[0] == "Ethanol")
+        assert h2o_row[ethanol_col] == expected
+        assert ethanol_row[h2o_col] == expected
     with pytest.raises(InputError, match="overwrite"):
         write_fit_result(binary_result, binary_root, overwrite=False)

@@ -803,6 +803,588 @@ PureNeutralRegressionResult choose_better_result_cpp(
     return best;
 }
 
+constexpr int kGenericTargetM = 0;
+constexpr int kGenericTargetS = 1;
+constexpr int kGenericTargetE = 2;
+constexpr int kGenericTargetEAssoc = 3;
+constexpr int kGenericTargetVolA = 4;
+constexpr int kGenericTargetDBorn = 5;
+constexpr int kGenericTargetKIJ = 6;
+constexpr int kGenericTargetLIJ = 7;
+constexpr int kGenericTargetKHB = 8;
+
+constexpr int kGenericTermDensity = 1;
+constexpr int kGenericTermPureVLE = 2;
+constexpr int kGenericTermOsmotic = 3;
+constexpr int kGenericTermMIAC = 4;
+constexpr int kGenericTermBinaryVLE = 5;
+constexpr int kGenericTermComponentLnFugacity = 6;
+
+double relative_residual_cpp(double calc, double exp) {
+    double denom = std::max(std::abs(exp), 1.0e-8);
+    return (calc - exp) / denom;
+}
+
+double relative_or_absolute_residual_cpp(double calc, double exp) {
+    if (std::abs(exp) <= 1.0e-8) {
+        return calc - exp;
+    }
+    return (calc - exp) / std::abs(exp);
+}
+
+std::string generic_term_name_cpp(const GenericRegressionRecord &record) {
+    if (!record.term_name.empty()) {
+        return record.term_name;
+    }
+    switch (record.term) {
+        case kGenericTermDensity:
+            return "density";
+        case kGenericTermPureVLE:
+            return "pure_vle_fugacity_balance";
+        case kGenericTermOsmotic:
+            return "osmotic_coefficient";
+        case kGenericTermMIAC:
+            return "mean_ionic_activity";
+        case kGenericTermBinaryVLE:
+            return "binary_vle_fugacity_balance";
+        case kGenericTermComponentLnFugacity:
+            return "component_lnfugacity";
+        default:
+            return "unknown";
+    }
+}
+
+void set_vector_value_cpp(vector<double> &values, int index, double value, const char *label) {
+    if (index < 0 || static_cast<size_t>(index) >= values.size()) {
+        throw ValueError(std::string("Native generic regression target index is out of range for ") + label + ".");
+    }
+    values[static_cast<size_t>(index)] = value;
+}
+
+void apply_generic_targets_cpp(
+    add_args &args,
+    const vector<int> &target_kinds,
+    const vector<int> &target_indices,
+    const vector<int> &target_indices_2,
+    const vector<double> &theta
+) {
+    if (target_kinds.size() != theta.size() || target_indices.size() != theta.size() || target_indices_2.size() != theta.size()) {
+        throw ValueError("Native generic regression target metadata must match theta length.");
+    }
+    const size_t n = args.m.size();
+    for (size_t j = 0; j < theta.size(); ++j) {
+        const double value = theta[j];
+        const int index = target_indices[j];
+        switch (target_kinds[j]) {
+            case kGenericTargetM:
+                set_vector_value_cpp(args.m, index, value, "m");
+                break;
+            case kGenericTargetS:
+                set_vector_value_cpp(args.s, index, value, "s");
+                break;
+            case kGenericTargetE:
+                set_vector_value_cpp(args.e, index, value, "e");
+                break;
+            case kGenericTargetEAssoc:
+                set_vector_value_cpp(args.e_assoc, index, value, "e_assoc");
+                break;
+            case kGenericTargetVolA:
+                set_vector_value_cpp(args.vol_a, index, value, "vol_a");
+                break;
+            case kGenericTargetDBorn:
+                set_vector_value_cpp(args.d_born, index, value, "d_born");
+                break;
+            case kGenericTargetKIJ: {
+                const int other = target_indices_2[j];
+                if (index < 0 || other < 0 || static_cast<size_t>(index) >= n || static_cast<size_t>(other) >= n) {
+                    throw ValueError("Native generic regression k_ij target index is out of range.");
+                }
+                if (args.k_ij.size() != n * n) {
+                    throw ValueError("Native generic regression requires a dense k_ij matrix for binary targets.");
+                }
+                args.k_ij[static_cast<size_t>(index) * n + static_cast<size_t>(other)] = value;
+                args.k_ij[static_cast<size_t>(other) * n + static_cast<size_t>(index)] = value;
+                break;
+            }
+            case kGenericTargetLIJ: {
+                const int other = target_indices_2[j];
+                if (index < 0 || other < 0 || static_cast<size_t>(index) >= n || static_cast<size_t>(other) >= n) {
+                    throw ValueError("Native generic regression l_ij target index is out of range.");
+                }
+                if (args.l_ij.size() != n * n) {
+                    throw ValueError("Native generic regression requires a dense l_ij matrix for binary targets.");
+                }
+                args.l_ij[static_cast<size_t>(index) * n + static_cast<size_t>(other)] = value;
+                args.l_ij[static_cast<size_t>(other) * n + static_cast<size_t>(index)] = value;
+                break;
+            }
+            case kGenericTargetKHB: {
+                const int other = target_indices_2[j];
+                if (index < 0 || other < 0 || static_cast<size_t>(index) >= n || static_cast<size_t>(other) >= n) {
+                    throw ValueError("Native generic regression k_hb_ij target index is out of range.");
+                }
+                if (args.k_hb.size() != n * n) {
+                    throw ValueError("Native generic regression requires a dense k_hb matrix for binary targets.");
+                }
+                args.k_hb[static_cast<size_t>(index) * n + static_cast<size_t>(other)] = value;
+                args.k_hb[static_cast<size_t>(other) * n + static_cast<size_t>(index)] = value;
+                break;
+            }
+            default:
+                throw ValueError("Unknown native generic regression target kind.");
+        }
+    }
+}
+
+double generic_mass_density_cpp(ePCSAFTStateNative &state, const add_args &args, const vector<double> &x) {
+    if (args.mw.size() != x.size()) {
+        throw ValueError("Native generic regression mass density requires one MW value per component.");
+    }
+    double mw_mix = 0.0;
+    for (size_t i = 0; i < x.size(); ++i) {
+        mw_mix += x[i] * args.mw[i];
+    }
+    return state.density() * mw_mix;
+}
+
+void append_generic_residuals_cpp(
+    const add_args &base_args,
+    const GenericRegressionRecord &record,
+    const vector<int> &target_kinds,
+    const vector<int> &target_indices,
+    const vector<int> &target_indices_2,
+    const vector<double> &theta,
+    vector<double> &scaled,
+    std::map<std::string, vector<double>> &raw_by_term
+) {
+    add_args args = base_args;
+    apply_generic_targets_cpp(args, target_kinds, target_indices, target_indices_2, theta);
+    auto mixture = std::make_shared<ePCSAFTMixtureNative>(args);
+    const std::string term_name = generic_term_name_cpp(record);
+    try {
+        if (record.term == kGenericTermDensity) {
+            auto state = mixture->state(record.t, record.x, record.phase, true, record.p, false, 0.0);
+            double calc = record.density_kind == 1 ? generic_mass_density_cpp(*state, args, record.x) : state->density();
+            double residual = relative_residual_cpp(calc, record.target);
+            raw_by_term[term_name].push_back(residual);
+            scaled.push_back(record.scale * residual);
+            return;
+        }
+        if (record.term == kGenericTermPureVLE) {
+            auto liquid = mixture->state(record.t, record.x, 0, true, record.p, false, 0.0);
+            auto vapor = mixture->state(record.t, record.x, 1, true, record.p, false, 0.0);
+            vector<double> lnphi_liq = liquid->ln_fugacity_coefficient();
+            vector<double> lnphi_vap = vapor->ln_fugacity_coefficient();
+            double residual = lnphi_liq.at(0) - lnphi_vap.at(0);
+            raw_by_term[term_name].push_back(residual);
+            scaled.push_back(record.scale * residual);
+            return;
+        }
+        if (record.term == kGenericTermOsmotic) {
+            auto state = mixture->state(record.t, record.x, record.phase, true, record.p, false, 0.0);
+            double residual = relative_or_absolute_residual_cpp(state->osmotic_coefficient(), record.target);
+            raw_by_term[term_name].push_back(residual);
+            scaled.push_back(record.scale * residual);
+            return;
+        }
+        if (record.term == kGenericTermMIAC) {
+            auto state = mixture->state(record.t, record.x, record.phase, true, record.p, false, 0.0);
+            ActivityCoefficientNative activity = state->activity_coefficient_native(
+                false,
+                record.solvent_index >= 0,
+                record.solvent_index
+            );
+            int pair_index = -1;
+            for (size_t i = 0; i < activity.pair_cation_indices.size(); ++i) {
+                bool cation_matches = record.target_index < 0 || activity.pair_cation_indices[i] == record.target_index;
+                bool anion_matches = record.target_index_2 < 0 || activity.pair_anion_indices[i] == record.target_index_2;
+                if (cation_matches && anion_matches) {
+                    if (pair_index >= 0 && record.target_index < 0 && record.target_index_2 < 0) {
+                        throw ValueError("Native generic regression MIAC records require a pair when multiple ion pairs are present.");
+                    }
+                    pair_index = static_cast<int>(i);
+                }
+            }
+            if (pair_index < 0) {
+                throw ValueError("Native generic regression MIAC pair was not present in the activity coefficient state.");
+            }
+            const vector<double> &values = record.activity_basis == 1
+                ? activity.mean_ionic_activity_coefficients_molality
+                : activity.mean_ionic_activity_coefficients_mole_fraction;
+            double residual = relative_or_absolute_residual_cpp(values.at(static_cast<size_t>(pair_index)), record.target);
+            raw_by_term[term_name].push_back(residual);
+            scaled.push_back(record.scale * residual);
+            return;
+        }
+        if (record.term == kGenericTermBinaryVLE) {
+            auto liquid = mixture->state(record.t, record.x, 0, true, record.p, false, 0.0);
+            auto vapor = mixture->state(record.t, record.y, 1, true, record.p, false, 0.0);
+            vector<double> lnphi_liq = liquid->ln_fugacity_coefficient();
+            vector<double> lnphi_vap = vapor->ln_fugacity_coefficient();
+            for (int index : {record.target_index, record.target_index_2}) {
+                if (index < 0) {
+                    continue;
+                }
+                const double xi = record.x.at(static_cast<size_t>(index));
+                const double yi = record.y.at(static_cast<size_t>(index));
+                if (!(xi > 0.0) || !(yi > 0.0)) {
+                    throw ValueError("Native generic regression binary VLE records require positive x/y values.");
+                }
+                double residual = std::log(xi) + lnphi_liq.at(static_cast<size_t>(index))
+                    - std::log(yi) - lnphi_vap.at(static_cast<size_t>(index));
+                raw_by_term[term_name].push_back(residual);
+                scaled.push_back(record.scale * residual);
+            }
+            return;
+        }
+        if (record.term == kGenericTermComponentLnFugacity) {
+            auto state = mixture->state(record.t, record.x, record.phase, true, record.p, false, 0.0);
+            vector<double> lnphi = state->ln_fugacity_coefficient();
+            double residual = lnphi.at(static_cast<size_t>(record.target_index)) - record.target;
+            raw_by_term[term_name].push_back(residual);
+            scaled.push_back(record.scale * residual);
+            return;
+        }
+        throw ValueError("Unknown native generic regression residual term.");
+    } catch (const SolutionError&) {
+        int penalty_count = 1;
+        if (record.term == kGenericTermBinaryVLE) {
+            penalty_count = 0;
+            if (record.target_index >= 0) {
+                ++penalty_count;
+            }
+            if (record.target_index_2 >= 0) {
+                ++penalty_count;
+            }
+            penalty_count = std::max(1, penalty_count);
+        }
+        for (int i = 0; i < penalty_count; ++i) {
+            double residual = 1.0e6;
+            raw_by_term[term_name].push_back(residual);
+            scaled.push_back(record.scale * residual);
+        }
+    }
+}
+
+GenericRegressionDebugResult evaluate_generic_residuals_cpp(
+    const vector<add_args> &base_args_by_record,
+    const vector<GenericRegressionRecord> &records,
+    const vector<int> &target_kinds,
+    const vector<int> &target_indices,
+    const vector<int> &target_indices_2,
+    const vector<double> &theta
+) {
+    if (base_args_by_record.size() != records.size()) {
+        throw ValueError("Native generic regression requires one base parameter payload per record.");
+    }
+    vector<double> scaled;
+    std::map<std::string, vector<double>> raw_by_term;
+    for (size_t i = 0; i < records.size(); ++i) {
+        append_generic_residuals_cpp(
+            base_args_by_record[i],
+            records[i],
+            target_kinds,
+            target_indices,
+            target_indices_2,
+            theta,
+            scaled,
+            raw_by_term
+        );
+    }
+    if (scaled.empty()) {
+        throw ValueError("Native generic regression generated no residuals.");
+    }
+    GenericRegressionDebugResult out;
+    out.residuals = std::move(scaled);
+    out.cost = 0.0;
+    for (double value : out.residuals) {
+        out.cost += 0.5 * value * value;
+    }
+    out.residual_norm = std::sqrt(std::max(0.0, 2.0 * out.cost));
+    for (const auto &item : raw_by_term) {
+        out.metrics_by_term[item.first] = rms_metric_cpp(item.second);
+    }
+    return out;
+}
+
+struct GenericBoundedTransformResult {
+    vector<double> x;
+};
+
+GenericBoundedTransformResult generic_unconstrained_to_bounded_cpp(
+    const LMInputVector &y,
+    const vector<double> &lower,
+    const vector<double> &upper
+) {
+    GenericBoundedTransformResult out;
+    out.x.resize(static_cast<size_t>(y.size()), 0.0);
+    for (Index i = 0; i < y.size(); ++i) {
+        double lo = lower[static_cast<size_t>(i)];
+        double hi = upper[static_cast<size_t>(i)];
+        if (!std::isfinite(lo) || !std::isfinite(hi) || !(hi > lo)) {
+            throw ValueError("Native generic regression requires finite strictly increasing bounds.");
+        }
+        double sigma = logistic_cpp(y[i]);
+        out.x[static_cast<size_t>(i)] = lo + (hi - lo) * sigma;
+    }
+    return out;
+}
+
+LMInputVector generic_bounded_to_unconstrained_cpp(
+    const vector<double> &x,
+    const vector<double> &lower,
+    const vector<double> &upper
+) {
+    LMInputVector y(static_cast<Index>(x.size()));
+    for (size_t i = 0; i < x.size(); ++i) {
+        double lo = lower[i];
+        double hi = upper[i];
+        if (!std::isfinite(lo) || !std::isfinite(hi) || !(hi > lo)) {
+            throw ValueError("Native generic regression requires finite strictly increasing bounds.");
+        }
+        double clipped = clip_start_value_cpp(x[i], lo, hi);
+        double p = (clipped - lo) / (hi - lo);
+        p = std::min(1.0 - 1.0e-12, std::max(1.0e-12, p));
+        y[static_cast<Index>(i)] = logit_cpp(p);
+    }
+    return y;
+}
+
+vector<vector<double>> generic_candidate_starts_cpp(
+    const vector<double> &x0,
+    const vector<double> &lower,
+    const vector<double> &upper,
+    int multistart
+) {
+    if (x0.size() != lower.size() || x0.size() != upper.size()) {
+        throw ValueError("Native generic regression starts and bounds must have matching lengths.");
+    }
+    vector<vector<double>> starts;
+    vector<double> first = x0;
+    for (size_t i = 0; i < first.size(); ++i) {
+        first[i] = clip_start_value_cpp(first[i], lower[i], upper[i]);
+    }
+    starts.push_back(first);
+    if (multistart <= 0) {
+        return starts;
+    }
+    constexpr std::array<double, 5> fractions = {0.25, 0.5, 0.75, 0.1, 0.9};
+    for (double fraction : fractions) {
+        if (static_cast<int>(starts.size()) > multistart) {
+            break;
+        }
+        vector<double> point = first;
+        for (size_t i = 0; i < point.size(); ++i) {
+            point[i] = lower[i] + fraction * (upper[i] - lower[i]);
+        }
+        append_start_if_distinct_cpp(starts, std::move(point));
+    }
+    return starts;
+}
+
+struct GenericLeastSquaresFunctor : Eigen::DenseFunctor<double> {
+    static int residual_count_from_records(const vector<GenericRegressionRecord> &records) {
+        int count = 0;
+        for (const auto &record : records) {
+            if (record.term == kGenericTermBinaryVLE) {
+                if (record.target_index >= 0) {
+                    ++count;
+                }
+                if (record.target_index_2 >= 0) {
+                    ++count;
+                }
+            } else {
+                ++count;
+            }
+        }
+        return std::max(1, count);
+    }
+
+    GenericLeastSquaresFunctor(
+        vector<add_args> base_args_by_record,
+        vector<GenericRegressionRecord> records,
+        vector<int> target_kinds,
+        vector<int> target_indices,
+        vector<int> target_indices_2,
+        vector<double> lower,
+        vector<double> upper
+    )
+        : Eigen::DenseFunctor<double>(
+              static_cast<int>(target_kinds.size()),
+              residual_count_from_records(records)
+          ),
+          base_args_by_record(std::move(base_args_by_record)),
+          records(std::move(records)),
+          target_kinds(std::move(target_kinds)),
+          target_indices(std::move(target_indices)),
+          target_indices_2(std::move(target_indices_2)),
+          lower(std::move(lower)),
+          upper(std::move(upper)) {}
+
+    int operator()(const LMInputVector &y, ResidualVector &fvec) {
+        try {
+            GenericBoundedTransformResult transform = generic_unconstrained_to_bounded_cpp(y, lower, upper);
+            GenericRegressionDebugResult eval = evaluate_generic_residuals_cpp(
+                base_args_by_record,
+                records,
+                target_kinds,
+                target_indices,
+                target_indices_2,
+                transform.x
+            );
+            for (Index i = 0; i < fvec.size(); ++i) {
+                fvec[i] = eval.residuals[static_cast<size_t>(i)];
+            }
+            return 0;
+        } catch (...) {
+            return -1;
+        }
+    }
+
+    int df(const LMInputVector &y, ResidualJacobian &fjac) {
+        constexpr double eps = 1.0e-6;
+        ResidualVector f0(values());
+        if ((*this)(y, f0) != 0) {
+            return -1;
+        }
+        for (Index j = 0; j < inputs(); ++j) {
+            LMInputVector yp = y;
+            LMInputVector ym = y;
+            yp[j] += eps;
+            ym[j] -= eps;
+            ResidualVector fp(values());
+            ResidualVector fm(values());
+            if ((*this)(yp, fp) != 0 || (*this)(ym, fm) != 0) {
+                return -1;
+            }
+            fjac.col(j) = (fp - fm) / (2.0 * eps);
+        }
+        return 0;
+    }
+
+    vector<add_args> base_args_by_record;
+    vector<GenericRegressionRecord> records;
+    vector<int> target_kinds;
+    vector<int> target_indices;
+    vector<int> target_indices_2;
+    vector<double> lower;
+    vector<double> upper;
+};
+
+GenericRegressionResult generic_result_from_eval_cpp(
+    const GenericRegressionDebugResult &eval,
+    const vector<double> &x,
+    bool success,
+    int status,
+    const std::string &message,
+    int nfev,
+    int iterations
+) {
+    GenericRegressionResult out;
+    out.x = x;
+    out.cost = eval.cost;
+    out.residual_norm = eval.residual_norm;
+    out.metrics_by_term = eval.metrics_by_term;
+    out.success = success;
+    out.status = status;
+    out.message = message;
+    out.nfev = nfev;
+    out.iterations = iterations;
+    out.backend = "least_squares_native";
+    return out;
+}
+
+GenericRegressionResult solve_one_generic_start_cpp(
+    const vector<add_args> &base_args_by_record,
+    const vector<GenericRegressionRecord> &records,
+    const vector<int> &target_kinds,
+    const vector<int> &target_indices,
+    const vector<int> &target_indices_2,
+    const vector<double> &start,
+    const vector<double> &lower,
+    const vector<double> &upper,
+    int max_nfev
+) {
+    GenericRegressionDebugResult initial_eval = evaluate_generic_residuals_cpp(
+        base_args_by_record,
+        records,
+        target_kinds,
+        target_indices,
+        target_indices_2,
+        start
+    );
+    if (max_nfev <= 1) {
+        GenericRegressionResult out = generic_result_from_eval_cpp(
+            initial_eval,
+            start,
+            std::isfinite(initial_eval.residual_norm),
+            0,
+            "evaluated initial native generic residual without optimizer",
+            1,
+            0
+        );
+        out.initial_cost = initial_eval.cost;
+        out.initial_residual_norm = initial_eval.residual_norm;
+        return out;
+    }
+    GenericLeastSquaresFunctor functor(
+        base_args_by_record,
+        records,
+        target_kinds,
+        target_indices,
+        target_indices_2,
+        lower,
+        upper
+    );
+    Eigen::LevenbergMarquardt<GenericLeastSquaresFunctor> lm(functor);
+    lm.setFtol(1.0e-6);
+    lm.setXtol(1.0e-6);
+    lm.setGtol(0.0);
+    lm.setFactor(10.0);
+    lm.setMaxfev(max_nfev);
+
+    LMInputVector y = generic_bounded_to_unconstrained_cpp(start, lower, upper);
+    Eigen::LevenbergMarquardtSpace::Status status = lm.minimize(y);
+    GenericBoundedTransformResult final_transform = generic_unconstrained_to_bounded_cpp(y, lower, upper);
+    GenericRegressionDebugResult final_eval = evaluate_generic_residuals_cpp(
+        base_args_by_record,
+        records,
+        target_kinds,
+        target_indices,
+        target_indices_2,
+        final_transform.x
+    );
+    GenericRegressionResult out = generic_result_from_eval_cpp(
+        final_eval,
+        final_transform.x,
+        least_squares_status_success_cpp(status) || final_eval.residual_norm <= initial_eval.residual_norm + 1.0e-12,
+        static_cast<int>(status),
+        least_squares_status_message_cpp(status),
+        static_cast<int>(lm.nfev() + lm.njev()),
+        static_cast<int>(lm.iterations())
+    );
+    out.initial_cost = initial_eval.cost;
+    out.initial_residual_norm = initial_eval.residual_norm;
+    return out;
+}
+
+GenericRegressionResult choose_better_generic_result_cpp(
+    bool have_result,
+    const GenericRegressionResult &best,
+    const GenericRegressionResult &candidate
+) {
+    if (!have_result) {
+        return candidate;
+    }
+    if (candidate.success && !best.success) {
+        return candidate;
+    }
+    if (candidate.success == best.success && candidate.cost < best.cost) {
+        return candidate;
+    }
+    return best;
+}
+
 }  // namespace regression_detail
 
 using regression_detail::PureNeutralObjectiveEvaluation;
@@ -816,6 +1398,10 @@ using regression_detail::kThetaSize;
 using regression_detail::objective_from_residual_eval_cpp;
 using regression_detail::solve_one_start_least_squares_cpp;
 using regression_detail::validate_pure_neutral_base_args_cpp;
+using regression_detail::choose_better_generic_result_cpp;
+using regression_detail::evaluate_generic_residuals_cpp;
+using regression_detail::generic_candidate_starts_cpp;
+using regression_detail::solve_one_generic_start_cpp;
 
 PureNeutralRegressionDebugResult evaluate_pure_neutral_objective_debug_cpp(
     const add_args &base_args,
@@ -933,6 +1519,73 @@ PureNeutralRegressionResult fit_pure_neutral_least_squares_cpp(
         throw ValueError("Native pure-neutral least-squares regression did not generate any candidate starts.");
     }
     best.starts_tried = starts_tried;
+    return best;
+}
+
+GenericRegressionDebugResult evaluate_generic_regression_debug_cpp(
+    const vector<add_args> &base_args_by_record,
+    const vector<GenericRegressionRecord> &records,
+    const vector<int> &target_kinds,
+    const vector<int> &target_indices,
+    const vector<int> &target_indices_2,
+    const vector<double> &x
+) {
+    return evaluate_generic_residuals_cpp(
+        base_args_by_record,
+        records,
+        target_kinds,
+        target_indices,
+        target_indices_2,
+        x
+    );
+}
+
+GenericRegressionResult fit_generic_least_squares_cpp(
+    const vector<add_args> &base_args_by_record,
+    const vector<GenericRegressionRecord> &records,
+    const vector<int> &target_kinds,
+    const vector<int> &target_indices,
+    const vector<int> &target_indices_2,
+    const vector<double> &x0,
+    const vector<double> &lower,
+    const vector<double> &upper,
+    int multistart,
+    int max_nfev
+) {
+    if (target_kinds.empty()) {
+        throw ValueError("Native generic regression requires at least one optimization target.");
+    }
+    if (x0.size() != target_kinds.size() || lower.size() != target_kinds.size() || upper.size() != target_kinds.size()) {
+        throw ValueError("Native generic regression target arrays must have matching lengths.");
+    }
+    vector<vector<double>> starts = generic_candidate_starts_cpp(x0, lower, upper, multistart);
+    bool have_result = false;
+    GenericRegressionResult best;
+    int starts_tried = 0;
+    int nfev_total = 0;
+    for (const auto &start : starts) {
+        GenericRegressionResult candidate = solve_one_generic_start_cpp(
+            base_args_by_record,
+            records,
+            target_kinds,
+            target_indices,
+            target_indices_2,
+            start,
+            lower,
+            upper,
+            max_nfev
+        );
+        ++starts_tried;
+        nfev_total += candidate.nfev;
+        best = choose_better_generic_result_cpp(have_result, best, candidate);
+        have_result = true;
+    }
+    if (!have_result) {
+        throw ValueError("Native generic least-squares regression did not generate any candidate starts.");
+    }
+    best.starts_tried = starts_tried;
+    best.nfev = nfev_total;
+    best.backend = "least_squares_native";
     return best;
 }
 
