@@ -1,6 +1,0 @@
-case,parameter,initial,fitted,reference,backend,residual_norm,metric
-Na+ ion,s,2.55,2.814984942621013,2.8232,least_squares_native,1.4824043718114553e-05,mean_ionic_activity=1.2081742e-05;osmotic_coefficient=8.5897486e-06
-Na+ ion,e,205.0,234.46179157087764,230.0,least_squares_native,1.4824043718114553e-05,mean_ionic_activity=1.2081742e-05;osmotic_coefficient=8.5897486e-06
-H2O/Ethanol binary,k_ij,-0.02,0.24999290707253013,-0.06167,least_squares_native,0.3064188566844703,binary_vle_fugacity_balance=0.30641886
-H2O/Ethanol binary,l_ij,0.01,-0.020358450439901282,0.0,least_squares_native,0.3064188566844703,binary_vle_fugacity_balance=0.30641886
-H2O/Ethanol binary,k_hb_ij,0.02,-0.2499999999974199,0.0,least_squares_native,0.3064188566844703,binary_vle_fugacity_balance=0.30641886
