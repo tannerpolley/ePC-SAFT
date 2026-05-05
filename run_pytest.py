@@ -5,7 +5,6 @@ import sys
 import uuid
 from pathlib import Path
 
-
 GENERIC_TEST_TARGETS = (
     "tests/api/test_runtime.py",
     "tests/equilibrium/test_api.py",
@@ -20,7 +19,11 @@ GENERIC_TEST_TARGETS = (
 CONFIDENCE_TEST_TARGETS = GENERIC_TEST_TARGETS + ("tests/native/test_runtime_contracts.py",)
 EQUILIBRIUM_CONFIDENCE_TEST_TARGETS = ("tests/equilibrium/test_electrolyte_lle_confidence.py",)
 RUNTIME_TEST_TARGETS = ("tests/api/test_runtime.py", "tests/native/test_runtime_contracts.py")
-API_TEST_TARGETS = ("tests/api/test_runtime.py", "tests/api/test_parameter_templates.py", "tests/api/test_regression_api.py")
+API_TEST_TARGETS = (
+    "tests/api/test_runtime.py",
+    "tests/api/test_parameter_templates.py",
+    "tests/api/test_regression_api.py",
+)
 NATIVE_TEST_TARGETS = ("tests/native/test_runtime_contracts.py",)
 PROFILE_TEST_TARGETS = ("tests/profile/test_runtime_profile.py",)
 FULL_PROFILE_TEST_TARGETS = (
@@ -55,8 +58,9 @@ FULL_PROFILE_RUNTIME_NOTE = (
     f"it can take about a minute locally, so allow at least {FULL_PROFILE_MIN_TIMEOUT_SECONDS} seconds."
 )
 SLICE_SELECTION_NOTE = (
-    "Slice flags are mutually exclusive. Extra positional pytest targets after a slice "
-    "are appended and will run in addition to that slice."
+    "Slice flags are mutually exclusive. Codex agents should normally start with "
+    "`uv run python scripts/codex_check.py quick` or `uv run python scripts/codex_check.py confidence`. "
+    "Extra positional pytest targets after a slice are appended and will run in addition to that slice."
 )
 
 
@@ -104,7 +108,9 @@ def _pytest_args(
     plots: bool = False,
 ) -> list[str]:
     cmd: list[str] = []
-    has_predefined_targets = generic or confidence or equilibrium_confidence or runtime or api or native or profile or profile_full or plots
+    has_predefined_targets = (
+        generic or confidence or equilibrium_confidence or runtime or api or native or profile or profile_full or plots
+    )
     if confidence:
         cmd.extend(CONFIDENCE_TEST_TARGETS)
     elif equilibrium_confidence:
@@ -191,12 +197,12 @@ def main() -> int:
     predefined.add_argument(
         "--confidence",
         action="store_true",
-        help="Run generic tests plus native runtime contract tests",
+        help="Run generic fast contracts plus native runtime contract tests",
     )
     predefined.add_argument(
         "--equilibrium-confidence",
         action="store_true",
-        help="Run opt-in electrolyte equilibrium confidence checks",
+        help="Run opt-in electrolyte equilibrium confidence/report checks",
     )
     predefined.add_argument("--runtime", action="store_true", help="Run runtime API and native contract tests")
     predefined.add_argument("--api", action="store_true", help="Run public API and regression API tests")
@@ -208,7 +214,9 @@ def main() -> int:
         help="Run all opt-in runtime, MIAC, and regression profile tests",
     )
     predefined.add_argument("--plots", action="store_true", help="Run opt-in generated plot gallery tests")
-    parser.add_argument("--list-slices", action="store_true", help="Print named test slices and exit without running pytest")
+    parser.add_argument(
+        "--list-slices", action="store_true", help="Print named test slices and exit without running pytest"
+    )
     args, pytest_args = parser.parse_known_args()
 
     if args.list_slices:
@@ -257,4 +265,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

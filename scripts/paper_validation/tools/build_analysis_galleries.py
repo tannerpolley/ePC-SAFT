@@ -4,9 +4,10 @@ import html
 import json
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PLOTS_ROOT = REPO_ROOT / "docs" / "plots"
+MANIFEST_PATH = PLOTS_ROOT / "manifest.json"
+
 
 def gallery_repo_root() -> Path:
     if PLOTS_ROOT.name == "plots" and PLOTS_ROOT.parent.name == "docs":
@@ -102,14 +103,38 @@ def image_manifest(pngs: list[Path]) -> list[dict[str, str]]:
 _image_manifest = image_manifest
 
 
+def manifest_path(root: Path = PLOTS_ROOT) -> Path:
+    return root / "manifest.json"
+
+
+def load_manifest(path: Path | None = None, root: Path = PLOTS_ROOT) -> list[dict[str, str]]:
+    path = path or manifest_path(root)
+    if not path.exists():
+        return []
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    items = payload.get("items", [])
+    if not isinstance(items, list):
+        return []
+    return [dict(item) for item in items if isinstance(item, dict)]
+
+
+def gallery_entries(root: Path = PLOTS_ROOT, pngs: list[Path] | None = None) -> list[dict[str, str]]:
+    if pngs is not None:
+        return image_manifest(pngs)
+    entries = load_manifest(root=root)
+    if entries:
+        return entries
+    return image_manifest(collect_pngs(root))
+
+
 def _safe_json(data: object) -> str:
     return json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
 
 
-def render_gallery_page(root: Path, pngs: list[Path]) -> str:
-    manifest = image_manifest(pngs)
+def render_gallery_page(root: Path, pngs: list[Path] | None = None) -> str:
+    manifest = gallery_entries(root, pngs)
     title = page_title()
-    summary = f"{len(manifest)} PNG files under source-local out folders. Select folders on the left to show every image in that subtree."
+    summary = f"{len(manifest)} manifest entries for source-local plot outputs. Missing local assets show a generate-local placeholder."
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -230,6 +255,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
     .asset-button:disabled {{ color: var(--muted); cursor: default; background: #f4f6f8; }}
     .plot-preview {{ display: grid; place-items: center; min-height: 220px; padding: 10px; background: #f7f9fc; }}
     .plot-preview img {{ display: block; max-width: 100%; max-height: 520px; object-fit: contain; background: #fff; border: 1px solid var(--border); border-radius: 6px; }}
+    .plot-preview.is-missing {{ align-content: center; color: var(--muted); font-size: 0.86rem; text-align: center; border-top: 1px dashed var(--border); }}
     .empty-state {{ padding: 28px; color: var(--muted); text-align: center; border: 1px dashed var(--border-strong); border-radius: var(--radius); background: #fff; }}
     .asset-modal, .data-modal {{
       position: fixed;
@@ -529,7 +555,21 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
       }}
       async function showDataTable(image) {{
         if (!image.data_path) return;
-        const response = await fetch(image.data_path);
+        let response;
+        try {{
+          response = await fetch(image.data_path);
+        }} catch (_error) {{
+          document.getElementById("data-dialog-title").textContent = image.data_path;
+          dataBodyEl.textContent = `Generate locally to view: ${{image.data_path}}`;
+          dataModalEl.classList.remove("hidden");
+          return;
+        }}
+        if (!response.ok) {{
+          document.getElementById("data-dialog-title").textContent = image.data_path;
+          dataBodyEl.textContent = `Generate locally to view: ${{image.data_path}}`;
+          dataModalEl.classList.remove("hidden");
+          return;
+        }}
         const text = await response.text();
         const rows = parseCsv(text);
         const table = document.createElement("table");
@@ -554,6 +594,7 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
           const img = document.createElement("img");
           img.src = path;
           img.alt = image.title;
+          img.onerror = () => {{ assetBodyEl.textContent = `Generate locally to view: ${{path}}`; }};
           assetBodyEl.append(img);
         }}
         assetModalEl.classList.remove("hidden");
@@ -597,6 +638,10 @@ def render_gallery_page(root: Path, pngs: list[Path]) -> str:
           const img = document.createElement("img");
           img.src = image.path;
           img.alt = image.title;
+          img.onerror = () => {{
+            preview.classList.add("is-missing");
+            preview.textContent = `Generate locally: ${{image.output_path}}`;
+          }};
           preview.append(img);
           head.append(imageTitle, imagePath, actions);
           card.append(head, preview);
@@ -675,9 +720,8 @@ def remove_stale_indexes() -> None:
 
 def main() -> None:
     PLOTS_ROOT.mkdir(parents=True, exist_ok=True)
-    pngs = collect_pngs(PLOTS_ROOT)
     remove_stale_indexes()
-    (PLOTS_ROOT / "index.html").write_text(render_gallery_page(PLOTS_ROOT, pngs), encoding="utf-8")
+    (PLOTS_ROOT / "index.html").write_text(render_gallery_page(PLOTS_ROOT), encoding="utf-8")
 
 
 if __name__ == "__main__":

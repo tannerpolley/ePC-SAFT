@@ -21,19 +21,22 @@ This repository uses `uv` for Python environment management and direct CMake for
 ```powershell
 uv sync --no-install-project
 uv run python scripts\build_epcsaft.py
-uv run python scripts\codex_doctor.py
-uv run python run_pytest.py --confidence -q
+uv run python scripts\codex_check.py quick
 ```
 
 Direct pytest also works, for example `uv run python -m pytest tests\api\test_runtime.py -q`, but `uv run python run_pytest.py ...` is preferred for Codex and Windows runs because it manages pytest temporary directories more predictably. Set `EPCSAFT_PYTEST_TEMP_ROOT` when you want the wrapper to use an opt-in external pytest temp root instead of its default repo-local generated temp area.
 
-The default new-agent validation sequence is sync, normal native build, doctor, then `uv run python run_pytest.py --confidence -q`.
+The default new-agent validation sequence is sync, normal native build, then `uv run python scripts\codex_check.py quick`. Use `uv run python scripts\codex_check.py confidence` before handoff when runtime confidence matters.
 
 For future Codex agents and maintainers, the [Codex workflow guide](docs/pages/codex_workflows.rst) is the source-of-truth command matrix for setup, fast rebuilds, focused tests, profiling, packaging, and repair-only cleanup.
 
 For the standard Codex validation loops:
 
 ```powershell
+uv run python scripts\codex_check.py quick
+uv run python scripts\codex_check.py confidence
+uv run python scripts\codex_check.py docs
+uv run python scripts\codex_check.py plots
 uv run python run_pytest.py --list-slices
 uv run python run_pytest.py --runtime -q
 uv run python run_pytest.py --generic -q
@@ -43,7 +46,7 @@ uv run python run_pytest.py --profile -q
 uv run python run_pytest.py --profile-full -q -s
 ```
 
-`--runtime` runs runtime API plus native contract tests. `--generic` runs the fast core runtime, parameter-template, equation-registry, and regression API slice. `--confidence` is the default runtime-confidence check; it runs that same slice plus the native runtime contract tests. `--equilibrium-confidence` runs the slower opt-in electrolyte LLE confidence suite and writes reports under `build/equilibrium_confidence`. `--profile` enables and runs the quick opt-in runtime-only profiling check. `--profile-full` runs the slower opt-in runtime, MIAC, and regression profile suite; it can take about a minute locally, so use a runner timeout of at least 120 seconds. To keep pytest temp files outside the repo for an opt-in run, set `EPCSAFT_PYTEST_TEMP_ROOT`, for example:
+`codex_check.py` is the agent-facing orchestrator; `run_pytest.py` remains the lower-level test selector. `--runtime` runs runtime API plus native contract tests. `--generic` runs the fast core runtime, parameter-template, equation-registry, and regression API slice. `--confidence` is the default runtime-confidence check; it runs that same slice plus the native runtime contract tests. `--equilibrium-confidence` runs the slower opt-in electrolyte LLE confidence report checks and writes reports under `build/equilibrium_confidence`. `--profile` enables and runs the quick opt-in runtime-only profiling check. `--profile-full` runs the slower opt-in runtime, MIAC, and regression profile suite; it can take about a minute locally, so use a runner timeout of at least 120 seconds. To keep pytest temp files outside the repo for an opt-in run, set `EPCSAFT_PYTEST_TEMP_ROOT`, for example:
 
 ```powershell
 $env:EPCSAFT_PYTEST_TEMP_ROOT = Join-Path $env:TEMP 'epcsaft-pytest'

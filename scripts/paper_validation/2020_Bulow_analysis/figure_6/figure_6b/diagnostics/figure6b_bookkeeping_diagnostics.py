@@ -18,7 +18,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts._env import require_epcsaft_install
-from scripts.plot_outputs import paper_validation_path, save_plot_figure
+from scripts.plot_outputs import paper_validation_dir, save_plot_figure
 
 require_epcsaft_install()
 if str(SCRIPT_DIR) not in sys.path:
@@ -38,7 +38,7 @@ from scripts._epcsaft_oop import epcsaft_compressibility_factor, epcsaft_density
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-OUTPUT_ROOT = paper_validation_path(Path(__file__).resolve().parent, "output")
+OUTPUT_ROOT = paper_validation_dir(Path(__file__).resolve().parent)
 OUTPUT_DATA_DIR = OUTPUT_ROOT / "data"
 OUTPUT_PLOTS_DIR = OUTPUT_ROOT / "plots"
 
@@ -165,10 +165,37 @@ def run_analysis(
     fig, ax = plt.subplots(figsize=(8.4, 5.6))
     fig.patch.set_facecolor("white")
     ax.set_facecolor("white")
-    ax.plot([r["x_salt"] for r in rows], [r["lnfug_total"] for r in rows], linewidth=2.1, color="green", label=r"$\ln(\gamma_{\pm}^{*})$ total")
-    ax.plot([r["x_salt"] for r in rows], [r["lnfug_sum"] for r in rows], linewidth=1.9, color="tab:blue", linestyle="--", label=r"sum of $\ln\varphi^\alpha$ contributions")
-    ax.plot([r["x_salt"] for r in rows], [r["mu_sum"] for r in rows], linewidth=1.6, color="black", linestyle=":", label=r"legacy sum of $\mu^\alpha$ contributions")
-    ax.plot([r["x_salt"] for r in rows], [r["z_correction"] for r in rows], linewidth=1.6, color="tab:red", linestyle="-.", label=r"$\ln(Z_{\infty}/Z)$")
+    ax.plot(
+        [r["x_salt"] for r in rows],
+        [r["lnfug_total"] for r in rows],
+        linewidth=2.1,
+        color="green",
+        label=r"$\ln(\gamma_{\pm}^{*})$ total",
+    )
+    ax.plot(
+        [r["x_salt"] for r in rows],
+        [r["lnfug_sum"] for r in rows],
+        linewidth=1.9,
+        color="tab:blue",
+        linestyle="--",
+        label=r"sum of $\ln\varphi^\alpha$ contributions",
+    )
+    ax.plot(
+        [r["x_salt"] for r in rows],
+        [r["mu_sum"] for r in rows],
+        linewidth=1.6,
+        color="black",
+        linestyle=":",
+        label=r"legacy sum of $\mu^\alpha$ contributions",
+    )
+    ax.plot(
+        [r["x_salt"] for r in rows],
+        [r["z_correction"] for r in rows],
+        linewidth=1.6,
+        color="tab:red",
+        linestyle="-.",
+        label=r"$\ln(Z_{\infty}/Z)$",
+    )
     ax.set_xlabel(r"salt mole fraction, $x_{salt}$")
     ax.set_ylabel(r"Contribution to $\ln(\gamma_{\pm}^{*})$")
     ax.set_title(r"Figure 6b bookkeeping: total vs summed $\ln\varphi^\alpha$ contributions")
@@ -223,4 +250,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

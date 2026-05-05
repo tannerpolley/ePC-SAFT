@@ -8,7 +8,6 @@ from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PLOTS_ROOT = REPO_ROOT / "docs" / "plots"
 GALLERY_INDEX = PLOTS_ROOT / "index.html"
@@ -76,13 +75,13 @@ def serve_gallery(host: str, port: int, *, auto_build: bool = True) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Build and serve the generated docs/plots gallery on localhost.")
+    parser = argparse.ArgumentParser(description="Build and serve the manifest-driven docs/plots gallery on localhost.")
     parser.add_argument("--host", default="127.0.0.1", help="Host interface for the local server.")
     parser.add_argument("--port", type=int, default=8765, help="Preferred local server port.")
     parser.add_argument(
         "--no-build",
         action="store_true",
-        help="Serve the existing gallery without rebuilding docs/plots/**/index.html first.",
+        help="Serve the existing gallery without rebuilding docs/plots/index.html first.",
     )
     parser.add_argument(
         "--no-auto-build",

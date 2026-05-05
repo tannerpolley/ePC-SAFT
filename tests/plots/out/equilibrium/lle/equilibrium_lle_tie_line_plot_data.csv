@@ -1,6 +1,0 @@
-figure_file,axes_index,axes_title,x_label,y_label,artist_type,artist_label,color,linestyle,marker,linewidth,series_index,point_index,x,y,width,height
-equilibrium_lle_tie_line.png,0,Methanol/cyclohexane LLE tie line,"Methanol mole fraction, $x_{\mathrm{MeOH}}$",,line,Tie line,#1f77b4,-,,1.5,0,0,0.11757838261506,0,,
-equilibrium_lle_tie_line.png,0,Methanol/cyclohexane LLE tie line,"Methanol mole fraction, $x_{\mathrm{MeOH}}$",,line,Tie line,#1f77b4,-,,1.5,0,1,0.79858743090189555,0,,
-equilibrium_lle_tie_line.png,0,Methanol/cyclohexane LLE tie line,"Methanol mole fraction, $x_{\mathrm{MeOH}}$",,scatter,Feed,#1f77b4,,,[1.],0,0,0.45000000000000001,0,,
-equilibrium_lle_tie_line.png,0,Methanol/cyclohexane LLE tie line,"Methanol mole fraction, $x_{\mathrm{MeOH}}$",,scatter,Liquid 1,#ff7f0e,,,[1.],1,0,0.11757838261506,0,,
-equilibrium_lle_tie_line.png,0,Methanol/cyclohexane LLE tie line,"Methanol mole fraction, $x_{\mathrm{MeOH}}$",,scatter,Liquid 2,#2ca02c,,,[1.],2,0,0.79858743090189555,0,,

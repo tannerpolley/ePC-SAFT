@@ -1,9 +1,12 @@
+import json
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 import run_pytest
+from scripts import build_plot_manifest
+from scripts import codex_check
 
 
 def test_confidence_slice_extends_generic_targets_without_changing_generic():
@@ -12,11 +15,42 @@ def test_confidence_slice_extends_generic_targets_without_changing_generic():
     generic_args = run_pytest._pytest_args(["-q"], pytest_temp, generic=True)
     confidence_args = run_pytest._pytest_args(["-q"], pytest_temp, confidence=True)
 
-    assert generic_args[:len(run_pytest.GENERIC_TEST_TARGETS)] == list(run_pytest.GENERIC_TEST_TARGETS)
+    assert generic_args[: len(run_pytest.GENERIC_TEST_TARGETS)] == list(run_pytest.GENERIC_TEST_TARGETS)
     assert "tests/native/test_runtime_contracts.py" not in generic_args
-    assert confidence_args[:len(run_pytest.CONFIDENCE_TEST_TARGETS)] == list(run_pytest.CONFIDENCE_TEST_TARGETS)
+    assert confidence_args[: len(run_pytest.CONFIDENCE_TEST_TARGETS)] == list(run_pytest.CONFIDENCE_TEST_TARGETS)
     assert "tests/native/test_runtime_contracts.py" in confidence_args
     assert confidence_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
+
+
+def test_codex_check_modes_route_to_agent_facing_validation_bundles():
+    assert codex_check.CHECK_COMMANDS["quick"] == (
+        ("scripts/codex_doctor.py",),
+        ("run_pytest.py", "--generic", "-q"),
+    )
+    assert ("scripts/build_plot_manifest.py", "--check") in codex_check.CHECK_COMMANDS["confidence"]
+    assert ("scripts/build_plot_manifest.py", "--refresh") in codex_check.CHECK_COMMANDS["plots"]
+    assert ("run_pytest.py", "--equilibrium-confidence", "-q") in codex_check.CHECK_COMMANDS["full"]
+
+
+def test_plot_manifest_validation_rejects_html_and_duplicate_outputs(tmp_path):
+    manifest = tmp_path / "manifest.json"
+    item = {field: "" for field in build_plot_manifest.REQUIRED_FIELDS}
+    item.update(
+        {
+            "path": "../../scripts/example/out/figure.html",
+            "output_path": "scripts/example/out/figure.html",
+            "source_folder": "scripts",
+        }
+    )
+    manifest.write_text(
+        json.dumps(build_plot_manifest.manifest_payload([item, item])),
+        encoding="utf-8",
+    )
+
+    errors = build_plot_manifest.validate_manifest(manifest)
+
+    assert any("Duplicate output_path" in error for error in errors)
+    assert any("should not reference HTML" in error for error in errors)
 
 
 def test_named_shortcuts_expand_to_expected_targets_and_keep_pytest_arg_ordering():
@@ -30,13 +64,15 @@ def test_named_shortcuts_expand_to_expected_targets_and_keep_pytest_arg_ordering
     profile_full_args = run_pytest._pytest_args(["-q"], pytest_temp, profile_full=True)
     plots_args = run_pytest._pytest_args(["-q"], pytest_temp, plots=True)
 
-    assert runtime_args[:len(run_pytest.RUNTIME_TEST_TARGETS)] == list(run_pytest.RUNTIME_TEST_TARGETS)
-    assert api_args[:len(run_pytest.API_TEST_TARGETS)] == list(run_pytest.API_TEST_TARGETS)
-    assert native_args[:len(run_pytest.NATIVE_TEST_TARGETS)] == list(run_pytest.NATIVE_TEST_TARGETS)
-    assert equilibrium_confidence_args[:len(run_pytest.EQUILIBRIUM_CONFIDENCE_TEST_TARGETS)] == list(run_pytest.EQUILIBRIUM_CONFIDENCE_TEST_TARGETS)
-    assert profile_args[:len(run_pytest.PROFILE_TEST_TARGETS)] == list(run_pytest.PROFILE_TEST_TARGETS)
-    assert profile_full_args[:len(run_pytest.FULL_PROFILE_TEST_TARGETS)] == list(run_pytest.FULL_PROFILE_TEST_TARGETS)
-    assert plots_args[:len(run_pytest.PLOT_TEST_TARGETS)] == list(run_pytest.PLOT_TEST_TARGETS)
+    assert runtime_args[: len(run_pytest.RUNTIME_TEST_TARGETS)] == list(run_pytest.RUNTIME_TEST_TARGETS)
+    assert api_args[: len(run_pytest.API_TEST_TARGETS)] == list(run_pytest.API_TEST_TARGETS)
+    assert native_args[: len(run_pytest.NATIVE_TEST_TARGETS)] == list(run_pytest.NATIVE_TEST_TARGETS)
+    assert equilibrium_confidence_args[: len(run_pytest.EQUILIBRIUM_CONFIDENCE_TEST_TARGETS)] == list(
+        run_pytest.EQUILIBRIUM_CONFIDENCE_TEST_TARGETS
+    )
+    assert profile_args[: len(run_pytest.PROFILE_TEST_TARGETS)] == list(run_pytest.PROFILE_TEST_TARGETS)
+    assert profile_full_args[: len(run_pytest.FULL_PROFILE_TEST_TARGETS)] == list(run_pytest.FULL_PROFILE_TEST_TARGETS)
+    assert plots_args[: len(run_pytest.PLOT_TEST_TARGETS)] == list(run_pytest.PLOT_TEST_TARGETS)
     assert runtime_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert api_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert native_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]

@@ -7,16 +7,15 @@ import csv
 import math
 import sys
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
 
 CONTRIBUTIONS = ["born", "dh", "hc", "disp", "assoc"]
 REPO_ROOT = Path(__file__).resolve().parents[6]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.plot_outputs import paper_validation_path
+from scripts.plot_outputs import paper_validation_dir
 
-OUTPUT_ROOT = paper_validation_path(Path(__file__).resolve().parent, "output")
+OUTPUT_ROOT = paper_validation_dir(Path(__file__).resolve().parent)
 OUTPUT_DATA_DIR = OUTPUT_ROOT / "data"
 
 
@@ -100,7 +99,9 @@ def _apply_weights(base: dict[str, list[float]], weights: dict[str, float]) -> d
     return out
 
 
-def _best_scalar_weight(x_model: list[float], base: list[float], zcorr: list[float], x_data: list[float], y_data: list[float]) -> tuple[float, float, float]:
+def _best_scalar_weight(
+    x_model: list[float], base: list[float], zcorr: list[float], x_data: list[float], y_data: list[float]
+) -> tuple[float, float, float]:
     num = 0.0
     den = 0.0
     for x, y in zip(x_data, y_data):
@@ -134,8 +135,8 @@ def run_scan(bookkeeping_csv: Path, digitized_csv: Path, summary_csv: Path, best
     for i in range(21):
         for j in range(21 - i):
             for k in range(21 - i - j):
-                l = 20 - i - j - k
-                weights = {"dh": i / 20.0, "hc": j / 20.0, "disp": k / 20.0, "assoc": l / 20.0}
+                assoc_weight = 20 - i - j - k
+                weights = {"dh": i / 20.0, "hc": j / 20.0, "disp": k / 20.0, "assoc": assoc_weight / 20.0}
                 adjusted = _apply_weights(base, weights)
                 rmses = {key: _rmse(x_model, adjusted[key], *digitized[key]) for key in CONTRIBUTIONS}
                 score = sum(rmses.values())
@@ -176,7 +177,12 @@ def run_scan(bookkeeping_csv: Path, digitized_csv: Path, summary_csv: Path, best
 
     summary_csv.parent.mkdir(parents=True, exist_ok=True)
     with summary_csv.open("w", newline="", encoding="utf-8") as handle:
-        fieldnames = ["method"] + [f"{key}_weight" for key in CONTRIBUTIONS] + [f"{key}_rmse" for key in CONTRIBUTIONS] + ["score_sum_rmse"]
+        fieldnames = (
+            ["method"]
+            + [f"{key}_weight" for key in CONTRIBUTIONS]
+            + [f"{key}_rmse" for key in CONTRIBUTIONS]
+            + ["score_sum_rmse"]
+        )
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(summary_rows)
@@ -201,7 +207,9 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--digitized-csv",
         type=Path,
-        default=Path(r"C:\Users\Tanner\Documents\git\ePC-SAFT\scripts\paper_validation\2020_Bulow_analysis\figure_6\figure_6b\data\Figure6b_curves.csv"),
+        default=Path(
+            r"C:\Users\Tanner\Documents\git\ePC-SAFT\scripts\paper_validation\2020_Bulow_analysis\figure_6\figure_6b\data\Figure6b_curves.csv"
+        ),
     )
     parser.add_argument(
         "--summary-csv",
@@ -228,4 +236,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

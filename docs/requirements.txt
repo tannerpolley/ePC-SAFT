@@ -1,2 +1,3 @@
 numpy
 scipy
+sphinx>=7.0

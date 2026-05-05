@@ -8,7 +8,6 @@ import pytest
 from scripts import build_test_plot_gallery
 from tests.plots import plot_registry
 
-
 FIELDNAMES = [
     "figure_file",
     "axes_index",
@@ -135,7 +134,7 @@ def test_build_gallery_from_numeric_csv_creates_static_svg_index_and_report(tmp_
     assert png_path.with_suffix(".svg").exists()
     assert (plots_root / "index.html").exists()
     assert "tests/plots/out/example/numeric/numeric_case.png" in (plots_root / "index.html").read_text(encoding="utf-8")
-    assert (tmp_path / "tests" / "plots" / "out" / "plot_asset_report.csv").exists()
+    assert (tmp_path / "build" / "plot_gallery" / "plot_asset_report.csv").exists()
     assert not (plots_root / ("plot" + "ly_companion_report.csv")).exists()
 
 
@@ -189,7 +188,7 @@ def test_build_gallery_dry_run_reports_work_without_writing_outputs(tmp_path: Pa
     assert not png_path.with_suffix(".html").exists()
     assert not png_path.with_suffix(".svg").exists()
     assert not (plots_root / "index.html").exists()
-    assert not (tmp_path / "tests" / "plots" / "out" / "plot_asset_report.csv").exists()
+    assert not (tmp_path / "build" / "plot_gallery" / "plot_asset_report.csv").exists()
 
 
 def test_build_gallery_requires_csv_companion_for_each_png(tmp_path: Path) -> None:
