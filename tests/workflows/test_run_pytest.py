@@ -7,6 +7,7 @@ from pathlib import Path
 import run_pytest
 from scripts import build_plot_manifest
 from scripts import codex_check
+from scripts import codex_doctor
 
 
 def test_confidence_slice_extends_generic_targets_without_changing_generic():
@@ -30,6 +31,14 @@ def test_codex_check_modes_route_to_agent_facing_validation_bundles():
     assert ("scripts/build_plot_manifest.py", "--check") in codex_check.CHECK_COMMANDS["confidence"]
     assert ("scripts/build_plot_manifest.py", "--refresh") in codex_check.CHECK_COMMANDS["plots"]
     assert ("run_pytest.py", "--equilibrium-confidence", "-q") in codex_check.CHECK_COMMANDS["full"]
+
+
+def test_codex_doctor_tracks_native_symbols_added_by_recent_workflows():
+    required = set(codex_doctor.REQUIRED_CORE_SYMBOLS)
+
+    assert "_fit_generic_native_least_squares" in required
+    assert "_evaluate_generic_native_debug" in required
+    assert "_solve_equilibrium_native" in required
 
 
 def test_plot_manifest_validation_rejects_html_and_duplicate_outputs(tmp_path):
@@ -138,6 +147,12 @@ def test_equilibrium_confidence_slice_is_listed():
 
     assert result.returncode == 0
     assert "equilibrium-confidence:" in result.stdout
+
+
+def test_equilibrium_confidence_shortcut_keeps_full_report_env_opt_in():
+    source = Path(run_pytest.__file__).read_text(encoding="utf-8")
+
+    assert 'env["EPCSAFT_EQUILIBRIUM_CONFIDENCE"] = "1"' not in source
 
 
 def test_full_profile_shortcut_sets_perf_environment_flag(monkeypatch):

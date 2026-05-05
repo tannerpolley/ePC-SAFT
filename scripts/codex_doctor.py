@@ -14,6 +14,13 @@ STALE_TRACKED_REPORTS = (
     REPO_ROOT / "scripts" / "paper_validation" / "tools" / "out" / "plot_asset_report.csv",
     REPO_ROOT / "tests" / "plots" / "out" / "plot_asset_report.csv",
 )
+REQUIRED_CORE_SYMBOLS = (
+    "_fit_pure_neutral_native_least_squares",
+    "_fit_generic_native_least_squares",
+    "_evaluate_generic_native_debug",
+    "_solve_equilibrium_native",
+    "NativeSolutionError",
+)
 
 
 def _git_output(*args: str) -> str | None:
@@ -37,6 +44,14 @@ def _module_path(module_name: str) -> tuple[Path | None, str | None]:
     if spec is None or spec.origin is None:
         return None, None
     return Path(spec.origin).resolve(), None
+
+
+def _missing_core_symbols() -> tuple[str, ...]:
+    try:
+        import epcsaft._core as core
+    except Exception:
+        return ()
+    return tuple(name for name in REQUIRED_CORE_SYMBOLS if not hasattr(core, name))
 
 
 def _tool_path(name: str) -> str:
@@ -100,6 +115,8 @@ def main() -> int:
     print(f"epcsaft_import_error: {package_error or '<none>'}")
     print(f"epcsaft_core: {core_path if core_path else '<missing>'}")
     print(f"epcsaft_core_error: {core_error or '<none>'}")
+    missing_core_symbols = _missing_core_symbols() if core_path is not None else ()
+    print(f"epcsaft_core_missing_symbols: {', '.join(missing_core_symbols) if missing_core_symbols else '<none>'}")
     manifest_state, manifest_next = _manifest_state()
     print(f"plot_manifest: {manifest_state}")
     print(f"stale_generated_reports: {_stale_report_state()}")
@@ -112,6 +129,10 @@ def main() -> int:
         return 1
     if core_path is None:
         print("install_state: missing-core")
+        print("next_command: uv run python scripts\\build_epcsaft.py")
+        return 1
+    if missing_core_symbols:
+        print("install_state: stale-core")
         print("next_command: uv run python scripts\\build_epcsaft.py")
         return 1
     if manifest_next != "none":

@@ -56,6 +56,17 @@ def test_khudaida_smoke_cases_return_results_or_diagnostic_failures() -> None:
             assert diagnostics["best_failure_reason"]
 
 
+def test_confidence_suite_smoke_mode_writes_bounded_report(tmp_path: Path) -> None:
+    report = run_confidence_suite("khudaida_2026", mode="smoke", output_root=tmp_path)
+    summary = json.loads(report.summary_path.read_text(encoding="utf-8"))
+
+    assert summary["mode"] == "smoke"
+    assert summary["case_count"] == 2
+    assert summary["oracle_rows"] == 1
+    assert summary["stress_rows"] == 0
+    assert summary["sensitivity_rows"] == 1
+
+
 def test_khudaida_paper_validation_recompute_uses_native_lle() -> None:
     common = importlib.import_module("scripts.paper_validation.2026_Khudaida_analysis._common")
     exp_row = common._experimental_rows(0.05, 293.15)[0]

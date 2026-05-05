@@ -37,7 +37,17 @@ def legacy_electrolyte_lle_candidate(
                 sol = least_squares(
                     _residual,
                     y0,
-                    args=(mixture, float(T), float(P), z_feed, charges, basis.to_dict(), beta_bounds, float(options.min_composition), False),
+                    args=(
+                        mixture,
+                        float(T),
+                        float(P),
+                        z_feed,
+                        charges,
+                        basis.to_dict(),
+                        beta_bounds,
+                        float(options.min_composition),
+                        False,
+                    ),
                     method="trf",
                     ftol=max(float(options.tolerance), 1.0e-10),
                     xtol=max(float(options.tolerance), 1.0e-10),
@@ -46,7 +56,17 @@ def legacy_electrolyte_lle_candidate(
                 )
             except Exception:
                 continue
-            candidate = _candidate_from_variables(mixture, float(T), float(P), z_feed, charges, basis.to_dict(), sol.x, beta_bounds, float(options.min_composition))
+            candidate = _candidate_from_variables(
+                mixture,
+                float(T),
+                float(P),
+                z_feed,
+                charges,
+                basis.to_dict(),
+                sol.x,
+                beta_bounds,
+                float(options.min_composition),
+            )
             if candidate is not None:
                 candidate["status"] = int(sol.status)
                 candidate["message"] = str(sol.message)
@@ -230,7 +250,9 @@ def _candidate_from_variables(
     except Exception:
         return None
     material = (1.0 - beta) * aq + beta * org - feed
-    charge_error = max(abs(float(np.dot(charges, feed))), abs(float(np.dot(charges, aq))), abs(float(np.dot(charges, org))))
+    charge_error = max(
+        abs(float(np.dot(charges, feed))), abs(float(np.dot(charges, aq))), abs(float(np.dot(charges, org)))
+    )
     gibbs_feed = _phase_state(mixture, T, P, feed)["g"]
     gibbs_split = (1.0 - beta) * float(aq_state["g"]) + beta * float(org_state["g"])
     return {
@@ -253,7 +275,9 @@ def _choose_best_candidate(candidates: list[dict[str, Any]], split_tolerance: fl
     return min(pool, key=lambda item: (item["residual_norm"], -item["phase_distance"]))
 
 
-def _heuristic_candidate(feed: np.ndarray, charges: np.ndarray, starts: list[np.ndarray], min_composition: float) -> dict[str, Any] | None:
+def _heuristic_candidate(
+    feed: np.ndarray, charges: np.ndarray, starts: list[np.ndarray], min_composition: float
+) -> dict[str, Any] | None:
     candidates: list[dict[str, Any]] = []
     for org_seed in starts:
         org = np.clip(np.asarray(org_seed, dtype=float), min_composition, None)
@@ -298,7 +322,9 @@ def _max_material_balanced_beta(feed: np.ndarray, org: np.ndarray, min_compositi
     return float(max(0.0, min(0.25, 0.8 * upper)))
 
 
-def _candidate_starts(feed: np.ndarray, charges: np.ndarray, basis: dict[str, Any], min_composition: float) -> list[np.ndarray]:
+def _candidate_starts(
+    feed: np.ndarray, charges: np.ndarray, basis: dict[str, Any], min_composition: float
+) -> list[np.ndarray]:
     starts = [np.asarray(feed, dtype=float)]
     neutral_indices = [int(i) for i in basis["neutral_indices"]]
     charged_indices = [i for i, charge in enumerate(charges) if abs(float(charge)) > 1.0e-12]
@@ -323,7 +349,9 @@ def _candidate_starts(feed: np.ndarray, charges: np.ndarray, basis: dict[str, An
     return starts
 
 
-def _copy_scaled_ions(candidate: np.ndarray, feed: np.ndarray, charges: np.ndarray, ion_total: float, min_composition: float) -> None:
+def _copy_scaled_ions(
+    candidate: np.ndarray, feed: np.ndarray, charges: np.ndarray, ion_total: float, min_composition: float
+) -> None:
     charged_indices = [i for i, charge in enumerate(charges) if abs(float(charge)) > 1.0e-12]
     if not charged_indices:
         return
@@ -366,7 +394,9 @@ def _anchored_retry(
                 )
             except Exception:
                 continue
-            candidate = _candidate_from_variables(mixture, T, P, feed, charges, basis, sol.x, beta_bounds, min_composition)
+            candidate = _candidate_from_variables(
+                mixture, T, P, feed, charges, basis, sol.x, beta_bounds, min_composition
+            )
             if candidate is not None:
                 candidate["status"] = int(sol.status)
                 candidate["message"] = str(sol.message)

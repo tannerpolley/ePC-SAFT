@@ -219,6 +219,8 @@ def test_khudaida_lle_plots_include_model_paper_experiment_and_feed_series(tmp_p
     source_dir = Path("scripts/paper_validation/2026_Khudaida_analysis/figure_2").resolve()
     figure_dir = tmp_path / "figure_2"
     shutil.copytree(source_dir / "data", figure_dir / "data")
+    (figure_dir / "out").mkdir()
+    shutil.copy2(figure_dir / "data" / "model_tielines.csv", figure_dir / "out" / "model_tielines.csv")
 
     common.plot_lle_figure(figure_dir, 2, 293.15, 0.05)
 

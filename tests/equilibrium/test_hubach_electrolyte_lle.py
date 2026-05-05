@@ -12,7 +12,6 @@ import epcsaft
 from epcsaft import ePCSAFTMixture
 from epcsaft.equilibrium_core.electrolyte_seeds import charge_neutral_lle_seed_from_org_phase
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURE_DIR = REPO_ROOT / "data" / "equilibrium_benchmarks" / "electrolyte_lle" / "hubach_2024"
 SPECIES = ["H2O", "TBP", "[emim][tcb]", "Li+", "Cl-"]
@@ -61,8 +60,8 @@ def test_hubach_fixture_matches_lithium_canonical_option_surface() -> None:
     assert model["DH_model"]["mu_DH_model"]["differential_mode"] == 0
     assert model["include_born_model"] is True
     assert model["born_model"]["d_Born_mode"] == 3
-    assert model["born_model"]["solvation_shell_model"] is False
-    assert model["born_model"]["dielectric_saturation"] is False
+    assert model["born_model"]["solvation_shell_model"] is True
+    assert model["born_model"]["dielectric_saturation"] is True
     assert model["born_model"]["bulk_mode"] == "mix"
     assert model["born_model"]["mu_born_model"]["differential_mode"] == 0
     assert model["born_model"]["mu_born_model"]["comp_dep_delta_d"] is True
@@ -86,7 +85,9 @@ def test_hubach_seed_helper_constructs_charge_neutral_material_balanced_guess() 
     assert aq[0] > org_out[0]
 
 
-@pytest.mark.skipif(os.environ.get("EPCSAFT_RUN_HUBACH_LLE") != "1", reason="Hubach native LLE solve is an opt-in hard-case regression.")
+@pytest.mark.skipif(
+    os.environ.get("EPCSAFT_RUN_HUBACH_LLE") != "1", reason="Hubach native LLE solve is an opt-in hard-case regression."
+)
 def test_hubach_row0_explicit_seed_converges_to_distinct_fixed_species_lle() -> None:
     feed = _row0_feed()
     mix = _hubach_mixture(feed)
@@ -115,12 +116,17 @@ def test_hubach_row0_explicit_seed_converges_to_distinct_fixed_species_lle() -> 
     assert diagnostics["seed_attempt_count"] >= 1
     assert diagnostics["seed_attempts"]
     assert phases["aq"].composition[0] > phases["org"].composition[0]
-    assert phases["org"].composition[1] + phases["org"].composition[2] > phases["aq"].composition[1] + phases["aq"].composition[2]
+    assert (
+        phases["org"].composition[1] + phases["org"].composition[2]
+        > phases["aq"].composition[1] + phases["aq"].composition[2]
+    )
     np.testing.assert_allclose(reconstructed, feed, atol=1.0e-10)
     json.dumps(result.to_dict(), allow_nan=False)
 
 
-@pytest.mark.skipif(os.environ.get("EPCSAFT_RUN_HUBACH_LLE") != "1", reason="Hubach native LLE solve is an opt-in hard-case regression.")
+@pytest.mark.skipif(
+    os.environ.get("EPCSAFT_RUN_HUBACH_LLE") != "1", reason="Hubach native LLE solve is an opt-in hard-case regression."
+)
 def test_hubach_cold_start_failure_reports_seed_attempts_before_error() -> None:
     feed = _row0_feed()
     mix = _hubach_mixture(feed)
@@ -146,7 +152,10 @@ def test_hubach_cold_start_failure_reports_seed_attempts_before_error() -> None:
     assert diagnostics["seed_attempt_count"] > 4
 
 
-@pytest.mark.skipif(os.environ.get("EPCSAFT_RUN_HUBACH_LLE") != "1", reason="Hubach legacy-candidate fallback is an opt-in hard-case regression.")
+@pytest.mark.skipif(
+    os.environ.get("EPCSAFT_RUN_HUBACH_LLE") != "1",
+    reason="Hubach legacy-candidate fallback is an opt-in hard-case regression.",
+)
 def test_hubach_cold_start_preserves_distinct_legacy_candidate_on_strict_failure() -> None:
     feed = _row0_feed()
     mix = _hubach_mixture(feed)
@@ -189,7 +198,10 @@ def test_hubach_cold_start_preserves_distinct_legacy_candidate_on_strict_failure
     json.dumps(diagnostics, allow_nan=False)
 
 
-@pytest.mark.skipif(os.environ.get("EPCSAFT_RUN_HUBACH_LLE") != "1", reason="Hubach density diagnostics are an opt-in hard-case regression.")
+@pytest.mark.skipif(
+    os.environ.get("EPCSAFT_RUN_HUBACH_LLE") != "1",
+    reason="Hubach density diagnostics are an opt-in hard-case regression.",
+)
 def test_hubach_cold_start_density_failure_payload_is_json_safe() -> None:
     feed = _row0_feed()
     mix = _hubach_mixture(feed)
@@ -211,6 +223,8 @@ def test_hubach_cold_start_density_failure_payload_is_json_safe() -> None:
     assert diagnostics["density_failure_count"] >= 0
     assert isinstance(diagnostics["density_failure_contexts"], list)
     for context in diagnostics["density_failure_contexts"]:
-        assert {"phase_label", "phase_kind", "T", "P", "composition", "scan_point_count", "rejection_reason"} <= set(context)
+        assert {"phase_label", "phase_kind", "T", "P", "composition", "scan_point_count", "rejection_reason"} <= set(
+            context
+        )
         assert len(context["composition"]) == mix.ncomp
     json.dumps(diagnostics, allow_nan=False)

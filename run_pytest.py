@@ -32,7 +32,9 @@ FULL_PROFILE_TEST_TARGETS = (
     "tests/profile/test_regression_profile.py",
 )
 PLOT_TEST_TARGETS = (
+    "tests/plots/test_2015_baygi_outputs.py",
     "tests/plots/test_gallery_outputs.py",
+    "tests/plots/test_build_test_plot_gallery.py",
     "tests/plots/test_api_parity_plot_outputs.py",
     "tests/plots/test_contribution_plot_outputs.py",
     "tests/plots/test_equilibrium_plot_outputs.py",
@@ -202,7 +204,7 @@ def main() -> int:
     predefined.add_argument(
         "--equilibrium-confidence",
         action="store_true",
-        help="Run opt-in electrolyte equilibrium confidence/report checks",
+        help="Run electrolyte equilibrium confidence contract tests; full reports remain env opt-in",
     )
     predefined.add_argument("--runtime", action="store_true", help="Run runtime API and native contract tests")
     predefined.add_argument("--api", action="store_true", help="Run public API and regression API tests")
@@ -226,8 +228,6 @@ def main() -> int:
     repo_root = _repo_root()
     pytest_temp = _pytest_temp(repo_root)
     env = _pytest_env(pytest_temp, profile=args.profile or args.profile_full)
-    if args.equilibrium_confidence:
-        env["EPCSAFT_EQUILIBRIUM_CONFIDENCE"] = "1"
     src_root = repo_root / "src"
     sys.path.insert(0, str(src_root))
     env["PYTHONPATH"] = str(src_root)

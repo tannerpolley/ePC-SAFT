@@ -149,6 +149,6 @@ For repeated runtime calls, build ``ePCSAFTMixture`` and ``ePCSAFTState`` once a
 Troubleshooting
 ---------------
 
-Run ``uv run python scripts/codex_doctor.py`` whenever imports, tool paths, ``_core`` state, generated-output tracking, or plot manifests are unclear. It reports the active Python, git ref, uv/cmake/ninja paths, ``epcsaft`` import path, ``epcsaft._core`` path, generated artifact state, and the next recommended command.
+Run ``uv run python scripts/codex_doctor.py`` whenever imports, tool paths, ``_core`` state, generated-output tracking, or plot manifests are unclear. It reports the active Python, git ref, uv/cmake/ninja paths, ``epcsaft`` import path, ``epcsaft._core`` path, required native symbol presence, generated artifact state, and the next recommended command.
 
 If ``scripts/build_epcsaft.py`` appears slow, wait for the configured timeout before treating it as broken. Full configure/build can take far longer than the fast rebuild path; incremental ``--build-only --parallel 10`` is the intended C++ edit loop.

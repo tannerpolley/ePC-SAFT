@@ -32,7 +32,6 @@ require_epcsaft_install()
 from epcsaft import SolutionError
 from epcsaft import ePCSAFTMixture
 
-
 MEA_MW = 0.06108
 T_MIN = 303.15
 T_MAX = 443.15
@@ -88,7 +87,7 @@ def output_path(path: Path) -> Path:
 
 
 def baygi_output_root() -> Path:
-    return REPO_ROOT / "docs" / "plots" / "paper_validation" / "2015_Baygi"
+    return ROOT / "out"
 
 
 def regressed_parameters_path() -> Path:
@@ -110,11 +109,10 @@ def read_csv_rows(path: Path) -> list[dict[str, str]]:
 
 
 def _diagnostics_cache_candidates(preferred_path: Path) -> list[Path]:
-    plot_root = baygi_output_root()
     candidates = [
         preferred_path,
-        plot_root / "figure_2" / "data" / "figure_2_diagnostics.csv",
-        plot_root / "figure_3" / "data" / "figure_3_diagnostics.csv",
+        ROOT / "figure_2" / "out" / "data" / "figure_2_diagnostics.csv",
+        ROOT / "figure_3" / "out" / "data" / "figure_3_diagnostics.csv",
     ]
     unique: list[Path] = []
     for candidate in candidates:
@@ -124,11 +122,10 @@ def _diagnostics_cache_candidates(preferred_path: Path) -> list[Path]:
 
 
 def _regressed_diagnostics_cache_candidates(preferred_path: Path) -> list[Path]:
-    plot_root = baygi_output_root()
     candidates = [
         preferred_path,
-        plot_root / "figure_2_regressed" / "data" / "figure_2_regressed_diagnostics.csv",
-        plot_root / "figure_3_regressed" / "data" / "figure_3_regressed_diagnostics.csv",
+        ROOT / "figure_2_regressed" / "out" / "data" / "figure_2_regressed_diagnostics.csv",
+        ROOT / "figure_3_regressed" / "out" / "data" / "figure_3_regressed_diagnostics.csv",
     ]
     unique: list[Path] = []
     for candidate in candidates:
@@ -252,11 +249,7 @@ def _bracket_saturation(mixture: ePCSAFTMixture, T: float, p_hint: float) -> tup
 
 
 def metric_rows(rows: list[dict], field: str) -> list[dict]:
-    reference = {
-        round(float(row["T_K"]), 6): float(row[field])
-        for row in rows
-        if row["series"] == "DIPPR"
-    }
+    reference = {round(float(row["T_K"]), 6): float(row[field]) for row in rows if row["series"] == "DIPPR"}
     out: list[dict] = []
     for assoc_scheme in ("2B", "3B", "4C"):
         residuals = []
@@ -400,7 +393,11 @@ def model_saturation_rows(
                 )
                 continue
             try:
-                log_p = bracket[0] if bracket[0] == bracket[1] else brentq(lambda value: _fugacity_difference(mixture, float(T), value), *bracket)
+                log_p = (
+                    bracket[0]
+                    if bracket[0] == bracket[1]
+                    else brentq(lambda value: _fugacity_difference(mixture, float(T), value), *bracket)
+                )
                 P = math.exp(float(log_p))
                 mixture.clear_runtime_caches()
                 liquid = mixture.state(float(T), np.asarray([1.0], dtype=float), P=P, phase="liq")

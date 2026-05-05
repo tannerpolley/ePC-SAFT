@@ -10,7 +10,6 @@ from epcsaft import ePCSAFTMixture
 from epcsaft import write_fit_result
 from epcsaft.regression import _fit_mea_co2_h2o_pure_parameter_benchmark
 
-
 SPECIES = ["H2O", "MEA", "CO2", "MEAH+", "MEACOO-", "HCO3-"]
 
 ADVANCED_USER_OPTIONS = {
@@ -33,7 +32,9 @@ REFERENCE_VALUES = {
 }
 
 
-def _write_pure_rows(dataset_root: Path, values: dict[str, dict[str, float]], *, fill_fitted_defaults: bool = True) -> None:
+def _write_pure_rows(
+    dataset_root: Path, values: dict[str, dict[str, float]], *, fill_fitted_defaults: bool = True
+) -> None:
     path = dataset_root / "pure" / "any_solvent.csv"
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
@@ -67,9 +68,7 @@ def _write_pure_rows(dataset_root: Path, values: dict[str, dict[str, float]], *,
         base = fixed.get(component, {})
         if not fill_fitted_defaults and component in {"MEA", "MEAH+", "MEACOO-", "HCO3-"}:
             base = {
-                key: value
-                for key, value in base.items()
-                if key not in {"m", "s", "e", "e_assoc", "vol_a", "d_born"}
+                key: value for key, value in base.items() if key not in {"m", "s", "e", "e_assoc", "vol_a", "d_born"}
             }
         merged = {**base, **values.get(component, {})}
         for key, value in merged.items():
@@ -197,4 +196,6 @@ def test_mea_co2_h2o_benchmark_opt_in_real_multistart(tmp_path):
 
     assert all(result.success for result in results.values())
     assert all(result.nfev > 1 for result in results.values())
-    assert all(result.residual_norm <= result.metrics_by_term["initial_residual_norm"] + 1.0e-12 for result in results.values())
+    assert all(
+        result.residual_norm <= result.metrics_by_term["initial_residual_norm"] + 1.0e-12 for result in results.values()
+    )

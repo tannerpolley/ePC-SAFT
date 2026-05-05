@@ -25,8 +25,8 @@
     "include_born_model": true,
     "born_model": {
       "d_Born_mode": "fitted_param",
-      "solvation_shell_model": false,
-      "dielectric_saturation": false,
+      "solvation_shell_model": true,
+      "dielectric_saturation": true,
       "bulk_mode": "mix",
       "mu_born_model": {
         "differential_mode": "analytical",

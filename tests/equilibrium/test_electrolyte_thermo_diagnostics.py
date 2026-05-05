@@ -196,8 +196,7 @@ def test_khudaida_solver_gate_reports_algorithm_or_thermo_failure() -> None:
     json.dumps(diagnostics, allow_nan=False)
 
 
-@pytest.mark.xfail(reason="Unseeded Khudaida feed recovery remains a tracked v4 robustness follow-up.")
-def test_khudaida_unseeded_solver_gate_is_not_yet_an_acceptance_test() -> None:
+def test_khudaida_unseeded_solver_gate_accepts_known_split() -> None:
     diagnostics = evaluate_khudaida_solver_gate(figure=2, tie_line=1, source="package")
 
     assert diagnostics["solver_outcome"] == "accepted"

@@ -275,11 +275,17 @@ def run_confidence_suite(
     out_dir = out_dir / benchmark_suite.name
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    predictions = [predict_case(benchmark_suite, case, max_iterations=5) for case in benchmark_suite.cases]
+    selected_cases = _cases_for_mode(benchmark_suite, mode)
+    predictions = [predict_case(benchmark_suite, case, max_iterations=5) for case in selected_cases]
     continuation = continuation_metrics(predictions)
-    oracle = oracle_checks(benchmark_suite, predictions[: min(6, len(predictions))])
-    stress = stress_cases(benchmark_suite)
-    sensitivity = sensitivity_metrics(benchmark_suite, _preferred_case(benchmark_suite, "0.10:303.15:1"))
+    if mode == "full":
+        oracle = oracle_checks(benchmark_suite, predictions[: min(6, len(predictions))])
+        stress = stress_cases(benchmark_suite)
+        sensitivity = sensitivity_metrics(benchmark_suite, _preferred_case(benchmark_suite, "0.10:303.15:1"))
+    else:
+        oracle = oracle_checks(benchmark_suite, predictions[:1])
+        stress = []
+        sensitivity = _smoke_sensitivity_metrics(predictions)
 
     report = ConfidenceReport(
         output_dir=out_dir,
@@ -307,6 +313,14 @@ def run_confidence_suite(
     if write_gallery:
         _write_gallery_copies(report)
     return report
+
+
+def _cases_for_mode(suite: BenchmarkSuite, mode: str) -> tuple[BenchmarkCase, ...]:
+    if mode == "full":
+        return suite.cases
+    if mode == "smoke":
+        return suite.cases[: min(2, len(suite.cases))]
+    raise ValueError("mode must be 'smoke' or 'full'.")
 
 
 def continuation_metrics(predictions: Sequence[BenchmarkPrediction]) -> list[ContinuationMetrics]:
@@ -421,6 +435,23 @@ def stress_cases(suite: BenchmarkSuite) -> list[BenchmarkPrediction]:
         )
         predictions.append(predict_case(suite, case, max_iterations=5, tolerance=1.0e-8))
     return predictions
+
+
+def _smoke_sensitivity_metrics(predictions: Sequence[BenchmarkPrediction]) -> list[SensitivityMetrics]:
+    if not predictions:
+        return []
+    baseline = predictions[0]
+    return [
+        SensitivityMetrics(
+            case_key=baseline.case.case_key,
+            parameter="smoke_baseline",
+            perturbation=0.0,
+            status=baseline.status,
+            max_composition_delta=0.0,
+            solver_residual_norm=float(baseline.diagnostics.get("solver_residual_norm", math.nan)),
+            gibbs_delta=float(baseline.diagnostics.get("gibbs_delta", math.nan)),
+        )
+    ]
 
 
 def sensitivity_metrics(suite: BenchmarkSuite, case: BenchmarkCase) -> list[SensitivityMetrics]:
