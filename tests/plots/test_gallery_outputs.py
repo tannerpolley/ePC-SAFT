@@ -14,9 +14,8 @@ import numpy as np
 import pytest
 
 from scripts import plot_outputs
-from scripts import build_plot_manifest
-from scripts.paper_validation.tools import build_analysis_galleries
 from scripts.paper_validation.tools import ensure_plot_companions
+from scripts.paper_validation.tools import plot_asset_index
 from scripts.paper_validation.tools import render_plot_data_csv
 from scripts.paper_validation.tools import report_plot_assets
 from tests.plots.plot_helpers import assert_figure_text_is_inside_canvas
@@ -146,8 +145,7 @@ def test_render_plot_data_csv_rejects_placeholder_rows(tmp_path: Path) -> None:
         render_plot_data_csv.render_csv_to_static_assets(csv_path)
 
 
-def test_plot_manifest_describes_source_owned_static_assets(tmp_path: Path, monkeypatch) -> None:
-    root = tmp_path / "docs" / "plots"
+def test_plot_asset_index_describes_source_owned_static_assets(tmp_path: Path) -> None:
     child = tmp_path / "scripts" / "paper_validation" / "Example_analysis" / "figure_1" / "out"
     child.mkdir(parents=True)
     (child / "figure_1.png").write_bytes(b"png")
@@ -163,16 +161,15 @@ def test_plot_manifest_describes_source_owned_static_assets(tmp_path: Path, monk
     ):
         test_child.mkdir(parents=True)
         (test_child / f"{test_child.name}.png").write_bytes(b"png")
-    monkeypatch.setattr(build_analysis_galleries, "PLOTS_ROOT", root)
 
-    manifest = build_analysis_galleries.image_manifest(build_analysis_galleries.collect_pngs(root))
-    by_output = {item["output_path"]: item for item in manifest}
+    assets = plot_asset_index.asset_rows(plot_asset_index.collect_pngs(tmp_path), repo_root=tmp_path)
+    by_output = {item["output_path"]: item for item in assets}
 
     assert by_output["scripts/paper_validation/Example_analysis/figure_1/out/figure_1.png"]["svg_path"] == (
-        "../../scripts/paper_validation/Example_analysis/figure_1/out/figure_1.svg"
+        "scripts/paper_validation/Example_analysis/figure_1/out/figure_1.svg"
     )
     assert by_output["scripts/paper_validation/Example_analysis/figure_1/out/figure_1.png"]["data_path"] == (
-        "../../scripts/paper_validation/Example_analysis/figure_1/out/figure_1_plot_data.csv"
+        "scripts/paper_validation/Example_analysis/figure_1/out/figure_1_plot_data.csv"
     )
     assert by_output["scripts/paper_validation/Example_analysis/figure_1/out/figure_1.png"]["source_path"] == (
         "scripts/paper_validation/Example_analysis/figure_1/figure_1.png"
@@ -183,8 +180,8 @@ def test_plot_manifest_describes_source_owned_static_assets(tmp_path: Path, monk
     assert by_output["tests/plots/out/properties/residual_energy/residual_energy.png"]["source_folder"] == (
         "tests/plots/properties/residual_energy"
     )
-    assert all(("html" + "_path") not in item for item in manifest)
-    assert all(("native_" + "plot" + "ly") not in json.dumps(item) for item in manifest)
+    assert all(("html" + "_path") not in item for item in assets)
+    assert all(("native_" + "plot" + "ly") not in json.dumps(item) for item in assets)
 
 
 def test_khudaida_lle_plots_include_model_paper_experiment_and_feed_series(tmp_path: Path) -> None:
@@ -210,8 +207,7 @@ def test_khudaida_lle_plots_include_model_paper_experiment_and_feed_series(tmp_p
     } <= scaled_labels
 
 
-def test_ensure_plot_companions_adds_svg_and_csv(tmp_path: Path, monkeypatch) -> None:
-    root = tmp_path / "docs" / "plots"
+def test_ensure_plot_companions_adds_svg_and_csv(tmp_path: Path) -> None:
     png = tmp_path / "scripts" / "paper_validation" / "Example_analysis" / "figure_1" / "out" / "figure_1.png"
     png.parent.mkdir(parents=True)
     png.write_bytes(
@@ -221,9 +217,8 @@ def test_ensure_plot_companions_adds_svg_and_csv(tmp_path: Path, monkeypatch) ->
         b"\x08\x02\x00\x00\x00"
         b"\x00\x00\x00\x00"
     )
-    monkeypatch.setattr(build_analysis_galleries, "PLOTS_ROOT", root)
 
-    result = ensure_plot_companions.ensure_companions(root)
+    result = ensure_plot_companions.ensure_companions(tmp_path)
 
     assert result.csv_created == 1
     assert result.svg_created == 1
@@ -232,8 +227,7 @@ def test_ensure_plot_companions_adds_svg_and_csv(tmp_path: Path, monkeypatch) ->
     assert 'href="figure_1.png"' in png.with_suffix(".svg").read_text(encoding="utf-8")
 
 
-def test_plot_asset_report_lists_static_png_svg_csv_bundles(tmp_path: Path, monkeypatch) -> None:
-    root = tmp_path / "docs" / "plots"
+def test_plot_asset_report_lists_static_png_svg_csv_bundles(tmp_path: Path) -> None:
     complete = tmp_path / "scripts" / "paper_validation" / "Example_analysis" / "figure_1" / "out" / "figure_1.png"
     incomplete = tmp_path / "scripts" / "paper_validation" / "Example_analysis" / "figure_2" / "out" / "figure_2.png"
     complete.parent.mkdir(parents=True)
@@ -242,11 +236,10 @@ def test_plot_asset_report_lists_static_png_svg_csv_bundles(tmp_path: Path, monk
     incomplete.write_bytes(b"png")
     complete.with_suffix(".svg").write_text("<svg></svg>", encoding="utf-8")
     (complete.parent / "figure_1_plot_data.csv").write_text("x,y\n0,0\n", encoding="utf-8")
-    monkeypatch.setattr(build_analysis_galleries, "PLOTS_ROOT", root)
 
     output = tmp_path / "report.csv"
-    rows = report_plot_assets.asset_rows(root)
-    report_plot_assets.write_report(output, root)
+    rows = report_plot_assets.asset_rows(tmp_path)
+    report_plot_assets.write_report(output, tmp_path)
     report = output.read_text(encoding="utf-8")
 
     by_output = {row["output_path"]: row for row in rows}
@@ -260,8 +253,7 @@ def test_plot_asset_report_lists_static_png_svg_csv_bundles(tmp_path: Path, monk
     assert "has_html" not in report
 
 
-def test_gallery_manifest_keeps_output_and_source_paths(tmp_path: Path, monkeypatch) -> None:
-    root = tmp_path / "docs" / "plots"
+def test_plot_asset_index_keeps_output_and_source_paths(tmp_path: Path) -> None:
     paths = [
         tmp_path / "scripts" / "paper_validation" / "Example_analysis" / "figure_1" / "out" / "figure_1.png",
         tmp_path / "scripts" / "fits" / "out" / "miac" / "water" / "miac.png",
@@ -273,52 +265,25 @@ def test_gallery_manifest_keeps_output_and_source_paths(tmp_path: Path, monkeypa
     paths[2].with_suffix(".svg").write_text("<svg></svg>", encoding="utf-8")
     data_path = paths[2].parent / "equilibrium_vle_compositions_plot_data.csv"
     data_path.write_text("x,y\n0,0\n", encoding="utf-8")
-    monkeypatch.setattr(build_analysis_galleries, "PLOTS_ROOT", root)
 
-    manifest = build_analysis_galleries.image_manifest(build_analysis_galleries.collect_pngs(root))
+    assets = plot_asset_index.asset_rows(plot_asset_index.collect_pngs(tmp_path), repo_root=tmp_path)
 
-    by_output = {item["output_path"]: item for item in manifest}
+    by_output = {item["output_path"]: item for item in assets}
     test_output = "tests/plots/out/equilibrium/vle/equilibrium_vle_compositions.png"
     assert by_output["scripts/paper_validation/Example_analysis/figure_1/out/figure_1.png"]["source_path"] == (
         "scripts/paper_validation/Example_analysis/figure_1/figure_1.png"
     )
     assert by_output["scripts/fits/out/miac/water/miac.png"]["source_path"] == "scripts/fits/miac/water/miac.png"
     assert by_output[test_output]["source_path"] == "tests/plots/equilibrium/vle/equilibrium_vle_compositions.png"
-    assert (
-        by_output[test_output]["svg_path"] == "../../tests/plots/out/equilibrium/vle/equilibrium_vle_compositions.svg"
-    )
+    assert by_output[test_output]["svg_path"] == "tests/plots/out/equilibrium/vle/equilibrium_vle_compositions.svg"
     assert ("html" + "_path") not in by_output[test_output]
     assert by_output[test_output]["data_path"] == (
-        "../../tests/plots/out/equilibrium/vle/equilibrium_vle_compositions_plot_data.csv"
-    )
-    assert by_output["scripts/paper_validation/Example_analysis/figure_1/out/figure_1.png"]["folder"] == (
-        "scripts/paper_validation/Example_analysis/figure_1"
-    )
-    assert by_output["scripts/paper_validation/Example_analysis/figure_1/out/figure_1.png"]["output_folder"] == (
-        "scripts/paper_validation/Example_analysis/figure_1/out"
+        "tests/plots/out/equilibrium/vle/equilibrium_vle_compositions_plot_data.csv"
     )
 
 
-def test_docs_plot_manifest_is_valid_without_requiring_generated_assets() -> None:
-    assert build_plot_manifest.validate_manifest() == []
-
-
-def test_docs_plot_manifest_entries_are_source_owned_and_static() -> None:
-    payload = json.loads(build_plot_manifest.DEFAULT_MANIFEST.read_text(encoding="utf-8"))
-    items = payload["items"]
-
-    assert items
-    for item in items:
-        assert item["path"] == (Path("../../") / item["output_path"]).as_posix()
-        assert item["source_path"]
-        assert item["output_path"].startswith(("scripts/", "tests/", "src/"))
-        assert "/out/" in item["output_path"]
-        assert not item["output_path"].startswith("docs/plots/")
-        assert ("html" + "_path") not in item
-        assert ("interactive" + "_source") not in item
-
-
-def test_docs_plots_has_manifest_but_no_repo_owned_html_app() -> None:
-    html_files = sorted(path.as_posix() for path in Path("docs/plots").rglob("*.html"))
+def test_docs_plots_has_no_repo_owned_html_or_catalog_app() -> None:
+    docs_plots = Path("docs") / "plots"
+    html_files = sorted(path.as_posix() for path in docs_plots.rglob("*.html"))
     assert html_files == []
-    assert build_plot_manifest.DEFAULT_MANIFEST.exists()
+    assert not (docs_plots / ("manifest" + ".json")).exists()

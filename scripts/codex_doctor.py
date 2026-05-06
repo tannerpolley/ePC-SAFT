@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib.util
-import json
 import shutil
 import subprocess
 import sys
@@ -9,7 +8,6 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = REPO_ROOT / "src"
-PLOT_MANIFEST = REPO_ROOT / "docs" / "plots" / "manifest.json"
 STALE_TRACKED_REPORTS = (
     REPO_ROOT / "scripts" / "paper_validation" / "tools" / "out" / "plot_asset_report.csv",
     REPO_ROOT / "tests" / "plots" / "out" / "plot_asset_report.csv",
@@ -76,19 +74,6 @@ def _tracked_generated_count() -> int | None:
     return count
 
 
-def _manifest_state() -> tuple[str, str]:
-    if not PLOT_MANIFEST.exists():
-        return "missing", "uv run python scripts\\build_plot_manifest.py --refresh"
-    try:
-        payload = json.loads(PLOT_MANIFEST.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return "invalid-json", "uv run python scripts\\build_plot_manifest.py --refresh"
-    items = payload.get("items")
-    if not isinstance(items, list):
-        return "invalid-schema", "uv run python scripts\\build_plot_manifest.py --refresh"
-    return f"current ({len(items)} item(s))", "none"
-
-
 def _stale_report_state() -> str:
     stale = [path.relative_to(REPO_ROOT).as_posix() for path in STALE_TRACKED_REPORTS if path.exists()]
     return ", ".join(stale) if stale else "<none>"
@@ -117,8 +102,6 @@ def main() -> int:
     print(f"epcsaft_core_error: {core_error or '<none>'}")
     missing_core_symbols = _missing_core_symbols() if core_path is not None else ()
     print(f"epcsaft_core_missing_symbols: {', '.join(missing_core_symbols) if missing_core_symbols else '<none>'}")
-    manifest_state, manifest_next = _manifest_state()
-    print(f"plot_manifest: {manifest_state}")
     print(f"stale_generated_reports: {_stale_report_state()}")
     tracked_generated = _tracked_generated_count()
     print(f"tracked_source_out_generated_files: {tracked_generated if tracked_generated is not None else '<unknown>'}")
@@ -135,11 +118,6 @@ def main() -> int:
         print("install_state: stale-core")
         print("next_command: uv run python scripts\\build_epcsaft.py")
         return 1
-    if manifest_next != "none":
-        print("install_state: missing-plot-manifest")
-        print(f"next_command: {manifest_next}")
-        return 1
-
     print("install_state: current")
     print("next_command: none")
     return 0

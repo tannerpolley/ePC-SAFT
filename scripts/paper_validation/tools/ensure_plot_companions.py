@@ -13,9 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.paper_validation.tools import build_analysis_galleries
-
-PLOTS_ROOT = build_analysis_galleries.PLOTS_ROOT
+from scripts.paper_validation.tools import plot_asset_index
 
 
 @dataclass(frozen=True)
@@ -92,7 +90,6 @@ def _write_static_svg(png_path: Path, *, dry_run: bool, force: bool = False) -> 
 
 def ensure_png_companions(
     png_paths: Iterable[Path],
-    plots_root: Path = PLOTS_ROOT,
     *,
     dry_run: bool = False,
     create_missing_csv: bool = True,
@@ -119,13 +116,13 @@ def ensure_png_companions(
     )
 
 
-def ensure_companions(plots_root: Path = PLOTS_ROOT, *, dry_run: bool = False) -> CompanionResult:
-    return ensure_png_companions(build_analysis_galleries.collect_pngs(plots_root), plots_root, dry_run=dry_run)
+def ensure_companions(repo_root: Path = REPO_ROOT, *, dry_run: bool = False) -> CompanionResult:
+    return ensure_png_companions(plot_asset_index.collect_pngs(repo_root), dry_run=dry_run)
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Ensure every source-local out PNG has CSV and SVG companions.")
-    parser.add_argument("--root", type=Path, default=PLOTS_ROOT, help="Plot gallery root.")
+    parser.add_argument("--root", type=Path, default=REPO_ROOT, help="Repository root for plot asset discovery.")
     parser.add_argument("--dry-run", action="store_true", help="Report work without writing companions.")
     return parser
 

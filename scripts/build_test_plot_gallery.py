@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import argparse
-import json
 import subprocess
 import sys
-from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -13,14 +11,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts import build_plot_manifest
-from scripts.paper_validation.tools import build_analysis_galleries
 from scripts.paper_validation.tools import ensure_plot_companions
 from scripts.paper_validation.tools import render_plot_data_csv
 from scripts.paper_validation.tools import report_plot_assets
 from tests.plots import plot_registry
-
-PLOTS_ROOT = REPO_ROOT / "docs" / "plots"
 
 
 class PlotGalleryBuildError(RuntimeError):
@@ -35,26 +29,15 @@ class GalleryBuildResult:
     png_count: int
     rendered_from_csv: int = 0
     svg_created: int = 0
-    manifest_path: Path | None = None
     report_path: Path | None = None
     dry_run: bool = False
-
-
-@contextmanager
-def _gallery_root(root: Path):
-    old_root = build_analysis_galleries.PLOTS_ROOT
-    build_analysis_galleries.PLOTS_ROOT = root
-    try:
-        yield
-    finally:
-        build_analysis_galleries.PLOTS_ROOT = old_root
 
 
 def _plot_data_path(png_path: Path) -> Path:
     return png_path.parent / f"{png_path.stem}_plot_data.csv"
 
 
-def _candidate_pngs(plots_root: Path, output_dirs: Iterable[str], *, repo_root: Path = REPO_ROOT) -> tuple[Path, ...]:
+def _candidate_pngs(output_dirs: Iterable[str], *, repo_root: Path = REPO_ROOT) -> tuple[Path, ...]:
     tests_root = repo_root / "tests" / "plots" / "out"
     pngs: list[Path] = []
     for output_dir in output_dirs:
@@ -68,26 +51,12 @@ def _missing_csvs(pngs: Iterable[Path]) -> list[Path]:
     return [png_path for png_path in pngs if not _plot_data_path(png_path).exists()]
 
 
-def _write_report(plots_root: Path, *, repo_root: Path = REPO_ROOT, dry_run: bool) -> Path:
-    report_path = repo_root / "build" / "plot_gallery" / "plot_asset_report.csv"
+def _write_report(*, repo_root: Path = REPO_ROOT, dry_run: bool) -> Path:
+    report_path = repo_root / "build" / "plot_assets" / "plot_asset_report.csv"
     if dry_run:
         return report_path
-    with _gallery_root(plots_root):
-        report_plot_assets.write_report(report_path, plots_root)
+    report_plot_assets.write_report(report_path, repo_root)
     return report_path
-
-
-def _write_manifest(plots_root: Path, *, dry_run: bool) -> Path:
-    manifest_path = plots_root / "manifest.json"
-    if dry_run:
-        return manifest_path
-    with _gallery_root(plots_root):
-        payload = build_plot_manifest.manifest_payload(
-            build_analysis_galleries.image_manifest(build_analysis_galleries.collect_pngs(plots_root))
-        )
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    return manifest_path
 
 
 def _run_plot_producers(plot_targets: tuple[str, ...], *, repo_root: Path, dry_run: bool, skip_pytest: bool) -> None:
@@ -116,7 +85,6 @@ def build_gallery(
     recipes: Iterable[plot_registry.PlotRecipe],
     *,
     repo_root: Path = REPO_ROOT,
-    plots_root: Path = PLOTS_ROOT,
     dry_run: bool = False,
     force_render: bool = False,
     skip_pytest: bool = False,
@@ -130,7 +98,7 @@ def build_gallery(
 
     _run_plot_producers(plot_targets, repo_root=repo_root, dry_run=dry_run, skip_pytest=skip_pytest)
 
-    pngs = _candidate_pngs(plots_root, output_dirs, repo_root=repo_root)
+    pngs = _candidate_pngs(output_dirs, repo_root=repo_root)
     missing_csv = _missing_csvs(pngs)
     if missing_csv:
         missing = "\n".join(f"  - {path.as_posix()}" for path in missing_csv)
@@ -140,13 +108,11 @@ def build_gallery(
     svg_candidates = tuple(path for path in pngs if not path.with_suffix(".svg").exists())
     svg = ensure_plot_companions.ensure_png_companions(
         list(svg_candidates),
-        plots_root,
         dry_run=dry_run,
         create_missing_csv=False,
     )
 
-    manifest_path = _write_manifest(plots_root, dry_run=dry_run)
-    report_path = _write_report(plots_root, repo_root=repo_root, dry_run=dry_run)
+    report_path = _write_report(repo_root=repo_root, dry_run=dry_run)
 
     return GalleryBuildResult(
         recipe_count=len(selected_recipes),
@@ -155,7 +121,6 @@ def build_gallery(
         png_count=len(pngs),
         rendered_from_csv=rendered,
         svg_created=svg.svg_created,
-        manifest_path=manifest_path,
         report_path=report_path,
         dry_run=dry_run,
     )
@@ -170,7 +135,6 @@ def _format_result(result: GalleryBuildResult) -> str:
         f"Plot producers: {targets}\n"
         f"Output folders: {folders}\n"
         f"PNG files: {result.png_count}; rendered from CSV: {result.rendered_from_csv}; SVG created: {result.svg_created}\n"
-        f"Plot manifest: {result.manifest_path}\n"
         f"Asset report: {result.report_path}"
     )
 
@@ -190,7 +154,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--skip-pytest", action="store_true", help="Use existing PNG/CSV outputs without running plot producer tests."
     )
-    parser.add_argument("--plots-root", type=Path, default=PLOTS_ROOT, help=argparse.SUPPRESS)
     return parser
 
 
@@ -204,7 +167,6 @@ def main(argv: list[str] | None = None) -> int:
         result = build_gallery(
             recipes,
             repo_root=REPO_ROOT,
-            plots_root=args.plots_root,
             dry_run=args.dry_run,
             force_render=args.force_render,
             skip_pytest=args.skip_pytest,

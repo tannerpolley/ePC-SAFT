@@ -72,8 +72,8 @@ a^{res} = a^{hc} + a^{disp} + a^{assoc} + a^{DH} + a^{Born}
 - This is the key ingredient for credible water → alcohol/organic electrolyte predictions
 
 Insert (optional):
-- Dielectric fits: manifest entry under `scripts/fits/out/dielectric/test_dielc_fit_salts_in_water_fit.png`
-- Dielectric derivative check: manifest entry under `scripts/fits/out/dielectric/test_dielc_diff_salts_in_water_fit.png`
+- Dielectric fits: generated asset under `scripts/fits/out/dielectric/test_dielc_fit_salts_in_water_fit.png`
+- Dielectric derivative check: generated asset under `scripts/fits/out/dielectric/test_dielc_diff_salts_in_water_fit.png`
 
 ---
 
@@ -102,8 +102,8 @@ Insert (optional):
 - These fits establish the ion parameter base before moving into mixed-solvent and extraction scenarios
 
 Insert (optional):
-- Water MIAC fits: manifest entries under `scripts/fits/out/miac/water/miac_m/miac_m_water_*.png`
-- Osmotic validation: manifest entry under `scripts/fits/out/osmotic/water/validation_2014_repro_NaCl_KBr_fit.png`
+- Water MIAC fits: generated assets under `scripts/fits/out/miac/water/miac_m/miac_m_water_*.png`
+- Osmotic validation: generated asset under `scripts/fits/out/osmotic/water/validation_2014_repro_NaCl_KBr_fit.png`
 
 ---
 
@@ -114,8 +114,8 @@ Insert (optional):
 - The non-aqueous performance is where the 2020 dielectric-dependent Born treatment shows its value
 
 Insert (optional):
-- Methanol MIAC fits: manifest entries under `scripts/fits/out/miac/methanol/miac_m/miac_m_methanol_*.png`
-- Ethanol MIAC fits: manifest entries under `scripts/fits/out/miac/ethanol/miac_m/miac_m_ethanol_*.png`
+- Methanol MIAC fits: generated assets under `scripts/fits/out/miac/methanol/miac_m/miac_m_methanol_*.png`
+- Ethanol MIAC fits: generated assets under `scripts/fits/out/miac/ethanol/miac_m/miac_m_ethanol_*.png`
 
 ---
 
@@ -126,7 +126,7 @@ Insert (optional):
 - Sets the right foundation for LLE coupling because electrostatics respond correctly to solvent composition
 
 Insert (optional):
-- DH/Born model comparisons: historical generated plots should be placed under `docs/plots/fits/` if regenerated.
+- DH/Born model comparisons: historical generated plots should be placed under the owning script's `out/` folder if regenerated.
 
 ---
 

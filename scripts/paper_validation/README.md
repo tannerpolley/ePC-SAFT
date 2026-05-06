@@ -2,15 +2,17 @@
 
 This folder contains paper-reproduction and diagnostic analysis assets. It is separate from the core package build and test workflow.
 
-## Plot Manifest Workflow
+## Plot Asset Workflow
 
-Refresh the source-owned plot manifest with:
+Generated plot assets live in source-local `out/` folders beside the scripts, tests, or package modules that create them. The external plot browser should discover these folders directly.
+
+Check local PNG/SVG/CSV bundles with:
 
 ```powershell
-uv run python scripts/build_plot_manifest.py --refresh
+uv run python scripts/paper_validation/tools/report_plot_assets.py
 ```
 
-`docs/plots/manifest.json` is the tracked interface for external plot-browser software. It lists source-owned plot outputs under `scripts/**/out`, `tests/**/out`, and `src/**/out` and links the matching SVG and CSV assets when they exist.
+The report scans source-owned plot outputs under `scripts/**/out`, `tests/**/out`, and `src/**/out` and records whether matching SVG and CSV assets exist.
 
 ## CSV-Backed Figure Data
 
@@ -34,7 +36,7 @@ All generated PNGs should also have a companion `<png-stem>_plot_data.csv` in th
 
 ## Folder Roles
 
-- `tools/`: shared tooling for paper-validation maintenance, companion asset checks, and manifest/report helpers.
+- `tools/`: shared tooling for paper-validation maintenance, companion asset checks, and asset reports.
 - `*_analysis/`: per-paper figure scripts and digitized/source data. Generated PNGs and generated figure CSVs live under each owning folder's ignored `out/`.
 - `2020_Bulow_analysis/**/diagnostics`: exploratory and audit material. Review and tag these before pruning; do not delete them as routine cleanup.
 

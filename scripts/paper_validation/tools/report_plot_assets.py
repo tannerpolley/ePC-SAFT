@@ -9,16 +9,16 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.paper_validation.tools import build_analysis_galleries
+from scripts.paper_validation.tools import plot_asset_index
 
-DEFAULT_REPORT = REPO_ROOT / "build" / "plot_gallery" / "plot_asset_report.csv"
+DEFAULT_REPORT = REPO_ROOT / "build" / "plot_assets" / "plot_asset_report.csv"
 
 
-def asset_rows(plots_root: Path = build_analysis_galleries.PLOTS_ROOT) -> list[dict[str, str]]:
+def asset_rows(repo_root: Path = REPO_ROOT) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
-    for item in build_analysis_galleries.gallery_entries(plots_root):
+    for item in plot_asset_index.asset_rows(plot_asset_index.collect_pngs(repo_root), repo_root=repo_root):
         output_path = item["output_path"]
-        png_path = build_analysis_galleries.gallery_repo_root() / output_path
+        png_path = repo_root / output_path
         svg_path = png_path.with_suffix(".svg")
         data_path = png_path.parent / f"{png_path.stem}_plot_data.csv"
         has_svg = svg_path.exists()
@@ -37,8 +37,8 @@ def asset_rows(plots_root: Path = build_analysis_galleries.PLOTS_ROOT) -> list[d
     return rows
 
 
-def write_report(output: Path, plots_root: Path = build_analysis_galleries.PLOTS_ROOT) -> Path:
-    rows = asset_rows(plots_root)
+def write_report(output: Path, repo_root: Path = REPO_ROOT) -> Path:
+    rows = asset_rows(repo_root)
     output.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
         "output_path",
@@ -60,7 +60,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Report PNG/SVG/CSV static plot assets under source-local out folders."
     )
-    parser.add_argument("--root", type=Path, default=build_analysis_galleries.PLOTS_ROOT, help="Plot gallery root.")
+    parser.add_argument("--root", type=Path, default=REPO_ROOT, help="Repository root for plot asset discovery.")
     parser.add_argument("--output", type=Path, default=DEFAULT_REPORT, help="CSV report path.")
     return parser
 

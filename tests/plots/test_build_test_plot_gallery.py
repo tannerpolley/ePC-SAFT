@@ -86,8 +86,7 @@ def test_registry_unregistered_test_reports_actionable_recipe_pattern() -> None:
     assert "tests/does_not_exist/test_new_feature.py" in message
 
 
-def test_build_gallery_from_numeric_csv_creates_static_svg_manifest_and_report(tmp_path: Path) -> None:
-    plots_root = tmp_path / "docs" / "plots"
+def test_build_gallery_from_numeric_csv_creates_static_svg_and_report(tmp_path: Path) -> None:
     png_path = tmp_path / "tests" / "plots" / "out" / "example" / "numeric" / "numeric_case.png"
     _write_png(png_path)
     _write_plot_csv(
@@ -123,7 +122,6 @@ def test_build_gallery_from_numeric_csv_creates_static_svg_manifest_and_report(t
     result = build_test_plot_gallery.build_gallery(
         [_recipe("example/numeric")],
         repo_root=tmp_path,
-        plots_root=plots_root,
         skip_pytest=True,
         force_render=True,
     )
@@ -132,17 +130,12 @@ def test_build_gallery_from_numeric_csv_creates_static_svg_manifest_and_report(t
     assert result.rendered_from_csv == 1
     assert not png_path.with_suffix(".html").exists()
     assert png_path.with_suffix(".svg").exists()
-    assert (plots_root / "manifest.json").exists()
-    assert "tests/plots/out/example/numeric/numeric_case.png" in (plots_root / "manifest.json").read_text(
-        encoding="utf-8"
-    )
-    assert not any(path.suffix == ".html" for path in plots_root.rglob("*"))
-    assert (tmp_path / "build" / "plot_gallery" / "plot_asset_report.csv").exists()
-    assert not (plots_root / ("plot" + "ly_companion_report.csv")).exists()
+    assert not any(path.name == "manifest" + ".json" for path in tmp_path.rglob("*"))
+    assert not any(path.suffix == ".html" for path in tmp_path.rglob("*"))
+    assert (tmp_path / "build" / "plot_assets" / "plot_asset_report.csv").exists()
 
 
 def test_build_gallery_rejects_non_numeric_csv_without_static_html(tmp_path: Path) -> None:
-    plots_root = tmp_path / "docs" / "plots"
     png_path = tmp_path / "tests" / "plots" / "out" / "example" / "static" / "static_case.png"
     _write_png(png_path)
     _write_plot_csv(png_path, [{"figure_file": png_path.name, "artist_type": "no_numeric_artists"}])
@@ -151,7 +144,6 @@ def test_build_gallery_rejects_non_numeric_csv_without_static_html(tmp_path: Pat
         build_test_plot_gallery.build_gallery(
             [_recipe("example/static")],
             repo_root=tmp_path,
-            plots_root=plots_root,
             skip_pytest=True,
             force_render=True,
         )
@@ -160,7 +152,6 @@ def test_build_gallery_rejects_non_numeric_csv_without_static_html(tmp_path: Pat
 
 
 def test_build_gallery_dry_run_reports_work_without_writing_outputs(tmp_path: Path) -> None:
-    plots_root = tmp_path / "docs" / "plots"
     png_path = tmp_path / "tests" / "plots" / "out" / "example" / "dry_run" / "dry_run_case.png"
     _write_png(png_path)
     _write_plot_csv(
@@ -180,7 +171,6 @@ def test_build_gallery_dry_run_reports_work_without_writing_outputs(tmp_path: Pa
     result = build_test_plot_gallery.build_gallery(
         [_recipe("example/dry_run")],
         repo_root=tmp_path,
-        plots_root=plots_root,
         dry_run=True,
         skip_pytest=True,
         force_render=True,
@@ -190,12 +180,11 @@ def test_build_gallery_dry_run_reports_work_without_writing_outputs(tmp_path: Pa
     assert result.rendered_from_csv == 1
     assert not png_path.with_suffix(".html").exists()
     assert not png_path.with_suffix(".svg").exists()
-    assert not (plots_root / "manifest.json").exists()
-    assert not (tmp_path / "build" / "plot_gallery" / "plot_asset_report.csv").exists()
+    assert not any(path.name == "manifest" + ".json" for path in tmp_path.rglob("*"))
+    assert not (tmp_path / "build" / "plot_assets" / "plot_asset_report.csv").exists()
 
 
 def test_build_gallery_requires_csv_companion_for_each_png(tmp_path: Path) -> None:
-    plots_root = tmp_path / "docs" / "plots"
     png_path = tmp_path / "tests" / "plots" / "out" / "example" / "missing_csv" / "missing_csv_case.png"
     _write_png(png_path)
 
@@ -203,7 +192,6 @@ def test_build_gallery_requires_csv_companion_for_each_png(tmp_path: Path) -> No
         build_test_plot_gallery.build_gallery(
             [_recipe("example/missing_csv")],
             repo_root=tmp_path,
-            plots_root=plots_root,
             skip_pytest=True,
         )
 

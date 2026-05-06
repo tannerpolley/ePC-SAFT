@@ -2,7 +2,7 @@
 
 This folder contains research and validation scripts, not the core package build workflow.
 
-Generated CSV/PNG/SVG outputs belong under `scripts/fits/out/**`, not under `data/**`. These outputs are ignored; `docs/plots/manifest.json` is the tracked plot-browser interface. Refresh it with `uv run python scripts/build_plot_manifest.py --refresh` after intentionally regenerating local outputs.
+Generated CSV/PNG/SVG outputs belong under `scripts/fits/out/**`, not under `data/**`. These outputs are ignored. The external plot browser should discover source-local `out/` folders directly.
 
 ## Active Validation
 

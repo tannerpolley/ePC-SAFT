@@ -16,21 +16,15 @@ CHECK_COMMANDS: dict[str, tuple[tuple[str, ...], ...]] = {
     "confidence": (
         ("scripts/codex_doctor.py",),
         ("run_pytest.py", "--confidence", "-q"),
-        ("scripts/build_plot_manifest.py", "--check"),
     ),
-    "docs": (
-        ("scripts/build_plot_manifest.py", "--check"),
-        ("-m", "sphinx", "-b", "html", "docs", "build/docs-html"),
-    ),
+    "docs": (("-m", "sphinx", "-b", "html", "docs", "build/docs-html"),),
     "plots": (
         ("run_pytest.py", "--plots", "-q"),
-        ("scripts/build_plot_manifest.py", "--refresh"),
         ("scripts/paper_validation/tools/report_plot_assets.py",),
     ),
     "full": (
         ("scripts/codex_doctor.py",),
         ("run_pytest.py", "-q"),
-        ("scripts/build_plot_manifest.py", "--check"),
     ),
 }
 

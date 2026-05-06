@@ -1,11 +1,9 @@
-import json
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 import run_pytest
-from scripts import build_plot_manifest
 from scripts import codex_check
 from scripts import codex_doctor
 
@@ -51,8 +49,10 @@ def test_codex_check_modes_route_to_agent_facing_validation_bundles():
         ("scripts/codex_doctor.py",),
         ("run_pytest.py", "-q"),
     )
-    assert ("scripts/build_plot_manifest.py", "--check") in codex_check.CHECK_COMMANDS["confidence"]
-    assert ("scripts/build_plot_manifest.py", "--refresh") in codex_check.CHECK_COMMANDS["plots"]
+    assert all(
+        "build_plot_" + "manifest.py" not in command for mode in codex_check.CHECK_COMMANDS.values() for command in mode
+    )
+    assert ("scripts/paper_validation/tools/report_plot_assets.py",) in codex_check.CHECK_COMMANDS["plots"]
     assert ("run_pytest.py", "-q") in codex_check.CHECK_COMMANDS["full"]
     assert ("run_pytest.py", "--all", "-q") not in codex_check.CHECK_COMMANDS["full"]
 
@@ -63,27 +63,6 @@ def test_codex_doctor_tracks_native_symbols_added_by_recent_workflows():
     assert "_fit_generic_native_least_squares" in required
     assert "_evaluate_generic_native_debug" in required
     assert "_solve_equilibrium_native" in required
-
-
-def test_plot_manifest_validation_rejects_html_and_duplicate_outputs(tmp_path):
-    manifest = tmp_path / "manifest.json"
-    item = {field: "" for field in build_plot_manifest.REQUIRED_FIELDS}
-    item.update(
-        {
-            "path": "../../scripts/example/out/figure.html",
-            "output_path": "scripts/example/out/figure.html",
-            "source_folder": "scripts",
-        }
-    )
-    manifest.write_text(
-        json.dumps(build_plot_manifest.manifest_payload([item, item])),
-        encoding="utf-8",
-    )
-
-    errors = build_plot_manifest.validate_manifest(manifest)
-
-    assert any("Duplicate output_path" in error for error in errors)
-    assert any("should not reference HTML" in error for error in errors)
 
 
 def test_named_shortcuts_expand_to_expected_targets_and_keep_pytest_arg_ordering():

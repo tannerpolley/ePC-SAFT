@@ -32,7 +32,7 @@ def main() -> None:
     parser.add_argument(
         "--skip-backend", action="store_true", help="Skip native build, doctor, and runtime smoke tests."
     )
-    parser.add_argument("--skip-plots", action="store_true", help="Skip PNG regeneration and manifest refresh.")
+    parser.add_argument("--skip-plots", action="store_true", help="Skip PNG regeneration and asset report refresh.")
     parser.add_argument("--rtol", type=float, default=1e-9)
     parser.add_argument("--atol", type=float, default=1e-10)
     args = parser.parse_args()
@@ -54,7 +54,7 @@ def main() -> None:
     if not args.skip_plots:
         for script in PLOT_SCRIPTS:
             _run([sys.executable, str(script.relative_to(REPO_ROOT))])
-        _run([sys.executable, "scripts/build_plot_manifest.py", "--refresh"])
+        _run([sys.executable, "scripts/paper_validation/tools/report_plot_assets.py"])
 
     print("2025 Figiel CSV-backed figure data validated.")
 
