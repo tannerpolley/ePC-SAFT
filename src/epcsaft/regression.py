@@ -37,6 +37,7 @@ TERM_OSMOTIC = "osmotic_coefficient"
 TERM_MIAC = "mean_ionic_activity"
 TERM_BINARY_VLE = "binary_vle_fugacity_balance"
 TERM_BINARY_LLE = "binary_lle_fugacity_balance"
+TERM_RELATIVE_PERMITTIVITY = "relative_permittivity"
 TERM_MEA_CO2_H2O_DENSITY = "mea_co2_h2o_density"
 TERM_MEA_CO2_H2O_CO2_FUGACITY = "mea_co2_h2o_co2_fugacity"
 TERM_MEA_CO2_H2O_OSMOTIC = "mea_co2_h2o_osmotic_coefficient"
@@ -115,6 +116,250 @@ NATIVE_TERM_KINDS = {
 
 def _copy_mapping(mapping: Mapping[str, Any] | None) -> dict[str, Any]:
     return {} if mapping is None else {str(k): v for k, v in mapping.items()}
+
+
+_DBORN_DIRECT_SOURCES = {
+    "dielectric",
+    "dielectric_measurement",
+    "dielectric_or_ion_activity",
+    "explicit_override",
+    "ion_activity",
+    "mean_ionic_activity",
+    "osmotic",
+    "relative_permittivity",
+}
+_DIRECT_BINARY_SOURCES = {
+    "direct_binary_activity",
+    "direct_binary_lle",
+    "direct_binary_vle",
+    "explicit_override",
+}
+_DIRECT_ELECTROLYTE_BINARY_SOURCES = {
+    "direct_binary_activity",
+    "direct_electrolyte_activity",
+    "direct_electrolyte_osmotic",
+    "direct_salt_pair_data",
+    "explicit_override",
+}
+_DIRECT_NEUTRAL_ION_SOURCES = {
+    "direct_neutral_ion_activity",
+    "direct_neutral_ion_data",
+    "direct_electrolyte_activity",
+    "explicit_override",
+}
+
+
+def _source_token(value: str | None) -> str:
+    return str(value or "").strip().lower()
+
+
+@dataclass(frozen=True, slots=True)
+class FitParameter:
+    """One pure/species parameter requested for provenance-aware fitting."""
+
+    component: str
+    parameter: str
+    source: str = ""
+    allow_without_direct_data: bool = False
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "component", _normalize_component(self.component))
+        object.__setattr__(self, "parameter", str(self.parameter))
+        object.__setattr__(self, "source", _source_token(self.source))
+        object.__setattr__(self, "allow_without_direct_data", bool(self.allow_without_direct_data))
+
+    @property
+    def key(self) -> str:
+        """Return the stable report key for this parameter."""
+        return f"{self.component}.{self.parameter}"
+
+
+@dataclass(frozen=True, slots=True)
+class BinaryInteraction:
+    """One binary-interaction parameter requested for provenance-aware fitting."""
+
+    pair: tuple[str, str]
+    parameter: str = "k_ij"
+    source: str = ""
+    allow_without_direct_data: bool = False
+
+    def __post_init__(self) -> None:
+        pair = tuple(_normalize_component(str(name)) for name in self.pair)
+        if len(pair) != 2 or pair[0] == pair[1]:
+            raise InputError("BinaryInteraction requires two distinct pair components.")
+        object.__setattr__(self, "pair", pair)
+        object.__setattr__(self, "parameter", str(self.parameter))
+        object.__setattr__(self, "source", _source_token(self.source))
+        object.__setattr__(self, "allow_without_direct_data", bool(self.allow_without_direct_data))
+
+    @property
+    def key(self) -> str:
+        """Return the stable report key for this interaction."""
+        return f"{self.pair[0]}:{self.pair[1]}.{self.parameter}"
+
+
+@dataclass(frozen=True, slots=True)
+class RelativePermittivityResidual:
+    """One relative-permittivity data residual for regression/provenance workflows."""
+
+    T: float
+    P: float
+    composition: Mapping[str, float]
+    epsilon_r_exp: float
+    weight: float = 1.0
+    source: str = "dielectric_measurement"
+
+    def __post_init__(self) -> None:
+        composition = {str(k): float(v) for k, v in self.composition.items()}
+        if not composition:
+            raise InputError("RelativePermittivityResidual requires a non-empty composition mapping.")
+        total = float(sum(composition.values()))
+        if total <= 0.0 or not math.isfinite(total):
+            raise InputError("RelativePermittivityResidual composition must have a positive finite sum.")
+        normalized = {name: value / total for name, value in composition.items()}
+        if any(value < -1.0e-12 or not math.isfinite(value) for value in normalized.values()):
+            raise InputError("RelativePermittivityResidual composition values must be finite and non-negative.")
+        object.__setattr__(self, "T", float(self.T))
+        object.__setattr__(self, "P", float(self.P))
+        object.__setattr__(self, "composition", normalized)
+        object.__setattr__(self, "epsilon_r_exp", float(self.epsilon_r_exp))
+        object.__setattr__(self, "weight", float(self.weight))
+        object.__setattr__(self, "source", _source_token(self.source))
+        if not math.isfinite(self.T) or self.T <= 0.0:
+            raise InputError("RelativePermittivityResidual T must be positive and finite.")
+        if not math.isfinite(self.P) or self.P <= 0.0:
+            raise InputError("RelativePermittivityResidual P must be positive and finite.")
+        if not math.isfinite(self.epsilon_r_exp) or self.epsilon_r_exp <= 0.0:
+            raise InputError("RelativePermittivityResidual epsilon_r_exp must be positive and finite.")
+        if not math.isfinite(self.weight) or self.weight <= 0.0:
+            raise InputError("RelativePermittivityResidual weight must be positive and finite.")
+
+    def to_record(self, *, species: Sequence[str] | None = None) -> dict[str, Any]:
+        """Return a flat regression record with ``x_*`` composition columns."""
+        labels = [str(label) for label in (species or self.composition.keys())]
+        record: dict[str, Any] = {
+            "T": self.T,
+            "P": self.P,
+            "epsilon_r_exp": self.epsilon_r_exp,
+            "source": self.source,
+        }
+        for label in labels:
+            record[f"x_{label}"] = float(self.composition.get(label, 0.0))
+        return record
+
+    def to_fit_term(self, *, species: Sequence[str] | None = None) -> "FitTerm":
+        """Return this residual as a first-class regression term descriptor."""
+        return FitTerm(
+            term_type=TERM_RELATIVE_PERMITTIVITY,
+            records=(self.to_record(species=species),),
+            weight=self.weight,
+            residual_count=1,
+        )
+
+
+def validate_regression_provenance(
+    parameters: Sequence[FitParameter | BinaryInteraction],
+    *,
+    terms: Sequence[FitTerm] | None = None,
+    species: Sequence[str] | None = None,
+    charges: Sequence[float] | Mapping[str, float] | None = None,
+    strict: bool = True,
+) -> dict[str, Any]:
+    """Validate provenance declarations for fitted parameters.
+
+    The validator is chemistry-agnostic: callers declare what data supports a
+    parameter, and the package rejects unsupported electrostatic/Born/binary
+    targets unless an explicit override is supplied.
+    """
+    _ = terms
+    labels = [] if species is None else [_normalize_component(label) for label in species]
+    charge_map = _charge_map(labels, charges)
+    fitted: list[str] = []
+    parameter_sources: dict[str, str] = {}
+    data_sources: dict[str, list[str]] = {}
+    warnings: list[str] = []
+    errors: list[str] = []
+
+    for item in parameters:
+        if isinstance(item, FitParameter):
+            fitted.append(item.key)
+            parameter_sources[item.key] = item.source
+            data_sources[item.key] = [item.source] if item.source else []
+            if item.parameter == "d_born" and item.source not in _DBORN_DIRECT_SOURCES:
+                message = (
+                    f"d_born for {item.component} requires dielectric, relative-permittivity, ion-activity, "
+                    "osmotic, or explicit_override provenance before fitting."
+                )
+                if item.allow_without_direct_data:
+                    warnings.append(message)
+                else:
+                    errors.append(message)
+            continue
+
+        if not isinstance(item, BinaryInteraction):
+            raise InputError("parameters must contain FitParameter or BinaryInteraction declarations.")
+        fitted.append(item.key)
+        parameter_sources[item.key] = item.source
+        data_sources[item.key] = [item.source] if item.source else []
+        left_charge = charge_map.get(item.pair[0])
+        right_charge = charge_map.get(item.pair[1])
+        if item.parameter in {"k_ij", "l_ij", "k_hb_ij"}:
+            if left_charge is not None and right_charge is not None:
+                if left_charge * right_charge > 0.0 and item.parameter == "k_ij":
+                    errors.append(
+                        f"{item.parameter} for same-sign ionic pair {item.pair[0]}:{item.pair[1]} is not a "
+                        "meaningful fit target because same-sign short-range dispersion is suppressed."
+                    )
+                elif left_charge * right_charge < 0.0 and item.source not in _DIRECT_ELECTROLYTE_BINARY_SOURCES:
+                    message = (
+                        f"{item.parameter} for opposite-sign ionic pair {item.pair[0]}:{item.pair[1]} requires "
+                        "direct electrolyte activity/osmotic/salt-pair provenance or explicit_override."
+                    )
+                    if item.allow_without_direct_data:
+                        warnings.append(message)
+                    else:
+                        errors.append(message)
+                elif (left_charge == 0.0) != (right_charge == 0.0) and item.source not in _DIRECT_NEUTRAL_ION_SOURCES:
+                    message = (
+                        f"{item.parameter} for neutral-ion pair {item.pair[0]}:{item.pair[1]} requires direct "
+                        "neutral-ion or electrolyte provenance or explicit_override."
+                    )
+                    if item.allow_without_direct_data:
+                        warnings.append(message)
+                    else:
+                        errors.append(message)
+                elif left_charge == 0.0 and right_charge == 0.0 and item.source not in _DIRECT_BINARY_SOURCES:
+                    message = f"{item.parameter} for neutral pair {item.pair[0]}:{item.pair[1]} requires direct binary provenance."
+                    if item.allow_without_direct_data:
+                        warnings.append(message)
+                    else:
+                        errors.append(message)
+            elif item.source not in _DIRECT_BINARY_SOURCES and not item.allow_without_direct_data:
+                errors.append(f"{item.parameter} for {item.pair[0]}:{item.pair[1]} requires declared data provenance.")
+
+    if errors and strict:
+        raise InputError("; ".join(errors))
+    if errors:
+        warnings.extend(errors)
+    return {
+        "fitted_parameters": fitted,
+        "fixed_parameters": [],
+        "parameter_sources": parameter_sources,
+        "data_sources_by_parameter": data_sources,
+        "warnings": warnings,
+        "backend_policy": "native_regression_only",
+    }
+
+
+def _charge_map(species: Sequence[str], charges: Sequence[float] | Mapping[str, float] | None) -> dict[str, float]:
+    if charges is None:
+        return {}
+    if isinstance(charges, Mapping):
+        return {_normalize_component(str(label)): float(value) for label, value in charges.items()}
+    values = np.asarray(charges, dtype=float).flatten()
+    if values.size != len(species):
+        raise InputError("charges must match species length when provided as a sequence.")
+    return {label: float(value) for label, value in zip(species, values)}
 
 
 @dataclass(slots=True)
@@ -205,6 +450,7 @@ class FitResult:
     message: str = ""
     nfev: int = 0
     backend: str = "least_squares_native"
+    provenance_report: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.fitted_values = {str(k): float(v) for k, v in self.fitted_values.items()}
@@ -222,6 +468,7 @@ class FitResult:
         self.message = str(self.message)
         self.nfev = int(self.nfev)
         self.backend = str(self.backend)
+        self.provenance_report = _copy_mapping(self.provenance_report)
 
 
 def load_regression_records(records: Any) -> list[dict[str, Any]]:
@@ -879,6 +1126,101 @@ def _run_native_generic_least_squares(
     )
 
 
+def _terms_support_ion_activity(terms: Sequence[FitTerm]) -> bool:
+    return any(term.term_type in {TERM_OSMOTIC, TERM_MIAC} for term in terms)
+
+
+def _terms_support_dielectric(terms: Sequence[FitTerm]) -> bool:
+    return any(term.term_type == TERM_RELATIVE_PERMITTIVITY for term in terms)
+
+
+def _source_for_pure_target(target: str, terms: Sequence[FitTerm]) -> str:
+    if target == "d_born":
+        if _terms_support_dielectric(terms):
+            return "relative_permittivity"
+        if _terms_support_ion_activity(terms):
+            return "ion_activity"
+        return "mixed_reactive_vle"
+    if _terms_support_ion_activity(terms):
+        return "ion_activity"
+    return "direct_data"
+
+
+def _pure_parameter_declarations(
+    component: str,
+    targets: Sequence[str],
+    terms: Sequence[FitTerm],
+    *,
+    provenance: Sequence[FitParameter] | Mapping[str, str] | None,
+    allow_unsupported_parameters: bool,
+) -> list[FitParameter]:
+    declared: dict[str, FitParameter] = {}
+    if isinstance(provenance, Mapping):
+        for target, source in provenance.items():
+            declared[str(target)] = FitParameter(
+                component,
+                str(target),
+                source=str(source),
+                allow_without_direct_data=allow_unsupported_parameters,
+            )
+    elif provenance is not None:
+        for item in provenance:
+            if not isinstance(item, FitParameter):
+                raise InputError("pure-parameter provenance entries must be FitParameter instances.")
+            declared[item.parameter] = item
+    out: list[FitParameter] = []
+    for target in targets:
+        out.append(
+            declared.get(
+                target,
+                FitParameter(
+                    component,
+                    target,
+                    source=_source_for_pure_target(target, terms),
+                    allow_without_direct_data=allow_unsupported_parameters,
+                ),
+            )
+        )
+    return out
+
+
+def _binary_interaction_declarations(
+    pair: tuple[str, str],
+    targets: Sequence[str],
+    *,
+    provenance: Sequence[BinaryInteraction] | Mapping[str, str] | None,
+    allow_unsupported_parameters: bool,
+) -> list[BinaryInteraction]:
+    declared: dict[str, BinaryInteraction] = {}
+    if isinstance(provenance, Mapping):
+        for target, source in provenance.items():
+            declared[str(target)] = BinaryInteraction(
+                pair,
+                parameter=str(target),
+                source=str(source),
+                allow_without_direct_data=allow_unsupported_parameters,
+            )
+    elif provenance is not None:
+        for item in provenance:
+            if not isinstance(item, BinaryInteraction):
+                raise InputError("binary-interaction provenance entries must be BinaryInteraction instances.")
+            declared[item.parameter] = item
+    out: list[BinaryInteraction] = []
+    for target in targets:
+        out.append(
+            declared.get(
+                target,
+                BinaryInteraction(
+                    pair,
+                    parameter=target,
+                    source="direct_binary_vle",
+                    allow_without_direct_data=allow_unsupported_parameters,
+                ),
+            )
+        )
+    return out
+
+
 def _fit_pure_ion_internal(
     records: Any,
     component: str,
@@ -890,6 +1232,8 @@ def _fit_pure_ion_internal(
     initial_guess: Mapping[str, float] | None = None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
     user_options: Mapping[str, Any] | None = None,
+    provenance: Sequence[FitParameter] | Mapping[str, str] | None = None,
+    allow_unsupported_parameters: bool = False,
     multistart: int = 0,
 ) -> FitResult:
     normalized_component = _normalize_component(component)
@@ -906,6 +1250,18 @@ def _fit_pure_ion_internal(
     if unsupported:
         raise InputError("pure_ion V1 supports only the targets 's', 'e', and 'd_born'.")
     terms = _build_pure_ion_terms(normalized_records)
+    provenance_report = validate_regression_provenance(
+        _pure_parameter_declarations(
+            normalized_component,
+            normalized_fit_targets,
+            terms,
+            provenance=provenance,
+            allow_unsupported_parameters=allow_unsupported_parameters,
+        ),
+        terms=terms,
+        species=normalized_species,
+        strict=True,
+    )
 
     T_ref = float(np.mean([_float_from_record(record, "T", required=True) for record in normalized_records]))
     seed_payload, source_key = _pure_seed_payload(normalized_component, T_ref, "", dataset, None)
@@ -1013,6 +1369,7 @@ def _fit_pure_ion_internal(
         message=str(result["message"]),
         nfev=int(result["nfev"]),
         backend=str(result["backend"]),
+        provenance_report=provenance_report,
     )
 
 
@@ -1027,6 +1384,8 @@ def _fit_binary_pair_internal(
     initial_guess: Mapping[str, float] | None = None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
     user_options: Mapping[str, Any] | None = None,
+    provenance: Sequence[BinaryInteraction] | Mapping[str, str] | None = None,
+    allow_unsupported_parameters: bool = False,
     multistart: int = 0,
 ) -> FitResult:
     normalized_pair = _normalize_pair(pair)
@@ -1042,6 +1401,23 @@ def _fit_binary_pair_internal(
     terms = _build_binary_terms(normalized_records)
 
     T_ref = float(np.mean([_float_from_record(record, "T", required=True) for record in normalized_records]))
+    sample_x = _composition_from_record(normalized_records[0], "x_", normalized_species)
+    sample_payload = _params_for_native_record(dataset, normalized_species, sample_x, T_ref, user_options)
+    charges = np.asarray(sample_payload.get("z", np.zeros(len(normalized_species))), dtype=float).flatten()
+    if charges.size == 0:
+        charges = np.zeros(len(normalized_species), dtype=float)
+    provenance_report = validate_regression_provenance(
+        _binary_interaction_declarations(
+            normalized_pair,
+            normalized_fit_targets,
+            provenance=provenance,
+            allow_unsupported_parameters=allow_unsupported_parameters,
+        ),
+        terms=terms,
+        species=normalized_species,
+        charges=charges,
+        strict=True,
+    )
     dataset_obj = _load_dataset(dataset)
     current = {
         target: _matrix_value(
@@ -1125,6 +1501,7 @@ def _fit_binary_pair_internal(
         message=str(result["message"]),
         nfev=int(result["nfev"]),
         backend=str(result["backend"]),
+        provenance_report=provenance_report,
     )
 
 
@@ -1559,6 +1936,8 @@ def fit_pure_ion(
     initial_guess: Mapping[str, float] | None = None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
     user_options: Mapping[str, Any] | None = None,
+    provenance: Sequence[FitParameter] | Mapping[str, str] | None = None,
+    allow_unsupported_parameters: bool = False,
     multistart: int = 0,
 ) -> FitResult:
     """Fit ion pure-component parameters against electrolyte records."""
@@ -1572,6 +1951,8 @@ def fit_pure_ion(
         initial_guess=initial_guess,
         bounds=bounds,
         user_options=user_options,
+        provenance=provenance,
+        allow_unsupported_parameters=allow_unsupported_parameters,
         multistart=multistart,
     )
 
@@ -1587,6 +1968,8 @@ def fit_binary_pair(
     initial_guess: Mapping[str, float] | None = None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
     user_options: Mapping[str, Any] | None = None,
+    provenance: Sequence[BinaryInteraction] | Mapping[str, str] | None = None,
+    allow_unsupported_parameters: bool = False,
     multistart: int = 0,
 ) -> FitResult:
     """Fit V1 binary interaction parameters against VLE x/y records."""
@@ -1600,6 +1983,8 @@ def fit_binary_pair(
         initial_guess=initial_guess,
         bounds=bounds,
         user_options=user_options,
+        provenance=provenance,
+        allow_unsupported_parameters=allow_unsupported_parameters,
         multistart=multistart,
     )
 
