@@ -27,6 +27,103 @@ def test_public_regression_surface_includes_ion_and_binary_v1():
     assert hasattr(epcsaft, "fit_pure_neutral")
     assert hasattr(epcsaft, "fit_pure_ion")
     assert hasattr(epcsaft, "fit_binary_pair")
+    assert hasattr(epcsaft, "FitParameter")
+    assert hasattr(epcsaft, "BinaryInteraction")
+    assert hasattr(epcsaft, "RelativePermittivityResidual")
+    assert hasattr(epcsaft, "validate_regression_provenance")
+
+
+def test_provenance_validation_rejects_indirect_dborn_without_electrostatic_data():
+    with pytest.raises(InputError, match="d_born.*dielectric|d_born.*ion-activity"):
+        epcsaft.validate_regression_provenance(
+            [
+                epcsaft.FitParameter(
+                    "MEAH+",
+                    "d_born",
+                    source="mixed_reactive_vle",
+                )
+            ],
+            strict=True,
+        )
+
+    report = epcsaft.validate_regression_provenance(
+        [
+            epcsaft.FitParameter(
+                "MEAH+",
+                "d_born",
+                source="explicit_override",
+                allow_without_direct_data=True,
+            )
+        ],
+        strict=True,
+    )
+    assert report["warnings"] == []
+    assert report["parameter_sources"]["MEAH+.d_born"] == "explicit_override"
+
+
+def test_provenance_validation_gates_ion_involving_binary_interactions():
+    with pytest.raises(InputError, match="same-sign ionic pair"):
+        epcsaft.validate_regression_provenance(
+            [
+                epcsaft.BinaryInteraction(
+                    ("MEACOO-", "HCO3-"),
+                    parameter="k_ij",
+                    source="direct_binary_vle",
+                )
+            ],
+            species=["MEACOO-", "HCO3-"],
+            charges=[-1.0, -1.0],
+            strict=True,
+        )
+
+    with pytest.raises(InputError, match="neutral-ion.*direct"):
+        epcsaft.validate_regression_provenance(
+            [
+                epcsaft.BinaryInteraction(
+                    ("CO2", "MEACOO-"),
+                    parameter="k_ij",
+                    source="mixed_reactive_vle",
+                )
+            ],
+            species=["CO2", "MEACOO-"],
+            charges=[0.0, -1.0],
+            strict=True,
+        )
+
+    report = epcsaft.validate_regression_provenance(
+        [
+            epcsaft.BinaryInteraction(
+                ("MEAH+", "MEACOO-"),
+                parameter="k_ij",
+                source="direct_electrolyte_activity",
+            )
+        ],
+        species=["MEAH+", "MEACOO-"],
+        charges=[1.0, -1.0],
+        strict=True,
+    )
+    assert report["warnings"] == []
+    assert report["data_sources_by_parameter"]["MEAH+:MEACOO-.k_ij"] == ["direct_electrolyte_activity"]
+
+
+def test_relative_permittivity_residual_builds_first_class_fit_term_record():
+    residual = epcsaft.RelativePermittivityResidual(
+        T=298.15,
+        P=101325.0,
+        composition={"H2O": 0.8, "MEA": 0.2},
+        epsilon_r_exp=65.0,
+        weight=2.0,
+        source="dielectric_measurement",
+    )
+
+    term = residual.to_fit_term(species=["H2O", "MEA"])
+
+    assert term.term_type == "relative_permittivity"
+    assert term.weight == pytest.approx(2.0)
+    assert term.residual_count == 1
+    assert term.records[0]["epsilon_r_exp"] == pytest.approx(65.0)
+    assert term.records[0]["x_H2O"] == pytest.approx(0.8)
+    assert term.records[0]["x_MEA"] == pytest.approx(0.2)
 
 
 def test_fit_pure_neutral_requires_pressure_for_density_records():
@@ -242,6 +339,8 @@ def test_fit_pure_ion_accepts_d_born_and_born_user_options():
     assert result.backend == "least_squares_native"
     assert result.problem.fit_targets == ("d_born",)
     assert result.metrics_by_term["osmotic_coefficient"] < 1.0e-3
+    assert result.provenance_report["parameter_sources"]["Na+.d_born"] == "ion_activity"
+    assert result.provenance_report["warnings"] == []
 
 
 def test_fit_pure_ion_passes_explicit_mean_ionic_pair_label_to_native_backend():
@@ -313,6 +412,7 @@ def test_fit_binary_pair_can_fit_all_constant_binary_interaction_targets():
     assert set(result.fitted_values) == {"k_ij", "l_ij", "k_hb_ij"}
     assert all(np.isfinite(value) for value in result.fitted_values.values())
     assert "binary_vle_fugacity_balance" in result.metrics_by_term
+    assert result.provenance_report["parameter_sources"]["H2O:Ethanol.k_ij"] == "direct_binary_vle"
 
 
 def test_fit_binary_pair_rejects_nonpositive_vle_fractions_before_native_solve():
@@ -325,6 +425,30 @@ def test_fit_binary_pair_rejects_nonpositive_vle_fractions_before_native_solve()
             ("H2O", "Ethanol"),
             dataset="2026_Khudaida",
             initial_guess={"k_ij": -0.02},
+        )
+
+
+def test_fit_binary_pair_rejects_ion_involving_kij_without_direct_electrolyte_provenance():
+    records = [
+        {
+            "T": 298.15,
+            "P": 101325.0,
+            "x_H2O": 0.998,
+            "x_Na+": 0.001,
+            "x_Cl-": 0.001,
+            "y_H2O": 0.998,
+            "y_Na+": 0.001,
+            "y_Cl-": 0.001,
+        }
+    ]
+
+    with pytest.raises(InputError, match="opposite-sign ionic pair.*direct electrolyte"):
+        epcsaft.fit_binary_pair(
+            records,
+            ("Na+", "Cl-"),
+            dataset="2026_Khudaida",
+            species=["H2O", "Na+", "Cl-"],
+            initial_guess={"k_ij": 0.0},
         )
 
 

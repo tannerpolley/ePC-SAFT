@@ -91,6 +91,21 @@ The regression API remains Python-facing, but ``fit_pure_neutral(...)`` now dele
    :undoc-members:
    :no-index:
 
+.. autoclass:: epcsaft.FitParameter
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: epcsaft.BinaryInteraction
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: epcsaft.RelativePermittivityResidual
+   :members:
+   :undoc-members:
+   :no-index:
+
 .. autoclass:: epcsaft.FitTerm
    :members:
    :undoc-members:
@@ -107,6 +122,8 @@ The regression API remains Python-facing, but ``fit_pure_neutral(...)`` now dele
    :no-index:
 
 .. autofunction:: epcsaft.load_regression_records
+
+.. autofunction:: epcsaft.validate_regression_provenance
 
 .. autofunction:: epcsaft.fit_pure_neutral
 

@@ -7,10 +7,12 @@ Supported workflows
 -------------------
 
 - ``fit_pure_neutral(...)`` fits nonassociating neutral pure-component ``m``, ``s``, and ``e`` against density and vapor-pressure records with the native least-squares backend.
-- ``fit_pure_ion(...)`` fits ion ``s`` and ``e`` by default, and can fit ``d_born`` when requested, with the Python/SciPy least-squares backend.
-- ``fit_binary_pair(...)`` fits constant binary ``k_ij`` values from VLE x/y records with the Python/SciPy least-squares backend.
+- ``fit_pure_ion(...)`` fits ion ``s`` and ``e`` by default, and can fit ``d_born`` when requested, with the native least-squares backend and provenance guardrails.
+- ``fit_binary_pair(...)`` fits constant binary interaction values from direct VLE x/y records with the native least-squares backend and provenance guardrails.
 
 Ion and binary V1 intentionally do not add dataset manifests or new regression-specific parameter namespaces. The helpers build runtime states from the existing dataset loader and caller-provided records.
+
+Python/SciPy optimizer loops are not an approved production backend for package-owned regression helpers. Python code may prepare records, declare provenance, and call native regression, but coupled electrolyte, reactive, phase-equilibrium, ``d_born``, and ``k_ij`` fitting should use the native backend.
 
 Build prerequisite
 ------------------
@@ -91,6 +93,7 @@ Each ion regression problem must include at least one of:
 - ``mean_ionic_activity``, ``mean_ionic_activity_coefficient``, or ``miac``
 
 Density is optional and is included when ``rho`` or a supported mass-density column is present.
+``d_born`` fitting additionally requires electrostatic provenance: dielectric or relative-permittivity data, ion-activity/osmotic data, or an explicit override. Results include ``result.provenance_report`` so downstream workflows can distinguish supported fitted values from provisional diagnostic values.
 
 Example:
 
@@ -140,6 +143,45 @@ Advanced electrolyte options pass through to every runtime state build:
        user_options=user_options,
    )
 
+Provenance guardrails
+---------------------
+
+Use explicit declarations when a fit target needs to document or override its
+data basis:
+
+.. code-block:: python
+
+   from epcsaft import BinaryInteraction, FitParameter, validate_regression_provenance
+
+   report = validate_regression_provenance(
+       [
+           FitParameter("MEAH+", "d_born", source="dielectric_or_ion_activity"),
+           BinaryInteraction(("MEA", "H2O"), parameter="k_ij", source="direct_binary_vle"),
+       ],
+       species=["MEA", "H2O", "MEAH+"],
+       charges=[0.0, 0.0, 1.0],
+   )
+
+The validator rejects unsupported targets by default:
+
+- same-sign ionic ``k_ij`` targets, because the runtime suppresses same-sign short-range dispersion;
+- opposite-sign ion-pair interaction targets without direct electrolyte activity, osmotic, salt-pair, or explicit-override provenance;
+- neutral-ion interaction targets without direct neutral-ion/electrolyte provenance;
+- ``d_born`` targets backed only by mixed reactive VLE residuals.
+
+``RelativePermittivityResidual`` provides a first-class record/term descriptor for dielectric data:
+
+.. code-block:: python
+
+   from epcsaft import RelativePermittivityResidual
+
+   dielectric_term = RelativePermittivityResidual(
+       T=298.15,
+       P=101325.0,
+       composition={"H2O": 0.8, "MEA": 0.2},
+       epsilon_r_exp=65.0,
+   ).to_fit_term(species=["H2O", "MEA"])
+
 Binary VLE records
 ------------------
 
@@ -150,7 +192,7 @@ Binary VLE records
 - liquid mole-fraction columns such as ``x_H2O`` and ``x_Ethanol``
 - vapor mole-fraction columns such as ``y_H2O`` and ``y_Ethanol``
 
-The only V1 target is constant ``k_ij``. ``l_ij``, ``k_hb_ij``, linear temperature models, and LLE fitting are future phases and raise ``InputError``.
+The V1 constant targets are ``k_ij``, ``l_ij``, and ``k_hb_ij``. Linear temperature models and LLE fitting are future phases and raise ``InputError``. Ion-involving binary targets require explicit provenance and are rejected by default unless they are tied to direct electrolyte/neutral-ion data or an explicit override.
 
 Example:
 
@@ -180,6 +222,7 @@ Inspect and write results
    print(result.backend)
    print(result.fitted_values)
    print(result.metrics_by_term)
+   print(result.provenance_report)
 
    from epcsaft import write_fit_result
 
