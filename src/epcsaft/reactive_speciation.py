@@ -34,6 +34,7 @@ class ReactiveSpeciationOptions:
     damping: float = 0.5
     min_mole_fraction: float = 1.0e-14
     finite_difference_step: float = 1.0e-6
+    jacobian_backend: str = "auto"
     phase: str = "liq"
     return_best_effort: bool = False
     mass_tolerance: float | None = None
@@ -139,11 +140,30 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
         raise InputError("ReactiveSpeciationOptions.damping must be in (0, 1].")
     if not isinstance(options.return_best_effort, bool):
         raise InputError("ReactiveSpeciationOptions.return_best_effort must be a bool.")
+    jacobian_backend = str(options.jacobian_backend).strip().lower()
+    if jacobian_backend in {"numerical", "fd"}:
+        jacobian_backend = "finite_difference"
+    if jacobian_backend not in {"auto", "autodiff", "finite_difference"}:
+        raise InputError("ReactiveSpeciationOptions.jacobian_backend must be 'auto', 'autodiff', or 'finite_difference'.")
     for name in ("mass_tolerance", "charge_tolerance", "reaction_tolerance"):
         value = getattr(options, name)
         if value is not None and value <= 0.0:
             raise InputError(f"ReactiveSpeciationOptions.{name} must be positive when provided.")
-    return options
+    if jacobian_backend == options.jacobian_backend:
+        return options
+    return ReactiveSpeciationOptions(
+        max_iterations=options.max_iterations,
+        tolerance=options.tolerance,
+        damping=options.damping,
+        min_mole_fraction=options.min_mole_fraction,
+        finite_difference_step=options.finite_difference_step,
+        jacobian_backend=jacobian_backend,
+        phase=options.phase,
+        return_best_effort=options.return_best_effort,
+        mass_tolerance=options.mass_tolerance,
+        charge_tolerance=options.charge_tolerance,
+        reaction_tolerance=options.reaction_tolerance,
+    )
 
 
 def _solve_reactive_speciation_native(
@@ -187,6 +207,7 @@ def _solve_reactive_speciation_native(
             "damping": float(options.damping),
             "min_mole_fraction": float(options.min_mole_fraction),
             "finite_difference_step": float(options.finite_difference_step),
+            "jacobian_backend": str(options.jacobian_backend),
             "phase": str(options.phase),
         },
     }

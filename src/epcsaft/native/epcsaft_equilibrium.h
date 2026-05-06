@@ -16,6 +16,7 @@ struct EquilibriumOptionsNative {
     bool stability_precheck = true;
     std::string density_diagnostics = "auto";
     bool experimental_coupled_density_lle = false;
+    std::string jacobian_backend = "auto";
 };
 
 struct EquilibriumPhaseNative {

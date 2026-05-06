@@ -92,6 +92,26 @@ def test_runtime_options_accept_autodiff_modes_and_preserve_explicit_overrides()
     assert minimized == user_options
 
 
+def test_runtime_options_default_to_auto_derivative_policy():
+    resolved = _resolve_runtime_options({})
+    model = resolved["model"]
+    runtime = resolved["runtime"]
+
+    assert model["rel_perm"]["differential_mode"] == 3
+    assert model["hc_model"]["dadx_differential_mode"] == 3
+    assert model["disp_model"]["dadx_differential_mode"] == 3
+    assert model["assoc_model"]["dadx_differential_mode"] == 3
+    assert model["DH_model"]["mu_DH_model"]["differential_mode"] == 3
+    assert model["born_model"]["mu_born_model"]["differential_mode"] == 3
+
+    assert runtime["dielc_diff_mode"] == 3
+    assert runtime["hc_dadx_diff_mode"] == 3
+    assert runtime["disp_dadx_diff_mode"] == 3
+    assert runtime["assoc_dadx_diff_mode"] == 3
+    assert runtime["mu_DH_diff_mode"] == 3
+    assert runtime["mu_born_diff_mode"] == 3
+
+
 def test_runtime_options_reject_removed_polar_model():
     with pytest.raises(KeyError, match="unsupported key"):
         _resolve_runtime_options({"elec_model": {"polar_model": {"dadx_differential_mode": "autodiff"}}})

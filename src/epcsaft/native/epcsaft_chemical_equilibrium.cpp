@@ -695,6 +695,26 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
             result.diagnostics_string["activity_model"] = activity_model;
             result.diagnostics_string["activity_basis"] = "mole_fraction";
             result.diagnostics_string["phase"] = options.phase;
+            result.diagnostics_string["requested_jacobian_backend"] = options.jacobian_backend;
+            result.diagnostics_string["jacobian_backend"] = "finite_difference";
+            result.diagnostics_bool["jacobian_available"] = true;
+            if (options.jacobian_backend == "auto" || options.jacobian_backend == "autodiff") {
+                result.diagnostics_bool["finite_difference_fallback_used"] = true;
+                result.diagnostics_bool["jacobian_fallback_used"] = true;
+                result.diagnostics_string["finite_difference_fallback_reason"] =
+                    "autodiff chemical-equilibrium residual jacobian is not implemented for activity-coupled native state calls yet";
+                result.diagnostics_string["jacobian_fallback_reason"] =
+                    "autodiff chemical-equilibrium residual jacobian is not implemented for activity-coupled native state calls yet";
+            } else {
+                result.diagnostics_bool["finite_difference_fallback_used"] = false;
+                result.diagnostics_bool["jacobian_fallback_used"] = false;
+                result.diagnostics_string["jacobian_fallback_reason"] = "";
+            }
+            result.diagnostics_bool["hessian_available"] = false;
+            result.diagnostics_string["hessian_backend"] = "not_implemented";
+            result.diagnostics_bool["hessian_fallback_used"] = false;
+            result.diagnostics_string["hessian_fallback_reason"] =
+                "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
             result.diagnostics_int["iterations"] = iteration;
             result.diagnostics_int["state_failure_count"] = state_failure_count;
             result.diagnostics_double["residual_norm"] = current.residual_norm;
@@ -748,6 +768,26 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
     result.diagnostics_string["activity_model"] = activity_model;
     result.diagnostics_string["activity_basis"] = "mole_fraction";
     result.diagnostics_string["phase"] = options.phase;
+    result.diagnostics_string["requested_jacobian_backend"] = options.jacobian_backend;
+    result.diagnostics_string["jacobian_backend"] = "finite_difference";
+    result.diagnostics_bool["jacobian_available"] = true;
+    if (options.jacobian_backend == "auto" || options.jacobian_backend == "autodiff") {
+        result.diagnostics_bool["finite_difference_fallback_used"] = true;
+        result.diagnostics_bool["jacobian_fallback_used"] = true;
+        result.diagnostics_string["finite_difference_fallback_reason"] =
+            "autodiff chemical-equilibrium residual jacobian is not implemented for activity-coupled native state calls yet";
+        result.diagnostics_string["jacobian_fallback_reason"] =
+            "autodiff chemical-equilibrium residual jacobian is not implemented for activity-coupled native state calls yet";
+    } else {
+        result.diagnostics_bool["finite_difference_fallback_used"] = false;
+        result.diagnostics_bool["jacobian_fallback_used"] = false;
+        result.diagnostics_string["jacobian_fallback_reason"] = "";
+    }
+    result.diagnostics_bool["hessian_available"] = false;
+    result.diagnostics_string["hessian_backend"] = "not_implemented";
+    result.diagnostics_bool["hessian_fallback_used"] = false;
+    result.diagnostics_string["hessian_fallback_reason"] =
+        "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
     result.diagnostics_int["iterations"] = options.max_iterations;
     result.diagnostics_int["state_failure_count"] = state_failure_count;
     result.diagnostics_double["residual_norm"] = best.residual_norm;

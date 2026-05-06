@@ -263,6 +263,8 @@ SOLVENT_COMPONENT_TO_TOKEN = {
 SOLVENT_TOKEN_TO_COMPONENT = {token: comp for comp, token in SOLVENT_COMPONENT_TO_TOKEN.items()}
 SOLVENT_TOKEN_ORDER = {"water": 0, "methanol": 1, "ethanol": 2, "propanol": 3, "butanol": 4}
 _DIFF_MODE_ALIASES = {
+    "auto": 3,
+    "automatic": 3,
     "analytic": 0,
     "analytical": 0,
     "numeric": 1,
@@ -293,12 +295,12 @@ _BULK_MODE_ALIASES = {
     "solvent": 1,
 }
 _CANONICAL_CONTRIBUTION_MODEL = {
-    "dadx_differential_mode": "analytical",
+    "dadx_differential_mode": "auto",
 }
 _CANONICAL_ELEC_MODEL = {
     "rel_perm": {
         "rule": 1,
-        "differential_mode": "analytical",
+        "differential_mode": "auto",
     },
     "hc_model": dict(_CANONICAL_CONTRIBUTION_MODEL),
     "disp_model": dict(_CANONICAL_CONTRIBUTION_MODEL),
@@ -308,7 +310,7 @@ _CANONICAL_ELEC_MODEL = {
         "d_ion_mode": 1,
         "bjeruum_treatment": False,
         "mu_DH_model": {
-            "differential_mode": "analytical",
+            "differential_mode": "auto",
             "comp_dep_rel_perm": True,
             "include_sum_term": True,
         },
@@ -320,7 +322,7 @@ _CANONICAL_ELEC_MODEL = {
         "dielectric_saturation": False,
         "bulk_mode": "mix",
         "mu_born_model": {
-            "differential_mode": "analytical",
+            "differential_mode": "auto",
             "comp_dep_rel_perm": True,
             "include_sum_term": True,
             "comp_dep_delta_d": False,

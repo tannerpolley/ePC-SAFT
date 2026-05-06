@@ -1187,6 +1187,26 @@ EquilibriumResultNative lle_two_phase_result(
     result.diagnostics_string["solver_language"] = "c++";
     result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
     result.diagnostics_string["nonlinear_solver"] = "native_finite_difference_newton";
+    result.diagnostics_string["requested_jacobian_backend"] = options.jacobian_backend;
+    result.diagnostics_string["jacobian_backend"] = "finite_difference";
+    result.diagnostics_bool["jacobian_available"] = true;
+    if (options.jacobian_backend == "auto" || options.jacobian_backend == "autodiff") {
+        result.diagnostics_bool["finite_difference_fallback_used"] = true;
+        result.diagnostics_bool["jacobian_fallback_used"] = true;
+        result.diagnostics_string["finite_difference_fallback_reason"] =
+            "autodiff neutral LLE residual jacobian is not implemented for native state calls yet";
+        result.diagnostics_string["jacobian_fallback_reason"] =
+            "autodiff neutral LLE residual jacobian is not implemented for native state calls yet";
+    } else {
+        result.diagnostics_bool["finite_difference_fallback_used"] = false;
+        result.diagnostics_bool["jacobian_fallback_used"] = false;
+        result.diagnostics_string["jacobian_fallback_reason"] = "";
+    }
+    result.diagnostics_bool["hessian_available"] = false;
+    result.diagnostics_string["hessian_backend"] = "not_implemented";
+    result.diagnostics_bool["hessian_fallback_used"] = false;
+    result.diagnostics_string["hessian_fallback_reason"] =
+        "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
     return result;
 }
 
@@ -1213,6 +1233,26 @@ EquilibriumResultNative lle_no_split_result(
     result.diagnostics_string["point_solver_message"] = attempt.message;
     result.diagnostics_string["solver_language"] = "c++";
     result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
+    result.diagnostics_string["requested_jacobian_backend"] = options.jacobian_backend;
+    result.diagnostics_string["jacobian_backend"] = "finite_difference";
+    result.diagnostics_bool["jacobian_available"] = true;
+    if (options.jacobian_backend == "auto" || options.jacobian_backend == "autodiff") {
+        result.diagnostics_bool["finite_difference_fallback_used"] = true;
+        result.diagnostics_bool["jacobian_fallback_used"] = true;
+        result.diagnostics_string["finite_difference_fallback_reason"] =
+            "autodiff neutral LLE residual jacobian is not implemented for native state calls yet";
+        result.diagnostics_string["jacobian_fallback_reason"] =
+            "autodiff neutral LLE residual jacobian is not implemented for native state calls yet";
+    } else {
+        result.diagnostics_bool["finite_difference_fallback_used"] = false;
+        result.diagnostics_bool["jacobian_fallback_used"] = false;
+        result.diagnostics_string["jacobian_fallback_reason"] = "";
+    }
+    result.diagnostics_bool["hessian_available"] = false;
+    result.diagnostics_string["hessian_backend"] = "not_implemented";
+    result.diagnostics_bool["hessian_fallback_used"] = false;
+    result.diagnostics_string["hessian_fallback_reason"] =
+        "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
     return result;
 }
 

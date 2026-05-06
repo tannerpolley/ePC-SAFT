@@ -1,6 +1,9 @@
 #include "epcsaft_core_internal.h"
 #include "contributions/epcsaft_contrib_internal.h"
 
+#include <map>
+#include <string>
+
 using thermo_detail::AresContributionKind;
 using thermo_detail::AresContributions;
 using thermo_detail::AssociationIntermediateState;
@@ -77,6 +80,31 @@ static double ares_born_cpp(double t, const BornIntermediateState &born_state) {
 }
 
 }  // namespace ares_detail
+
+namespace {
+
+std::string contribution_backend_name(int mode) {
+    if (mode == 0) return "analytic";
+    if (mode == 1) return "finite_difference";
+    if (mode == 2) return "autodiff";
+    if (mode == 3 || mode == 5) {
+        return "analytic";
+    }
+    if (mode == 4) return "autodiff";
+    return "unknown";
+}
+
+std::map<std::string, std::string> composition_derivative_backend_map(const add_args &cppargs) {
+    std::map<std::string, std::string> backends;
+    backends["hc"] = contribution_backend_name(cppargs.hc_dadx_diff_mode);
+    backends["disp"] = contribution_backend_name(cppargs.disp_dadx_diff_mode);
+    backends["assoc"] = contribution_backend_name(cppargs.assoc_dadx_diff_mode);
+    backends["ion"] = contribution_backend_name(cppargs.mu_DH_diff_mode);
+    backends["born"] = contribution_backend_name(cppargs.born_diff_mode);
+    return backends;
+}
+
+}  // namespace
 
 double ares_contribution_value_cpp(const AresContributions &terms, AresContributionKind kind) {
     switch (kind) {
@@ -209,5 +237,7 @@ CompositionContributionResult composition_derivative_residual_helmholtz_result_c
         total[i] = hc.dadx[i] + disp.dadx[i] + assoc.dadx[i] + ion.dadx[i] + born.dadx[i];
     }
     result.dadx.total = total;
+    result.derivative_backend = composition_derivative_backend_map(cppargs);
+    result.finite_difference_fallback_used = false;
     return result;
 }

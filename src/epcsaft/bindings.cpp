@@ -108,6 +108,14 @@ py::dict regression_result_to_dict(const PureNeutralRegressionResult& result) {
     out["solve_wall_time_s"] = result.solve_wall_time_s;
     out["message"] = result.message;
     out["backend"] = result.backend;
+    out["jacobian_available"] = result.jacobian_available;
+    out["jacobian_backend"] = result.jacobian_backend;
+    out["jacobian_fallback_used"] = result.jacobian_fallback_used;
+    out["jacobian_fallback_reason"] = result.jacobian_fallback_reason;
+    out["hessian_available"] = result.hessian_available;
+    out["hessian_backend"] = result.hessian_backend;
+    out["hessian_fallback_used"] = result.hessian_fallback_used;
+    out["hessian_fallback_reason"] = result.hessian_fallback_reason;
     return out;
 }
 
@@ -118,6 +126,16 @@ py::dict regression_debug_to_dict(const PureNeutralRegressionDebugResult& result
     out["residuals"] = result.residuals;
     out["jacobian_row_major"] = result.jacobian_row_major;
     out["jacobian_shape"] = py::make_tuple(result.jacobian_rows, result.jacobian_cols);
+    out["jacobian_available"] = result.jacobian_available;
+    out["jacobian_backend"] = result.jacobian_backend;
+    out["jacobian_fallback_used"] = result.jacobian_fallback_used;
+    out["jacobian_fallback_reason"] = result.jacobian_fallback_reason;
+    out["hessian_row_major"] = result.hessian_row_major;
+    out["hessian_shape"] = py::make_tuple(result.hessian_rows, result.hessian_cols);
+    out["hessian_available"] = result.hessian_available;
+    out["hessian_backend"] = result.hessian_backend;
+    out["hessian_fallback_used"] = result.hessian_fallback_used;
+    out["hessian_fallback_reason"] = result.hessian_fallback_reason;
     out["density_raw_residuals"] = result.density_raw_residuals;
     out["pure_vle_raw_residuals"] = result.pure_vle_raw_residuals;
     out["residual_evaluations"] = result.residual_evaluations;
@@ -146,6 +164,15 @@ py::dict generic_regression_result_to_dict(const GenericRegressionResult& result
     out["starts_tried"] = result.starts_tried;
     out["message"] = result.message;
     out["backend"] = result.backend;
+    out["jacobian_available"] = result.jacobian_available;
+    out["jacobian_backend"] = result.jacobian_backend;
+    out["jacobian_fallback_used"] = result.jacobian_fallback_used;
+    out["jacobian_fallback_reason"] = result.jacobian_fallback_reason;
+    out["finite_difference_fallback_count"] = result.finite_difference_fallback_count;
+    out["hessian_available"] = result.hessian_available;
+    out["hessian_backend"] = result.hessian_backend;
+    out["hessian_fallback_used"] = result.hessian_fallback_used;
+    out["hessian_fallback_reason"] = result.hessian_fallback_reason;
     return out;
 }
 
@@ -159,6 +186,19 @@ py::dict generic_regression_debug_to_dict(const GenericRegressionDebugResult& re
         metrics[py::str(item.first)] = item.second;
     }
     out["metrics_by_term"] = metrics;
+    out["jacobian_row_major"] = result.jacobian_row_major;
+    out["jacobian_shape"] = py::make_tuple(result.jacobian_rows, result.jacobian_cols);
+    out["jacobian_available"] = result.jacobian_available;
+    out["jacobian_backend"] = result.jacobian_backend;
+    out["jacobian_fallback_used"] = result.jacobian_fallback_used;
+    out["jacobian_fallback_reason"] = result.jacobian_fallback_reason;
+    out["finite_difference_fallback_count"] = result.finite_difference_fallback_count;
+    out["hessian_row_major"] = result.hessian_row_major;
+    out["hessian_shape"] = py::make_tuple(result.hessian_rows, result.hessian_cols);
+    out["hessian_available"] = result.hessian_available;
+    out["hessian_backend"] = result.hessian_backend;
+    out["hessian_fallback_used"] = result.hessian_fallback_used;
+    out["hessian_fallback_reason"] = result.hessian_fallback_reason;
     return out;
 }
 
@@ -534,6 +574,9 @@ EquilibriumOptionsNative options_from_request(const py::dict& request) {
     if (input.contains("experimental_coupled_density_lle")) {
         options.experimental_coupled_density_lle = input["experimental_coupled_density_lle"].cast<bool>();
     }
+    if (input.contains("jacobian_backend")) {
+        options.jacobian_backend = input["jacobian_backend"].cast<std::string>();
+    }
     return options;
 }
 
@@ -557,6 +600,9 @@ ChemicalEquilibriumOptionsNative chemical_options_from_request(const py::dict& r
     }
     if (input.contains("finite_difference_step")) {
         options.finite_difference_step = input["finite_difference_step"].cast<double>();
+    }
+    if (input.contains("jacobian_backend")) {
+        options.jacobian_backend = input["jacobian_backend"].cast<std::string>();
     }
     if (input.contains("phase")) {
         options.phase = input["phase"].cast<std::string>();
@@ -908,7 +954,10 @@ PYBIND11_MODULE(_core, m) {
         .def_readonly("ares", &CompositionContributionResult::ares)
         .def_readonly("sum_x_dadx", &CompositionContributionResult::sum_x_dadx)
         .def_readonly("z_raw", &CompositionContributionResult::z_raw)
-        .def_readonly("z", &CompositionContributionResult::z);
+        .def_readonly("z", &CompositionContributionResult::z)
+        .def_readonly("derivative_backend", &CompositionContributionResult::derivative_backend)
+        .def_readonly("finite_difference_fallback_used", &CompositionContributionResult::finite_difference_fallback_used)
+        .def_readonly("finite_difference_fallback_reason", &CompositionContributionResult::finite_difference_fallback_reason);
 
     py::class_<ResidualChemicalPotentialResult>(m, "ResidualChemicalPotentialResult")
         .def_readonly("mu", &ResidualChemicalPotentialResult::mu)

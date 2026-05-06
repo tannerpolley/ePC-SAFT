@@ -1,11 +1,48 @@
 #pragma once
 
 #include <cmath>
+#include <string>
 
 #include <unsupported/Eigen/AutoDiff>
 
 using AutoDualDerivative = Eigen::Matrix<double, 1, 1>;
 using AutoDual = Eigen::AutoDiffScalar<AutoDualDerivative>;
+
+enum class DerivativeBackend {
+    Analytic = 0,
+    FiniteDifference = 1,
+    Autodiff = 2,
+    Auto = 3,
+};
+
+inline DerivativeBackend derivative_backend_from_int(int mode) {
+    switch (mode) {
+        case 0:
+            return DerivativeBackend::Analytic;
+        case 1:
+            return DerivativeBackend::FiniteDifference;
+        case 2:
+            return DerivativeBackend::Autodiff;
+        case 3:
+            return DerivativeBackend::Auto;
+        default:
+            return DerivativeBackend::Auto;
+    }
+}
+
+inline std::string derivative_backend_name(DerivativeBackend backend) {
+    switch (backend) {
+        case DerivativeBackend::Analytic:
+            return "analytic";
+        case DerivativeBackend::FiniteDifference:
+            return "finite_difference";
+        case DerivativeBackend::Autodiff:
+            return "autodiff";
+        case DerivativeBackend::Auto:
+            return "auto";
+    }
+    return "auto";
+}
 
 inline AutoDual make_autodiff_scalar(double value, double derivative = 0.0) {
     AutoDual x;

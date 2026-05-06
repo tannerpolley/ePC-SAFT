@@ -154,8 +154,9 @@ def test_solve_reactive_speciation_best_effort_returns_nonconverged_result() -> 
     json.dumps(result.to_dict(), allow_nan=False)
 
 
-def test_reactive_speciation_options_have_no_backend_selector() -> None:
+def test_reactive_speciation_options_expose_jacobian_backend_selector() -> None:
     assert "backend" not in {field.name for field in fields(epcsaft.ReactiveSpeciationOptions)}
+    assert "jacobian_backend" in {field.name for field in fields(epcsaft.ReactiveSpeciationOptions)}
 
 
 @pytest.mark.parametrize(

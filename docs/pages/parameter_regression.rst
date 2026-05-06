@@ -122,12 +122,12 @@ Advanced electrolyte options pass through to every runtime state build:
 
    user_options = {
        "elec_model": {
-           "rel_perm": {"rule": "empirical", "differential_mode": "numerical"},
+           "rel_perm": {"rule": "empirical", "differential_mode": "auto"},
            "born_model": {
                "d_Born_mode": 3,
                "solvation_shell_model": True,
                "dielectric_saturation": True,
-               "mu_born_model": {"differential_mode": "numerical", "comp_dep_delta_d": True},
+               "mu_born_model": {"differential_mode": "auto", "comp_dep_delta_d": True},
            },
        }
    }
@@ -220,6 +220,8 @@ Inspect and write results
 
    print(result.success)
    print(result.backend)
+   print(result.jacobian_backend)
+   print(result.hessian_backend)
    print(result.fitted_values)
    print(result.metrics_by_term)
    print(result.provenance_report)
@@ -230,3 +232,49 @@ Inspect and write results
    print(written_paths)
 
 With ``overwrite=False``, blank template cells can be filled but existing values are protected. Pure ion fits update the target component row in ``pure/``. Binary fits update both symmetric cells in the relevant interaction matrix.
+
+Derivative and Jacobian access
+------------------------------
+
+Normal ``FitResult`` payloads report compact derivative metadata:
+
+- ``jacobian_available``
+- ``jacobian_backend``
+- ``jacobian_fallback_used``
+- ``jacobian_fallback_reason``
+- ``finite_difference_fallback_count``
+- ``hessian_available``
+- ``hessian_backend``
+- ``hessian_fallback_used``
+- ``hessian_fallback_reason``
+
+Large matrices are exposed only through explicit derivative-evaluation helpers. Use ``evaluate_pure_neutral_derivatives(...)`` for the native pure-neutral objective. It returns residuals, gradient, ``jacobian_row_major``, ``jacobian_shape``, and Hessian skeleton fields. Pure-neutral Jacobians use the native autodiff path.
+
+For lower-level generic native records, use ``evaluate_generic_regression_derivatives(...)``. It returns residuals plus ``jacobian_row_major`` and ``jacobian_shape``. The current generic-regression Jacobian backend is reported honestly as ``finite_difference`` until the residual state calls are scalar-templated for autodiff.
+
+Derivative availability
+-----------------------
+
+.. list-table::
+   :header-rows: 1
+
+   * - Method
+     - Current Jacobian access
+     - Hessian status
+   * - Runtime ``dadt()``, ``dadx()``, ``z(return_contribution_terms=True)``, ``mures(return_contribution_terms=True)``
+     - Analytical where available, autodiff where implemented, finite-difference fallback with metadata
+     - Not exposed
+   * - Pure-neutral regression
+     - Native autodiff Jacobian through ``evaluate_pure_neutral_derivatives(...)``
+     - Skeleton metadata only
+   * - Generic ion/binary regression
+     - Explicit finite-difference Jacobian through ``evaluate_generic_regression_derivatives(...)`` until generic autodiff coverage is implemented
+     - Skeleton metadata only
+   * - Neutral LLE
+     - Native finite-difference Newton Jacobian with fallback diagnostics; autodiff residual boundary is planned
+     - Skeleton metadata only
+   * - Chemical equilibrium / reactive speciation
+     - Native finite-difference Newton Jacobian with fallback diagnostics; autodiff residual boundary is planned
+     - Skeleton metadata only
+
+The Hessian fields are deliberately a contract skeleton for future IPOPT-compatible optimizer integration. They do not mean IPOPT support or second-derivative evaluation is implemented.
