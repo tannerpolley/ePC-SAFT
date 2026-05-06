@@ -1,53 +1,134 @@
-name: wheels
+name: local-development-smoke
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      full_wheel_matrix:
+        description: "Run the full Linux/macOS/Windows wheel and sdist packaging checks"
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
-    name: test / ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+  fast-pr-smoke:
+    name: fast workflow smoke
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
+
+      - name: Check lightweight package and workflow contracts
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import ast
+          import re
+          import tomllib
+
+          workflow = Path(".github/workflows/wheels.yml").read_text(encoding="utf-8")
+          stale = [
+              "actions/checkout@" + "v4",
+              "astral-sh/setup-uv@" + "v6",
+              "actions/upload-artifact@" + "v4",
+              "Node.js " + "20",
+              "node" + "20",
+          ]
+          found = [token for token in stale if token in workflow]
+          if found:
+              raise SystemExit(f"stale workflow action/runtime token(s): {found}")
+          for token in (
+              "actions/checkout@v6.0.2",
+              "astral-sh/setup-uv@v8.1.0",
+              "actions/upload-artifact@v7.0.1",
+              "branches: [main]",
+              "fast workflow smoke",
+              "windows install smoke",
+          ):
+              if token not in workflow:
+                  raise SystemExit(f"missing workflow contract token: {token}")
+          if not re.search(r"windows-install-smoke:\n(?:.*\n)*?    if: \$\{\{ github\.event_name != 'pull_request' \}\}", workflow):
+              raise SystemExit("windows install smoke must not run on pull_request events")
+
+          pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          project = pyproject["project"]
+          if project["name"] != "epcsaft":
+              raise SystemExit("unexpected project name")
+          deps = "\n".join(str(item).lower() for item in project.get("dependencies", ()))
+          if "numpy" not in deps or "pandas" not in deps:
+              raise SystemExit("runtime dependencies must include numpy and pandas")
+          blocked = "sci" + "py"
+          if blocked in deps:
+              raise SystemExit("runtime dependencies must not include the external optimizer stack")
+
+          init_tree = ast.parse(Path("src/epcsaft/__init__.py").read_text(encoding="utf-8"))
+          exported = {
+              alias.name
+              for node in init_tree.body
+              if isinstance(node, ast.ImportFrom)
+              for alias in node.names
+          }
+          required_exports = {"ePCSAFTMixture", "InputError", "SolutionError", "fit_pure_neutral"}
+          missing_exports = sorted(required_exports - exported)
+          if missing_exports:
+              raise SystemExit(f"missing public exports: {missing_exports}")
+          print("fast workflow/package contract smoke passed")
+          PY
+
+  windows-install-smoke:
+    name: windows install smoke
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v6.0.2
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v8.1.0
         with:
           enable-cache: true
 
       - name: Install Python
         run: uv python install 3.12
 
-      - name: Sync dependencies
-        run: uv sync --locked --no-install-project
+      - name: Build Windows wheel
+        run: uv build --wheel
 
-      - name: Build native extension
-        run: uv run --locked python scripts/build_epcsaft.py --clean
+      - name: Install wheel into fresh environment
+        shell: pwsh
+        run: |
+          uv venv --python 3.12 .venv-smoke
+          $wheel = (Get-ChildItem -LiteralPath dist -Filter '*.whl' | Select-Object -First 1).FullName
+          uv pip install --python .\.venv-smoke\Scripts\python.exe $wheel
 
-      - name: Run focused tests
-        run: uv run --locked python run_pytest.py --confidence -q
+      - name: Smoke installed package
+        shell: pwsh
+        run: |
+          Set-Location $env:RUNNER_TEMP
+          & "$env:GITHUB_WORKSPACE\.venv-smoke\Scripts\python.exe" -c "import numpy as np; import epcsaft; import epcsaft._core; m = epcsaft.ePCSAFTMixture.from_params({'m': np.asarray([1.0]), 's': np.asarray([3.7039]), 'e': np.asarray([150.03])}); state = m.state(T=300.0, x=np.asarray([1.0]), rho=100.0); print(state.compressibility_factor())"
 
   build:
     name: build wheels / ${{ matrix.os }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.full_wheel_matrix }}
     runs-on: ${{ matrix.os }}
-    needs: test
+    needs: windows-install-smoke
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v8.1.0
         with:
           enable-cache: true
 
@@ -66,21 +147,22 @@ jobs:
           CIBW_TEST_COMMAND: "python -c \"import numpy as np; import epcsaft; import epcsaft._core; m=epcsaft.ePCSAFTMixture.from_params({'m': np.asarray([1.0]), 's': np.asarray([3.7039]), 'e': np.asarray([150.03])}); s=m.state(T=300.0, x=np.asarray([1.0]), rho=100.0); print(s.compressibility_factor())\""
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: wheels-${{ matrix.os }}
           path: wheelhouse/*.whl
 
   sdist:
     name: build sdist
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.full_wheel_matrix }}
     runs-on: ubuntu-latest
-    needs: test
+    needs: windows-install-smoke
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v8.1.0
         with:
           enable-cache: true
 
@@ -91,7 +173,7 @@ jobs:
         run: uv build --sdist
 
       - name: Upload sdist
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: sdist
           path: dist/*.tar.gz

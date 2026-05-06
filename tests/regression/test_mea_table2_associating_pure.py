@@ -3,7 +3,7 @@ import importlib
 
 import pytest
 
-from epcsaft.regression import _fit_pure_neutral_associating_python
+from epcsaft.regression import _fit_pure_neutral_associating_native
 
 baygi = importlib.import_module("analyses.2015_baygi.scripts._common")
 MEA_MW = baygi.MEA_MW
@@ -42,7 +42,7 @@ def _perturbed(values):
 @pytest.mark.parametrize("assoc_scheme", ("2B", "3B", "4C"))
 def test_baygi_table2_mea_parameters_score_better_than_perturbed_seed(assoc_scheme):
     table_values = TABLE2_MEA_PARAMETERS[assoc_scheme]
-    table_score = _fit_pure_neutral_associating_python(
+    table_score = _fit_pure_neutral_associating_native(
         _baygi_mea_records(),
         "MEA",
         assoc_scheme=assoc_scheme,
@@ -50,7 +50,7 @@ def test_baygi_table2_mea_parameters_score_better_than_perturbed_seed(assoc_sche
         initial_guess=table_values,
         max_nfev=1,
     )
-    perturbed_score = _fit_pure_neutral_associating_python(
+    perturbed_score = _fit_pure_neutral_associating_native(
         _baygi_mea_records(),
         "MEA",
         assoc_scheme=assoc_scheme,
@@ -69,7 +69,7 @@ def test_baygi_table2_mea_parameters_score_better_than_perturbed_seed(assoc_sche
 @pytest.mark.parametrize("assoc_scheme", ("2B", "3B", "4C"))
 def test_baygi_table2_mea_association_scheme_optimizer_does_not_worsen_seed(assoc_scheme):
     table_values = TABLE2_MEA_PARAMETERS[assoc_scheme]
-    result = _fit_pure_neutral_associating_python(
+    result = _fit_pure_neutral_associating_native(
         _baygi_mea_records(),
         "MEA",
         assoc_scheme=assoc_scheme,

@@ -31,6 +31,8 @@ The default source-checkout validation sequence is sync, normal native build, th
 For maintainers, the [development workflow guide](docs/pages/development_workflows.rst) is the source-of-truth command matrix for setup, fast rebuilds, focused tests, profiling, packaging, and repair-only cleanup. The [project structure guide](docs/pages/project_structure.rst) explains where package code, reusable reference data, and analysis workflows belong.
 For downstream projects that hit suspected package bugs, use the [downstream dependency protocol](docs/pages/downstream_dependency_protocol.rst) to file a complete GitHub issue and validation command.
 
+GitHub Actions are intentionally lightweight while this package is still in local development. Pushes and pull requests run a Windows wheel install smoke test only. Full Linux/macOS/Windows wheel and sdist packaging checks are available as a manual workflow dispatch when release confidence is needed.
+
 For the standard validation loops:
 
 ```powershell
@@ -99,7 +101,7 @@ The main entry points are `ePCSAFTMixture`, `ePCSAFTState`, `create_parameter_te
 
 The regression workflow is record-driven: `fit_pure_neutral(...)` fits nonassociating neutral-component `m`, `s`, and `e`; `fit_pure_ion(...)` fits ion `s`/`e` and optional `d_born`; `fit_binary_pair(...)` fits V1 VLE `k_ij` values; and `fit_mea_co2_h2o_electrolyte(...)` exposes the opt-in MEA-CO2-H2O electrolyte pure-parameter benchmark. Use `write_fit_result(...)` when you want to persist a fit back into a user-owned dataset folder.
 
-Electrolyte VLE starts with `mixture.equilibrium(kind="electrolyte_bubble_pressure", ...)`, which solves a charge-neutral liquid true-species composition against declared neutral vapor species while keeping ions liquid-only. Homogeneous reaction chemistry can be layered with `solve_reactive_speciation(...)`, where the caller supplies species, balances, reactions, equilibrium constants, and a mixture factory for activity-coefficient evaluations.
+Homogeneous reaction chemistry is available through `solve_reactive_speciation(...)`, where the caller supplies species, balances, reactions, equilibrium constants, and a mixture factory for native activity-coefficient evaluations. Electrolyte bubble-pressure and composed reactive electrolyte bubble-pressure entry points are native-backend placeholders and raise `InputError` until the corresponding C++ solvers exist; the package does not expose Python equilibrium solver fallbacks.
 
 ## Documentation
 

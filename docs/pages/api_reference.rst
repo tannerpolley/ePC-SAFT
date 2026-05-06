@@ -36,9 +36,9 @@ Activity results
 Equilibrium and speciation
 --------------------------
 
-``ePCSAFTMixture.equilibrium(kind="electrolyte_bubble_pressure", ...)`` solves
-an ion-containing liquid bubble pressure with neutral vapor species. Ions are
-nonvolatile in this V1 route.
+``ePCSAFTMixture.equilibrium(kind="electrolyte_bubble_pressure", ...)`` is a
+native-backend placeholder. It raises ``InputError`` until a C++ electrolyte
+bubble-pressure backend exists; Python equilibrium solvers are not exposed.
 
 .. autoclass:: epcsaft.ElectrolyteBubbleOptions
    :members:
@@ -91,6 +91,21 @@ The regression API remains Python-facing, but ``fit_pure_neutral(...)`` now dele
    :undoc-members:
    :no-index:
 
+.. autoclass:: epcsaft.FitParameter
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: epcsaft.BinaryInteraction
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: epcsaft.RelativePermittivityResidual
+   :members:
+   :undoc-members:
+   :no-index:
+
 .. autoclass:: epcsaft.FitTerm
    :members:
    :undoc-members:
@@ -107,6 +122,8 @@ The regression API remains Python-facing, but ``fit_pure_neutral(...)`` now dele
    :no-index:
 
 .. autofunction:: epcsaft.load_regression_records
+
+.. autofunction:: epcsaft.validate_regression_provenance
 
 .. autofunction:: epcsaft.fit_pure_neutral
 

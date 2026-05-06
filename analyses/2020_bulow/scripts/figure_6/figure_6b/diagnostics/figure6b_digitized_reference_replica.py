@@ -10,7 +10,6 @@ from typing import Dict, List, Tuple
 
 import matplotlib
 import numpy as np
-from scipy.interpolate import PchipInterpolator
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -98,11 +97,7 @@ def _load_digitized_curves(path: Path) -> Dict[str, Tuple[np.ndarray, np.ndarray
 
 def _interp_dense_curve(x: np.ndarray, y: np.ndarray, points: int) -> Tuple[np.ndarray, np.ndarray]:
     x_dense = np.linspace(float(np.min(x)), float(np.max(x)), int(points))
-    if len(x) < 3 or np.any(np.diff(x) <= 0.0):
-        y_dense = np.interp(x_dense, x, y)
-        return x_dense, y_dense
-    interp = PchipInterpolator(x, y)
-    y_dense = interp(x_dense)
+    y_dense = np.interp(x_dense, x, y)
     return x_dense, y_dense
 
 

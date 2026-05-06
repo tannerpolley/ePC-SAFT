@@ -21,16 +21,20 @@ from .parameters import molality_to_molefraction
 from .parameters import molefraction_to_molality
 from .parameter_templates import create_parameter_template
 from .regression import FitBounds
+from .regression import BinaryInteraction
 from .regression import FitProblem
+from .regression import FitParameter
 from .regression import FitResult
 from .regression import FitTerm
 from .regression import evaluate_generic_regression_derivatives
 from .regression import evaluate_pure_neutral_derivatives
+from .regression import RelativePermittivityResidual
 from .regression import fit_binary_pair
 from .regression import fit_mea_co2_h2o_electrolyte
 from .regression import fit_pure_neutral
 from .regression import fit_pure_ion
 from .regression import load_regression_records
+from .regression import validate_regression_provenance
 from .regression import write_fit_result
 from .reactive_speciation import ReactionDefinition
 from .reactive_speciation import ReactiveSpeciationOptions
@@ -59,18 +63,22 @@ __all__ = [
     "ElectrolyteBubbleResult",
     "available_datasets",
     "create_parameter_template",
+    "BinaryInteraction",
     "FitBounds",
+    "FitParameter",
     "FitProblem",
     "FitResult",
     "FitTerm",
     "evaluate_generic_regression_derivatives",
     "evaluate_pure_neutral_derivatives",
+    "RelativePermittivityResidual",
     "fit_binary_pair",
     "fit_mea_co2_h2o_electrolyte",
     "fit_pure_neutral",
     "fit_pure_ion",
     "get_prop_dict",
     "load_regression_records",
+    "validate_regression_provenance",
     "molality_to_molefraction",
     "molefraction_to_molality",
     "ReactionDefinition",
