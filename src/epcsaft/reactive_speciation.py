@@ -184,9 +184,7 @@ def _solve_reactive_speciation_native(
         success=True,
         message=str(payload["message"]),
         x={label: float(value) for label, value in zip(species, payload["composition"])},
-        activity_coefficients={
-            label: float(value) for label, value in zip(species, payload["activity_coefficients"])
-        },
+        activity_coefficients={label: float(value) for label, value in zip(species, payload["activity_coefficients"])},
         mass_balance_residuals={
             name: float(value) for name, value in zip(balance_names, payload["mass_balance_residuals"])
         },

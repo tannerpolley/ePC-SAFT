@@ -63,7 +63,12 @@ def _log_k_from_state(
 ) -> float:
     state = mix.state(T=T, P=P, x=x, phase="liq")
     gamma = state.activity_coefficient(species=mix.species)
-    return float(sum(nu * math.log(max(x[mix.species.index(label)] * gamma[label], 1.0e-300)) for label, nu in stoichiometry.items()))
+    return float(
+        sum(
+            nu * math.log(max(x[mix.species.index(label)] * gamma[label], 1.0e-300))
+            for label, nu in stoichiometry.items()
+        )
+    )
 
 
 def _neutral_log_k_from_fugacity_activity(

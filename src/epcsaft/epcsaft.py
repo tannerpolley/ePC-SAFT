@@ -274,9 +274,7 @@ class ePCSAFTMixture:
             charges = np.asarray(self.parameters.get("z", []), dtype=float).flatten()
             if charges.size and np.any(np.abs(charges) > 1.0e-12):
                 if parent_phase is not None or trial_phases is not None:
-                    raise InputError(
-                        "parent_phase and trial_phases are not supported for ionic reactive_stability."
-                    )
+                    raise InputError("parent_phase and trial_phases are not supported for ionic reactive_stability.")
                 result = electrolyte_stability(self, T=T, P=P, z=equilibrated_z, options=phase_options)
             else:
                 result = neutral_stability(
