@@ -38,7 +38,7 @@ def _mea_like_mixture() -> epcsaft.ePCSAFTMixture:
     )
 
 
-def _methanol_cyclohexane_mixture() -> epcsaft.ePCSAFTMixture:
+def _methanol_cyclohexane_mixture(kij: float = 0.051) -> epcsaft.ePCSAFTMixture:
     params = {
         "MW": np.asarray([32.042e-3, 84.147e-3]),
         "m": np.asarray([1.5255, 2.5303]),
@@ -47,7 +47,7 @@ def _methanol_cyclohexane_mixture() -> epcsaft.ePCSAFTMixture:
         "e_assoc": np.asarray([2899.5, 0.0]),
         "vol_a": np.asarray([0.035176, 0.0]),
         "assoc_scheme": ["2B", None],
-        "k_ij": np.asarray([[0.0, 0.051], [0.051, 0.0]]),
+        "k_ij": np.asarray([[0.0, kij], [kij, 0.0]]),
         "z": np.asarray([0.0, 0.0]),
         "dielc": np.asarray([33.05, 2.02]),
     }
@@ -359,6 +359,47 @@ def test_native_chemical_equilibrium_skips_soft_start_when_no_reactions() -> Non
     assert result.diagnostics["soft_start_rejection_reason"] == "no_reactions"
 
 
+def test_native_chemical_equilibrium_handles_trace_species_seed_without_invalid_numbers() -> None:
+    mix = epcsaft.ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([1.0, 1.0]),
+            "s": np.asarray([3.0, 3.0]),
+            "e": np.asarray([200.0, 200.0]),
+        },
+        species=["A", "B"],
+    )
+    trace_target = 1.0e-9
+    log_k = math.log(trace_target / (1.0 - trace_target))
+
+    result = epcsaft.solve_reactive_speciation(
+        species=["A", "B"],
+        mixture_factory=lambda x, T, P: mix,
+        T=298.15,
+        P=1.0e5,
+        balances={"total": {"A": 1.0, "B": 1.0}},
+        totals={"total": 1.0},
+        reactions=[epcsaft.ReactionDefinition({"A": -1.0, "B": 1.0}, log_k)],
+        initial_x=[1.0 - 1.0e-14, 1.0e-14],
+        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-8, min_mole_fraction=1.0e-14),
+    )
+
+    x_values = list(result.x.values())
+    activity_values = list(result.activity_coefficients.values())
+    diagnostics = result.diagnostics
+
+    assert result.success is True
+    assert min(x_values) >= 0.0
+    assert result.x["B"] == pytest.approx(trace_target, rel=1.0e-6)
+    assert max(abs(value) for value in result.reaction_residuals) <= 1.0e-8
+    assert all(math.isfinite(value) for value in x_values)
+    assert all(math.isfinite(value) and value > 0.0 for value in activity_values)
+    assert all(math.isfinite(value) for value in result.mass_balance_residuals.values())
+    assert math.isfinite(result.charge_residual)
+    assert all(math.isfinite(value) for value in result.reaction_residuals)
+    assert all(math.isfinite(value) for value in diagnostics["history"])
+    assert all(math.isfinite(value) for value in diagnostics["phase_equilibrium_handoff"]["composition"])
+
+
 def test_reactive_stability_chemical_equilibrates_feed_before_native_tpd() -> None:
     mix = _methanol_cyclohexane_mixture()
     target_x = np.asarray([0.45, 0.55], dtype=float)
@@ -417,3 +458,45 @@ def test_native_chemical_equilibrium_uses_epcsaft_activities_for_neutral_reactio
     assert result.x["Cyclohexane"] == pytest.approx(target_x[1], rel=5.0e-6)
     assert result.diagnostics["activity_model"] == "epcsaft_neutral_fugacity_activity"
     assert result.activity_coefficients["Methanol"] != pytest.approx(1.0, abs=1.0e-3)
+
+
+def test_native_chemical_equilibrium_solution_shifts_when_fugacity_model_changes() -> None:
+    base_mix = _methanol_cyclohexane_mixture(kij=0.051)
+    target_x = np.asarray([0.35, 0.65], dtype=float)
+    stoich = {"Methanol": -1.0, "Cyclohexane": 1.0}
+    log_k = _neutral_log_k_from_fugacity_activity(base_mix, 298.15, 1.013e5, target_x, stoich)
+
+    base_result = epcsaft.solve_reactive_speciation(
+        species=base_mix.species,
+        mixture_factory=lambda x, T, P: base_mix,
+        T=298.15,
+        P=1.013e5,
+        balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
+        totals={"total": 1.0},
+        reactions=[epcsaft.ReactionDefinition(stoich, log_k)],
+        initial_x=[0.5, 0.5],
+        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-9),
+    )
+
+    perturbed_mix = _methanol_cyclohexane_mixture(kij=0.0)
+    perturbed_result = epcsaft.solve_reactive_speciation(
+        species=perturbed_mix.species,
+        mixture_factory=lambda x, T, P: perturbed_mix,
+        T=298.15,
+        P=1.013e5,
+        balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
+        totals={"total": 1.0},
+        reactions=[epcsaft.ReactionDefinition(stoich, log_k)],
+        initial_x=[0.5, 0.5],
+        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-9),
+    )
+
+    assert base_result.success is True
+    assert base_result.x["Methanol"] == pytest.approx(target_x[0], rel=5.0e-6)
+    assert base_result.x["Cyclohexane"] == pytest.approx(target_x[1], rel=5.0e-6)
+    assert base_result.diagnostics["activity_model"] == "epcsaft_neutral_fugacity_activity"
+
+    assert perturbed_result.success is True
+    assert perturbed_result.diagnostics["activity_model"] == "epcsaft_neutral_fugacity_activity"
+    assert max(abs(value) for value in perturbed_result.reaction_residuals) <= 1.0e-8
+    assert perturbed_result.x["Methanol"] - base_result.x["Methanol"] > 0.1

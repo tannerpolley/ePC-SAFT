@@ -69,3 +69,48 @@ def test_solve_reactive_speciation_returns_balanced_activity_coupled_state() -> 
 
 def test_reactive_speciation_options_have_no_backend_selector() -> None:
     assert "backend" not in {field.name for field in fields(epcsaft.ReactiveSpeciationOptions)}
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        (
+            {"reactions": [epcsaft.ReactionDefinition({"Missing": -1.0, "Na+": 1.0}, 0.0)]},
+            "Unknown species 'Missing' in reaction stoichiometry",
+        ),
+        (
+            {"totals": {"water_total": 0.998, "sodium_total": 0.0015}},
+            "Missing total for balance 'chloride_total'",
+        ),
+        (
+            {"initial_x": [0.998, 0.001, 0.0005]},
+            "initial_x length must match species length",
+        ),
+    ],
+)
+def test_solve_reactive_speciation_rejects_invalid_chemistry_inputs(kwargs: dict[str, object], message: str) -> None:
+    species = ["H2O", "NaCl", "Na+", "Cl-"]
+    mix = _salt_speciation_mixture()
+    request = {
+        "species": species,
+        "mixture_factory": lambda x, T, P: mix,
+        "T": 298.15,
+        "P": 1.0e5,
+        "balances": {
+            "water_total": {"H2O": 1.0},
+            "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
+            "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
+        },
+        "totals": {"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
+        "reactions": [
+            epcsaft.ReactionDefinition(
+                stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
+                log_equilibrium_constant=0.0,
+            )
+        ],
+        "initial_x": [0.998, 0.001, 0.0005, 0.0005],
+    }
+    request.update(kwargs)
+
+    with pytest.raises(epcsaft.InputError, match=message):
+        epcsaft.solve_reactive_speciation(**request)
