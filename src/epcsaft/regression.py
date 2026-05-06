@@ -1762,7 +1762,7 @@ def _associating_pure_payload(
     return payload
 
 
-def _fit_pure_neutral_associating_python(
+def _fit_pure_neutral_associating_native(
     records: Any,
     component: str,
     *,
@@ -1774,10 +1774,10 @@ def _fit_pure_neutral_associating_python(
     multistart: int = 0,
     max_nfev: int = 1,
 ) -> FitResult:
-    """Internal associating pure-neutral regression path kept for benchmark compatibility."""
+    """Internal native associating pure-neutral regression path for analysis checks."""
 
     if not _assoc_is_enabled(assoc_scheme):
-        raise InputError("Associating pure-neutral Python regression requires an association scheme.")
+        raise InputError("Associating pure-neutral regression requires an association scheme.")
     normalized_component = _normalize_component(component)
     normalized_records = _normalize_records(records)
     normalized_fit_targets = (

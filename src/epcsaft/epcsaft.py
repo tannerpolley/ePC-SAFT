@@ -400,8 +400,8 @@ class ePCSAFTMixture:
                 raise InputError("initial_phases is not supported for kind='electrolyte_bubble_pressure'.")
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
-            if backend not in (None, "python", "electrolyte_bubble"):
-                raise InputError("Electrolyte bubble backend must be None, 'python', or 'electrolyte_bubble'.")
+            if backend not in (None, "native"):
+                raise InputError("Electrolyte bubble backend must be None or 'native'.")
             return electrolyte_bubble_pressure(
                 self,
                 T=T,

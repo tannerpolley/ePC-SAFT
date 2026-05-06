@@ -156,7 +156,7 @@ def test_hubach_cold_start_failure_reports_seed_attempts_before_error() -> None:
     os.environ.get("EPCSAFT_RUN_HUBACH_LLE") != "1",
     reason="Hubach legacy-candidate fallback is an opt-in hard-case regression.",
 )
-def test_hubach_cold_start_preserves_distinct_legacy_candidate_on_strict_failure() -> None:
+def test_hubach_cold_start_reports_disabled_legacy_candidate_on_strict_failure() -> None:
     feed = _row0_feed()
     mix = _hubach_mixture(feed)
 
@@ -183,13 +183,8 @@ def test_hubach_cold_start_preserves_distinct_legacy_candidate_on_strict_failure
         return
 
     assert diagnostics["acceptance_gate"] == "predictive_solve_failed"
-    assert diagnostics["legacy_candidate_found"] is True
-    assert diagnostics["legacy_candidate_phase_distance"] > diagnostics["legacy_candidate_split_tolerance"]
-    assert diagnostics["legacy_candidate_material_balance_error"] <= 1.0e-8
-    assert diagnostics["legacy_candidate_charge_balance_error"] <= 1.0e-6
-    assert diagnostics["legacy_candidate_rejected_by_strict_gate"] is True
-    assert len(diagnostics["legacy_candidate_aq_composition"]) == mix.ncomp
-    assert len(diagnostics["legacy_candidate_org_composition"]) == mix.ncomp
+    assert diagnostics["legacy_candidate_found"] is False
+    assert "disabled" in diagnostics["legacy_candidate_message"]
     assert diagnostics["density_failure_count"] >= 0
     assert diagnostics["density_diagnostics_mode"] == "auto"
     assert diagnostics["density_validity_gate"] in {"passed", "failed", "not_evaluated"}

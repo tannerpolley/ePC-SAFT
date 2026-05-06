@@ -1,106 +1,32 @@
 Electrolyte VLE And Reactive Speciation
 =======================================
 
-The first package-level electrolyte VLE route is a bubble-pressure calculation
-for an ion-containing liquid phase with neutral vapor species. Ions remain
-liquid-only in this V1 API, and vapor fugacity is evaluated with a neutral
-vapor-only submixture built from the same pure and binary parameters.
+Native-only solver policy
+-------------------------
 
-Electrolyte bubble pressure
----------------------------
+Package-owned regression and equilibrium solves must run through the native
+C++ backend exposed by ``epcsaft._core``. Python package code may normalize
+inputs, build request payloads, validate units and compositions, and convert
+native payloads into structured result objects, but it must not contain
+production nonlinear equilibrium or regression optimizers.
 
-Use ``kind="electrolyte_bubble_pressure"`` when the liquid composition is a
-fixed true-species electrolyte composition and the vapor contains only declared
-neutral volatile species.
+Consequently, electrolyte bubble-pressure and composed reactive electrolyte
+bubble-pressure entry points are currently disabled. Their public option and
+result classes remain as stable contract placeholders, but calls raise
+``InputError`` until the corresponding native C++ backend exists.
 
-.. code-block:: python
-
-   import numpy as np
-   import epcsaft
-
-   result = mixture.equilibrium(
-       kind="electrolyte_bubble_pressure",
-       T=313.15,
-       x_liq=np.asarray([0.02, 0.979, 0.0005, 0.0005]),
-       volatile_species=["CO2", "H2O"],
-       vapor_species=["CO2", "H2O"],
-       nonvolatile_species=["Na+", "Cl-"],
-       options=epcsaft.ElectrolyteBubbleOptions(initial_pressure=1.0e5),
-   )
-
-   assert result.success
-   print(result.P)
-   print(result.y_vap)
-   print(result.partial_pressures)
-
-``z`` is accepted as an alias only when ``x_liq`` is omitted. The liquid
-composition must be charge neutral, and ``vapor_species`` must not include ions.
-Pressure is solved internally in ``log(P)`` for better behavior across wide VLE
-pressure ranges, but all public inputs and outputs remain in pascals.
-Nonconverged solves raise ``SolutionError`` by default with JSON-like
-diagnostics containing the pressure bracket, bounded vapor history, state
-failure count, and best finite point fields such as ``best_P``,
-``best_objective``, ``best_y_vap``, ``best_partial_pressures``, and
-``best_fugacity_residual_norm``.
-
-For continuation across nearby compositions, pass the previous result's
-``P`` and ``y_vap`` back through ``ElectrolyteBubbleOptions``:
-
-.. code-block:: python
-
-   next_result = mixture.equilibrium(
-       kind="electrolyte_bubble_pressure",
-       T=313.15,
-       x_liq=next_x_liq,
-       volatile_species=["CO2", "H2O"],
-       vapor_species=["CO2", "H2O"],
-       nonvolatile_species=["Na+", "Cl-"],
-       options=epcsaft.ElectrolyteBubbleOptions(
-           initial_pressure=result.P,
-           initial_y_vap=result.y_vap,
-       ),
-   )
-
-Strict failure remains the default. Set ``return_best_effort=True`` only for
-diagnostic sweeps where a finite nonconverged state is useful:
-
-.. code-block:: python
-
-   diagnostic = mixture.equilibrium(
-       kind="electrolyte_bubble_pressure",
-       T=313.15,
-       x_liq=x_liq,
-       volatile_species=["CO2", "H2O"],
-       vapor_species=["CO2", "H2O"],
-       options=epcsaft.ElectrolyteBubbleOptions(return_best_effort=True),
-   )
-
-   if not diagnostic.success:
-       print(diagnostic.diagnostics["best_objective"])
-
-Reactive speciation
--------------------
+Homogeneous reactive speciation
+-------------------------------
 
 ``solve_reactive_speciation(...)`` solves one homogeneous reactive phase using
-log mole amounts. The caller owns the chemistry: species labels, material
-balances, totals, reactions, equilibrium constants, and the ``mixture_factory``
-used to evaluate activity coefficients.
+the C++ chemical-equilibrium kernel. The caller owns the chemistry: species
+labels, material balances, totals, reactions, equilibrium constants, and the
+``mixture_factory`` used to create the native ePC-SAFT mixture.
 
-The package chemical-equilibrium implementation is the C++ homogeneous
-chemical-equilibrium kernel. The native backend solves material balances,
-charge balance, and reaction residuals in log mole amounts, evaluates ePC-SAFT
-component activity coefficients for ion-containing mixtures, and uses neutral
-ePC-SAFT fugacity-reference activities for nonionic mixtures. This is the fast
-inner primitive intended for MEA/CO2/H2O speciation packages and for
-Ascani-style reactive phase-equilibrium workflows.
-
-For the native backend, the final activity-coupled residual solve is warm
-started by an ideal convex Gibbs minimization in reaction-extent space. The
-ideal soft start is only used when it produces a finite composition that
-improves the full ePC-SAFT residual; otherwise the solver falls back to the
-caller-provided initial composition. The runtime ladder is therefore:
-ideal convex Gibbs soft start, full ePC-SAFT activity residual Newton solve,
-then the phase-equilibrium handoff diagnostics.
+The native backend solves material balances, charge balance, and reaction
+residuals in log mole amounts. For ion-containing mixtures it evaluates
+ePC-SAFT component activity coefficients. For nonionic mixtures it uses neutral
+ePC-SAFT fugacity-reference activities.
 
 .. code-block:: python
 
@@ -119,6 +45,7 @@ then the phase-equilibrium handoff diagnostics.
            epcsaft.ReactionDefinition(
                stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
                log_equilibrium_constant=-4.0,
+               name="salt_dissociation",
            )
        ],
        initial_x=[0.998, 0.001, 0.0005, 0.0005],
@@ -127,16 +54,7 @@ then the phase-equilibrium handoff diagnostics.
 
    print(result.x)
    print(result.mass_balance_residuals)
-   print(result.reaction_residuals)
    print(result.named_reaction_residuals)
-
-The native solver does not require SciPy at runtime. Its diagnostics include a
-``phase_equilibrium_handoff`` payload with the equilibrated composition and
-activity basis. That handoff is deliberately shaped for the existing native
-stability, LLE, and VLE routes: chemical-equilibrate the feed, run phase
-stability or a non-reactive flash, chemical-equilibrate any phase seeds, then
-use those seeds in a rigorous reactive phase calculation as that layer is
-added.
 
 ``ReactiveSpeciationOptions`` keeps strict failure behavior by default. Failed
 native solves raise ``SolutionError``. For diagnostic grid work, opt into
@@ -145,95 +63,15 @@ native solves raise ``SolutionError``. For diagnostic grid work, opt into
 payload instead. Diagnostics include ``best_x``,
 ``best_activity_coefficients``, family residual norms, and named reaction
 residuals. ``mass_tolerance``, ``charge_tolerance``, and
-``reaction_tolerance`` may be set separately; each defaults to
-``tolerance`` when omitted.
-
-The same route is also available from the mixture equilibrium facade:
-
-.. code-block:: python
-
-   result = mixture.equilibrium(
-       kind="chemical_equilibrium",
-       T=298.15,
-       P=1.0e5,
-       z=[0.998, 0.001, 0.0005, 0.0005],
-       balances={...},
-       totals={...},
-       reactions=[...],
-       options=epcsaft.ReactiveSpeciationOptions(),
-   )
-
-Composed reactive electrolyte bubble workflow
----------------------------------------------
-
-For reactive VLE observables such as vapor partial pressures, use the generic
-composed helper instead of wiring the two primitive solves by hand:
-
-.. code-block:: python
-
-   result = epcsaft.solve_reactive_electrolyte_bubble(
-       species=species,
-       mixture_factory=lambda x, T, P: mixture,
-       T=313.15,
-       P_seed=1.0e5,
-       balances=balances,
-       totals=totals,
-       reactions=reactions,
-       initial_x=initial_x,
-       vapor_species=["CO2", "H2O"],
-       nonvolatile_species=["MEAH+", "MEACOO-", "HCO3-", "CO3^2-", "H3O+", "OH-"],
-       options=epcsaft.ReactiveElectrolyteBubbleOptions(),
-   )
-
-The result keeps the speciation and bubble-pressure outputs together:
-``x_liq``, activity coefficients, material-balance residuals, named reaction
-residuals, total pressure, vapor composition, partial pressures, fugacity
-residuals, state failure count, and diagnostics. The helper is generic: MEA,
-amine blends, sour-gas absorption systems, salt plus volatile gas systems, and
-ionic-liquid blends all provide their own species, balances, reactions, and
-``mixture_factory``.
-
-Direct single-point calls remain strict by default. For regression or batch
-sweeps that need fixed-shape outputs, set
-``ReactiveElectrolyteBubbleOptions(error_mode="result")``. Failed points then
-return ``ReactiveElectrolyteBubbleResult(success=False, ...)`` with
-``penalty_residuals`` and compact diagnostics instead of changing the result
-array length through exceptions.
-
-Ordered sweeps
---------------
-
-``solve_reactive_electrolyte_bubble_sweep(...)`` and
-``mixture.equilibrium_sweep(kind="reactive_electrolyte_bubble_pressure", ...)``
-solve related points in order and reuse the previous successful liquid
-composition, pressure, and vapor composition as continuation seeds.
-
-.. code-block:: python
-
-   results = mixture.equilibrium_sweep(
-       kind="reactive_electrolyte_bubble_pressure",
-       points=[
-           {"T": 313.15, "P_seed": 1.0e5, "totals": totals_0, "initial_x": x0},
-           {"T": 313.15, "totals": totals_1},
-       ],
-       balances=balances,
-       reactions=reactions,
-       vapor_species=["CO2", "H2O", "MEA"],
-       nonvolatile_species=["MEAH+", "MEACOO-", "HCO3-", "CO3^2-", "H3O+", "OH-"],
-       options=epcsaft.ReactiveElectrolyteBubbleOptions(error_mode="result"),
-   )
-
-The sweep API is intentionally an ordered point evaluator, not a regression
-optimizer. It preserves one result object per input point and records whether
-continuation was used in each point's diagnostics.
+``reaction_tolerance`` may be set separately; each defaults to ``tolerance``
+when omitted.
 
 Reactive stability handoff
 --------------------------
 
-``kind="reactive_stability"`` runs the first two steps of the Ascani-style
-workflow from the public facade: it first solves the homogeneous chemical
-equilibrium with the native chemical solver, then sends the equilibrated
-composition to the existing native stability route.
+``kind="reactive_stability"`` first solves homogeneous chemical equilibrium
+with the native chemical solver, then sends the equilibrated composition to the
+existing native stability route.
 
 .. code-block:: python
 
@@ -251,11 +89,18 @@ composition to the existing native stability route.
 The returned ``StabilityResult`` diagnostics include
 ``reactive_chemical_equilibrium`` and ``reactive_feed_composition`` so callers
 can inspect the chemical-equilibrated feed used for tangent-plane-distance
-analysis. This route is intentionally a stability/handoff coordinator, not yet
-a full rigorous reactive flash solver.
+analysis. This route is a native stability/handoff coordinator, not a full
+rigorous reactive flash solver.
 
-Full coupled regression helpers, target definitions, parameter masks, and
-native batched residual-vector evaluation remain a future layer. The current
-package contracts provide the reusable reactive electrolyte bubble primitives,
-fixed-shape diagnostic mode, and ordered sweep continuation those downstream
-workflows need first.
+Disabled native placeholders
+----------------------------
+
+These entry points are intentionally unavailable until implemented in C++:
+
+- ``mixture.equilibrium(kind="electrolyte_bubble_pressure", ...)``
+- ``epcsaft.solve_reactive_electrolyte_bubble(...)``
+- ``epcsaft.solve_reactive_electrolyte_bubble_sweep(...)``
+- ``mixture.equilibrium_sweep(kind="reactive_electrolyte_bubble_pressure", ...)``
+
+They raise ``InputError`` instead of falling back to a Python pressure,
+speciation, or regression loop.

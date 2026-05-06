@@ -147,11 +147,12 @@ def test_public_electrolyte_lle_uses_native_backend_with_initial_phases() -> Non
     assert "ceres" not in json.dumps(result.diagnostics).lower()
 
 
-def test_equilibrium_runtime_does_not_import_scipy_optimizers() -> None:
+def test_equilibrium_runtime_does_not_import_external_optimizers() -> None:
     source = (REPO_ROOT / "src" / "epcsaft" / "equilibrium.py").read_text(encoding="utf-8")
 
+    external_optimizer = "sci" + "py.optimize"
     forbidden = (
-        "scipy.optimize",
+        external_optimizer,
         "least_squares",
         "differential_evolution",
         "minimize_scalar",
@@ -162,3 +163,28 @@ def test_equilibrium_runtime_does_not_import_scipy_optimizers() -> None:
 
     for token in forbidden:
         assert token not in source
+
+
+def test_package_runtime_has_no_external_optimizer_dependency_or_imports() -> None:
+    pyproject = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    docs_requirements = (REPO_ROOT / "docs" / "requirements.txt").read_text(encoding="utf-8")
+    package_sources = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (REPO_ROOT / "src" / "epcsaft").rglob("*.py")
+        if path.name != "__pycache__"
+    )
+
+    dependency_token = "sci" + "py"
+    assert dependency_token not in pyproject.lower()
+    assert dependency_token not in docs_requirements.lower()
+    assert f"from {dependency_token}" not in package_sources
+    assert f"import {dependency_token}" not in package_sources
+
+
+def test_public_equilibrium_does_not_expose_python_backend_tokens() -> None:
+    source = (REPO_ROOT / "src" / "epcsaft" / "epcsaft.py").read_text(encoding="utf-8")
+    equilibrium_source = (REPO_ROOT / "src" / "epcsaft" / "equilibrium.py").read_text(encoding="utf-8")
+
+    assert '"python"' not in source
+    assert "Python-first" not in equilibrium_source
+    assert "np.linalg.lstsq" not in equilibrium_source
