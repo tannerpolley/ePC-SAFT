@@ -91,11 +91,13 @@ print(state.ares(return_contribution_terms=True)["terms"]["hc"])
 
 ## Public API
 
-The main entry points are `ePCSAFTMixture`, `ePCSAFTState`, `create_parameter_template`, `fit_pure_neutral(...)`, `fit_pure_ion(...)`, `fit_binary_pair(...)`, and the structured result objects returned by solver-style methods.
+The main entry points are `ePCSAFTMixture`, `ePCSAFTState`, `create_parameter_template`, `fit_pure_neutral(...)`, `fit_pure_ion(...)`, `fit_binary_pair(...)`, `fit_mea_co2_h2o_electrolyte(...)`, `solve_reactive_speciation(...)`, and the structured result objects returned by solver-style methods.
 
 `create_parameter_template(...)` creates a blank dataset folder with the expected `pure/`, `mixed/`, and `user_options.json` layout. After you fill in the files, `ePCSAFTMixture.from_dataset(...)` can load the folder path you created yourself.
 
-The regression workflow is record-driven: `fit_pure_neutral(...)` fits nonassociating neutral-component `m`, `s`, and `e`; `fit_pure_ion(...)` fits ion `s`/`e` and optional `d_born`; and `fit_binary_pair(...)` fits V1 VLE `k_ij` values. Use `write_fit_result(...)` when you want to persist a fit back into a user-owned dataset folder.
+The regression workflow is record-driven: `fit_pure_neutral(...)` fits nonassociating neutral-component `m`, `s`, and `e`; `fit_pure_ion(...)` fits ion `s`/`e` and optional `d_born`; `fit_binary_pair(...)` fits V1 VLE `k_ij` values; and `fit_mea_co2_h2o_electrolyte(...)` exposes the opt-in MEA-CO2-H2O electrolyte pure-parameter benchmark. Use `write_fit_result(...)` when you want to persist a fit back into a user-owned dataset folder.
+
+Electrolyte VLE starts with `mixture.equilibrium(kind="electrolyte_bubble_pressure", ...)`, which solves a charge-neutral liquid true-species composition against declared neutral vapor species while keeping ions liquid-only. Homogeneous reaction chemistry can be layered with `solve_reactive_speciation(...)`, where the caller supplies species, balances, reactions, equilibrium constants, and a mixture factory for activity-coefficient evaluations.
 
 ## Documentation
 
@@ -106,6 +108,7 @@ The regression workflow is record-driven: `fit_pure_neutral(...)` fits nonassoci
 - [Parameter regression guide](docs/pages/parameter_regression.rst)
 - [User options reference](docs/pages/user_options.rst)
 - [Task-based package guide](docs/pages/package_guide.rst)
+- [Electrolyte VLE and reactive speciation](docs/pages/electrolyte_vle_reactive_workflow.rst)
 - [API reference](docs/pages/api_reference.rst)
 
 ## License

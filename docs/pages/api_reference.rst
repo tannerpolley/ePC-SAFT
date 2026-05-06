@@ -33,6 +33,40 @@ Activity results
    :undoc-members:
    :no-index:
 
+Equilibrium and speciation
+--------------------------
+
+``ePCSAFTMixture.equilibrium(kind="electrolyte_bubble_pressure", ...)`` solves
+an ion-containing liquid bubble pressure with neutral vapor species. Ions are
+nonvolatile in this V1 route.
+
+.. autoclass:: epcsaft.ElectrolyteBubbleOptions
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: epcsaft.ElectrolyteBubbleResult
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: epcsaft.ReactionDefinition
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: epcsaft.ReactiveSpeciationOptions
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: epcsaft.ReactiveSpeciationResult
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autofunction:: epcsaft.solve_reactive_speciation
+
 Regression helpers
 ------------------
 
@@ -61,6 +95,8 @@ The regression API remains Python-facing, but ``fit_pure_neutral(...)`` now dele
 .. autofunction:: epcsaft.load_regression_records
 
 .. autofunction:: epcsaft.fit_pure_neutral
+
+.. autofunction:: epcsaft.fit_mea_co2_h2o_electrolyte
 
 .. autofunction:: epcsaft.write_fit_result
 

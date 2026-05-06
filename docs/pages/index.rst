@@ -34,6 +34,7 @@ Reference
 
    package_guide
    electrolyte_lle_workflow
+   electrolyte_vle_reactive_workflow
    api_reference
    native_debugging
    equation_traceability

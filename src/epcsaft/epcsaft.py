@@ -169,6 +169,10 @@ class ePCSAFTMixture:
         T=None,
         P=None,
         z=None,
+        x_liq=None,
+        volatile_species=None,
+        vapor_species=None,
+        nonvolatile_species=None,
         solvent_feed=None,
         salt_molality=None,
         options=None,
@@ -184,9 +188,21 @@ class ePCSAFTMixture:
         from .equilibrium import neutral_stability
         from .equilibrium import tp_flash
         from .equilibrium_core.classify import classify_equilibrium_route
+        from .electrolyte_bubble import electrolyte_bubble_pressure
 
         if kind == "auto":
             route = classify_equilibrium_route(self, kind, backend)
+            if route["route"] == "electrolyte_bubble":
+                return electrolyte_bubble_pressure(
+                    self,
+                    T=T,
+                    x_liq=x_liq,
+                    z=z,
+                    volatile_species=volatile_species,
+                    vapor_species=vapor_species,
+                    nonvolatile_species=nonvolatile_species,
+                    options=options,
+                )
             if route["route"] == "electrolyte_lle":
                 try:
                     result = electrolyte_lle_flash_native(
@@ -218,9 +234,43 @@ class ePCSAFTMixture:
             if route["route"] == "neutral_lle":
                 return lle_flash(self, T=T, P=P, z=z, options=options, initial_phases=initial_phases)
             return tp_flash(self, T=T, P=P, z=z, options=options)
+        if kind in {"electrolyte_bubble_pressure", "electrolyte_bubble", "bubble_pressure"}:
+            if P is not None:
+                raise InputError(
+                    "P is solved by kind='electrolyte_bubble_pressure'; use options.initial_pressure as a seed."
+                )
+            if solvent_feed is not None or salt_molality is not None:
+                raise InputError(
+                    "solvent_feed and salt_molality are not supported for kind='electrolyte_bubble_pressure'."
+                )
+            if initial_phases is not None:
+                raise InputError("initial_phases is not supported for kind='electrolyte_bubble_pressure'.")
+            if parent_phase is not None or trial_phases is not None:
+                raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
+            if backend not in (None, "python", "electrolyte_bubble"):
+                raise InputError("Electrolyte bubble backend must be None, 'python', or 'electrolyte_bubble'.")
+            return electrolyte_bubble_pressure(
+                self,
+                T=T,
+                x_liq=x_liq,
+                z=z,
+                volatile_species=volatile_species,
+                vapor_species=vapor_species,
+                nonvolatile_species=nonvolatile_species,
+                options=options,
+            )
         if kind == "tp_flash":
             if solvent_feed is not None or salt_molality is not None:
                 raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
+            if (
+                x_liq is not None
+                or volatile_species is not None
+                or vapor_species is not None
+                or nonvolatile_species is not None
+            ):
+                raise InputError(
+                    "x_liq and vapor species controls are only supported for kind='electrolyte_bubble_pressure'."
+                )
             if initial_phases is not None:
                 raise InputError("initial_phases is only supported for kind='lle_flash'.")
             if parent_phase is not None or trial_phases is not None:
@@ -231,12 +281,30 @@ class ePCSAFTMixture:
         if kind == "lle_flash":
             if solvent_feed is not None or salt_molality is not None:
                 raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
+            if (
+                x_liq is not None
+                or volatile_species is not None
+                or vapor_species is not None
+                or nonvolatile_species is not None
+            ):
+                raise InputError(
+                    "x_liq and vapor species controls are only supported for kind='electrolyte_bubble_pressure'."
+                )
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
             if backend not in (None, "native", "neutral_lle"):
                 raise InputError("LLE flash backend must be None, 'native', or 'neutral_lle'.")
             return lle_flash(self, T=T, P=P, z=z, options=options, initial_phases=initial_phases)
         if kind in {"electrolyte_lle", "electrolyte_lle_flash"}:
+            if (
+                x_liq is not None
+                or volatile_species is not None
+                or vapor_species is not None
+                or nonvolatile_species is not None
+            ):
+                raise InputError(
+                    "x_liq and vapor species controls are only supported for kind='electrolyte_bubble_pressure'."
+                )
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
             if backend not in (None, "native", "electrolyte_lle"):
@@ -254,6 +322,15 @@ class ePCSAFTMixture:
                 options=options,
             )
         if kind == "electrolyte_stability":
+            if (
+                x_liq is not None
+                or volatile_species is not None
+                or vapor_species is not None
+                or nonvolatile_species is not None
+            ):
+                raise InputError(
+                    "x_liq and vapor species controls are only supported for kind='electrolyte_bubble_pressure'."
+                )
             if initial_phases is not None:
                 raise InputError("initial_phases is not supported for kind='electrolyte_stability'.")
             if parent_phase is not None or trial_phases is not None:
@@ -272,6 +349,15 @@ class ePCSAFTMixture:
         if kind == "stability":
             if solvent_feed is not None or salt_molality is not None:
                 raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
+            if (
+                x_liq is not None
+                or volatile_species is not None
+                or vapor_species is not None
+                or nonvolatile_species is not None
+            ):
+                raise InputError(
+                    "x_liq and vapor species controls are only supported for kind='electrolyte_bubble_pressure'."
+                )
             if initial_phases is not None:
                 raise InputError("initial_phases is only supported for kind='lle_flash'.")
             if backend not in (None, "native", "neutral_tpd"):
@@ -286,7 +372,7 @@ class ePCSAFTMixture:
                 trial_phases=trial_phases,
             )
         raise InputError(
-            "Only kind='tp_flash', kind='auto', kind='lle_flash', kind='electrolyte_lle', kind='electrolyte_stability', or kind='stability' is supported by equilibrium."
+            "Only kind='tp_flash', kind='auto', kind='lle_flash', kind='electrolyte_lle', kind='electrolyte_bubble_pressure', kind='electrolyte_stability', or kind='stability' is supported by equilibrium."
         )
 
     def equilibrium_curve(self, points, *, kind="electrolyte_lle", T=None, P=None, options=None, initial_phases=None):

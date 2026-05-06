@@ -5,6 +5,8 @@ from .epcsaft import ActivityCoefficientResult
 from .epcsaft import ePCSAFTMixture
 from .epcsaft import ePCSAFTState
 from .epcsaft import SolutionError
+from .electrolyte_bubble import ElectrolyteBubbleOptions
+from .electrolyte_bubble import ElectrolyteBubbleResult
 from .equilibrium import EquilibriumOptions
 from .equilibrium import EquilibriumPhase
 from .equilibrium import EquilibriumResult
@@ -23,10 +25,15 @@ from .regression import FitProblem
 from .regression import FitResult
 from .regression import FitTerm
 from .regression import fit_binary_pair
+from .regression import fit_mea_co2_h2o_electrolyte
 from .regression import fit_pure_neutral
 from .regression import fit_pure_ion
 from .regression import load_regression_records
 from .regression import write_fit_result
+from .reactive_speciation import ReactionDefinition
+from .reactive_speciation import ReactiveSpeciationOptions
+from .reactive_speciation import ReactiveSpeciationResult
+from .reactive_speciation import solve_reactive_speciation
 
 __all__ = [
     "DATASET_ROOT",
@@ -42,6 +49,8 @@ __all__ = [
     "ePCSAFTMixture",
     "ePCSAFTState",
     "SolutionError",
+    "ElectrolyteBubbleOptions",
+    "ElectrolyteBubbleResult",
     "available_datasets",
     "create_parameter_template",
     "FitBounds",
@@ -49,11 +58,16 @@ __all__ = [
     "FitResult",
     "FitTerm",
     "fit_binary_pair",
+    "fit_mea_co2_h2o_electrolyte",
     "fit_pure_neutral",
     "fit_pure_ion",
     "get_prop_dict",
     "load_regression_records",
     "molality_to_molefraction",
     "molefraction_to_molality",
+    "ReactionDefinition",
+    "ReactiveSpeciationOptions",
+    "ReactiveSpeciationResult",
+    "solve_reactive_speciation",
     "write_fit_result",
 ]

@@ -7,8 +7,8 @@ import pytest
 
 from epcsaft import create_parameter_template
 from epcsaft import ePCSAFTMixture
+from epcsaft import fit_mea_co2_h2o_electrolyte
 from epcsaft import write_fit_result
-from epcsaft.regression import _fit_mea_co2_h2o_pure_parameter_benchmark
 
 SPECIES = ["H2O", "MEA", "CO2", "MEAH+", "MEACOO-", "HCO3-"]
 
@@ -120,7 +120,7 @@ def test_mea_co2_h2o_benchmark_smoke_fits_only_pure_parameters(tmp_path):
     )
     before_binary = (fit_root / "mixed" / "binary_interaction" / "k_ij.csv").read_text(encoding="utf-8")
 
-    results = _fit_mea_co2_h2o_pure_parameter_benchmark(
+    results = fit_mea_co2_h2o_electrolyte(
         records,
         dataset=fit_root,
         species=SPECIES,
@@ -151,7 +151,7 @@ def test_mea_co2_h2o_benchmark_writes_only_pure_rows_and_protects_existing_cells
         },
         "MEA_CO2_H2O_Fit",
     )
-    results = _fit_mea_co2_h2o_pure_parameter_benchmark(
+    results = fit_mea_co2_h2o_electrolyte(
         records,
         dataset=fit_root,
         species=SPECIES,
@@ -185,7 +185,7 @@ def test_mea_co2_h2o_benchmark_opt_in_real_multistart(tmp_path):
         "MEA_CO2_H2O_Fit",
     )
 
-    results = _fit_mea_co2_h2o_pure_parameter_benchmark(
+    results = fit_mea_co2_h2o_electrolyte(
         records,
         dataset=fit_root,
         species=SPECIES,
