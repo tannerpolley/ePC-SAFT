@@ -52,7 +52,7 @@ def test_codex_check_modes_route_to_agent_facing_validation_bundles():
     assert all(
         "build_plot_" + "manifest.py" not in command for mode in codex_check.CHECK_COMMANDS.values() for command in mode
     )
-    assert ("scripts/paper_validation/tools/report_plot_assets.py",) in codex_check.CHECK_COMMANDS["plots"]
+    assert "plots" not in codex_check.CHECK_COMMANDS
     assert ("run_pytest.py", "-q") in codex_check.CHECK_COMMANDS["full"]
     assert ("run_pytest.py", "--all", "-q") not in codex_check.CHECK_COMMANDS["full"]
 
@@ -74,7 +74,6 @@ def test_named_shortcuts_expand_to_expected_targets_and_keep_pytest_arg_ordering
     equilibrium_confidence_args = run_pytest._pytest_args(["-q"], pytest_temp, equilibrium_confidence=True)
     profile_args = run_pytest._pytest_args(["-q"], pytest_temp, profile=True)
     profile_full_args = run_pytest._pytest_args(["-q"], pytest_temp, profile_full=True)
-    plots_args = run_pytest._pytest_args(["-q"], pytest_temp, plots=True)
 
     assert runtime_args[: len(run_pytest.RUNTIME_TEST_TARGETS)] == list(run_pytest.RUNTIME_TEST_TARGETS)
     assert api_args[: len(run_pytest.API_TEST_TARGETS)] == list(run_pytest.API_TEST_TARGETS)
@@ -84,30 +83,19 @@ def test_named_shortcuts_expand_to_expected_targets_and_keep_pytest_arg_ordering
     )
     assert profile_args[: len(run_pytest.PROFILE_TEST_TARGETS)] == list(run_pytest.PROFILE_TEST_TARGETS)
     assert profile_full_args[: len(run_pytest.FULL_PROFILE_TEST_TARGETS)] == list(run_pytest.FULL_PROFILE_TEST_TARGETS)
-    assert plots_args[: len(run_pytest.PLOT_TEST_TARGETS)] == list(run_pytest.PLOT_TEST_TARGETS)
     assert runtime_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert api_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert native_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert equilibrium_confidence_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert profile_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert profile_full_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
-    assert plots_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
 
 
-def test_plot_slice_stays_out_of_generic_and_confidence_targets():
-    assert "tests/plots/test_equilibrium_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
-    assert "tests/plots/test_property_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
-    assert "tests/plots/test_contribution_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
-    assert "tests/plots/test_regression_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
-    assert "tests/plots/test_native_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
-    assert "tests/plots/test_api_parity_plot_outputs.py" in run_pytest.PLOT_TEST_TARGETS
-    assert all(target.endswith("_outputs.py") for target in run_pytest.PLOT_TEST_TARGETS)
-    assert all("gallery" not in target and "build_test" not in target for target in run_pytest.PLOT_TEST_TARGETS)
-    assert ("tests/plots/test_" + "plot" + "ly_backfill.py") not in run_pytest.PLOT_TEST_TARGETS
-    assert all(target.startswith("tests/plots/") for target in run_pytest.PLOT_TEST_TARGETS)
-    for target in run_pytest.PLOT_TEST_TARGETS:
-        assert target not in run_pytest.GENERIC_TEST_TARGETS
-        assert target not in run_pytest.CONFIDENCE_TEST_TARGETS
+def test_plot_output_tests_have_no_named_slice():
+    assert "plots" not in run_pytest.SLICE_TARGETS
+    assert all(
+        not target.startswith("tests/plots/") for targets in run_pytest.SLICE_TARGETS.values() for target in targets
+    )
 
 
 def test_slice_targets_use_grouped_test_subpackages():
@@ -120,7 +108,6 @@ def test_slice_targets_use_grouped_test_subpackages():
         *run_pytest.EQUILIBRIUM_CONFIDENCE_TEST_TARGETS,
         *run_pytest.PROFILE_TEST_TARGETS,
         *run_pytest.FULL_PROFILE_TEST_TARGETS,
-        *run_pytest.PLOT_TEST_TARGETS,
     ]
 
     assert all(target.startswith("tests/") for target in all_targets)

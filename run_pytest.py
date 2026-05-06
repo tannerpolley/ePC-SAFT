@@ -52,16 +52,6 @@ FULL_PROFILE_TEST_TARGETS = (
     "tests/profile/test_miac_profile.py",
     "tests/profile/test_regression_profile.py",
 )
-PLOT_TEST_TARGETS = (
-    "tests/plots/test_2015_baygi_outputs.py",
-    "tests/plots/test_api_parity_plot_outputs.py",
-    "tests/plots/test_contribution_plot_outputs.py",
-    "tests/plots/test_equilibrium_plot_outputs.py",
-    "tests/plots/test_equilibrium_confidence_plot_outputs.py",
-    "tests/plots/test_native_plot_outputs.py",
-    "tests/plots/test_property_plot_outputs.py",
-    "tests/plots/test_regression_plot_outputs.py",
-)
 SLICE_TARGETS = {
     "generic": GENERIC_TEST_TARGETS,
     "all": ALL_TEST_TARGETS,
@@ -72,7 +62,6 @@ SLICE_TARGETS = {
     "native": NATIVE_TEST_TARGETS,
     "profile": PROFILE_TEST_TARGETS,
     "profile-full": FULL_PROFILE_TEST_TARGETS,
-    "plots": PLOT_TEST_TARGETS,
 }
 FULL_PROFILE_MIN_TIMEOUT_SECONDS = 120
 FULL_PROFILE_RUNTIME_NOTE = (
@@ -128,7 +117,6 @@ def _pytest_args(
     native: bool = False,
     profile: bool = False,
     profile_full: bool = False,
-    plots: bool = False,
     all_tests: bool = False,
 ) -> list[str]:
     cmd: list[str] = []
@@ -141,7 +129,6 @@ def _pytest_args(
         or native
         or profile
         or profile_full
-        or plots
         or all_tests
     )
     if all_tests:
@@ -162,8 +149,6 @@ def _pytest_args(
         cmd.extend(PROFILE_TEST_TARGETS)
     elif profile_full:
         cmd.extend(FULL_PROFILE_TEST_TARGETS)
-    elif plots:
-        cmd.extend(PLOT_TEST_TARGETS)
 
     if has_predefined_targets:
         cmd.extend(pytest_args)
@@ -248,7 +233,6 @@ def main() -> int:
         action="store_true",
         help="Run all opt-in runtime, MIAC, and regression profile tests",
     )
-    predefined.add_argument("--plots", action="store_true", help="Run opt-in generated plot gallery tests")
     predefined.add_argument(
         "--all",
         dest="all_tests",
@@ -282,7 +266,6 @@ def main() -> int:
         native=args.native,
         profile=args.profile,
         profile_full=args.profile_full,
-        plots=args.plots,
         all_tests=args.all_tests,
     )
     print("Running:", f"{sys.executable} -m pytest", " ".join(cmd), flush=True)

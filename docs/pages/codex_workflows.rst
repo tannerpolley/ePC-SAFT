@@ -52,9 +52,6 @@ Command matrix
    * - Docs check
      - ``uv run python scripts/codex_check.py docs``
      - Build Sphinx HTML under ``build/docs-html``.
-   * - Plot asset rebuild
-     - ``uv run python scripts/codex_check.py plots``
-     - Opt-in generated plot producers and static asset report.
    * - Quick method-speed check
      - ``uv run python run_pytest.py --profile -q``
      - Runtime-only profiling. The wrapper enables the required performance environment flag.
@@ -130,12 +127,12 @@ Use the smallest relevant test first, then run ``scripts/codex_check.py confiden
 - Native/equation changes: ``uv run python scripts/build_epcsaft.py --build-only --parallel 10`` first, then ``uv run python run_pytest.py --runtime -q``, then ``uv run python run_pytest.py --confidence -q``.
 - Equation traceability changes: ``uv run python scripts/sync_equation_registry.py --check --strict-traceability`` then ``uv run python run_pytest.py tests/native/test_equation_registry.py -q``.
 - Performance claims: ``uv run python run_pytest.py --profile -q -s`` is the quick runtime-only profile; use ``uv run python run_pytest.py --profile-full -q -s`` only for broad speed claims. Read the generated ``build/runtime_profile/*.md`` reports. Do not rely on skipped profile tests or code inspection alone.
-- Plot asset changes: use ``uv run python scripts/codex_check.py plots`` only when regenerating local plot outputs is explicitly part of the task.
+- Plot asset changes: run the owning data/plot script or a targeted ``tests/plots/test_*_outputs.py`` file only when regenerating local plot outputs is explicitly part of the task.
 
 ``--profile`` is the quick runtime-only profile. ``--profile-full`` runs runtime, MIAC, and regression profiles and is the preferred evidence path for comprehensive speed reviews; use a timeout of at least 120 seconds.
 - Packaging changes: ``scripts/build_dist.py``.
 
-Keep generated plot assets and generated CSV workflows out of normal validation unless the task explicitly asks for them. Use ``--plots`` or ``scripts/codex_check.py plots`` for the opt-in plot asset slice.
+Keep generated plot assets and generated CSV workflows out of normal validation unless the task explicitly asks for them. There is no named plot validation slice; target the owning script or test file directly when plot output work is in scope.
 
 Use ``uv run python run_pytest.py --list-slices`` when you need to inspect what each named slice runs before choosing a validation command.
 

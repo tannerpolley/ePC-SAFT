@@ -36,7 +36,6 @@ For the standard Codex validation loops:
 uv run python scripts\codex_check.py quick
 uv run python scripts\codex_check.py confidence
 uv run python scripts\codex_check.py docs
-uv run python scripts\codex_check.py plots
 uv run python run_pytest.py --list-slices
 uv run python run_pytest.py -q
 uv run python run_pytest.py --runtime -q
@@ -48,7 +47,7 @@ uv run python run_pytest.py --profile -q
 uv run python run_pytest.py --profile-full -q -s
 ```
 
-`codex_check.py` is the agent-facing orchestrator; `run_pytest.py` remains the lower-level test selector. `run_pytest.py -q` is the default fast contract suite: it runs representative API, native, regression, equilibrium, and workflow smoke checks without regenerating plots or full scientific reproduction suites. `--runtime` runs runtime API plus native contract tests. `--generic` runs the same fast contract target list as the default route. `--confidence` adds a few native runtime contracts and is the default runtime-confidence check before handoff. `--equilibrium-confidence` is a bounded Khudaida fixture plus cached fixed-phase residual contract; native confidence solving and full electrolyte reports remain explicit opt-ins. `--all` is the explicit exhaustive historical suite and can take many minutes. `--profile` enables and runs the quick opt-in runtime-only profiling check. `--profile-full` runs the slower opt-in runtime, MIAC, and regression profile suite; it can take about a minute locally, so use a runner timeout of at least 120 seconds. To keep pytest temp files outside the repo for an opt-in run, set `EPCSAFT_PYTEST_TEMP_ROOT`, for example:
+`codex_check.py` is the agent-facing orchestrator; `run_pytest.py` remains the lower-level test selector. `run_pytest.py -q` is the default fast contract suite: it runs representative API, native, regression, equilibrium, and workflow smoke checks without regenerating plots or full scientific reproduction suites. `--runtime` runs runtime API plus native contract tests. `--generic` runs the same fast contract target list as the default route. `--confidence` adds a few native runtime contracts and is the default runtime-confidence check before handoff. `--equilibrium-confidence` is a bounded Khudaida fixture plus cached fixed-phase residual contract; native confidence solving and full electrolyte reports remain explicit opt-ins. Generated plot output tests are manual, targeted pytest runs rather than named validation slices. `--all` is the explicit exhaustive historical suite and can take many minutes. `--profile` enables and runs the quick opt-in runtime-only profiling check. `--profile-full` runs the slower opt-in runtime, MIAC, and regression profile suite; it can take about a minute locally, so use a runner timeout of at least 120 seconds. To keep pytest temp files outside the repo for an opt-in run, set `EPCSAFT_PYTEST_TEMP_ROOT`, for example:
 
 ```powershell
 $env:EPCSAFT_PYTEST_TEMP_ROOT = Join-Path $env:TEMP 'epcsaft-pytest'

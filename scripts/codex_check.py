@@ -18,10 +18,6 @@ CHECK_COMMANDS: dict[str, tuple[tuple[str, ...], ...]] = {
         ("run_pytest.py", "--confidence", "-q"),
     ),
     "docs": (("-m", "sphinx", "-b", "html", "docs", "build/docs-html"),),
-    "plots": (
-        ("run_pytest.py", "--plots", "-q"),
-        ("scripts/paper_validation/tools/report_plot_assets.py",),
-    ),
     "full": (
         ("scripts/codex_doctor.py",),
         ("run_pytest.py", "-q"),
@@ -50,7 +46,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "mode",
         choices=tuple(CHECK_COMMANDS),
-        help="Validation bundle to run: quick, confidence, docs, plots, or full.",
+        help="Validation bundle to run: quick, confidence, docs, or full.",
     )
     return parser
 
