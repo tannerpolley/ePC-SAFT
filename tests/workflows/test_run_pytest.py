@@ -19,18 +19,42 @@ def test_confidence_slice_extends_generic_targets_without_changing_generic():
     assert generic_args[: len(run_pytest.GENERIC_TEST_TARGETS)] == list(run_pytest.GENERIC_TEST_TARGETS)
     assert "tests/native/test_runtime_contracts.py" not in generic_args
     assert confidence_args[: len(run_pytest.CONFIDENCE_TEST_TARGETS)] == list(run_pytest.CONFIDENCE_TEST_TARGETS)
-    assert "tests/native/test_runtime_contracts.py" in confidence_args
+    assert (
+        "tests/native/test_runtime_contracts.py::" "test_pressure_based_and_density_based_states_match_for_ionic_system"
+    ) in confidence_args
     assert confidence_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
+
+
+def test_default_pytest_route_uses_fast_contracts_not_exhaustive_suite():
+    pytest_temp = Path("build") / "pytest-temp" / "run-test"
+
+    default_args = run_pytest._pytest_args(["-q"], pytest_temp)
+
+    assert default_args[: len(run_pytest.FAST_TEST_TARGETS)] == list(run_pytest.FAST_TEST_TARGETS)
+    assert "tests" not in default_args
+    assert not any(target.startswith("tests/plots/") for target in default_args)
+    assert "tests/equilibrium/test_electrolyte_lle_confidence.py" not in default_args
+    assert default_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
+
+
+def test_all_shortcut_is_the_explicit_exhaustive_pytest_route():
+    pytest_temp = Path("build") / "pytest-temp" / "run-test"
+
+    all_args = run_pytest._pytest_args(["-q"], pytest_temp, all_tests=True)
+
+    assert all_args[: len(run_pytest.ALL_TEST_TARGETS)] == list(run_pytest.ALL_TEST_TARGETS)
+    assert all_args == ["tests", "-q", "--basetemp", str(pytest_temp)]
 
 
 def test_codex_check_modes_route_to_agent_facing_validation_bundles():
     assert codex_check.CHECK_COMMANDS["quick"] == (
         ("scripts/codex_doctor.py",),
-        ("run_pytest.py", "--generic", "-q"),
+        ("run_pytest.py", "-q"),
     )
     assert ("scripts/build_plot_manifest.py", "--check") in codex_check.CHECK_COMMANDS["confidence"]
     assert ("scripts/build_plot_manifest.py", "--refresh") in codex_check.CHECK_COMMANDS["plots"]
-    assert ("run_pytest.py", "--equilibrium-confidence", "-q") in codex_check.CHECK_COMMANDS["full"]
+    assert ("run_pytest.py", "-q") in codex_check.CHECK_COMMANDS["full"]
+    assert ("run_pytest.py", "--all", "-q") not in codex_check.CHECK_COMMANDS["full"]
 
 
 def test_codex_doctor_tracks_native_symbols_added_by_recent_workflows():
@@ -121,9 +145,15 @@ def test_slice_targets_use_grouped_test_subpackages():
     assert all(target.startswith("tests/") for target in all_targets)
     assert all(target.count("/") >= 2 for target in all_targets)
     assert "tests/api/test_runtime.py" in run_pytest.API_TEST_TARGETS
-    assert "tests/equilibrium/test_vle.py" in run_pytest.GENERIC_TEST_TARGETS
-    assert "tests/native/test_equation_registry.py" in run_pytest.GENERIC_TEST_TARGETS
-    assert "tests/regression/test_hydrocarbon.py" in run_pytest.GENERIC_TEST_TARGETS
+    assert (
+        "tests/equilibrium/test_vle.py::" "test_ternary_hydrocarbon_basis_tp_flash_closes_material_and_fugacity_balance"
+    ) in run_pytest.GENERIC_TEST_TARGETS
+    assert "tests/native/test_equation_registry.py::test_equation_registry_outputs_are_synced" in (
+        run_pytest.GENERIC_TEST_TARGETS
+    )
+    assert "tests/regression/test_hydrocarbon.py::test_methane_reference_parameters_keep_native_objective_pinned" in (
+        run_pytest.GENERIC_TEST_TARGETS
+    )
     assert "tests/workflows/test_run_pytest.py" not in run_pytest.GENERIC_TEST_TARGETS
 
 
@@ -230,4 +260,4 @@ def test_help_mentions_slice_append_semantics():
     assert result.returncode == 0, result.stdout + result.stderr
     assert "Slice flags are mutually exclusive" in result.stdout
     assert "Extra positional pytest targets" in result.stdout
-    assert "appended and will run in addition" in result.stdout
+    assert "exhaustive historical test suite" in result.stdout

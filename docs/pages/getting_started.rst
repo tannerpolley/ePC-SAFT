@@ -18,11 +18,10 @@ For development from this source tree, use ``uv`` and the direct CMake build loo
 
    uv sync --no-install-project
    uv run python scripts/build_epcsaft.py
-   uv run python scripts/codex_doctor.py
-   uv run python run_pytest.py --confidence -q
+   uv run python scripts/codex_check.py quick
 
 This is the default new-agent validation sequence: sync, normal native build,
-doctor, then the confidence suite.
+doctor, then the fast contract suite.
 
 For the full source-checkout command matrix, see :doc:`codex_workflows`.
 
@@ -30,7 +29,7 @@ For tests, use:
 
 .. code-block:: bash
 
-   uv run python run_pytest.py --confidence -q
+   uv run python run_pytest.py -q
 
 Direct pytest also works:
 
@@ -40,7 +39,7 @@ Direct pytest also works:
 
 For Codex and Windows work, prefer ``uv run python run_pytest.py ...`` because the wrapper manages pytest temporary directories more predictably. Set ``EPCSAFT_PYTEST_TEMP_ROOT`` when you want the wrapper to use an opt-in external pytest temp root instead of its default repo-local generated temp area.
 
-``--generic`` is the faster validation slice. ``--confidence`` is the default runtime-confidence check because it also runs the native runtime contract tests.
+``run_pytest.py -q`` is the default fast contract suite. It samples the important API, native, regression, equilibrium, and workflow contracts without running full equilibrium/regression reproductions or generated plot production. ``--generic`` is the same target list, ``--confidence`` adds a few native runtime contracts for handoff, and ``--all`` is the explicit exhaustive historical suite.
 
 For speed checks, use ``uv run python run_pytest.py --profile -q`` for the quick runtime-only profile. Use ``uv run python run_pytest.py --profile-full -q -s`` when you need the slower runtime, MIAC, and regression profile suite.
 

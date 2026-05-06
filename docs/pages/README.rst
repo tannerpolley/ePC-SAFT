@@ -30,10 +30,9 @@ For development from this source tree:
 
    uv sync --no-install-project
    uv run python scripts/build_epcsaft.py
-   uv run python scripts/codex_doctor.py
-   uv run python run_pytest.py --confidence -q
+   uv run python scripts/codex_check.py quick
 
-Direct pytest also works, for example ``uv run python -m pytest tests/api/test_runtime.py -q``. For Codex and Windows work, prefer ``uv run python run_pytest.py ...`` because the wrapper manages pytest temporary directories more predictably. Set ``EPCSAFT_PYTEST_TEMP_ROOT`` when you want the wrapper to use an opt-in external pytest temp root instead of its default repo-local generated temp area.
+Direct pytest also works, for example ``uv run python -m pytest tests/api/test_runtime.py -q``. For Codex and Windows work, prefer ``uv run python run_pytest.py ...`` because the wrapper manages pytest temporary directories more predictably. ``uv run python run_pytest.py -q`` is the default fast contract suite; use ``uv run python run_pytest.py --confidence -q`` before handoff when native runtime confidence matters, and ``--all`` only for the explicit exhaustive suite. Set ``EPCSAFT_PYTEST_TEMP_ROOT`` when you want the wrapper to use an opt-in external pytest temp root instead of its default repo-local generated temp area.
 
 For future Codex agents, :doc:`codex_workflows` is the explicit command matrix for setup, fast native rebuilds, focused tests, profiling, packaging, and repair-only cleanup.
 

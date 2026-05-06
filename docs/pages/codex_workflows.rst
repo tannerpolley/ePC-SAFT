@@ -14,7 +14,7 @@ Start every new Codex thread with this sequence:
    uv run python scripts/build_epcsaft.py
    uv run python scripts/codex_check.py quick
 
-This is the expected healthy baseline. It creates the uv environment, builds the in-place pybind11 ``epcsaft._core`` extension, verifies imports/tool paths, generated-output state, and plot manifest presence/schema through doctor, then runs the fast generic contract suite. Use ``uv run python scripts/codex_check.py confidence`` before handoff when native runtime contracts and full plot manifest path validation should be included.
+This is the expected healthy baseline. It creates the uv environment, builds the in-place pybind11 ``epcsaft._core`` extension, verifies imports/tool paths, generated-output state, and plot manifest presence/schema through doctor, then runs the fast contract suite. The default test route intentionally samples representative API, native, regression, equilibrium, and workflow contracts instead of running full equilibrium/regression reproductions or generated plot production. Use ``uv run python scripts/codex_check.py confidence`` before handoff when extra native runtime contracts and plot manifest path validation should be included.
 
 Use ``uv run python run_pytest.py ...`` for repo validation. Direct ``uv run python -m pytest ...`` works, but the wrapper sets ``src`` on the import path and uses a per-run pytest temp directory that is safer for Codex and Windows runs.
 
@@ -48,7 +48,7 @@ Command matrix
      - Fast check for pressure-vs-density and contribution-map contracts.
    * - Electrolyte LLE confidence
      - ``uv run python run_pytest.py --equilibrium-confidence -q -s``
-     - Opt-in Khudaida electrolyte LLE full-report suite; slower than standard confidence and writes reports under ``build/equilibrium_confidence``.
+     - Bounded Khudaida fixture plus cached fixed-phase residual contract. Native confidence solving and full report generation remain explicit opt-ins.
    * - Docs check
      - ``uv run python scripts/codex_check.py docs``
      - Validate the tracked plot manifest and build Sphinx HTML under ``build/docs-html``.
@@ -124,7 +124,7 @@ Use ``scripts/create_codex_worktree.ps1`` from the primary checkout instead of r
 Test selection rules
 --------------------
 
-Use the smallest relevant test first, then run ``scripts/codex_check.py confidence`` before handoff.
+Use the smallest relevant test first, then run ``scripts/codex_check.py confidence`` before handoff. Use ``uv run python run_pytest.py --all -q`` only when you explicitly need the exhaustive historical suite.
 
 - Python wrapper/API changes: ``uv run python run_pytest.py --api -q`` first, then ``uv run python run_pytest.py --confidence -q``.
 - Native/equation changes: ``uv run python scripts/build_epcsaft.py --build-only --parallel 10`` first, then ``uv run python run_pytest.py --runtime -q``, then ``uv run python run_pytest.py --confidence -q``.

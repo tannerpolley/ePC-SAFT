@@ -10,7 +10,7 @@ def _read(path: str) -> str:
     return (REPO_ROOT / path).read_text(encoding="utf-8")
 
 
-def test_bootstrap_scripts_use_normal_build_and_confidence_suite() -> None:
+def test_bootstrap_scripts_use_normal_build_and_fast_suite() -> None:
     for path in ("scripts/bootstrap_uv.ps1", "scripts/bootstrap_uv.sh"):
         content = _read(path)
 
@@ -18,7 +18,7 @@ def test_bootstrap_scripts_use_normal_build_and_confidence_suite() -> None:
         assert "uv sync --no-install-project" in content
         assert "scripts/build_epcsaft.py --clean" not in content
         assert "scripts\\build_epcsaft.py --clean" not in content
-        assert "run_pytest.py --confidence -q" in content
+        assert "scripts\\codex_check.py quick" in content or "scripts/codex_check.py quick" in content
         assert "run_pytest.py tests/test_runtime.py -q" not in content
         assert "run_pytest.py tests\\test_runtime.py -q" not in content
 
@@ -52,10 +52,10 @@ def test_docs_make_confidence_suite_the_default_runtime_check() -> None:
     codex_workflows = _read("docs/pages/codex_workflows.rst")
 
     assert "default new-agent validation sequence" in readme
-    assert "`--confidence` is the default runtime-confidence check" in readme
+    assert "`run_pytest.py -q` is the default fast contract suite" in readme
     assert "Codex workflow guide" in readme
     assert "default new-agent validation sequence" in getting_started
-    assert "``--confidence`` is the default runtime-confidence check" in getting_started
+    assert "``run_pytest.py -q`` is the default fast contract suite" in getting_started
     assert "uv run python run_pytest.py --confidence -q" in overview
     assert "run_pytest.py tests/test_runtime.py -q" not in overview
     assert "codex_workflows" in docs_index

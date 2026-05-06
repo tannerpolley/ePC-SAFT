@@ -15,4 +15,4 @@ uv python pin 3.12
 uv sync --no-install-project
 uv run python scripts/build_epcsaft.py
 uv run python scripts/codex_doctor.py
-uv run python run_pytest.py --confidence -q
+uv run python scripts/codex_check.py quick

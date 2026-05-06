@@ -6,18 +6,39 @@ import uuid
 from pathlib import Path
 
 GENERIC_TEST_TARGETS = (
-    "tests/api/test_runtime.py",
-    "tests/equilibrium/test_api.py",
-    "tests/equilibrium/test_vle.py",
-    "tests/equilibrium/test_lle.py",
-    "tests/equilibrium/test_stability.py",
-    "tests/api/test_parameter_templates.py",
-    "tests/native/test_equation_registry.py",
-    "tests/regression/test_hydrocarbon.py",
-    "tests/api/test_regression_api.py",
+    "tests/api/test_package_main.py::test_python_m_epcsaft_reports_package_and_core_status",
+    "tests/api/test_runtime.py::test_package_exports_are_available",
+    "tests/api/test_runtime.py::test_neutral_scalar_methods_return_expected_values",
+    "tests/api/test_runtime.py::test_ionic_activity_and_solution_methods_return_expected_values",
+    "tests/api/test_parameter_templates.py::test_runtime_options_accept_autodiff_modes_and_preserve_explicit_overrides",
+    "tests/api/test_regression_api.py::test_internal_native_least_squares_backend_matches_methane_reference_band",
+    "tests/regression/test_hydrocarbon.py::test_methane_reference_parameters_keep_native_objective_pinned",
+    "tests/equilibrium/test_api.py::test_tp_flash_returns_structured_result_and_json_like_dict",
+    "tests/equilibrium/test_vle.py::test_ternary_hydrocarbon_basis_tp_flash_closes_material_and_fugacity_balance",
+    "tests/equilibrium/test_lle.py::test_methanol_cyclohexane_lle_flash_closes_material_and_fugacity_balance",
+    "tests/equilibrium/test_stability.py::test_stability_returns_structured_result_and_json_like_dict",
+    "tests/equilibrium/test_electrolyte_lle.py::test_one_salt_smoke_solves_native_predictive_split",
+    "tests/equilibrium/test_electrolyte_thermo_diagnostics.py::test_khudaida_fixture_loads_charge_neutral_explicit_ions",
+    "tests/native/test_equilibrium_native_contracts.py::test_native_equilibrium_entrypoint_is_exposed",
+    "tests/native/test_runtime_contracts.py::test_pressure_based_and_density_based_states_match_for_neutral_system",
+    "tests/native/test_equation_registry.py::test_equation_registry_outputs_are_synced",
+    "tests/workflows/test_run_pytest.py::test_list_slices_exits_without_running_pytest",
+    "tests/workflows/test_workflow_entrypoints.py::test_docs_make_confidence_suite_the_default_runtime_check",
 )
-CONFIDENCE_TEST_TARGETS = GENERIC_TEST_TARGETS + ("tests/native/test_runtime_contracts.py",)
-EQUILIBRIUM_CONFIDENCE_TEST_TARGETS = ("tests/equilibrium/test_electrolyte_lle_confidence.py",)
+FAST_TEST_TARGETS = GENERIC_TEST_TARGETS
+CONFIDENCE_TEST_TARGETS = GENERIC_TEST_TARGETS + (
+    "tests/native/test_runtime_contracts.py::test_pressure_based_and_density_based_states_match_for_ionic_system",
+    "tests/native/test_runtime_contracts.py::test_native_residual_helmholtz_and_compressibility_contributions_match_neutral_contract",
+    "tests/native/test_equilibrium_native_contracts.py::test_public_equilibrium_result_comes_from_native_backend",
+)
+EQUILIBRIUM_CONFIDENCE_TEST_TARGETS = (
+    "tests/equilibrium/test_electrolyte_lle_confidence.py::test_khudaida_benchmark_fixture_loads_charge_neutral_cases",
+    (
+        "tests/equilibrium/test_electrolyte_thermo_diagnostics.py::"
+        "test_khudaida_package_tieline_fixed_phase_residual_is_internally_consistent"
+    ),
+)
+ALL_TEST_TARGETS = ("tests",)
 RUNTIME_TEST_TARGETS = ("tests/api/test_runtime.py", "tests/native/test_runtime_contracts.py")
 API_TEST_TARGETS = (
     "tests/api/test_runtime.py",
@@ -45,6 +66,7 @@ PLOT_TEST_TARGETS = (
 )
 SLICE_TARGETS = {
     "generic": GENERIC_TEST_TARGETS,
+    "all": ALL_TEST_TARGETS,
     "confidence": CONFIDENCE_TEST_TARGETS,
     "equilibrium-confidence": EQUILIBRIUM_CONFIDENCE_TEST_TARGETS,
     "runtime": RUNTIME_TEST_TARGETS,
@@ -61,7 +83,8 @@ FULL_PROFILE_RUNTIME_NOTE = (
 )
 SLICE_SELECTION_NOTE = (
     "Slice flags are mutually exclusive. Codex agents should normally start with "
-    "`uv run python scripts/codex_check.py quick` or `uv run python scripts/codex_check.py confidence`. "
+    "`uv run python scripts/codex_check.py quick` or `uv run python run_pytest.py -q`. "
+    "Use `--all` only when you explicitly need the exhaustive historical suite. "
     "Extra positional pytest targets after a slice are appended and will run in addition to that slice."
 )
 
@@ -108,12 +131,24 @@ def _pytest_args(
     profile: bool = False,
     profile_full: bool = False,
     plots: bool = False,
+    all_tests: bool = False,
 ) -> list[str]:
     cmd: list[str] = []
     has_predefined_targets = (
-        generic or confidence or equilibrium_confidence or runtime or api or native or profile or profile_full or plots
+        generic
+        or confidence
+        or equilibrium_confidence
+        or runtime
+        or api
+        or native
+        or profile
+        or profile_full
+        or plots
+        or all_tests
     )
-    if confidence:
+    if all_tests:
+        cmd.extend(ALL_TEST_TARGETS)
+    elif confidence:
         cmd.extend(CONFIDENCE_TEST_TARGETS)
     elif equilibrium_confidence:
         cmd.extend(EQUILIBRIUM_CONFIDENCE_TEST_TARGETS)
@@ -139,7 +174,7 @@ def _pytest_args(
         if has_positional_target:
             cmd.extend(pytest_args)
         else:
-            cmd.append("tests")
+            cmd.extend(FAST_TEST_TARGETS)
             cmd.extend(pytest_args)
 
     if not any(arg == "--basetemp" or arg.startswith("--basetemp=") for arg in cmd):
@@ -216,6 +251,12 @@ def main() -> int:
         help="Run all opt-in runtime, MIAC, and regression profile tests",
     )
     predefined.add_argument("--plots", action="store_true", help="Run opt-in generated plot gallery tests")
+    predefined.add_argument(
+        "--all",
+        dest="all_tests",
+        action="store_true",
+        help="Run the exhaustive historical test suite under tests/; this is intentionally opt-in",
+    )
     parser.add_argument(
         "--list-slices", action="store_true", help="Print named test slices and exit without running pytest"
     )
@@ -244,6 +285,7 @@ def main() -> int:
         profile=args.profile,
         profile_full=args.profile_full,
         plots=args.plots,
+        all_tests=args.all_tests,
     )
     print("Running:", f"{sys.executable} -m pytest", " ".join(cmd), flush=True)
     if args.profile_full:

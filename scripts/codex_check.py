@@ -11,7 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 CHECK_COMMANDS: dict[str, tuple[tuple[str, ...], ...]] = {
     "quick": (
         ("scripts/codex_doctor.py",),
-        ("run_pytest.py", "--generic", "-q"),
+        ("run_pytest.py", "-q"),
     ),
     "confidence": (
         ("scripts/codex_doctor.py",),
@@ -29,8 +29,7 @@ CHECK_COMMANDS: dict[str, tuple[tuple[str, ...], ...]] = {
     ),
     "full": (
         ("scripts/codex_doctor.py",),
-        ("run_pytest.py", "--confidence", "-q"),
-        ("run_pytest.py", "--equilibrium-confidence", "-q"),
+        ("run_pytest.py", "-q"),
         ("scripts/build_plot_manifest.py", "--check"),
     ),
 }
