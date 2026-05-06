@@ -35,8 +35,48 @@ neutral volatile species.
 
 ``z`` is accepted as an alias only when ``x_liq`` is omitted. The liquid
 composition must be charge neutral, and ``vapor_species`` must not include ions.
-Nonconverged solves raise ``SolutionError`` with JSON-like diagnostics containing
-the pressure bracket, iteration history, and state failure count.
+Pressure is solved internally in ``log(P)`` for better behavior across wide VLE
+pressure ranges, but all public inputs and outputs remain in pascals.
+Nonconverged solves raise ``SolutionError`` by default with JSON-like
+diagnostics containing the pressure bracket, bounded vapor history, state
+failure count, and best finite point fields such as ``best_P``,
+``best_objective``, ``best_y_vap``, ``best_partial_pressures``, and
+``best_fugacity_residual_norm``.
+
+For continuation across nearby compositions, pass the previous result's
+``P`` and ``y_vap`` back through ``ElectrolyteBubbleOptions``:
+
+.. code-block:: python
+
+   next_result = mixture.equilibrium(
+       kind="electrolyte_bubble_pressure",
+       T=313.15,
+       x_liq=next_x_liq,
+       volatile_species=["CO2", "H2O"],
+       vapor_species=["CO2", "H2O"],
+       nonvolatile_species=["Na+", "Cl-"],
+       options=epcsaft.ElectrolyteBubbleOptions(
+           initial_pressure=result.P,
+           initial_y_vap=result.y_vap,
+       ),
+   )
+
+Strict failure remains the default. Set ``return_best_effort=True`` only for
+diagnostic sweeps where a finite nonconverged state is useful:
+
+.. code-block:: python
+
+   diagnostic = mixture.equilibrium(
+       kind="electrolyte_bubble_pressure",
+       T=313.15,
+       x_liq=x_liq,
+       volatile_species=["CO2", "H2O"],
+       vapor_species=["CO2", "H2O"],
+       options=epcsaft.ElectrolyteBubbleOptions(return_best_effort=True),
+   )
+
+   if not diagnostic.success:
+       print(diagnostic.diagnostics["best_objective"])
 
 Reactive speciation
 -------------------
@@ -88,6 +128,7 @@ then the phase-equilibrium handoff diagnostics.
    print(result.x)
    print(result.mass_balance_residuals)
    print(result.reaction_residuals)
+   print(result.named_reaction_residuals)
 
 The native solver does not require SciPy at runtime. Its diagnostics include a
 ``phase_equilibrium_handoff`` payload with the equilibrated composition and
@@ -96,6 +137,16 @@ stability, LLE, and VLE routes: chemical-equilibrate the feed, run phase
 stability or a non-reactive flash, chemical-equilibrate any phase seeds, then
 use those seeds in a rigorous reactive phase calculation as that layer is
 added.
+
+``ReactiveSpeciationOptions`` keeps strict failure behavior by default. Failed
+native solves raise ``SolutionError``. For diagnostic grid work, opt into
+``return_best_effort=True`` to receive a
+``ReactiveSpeciationResult(success=False, ...)`` from the best finite native
+payload instead. Diagnostics include ``best_x``,
+``best_activity_coefficients``, family residual norms, and named reaction
+residuals. ``mass_tolerance``, ``charge_tolerance``, and
+``reaction_tolerance`` may be set separately; each defaults to
+``tolerance`` when omitted.
 
 The same route is also available from the mixture equilibrium facade:
 
@@ -111,6 +162,70 @@ The same route is also available from the mixture equilibrium facade:
        reactions=[...],
        options=epcsaft.ReactiveSpeciationOptions(),
    )
+
+Composed reactive electrolyte bubble workflow
+---------------------------------------------
+
+For reactive VLE observables such as vapor partial pressures, use the generic
+composed helper instead of wiring the two primitive solves by hand:
+
+.. code-block:: python
+
+   result = epcsaft.solve_reactive_electrolyte_bubble(
+       species=species,
+       mixture_factory=lambda x, T, P: mixture,
+       T=313.15,
+       P_seed=1.0e5,
+       balances=balances,
+       totals=totals,
+       reactions=reactions,
+       initial_x=initial_x,
+       vapor_species=["CO2", "H2O"],
+       nonvolatile_species=["MEAH+", "MEACOO-", "HCO3-", "CO3^2-", "H3O+", "OH-"],
+       options=epcsaft.ReactiveElectrolyteBubbleOptions(),
+   )
+
+The result keeps the speciation and bubble-pressure outputs together:
+``x_liq``, activity coefficients, material-balance residuals, named reaction
+residuals, total pressure, vapor composition, partial pressures, fugacity
+residuals, state failure count, and diagnostics. The helper is generic: MEA,
+amine blends, sour-gas absorption systems, salt plus volatile gas systems, and
+ionic-liquid blends all provide their own species, balances, reactions, and
+``mixture_factory``.
+
+Direct single-point calls remain strict by default. For regression or batch
+sweeps that need fixed-shape outputs, set
+``ReactiveElectrolyteBubbleOptions(error_mode="result")``. Failed points then
+return ``ReactiveElectrolyteBubbleResult(success=False, ...)`` with
+``penalty_residuals`` and compact diagnostics instead of changing the result
+array length through exceptions.
+
+Ordered sweeps
+--------------
+
+``solve_reactive_electrolyte_bubble_sweep(...)`` and
+``mixture.equilibrium_sweep(kind="reactive_electrolyte_bubble_pressure", ...)``
+solve related points in order and reuse the previous successful liquid
+composition, pressure, and vapor composition as continuation seeds.
+
+.. code-block:: python
+
+   results = mixture.equilibrium_sweep(
+       kind="reactive_electrolyte_bubble_pressure",
+       points=[
+           {"T": 313.15, "P_seed": 1.0e5, "totals": totals_0, "initial_x": x0},
+           {"T": 313.15, "totals": totals_1},
+       ],
+       balances=balances,
+       reactions=reactions,
+       vapor_species=["CO2", "H2O", "MEA"],
+       nonvolatile_species=["MEAH+", "MEACOO-", "HCO3-", "CO3^2-", "H3O+", "OH-"],
+       options=epcsaft.ReactiveElectrolyteBubbleOptions(error_mode="result"),
+   )
+
+The sweep API is intentionally an ordered point evaluator, not a regression
+optimizer. It preserves one result object per input point and records whether
+continuation was used in each point's diagnostics.
 
 Reactive stability handoff
 --------------------------
@@ -138,3 +253,9 @@ The returned ``StabilityResult`` diagnostics include
 can inspect the chemical-equilibrated feed used for tangent-plane-distance
 analysis. This route is intentionally a stability/handoff coordinator, not yet
 a full rigorous reactive flash solver.
+
+Full coupled regression helpers, target definitions, parameter masks, and
+native batched residual-vector evaluation remain a future layer. The current
+package contracts provide the reusable reactive electrolyte bubble primitives,
+fixed-shape diagnostic mode, and ordered sweep continuation those downstream
+workflows need first.

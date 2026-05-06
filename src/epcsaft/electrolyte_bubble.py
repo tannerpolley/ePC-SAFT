@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -25,6 +26,8 @@ class ElectrolyteBubbleOptions:
     pressure_factor: float = 2.0
     min_composition: float = 1.0e-14
     charge_tolerance: float = 1.0e-8
+    return_best_effort: bool = False
+    initial_y_vap: Mapping[str, float] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,11 +127,13 @@ def electrolyte_bubble_pressure(
         )
 
     vapor_mixture = _build_neutral_submixture(mixture, vapor_idx)
+    initial_y_seed = _normalize_vapor_seed(vapor_labels, opts.initial_y_vap, opts)
     history: list[dict[str, Any]] = []
     state_failure_count = 0
+    best_point: dict[str, Any] | None = None
 
     def evaluate(pressure: float, y_seed: np.ndarray | None = None) -> dict[str, Any]:
-        nonlocal state_failure_count
+        nonlocal best_point, state_failure_count
         try:
             out = _bubble_objective(
                 mixture,
@@ -145,39 +150,71 @@ def electrolyte_bubble_pressure(
         except Exception as exc:
             state_failure_count += 1
             raise exc
+        objective = float(out["objective"])
+        residual = _fugacity_residual(out, vapor_labels)
+        residual_norm = float(max((abs(value) for value in residual.values()), default=0.0))
+        y_vap = {label: float(value) for label, value in zip(vapor_labels, out["y_vap"])}
+        partial_pressures = {label: float(pressure * y) for label, y in y_vap.items()}
         history.append(
             {
                 "P": float(pressure),
-                "objective": float(out["objective"]),
-                "y_vap": {label: float(value) for label, value in zip(vapor_labels, out["y_vap"])},
+                "logP": float(np.log(pressure)),
+                "objective": objective,
+                "y_vap": y_vap,
             }
         )
+        if np.isfinite(objective) and (best_point is None or abs(objective) < abs(float(best_point["objective"]))):
+            best_point = {
+                "P": float(pressure),
+                "objective": objective,
+                "y_vap": y_vap,
+                "partial_pressures": partial_pressures,
+                "fugacity_residual_norm": residual_norm,
+                "payload": out,
+            }
         return out
 
     try:
-        bracket = _find_pressure_bracket(evaluate, opts)
+        bracket = _find_pressure_bracket(evaluate, opts, initial_y_seed)
     except SolutionError as exc:
         diagnostics = dict(exc.diagnostics or {})
+        message = exc.message
         diagnostics.update(
             {
                 "success": False,
-                "message": exc.message,
+                "message": message,
                 "state_failure_count": int(state_failure_count),
-                "vapor_history": history,
+                "vapor_history": _bounded_history(history),
                 "tolerance": float(opts.tolerance),
             }
         )
-        raise SolutionError(exc.message, _json_like(diagnostics)) from exc
+        diagnostics.update(_best_diagnostics(best_point))
+        if opts.return_best_effort and best_point is not None:
+            return _make_result(
+                success=False,
+                message=message,
+                pressure=float(best_point["P"]),
+                payload=best_point["payload"],
+                species=species,
+                vapor_species=vapor_labels,
+                composition=composition,
+                charge_residual=charge_residual,
+                diagnostics=_json_like(diagnostics),
+            )
+        raise SolutionError(message, _json_like(diagnostics)) from exc
     low_p, low_eval, high_p, high_eval = bracket
     best_p = low_p
     best_eval = low_eval
-    y_seed = low_eval["y_vap"]
+    y_seed = initial_y_seed if initial_y_seed is not None else low_eval["y_vap"]
+    low_log = float(np.log(low_p))
+    high_log = float(np.log(high_p))
     for iteration in range(1, opts.max_iterations + 1):
         if abs(low_eval["objective"]) <= abs(high_eval["objective"]):
             best_p, best_eval = low_p, low_eval
         else:
             best_p, best_eval = high_p, high_eval
-        mid_p = 0.5 * (low_p + high_p)
+        mid_log = 0.5 * (low_log + high_log)
+        mid_p = float(np.exp(mid_log))
         mid_eval = evaluate(mid_p, y_seed=y_seed)
         y_seed = mid_eval["y_vap"]
         if abs(mid_eval["objective"]) <= opts.tolerance:
@@ -185,47 +222,62 @@ def electrolyte_bubble_pressure(
             break
         if np.sign(low_eval["objective"]) == np.sign(mid_eval["objective"]):
             low_p, low_eval = mid_p, mid_eval
+            low_log = mid_log
         else:
             high_p, high_eval = mid_p, mid_eval
+            high_log = mid_log
     else:
+        message = "electrolyte bubble pressure did not converge"
         diagnostics = {
             "success": False,
-            "message": "electrolyte bubble pressure did not converge",
+            "message": message,
             "iterations": int(opts.max_iterations),
             "state_failure_count": int(state_failure_count),
             "pressure_bracket": [float(low_p), float(high_p)],
-            "vapor_history": history,
+            "log_pressure_bracket": [float(low_log), float(high_log)],
+            "vapor_history": _bounded_history(history),
             "tolerance": float(opts.tolerance),
         }
-        raise SolutionError("electrolyte bubble pressure did not converge", diagnostics)
+        diagnostics.update(_best_diagnostics(best_point))
+        if opts.return_best_effort and best_point is not None:
+            return _make_result(
+                success=False,
+                message=message,
+                pressure=float(best_point["P"]),
+                payload=best_point["payload"],
+                species=species,
+                vapor_species=vapor_labels,
+                composition=composition,
+                charge_residual=charge_residual,
+                diagnostics=_json_like(diagnostics),
+            )
+        raise SolutionError(message, _json_like(diagnostics))
 
-    residual = _fugacity_residual(best_eval, vapor_labels)
-    residual_norm = float(max((abs(value) for value in residual.values()), default=0.0))
-    y_vap = {label: float(value) for label, value in zip(vapor_labels, best_eval["y_vap"])}
     diagnostics = {
         "success": True,
         "iterations": int(len(history)),
         "state_failure_count": int(state_failure_count),
         "pressure_bracket": [float(low_p), float(high_p)],
-        "vapor_history": history,
+        "log_pressure_bracket": [float(low_log), float(high_log)],
+        "vapor_history": _bounded_history(history),
         "vapor_species": list(vapor_labels),
         "volatile_species": list(volatile_labels),
         "nonvolatile_species": list(nonvolatile_labels),
         "tolerance": float(opts.tolerance),
+        "log_pressure_solve": True,
+        "used_initial_y_vap": initial_y_seed is not None,
         "message": "converged",
     }
-    return ElectrolyteBubbleResult(
+    diagnostics.update(_best_diagnostics(best_point))
+    return _make_result(
         success=True,
         message="converged",
-        P=best_p,
-        y_vap=y_vap,
-        x_liq=composition,
-        ln_phi_liq={label: float(value) for label, value in zip(species, best_eval["ln_phi_liq_full"])},
-        ln_phi_vap={label: float(value) for label, value in zip(vapor_labels, best_eval["ln_phi_vap"])},
-        fugacity_residual=residual,
-        fugacity_residual_norm=residual_norm,
+        pressure=best_p,
+        payload=best_eval,
+        species=species,
+        vapor_species=vapor_labels,
+        composition=composition,
         charge_residual=charge_residual,
-        partial_pressures={label: float(best_p * y) for label, y in y_vap.items()},
         diagnostics=diagnostics,
     )
 
@@ -245,6 +297,8 @@ def _normalize_options(options: ElectrolyteBubbleOptions | None) -> ElectrolyteB
         raise InputError("ElectrolyteBubbleOptions initial_pressure must be positive.")
     if options.pressure_factor <= 1.0:
         raise InputError("ElectrolyteBubbleOptions pressure_factor must be greater than 1.")
+    if not isinstance(options.return_best_effort, bool):
+        raise InputError("ElectrolyteBubbleOptions.return_best_effort must be a bool.")
     return options
 
 
@@ -297,6 +351,31 @@ def _normalize_species_subset(species: list[str], labels: Any) -> list[str]:
         if label not in out:
             out.append(label)
     return out
+
+
+def _normalize_vapor_seed(
+    vapor_species: list[str], seed: Mapping[str, float] | None, options: ElectrolyteBubbleOptions
+) -> np.ndarray | None:
+    if seed is None:
+        return None
+    if not isinstance(seed, Mapping):
+        raise InputError(
+            "ElectrolyteBubbleOptions.initial_y_vap must be a mapping from vapor species to mole fraction."
+        )
+    unknown = sorted(set(str(label) for label in seed) - set(vapor_species))
+    if unknown:
+        raise InputError(f"initial_y_vap contains unknown vapor species: {unknown}.")
+    missing = [label for label in vapor_species if label not in seed]
+    if missing:
+        raise InputError(f"initial_y_vap is missing vapor species: {missing}.")
+    y = np.asarray([float(seed[label]) for label in vapor_species], dtype=float)
+    if np.any(~np.isfinite(y)) or np.any(y < -options.min_composition):
+        raise InputError("initial_y_vap values must be finite and non-negative.")
+    y = np.clip(y, 0.0, None)
+    total = float(np.sum(y))
+    if total <= 0.0:
+        raise InputError("initial_y_vap must have a positive sum.")
+    return y / total
 
 
 def _build_neutral_submixture(mixture: Any, indices: list[int]) -> Any:
@@ -368,18 +447,23 @@ def _bubble_objective(
 
 
 def _find_pressure_bracket(
-    evaluate: Any, options: ElectrolyteBubbleOptions
+    evaluate: Any, options: ElectrolyteBubbleOptions, initial_y_seed: np.ndarray | None = None
 ) -> tuple[float, dict[str, Any], float, dict[str, Any]]:
     center = min(max(float(options.initial_pressure), float(options.min_pressure)), float(options.max_pressure))
-    center_eval = evaluate(center)
+    center_eval = evaluate(center, y_seed=initial_y_seed)
     if abs(center_eval["objective"]) <= options.tolerance:
         return center, center_eval, center, center_eval
     candidates: list[tuple[float, dict[str, Any]]] = [(center, center_eval)]
-    low = center
-    high = center
+    min_log = float(np.log(options.min_pressure))
+    max_log = float(np.log(options.max_pressure))
+    step_log = float(np.log(options.pressure_factor))
+    low_log = float(np.log(center))
+    high_log = float(np.log(center))
     for _ in range(options.max_bracket_expansions):
-        low = max(options.min_pressure, low / options.pressure_factor)
-        high = min(options.max_pressure, high * options.pressure_factor)
+        low_log = max(min_log, low_log - step_log)
+        high_log = min(max_log, high_log + step_log)
+        low = float(np.exp(low_log))
+        high = float(np.exp(high_log))
         for pressure in (low, high):
             if any(abs(pressure - existing[0]) <= 1.0e-12 * max(1.0, pressure) for existing in candidates):
                 continue
@@ -398,8 +482,11 @@ def _find_pressure_bracket(
     diagnostics = {
         "success": False,
         "message": "electrolyte bubble pressure could not bracket a pressure root",
-        "evaluated_pressures": [{"P": p, "objective": item["objective"]} for p, item in candidates],
+        "evaluated_pressures": [
+            {"P": p, "logP": float(np.log(p)), "objective": item["objective"]} for p, item in candidates
+        ],
         "pressure_bounds": [float(options.min_pressure), float(options.max_pressure)],
+        "log_pressure_bounds": [min_log, max_log],
     }
     raise SolutionError("electrolyte bubble pressure could not bracket a pressure root", diagnostics)
 
@@ -411,6 +498,59 @@ def _fugacity_residual(payload: dict[str, Any], vapor_species: list[str]) -> dic
     x_v = np.asarray(payload["x_v"], dtype=float)
     residual = np.log(y) + ln_phi_vap - np.log(x_v) - ln_phi_liq
     return {label: float(value) for label, value in zip(vapor_species, residual)}
+
+
+def _make_result(
+    *,
+    success: bool,
+    message: str,
+    pressure: float,
+    payload: dict[str, Any],
+    species: list[str],
+    vapor_species: list[str],
+    composition: np.ndarray,
+    charge_residual: float,
+    diagnostics: dict[str, Any],
+) -> ElectrolyteBubbleResult:
+    residual = _fugacity_residual(payload, vapor_species)
+    residual_norm = float(max((abs(value) for value in residual.values()), default=0.0))
+    y_vap = {label: float(value) for label, value in zip(vapor_species, payload["y_vap"])}
+    return ElectrolyteBubbleResult(
+        success=success,
+        message=message,
+        P=float(pressure),
+        y_vap=y_vap,
+        x_liq=composition,
+        ln_phi_liq={label: float(value) for label, value in zip(species, payload["ln_phi_liq_full"])},
+        ln_phi_vap={label: float(value) for label, value in zip(vapor_species, payload["ln_phi_vap"])},
+        fugacity_residual=residual,
+        fugacity_residual_norm=residual_norm,
+        charge_residual=charge_residual,
+        partial_pressures={label: float(pressure * y) for label, y in y_vap.items()},
+        diagnostics=diagnostics,
+    )
+
+
+def _best_diagnostics(best_point: dict[str, Any] | None) -> dict[str, Any]:
+    if best_point is None:
+        return {
+            "best_P": None,
+            "best_objective": None,
+            "best_y_vap": {},
+            "best_partial_pressures": {},
+            "best_fugacity_residual_norm": None,
+        }
+    return {
+        "best_P": float(best_point["P"]),
+        "best_objective": float(best_point["objective"]),
+        "best_y_vap": dict(best_point["y_vap"]),
+        "best_partial_pressures": dict(best_point["partial_pressures"]),
+        "best_fugacity_residual_norm": float(best_point["fugacity_residual_norm"]),
+    }
+
+
+def _bounded_history(history: list[dict[str, Any]], limit: int = 50) -> list[dict[str, Any]]:
+    return history[-limit:]
 
 
 def _json_like(value: Any) -> Any:
