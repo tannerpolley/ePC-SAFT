@@ -1,159 +1,40 @@
 from __future__ import annotations
 
-import json
-
 import numpy as np
 import pytest
 
 import epcsaft
+from epcsaft import InputError
 
 
-def _co2_water_salt_mixture() -> epcsaft.ePCSAFTMixture:
-    params = {
-        "m": np.asarray([2.0729, 1.2047, 1.0, 1.0]),
-        "s": np.asarray([2.7852, 2.7927, 2.8232, 2.7560]),
-        "e": np.asarray([169.21, 353.95, 230.0, 170.0]),
-        "z": np.asarray([0.0, 0.0, 1.0, -1.0]),
-        "dielc": np.asarray([1.6, 78.09, 8.0, 8.0]),
-        "d_born": np.asarray([0.0, 0.0, 3.445, 4.1]),
-        "MW": np.asarray([44.0095e-3, 18.01528e-3, 22.989e-3, 35.45e-3]),
-    }
-    return epcsaft.ePCSAFTMixture.from_params(params, species=["CO2", "H2O", "Na+", "Cl-"])
+def _salt_mixture() -> epcsaft.ePCSAFTMixture:
+    x = np.asarray([0.98, 0.01, 0.01], dtype=float)
+    return epcsaft.ePCSAFTMixture.from_dataset("2026_Khudaida", ["H2O", "Na+", "Cl-"], x, 298.15)
 
 
-def test_electrolyte_bubble_pressure_solves_neutral_vapor_over_ionic_liquid() -> None:
-    mix = _co2_water_salt_mixture()
-    x_liq = np.asarray([0.02, 0.979, 0.0005, 0.0005], dtype=float)
+def test_electrolyte_bubble_pressure_requires_native_backend() -> None:
+    mix = _salt_mixture()
 
-    result = mix.equilibrium(
-        kind="electrolyte_bubble_pressure",
-        T=313.15,
-        x_liq=x_liq,
-        volatile_species=["CO2", "H2O"],
-        vapor_species=["CO2", "H2O"],
-        nonvolatile_species=["Na+", "Cl-"],
-        options=epcsaft.ElectrolyteBubbleOptions(initial_pressure=1.0e5, max_iterations=80),
-    )
-
-    assert isinstance(result, epcsaft.ElectrolyteBubbleResult)
-    assert result.success is True
-    assert result.P > 0.0
-    np.testing.assert_allclose(result.x_liq, x_liq)
-    assert set(result.y_vap) == {"CO2", "H2O"}
-    assert sum(result.y_vap.values()) == pytest.approx(1.0, abs=1.0e-8)
-    assert "Na+" not in result.y_vap
-    assert "Cl-" not in result.y_vap
-    assert result.charge_residual == pytest.approx(0.0, abs=1.0e-10)
-    assert result.fugacity_residual_norm <= result.diagnostics["tolerance"]
-    json.dumps(result.to_dict(), allow_nan=False)
-
-
-def test_electrolyte_bubble_pressure_accepts_pressure_and_vapor_continuation() -> None:
-    mix = _co2_water_salt_mixture()
-    first = mix.equilibrium(
-        kind="electrolyte_bubble_pressure",
-        T=313.15,
-        x_liq=[0.02, 0.979, 0.0005, 0.0005],
-        volatile_species=["CO2", "H2O"],
-        vapor_species=["CO2", "H2O"],
-        nonvolatile_species=["Na+", "Cl-"],
-        options=epcsaft.ElectrolyteBubbleOptions(initial_pressure=1.0e5, max_iterations=80),
-    )
-
-    continued = mix.equilibrium(
-        kind="electrolyte_bubble_pressure",
-        T=313.15,
-        x_liq=[0.021, 0.978, 0.0005, 0.0005],
-        volatile_species=["CO2", "H2O"],
-        vapor_species=["CO2", "H2O"],
-        nonvolatile_species=["Na+", "Cl-"],
-        options=epcsaft.ElectrolyteBubbleOptions(
-            initial_pressure=first.P,
-            initial_y_vap=first.y_vap,
-            max_iterations=80,
-        ),
-    )
-
-    assert continued.success is True
-    assert continued.diagnostics["log_pressure_solve"] is True
-    assert continued.diagnostics["used_initial_y_vap"] is True
-    assert sum(continued.y_vap.values()) == pytest.approx(1.0, abs=1.0e-8)
-
-
-def test_electrolyte_bubble_pressure_strict_failure_reports_best_point() -> None:
-    mix = _co2_water_salt_mixture()
-
-    with pytest.raises(epcsaft.SolutionError) as excinfo:
+    with pytest.raises(InputError, match="native C\\+\\+ backend"):
         mix.equilibrium(
             kind="electrolyte_bubble_pressure",
-            T=313.15,
-            x_liq=[0.02, 0.979, 0.0005, 0.0005],
-            volatile_species=["CO2", "H2O"],
-            vapor_species=["CO2", "H2O"],
+            T=298.15,
+            x_liq=[0.98, 0.01, 0.01],
+            vapor_species=["H2O"],
+            volatile_species=["H2O"],
             nonvolatile_species=["Na+", "Cl-"],
-            options=epcsaft.ElectrolyteBubbleOptions(
-                initial_pressure=1.0e5,
-                max_iterations=1,
-                tolerance=1.0e-20,
-            ),
+            backend="native",
         )
 
-    diagnostics = excinfo.value.diagnostics
-    assert diagnostics["best_P"] > 0.0
-    assert np.isfinite(diagnostics["best_objective"])
-    assert set(diagnostics["best_y_vap"]) == {"CO2", "H2O"}
-    assert set(diagnostics["best_partial_pressures"]) == {"CO2", "H2O"}
-    assert diagnostics["best_fugacity_residual_norm"] >= 0.0
-    json.dumps(diagnostics, allow_nan=False)
 
+def test_electrolyte_bubble_pressure_rejects_python_backend_alias() -> None:
+    mix = _salt_mixture()
 
-def test_electrolyte_bubble_pressure_best_effort_returns_nonconverged_result() -> None:
-    mix = _co2_water_salt_mixture()
-
-    result = mix.equilibrium(
-        kind="electrolyte_bubble_pressure",
-        T=313.15,
-        x_liq=[0.02, 0.979, 0.0005, 0.0005],
-        volatile_species=["CO2", "H2O"],
-        vapor_species=["CO2", "H2O"],
-        nonvolatile_species=["Na+", "Cl-"],
-        options=epcsaft.ElectrolyteBubbleOptions(
-            initial_pressure=1.0e5,
-            max_iterations=1,
-            tolerance=1.0e-20,
-            return_best_effort=True,
-        ),
-    )
-
-    assert isinstance(result, epcsaft.ElectrolyteBubbleResult)
-    assert result.success is False
-    assert result.P > 0.0
-    assert set(result.y_vap) == {"CO2", "H2O"}
-    assert sum(result.y_vap.values()) == pytest.approx(1.0, abs=1.0e-8)
-    assert set(result.partial_pressures) == {"CO2", "H2O"}
-    assert result.diagnostics["best_P"] == pytest.approx(result.P)
-    json.dumps(result.to_dict(), allow_nan=False)
-
-
-@pytest.mark.parametrize(
-    ("kwargs", "match"),
-    [
-        ({}, "x_liq"),
-        ({"x_liq": [0.02, 0.979, 0.0004, 0.0006]}, "charge neutral"),
-        ({"x_liq": [0.02, 0.979, 0.0005, 0.0005], "vapor_species": ["Na+"]}, "neutral vapor"),
-        ({"x_liq": [0.02, 0.979, 0.0005, 0.0005], "volatile_species": ["missing"]}, "Unknown species"),
-    ],
-)
-def test_electrolyte_bubble_pressure_rejects_invalid_public_inputs(kwargs, match) -> None:
-    mix = _co2_water_salt_mixture()
-    payload = {
-        "kind": "electrolyte_bubble_pressure",
-        "T": 313.15,
-        "volatile_species": ["CO2", "H2O"],
-        "vapor_species": ["CO2", "H2O"],
-        "nonvolatile_species": ["Na+", "Cl-"],
-    }
-    payload.update(kwargs)
-
-    with pytest.raises(epcsaft.InputError, match=match):
-        mix.equilibrium(**payload)
+    with pytest.raises(InputError, match="backend must be None or 'native'"):
+        mix.equilibrium(
+            kind="electrolyte_bubble_pressure",
+            T=298.15,
+            x_liq=[0.98, 0.01, 0.01],
+            vapor_species=["H2O"],
+            backend="python",
+        )

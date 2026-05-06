@@ -36,9 +36,9 @@ Activity results
 Equilibrium and speciation
 --------------------------
 
-``ePCSAFTMixture.equilibrium(kind="electrolyte_bubble_pressure", ...)`` solves
-an ion-containing liquid bubble pressure with neutral vapor species. Ions are
-nonvolatile in this V1 route.
+``ePCSAFTMixture.equilibrium(kind="electrolyte_bubble_pressure", ...)`` is a
+native-backend placeholder. It raises ``InputError`` until a C++ electrolyte
+bubble-pressure backend exists; Python equilibrium solvers are not exposed.
 
 .. autoclass:: epcsaft.ElectrolyteBubbleOptions
    :members:

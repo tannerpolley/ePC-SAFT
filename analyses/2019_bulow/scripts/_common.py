@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
-# Avoid WMI stalls from platform.machine() during scipy / extension imports.
+# Avoid WMI stalls from platform.machine() during native extension imports.
 platform.machine = lambda: os.environ.get("PROCESSOR_ARCHITECTURE", "AMD64")
 
 ROOT = Path(__file__).resolve().parent

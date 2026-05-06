@@ -11,7 +11,6 @@ from typing import Mapping
 
 import matplotlib
 import numpy as np
-from scipy.optimize import brentq
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -252,6 +251,42 @@ def _bracket_saturation(mixture: ePCSAFTMixture, T: float, p_hint: float) -> tup
     return None
 
 
+def _bisect_log_pressure_root(
+    mixture: ePCSAFTMixture,
+    T: float,
+    lower: float,
+    upper: float,
+    *,
+    tolerance: float = 1.0e-10,
+    max_iterations: int = 100,
+) -> float:
+    if lower == upper:
+        return float(lower)
+    f_lower = _fugacity_difference(mixture, T, lower)
+    f_upper = _fugacity_difference(mixture, T, upper)
+    if f_lower == 0.0:
+        return float(lower)
+    if f_upper == 0.0:
+        return float(upper)
+    if f_lower * f_upper > 0.0:
+        raise RuntimeError("Saturation bracket does not contain a sign change.")
+
+    lo = float(lower)
+    hi = float(upper)
+    flo = float(f_lower)
+    for _ in range(max_iterations):
+        mid = 0.5 * (lo + hi)
+        f_mid = _fugacity_difference(mixture, T, mid)
+        if abs(f_mid) <= tolerance or abs(hi - lo) <= tolerance:
+            return float(mid)
+        if flo * f_mid <= 0.0:
+            hi = mid
+        else:
+            lo = mid
+            flo = float(f_mid)
+    return float(0.5 * (lo + hi))
+
+
 def metric_rows(rows: list[dict], field: str) -> list[dict]:
     reference = {round(float(row["T_K"]), 6): float(row[field]) for row in rows if row["series"] == "DIPPR"}
     out: list[dict] = []
@@ -302,13 +337,13 @@ def regressed_parameter_rows(path: Path) -> list[dict[str, str]]:
     if os.environ.get("EPCSAFT_RECOMPUTE_BAYGI_REGRESSION") != "1" and path.exists():
         return read_csv_rows(path)
 
-    from epcsaft.regression import _fit_pure_neutral_associating_python
+    from epcsaft.regression import _fit_pure_neutral_associating_native
 
     records = baygi_mea_fit_records()
     max_nfev = int(os.environ.get("EPCSAFT_BAYGI_REGRESSION_MAX_NFEV", "30"))
     rows: list[dict[str, str | float | int | bool]] = []
     for assoc_scheme, table_values in TABLE2_MEA_PARAMETERS.items():
-        result = _fit_pure_neutral_associating_python(
+        result = _fit_pure_neutral_associating_native(
             records,
             "MEA",
             assoc_scheme=assoc_scheme,
@@ -397,11 +432,7 @@ def model_saturation_rows(
                 )
                 continue
             try:
-                log_p = (
-                    bracket[0]
-                    if bracket[0] == bracket[1]
-                    else brentq(lambda value: _fugacity_difference(mixture, float(T), value), *bracket)
-                )
+                log_p = _bisect_log_pressure_root(mixture, float(T), *bracket)
                 P = math.exp(float(log_p))
                 mixture.clear_runtime_caches()
                 liquid = mixture.state(float(T), np.asarray([1.0], dtype=float), P=P, phase="liq")

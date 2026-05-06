@@ -22,7 +22,7 @@ from scripts.plot_outputs import paper_validation_output_path, save_plot_figure
 require_epcsaft_install()
 
 
-# Avoid WMI stalls from platform.machine() during scipy import on some Windows sessions.
+# Avoid WMI stalls from platform.machine() during native extension imports on some Windows sessions.
 def _fast_machine() -> str:
     return os.environ.get("PROCESSOR_ARCHITECTURE", "AMD64")
 
