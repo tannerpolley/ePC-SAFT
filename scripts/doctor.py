@@ -8,10 +8,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = REPO_ROOT / "src"
-STALE_TRACKED_REPORTS = (
-    REPO_ROOT / "scripts" / "paper_validation" / "tools" / "out" / "plot_asset_report.csv",
-    REPO_ROOT / "tests" / "plots" / "out" / "plot_asset_report.csv",
-)
+STALE_TRACKED_REPORTS: tuple[Path, ...] = ()
 REQUIRED_CORE_SYMBOLS = (
     "_fit_pure_neutral_native_least_squares",
     "_fit_generic_native_least_squares",
@@ -65,9 +62,9 @@ def _tracked_generated_count() -> int | None:
     for raw_line in output.splitlines():
         path = Path(raw_line)
         parts = path.parts
-        if "out" not in parts:
+        if "out" not in parts and "runs" not in parts:
             continue
-        if not parts or parts[0] not in {"scripts", "tests", "src"}:
+        if not parts or parts[0] not in {"analyses", "scripts", "tests", "src"}:
             continue
         if path.suffix.lower() in generated_extensions:
             count += 1
@@ -104,7 +101,7 @@ def main() -> int:
     print(f"epcsaft_core_missing_symbols: {', '.join(missing_core_symbols) if missing_core_symbols else '<none>'}")
     print(f"stale_generated_reports: {_stale_report_state()}")
     tracked_generated = _tracked_generated_count()
-    print(f"tracked_source_out_generated_files: {tracked_generated if tracked_generated is not None else '<unknown>'}")
+    print(f"tracked_generated_run_files: {tracked_generated if tracked_generated is not None else '<unknown>'}")
 
     if package_path is None:
         print("install_state: missing-package")

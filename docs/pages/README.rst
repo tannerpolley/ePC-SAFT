@@ -34,7 +34,7 @@ For development from this source tree:
 
 Direct pytest also works, for example ``uv run python -m pytest tests/api/test_runtime.py -q``. For source-checkout validation, prefer ``uv run python run_pytest.py ...`` because the wrapper sets the source import path and manages pytest temporary directories more predictably. ``uv run python run_pytest.py -q`` is the default fast contract suite; use ``uv run python run_pytest.py --confidence -q`` before handoff when native runtime confidence matters, and ``--all`` only for the explicit exhaustive suite. Set ``EPCSAFT_PYTEST_TEMP_ROOT`` when you want the wrapper to use an opt-in external pytest temp root instead of its default repo-local generated temp area.
 
-For maintainers, :doc:`development_workflows` is the explicit command matrix for setup, fast native rebuilds, focused tests, profiling, packaging, and repair-only cleanup.
+For maintainers, :doc:`development_workflows` is the explicit command matrix for setup, fast native rebuilds, focused tests, profiling, packaging, and repair-only cleanup. :doc:`project_structure` defines the package, reusable data, and analysis folder layout.
 
 Use ``uv run python scripts/build_epcsaft.py --clean`` only as a repair step for stale CMake state or stale/locked ``_core`` artifacts. If a ``_core*.pyd`` is locked, stop the importing Python/test/IDE process before running the clean repair.
 
@@ -82,8 +82,8 @@ Project Layout
 --------------
 
 - ``src/epcsaft/``: installable runtime package, pybind11 binding source, and native C++ sources
-- ``data/epcsaft_parameters/``: source-checkout example parameter datasets for inspection, comparison, and tests
-- ``data/``: other datasets and figures that are not required by the package
+- ``data/reference/``: reusable checkout reference data, including example parameter datasets under ``data/reference/epcsaft_parameters/``
+- ``analyses/``: source-owned paper validation, fit validation, and figure workflows with local ``scripts/``, ``data/``, and ``results/``
 - ``docs/``: user documentation and reference material
 
 Public API

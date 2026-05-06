@@ -23,8 +23,8 @@ from epcsaft.equilibrium import EquilibriumOptions
 from epcsaft.equilibrium import _phase_state
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-BENCHMARK_ROOT = REPO_ROOT / "data" / "equilibrium_benchmarks" / "electrolyte_lle"
-DEFAULT_OUTPUT_ROOT = Path(__file__).resolve().parent / "out"
+BENCHMARK_ROOT = REPO_ROOT / "data" / "reference" / "equilibrium_benchmarks" / "electrolyte_lle"
+DEFAULT_OUTPUT_ROOT = REPO_ROOT / "analyses" / "2026_khudaida" / "results" / "final" / "reports"
 PRESSURE_PA = 100000.0
 FORMULA_SPECIES = ("H2O", "Ethanol", "Butanol", "NaCl")
 EXPLICIT_SPECIES = ("H2O", "Ethanol", "Butanol", "Na+", "Cl-")
@@ -1012,7 +1012,7 @@ def _write_plot_data(path: Path, series_rows: Sequence[tuple[str, Sequence[str],
 
 
 def _write_gallery_copies(report: ConfidenceReport) -> None:
-    # External gallery tools index package-local out folders directly.
+    # External gallery tools should discover analysis-owned results directly.
     return None
 
 

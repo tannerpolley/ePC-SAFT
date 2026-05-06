@@ -1,11 +1,11 @@
 """Extract per-paper binary interaction matrices and pure-component parameter CSVs.
 
 Outputs:
-- data/epcsaft_parameters/<dataset_key>/pure/<name>.csv
-- data/epcsaft_parameters/<dataset_key>/mixed/binary_interaction/k_ij.csv
+- data/reference/epcsaft_parameters/<dataset_key>/pure/<name>.csv
+- data/reference/epcsaft_parameters/<dataset_key>/mixed/binary_interaction/k_ij.csv
 - optional:
-  - data/epcsaft_parameters/<dataset_key>/mixed/binary_interaction/l_ij.csv
-  - data/epcsaft_parameters/<dataset_key>/mixed/binary_interaction/khb_ij.csv
+  - data/reference/epcsaft_parameters/<dataset_key>/mixed/binary_interaction/l_ij.csv
+  - data/reference/epcsaft_parameters/<dataset_key>/mixed/binary_interaction/khb_ij.csv
 
 Target papers: 2005, 2008, 2014, 2020, 2021, 2025
 """
@@ -31,7 +31,7 @@ from scripts._env import require_epcsaft_install
 require_epcsaft_install()
 
 PAPER_DIR = REPO_ROOT / "docs" / "papers" / "md"
-OUT_BASE_DIR = REPO_ROOT / "data" / "epcsaft_parameters"
+OUT_BASE_DIR = REPO_ROOT / "data" / "reference" / "epcsaft_parameters"
 OUT_BINARY_DIR = OUT_BASE_DIR / "binary_interaction_parameters"
 OUT_PURE_DIR = OUT_BASE_DIR / "pure_component_parameters"
 LEGACY_FLAT_DIRS = [OUT_BINARY_DIR, OUT_PURE_DIR]
@@ -109,7 +109,7 @@ PAPER_KEY_BY_DATASET = {
     "2021_Bulow": "2021",
     "2025_Figiel": "2025",
 }
-CANONICAL_USER_OPTIONS_SOURCE = "scripts/fits/validate_miac_fits.py"
+CANONICAL_USER_OPTIONS_SOURCE = "analyses/miac_fits/scripts/validate_miac_fits.py"
 RESOLVER_SOURCE = "epcsaft.parameters::_resolve_runtime_options"
 RUNTIME_REQUIRED_KEYS = {
     "dielc_rule",

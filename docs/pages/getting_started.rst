@@ -80,7 +80,7 @@ This creates the expected ``pure/``, ``mixed/``, and ``user_options.json`` files
 
 If you want to fit missing entries instead of typing them by hand, the regression helpers can work directly with the same folder structure. See ``parameter_regression`` for the current phase-1 neutral ``m/s/e`` workflow.
 
-If you are working from a checkout of this repository, you can also inspect the example parameter folders in ``data/epcsaft_parameters/``. They are there for comparison and reference while you build your own folders.
+If you are working from a checkout of this repository, you can also inspect the example parameter folders in ``data/reference/epcsaft_parameters/``. They are there for comparison and reference while you build your own folders.
 
 For a complete list of ``user_options.json`` settings, see ``user_options``.
 

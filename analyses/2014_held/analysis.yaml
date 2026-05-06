@@ -1,0 +1,11 @@
+analysis_id: 2014_held
+title: Held 2014 paper validation
+kind: paper_validation
+status: migrated
+package: epcsaft
+commands:
+  run_all: uv run python analyses/2014_held/scripts/run_all.py
+outputs:
+  figures: results/final/figures
+  tables: results/final/tables
+  reports: results/final/reports

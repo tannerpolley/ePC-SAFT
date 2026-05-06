@@ -8,51 +8,88 @@ import pandas as pd
 from matplotlib import colors as mcolors
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-PLOTS_ROOT = REPO_ROOT / "docs" / "plots"
-PAPER_VALIDATION_SOURCE_ROOT = REPO_ROOT / "scripts" / "paper_validation"
-PAPER_VALIDATION_PLOTS_ROOT = PAPER_VALIDATION_SOURCE_ROOT
-FITS_PLOTS_ROOT = REPO_ROOT / "scripts" / "fits" / "out"
-TEST_PLOTS_ROOT = REPO_ROOT / "tests" / "plots" / "out"
-OUTPUT_DIR_NAME = "out"
+ANALYSES_ROOT = REPO_ROOT / "analyses"
+PAPER_VALIDATION_SOURCE_ROOT = ANALYSES_ROOT
+FITS_ANALYSIS_ROOT = ANALYSES_ROOT / "miac_fits"
+FITS_CATEGORY_ROOTS = {
+    "dielectric": ANALYSES_ROOT / "dielectric_fits",
+    "osmotic": ANALYSES_ROOT / "osmotic_validation",
+}
+TEST_PLOTS_ANALYSIS_ROOT = ANALYSES_ROOT / "package_plot_smokes"
+RESULTS_DIR_NAME = "results"
 
 
 def _clean_analysis_name(name: str) -> str:
     return name.removesuffix("_analysis")
 
 
-def paper_validation_path(source_path: str | Path, filename: str | None = None) -> Path:
+def _analysis_root_for(source_path: str | Path) -> Path:
+    source = Path(source_path).resolve()
+    parts = source.parts
+    try:
+        analyses_index = max(index for index, part in enumerate(parts) if part == "analyses")
+    except ValueError as exc:
+        raise ValueError(f"path is not inside analyses/: {source}") from exc
+    if analyses_index + 1 >= len(parts):
+        raise ValueError(f"path does not include an analysis id: {source}")
+    return Path(*parts[: analyses_index + 2])
+
+
+def _relative_script_parts(source_path: str | Path) -> list[str]:
     source = Path(source_path).resolve()
     source_dir = source if source.is_dir() else source.parent
-    source_dir.relative_to(PAPER_VALIDATION_SOURCE_ROOT)
-    target_dir = source_dir / OUTPUT_DIR_NAME
-    target = target_dir / (filename if filename is not None else source.name)
+    analysis_root = _analysis_root_for(source_dir)
+    try:
+        relative = source_dir.relative_to(analysis_root / "scripts")
+    except ValueError:
+        relative = source_dir.relative_to(analysis_root)
+    return [part for part in relative.parts if part not in ("", ".")]
+
+
+def analysis_final_dir(source_path: str | Path, category: str = "figures") -> Path:
+    analysis_root = _analysis_root_for(source_path)
+    rel_parts = _relative_script_parts(source_path)
+    target = analysis_root / RESULTS_DIR_NAME / "final" / category
+    if rel_parts:
+        target = target.joinpath(*rel_parts)
+    target.mkdir(parents=True, exist_ok=True)
+    return target
+
+
+def analysis_final_path(source_path: str | Path, filename: str | Path, category: str = "figures") -> Path:
+    return analysis_final_dir(source_path, category=category) / Path(filename)
+
+
+def paper_validation_path(source_path: str | Path, filename: str | None = None) -> Path:
+    source = Path(source_path).resolve()
+    target = analysis_final_path(source, filename if filename is not None else source.name, category="figures")
     target.parent.mkdir(parents=True, exist_ok=True)
     return target
 
 
 def paper_validation_dir(source_path: str | Path) -> Path:
-    source = Path(source_path).resolve()
-    source_dir = source if source.is_dir() else source.parent
-    source_dir.relative_to(PAPER_VALIDATION_SOURCE_ROOT)
-    target = source_dir / OUTPUT_DIR_NAME
-    target.mkdir(parents=True, exist_ok=True)
-    return target
+    return analysis_final_dir(source_path, category="reports")
 
 
 def paper_validation_output_path(path: str | Path) -> Path:
     source = Path(path).resolve()
-    if source.is_relative_to(PAPER_VALIDATION_SOURCE_ROOT):
-        return paper_validation_path(source.parent, source.name)
-    if source.parent.name == OUTPUT_DIR_NAME:
+    suffix = source.suffix.lower()
+    category = "figures" if suffix in {".png", ".svg", ".pdf"} else "tables"
+    if source.is_relative_to(ANALYSES_ROOT):
+        return analysis_final_path(source.parent, source.name, category=category)
+    if RESULTS_DIR_NAME in source.parts:
         target = source
     else:
-        target = source.parent / OUTPUT_DIR_NAME / source.name
+        target = source.parent / RESULTS_DIR_NAME / "final" / category / source.name
     target.parent.mkdir(parents=True, exist_ok=True)
     return target
 
 
 def fits_plot_path(*parts: str | Path) -> Path:
-    target = FITS_PLOTS_ROOT.joinpath(*(str(part) for part in parts))
+    raw_parts = [str(part) for part in parts]
+    analysis_root = FITS_CATEGORY_ROOTS.get(raw_parts[0], FITS_ANALYSIS_ROOT) if raw_parts else FITS_ANALYSIS_ROOT
+    target = analysis_root / RESULTS_DIR_NAME / "final" / "figures"
+    target = target.joinpath(*raw_parts)
     target.parent.mkdir(parents=True, exist_ok=True)
     return target
 
@@ -87,8 +124,9 @@ def test_plot_path(
     category: str | Path | Iterable[str | Path] | None = None,
 ) -> Path:
     category_parts = _test_plot_category_parts(category)
+    root = TEST_PLOTS_ANALYSIS_ROOT / RESULTS_DIR_NAME / "final" / "figures"
     if category_parts is not None:
-        target = TEST_PLOTS_ROOT.joinpath(*category_parts) / Path(filename)
+        target = root.joinpath(*category_parts) / Path(filename)
         target.parent.mkdir(parents=True, exist_ok=True)
         return target
 
@@ -104,7 +142,7 @@ def test_plot_path(
         if module_name.startswith("test_"):
             module_name = module_name.removeprefix("test_")
         rel_parts = [*rel_parts[:-1], module_name]
-    target = TEST_PLOTS_ROOT.joinpath(*rel_parts) / Path(filename)
+    target = root.joinpath(*rel_parts) / Path(filename)
     target.parent.mkdir(parents=True, exist_ok=True)
     return target
 

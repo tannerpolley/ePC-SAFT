@@ -5,7 +5,9 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-ETHANOL_WATER_JCED2021_100KPA = REPO_ROOT / "data" / "regression" / "binary" / "ethanol_water_jced2021_vle_100kpa.csv"
+ETHANOL_WATER_JCED2021_100KPA = (
+    REPO_ROOT / "data" / "reference" / "regression" / "binary" / "ethanol_water_jced2021_vle_100kpa.csv"
+)
 ETHANOL_WATER_PAPER_PCSAFT_KIJ_100KPA = -0.0269
 ETHANOL_WATER_HELD_2012_KIJ = -0.049
 

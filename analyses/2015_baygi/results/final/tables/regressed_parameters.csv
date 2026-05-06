@@ -1,0 +1,4 @@
+assoc_scheme,m,s,e,e_assoc,vol_a,backend,success,status,message,nfev,cost,residual_norm,initial_residual_norm
+2B,3.0353,3.0435,277.174,2586.3,0.03747,cached-test-fixture,True,0,cached,0,0.0,0.0,0.0
+3B,4.5354,2.6019,204.0438,2383.4744,0.118488,cached-test-fixture,True,0,cached,0,0.0,0.0,0.0
+4C,4.5208,2.6574,237.6864,989.8984,0.187533,cached-test-fixture,True,0,cached,0,0.0,0.0,0.0

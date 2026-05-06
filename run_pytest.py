@@ -22,6 +22,7 @@ GENERIC_TEST_TARGETS = (
     "tests/native/test_equilibrium_native_contracts.py::test_native_equilibrium_entrypoint_is_exposed",
     "tests/native/test_runtime_contracts.py::test_pressure_based_and_density_based_states_match_for_neutral_system",
     "tests/native/test_equation_registry.py::test_equation_registry_outputs_are_synced",
+    "tests/workflows/test_project_structure.py",
     "tests/workflows/test_run_pytest.py::test_list_slices_exits_without_running_pytest",
     "tests/workflows/test_workflow_entrypoints.py::test_docs_make_confidence_suite_the_default_runtime_check",
 )

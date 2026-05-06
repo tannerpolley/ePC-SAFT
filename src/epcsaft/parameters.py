@@ -1,7 +1,7 @@
 """Dataset-driven parameter loader for the ePC-SAFT runtime.
 
 This module reads repository-owned parameter sets from
-``data/epcsaft_parameters/<dataset>/`` and also accepts external dataset
+``data/reference/epcsaft_parameters/<dataset>/`` and also accepts external dataset
 directories with the same on-disk layout.
 
 Public API:
@@ -26,7 +26,7 @@ from typing import Dict, Iterable
 
 import numpy as np
 
-DATASET_ROOT = Path(__file__).resolve().parents[2] / "data" / "epcsaft_parameters"
+DATASET_ROOT = Path(__file__).resolve().parents[2] / "data" / "reference" / "epcsaft_parameters"
 
 BASE_KEYS = ["MW", "m", "s", "e", "e_assoc", "vol_a", "assoc_scheme", "z", "dielc"]
 OPTIONAL_KEYS = ["d_born", "f_solv"]

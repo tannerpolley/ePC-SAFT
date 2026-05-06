@@ -11,12 +11,12 @@ Use `ePCSAFTMixture` to load parameters and create states.
 - `create_parameter_template(...)` makes a new user-owned dataset folder with blank files you can fill in.
 - `fit_pure_neutral(...)` is the current phase-1 regression entrypoint for neutral-component `m`, `s`, and `e`.
 - `write_fit_result(...)` writes a neutral regression result back into a user-owned dataset folder when you explicitly want to persist it.
-- `ePCSAFTMixture.from_dataset(...)` loads a folder path you created yourself. If you are working from a checkout of this repository, it can also load the example folders under `data/epcsaft_parameters/`.
+- `ePCSAFTMixture.from_dataset(...)` loads a folder path you created yourself. If you are working from a checkout of this repository, it can also load the example folders under `data/reference/epcsaft_parameters/`.
 - `ePCSAFTMixture.from_params(...)` builds a mixture from a resolved parameter dict.
 - `ePCSAFTMixture.state(...)` creates a new state snapshot from temperature, composition, and either pressure or density.
   Pressure-based states solve and cache density during construction; density-based states still compute pressure on demand.
 
-For the current regression basis, see the neutral reference files under `data/pure_component/` in this source checkout.
+For the current regression basis, see the neutral reference files under `data/reference/pure_component/` in this source checkout.
 
 Evaluating state properties
 ---------------------------

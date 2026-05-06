@@ -1,0 +1,12 @@
+analysis_id: template
+title: Analysis title
+kind: modeling
+status: template
+package: epcsaft
+commands:
+  generate_data: uv run python analyses/<short_id>/scripts/generate_data.py
+  render_plots: uv run python analyses/<short_id>/scripts/plot_results.py
+outputs:
+  figures: results/final/figures
+  tables: results/final/tables
+  reports: results/final/reports

@@ -13,7 +13,7 @@ from epcsaft import ePCSAFTMixture
 from epcsaft.equilibrium_core.electrolyte_seeds import charge_neutral_lle_seed_from_org_phase
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-FIXTURE_DIR = REPO_ROOT / "data" / "equilibrium_benchmarks" / "electrolyte_lle" / "hubach_2024"
+FIXTURE_DIR = REPO_ROOT / "data" / "reference" / "equilibrium_benchmarks" / "electrolyte_lle" / "hubach_2024"
 SPECIES = ["H2O", "TBP", "[emim][tcb]", "Li+", "Cl-"]
 T_K = 294.15
 P_PA = 1.013e5

@@ -7,7 +7,7 @@ This script can:
 
 Example:
   python scripts/data/sync_miac_variants.py \
-      --csv data/MIAC/ethanol/ethanol-LiBr.csv \
+      --csv data/reference/MIAC/ethanol/ethanol-LiBr.csv \
       --merge C:/Users/Tanner/Downloads/ethanol-LiBr-data2.csv
 """
 

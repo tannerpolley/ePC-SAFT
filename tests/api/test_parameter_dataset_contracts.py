@@ -4,7 +4,7 @@ import csv
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PARAMETER_ROOT = REPO_ROOT / "data" / "epcsaft_parameters"
+PARAMETER_ROOT = REPO_ROOT / "data" / "reference" / "epcsaft_parameters"
 
 
 def _assoc_parameter_is_enabled(value: str | None) -> bool:

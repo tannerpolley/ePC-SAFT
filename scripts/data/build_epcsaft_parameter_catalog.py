@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PAPER_DIR = REPO_ROOT / "docs" / "papers" / "md"
-OUT_DIR = REPO_ROOT / "data" / "epcsaft_parameters" / "catalog"
+OUT_DIR = REPO_ROOT / "data" / "reference" / "epcsaft_parameters" / "catalog"
 OUT_JSON = OUT_DIR / "epcsaft-parameter-catalog.json"
 
 

@@ -5,7 +5,7 @@ import pytest
 
 from epcsaft.regression import _fit_pure_neutral_associating_python
 
-baygi = importlib.import_module("scripts.paper_validation.2015_Baygi_analysis._common")
+baygi = importlib.import_module("analyses.2015_baygi.scripts._common")
 MEA_MW = baygi.MEA_MW
 TABLE2_MEA_PARAMETERS = baygi.TABLE2_MEA_PARAMETERS
 

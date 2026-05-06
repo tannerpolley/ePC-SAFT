@@ -1,0 +1,11 @@
+analysis_id: 2020_bulow
+title: Bulow 2020 paper validation
+kind: paper_validation
+status: migrated
+package: epcsaft
+commands:
+  run_all: uv run python analyses/2020_bulow/scripts/run_all.py
+outputs:
+  figures: results/final/figures
+  tables: results/final/tables
+  reports: results/final/reports

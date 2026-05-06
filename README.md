@@ -28,7 +28,7 @@ Direct pytest also works, for example `uv run python -m pytest tests\api\test_ru
 
 The default source-checkout validation sequence is sync, normal native build, then `uv run python scripts\validate_project.py quick`. Use `uv run python scripts\validate_project.py confidence` before handoff when runtime confidence matters.
 
-For maintainers, the [development workflow guide](docs/pages/development_workflows.rst) is the source-of-truth command matrix for setup, fast rebuilds, focused tests, profiling, packaging, and repair-only cleanup.
+For maintainers, the [development workflow guide](docs/pages/development_workflows.rst) is the source-of-truth command matrix for setup, fast rebuilds, focused tests, profiling, packaging, and repair-only cleanup. The [project structure guide](docs/pages/project_structure.rst) explains where package code, reusable reference data, and analysis workflows belong.
 For downstream projects that hit suspected package bugs, use the [downstream dependency protocol](docs/pages/downstream_dependency_protocol.rst) to file a complete GitHub issue and validation command.
 
 For the standard validation loops:
@@ -86,7 +86,8 @@ print(state.ares(return_contribution_terms=True)["terms"]["hc"])
 ## Package Layout
 
 - `src/epcsaft/`: Python package, pybind11 binding source, and native C++ equation code
-- `data/epcsaft_parameters/`: source-checkout example parameter datasets for inspection, comparison, and tests
+- `data/reference/`: source-checkout reference data, including example parameter datasets under `data/reference/epcsaft_parameters/`
+- `analyses/`: source-owned paper validation, fit validation, and figure workflows with local `scripts/`, `data/`, and `results/`
 - `docs/`: user documentation and reference material
 - `scripts/`: uv/CMake build, doctor, and validation helpers
 

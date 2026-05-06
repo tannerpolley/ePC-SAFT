@@ -1,0 +1,12 @@
+analysis_id: dielectric_fits
+title: Dielectric fit validation
+kind: fit_validation
+status: migrated
+package: epcsaft
+commands:
+  fit_plot: uv run python analyses/dielectric_fits/scripts/dielc_fit.py
+  derivative_plot: uv run python analyses/dielectric_fits/scripts/dielc_diff.py
+outputs:
+  figures: results/final/figures
+  tables: results/final/tables
+  reports: results/final/reports

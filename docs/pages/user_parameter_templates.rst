@@ -64,9 +64,9 @@ Once the files are filled in, point ``ePCSAFTMixture.from_dataset(...)`` at the 
        298.15,
    )
 
-If you are working from a checkout of this repository, you can also inspect the example folders in ``data/epcsaft_parameters/`` by name. If you pass a path instead, the loader uses that folder directly.
+If you are working from a checkout of this repository, you can also inspect the example folders in ``data/reference/epcsaft_parameters/`` by name. If you pass a path instead, the loader uses that folder directly.
 
-The example folders in ``data/epcsaft_parameters/`` are the same kind of folders you can create for yourself with this helper, but they are source-checkout examples rather than installed-package assets.
+The example folders in ``data/reference/epcsaft_parameters/`` are the same kind of folders you can create for yourself with this helper, but they are source-checkout examples rather than installed-package assets.
 
 Tips
 ----

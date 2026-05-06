@@ -366,7 +366,7 @@ def test_public_methods_expose_eqid_owned_contribution_groups() -> None:
 
 
 def test_miac_electrolyte_variants_cover_water_nonaqueous_and_mixed_solvents() -> None:
-    from scripts.fits import validate_miac_fits as vmf
+    from analyses.miac_fits.scripts import validate_miac_fits as vmf
     from scripts._epcsaft_oop import as_mixture
 
     def find_combo(solvent_system: str, salt: str, comp_signature=None) -> dict[str, object]:
@@ -417,7 +417,7 @@ def test_miac_electrolyte_variants_cover_water_nonaqueous_and_mixed_solvents() -
 
 
 def test_miac_activity_cache_reuse_keeps_results_stable() -> None:
-    from scripts.fits import validate_miac_fits as vmf
+    from analyses.miac_fits.scripts import validate_miac_fits as vmf
     from scripts._epcsaft_oop import as_mixture
 
     combo = next(

@@ -13,6 +13,7 @@ Start Here
    README
    getting_started
    development_workflows
+   project_structure
 
 Create Your Own Data
 --------------------

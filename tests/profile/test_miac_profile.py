@@ -12,9 +12,9 @@ import os
 
 import pytest
 
-from scripts.fits.profile_miac_runtime import REPORT_CSV
-from scripts.fits.profile_miac_runtime import REPORT_MD
-from scripts.fits.profile_miac_runtime import run_miac_runtime_profile
+from analyses.miac_fits.scripts.profile_miac_runtime import REPORT_CSV
+from analyses.miac_fits.scripts.profile_miac_runtime import REPORT_MD
+from analyses.miac_fits.scripts.profile_miac_runtime import run_miac_runtime_profile
 
 
 def _should_run_perf() -> bool:
