@@ -17,10 +17,10 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v8
+        uses: astral-sh/setup-uv@v8.1.0
         with:
           enable-cache: true
 
@@ -54,10 +54,10 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v8
+        uses: astral-sh/setup-uv@v8.1.0
         with:
           enable-cache: true
 
@@ -76,7 +76,7 @@ jobs:
           CIBW_TEST_COMMAND: "python -c \"import numpy as np; import epcsaft; import epcsaft._core; m=epcsaft.ePCSAFTMixture.from_params({'m': np.asarray([1.0]), 's': np.asarray([3.7039]), 'e': np.asarray([150.03])}); s=m.state(T=300.0, x=np.asarray([1.0]), rho=100.0); print(s.compressibility_factor())\""
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: wheels-${{ matrix.os }}
           path: wheelhouse/*.whl
@@ -88,10 +88,10 @@ jobs:
     needs: windows-install-smoke
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v8
+        uses: astral-sh/setup-uv@v8.1.0
         with:
           enable-cache: true
 
@@ -102,7 +102,7 @@ jobs:
         run: uv build --sdist
 
       - name: Upload sdist
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: sdist
           path: dist/*.tar.gz
