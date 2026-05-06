@@ -309,7 +309,6 @@ def run_confidence_suite(
     _write_stress_csv(report.stress_csv, stress)
     _write_summary(report.summary_path, benchmark_suite, mode, predictions, continuation, oracle, sensitivity, stress)
     _write_plots(report, benchmark_suite, predictions, continuation, sensitivity)
-    _write_report_index(report)
     if write_gallery:
         _write_gallery_copies(report)
     return report
@@ -1012,27 +1011,8 @@ def _write_plot_data(path: Path, series_rows: Sequence[tuple[str, Sequence[str],
     _write_csv(path.parent / f"{path.stem}_plot_data.csv", ["plot", "series", "label", "value"], rows)
 
 
-def _write_report_index(report: ConfidenceReport) -> None:
-    (report.output_dir / "index.html").write_text(
-        "\n".join(
-            [
-                "<!doctype html><meta charset='utf-8'><title>Electrolyte LLE Confidence Report</title>",
-                "<h1>Electrolyte LLE Confidence Report</h1>",
-                f"<p><a href='{report.summary_path.name}'>summary.json</a></p>",
-                f"<p><a href='{report.benchmark_csv.name}'>benchmark_predictions.csv</a></p>",
-                f"<p><a href='{report.residual_gate_plot.name}'>residual gate plot</a></p>",
-                f"<p><a href='{report.error_plot.name}'>error plot</a></p>",
-                f"<p><a href='{report.all_tielines_plot.name}'>all Khudaida tie-lines plot</a></p>",
-                f"<p><a href='{report.continuation_plot.name}'>continuation plot</a></p>",
-                f"<p><a href='{report.sensitivity_plot.name}'>sensitivity plot</a></p>",
-            ]
-        ),
-        encoding="utf-8",
-    )
-
-
 def _write_gallery_copies(report: ConfidenceReport) -> None:
-    # The gallery now indexes package-local out folders directly.
+    # External gallery tools index package-local out folders directly.
     return None
 
 

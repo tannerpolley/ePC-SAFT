@@ -116,7 +116,7 @@ def validate_manifest(path: Path = DEFAULT_MANIFEST) -> list[str]:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Build or validate the tracked plot-gallery manifest.")
+    parser = argparse.ArgumentParser(description="Build or validate the tracked plot manifest.")
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST, help="Manifest JSON path.")
     parser.add_argument(
         "--refresh", action="store_true", help="Refresh manifest from currently generated local PNG assets."

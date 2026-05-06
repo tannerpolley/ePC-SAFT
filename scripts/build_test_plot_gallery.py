@@ -35,7 +35,7 @@ class GalleryBuildResult:
     png_count: int
     rendered_from_csv: int = 0
     svg_created: int = 0
-    index_path: Path | None = None
+    manifest_path: Path | None = None
     report_path: Path | None = None
     dry_run: bool = False
 
@@ -66,20 +66,6 @@ def _candidate_pngs(plots_root: Path, output_dirs: Iterable[str], *, repo_root: 
 
 def _missing_csvs(pngs: Iterable[Path]) -> list[Path]:
     return [png_path for png_path in pngs if not _plot_data_path(png_path).exists()]
-
-
-def _write_gallery_index(plots_root: Path, *, dry_run: bool) -> Path:
-    index_path = plots_root / "index.html"
-    if dry_run:
-        return index_path
-    plots_root.mkdir(parents=True, exist_ok=True)
-    with _gallery_root(plots_root):
-        pngs = build_analysis_galleries.collect_pngs(plots_root)
-        for nested_index in plots_root.rglob("index.html"):
-            if nested_index != index_path:
-                nested_index.unlink()
-        index_path.write_text(build_analysis_galleries.render_gallery_page(plots_root, pngs), encoding="utf-8")
-    return index_path
 
 
 def _write_report(plots_root: Path, *, repo_root: Path = REPO_ROOT, dry_run: bool) -> Path:
@@ -159,8 +145,7 @@ def build_gallery(
         create_missing_csv=False,
     )
 
-    _write_manifest(plots_root, dry_run=dry_run)
-    index_path = _write_gallery_index(plots_root, dry_run=dry_run)
+    manifest_path = _write_manifest(plots_root, dry_run=dry_run)
     report_path = _write_report(plots_root, repo_root=repo_root, dry_run=dry_run)
 
     return GalleryBuildResult(
@@ -170,7 +155,7 @@ def build_gallery(
         png_count=len(pngs),
         rendered_from_csv=rendered,
         svg_created=svg.svg_created,
-        index_path=index_path,
+        manifest_path=manifest_path,
         report_path=report_path,
         dry_run=dry_run,
     )
@@ -185,7 +170,7 @@ def _format_result(result: GalleryBuildResult) -> str:
         f"Plot producers: {targets}\n"
         f"Output folders: {folders}\n"
         f"PNG files: {result.png_count}; rendered from CSV: {result.rendered_from_csv}; SVG created: {result.svg_created}\n"
-        f"Gallery index: {result.index_path}\n"
+        f"Plot manifest: {result.manifest_path}\n"
         f"Asset report: {result.report_path}"
     )
 

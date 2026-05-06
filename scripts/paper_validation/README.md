@@ -2,17 +2,15 @@
 
 This folder contains paper-reproduction and diagnostic analysis assets. It is separate from the core package build and test workflow.
 
-## Gallery Workflow
+## Plot Manifest Workflow
 
-Regenerate the local PNG browser with:
+Refresh the source-owned plot manifest with:
 
 ```powershell
-uv run python scripts/paper_validation/tools/build_analysis_galleries.py
+uv run python scripts/build_plot_manifest.py --refresh
 ```
 
-The generator writes the master gallery to `docs/plots/index.html` from the tracked `docs/plots/manifest.json`. Open `docs/plots/index.html` locally to browse generated PNG outputs when they exist.
-
-The gallery is a single root page. It lists source-owned plot outputs under `scripts/**/out`, `tests/**/out`, and `src/**/out` and links the matching SVG and CSV assets when they exist. These generated assets are ignored; refresh the manifest with `uv run python scripts/build_plot_manifest.py --refresh` only after intentionally regenerating local outputs.
+`docs/plots/manifest.json` is the tracked interface for external plot-browser software. It lists source-owned plot outputs under `scripts/**/out`, `tests/**/out`, and `src/**/out` and links the matching SVG and CSV assets when they exist.
 
 ## CSV-Backed Figure Data
 
@@ -24,7 +22,7 @@ Regenerate the CSV baseline with:
 uv run python scripts/paper_validation/2025_Figiel_analysis/generate_figure_data.py
 ```
 
-Validate the committed CSV baseline, regenerate the PNGs from CSV, and rebuild the gallery with:
+Validate the committed CSV baseline and regenerate the PNGs from CSV with:
 
 ```powershell
 uv run python scripts/paper_validation/2025_Figiel_analysis/validate_figure_data.py
@@ -36,7 +34,7 @@ All generated PNGs should also have a companion `<png-stem>_plot_data.csv` in th
 
 ## Folder Roles
 
-- `tools/`: shared tooling for paper-validation maintenance, starting with the gallery generator.
+- `tools/`: shared tooling for paper-validation maintenance, companion asset checks, and manifest/report helpers.
 - `*_analysis/`: per-paper figure scripts and digitized/source data. Generated PNGs and generated figure CSVs live under each owning folder's ignored `out/`.
 - `2020_Bulow_analysis/**/diagnostics`: exploratory and audit material. Review and tag these before pruning; do not delete them as routine cleanup.
 

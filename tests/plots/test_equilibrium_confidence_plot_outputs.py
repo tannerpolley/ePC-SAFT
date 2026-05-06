@@ -6,7 +6,7 @@ from epcsaft.equilibrium_core.confidence import run_confidence_suite
 from tests.plots.plot_helpers import assert_plot_with_data
 
 
-def test_electrolyte_lle_confidence_plots_are_written_to_gallery(tmp_path: Path) -> None:
+def test_electrolyte_lle_confidence_plots_are_written_to_local_output(tmp_path: Path) -> None:
     report = run_confidence_suite("khudaida_2026", mode="smoke", output_root=tmp_path, write_gallery=True)
 
     assert report.output_dir == tmp_path / "khudaida_2026"

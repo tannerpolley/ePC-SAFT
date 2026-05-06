@@ -4,8 +4,6 @@ import csv
 import importlib
 import json
 import shutil
-import threading
-import urllib.request
 from pathlib import Path
 
 import matplotlib
@@ -21,7 +19,6 @@ from scripts.paper_validation.tools import build_analysis_galleries
 from scripts.paper_validation.tools import ensure_plot_companions
 from scripts.paper_validation.tools import render_plot_data_csv
 from scripts.paper_validation.tools import report_plot_assets
-from scripts.paper_validation.tools import serve_plot_gallery
 from tests.plots.plot_helpers import assert_figure_text_is_inside_canvas
 from tests.plots.plot_helpers import save_comparison_plot
 
@@ -149,7 +146,7 @@ def test_render_plot_data_csv_rejects_placeholder_rows(tmp_path: Path) -> None:
         render_plot_data_csv.render_csv_to_static_assets(csv_path)
 
 
-def test_root_gallery_embeds_static_single_page_manifest(tmp_path: Path, monkeypatch) -> None:
+def test_plot_manifest_describes_source_owned_static_assets(tmp_path: Path, monkeypatch) -> None:
     root = tmp_path / "docs" / "plots"
     child = tmp_path / "scripts" / "paper_validation" / "Example_analysis" / "figure_1" / "out"
     child.mkdir(parents=True)
@@ -168,50 +165,26 @@ def test_root_gallery_embeds_static_single_page_manifest(tmp_path: Path, monkeyp
         (test_child / f"{test_child.name}.png").write_bytes(b"png")
     monkeypatch.setattr(build_analysis_galleries, "PLOTS_ROOT", root)
 
-    html = build_analysis_galleries.render_gallery_page(root, build_analysis_galleries.collect_pngs(root))
+    manifest = build_analysis_galleries.image_manifest(build_analysis_galleries.collect_pngs(root))
+    by_output = {item["output_path"]: item for item in manifest}
 
-    assert 'data-testid="folder-tree"' in html
-    assert 'data-testid="gallery-grid"' in html
-    assert "paper_validation/index.html" not in html
-    assert '"output_path":"scripts/paper_validation/Example_analysis/figure_1/out/figure_1.png"' in html
-    assert '"svg_path":"../../scripts/paper_validation/Example_analysis/figure_1/out/figure_1.svg"' in html
-    assert '"data_path":"../../scripts/paper_validation/Example_analysis/figure_1/out/figure_1_plot_data.csv"' in html
-    assert '"source_path":"scripts/paper_validation/Example_analysis/figure_1/figure_1.png"' in html
-    assert '"source_path":"tests/plots/equilibrium/vle/vle.png"' in html
-    assert '"source_folder":"tests/plots/properties/residual_energy"' in html
-    assert "tests/plots/reference_comparison_outputs" not in html
-    assert "Source tree" in html
-    assert "Output tree" in html
-    assert "plotGallerySidebarWidth" in html
-    assert "plotGalleryStaticStateV1" in html
-    assert "function saveGalleryState" in html
-    assert "function restoreGalleryState" in html
-    assert "function expandAncestors" in html
-    assert "localStorage.setItem(galleryStateStorageKey" in html
-    assert 'id="sidebar-resizer"' in html
-    assert 'role="separator"' in html
-    assert 'aria-label="Resize plot folder sidebar"' in html
-    assert "function setSidebarWidth" in html
-    assert "startSidebarResize" in html
-    assert "finishSidebarResize" in html
-    assert "col-resize" in html
-    assert ".tree-wrap { flex: 1 1 auto; min-height: 0; overflow: auto;" in html
-    assert "const inFolder = folders.length > 0 && folders.some" in html
-    assert "No folders selected" in html
-    assert "Check one or more folders on the left to show plots." in html
-    assert 'id="data-modal"' in html
-    assert 'id="asset-modal"' in html
-    assert "img.src = image.path;" in html
-    assert "function showDataTable" in html
-    assert "function showAssetPreview" in html
-    assert "function makeAssetButton" in html
-    assert "parseCsv" in html
-    assert 'button.textContent = "Data";' in html
-    assert "Select folders on the left" in html
-    assert ("html" + "_path") not in html
-    assert ("native_" + "plot" + "ly") not in html
-    assert ("csv_" + "backfill") not in html
-    assert ("static_png_" + "wrapper") not in html
+    assert by_output["scripts/paper_validation/Example_analysis/figure_1/out/figure_1.png"]["svg_path"] == (
+        "../../scripts/paper_validation/Example_analysis/figure_1/out/figure_1.svg"
+    )
+    assert by_output["scripts/paper_validation/Example_analysis/figure_1/out/figure_1.png"]["data_path"] == (
+        "../../scripts/paper_validation/Example_analysis/figure_1/out/figure_1_plot_data.csv"
+    )
+    assert by_output["scripts/paper_validation/Example_analysis/figure_1/out/figure_1.png"]["source_path"] == (
+        "scripts/paper_validation/Example_analysis/figure_1/figure_1.png"
+    )
+    assert by_output["tests/plots/out/equilibrium/vle/vle.png"]["source_path"] == (
+        "tests/plots/equilibrium/vle/vle.png"
+    )
+    assert by_output["tests/plots/out/properties/residual_energy/residual_energy.png"]["source_folder"] == (
+        "tests/plots/properties/residual_energy"
+    )
+    assert all(("html" + "_path") not in item for item in manifest)
+    assert all(("native_" + "plot" + "ly") not in json.dumps(item) for item in manifest)
 
 
 def test_khudaida_lle_plots_include_model_paper_experiment_and_feed_series(tmp_path: Path) -> None:
@@ -326,26 +299,6 @@ def test_gallery_manifest_keeps_output_and_source_paths(tmp_path: Path, monkeypa
     )
 
 
-def test_plot_gallery_main_writes_only_root_index_and_removes_nested_indexes(tmp_path: Path, monkeypatch) -> None:
-    root = tmp_path / "docs" / "plots"
-    leaf = tmp_path / "scripts" / "paper_validation" / "Example_analysis" / "figure_1" / "out"
-    nested = leaf / "diagnostics"
-    nested.mkdir(parents=True)
-    (leaf / "figure_1.png").write_bytes(b"png")
-    (nested / "diagnostic.png").write_bytes(b"png")
-    (leaf / "index.html").write_text("stale nested page", encoding="utf-8")
-    monkeypatch.setattr(build_analysis_galleries, "PLOTS_ROOT", root)
-
-    build_analysis_galleries.main()
-    html = (root / "index.html").read_text(encoding="utf-8")
-
-    assert (root / "index.html").exists()
-    assert not (leaf / "index.html").exists()
-    assert '"output_path":"scripts/paper_validation/Example_analysis/figure_1/out/figure_1.png"' in html
-    assert '"output_path":"scripts/paper_validation/Example_analysis/figure_1/out/diagnostics/diagnostic.png"' in html
-    assert "/index.html" not in html
-
-
 def test_docs_plot_manifest_is_valid_without_requiring_generated_assets() -> None:
     assert build_plot_manifest.validate_manifest() == []
 
@@ -365,67 +318,7 @@ def test_docs_plot_manifest_entries_are_source_owned_and_static() -> None:
         assert ("interactive" + "_source") not in item
 
 
-def test_docs_plot_manifest_is_embedded_in_root_gallery() -> None:
-    payload = json.loads(build_plot_manifest.DEFAULT_MANIFEST.read_text(encoding="utf-8"))
-    html = build_analysis_galleries.MANIFEST_PATH.with_name("index.html").read_text(encoding="utf-8")
-
-    assert "Generate locally" in html
-    assert f"{len(payload['items'])} manifest entries" in html
-    assert payload["items"][0]["output_path"] in html
-
-
-def test_docs_plots_have_only_root_gallery_html() -> None:
+def test_docs_plots_has_manifest_but_no_repo_owned_html_app() -> None:
     html_files = sorted(path.as_posix() for path in Path("docs/plots").rglob("*.html"))
-    assert html_files == ["docs/plots/index.html"]
-
-
-def test_plot_gallery_server_skips_busy_preferred_port() -> None:
-    import socket
-
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as occupied:
-        occupied.bind(("127.0.0.1", 0))
-        preferred_port = occupied.getsockname()[1]
-        available_port = serve_plot_gallery.find_available_port("127.0.0.1", preferred_port, attempts=3)
-
-    assert available_port != preferred_port
-    assert preferred_port < available_port <= preferred_port + 2
-
-
-def test_plot_gallery_server_rebuilds_index_on_refresh(tmp_path: Path, monkeypatch) -> None:
-    import socket
-    from functools import partial
-    from http.server import ThreadingHTTPServer
-
-    root = tmp_path
-    index = root / "docs" / "plots" / "index.html"
-    index.parent.mkdir(parents=True)
-    index.write_text("old", encoding="utf-8")
-
-    def fake_build_gallery() -> None:
-        index.write_text("fresh", encoding="utf-8")
-
-    monkeypatch.setattr(serve_plot_gallery, "build_gallery", fake_build_gallery)
-    handler = partial(
-        serve_plot_gallery.PlotGalleryRequestHandler,
-        directory=str(root),
-        auto_build=True,
-    )
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
-        probe.bind(("127.0.0.1", 0))
-        port = probe.getsockname()[1]
-
-    server = ThreadingHTTPServer(("127.0.0.1", port), handler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    try:
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=5) as response:
-            body = response.read().decode("utf-8")
-            cache_control = response.headers["Cache-Control"]
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join(timeout=5)
-
-    assert body == "fresh"
-    assert "no-cache" in cache_control
-    assert "no-store" in cache_control
+    assert html_files == []
+    assert build_plot_manifest.DEFAULT_MANIFEST.exists()

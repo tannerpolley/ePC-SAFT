@@ -25,7 +25,7 @@ CHECK_COMMANDS: dict[str, tuple[tuple[str, ...], ...]] = {
     "plots": (
         ("run_pytest.py", "--plots", "-q"),
         ("scripts/build_plot_manifest.py", "--refresh"),
-        ("scripts/paper_validation/tools/build_analysis_galleries.py",),
+        ("scripts/paper_validation/tools/report_plot_assets.py",),
     ),
     "full": (
         ("scripts/codex_doctor.py",),
