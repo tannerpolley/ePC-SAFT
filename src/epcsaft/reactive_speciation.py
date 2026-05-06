@@ -101,73 +101,18 @@ def solve_reactive_speciation(
     initial = _normalize_composition(initial_x, len(labels), opts.min_mole_fraction)
     balance_matrix, total_vector, balance_names = _normalize_balances(labels, balances, totals)
     reaction_defs = _normalize_reactions(labels, reactions)
-    log_n = np.log(np.clip(initial, opts.min_mole_fraction, None))
-    state_failure_count = 0
-    history: list[dict[str, Any]] = []
-    best_payload: dict[str, Any] | None = None
-
-    def evaluate(candidate_log_n: np.ndarray) -> dict[str, Any]:
-        nonlocal state_failure_count
-        n = np.exp(candidate_log_n)
-        x = n / float(np.sum(n))
-        try:
-            state, charges = _state_for(mixture_factory, x, labels, T, P, opts.phase)
-            activity = state.activity_coefficient(species=labels)
-        except Exception as exc:
-            state_failure_count += 1
-            raise exc
-        gamma = np.asarray([float(activity[label]) for label in labels], dtype=float)
-        mass_residual = balance_matrix @ n - total_vector
-        charge_residual = 0.0 if charges is None else float(np.dot(charges, n))
-        log_activity = np.log(np.clip(x * gamma, opts.min_mole_fraction, None))
-        reaction_residual = np.asarray(
-            [
-                sum(float(nu) * log_activity[labels.index(label)] for label, nu in reaction.stoichiometry.items())
-                - reaction.log_equilibrium_constant
-                for reaction in reaction_defs
-            ],
-            dtype=float,
-        )
-        residual = np.concatenate([mass_residual, np.asarray([charge_residual]), reaction_residual])
-        residual_norm = float(np.max(np.abs(residual))) if residual.size else 0.0
-        return {
-            "n": n,
-            "x": x,
-            "activity": activity,
-            "mass_residual": mass_residual,
-            "charge_residual": charge_residual,
-            "reaction_residual": reaction_residual,
-            "residual": residual,
-            "residual_norm": residual_norm,
-        }
-
-    for iteration in range(0, opts.max_iterations + 1):
-        payload = evaluate(log_n)
-        best_payload = payload
-        history.append({"iteration": iteration, "residual_norm": payload["residual_norm"]})
-        if payload["residual_norm"] <= opts.tolerance:
-            return _result_from_payload(
-                labels,
-                balance_names,
-                payload,
-                state_failure_count,
-                "converged",
-                True,
-                history,
-                opts,
-            )
-        if iteration == opts.max_iterations:
-            break
-        jac = _finite_difference_jacobian(evaluate, log_n, payload["residual"], opts.finite_difference_step)
-        step, *_ = np.linalg.lstsq(jac, -payload["residual"], rcond=None)
-        log_n = log_n + opts.damping * step
-
-    assert best_payload is not None
-    diagnostics = _diagnostics(history, state_failure_count, opts)
-    diagnostics["success"] = False
-    diagnostics["message"] = "reactive speciation did not converge"
-    diagnostics["final_residual_norm"] = best_payload["residual_norm"]
-    raise SolutionError("reactive speciation did not converge", diagnostics)
+    return _solve_reactive_speciation_native(
+        species=labels,
+        mixture_factory=mixture_factory,
+        T=T,
+        P=P,
+        balance_matrix=balance_matrix,
+        total_vector=total_vector,
+        balance_names=balance_names,
+        reactions=reaction_defs,
+        initial_x=initial,
+        options=opts,
+    )
 
 
 def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpeciationOptions:
@@ -182,6 +127,74 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
     if not (0.0 < options.damping <= 1.0):
         raise InputError("ReactiveSpeciationOptions.damping must be in (0, 1].")
     return options
+
+
+def _solve_reactive_speciation_native(
+    *,
+    species: list[str],
+    mixture_factory: Any,
+    T: float,
+    P: float,
+    balance_matrix: np.ndarray,
+    total_vector: np.ndarray,
+    balance_names: list[str],
+    reactions: list[ReactionDefinition],
+    initial_x: np.ndarray,
+    options: ReactiveSpeciationOptions,
+) -> ReactiveSpeciationResult:
+    from . import _core
+
+    mixture = mixture_factory(initial_x, T, P)
+    native = getattr(mixture, "_native", None)
+    if native is None:
+        raise InputError("native reactive speciation backend requires mixture_factory to return an ePCSAFTMixture.")
+    if list(getattr(mixture, "species", species)) != species:
+        raise InputError("native reactive speciation backend requires mixture species to match the species argument.")
+    reaction_matrix = np.asarray(
+        [[float(reaction.stoichiometry.get(label, 0.0)) for label in species] for reaction in reactions],
+        dtype=float,
+    )
+    request = {
+        "T": float(T),
+        "P": float(P),
+        "initial_x": np.asarray(initial_x, dtype=float).tolist(),
+        "balance_matrix": np.asarray(balance_matrix, dtype=float).reshape(-1).tolist(),
+        "balance_rows": int(balance_matrix.shape[0]),
+        "total_vector": np.asarray(total_vector, dtype=float).tolist(),
+        "reaction_stoichiometry": reaction_matrix.reshape(-1).tolist(),
+        "reaction_rows": int(reaction_matrix.shape[0]),
+        "log_equilibrium_constants": [float(reaction.log_equilibrium_constant) for reaction in reactions],
+        "options": {
+            "max_iterations": int(options.max_iterations),
+            "tolerance": float(options.tolerance),
+            "damping": float(options.damping),
+            "min_mole_fraction": float(options.min_mole_fraction),
+            "finite_difference_step": float(options.finite_difference_step),
+            "phase": str(options.phase),
+        },
+    }
+    payload = _core._solve_chemical_equilibrium_native(native, request)
+    diagnostics = dict(payload["diagnostics"])
+    diagnostics["success"] = bool(payload["success"])
+    diagnostics["message"] = str(payload["message"])
+    diagnostics["backend"] = "native"
+    if not payload["success"]:
+        raise SolutionError(str(payload["message"]), diagnostics)
+    return ReactiveSpeciationResult(
+        success=True,
+        message=str(payload["message"]),
+        x={label: float(value) for label, value in zip(species, payload["composition"])},
+        activity_coefficients={
+            label: float(value) for label, value in zip(species, payload["activity_coefficients"])
+        },
+        mass_balance_residuals={
+            name: float(value) for name, value in zip(balance_names, payload["mass_balance_residuals"])
+        },
+        charge_residual=float(payload["charge_residual"]),
+        reaction_residuals=[float(value) for value in payload["reaction_residuals"]],
+        state_failure_count=int(diagnostics.get("state_failure_count", 0)),
+        diagnostics=diagnostics,
+    )
 
 
 def _normalize_composition(value: Any, ncomp: int, min_value: float) -> np.ndarray:
@@ -231,73 +244,6 @@ def _normalize_reactions(species: list[str], reactions: Any) -> list[ReactionDef
                 raise InputError(f"Unknown species '{label}' in reaction stoichiometry.")
         out.append(reaction)
     return out
-
-
-def _state_for(
-    mixture_factory: Any, x: np.ndarray, species: list[str], T: float, P: float, phase: str
-) -> tuple[Any, np.ndarray | None]:
-    obj = mixture_factory(x, T, P)
-    if hasattr(obj, "state"):
-        state = obj.state(T=T, P=P, x=x, phase=phase)
-        charges = np.asarray(obj.parameters.get("z", []), dtype=float).flatten()
-        if charges.size == 0:
-            charges = None
-        elif charges.size != len(species):
-            raise InputError("mixture_factory returned a mixture with a charge vector that does not match species.")
-        return state, charges
-    if not hasattr(obj, "activity_coefficient"):
-        raise InputError("mixture_factory must return an ePCSAFTMixture or an ePCSAFTState-like object.")
-    mix = getattr(obj, "mixture", None)
-    charges = None
-    if mix is not None:
-        raw = np.asarray(mix.parameters.get("z", []), dtype=float).flatten()
-        charges = raw if raw.size else None
-    return obj, charges
-
-
-def _finite_difference_jacobian(evaluate: Any, log_n: np.ndarray, residual: np.ndarray, step: float) -> np.ndarray:
-    jac = np.zeros((residual.size, log_n.size), dtype=float)
-    for idx in range(log_n.size):
-        shifted = log_n.copy()
-        shifted[idx] += step
-        jac[:, idx] = (evaluate(shifted)["residual"] - residual) / step
-    return jac
-
-
-def _result_from_payload(
-    species: list[str],
-    balance_names: list[str],
-    payload: dict[str, Any],
-    state_failure_count: int,
-    message: str,
-    success: bool,
-    history: list[dict[str, Any]],
-    options: ReactiveSpeciationOptions,
-) -> ReactiveSpeciationResult:
-    return ReactiveSpeciationResult(
-        success=success,
-        message=message,
-        x={label: float(value) for label, value in zip(species, payload["x"])},
-        activity_coefficients={str(k): float(v) for k, v in payload["activity"].items()},
-        mass_balance_residuals={name: float(value) for name, value in zip(balance_names, payload["mass_residual"])},
-        charge_residual=float(payload["charge_residual"]),
-        reaction_residuals=[float(value) for value in payload["reaction_residual"]],
-        state_failure_count=state_failure_count,
-        diagnostics=_diagnostics(history, state_failure_count, options),
-    )
-
-
-def _diagnostics(
-    history: list[dict[str, Any]], state_failure_count: int, options: ReactiveSpeciationOptions
-) -> dict[str, Any]:
-    return {
-        "success": True,
-        "iterations": int(history[-1]["iteration"]) if history else 0,
-        "history": _json_like(history),
-        "state_failure_count": int(state_failure_count),
-        "tolerance": float(options.tolerance),
-        "phase": str(options.phase),
-    }
 
 
 def _json_like(value: Any) -> Any:
