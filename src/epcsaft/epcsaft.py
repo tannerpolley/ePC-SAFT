@@ -194,8 +194,44 @@ class ePCSAFTMixture:
         from .equilibrium import tp_flash
         from .equilibrium_core.classify import classify_equilibrium_route
         from .electrolyte_bubble import electrolyte_bubble_pressure
+        from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions
+        from .reactive_electrolyte import solve_reactive_electrolyte_bubble
         from .reactive_speciation import ReactiveSpeciationOptions
         from .reactive_speciation import solve_reactive_speciation
+
+        if kind in {"reactive_electrolyte_bubble_pressure", "reactive_electrolyte_bubble"}:
+            if balances is None or totals is None or reactions is None:
+                raise InputError("reactive_electrolyte_bubble_pressure requires balances, totals, and reactions.")
+            if initial_x is None:
+                if z is None:
+                    raise InputError(
+                        "reactive_electrolyte_bubble_pressure requires z or initial_x as the initial composition."
+                    )
+                initial_x = z
+            if P is None:
+                raise InputError("reactive_electrolyte_bubble_pressure requires P as the pressure seed.")
+            if options is None:
+                reactive_bubble_options = ReactiveElectrolyteBubbleOptions()
+            elif not isinstance(options, ReactiveElectrolyteBubbleOptions):
+                raise InputError(
+                    "reactive_electrolyte_bubble_pressure options must be a ReactiveElectrolyteBubbleOptions instance."
+                )
+            else:
+                reactive_bubble_options = options
+            return solve_reactive_electrolyte_bubble(
+                species=self.species,
+                mixture_factory=lambda x, T, P: self,
+                T=T,
+                P_seed=P,
+                balances=balances,
+                totals=totals,
+                reactions=reactions,
+                initial_x=initial_x,
+                vapor_species=vapor_species if vapor_species is not None else volatile_species,
+                volatile_species=volatile_species,
+                nonvolatile_species=nonvolatile_species,
+                options=reactive_bubble_options,
+            )
 
         if kind in {"chemical_equilibrium", "reactive_speciation"}:
             if balances is None or totals is None or reactions is None:
@@ -219,6 +255,10 @@ class ePCSAFTMixture:
                     min_mole_fraction=reactive_options.min_mole_fraction,
                     finite_difference_step=reactive_options.finite_difference_step,
                     phase=reactive_options.phase,
+                    return_best_effort=reactive_options.return_best_effort,
+                    mass_tolerance=reactive_options.mass_tolerance,
+                    charge_tolerance=reactive_options.charge_tolerance,
+                    reaction_tolerance=reactive_options.reaction_tolerance,
                 )
             return solve_reactive_speciation(
                 species=self.species,
@@ -485,7 +525,7 @@ class ePCSAFTMixture:
                 trial_phases=trial_phases,
             )
         raise InputError(
-            "Only kind='tp_flash', kind='auto', kind='lle_flash', kind='electrolyte_lle', kind='electrolyte_bubble_pressure', kind='electrolyte_stability', kind='stability', kind='chemical_equilibrium', or kind='reactive_stability' is supported by equilibrium."
+            "Only kind='tp_flash', kind='auto', kind='lle_flash', kind='electrolyte_lle', kind='electrolyte_bubble_pressure', kind='electrolyte_stability', kind='stability', kind='chemical_equilibrium', kind='reactive_stability', or kind='reactive_electrolyte_bubble_pressure' is supported by equilibrium."
         )
 
     def equilibrium_curve(self, points, *, kind="electrolyte_lle", T=None, P=None, options=None, initial_phases=None):
@@ -510,6 +550,41 @@ class ePCSAFTMixture:
             if result.split_detected:
                 seed = initial_phases_from_result(result)
         return results
+
+    def equilibrium_sweep(
+        self,
+        points,
+        *,
+        kind="reactive_electrolyte_bubble_pressure",
+        balances=None,
+        reactions=None,
+        vapor_species=None,
+        volatile_species=None,
+        nonvolatile_species=None,
+        options=None,
+        continuation="auto",
+    ):
+        """Solve an ordered equilibrium sweep with workflow-specific continuation."""
+        if kind not in {"reactive_electrolyte_bubble_pressure", "reactive_electrolyte_bubble"}:
+            raise InputError("equilibrium_sweep currently supports kind='reactive_electrolyte_bubble_pressure'.")
+        if balances is None or reactions is None:
+            raise InputError("reactive electrolyte equilibrium_sweep requires balances and reactions.")
+        if vapor_species is None and volatile_species is None:
+            raise InputError("reactive electrolyte equilibrium_sweep requires vapor_species or volatile_species.")
+        from .reactive_electrolyte import solve_reactive_electrolyte_bubble_sweep
+
+        return solve_reactive_electrolyte_bubble_sweep(
+            species=self.species,
+            mixture_factory=lambda x, T, P: self,
+            points=points,
+            balances=balances,
+            reactions=reactions,
+            vapor_species=vapor_species if vapor_species is not None else volatile_species,
+            volatile_species=volatile_species,
+            nonvolatile_species=nonvolatile_species,
+            options=options,
+            continuation=continuation,
+        )
 
     def __repr__(self):
         """Return a short debugging representation of the mixture."""

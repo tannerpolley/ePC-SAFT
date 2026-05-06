@@ -48,6 +48,93 @@ def test_electrolyte_bubble_pressure_solves_neutral_vapor_over_ionic_liquid() ->
     json.dumps(result.to_dict(), allow_nan=False)
 
 
+def test_electrolyte_bubble_pressure_accepts_pressure_and_vapor_continuation() -> None:
+    mix = _co2_water_salt_mixture()
+    first = mix.equilibrium(
+        kind="electrolyte_bubble_pressure",
+        T=313.15,
+        x_liq=[0.02, 0.979, 0.0005, 0.0005],
+        volatile_species=["CO2", "H2O"],
+        vapor_species=["CO2", "H2O"],
+        nonvolatile_species=["Na+", "Cl-"],
+        options=epcsaft.ElectrolyteBubbleOptions(initial_pressure=1.0e5, max_iterations=80),
+    )
+
+    continued = mix.equilibrium(
+        kind="electrolyte_bubble_pressure",
+        T=313.15,
+        x_liq=[0.021, 0.978, 0.0005, 0.0005],
+        volatile_species=["CO2", "H2O"],
+        vapor_species=["CO2", "H2O"],
+        nonvolatile_species=["Na+", "Cl-"],
+        options=epcsaft.ElectrolyteBubbleOptions(
+            initial_pressure=first.P,
+            initial_y_vap=first.y_vap,
+            max_iterations=80,
+        ),
+    )
+
+    assert continued.success is True
+    assert continued.diagnostics["log_pressure_solve"] is True
+    assert continued.diagnostics["used_initial_y_vap"] is True
+    assert sum(continued.y_vap.values()) == pytest.approx(1.0, abs=1.0e-8)
+
+
+def test_electrolyte_bubble_pressure_strict_failure_reports_best_point() -> None:
+    mix = _co2_water_salt_mixture()
+
+    with pytest.raises(epcsaft.SolutionError) as excinfo:
+        mix.equilibrium(
+            kind="electrolyte_bubble_pressure",
+            T=313.15,
+            x_liq=[0.02, 0.979, 0.0005, 0.0005],
+            volatile_species=["CO2", "H2O"],
+            vapor_species=["CO2", "H2O"],
+            nonvolatile_species=["Na+", "Cl-"],
+            options=epcsaft.ElectrolyteBubbleOptions(
+                initial_pressure=1.0e5,
+                max_iterations=1,
+                tolerance=1.0e-20,
+            ),
+        )
+
+    diagnostics = excinfo.value.diagnostics
+    assert diagnostics["best_P"] > 0.0
+    assert np.isfinite(diagnostics["best_objective"])
+    assert set(diagnostics["best_y_vap"]) == {"CO2", "H2O"}
+    assert set(diagnostics["best_partial_pressures"]) == {"CO2", "H2O"}
+    assert diagnostics["best_fugacity_residual_norm"] >= 0.0
+    json.dumps(diagnostics, allow_nan=False)
+
+
+def test_electrolyte_bubble_pressure_best_effort_returns_nonconverged_result() -> None:
+    mix = _co2_water_salt_mixture()
+
+    result = mix.equilibrium(
+        kind="electrolyte_bubble_pressure",
+        T=313.15,
+        x_liq=[0.02, 0.979, 0.0005, 0.0005],
+        volatile_species=["CO2", "H2O"],
+        vapor_species=["CO2", "H2O"],
+        nonvolatile_species=["Na+", "Cl-"],
+        options=epcsaft.ElectrolyteBubbleOptions(
+            initial_pressure=1.0e5,
+            max_iterations=1,
+            tolerance=1.0e-20,
+            return_best_effort=True,
+        ),
+    )
+
+    assert isinstance(result, epcsaft.ElectrolyteBubbleResult)
+    assert result.success is False
+    assert result.P > 0.0
+    assert set(result.y_vap) == {"CO2", "H2O"}
+    assert sum(result.y_vap.values()) == pytest.approx(1.0, abs=1.0e-8)
+    assert set(result.partial_pressures) == {"CO2", "H2O"}
+    assert result.diagnostics["best_P"] == pytest.approx(result.P)
+    json.dumps(result.to_dict(), allow_nan=False)
+
+
 @pytest.mark.parametrize(
     ("kwargs", "match"),
     [

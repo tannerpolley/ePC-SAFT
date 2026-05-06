@@ -47,10 +47,17 @@ def test_solve_reactive_speciation_returns_balanced_activity_coupled_state() -> 
             epcsaft.ReactionDefinition(
                 stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
                 log_equilibrium_constant=log_k,
+                name="salt_dissociation",
             )
         ],
         initial_x=initial_x,
-        options=epcsaft.ReactiveSpeciationOptions(max_iterations=8, tolerance=1.0e-8),
+        options=epcsaft.ReactiveSpeciationOptions(
+            max_iterations=8,
+            tolerance=1.0e-8,
+            mass_tolerance=1.0e-8,
+            charge_tolerance=1.0e-8,
+            reaction_tolerance=1.0e-8,
+        ),
     )
 
     assert isinstance(result, epcsaft.ReactiveSpeciationResult)
@@ -59,11 +66,91 @@ def test_solve_reactive_speciation_returns_balanced_activity_coupled_state() -> 
     assert abs(result.charge_residual) <= 1.0e-10
     assert max(abs(value) for value in result.mass_balance_residuals.values()) <= 1.0e-8
     assert max(abs(value) for value in result.reaction_residuals) <= 1.0e-8
+    assert set(result.named_reaction_residuals) == {"salt_dissociation"}
+    assert result.named_reaction_residuals["salt_dissociation"] == pytest.approx(result.reaction_residuals[0])
     assert set(result.activity_coefficients) == set(species)
     assert result.state_failure_count == 0
     assert result.diagnostics["solver_language"] == "c++"
     assert result.diagnostics["backend"] == "native"
     assert result.diagnostics["native_entrypoint"] == "_solve_chemical_equilibrium_native"
+    assert result.diagnostics["mass_tolerance"] == pytest.approx(1.0e-8)
+    assert result.diagnostics["charge_tolerance"] == pytest.approx(1.0e-8)
+    assert result.diagnostics["reaction_tolerance"] == pytest.approx(1.0e-8)
+    json.dumps(result.to_dict(), allow_nan=False)
+
+
+def test_solve_reactive_speciation_strict_failure_reports_best_state() -> None:
+    species = ["H2O", "NaCl", "Na+", "Cl-"]
+    mix = _salt_speciation_mixture()
+
+    with pytest.raises(epcsaft.SolutionError) as excinfo:
+        epcsaft.solve_reactive_speciation(
+            species=species,
+            mixture_factory=lambda x, T, P: mix,
+            T=298.15,
+            P=1.0e5,
+            balances={
+                "water_total": {"H2O": 1.0},
+                "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
+                "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
+            },
+            totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
+            reactions=[
+                epcsaft.ReactionDefinition(
+                    stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
+                    log_equilibrium_constant=0.0,
+                    name="salt_dissociation",
+                )
+            ],
+            initial_x=[0.998, 0.001, 0.0005, 0.0005],
+            options=epcsaft.ReactiveSpeciationOptions(max_iterations=0, tolerance=1.0e-12),
+        )
+
+    diagnostics = excinfo.value.diagnostics
+    assert set(diagnostics["best_x"]) == set(species)
+    assert set(diagnostics["best_activity_coefficients"]) == set(species)
+    assert diagnostics["named_reaction_residuals"].keys() == {"salt_dissociation"}
+    assert diagnostics["native_success"] is False
+    json.dumps(diagnostics, allow_nan=False)
+
+
+def test_solve_reactive_speciation_best_effort_returns_nonconverged_result() -> None:
+    species = ["H2O", "NaCl", "Na+", "Cl-"]
+    mix = _salt_speciation_mixture()
+
+    result = epcsaft.solve_reactive_speciation(
+        species=species,
+        mixture_factory=lambda x, T, P: mix,
+        T=298.15,
+        P=1.0e5,
+        balances={
+            "water_total": {"H2O": 1.0},
+            "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
+            "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
+        },
+        totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
+        reactions=[
+            epcsaft.ReactionDefinition(
+                stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
+                log_equilibrium_constant=0.0,
+                name="salt_dissociation",
+            )
+        ],
+        initial_x=[0.998, 0.001, 0.0005, 0.0005],
+        options=epcsaft.ReactiveSpeciationOptions(
+            max_iterations=0,
+            tolerance=1.0e-12,
+            return_best_effort=True,
+        ),
+    )
+
+    assert isinstance(result, epcsaft.ReactiveSpeciationResult)
+    assert result.success is False
+    assert set(result.x) == set(species)
+    assert set(result.activity_coefficients) == set(species)
+    assert set(result.named_reaction_residuals) == {"salt_dissociation"}
+    assert result.diagnostics["best_x"] == result.x
+    assert result.diagnostics["best_activity_coefficients"] == result.activity_coefficients
     json.dumps(result.to_dict(), allow_nan=False)
 
 

@@ -35,6 +35,10 @@ class ReactiveSpeciationOptions:
     min_mole_fraction: float = 1.0e-14
     finite_difference_step: float = 1.0e-6
     phase: str = "liq"
+    return_best_effort: bool = False
+    mass_tolerance: float | None = None
+    charge_tolerance: float | None = None
+    reaction_tolerance: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +52,7 @@ class ReactiveSpeciationResult:
     mass_balance_residuals: dict[str, float]
     charge_residual: float
     reaction_residuals: list[float]
+    named_reaction_residuals: dict[str, float]
     state_failure_count: int
     diagnostics: dict[str, Any]
 
@@ -63,6 +68,11 @@ class ReactiveSpeciationResult:
         )
         object.__setattr__(self, "charge_residual", float(self.charge_residual))
         object.__setattr__(self, "reaction_residuals", [float(v) for v in self.reaction_residuals])
+        object.__setattr__(
+            self,
+            "named_reaction_residuals",
+            {str(k): float(v) for k, v in self.named_reaction_residuals.items()},
+        )
         object.__setattr__(self, "state_failure_count", int(self.state_failure_count))
         object.__setattr__(self, "diagnostics", dict(self.diagnostics))
 
@@ -76,6 +86,7 @@ class ReactiveSpeciationResult:
             "mass_balance_residuals": dict(self.mass_balance_residuals),
             "charge_residual": self.charge_residual,
             "reaction_residuals": list(self.reaction_residuals),
+            "named_reaction_residuals": dict(self.named_reaction_residuals),
             "state_failure_count": self.state_failure_count,
             "diagnostics": _json_like(self.diagnostics),
         }
@@ -126,6 +137,12 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
         raise InputError("ReactiveSpeciationOptions tolerances and steps must be positive.")
     if not (0.0 < options.damping <= 1.0):
         raise InputError("ReactiveSpeciationOptions.damping must be in (0, 1].")
+    if not isinstance(options.return_best_effort, bool):
+        raise InputError("ReactiveSpeciationOptions.return_best_effort must be a bool.")
+    for name in ("mass_tolerance", "charge_tolerance", "reaction_tolerance"):
+        value = getattr(options, name)
+        if value is not None and value <= 0.0:
+            raise InputError(f"ReactiveSpeciationOptions.{name} must be positive when provided.")
     return options
 
 
@@ -174,25 +191,74 @@ def _solve_reactive_speciation_native(
         },
     }
     payload = _core._solve_chemical_equilibrium_native(native, request)
+    x = {label: float(value) for label, value in zip(species, payload["composition"])}
+    activity_coefficients = {label: float(value) for label, value in zip(species, payload["activity_coefficients"])}
+    mass_balance_residuals = {
+        name: float(value) for name, value in zip(balance_names, payload["mass_balance_residuals"])
+    }
+    reaction_residuals = [float(value) for value in payload["reaction_residuals"]]
+    named_reaction_residuals = _named_reaction_residuals(reactions, reaction_residuals)
+    mass_tolerance = options.mass_tolerance if options.mass_tolerance is not None else options.tolerance
+    charge_tolerance = options.charge_tolerance if options.charge_tolerance is not None else options.tolerance
+    reaction_tolerance = options.reaction_tolerance if options.reaction_tolerance is not None else options.tolerance
+    mass_residual_norm = float(max((abs(value) for value in mass_balance_residuals.values()), default=0.0))
+    reaction_residual_norm = float(max((abs(value) for value in reaction_residuals), default=0.0))
+    charge_residual = float(payload["charge_residual"])
+    residual_family_success = (
+        mass_residual_norm <= mass_tolerance
+        and abs(charge_residual) <= charge_tolerance
+        and reaction_residual_norm <= reaction_tolerance
+    )
     diagnostics = dict(payload["diagnostics"])
-    diagnostics["success"] = bool(payload["success"])
-    diagnostics["message"] = str(payload["message"])
-    diagnostics["backend"] = "native"
-    if not payload["success"]:
-        raise SolutionError(str(payload["message"]), diagnostics)
-    return ReactiveSpeciationResult(
-        success=True,
-        message=str(payload["message"]),
-        x={label: float(value) for label, value in zip(species, payload["composition"])},
-        activity_coefficients={label: float(value) for label, value in zip(species, payload["activity_coefficients"])},
-        mass_balance_residuals={
-            name: float(value) for name, value in zip(balance_names, payload["mass_balance_residuals"])
-        },
-        charge_residual=float(payload["charge_residual"]),
-        reaction_residuals=[float(value) for value in payload["reaction_residuals"]],
+    diagnostics.update(
+        {
+            "success": bool(payload["success"] and residual_family_success),
+            "native_success": bool(payload["success"]),
+            "residual_family_success": bool(residual_family_success),
+            "message": str(payload["message"]),
+            "backend": "native",
+            "mass_tolerance": float(mass_tolerance),
+            "charge_tolerance": float(charge_tolerance),
+            "reaction_tolerance": float(reaction_tolerance),
+            "mass_residual_norm": mass_residual_norm,
+            "charge_residual_abs": abs(charge_residual),
+            "reaction_residual_norm": reaction_residual_norm,
+            "named_reaction_residuals": dict(named_reaction_residuals),
+            "best_x": dict(x),
+            "best_activity_coefficients": dict(activity_coefficients),
+        }
+    )
+    success = bool(payload["success"] and residual_family_success)
+    message = str(payload["message"])
+    if bool(payload["success"]) and not residual_family_success:
+        message = "reactive speciation residual family tolerances were not met"
+        diagnostics["message"] = message
+    result = ReactiveSpeciationResult(
+        success=success,
+        message=message,
+        x=x,
+        activity_coefficients=activity_coefficients,
+        mass_balance_residuals=mass_balance_residuals,
+        charge_residual=charge_residual,
+        reaction_residuals=reaction_residuals,
+        named_reaction_residuals=named_reaction_residuals,
         state_failure_count=int(diagnostics.get("state_failure_count", 0)),
         diagnostics=diagnostics,
     )
+    if not success and not options.return_best_effort:
+        raise SolutionError(message, _json_like(diagnostics))
+    return result
+
+
+def _named_reaction_residuals(reactions: list[ReactionDefinition], reaction_residuals: list[float]) -> dict[str, float]:
+    names: list[str] = []
+    counts: dict[str, int] = {}
+    for index, reaction in enumerate(reactions):
+        base = reaction.name.strip() if reaction.name.strip() else f"reaction_{index}"
+        count = counts.get(base, 0)
+        counts[base] = count + 1
+        names.append(base if count == 0 else f"{base}_{count}")
+    return {name: float(value) for name, value in zip(names, reaction_residuals)}
 
 
 def _normalize_composition(value: Any, ncomp: int, min_value: float) -> np.ndarray:

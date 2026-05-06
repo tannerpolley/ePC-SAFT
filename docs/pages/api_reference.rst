@@ -67,6 +67,20 @@ nonvolatile in this V1 route.
 
 .. autofunction:: epcsaft.solve_reactive_speciation
 
+.. autoclass:: epcsaft.ReactiveElectrolyteBubbleOptions
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: epcsaft.ReactiveElectrolyteBubbleResult
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autofunction:: epcsaft.solve_reactive_electrolyte_bubble
+
+.. autofunction:: epcsaft.solve_reactive_electrolyte_bubble_sweep
+
 Regression helpers
 ------------------
 

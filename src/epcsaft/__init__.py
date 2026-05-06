@@ -34,6 +34,10 @@ from .reactive_speciation import ReactionDefinition
 from .reactive_speciation import ReactiveSpeciationOptions
 from .reactive_speciation import ReactiveSpeciationResult
 from .reactive_speciation import solve_reactive_speciation
+from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions
+from .reactive_electrolyte import ReactiveElectrolyteBubbleResult
+from .reactive_electrolyte import solve_reactive_electrolyte_bubble
+from .reactive_electrolyte import solve_reactive_electrolyte_bubble_sweep
 
 __all__ = [
     "DATASET_ROOT",
@@ -68,6 +72,10 @@ __all__ = [
     "ReactionDefinition",
     "ReactiveSpeciationOptions",
     "ReactiveSpeciationResult",
+    "ReactiveElectrolyteBubbleOptions",
+    "ReactiveElectrolyteBubbleResult",
+    "solve_reactive_electrolyte_bubble",
+    "solve_reactive_electrolyte_bubble_sweep",
     "solve_reactive_speciation",
     "write_fit_result",
 ]
