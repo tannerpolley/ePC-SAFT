@@ -33,6 +33,7 @@ Reference
    :caption: API and Background
 
    package_guide
+   downstream_dependency_protocol
    electrolyte_lle_workflow
    electrolyte_vle_reactive_workflow
    api_reference

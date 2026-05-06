@@ -29,6 +29,7 @@ Direct pytest also works, for example `uv run python -m pytest tests\api\test_ru
 The default source-checkout validation sequence is sync, normal native build, then `uv run python scripts\validate_project.py quick`. Use `uv run python scripts\validate_project.py confidence` before handoff when runtime confidence matters.
 
 For maintainers, the [development workflow guide](docs/pages/development_workflows.rst) is the source-of-truth command matrix for setup, fast rebuilds, focused tests, profiling, packaging, and repair-only cleanup.
+For downstream projects that hit suspected package bugs, use the [downstream dependency protocol](docs/pages/downstream_dependency_protocol.rst) to file a complete GitHub issue and validation command.
 
 For the standard validation loops:
 
@@ -108,6 +109,7 @@ Electrolyte VLE starts with `mixture.equilibrium(kind="electrolyte_bubble_pressu
 - [Parameter regression guide](docs/pages/parameter_regression.rst)
 - [User options reference](docs/pages/user_options.rst)
 - [Task-based package guide](docs/pages/package_guide.rst)
+- [Downstream dependency protocol](docs/pages/downstream_dependency_protocol.rst)
 - [Electrolyte VLE and reactive speciation](docs/pages/electrolyte_vle_reactive_workflow.rst)
 - [API reference](docs/pages/api_reference.rst)
 

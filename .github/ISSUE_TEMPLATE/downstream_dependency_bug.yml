@@ -1,0 +1,86 @@
+name: Downstream ePC-SAFT dependency bug
+description: Report a downstream project failure that appears to require an upstream epcsaft package fix.
+title: "Downstream failure: <consumer> hits <short epcsaft issue>"
+labels: ["downstream-bug", "agent-ready"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when another project fails because of a suspected `epcsaft` package bug or missing public contract.
+        Downstream agents should verify the imported package path before filing.
+  - type: input
+    id: downstream-repo-or-path
+    attributes:
+      label: Downstream repo or path
+      description: Repository name, local path, or app that depends on epcsaft.
+      placeholder: C:\Users\Tanner\Documents\git\MEA-Thermodynamics
+    validations:
+      required: true
+  - type: input
+    id: task-goal
+    attributes:
+      label: Task goal
+      description: One sentence describing what the downstream project was trying to do.
+    validations:
+      required: true
+  - type: textarea
+    id: failing-command
+    attributes:
+      label: Failing command
+      description: Exact command that failed.
+      render: powershell
+    validations:
+      required: true
+  - type: textarea
+    id: error-or-bad-result
+    attributes:
+      label: Error or bad result
+      description: Traceback, log excerpt, or numeric mismatch.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: minimal-reproducer
+    attributes:
+      label: Minimal reproducer
+      description: Smallest Python snippet or script that reproduces the package-level problem.
+      render: python
+    validations:
+      required: true
+  - type: textarea
+    id: imported-epcsaft-path
+    attributes:
+      label: Imported epcsaft path
+      description: Output from `python -c "import epcsaft; print(epcsaft.__file__)"`.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: What should epcsaft do?
+    validations:
+      required: true
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual behavior
+      description: What did epcsaft do instead?
+    validations:
+      required: true
+  - type: textarea
+    id: downstream-validation-command-after-fix
+    attributes:
+      label: Downstream validation command after fix
+      description: Exact command the downstream agent should rerun after an upstream fix.
+      render: powershell
+    validations:
+      required: true
+  - type: textarea
+    id: temporary-workaround
+    attributes:
+      label: Temporary workaround
+      description: State whether a workaround was used and whether it should be removed after the upstream fix.
+    validations:
+      required: true

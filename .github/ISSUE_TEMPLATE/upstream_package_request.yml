@@ -1,0 +1,101 @@
+name: Upstream ePC-SAFT package request
+description: Request an epcsaft public API, documentation, packaging, numerical, or validation change.
+title: "Package request: <short epcsaft change>"
+labels: ["enhancement", "agent-ready"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for package-level gaps found by downstream work when the request is broader than a single bug.
+        Include a downstream validation command so the upstream change can be proven in context.
+  - type: input
+    id: downstream-repo-or-path
+    attributes:
+      label: Downstream repo or path
+      description: Repository name, local path, or application that needs the package change.
+      placeholder: C:\Users\Tanner\Documents\git\MEA-Thermodynamics
+    validations:
+      required: true
+  - type: dropdown
+    id: request-area
+    attributes:
+      label: Request area
+      options:
+        - python-api
+        - native
+        - solver
+        - packaging
+        - docs
+        - validation
+        - regression
+        - equilibrium
+    validations:
+      required: true
+  - type: input
+    id: task-goal
+    attributes:
+      label: Task goal
+      description: One sentence describing what the downstream project is trying to do.
+    validations:
+      required: true
+  - type: textarea
+    id: failing-command
+    attributes:
+      label: Failing command
+      description: Exact command, script, or usage that shows the current gap.
+      render: powershell
+    validations:
+      required: true
+  - type: textarea
+    id: error-or-bad-result
+    attributes:
+      label: Error or bad result
+      description: Traceback, log excerpt, confusing behavior, or missing-capability evidence.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: minimal-reproducer
+    attributes:
+      label: Minimal reproducer
+      description: Smallest Python snippet or command sequence that demonstrates the requested package behavior.
+      render: python
+    validations:
+      required: true
+  - type: textarea
+    id: imported-epcsaft-path
+    attributes:
+      label: Imported epcsaft path
+      description: Output from `python -c "import epcsaft; print(epcsaft.__file__)"`.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: Desired public package behavior or documentation outcome.
+    validations:
+      required: true
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual behavior
+      description: Current package behavior or ambiguity.
+    validations:
+      required: true
+  - type: textarea
+    id: downstream-validation-command-after-fix
+    attributes:
+      label: Downstream validation command after fix
+      description: Exact command the downstream agent should rerun after the upstream package change.
+      render: powershell
+    validations:
+      required: true
+  - type: textarea
+    id: temporary-workaround
+    attributes:
+      label: Temporary workaround
+      description: State whether a workaround was used and whether it should be removed after the upstream change.
+    validations:
+      required: true
