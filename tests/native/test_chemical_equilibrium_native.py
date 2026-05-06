@@ -126,6 +126,21 @@ def test_native_chemical_equilibrium_solves_easy_ideal_reaction() -> None:
     assert result.diagnostics["solver_language"] == "c++"
     assert result.diagnostics["native_entrypoint"] == "_solve_chemical_equilibrium_native"
     assert result.diagnostics["activity_model"] == "epcsaft_neutral_fugacity_activity"
+    assert result.diagnostics["requested_jacobian_backend"] == "auto"
+    assert result.diagnostics["jacobian_backend"] == "finite_difference"
+    assert result.diagnostics["jacobian_available"] is True
+    assert result.diagnostics["jacobian_fallback_used"] is True
+    assert result.diagnostics["finite_difference_fallback_used"] is True
+    assert "autodiff chemical-equilibrium residual jacobian is not implemented" in result.diagnostics[
+        "finite_difference_fallback_reason"
+    ]
+    assert "autodiff chemical-equilibrium residual jacobian is not implemented" in result.diagnostics[
+        "jacobian_fallback_reason"
+    ]
+    assert result.diagnostics["hessian_available"] is False
+    assert result.diagnostics["hessian_backend"] == "not_implemented"
+    assert result.diagnostics["hessian_fallback_used"] is False
+    assert "IPOPT-compatible optimizer integration" in result.diagnostics["hessian_fallback_reason"]
 
 
 def test_mixture_equilibrium_routes_chemical_equilibrium_to_native_speciation() -> None:

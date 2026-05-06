@@ -111,6 +111,9 @@ struct CompositionContributionResult {
     ScalarContributionTerms sum_x_dadx;
     ScalarContributionTerms z_raw;
     ScalarContributionTerms z;
+    std::map<std::string, std::string> derivative_backend;
+    bool finite_difference_fallback_used = false;
+    std::string finite_difference_fallback_reason;
 };
 
 struct ResidualChemicalPotentialResult {
@@ -196,6 +199,17 @@ struct PureNeutralRegressionDebugResult {
     vector<double> jacobian_row_major;
     int jacobian_rows = 0;
     int jacobian_cols = 0;
+    bool jacobian_available = true;
+    std::string jacobian_backend = "autodiff";
+    bool jacobian_fallback_used = false;
+    std::string jacobian_fallback_reason;
+    vector<double> hessian_row_major;
+    int hessian_rows = 0;
+    int hessian_cols = 0;
+    bool hessian_available = false;
+    std::string hessian_backend = "not_implemented";
+    bool hessian_fallback_used = false;
+    std::string hessian_fallback_reason = "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
     vector<double> density_raw_residuals;
     vector<double> pure_vle_raw_residuals;
     int residual_evaluations = 0;
@@ -227,6 +241,14 @@ struct PureNeutralRegressionResult {
     double solve_wall_time_s = 0.0;
     std::string message;
     std::string backend;
+    bool jacobian_available = true;
+    std::string jacobian_backend = "autodiff";
+    bool jacobian_fallback_used = false;
+    std::string jacobian_fallback_reason;
+    bool hessian_available = false;
+    std::string hessian_backend = "not_implemented";
+    bool hessian_fallback_used = false;
+    std::string hessian_fallback_reason = "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
 };
 
 struct GenericRegressionRecord {
@@ -250,6 +272,21 @@ struct GenericRegressionDebugResult {
     double cost = HUGE_DBL;
     double residual_norm = HUGE_DBL;
     vector<double> residuals;
+    vector<double> jacobian_row_major;
+    int jacobian_rows = 0;
+    int jacobian_cols = 0;
+    bool jacobian_available = true;
+    std::string jacobian_backend = "finite_difference";
+    bool jacobian_fallback_used = true;
+    std::string jacobian_fallback_reason = "Generic regression autodiff Jacobian is not implemented for all residual state calls yet.";
+    int finite_difference_fallback_count = 0;
+    vector<double> hessian_row_major;
+    int hessian_rows = 0;
+    int hessian_cols = 0;
+    bool hessian_available = false;
+    std::string hessian_backend = "not_implemented";
+    bool hessian_fallback_used = false;
+    std::string hessian_fallback_reason = "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
     std::map<std::string, double> metrics_by_term;
 };
 
@@ -265,6 +302,15 @@ struct GenericRegressionResult {
     int nfev = 0;
     int iterations = 0;
     int starts_tried = 0;
+    bool jacobian_available = true;
+    std::string jacobian_backend = "finite_difference";
+    bool jacobian_fallback_used = true;
+    std::string jacobian_fallback_reason = "Generic regression autodiff Jacobian is not implemented for all residual state calls yet.";
+    int finite_difference_fallback_count = 0;
+    bool hessian_available = false;
+    std::string hessian_backend = "not_implemented";
+    bool hessian_fallback_used = false;
+    std::string hessian_fallback_reason = "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
     std::string message;
     std::string backend;
 };

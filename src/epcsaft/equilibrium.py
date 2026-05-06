@@ -37,6 +37,7 @@ class EquilibriumOptions:
     ignored_legacy_options: tuple[str, ...] = ()
     density_diagnostics: Literal["auto", "off", "full"] = "auto"
     experimental_coupled_density_lle: bool = False
+    jacobian_backend: Literal["auto", "autodiff", "finite_difference"] = "auto"
 
 
 @dataclass(frozen=True, slots=True, init=False)
@@ -569,6 +570,7 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
             "legacy_candidate_max_iterations",
             "density_diagnostics",
             "experimental_coupled_density_lle",
+            "jacobian_backend",
         }
         unknown = sorted(set(raw) - allowed)
         if unknown:
@@ -622,6 +624,11 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
         raise InputError("options.density_diagnostics must be 'auto', 'off', or 'full'.")
     if not isinstance(options.experimental_coupled_density_lle, bool):
         raise InputError("options.experimental_coupled_density_lle must be boolean.")
+    jacobian_backend = str(options.jacobian_backend).strip().lower()
+    aliases = {"numerical": "finite_difference", "fd": "finite_difference"}
+    jacobian_backend = aliases.get(jacobian_backend, jacobian_backend)
+    if jacobian_backend not in {"auto", "autodiff", "finite_difference"}:
+        raise InputError("options.jacobian_backend must be 'auto', 'autodiff', or 'finite_difference'.")
     return EquilibriumOptions(
         max_iterations=max_iterations,
         tolerance=tolerance,
@@ -636,6 +643,7 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
         ignored_legacy_options=ignored_legacy_options,
         density_diagnostics=density_diagnostics,  # type: ignore[arg-type]
         experimental_coupled_density_lle=options.experimental_coupled_density_lle,
+        jacobian_backend=jacobian_backend,  # type: ignore[arg-type]
     )
 
 
@@ -649,6 +657,7 @@ def _stability_precheck_options(options: EquilibriumOptions) -> EquilibriumOptio
         stability_precheck=True,
         density_diagnostics=options.density_diagnostics,
         experimental_coupled_density_lle=options.experimental_coupled_density_lle,
+        jacobian_backend=options.jacobian_backend,
     )
 
 
@@ -1658,6 +1667,7 @@ def _options_to_native_dict(options: EquilibriumOptions) -> dict[str, Any]:
         "stability_precheck": bool(options.stability_precheck),
         "density_diagnostics": str(options.density_diagnostics),
         "experimental_coupled_density_lle": bool(options.experimental_coupled_density_lle),
+        "jacobian_backend": str(options.jacobian_backend),
     }
 
 

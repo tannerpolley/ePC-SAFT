@@ -13,6 +13,7 @@ import numpy as np
 from ._types import InputError
 from ._types import phase_to_int
 from .epcsaft import _fit_generic_native_least_squares
+from .epcsaft import _evaluate_generic_native_debug
 from .epcsaft import _fit_pure_neutral_native_least_squares
 from .epcsaft import _fit_pure_neutral_native_debug
 from .parameter_templates import _infer_pure_template_name
@@ -112,6 +113,10 @@ NATIVE_TERM_KINDS = {
     TERM_MEA_CO2_H2O_CO2_FUGACITY: 6,
 }
 
+HESSIAN_NOT_IMPLEMENTED_REASON = (
+    "Hessian support is a skeleton for future IPOPT-compatible optimizer integration."
+)
+
 
 def _copy_mapping(mapping: Mapping[str, Any] | None) -> dict[str, Any]:
     return {} if mapping is None else {str(k): v for k, v in mapping.items()}
@@ -205,6 +210,15 @@ class FitResult:
     message: str = ""
     nfev: int = 0
     backend: str = "least_squares_native"
+    jacobian_available: bool = False
+    jacobian_backend: str = "not_available"
+    jacobian_fallback_used: bool = False
+    jacobian_fallback_reason: str = ""
+    finite_difference_fallback_count: int = 0
+    hessian_available: bool = False
+    hessian_backend: str = "not_implemented"
+    hessian_fallback_used: bool = False
+    hessian_fallback_reason: str = HESSIAN_NOT_IMPLEMENTED_REASON
 
     def __post_init__(self) -> None:
         self.fitted_values = {str(k): float(v) for k, v in self.fitted_values.items()}
@@ -222,6 +236,33 @@ class FitResult:
         self.message = str(self.message)
         self.nfev = int(self.nfev)
         self.backend = str(self.backend)
+        self.jacobian_available = bool(self.jacobian_available)
+        self.jacobian_backend = str(self.jacobian_backend)
+        self.jacobian_fallback_used = bool(self.jacobian_fallback_used)
+        self.jacobian_fallback_reason = str(self.jacobian_fallback_reason)
+        self.finite_difference_fallback_count = int(self.finite_difference_fallback_count)
+        self.hessian_available = bool(self.hessian_available)
+        self.hessian_backend = str(self.hessian_backend)
+        self.hessian_fallback_used = bool(self.hessian_fallback_used)
+        self.hessian_fallback_reason = str(self.hessian_fallback_reason)
+
+
+def _fit_derivative_metadata(result: Mapping[str, Any]) -> dict[str, Any]:
+    """Extract compact Jacobian/Hessian metadata from native regression payloads."""
+
+    return {
+        "jacobian_available": bool(result.get("jacobian_available", False)),
+        "jacobian_backend": str(result.get("jacobian_backend", "not_available")),
+        "jacobian_fallback_used": bool(result.get("jacobian_fallback_used", False)),
+        "jacobian_fallback_reason": str(result.get("jacobian_fallback_reason", "")),
+        "finite_difference_fallback_count": int(result.get("finite_difference_fallback_count", 0)),
+        "hessian_available": bool(result.get("hessian_available", False)),
+        "hessian_backend": str(result.get("hessian_backend", "not_implemented")),
+        "hessian_fallback_used": bool(result.get("hessian_fallback_used", False)),
+        "hessian_fallback_reason": str(
+            result.get("hessian_fallback_reason", HESSIAN_NOT_IMPLEMENTED_REASON)
+        ),
+    }
 
 
 def load_regression_records(records: Any) -> list[dict[str, Any]]:
@@ -879,6 +920,62 @@ def _run_native_generic_least_squares(
     )
 
 
+def _run_native_generic_derivative_debug(
+    fixed_payloads: Sequence[Mapping[str, Any]],
+    native_records: Sequence[Mapping[str, Any]],
+    optimization_names: Sequence[str],
+    species: Sequence[str],
+    x: Sequence[float],
+    *,
+    component: str | None = None,
+    pair: tuple[str, str] | None = None,
+) -> dict[str, Any]:
+    target_kinds, target_indices, target_indices_2 = _native_target_payload(
+        optimization_names,
+        species,
+        component=component,
+        pair=pair,
+    )
+    return _evaluate_generic_native_debug(
+        [dict(payload) for payload in fixed_payloads],
+        [dict(record) for record in native_records],
+        target_kinds,
+        target_indices,
+        target_indices_2,
+        np.asarray(x, dtype=float),
+    )
+
+
+def evaluate_generic_regression_derivatives(
+    fixed_payloads: Sequence[Mapping[str, Any]],
+    native_records: Sequence[Mapping[str, Any]],
+    optimization_names: Sequence[str],
+    species: Sequence[str],
+    x: Sequence[float],
+    *,
+    component: str | None = None,
+    pair: Sequence[str] | None = None,
+) -> dict[str, Any]:
+    """Evaluate native generic-regression residuals and an explicit Jacobian payload."""
+
+    normalized_species = tuple(_normalize_component(str(name)) for name in species)
+    normalized_pair = None if pair is None else _normalize_pair(pair)
+    normalized_component = None if component is None else _normalize_component(component)
+    normalized_names = tuple(str(name) for name in optimization_names)
+    theta = np.asarray(x, dtype=float)
+    if theta.size != len(normalized_names):
+        raise InputError(f"Expected {len(normalized_names)} values for x, got {theta.size}.")
+    return _run_native_generic_derivative_debug(
+        fixed_payloads,
+        native_records,
+        normalized_names,
+        normalized_species,
+        theta,
+        component=normalized_component,
+        pair=normalized_pair,
+    )
+
+
 def _fit_pure_ion_internal(
     records: Any,
     component: str,
@@ -1013,6 +1110,7 @@ def _fit_pure_ion_internal(
         message=str(result["message"]),
         nfev=int(result["nfev"]),
         backend=str(result["backend"]),
+        **_fit_derivative_metadata(result),
     )
 
 
@@ -1125,6 +1223,7 @@ def _fit_binary_pair_internal(
         message=str(result["message"]),
         nfev=int(result["nfev"]),
         backend=str(result["backend"]),
+        **_fit_derivative_metadata(result),
     )
 
 
@@ -1297,7 +1396,8 @@ def _fit_pure_neutral_internal_with_native(
         status=int(native_result["status"]),
         message=str(native_result["message"]),
         nfev=int(native_result["nfev"]),
-        backend="least_squares_native",
+        backend=str(native_result["backend"]),
+        **_fit_derivative_metadata(native_result),
     )
     return fit_result, native_result
 
@@ -1489,6 +1589,7 @@ def _fit_pure_neutral_associating_python(
         message=str(result["message"]),
         nfev=int(result["nfev"]),
         backend=str(result["backend"]),
+        **_fit_derivative_metadata(result),
     )
 
 
@@ -1545,6 +1646,35 @@ def _debug_native_pure_neutral_objective(
         payload["vle_P"],
         payload["pure_vle_scale"],
         theta,
+    )
+
+
+def evaluate_pure_neutral_derivatives(
+    records: Any,
+    component: str,
+    *,
+    assoc_scheme: str = "",
+    dataset: str | Path | None = None,
+    pure_set: str | None = None,
+    fit_targets: Iterable[str] | None = None,
+    fixed_parameters: Mapping[str, Any] | None = None,
+    initial_guess: Mapping[str, float] | None = None,
+    bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
+    x: Mapping[str, float] | Sequence[float] | None = None,
+) -> dict[str, Any]:
+    """Evaluate pure-neutral residuals, gradient, and Jacobian diagnostics at a parameter point."""
+
+    return _debug_native_pure_neutral_objective(
+        records,
+        component,
+        assoc_scheme=assoc_scheme,
+        dataset=dataset,
+        pure_set=pure_set,
+        fit_targets=fit_targets,
+        fixed_parameters=fixed_parameters,
+        initial_guess=initial_guess,
+        bounds=bounds,
+        x=x,
     )
 
 
@@ -1894,6 +2024,7 @@ def _fit_mea_co2_h2o_component(
         message=str(result["message"]),
         nfev=int(result["nfev"]),
         backend=str(result["backend"]),
+        **_fit_derivative_metadata(result),
     )
 
 

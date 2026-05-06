@@ -50,19 +50,19 @@ Only the documented nested keys are supported.
   - ``4`` or ``empirical``
   - ``7`` or ``linear-saltfraction``
   - ``8`` or ``aqueous-organic``
-- ``differential_mode``: choose ``analytical``, ``numerical``/``finite_difference``, or ``autodiff``
+- ``differential_mode``: choose ``auto`` (default), ``analytical``, ``numerical``/``finite_difference``, or ``autodiff``
 
 ``hc_model``, ``disp_model``, ``assoc_model``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- ``dadx_differential_mode``: choose ``analytical``, ``numerical``/``finite_difference``, or ``autodiff``
+- ``dadx_differential_mode``: choose ``auto`` (default), ``analytical``, ``numerical``/``finite_difference``, or ``autodiff``
 
 ``DH_model``
 ~~~~~~~~~~~~
 
 - ``d_ion_mode``: choose ``0``, ``1``, or ``2``
 - ``bjeruum_treatment``: enable or disable Bjerrum treatment
-- ``mu_DH_model.differential_mode``: choose ``analytical``, ``numerical``/``finite_difference``, or ``autodiff``
+- ``mu_DH_model.differential_mode``: choose ``auto`` (default), ``analytical``, ``numerical``/``finite_difference``, or ``autodiff``
 - ``mu_DH_model.comp_dep_rel_perm``: include composition-dependent permittivity in the derivative model
 - ``mu_DH_model.include_sum_term``: include the sum term in the derivative model
 
@@ -73,7 +73,7 @@ Only the documented nested keys are supported.
 - ``solvation_shell_model``: enable or disable the solvation-shell model
 - ``dielectric_saturation``: enable or disable dielectric saturation
 - ``bulk_mode``: choose ``mix`` or ``solvent``
-- ``mu_born_model.differential_mode``: choose ``analytical``, ``numerical``/``finite_difference``, or ``autodiff``
+- ``mu_born_model.differential_mode``: choose ``auto`` (default), ``analytical``, ``numerical``/``finite_difference``, or ``autodiff``
 - ``mu_born_model.comp_dep_rel_perm``: include composition-dependent permittivity in the derivative model
 - ``mu_born_model.include_sum_term``: include the sum term in the derivative model
 - ``mu_born_model.comp_dep_delta_d``: include the delta-d composition term
@@ -111,14 +111,14 @@ Use a more advanced Born setup:
      "elec_model": {
        "rel_perm": {
          "rule": "empirical",
-          "differential_mode": "autodiff"
+          "differential_mode": "auto"
        },
        "born_model": {
          "d_Born_mode": 3,
          "solvation_shell_model": true,
          "dielectric_saturation": true,
          "mu_born_model": {
-            "differential_mode": "autodiff",
+            "differential_mode": "auto",
            "comp_dep_delta_d": true
          }
        }
@@ -130,4 +130,7 @@ Tips
 
 - Start from a small file and add only the settings you actually need.
 - If a value is left out, the package keeps its default.
+- The default derivative policy is ``auto``: use validated analytical derivatives where they already exist, use autodiff for implemented derivative paths, and use finite difference only as an explicit fallback.
+- ``autodiff`` is stricter than ``auto``. It requests the autodiff backend directly and raises for unsupported paths instead of quietly selecting an analytical formula or finite-difference approximation.
+- Finite difference is still used for unsupported association autodiff, unsupported solvation-shell/dielectric-saturation Born autodiff, explicit ``finite_difference`` overrides, or guarded fallback after an autodiff derivative is unavailable.
 - If you are unsure, keep ``user_options.json`` empty and add settings one at a time.

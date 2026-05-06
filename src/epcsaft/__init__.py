@@ -24,6 +24,8 @@ from .regression import FitBounds
 from .regression import FitProblem
 from .regression import FitResult
 from .regression import FitTerm
+from .regression import evaluate_generic_regression_derivatives
+from .regression import evaluate_pure_neutral_derivatives
 from .regression import fit_binary_pair
 from .regression import fit_mea_co2_h2o_electrolyte
 from .regression import fit_pure_neutral
@@ -61,6 +63,8 @@ __all__ = [
     "FitProblem",
     "FitResult",
     "FitTerm",
+    "evaluate_generic_regression_derivatives",
+    "evaluate_pure_neutral_derivatives",
     "fit_binary_pair",
     "fit_mea_co2_h2o_electrolyte",
     "fit_pure_neutral",

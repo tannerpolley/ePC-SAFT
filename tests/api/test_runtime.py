@@ -145,7 +145,18 @@ def test_state_contribution_term_payloads_match_totals():
     _assert_array(_sum_term_arrays(mures["terms"]), mures["total"])
 
     dadx = state.dadx()
-    assert set(dadx) == {"total", "terms", "ares_terms", "sum_x_terms", "z_raw_terms", "z_terms", "z_total"}
+    assert set(dadx) == {
+        "total",
+        "terms",
+        "ares_terms",
+        "sum_x_terms",
+        "z_raw_terms",
+        "z_terms",
+        "z_total",
+        "derivative_backend",
+        "finite_difference_fallback_used",
+        "finite_difference_fallback_reason",
+    }
     assert set(dadx["terms"]) == {"hc", "disp", "assoc", "ion", "born"}
     assert set(dadx["ares_terms"]) == {"hc", "disp", "assoc", "ion", "born"}
     assert set(dadx["sum_x_terms"]) == {"hc", "disp", "assoc", "ion", "born"}
@@ -192,7 +203,18 @@ def test_neutral_composition_and_fugacity_terms_return_expected_values():
 
     dadx = state.composition_derivative_residual_helmholtz()
     terms = state.state_diagnostics(species=species)["fugacity_coefficient_terms"]
-    assert set(dadx) == {"total", "terms", "ares_terms", "sum_x_terms", "z_raw_terms", "z_terms", "z_total"}
+    assert set(dadx) == {
+        "total",
+        "terms",
+        "ares_terms",
+        "sum_x_terms",
+        "z_raw_terms",
+        "z_terms",
+        "z_total",
+        "derivative_backend",
+        "finite_difference_fallback_used",
+        "finite_difference_fallback_reason",
+    }
     for key in ("hc", "disp", "assoc", "ion", "born"):
         np.testing.assert_allclose(dadx["terms"][key], terms[f"dadx_{key}"])
         np.testing.assert_allclose(dadx["ares_terms"][key], terms[f"a_{key}"])
@@ -298,6 +320,36 @@ def test_rel_perm_autodiff_matches_analytic_density_derivative_usage():
     ad_dadx = ad_state.dadx()
     _assert_array(ad_dadx["terms"]["ion"], base_dadx["terms"]["ion"], rtol=1e-7, atol=1e-9)
     _assert_array(ad_dadx["terms"]["born"], base_dadx["terms"]["born"], rtol=1e-7, atol=1e-9)
+
+
+def test_default_dadx_reports_auto_derivative_policy():
+    state, _ = _ionic_state()
+    dadx = state.dadx()
+
+    assert dadx["derivative_backend"]["hc"] == "analytic"
+    assert dadx["derivative_backend"]["disp"] == "analytic"
+    assert dadx["derivative_backend"]["ion"] == "analytic"
+    assert dadx["derivative_backend"]["born"] == "analytic"
+    assert dadx["derivative_backend"]["assoc"] == "analytic"
+    assert dadx["finite_difference_fallback_used"] is False
+    assert dadx["finite_difference_fallback_reason"] == ""
+
+
+def test_explicit_finite_difference_dadx_reports_finite_difference_backend():
+    state, _ = _ionic_state_with_elec_model(
+        {
+            "hc_model": {"dadx_differential_mode": "finite_difference"},
+            "disp_model": {"dadx_differential_mode": "finite_difference"},
+            "DH_model": {"mu_DH_model": {"differential_mode": "finite_difference"}},
+            "born_model": {"mu_born_model": {"differential_mode": "finite_difference"}},
+        }
+    )
+    dadx = state.dadx()
+
+    assert dadx["derivative_backend"]["hc"] == "finite_difference"
+    assert dadx["derivative_backend"]["disp"] == "finite_difference"
+    assert dadx["derivative_backend"]["ion"] == "finite_difference"
+    assert dadx["derivative_backend"]["born"] == "finite_difference"
 
 
 def test_hc_dadx_autodiff_matches_analytic_terms():

@@ -95,6 +95,21 @@ def test_methanol_cyclohexane_lle_flash_closes_material_and_fugacity_balance() -
     assert result.diagnostics["unstable_trial_count"] >= 1
     assert result.diagnostics["stability_max_iterations"] == 40
     assert result.diagnostics["stability_tolerance"] == pytest.approx(1.0e-8)
+    assert result.diagnostics["requested_jacobian_backend"] == "auto"
+    assert result.diagnostics["jacobian_backend"] == "finite_difference"
+    assert result.diagnostics["jacobian_available"] is True
+    assert result.diagnostics["jacobian_fallback_used"] is True
+    assert result.diagnostics["finite_difference_fallback_used"] is True
+    assert "autodiff neutral LLE residual jacobian is not implemented" in result.diagnostics[
+        "finite_difference_fallback_reason"
+    ]
+    assert "autodiff neutral LLE residual jacobian is not implemented" in result.diagnostics[
+        "jacobian_fallback_reason"
+    ]
+    assert result.diagnostics["hessian_available"] is False
+    assert result.diagnostics["hessian_backend"] == "not_implemented"
+    assert result.diagnostics["hessian_fallback_used"] is False
+    assert "IPOPT-compatible optimizer integration" in result.diagnostics["hessian_fallback_reason"]
 
     reconstructed = liq1.phase_fraction * liq1.composition + liq2.phase_fraction * liq2.composition
     np.testing.assert_allclose(reconstructed, feed, atol=1.0e-10)
