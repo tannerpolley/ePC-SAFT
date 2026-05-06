@@ -35,7 +35,7 @@ jobs:
         run: |
           uv venv --python 3.12 .venv-smoke
           $wheel = (Get-ChildItem -LiteralPath dist -Filter '*.whl' | Select-Object -First 1).FullName
-          .\.venv-smoke\Scripts\python.exe -m pip install $wheel
+          uv pip install --python .\.venv-smoke\Scripts\python.exe $wheel
 
       - name: Smoke installed package
         shell: pwsh
