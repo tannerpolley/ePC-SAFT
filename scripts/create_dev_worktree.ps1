@@ -1,4 +1,4 @@
-# Create a project-local Git worktree and register it as safe for Codex Git use.
+# Create a project-local Git worktree and register it as safe for Git use.
 
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(

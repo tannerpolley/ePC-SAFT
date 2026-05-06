@@ -4,8 +4,8 @@ import sys
 from pathlib import Path
 
 import run_pytest
-from scripts import codex_check
-from scripts import codex_doctor
+from scripts import doctor
+from scripts import validate_project
 
 
 def test_confidence_slice_extends_generic_targets_without_changing_generic():
@@ -44,21 +44,23 @@ def test_all_shortcut_is_the_explicit_exhaustive_pytest_route():
     assert all_args == ["tests", "-q", "--basetemp", str(pytest_temp)]
 
 
-def test_codex_check_modes_route_to_agent_facing_validation_bundles():
-    assert codex_check.CHECK_COMMANDS["quick"] == (
-        ("scripts/codex_doctor.py",),
+def test_validate_project_modes_route_to_standard_validation_bundles():
+    assert validate_project.CHECK_COMMANDS["quick"] == (
+        ("scripts/doctor.py",),
         ("run_pytest.py", "-q"),
     )
     assert all(
-        "build_plot_" + "manifest.py" not in command for mode in codex_check.CHECK_COMMANDS.values() for command in mode
+        "build_plot_" + "manifest.py" not in command
+        for mode in validate_project.CHECK_COMMANDS.values()
+        for command in mode
     )
-    assert "plots" not in codex_check.CHECK_COMMANDS
-    assert ("run_pytest.py", "-q") in codex_check.CHECK_COMMANDS["full"]
-    assert ("run_pytest.py", "--all", "-q") not in codex_check.CHECK_COMMANDS["full"]
+    assert "plots" not in validate_project.CHECK_COMMANDS
+    assert ("run_pytest.py", "-q") in validate_project.CHECK_COMMANDS["full"]
+    assert ("run_pytest.py", "--all", "-q") not in validate_project.CHECK_COMMANDS["full"]
 
 
-def test_codex_doctor_tracks_native_symbols_added_by_recent_workflows():
-    required = set(codex_doctor.REQUIRED_CORE_SYMBOLS)
+def test_doctor_tracks_native_symbols_added_by_recent_workflows():
+    required = set(doctor.REQUIRED_CORE_SYMBOLS)
 
     assert "_fit_generic_native_least_squares" in required
     assert "_evaluate_generic_native_debug" in required

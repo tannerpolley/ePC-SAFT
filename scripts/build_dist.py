@@ -9,7 +9,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DIST_ROOT = REPO_ROOT / "dist"
-TEMPFILE_SITE = REPO_ROOT / "scripts" / "codex_tempfile_site"
+TEMPFILE_SITE = REPO_ROOT / "scripts" / "sandbox_tempfile_site"
 
 
 def _run(cmd: list[str], *, env: dict[str, str] | None = None) -> None:

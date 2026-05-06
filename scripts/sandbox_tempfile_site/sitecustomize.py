@@ -1,6 +1,6 @@
-"""Sandbox-safe tempfile behavior for local Codex build subprocesses.
+"""Sandbox-safe tempfile behavior for local build subprocesses.
 
-Windows Codex sandbox tokens can fail to create child directories inside
+Some restricted Windows tokens can fail to create child directories inside
 ``tempfile.mkdtemp()`` directories made with the stdlib's restrictive 0o700
 mode. Build backends such as scikit-build-core rely on nested temporary
 directories, so opt in to a less restrictive mode for local build commands.

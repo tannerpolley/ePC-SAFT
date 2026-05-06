@@ -26,7 +26,7 @@ Use the normal build path first:
 .. code-block:: powershell
 
    uv run python scripts/build_epcsaft.py
-   uv run python scripts/codex_doctor.py
+   uv run python scripts/doctor.py
    uv run python run_pytest.py --confidence -q
 
 For C++ iteration after the build tree is configured:

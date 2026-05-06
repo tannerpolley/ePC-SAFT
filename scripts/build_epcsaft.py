@@ -50,7 +50,7 @@ def _remove_extension_artifact(artifact: Path) -> None:
         message = (
             f"Unable to remove {artifact}. The compiled extension is probably "
             "loaded by an active Python process. Close Python terminals, IDE "
-            "test runners, or Codex subagents that imported epcsaft._core, "
+            "test runners, or parallel workers that imported epcsaft._core, "
             "then rerun the build."
         )
         raise PermissionError(message) from exc

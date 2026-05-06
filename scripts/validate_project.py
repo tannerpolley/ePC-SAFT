@@ -10,16 +10,16 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 CHECK_COMMANDS: dict[str, tuple[tuple[str, ...], ...]] = {
     "quick": (
-        ("scripts/codex_doctor.py",),
+        ("scripts/doctor.py",),
         ("run_pytest.py", "-q"),
     ),
     "confidence": (
-        ("scripts/codex_doctor.py",),
+        ("scripts/doctor.py",),
         ("run_pytest.py", "--confidence", "-q"),
     ),
     "docs": (("-m", "sphinx", "-b", "html", "docs", "build/docs-html"),),
     "full": (
-        ("scripts/codex_doctor.py",),
+        ("scripts/doctor.py",),
         ("run_pytest.py", "-q"),
     ),
 }
@@ -41,7 +41,7 @@ def run_mode(mode: str) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run the repo's Codex-friendly validation modes.",
+        description="Run the repo's standard validation modes.",
     )
     parser.add_argument(
         "mode",

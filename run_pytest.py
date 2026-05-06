@@ -69,8 +69,8 @@ FULL_PROFILE_RUNTIME_NOTE = (
     f"it can take about a minute locally, so allow at least {FULL_PROFILE_MIN_TIMEOUT_SECONDS} seconds."
 )
 SLICE_SELECTION_NOTE = (
-    "Slice flags are mutually exclusive. Codex agents should normally start with "
-    "`uv run python scripts/codex_check.py quick` or `uv run python run_pytest.py -q`. "
+    "Slice flags are mutually exclusive. Developers should normally start with "
+    "`uv run python scripts/validate_project.py quick` or `uv run python run_pytest.py -q`. "
     "Use `--all` only when you explicitly need the exhaustive historical suite. "
     "Extra positional pytest targets after a slice are appended and will run in addition to that slice."
 )
@@ -187,7 +187,7 @@ def _patch_windows_pytest_temp_acl() -> None:
 
 
 def _patch_pytest_cleanup() -> None:
-    # Pytest's Windows cleanup hook can trip over Codex sandbox ACLs after
+    # Pytest's Windows cleanup hook can trip over restricted ACLs after
     # tmp_path tests pass. Keep the per-run basetemp, but skip that hook.
     try:
         import _pytest.pathlib as pytest_pathlib

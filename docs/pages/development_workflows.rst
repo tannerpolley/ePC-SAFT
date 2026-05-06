@@ -1,22 +1,22 @@
-Codex Workflow Guide
-====================
+Development Workflow Guide
+==========================
 
-This is the operational guide for future Codex agents and maintainers working from this source tree. Use these commands before inventing new build, test, or package workflows.
+This is the operational guide for maintainers working from this source tree. Use these commands before inventing new build, test, or package workflows.
 
-Default new-agent sequence
---------------------------
+Default source-checkout sequence
+--------------------------------
 
-Start every new Codex thread with this sequence:
+Start every fresh source checkout with this sequence:
 
 .. code-block:: powershell
 
    uv sync --no-install-project
    uv run python scripts/build_epcsaft.py
-   uv run python scripts/codex_check.py quick
+   uv run python scripts/validate_project.py quick
 
-This is the expected healthy baseline. It creates the uv environment, builds the in-place pybind11 ``epcsaft._core`` extension, verifies imports/tool paths and generated-output state through doctor, then runs the fast contract suite. The default test route intentionally samples representative API, native, regression, equilibrium, and workflow contracts instead of running full equilibrium/regression reproductions or generated plot production. Use ``uv run python scripts/codex_check.py confidence`` before handoff when extra native runtime contracts should be included.
+This is the expected healthy baseline. It creates the uv environment, builds the in-place pybind11 ``epcsaft._core`` extension, verifies imports/tool paths and generated-output state through doctor, then runs the fast contract suite. The default test route intentionally samples representative API, native, regression, equilibrium, and workflow contracts instead of running full equilibrium/regression reproductions or generated plot production. Use ``uv run python scripts/validate_project.py confidence`` before handoff when extra native runtime contracts should be included.
 
-Use ``uv run python run_pytest.py ...`` for repo validation. Direct ``uv run python -m pytest ...`` works, but the wrapper sets ``src`` on the import path and uses a per-run pytest temp directory that is safer for Codex and Windows runs.
+Use ``uv run python run_pytest.py ...`` for repo validation. Direct ``uv run python -m pytest ...`` works, but the wrapper sets ``src`` on the import path and uses a per-run pytest temp directory that is safer for Windows and parallel local runs.
 
 Command matrix
 --------------
@@ -29,13 +29,13 @@ Command matrix
      - Command
      - Use when
    * - First setup or uncertain state
-     - ``uv sync --no-install-project`` then ``uv run python scripts/build_epcsaft.py`` then ``uv run python scripts/codex_doctor.py``
+     - ``uv sync --no-install-project`` then ``uv run python scripts/build_epcsaft.py`` then ``uv run python scripts/doctor.py``
      - Starting a fresh thread, after dependency changes, or after a failed import.
    * - Handoff validation
-     - ``uv run python scripts/codex_check.py confidence``
+     - ``uv run python scripts/validate_project.py confidence``
      - Before claiming repo runtime confidence. This includes doctor and the confidence slice.
    * - Fast generic validation
-     - ``uv run python scripts/codex_check.py quick``
+     - ``uv run python scripts/validate_project.py quick``
      - Quick checks for Python/runtime/regression API changes when native contract coverage is not required yet.
    * - Python API work
      - ``uv run python run_pytest.py --api -q``
@@ -50,7 +50,7 @@ Command matrix
      - ``uv run python run_pytest.py --equilibrium-confidence -q -s``
      - Bounded Khudaida fixture plus cached fixed-phase residual contract. Native confidence solving and full report generation remain explicit opt-ins.
    * - Docs check
-     - ``uv run python scripts/codex_check.py docs``
+     - ``uv run python scripts/validate_project.py docs``
      - Build Sphinx HTML under ``build/docs-html``.
    * - Quick method-speed check
      - ``uv run python run_pytest.py --profile -q``
@@ -76,7 +76,7 @@ The canonical native build command is:
 
 Use ``--build-only --parallel 10`` only after the CMake tree already exists. Use ``--configure-only`` when you need to refresh CMake configuration without compiling.
 
-Do not use ``--clean`` for routine validation. ``uv run python scripts/build_epcsaft.py --clean`` is a repair action for stale CMake state or stale/locked ``_core`` artifacts. If Windows reports that ``_core*.pyd`` is locked, stop Python REPLs, tests, IDE run configurations, or Codex sub-agents that imported ``epcsaft._core`` before retrying.
+Do not use ``--clean`` for routine validation. ``uv run python scripts/build_epcsaft.py --clean`` is a repair action for stale CMake state or stale/locked ``_core`` artifacts. If Windows reports that ``_core*.pyd`` is locked, stop Python REPLs, tests, IDE run configurations, or parallel workers that imported ``epcsaft._core`` before retrying.
 
 LaTeX and Overleaf mirror
 -------------------------
@@ -97,31 +97,31 @@ After LaTeX edits are committed or ready to publish, mirror the current ``docs/l
 
 The mirror lives at ``C:\Users\Tanner\Documents\git\LaTeX-Projects\ePC-SAFT-LaTeX`` and owns the Overleaf Git remote. The sync script copies the current LaTeX source tree and intentional top-level artifacts; generated ``docs/latex/out`` build products remain ignored in this repo.
 
-Parallel agent safety
----------------------
+Parallel worker safety
+----------------------
 
-The dev build tree and temp/profile outputs under ``build/`` are shared disposable state. In multi-agent sessions, keep native rebuild, clean, and repair coordination on the main thread unless that work is explicitly assigned.
+The dev build tree and temp/profile outputs under ``build/`` are shared disposable state. In parallel sessions, coordinate native rebuild, clean, and repair work so only one process owns the native extension at a time.
 
-- Do not run clean or repair actions while tests, REPLs, IDE run configurations, or other agents may import ``epcsaft._core``.
+- Do not run clean or repair actions while tests, REPLs, IDE run configurations, or other workers may import ``epcsaft._core``.
 - Prefer one native builder at a time for ``build/dev`` and the in-place ``_core`` extension.
-- Let sub-agents run focused test slices for their lane, and reserve full build, doctor, and ``--confidence`` validation for coordinated handoff checks.
+- Let parallel workers run focused test slices for their lane, and reserve full build, doctor, and ``--confidence`` validation for coordinated handoff checks.
 - Use ``uv run python run_pytest.py --profile -q`` for quick runtime-only speed claims. Use ``uv run python run_pytest.py --profile-full -q -s`` before broad method-speed claims, allow at least 120 seconds, then read ``build/runtime_profile/*.md`` before reporting conclusions.
 
 Project-local Git worktrees
 ---------------------------
 
-Use ``scripts/create_codex_worktree.ps1`` from the primary checkout instead of raw ``git worktree add`` when a Codex agent needs a project-local worktree under ``.worktrees/``. The helper creates ``.worktrees/<name>`` and registers the new checkout path as a Git ``safe.directory`` so future Git commands inside that worktree do not fail on Windows because Codex runs as a sandbox user.
+Use ``scripts/create_dev_worktree.ps1`` from the primary checkout instead of raw ``git worktree add`` when a contributor needs a project-local worktree under ``.worktrees/``. The helper creates ``.worktrees/<name>`` and registers the new checkout path as a Git ``safe.directory`` so future Git commands inside that worktree do not fail on Windows when the checkout is accessed by tools running under different user contexts.
 
 .. code-block:: powershell
 
-   .\scripts\create_codex_worktree.ps1 -Name equilibrium-v3 -Branch codex/equilibrium-v3
+   .\scripts\create_dev_worktree.ps1 -Name equilibrium-v3 -Branch feature/equilibrium-v3
 
-``.worktrees/`` must stay ignored in ``.gitignore`` before using the helper. The ``safe.directory`` registration is intentionally path-specific and global to the current Windows user; Codex may still ask for approval because that is a persistent Git trust change. Use ``-SkipSafeDirectory`` only when you plan to use per-command ``git -c safe.directory=<path> ...`` overrides instead.
+``.worktrees/`` must stay ignored in ``.gitignore`` before using the helper. The ``safe.directory`` registration is intentionally path-specific and global to the current Windows user. Use ``-SkipSafeDirectory`` only when you plan to use per-command ``git -c safe.directory=<path> ...`` overrides instead.
 
 Test selection rules
 --------------------
 
-Use the smallest relevant test first, then run ``scripts/codex_check.py confidence`` before handoff. Use ``uv run python run_pytest.py --all -q`` only when you explicitly need the exhaustive historical suite.
+Use the smallest relevant test first, then run ``scripts/validate_project.py confidence`` before handoff. Use ``uv run python run_pytest.py --all -q`` only when you explicitly need the exhaustive historical suite.
 
 - Python wrapper/API changes: ``uv run python run_pytest.py --api -q`` first, then ``uv run python run_pytest.py --confidence -q``.
 - Native/equation changes: ``uv run python scripts/build_epcsaft.py --build-only --parallel 10`` first, then ``uv run python run_pytest.py --runtime -q``, then ``uv run python run_pytest.py --confidence -q``.
@@ -136,7 +136,7 @@ Keep generated plot assets and generated CSV workflows out of normal validation 
 
 Use ``uv run python run_pytest.py --list-slices`` when you need to inspect what each named slice runs before choosing a validation command.
 
-For parallel Codex sessions, leave the default repo-local temp behavior alone unless it causes contention. When running concurrent pytest lanes, set ``EPCSAFT_PYTEST_TEMP_ROOT`` to an external temp root for the extra lanes so each run gets an isolated ``pytest-temp`` child.
+For parallel sessions, leave the default repo-local temp behavior alone unless it causes contention. When running concurrent pytest lanes, set ``EPCSAFT_PYTEST_TEMP_ROOT`` to an external temp root for the extra lanes so each run gets an isolated ``pytest-temp`` child.
 
 Runtime speed rule
 ------------------
@@ -146,6 +146,6 @@ For repeated runtime calls, build ``ePCSAFTMixture`` and ``ePCSAFTState`` once a
 Troubleshooting
 ---------------
 
-Run ``uv run python scripts/codex_doctor.py`` whenever imports, tool paths, ``_core`` state, or generated-output tracking are unclear. It reports the active Python, git ref, uv/cmake/ninja paths, ``epcsaft`` import path, ``epcsaft._core`` path, required native symbol presence, generated artifact state, and the next recommended command.
+Run ``uv run python scripts/doctor.py`` whenever imports, tool paths, ``_core`` state, or generated-output tracking are unclear. It reports the active Python, git ref, uv/cmake/ninja paths, ``epcsaft`` import path, ``epcsaft._core`` path, required native symbol presence, generated artifact state, and the next recommended command.
 
 If ``scripts/build_epcsaft.py`` appears slow, wait for the configured timeout before treating it as broken. Full configure/build can take far longer than the fast rebuild path; incremental ``--build-only --parallel 10`` is the intended C++ edit loop.

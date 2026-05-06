@@ -16,26 +16,26 @@ The package includes a compiled C++ extension. Wheels are preferred for end user
 
 This repository uses `uv` for Python environment management and direct CMake for the local native build loop.
 
-`uv.toml` routes uv's cache into `build/uv-cache` so Codex/Windows sandbox runs do not touch `%LOCALAPPDATA%\uv\cache`.
+`uv.toml` routes uv's cache into `build/uv-cache` so local and sandboxed runs do not touch the user-level uv cache.
 
 ```powershell
 uv sync --no-install-project
 uv run python scripts\build_epcsaft.py
-uv run python scripts\codex_check.py quick
+uv run python scripts\validate_project.py quick
 ```
 
-Direct pytest also works, for example `uv run python -m pytest tests\api\test_runtime.py -q`, but `uv run python run_pytest.py ...` is preferred for Codex and Windows runs because it manages pytest temporary directories more predictably. Set `EPCSAFT_PYTEST_TEMP_ROOT` when you want the wrapper to use an opt-in external pytest temp root instead of its default repo-local generated temp area.
+Direct pytest also works, for example `uv run python -m pytest tests\api\test_runtime.py -q`, but `uv run python run_pytest.py ...` is preferred for source-checkout validation because it sets the source import path and manages pytest temporary directories more predictably. Set `EPCSAFT_PYTEST_TEMP_ROOT` when you want the wrapper to use an opt-in external pytest temp root instead of its default repo-local generated temp area.
 
-The default new-agent validation sequence is sync, normal native build, then `uv run python scripts\codex_check.py quick`. Use `uv run python scripts\codex_check.py confidence` before handoff when runtime confidence matters.
+The default source-checkout validation sequence is sync, normal native build, then `uv run python scripts\validate_project.py quick`. Use `uv run python scripts\validate_project.py confidence` before handoff when runtime confidence matters.
 
-For future Codex agents and maintainers, the [Codex workflow guide](docs/pages/codex_workflows.rst) is the source-of-truth command matrix for setup, fast rebuilds, focused tests, profiling, packaging, and repair-only cleanup.
+For maintainers, the [development workflow guide](docs/pages/development_workflows.rst) is the source-of-truth command matrix for setup, fast rebuilds, focused tests, profiling, packaging, and repair-only cleanup.
 
-For the standard Codex validation loops:
+For the standard validation loops:
 
 ```powershell
-uv run python scripts\codex_check.py quick
-uv run python scripts\codex_check.py confidence
-uv run python scripts\codex_check.py docs
+uv run python scripts\validate_project.py quick
+uv run python scripts\validate_project.py confidence
+uv run python scripts\validate_project.py docs
 uv run python run_pytest.py --list-slices
 uv run python run_pytest.py -q
 uv run python run_pytest.py --runtime -q
@@ -47,7 +47,7 @@ uv run python run_pytest.py --profile -q
 uv run python run_pytest.py --profile-full -q -s
 ```
 
-`codex_check.py` is the agent-facing orchestrator; `run_pytest.py` remains the lower-level test selector. `run_pytest.py -q` is the default fast contract suite: it runs representative API, native, regression, equilibrium, and workflow smoke checks without regenerating plots or full scientific reproduction suites. `--runtime` runs runtime API plus native contract tests. `--generic` runs the same fast contract target list as the default route. `--confidence` adds a few native runtime contracts and is the default runtime-confidence check before handoff. `--equilibrium-confidence` is a bounded Khudaida fixture plus cached fixed-phase residual contract; native confidence solving and full electrolyte reports remain explicit opt-ins. Generated plot output tests are manual, targeted pytest runs rather than named validation slices. `--all` is the explicit exhaustive historical suite and can take many minutes. `--profile` enables and runs the quick opt-in runtime-only profiling check. `--profile-full` runs the slower opt-in runtime, MIAC, and regression profile suite; it can take about a minute locally, so use a runner timeout of at least 120 seconds. To keep pytest temp files outside the repo for an opt-in run, set `EPCSAFT_PYTEST_TEMP_ROOT`, for example:
+`validate_project.py` is the high-level validation orchestrator; `run_pytest.py` remains the lower-level test selector. `run_pytest.py -q` is the default fast contract suite: it runs representative API, native, regression, equilibrium, and workflow smoke checks without regenerating plots or full scientific reproduction suites. `--runtime` runs runtime API plus native contract tests. `--generic` runs the same fast contract target list as the default route. `--confidence` adds a few native runtime contracts and is the default runtime-confidence check before handoff. `--equilibrium-confidence` is a bounded Khudaida fixture plus cached fixed-phase residual contract; native confidence solving and full electrolyte reports remain explicit opt-ins. Generated plot output tests are manual, targeted pytest runs rather than named validation slices. `--all` is the explicit exhaustive historical suite and can take many minutes. `--profile` enables and runs the quick opt-in runtime-only profiling check. `--profile-full` runs the slower opt-in runtime, MIAC, and regression profile suite; it can take about a minute locally, so use a runner timeout of at least 120 seconds. To keep pytest temp files outside the repo for an opt-in run, set `EPCSAFT_PYTEST_TEMP_ROOT`, for example:
 
 ```powershell
 $env:EPCSAFT_PYTEST_TEMP_ROOT = Join-Path $env:TEMP 'epcsaft-pytest'
@@ -101,7 +101,7 @@ The regression workflow is record-driven: `fit_pure_neutral(...)` fits nonassoci
 
 - [Start here](docs/pages/README.rst)
 - [Getting started](docs/pages/getting_started.rst)
-- [Codex workflow guide](docs/pages/codex_workflows.rst)
+- [Development workflow guide](docs/pages/development_workflows.rst)
 - [Create your own parameter folder](docs/pages/user_parameter_templates.rst)
 - [Parameter regression guide](docs/pages/parameter_regression.rst)
 - [User options reference](docs/pages/user_options.rst)

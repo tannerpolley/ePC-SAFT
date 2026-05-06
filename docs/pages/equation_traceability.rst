@@ -16,7 +16,7 @@ Do not hand-edit ``docs/equations.md`` or ``docs/equations_registry.yaml``. Rege
 Place Owner Comments
 --------------------
 
-Place each ``// EqID: <id>`` comment immediately above the C++ function or expression block that owns the equation. Prefer the narrowest owner that future agents can inspect quickly, such as a contribution helper, density closure function, or activity-coefficient conversion block.
+Place each ``// EqID: <id>`` comment immediately above the C++ function or expression block that owns the equation. Prefer the narrowest owner that future maintainers can inspect quickly, such as a contribution helper, density closure function, or activity-coefficient conversion block.
 
 Use ``Documentation-only`` only when there is no direct implemented owner. Do not use it to hide missing traceability for active formulas.
 

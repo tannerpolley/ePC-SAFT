@@ -18,12 +18,12 @@ For development from this source tree, use ``uv`` and the direct CMake build loo
 
    uv sync --no-install-project
    uv run python scripts/build_epcsaft.py
-   uv run python scripts/codex_check.py quick
+   uv run python scripts/validate_project.py quick
 
-This is the default new-agent validation sequence: sync, normal native build,
+This is the default source-checkout validation sequence: sync, normal native build,
 doctor, then the fast contract suite.
 
-For the full source-checkout command matrix, see :doc:`codex_workflows`.
+For the full source-checkout command matrix, see :doc:`development_workflows`.
 
 For tests, use:
 
@@ -37,13 +37,13 @@ Direct pytest also works:
 
    uv run python -m pytest tests/api/test_runtime.py -q
 
-For Codex and Windows work, prefer ``uv run python run_pytest.py ...`` because the wrapper manages pytest temporary directories more predictably. Set ``EPCSAFT_PYTEST_TEMP_ROOT`` when you want the wrapper to use an opt-in external pytest temp root instead of its default repo-local generated temp area.
+For source-checkout validation, prefer ``uv run python run_pytest.py ...`` because the wrapper sets the source import path and manages pytest temporary directories more predictably. Set ``EPCSAFT_PYTEST_TEMP_ROOT`` when you want the wrapper to use an opt-in external pytest temp root instead of its default repo-local generated temp area.
 
 ``run_pytest.py -q`` is the default fast contract suite. It samples the important API, native, regression, equilibrium, and workflow contracts without running full equilibrium/regression reproductions or generated plot production. ``--generic`` is the same target list, ``--confidence`` adds a few native runtime contracts for handoff, and ``--all`` is the explicit exhaustive historical suite.
 
 For speed checks, use ``uv run python run_pytest.py --profile -q`` for the quick runtime-only profile. Use ``uv run python run_pytest.py --profile-full -q -s`` when you need the slower runtime, MIAC, and regression profile suite.
 
-Use ``uv run python run_pytest.py --list-slices`` to print the named test slices without running pytest. In parallel Codex sessions, set ``EPCSAFT_PYTEST_TEMP_ROOT`` for extra pytest lanes when the default repo-local ``build/pytest-temp`` area becomes noisy or contended.
+Use ``uv run python run_pytest.py --list-slices`` to print the named test slices without running pytest. In parallel sessions, set ``EPCSAFT_PYTEST_TEMP_ROOT`` for extra pytest lanes when the default repo-local ``build/pytest-temp`` area becomes noisy or contended.
 
 For repeated thermodynamic calls, reuse an ``ePCSAFTMixture`` and its ``ePCSAFTState`` objects instead of rebuilding them inside loops. The runtime profile reports the cost difference between reused-state calls and full rebuild calls.
 
