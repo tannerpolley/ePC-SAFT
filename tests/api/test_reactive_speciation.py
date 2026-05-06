@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+from dataclasses import fields
 
 import numpy as np
 import pytest
@@ -60,4 +61,11 @@ def test_solve_reactive_speciation_returns_balanced_activity_coupled_state() -> 
     assert max(abs(value) for value in result.reaction_residuals) <= 1.0e-8
     assert set(result.activity_coefficients) == set(species)
     assert result.state_failure_count == 0
+    assert result.diagnostics["solver_language"] == "c++"
+    assert result.diagnostics["backend"] == "native"
+    assert result.diagnostics["native_entrypoint"] == "_solve_chemical_equilibrium_native"
     json.dumps(result.to_dict(), allow_nan=False)
+
+
+def test_reactive_speciation_options_have_no_backend_selector() -> None:
+    assert "backend" not in {field.name for field in fields(epcsaft.ReactiveSpeciationOptions)}

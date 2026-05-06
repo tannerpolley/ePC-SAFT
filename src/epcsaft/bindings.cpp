@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "epcsaft_chemical_equilibrium.h"
 #include "epcsaft_equilibrium.h"
 
 namespace py = pybind11;
@@ -441,6 +442,34 @@ py::dict native_equilibrium_to_dict(const EquilibriumResultNative& result) {
     return out;
 }
 
+py::dict native_chemical_equilibrium_to_dict(const ChemicalEquilibriumResultNative& result) {
+    py::dict out;
+    out["success"] = result.success;
+    out["message"] = result.message;
+    out["composition"] = result.composition;
+    out["activity_coefficients"] = result.activity_coefficients;
+    out["mass_balance_residuals"] = result.mass_balance_residuals;
+    out["charge_residual"] = result.charge_residual;
+    out["reaction_residuals"] = result.reaction_residuals;
+    py::dict diagnostics = native_diagnostics_to_dict(
+        result.diagnostics_double,
+        result.diagnostics_int,
+        result.diagnostics_bool,
+        result.diagnostics_string,
+        result.diagnostics_vector
+    );
+    py::dict handoff;
+    auto handoff_it = result.diagnostics_vector.find("phase_handoff_composition");
+    handoff["composition"] = handoff_it == result.diagnostics_vector.end() ? result.composition : handoff_it->second;
+    handoff["activity_coefficients"] = result.activity_coefficients;
+    handoff["activity_basis"] = result.diagnostics_string.count("activity_basis")
+        ? result.diagnostics_string.at("activity_basis")
+        : "mole_fraction";
+    diagnostics["phase_equilibrium_handoff"] = handoff;
+    out["diagnostics"] = diagnostics;
+    return out;
+}
+
 [[noreturn]] void raise_native_solution_error_with_diagnostics(
     const std::string& message,
     const EquilibriumResultNative& result
@@ -506,6 +535,67 @@ EquilibriumOptionsNative options_from_request(const py::dict& request) {
         options.experimental_coupled_density_lle = input["experimental_coupled_density_lle"].cast<bool>();
     }
     return options;
+}
+
+ChemicalEquilibriumOptionsNative chemical_options_from_request(const py::dict& request) {
+    ChemicalEquilibriumOptionsNative options;
+    if (!request.contains("options") || request["options"].is_none()) {
+        return options;
+    }
+    py::dict input = request["options"].cast<py::dict>();
+    if (input.contains("max_iterations")) {
+        options.max_iterations = input["max_iterations"].cast<int>();
+    }
+    if (input.contains("tolerance")) {
+        options.tolerance = input["tolerance"].cast<double>();
+    }
+    if (input.contains("damping")) {
+        options.damping = input["damping"].cast<double>();
+    }
+    if (input.contains("min_mole_fraction")) {
+        options.min_mole_fraction = input["min_mole_fraction"].cast<double>();
+    }
+    if (input.contains("finite_difference_step")) {
+        options.finite_difference_step = input["finite_difference_step"].cast<double>();
+    }
+    if (input.contains("phase")) {
+        options.phase = input["phase"].cast<std::string>();
+    }
+    return options;
+}
+
+py::dict solve_chemical_equilibrium_native_binding(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    const py::dict& request
+) {
+    double t = request["T"].cast<double>();
+    double p = request["P"].cast<double>();
+    std::vector<double> initial_x = request["initial_x"].cast<std::vector<double>>();
+    std::vector<double> balance_matrix = request["balance_matrix"].cast<std::vector<double>>();
+    int balance_rows = request["balance_rows"].cast<int>();
+    std::vector<double> total_vector = request["total_vector"].cast<std::vector<double>>();
+    std::vector<double> reaction_stoichiometry = request["reaction_stoichiometry"].cast<std::vector<double>>();
+    int reaction_rows = request["reaction_rows"].cast<int>();
+    std::vector<double> log_equilibrium_constants = request["log_equilibrium_constants"].cast<std::vector<double>>();
+    ChemicalEquilibriumOptionsNative options = chemical_options_from_request(request);
+    ChemicalEquilibriumResultNative result;
+    {
+        py::gil_scoped_release release;
+        result = chemical_equilibrium_native(
+            mixture,
+            t,
+            p,
+            initial_x,
+            balance_matrix,
+            balance_rows,
+            total_vector,
+            reaction_stoichiometry,
+            reaction_rows,
+            log_equilibrium_constants,
+            options
+        );
+    }
+    return native_chemical_equilibrium_to_dict(result);
 }
 
 std::vector<std::string> string_vector_from_request(const py::dict& request, const char* key, std::vector<std::string> fallback) {
@@ -897,4 +987,5 @@ PYBIND11_MODULE(_core, m) {
     m.def("_fit_generic_native_least_squares", &fit_generic_native_least_squares_binding);
     m.def("_evaluate_generic_native_debug", &evaluate_generic_native_debug_binding);
     m.def("_solve_equilibrium_native", &solve_equilibrium_native_binding);
+    m.def("_solve_chemical_equilibrium_native", &solve_chemical_equilibrium_native_binding);
 }
