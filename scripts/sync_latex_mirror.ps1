@@ -45,7 +45,7 @@ if ($actualBranch -ne $Branch) {
     throw "Mirror branch mismatch. Expected '$Branch' but found '$actualBranch'."
 }
 
-& robocopy $sourceRoot $MirrorRoot /MIR /XD .git /XF .git /R:2 /W:1 /NFL /NDL /NP
+& robocopy $sourceRoot $MirrorRoot /MIR /XD .git /XF .git sync_to_overleaf_mirror.ps1 /R:2 /W:1 /NFL /NDL /NP
 $robocopyExit = $LASTEXITCODE
 if ($robocopyExit -gt 7) {
     throw "robocopy failed with exit code $robocopyExit"
