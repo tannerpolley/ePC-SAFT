@@ -39,11 +39,9 @@ jobs:
 
       - name: Smoke installed package
         shell: pwsh
-        run: >
-          .\.venv-smoke\Scripts\python.exe -c "import numpy as np; import epcsaft; import epcsaft._core;
-          m = epcsaft.ePCSAFTMixture.from_params({'m': np.asarray([1.0]), 's': np.asarray([3.7039]), 'e': np.asarray([150.03])});
-          state = m.state(T=300.0, x=np.asarray([1.0]), rho=100.0);
-          print(state.compressibility_factor())"
+        run: |
+          Set-Location $env:RUNNER_TEMP
+          & "$env:GITHUB_WORKSPACE\.venv-smoke\Scripts\python.exe" -c "import numpy as np; import epcsaft; import epcsaft._core; m = epcsaft.ePCSAFTMixture.from_params({'m': np.asarray([1.0]), 's': np.asarray([3.7039]), 'e': np.asarray([150.03])}); state = m.state(T=300.0, x=np.asarray([1.0]), rho=100.0); print(state.compressibility_factor())"
 
   build:
     name: build wheels / ${{ matrix.os }}
