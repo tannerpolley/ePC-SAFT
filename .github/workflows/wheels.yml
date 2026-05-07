@@ -51,11 +51,34 @@ jobs:
               "branches: [main]",
               "fast workflow smoke",
               "windows install smoke",
+              "uv python install 3.13",
+              '$repoUrl = "file:///"',
+              "epcsaft @ $repoUrl",
+              "UV_CACHE_DIR",
+              "EPCSAFT_PEP517_BUILD_DIR",
+              "uv sync",
+              "uv run --no-sync",
+              'CIBW_BUILD: "cp313-*"',
           ):
               if token not in workflow:
                   raise SystemExit(f"missing workflow contract token: {token}")
           if not re.search(r"windows-install-smoke:\n(?:.*\n)*?    if: \$\{\{ github\.event_name != 'pull_request' \}\}", workflow):
               raise SystemExit("windows install smoke must not run on pull_request events")
+          windows_smoke = re.search(
+              r"windows-install-smoke:\n(?P<body>.*?)(?:\n  build:|\Z)",
+              workflow,
+              re.S,
+          ).group("body")
+          old_wheel_command = "uv build --" + "wheel"
+          old_wheel_step = "Build Windows " + "wheel"
+          if old_wheel_command in windows_smoke:
+              raise SystemExit("default windows install smoke must not build wheel artifacts")
+          if old_wheel_step in windows_smoke:
+              raise SystemExit("default windows install smoke must not use the old wheel-build step")
+          old_python = "uv python install " + "3." + "12"
+          old_cibw = 'CIBW_BUILD: "cp' + '312-*"'
+          if old_python in workflow or old_cibw in workflow:
+              raise SystemExit("workflow must use the Python 3.13 smoke baseline")
 
           pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
           project = pyproject["project"]
@@ -96,23 +119,36 @@ jobs:
           enable-cache: true
 
       - name: Install Python
-        run: uv python install 3.12
+        run: uv python install 3.13
 
-      - name: Build Windows wheel
-        run: uv build --wheel
-
-      - name: Install wheel into fresh environment
+      - name: Install as downstream path dependency
         shell: pwsh
         run: |
-          uv venv --python 3.12 .venv-smoke
-          $wheel = (Get-ChildItem -LiteralPath dist -Filter '*.whl' | Select-Object -First 1).FullName
-          uv pip install --python .\.venv-smoke\Scripts\python.exe $wheel
+          $downstream = Join-Path $env:RUNNER_TEMP "epcsaft-downstream-smoke"
+          New-Item -ItemType Directory -Force -Path $downstream | Out-Null
+          $repoUrl = "file:///" + ($env:GITHUB_WORKSPACE -replace "\\", "/")
+          @"
+          [project]
+          name = "epcsaft-downstream-smoke"
+          version = "0.0.0"
+          requires-python = ">=3.13"
+          dependencies = [
+              "epcsaft @ $repoUrl",
+          ]
+          "@ | Set-Content -LiteralPath (Join-Path $downstream "pyproject.toml") -Encoding UTF8
+          $env:UV_CACHE_DIR = Join-Path $env:RUNNER_TEMP "uv-cache"
+          $env:EPCSAFT_PEP517_BUILD_DIR = Join-Path $env:RUNNER_TEMP "epcsaft-pep517-build"
+          Set-Location $downstream
+          uv sync --python 3.13
 
       - name: Smoke installed package
         shell: pwsh
         run: |
-          Set-Location $env:RUNNER_TEMP
-          & "$env:GITHUB_WORKSPACE\.venv-smoke\Scripts\python.exe" -c "import numpy as np; import epcsaft; import epcsaft._core; m = epcsaft.ePCSAFTMixture.from_params({'m': np.asarray([1.0]), 's': np.asarray([3.7039]), 'e': np.asarray([150.03])}); state = m.state(T=300.0, x=np.asarray([1.0]), rho=100.0); print(state.compressibility_factor())"
+          $downstream = Join-Path $env:RUNNER_TEMP "epcsaft-downstream-smoke"
+          Set-Location $downstream
+          $env:UV_CACHE_DIR = Join-Path $env:RUNNER_TEMP "uv-cache"
+          $env:EPCSAFT_PEP517_BUILD_DIR = Join-Path $env:RUNNER_TEMP "epcsaft-pep517-build"
+          uv run --no-sync python -c "import numpy as np; import epcsaft; import epcsaft._core; m = epcsaft.ePCSAFTMixture.from_params({'m': np.asarray([1.0]), 's': np.asarray([3.7039]), 'e': np.asarray([150.03])}); state = m.state(T=300.0, x=np.asarray([1.0]), rho=100.0); print(state.compressibility_factor())"
 
   build:
     name: build wheels / ${{ matrix.os }}
@@ -133,7 +169,7 @@ jobs:
           enable-cache: true
 
       - name: Install Python
-        run: uv python install 3.12
+        run: uv python install 3.13
 
       - name: Sync dependencies
         run: uv sync --locked --no-install-project
@@ -141,7 +177,7 @@ jobs:
       - name: Build wheels
         run: uv run --locked cibuildwheel --output-dir wheelhouse
         env:
-          CIBW_BUILD: "cp312-*"
+          CIBW_BUILD: "cp313-*"
           CIBW_SKIP: "pp* *-win32 *-musllinux*"
           CIBW_TEST_REQUIRES: "numpy"
           CIBW_TEST_COMMAND: "python -c \"import numpy as np; import epcsaft; import epcsaft._core; m=epcsaft.ePCSAFTMixture.from_params({'m': np.asarray([1.0]), 's': np.asarray([3.7039]), 'e': np.asarray([150.03])}); s=m.state(T=300.0, x=np.asarray([1.0]), rho=100.0); print(s.compressibility_factor())\""
@@ -167,7 +203,7 @@ jobs:
           enable-cache: true
 
       - name: Install Python
-        run: uv python install 3.12
+        run: uv python install 3.13
 
       - name: Build sdist
         run: uv build --sdist

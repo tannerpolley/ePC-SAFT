@@ -15,6 +15,7 @@ Start every fresh source checkout with this sequence:
    uv run python scripts/validate_project.py quick
 
 This is the expected healthy baseline. It creates the uv environment, builds the in-place pybind11 ``epcsaft._core`` extension, verifies imports/tool paths and generated-output state through doctor, then runs the fast contract suite. The default test route intentionally samples representative API, native, regression, equilibrium, and workflow contracts instead of running full equilibrium/regression reproductions or generated plot production. Use ``uv run python scripts/validate_project.py confidence`` before handoff when extra native runtime contracts should be included.
+The current development and CI smoke baseline is Python 3.13, while ``pyproject.toml`` still declares package compatibility with Python ``>=3.9``.
 
 Use ``uv run python run_pytest.py ...`` for repo validation. Direct ``uv run python -m pytest ...`` works, but the wrapper sets ``src`` on the import path and uses a per-run pytest temp directory that is safer for Windows and parallel local runs.
 
@@ -74,7 +75,7 @@ The canonical native build command is:
 
    uv run python scripts/build_epcsaft.py
 
-Use ``--build-only --parallel 10`` only after the CMake tree already exists. Use ``--configure-only`` when you need to refresh CMake configuration without compiling. For a new ``build/dev`` tree, ``scripts/build_epcsaft.py`` now prefers Ninja when ``ninja`` is available on ``PATH`` because it is usually faster than MinGW Makefiles for repeated local rebuilds. Existing CMake trees keep their original generator; use ``uv run python scripts/build_epcsaft.py --clean --generator ninja`` once when you intentionally want to switch an older MinGW tree to Ninja.
+Use ``--build-only --parallel 10`` only after the CMake tree already exists. Use ``--configure-only`` when you need to refresh CMake configuration without compiling. For a new ``build/dev`` tree, ``scripts/build_epcsaft.py`` now prefers Ninja when ``ninja`` is available on ``PATH`` because it is usually faster than MinGW Makefiles for repeated local rebuilds. Existing CMake trees keep their original generator; doctor reports ``build_generator_recommendation`` when ``uv run python scripts/build_epcsaft.py --clean --generator ninja`` is the appropriate one-time migration from an older MinGW tree.
 
 Do not use ``--clean`` for routine validation. ``uv run python scripts/build_epcsaft.py --clean`` is a repair action for stale CMake state or stale/locked ``_core`` artifacts. If Windows reports that ``_core*.pyd`` is locked, stop Python REPLs, tests, IDE run configurations, or parallel workers that imported ``epcsaft._core`` before retrying.
 

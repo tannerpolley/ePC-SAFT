@@ -22,6 +22,7 @@ For development from this source tree, use ``uv`` and the direct CMake build loo
 
 This is the default source-checkout validation sequence: sync, normal native build,
 doctor, then the fast contract suite.
+The current development and CI smoke baseline is Python 3.13, while the package metadata still supports Python ``>=3.9``.
 
 For the full source-checkout command matrix, see :doc:`development_workflows`.
 
