@@ -1,5 +1,0 @@
-panel,salt,solvent,baseline_rmse,rule7_rmse,baseline_bias,rule7_bias,rmse_delta_rule7_minus_baseline,note
-7a,LiBr,ethanol,0.871331897052221,0.8713318970522208,-0.46971926716834833,-0.4697192671683476,-2.220446049250313e-16,Metrics use visible paper points only; rule7 is the salt-basis dielectric variant.
-7b,NaBr,ethanol,0.00963806093623794,0.009638060936238441,0.00037304656946285993,0.0003730465694624374,5.0133508455729725e-16,Metrics use visible paper points only; rule7 is the salt-basis dielectric variant.
-7c,LiCl,methanol,0.07947791535480438,0.07947791535480438,-0.04800916470883661,-0.04800916470883661,0.0,Metrics use visible paper points only; rule7 is the salt-basis dielectric variant.
-7d,NaBr,methanol,0.06342894962793422,0.06342894962795899,-0.05729129121831083,-0.05729129121833286,2.4771851236948805e-14,Metrics use visible paper points only; rule7 is the salt-basis dielectric variant.

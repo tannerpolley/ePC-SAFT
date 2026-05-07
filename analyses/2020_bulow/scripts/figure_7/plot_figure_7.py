@@ -21,14 +21,14 @@ require_epcsaft_install()
 
 from epcsaft.parameters import get_prop_dict
 from scripts._epcsaft_oop import epcsaft_activity_coefficient, epcsaft_density
-from _plot_common import configure_style, save_figure
+import _plot_common as common
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 T_REF = 298.15
 P_REF = 1.0e5
-DATA_DIR = Path(__file__).resolve().parent / "data"
+DATA_DIR = common.analysis_data_path(__file__, "_placeholder", kind="processed").parent
 
 SOLVENT_MW = {
     "methanol": 32.04e-3,
@@ -189,14 +189,14 @@ def _plot_panel(panel: dict[str, object]) -> Path:
     ax.grid(True, alpha=0.25)
     ax.legend(loc="best")
     out = Path(__file__).resolve().parent / f"figure_{panel['id']}.png"
-    save_figure(fig, out)
+    common.save_figure(fig, out)
     plt.close(fig)
     print(f"Wrote {out}")
     return out
 
 
 def main() -> None:
-    configure_style()
+    common.configure_style()
     for panel in PANELS:
         _plot_panel(panel)
 

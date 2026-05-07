@@ -17,7 +17,7 @@ import _common as common
 OUTPUT = Path(__file__).with_name("figure_2.png")
 DIGITIZED_SOURCES = (
     common.REPO_ROOT / "data" / "osmotic" / "water" / "2014_Held_figure_2_digitized.csv",
-    Path(__file__).with_name("figure_2_digitized.csv"),
+    common.analysis_data_path(__file__, "figure_2_digitized.csv", kind="input"),
 )
 
 

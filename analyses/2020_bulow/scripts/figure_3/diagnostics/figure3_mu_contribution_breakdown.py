@@ -19,8 +19,8 @@ if str(REPO_ROOT) not in sys.path:
 import _plot_common as common
 import _model_overlay as overlay
 
-DATA_PATH = FIGURE_DIR / "data" / "water_contributions.csv"
-OUTPUT_CSV = SCRIPT_DIR / "figure3_mu_contribution_breakdown.csv"
+DATA_PATH = common.analysis_data_path(FIGURE_DIR, "water_contributions.csv", kind="processed", category="figure_3")
+OUTPUT_CSV = common.analysis_runs_path(__file__, "figure3_mu_contribution_breakdown.csv", category=("figure_3", "diagnostics"))
 R_GAS = overlay.R_GAS
 T_REF = overlay.T_REF
 RT_KJMOL = R_GAS * T_REF / 1000.0

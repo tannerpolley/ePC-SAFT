@@ -17,6 +17,7 @@ if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import _common as common
+from scripts.plot_outputs import analysis_data_dir, analysis_data_path
 
 SOURCE_ROOT = Path(__file__).resolve().parent
 ANALYSIS_ROOT = SOURCE_ROOT.parent
@@ -79,7 +80,7 @@ FIG9_CURVE_MAX_BY_PANEL = {
 
 
 def payload_path(figure_id: str) -> Path:
-    return ANALYSIS_ROOT / "results" / "final" / "tables" / figure_id / f"{figure_id}_series.csv"
+    return analysis_data_path(SOURCE_ROOT / figure_id, f"{figure_id}_series.csv", kind="processed", category=figure_id)
 
 
 def _format_value(value: object) -> str:
@@ -201,7 +202,7 @@ def rows_by_key(rows: Iterable[dict[str, str]], key: str) -> dict[str, list[dict
 
 def generate_figure_4() -> list[dict[str, str]]:
     figure_id = "figure_4"
-    source = SOURCE_ROOT / "figure_4" / "data" / "water.csv"
+    source = analysis_data_path(SOURCE_ROOT / "figure_4", "water.csv", kind="input", category="figure_4")
     _, raw_rows = common.read_csv_rows(source)
     literature: dict[str, float] = {}
     for raw in raw_rows:
@@ -266,7 +267,7 @@ def generate_figure_4() -> list[dict[str, str]]:
 
 def generate_figure_5() -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
-    source_root = SOURCE_ROOT / "figure_5" / "data" / "water"
+    source_root = analysis_data_dir(SOURCE_ROOT / "figure_5", kind=("input", "figure_5", "water"), category=())
     order = 0
     for panel_id, salts, _title in FIG5_PANELS:
         for salt in salts:
@@ -339,7 +340,7 @@ def _load_transfer_xy(path: Path) -> tuple[np.ndarray, np.ndarray]:
 
 
 def generate_figure_6() -> list[dict[str, str]]:
-    data_root = SOURCE_ROOT / "figure_6" / "data" / "G_trans" / "water"
+    data_root = analysis_data_dir(SOURCE_ROOT / "figure_6", kind=("input", "figure_6", "G_trans", "water"), category=())
     panels = [
         ("a)", "K+", "methanol", data_root / "methanol" / "K.csv"),
         ("b)", "Br-", "methanol", data_root / "methanol" / "Br.csv"),
@@ -404,7 +405,9 @@ def generate_figure_6() -> list[dict[str, str]]:
 
 
 def generate_figure_7() -> list[dict[str, str]]:
-    source = SOURCE_ROOT / "figure_7" / "data" / "methanol" / "methanol-NaBr.csv"
+    source = analysis_data_path(
+        SOURCE_ROOT / "figure_7", "methanol-NaBr.csv", kind=("input", "figure_7", "methanol"), category=()
+    )
     data = common.read_miac_dataset(source, "methanol")
     m_max = max(float(row["molality"]) for row in data)
     rows: list[dict[str, str]] = []
@@ -471,7 +474,7 @@ def generate_figure_7() -> list[dict[str, str]]:
 
 
 def generate_figure_8() -> list[dict[str, str]]:
-    source_root = SOURCE_ROOT / "figure_8" / "data"
+    source_root = analysis_data_dir(SOURCE_ROOT / "figure_8", kind=("input", "figure_8"), category=())
     rows: list[dict[str, str]] = []
     order = 0
     for panel_id, salt, m_max, _y_max in FIG8_PANELS:
@@ -606,7 +609,7 @@ def _figure9_curve_m_max(panel_id: str, target_w_org: float, default_max: float)
 
 
 def generate_figure_9() -> list[dict[str, str]]:
-    source_root = SOURCE_ROOT / "figure_9" / "data"
+    source_root = analysis_data_dir(SOURCE_ROOT / "figure_9", kind=("input", "figure_9"), category=())
     rows: list[dict[str, str]] = []
     order = 0
     for panel_id, salt, solvent_system, m_max in FIG9_PANELS:
