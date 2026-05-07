@@ -18,7 +18,6 @@ venv/
 *.dylib
 artifacts/
 outputs/
-graphify-out/
 **/out/
 analyses/**/results/runs/
 analyses/**/logs/
