@@ -10,6 +10,12 @@ import numpy as np
 
 from ._types import InputError, SolutionError
 
+_REACTION_STANDARD_STATES = {
+    "mole_fraction_activity": 0,
+    "ideal_mole_fraction": 1,
+    "concentration": 2,
+}
+
 
 @dataclass(frozen=True, slots=True)
 class ReactionDefinition:
@@ -18,11 +24,17 @@ class ReactionDefinition:
     stoichiometry: Mapping[str, float]
     log_equilibrium_constant: float
     name: str = ""
+    standard_state: str = "mole_fraction_activity"
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "stoichiometry", {str(k): float(v) for k, v in self.stoichiometry.items()})
         object.__setattr__(self, "log_equilibrium_constant", float(self.log_equilibrium_constant))
         object.__setattr__(self, "name", str(self.name))
+        standard_state = str(self.standard_state).strip().lower()
+        if standard_state not in _REACTION_STANDARD_STATES:
+            supported = "', '".join(_REACTION_STANDARD_STATES)
+            raise InputError(f"ReactionDefinition.standard_state must be one of '{supported}'.")
+        object.__setattr__(self, "standard_state", standard_state)
 
 
 @dataclass(frozen=True, slots=True)
@@ -144,7 +156,9 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
     if jacobian_backend in {"numerical", "fd"}:
         jacobian_backend = "finite_difference"
     if jacobian_backend not in {"auto", "autodiff", "finite_difference"}:
-        raise InputError("ReactiveSpeciationOptions.jacobian_backend must be 'auto', 'autodiff', or 'finite_difference'.")
+        raise InputError(
+            "ReactiveSpeciationOptions.jacobian_backend must be 'auto', 'autodiff', or 'finite_difference'."
+        )
     for name in ("mass_tolerance", "charge_tolerance", "reaction_tolerance"):
         value = getattr(options, name)
         if value is not None and value <= 0.0:
@@ -201,6 +215,7 @@ def _solve_reactive_speciation_native(
         "reaction_stoichiometry": reaction_matrix.reshape(-1).tolist(),
         "reaction_rows": int(reaction_matrix.shape[0]),
         "log_equilibrium_constants": [float(reaction.log_equilibrium_constant) for reaction in reactions],
+        "reaction_standard_states": [int(_REACTION_STANDARD_STATES[reaction.standard_state]) for reaction in reactions],
         "options": {
             "max_iterations": int(options.max_iterations),
             "tolerance": float(options.tolerance),
@@ -231,6 +246,7 @@ def _solve_reactive_speciation_native(
         and reaction_residual_norm <= reaction_tolerance
     )
     diagnostics = dict(payload["diagnostics"])
+    diagnostics["reaction_standard_states"] = [reaction.standard_state for reaction in reactions]
     diagnostics.update(
         {
             "success": bool(payload["success"] and residual_family_success),

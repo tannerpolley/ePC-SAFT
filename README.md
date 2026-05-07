@@ -102,7 +102,7 @@ The main entry points are `ePCSAFTMixture`, `ePCSAFTState`, `create_parameter_te
 
 The regression workflow is record-driven: `fit_pure_neutral(...)` fits nonassociating neutral-component `m`, `s`, and `e`; `fit_pure_ion(...)` fits ion `s`/`e` and optional `d_born`; `fit_binary_pair(...)` fits V1 VLE `k_ij` values; and `fit_mea_co2_h2o_electrolyte(...)` exposes the opt-in MEA-CO2-H2O electrolyte pure-parameter benchmark. Use `write_fit_result(...)` when you want to persist a fit back into a user-owned dataset folder.
 
-Homogeneous reaction chemistry is available through `solve_reactive_speciation(...)`, where the caller supplies species, balances, reactions, equilibrium constants, and a mixture factory for native activity-coefficient evaluations. Electrolyte bubble-pressure and composed reactive electrolyte bubble-pressure entry points are native-backend placeholders and raise `InputError` until the corresponding C++ solvers exist; the package does not expose Python equilibrium solver fallbacks.
+Homogeneous reaction chemistry is available through `solve_reactive_speciation(...)`, where the caller supplies species, balances, reactions, equilibrium constants, standard-state basis, and a mixture factory for native activity-coefficient evaluations. Neutral `bubble_p(...)`, `bubble_t(...)`, `dew_p(...)`, and `dew_t(...)` methods use scalar outer solves over the existing state/fugacity machinery. Electrolyte bubble pressure is available as a fixed-liquid native workflow with neutral vapor species, and composed reactive electrolyte bubble pressure runs native chemical speciation before that fixed-liquid bubble-pressure solve.
 
 ## Documentation
 

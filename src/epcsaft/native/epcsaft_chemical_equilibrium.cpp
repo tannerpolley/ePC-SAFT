@@ -12,6 +12,10 @@
 
 namespace {
 
+constexpr int STANDARD_STATE_MOLE_FRACTION_ACTIVITY = 0;
+constexpr int STANDARD_STATE_IDEAL_MOLE_FRACTION = 1;
+constexpr int STANDARD_STATE_CONCENTRATION = 2;
+
 int phase_token_to_int_chemical(const std::string& phase) {
     if (phase == "liq" || phase == "liquid" || phase == "aq" || phase == "org") {
         return 0;
@@ -28,6 +32,44 @@ double max_abs_chemical(const std::vector<double>& values) {
         out = std::max(out, std::abs(value));
     }
     return out;
+}
+
+bool standard_states_need_concentration(const std::vector<int>& standard_states) {
+    for (int value : standard_states) {
+        if (value == STANDARD_STATE_CONCENTRATION) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::string standard_state_label(int value) {
+    if (value == STANDARD_STATE_MOLE_FRACTION_ACTIVITY) {
+        return "mole_fraction_activity";
+    }
+    if (value == STANDARD_STATE_IDEAL_MOLE_FRACTION) {
+        return "ideal_mole_fraction";
+    }
+    if (value == STANDARD_STATE_CONCENTRATION) {
+        return "concentration";
+    }
+    throw ValueError("reaction standard state contains an unsupported code.");
+}
+
+std::string standard_state_summary(const std::vector<int>& standard_states) {
+    if (standard_states.empty()) {
+        return "mole_fraction";
+    }
+    int first = standard_states.front();
+    for (int value : standard_states) {
+        if (value != first) {
+            return "mixed_standard_state";
+        }
+    }
+    if (first == STANDARD_STATE_MOLE_FRACTION_ACTIVITY) {
+        return "mole_fraction";
+    }
+    return standard_state_label(first);
 }
 
 std::vector<double> normalize_composition_chemical(const std::vector<double>& value, double min_mole_fraction) {
@@ -460,6 +502,7 @@ ChemicalEvaluation evaluate_chemical(
     const Eigen::VectorXd& totals,
     const Eigen::MatrixXd& reactions,
     const Eigen::VectorXd& log_k,
+    const std::vector<int>& reaction_standard_states,
     const ChemicalEquilibriumOptionsNative& options,
     int phase_int,
     const std::string& activity_model,
@@ -490,12 +533,41 @@ ChemicalEvaluation evaluate_chemical(
         }
     }
 
-    Eigen::VectorXd log_activity(static_cast<Eigen::Index>(out.x.size()));
-    for (Eigen::Index i = 0; i < log_activity.size(); ++i) {
-        double value = out.x[static_cast<std::size_t>(i)] * out.gamma[static_cast<std::size_t>(i)];
-        log_activity[i] = std::log(std::max(value, options.min_mole_fraction));
+    double molar_density = 0.0;
+    if (standard_states_need_concentration(reaction_standard_states)) {
+        try {
+            molar_density = mixture->solve_density_scoped(
+                t,
+                p,
+                out.x,
+                phase_int,
+                "chemical_equilibrium_concentration_standard_state"
+            );
+        } catch (...) {
+            if (state_failure_count != nullptr) {
+                *state_failure_count += 1;
+            }
+            throw;
+        }
     }
-    Eigen::VectorXd reaction = reactions * log_activity - log_k;
+
+    Eigen::VectorXd reaction(reactions.rows());
+    for (Eigen::Index r = 0; r < reactions.rows(); ++r) {
+        double value = -log_k[r];
+        const int standard_state = reaction_standard_states[static_cast<std::size_t>(r)];
+        for (Eigen::Index i = 0; i < reactions.cols(); ++i) {
+            double species_activity = out.x[static_cast<std::size_t>(i)] * out.gamma[static_cast<std::size_t>(i)];
+            if (standard_state == STANDARD_STATE_IDEAL_MOLE_FRACTION) {
+                species_activity = out.x[static_cast<std::size_t>(i)];
+            } else if (standard_state == STANDARD_STATE_CONCENTRATION) {
+                species_activity = out.x[static_cast<std::size_t>(i)] * molar_density;
+            } else if (standard_state != STANDARD_STATE_MOLE_FRACTION_ACTIVITY) {
+                throw ValueError("reaction standard state contains an unsupported code.");
+            }
+            value += reactions(r, i) * std::log(std::max(species_activity, options.min_mole_fraction));
+        }
+        reaction[r] = value;
+    }
     out.reaction_residuals.assign(reaction.data(), reaction.data() + reaction.size());
 
     out.residuals.reserve(out.mass_residuals.size() + 1 + out.reaction_residuals.size());
@@ -516,6 +588,7 @@ Eigen::MatrixXd finite_difference_jacobian(
     const Eigen::VectorXd& totals,
     const Eigen::MatrixXd& reactions,
     const Eigen::VectorXd& log_k,
+    const std::vector<int>& reaction_standard_states,
     const ChemicalEquilibriumOptionsNative& options,
     int phase_int,
     const std::string& activity_model,
@@ -533,7 +606,19 @@ Eigen::MatrixXd finite_difference_jacobian(
         Eigen::VectorXd shifted = log_n;
         shifted[col] += options.finite_difference_step;
         ChemicalEvaluation value = evaluate_chemical(
-            mixture, t, p, shifted, balances, totals, reactions, log_k, options, phase_int, activity_model, state_failure_count
+            mixture,
+            t,
+            p,
+            shifted,
+            balances,
+            totals,
+            reactions,
+            log_k,
+            reaction_standard_states,
+            options,
+            phase_int,
+            activity_model,
+            state_failure_count
         );
         Eigen::VectorXd residual = Eigen::Map<const Eigen::VectorXd>(
             value.residuals.data(),
@@ -578,6 +663,7 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
     const std::vector<double>& reaction_stoichiometry_row_major,
     int reaction_rows,
     const std::vector<double>& log_equilibrium_constants,
+    const std::vector<int>& reaction_standard_states,
     const ChemicalEquilibriumOptionsNative& options
 ) {
     const int ncomp = static_cast<int>(mixture->ncomp());
@@ -592,6 +678,12 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
     }
     if (log_equilibrium_constants.size() != static_cast<std::size_t>(reaction_rows)) {
         throw ValueError("log equilibrium constant length must match reaction row count.");
+    }
+    if (reaction_standard_states.size() != static_cast<std::size_t>(reaction_rows)) {
+        throw ValueError("reaction standard state length must match reaction row count.");
+    }
+    for (int standard_state : reaction_standard_states) {
+        standard_state_label(standard_state);
     }
     if (options.max_iterations < 0 || options.tolerance <= 0.0 || options.damping <= 0.0 || options.damping > 1.0
         || options.min_mole_fraction <= 0.0 || options.finite_difference_step <= 0.0) {
@@ -629,7 +721,19 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
         p
     );
     ChemicalEvaluation initial_evaluation = evaluate_chemical(
-        mixture, t, p, log_n, balances, totals, reactions, log_k, options, phase_int, activity_model, &state_failure_count
+        mixture,
+        t,
+        p,
+        log_n,
+        balances,
+        totals,
+        reactions,
+        log_k,
+        reaction_standard_states,
+        options,
+        phase_int,
+        activity_model,
+        &state_failure_count
     );
     soft_start.initial_residual_norm = initial_evaluation.residual_norm;
     if (soft_start.composition.empty()) {
@@ -649,6 +753,7 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
                 totals,
                 reactions,
                 log_k,
+                reaction_standard_states,
                 options,
                 phase_int,
                 activity_model,
@@ -676,7 +781,19 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
 
     for (int iteration = 0; iteration <= options.max_iterations; ++iteration) {
         ChemicalEvaluation current = evaluate_chemical(
-            mixture, t, p, log_n, balances, totals, reactions, log_k, options, phase_int, activity_model, &state_failure_count
+            mixture,
+            t,
+            p,
+            log_n,
+            balances,
+            totals,
+            reactions,
+            log_k,
+            reaction_standard_states,
+            options,
+            phase_int,
+            activity_model,
+            &state_failure_count
         );
         best = current;
         history.push_back(current.residual_norm);
@@ -693,7 +810,7 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
             result.diagnostics_string["native_entrypoint"] = "_solve_chemical_equilibrium_native";
             result.diagnostics_string["problem_class"] = "homogeneous_chemical_equilibrium";
             result.diagnostics_string["activity_model"] = activity_model;
-            result.diagnostics_string["activity_basis"] = "mole_fraction";
+            result.diagnostics_string["activity_basis"] = standard_state_summary(reaction_standard_states);
             result.diagnostics_string["phase"] = options.phase;
             result.diagnostics_string["requested_jacobian_backend"] = options.jacobian_backend;
             result.diagnostics_string["jacobian_backend"] = "finite_difference";
@@ -728,7 +845,20 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
             break;
         }
         Eigen::MatrixXd jac = finite_difference_jacobian(
-            mixture, t, p, log_n, current, balances, totals, reactions, log_k, options, phase_int, activity_model, &state_failure_count
+            mixture,
+            t,
+            p,
+            log_n,
+            current,
+            balances,
+            totals,
+            reactions,
+            log_k,
+            reaction_standard_states,
+            options,
+            phase_int,
+            activity_model,
+            &state_failure_count
         );
         Eigen::VectorXd residual = Eigen::Map<const Eigen::VectorXd>(
             current.residuals.data(),
@@ -740,7 +870,19 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
         for (int trial = 0; trial < 12; ++trial) {
             Eigen::VectorXd candidate_log_n = log_n + alpha * step;
             ChemicalEvaluation candidate = evaluate_chemical(
-                mixture, t, p, candidate_log_n, balances, totals, reactions, log_k, options, phase_int, activity_model, &state_failure_count
+                mixture,
+                t,
+                p,
+                candidate_log_n,
+                balances,
+                totals,
+                reactions,
+                log_k,
+                reaction_standard_states,
+                options,
+                phase_int,
+                activity_model,
+                &state_failure_count
             );
             if (candidate.residual_norm <= current.residual_norm || alpha <= 1.0e-4) {
                 log_n = candidate_log_n;
@@ -766,7 +908,7 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
     result.diagnostics_string["native_entrypoint"] = "_solve_chemical_equilibrium_native";
     result.diagnostics_string["problem_class"] = "homogeneous_chemical_equilibrium";
     result.diagnostics_string["activity_model"] = activity_model;
-    result.diagnostics_string["activity_basis"] = "mole_fraction";
+    result.diagnostics_string["activity_basis"] = standard_state_summary(reaction_standard_states);
     result.diagnostics_string["phase"] = options.phase;
     result.diagnostics_string["requested_jacobian_backend"] = options.jacobian_backend;
     result.diagnostics_string["jacobian_backend"] = "finite_difference";

@@ -12,8 +12,8 @@ production nonlinear equilibrium or regression optimizers.
 
 Consequently, electrolyte bubble-pressure and composed reactive electrolyte
 bubble-pressure entry points route through native C++ kernels. The Python layer
-only coordinates native speciation, native phase-equilibrium calls, structured
-results, and diagnostics.
+only coordinates native speciation, native phase-equilibrium calls, fixed-liquid
+bubble-pressure handoffs, structured results, and diagnostics.
 
 Homogeneous reactive speciation
 -------------------------------
@@ -99,6 +99,8 @@ Electrolyte bubble pressure
 ``solve_reactive_electrolyte_bubble(...)`` are native-backed fixed-liquid
 bubble-pressure workflows. Ions remain liquid-only. Vapor fugacity is evaluated
 with a neutral vapor submixture built from the declared vapor species.
+These paths do not fall back to Python pressure, speciation, or regression
+loops.
 
 For reactive electrolyte bubbles, the package first solves homogeneous
 chemical equilibrium with the native chemical solver and then hands the

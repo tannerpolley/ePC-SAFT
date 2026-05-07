@@ -79,9 +79,10 @@ Use ``capabilities()`` before wiring high-level downstream workflows:
 
    caps = epcsaft.capabilities()
    assert caps["equilibrium"]["neutral_tp_flash"]["available"]
-   assert not caps["equilibrium"]["electrolyte_bubble_pressure"]["available"]
+   assert caps["equilibrium"]["electrolyte_bubble_pressure"]["available"]
+   assert caps["equilibrium"]["reactive_electrolyte_bubble"]["available"]
 
-Native neutral TP flash, neutral LLE, electrolyte LLE, reactive speciation, and native regression helpers are available. Electrolyte bubble pressure and reactive electrolyte bubble pressure are placeholders until their native C++ backends exist.
+Native neutral TP flash, neutral LLE, electrolyte LLE, electrolyte bubble pressure, reactive speciation, reactive electrolyte bubble pressure, and native regression helpers are available. The electrolyte bubble-pressure workflow is scoped to fixed liquid composition with neutral vapor species; ions remain liquid-only. The reactive electrolyte bubble workflow performs native chemical speciation before the native fixed-liquid electrolyte bubble-pressure solve.
 
 MEA benchmark scope
 -------------------

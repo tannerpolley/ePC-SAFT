@@ -50,6 +50,7 @@ execute_process(
 file(GLOB EPCSAFT_NATIVE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/contributions/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/equilibrium/*.cpp"
 )
 
 add_library(epcsaft_native STATIC ${EPCSAFT_NATIVE_SOURCES})
@@ -57,6 +58,7 @@ target_include_directories(epcsaft_native
     PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/contributions"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/equilibrium"
         "${EPCSAFT_EIGEN_INCLUDE}"
 )
 target_compile_features(epcsaft_native PUBLIC cxx_std_17)
@@ -73,6 +75,7 @@ target_include_directories(_core
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/contributions"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/equilibrium"
         "${EPCSAFT_EIGEN_INCLUDE}"
 )
 target_compile_features(_core PRIVATE cxx_std_17)

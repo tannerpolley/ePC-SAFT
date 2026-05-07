@@ -53,6 +53,10 @@ def test_equilibrium_public_exports_are_available() -> None:
     assert hasattr(epcsaft, "EquilibriumResult")
     assert hasattr(epcsaft, "StabilityTrial")
     assert hasattr(epcsaft, "StabilityResult")
+    assert hasattr(epcsaft, "bubble_p")
+    assert hasattr(epcsaft, "bubble_t")
+    assert hasattr(epcsaft, "dew_p")
+    assert hasattr(epcsaft, "dew_t")
 
 
 def test_tp_flash_returns_structured_result_and_json_like_dict() -> None:
@@ -68,6 +72,91 @@ def test_tp_flash_returns_structured_result_and_json_like_dict() -> None:
     assert payload["phase_labels"] == ["liq", "vap"]
     json.dumps(payload, allow_nan=False)
     _assert_json_like(payload)
+
+
+def test_explicit_flash_tp_matches_legacy_equilibrium_dispatch() -> None:
+    mix = _hydrocarbon_mixture()
+    feed = np.asarray([0.1, 0.3, 0.6])
+
+    direct = mix.flash_tp(T=220.0, P=1.0e5, z=feed)
+    legacy = mix.equilibrium(kind="tp_flash", T=220.0, P=1.0e5, z=feed)
+
+    assert isinstance(direct, epcsaft.EquilibriumResult)
+    assert direct.problem_kind == legacy.problem_kind
+    assert direct.phase_labels == legacy.phase_labels
+    np.testing.assert_allclose(direct.phases[0].composition, legacy.phases[0].composition)
+    np.testing.assert_allclose(direct.phases[1].composition, legacy.phases[1].composition)
+
+
+def test_explicit_stability_tp_matches_legacy_equilibrium_dispatch() -> None:
+    feed = np.asarray([0.1, 0.3, 0.6])
+
+    direct = _hydrocarbon_mixture().stability_tp(T=300.0, P=1.0e5, z=feed, parent_phase="liq", trial_phases=("liq",))
+    legacy = _hydrocarbon_mixture().equilibrium(
+        kind="stability",
+        T=300.0,
+        P=1.0e5,
+        z=feed,
+        parent_phase="liq",
+        trial_phases=("liq",),
+    )
+
+    assert isinstance(direct, epcsaft.StabilityResult)
+    assert direct.problem_kind == legacy.problem_kind
+    assert direct.parent_phase == legacy.parent_phase
+    assert direct.trial_phase == legacy.trial_phase
+    assert direct.min_tpd == pytest.approx(legacy.min_tpd)
+
+
+def test_explicit_lle_tp_matches_legacy_equilibrium_dispatch() -> None:
+    mix = ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([1.5255, 2.5303]),
+            "s": np.asarray([3.2300, 3.8499]),
+            "e": np.asarray([188.90, 278.11]),
+            "e_assoc": np.asarray([2899.5, 0.0]),
+            "vol_a": np.asarray([0.035176, 0.0]),
+            "assoc_scheme": ["2B", None],
+            "k_ij": np.asarray([[0.0, 0.051], [0.051, 0.0]]),
+        },
+        species=["Methanol", "Cyclohexane"],
+    )
+    feed = np.asarray([0.5, 0.5])
+
+    direct = mix.lle_tp(T=298.15, P=1.013e5, z=feed)
+    legacy = mix.equilibrium(kind="lle_flash", T=298.15, P=1.013e5, z=feed)
+
+    assert isinstance(direct, epcsaft.EquilibriumResult)
+    assert direct.problem_kind == legacy.problem_kind
+    assert direct.phase_labels == legacy.phase_labels
+    assert direct.split_detected == legacy.split_detected
+
+
+def test_explicit_chemical_equilibrium_matches_legacy_equilibrium_dispatch() -> None:
+    mix = ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([1.0, 1.0]),
+            "s": np.asarray([3.0, 3.0]),
+            "e": np.asarray([200.0, 200.0]),
+        },
+        species=["A", "B"],
+    )
+    request = {
+        "T": 298.15,
+        "P": 1.0e5,
+        "z": [0.5, 0.5],
+        "balances": {"total": {"A": 1.0, "B": 1.0}},
+        "totals": {"total": 1.0},
+        "reactions": [epcsaft.ReactionDefinition({"A": -1.0, "B": 1.0}, np.log(3.0))],
+        "options": epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
+    }
+
+    direct = mix.chemical_equilibrium(**request)
+    legacy = mix.equilibrium(kind="chemical_equilibrium", **request)
+
+    assert isinstance(direct, epcsaft.ReactiveSpeciationResult)
+    assert direct.x == pytest.approx(legacy.x)
+    assert direct.reaction_residuals == pytest.approx(legacy.reaction_residuals)
 
 
 def test_equilibrium_phase_exposes_explicit_ln_fugacity_alias() -> None:

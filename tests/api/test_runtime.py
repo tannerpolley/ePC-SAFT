@@ -35,8 +35,22 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     capabilities = epcsaft.capabilities()
     assert capabilities["native_extension"] is True
     assert capabilities["equilibrium"]["neutral_tp_flash"]["available"] is True
-    assert capabilities["equilibrium"]["electrolyte_bubble_pressure"]["available"] is False
-    assert capabilities["equilibrium"]["reactive_electrolyte_bubble"]["available"] is False
+    assert capabilities["equilibrium"]["neutral_bubble_dew"] == {
+        "available": True,
+        "backend": "python_orchestrated_native_state_fugacity",
+        "methods": ["bubble_p", "bubble_t", "dew_p", "dew_t"],
+    }
+    electrolyte_bubble = capabilities["equilibrium"]["electrolyte_bubble_pressure"]
+    assert electrolyte_bubble["available"] is True
+    assert electrolyte_bubble["backend"] == "native"
+    assert electrolyte_bubble["scope"] == "fixed liquid composition with neutral vapor species; ions remain liquid-only"
+    reactive_bubble = capabilities["equilibrium"]["reactive_electrolyte_bubble"]
+    assert reactive_bubble["available"] is True
+    assert reactive_bubble["backend"] == "native"
+    assert (
+        reactive_bubble["scope"]
+        == "native chemical speciation followed by native fixed-liquid electrolyte bubble pressure"
+    )
     assert capabilities["regression"]["pure_neutral"]["backend"] == "native"
 
 

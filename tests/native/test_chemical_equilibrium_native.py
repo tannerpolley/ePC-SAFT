@@ -131,12 +131,14 @@ def test_native_chemical_equilibrium_solves_easy_ideal_reaction() -> None:
     assert result.diagnostics["jacobian_available"] is True
     assert result.diagnostics["jacobian_fallback_used"] is True
     assert result.diagnostics["finite_difference_fallback_used"] is True
-    assert "autodiff chemical-equilibrium residual jacobian is not implemented" in result.diagnostics[
-        "finite_difference_fallback_reason"
-    ]
-    assert "autodiff chemical-equilibrium residual jacobian is not implemented" in result.diagnostics[
-        "jacobian_fallback_reason"
-    ]
+    assert (
+        "autodiff chemical-equilibrium residual jacobian is not implemented"
+        in result.diagnostics["finite_difference_fallback_reason"]
+    )
+    assert (
+        "autodiff chemical-equilibrium residual jacobian is not implemented"
+        in result.diagnostics["jacobian_fallback_reason"]
+    )
     assert result.diagnostics["hessian_available"] is False
     assert result.diagnostics["hessian_backend"] == "not_implemented"
     assert result.diagnostics["hessian_fallback_used"] is False

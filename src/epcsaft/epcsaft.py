@@ -163,6 +163,241 @@ class ePCSAFTMixture:
             raise InputError("Provide exactly one of P or rho when constructing a state.")
         return ePCSAFTState(self, T, x, P=P, rho=rho, phase=phase)
 
+    def flash_tp(self, T, P, z, *, options=None):
+        """Solve a neutral TP flash with explicit thermodynamic-method naming."""
+        from .equilibrium import tp_flash
+
+        return tp_flash(self, T=T, P=P, z=z, options=options)
+
+    def bubble_p(self, T, x, *, options=None):
+        """Solve a neutral bubble pressure from liquid composition at fixed temperature."""
+        from .equilibrium import bubble_p
+
+        return bubble_p(self, T=T, x=x, options=options)
+
+    def bubble_t(self, P, x, *, options=None):
+        """Solve a neutral bubble temperature from liquid composition at fixed pressure."""
+        from .equilibrium import bubble_t
+
+        return bubble_t(self, P=P, x=x, options=options)
+
+    def dew_p(self, T, y, *, options=None):
+        """Solve a neutral dew pressure from vapor composition at fixed temperature."""
+        from .equilibrium import dew_p
+
+        return dew_p(self, T=T, y=y, options=options)
+
+    def dew_t(self, P, y, *, options=None):
+        """Solve a neutral dew temperature from vapor composition at fixed pressure."""
+        from .equilibrium import dew_t
+
+        return dew_t(self, P=P, y=y, options=options)
+
+    def lle_tp(self, T, P, z, *, options=None, initial_phases=None):
+        """Solve a neutral liquid-liquid TP flash."""
+        from .equilibrium import lle_flash
+
+        return lle_flash(self, T=T, P=P, z=z, options=options, initial_phases=initial_phases)
+
+    def stability_tp(self, T, P, z, *, options=None, parent_phase=None, trial_phases=None):
+        """Run neutral TP tangent-plane-distance stability analysis."""
+        from .equilibrium import neutral_stability
+
+        return neutral_stability(
+            self,
+            T=T,
+            P=P,
+            z=z,
+            options=options,
+            parent_phase=parent_phase,
+            trial_phases=trial_phases,
+        )
+
+    def electrolyte_stability_tp(self, T, P, *, z=None, solvent_feed=None, salt_molality=None, options=None):
+        """Run transformed-basis electrolyte TP stability analysis."""
+        from .equilibrium import electrolyte_stability
+
+        return electrolyte_stability(
+            self,
+            T=T,
+            P=P,
+            z=z,
+            solvent_feed=solvent_feed,
+            salt_molality=salt_molality,
+            options=options,
+        )
+
+    def electrolyte_lle_tp(
+        self,
+        T,
+        P,
+        *,
+        z=None,
+        solvent_feed=None,
+        salt_molality=None,
+        initial_phases=None,
+        options=None,
+    ):
+        """Solve charge-constrained electrolyte LLE at fixed temperature and pressure."""
+        from .equilibrium import electrolyte_lle_flash_native
+
+        return electrolyte_lle_flash_native(
+            self,
+            T=T,
+            P=P,
+            z=z,
+            solvent_feed=solvent_feed,
+            salt_molality=salt_molality,
+            initial_phases=initial_phases,
+            options=options,
+        )
+
+    def electrolyte_bubble_p(
+        self,
+        T,
+        *,
+        x_liq=None,
+        z=None,
+        vapor_species=None,
+        volatile_species=None,
+        nonvolatile_species=None,
+        options=None,
+    ):
+        """Solve fixed-liquid electrolyte bubble pressure."""
+        from .electrolyte_bubble import electrolyte_bubble_pressure
+
+        return electrolyte_bubble_pressure(
+            self,
+            T=T,
+            x_liq=x_liq,
+            z=z,
+            vapor_species=vapor_species,
+            volatile_species=volatile_species,
+            nonvolatile_species=nonvolatile_species,
+            options=options,
+        )
+
+    def chemical_equilibrium(
+        self,
+        T,
+        P,
+        *,
+        balances,
+        totals,
+        reactions,
+        initial_x=None,
+        z=None,
+        options=None,
+    ):
+        """Solve homogeneous activity-coupled chemical equilibrium."""
+        from .reactive_speciation import ReactiveSpeciationOptions
+        from .reactive_speciation import solve_reactive_speciation
+
+        if initial_x is None:
+            if z is None:
+                raise InputError("chemical_equilibrium requires z or initial_x as the initial composition.")
+            initial_x = z
+        reactive_options = options if options is not None else ReactiveSpeciationOptions()
+        if not isinstance(reactive_options, ReactiveSpeciationOptions):
+            raise InputError("chemical_equilibrium options must be a ReactiveSpeciationOptions instance.")
+        return solve_reactive_speciation(
+            species=self.species,
+            mixture_factory=lambda x, T, P: self,
+            T=T,
+            P=P,
+            balances=balances,
+            totals=totals,
+            reactions=reactions,
+            initial_x=initial_x,
+            options=reactive_options,
+        )
+
+    def reactive_electrolyte_bubble_p(
+        self,
+        T,
+        *,
+        P_seed,
+        balances,
+        totals,
+        reactions,
+        initial_x=None,
+        z=None,
+        vapor_species=None,
+        volatile_species=None,
+        nonvolatile_species=None,
+        options=None,
+    ):
+        """Run staged reactive speciation followed by fixed-liquid electrolyte bubble pressure."""
+        from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions
+        from .reactive_electrolyte import solve_reactive_electrolyte_bubble
+
+        if initial_x is None:
+            if z is None:
+                raise InputError(
+                    "reactive_electrolyte_bubble_pressure requires z or initial_x as the initial composition."
+                )
+            initial_x = z
+        reactive_bubble_options = options if options is not None else ReactiveElectrolyteBubbleOptions()
+        if not isinstance(reactive_bubble_options, ReactiveElectrolyteBubbleOptions):
+            raise InputError(
+                "reactive_electrolyte_bubble_pressure options must be a ReactiveElectrolyteBubbleOptions instance."
+            )
+        return solve_reactive_electrolyte_bubble(
+            species=self.species,
+            mixture_factory=lambda x, T, P: self,
+            T=T,
+            P_seed=P_seed,
+            balances=balances,
+            totals=totals,
+            reactions=reactions,
+            initial_x=initial_x,
+            vapor_species=vapor_species if vapor_species is not None else volatile_species,
+            volatile_species=volatile_species,
+            nonvolatile_species=nonvolatile_species,
+            options=reactive_bubble_options,
+        )
+
+    def reactive_staged_equilibrium(
+        self,
+        T,
+        P,
+        *,
+        balances,
+        totals,
+        reactions,
+        initial_x=None,
+        z=None,
+        phase_kind="auto",
+        options=None,
+        phase_options=None,
+        phase_kwargs=None,
+    ):
+        """Run staged chemical equilibrium followed by an explicit phase route."""
+        from .reactive_speciation import ReactiveSpeciationOptions
+        from .reactive_staged import solve_reactive_staged_equilibrium
+
+        if initial_x is None:
+            if z is None:
+                raise InputError("reactive_staged_equilibrium requires z or initial_x as the initial composition.")
+            initial_x = z
+        reactive_options = options if options is not None else ReactiveSpeciationOptions()
+        if not isinstance(reactive_options, ReactiveSpeciationOptions):
+            raise InputError("reactive_staged_equilibrium options must be a ReactiveSpeciationOptions instance.")
+        return solve_reactive_staged_equilibrium(
+            species=self.species,
+            mixture_factory=lambda x, T, P: self,
+            T=T,
+            P=P,
+            balances=balances,
+            totals=totals,
+            reactions=reactions,
+            initial_x=initial_x,
+            phase_kind=phase_kind,
+            speciation_options=reactive_options,
+            phase_options=phase_options,
+            phase_kwargs=phase_kwargs,
+        )
+
     def equilibrium(
         self,
         kind="tp_flash",
@@ -180,6 +415,7 @@ class ePCSAFTMixture:
         reactions=None,
         initial_x=None,
         options=None,
+        phase_kind=None,
         phase_options=None,
         backend=None,
         initial_phases=None,
@@ -187,17 +423,35 @@ class ePCSAFTMixture:
         trial_phases=None,
     ):
         """Run a native-backed equilibrium calculation for this mixture."""
-        from .equilibrium import electrolyte_lle_flash_native
-        from .equilibrium import electrolyte_stability
-        from .equilibrium import lle_flash
-        from .equilibrium import neutral_stability
-        from .equilibrium import tp_flash
         from .equilibrium_core.classify import classify_equilibrium_route
-        from .electrolyte_bubble import electrolyte_bubble_pressure
-        from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions
-        from .reactive_electrolyte import solve_reactive_electrolyte_bubble
         from .reactive_speciation import ReactiveSpeciationOptions
-        from .reactive_speciation import solve_reactive_speciation
+
+        if kind in {"reactive_staged_equilibrium", "reactive_staged"}:
+            if balances is None or totals is None or reactions is None:
+                raise InputError("reactive_staged_equilibrium requires balances, totals, and reactions.")
+            phase_kwargs = {
+                "vapor_species": vapor_species,
+                "volatile_species": volatile_species,
+                "nonvolatile_species": nonvolatile_species,
+                "solvent_feed": solvent_feed,
+                "salt_molality": salt_molality,
+                "initial_phases": initial_phases,
+                "parent_phase": parent_phase,
+                "trial_phases": trial_phases,
+            }
+            return self.reactive_staged_equilibrium(
+                T=T,
+                P=P,
+                balances=balances,
+                totals=totals,
+                reactions=reactions,
+                initial_x=initial_x,
+                z=z,
+                phase_kind=phase_kind if phase_kind is not None else ("auto" if backend is None else str(backend)),
+                options=options,
+                phase_options=phase_options,
+                phase_kwargs=phase_kwargs,
+            )
 
         if kind in {"reactive_electrolyte_bubble_pressure", "reactive_electrolyte_bubble"}:
             if balances is None or totals is None or reactions is None:
@@ -210,27 +464,18 @@ class ePCSAFTMixture:
                 initial_x = z
             if P is None:
                 raise InputError("reactive_electrolyte_bubble_pressure requires P as the pressure seed.")
-            if options is None:
-                reactive_bubble_options = ReactiveElectrolyteBubbleOptions()
-            elif not isinstance(options, ReactiveElectrolyteBubbleOptions):
-                raise InputError(
-                    "reactive_electrolyte_bubble_pressure options must be a ReactiveElectrolyteBubbleOptions instance."
-                )
-            else:
-                reactive_bubble_options = options
-            return solve_reactive_electrolyte_bubble(
-                species=self.species,
-                mixture_factory=lambda x, T, P: self,
+            return self.reactive_electrolyte_bubble_p(
                 T=T,
                 P_seed=P,
                 balances=balances,
                 totals=totals,
                 reactions=reactions,
                 initial_x=initial_x,
+                z=z,
                 vapor_species=vapor_species if vapor_species is not None else volatile_species,
                 volatile_species=volatile_species,
                 nonvolatile_species=nonvolatile_species,
-                options=reactive_bubble_options,
+                options=options,
             )
 
         if kind in {"chemical_equilibrium", "reactive_speciation"}:
@@ -242,34 +487,15 @@ class ePCSAFTMixture:
                 initial_x = z
             if backend not in (None, "native"):
                 raise InputError("chemical_equilibrium backend must be None or 'native'.")
-            reactive_options = options
-            if reactive_options is None:
-                reactive_options = ReactiveSpeciationOptions()
-            elif not isinstance(reactive_options, ReactiveSpeciationOptions):
-                raise InputError("chemical_equilibrium options must be a ReactiveSpeciationOptions instance.")
-            elif backend is not None:
-                reactive_options = ReactiveSpeciationOptions(
-                    max_iterations=reactive_options.max_iterations,
-                    tolerance=reactive_options.tolerance,
-                    damping=reactive_options.damping,
-                    min_mole_fraction=reactive_options.min_mole_fraction,
-                    finite_difference_step=reactive_options.finite_difference_step,
-                    phase=reactive_options.phase,
-                    return_best_effort=reactive_options.return_best_effort,
-                    mass_tolerance=reactive_options.mass_tolerance,
-                    charge_tolerance=reactive_options.charge_tolerance,
-                    reaction_tolerance=reactive_options.reaction_tolerance,
-                )
-            return solve_reactive_speciation(
-                species=self.species,
-                mixture_factory=lambda x, T, P: self,
+            return self.chemical_equilibrium(
                 T=T,
                 P=P,
                 balances=balances,
                 totals=totals,
                 reactions=reactions,
                 initial_x=initial_x,
-                options=reactive_options,
+                z=z,
+                options=options,
             )
 
         if kind in {"reactive_stability", "chemical_stability"}:
@@ -294,20 +520,17 @@ class ePCSAFTMixture:
                 )
             if solvent_feed is not None or salt_molality is not None:
                 raise InputError("solvent_feed and salt_molality are not supported for kind='reactive_stability'.")
-            reactive_options = options
-            if reactive_options is None:
-                reactive_options = ReactiveSpeciationOptions()
-            elif not isinstance(reactive_options, ReactiveSpeciationOptions):
+            reactive_options = options if options is not None else ReactiveSpeciationOptions()
+            if not isinstance(reactive_options, ReactiveSpeciationOptions):
                 raise InputError("reactive_stability options must be a ReactiveSpeciationOptions instance.")
-            chemical = solve_reactive_speciation(
-                species=self.species,
-                mixture_factory=lambda x, T, P: self,
+            chemical = self.chemical_equilibrium(
                 T=T,
                 P=P,
                 balances=balances,
                 totals=totals,
                 reactions=reactions,
                 initial_x=initial_x,
+                z=z,
                 options=reactive_options,
             )
             equilibrated_z = [chemical.x[label] for label in self.species]
@@ -315,10 +538,9 @@ class ePCSAFTMixture:
             if charges.size and np.any(np.abs(charges) > 1.0e-12):
                 if parent_phase is not None or trial_phases is not None:
                     raise InputError("parent_phase and trial_phases are not supported for ionic reactive_stability.")
-                result = electrolyte_stability(self, T=T, P=P, z=equilibrated_z, options=phase_options)
+                result = self.electrolyte_stability_tp(T=T, P=P, z=equilibrated_z, options=phase_options)
             else:
-                result = neutral_stability(
-                    self,
+                result = self.stability_tp(
                     T=T,
                     P=P,
                     z=equilibrated_z,
@@ -346,8 +568,7 @@ class ePCSAFTMixture:
         if kind == "auto":
             route = classify_equilibrium_route(self, kind, backend)
             if route["route"] == "electrolyte_bubble":
-                return electrolyte_bubble_pressure(
-                    self,
+                return self.electrolyte_bubble_p(
                     T=T,
                     x_liq=x_liq,
                     z=z,
@@ -358,8 +579,7 @@ class ePCSAFTMixture:
                 )
             if route["route"] == "electrolyte_lle":
                 try:
-                    result = electrolyte_lle_flash_native(
-                        self,
+                    result = self.electrolyte_lle_tp(
                         T=T,
                         P=P,
                         z=z,
@@ -385,8 +605,8 @@ class ePCSAFTMixture:
                     diagnostics=diagnostics,
                 )
             if route["route"] == "neutral_lle":
-                return lle_flash(self, T=T, P=P, z=z, options=options, initial_phases=initial_phases)
-            return tp_flash(self, T=T, P=P, z=z, options=options)
+                return self.lle_tp(T=T, P=P, z=z, options=options, initial_phases=initial_phases)
+            return self.flash_tp(T=T, P=P, z=z, options=options)
         if kind in {"electrolyte_bubble_pressure", "electrolyte_bubble", "bubble_pressure"}:
             if P is not None:
                 raise InputError(
@@ -402,8 +622,7 @@ class ePCSAFTMixture:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
             if backend not in (None, "native"):
                 raise InputError("Electrolyte bubble backend must be None or 'native'.")
-            return electrolyte_bubble_pressure(
-                self,
+            return self.electrolyte_bubble_p(
                 T=T,
                 x_liq=x_liq,
                 z=z,
@@ -430,7 +649,7 @@ class ePCSAFTMixture:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
             if backend not in (None, "native", "neutral_vle"):
                 raise InputError("TP flash backend must be None, 'native', or 'neutral_vle'.")
-            return tp_flash(self, T=T, P=P, z=z, options=options)
+            return self.flash_tp(T=T, P=P, z=z, options=options)
         if kind == "lle_flash":
             if solvent_feed is not None or salt_molality is not None:
                 raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
@@ -447,7 +666,7 @@ class ePCSAFTMixture:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
             if backend not in (None, "native", "neutral_lle"):
                 raise InputError("LLE flash backend must be None, 'native', or 'neutral_lle'.")
-            return lle_flash(self, T=T, P=P, z=z, options=options, initial_phases=initial_phases)
+            return self.lle_tp(T=T, P=P, z=z, options=options, initial_phases=initial_phases)
         if kind in {"electrolyte_lle", "electrolyte_lle_flash"}:
             if (
                 x_liq is not None
@@ -462,10 +681,7 @@ class ePCSAFTMixture:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
             if backend not in (None, "native", "electrolyte_lle"):
                 raise InputError("Electrolyte LLE backend must be None, 'native', or 'electrolyte_lle'.")
-            from .equilibrium import electrolyte_lle_flash_native
-
-            return electrolyte_lle_flash_native(
-                self,
+            return self.electrolyte_lle_tp(
                 T=T,
                 P=P,
                 z=z,
@@ -490,8 +706,7 @@ class ePCSAFTMixture:
                 raise InputError("parent_phase and trial_phases are not supported for kind='electrolyte_stability'.")
             if backend not in (None, "native", "electrolyte_tpd"):
                 raise InputError("Electrolyte stability backend must be None, 'native', or 'electrolyte_tpd'.")
-            return electrolyte_stability(
-                self,
+            return self.electrolyte_stability_tp(
                 T=T,
                 P=P,
                 z=z,
@@ -515,8 +730,7 @@ class ePCSAFTMixture:
                 raise InputError("initial_phases is only supported for kind='lle_flash'.")
             if backend not in (None, "native", "neutral_tpd"):
                 raise InputError("Stability backend must be None, 'native', or 'neutral_tpd'.")
-            return neutral_stability(
-                self,
+            return self.stability_tp(
                 T=T,
                 P=P,
                 z=z,
@@ -525,7 +739,7 @@ class ePCSAFTMixture:
                 trial_phases=trial_phases,
             )
         raise InputError(
-            "Only kind='tp_flash', kind='auto', kind='lle_flash', kind='electrolyte_lle', kind='electrolyte_bubble_pressure', kind='electrolyte_stability', kind='stability', kind='chemical_equilibrium', kind='reactive_stability', or kind='reactive_electrolyte_bubble_pressure' is supported by equilibrium."
+            "Only kind='tp_flash', kind='auto', kind='lle_flash', kind='electrolyte_lle', kind='electrolyte_bubble_pressure', kind='electrolyte_stability', kind='stability', kind='chemical_equilibrium', kind='reactive_staged_equilibrium', kind='reactive_stability', or kind='reactive_electrolyte_bubble_pressure' is supported by equilibrium."
         )
 
     def equilibrium_curve(self, points, *, kind="electrolyte_lle", T=None, P=None, options=None, initial_phases=None):
@@ -1469,9 +1683,7 @@ def create_struct(params):
         raise ValueError(
             "Unknown disp_model dadx_differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3)."
         )
-    cppargs.assoc_dadx_diff_mode = _as_int_alias(
-        assoc_model_dict.get("dadx_differential_mode", "auto"), diff_alias
-    )
+    cppargs.assoc_dadx_diff_mode = _as_int_alias(assoc_model_dict.get("dadx_differential_mode", "auto"), diff_alias)
     if cppargs.assoc_dadx_diff_mode not in (0, 1, 2, 3):
         raise ValueError(
             "Unknown assoc_model dadx_differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3)."
@@ -1485,7 +1697,9 @@ def create_struct(params):
     bjeruum = _as_bool(dh_model_dict.get("bjeruum_treatment", False))
     cppargs.mu_DH_diff_mode = _as_int_alias(mu_dh.get("differential_mode", "auto"), diff_alias)
     if cppargs.mu_DH_diff_mode not in (0, 1, 2, 3):
-        raise ValueError("Unknown mu_DH differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3).")
+        raise ValueError(
+            "Unknown mu_DH differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3)."
+        )
     cppargs.mu_DH_comp_dep_rel_perm = int(_as_bool(mu_dh.get("comp_dep_rel_perm", True)))
     cppargs.mu_DH_include_sum_term = int(_as_bool(mu_dh.get("include_sum_term", True)))
 

@@ -100,12 +100,11 @@ def test_methanol_cyclohexane_lle_flash_closes_material_and_fugacity_balance() -
     assert result.diagnostics["jacobian_available"] is True
     assert result.diagnostics["jacobian_fallback_used"] is True
     assert result.diagnostics["finite_difference_fallback_used"] is True
-    assert "autodiff neutral LLE residual jacobian is not implemented" in result.diagnostics[
-        "finite_difference_fallback_reason"
-    ]
-    assert "autodiff neutral LLE residual jacobian is not implemented" in result.diagnostics[
-        "jacobian_fallback_reason"
-    ]
+    assert (
+        "autodiff neutral LLE residual jacobian is not implemented"
+        in result.diagnostics["finite_difference_fallback_reason"]
+    )
+    assert "autodiff neutral LLE residual jacobian is not implemented" in result.diagnostics["jacobian_fallback_reason"]
     assert result.diagnostics["hessian_available"] is False
     assert result.diagnostics["hessian_backend"] == "not_implemented"
     assert result.diagnostics["hessian_fallback_used"] is False
