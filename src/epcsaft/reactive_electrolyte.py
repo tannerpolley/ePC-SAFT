@@ -11,7 +11,12 @@ from ._types import SolutionError
 from .electrolyte_bubble import ElectrolyteBubbleOptions
 from .electrolyte_bubble import electrolyte_bubble_pressure
 from .reactive_speciation import ReactiveSpeciationOptions
+from .reactive_speciation import ReactiveSpeciationResult
 from .reactive_speciation import solve_reactive_speciation
+
+_PHASE_HANDOFF_MASS_TOLERANCE = 1.0e-8
+_PHASE_HANDOFF_CHARGE_TOLERANCE = 1.0e-8
+_PHASE_HANDOFF_REACTION_TOLERANCE = 1.0e-5
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,12 +129,17 @@ def solve_reactive_electrolyte_bubble(
     diagnostics = {
         "speciation": chemical.to_dict(),
         "bubble": bubble.to_dict(),
+        "speciation_strict_success": bool(chemical.success),
+        "speciation_phase_handoff_success": _speciation_phase_handoff_success(chemical),
+        "bubble_success": bool(bubble.success),
         "native_entrypoint": "_solve_chemical_equilibrium_native_then__solve_electrolyte_bubble_native",
         "solver_language": "c++",
     }
+    success = bool(diagnostics["speciation_phase_handoff_success"] and bubble.success)
+    message = "converged" if success else _reactive_bubble_failure_message(chemical, bubble, diagnostics)
     return ReactiveElectrolyteBubbleResult(
-        success=bool(chemical.success and bubble.success),
-        message="converged" if chemical.success and bubble.success else bubble.message,
+        success=success,
+        message=message,
         x_liq=x_liq,
         activity_coefficients=chemical.activity_coefficients,
         mass_balance_residuals=chemical.mass_balance_residuals,
@@ -212,3 +222,37 @@ def solve_reactive_electrolyte_bubble_sweep(
             last_pressure = result.P_total
             last_y = result.y_vap
     return results
+
+
+def _speciation_phase_handoff_success(result: ReactiveSpeciationResult) -> bool:
+    """Return whether speciation is accurate enough to hand to phase equilibrium."""
+    if result.success:
+        return True
+    diagnostics = result.diagnostics
+    if not bool(diagnostics.get("native_success", False)):
+        return False
+    mass_norm = float(diagnostics.get("mass_residual_norm", float("inf")))
+    charge_norm = float(diagnostics.get("charge_residual_abs", abs(result.charge_residual)))
+    reaction_norm = float(
+        diagnostics.get(
+            "reaction_residual_norm",
+            max((abs(value) for value in result.reaction_residuals), default=0.0),
+        )
+    )
+    return (
+        mass_norm <= _PHASE_HANDOFF_MASS_TOLERANCE
+        and charge_norm <= _PHASE_HANDOFF_CHARGE_TOLERANCE
+        and reaction_norm <= _PHASE_HANDOFF_REACTION_TOLERANCE
+    )
+
+
+def _reactive_bubble_failure_message(
+    chemical: ReactiveSpeciationResult,
+    bubble: Any,
+    diagnostics: Mapping[str, Any],
+) -> str:
+    if not bool(diagnostics["speciation_phase_handoff_success"]):
+        if chemical.success:
+            return "reactive electrolyte speciation failed phase-handoff checks"
+        return "reactive electrolyte speciation did not meet phase-handoff tolerances"
+    return str(bubble.message)
