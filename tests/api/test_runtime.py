@@ -510,6 +510,98 @@ def test_pressure_based_state_matches_equivalent_density_state():
     assert state_tp.residual_helmholtz() == pytest.approx(state_trho.residual_helmholtz())
 
 
+def test_pressure_based_state_accepts_density_guess_without_changing_closure():
+    mix = ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([2.8149]),
+            "s": np.asarray([3.7169]),
+            "e": np.asarray([285.69]),
+        },
+        species=["Toluene"],
+    )
+
+    base = mix.state(T=320.0, x=np.asarray([1.0]), P=101325.0, phase="liq")
+    seeded = mix.state(T=320.0, x=np.asarray([1.0]), P=101325.0, phase="liq", rho_guess=base.density())
+
+    assert seeded.density() == pytest.approx(base.density())
+    assert seeded.pressure() == pytest.approx(base.pressure())
+    assert seeded.fugacity_coefficient() == pytest.approx(base.fugacity_coefficient())
+
+
+def test_pressure_based_state_with_poor_density_guess_falls_back_safely():
+    mix = ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([2.8149]),
+            "s": np.asarray([3.7169]),
+            "e": np.asarray([285.69]),
+        },
+        species=["Toluene"],
+    )
+
+    reference = mix.state(T=320.0, x=np.asarray([1.0]), P=101325.0, phase="liq")
+    seeded = mix.state(T=320.0, x=np.asarray([1.0]), P=101325.0, phase="liq", rho_guess=1.0e-6)
+
+    assert seeded.density() == pytest.approx(reference.density())
+    assert seeded.pressure() == pytest.approx(reference.pressure())
+
+
+@pytest.mark.parametrize("rho_guess", [0.0, -1.0, np.inf, np.nan])
+def test_pressure_based_state_rejects_invalid_density_guess(rho_guess):
+    mix = ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([1.0]),
+            "s": np.asarray([3.0]),
+            "e": np.asarray([150.0]),
+        }
+    )
+
+    with pytest.raises(epcsaft.InputError, match="rho_guess must be finite and positive"):
+        mix.state(T=300.0, x=np.asarray([1.0]), P=101325.0, rho_guess=rho_guess)
+
+
+def test_density_guess_is_only_valid_for_pressure_based_states():
+    mix = ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([1.0]),
+            "s": np.asarray([3.0]),
+            "e": np.asarray([150.0]),
+        }
+    )
+
+    with pytest.raises(epcsaft.InputError, match="rho_guess is only supported"):
+        mix.state(T=300.0, x=np.asarray([1.0]), rho=100.0, rho_guess=100.0)
+
+
+def test_check_density_reports_pressure_consistency_diagnostics():
+    mix = ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([2.8149]),
+            "s": np.asarray([3.7169]),
+            "e": np.asarray([285.69]),
+        },
+        species=["Toluene"],
+    )
+
+    state = mix.state(T=320.0, x=np.asarray([1.0]), P=101325.0, phase="liq")
+    matching = mix.check_density(T=320.0, x=np.asarray([1.0]), P=101325.0, rho=state.density(), phase="liq")
+    perturbed = mix.check_density(T=320.0, x=np.asarray([1.0]), P=101325.0, rho=state.density() * 0.9, phase="liq")
+
+    assert matching["within_tolerance"] is True
+    assert matching["pressure_residual"] == pytest.approx(0.0, abs=1.0e-6)
+    assert matching["state"].density() == pytest.approx(state.density())
+    assert perturbed["within_tolerance"] is False
+    assert abs(perturbed["pressure_residual"]) > abs(matching["pressure_residual"])
+    assert set(perturbed) == {
+        "density",
+        "pressure_target",
+        "pressure_from_density",
+        "pressure_residual",
+        "relative_pressure_residual",
+        "within_tolerance",
+        "state",
+    }
+
+
 def test_pressure_based_state_raises_solver_error_during_construction():
     mix = ePCSAFTMixture.from_params(
         {

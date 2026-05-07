@@ -77,6 +77,8 @@ Simple example
   print(state.molar_density())         # explicit molar-density alias
   print(state.ares())                  # short alias for residual_helmholtz()
   print(state.ares(return_contribution_terms=True)["terms"]["hc"])
+  seeded = mixture.state(T=321.0, x=np.asarray([1.0]), P=101325.0, rho_guess=state.density())
+  audit = mixture.check_density(T=320.0, x=np.asarray([1.0]), P=101325.0, rho=state.density())
 
 Project Layout
 --------------

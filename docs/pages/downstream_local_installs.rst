@@ -48,6 +48,19 @@ For normal ePC-SAFT source development, keep using the explicit in-place dev bui
 
 New dev build configurations prefer Ninja when available. Existing ``build/dev`` trees keep their configured generator until you run the coordinated repair command ``uv run python scripts\build_epcsaft.py --clean --generator ninja``.
 
+Editable installs
+-----------------
+
+The current custom build backend is intended for wheel/path installs and does not expose a PEP 660 editable-install workflow as the normal downstream path. For downstream co-development, prefer reinstalling the local path dependency after package changes:
+
+.. code-block:: powershell
+
+   $env:UV_CACHE_DIR = "$PWD\.uv-cache"
+   uv sync --reinstall-package epcsaft
+   uv run --no-sync python -m your_downstream_smoke
+
+When working inside the ePC-SAFT checkout itself, use ``uv run python scripts\build_epcsaft.py --build-only --parallel 10`` after the initial build rather than relying on ``pip install -e``.
+
 Windows ``_core`` lock failures
 -------------------------------
 

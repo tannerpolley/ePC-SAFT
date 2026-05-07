@@ -84,6 +84,12 @@ state = mixture.state(T=320.0, x=np.asarray([1.0]), P=101325.0)
 print(state.density())
 print(state.ares())
 print(state.ares(return_contribution_terms=True)["terms"]["hc"])
+
+# Reuse an accepted density as a pressure-solve seed for nearby calls.
+seeded = mixture.state(T=321.0, x=np.asarray([1.0]), P=101325.0, rho_guess=state.density())
+
+# Or audit a direct-density input against pressure closure.
+audit = mixture.check_density(T=320.0, x=np.asarray([1.0]), P=101325.0, rho=state.density())
 ```
 
 ## Package Layout
