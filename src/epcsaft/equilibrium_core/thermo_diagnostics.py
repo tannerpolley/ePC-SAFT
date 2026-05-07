@@ -17,7 +17,7 @@ from epcsaft.equilibrium import _phase_state
 from epcsaft.equilibrium_core.electrolyte_basis import build_electrolyte_basis
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-KHUIDAIDA_ANALYSIS = REPO_ROOT / "analyses" / "2026_khudaida" / "scripts"
+KHUIDAIDA_ANALYSIS = REPO_ROOT / "analyses" / "2026_khudaida"
 KHUIDAIDA_PARAMS = REPO_ROOT / "data" / "reference" / "epcsaft_parameters" / "2026_Khudaida"
 DATASET = "2026_Khudaida"
 SPECIES = ["H2O", "Ethanol", "Butanol", "Na+", "Cl-"]
@@ -178,7 +178,7 @@ def evaluate_khudaida_tieline(*, figure: int, tie_line: int, source: str) -> dic
 
 def compare_khudaida_aad_tables() -> dict[str, Any]:
     """Summarize package-vs-paper AAD gaps from Khudaida Tables 9 and 10."""
-    table_dir = KHUIDAIDA_ANALYSIS / "tables_9_10" / "data"
+    table_dir = _khudaida_analysis_data_dir("tables_9_10")
     rows_compared = []
     max_package = 0.0
     max_paper = 0.0
@@ -588,10 +588,18 @@ def evaluate_khudaida_solver_gate(
 
 
 def _figure_data_dir(figure: int) -> Path:
-    path = KHUIDAIDA_ANALYSIS / f"figure_{int(figure)}" / "data"
-    if not path.is_dir():
-        raise FileNotFoundError(f"Khudaida figure data directory is missing: {path}")
-    return path
+    return _khudaida_analysis_data_dir(f"figure_{int(figure)}")
+
+
+def _khudaida_analysis_data_dir(result_set: str) -> Path:
+    candidates = [
+        KHUIDAIDA_ANALYSIS / "results" / result_set / "data",
+        KHUIDAIDA_ANALYSIS / "scripts" / result_set / "data",
+    ]
+    for path in candidates:
+        if path.is_dir():
+            return path
+    raise FileNotFoundError(f"Khudaida analysis data directory is missing: {candidates[0]}")
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
