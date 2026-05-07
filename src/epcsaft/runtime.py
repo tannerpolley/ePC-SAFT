@@ -1,0 +1,171 @@
+"""Runtime metadata and capability discovery for downstream applications."""
+
+from __future__ import annotations
+
+import json
+import platform
+import re
+import subprocess
+import sys
+from datetime import datetime, timezone
+from functools import lru_cache
+from importlib import metadata
+from pathlib import Path
+from urllib.parse import unquote, urlparse
+from urllib.request import url2pathname
+
+
+def _package_version() -> str:
+    try:
+        return metadata.version("epcsaft")
+    except metadata.PackageNotFoundError:
+        pass
+    pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
+    if pyproject.exists():
+        match = re.search(
+            r'(?m)^version\s*=\s*"([^"]+)"',
+            pyproject.read_text(encoding="utf-8", errors="replace"),
+        )
+        if match:
+            return match.group(1)
+    return "0+unknown"
+
+
+__version__ = _package_version()
+
+
+def _direct_url_payload() -> dict:
+    try:
+        text = metadata.distribution("epcsaft").read_text("direct_url.json")
+    except metadata.PackageNotFoundError:
+        return {}
+    if not text:
+        return {}
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _path_from_file_url(url: str | None) -> Path | None:
+    if not url:
+        return None
+    parsed = urlparse(str(url))
+    if parsed.scheme != "file":
+        return None
+    raw_path = unquote(parsed.path)
+    if parsed.netloc:
+        raw_path = f"//{parsed.netloc}{raw_path}"
+    return Path(url2pathname(raw_path))
+
+
+def _source_checkout_from_package() -> Path | None:
+    package_path = Path(__file__).resolve()
+    for candidate in (package_path.parents[2], package_path.parents[1]):
+        if (candidate / ".git").exists():
+            return candidate
+    return None
+
+
+def _source_checkout_from_direct_url(payload: dict) -> Path | None:
+    source = _path_from_file_url(payload.get("url"))
+    if source is None:
+        return None
+    if source.is_file():
+        source = source.parent
+    for candidate in (source, *source.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    return source if source.exists() else None
+
+
+def _git_commit(source_root: Path | None) -> str:
+    if source_root is None or not source_root.exists():
+        return "unknown"
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(source_root), "rev-parse", "--short=12", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=2.0,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+    commit = completed.stdout.strip()
+    return commit if completed.returncode == 0 and commit else "unknown"
+
+
+def _native_extension_path() -> Path | None:
+    try:
+        from . import _core
+    except Exception:
+        return None
+    return Path(_core.__file__).resolve()
+
+
+def _mtime_utc(path: Path) -> str:
+    return datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat()
+
+
+@lru_cache(maxsize=1)
+def runtime_build_info() -> dict[str, object]:
+    """Return JSON-like package, source, and native-extension metadata."""
+
+    direct_url = _direct_url_payload()
+    source_root = _source_checkout_from_package() or _source_checkout_from_direct_url(direct_url)
+    native_path = _native_extension_path()
+    direct_url_info = direct_url.get("dir_info") if isinstance(direct_url.get("dir_info"), dict) else {}
+    return {
+        "package_version": __version__,
+        "source_git_commit": _git_commit(source_root),
+        "source_root": None if source_root is None else str(source_root),
+        "direct_url": direct_url.get("url"),
+        "editable": bool(direct_url_info.get("editable", False)),
+        "package_file": str(Path(__file__).resolve()),
+        "native_extension": None if native_path is None else str(native_path),
+        "native_extension_available": native_path is not None,
+        "native_extension_mtime_utc": None if native_path is None else _mtime_utc(native_path),
+        "python": sys.version.split()[0],
+        "platform": platform.platform(),
+        "machine": platform.machine(),
+    }
+
+
+def capabilities() -> dict[str, object]:
+    """Return structured availability flags for high-level package workflows."""
+
+    return {
+        "native_extension": bool(runtime_build_info()["native_extension_available"]),
+        "equilibrium": {
+            "neutral_tp_flash": {"available": True, "backend": "native"},
+            "neutral_lle_flash": {"available": True, "backend": "native"},
+            "neutral_stability": {"available": True, "backend": "native"},
+            "electrolyte_lle": {"available": True, "backend": "native"},
+            "electrolyte_bubble_pressure": {
+                "available": False,
+                "backend": "native-placeholder",
+                "reason": "native C++ backend is not implemented",
+            },
+            "reactive_electrolyte_bubble": {
+                "available": False,
+                "backend": "native-placeholder",
+                "reason": "native C++ backend is not implemented",
+            },
+            "reactive_speciation": {"available": True, "backend": "native activity evaluations"},
+        },
+        "regression": {
+            "pure_neutral": {"available": True, "backend": "native"},
+            "pure_ion": {"available": True, "backend": "native"},
+            "binary_pair": {"available": True, "backend": "native"},
+            "mea_co2_h2o_electrolyte_benchmark": {
+                "available": True,
+                "backend": "native",
+                "scope": "fixed-composition benchmark, not reactive bubble-pressure fitting",
+            },
+        },
+    }
+
+
+__git_commit__ = str(runtime_build_info()["source_git_commit"])

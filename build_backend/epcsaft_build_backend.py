@@ -7,6 +7,7 @@ import os
 import shutil
 import sys
 import tempfile
+from pathlib import Path
 
 from scikit_build_core import build as _scikit_build
 
@@ -37,13 +38,73 @@ def _sandbox_safe_mkdtemp(suffix=None, prefix=None, dir=None):
 
 if os.name == "nt":
     tempfile.mkdtemp = _sandbox_safe_mkdtemp
-    if shutil.which("mingw32-make") and not shutil.which("cl"):
-        os.environ.setdefault("CMAKE_GENERATOR", "MinGW Makefiles")
-        os.environ.setdefault("CMAKE_MAKE_PROGRAM", shutil.which("mingw32-make") or "")
+    if not os.environ.get("CMAKE_GENERATOR") and not shutil.which("cl"):
+        if shutil.which("ninja"):
+            os.environ.setdefault("CMAKE_GENERATOR", "Ninja")
+        elif shutil.which("mingw32-make"):
+            os.environ.setdefault("CMAKE_GENERATOR", "MinGW Makefiles")
+            os.environ.setdefault("CMAKE_MAKE_PROGRAM", shutil.which("mingw32-make") or "")
+
+
+def _has_build_dir(config_settings) -> bool:
+    if not config_settings:
+        return False
+    return any(str(key).replace("_", "-") == "build-dir" for key in config_settings)
+
+
+def _source_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def _is_under(path: Path, root: Path) -> bool:
+    return path == root or root in path.parents
+
+
+def _external_temp_root() -> Path | None:
+    source_root = _source_root()
+    candidates: list[Path] = []
+    local_app_data = os.environ.get("LOCALAPPDATA")
+    if local_app_data:
+        candidates.append(Path(local_app_data) / "Temp")
+    if os.name != "nt":
+        candidates.append(Path("/tmp"))
+    candidates.append(Path(tempfile.gettempdir()))
+
+    for candidate in candidates:
+        try:
+            resolved = candidate.expanduser().resolve()
+            if _is_under(resolved, source_root):
+                continue
+            resolved.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            continue
+        return resolved
+    return None
+
+
+def _isolated_build_config(config_settings=None):
+    config = dict(config_settings or {})
+    if _has_build_dir(config):
+        return config
+    persistent = os.environ.get("EPCSAFT_PEP517_BUILD_DIR")
+    if persistent:
+        build_dir = Path(persistent).expanduser().resolve()
+        build_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        build_dir = Path(tempfile.mkdtemp(prefix="epcsaft-pep517-build-", dir=_external_temp_root())).resolve()
+    config["build-dir"] = str(build_dir)
+    return config
+
+
+def build_wheel(wheel_directory, config_settings=None, metadata_directory=None):
+    return _scikit_build.build_wheel(
+        wheel_directory,
+        config_settings=_isolated_build_config(config_settings),
+        metadata_directory=metadata_directory,
+    )
 
 
 build_sdist = _scikit_build.build_sdist
-build_wheel = _scikit_build.build_wheel
 get_requires_for_build_sdist = _scikit_build.get_requires_for_build_sdist
 get_requires_for_build_wheel = _scikit_build.get_requires_for_build_wheel
 prepare_metadata_for_build_wheel = _scikit_build.prepare_metadata_for_build_wheel

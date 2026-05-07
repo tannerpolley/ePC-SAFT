@@ -12,6 +12,7 @@ Start Here
 
    README
    getting_started
+   downstream_local_installs
    development_workflows
    project_structure
 

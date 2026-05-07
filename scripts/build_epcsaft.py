@@ -56,6 +56,50 @@ def _remove_extension_artifact(artifact: Path) -> None:
         raise PermissionError(message) from exc
 
 
+def _configured_generator() -> str | None:
+    cache = BUILD_DIR / "CMakeCache.txt"
+    if not cache.exists():
+        return None
+    for line in cache.read_text(encoding="utf-8", errors="replace").splitlines():
+        if line.startswith("CMAKE_GENERATOR:INTERNAL="):
+            return line.split("=", 1)[1].strip()
+    return None
+
+
+def _generator_args(env: dict[str, str], configured_generator: str | None = None) -> list[str]:
+    requested = env.get("EPCSAFT_CMAKE_GENERATOR", "").strip().lower()
+    if requested == "auto":
+        requested = ""
+
+    known = {
+        "ninja": "Ninja",
+        "mingw": "MinGW Makefiles",
+        "mingw makefiles": "MinGW Makefiles",
+    }
+    if configured_generator:
+        if not requested:
+            return []
+        target = known.get(requested)
+        if target and target == configured_generator:
+            return []
+        raise RuntimeError(
+            "build/dev is already configured with "
+            f"{configured_generator!r}. Use --clean before switching to {target or requested!r}."
+        )
+
+    if requested in {"ninja", ""} and shutil.which("ninja", path=env.get("PATH")):
+        return ["-G", "Ninja"]
+    if (
+        requested in {"mingw", "mingw makefiles"}
+        and os.name == "nt"
+        and shutil.which("mingw32-make", path=env.get("PATH"))
+    ):
+        return ["-G", "MinGW Makefiles"]
+    if os.name == "nt" and shutil.which("mingw32-make", path=env.get("PATH")):
+        return ["-G", "MinGW Makefiles"]
+    return []
+
+
 def _configure(env: dict[str, str]) -> None:
     pybind11_dir = _capture([sys.executable, "-m", "pybind11", "--cmakedir"], env=env)
     cmd = [
@@ -69,10 +113,7 @@ def _configure(env: dict[str, str]) -> None:
         f"-DPython_EXECUTABLE={sys.executable}",
         f"-Dpybind11_DIR={pybind11_dir}",
     ]
-    if os.name == "nt" and shutil.which("mingw32-make", path=env.get("PATH")):
-        cmd.extend(["-G", "MinGW Makefiles"])
-    elif shutil.which("ninja", path=env.get("PATH")):
-        cmd.extend(["-G", "Ninja"])
+    cmd.extend(_generator_args(env, _configured_generator()))
     _run(cmd, env=env)
 
 
@@ -101,6 +142,12 @@ def _parser() -> argparse.ArgumentParser:
         "--build-only", action="store_true", help="Build the existing CMake dev build tree without reconfiguring."
     )
     parser.add_argument("--parallel", help="Optional CMake build parallelism value.")
+    parser.add_argument(
+        "--generator",
+        choices=("auto", "ninja", "mingw"),
+        default="auto",
+        help="CMake generator for a new configure. Auto prefers Ninja when available.",
+    )
     return parser
 
 
@@ -117,6 +164,8 @@ def main() -> int:
         _timed("clean", _clean)
 
     env = _env()
+    if args.generator != "auto":
+        env["EPCSAFT_CMAKE_GENERATOR"] = args.generator
     if not args.build_only:
         _timed("configure", lambda: _configure(env))
     else:

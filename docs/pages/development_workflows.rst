@@ -74,7 +74,7 @@ The canonical native build command is:
 
    uv run python scripts/build_epcsaft.py
 
-Use ``--build-only --parallel 10`` only after the CMake tree already exists. Use ``--configure-only`` when you need to refresh CMake configuration without compiling.
+Use ``--build-only --parallel 10`` only after the CMake tree already exists. Use ``--configure-only`` when you need to refresh CMake configuration without compiling. For a new ``build/dev`` tree, ``scripts/build_epcsaft.py`` now prefers Ninja when ``ninja`` is available on ``PATH`` because it is usually faster than MinGW Makefiles for repeated local rebuilds. Existing CMake trees keep their original generator; use ``uv run python scripts/build_epcsaft.py --clean --generator ninja`` once when you intentionally want to switch an older MinGW tree to Ninja.
 
 Do not use ``--clean`` for routine validation. ``uv run python scripts/build_epcsaft.py --clean`` is a repair action for stale CMake state or stale/locked ``_core`` artifacts. If Windows reports that ``_core*.pyd`` is locked, stop Python REPLs, tests, IDE run configurations, or parallel workers that imported ``epcsaft._core`` before retrying.
 
@@ -148,4 +148,4 @@ Troubleshooting
 
 Run ``uv run python scripts/doctor.py`` whenever imports, tool paths, ``_core`` state, or generated-output tracking are unclear. It reports the active Python, git ref, uv/cmake/ninja paths, ``epcsaft`` import path, ``epcsaft._core`` path, required native symbol presence, generated artifact state, and the next recommended command.
 
-If ``scripts/build_epcsaft.py`` appears slow, wait for the configured timeout before treating it as broken. Full configure/build can take far longer than the fast rebuild path; incremental ``--build-only --parallel 10`` is the intended C++ edit loop.
+If ``scripts/build_epcsaft.py`` appears slow, first check whether ``build/dev/CMakeCache.txt`` reports ``CMAKE_GENERATOR:INTERNAL=MinGW Makefiles``. A clean one-time switch to Ninja can materially reduce rebuild overhead on Windows systems where Ninja is already installed. Full configure/build can still take far longer than the fast rebuild path; incremental ``--build-only --parallel 10`` is the intended C++ edit loop.

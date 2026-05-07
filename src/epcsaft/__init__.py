@@ -44,6 +44,10 @@ from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions
 from .reactive_electrolyte import ReactiveElectrolyteBubbleResult
 from .reactive_electrolyte import solve_reactive_electrolyte_bubble
 from .reactive_electrolyte import solve_reactive_electrolyte_bubble_sweep
+from .runtime import __git_commit__
+from .runtime import __version__
+from .runtime import capabilities
+from .runtime import runtime_build_info
 
 __all__ = [
     "DATASET_ROOT",
@@ -90,4 +94,8 @@ __all__ = [
     "solve_reactive_electrolyte_bubble_sweep",
     "solve_reactive_speciation",
     "write_fit_result",
+    "__git_commit__",
+    "__version__",
+    "capabilities",
+    "runtime_build_info",
 ]
