@@ -43,6 +43,15 @@ bool standard_states_need_concentration(const std::vector<int>& standard_states)
     return false;
 }
 
+bool standard_states_need_activity(const std::vector<int>& standard_states) {
+    for (int value : standard_states) {
+        if (value == STANDARD_STATE_MOLE_FRACTION_ACTIVITY) {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::string standard_state_label(int value) {
     if (value == STANDARD_STATE_MOLE_FRACTION_ACTIVITY) {
         return "mole_fraction_activity";
@@ -228,6 +237,28 @@ struct ChemicalEvaluation {
     std::vector<double> residuals;
     double residual_norm = std::numeric_limits<double>::infinity();
 };
+
+struct ChemicalEvaluationCounters {
+    int residual_evaluations = 0;
+    int jacobian_evaluations = 0;
+    int state_evaluations = 0;
+    int activity_evaluations = 0;
+    int density_solves = 0;
+};
+
+bool should_evaluate_activity_coefficients(
+    const std::vector<int>& standard_states,
+    const ChemicalEquilibriumOptionsNative& options
+) {
+    const std::string mode = options.activity_output;
+    if (mode == "always") {
+        return true;
+    }
+    if (mode == "auto" || mode == "never") {
+        return standard_states_need_activity(standard_states);
+    }
+    throw ValueError("chemical equilibrium activity_output must be 'auto', 'always', or 'never'.");
+}
 
 struct ChemicalSoftStartResult {
     bool enabled = true;
@@ -506,21 +537,33 @@ ChemicalEvaluation evaluate_chemical(
     const ChemicalEquilibriumOptionsNative& options,
     int phase_int,
     const std::string& activity_model,
-    int* state_failure_count
+    int* state_failure_count,
+    ChemicalEvaluationCounters* counters
 ) {
     ChemicalEvaluation out;
+    if (counters != nullptr) {
+        counters->residual_evaluations += 1;
+    }
     out.n = moles_from_log_amounts(log_n);
     out.x = composition_from_moles(out.n, options.min_mole_fraction);
-    out.gamma = activity_coefficients(
-        mixture,
-        t,
-        p,
-        out.x,
-        phase_int,
-        activity_model,
-        options.min_mole_fraction,
-        state_failure_count
-    );
+    const bool evaluate_activity = should_evaluate_activity_coefficients(reaction_standard_states, options);
+    if (evaluate_activity) {
+        if (counters != nullptr) {
+            counters->activity_evaluations += 1;
+            counters->state_evaluations += 1;
+            counters->density_solves += 1;
+        }
+        out.gamma = activity_coefficients(
+            mixture,
+            t,
+            p,
+            out.x,
+            phase_int,
+            activity_model,
+            options.min_mole_fraction,
+            state_failure_count
+        );
+    }
 
     Eigen::VectorXd n_vec = Eigen::Map<const Eigen::VectorXd>(out.n.data(), static_cast<Eigen::Index>(out.n.size()));
     Eigen::VectorXd mass = balances * n_vec - totals;
@@ -536,6 +579,10 @@ ChemicalEvaluation evaluate_chemical(
     double molar_density = 0.0;
     if (standard_states_need_concentration(reaction_standard_states)) {
         try {
+            if (counters != nullptr) {
+                counters->density_solves += 1;
+                counters->state_evaluations += 1;
+            }
             molar_density = mixture->solve_density_scoped(
                 t,
                 p,
@@ -556,12 +603,17 @@ ChemicalEvaluation evaluate_chemical(
         double value = -log_k[r];
         const int standard_state = reaction_standard_states[static_cast<std::size_t>(r)];
         for (Eigen::Index i = 0; i < reactions.cols(); ++i) {
-            double species_activity = out.x[static_cast<std::size_t>(i)] * out.gamma[static_cast<std::size_t>(i)];
+            double species_activity = out.x[static_cast<std::size_t>(i)];
             if (standard_state == STANDARD_STATE_IDEAL_MOLE_FRACTION) {
                 species_activity = out.x[static_cast<std::size_t>(i)];
             } else if (standard_state == STANDARD_STATE_CONCENTRATION) {
                 species_activity = out.x[static_cast<std::size_t>(i)] * molar_density;
-            } else if (standard_state != STANDARD_STATE_MOLE_FRACTION_ACTIVITY) {
+            } else if (standard_state == STANDARD_STATE_MOLE_FRACTION_ACTIVITY) {
+                if (out.gamma.size() != out.x.size()) {
+                    throw ValueError("activity-coupled reaction residual requires activity coefficients.");
+                }
+                species_activity = out.x[static_cast<std::size_t>(i)] * out.gamma[static_cast<std::size_t>(i)];
+            } else {
                 throw ValueError("reaction standard state contains an unsupported code.");
             }
             value += reactions(r, i) * std::log(std::max(species_activity, options.min_mole_fraction));
@@ -592,8 +644,12 @@ Eigen::MatrixXd finite_difference_jacobian(
     const ChemicalEquilibriumOptionsNative& options,
     int phase_int,
     const std::string& activity_model,
-    int* state_failure_count
+    int* state_failure_count,
+    ChemicalEvaluationCounters* counters
 ) {
+    if (counters != nullptr) {
+        counters->jacobian_evaluations += 1;
+    }
     Eigen::MatrixXd jac(
         static_cast<Eigen::Index>(base.residuals.size()),
         static_cast<Eigen::Index>(log_n.size())
@@ -618,7 +674,8 @@ Eigen::MatrixXd finite_difference_jacobian(
             options,
             phase_int,
             activity_model,
-            state_failure_count
+            state_failure_count,
+            counters
         );
         Eigen::VectorXd residual = Eigen::Map<const Eigen::VectorXd>(
             value.residuals.data(),
@@ -723,6 +780,7 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
         ? "epcsaft_component_activity"
         : "epcsaft_neutral_fugacity_activity";
     int state_failure_count = 0;
+    ChemicalEvaluationCounters counters;
     ChemicalEvaluation current = evaluate_chemical(
         mixture,
         t,
@@ -736,7 +794,8 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
         options,
         phase_int,
         activity_model,
-        &state_failure_count
+        &state_failure_count,
+        &counters
     );
     Eigen::MatrixXd jac = finite_difference_jacobian(
         mixture,
@@ -752,7 +811,8 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
         options,
         phase_int,
         activity_model,
-        &state_failure_count
+        &state_failure_count,
+        &counters
     );
     Eigen::VectorXd residual = Eigen::Map<const Eigen::VectorXd>(
         current.residuals.data(),
@@ -785,16 +845,34 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     out.diagnostics_string["native_entrypoint"] = "_evaluate_chemical_equilibrium_residual_native";
     out.diagnostics_string["problem_class"] = "homogeneous_chemical_equilibrium";
     out.diagnostics_string["activity_model"] = activity_model;
+    out.diagnostics_string["activity_output"] = options.activity_output;
     out.diagnostics_string["activity_basis"] = standard_state_summary(reaction_standard_states);
     out.diagnostics_string["phase"] = options.phase;
     out.diagnostics_string["jacobian_backend"] = "finite_difference";
     out.diagnostics_string["hessian_backend"] = "gauss_newton";
+    out.diagnostics_string["finite_difference_scheme"] = "forward";
+    out.diagnostics_string["finite_difference_variable_space"] = "log_species_amounts";
+    out.diagnostics_string["finite_difference_step_rule"] = "absolute_log_variable_step";
+    out.diagnostics_string["hessian_kind"] = "approximate_least_squares_gauss_newton";
+    out.diagnostics_string["hessian_structure"] = "dense_lower_triangular";
     out.diagnostics_bool["jacobian_available"] = true;
     out.diagnostics_bool["hessian_available"] = true;
+    out.diagnostics_bool["exact_hessian_available"] = false;
+    out.diagnostics_bool["hessian_callback_available"] = true;
+    out.diagnostics_bool["hessian_includes_second_residual_derivatives"] = false;
+    out.diagnostics_bool["sparse_hessian_available"] = false;
     out.diagnostics_bool["finite_difference_fallback_used"] = options.jacobian_backend == "auto" || options.jacobian_backend == "autodiff";
+    out.diagnostics_bool["activity_coefficients_evaluated"] = !current.gamma.empty();
     out.diagnostics_int["state_failure_count"] = state_failure_count;
+    out.diagnostics_int["residual_evaluation_count"] = counters.residual_evaluations;
+    out.diagnostics_int["jacobian_evaluation_count"] = counters.jacobian_evaluations;
+    out.diagnostics_int["state_evaluation_count"] = counters.state_evaluations;
+    out.diagnostics_int["activity_evaluation_count"] = counters.activity_evaluations;
+    out.diagnostics_int["density_solve_count"] = counters.density_solves;
     out.diagnostics_double["residual_norm"] = current.residual_norm;
     out.diagnostics_double["objective"] = out.objective;
+    out.diagnostics_double["finite_difference_base_step"] = options.finite_difference_step;
+    out.diagnostics_double["finite_difference_effective_step"] = options.finite_difference_step;
     out.diagnostics_vector["phase_handoff_composition"] = current.x;
     return out;
 }
@@ -857,6 +935,7 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
         ? "epcsaft_component_activity"
         : "epcsaft_neutral_fugacity_activity";
     int state_failure_count = 0;
+    ChemicalEvaluationCounters counters;
     ChemicalSoftStartResult soft_start = ideal_gibbs_soft_start_solve(
         initial,
         balances,
@@ -880,7 +959,8 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
         options,
         phase_int,
         activity_model,
-        &state_failure_count
+        &state_failure_count,
+        &counters
     );
     soft_start.initial_residual_norm = initial_evaluation.residual_norm;
     if (soft_start.composition.empty()) {
@@ -904,7 +984,8 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
                 options,
                 phase_int,
                 activity_model,
-                &state_failure_count
+                &state_failure_count,
+                &counters
             );
             soft_start.residual_norm = soft_evaluation.residual_norm;
             soft_start.composition = soft_evaluation.x;
@@ -940,7 +1021,8 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
             options,
             phase_int,
             activity_model,
-            &state_failure_count
+            &state_failure_count,
+            &counters
         );
         best = current;
         history.push_back(current.residual_norm);
@@ -957,6 +1039,7 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
             result.diagnostics_string["native_entrypoint"] = "_solve_chemical_equilibrium_native";
             result.diagnostics_string["problem_class"] = "homogeneous_chemical_equilibrium";
             result.diagnostics_string["activity_model"] = activity_model;
+            result.diagnostics_string["activity_output"] = options.activity_output;
             result.diagnostics_string["activity_basis"] = standard_state_summary(reaction_standard_states);
             result.diagnostics_string["phase"] = options.phase;
             result.diagnostics_string["requested_jacobian_backend"] = options.jacobian_backend;
@@ -981,6 +1064,12 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
                 "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
             result.diagnostics_int["iterations"] = iteration;
             result.diagnostics_int["state_failure_count"] = state_failure_count;
+            result.diagnostics_int["residual_evaluation_count"] = counters.residual_evaluations;
+            result.diagnostics_int["jacobian_evaluation_count"] = counters.jacobian_evaluations;
+            result.diagnostics_int["state_evaluation_count"] = counters.state_evaluations;
+            result.diagnostics_int["activity_evaluation_count"] = counters.activity_evaluations;
+            result.diagnostics_int["density_solve_count"] = counters.density_solves;
+            result.diagnostics_bool["activity_coefficients_evaluated"] = !current.gamma.empty();
             result.diagnostics_double["residual_norm"] = current.residual_norm;
             result.diagnostics_double["tolerance"] = options.tolerance;
             result.diagnostics_vector["history"] = history;
@@ -1005,7 +1094,8 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
             options,
             phase_int,
             activity_model,
-            &state_failure_count
+            &state_failure_count,
+            &counters
         );
         Eigen::VectorXd residual = Eigen::Map<const Eigen::VectorXd>(
             current.residuals.data(),
@@ -1029,7 +1119,8 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
                 options,
                 phase_int,
                 activity_model,
-                &state_failure_count
+                &state_failure_count,
+                &counters
             );
             if (candidate.residual_norm <= current.residual_norm || alpha <= 1.0e-4) {
                 log_n = candidate_log_n;
@@ -1055,6 +1146,7 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
     result.diagnostics_string["native_entrypoint"] = "_solve_chemical_equilibrium_native";
     result.diagnostics_string["problem_class"] = "homogeneous_chemical_equilibrium";
     result.diagnostics_string["activity_model"] = activity_model;
+    result.diagnostics_string["activity_output"] = options.activity_output;
     result.diagnostics_string["activity_basis"] = standard_state_summary(reaction_standard_states);
     result.diagnostics_string["phase"] = options.phase;
     result.diagnostics_string["requested_jacobian_backend"] = options.jacobian_backend;
@@ -1079,6 +1171,12 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
         "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
     result.diagnostics_int["iterations"] = options.max_iterations;
     result.diagnostics_int["state_failure_count"] = state_failure_count;
+    result.diagnostics_int["residual_evaluation_count"] = counters.residual_evaluations;
+    result.diagnostics_int["jacobian_evaluation_count"] = counters.jacobian_evaluations;
+    result.diagnostics_int["state_evaluation_count"] = counters.state_evaluations;
+    result.diagnostics_int["activity_evaluation_count"] = counters.activity_evaluations;
+    result.diagnostics_int["density_solve_count"] = counters.density_solves;
+    result.diagnostics_bool["activity_coefficients_evaluated"] = !best.gamma.empty();
     result.diagnostics_double["residual_norm"] = best.residual_norm;
     result.diagnostics_double["tolerance"] = options.tolerance;
     result.diagnostics_vector["history"] = history;

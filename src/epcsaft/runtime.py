@@ -149,8 +149,13 @@ def capabilities() -> dict[str, object]:
             "ipopt": {
                 **cyipopt,
                 "solver_backend": "ipopt",
-                "scope": "explicit opt-in cyipopt backend; Newton and native least-squares remain defaults",
+                "scope": "explicit opt-in cyipopt backend; native Newton/default backends remain defaults",
                 "hessian_strategies": ["gauss_newton", "lbfgs"],
+                "formulations": ["bound_constrained_residual_minimization"],
+                "full_constrained_nlp_available": False,
+                "default_auto_uses_ipopt": False,
+                "exact_hessian_available": False,
+                "hessian_includes_second_residual_derivatives": False,
             }
         },
         "equilibrium": {
@@ -167,6 +172,9 @@ def capabilities() -> dict[str, object]:
                 "backend": "native",
                 "solver_backends": ["auto", "newton", "ipopt"],
                 "ipopt_available": bool(cyipopt["available"]),
+                "default_auto_uses_ipopt": False,
+                "ipopt_formulation": "bound_constrained_residual_minimization",
+                "full_constrained_nlp_available": False,
             },
             "electrolyte_bubble_pressure": {
                 "available": True,
@@ -181,8 +189,24 @@ def capabilities() -> dict[str, object]:
             "reactive_speciation": {
                 "available": True,
                 "backend": "native activity evaluations",
+                "sweep_available": True,
+                "continuation_state_available": True,
+                "activity_output_modes": ["auto", "always", "never"],
                 "solver_backends": ["auto", "newton", "ipopt"],
                 "ipopt_available": bool(cyipopt["available"]),
+                "default_auto_uses_ipopt": False,
+                "ipopt_formulation": "bound_constrained_residual_minimization",
+                "full_constrained_nlp_available": False,
+            },
+            "repeated_state_properties": {
+                "available": True,
+                "helpers": ["evaluate_fugacity_coefficients", "evaluate_fugacity_coefficients_batch"],
+                "density_seed_aliases": ["rho_guess", "rho_seed"],
+            },
+            "dataset_validation": {
+                "available": True,
+                "helper": "validate_dataset_bundle",
+                "scope": "external parameter bundle structure and reaction/species compatibility checks",
             },
         },
         "regression": {

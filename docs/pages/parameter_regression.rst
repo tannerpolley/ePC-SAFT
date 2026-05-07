@@ -47,6 +47,49 @@ The IPOPT path uses ``cyipopt`` and remains explicit opt-in through
 ``solver_backend="ipopt"``. It is not a replacement for native least-squares or
 Newton defaults.
 
+Current IPOPT scope
+-------------------
+
+The current IPOPT support is an experimental
+``bound_constrained_residual_minimization`` backend for selected equilibrium
+routes. It does not yet expose a full constrained thermodynamic NLP: material
+balances, charge balance, and equilibrium residuals are not formal IPOPT
+equality constraints in this phase. Runtime capabilities report
+``full_constrained_nlp_available=False`` and ``default_auto_uses_ipopt=False``.
+
+Approximate Hessian diagnostics are intentionally explicit. Gauss-Newton means a
+least-squares ``J.T @ J`` callback; L-BFGS means IPOPT limited-memory Hessian
+approximation. Both report ``exact_hessian_available=False`` and
+``hessian_includes_second_residual_derivatives=False``.
+
+Solver-selection guidance
+-------------------------
+
+.. list-table::
+   :header-rows: 1
+
+   * - Problem type
+     - Preferred default
+     - IPOPT role
+   * - Scalar bubble/dew variable solve
+     - Brent or safeguarded Newton
+     - Usually not appropriate
+   * - Small smooth residual system
+     - Native Newton/trust-region residual solve
+     - Explicit fallback or refinement only
+   * - Least-squares parameter estimation
+     - Gauss-Newton, LM, or trust-region least squares
+     - Use only when bounds or constraints dominate
+   * - Noisy or nonsmooth black-box workflow
+     - Derivative-free or surrogate method
+     - Not preferred
+   * - Phase equilibrium near active bounds
+     - Native safeguarded residual solve first
+     - Useful as explicit bounded residual refinement
+   * - Large sparse constrained NLP
+     - IPOPT or SQP with sparse derivatives
+     - Appropriate once constraints are explicit
+
 Create a dataset folder
 -----------------------
 

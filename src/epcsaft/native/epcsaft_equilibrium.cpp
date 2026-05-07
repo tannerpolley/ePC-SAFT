@@ -2719,8 +2719,17 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
     out.diagnostics_string["variable_model"] = basis.variable_model;
     out.diagnostics_string["jacobian_backend"] = "finite_difference";
     out.diagnostics_string["hessian_backend"] = "gauss_newton";
+    out.diagnostics_string["finite_difference_scheme"] = "forward";
+    out.diagnostics_string["finite_difference_variable_space"] = "transformed_formula_variables";
+    out.diagnostics_string["finite_difference_step_rule"] = "absolute_transformed_variable_step";
+    out.diagnostics_string["hessian_kind"] = "approximate_least_squares_gauss_newton";
+    out.diagnostics_string["hessian_structure"] = "dense_lower_triangular";
     out.diagnostics_bool["jacobian_available"] = true;
     out.diagnostics_bool["hessian_available"] = true;
+    out.diagnostics_bool["exact_hessian_available"] = false;
+    out.diagnostics_bool["hessian_callback_available"] = true;
+    out.diagnostics_bool["hessian_includes_second_residual_derivatives"] = false;
+    out.diagnostics_bool["sparse_hessian_available"] = false;
     out.diagnostics_int["basis_rank"] = basis.basis_rank;
     out.diagnostics_double["solver_residual_norm"] = current.solver_residual_norm;
     out.diagnostics_double["fugacity_residual_norm"] = current.solver_residual_norm;
@@ -2729,6 +2738,8 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
     out.diagnostics_double["phase_distance"] = current.phase_distance_value;
     out.diagnostics_double["gibbs_delta"] = current.gibbs_delta;
     out.diagnostics_double["objective"] = objective;
+    out.diagnostics_double["finite_difference_base_step"] = options.min_composition;
+    out.diagnostics_double["finite_difference_effective_step"] = step;
     out.diagnostics_vector["feed_composition"] = feed;
     out.diagnostics_vector["fugacity_residual"] = base_residual;
     return out;

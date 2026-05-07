@@ -15,6 +15,7 @@ struct ChemicalEquilibriumOptionsNative {
     double finite_difference_step = 1.0e-6;
     std::string jacobian_backend = "auto";
     std::string phase = "liq";
+    std::string activity_output = "auto";
 };
 
 struct ChemicalEquilibriumResultNative {

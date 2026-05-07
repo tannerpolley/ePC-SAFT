@@ -104,15 +104,12 @@ def test_electrolyte_lle_direct_feed_solves_native_predictive_split() -> None:
 def test_electrolyte_lle_direct_feed_solves_ipopt_predictive_split() -> None:
     feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
     mix = _ascani_water_butanol_nacl_mixture(feed)
-    native = mix.equilibrium(kind="electrolyte_lle", T=298.15, P=1.013e5, z=feed)
-    aq, org = native.phases
 
     result = mix.equilibrium(
         kind="electrolyte_lle",
         T=298.15,
         P=1.013e5,
         z=feed,
-        initial_phases={"aq": aq.composition, "org": org.composition, "phase_fraction": org.phase_fraction},
         options=epcsaft.EquilibriumOptions(
             solver_backend="ipopt",
             hessian_strategy="lbfgs",
@@ -124,6 +121,17 @@ def test_electrolyte_lle_direct_feed_solves_ipopt_predictive_split() -> None:
     assert result.backend == "electrolyte_lle_ipopt"
     assert result.split_detected is True
     assert result.diagnostics["solver_method"] == "cyipopt_bound_min_residual"
+    assert result.diagnostics["ipopt_seed_source"] == "native_transformed_newton_seed"
+    assert result.diagnostics["formulation"] == "bound_constrained_residual_minimization"
+    assert result.diagnostics["exact_hessian_available"] is False
+    assert result.diagnostics["hessian_strategy"] == "lbfgs"
+    assert result.diagnostics["hessian_kind"] == "ipopt_limited_memory"
+    assert result.diagnostics["hessian_includes_second_residual_derivatives"] is False
+    assert result.diagnostics["ipopt_success"] is True
+    assert result.diagnostics["residual_gate_success"] is True
+    assert result.diagnostics["physical_gate_success"] is True
+    assert result.diagnostics["accepted"] is True
+    assert result.diagnostics["selected_solver_backend"] == "ipopt"
     assert result.diagnostics["fugacity_residual_norm"] <= 1.0e-8
     assert result.diagnostics["material_balance_error"] <= 1.0e-8
 

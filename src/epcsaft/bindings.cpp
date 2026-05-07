@@ -725,6 +725,9 @@ ChemicalEquilibriumOptionsNative chemical_options_from_request(const py::dict& r
     if (input.contains("phase")) {
         options.phase = input["phase"].cast<std::string>();
     }
+    if (input.contains("activity_output")) {
+        options.activity_output = input["activity_output"].cast<std::string>();
+    }
     return options;
 }
 

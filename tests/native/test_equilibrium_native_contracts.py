@@ -168,11 +168,32 @@ def test_native_electrolyte_lle_residual_evaluator_exposes_transformed_jacobian(
     assert payload["variable_model"] == "ascani_transformed_salt_pairs"
     assert payload["jacobian_backend"] == "finite_difference"
     assert payload["hessian_backend"] == "gauss_newton"
+    diagnostics = payload["diagnostics"]
+    assert diagnostics["finite_difference_scheme"] == "forward"
+    assert diagnostics["finite_difference_variable_space"] == "transformed_formula_variables"
+    assert diagnostics["finite_difference_step_rule"] == "absolute_transformed_variable_step"
+    assert diagnostics["finite_difference_effective_step"] == pytest.approx(1.0e-7)
+    assert diagnostics["exact_hessian_available"] is False
+    assert diagnostics["hessian_kind"] == "approximate_least_squares_gauss_newton"
+    assert diagnostics["hessian_includes_second_residual_derivatives"] is False
     residual = np.asarray(payload["residual"], dtype=float)
     gradient = np.asarray(payload["gradient"], dtype=float)
     jacobian = np.asarray(payload["jacobian_row_major"], dtype=float).reshape(payload["jacobian_shape"])
+    lower = np.asarray(payload["lower_bounds"], dtype=float)
+    variables = np.asarray(payload["variables"], dtype=float)
+    upper = np.asarray(payload["upper_bounds"], dtype=float)
     assert residual.shape[0] == payload["jacobian_shape"][0]
     assert gradient.shape[0] == payload["jacobian_shape"][1]
+    assert np.isfinite(payload["objective"])
+    assert np.all(np.isfinite(residual))
+    assert np.all(np.isfinite(gradient))
+    assert np.all(np.isfinite(jacobian))
+    assert np.all(np.isfinite(lower))
+    assert np.all(np.isfinite(variables))
+    assert np.all(np.isfinite(upper))
+    assert np.all(lower < upper)
+    assert np.all(variables >= lower)
+    assert np.all(variables <= upper)
     np.testing.assert_allclose(gradient, jacobian.T @ residual, rtol=1.0e-8, atol=1.0e-10)
     assert payload["objective"] == pytest.approx(0.5 * float(residual @ residual))
     assert len(payload["lower_bounds"]) == len(payload["variables"]) == len(payload["upper_bounds"])

@@ -23,6 +23,19 @@ without ``cyipopt`` instead of falling back to Newton. The adapter solves a
 bounded log-amount residual-minimization NLP through native residual/Jacobian
 callbacks and preserves mass, charge, and reaction residual diagnostics.
 
+The current IPOPT formulation is experimental residual minimization, not full
+constrained Gibbs minimization. Diagnostics report ``formulation``,
+``ipopt_success``, residual/physical gate status, and approximate Hessian
+metadata separately. ``hessian_strategy="gauss_newton"`` supplies a
+least-squares ``J.T @ J`` callback; ``hessian_strategy="lbfgs"`` delegates to
+IPOPT limited-memory Hessian approximation. Neither route includes exact second
+residual derivatives.
+
+Solver-selection policy is intentionally conservative. ``auto`` keeps the native
+chemical-equilibrium solver. IPOPT is appropriate only as an explicit
+bound-constrained residual-minimization experiment until material, charge, and
+reaction constraints are exposed as formal NLP constraints.
+
 Homogeneous reactive speciation
 -------------------------------
 
@@ -32,9 +45,11 @@ labels, material balances, totals, reactions, equilibrium constants, and the
 ``mixture_factory`` used to create the native ePC-SAFT mixture.
 
 The native backend solves material balances, charge balance, and reaction
-residuals in log mole amounts. For ion-containing mixtures it evaluates
-ePC-SAFT component activity coefficients. For nonionic mixtures it uses neutral
-ePC-SAFT fugacity-reference activities.
+residuals in log mole amounts. Activity coefficients are evaluated only when
+the selected reaction standard state needs them or when
+``ReactiveSpeciationOptions.activity_output="always"`` is requested. This keeps
+``standard_state="concentration"`` and ``"ideal_mole_fraction"`` workflows from
+paying for unused activity calls under the default ``activity_output="auto"``.
 
 .. code-block:: python
 
@@ -66,13 +81,21 @@ ePC-SAFT fugacity-reference activities.
 
 ``ReactiveSpeciationOptions`` keeps strict failure behavior by default. Failed
 native solves raise ``SolutionError``. For diagnostic grid work, opt into
-``return_best_effort=True`` to receive a
+``error_mode="result"`` or ``return_best_effort=True`` to receive a
 ``ReactiveSpeciationResult(success=False, ...)`` from the best finite native
 payload instead. Diagnostics include ``best_x``,
 ``best_activity_coefficients``, family residual norms, and named reaction
 residuals. ``mass_tolerance``, ``charge_tolerance``, and
 ``reaction_tolerance`` may be set separately; each defaults to ``tolerance``
 when omitted.
+
+For repeated nearby states, use ``solve_reactive_speciation_sweep(...)`` with
+``continuation="auto"``. Each successful result carries a
+``continuation_state`` containing the composition and lightweight counters for
+the next point. Failed points return fixed-shape diagnostic result objects when
+``error_mode="result"`` is selected, so downstream sweeps can continue.
+Speciation diagnostics report iteration, residual, Jacobian, density, state,
+and activity-evaluation counts.
 
 Reactive stability handoff
 --------------------------

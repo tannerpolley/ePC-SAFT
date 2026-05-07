@@ -222,6 +222,89 @@ def _ipopt_status_success(info: dict[str, Any]) -> bool:
         return False
 
 
+def _hessian_metadata(strategy: str) -> dict[str, Any]:
+    if strategy == "lbfgs":
+        return {
+            "exact_hessian_available": False,
+            "hessian_strategy": "lbfgs",
+            "hessian_kind": "ipopt_limited_memory",
+            "hessian_includes_second_residual_derivatives": False,
+            "hessian_structure": "ipopt_internal_limited_memory",
+            "hessian_callback_available": False,
+            "sparse_hessian_available": False,
+            "hessian_available": False,
+        }
+    return {
+        "exact_hessian_available": False,
+        "hessian_strategy": "gauss_newton",
+        "hessian_kind": "approximate_least_squares_gauss_newton",
+        "hessian_includes_second_residual_derivatives": False,
+        "hessian_structure": "dense_lower_triangular",
+        "hessian_callback_available": True,
+        "sparse_hessian_available": False,
+        "hessian_available": True,
+    }
+
+
+def _solver_selection_metadata(route: str, selected_backend: str, reason: str) -> dict[str, Any]:
+    return {
+        "solver_route": route,
+        "selected_solver_backend": selected_backend,
+        "solver_selection_reason": reason,
+        "formulation": "bound_constrained_residual_minimization",
+        "full_constrained_nlp": False,
+    }
+
+
+def _electrolyte_lle_native_seed(
+    *,
+    mixture: Any,
+    T: float,
+    P: float,
+    feed: Any,
+    species: list[str],
+    options: Any,
+) -> tuple[dict[str, Any] | None, str]:
+    from . import _core
+
+    request = {
+        "kind": "electrolyte_lle",
+        "T": float(T),
+        "P": float(P),
+        "z": np.asarray(feed, dtype=float).tolist(),
+        "species": species,
+        "initial_phases": None,
+        "options": {
+            "max_iterations": int(options.max_iterations),
+            "tolerance": float(options.tolerance),
+            "damping": float(options.damping),
+            "min_composition": float(options.min_composition),
+            "include_phase_diagnostics": bool(options.include_phase_diagnostics),
+            "stability_precheck": bool(options.stability_precheck),
+            "density_diagnostics": str(options.density_diagnostics),
+            "experimental_coupled_density_lle": bool(options.experimental_coupled_density_lle),
+            "jacobian_backend": str(options.jacobian_backend),
+            "solver_backend": "newton",
+            "hessian_strategy": str(options.hessian_strategy),
+        },
+    }
+    try:
+        payload = _core._solve_equilibrium_native(mixture._native, request)
+    except Exception as exc:
+        return None, f"{type(exc).__name__}: {exc}"
+    phases = list(payload.get("phases") or [])
+    if len(phases) != 2:
+        return None, "native seed did not return two phases"
+    by_label = {str(item.get("label", "")): item for item in phases}
+    aq = by_label.get("aq", phases[0])
+    org = by_label.get("org", phases[1])
+    return {
+        "aq": list(aq["composition"]),
+        "org": list(org["composition"]),
+        "phase_fraction": float(org["phase_fraction"]),
+    }, "native_transformed_newton_seed"
+
+
 def solve_electrolyte_lle_ipopt(**kwargs: Any) -> Any:
     """Solve electrolyte LLE as a bound-constrained residual minimization with cyipopt."""
 
@@ -232,12 +315,27 @@ def solve_electrolyte_lle_ipopt(**kwargs: Any) -> Any:
 
     mixture = kwargs["mixture"]
     options = kwargs["options"]
+    species = list(getattr(mixture, "species", []))
+    initial_phases = kwargs.get("initial_phases")
+    seed_source = "user_initial_phases" if initial_phases is not None else "native_transformed_newton_seed"
+    seed_failure = ""
+    if initial_phases is None:
+        initial_phases, seed_failure = _electrolyte_lle_native_seed(
+            mixture=mixture,
+            T=float(kwargs["T"]),
+            P=float(kwargs["P"]),
+            feed=kwargs["feed"],
+            species=species,
+            options=options,
+        )
+        if initial_phases is None:
+            seed_source = "native_residual_default_seed"
     request = {
         "T": float(kwargs["T"]),
         "P": float(kwargs["P"]),
         "z": np.asarray(kwargs["feed"], dtype=float).tolist(),
-        "species": list(getattr(mixture, "species", [])),
-        "initial_phases": kwargs.get("initial_phases"),
+        "species": species,
+        "initial_phases": initial_phases,
         "options": {
             "max_iterations": int(options.max_iterations),
             "tolerance": float(options.tolerance),
@@ -270,12 +368,14 @@ def solve_electrolyte_lle_ipopt(**kwargs: Any) -> Any:
     material_error = float(final["material_balance_error"])
     charge_error = float(final["charge_balance_error"])
     phase_distance = float(final["phase_distance"])
-    accepted = (
-        residual_norm <= float(options.tolerance)
-        and material_error <= max(float(options.tolerance), 1.0e-10)
+    residual_gate_success = residual_norm <= float(options.tolerance)
+    physical_gate_success = (
+        material_error <= max(float(options.tolerance), 1.0e-10)
         and charge_error <= 1.0e-8
         and phase_distance > max(1.0e-4, 100.0 * float(options.min_composition))
     )
+    accepted = bool(residual_gate_success and physical_gate_success)
+    ipopt_success = _ipopt_status_success(solve["info"])
     diagnostics = dict(final.get("diagnostics") or {})
     diagnostics.update(
         {
@@ -284,10 +384,9 @@ def solve_electrolyte_lle_ipopt(**kwargs: Any) -> Any:
             "native_entrypoint": "_evaluate_electrolyte_lle_residual_native",
             "requested_solver_backend": "ipopt",
             "hessian_backend": solve["hessian_backend"],
-            "hessian_available": True,
             "ipopt_status": int(solve["info"].get("status", 999)),
             "ipopt_status_msg": str(solve["info"].get("status_msg", "")),
-            "ipopt_success": _ipopt_status_success(solve["info"]),
+            "ipopt_success": ipopt_success,
             "ipopt_objective": float(final["objective"]),
             "ipopt_evaluation_count": int(solve["evaluation_count"]),
             "solver_residual_norm": residual_norm,
@@ -295,10 +394,18 @@ def solve_electrolyte_lle_ipopt(**kwargs: Any) -> Any:
             "material_balance_error": material_error,
             "charge_balance_error": charge_error,
             "phase_distance": phase_distance,
+            "residual_gate_success": bool(residual_gate_success),
+            "physical_gate_success": bool(physical_gate_success),
+            "accepted": accepted,
+            "accepted_despite_ipopt_status": bool(accepted and not ipopt_success),
             "acceptance_gate": "ipopt_min_residual" if accepted else "ipopt_min_residual_failed",
             "variable_model": str(final["variable_model"]),
+            "ipopt_seed_source": seed_source,
+            "ipopt_seed_failure": seed_failure,
         }
     )
+    diagnostics.update(_hessian_metadata(str(solve["hessian_backend"])))
+    diagnostics.update(_solver_selection_metadata("electrolyte_lle", "ipopt", "explicit_request"))
     diagnostics.update(dict(kwargs.get("feed_diagnostics") or {}))
     if not accepted:
         raise SolutionError("electrolyte LLE IPOPT solve did not satisfy acceptance gates", diagnostics)
@@ -376,6 +483,7 @@ def solve_reactive_speciation_ipopt(**kwargs: Any) -> Any:
             "finite_difference_step": float(options.finite_difference_step),
             "jacobian_backend": str(options.jacobian_backend),
             "phase": str(options.phase),
+            "activity_output": str(options.activity_output),
         },
     }
 
@@ -412,6 +520,10 @@ def solve_reactive_speciation_ipopt(**kwargs: Any) -> Any:
         and abs(charge_residual) <= charge_tolerance
         and reaction_residual_norm <= reaction_tolerance
     )
+    mass_balance_gate_success = mass_residual_norm <= mass_tolerance
+    charge_balance_gate_success = abs(charge_residual) <= charge_tolerance
+    reaction_residual_gate_success = reaction_residual_norm <= reaction_tolerance
+    ipopt_success = _ipopt_status_success(solve["info"])
     diagnostics = dict(final.get("diagnostics") or {})
     activity_basis = _reaction_standard_state_summary(kwargs["reactions"])
     handoff = dict(diagnostics.get("phase_equilibrium_handoff", {}))
@@ -434,10 +546,9 @@ def solve_reactive_speciation_ipopt(**kwargs: Any) -> Any:
             "native_entrypoint": "_evaluate_chemical_equilibrium_residual_native",
             "requested_solver_backend": "ipopt",
             "hessian_backend": solve["hessian_backend"],
-            "hessian_available": True,
             "ipopt_status": int(solve["info"].get("status", 999)),
             "ipopt_status_msg": str(solve["info"].get("status_msg", "")),
-            "ipopt_success": _ipopt_status_success(solve["info"]),
+            "ipopt_success": ipopt_success,
             "ipopt_objective": float(final["objective"]),
             "ipopt_evaluation_count": int(solve["evaluation_count"]),
             "mass_tolerance": float(mass_tolerance),
@@ -446,11 +557,20 @@ def solve_reactive_speciation_ipopt(**kwargs: Any) -> Any:
             "mass_residual_norm": mass_residual_norm,
             "charge_residual_abs": abs(charge_residual),
             "reaction_residual_norm": reaction_residual_norm,
+            "mass_balance_gate_success": bool(mass_balance_gate_success),
+            "charge_balance_gate_success": bool(charge_balance_gate_success),
+            "reaction_residual_gate_success": bool(reaction_residual_gate_success),
+            "residual_gate_success": bool(residual_family_success),
+            "physical_gate_success": bool(residual_family_success),
+            "accepted": bool(residual_family_success),
+            "accepted_despite_ipopt_status": bool(residual_family_success and not ipopt_success),
             "named_reaction_residuals": dict(named_reaction_residuals),
             "best_x": dict(x),
             "best_activity_coefficients": dict(activity_coefficients),
         }
     )
+    diagnostics.update(_hessian_metadata(str(solve["hessian_backend"])))
+    diagnostics.update(_solver_selection_metadata("reactive_speciation", "ipopt", "explicit_request"))
     result = ReactiveSpeciationResult(
         success=bool(residual_family_success),
         message=str(diagnostics["message"]),

@@ -24,6 +24,9 @@ from .parameters import get_prop_dict
 from .parameters import molality_to_molefraction
 from .parameters import molefraction_to_molality
 from .parameter_templates import create_parameter_template
+from .dataset_validation import validate_dataset_bundle
+from .properties import evaluate_fugacity_coefficients
+from .properties import evaluate_fugacity_coefficients_batch
 from .regression import FitBounds
 from .regression import BinaryInteraction
 from .regression import FitProblem
@@ -44,6 +47,7 @@ from .reactive_speciation import ReactionDefinition
 from .reactive_speciation import ReactiveSpeciationOptions
 from .reactive_speciation import ReactiveSpeciationResult
 from .reactive_speciation import solve_reactive_speciation
+from .reactive_speciation import solve_reactive_speciation_sweep
 from .reactive_staged import ReactiveStagedEquilibriumResult
 from .reactive_staged import solve_reactive_staged_equilibrium
 from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions
@@ -77,6 +81,9 @@ __all__ = [
     "ElectrolyteBubbleResult",
     "available_datasets",
     "create_parameter_template",
+    "validate_dataset_bundle",
+    "evaluate_fugacity_coefficients",
+    "evaluate_fugacity_coefficients_batch",
     "BinaryInteraction",
     "FitBounds",
     "FitParameter",
@@ -104,6 +111,7 @@ __all__ = [
     "solve_reactive_electrolyte_bubble",
     "solve_reactive_electrolyte_bubble_sweep",
     "solve_reactive_speciation",
+    "solve_reactive_speciation_sweep",
     "solve_reactive_staged_equilibrium",
     "write_fit_result",
     "__git_commit__",

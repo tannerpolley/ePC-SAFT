@@ -21,6 +21,7 @@ The ``epcsaft.ePCSAFTState.composition_derivative_residual_helmholtz()`` method 
 The ``epcsaft.ePCSAFTState.activity_coefficient(...)`` method returns component activity coefficients by default, and mean-ionic values when called with ``mean_ionic_form=True``.
 The ``epcsaft.ePCSAFTState.density()`` method returns molar density by default and also accepts ``units="mass"`` for ``kg/m^3`` when molecular weights are available. Use ``molar_density()`` and ``mass_density()`` when you want the unit choice to be explicit in code.
 ``ePCSAFTMixture.state(...)`` accepts exactly one of ``P`` or ``rho``. With ``P``, optional ``rho_guess`` seeds the native pressure-density solve without changing the pressure-closure contract. With ``rho``, the state is evaluated directly at the supplied molar density.
+``rho_seed`` is accepted as an alias for ``rho_guess`` in repeated-state workflows.
 ``ePCSAFTMixture.check_density(...)`` returns pressure-residual diagnostics for an externally supplied density and target pressure.
 The ``epcsaft.ePCSAFTState.method_aliases()`` method returns the canonical state-method abbreviation map, and those aliases can be called directly on the state object. Example: ``ares()`` maps to ``residual_helmholtz()``.
 ``fugacity_coefficient()`` now defaults to the natural-log form. Pass ``natural_log=False`` to get the coefficient form instead, and use ``return_contribution_terms=True`` when you need the structured contribution payload.
@@ -91,6 +92,14 @@ electrolyte bubble-pressure workflow.
    :no-index:
 
 .. autofunction:: epcsaft.solve_reactive_speciation
+
+.. autofunction:: epcsaft.solve_reactive_speciation_sweep
+
+.. autofunction:: epcsaft.evaluate_fugacity_coefficients
+
+.. autofunction:: epcsaft.evaluate_fugacity_coefficients_batch
+
+.. autofunction:: epcsaft.validate_dataset_bundle
 
 .. autoclass:: epcsaft.ReactiveElectrolyteBubbleOptions
    :members:

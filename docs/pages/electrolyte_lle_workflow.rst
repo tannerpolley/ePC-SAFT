@@ -28,6 +28,28 @@ electrolyte LLE by calling native residual/Jacobian callbacks. Acceptance still
 uses the package engineering gates: residual norm, material balance, charge
 balance, phase distance, stability diagnostics, and no collapsed split.
 
+This is not yet a full constrained thermodynamic NLP. Material and charge
+balances are checked by acceptance gates and residual penalties rather than
+being exposed to IPOPT as equality constraints. Diagnostics separate
+``ipopt_success`` from ``residual_gate_success``, ``physical_gate_success``, and
+``accepted``. Approximate Hessian choices are reported as ``hessian_strategy``
+and ``hessian_kind``; ``exact_hessian_available`` remains ``False``.
+
+When ``solver_backend="ipopt"`` is requested without explicit
+``initial_phases``, the adapter first asks the native transformed Newton route
+for a seed and then refines that split with IPOPT. If that seed cannot be
+generated, diagnostics report ``ipopt_seed_failure`` and the residual evaluator
+falls back to its native default seed.
+
+Solver-selection policy
+-----------------------
+
+``solver_backend="auto"`` remains conservative and does not switch to IPOPT just
+because ``cyipopt`` is installed. Use IPOPT explicitly when active bounds or a
+near-bound residual-minimization refinement matters. Prefer the native Newton
+route for ordinary fixed-species electrolyte LLE solves and continuation unless
+the diagnostics show a bound or split-acceptance failure worth refining.
+
 Hubach-style example
 --------------------
 

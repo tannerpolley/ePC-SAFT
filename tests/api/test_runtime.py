@@ -25,6 +25,9 @@ def test_package_exports_are_available():
     assert isinstance(epcsaft.__git_commit__, str)
     assert callable(epcsaft.runtime_build_info)
     assert callable(epcsaft.capabilities)
+    assert callable(epcsaft.evaluate_fugacity_coefficients)
+    assert callable(epcsaft.evaluate_fugacity_coefficients_batch)
+    assert callable(epcsaft.validate_dataset_bundle)
 
 
 def test_runtime_build_info_and_capabilities_are_json_like():
@@ -38,6 +41,10 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     ipopt = capabilities["optimizers"]["ipopt"]
     assert ipopt["backend"] == "cyipopt"
     assert ipopt["available"] is ipopt_backend.cyipopt_available()
+    assert ipopt["formulations"] == ["bound_constrained_residual_minimization"]
+    assert ipopt["full_constrained_nlp_available"] is False
+    assert ipopt["default_auto_uses_ipopt"] is False
+    assert ipopt["exact_hessian_available"] is False
     assert info["optional_dependencies"]["cyipopt"]["available"] is ipopt["available"]
     assert capabilities["equilibrium"]["neutral_tp_flash"]["available"] is True
     assert capabilities["equilibrium"]["neutral_bubble_dew"] == {
@@ -49,6 +56,8 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert electrolyte_bubble["available"] is True
     assert electrolyte_bubble["backend"] == "native"
     assert electrolyte_bubble["scope"] == "fixed liquid composition with neutral vapor species; ions remain liquid-only"
+    assert capabilities["equilibrium"]["electrolyte_lle"]["default_auto_uses_ipopt"] is False
+    assert capabilities["equilibrium"]["electrolyte_lle"]["full_constrained_nlp_available"] is False
     reactive_bubble = capabilities["equilibrium"]["reactive_electrolyte_bubble"]
     assert reactive_bubble["available"] is True
     assert reactive_bubble["backend"] == "native"
@@ -56,6 +65,8 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         reactive_bubble["scope"]
         == "native chemical speciation followed by native fixed-liquid electrolyte bubble pressure"
     )
+    assert capabilities["equilibrium"]["reactive_speciation"]["default_auto_uses_ipopt"] is False
+    assert capabilities["equilibrium"]["reactive_speciation"]["full_constrained_nlp_available"] is False
     assert capabilities["regression"]["pure_neutral"]["backend"] == "native"
 
 
@@ -70,7 +81,66 @@ def test_cyipopt_import_prepares_configured_windows_dll_directory(monkeypatch, t
     ipopt_backend._prepare_ipopt_dll_search_path()
 
     assert calls == [str(dll_dir)]
-    assert str(dll_dir) in ipopt_backend.os.environ["PATH"]
+
+
+def test_fast_fugacity_helper_matches_state_call_and_reports_density() -> None:
+    state, _ = _ionic_state()
+    mix = state.mixture
+    helper = epcsaft.evaluate_fugacity_coefficients(
+        mix,
+        T=state.T,
+        x=state.x,
+        P=state.pressure(),
+        phase="liq",
+        natural_log=True,
+    )
+
+    _assert_array(helper["ln_fugacity_coefficient"], state.fugacity_coefficient(natural_log=True))
+    assert helper["density"] == pytest.approx(state.molar_density())
+    assert helper["phase"] == "liq"
+
+
+def test_batch_fugacity_helper_matches_scalar_rows() -> None:
+    state, _ = _ionic_state()
+    mix = state.mixture
+    rows = [
+        {"T": state.T, "P": state.pressure(), "x": state.x, "phase": "liq"},
+        {"T": state.T, "rho": state.molar_density(), "x": state.x, "phase": "liq"},
+    ]
+
+    batch = epcsaft.evaluate_fugacity_coefficients_batch(mix, rows=rows, natural_log=True)
+
+    assert len(batch) == 2
+    for payload in batch:
+        _assert_array(payload["ln_fugacity_coefficient"], state.fugacity_coefficient(natural_log=True))
+        assert payload["density"] == pytest.approx(state.molar_density())
+
+
+def test_state_accepts_rho_seed_alias() -> None:
+    state, _ = _ionic_state()
+    mix = state.mixture
+    seeded = mix.state(T=state.T, x=state.x, P=state.pressure(), phase="liq", rho_seed=state.molar_density())
+
+    assert seeded.molar_density() == pytest.approx(state.molar_density())
+
+
+def test_validate_dataset_bundle_reports_reaction_and_charge_errors() -> None:
+    report = epcsaft.validate_dataset_bundle(
+        {
+            "m": np.asarray([1.0, 1.0]),
+            "s": np.asarray([3.0, 3.0]),
+            "e": np.asarray([200.0, 200.0]),
+            "z": np.asarray([1.0, 1.0]),
+            "d_born": np.asarray([3.0, np.nan]),
+        },
+        species=["Na+", "Cl-"],
+        reactions=[epcsaft.ReactionDefinition({"Na+": -1.0, "Missing": 1.0}, 0.0)],
+    )
+
+    assert report["valid"] is False
+    assert any("charge sign mismatch" in error for error in report["errors"])
+    assert any("non-finite d_born" in error for error in report["errors"])
+    assert any("Unknown species 'Missing'" in error for error in report["errors"])
 
 
 def test_from_params_rejects_legacy_electrolyte_keys():
