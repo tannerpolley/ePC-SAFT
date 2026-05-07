@@ -17,12 +17,78 @@ Non-native optimizer loops are not an approved production backend for package-ow
 Build prerequisite
 ------------------
 
-There is no IPOPT prerequisite for the current package build. The supported developer path is the uv-managed environment plus the direct CMake/pybind11 native build:
+There is no IPOPT prerequisite for the default package build. The supported
+developer path is the uv-managed environment plus the direct CMake/pybind11
+native build:
 
 .. code-block:: powershell
 
    uv sync --no-install-project
    uv run python scripts\build_epcsaft.py
+
+For experimental IPOPT work, install the optional Python adapter dependency
+with the ``ipopt`` extra or dependency group:
+
+.. code-block:: powershell
+
+   uv sync --extra ipopt
+
+On Windows, ``cyipopt`` builds from source and needs an IPOPT install that
+``pkg-config`` can describe. When using conda-forge IPOPT, first make sure the
+IPOPT environment also has ``pkg-config``, then let the helper create a corrected
+local ``ipopt.pc`` shim and run uv:
+
+.. code-block:: powershell
+
+   conda install -n epcsaft-cyipopt-test -c conda-forge pkg-config
+   .\scripts\setup_windows_cyipopt_uv.ps1 -IpoptPrefix C:\ProgramData\miniconda3\envs\epcsaft-cyipopt-test\Library
+
+The IPOPT path uses ``cyipopt`` and remains explicit opt-in through
+``solver_backend="ipopt"``. It is not a replacement for native least-squares or
+Newton defaults.
+
+Current IPOPT scope
+-------------------
+
+The current IPOPT support is an experimental
+``bound_constrained_residual_minimization`` backend for selected equilibrium
+routes. It does not yet expose a full constrained thermodynamic NLP: material
+balances, charge balance, and equilibrium residuals are not formal IPOPT
+equality constraints in this phase. Runtime capabilities report
+``full_constrained_nlp_available=False`` and ``default_auto_uses_ipopt=False``.
+
+Approximate Hessian diagnostics are intentionally explicit. Gauss-Newton means a
+least-squares ``J.T @ J`` callback; L-BFGS means IPOPT limited-memory Hessian
+approximation. Both report ``exact_hessian_available=False`` and
+``hessian_includes_second_residual_derivatives=False``.
+
+Solver-selection guidance
+-------------------------
+
+.. list-table::
+   :header-rows: 1
+
+   * - Problem type
+     - Preferred default
+     - IPOPT role
+   * - Scalar bubble/dew variable solve
+     - Brent or safeguarded Newton
+     - Usually not appropriate
+   * - Small smooth residual system
+     - Native Newton/trust-region residual solve
+     - Explicit fallback or refinement only
+   * - Least-squares parameter estimation
+     - Gauss-Newton, LM, or trust-region least squares
+     - Use only when bounds or constraints dominate
+   * - Noisy or nonsmooth black-box workflow
+     - Derivative-free or surrogate method
+     - Not preferred
+   * - Phase equilibrium near active bounds
+     - Native safeguarded residual solve first
+     - Useful as explicit bounded residual refinement
+   * - Large sparse constrained NLP
+     - IPOPT or SQP with sparse derivatives
+     - Appropriate once constraints are explicit
 
 Create a dataset folder
 -----------------------
@@ -274,7 +340,9 @@ Derivative availability
      - Native finite-difference Newton Jacobian with fallback diagnostics; autodiff residual boundary is planned
      - Skeleton metadata only
    * - Chemical equilibrium / reactive speciation
-     - Native finite-difference Newton Jacobian with fallback diagnostics; autodiff residual boundary is planned
-     - Skeleton metadata only
+     - Native finite-difference Newton Jacobian plus opt-in native residual/Jacobian callback evaluation for cyipopt
+     - Opt-in cyipopt accepts Gauss-Newton or L-BFGS approximate Hessian strategies
 
-The Hessian fields are deliberately a contract skeleton for future IPOPT-compatible optimizer integration. They do not mean IPOPT support or second-derivative evaluation is implemented.
+The Hessian fields are deliberately a contract skeleton for future
+IPOPT-compatible optimizer integration. They do not mean exact second-derivative
+evaluation is implemented.

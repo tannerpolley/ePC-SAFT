@@ -510,6 +510,76 @@ py::dict native_chemical_equilibrium_to_dict(const ChemicalEquilibriumResultNati
     return out;
 }
 
+py::dict native_chemical_residual_evaluation_to_dict(const ChemicalResidualEvaluationNative& result) {
+    py::dict out;
+    out["variable_model"] = result.variable_model;
+    out["variables"] = result.variables;
+    out["lower_bounds"] = result.lower_bounds;
+    out["upper_bounds"] = result.upper_bounds;
+    out["residual"] = result.residual;
+    out["objective"] = result.objective;
+    out["gradient"] = result.gradient;
+    out["jacobian_row_major"] = result.jacobian_row_major;
+    out["jacobian_shape"] = py::make_tuple(result.jacobian_rows, result.jacobian_cols);
+    out["jacobian_backend"] = result.diagnostics_string.count("jacobian_backend")
+        ? result.diagnostics_string.at("jacobian_backend")
+        : "finite_difference";
+    out["hessian_backend"] = result.diagnostics_string.count("hessian_backend")
+        ? result.diagnostics_string.at("hessian_backend")
+        : "gauss_newton";
+    out["composition"] = result.composition;
+    out["activity_coefficients"] = result.activity_coefficients;
+    out["mass_balance_residuals"] = result.mass_balance_residuals;
+    out["charge_residual"] = result.charge_residual;
+    out["reaction_residuals"] = result.reaction_residuals;
+    out["diagnostics"] = native_diagnostics_to_dict(
+        result.diagnostics_double,
+        result.diagnostics_int,
+        result.diagnostics_bool,
+        result.diagnostics_string,
+        result.diagnostics_vector
+    );
+    return out;
+}
+
+py::dict native_electrolyte_lle_residual_evaluation_to_dict(const ElectrolyteLLEResidualEvaluationNative& result) {
+    py::dict out;
+    out["variable_model"] = result.variable_model;
+    out["variables"] = result.variables;
+    out["lower_bounds"] = result.lower_bounds;
+    out["upper_bounds"] = result.upper_bounds;
+    out["residual"] = result.residual;
+    out["objective"] = result.objective;
+    out["gradient"] = result.gradient;
+    out["jacobian_row_major"] = result.jacobian_row_major;
+    out["jacobian_shape"] = py::make_tuple(result.jacobian_rows, result.jacobian_cols);
+    out["jacobian_backend"] = result.diagnostics_string.count("jacobian_backend")
+        ? result.diagnostics_string.at("jacobian_backend")
+        : "finite_difference";
+    out["hessian_backend"] = result.diagnostics_string.count("hessian_backend")
+        ? result.diagnostics_string.at("hessian_backend")
+        : "gauss_newton";
+    out["aq_composition"] = result.aq_composition;
+    out["org_composition"] = result.org_composition;
+    out["aq_ln_fugacity_coefficient"] = result.aq_ln_fugacity_coefficient;
+    out["org_ln_fugacity_coefficient"] = result.org_ln_fugacity_coefficient;
+    out["aq_density"] = result.aq_density;
+    out["org_density"] = result.org_density;
+    out["phase_fraction_org"] = result.phase_fraction_org;
+    out["material_balance_error"] = result.material_balance_error;
+    out["charge_balance_error"] = result.charge_balance_error;
+    out["phase_distance"] = result.phase_distance;
+    out["gibbs_delta"] = result.gibbs_delta;
+    out["diagnostics"] = native_diagnostics_to_dict(
+        result.diagnostics_double,
+        result.diagnostics_int,
+        result.diagnostics_bool,
+        result.diagnostics_string,
+        result.diagnostics_vector
+    );
+    return out;
+}
+
 [[noreturn]] void raise_native_solution_error_with_diagnostics(
     const std::string& message,
     const EquilibriumResultNative& result
@@ -655,6 +725,9 @@ ChemicalEquilibriumOptionsNative chemical_options_from_request(const py::dict& r
     if (input.contains("phase")) {
         options.phase = input["phase"].cast<std::string>();
     }
+    if (input.contains("activity_output")) {
+        options.activity_output = input["activity_output"].cast<std::string>();
+    }
     return options;
 }
 
@@ -716,11 +789,107 @@ py::dict solve_chemical_equilibrium_native_binding(
     return native_chemical_equilibrium_to_dict(result);
 }
 
+py::dict evaluate_chemical_equilibrium_residual_native_binding(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    const py::dict& request
+) {
+    double t = request["T"].cast<double>();
+    double p = request["P"].cast<double>();
+    std::vector<double> initial_x = request["initial_x"].cast<std::vector<double>>();
+    std::vector<double> variables;
+    bool has_variables = false;
+    if (request.contains("variables") && !request["variables"].is_none()) {
+        variables = request["variables"].cast<std::vector<double>>();
+        has_variables = true;
+    }
+    std::vector<double> balance_matrix = request["balance_matrix"].cast<std::vector<double>>();
+    int balance_rows = request["balance_rows"].cast<int>();
+    std::vector<double> total_vector = request["total_vector"].cast<std::vector<double>>();
+    std::vector<double> reaction_stoichiometry = request["reaction_stoichiometry"].cast<std::vector<double>>();
+    int reaction_rows = request["reaction_rows"].cast<int>();
+    std::vector<double> log_equilibrium_constants = request["log_equilibrium_constants"].cast<std::vector<double>>();
+    std::vector<int> reaction_standard_states;
+    if (request.contains("reaction_standard_states") && !request["reaction_standard_states"].is_none()) {
+        reaction_standard_states = request["reaction_standard_states"].cast<std::vector<int>>();
+    } else {
+        reaction_standard_states = std::vector<int>(static_cast<std::size_t>(reaction_rows), 0);
+    }
+    ChemicalEquilibriumOptionsNative options = chemical_options_from_request(request);
+    ChemicalResidualEvaluationNative result;
+    {
+        py::gil_scoped_release release;
+        result = evaluate_chemical_equilibrium_residual_native(
+            mixture,
+            t,
+            p,
+            initial_x,
+            variables,
+            has_variables,
+            balance_matrix,
+            balance_rows,
+            total_vector,
+            reaction_stoichiometry,
+            reaction_rows,
+            log_equilibrium_constants,
+            reaction_standard_states,
+            options
+        );
+    }
+    return native_chemical_residual_evaluation_to_dict(result);
+}
+
 std::vector<std::string> string_vector_from_request(const py::dict& request, const char* key, std::vector<std::string> fallback) {
     if (!request.contains(key) || request[key].is_none()) {
         return fallback;
     }
     return request[key].cast<std::vector<std::string>>();
+}
+
+py::dict evaluate_electrolyte_lle_residual_native_binding(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    const py::dict& request
+) {
+    double t = request["T"].cast<double>();
+    double p = request["P"].cast<double>();
+    std::vector<double> feed = request["z"].cast<std::vector<double>>();
+    std::vector<std::string> species = string_vector_from_request(request, "species", {});
+    EquilibriumOptionsNative options = options_from_request(request);
+    std::vector<double> variables;
+    bool has_variables = false;
+    if (request.contains("variables") && !request["variables"].is_none()) {
+        variables = request["variables"].cast<std::vector<double>>();
+        has_variables = true;
+    }
+    std::vector<double> aq;
+    std::vector<double> org;
+    double beta = 0.5;
+    bool has_initial = false;
+    if (request.contains("initial_phases") && !request["initial_phases"].is_none()) {
+        py::dict initial = request["initial_phases"].cast<py::dict>();
+        aq = initial["aq"].cast<std::vector<double>>();
+        org = initial["org"].cast<std::vector<double>>();
+        beta = initial["phase_fraction"].cast<double>();
+        has_initial = true;
+    }
+    ElectrolyteLLEResidualEvaluationNative result;
+    {
+        py::gil_scoped_release release;
+        result = evaluate_electrolyte_lle_residual_native(
+            mixture,
+            t,
+            p,
+            feed,
+            options,
+            species,
+            variables,
+            has_variables,
+            aq,
+            org,
+            beta,
+            has_initial
+        );
+    }
+    return native_electrolyte_lle_residual_evaluation_to_dict(result);
 }
 
 py::dict solve_equilibrium_native_binding(
@@ -1118,6 +1287,8 @@ PYBIND11_MODULE(_core, m) {
     m.def("_fit_generic_native_least_squares", &fit_generic_native_least_squares_binding);
     m.def("_evaluate_generic_native_debug", &evaluate_generic_native_debug_binding);
     m.def("_solve_equilibrium_native", &solve_equilibrium_native_binding);
+    m.def("_evaluate_electrolyte_lle_residual_native", &evaluate_electrolyte_lle_residual_native_binding);
     m.def("_solve_electrolyte_bubble_native", &solve_electrolyte_bubble_native_binding);
     m.def("_solve_chemical_equilibrium_native", &solve_chemical_equilibrium_native_binding);
+    m.def("_evaluate_chemical_equilibrium_residual_native", &evaluate_chemical_equilibrium_residual_native_binding);
 }

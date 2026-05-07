@@ -103,6 +103,35 @@ struct EquilibriumResultNative {
     std::vector<DensitySolveDiagnostics> density_diagnostics;
 };
 
+struct ElectrolyteLLEResidualEvaluationNative {
+    std::string variable_model = "ascani_transformed_salt_pairs";
+    std::vector<double> variables;
+    std::vector<double> lower_bounds;
+    std::vector<double> upper_bounds;
+    std::vector<double> residual;
+    std::vector<double> jacobian_row_major;
+    int jacobian_rows = 0;
+    int jacobian_cols = 0;
+    std::vector<double> gradient;
+    double objective = 0.0;
+    std::vector<double> aq_composition;
+    std::vector<double> org_composition;
+    std::vector<double> aq_ln_fugacity_coefficient;
+    std::vector<double> org_ln_fugacity_coefficient;
+    double aq_density = 0.0;
+    double org_density = 0.0;
+    double phase_fraction_org = 0.0;
+    double material_balance_error = 0.0;
+    double charge_balance_error = 0.0;
+    double phase_distance = 0.0;
+    double gibbs_delta = 0.0;
+    std::map<std::string, double> diagnostics_double;
+    std::map<std::string, int> diagnostics_int;
+    std::map<std::string, bool> diagnostics_bool;
+    std::map<std::string, std::string> diagnostics_string;
+    std::map<std::string, std::vector<double>> diagnostics_vector;
+};
+
 StabilityResultNative neutral_stability_native(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
     double t,
@@ -149,6 +178,21 @@ EquilibriumResultNative electrolyte_lle_native(
     const std::vector<double>& feed,
     const EquilibriumOptionsNative& options,
     const std::vector<std::string>& species,
+    const std::vector<double>& initial_aq = {},
+    const std::vector<double>& initial_org = {},
+    double initial_beta_org = 0.5,
+    bool has_initial_phases = false
+);
+
+ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const EquilibriumOptionsNative& options,
+    const std::vector<std::string>& species,
+    const std::vector<double>& variables = {},
+    bool has_variables = false,
     const std::vector<double>& initial_aq = {},
     const std::vector<double>& initial_org = {},
     double initial_beta_org = 0.5,

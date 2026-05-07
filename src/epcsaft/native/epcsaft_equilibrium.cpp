@@ -2575,3 +2575,172 @@ EquilibriumResultNative electrolyte_lle_native(
     result.density_diagnostics = density_failures;
     return result;
 }
+
+ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& raw_feed,
+    const EquilibriumOptionsNative& options,
+    const std::vector<std::string>& species,
+    const std::vector<double>& variables,
+    bool has_variables,
+    const std::vector<double>& initial_aq,
+    const std::vector<double>& initial_org,
+    double initial_beta_org,
+    bool has_initial_phases
+) {
+    if (!mixture->has_ionic()) {
+        throw ValueError("electrolyte_lle residual evaluation requires an ion-containing mixture.");
+    }
+    std::vector<double> feed = normalize_feed(raw_feed, mixture->ncomp(), options.min_composition, "electrolyte_lle");
+    const std::vector<double>& charges = mixture->args().z;
+    double feed_charge = composition_charge(feed, charges);
+    if (std::abs(feed_charge) > 1.0e-10) {
+        throw ValueError("electrolyte_lle feed must be charge neutral.");
+    }
+    if (options.min_composition <= 0.0) {
+        throw ValueError("electrolyte_lle residual evaluation options contain invalid numerical controls.");
+    }
+    ElectrolyteBasisNative basis = build_electrolyte_basis_native(mixture, feed, species);
+    PhaseStateNative feed_state = phase_state(mixture, t, p, feed, "liq", "feed");
+    double gibbs_feed = electrolyte_gibbs_proxy(feed, feed_state);
+
+    std::vector<double> active_variables = variables;
+    if (has_variables) {
+        if (active_variables.size() != basis.formula_feed.size()) {
+            throw ValueError("electrolyte_lle residual variables length must match transformed basis dimension.");
+        }
+    } else if (has_initial_phases) {
+        if (initial_aq.size() != feed.size() || initial_org.size() != feed.size()) {
+            throw ValueError("initial_phases aq/org length must match mixture component count.");
+        }
+        if (!(initial_beta_org > 0.0 && initial_beta_org < 1.0) || !std::isfinite(initial_beta_org)) {
+            throw ValueError("initial_phases phase_fraction must be > 0 and < 1.");
+        }
+        std::vector<double> aq_comp_initial = clip_normalize(initial_aq, options.min_composition);
+        std::vector<double> org_comp_initial = clip_normalize(initial_org, options.min_composition);
+        std::vector<double> aq_formula = explicit_to_formula(aq_comp_initial, basis);
+        std::vector<double> org_formula = explicit_to_formula(org_comp_initial, basis);
+        auto aq_expanded = formula_to_explicit(aq_formula, basis, feed.size());
+        auto org_expanded = formula_to_explicit(org_formula, basis, feed.size());
+        double beta_formula = initial_beta_org;
+        double numerator = initial_beta_org / org_expanded.second;
+        double denominator = numerator + (1.0 - initial_beta_org) / aq_expanded.second;
+        if (denominator > 0.0) {
+            beta_formula = std::max(1.0e-12, std::min(1.0 - 1.0e-12, numerator / denominator));
+        }
+        active_variables = pack_predictive_electrolyte_variables(beta_formula, org_formula);
+    } else {
+        auto seeds = electrolyte_formula_seeds(mixture, feed, basis, options);
+        std::vector<double> org_formula = seeds.empty() ? basis.formula_feed : seeds.front().second;
+        active_variables = pack_predictive_electrolyte_variables(0.5, org_formula);
+    }
+    for (double value : active_variables) {
+        if (!std::isfinite(value)) {
+            throw ValueError("electrolyte_lle residual variables must be finite.");
+        }
+    }
+
+    auto residual_fn = [&](const std::vector<double>& candidate) {
+        try {
+            return evaluate_predictive_electrolyte_variables(
+                mixture,
+                t,
+                p,
+                feed,
+                basis,
+                candidate,
+                options,
+                gibbs_feed
+            ).residual;
+        } catch (const SolutionError&) {
+            return predictive_infeasible_residual(candidate, basis, options);
+        }
+    };
+    ElectrolyteCandidateNative current = evaluate_predictive_electrolyte_variables(
+        mixture,
+        t,
+        p,
+        feed,
+        basis,
+        active_variables,
+        options,
+        gibbs_feed
+    );
+    std::vector<double> base_residual = current.residual;
+    const std::size_t nvar = active_variables.size();
+    const std::size_t nres = base_residual.size();
+    std::vector<double> jacobian(nres * nvar, 0.0);
+    const double step = std::max(1.0e-7, 10.0 * options.min_composition);
+    for (std::size_t col = 0; col < nvar; ++col) {
+        std::vector<double> shifted = active_variables;
+        shifted[col] += step;
+        std::vector<double> value = residual_fn(shifted);
+        for (std::size_t row = 0; row < nres; ++row) {
+            jacobian[row * nvar + col] = (value[row] - base_residual[row]) / step;
+        }
+    }
+    std::vector<double> gradient(nvar, 0.0);
+    for (std::size_t col = 0; col < nvar; ++col) {
+        for (std::size_t row = 0; row < nres; ++row) {
+            gradient[col] += jacobian[row * nvar + col] * base_residual[row];
+        }
+    }
+    double objective = 0.0;
+    for (double value : base_residual) {
+        objective += 0.5 * value * value;
+    }
+
+    ElectrolyteLLEResidualEvaluationNative out;
+    out.variables = active_variables;
+    out.lower_bounds.assign(nvar, -30.0);
+    out.upper_bounds.assign(nvar, 30.0);
+    out.residual = base_residual;
+    out.jacobian_row_major = jacobian;
+    out.jacobian_rows = static_cast<int>(nres);
+    out.jacobian_cols = static_cast<int>(nvar);
+    out.gradient = gradient;
+    out.objective = objective;
+    out.aq_composition = current.aq_comp;
+    out.org_composition = current.org_comp;
+    out.aq_ln_fugacity_coefficient = current.aq_state.ln_phi;
+    out.org_ln_fugacity_coefficient = current.org_state.ln_phi;
+    out.aq_density = current.aq_state.density;
+    out.org_density = current.org_state.density;
+    out.phase_fraction_org = current.beta_org;
+    out.material_balance_error = current.material_error;
+    out.charge_balance_error = current.charge_balance_error;
+    out.phase_distance = current.phase_distance_value;
+    out.gibbs_delta = current.gibbs_delta;
+    out.diagnostics_string["solver_language"] = "c++";
+    out.diagnostics_string["native_entrypoint"] = "_evaluate_electrolyte_lle_residual_native";
+    out.diagnostics_string["phase_equilibrium_model"] = "electrolyte_lle_v5_native_charge_constrained_solve";
+    out.diagnostics_string["variable_model"] = basis.variable_model;
+    out.diagnostics_string["jacobian_backend"] = "finite_difference";
+    out.diagnostics_string["hessian_backend"] = "gauss_newton";
+    out.diagnostics_string["finite_difference_scheme"] = "forward";
+    out.diagnostics_string["finite_difference_variable_space"] = "transformed_formula_variables";
+    out.diagnostics_string["finite_difference_step_rule"] = "absolute_transformed_variable_step";
+    out.diagnostics_string["hessian_kind"] = "approximate_least_squares_gauss_newton";
+    out.diagnostics_string["hessian_structure"] = "dense_lower_triangular";
+    out.diagnostics_bool["jacobian_available"] = true;
+    out.diagnostics_bool["hessian_available"] = true;
+    out.diagnostics_bool["exact_hessian_available"] = false;
+    out.diagnostics_bool["hessian_callback_available"] = true;
+    out.diagnostics_bool["hessian_includes_second_residual_derivatives"] = false;
+    out.diagnostics_bool["sparse_hessian_available"] = false;
+    out.diagnostics_int["basis_rank"] = basis.basis_rank;
+    out.diagnostics_double["solver_residual_norm"] = current.solver_residual_norm;
+    out.diagnostics_double["fugacity_residual_norm"] = current.solver_residual_norm;
+    out.diagnostics_double["material_balance_error"] = current.material_error;
+    out.diagnostics_double["charge_balance_error"] = current.charge_balance_error;
+    out.diagnostics_double["phase_distance"] = current.phase_distance_value;
+    out.diagnostics_double["gibbs_delta"] = current.gibbs_delta;
+    out.diagnostics_double["objective"] = objective;
+    out.diagnostics_double["finite_difference_base_step"] = options.min_composition;
+    out.diagnostics_double["finite_difference_effective_step"] = step;
+    out.diagnostics_vector["feed_composition"] = feed;
+    out.diagnostics_vector["fugacity_residual"] = base_residual;
+    return out;
+}

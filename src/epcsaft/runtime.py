@@ -113,9 +113,12 @@ def _mtime_utc(path: Path) -> str:
 def runtime_build_info() -> dict[str, object]:
     """Return JSON-like package, source, and native-extension metadata."""
 
+    from .ipopt_backend import cyipopt_backend_info
+
     direct_url = _direct_url_payload()
     source_root = _source_checkout_from_package() or _source_checkout_from_direct_url(direct_url)
     native_path = _native_extension_path()
+    cyipopt = cyipopt_backend_info()
     direct_url_info = direct_url.get("dir_info") if isinstance(direct_url.get("dir_info"), dict) else {}
     return {
         "package_version": __version__,
@@ -130,14 +133,31 @@ def runtime_build_info() -> dict[str, object]:
         "python": sys.version.split()[0],
         "platform": platform.platform(),
         "machine": platform.machine(),
+        "optional_dependencies": {
+            "cyipopt": cyipopt,
+        },
     }
 
 
 def capabilities() -> dict[str, object]:
     """Return structured availability flags for high-level package workflows."""
 
+    cyipopt = dict(runtime_build_info()["optional_dependencies"]["cyipopt"])  # type: ignore[index]
     return {
         "native_extension": bool(runtime_build_info()["native_extension_available"]),
+        "optimizers": {
+            "ipopt": {
+                **cyipopt,
+                "solver_backend": "ipopt",
+                "scope": "explicit opt-in cyipopt backend; native Newton/default backends remain defaults",
+                "hessian_strategies": ["gauss_newton", "lbfgs"],
+                "formulations": ["bound_constrained_residual_minimization"],
+                "full_constrained_nlp_available": False,
+                "default_auto_uses_ipopt": False,
+                "exact_hessian_available": False,
+                "hessian_includes_second_residual_derivatives": False,
+            }
+        },
         "equilibrium": {
             "neutral_tp_flash": {"available": True, "backend": "native"},
             "neutral_lle_flash": {"available": True, "backend": "native"},
@@ -147,7 +167,15 @@ def capabilities() -> dict[str, object]:
                 "backend": "python_orchestrated_native_state_fugacity",
                 "methods": ["bubble_p", "bubble_t", "dew_p", "dew_t"],
             },
-            "electrolyte_lle": {"available": True, "backend": "native"},
+            "electrolyte_lle": {
+                "available": True,
+                "backend": "native",
+                "solver_backends": ["auto", "newton", "ipopt"],
+                "ipopt_available": bool(cyipopt["available"]),
+                "default_auto_uses_ipopt": False,
+                "ipopt_formulation": "bound_constrained_residual_minimization",
+                "full_constrained_nlp_available": False,
+            },
             "electrolyte_bubble_pressure": {
                 "available": True,
                 "backend": "native",
@@ -158,7 +186,28 @@ def capabilities() -> dict[str, object]:
                 "backend": "native",
                 "scope": "native chemical speciation followed by native fixed-liquid electrolyte bubble pressure",
             },
-            "reactive_speciation": {"available": True, "backend": "native activity evaluations"},
+            "reactive_speciation": {
+                "available": True,
+                "backend": "native activity evaluations",
+                "sweep_available": True,
+                "continuation_state_available": True,
+                "activity_output_modes": ["auto", "always", "never"],
+                "solver_backends": ["auto", "newton", "ipopt"],
+                "ipopt_available": bool(cyipopt["available"]),
+                "default_auto_uses_ipopt": False,
+                "ipopt_formulation": "bound_constrained_residual_minimization",
+                "full_constrained_nlp_available": False,
+            },
+            "repeated_state_properties": {
+                "available": True,
+                "helpers": ["evaluate_fugacity_coefficients", "evaluate_fugacity_coefficients_batch"],
+                "density_seed_aliases": ["rho_guess", "rho_seed"],
+            },
+            "dataset_validation": {
+                "available": True,
+                "helper": "validate_dataset_bundle",
+                "scope": "external parameter bundle structure and reaction/species compatibility checks",
+            },
         },
         "regression": {
             "pure_neutral": {"available": True, "backend": "native"},

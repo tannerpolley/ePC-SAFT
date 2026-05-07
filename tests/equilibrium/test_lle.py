@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import fields
 
 import numpy as np
 import pytest
@@ -231,6 +232,15 @@ def test_lle_flash_phase_diagnostics_are_json_serializable_when_requested() -> N
         assert "fugacity_coefficient_terms" in phase_payload["diagnostics"]
 
 
+def test_equilibrium_options_expose_explicit_solver_backend_controls() -> None:
+    option_fields = {field.name for field in fields(epcsaft.EquilibriumOptions)}
+
+    assert "solver_backend" in option_fields
+    assert "hessian_strategy" in option_fields
+    assert epcsaft.EquilibriumOptions().solver_backend == "auto"
+    assert epcsaft.EquilibriumOptions().hessian_strategy == "gauss_newton"
+
+
 def test_lle_flash_distinct_stalled_seed_raises_solution_error() -> None:
     mix = _methanol_cyclohexane_mixture()
     feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
@@ -256,6 +266,8 @@ def test_lle_flash_distinct_stalled_seed_raises_solution_error() -> None:
         (epcsaft.EquilibriumOptions(min_composition=float("nan")), "min_composition"),
         (epcsaft.EquilibriumOptions(include_phase_diagnostics="yes"), "include_phase_diagnostics"),
         (epcsaft.EquilibriumOptions(stability_precheck="yes"), "stability_precheck"),
+        (epcsaft.EquilibriumOptions(solver_backend="cyipopt"), "solver_backend"),
+        (epcsaft.EquilibriumOptions(hessian_strategy="exact"), "hessian_strategy"),
     ],
 )
 def test_lle_flash_rejects_invalid_options_through_public_api(options, match) -> None:
@@ -270,6 +282,23 @@ def test_lle_flash_rejects_invalid_options_through_public_api(options, match) ->
             z=feed,
             initial_phases={"liq1": feed, "liq2": feed, "phase_fraction": 0.5},
             options=options,
+        )
+
+
+def test_lle_flash_requested_ipopt_requires_cyipopt(monkeypatch) -> None:
+    import epcsaft.ipopt_backend as ipopt_backend
+
+    monkeypatch.setattr(ipopt_backend, "cyipopt_available", lambda: False)
+    mix = _methanol_cyclohexane_mixture()
+    feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
+
+    with pytest.raises(epcsaft.InputError, match="cyipopt.*solver_backend='ipopt'"):
+        mix.equilibrium(
+            kind="lle_flash",
+            T=298.15,
+            P=1.013e5,
+            z=feed,
+            options=epcsaft.EquilibriumOptions(solver_backend="ipopt"),
         )
 
 

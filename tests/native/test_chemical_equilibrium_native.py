@@ -97,6 +97,67 @@ def _neutral_log_k_from_fugacity_activity(
 
 def test_native_chemical_equilibrium_entrypoint_is_exposed() -> None:
     assert hasattr(_core, "_solve_chemical_equilibrium_native")
+    assert hasattr(_core, "_evaluate_chemical_equilibrium_residual_native")
+
+
+def test_native_chemical_equilibrium_residual_evaluator_exposes_jacobian() -> None:
+    mix = epcsaft.ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([1.0, 1.0]),
+            "s": np.asarray([3.0, 3.0]),
+            "e": np.asarray([200.0, 200.0]),
+        },
+        species=["A", "B"],
+    )
+    request = {
+        "T": 298.15,
+        "P": 1.0e5,
+        "initial_x": [0.5, 0.5],
+        "balance_matrix": [1.0, 1.0],
+        "balance_rows": 1,
+        "total_vector": [1.0],
+        "reaction_stoichiometry": [-1.0, 1.0],
+        "reaction_rows": 1,
+        "log_equilibrium_constants": [math.log(3.0)],
+        "reaction_standard_states": [1],
+        "options": {"tolerance": 1.0e-10, "finite_difference_step": 1.0e-7},
+    }
+
+    payload = _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
+
+    assert payload["variable_model"] == "log_species_amounts"
+    assert payload["jacobian_backend"] == "finite_difference"
+    assert payload["hessian_backend"] == "gauss_newton"
+    diagnostics = payload["diagnostics"]
+    assert diagnostics["finite_difference_scheme"] == "forward"
+    assert diagnostics["finite_difference_variable_space"] == "log_species_amounts"
+    assert diagnostics["finite_difference_step_rule"] == "absolute_log_variable_step"
+    assert diagnostics["finite_difference_base_step"] == pytest.approx(1.0e-7)
+    assert diagnostics["exact_hessian_available"] is False
+    assert diagnostics["hessian_kind"] == "approximate_least_squares_gauss_newton"
+    assert diagnostics["hessian_includes_second_residual_derivatives"] is False
+    residual = np.asarray(payload["residual"], dtype=float)
+    gradient = np.asarray(payload["gradient"], dtype=float)
+    jacobian = np.asarray(payload["jacobian_row_major"], dtype=float).reshape(payload["jacobian_shape"])
+    lower = np.asarray(payload["lower_bounds"], dtype=float)
+    variables = np.asarray(payload["variables"], dtype=float)
+    upper = np.asarray(payload["upper_bounds"], dtype=float)
+    assert residual.shape == (3,)
+    assert gradient.shape == (2,)
+    assert jacobian.shape == (3, 2)
+    assert np.isfinite(payload["objective"])
+    assert np.all(np.isfinite(residual))
+    assert np.all(np.isfinite(gradient))
+    assert np.all(np.isfinite(jacobian))
+    assert np.all(np.isfinite(lower))
+    assert np.all(np.isfinite(variables))
+    assert np.all(np.isfinite(upper))
+    assert np.all(lower < upper)
+    assert np.all(variables >= lower)
+    assert np.all(variables <= upper)
+    np.testing.assert_allclose(gradient, jacobian.T @ residual, rtol=1.0e-10, atol=1.0e-10)
+    assert payload["objective"] == pytest.approx(0.5 * float(residual @ residual))
+    assert len(payload["lower_bounds"]) == len(payload["variables"]) == len(payload["upper_bounds"])
 
 
 def test_native_chemical_equilibrium_solves_easy_ideal_reaction() -> None:
