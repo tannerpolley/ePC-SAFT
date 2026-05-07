@@ -246,9 +246,16 @@ def _solve_reactive_speciation_native(
         and reaction_residual_norm <= reaction_tolerance
     )
     diagnostics = dict(payload["diagnostics"])
+    activity_basis = _reaction_standard_state_summary(reactions)
+    handoff = dict(diagnostics.get("phase_equilibrium_handoff", {}))
+    handoff["composition"] = dict(x)
+    handoff["activity_coefficients"] = dict(activity_coefficients)
+    handoff["activity_basis"] = activity_basis
+    diagnostics["phase_equilibrium_handoff"] = handoff
     diagnostics["reaction_standard_states"] = [reaction.standard_state for reaction in reactions]
     diagnostics.update(
         {
+            "activity_basis": activity_basis,
             "success": bool(payload["success"] and residual_family_success),
             "native_success": bool(payload["success"]),
             "residual_family_success": bool(residual_family_success),
@@ -296,6 +303,18 @@ def _named_reaction_residuals(reactions: list[ReactionDefinition], reaction_resi
         counts[base] = count + 1
         names.append(base if count == 0 else f"{base}_{count}")
     return {name: float(value) for name, value in zip(names, reaction_residuals)}
+
+
+def _reaction_standard_state_summary(reactions: list[ReactionDefinition]) -> str:
+    standard_states = [reaction.standard_state for reaction in reactions]
+    if not standard_states:
+        return "mole_fraction"
+    first = standard_states[0]
+    if any(value != first for value in standard_states[1:]):
+        return "mixed_standard_state"
+    if first == "mole_fraction_activity":
+        return "mole_fraction"
+    return first
 
 
 def _normalize_composition(value: Any, ncomp: int, min_value: float) -> np.ndarray:
