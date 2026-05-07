@@ -10,12 +10,10 @@ inputs, build request payloads, validate units and compositions, and convert
 native payloads into structured result objects, but it must not contain
 production nonlinear equilibrium or regression optimizers.
 
-Electrolyte bubble-pressure and composed reactive electrolyte bubble-pressure
-entry points are available as scoped native workflows. The electrolyte
-bubble-pressure route solves fixed-liquid pressure with ions kept liquid-only
-and neutral vapor species allowed. The reactive route performs native chemical
-speciation first, then passes the speciated liquid composition into that same
-fixed-liquid bubble-pressure solve.
+Consequently, electrolyte bubble-pressure and composed reactive electrolyte
+bubble-pressure entry points route through native C++ kernels. The Python layer
+only coordinates native speciation, native phase-equilibrium calls, fixed-liquid
+bubble-pressure handoffs, structured results, and diagnostics.
 
 Homogeneous reactive speciation
 -------------------------------
@@ -94,19 +92,33 @@ can inspect the chemical-equilibrated feed used for tangent-plane-distance
 analysis. This route is a native stability/handoff coordinator, not a full
 rigorous reactive flash solver.
 
-Scoped native bubble-pressure workflows
----------------------------------------
+Electrolyte bubble pressure
+---------------------------
 
-These entry points are available as scoped native workflows:
+``kind="electrolyte_bubble_pressure"`` and
+``solve_reactive_electrolyte_bubble(...)`` are native-backed fixed-liquid
+bubble-pressure workflows. Ions remain liquid-only. Vapor fugacity is evaluated
+with a neutral vapor submixture built from the declared vapor species.
+These paths do not fall back to Python pressure, speciation, or regression
+loops.
 
-- ``mixture.equilibrium(kind="electrolyte_bubble_pressure", ...)``
-- ``epcsaft.solve_reactive_electrolyte_bubble(...)``
-- ``epcsaft.solve_reactive_electrolyte_bubble_sweep(...)``
-- ``mixture.equilibrium_sweep(kind="reactive_electrolyte_bubble_pressure", ...)``
+For reactive electrolyte bubbles, the package first solves homogeneous
+chemical equilibrium with the native chemical solver and then hands the
+equilibrated liquid composition to the native electrolyte bubble solver.
+``ReactiveElectrolyteBubbleResult`` reports both strict speciation success and
+phase-handoff success:
 
-The electrolyte bubble-pressure route solves fixed-liquid electrolyte bubble
-pressure with ions kept liquid-only and neutral vapor species allowed. The
-reactive route performs native chemical speciation first, then passes the
-speciated liquid composition into the same native fixed-liquid bubble-pressure
-workflow. These paths do not fall back to Python pressure, speciation, or
-regression loops.
+- ``speciation_strict_success`` reflects the standalone native chemical
+  equilibrium tolerances requested in ``ReactiveSpeciationOptions``.
+- ``speciation_phase_handoff_success`` reflects whether finite mass, charge,
+  and reaction residuals are accurate enough for phase-equilibrium handoff.
+- ``bubble_success`` reflects the native electrolyte bubble-pressure solve.
+
+The handoff tolerances default to ``1e-8`` for mass, ``1e-8`` for charge, and
+``1e-5`` for reaction residuals. They can be adjusted with
+``ReactiveElectrolyteBubbleOptions.phase_handoff_mass_tolerance``,
+``phase_handoff_charge_tolerance``, and
+``phase_handoff_reaction_tolerance``. This lets downstream workflows keep
+strict standalone chemical-equilibrium tolerances while accepting a looser,
+documented phase-equilibrium handoff envelope when the bubble solve itself is
+well converged.
