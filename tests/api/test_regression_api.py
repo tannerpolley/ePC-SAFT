@@ -693,6 +693,7 @@ def test_public_generic_derivative_evaluator_exposes_jacobian_and_hessian_skelet
         species=("H2O", "Ethanol"),
         pair=("H2O", "Ethanol"),
         x=(-0.01, 0.02),
+        jacobian_backend="finite_difference",
     )
 
     assert payload["jacobian_available"] is True
@@ -708,3 +709,24 @@ def test_public_generic_derivative_evaluator_exposes_jacobian_and_hessian_skelet
     np.testing.assert_array_equal(calls[0]["target_kinds"], [6, 7])
     np.testing.assert_array_equal(calls[0]["target_indices"], [0, 0])
     np.testing.assert_array_equal(calls[0]["target_indices_2"], [1, 1])
+
+
+def test_public_generic_derivative_evaluator_rejects_auto_without_autodiff():
+    with pytest.raises(InputError, match="generic regression autodiff"):
+        evaluate_generic_regression_derivatives(
+            fixed_payloads=[{"m": [1.0, 1.0], "s": [3.0, 3.0], "e": [200.0, 200.0]}],
+            native_records=[
+                {
+                    "term_name": "binary_vle_fugacity_balance",
+                    "term": regression_module.NATIVE_TERM_KINDS["binary_vle_fugacity_balance"],
+                    "T": 330.0,
+                    "P": 101325.0,
+                    "x": [0.7, 0.3],
+                    "y": [0.5, 0.5],
+                }
+            ],
+            optimization_names=("k_ij", "l_ij"),
+            species=("H2O", "Ethanol"),
+            pair=("H2O", "Ethanol"),
+            x=(-0.01, 0.02),
+        )

@@ -2593,6 +2593,12 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
     if (!mixture->has_ionic()) {
         throw ValueError("electrolyte_lle residual evaluation requires an ion-containing mixture.");
     }
+    if (options.jacobian_backend != "finite_difference") {
+        throw ValueError(
+            "electrolyte LLE residual jacobian does not yet have analytic/autodiff coverage; "
+            "finite difference is only available when jacobian_backend='finite_difference' is requested explicitly."
+        );
+    }
     std::vector<double> feed = normalize_feed(raw_feed, mixture->ncomp(), options.min_composition, "electrolyte_lle");
     const std::vector<double>& charges = mixture->args().z;
     double feed_charge = composition_charge(feed, charges);
@@ -2718,6 +2724,9 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
     out.diagnostics_string["phase_equilibrium_model"] = "electrolyte_lle_v5_native_charge_constrained_solve";
     out.diagnostics_string["variable_model"] = basis.variable_model;
     out.diagnostics_string["jacobian_backend"] = "finite_difference";
+    out.diagnostics_string["derivative_backend_selected"] = "finite_difference";
+    out.diagnostics_string["derivative_capability_path"] = "electrolyte_lle:explicit_finite_difference:transformed_formula_variables";
+    out.diagnostics_string["unsupported_derivative_reason"] = "";
     out.diagnostics_string["hessian_backend"] = "gauss_newton";
     out.diagnostics_string["finite_difference_scheme"] = "forward";
     out.diagnostics_string["finite_difference_variable_space"] = "transformed_formula_variables";
@@ -2725,6 +2734,9 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
     out.diagnostics_string["hessian_kind"] = "approximate_least_squares_gauss_newton";
     out.diagnostics_string["hessian_structure"] = "dense_lower_triangular";
     out.diagnostics_bool["jacobian_available"] = true;
+    out.diagnostics_bool["finite_difference_allowed"] = true;
+    out.diagnostics_bool["explicit_finite_difference"] = true;
+    out.diagnostics_bool["finite_difference_fallback_used"] = false;
     out.diagnostics_bool["hessian_available"] = true;
     out.diagnostics_bool["exact_hessian_available"] = false;
     out.diagnostics_bool["hessian_callback_available"] = true;

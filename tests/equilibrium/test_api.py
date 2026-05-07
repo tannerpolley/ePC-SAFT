@@ -147,7 +147,13 @@ def test_explicit_chemical_equilibrium_matches_legacy_equilibrium_dispatch() -> 
         "z": [0.5, 0.5],
         "balances": {"total": {"A": 1.0, "B": 1.0}},
         "totals": {"total": 1.0},
-        "reactions": [epcsaft.ReactionDefinition({"A": -1.0, "B": 1.0}, np.log(3.0))],
+        "reactions": [
+            epcsaft.ReactionDefinition(
+                {"A": -1.0, "B": 1.0},
+                np.log(3.0),
+                standard_state="ideal_mole_fraction",
+            )
+        ],
         "options": epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
     }
 

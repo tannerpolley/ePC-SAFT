@@ -160,7 +160,12 @@ def test_native_electrolyte_lle_residual_evaluator_exposes_transformed_jacobian(
         "z": feed,
         "species": mix.species,
         "initial_phases": {"aq": aq.tolist(), "org": org.tolist(), "phase_fraction": beta_org},
-        "options": {"max_iterations": 80, "tolerance": 1.0e-8, "min_composition": 1.0e-12},
+        "options": {
+            "max_iterations": 80,
+            "tolerance": 1.0e-8,
+            "min_composition": 1.0e-12,
+            "jacobian_backend": "finite_difference",
+        },
     }
 
     payload = _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
@@ -173,6 +178,9 @@ def test_native_electrolyte_lle_residual_evaluator_exposes_transformed_jacobian(
     assert diagnostics["finite_difference_variable_space"] == "transformed_formula_variables"
     assert diagnostics["finite_difference_step_rule"] == "absolute_transformed_variable_step"
     assert diagnostics["finite_difference_effective_step"] == pytest.approx(1.0e-7)
+    assert diagnostics["derivative_backend_selected"] == "finite_difference"
+    assert diagnostics["finite_difference_allowed"] is True
+    assert diagnostics["explicit_finite_difference"] is True
     assert diagnostics["exact_hessian_available"] is False
     assert diagnostics["hessian_kind"] == "approximate_least_squares_gauss_newton"
     assert diagnostics["hessian_includes_second_residual_derivatives"] is False
@@ -198,6 +206,25 @@ def test_native_electrolyte_lle_residual_evaluator_exposes_transformed_jacobian(
     assert payload["objective"] == pytest.approx(0.5 * float(residual @ residual))
     assert len(payload["lower_bounds"]) == len(payload["variables"]) == len(payload["upper_bounds"])
     assert abs(payload["charge_balance_error"]) <= 1.0e-8
+
+
+def test_native_electrolyte_lle_residual_evaluator_rejects_auto_without_autodiff() -> None:
+    mix = _electrolyte_mixture()
+    aq = np.asarray([0.798324680201737, 0.016320352824141723, 0.09267748348706063, 0.09267748348706063], dtype=float)
+    org = np.asarray([0.37006036048879404, 0.6214918588210971, 0.004223890345054407, 0.004223890345054407], dtype=float)
+    beta_org = 0.613766575013417
+    feed = ((1.0 - beta_org) * aq + beta_org * org).tolist()
+    request = {
+        "T": 298.15,
+        "P": 1.013e5,
+        "z": feed,
+        "species": mix.species,
+        "initial_phases": {"aq": aq.tolist(), "org": org.tolist(), "phase_fraction": beta_org},
+        "options": {"max_iterations": 80, "tolerance": 1.0e-8, "min_composition": 1.0e-12},
+    }
+
+    with pytest.raises(Exception, match="electrolyte LLE residual jacobian"):
+        _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
 
 
 def test_equilibrium_runtime_does_not_import_external_optimizers() -> None:

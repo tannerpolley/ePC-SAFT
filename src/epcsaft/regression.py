@@ -1198,8 +1198,20 @@ def evaluate_generic_regression_derivatives(
     *,
     component: str | None = None,
     pair: Sequence[str] | None = None,
+    jacobian_backend: str = "auto",
 ) -> dict[str, Any]:
     """Evaluate native generic-regression residuals and an explicit Jacobian payload."""
+
+    backend = str(jacobian_backend).strip().lower()
+    if backend in {"numerical", "fd"}:
+        backend = "finite_difference"
+    if backend not in {"auto", "autodiff", "finite_difference"}:
+        raise InputError("jacobian_backend must be 'auto', 'autodiff', or 'finite_difference'.")
+    if backend != "finite_difference":
+        raise InputError(
+            "generic regression autodiff Jacobians are not implemented for the generic residual state path yet; "
+            "finite difference is only available when jacobian_backend='finite_difference' is requested explicitly."
+        )
 
     normalized_species = tuple(_normalize_component(str(name)) for name in species)
     normalized_pair = None if pair is None else _normalize_pair(pair)

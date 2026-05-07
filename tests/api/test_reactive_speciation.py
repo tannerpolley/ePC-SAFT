@@ -58,6 +58,7 @@ def test_solve_reactive_speciation_returns_balanced_activity_coupled_state() -> 
             mass_tolerance=1.0e-8,
             charge_tolerance=1.0e-8,
             reaction_tolerance=1.0e-8,
+            jacobian_backend="finite_difference",
         ),
     )
 
@@ -129,7 +130,11 @@ def test_solve_reactive_speciation_concentration_standard_state_uses_molar_densi
             )
         ],
         initial_x=initial_x,
-        options=epcsaft.ReactiveSpeciationOptions(max_iterations=50, tolerance=1.0e-8),
+        options=epcsaft.ReactiveSpeciationOptions(
+            max_iterations=50,
+            tolerance=1.0e-8,
+            jacobian_backend="finite_difference",
+        ),
     )
 
     assert result.success is True
@@ -165,7 +170,7 @@ def test_concentration_standard_state_can_skip_activity_output() -> None:
             )
         ],
         initial_x=initial_x,
-        options=epcsaft.ReactiveSpeciationOptions(activity_output="never"),
+        options=epcsaft.ReactiveSpeciationOptions(activity_output="never", jacobian_backend="finite_difference"),
     )
 
     assert result.success is True
@@ -198,7 +203,11 @@ def test_solve_reactive_speciation_strict_failure_reports_best_state() -> None:
                 )
             ],
             initial_x=[0.998, 0.001, 0.0005, 0.0005],
-            options=epcsaft.ReactiveSpeciationOptions(max_iterations=0, tolerance=1.0e-12),
+                options=epcsaft.ReactiveSpeciationOptions(
+                    max_iterations=0,
+                    tolerance=1.0e-12,
+                    jacobian_backend="finite_difference",
+                ),
         )
 
     diagnostics = excinfo.value.diagnostics
@@ -232,11 +241,12 @@ def test_solve_reactive_speciation_best_effort_returns_nonconverged_result() -> 
             )
         ],
         initial_x=[0.998, 0.001, 0.0005, 0.0005],
-        options=epcsaft.ReactiveSpeciationOptions(
-            max_iterations=0,
-            tolerance=1.0e-12,
-            return_best_effort=True,
-        ),
+            options=epcsaft.ReactiveSpeciationOptions(
+                max_iterations=0,
+                tolerance=1.0e-12,
+                return_best_effort=True,
+                jacobian_backend="finite_difference",
+            ),
     )
 
     assert isinstance(result, epcsaft.ReactiveSpeciationResult)
@@ -336,7 +346,13 @@ def test_reactive_speciation_auto_does_not_require_cyipopt(monkeypatch) -> None:
         P=1.0e5,
         balances={"total": {"A": 1.0, "B": 1.0}},
         totals={"total": 1.0},
-        reactions=[epcsaft.ReactionDefinition({"A": -1.0, "B": 1.0}, log_equilibrium_constant=math.log(3.0))],
+        reactions=[
+            epcsaft.ReactionDefinition(
+                {"A": -1.0, "B": 1.0},
+                log_equilibrium_constant=math.log(3.0),
+                standard_state="ideal_mole_fraction",
+            )
+        ],
         initial_x=[0.5, 0.5],
     )
 
@@ -364,7 +380,13 @@ def test_reactive_speciation_sweep_uses_continuation_and_keeps_shape() -> None:
             {"T": 298.15, "P": 1.0e5, "totals": {"total": 1.0}, "initial_x": [0.9, 0.1]},
         ],
         balances={"total": {"A": 1.0, "B": 1.0}},
-        reactions=[epcsaft.ReactionDefinition({"A": -1.0, "B": 1.0}, log_equilibrium_constant=math.log(3.0))],
+        reactions=[
+            epcsaft.ReactionDefinition(
+                {"A": -1.0, "B": 1.0},
+                log_equilibrium_constant=math.log(3.0),
+                standard_state="ideal_mole_fraction",
+            )
+        ],
         options=epcsaft.ReactiveSpeciationOptions(error_mode="result"),
         continuation="auto",
     )
@@ -394,7 +416,13 @@ def test_reactive_speciation_sweep_returns_failed_result_shape() -> None:
             {"T": 298.15, "P": 1.0e5, "totals": {"missing": 1.0}, "initial_x": [0.5, 0.5]},
         ],
         balances={"total": {"A": 1.0, "B": 1.0}},
-        reactions=[epcsaft.ReactionDefinition({"A": -1.0, "B": 1.0}, log_equilibrium_constant=math.log(3.0))],
+        reactions=[
+            epcsaft.ReactionDefinition(
+                {"A": -1.0, "B": 1.0},
+                log_equilibrium_constant=math.log(3.0),
+                standard_state="ideal_mole_fraction",
+            )
+        ],
         options=epcsaft.ReactiveSpeciationOptions(error_mode="result"),
     )
 

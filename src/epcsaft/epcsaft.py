@@ -1994,12 +1994,12 @@ def _fit_generic_native_least_squares(
         "message": str(result["message"]),
         "backend": str(result["backend"]),
         "jacobian_available": bool(result.get("jacobian_available", True)),
-        "jacobian_backend": str(result.get("jacobian_backend", "finite_difference")),
-        "jacobian_fallback_used": bool(result.get("jacobian_fallback_used", True)),
+        "jacobian_backend": str(result.get("jacobian_backend", "not_available")),
+        "jacobian_fallback_used": bool(result.get("jacobian_fallback_used", False)),
         "jacobian_fallback_reason": str(
             result.get(
                 "jacobian_fallback_reason",
-                "Generic regression autodiff Jacobian is not implemented for all residual state calls yet.",
+                "",
             )
         ),
         "finite_difference_fallback_count": int(result.get("finite_difference_fallback_count", 0)),
@@ -2039,12 +2039,12 @@ def _evaluate_generic_native_debug(
         "jacobian_row_major": vector_to_array(result.get("jacobian_row_major", [])),
         "jacobian_shape": tuple(result.get("jacobian_shape", (len(result["residuals"]), 0))),
         "jacobian_available": bool(result.get("jacobian_available", True)),
-        "jacobian_backend": str(result.get("jacobian_backend", "finite_difference")),
-        "jacobian_fallback_used": bool(result.get("jacobian_fallback_used", True)),
+        "jacobian_backend": str(result.get("jacobian_backend", "not_available")),
+        "jacobian_fallback_used": bool(result.get("jacobian_fallback_used", False)),
         "jacobian_fallback_reason": str(
             result.get(
                 "jacobian_fallback_reason",
-                "Generic regression autodiff Jacobian is not implemented for all residual state calls yet.",
+                "",
             )
         ),
         "finite_difference_fallback_count": int(result.get("finite_difference_fallback_count", 0)),

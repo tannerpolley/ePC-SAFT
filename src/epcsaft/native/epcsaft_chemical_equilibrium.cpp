@@ -52,6 +52,15 @@ bool standard_states_need_activity(const std::vector<int>& standard_states) {
     return false;
 }
 
+bool standard_states_all_ideal_mole_fraction(const std::vector<int>& standard_states) {
+    for (int value : standard_states) {
+        if (value != STANDARD_STATE_IDEAL_MOLE_FRACTION) {
+            return false;
+        }
+    }
+    return true;
+}
+
 std::string standard_state_label(int value) {
     if (value == STANDARD_STATE_MOLE_FRACTION_ACTIVITY) {
         return "mole_fraction_activity";
@@ -246,6 +255,47 @@ struct ChemicalEvaluationCounters {
     int density_solves = 0;
 };
 
+struct ChemicalDerivativeSelection {
+    std::string backend = "unsupported";
+    std::string capability_path = "";
+    std::string unsupported_reason = "";
+    bool finite_difference_allowed = false;
+    bool explicit_finite_difference = false;
+};
+
+ChemicalDerivativeSelection select_chemical_derivative_backend(
+    const ChemicalEquilibriumOptionsNative& options,
+    const std::vector<int>& reaction_standard_states
+) {
+    ChemicalDerivativeSelection selection;
+    const std::string requested = options.jacobian_backend;
+    if (requested == "finite_difference") {
+        selection.backend = "finite_difference";
+        selection.capability_path = "chemical_equilibrium:explicit_finite_difference:log_amounts";
+        selection.finite_difference_allowed = true;
+        selection.explicit_finite_difference = true;
+        return selection;
+    }
+    if (requested == "autodiff") {
+        selection.unsupported_reason =
+            "autodiff chemical-equilibrium residual jacobian is not implemented for log-species amounts; "
+            "use jacobian_backend='auto' for analytic supported paths or jacobian_backend='finite_difference' explicitly for comparison.";
+        throw ValueError(selection.unsupported_reason);
+    }
+    if (requested != "auto") {
+        throw ValueError("chemical equilibrium jacobian_backend must be 'auto', 'autodiff', or 'finite_difference'.");
+    }
+    if (standard_states_all_ideal_mole_fraction(reaction_standard_states)) {
+        selection.backend = "analytic";
+        selection.capability_path = "chemical_equilibrium:ideal_mole_fraction:log_amounts";
+        return selection;
+    }
+    selection.unsupported_reason =
+        "analytic/autodiff chemical-equilibrium residual jacobian is unavailable for activity- or concentration-coupled "
+        "standard states; finite difference is only available when jacobian_backend='finite_difference' is requested explicitly.";
+    throw ValueError(selection.unsupported_reason);
+}
+
 bool should_evaluate_activity_coefficients(
     const std::vector<int>& standard_states,
     const ChemicalEquilibriumOptionsNative& options
@@ -258,6 +308,48 @@ bool should_evaluate_activity_coefficients(
         return standard_states_need_activity(standard_states);
     }
     throw ValueError("chemical equilibrium activity_output must be 'auto', 'always', or 'never'.");
+}
+
+Eigen::MatrixXd analytic_ideal_log_amount_jacobian(
+    const ChemicalEvaluation& base,
+    const Eigen::MatrixXd& balances,
+    const Eigen::MatrixXd& reactions,
+    const std::vector<double>& charges,
+    double min_mole_fraction
+) {
+    const Eigen::Index nvars = static_cast<Eigen::Index>(base.n.size());
+    const Eigen::Index rows = balances.rows() + 1 + reactions.rows();
+    if (static_cast<Eigen::Index>(base.x.size()) != nvars) {
+        throw ValueError("analytic chemical-equilibrium Jacobian requires matching composition and variable sizes.");
+    }
+    for (double value : base.x) {
+        if (!(std::isfinite(value) && value > min_mole_fraction)) {
+            throw ValueError("analytic chemical-equilibrium Jacobian requires an unclipped positive composition.");
+        }
+    }
+    Eigen::MatrixXd jac = Eigen::MatrixXd::Zero(rows, nvars);
+    for (Eigen::Index r = 0; r < balances.rows(); ++r) {
+        for (Eigen::Index j = 0; j < nvars; ++j) {
+            jac(r, j) = balances(r, j) * base.n[static_cast<std::size_t>(j)];
+        }
+    }
+    const Eigen::Index charge_row = balances.rows();
+    if (static_cast<Eigen::Index>(charges.size()) == nvars) {
+        for (Eigen::Index j = 0; j < nvars; ++j) {
+            jac(charge_row, j) = charges[static_cast<std::size_t>(j)] * base.n[static_cast<std::size_t>(j)];
+        }
+    }
+    for (Eigen::Index r = 0; r < reactions.rows(); ++r) {
+        double stoich_sum = 0.0;
+        for (Eigen::Index i = 0; i < reactions.cols(); ++i) {
+            stoich_sum += reactions(r, i);
+        }
+        const Eigen::Index row = balances.rows() + 1 + r;
+        for (Eigen::Index j = 0; j < nvars; ++j) {
+            jac(row, j) = reactions(r, j) - stoich_sum * base.x[static_cast<std::size_t>(j)];
+        }
+    }
+    return jac;
 }
 
 struct ChemicalSoftStartResult {
@@ -686,6 +778,59 @@ Eigen::MatrixXd finite_difference_jacobian(
     return jac;
 }
 
+Eigen::MatrixXd chemical_residual_jacobian(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const Eigen::VectorXd& log_n,
+    const ChemicalEvaluation& current,
+    const Eigen::MatrixXd& balances,
+    const Eigen::VectorXd& totals,
+    const Eigen::MatrixXd& reactions,
+    const Eigen::VectorXd& log_k,
+    const std::vector<int>& reaction_standard_states,
+    const ChemicalEquilibriumOptionsNative& options,
+    int phase_int,
+    const std::string& activity_model,
+    int* state_failure_count,
+    ChemicalEvaluationCounters* counters,
+    ChemicalDerivativeSelection* selection
+) {
+    ChemicalDerivativeSelection selected = select_chemical_derivative_backend(options, reaction_standard_states);
+    if (selection != nullptr) {
+        *selection = selected;
+    }
+    if (selected.backend == "analytic") {
+        if (counters != nullptr) {
+            counters->jacobian_evaluations += 1;
+        }
+        return analytic_ideal_log_amount_jacobian(
+            current,
+            balances,
+            reactions,
+            mixture->args().z,
+            options.min_mole_fraction
+        );
+    }
+    return finite_difference_jacobian(
+        mixture,
+        t,
+        p,
+        log_n,
+        current,
+        balances,
+        totals,
+        reactions,
+        log_k,
+        reaction_standard_states,
+        options,
+        phase_int,
+        activity_model,
+        state_failure_count,
+        counters
+    );
+}
+
 Eigen::MatrixXd matrix_from_row_major(const std::vector<double>& values, int rows, int cols, const std::string& name) {
     if (rows < 0 || cols < 0 || values.size() != static_cast<std::size_t>(rows * cols)) {
         throw ValueError(name + " has an invalid row-major matrix size.");
@@ -779,6 +924,10 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     const std::string activity_model = has_ionic_species(mixture)
         ? "epcsaft_component_activity"
         : "epcsaft_neutral_fugacity_activity";
+    ChemicalDerivativeSelection derivative_selection = select_chemical_derivative_backend(
+        options,
+        reaction_standard_states
+    );
     int state_failure_count = 0;
     ChemicalEvaluationCounters counters;
     ChemicalEvaluation current = evaluate_chemical(
@@ -797,7 +946,7 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
         &state_failure_count,
         &counters
     );
-    Eigen::MatrixXd jac = finite_difference_jacobian(
+    Eigen::MatrixXd jac = chemical_residual_jacobian(
         mixture,
         t,
         p,
@@ -812,7 +961,8 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
         phase_int,
         activity_model,
         &state_failure_count,
-        &counters
+        &counters,
+        &derivative_selection
     );
     Eigen::VectorXd residual = Eigen::Map<const Eigen::VectorXd>(
         current.residuals.data(),
@@ -848,11 +998,16 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     out.diagnostics_string["activity_output"] = options.activity_output;
     out.diagnostics_string["activity_basis"] = standard_state_summary(reaction_standard_states);
     out.diagnostics_string["phase"] = options.phase;
-    out.diagnostics_string["jacobian_backend"] = "finite_difference";
+    out.diagnostics_string["jacobian_backend"] = derivative_selection.backend;
+    out.diagnostics_string["derivative_backend_selected"] = derivative_selection.backend;
+    out.diagnostics_string["derivative_capability_path"] = derivative_selection.capability_path;
+    out.diagnostics_string["unsupported_derivative_reason"] = derivative_selection.unsupported_reason;
     out.diagnostics_string["hessian_backend"] = "gauss_newton";
-    out.diagnostics_string["finite_difference_scheme"] = "forward";
-    out.diagnostics_string["finite_difference_variable_space"] = "log_species_amounts";
-    out.diagnostics_string["finite_difference_step_rule"] = "absolute_log_variable_step";
+    if (derivative_selection.explicit_finite_difference) {
+        out.diagnostics_string["finite_difference_scheme"] = "forward";
+        out.diagnostics_string["finite_difference_variable_space"] = "log_species_amounts";
+        out.diagnostics_string["finite_difference_step_rule"] = "absolute_log_variable_step";
+    }
     out.diagnostics_string["hessian_kind"] = "approximate_least_squares_gauss_newton";
     out.diagnostics_string["hessian_structure"] = "dense_lower_triangular";
     out.diagnostics_bool["jacobian_available"] = true;
@@ -861,7 +1016,9 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     out.diagnostics_bool["hessian_callback_available"] = true;
     out.diagnostics_bool["hessian_includes_second_residual_derivatives"] = false;
     out.diagnostics_bool["sparse_hessian_available"] = false;
-    out.diagnostics_bool["finite_difference_fallback_used"] = options.jacobian_backend == "auto" || options.jacobian_backend == "autodiff";
+    out.diagnostics_bool["finite_difference_fallback_used"] = false;
+    out.diagnostics_bool["finite_difference_allowed"] = derivative_selection.finite_difference_allowed;
+    out.diagnostics_bool["explicit_finite_difference"] = derivative_selection.explicit_finite_difference;
     out.diagnostics_bool["activity_coefficients_evaluated"] = !current.gamma.empty();
     out.diagnostics_int["state_failure_count"] = state_failure_count;
     out.diagnostics_int["residual_evaluation_count"] = counters.residual_evaluations;
@@ -871,8 +1028,10 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     out.diagnostics_int["density_solve_count"] = counters.density_solves;
     out.diagnostics_double["residual_norm"] = current.residual_norm;
     out.diagnostics_double["objective"] = out.objective;
-    out.diagnostics_double["finite_difference_base_step"] = options.finite_difference_step;
-    out.diagnostics_double["finite_difference_effective_step"] = options.finite_difference_step;
+    if (derivative_selection.explicit_finite_difference) {
+        out.diagnostics_double["finite_difference_base_step"] = options.finite_difference_step;
+        out.diagnostics_double["finite_difference_effective_step"] = options.finite_difference_step;
+    }
     out.diagnostics_vector["phase_handoff_composition"] = current.x;
     return out;
 }
@@ -934,6 +1093,10 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
     const std::string activity_model = has_ionic_species(mixture)
         ? "epcsaft_component_activity"
         : "epcsaft_neutral_fugacity_activity";
+    ChemicalDerivativeSelection derivative_selection = select_chemical_derivative_backend(
+        options,
+        reaction_standard_states
+    );
     int state_failure_count = 0;
     ChemicalEvaluationCounters counters;
     ChemicalSoftStartResult soft_start = ideal_gibbs_soft_start_solve(
@@ -1043,20 +1206,16 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
             result.diagnostics_string["activity_basis"] = standard_state_summary(reaction_standard_states);
             result.diagnostics_string["phase"] = options.phase;
             result.diagnostics_string["requested_jacobian_backend"] = options.jacobian_backend;
-            result.diagnostics_string["jacobian_backend"] = "finite_difference";
+            result.diagnostics_string["jacobian_backend"] = derivative_selection.backend;
+            result.diagnostics_string["derivative_backend_selected"] = derivative_selection.backend;
+            result.diagnostics_string["derivative_capability_path"] = derivative_selection.capability_path;
+            result.diagnostics_string["unsupported_derivative_reason"] = derivative_selection.unsupported_reason;
             result.diagnostics_bool["jacobian_available"] = true;
-            if (options.jacobian_backend == "auto" || options.jacobian_backend == "autodiff") {
-                result.diagnostics_bool["finite_difference_fallback_used"] = true;
-                result.diagnostics_bool["jacobian_fallback_used"] = true;
-                result.diagnostics_string["finite_difference_fallback_reason"] =
-                    "autodiff chemical-equilibrium residual jacobian is not implemented for activity-coupled native state calls yet";
-                result.diagnostics_string["jacobian_fallback_reason"] =
-                    "autodiff chemical-equilibrium residual jacobian is not implemented for activity-coupled native state calls yet";
-            } else {
-                result.diagnostics_bool["finite_difference_fallback_used"] = false;
-                result.diagnostics_bool["jacobian_fallback_used"] = false;
-                result.diagnostics_string["jacobian_fallback_reason"] = "";
-            }
+            result.diagnostics_bool["finite_difference_fallback_used"] = false;
+            result.diagnostics_bool["jacobian_fallback_used"] = false;
+            result.diagnostics_bool["finite_difference_allowed"] = derivative_selection.finite_difference_allowed;
+            result.diagnostics_bool["explicit_finite_difference"] = derivative_selection.explicit_finite_difference;
+            result.diagnostics_string["jacobian_fallback_reason"] = "";
             result.diagnostics_bool["hessian_available"] = false;
             result.diagnostics_string["hessian_backend"] = "not_implemented";
             result.diagnostics_bool["hessian_fallback_used"] = false;
@@ -1080,7 +1239,7 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
         if (iteration == options.max_iterations) {
             break;
         }
-        Eigen::MatrixXd jac = finite_difference_jacobian(
+        Eigen::MatrixXd jac = chemical_residual_jacobian(
             mixture,
             t,
             p,
@@ -1095,7 +1254,8 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
             phase_int,
             activity_model,
             &state_failure_count,
-            &counters
+            &counters,
+            &derivative_selection
         );
         Eigen::VectorXd residual = Eigen::Map<const Eigen::VectorXd>(
             current.residuals.data(),
@@ -1150,20 +1310,16 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
     result.diagnostics_string["activity_basis"] = standard_state_summary(reaction_standard_states);
     result.diagnostics_string["phase"] = options.phase;
     result.diagnostics_string["requested_jacobian_backend"] = options.jacobian_backend;
-    result.diagnostics_string["jacobian_backend"] = "finite_difference";
+    result.diagnostics_string["jacobian_backend"] = derivative_selection.backend;
+    result.diagnostics_string["derivative_backend_selected"] = derivative_selection.backend;
+    result.diagnostics_string["derivative_capability_path"] = derivative_selection.capability_path;
+    result.diagnostics_string["unsupported_derivative_reason"] = derivative_selection.unsupported_reason;
     result.diagnostics_bool["jacobian_available"] = true;
-    if (options.jacobian_backend == "auto" || options.jacobian_backend == "autodiff") {
-        result.diagnostics_bool["finite_difference_fallback_used"] = true;
-        result.diagnostics_bool["jacobian_fallback_used"] = true;
-        result.diagnostics_string["finite_difference_fallback_reason"] =
-            "autodiff chemical-equilibrium residual jacobian is not implemented for activity-coupled native state calls yet";
-        result.diagnostics_string["jacobian_fallback_reason"] =
-            "autodiff chemical-equilibrium residual jacobian is not implemented for activity-coupled native state calls yet";
-    } else {
-        result.diagnostics_bool["finite_difference_fallback_used"] = false;
-        result.diagnostics_bool["jacobian_fallback_used"] = false;
-        result.diagnostics_string["jacobian_fallback_reason"] = "";
-    }
+    result.diagnostics_bool["finite_difference_fallback_used"] = false;
+    result.diagnostics_bool["jacobian_fallback_used"] = false;
+    result.diagnostics_bool["finite_difference_allowed"] = derivative_selection.finite_difference_allowed;
+    result.diagnostics_bool["explicit_finite_difference"] = derivative_selection.explicit_finite_difference;
+    result.diagnostics_string["jacobian_fallback_reason"] = "";
     result.diagnostics_bool["hessian_available"] = false;
     result.diagnostics_string["hessian_backend"] = "not_implemented";
     result.diagnostics_bool["hessian_fallback_used"] = false;
