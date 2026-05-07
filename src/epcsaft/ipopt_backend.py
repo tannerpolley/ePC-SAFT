@@ -539,7 +539,9 @@ def solve_reactive_speciation_ipopt(**kwargs: Any) -> Any:
             "success": bool(residual_family_success),
             "native_success": bool(residual_family_success),
             "residual_family_success": bool(residual_family_success),
-            "message": "converged" if residual_family_success else "reactive speciation IPOPT residual tolerances were not met",
+            "message": (
+                "converged" if residual_family_success else "reactive speciation IPOPT residual tolerances were not met"
+            ),
             "backend": "ipopt",
             "solver_method": "cyipopt_bound_min_residual",
             "solver_language": "python_cyipopt_native_callbacks",

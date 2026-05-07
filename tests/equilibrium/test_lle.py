@@ -124,7 +124,6 @@ def test_methanol_cyclohexane_lle_flash_closes_material_and_fugacity_balance() -
     )
     np.testing.assert_allclose(fugacity_residual, np.zeros_like(feed), atol=1.0e-9)
 
-
     payload = result.to_dict()
     assert payload["phase_labels"] == ["liq1", "liq2"]
     json.dumps(payload, allow_nan=False)

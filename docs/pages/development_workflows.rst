@@ -41,6 +41,9 @@ Command matrix
    * - Python API work
      - ``uv run python run_pytest.py --api -q``
      - Public wrapper, parameter-template, or regression API edits.
+   * - Equilibrium/speciation agent workflows
+     - ``uv run python run_pytest.py --equilibrium-api -q``
+     - Fast representative check for neutral equilibrium, electrolyte LLE, reactive speciation, reactive electrolyte bubble, autodiff/finite-difference contracts, and capability reporting.
    * - Native or density/equation work
      - ``uv run python scripts/build_epcsaft.py --build-only --parallel 10`` then ``uv run python run_pytest.py --runtime -q``
      - C++ iteration after ``build/dev`` is already configured.

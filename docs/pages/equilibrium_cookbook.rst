@@ -1,0 +1,253 @@
+Equilibrium Cookbook For Agents
+===============================
+
+Use this page when a downstream agent needs to choose and validate an
+equilibrium, speciation, or repeated-property workflow. The public API is
+Python, but package-owned thermodynamic solves run through native C++ kernels
+unless this page explicitly says otherwise.
+
+Fast validation
+---------------
+
+Before changing downstream code that depends on equilibrium behavior, run:
+
+.. code-block:: powershell
+
+   uv run python run_pytest.py --equilibrium-api -q
+
+Use ``uv run python scripts/validate_project.py quick`` before handoff. Use
+``--equilibrium-confidence`` only for the bounded electrolyte confidence checks;
+full scientific reports remain explicit opt-ins.
+
+Capability and solver selection
+-------------------------------
+
+Use ``epcsaft.capabilities()`` to detect what the current install can do. Treat
+these fields as routing hints, not as proof that a physical case is valid.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Capability
+     - Status
+     - Use
+   * - Neutral TP flash, LLE, stability
+     - Production native
+     - Default phase-equilibrium workflows for neutral systems.
+   * - Electrolyte LLE
+     - Production native
+     - Fixed-species charge-neutral LLE, preferably after stability checks.
+   * - Reactive speciation
+     - Production native
+     - Homogeneous chemical equilibrium for a single phase.
+   * - Electrolyte bubble pressure
+     - Production native, scoped
+     - Fixed-liquid electrolyte bubble pressure with neutral vapor species only.
+   * - Reactive electrolyte bubble
+     - Staged production native, scoped
+     - Native speciation followed by fixed-liquid electrolyte bubble pressure.
+   * - IPOPT
+     - Experimental opt-in
+     - Bound-constrained residual-minimization refinement only; not full Gibbs/NLP.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Solver option
+     - Choose when
+     - Do not use when
+   * - ``solver_backend="auto"``
+     - You want the supported native default.
+     - You expect IPOPT to run automatically.
+   * - Native Newton/default
+     - Ordinary equilibrium/speciation solves and continuation.
+     - You need active-bound NLP refinement.
+   * - Native least squares
+     - Package regression helpers.
+     - You need a Python optimizer loop.
+   * - ``jacobian_backend="finite_difference"``
+     - You need an explicit diagnostic comparison.
+     - You want silent fallback from unsupported autodiff.
+   * - ``differential_mode="autodiff"``
+     - You need implemented autodiff derivative paths.
+     - You want finite-difference fallback.
+   * - ``solver_backend="ipopt"``
+     - You explicitly installed ``cyipopt`` and want residual-minimization refinement.
+     - You need full constrained Gibbs minimization.
+
+Neutral VLE, LLE, and stability
+-------------------------------
+
+Use explicit mixture methods in new code. Use string-dispatched
+``mixture.equilibrium(kind=...)`` only for compatibility with older scripts.
+
+.. code-block:: python
+
+   import numpy as np
+   import epcsaft
+
+   mixture = epcsaft.ePCSAFTMixture.from_params(
+       {
+           "MW": np.asarray([32.042e-3, 84.147e-3]),
+           "m": np.asarray([1.5255, 2.5303]),
+           "s": np.asarray([3.23, 3.8499]),
+           "e": np.asarray([188.9, 278.11]),
+           "e_assoc": np.asarray([2899.5, 0.0]),
+           "vol_a": np.asarray([0.035176, 0.0]),
+           "assoc_scheme": ["2B", None],
+           "k_ij": np.asarray([[0.0, 0.051], [0.051, 0.0]]),
+       },
+       species=["Methanol", "Cyclohexane"],
+   )
+
+   z = np.asarray([0.55, 0.45])
+   stability = mixture.stability_tp(T=298.15, P=101325.0, z=z)
+   lle = mixture.lle_tp(T=298.15, P=101325.0, z=z)
+   assert lle.split_detected
+   print(lle.phase_labels, lle.diagnostics)
+
+Electrolyte LLE
+---------------
+
+Use stability first. If the native LLE solve collapses, provide explicit
+charge-neutral ``initial_phases`` and inspect ``diagnostics["seed_attempts"]``.
+
+.. code-block:: python
+
+   import numpy as np
+   import epcsaft
+
+   species = ["H2O", "TBP", "[emim][tcb]", "Li+", "Cl-"]
+   feed = np.asarray([0.9549141, 0.0290154, 0.00603255, 0.00501896, 0.00501896])
+   mixture = epcsaft.ePCSAFTMixture.from_dataset("2024_Hubach", species, feed, 294.15)
+
+   initial_phases = {
+       "aq": np.asarray([0.9762254, 0.0147531, 0.00108794, 0.00396628, 0.00396628]),
+       "org": np.asarray([0.55, 0.30, 0.10, 0.025, 0.025]),
+       "phase_fraction": 0.05,
+   }
+   result = mixture.electrolyte_lle_tp(
+       T=294.15,
+       P=101325.0,
+       z=feed,
+       initial_phases=initial_phases,
+       options=epcsaft.EquilibriumOptions(max_iterations=180),
+   )
+   print(result.diagnostics)
+
+Reactive speciation
+-------------------
+
+The caller owns species, balances, totals, reactions, standard states, and
+initial composition. Use ``error_mode="result"`` only for diagnostic sweeps.
+
+.. code-block:: python
+
+   import epcsaft
+
+   species = ["H2O", "NaCl", "Na+", "Cl-"]
+   mixture = epcsaft.ePCSAFTMixture.from_dataset("2026_Khudaida", species, [0.998, 0.001, 0.0005, 0.0005], 298.15)
+   result = epcsaft.solve_reactive_speciation(
+       species=species,
+       mixture_factory=lambda x, T, P: mixture,
+       T=298.15,
+       P=101325.0,
+       balances={
+           "water": {"H2O": 1.0},
+           "sodium": {"NaCl": 1.0, "Na+": 1.0},
+           "chloride": {"NaCl": 1.0, "Cl-": 1.0},
+       },
+       totals={"water": 0.998, "sodium": 0.0015, "chloride": 0.0015},
+       reactions=[
+           epcsaft.ReactionDefinition(
+               {"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
+               log_equilibrium_constant=-4.0,
+               name="salt_dissociation",
+           )
+       ],
+       initial_x=[0.998, 0.001, 0.0005, 0.0005],
+       options=epcsaft.ReactiveSpeciationOptions(jacobian_backend="finite_difference"),
+   )
+   print(result.x, result.named_reaction_residuals)
+
+Electrolyte bubble and reactive bubble
+--------------------------------------
+
+Use electrolyte bubble pressure only for a fixed liquid composition and neutral
+vapor species. Ions remain liquid-only.
+
+.. code-block:: python
+
+   bubble = mixture.electrolyte_bubble_p(
+       T=298.15,
+       x_liq=[0.998, 0.001, 0.0005, 0.0005],
+       vapor_species=["H2O"],
+       options=epcsaft.ElectrolyteBubbleOptions(initial_pressure=101325.0),
+   )
+
+For reactive electrolyte bubbles, speciation runs first and the equilibrated
+liquid goes into the fixed-liquid bubble solve. Keep strict default behavior
+for single points; use ``error_mode="result"`` for sweeps that must continue.
+
+.. code-block:: python
+
+   reactive_bubble = epcsaft.solve_reactive_electrolyte_bubble(
+       species=species,
+       mixture_factory=lambda x, T, P: mixture,
+       T=298.15,
+       P_seed=101325.0,
+       balances={
+           "water": {"H2O": 1.0},
+           "sodium": {"NaCl": 1.0, "Na+": 1.0},
+           "chloride": {"NaCl": 1.0, "Cl-": 1.0},
+       },
+       totals={"water": 0.998, "sodium": 0.0015, "chloride": 0.0015},
+       reactions=[],
+       initial_x=[0.998, 0.001, 0.0005, 0.0005],
+       vapor_species=["H2O"],
+       options=epcsaft.ReactiveElectrolyteBubbleOptions(error_mode="result"),
+   )
+   print(reactive_bubble.success, reactive_bubble.diagnostics)
+
+Repeated fugacity/property loops
+--------------------------------
+
+Use ``P`` when pressure closure matters. Pass ``rho_guess`` or ``rho_seed`` only
+as a density-solve hint. Use direct ``rho`` only when the supplied density is
+the physical closure and pressure mismatch is acceptable or separately audited.
+
+.. code-block:: python
+
+   rows = [
+       {"T": 298.15, "P": 101325.0, "x": [1.0], "phase": "liq"},
+       {"T": 300.15, "P": 101325.0, "x": [1.0], "phase": "liq"},
+   ]
+   values = epcsaft.evaluate_fugacity_coefficients_batch(mixture, rows=rows)
+   next_seed = values[-1]["density"]
+   next_value = epcsaft.evaluate_fugacity_coefficients(
+       mixture,
+       T=301.15,
+       P=101325.0,
+       x=[1.0],
+       rho_seed=next_seed,
+   )
+
+IPOPT opt-in
+------------
+
+``solver_backend="ipopt"`` requires the optional ``cyipopt`` dependency. If it
+is not importable, the package raises ``InputError`` and does not silently fall
+back to Newton.
+
+.. code-block:: python
+
+   try:
+       result = mixture.electrolyte_lle_tp(
+           T=294.15,
+           P=101325.0,
+           z=feed,
+           options=epcsaft.EquilibriumOptions(solver_backend="ipopt"),
+       )
+   except epcsaft.InputError as exc:
+       print("IPOPT was requested but is unavailable:", exc)
+

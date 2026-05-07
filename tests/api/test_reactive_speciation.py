@@ -203,11 +203,11 @@ def test_solve_reactive_speciation_strict_failure_reports_best_state() -> None:
                 )
             ],
             initial_x=[0.998, 0.001, 0.0005, 0.0005],
-                options=epcsaft.ReactiveSpeciationOptions(
-                    max_iterations=0,
-                    tolerance=1.0e-12,
-                    jacobian_backend="finite_difference",
-                ),
+            options=epcsaft.ReactiveSpeciationOptions(
+                max_iterations=0,
+                tolerance=1.0e-12,
+                jacobian_backend="finite_difference",
+            ),
         )
 
     diagnostics = excinfo.value.diagnostics
@@ -241,12 +241,12 @@ def test_solve_reactive_speciation_best_effort_returns_nonconverged_result() -> 
             )
         ],
         initial_x=[0.998, 0.001, 0.0005, 0.0005],
-            options=epcsaft.ReactiveSpeciationOptions(
-                max_iterations=0,
-                tolerance=1.0e-12,
-                return_best_effort=True,
-                jacobian_backend="finite_difference",
-            ),
+        options=epcsaft.ReactiveSpeciationOptions(
+            max_iterations=0,
+            tolerance=1.0e-12,
+            return_best_effort=True,
+            jacobian_backend="finite_difference",
+        ),
     )
 
     assert isinstance(result, epcsaft.ReactiveSpeciationResult)

@@ -470,7 +470,9 @@ def _initial_composition_from_inputs(
     return _normalize_composition(initial_x, ncomp, min_value), "initial_x"
 
 
-def _continuation_state(*, x: Mapping[str, float], T: float, P: float, diagnostics: Mapping[str, Any]) -> dict[str, Any]:
+def _continuation_state(
+    *, x: Mapping[str, float], T: float, P: float, diagnostics: Mapping[str, Any]
+) -> dict[str, Any]:
     composition = {str(label): float(value) for label, value in x.items()}
     return {
         "composition": composition,
