@@ -980,9 +980,7 @@ def initial_phases_from_result(result: EquilibriumResult) -> dict[str, object]:
     }
 
 
-def bubble_p(
-    mixture: Any, *, T: float, x: Any, options: EquilibriumOptions | None = None
-) -> EquilibriumResult:
+def bubble_p(mixture: Any, *, T: float, x: Any, options: EquilibriumOptions | None = None) -> EquilibriumResult:
     """Solve a neutral bubble pressure at fixed liquid composition and temperature."""
     opts = _normalize_options(options)
     liquid = _normalize_feed(x, mixture.ncomp, opts.min_composition, "bubble_p")
@@ -1000,9 +998,7 @@ def bubble_p(
     )
 
 
-def dew_p(
-    mixture: Any, *, T: float, y: Any, options: EquilibriumOptions | None = None
-) -> EquilibriumResult:
+def dew_p(mixture: Any, *, T: float, y: Any, options: EquilibriumOptions | None = None) -> EquilibriumResult:
     """Solve a neutral dew pressure at fixed vapor composition and temperature."""
     opts = _normalize_options(options)
     vapor = _normalize_feed(y, mixture.ncomp, opts.min_composition, "dew_p")
@@ -1020,9 +1016,7 @@ def dew_p(
     )
 
 
-def bubble_t(
-    mixture: Any, *, P: float, x: Any, options: EquilibriumOptions | None = None
-) -> EquilibriumResult:
+def bubble_t(mixture: Any, *, P: float, x: Any, options: EquilibriumOptions | None = None) -> EquilibriumResult:
     """Solve a neutral bubble temperature at fixed liquid composition and pressure."""
     opts = _normalize_options(options)
     liquid = _normalize_feed(x, mixture.ncomp, opts.min_composition, "bubble_t")
@@ -1040,9 +1034,7 @@ def bubble_t(
     )
 
 
-def dew_t(
-    mixture: Any, *, P: float, y: Any, options: EquilibriumOptions | None = None
-) -> EquilibriumResult:
+def dew_t(mixture: Any, *, P: float, y: Any, options: EquilibriumOptions | None = None) -> EquilibriumResult:
     """Solve a neutral dew temperature at fixed vapor composition and pressure."""
     opts = _normalize_options(options)
     vapor = _normalize_feed(y, mixture.ncomp, opts.min_composition, "dew_t")
@@ -1102,9 +1094,7 @@ def _neutral_bubble_dew_outer(
         diagnostics = {
             "message": "failed to bracket neutral bubble/dew scalar residual",
             "problem_kind": problem_kind,
-            "residual_samples": [
-                {"variable": item["variable"], "residual": item["residual"]} for item in evaluations
-            ],
+            "residual_samples": [{"variable": item["variable"], "residual": item["residual"]} for item in evaluations],
             "state_failures": failures[:10],
         }
         raise SolutionError("neutral {} did not bracket a scalar root".format(problem_kind), diagnostics)

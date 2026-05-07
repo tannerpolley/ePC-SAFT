@@ -156,7 +156,9 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
     if jacobian_backend in {"numerical", "fd"}:
         jacobian_backend = "finite_difference"
     if jacobian_backend not in {"auto", "autodiff", "finite_difference"}:
-        raise InputError("ReactiveSpeciationOptions.jacobian_backend must be 'auto', 'autodiff', or 'finite_difference'.")
+        raise InputError(
+            "ReactiveSpeciationOptions.jacobian_backend must be 'auto', 'autodiff', or 'finite_difference'."
+        )
     for name in ("mass_tolerance", "charge_tolerance", "reaction_tolerance"):
         value = getattr(options, name)
         if value is not None and value <= 0.0:
@@ -213,9 +215,7 @@ def _solve_reactive_speciation_native(
         "reaction_stoichiometry": reaction_matrix.reshape(-1).tolist(),
         "reaction_rows": int(reaction_matrix.shape[0]),
         "log_equilibrium_constants": [float(reaction.log_equilibrium_constant) for reaction in reactions],
-        "reaction_standard_states": [
-            int(_REACTION_STANDARD_STATES[reaction.standard_state]) for reaction in reactions
-        ],
+        "reaction_standard_states": [int(_REACTION_STANDARD_STATES[reaction.standard_state]) for reaction in reactions],
         "options": {
             "max_iterations": int(options.max_iterations),
             "tolerance": float(options.tolerance),

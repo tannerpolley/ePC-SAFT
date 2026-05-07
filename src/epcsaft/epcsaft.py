@@ -1683,9 +1683,7 @@ def create_struct(params):
         raise ValueError(
             "Unknown disp_model dadx_differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3)."
         )
-    cppargs.assoc_dadx_diff_mode = _as_int_alias(
-        assoc_model_dict.get("dadx_differential_mode", "auto"), diff_alias
-    )
+    cppargs.assoc_dadx_diff_mode = _as_int_alias(assoc_model_dict.get("dadx_differential_mode", "auto"), diff_alias)
     if cppargs.assoc_dadx_diff_mode not in (0, 1, 2, 3):
         raise ValueError(
             "Unknown assoc_model dadx_differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3)."
@@ -1699,7 +1697,9 @@ def create_struct(params):
     bjeruum = _as_bool(dh_model_dict.get("bjeruum_treatment", False))
     cppargs.mu_DH_diff_mode = _as_int_alias(mu_dh.get("differential_mode", "auto"), diff_alias)
     if cppargs.mu_DH_diff_mode not in (0, 1, 2, 3):
-        raise ValueError("Unknown mu_DH differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3).")
+        raise ValueError(
+            "Unknown mu_DH differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3)."
+        )
     cppargs.mu_DH_comp_dep_rel_perm = int(_as_bool(mu_dh.get("comp_dep_rel_perm", True)))
     cppargs.mu_DH_include_sum_term = int(_as_bool(mu_dh.get("include_sum_term", True)))
 
