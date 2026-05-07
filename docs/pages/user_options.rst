@@ -130,7 +130,7 @@ Tips
 
 - Start from a small file and add only the settings you actually need.
 - If a value is left out, the package keeps its default.
-- The default derivative policy is ``auto``: use validated analytical derivatives where they already exist, use autodiff for implemented derivative paths, and use finite difference only as an explicit fallback.
+- The default derivative policy is ``auto``: use validated analytical derivatives where they already exist, then autodiff for implemented derivative paths. It does not silently select finite difference.
 - ``autodiff`` is stricter than ``auto``. It requests the autodiff backend directly and raises for unsupported paths instead of quietly selecting an analytical formula or finite-difference approximation.
-- Finite difference is still used for unsupported association autodiff, unsupported solvation-shell/dielectric-saturation Born autodiff, explicit ``finite_difference`` overrides, or guarded fallback after an autodiff derivative is unavailable.
+- Finite difference is available only through explicit ``finite_difference`` overrides for comparison or hard-case diagnostics. Unsupported ``auto``/``autodiff`` derivative paths raise clear errors.
 - If you are unsure, keep ``user_options.json`` empty and add settings one at a time.

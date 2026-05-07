@@ -316,7 +316,7 @@ Normal ``FitResult`` payloads report compact derivative metadata:
 
 Large matrices are exposed only through explicit derivative-evaluation helpers. Use ``evaluate_pure_neutral_derivatives(...)`` for the native pure-neutral objective. It returns residuals, gradient, ``jacobian_row_major``, ``jacobian_shape``, and Hessian skeleton fields. Pure-neutral Jacobians use the native autodiff path.
 
-For lower-level generic native records, use ``evaluate_generic_regression_derivatives(...)``. It returns residuals plus ``jacobian_row_major`` and ``jacobian_shape``. The current generic-regression Jacobian backend is reported honestly as ``finite_difference`` until the residual state calls are scalar-templated for autodiff.
+For lower-level generic native records, use ``evaluate_generic_regression_derivatives(..., jacobian_backend="finite_difference")`` when an explicit finite-difference comparison Jacobian is needed. The default ``auto`` mode raises until generic residual state calls have analytic/autodiff coverage.
 
 Derivative availability
 -----------------------
@@ -328,19 +328,19 @@ Derivative availability
      - Current Jacobian access
      - Hessian status
    * - Runtime ``dadt()``, ``dadx()``, ``z(return_contribution_terms=True)``, ``mures(return_contribution_terms=True)``
-     - Analytical where available, autodiff where implemented, finite-difference fallback with metadata
+     - Analytical where available, autodiff where implemented; explicit finite difference only where requested
      - Not exposed
    * - Pure-neutral regression
      - Native autodiff Jacobian through ``evaluate_pure_neutral_derivatives(...)``
      - Skeleton metadata only
    * - Generic ion/binary regression
-     - Explicit finite-difference Jacobian through ``evaluate_generic_regression_derivatives(...)`` until generic autodiff coverage is implemented
+     - Explicit finite-difference Jacobian through ``evaluate_generic_regression_derivatives(..., jacobian_backend="finite_difference")`` until generic autodiff coverage is implemented
      - Skeleton metadata only
    * - Neutral LLE
-     - Native finite-difference Newton Jacobian with fallback diagnostics; autodiff residual boundary is planned
+     - Native Newton solve remains available; derivative callback paths require explicit finite difference until autodiff residual coverage is implemented
      - Skeleton metadata only
    * - Chemical equilibrium / reactive speciation
-     - Native finite-difference Newton Jacobian plus opt-in native residual/Jacobian callback evaluation for cyipopt
+     - Analytic log-amount Jacobian for ideal-mole-fraction reactions under ``auto``; activity/concentration paths require explicit finite difference until derivative coverage is implemented
      - Opt-in cyipopt accepts Gauss-Newton or L-BFGS approximate Hessian strategies
 
 The Hessian fields are deliberately a contract skeleton for future

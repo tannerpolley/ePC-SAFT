@@ -66,7 +66,12 @@ def test_methanol_cyclohexane_lle_flash_closes_material_and_fugacity_balance() -
         z=feed,
         backend="neutral_lle",
         initial_phases=initial_phases,
-        options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10, damping=0.5),
+        options=epcsaft.EquilibriumOptions(
+            max_iterations=240,
+            tolerance=1.0e-10,
+            damping=0.5,
+            jacobian_backend="finite_difference",
+        ),
     )
 
     assert result.split_detected is True
@@ -96,16 +101,11 @@ def test_methanol_cyclohexane_lle_flash_closes_material_and_fugacity_balance() -
     assert result.diagnostics["unstable_trial_count"] >= 1
     assert result.diagnostics["stability_max_iterations"] == 40
     assert result.diagnostics["stability_tolerance"] == pytest.approx(1.0e-8)
-    assert result.diagnostics["requested_jacobian_backend"] == "auto"
+    assert result.diagnostics["requested_jacobian_backend"] == "finite_difference"
     assert result.diagnostics["jacobian_backend"] == "finite_difference"
     assert result.diagnostics["jacobian_available"] is True
-    assert result.diagnostics["jacobian_fallback_used"] is True
-    assert result.diagnostics["finite_difference_fallback_used"] is True
-    assert (
-        "autodiff neutral LLE residual jacobian is not implemented"
-        in result.diagnostics["finite_difference_fallback_reason"]
-    )
-    assert "autodiff neutral LLE residual jacobian is not implemented" in result.diagnostics["jacobian_fallback_reason"]
+    assert result.diagnostics["jacobian_fallback_used"] is False
+    assert result.diagnostics["finite_difference_fallback_used"] is False
     assert result.diagnostics["hessian_available"] is False
     assert result.diagnostics["hessian_backend"] == "not_implemented"
     assert result.diagnostics["hessian_fallback_used"] is False
@@ -123,6 +123,7 @@ def test_methanol_cyclohexane_lle_flash_closes_material_and_fugacity_balance() -
         - liq1.ln_fugacity_coefficient
     )
     np.testing.assert_allclose(fugacity_residual, np.zeros_like(feed), atol=1.0e-9)
+
 
     payload = result.to_dict()
     assert payload["phase_labels"] == ["liq1", "liq2"]
