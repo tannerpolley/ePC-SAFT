@@ -508,6 +508,273 @@ double composition_charge(const std::vector<double>& composition, const std::vec
     return out;
 }
 
+std::vector<int> species_indices_from_labels(
+    const std::vector<std::string>& species,
+    const std::vector<std::string>& labels,
+    const std::string& field_name
+) {
+    if (species.empty()) {
+        throw ValueError(field_name + " requires species labels from the Python mixture.");
+    }
+    std::vector<int> out;
+    for (const std::string& label : labels) {
+        auto it = std::find(species.begin(), species.end(), label);
+        if (it == species.end()) {
+            throw ValueError(field_name + " contains unknown species label: " + label);
+        }
+        int index = static_cast<int>(std::distance(species.begin(), it));
+        if (std::find(out.begin(), out.end(), index) == out.end()) {
+            out.push_back(index);
+        }
+    }
+    return out;
+}
+
+std::vector<double> normalize_nonnegative_composition(
+    const std::vector<double>& values,
+    std::size_t ncomp,
+    double min_composition,
+    const std::string& field_name
+) {
+    if (values.size() != ncomp) {
+        throw ValueError(field_name + " length must match mixture component count.");
+    }
+    double total = 0.0;
+    std::vector<double> out(values.size(), 0.0);
+    for (std::size_t i = 0; i < values.size(); ++i) {
+        if (!std::isfinite(values[i])) {
+            throw ValueError(field_name + " must contain only finite values.");
+        }
+        if (values[i] < 0.0) {
+            throw ValueError(field_name + " must be non-negative.");
+        }
+        out[i] = std::max(values[i], min_composition);
+        total += out[i];
+    }
+    if (!std::isfinite(total) || total <= 0.0) {
+        throw ValueError(field_name + " must have a positive finite sum.");
+    }
+    for (double& value : out) {
+        value /= total;
+    }
+    return out;
+}
+
+std::vector<double> vapor_full_composition(
+    const std::vector<int>& vapor_indices,
+    const std::vector<double>& y_vap,
+    std::size_t ncomp,
+    double min_composition
+) {
+    std::vector<double> out(ncomp, min_composition);
+    for (std::size_t pos = 0; pos < vapor_indices.size(); ++pos) {
+        out[static_cast<std::size_t>(vapor_indices[pos])] = std::max(y_vap[pos], min_composition);
+    }
+    double total = std::accumulate(out.begin(), out.end(), 0.0);
+    for (double& value : out) {
+        value /= total;
+    }
+    return out;
+}
+
+std::vector<double> subset_double_vector(const std::vector<double>& values, const std::vector<int>& indices, std::size_t ncomp) {
+    if (values.empty() || values.size() != ncomp) {
+        return values;
+    }
+    std::vector<double> out;
+    out.reserve(indices.size());
+    for (int index : indices) {
+        out.push_back(values[static_cast<std::size_t>(index)]);
+    }
+    return out;
+}
+
+std::vector<int> subset_int_vector(const std::vector<int>& values, const std::vector<int>& indices, std::size_t ncomp) {
+    if (values.empty() || values.size() != ncomp) {
+        return values;
+    }
+    std::vector<int> out;
+    out.reserve(indices.size());
+    for (int index : indices) {
+        out.push_back(values[static_cast<std::size_t>(index)]);
+    }
+    return out;
+}
+
+std::vector<double> subset_double_matrix(const std::vector<double>& values, const std::vector<int>& indices, std::size_t ncomp) {
+    if (values.empty() || values.size() != ncomp * ncomp) {
+        return values;
+    }
+    std::vector<double> out(indices.size() * indices.size(), 0.0);
+    for (std::size_t row = 0; row < indices.size(); ++row) {
+        for (std::size_t col = 0; col < indices.size(); ++col) {
+            out[row * indices.size() + col] = values[static_cast<std::size_t>(indices[row]) * ncomp + static_cast<std::size_t>(indices[col])];
+        }
+    }
+    return out;
+}
+
+std::vector<int> subset_int_matrix(const std::vector<int>& values, const std::vector<int>& indices, std::size_t ncomp) {
+    if (values.empty() || values.size() != ncomp * ncomp) {
+        return values;
+    }
+    std::vector<int> out(indices.size() * indices.size(), 0);
+    for (std::size_t row = 0; row < indices.size(); ++row) {
+        for (std::size_t col = 0; col < indices.size(); ++col) {
+            out[row * indices.size() + col] = values[static_cast<std::size_t>(indices[row]) * ncomp + static_cast<std::size_t>(indices[col])];
+        }
+    }
+    return out;
+}
+
+std::shared_ptr<ePCSAFTMixtureNative> vapor_submixture(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    const std::vector<int>& vapor_indices
+) {
+    const add_args& args = mixture->args();
+    std::size_t ncomp = mixture->ncomp();
+    add_args sub = args;
+    sub.m = subset_double_vector(args.m, vapor_indices, ncomp);
+    sub.s = subset_double_vector(args.s, vapor_indices, ncomp);
+    sub.e = subset_double_vector(args.e, vapor_indices, ncomp);
+    sub.e_assoc = subset_double_vector(args.e_assoc, vapor_indices, ncomp);
+    sub.vol_a = subset_double_vector(args.vol_a, vapor_indices, ncomp);
+    sub.z = std::vector<double>(vapor_indices.size(), 0.0);
+    sub.dielc = subset_double_vector(args.dielc, vapor_indices, ncomp);
+    sub.mw = subset_double_vector(args.mw, vapor_indices, ncomp);
+    sub.mixed_rel_perm_a = subset_double_vector(args.mixed_rel_perm_a, vapor_indices, ncomp);
+    sub.mixed_rel_perm_b = subset_double_vector(args.mixed_rel_perm_b, vapor_indices, ncomp);
+    sub.mixed_rel_perm_c = subset_double_vector(args.mixed_rel_perm_c, vapor_indices, ncomp);
+    sub.mixed_rel_perm_mask = subset_int_vector(args.mixed_rel_perm_mask, vapor_indices, ncomp);
+    sub.d_born = subset_double_vector(args.d_born, vapor_indices, ncomp);
+    sub.f_solv = subset_double_vector(args.f_solv, vapor_indices, ncomp);
+    sub.assoc_num = subset_int_vector(args.assoc_num, vapor_indices, ncomp);
+    sub.k_ij = subset_double_matrix(args.k_ij, vapor_indices, ncomp);
+    sub.l_ij = subset_double_matrix(args.l_ij, vapor_indices, ncomp);
+    sub.assoc_matrix = subset_int_matrix(args.assoc_matrix, vapor_indices, ncomp);
+    sub.k_hb = subset_double_matrix(args.k_hb, vapor_indices, ncomp);
+    sub.mixed_rel_perm_water_index = -1;
+    for (std::size_t pos = 0; pos < vapor_indices.size(); ++pos) {
+        if (vapor_indices[pos] == args.mixed_rel_perm_water_index) {
+            sub.mixed_rel_perm_water_index = static_cast<int>(pos);
+            break;
+        }
+    }
+    return std::make_shared<ePCSAFTMixtureNative>(sub);
+}
+
+struct ElectrolyteBubbleEvaluationNative {
+    bool finite = false;
+    double p = 0.0;
+    double objective = std::numeric_limits<double>::infinity();
+    double residual_norm = std::numeric_limits<double>::infinity();
+    double charge_residual = 0.0;
+    int vapor_iterations = 0;
+    std::string message;
+    std::vector<double> y_vap;
+    std::vector<double> y_full;
+    std::vector<double> partial_pressures;
+    std::vector<double> fugacity_residual;
+    PhaseStateNative liquid;
+    PhaseStateNative vapor;
+};
+
+ElectrolyteBubbleEvaluationNative evaluate_electrolyte_bubble_pressure(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    const std::shared_ptr<ePCSAFTMixtureNative>& vapor_mixture,
+    double t,
+    double p,
+    const std::vector<double>& x_liq,
+    const std::vector<int>& vapor_indices,
+    const ElectrolyteBubbleOptionsNative& options,
+    const std::vector<double>& y_seed
+) {
+    ElectrolyteBubbleEvaluationNative out;
+    out.p = p;
+    out.charge_residual = composition_charge(x_liq, mixture->args().z);
+    if (!(p > 0.0) || !std::isfinite(p)) {
+        out.message = "pressure is not positive finite";
+        return out;
+    }
+    try {
+        mixture->clear_runtime_caches();
+        vapor_mixture->clear_runtime_caches();
+        std::vector<double> y(vapor_indices.size(), 1.0 / static_cast<double>(vapor_indices.size()));
+        if (y_seed.size() == vapor_indices.size()) {
+            y = clip_normalize(y_seed, options.min_composition);
+        }
+        PhaseStateNative liquid = phase_state(mixture, t, p, x_liq, "liq", "electrolyte_bubble_liq");
+        PhaseStateNative vapor;
+        std::vector<double> raw(y.size(), 0.0);
+        double sum_raw = 0.0;
+        int iteration = 0;
+        for (iteration = 1; iteration <= options.max_vapor_iterations; ++iteration) {
+            vapor = phase_state(vapor_mixture, t, p, y, "vap", "electrolyte_bubble_vap");
+            if (vapor.density > 0.5 * liquid.density) {
+                out.message = "vapor density root is liquid-like";
+                return out;
+            }
+            sum_raw = 0.0;
+            for (std::size_t pos = 0; pos < vapor_indices.size(); ++pos) {
+                std::size_t i = static_cast<std::size_t>(vapor_indices[pos]);
+                double ln_k = liquid.ln_phi[i] - vapor.ln_phi[pos];
+                raw[pos] = std::max(x_liq[i], options.min_composition) * std::exp(std::clamp(ln_k, -700.0, 700.0));
+                sum_raw += raw[pos];
+            }
+            if (!std::isfinite(sum_raw) || sum_raw <= 0.0) {
+                out.message = "bubble objective produced invalid K-values";
+                return out;
+            }
+            double max_delta = 0.0;
+            std::vector<double> y_next(y.size(), 0.0);
+            for (std::size_t pos = 0; pos < y.size(); ++pos) {
+                y_next[pos] = std::max(raw[pos] / sum_raw, options.min_composition);
+                max_delta = std::max(max_delta, std::abs(y_next[pos] - y[pos]));
+            }
+            y_next = clip_normalize(y_next, options.min_composition);
+            y = y_next;
+            if (max_delta <= options.vapor_tolerance) {
+                break;
+            }
+        }
+        vapor = phase_state(vapor_mixture, t, p, y, "vap", "electrolyte_bubble_vap");
+        if (vapor.density > 0.5 * liquid.density) {
+            out.message = "vapor density root is liquid-like";
+            return out;
+        }
+        sum_raw = 0.0;
+        for (std::size_t pos = 0; pos < vapor_indices.size(); ++pos) {
+            std::size_t i = static_cast<std::size_t>(vapor_indices[pos]);
+            double ln_k = liquid.ln_phi[i] - vapor.ln_phi[pos];
+            raw[pos] = std::max(x_liq[i], options.min_composition) * std::exp(std::clamp(ln_k, -700.0, 700.0));
+            sum_raw += raw[pos];
+        }
+        out.y_vap = clip_normalize(raw, options.min_composition);
+        out.y_full = out.y_vap;
+        out.partial_pressures.resize(out.y_vap.size(), 0.0);
+        out.fugacity_residual.resize(out.y_vap.size(), 0.0);
+        for (std::size_t pos = 0; pos < vapor_indices.size(); ++pos) {
+            std::size_t i = static_cast<std::size_t>(vapor_indices[pos]);
+            out.partial_pressures[pos] = out.y_vap[pos] * p;
+            out.fugacity_residual[pos] = std::log(std::max(out.y_vap[pos], options.min_composition))
+                + vapor.ln_phi[pos]
+                - std::log(std::max(x_liq[i], options.min_composition))
+                - liquid.ln_phi[i];
+        }
+        out.finite = std::isfinite(sum_raw) && sum_raw > 0.0;
+        out.objective = sum_raw - 1.0;
+        out.residual_norm = max_abs(out.fugacity_residual);
+        out.vapor_iterations = iteration;
+        out.liquid = liquid;
+        out.vapor = vapor;
+        out.message = "finite";
+        return out;
+    } catch (const std::exception& exc) {
+        out.message = exc.what();
+        return out;
+    }
+}
+
 double electrolyte_gibbs_proxy(const std::vector<double>& composition, const PhaseStateNative& state) {
     double out = 0.0;
     for (std::size_t i = 0; i < composition.size(); ++i) {
@@ -1480,6 +1747,201 @@ EquilibriumResultNative tp_flash_native(
         }
     }
     throw SolutionError("neutral TP flash did not converge after native iterations.");
+}
+
+EquilibriumResultNative electrolyte_bubble_pressure_native(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    const std::vector<double>& raw_x_liq,
+    const ElectrolyteBubbleOptionsNative& options,
+    const std::vector<std::string>& species,
+    const std::vector<std::string>& vapor_species
+) {
+    if (!mixture->has_ionic()) {
+        throw ValueError("electrolyte_bubble_pressure requires an ion-containing mixture.");
+    }
+    if (vapor_species.empty()) {
+        throw ValueError("electrolyte_bubble_pressure requires at least one neutral vapor species.");
+    }
+    if (options.min_pressure <= 0.0 || options.max_pressure <= options.min_pressure || options.initial_pressure <= 0.0) {
+        throw ValueError("electrolyte_bubble_pressure pressure bounds and initial pressure must be positive and ordered.");
+    }
+    if (options.pressure_factor <= 1.0) {
+        throw ValueError("electrolyte_bubble_pressure pressure_factor must be greater than 1.");
+    }
+    const std::vector<double>& charges = mixture->args().z;
+    if (charges.size() != mixture->ncomp()) {
+        throw ValueError("mixture parameters must include one charge value per species in params['z'].");
+    }
+    std::vector<double> x_liq = normalize_nonnegative_composition(
+        raw_x_liq,
+        mixture->ncomp(),
+        options.min_composition,
+        "x_liq"
+    );
+    double charge_residual = composition_charge(x_liq, charges);
+    if (std::abs(charge_residual) > options.charge_tolerance) {
+        throw ValueError("electrolyte_bubble_pressure liquid composition must be charge neutral.");
+    }
+    std::vector<int> vapor_indices = species_indices_from_labels(species, vapor_species, "vapor_species");
+    for (int index : vapor_indices) {
+        if (std::abs(charges[static_cast<std::size_t>(index)]) > 1.0e-12) {
+            throw ValueError("electrolyte_bubble_pressure vapor_species must be neutral; ions are liquid-only.");
+        }
+    }
+    std::shared_ptr<ePCSAFTMixtureNative> vapor_mix = vapor_submixture(mixture, vapor_indices);
+    std::vector<double> y_seed(vapor_indices.size(), 1.0 / static_cast<double>(vapor_indices.size()));
+    if (!options.initial_y_vap.empty()) {
+        if (options.initial_y_vap.size() != vapor_indices.size()) {
+            throw ValueError("initial_y_vap length must match vapor_species length.");
+        }
+        y_seed = clip_normalize(options.initial_y_vap, options.min_composition);
+    }
+
+    auto evaluate = [&](double pressure, const std::vector<double>& seed) {
+        return evaluate_electrolyte_bubble_pressure(mixture, vapor_mix, t, pressure, x_liq, vapor_indices, options, seed);
+    };
+
+    int state_failure_count = 0;
+    std::vector<double> history_p;
+    std::vector<double> history_objective;
+    auto append_history = [&](const ElectrolyteBubbleEvaluationNative& eval) {
+        if (history_p.size() < 40) {
+            history_p.push_back(eval.p);
+            history_objective.push_back(eval.finite ? eval.objective : 1.0e300);
+        }
+    };
+    auto better = [](const ElectrolyteBubbleEvaluationNative& a, const ElectrolyteBubbleEvaluationNative& b) {
+        if (!a.finite) {
+            return false;
+        }
+        if (!b.finite) {
+            return true;
+        }
+        return std::abs(a.objective) + 1.0e-5 < std::abs(b.objective);
+    };
+
+    ElectrolyteBubbleEvaluationNative best;
+    double initial_p = std::clamp(options.initial_pressure, options.min_pressure, options.max_pressure);
+    ElectrolyteBubbleEvaluationNative initial = evaluate(initial_p, y_seed);
+    if (!initial.finite) {
+        ++state_failure_count;
+    }
+    append_history(initial);
+    if (better(initial, best)) {
+        best = initial;
+        y_seed = initial.y_vap;
+    }
+
+    ElectrolyteBubbleEvaluationNative low = initial;
+    ElectrolyteBubbleEvaluationNative high = initial;
+    bool bracketed = false;
+    double log_step = std::log(options.pressure_factor);
+    for (int expansion = 1; expansion <= options.max_bracket_expansions; ++expansion) {
+        double low_p = std::max(options.min_pressure, initial_p * std::exp(-log_step * expansion));
+        double high_p = std::min(options.max_pressure, initial_p * std::exp(log_step * expansion));
+        ElectrolyteBubbleEvaluationNative low_eval = evaluate(low_p, y_seed);
+        ElectrolyteBubbleEvaluationNative high_eval = evaluate(high_p, y_seed);
+        if (!low_eval.finite) {
+            ++state_failure_count;
+        }
+        if (!high_eval.finite) {
+            ++state_failure_count;
+        }
+        append_history(low_eval);
+        append_history(high_eval);
+        if (better(low_eval, best)) {
+            best = low_eval;
+        }
+        if (better(high_eval, best)) {
+            best = high_eval;
+        }
+        if (low_eval.finite && high_eval.finite && low_eval.objective * high_eval.objective <= 0.0) {
+            low = low_eval;
+            high = high_eval;
+            bracketed = true;
+            break;
+        }
+        if (low_p <= options.min_pressure && high_p >= options.max_pressure) {
+            break;
+        }
+    }
+
+    bool converged = false;
+    std::string message = "electrolyte bubble pressure did not bracket a pressure root";
+    int iterations = 0;
+    if (bracketed) {
+        message = "electrolyte bubble pressure did not converge";
+        double log_low = std::log(low.p);
+        double log_high = std::log(high.p);
+        for (iterations = 1; iterations <= options.max_iterations; ++iterations) {
+            double log_mid = 0.5 * (log_low + log_high);
+            ElectrolyteBubbleEvaluationNative mid = evaluate(std::exp(log_mid), best.finite ? best.y_vap : y_seed);
+            if (!mid.finite) {
+                ++state_failure_count;
+                append_history(mid);
+                log_high = log_mid;
+                continue;
+            }
+            append_history(mid);
+            if (better(mid, best)) {
+                best = mid;
+            }
+            if (std::abs(mid.objective) <= options.tolerance || mid.residual_norm <= options.tolerance) {
+                best = mid;
+                converged = true;
+                message = "converged";
+                break;
+            }
+            if (low.objective * mid.objective <= 0.0) {
+                high = mid;
+                log_high = log_mid;
+            } else {
+                low = mid;
+                log_low = log_mid;
+            }
+        }
+    }
+    double acceptance_tolerance = std::max(options.tolerance, 5.0e-2);
+    bool accepted_by_diagnostic_envelope = false;
+    if (!converged && best.finite && best.residual_norm <= acceptance_tolerance) {
+        converged = true;
+        accepted_by_diagnostic_envelope = true;
+        message = "accepted by electrolyte bubble diagnostic envelope";
+    }
+
+    EquilibriumResultNative result;
+    result.backend = "electrolyte_vle";
+    result.problem_kind = "electrolyte_bubble_pressure";
+    result.stable = false;
+    result.split_detected = converged;
+    result.diagnostics_bool["success"] = converged;
+    result.diagnostics_bool["bracketed"] = bracketed;
+    result.diagnostics_bool["accepted_by_diagnostic_envelope"] = accepted_by_diagnostic_envelope;
+    result.diagnostics_int["iterations"] = iterations;
+    result.diagnostics_int["state_failure_count"] = state_failure_count;
+    result.diagnostics_int["vapor_species_count"] = static_cast<int>(vapor_indices.size());
+    result.diagnostics_double["charge_residual"] = charge_residual;
+    result.diagnostics_double["best_P"] = best.finite ? best.p : 1.0e300;
+    result.diagnostics_double["best_objective"] = best.finite ? best.objective : 1.0e300;
+    result.diagnostics_double["best_fugacity_residual_norm"] = best.finite ? best.residual_norm : 1.0e300;
+    result.diagnostics_double["fugacity_residual_norm"] = best.finite ? best.residual_norm : 1.0e300;
+    result.diagnostics_double["acceptance_tolerance"] = acceptance_tolerance;
+    result.diagnostics_string["message"] = message;
+    result.diagnostics_string["solver_language"] = "c++";
+    result.diagnostics_string["native_entrypoint"] = "_solve_electrolyte_bubble_native";
+    result.diagnostics_string["nonlinear_solver"] = "native_log_pressure_bisection";
+    result.diagnostics_vector["vapor_species_indices"] = std::vector<double>(vapor_indices.begin(), vapor_indices.end());
+    result.diagnostics_vector["vapor_history_pressure"] = history_p;
+    result.diagnostics_vector["vapor_history_objective"] = history_objective;
+    if (best.finite) {
+        result.phases.push_back(phase_from_state("liq", x_liq, 1.0, best.liquid, false));
+        result.phases.push_back(phase_from_state("vap", best.y_full, 0.0, best.vapor, false));
+        result.diagnostics_vector["best_y_vap"] = best.y_vap;
+        result.diagnostics_vector["best_partial_pressures"] = best.partial_pressures;
+        result.diagnostics_vector["fugacity_residual"] = best.fugacity_residual;
+    }
+    return result;
 }
 
 EquilibriumResultNative lle_flash_native(

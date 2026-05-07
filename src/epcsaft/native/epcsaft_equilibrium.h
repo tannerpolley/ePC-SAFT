@@ -19,6 +19,22 @@ struct EquilibriumOptionsNative {
     std::string jacobian_backend = "auto";
 };
 
+struct ElectrolyteBubbleOptionsNative {
+    double initial_pressure = 1.0e5;
+    double min_pressure = 1.0;
+    double max_pressure = 1.0e8;
+    int max_iterations = 80;
+    int max_vapor_iterations = 30;
+    int max_bracket_expansions = 40;
+    double tolerance = 1.0e-6;
+    double vapor_tolerance = 1.0e-10;
+    double pressure_factor = 2.0;
+    double min_composition = 1.0e-14;
+    double charge_tolerance = 1.0e-8;
+    bool return_best_effort = false;
+    std::vector<double> initial_y_vap;
+};
+
 struct EquilibriumPhaseNative {
     std::string label;
     std::vector<double> composition;
@@ -137,4 +153,13 @@ EquilibriumResultNative electrolyte_lle_native(
     const std::vector<double>& initial_org = {},
     double initial_beta_org = 0.5,
     bool has_initial_phases = false
+);
+
+EquilibriumResultNative electrolyte_bubble_pressure_native(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    const std::vector<double>& x_liq,
+    const ElectrolyteBubbleOptionsNative& options,
+    const std::vector<std::string>& species,
+    const std::vector<std::string>& vapor_species
 );
