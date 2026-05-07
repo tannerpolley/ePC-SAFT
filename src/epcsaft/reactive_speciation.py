@@ -47,6 +47,8 @@ class ReactiveSpeciationOptions:
     min_mole_fraction: float = 1.0e-14
     finite_difference_step: float = 1.0e-6
     jacobian_backend: str = "auto"
+    solver_backend: str = "auto"
+    hessian_strategy: str = "gauss_newton"
     phase: str = "liq"
     return_best_effort: bool = False
     mass_tolerance: float | None = None
@@ -125,6 +127,21 @@ def solve_reactive_speciation(
     initial = _normalize_composition(initial_x, len(labels), opts.min_mole_fraction)
     balance_matrix, total_vector, balance_names = _normalize_balances(labels, balances, totals)
     reaction_defs = _normalize_reactions(labels, reactions)
+    if opts.solver_backend == "ipopt":
+        from .ipopt_backend import solve_reactive_speciation_ipopt
+
+        return solve_reactive_speciation_ipopt(
+            species=labels,
+            mixture_factory=mixture_factory,
+            T=T,
+            P=P,
+            balance_matrix=balance_matrix,
+            total_vector=total_vector,
+            balance_names=balance_names,
+            reactions=reaction_defs,
+            initial_x=initial,
+            options=opts,
+        )
     return _solve_reactive_speciation_native(
         species=labels,
         mixture_factory=mixture_factory,
@@ -159,11 +176,23 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
         raise InputError(
             "ReactiveSpeciationOptions.jacobian_backend must be 'auto', 'autodiff', or 'finite_difference'."
         )
+    solver_backend = str(options.solver_backend).strip().lower()
+    if solver_backend not in {"auto", "newton", "ipopt"}:
+        raise InputError("ReactiveSpeciationOptions.solver_backend must be 'auto', 'newton', or 'ipopt'.")
+    hessian_strategy = str(options.hessian_strategy).strip().lower()
+    hessian_aliases = {"gn": "gauss_newton", "gauss-newton": "gauss_newton", "bfgs": "lbfgs"}
+    hessian_strategy = hessian_aliases.get(hessian_strategy, hessian_strategy)
+    if hessian_strategy not in {"gauss_newton", "lbfgs"}:
+        raise InputError("ReactiveSpeciationOptions.hessian_strategy must be 'gauss_newton' or 'lbfgs'.")
     for name in ("mass_tolerance", "charge_tolerance", "reaction_tolerance"):
         value = getattr(options, name)
         if value is not None and value <= 0.0:
             raise InputError(f"ReactiveSpeciationOptions.{name} must be positive when provided.")
-    if jacobian_backend == options.jacobian_backend:
+    if (
+        jacobian_backend == options.jacobian_backend
+        and solver_backend == options.solver_backend
+        and hessian_strategy == options.hessian_strategy
+    ):
         return options
     return ReactiveSpeciationOptions(
         max_iterations=options.max_iterations,
@@ -172,6 +201,8 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
         min_mole_fraction=options.min_mole_fraction,
         finite_difference_step=options.finite_difference_step,
         jacobian_backend=jacobian_backend,
+        solver_backend=solver_backend,
+        hessian_strategy=hessian_strategy,
         phase=options.phase,
         return_best_effort=options.return_best_effort,
         mass_tolerance=options.mass_tolerance,
@@ -223,6 +254,8 @@ def _solve_reactive_speciation_native(
             "min_mole_fraction": float(options.min_mole_fraction),
             "finite_difference_step": float(options.finite_difference_step),
             "jacobian_backend": str(options.jacobian_backend),
+            "solver_backend": str(options.solver_backend),
+            "hessian_strategy": str(options.hessian_strategy),
             "phase": str(options.phase),
         },
     }
@@ -248,8 +281,10 @@ def _solve_reactive_speciation_native(
     diagnostics = dict(payload["diagnostics"])
     activity_basis = _reaction_standard_state_summary(reactions)
     handoff = dict(diagnostics.get("phase_equilibrium_handoff", {}))
-    handoff["composition"] = dict(x)
-    handoff["activity_coefficients"] = dict(activity_coefficients)
+    handoff.setdefault("composition", [float(value) for value in payload["composition"]])
+    handoff.setdefault("activity_coefficients", [float(value) for value in payload["activity_coefficients"]])
+    handoff["composition_map"] = dict(x)
+    handoff["activity_coefficients_map"] = dict(activity_coefficients)
     handoff["activity_basis"] = activity_basis
     diagnostics["phase_equilibrium_handoff"] = handoff
     diagnostics["reaction_standard_states"] = [reaction.standard_state for reaction in reactions]
@@ -261,6 +296,8 @@ def _solve_reactive_speciation_native(
             "residual_family_success": bool(residual_family_success),
             "message": str(payload["message"]),
             "backend": "native",
+            "requested_solver_backend": str(options.solver_backend),
+            "requested_hessian_strategy": str(options.hessian_strategy),
             "mass_tolerance": float(mass_tolerance),
             "charge_tolerance": float(charge_tolerance),
             "reaction_tolerance": float(reaction_tolerance),

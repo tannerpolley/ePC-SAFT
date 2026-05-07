@@ -60,6 +60,11 @@ scope keeps ions liquid-only and permits neutral vapor species.
 run native chemical speciation, then call the same native fixed-liquid
 electrolyte bubble-pressure workflow.
 
+.. autoclass:: epcsaft.EquilibriumOptions
+   :members:
+   :undoc-members:
+   :no-index:
+
 .. autoclass:: epcsaft.ElectrolyteBubbleOptions
    :members:
    :undoc-members:

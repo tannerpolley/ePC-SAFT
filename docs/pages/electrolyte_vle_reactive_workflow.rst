@@ -1,19 +1,27 @@
 Electrolyte VLE And Reactive Speciation
 =======================================
 
-Native-only solver policy
--------------------------
+Native-default solver policy
+----------------------------
 
 Package-owned regression and equilibrium solves must run through the native
 C++ backend exposed by ``epcsaft._core``. Python package code may normalize
 inputs, build request payloads, validate units and compositions, and convert
-native payloads into structured result objects, but it must not contain
-production nonlinear equilibrium or regression optimizers.
+native payloads into structured result objects. The default production paths
+remain native Newton and native least-squares.
 
 Consequently, electrolyte bubble-pressure and composed reactive electrolyte
 bubble-pressure entry points route through native C++ kernels. The Python layer
 only coordinates native speciation, native phase-equilibrium calls, fixed-liquid
 bubble-pressure handoffs, structured results, and diagnostics.
+
+``ReactiveSpeciationOptions`` accepts ``solver_backend="auto" | "newton" |
+"ipopt"`` and ``hessian_strategy="gauss_newton" | "lbfgs"``. ``auto`` keeps
+the current native chemical-equilibrium solve. ``ipopt`` is explicit opt-in,
+uses the optional ``cyipopt`` package, and raises ``InputError`` when requested
+without ``cyipopt`` instead of falling back to Newton. The adapter solves a
+bounded log-amount residual-minimization NLP through native residual/Jacobian
+callbacks and preserves mass, charge, and reaction residual diagnostics.
 
 Homogeneous reactive speciation
 -------------------------------

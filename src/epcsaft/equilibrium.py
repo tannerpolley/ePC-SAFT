@@ -38,6 +38,8 @@ class EquilibriumOptions:
     density_diagnostics: Literal["auto", "off", "full"] = "auto"
     experimental_coupled_density_lle: bool = False
     jacobian_backend: Literal["auto", "autodiff", "finite_difference"] = "auto"
+    solver_backend: Literal["auto", "newton", "ipopt"] = "auto"
+    hessian_strategy: Literal["gauss_newton", "lbfgs"] = "gauss_newton"
 
 
 @dataclass(frozen=True, slots=True, init=False)
@@ -322,6 +324,8 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
             "density_diagnostics",
             "experimental_coupled_density_lle",
             "jacobian_backend",
+            "solver_backend",
+            "hessian_strategy",
         }
         unknown = sorted(set(raw) - allowed)
         if unknown:
@@ -380,6 +384,14 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
     jacobian_backend = aliases.get(jacobian_backend, jacobian_backend)
     if jacobian_backend not in {"auto", "autodiff", "finite_difference"}:
         raise InputError("options.jacobian_backend must be 'auto', 'autodiff', or 'finite_difference'.")
+    solver_backend = str(options.solver_backend).strip().lower()
+    if solver_backend not in {"auto", "newton", "ipopt"}:
+        raise InputError("options.solver_backend must be 'auto', 'newton', or 'ipopt'.")
+    hessian_strategy = str(options.hessian_strategy).strip().lower()
+    hessian_aliases = {"gn": "gauss_newton", "gauss-newton": "gauss_newton", "bfgs": "lbfgs"}
+    hessian_strategy = hessian_aliases.get(hessian_strategy, hessian_strategy)
+    if hessian_strategy not in {"gauss_newton", "lbfgs"}:
+        raise InputError("options.hessian_strategy must be 'gauss_newton' or 'lbfgs'.")
     return EquilibriumOptions(
         max_iterations=max_iterations,
         tolerance=tolerance,
@@ -395,6 +407,8 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
         density_diagnostics=density_diagnostics,  # type: ignore[arg-type]
         experimental_coupled_density_lle=options.experimental_coupled_density_lle,
         jacobian_backend=jacobian_backend,  # type: ignore[arg-type]
+        solver_backend=solver_backend,  # type: ignore[arg-type]
+        hessian_strategy=hessian_strategy,  # type: ignore[arg-type]
     )
 
 
@@ -798,6 +812,8 @@ def _options_to_native_dict(options: EquilibriumOptions) -> dict[str, Any]:
         "density_diagnostics": str(options.density_diagnostics),
         "experimental_coupled_density_lle": bool(options.experimental_coupled_density_lle),
         "jacobian_backend": str(options.jacobian_backend),
+        "solver_backend": str(options.solver_backend),
+        "hessian_strategy": str(options.hessian_strategy),
     }
 
 
@@ -863,6 +879,10 @@ def _call_native_equilibrium(
     parent_phase: Any = None,
     trial_phases: Any = None,
 ) -> EquilibriumResult | StabilityResult:
+    if options.solver_backend == "ipopt":
+        from .ipopt_backend import unsupported_ipopt_route
+
+        unsupported_ipopt_route(kind)
     from . import _core
 
     request: dict[str, Any] = {
@@ -914,6 +934,8 @@ def _add_legacy_option_diagnostics(diagnostics: dict[str, Any], options: Equilib
     diagnostics.setdefault("ignored_legacy_options", list(options.ignored_legacy_options))
     diagnostics.setdefault("density_diagnostics_mode", str(options.density_diagnostics))
     diagnostics.setdefault("experimental_coupled_density_lle", bool(options.experimental_coupled_density_lle))
+    diagnostics.setdefault("requested_solver_backend", str(options.solver_backend))
+    diagnostics.setdefault("requested_hessian_strategy", str(options.hessian_strategy))
     diagnostics.setdefault("density_failure_count", 0)
     diagnostics.setdefault("density_failure_contexts", [])
     diagnostics.setdefault("density_scan_summary", {})
@@ -1422,6 +1444,19 @@ def electrolyte_lle_flash_native(
             "phase_fraction": float(initial_phases["phase_fraction"]),
         }
         _ = seed
+    if opts.solver_backend == "ipopt":
+        from .ipopt_backend import solve_electrolyte_lle_ipopt
+
+        return solve_electrolyte_lle_ipopt(
+            mixture=mixture,
+            T=temperature,
+            P=pressure,
+            feed=feed,
+            feed_diagnostics=feed_diagnostics,
+            basis_payload=basis_payload,
+            initial_phases=native_initial_phases,
+            options=opts,
+        )
     try:
         result = _call_native_equilibrium(
             mixture,

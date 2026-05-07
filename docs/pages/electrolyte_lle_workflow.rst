@@ -14,6 +14,20 @@ Recommended workflow
 4. For curves, solve one point with strong initial phases and use continuation
    through ``equilibrium_curve``.
 
+Optional IPOPT surface
+----------------------
+
+``EquilibriumOptions`` accepts ``solver_backend="auto" | "newton" | "ipopt"``
+and ``hessian_strategy="gauss_newton" | "lbfgs"``. The default ``auto`` keeps
+the current native Newton path. ``solver_backend="ipopt"`` is explicit opt-in
+and requires the optional ``cyipopt`` dependency; if ``cyipopt`` is unavailable,
+the package raises ``InputError`` and does not silently fall back to Newton.
+
+The cyipopt adapter solves a bounded transformed-variable min-residual NLP for
+electrolyte LLE by calling native residual/Jacobian callbacks. Acceptance still
+uses the package engineering gates: residual norm, material balance, charge
+balance, phase distance, stability diagnostics, and no collapsed split.
+
 Hubach-style example
 --------------------
 

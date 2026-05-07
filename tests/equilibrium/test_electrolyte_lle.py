@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 import epcsaft
+import epcsaft.ipopt_backend as ipopt_backend
 from epcsaft import ePCSAFTMixture
 from epcsaft.equilibrium_core.electrolyte_basis import build_electrolyte_basis
 from epcsaft.equilibrium import _explicit_to_formula_composition
@@ -97,6 +98,34 @@ def test_electrolyte_lle_direct_feed_solves_native_predictive_split() -> None:
     assert diagnostics["seed_attempts"]
     assert "v4_partition_seed_api_compatibility" not in json.dumps(diagnostics)
     json.dumps(diagnostics, allow_nan=False)
+
+
+@pytest.mark.skipif(not ipopt_backend.cyipopt_available(), reason="cyipopt is optional")
+def test_electrolyte_lle_direct_feed_solves_ipopt_predictive_split() -> None:
+    feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
+    mix = _ascani_water_butanol_nacl_mixture(feed)
+    native = mix.equilibrium(kind="electrolyte_lle", T=298.15, P=1.013e5, z=feed)
+    aq, org = native.phases
+
+    result = mix.equilibrium(
+        kind="electrolyte_lle",
+        T=298.15,
+        P=1.013e5,
+        z=feed,
+        initial_phases={"aq": aq.composition, "org": org.composition, "phase_fraction": org.phase_fraction},
+        options=epcsaft.EquilibriumOptions(
+            solver_backend="ipopt",
+            hessian_strategy="lbfgs",
+            max_iterations=80,
+            tolerance=1.0e-8,
+        ),
+    )
+
+    assert result.backend == "electrolyte_lle_ipopt"
+    assert result.split_detected is True
+    assert result.diagnostics["solver_method"] == "cyipopt_bound_min_residual"
+    assert result.diagnostics["fugacity_residual_norm"] <= 1.0e-8
+    assert result.diagnostics["material_balance_error"] <= 1.0e-8
 
 
 def test_electrolyte_lle_molality_feed_solves_predictive_split() -> None:

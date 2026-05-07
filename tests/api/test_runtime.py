@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 
 import epcsaft
+import epcsaft.ipopt_backend as ipopt_backend
 import epcsaft.epcsaft as epcsaft_module
 from epcsaft import ePCSAFTMixture
 from tests.helpers.runtime_cases import _assert_array
@@ -34,6 +35,10 @@ def test_runtime_build_info_and_capabilities_are_json_like():
 
     capabilities = epcsaft.capabilities()
     assert capabilities["native_extension"] is True
+    ipopt = capabilities["optimizers"]["ipopt"]
+    assert ipopt["backend"] == "cyipopt"
+    assert ipopt["available"] is ipopt_backend.cyipopt_available()
+    assert info["optional_dependencies"]["cyipopt"]["available"] is ipopt["available"]
     assert capabilities["equilibrium"]["neutral_tp_flash"]["available"] is True
     assert capabilities["equilibrium"]["neutral_bubble_dew"] == {
         "available": True,

@@ -17,12 +17,25 @@ Non-native optimizer loops are not an approved production backend for package-ow
 Build prerequisite
 ------------------
 
-There is no IPOPT prerequisite for the current package build. The supported developer path is the uv-managed environment plus the direct CMake/pybind11 native build:
+There is no IPOPT prerequisite for the default package build. The supported
+developer path is the uv-managed environment plus the direct CMake/pybind11
+native build:
 
 .. code-block:: powershell
 
    uv sync --no-install-project
    uv run python scripts\build_epcsaft.py
+
+For experimental IPOPT work, install the optional Python adapter dependency
+with the ``ipopt`` extra or dependency group:
+
+.. code-block:: powershell
+
+   uv sync --extra ipopt
+
+The IPOPT path uses ``cyipopt`` and remains explicit opt-in through
+``solver_backend="ipopt"``. It is not a replacement for native least-squares or
+Newton defaults.
 
 Create a dataset folder
 -----------------------
@@ -274,7 +287,9 @@ Derivative availability
      - Native finite-difference Newton Jacobian with fallback diagnostics; autodiff residual boundary is planned
      - Skeleton metadata only
    * - Chemical equilibrium / reactive speciation
-     - Native finite-difference Newton Jacobian with fallback diagnostics; autodiff residual boundary is planned
-     - Skeleton metadata only
+     - Native finite-difference Newton Jacobian plus opt-in native residual/Jacobian callback evaluation for cyipopt
+     - Opt-in cyipopt accepts Gauss-Newton or L-BFGS approximate Hessian strategies
 
-The Hessian fields are deliberately a contract skeleton for future IPOPT-compatible optimizer integration. They do not mean IPOPT support or second-derivative evaluation is implemented.
+The Hessian fields are deliberately a contract skeleton for future
+IPOPT-compatible optimizer integration. They do not mean exact second-derivative
+evaluation is implemented.
