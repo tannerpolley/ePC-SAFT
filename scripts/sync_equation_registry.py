@@ -129,12 +129,15 @@ def parse_equations(tex_path: Path) -> list[dict]:
 
 
 def require_equations_tex(tex_path: Path = TEX_PATH) -> None:
-    """Exit with an actionable message when the private docs submodule is absent."""
+    """Exit with an actionable message when the tracked LaTeX source is absent."""
     if tex_path.exists():
         return
-    rel_path = tex_path.relative_to(REPO_ROOT).as_posix()
+    try:
+        rel_path = tex_path.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        rel_path = tex_path.as_posix()
     print(
-        "{} is missing; the docs submodule is not checked out. Run `git submodule update --init docs/latex` from the repo root and retry.".format(
+        "{} is missing; docs/latex is tracked repo content. Restore the file from git or refresh the checkout and retry.".format(
             rel_path,
         ),
         file=sys.stderr,

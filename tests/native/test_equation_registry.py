@@ -62,23 +62,21 @@ def test_equation_registry_strict_traceability_passes_current_registry() -> None
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_sync_equation_registry_missing_latex_submodule_reports_actionable_message() -> None:
-    if TEX_PATH.exists():
-        pytest.skip("docs/latex/equations.tex is available, so the missing-submodule path is not active")
+def test_sync_equation_registry_missing_tracked_latex_reports_actionable_message(tmp_path, capsys) -> None:
+    missing_tex = tmp_path / "docs" / "latex" / "equations.tex"
 
-    result = subprocess.run(
-        [sys.executable, "scripts/sync_equation_registry.py", "--check"],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        sync_equation_registry.require_equations_tex(missing_tex)
+    except SystemExit as exc:
+        assert exc.code == 1
+    else:
+        raise AssertionError("missing equations.tex must stop registry sync")
 
-    combined = result.stdout + result.stderr
-    assert result.returncode == 1, combined
+    combined = capsys.readouterr().err
     assert "docs/latex/equations.tex" in combined
-    assert "docs submodule is not checked out" in combined
-    assert "git submodule update --init docs/latex" in combined
+    assert "tracked repo content" in combined
+    removed_workflow = "git " + "sub" + "module"
+    assert removed_workflow not in combined
     assert "Traceback" not in combined
 
 
