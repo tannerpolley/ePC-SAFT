@@ -8,6 +8,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = REPO_ROOT / "src"
+DEV_BUILD_CACHE = REPO_ROOT / "build" / "dev" / "CMakeCache.txt"
 STALE_TRACKED_REPORTS: tuple[Path, ...] = ()
 REQUIRED_CORE_SYMBOLS = (
     "_fit_pure_neutral_native_least_squares",
@@ -53,6 +54,21 @@ def _tool_path(name: str) -> str:
     return shutil.which(name) or "<missing>"
 
 
+def _cmake_generator(cache_path: Path = DEV_BUILD_CACHE) -> str | None:
+    if not cache_path.exists():
+        return None
+    for line in cache_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if line.startswith("CMAKE_GENERATOR:INTERNAL="):
+            return line.split("=", 1)[1].strip()
+    return None
+
+
+def _ninja_migration_recommendation(generator: str | None, ninja_path: str) -> str | None:
+    if generator == "MinGW Makefiles" and ninja_path != "<missing>":
+        return "uv run python scripts\\build_epcsaft.py --clean --generator ninja"
+    return None
+
+
 def _tracked_generated_count() -> int | None:
     output = _git_output("ls-files")
     if output is None:
@@ -92,7 +108,12 @@ def main() -> int:
     print(f"git_head: {head}")
     print(f"uv: {_tool_path('uv')}")
     print(f"cmake: {_tool_path('cmake')}")
-    print(f"ninja: {_tool_path('ninja')}")
+    ninja_path = _tool_path("ninja")
+    print(f"ninja: {ninja_path}")
+    cmake_generator = _cmake_generator()
+    print(f"cmake_generator: {cmake_generator or '<missing>'}")
+    generator_recommendation = _ninja_migration_recommendation(cmake_generator, ninja_path)
+    print(f"build_generator_recommendation: {generator_recommendation or '<none>'}")
     print(f"epcsaft_import: {package_path if package_path else '<missing>'}")
     print(f"epcsaft_import_error: {package_error or '<none>'}")
     print(f"epcsaft_core: {core_path if core_path else '<missing>'}")

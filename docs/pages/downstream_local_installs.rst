@@ -21,6 +21,8 @@ Install or refresh the local package once, then run downstream checks without im
    uv run --no-sync python -m unittest tests.test_epcsaft_ionic -v
    uv run --no-sync python -m MEA.epcsaft_ionic.smoke
 
+The repo's current CI path-install smoke uses Python 3.13. The package metadata remains broader, but Python 3.13 is the baseline to match when checking current downstream local-install behavior.
+
 Use ``uv run --no-sync`` after a known-good install because ordinary ``uv run`` is allowed to sync the environment. For a local native path dependency, that sync can rebuild ePC-SAFT when the downstream goal is only to run a smoke test.
 
 Do not start multiple downstream ``uv run`` commands in parallel until the reinstall has completed. If parallel checks are needed, run the reinstall once first, then use ``uv run --no-sync`` for every parallel check.
@@ -44,7 +46,7 @@ For normal ePC-SAFT source development, keep using the explicit in-place dev bui
    uv run python scripts\build_epcsaft.py
    uv run python scripts\build_epcsaft.py --build-only --parallel 10
 
-New dev build configurations prefer Ninja when available. Existing ``build/dev`` trees keep their configured generator until you run the coordinated repair command ``uv run python scripts\build_epcsaft.py --clean``.
+New dev build configurations prefer Ninja when available. Existing ``build/dev`` trees keep their configured generator until you run the coordinated repair command ``uv run python scripts\build_epcsaft.py --clean --generator ninja``.
 
 Windows ``_core`` lock failures
 -------------------------------

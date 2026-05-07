@@ -13,7 +13,7 @@ def test_bootstrap_scripts_use_normal_build_and_fast_suite() -> None:
     for path in ("scripts/bootstrap_uv.ps1", "scripts/bootstrap_uv.sh"):
         content = _read(path)
 
-        assert "uv python pin 3.12" in content
+        assert "uv python pin 3.13" in content
         assert "uv sync --no-install-project" in content
         assert "scripts/build_epcsaft.py --clean" not in content
         assert "scripts\\build_epcsaft.py --clean" not in content
@@ -60,3 +60,42 @@ def test_docs_make_confidence_suite_the_default_runtime_check() -> None:
     assert "allow at least 120 seconds" in development_workflows
     assert "uv run python scripts/build_dist.py" in development_workflows
     assert "Do not use ``--clean`` for routine validation" in development_workflows
+
+
+def test_github_default_smoke_uses_downstream_path_install_not_wheel_build() -> None:
+    workflow = _read(".github/workflows/wheels.yml")
+    old_python = "uv python install " + "3." + "12"
+    old_wheel_command = "uv build --" + "wheel"
+    old_wheel_step = "Build Windows " + "wheel"
+
+    assert "uv python install 3.13" in workflow
+    assert old_python not in workflow
+    assert '$repoUrl = "file:///"' in workflow
+    assert "epcsaft @ $repoUrl" in workflow
+    assert "UV_CACHE_DIR" in workflow
+    assert "EPCSAFT_PEP517_BUILD_DIR" in workflow
+    assert "uv sync --python 3.13" in workflow
+    assert "uv run --no-sync python" in workflow
+    assert old_wheel_command not in workflow
+    assert old_wheel_step not in workflow
+
+
+def test_github_full_packaging_remains_manual_only() -> None:
+    workflow = _read(".github/workflows/wheels.yml")
+    old_cibw = 'CIBW_BUILD: "cp' + '312-*"'
+
+    assert "workflow_dispatch:" in workflow
+    assert "if: ${{ github.event_name == 'workflow_dispatch' && inputs.full_wheel_matrix }}" in workflow
+    assert 'CIBW_BUILD: "cp313-*"' in workflow
+    assert old_cibw not in workflow
+
+
+def test_github_default_events_do_not_run_duplicate_heavy_smokes() -> None:
+    workflow = _read(".github/workflows/wheels.yml")
+
+    assert "fast-pr-smoke:" in workflow
+    assert "windows-install-smoke:" in workflow
+    assert "if: ${{ github.event_name == 'pull_request' }}" in workflow
+    assert "if: ${{ github.event_name != 'pull_request' }}" in workflow
+    assert workflow.count("name: windows install smoke") == 1
+    assert workflow.count("name: fast workflow smoke") == 1

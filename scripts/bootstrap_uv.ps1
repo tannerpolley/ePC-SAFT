@@ -9,7 +9,7 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
 }
 
 uv --version
-uv python pin 3.12
+uv python pin 3.13
 uv sync --no-install-project
 uv run python scripts\build_epcsaft.py
 uv run python scripts\doctor.py

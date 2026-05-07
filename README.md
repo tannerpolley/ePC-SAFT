@@ -17,6 +17,7 @@ The package includes a compiled C++ extension. Wheels are preferred for end user
 This repository uses `uv` for Python environment management and direct CMake for the local native build loop.
 
 `uv.toml` routes uv's cache into `build/uv-cache` so local and sandboxed runs do not touch the user-level uv cache.
+The current development and CI smoke baseline is Python 3.13, while package metadata still allows Python `>=3.9`.
 
 ```powershell
 uv sync --no-install-project
@@ -31,7 +32,7 @@ The default source-checkout validation sequence is sync, normal native build, th
 For maintainers, the [development workflow guide](docs/pages/development_workflows.rst) is the source-of-truth command matrix for setup, fast rebuilds, focused tests, profiling, packaging, and repair-only cleanup. The [project structure guide](docs/pages/project_structure.rst) explains where package code, reusable reference data, and analysis workflows belong.
 For downstream projects that install this checkout as a uv path dependency, use the [downstream local install guide](docs/pages/downstream_local_installs.rst). For suspected package bugs, use the [downstream dependency protocol](docs/pages/downstream_dependency_protocol.rst) to file a complete GitHub issue and validation command.
 
-GitHub Actions are intentionally lightweight while this package is still in local development. Pull requests run a fast workflow/package contract smoke; pushes to `main` run the Windows wheel install smoke. Full Linux/macOS/Windows wheel and sdist packaging checks are available as a manual workflow dispatch when release confidence is needed.
+GitHub Actions are intentionally lightweight while this package is still in local development. Pull requests run a fast workflow/package contract smoke; pushes to `main` run a Windows downstream path-install smoke on Python 3.13. Full Linux/macOS/Windows wheel and sdist packaging checks are available as a manual workflow dispatch when release confidence is needed.
 
 For the standard validation loops:
 

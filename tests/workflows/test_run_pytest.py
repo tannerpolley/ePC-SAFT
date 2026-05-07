@@ -67,6 +67,18 @@ def test_doctor_tracks_native_symbols_added_by_recent_workflows():
     assert "_solve_equilibrium_native" in required
 
 
+def test_doctor_recommends_ninja_migration_for_mingw_build_tree():
+    command = doctor._ninja_migration_recommendation("MinGW Makefiles", "C:/tools/ninja.exe")
+
+    assert command == "uv run python scripts\\build_epcsaft.py --clean --generator ninja"
+
+
+def test_doctor_does_not_recommend_ninja_migration_when_already_ninja():
+    command = doctor._ninja_migration_recommendation("Ninja", "C:/tools/ninja.exe")
+
+    assert command is None
+
+
 def test_named_shortcuts_expand_to_expected_targets_and_keep_pytest_arg_ordering():
     pytest_temp = Path("build") / "pytest-temp" / "run-test"
 
