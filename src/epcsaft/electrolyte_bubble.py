@@ -14,7 +14,7 @@ from ._types import SolutionError
 
 @dataclass(frozen=True, slots=True)
 class ElectrolyteBubbleOptions:
-    """Numerical controls for the future native electrolyte bubble-pressure backend."""
+    """Numerical controls for native fixed-liquid electrolyte bubble pressure."""
 
     initial_pressure: float = 1.0e5
     min_pressure: float = 1.0
@@ -33,7 +33,7 @@ class ElectrolyteBubbleOptions:
 
 @dataclass(frozen=True, slots=True)
 class ElectrolyteBubbleResult:
-    """Structured result shape reserved for native electrolyte bubble-pressure calculations."""
+    """Structured result returned by native electrolyte bubble-pressure calculations."""
 
     success: bool
     message: str

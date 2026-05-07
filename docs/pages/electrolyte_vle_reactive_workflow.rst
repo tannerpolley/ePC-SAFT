@@ -158,3 +158,9 @@ The handoff tolerances default to ``1e-8`` for mass, ``1e-8`` for charge, and
 strict standalone chemical-equilibrium tolerances while accepting a looser,
 documented phase-equilibrium handoff envelope when the bubble solve itself is
 well converged.
+
+Strict default behavior still raises on bubble-stage failure. For diagnostic
+sweeps, set ``ReactiveElectrolyteBubbleOptions(error_mode="result")`` to return
+a structured ``ReactiveElectrolyteBubbleResult(success=False, ...)`` containing
+the successful speciation payload plus the failed bubble diagnostics. Complete
+agent-facing examples are in :doc:`equilibrium_cookbook`.

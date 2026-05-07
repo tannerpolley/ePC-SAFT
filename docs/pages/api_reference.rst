@@ -46,6 +46,9 @@ Runtime metadata
 Equilibrium and speciation
 --------------------------
 
+For agent-executable examples and solver-selection guidance, start with
+:doc:`equilibrium_cookbook`.
+
 Explicit mixture methods are preferred for new code: ``flash_tp(...)``,
 ``lle_tp(...)``, ``stability_tp(...)``, ``bubble_p(...)``, ``bubble_t(...)``,
 ``dew_p(...)``, ``dew_t(...)``, ``electrolyte_lle_tp(...)``,
@@ -60,6 +63,14 @@ scope keeps ions liquid-only and permits neutral vapor species.
 ``solve_reactive_electrolyte_bubble(...)`` and the matching sweep helper first
 run native chemical speciation, then call the same native fixed-liquid
 electrolyte bubble-pressure workflow.
+Use ``ReactiveElectrolyteBubbleOptions(error_mode="result")`` for diagnostic
+sweeps that should return structured nonconverged bubble-stage failures instead
+of raising immediately.
+
+``evaluate_fugacity_coefficients_batch(...)`` is the intended lightweight helper
+for downstream-owned repeated property loops. It reuses the previous row's
+resolved density as ``rho_seed`` when pressure closure is requested and
+``continuation="auto"`` is selected.
 
 .. autoclass:: epcsaft.EquilibriumOptions
    :members:

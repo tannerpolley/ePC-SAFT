@@ -34,7 +34,7 @@ For development from this source tree:
 
 Direct pytest also works, for example ``uv run python -m pytest tests/api/test_runtime.py -q``. For source-checkout validation, prefer ``uv run python run_pytest.py ...`` because the wrapper sets the source import path and manages pytest temporary directories more predictably. ``uv run python run_pytest.py -q`` is the default fast contract suite; use ``uv run python run_pytest.py --confidence -q`` before handoff when native runtime confidence matters, and ``--all`` only for the explicit exhaustive suite. Set ``EPCSAFT_PYTEST_TEMP_ROOT`` when you want the wrapper to use an opt-in external pytest temp root instead of its default repo-local generated temp area.
 
-For maintainers, :doc:`development_workflows` is the explicit command matrix for setup, fast native rebuilds, focused tests, profiling, packaging, and repair-only cleanup. :doc:`project_structure` defines the package, reusable data, and analysis folder layout.
+For maintainers, :doc:`development_workflows` is the explicit command matrix for setup, fast native rebuilds, focused tests, profiling, packaging, and repair-only cleanup. :doc:`project_structure` defines the package, reusable data, and analysis folder layout. :doc:`equilibrium_cookbook` is the agent-facing guide for choosing and validating equilibrium, speciation, electrolyte bubble, repeated fugacity, autodiff, and IPOPT workflows.
 
 Use ``uv run python scripts/build_epcsaft.py --clean`` only as a repair step for stale CMake state or stale/locked ``_core`` artifacts. If a ``_core*.pyd`` is locked, stop the importing Python/test/IDE process before running the clean repair.
 
@@ -52,6 +52,7 @@ Then choose the path that matches what you want to do:
 
 - :doc:`getting_started` for the quickest first run
 - :doc:`development_workflows` for the exact build/test/debug command matrix
+- :doc:`equilibrium_cookbook` for downstream-agent equilibrium and speciation workflows
 - :doc:`user_parameter_templates` to build your own parameter folder
 - :doc:`parameter_regression` for the phase-1 neutral ``m/s/e`` regression workflow
 - :doc:`user_options` to see every supported ``user_options.json`` setting

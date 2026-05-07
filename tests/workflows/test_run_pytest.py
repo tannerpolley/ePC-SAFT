@@ -86,6 +86,7 @@ def test_named_shortcuts_expand_to_expected_targets_and_keep_pytest_arg_ordering
     api_args = run_pytest._pytest_args(["-q"], pytest_temp, api=True)
     native_args = run_pytest._pytest_args(["-q"], pytest_temp, native=True)
     equilibrium_confidence_args = run_pytest._pytest_args(["-q"], pytest_temp, equilibrium_confidence=True)
+    equilibrium_api_args = run_pytest._pytest_args(["-q"], pytest_temp, equilibrium_api=True)
     profile_args = run_pytest._pytest_args(["-q"], pytest_temp, profile=True)
     profile_full_args = run_pytest._pytest_args(["-q"], pytest_temp, profile_full=True)
 
@@ -95,12 +96,16 @@ def test_named_shortcuts_expand_to_expected_targets_and_keep_pytest_arg_ordering
     assert equilibrium_confidence_args[: len(run_pytest.EQUILIBRIUM_CONFIDENCE_TEST_TARGETS)] == list(
         run_pytest.EQUILIBRIUM_CONFIDENCE_TEST_TARGETS
     )
+    assert equilibrium_api_args[: len(run_pytest.EQUILIBRIUM_API_TEST_TARGETS)] == list(
+        run_pytest.EQUILIBRIUM_API_TEST_TARGETS
+    )
     assert profile_args[: len(run_pytest.PROFILE_TEST_TARGETS)] == list(run_pytest.PROFILE_TEST_TARGETS)
     assert profile_full_args[: len(run_pytest.FULL_PROFILE_TEST_TARGETS)] == list(run_pytest.FULL_PROFILE_TEST_TARGETS)
     assert runtime_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert api_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert native_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert equilibrium_confidence_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
+    assert equilibrium_api_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert profile_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert profile_full_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
 
@@ -120,6 +125,7 @@ def test_slice_targets_use_grouped_test_subpackages():
         *run_pytest.API_TEST_TARGETS,
         *run_pytest.NATIVE_TEST_TARGETS,
         *run_pytest.EQUILIBRIUM_CONFIDENCE_TEST_TARGETS,
+        *run_pytest.EQUILIBRIUM_API_TEST_TARGETS,
         *run_pytest.PROFILE_TEST_TARGETS,
         *run_pytest.FULL_PROFILE_TEST_TARGETS,
     ]
@@ -159,6 +165,18 @@ def test_equilibrium_confidence_slice_is_listed():
 
     assert result.returncode == 0
     assert "equilibrium-confidence:" in result.stdout
+
+
+def test_equilibrium_api_slice_is_listed():
+    result = subprocess.run(
+        [sys.executable, "run_pytest.py", "--equilibrium-api", "--list-slices"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "equilibrium-api:" in result.stdout
 
 
 def test_equilibrium_confidence_shortcut_keeps_full_report_env_opt_in():

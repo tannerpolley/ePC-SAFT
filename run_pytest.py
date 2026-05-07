@@ -39,6 +39,28 @@ EQUILIBRIUM_CONFIDENCE_TEST_TARGETS = (
         "test_khudaida_package_tieline_fixed_phase_residual_is_internally_consistent"
     ),
 )
+EQUILIBRIUM_API_TEST_TARGETS = (
+    "tests/equilibrium/test_api.py::test_tp_flash_returns_structured_result_and_json_like_dict",
+    "tests/equilibrium/test_lle.py::test_methanol_cyclohexane_lle_flash_closes_material_and_fugacity_balance",
+    "tests/equilibrium/test_stability.py::test_stability_returns_structured_result_and_json_like_dict",
+    "tests/equilibrium/test_electrolyte_lle.py::test_one_salt_smoke_solves_native_predictive_split",
+    "tests/api/test_runtime.py::test_runtime_build_info_and_capabilities_are_json_like",
+    (
+        "tests/api/test_reactive_speciation.py::"
+        "test_solve_reactive_speciation_returns_balanced_activity_coupled_state"
+    ),
+    "tests/api/test_reactive_speciation.py::test_reactive_speciation_options_expose_jacobian_backend_selector",
+    "tests/api/test_reactive_speciation.py::test_reactive_speciation_requested_ipopt_requires_cyipopt",
+    "tests/api/test_reactive_electrolyte_bubble.py",
+    (
+        "tests/native/test_chemical_equilibrium_native.py::"
+        "test_native_chemical_equilibrium_residual_evaluator_uses_analytic_jacobian_by_default"
+    ),
+    (
+        "tests/native/test_chemical_equilibrium_native.py::"
+        "test_native_chemical_equilibrium_residual_evaluator_keeps_explicit_finite_difference"
+    ),
+)
 ALL_TEST_TARGETS = ("tests",)
 RUNTIME_TEST_TARGETS = ("tests/api/test_runtime.py", "tests/native/test_runtime_contracts.py")
 API_TEST_TARGETS = (
@@ -58,6 +80,7 @@ SLICE_TARGETS = {
     "all": ALL_TEST_TARGETS,
     "confidence": CONFIDENCE_TEST_TARGETS,
     "equilibrium-confidence": EQUILIBRIUM_CONFIDENCE_TEST_TARGETS,
+    "equilibrium-api": EQUILIBRIUM_API_TEST_TARGETS,
     "runtime": RUNTIME_TEST_TARGETS,
     "api": API_TEST_TARGETS,
     "native": NATIVE_TEST_TARGETS,
@@ -113,6 +136,7 @@ def _pytest_args(
     generic: bool = False,
     confidence: bool = False,
     equilibrium_confidence: bool = False,
+    equilibrium_api: bool = False,
     runtime: bool = False,
     api: bool = False,
     native: bool = False,
@@ -125,6 +149,7 @@ def _pytest_args(
         generic
         or confidence
         or equilibrium_confidence
+        or equilibrium_api
         or runtime
         or api
         or native
@@ -138,6 +163,8 @@ def _pytest_args(
         cmd.extend(CONFIDENCE_TEST_TARGETS)
     elif equilibrium_confidence:
         cmd.extend(EQUILIBRIUM_CONFIDENCE_TEST_TARGETS)
+    elif equilibrium_api:
+        cmd.extend(EQUILIBRIUM_API_TEST_TARGETS)
     elif generic:
         cmd.extend(GENERIC_TEST_TARGETS)
     elif runtime:
@@ -225,6 +252,11 @@ def main() -> int:
         action="store_true",
         help="Run electrolyte equilibrium confidence contract tests; full reports remain env opt-in",
     )
+    predefined.add_argument(
+        "--equilibrium-api",
+        action="store_true",
+        help="Run fast equilibrium/speciation API tests for downstream-agent workflows",
+    )
     predefined.add_argument("--runtime", action="store_true", help="Run runtime API and native contract tests")
     predefined.add_argument("--api", action="store_true", help="Run public API and regression API tests")
     predefined.add_argument("--native", action="store_true", help="Run native runtime contract tests")
@@ -262,6 +294,7 @@ def main() -> int:
         args.generic,
         confidence=args.confidence,
         equilibrium_confidence=args.equilibrium_confidence,
+        equilibrium_api=args.equilibrium_api,
         runtime=args.runtime,
         api=args.api,
         native=args.native,

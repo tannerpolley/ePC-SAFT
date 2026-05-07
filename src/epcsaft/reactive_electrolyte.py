@@ -116,6 +116,7 @@ def solve_reactive_electrolyte_bubble(
     )
     x_liq = {label: chemical.x[label] for label in species}
     mixture = mixture_factory([x_liq[label] for label in species], T, P_seed)
+    bubble_failure: SolutionError | None = None
     try:
         bubble = electrolyte_bubble_pressure(
             mixture,
@@ -126,10 +127,17 @@ def solve_reactive_electrolyte_bubble(
             nonvolatile_species=nonvolatile_species,
             options=bubble_options,
         )
-    except SolutionError:
+    except SolutionError as exc:
         if options.error_mode == "raise":
             raise
-        raise
+        bubble_failure = exc
+        bubble = _failed_bubble_result(
+            message=str(getattr(exc, "message", str(exc))),
+            diagnostics=dict(getattr(exc, "diagnostics", {}) or {}),
+            species=species,
+            x_liq=x_liq,
+            vapor_species=vapor_species if vapor_species is not None else volatile_species,
+        )
     handoff = _speciation_phase_handoff_diagnostics(chemical, options)
     diagnostics = {
         "speciation": chemical.to_dict(),
@@ -141,6 +149,12 @@ def solve_reactive_electrolyte_bubble(
         "native_entrypoint": "_solve_chemical_equilibrium_native_then__solve_electrolyte_bubble_native",
         "solver_language": "c++",
     }
+    if bubble_failure is not None:
+        diagnostics["bubble_failure"] = {
+            "type": type(bubble_failure).__name__,
+            "message": str(getattr(bubble_failure, "message", str(bubble_failure))),
+            "diagnostics": dict(getattr(bubble_failure, "diagnostics", {}) or {}),
+        }
     success = bool(diagnostics["speciation_phase_handoff_success"] and bubble.success)
     message = "converged" if success else _reactive_bubble_failure_message(chemical, bubble, diagnostics)
     return ReactiveElectrolyteBubbleResult(
@@ -288,6 +302,61 @@ def _positive_tolerance(value: float, name: str) -> float:
     if not math.isfinite(tolerance) or tolerance <= 0.0:
         raise InputError(f"{name} must be a finite positive value.")
     return tolerance
+
+
+def _failed_bubble_result(
+    *,
+    message: str,
+    diagnostics: Mapping[str, Any],
+    species: Sequence[str],
+    x_liq: Mapping[str, float],
+    vapor_species: Any,
+) -> Any:
+    """Build a fixed-shape bubble result from a strict bubble failure."""
+    from .electrolyte_bubble import ElectrolyteBubbleResult
+
+    labels = _normalize_vapor_labels(vapor_species)
+    pressure = float(diagnostics.get("best_P", diagnostics.get("P", 0.0)) or 0.0)
+    y_vap = _mapping_for_labels(labels, diagnostics.get("best_y_vap"), default=0.0)
+    partial_values = diagnostics.get("best_partial_pressures")
+    partial = _mapping_for_labels(labels, partial_values, default=0.0)
+    residual = _mapping_for_labels(labels, diagnostics.get("fugacity_residual"), default=float("nan"))
+    if partial_values is None and labels:
+        partial = {label: float(y_vap.get(label, 0.0)) * pressure for label in labels}
+    return ElectrolyteBubbleResult(
+        success=False,
+        message=message,
+        P=pressure,
+        y_vap=y_vap,
+        x_liq=[float(x_liq[label]) for label in species],
+        ln_phi_liq={label: float("nan") for label in labels},
+        ln_phi_vap={label: float("nan") for label in labels},
+        fugacity_residual=residual,
+        fugacity_residual_norm=float(diagnostics.get("best_fugacity_residual_norm", float("nan"))),
+        charge_residual=float(diagnostics.get("charge_residual", float("nan"))),
+        partial_pressures=partial,
+        diagnostics=dict(diagnostics),
+    )
+
+
+def _normalize_vapor_labels(values: Any) -> list[str]:
+    if values is None:
+        return []
+    if isinstance(values, str):
+        return [values]
+    return [str(value) for value in values]
+
+
+def _mapping_for_labels(labels: Sequence[str], values: Any, *, default: float) -> dict[str, float]:
+    if isinstance(values, Mapping):
+        return {label: float(values.get(label, default)) for label in labels}
+    if values is None:
+        return {label: float(default) for label in labels}
+    try:
+        items = list(values)
+    except TypeError:
+        return {label: float(default) for label in labels}
+    return {label: float(items[index]) if index < len(items) else float(default) for index, label in enumerate(labels)}
 
 
 def _reactive_bubble_failure_message(

@@ -15,6 +15,7 @@ Start Here
    downstream_local_installs
    development_workflows
    project_structure
+   equilibrium_cookbook
 
 Create Your Own Data
 --------------------
