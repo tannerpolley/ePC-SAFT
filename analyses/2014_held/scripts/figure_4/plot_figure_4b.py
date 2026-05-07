@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
 import _common as common
 
 OUTPUT = Path(__file__).with_name("figure_4b.png")
-DIGITIZED = Path(__file__).with_name("figure_4b_digitized.csv")
+DIGITIZED = common.analysis_data_path(__file__, "figure_4b_digitized.csv", kind="input")
 
 
 def _load() -> dict[tuple[str, str], tuple[np.ndarray, np.ndarray]]:

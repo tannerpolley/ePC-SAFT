@@ -22,7 +22,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts._env import require_epcsaft_install
-from scripts.plot_outputs import paper_validation_output_path, save_plot_figure
+from scripts.plot_outputs import analysis_data_path, analysis_plot_set_dir, paper_validation_output_path, save_plot_figure
 
 require_epcsaft_install()
 
@@ -120,7 +120,8 @@ def write_csv_rows(path: Path, fieldnames: Iterable[str], rows: Iterable[dict]) 
 
 
 def out_path(fig_dir: Path, filename: str) -> Path:
-    return fig_dir / "out" / filename
+    plot_set_dir = analysis_plot_set_dir(fig_dir)
+    return plot_set_dir / "data" / filename
 
 
 EXPERIMENTAL_CASES: dict[tuple[float, float], list[tuple[int, tuple[float, ...], tuple[float, ...]]]] = {
@@ -284,7 +285,9 @@ def _experimental_rows(salt_wt: float, temperature_k: float) -> list[dict]:
 
 
 def _digitized_feed_rows_for_figure(figure_number: int, temperature_k: float, salt_wt: float) -> list[dict] | None:
-    source_path = ROOT / f"figure_{figure_number}" / "data" / "feed_compositions_digitized.csv"
+    source_path = analysis_data_path(
+        ROOT / f"figure_{figure_number}", "feed_compositions_digitized.csv", kind="input", category=f"figure_{figure_number}"
+    )
     if not source_path.exists():
         return None
     rows = []
@@ -947,7 +950,7 @@ def _plot_feed_points(
 
 
 def _paper_epcsaft_digitized_rows(fig_dir: Path, temperature_k: float, salt_wt: float) -> list[dict]:
-    path = fig_dir / "data" / "paper_epcsaft_digitized.csv"
+    path = analysis_data_path(fig_dir, "paper_epcsaft_digitized.csv", kind="input")
     if not path.exists():
         return []
     rows = []

@@ -39,7 +39,9 @@ SOURCE_WORKBOOK = Path(
     r"C:\Users\Tanner\Documents\Learning Resources\Classes\0_Spring_2024\ePC-SAFT Calculations - Part 1 - Helmholtz Free Energy.xlsm"
 )
 OUTPUT_WORKBOOK = REPO_ROOT / "workbooks" / "figure3_hc_audit.xlsm"
-DATA_PATH = ANALYSIS_ROOT / "figure_3" / "data" / "water_contributions.csv"
+DATA_PATH = common.analysis_data_path(
+    ANALYSIS_ROOT / "figure_3", "water_contributions.csv", kind="processed", category="figure_3"
+)
 
 
 def _species_for_ion(ion: str) -> list[str]:

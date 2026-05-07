@@ -22,8 +22,10 @@ if str(REPO_ROOT) not in sys.path:
 import _plot_common as common
 import _model_overlay as overlay
 
-DATA_PATH = SCRIPT_DIR / "data" / "water_contributions.csv"
-FIGURE2_TOTALS_PATH = ANALYSIS_ROOT / "figure_2" / "data" / "water_comparisons.csv"
+DATA_PATH = common.analysis_data_path(__file__, "water_contributions.csv", kind="processed")
+FIGURE2_TOTALS_PATH = common.analysis_data_path(
+    ANALYSIS_ROOT / "figure_2", "water_comparisons.csv", kind="processed", category="figure_2"
+)
 CONTRIBUTIONS = [
     ("hc", "Hard chain", "#9f9f9f"),
     ("disp", "Dispersion", "#5f5f5f"),

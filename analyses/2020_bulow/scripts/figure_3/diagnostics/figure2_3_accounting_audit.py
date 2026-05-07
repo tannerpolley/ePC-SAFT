@@ -11,7 +11,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 FIGURE_DIR = SCRIPT_DIR.parent
 ANALYSIS_ROOT = FIGURE_DIR.parent
 REPO_ROOT = ANALYSIS_ROOT.parents[2]
-OUTPUT_DIR = SCRIPT_DIR
+OUTPUT_DIR = common.analysis_runs_path(__file__, "_placeholder", category=("figure_3", "diagnostics")).parent
 
 if str(ANALYSIS_ROOT) not in sys.path:
     sys.path.insert(0, str(ANALYSIS_ROOT))
@@ -23,8 +23,12 @@ import _plot_common as common
 
 R_GAS = 8.31446261815324
 T_REF = 298.15
-FIG2_PATH = ANALYSIS_ROOT / "figure_2" / "data" / "water_comparisons.csv"
-FIG3_PATH = ANALYSIS_ROOT / "figure_3" / "data" / "water_contributions.csv"
+FIG2_PATH = common.analysis_data_path(
+    ANALYSIS_ROOT / "figure_2", "water_comparisons.csv", kind="processed", category="figure_2"
+)
+FIG3_PATH = common.analysis_data_path(
+    ANALYSIS_ROOT / "figure_3", "water_contributions.csv", kind="processed", category="figure_3"
+)
 TERMS = ("hc", "disp", "assoc", "born")
 TERM_KEY_MAP = {
     "hc": "hc",

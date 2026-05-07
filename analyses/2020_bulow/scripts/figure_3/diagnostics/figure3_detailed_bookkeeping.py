@@ -26,13 +26,13 @@ import _plot_common as common
 from epcsaft.parameters import get_prop_dict
 from scripts._epcsaft_oop import epcsaft_density, epcsaft_fugacity_coefficient_terms, epcsaft_pressure
 
-DATA_PATH = FIGURE_DIR / "data" / "water_contributions.csv"
-OUTPUT_BOOKKEEPING = SCRIPT_DIR / "figure3_detailed_bookkeeping.csv"
-OUTPUT_HC = SCRIPT_DIR / "figure3_hc_dadx_components.csv"
-OUTPUT_DISP = SCRIPT_DIR / "figure3_disp_dadx_components.csv"
-OUTPUT_ASSOC = SCRIPT_DIR / "figure3_assoc_dadx_components.csv"
-OUTPUT_DH = SCRIPT_DIR / "figure3_dh_dadx_components.csv"
-OUTPUT_BORN = SCRIPT_DIR / "figure3_born_dadx_components.csv"
+DATA_PATH = common.analysis_data_path(FIGURE_DIR, "water_contributions.csv", kind="processed", category="figure_3")
+OUTPUT_BOOKKEEPING = common.analysis_runs_path(__file__, "figure3_detailed_bookkeeping.csv", category=("figure_3", "diagnostics"))
+OUTPUT_HC = common.analysis_runs_path(__file__, "figure3_hc_dadx_components.csv", category=("figure_3", "diagnostics"))
+OUTPUT_DISP = common.analysis_runs_path(__file__, "figure3_disp_dadx_components.csv", category=("figure_3", "diagnostics"))
+OUTPUT_ASSOC = common.analysis_runs_path(__file__, "figure3_assoc_dadx_components.csv", category=("figure_3", "diagnostics"))
+OUTPUT_DH = common.analysis_runs_path(__file__, "figure3_dh_dadx_components.csv", category=("figure_3", "diagnostics"))
+OUTPUT_BORN = common.analysis_runs_path(__file__, "figure3_born_dadx_components.csv", category=("figure_3", "diagnostics"))
 
 T_REF = overlay.T_REF
 P_REF = overlay.P_REF

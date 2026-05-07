@@ -13,7 +13,7 @@ if str(ROOT) not in sys.path:
 import _common as common
 
 OUTPUT = Path(__file__).with_name("figure_5.png")
-DATA_PATH = Path(__file__).with_name("esteso_1989_table1_selected_series.csv")
+DATA_PATH = common.analysis_data_path(__file__, "esteso_1989_table1_selected_series.csv", kind="input")
 SERIES = [
     {
         "xw": 0.9109,

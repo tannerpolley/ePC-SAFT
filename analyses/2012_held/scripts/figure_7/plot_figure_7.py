@@ -13,8 +13,8 @@ if str(ROOT) not in sys.path:
 import _common as common
 
 OUTPUT = Path(__file__).with_name("figure_7.png")
-DATA_PATH = Path(__file__).with_name("hernandez_2007_table6.csv")
-DIELC_PATH = Path(__file__).with_name("water-methanol-ethanol.csv")
+DATA_PATH = common.analysis_data_path(__file__, "hernandez_2007_table6.csv", kind="input")
+DIELC_PATH = common.analysis_data_path(__file__, "water-methanol-ethanol.csv", kind="input")
 SERIES = [
     {
         "weights": {"water": 0.85, "methanol": 0.10, "ethanol": 0.05},

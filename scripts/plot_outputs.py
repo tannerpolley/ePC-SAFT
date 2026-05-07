@@ -92,6 +92,95 @@ def analysis_plot_set_dir(
     return _plot_set_dir(analysis_root, plot_set_parts, filename)
 
 
+def _data_kind_parts(kind: str | Path | Iterable[str | Path]) -> list[str]:
+    if isinstance(kind, (str, Path)):
+        raw_parts = [kind]
+    else:
+        raw_parts = list(kind)
+
+    parts: list[str] = []
+    for raw_part in raw_parts:
+        path_part = Path(raw_part)
+        if path_part.is_absolute():
+            raise ValueError(f"data-path kind must be relative: {raw_part}")
+        for part in path_part.parts:
+            if part in ("", "."):
+                continue
+            if part == "..":
+                raise ValueError(f"data-path kind cannot contain '..': {raw_part}")
+            parts.append(part)
+    return parts
+
+
+def analysis_data_dir(
+    source_path: str | Path,
+    *,
+    kind: str | Path | Iterable[str | Path] = "input",
+    category: str | Path | Iterable[str | Path] | None = None,
+) -> Path:
+    analysis_root = _analysis_root_for(source_path)
+    kind_parts = _data_kind_parts(kind)
+    if category is None:
+        category_parts: list[str | Path] = _relative_script_parts(source_path)
+    elif isinstance(category, (str, Path)):
+        category_parts = [category]
+    else:
+        category_parts = list(category)
+
+    target = analysis_root / "data"
+    if kind_parts:
+        target = target.joinpath(*kind_parts)
+    if category_parts:
+        target = target.joinpath(*[part for part in category_parts if str(part) not in ("", ".")])
+    target.mkdir(parents=True, exist_ok=True)
+    return target
+
+
+def analysis_data_path(
+    source_path: str | Path,
+    filename: str | Path,
+    *,
+    kind: str | Path | Iterable[str | Path] = "input",
+    category: str | Path | Iterable[str | Path] | None = None,
+) -> Path:
+    target = analysis_data_dir(source_path, kind=kind, category=category)
+    path = target / Path(filename)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def analysis_runs_dir(
+    source_path: str | Path,
+    *,
+    category: str | Path | Iterable[str | Path] | None = None,
+) -> Path:
+    analysis_root = _analysis_root_for(source_path)
+    if category is None:
+        category_parts: list[str | Path] = _relative_script_parts(source_path)
+    elif isinstance(category, (str, Path)):
+        category_parts = [category]
+    else:
+        category_parts = list(category)
+
+    target = analysis_root / RESULTS_DIR_NAME / RUNS_DIR_NAME
+    if category_parts:
+        target = target.joinpath(*[part for part in category_parts if str(part) not in ("", ".")])
+    target.mkdir(parents=True, exist_ok=True)
+    return target
+
+
+def analysis_runs_path(
+    source_path: str | Path,
+    filename: str | Path,
+    *,
+    category: str | Path | Iterable[str | Path] | None = None,
+) -> Path:
+    target = analysis_runs_dir(source_path, category=category)
+    path = target / Path(filename)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def analysis_final_dir(source_path: str | Path, category: str = "figures") -> Path:
     """Compatibility alias for analysis-owned curated result directories.
 

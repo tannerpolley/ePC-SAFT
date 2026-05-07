@@ -12,7 +12,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 FIGURE_DIR = SCRIPT_DIR.parent
 ANALYSIS_ROOT = FIGURE_DIR.parent
 REPO_ROOT = ANALYSIS_ROOT.parents[2]
-OUTPUT_DIR = SCRIPT_DIR
+OUTPUT_DIR = common.analysis_runs_path(__file__, "_placeholder", category=("figure_5", "diagnostics")).parent
 
 if str(ANALYSIS_ROOT) not in sys.path:
     sys.path.insert(0, str(ANALYSIS_ROOT))
@@ -62,7 +62,9 @@ def main() -> None:
     detail_rows: list[dict[str, object]] = []
 
     # Figure 2
-    fig2 = common.load_indexed_csv(ANALYSIS_ROOT / "figure_2" / "data" / "water_comparisons.csv")
+    fig2 = common.load_indexed_csv(
+        common.analysis_data_path(ANALYSIS_ROOT / "figure_2", "water_comparisons.csv", kind="processed", category="figure_2")
+    )
     ions = list(fig2.columns)
     for variant in ("advanced", "revised"):
         paper = fig2.values(variant, ions)
@@ -81,7 +83,9 @@ def main() -> None:
             )
 
     # Figure 3
-    fig3 = common.load_indexed_csv(ANALYSIS_ROOT / "figure_3" / "data" / "water_contributions.csv")
+    fig3 = common.load_indexed_csv(
+        common.analysis_data_path(ANALYSIS_ROOT / "figure_3", "water_contributions.csv", kind="processed", category="figure_3")
+    )
     ions = list(fig3.columns)
     for term in ("hc", "disp", "assoc", "dh", "born"):
         if term == "dh":
@@ -106,7 +110,11 @@ def main() -> None:
 
     # Figure 4
     for solvent in ("methanol", "ethanol"):
-        fig4 = common.load_indexed_csv(ANALYSIS_ROOT / "figure_4" / "data" / f"water-{solvent}-comparison.csv")
+        fig4 = common.load_indexed_csv(
+            common.analysis_data_path(
+                ANALYSIS_ROOT / "figure_4", f"water-{solvent}-comparison.csv", kind="processed", category="figure_4"
+            )
+        )
         ions = list(fig4.columns)
         for variant in ("advanced", "revised"):
             paper = fig4.values(variant, ions)
@@ -126,7 +134,11 @@ def main() -> None:
 
     # Figure 5
     for solvent in ("methanol", "ethanol"):
-        fig5 = common.load_indexed_csv(ANALYSIS_ROOT / "figure_5" / "data" / f"water-{solvent}-contributions.csv")
+        fig5 = common.load_indexed_csv(
+            common.analysis_data_path(
+                ANALYSIS_ROOT / "figure_5", f"water-{solvent}-contributions.csv", kind="processed", category="figure_5"
+            )
+        )
         for term in ("hc", "disp", "assoc", "dh", "Born"):
             for ion in ("Na+", "Cl-", "I-"):
                 if term == "dh":

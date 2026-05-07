@@ -1,0 +1,10 @@
+# Matplotlib plot-set style contract.
+# Edit this sidecar, then rerun the owning render script.
+figure:
+  file: "figure_3.png"
+  format: "png"
+axes:
+  - index: 0
+    title: "2012 Fig. 3 style: NaI solvent activity coefficients (298.15 K)"
+    xlabel: "molality, $m$ / mol kg$^{-1}$"
+    ylabel: "$\\gamma_{solv}$ / -"

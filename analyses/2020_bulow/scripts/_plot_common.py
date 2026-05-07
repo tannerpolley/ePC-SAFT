@@ -12,7 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.plot_outputs import paper_validation_output_path, save_plot_figure
+from scripts.plot_outputs import analysis_data_path, analysis_runs_path, paper_validation_output_path, save_plot_figure
 
 FIG_DPI = 300
 

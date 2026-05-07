@@ -21,7 +21,7 @@ require_epcsaft_install()
 
 from epcsaft.parameters import get_prop_dict
 
-DATA_PATH = Path(__file__).with_name("1-butanol-NH4Cl-water-LLE.csv")
+DATA_PATH = common.analysis_data_path(__file__, "1-butanol-NH4Cl-water-LLE.csv", kind="input")
 SPECIES = ["H2O", "Butanol", "NH4+", "Cl-"]
 MW = np.asarray([18.0153e-3, 74.1216e-3, 18.038e-3, 35.453e-3], dtype=float)
 MW_NH4CL = float(MW[2] + MW[3])

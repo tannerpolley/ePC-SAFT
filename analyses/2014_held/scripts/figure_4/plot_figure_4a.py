@@ -27,7 +27,7 @@ T_REF = 298.15
 P_REF = 1.0e5
 MW_WATER = 18.01528e-3
 OUTPUT = Path(__file__).with_name("figure_4a.png")
-DIGITIZED = Path(__file__).with_name("figure_4a_digitized.csv")
+DIGITIZED = common.analysis_data_path(__file__, "figure_4a_digitized.csv", kind="input")
 
 ION_STRATEGY1 = {
     "K+": (2.9698, 271.05),

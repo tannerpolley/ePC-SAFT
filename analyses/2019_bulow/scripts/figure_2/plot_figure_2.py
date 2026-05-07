@@ -22,7 +22,7 @@ require_epcsaft_install()
 
 from _common import build_params
 from scripts._epcsaft_oop import epcsaft_density, epcsaft_fugacity_coefficient_terms
-from scripts.plot_outputs import paper_validation_path, save_plot_figure
+from scripts.plot_outputs import analysis_data_path, paper_validation_path, save_plot_figure
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -36,8 +36,8 @@ WATER_INDEX = 0
 CATION_INDEX = 1
 ANION_INDEX = 2
 THIS_DIR = Path(__file__).resolve().parent
-FIG2A_CSV = THIS_DIR / "2019_Figure2a_curves.csv"
-FIG2B_CSV = THIS_DIR / "2019_Figure2b_curves.csv"
+FIG2A_CSV = analysis_data_path(__file__, "2019_Figure2a_curves.csv", kind="input")
+FIG2B_CSV = analysis_data_path(__file__, "2019_Figure2b_curves.csv", kind="input")
 SERIES_META = [
     ("water", r"constant $\varepsilon_{water}$", "tab:blue"),
     ("mixed", r"ePC-SAFT, $\varepsilon(x_{IL})$", "green"),

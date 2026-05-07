@@ -26,10 +26,10 @@ from scripts._epcsaft_oop import epcsaft_density
 T_REF = 298.15
 P_REF = 1.0e5
 OUTPUT = Path(__file__).with_name("figure_3.png")
-DIGITIZED = Path(__file__).with_name("figure_3_digitized.csv")
+DIGITIZED = common.analysis_data_path(__file__, "figure_3_digitized.csv", kind="input")
 RAW_DATA_SOURCES = (
     common.REPO_ROOT / "data" / "osmotic" / "water" / "LiAc-NaAc-KAc.csv",
-    Path(__file__).with_name("LiAc-NaAc-KAc.csv"),
+    common.analysis_data_path(__file__, "LiAc-NaAc-KAc.csv", kind="input"),
 )
 
 SALT_SPECS = {

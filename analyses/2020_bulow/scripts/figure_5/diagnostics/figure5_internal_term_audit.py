@@ -11,7 +11,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 FIGURE_DIR = SCRIPT_DIR.parent
 ANALYSIS_ROOT = FIGURE_DIR.parent
 REPO_ROOT = ANALYSIS_ROOT.parents[2]
-OUTPUT_DIR = SCRIPT_DIR
+OUTPUT_DIR = common.analysis_runs_path(__file__, "_placeholder", category=("figure_5", "diagnostics")).parent
 
 if str(ANALYSIS_ROOT) not in sys.path:
     sys.path.insert(0, str(ANALYSIS_ROOT))
@@ -24,8 +24,12 @@ import _plot_common as common
 R_GAS = 8.31446261815324
 T_REF = 298.15
 FIG5_PATHS = {
-    "methanol": ANALYSIS_ROOT / "figure_5" / "data" / "water-methanol-contributions.csv",
-    "ethanol": ANALYSIS_ROOT / "figure_5" / "data" / "water-ethanol-contributions.csv",
+    "methanol": common.analysis_data_path(
+        ANALYSIS_ROOT / "figure_5", "water-methanol-contributions.csv", kind="processed", category="figure_5"
+    ),
+    "ethanol": common.analysis_data_path(
+        ANALYSIS_ROOT / "figure_5", "water-ethanol-contributions.csv", kind="processed", category="figure_5"
+    ),
 }
 IONS = ("Na+", "Cl-", "I-")
 TERM_TO_KEY = {
