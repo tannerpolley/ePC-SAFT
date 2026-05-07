@@ -154,14 +154,41 @@ class ePCSAFTMixture:
             "density_warm_start_fallbacks": int(self._native.density_warm_start_fallbacks()),
         }
 
-    def state(self, T, x, P=None, rho=None, phase="liq"):
+    def state(self, T, x, P=None, rho=None, phase="liq", rho_guess=None):
         """Create an immutable thermodynamic state for the mixture.
 
         States built from pressure resolve and cache density during construction.
+        ``rho_guess`` may seed that pressure-density solve but does not replace
+        pressure closure.
         """
         if (P is None) == (rho is None):
             raise InputError("Provide exactly one of P or rho when constructing a state.")
-        return ePCSAFTState(self, T, x, P=P, rho=rho, phase=phase)
+        return ePCSAFTState(self, T, x, P=P, rho=rho, phase=phase, rho_guess=rho_guess)
+
+    def check_density(self, T, x, P, rho, *, phase="liq", rtol=1.0e-6, atol=1.0e-3):
+        """Return pressure-consistency diagnostics for an externally supplied density."""
+        if float(P) <= 0.0:
+            raise InputError("P must be positive when checking density consistency.")
+        if not np.isfinite(float(rtol)) or float(rtol) < 0.0:
+            raise InputError("rtol must be finite and non-negative.")
+        if not np.isfinite(float(atol)) or float(atol) < 0.0:
+            raise InputError("atol must be finite and non-negative.")
+        state = self.state(T=T, x=x, rho=rho, phase=phase)
+        pressure_target = float(P)
+        pressure_from_density = float(state.pressure())
+        pressure_residual = pressure_from_density - pressure_target
+        scale = max(abs(pressure_target), float(atol))
+        relative_pressure_residual = abs(pressure_residual) / scale
+        within_tolerance = bool(abs(pressure_residual) <= float(atol) + float(rtol) * abs(pressure_target))
+        return {
+            "density": float(rho),
+            "pressure_target": pressure_target,
+            "pressure_from_density": pressure_from_density,
+            "pressure_residual": float(pressure_residual),
+            "relative_pressure_residual": float(relative_pressure_residual),
+            "within_tolerance": within_tolerance,
+            "state": state,
+        }
 
     def flash_tp(self, T, P, z, *, options=None):
         """Solve a neutral TP flash with explicit thermodynamic-method naming."""
@@ -808,7 +835,7 @@ class ePCSAFTMixture:
 class ePCSAFTState:
     """Immutable thermodynamic state bound to one mixture."""
 
-    def __init__(self, mixture, T, x, P=None, rho=None, phase="liq"):
+    def __init__(self, mixture, T, x, P=None, rho=None, phase="liq", rho_guess=None):
         """Create a state with exactly one intensive variable fixed.
 
         Pressure-based states solve the internal T, P, x -> rho closure eagerly.
@@ -830,6 +857,11 @@ class ePCSAFTState:
         has_rho = rho is not None
         if has_p == has_rho:
             raise InputError("Provide exactly one of P or rho when constructing a state.")
+        has_rho_guess = rho_guess is not None
+        if has_rho_guess and not has_p:
+            raise InputError("rho_guess is only supported for pressure-based states constructed with P.")
+        if has_rho_guess and (not np.isfinite(float(rho_guess)) or float(rho_guess) <= 0.0):
+            raise InputError("rho_guess must be finite and positive.")
         if has_p:
             check_input(x, {"temperature": T, "pressure": P})
         else:
@@ -845,6 +877,8 @@ class ePCSAFTState:
                 float(P) if P is not None else 0.0,
                 has_rho,
                 float(rho) if rho is not None else 0.0,
+                has_rho_guess,
+                float(rho_guess) if rho_guess is not None else 0.0,
             )
         except Exception as exc:
             variable_name = "P" if has_p else "rho"

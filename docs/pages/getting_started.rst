@@ -117,6 +117,39 @@ Minimal example
        basis="molality",
    )
 
+Density-first and seeded pressure states
+----------------------------------------
+
+Use exactly one closure variable when creating a state:
+
+- ``P`` asks ePC-SAFT to solve the EOS pressure-density closure.
+- ``rho`` evaluates the state directly at a supplied molar density.
+- ``rho_guess`` is allowed only with ``P`` and only seeds the pressure-density solve; it does not replace pressure closure.
+
+.. code-block:: python
+
+   exact = mixture.state(T=298.15, x=np.asarray([0.9998, 1e-4, 1e-4]), P=1.0e5)
+   seeded = mixture.state(
+       T=298.15,
+       x=np.asarray([0.9998, 1e-4, 1e-4]),
+       P=1.0e5,
+       rho_guess=exact.density(),
+   )
+   direct_density = mixture.state(
+       T=298.15,
+       x=np.asarray([0.9998, 1e-4, 1e-4]),
+       rho=exact.density(),
+   )
+
+   audit = mixture.check_density(
+       T=298.15,
+       x=np.asarray([0.9998, 1e-4, 1e-4]),
+       P=1.0e5,
+       rho=direct_density.density(),
+   )
+
+For many nearby downstream calls, keep the loop in the downstream project and pass the previous accepted pressure-state density as ``rho_guess``. Use ``rho=...`` only when your model intentionally provides the density and you have accepted any pressure-residual error.
+
 Key objects
 -----------
 

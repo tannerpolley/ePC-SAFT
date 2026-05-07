@@ -62,7 +62,7 @@ Debugging checklist
 -------------------
 
 - Reproduce the behavior through a public ``ePCSAFTMixture`` / ``ePCSAFTState`` call before debugging private native functions.
-- Compare pressure-created and density-created states when investigating density closure. Start with the same ``T`` and ``x`` and compare density, pressure, ``z()``, and ``ares()``.
+- Compare pressure-created and density-created states when investigating density closure. Start with the same ``T`` and ``x`` and compare density, pressure, ``z()``, and ``ares()``. Use ``state(..., P=..., rho_guess=...)`` to test seeded pressure closure and ``check_density(...)`` to audit an externally supplied density against a target pressure.
 - Inspect ``src/epcsaft/native/epcsaft_density.cpp`` and ``src/epcsaft/native/epcsaft_state.cpp`` for pressure-to-density root selection, warm-start behavior, and phase-branch policy before changing contribution code.
 - Request contribution terms with ``return_contribution_terms=True`` when debugging residual Helmholtz, compressibility factor, chemical potential, or fugacity totals.
 - Request contribution terms and compare ``hc``, ``disp``, ``assoc``, ``ion``, and ``born`` totals before adding temporary native instrumentation.

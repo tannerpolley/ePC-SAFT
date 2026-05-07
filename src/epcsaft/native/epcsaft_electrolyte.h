@@ -320,7 +320,8 @@ class ePCSAFTMixtureNative;
 class ePCSAFTStateNative {
 public:
     ePCSAFTStateNative(std::shared_ptr<ePCSAFTMixtureNative> mixture, double t, vector<double> x,
-        int phase, bool has_p, double p, bool has_rho, double rho);
+        int phase, bool has_p, double p, bool has_rho, double rho,
+        bool has_rho_guess = false, double rho_guess = 0.0);
 
     double temperature() const;
     int phase() const;
@@ -372,7 +373,7 @@ public:
     explicit ePCSAFTMixtureNative(const add_args& args);
     const add_args& args() const;
     std::shared_ptr<ePCSAFTStateNative> state(double t, vector<double> x, int phase,
-        bool has_p, double p, bool has_rho, double rho);
+        bool has_p, double p, bool has_rho, double rho, bool has_rho_guess = false, double rho_guess = 0.0);
     size_t ncomp() const;
     bool has_ionic() const;
     const vector<int>& cation_indices() const;
@@ -383,6 +384,7 @@ public:
     const vector<int>& pair_nu_cation() const;
     const vector<int>& pair_nu_anion() const;
     double solve_density(double t, double p, const vector<double>& x, int phase);
+    double solve_density_with_guess(double t, double p, const vector<double>& x, int phase, double rho_guess);
     double solve_density_scoped(double t, double p, const vector<double>& x, int phase, const std::string& scope);
     const DensitySolveDiagnostics& last_density_diagnostics() const;
     bool lookup_reference_state(const ReferenceStateKey& key, ReferenceStateValue* out);

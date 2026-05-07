@@ -1071,7 +1071,17 @@ PYBIND11_MODULE(_core, m) {
         });
 
     py::class_<ePCSAFTStateNative, std::shared_ptr<ePCSAFTStateNative>>(m, "NativeState")
-        .def(py::init<std::shared_ptr<ePCSAFTMixtureNative>, double, std::vector<double>, int, bool, double, bool, double>())
+        .def(py::init<
+             std::shared_ptr<ePCSAFTMixtureNative>,
+             double,
+             std::vector<double>,
+             int,
+             bool,
+             double,
+             bool,
+             double,
+             bool,
+             double>())
         .def("temperature", &ePCSAFTStateNative::temperature)
         .def("phase", &ePCSAFTStateNative::phase)
         .def("composition", &ePCSAFTStateNative::composition)

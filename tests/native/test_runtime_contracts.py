@@ -303,6 +303,23 @@ def test_runtime_cache_stats_track_density_and_reference_state_reuse() -> None:
     assert stats["reference_state_cache_hits"] >= 2
 
 
+def test_density_guess_uses_native_warm_start_diagnostics() -> None:
+    mix, _, pressure, _, temperature, composition = _ionic_state()
+    reference = mix.state(T=temperature, x=composition, P=pressure, phase="liq")
+    mix.clear_runtime_caches()
+    mix.reset_runtime_cache_stats()
+
+    seeded = mix.state(T=temperature, x=composition, P=pressure, phase="liq", rho_guess=reference.density())
+
+    assert seeded.density() == pytest.approx(reference.density())
+    diagnostics = dict(mix._native.last_density_diagnostics())
+    assert diagnostics["density_warm_start_source"] == "rho_guess"
+    assert diagnostics["density_validity_gate"] == "passed"
+    stats = mix.runtime_cache_stats()
+    assert stats["density_warm_start_hits"] == 1
+    assert stats["density_warm_start_fallbacks"] == 0
+
+
 def test_activity_coefficient_cache_behavior_distinguishes_aux_cache_from_solvent_override() -> None:
     mix, species, pressure, _, temperature, composition = _ionic_state()
     state = mix.state(T=temperature, x=composition, P=pressure, phase="liq")

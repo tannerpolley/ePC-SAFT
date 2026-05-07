@@ -15,6 +15,7 @@ Use `ePCSAFTMixture` to load parameters and create states.
 - `ePCSAFTMixture.from_params(...)` builds a mixture from a resolved parameter dict.
 - `ePCSAFTMixture.state(...)` creates a new state snapshot from temperature, composition, and either pressure or density.
   Pressure-based states solve and cache density during construction; density-based states still compute pressure on demand.
+- `ePCSAFTMixture.check_density(...)` checks whether an externally supplied density is consistent with a target pressure.
 
 For the current regression basis, see the neutral reference files under `data/reference/pure_component/` in this source checkout.
 
@@ -36,6 +37,35 @@ Use `ePCSAFTState` for point-property calculations.
 - `method_aliases()` returns the canonical short-name map for state methods, and the aliases can be called directly. For example, `ares()` maps to `residual_helmholtz()` and `mures()` maps to `residual_chemical_potential()`.
 - `return_contribution_terms=True` is available on the primitive contribution methods `compressibility_factor()`, `residual_helmholtz()`, `temperature_derivative_residual_helmholtz()`, `residual_chemical_potential()`, and `fugacity_coefficient()`. `composition_derivative_residual_helmholtz()` always returns its structured payload directly.
 - For `fugacity_coefficient(..., return_contribution_terms=True)`, the contribution payload remains in natural-log form under `terms`, while `total` follows the chosen `natural_log` basis. The structured payload also includes `terms_total_natural_log`.
+
+Density closure and repeated calls
+----------------------------------
+
+Use the state constructor to make the density contract explicit:
+
+- `state(T=..., x=..., P=..., phase=...)` solves the EOS pressure-density closure and returns a pressure-consistent state.
+- `state(T=..., x=..., P=..., phase=..., rho_guess=previous_density)` still solves the EOS pressure-density closure, but starts the native density solve from the supplied molar-density guess.
+- `state(T=..., x=..., rho=..., phase=...)` skips the pressure-density solve and evaluates properties at the supplied molar density. This is the fast direct-density path, but it is only pressure-consistent if the supplied density already satisfies the EOS pressure closure.
+- `check_density(T=..., x=..., P=..., rho=..., phase=...)` returns pressure residual diagnostics when you want to audit an external density correlation or a reused density.
+
+For absorber, collocation, and UQ workloads with many nearby fugacity calls, keep batching in the downstream project for now. Reuse accepted densities as `rho_guess` on neighboring pressure states when exact pressure closure is required, or use `rho=...` only when the downstream model intentionally accepts a density-specified approximation.
+
+.. code-block:: python
+
+   previous_rho = None
+   ln_phi = []
+   for T_i, P_i, x_i in rows:
+       state = mixture.state(
+           T=T_i,
+           x=x_i,
+           P=P_i,
+           phase="liq",
+           rho_guess=previous_rho,
+       )
+       previous_rho = state.density()
+       ln_phi.append(state.fugacity_coefficient())
+
+No package-owned MEA/CO2/H2O parameter dataset is implied by these helpers. Use `ePCSAFTMixture.from_dataset(...)` with an external dataset folder when a downstream project owns those parameters.
 
 Activity-coefficient data
 -------------------------

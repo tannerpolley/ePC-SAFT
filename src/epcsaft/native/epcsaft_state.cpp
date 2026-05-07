@@ -179,14 +179,49 @@ const vector<int>& ePCSAFTMixtureNative::pair_nu_anion() const
 }
 
 std::shared_ptr<ePCSAFTStateNative> ePCSAFTMixtureNative::state(double t, vector<double> x, int phase,
-    bool has_p, double p, bool has_rho, double rho)
+    bool has_p, double p, bool has_rho, double rho, bool has_rho_guess, double rho_guess)
 {
-    return std::make_shared<ePCSAFTStateNative>(shared_from_this(), t, std::move(x), phase, has_p, p, has_rho, rho);
+    return std::make_shared<ePCSAFTStateNative>(
+        shared_from_this(), t, std::move(x), phase, has_p, p, has_rho, rho, has_rho_guess, rho_guess
+    );
 }
 
 double ePCSAFTMixtureNative::solve_density(double t, double p, const vector<double>& x, int phase)
 {
     return solve_density_scoped(t, p, x, phase, "");
+}
+
+double ePCSAFTMixtureNative::solve_density_with_guess(
+    double t, double p, const vector<double>& x, int phase, double rho_guess
+)
+{
+    if (!std::isfinite(rho_guess) || rho_guess <= 0.0) {
+        throw ValueError("rho_guess must be finite and positive.");
+    }
+
+    const add_args& cppargs = args_;
+    DensityRootCandidate candidate;
+    double rho_root = 0.0;
+    if (density_root_from_seed_cpp(t, p, x, phase, cppargs, rho_guess, &candidate, &rho_root)) {
+        last_density_diagnostics_ = DensitySolveDiagnostics{};
+        last_density_diagnostics_.warm_start_source = "rho_guess";
+        last_density_diagnostics_.validity_gate = "passed";
+        density_warm_start_hits_ += 1;
+        if (phase == 0) {
+            liquid_density_seed_ = rho_root;
+            liquid_density_seed_valid_ = true;
+        }
+        else if (phase == 1) {
+            vapor_density_seed_ = rho_root;
+            vapor_density_seed_valid_ = true;
+        }
+        return rho_root;
+    }
+
+    density_warm_start_fallbacks_ += 1;
+    double rho = solve_density_scoped(t, p, x, phase, "");
+    last_density_diagnostics_.warm_start_source = "rho_guess_fallback";
+    return rho;
 }
 
 double ePCSAFTMixtureNative::solve_density_scoped(double t, double p, const vector<double>& x, int phase, const std::string& scope)
@@ -344,8 +379,18 @@ size_t ePCSAFTMixtureNative::density_warm_start_fallbacks() const
     return density_warm_start_fallbacks_;
 }
 
-ePCSAFTStateNative::ePCSAFTStateNative(std::shared_ptr<ePCSAFTMixtureNative> mixture, double t, vector<double> x,
-    int phase, bool has_p, double p, bool has_rho, double rho)
+ePCSAFTStateNative::ePCSAFTStateNative(
+    std::shared_ptr<ePCSAFTMixtureNative> mixture,
+    double t,
+    vector<double> x,
+    int phase,
+    bool has_p,
+    double p,
+    bool has_rho,
+    double rho,
+    bool has_rho_guess,
+    double rho_guess
+)
     : mixture_(std::move(mixture)), t_(t), x_(std::move(x)), phase_(phase),
       has_p_(has_p), has_rho_(has_rho), p_(p), rho_(rho),
       pressure_cached_(has_p), density_cached_(has_rho), activity_coefficient_cached_(false)
@@ -360,7 +405,9 @@ ePCSAFTStateNative::ePCSAFTStateNative(std::shared_ptr<ePCSAFTMixtureNative> mix
         throw ValueError("phase must be 0 (liquid) or 1 (vapor).");
     }
     if (pressure_cached_ && !density_cached_) {
-        rho_ = mixture_->solve_density(t_, p_, x_, phase_);
+        rho_ = has_rho_guess
+            ? mixture_->solve_density_with_guess(t_, p_, x_, phase_, rho_guess)
+            : mixture_->solve_density(t_, p_, x_, phase_);
         has_rho_ = true;
         density_cached_ = true;
     }
