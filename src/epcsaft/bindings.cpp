@@ -580,6 +580,54 @@ EquilibriumOptionsNative options_from_request(const py::dict& request) {
     return options;
 }
 
+ElectrolyteBubbleOptionsNative electrolyte_bubble_options_from_request(const py::dict& request) {
+    ElectrolyteBubbleOptionsNative options;
+    if (!request.contains("options") || request["options"].is_none()) {
+        return options;
+    }
+    py::dict input = request["options"].cast<py::dict>();
+    if (input.contains("initial_pressure")) {
+        options.initial_pressure = input["initial_pressure"].cast<double>();
+    }
+    if (input.contains("min_pressure")) {
+        options.min_pressure = input["min_pressure"].cast<double>();
+    }
+    if (input.contains("max_pressure")) {
+        options.max_pressure = input["max_pressure"].cast<double>();
+    }
+    if (input.contains("max_iterations")) {
+        options.max_iterations = input["max_iterations"].cast<int>();
+    }
+    if (input.contains("max_vapor_iterations")) {
+        options.max_vapor_iterations = input["max_vapor_iterations"].cast<int>();
+    }
+    if (input.contains("max_bracket_expansions")) {
+        options.max_bracket_expansions = input["max_bracket_expansions"].cast<int>();
+    }
+    if (input.contains("tolerance")) {
+        options.tolerance = input["tolerance"].cast<double>();
+    }
+    if (input.contains("vapor_tolerance")) {
+        options.vapor_tolerance = input["vapor_tolerance"].cast<double>();
+    }
+    if (input.contains("pressure_factor")) {
+        options.pressure_factor = input["pressure_factor"].cast<double>();
+    }
+    if (input.contains("min_composition")) {
+        options.min_composition = input["min_composition"].cast<double>();
+    }
+    if (input.contains("charge_tolerance")) {
+        options.charge_tolerance = input["charge_tolerance"].cast<double>();
+    }
+    if (input.contains("return_best_effort")) {
+        options.return_best_effort = input["return_best_effort"].cast<bool>();
+    }
+    if (input.contains("initial_y_vap") && !input["initial_y_vap"].is_none()) {
+        options.initial_y_vap = input["initial_y_vap"].cast<std::vector<double>>();
+    }
+    return options;
+}
+
 ChemicalEquilibriumOptionsNative chemical_options_from_request(const py::dict& request) {
     ChemicalEquilibriumOptionsNative options;
     if (!request.contains("options") || request["options"].is_none()) {
@@ -608,6 +656,23 @@ ChemicalEquilibriumOptionsNative chemical_options_from_request(const py::dict& r
         options.phase = input["phase"].cast<std::string>();
     }
     return options;
+}
+
+py::dict solve_electrolyte_bubble_native_binding(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    const py::dict& request
+) {
+    double t = request["T"].cast<double>();
+    std::vector<double> x_liq = request["x_liq"].cast<std::vector<double>>();
+    std::vector<std::string> species = request["species"].cast<std::vector<std::string>>();
+    std::vector<std::string> vapor_species = request["vapor_species"].cast<std::vector<std::string>>();
+    ElectrolyteBubbleOptionsNative options = electrolyte_bubble_options_from_request(request);
+    EquilibriumResultNative result;
+    {
+        py::gil_scoped_release release;
+        result = electrolyte_bubble_pressure_native(mixture, t, x_liq, options, species, vapor_species);
+    }
+    return native_equilibrium_to_dict(result);
 }
 
 py::dict solve_chemical_equilibrium_native_binding(
@@ -1036,5 +1101,6 @@ PYBIND11_MODULE(_core, m) {
     m.def("_fit_generic_native_least_squares", &fit_generic_native_least_squares_binding);
     m.def("_evaluate_generic_native_debug", &evaluate_generic_native_debug_binding);
     m.def("_solve_equilibrium_native", &solve_equilibrium_native_binding);
+    m.def("_solve_electrolyte_bubble_native", &solve_electrolyte_bubble_native_binding);
     m.def("_solve_chemical_equilibrium_native", &solve_chemical_equilibrium_native_binding);
 }

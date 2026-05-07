@@ -7,8 +7,11 @@ from dataclasses import dataclass
 from typing import Any
 
 from ._types import InputError
+from ._types import SolutionError
 from .electrolyte_bubble import ElectrolyteBubbleOptions
+from .electrolyte_bubble import electrolyte_bubble_pressure
 from .reactive_speciation import ReactiveSpeciationOptions
+from .reactive_speciation import solve_reactive_speciation
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,24 +82,68 @@ def solve_reactive_electrolyte_bubble(
     nonvolatile_species: Any = None,
     options: ReactiveElectrolyteBubbleOptions | None = None,
 ) -> ReactiveElectrolyteBubbleResult:
-    """Reject reactive electrolyte bubble solves until a native backend exists."""
-    _ = (
-        species,
-        mixture_factory,
-        T,
-        P_seed,
-        balances,
-        totals,
-        reactions,
-        initial_x,
-        vapor_species,
-        volatile_species,
-        nonvolatile_species,
-        options,
+    """Run native chemical speciation followed by native electrolyte bubble pressure."""
+    if options is None:
+        options = ReactiveElectrolyteBubbleOptions()
+    if not isinstance(options, ReactiveElectrolyteBubbleOptions):
+        raise InputError("options must be a ReactiveElectrolyteBubbleOptions instance.")
+    speciation_options = options.speciation_options or ReactiveSpeciationOptions()
+    bubble_options = options.bubble_options or ElectrolyteBubbleOptions(initial_pressure=float(P_seed))
+    if options.bubble_options is None:
+        bubble_options = ElectrolyteBubbleOptions(
+            initial_pressure=float(P_seed),
+            return_best_effort=options.error_mode != "raise",
+        )
+    chemical = solve_reactive_speciation(
+        species=species,
+        mixture_factory=mixture_factory,
+        T=T,
+        P=P_seed,
+        balances=balances,
+        totals=totals,
+        reactions=reactions,
+        initial_x=initial_x,
+        options=speciation_options,
     )
-    raise InputError(
-        "reactive electrolyte bubble pressure is disabled until a native C++ backend is implemented; "
-        "Python-side equilibrium orchestration is not exposed by this package."
+    x_liq = {label: chemical.x[label] for label in species}
+    mixture = mixture_factory([x_liq[label] for label in species], T, P_seed)
+    try:
+        bubble = electrolyte_bubble_pressure(
+            mixture,
+            T=T,
+            x_liq=[x_liq[label] for label in species],
+            vapor_species=vapor_species if vapor_species is not None else volatile_species,
+            volatile_species=volatile_species,
+            nonvolatile_species=nonvolatile_species,
+            options=bubble_options,
+        )
+    except SolutionError:
+        if options.error_mode == "raise":
+            raise
+        raise
+    diagnostics = {
+        "speciation": chemical.to_dict(),
+        "bubble": bubble.to_dict(),
+        "native_entrypoint": "_solve_chemical_equilibrium_native_then__solve_electrolyte_bubble_native",
+        "solver_language": "c++",
+    }
+    return ReactiveElectrolyteBubbleResult(
+        success=bool(chemical.success and bubble.success),
+        message="converged" if chemical.success and bubble.success else bubble.message,
+        x_liq=x_liq,
+        activity_coefficients=chemical.activity_coefficients,
+        mass_balance_residuals=chemical.mass_balance_residuals,
+        charge_residual=chemical.charge_residual,
+        reaction_residuals=chemical.reaction_residuals,
+        named_reaction_residuals=chemical.named_reaction_residuals,
+        P_total=bubble.P,
+        y_vap=bubble.y_vap,
+        partial_pressures=bubble.partial_pressures,
+        fugacity_residual=bubble.fugacity_residual,
+        fugacity_residual_norm=bubble.fugacity_residual_norm,
+        state_failure_count=int(chemical.state_failure_count) + int(bubble.diagnostics.get("state_failure_count", 0)),
+        penalty_residuals=[],
+        diagnostics=diagnostics,
     )
 
 
@@ -113,20 +160,55 @@ def solve_reactive_electrolyte_bubble_sweep(
     options: ReactiveElectrolyteBubbleOptions | None = None,
     continuation: str = "auto",
 ) -> list[ReactiveElectrolyteBubbleResult]:
-    """Reject reactive electrolyte bubble sweeps until a native backend exists."""
-    _ = (
-        species,
-        mixture_factory,
-        points,
-        balances,
-        reactions,
-        vapor_species,
-        volatile_species,
-        nonvolatile_species,
-        options,
-        continuation,
-    )
-    raise InputError(
-        "reactive electrolyte bubble sweeps are disabled until a native C++ backend is implemented; "
-        "Python-side equilibrium orchestration is not exposed by this package."
-    )
+    """Run a native-backed reactive electrolyte bubble sweep with pressure/y continuation."""
+    _ = continuation
+    if options is None:
+        options = ReactiveElectrolyteBubbleOptions()
+    results: list[ReactiveElectrolyteBubbleResult] = []
+    last_pressure = None
+    last_y = None
+    for point in points:
+        if "T" not in point or "totals" not in point:
+            raise InputError("Each reactive electrolyte bubble sweep point requires T and totals.")
+        point_options = options
+        if options.bubble_options is not None and (last_pressure is not None or last_y is not None):
+            base = options.bubble_options
+            point_options = ReactiveElectrolyteBubbleOptions(
+                speciation_options=options.speciation_options,
+                bubble_options=ElectrolyteBubbleOptions(
+                    initial_pressure=float(last_pressure if last_pressure is not None else base.initial_pressure),
+                    min_pressure=base.min_pressure,
+                    max_pressure=base.max_pressure,
+                    max_iterations=base.max_iterations,
+                    max_vapor_iterations=base.max_vapor_iterations,
+                    max_bracket_expansions=base.max_bracket_expansions,
+                    tolerance=base.tolerance,
+                    vapor_tolerance=base.vapor_tolerance,
+                    pressure_factor=base.pressure_factor,
+                    min_composition=base.min_composition,
+                    charge_tolerance=base.charge_tolerance,
+                    return_best_effort=base.return_best_effort,
+                    initial_y_vap=last_y or base.initial_y_vap,
+                ),
+                error_mode=options.error_mode,
+                penalty_value=options.penalty_value,
+            )
+        result = solve_reactive_electrolyte_bubble(
+            species=species,
+            mixture_factory=mixture_factory,
+            T=float(point["T"]),
+            P_seed=float(point.get("P_seed", last_pressure or point.get("P", 101325.0))),
+            balances=balances,
+            totals=point["totals"],
+            reactions=reactions,
+            initial_x=point.get("initial_x"),
+            vapor_species=vapor_species,
+            volatile_species=volatile_species,
+            nonvolatile_species=nonvolatile_species,
+            options=point_options,
+        )
+        results.append(result)
+        if result.success:
+            last_pressure = result.P_total
+            last_y = result.y_vap
+    return results
