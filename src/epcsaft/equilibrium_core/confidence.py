@@ -980,10 +980,11 @@ def _all_tielines_plot(path: Path, predictions: Sequence[BenchmarkPrediction]) -
     fig.savefig(path.with_suffix(".svg"))
     plt.close(fig)
     _write_csv(
-        path.parent / f"{path.stem}_plot_data.csv",
+        path.parent / f"{path.stem}.csv",
         ["case_key", "figure", "tie_line", "point_type", "status", "x_water", "x_ethanol", "x_isobutanol", "x_nacl"],
         rows,
     )
+    _write_mpl_style_contract(path, "Khudaida 2026 electrolyte LLE tie-lines and native result status")
 
 
 def _tieline_plot_row(
@@ -1008,7 +1009,30 @@ def _write_plot_data(path: Path, series_rows: Sequence[tuple[str, Sequence[str],
     for series, labels, values in series_rows:
         for label, value in zip(labels, values):
             rows.append({"plot": path.name, "series": series, "label": label, "value": value})
-    _write_csv(path.parent / f"{path.stem}_plot_data.csv", ["plot", "series", "label", "value"], rows)
+    _write_csv(path.parent / f"{path.stem}.csv", ["plot", "series", "label", "value"], rows)
+    _write_mpl_style_contract(path, "")
+
+
+def _write_mpl_style_contract(path: Path, title: str) -> None:
+    style_path = path.parent / f"{path.stem}.mpl.yaml"
+    if style_path.exists():
+        return
+    style_path.write_text(
+        "\n".join(
+            [
+                "# Matplotlib plot-set style contract.",
+                "# Edit this sidecar, then rerun the owning confidence workflow.",
+                "figure:",
+                f'  file: "{path.name}"',
+                f'  format: "{path.suffix.lstrip(".")}"',
+                "axes:",
+                "  - index: 0",
+                f'    title: "{title}"',
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
 
 
 def _write_gallery_copies(report: ConfidenceReport) -> None:

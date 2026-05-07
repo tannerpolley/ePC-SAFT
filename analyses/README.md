@@ -16,14 +16,15 @@ analyses/<short_id>/
     processed/
   results/
     runs/
-    final/
-      figures/
-      tables/
-      reports/
+    <plot_set>/
+      <plot_set>.csv
+      <plot_set>.svg
+      <plot_set>.png
+      <plot_set>.mpl.yaml
   notebooks/
   tests/
 ```
 
 Only create optional folders when the analysis needs them. Stable literature inputs that are reused by multiple analyses belong under `data/reference/`; analysis-specific inputs stay local under `analyses/<short_id>/data/input/` or beside the figure script when the current workflow has not yet been normalized.
 
-Generated run payloads belong under `results/runs/` and are ignored. Curated final figures, tables, and reports belong under `results/final/`. The package-level `scripts/` directory is reserved for repo tooling such as builds, validation, data curation, packaging, and docs.
+Generated run payloads belong under `results/runs/` and are ignored. Curated plot-producing outputs belong under `results/<plot_set>/`, with the figure, exact plotted data snapshot, and `<plot_set>.mpl.yaml` sidecar in the same folder so `mplgallery` can discover plot sets directly. The package-level `scripts/` directory is reserved for repo tooling such as builds, validation, data curation, packaging, and docs.

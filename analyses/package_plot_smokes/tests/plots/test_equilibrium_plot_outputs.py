@@ -35,7 +35,7 @@ def _ascani_electrolyte_lle_result() -> tuple[epcsaft.ePCSAFTMixture, epcsaft.Eq
     return mix, result
 
 
-def test_equilibrium_vle_composition_plot_is_written_to_gallery() -> None:
+def test_equilibrium_vle_composition_plot_is_written_to_plot_set() -> None:
     mix = hydrocarbon_basis_mixture()
     result = mix.equilibrium(kind="tp_flash", T=220.0, P=1.0e5, z=[0.1, 0.3, 0.6])
     liquid, vapor = result.phases
@@ -127,7 +127,7 @@ def test_equilibrium_vle_residual_closure_plot() -> None:
     )
 
 
-def test_equilibrium_lle_tie_line_plot_is_written_to_gallery() -> None:
+def test_equilibrium_lle_tie_line_plot_is_written_to_plot_set() -> None:
     mix = methanol_cyclohexane_mixture()
     feed = np.asarray([0.45, 0.55], dtype=float)
     result = mix.equilibrium(

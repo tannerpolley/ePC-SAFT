@@ -6,6 +6,5 @@ package: epcsaft
 commands:
   validate: uv run python analyses/osmotic_validation/scripts/validation_2014_repro.py
 outputs:
-  figures: results/final/figures
-  tables: results/final/tables
-  reports: results/final/reports
+  plot_sets: results/<plot_set>
+  runs: results/runs

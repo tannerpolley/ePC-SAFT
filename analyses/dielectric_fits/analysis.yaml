@@ -7,6 +7,5 @@ commands:
   fit_plot: uv run python analyses/dielectric_fits/scripts/dielc_fit.py
   derivative_plot: uv run python analyses/dielectric_fits/scripts/dielc_diff.py
 outputs:
-  figures: results/final/figures
-  tables: results/final/tables
-  reports: results/final/reports
+  plot_sets: results/<plot_set>
+  runs: results/runs

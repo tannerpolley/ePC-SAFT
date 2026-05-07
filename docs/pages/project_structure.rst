@@ -42,10 +42,11 @@ Use this layout for new analyses:
        processed/
      results/
        runs/
-       final/
-         figures/
-         tables/
-         reports/
+       <plot_set>/
+         <plot_set>.csv
+         <plot_set>.svg
+         <plot_set>.png
+         <plot_set>.mpl.yaml
      notebooks/
      tests/
 
@@ -68,8 +69,18 @@ Output Policy
 Generated outputs use ``results/``:
 
 - ``results/runs/`` for ignored run-specific payloads, logs, sweeps, and exploratory output
-- ``results/final/figures/`` for curated PNG/SVG/PDF figures
-- ``results/final/tables/`` for final CSV/Parquet/Excel tables
-- ``results/final/reports/`` for final Markdown/HTML/text diagnostics and reports
+- ``results/<plot_set>/`` for curated plot sets that are intentionally retained
+
+Each curated plot set keeps the figure, exact plotted data snapshot, and editable Matplotlib sidecar together:
+
+.. code-block:: text
+
+   results/response_curve/
+     response_curve.csv
+     response_curve.svg
+     response_curve.png
+     response_curve.mpl.yaml
+
+Use one meaningful plot-set folder per figure or figure family. This layout is designed so external tools such as ``mplgallery`` can discover analysis-owned plots directly without a package-owned gallery index, server, or manifest.
 
 Do not add new gallery index, server, or manifest workflows to this package. External visualization tools should discover analysis-owned assets directly.

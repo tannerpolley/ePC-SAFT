@@ -7,6 +7,5 @@ commands:
   generate_data: uv run python analyses/<short_id>/scripts/generate_data.py
   render_plots: uv run python analyses/<short_id>/scripts/plot_results.py
 outputs:
-  figures: results/final/figures
-  tables: results/final/tables
-  reports: results/final/reports
+  plot_sets: results/<plot_set>
+  runs: results/runs

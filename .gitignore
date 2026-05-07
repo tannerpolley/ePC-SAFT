@@ -25,7 +25,7 @@ analyses/**/logs/
 analyses/**/.ipynb_checkpoints/
 analyses/**/data/interim/
 analyses/**/data/raw/large/
-analyses/**/results/final/_draft/
+analyses/**/results/**/_draft/
 docs/latex/out/
 data/MIAC/*/plot_fits/
 data/reference/MIAC/*/plot_fits/

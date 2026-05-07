@@ -17,6 +17,7 @@ FITS_CATEGORY_ROOTS = {
 }
 TEST_PLOTS_ANALYSIS_ROOT = ANALYSES_ROOT / "package_plot_smokes"
 RESULTS_DIR_NAME = "results"
+RUNS_DIR_NAME = "runs"
 
 
 def _clean_analysis_name(name: str) -> str:
@@ -46,41 +47,92 @@ def _relative_script_parts(source_path: str | Path) -> list[str]:
     return [part for part in relative.parts if part not in ("", ".")]
 
 
-def analysis_final_dir(source_path: str | Path, category: str = "figures") -> Path:
-    analysis_root = _analysis_root_for(source_path)
-    rel_parts = _relative_script_parts(source_path)
-    target = analysis_root / RESULTS_DIR_NAME / "final" / category
-    if rel_parts:
-        target = target.joinpath(*rel_parts)
+def _is_placeholder_filename(filename: str | Path) -> bool:
+    return Path(filename).stem.startswith("_placeholder")
+
+
+def _plot_set_dir(root: Path, parts: Iterable[str | Path], filename: str | Path | None = None) -> Path:
+    clean_parts: list[str] = []
+    for raw_part in parts:
+        part = Path(raw_part)
+        if part.is_absolute():
+            raise ValueError(f"plot-set path part must be relative: {raw_part}")
+        for path_part in part.parts:
+            if path_part in ("", "."):
+                continue
+            if path_part == "..":
+                raise ValueError(f"plot-set path part cannot contain '..': {raw_part}")
+            clean_parts.append(path_part)
+
+    if filename is not None and not _is_placeholder_filename(filename):
+        stem = Path(filename).stem
+        if stem and (not clean_parts or clean_parts[-1] != stem):
+            clean_parts.append(stem)
+
+    target = root / RESULTS_DIR_NAME
+    if clean_parts:
+        target = target.joinpath(*clean_parts)
     target.mkdir(parents=True, exist_ok=True)
     return target
 
 
+def analysis_plot_set_dir(
+    source_path: str | Path,
+    filename: str | Path | None = None,
+    *,
+    category: str | Path | Iterable[str | Path] | None = None,
+) -> Path:
+    analysis_root = _analysis_root_for(source_path)
+    if category is None:
+        plot_set_parts: list[str | Path] = _relative_script_parts(source_path)
+    elif isinstance(category, (str, Path)):
+        plot_set_parts = [category]
+    else:
+        plot_set_parts = list(category)
+    return _plot_set_dir(analysis_root, plot_set_parts, filename)
+
+
+def analysis_final_dir(source_path: str | Path, category: str = "figures") -> Path:
+    """Compatibility alias for analysis-owned curated result directories.
+
+    New analysis outputs should use ``results/<plot_set>/`` folders. This
+    legacy-named helper now maps to a plot-set-like directory under
+    ``results/<category>/`` instead of ``results/final/<category>/``.
+    """
+
+    return analysis_plot_set_dir(source_path, category=category)
+
+
 def analysis_final_path(source_path: str | Path, filename: str | Path, category: str = "figures") -> Path:
-    return analysis_final_dir(source_path, category=category) / Path(filename)
+    return analysis_plot_set_dir(source_path, filename=filename, category=category) / Path(filename)
 
 
 def paper_validation_path(source_path: str | Path, filename: str | None = None) -> Path:
     source = Path(source_path).resolve()
-    target = analysis_final_path(source, filename if filename is not None else source.name, category="figures")
+    target = analysis_plot_set_dir(source, filename if filename is not None else source.name) / Path(
+        filename if filename is not None else source.name
+    )
     target.parent.mkdir(parents=True, exist_ok=True)
     return target
 
 
 def paper_validation_dir(source_path: str | Path) -> Path:
-    return analysis_final_dir(source_path, category="reports")
+    return analysis_plot_set_dir(source_path)
 
 
 def paper_validation_output_path(path: str | Path) -> Path:
     source = Path(path).resolve()
-    suffix = source.suffix.lower()
-    category = "figures" if suffix in {".png", ".svg", ".pdf"} else "tables"
     if source.is_relative_to(ANALYSES_ROOT):
-        return analysis_final_path(source.parent, source.name, category=category)
+        if RESULTS_DIR_NAME in source.parts:
+            target = source
+        else:
+            target = analysis_plot_set_dir(source.parent, source.name) / source.name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        return target
     if RESULTS_DIR_NAME in source.parts:
         target = source
     else:
-        target = source.parent / RESULTS_DIR_NAME / "final" / category / source.name
+        target = _plot_set_dir(source.parent, [source.stem], source.name) / source.name
     target.parent.mkdir(parents=True, exist_ok=True)
     return target
 
@@ -88,8 +140,15 @@ def paper_validation_output_path(path: str | Path) -> Path:
 def fits_plot_path(*parts: str | Path) -> Path:
     raw_parts = [str(part) for part in parts]
     analysis_root = FITS_CATEGORY_ROOTS.get(raw_parts[0], FITS_ANALYSIS_ROOT) if raw_parts else FITS_ANALYSIS_ROOT
-    target = analysis_root / RESULTS_DIR_NAME / "final" / "figures"
-    target = target.joinpath(*raw_parts)
+    if raw_parts and Path(raw_parts[-1]).suffix:
+        filename = Path(raw_parts[-1])
+        plot_set_parts = raw_parts[:-1]
+        if _is_placeholder_filename(filename):
+            target = _plot_set_dir(analysis_root, plot_set_parts) / filename
+        else:
+            target = _plot_set_dir(analysis_root, plot_set_parts, filename) / filename
+    else:
+        target = _plot_set_dir(analysis_root, raw_parts)
     target.parent.mkdir(parents=True, exist_ok=True)
     return target
 
@@ -124,9 +183,8 @@ def test_plot_path(
     category: str | Path | Iterable[str | Path] | None = None,
 ) -> Path:
     category_parts = _test_plot_category_parts(category)
-    root = TEST_PLOTS_ANALYSIS_ROOT / RESULTS_DIR_NAME / "final" / "figures"
     if category_parts is not None:
-        target = root.joinpath(*category_parts) / Path(filename)
+        target = _plot_set_dir(TEST_PLOTS_ANALYSIS_ROOT, [*category_parts], filename) / Path(filename)
         target.parent.mkdir(parents=True, exist_ok=True)
         return target
 
@@ -142,19 +200,24 @@ def test_plot_path(
         if module_name.startswith("test_"):
             module_name = module_name.removeprefix("test_")
         rel_parts = [*rel_parts[:-1], module_name]
-    target = root.joinpath(*rel_parts) / Path(filename)
+    target = _plot_set_dir(TEST_PLOTS_ANALYSIS_ROOT, rel_parts, filename) / Path(filename)
     target.parent.mkdir(parents=True, exist_ok=True)
     return target
 
 
 def plot_data_path(image_path: str | Path) -> Path:
     image = Path(image_path)
-    return image.parent / f"{image.stem}_plot_data.csv"
+    return image.parent / f"{image.stem}.csv"
 
 
 def plot_svg_path(image_path: str | Path) -> Path:
     image = Path(image_path)
     return image.with_suffix(".svg")
+
+
+def plot_style_path(image_path: str | Path) -> Path:
+    image = Path(image_path)
+    return image.parent / f"{image.stem}.mpl.yaml"
 
 
 def _strip_trailing_whitespace(path: Path) -> None:
@@ -163,6 +226,43 @@ def _strip_trailing_whitespace(path: Path) -> None:
     if text.endswith("\n"):
         normalized += "\n"
     path.write_text(normalized, encoding="utf-8", newline="\n")
+
+
+def _yaml_scalar(value: Any) -> str:
+    text = "" if value is None else str(value)
+    return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def write_mpl_style_contract(fig: Any, image_path: str | Path) -> Path:
+    image = Path(image_path)
+    path = plot_style_path(image)
+    axes_blocks: list[str] = []
+    for index, ax in enumerate(getattr(fig, "axes", [])):
+        axes_blocks.extend(
+            [
+                f"  - index: {index}",
+                f"    title: {_yaml_scalar(ax.get_title() if hasattr(ax, 'get_title') else '')}",
+                f"    xlabel: {_yaml_scalar(ax.get_xlabel() if hasattr(ax, 'get_xlabel') else '')}",
+                f"    ylabel: {_yaml_scalar(ax.get_ylabel() if hasattr(ax, 'get_ylabel') else '')}",
+            ]
+        )
+    if not axes_blocks:
+        axes_blocks.append("  []")
+
+    content = [
+        "# Matplotlib plot-set style contract.",
+        "# Edit this sidecar, then rerun the owning render script.",
+        "figure:",
+        f"  file: {_yaml_scalar(image.name)}",
+        "  format: " + _yaml_scalar(image.suffix.lstrip(".")),
+        "axes:",
+        *axes_blocks,
+        "",
+    ]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        path.write_text("\n".join(content), encoding="utf-8", newline="\n")
+    return path
 
 
 def _format_cell(value: Any) -> str:
@@ -398,4 +498,5 @@ def save_plot_figure(
         fig.savefig(svg_path, format="svg", **svg_kwargs)
         _strip_trailing_whitespace(svg_path)
     export_plot_data(fig, output_path)
+    write_mpl_style_contract(fig, output_path)
     return output_path

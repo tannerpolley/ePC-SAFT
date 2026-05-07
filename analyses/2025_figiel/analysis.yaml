@@ -6,6 +6,5 @@ package: epcsaft
 commands:
   validate: uv run python analyses/2025_figiel/scripts/validate_figure_data.py
 outputs:
-  figures: results/final/figures
-  tables: results/final/tables
-  reports: results/final/reports
+  plot_sets: results/<plot_set>
+  runs: results/runs

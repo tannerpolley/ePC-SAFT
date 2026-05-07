@@ -53,6 +53,20 @@ def test_old_gallery_and_script_roots_are_not_tracked() -> None:
 def test_generated_output_roots_are_not_tracked_in_analyses() -> None:
     tracked = _tracked_files("analyses")
     stale = [
-        path for path in tracked if "/out/" in path.replace("\\", "/") or "/results/runs/" in path.replace("\\", "/")
+        path
+        for path in tracked
+        if "/out/" in path.replace("\\", "/")
+        or "/results/runs/" in path.replace("\\", "/")
+        or "/results/final/" in path.replace("\\", "/")
     ]
     assert stale == []
+
+
+def test_analysis_metadata_uses_plot_set_outputs() -> None:
+    tracked = _tracked_files("analyses")
+    metadata_files = [REPO_ROOT / path for path in tracked if path.endswith("/analysis.yaml")]
+    assert metadata_files
+    for path in metadata_files:
+        text = path.read_text(encoding="utf-8")
+        assert "plot_sets: results/<plot_set>" in text, path
+        assert "results/final" not in text, path

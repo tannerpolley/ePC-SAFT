@@ -1,0 +1,10 @@
+# Matplotlib plot-set style contract.
+# Edit this sidecar, then rerun the owning render script.
+figure:
+  file: "figure_2.png"
+  format: "png"
+axes:
+  - index: 0
+    title: "Baygi 2015 Figure 2: pure MEA saturation"
+    xlabel: "saturated liquid density, $\\rho^L_{sat}$ / kg m$^{-3}$"
+    ylabel: "saturated vapor pressure, $p_{sat}$ / kPa"

@@ -6,6 +6,5 @@ package: epcsaft
 commands:
   run_all: uv run python analyses/2026_khudaida/scripts/run_all.py
 outputs:
-  figures: results/final/figures
-  tables: results/final/tables
-  reports: results/final/reports
+  plot_sets: results/<plot_set>
+  runs: results/runs

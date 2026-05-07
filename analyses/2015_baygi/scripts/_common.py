@@ -86,7 +86,7 @@ def output_path(path: Path) -> Path:
 
 
 def baygi_output_root() -> Path:
-    return ROOT.parent / "results" / "final" / "tables"
+    return ROOT.parent / "results" / "regressed_parameters"
 
 
 def regressed_parameters_path() -> Path:
@@ -108,7 +108,7 @@ def read_csv_rows(path: Path) -> list[dict[str, str]]:
 
 
 def _figure_data_result_path(figure: str, filename: str) -> Path:
-    return ROOT.parent / "results" / "final" / "figures" / figure / "data" / filename
+    return ROOT.parent / "results" / figure / "data" / filename
 
 
 def _diagnostics_cache_candidates(preferred_path: Path) -> list[Path]:

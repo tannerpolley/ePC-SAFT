@@ -7,6 +7,5 @@ commands:
   validate: uv run python analyses/miac_fits/scripts/validate_miac_fits.py
   profile: uv run python analyses/miac_fits/scripts/profile_miac_runtime.py
 outputs:
-  figures: results/final/figures
-  tables: results/final/tables
-  reports: results/final/reports
+  plot_sets: results/<plot_set>
+  runs: results/runs
