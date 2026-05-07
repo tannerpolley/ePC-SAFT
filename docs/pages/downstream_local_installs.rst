@@ -1,0 +1,89 @@
+Downstream Local Installs
+=========================
+
+This page is for downstream projects that depend on a local ePC-SAFT checkout through a uv path dependency, for example:
+
+.. code-block:: toml
+
+   dependencies = [
+       "epcsaft @ file:///C:/Users/Tanner/Documents/git/ePC-SAFT",
+   ]
+
+Recommended downstream loop
+---------------------------
+
+Install or refresh the local package once, then run downstream checks without implicit sync:
+
+.. code-block:: powershell
+
+   $env:UV_CACHE_DIR = "$PWD\.uv-cache"
+   uv sync --reinstall-package epcsaft
+   uv run --no-sync python -m unittest tests.test_epcsaft_ionic -v
+   uv run --no-sync python -m MEA.epcsaft_ionic.smoke
+
+Use ``uv run --no-sync`` after a known-good install because ordinary ``uv run`` is allowed to sync the environment. For a local native path dependency, that sync can rebuild ePC-SAFT when the downstream goal is only to run a smoke test.
+
+Do not start multiple downstream ``uv run`` commands in parallel until the reinstall has completed. If parallel checks are needed, run the reinstall once first, then use ``uv run --no-sync`` for every parallel check.
+
+Build directory behavior
+------------------------
+
+PEP 517 wheel builds use an isolated temporary native build directory by default. This avoids repeated downstream path installs writing into the shared source checkout ``build/`` tree, which is the common source of Windows ``_core*.pyd`` lock races.
+
+If you intentionally want a persistent build directory for a downstream reinstall, set:
+
+.. code-block:: powershell
+
+   $env:EPCSAFT_PEP517_BUILD_DIR = "$PWD\.uv-cache\epcsaft-build"
+   uv sync --reinstall-package epcsaft
+
+For normal ePC-SAFT source development, keep using the explicit in-place dev build:
+
+.. code-block:: powershell
+
+   uv run python scripts\build_epcsaft.py
+   uv run python scripts\build_epcsaft.py --build-only --parallel 10
+
+New dev build configurations prefer Ninja when available. Existing ``build/dev`` trees keep their configured generator until you run the coordinated repair command ``uv run python scripts\build_epcsaft.py --clean``.
+
+Windows ``_core`` lock failures
+-------------------------------
+
+If a build reports ``Permission denied`` while writing ``_core*.pyd``, a Python process is usually still importing the extension. Stop downstream tests, Python REPLs, IDE runs, and parallel workers that imported ``epcsaft._core``. Then run exactly one reinstall/build command before starting checks again.
+
+Runtime metadata
+----------------
+
+Downstream projects can confirm which package source they are using:
+
+.. code-block:: python
+
+   import epcsaft
+
+   print(epcsaft.__version__)
+   print(epcsaft.__git_commit__)
+   print(epcsaft.runtime_build_info())
+
+``runtime_build_info()`` reports package version, source path/commit when discoverable, native extension path, Python version, and platform information.
+
+Capability discovery
+--------------------
+
+Use ``capabilities()`` before wiring high-level downstream workflows:
+
+.. code-block:: python
+
+   import epcsaft
+
+   caps = epcsaft.capabilities()
+   assert caps["equilibrium"]["neutral_tp_flash"]["available"]
+   assert not caps["equilibrium"]["electrolyte_bubble_pressure"]["available"]
+
+Native neutral TP flash, neutral LLE, electrolyte LLE, reactive speciation, and native regression helpers are available. Electrolyte bubble pressure and reactive electrolyte bubble pressure are placeholders until their native C++ backends exist.
+
+MEA benchmark scope
+-------------------
+
+``fit_mea_co2_h2o_electrolyte(...)`` is a fixed-composition native benchmark helper. It is useful for checking electrolyte pure-parameter regression plumbing, provenance, bounds, and native objective behavior.
+
+It is not reactive bubble-pressure fitting. Fixed-liquid fugacity-coefficient residuals should not be interpreted as a full MEA absorber VLE regression objective, especially when fitted values hit bounds or residuals remain large.

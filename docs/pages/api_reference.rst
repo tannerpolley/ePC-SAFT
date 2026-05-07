@@ -33,6 +33,13 @@ Activity results
    :undoc-members:
    :no-index:
 
+Runtime metadata
+----------------
+
+.. autofunction:: epcsaft.runtime_build_info
+
+.. autofunction:: epcsaft.capabilities
+
 Equilibrium and speciation
 --------------------------
 

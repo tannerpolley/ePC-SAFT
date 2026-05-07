@@ -33,8 +33,11 @@ def main(argv: list[str] | None = None) -> int:
 
     package_path = Path(package.__file__).resolve()
     core_path = Path(core.__file__).resolve()
+    build_info = package.runtime_build_info()
     print(f"epcsaft package: {package_path}")
     print(f"epcsaft._core: {core_path}")
+    print(f"version: {build_info['package_version']}")
+    print(f"source_git_commit: {build_info['source_git_commit']}")
     print("status: ok")
     return 0
 

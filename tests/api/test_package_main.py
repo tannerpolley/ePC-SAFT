@@ -17,6 +17,8 @@ def test_python_m_epcsaft_reports_package_and_core_status(capsys) -> None:
     assert exit_code == 0
     assert "epcsaft package:" in output
     assert "epcsaft._core:" in output
+    assert "version:" in output
+    assert "source_git_commit:" in output
     assert "status: ok" in output
 
 

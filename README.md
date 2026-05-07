@@ -29,9 +29,9 @@ Direct pytest also works, for example `uv run python -m pytest tests\api\test_ru
 The default source-checkout validation sequence is sync, normal native build, then `uv run python scripts\validate_project.py quick`. Use `uv run python scripts\validate_project.py confidence` before handoff when runtime confidence matters.
 
 For maintainers, the [development workflow guide](docs/pages/development_workflows.rst) is the source-of-truth command matrix for setup, fast rebuilds, focused tests, profiling, packaging, and repair-only cleanup. The [project structure guide](docs/pages/project_structure.rst) explains where package code, reusable reference data, and analysis workflows belong.
-For downstream projects that hit suspected package bugs, use the [downstream dependency protocol](docs/pages/downstream_dependency_protocol.rst) to file a complete GitHub issue and validation command.
+For downstream projects that install this checkout as a uv path dependency, use the [downstream local install guide](docs/pages/downstream_local_installs.rst). For suspected package bugs, use the [downstream dependency protocol](docs/pages/downstream_dependency_protocol.rst) to file a complete GitHub issue and validation command.
 
-GitHub Actions are intentionally lightweight while this package is still in local development. Pushes and pull requests run a Windows wheel install smoke test only. Full Linux/macOS/Windows wheel and sdist packaging checks are available as a manual workflow dispatch when release confidence is needed.
+GitHub Actions are intentionally lightweight while this package is still in local development. Pull requests run a fast workflow/package contract smoke; pushes to `main` run the Windows wheel install smoke. Full Linux/macOS/Windows wheel and sdist packaging checks are available as a manual workflow dispatch when release confidence is needed.
 
 For the standard validation loops:
 
@@ -95,7 +95,7 @@ print(state.ares(return_contribution_terms=True)["terms"]["hc"])
 
 ## Public API
 
-The main entry points are `ePCSAFTMixture`, `ePCSAFTState`, `create_parameter_template`, `fit_pure_neutral(...)`, `fit_pure_ion(...)`, `fit_binary_pair(...)`, `fit_mea_co2_h2o_electrolyte(...)`, `solve_reactive_speciation(...)`, and the structured result objects returned by solver-style methods.
+The main entry points are `ePCSAFTMixture`, `ePCSAFTState`, `create_parameter_template`, `fit_pure_neutral(...)`, `fit_pure_ion(...)`, `fit_binary_pair(...)`, `fit_mea_co2_h2o_electrolyte(...)`, `solve_reactive_speciation(...)`, `runtime_build_info()`, `capabilities()`, and the structured result objects returned by solver-style methods.
 
 `create_parameter_template(...)` creates a blank dataset folder with the expected `pure/`, `mixed/`, and `user_options.json` layout. After you fill in the files, `ePCSAFTMixture.from_dataset(...)` can load the folder path you created yourself.
 
@@ -107,6 +107,7 @@ Homogeneous reaction chemistry is available through `solve_reactive_speciation(.
 
 - [Start here](docs/pages/README.rst)
 - [Getting started](docs/pages/getting_started.rst)
+- [Downstream local installs](docs/pages/downstream_local_installs.rst)
 - [Development workflow guide](docs/pages/development_workflows.rst)
 - [Create your own parameter folder](docs/pages/user_parameter_templates.rst)
 - [Parameter regression guide](docs/pages/parameter_regression.rst)

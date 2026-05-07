@@ -19,6 +19,25 @@ def test_package_exports_are_available():
     assert hasattr(epcsaft, "ePCSAFTMixture")
     assert hasattr(epcsaft, "ePCSAFTState")
     assert hasattr(epcsaft, "ActivityCoefficientResult")
+    assert isinstance(epcsaft.__version__, str)
+    assert epcsaft.__version__ != "0+unknown"
+    assert isinstance(epcsaft.__git_commit__, str)
+    assert callable(epcsaft.runtime_build_info)
+    assert callable(epcsaft.capabilities)
+
+
+def test_runtime_build_info_and_capabilities_are_json_like():
+    info = epcsaft.runtime_build_info()
+    assert info["package_version"] == epcsaft.__version__
+    assert "source_git_commit" in info
+    assert info["native_extension_available"] is True
+
+    capabilities = epcsaft.capabilities()
+    assert capabilities["native_extension"] is True
+    assert capabilities["equilibrium"]["neutral_tp_flash"]["available"] is True
+    assert capabilities["equilibrium"]["electrolyte_bubble_pressure"]["available"] is False
+    assert capabilities["equilibrium"]["reactive_electrolyte_bubble"]["available"] is False
+    assert capabilities["regression"]["pure_neutral"]["backend"] == "native"
 
 
 def test_from_params_rejects_legacy_electrolyte_keys():
