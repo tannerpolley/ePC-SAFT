@@ -43,9 +43,20 @@ Runtime metadata
 Equilibrium and speciation
 --------------------------
 
-``ePCSAFTMixture.equilibrium(kind="electrolyte_bubble_pressure", ...)`` is a
-native-backend placeholder. It raises ``InputError`` until a C++ electrolyte
-bubble-pressure backend exists; Python equilibrium solvers are not exposed.
+Explicit mixture methods are preferred for new code: ``flash_tp(...)``,
+``lle_tp(...)``, ``stability_tp(...)``, ``bubble_p(...)``, ``bubble_t(...)``,
+``dew_p(...)``, ``dew_t(...)``, ``electrolyte_lle_tp(...)``,
+``electrolyte_stability_tp(...)``, ``electrolyte_bubble_p(...)``,
+``chemical_equilibrium(...)``, and ``reactive_staged_equilibrium(...)``.
+The string-dispatched ``ePCSAFTMixture.equilibrium(kind=...)`` API remains
+supported and routes through the explicit methods.
+
+``ePCSAFTMixture.equilibrium(kind="electrolyte_bubble_pressure", ...)`` uses the
+native backend for fixed-liquid electrolyte bubble-pressure solves. Its current
+scope keeps ions liquid-only and permits neutral vapor species.
+``solve_reactive_electrolyte_bubble(...)`` and the matching sweep helper first
+run native chemical speciation, then call the same native fixed-liquid
+electrolyte bubble-pressure workflow.
 
 .. autoclass:: epcsaft.ElectrolyteBubbleOptions
    :members:

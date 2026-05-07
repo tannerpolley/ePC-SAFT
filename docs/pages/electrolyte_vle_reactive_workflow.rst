@@ -10,10 +10,12 @@ inputs, build request payloads, validate units and compositions, and convert
 native payloads into structured result objects, but it must not contain
 production nonlinear equilibrium or regression optimizers.
 
-Consequently, electrolyte bubble-pressure and composed reactive electrolyte
-bubble-pressure entry points are currently disabled. Their public option and
-result classes remain as stable contract placeholders, but calls raise
-``InputError`` until the corresponding native C++ backend exists.
+Electrolyte bubble-pressure and composed reactive electrolyte bubble-pressure
+entry points are available as scoped native workflows. The electrolyte
+bubble-pressure route solves fixed-liquid pressure with ions kept liquid-only
+and neutral vapor species allowed. The reactive route performs native chemical
+speciation first, then passes the speciated liquid composition into that same
+fixed-liquid bubble-pressure solve.
 
 Homogeneous reactive speciation
 -------------------------------
@@ -92,15 +94,19 @@ can inspect the chemical-equilibrated feed used for tangent-plane-distance
 analysis. This route is a native stability/handoff coordinator, not a full
 rigorous reactive flash solver.
 
-Disabled native placeholders
-----------------------------
+Scoped native bubble-pressure workflows
+---------------------------------------
 
-These entry points are intentionally unavailable until implemented in C++:
+These entry points are available as scoped native workflows:
 
 - ``mixture.equilibrium(kind="electrolyte_bubble_pressure", ...)``
 - ``epcsaft.solve_reactive_electrolyte_bubble(...)``
 - ``epcsaft.solve_reactive_electrolyte_bubble_sweep(...)``
 - ``mixture.equilibrium_sweep(kind="reactive_electrolyte_bubble_pressure", ...)``
 
-They raise ``InputError`` instead of falling back to a Python pressure,
-speciation, or regression loop.
+The electrolyte bubble-pressure route solves fixed-liquid electrolyte bubble
+pressure with ions kept liquid-only and neutral vapor species allowed. The
+reactive route performs native chemical speciation first, then passes the
+speciated liquid composition into the same native fixed-liquid bubble-pressure
+workflow. These paths do not fall back to Python pressure, speciation, or
+regression loops.

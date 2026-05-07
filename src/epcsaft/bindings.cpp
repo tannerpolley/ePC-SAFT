@@ -688,6 +688,12 @@ py::dict solve_chemical_equilibrium_native_binding(
     std::vector<double> reaction_stoichiometry = request["reaction_stoichiometry"].cast<std::vector<double>>();
     int reaction_rows = request["reaction_rows"].cast<int>();
     std::vector<double> log_equilibrium_constants = request["log_equilibrium_constants"].cast<std::vector<double>>();
+    std::vector<int> reaction_standard_states;
+    if (request.contains("reaction_standard_states") && !request["reaction_standard_states"].is_none()) {
+        reaction_standard_states = request["reaction_standard_states"].cast<std::vector<int>>();
+    } else {
+        reaction_standard_states = std::vector<int>(static_cast<std::size_t>(reaction_rows), 0);
+    }
     ChemicalEquilibriumOptionsNative options = chemical_options_from_request(request);
     ChemicalEquilibriumResultNative result;
     {
@@ -703,6 +709,7 @@ py::dict solve_chemical_equilibrium_native_binding(
             reaction_stoichiometry,
             reaction_rows,
             log_equilibrium_constants,
+            reaction_standard_states,
             options
         );
     }

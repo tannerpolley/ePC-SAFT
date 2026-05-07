@@ -12,6 +12,10 @@ from .equilibrium import EquilibriumPhase
 from .equilibrium import EquilibriumResult
 from .equilibrium import StabilityResult
 from .equilibrium import StabilityTrial
+from .equilibrium import bubble_p
+from .equilibrium import bubble_t
+from .equilibrium import dew_p
+from .equilibrium import dew_t
 from .equilibrium import electrolyte_feed_from_molality
 from .equilibrium import initial_phases_from_result
 from .parameters import DATASET_ROOT
@@ -40,6 +44,8 @@ from .reactive_speciation import ReactionDefinition
 from .reactive_speciation import ReactiveSpeciationOptions
 from .reactive_speciation import ReactiveSpeciationResult
 from .reactive_speciation import solve_reactive_speciation
+from .reactive_staged import ReactiveStagedEquilibriumResult
+from .reactive_staged import solve_reactive_staged_equilibrium
 from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions
 from .reactive_electrolyte import ReactiveElectrolyteBubbleResult
 from .reactive_electrolyte import solve_reactive_electrolyte_bubble
@@ -58,6 +64,10 @@ __all__ = [
     "EquilibriumResult",
     "StabilityResult",
     "StabilityTrial",
+    "bubble_p",
+    "bubble_t",
+    "dew_p",
+    "dew_t",
     "electrolyte_feed_from_molality",
     "initial_phases_from_result",
     "ePCSAFTMixture",
@@ -88,11 +98,13 @@ __all__ = [
     "ReactionDefinition",
     "ReactiveSpeciationOptions",
     "ReactiveSpeciationResult",
+    "ReactiveStagedEquilibriumResult",
     "ReactiveElectrolyteBubbleOptions",
     "ReactiveElectrolyteBubbleResult",
     "solve_reactive_electrolyte_bubble",
     "solve_reactive_electrolyte_bubble_sweep",
     "solve_reactive_speciation",
+    "solve_reactive_staged_equilibrium",
     "write_fit_result",
     "__git_commit__",
     "__version__",

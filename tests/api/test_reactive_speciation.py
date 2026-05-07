@@ -79,6 +79,64 @@ def test_solve_reactive_speciation_returns_balanced_activity_coupled_state() -> 
     json.dumps(result.to_dict(), allow_nan=False)
 
 
+@pytest.mark.parametrize("standard_state", ["ideal_mole_fraction", "concentration", "mole_fraction_activity"])
+def test_reaction_definition_accepts_supported_standard_states(standard_state: str) -> None:
+    reaction = epcsaft.ReactionDefinition(
+        stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
+        log_equilibrium_constant=0.0,
+        standard_state=standard_state,
+    )
+
+    assert reaction.standard_state == standard_state
+
+
+def test_reaction_definition_rejects_unknown_standard_state() -> None:
+    with pytest.raises(epcsaft.InputError, match="ReactionDefinition.standard_state"):
+        epcsaft.ReactionDefinition(
+            stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
+            log_equilibrium_constant=0.0,
+            standard_state="molality",
+        )
+
+
+def test_solve_reactive_speciation_concentration_standard_state_uses_molar_density() -> None:
+    species = ["H2O", "NaCl", "Na+", "Cl-"]
+    mix = _salt_speciation_mixture()
+    initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
+    state = mix.state(T=298.15, P=1.0e5, x=initial_x, phase="liq")
+    density = state.molar_density()
+    log_k = math.log(density * initial_x[2]) + math.log(density * initial_x[3])
+    log_k -= math.log(density * initial_x[1])
+
+    result = epcsaft.solve_reactive_speciation(
+        species=species,
+        mixture_factory=lambda x, T, P: mix,
+        T=298.15,
+        P=1.0e5,
+        balances={
+            "water_total": {"H2O": 1.0},
+            "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
+            "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
+        },
+        totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
+        reactions=[
+            epcsaft.ReactionDefinition(
+                stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
+                log_equilibrium_constant=log_k,
+                name="salt_dissociation",
+                standard_state="concentration",
+            )
+        ],
+        initial_x=initial_x,
+        options=epcsaft.ReactiveSpeciationOptions(max_iterations=50, tolerance=1.0e-8),
+    )
+
+    assert result.success is True
+    assert result.reaction_residuals == pytest.approx([0.0], abs=1.0e-8)
+    assert result.diagnostics["reaction_standard_states"] == ["concentration"]
+    assert result.diagnostics["activity_basis"] == "concentration"
+
+
 def test_solve_reactive_speciation_strict_failure_reports_best_state() -> None:
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()

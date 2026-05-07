@@ -142,6 +142,11 @@ def capabilities() -> dict[str, object]:
             "neutral_tp_flash": {"available": True, "backend": "native"},
             "neutral_lle_flash": {"available": True, "backend": "native"},
             "neutral_stability": {"available": True, "backend": "native"},
+            "neutral_bubble_dew": {
+                "available": True,
+                "backend": "python_orchestrated_native_state_fugacity",
+                "methods": ["bubble_p", "bubble_t", "dew_p", "dew_t"],
+            },
             "electrolyte_lle": {"available": True, "backend": "native"},
             "electrolyte_bubble_pressure": {
                 "available": True,

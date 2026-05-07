@@ -43,5 +43,6 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
     const std::vector<double>& reaction_stoichiometry_row_major,
     int reaction_rows,
     const std::vector<double>& log_equilibrium_constants,
+    const std::vector<int>& reaction_standard_states,
     const ChemicalEquilibriumOptionsNative& options
 );
