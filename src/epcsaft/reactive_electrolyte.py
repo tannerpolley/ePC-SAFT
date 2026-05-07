@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -21,10 +22,13 @@ _PHASE_HANDOFF_REACTION_TOLERANCE = 1.0e-5
 
 @dataclass(frozen=True, slots=True)
 class ReactiveElectrolyteBubbleOptions:
-    """Controls reserved for the future native reactive electrolyte bubble backend."""
+    """Controls for native reactive electrolyte bubble-pressure calculations."""
 
     speciation_options: ReactiveSpeciationOptions | None = None
     bubble_options: ElectrolyteBubbleOptions | None = None
+    phase_handoff_mass_tolerance: float = _PHASE_HANDOFF_MASS_TOLERANCE
+    phase_handoff_charge_tolerance: float = _PHASE_HANDOFF_CHARGE_TOLERANCE
+    phase_handoff_reaction_tolerance: float = _PHASE_HANDOFF_REACTION_TOLERANCE
     error_mode: str = "raise"
     penalty_value: float = 1.0e6
 
@@ -126,11 +130,13 @@ def solve_reactive_electrolyte_bubble(
         if options.error_mode == "raise":
             raise
         raise
+    handoff = _speciation_phase_handoff_diagnostics(chemical, options)
     diagnostics = {
         "speciation": chemical.to_dict(),
         "bubble": bubble.to_dict(),
         "speciation_strict_success": bool(chemical.success),
-        "speciation_phase_handoff_success": _speciation_phase_handoff_success(chemical),
+        "speciation_phase_handoff_success": handoff["success"],
+        "speciation_phase_handoff": handoff,
         "bubble_success": bool(bubble.success),
         "native_entrypoint": "_solve_chemical_equilibrium_native_then__solve_electrolyte_bubble_native",
         "solver_language": "c++",
@@ -202,6 +208,9 @@ def solve_reactive_electrolyte_bubble_sweep(
                 ),
                 error_mode=options.error_mode,
                 penalty_value=options.penalty_value,
+                phase_handoff_mass_tolerance=options.phase_handoff_mass_tolerance,
+                phase_handoff_charge_tolerance=options.phase_handoff_charge_tolerance,
+                phase_handoff_reaction_tolerance=options.phase_handoff_reaction_tolerance,
             )
         result = solve_reactive_electrolyte_bubble(
             species=species,
@@ -224,13 +233,18 @@ def solve_reactive_electrolyte_bubble_sweep(
     return results
 
 
-def _speciation_phase_handoff_success(result: ReactiveSpeciationResult) -> bool:
-    """Return whether speciation is accurate enough to hand to phase equilibrium."""
-    if result.success:
-        return True
+def _speciation_phase_handoff_diagnostics(
+    result: ReactiveSpeciationResult,
+    options: ReactiveElectrolyteBubbleOptions,
+) -> dict[str, Any]:
+    """Return residual-family diagnostics for speciation-to-phase handoff."""
     diagnostics = result.diagnostics
-    if not bool(diagnostics.get("native_success", False)):
-        return False
+    mass_tolerance = _positive_tolerance(options.phase_handoff_mass_tolerance, "phase_handoff_mass_tolerance")
+    charge_tolerance = _positive_tolerance(options.phase_handoff_charge_tolerance, "phase_handoff_charge_tolerance")
+    reaction_tolerance = _positive_tolerance(
+        options.phase_handoff_reaction_tolerance,
+        "phase_handoff_reaction_tolerance",
+    )
     mass_norm = float(diagnostics.get("mass_residual_norm", float("inf")))
     charge_norm = float(diagnostics.get("charge_residual_abs", abs(result.charge_residual)))
     reaction_norm = float(
@@ -239,11 +253,41 @@ def _speciation_phase_handoff_success(result: ReactiveSpeciationResult) -> bool:
             max((abs(value) for value in result.reaction_residuals), default=0.0),
         )
     )
-    return (
-        mass_norm <= _PHASE_HANDOFF_MASS_TOLERANCE
-        and charge_norm <= _PHASE_HANDOFF_CHARGE_TOLERANCE
-        and reaction_norm <= _PHASE_HANDOFF_REACTION_TOLERANCE
+    state_failure_count = int(diagnostics.get("state_failure_count", result.state_failure_count))
+    residuals_finite = all(math.isfinite(value) for value in (mass_norm, charge_norm, reaction_norm))
+    residuals_within_tolerance = (
+        mass_norm <= mass_tolerance and charge_norm <= charge_tolerance and reaction_norm <= reaction_tolerance
     )
+    if result.success:
+        reason = "strict_success"
+    elif state_failure_count > 0:
+        reason = "state_failures"
+    elif not residuals_finite:
+        reason = "nonfinite_residuals"
+    elif residuals_within_tolerance:
+        reason = "residuals_within_phase_handoff_tolerances"
+    else:
+        reason = "residuals_exceed_phase_handoff_tolerances"
+    success = bool(result.success or (state_failure_count == 0 and residuals_finite and residuals_within_tolerance))
+    return {
+        "success": success,
+        "reason": reason,
+        "native_success": bool(diagnostics.get("native_success", result.success)),
+        "state_failure_count": state_failure_count,
+        "mass_residual_norm": mass_norm,
+        "charge_residual_abs": charge_norm,
+        "reaction_residual_norm": reaction_norm,
+        "mass_tolerance": mass_tolerance,
+        "charge_tolerance": charge_tolerance,
+        "reaction_tolerance": reaction_tolerance,
+    }
+
+
+def _positive_tolerance(value: float, name: str) -> float:
+    tolerance = float(value)
+    if not math.isfinite(tolerance) or tolerance <= 0.0:
+        raise InputError(f"{name} must be a finite positive value.")
+    return tolerance
 
 
 def _reactive_bubble_failure_message(
