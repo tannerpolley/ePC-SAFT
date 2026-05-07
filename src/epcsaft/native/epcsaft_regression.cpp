@@ -38,6 +38,55 @@ using LMInputVector = Eigen::VectorXd;
 
 ParamDual make_param_dual(double value, int seed_index = -1);
 
+double scalar_value(double x) {
+    return x;
+}
+
+template <typename DerType>
+double scalar_value(const Eigen::AutoDiffScalar<DerType> &x) {
+    return x.value();
+}
+
+double scalar_log(double x) {
+    return std::log(x);
+}
+
+template <typename DerType>
+auto scalar_log(const Eigen::AutoDiffScalar<DerType> &x) -> decltype(log(x)) {
+    using std::log;
+    return log(x);
+}
+
+double scalar_exp(double x) {
+    return std::exp(x);
+}
+
+template <typename DerType>
+auto scalar_exp(const Eigen::AutoDiffScalar<DerType> &x) -> decltype(exp(x)) {
+    using std::exp;
+    return exp(x);
+}
+
+double scalar_pow(double x, int exponent) {
+    return std::pow(x, exponent);
+}
+
+template <typename DerType>
+auto scalar_pow(const Eigen::AutoDiffScalar<DerType> &x, int exponent) -> decltype(pow(x, static_cast<double>(exponent))) {
+    using std::pow;
+    return pow(x, static_cast<double>(exponent));
+}
+
+double scalar_pow(double x, double exponent) {
+    return std::pow(x, exponent);
+}
+
+template <typename DerType>
+auto scalar_pow(const Eigen::AutoDiffScalar<DerType> &x, double exponent) -> decltype(pow(x, exponent)) {
+    using std::pow;
+    return pow(x, exponent);
+}
+
 template <typename Scalar>
 Scalar regression_scalar_constant(double value) {
     return scalar_constant<Scalar>(value);
@@ -260,7 +309,6 @@ PureNeutralStateScalar<Scalar> pure_neutral_state_scalar_cpp(
 PureNeutralFusedState evaluate_fused_state_cpp(double t, double rho, const vector<double> &x) {
     AutoDual rho_dual = make_autodiff_scalar(rho, 1.0);
     auto rho_state = pure_neutral_state_scalar_cpp<AutoDual>(t, rho_dual, x[0], x[1], x[2]);
-    constexpr std::array<double, kThetaSize> kParameterSteps = {1.0e-6, 1.0e-6, 1.0e-5};
 
     PureNeutralFusedState out;
     out.pressure = scalar_value(rho_state.pressure);
@@ -268,17 +316,16 @@ PureNeutralFusedState evaluate_fused_state_cpp(double t, double rho, const vecto
     out.Z = scalar_value(rho_state.Z);
     out.dpdrho = scalar_derivative_at(rho_state.pressure, 0);
     out.dlnfug_drho = scalar_derivative_at(rho_state.lnfug, 0);
+    auto theta_state = pure_neutral_state_scalar_cpp<ParamDual>(
+        t,
+        make_param_dual(rho),
+        make_param_dual(x[0], 0),
+        make_param_dual(x[1], 1),
+        make_param_dual(x[2], 2)
+    );
     for (int j = 0; j < kThetaSize; ++j) {
-        vector<double> x_forward = x;
-        vector<double> x_backward = x;
-        x_forward[static_cast<size_t>(j)] += kParameterSteps[static_cast<size_t>(j)];
-        x_backward[static_cast<size_t>(j)] -= kParameterSteps[static_cast<size_t>(j)];
-        auto forward_state = pure_neutral_state_scalar_cpp<double>(t, rho, x_forward[0], x_forward[1], x_forward[2]);
-        auto backward_state = pure_neutral_state_scalar_cpp<double>(t, rho, x_backward[0], x_backward[1], x_backward[2]);
-        out.dpdtheta[static_cast<size_t>(j)] =
-            (forward_state.pressure - backward_state.pressure) / (2.0 * kParameterSteps[static_cast<size_t>(j)]);
-        out.dlnfugdtheta[static_cast<size_t>(j)] =
-            (forward_state.lnfug - backward_state.lnfug) / (2.0 * kParameterSteps[static_cast<size_t>(j)]);
+        out.dpdtheta[static_cast<size_t>(j)] = scalar_derivative_at(theta_state.pressure, j);
+        out.dlnfugdtheta[static_cast<size_t>(j)] = scalar_derivative_at(theta_state.lnfug, j);
     }
     return out;
 }

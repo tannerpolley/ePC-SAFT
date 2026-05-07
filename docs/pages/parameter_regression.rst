@@ -33,6 +33,16 @@ with the ``ipopt`` extra or dependency group:
 
    uv sync --extra ipopt
 
+On Windows, ``cyipopt`` builds from source and needs an IPOPT install that
+``pkg-config`` can describe. When using conda-forge IPOPT, first make sure the
+IPOPT environment also has ``pkg-config``, then let the helper create a corrected
+local ``ipopt.pc`` shim and run uv:
+
+.. code-block:: powershell
+
+   conda install -n epcsaft-cyipopt-test -c conda-forge pkg-config
+   .\scripts\setup_windows_cyipopt_uv.ps1 -IpoptPrefix C:\ProgramData\miniconda3\envs\epcsaft-cyipopt-test\Library
+
 The IPOPT path uses ``cyipopt`` and remains explicit opt-in through
 ``solver_backend="ipopt"``. It is not a replacement for native least-squares or
 Newton defaults.

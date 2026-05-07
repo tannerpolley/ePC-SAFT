@@ -3,14 +3,53 @@
 from __future__ import annotations
 
 import importlib
+import os
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 
 from ._types import InputError
 
+_IPOPT_DLL_HANDLES: list[Any] = []
+_IPOPT_DLL_PATHS_PREPARED: set[str] = set()
+_IPOPT_PATHS_PREPENDED: set[str] = set()
+
+
+def _candidate_ipopt_dll_dirs() -> list[Path]:
+    candidates: list[Path] = []
+    explicit = os.environ.get("EPCSAFT_IPOPT_DLL_DIR")
+    if explicit:
+        candidates.append(Path(explicit))
+    ipopt_win_dir = os.environ.get("IPOPTWINDIR")
+    if ipopt_win_dir:
+        candidates.append(Path(ipopt_win_dir) / "bin")
+    conda_prefix = os.environ.get("CONDA_PREFIX")
+    if conda_prefix:
+        candidates.append(Path(conda_prefix) / "Library" / "bin")
+    return candidates
+
+
+def _prepare_ipopt_dll_search_path() -> None:
+    add_dll_directory = getattr(os, "add_dll_directory", None)
+    for candidate in _candidate_ipopt_dll_dirs():
+        try:
+            resolved = candidate.resolve()
+        except OSError:
+            continue
+        key = str(resolved)
+        if not resolved.is_dir():
+            continue
+        if key not in _IPOPT_PATHS_PREPENDED:
+            os.environ["PATH"] = key + os.pathsep + os.environ.get("PATH", "")
+            _IPOPT_PATHS_PREPENDED.add(key)
+        if add_dll_directory is not None and key not in _IPOPT_DLL_PATHS_PREPARED:
+            _IPOPT_DLL_HANDLES.append(add_dll_directory(key))
+            _IPOPT_DLL_PATHS_PREPARED.add(key)
+
 
 def _cyipopt_import_error() -> str:
+    _prepare_ipopt_dll_search_path()
     try:
         importlib.import_module("cyipopt")
     except Exception as exc:  # pragma: no cover - depends on local optional install state.

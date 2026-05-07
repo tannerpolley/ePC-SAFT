@@ -59,6 +59,20 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert capabilities["regression"]["pure_neutral"]["backend"] == "native"
 
 
+def test_cyipopt_import_prepares_configured_windows_dll_directory(monkeypatch, tmp_path):
+    calls: list[str] = []
+    dll_dir = tmp_path / "ipopt-bin"
+    dll_dir.mkdir()
+
+    monkeypatch.setenv("EPCSAFT_IPOPT_DLL_DIR", str(dll_dir))
+    monkeypatch.setenv("PATH", "base-path")
+    monkeypatch.setattr(ipopt_backend.os, "add_dll_directory", lambda path: calls.append(str(path)), raising=False)
+    ipopt_backend._prepare_ipopt_dll_search_path()
+
+    assert calls == [str(dll_dir)]
+    assert str(dll_dir) in ipopt_backend.os.environ["PATH"]
+
+
 def test_from_params_rejects_legacy_electrolyte_keys():
     species = ["water", "Na+", "Cl-"]
     params = _ionic_params()
