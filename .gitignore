@@ -26,6 +26,7 @@ analyses/**/data/interim/
 analyses/**/data/raw/large/
 analyses/**/results/**/_draft/
 docs/latex/out/
+docs/latex/references.bib
 data/MIAC/*/plot_fits/
 data/reference/MIAC/*/plot_fits/
 data/MIAC_m/
