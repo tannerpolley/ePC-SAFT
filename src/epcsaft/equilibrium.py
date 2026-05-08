@@ -44,6 +44,7 @@ class EquilibriumOptions:
     max_seed_attempts: int | None = None
     max_density_failures: int | None = None
     max_total_objective_evaluations: int | None = None
+    return_best_effort: bool = False
 
 
 @dataclass(frozen=True, slots=True, init=False)
@@ -334,6 +335,7 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
             "max_seed_attempts",
             "max_density_failures",
             "max_total_objective_evaluations",
+            "return_best_effort",
         }
         unknown = sorted(set(raw) - allowed)
         if unknown:
@@ -406,6 +408,8 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
     max_total_objective_evaluations = _optional_positive_int_option(
         options.max_total_objective_evaluations, "max_total_objective_evaluations"
     )
+    if not isinstance(options.return_best_effort, bool):
+        raise InputError("options.return_best_effort must be boolean.")
     return EquilibriumOptions(
         max_iterations=max_iterations,
         tolerance=tolerance,
@@ -427,6 +431,7 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
         max_seed_attempts=max_seed_attempts,
         max_density_failures=max_density_failures,
         max_total_objective_evaluations=max_total_objective_evaluations,
+        return_best_effort=options.return_best_effort,
     )
 
 
@@ -858,6 +863,7 @@ def _options_to_native_dict(options: EquilibriumOptions) -> dict[str, Any]:
         "max_total_objective_evaluations": (
             None if options.max_total_objective_evaluations is None else int(options.max_total_objective_evaluations)
         ),
+        "return_best_effort": bool(options.return_best_effort),
     }
 
 
@@ -994,6 +1000,7 @@ def _add_legacy_option_diagnostics(diagnostics: dict[str, Any], options: Equilib
     diagnostics.setdefault("density_fallback_rejected_reason", "")
     diagnostics.setdefault("density_warm_start_source", "")
     diagnostics.setdefault("density_validity_gate", "not_evaluated")
+    diagnostics.setdefault("return_best_effort", bool(options.return_best_effort))
 
 
 def _diagnostics_with_legacy_candidate(

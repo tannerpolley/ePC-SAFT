@@ -245,6 +245,7 @@ def test_equilibrium_options_expose_explicit_solver_backend_controls() -> None:
     assert epcsaft.EquilibriumOptions().hessian_strategy == "gauss_newton"
     assert epcsaft.EquilibriumOptions().timeout_seconds is None
     assert epcsaft.EquilibriumOptions().max_seed_attempts is None
+    assert epcsaft.EquilibriumOptions().return_best_effort is False
 
 
 def test_lle_flash_distinct_stalled_seed_raises_solution_error() -> None:
@@ -280,6 +281,7 @@ def test_lle_flash_distinct_stalled_seed_raises_solution_error() -> None:
         (epcsaft.EquilibriumOptions(max_seed_attempts=1.5), "max_seed_attempts"),
         (epcsaft.EquilibriumOptions(max_density_failures=0), "max_density_failures"),
         (epcsaft.EquilibriumOptions(max_total_objective_evaluations=0), "max_total_objective_evaluations"),
+        (epcsaft.EquilibriumOptions(return_best_effort="yes"), "return_best_effort"),
     ],
 )
 def test_lle_flash_rejects_invalid_options_through_public_api(options, match) -> None:

@@ -39,6 +39,42 @@ values. Use these fields to distinguish "the case is physically hard or
 unaccepted" from "the calling script killed the process before the package
 could report diagnostics."
 
+Strict versus best-effort results
+---------------------------------
+
+Strict behavior remains the default. If fixed-species electrolyte LLE does not
+pass the predictive acceptance gates, the Python binding raises
+``SolutionError`` with JSON-safe diagnostics.
+
+For downstream sweeps, set ``return_best_effort=True`` to receive a structured
+``EquilibriumResult`` instead of an exception when the native route reaches a
+finite but unaccepted diagnostic state:
+
+.. code-block:: python
+
+   result = mix.equilibrium(
+       kind="electrolyte_lle",
+       T=294.15,
+       P=1.013e5,
+       z=feed,
+       options=epcsaft.EquilibriumOptions(
+           timeout_seconds=8.0,
+           max_seed_attempts=4,
+           return_best_effort=True,
+       ),
+   )
+
+   if not result.split_detected:
+       gate = result.diagnostics["acceptance_gate"]
+       seed_attempts = result.diagnostics["seed_attempts"]
+
+Best-effort mode does not weaken acceptance. A returned result with
+``split_detected=False`` is a diagnostic payload, not a solved phase split.
+When the native route has a noncollapsed best candidate, diagnostics report
+``best_effort_phases_returned=True`` and include the candidate phases for
+inspection or continuation experiments; otherwise the result carries the same
+failure diagnostics without phases.
+
 Optional IPOPT surface
 ----------------------
 

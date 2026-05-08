@@ -659,6 +659,9 @@ EquilibriumOptionsNative options_from_request(const py::dict& request) {
     if (input.contains("max_total_objective_evaluations") && !input["max_total_objective_evaluations"].is_none()) {
         options.max_total_objective_evaluations = input["max_total_objective_evaluations"].cast<int>();
     }
+    if (input.contains("return_best_effort")) {
+        options.return_best_effort = input["return_best_effort"].cast<bool>();
+    }
     return options;
 }
 
@@ -985,6 +988,7 @@ py::dict solve_equilibrium_native_binding(
         }
         const std::string acceptance_gate = result.diagnostics_string["acceptance_gate"];
         if (!result.split_detected
+            && !options.return_best_effort
             && (acceptance_gate == "predictive_solve_failed" || acceptance_gate == "predictive_budget_exhausted")) {
             raise_native_solution_error_with_diagnostics("electrolyte LLE flash did not converge", result);
         }
