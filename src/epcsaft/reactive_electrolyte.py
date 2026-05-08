@@ -191,46 +191,34 @@ def solve_reactive_electrolyte_bubble_sweep(
     continuation: str = "auto",
 ) -> list[ReactiveElectrolyteBubbleResult]:
     """Run a native-backed reactive electrolyte bubble sweep with pressure/y continuation."""
-    _ = continuation
+    continuation_mode = _normalize_continuation(continuation)
     if options is None:
         options = ReactiveElectrolyteBubbleOptions()
+    if not isinstance(options, ReactiveElectrolyteBubbleOptions):
+        raise InputError("options must be a ReactiveElectrolyteBubbleOptions instance.")
     results: list[ReactiveElectrolyteBubbleResult] = []
     last_pressure = None
     last_y = None
     for point in points:
         if "T" not in point or "totals" not in point:
             raise InputError("Each reactive electrolyte bubble sweep point requires T and totals.")
-        point_options = options
-        if options.bubble_options is not None and (last_pressure is not None or last_y is not None):
-            base = options.bubble_options
-            point_options = ReactiveElectrolyteBubbleOptions(
-                speciation_options=options.speciation_options,
-                bubble_options=ElectrolyteBubbleOptions(
-                    initial_pressure=float(last_pressure if last_pressure is not None else base.initial_pressure),
-                    min_pressure=base.min_pressure,
-                    max_pressure=base.max_pressure,
-                    max_iterations=base.max_iterations,
-                    max_vapor_iterations=base.max_vapor_iterations,
-                    max_bracket_expansions=base.max_bracket_expansions,
-                    tolerance=base.tolerance,
-                    vapor_tolerance=base.vapor_tolerance,
-                    pressure_factor=base.pressure_factor,
-                    min_composition=base.min_composition,
-                    charge_tolerance=base.charge_tolerance,
-                    return_best_effort=base.return_best_effort,
-                    initial_y_vap=last_y or base.initial_y_vap,
-                ),
-                error_mode=options.error_mode,
-                penalty_value=options.penalty_value,
-                phase_handoff_mass_tolerance=options.phase_handoff_mass_tolerance,
-                phase_handoff_charge_tolerance=options.phase_handoff_charge_tolerance,
-                phase_handoff_reaction_tolerance=options.phase_handoff_reaction_tolerance,
+        point_options = point.get("options", options)
+        if not isinstance(point_options, ReactiveElectrolyteBubbleOptions):
+            raise InputError("Each point options entry must be a ReactiveElectrolyteBubbleOptions instance.")
+        pressure_seed = float(point.get("P_seed", point.get("P", 101325.0)))
+        if continuation_mode == "auto" and (last_pressure is not None or last_y is not None):
+            point_options = _with_bubble_continuation(
+                point_options,
+                initial_pressure=float(last_pressure if last_pressure is not None else pressure_seed),
+                initial_y_vap=last_y,
+                fallback_pressure=pressure_seed,
             )
+            pressure_seed = float(last_pressure if last_pressure is not None else pressure_seed)
         result = solve_reactive_electrolyte_bubble(
             species=species,
             mixture_factory=mixture_factory,
             T=float(point["T"]),
-            P_seed=float(point.get("P_seed", last_pressure or point.get("P", 101325.0))),
+            P_seed=pressure_seed,
             balances=balances,
             totals=point["totals"],
             reactions=reactions,
@@ -245,6 +233,53 @@ def solve_reactive_electrolyte_bubble_sweep(
             last_pressure = result.P_total
             last_y = result.y_vap
     return results
+
+
+def _normalize_continuation(value: Any) -> str:
+    if isinstance(value, bool):
+        return "auto" if value else "none"
+    token = str(value).strip().lower()
+    if token in {"auto", "on", "true", "1"}:
+        return "auto"
+    if token in {"none", "off", "false", "0", "disabled"}:
+        return "none"
+    raise InputError("continuation must be 'auto' or 'none'.")
+
+
+def _with_bubble_continuation(
+    options: ReactiveElectrolyteBubbleOptions,
+    *,
+    initial_pressure: float,
+    initial_y_vap: Mapping[str, float] | None,
+    fallback_pressure: float,
+) -> ReactiveElectrolyteBubbleOptions:
+    base = options.bubble_options or ElectrolyteBubbleOptions(
+        initial_pressure=float(fallback_pressure),
+        return_best_effort=options.error_mode != "raise",
+    )
+    return ReactiveElectrolyteBubbleOptions(
+        speciation_options=options.speciation_options,
+        bubble_options=ElectrolyteBubbleOptions(
+            initial_pressure=float(initial_pressure),
+            min_pressure=base.min_pressure,
+            max_pressure=base.max_pressure,
+            max_iterations=base.max_iterations,
+            max_vapor_iterations=base.max_vapor_iterations,
+            max_bracket_expansions=base.max_bracket_expansions,
+            tolerance=base.tolerance,
+            vapor_tolerance=base.vapor_tolerance,
+            pressure_factor=base.pressure_factor,
+            min_composition=base.min_composition,
+            charge_tolerance=base.charge_tolerance,
+            return_best_effort=base.return_best_effort,
+            initial_y_vap=initial_y_vap or base.initial_y_vap,
+        ),
+        error_mode=options.error_mode,
+        penalty_value=options.penalty_value,
+        phase_handoff_mass_tolerance=options.phase_handoff_mass_tolerance,
+        phase_handoff_charge_tolerance=options.phase_handoff_charge_tolerance,
+        phase_handoff_reaction_tolerance=options.phase_handoff_reaction_tolerance,
+    )
 
 
 def _speciation_phase_handoff_diagnostics(

@@ -473,6 +473,61 @@ def test_electrolyte_lle_solver_failure_reports_json_diagnostics() -> None:
     json.dumps(diagnostics, allow_nan=False)
 
 
+def test_electrolyte_lle_seed_budget_returns_structured_failure() -> None:
+    mix = _case2_mixture()
+
+    with pytest.raises(epcsaft.SolutionError) as excinfo:
+        mix.equilibrium(
+            kind="electrolyte_lle",
+            T=298.15,
+            P=1.0e5,
+            z=_case2_feed(),
+            options=epcsaft.EquilibriumOptions(
+                max_iterations=80,
+                tolerance=1.0e-12,
+                max_seed_attempts=1,
+                legacy_candidate_mode="off",
+            ),
+        )
+
+    diagnostics = excinfo.value.args[1]
+    assert diagnostics["acceptance_gate"] == "predictive_budget_exhausted"
+    assert diagnostics["budget_exceeded"] is True
+    assert diagnostics["budget_trigger"] == "max_seed_attempts"
+    assert diagnostics["max_seed_attempts"] == 1
+    assert diagnostics["seed_attempt_count"] == 1
+    assert diagnostics["objective_evaluation_count"] > 0
+    assert diagnostics["requested_timeout_seconds"] == pytest.approx(0.0)
+    assert diagnostics["elapsed_seconds"] >= 0.0
+    json.dumps(diagnostics, allow_nan=False)
+
+
+def test_electrolyte_lle_objective_budget_returns_structured_failure() -> None:
+    mix = _case2_mixture()
+
+    with pytest.raises(epcsaft.SolutionError) as excinfo:
+        mix.equilibrium(
+            kind="electrolyte_lle",
+            T=298.15,
+            P=1.0e5,
+            z=_case2_feed(),
+            options=epcsaft.EquilibriumOptions(
+                max_iterations=80,
+                tolerance=1.0e-12,
+                max_total_objective_evaluations=1,
+                legacy_candidate_mode="off",
+            ),
+        )
+
+    diagnostics = excinfo.value.args[1]
+    assert diagnostics["acceptance_gate"] == "predictive_budget_exhausted"
+    assert diagnostics["budget_exceeded"] is True
+    assert diagnostics["budget_trigger"] == "max_total_objective_evaluations"
+    assert diagnostics["max_total_objective_evaluations"] == 1
+    assert diagnostics["objective_evaluation_count"] >= 1
+    json.dumps(diagnostics, allow_nan=False)
+
+
 def test_experimental_coupled_density_lle_option_is_reported_without_changing_default_gate() -> None:
     mix = _case2_mixture()
 

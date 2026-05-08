@@ -17,6 +17,10 @@ struct EquilibriumOptionsNative {
     std::string density_diagnostics = "auto";
     bool experimental_coupled_density_lle = false;
     std::string jacobian_backend = "auto";
+    double timeout_seconds = 0.0;
+    int max_seed_attempts = 0;
+    int max_density_failures = 0;
+    int max_total_objective_evaluations = 0;
 };
 
 struct ElectrolyteBubbleOptionsNative {

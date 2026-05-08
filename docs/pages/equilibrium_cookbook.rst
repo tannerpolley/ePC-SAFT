@@ -65,9 +65,15 @@ these fields as routing hints, not as proof that a physical case is valid.
    * - Native least squares
      - Package regression helpers.
      - You need a Python optimizer loop.
+   * - ``jacobian_backend="auto"``
+     - You want the native chemical-equilibrium default: analytic where available, finite difference for activity/concentration-coupled residuals.
+     - You need strict failure when a specific derivative backend is unavailable.
    * - ``jacobian_backend="finite_difference"``
      - You need an explicit diagnostic comparison.
-     - You want silent fallback from unsupported autodiff.
+     - You expect autodiff derivatives.
+   * - ``jacobian_backend="autodiff"``
+     - You need the implemented autodiff path and want unsupported routes to fail loudly.
+     - You want automatic finite-difference fallback.
    * - ``differential_mode="autodiff"``
      - You need implemented autodiff derivative paths.
      - You want finite-difference fallback.
@@ -131,9 +137,25 @@ charge-neutral ``initial_phases`` and inspect ``diagnostics["seed_attempts"]``.
        P=101325.0,
        z=feed,
        initial_phases=initial_phases,
-       options=epcsaft.EquilibriumOptions(max_iterations=180),
+       options=epcsaft.EquilibriumOptions(
+           max_iterations=180,
+           timeout_seconds=15.0,
+           max_total_objective_evaluations=5000,
+       ),
    )
    print(result.diagnostics)
+
+For diagnostic matrices, use the budget diagnostics rather than killing a
+worker process:
+
+.. code-block:: python
+
+   options = epcsaft.EquilibriumOptions(
+       max_iterations=24,
+       timeout_seconds=8.0,
+       max_seed_attempts=4,
+       max_total_objective_evaluations=8000,
+   )
 
 Reactive speciation
 -------------------
@@ -166,9 +188,16 @@ initial composition. Use ``error_mode="result"`` only for diagnostic sweeps.
            )
        ],
        initial_x=[0.998, 0.001, 0.0005, 0.0005],
-       options=epcsaft.ReactiveSpeciationOptions(jacobian_backend="finite_difference"),
+       options=epcsaft.ReactiveSpeciationOptions(),
    )
    print(result.x, result.named_reaction_residuals)
+   print(result.diagnostics["jacobian_backend"])
+
+With ``jacobian_backend="auto"``, ideal mole-fraction standard states use the
+analytic native Jacobian. Activity- or concentration-coupled standard states
+select the native finite-difference residual Jacobian and mark the fallback in
+diagnostics. Request ``jacobian_backend="autodiff"`` only when unsupported
+derivative paths should fail loudly.
 
 Electrolyte bubble and reactive bubble
 --------------------------------------

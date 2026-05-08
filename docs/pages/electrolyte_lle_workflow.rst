@@ -14,6 +14,31 @@ Recommended workflow
 4. For curves, solve one point with strong initial phases and use continuation
    through ``equilibrium_curve``.
 
+Bounded diagnostic runs
+-----------------------
+
+Long downstream sweeps should bound hard fixed-species LLE attempts with
+``EquilibriumOptions`` rather than relying on an outer process timeout. The
+default values are ``None`` and keep the existing robust solve behavior. When a
+budget is provided and exhausted, strict mode raises ``SolutionError`` with
+structured diagnostics instead of hanging indefinitely.
+
+Useful budget controls are:
+
+- ``timeout_seconds`` for native wall-clock budget checks inside the LLE route.
+- ``max_seed_attempts`` to stop after a bounded number of seed families.
+- ``max_density_failures`` to stop density-heavy diagnostics when repeated
+  phase-state construction fails.
+- ``max_total_objective_evaluations`` to bound transformed Gibbs objective
+  work in exploratory matrices.
+
+On budget stop, diagnostics include ``acceptance_gate =
+"predictive_budget_exhausted"``, ``budget_exceeded``, ``budget_trigger``,
+``elapsed_seconds``, ``objective_evaluation_count``, and the requested budget
+values. Use these fields to distinguish "the case is physically hard or
+unaccepted" from "the calling script killed the process before the package
+could report diagnostics."
+
 Optional IPOPT surface
 ----------------------
 
@@ -80,7 +105,12 @@ Hubach-style example
        P=1.013e5,
        z=feed,
        initial_phases=initial_phases,
-       options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
+       options=epcsaft.EquilibriumOptions(
+           max_iterations=180,
+           tolerance=1.0e-8,
+           timeout_seconds=15.0,
+           max_total_objective_evaluations=5000,
+       ),
    )
 
    assert result.split_detected

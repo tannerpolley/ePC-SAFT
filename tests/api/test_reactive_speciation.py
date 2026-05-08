@@ -143,6 +143,45 @@ def test_solve_reactive_speciation_concentration_standard_state_uses_molar_densi
     assert result.diagnostics["activity_basis"] == "concentration"
 
 
+def test_reactive_speciation_auto_jacobian_falls_back_for_concentration_standard_state() -> None:
+    species = ["H2O", "NaCl", "Na+", "Cl-"]
+    mix = _salt_speciation_mixture()
+    initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
+    density = mix.state(T=298.15, P=1.0e5, x=initial_x, phase="liq").molar_density()
+    log_k = math.log(density * initial_x[2]) + math.log(density * initial_x[3])
+    log_k -= math.log(density * initial_x[1])
+
+    result = epcsaft.solve_reactive_speciation(
+        species=species,
+        mixture_factory=lambda x, T, P: mix,
+        T=298.15,
+        P=1.0e5,
+        balances={
+            "water_total": {"H2O": 1.0},
+            "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
+            "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
+        },
+        totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
+        reactions=[
+            epcsaft.ReactionDefinition(
+                stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
+                log_equilibrium_constant=log_k,
+                name="salt_dissociation",
+                standard_state="concentration",
+            )
+        ],
+        initial_x=initial_x,
+        options=epcsaft.ReactiveSpeciationOptions(max_iterations=50, tolerance=1.0e-8),
+    )
+
+    assert result.success is True
+    assert result.diagnostics["requested_jacobian_backend"] == "auto"
+    assert result.diagnostics["jacobian_backend"] == "finite_difference"
+    assert result.diagnostics["finite_difference_fallback_used"] is True
+    assert result.diagnostics["explicit_finite_difference"] is False
+    assert "auto selected finite difference" in result.diagnostics["jacobian_fallback_reason"]
+
+
 def test_concentration_standard_state_can_skip_activity_output() -> None:
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
