@@ -492,6 +492,48 @@ class FitResult:
         self.provenance_report = _copy_mapping(self.provenance_report)
 
 
+@dataclass(slots=True)
+class ReactiveElectrolyteRegressionResult:
+    """Fixed-shape residual payload for coupled reactive-electrolyte objectives."""
+
+    residuals: np.ndarray
+    residual_names: tuple[str, ...] = field(default_factory=tuple)
+    record_results: tuple[dict[str, Any], ...] = field(default_factory=tuple, repr=False)
+    diagnostics: dict[str, Any] = field(default_factory=dict)
+    success_count: int = 0
+    failure_count: int = 0
+    backend: str = "python_orchestrated_native_reactive_electrolyte"
+
+    def __post_init__(self) -> None:
+        self.residuals = np.asarray(self.residuals, dtype=float).reshape(-1)
+        self.residual_names = tuple(str(name) for name in self.residual_names)
+        self.record_results = tuple(dict(row) for row in self.record_results)
+        self.diagnostics = _copy_mapping(self.diagnostics)
+        self.success_count = int(self.success_count)
+        self.failure_count = int(self.failure_count)
+        self.backend = str(self.backend)
+        if self.residual_names and len(self.residual_names) != int(self.residuals.size):
+            raise InputError("ReactiveElectrolyteRegressionResult residual_names must match residual length.")
+
+    @property
+    def residual_norm(self) -> float:
+        """Return the Euclidean norm of the fixed residual vector."""
+        return float(np.linalg.norm(self.residuals))
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-like result payload."""
+        return {
+            "residuals": [float(value) for value in self.residuals],
+            "residual_names": list(self.residual_names),
+            "residual_norm": self.residual_norm,
+            "success_count": int(self.success_count),
+            "failure_count": int(self.failure_count),
+            "backend": self.backend,
+            "record_results": _json_like_regression(self.record_results),
+            "diagnostics": _json_like_regression(self.diagnostics),
+        }
+
+
 def _fit_derivative_metadata(result: Mapping[str, Any]) -> dict[str, Any]:
     """Extract compact Jacobian/Hessian metadata from native regression payloads."""
 
@@ -960,6 +1002,23 @@ def _family_metrics(raw_residuals_by_term: Mapping[str, Sequence[float]]) -> dic
         arr = np.asarray(values, dtype=float)
         metrics[family] = float(np.sqrt(np.mean(arr**2))) if arr.size else 0.0
     return metrics
+
+
+def _json_like_regression(value: Any) -> Any:
+    if isinstance(value, np.ndarray):
+        return _json_like_regression(value.tolist())
+    if isinstance(value, Mapping):
+        return {str(key): _json_like_regression(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_like_regression(item) for item in value]
+    if isinstance(value, (bool, str)) or value is None:
+        return value
+    if isinstance(value, (np.integer, int)):
+        return int(value)
+    if isinstance(value, (np.floating, float)):
+        out = float(value)
+        return out if math.isfinite(out) else str(out)
+    return str(value)
 
 
 def _source_dataset_label(dataset: str | Path | None) -> str | None:
@@ -2496,6 +2555,345 @@ def fit_mea_co2_h2o_electrolyte(
         multistart=multistart,
         max_nfev=max_nfev,
     )
+
+
+def evaluate_reactive_electrolyte_bubble_residuals(
+    records: Any,
+    *,
+    species: Sequence[str],
+    mixture_factory: Any,
+    balances: Mapping[str, Mapping[str, float]],
+    reactions: Any,
+    vapor_species: Sequence[str],
+    volatile_species: Sequence[str] | None = None,
+    nonvolatile_species: Sequence[str] | None = None,
+    options: Any = None,
+    continuation: str = "auto",
+    pressure_species: Sequence[str] | None = None,
+    speciation_species: Sequence[str] | None = None,
+    reaction_names: Sequence[str] | None = None,
+    pressure_weight: float = 1.0,
+    speciation_weight: float = 1.0,
+    reaction_weight: float = 0.0,
+    penalty_value: float = 8.0,
+) -> ReactiveElectrolyteRegressionResult:
+    """Evaluate a fixed-shape coupled reactive-electrolyte residual vector.
+
+    This is a regression objective helper, not an optimizer. Downstream projects
+    own target selection, parameter updates, artifact promotion, and optimizer
+    policy. The package owns the coupled native speciation plus fixed-liquid
+    electrolyte bubble call sequence, continuation seeds, result-mode failure
+    shaping, and compact per-record diagnostics.
+    """
+
+    from .electrolyte_bubble import ElectrolyteBubbleOptions
+    from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions
+    from .reactive_electrolyte import solve_reactive_electrolyte_bubble
+
+    normalized_records = _normalize_records(records)
+    species_labels = tuple(str(label) for label in species)
+    if not species_labels:
+        raise InputError("species must include at least one label.")
+    pressure_labels = _infer_reactive_target_labels(
+        normalized_records,
+        pressure_species,
+        target_keys=("target_partial_pressures", "partial_pressures", "pressure_targets"),
+        scalar_keys=("target_pressure", "target_pressure_Pa", "target_partial_pressure", "target_partial_pressure_Pa"),
+    )
+    speciation_labels = _infer_reactive_target_labels(
+        normalized_records,
+        speciation_species,
+        target_keys=("target_x", "target_composition", "speciation_targets"),
+        scalar_keys=(),
+    )
+    reaction_labels = tuple(str(name) for name in (reaction_names or ()))
+    p_scale = math.sqrt(_positive_regression_weight(pressure_weight, "pressure_weight"))
+    x_scale = math.sqrt(_positive_regression_weight(speciation_weight, "speciation_weight"))
+    r_scale = math.sqrt(_positive_regression_weight(reaction_weight, "reaction_weight")) if reaction_labels else 0.0
+    penalty = _positive_regression_weight(penalty_value, "penalty_value")
+    continuation_mode = _normalize_regression_continuation(continuation)
+    default_options = _reactive_regression_options(options, penalty, ReactiveElectrolyteBubbleOptions)
+
+    residuals: list[float] = []
+    residual_names: list[str] = []
+    record_results: list[dict[str, Any]] = []
+    last_pressure: float | None = None
+    last_y: Mapping[str, float] | None = None
+    success_count = 0
+    failure_count = 0
+
+    for idx, record in enumerate(normalized_records):
+        row_id = str(record.get("row_id", record.get("id", f"record_{idx}")))
+        if "T" not in record or "totals" not in record:
+            raise InputError("Each reactive electrolyte regression record requires T and totals.")
+        pressure_seed = float(record.get("P_seed", record.get("P", last_pressure or 101325.0)))
+        row_options = _reactive_regression_options(
+            record.get("options", default_options),
+            penalty,
+            ReactiveElectrolyteBubbleOptions,
+        )
+        if continuation_mode == "auto" and (last_pressure is not None or last_y is not None):
+            row_options = _reactive_regression_options_with_seed(
+                row_options,
+                ElectrolyteBubbleOptions,
+                initial_pressure=float(last_pressure if last_pressure is not None else pressure_seed),
+                initial_y_vap=last_y,
+                fallback_pressure=pressure_seed,
+            )
+            pressure_seed = float(last_pressure if last_pressure is not None else pressure_seed)
+
+        pressure_targets = _reactive_target_mapping(
+            record,
+            pressure_labels,
+            target_keys=("target_partial_pressures", "partial_pressures", "pressure_targets"),
+            scalar_keys=(
+                "target_pressure",
+                "target_pressure_Pa",
+                "target_partial_pressure",
+                "target_partial_pressure_Pa",
+            ),
+        )
+        speciation_targets = _reactive_target_mapping(
+            record,
+            speciation_labels,
+            target_keys=("target_x", "target_composition", "speciation_targets"),
+            scalar_keys=(),
+        )
+        row_residuals: list[float] = []
+        row_names: list[str] = []
+        try:
+            result = solve_reactive_electrolyte_bubble(
+                species=species_labels,
+                mixture_factory=mixture_factory,
+                T=float(record["T"]),
+                P_seed=pressure_seed,
+                balances=balances,
+                totals=record["totals"],
+                reactions=_record_reactions(reactions, record),
+                initial_x=record.get("initial_x"),
+                vapor_species=vapor_species,
+                volatile_species=volatile_species,
+                nonvolatile_species=nonvolatile_species,
+                options=row_options,
+            )
+            if result.success:
+                success_count += 1
+                last_pressure = float(result.P_total)
+                last_y = dict(result.y_vap)
+            else:
+                failure_count += 1
+            for label in pressure_labels:
+                target = pressure_targets[label]
+                predicted = float(result.partial_pressures.get(label, float("nan")))
+                raw = _safe_log10_ratio(predicted, target, penalty)
+                row_residuals.append(p_scale * raw)
+                row_names.append(f"{row_id}.partial_pressure.{label}")
+            for label in speciation_labels:
+                target = speciation_targets[label]
+                predicted = float(result.x_liq.get(label, float("nan")))
+                raw = _safe_log10_ratio(predicted, target, penalty)
+                row_residuals.append(x_scale * raw)
+                row_names.append(f"{row_id}.x.{label}")
+            for label in reaction_labels:
+                raw = float(result.named_reaction_residuals.get(label, penalty))
+                if not math.isfinite(raw):
+                    raw = penalty
+                row_residuals.append(r_scale * raw)
+                row_names.append(f"{row_id}.reaction.{label}")
+            record_results.append(
+                {
+                    "row_id": row_id,
+                    "success": bool(result.success),
+                    "message": result.message,
+                    "P_total": float(result.P_total),
+                    "partial_pressures": _json_like_regression(getattr(result, "partial_pressures", {})),
+                    "x_liq": _json_like_regression(getattr(result, "x_liq", {})),
+                    "y_vap": _json_like_regression(getattr(result, "y_vap", {})),
+                    "named_reaction_residuals": _json_like_regression(getattr(result, "named_reaction_residuals", {})),
+                    "fugacity_residual_norm": float(result.fugacity_residual_norm),
+                    "state_failure_count": int(result.state_failure_count),
+                    "diagnostics": _json_like_regression(getattr(result, "diagnostics", {})),
+                    "residual_count": len(row_residuals),
+                }
+            )
+        except Exception as exc:
+            failure_count += 1
+            expected_count = len(pressure_labels) + len(speciation_labels) + len(reaction_labels)
+            row_residuals.extend([p_scale * penalty] * len(pressure_labels))
+            row_residuals.extend([x_scale * penalty] * len(speciation_labels))
+            row_residuals.extend([r_scale * penalty] * len(reaction_labels))
+            row_names.extend(
+                [f"{row_id}.partial_pressure.{label}" for label in pressure_labels]
+                + [f"{row_id}.x.{label}" for label in speciation_labels]
+                + [f"{row_id}.reaction.{label}" for label in reaction_labels]
+            )
+            record_results.append(
+                {
+                    "row_id": row_id,
+                    "success": False,
+                    "message": f"{type(exc).__name__}: {str(exc).splitlines()[0]}",
+                    "diagnostics": _json_like_regression(getattr(exc, "diagnostics", {}) or {}),
+                    "residual_count": expected_count,
+                }
+            )
+        residuals.extend(row_residuals)
+        residual_names.extend(row_names)
+
+    return ReactiveElectrolyteRegressionResult(
+        residuals=np.asarray(residuals, dtype=float),
+        residual_names=tuple(residual_names),
+        record_results=tuple(record_results),
+        success_count=success_count,
+        failure_count=failure_count,
+        diagnostics={
+            "record_count": len(normalized_records),
+            "pressure_species": pressure_labels,
+            "speciation_species": speciation_labels,
+            "reaction_names": reaction_labels,
+            "continuation": continuation_mode,
+            "fixed_shape": True,
+        },
+    )
+
+
+def _infer_reactive_target_labels(
+    records: Sequence[Mapping[str, Any]],
+    explicit: Sequence[str] | None,
+    *,
+    target_keys: Sequence[str],
+    scalar_keys: Sequence[str],
+) -> tuple[str, ...]:
+    if explicit is not None:
+        return tuple(str(label) for label in explicit)
+    labels: list[str] = []
+    for record in records:
+        for key in target_keys:
+            value = record.get(key)
+            if isinstance(value, Mapping):
+                labels.extend(str(label) for label in value)
+        if any(key in record for key in scalar_keys):
+            label = str(record.get("target_species", record.get("target_pressure_species", "")))
+            if label:
+                labels.append(label)
+    return tuple(dict.fromkeys(labels))
+
+
+def _reactive_target_mapping(
+    record: Mapping[str, Any],
+    labels: Sequence[str],
+    *,
+    target_keys: Sequence[str],
+    scalar_keys: Sequence[str],
+) -> dict[str, float]:
+    mapping: dict[str, float] = {}
+    for key in target_keys:
+        value = record.get(key)
+        if isinstance(value, Mapping):
+            mapping.update({str(label): float(target) for label, target in value.items()})
+    scalar_value = None
+    for key in scalar_keys:
+        if key in record:
+            scalar_value = record[key]
+            break
+    if scalar_value is not None:
+        label = str(record.get("target_species", record.get("target_pressure_species", "")))
+        if not label and len(labels) == 1:
+            label = str(labels[0])
+        if label:
+            mapping[label] = float(scalar_value)
+    missing = [label for label in labels if label not in mapping]
+    if missing:
+        raise InputError(f"Reactive electrolyte regression record is missing target(s): {', '.join(missing)}.")
+    return {str(label): float(mapping[str(label)]) for label in labels}
+
+
+def _positive_regression_weight(value: float, label: str) -> float:
+    out = float(value)
+    if not math.isfinite(out) or out < 0.0:
+        raise InputError(f"{label} must be finite and non-negative.")
+    return out
+
+
+def _safe_log10_ratio(predicted: float, target: float, penalty: float) -> float:
+    if not (math.isfinite(predicted) and math.isfinite(target)) or predicted <= 0.0 or target <= 0.0:
+        return penalty
+    return math.log10(max(predicted, 1.0e-300) / max(target, 1.0e-300))
+
+
+def _normalize_regression_continuation(value: Any) -> str:
+    if isinstance(value, bool):
+        return "auto" if value else "none"
+    token = str(value).strip().lower()
+    if token in {"auto", "on", "true", "1"}:
+        return "auto"
+    if token in {"none", "off", "false", "0", "disabled"}:
+        return "none"
+    raise InputError("continuation must be 'auto' or 'none'.")
+
+
+def _reactive_regression_options(options: Any, penalty: float, options_type: Any) -> Any:
+    if options is None:
+        return options_type(error_mode="result", penalty_value=penalty)
+    if not isinstance(options, options_type):
+        raise InputError("options must be a ReactiveElectrolyteBubbleOptions instance.")
+    if options.error_mode != "result" or float(options.penalty_value) != penalty:
+        return options_type(
+            speciation_options=options.speciation_options,
+            bubble_options=options.bubble_options,
+            phase_handoff_mass_tolerance=options.phase_handoff_mass_tolerance,
+            phase_handoff_charge_tolerance=options.phase_handoff_charge_tolerance,
+            phase_handoff_reaction_tolerance=options.phase_handoff_reaction_tolerance,
+            error_mode="result",
+            penalty_value=penalty,
+        )
+    return options
+
+
+def _reactive_regression_options_with_seed(
+    options: Any,
+    bubble_options_type: Any,
+    *,
+    initial_pressure: float,
+    initial_y_vap: Mapping[str, float] | None,
+    fallback_pressure: float,
+) -> Any:
+    base = options.bubble_options or bubble_options_type(
+        initial_pressure=float(fallback_pressure),
+        return_best_effort=True,
+    )
+    bubble_options = bubble_options_type(
+        initial_pressure=float(initial_pressure),
+        min_pressure=base.min_pressure,
+        max_pressure=base.max_pressure,
+        max_iterations=base.max_iterations,
+        max_vapor_iterations=base.max_vapor_iterations,
+        max_bracket_expansions=base.max_bracket_expansions,
+        tolerance=base.tolerance,
+        vapor_tolerance=base.vapor_tolerance,
+        pressure_factor=base.pressure_factor,
+        min_composition=base.min_composition,
+        charge_tolerance=base.charge_tolerance,
+        return_best_effort=base.return_best_effort,
+        initial_y_vap=initial_y_vap or base.initial_y_vap,
+    )
+    return type(options)(
+        speciation_options=options.speciation_options,
+        bubble_options=bubble_options,
+        phase_handoff_mass_tolerance=options.phase_handoff_mass_tolerance,
+        phase_handoff_charge_tolerance=options.phase_handoff_charge_tolerance,
+        phase_handoff_reaction_tolerance=options.phase_handoff_reaction_tolerance,
+        error_mode=options.error_mode,
+        penalty_value=options.penalty_value,
+    )
+
+
+def _record_reactions(reactions: Any, record: Mapping[str, Any]) -> Any:
+    if not callable(reactions):
+        return reactions
+    try:
+        return reactions(record)
+    except TypeError:
+        return reactions(float(record["T"]))
 
 
 def write_fit_result(

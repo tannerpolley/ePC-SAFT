@@ -318,6 +318,49 @@ Large matrices are exposed only through explicit derivative-evaluation helpers. 
 
 For lower-level generic native records, use ``evaluate_generic_regression_derivatives(..., jacobian_backend="finite_difference")`` when an explicit finite-difference comparison Jacobian is needed. The default ``auto`` mode raises until generic residual state calls have analytic/autodiff coverage.
 
+Reactive electrolyte residual evaluator
+---------------------------------------
+
+Use ``evaluate_reactive_electrolyte_bubble_residuals(...)`` when a downstream
+project needs a fixed-shape objective for coupled native reactive speciation plus
+fixed-liquid electrolyte bubble pressure. The helper is deliberately not an
+optimizer and it does not own MEA-specific data, parameter masks, run folders, or
+artifact promotion. Downstream code supplies records, targets, species,
+balances, reactions, and a ``mixture_factory`` for the current parameters; the
+package returns a ``ReactiveElectrolyteRegressionResult`` with residuals,
+residual names, per-record diagnostics, and success/failure counts.
+
+The evaluator keeps the residual vector shape stable when a record fails by
+inserting bounded penalty residuals. It also forces result-mode reactive bubble
+solves internally, so one bad row can be reported without aborting the whole
+candidate. Successful row diagnostics include predicted partial pressures,
+liquid composition, vapor composition, named reaction residuals, and compact
+solver diagnostics so downstream code can write reports without rerunning the
+same expensive rows. Keep target magnitudes positive for log-scale pressure and
+composition residuals, and use continuation when neighboring rows are ordered by
+temperature, loading, or pressure:
+
+.. code-block:: python
+
+   result = epcsaft.evaluate_reactive_electrolyte_bubble_residuals(
+       records,
+       species=["CO2", "H2O", "MEA", "MEAH+", "HCO3-"],
+       mixture_factory=make_mixture_for_candidate,
+       balances=balances,
+       reactions=reactions,
+       vapor_species=["CO2", "H2O"],
+       pressure_species=["CO2"],
+       speciation_species=["CO2", "MEAH+", "HCO3-"],
+       reaction_names=["carbamate", "bicarbonate"],
+       continuation="auto",
+   )
+
+Pass ``result.residuals`` to a downstream-owned optimizer. Use
+``result.record_results`` and ``result.diagnostics`` to decide whether a
+candidate failed numerically, hit phase-equilibrium limits, or simply predicts
+poorly. Do not treat this helper as a full constrained Gibbs/NLP solve; IPOPT
+remains an explicit opt-in refinement elsewhere and is not used automatically.
+
 Derivative availability
 -----------------------
 

@@ -227,6 +227,11 @@ def capabilities() -> dict[str, object]:
                 "backend": "native",
                 "scope": "fixed-composition benchmark, not reactive bubble-pressure fitting",
             },
+            "reactive_electrolyte_residuals": {
+                "available": True,
+                "backend": "python_orchestrated_native_solvers",
+                "scope": "fixed-shape residual evaluator for downstream-owned coupled reactive electrolyte regression loops",
+            },
         },
     }
 

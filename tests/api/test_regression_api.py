@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import csv
+from types import SimpleNamespace
 
 import epcsaft
 import epcsaft.regression as regression_module
@@ -31,6 +32,144 @@ def test_public_regression_surface_includes_ion_and_binary_v1():
     assert hasattr(epcsaft, "BinaryInteraction")
     assert hasattr(epcsaft, "RelativePermittivityResidual")
     assert hasattr(epcsaft, "validate_regression_provenance")
+    assert hasattr(epcsaft, "evaluate_reactive_electrolyte_bubble_residuals")
+    assert hasattr(epcsaft, "ReactiveElectrolyteRegressionResult")
+
+
+def test_reactive_electrolyte_regression_residuals_keep_fixed_shape(monkeypatch):
+    calls = []
+
+    def fake_solve(**kwargs):
+        calls.append(kwargs)
+        if len(calls) == 2:
+            raise epcsaft.SolutionError("synthetic bubble failure", {"best_P": 90000.0})
+        return SimpleNamespace(
+            success=True,
+            message="converged",
+            P_total=101325.0,
+            y_vap={"CO2": 0.25, "H2O": 0.75},
+            partial_pressures={"CO2": 25331.25},
+            x_liq={"CO2": 0.1, "H2O": 0.9},
+            named_reaction_residuals={"R": 0.2},
+            fugacity_residual_norm=1.0e-8,
+            state_failure_count=0,
+        )
+
+    monkeypatch.setattr("epcsaft.reactive_electrolyte.solve_reactive_electrolyte_bubble", fake_solve)
+    result = epcsaft.evaluate_reactive_electrolyte_bubble_residuals(
+        [
+            {
+                "row_id": "ok",
+                "T": 298.15,
+                "P_seed": 101325.0,
+                "totals": {"carbon": 0.1, "water": 0.9},
+                "initial_x": [0.1, 0.9],
+                "target_partial_pressures": {"CO2": 25331.25},
+                "target_x": {"CO2": 0.1},
+            },
+            {
+                "row_id": "bad",
+                "T": 298.15,
+                "P_seed": 101325.0,
+                "totals": {"carbon": 0.1, "water": 0.9},
+                "initial_x": [0.1, 0.9],
+                "target_partial_pressures": {"CO2": 25331.25},
+                "target_x": {"CO2": 0.1},
+            },
+        ],
+        species=["CO2", "H2O"],
+        mixture_factory=lambda x, T, P: None,
+        balances={"carbon": {"CO2": 1.0}, "water": {"H2O": 1.0}},
+        reactions=[],
+        vapor_species=["CO2", "H2O"],
+        pressure_species=["CO2"],
+        speciation_species=["CO2"],
+        reaction_names=["R"],
+        pressure_weight=4.0,
+        speciation_weight=0.25,
+        reaction_weight=9.0,
+        penalty_value=8.0,
+    )
+
+    assert result.success_count == 1
+    assert result.failure_count == 1
+    assert result.residuals.shape == (6,)
+    assert result.residual_names == (
+        "ok.partial_pressure.CO2",
+        "ok.x.CO2",
+        "ok.reaction.R",
+        "bad.partial_pressure.CO2",
+        "bad.x.CO2",
+        "bad.reaction.R",
+    )
+    assert result.residuals[0] == pytest.approx(0.0)
+    assert result.residuals[1] == pytest.approx(0.0)
+    assert result.residuals[2] == pytest.approx(0.6)
+    assert result.residuals[3:].tolist() == pytest.approx([16.0, 4.0, 24.0])
+    assert result.record_results[0]["partial_pressures"] == {"CO2": pytest.approx(25331.25)}
+    assert result.record_results[0]["x_liq"] == {"CO2": pytest.approx(0.1), "H2O": pytest.approx(0.9)}
+    assert result.record_results[0]["y_vap"] == {"CO2": pytest.approx(0.25), "H2O": pytest.approx(0.75)}
+    assert result.record_results[0]["named_reaction_residuals"] == {"R": pytest.approx(0.2)}
+    assert result.to_dict()["diagnostics"]["fixed_shape"] is True
+    assert len(calls) == 2
+    assert calls[0]["options"].error_mode == "result"
+
+
+def test_reactive_electrolyte_regression_residuals_use_continuation_seed(monkeypatch):
+    calls = []
+
+    def fake_solve(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(
+            success=True,
+            message="converged",
+            P_total=120000.0 if len(calls) == 1 else 121000.0,
+            y_vap={"CO2": 0.2, "H2O": 0.8},
+            partial_pressures={"CO2": 24000.0},
+            x_liq={"CO2": 0.1, "H2O": 0.9},
+            named_reaction_residuals={},
+            fugacity_residual_norm=1.0e-8,
+            state_failure_count=0,
+        )
+
+    monkeypatch.setattr("epcsaft.reactive_electrolyte.solve_reactive_electrolyte_bubble", fake_solve)
+    options = epcsaft.ReactiveElectrolyteBubbleOptions(
+        bubble_options=epcsaft.ElectrolyteBubbleOptions(initial_pressure=101325.0),
+        error_mode="result",
+    )
+    epcsaft.evaluate_reactive_electrolyte_bubble_residuals(
+        [
+            {
+                "row_id": "one",
+                "T": 298.15,
+                "P_seed": 101325.0,
+                "totals": {"carbon": 0.1, "water": 0.9},
+                "initial_x": [0.1, 0.9],
+                "target_partial_pressures": {"CO2": 24000.0},
+            },
+            {
+                "row_id": "two",
+                "T": 298.15,
+                "P_seed": 90000.0,
+                "totals": {"carbon": 0.1, "water": 0.9},
+                "initial_x": [0.1, 0.9],
+                "target_partial_pressures": {"CO2": 24000.0},
+            },
+        ],
+        species=["CO2", "H2O"],
+        mixture_factory=lambda x, T, P: None,
+        balances={"carbon": {"CO2": 1.0}, "water": {"H2O": 1.0}},
+        reactions=[],
+        vapor_species=["CO2", "H2O"],
+        pressure_species=["CO2"],
+        options=options,
+        continuation="auto",
+    )
+
+    assert calls[0]["P_seed"] == pytest.approx(101325.0)
+    assert calls[1]["P_seed"] == pytest.approx(120000.0)
+    assert calls[1]["options"].bubble_options.initial_pressure == pytest.approx(120000.0)
+    assert calls[1]["options"].bubble_options.initial_y_vap == pytest.approx({"CO2": 0.2, "H2O": 0.8})
 
 
 def test_provenance_validation_rejects_indirect_dborn_without_electrostatic_data():
