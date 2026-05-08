@@ -40,6 +40,10 @@ class EquilibriumOptions:
     jacobian_backend: Literal["auto", "autodiff", "finite_difference"] = "auto"
     solver_backend: Literal["auto", "newton", "ipopt"] = "auto"
     hessian_strategy: Literal["gauss_newton", "lbfgs"] = "gauss_newton"
+    timeout_seconds: float | None = None
+    max_seed_attempts: int | None = None
+    max_density_failures: int | None = None
+    max_total_objective_evaluations: int | None = None
 
 
 @dataclass(frozen=True, slots=True, init=False)
@@ -326,6 +330,10 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
             "jacobian_backend",
             "solver_backend",
             "hessian_strategy",
+            "timeout_seconds",
+            "max_seed_attempts",
+            "max_density_failures",
+            "max_total_objective_evaluations",
         }
         unknown = sorted(set(raw) - allowed)
         if unknown:
@@ -392,6 +400,12 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
     hessian_strategy = hessian_aliases.get(hessian_strategy, hessian_strategy)
     if hessian_strategy not in {"gauss_newton", "lbfgs"}:
         raise InputError("options.hessian_strategy must be 'gauss_newton' or 'lbfgs'.")
+    timeout_seconds = _optional_positive_float_option(options.timeout_seconds, "timeout_seconds")
+    max_seed_attempts = _optional_positive_int_option(options.max_seed_attempts, "max_seed_attempts")
+    max_density_failures = _optional_positive_int_option(options.max_density_failures, "max_density_failures")
+    max_total_objective_evaluations = _optional_positive_int_option(
+        options.max_total_objective_evaluations, "max_total_objective_evaluations"
+    )
     return EquilibriumOptions(
         max_iterations=max_iterations,
         tolerance=tolerance,
@@ -409,6 +423,10 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
         jacobian_backend=jacobian_backend,  # type: ignore[arg-type]
         solver_backend=solver_backend,  # type: ignore[arg-type]
         hessian_strategy=hessian_strategy,  # type: ignore[arg-type]
+        timeout_seconds=timeout_seconds,
+        max_seed_attempts=max_seed_attempts,
+        max_density_failures=max_density_failures,
+        max_total_objective_evaluations=max_total_objective_evaluations,
     )
 
 
@@ -418,6 +436,26 @@ def _finite_float_option(value: Any, label: str) -> float:
     out = float(value)
     if not np.isfinite(out):
         raise InputError("options.{} must be finite.".format(label))
+    return out
+
+
+def _optional_positive_float_option(value: Any, label: str) -> float | None:
+    if value is None:
+        return None
+    out = _finite_float_option(value, label)
+    if out <= 0.0:
+        raise InputError("options.{} must be positive when provided.".format(label))
+    return out
+
+
+def _optional_positive_int_option(value: Any, label: str) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, Integral):
+        raise InputError("options.{} must be an integer greater than zero when provided.".format(label))
+    out = int(value)
+    if out <= 0:
+        raise InputError("options.{} must be an integer greater than zero when provided.".format(label))
     return out
 
 
@@ -814,6 +852,12 @@ def _options_to_native_dict(options: EquilibriumOptions) -> dict[str, Any]:
         "jacobian_backend": str(options.jacobian_backend),
         "solver_backend": str(options.solver_backend),
         "hessian_strategy": str(options.hessian_strategy),
+        "timeout_seconds": None if options.timeout_seconds is None else float(options.timeout_seconds),
+        "max_seed_attempts": None if options.max_seed_attempts is None else int(options.max_seed_attempts),
+        "max_density_failures": None if options.max_density_failures is None else int(options.max_density_failures),
+        "max_total_objective_evaluations": (
+            None if options.max_total_objective_evaluations is None else int(options.max_total_objective_evaluations)
+        ),
     }
 
 

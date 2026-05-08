@@ -67,6 +67,12 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     )
     assert capabilities["equilibrium"]["reactive_speciation"]["default_auto_uses_ipopt"] is False
     assert capabilities["equilibrium"]["reactive_speciation"]["full_constrained_nlp_available"] is False
+    assert (
+        capabilities["equilibrium"]["reactive_speciation"]["jacobian_auto_policy"]
+        == "analytic_ideal_else_native_finite_difference"
+    )
+    assert capabilities["equilibrium"]["reactive_speciation"]["finite_difference_requires_explicit_request"] is False
+    assert capabilities["equilibrium"]["reactive_speciation"]["explicit_autodiff_raises_when_unavailable"] is True
     assert capabilities["regression"]["pure_neutral"]["backend"] == "native"
 
 

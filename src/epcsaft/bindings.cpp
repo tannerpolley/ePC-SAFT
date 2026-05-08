@@ -647,6 +647,18 @@ EquilibriumOptionsNative options_from_request(const py::dict& request) {
     if (input.contains("jacobian_backend")) {
         options.jacobian_backend = input["jacobian_backend"].cast<std::string>();
     }
+    if (input.contains("timeout_seconds") && !input["timeout_seconds"].is_none()) {
+        options.timeout_seconds = input["timeout_seconds"].cast<double>();
+    }
+    if (input.contains("max_seed_attempts") && !input["max_seed_attempts"].is_none()) {
+        options.max_seed_attempts = input["max_seed_attempts"].cast<int>();
+    }
+    if (input.contains("max_density_failures") && !input["max_density_failures"].is_none()) {
+        options.max_density_failures = input["max_density_failures"].cast<int>();
+    }
+    if (input.contains("max_total_objective_evaluations") && !input["max_total_objective_evaluations"].is_none()) {
+        options.max_total_objective_evaluations = input["max_total_objective_evaluations"].cast<int>();
+    }
     return options;
 }
 
@@ -971,7 +983,9 @@ py::dict solve_equilibrium_native_binding(
             py::gil_scoped_release release;
             result = electrolyte_lle_native(mixture, t, p, feed, options, species, aq, org, beta_org, has_initial);
         }
-        if (!result.split_detected && result.diagnostics_string["acceptance_gate"] == "predictive_solve_failed") {
+        const std::string acceptance_gate = result.diagnostics_string["acceptance_gate"];
+        if (!result.split_detected
+            && (acceptance_gate == "predictive_solve_failed" || acceptance_gate == "predictive_budget_exhausted")) {
             raise_native_solution_error_with_diagnostics("electrolyte LLE flash did not converge", result);
         }
         return native_equilibrium_to_dict(result);

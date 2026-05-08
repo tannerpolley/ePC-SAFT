@@ -50,11 +50,15 @@ the selected reaction standard state needs them or when
 ``ReactiveSpeciationOptions.activity_output="always"`` is requested. This keeps
 ``standard_state="concentration"`` and ``"ideal_mole_fraction"`` workflows from
 paying for unused activity calls under the default ``activity_output="auto"``.
-The derivative default is also strict: ``jacobian_backend="auto"`` uses the
-analytic log-amount Jacobian for ``standard_state="ideal_mole_fraction"``.
-Activity- and concentration-coupled Jacobians must request
-``jacobian_backend="finite_difference"`` explicitly until their native
-fugacity/activity derivative path is implemented.
+The derivative default is native-owned and diagnostic-friendly:
+``jacobian_backend="auto"`` uses the analytic log-amount Jacobian for
+``standard_state="ideal_mole_fraction"`` and automatically selects the native
+finite-difference residual Jacobian for activity- or concentration-coupled
+standard states. Diagnostics report ``requested_jacobian_backend``,
+``jacobian_backend``, ``finite_difference_fallback_used``, and
+``jacobian_fallback_reason`` so downstream agents can see when this fallback
+was used. Explicit ``jacobian_backend="autodiff"`` remains strict and raises
+when the requested derivative path is unavailable.
 
 .. code-block:: python
 

@@ -290,10 +290,14 @@ ChemicalDerivativeSelection select_chemical_derivative_backend(
         selection.capability_path = "chemical_equilibrium:ideal_mole_fraction:log_amounts";
         return selection;
     }
+    selection.backend = "finite_difference";
+    selection.capability_path = "chemical_equilibrium:auto_finite_difference_fallback:log_amounts";
+    selection.finite_difference_allowed = true;
+    selection.explicit_finite_difference = false;
     selection.unsupported_reason =
         "analytic/autodiff chemical-equilibrium residual jacobian is unavailable for activity- or concentration-coupled "
-        "standard states; finite difference is only available when jacobian_backend='finite_difference' is requested explicitly.";
-    throw ValueError(selection.unsupported_reason);
+        "standard states; auto selected finite difference for this residual.";
+    return selection;
 }
 
 bool should_evaluate_activity_coefficients(
@@ -1003,7 +1007,7 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     out.diagnostics_string["derivative_capability_path"] = derivative_selection.capability_path;
     out.diagnostics_string["unsupported_derivative_reason"] = derivative_selection.unsupported_reason;
     out.diagnostics_string["hessian_backend"] = "gauss_newton";
-    if (derivative_selection.explicit_finite_difference) {
+    if (derivative_selection.backend == "finite_difference") {
         out.diagnostics_string["finite_difference_scheme"] = "forward";
         out.diagnostics_string["finite_difference_variable_space"] = "log_species_amounts";
         out.diagnostics_string["finite_difference_step_rule"] = "absolute_log_variable_step";
@@ -1016,7 +1020,8 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     out.diagnostics_bool["hessian_callback_available"] = true;
     out.diagnostics_bool["hessian_includes_second_residual_derivatives"] = false;
     out.diagnostics_bool["sparse_hessian_available"] = false;
-    out.diagnostics_bool["finite_difference_fallback_used"] = false;
+    out.diagnostics_bool["finite_difference_fallback_used"] =
+        derivative_selection.backend == "finite_difference" && !derivative_selection.explicit_finite_difference;
     out.diagnostics_bool["finite_difference_allowed"] = derivative_selection.finite_difference_allowed;
     out.diagnostics_bool["explicit_finite_difference"] = derivative_selection.explicit_finite_difference;
     out.diagnostics_bool["activity_coefficients_evaluated"] = !current.gamma.empty();
@@ -1028,7 +1033,7 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     out.diagnostics_int["density_solve_count"] = counters.density_solves;
     out.diagnostics_double["residual_norm"] = current.residual_norm;
     out.diagnostics_double["objective"] = out.objective;
-    if (derivative_selection.explicit_finite_difference) {
+    if (derivative_selection.backend == "finite_difference") {
         out.diagnostics_double["finite_difference_base_step"] = options.finite_difference_step;
         out.diagnostics_double["finite_difference_effective_step"] = options.finite_difference_step;
     }
@@ -1211,11 +1216,16 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
             result.diagnostics_string["derivative_capability_path"] = derivative_selection.capability_path;
             result.diagnostics_string["unsupported_derivative_reason"] = derivative_selection.unsupported_reason;
             result.diagnostics_bool["jacobian_available"] = true;
-            result.diagnostics_bool["finite_difference_fallback_used"] = false;
-            result.diagnostics_bool["jacobian_fallback_used"] = false;
+            result.diagnostics_bool["finite_difference_fallback_used"] =
+                derivative_selection.backend == "finite_difference" && !derivative_selection.explicit_finite_difference;
+            result.diagnostics_bool["jacobian_fallback_used"] =
+                derivative_selection.backend == "finite_difference" && !derivative_selection.explicit_finite_difference;
             result.diagnostics_bool["finite_difference_allowed"] = derivative_selection.finite_difference_allowed;
             result.diagnostics_bool["explicit_finite_difference"] = derivative_selection.explicit_finite_difference;
-            result.diagnostics_string["jacobian_fallback_reason"] = "";
+            result.diagnostics_string["jacobian_fallback_reason"] =
+                (derivative_selection.backend == "finite_difference" && !derivative_selection.explicit_finite_difference)
+                    ? derivative_selection.unsupported_reason
+                    : "";
             result.diagnostics_bool["hessian_available"] = false;
             result.diagnostics_string["hessian_backend"] = "not_implemented";
             result.diagnostics_bool["hessian_fallback_used"] = false;
@@ -1315,11 +1325,16 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
     result.diagnostics_string["derivative_capability_path"] = derivative_selection.capability_path;
     result.diagnostics_string["unsupported_derivative_reason"] = derivative_selection.unsupported_reason;
     result.diagnostics_bool["jacobian_available"] = true;
-    result.diagnostics_bool["finite_difference_fallback_used"] = false;
-    result.diagnostics_bool["jacobian_fallback_used"] = false;
+    result.diagnostics_bool["finite_difference_fallback_used"] =
+        derivative_selection.backend == "finite_difference" && !derivative_selection.explicit_finite_difference;
+    result.diagnostics_bool["jacobian_fallback_used"] =
+        derivative_selection.backend == "finite_difference" && !derivative_selection.explicit_finite_difference;
     result.diagnostics_bool["finite_difference_allowed"] = derivative_selection.finite_difference_allowed;
     result.diagnostics_bool["explicit_finite_difference"] = derivative_selection.explicit_finite_difference;
-    result.diagnostics_string["jacobian_fallback_reason"] = "";
+    result.diagnostics_string["jacobian_fallback_reason"] =
+        (derivative_selection.backend == "finite_difference" && !derivative_selection.explicit_finite_difference)
+            ? derivative_selection.unsupported_reason
+            : "";
     result.diagnostics_bool["hessian_available"] = false;
     result.diagnostics_string["hessian_backend"] = "not_implemented";
     result.diagnostics_bool["hessian_fallback_used"] = false;

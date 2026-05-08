@@ -4,12 +4,15 @@
 #include <Eigen/Dense>
 
 #include <algorithm>
+#include <chrono>
 #include <cctype>
 #include <cmath>
 #include <functional>
 #include <limits>
 #include <numeric>
 #include <sstream>
+#include <stdexcept>
+#include <utility>
 
 namespace {
 
@@ -84,6 +87,88 @@ std::pair<std::vector<double>, std::vector<double>> phase_compositions(
 );
 
 using namespace epcsaft::native::equilibrium;
+
+struct EquilibriumBudgetExceeded : public std::runtime_error {
+    explicit EquilibriumBudgetExceeded(std::string budget_trigger)
+        : std::runtime_error(budget_trigger), trigger(std::move(budget_trigger)) {}
+
+    std::string trigger;
+};
+
+struct ElectrolyteLLEBudget {
+    explicit ElectrolyteLLEBudget(const EquilibriumOptionsNative& options)
+        : timeout_seconds(options.timeout_seconds),
+          max_seed_attempts(options.max_seed_attempts),
+          max_density_failures(options.max_density_failures),
+          max_total_objective_evaluations(options.max_total_objective_evaluations),
+          start(std::chrono::steady_clock::now()) {}
+
+    double timeout_seconds = 0.0;
+    int max_seed_attempts = 0;
+    int max_density_failures = 0;
+    int max_total_objective_evaluations = 0;
+    int objective_evaluations = 0;
+    std::chrono::steady_clock::time_point start;
+
+    double elapsed_seconds() const {
+        return std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+    }
+
+    void check_timeout(const std::string& trigger = "timeout_seconds") const {
+        if (timeout_seconds > 0.0 && elapsed_seconds() >= timeout_seconds) {
+            throw EquilibriumBudgetExceeded(trigger);
+        }
+    }
+
+    void count_objective_evaluation() {
+        ++objective_evaluations;
+        if (max_total_objective_evaluations > 0 && objective_evaluations > max_total_objective_evaluations) {
+            throw EquilibriumBudgetExceeded("max_total_objective_evaluations");
+        }
+        check_timeout();
+    }
+
+    void check_seed_attempt_count(int completed_seed_attempts) const {
+        if (max_seed_attempts > 0 && completed_seed_attempts >= max_seed_attempts) {
+            throw EquilibriumBudgetExceeded("max_seed_attempts");
+        }
+        check_timeout();
+    }
+
+    void check_density_failure_count(std::size_t density_failure_count) const {
+        if (max_density_failures > 0 && density_failure_count >= static_cast<std::size_t>(max_density_failures)) {
+            throw EquilibriumBudgetExceeded("max_density_failures");
+        }
+        check_timeout();
+    }
+};
+
+void apply_electrolyte_lle_budget_diagnostics(
+    EquilibriumResultNative& result,
+    const EquilibriumOptionsNative& options,
+    const ElectrolyteLLEBudget& budget,
+    bool budget_exceeded,
+    const std::string& budget_trigger
+) {
+    result.diagnostics_bool["budget_exceeded"] = budget_exceeded;
+    result.diagnostics_string["budget_trigger"] = budget_trigger;
+    result.diagnostics_double["elapsed_seconds"] = budget.elapsed_seconds();
+    result.diagnostics_double["requested_timeout_seconds"] = options.timeout_seconds;
+    result.diagnostics_int["objective_evaluation_count"] = budget.objective_evaluations;
+    result.diagnostics_int["max_seed_attempts"] = options.max_seed_attempts;
+    result.diagnostics_int["max_density_failures"] = options.max_density_failures;
+    result.diagnostics_int["max_total_objective_evaluations"] = options.max_total_objective_evaluations;
+    if (budget_exceeded) {
+        if (result.split_detected) {
+            result.diagnostics_string["message"] =
+                "electrolyte LLE flash accepted a split after a configured exploratory work budget was exhausted";
+        } else {
+            result.diagnostics_string["message"] =
+                "electrolyte LLE flash stopped after a configured work budget was exhausted";
+            result.diagnostics_string["acceptance_gate"] = "predictive_budget_exhausted";
+        }
+    }
+}
 
 PhaseStateNative phase_state(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
@@ -2165,7 +2250,8 @@ EquilibriumResultNative electrolyte_lle_failure_result(
 std::vector<double> nelder_mead_variables(
     const std::function<double(const std::vector<double>&)>& objective,
     const std::vector<double>& start,
-    int max_iterations
+    int max_iterations,
+    ElectrolyteLLEBudget* budget = nullptr
 ) {
     const std::size_t n = start.size();
     std::vector<std::vector<double>> simplex(n + 1, start);
@@ -2180,6 +2266,9 @@ std::vector<double> nelder_mead_variables(
     };
     refresh();
     for (int iter = 0; iter < max_iterations; ++iter) {
+        if (budget != nullptr) {
+            budget->check_timeout();
+        }
         std::vector<std::size_t> order(simplex.size());
         std::iota(order.begin(), order.end(), 0);
         std::sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) { return values[a] < values[b]; });
@@ -2252,7 +2341,8 @@ std::vector<double> gibbs_seed_variables_from_trial(
     const std::vector<double>& feed,
     const ElectrolyteBasisNative& basis,
     const EquilibriumOptionsNative& options,
-    const std::vector<double>& trial_composition
+    const std::vector<double>& trial_composition,
+    ElectrolyteLLEBudget* budget
 ) {
     std::vector<double> org_formula = explicit_to_formula(trial_composition, basis);
     double upper = 1.0 - 1.0e-8;
@@ -2265,6 +2355,9 @@ std::vector<double> gibbs_seed_variables_from_trial(
         throw SolutionError("No feasible phase-fraction interval for Gibbs seed.");
     }
     auto objective = [&](double beta_formula) {
+        if (budget != nullptr) {
+            budget->count_objective_evaluation();
+        }
         std::vector<double> aq_formula_raw(basis.formula_feed.size(), 0.0);
         for (std::size_t i = 0; i < basis.formula_feed.size(); ++i) {
             aq_formula_raw[i] = (basis.formula_feed[i] - beta_formula * org_formula[i]) / (1.0 - beta_formula);
@@ -2289,6 +2382,9 @@ std::vector<double> gibbs_seed_variables_from_trial(
     double f1 = objective(x1);
     double f2 = objective(x2);
     for (int iter = 0; iter < 80; ++iter) {
+        if (budget != nullptr) {
+            budget->check_timeout();
+        }
         if (f1 < f2) {
             hi = x2;
             x2 = x1;
@@ -2316,69 +2412,119 @@ ElectrolyteCandidateNative solve_predictive_electrolyte_attempt(
     const EquilibriumOptionsNative& options,
     const std::vector<double>& seed_variables,
     double gibbs_feed,
-    std::vector<DensitySolveDiagnostics>* density_failures
+    std::vector<DensitySolveDiagnostics>* density_failures,
+    ElectrolyteLLEBudget* budget,
+    bool* budget_exceeded,
+    std::string* budget_trigger
 ) {
     std::vector<double> variables = seed_variables;
-    auto objective_fn = [&](const std::vector<double>& candidate) {
-        try {
-            return l2_norm(evaluate_predictive_electrolyte_variables(mixture, t, p, feed, basis, candidate, options, gibbs_feed).residual);
-        } catch (const SolutionError&) {
-            append_last_density_failure(mixture, density_failures);
-            return l2_norm(predictive_infeasible_residual(candidate, basis, options));
-        }
-    };
-    if (basis.formula_feed.size() > 3) {
-        variables = nelder_mead_variables(objective_fn, variables, std::max(40, options.max_iterations * 4));
-    }
     ElectrolyteCandidateNative best;
     bool has_best = false;
-    for (int iteration = 1; iteration <= options.max_iterations; ++iteration) {
-        ElectrolyteCandidateNative current;
-        try {
-            current = evaluate_predictive_electrolyte_variables(mixture, t, p, feed, basis, variables, options, gibbs_feed);
-        } catch (const SolutionError&) {
-            append_last_density_failure(mixture, density_failures);
-            std::vector<double> residual = predictive_infeasible_residual(variables, basis, options);
-            current.objective = l2_norm(residual);
-            current.residual = residual;
-        }
-        current.iteration = iteration;
-        if (!has_best || current.objective < best.objective) {
-            best = current;
-            has_best = true;
-        }
-        if (has_best && predictive_electrolyte_accepted(best, options)) {
-            return best;
-        }
-        auto residual_fn = [&](const std::vector<double>& candidate) {
+    try {
+        auto objective_fn = [&](const std::vector<double>& candidate) {
+            if (budget != nullptr) {
+                budget->count_objective_evaluation();
+            }
             try {
-                return evaluate_predictive_electrolyte_variables(mixture, t, p, feed, basis, candidate, options, gibbs_feed).residual;
+                return l2_norm(evaluate_predictive_electrolyte_variables(mixture, t, p, feed, basis, candidate, options, gibbs_feed).residual);
             } catch (const SolutionError&) {
                 append_last_density_failure(mixture, density_failures);
-                return predictive_infeasible_residual(candidate, basis, options);
+                if (budget != nullptr && density_failures != nullptr) {
+                    budget->check_density_failure_count(density_failures->size());
+                }
+                return l2_norm(predictive_infeasible_residual(candidate, basis, options));
             }
         };
-        std::vector<double> base_residual = residual_fn(variables);
-        std::vector<double> step = newton_step(residual_fn, variables, base_residual);
-        bool accepted = false;
-        double current_objective = l2_norm(base_residual);
-        for (double scale : damping_schedule(options.damping)) {
-            std::vector<double> candidate_vars = variables;
-            for (std::size_t i = 0; i < candidate_vars.size(); ++i) {
-                candidate_vars[i] += scale * step[i];
+        if (basis.formula_feed.size() > 3) {
+            variables = nelder_mead_variables(objective_fn, variables, std::max(40, options.max_iterations * 4), budget);
+        }
+        for (int iteration = 1; iteration <= options.max_iterations; ++iteration) {
+            if (budget != nullptr) {
+                budget->check_timeout();
             }
-            std::vector<double> candidate_residual = residual_fn(candidate_vars);
-            if (l2_norm(candidate_residual) < current_objective) {
-                variables = candidate_vars;
-                accepted = true;
-                break;
+            ElectrolyteCandidateNative current;
+            try {
+                if (budget != nullptr) {
+                    budget->count_objective_evaluation();
+                }
+                current = evaluate_predictive_electrolyte_variables(mixture, t, p, feed, basis, variables, options, gibbs_feed);
+            } catch (const SolutionError&) {
+                append_last_density_failure(mixture, density_failures);
+                if (budget != nullptr && density_failures != nullptr) {
+                    budget->check_density_failure_count(density_failures->size());
+                }
+                std::vector<double> residual = predictive_infeasible_residual(variables, basis, options);
+                current.objective = l2_norm(residual);
+                current.solver_residual_norm = current.objective;
+                current.material_error = 1.0e300;
+                current.charge_balance_error = 1.0e300;
+                current.residual = residual;
+            }
+            current.iteration = iteration;
+            if (!has_best || current.objective < best.objective) {
+                best = current;
+                has_best = true;
+            }
+            if (has_best && predictive_electrolyte_accepted(best, options)) {
+                return best;
+            }
+            auto residual_fn = [&](const std::vector<double>& candidate) {
+                if (budget != nullptr) {
+                    budget->count_objective_evaluation();
+                }
+                try {
+                    return evaluate_predictive_electrolyte_variables(mixture, t, p, feed, basis, candidate, options, gibbs_feed).residual;
+                } catch (const SolutionError&) {
+                    append_last_density_failure(mixture, density_failures);
+                    if (budget != nullptr && density_failures != nullptr) {
+                        budget->check_density_failure_count(density_failures->size());
+                    }
+                    return predictive_infeasible_residual(candidate, basis, options);
+                }
+            };
+            std::vector<double> base_residual = residual_fn(variables);
+            std::vector<double> step = newton_step(residual_fn, variables, base_residual);
+            bool accepted = false;
+            double current_objective = l2_norm(base_residual);
+            for (double scale : damping_schedule(options.damping)) {
+                if (budget != nullptr) {
+                    budget->check_timeout();
+                }
+                std::vector<double> candidate_vars = variables;
+                for (std::size_t i = 0; i < candidate_vars.size(); ++i) {
+                    candidate_vars[i] += scale * step[i];
+                }
+                std::vector<double> candidate_residual = residual_fn(candidate_vars);
+                if (l2_norm(candidate_residual) < current_objective) {
+                    variables = candidate_vars;
+                    accepted = true;
+                    break;
+                }
+            }
+            if (!accepted) {
+                return best;
             }
         }
-        if (!accepted) {
+        return best;
+    } catch (const EquilibriumBudgetExceeded& exc) {
+        if (budget_exceeded != nullptr) {
+            *budget_exceeded = true;
+        }
+        if (budget_trigger != nullptr) {
+            *budget_trigger = exc.trigger;
+        }
+        if (has_best) {
             return best;
         }
+        ElectrolyteCandidateNative failed;
+        failed.objective = 1.0e300;
+        failed.solver_residual_norm = 1.0e300;
+        failed.material_error = 1.0e300;
+        failed.charge_balance_error = 1.0e300;
+        failed.iteration = 0;
+        failed.residual.assign(std::max<std::size_t>(1, basis.formula_feed.size()), 1.0e300);
+        return failed;
     }
-    return best;
 }
 
 EquilibriumResultNative electrolyte_lle_native(
@@ -2404,6 +2550,9 @@ EquilibriumResultNative electrolyte_lle_native(
     }
     ElectrolyteBasisNative basis = build_electrolyte_basis_native(mixture, feed, species);
     EquilibriumOptionsNative solver_options = options;
+    ElectrolyteLLEBudget budget(solver_options);
+    bool budget_exceeded = false;
+    std::string budget_trigger;
     PhaseStateNative feed_state = phase_state(mixture, t, p, feed, "liq", "feed");
     double gibbs_feed = electrolyte_gibbs_proxy(feed, feed_state);
     std::vector<std::pair<std::string, std::vector<double>>> seed_variables;
@@ -2441,21 +2590,38 @@ EquilibriumResultNative electrolyte_lle_native(
         seed_variables.emplace_back("initial_phases", pack_predictive_electrolyte_variables(beta_formula, org_formula));
     }
     StabilityResultNative stability = electrolyte_stability_native(mixture, t, p, feed, precheck_options(solver_options), species);
-    if (!stability.trial_composition.empty() && phase_distance(stability.trial_composition, feed) > split_distance_tolerance(solver_options)) {
-        seed_variables.emplace_back("native_tpd_trial", pack_predictive_electrolyte_variables(0.5, explicit_to_formula(stability.trial_composition, basis)));
-        try {
-            seed_variables.emplace_back("native_gibbs_tpd_trial", gibbs_seed_variables_from_trial(mixture, t, p, feed, basis, solver_options, stability.trial_composition));
-        } catch (const SolutionError&) {
+    try {
+        budget.check_timeout();
+        if (!stability.trial_composition.empty() && phase_distance(stability.trial_composition, feed) > split_distance_tolerance(solver_options)) {
+            seed_variables.emplace_back("native_tpd_trial", pack_predictive_electrolyte_variables(0.5, explicit_to_formula(stability.trial_composition, basis)));
+            try {
+                seed_variables.emplace_back("native_gibbs_tpd_trial", gibbs_seed_variables_from_trial(
+                    mixture,
+                    t,
+                    p,
+                    feed,
+                    basis,
+                    solver_options,
+                    stability.trial_composition,
+                    &budget
+                ));
+            } catch (const SolutionError&) {
+            }
         }
+    } catch (const EquilibriumBudgetExceeded& exc) {
+        budget_exceeded = true;
+        budget_trigger = exc.trigger;
     }
-    for (const auto& seed : electrolyte_formula_seeds(mixture, feed, basis, solver_options)) {
-        for (double beta : {0.02, 0.05, 0.10, 0.25, 0.50, 0.75, 0.90}) {
-            seed_variables.emplace_back(seed.first + "_b" + std::to_string(static_cast<int>(100 * beta)), pack_predictive_electrolyte_variables(beta, seed.second));
+    if (!budget_exceeded) {
+        for (const auto& seed : electrolyte_formula_seeds(mixture, feed, basis, solver_options)) {
+            for (double beta : {0.02, 0.05, 0.10, 0.25, 0.50, 0.75, 0.90}) {
+                seed_variables.emplace_back(seed.first + "_b" + std::to_string(static_cast<int>(100 * beta)), pack_predictive_electrolyte_variables(beta, seed.second));
+            }
         }
-    }
-    for (const auto& seed : electrolyte_endpoint_phase_seeds(basis, solver_options)) {
-        for (double beta : {0.02, 0.05, 0.10, 0.25, 0.50}) {
-            seed_variables.emplace_back(seed.first + "_b" + std::to_string(static_cast<int>(100 * beta)), pack_predictive_electrolyte_variables(beta, seed.second));
+        for (const auto& seed : electrolyte_endpoint_phase_seeds(basis, solver_options)) {
+            for (double beta : {0.02, 0.05, 0.10, 0.25, 0.50}) {
+                seed_variables.emplace_back(seed.first + "_b" + std::to_string(static_cast<int>(100 * beta)), pack_predictive_electrolyte_variables(beta, seed.second));
+            }
         }
     }
     ElectrolyteCandidateNative best;
@@ -2465,6 +2631,15 @@ EquilibriumResultNative electrolyte_lle_native(
     std::vector<EquilibriumAttemptDiagnosticsNative> attempts;
     std::vector<DensitySolveDiagnostics> density_failures;
     for (const auto& seed : seed_variables) {
+        try {
+            budget.check_seed_attempt_count(static_cast<int>(attempts.size()));
+        } catch (const EquilibriumBudgetExceeded& exc) {
+            budget_exceeded = true;
+            budget_trigger = exc.trigger;
+            break;
+        }
+        bool attempt_budget_exceeded = false;
+        std::string attempt_budget_trigger;
         ElectrolyteCandidateNative candidate = solve_predictive_electrolyte_attempt(
             mixture,
             t,
@@ -2474,7 +2649,10 @@ EquilibriumResultNative electrolyte_lle_native(
             solver_options,
             seed.second,
             gibbs_feed,
-            &density_failures
+            &density_failures,
+            &budget,
+            &attempt_budget_exceeded,
+            &attempt_budget_trigger
         );
         bool candidate_accepted = predictive_electrolyte_accepted(candidate, solver_options);
         attempts.push_back(electrolyte_attempt_diagnostics(seed.first, candidate, solver_options, candidate_accepted));
@@ -2489,10 +2667,24 @@ EquilibriumResultNative electrolyte_lle_native(
             accepted = true;
             break;
         }
+        if (attempt_budget_exceeded) {
+            budget_exceeded = true;
+            budget_trigger = attempt_budget_trigger;
+            break;
+        }
+        try {
+            budget.check_seed_attempt_count(static_cast<int>(attempts.size()));
+        } catch (const EquilibriumBudgetExceeded& exc) {
+            budget_exceeded = true;
+            budget_trigger = exc.trigger;
+            break;
+        }
     }
     if (!has_best || !accepted) {
         EquilibriumResultNative result = electrolyte_lle_failure_result(feed, basis, stability, best, best_seed, has_best, solver_options, attempts);
         result.density_diagnostics = density_failures;
+        result.diagnostics_int["density_failure_count"] = static_cast<int>(density_failures.size());
+        apply_electrolyte_lle_budget_diagnostics(result, solver_options, budget, budget_exceeded, budget_trigger);
         return result;
     }
     bool labels_swapped = false;
@@ -2554,7 +2746,7 @@ EquilibriumResultNative electrolyte_lle_native(
     result.diagnostics_bool["stability_stable"] = stability.stable;
     result.diagnostics_int["basis_rank"] = basis.basis_rank;
     result.diagnostics_int["seed_attempt_count"] = static_cast<int>(attempts.size());
-    result.diagnostics_int["density_failure_count"] = 0;
+    result.diagnostics_int["density_failure_count"] = static_cast<int>(density_failures.size());
     result.diagnostics_int["iterations"] = best.iteration;
     result.diagnostics_int["repeated_stability_iterations"] = 1;
     result.diagnostics_int["requested_max_iterations"] = options.max_iterations;
@@ -2573,6 +2765,7 @@ EquilibriumResultNative electrolyte_lle_native(
     result.diagnostics_string["best_noncollapsed_candidate"] = "accepted";
     result.attempt_diagnostics = attempts;
     result.density_diagnostics = density_failures;
+    apply_electrolyte_lle_budget_diagnostics(result, solver_options, budget, budget_exceeded, budget_trigger);
     return result;
 }
 

@@ -72,6 +72,15 @@ for downstream-owned repeated property loops. It reuses the previous row's
 resolved density as ``rho_seed`` when pressure closure is requested and
 ``continuation="auto"`` is selected.
 
+``EquilibriumOptions`` also exposes optional diagnostic work budgets for
+electrolyte LLE: ``timeout_seconds``, ``max_seed_attempts``,
+``max_density_failures``, and ``max_total_objective_evaluations``. Defaults are
+``None`` and preserve the robust solver path. When a configured budget is
+exhausted, strict mode raises ``SolutionError`` with
+``diagnostics["acceptance_gate"] == "predictive_budget_exhausted"`` and budget
+fields so downstream sweeps can record a structured nonconvergence instead of
+using only outer process timeouts.
+
 .. autoclass:: epcsaft.EquilibriumOptions
    :members:
    :undoc-members:
