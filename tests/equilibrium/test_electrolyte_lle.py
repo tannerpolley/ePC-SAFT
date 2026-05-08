@@ -473,6 +473,32 @@ def test_electrolyte_lle_solver_failure_reports_json_diagnostics() -> None:
     json.dumps(diagnostics, allow_nan=False)
 
 
+def test_electrolyte_lle_best_effort_returns_nonconverged_result() -> None:
+    mix = _case2_mixture()
+
+    result = mix.equilibrium(
+        kind="electrolyte_lle",
+        T=298.15,
+        P=1.0e5,
+        z=_case2_feed(),
+        options=epcsaft.EquilibriumOptions(
+            max_iterations=1,
+            tolerance=1.0e-12,
+            legacy_candidate_mode="off",
+            return_best_effort=True,
+        ),
+    )
+
+    diagnostics = result.diagnostics
+    assert result.split_detected is False
+    assert diagnostics["acceptance_gate"] == "predictive_solve_failed"
+    assert diagnostics["return_best_effort"] is True
+    assert diagnostics["best_effort_phases_returned"] is False
+    assert diagnostics["solver_seed_name"]
+    assert diagnostics["seed_attempt_count"] == len(diagnostics["seed_attempts"])
+    json.dumps(result.to_dict(), allow_nan=False)
+
+
 def test_electrolyte_lle_seed_budget_returns_structured_failure() -> None:
     mix = _case2_mixture()
 

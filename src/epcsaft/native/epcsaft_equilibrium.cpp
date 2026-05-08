@@ -2214,6 +2214,7 @@ EquilibriumResultNative electrolyte_lle_failure_result(
     result.diagnostics_bool["experimental_coupled_density_lle"] = options.experimental_coupled_density_lle;
     result.diagnostics_bool["coupled_density_lle_attempted"] = options.experimental_coupled_density_lle;
     result.diagnostics_bool["density_fallback_used"] = false;
+    result.diagnostics_bool["return_best_effort"] = options.return_best_effort;
     result.diagnostics_int["density_failure_count"] = 0;
     result.diagnostics_bool["stability_checked"] = true;
     result.diagnostics_bool["stability_stable"] = stability.stable;
@@ -2236,12 +2237,20 @@ EquilibriumResultNative electrolyte_lle_failure_result(
     result.diagnostics_double["stability_min_tpd"] = stability.min_tpd;
     result.diagnostics_vector["feed_composition"] = feed;
     result.diagnostics_vector["fugacity_residual"] = best.residual;
-    if (has_best && best.phase_distance_value > std::max(1.0e-4, split_distance_tolerance(options))) {
+    bool has_best_noncollapsed = has_best && best.phase_distance_value > std::max(1.0e-4, split_distance_tolerance(options));
+    if (has_best_noncollapsed) {
         result.diagnostics_vector["best_noncollapsed_candidate_aq"] = best.aq_comp;
         result.diagnostics_vector["best_noncollapsed_candidate_org"] = best.org_comp;
         result.diagnostics_string["best_noncollapsed_candidate"] = "available";
     } else {
         result.diagnostics_string["best_noncollapsed_candidate"] = "none";
+    }
+    result.diagnostics_bool["best_effort_phases_returned"] = false;
+    if (options.return_best_effort && has_best_noncollapsed && best.aq_comp.size() == feed.size() && best.org_comp.size() == feed.size()) {
+        result.phases.push_back(phase_from_state("aq", best.aq_comp, 1.0 - best.beta_org, best.aq_state, options.include_phase_diagnostics));
+        result.phases.push_back(phase_from_state("org", best.org_comp, best.beta_org, best.org_state, options.include_phase_diagnostics));
+        result.diagnostics_bool["best_effort_phases_returned"] = true;
+        result.diagnostics_string["message"] = "electrolyte LLE flash returned best-effort diagnostic phases without predictive acceptance";
     }
     result.attempt_diagnostics = attempts;
     return result;
@@ -2742,6 +2751,8 @@ EquilibriumResultNative electrolyte_lle_native(
     result.diagnostics_bool["experimental_coupled_density_lle"] = options.experimental_coupled_density_lle;
     result.diagnostics_bool["coupled_density_lle_attempted"] = options.experimental_coupled_density_lle;
     result.diagnostics_bool["density_fallback_used"] = false;
+    result.diagnostics_bool["return_best_effort"] = options.return_best_effort;
+    result.diagnostics_bool["best_effort_phases_returned"] = false;
     result.diagnostics_bool["stability_checked"] = true;
     result.diagnostics_bool["stability_stable"] = stability.stable;
     result.diagnostics_int["basis_rank"] = basis.basis_rank;

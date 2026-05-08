@@ -21,6 +21,7 @@ struct EquilibriumOptionsNative {
     int max_seed_attempts = 0;
     int max_density_failures = 0;
     int max_total_objective_evaluations = 0;
+    bool return_best_effort = false;
 };
 
 struct ElectrolyteBubbleOptionsNative {
