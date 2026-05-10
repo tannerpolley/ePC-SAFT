@@ -18,6 +18,7 @@ def main() -> None:
     common.configure_style()
     exp_rows = _shared.load_experimental_rows()
     model_rows = _shared.solve_model_rows()
+    _shared.write_model_validation_table()
 
     fig, ax = plt.subplots(figsize=(7.4, 4.9))
 

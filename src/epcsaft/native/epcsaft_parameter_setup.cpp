@@ -194,6 +194,21 @@ Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, co
         for (int idx : idx_ion) eps_ion += x[idx] * cppargs.dielc[idx];
         return x_sol * eps_sol_w + eps_ion;
     }
+    if (rule == 9) {
+        if (idx_sol.empty()) {
+            throw ValueError("dielc_rule=9 requires at least one solvent species (z=0).");
+        }
+        Scalar mw_sol = scalar_constant<Scalar>(0.0);
+        Scalar eps_sol_num = scalar_constant<Scalar>(0.0);
+        for (int idx : idx_sol) {
+            mw_sol += x[idx] * cppargs.mw[idx];
+            eps_sol_num += x[idx] * cppargs.mw[idx] * cppargs.dielc[idx];
+        }
+        if (scalar_value(mw_sol) <= 0.0) {
+            throw ValueError("Solvent molecular-weight denominator must be positive for dielc_rule=9.");
+        }
+        return eps_sol_num / mw_sol;
+    }
     if (rule == 4 || rule == 5) {
         if (idx_sol.empty()) {
             throw ValueError("dielc_rule requires at least one solvent species (z=0).");
@@ -223,7 +238,7 @@ Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, co
         for (int idx : idx_ion) x_ion += x[idx];
         return scalar_constant<Scalar>(eps_sf_const) / (one + alpha * x_ion);
     }
-    throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7, 8.");
+    throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7, 8, 9.");
 }
 
 void dielectric_inputs_valid_cpp(const vector<double> &x, const add_args &cppargs) {

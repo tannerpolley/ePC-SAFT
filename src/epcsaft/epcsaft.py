@@ -1726,8 +1726,8 @@ def create_struct(params):
         raise ValueError(
             "Unknown assoc_model dadx_differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3)."
         )
-    if cppargs.dielc_rule < 0 or cppargs.dielc_rule > 8:
-        raise ValueError("Unknown rel_perm rule. Supported values are 0..8.")
+    if cppargs.dielc_rule < 0 or cppargs.dielc_rule > 9:
+        raise ValueError("Unknown rel_perm rule. Supported values are 0..9.")
 
     cppargs.d_ion_mode = _as_int_alias(dh_model_dict.get("d_ion_mode", 1), d_ion_alias)
     if cppargs.d_ion_mode not in (0, 1, 2):
