@@ -113,6 +113,26 @@ def test_salt_free_solvent_massfraction_dielectric_rule_reaches_native_runtime()
     assert np.isfinite(state.compressibility_factor())
 
 
+def test_salt_free_solvent_massfraction_dielectric_rule_supports_ionic_pressure_state():
+    mixture = ePCSAFTMixture.from_dataset(
+        "2014_Held",
+        ["H2O", "Butanol", "NH4+", "Cl-"],
+        np.asarray([0.715, 0.27, 0.0075, 0.0075]),
+        298.15,
+        user_options={
+            "elec_model": {
+                "rel_perm": {"rule": "salt-free-massfraction"},
+                "include_born_model": False,
+            }
+        },
+    )
+    state = mixture.state(T=298.15, P=101325.0, x=np.asarray([0.715, 0.27, 0.0075, 0.0075]))
+
+    assert mixture.parameters["elec_model"]["rel_perm"]["rule"] == 9
+    assert state.density() > 0.0
+    assert np.isfinite(state.pressure())
+
+
 def test_runtime_options_default_to_auto_derivative_policy():
     resolved = _resolve_runtime_options({})
     model = resolved["model"]

@@ -32,12 +32,6 @@ T_FIGURE = 298.15
 P_FIGURE = 101325.0
 MODEL_USER_OPTIONS = {
     "elec_model": {
-        "rel_perm": {"rule": "salt-free-massfraction"},
-        "include_born_model": False,
-    }
-}
-FALLBACK_USER_OPTIONS = {
-    "elec_model": {
         "rel_perm": {"rule": "linear-massfraction"},
         "include_born_model": False,
     }
@@ -81,19 +75,31 @@ def _phase_mole_fraction_with_trace_salt(
     return _mass_to_mole_fraction(phase)
 
 
+def _set_symmetric_pair(
+    params: dict, species: list[str], matrix_name: str, left: str, right: str, value: float
+) -> None:
+    if left not in species or right not in species:
+        return
+    matrix = params.get(matrix_name)
+    if matrix is None:
+        return
+    i = species.index(left)
+    j = species.index(right)
+    matrix[i, j] = float(value)
+    matrix[j, i] = float(value)
+
+
+def _apply_held_figure6_overrides(params: dict, species: list[str]) -> dict:
+    for (left, right), value in TABLE_3_4_KIJ.items():
+        _set_symmetric_pair(params, species, "k_ij", left, right, value)
+    for (left, right), value in TABLE_4_LIJ.items():
+        _set_symmetric_pair(params, species, "l_ij", left, right, value)
+    return params
+
+
 def _held_figure6_params(feed_x: np.ndarray, user_options: dict = MODEL_USER_OPTIONS) -> dict:
     params = get_prop_dict("2014_Held", SPECIES, feed_x, T_FIGURE, user_options=user_options)
-    for (left, right), value in TABLE_3_4_KIJ.items():
-        i = IDX[left]
-        j = IDX[right]
-        params["k_ij"][i, j] = float(value)
-        params["k_ij"][j, i] = float(value)
-    for (left, right), value in TABLE_4_LIJ.items():
-        i = IDX[left]
-        j = IDX[right]
-        params["l_ij"][i, j] = float(value)
-        params["l_ij"][j, i] = float(value)
-    return params
+    return _apply_held_figure6_overrides(params, SPECIES)
 
 
 def _solve_lle(
@@ -114,12 +120,11 @@ def _solve_lle(
         org0 = org0_neutral[:2] / np.sum(org0_neutral[:2])
         beta = float(beta_organic)
         feed = (1.0 - beta) * aq0 + beta * org0
-        mixture = epcsaft.ePCSAFTMixture.from_dataset(
-            "2014_Held",
-            ["H2O", "Butanol"],
-            feed,
-            T_FIGURE,
-            user_options=MODEL_USER_OPTIONS,
+        neutral_species = ["H2O", "Butanol"]
+        params = get_prop_dict("2014_Held", neutral_species, feed, T_FIGURE, user_options=MODEL_USER_OPTIONS)
+        mixture = epcsaft.ePCSAFTMixture.from_params(
+            _apply_held_figure6_overrides(params, neutral_species),
+            species=neutral_species,
         )
         result = mixture.equilibrium(
             kind="lle_flash",
@@ -152,7 +157,7 @@ def _solve_lle(
             "beta_aqueous": float(phases[0].phase_fraction),
             "beta_organic": float(phases[1].phase_fraction),
             "diagnostics": dict(result.diagnostics),
-            "dielectric_rule": "salt-free-massfraction",
+            "dielectric_rule": "linear-massfraction",
         }
 
     trace_salt = 1.0e-8
@@ -163,36 +168,25 @@ def _solve_lle(
     feed_x = (1.0 - beta) * aq0 + beta * org0
     feed_x = feed_x / np.sum(feed_x)
 
-    result = None
-    diagnostics: dict = {}
-    accepted_dielectric_rule = "salt-free-massfraction"
-    for accepted_dielectric_rule, user_options in (
-        ("salt-free-massfraction", MODEL_USER_OPTIONS),
-        ("linear-massfraction", FALLBACK_USER_OPTIONS),
-    ):
-        mixture = epcsaft.ePCSAFTMixture.from_params(_held_figure6_params(feed_x, user_options), species=SPECIES)
-        try:
-            candidate = mixture.equilibrium(
-                kind="electrolyte_lle",
-                T=T_FIGURE,
-                P=P_FIGURE,
-                z=feed_x,
-                initial_phases={"aq": aq0, "org": org0, "phase_fraction": beta},
-                options=epcsaft.EquilibriumOptions(
-                    max_iterations=400,
-                    tolerance=1.0e-8,
-                    damping=0.5,
-                    include_phase_diagnostics=True,
-                    return_best_effort=True,
-                ),
-            )
-        except epcsaft.SolutionError as exc:
-            diagnostics = dict(getattr(exc, "diagnostics", {}) or {})
-            continue
-        diagnostics = dict(candidate.diagnostics)
-        if candidate.split_detected and len(candidate.phases) == 2:
-            result = candidate
-            break
+    mixture = epcsaft.ePCSAFTMixture.from_params(_held_figure6_params(feed_x), species=SPECIES)
+    try:
+        result = mixture.equilibrium(
+            kind="electrolyte_lle",
+            T=T_FIGURE,
+            P=P_FIGURE,
+            z=feed_x,
+            initial_phases={"aq": aq0, "org": org0, "phase_fraction": beta},
+            options=epcsaft.EquilibriumOptions(
+                max_iterations=400,
+                tolerance=1.0e-8,
+                damping=0.5,
+                include_phase_diagnostics=True,
+                return_best_effort=True,
+            ),
+        )
+    except epcsaft.SolutionError as exc:
+        diagnostics = dict(getattr(exc, "diagnostics", {}) or {})
+        result = None
     if result is None:
         return {
             "aqueous_mass_fraction": None,
@@ -217,7 +211,7 @@ def _solve_lle(
         "beta_aqueous": float(aqueous.phase_fraction),
         "beta_organic": float(organic.phase_fraction),
         "diagnostics": dict(result.diagnostics),
-        "dielectric_rule": accepted_dielectric_rule,
+        "dielectric_rule": "linear-massfraction",
     }
 
 
@@ -314,7 +308,7 @@ def solve_model_rows() -> tuple[dict, ...]:
                 "beta_aqueous": float(solved["beta_aqueous"]),
                 "solver_residual_norm": float(solved["diagnostics"].get("solver_residual_norm", np.nan)),
                 "gibbs_delta": float(solved["diagnostics"].get("gibbs_delta", np.nan)),
-                "dielectric_rule": str(solved.get("dielectric_rule", "salt-free-massfraction")),
+                "dielectric_rule": str(solved.get("dielectric_rule", "linear-massfraction")),
             }
         )
 

@@ -1637,6 +1637,13 @@ def create_struct(params):
         "mixed-aqueous-organic": 8,
         "mixed_aqueous_organic": 8,
         "rule8": 8,
+        "salt-free-massfraction": 9,
+        "salt_free_massfraction": 9,
+        "salt-free-solvent-massfraction": 9,
+        "salt_free_solvent_massfraction": 9,
+        "salt-free-solvent-weight": 9,
+        "salt_free_solvent_weight": 9,
+        "rule9": 9,
     }
     diff_alias = {
         "auto": 3,
