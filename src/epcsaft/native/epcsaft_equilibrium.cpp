@@ -296,6 +296,67 @@ StabilityTrialNative solve_tpd_trial(
     return out;
 }
 
+StabilityTrialNative fixed_composition_tpd_trial(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const std::vector<double>& parent_ln_phi,
+    const std::string& parent_phase,
+    const std::string& trial_phase,
+    const std::string& seed_name,
+    const std::vector<double>& trial_composition,
+    const EquilibriumOptionsNative& options,
+    double threshold
+) {
+    std::vector<double> composition = clip_normalize(trial_composition, options.min_composition);
+    PhaseStateNative trial = phase_state(mixture, t, p, composition, trial_phase);
+    double candidate_tpd = tpd_value(composition, trial.ln_phi, feed, parent_ln_phi);
+
+    StabilityTrialNative out;
+    out.parent_phase = parent_phase;
+    out.trial_phase = trial_phase;
+    out.seed_name = seed_name;
+    out.composition = composition;
+    out.tpd = candidate_tpd;
+    out.iterations = 1;
+    out.converged = true;
+    out.unstable = candidate_tpd < -threshold;
+    out.diagnostics_double["tpd_threshold"] = threshold;
+    out.diagnostics_double["final_max_composition_delta"] = 0.0;
+    out.diagnostics_string["message"] = out.unstable ? "negative TPD trial" : "non-negative TPD trial";
+    return out;
+}
+
+StabilityTrialNative fixed_composition_tpd_trial_from_state(
+    const std::vector<double>& feed,
+    const std::vector<double>& parent_ln_phi,
+    const std::string& parent_phase,
+    const std::string& trial_phase,
+    const std::string& seed_name,
+    const std::vector<double>& trial_composition,
+    const std::vector<double>& trial_ln_phi,
+    const EquilibriumOptionsNative& options,
+    double threshold
+) {
+    std::vector<double> composition = clip_normalize(trial_composition, options.min_composition);
+    double candidate_tpd = tpd_value(composition, trial_ln_phi, feed, parent_ln_phi);
+
+    StabilityTrialNative out;
+    out.parent_phase = parent_phase;
+    out.trial_phase = trial_phase;
+    out.seed_name = seed_name;
+    out.composition = composition;
+    out.tpd = candidate_tpd;
+    out.iterations = 1;
+    out.converged = true;
+    out.unstable = candidate_tpd < -threshold;
+    out.diagnostics_double["tpd_threshold"] = threshold;
+    out.diagnostics_double["final_max_composition_delta"] = 0.0;
+    out.diagnostics_string["message"] = out.unstable ? "negative TPD trial" : "non-negative TPD trial";
+    return out;
+}
+
 std::vector<std::pair<std::string, std::vector<double>>> tpd_seeds(const std::vector<double>& feed, const EquilibriumOptionsNative& options) {
     std::vector<std::pair<std::string, std::vector<double>>> seeds;
     seeds.push_back({"feed", feed});
@@ -303,6 +364,140 @@ std::vector<std::pair<std::string, std::vector<double>>> tpd_seeds(const std::ve
         seeds.push_back({"component_" + std::to_string(i) + "_rich", component_rich_composition(feed.size(), i, options.min_composition)});
     }
     return seeds;
+}
+
+StabilityResultNative neutral_stability_result_from_trials(
+    std::vector<StabilityTrialNative> trials,
+    double threshold,
+    bool fast_exit_used,
+    const std::string& tpd_method
+) {
+    if (trials.empty()) {
+        throw ValueError("stability analysis requires at least one parent and trial phase.");
+    }
+    auto best_iter = std::min_element(trials.begin(), trials.end(), [](const auto& a, const auto& b) {
+        return a.tpd < b.tpd;
+    });
+    StabilityResultNative result;
+    result.backend = "neutral_tpd";
+    result.problem_kind = "stability";
+    result.trials = std::move(trials);
+    result.stable = best_iter->tpd >= -threshold;
+    result.min_tpd = best_iter->tpd;
+    result.parent_phase = best_iter->parent_phase;
+    result.trial_phase = best_iter->trial_phase;
+    result.trial_composition = best_iter->composition;
+    result.diagnostics_string["stability_analysis"] = "neutral_tpd";
+    result.diagnostics_bool["stable"] = result.stable;
+    result.diagnostics_bool["fast_exit_used"] = fast_exit_used;
+    result.diagnostics_double["tpd_threshold"] = threshold;
+    result.diagnostics_double["min_tpd"] = result.min_tpd;
+    result.diagnostics_int["trial_count"] = static_cast<int>(result.trials.size());
+    result.diagnostics_string["min_seed_name"] = best_iter->seed_name;
+    result.diagnostics_string["message"] = result.stable ? "no negative TPD trial found" : "unstable trial phase detected";
+    result.diagnostics_string["solver_language"] = "c++";
+    result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
+    result.diagnostics_string["tpd_method"] = tpd_method;
+    return result;
+}
+
+StabilityResultNative neutral_stability_native_impl(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& raw_feed,
+    const EquilibriumOptionsNative& options,
+    const std::vector<std::string>& parent_phases,
+    const std::vector<std::string>& trial_phases,
+    bool stop_on_first_unstable
+) {
+    if (mixture->has_ionic()) {
+        throw ValueError("Neutral stability does not support ion-containing mixtures.");
+    }
+    std::vector<double> feed = normalize_feed(raw_feed, mixture->ncomp(), options.min_composition, "stability");
+    std::vector<StabilityTrialNative> trials;
+    double threshold = std::max(options.tolerance, 1.0e-8);
+    const auto seeds = tpd_seeds(feed, options);
+    bool fast_exit_used = false;
+    for (const std::string& parent_phase : parent_phases) {
+        PhaseStateNative parent = phase_state(mixture, t, p, feed, parent_phase);
+        for (const std::string& trial_phase : trial_phases) {
+            for (const auto& seed : seeds) {
+                StabilityTrialNative trial = solve_tpd_trial(
+                    mixture,
+                    t,
+                    p,
+                    feed,
+                    parent.ln_phi,
+                    parent_phase,
+                    trial_phase,
+                    seed.first,
+                    seed.second,
+                    options,
+                    threshold
+                );
+                trials.push_back(std::move(trial));
+                if (stop_on_first_unstable && trials.back().unstable) {
+                    fast_exit_used = true;
+                    goto stability_done;
+                }
+            }
+        }
+    }
+
+stability_done:
+    return neutral_stability_result_from_trials(
+        std::move(trials),
+        threshold,
+        fast_exit_used,
+        fast_exit_used ? "native_tpd_fixed_point_fast_exit" : "native_tpd_fixed_point"
+    );
+}
+
+StabilityResultNative neutral_split_stability_precheck_from_states(
+    const std::vector<double>& raw_feed,
+    const PhaseStateNative& parent_liq,
+    const PhaseStateNative& parent_vap,
+    const std::vector<double>& liquid_composition,
+    const std::vector<double>& vapor_composition,
+    const PhaseStateNative& liquid_state,
+    const PhaseStateNative& vapor_state,
+    const EquilibriumOptionsNative& options
+) {
+    std::vector<double> feed = raw_feed;
+    double threshold = std::max(options.tolerance, 1.0e-8);
+    std::vector<StabilityTrialNative> trials;
+
+    trials.push_back(fixed_composition_tpd_trial_from_state(
+        feed,
+        parent_liq.ln_phi,
+        "liq",
+        "vap",
+        "split_vapor_seed",
+        vapor_composition,
+        vapor_state.ln_phi,
+        options,
+        threshold
+    ));
+    if (!trials.back().unstable) {
+        trials.push_back(fixed_composition_tpd_trial_from_state(
+            feed,
+            parent_vap.ln_phi,
+            "vap",
+            "liq",
+            "split_liquid_seed",
+            liquid_composition,
+            liquid_state.ln_phi,
+            options,
+            threshold
+        ));
+    }
+    return neutral_stability_result_from_trials(
+        std::move(trials),
+        threshold,
+        true,
+        "native_tpd_split_seed_check"
+    );
 }
 
 std::string ion_stem(const std::string& label, double charge = 0.0) {
@@ -916,6 +1111,8 @@ void merge_stability_diagnostics(EquilibriumResultNative& result, const Stabilit
     result.diagnostics_int["trial_count"] = static_cast<int>(stability.trials.size());
     result.diagnostics_int["stability_max_iterations"] = pre_opts.max_iterations;
     result.diagnostics_double["stability_tolerance"] = pre_opts.tolerance;
+    auto fast_exit = stability.diagnostics_bool.find("fast_exit_used");
+    result.diagnostics_bool["stability_fast_exit"] = fast_exit != stability.diagnostics_bool.end() && fast_exit->second;
 }
 
 void skipped_stability_diagnostics(EquilibriumResultNative& result) {
@@ -1511,46 +1708,7 @@ StabilityResultNative neutral_stability_native(
     const std::vector<std::string>& parent_phases,
     const std::vector<std::string>& trial_phases
 ) {
-    if (mixture->has_ionic()) {
-        throw ValueError("Neutral stability does not support ion-containing mixtures.");
-    }
-    std::vector<double> feed = normalize_feed(raw_feed, mixture->ncomp(), options.min_composition, "stability");
-    std::vector<StabilityTrialNative> trials;
-    double threshold = std::max(options.tolerance, 1.0e-8);
-    for (const std::string& parent_phase : parent_phases) {
-        PhaseStateNative parent = phase_state(mixture, t, p, feed, parent_phase);
-        for (const std::string& trial_phase : trial_phases) {
-            for (const auto& seed : tpd_seeds(feed, options)) {
-                trials.push_back(solve_tpd_trial(mixture, t, p, feed, parent.ln_phi, parent_phase, trial_phase, seed.first, seed.second, options, threshold));
-            }
-        }
-    }
-    if (trials.empty()) {
-        throw ValueError("stability analysis requires at least one parent and trial phase.");
-    }
-    auto best_iter = std::min_element(trials.begin(), trials.end(), [](const auto& a, const auto& b) {
-        return a.tpd < b.tpd;
-    });
-    StabilityResultNative result;
-    result.backend = "neutral_tpd";
-    result.problem_kind = "stability";
-    result.trials = trials;
-    result.stable = best_iter->tpd >= -threshold;
-    result.min_tpd = best_iter->tpd;
-    result.parent_phase = best_iter->parent_phase;
-    result.trial_phase = best_iter->trial_phase;
-    result.trial_composition = best_iter->composition;
-    result.diagnostics_string["stability_analysis"] = "neutral_tpd";
-    result.diagnostics_bool["stable"] = result.stable;
-    result.diagnostics_double["tpd_threshold"] = threshold;
-    result.diagnostics_double["min_tpd"] = result.min_tpd;
-    result.diagnostics_int["trial_count"] = static_cast<int>(trials.size());
-    result.diagnostics_string["min_seed_name"] = best_iter->seed_name;
-    result.diagnostics_string["message"] = result.stable ? "no negative TPD trial found" : "unstable trial phase detected";
-    result.diagnostics_string["solver_language"] = "c++";
-    result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
-    result.diagnostics_string["tpd_method"] = "native_tpd_fixed_point";
-    return result;
+    return neutral_stability_native_impl(mixture, t, p, raw_feed, options, parent_phases, trial_phases, false);
 }
 
 StabilityResultNative electrolyte_stability_native(
@@ -1628,15 +1786,6 @@ EquilibriumResultNative tp_flash_native(
     result.backend = "neutral_vle";
     result.problem_kind = "tp_flash";
 
-    if (options.stability_precheck) {
-        EquilibriumOptionsNative stab_opts = precheck_options(options);
-        StabilityResultNative stability = neutral_stability_native(mixture, t, p, feed, stab_opts, {"liq", "vap"}, {"liq", "vap"});
-        merge_stability_diagnostics(result, stability, stab_opts);
-        mixture->clear_runtime_caches();
-    } else {
-        skipped_stability_diagnostics(result);
-    }
-
     PhaseStateNative liquid_seed = phase_state(mixture, t, p, feed, "liq");
     PhaseStateNative vapor_seed = phase_state(mixture, t, p, feed, "vap");
     std::vector<double> ln_k(feed.size(), 0.0);
@@ -1654,8 +1803,25 @@ EquilibriumResultNative tp_flash_native(
         std::string phase_label = beta <= 0.0 ? "liq" : "vap";
         const PhaseStateNative& phase_state_payload = beta <= 0.0 ? liquid_seed : vapor_seed;
         result.phases.push_back(phase_from_state(phase_label, feed, 1.0, phase_state_payload, options.include_phase_diagnostics));
-        result.stable = no_split_stable_from_precheck(result);
         result.split_detected = false;
+        if (options.stability_precheck) {
+            EquilibriumOptionsNative stab_opts = precheck_options(options);
+            StabilityResultNative stability = neutral_stability_native_impl(
+                mixture,
+                t,
+                p,
+                feed,
+                stab_opts,
+                {"liq", "vap"},
+                {"liq", "vap"},
+                false
+            );
+            merge_stability_diagnostics(result, stability, stab_opts);
+            result.stable = stability.stable;
+        } else {
+            skipped_stability_diagnostics(result);
+            result.stable = false;
+        }
         result.diagnostics_int["iterations"] = 0;
         result.diagnostics_double["fugacity_residual_norm"] = 0.0;
         result.diagnostics_double["material_balance_error"] = 0.0;
@@ -1665,6 +1831,9 @@ EquilibriumResultNative tp_flash_native(
         result.diagnostics_string["point_solver_message"] = no_split_message;
         result.diagnostics_string["solver_language"] = "c++";
         result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
+        result.diagnostics_bool["neutral_fast_path"] = true;
+        result.diagnostics_bool["neutral_fallback_used"] = false;
+        result.diagnostics_string["neutral_fallback_reason"] = "";
         return result;
     }
 
@@ -1705,6 +1874,34 @@ EquilibriumResultNative tp_flash_native(
             result.phases.push_back(phase_from_state("vap", best_y, beta, best_vapor, options.include_phase_diagnostics));
             result.stable = false;
             result.split_detected = true;
+            if (options.stability_precheck) {
+                EquilibriumOptionsNative stab_opts = precheck_options(options);
+                StabilityResultNative stability = neutral_split_stability_precheck_from_states(
+                    feed,
+                    liquid_seed,
+                    vapor_seed,
+                    best_x,
+                    best_y,
+                    best_liquid,
+                    best_vapor,
+                    stab_opts
+                );
+                if (stability.stable) {
+                    stability = neutral_stability_native_impl(
+                        mixture,
+                        t,
+                        p,
+                        feed,
+                        stab_opts,
+                        {"liq", "vap"},
+                        {"liq", "vap"},
+                        false
+                    );
+                }
+                merge_stability_diagnostics(result, stability, stab_opts);
+            } else {
+                skipped_stability_diagnostics(result);
+            }
             result.diagnostics_int["iterations"] = best_iteration;
             result.diagnostics_double["fugacity_residual_norm"] = best_residual_norm;
             result.diagnostics_vector["fugacity_residual"] = best_residual;
@@ -1716,6 +1913,9 @@ EquilibriumResultNative tp_flash_native(
             result.diagnostics_string["solver_language"] = "c++";
             result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
             result.diagnostics_string["nonlinear_solver"] = "native_successive_substitution";
+            result.diagnostics_bool["neutral_fast_path"] = true;
+            result.diagnostics_bool["neutral_fallback_used"] = false;
+            result.diagnostics_string["neutral_fallback_reason"] = "";
             return result;
         }
         for (std::size_t i = 0; i < feed.size(); ++i) {
@@ -1942,7 +2142,16 @@ EquilibriumResultNative lle_flash_native(
     std::vector<double> unstable_trial_composition;
     if (options.stability_precheck) {
         stab_opts = precheck_options(options);
-        stability = neutral_stability_native(mixture, t, p, feed, stab_opts, {"liq"}, {"liq"});
+        stability = neutral_stability_native_impl(
+            mixture,
+            t,
+            p,
+            feed,
+            stab_opts,
+            {"liq"},
+            {"liq"},
+            has_initial_phases
+        );
         merge_stability_diagnostics(result_prefix, stability, stab_opts);
         mixture->clear_runtime_caches();
         for (const auto& trial : stability.trials) {

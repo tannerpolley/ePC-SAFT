@@ -57,6 +57,9 @@ def test_ternary_hydrocarbon_basis_tp_flash_closes_material_and_fugacity_balance
     assert result.diagnostics["material_balance_error"] < 1.0e-10
     assert result.diagnostics["fugacity_residual_norm"] < 1.0e-6
     assert result.diagnostics["stability_analysis"] == "neutral_tpd"
+    assert result.diagnostics["neutral_fast_path"] is True
+    assert result.diagnostics["neutral_fallback_used"] is False
+    assert result.diagnostics["neutral_fallback_reason"] == ""
     assert isinstance(result.diagnostics["stability_stable"], bool)
     assert np.isfinite(result.diagnostics["min_tpd"])
     assert result.diagnostics["unstable_trial_count"] >= 1
