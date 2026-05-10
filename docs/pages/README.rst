@@ -1,109 +1,178 @@
 Overview
 ========
 
-.. image:: https://badge.fury.io/py/epcsaft.svg
-    :target: https://badge.fury.io/py/epcsaft
-.. image:: https://img.shields.io/badge/License-GPLv3-blue.svg
-    :target: /LICENSE
-.. image:: https://img.shields.io/pypi/dm/epcsaft
-    :alt: PyPI - Downloads
-    :target: https://pypistats.org/packages/epcsaft
-.. image:: https://readthedocs.org/projects/epcsaft/badge/?version=latest
-   :target: http://epcsaft.readthedocs.io/?badge=latest
+``epcsaft`` is a Python package for electrolyte PC-SAFT thermodynamic
+calculations. The public interface is Python, while the equation-of-state
+runtime and package-owned equilibrium/regression kernels are implemented in
+native C++ through ``pybind11``.
 
-``epcsaft`` is a Python package with a pybind11/C++ implementation of the ePC-SAFT equation of state with association and electrolyte terms.
+Current release: ``1.5.0``
 
-Where to start
---------------
+What the package does
+---------------------
 
-Most users should install from PyPI:
+Use ``epcsaft`` to build PC-SAFT/ePC-SAFT mixtures, evaluate thermodynamic
+states, compute fugacity and activity coefficients, run supported
+phase-equilibrium workflows, and fit supported parameter sets against tabular
+data.
 
-.. code-block:: bash
+The main user objects are:
 
-   pip install epcsaft
+- ``ePCSAFTMixture``: stores species parameters and creates states.
+- ``ePCSAFTState``: evaluates density, pressure, residual properties, fugacity
+  coefficients, activity coefficients, and diagnostics.
+- ``create_parameter_template(...)``: creates a user-owned parameter folder.
+- ``fit_pure_neutral(...)`` and related helpers: fit supported parameter sets.
+- ``capabilities()``: reports available runtime and solver paths.
 
-``epcsaft`` includes a compiled C++ extension. If a wheel is available for your Python version and platform, pip installs it automatically. If a wheel is not available, pip falls back to a source build, which requires a working native build toolchain.
+Install
+-------
 
-For development from this source tree:
+Install from the current GitHub release:
 
-.. code-block:: bash
+``https://github.com/tannerpolley/ePC-SAFT/releases/tag/v1.5.0``
 
-   uv sync --no-install-project
-   uv run python scripts/build_epcsaft.py
-   uv run python scripts/validate_project.py quick
+If a wheel matching your platform is attached to the release, install it
+directly:
 
-Direct pytest also works, for example ``uv run python -m pytest tests/api/test_runtime.py -q``. For source-checkout validation, prefer ``uv run python run_pytest.py ...`` because the wrapper sets the source import path and manages pytest temporary directories more predictably. ``uv run python run_pytest.py -q`` is the default fast contract suite; use ``uv run python run_pytest.py --confidence -q`` before handoff when native runtime confidence matters, and ``--all`` only for the explicit exhaustive suite. Set ``EPCSAFT_PYTEST_TEMP_ROOT`` when you want the wrapper to use an opt-in external pytest temp root instead of its default repo-local generated temp area.
+.. code-block:: powershell
 
-For maintainers, :doc:`development_workflows` is the explicit command matrix for setup, fast native rebuilds, focused tests, profiling, packaging, and repair-only cleanup. :doc:`project_structure` defines the package, reusable data, and analysis folder layout. :doc:`equilibrium_cookbook` is the agent-facing guide for choosing and validating equilibrium, speciation, electrolyte bubble, repeated fugacity, autodiff, and IPOPT workflows.
+   python -m pip install C:\path\to\epcsaft-1.5.0-*.whl
 
-Use ``uv run python scripts/build_epcsaft.py --clean`` only as a repair step for stale CMake state or stale/locked ``_core`` artifacts. If a ``_core*.pyd`` is locked, stop the importing Python/test/IDE process before running the clean repair.
+To install from the tagged source:
 
-``CMakePresets.json`` is optional Windows MinGW convenience for IDEs and manual CMake use. The canonical local native build remains ``uv run python scripts/build_epcsaft.py``.
+.. code-block:: powershell
 
-For package artifacts:
+   python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.0"
 
-.. code-block:: bash
+With ``uv``:
 
-   uv run python scripts/build_dist.py
+.. code-block:: powershell
 
-The default development workflow uses ``uv`` for dependency management and direct CMake for the in-place native extension build.
+   uv add "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.0"
 
-Then choose the path that matches what you want to do:
+Source builds require Python ``>=3.9``, a C++ compiler, CMake, and Ninja or
+another CMake generator. Python 3.13 is the current project smoke-test
+baseline.
 
-- :doc:`getting_started` for the quickest first run
-- :doc:`development_workflows` for the exact build/test/debug command matrix
-- :doc:`equilibrium_cookbook` for downstream-agent equilibrium and speciation workflows
-- :doc:`user_parameter_templates` to build your own parameter folder
-- :doc:`parameter_regression` for the phase-1 neutral ``m/s/e`` regression workflow
-- :doc:`user_options` to see every supported ``user_options.json`` setting
-- :doc:`package_guide` for a task-based guide to the public API
-- :doc:`api_reference` for the full method list
+The project metadata is prepared for PyPI distribution as ``epcsaft``. Until
+PyPI publishing is enabled, use the GitHub release or tagged Git install path.
 
-Simple example
---------------
+Verify the install
+------------------
 
 .. code-block:: python
 
-  import numpy as np
-  from epcsaft import ePCSAFTMixture
+   import epcsaft
 
-  mixture = ePCSAFTMixture.from_params(
-      {"m": np.asarray([2.8149]), "s": np.asarray([3.7169]), "e": np.asarray([285.69])},
-      species=["Toluene"],
-  )
-  state = mixture.state(T=320.0, x=np.asarray([1.0]), P=101325.0)
-  # Pressure-based states solve and cache density during construction.
-  print(state.density())               # mol/m^3 by default
-  print(state.density(units="mass"))   # kg/m^3 when MW is available
-  print(state.molar_density())         # explicit molar-density alias
-  print(state.ares())                  # short alias for residual_helmholtz()
-  print(state.ares(return_contribution_terms=True)["terms"]["hc"])
-  seeded = mixture.state(T=321.0, x=np.asarray([1.0]), P=101325.0, rho_guess=state.density())
-  audit = mixture.check_density(T=320.0, x=np.asarray([1.0]), P=101325.0, rho=state.density())
+   print(epcsaft.__version__)
+   print(epcsaft.runtime_build_info())
+   print(epcsaft.capabilities())
 
-Project Layout
+Quick example
+-------------
+
+.. code-block:: python
+
+   import numpy as np
+   from epcsaft import ePCSAFTMixture
+
+   mixture = ePCSAFTMixture.from_params(
+       {
+           "m": np.asarray([2.8149]),
+           "s": np.asarray([3.7169]),
+           "e": np.asarray([285.69]),
+       },
+       species=["Toluene"],
+   )
+
+   state = mixture.state(T=320.0, x=np.asarray([1.0]), P=101325.0)
+
+   print(state.density())
+   print(state.pressure())
+   print(state.compressibility_factor())
+   print(state.fugacity_coefficient())
+
+Pressure, density, and seeds
+----------------------------
+
+State construction uses exactly one closure variable:
+
+- ``state(..., P=...)`` solves the EOS pressure-density closure.
+- ``state(..., rho=...)`` evaluates properties at the supplied molar density.
+- ``state(..., P=..., rho_guess=...)`` still solves exact pressure closure, but
+  seeds the density solve with a previous good density.
+
+.. code-block:: python
+
+   base = mixture.state(T=320.0, x=np.asarray([1.0]), P=101325.0)
+   next_state = mixture.state(
+       T=321.0,
+       x=np.asarray([1.0]),
+       P=101325.0,
+       rho_guess=base.density(),
+   )
+
+   audit = mixture.check_density(
+       T=320.0,
+       x=np.asarray([1.0]),
+       P=101325.0,
+       rho=base.density(),
+   )
+   print(audit["within_tolerance"], audit["pressure_residual"])
+
+Parameter data
 --------------
 
-- ``src/epcsaft/``: installable runtime package, pybind11 binding source, and native C++ sources
-- ``data/reference/``: reusable checkout reference data, including example parameter datasets under ``data/reference/epcsaft_parameters/``
-- ``analyses/``: source-owned paper validation, fit validation, and figure workflows with local ``scripts/``, ``data/``, and ``results/``
-- ``docs/``: user documentation and reference material
+Most users should create and own their parameter folders:
 
-Public API
-----------
+.. code-block:: python
 
-The main entry points are ``create_parameter_template``, ``ePCSAFTMixture``, ``ePCSAFTState``, ``fit_pure_neutral(...)``, and the structured result objects returned by solver-style methods.
+   from epcsaft import create_parameter_template
 
-If you want to build your own parameter folder, see :doc:`user_parameter_templates`.
+   template_root = create_parameter_template(
+       location=r"C:\path\to\my_epcsaft_data",
+       folder_name="water_salt_case",
+       species=["H2O", "Na+", "Cl-"],
+   )
 
-Author
-------
+After filling in the generated files, load them with
+``ePCSAFTMixture.from_dataset(...)``. The source checkout contains
+reference/example datasets under ``data/reference/epcsaft_parameters/`` for
+comparison and validation, but users should not assume every installed wheel
+contains those source-checkout reference folders.
 
-Tanner Polley
+Equilibrium and speciation
+--------------------------
+
+Use ``capabilities()`` and the cookbook before wiring a high-level equilibrium
+workflow. The package includes native-backed paths for neutral phase
+equilibrium, electrolyte LLE, fixed-liquid electrolyte bubble pressure,
+reactive speciation, reactive staged equilibrium, and scoped reactive
+electrolyte bubble pressure.
+
+Important boundaries:
+
+- Electrolyte bubble pressure is for fixed liquid composition with neutral
+  vapor species; ions remain liquid-only.
+- Reactive electrolyte bubble pressure is staged: native speciation first,
+  then fixed-liquid electrolyte bubble pressure.
+- IPOPT is optional, experimental, and explicit opt-in.
+- Downstream case-study models should own their own data, balances, run
+  matrices, and acceptance criteria.
+
+Where to go next
+----------------
+
+- :doc:`release_installation` for release downloads and source-build notes.
+- :doc:`getting_started` for the first local calculation.
+- :doc:`user_parameter_templates` to build your own parameter folder.
+- :doc:`user_options` for supported ``user_options.json`` settings.
+- :doc:`equilibrium_cookbook` for equilibrium and speciation examples.
+- :doc:`package_guide` for task-based API guidance.
+- :doc:`api_reference` for the full API reference.
 
 License
 -------
 
-GNU General Public License v3.0
-
-
+GNU General Public License v3.0.

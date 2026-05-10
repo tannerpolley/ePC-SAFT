@@ -11,6 +11,7 @@ Start Here
    :caption: Quick Start
 
    README
+   release_installation
    getting_started
    downstream_local_installs
    development_workflows

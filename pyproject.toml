@@ -85,6 +85,9 @@ ninja.version = ">=1.11"
 
 [tool.scikit-build.sdist]
 include = [
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
     "CMakeLists.txt",
     "build_backend/*.py",
     "src/epcsaft/**/*.py",

@@ -34,16 +34,24 @@ def test_docs_make_confidence_suite_the_default_runtime_check() -> None:
     readme = _read("README.md")
     getting_started = _read("docs/pages/getting_started.rst")
     overview = _read("docs/pages/README.rst")
+    release_installation = _read("docs/pages/release_installation.rst")
     docs_index = _read("docs/pages/index.rst")
     development_workflows = _read("docs/pages/development_workflows.rst")
 
-    assert "default source-checkout validation sequence" in readme
-    assert "`run_pytest.py -q` is the default fast contract suite" in readme
-    assert "development workflow guide" in readme
+    assert "README intentionally stays focused on package users" in readme
+    assert "uv run python scripts\\validate_project.py quick" not in readme
+    assert "uv run python run_pytest.py --confidence -q" not in readme
+    assert "GitHub release or tagged Git install path" in readme
+    assert "python -m pip install epcsaft" in readme
+    assert "Until then, use the GitHub release" in readme
+    assert "tagged Git source install path" in release_installation
     assert "default source-checkout validation sequence" in getting_started
     assert "``run_pytest.py -q`` is the default fast contract suite" in getting_started
-    assert "uv run python run_pytest.py --confidence -q" in overview
+    assert "Current release: ``1.5.0``" in overview
+    assert "PyPI publishing is enabled" in overview
+    assert "uv run python run_pytest.py --confidence -q" not in overview
     assert "run_pytest.py tests/test_runtime.py -q" not in overview
+    assert "release_installation" in docs_index
     assert "development_workflows" in docs_index
     assert "native_debugging" in docs_index
     assert "native/equation debugging guide" in getting_started

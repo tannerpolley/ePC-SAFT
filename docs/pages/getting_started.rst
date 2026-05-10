@@ -4,13 +4,21 @@ Getting Started
 Install and build
 -----------------
 
-Most users install the published package from PyPI:
+Most users should start from the current GitHub release:
 
 .. code-block:: bash
 
-   pip install epcsaft
+   python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.0"
 
-``epcsaft`` includes a compiled C++ extension exposed through pybind11. If a wheel is available for your Python version and platform, pip installs it automatically. If a wheel is not available, pip falls back to a source build, which requires a working native build toolchain.
+With ``uv``:
+
+.. code-block:: bash
+
+   uv add "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.0"
+
+``epcsaft`` includes a compiled C++ extension exposed through pybind11. If you install a release wheel that matches your Python version and platform, the native extension is already built. If you install from tagged source, the installer builds the extension locally and requires a working native build toolchain. See :doc:`release_installation` for the current download paths and source-build notes.
+
+The project metadata is prepared for PyPI distribution as ``epcsaft``. Until PyPI publishing is enabled, use the GitHub release or tagged Git install route.
 
 For development from this source tree, use ``uv`` and the direct CMake build loop:
 
