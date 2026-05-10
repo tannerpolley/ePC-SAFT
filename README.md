@@ -2,7 +2,7 @@
 
 `epcsaft` is a Python package for electrolyte PC-SAFT thermodynamic calculations. The public interface is Python, while the equation-of-state runtime and package-owned equilibrium/regression kernels are implemented in native C++ through `pybind11`.
 
-Current release: `1.5.1`
+Current release: `1.5.2`
 
 ## What This Package Does
 
@@ -20,7 +20,7 @@ The main user objects are:
 
 ### From PyPI
 
-Once the package is published on PyPI, the standard install command is:
+The standard install command is:
 
 ```powershell
 python -m pip install epcsaft
@@ -32,30 +32,30 @@ With `uv`:
 uv add epcsaft
 ```
 
-The current public release is also available from GitHub while PyPI publishing is being set up.
+The current public release is also available from GitHub.
 
 ### Install From The GitHub Release
 
 Download the current release from:
 
-<https://github.com/tannerpolley/ePC-SAFT/releases/tag/v1.5.1>
+<https://github.com/tannerpolley/ePC-SAFT/releases/tag/v1.5.2>
 
 If a wheel matching your Python version and platform is attached to the release, install it directly:
 
 ```powershell
-python -m pip install C:\path\to\epcsaft-1.5.1-*.whl
+python -m pip install C:\path\to\epcsaft-1.5.2-*.whl
 ```
 
 If you are installing from the release source archive or from the tagged Git source, a native build is required:
 
 ```powershell
-python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.1"
+python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.2"
 ```
 
 With `uv`:
 
 ```powershell
-uv add "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.1"
+uv add "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.2"
 ```
 
 Source builds require Python `>=3.9`, a C++ compiler, CMake, and Ninja or another CMake generator. Python 3.13 is the current project smoke-test baseline.
@@ -93,7 +93,7 @@ uv pip install -e .
 IPOPT support is optional and experimental. Install it only if you already have the `cyipopt`/IPOPT prerequisites working for your platform:
 
 ```powershell
-python -m pip install "epcsaft[ipopt] @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.1"
+python -m pip install "epcsaft[ipopt] @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.2"
 ```
 
 IPOPT is never selected automatically by `solver_backend="auto"`; it is an explicit opt-in refinement path.

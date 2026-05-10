@@ -10,7 +10,7 @@ backend-path = ["build_backend"]
 
 [project]
 name = "epcsaft"
-version = "1.5.1"
+version = "1.5.2"
 description = "The ePC-SAFT equation of state, including dipole, association, and ion terms."
 readme = "README.md"
 requires-python = ">=3.9"

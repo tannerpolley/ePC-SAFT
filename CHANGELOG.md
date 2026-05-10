@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.2 - 2026-05-10
+
+### Highlights
+
+- Added a GitHub Actions workflow for PyPI Trusted Publishing.
+- Added release/tag and manual-dispatch publishing paths for PyPI.
+- Updated README and installation docs so PyPI is the primary install path once publishing is live.
+
 ## 1.5.1 - 2026-05-10
 
 ### Highlights

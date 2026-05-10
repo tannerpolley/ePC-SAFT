@@ -41,7 +41,7 @@ def test_docs_make_confidence_suite_the_default_runtime_check() -> None:
     assert "README intentionally stays focused on package users" in readme
     assert "uv run python scripts\\validate_project.py quick" not in readme
     assert "uv run python run_pytest.py --confidence -q" not in readme
-    assert "GitHub while PyPI publishing is being set up" in readme
+    assert "The current public release is also available from GitHub" in readme
     assert "python -m pip install epcsaft" in readme
     assert "python -m pip install -e ." in readme
     assert "README intentionally stays focused on package users" in readme
@@ -50,13 +50,14 @@ def test_docs_make_confidence_suite_the_default_runtime_check() -> None:
     assert "Source and editable installs build a native C++ extension" in getting_started
     assert "default source-checkout validation sequence" not in getting_started
     assert "``run_pytest.py -q`` is the default fast contract suite" not in getting_started
-    assert "Current release: ``1.5.1``" in overview
+    assert "Current release: ``1.5.2``" in overview
     assert "python -m pip install -e ." in overview
     assert "uv run python run_pytest.py --confidence -q" not in overview
     assert "run_pytest.py tests/test_runtime.py -q" not in overview
     assert "release_installation" in docs_index
     assert "development_workflows" in docs_index
     assert "native_debugging" in docs_index
+    assert "publishing" in docs_index
     assert "native/equation debugging guide" not in getting_started
     assert "Start every fresh source checkout with this sequence" in development_workflows
     assert "uv run python scripts/build_epcsaft.py --build-only --parallel 10" in development_workflows
@@ -110,3 +111,28 @@ def test_github_default_events_do_not_run_duplicate_heavy_smokes() -> None:
     assert "if: ${{ github.event_name != 'pull_request' }}" in workflow
     assert workflow.count("name: windows install smoke") == 1
     assert workflow.count("name: fast workflow smoke") == 1
+
+
+def test_pypi_publish_workflow_uses_trusted_publishing() -> None:
+    workflow = _read(".github/workflows/publish-pypi.yml")
+    publishing_docs = _read("docs/pages/publishing.rst")
+
+    for token in (
+        "name: publish-to-pypi",
+        "types: [published]",
+        "workflow_dispatch:",
+        "id-token: write",
+        "environment:",
+        "name: pypi",
+        "pypa/gh-action-pypi-publish@release/v1",
+        "actions/download-artifact@v7.0.1",
+        "merge-multiple: true",
+        'CIBW_BUILD: "cp313-*"',
+        "uv build --sdist",
+    ):
+        assert token in workflow
+    assert "password:" not in workflow
+    assert "username:" not in workflow
+    assert "PYPI_API_TOKEN" not in workflow
+    assert "Workflow filename: ``publish-pypi.yml``" in publishing_docs
+    assert "Environment name: ``pypi``" in publishing_docs

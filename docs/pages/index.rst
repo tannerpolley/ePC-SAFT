@@ -61,6 +61,7 @@ Contributor Reference
    downstream_dependency_protocol
    native_debugging
    equation_traceability
+   publishing
 
 Indices and tables
 ==================

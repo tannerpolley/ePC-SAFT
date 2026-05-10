@@ -59,13 +59,13 @@ def test_pep660_editable_hook_uses_isolated_build_dir(tmp_path, monkeypatch) -> 
         captured["wheel_directory"] = wheel_directory
         captured["config_settings"] = config_settings
         captured["metadata_directory"] = metadata_directory
-        return "epcsaft-1.5.1-0.editable-py3-none-any.whl"
+        return "epcsaft-1.5.2-0.editable-py3-none-any.whl"
 
     monkeypatch.setattr(backend._scikit_build, "build_editable", fake_build_editable)
 
     result = backend.build_editable(str(wheel_dir), config_settings={"editable.mode": "redirect"})
 
-    assert result == "epcsaft-1.5.1-0.editable-py3-none-any.whl"
+    assert result == "epcsaft-1.5.2-0.editable-py3-none-any.whl"
     assert captured["wheel_directory"] == str(wheel_dir)
     assert captured["metadata_directory"] is None
     assert captured["config_settings"]["editable.mode"] == "redirect"

@@ -4,18 +4,17 @@ Getting Started
 Install
 -------
 
-For a released package, use the standard package-manager command once PyPI
-publishing is enabled:
+For a released package, use the standard package-manager command:
 
 .. code-block:: powershell
 
    python -m pip install epcsaft
 
-Until then, install the current release from GitHub:
+The current release is also installable from GitHub:
 
 .. code-block:: powershell
 
-   python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.1"
+   python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.2"
 
 For a local editable checkout:
 

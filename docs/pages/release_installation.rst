@@ -1,12 +1,12 @@
 Installation
 ============
 
-Current release: ``1.5.1``
+Current release: ``1.5.2``
 
 Install from PyPI
 -----------------
 
-Once PyPI publishing is enabled, the standard install command is:
+The standard install command is:
 
 .. code-block:: powershell
 
@@ -18,10 +18,9 @@ With ``uv``:
 
    uv add epcsaft
 
-The current public release is also available from GitHub while PyPI publishing
-is being set up:
+The current public release is also available from GitHub:
 
-``https://github.com/tannerpolley/ePC-SAFT/releases/tag/v1.5.1``
+``https://github.com/tannerpolley/ePC-SAFT/releases/tag/v1.5.2``
 
 Install from a wheel
 --------------------
@@ -31,7 +30,7 @@ download it and install it directly:
 
 .. code-block:: powershell
 
-   python -m pip install C:\path\to\epcsaft-1.5.1-*.whl
+   python -m pip install C:\path\to\epcsaft-1.5.2-*.whl
 
 This is the simplest install path because the native extension is already
 built for your platform.
@@ -43,13 +42,13 @@ If no compatible wheel is available, install from the tagged Git source:
 
 .. code-block:: powershell
 
-   python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.1"
+   python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.2"
 
 With ``uv``:
 
 .. code-block:: powershell
 
-   uv add "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.1"
+   uv add "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.2"
 
 Source builds require:
 
@@ -68,7 +67,7 @@ Download the release source archive, extract it, then run:
 
 .. code-block:: powershell
 
-   cd C:\path\to\ePC-SAFT-1.5.1
+   cd C:\path\to\ePC-SAFT-1.5.2
    python -m pip install .
 
 Editable source install
@@ -122,7 +121,7 @@ already has the required IPOPT and ``cyipopt`` prerequisites:
 
 .. code-block:: powershell
 
-   python -m pip install "epcsaft[ipopt] @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.1"
+   python -m pip install "epcsaft[ipopt] @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.2"
 
 IPOPT is explicit opt-in only. It is not selected by ``solver_backend="auto"``
 and it is not a full constrained Gibbs/NLP replacement.
