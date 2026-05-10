@@ -6,7 +6,7 @@ calculations. The public interface is Python, while the equation-of-state
 runtime and package-owned equilibrium/regression kernels are implemented in
 native C++ through ``pybind11``.
 
-Current release: ``1.5.0``
+Current release: ``1.5.1``
 
 What the package does
 ---------------------
@@ -28,35 +28,66 @@ The main user objects are:
 Install
 -------
 
+Once the package is published on PyPI, the standard install command is:
+
+.. code-block:: powershell
+
+   python -m pip install epcsaft
+
+With ``uv``:
+
+.. code-block:: powershell
+
+   uv add epcsaft
+
+The current public release is also available from GitHub while PyPI publishing
+is being set up.
+
 Install from the current GitHub release:
 
-``https://github.com/tannerpolley/ePC-SAFT/releases/tag/v1.5.0``
+``https://github.com/tannerpolley/ePC-SAFT/releases/tag/v1.5.1``
 
 If a wheel matching your platform is attached to the release, install it
 directly:
 
 .. code-block:: powershell
 
-   python -m pip install C:\path\to\epcsaft-1.5.0-*.whl
+   python -m pip install C:\path\to\epcsaft-1.5.1-*.whl
 
 To install from the tagged source:
 
 .. code-block:: powershell
 
-   python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.0"
+   python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.1"
 
 With ``uv``:
 
 .. code-block:: powershell
 
-   uv add "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.0"
+   uv add "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.1"
 
 Source builds require Python ``>=3.9``, a C++ compiler, CMake, and Ninja or
 another CMake generator. Python 3.13 is the current project smoke-test
 baseline.
 
-The project metadata is prepared for PyPI distribution as ``epcsaft``. Until
-PyPI publishing is enabled, use the GitHub release or tagged Git install path.
+For a normal local source install:
+
+.. code-block:: powershell
+
+   git clone https://github.com/tannerpolley/ePC-SAFT.git
+   cd ePC-SAFT
+   python -m pip install .
+
+For an editable install while changing Python files:
+
+.. code-block:: powershell
+
+   python -m pip install -e .
+
+Editable installs use the same native build backend as wheel installs. Python
+source changes are picked up from the checkout. If you change C++ sources,
+pybind bindings, CMake files, or build metadata, rerun
+``python -m pip install -e .``.
 
 Verify the install
 ------------------

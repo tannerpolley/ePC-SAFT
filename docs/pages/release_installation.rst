@@ -1,11 +1,27 @@
-Release Installation
-====================
+Installation
+============
 
-Current release: ``1.5.0``
+Current release: ``1.5.1``
 
-The current official download route is the GitHub release:
+Install from PyPI
+-----------------
 
-``https://github.com/tannerpolley/ePC-SAFT/releases/tag/v1.5.0``
+Once PyPI publishing is enabled, the standard install command is:
+
+.. code-block:: powershell
+
+   python -m pip install epcsaft
+
+With ``uv``:
+
+.. code-block:: powershell
+
+   uv add epcsaft
+
+The current public release is also available from GitHub while PyPI publishing
+is being set up:
+
+``https://github.com/tannerpolley/ePC-SAFT/releases/tag/v1.5.1``
 
 Install from a wheel
 --------------------
@@ -15,7 +31,7 @@ download it and install it directly:
 
 .. code-block:: powershell
 
-   python -m pip install C:\path\to\epcsaft-1.5.0-*.whl
+   python -m pip install C:\path\to\epcsaft-1.5.1-*.whl
 
 This is the simplest install path because the native extension is already
 built for your platform.
@@ -27,13 +43,13 @@ If no compatible wheel is available, install from the tagged Git source:
 
 .. code-block:: powershell
 
-   python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.0"
+   python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.1"
 
 With ``uv``:
 
 .. code-block:: powershell
 
-   uv add "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.0"
+   uv add "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.1"
 
 Source builds require:
 
@@ -52,28 +68,51 @@ Download the release source archive, extract it, then run:
 
 .. code-block:: powershell
 
-   cd C:\path\to\ePC-SAFT-1.5.0
+   cd C:\path\to\ePC-SAFT-1.5.1
    python -m pip install .
 
-For downstream projects that use ``uv`` and a local path dependency, prefer a
-normal reinstall after package changes:
+Editable source install
+-----------------------
+
+Use an editable install when you are changing Python files and want imports to
+come directly from the checkout:
+
+.. code-block:: powershell
+
+   git clone https://github.com/tannerpolley/ePC-SAFT.git
+   cd ePC-SAFT
+   python -m pip install -e .
+
+With ``uv``:
+
+.. code-block:: powershell
+
+   uv pip install -e .
+
+Editable installs use the same native build backend as wheel installs. Python
+source changes are picked up from the checkout. If you change C++ sources,
+pybind bindings, CMake files, or build metadata, rerun the editable install
+command so the native extension is rebuilt.
+
+Local path dependency
+---------------------
+
+For a project that depends on a local checkout, use a path dependency:
+
+.. code-block:: toml
+
+   dependencies = [
+       "epcsaft @ file:///C:/path/to/ePC-SAFT",
+   ]
+
+After package changes, refresh the installed dependency:
 
 .. code-block:: powershell
 
    uv sync --reinstall-package epcsaft
-   uv run --no-sync python -m your_downstream_smoke
 
-PyPI status
------------
-
-The package metadata is prepared for distribution under the name ``epcsaft``.
-Once PyPI publishing is enabled, the install command will be:
-
-.. code-block:: powershell
-
-   python -m pip install epcsaft
-
-Until then, use the GitHub release or tagged Git source install path.
+Use ``uv run --no-sync ...`` for follow-up downstream commands when you do not
+want an implicit sync to rebuild the package again.
 
 Optional IPOPT support
 ----------------------
@@ -83,7 +122,7 @@ already has the required IPOPT and ``cyipopt`` prerequisites:
 
 .. code-block:: powershell
 
-   python -m pip install "epcsaft[ipopt] @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.0"
+   python -m pip install "epcsaft[ipopt] @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.1"
 
 IPOPT is explicit opt-in only. It is not selected by ``solver_backend="auto"``
 and it is not a full constrained Gibbs/NLP replacement.

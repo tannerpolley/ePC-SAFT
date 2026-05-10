@@ -27,7 +27,7 @@ Use labels to make routing durable:
 
 ``agent-ready``
    The report has a minimal reproducer, imported package path, and downstream
-   validation command.
+   validation command and is ready for an upstream maintainer to reproduce.
 
 ``in-progress``, ``upstream-fix-ready``, ``downstream-validated``, and
 ``blocked-downstream`` track the handoff state. Area labels such as
@@ -73,13 +73,3 @@ The helper fetches the issue through GitHub CLI, checks the required sections,
 classifies the likely area from labels and body text, and prints recommended
 next commands. It exits nonzero when the report still needs a reproducer,
 imported package path, or downstream validation command.
-
-Automation
-----------
-
-A local Codex heartbeat can poll open ``downstream-bug`` and ``agent-ready``
-issues every five minutes. It should ignore issues labeled ``in-progress``,
-``blocked-downstream``, or ``downstream-validated``. For ``needs-repro`` issues,
-it should report missing fields and avoid code changes. For ``agent-ready``
-issues, it should run the triage helper first, then start the normal upstream
-fix workflow only when the report is complete.

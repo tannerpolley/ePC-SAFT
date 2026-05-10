@@ -46,7 +46,7 @@ Runtime metadata
 Equilibrium and speciation
 --------------------------
 
-For agent-executable examples and solver-selection guidance, start with
+For runnable examples and solver-selection guidance, start with
 :doc:`equilibrium_cookbook`.
 
 Explicit mixture methods are preferred for new code: ``flash_tp(...)``,

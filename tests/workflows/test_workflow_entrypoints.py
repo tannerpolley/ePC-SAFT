@@ -41,20 +41,23 @@ def test_docs_make_confidence_suite_the_default_runtime_check() -> None:
     assert "README intentionally stays focused on package users" in readme
     assert "uv run python scripts\\validate_project.py quick" not in readme
     assert "uv run python run_pytest.py --confidence -q" not in readme
-    assert "GitHub release or tagged Git install path" in readme
+    assert "GitHub while PyPI publishing is being set up" in readme
     assert "python -m pip install epcsaft" in readme
-    assert "Until then, use the GitHub release" in readme
-    assert "tagged Git source install path" in release_installation
-    assert "default source-checkout validation sequence" in getting_started
-    assert "``run_pytest.py -q`` is the default fast contract suite" in getting_started
-    assert "Current release: ``1.5.0``" in overview
-    assert "PyPI publishing is enabled" in overview
+    assert "python -m pip install -e ." in readme
+    assert "README intentionally stays focused on package users" in readme
+    assert "Editable source install" in release_installation
+    assert "python -m pip install -e ." in release_installation
+    assert "Source and editable installs build a native C++ extension" in getting_started
+    assert "default source-checkout validation sequence" not in getting_started
+    assert "``run_pytest.py -q`` is the default fast contract suite" not in getting_started
+    assert "Current release: ``1.5.1``" in overview
+    assert "python -m pip install -e ." in overview
     assert "uv run python run_pytest.py --confidence -q" not in overview
     assert "run_pytest.py tests/test_runtime.py -q" not in overview
     assert "release_installation" in docs_index
     assert "development_workflows" in docs_index
     assert "native_debugging" in docs_index
-    assert "native/equation debugging guide" in getting_started
+    assert "native/equation debugging guide" not in getting_started
     assert "Start every fresh source checkout with this sequence" in development_workflows
     assert "uv run python scripts/build_epcsaft.py --build-only --parallel 10" in development_workflows
     assert "uv run python run_pytest.py --runtime -q" in development_workflows

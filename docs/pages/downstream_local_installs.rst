@@ -1,7 +1,36 @@
-Downstream Local Installs
-=========================
+Local Source Installs
+=====================
 
-This page is for downstream projects that depend on a local ePC-SAFT checkout through a uv path dependency, for example:
+This page is for projects that use a local ePC-SAFT checkout before or instead
+of installing a published wheel.
+
+Editable install
+----------------
+
+Use an editable install when you are changing Python files in the ePC-SAFT
+checkout:
+
+.. code-block:: powershell
+
+   cd C:\path\to\ePC-SAFT
+   python -m pip install -e .
+
+With ``uv``:
+
+.. code-block:: powershell
+
+   uv pip install -e .
+
+Editable installs use the same native build backend as wheel installs. Python
+source changes are picked up from the checkout. If you change C++ sources,
+pybind bindings, CMake files, or build metadata, rerun the editable install
+command so the native extension is rebuilt.
+
+Local path dependency
+---------------------
+
+Use a path dependency when another project should install a local ePC-SAFT
+checkout:
 
 .. code-block:: toml
 
@@ -9,10 +38,11 @@ This page is for downstream projects that depend on a local ePC-SAFT checkout th
        "epcsaft @ file:///C:/Users/Tanner/Documents/git/ePC-SAFT",
    ]
 
-Recommended downstream loop
----------------------------
+Recommended local dependency loop
+---------------------------------
 
-Install or refresh the local package once, then run downstream checks without implicit sync:
+Install or refresh the local package once, then run checks without implicit
+sync:
 
 .. code-block:: powershell
 
@@ -21,7 +51,9 @@ Install or refresh the local package once, then run downstream checks without im
    uv run --no-sync python -m unittest tests.test_epcsaft_ionic -v
    uv run --no-sync python -m MEA.epcsaft_ionic.smoke
 
-The repo's current CI path-install smoke uses Python 3.13. The package metadata remains broader, but Python 3.13 is the baseline to match when checking current downstream local-install behavior.
+The repo's current CI path-install smoke uses Python 3.13. The package
+metadata remains broader, but Python 3.13 is the baseline to match when
+checking current local-install behavior.
 
 Use ``uv run --no-sync`` after a known-good install because ordinary ``uv run`` is allowed to sync the environment. For a local native path dependency, that sync can rebuild ePC-SAFT when the downstream goal is only to run a smoke test.
 
@@ -47,19 +79,6 @@ For normal ePC-SAFT source development, keep using the explicit in-place dev bui
    uv run python scripts\build_epcsaft.py --build-only --parallel 10
 
 New dev build configurations prefer Ninja when available. Existing ``build/dev`` trees keep their configured generator until you run the coordinated repair command ``uv run python scripts\build_epcsaft.py --clean --generator ninja``.
-
-Editable installs
------------------
-
-The current custom build backend is intended for wheel/path installs and does not expose a PEP 660 editable-install workflow as the normal downstream path. For downstream co-development, prefer reinstalling the local path dependency after package changes:
-
-.. code-block:: powershell
-
-   $env:UV_CACHE_DIR = "$PWD\.uv-cache"
-   uv sync --reinstall-package epcsaft
-   uv run --no-sync python -m your_downstream_smoke
-
-When working inside the ePC-SAFT checkout itself, use ``uv run python scripts\build_epcsaft.py --build-only --parallel 10`` after the initial build rather than relying on ``pip install -e``.
 
 Windows ``_core`` lock failures
 -------------------------------
@@ -97,8 +116,8 @@ Use ``capabilities()`` before wiring high-level downstream workflows:
 
 Native neutral TP flash, neutral LLE, electrolyte LLE, electrolyte bubble pressure, reactive speciation, reactive electrolyte bubble pressure, and native regression helpers are available. The electrolyte bubble-pressure workflow is scoped to fixed liquid composition with neutral vapor species; ions remain liquid-only. The reactive electrolyte bubble workflow performs native chemical speciation before the native fixed-liquid electrolyte bubble-pressure solve.
 
-For agent-facing routing examples and the production/experimental solver table,
-see :doc:`equilibrium_cookbook`.
+For routing examples and the production/experimental solver table, see
+:doc:`equilibrium_cookbook`.
 
 Capability status summary
 ~~~~~~~~~~~~~~~~~~~~~~~~~

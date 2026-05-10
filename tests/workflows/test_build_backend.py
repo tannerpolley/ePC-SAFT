@@ -47,3 +47,28 @@ def test_pep517_build_backend_honors_persistent_build_dir_env(tmp_path, monkeypa
 
     assert Path(config["build-dir"]) == requested.resolve()
     assert requested.exists()
+
+
+def test_pep660_editable_hook_uses_isolated_build_dir(tmp_path, monkeypatch) -> None:
+    backend = _load_backend()
+    wheel_dir = tmp_path / "wheelhouse"
+    wheel_dir.mkdir()
+    captured = {}
+
+    def fake_build_editable(wheel_directory, config_settings=None, metadata_directory=None):
+        captured["wheel_directory"] = wheel_directory
+        captured["config_settings"] = config_settings
+        captured["metadata_directory"] = metadata_directory
+        return "epcsaft-1.5.1-0.editable-py3-none-any.whl"
+
+    monkeypatch.setattr(backend._scikit_build, "build_editable", fake_build_editable)
+
+    result = backend.build_editable(str(wheel_dir), config_settings={"editable.mode": "redirect"})
+
+    assert result == "epcsaft-1.5.1-0.editable-py3-none-any.whl"
+    assert captured["wheel_directory"] == str(wheel_dir)
+    assert captured["metadata_directory"] is None
+    assert captured["config_settings"]["editable.mode"] == "redirect"
+    build_dir = Path(captured["config_settings"]["build-dir"])
+    assert build_dir.exists()
+    assert REPO_ROOT not in build_dir.parents

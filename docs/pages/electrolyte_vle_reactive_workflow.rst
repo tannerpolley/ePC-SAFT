@@ -56,9 +56,9 @@ The derivative default is native-owned and diagnostic-friendly:
 finite-difference residual Jacobian for activity- or concentration-coupled
 standard states. Diagnostics report ``requested_jacobian_backend``,
 ``jacobian_backend``, ``finite_difference_fallback_used``, and
-``jacobian_fallback_reason`` so downstream agents can see when this fallback
-was used. Explicit ``jacobian_backend="autodiff"`` remains strict and raises
-when the requested derivative path is unavailable.
+``jacobian_fallback_reason`` so users can see when this fallback was used.
+Explicit ``jacobian_backend="autodiff"`` remains strict and raises when the
+requested derivative path is unavailable.
 
 .. code-block:: python
 
@@ -167,4 +167,4 @@ Strict default behavior still raises on bubble-stage failure. For diagnostic
 sweeps, set ``ReactiveElectrolyteBubbleOptions(error_mode="result")`` to return
 a structured ``ReactiveElectrolyteBubbleResult(success=False, ...)`` containing
 the successful speciation payload plus the failed bubble diagnostics. Complete
-agent-facing examples are in :doc:`equilibrium_cookbook`.
+examples are in :doc:`equilibrium_cookbook`.

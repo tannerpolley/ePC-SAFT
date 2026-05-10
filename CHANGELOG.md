@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.1 - 2026-05-10
+
+### Highlights
+
+- Added PEP 660 editable-install support through the custom build backend.
+- Documented `python -m pip install -e .` and `uv pip install -e .` as supported local development paths.
+- Simplified the user-facing README and getting-started docs so install, editable install, first calculation, parameter folders, and next steps are easier to find.
+- Moved maintainer and troubleshooting workflows out of the primary quick-start path.
+
 ## 1.5.0 - 2026-05-10
 
 First official source-release baseline for `epcsaft`.

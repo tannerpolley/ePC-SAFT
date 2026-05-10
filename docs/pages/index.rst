@@ -1,22 +1,32 @@
 Documentation for epcsaft
 =========================
 
-This documentation is organized around getting started, creating your own parameter files, and looking up reference material.
+This documentation is organized around installing the package, running your
+first calculation, creating parameter files, and looking up reference material.
 
 Start Here
 ----------
 
 .. toctree::
    :maxdepth: 1
-   :caption: Quick Start
+   :caption: User Guide
 
    README
    release_installation
    getting_started
+   package_guide
+   equilibrium_cookbook
+
+Installation and Source Work
+----------------------------
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Installation and Source Work
+
    downstream_local_installs
    development_workflows
    project_structure
-   equilibrium_cookbook
 
 Create Your Own Data
 --------------------
@@ -36,15 +46,21 @@ Reference
    :maxdepth: 1
    :caption: API and Background
 
-   package_guide
-   downstream_dependency_protocol
    electrolyte_lle_workflow
    electrolyte_vle_reactive_workflow
    api_reference
+   references
+
+Contributor Reference
+---------------------
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Contributor Reference
+
+   downstream_dependency_protocol
    native_debugging
    equation_traceability
-
-   references
 
 Indices and tables
 ==================

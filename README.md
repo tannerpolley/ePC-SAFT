@@ -2,7 +2,7 @@
 
 `epcsaft` is a Python package for electrolyte PC-SAFT thermodynamic calculations. The public interface is Python, while the equation-of-state runtime and package-owned equilibrium/regression kernels are implemented in native C++ through `pybind11`.
 
-Current release: `1.5.0`
+Current release: `1.5.1`
 
 ## What This Package Does
 
@@ -18,48 +18,82 @@ The main user objects are:
 
 ## Install
 
-### Install From The GitHub Release
+### From PyPI
 
-Download the current release from:
-
-<https://github.com/tannerpolley/ePC-SAFT/releases/tag/v1.5.0>
-
-If a wheel matching your Python version and platform is attached to the release, install it directly:
-
-```powershell
-python -m pip install C:\path\to\epcsaft-1.5.0-*.whl
-```
-
-If you are installing from the release source archive or from the tagged Git source, a native build is required:
-
-```powershell
-python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.0"
-```
-
-With `uv`:
-
-```powershell
-uv add "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.0"
-```
-
-Source builds require Python `>=3.9`, a C++ compiler, CMake, and Ninja or another CMake generator. Python 3.13 is the current project smoke-test baseline.
-
-### PyPI
-
-The project metadata is prepared for package distribution under the name `epcsaft`. Once PyPI publishing is enabled for this project, the install command will be:
+Once the package is published on PyPI, the standard install command is:
 
 ```powershell
 python -m pip install epcsaft
 ```
 
-Until then, use the GitHub release or tagged Git install path above.
+With `uv`:
+
+```powershell
+uv add epcsaft
+```
+
+The current public release is also available from GitHub while PyPI publishing is being set up.
+
+### Install From The GitHub Release
+
+Download the current release from:
+
+<https://github.com/tannerpolley/ePC-SAFT/releases/tag/v1.5.1>
+
+If a wheel matching your Python version and platform is attached to the release, install it directly:
+
+```powershell
+python -m pip install C:\path\to\epcsaft-1.5.1-*.whl
+```
+
+If you are installing from the release source archive or from the tagged Git source, a native build is required:
+
+```powershell
+python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.1"
+```
+
+With `uv`:
+
+```powershell
+uv add "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.1"
+```
+
+Source builds require Python `>=3.9`, a C++ compiler, CMake, and Ninja or another CMake generator. Python 3.13 is the current project smoke-test baseline.
+
+### Install From A Local Clone
+
+For a normal local source install:
+
+```powershell
+git clone https://github.com/tannerpolley/ePC-SAFT.git
+cd ePC-SAFT
+python -m pip install .
+```
+
+For an editable install while changing Python files:
+
+```powershell
+python -m pip install -e .
+```
+
+Editable installs use the same native build backend as wheel installs. Python source changes are picked up from the checkout. If you change C++ sources, pybind bindings, CMake files, or build metadata, rerun:
+
+```powershell
+python -m pip install -e .
+```
+
+With `uv`, use:
+
+```powershell
+uv pip install -e .
+```
 
 ### Optional IPOPT Support
 
 IPOPT support is optional and experimental. Install it only if you already have the `cyipopt`/IPOPT prerequisites working for your platform:
 
 ```powershell
-python -m pip install "epcsaft[ipopt] @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.0"
+python -m pip install "epcsaft[ipopt] @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.1"
 ```
 
 IPOPT is never selected automatically by `solver_backend="auto"`; it is an explicit opt-in refinement path.

@@ -1,168 +1,127 @@
 Getting Started
 ===============
 
-Install and build
------------------
+Install
+-------
 
-Most users should start from the current GitHub release:
+For a released package, use the standard package-manager command once PyPI
+publishing is enabled:
 
-.. code-block:: bash
+.. code-block:: powershell
 
-   python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.0"
+   python -m pip install epcsaft
 
-With ``uv``:
+Until then, install the current release from GitHub:
 
-.. code-block:: bash
+.. code-block:: powershell
 
-   uv add "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.0"
+   python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.1"
 
-``epcsaft`` includes a compiled C++ extension exposed through pybind11. If you install a release wheel that matches your Python version and platform, the native extension is already built. If you install from tagged source, the installer builds the extension locally and requires a working native build toolchain. See :doc:`release_installation` for the current download paths and source-build notes.
+For a local editable checkout:
 
-The project metadata is prepared for PyPI distribution as ``epcsaft``. Until PyPI publishing is enabled, use the GitHub release or tagged Git install route.
+.. code-block:: powershell
 
-For development from this source tree, use ``uv`` and the direct CMake build loop:
+   git clone https://github.com/tannerpolley/ePC-SAFT.git
+   cd ePC-SAFT
+   python -m pip install -e .
 
-.. code-block:: bash
+Source and editable installs build a native C++ extension. They require Python
+``>=3.9``, a C++ compiler, CMake, and Ninja or another CMake generator. See
+:doc:`release_installation` for the full install matrix.
 
-   uv sync --no-install-project
-   uv run python scripts/build_epcsaft.py
-   uv run python scripts/validate_project.py quick
+Verify the install
+------------------
 
-This is the default source-checkout validation sequence: sync, normal native build,
-doctor, then the fast contract suite.
-The current development and CI smoke baseline is Python 3.13, while the package metadata still supports Python ``>=3.9``.
+.. code-block:: python
 
-For the full source-checkout command matrix, see :doc:`development_workflows`.
+   import epcsaft
 
-For tests, use:
+   print(epcsaft.__version__)
+   print(epcsaft.runtime_build_info())
 
-.. code-block:: bash
+Create a mixture
+----------------
 
-   uv run python run_pytest.py -q
+For a one-component example, pass a parameter dictionary directly:
 
-Direct pytest also works:
+.. code-block:: python
 
-.. code-block:: bash
+   import numpy as np
+   from epcsaft import ePCSAFTMixture
 
-   uv run python -m pytest tests/api/test_runtime.py -q
+   mixture = ePCSAFTMixture.from_params(
+       {
+           "m": np.asarray([2.8149]),
+           "s": np.asarray([3.7169]),
+           "e": np.asarray([285.69]),
+       },
+       species=["Toluene"],
+   )
 
-For source-checkout validation, prefer ``uv run python run_pytest.py ...`` because the wrapper sets the source import path and manages pytest temporary directories more predictably. Set ``EPCSAFT_PYTEST_TEMP_ROOT`` when you want the wrapper to use an opt-in external pytest temp root instead of its default repo-local generated temp area.
+   state = mixture.state(T=320.0, x=np.asarray([1.0]), P=101325.0)
+   print(state.density())
+   print(state.compressibility_factor())
+   print(state.fugacity_coefficient())
 
-``run_pytest.py -q`` is the default fast contract suite. It samples the important API, native, regression, equilibrium, and workflow contracts without running full equilibrium/regression reproductions or generated plot production. ``--generic`` is the same target list, ``--confidence`` adds a few native runtime contracts for handoff, and ``--all`` is the explicit exhaustive historical suite.
+Use pressure or density closure
+-------------------------------
 
-For speed checks, use ``uv run python run_pytest.py --profile -q`` for the quick runtime-only profile. Use ``uv run python run_pytest.py --profile-full -q -s`` when you need the slower runtime, MIAC, and regression profile suite.
+Every state uses exactly one closure variable:
 
-Use ``uv run python run_pytest.py --list-slices`` to print the named test slices without running pytest. In parallel sessions, set ``EPCSAFT_PYTEST_TEMP_ROOT`` for extra pytest lanes when the default repo-local ``build/pytest-temp`` area becomes noisy or contended.
+- ``P`` asks the EOS to solve for density.
+- ``rho`` evaluates the model directly at a supplied molar density.
+- ``rho_guess`` is allowed only with ``P`` and seeds the pressure-density solve.
 
-For repeated thermodynamic calls, reuse an ``ePCSAFTMixture`` and its ``ePCSAFTState`` objects instead of rebuilding them inside loops. The runtime profile reports the cost difference between reused-state calls and full rebuild calls.
+.. code-block:: python
 
-For native/equation work, use the native/equation debugging guide after the normal build and confidence sequence.
+   base = mixture.state(T=320.0, x=np.asarray([1.0]), P=101325.0)
+   nearby = mixture.state(
+       T=321.0,
+       x=np.asarray([1.0]),
+       P=101325.0,
+       rho_guess=base.density(),
+   )
 
-Use ``uv run python scripts/build_epcsaft.py --clean`` only as a repair step for stale CMake state or stale/locked ``_core`` artifacts. If a ``_core*.pyd`` is locked, stop the importing Python/test/IDE process before running the clean repair.
+   density_state = mixture.state(T=320.0, x=np.asarray([1.0]), rho=base.density())
+   audit = mixture.check_density(
+       T=320.0,
+       x=np.asarray([1.0]),
+       P=101325.0,
+       rho=density_state.density(),
+   )
+   print(audit["within_tolerance"], audit["pressure_residual"])
 
-``CMakePresets.json`` is optional Windows MinGW convenience for IDEs and manual CMake use. The canonical local native build remains ``uv run python scripts/build_epcsaft.py``.
+Create a parameter folder
+-------------------------
 
-For package artifacts, use:
-
-.. code-block:: bash
-
-   uv run python scripts/build_dist.py
-
-On Windows, a compiled ``.pyd`` file may appear during local builds. That file is a build artifact and is normally produced by the installer or build backend, not copied into a project manually.
-
-Create your own parameter folder
---------------------------------
-
-If you want to build your own parameter folder, use ``create_parameter_template(...)``.
+For real systems, keep your parameter data in a folder you control:
 
 .. code-block:: python
 
    from epcsaft import create_parameter_template
 
    template_root = create_parameter_template(
-       location=r"C:\Users\Tanner\Documents\my_epcsaft_data",
+       location=r"C:\path\to\my_epcsaft_data",
        folder_name="water_salt_case",
        species=["H2O", "Na+", "Cl-"],
    )
 
-This creates the expected ``pure/``, ``mixed/``, and ``user_options.json`` files for you to fill in. After you add your parameters, pass ``template_root`` into ``ePCSAFTMixture.from_dataset(...)``.
-
-If you want to fit missing entries instead of typing them by hand, the regression helpers can work directly with the same folder structure. See ``parameter_regression`` for the current phase-1 neutral ``m/s/e`` workflow.
-
-If you are working from a checkout of this repository, you can also inspect the example parameter folders in ``data/reference/epcsaft_parameters/``. They are there for comparison and reference while you build your own folders.
-
-For a complete list of ``user_options.json`` settings, see ``user_options``.
-
-Minimal example
----------------
+Fill in the generated files, then load the folder:
 
 .. code-block:: python
 
    import numpy as np
-   from epcsaft import create_parameter_template, ePCSAFTMixture
+   from epcsaft import ePCSAFTMixture
 
-   template_root = create_parameter_template(
-       location=r"C:\Users\Tanner\Documents\my_epcsaft_data",
-       folder_name="water_salt_case",
-       species=["H2O", "Na+", "Cl-"],
-   )
-   mixture = ePCSAFTMixture.from_dataset(
-       template_root,
-       ["H2O", "Na+", "Cl-"],
-       np.asarray([0.9998, 1e-4, 1e-4]),
-       298.15,
-   )
-   state = mixture.state(T=298.15, x=np.asarray([0.9998, 1e-4, 1e-4]), P=1.0e5)
-   # Pressure-based states solve and cache density during construction.
+   species = ["H2O", "Na+", "Cl-"]
+   x = np.asarray([0.9998, 1e-4, 1e-4])
+   mixture = ePCSAFTMixture.from_dataset(template_root, species, x, 298.15)
 
-   rho_molar = state.density()
-   rho_mass = state.density(units="mass")
-   z = state.compressibility_factor()
-   activity = state.activity_coefficient(species=["H2O", "Na+", "Cl-"])
-   mean_ionic = state.activity_coefficient(
-       species=["H2O", "Na+", "Cl-"],
-       mean_ionic_form=True,
-       basis="molality",
-   )
+Next steps
+----------
 
-Density-first and seeded pressure states
-----------------------------------------
-
-Use exactly one closure variable when creating a state:
-
-- ``P`` asks ePC-SAFT to solve the EOS pressure-density closure.
-- ``rho`` evaluates the state directly at a supplied molar density.
-- ``rho_guess`` is allowed only with ``P`` and only seeds the pressure-density solve; it does not replace pressure closure.
-
-.. code-block:: python
-
-   exact = mixture.state(T=298.15, x=np.asarray([0.9998, 1e-4, 1e-4]), P=1.0e5)
-   seeded = mixture.state(
-       T=298.15,
-       x=np.asarray([0.9998, 1e-4, 1e-4]),
-       P=1.0e5,
-       rho_guess=exact.density(),
-   )
-   direct_density = mixture.state(
-       T=298.15,
-       x=np.asarray([0.9998, 1e-4, 1e-4]),
-       rho=exact.density(),
-   )
-
-   audit = mixture.check_density(
-       T=298.15,
-       x=np.asarray([0.9998, 1e-4, 1e-4]),
-       P=1.0e5,
-       rho=direct_density.density(),
-   )
-
-For many nearby downstream calls, keep the loop in the downstream project and pass the previous accepted pressure-state density as ``rho_guess``. Use ``rho=...`` only when your model intentionally provides the density and you have accepted any pressure-residual error.
-
-Key objects
------------
-
-- Use `ePCSAFTMixture` to load parameters and create states.
-- Use `ePCSAFTState` for pressure, density, residual properties, fugacity, and activity-coefficient calls.
-- Use `activity_coefficient(...)` with `mean_ionic_form=True` when you want mean-ionic activity data on a chosen basis.
-
-
+- :doc:`user_parameter_templates` explains the parameter-folder layout.
+- :doc:`user_options` lists supported model options.
+- :doc:`package_guide` gives task-based examples.
+- :doc:`equilibrium_cookbook` shows phase-equilibrium and speciation workflows.
+- :doc:`api_reference` lists the public API.

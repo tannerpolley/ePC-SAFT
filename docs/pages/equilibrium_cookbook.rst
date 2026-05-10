@@ -1,23 +1,23 @@
-Equilibrium Cookbook For Agents
-===============================
+Equilibrium Cookbook
+====================
 
-Use this page when a downstream agent needs to choose and validate an
-equilibrium, speciation, or repeated-property workflow. The public API is
-Python, but package-owned thermodynamic solves run through native C++ kernels
-unless this page explicitly says otherwise.
+Use this page to choose and validate an equilibrium, speciation, or
+repeated-property workflow. The public API is Python, but package-owned
+thermodynamic solves run through native C++ kernels unless this page explicitly
+says otherwise.
 
 Fast validation
 ---------------
 
-Before changing downstream code that depends on equilibrium behavior, run:
+Before changing code that depends on equilibrium behavior, run:
 
 .. code-block:: powershell
 
    uv run python run_pytest.py --equilibrium-api -q
 
-Use ``uv run python scripts/validate_project.py quick`` before handoff. Use
-``--equilibrium-confidence`` only for the bounded electrolyte confidence checks;
-full scientific reports remain explicit opt-ins.
+Use ``uv run python scripts/validate_project.py quick`` before publishing a
+change. Use ``--equilibrium-confidence`` only for the bounded electrolyte
+confidence checks; full scientific reports remain explicit opt-ins.
 
 Capability and solver selection
 -------------------------------
