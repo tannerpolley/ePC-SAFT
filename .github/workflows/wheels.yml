@@ -178,7 +178,7 @@ jobs:
         run: uv run --locked cibuildwheel --output-dir wheelhouse
         env:
           CIBW_BUILD: "cp313-*"
-          CIBW_SKIP: "pp* *-win32 *-musllinux*"
+          CIBW_SKIP: "*-win32 *-musllinux*"
           CIBW_TEST_REQUIRES: "numpy"
           CIBW_TEST_COMMAND: "python -c \"import numpy as np; import epcsaft; import epcsaft._core; m=epcsaft.ePCSAFTMixture.from_params({'m': np.asarray([1.0]), 's': np.asarray([3.7039]), 'e': np.asarray([150.03])}); s=m.state(T=300.0, x=np.asarray([1.0]), rho=100.0); print(s.compressibility_factor())\""
 

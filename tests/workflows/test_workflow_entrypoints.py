@@ -125,7 +125,7 @@ def test_pypi_publish_workflow_uses_trusted_publishing() -> None:
         "environment:",
         "name: pypi",
         "pypa/gh-action-pypi-publish@release/v1",
-        "actions/download-artifact@v7.0.1",
+        "actions/download-artifact@v8.0.1",
         "merge-multiple: true",
         'CIBW_BUILD: "cp313-*"',
         "uv build --sdist",
@@ -134,5 +134,6 @@ def test_pypi_publish_workflow_uses_trusted_publishing() -> None:
     assert "password:" not in workflow
     assert "username:" not in workflow
     assert "PYPI_API_TOKEN" not in workflow
+    assert "pp*" not in workflow
     assert "Workflow filename: ``publish-pypi.yml``" in publishing_docs
     assert "Environment name: ``pypi``" in publishing_docs
