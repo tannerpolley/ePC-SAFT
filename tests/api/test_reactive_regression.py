@@ -267,6 +267,280 @@ def test_reactive_regression_reporting_helpers_write_outputs(monkeypatch, tmp_pa
     assert "objective" in summary.read_text(encoding="utf-8")
 
 
+def test_fit_reactive_electrolyte_parameters_returns_fit_result_and_applies_bounds(monkeypatch, tmp_path: Path) -> None:
+    def fake_solve(**kwargs):
+        mix = kwargs["mixture_factory"](kwargs["initial_x"], kwargs["T"], kwargs["P_seed"])
+        sigma = float(np.asarray(mix._params["s"], dtype=float)[0])
+        pressure = 100000.0 + 1000.0 * (sigma - 3.0)
+        x_a = 0.2 + 0.01 * (sigma - 3.0)
+        return epcsaft.ReactiveElectrolyteBubbleResult(
+            success=True,
+            message="converged",
+            x_liq={"A": x_a, "B": 1.0 - x_a},
+            activity_coefficients={"A": 1.0, "B": 1.0},
+            mass_balance_residuals={"total": 0.0},
+            charge_residual=0.0,
+            reaction_residuals=[],
+            named_reaction_residuals={},
+            P_total=pressure,
+            y_vap={"A": 0.3, "B": 0.7},
+            partial_pressures={"A": 30000.0},
+            fugacity_residual={"A": 0.0},
+            fugacity_residual_norm=1.0e-9,
+            state_failure_count=0,
+            penalty_residuals=[],
+            diagnostics={},
+        )
+
+    monkeypatch.setattr("epcsaft.reactive_electrolyte.solve_reactive_electrolyte_bubble", fake_solve)
+
+    batch = epcsaft.ReactiveElectrolyteBatch(
+        species=["A", "B"],
+        rows=[
+            epcsaft.ReactiveElectrolyteRow(
+                row_id="row1",
+                T=298.15,
+                P_seed=101325.0,
+                totals={"A": 0.2, "B": 0.8},
+                initial_x=[0.2, 0.8],
+                balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},
+                reactions=[],
+                vapor_species=["A", "B"],
+                target_pressure=100200.0,
+                target_speciation={"A": 0.202},
+                source="train",
+                split="fit",
+            )
+        ],
+        balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},
+        reactions=[],
+        vapor_species=["A", "B"],
+        base_parameters=_tiny_base_parameters(),
+        options=epcsaft.ReactiveElectrolyteBatchOptions(include_state_outputs=False),
+    )
+
+    fit = epcsaft.fit_reactive_electrolyte_parameters(
+        batch,
+        initial_parameters={"A.sigma": 2.8},
+        lower_bounds={"A.sigma": 2.5},
+        upper_bounds={"A.sigma": 3.05},
+        max_iterations=4,
+        tolerance=1.0e-10,
+        log_parameters=False,
+    )
+
+    assert isinstance(fit, epcsaft.ReactiveRegressionFitResult)
+    assert fit.parameter_map["A.sigma"] == pytest.approx(3.05)
+    assert fit.active_bounds["A.sigma"] is True
+    assert fit.covariance_available is True
+    summary = epcsaft.summarize_regression_result(fit)
+    assert summary["fit_success"] is True
+    assert summary["upper_bounds"]["A.sigma"] == pytest.approx(3.05)
+    assert summary["covariance_status"] == "available"
+
+    summary_path = tmp_path / "fit_summary.json"
+    rows_path = tmp_path / "fit_rows.csv"
+    residuals_path = tmp_path / "fit_residuals.csv"
+    params_path = tmp_path / "fit_params.csv"
+    epcsaft.write_regression_summary(fit, summary_path)
+    epcsaft.write_regression_row_table(fit, rows_path)
+    epcsaft.write_regression_residual_table(fit, residuals_path)
+    epcsaft.write_regression_parameter_table(fit, params_path)
+
+    assert '"fit_success": true' in summary_path.read_text(encoding="utf-8")
+    assert "active_bound" in params_path.read_text(encoding="utf-8")
+    assert rows_path.exists()
+    assert residuals_path.exists()
+
+
+def test_fit_reactive_electrolyte_parameters_rejects_invalid_parameter_inputs(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "epcsaft.reactive_electrolyte.solve_reactive_electrolyte_bubble",
+        lambda **kwargs: epcsaft.ReactiveElectrolyteBubbleResult(
+            success=True,
+            message="converged",
+            x_liq={"A": 0.2, "B": 0.8},
+            activity_coefficients={"A": 1.0, "B": 1.0},
+            mass_balance_residuals={"total": 0.0},
+            charge_residual=0.0,
+            reaction_residuals=[],
+            named_reaction_residuals={},
+            P_total=100000.0,
+            y_vap={"A": 0.3, "B": 0.7},
+            partial_pressures={"A": 30000.0},
+            fugacity_residual={"A": 0.0},
+            fugacity_residual_norm=1.0e-9,
+            state_failure_count=0,
+            penalty_residuals=[],
+            diagnostics={},
+        ),
+    )
+
+    batch = epcsaft.ReactiveElectrolyteBatch(
+        species=["A", "B"],
+        rows=[
+            epcsaft.ReactiveElectrolyteRow(
+                row_id="row1",
+                T=298.15,
+                P_seed=101325.0,
+                totals={"A": 0.2, "B": 0.8},
+                initial_x=[0.2, 0.8],
+                balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},
+                reactions=[],
+                vapor_species=["A", "B"],
+                target_pressure=100000.0,
+                target_speciation={"A": 0.2},
+            )
+        ],
+        balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},
+        reactions=[],
+        vapor_species=["A", "B"],
+        base_parameters=_tiny_base_parameters(),
+        options=epcsaft.ReactiveElectrolyteBatchOptions(include_state_outputs=False),
+    )
+
+    with pytest.raises(epcsaft.InputError, match="at least one fitted parameter"):
+        epcsaft.fit_reactive_electrolyte_parameters(batch, initial_parameters={})
+    with pytest.raises(epcsaft.InputError, match="unknown parameters"):
+        epcsaft.fit_reactive_electrolyte_parameters(
+            batch,
+            initial_parameters={"A.sigma": 3.0},
+            lower_bounds={"B.sigma": 3.2},
+        )
+    with pytest.raises(epcsaft.InputError, match="inconsistent"):
+        epcsaft.fit_reactive_electrolyte_parameters(
+            batch,
+            initial_parameters={"A.sigma": 3.0},
+            lower_bounds={"A.sigma": 3.2},
+            upper_bounds={"A.sigma": 3.1},
+        )
+
+
+def test_fit_reactive_electrolyte_parameters_accepts_speciation_rows(monkeypatch) -> None:
+    def fake_speciation(**kwargs):
+        mix = kwargs["mixture_factory"](kwargs["initial_x"], kwargs["T"], kwargs["P"])
+        sigma = float(np.asarray(mix._params["s"], dtype=float)[0])
+        x_a = 0.2 + 0.01 * (sigma - 3.0)
+        gamma_a = 1.1 + 0.1 * (sigma - 3.0)
+        return epcsaft.ReactiveSpeciationResult(
+            success=True,
+            message="converged",
+            x={"A": x_a, "B": 1.0 - x_a},
+            activity_coefficients={"A": gamma_a, "B": 1.0},
+            mass_balance_residuals={"total": 0.0},
+            charge_residual=0.0,
+            reaction_residuals=[],
+            named_reaction_residuals={},
+            state_failure_count=0,
+            diagnostics={},
+        )
+
+    monkeypatch.setattr("epcsaft.reactive_speciation.solve_reactive_speciation", fake_speciation)
+
+    batch = epcsaft.ReactiveElectrolyteBatch(
+        species=["A", "B"],
+        rows=[
+            epcsaft.ReactiveElectrolyteRow(
+                row_id="row1",
+                T=298.15,
+                P=101325.0,
+                totals={"A": 0.2, "B": 0.8},
+                initial_x=[0.2, 0.8],
+                balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},
+                reactions=[],
+                target_speciation={"A": 0.203},
+                target_activity={"A": 1.13},
+                source="validation",
+                split="holdout",
+                mode="speciation",
+            )
+        ],
+        balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},
+        reactions=[],
+        base_parameters=_tiny_base_parameters(),
+        options=epcsaft.ReactiveElectrolyteBatchOptions(include_state_outputs=False),
+    )
+
+    fit = epcsaft.fit_reactive_electrolyte_parameters(
+        batch,
+        initial_parameters={"A.sigma": 2.9},
+        max_iterations=3,
+        tolerance=1.0e-12,
+        log_parameters=False,
+    )
+
+    summary = epcsaft.summarize_regression_result(fit)
+    assert isinstance(fit, epcsaft.ReactiveRegressionFitResult)
+    assert fit.objective_result.batch_result.success_count == 1
+    assert "validation" in summary["by_source"]
+    assert "holdout" in summary["train_validation"]
+    assert isinstance(summary["fit_success"], bool)
+
+
+def test_fit_reactive_electrolyte_parameters_reports_nonconverged_fit(monkeypatch) -> None:
+    def fake_solve(**kwargs):
+        mix = kwargs["mixture_factory"](kwargs["initial_x"], kwargs["T"], kwargs["P_seed"])
+        sigma = float(np.asarray(mix._params["s"], dtype=float)[0])
+        pressure = 100000.0 + 1000.0 * (sigma - 3.0)
+        x_a = 0.2 + 0.01 * (sigma - 3.0)
+        return epcsaft.ReactiveElectrolyteBubbleResult(
+            success=True,
+            message="converged",
+            x_liq={"A": x_a, "B": 1.0 - x_a},
+            activity_coefficients={"A": 1.0, "B": 1.0},
+            mass_balance_residuals={"total": 0.0},
+            charge_residual=0.0,
+            reaction_residuals=[],
+            named_reaction_residuals={},
+            P_total=pressure,
+            y_vap={"A": 0.3, "B": 0.7},
+            partial_pressures={"A": 30000.0},
+            fugacity_residual={"A": 0.0},
+            fugacity_residual_norm=1.0e-9,
+            state_failure_count=0,
+            penalty_residuals=[],
+            diagnostics={},
+        )
+
+    monkeypatch.setattr("epcsaft.reactive_electrolyte.solve_reactive_electrolyte_bubble", fake_solve)
+
+    batch = epcsaft.ReactiveElectrolyteBatch(
+        species=["A", "B"],
+        rows=[
+            epcsaft.ReactiveElectrolyteRow(
+                row_id="row1",
+                T=298.15,
+                P_seed=101325.0,
+                totals={"A": 0.2, "B": 0.8},
+                initial_x=[0.2, 0.8],
+                balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},
+                reactions=[],
+                vapor_species=["A", "B"],
+                target_pressure=100600.0,
+                target_speciation={"A": 0.206},
+            )
+        ],
+        balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},
+        reactions=[],
+        vapor_species=["A", "B"],
+        base_parameters=_tiny_base_parameters(),
+        options=epcsaft.ReactiveElectrolyteBatchOptions(include_state_outputs=False),
+    )
+
+    fit = epcsaft.fit_reactive_electrolyte_parameters(
+        batch,
+        initial_parameters={"A.sigma": 2.8},
+        max_iterations=1,
+        damping=0.25,
+        tolerance=1.0e-12,
+        log_parameters=False,
+    )
+
+    assert fit.success is False
+    assert fit.message == "maximum iterations reached"
+    assert fit.iterations == 1
+
+
 def test_reactive_regression_legacy_wrapper_keeps_fixed_shape(monkeypatch) -> None:
     def fake_solve(**kwargs):
         return epcsaft.ReactiveElectrolyteBubbleResult(

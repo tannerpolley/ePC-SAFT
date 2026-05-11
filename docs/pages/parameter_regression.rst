@@ -260,6 +260,7 @@ Main entry points:
 - ``ReactiveElectrolyteBatch``: shared species, balances, reactions, parameter payload, and solver options
 - ``ReactiveElectrolyteRegressionContext.from_batch(...)``: compile invariant row/schema metadata once
 - ``evaluate_reactive_regression_objective(...)``: evaluate a structured mixed residual objective
+- ``fit_reactive_electrolyte_parameters(...)``: bounded Gauss-Newton fit wrapper over the compiled context
 - ``summarize_regression_result(...)`` plus ``write_regression_*`` helpers: stable JSON/CSV reporting
 
 Minimal example:
@@ -327,12 +328,18 @@ Structured outputs follow stable field names:
   ``ln_fugacity``, ``activity_coefficients``, ``density``,
   ``relative_permittivity``, ``residuals``, ``residual_names``,
   ``failure_diagnostics``, ``active_bounds``, ``solver_status``,
-  ``elapsed_seconds``, ``cache_stats``, ``partial_pressures``, ``y_vap``,
-  ``named_reaction_residuals``, ``source``, ``split``, ``metadata``
+  ``elapsed_seconds``, ``cache_stats``, ``warm_start_used``,
+  ``warm_start_source``, ``warm_start_failed``, ``fallback_seed_used``,
+  ``partial_pressures``, ``y_vap``, ``named_reaction_residuals``, ``source``,
+  ``split``, ``metadata``
 - batch: ``success_count``, ``failure_count``, ``row_results``, ``residuals``,
   ``residual_names``, ``residual_row_map``, ``diagnostics``, ``cache_stats``,
   ``timing_summary``
 - objective: ``objective``, ``metrics``, and the embedded ``batch_result``
+- fit: ``success``, ``message``, ``iterations``, ``parameter_map``, ``seed_map``,
+  ``lower_bounds``, ``upper_bounds``, ``active_bounds``, ``objective_result``,
+  ``covariance_available``, ``covariance_matrix``, ``identifiability_status``,
+  and ``diagnostics``
 
 Reporting helpers write those schemas without downstream column guessing:
 
@@ -341,6 +348,34 @@ Reporting helpers write those schemas without downstream column guessing:
    epcsaft.write_regression_summary(result, "build/regression/summary.json")
    epcsaft.write_regression_row_table(result, "build/regression/rows.csv")
    epcsaft.write_regression_residual_table(result, "build/regression/residuals.csv")
+
+If you are fitting parameters instead of only evaluating an objective, pass the
+fit result directly to the same reporting helpers. ``write_regression_parameter_table(...)``
+accepts either a raw parameter map plus ``seed_map=...`` or the full
+``ReactiveRegressionFitResult`` so seed values, parameter movement, bounds, and
+active-bound flags stay aligned with the solved fit payload.
+
+The fit helper accepts the compiled batch or context plus the initial parameter
+map and optional fit controls:
+
+.. code-block:: python
+
+   fit = epcsaft.fit_reactive_electrolyte_parameters(
+       context,
+       initial_parameters={"Na+.sigma": 2.85},
+       lower_bounds={"Na+.sigma": 2.5},
+       upper_bounds={"Na+.sigma": 3.1},
+       max_iterations=6,
+       tolerance=1e-6,
+       damping=1.0,
+       jacobian_mode="central",
+       relative_step=1e-4,
+       absolute_step=None,
+       log_parameters=True,
+   )
+
+``summarize_regression_result(...)`` returns ``fit_success = null`` for
+objective-only results and a boolean for true fit results.
 
 The package-owned micro-benchmark harness for this layer is:
 

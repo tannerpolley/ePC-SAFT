@@ -63,6 +63,7 @@ from .reactive_regression import ReactiveElectrolyteRegressionContext
 from .reactive_regression import ReactiveElectrolyteRow
 from .reactive_regression import ReactiveElectrolyteRowResult
 from .reactive_regression import ReactiveRegressionJacobianResult
+from .reactive_regression import ReactiveRegressionFitResult
 from .reactive_regression import ReactiveRegressionObjective
 from .reactive_regression import ReactiveRegressionObjectiveResult
 from .reactive_regression import build_reactive_regression_objective
@@ -141,6 +142,7 @@ __all__ = [
     "solve_reactive_speciation_sweep",
     "solve_reactive_staged_equilibrium",
     "ReactiveRegressionJacobianResult",
+    "ReactiveRegressionFitResult",
     "ReactiveRegressionObjective",
     "ReactiveRegressionObjectiveResult",
     "build_reactive_regression_objective",

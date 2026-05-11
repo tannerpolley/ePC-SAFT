@@ -388,6 +388,10 @@ class ReactiveElectrolyteRowResult:
     solver_status: str
     elapsed_seconds: float
     cache_stats: Mapping[str, Any]
+    warm_start_used: bool = False
+    warm_start_source: str = ""
+    warm_start_failed: bool = False
+    fallback_seed_used: bool = False
     partial_pressures: Mapping[str, float] = field(default_factory=dict)
     y_vap: Mapping[str, float] = field(default_factory=dict)
     named_reaction_residuals: Mapping[str, float] = field(default_factory=dict)
@@ -415,6 +419,10 @@ class ReactiveElectrolyteRowResult:
             "solver_status": self.solver_status,
             "elapsed_seconds": float(self.elapsed_seconds),
             "cache_stats": _json_like(self.cache_stats),
+            "warm_start_used": bool(self.warm_start_used),
+            "warm_start_source": self.warm_start_source,
+            "warm_start_failed": bool(self.warm_start_failed),
+            "fallback_seed_used": bool(self.fallback_seed_used),
             "partial_pressures": _json_like(self.partial_pressures),
             "y_vap": _json_like(self.y_vap),
             "named_reaction_residuals": _json_like(self.named_reaction_residuals),
@@ -531,6 +539,42 @@ class ReactiveRegressionJacobianResult:
             "residual_names": list(self.residual_names),
             "residual_row_map": list(self.residual_row_map),
             "parameter_names": list(self.parameter_names),
+            "diagnostics": _json_like(self.diagnostics),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ReactiveRegressionFitResult:
+    """Structured result for a bounded reactive-regression fit loop."""
+
+    success: bool
+    message: str
+    iterations: int
+    parameter_map: Mapping[str, float]
+    seed_map: Mapping[str, float]
+    lower_bounds: Mapping[str, float | None]
+    upper_bounds: Mapping[str, float | None]
+    active_bounds: Mapping[str, bool]
+    objective_result: ReactiveRegressionObjectiveResult
+    covariance_available: bool
+    covariance_matrix: np.ndarray | None
+    identifiability_status: str
+    diagnostics: Mapping[str, Any]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "success": bool(self.success),
+            "message": self.message,
+            "iterations": int(self.iterations),
+            "parameter_map": _json_like(self.parameter_map),
+            "seed_map": _json_like(self.seed_map),
+            "lower_bounds": _json_like(self.lower_bounds),
+            "upper_bounds": _json_like(self.upper_bounds),
+            "active_bounds": _json_like(self.active_bounds),
+            "objective_result": self.objective_result.to_dict(),
+            "covariance_available": bool(self.covariance_available),
+            "covariance_matrix": None if self.covariance_matrix is None else _json_like(self.covariance_matrix),
+            "identifiability_status": self.identifiability_status,
             "diagnostics": _json_like(self.diagnostics),
         }
 
@@ -951,28 +995,92 @@ def evaluate_reactive_regression_objective(
     return context.evaluate_objective(parameter_map)
 
 
-def fit_reactive_electrolyte_parameters(*args: Any, **kwargs: Any) -> ReactiveRegressionObjectiveResult:
-    raise InputError(
-        "fit_reactive_electrolyte_parameters is a package-owned objective/reporting helper placeholder. "
-        "Optimizer policy remains downstream-owned in this pass; use evaluate_reactive_regression_objective "
-        "and finite_difference_jacobian from a compiled context."
+def fit_reactive_electrolyte_parameters(
+    batch_or_context: ReactiveElectrolyteBatch | ReactiveElectrolyteRegressionContext,
+    *,
+    initial_parameters: Mapping[str, float],
+    lower_bounds: Mapping[str, float | None] | None = None,
+    upper_bounds: Mapping[str, float | None] | None = None,
+    max_iterations: int = 6,
+    tolerance: float = 1.0e-6,
+    damping: float = 1.0,
+    jacobian_mode: str = "central",
+    relative_step: float = 1.0e-4,
+    absolute_step: float | None = None,
+    log_parameters: bool = True,
+) -> ReactiveRegressionFitResult:
+    return _fit_reactive_parameters_impl(
+        batch_or_context,
+        initial_parameters=initial_parameters,
+        lower_bounds=lower_bounds,
+        upper_bounds=upper_bounds,
+        max_iterations=max_iterations,
+        tolerance=tolerance,
+        damping=damping,
+        jacobian_mode=jacobian_mode,
+        relative_step=relative_step,
+        absolute_step=absolute_step,
+        log_parameters=log_parameters,
     )
 
 
-def summarize_regression_result(result: ReactiveRegressionObjectiveResult) -> dict[str, Any]:
-    batch = result.batch_result
+def summarize_regression_result(
+    result: ReactiveRegressionObjectiveResult | ReactiveRegressionFitResult,
+) -> dict[str, Any]:
+    if isinstance(result, ReactiveRegressionFitResult):
+        objective_result = result.objective_result
+        fit_payload = {
+            "fit_success": bool(result.success),
+            "fit_message": result.message,
+            "fit_iterations": int(result.iterations),
+            "parameter_map": _json_like(result.parameter_map),
+            "seed_map": _json_like(result.seed_map),
+            "lower_bounds": _json_like(result.lower_bounds),
+            "upper_bounds": _json_like(result.upper_bounds),
+            "active_bounds": _json_like(result.active_bounds),
+            "covariance_available": bool(result.covariance_available),
+            "covariance_matrix": _json_like(result.covariance_matrix),
+            "identifiability_status": result.identifiability_status,
+            "covariance_status": "available" if result.covariance_available else "unavailable",
+            "diagnostics": _json_like(result.diagnostics),
+        }
+    else:
+        objective_result = result
+        fit_payload = {
+            "fit_success": None,
+            "fit_message": "",
+            "fit_iterations": None,
+            "covariance_available": False,
+            "identifiability_status": "unavailable",
+            "covariance_status": "unavailable",
+        }
+    batch = objective_result.batch_result
     row_norms: list[tuple[str, float]] = []
     source_counter: dict[str, list[float]] = {}
+    split_counter: dict[str, list[float]] = {}
+    target_counter: dict[str, list[float]] = {}
+    species_counter: dict[str, list[float]] = {}
+    warm_counter: Counter[str] = Counter()
     for row in batch.row_results:
         norm = float(np.linalg.norm(np.asarray(list(row.residuals.values()), dtype=float)) if row.residuals else 0.0)
         row_norms.append((row.row_id, norm))
         source_counter.setdefault(row.source or "unspecified", []).append(norm)
+        split_counter.setdefault(row.split or "unspecified", []).append(norm)
+        warm_counter["used" if row.warm_start_used else "not_used"] += 1
+        if row.warm_start_failed:
+            warm_counter["failed"] += 1
+        if row.fallback_seed_used:
+            warm_counter["fallback"] += 1
+        for name, value in row.residuals.items():
+            target_counter.setdefault(_residual_family_from_name(name), []).append(float(abs(value)))
+            species = name.rsplit(".", 1)[-1]
+            species_counter.setdefault(species, []).append(float(abs(value)))
     row_norms.sort(key=lambda item: item[1], reverse=True)
-    return {
-        "objective": result.objective,
+    payload = {
+        "objective": objective_result.objective,
         "success_count": batch.success_count,
         "failure_count": batch.failure_count,
-        "residual_norm": float(np.linalg.norm(result.residuals)),
+        "residual_norm": float(np.linalg.norm(objective_result.residuals)),
         "top_failing_rows": [{"row_id": row_id, "residual_norm": norm} for row_id, norm in row_norms[:5]],
         "by_source": {
             source: {
@@ -981,12 +1089,46 @@ def summarize_regression_result(result: ReactiveRegressionObjectiveResult) -> di
             }
             for source, values in source_counter.items()
         },
+        "by_split": {
+            split: {
+                "count": len(values),
+                "mean_row_residual_norm": float(np.mean(values)) if values else 0.0,
+            }
+            for split, values in split_counter.items()
+        },
+        "by_target_type": {
+            target: {
+                "count": len(values),
+                "mean_abs_residual": float(np.mean(values)) if values else 0.0,
+            }
+            for target, values in target_counter.items()
+        },
+        "by_species": {
+            species: {
+                "count": len(values),
+                "mean_abs_residual": float(np.mean(values)) if values else 0.0,
+            }
+            for species, values in species_counter.items()
+        },
+        "train_validation": {
+            split: {
+                "count": len(values),
+                "residual_norm": float(np.linalg.norm(np.asarray(values, dtype=float))) if values else 0.0,
+            }
+            for split, values in split_counter.items()
+        },
+        "warm_start": dict(warm_counter),
         "cache_stats": _json_like(batch.cache_stats),
         "timing_summary": _json_like(batch.timing_summary),
+        **fit_payload,
     }
+    return payload
 
 
-def write_regression_summary(result: ReactiveRegressionObjectiveResult, path: str | Path) -> Path:
+def write_regression_summary(
+    result: ReactiveRegressionObjectiveResult | ReactiveRegressionFitResult,
+    path: str | Path,
+) -> Path:
     target = Path(path)
     payload = summarize_regression_result(result)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -998,16 +1140,20 @@ def write_regression_summary(result: ReactiveRegressionObjectiveResult, path: st
     return target
 
 
-def write_regression_row_table(result: ReactiveRegressionObjectiveResult, path: str | Path) -> Path:
+def write_regression_row_table(
+    result: ReactiveRegressionObjectiveResult | ReactiveRegressionFitResult,
+    path: str | Path,
+) -> Path:
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    rows = result.batch_result.flatten_rows()
+    objective_result = result.objective_result if isinstance(result, ReactiveRegressionFitResult) else result
+    rows = objective_result.batch_result.flatten_rows()
     _write_csv_rows(target, rows)
     return target
 
 
 def write_regression_parameter_table(
-    parameter_map: Mapping[str, float],
+    result_or_parameter_map: ReactiveRegressionFitResult | Mapping[str, float],
     path: str | Path,
     *,
     seed_map: Mapping[str, float] | None = None,
@@ -1015,6 +1161,17 @@ def write_regression_parameter_table(
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     rows = []
+    active_bounds: dict[str, bool] = {}
+    lower_bounds_map: dict[str, float | None] = {}
+    upper_bounds_map: dict[str, float | None] = {}
+    if isinstance(result_or_parameter_map, ReactiveRegressionFitResult):
+        parameter_map = dict(result_or_parameter_map.parameter_map)
+        seed_map = dict(result_or_parameter_map.seed_map) if seed_map is None else dict(seed_map)
+        active_bounds = {str(k): bool(v) for k, v in result_or_parameter_map.active_bounds.items()}
+        lower_bounds_map = {str(k): v for k, v in result_or_parameter_map.lower_bounds.items()}
+        upper_bounds_map = {str(k): v for k, v in result_or_parameter_map.upper_bounds.items()}
+    else:
+        parameter_map = {str(k): float(v) for k, v in result_or_parameter_map.items()}
     seed_map = {str(k): float(v) for k, v in (seed_map or {}).items()}
     for key, value in sorted((str(k), float(v)) for k, v in parameter_map.items()):
         seed = seed_map.get(key)
@@ -1025,17 +1182,204 @@ def write_regression_parameter_table(
                 "final_value": value,
                 "movement": None if seed is None else float(value - seed),
                 "relative_movement": None if seed in (None, 0.0) else float((value - seed) / seed),
+                "lower_bound": lower_bounds_map.get(key),
+                "upper_bound": upper_bounds_map.get(key),
+                "active_bound": bool(active_bounds.get(key, False)),
             }
         )
     _write_csv_rows(target, rows)
     return target
 
 
-def write_regression_residual_table(result: ReactiveRegressionObjectiveResult, path: str | Path) -> Path:
+def write_regression_residual_table(
+    result: ReactiveRegressionObjectiveResult | ReactiveRegressionFitResult,
+    path: str | Path,
+) -> Path:
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    _write_csv_rows(target, result.batch_result.flatten_residuals())
+    objective_result = result.objective_result if isinstance(result, ReactiveRegressionFitResult) else result
+    _write_csv_rows(target, objective_result.batch_result.flatten_residuals())
     return target
+
+
+def _fit_reactive_parameters_impl(
+    batch_or_context: ReactiveElectrolyteBatch | ReactiveElectrolyteRegressionContext,
+    *,
+    initial_parameters: Mapping[str, float],
+    lower_bounds: Mapping[str, float | None] | None = None,
+    upper_bounds: Mapping[str, float | None] | None = None,
+    max_iterations: int = 6,
+    tolerance: float = 1.0e-6,
+    damping: float = 1.0,
+    jacobian_mode: str = "central",
+    relative_step: float = 1.0e-4,
+    absolute_step: float | None = None,
+    log_parameters: bool = True,
+) -> ReactiveRegressionFitResult:
+    if isinstance(batch_or_context, ReactiveElectrolyteRegressionContext):
+        context = batch_or_context
+    else:
+        context = ReactiveElectrolyteRegressionContext.from_batch(
+            species=batch_or_context.species,
+            rows=batch_or_context.rows,
+            balances=batch_or_context.balances,
+            reactions=batch_or_context.reactions,
+            options=batch_or_context.options,
+            vapor_species=batch_or_context.vapor_species,
+            volatile_species=batch_or_context.volatile_species,
+            nonvolatile_species=batch_or_context.nonvolatile_species,
+            base_parameters=batch_or_context.base_parameters,
+            user_options=batch_or_context.user_options,
+            mixture_factory=batch_or_context.mixture_factory,
+            mixture_factory_builder=batch_or_context.mixture_factory_builder,
+            reactive_speciation_options=batch_or_context.reactive_speciation_options,
+            reactive_bubble_options=batch_or_context.reactive_bubble_options,
+        )
+    current = {str(k): float(v) for k, v in initial_parameters.items()}
+    if not current:
+        raise InputError("initial_parameters must include at least one fitted parameter.")
+    seed_map = dict(current)
+    lower = {str(k): (None if v is None else float(v)) for k, v in (lower_bounds or {}).items()}
+    upper = {str(k): (None if v is None else float(v)) for k, v in (upper_bounds or {}).items()}
+    parameter_names = tuple(current)
+    unknown_lower = sorted(set(lower) - set(parameter_names))
+    if unknown_lower:
+        raise InputError(f"lower_bounds includes unknown parameters: {', '.join(unknown_lower)}")
+    unknown_upper = sorted(set(upper) - set(parameter_names))
+    if unknown_upper:
+        raise InputError(f"upper_bounds includes unknown parameters: {', '.join(unknown_upper)}")
+    for name in parameter_names:
+        lo = lower.get(name)
+        hi = upper.get(name)
+        if lo is not None and hi is not None and lo > hi:
+            raise InputError(f"Bounds for {name} are inconsistent: lower_bound > upper_bound.")
+    if max_iterations <= 0:
+        raise InputError("max_iterations must be positive.")
+    if tolerance <= 0.0:
+        raise InputError("tolerance must be positive.")
+    if damping <= 0.0:
+        raise InputError("damping must be positive.")
+
+    trajectory: list[dict[str, Any]] = []
+    objective_result = context.evaluate_objective(current)
+    converged = False
+    message = "maximum iterations reached"
+    final_jacobian: ReactiveRegressionJacobianResult | None = None
+
+    for iteration in range(1, max_iterations + 1):
+        jacobian = context.finite_difference_jacobian(
+            current,
+            parameters=parameter_names,
+            mode=jacobian_mode,
+            relative_step=relative_step,
+            absolute_step=absolute_step,
+            log_parameters=log_parameters,
+        )
+        final_jacobian = jacobian
+        jtj = jacobian.jacobian.T @ jacobian.jacobian
+        jtr = jacobian.jacobian.T @ objective_result.residuals
+        regularization = 1.0e-8 * np.eye(jtj.shape[0], dtype=float)
+        try:
+            step = -np.linalg.solve(jtj + regularization, jtr)
+        except np.linalg.LinAlgError:
+            step = -np.linalg.pinv(jtj + regularization) @ jtr
+        step *= float(damping)
+        trial = dict(current)
+        for idx, name in enumerate(parameter_names):
+            trial[name] = float(current[name] + step[idx])
+            lo = lower.get(name)
+            hi = upper.get(name)
+            if lo is not None:
+                trial[name] = max(trial[name], lo)
+            if hi is not None:
+                trial[name] = min(trial[name], hi)
+        trial_result = context.evaluate_objective(trial)
+        accepted = trial_result.objective <= objective_result.objective
+        if not accepted:
+            line_scale = 0.5
+            for _ in range(6):
+                retry = {
+                    name: float(current[name] + line_scale * (trial[name] - current[name])) for name in parameter_names
+                }
+                retry_result = context.evaluate_objective(retry)
+                if retry_result.objective <= objective_result.objective:
+                    trial = retry
+                    trial_result = retry_result
+                    accepted = True
+                    break
+                line_scale *= 0.5
+        trajectory.append(
+            {
+                "iteration": iteration,
+                "objective": float(objective_result.objective),
+                "accepted": bool(accepted),
+                "step_norm": float(np.linalg.norm(step)),
+            }
+        )
+        if accepted:
+            delta = max(abs(trial[name] - current[name]) for name in parameter_names)
+            current = trial
+            objective_result = trial_result
+            if delta <= tolerance:
+                converged = True
+                message = "parameter step tolerance reached"
+                break
+            if np.linalg.norm(step) <= tolerance:
+                converged = True
+                message = "gauss-newton step norm reached tolerance"
+                break
+        else:
+            message = "line search failed to improve objective"
+            break
+
+    covariance_available = False
+    covariance_matrix: np.ndarray | None = None
+    identifiability_status = "unavailable"
+    covariance_diagnostics: dict[str, Any] = {"covariance_reason": "jacobian unavailable"}
+    if final_jacobian is not None:
+        finite = np.all(np.isfinite(final_jacobian.jacobian))
+        if finite and final_jacobian.jacobian.size:
+            jtj = final_jacobian.jacobian.T @ final_jacobian.jacobian
+            try:
+                covariance_matrix = np.linalg.pinv(jtj)
+                covariance_available = True
+                cond_value = float(np.linalg.cond(jtj))
+                identifiability_status = "well_conditioned" if cond_value < 1.0e8 else "ill_conditioned"
+                covariance_diagnostics = {"condition_number": cond_value}
+            except np.linalg.LinAlgError:
+                covariance_diagnostics = {"covariance_reason": "JTJ inversion failed"}
+    active_bounds = {
+        name: (
+            (
+                lower.get(name) is not None
+                and math.isclose(current[name], float(lower[name]), rel_tol=0.0, abs_tol=1.0e-10)
+            )
+            or (
+                upper.get(name) is not None
+                and math.isclose(current[name], float(upper[name]), rel_tol=0.0, abs_tol=1.0e-10)
+            )
+        )
+        for name in parameter_names
+    }
+    return ReactiveRegressionFitResult(
+        success=converged,
+        message=message,
+        iterations=len(trajectory),
+        parameter_map=current,
+        seed_map=seed_map,
+        lower_bounds=lower,
+        upper_bounds=upper,
+        active_bounds=active_bounds,
+        objective_result=objective_result,
+        covariance_available=covariance_available,
+        covariance_matrix=covariance_matrix,
+        identifiability_status=identifiability_status,
+        diagnostics={
+            "trajectory": trajectory,
+            "jacobian": None if final_jacobian is None else final_jacobian.to_dict(),
+            "covariance": covariance_diagnostics,
+        },
+    )
 
 
 def _write_csv_rows(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:
@@ -1238,6 +1582,10 @@ def _row_result_from_speciation(
         solver_status="success" if raw_result.success else "failure",
         elapsed_seconds=float(elapsed_seconds),
         cache_stats={"warm_start_source": seed_source},
+        warm_start_used=seed_source != "user_initial",
+        warm_start_source=seed_source,
+        warm_start_failed=False,
+        fallback_seed_used=False,
         named_reaction_residuals=dict(raw_result.named_reaction_residuals),
         source=row.source,
         split=row.split,
@@ -1296,6 +1644,10 @@ def _row_result_from_bubble(
         solver_status="success" if bool(getattr(raw_result, "success", False)) else "failure",
         elapsed_seconds=float(elapsed_seconds),
         cache_stats={"warm_start_source": seed_source},
+        warm_start_used=seed_source != "user_initial",
+        warm_start_source=seed_source,
+        warm_start_failed=False,
+        fallback_seed_used=False,
         partial_pressures=dict(getattr(raw_result, "partial_pressures", {}) or {}),
         y_vap=dict(getattr(raw_result, "y_vap", {}) or {}),
         named_reaction_residuals=dict(getattr(raw_result, "named_reaction_residuals", {}) or {}),
@@ -1330,6 +1682,10 @@ def _failed_row_result(
         solver_status="exception",
         elapsed_seconds=float(elapsed_seconds),
         cache_stats={"warm_start_source": seed_source},
+        warm_start_used=seed_source != "user_initial",
+        warm_start_source=seed_source,
+        warm_start_failed=seed_source != "user_initial",
+        fallback_seed_used=seed_source != "user_initial",
         source=row.source,
         split=row.split,
         metadata=dict(row.metadata),
@@ -1544,6 +1900,7 @@ __all__ = [
     "ReactiveRegressionObjective",
     "ReactiveRegressionObjectiveResult",
     "ReactiveRegressionJacobianResult",
+    "ReactiveRegressionFitResult",
     "build_reactive_regression_objective",
     "evaluate_reactive_regression_objective",
     "fit_reactive_electrolyte_parameters",
