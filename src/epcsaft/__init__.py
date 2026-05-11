@@ -29,6 +29,8 @@ from .equilibrium import (
 from .native_regression import (
     CANONICAL_NATIVE_REGRESSION_STATUSES,
     evaluate_native_regression_residual_records,
+    evaluate_native_thermo_regression_rows,
+    fit_native_thermo_regression,
     native_regression_contract_schema,
     solve_native_regression_residual_records,
 )
@@ -175,11 +177,13 @@ __all__ = [
     "evaluate_fugacity_coefficients_batch",
     "evaluate_generic_regression_derivatives",
     "evaluate_native_regression_residual_records",
+    "evaluate_native_thermo_regression_rows",
     "evaluate_pure_neutral_derivatives",
     "evaluate_reactive_electrolyte_bubble_residuals",
     "evaluate_reactive_regression_objective",
     "fit_binary_pair",
     "fit_mea_co2_h2o_electrolyte",
+    "fit_native_thermo_regression",
     "fit_pure_ion",
     "fit_pure_neutral",
     "fit_reactive_electrolyte_parameters",

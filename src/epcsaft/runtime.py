@@ -356,6 +356,7 @@ def capabilities() -> dict[str, object]:
                         "nonfinite_objective",
                         "bounds_inconsistent",
                         "invalid_input",
+                        "backend_unavailable",
                     ],
                     "fields": [
                         "status",

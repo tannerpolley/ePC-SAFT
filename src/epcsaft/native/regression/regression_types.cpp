@@ -4,10 +4,6 @@
 #include <cmath>
 #include <stdexcept>
 
-#ifdef EPCSAFT_HAS_CERES
-#include <ceres/ceres.h>
-#endif
-
 namespace {
 
 std::vector<double> solve_dense_linear_system(std::vector<std::vector<double>> matrix, std::vector<double> rhs) {
@@ -92,6 +88,8 @@ std::string native_regression_status_name(NativeRegressionStatus status) {
             return "bounds_inconsistent";
         case NativeRegressionStatus::INVALID_INPUT:
             return "invalid_input";
+        case NativeRegressionStatus::BACKEND_UNAVAILABLE:
+            return "backend_unavailable";
     }
     throw std::invalid_argument("Unknown native regression status.");
 }
@@ -106,6 +104,7 @@ std::vector<std::string> native_regression_status_names() {
         native_regression_status_name(NativeRegressionStatus::NONFINITE_OBJECTIVE),
         native_regression_status_name(NativeRegressionStatus::BOUNDS_INCONSISTENT),
         native_regression_status_name(NativeRegressionStatus::INVALID_INPUT),
+        native_regression_status_name(NativeRegressionStatus::BACKEND_UNAVAILABLE),
     };
 }
 

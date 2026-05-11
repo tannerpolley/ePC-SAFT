@@ -23,6 +23,7 @@ def test_native_regression_contract_schema_is_exposed_from_core() -> None:
         "nonfinite_objective",
         "bounds_inconsistent",
         "invalid_input",
+        "backend_unavailable",
     ]
     assert schema["fixed_shape_residuals"] is True
     assert schema["production_finite_difference_allowed"] is False

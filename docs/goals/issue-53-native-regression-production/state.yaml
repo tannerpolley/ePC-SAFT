@@ -28,6 +28,8 @@ goal:
       - "GitHub issue #53: https://github.com/tannerpolley/ePC-SAFT/issues/53"
       - "GitHub comment 4424893353: https://github.com/tannerpolley/ePC-SAFT/issues/53#issuecomment-4424893353"
       - "The current branch is only a Phase 0 / native residual-record contract slice unless the next tranche is implemented."
+      - "Continue on branch codex/issue-53-native-regression-production; do not fork a new native-Ceres branch unless a later Judge task changes this."
+      - "Do not open a completion PR before T022; any earlier PR must be draft-only and framed as Phase 0 native residual-record groundwork."
       - "Do not merge or describe the current branch as completing #53 while issue53_native_production_ready=false, native_hot_loop=false, Python packs/evaluates mixed pressure/speciation thermodynamic rows, Ceres does not execute the production parameter solve loop, or CppAD is not package-wide."
       - "Issue #53 asks for Ceres as primary robust bounded nonlinear least-squares backend."
       - "Issue #53 asks for CppAD as package-wide AD substrate."
@@ -55,7 +57,7 @@ agents:
   judge: installed
   worker: installed
 
-active_task: T014
+active_task: T020
 
 tasks:
   - id: T001
@@ -743,7 +745,7 @@ tasks:
   - id: T014
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: xhigh
     objective: "Ingest GitHub comment 4424893353, reframe the current branch as Phase 0 only, and decide the smallest real next-tranche architecture that can satisfy issue #53 without pretending residual-record solving is production thermodynamic regression."
     inputs:
@@ -762,12 +764,19 @@ tasks:
       - "Explicit branch/PR framing decision."
       - "Blocking risks for package-wide CppAD templating and implicit sensitivities."
       - "Ordered Worker tasks T015 onward refined if needed."
-    receipt: null
+    receipt:
+      result: done
+      decision: "Continue on codex/issue-53-native-regression-production; do not open a completion PR; implement a Phase 1 native thermodynamic hot loop for the first production slice."
+      summary: "Judge approved staying on the existing branch and implementing only the first real production slice: slice-scoped native AD, native ReactiveSpeciation/ReactiveElectrolyteBubble thermodynamic row evaluator, implicit sensitivities for converged nested solves, Ceres-owned parameter iteration, Python limited to validation/marshalling/serialization, and finite difference only behind EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG=1. Whole-package CppAD conversion is a direction, not a one-pass rewrite; unsupported derivative paths must fail closed as backend_unavailable."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T014-github-comment-4424893353.md"
+        - "docs/goals/issue-53-native-regression-production/notes/T014-judge-decision.md"
+        - "GitHub issue comment 4424893353"
 
   - id: T015
     type: scout
     assignee: Scout
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Audit every finite-difference, numerical Jacobian, Python objective, and Python residual-packing path named in comment 4424893353."
     inputs:
@@ -785,18 +794,60 @@ tasks:
     expected_output:
       - "Finite-difference and Python-objective migration map."
       - "Tests needed to prove production rejection and debug escape hatch behavior."
+    receipt:
+      result: done
+      summary: "Audit found production finite-difference/Python-hot-loop risk in reactive speciation, reactive electrolyte bubble through speciation, reactive regression python_compat, reactive regression native residual-record prepacking, and public equilibrium/LLE derivative surfaces. Explicit generic regression debug helpers are lower priority and can remain only if env-gated and labeled debug."
+      evidence:
+        - "src/epcsaft/reactive_speciation.py"
+        - "src/epcsaft/reactive_electrolyte.py"
+        - "src/epcsaft/reactive_regression.py"
+        - "src/epcsaft/regression.py"
+        - "src/epcsaft/equilibrium.py"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+        - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      migration_priority:
+        - "P0: reactive_speciation.py plus native epcsaft_chemical_equilibrium.cpp because auto currently falls back to finite difference for nonideal standard states and reactive electrolyte bubble inherits it."
+        - "P0: reactive_regression.py python_compat because it is Python optimizer plus Python residual packing plus Python finite-difference Jacobian."
+        - "P1: reactive_regression.py native residual-record path because it evaluates and packs rows in Python before native solve while diagnostics imply production_ready."
+        - "P1: equilibrium.py plus native epcsaft_equilibrium.cpp LLE residual/equilibrium finite-difference surfaces."
+        - "P2: regression.py explicit debug helpers; keep only as env-gated debug if retained."
+      tests_needed:
+        - "tests/api/test_reactive_speciation.py: production finite_difference rejects without EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG; debug env relabels diagnostics."
+        - "tests/native/test_chemical_equilibrium_native.py: auto nonideal must not silently use finite difference; explicit finite difference requires debug env."
+        - "tests/api/test_reactive_regression.py: python_compat must reject or be debug-gated; native path must stop claiming production once Python packs rows."
+        - "tests/native/test_equilibrium_native_contracts.py: electrolyte LLE residual finite difference requires debug env."
+        - "tests/api/test_runtime.py: capability claims must stay honest and stop advertising production finite-difference fallback."
+
+  - id: T024
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Decide after T016/T017 whether python_compat and direct _core residual evaluators remain env-gated debug escape hatches or are rejected outright."
+    inputs:
+      - "T015 audit receipt."
+      - "T016/T017 implementation receipts."
+    constraints:
+      - "Do not allow any production path to use finite difference."
+      - "Do not remove useful explicit debug tooling unless it creates public API ambiguity."
+    expected_output:
+      - "Policy decision for python_compat and direct residual evaluator debug access."
     receipt: null
 
   - id: T016
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Add package-wide native AD scaffolding under src/epcsaft/native/autodiff and templatize the supported residual functions needed by the first production thermodynamic regression slice."
     allowed_files:
       - "src/epcsaft/native/autodiff/**"
+      - "src/epcsaft/native/autodiff/ad_scalar.h"
+      - "src/epcsaft/native/autodiff/ad_derivative_checks.h"
+      - "src/epcsaft/native/autodiff/ad_derivative_checks.cpp"
       - "src/epcsaft/native/**/*.h"
       - "src/epcsaft/native/**/*.cpp"
+      - "src/epcsaft/bindings.cpp"
       - "CMakeLists.txt"
       - "tests/native/test_cppad_eos_derivatives.py"
       - "tests/native/test_cppad_reactive_speciation_derivatives.py"
@@ -807,14 +858,203 @@ tasks:
     stop_if:
       - "Templating a required contribution would require broad EOS rewrites beyond the first production slice."
       - "CppAD cannot build in the local Windows uv/CMake environment."
-    receipt: null
+    receipt:
+      result: done
+      summary: "Added slice-scoped native AD scaffolding under src/epcsaft/native/autodiff, an internal _core derivative-check binding, focused native tests, and CMake support for bundled CppAD generated configure.hpp plus cppad_lib/temp_file.cpp. Default builds return backend_unavailable without finite differences; a CppAD-enabled temp _core build returns real CppAD derivatives with finite_difference_used=false."
+      changed_files:
+        - "CMakeLists.txt"
+        - "src/epcsaft/bindings.cpp"
+        - "src/epcsaft/native/autodiff/ad_scalar.h"
+        - "src/epcsaft/native/autodiff/ad_derivative_checks.h"
+        - "src/epcsaft/native/autodiff/ad_derivative_checks.cpp"
+        - "tests/native/test_cppad_eos_derivatives.py"
+        - "tests/native/test_cppad_reactive_speciation_derivatives.py"
+        - "tests/native/test_cppad_bubble_derivatives.py"
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T016-native-ad-scaffold.md"
+      commands:
+        - cmd: "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/test_cppad_eos_derivatives.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_cppad_bubble_derivatives.py -q"
+          status: pass
+          summary: "3 passed in 0.46s"
+        - cmd: "uv run ruff check tests/native/test_cppad_eos_derivatives.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_cppad_bubble_derivatives.py"
+          status: pass
+        - cmd: "uv run black --check tests/native/test_cppad_eos_derivatives.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_cppad_bubble_derivatives.py"
+          status: pass
+        - cmd: "cmake -S . -B build/temp/cppad-ad-check ... -DEPCSAFT_ENABLE_CPPAD=ON"
+          status: pass
+        - cmd: "cmake --build build/temp/cppad-ad-check --target _core --parallel 10"
+          status: pass
+        - cmd: "uv run python -c \"import sys; sys.path.insert(0, r'build/temp/cppad-ad-check'); import _core; print(_core._native_autodiff_derivative_checks())\""
+          status: pass
+          summary: "cppad_compiled=True, cppad_used=True, finite_difference_used=False, max_abs_error=0.0"
 
   - id: T017
     type: worker
     assignee: Worker
-    status: queued
+    status: done
+    reasoning_hint: xhigh
+    objective: "Implement native regression problem, parameter map, row workspace, and thermodynamic evaluator objects for ReactiveSpeciation and ReactiveElectrolyteBubble rows."
+    allowed_files:
+      - "src/epcsaft/native/regression/**"
+      - "src/epcsaft/native/regression/thermo_regression.h"
+      - "src/epcsaft/native/regression/thermo_regression.cpp"
+      - "src/epcsaft/native/**/*.cpp"
+      - "src/epcsaft/native/**/*.h"
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/native_regression.py"
+      - "src/epcsaft/__init__.py"
+      - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      - "tests/native/test_native_ceres_reactive_pressure_speciation.py"
+    verify:
+      - "uv run python scripts/build_epcsaft.py"
+      - "uv run python run_pytest.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_native_ceres_reactive_pressure_speciation.py -q"
+    stop_if:
+      - "The row evaluator still requires Python to compute or pack production residual rows."
+      - "ReactiveSpeciation or ReactiveElectrolyteBubble cannot be executed in native C++ for the tiny benchmark cases."
+    receipt:
+      result: done
+      summary: "Added native thermodynamic regression row evaluation for reactive_speciation and reactive_electrolyte_bubble rows. C++ now calls chemical_equilibrium_native and electrolyte_bubble_pressure_native directly, packs fixed-shape residuals, and penalizes unsupported row modes without falling back to Python."
+      changed_files:
+        - "src/epcsaft/native/regression/thermo_regression.h"
+        - "src/epcsaft/native/regression/thermo_regression.cpp"
+        - "src/epcsaft/bindings.cpp"
+        - "src/epcsaft/native_regression.py"
+        - "src/epcsaft/__init__.py"
+        - "tests/native/test_native_ceres_thermodynamic_regression.py"
+        - "tests/native/test_native_ceres_reactive_pressure_speciation.py"
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T017-native-thermo-row-evaluator.md"
+      commands:
+        - cmd: "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_native_ceres_reactive_pressure_speciation.py -q"
+          status: pass
+          summary: "3 passed in 12.21s"
+        - cmd: "uv run ruff check src/epcsaft/native_regression.py src/epcsaft/__init__.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_native_ceres_reactive_pressure_speciation.py"
+          status: pass
+        - cmd: "uv run black --check src/epcsaft/native_regression.py src/epcsaft/__init__.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_native_ceres_reactive_pressure_speciation.py"
+          status: pass
+
+  - id: T018
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: xhigh
+    objective: "Add implicit-sensitivity support for converged nested reactive speciation and fixed-liquid electrolyte bubble solves, returning backend_unavailable rather than finite-differencing when unsupported."
+    allowed_files:
+      - "src/epcsaft/native/regression/implicit_sensitivity.*"
+      - "src/epcsaft/native/regression/implicit_sensitivity.h"
+      - "src/epcsaft/native/regression/implicit_sensitivity.cpp"
+      - "src/epcsaft/native/regression/**"
+      - "src/epcsaft/native/**/*.h"
+      - "src/epcsaft/native/**/*.cpp"
+      - "src/epcsaft/bindings.cpp"
+      - "tests/native/test_cppad_reactive_speciation_derivatives.py"
+      - "tests/native/test_cppad_bubble_derivatives.py"
+    verify:
+      - "uv run python scripts/build_epcsaft.py"
+      - "uv run python run_pytest.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_cppad_bubble_derivatives.py -q"
+    stop_if:
+      - "The needed inner residual Jacobians are not exposed enough to support implicit differentiation; return backend_unavailable rather than finite-differencing."
+    receipt:
+      result: done
+      summary: "Added native implicit sensitivity linear solve for converged nested residual systems, exposed a private _core binding, and tested converged and singular cases without finite-difference fallback. Real reactive speciation/bubble row solves still need to expose inner residual Jacobians before T019 can use this for full production sensitivities."
+      changed_files:
+        - "src/epcsaft/native/regression/implicit_sensitivity.h"
+        - "src/epcsaft/native/regression/implicit_sensitivity.cpp"
+        - "src/epcsaft/bindings.cpp"
+        - "tests/native/test_cppad_reactive_speciation_derivatives.py"
+        - "tests/native/test_cppad_bubble_derivatives.py"
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T018-implicit-sensitivity.md"
+      commands:
+        - cmd: "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_cppad_bubble_derivatives.py -q"
+          status: pass
+          summary: "4 passed in 0.41s"
+        - cmd: "uv run ruff check tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_cppad_bubble_derivatives.py"
+          status: pass
+        - cmd: "uv run black --check tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_cppad_bubble_derivatives.py"
+          status: pass
+
+  - id: T019
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: xhigh
+    objective: "Add the Ceres DynamicCostFunction production solve loop around the native thermodynamic evaluator, with CppAD/analytic/implicit Jacobians and canonical statuses."
+    allowed_files:
+      - "CMakeLists.txt"
+      - "src/epcsaft/native/epcsaft_electrolyte.h"
+      - "src/epcsaft/native/regression/**"
+      - "src/epcsaft/native/regression/regression_types.h"
+      - "src/epcsaft/native/regression/regression_types.cpp"
+      - "src/epcsaft/native/regression/thermo_regression.h"
+      - "src/epcsaft/native/regression/thermo_regression.cpp"
+      - "src/epcsaft/native/regression/implicit_sensitivity.cpp"
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/native_regression.py"
+      - "src/epcsaft/__init__.py"
+      - "src/epcsaft/runtime.py"
+      - "src/epcsaft/reactive_regression.py"
+      - "tests/native/test_cppad_reactive_speciation_derivatives.py"
+      - "tests/native/test_native_regression_types.py"
+      - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      - "tests/native/test_native_ceres_reactive_pressure_speciation.py"
+      - "tests/api/test_reactive_regression.py"
+    verify:
+      - "uv run python scripts/build_epcsaft.py"
+      - "uv run python run_pytest.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_native_ceres_reactive_pressure_speciation.py tests/api/test_reactive_regression.py -q"
+    stop_if:
+      - "Ceres is unavailable and the code would need to fake optimizer_backend=ceres."
+      - "Objective decrease cannot be demonstrated without a Python objective loop."
+    receipt:
+      result: done
+      summary: "Added a native Ceres thermodynamic fit surface for the first honest supported production slice: reactive-speciation rows with reaction log-equilibrium-constant parameters, ideal mole-fraction standard states, speciation targets, and analytic/implicit Jacobians. Unsupported row/parameter derivative combinations return backend_unavailable instead of falling back to finite differences."
+      changed_files:
+        - "CMakeLists.txt"
+        - "src/epcsaft/native/epcsaft_electrolyte.h"
+        - "src/epcsaft/native/regression/regression_types.h"
+        - "src/epcsaft/native/regression/regression_types.cpp"
+        - "src/epcsaft/native/regression/thermo_regression.h"
+        - "src/epcsaft/native/regression/thermo_regression.cpp"
+        - "src/epcsaft/native/regression/implicit_sensitivity.cpp"
+        - "src/epcsaft/bindings.cpp"
+        - "src/epcsaft/native_regression.py"
+        - "src/epcsaft/__init__.py"
+        - "src/epcsaft/runtime.py"
+        - "tests/native/test_cppad_reactive_speciation_derivatives.py"
+        - "tests/native/test_native_ceres_thermodynamic_regression.py"
+        - "tests/native/test_native_regression_types.py"
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T019-native-ceres-thermo-fit.md"
+      commands:
+        - cmd: "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_cppad_bubble_derivatives.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_native_ceres_reactive_pressure_speciation.py tests/native/test_native_regression_types.py -q"
+          status: pass
+          summary: "14 passed in 5.57s"
+        - cmd: "cmake -S . -B build/temp/ceres-fit-check -G Ninja -Dpybind11_DIR=... -DPython_EXECUTABLE=... -DEPCSAFT_ENABLE_CERES=ON -DEPCSAFT_DEV_INPLACE=OFF"
+          status: pass
+        - cmd: "cmake --build build/temp/ceres-fit-check --target _core --parallel 10"
+          status: pass
+        - cmd: "direct _core._fit_native_thermo_regression smoke from build/temp/ceres-fit-check"
+          status: pass
+          summary: "optimizer_backend=ceres, derivative_backend=analytic_implicit, initial_cost=0.05174377188057001, final_cost=1.1771098705162825e-19, native_hot_loop=true, python_objective_used=false, finite_difference_used=false"
+        - cmd: "uv run ruff check src/epcsaft/native_regression.py src/epcsaft/__init__.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_native_regression_types.py"
+          status: pass
+        - cmd: "uv run black --check src/epcsaft/native_regression.py src/epcsaft/__init__.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_native_regression_types.py"
+          status: pass
+
+  - id: T020
+    type: worker
+    assignee: Worker
+    status: active
     reasoning_hint: high
-    objective: "Make finite difference debug-only across public production derivative options and native regression/equilibrium paths."
+    objective: "Make finite difference debug-only across public production derivative options and native regression/equilibrium paths after real alternatives or honest backend_unavailable paths exist."
     allowed_files:
       - "src/epcsaft/equilibrium.py"
       - "src/epcsaft/reactive_speciation.py"
@@ -831,69 +1071,6 @@ tasks:
       - "uv run python run_pytest.py tests/native -q"
     stop_if:
       - "A public production path has no analytic/CppAD/implicit derivative alternative and cannot honestly reject finite_difference without breaking documented behavior."
-    receipt: null
-
-  - id: T018
-    type: worker
-    assignee: Worker
-    status: queued
-    reasoning_hint: xhigh
-    objective: "Implement native thermodynamic regression problem objects, row workspaces, parameter maps, and evaluator for ReactiveSpeciation and ReactiveElectrolyteBubble rows."
-    allowed_files:
-      - "src/epcsaft/native/regression/**"
-      - "src/epcsaft/native/**/*.h"
-      - "src/epcsaft/native/**/*.cpp"
-      - "src/epcsaft/bindings.cpp"
-      - "src/epcsaft/reactive_regression.py"
-      - "tests/native/test_native_ceres_thermodynamic_regression.py"
-      - "tests/native/test_native_ceres_reactive_pressure_speciation.py"
-    verify:
-      - "uv run python scripts/build_epcsaft.py"
-      - "uv run python run_pytest.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_native_ceres_reactive_pressure_speciation.py -q"
-    stop_if:
-      - "The row evaluator still requires Python to compute or pack production residual rows."
-      - "ReactiveSpeciation or ReactiveElectrolyteBubble cannot be executed in native C++ for the tiny benchmark cases."
-    receipt: null
-
-  - id: T019
-    type: worker
-    assignee: Worker
-    status: queued
-    reasoning_hint: xhigh
-    objective: "Add the Ceres DynamicCostFunction production solve loop around the native thermodynamic evaluator, with CppAD/analytic/implicit Jacobians and canonical statuses."
-    allowed_files:
-      - "src/epcsaft/native/regression/**"
-      - "src/epcsaft/bindings.cpp"
-      - "src/epcsaft/reactive_regression.py"
-      - "tests/native/test_native_ceres_thermodynamic_regression.py"
-      - "tests/native/test_native_ceres_reactive_pressure_speciation.py"
-      - "tests/api/test_reactive_regression.py"
-    verify:
-      - "uv run python scripts/build_epcsaft.py"
-      - "uv run python run_pytest.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_native_ceres_reactive_pressure_speciation.py tests/api/test_reactive_regression.py -q"
-    stop_if:
-      - "Ceres is unavailable and the code would need to fake optimizer_backend=ceres."
-      - "Objective decrease cannot be demonstrated without a Python objective loop."
-    receipt: null
-
-  - id: T020
-    type: worker
-    assignee: Worker
-    status: queued
-    reasoning_hint: high
-    objective: "Add implicit-sensitivity support for the nested reactive speciation and fixed-liquid electrolyte bubble solves covered by the production regression slice."
-    allowed_files:
-      - "src/epcsaft/native/regression/implicit_sensitivity.*"
-      - "src/epcsaft/native/regression/**"
-      - "src/epcsaft/native/**/*.h"
-      - "src/epcsaft/native/**/*.cpp"
-      - "tests/native/test_cppad_reactive_speciation_derivatives.py"
-      - "tests/native/test_cppad_bubble_derivatives.py"
-    verify:
-      - "uv run python scripts/build_epcsaft.py"
-      - "uv run python run_pytest.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_cppad_bubble_derivatives.py -q"
-    stop_if:
-      - "The needed inner residual Jacobians are not exposed enough to support implicit differentiation; return backend_unavailable rather than finite-differencing."
     receipt: null
 
   - id: T021

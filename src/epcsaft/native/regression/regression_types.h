@@ -13,6 +13,7 @@ enum class NativeRegressionStatus {
     NONFINITE_OBJECTIVE = 5,
     BOUNDS_INCONSISTENT = 6,
     INVALID_INPUT = 7,
+    BACKEND_UNAVAILABLE = 8,
 };
 
 struct NativeRegressionParameterSpec {

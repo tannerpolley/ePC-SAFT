@@ -9,13 +9,19 @@
 
 #include "epcsaft_chemical_equilibrium.h"
 #include "epcsaft_equilibrium.h"
+#include "ad_derivative_checks.h"
+#include "implicit_sensitivity.h"
 #include "regression_types.h"
+#include "thermo_regression.h"
 
 namespace py = pybind11;
 
 namespace {
 
 py::object native_solution_error_type;
+
+ChemicalEquilibriumOptionsNative chemical_options_from_request(const py::dict& request);
+ElectrolyteBubbleOptionsNative electrolyte_bubble_options_from_request(const py::dict& request);
 
 std::vector<double> array_to_double_vector(const py::array& array) {
     py::array_t<double, py::array::forcecast> casted(array);
@@ -218,6 +224,38 @@ py::dict native_regression_parameter_spec_to_dict(const NativeRegressionParamete
         metadata[py::str(item.first)] = item.second;
     }
     out["metadata"] = metadata;
+    return out;
+}
+
+py::dict native_autodiff_derivative_check_to_dict(
+    const epcsaft::autodiff::NativeAutodiffDerivativeCheckResult& result
+) {
+    py::dict out;
+    out["cppad_compiled"] = result.cppad_compiled;
+    out["cppad_used"] = result.cppad_used;
+    out["finite_difference_used"] = result.finite_difference_used;
+    out["status"] = result.status;
+    out["derivative_backend"] = result.derivative_backend;
+    out["checked_residuals"] = result.checked_residuals;
+    py::dict derivatives;
+    for (const auto& item : result.derivative_by_residual) {
+        derivatives[py::str(item.first)] = item.second;
+    }
+    out["derivative_by_residual"] = derivatives;
+    out["max_abs_error"] = result.max_abs_error;
+    return out;
+}
+
+py::dict native_implicit_sensitivity_to_dict(const NativeImplicitSensitivityResult& result) {
+    py::dict out;
+    out["success"] = result.success;
+    out["status"] = result.status;
+    out["message"] = result.message;
+    out["sensitivities_row_major"] = result.sensitivities_row_major;
+    out["shape"] = py::make_tuple(result.rows, result.cols);
+    out["residual_jacobian_condition_proxy"] = result.residual_jacobian_condition_proxy;
+    out["finite_difference_used"] = false;
+    out["sensitivity_backend"] = "analytic_implicit";
     return out;
 }
 
@@ -442,6 +480,127 @@ py::dict solve_native_regression_residual_records_binding(
         native_regression_parameter_specs_from_list(parameters),
         native_regression_fit_options_from_dict(options)
     );
+    return native_regression_fit_result_to_dict(result);
+}
+
+NativeThermoRegressionTarget native_thermo_regression_target_from_dict(const py::dict& input) {
+    NativeThermoRegressionTarget target;
+    target.family = input["family"].cast<std::string>();
+    if (input.contains("target") && !input["target"].is_none()) {
+        target.target = input["target"].cast<std::string>();
+    }
+    if (input.contains("index") && !input["index"].is_none()) {
+        target.index = input["index"].cast<int>();
+    }
+    target.observed = input["observed"].cast<double>();
+    if (input.contains("scale") && !input["scale"].is_none()) {
+        target.scale = input["scale"].cast<double>();
+    }
+    return target;
+}
+
+NativeThermoRegressionRow native_thermo_regression_row_from_dict(const py::dict& input) {
+    NativeThermoRegressionRow row;
+    row.row_id = input["row_id"].cast<std::string>();
+    row.row_mode = input["row_mode"].cast<std::string>();
+    row.t = input["T"].cast<double>();
+    if (input.contains("P") && !input["P"].is_none()) {
+        row.p = input["P"].cast<double>();
+    }
+    if (input.contains("initial_x") && !input["initial_x"].is_none()) {
+        row.initial_x = input["initial_x"].cast<std::vector<double>>();
+    }
+    if (input.contains("x_liq") && !input["x_liq"].is_none()) {
+        row.x_liq = input["x_liq"].cast<std::vector<double>>();
+    }
+    if (input.contains("balance_matrix") && !input["balance_matrix"].is_none()) {
+        row.balance_matrix_row_major = input["balance_matrix"].cast<std::vector<double>>();
+    }
+    if (input.contains("balance_rows") && !input["balance_rows"].is_none()) {
+        row.balance_rows = input["balance_rows"].cast<int>();
+    }
+    if (input.contains("total_vector") && !input["total_vector"].is_none()) {
+        row.total_vector = input["total_vector"].cast<std::vector<double>>();
+    }
+    if (input.contains("reaction_stoichiometry") && !input["reaction_stoichiometry"].is_none()) {
+        row.reaction_stoichiometry_row_major = input["reaction_stoichiometry"].cast<std::vector<double>>();
+    }
+    if (input.contains("reaction_rows") && !input["reaction_rows"].is_none()) {
+        row.reaction_rows = input["reaction_rows"].cast<int>();
+    }
+    if (input.contains("log_equilibrium_constants") && !input["log_equilibrium_constants"].is_none()) {
+        row.log_equilibrium_constants = input["log_equilibrium_constants"].cast<std::vector<double>>();
+    }
+    if (input.contains("reaction_standard_states") && !input["reaction_standard_states"].is_none()) {
+        row.reaction_standard_states = input["reaction_standard_states"].cast<std::vector<int>>();
+    } else {
+        row.reaction_standard_states = std::vector<int>(static_cast<std::size_t>(row.reaction_rows), 0);
+    }
+    if (input.contains("vapor_species") && !input["vapor_species"].is_none()) {
+        row.vapor_species = input["vapor_species"].cast<std::vector<std::string>>();
+    }
+    if (input.contains("target_species") && !input["target_species"].is_none()) {
+        row.targets_species = input["target_species"].cast<std::vector<std::string>>();
+    }
+    row.speciation_options = chemical_options_from_request(input);
+    row.bubble_options = electrolyte_bubble_options_from_request(input);
+    py::list targets = input["targets"].cast<py::list>();
+    row.targets.reserve(py::len(targets));
+    for (const py::handle item : targets) {
+        row.targets.push_back(native_thermo_regression_target_from_dict(item.cast<py::dict>()));
+    }
+    return row;
+}
+
+py::dict evaluate_native_thermo_regression_rows_binding(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    const py::dict& request
+) {
+    std::vector<std::string> species = request["species"].cast<std::vector<std::string>>();
+    double penalty_residual = 1.0e6;
+    if (request.contains("penalty_residual") && !request["penalty_residual"].is_none()) {
+        penalty_residual = request["penalty_residual"].cast<double>();
+    }
+    py::list rows_input = request["rows"].cast<py::list>();
+    std::vector<NativeThermoRegressionRow> rows;
+    rows.reserve(py::len(rows_input));
+    for (const py::handle item : rows_input) {
+        rows.push_back(native_thermo_regression_row_from_dict(item.cast<py::dict>()));
+    }
+    NativeRegressionResidualEvaluation result;
+    {
+        py::gil_scoped_release release;
+        result = evaluate_native_thermo_regression_rows(mixture, species, rows, penalty_residual);
+    }
+    return native_regression_residual_evaluation_to_dict(result);
+}
+
+py::dict fit_native_thermo_regression_binding(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    const py::dict& request
+) {
+    std::vector<std::string> species = request["species"].cast<std::vector<std::string>>();
+    py::list rows_input = request["rows"].cast<py::list>();
+    std::vector<NativeThermoRegressionRow> rows;
+    rows.reserve(py::len(rows_input));
+    for (const py::handle item : rows_input) {
+        rows.push_back(native_thermo_regression_row_from_dict(item.cast<py::dict>()));
+    }
+    py::list parameters_input = request["parameters"].cast<py::list>();
+    std::vector<NativeRegressionParameterSpec> parameters;
+    parameters.reserve(py::len(parameters_input));
+    for (const py::handle item : parameters_input) {
+        parameters.push_back(native_regression_parameter_spec_from_dict(item.cast<py::dict>()));
+    }
+    NativeRegressionFitOptions options;
+    if (request.contains("options") && !request["options"].is_none()) {
+        options = native_regression_fit_options_from_dict(request["options"].cast<py::dict>());
+    }
+    NativeRegressionFitResult result;
+    {
+        py::gil_scoped_release release;
+        result = fit_native_thermo_regression(mixture, species, rows, parameters, options);
+    }
     return native_regression_fit_result_to_dict(result);
 }
 
@@ -1550,6 +1709,30 @@ PYBIND11_MODULE(_core, m) {
     m.def("_native_regression_contract_schema", []() {
         return native_regression_contract_to_dict(native_regression_contract_schema());
     });
+    m.def("_native_autodiff_derivative_checks", []() {
+        return native_autodiff_derivative_check_to_dict(epcsaft::autodiff::native_autodiff_derivative_checks());
+    });
+    m.def(
+        "_solve_native_implicit_sensitivity",
+        [](const std::vector<double>& residual_jacobian_u,
+           int residual_rows,
+           int state_cols,
+           const std::vector<double>& residual_jacobian_theta,
+           int parameter_cols) {
+            return native_implicit_sensitivity_to_dict(solve_native_implicit_sensitivity(
+                residual_jacobian_u,
+                residual_rows,
+                state_cols,
+                residual_jacobian_theta,
+                parameter_cols
+            ));
+        },
+        py::arg("residual_jacobian_u"),
+        py::arg("residual_rows"),
+        py::arg("state_cols"),
+        py::arg("residual_jacobian_theta"),
+        py::arg("parameter_cols")
+    );
     m.def(
         "_evaluate_native_regression_residual_records",
         &evaluate_native_regression_residual_records_binding,
@@ -1562,6 +1745,18 @@ PYBIND11_MODULE(_core, m) {
         py::arg("records"),
         py::arg("parameters"),
         py::arg("options") = py::dict()
+    );
+    m.def(
+        "_evaluate_native_thermo_regression_rows",
+        &evaluate_native_thermo_regression_rows_binding,
+        py::arg("mixture"),
+        py::arg("request")
+    );
+    m.def(
+        "_fit_native_thermo_regression",
+        &fit_native_thermo_regression_binding,
+        py::arg("mixture"),
+        py::arg("request")
     );
     m.def("_solve_equilibrium_native", &solve_equilibrium_native_binding);
     m.def("_evaluate_electrolyte_lle_residual_native", &evaluate_electrolyte_lle_residual_native_binding);
