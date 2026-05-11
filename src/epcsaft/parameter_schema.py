@@ -39,7 +39,11 @@ class AssociationSite:
 
 @dataclass(frozen=True, slots=True)
 class PureRecord:
-    """Canonical pure-component ePC-SAFT parameters."""
+    """Canonical pure-component ePC-SAFT parameters.
+
+    ``molar_mass`` is stored in kg/mol to match the legacy native ``MW`` payload.
+    Use :meth:`from_g_per_mol` when source tables report g/mol.
+    """
 
     component: str | ComponentIdentifier
     molar_mass: float
@@ -72,6 +76,51 @@ class PureRecord:
             "solvation_factor",
         ):
             object.__setattr__(self, field_name, float(getattr(self, field_name)))
+        if not np.isfinite(float(self.molar_mass)) or float(self.molar_mass) <= 0.0:
+            raise InputError(f"{component}.molar_mass must be finite and positive in kg/mol.")
+        if float(self.molar_mass) > 1.0:
+            raise InputError(
+                f"PureRecord.molar_mass is interpreted as kg/mol. Got {float(self.molar_mass)} for {component}. "
+                "Use a kg/mol value such as 18.01528e-3, or use PureRecord.from_g_per_mol(...)."
+            )
+
+    @classmethod
+    def from_g_per_mol(
+        cls,
+        component: str | ComponentIdentifier,
+        *,
+        molar_mass_g_per_mol: float,
+        m: float,
+        sigma: float,
+        epsilon_k: float,
+        charge: float = 0.0,
+        epsilon_k_ab: float = 0.0,
+        kappa_ab: float = 0.0,
+        association_scheme: str | None = None,
+        association_sites: Sequence[AssociationSite] = (),
+        relative_permittivity: float = 1.0,
+        born_diameter: float = 0.0,
+        solvation_factor: float = 1.0,
+    ) -> PureRecord:
+        """Construct a pure record from a source molar mass reported in g/mol."""
+        value = float(molar_mass_g_per_mol)
+        if not np.isfinite(value) or value <= 0.0:
+            raise InputError("molar_mass_g_per_mol must be finite and positive.")
+        return cls(
+            component=component,
+            molar_mass=value * 1.0e-3,
+            m=m,
+            sigma=sigma,
+            epsilon_k=epsilon_k,
+            charge=charge,
+            epsilon_k_ab=epsilon_k_ab,
+            kappa_ab=kappa_ab,
+            association_scheme=association_scheme,
+            association_sites=tuple(association_sites),
+            relative_permittivity=relative_permittivity,
+            born_diameter=born_diameter,
+            solvation_factor=solvation_factor,
+        )
 
     @classmethod
     def from_legacy(cls, component: str, payload: Mapping[str, Any]) -> PureRecord:

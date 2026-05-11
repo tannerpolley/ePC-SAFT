@@ -6,14 +6,21 @@ import sys
 
 
 def test_reactive_regression_benchmark_cases_and_order():
-    from epcsaft.benchmarks.reactive_regression import CASE_BUILDERS
+    from epcsaft.benchmarks.reactive_regression import CASE_BUILDERS, DEFAULT_CASES
 
     assert tuple(CASE_BUILDERS) == (
         "reactive_speciation_batch_tiny",
         "reactive_bubble_batch_tiny",
         "reactive_regression_objective_tiny",
         "reactive_regression_parameter_perturbation",
+        "reactive_regression_pressure_speciation_35_row_surrogate",
         "mea_trace_carbonate_35_row_public_surrogate",
+    )
+    assert DEFAULT_CASES == (
+        "reactive_speciation_batch_tiny",
+        "reactive_bubble_batch_tiny",
+        "reactive_regression_objective_tiny",
+        "reactive_regression_parameter_perturbation",
     )
 
 
@@ -60,6 +67,7 @@ def test_reactive_regression_benchmark_schema_for_one_case():
         "fugacity_calls",
         "fingerprint",
         "diagnostics_keys",
+        "target_family_counts",
     )
     for field in required:
         assert field in case_payload
@@ -165,6 +173,27 @@ def test_reactive_regression_benchmark_has_35_row_public_surrogate():
     assert case_payload["bubble_solves"] == 0
     assert "surrogate" in case_payload["case"].lower()
     assert "synthetic rows" in case_payload["fingerprint"]["surrogate_note"].lower()
+
+
+def test_reactive_regression_benchmark_has_35_row_pressure_speciation_surrogate():
+    from epcsaft.benchmarks.reactive_regression import run_reactive_regression_benchmarks
+
+    payload = run_reactive_regression_benchmarks(
+        warmup=0,
+        repeat=1,
+        case="reactive_regression_pressure_speciation_35_row_surrogate",
+    )
+    case_payload = payload["cases"][0]
+
+    assert case_payload["row_count"] == 35
+    assert case_payload["measured_success_repeat_count"] == 1
+    assert case_payload["speciation_solves"] >= 33
+    assert case_payload["bubble_solves"] >= 2
+    assert case_payload["target_family_counts"]["partial_pressure"] >= 2
+    assert case_payload["target_family_counts"]["speciation"] >= 35
+    assert case_payload["target_family_counts"]["activity"] >= 33
+    assert case_payload["fingerprint"]["target_family_counts"]["partial_pressure"] >= 2
+    assert "pressure" in case_payload["fingerprint"]["surrogate_note"].lower()
 
 
 def test_reactive_regression_benchmark_script_executes_and_writes_json(tmp_path):

@@ -38,6 +38,38 @@ def test_create_parameter_template_creates_loadable_scaffold(tmp_path):
     np.testing.assert_allclose(mixture.parameters["k_ij"], np.zeros((1, 1)))
 
 
+def test_create_parameter_template_accepts_explicit_legacy_schema(tmp_path):
+    root = create_parameter_template(tmp_path, "legacy_user", ["H2O", "Ethanol"], schema="legacy")
+
+    assert (root / "pure" / "any_solvent.csv").exists()
+    assert (root / "mixed" / "binary_interaction" / "k_ij.csv").exists()
+    assert not (root / "parameter_set.json").exists()
+
+
+def test_create_parameter_template_canonical_schema_creates_json_scaffold(tmp_path):
+    root = create_parameter_template(tmp_path, "canonical_user", ["H2O", "Na+", "Cl-"], schema="canonical")
+
+    assert root == tmp_path / "canonical_user"
+    assert not (root / "pure").exists()
+    assert json.loads((root / "user_options.json").read_text(encoding="utf-8")) == {}
+
+    parameter_set = json.loads((root / "parameter_set.json").read_text(encoding="utf-8"))
+    assert parameter_set["schema"] == "canonical"
+    assert parameter_set["schema_version"] == 1
+    assert parameter_set["components"] == ["H2O", "Na+", "Cl-"]
+    assert parameter_set["binary_records"] == []
+
+    pure_records = parameter_set["pure_records"]
+    assert [record["component"] for record in pure_records] == ["H2O", "Na+", "Cl-"]
+    assert {record["molar_mass_units"] for record in pure_records} == {"kg/mol"}
+    assert all(record["molar_mass"] is None for record in pure_records)
+
+
+def test_create_parameter_template_rejects_unknown_schema(tmp_path):
+    with pytest.raises(ValueError, match="Unsupported parameter template schema"):
+        create_parameter_template(tmp_path, "bad_schema", ["H2O"], schema="spreadsheet")
+
+
 def test_runtime_options_reject_legacy_electrolyte_shorthand():
     with pytest.raises(KeyError, match="Unknown user_options key"):
         _resolve_runtime_options({"dielc_rule": "constant"})

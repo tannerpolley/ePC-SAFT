@@ -12,7 +12,8 @@ Core Surfaces
 
 Use these imports for new code:
 
-* ``epcsaft.eos`` for ``ePCSAFTMixture`` and ``ePCSAFTState``.
+* ``epcsaft.eos`` for ``ePCSAFTMixture`` and ``ePCSAFTState``. It also exports
+  ``Mixture`` and ``State`` aliases for shorter new-user examples.
 * ``epcsaft.equilibrium`` for neutral and electrolyte equilibrium helpers.
 * ``epcsaft.electrolyte`` for electrolyte LLE and fixed-liquid bubble pressure.
 * ``epcsaft.reactive`` for reactive speciation, reactive electrolyte bubble

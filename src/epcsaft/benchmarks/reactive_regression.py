@@ -6,7 +6,7 @@ import json
 import statistics
 import subprocess
 import time
-from collections import OrderedDict
+from collections import Counter, OrderedDict
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -591,6 +591,26 @@ def _speciation_surrogate_rows(row_count: int = 35) -> tuple[dict[str, Any], ...
     return tuple(rows)
 
 
+def _mixed_pressure_speciation_surrogate_rows(row_count: int = 35) -> tuple[dict[str, Any], ...]:
+    if row_count < 3:
+        raise ValueError("mixed pressure/speciation surrogate requires at least three rows.")
+    rows: list[dict[str, Any]] = []
+    for row in _objective_rows():
+        mutated = dict(row)
+        mutated["mode"] = "bubble"
+        mutated["source"] = "public_pressure_surrogate"
+        mutated["split"] = "benchmark"
+        rows.append(mutated)
+    for idx, row in enumerate(_speciation_surrogate_rows(row_count - len(rows))):
+        mutated = dict(row)
+        mutated["row_id"] = f"mixed-speciation-{idx + 1:02d}"
+        mutated["mode"] = "speciation"
+        mutated["source"] = "public_speciation_surrogate"
+        mutated["split"] = "benchmark"
+        rows.append(mutated)
+    return tuple(rows)
+
+
 def _compile_speciation_surrogate_context(
     rows: Sequence[Mapping[str, Any]],
 ) -> epcsaft.ReactiveElectrolyteRegressionContext:
@@ -641,6 +661,87 @@ def _compile_speciation_surrogate_context(
     )
 
 
+def _compile_mixed_pressure_speciation_surrogate_context(
+    rows: Sequence[Mapping[str, Any]],
+) -> epcsaft.ReactiveElectrolyteRegressionContext:
+    batch_rows: list[epcsaft.ReactiveElectrolyteRow] = []
+    for row in rows:
+        mode = str(row.get("mode", "speciation"))
+        if mode == "bubble":
+            batch_rows.append(
+                epcsaft.ReactiveElectrolyteRow(
+                    row_id=str(row["row_id"]),
+                    T=float(row["T"]),
+                    P_seed=float(row["P_seed"]),
+                    totals=dict(row["totals"]),
+                    initial_x=list(row["initial_x"]),
+                    balances=BALANCES,
+                    reactions=REACTIONS,
+                    vapor_species=VAPOR_SPECIES,
+                    target_partial_pressures=dict(row["target_partial_pressures"]),
+                    target_speciation=dict(row["target_x"]),
+                    source=str(row.get("source", "public_pressure_surrogate")),
+                    split=str(row.get("split", "benchmark")),
+                    metadata={"surrogate": "pressure/speciation mixed public workflow shape"},
+                    mode="bubble",
+                )
+            )
+            continue
+        batch_rows.append(
+            epcsaft.ReactiveElectrolyteRow(
+                row_id=str(row["row_id"]),
+                T=float(row["T"]),
+                P=float(row["P"]),
+                totals=dict(row["totals"]),
+                initial_x=list(row["initial_x"]),
+                balances=BALANCES,
+                reactions=REACTIONS,
+                target_speciation=dict(row["target_x"]),
+                target_activity=dict(row["target_activity"]),
+                source=str(row.get("source", "public_speciation_surrogate")),
+                split=str(row.get("split", "benchmark")),
+                metadata={"surrogate": "pressure/speciation mixed public workflow shape"},
+                mode="speciation",
+            )
+        )
+    batch = epcsaft.ReactiveElectrolyteBatch(
+        species=SPECIES,
+        rows=batch_rows,
+        balances=BALANCES,
+        reactions=REACTIONS,
+        vapor_species=VAPOR_SPECIES,
+        base_parameters=_ionic_mix_params(),
+        options=epcsaft.ReactiveElectrolyteBatchOptions(
+            warm_start_rows=True,
+            warm_start_objective=True,
+            include_state_outputs=False,
+            penalty_value=8.0,
+        ),
+        reactive_bubble_options=epcsaft.ReactiveElectrolyteBubbleOptions(error_mode="result"),
+    )
+    objective = epcsaft.build_reactive_regression_objective(
+        batch,
+        residual_weights={
+            "partial_pressure": 1.0,
+            "speciation": 1.0,
+            "activity": 1.0,
+            "reaction": 0.0,
+        },
+        failure_penalty=8.0,
+    )
+    return epcsaft.ReactiveElectrolyteRegressionContext.from_batch(
+        species=batch.species,
+        rows=batch.rows,
+        balances=batch.balances,
+        reactions=batch.reactions,
+        options=batch.options,
+        objective=objective,
+        vapor_species=batch.vapor_species,
+        base_parameters=batch.base_parameters,
+        reactive_bubble_options=batch.reactive_bubble_options,
+    )
+
+
 def _run_speciation_surrogate_compiled(
     rows: Sequence[Mapping[str, Any]],
 ) -> Callable[[], BenchmarkObservation]:
@@ -663,6 +764,69 @@ def _run_speciation_surrogate_compiled(
                 "objective": _to_float(result.objective),
                 "residual_norm": _to_float(np.linalg.norm(result.residuals)),
                 "surrogate_note": "Public synthetic rows; same compiled reactive-regression speciation workflow shape.",
+            },
+            fallback_used=bool(batch_result.failure_count),
+            diagnostics={
+                "diagnostics_keys": sorted(batch_result.diagnostics.keys()),
+                "cache_stats": dict(batch_result.cache_stats),
+                "target_family_counts": dict(target_counter),
+            },
+            row_count=len(rows),
+            parameter_count=1,
+            success_count=batch_result.success_count,
+            failure_count=batch_result.failure_count,
+            residual_count=int(result.residuals.size),
+            cache_hits=context_cache_hits + objective_seed_hits,
+            cache_misses=context_cache_misses + objective_seed_misses,
+            speciation_solves=int(solve_counter.get("speciation_solves", 0)),
+            bubble_solves=int(solve_counter.get("bubble_solves", 0)),
+            density_solves=int(solve_counter.get("density_solves", 0)),
+            activity_calls=int(solve_counter.get("activity_calls", 0)),
+            fugacity_calls=int(target_counter.get("partial_pressure", 0)),
+            counter_details={
+                "context_cache_hits": context_cache_hits,
+                "context_cache_misses": context_cache_misses,
+                "objective_seed_hits": objective_seed_hits,
+                "objective_seed_misses": objective_seed_misses,
+                "native_reference_state_cache_hits": None,
+                "native_reference_state_cache_misses": None,
+                "density_warm_start_hits": None,
+                "density_warm_start_fallbacks": None,
+                "unavailable_counters": [
+                    "native_reference_state_cache_hits",
+                    "native_reference_state_cache_misses",
+                    "density_warm_start_hits",
+                    "density_warm_start_fallbacks",
+                ],
+            },
+        )
+
+    return _run
+
+
+def _run_mixed_pressure_speciation_surrogate_compiled(
+    rows: Sequence[Mapping[str, Any]],
+) -> Callable[[], BenchmarkObservation]:
+    context = _compile_mixed_pressure_speciation_surrogate_context(rows)
+
+    def _run() -> BenchmarkObservation:
+        result = context.evaluate_objective({"Na+.sigma": 2.8232})
+        batch_result = result.batch_result
+        target_counter = _safe_mapping(batch_result.diagnostics).get("target_family_counts", {})
+        solve_counter = _safe_mapping(batch_result.diagnostics).get("solve_counts", {})
+        context_cache_hits = int(batch_result.cache_stats.get("context_cache_hits", 0))
+        context_cache_misses = int(batch_result.cache_stats.get("context_cache_misses", 0))
+        objective_seed_hits = int(batch_result.cache_stats.get("objective_seed_hits", 0))
+        objective_seed_misses = int(batch_result.cache_stats.get("objective_seed_misses", 0))
+        return BenchmarkObservation(
+            fingerprint={
+                "case": "reactive_regression_pressure_speciation_35_row_surrogate",
+                "row_count": len(rows),
+                "parameter_count": 1,
+                "objective": _to_float(result.objective),
+                "residual_norm": _to_float(np.linalg.norm(result.residuals)),
+                "surrogate_note": "Public synthetic rows with both bubble-pressure and speciation residual families.",
+                "target_family_counts": dict(target_counter),
             },
             fallback_used=bool(batch_result.failure_count),
             diagnostics={
@@ -792,6 +956,15 @@ def _case_builder_mea_trace_carbonate_35_row_public_surrogate() -> PreparedBench
     )
 
 
+def _case_builder_reactive_regression_pressure_speciation_35_row_surrogate() -> PreparedBenchmarkCase:
+    rows = _mixed_pressure_speciation_surrogate_rows(35)
+    return PreparedBenchmarkCase(
+        case="reactive_regression_pressure_speciation_35_row_surrogate",
+        description="Public 35-row reactive-regression surrogate with pressure and speciation residual families.",
+        runner=_run_mixed_pressure_speciation_surrogate_compiled(rows),
+    )
+
+
 CASE_BUILDERS: OrderedDict[str, Callable[[], PreparedBenchmarkCase]] = OrderedDict(
     (
         ("reactive_speciation_batch_tiny", _case_builder_reactive_speciation_tiny),
@@ -799,10 +972,20 @@ CASE_BUILDERS: OrderedDict[str, Callable[[], PreparedBenchmarkCase]] = OrderedDi
         ("reactive_regression_objective_tiny", _case_builder_reactive_regression_objective_tiny),
         ("reactive_regression_parameter_perturbation", _case_builder_reactive_regression_parameter_perturbation),
         (
+            "reactive_regression_pressure_speciation_35_row_surrogate",
+            _case_builder_reactive_regression_pressure_speciation_35_row_surrogate,
+        ),
+        (
             "mea_trace_carbonate_35_row_public_surrogate",
             _case_builder_mea_trace_carbonate_35_row_public_surrogate,
         ),
     )
+)
+DEFAULT_CASES: tuple[str, ...] = (
+    "reactive_speciation_batch_tiny",
+    "reactive_bubble_batch_tiny",
+    "reactive_regression_objective_tiny",
+    "reactive_regression_parameter_perturbation",
 )
 
 
@@ -843,6 +1026,7 @@ def _benchmark_case(prepared: PreparedBenchmarkCase, *, warmup: int, repeat: int
     fallback_used = False
     fingerprint: dict[str, Any] | None = None
     diagnostics_keys: list[str] = []
+    target_family_counts: Counter[str] = Counter()
     counter_details_totals: dict[str, Any] = {
         "context_cache_hits": 0,
         "context_cache_misses": 0,
@@ -881,6 +1065,12 @@ def _benchmark_case(prepared: PreparedBenchmarkCase, *, warmup: int, repeat: int
         row_count = observation.row_count
         parameter_count = observation.parameter_count
         diagnostics_keys.extend(observation.diagnostics.get("diagnostics_keys", []))
+        target_family_counts.update(
+            {
+                str(key): int(value)
+                for key, value in _safe_mapping(observation.diagnostics.get("target_family_counts")).items()
+            }
+        )
         for key, value in observation.counter_details.items():
             if value is None:
                 unavailable = counter_details_totals.setdefault("unavailable_counters", [])
@@ -922,6 +1112,7 @@ def _benchmark_case(prepared: PreparedBenchmarkCase, *, warmup: int, repeat: int
         "fallback_used": bool(fallback_used),
         "fingerprint": fingerprint or {},
         "diagnostics_keys": sorted(set(diagnostics_keys)),
+        "target_family_counts": dict(target_family_counts),
         "cache_hits": int(cache_hits),
         "cache_misses": int(cache_misses),
         "speciation_solves": int(speciation_solves),
@@ -992,7 +1183,7 @@ def run_reactive_regression_benchmarks(
     if baseline_json is not None:
         baseline_payload = json.loads(Path(baseline_json).read_text(encoding="utf-8"))
 
-    selected = [case] if case is not None else list(CASE_BUILDERS)
+    selected = [case] if case is not None else list(DEFAULT_CASES)
     rows = [_benchmark_case(CASE_BUILDERS[name](), warmup=warmup, repeat=repeat) for name in selected]
     rows = _augment_with_baseline(rows, baseline_payload)
     build_info = epcsaft.runtime_build_info()
