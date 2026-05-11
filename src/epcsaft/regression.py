@@ -2586,9 +2586,12 @@ def evaluate_reactive_electrolyte_bubble_residuals(
     shaping, and compact per-record diagnostics.
     """
 
-    from .electrolyte_bubble import ElectrolyteBubbleOptions
+    from .reactive_regression import ReactiveElectrolyteBatch
+    from .reactive_regression import ReactiveElectrolyteBatchOptions
+    from .reactive_regression import ReactiveElectrolyteRegressionContext
+    from .reactive_regression import ReactiveElectrolyteRow
+    from .reactive_regression import build_reactive_regression_objective
     from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions
-    from .reactive_electrolyte import solve_reactive_electrolyte_bubble
 
     normalized_records = _normalize_records(records)
     species_labels = tuple(str(label) for label in species)
@@ -2607,41 +2610,17 @@ def evaluate_reactive_electrolyte_bubble_residuals(
         scalar_keys=(),
     )
     reaction_labels = tuple(str(name) for name in (reaction_names or ()))
-    p_scale = math.sqrt(_positive_regression_weight(pressure_weight, "pressure_weight"))
-    x_scale = math.sqrt(_positive_regression_weight(speciation_weight, "speciation_weight"))
-    r_scale = math.sqrt(_positive_regression_weight(reaction_weight, "reaction_weight")) if reaction_labels else 0.0
     penalty = _positive_regression_weight(penalty_value, "penalty_value")
     continuation_mode = _normalize_regression_continuation(continuation)
-    default_options = _reactive_regression_options(options, penalty, ReactiveElectrolyteBubbleOptions)
-
-    residuals: list[float] = []
-    residual_names: list[str] = []
-    record_results: list[dict[str, Any]] = []
-    last_pressure: float | None = None
-    last_y: Mapping[str, float] | None = None
-    success_count = 0
-    failure_count = 0
-
+    row_weight_scale = {
+        "partial_pressure": float(pressure_weight),
+        "speciation": float(speciation_weight),
+        "reaction": float(reaction_weight if reaction_labels else 0.0),
+    }
+    rows = []
     for idx, record in enumerate(normalized_records):
-        row_id = str(record.get("row_id", record.get("id", f"record_{idx}")))
         if "T" not in record or "totals" not in record:
             raise InputError("Each reactive electrolyte regression record requires T and totals.")
-        pressure_seed = float(record.get("P_seed", record.get("P", last_pressure or 101325.0)))
-        row_options = _reactive_regression_options(
-            record.get("options", default_options),
-            penalty,
-            ReactiveElectrolyteBubbleOptions,
-        )
-        if continuation_mode == "auto" and (last_pressure is not None or last_y is not None):
-            row_options = _reactive_regression_options_with_seed(
-                row_options,
-                ElectrolyteBubbleOptions,
-                initial_pressure=float(last_pressure if last_pressure is not None else pressure_seed),
-                initial_y_vap=last_y,
-                fallback_pressure=pressure_seed,
-            )
-            pressure_seed = float(last_pressure if last_pressure is not None else pressure_seed)
-
         pressure_targets = _reactive_target_mapping(
             record,
             pressure_labels,
@@ -2659,92 +2638,101 @@ def evaluate_reactive_electrolyte_bubble_residuals(
             target_keys=("target_x", "target_composition", "speciation_targets"),
             scalar_keys=(),
         )
-        row_residuals: list[float] = []
-        row_names: list[str] = []
-        try:
-            result = solve_reactive_electrolyte_bubble(
-                species=species_labels,
-                mixture_factory=mixture_factory,
+        rows.append(
+            ReactiveElectrolyteRow(
+                row_id=str(record.get("row_id", record.get("id", f"record_{idx}"))),
                 T=float(record["T"]),
-                P_seed=pressure_seed,
-                balances=balances,
+                P=float(record["P"]) if record.get("P") not in (None, "") else None,
+                P_seed=float(record["P_seed"]) if record.get("P_seed") not in (None, "") else None,
+                initial_x=record.get("initial_x"),
+                balances=record.get("balances", balances),
                 totals=record["totals"],
                 reactions=_record_reactions(reactions, record),
-                initial_x=record.get("initial_x"),
                 vapor_species=vapor_species,
-                volatile_species=volatile_species,
-                nonvolatile_species=nonvolatile_species,
-                options=row_options,
+                target_pressure=None,
+                target_speciation=speciation_targets,
+                target_partial_pressures=pressure_targets,
+                source=str(record.get("source", "")),
+                split=str(record.get("split", "")),
+                metadata=record.get("metadata", {}),
+                mode="bubble",
             )
-            if result.success:
-                success_count += 1
-                last_pressure = float(result.P_total)
-                last_y = dict(result.y_vap)
-            else:
-                failure_count += 1
-            for label in pressure_labels:
-                target = pressure_targets[label]
-                predicted = float(result.partial_pressures.get(label, float("nan")))
-                raw = _safe_log10_ratio(predicted, target, penalty)
-                row_residuals.append(p_scale * raw)
-                row_names.append(f"{row_id}.partial_pressure.{label}")
-            for label in speciation_labels:
-                target = speciation_targets[label]
-                predicted = float(result.x_liq.get(label, float("nan")))
-                raw = _safe_log10_ratio(predicted, target, penalty)
-                row_residuals.append(x_scale * raw)
-                row_names.append(f"{row_id}.x.{label}")
-            for label in reaction_labels:
-                raw = float(result.named_reaction_residuals.get(label, penalty))
-                if not math.isfinite(raw):
-                    raw = penalty
-                row_residuals.append(r_scale * raw)
-                row_names.append(f"{row_id}.reaction.{label}")
-            record_results.append(
-                {
-                    "row_id": row_id,
-                    "success": bool(result.success),
-                    "message": result.message,
-                    "P_total": float(result.P_total),
-                    "partial_pressures": _json_like_regression(getattr(result, "partial_pressures", {})),
-                    "x_liq": _json_like_regression(getattr(result, "x_liq", {})),
-                    "y_vap": _json_like_regression(getattr(result, "y_vap", {})),
-                    "named_reaction_residuals": _json_like_regression(getattr(result, "named_reaction_residuals", {})),
-                    "fugacity_residual_norm": float(result.fugacity_residual_norm),
-                    "state_failure_count": int(result.state_failure_count),
-                    "diagnostics": _json_like_regression(getattr(result, "diagnostics", {})),
-                    "residual_count": len(row_residuals),
-                }
-            )
-        except Exception as exc:
-            failure_count += 1
-            expected_count = len(pressure_labels) + len(speciation_labels) + len(reaction_labels)
-            row_residuals.extend([p_scale * penalty] * len(pressure_labels))
-            row_residuals.extend([x_scale * penalty] * len(speciation_labels))
-            row_residuals.extend([r_scale * penalty] * len(reaction_labels))
-            row_names.extend(
-                [f"{row_id}.partial_pressure.{label}" for label in pressure_labels]
-                + [f"{row_id}.x.{label}" for label in speciation_labels]
-                + [f"{row_id}.reaction.{label}" for label in reaction_labels]
-            )
-            record_results.append(
-                {
-                    "row_id": row_id,
-                    "success": False,
-                    "message": f"{type(exc).__name__}: {str(exc).splitlines()[0]}",
-                    "diagnostics": _json_like_regression(getattr(exc, "diagnostics", {}) or {}),
-                    "residual_count": expected_count,
-                }
-            )
-        residuals.extend(row_residuals)
-        residual_names.extend(row_names)
-
+        )
+    batch = ReactiveElectrolyteBatch(
+        species=species_labels,
+        rows=tuple(rows),
+        balances=balances,
+        reactions=reactions,
+        vapor_species=vapor_species,
+        volatile_species=volatile_species,
+        nonvolatile_species=nonvolatile_species,
+        mixture_factory=mixture_factory,
+        reactive_bubble_options=(
+            options
+            if isinstance(options, ReactiveElectrolyteBubbleOptions)
+            else ReactiveElectrolyteBubbleOptions(error_mode="result")
+        ),
+        options=ReactiveElectrolyteBatchOptions(
+            warm_start_rows=continuation_mode == "auto",
+            warm_start_objective=continuation_mode == "auto",
+            reuse_pressure_seeds=True,
+            penalty_value=penalty,
+            include_state_outputs=False,
+        ),
+    )
+    objective = build_reactive_regression_objective(
+        batch,
+        residual_weights=row_weight_scale,
+        failure_penalty=penalty,
+    )
+    context = ReactiveElectrolyteRegressionContext.from_batch(
+        species=batch.species,
+        rows=batch.rows,
+        balances=batch.balances,
+        reactions=batch.reactions,
+        options=batch.options,
+        objective=objective,
+        vapor_species=batch.vapor_species,
+        volatile_species=batch.volatile_species,
+        nonvolatile_species=batch.nonvolatile_species,
+        mixture_factory=batch.mixture_factory,
+        reactive_bubble_options=batch.reactive_bubble_options,
+    )
+    if reaction_labels:
+        context.reaction_names = reaction_labels
+    batch_result = context.evaluate({})
+    record_results = []
+    for row_result in batch_result.row_results:
+        record_results.append(
+            {
+                "row_id": row_result.row_id,
+                "success": bool(row_result.success),
+                "message": row_result.message,
+                "P_total": None if row_result.pressure is None else float(row_result.pressure),
+                "partial_pressures": _json_like_regression(row_result.partial_pressures),
+                "x_liq": _json_like_regression(row_result.composition),
+                "y_vap": _json_like_regression(row_result.y_vap),
+                "named_reaction_residuals": _json_like_regression(row_result.named_reaction_residuals),
+                "fugacity_residual_norm": float(
+                    row_result.failure_diagnostics.get("bubble", {}).get("fugacity_residual_norm", 0.0)
+                    if isinstance(row_result.failure_diagnostics.get("bubble"), Mapping)
+                    else 0.0
+                ),
+                "state_failure_count": int(
+                    row_result.failure_diagnostics.get("state_failure_count", 0)
+                    if isinstance(row_result.failure_diagnostics, Mapping)
+                    else 0
+                ),
+                "diagnostics": _json_like_regression(row_result.failure_diagnostics),
+                "residual_count": len(row_result.residual_names),
+            }
+        )
     return ReactiveElectrolyteRegressionResult(
-        residuals=np.asarray(residuals, dtype=float),
-        residual_names=tuple(residual_names),
+        residuals=batch_result.residuals,
+        residual_names=batch_result.residual_names,
         record_results=tuple(record_results),
-        success_count=success_count,
-        failure_count=failure_count,
+        success_count=batch_result.success_count,
+        failure_count=batch_result.failure_count,
         diagnostics={
             "record_count": len(normalized_records),
             "pressure_species": pressure_labels,
@@ -2752,6 +2740,8 @@ def evaluate_reactive_electrolyte_bubble_residuals(
             "reaction_names": reaction_labels,
             "continuation": continuation_mode,
             "fixed_shape": True,
+            "batch_cache_stats": _json_like_regression(batch_result.cache_stats),
+            "timing_summary": _json_like_regression(batch_result.timing_summary),
         },
     )
 

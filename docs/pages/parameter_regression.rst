@@ -248,6 +248,106 @@ The validator rejects unsupported targets by default:
        epsilon_r_exp=65.0,
    ).to_fit_term(species=["H2O", "MEA"])
 
+Reactive electrolyte regression batches
+---------------------------------------
+
+Publication-style reactive electrolyte studies can now use the package-owned
+batch/context layer instead of packing row loops downstream by hand.
+
+Main entry points:
+
+- ``ReactiveElectrolyteRow``: one reactive speciation or fixed-liquid bubble row
+- ``ReactiveElectrolyteBatch``: shared species, balances, reactions, parameter payload, and solver options
+- ``ReactiveElectrolyteRegressionContext.from_batch(...)``: compile invariant row/schema metadata once
+- ``evaluate_reactive_regression_objective(...)``: evaluate a structured mixed residual objective
+- ``summarize_regression_result(...)`` plus ``write_regression_*`` helpers: stable JSON/CSV reporting
+
+Minimal example:
+
+.. code-block:: python
+
+   import epcsaft
+   import numpy as np
+
+   params = {
+       "m": np.asarray([1.2047, 1.0, 1.0]),
+       "s": np.asarray([2.79, 2.82, 2.76]),
+       "e": np.asarray([353.95, 230.0, 170.0]),
+       "MW": np.asarray([18.01528e-3, 22.989e-3, 35.45e-3]),
+       "z": np.asarray([0.0, 1.0, -1.0]),
+       "dielc": np.asarray([78.09, 8.0, 8.0]),
+       "d_born": np.asarray([0.0, 3.445, 4.1]),
+   }
+
+   batch = epcsaft.ReactiveElectrolyteBatch(
+       species=["H2O", "Na+", "Cl-"],
+       rows=[
+           epcsaft.ReactiveElectrolyteRow(
+               row_id="row_1",
+               T=298.15,
+               P_seed=101325.0,
+               totals={"water": 0.98, "sodium": 0.01, "chloride": 0.01},
+               initial_x=[0.98, 0.01, 0.01],
+               balances={
+                   "water": {"H2O": 1.0},
+                   "sodium": {"Na+": 1.0},
+                   "chloride": {"Cl-": 1.0},
+               },
+               reactions=[],
+               vapor_species=["H2O"],
+               target_partial_pressures={"H2O": 3166.4},
+               target_speciation={"H2O": 0.98},
+               source="train",
+               split="fit",
+           ),
+       ],
+       balances={
+           "water": {"H2O": 1.0},
+           "sodium": {"Na+": 1.0},
+           "chloride": {"Cl-": 1.0},
+       },
+       reactions=[],
+       vapor_species=["H2O"],
+       base_parameters=params,
+   )
+
+   context = epcsaft.ReactiveElectrolyteRegressionContext.from_batch(
+       species=batch.species,
+       rows=batch.rows,
+       balances=batch.balances,
+       reactions=batch.reactions,
+       vapor_species=batch.vapor_species,
+       base_parameters=batch.base_parameters,
+   )
+   result = context.evaluate_objective({"Na+.sigma": 2.85})
+
+Structured outputs follow stable field names:
+
+- per-row: ``row_id``, ``success``, ``message``, ``composition``, ``pressure``,
+  ``ln_fugacity``, ``activity_coefficients``, ``density``,
+  ``relative_permittivity``, ``residuals``, ``residual_names``,
+  ``failure_diagnostics``, ``active_bounds``, ``solver_status``,
+  ``elapsed_seconds``, ``cache_stats``, ``partial_pressures``, ``y_vap``,
+  ``named_reaction_residuals``, ``source``, ``split``, ``metadata``
+- batch: ``success_count``, ``failure_count``, ``row_results``, ``residuals``,
+  ``residual_names``, ``residual_row_map``, ``diagnostics``, ``cache_stats``,
+  ``timing_summary``
+- objective: ``objective``, ``metrics``, and the embedded ``batch_result``
+
+Reporting helpers write those schemas without downstream column guessing:
+
+.. code-block:: python
+
+   epcsaft.write_regression_summary(result, "build/regression/summary.json")
+   epcsaft.write_regression_row_table(result, "build/regression/rows.csv")
+   epcsaft.write_regression_residual_table(result, "build/regression/residuals.csv")
+
+The package-owned micro-benchmark harness for this layer is:
+
+.. code-block:: powershell
+
+   uv run python scripts\benchmark_reactive_regression.py --warmup 3 --repeat 10
+
 Binary VLE records
 ------------------
 
