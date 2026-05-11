@@ -56,6 +56,23 @@ from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions
 from .reactive_electrolyte import ReactiveElectrolyteBubbleResult
 from .reactive_electrolyte import solve_reactive_electrolyte_bubble
 from .reactive_electrolyte import solve_reactive_electrolyte_bubble_sweep
+from .reactive_regression import ReactiveElectrolyteBatch
+from .reactive_regression import ReactiveElectrolyteBatchOptions
+from .reactive_regression import ReactiveElectrolyteBatchResult
+from .reactive_regression import ReactiveElectrolyteRegressionContext
+from .reactive_regression import ReactiveElectrolyteRow
+from .reactive_regression import ReactiveElectrolyteRowResult
+from .reactive_regression import ReactiveRegressionJacobianResult
+from .reactive_regression import ReactiveRegressionObjective
+from .reactive_regression import ReactiveRegressionObjectiveResult
+from .reactive_regression import build_reactive_regression_objective
+from .reactive_regression import evaluate_reactive_regression_objective
+from .reactive_regression import fit_reactive_electrolyte_parameters
+from .reactive_regression import summarize_regression_result
+from .reactive_regression import write_regression_parameter_table
+from .reactive_regression import write_regression_residual_table
+from .reactive_regression import write_regression_row_table
+from .reactive_regression import write_regression_summary
 from .runtime import __git_commit__
 from .runtime import __version__
 from .runtime import capabilities
@@ -112,11 +129,28 @@ __all__ = [
     "ReactiveStagedEquilibriumResult",
     "ReactiveElectrolyteBubbleOptions",
     "ReactiveElectrolyteBubbleResult",
+    "ReactiveElectrolyteBatch",
+    "ReactiveElectrolyteBatchOptions",
+    "ReactiveElectrolyteBatchResult",
+    "ReactiveElectrolyteRegressionContext",
+    "ReactiveElectrolyteRow",
+    "ReactiveElectrolyteRowResult",
     "solve_reactive_electrolyte_bubble",
     "solve_reactive_electrolyte_bubble_sweep",
     "solve_reactive_speciation",
     "solve_reactive_speciation_sweep",
     "solve_reactive_staged_equilibrium",
+    "ReactiveRegressionJacobianResult",
+    "ReactiveRegressionObjective",
+    "ReactiveRegressionObjectiveResult",
+    "build_reactive_regression_objective",
+    "evaluate_reactive_regression_objective",
+    "fit_reactive_electrolyte_parameters",
+    "summarize_regression_result",
+    "write_regression_parameter_table",
+    "write_regression_residual_table",
+    "write_regression_row_table",
+    "write_regression_summary",
     "write_fit_result",
     "__git_commit__",
     "__version__",
