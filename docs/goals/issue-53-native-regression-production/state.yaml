@@ -57,7 +57,7 @@ agents:
   judge: installed
   worker: installed
 
-active_task: T022
+active_task: T025
 
 tasks:
   - id: T001
@@ -1166,7 +1166,7 @@ tasks:
   - id: T022
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: xhigh
     objective: "Audit whether issue #53 can honestly be claimed complete after T015-T021."
     inputs:
@@ -1182,6 +1182,84 @@ tasks:
       - "complete, partial, or blocked decision."
       - "Required PR title framing."
       - "Final validation commands."
+    receipt:
+      result: done
+      decision: rejected
+      summary: "Issue #53 cannot be honestly closed yet. The branch has a real native Ceres reactive-speciation/logK slice and finite-difference debug gates, but reactive electrolyte bubble derivatives, Born/SSM+DS and k_ij Ceres derivatives, activity/concentration standard-state derivatives, and full high-level production wrapper migration remain incomplete."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T022-completion-audit.md"
+        - "src/epcsaft/native/regression/thermo_regression.cpp"
+        - "src/epcsaft/reactive_regression.py"
+        - "src/epcsaft/runtime.py"
+      blockers:
+        - "reactive_electrolyte_bubble rows are native-evaluated but not yet differentiable for Ceres"
+        - "Born/SSM+DS and k_ij parameters are applicable but not derivative-supported in the production Ceres slice"
+        - "activity/concentration-coupled speciation derivatives return backend_unavailable unless finite-difference debug gate is enabled"
+        - "high-level reactive regression production calls are not fully routed to the native thermodynamic Ceres fit"
+
+  - id: T025
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: xhigh
+    objective: "Add native thermodynamic parameter sensitivities for Born/SSM+DS and k_ij parameters, or route the supported residual slice through CppAD so those parameters can move inside Ceres without finite differences."
+    allowed_files:
+      - "src/epcsaft/native/autodiff/**"
+      - "src/epcsaft/native/regression/**"
+      - "src/epcsaft/native/contributions/**"
+      - "src/epcsaft/native/epcsaft_*.cpp"
+      - "src/epcsaft/native/epcsaft_*.h"
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/native_regression.py"
+      - "tests/native/**"
+      - "tests/api/test_runtime.py"
+      - "docs/pages/**"
+    verify:
+      - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_cppad_eos_derivatives.py tests/api/test_runtime.py -q"
+    stop_if:
+      - "Born/k_ij sensitivities require a broad templated EOS rewrite beyond the current tranche; record the exact missing scalar-templated call graph instead of faking derivatives."
+    receipt: null
+
+  - id: T026
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: xhigh
+    objective: "Add native reactive-electrolyte-bubble pressure sensitivities for Ceres, using implicit pressure/vapor continuation or CppAD where mathematically supported."
+    allowed_files:
+      - "src/epcsaft/native/regression/**"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "src/epcsaft/bindings.cpp"
+      - "tests/native/test_native_ceres_reactive_pressure_speciation.py"
+      - "tests/native/test_cppad_bubble_derivatives.py"
+      - "docs/pages/**"
+    verify:
+      - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py tests/native/test_native_ceres_reactive_pressure_speciation.py tests/native/test_cppad_bubble_derivatives.py -q"
+    stop_if:
+      - "Bubble pressure sensitivities cannot be derived without changing accepted bubble solve physics; return backend_unavailable and document the missing residual equations."
+    receipt: null
+
+  - id: T027
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Route high-level production reactive regression calls to the native thermodynamic Ceres fit for supported slices, leaving python_compat explicitly debug/compatibility only."
+    allowed_files:
+      - "src/epcsaft/reactive_regression.py"
+      - "src/epcsaft/native_regression.py"
+      - "src/epcsaft/runtime.py"
+      - "tests/api/test_reactive_regression.py"
+      - "tests/workflows/test_benchmark_reactive_regression.py"
+      - "docs/pages/parameter_regression.rst"
+    verify:
+      - "uv run python run_pytest.py tests/api/test_reactive_regression.py tests/workflows/test_benchmark_reactive_regression.py -q"
+      - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 3"
+    stop_if:
+      - "The public object model cannot express the supported native thermodynamic row payload without broad API churn."
     receipt: null
 
   - id: T023
