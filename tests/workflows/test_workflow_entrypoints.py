@@ -129,8 +129,13 @@ def test_pypi_publish_workflow_uses_trusted_publishing() -> None:
         "merge-multiple: true",
         'CIBW_BUILD: "cp313-*"',
         "uv build --sdist",
+        "pypi-preflight:",
+        "PyPI trusted publisher preflight",
+        "https://pypi.org/pypi/${project}/json",
+        "pending publisher",
     ):
         assert token in workflow
+    assert "needs: [pypi-preflight]" in workflow
     assert "password:" not in workflow
     assert "username:" not in workflow
     assert "PYPI_API_TOKEN" not in workflow

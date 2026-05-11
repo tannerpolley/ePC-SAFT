@@ -19,9 +19,50 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  pypi-preflight:
+    name: PyPI trusted publisher preflight
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check PyPI project or pending publisher requirement
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="epcsaft"
+          status="$(curl -sS -o /tmp/pypi-project.json -w "%{http_code}" "https://pypi.org/pypi/${project}/json")"
+          if [[ "$status" == "200" ]]; then
+            echo "PyPI project '${project}' exists."
+            exit 0
+          fi
+          if [[ "$status" != "404" ]]; then
+            echo "::error::Unexpected PyPI project lookup status ${status} for '${project}'."
+            cat /tmp/pypi-project.json || true
+            exit 1
+          fi
+          cat <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          ## PyPI project preflight failed
+
+          PyPI does not have a published project named `epcsaft` yet. Before the
+          first trusted-publishing upload, create a **pending publisher** on PyPI
+          with exactly these values:
+
+          - PyPI project name: `epcsaft`
+          - Owner: `tannerpolley`
+          - Repository name: `ePC-SAFT`
+          - Workflow filename: `publish-pypi.yml`
+          - Environment name: `pypi`
+
+          Then rerun this workflow for the release tag.
+          EOF
+          echo "::error::PyPI project '${project}' does not exist and must have a matching pending publisher before trusted publishing can create it."
+          exit 1
+
   build-sdist:
     name: build sdist
     runs-on: ubuntu-latest
+    needs: [pypi-preflight]
 
     steps:
       - uses: actions/checkout@v6.0.2
@@ -48,6 +89,7 @@ jobs:
   build-wheels:
     name: build wheels / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    needs: [pypi-preflight]
     strategy:
       fail-fast: false
       matrix:
