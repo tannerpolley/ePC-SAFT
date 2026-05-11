@@ -444,6 +444,15 @@ The package-owned micro-benchmark harness for this layer is:
    uv run python scripts\benchmark_reactive_regression.py --case reactive_regression_pressure_speciation_35_row_surrogate --warmup 0 --repeat 1
    uv run python scripts\benchmark_native_regression.py --warmup 1 --repeat 3
    uv run python scripts\benchmark_native_regression.py --case native_mea_pressure_speciation_35_row_surrogate --warmup 0 --repeat 1
+   uv run python scripts\benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 3
+
+``benchmark_native_ceres_thermo_regression.py`` reports
+``native_hot_loop``, ``python_objective_used``, ``finite_difference_used``,
+``initial_cost``, and ``final_cost`` for the supported Ceres thermodynamic
+slice. With a default build that does not enable Ceres, the benchmark exits
+successfully but reports ``backend_unavailable``. Rebuild with
+``EPCSAFT_ENABLE_CERES=ON`` to verify Ceres-owned parameter iteration and
+objective decrease.
 
 Binary VLE records
 ------------------

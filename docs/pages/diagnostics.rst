@@ -25,9 +25,11 @@ supported target families and the current production-readiness gate. The public
 default fit backend now calls the native residual-record solve boundary, while
 ``backend="python_compat"`` is the explicit compatibility-only Python
 Gauss-Newton path. The capability reports
-``status="native_boundary_contract_slice"`` and
+``status="partial_native_ceres_thermodynamic_slice"`` and
 ``issue53_native_production_ready=False`` until full Ceres parameter iteration
-and all production parameter sensitivities are wired.
+and all production parameter sensitivities are wired. The first supported Ceres
+thermodynamic slice is native reactive speciation with reaction logK
+parameters, ideal mole-fraction standard states, and speciation targets.
 
 Contribution Maps
 -----------------
@@ -79,9 +81,16 @@ contract, status handling, derivative policy, or public production boundary:
 
    uv run python scripts/benchmark_native_regression.py --warmup 1 --repeat 3 --json build/benchmarks/native_regression_main.json
    uv run python scripts/benchmark_native_regression.py --case native_mea_pressure_speciation_35_row_surrogate --warmup 0 --repeat 1 --json build/benchmarks/native_regression_mea_35row_smoke.json
+   uv run python scripts/benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 3 --json build/benchmarks/native_ceres_thermo_regression.json
 
 The native benchmark includes tiny neutral, binary ``k_ij``, and reactive
 Born/``k_ij`` fixtures plus a 35-row public MEA-style pressure/speciation
 surrogate. The benchmark payload records target families, parameter kinds,
 fixed-shape residual status, derivative backend, and whether finite differences
 are allowed in production.
+
+The Ceres thermodynamic benchmark reports ``backend_unavailable`` on builds
+without ``EPCSAFT_ENABLE_CERES=ON``. On a Ceres-enabled build it should report
+``optimizer_backend="ceres"``, ``native_hot_loop=True``,
+``python_objective_used=False``, ``finite_difference_used=False``, and a lower
+``final_cost`` than ``initial_cost`` for the supported slice.

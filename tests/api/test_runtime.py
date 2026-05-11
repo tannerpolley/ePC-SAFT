@@ -64,17 +64,24 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         "bounded_mixed_pressure_speciation_regression"
     ]
     assert mixed_regression["available"] is True
-    assert mixed_regression["status"] == "native_boundary_contract_slice"
+    assert mixed_regression["status"] == "partial_native_ceres_thermodynamic_slice"
     assert mixed_regression["issue53_native_production_ready"] is False
     assert mixed_regression["supports_pressure_targets"] is True
     assert mixed_regression["supports_speciation_targets"] is True
     assert mixed_regression["supports_bounds"] is True
-    assert mixed_regression["native_hot_loop"] is False
+    assert mixed_regression["native_hot_loop"] is True
     assert mixed_regression["native_optimizer_boundary"] is True
     assert mixed_regression["public_default_backend"] == "native"
     assert mixed_regression["compatibility_backend"] == "python_compat"
     assert mixed_regression["required_native_dependencies"] == ["ceres", "cppad"]
-    assert "Ceres" in mixed_regression["production_blockers"][0]
+    assert "reactive-speciation" in mixed_regression["production_blockers"][0]
+    native_ceres = capabilities["regression"]["reactive_electrolyte_batch_context"][
+        "native_ceres_thermodynamic_regression"
+    ]
+    assert native_ceres["native_hot_loop"] is True
+    assert native_ceres["python_objective_used"] is False
+    assert native_ceres["finite_difference_used"] is False
+    assert native_ceres["unsupported_status"] == "backend_unavailable"
     assert ipopt["available"] is ipopt_backend.cyipopt_available()
     assert ipopt["formulations"] == ["bound_constrained_residual_minimization"]
     assert ipopt["full_constrained_nlp_available"] is False

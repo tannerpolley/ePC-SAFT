@@ -97,3 +97,42 @@ def test_native_regression_benchmark_script_executes_and_writes_json(tmp_path):
     assert result.returncode == 0, result.stdout + result.stderr
     assert "native_neutral_density_tiny" in result.stdout
     assert output_path.exists()
+
+
+def test_native_ceres_thermo_regression_benchmark_schema():
+    from epcsaft.benchmarks.native_ceres_thermo_regression import run_native_ceres_thermo_regression_benchmark
+
+    payload = run_native_ceres_thermo_regression_benchmark(warmup=0, repeat=1)
+
+    assert payload["case"] == "reactive_speciation_logk_implicit"
+    assert payload["optimizer_backend"] in {"backend_unavailable", "ceres"}
+    assert payload["derivative_backend"] in {"implicit", "analytic_implicit"}
+    assert payload["python_objective_used"] is False
+    assert payload["finite_difference_used"] is False
+    assert payload["initial_cost"] >= 0.0
+    assert payload["final_cost"] >= 0.0
+
+
+def test_native_ceres_thermo_regression_benchmark_script_executes_and_writes_json(tmp_path):
+    output_path = tmp_path / "native_ceres_thermo_regression.json"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/benchmark_native_ceres_thermo_regression.py",
+            "--warmup",
+            "0",
+            "--repeat",
+            "1",
+            "--json",
+            str(output_path),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "reactive_speciation_logk_implicit" in result.stdout
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["python_objective_used"] is False
+    assert payload["finite_difference_used"] is False

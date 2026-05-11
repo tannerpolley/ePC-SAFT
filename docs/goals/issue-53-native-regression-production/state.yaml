@@ -57,7 +57,7 @@ agents:
   judge: installed
   worker: installed
 
-active_task: T021
+active_task: T022
 
 tasks:
   - id: T001
@@ -1115,16 +1115,20 @@ tasks:
   - id: T021
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: medium
     objective: "Update capabilities, docs, and benchmark script so production readiness is honest and the new native Ceres/CppAD path is measurable."
     allowed_files:
       - "src/epcsaft/runtime.py"
+      - "src/epcsaft/benchmarks/native_ceres_thermo_regression.py"
       - "scripts/benchmark_native_ceres_thermo_regression.py"
       - "scripts/benchmark_native_regression.py"
       - "tests/workflows/test_benchmark_reactive_regression.py"
+      - "tests/workflows/test_benchmark_native_regression.py"
       - "tests/api/test_runtime.py"
       - "docs/pages/**"
+      - "docs/pages/diagnostics.rst"
+      - "docs/pages/parameter_regression.rst"
       - "README.md"
     verify:
       - "uv run python run_pytest.py tests/api/test_runtime.py tests/workflows/test_benchmark_reactive_regression.py -q"
@@ -1133,12 +1137,36 @@ tasks:
     stop_if:
       - "The benchmark cannot honestly report native_hot_loop=true and python_objective_used=false for a supported Ceres-enabled thermodynamic fit."
       - "Capabilities would need to claim production readiness for unsupported Born/k_ij/bubble derivative combinations."
-    receipt: null
+    receipt:
+      result: done
+      summary: "Added honest capability reporting and a benchmark command for the supported native Ceres thermodynamic regression slice. Default builds report backend_unavailable when Ceres is not compiled; Ceres-enabled T019 smoke proved objective decrease through the native hot loop."
+      changed_files:
+        - "src/epcsaft/benchmarks/native_ceres_thermo_regression.py"
+        - "scripts/benchmark_native_ceres_thermo_regression.py"
+        - "src/epcsaft/runtime.py"
+        - "tests/api/test_runtime.py"
+        - "tests/workflows/test_benchmark_native_regression.py"
+        - "README.md"
+        - "docs/pages/diagnostics.rst"
+        - "docs/pages/parameter_regression.rst"
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T021-capabilities-docs-benchmark.md"
+      commands:
+        - cmd: "uv run python run_pytest.py tests/api/test_runtime.py tests/workflows/test_benchmark_native_regression.py tests/workflows/test_benchmark_reactive_regression.py -q"
+          status: pass
+          summary: "52 passed in 70.93s"
+        - cmd: "uv run python scripts/benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 3"
+          status: pass
+          summary: "default build reports backend_unavailable because Ceres is disabled"
+        - cmd: "uv run ruff check src/epcsaft/benchmarks/native_ceres_thermo_regression.py scripts/benchmark_native_ceres_thermo_regression.py src/epcsaft/runtime.py tests/workflows/test_benchmark_native_regression.py tests/api/test_runtime.py"
+          status: pass
+        - cmd: "uv run black --check src/epcsaft/benchmarks/native_ceres_thermo_regression.py scripts/benchmark_native_ceres_thermo_regression.py src/epcsaft/runtime.py tests/workflows/test_benchmark_native_regression.py tests/api/test_runtime.py"
+          status: pass
 
   - id: T022
     type: judge
     assignee: Judge
-    status: queued
+    status: active
     reasoning_hint: xhigh
     objective: "Audit whether issue #53 can honestly be claimed complete after T015-T021."
     inputs:
