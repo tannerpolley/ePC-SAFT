@@ -242,3 +242,36 @@ def test_native_thermo_regression_penalizes_unsupported_row_mode() -> None:
     assert result["failure_count"] == 1
     assert result["residuals"] == pytest.approx([123.0])
     assert result["row_diagnostics"][0]["penalty_applied"] is True
+
+
+def test_native_thermo_regression_reports_concentration_standard_state_unavailable() -> None:
+    species = ["H2O", "NaCl", "Na+", "Cl-"]
+    mix = _salt_speciation_mixture()
+    initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
+    density = mix.state(T=298.15, P=1.0e5, x=initial_x, phase="liq").molar_density()
+    log_k = math.log(density * initial_x[2]) + math.log(density * initial_x[3]) - math.log(density * initial_x[1])
+
+    row = _salt_speciation_row(log_k, 0.00065)
+    row["reaction_standard_states"] = [2]
+
+    result = epcsaft.fit_native_thermo_regression(
+        mix,
+        {
+            "species": species,
+            "rows": [row],
+            "parameters": [
+                {
+                    "name": "salt.logK",
+                    "kind": "reaction_equilibrium_constant",
+                    "initial": log_k,
+                    "lower": log_k - 5.0,
+                    "upper": log_k + 5.0,
+                    "metadata": {"row_id": "speciation_1", "reaction_index": "0"},
+                }
+            ],
+            "options": {"max_iterations": 3, "derivative_backend": "implicit"},
+        },
+    )
+
+    assert result["status"] == "backend_unavailable"
+    assert "ideal mole-fraction reaction standard states" in result["message"]

@@ -57,7 +57,7 @@ agents:
   judge: installed
   worker: installed
 
-active_task: T037
+active_task: T039
 
 tasks:
   - id: T001
@@ -1703,7 +1703,7 @@ tasks:
   - id: T037
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: xhigh
     objective: "Implement native concentration-standard-state chemical-equilibrium derivatives as the next issue #53 prerequisite, then expose that support to native thermodynamic regression while keeping activity-coupled standard states gated."
     allowed_files:
@@ -1718,6 +1718,7 @@ tasks:
       - "docs/pages/parameter_regression.rst"
       - "docs/pages/diagnostics.rst"
       - "docs/goals/issue-53-native-regression-production/notes/**"
+      - "docs/goals/issue-53-native-regression-production/notes/T037-concentration-derivative-blocker.md"
       - "docs/goals/issue-53-native-regression-production/state.yaml"
     verify:
       - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
@@ -1726,6 +1727,67 @@ tasks:
       - "Concentration-standard-state derivatives still require the full activity-coefficient derivative path."
       - "The only viable implementation path reintroduces production finite differences."
       - "Thermodynamic regression cannot consume the new concentration-standard-state derivative payload without a broader contract rewrite."
+    receipt:
+      result: done
+      summary: "Stopped on this tranche. Concentration-standard-state derivatives require finite-difference-free pressure-composition and later pressure-parameter derivatives through density closure, and those surfaces do not yet exist in the native EOS/runtime path."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T037-concentration-derivative-blocker.md"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+        - "src/epcsaft/native/epcsaft_density.cpp"
+        - "src/epcsaft/native/epcsaft_ares.cpp"
+        - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      changed_files:
+        - "docs/goals/issue-53-native-regression-production/notes/T037-concentration-derivative-blocker.md"
+        - "tests/native/test_native_ceres_thermodynamic_regression.py"
+        - "docs/goals/issue-53-native-regression-production/state.yaml"
+      commands:
+        - cmd: "uv run python run_pytest.py tests/native/test_native_ceres_thermodynamic_regression.py -q"
+          status: pass
+          summary: "Focused thermo-regression gate slice passed, including concentration-standard-state blocker coverage."
+      stop_condition: "A native finite-difference-free pressure-composition derivative substrate is missing and is now the real prerequisite."
+
+  - id: T038
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: xhigh
+    objective: "Decide the next broad prerequisite after T037: whether to start a native pressure-composition derivative substrate tranche or to stop this issue-53 branch and record that broader EOS derivative architecture is required."
+    inputs:
+      - "T037 blocker receipt."
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/epcsaft_density.cpp"
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+    constraints:
+      - "Do not allow production finite differences as a shortcut."
+      - "Do not pretend concentration-standard-state derivatives are close if the pressure-composition substrate is still absent."
+      - "Choose between a real new architecture tranche and an honest documented stop."
+    expected_output:
+      - "Decision on whether to proceed with a pressure-composition derivative architecture tranche."
+      - "If proceeding, the smallest valid first worker slice."
+      - "If stopping, explicit rationale."
+    receipt:
+      result: done
+      decision: "The next work is a broader EOS derivative architecture tranche, not a small continuation of T037."
+      summary: "After the T037 blocker, the next honest prerequisite is a native finite-difference-free pressure-composition derivative substrate. That is broader than the just-finished concentration-standard-state checkpoint, so this run should stop at the documented blocker rather than pretending a narrow follow-up slice is ready."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T037-concentration-derivative-blocker.md"
+        - "src/epcsaft/native/epcsaft_ares.cpp"
+        - "src/epcsaft/native/epcsaft_density.cpp"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+
+  - id: T039
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: medium
+    objective: "Checkpoint after the documented T037 blocker: either start a broad native pressure-composition derivative architecture tranche next, or publish the current blocker checkpoint as a partial issue-53 progress branch."
+    constraints:
+      - "Do not claim issue #53 complete."
+      - "Do not imply concentration-standard-state derivatives are nearly finished."
+      - "Do not reintroduce production finite differences."
+    expected_output:
+      - "If continuing: create the next broad architecture tranche."
+      - "If stopping: leave the branch at the verified blocker checkpoint."
     receipt: null
 
   - id: T023
