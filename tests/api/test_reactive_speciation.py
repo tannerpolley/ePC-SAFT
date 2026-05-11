@@ -24,7 +24,12 @@ def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_params(params, species=["H2O", "NaCl", "Na+", "Cl-"])
 
 
-def test_solve_reactive_speciation_returns_balanced_activity_coupled_state() -> None:
+def _allow_finite_difference_debug(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG", "1")
+
+
+def test_solve_reactive_speciation_returns_balanced_activity_coupled_state(monkeypatch: pytest.MonkeyPatch) -> None:
+    _allow_finite_difference_debug(monkeypatch)
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
     initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
@@ -101,7 +106,10 @@ def test_reaction_definition_rejects_unknown_standard_state() -> None:
         )
 
 
-def test_solve_reactive_speciation_concentration_standard_state_uses_molar_density() -> None:
+def test_solve_reactive_speciation_concentration_standard_state_uses_molar_density(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _allow_finite_difference_debug(monkeypatch)
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
     initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
@@ -143,7 +151,7 @@ def test_solve_reactive_speciation_concentration_standard_state_uses_molar_densi
     assert result.diagnostics["activity_basis"] == "concentration"
 
 
-def test_reactive_speciation_auto_jacobian_falls_back_for_concentration_standard_state() -> None:
+def test_reactive_speciation_auto_jacobian_reports_backend_unavailable_for_concentration_standard_state() -> None:
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
     initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
@@ -151,38 +159,33 @@ def test_reactive_speciation_auto_jacobian_falls_back_for_concentration_standard
     log_k = math.log(density * initial_x[2]) + math.log(density * initial_x[3])
     log_k -= math.log(density * initial_x[1])
 
-    result = epcsaft.solve_reactive_speciation(
-        species=species,
-        mixture_factory=lambda x, T, P: mix,
-        T=298.15,
-        P=1.0e5,
-        balances={
-            "water_total": {"H2O": 1.0},
-            "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
-            "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
-        },
-        totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
-        reactions=[
-            epcsaft.ReactionDefinition(
-                stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
-                log_equilibrium_constant=log_k,
-                name="salt_dissociation",
-                standard_state="concentration",
-            )
-        ],
-        initial_x=initial_x,
-        options=epcsaft.ReactiveSpeciationOptions(max_iterations=50, tolerance=1.0e-8),
-    )
-
-    assert result.success is True
-    assert result.diagnostics["requested_jacobian_backend"] == "auto"
-    assert result.diagnostics["jacobian_backend"] == "finite_difference"
-    assert result.diagnostics["finite_difference_fallback_used"] is True
-    assert result.diagnostics["explicit_finite_difference"] is False
-    assert "auto selected finite difference" in result.diagnostics["jacobian_fallback_reason"]
+    with pytest.raises(Exception, match="backend_unavailable"):
+        epcsaft.solve_reactive_speciation(
+            species=species,
+            mixture_factory=lambda x, T, P: mix,
+            T=298.15,
+            P=1.0e5,
+            balances={
+                "water_total": {"H2O": 1.0},
+                "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
+                "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
+            },
+            totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
+            reactions=[
+                epcsaft.ReactionDefinition(
+                    stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
+                    log_equilibrium_constant=log_k,
+                    name="salt_dissociation",
+                    standard_state="concentration",
+                )
+            ],
+            initial_x=initial_x,
+            options=epcsaft.ReactiveSpeciationOptions(max_iterations=50, tolerance=1.0e-8),
+        )
 
 
-def test_concentration_standard_state_can_skip_activity_output() -> None:
+def test_concentration_standard_state_can_skip_activity_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    _allow_finite_difference_debug(monkeypatch)
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
     initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
@@ -218,7 +221,8 @@ def test_concentration_standard_state_can_skip_activity_output() -> None:
     assert result.diagnostics["activity_evaluation_count"] == 0
 
 
-def test_solve_reactive_speciation_strict_failure_reports_best_state() -> None:
+def test_solve_reactive_speciation_strict_failure_reports_best_state(monkeypatch: pytest.MonkeyPatch) -> None:
+    _allow_finite_difference_debug(monkeypatch)
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
 
@@ -257,7 +261,8 @@ def test_solve_reactive_speciation_strict_failure_reports_best_state() -> None:
     json.dumps(diagnostics, allow_nan=False)
 
 
-def test_solve_reactive_speciation_best_effort_returns_nonconverged_result() -> None:
+def test_solve_reactive_speciation_best_effort_returns_nonconverged_result(monkeypatch: pytest.MonkeyPatch) -> None:
+    _allow_finite_difference_debug(monkeypatch)
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
 

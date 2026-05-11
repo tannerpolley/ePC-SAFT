@@ -366,9 +366,13 @@ fixed-shape: residual names, row ids, target families, and row diagnostic fields
 must remain stable even when a recoverable row failure is represented by penalty
 residuals. The canonical top-level statuses are ``converged``,
 ``max_iterations``, ``line_search_failed``, ``singular_jacobian``,
-``all_rows_failed``, ``nonfinite_objective``, ``bounds_inconsistent``, and
-``invalid_input``. Production native regression does not allow finite-difference
-derivatives; finite-difference comparisons belong behind explicit debug gates.
+``all_rows_failed``, ``nonfinite_objective``, ``bounds_inconsistent``,
+``invalid_input``, and ``backend_unavailable``. Unsupported native optimizer or
+derivative combinations use ``backend_unavailable`` rather than silently falling
+back. Production native
+regression does not allow finite-difference derivatives; finite-difference
+comparisons belong behind explicit debug gates such as
+``EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG=1``.
 
 The fit helper defaults to ``backend="native"``. Python evaluates the current
 row objective once, packs fixed-shape residual records, and calls the native

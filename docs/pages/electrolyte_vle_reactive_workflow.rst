@@ -52,11 +52,15 @@ the selected reaction standard state needs them or when
 paying for unused activity calls under the default ``activity_output="auto"``.
 The derivative default is native-owned and diagnostic-friendly:
 ``jacobian_backend="auto"`` uses the analytic log-amount Jacobian for
-``standard_state="ideal_mole_fraction"`` and automatically selects the native
-finite-difference residual Jacobian for activity- or concentration-coupled
-standard states. Diagnostics report ``requested_jacobian_backend``,
-``jacobian_backend``, ``finite_difference_fallback_used``, and
-``jacobian_fallback_reason`` so users can see when this fallback was used.
+``standard_state="ideal_mole_fraction"``. For activity- or
+concentration-coupled standard states, production ``auto`` now reports
+``backend_unavailable`` until an analytic, autodiff, or implicit derivative path
+exists. Explicit finite-difference Jacobians are debug-only: set
+``EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG=1`` and request
+``jacobian_backend="finite_difference"`` when you need a comparison diagnostic.
+Diagnostics report ``requested_jacobian_backend``, ``jacobian_backend``,
+``finite_difference_fallback_used``, and ``jacobian_fallback_reason`` for debug
+runs.
 Explicit ``jacobian_backend="autodiff"`` remains strict and raises when the
 requested derivative path is unavailable.
 

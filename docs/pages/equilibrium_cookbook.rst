@@ -66,11 +66,11 @@ these fields as routing hints, not as proof that a physical case is valid.
      - Package regression helpers.
      - You need a Python optimizer loop.
    * - ``jacobian_backend="auto"``
-     - You want the native chemical-equilibrium default: analytic where available, finite difference for activity/concentration-coupled residuals.
+     - You want the native chemical-equilibrium default: analytic where available and ``backend_unavailable`` where production derivatives are missing.
      - You need strict failure when a specific derivative backend is unavailable.
    * - ``jacobian_backend="finite_difference"``
-     - You need an explicit diagnostic comparison.
-     - You expect autodiff derivatives.
+     - You set ``EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG=1`` and need an explicit diagnostic comparison.
+     - You expect production fitting or default solves to use finite differences.
    * - ``jacobian_backend="autodiff"``
      - You need the implemented autodiff path and want unsupported routes to fail loudly.
      - You want automatic finite-difference fallback.

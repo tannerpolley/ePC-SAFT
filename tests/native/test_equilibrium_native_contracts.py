@@ -12,6 +12,11 @@ from epcsaft import _core, ePCSAFTMixture
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
+@pytest.fixture(autouse=True)
+def _allow_finite_difference_debug(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG", "1")
+
+
 def _hydrocarbon_mixture() -> ePCSAFTMixture:
     params = {
         "m": np.asarray([1.0, 1.6069, 2.0020]),

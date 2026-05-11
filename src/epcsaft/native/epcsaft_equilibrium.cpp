@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cctype>
 #include <cmath>
+#include <cstdlib>
 #include <functional>
 #include <limits>
 #include <numeric>
@@ -15,6 +16,11 @@
 #include <utility>
 
 namespace {
+
+bool finite_difference_debug_enabled() {
+    const char* value = std::getenv("EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG");
+    return value != nullptr && std::string(value) == "1";
+}
 
 struct PhaseStateNative {
     std::shared_ptr<ePCSAFTStateNative> state;
@@ -3010,6 +3016,12 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
         throw ValueError(
             "electrolyte LLE residual jacobian does not yet have analytic/autodiff coverage; "
             "finite difference is only available when jacobian_backend='finite_difference' is requested explicitly."
+        );
+    }
+    if (!finite_difference_debug_enabled()) {
+        throw ValueError(
+            "electrolyte LLE finite_difference jacobian_backend is debug-only; "
+            "set EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG=1 to use it for explicit diagnostics."
         );
     }
     std::vector<double> feed = normalize_feed(raw_feed, mixture->ncomp(), options.min_composition, "electrolyte_lle");

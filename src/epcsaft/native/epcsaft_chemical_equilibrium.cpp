@@ -5,6 +5,7 @@
 #include "epcsaft_electrolyte.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <cmath>
 #include <limits>
 #include <numeric>
@@ -263,6 +264,11 @@ struct ChemicalDerivativeSelection {
     bool explicit_finite_difference = false;
 };
 
+bool finite_difference_debug_enabled() {
+    const char* value = std::getenv("EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG");
+    return value != nullptr && std::string(value) == "1";
+}
+
 ChemicalDerivativeSelection select_chemical_derivative_backend(
     const ChemicalEquilibriumOptionsNative& options,
     const std::vector<int>& reaction_standard_states
@@ -270,6 +276,12 @@ ChemicalDerivativeSelection select_chemical_derivative_backend(
     ChemicalDerivativeSelection selection;
     const std::string requested = options.jacobian_backend;
     if (requested == "finite_difference") {
+        if (!finite_difference_debug_enabled()) {
+            throw ValueError(
+                "chemical equilibrium finite_difference jacobian_backend is debug-only; "
+                "set EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG=1 to use it for explicit diagnostics."
+            );
+        }
         selection.backend = "finite_difference";
         selection.capability_path = "chemical_equilibrium:explicit_finite_difference:log_amounts";
         selection.finite_difference_allowed = true;
@@ -289,6 +301,13 @@ ChemicalDerivativeSelection select_chemical_derivative_backend(
         selection.backend = "analytic";
         selection.capability_path = "chemical_equilibrium:ideal_mole_fraction:log_amounts";
         return selection;
+    }
+    if (!finite_difference_debug_enabled()) {
+        throw ValueError(
+            "backend_unavailable: analytic/autodiff chemical-equilibrium residual jacobian is unavailable "
+            "for activity- or concentration-coupled standard states; finite differences are debug-only behind "
+            "EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG=1."
+        );
     }
     selection.backend = "finite_difference";
     selection.capability_path = "chemical_equilibrium:auto_finite_difference_fallback:log_amounts";

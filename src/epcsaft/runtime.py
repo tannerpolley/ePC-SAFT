@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import platform
 import re
 import subprocess
@@ -176,6 +177,10 @@ def _native_dependency_status(source_root: Path | None) -> dict[str, dict[str, o
     }
 
 
+def _finite_difference_debug_enabled() -> bool:
+    return os.environ.get("EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG") == "1"
+
+
 def _native_extension_path() -> Path | None:
     try:
         from . import _core
@@ -277,14 +282,13 @@ def capabilities() -> dict[str, object]:
                 "sweep_available": True,
                 "continuation_state_available": True,
                 "activity_output_modes": ["auto", "always", "never"],
-                "jacobian_auto_policy": "analytic_ideal_else_native_finite_difference",
+                "jacobian_auto_policy": "analytic_ideal_else_backend_unavailable",
                 "jacobian_auto_supported_standard_states": [
                     "ideal_mole_fraction",
-                    "mole_fraction_activity",
-                    "activity",
-                    "concentration",
                 ],
-                "finite_difference_requires_explicit_request": False,
+                "finite_difference_requires_explicit_request": True,
+                "finite_difference_debug_gate": "EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG=1",
+                "finite_difference_debug_enabled": _finite_difference_debug_enabled(),
                 "explicit_autodiff_raises_when_unavailable": True,
                 "solver_backends": ["auto", "newton", "ipopt"],
                 "ipopt_available": bool(cyipopt["available"]),

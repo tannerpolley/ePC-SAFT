@@ -10,6 +10,11 @@ import epcsaft
 from epcsaft import ePCSAFTMixture
 
 
+@pytest.fixture(autouse=True)
+def _allow_finite_difference_debug(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG", "1")
+
+
 def _methanol_cyclohexane_mixture() -> ePCSAFTMixture:
     # Gross/Sadowski 2002 methanol parameters and kij; Gross/Sadowski 2001 cyclohexane parameters.
     params = {

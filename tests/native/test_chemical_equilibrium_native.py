@@ -9,6 +9,11 @@ import epcsaft
 from epcsaft import _core
 
 
+@pytest.fixture(autouse=True)
+def _allow_finite_difference_debug(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG", "1")
+
+
 def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
     params = {
         "m": np.asarray([1.2047, 1.0, 1.0, 1.0]),

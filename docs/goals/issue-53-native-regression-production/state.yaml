@@ -57,7 +57,7 @@ agents:
   judge: installed
   worker: installed
 
-active_task: T020
+active_task: T021
 
 tasks:
   - id: T001
@@ -1052,7 +1052,7 @@ tasks:
   - id: T020
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Make finite difference debug-only across public production derivative options and native regression/equilibrium paths after real alternatives or honest backend_unavailable paths exist."
     allowed_files:
@@ -1063,20 +1063,59 @@ tasks:
       - "src/epcsaft/regression.py"
       - "src/epcsaft/native/**/*.cpp"
       - "src/epcsaft/native/**/*.h"
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/runtime.py"
       - "tests/api/test_finite_difference_debug_policy.py"
+      - "tests/api/test_reactive_speciation.py"
+      - "tests/api/test_runtime.py"
+      - "tests/native/test_chemical_equilibrium_native.py"
+      - "tests/native/test_equilibrium_native_contracts.py"
       - "tests/native/**"
+      - "tests/api/test_runtime.py"
+      - "tests/equilibrium/test_lle.py"
       - "docs/pages/**"
+      - "docs/pages/electrolyte_vle_reactive_workflow.rst"
+      - "docs/pages/equilibrium_cookbook.rst"
+      - "docs/pages/parameter_regression.rst"
     verify:
       - "uv run python run_pytest.py tests/api/test_finite_difference_debug_policy.py tests/api/test_reactive_regression.py tests/api/test_reactive_speciation.py -q"
       - "uv run python run_pytest.py tests/native -q"
     stop_if:
       - "A public production path has no analytic/CppAD/implicit derivative alternative and cannot honestly reject finite_difference without breaking documented behavior."
-    receipt: null
+    receipt:
+      result: done
+      summary: "Made finite-difference derivative paths debug-gated for native chemical equilibrium and electrolyte LLE residual diagnostics. Production auto now reports backend_unavailable for unsupported concentration/activity-coupled speciation derivatives instead of silently falling back to finite differences."
+      changed_files:
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+        - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+        - "src/epcsaft/runtime.py"
+        - "tests/api/test_finite_difference_debug_policy.py"
+        - "tests/api/test_reactive_speciation.py"
+        - "tests/api/test_runtime.py"
+        - "tests/native/test_chemical_equilibrium_native.py"
+        - "tests/native/test_equilibrium_native_contracts.py"
+        - "tests/equilibrium/test_lle.py"
+        - "docs/pages/electrolyte_vle_reactive_workflow.rst"
+        - "docs/pages/equilibrium_cookbook.rst"
+        - "docs/pages/parameter_regression.rst"
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T020-finite-difference-debug-policy.md"
+      commands:
+        - cmd: "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/api/test_finite_difference_debug_policy.py tests/api/test_reactive_speciation.py tests/api/test_runtime.py tests/native/test_chemical_equilibrium_native.py tests/native/test_equilibrium_native_contracts.py tests/equilibrium/test_lle.py -q"
+          status: pass
+          summary: "118 passed, 1 skipped in 17.63s"
+        - cmd: "uv run ruff check src/epcsaft/runtime.py tests/api/test_finite_difference_debug_policy.py tests/api/test_reactive_speciation.py tests/api/test_runtime.py tests/native/test_chemical_equilibrium_native.py tests/native/test_equilibrium_native_contracts.py tests/equilibrium/test_lle.py"
+          status: pass
+        - cmd: "uv run black --check src/epcsaft/runtime.py tests/api/test_finite_difference_debug_policy.py tests/api/test_reactive_speciation.py tests/api/test_runtime.py tests/native/test_chemical_equilibrium_native.py tests/native/test_equilibrium_native_contracts.py tests/equilibrium/test_lle.py"
+          status: pass
 
   - id: T021
     type: worker
     assignee: Worker
-    status: queued
+    status: active
     reasoning_hint: medium
     objective: "Update capabilities, docs, and benchmark script so production readiness is honest and the new native Ceres/CppAD path is measurable."
     allowed_files:
@@ -1091,6 +1130,9 @@ tasks:
       - "uv run python run_pytest.py tests/api/test_runtime.py tests/workflows/test_benchmark_reactive_regression.py -q"
       - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 3"
       - "uv run python scripts/validate_project.py docs"
+    stop_if:
+      - "The benchmark cannot honestly report native_hot_loop=true and python_objective_used=false for a supported Ceres-enabled thermodynamic fit."
+      - "Capabilities would need to claim production readiness for unsupported Born/k_ij/bubble derivative combinations."
     receipt: null
 
   - id: T022
