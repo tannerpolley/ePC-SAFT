@@ -7,7 +7,7 @@ goal:
   title: "Issue #53 native regression production stack"
   slug: "issue-53-native-regression-production"
   kind: existing_plan
-  tranche: "Implement issue #53 end to end: native C++ production regression with Ceres/CppAD, production derivative policy, mixed pressure/speciation benchmarks, docs, and PR integration."
+  tranche: "Continue issue #53 after GitHub comment 4424893353: preserve the current branch as Phase 0 contract groundwork, then implement the true native Ceres/CppAD thermodynamic row hot loop with finite differences debug-only."
   status: active
   intake:
     original_request: "Prep to fully implement the new issue posted as issue #53 and implement subagent to achieve all the different aspects and scopes of the plan."
@@ -26,6 +26,9 @@ goal:
       - "Benchmark fixtures must prove pressure/speciation residuals, Born/SSM+DS coverage, and at least one k_ij path without private downstream files."
     existing_plan_facts:
       - "GitHub issue #53: https://github.com/tannerpolley/ePC-SAFT/issues/53"
+      - "GitHub comment 4424893353: https://github.com/tannerpolley/ePC-SAFT/issues/53#issuecomment-4424893353"
+      - "The current branch is only a Phase 0 / native residual-record contract slice unless the next tranche is implemented."
+      - "Do not merge or describe the current branch as completing #53 while issue53_native_production_ready=false, native_hot_loop=false, Python packs/evaluates mixed pressure/speciation thermodynamic rows, Ceres does not execute the production parameter solve loop, or CppAD is not package-wide."
       - "Issue #53 asks for Ceres as primary robust bounded nonlinear least-squares backend."
       - "Issue #53 asks for CppAD as package-wide AD substrate."
       - "Issue #53 keeps native IPOPT full NLP optional/future."
@@ -738,18 +741,215 @@ tasks:
           status: pass
 
   - id: T014
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: xhigh
+    objective: "Ingest GitHub comment 4424893353, reframe the current branch as Phase 0 only, and decide the smallest real next-tranche architecture that can satisfy issue #53 without pretending residual-record solving is production thermodynamic regression."
+    inputs:
+      - "GitHub comment 4424893353: https://github.com/tannerpolley/ePC-SAFT/issues/53#issuecomment-4424893353"
+      - "docs/goals/issue-53-native-regression-production/notes/T014-github-comment-4424893353.md"
+      - "Existing T001-T013 receipts."
+      - "Current branch: codex/issue-53-native-regression-production"
+    constraints:
+      - "Do not implement code in this task."
+      - "Do not approve a completion PR for the current residual-record-only state."
+      - "Decide whether the existing branch continues or a new branch codex/issue-53-native-ceres-thermo-regression is required."
+      - "Require honest capability labels until native_hot_loop is genuinely true."
+      - "Require Python to remain only validation/serialization for production thermodynamic regression rows."
+    expected_output:
+      - "Approved tranche plan with write scopes."
+      - "Explicit branch/PR framing decision."
+      - "Blocking risks for package-wide CppAD templating and implicit sensitivities."
+      - "Ordered Worker tasks T015 onward refined if needed."
+    receipt: null
+
+  - id: T015
+    type: scout
+    assignee: Scout
+    status: queued
+    reasoning_hint: high
+    objective: "Audit every finite-difference, numerical Jacobian, Python objective, and Python residual-packing path named in comment 4424893353."
+    inputs:
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/reactive_speciation.py"
+      - "src/epcsaft/reactive_electrolyte.py"
+      - "src/epcsaft/reactive_regression.py"
+      - "src/epcsaft/regression.py"
+      - "src/epcsaft/native/**/*.cpp"
+      - "src/epcsaft/native/**/*.h"
+    constraints:
+      - "Read-only."
+      - "Report exact symbols and call paths."
+      - "Separate production paths from explicit debug/test helpers."
+    expected_output:
+      - "Finite-difference and Python-objective migration map."
+      - "Tests needed to prove production rejection and debug escape hatch behavior."
+    receipt: null
+
+  - id: T016
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Add package-wide native AD scaffolding under src/epcsaft/native/autodiff and templatize the supported residual functions needed by the first production thermodynamic regression slice."
+    allowed_files:
+      - "src/epcsaft/native/autodiff/**"
+      - "src/epcsaft/native/**/*.h"
+      - "src/epcsaft/native/**/*.cpp"
+      - "CMakeLists.txt"
+      - "tests/native/test_cppad_eos_derivatives.py"
+      - "tests/native/test_cppad_reactive_speciation_derivatives.py"
+      - "tests/native/test_cppad_bubble_derivatives.py"
+    verify:
+      - "uv run python scripts/build_epcsaft.py"
+      - "uv run python run_pytest.py tests/native/test_cppad_eos_derivatives.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_cppad_bubble_derivatives.py -q"
+    stop_if:
+      - "Templating a required contribution would require broad EOS rewrites beyond the first production slice."
+      - "CppAD cannot build in the local Windows uv/CMake environment."
+    receipt: null
+
+  - id: T017
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Make finite difference debug-only across public production derivative options and native regression/equilibrium paths."
+    allowed_files:
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/reactive_speciation.py"
+      - "src/epcsaft/reactive_electrolyte.py"
+      - "src/epcsaft/reactive_regression.py"
+      - "src/epcsaft/regression.py"
+      - "src/epcsaft/native/**/*.cpp"
+      - "src/epcsaft/native/**/*.h"
+      - "tests/api/test_finite_difference_debug_policy.py"
+      - "tests/native/**"
+      - "docs/pages/**"
+    verify:
+      - "uv run python run_pytest.py tests/api/test_finite_difference_debug_policy.py tests/api/test_reactive_regression.py tests/api/test_reactive_speciation.py -q"
+      - "uv run python run_pytest.py tests/native -q"
+    stop_if:
+      - "A public production path has no analytic/CppAD/implicit derivative alternative and cannot honestly reject finite_difference without breaking documented behavior."
+    receipt: null
+
+  - id: T018
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: xhigh
+    objective: "Implement native thermodynamic regression problem objects, row workspaces, parameter maps, and evaluator for ReactiveSpeciation and ReactiveElectrolyteBubble rows."
+    allowed_files:
+      - "src/epcsaft/native/regression/**"
+      - "src/epcsaft/native/**/*.h"
+      - "src/epcsaft/native/**/*.cpp"
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/reactive_regression.py"
+      - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      - "tests/native/test_native_ceres_reactive_pressure_speciation.py"
+    verify:
+      - "uv run python scripts/build_epcsaft.py"
+      - "uv run python run_pytest.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_native_ceres_reactive_pressure_speciation.py -q"
+    stop_if:
+      - "The row evaluator still requires Python to compute or pack production residual rows."
+      - "ReactiveSpeciation or ReactiveElectrolyteBubble cannot be executed in native C++ for the tiny benchmark cases."
+    receipt: null
+
+  - id: T019
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: xhigh
+    objective: "Add the Ceres DynamicCostFunction production solve loop around the native thermodynamic evaluator, with CppAD/analytic/implicit Jacobians and canonical statuses."
+    allowed_files:
+      - "src/epcsaft/native/regression/**"
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/reactive_regression.py"
+      - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      - "tests/native/test_native_ceres_reactive_pressure_speciation.py"
+      - "tests/api/test_reactive_regression.py"
+    verify:
+      - "uv run python scripts/build_epcsaft.py"
+      - "uv run python run_pytest.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_native_ceres_reactive_pressure_speciation.py tests/api/test_reactive_regression.py -q"
+    stop_if:
+      - "Ceres is unavailable and the code would need to fake optimizer_backend=ceres."
+      - "Objective decrease cannot be demonstrated without a Python objective loop."
+    receipt: null
+
+  - id: T020
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Add implicit-sensitivity support for the nested reactive speciation and fixed-liquid electrolyte bubble solves covered by the production regression slice."
+    allowed_files:
+      - "src/epcsaft/native/regression/implicit_sensitivity.*"
+      - "src/epcsaft/native/regression/**"
+      - "src/epcsaft/native/**/*.h"
+      - "src/epcsaft/native/**/*.cpp"
+      - "tests/native/test_cppad_reactive_speciation_derivatives.py"
+      - "tests/native/test_cppad_bubble_derivatives.py"
+    verify:
+      - "uv run python scripts/build_epcsaft.py"
+      - "uv run python run_pytest.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_cppad_bubble_derivatives.py -q"
+    stop_if:
+      - "The needed inner residual Jacobians are not exposed enough to support implicit differentiation; return backend_unavailable rather than finite-differencing."
+    receipt: null
+
+  - id: T021
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: medium
+    objective: "Update capabilities, docs, and benchmark script so production readiness is honest and the new native Ceres/CppAD path is measurable."
+    allowed_files:
+      - "src/epcsaft/runtime.py"
+      - "scripts/benchmark_native_ceres_thermo_regression.py"
+      - "scripts/benchmark_native_regression.py"
+      - "tests/workflows/test_benchmark_reactive_regression.py"
+      - "tests/api/test_runtime.py"
+      - "docs/pages/**"
+      - "README.md"
+    verify:
+      - "uv run python run_pytest.py tests/api/test_runtime.py tests/workflows/test_benchmark_reactive_regression.py -q"
+      - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 3"
+      - "uv run python scripts/validate_project.py docs"
+    receipt: null
+
+  - id: T022
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: xhigh
+    objective: "Audit whether issue #53 can honestly be claimed complete after T015-T021."
+    inputs:
+      - "All task receipts."
+      - "GitHub comment 4424893353 acceptance criteria."
+      - "Current code, tests, capabilities, and benchmark output."
+    constraints:
+      - "Reject completion if native_hot_loop is false."
+      - "Reject completion if Python packs/evaluates production thermodynamic residual rows."
+      - "Reject completion if finite difference is used without debug gate."
+      - "Reject completion if Ceres does not execute the production solve loop."
+    expected_output:
+      - "complete, partial, or blocked decision."
+      - "Required PR title framing."
+      - "Final validation commands."
+    receipt: null
+
+  - id: T023
     type: pm
     assignee: PM
-    status: active
+    status: queued
     reasoning_hint: medium
-    objective: "Commit, push, create PR with required sections, watch checks, merge when green, return to main, prune branches, and close/report issue #53."
+    objective: "Only after T022 approves, commit, push, create PR with required sections, watch checks, merge when green, return to main, prune branches, and update issue #53."
     inputs:
-      - "T012 complete decision."
+      - "T022 completion decision."
       - "Validation and benchmark receipts."
       - "Current git status."
     constraints:
-      - "Do not PR if T012 is not complete."
-      - "PR body must include required issue #53 sections."
+      - "If T022 says partial, use a partial PR title and do not close issue #53."
+      - "If T022 says complete, include all required issue #53 evidence in the PR body."
       - "Do not merge unless checks pass."
       - "After merge, return local checkout to main and prune/delete stale branches."
     expected_output:
@@ -757,7 +957,7 @@ tasks:
       - "PR URL."
       - "Merge commit."
       - "Final local git status."
-      - "Issue closure evidence."
+      - "Issue update or closure evidence."
     receipt: null
 
 checks:
@@ -766,3 +966,4 @@ checks:
     result: unknown
     task: null
     commands: []
+

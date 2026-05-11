@@ -6,6 +6,18 @@ Fully implement GitHub issue #53: replace package-owned production regression fi
 
 Issue URL: https://github.com/tannerpolley/ePC-SAFT/issues/53
 
+## 2026-05-11 Issue Comment Update
+
+GitHub comment https://github.com/tannerpolley/ePC-SAFT/issues/53#issuecomment-4424893353 supersedes any plan that would merge the current branch as full completion. The current `codex/issue-53-native-regression-production` branch is only a Phase 0 / native residual-record contract slice:
+
+- native result/status/schema contracts
+- fixed-shape residual-record evaluation
+- native residual-record solve boundary
+- finite-difference production gate at that boundary
+- benchmark scaffolding
+
+The issue remains open until native C++ owns the full thermodynamic regression hot loop: Ceres executes parameter iterations, CppAD/analytic/implicit derivatives provide production Jacobians, Python no longer packs or evaluates mixed thermodynamic rows, and mixed reactive-speciation plus reactive-electrolyte-bubble rows pass through the native evaluator.
+
 ## Completion Proof
 
 The goal is complete only when all of these are true:
@@ -17,6 +29,10 @@ The goal is complete only when all of these are true:
 - SciPy is not used for package-owned production fitting.
 - Finite differences are rejected for production regression unless an explicit debug gate is enabled.
 - Native mixed pressure/speciation reactive electrolyte regression runs with fixed-shape residuals, bounded parameters, status diagnostics, row diagnostics, and no `bounded_incomplete`.
+- Ceres, not residual-record post-processing or Python loops, executes the production parameter solve loop.
+- CppAD is used as a package-wide derivative substrate for supported production residuals, not only as a regression-local placeholder.
+- Python does not pack, evaluate, optimize, finite-difference, or own production thermodynamic residual rows.
+- `capabilities()["regression"]["native_ceres_thermodynamic_regression"]` is honest and reports `native_hot_loop=true` only when that path is genuinely implemented.
 - At least one SSM+DS/Born-related parameter and at least one `k_ij` parameter are represented in native regression tests or benchmark fixtures.
 - Package-owned native benchmark cases include tiny neutral/binary/reactive cases and an MEA-style 35-row public surrogate.
 - Docs explain native C++ regression architecture, Ceres, CppAD/autodiff/implicit derivative policy, finite-difference debug-only policy, status contract, benchmark commands, and downstream usage.
@@ -47,6 +63,15 @@ The goal is complete only when all of these are true:
 9. Add package-owned native benchmark cases and `scripts/benchmark_native_regression.py`.
 10. Update docs, capabilities, tests, and downstream guidance.
 11. Run validation, benchmark evidence, final audit, PR, merge, and branch cleanup.
+
+## Next Required Tranche From Comment 4424893353
+
+1. Reframe the existing branch and any PR language as partial Phase 0 unless the full native Ceres/CppAD thermodynamic path is implemented.
+2. Add a package-wide native AD layer under `src/epcsaft/native/autodiff/` and templatize the supported thermodynamic residual functions over scalar type.
+3. Make finite difference debug-only across regression, reactive speciation, reactive electrolyte bubble/equilibrium derivative paths, gated by `EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG=1`.
+4. Replace residual-record solving with a native thermodynamic row evaluator and Ceres production solve loop for at least `ReactiveSpeciation` and `ReactiveElectrolyteBubble` row modes.
+5. Add implicit sensitivities for converged nested speciation and fixed-liquid electrolyte bubble solves, returning `backend_unavailable` rather than silently falling back to finite differences when unsupported.
+6. Add tests and benchmarks proving parameter movement, objective decrease, Ceres backend ownership, non-finite-difference derivatives, populated row diagnostics, and `python_objective_used=false`.
 
 ## Required Validation Commands
 
