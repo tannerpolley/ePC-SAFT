@@ -15,8 +15,8 @@
     \bar{m}=\sum_{i} x_{i} m_{i}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
-      line: 536
-      comment_line: 527
+      line: 551
+      comment_line: 542
       context: "MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {"
 - eqid: "mw_bar"
   section: "Parameter Setup"
@@ -105,8 +105,8 @@
     d_{i}=\sigma_{i}\left[1-0.12 \exp \left(-3 \frac{\epsilon_{i}}{k T}\right)\right]
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
-      line: 536
-      comment_line: 528
+      line: 551
+      comment_line: 543
       context: "MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {"
 - eqid: "d_segment_dT"
   section: "Parameter Setup"
@@ -125,8 +125,8 @@
         =\sigma_{i}\left(3\frac{\epsilon_{i}}{kT^2}\right)\left[-0.12\exp\left(-3\frac{\epsilon_{i}}{kT}\right)\right]
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
-      line: 536
-      comment_line: 529
+      line: 551
+      comment_line: 544
       context: "MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {"
 - eqid: "half_d_identity"
   section: "Parameter Setup"
@@ -163,8 +163,8 @@
         \qquad i\in\mathcal{I}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
-      line: 536
-      comment_line: 530
+      line: 551
+      comment_line: 545
       context: "MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {"
 - eqid: "d_ij"
   section: "Parameter Setup"
@@ -195,8 +195,8 @@
     \sigma_{i j}=\frac{1}{2}\left(\sigma_{i}+\sigma_{j}\right) \cdot \left(1- l_{ij} \right)
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
-      line: 536
-      comment_line: 531
+      line: 551
+      comment_line: 546
       context: "MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {"
 - eqid: "epsilon_ij_mixing"
   section: "Parameter Setup"
@@ -215,8 +215,8 @@
         \sqrt{\epsilon_{i}\,\epsilon_{j}}\left(1-k_{ij}\right)
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
-      line: 536
-      comment_line: 532
+      line: 551
+      comment_line: 547
       context: "MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {"
 - eqid: "epsilon_ij_ionic_zero"
   section: "Parameter Setup"
@@ -234,8 +234,8 @@
         \qquad \text{for } z_{i}z_{j}>0,
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
-      line: 536
-      comment_line: 533
+      line: 551
+      comment_line: 548
       context: "MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {"
 - eqid: "epsilon_assoc_mixing"
   section: "Parameter Setup"
@@ -252,8 +252,8 @@
     \varepsilon^{A_{i}B_{j}}=\frac{1}{2}(\varepsilon^{A_{i}B_{i}}+\varepsilon^{A_{j}B_{j}})(1-k_{ij}^{\mathrm{hb}})
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
-      line: 396
-      comment_line: 394
+      line: 411
+      comment_line: 409
       context: "double association_volume_cpp(int comp_i, int comp_j, int ncomp, const vector<double> &s_ij, const add_args &cppargs) {"
 - eqid: "kappa_assoc_mixing"
   section: "Parameter Setup"
@@ -270,8 +270,8 @@
     k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_{i}\sigma_{j}}}{1/2(\sigma_{i}+\sigma_{j})}\right)^3
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
-      line: 396
-      comment_line: 395
+      line: 411
+      comment_line: 410
       context: "double association_volume_cpp(int comp_i, int comp_j, int ncomp, const vector<double> &s_ij, const add_args &cppargs) {"
 - eqid: "epsr_mix_rule"
   section: "Parameter Setup"
@@ -313,8 +313,8 @@
         = \varepsilon_{r, i}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
-      line: 592
-      comment_line: 586
+      line: 607
+      comment_line: 601
       context: "vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "depsr_dxi_mass"
   section: "Parameter Setup"
@@ -333,8 +333,8 @@
         \frac{MW_{i}}{\overline{MW}}\left(\varepsilon_{r,i}-\varepsilon_{r}\right)
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
-      line: 592
-      comment_line: 587
+      line: 607
+      comment_line: 602
       context: "vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "depsr_dxi_combo"
   section: "Parameter Setup"
@@ -357,8 +357,8 @@
         \qquad i\in\mathcal S
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
-      line: 592
-      comment_line: 588
+      line: 607
+      comment_line: 603
       context: "vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "epsr_solvent_mass"
   section: "Parameter Setup"
@@ -492,8 +492,8 @@
         \end{cases}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
-      line: 592
-      comment_line: 589
+      line: 607
+      comment_line: 604
       context: "vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "depsr_mix_dxi"
   section: "Parameter Setup"
@@ -515,8 +515,8 @@
         \left(\frac{\partial x_{\mathrm{ion}}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}} .
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
-      line: 592
-      comment_line: 590
+      line: 607
+      comment_line: 605
       context: "vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "depsr_mix_dxi_piecewise"
   section: "Parameter Setup"
@@ -542,8 +542,8 @@
         \end{cases}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
-      line: 592
-      comment_line: 591
+      line: 607
+      comment_line: 606
       context: "vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "zeta_n"
   section: "Density"
@@ -1020,8 +1020,8 @@
     \overline{m^2 \epsilon \sigma^3}=\sum_{i} \sum_{j} x_{i} x_{j} m_{i} m_{j}\left(\frac{\epsilon_{i j}}{k T}\right) \sigma_{i j}^3
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
-      line: 536
-      comment_line: 534
+      line: 551
+      comment_line: 549
       context: "MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {"
 - eqid: "m2epssigma3_xk"
   section: "Contribution Intermediates"
@@ -1058,8 +1058,8 @@
     \overline{m^2 \epsilon^2 \sigma^3}=\sum_{i} \sum_{j} x_{i} x_{j} m_{i} m_{j}\left(\frac{\epsilon_{i j}}{k T}\right)^2 \sigma_{i j}{ }^3
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
-      line: 536
-      comment_line: 535
+      line: 551
+      comment_line: 550
       context: "MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {"
 - eqid: "m2eps2sigma3_xk"
   section: "Contribution Intermediates"
@@ -1664,8 +1664,8 @@
         \qquad i\in\mathcal{I}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_parameter_setup.cpp"
-      line: 443
-      comment_line: 442
+      line: 458
+      comment_line: 457
       context: "double ion_born_radius_cpp(int i, double t, const add_args &cppargs) {"
 - eqid: "f_mix"
   section: "Contribution Intermediates"

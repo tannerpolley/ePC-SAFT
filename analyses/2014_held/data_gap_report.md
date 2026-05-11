@@ -8,12 +8,12 @@ Current reproducible outputs in this folder:
 - Figure 4a: amino-acid/KCl osmotic coefficients (alanine, glycine) with strategy-2 model and strategy-1-like reference model (`figure_4/plot_figure_4a.py`) using `figure_4a_digitized.csv` data points.
 - Figure 4b (digitized): amino-acid solubility panel reproduced from digitized paper data/model traces (`figure_4/plot_figure_4b.py`, `figure_4b_digitized.csv`).
 - Figure 5 (digitized): benzene solubility panel using digitized data/model points from paper panel (`figure_5/plot_figure_5.py`, `figure_5_digitized.csv`).
-- Figure 6a/6b: both panels now read the provided `figure_6/1-butanol-NH4Cl-water-LLE.csv`; the data points are reused in the ternary panel and the model tie lines are generated with the built-in LLE solver using `2014_Held` Tables 1-4 assumptions plus the constant-rule, salt-free solvent-only dielectric blend from Held 2014 Eq. (23) (`figure_6/_shared.py`, `figure_6/plot_figure_6a.py`, `figure_6/plot_figure_6b.py`).
+- Figure 6a/6b: both panels now read the provided `figure_6/1-butanol-NH4Cl-water-LLE.csv`; the data points are reused in the ternary panel and the model tie lines are generated with the built-in LLE solver using the `2014_Held` dataset, Held Figure 6 ion/organic binary interaction overrides, and the package `linear-massfraction` dielectric rule with Born disabled (`figure_6/_shared.py`, `figure_6/plot_figure_6a.py`, `figure_6/plot_figure_6b.py`).
 - Figure 6b (digitized): ternary phase diagram reproduced from digitized tie-line endpoints and envelope points (`figure_6/plot_figure_6b.py`, `figure_6b_digitized.csv`).
 
 Remaining gap:
 
-- Figures 4b and 6b are currently digitized reproductions, not fresh ePC-SAFT equilibrium solves from raw thermodynamic constraints.
+- Figure 4b is currently a digitized reproduction, not a fresh ePC-SAFT equilibrium solve from raw thermodynamic constraints.
 
 Optional digitized-data hook for Figure 2:
 

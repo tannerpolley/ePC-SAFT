@@ -46,10 +46,12 @@ Only the documented nested keys are supported.
 - ``rule``: dielectric-mixing rule
   - ``1`` or ``linear``
   - ``0`` or ``constant``
+  - ``2`` or ``linear-massfraction``
   - ``3`` or ``combined``
   - ``4`` or ``empirical``
   - ``7`` or ``linear-saltfraction``
   - ``8`` or ``aqueous-organic``
+  - ``9`` or ``salt-free-massfraction`` for a solvent-only mass-fraction average that ignores ions in the dielectric average
 - ``differential_mode``: choose ``auto`` (default), ``analytical``, ``numerical``/``finite_difference``, or ``autodiff``
 
 ``hc_model``, ``disp_model``, ``assoc_model``

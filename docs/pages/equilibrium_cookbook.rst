@@ -112,6 +112,14 @@ Use explicit mixture methods in new code. Use string-dispatched
    assert lle.split_detected
    print(lle.phase_labels, lle.diagnostics)
 
+For neutral TP flash and neutral bubble/dew diagnostics, check these fields before concluding that a speedup changed solver semantics:
+
+- ``diagnostics["neutral_fast_path"]``
+- ``diagnostics["neutral_fallback_used"]``
+- ``diagnostics["neutral_fallback_reason"]``
+
+The fast-path flag means the current native or local-first neutral route handled the solve directly. A fallback flag means the optimized route dropped to the more conservative path while preserving the same result contract.
+
 Electrolyte LLE
 ---------------
 

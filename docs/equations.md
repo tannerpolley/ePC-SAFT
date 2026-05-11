@@ -14,7 +14,7 @@ The LaTeX document remains the current source of truth; this Markdown view and `
 - Description: Provides a supporting relation used in hard-chain reference contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
 - LaTeX: `docs/latex/equations.tex:27`
-- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:536` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
+- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:551` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
 
 ```tex
 \bar{m}=\sum_{i} x_{i} m_{i}
@@ -83,7 +83,7 @@ x_{sol}=\sum_{j\in\mathcal S}x_{j}
 - Description: Provides a supporting relation used in hard-chain reference contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
 - LaTeX: `docs/latex/equations.tex:89`
-- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:536` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
+- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:551` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
 
 ```tex
 d_{i}=\sigma_{i}\left[1-0.12 \exp \left(-3 \frac{\epsilon_{i}}{k T}\right)\right]
@@ -96,7 +96,7 @@ d_{i}=\sigma_{i}\left[1-0.12 \exp \left(-3 \frac{\epsilon_{i}}{k T}\right)\right
 - Description: Provides a differential relation needed for temperature differential calculations.
 - Change note: Computed by differentiating Eq. (A.9) with respect to temperature.
 - LaTeX: `docs/latex/equations.tex:100`
-- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:536` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
+- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:551` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
 
 ```tex
 \left(\frac{\partial d_i}{\partial T}\right)_{\rho,x}
@@ -126,7 +126,7 @@ d_{i}=\sigma_{i}\left[1-0.12 \exp \left(-3 \frac{\epsilon_{i}}{k T}\right)\right
 - Description: Provides the grouped ion-diameter rule used in Debye-Huckel electrolyte calculations.
 - Change note: Consolidates the documented sigma, constant-factor, and Barker-Henderson ion-diameter options into one visible case-set presentation.
 - LaTeX: `docs/latex/equations.tex:127`
-- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:536` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
+- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:551` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
 
 ```tex
 d_{\mathrm{ion},i}\equiv d_{i}=
@@ -160,7 +160,7 @@ d_{i j}=\left(d_{i i}+d_{j j}\right) / 2 .
 - Description: Provides a supporting relation used in dispersion contribution.
 - Change note: Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation.
 - LaTeX: `docs/latex/equations.tex:158`
-- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:536` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
+- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:551` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
 
 ```tex
 \sigma_{i j}=\frac{1}{2}\left(\sigma_{i}+\sigma_{j}\right) \cdot \left(1- l_{ij} \right)
@@ -173,7 +173,7 @@ d_{i j}=\left(d_{i i}+d_{j j}\right) / 2 .
 - Description: Provides a supporting relation used in dispersion contribution.
 - Change note: This is the base Berthelot-style pair-dispersion combining rule before any ePC-SAFT ionic override is applied.
 - LaTeX: `docs/latex/equations.tex:169`
-- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:536` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
+- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:551` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
 
 ```tex
 \epsilon_{ij}^{\mathrm{base}}
@@ -188,7 +188,7 @@ d_{i j}=\left(d_{i i}+d_{j j}\right) / 2 .
 - Description: Provides a supporting relation used in dispersion contribution.
 - Change note: The active implementation suppresses short-range dispersion for same-sign ionic pairs by overriding the base combining rule with zero; this is why the second equation is simply \(=0\).
 - LaTeX: `docs/latex/equations.tex:182`
-- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:536` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
+- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:551` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
 
 ```tex
 \epsilon_{ij}=0
@@ -202,7 +202,7 @@ d_{i j}=\left(d_{i i}+d_{j j}\right) / 2 .
 - Description: Provides a supporting relation used in association contribution.
 - Change note: Mapped manually to the Gross 2002 cross-association energy combining rule.
 - LaTeX: `docs/latex/equations.tex:196`
-- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:396` (double association_volume_cpp(int comp_i, int comp_j, int ncomp, const vector<double> &s_ij, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:411` (double association_volume_cpp(int comp_i, int comp_j, int ncomp, const vector<double> &s_ij, const add_args &cppargs) {)
 
 ```tex
 \varepsilon^{A_{i}B_{j}}=\frac{1}{2}(\varepsilon^{A_{i}B_{i}}+\varepsilon^{A_{j}B_{j}})(1-k_{ij}^{\mathrm{hb}})
@@ -215,7 +215,7 @@ d_{i j}=\left(d_{i i}+d_{j j}\right) / 2 .
 - Description: Provides a supporting relation used in association contribution.
 - Change note: Mapped manually to the Gross 2002 cross-association volume combining rule.
 - LaTeX: `docs/latex/equations.tex:207`
-- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:396` (double association_volume_cpp(int comp_i, int comp_j, int ncomp, const vector<double> &s_ij, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:411` (double association_volume_cpp(int comp_i, int comp_j, int ncomp, const vector<double> &s_ij, const add_args &cppargs) {)
 
 ```tex
 k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_{i}\sigma_{j}}}{1/2(\sigma_{i}+\sigma_{j})}\right)^3
@@ -251,7 +251,7 @@ k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_
 - Description: Specifies dielectric-property mixing or derivative form for debye and huckel electrolyte term contribution.
 - Change note: Direct derivative of the mole-fraction dielectric mixing rule.
 - LaTeX: `docs/latex/equations.tex:242`
-- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:592` (vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:607` (vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \left(\frac{\partial \varepsilon_{r}}{\partial x_{i}}\right)_{x_{j\neq i}}
@@ -267,7 +267,7 @@ k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_
 - Description: Specifies dielectric-property mixing or derivative form for debye and huckel electrolyte term contribution.
 - Change note: Direct derivative of the mass-fraction dielectric mixing rule.
 - LaTeX: `docs/latex/equations.tex:257`
-- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:592` (vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:607` (vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \left(\frac{\partial \varepsilon_{r}}{\partial x_{i}}\right)_{x_{j\neq i}}
@@ -284,7 +284,7 @@ k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_
 - Description: Specifies dielectric-property mixing or derivative form for debye and huckel electrolyte term contribution.
 - Change note: Direct derivative of the mixed solvent-plus-ion dielectric mixing rule.
 - LaTeX: `docs/latex/equations.tex:273`
-- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:592` (vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:607` (vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \left(\frac{\partial \varepsilon_{r}}{\partial x_{i}}\right)_{x_{j\neq i}}
@@ -389,7 +389,7 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - Description: Provides a differential relation needed for debye and huckel electrolyte term contribution calculations.
 - Change note: Derivative of solvent-mixture dielectric expression in Eq. (12).
 - LaTeX: `docs/latex/equations.tex:366`
-- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:592` (vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:607` (vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \left(\frac{\partial \varepsilon_{sf}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
@@ -410,7 +410,7 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - Description: Provides a differential relation needed for debye and huckel electrolyte term contribution calculations.
 - Change note: Derivative of the 2025 dielectric mixing rule via chain rule.
 - LaTeX: `docs/latex/equations.tex:385`
-- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:592` (vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:607` (vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \left(\frac{\partial \varepsilon_{r,\mathrm{mix}}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
@@ -428,7 +428,7 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - Description: Provides a differential relation needed for debye and huckel electrolyte term contribution calculations.
 - Change note: Piecewise closed-form derivative obtained by combining Eq. (11) and Eq. (12).
 - LaTeX: `docs/latex/equations.tex:401`
-- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:592` (vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:607` (vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \left(\frac{\partial \varepsilon_{r,\mathrm{mix}}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
@@ -834,7 +834,7 @@ C_{2}
 - Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
 - Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
 - LaTeX: `docs/latex/equations.tex:785`
-- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:536` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
+- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:551` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
 
 ```tex
 \overline{m^2 \epsilon \sigma^3}=\sum_{i} \sum_{j} x_{i} x_{j} m_{i} m_{j}\left(\frac{\epsilon_{i j}}{k T}\right) \sigma_{i j}^3
@@ -864,7 +864,7 @@ C_{2}
 - Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
 - Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
 - LaTeX: `docs/latex/equations.tex:812`
-- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:536` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
+- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:551` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
 
 ```tex
 \overline{m^2 \epsilon^2 \sigma^3}=\sum_{i} \sum_{j} x_{i} x_{j} m_{i} m_{j}\left(\frac{\epsilon_{i j}}{k T}\right)^2 \sigma_{i j}{ }^3
@@ -1360,7 +1360,7 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - Description: Provides the selectable Born-diameter rule used in born electrolyte term contribution.
 - Change note: Groups the repeated-left-hand-side Born-diameter setup equations into one visible case set so the selectable diameter definition is documented as one variable with alternative parameterization choices.
 - LaTeX: `docs/latex/equations.tex:1275`
-- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:443` (double ion_born_radius_cpp(int i, double t, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:458` (double ion_born_radius_cpp(int i, double t, const add_args &cppargs) {)
 
 ```tex
 d^{\text{Born}}_{i}

@@ -1142,10 +1142,14 @@ def _neutral_bubble_dew_outer(
     options: EquilibriumOptions,
 ) -> EquilibriumResult:
     solve_pressure = fixed_name == "P"
-    grid = np.geomspace(1.0, 1.0e8, 81) if solve_pressure else np.linspace(120.0, 700.0, 117)
+    local_grid = _neutral_bubble_dew_local_grid(solve_pressure)
+    fallback_grid = np.geomspace(1.0, 1.0e8, 81) if solve_pressure else np.linspace(120.0, 700.0, 117)
     evaluations: list[dict[str, Any]] = []
     failures: list[dict[str, str]] = []
-    for candidate in grid:
+    fallback_used = False
+    fallback_reason = ""
+    bracket: tuple[dict[str, Any], dict[str, Any]] | None = None
+    for candidate in local_grid:
         try:
             evaluation = _neutral_bubble_dew_evaluate(
                 mixture,
@@ -1162,18 +1166,66 @@ def _neutral_bubble_dew_outer(
             continue
         evaluations.append(evaluation)
         if abs(float(evaluation["residual"])) <= options.tolerance:
-            return _neutral_bubble_dew_result(mixture, problem_kind, evaluation, options, evaluations, failures)
-    bracket: tuple[dict[str, Any], dict[str, Any]] | None = None
-    for left, right in zip(evaluations, evaluations[1:]):
-        if float(left["residual"]) * float(right["residual"]) <= 0.0:
-            bracket = (left, right)
+            return _neutral_bubble_dew_result(
+                mixture,
+                problem_kind,
+                evaluation,
+                options,
+                evaluations,
+                failures,
+                neutral_fast_path=True,
+                neutral_fallback_used=False,
+                neutral_fallback_reason="",
+            )
+        bracket = _neutral_bubble_dew_find_bracket(evaluations)
+        if bracket is not None:
             break
+    if bracket is None:
+        fallback_used = True
+        fallback_reason = "local_bracket_not_found"
+        seen = {float(item["variable"]) for item in evaluations}
+        for candidate in fallback_grid:
+            if float(candidate) in seen:
+                continue
+            try:
+                evaluation = _neutral_bubble_dew_evaluate(
+                    mixture,
+                    problem_kind=problem_kind,
+                    variable=float(candidate),
+                    fixed_value=fixed_value,
+                    source_composition=source_composition,
+                    source_phase=source_phase,
+                    incipient_phase=incipient_phase,
+                    options=options,
+                )
+            except Exception as exc:
+                failures.append({"variable": str(float(candidate)), "message": str(exc)})
+                continue
+            evaluations.append(evaluation)
+            if abs(float(evaluation["residual"])) <= options.tolerance:
+                return _neutral_bubble_dew_result(
+                    mixture,
+                    problem_kind,
+                    evaluation,
+                    options,
+                    evaluations,
+                    failures,
+                    neutral_fast_path=True,
+                    neutral_fallback_used=True,
+                    neutral_fallback_reason=fallback_reason,
+                )
+            bracket = _neutral_bubble_dew_find_bracket(evaluations)
+            if bracket is not None:
+                break
     if bracket is None:
         diagnostics = {
             "message": "failed to bracket neutral bubble/dew scalar residual",
             "problem_kind": problem_kind,
             "residual_samples": [{"variable": item["variable"], "residual": item["residual"]} for item in evaluations],
             "state_failures": failures[:10],
+            "neutral_fast_path": True,
+            "neutral_fallback_used": fallback_used,
+            "neutral_fallback_reason": fallback_reason,
         }
         raise SolutionError("neutral {} did not bracket a scalar root".format(problem_kind), diagnostics)
     left, right = bracket
@@ -1198,13 +1250,33 @@ def _neutral_bubble_dew_outer(
         if abs(float(current["residual"])) < abs(float(best["residual"])):
             best = current
         if abs(float(current["residual"])) <= options.tolerance:
-            return _neutral_bubble_dew_result(mixture, problem_kind, current, options, history, failures)
+            return _neutral_bubble_dew_result(
+                mixture,
+                problem_kind,
+                current,
+                options,
+                history,
+                failures,
+                neutral_fast_path=True,
+                neutral_fallback_used=fallback_used,
+                neutral_fallback_reason=fallback_reason,
+            )
         if float(left["residual"]) * float(current["residual"]) <= 0.0:
             right = current
         else:
             left = current
     if abs(float(best["residual"])) <= 10.0 * options.tolerance:
-        return _neutral_bubble_dew_result(mixture, problem_kind, best, options, history, failures)
+        return _neutral_bubble_dew_result(
+            mixture,
+            problem_kind,
+            best,
+            options,
+            history,
+            failures,
+            neutral_fast_path=True,
+            neutral_fallback_used=fallback_used,
+            neutral_fallback_reason=fallback_reason,
+        )
     diagnostics = {
         "message": "neutral bubble/dew scalar solve reached max_iterations",
         "problem_kind": problem_kind,
@@ -1212,8 +1284,31 @@ def _neutral_bubble_dew_outer(
         "best_residual": best["residual"],
         "residual_history": [{"variable": item["variable"], "residual": item["residual"]} for item in history],
         "state_failures": failures[:10],
+        "neutral_fast_path": True,
+        "neutral_fallback_used": fallback_used,
+        "neutral_fallback_reason": fallback_reason,
     }
     raise SolutionError("neutral {} did not converge".format(problem_kind), diagnostics)
+
+
+def _neutral_bubble_dew_local_grid(solve_pressure: bool) -> list[float]:
+    if solve_pressure:
+        center = 1.0e5
+        factors = [1.0]
+        for delta in (0.01, 0.02, 0.05, 0.1, 0.2, 0.4, 0.8):
+            factors.extend((1.0 - delta, 1.0 + delta))
+        return [center * factor for factor in factors if factor > 0.0]
+    return []
+
+
+def _neutral_bubble_dew_find_bracket(
+    evaluations: list[dict[str, Any]],
+) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    ordered = sorted(evaluations, key=lambda item: float(item["variable"]))
+    for left, right in zip(ordered, ordered[1:]):
+        if float(left["residual"]) * float(right["residual"]) <= 0.0:
+            return left, right
+    return None
 
 
 def _neutral_bubble_dew_evaluate(
@@ -1234,11 +1329,9 @@ def _neutral_bubble_dew_evaluate(
         temperature = variable
         pressure = fixed_value
     incipient = np.array(source_composition, dtype=float, copy=True)
+    source_state = _phase_state(mixture, temperature, pressure, source_composition, source_phase, options, problem_kind)
     last_residual = float("inf")
     for inner_iteration in range(max(1, options.max_iterations)):
-        source_state = _phase_state(
-            mixture, temperature, pressure, source_composition, source_phase, options, problem_kind
-        )
         incipient_state = _phase_state(
             mixture, temperature, pressure, incipient, incipient_phase, options, problem_kind
         )
@@ -1256,7 +1349,6 @@ def _neutral_bubble_dew_evaluate(
         last_residual = residual
         if delta <= max(options.tolerance, 1.0e-12):
             break
-    source_state = _phase_state(mixture, temperature, pressure, source_composition, source_phase, options, problem_kind)
     incipient_state = _phase_state(mixture, temperature, pressure, incipient, incipient_phase, options, problem_kind)
     fugacity_residual = (
         np.log(np.maximum(incipient, options.min_composition))
@@ -1288,6 +1380,10 @@ def _neutral_bubble_dew_result(
     options: EquilibriumOptions,
     history: list[dict[str, Any]],
     failures: list[dict[str, str]],
+    *,
+    neutral_fast_path: bool,
+    neutral_fallback_used: bool,
+    neutral_fallback_reason: str,
 ) -> EquilibriumResult:
     source_phase = str(evaluation["source_phase"])
     incipient_phase = str(evaluation["incipient_phase"])
@@ -1326,6 +1422,9 @@ def _neutral_bubble_dew_result(
         "state_failures": failures[:10],
         "min_composition": float(options.min_composition),
         "species": list(getattr(mixture, "species", [])),
+        "neutral_fast_path": bool(neutral_fast_path),
+        "neutral_fallback_used": bool(neutral_fallback_used),
+        "neutral_fallback_reason": str(neutral_fallback_reason),
     }
     return EquilibriumResult(
         backend="neutral_bubble_dew",

@@ -119,7 +119,7 @@ Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, co
 
     vector<int> idx_sol;
     vector<int> idx_ion;
-    if (rule == 3 || rule == 4 || rule == 5 || rule == 6 || rule == 7) {
+    if (rule == 3 || rule == 4 || rule == 5 || rule == 6 || rule == 7 || rule == 9) {
         idx_sol.reserve(ncomp);
         idx_ion.reserve(ncomp);
         for (int i = 0; i < ncomp; i++) {
@@ -194,6 +194,21 @@ Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, co
         for (int idx : idx_ion) eps_ion += x[idx] * cppargs.dielc[idx];
         return x_sol * eps_sol_w + eps_ion;
     }
+    if (rule == 9) {
+        if (idx_sol.empty()) {
+            throw ValueError("dielc_rule=9 requires at least one solvent species (z=0).");
+        }
+        Scalar mw_sol = scalar_constant<Scalar>(0.0);
+        Scalar eps_sol_num = scalar_constant<Scalar>(0.0);
+        for (int idx : idx_sol) {
+            mw_sol += x[idx] * cppargs.mw[idx];
+            eps_sol_num += x[idx] * cppargs.mw[idx] * cppargs.dielc[idx];
+        }
+        if (scalar_value(mw_sol) <= 0.0) {
+            throw ValueError("Solvent molecular-weight denominator must be positive for dielc_rule=9.");
+        }
+        return eps_sol_num / mw_sol;
+    }
     if (rule == 4 || rule == 5) {
         if (idx_sol.empty()) {
             throw ValueError("dielc_rule requires at least one solvent species (z=0).");
@@ -223,7 +238,7 @@ Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, co
         for (int idx : idx_ion) x_ion += x[idx];
         return scalar_constant<Scalar>(eps_sf_const) / (one + alpha * x_ion);
     }
-    throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7, 8.");
+    throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7, 8, 9.");
 }
 
 void dielectric_inputs_valid_cpp(const vector<double> &x, const add_args &cppargs) {
@@ -294,14 +309,14 @@ void dielectric_inputs_valid_cpp(const vector<double> &x, const add_args &cpparg
         }
     }
     int rule = cppargs.dielc_rule;
-    if (rule < 0 || rule > 8) {
-        throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7, 8.");
+    if (rule < 0 || rule > 9) {
+        throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7, 8, 9.");
     }
-    if ((rule == 2 || rule == 3 || rule == 4 || rule == 5) &&
+    if ((rule == 2 || rule == 3 || rule == 4 || rule == 5 || rule == 9) &&
         cppargs.mw.size() != static_cast<size_t>(ncomp)) {
         throw ValueError("dielc_rule requires params['MW'] as an array with length equal to ncomp.");
     }
-    if ((rule == 3 || rule == 4 || rule == 5 || rule == 6) &&
+    if ((rule == 3 || rule == 4 || rule == 5 || rule == 6 || rule == 9) &&
         cppargs.z.size() != static_cast<size_t>(ncomp)) {
         throw ValueError("dielc_rule requires params['z'] as an array with length equal to ncomp.");
     }
@@ -681,6 +696,29 @@ vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x,
         }
         return deps_dx;
     }
+    if (rule == 9) {
+        vector<int> idx_sol;
+        for (int i = 0; i < ncomp; i++) {
+            if (std::abs(cppargs.z[i]) <= 1e-12) idx_sol.push_back(i);
+        }
+        if (idx_sol.empty()) {
+            throw ValueError("dielc_rule=9 requires at least one solvent species (z=0).");
+        }
+        double mw_sol = 0.0;
+        double eps_sol_num = 0.0;
+        for (int idx : idx_sol) {
+            mw_sol += x[idx] * cppargs.mw[idx];
+            eps_sol_num += x[idx] * cppargs.mw[idx] * cppargs.dielc[idx];
+        }
+        if (mw_sol <= 0.0) {
+            throw ValueError("Solvent molecular-weight denominator must be positive for dielc_rule=9.");
+        }
+        double eps_sf = eps_sol_num / mw_sol;
+        for (int idx : idx_sol) {
+            deps_dx[idx] = (cppargs.mw[idx] / mw_sol) * (cppargs.dielc[idx] - eps_sf);
+        }
+        return deps_dx;
+    }
     if (rule == 4) {
         vector<int> idx_sol;
         vector<int> idx_ion;
@@ -721,7 +759,7 @@ vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x,
         }
         return deps_dx;
     }
-    throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7, 8.");
+    throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7, 8, 9.");
 }
 
 vector<double> dielectric_derivative_rule_fd_cpp(int rule, const vector<double> &x, const add_args &cppargs) {

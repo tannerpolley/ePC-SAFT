@@ -1637,6 +1637,13 @@ def create_struct(params):
         "mixed-aqueous-organic": 8,
         "mixed_aqueous_organic": 8,
         "rule8": 8,
+        "salt-free-massfraction": 9,
+        "salt_free_massfraction": 9,
+        "salt-free-solvent-massfraction": 9,
+        "salt_free_solvent_massfraction": 9,
+        "salt-free-solvent-weight": 9,
+        "salt_free_solvent_weight": 9,
+        "rule9": 9,
     }
     diff_alias = {
         "auto": 3,
@@ -1726,8 +1733,8 @@ def create_struct(params):
         raise ValueError(
             "Unknown assoc_model dadx_differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3)."
         )
-    if cppargs.dielc_rule < 0 or cppargs.dielc_rule > 8:
-        raise ValueError("Unknown rel_perm rule. Supported values are 0..8.")
+    if cppargs.dielc_rule < 0 or cppargs.dielc_rule > 9:
+        raise ValueError("Unknown rel_perm rule. Supported values are 0..9.")
 
     cppargs.d_ion_mode = _as_int_alias(dh_model_dict.get("d_ion_mode", 1), d_ion_alias)
     if cppargs.d_ion_mode not in (0, 1, 2):

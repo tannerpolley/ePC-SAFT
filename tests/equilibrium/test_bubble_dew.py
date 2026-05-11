@@ -48,6 +48,12 @@ def test_neutral_bubble_and_dew_pressure_match_tp_flash_endpoint() -> None:
     assert dew.phases[1].pressure == pytest.approx(1.0e5, rel=2.0e-5)
     assert bubble.diagnostics["fugacity_residual_norm"] < 2.0e-5
     assert dew.diagnostics["fugacity_residual_norm"] < 2.0e-5
+    assert bubble.diagnostics["neutral_fast_path"] is True
+    assert dew.diagnostics["neutral_fast_path"] is True
+    assert bubble.diagnostics["neutral_fallback_used"] is False
+    assert dew.diagnostics["neutral_fallback_used"] is False
+    assert bubble.diagnostics["neutral_fallback_reason"] == ""
+    assert dew.diagnostics["neutral_fallback_reason"] == ""
     json.dumps(bubble.to_dict(), allow_nan=False)
     json.dumps(dew.to_dict(), allow_nan=False)
 
