@@ -50,6 +50,7 @@ if(EPCSAFT_ENABLE_CERES)
         set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
         set(BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
         set(MINIGLOG ON CACHE BOOL "" FORCE)
+        set(LAPACK OFF CACHE BOOL "" FORCE)
         FetchContent_Declare(
             ceres-solver
             GIT_REPOSITORY https://ceres-solver.googlesource.com/ceres-solver

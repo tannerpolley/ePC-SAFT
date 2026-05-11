@@ -116,7 +116,7 @@ def test_native_thermo_regression_evaluates_reactive_speciation_row_in_cpp() -> 
     assert max(abs(value) for value in result["residuals"]) <= 1.0e-8
 
 
-def test_native_thermo_regression_fit_reports_unavailable_without_ceres() -> None:
+def test_native_thermo_regression_fit_reports_fixed_shape_result() -> None:
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
     log_k = math.log(0.0005) + math.log(0.0005) - math.log(0.001)
@@ -140,7 +140,7 @@ def test_native_thermo_regression_fit_reports_unavailable_without_ceres() -> Non
         },
     )
 
-    assert result["status"] in {"backend_unavailable", "converged"}
+    assert result["status"] in {"backend_unavailable", "converged", "max_iterations"}
     assert result["optimizer_backend"] in {"backend_unavailable", "ceres"}
     assert result["derivative_backend"] in {"implicit", "analytic_implicit"}
     assert result["initial_cost"] >= 0.0

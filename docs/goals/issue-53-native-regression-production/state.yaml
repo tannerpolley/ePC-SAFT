@@ -57,7 +57,7 @@ agents:
   judge: installed
   worker: installed
 
-active_task: T029
+active_task: T030
 
 tasks:
   - id: T001
@@ -1072,6 +1072,7 @@ tasks:
       - "tests/native/test_chemical_equilibrium_native.py"
       - "tests/native/test_equilibrium_native_contracts.py"
       - "tests/native/**"
+      - "tests/native/test_native_ceres_thermodynamic_regression.py"
       - "tests/api/test_runtime.py"
       - "tests/equilibrium/test_lle.py"
       - "docs/pages/**"
@@ -1401,9 +1402,66 @@ tasks:
   - id: T029
     type: worker
     assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Remove the Ceres-enabled release-path proof blocker and choose the next native derivative tranche."
+    allowed_files:
+      - "src/epcsaft/native/**"
+      - "src/epcsaft/bindings.cpp"
+      - "CMakeLists.txt"
+      - "src/epcsaft/reactive_regression.py"
+      - "src/epcsaft/runtime.py"
+      - "tests/native/**"
+      - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      - "tests/api/test_runtime.py"
+      - "tests/api/test_reactive_regression.py"
+      - "tests/workflows/test_build_epcsaft_script.py"
+      - "docs/pages/parameter_regression.rst"
+      - "docs/pages/diagnostics.rst"
+      - "docs/goals/issue-53-native-regression-production/notes/**"
+      - "docs/goals/issue-53-native-regression-production/notes/T029-ceres-release-proof.md"
+      - "docs/goals/issue-53-native-regression-production/state.yaml"
+    verify:
+      - "uv run python scripts/build_epcsaft.py"
+      - "uv run python run_pytest.py tests/native/test_native_ceres_reactive_pressure_speciation.py tests/native/test_native_ceres_thermodynamic_regression.py tests/api/test_runtime.py -q"
+      - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 3"
+    stop_if:
+      - "A correct derivative path requires a broad scalar-templating rewrite beyond this branch's safe scope."
+      - "The implementation cannot prove non-finite-difference sensitivities for the selected tranche."
+    receipt:
+      result: done
+      summary: "Bundled Ceres now builds LAPACK-free on Windows/MinGW, and the local Ceres+CppAD build proves the native thermodynamic logK slice with optimizer_backend=ceres, derivative=analytic_implicit, native_hot_loop=True, and objective decrease to numerical zero. Remaining issue #53 work is now the actual bubble/Born derivative tranche, not Ceres build plumbing."
+      evidence:
+        - "CMakeLists.txt"
+        - "tests/workflows/test_build_epcsaft_script.py"
+        - "tests/native/test_native_ceres_thermodynamic_regression.py"
+        - "docs/goals/issue-53-native-regression-production/notes/T029-ceres-release-proof.md"
+      changed_files:
+        - "CMakeLists.txt"
+        - "tests/workflows/test_build_epcsaft_script.py"
+        - "tests/native/test_native_ceres_thermodynamic_regression.py"
+        - "docs/goals/issue-53-native-regression-production/notes/T029-ceres-release-proof.md"
+        - "docs/goals/issue-53-native-regression-production/state.yaml"
+      commands:
+        - cmd: "uv run python scripts/build_epcsaft.py --clean --enable-ceres --enable-cppad --parallel 10"
+          status: pass
+          summary: "Ceres/CppAD clean build passed; configure 37.51s, build 172.85s, total 211.29s"
+        - cmd: "uv run python scripts/benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 3"
+          status: pass
+          summary: "median 1.399 ms; status converged; backend ceres; derivative analytic_implicit; native_hot_loop True; cost 0.0517438 -> 1.17711e-19"
+        - cmd: "uv run python scripts/doctor.py"
+          status: pass
+          summary: "Ceres and CppAD enabled, found, and available"
+        - cmd: "uv run python run_pytest.py tests/workflows/test_build_epcsaft_script.py tests/native/test_native_ceres_thermodynamic_regression.py tests/api/test_runtime.py -q"
+          status: pass
+          summary: "47 passed in 1.33s"
+
+  - id: T030
+    type: worker
+    assignee: Worker
     status: active
     reasoning_hint: high
-    objective: "Implement the next native derivative tranche: either bubble residual/Jacobian support or Born-SSM+DS d_born/f_solv sensitivities, choosing the smallest path that can make real issue #53 progress."
+    objective: "Implement or formally stop on the smallest real derivative tranche for issue #53: reactive-electrolyte bubble pressure residual/Jacobian support or Born-SSM+DS d_born/f_solv sensitivities."
     allowed_files:
       - "src/epcsaft/native/**"
       - "src/epcsaft/bindings.cpp"
@@ -1417,7 +1475,7 @@ tasks:
       - "docs/goals/issue-53-native-regression-production/notes/**"
       - "docs/goals/issue-53-native-regression-production/state.yaml"
     verify:
-      - "uv run python scripts/build_epcsaft.py"
+      - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
       - "uv run python run_pytest.py tests/native/test_native_ceres_reactive_pressure_speciation.py tests/native/test_native_ceres_thermodynamic_regression.py tests/api/test_runtime.py -q"
       - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 3"
     stop_if:

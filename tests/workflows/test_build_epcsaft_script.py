@@ -60,3 +60,9 @@ def test_build_script_dependency_flags_are_emitted_from_parse_args() -> None:
     assert "-DEPCSAFT_USE_SYSTEM_CERES=ON" in flags
     assert "-DEPCSAFT_ENABLE_CPPAD=ON" in flags
     assert "-DEPCSAFT_USE_SYSTEM_CPPAD=ON" in flags
+
+
+def test_bundled_ceres_disables_lapack_for_static_mingw_link() -> None:
+    cmake_text = (REPO_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+
+    assert 'set(LAPACK OFF CACHE BOOL "" FORCE)' in cmake_text
