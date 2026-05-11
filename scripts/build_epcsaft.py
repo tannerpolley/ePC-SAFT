@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -20,6 +21,14 @@ def _run(cmd: list[str], *, env: dict[str, str]) -> None:
 
 def _capture(cmd: list[str], *, env: dict[str, str]) -> str:
     return subprocess.check_output(cmd, cwd=str(REPO_ROOT), env=env, text=True).strip()
+
+
+def _pyproject_version() -> str:
+    text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    match = re.search(r'(?m)^version\s*=\s*"([^"]+)"', text)
+    if not match:
+        raise RuntimeError("Could not derive package version from pyproject.toml")
+    return match.group(1)
 
 
 def _env() -> dict[str, str]:
@@ -110,6 +119,7 @@ def _configure(env: dict[str, str]) -> None:
         str(BUILD_DIR),
         "-DEPCSAFT_DEV_INPLACE=ON",
         "-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY",
+        f"-DSKBUILD_PROJECT_VERSION={_pyproject_version()}",
         f"-DPython_EXECUTABLE={sys.executable}",
         f"-Dpybind11_DIR={pybind11_dir}",
     ]

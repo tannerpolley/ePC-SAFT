@@ -143,7 +143,7 @@ def _pair_for_salt_label(
             if _salt_token(candidate["label"]) == token:
                 matches.append((cation_i, anion_i))
     if len(matches) != 1:
-        raise InputError("Could not uniquely map salt '{}' onto independent electrolyte ions.".format(salt_label))
+        raise InputError(f"Could not uniquely map salt '{salt_label}' onto independent electrolyte ions.")
     cation_i, anion_i = matches[0]
     return _pair_payload(species, charges, cation_i, anion_i)
 
@@ -172,8 +172,8 @@ def _salt_token(label: Any) -> str:
 
 
 def _neutral_stoichiometry(cation_charge: float, anion_charge: float) -> tuple[int, int]:
-    cation_int = int(round(cation_charge))
-    anion_int = int(round(anion_charge))
+    cation_int = round(cation_charge)
+    anion_int = round(anion_charge)
     if cation_int <= 0 or anion_int <= 0:
         raise InputError("electrolyte salt stoichiometry requires non-zero ion charges.")
     if abs(float(cation_int) - cation_charge) > 1.0e-12 or abs(float(anion_int) - anion_charge) > 1.0e-12:
@@ -186,7 +186,7 @@ def _ion_stem(label: str, charge_magnitude: float | None = None) -> str:
     text = str(label)
     stripped = text.replace("+", "").replace("-", "")
     if charge_magnitude is not None and ("+" in text or "-" in text):
-        charge_int = int(round(abs(float(charge_magnitude))))
+        charge_int = round(abs(float(charge_magnitude)))
         suffix = str(charge_int)
         if charge_int > 1 and stripped.endswith(suffix):
             stripped = stripped[: -len(suffix)]

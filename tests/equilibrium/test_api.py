@@ -88,6 +88,24 @@ def test_explicit_flash_tp_matches_legacy_equilibrium_dispatch() -> None:
     np.testing.assert_allclose(direct.phases[1].composition, legacy.phases[1].composition)
 
 
+def test_solve_equilibrium_accepts_typed_problem_objects() -> None:
+    mix = _hydrocarbon_mixture()
+    feed = np.asarray([0.1, 0.3, 0.6])
+
+    flash = mix.solve_equilibrium(epcsaft.TPFlash(T=220.0, P=1.0e5, z=feed))
+    stability = mix.solve_equilibrium(
+        epcsaft.StabilityAnalysis(T=300.0, P=1.0e5, z=feed, parent_phase="liq", trial_phases=("liq",))
+    )
+    dew = mix.solve_equilibrium(epcsaft.DewPoint(T=260.0, y=feed))
+
+    assert isinstance(flash, epcsaft.EquilibriumResult)
+    assert flash.problem_kind == "tp_flash"
+    assert isinstance(stability, epcsaft.StabilityResult)
+    assert stability.problem_kind == "stability"
+    assert isinstance(dew, epcsaft.EquilibriumResult)
+    assert dew.problem_kind == "dew_p"
+
+
 def test_explicit_stability_tp_matches_legacy_equilibrium_dispatch() -> None:
     feed = np.asarray([0.1, 0.3, 0.6])
 

@@ -4,29 +4,33 @@ from __future__ import annotations
 
 import csv
 import math
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 import numpy as np
 
-from ._types import InputError
-from ._types import phase_to_int
-from .epcsaft import _fit_generic_native_least_squares
-from .epcsaft import _evaluate_generic_native_debug
-from .epcsaft import _fit_pure_neutral_native_least_squares
-from .epcsaft import _fit_pure_neutral_native_debug
+from ._types import InputError, phase_to_int
+from .epcsaft import (
+    _evaluate_generic_native_debug,
+    _fit_generic_native_least_squares,
+    _fit_pure_neutral_native_debug,
+    _fit_pure_neutral_native_least_squares,
+)
 from .parameter_templates import _infer_pure_template_name
-from .parameters import _deterministic_default
-from .parameters import _invalidate_dataset_cache
-from .parameters import _load_dataset
-from .parameters import _MISSING
-from .parameters import _matrix_value
-from .parameters import _normalize_component
-from .parameters import _resolve_component_field_with_source
-from .parameters import _solvent_token_for_component
-from .parameters import get_prop_dict
-from .parameters import molality_to_molefraction
+from .parameters import (
+    _MISSING,
+    _deterministic_default,
+    _invalidate_dataset_cache,
+    _load_dataset,
+    _matrix_value,
+    _normalize_component,
+    _resolve_component_field_with_source,
+    _solvent_token_for_component,
+    get_prop_dict,
+    molality_to_molefraction,
+)
 
 PURE_NEUTRAL_MODE = "pure_neutral"
 PURE_ION_MODE = "pure_ion"
@@ -250,7 +254,7 @@ class RelativePermittivityResidual:
             record[f"x_{label}"] = float(self.composition.get(label, 0.0))
         return record
 
-    def to_fit_term(self, *, species: Sequence[str] | None = None) -> "FitTerm":
+    def to_fit_term(self, *, species: Sequence[str] | None = None) -> FitTerm:
         """Return this residual as a first-class regression term descriptor."""
         return FitTerm(
             term_type=TERM_RELATIVE_PERMITTIVITY,
@@ -2586,12 +2590,14 @@ def evaluate_reactive_electrolyte_bubble_residuals(
     shaping, and compact per-record diagnostics.
     """
 
-    from .reactive_regression import ReactiveElectrolyteBatch
-    from .reactive_regression import ReactiveElectrolyteBatchOptions
-    from .reactive_regression import ReactiveElectrolyteRegressionContext
-    from .reactive_regression import ReactiveElectrolyteRow
-    from .reactive_regression import build_reactive_regression_objective
     from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions
+    from .reactive_regression import (
+        ReactiveElectrolyteBatch,
+        ReactiveElectrolyteBatchOptions,
+        ReactiveElectrolyteRegressionContext,
+        ReactiveElectrolyteRow,
+        build_reactive_regression_objective,
+    )
 
     normalized_records = _normalize_records(records)
     species_labels = tuple(str(label) for label in species)

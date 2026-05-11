@@ -47,6 +47,210 @@ class EquilibriumOptions:
     return_best_effort: bool = False
 
 
+@dataclass(frozen=True, slots=True)
+class EquilibriumProblem:
+    """Base class for typed equilibrium problem objects."""
+
+    def solve(self, mixture):
+        """Solve this problem with a mixture instance."""
+        raise NotImplementedError("EquilibriumProblem subclasses define solve(mixture).")
+
+
+@dataclass(frozen=True, slots=True)
+class TPFlash(EquilibriumProblem):
+    """Neutral TP flash problem."""
+
+    T: float
+    P: float
+    z: Any
+    options: EquilibriumOptions | None = None
+
+    def solve(self, mixture):
+        return mixture.flash_tp(T=self.T, P=self.P, z=self.z, options=self.options)
+
+
+@dataclass(frozen=True, slots=True)
+class StabilityAnalysis(EquilibriumProblem):
+    """Neutral or electrolyte tangent-plane-distance stability problem."""
+
+    T: float
+    P: float
+    z: Any | None = None
+    options: EquilibriumOptions | None = None
+    parent_phase: str | None = None
+    trial_phases: Any | None = None
+    solvent_feed: Mapping[str, float] | None = None
+    salt_molality: Mapping[str, float] | None = None
+    electrolyte: bool = False
+
+    def solve(self, mixture):
+        if self.electrolyte or self.solvent_feed is not None or self.salt_molality is not None:
+            return mixture.electrolyte_stability_tp(
+                T=self.T,
+                P=self.P,
+                z=self.z,
+                solvent_feed=self.solvent_feed,
+                salt_molality=self.salt_molality,
+                options=self.options,
+            )
+        return mixture.stability_tp(
+            T=self.T,
+            P=self.P,
+            z=self.z,
+            options=self.options,
+            parent_phase=self.parent_phase,
+            trial_phases=self.trial_phases,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class BubblePoint(EquilibriumProblem):
+    """Neutral bubble-point problem."""
+
+    T: float
+    x: Any
+    options: EquilibriumOptions | None = None
+
+    def solve(self, mixture):
+        return mixture.bubble_p(T=self.T, x=self.x, options=self.options)
+
+
+@dataclass(frozen=True, slots=True)
+class DewPoint(EquilibriumProblem):
+    """Neutral dew-point problem."""
+
+    y: Any
+    T: float | None = None
+    P: float | None = None
+    options: EquilibriumOptions | None = None
+
+    def solve(self, mixture):
+        if (self.T is None) == (self.P is None):
+            raise InputError("DewPoint requires exactly one of T or P.")
+        if self.T is not None:
+            return mixture.dew_p(T=self.T, y=self.y, options=self.options)
+        return mixture.dew_t(P=self.P, y=self.y, options=self.options)
+
+
+@dataclass(frozen=True, slots=True)
+class LLEProblem(EquilibriumProblem):
+    """Neutral liquid-liquid equilibrium problem."""
+
+    T: float
+    P: float
+    z: Any
+    options: EquilibriumOptions | None = None
+    initial_phases: Any | None = None
+
+    def solve(self, mixture):
+        return mixture.lle_tp(
+            T=self.T,
+            P=self.P,
+            z=self.z,
+            options=self.options,
+            initial_phases=self.initial_phases,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ElectrolyteLLEProblem(EquilibriumProblem):
+    """Charge-constrained electrolyte LLE problem."""
+
+    T: float
+    P: float
+    z: Any | None = None
+    solvent_feed: Mapping[str, float] | None = None
+    salt_molality: Mapping[str, float] | None = None
+    options: EquilibriumOptions | None = None
+    initial_phases: Any | None = None
+
+    def solve(self, mixture):
+        return mixture.electrolyte_lle_tp(
+            T=self.T,
+            P=self.P,
+            z=self.z,
+            solvent_feed=self.solvent_feed,
+            salt_molality=self.salt_molality,
+            initial_phases=self.initial_phases,
+            options=self.options,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ElectrolyteBubblePoint(EquilibriumProblem):
+    """Fixed-liquid electrolyte bubble-point problem."""
+
+    T: float
+    x_liq: Any | None = None
+    z: Any | None = None
+    vapor_species: Any | None = None
+    volatile_species: Any | None = None
+    nonvolatile_species: Any | None = None
+    options: Any | None = None
+
+    def solve(self, mixture):
+        return mixture.electrolyte_bubble_p(
+            T=self.T,
+            x_liq=self.x_liq,
+            z=self.z,
+            vapor_species=self.vapor_species,
+            volatile_species=self.volatile_species,
+            nonvolatile_species=self.nonvolatile_species,
+            options=self.options,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ReactiveSpeciationProblem(EquilibriumProblem):
+    """Homogeneous activity-coupled reactive speciation problem."""
+
+    T: float
+    P: float
+    balances: Any
+    totals: Mapping[str, float]
+    reactions: Any
+    initial_x: Any | None = None
+    z: Any | None = None
+    options: Any | None = None
+
+    def solve(self, mixture):
+        return mixture.chemical_equilibrium(
+            T=self.T,
+            P=self.P,
+            balances=self.balances,
+            totals=self.totals,
+            reactions=self.reactions,
+            initial_x=self.initial_x,
+            z=self.z,
+            options=self.options,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ReactiveElectrolyteBubbleProblem(ReactiveSpeciationProblem):
+    """Reactive speciation followed by fixed-liquid electrolyte bubble pressure."""
+
+    P_seed: float | None = None
+    vapor_species: Any | None = None
+    volatile_species: Any | None = None
+    nonvolatile_species: Any | None = None
+
+    def solve(self, mixture):
+        return mixture.reactive_electrolyte_bubble_p(
+            T=self.T,
+            P_seed=self.P if self.P_seed is None else self.P_seed,
+            balances=self.balances,
+            totals=self.totals,
+            reactions=self.reactions,
+            initial_x=self.initial_x,
+            z=self.z,
+            vapor_species=self.vapor_species,
+            volatile_species=self.volatile_species,
+            nonvolatile_species=self.nonvolatile_species,
+            options=self.options,
+        )
+
+
 @dataclass(frozen=True, slots=True, init=False)
 class EquilibriumPhase:
     """One phase returned by an equilibrium calculation."""
@@ -278,8 +482,8 @@ def electrolyte_feed_from_molality(
     moles += solvent_x * neutral_moles
     for salt_label, molality in salt_items.items():
         cation_i, anion_i = _species_pair_for_salt(species, charges, salt_label)
-        z_cat = int(round(abs(float(charges[cation_i]))))
-        z_an = int(round(abs(float(charges[anion_i]))))
+        z_cat = round(abs(float(charges[cation_i])))
+        z_an = round(abs(float(charges[anion_i])))
         gcd_z = int(np.gcd(z_cat, z_an))
         nu_cation = z_an // gcd_z
         nu_anion = z_cat // gcd_z
@@ -437,10 +641,10 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
 
 def _finite_float_option(value: Any, label: str) -> float:
     if isinstance(value, bool) or not isinstance(value, Real):
-        raise InputError("options.{} must be a finite real number.".format(label))
+        raise InputError(f"options.{label} must be a finite real number.")
     out = float(value)
     if not np.isfinite(out):
-        raise InputError("options.{} must be finite.".format(label))
+        raise InputError(f"options.{label} must be finite.")
     return out
 
 
@@ -449,7 +653,7 @@ def _optional_positive_float_option(value: Any, label: str) -> float | None:
         return None
     out = _finite_float_option(value, label)
     if out <= 0.0:
-        raise InputError("options.{} must be positive when provided.".format(label))
+        raise InputError(f"options.{label} must be positive when provided.")
     return out
 
 
@@ -457,21 +661,19 @@ def _optional_positive_int_option(value: Any, label: str) -> int | None:
     if value is None:
         return None
     if isinstance(value, bool) or not isinstance(value, Integral):
-        raise InputError("options.{} must be an integer greater than zero when provided.".format(label))
+        raise InputError(f"options.{label} must be an integer greater than zero when provided.")
     out = int(value)
     if out <= 0:
-        raise InputError("options.{} must be an integer greater than zero when provided.".format(label))
+        raise InputError(f"options.{label} must be an integer greater than zero when provided.")
     return out
 
 
 def _normalize_feed(z: Any, ncomp: int, min_composition: float, kind: str) -> np.ndarray:
     if z is None:
-        raise InputError("z is required for kind='{}'.".format(kind))
+        raise InputError(f"z is required for kind='{kind}'.")
     feed = np.asarray(z, dtype=float).flatten()
     if feed.size != int(ncomp):
-        raise InputError(
-            "Feed composition length ({}) must match mixture component count ({}).".format(feed.size, ncomp)
-        )
+        raise InputError(f"Feed composition length ({feed.size}) must match mixture component count ({ncomp}).")
     if not np.all(np.isfinite(feed)):
         raise InputError("Feed composition z must contain only finite values.")
     if np.any(feed < 0.0):
@@ -481,16 +683,16 @@ def _normalize_feed(z: Any, ncomp: int, min_composition: float, kind: str) -> np
         raise InputError("Feed composition z must have a positive sum.")
     feed = feed / total
     if np.any(feed < min_composition):
-        raise InputError("{} requires each feed composition entry to be >= min_composition.".format(kind))
+        raise InputError(f"{kind} requires each feed composition entry to be >= min_composition.")
     return feed
 
 
 def _positive_scalar(value: Any, label: str, kind: str) -> float:
     if value is None:
-        raise InputError("{} is required for kind='{}'.".format(label, kind))
+        raise InputError(f"{label} is required for kind='{kind}'.")
     out = float(value)
     if not np.isfinite(out) or out <= 0.0:
-        raise InputError("{} must be a positive finite scalar.".format(label))
+        raise InputError(f"{label} must be a positive finite scalar.")
     return out
 
 
@@ -503,7 +705,7 @@ def _reject_ion_containing_mixture(mixture: Any) -> None:
 def _require_ion_containing_mixture(mixture: Any, kind: str) -> None:
     charges = _mixture_charges(mixture)
     if not np.any(np.abs(charges) > 1.0e-12):
-        raise InputError("{} requires an ion-containing mixture.".format(kind))
+        raise InputError(f"{kind} requires an ion-containing mixture.")
 
 
 def _mixture_charges(mixture: Any) -> np.ndarray:
@@ -516,7 +718,7 @@ def _mixture_charges(mixture: Any) -> np.ndarray:
 def _require_charge_neutral(composition: np.ndarray, charges: np.ndarray, label: str) -> None:
     charge = float(np.dot(np.asarray(composition, dtype=float), np.asarray(charges, dtype=float)))
     if abs(charge) > 1.0e-10:
-        raise InputError("{} must be charge neutral; charge balance is {}.".format(label, charge))
+        raise InputError(f"{label} must be charge neutral; charge balance is {charge}.")
 
 
 def _normalize_electrolyte_feed(
@@ -552,9 +754,9 @@ def _normalize_solvent_feed(species: list[str], charges: np.ndarray, solvent_fee
             try:
                 index = species.index(str(label))
             except ValueError as exc:
-                raise InputError("solvent_feed species '{}' is not present in the mixture.".format(label)) from exc
+                raise InputError(f"solvent_feed species '{label}' is not present in the mixture.") from exc
             if index not in neutral_indices:
-                raise InputError("solvent_feed species '{}' is ionic; expected neutral solvents only.".format(label))
+                raise InputError(f"solvent_feed species '{label}' is ionic; expected neutral solvents only.")
             solvent_x[index] = float(value)
     else:
         values = np.asarray(solvent_feed, dtype=float).flatten()
@@ -601,7 +803,7 @@ def _species_pair_for_salt(species: list[str], charges: np.ndarray, salt_label: 
             if pair_label == normalized:
                 matches.append((cation_i, anion_i))
     if len(matches) != 1:
-        raise InputError("Could not uniquely map salt_molality key '{}' onto mixture ions.".format(salt_label))
+        raise InputError(f"Could not uniquely map salt_molality key '{salt_label}' onto mixture ions.")
     return matches[0]
 
 
@@ -613,7 +815,7 @@ def _ion_stem(label: str, charge: float | None = None) -> str:
     text = str(label)
     stripped = text.replace("+", "").replace("-", "")
     if charge is not None and ("+" in text or "-" in text):
-        charge_int = int(round(abs(float(charge))))
+        charge_int = round(abs(float(charge)))
         suffix = str(charge_int)
         if charge_int > 1 and stripped.endswith(suffix):
             stripped = stripped[: -len(suffix)]
@@ -621,8 +823,8 @@ def _ion_stem(label: str, charge: float | None = None) -> str:
 
 
 def _salt_stoichiometry(cation_charge: float, anion_charge: float) -> tuple[int, int]:
-    cation_int = int(round(abs(float(cation_charge))))
-    anion_int = int(round(abs(float(anion_charge))))
+    cation_int = round(abs(float(cation_charge)))
+    anion_int = round(abs(float(anion_charge)))
     if cation_int <= 0 or anion_int <= 0:
         raise InputError("electrolyte salt stoichiometry requires non-zero ion charges.")
     if (
@@ -760,7 +962,7 @@ def _phase_state(
     except SolutionError:
         raise
     except Exception as exc:
-        raise SolutionError("Failed to construct {} phase during {}: {}".format(label, context, exc)) from exc
+        raise SolutionError(f"Failed to construct {label} phase during {context}: {exc}") from exc
     diagnostics = state.state_diagnostics(species=mixture.species) if options.include_phase_diagnostics else None
     return {
         "state": state,
@@ -793,7 +995,7 @@ def _normalize_trial_phases(trial_phases: Any) -> tuple[str, ...]:
 def _normalize_phase_token(value: Any, label: str) -> str:
     token = str(value).strip().lower()
     if token not in {"liq", "vap"}:
-        raise InputError("{} must be None, 'liq', or 'vap'.".format(label))
+        raise InputError(f"{label} must be None, 'liq', or 'vap'.")
     return token
 
 
@@ -801,20 +1003,18 @@ def _normalize_initial_phase(value: Any, ncomp: int, min_composition: float, lab
     composition = np.asarray(value, dtype=float).flatten()
     if composition.size != int(ncomp):
         raise InputError(
-            "initial_phases {} length ({}) must match mixture component count ({}).".format(
-                label, composition.size, ncomp
-            )
+            f"initial_phases {label} length ({composition.size}) must match mixture component count ({ncomp})."
         )
     if not np.all(np.isfinite(composition)):
-        raise InputError("initial_phases {} must contain only finite values.".format(label))
+        raise InputError(f"initial_phases {label} must contain only finite values.")
     if np.any(composition < 0.0):
-        raise InputError("initial_phases {} must be non-negative.".format(label))
+        raise InputError(f"initial_phases {label} must be non-negative.")
     total = float(np.sum(composition))
     if total <= 0.0:
-        raise InputError("initial_phases {} must have a positive sum.".format(label))
+        raise InputError(f"initial_phases {label} must have a positive sum.")
     composition = composition / total
     if np.any(composition < min_composition):
-        raise InputError("initial_phases {} entries must be >= min_composition.".format(label))
+        raise InputError(f"initial_phases {label} entries must be >= min_composition.")
     return composition
 
 
@@ -1227,7 +1427,7 @@ def _neutral_bubble_dew_outer(
             "neutral_fallback_used": fallback_used,
             "neutral_fallback_reason": fallback_reason,
         }
-        raise SolutionError("neutral {} did not bracket a scalar root".format(problem_kind), diagnostics)
+        raise SolutionError(f"neutral {problem_kind} did not bracket a scalar root", diagnostics)
     left, right = bracket
     history = [left, right]
     best = min((left, right), key=lambda item: abs(float(item["residual"])))
@@ -1288,7 +1488,7 @@ def _neutral_bubble_dew_outer(
         "neutral_fallback_used": fallback_used,
         "neutral_fallback_reason": fallback_reason,
     }
-    raise SolutionError("neutral {} did not converge".format(problem_kind), diagnostics)
+    raise SolutionError(f"neutral {problem_kind} did not converge", diagnostics)
 
 
 def _neutral_bubble_dew_local_grid(solve_pressure: bool) -> list[float]:
@@ -1331,7 +1531,9 @@ def _neutral_bubble_dew_evaluate(
     incipient = np.array(source_composition, dtype=float, copy=True)
     source_state = _phase_state(mixture, temperature, pressure, source_composition, source_phase, options, problem_kind)
     last_residual = float("inf")
-    for inner_iteration in range(max(1, options.max_iterations)):
+    inner_iterations = 0
+    for _inner_iteration in range(max(1, options.max_iterations)):
+        inner_iterations = _inner_iteration + 1
         incipient_state = _phase_state(
             mixture, temperature, pressure, incipient, incipient_phase, options, problem_kind
         )
@@ -1341,7 +1543,7 @@ def _neutral_bubble_dew_evaluate(
         residual = float(np.sum(raw) - 1.0)
         total = float(np.sum(raw))
         if not np.isfinite(total) or total <= 0.0:
-            raise SolutionError("neutral {} produced a non-positive incipient composition sum".format(problem_kind))
+            raise SolutionError(f"neutral {problem_kind} produced a non-positive incipient composition sum")
         updated = np.maximum(raw / total, options.min_composition)
         updated = updated / float(np.sum(updated))
         delta = float(np.max(np.abs(updated - incipient)))
@@ -1369,7 +1571,7 @@ def _neutral_bubble_dew_evaluate(
         "incipient_state": incipient_state,
         "fugacity_residual": fugacity_residual,
         "fugacity_residual_norm": float(np.max(np.abs(fugacity_residual))),
-        "inner_iterations": inner_iteration + 1,
+        "inner_iterations": inner_iterations,
     }
 
 

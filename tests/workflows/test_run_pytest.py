@@ -4,8 +4,7 @@ import sys
 from pathlib import Path
 
 import run_pytest
-from scripts import doctor
-from scripts import validate_project
+from scripts import doctor, validate_project
 
 
 def test_confidence_slice_extends_generic_targets_without_changing_generic():

@@ -27,7 +27,9 @@ author = "Tanner Polley"
 # The full version, including alpha/beta/rc tags
 _pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
 _match = re.search(r'^version = "([^"]+)"$', _pyproject, re.MULTILINE)
-release = _match.group(1) if _match else "1.5.0"
+if not _match:
+    raise RuntimeError("Could not derive documentation release from pyproject.toml")
+release = _match.group(1)
 
 
 # -- General configuration ---------------------------------------------------

@@ -137,3 +137,24 @@ def test_pypi_publish_workflow_uses_trusted_publishing() -> None:
     assert "pp*" not in workflow
     assert "Workflow filename: ``publish-pypi.yml``" in publishing_docs
     assert "Environment name: ``pypi``" in publishing_docs
+
+
+def test_version_fallbacks_are_derived_from_pyproject() -> None:
+    cmake = _read("CMakeLists.txt")
+    docs_conf = _read("docs/conf.py")
+
+    assert 'set(SKBUILD_PROJECT_VERSION "1.5.0")' not in cmake
+    assert 'release = "1.5.0"' not in docs_conf
+    assert "pyproject.toml" in cmake
+    assert "pyproject.toml" in docs_conf
+    assert "Could not derive documentation release from pyproject.toml" in docs_conf
+
+
+def test_native_warning_options_apply_to_all_native_targets() -> None:
+    cmake = _read("CMakeLists.txt")
+
+    assert 'option(EPCSAFT_WARNINGS_AS_ERRORS "Treat native warnings as errors" OFF)' in cmake
+    assert 'option(EPCSAFT_ENABLE_SANITIZERS "Enable ASAN/UBSAN in debug builds" OFF)' in cmake
+    assert "set(EPCSAFT_NATIVE_TARGETS epcsaft_native _core)" in cmake
+    assert "foreach(target_name IN LISTS EPCSAFT_NATIVE_TARGETS)" in cmake
+    assert "target_compile_options(${target_name} PRIVATE -Wall -Wextra -Wpedantic)" in cmake

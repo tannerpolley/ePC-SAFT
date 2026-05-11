@@ -12,11 +12,7 @@ pytestmark = pytest.mark.skipif(
 
 import epcsaft
 from epcsaft import initial_phases_from_result
-from tests.equilibrium.test_hubach_electrolyte_lle import P_PA
-from tests.equilibrium.test_hubach_electrolyte_lle import T_K
-from tests.equilibrium.test_hubach_electrolyte_lle import _hubach_mixture
-from tests.equilibrium.test_hubach_electrolyte_lle import _row0_feed
-from tests.equilibrium.test_hubach_electrolyte_lle import _row0_initial_phases
+from tests.equilibrium.test_hubach_electrolyte_lle import P_PA, T_K, _hubach_mixture, _row0_feed, _row0_initial_phases
 
 
 def test_initial_phases_from_result_round_trips_hubach_split() -> None:

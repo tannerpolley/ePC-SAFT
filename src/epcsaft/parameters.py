@@ -21,8 +21,8 @@ import csv
 import json
 import math
 import re
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Dict, Iterable
 
 import numpy as np
 
@@ -342,7 +342,7 @@ _DEFAULT_USER_OPTIONS = {
     "elec_model": copy.deepcopy(_CANONICAL_ELEC_MODEL),
 }
 
-_DATASET_CACHE: Dict[str, dict] = {}
+_DATASET_CACHE: dict[str, dict] = {}
 _MISSING = object()
 
 
@@ -1577,8 +1577,8 @@ def molality_to_molefraction(molality, species=None, solvent=None, basis_mass_kg
     if z_cat <= 0.0 or z_an >= 0.0:
         raise ValueError("Invalid cation/anion charges in species list.")
 
-    z_cat_abs = int(round(abs(z_cat)))
-    z_an_abs = int(round(abs(z_an)))
+    z_cat_abs = round(abs(z_cat))
+    z_an_abs = round(abs(z_an))
     gcd_z = math.gcd(z_cat_abs, z_an_abs)
     v_cat = z_an_abs // gcd_z
     v_an = z_cat_abs // gcd_z

@@ -120,7 +120,7 @@ def _full_rebuild_reuse_note(rebuild_row: dict, reuse_row: dict, ratio: float) -
 
 def _public_callables(cls) -> set[str]:
     names = set()
-    for name, member in inspect.getmembers(cls, predicate=callable):
+    for name, _member in inspect.getmembers(cls, predicate=callable):
         if name.startswith("_"):
             continue
         names.add(name)

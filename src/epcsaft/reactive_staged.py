@@ -7,10 +7,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from ._types import InputError
-from .reactive_speciation import ReactiveSpeciationOptions
-from .reactive_speciation import ReactiveSpeciationResult
-from .reactive_speciation import _json_like
-from .reactive_speciation import solve_reactive_speciation
+from .reactive_speciation import (
+    ReactiveSpeciationOptions,
+    ReactiveSpeciationResult,
+    _json_like,
+    solve_reactive_speciation,
+)
 
 
 @dataclass(frozen=True, slots=True)

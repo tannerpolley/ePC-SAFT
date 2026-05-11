@@ -16,6 +16,8 @@ Start Here
    getting_started
    package_guide
    equilibrium_cookbook
+   package_architecture
+   equilibrium_architecture
 
 Installation and Source Work
 ----------------------------
@@ -36,6 +38,7 @@ Create Your Own Data
    :caption: Parameter Files
 
    user_parameter_templates
+   parameter_schema
    parameter_regression
    user_options
 
@@ -48,6 +51,7 @@ Reference
 
    electrolyte_lle_workflow
    electrolyte_vle_reactive_workflow
+   diagnostics
    api_reference
    references
 

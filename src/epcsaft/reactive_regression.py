@@ -8,24 +8,18 @@ import math
 import time
 from collections import Counter
 from collections.abc import Mapping, Sequence
-from dataclasses import asdict
-from dataclasses import dataclass
-from dataclasses import field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from ._types import InputError
-from ._types import SolutionError
-from .epcsaft import ePCSAFTMixture
 from . import reactive_electrolyte as reactive_electrolyte_module
 from . import reactive_speciation as reactive_speciation_module
-from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions
-from .reactive_electrolyte import ReactiveElectrolyteBubbleResult
-from .reactive_speciation import ReactionDefinition
-from .reactive_speciation import ReactiveSpeciationOptions
-from .reactive_speciation import ReactiveSpeciationResult
+from ._types import InputError, SolutionError
+from .epcsaft import ePCSAFTMixture
+from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions, ReactiveElectrolyteBubbleResult
+from .reactive_speciation import ReactionDefinition, ReactiveSpeciationOptions, ReactiveSpeciationResult
 
 _PRESSURE_FAMILY_ALIASES = {
     "pressure_linear": "pressure_linear",
@@ -222,7 +216,7 @@ class ReactiveElectrolyteRow:
         default_balances: Mapping[str, Mapping[str, float]],
         default_reactions: Sequence[ReactionDefinition] | Sequence[Mapping[str, Any]],
         default_vapor_species: Sequence[str] | None,
-    ) -> "ReactiveElectrolyteRow":
+    ) -> ReactiveElectrolyteRow:
         return cls(
             row_id=str(record.get("row_id", record.get("id", "row"))),
             T=float(record["T"]),
@@ -617,7 +611,7 @@ class ReactiveElectrolyteRegressionContext:
         mixture_factory_builder: Any | None = None,
         reactive_speciation_options: ReactiveSpeciationOptions | None = None,
         reactive_bubble_options: ReactiveElectrolyteBubbleOptions | None = None,
-    ) -> "ReactiveElectrolyteRegressionContext":
+    ) -> ReactiveElectrolyteRegressionContext:
         batch = ReactiveElectrolyteBatch(
             species=species,
             rows=rows,
@@ -1893,20 +1887,20 @@ def _apply_parameter_value(
 __all__ = [
     "ReactiveElectrolyteBatch",
     "ReactiveElectrolyteBatchOptions",
+    "ReactiveElectrolyteBatchResult",
     "ReactiveElectrolyteRegressionContext",
     "ReactiveElectrolyteRow",
     "ReactiveElectrolyteRowResult",
-    "ReactiveElectrolyteBatchResult",
+    "ReactiveRegressionFitResult",
+    "ReactiveRegressionJacobianResult",
     "ReactiveRegressionObjective",
     "ReactiveRegressionObjectiveResult",
-    "ReactiveRegressionJacobianResult",
-    "ReactiveRegressionFitResult",
     "build_reactive_regression_objective",
     "evaluate_reactive_regression_objective",
     "fit_reactive_electrolyte_parameters",
     "summarize_regression_result",
-    "write_regression_summary",
-    "write_regression_row_table",
     "write_regression_parameter_table",
     "write_regression_residual_table",
+    "write_regression_row_table",
+    "write_regression_summary",
 ]

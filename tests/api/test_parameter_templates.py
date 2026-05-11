@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for user-owned parameter template generation."""
 
 import json
@@ -6,10 +5,8 @@ import json
 import numpy as np
 import pytest
 
-from epcsaft import create_parameter_template
-from epcsaft import ePCSAFTMixture
-from epcsaft.parameters import _resolve_runtime_options
-from epcsaft.parameters import minimize_user_options
+from epcsaft import create_parameter_template, ePCSAFTMixture
+from epcsaft.parameters import _resolve_runtime_options, minimize_user_options
 
 
 def test_create_parameter_template_creates_loadable_scaffold(tmp_path):

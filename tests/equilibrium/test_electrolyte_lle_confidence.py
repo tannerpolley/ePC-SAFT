@@ -1,17 +1,19 @@
 from __future__ import annotations
 
-import json
 import importlib
+import json
 import os
 from pathlib import Path
 
 import numpy as np
 import pytest
 
-from epcsaft.equilibrium_core.confidence import benchmark_case_to_native_inputs
-from epcsaft.equilibrium_core.confidence import load_benchmark_suite
-from epcsaft.equilibrium_core.confidence import run_confidence_suite
-from epcsaft.equilibrium_core.confidence import run_smoke_cases
+from epcsaft.equilibrium_core.confidence import (
+    benchmark_case_to_native_inputs,
+    load_benchmark_suite,
+    run_confidence_suite,
+    run_smoke_cases,
+)
 
 
 def test_khudaida_benchmark_fixture_loads_charge_neutral_cases() -> None:

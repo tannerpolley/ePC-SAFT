@@ -7,8 +7,7 @@ import numpy as np
 import pytest
 
 import epcsaft
-from epcsaft import _core
-from epcsaft import ePCSAFTMixture
+from epcsaft import _core, ePCSAFTMixture
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 

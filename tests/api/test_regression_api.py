@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Regression API contract tests outside the hydrocarbon benchmark."""
 
 from __future__ import annotations
@@ -6,22 +5,19 @@ from __future__ import annotations
 import csv
 from types import SimpleNamespace
 
-import epcsaft
-import epcsaft.regression as regression_module
 import numpy as np
 import pytest
 
-from epcsaft import FitProblem
-from epcsaft import FitResult
-from epcsaft import create_parameter_template
-from epcsaft import fit_pure_neutral
-from epcsaft import write_fit_result
+import epcsaft
+import epcsaft.regression as regression_module
+from epcsaft import FitProblem, FitResult, create_parameter_template, fit_pure_neutral, write_fit_result
 from epcsaft._types import InputError
-from epcsaft.regression import _debug_native_pure_neutral_objective
-from epcsaft.regression import _fit_pure_neutral_least_squares_internal
-from epcsaft.regression import evaluate_generic_regression_derivatives
-from tests.helpers.regression_cases import _methane_like_records
-from tests.helpers.regression_cases import _minimal_neutral_metadata
+from epcsaft.regression import (
+    _debug_native_pure_neutral_objective,
+    _fit_pure_neutral_least_squares_internal,
+    evaluate_generic_regression_derivatives,
+)
+from tests.helpers.regression_cases import _methane_like_records, _minimal_neutral_metadata
 
 
 def test_public_regression_surface_includes_ion_and_binary_v1():
@@ -173,7 +169,7 @@ def test_reactive_electrolyte_regression_residuals_use_continuation_seed(monkeyp
 
 
 def test_provenance_validation_rejects_indirect_dborn_without_electrostatic_data():
-    with pytest.raises(InputError, match="d_born.*dielectric|d_born.*ion-activity"):
+    with pytest.raises(InputError, match=r"d_born.*dielectric|d_born.*ion-activity"):
         epcsaft.validate_regression_provenance(
             [
                 epcsaft.FitParameter(
@@ -215,7 +211,7 @@ def test_provenance_validation_gates_ion_involving_binary_interactions():
             strict=True,
         )
 
-    with pytest.raises(InputError, match="neutral-ion.*direct"):
+    with pytest.raises(InputError, match=r"neutral-ion.*direct"):
         epcsaft.validate_regression_provenance(
             [
                 epcsaft.BinaryInteraction(
@@ -476,7 +472,7 @@ def test_fit_pure_ion_requires_composition_and_activity_or_osmotic_records():
             dataset="2026_Khudaida",
         )
 
-    with pytest.raises(InputError, match="osmotic|mean-ionic|mean ionic"):
+    with pytest.raises(InputError, match=r"osmotic|mean-ionic|mean ionic"):
         epcsaft.fit_pure_ion(
             [{"T": 298.15, "P": 101325.0, "molality": 0.1}],
             "Na+",
@@ -677,7 +673,7 @@ def test_fit_binary_pair_rejects_ion_involving_kij_without_direct_electrolyte_pr
         }
     ]
 
-    with pytest.raises(InputError, match="opposite-sign ionic pair.*direct electrolyte"):
+    with pytest.raises(InputError, match=r"opposite-sign ionic pair.*direct electrolyte"):
         epcsaft.fit_binary_pair(
             records,
             ("Na+", "Cl-"),

@@ -6,9 +6,7 @@ import os
 
 import pytest
 
-from scripts.profile_regression_runtime import REPORT_CSV
-from scripts.profile_regression_runtime import REPORT_MD
-from scripts.profile_regression_runtime import run_regression_runtime_profile
+from scripts.profile_regression_runtime import REPORT_CSV, REPORT_MD, run_regression_runtime_profile
 
 
 def _should_run_perf() -> bool:

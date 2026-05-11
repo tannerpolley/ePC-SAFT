@@ -1,4 +1,5 @@
 import numpy as np
+
 from epcsaft import create_parameter_template, ePCSAFTMixture
 
 # Toluene
@@ -17,9 +18,9 @@ state = mixture.state(T=t, x=np.asarray([1.0]), P=p)
 den = state.density()
 den_mass = state.density(units="mass")
 den_molar = state.molar_density()
-print("Density of toluene at {} K:".format(t), den, "mol m^-3")
-print("Mass density of toluene at {} K:".format(t), den_mass, "kg m^-3")
-print("Explicit molar density of toluene at {} K:".format(t), den_molar, "mol m^-3")
+print(f"Density of toluene at {t} K:", den, "mol m^-3")
+print(f"Mass density of toluene at {t} K:", den_mass, "kg m^-3")
+print(f"Explicit molar density of toluene at {t} K:", den_molar, "mol m^-3")
 
 # Water using a user-owned external parameter folder
 template_root = create_parameter_template(
@@ -39,6 +40,6 @@ state = mixture.state(T=t, x=np.asarray([0.9998, 1e-4, 1e-4]), P=p)
 den = state.density()
 den_mass = state.density(units="mass")
 den_molar = state.molar_density()
-print("Density of water at {} K:".format(t), den, "mol m^-3")
-print("Mass density of water at {} K:".format(t), den_mass, "kg m^-3")
-print("Explicit molar density of water at {} K:".format(t), den_molar, "mol m^-3")
+print(f"Density of water at {t} K:", den, "mol m^-3")
+print(f"Mass density of water at {t} K:", den_mass, "kg m^-3")
+print(f"Explicit molar density of water at {t} K:", den_molar, "mol m^-3")

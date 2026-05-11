@@ -1,17 +1,17 @@
-# -*- coding: utf-8 -*-
 """Fast hydrocarbon neutral-regression contracts against Gross/Sadowski (2001)."""
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
-import numpy as np
-
 from epcsaft.regression import _debug_native_pure_neutral_objective
-from tests.helpers.regression_cases import HYDROCARBON_REFERENCE
-from tests.helpers.regression_cases import _load_workbook_reference_rows
-from tests.helpers.regression_cases import _neutral_fixed_parameters
-from tests.helpers.regression_cases import _real_saturation_records
+from tests.helpers.regression_cases import (
+    HYDROCARBON_REFERENCE,
+    _load_workbook_reference_rows,
+    _neutral_fixed_parameters,
+    _real_saturation_records,
+)
 
 
 def test_hydrocarbon_reference_csv_matches_gross_2001_table2():

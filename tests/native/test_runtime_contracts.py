@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Native runtime contracts for pressure-vs-density closure and contribution terms."""
 
 from __future__ import annotations
@@ -7,13 +6,10 @@ import json
 
 import numpy as np
 import pytest
-
-from epcsaft import InputError
-from epcsaft import SolutionError
-from epcsaft import ePCSAFTMixture
 from epcsaft._core import NativeValueError
-from tests.helpers.native_cases import _ionic_state
-from tests.helpers.native_cases import _neutral_state
+
+from epcsaft import InputError, SolutionError, ePCSAFTMixture
+from tests.helpers.native_cases import _ionic_state, _neutral_state
 
 
 def _assert_close_terms(observed: dict[str, float], expected: dict[str, float]) -> None:

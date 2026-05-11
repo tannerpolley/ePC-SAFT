@@ -273,7 +273,7 @@ def _benchmark_case(prepared: PreparedBenchmarkCase, *, warmup: int, repeat: int
         "failures": int(failures),
         "fallback_used": bool(fallback_used),
         "median_ns": int(np.median(timings)),
-        "mean_ns": int(round(statistics.fmean(timings_ns))),
+        "mean_ns": round(statistics.fmean(timings_ns)),
         "min_ns": int(np.min(timings)),
         "max_ns": int(np.max(timings)),
         "p10_ns": int(np.percentile(timings, 10.0)),

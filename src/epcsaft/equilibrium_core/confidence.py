@@ -10,17 +10,17 @@ import argparse
 import csv
 import json
 import math
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from epcsaft._types import SolutionError
 from epcsaft.epcsaft import ePCSAFTMixture
-from epcsaft.equilibrium import EquilibriumOptions
-from epcsaft.equilibrium import _phase_state
+from epcsaft.equilibrium import EquilibriumOptions, _phase_state
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 BENCHMARK_ROOT = REPO_ROOT / "data" / "reference" / "equilibrium_benchmarks" / "electrolyte_lle"
