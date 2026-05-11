@@ -4,6 +4,7 @@ import importlib.util
 from pathlib import Path
 
 import pytest
+import tomllib
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = REPO_ROOT / "scripts" / "build_epcsaft.py"
@@ -40,3 +41,10 @@ def test_build_script_auto_prefers_ninja_for_new_build_tree(monkeypatch) -> None
     args = build._generator_args({"EPCSAFT_CMAKE_GENERATOR": ""}, configured_generator=None)
 
     assert args == ["-G", "Ninja"]
+
+
+def test_build_script_reads_version_from_pyproject() -> None:
+    build = _load_script()
+    pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+
+    assert build._pyproject_version() == pyproject["project"]["version"]

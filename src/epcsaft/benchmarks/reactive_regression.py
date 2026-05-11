@@ -8,7 +8,7 @@ import subprocess
 import time
 from collections import OrderedDict
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -62,6 +62,7 @@ class BenchmarkObservation:
     density_solves: int
     activity_calls: int
     fugacity_calls: int
+    counter_details: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -88,14 +89,26 @@ def _to_float(value: Any) -> float:
 
 def _runtime_cache_stats(mix: epcsaft.ePCSAFTMixture | None = None) -> dict[str, int]:
     if mix is None:
-        return {"reference_state_cache_hits": 0, "reference_state_cache_misses": 0}
+        return {
+            "reference_state_cache_hits": 0,
+            "reference_state_cache_misses": 0,
+            "density_warm_start_hits": 0,
+            "density_warm_start_fallbacks": 0,
+        }
     try:
         payload = mix.runtime_cache_stats()
     except Exception:
-        return {"reference_state_cache_hits": 0, "reference_state_cache_misses": 0}
+        return {
+            "reference_state_cache_hits": 0,
+            "reference_state_cache_misses": 0,
+            "density_warm_start_hits": 0,
+            "density_warm_start_fallbacks": 0,
+        }
     return {
         "reference_state_cache_hits": _to_int(payload.get("reference_state_cache_hits", 0)),
         "reference_state_cache_misses": _to_int(payload.get("reference_state_cache_misses", 0)),
+        "density_warm_start_hits": _to_int(payload.get("density_warm_start_hits", 0)),
+        "density_warm_start_fallbacks": _to_int(payload.get("density_warm_start_fallbacks", 0)),
     }
 
 
@@ -225,6 +238,16 @@ def _run_solve_reactive_speciation(points: Sequence[Mapping[str, Any]]) -> Calla
             density_solves=density_solves,
             activity_calls=activity_calls,
             fugacity_calls=fugacity_calls,
+            counter_details={
+                "native_reference_state_cache_hits": _cache_delta(
+                    cache_before, cache_after, "reference_state_cache_hits"
+                ),
+                "native_reference_state_cache_misses": _cache_delta(
+                    cache_before, cache_after, "reference_state_cache_misses"
+                ),
+                "density_warm_start_hits": _cache_delta(cache_before, cache_after, "density_warm_start_hits"),
+                "density_warm_start_fallbacks": _cache_delta(cache_before, cache_after, "density_warm_start_fallbacks"),
+            },
         )
 
     return _run
@@ -306,6 +329,16 @@ def _run_solve_reactive_bubble(points: Sequence[Mapping[str, Any]]) -> Callable[
             density_solves=density_solves,
             activity_calls=activity_calls,
             fugacity_calls=fugacity_calls,
+            counter_details={
+                "native_reference_state_cache_hits": _cache_delta(
+                    cache_before, cache_after, "reference_state_cache_hits"
+                ),
+                "native_reference_state_cache_misses": _cache_delta(
+                    cache_before, cache_after, "reference_state_cache_misses"
+                ),
+                "density_warm_start_hits": _cache_delta(cache_before, cache_after, "density_warm_start_hits"),
+                "density_warm_start_fallbacks": _cache_delta(cache_before, cache_after, "density_warm_start_fallbacks"),
+            },
         )
 
     return _run
@@ -402,6 +435,12 @@ def _run_objective_legacy(
         density_solves=density_solves,
         activity_calls=activity_calls,
         fugacity_calls=fugacity_calls,
+        counter_details={
+            "native_reference_state_cache_hits": cache_hits,
+            "native_reference_state_cache_misses": cache_misses,
+            "density_warm_start_hits": _cache_delta(cache_before, cache_after, "density_warm_start_hits"),
+            "density_warm_start_fallbacks": _cache_delta(cache_before, cache_after, "density_warm_start_fallbacks"),
+        },
     )
 
 
@@ -475,16 +514,17 @@ def _run_objective_compiled(
         pressure_weight=pressure_weight,
         speciation_weight=speciation_weight,
     )
-    mix = epcsaft.ePCSAFTMixture.from_params(_ionic_mix_params(), species=SPECIES)
     parameter_map = dict(parameter_map or {})
 
     def _run() -> BenchmarkObservation:
-        cache_before = _runtime_cache_stats(mix)
         result = context.evaluate_objective(parameter_map)
-        cache_after = _runtime_cache_stats(mix)
         batch_result = result.batch_result
         target_counter = _safe_mapping(batch_result.diagnostics).get("target_family_counts", {})
         solve_counter = _safe_mapping(batch_result.diagnostics).get("solve_counts", {})
+        context_cache_hits = int(batch_result.cache_stats.get("context_cache_hits", 0))
+        context_cache_misses = int(batch_result.cache_stats.get("context_cache_misses", 0))
+        objective_seed_hits = int(batch_result.cache_stats.get("objective_seed_hits", 0))
+        objective_seed_misses = int(batch_result.cache_stats.get("objective_seed_misses", 0))
         return BenchmarkObservation(
             fingerprint={
                 "case": "reactive_regression_objective_tiny",
@@ -504,15 +544,160 @@ def _run_objective_compiled(
             success_count=batch_result.success_count,
             failure_count=batch_result.failure_count,
             residual_count=int(result.residuals.size),
-            cache_hits=int(batch_result.cache_stats.get("objective_seed_hits", 0))
-            + _cache_delta(cache_before, cache_after, "reference_state_cache_hits"),
-            cache_misses=int(batch_result.cache_stats.get("objective_seed_misses", 0))
-            + _cache_delta(cache_before, cache_after, "reference_state_cache_misses"),
+            cache_hits=context_cache_hits + objective_seed_hits,
+            cache_misses=context_cache_misses + objective_seed_misses,
             speciation_solves=int(solve_counter.get("speciation_solves", 0)),
             bubble_solves=int(solve_counter.get("bubble_solves", 0)),
             density_solves=int(solve_counter.get("density_solves", 0)),
             activity_calls=int(solve_counter.get("activity_calls", 0)),
             fugacity_calls=int(target_counter.get("partial_pressure", 0)),
+            counter_details={
+                "context_cache_hits": context_cache_hits,
+                "context_cache_misses": context_cache_misses,
+                "objective_seed_hits": objective_seed_hits,
+                "objective_seed_misses": objective_seed_misses,
+                "native_reference_state_cache_hits": None,
+                "native_reference_state_cache_misses": None,
+                "density_warm_start_hits": None,
+                "density_warm_start_fallbacks": None,
+                "unavailable_counters": [
+                    "native_reference_state_cache_hits",
+                    "native_reference_state_cache_misses",
+                    "density_warm_start_hits",
+                    "density_warm_start_fallbacks",
+                ],
+            },
+        )
+
+    return _run
+
+
+def _speciation_surrogate_rows(row_count: int = 35) -> tuple[dict[str, Any], ...]:
+    rows: list[dict[str, Any]] = []
+    for idx in range(row_count):
+        salt = 0.004 + 0.00025 * (idx % 7)
+        water = 1.0 - 2.0 * salt
+        rows.append(
+            {
+                "row_id": f"mea-surrogate-{idx + 1:02d}",
+                "T": 298.15 + 0.2 * (idx % 5),
+                "P": 101325.0,
+                "totals": {"water": water, "sodium": salt, "chloride": salt},
+                "initial_x": [water, salt, salt],
+                "target_x": {"water": water},
+                "target_activity": {"water": 1.0},
+            }
+        )
+    return tuple(rows)
+
+
+def _compile_speciation_surrogate_context(
+    rows: Sequence[Mapping[str, Any]],
+) -> epcsaft.ReactiveElectrolyteRegressionContext:
+    batch_rows = [
+        epcsaft.ReactiveElectrolyteRow(
+            row_id=str(row["row_id"]),
+            T=float(row["T"]),
+            P=float(row["P"]),
+            totals=dict(row["totals"]),
+            initial_x=list(row["initial_x"]),
+            balances=BALANCES,
+            reactions=REACTIONS,
+            target_speciation=dict(row["target_x"]),
+            target_activity=dict(row["target_activity"]),
+            source="public_surrogate",
+            split="benchmark",
+            metadata={"surrogate": "MEA-style trace-carbonate workflow shape"},
+            mode="speciation",
+        )
+        for row in rows
+    ]
+    batch = epcsaft.ReactiveElectrolyteBatch(
+        species=SPECIES,
+        rows=batch_rows,
+        balances=BALANCES,
+        reactions=REACTIONS,
+        base_parameters=_ionic_mix_params(),
+        options=epcsaft.ReactiveElectrolyteBatchOptions(
+            warm_start_rows=True,
+            warm_start_objective=True,
+            include_state_outputs=False,
+            penalty_value=8.0,
+        ),
+    )
+    objective = epcsaft.build_reactive_regression_objective(
+        batch,
+        residual_weights={"speciation": 1.0, "activity": 1.0, "reaction": 0.0},
+        failure_penalty=8.0,
+    )
+    return epcsaft.ReactiveElectrolyteRegressionContext.from_batch(
+        species=batch.species,
+        rows=batch.rows,
+        balances=batch.balances,
+        reactions=batch.reactions,
+        options=batch.options,
+        objective=objective,
+        base_parameters=batch.base_parameters,
+    )
+
+
+def _run_speciation_surrogate_compiled(
+    rows: Sequence[Mapping[str, Any]],
+) -> Callable[[], BenchmarkObservation]:
+    context = _compile_speciation_surrogate_context(rows)
+
+    def _run() -> BenchmarkObservation:
+        result = context.evaluate_objective({"Na+.sigma": 2.8232})
+        batch_result = result.batch_result
+        target_counter = _safe_mapping(batch_result.diagnostics).get("target_family_counts", {})
+        solve_counter = _safe_mapping(batch_result.diagnostics).get("solve_counts", {})
+        context_cache_hits = int(batch_result.cache_stats.get("context_cache_hits", 0))
+        context_cache_misses = int(batch_result.cache_stats.get("context_cache_misses", 0))
+        objective_seed_hits = int(batch_result.cache_stats.get("objective_seed_hits", 0))
+        objective_seed_misses = int(batch_result.cache_stats.get("objective_seed_misses", 0))
+        return BenchmarkObservation(
+            fingerprint={
+                "case": "mea_trace_carbonate_35_row_public_surrogate",
+                "row_count": len(rows),
+                "parameter_count": 1,
+                "objective": _to_float(result.objective),
+                "residual_norm": _to_float(np.linalg.norm(result.residuals)),
+                "surrogate_note": "Public synthetic rows; same compiled reactive-regression speciation workflow shape.",
+            },
+            fallback_used=bool(batch_result.failure_count),
+            diagnostics={
+                "diagnostics_keys": sorted(batch_result.diagnostics.keys()),
+                "cache_stats": dict(batch_result.cache_stats),
+                "target_family_counts": dict(target_counter),
+            },
+            row_count=len(rows),
+            parameter_count=1,
+            success_count=batch_result.success_count,
+            failure_count=batch_result.failure_count,
+            residual_count=int(result.residuals.size),
+            cache_hits=context_cache_hits + objective_seed_hits,
+            cache_misses=context_cache_misses + objective_seed_misses,
+            speciation_solves=int(solve_counter.get("speciation_solves", 0)),
+            bubble_solves=int(solve_counter.get("bubble_solves", 0)),
+            density_solves=int(solve_counter.get("density_solves", 0)),
+            activity_calls=int(solve_counter.get("activity_calls", 0)),
+            fugacity_calls=int(target_counter.get("partial_pressure", 0)),
+            counter_details={
+                "context_cache_hits": context_cache_hits,
+                "context_cache_misses": context_cache_misses,
+                "objective_seed_hits": objective_seed_hits,
+                "objective_seed_misses": objective_seed_misses,
+                "native_reference_state_cache_hits": None,
+                "native_reference_state_cache_misses": None,
+                "density_warm_start_hits": None,
+                "density_warm_start_fallbacks": None,
+                "unavailable_counters": [
+                    "native_reference_state_cache_hits",
+                    "native_reference_state_cache_misses",
+                    "density_warm_start_hits",
+                    "density_warm_start_fallbacks",
+                ],
+            },
         )
 
     return _run
@@ -598,12 +783,25 @@ def _case_builder_reactive_regression_parameter_perturbation() -> PreparedBenchm
     )
 
 
+def _case_builder_mea_trace_carbonate_35_row_public_surrogate() -> PreparedBenchmarkCase:
+    rows = _speciation_surrogate_rows(35)
+    return PreparedBenchmarkCase(
+        case="mea_trace_carbonate_35_row_public_surrogate",
+        description="Public 35-row MEA-style reactive-regression surrogate using native speciation solves.",
+        runner=_run_speciation_surrogate_compiled(rows),
+    )
+
+
 CASE_BUILDERS: OrderedDict[str, Callable[[], PreparedBenchmarkCase]] = OrderedDict(
     (
         ("reactive_speciation_batch_tiny", _case_builder_reactive_speciation_tiny),
         ("reactive_bubble_batch_tiny", _case_builder_reactive_bubble_tiny),
         ("reactive_regression_objective_tiny", _case_builder_reactive_regression_objective_tiny),
         ("reactive_regression_parameter_perturbation", _case_builder_reactive_regression_parameter_perturbation),
+        (
+            "mea_trace_carbonate_35_row_public_surrogate",
+            _case_builder_mea_trace_carbonate_35_row_public_surrogate,
+        ),
     )
 )
 
@@ -638,22 +836,36 @@ def _benchmark_case(prepared: PreparedBenchmarkCase, *, warmup: int, repeat: int
     density_solves = 0
     activity_calls = 0
     fugacity_calls = 0
+    measured_success_repeat_count = 0
+    failure_messages: list[str] = []
     row_count = 0
     parameter_count = len(SPECIES)
     fallback_used = False
     fingerprint: dict[str, Any] | None = None
     diagnostics_keys: list[str] = []
+    counter_details_totals: dict[str, Any] = {
+        "context_cache_hits": 0,
+        "context_cache_misses": 0,
+        "objective_seed_hits": 0,
+        "objective_seed_misses": 0,
+        "native_reference_state_cache_hits": 0,
+        "native_reference_state_cache_misses": 0,
+        "density_warm_start_hits": 0,
+        "density_warm_start_fallbacks": 0,
+        "unavailable_counters": [],
+    }
 
     for _ in range(max(1, repeat)):
         start_ns = time.perf_counter_ns()
         try:
             observation = prepared.runner()
-        except Exception:
-            timings_ns.append(1)
+        except Exception as exc:
             failure_count += 1
+            failure_messages.append(f"{type(exc).__name__}: {exc}")
             continue
         elapsed_ns = time.perf_counter_ns() - start_ns
         timings_ns.append(elapsed_ns)
+        measured_success_repeat_count += 1
 
         success_count += observation.success_count
         failure_count += observation.failure_count
@@ -669,6 +881,19 @@ def _benchmark_case(prepared: PreparedBenchmarkCase, *, warmup: int, repeat: int
         row_count = observation.row_count
         parameter_count = observation.parameter_count
         diagnostics_keys.extend(observation.diagnostics.get("diagnostics_keys", []))
+        for key, value in observation.counter_details.items():
+            if value is None:
+                unavailable = counter_details_totals.setdefault("unavailable_counters", [])
+                if key not in unavailable:
+                    unavailable.append(key)
+                counter_details_totals[key] = None
+            elif isinstance(value, list):
+                unavailable = counter_details_totals.setdefault("unavailable_counters", [])
+                for item in value:
+                    if item not in unavailable:
+                        unavailable.append(item)
+            elif counter_details_totals.get(key) is not None:
+                counter_details_totals[key] = int(counter_details_totals.get(key, 0)) + int(value)
         if fingerprint is None:
             fingerprint = observation.fingerprint
 
@@ -685,9 +910,11 @@ def _benchmark_case(prepared: PreparedBenchmarkCase, *, warmup: int, repeat: int
         "parameter_count": int(parameter_count),
         "success_count": int(success_count),
         "failure_count": int(failure_count),
+        "measured_success_repeat_count": int(measured_success_repeat_count),
+        "failure_messages": failure_messages,
         "residual_count": int(residual_count),
         "median_ns": int(np.median(timings)),
-        "mean_ns": int(round(statistics.fmean(timings_ns))),
+        "mean_ns": round(statistics.fmean(timings_ns)),
         "min_ns": int(np.min(timings)),
         "max_ns": int(np.max(timings)),
         "p10_ns": int(np.percentile(timings, 10.0)),
@@ -702,18 +929,31 @@ def _benchmark_case(prepared: PreparedBenchmarkCase, *, warmup: int, repeat: int
         "density_solves": int(density_solves),
         "activity_calls": int(activity_calls),
         "fugacity_calls": int(fugacity_calls),
+        "context_cache_hits": counter_details_totals["context_cache_hits"],
+        "context_cache_misses": counter_details_totals["context_cache_misses"],
+        "objective_seed_hits": counter_details_totals["objective_seed_hits"],
+        "objective_seed_misses": counter_details_totals["objective_seed_misses"],
+        "native_reference_state_cache_hits": counter_details_totals["native_reference_state_cache_hits"],
+        "native_reference_state_cache_misses": counter_details_totals["native_reference_state_cache_misses"],
+        "density_warm_start_hits": counter_details_totals["density_warm_start_hits"],
+        "density_warm_start_fallbacks": counter_details_totals["density_warm_start_fallbacks"],
+        "unavailable_counters": sorted(set(counter_details_totals["unavailable_counters"])),
     }
     if prepared.baseline_runner is not None:
         baseline_timings_ns: list[int] = []
-        for _ in range(max(0, warmup)):
+        baseline_repeat = min(max(1, repeat), 3)
+        baseline_warmup = min(max(0, warmup), 1)
+        for _ in range(baseline_warmup):
             prepared.baseline_runner()
-        for _ in range(max(1, repeat)):
+        for _ in range(baseline_repeat):
             start_ns = time.perf_counter_ns()
             prepared.baseline_runner()
             baseline_timings_ns.append(time.perf_counter_ns() - start_ns)
         baseline_timings = np.asarray(baseline_timings_ns, dtype=np.int64)
         baseline_median = int(np.median(baseline_timings))
         payload["baseline_median_ns"] = baseline_median
+        payload["baseline_repeat"] = int(baseline_repeat)
+        payload["baseline_warmup"] = int(baseline_warmup)
         payload["speedup_vs_baseline"] = float(baseline_median / max(int(payload["median_ns"]), 1))
     return payload
 

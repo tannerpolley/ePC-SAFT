@@ -12,6 +12,8 @@ The main user objects are:
 
 - `ePCSAFTMixture`: stores species parameters and creates states.
 - `ePCSAFTState`: evaluates density, pressure, residual properties, fugacity coefficients, activity coefficients, and diagnostics.
+- `ParameterSet`, `PureRecord`, and `BinaryRecord`: canonical parameter records that can still emit the legacy native payload.
+- `TPFlash`, `ElectrolyteLLEProblem`, `ReactiveSpeciationProblem`, and related problem objects: optional typed wrappers for `mixture.solve_equilibrium(problem)`.
 - `create_parameter_template(...)`: creates a user-owned parameter folder to fill in.
 - `fit_pure_neutral(...)`, `fit_pure_ion(...)`, and related helpers: fit supported parameter sets.
 - `capabilities()`: reports which runtime and solver paths are available in the current install.
@@ -97,6 +99,15 @@ python -m pip install "epcsaft[ipopt] @ git+https://github.com/tannerpolley/ePC-
 ```
 
 IPOPT is never selected automatically by `solver_backend="auto"`; it is an explicit opt-in refinement path.
+
+## Architecture And Diagnostics
+
+The documentation includes short reference pages for the package architecture, parameter schema, equilibrium problem objects, and diagnostics:
+
+- `docs/pages/package_architecture.rst`
+- `docs/pages/parameter_schema.rst`
+- `docs/pages/equilibrium_architecture.rst`
+- `docs/pages/diagnostics.rst`
 
 ## Verify The Install
 

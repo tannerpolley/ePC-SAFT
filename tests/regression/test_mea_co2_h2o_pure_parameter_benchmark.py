@@ -5,10 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from epcsaft import create_parameter_template
-from epcsaft import ePCSAFTMixture
-from epcsaft import fit_mea_co2_h2o_electrolyte
-from epcsaft import write_fit_result
+from epcsaft import create_parameter_template, ePCSAFTMixture, fit_mea_co2_h2o_electrolyte, write_fit_result
 
 SPECIES = ["H2O", "MEA", "CO2", "MEAH+", "MEACOO-", "HCO3-"]
 

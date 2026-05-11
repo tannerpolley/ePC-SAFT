@@ -1,19 +1,20 @@
-# -*- coding: utf-8 -*-
 """Object-oriented integration tests for the pybind11 native ePC-SAFT runtime."""
 
 import numpy as np
 import pytest
 
 import epcsaft
-import epcsaft.ipopt_backend as ipopt_backend
 import epcsaft.epcsaft as epcsaft_module
+import epcsaft.ipopt_backend as ipopt_backend
 from epcsaft import ePCSAFTMixture
-from tests.helpers.runtime_cases import _assert_array
-from tests.helpers.runtime_cases import _ionic_params
-from tests.helpers.runtime_cases import _ionic_state
-from tests.helpers.runtime_cases import _ionic_state_with_elec_model
-from tests.helpers.runtime_cases import _neutral_state
-from tests.helpers.runtime_cases import _sum_term_arrays
+from tests.helpers.runtime_cases import (
+    _assert_array,
+    _ionic_params,
+    _ionic_state,
+    _ionic_state_with_elec_model,
+    _neutral_state,
+    _sum_term_arrays,
+)
 
 
 def test_package_exports_are_available():
@@ -28,6 +29,18 @@ def test_package_exports_are_available():
     assert callable(epcsaft.evaluate_fugacity_coefficients)
     assert callable(epcsaft.evaluate_fugacity_coefficients_batch)
     assert callable(epcsaft.validate_dataset_bundle)
+
+
+def test_organized_public_import_modules_are_available():
+    import epcsaft.diagnostics
+    import epcsaft.electrolyte
+    import epcsaft.eos
+    import epcsaft.reactive
+
+    assert epcsaft.eos.ePCSAFTMixture is epcsaft.ePCSAFTMixture
+    assert epcsaft.electrolyte.ElectrolyteLLEProblem is epcsaft.ElectrolyteLLEProblem
+    assert epcsaft.reactive.ReactiveSpeciationProblem is epcsaft.ReactiveSpeciationProblem
+    assert epcsaft.diagnostics.capabilities is epcsaft.capabilities
 
 
 def test_runtime_build_info_and_capabilities_are_json_like():
@@ -49,8 +62,9 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert capabilities["equilibrium"]["neutral_tp_flash"]["available"] is True
     assert capabilities["equilibrium"]["neutral_bubble_dew"] == {
         "available": True,
-        "backend": "python_orchestrated_native_state_fugacity",
+        "backend": "native_state_fugacity_with_python_scalar_root",
         "methods": ["bubble_p", "bubble_t", "dew_p", "dew_t"],
+        "status": "production",
     }
     electrolyte_bubble = capabilities["equilibrium"]["electrolyte_bubble_pressure"]
     assert electrolyte_bubble["available"] is True
@@ -78,6 +92,15 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert reactive_regression["available"] is True
     assert reactive_regression["backend"] == "python_orchestrated_native_solvers"
     assert "downstream-owned" in reactive_regression["scope"]
+    batch_context = capabilities["regression"]["reactive_electrolyte_batch_context"]
+    assert batch_context["available"] is True
+    assert batch_context["backend"] == "python_batched_native_solvers"
+    assert "ReactiveElectrolyteRegressionContext" in batch_context["classes"]
+    assert "finite_difference_jacobian" in batch_context["methods"]
+    assert capabilities["equilibrium"]["problem_objects"]["entrypoint"] == "mixture.solve_equilibrium(problem)"
+    assert (
+        capabilities["equilibrium"]["contribution_maps"]["activity_coefficient_term_decomposition_available"] is False
+    )
 
 
 def test_cyipopt_import_prepares_configured_windows_dll_directory(monkeypatch, tmp_path):
@@ -167,7 +190,7 @@ def test_from_params_rejects_legacy_electrolyte_keys():
 
 
 def test_neutral_scalar_methods_return_expected_values():
-    state, species = _neutral_state()
+    state, _species = _neutral_state()
 
     assert state.density() == pytest.approx(14330.417110)
     assert state.density(units="molar") == pytest.approx(14330.417110)
@@ -244,13 +267,13 @@ def test_state_method_aliases_match_canonical_methods():
     )
     assert state.gsolv(species=species) == state.solvation_free_energy(species=species)
     with pytest.raises(AttributeError):
-        getattr(state, "fugacity_coefficient_terms")
+        _ = state.fugacity_coefficient_terms
     with pytest.raises(AttributeError):
-        getattr(state, "lnfug_terms")
+        _ = state.lnfug_terms
 
 
 def test_state_contribution_term_payloads_match_totals():
-    state, species = _ionic_state()
+    state, _species = _ionic_state()
 
     ares = state.ares(return_contribution_terms=True)
     assert set(ares) == {"total", "terms"}
@@ -307,6 +330,33 @@ def test_state_contribution_term_payloads_match_totals():
     _assert_array(_sum_term_arrays(fugcoef["terms"]), fugcoef["terms_total_natural_log"])
     _assert_array(_sum_term_arrays(fugcoef_coeff["terms"]), fugcoef_coeff["terms_total_natural_log"])
     assert fugcoef["term_basis"] == "natural_log"
+
+
+def test_state_contribution_map_aliases_use_public_family_names():
+    state, _species = _ionic_state()
+
+    families = {"hard_chain", "dispersion", "association", "ionic", "born"}
+    helmholtz = state.helmholtz_contributions()
+    residual_helmholtz = state.residual_helmholtz_contributions()
+    pressure = state.pressure_contributions()
+    chemical_potential = state.chemical_potential_contributions()
+    ln_phi = state.ln_fugacity_coefficient_contributions()
+
+    assert set(helmholtz["terms"]) == families
+    assert set(residual_helmholtz["terms"]) == families
+    assert families | {"ideal"} == set(pressure["terms"])
+    assert set(chemical_potential["terms"]) == families
+    assert set(ln_phi["terms"]) == families
+    assert helmholtz["term_basis"] == "dimensionless_residual_helmholtz"
+    assert pressure["term_basis"] == "pressure_from_compressibility_factor"
+    np.testing.assert_allclose(ln_phi["total"], state.fugacity_coefficient())
+
+
+def test_activity_coefficient_contribution_map_is_explicitly_unsupported():
+    state, _species = _ionic_state()
+
+    with pytest.raises(NotImplementedError, match="Activity coefficients are available"):
+        state.activity_coefficient_contributions()
 
 
 def test_dadrho_hierarchy_identities_hold_for_neutral_and_ionic_states():

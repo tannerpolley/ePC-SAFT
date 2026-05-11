@@ -6,8 +6,8 @@ import numpy as np
 import pytest
 
 from epcsaft.equilibrium_core.thermo_diagnostics import (
-    compare_khudaida_digitized_paper_to_package,
     compare_khudaida_aad_tables,
+    compare_khudaida_digitized_paper_to_package,
     evaluate_khudaida_solver_gate,
     evaluate_khudaida_tieline,
     load_khudaida_digitized_paper_epcsaft,

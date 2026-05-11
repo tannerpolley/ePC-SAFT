@@ -17,6 +17,68 @@ def _tiny_base_parameters() -> dict[str, np.ndarray]:
     }
 
 
+def test_reactive_regression_context_runs_native_speciation_objective_and_jacobian() -> None:
+    row = epcsaft.ReactiveElectrolyteRow(
+        row_id="native-row",
+        T=298.15,
+        P=101325.0,
+        initial_x=[0.9, 0.05, 0.025, 0.025],
+        balances={
+            "water": {"H2O": 1.0},
+            "sodium": {"NaCl": 1.0, "Na+": 1.0},
+            "chloride": {"NaCl": 1.0, "Cl-": 1.0},
+        },
+        totals={"water": 0.9, "sodium": 0.075, "chloride": 0.075},
+        reactions=[
+            epcsaft.ReactionDefinition(
+                {"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
+                np.log(1.0e-2),
+                name="salt_dissociation",
+                standard_state="ideal_mole_fraction",
+            )
+        ],
+        mode="speciation",
+    )
+    batch = epcsaft.ReactiveElectrolyteBatch(
+        species=["H2O", "NaCl", "Na+", "Cl-"],
+        rows=[row],
+        balances=row.balances,
+        reactions=row.reactions,
+        base_parameters={
+            "m": np.asarray([1.2047, 1.0, 1.0, 1.0], dtype=float),
+            "s": np.asarray([2.7927, 3.1, 2.8232, 2.7560], dtype=float),
+            "e": np.asarray([353.95, 230.0, 230.0, 170.0], dtype=float),
+            "z": np.asarray([0.0, 0.0, 1.0, -1.0], dtype=float),
+            "dielc": np.asarray([78.09, 78.09, 8.0, 8.0], dtype=float),
+            "d_born": np.asarray([0.0, 0.0, 3.0, 3.0], dtype=float),
+        },
+        options=epcsaft.ReactiveElectrolyteBatchOptions(include_state_outputs=False),
+    )
+    context = epcsaft.ReactiveElectrolyteRegressionContext.from_batch(
+        species=batch.species,
+        rows=batch.rows,
+        balances=batch.balances,
+        reactions=batch.reactions,
+        base_parameters=batch.base_parameters,
+        options=batch.options,
+    )
+
+    objective = context.evaluate_objective({"Na+.sigma": 2.8232})
+    jacobian = context.finite_difference_jacobian(
+        {"Na+.sigma": 2.8232},
+        parameters=["Na+.sigma"],
+        mode="forward",
+        relative_step=1.0e-4,
+        log_parameters=False,
+    )
+
+    assert objective.batch_result.success_count == 1
+    assert objective.batch_result.failure_count == 0
+    assert objective.residual_names == ("native-row.reaction.salt_dissociation",)
+    assert objective.residuals.shape == (1,)
+    assert jacobian.jacobian.shape == (1, 1)
+
+
 def test_reactive_regression_context_evaluates_batch_and_reuses_warm_starts(monkeypatch) -> None:
     calls: list[dict[str, object]] = []
 

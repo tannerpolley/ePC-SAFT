@@ -85,12 +85,9 @@ def require_cyipopt(route: str) -> None:
     info = cyipopt_backend_info()
     reason = str(info.get("import_error") or "cyipopt is not installed")
     raise InputError(
-        "cyipopt is required when solver_backend='ipopt' is requested for {}. "
+        f"cyipopt is required when solver_backend='ipopt' is requested for {route}. "
         "Install the optional IPOPT dependency with the package 'ipopt' extra or the uv 'ipopt' group. "
-        "The requested solve was not run with the Newton/default backend. Import diagnostic: {}".format(
-            route,
-            reason,
-        )
+        f"The requested solve was not run with the Newton/default backend. Import diagnostic: {reason}"
     )
 
 
@@ -99,9 +96,9 @@ def unsupported_ipopt_route(route: str) -> None:
 
     require_cyipopt(route)
     raise InputError(
-        "solver_backend='ipopt' is opt-in but is not wired for {} yet. "
+        f"solver_backend='ipopt' is opt-in but is not wired for {route} yet. "
         "The cyipopt adapter is available, but this route still needs native residual/Jacobian callbacks before it "
-        "can run without reimplementing thermodynamics in Python.".format(route)
+        "can run without reimplementing thermodynamics in Python."
     )
 
 
@@ -444,10 +441,10 @@ def solve_reactive_speciation_ipopt(**kwargs: Any) -> Any:
     from . import _core
     from .reactive_speciation import (
         _REACTION_STANDARD_STATES,
+        ReactiveSpeciationResult,
         _json_like,
         _named_reaction_residuals,
         _reaction_standard_state_summary,
-        ReactiveSpeciationResult,
     )
 
     species = list(kwargs["species"])

@@ -252,7 +252,7 @@ def test_lle_flash_distinct_stalled_seed_raises_solution_error() -> None:
     mix = _methanol_cyclohexane_mixture()
     feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
 
-    with pytest.raises(epcsaft.SolutionError, match="neutral LLE flash did not converge|residual improvement stalled"):
+    with pytest.raises(epcsaft.SolutionError, match=r"neutral LLE flash did not converge|residual improvement stalled"):
         mix.equilibrium(
             kind="lle_flash",
             T=298.15,
@@ -306,7 +306,7 @@ def test_lle_flash_requested_ipopt_requires_cyipopt(monkeypatch) -> None:
     mix = _methanol_cyclohexane_mixture()
     feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
 
-    with pytest.raises(epcsaft.InputError, match="cyipopt.*solver_backend='ipopt'"):
+    with pytest.raises(epcsaft.InputError, match=r"cyipopt.*solver_backend='ipopt'"):
         mix.equilibrium(
             kind="lle_flash",
             T=298.15,

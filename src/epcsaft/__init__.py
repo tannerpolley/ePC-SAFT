@@ -1,161 +1,197 @@
 """Public package interface for the native ePC-SAFT runtime."""
 
-from .epcsaft import InputError
-from .epcsaft import ActivityCoefficientResult
-from .epcsaft import ePCSAFTMixture
-from .epcsaft import ePCSAFTState
-from .epcsaft import SolutionError
-from .electrolyte_bubble import ElectrolyteBubbleOptions
-from .electrolyte_bubble import ElectrolyteBubbleResult
-from .equilibrium import EquilibriumOptions
-from .equilibrium import EquilibriumPhase
-from .equilibrium import EquilibriumResult
-from .equilibrium import StabilityResult
-from .equilibrium import StabilityTrial
-from .equilibrium import bubble_p
-from .equilibrium import bubble_t
-from .equilibrium import dew_p
-from .equilibrium import dew_t
-from .equilibrium import electrolyte_feed_from_molality
-from .equilibrium import initial_phases_from_result
-from .parameters import DATASET_ROOT
-from .parameters import available_datasets
-from .parameters import get_prop_dict
-from .parameters import molality_to_molefraction
-from .parameters import molefraction_to_molality
-from .parameter_templates import create_parameter_template
 from .dataset_validation import validate_dataset_bundle
-from .properties import evaluate_fugacity_coefficients
-from .properties import evaluate_fugacity_coefficients_batch
-from .regression import FitBounds
-from .regression import BinaryInteraction
-from .regression import FitProblem
-from .regression import FitParameter
-from .regression import FitResult
-from .regression import FitTerm
-from .regression import ReactiveElectrolyteRegressionResult
-from .regression import evaluate_generic_regression_derivatives
-from .regression import evaluate_pure_neutral_derivatives
-from .regression import evaluate_reactive_electrolyte_bubble_residuals
-from .regression import RelativePermittivityResidual
-from .regression import fit_binary_pair
-from .regression import fit_mea_co2_h2o_electrolyte
-from .regression import fit_pure_neutral
-from .regression import fit_pure_ion
-from .regression import load_regression_records
-from .regression import validate_regression_provenance
-from .regression import write_fit_result
-from .reactive_speciation import ReactionDefinition
-from .reactive_speciation import ReactiveSpeciationOptions
-from .reactive_speciation import ReactiveSpeciationResult
-from .reactive_speciation import solve_reactive_speciation
-from .reactive_speciation import solve_reactive_speciation_sweep
-from .reactive_staged import ReactiveStagedEquilibriumResult
-from .reactive_staged import solve_reactive_staged_equilibrium
-from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions
-from .reactive_electrolyte import ReactiveElectrolyteBubbleResult
-from .reactive_electrolyte import solve_reactive_electrolyte_bubble
-from .reactive_electrolyte import solve_reactive_electrolyte_bubble_sweep
-from .reactive_regression import ReactiveElectrolyteBatch
-from .reactive_regression import ReactiveElectrolyteBatchOptions
-from .reactive_regression import ReactiveElectrolyteBatchResult
-from .reactive_regression import ReactiveElectrolyteRegressionContext
-from .reactive_regression import ReactiveElectrolyteRow
-from .reactive_regression import ReactiveElectrolyteRowResult
-from .reactive_regression import ReactiveRegressionJacobianResult
-from .reactive_regression import ReactiveRegressionFitResult
-from .reactive_regression import ReactiveRegressionObjective
-from .reactive_regression import ReactiveRegressionObjectiveResult
-from .reactive_regression import build_reactive_regression_objective
-from .reactive_regression import evaluate_reactive_regression_objective
-from .reactive_regression import fit_reactive_electrolyte_parameters
-from .reactive_regression import summarize_regression_result
-from .reactive_regression import write_regression_parameter_table
-from .reactive_regression import write_regression_residual_table
-from .reactive_regression import write_regression_row_table
-from .reactive_regression import write_regression_summary
-from .runtime import __git_commit__
-from .runtime import __version__
-from .runtime import capabilities
-from .runtime import runtime_build_info
+from .electrolyte_bubble import ElectrolyteBubbleOptions, ElectrolyteBubbleResult
+from .epcsaft import ActivityCoefficientResult, InputError, SolutionError, ePCSAFTMixture, ePCSAFTState
+from .equilibrium import (
+    BubblePoint,
+    DewPoint,
+    ElectrolyteBubblePoint,
+    ElectrolyteLLEProblem,
+    EquilibriumOptions,
+    EquilibriumPhase,
+    EquilibriumProblem,
+    EquilibriumResult,
+    LLEProblem,
+    ReactiveElectrolyteBubbleProblem,
+    ReactiveSpeciationProblem,
+    StabilityAnalysis,
+    StabilityResult,
+    StabilityTrial,
+    TPFlash,
+    bubble_p,
+    bubble_t,
+    dew_p,
+    dew_t,
+    electrolyte_feed_from_molality,
+    initial_phases_from_result,
+)
+from .parameter_schema import (
+    AssociationSite,
+    BinaryRecord,
+    ComponentIdentifier,
+    ParameterSet,
+    PermittivityRecord,
+    PureRecord,
+)
+from .parameter_templates import create_parameter_template
+from .parameters import (
+    DATASET_ROOT,
+    available_datasets,
+    get_prop_dict,
+    molality_to_molefraction,
+    molefraction_to_molality,
+)
+from .properties import evaluate_fugacity_coefficients, evaluate_fugacity_coefficients_batch
+from .reactive_electrolyte import (
+    ReactiveElectrolyteBubbleOptions,
+    ReactiveElectrolyteBubbleResult,
+    solve_reactive_electrolyte_bubble,
+    solve_reactive_electrolyte_bubble_sweep,
+)
+from .reactive_regression import (
+    ReactiveElectrolyteBatch,
+    ReactiveElectrolyteBatchOptions,
+    ReactiveElectrolyteBatchResult,
+    ReactiveElectrolyteRegressionContext,
+    ReactiveElectrolyteRow,
+    ReactiveElectrolyteRowResult,
+    ReactiveRegressionFitResult,
+    ReactiveRegressionJacobianResult,
+    ReactiveRegressionObjective,
+    ReactiveRegressionObjectiveResult,
+    build_reactive_regression_objective,
+    evaluate_reactive_regression_objective,
+    fit_reactive_electrolyte_parameters,
+    summarize_regression_result,
+    write_regression_parameter_table,
+    write_regression_residual_table,
+    write_regression_row_table,
+    write_regression_summary,
+)
+from .reactive_speciation import (
+    ReactionDefinition,
+    ReactiveSpeciationOptions,
+    ReactiveSpeciationResult,
+    solve_reactive_speciation,
+    solve_reactive_speciation_sweep,
+)
+from .reactive_staged import ReactiveStagedEquilibriumResult, solve_reactive_staged_equilibrium
+from .regression import (
+    BinaryInteraction,
+    FitBounds,
+    FitParameter,
+    FitProblem,
+    FitResult,
+    FitTerm,
+    ReactiveElectrolyteRegressionResult,
+    RelativePermittivityResidual,
+    evaluate_generic_regression_derivatives,
+    evaluate_pure_neutral_derivatives,
+    evaluate_reactive_electrolyte_bubble_residuals,
+    fit_binary_pair,
+    fit_mea_co2_h2o_electrolyte,
+    fit_pure_ion,
+    fit_pure_neutral,
+    load_regression_records,
+    validate_regression_provenance,
+    write_fit_result,
+)
+from .runtime import __git_commit__, __version__, capabilities, runtime_build_info
 
 __all__ = [
     "DATASET_ROOT",
     "ActivityCoefficientResult",
-    "InputError",
+    "AssociationSite",
+    "BinaryInteraction",
+    "BinaryRecord",
+    "BubblePoint",
+    "ComponentIdentifier",
+    "DewPoint",
+    "ElectrolyteBubbleOptions",
+    "ElectrolyteBubblePoint",
+    "ElectrolyteBubbleResult",
+    "ElectrolyteLLEProblem",
     "EquilibriumOptions",
     "EquilibriumPhase",
+    "EquilibriumProblem",
     "EquilibriumResult",
-    "StabilityResult",
-    "StabilityTrial",
-    "bubble_p",
-    "bubble_t",
-    "dew_p",
-    "dew_t",
-    "electrolyte_feed_from_molality",
-    "initial_phases_from_result",
-    "ePCSAFTMixture",
-    "ePCSAFTState",
-    "SolutionError",
-    "ElectrolyteBubbleOptions",
-    "ElectrolyteBubbleResult",
-    "available_datasets",
-    "create_parameter_template",
-    "validate_dataset_bundle",
-    "evaluate_fugacity_coefficients",
-    "evaluate_fugacity_coefficients_batch",
-    "BinaryInteraction",
     "FitBounds",
     "FitParameter",
     "FitProblem",
     "FitResult",
     "FitTerm",
-    "ReactiveElectrolyteRegressionResult",
-    "evaluate_generic_regression_derivatives",
-    "evaluate_pure_neutral_derivatives",
-    "evaluate_reactive_electrolyte_bubble_residuals",
-    "RelativePermittivityResidual",
-    "fit_binary_pair",
-    "fit_mea_co2_h2o_electrolyte",
-    "fit_pure_neutral",
-    "fit_pure_ion",
-    "get_prop_dict",
-    "load_regression_records",
-    "validate_regression_provenance",
-    "molality_to_molefraction",
-    "molefraction_to_molality",
+    "InputError",
+    "LLEProblem",
+    "ParameterSet",
+    "PermittivityRecord",
+    "PureRecord",
     "ReactionDefinition",
-    "ReactiveSpeciationOptions",
-    "ReactiveSpeciationResult",
-    "ReactiveStagedEquilibriumResult",
-    "ReactiveElectrolyteBubbleOptions",
-    "ReactiveElectrolyteBubbleResult",
     "ReactiveElectrolyteBatch",
     "ReactiveElectrolyteBatchOptions",
     "ReactiveElectrolyteBatchResult",
+    "ReactiveElectrolyteBubbleOptions",
+    "ReactiveElectrolyteBubbleProblem",
+    "ReactiveElectrolyteBubbleResult",
     "ReactiveElectrolyteRegressionContext",
+    "ReactiveElectrolyteRegressionResult",
     "ReactiveElectrolyteRow",
     "ReactiveElectrolyteRowResult",
+    "ReactiveRegressionFitResult",
+    "ReactiveRegressionJacobianResult",
+    "ReactiveRegressionObjective",
+    "ReactiveRegressionObjectiveResult",
+    "ReactiveSpeciationOptions",
+    "ReactiveSpeciationProblem",
+    "ReactiveSpeciationResult",
+    "ReactiveStagedEquilibriumResult",
+    "RelativePermittivityResidual",
+    "SolutionError",
+    "StabilityAnalysis",
+    "StabilityResult",
+    "StabilityTrial",
+    "TPFlash",
+    "__git_commit__",
+    "__version__",
+    "available_datasets",
+    "bubble_p",
+    "bubble_t",
+    "build_reactive_regression_objective",
+    "capabilities",
+    "create_parameter_template",
+    "dew_p",
+    "dew_t",
+    "ePCSAFTMixture",
+    "ePCSAFTState",
+    "electrolyte_feed_from_molality",
+    "evaluate_fugacity_coefficients",
+    "evaluate_fugacity_coefficients_batch",
+    "evaluate_generic_regression_derivatives",
+    "evaluate_pure_neutral_derivatives",
+    "evaluate_reactive_electrolyte_bubble_residuals",
+    "evaluate_reactive_regression_objective",
+    "fit_binary_pair",
+    "fit_mea_co2_h2o_electrolyte",
+    "fit_pure_ion",
+    "fit_pure_neutral",
+    "fit_reactive_electrolyte_parameters",
+    "get_prop_dict",
+    "initial_phases_from_result",
+    "load_regression_records",
+    "molality_to_molefraction",
+    "molefraction_to_molality",
+    "runtime_build_info",
     "solve_reactive_electrolyte_bubble",
     "solve_reactive_electrolyte_bubble_sweep",
     "solve_reactive_speciation",
     "solve_reactive_speciation_sweep",
     "solve_reactive_staged_equilibrium",
-    "ReactiveRegressionJacobianResult",
-    "ReactiveRegressionFitResult",
-    "ReactiveRegressionObjective",
-    "ReactiveRegressionObjectiveResult",
-    "build_reactive_regression_objective",
-    "evaluate_reactive_regression_objective",
-    "fit_reactive_electrolyte_parameters",
     "summarize_regression_result",
+    "validate_dataset_bundle",
+    "validate_regression_provenance",
+    "write_fit_result",
     "write_regression_parameter_table",
     "write_regression_residual_table",
     "write_regression_row_table",
     "write_regression_summary",
-    "write_fit_result",
-    "__git_commit__",
-    "__version__",
-    "capabilities",
-    "runtime_build_info",
 ]

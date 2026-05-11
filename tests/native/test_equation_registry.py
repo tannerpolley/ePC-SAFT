@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import pytest
+
 from scripts import sync_equation_registry
 
 REPO_ROOT = Path(__file__).resolve().parents[2]

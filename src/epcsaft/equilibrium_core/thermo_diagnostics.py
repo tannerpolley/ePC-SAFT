@@ -11,9 +11,7 @@ import numpy as np
 
 from epcsaft._types import SolutionError
 from epcsaft.epcsaft import ePCSAFTMixture
-from epcsaft.equilibrium import EquilibriumOptions
-from epcsaft.equilibrium import _json_like
-from epcsaft.equilibrium import _phase_state
+from epcsaft.equilibrium import EquilibriumOptions, _json_like, _phase_state
 from epcsaft.equilibrium_core.electrolyte_basis import build_electrolyte_basis
 
 REPO_ROOT = Path(__file__).resolve().parents[3]

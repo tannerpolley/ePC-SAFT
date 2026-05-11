@@ -8,8 +8,7 @@ from typing import Any
 
 import numpy as np
 
-from ._types import InputError
-from ._types import SolutionError
+from ._types import InputError, SolutionError
 
 
 @dataclass(frozen=True, slots=True)

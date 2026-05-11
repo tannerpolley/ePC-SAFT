@@ -2,7 +2,7 @@
 """
 dh_mu_equivalence_demo.py
 
-Proves (numerically) that the Debye–Hückel chemical potential contribution mu~_k^DH
+Proves (numerically) that the Debye-Huckel chemical potential contribution mu~_k^DH
 computed by:
 
 (1) The closed-form final expression

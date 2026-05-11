@@ -7,13 +7,9 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from ._types import InputError
-from ._types import SolutionError
-from .electrolyte_bubble import ElectrolyteBubbleOptions
-from .electrolyte_bubble import electrolyte_bubble_pressure
-from .reactive_speciation import ReactiveSpeciationOptions
-from .reactive_speciation import ReactiveSpeciationResult
-from .reactive_speciation import solve_reactive_speciation
+from ._types import InputError, SolutionError
+from .electrolyte_bubble import ElectrolyteBubbleOptions, electrolyte_bubble_pressure
+from .reactive_speciation import ReactiveSpeciationOptions, ReactiveSpeciationResult, solve_reactive_speciation
 
 _PHASE_HANDOFF_MASS_TOLERANCE = 1.0e-8
 _PHASE_HANDOFF_CHARGE_TOLERANCE = 1.0e-8

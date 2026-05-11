@@ -1,12 +1,9 @@
-# -*- coding: utf-8 -*-
-import numpy as np
 from copy import deepcopy
+
+import numpy as np
+
 from . import _core
-from ._types import ActivityCoefficientResult
-from ._types import InputError
-from ._types import SolutionError
-from ._types import phase_to_int
-from ._types import vector_to_array
+from ._types import ActivityCoefficientResult, InputError, SolutionError, phase_to_int, vector_to_array
 
 STATE_METHOD_ALIAS_MAP = {
     "pressure": "p",
@@ -30,18 +27,20 @@ STATE_METHOD_ALIAS_MAP = {
 }
 _STATE_METHOD_ALIAS_LOOKUP = {alias: name for name, alias in STATE_METHOD_ALIAS_MAP.items()}
 _CONTRIBUTION_NAMES = ("hc", "disp", "assoc", "ion", "born")
+_CONTRIBUTION_PUBLIC_NAMES = {
+    "hc": "hard_chain",
+    "disp": "dispersion",
+    "assoc": "association",
+    "ion": "ionic",
+    "born": "born",
+}
+_GAS_CONSTANT = 8.31446261815324
 
 
 def _state_construction_error_message(T, x, phase, ncomp, mode_name, variable_name, variable_value, exc):
-    return "{}-based state solve failed for " "T={}, {}={}, phase={}, ncomp={}, x={}: {}".format(
-        mode_name,
-        float(T),
-        variable_name,
-        float(variable_value),
-        phase,
-        ncomp,
-        x.tolist(),
-        exc,
+    return (
+        f"{mode_name}-based state solve failed for "
+        f"T={float(T)}, {variable_name}={float(variable_value)}, phase={phase}, ncomp={ncomp}, x={x.tolist()}: {exc}"
     )
 
 
@@ -51,6 +50,15 @@ def _sum_vector_terms(terms):
         value = np.asarray(terms[name], dtype=float)
         total = value.copy() if total is None else total + value
     return total
+
+
+def _public_contribution_terms(terms):
+    out = {}
+    for internal, public in _CONTRIBUTION_PUBLIC_NAMES.items():
+        out[public] = terms[internal]
+    if "ideal" in terms:
+        out["ideal"] = terms["ideal"]
+    return out
 
 
 def _scalar_terms_dict(terms):
@@ -78,9 +86,7 @@ def _vector_terms_dict(terms, expected_size, label):
         arr = np.asarray(arr, dtype=float)
         if arr.size != expected_size:
             raise SolutionError(
-                "Unexpected {} payload size for {}: expected {}, got {}.".format(
-                    label, name, int(expected_size), int(arr.size)
-                )
+                f"Unexpected {label} payload size for {name}: expected {int(expected_size)}, got {int(arr.size)}."
             )
         out[name] = arr
     return out
@@ -100,6 +106,10 @@ class ePCSAFTMixture:
     @classmethod
     def from_params(cls, params, species=None):
         """Construct a mixture from an already-resolved parameter dict."""
+        if hasattr(params, "to_legacy_dict"):
+            if species is None and hasattr(params, "components"):
+                species = list(params.components)
+            params = params.to_legacy_dict()
         return cls(params=params, species=species)
 
     @classmethod
@@ -112,6 +122,10 @@ class ePCSAFTMixture:
 
     def _init_from_params(self, params, species=None):
         """Initialize the native mixture from a normalized parameter payload."""
+        if hasattr(params, "to_legacy_dict"):
+            if species is None and hasattr(params, "components"):
+                species = list(params.components)
+            params = params.to_legacy_dict()
         params = check_association(params)
         cppargs = create_struct(params)
         self._native = _core.NativeMixture(cppargs)
@@ -193,6 +207,13 @@ class ePCSAFTMixture:
             "within_tolerance": within_tolerance,
             "state": state,
         }
+
+    def solve_equilibrium(self, problem):
+        """Solve a typed equilibrium problem object against this mixture."""
+        solve = getattr(problem, "solve", None)
+        if solve is None or not callable(solve):
+            raise InputError("solve_equilibrium requires an EquilibriumProblem object with a solve(mixture) method.")
+        return solve(self)
 
     def flash_tp(self, T, P, z, *, options=None):
         """Solve a neutral TP flash with explicit thermodynamic-method naming."""
@@ -321,8 +342,7 @@ class ePCSAFTMixture:
         options=None,
     ):
         """Solve homogeneous activity-coupled chemical equilibrium."""
-        from .reactive_speciation import ReactiveSpeciationOptions
-        from .reactive_speciation import solve_reactive_speciation
+        from .reactive_speciation import ReactiveSpeciationOptions, solve_reactive_speciation
 
         if initial_x is None:
             if z is None:
@@ -359,8 +379,7 @@ class ePCSAFTMixture:
         options=None,
     ):
         """Run staged reactive speciation followed by fixed-liquid electrolyte bubble pressure."""
-        from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions
-        from .reactive_electrolyte import solve_reactive_electrolyte_bubble
+        from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions, solve_reactive_electrolyte_bubble
 
         if initial_x is None:
             if z is None:
@@ -847,13 +866,11 @@ class ePCSAFTState:
         if not isinstance(mixture, ePCSAFTMixture):
             raise InputError("mixture must be a ePCSAFTMixture instance.")
         mix = mixture
-        x, params = ensure_numpy_input(x, mix._params)
+        x, _params = ensure_numpy_input(x, mix._params)
         x = np.asarray(x, dtype=float).flatten()
         ncomp = int(mix.ncomp)
         if x.size != ncomp:
-            raise InputError(
-                "State composition length ({}) must match mixture component count ({}).".format(int(x.size), ncomp)
-            )
+            raise InputError(f"State composition length ({int(x.size)}) must match mixture component count ({ncomp}).")
         # ensure_numpy_input may normalize a scalar mixture parameter path, but the
         # state should retain the original mixture data unchanged.
         phase_num = phase_to_int(phase)
@@ -1049,6 +1066,20 @@ class ePCSAFTState:
             "terms": terms,
         }
 
+    def pressure_contributions(self):
+        """Return pressure contributions derived from native compressibility-factor terms."""
+        z_payload = self.compressibility_factor(return_contribution_terms=True)
+        pressure_scale = float(self.molar_density() * _GAS_CONSTANT * self._T)
+        return {
+            "total": float(self.pressure()),
+            "terms": {
+                name: float(value) * pressure_scale
+                for name, value in _public_contribution_terms(z_payload["terms"]).items()
+            },
+            "term_basis": "pressure_from_compressibility_factor",
+            "compressibility_factor": z_payload,
+        }
+
     def residual_helmholtz(self, return_contribution_terms=False):
         """Return the residual Helmholtz energy."""
         if not return_contribution_terms:
@@ -1059,6 +1090,25 @@ class ePCSAFTState:
         return {
             "total": float(payload_dict["total"]),
             "terms": terms,
+        }
+
+    def helmholtz_contributions(self):
+        """Return the native residual Helmholtz contribution map."""
+        payload = self.residual_helmholtz(return_contribution_terms=True)
+        return {
+            **payload,
+            "terms": _public_contribution_terms(payload["terms"]),
+            "term_basis": "dimensionless_residual_helmholtz",
+            "ideal": {"available": False, "reason": "ideal Helmholtz decomposition is not exposed by the native API"},
+        }
+
+    def residual_helmholtz_contributions(self):
+        """Return the native residual Helmholtz contribution map."""
+        payload = self.residual_helmholtz(return_contribution_terms=True)
+        return {
+            **payload,
+            "terms": _public_contribution_terms(payload["terms"]),
+            "term_basis": "dimensionless_residual_helmholtz",
         }
 
     def temperature_derivative_residual_helmholtz(self, return_contribution_terms=False):
@@ -1100,13 +1150,20 @@ class ePCSAFTState:
             "terms": terms,
         }
 
+    def chemical_potential_contributions(self):
+        """Return the native residual chemical-potential contribution map."""
+        payload = self.residual_chemical_potential(return_contribution_terms=True)
+        return {
+            **payload,
+            "terms": _public_contribution_terms(payload["terms"]),
+            "term_basis": "residual_chemical_potential",
+        }
+
     def _activity_coefficient_bundle(self, species=None, solvent=None, include_aux=False):
         """Build the full activity-coefficient payload for internal reuse."""
         species = self._mixture.species if species is None else [str(s) for s in species]
         if len(species) != self._x.size:
-            raise InputError(
-                "species length ({}) must match composition length ({}).".format(len(species), self._x.size)
-            )
+            raise InputError(f"species length ({len(species)}) must match composition length ({self._x.size}).")
         has_solvent_override, solvent_index = _resolve_solvent_override(self._mixture, species, solvent)
         include_aux_c = bool(include_aux)
         has_solvent_override_c = bool(has_solvent_override)
@@ -1151,9 +1208,7 @@ class ePCSAFTState:
         """Return activity coefficients in the requested form."""
         species = self._mixture.species if species is None else [str(s) for s in species]
         if len(species) != self._x.size:
-            raise InputError(
-                "species length ({}) must match composition length ({}).".format(len(species), self._x.size)
-            )
+            raise InputError(f"species length ({len(species)}) must match composition length ({self._x.size}).")
         has_solvent_override, solvent_index = _resolve_solvent_override(self._mixture, species, solvent)
         include_aux_c = False
         has_solvent_override_c = bool(has_solvent_override)
@@ -1176,6 +1231,14 @@ class ePCSAFTState:
         values = np.asarray(out.component_activity_coefficients, dtype=float)
         return {label: float(value) for label, value in zip(species, values.tolist())}
 
+    def activity_coefficient_contributions(self, *args, **kwargs):
+        """Reject unsupported additive activity-coefficient decomposition explicitly."""
+        raise NotImplementedError(
+            "Activity coefficients are available through activity_coefficient(), but additive "
+            "hard_chain/dispersion/association/ionic/born activity-coefficient contributions are not exposed by "
+            "the native activity API."
+        )
+
     def fugacity_coefficient(self, natural_log=True, return_contribution_terms=False):
         """Return fugacity coefficients, defaulting to natural-log form."""
         ln_total = vector_to_array(self._native.ln_fugacity_coefficient())
@@ -1193,6 +1256,14 @@ class ePCSAFTState:
             "terms_total_natural_log": ln_term_total,
         }
         return out
+
+    def ln_fugacity_coefficient_contributions(self):
+        """Return native natural-log fugacity-coefficient contribution terms."""
+        payload = self.fugacity_coefficient(natural_log=True, return_contribution_terms=True)
+        return {
+            **payload,
+            "terms": _public_contribution_terms(payload["terms"]),
+        }
 
     def relative_permittivity(self):
         """Return the dielectric model evaluation for the current state."""
@@ -1266,7 +1337,7 @@ class ePCSAFTState:
         target = _STATE_METHOD_ALIAS_LOOKUP.get(str(name))
         if target is not None:
             return getattr(self, target)
-        raise AttributeError("{} has no attribute '{}'".format(type(self).__name__, name))
+        raise AttributeError(f"{type(self).__name__} has no attribute '{name}'")
 
     def __repr__(self):
         """Return a short debugging representation of the state."""
@@ -1275,7 +1346,7 @@ class ePCSAFTState:
 
 def check_input(x, vars):
     if abs(np.sum(x) - 1) > 1e-7:
-        raise InputError("The mole fractions do not sum to 1. x = {}".format(x))
+        raise InputError(f"The mole fractions do not sum to 1. x = {x}")
     if "temperature" in vars:
         if vars["temperature"] <= 0:
             raise InputError(
@@ -1340,18 +1411,18 @@ def create_assoc_matrix(params):
             num = 0
             for site in comp:
                 if site.lower() not in scheme_charges:
-                    raise InputError("{} is not a valid association type.".format(site))
+                    raise InputError(f"{site} is not a valid association type.")
                 charge.extend(scheme_charges[site.lower()])
                 num += len(scheme_charges[site.lower()])
             assoc_num.append(num)
         else:
             if comp.lower() not in scheme_charges:
-                raise InputError("{} is not a valid association type.".format(comp))
+                raise InputError(f"{comp} is not a valid association type.")
             charge.extend(scheme_charges[comp.lower()])
             assoc_num.append(len(scheme_charges[comp.lower()]))
     params["assoc_num"] = np.asarray(assoc_num)
 
-    params["assoc_matrix"] = np.zeros((len(charge) * len(charge)))
+    params["assoc_matrix"] = np.zeros(len(charge) * len(charge))
     ctr = 0
     for c1 in charge:
         for c2 in charge:
@@ -1403,10 +1474,10 @@ def _resolve_solvent_override(mixture, species, solvent):
     else:
         token = str(solvent)
         if token not in species:
-            raise InputError("Unknown solvent label '{}'. Available species={}".format(token, list(species)))
+            raise InputError(f"Unknown solvent label '{token}'. Available species={list(species)}")
         idx = species.index(token)
     if idx < 0 or idx >= z.size:
-        raise InputError("solvent index out of bounds: {} (ncomp={})".format(idx, int(z.size)))
+        raise InputError(f"solvent index out of bounds: {idx} (ncomp={int(z.size)})")
     if abs(float(z[idx])) > 1e-12:
         raise InputError("solvent override must reference a neutral species (z=0).")
     return True, idx
@@ -1450,7 +1521,7 @@ def create_struct(params):
     for removed_key in ("dipm", "dip_num"):
         if removed_key in params:
             raise ValueError(
-                'Removed polar parameter "{}" is not supported by the active ePC-SAFT package.'.format(removed_key)
+                f'Removed polar parameter "{removed_key}" is not supported by the active ePC-SAFT package.'
             )
 
     cppargs.mixed_rel_perm_water_index = -1
@@ -1468,40 +1539,38 @@ def create_struct(params):
     if "z" in params:
         z_arr = np.asarray(params["z"], dtype=float).flatten()
         if z_arr.size not in (0, ncomp):
-            raise ValueError('params["z"] must have length {} (or be empty), got {}.'.format(ncomp, z_arr.size))
+            raise ValueError(f'params["z"] must have length {ncomp} (or be empty), got {z_arr.size}.')
         if z_arr.size == ncomp:
             cppargs.z = np_to_vector_double(z_arr)
     if "dielc" in params:
         dielc_arr = np.asarray(params["dielc"], dtype=float).flatten()
         if dielc_arr.size != ncomp:
-            raise ValueError('params["dielc"] must have length {}, got {}.'.format(ncomp, dielc_arr.size))
+            raise ValueError(f'params["dielc"] must have length {ncomp}, got {dielc_arr.size}.')
         cppargs.dielc = np_to_vector_double(dielc_arr)
     if "MW" in params:
         mw_arr = np.asarray(params["MW"], dtype=float).flatten()
         if mw_arr.size != ncomp:
-            raise ValueError('params["MW"] must have length {}, got {}.'.format(ncomp, mw_arr.size))
+            raise ValueError(f'params["MW"] must have length {ncomp}, got {mw_arr.size}.')
         cppargs.mw = np_to_vector_double(mw_arr)
     if "mixed_rel_perm_a" in params:
         mixed_a_arr = np.asarray(params["mixed_rel_perm_a"], dtype=float).flatten()
         if mixed_a_arr.size != ncomp:
-            raise ValueError('params["mixed_rel_perm_a"] must have length {}, got {}.'.format(ncomp, mixed_a_arr.size))
+            raise ValueError(f'params["mixed_rel_perm_a"] must have length {ncomp}, got {mixed_a_arr.size}.')
         cppargs.mixed_rel_perm_a = np_to_vector_double(mixed_a_arr)
     if "mixed_rel_perm_b" in params:
         mixed_b_arr = np.asarray(params["mixed_rel_perm_b"], dtype=float).flatten()
         if mixed_b_arr.size != ncomp:
-            raise ValueError('params["mixed_rel_perm_b"] must have length {}, got {}.'.format(ncomp, mixed_b_arr.size))
+            raise ValueError(f'params["mixed_rel_perm_b"] must have length {ncomp}, got {mixed_b_arr.size}.')
         cppargs.mixed_rel_perm_b = np_to_vector_double(mixed_b_arr)
     if "mixed_rel_perm_c" in params:
         mixed_c_arr = np.asarray(params["mixed_rel_perm_c"], dtype=float).flatten()
         if mixed_c_arr.size != ncomp:
-            raise ValueError('params["mixed_rel_perm_c"] must have length {}, got {}.'.format(ncomp, mixed_c_arr.size))
+            raise ValueError(f'params["mixed_rel_perm_c"] must have length {ncomp}, got {mixed_c_arr.size}.')
         cppargs.mixed_rel_perm_c = np_to_vector_double(mixed_c_arr)
     if "mixed_rel_perm_mask" in params:
         mixed_mask_arr = np.asarray(params["mixed_rel_perm_mask"], dtype=int).flatten()
         if mixed_mask_arr.size != ncomp:
-            raise ValueError(
-                'params["mixed_rel_perm_mask"] must have length {}, got {}.'.format(ncomp, mixed_mask_arr.size)
-            )
+            raise ValueError(f'params["mixed_rel_perm_mask"] must have length {ncomp}, got {mixed_mask_arr.size}.')
         cppargs.mixed_rel_perm_mask = np_to_vector_int(mixed_mask_arr)
     if "mixed_rel_perm_water_index" in params:
         cppargs.mixed_rel_perm_water_index = int(params["mixed_rel_perm_water_index"])
@@ -1511,7 +1580,7 @@ def create_struct(params):
     if "d_born" in params:
         d_born_arr = np.asarray(params["d_born"], dtype=float).flatten()
         if d_born_arr.size != ncomp:
-            raise ValueError('params["d_born"] must have length {}, got {}.'.format(ncomp, d_born_arr.size))
+            raise ValueError(f'params["d_born"] must have length {ncomp}, got {d_born_arr.size}.')
         cppargs.d_born = np_to_vector_double(d_born_arr)
     if "f_solv" in params:
         cppargs.f_solv = np_to_vector_double(np.asarray(params["f_solv"], dtype=float))
@@ -1584,7 +1653,7 @@ def create_struct(params):
     def _reject_unknown_keys(mapping, allowed, label):
         unknown = sorted(set(mapping) - set(allowed))
         if unknown:
-            raise ValueError("{} contains unsupported key(s): {}.".format(label, unknown))
+            raise ValueError(f"{label} contains unsupported key(s): {unknown}.")
 
     _reject_unknown_keys(
         elec_model,
@@ -1603,7 +1672,7 @@ def create_struct(params):
                 return True
             if s in {"0", "false", "no", "n", "off"}:
                 return False
-        raise ValueError("Could not coerce value to bool: {}".format(v))
+        raise ValueError(f"Could not coerce value to bool: {v}")
 
     def _as_int_alias(v, aliases):
         if isinstance(v, (int, np.integer)):
@@ -1614,7 +1683,7 @@ def create_struct(params):
                 return int(aliases[s])
             if s.isdigit() or (s.startswith("-") and s[1:].isdigit()):
                 return int(s)
-        raise ValueError("Unknown option value: {}".format(v))
+        raise ValueError(f"Unknown option value: {v}")
 
     rule_alias = {
         "constant": 0,

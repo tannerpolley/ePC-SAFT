@@ -164,8 +164,9 @@ def capabilities() -> dict[str, object]:
             "neutral_stability": {"available": True, "backend": "native"},
             "neutral_bubble_dew": {
                 "available": True,
-                "backend": "python_orchestrated_native_state_fugacity",
+                "backend": "native_state_fugacity_with_python_scalar_root",
                 "methods": ["bubble_p", "bubble_t", "dew_p", "dew_t"],
+                "status": "production",
             },
             "electrolyte_lle": {
                 "available": True,
@@ -212,6 +213,29 @@ def capabilities() -> dict[str, object]:
                 "helpers": ["evaluate_fugacity_coefficients", "evaluate_fugacity_coefficients_batch"],
                 "density_seed_aliases": ["rho_guess", "rho_seed"],
             },
+            "problem_objects": {
+                "available": True,
+                "backend": "typed_python_dispatch_to_existing_native_methods",
+                "classes": [
+                    "TPFlash",
+                    "StabilityAnalysis",
+                    "BubblePoint",
+                    "DewPoint",
+                    "LLEProblem",
+                    "ElectrolyteLLEProblem",
+                    "ElectrolyteBubblePoint",
+                    "ReactiveSpeciationProblem",
+                    "ReactiveElectrolyteBubbleProblem",
+                ],
+                "entrypoint": "mixture.solve_equilibrium(problem)",
+            },
+            "contribution_maps": {
+                "available": True,
+                "backend": "native_term_payloads",
+                "families": ["hard_chain", "dispersion", "association", "ionic", "born"],
+                "inactive_terms_explicit": True,
+                "activity_coefficient_term_decomposition_available": False,
+            },
             "dataset_validation": {
                 "available": True,
                 "helper": "validate_dataset_bundle",
@@ -231,6 +255,21 @@ def capabilities() -> dict[str, object]:
                 "available": True,
                 "backend": "python_orchestrated_native_solvers",
                 "scope": "fixed-shape residual evaluator for downstream-owned coupled reactive electrolyte regression loops",
+            },
+            "reactive_electrolyte_batch_context": {
+                "available": True,
+                "backend": "python_batched_native_solvers",
+                "classes": [
+                    "ReactiveElectrolyteBatch",
+                    "ReactiveElectrolyteRegressionContext",
+                    "ReactiveRegressionObjective",
+                ],
+                "methods": ["evaluate_objective", "finite_difference_jacobian"],
+                "benchmark_commands": [
+                    "uv run python scripts/benchmark_reactive_regression.py --warmup 3 --repeat 10 --json build/benchmarks/reactive_regression_main.json",
+                    "uv run python scripts/benchmark_reactive_regression.py --case reactive_regression_objective_tiny --warmup 3 --repeat 20 --json build/benchmarks/reactive_regression_objective_main.json",
+                    "uv run python scripts/benchmark_reactive_regression.py --case reactive_regression_parameter_perturbation --warmup 3 --repeat 20 --json build/benchmarks/reactive_regression_perturbation_main.json",
+                ],
             },
         },
     }

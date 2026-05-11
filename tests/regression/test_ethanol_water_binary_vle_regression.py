@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import csv
 
-import epcsaft
 import pytest
 
-from tests.helpers.binary_regression_cases import ETHANOL_WATER_HELD_2012_KIJ
-from tests.helpers.binary_regression_cases import ETHANOL_WATER_JCED2021_100KPA
-from tests.helpers.binary_regression_cases import ETHANOL_WATER_PAPER_PCSAFT_KIJ_100KPA
-from tests.helpers.binary_regression_cases import ethanol_water_jced2021_vle_records
+import epcsaft
+from tests.helpers.binary_regression_cases import (
+    ETHANOL_WATER_HELD_2012_KIJ,
+    ETHANOL_WATER_JCED2021_100KPA,
+    ETHANOL_WATER_PAPER_PCSAFT_KIJ_100KPA,
+    ethanol_water_jced2021_vle_records,
+)
 
 
 def test_ethanol_water_jced2021_vle_dataset_loads_as_binary_regression_records() -> None:

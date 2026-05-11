@@ -93,7 +93,7 @@ def test_reaction_definition_accepts_supported_standard_states(standard_state: s
 
 
 def test_reaction_definition_rejects_unknown_standard_state() -> None:
-    with pytest.raises(epcsaft.InputError, match="ReactionDefinition.standard_state"):
+    with pytest.raises(epcsaft.InputError, match=r"ReactionDefinition\.standard_state"):
         epcsaft.ReactionDefinition(
             stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
             log_equilibrium_constant=0.0,
@@ -344,7 +344,7 @@ def test_reactive_speciation_requested_ipopt_requires_cyipopt(monkeypatch) -> No
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
 
-    with pytest.raises(epcsaft.InputError, match="cyipopt.*solver_backend='ipopt'"):
+    with pytest.raises(epcsaft.InputError, match=r"cyipopt.*solver_backend='ipopt'"):
         epcsaft.solve_reactive_speciation(
             species=species,
             mixture_factory=lambda x, T, P: mix,
