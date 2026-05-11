@@ -18,6 +18,11 @@ For the first PyPI publish, configure a PyPI trusted publisher for this project:
 For a new PyPI project, create this as a pending publisher in PyPI before the
 first GitHub Actions publish run.
 
+The workflow checks ``https://pypi.org/pypi/epcsaft/json`` before building
+artifacts. If PyPI returns 404, the workflow fails before wheel builds and
+prints the exact pending-publisher values above. That failure is expected until
+the pending publisher is created in the PyPI account.
+
 Publish a release
 -----------------
 
@@ -49,6 +54,9 @@ Failure modes
 - ``trusted publishing exchange failure`` usually means the PyPI publisher
   configuration does not exactly match the repository, workflow filename, or
   environment name above.
+- ``invalid-publisher`` on the first upload means PyPI has no matching pending
+  publisher for the OIDC claims. Create the pending publisher with the values
+  above, then rerun the workflow.
 - Duplicate-file errors mean that version was already published to PyPI. Bump
   the package version and publish a new release; PyPI files are immutable.
 - Wheel build failures should be fixed in the package or build workflow before
