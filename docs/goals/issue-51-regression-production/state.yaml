@@ -1,0 +1,242 @@
+# GoalBuddy v2 state.yaml
+# Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
+
+version: 2
+
+goal:
+  title: "Issue #51 regression production readiness"
+  slug: "issue-51-regression-production"
+  kind: existing_plan
+  tranche: "Implement issue #51 end to end: canonical schema polish plus production-grade bounded mixed pressure/speciation reactive regression."
+  status: active
+  intake:
+    original_request: "Look at the new issue posted and prepare for its full implementation."
+    interpreted_outcome: "Prepare and then execute a GoalBuddy board that fully implements GitHub issue #51 with real tests, benchmark evidence, docs, and PR integration."
+    input_shape: existing_plan
+    audience: "ePC-SAFT package users and downstream manuscript/modeling agents"
+    authority: requested
+    proof_type: test
+    completion_proof: "Issue #51 definition of done is satisfied, required validation and benchmark commands pass or have explicit evidence-backed exceptions, PR includes required reporting sections, checks pass, and no public package payload emits bounded_incomplete."
+    likely_misfire: "Only renaming statuses or adding docs while the mixed pressure/speciation bounded regression path remains incomplete or untested."
+    blind_spots_considered:
+      - "Canonical molar_mass examples currently risk g/mol versus kg/mol corruption."
+      - "bounded_incomplete may come from downstream, so package must provide a stronger status contract even if the string is external."
+      - "35-row pressure/speciation benchmark can be too slow for default CI and may need opt-in handling."
+      - "Production wording must not imply a global mathematical optimizer or automatic IPOPT."
+    existing_plan_facts:
+      - "GitHub issue #51: https://github.com/tannerpolley/ePC-SAFT/issues/51"
+      - "Phase 1 fixes canonical molar-mass units and adds g/mol safeguards/conversion."
+      - "Phase 2 adds canonical parameter-template generation without breaking legacy templates."
+      - "Phase 3 adds epcsaft.eos.Mixture and epcsaft.eos.State aliases."
+      - "Phase 4 makes bounded mixed pressure/speciation regression production-grade with precise statuses and no bounded_incomplete."
+      - "Phase 5 adds pressure/speciation 35-row benchmark or downstream validation evidence."
+      - "Phase 6 requires PR reporting sections: Summary, What changed, Regression status contract, Benchmark evidence, Validation commands, Known limitations, Downstream impact."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+active_task: T001
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: active
+    reasoning_hint: medium
+    objective: "Map current main against every issue #51 requirement without editing files."
+    inputs:
+      - "GitHub issue #51"
+      - "src/epcsaft/parameter_schema.py"
+      - "src/epcsaft/parameter_templates.py"
+      - "src/epcsaft/eos.py"
+      - "src/epcsaft/reactive_regression.py"
+      - "src/epcsaft/runtime.py"
+      - "src/epcsaft/benchmarks/reactive_regression.py"
+      - "docs/pages/parameter_schema.rst"
+      - "docs/pages/parameter_regression.rst"
+      - "docs/pages/diagnostics.rst"
+      - "tests/api/test_parameter_schema.py"
+      - "tests/api/test_parameter_templates.py"
+      - "tests/api/test_reactive_regression.py"
+      - "tests/workflows/test_benchmark_reactive_regression.py"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files."
+      - "Use exact file/symbol evidence."
+      - "Search for bounded_incomplete in package and available downstream paths if locally available."
+    expected_output:
+      - "Requirement-by-requirement gap map."
+      - "Existing code paths and tests relevant to each phase."
+      - "Initial risk ranking and likely implementation order."
+      - "Candidate disjoint Worker slices."
+    receipt: null
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Validate the issue #51 implementation order and select the first safe Worker slice."
+    inputs:
+      - "T001 receipt"
+      - "Issue #51 definition of done"
+    constraints:
+      - "Do not implement."
+      - "Reject any plan that can close the issue by relabeling incomplete behavior."
+      - "Preserve legacy API compatibility."
+      - "Select small reviewable work with explicit allowed files and verification."
+    expected_output:
+      - "Decision on implementation sequence."
+      - "First Worker objective."
+      - "allowed_files."
+      - "verify commands."
+      - "stop_if conditions."
+      - "Deferred or blocked tasks, if any."
+    receipt: null
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: medium
+    objective: "Implement canonical molar-mass unit safeguards and tests selected by Judge."
+    allowed_files:
+      - "src/epcsaft/parameter_schema.py"
+      - "docs/pages/parameter_schema.rst"
+      - "docs/pages/package_architecture.rst"
+      - "README.md"
+      - "tests/api/test_parameter_schema.py"
+    verify:
+      - "uv run python run_pytest.py tests/api/test_parameter_schema.py -q"
+      - "uv run ruff check src/epcsaft/parameter_schema.py tests/api/test_parameter_schema.py docs/pages/parameter_schema.rst"
+      - "uv run black --check src/epcsaft/parameter_schema.py tests/api/test_parameter_schema.py"
+    stop_if:
+      - "Need to change legacy dictionary parameter semantics."
+      - "Molar-mass unit migration breaks existing from_dict legacy MW behavior."
+      - "Verification fails twice for reasons outside allowed files."
+    receipt: null
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: medium
+    objective: "Implement canonical parameter-template generation and EOS aliases."
+    allowed_files:
+      - "src/epcsaft/parameter_templates.py"
+      - "src/epcsaft/eos.py"
+      - "tests/api/test_parameter_templates.py"
+      - "tests/api/test_runtime.py"
+      - "docs/pages/parameter_schema.rst"
+      - "docs/pages/package_architecture.rst"
+    verify:
+      - "uv run python run_pytest.py tests/api/test_parameter_templates.py tests/api/test_runtime.py -q"
+      - "uv run ruff check src/epcsaft/parameter_templates.py src/epcsaft/eos.py tests/api/test_parameter_templates.py tests/api/test_runtime.py"
+      - "uv run black --check src/epcsaft/parameter_templates.py src/epcsaft/eos.py tests/api/test_parameter_templates.py tests/api/test_runtime.py"
+    stop_if:
+      - "Canonical scaffold needs an undocumented format decision not covered by issue #51."
+      - "Legacy template output changes unexpectedly."
+    receipt: null
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Make bounded mixed pressure/speciation reactive-electrolyte regression production-grade with precise statuses and tests."
+    allowed_files:
+      - "src/epcsaft/reactive_regression.py"
+      - "src/epcsaft/runtime.py"
+      - "tests/api/test_reactive_regression.py"
+      - "docs/pages/parameter_regression.rst"
+      - "docs/pages/diagnostics.rst"
+    verify:
+      - "uv run python run_pytest.py tests/api/test_reactive_regression.py tests/api/test_runtime.py -q"
+      - "uv run ruff check src/epcsaft/reactive_regression.py src/epcsaft/runtime.py tests/api/test_reactive_regression.py"
+      - "uv run black --check src/epcsaft/reactive_regression.py src/epcsaft/runtime.py tests/api/test_reactive_regression.py"
+    stop_if:
+      - "Need native C++ changes for correctness rather than performance."
+      - "Real package-solver fit cannot decrease objective on a public fixture."
+      - "Any public payload still emits bounded_incomplete after implementation."
+    receipt: null
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: medium
+    objective: "Add pressure/speciation 35-row benchmark or evidence-backed opt-in benchmark path."
+    allowed_files:
+      - "src/epcsaft/benchmarks/reactive_regression.py"
+      - "tests/workflows/test_benchmark_reactive_regression.py"
+      - "docs/pages/diagnostics.rst"
+      - "docs/pages/parameter_regression.rst"
+    verify:
+      - "uv run python run_pytest.py tests/workflows/test_benchmark_reactive_regression.py -q"
+      - "uv run python scripts/benchmark_reactive_regression.py --case reactive_regression_pressure_speciation_35_row_surrogate --warmup 0 --repeat 1 --json build/benchmarks/reactive_regression_pressure_speciation_35row_smoke.json"
+      - "uv run ruff check src/epcsaft/benchmarks/reactive_regression.py tests/workflows/test_benchmark_reactive_regression.py"
+      - "uv run black --check src/epcsaft/benchmarks/reactive_regression.py tests/workflows/test_benchmark_reactive_regression.py"
+    stop_if:
+      - "The 35-row pressure/speciation benchmark is too slow for even opt-in smoke without native hot-loop work."
+      - "A package-owned surrogate cannot include both pressure and speciation residual families."
+    receipt: null
+  - id: T007
+    type: pm
+    assignee: PM
+    status: queued
+    reasoning_hint: medium
+    objective: "Run full validation and benchmark commands required by issue #51, then prepare PR with required reporting sections."
+    inputs:
+      - "Receipts from T003-T006"
+      - "Current git diff"
+    constraints:
+      - "Do not merge unless checks pass."
+      - "Record any benchmark timeout or native-hot-loop limitation explicitly."
+      - "PR body must include issue #51 required sections."
+    expected_output:
+      - "Commit hash."
+      - "PR URL."
+      - "Validation command results."
+      - "Benchmark evidence."
+      - "Known limitations and downstream impact."
+    receipt: null
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Audit whether issue #51 is fully complete."
+    inputs:
+      - "All done task receipts."
+      - "Last validation and benchmark evidence."
+      - "Current git status."
+      - "PR/check/merge status if available."
+    constraints:
+      - "Do not implement."
+      - "Reject completion if any definition-of-done item from issue #51 is unmet."
+      - "Reject completion if bounded_incomplete appears in public package outputs."
+      - "Reject completion if mixed pressure/speciation regression lacks real solver tests."
+    expected_output:
+      - "complete | not_complete."
+      - "full_outcome_complete: true | false."
+      - "Definition-of-done checklist."
+      - "Missing evidence."
+      - "Next task if not complete."
+    receipt: null
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: unknown
+    task: null
+    commands: []
