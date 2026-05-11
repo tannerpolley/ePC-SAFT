@@ -336,7 +336,9 @@ Structured outputs follow stable field names:
   ``residual_names``, ``residual_row_map``, ``diagnostics``, ``cache_stats``,
   ``timing_summary``
 - objective: ``objective``, ``metrics``, and the embedded ``batch_result``
-- fit: ``success``, ``message``, ``iterations``, ``parameter_map``, ``seed_map``,
+- fit: ``success``, ``message``, ``status``, ``termination_reason``,
+  ``iterations``, ``objective_initial``, ``objective_final``,
+  ``gradient_norm``, ``step_norm``, ``parameter_map``, ``seed_map``,
   ``lower_bounds``, ``upper_bounds``, ``active_bounds``, ``objective_result``,
   ``covariance_available``, ``covariance_matrix``, ``identifiability_status``,
   and ``diagnostics``
@@ -375,13 +377,38 @@ map and optional fit controls:
    )
 
 ``summarize_regression_result(...)`` returns ``fit_success = null`` for
-objective-only results and a boolean for true fit results.
+objective-only results and a boolean for true fit results. Fit results also
+carry a production status contract:
+
+.. list-table::
+   :header-rows: 1
+
+   * - ``status``
+     - Meaning
+   * - ``converged``
+     - The bounded fit met a stopping tolerance and all objective rows solved.
+   * - ``max_iterations``
+     - The bounded fit improved or evaluated normally but exhausted the
+       configured iteration budget.
+   * - ``line_search_failed``
+     - The Gauss-Newton step and bounded line search could not improve the
+       current objective.
+   * - ``failed_rows``
+     - The final objective includes failed rows; inspect row diagnostics before
+       using the parameters.
+
+The package does not emit placeholder public statuses such as
+``bounded_incomplete``. Downstream workflows should branch on ``status``,
+``termination_reason``, ``objective_initial``, ``objective_final``,
+``gradient_norm``, and ``step_norm`` instead of inventing their own fit-state
+labels.
 
 The package-owned micro-benchmark harness for this layer is:
 
 .. code-block:: powershell
 
    uv run python scripts\benchmark_reactive_regression.py --warmup 3 --repeat 10
+   uv run python scripts\benchmark_reactive_regression.py --case reactive_regression_pressure_speciation_35_row_surrogate --warmup 0 --repeat 1
 
 Binary VLE records
 ------------------

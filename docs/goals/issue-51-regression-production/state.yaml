@@ -1,0 +1,501 @@
+# GoalBuddy v2 state.yaml
+# Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
+
+version: 2
+
+goal:
+  title: "Issue #51 regression production readiness"
+  slug: "issue-51-regression-production"
+  kind: existing_plan
+  tranche: "Implement issue #51 end to end: canonical schema polish plus production-grade bounded mixed pressure/speciation reactive regression."
+  status: done
+  intake:
+    original_request: "Look at the new issue posted and prepare for its full implementation."
+    interpreted_outcome: "Prepare and then execute a GoalBuddy board that fully implements GitHub issue #51 with real tests, benchmark evidence, docs, and PR integration."
+    input_shape: existing_plan
+    audience: "ePC-SAFT package users and downstream manuscript/modeling agents"
+    authority: requested
+    proof_type: test
+    completion_proof: "Issue #51 definition of done is satisfied, required validation and benchmark commands pass or have explicit evidence-backed exceptions, PR includes required reporting sections, checks pass, and no public package payload emits bounded_incomplete."
+    likely_misfire: "Only renaming statuses or adding docs while the mixed pressure/speciation bounded regression path remains incomplete or untested."
+    blind_spots_considered:
+      - "Canonical molar_mass examples currently risk g/mol versus kg/mol corruption."
+      - "bounded_incomplete may come from downstream, so package must provide a stronger status contract even if the string is external."
+      - "35-row pressure/speciation benchmark can be too slow for default CI and may need opt-in handling."
+      - "Production wording must not imply a global mathematical optimizer or automatic IPOPT."
+    existing_plan_facts:
+      - "GitHub issue #51: https://github.com/tannerpolley/ePC-SAFT/issues/51"
+      - "Phase 1 fixes canonical molar-mass units and adds g/mol safeguards/conversion."
+      - "Phase 2 adds canonical parameter-template generation without breaking legacy templates."
+      - "Phase 3 adds epcsaft.eos.Mixture and epcsaft.eos.State aliases."
+      - "Phase 4 makes bounded mixed pressure/speciation regression production-grade with precise statuses and no bounded_incomplete."
+      - "Phase 5 adds pressure/speciation 35-row benchmark or downstream validation evidence."
+      - "Phase 6 requires PR reporting sections: Summary, What changed, Regression status contract, Benchmark evidence, Validation commands, Known limitations, Downstream impact."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: medium
+    objective: "Map current main against every issue #51 requirement without editing files."
+    inputs:
+      - "GitHub issue #51"
+      - "src/epcsaft/parameter_schema.py"
+      - "src/epcsaft/parameter_templates.py"
+      - "src/epcsaft/eos.py"
+      - "src/epcsaft/reactive_regression.py"
+      - "src/epcsaft/runtime.py"
+      - "src/epcsaft/benchmarks/reactive_regression.py"
+      - "docs/pages/parameter_schema.rst"
+      - "docs/pages/parameter_regression.rst"
+      - "docs/pages/diagnostics.rst"
+      - "tests/api/test_parameter_schema.py"
+      - "tests/api/test_parameter_templates.py"
+      - "tests/api/test_reactive_regression.py"
+      - "tests/workflows/test_benchmark_reactive_regression.py"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files."
+      - "Use exact file/symbol evidence."
+      - "Search for bounded_incomplete in package and available downstream paths if locally available."
+    expected_output:
+      - "Requirement-by-requirement gap map."
+      - "Existing code paths and tests relevant to each phase."
+      - "Initial risk ranking and likely implementation order."
+      - "Candidate disjoint Worker slices."
+    receipt:
+      result: done
+      status: partial_gap_map_complete
+      summary: "Issue #51 remains mostly open on main. Phase 4 has partial bounded Gauss-Newton scaffolding, but the production status contract, real mixed solver tests, and benchmark evidence are incomplete."
+      key_findings:
+        - "Phase 1 critical gap: PureRecord.molar_mass is plain kg/mol by implication only; to_legacy_dict writes it directly to MW and current docs/tests use g/mol-looking values."
+        - "Phase 2 high gap: create_parameter_template has no schema argument and only writes the legacy CSV scaffold."
+        - "Phase 3 low gap: epcsaft.eos lacks Mixture and State aliases."
+        - "Phase 4 high gap: fit_reactive_electrolyte_parameters has real bounded Gauss-Newton plumbing, but ReactiveRegressionFitResult lacks top-level status, termination_reason, objective_initial/final, gradient_norm, and step_norm."
+        - "Phase 4 high gap: tests for fit_reactive_electrolyte_parameters are mostly monkeypatched; no real package-owned mixed pressure/speciation fit test proves convergence."
+        - "Phase 4 source search: package source does not emit bounded_incomplete; downstream MEA-Thermodynamics currently invents it in src/MEA/epcsaft_ionic/global_regression.py."
+        - "Phase 5 medium gap: existing 35-row public surrogate is speciation-only with bubble_solves == 0; no 35-row pressure/speciation benchmark exists."
+      evidence:
+        - "src/epcsaft/parameter_schema.py:45"
+        - "src/epcsaft/parameter_schema.py:234"
+        - "src/epcsaft/parameter_schema.py:256"
+        - "src/epcsaft/parameter_templates.py:93"
+        - "src/epcsaft/eos.py:3"
+        - "src/epcsaft/reactive_regression.py:541"
+        - "src/epcsaft/reactive_regression.py:992"
+        - "src/epcsaft/reactive_regression.py:1212"
+        - "src/epcsaft/runtime.py:259"
+        - "src/epcsaft/benchmarks/reactive_regression.py:789"
+        - "tests/workflows/test_benchmark_reactive_regression.py:165"
+        - "C:/Users/Tanner/Documents/git/MEA-Thermodynamics/src/MEA/epcsaft_ionic/global_regression.py:370"
+      recommended_worker_slices:
+        - "Phase 1 schema hardening."
+        - "Phase 2 canonical templates."
+        - "Phase 3 aliases plus capabilities/docs."
+        - "Phase 4 fit result/status contract and real solver tests."
+        - "Phase 5 pressure/speciation 35-row benchmark."
+      ambiguities_for_judge:
+        - "Use preferred molar_mass_kg_per_mol rename with alias, or keep molar_mass plus explicit units."
+        - "Whether package completion also requires editing downstream MEA-Thermodynamics or only package status contract and tests."
+        - "Whether opt-in package 35-row pressure/speciation benchmark is sufficient if full downstream validation is too slow."
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the issue #51 implementation order and select the first safe Worker slice."
+    inputs:
+      - "T001 receipt"
+      - "Issue #51 definition of done"
+    constraints:
+      - "Do not implement."
+      - "Reject any plan that can close the issue by relabeling incomplete behavior."
+      - "Preserve legacy API compatibility."
+      - "Select small reviewable work with explicit allowed files and verification."
+    expected_output:
+      - "Decision on implementation sequence."
+      - "First Worker objective."
+      - "allowed_files."
+      - "verify commands."
+      - "stop_if conditions."
+      - "Deferred or blocked tasks, if any."
+    receipt:
+      result: done
+      decision: "Continue with T003 first: molar-mass safety using the compatibility path."
+      implementation_order:
+        - "T003 Phase 1 molar-mass safety."
+        - "T004 canonical templates plus EOS aliases."
+        - "T005 fit status contract and real mixed solver tests."
+        - "T006 pressure/speciation 35-row benchmark."
+        - "T007/T999 validation, PR reporting, final audit."
+      ambiguity_resolutions:
+        - "Keep PureRecord.molar_mass as the public field for now, but define it as kg/mol, reject values > 1.0, and add PureRecord.from_g_per_mol(...)."
+        - "Do not require downstream MEA code edits for package issue closure; downstream is evidence only."
+        - "An opt-in package-owned 35-row mixed pressure/speciation benchmark is sufficient if it exercises both residual families and reports counters."
+      first_worker_objective: "Implement Phase 1 molar-mass unit safeguards and tests."
+      allowed_files:
+        - "src/epcsaft/parameter_schema.py"
+        - "docs/pages/parameter_schema.rst"
+        - "docs/pages/package_architecture.rst"
+        - "README.md"
+        - "tests/api/test_parameter_schema.py"
+      verify:
+        - "uv run python run_pytest.py tests/api/test_parameter_schema.py tests/api/test_runtime.py -q"
+        - "uv run ruff check src/epcsaft/parameter_schema.py tests/api/test_parameter_schema.py"
+        - "uv run black --check src/epcsaft/parameter_schema.py tests/api/test_parameter_schema.py"
+        - "rg -n \"molar_mass=18\\.0|molar_mass=32\\.04|molar_mass=46\\.0|molar_mass=84\\.16\" docs/pages/parameter_schema.rst README.md tests/api/test_parameter_schema.py"
+      blocked_tasks: []
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement canonical molar-mass unit safeguards and tests selected by Judge."
+    allowed_files:
+      - "src/epcsaft/parameter_schema.py"
+      - "docs/pages/parameter_schema.rst"
+      - "docs/pages/package_architecture.rst"
+      - "README.md"
+      - "tests/api/test_parameter_schema.py"
+    verify:
+      - "uv run python run_pytest.py tests/api/test_parameter_schema.py -q"
+      - "uv run ruff check src/epcsaft/parameter_schema.py tests/api/test_parameter_schema.py docs/pages/parameter_schema.rst"
+      - "uv run black --check src/epcsaft/parameter_schema.py tests/api/test_parameter_schema.py"
+    stop_if:
+      - "Need to change legacy dictionary parameter semantics."
+      - "Molar-mass unit migration breaks existing from_dict legacy MW behavior."
+      - "Verification fails twice for reasons outside allowed files."
+    receipt:
+      result: done
+      summary: "PureRecord.molar_mass is now explicitly kg/mol, rejects g/mol-looking values by default, and has PureRecord.from_g_per_mol(...) for source tables. Canonical docs/tests no longer use unsafe g/mol-looking molar_mass literals."
+      changed_files:
+        - "src/epcsaft/parameter_schema.py"
+        - "tests/api/test_parameter_schema.py"
+        - "docs/pages/parameter_schema.rst"
+      commands:
+        - cmd: "uv run python run_pytest.py tests/api/test_parameter_schema.py tests/api/test_runtime.py -q"
+          status: pass
+          summary: "43 passed in 2.72s"
+        - cmd: "uv run ruff check src/epcsaft/parameter_schema.py tests/api/test_parameter_schema.py"
+          status: pass
+        - cmd: "uv run black --check src/epcsaft/parameter_schema.py tests/api/test_parameter_schema.py"
+          status: pass
+        - cmd: "rg -n \"molar_mass=18\\.0|molar_mass=32\\.04|molar_mass=46\\.0|molar_mass=84\\.16\" docs/pages/parameter_schema.rst README.md tests/api/test_parameter_schema.py"
+          status: pass
+          summary: "No matches."
+      next_task: T004
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement canonical parameter-template generation and EOS aliases."
+    allowed_files:
+      - "src/epcsaft/parameter_templates.py"
+      - "src/epcsaft/eos.py"
+      - "tests/api/test_parameter_templates.py"
+      - "tests/api/test_runtime.py"
+      - "docs/pages/parameter_schema.rst"
+      - "docs/pages/package_architecture.rst"
+    verify:
+      - "uv run python run_pytest.py tests/api/test_parameter_templates.py tests/api/test_runtime.py -q"
+      - "uv run ruff check src/epcsaft/parameter_templates.py src/epcsaft/eos.py tests/api/test_parameter_templates.py tests/api/test_runtime.py"
+      - "uv run black --check src/epcsaft/parameter_templates.py src/epcsaft/eos.py tests/api/test_parameter_templates.py tests/api/test_runtime.py"
+    stop_if:
+      - "Canonical scaffold needs an undocumented format decision not covered by issue #51."
+      - "Legacy template output changes unexpectedly."
+    receipt:
+      result: done
+      status: implemented
+      summary: "Added schema='canonical' parameter-template scaffolds and epcsaft.eos.Mixture/State aliases while preserving legacy CSV template behavior."
+      changes:
+        - "create_parameter_template(..., schema='legacy') remains the default and writes the previous CSV folder layout."
+        - "create_parameter_template(..., schema='canonical') writes parameter_set.json and user_options.json with kg/mol molar-mass units explicit in pure-record placeholders."
+        - "epcsaft.eos now exports Mixture and State aliases in addition to ePCSAFTMixture and ePCSAFTState."
+        - "Docs describe canonical template generation and the shorter EOS aliases."
+      changed_files:
+        - "src/epcsaft/parameter_templates.py"
+        - "src/epcsaft/eos.py"
+        - "tests/api/test_parameter_templates.py"
+        - "tests/api/test_runtime.py"
+        - "docs/pages/parameter_schema.rst"
+        - "docs/pages/package_architecture.rst"
+      evidence:
+        - "src/epcsaft/parameter_templates.py"
+        - "src/epcsaft/eos.py"
+        - "tests/api/test_parameter_templates.py"
+        - "tests/api/test_runtime.py"
+        - "docs/pages/parameter_schema.rst"
+        - "docs/pages/package_architecture.rst"
+      commands:
+        - cmd: "uv run python run_pytest.py tests/api/test_parameter_templates.py tests/api/test_runtime.py -q"
+          status: pass
+          summary: "48 passed in 2.67s"
+        - cmd: "uv run ruff check src/epcsaft/parameter_templates.py src/epcsaft/eos.py tests/api/test_parameter_templates.py tests/api/test_runtime.py"
+          status: pass
+        - cmd: "uv run black --check src/epcsaft/parameter_templates.py src/epcsaft/eos.py tests/api/test_parameter_templates.py tests/api/test_runtime.py"
+          status: pass
+      next_task: T005
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Make bounded mixed pressure/speciation reactive-electrolyte regression production-grade with precise statuses and tests."
+    allowed_files:
+      - "src/epcsaft/reactive_regression.py"
+      - "src/epcsaft/runtime.py"
+      - "tests/api/test_reactive_regression.py"
+      - "tests/api/test_runtime.py"
+      - "docs/pages/parameter_regression.rst"
+      - "docs/pages/diagnostics.rst"
+    verify:
+      - "uv run python run_pytest.py tests/api/test_reactive_regression.py tests/api/test_runtime.py -q"
+      - "uv run ruff check src/epcsaft/reactive_regression.py src/epcsaft/runtime.py tests/api/test_reactive_regression.py"
+      - "uv run black --check src/epcsaft/reactive_regression.py src/epcsaft/runtime.py tests/api/test_reactive_regression.py"
+    stop_if:
+      - "Need native C++ changes for correctness rather than performance."
+      - "Real package-solver fit cannot decrease objective on a public fixture."
+      - "Any public payload still emits bounded_incomplete after implementation."
+    receipt:
+      result: done
+      status: implemented
+      summary: "ReactiveRegressionFitResult now has a production status contract, failed rows carry penalty residuals, and a real native mixed pressure/speciation fit test proves objective improvement."
+      changes:
+        - "Added status, termination_reason, objective_initial, objective_final, gradient_norm, and step_norm to fit result payloads and summaries."
+        - "Added capabilities()['regression']['reactive_electrolyte_batch_context']['fit_status_contract'] for downstream solver selection and status branching."
+        - "Changed failed-row residual packing so failed rows always contribute penalty residuals for requested targets instead of retaining best-effort zero residuals."
+        - "Documented fit statuses: converged, max_iterations, line_search_failed, and failed_rows."
+      changed_files:
+        - "src/epcsaft/reactive_regression.py"
+        - "src/epcsaft/runtime.py"
+        - "tests/api/test_reactive_regression.py"
+        - "tests/api/test_runtime.py"
+        - "docs/pages/parameter_regression.rst"
+        - "docs/pages/diagnostics.rst"
+      evidence:
+        - "src/epcsaft/reactive_regression.py"
+        - "src/epcsaft/runtime.py"
+        - "tests/api/test_reactive_regression.py"
+        - "tests/api/test_runtime.py"
+        - "docs/pages/parameter_regression.rst"
+        - "docs/pages/diagnostics.rst"
+      commands:
+        - cmd: "uv run python run_pytest.py tests/api/test_reactive_regression.py tests/api/test_runtime.py -q"
+          status: pass
+          summary: "47 passed in 11.27s"
+        - cmd: "uv run ruff check src/epcsaft/reactive_regression.py src/epcsaft/runtime.py tests/api/test_reactive_regression.py"
+          status: pass
+        - cmd: "uv run black --check src/epcsaft/reactive_regression.py src/epcsaft/runtime.py tests/api/test_reactive_regression.py"
+          status: pass
+        - cmd: "rg -n \"bounded_incomplete\" src tests docs/pages docs/goals/issue-51-regression-production/state.yaml"
+          status: pass
+          summary: "No package source payload emits bounded_incomplete; remaining matches are docs/tests/goal-board guardrails."
+      next_task: T006
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Add pressure/speciation 35-row benchmark or evidence-backed opt-in benchmark path."
+    allowed_files:
+      - "src/epcsaft/benchmarks/reactive_regression.py"
+      - "tests/workflows/test_benchmark_reactive_regression.py"
+      - "docs/pages/diagnostics.rst"
+      - "docs/pages/parameter_regression.rst"
+    verify:
+      - "uv run python run_pytest.py tests/workflows/test_benchmark_reactive_regression.py -q"
+      - "uv run python scripts/benchmark_reactive_regression.py --case reactive_regression_pressure_speciation_35_row_surrogate --warmup 0 --repeat 1 --json build/benchmarks/reactive_regression_pressure_speciation_35row_smoke.json"
+      - "uv run ruff check src/epcsaft/benchmarks/reactive_regression.py tests/workflows/test_benchmark_reactive_regression.py"
+      - "uv run black --check src/epcsaft/benchmarks/reactive_regression.py tests/workflows/test_benchmark_reactive_regression.py"
+    stop_if:
+      - "The 35-row pressure/speciation benchmark is too slow for even opt-in smoke without native hot-loop work."
+      - "A package-owned surrogate cannot include both pressure and speciation residual families."
+    receipt:
+      result: done
+      status: implemented
+      summary: "Added an opt-in 35-row mixed pressure/speciation reactive-regression surrogate benchmark with explicit target-family counters."
+      changes:
+        - "Added reactive_regression_pressure_speciation_35_row_surrogate to the benchmark case registry."
+        - "The new surrogate runs 2 bubble-pressure rows and 33 speciation rows for 35 total rows."
+        - "Benchmark case payloads now include top-level target_family_counts."
+        - "Docs list the opt-in 35-row mixed benchmark command and explain its residual-family evidence."
+      changed_files:
+        - "src/epcsaft/benchmarks/reactive_regression.py"
+        - "tests/workflows/test_benchmark_reactive_regression.py"
+        - "docs/pages/diagnostics.rst"
+        - "docs/pages/parameter_regression.rst"
+      evidence:
+        - "src/epcsaft/benchmarks/reactive_regression.py"
+        - "tests/workflows/test_benchmark_reactive_regression.py"
+        - "docs/pages/diagnostics.rst"
+        - "docs/pages/parameter_regression.rst"
+        - "build/benchmarks/reactive_regression_pressure_speciation_35row_smoke.json"
+      commands:
+        - cmd: "uv run python run_pytest.py tests/workflows/test_benchmark_reactive_regression.py -q"
+          status: pass
+          summary: "8 passed in 54.54s"
+        - cmd: "uv run python scripts/benchmark_reactive_regression.py --case reactive_regression_pressure_speciation_35_row_surrogate --warmup 0 --repeat 1 --json build/benchmarks/reactive_regression_pressure_speciation_35row_smoke.json"
+          status: pass
+          summary: "35 rows; success_count=35; failure_count=0; speciation_solves=33; bubble_solves=2; target_family_counts={'partial_pressure': 2, 'speciation': 35, 'activity': 33}; median_ms=8153.716"
+        - cmd: "uv run ruff check src/epcsaft/benchmarks/reactive_regression.py tests/workflows/test_benchmark_reactive_regression.py"
+          status: pass
+        - cmd: "uv run black --check src/epcsaft/benchmarks/reactive_regression.py tests/workflows/test_benchmark_reactive_regression.py"
+          status: pass
+      next_task: T007
+  - id: T007
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Run full validation and benchmark commands required by issue #51, then prepare PR with required reporting sections."
+    inputs:
+      - "Receipts from T003-T006"
+      - "Current git diff"
+    constraints:
+      - "Do not merge unless checks pass."
+      - "Record any benchmark timeout or native-hot-loop limitation explicitly."
+      - "PR body must include issue #51 required sections."
+    expected_output:
+      - "Commit hash."
+      - "PR URL."
+      - "Validation command results."
+      - "Benchmark evidence."
+      - "Known limitations and downstream impact."
+    receipt:
+      result: done
+      status: validated
+      summary: "Issue #51 implementation passed required build, tests, docs, lint, format checks, and benchmark evidence. The first all-case benchmark attempt timed out because the opt-in 35-row case was included by default; default benchmark selection was corrected to fast cases only and the explicit 35-row mixed case passed separately."
+      validation:
+        - cmd: "uv sync --no-install-project"
+          status: pass
+          summary: "Resolved environment and removed unneeded packages from the venv."
+        - cmd: "uv run python scripts/build_epcsaft.py"
+          status: pass
+          summary: "Ninja no-op build completed; total 2.99s."
+        - cmd: "uv run python run_pytest.py tests/api/test_parameter_schema.py tests/api/test_parameter_templates.py tests/api/test_runtime.py tests/api/test_reactive_regression.py tests/workflows/test_benchmark_reactive_regression.py -q"
+          status: pass
+          summary: "72 passed in 66.92s."
+        - cmd: "uv run python run_pytest.py tests/equilibrium/test_api.py -q"
+          status: pass
+          summary: "15 passed in 1.67s."
+        - cmd: "uv run python scripts/validate_project.py quick"
+          status: pass
+          summary: "Doctor plus quick slice passed; 23 passed in 14.66s."
+        - cmd: "uv run python scripts/validate_project.py docs"
+          status: pass
+          summary: "Sphinx docs build succeeded."
+        - cmd: "uv run ruff check src tests docs"
+          status: pass
+        - cmd: "uv run black --check src tests docs"
+          status: pass
+          summary: "88 files would be left unchanged."
+        - cmd: "uv run python run_pytest.py tests/api/test_runtime.py tests/workflows/test_benchmark_reactive_regression.py -q"
+          status: pass
+          summary: "45 passed in 63.77s after final capability/default-benchmark patches."
+      benchmarks:
+        - cmd: "uv run python scripts/benchmark_reactive_regression.py --warmup 3 --repeat 10 --json build/benchmarks/reactive_regression_main.json"
+          status: pass_after_default_scope_fix
+          summary: "Default fast cases only: speciation median 0.365 ms; bubble median 8474.441 ms; objective tiny median 1095.699 ms with 7.68x speedup; perturbation median 2182.791 ms with 7.88x speedup; all failure_count=0."
+        - cmd: "uv run python scripts/benchmark_reactive_regression.py --case reactive_regression_objective_tiny --warmup 3 --repeat 20 --json build/benchmarks/reactive_regression_objective_main.json"
+          status: pass
+          summary: "median_ms=1131.615; success_count=40; failure_count=0; speedup=7.60x."
+        - cmd: "uv run python scripts/benchmark_reactive_regression.py --case reactive_regression_parameter_perturbation --warmup 3 --repeat 20 --json build/benchmarks/reactive_regression_perturbation_main.json"
+          status: pass
+          summary: "median_ms=2245.403; success_count=80; failure_count=0; speedup=8.34x."
+        - cmd: "uv run python scripts/benchmark_reactive_regression.py --case reactive_regression_pressure_speciation_35_row_surrogate --warmup 1 --repeat 3 --json build/benchmarks/reactive_regression_pressure_speciation_35row.json"
+          status: pass
+          summary: "35 rows per repeat; success_count=105; failure_count=0; speciation_solves=99; bubble_solves=6; target_family_counts={'partial_pressure': 6, 'speciation': 105, 'activity': 99}; median_ms=1180.69."
+      known_limitations:
+        - "The bounded mixed regression is Python-orchestrated with native thermodynamic solves; capabilities report native_hot_loop=False."
+        - "The tiny bubble benchmark remains slow relative to speciation and dominates the default benchmark wall time."
+        - "The 35-row mixed benchmark is explicit opt-in, not part of the default all-case benchmark command."
+      next_task: T999
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether issue #51 is fully complete."
+    inputs:
+      - "All done task receipts."
+      - "Last validation and benchmark evidence."
+      - "Current git status."
+      - "PR/check/merge status if available."
+    constraints:
+      - "Do not implement."
+      - "Reject completion if any definition-of-done item from issue #51 is unmet."
+      - "Reject completion if bounded_incomplete appears in public package outputs."
+      - "Reject completion if mixed pressure/speciation regression lacks real solver tests."
+    expected_output:
+      - "complete | not_complete."
+      - "full_outcome_complete: true | false."
+      - "Definition-of-done checklist."
+      - "Missing evidence."
+      - "Next task if not complete."
+    receipt:
+      result: done
+      status: complete
+      decision: complete
+      full_outcome_complete: true
+      summary: "Issue #51 definition of done is satisfied by the current branch implementation and validation evidence."
+      checklist:
+        - item: "Canonical molar-mass units are unambiguous and validated."
+          status: pass
+          evidence: "PureRecord docs and validation treat molar_mass as kg/mol; >1.0 is rejected."
+        - item: "g/mol mistakes are blocked or explicitly converted."
+          status: pass
+          evidence: "PureRecord.from_g_per_mol(...) converts g/mol to kg/mol; g/mol-looking molar_mass raises InputError."
+        - item: "Canonical parameter templates exist."
+          status: pass
+          evidence: "create_parameter_template(..., schema='canonical') writes parameter_set.json with molar_mass_units='kg/mol'."
+        - item: "epcsaft.eos.Mixture and epcsaft.eos.State aliases exist."
+          status: pass
+          evidence: "tests/api/test_runtime.py asserts aliases are identical to ePCSAFTMixture/ePCSAFTState."
+        - item: "Mixed pressure/speciation bounded regression is production-grade."
+          status: pass
+          evidence: "Fit result has explicit statuses and diagnostics; failed rows now produce penalty residuals; real native mixed pressure/speciation fit test improves objective."
+        - item: "No public package result, summary, capability, or diagnostic emits bounded_incomplete."
+          status: pass
+          evidence: "Tests serialize fit.to_dict(), summarize_regression_result(fit), and capabilities status lists; remaining bounded_incomplete matches are docs/tests guardrails only."
+        - item: "Nonconverged fits return precise statuses."
+          status: pass
+          evidence: "Tests assert max_iterations status for low-iteration nonconvergence."
+        - item: "Pressure/speciation 35-row package benchmark exists."
+          status: pass
+          evidence: "reactive_regression_pressure_speciation_35_row_surrogate ran with 35 rows, 6 bubble solves, 99 speciation solves, and no failures across repeat=3."
+        - item: "capabilities() accurately reports production status."
+          status: pass
+          evidence: "bounded_mixed_pressure_speciation_regression reports available=True, status='production', target support, bounds support, native_hot_loop=False."
+        - item: "Docs explain status, convergence, nonconvergence, and benchmark usage."
+          status: pass
+          evidence: "docs/pages/parameter_regression.rst and docs/pages/diagnostics.rst updated; Sphinx docs validation passed."
+      validation_reference: "See T007 receipt for commands, benchmark timings, and known limitations."
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: unknown
+    task: null
+    commands: []

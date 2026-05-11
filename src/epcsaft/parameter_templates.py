@@ -6,6 +6,7 @@ import csv
 import json
 from collections.abc import Iterable
 from pathlib import Path
+from typing import Any
 
 PURE_TEMPLATE_COLUMNS = [
     "component",
@@ -24,6 +25,7 @@ PURE_TEMPLATE_COLUMNS = [
 
 MATRIX_TEMPLATE_COLUMNS = ["component"]
 REL_PERM_TEMPLATE_COLUMNS = ["organic", "a", "b", "c"]
+SUPPORTED_SCHEMAS = {"legacy", "canonical"}
 
 
 def _prompt(prompt: str) -> str:
@@ -90,16 +92,79 @@ def _write_pure_template(path: Path, species: list[str]) -> None:
     _write_csv(path, PURE_TEMPLATE_COLUMNS, rows)
 
 
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    with path.open("w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2)
+        handle.write("\n")
+
+
+def _canonical_pure_record(component: str) -> dict[str, Any]:
+    return {
+        "component": component,
+        "molar_mass": None,
+        "molar_mass_units": "kg/mol",
+        "m": None,
+        "sigma": None,
+        "epsilon_k": None,
+        "charge": 0.0,
+        "epsilon_k_ab": 0.0,
+        "kappa_ab": 0.0,
+        "association_scheme": None,
+        "association_sites": [],
+        "relative_permittivity": None,
+        "born_diameter": 0.0,
+        "solvation_factor": 1.0,
+    }
+
+
+def _write_canonical_template(root: Path, species: list[str]) -> None:
+    root.mkdir(parents=True, exist_ok=False)
+    _write_json(
+        root / "parameter_set.json",
+        {
+            "schema": "canonical",
+            "schema_version": 1,
+            "components": species,
+            "pure_records": [_canonical_pure_record(component) for component in species],
+            "binary_records": [],
+            "metadata": {
+                "template_note": (
+                    "Fill molar_mass in kg/mol or construct records with "
+                    "PureRecord.from_g_per_mol(...) before loading."
+                )
+            },
+        },
+    )
+    _write_json(root / "user_options.json", {})
+
+
+def _write_legacy_template(root: Path, species: list[str]) -> None:
+    (root / "pure").mkdir(parents=True, exist_ok=False)
+    (root / "mixed" / "binary_interaction").mkdir(parents=True, exist_ok=False)
+    (root / "mixed" / "rel_perm").mkdir(parents=True, exist_ok=False)
+
+    pure_name = _infer_pure_template_name(species)
+    _write_pure_template(root / "pure" / pure_name, species)
+    _write_matrix_template(root / "mixed" / "binary_interaction" / "k_ij.csv", species)
+    _write_matrix_template(root / "mixed" / "binary_interaction" / "l_ij.csv", species)
+    _write_matrix_template(root / "mixed" / "binary_interaction" / "k_hb_ij.csv", species)
+    _write_csv(root / "mixed" / "rel_perm" / "parameters.csv", REL_PERM_TEMPLATE_COLUMNS, [])
+    _write_json(root / "user_options.json", {})
+
+
 def create_parameter_template(
     location: str | Path | None = None,
     folder_name: str | None = None,
     species: Iterable[str] | str | None = None,
+    *,
+    schema: str = "legacy",
 ) -> Path:
     """Create a user-owned dataset scaffold and return its root path.
 
     If any of the inputs are omitted, the function prompts for them.
-    The generated layout matches the loader expectations used by
-    ``ePCSAFTMixture.from_dataset(...)``.
+    ``schema="legacy"`` preserves the CSV layout consumed by
+    ``ePCSAFTMixture.from_dataset(...)``. ``schema="canonical"`` writes a
+    JSON scaffold aligned to ``PureRecord`` and ``BinaryRecord`` fields.
     """
 
     if location is None:
@@ -109,25 +174,19 @@ def create_parameter_template(
     if species is None:
         species = _prompt("Comma-separated species list")
 
+    schema_name = str(schema).strip().lower()
+    if schema_name not in SUPPORTED_SCHEMAS:
+        raise ValueError(f"Unsupported parameter template schema {schema!r}; expected 'legacy' or 'canonical'.")
+
     root = Path(location).expanduser() / str(folder_name).strip()
     if root.exists():
         raise FileExistsError(f"Template folder already exists: {root}")
 
     species_list = _normalize_species(species)
 
-    (root / "pure").mkdir(parents=True, exist_ok=False)
-    (root / "mixed" / "binary_interaction").mkdir(parents=True, exist_ok=False)
-    (root / "mixed" / "rel_perm").mkdir(parents=True, exist_ok=False)
-
-    pure_name = _infer_pure_template_name(species_list)
-    _write_pure_template(root / "pure" / pure_name, species_list)
-    _write_matrix_template(root / "mixed" / "binary_interaction" / "k_ij.csv", species_list)
-    _write_matrix_template(root / "mixed" / "binary_interaction" / "l_ij.csv", species_list)
-    _write_matrix_template(root / "mixed" / "binary_interaction" / "k_hb_ij.csv", species_list)
-    _write_csv(root / "mixed" / "rel_perm" / "parameters.csv", REL_PERM_TEMPLATE_COLUMNS, [])
-
-    with (root / "user_options.json").open("w", encoding="utf-8") as handle:
-        json.dump({}, handle, indent=2)
-        handle.write("\n")
+    if schema_name == "canonical":
+        _write_canonical_template(root, species_list)
+    else:
+        _write_legacy_template(root, species_list)
 
     return root

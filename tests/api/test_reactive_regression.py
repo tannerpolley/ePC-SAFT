@@ -17,6 +17,55 @@ def _tiny_base_parameters() -> dict[str, np.ndarray]:
     }
 
 
+def _native_mixed_pressure_speciation_batch() -> tuple[epcsaft.ReactiveElectrolyteBatch, float]:
+    temperature = 298.15
+    water_sigma = 2.7927 + 10.11 * np.exp(-0.01775 * temperature) - 1.417 * np.exp(-0.01146 * temperature)
+    params = {
+        "MW": np.asarray([18.01528e-3, 22.98e-3, 35.45e-3]),
+        "m": np.asarray([1.2047, 1.0, 1.0]),
+        "s": np.asarray([water_sigma, 2.8232, 2.7560]),
+        "e": np.asarray([353.95, 230.0, 170.0]),
+        "e_assoc": np.asarray([2425.7, 0.0, 0.0]),
+        "vol_a": np.asarray([0.04509, 0.0, 0.0]),
+        "assoc_scheme": ["2B", None, None],
+        "z": np.asarray([0.0, 1.0, -1.0]),
+        "dielc": np.asarray([78.09, 8.0, 8.0]),
+        "d_born": np.asarray([0.0, 3.445, 4.1]),
+        "f_solv": np.asarray([1.5, 1.0, 1.0]),
+        "k_ij": np.asarray([[0.0, 0.0045, -0.25], [0.0045, 0.0, 0.317], [-0.25, 0.317, 0.0]]),
+        "l_ij": np.zeros((3, 3)),
+        "k_hb": np.zeros((3, 3)),
+    }
+    balances = {"water": {"water": 1.0}, "sodium": {"Na+": 1.0}, "chloride": {"Cl-": 1.0}}
+    row = epcsaft.ReactiveElectrolyteRow(
+        row_id="native-mixed",
+        T=temperature,
+        P_seed=101325.0,
+        totals={"water": 0.98, "sodium": 0.01, "chloride": 0.01},
+        initial_x=[0.98, 0.01, 0.01],
+        balances=balances,
+        reactions=[],
+        vapor_species=["water"],
+        target_partial_pressures={"water": 3000.0},
+        target_speciation={"water": 0.98},
+    )
+    batch = epcsaft.ReactiveElectrolyteBatch(
+        species=["water", "Na+", "Cl-"],
+        rows=[row],
+        balances=balances,
+        reactions=[],
+        vapor_species=["water"],
+        base_parameters=params,
+        options=epcsaft.ReactiveElectrolyteBatchOptions(
+            include_state_outputs=False,
+            warm_start_rows=True,
+            warm_start_objective=True,
+        ),
+        reactive_bubble_options=epcsaft.ReactiveElectrolyteBubbleOptions(error_mode="result"),
+    )
+    return batch, water_sigma
+
+
 def test_reactive_regression_context_runs_native_speciation_objective_and_jacobian() -> None:
     row = epcsaft.ReactiveElectrolyteRow(
         row_id="native-row",
@@ -392,11 +441,18 @@ def test_fit_reactive_electrolyte_parameters_returns_fit_result_and_applies_boun
     )
 
     assert isinstance(fit, epcsaft.ReactiveRegressionFitResult)
+    assert fit.status == "converged"
+    assert fit.termination_reason in {"parameter_step_tolerance", "step_norm_tolerance"}
+    assert fit.objective_final <= fit.objective_initial
+    assert fit.gradient_norm is not None
+    assert fit.step_norm is not None
     assert fit.parameter_map["A.sigma"] == pytest.approx(3.05)
     assert fit.active_bounds["A.sigma"] is True
     assert fit.covariance_available is True
     summary = epcsaft.summarize_regression_result(fit)
     assert summary["fit_success"] is True
+    assert summary["fit_status"] == "converged"
+    assert summary["termination_reason"] == fit.termination_reason
     assert summary["upper_bounds"]["A.sigma"] == pytest.approx(3.05)
     assert summary["covariance_status"] == "available"
 
@@ -539,6 +595,38 @@ def test_fit_reactive_electrolyte_parameters_accepts_speciation_rows(monkeypatch
     assert isinstance(summary["fit_success"], bool)
 
 
+def test_fit_reactive_electrolyte_parameters_real_mixed_objective_improves() -> None:
+    batch, _water_sigma = _native_mixed_pressure_speciation_batch()
+
+    fit = epcsaft.fit_reactive_electrolyte_parameters(
+        batch,
+        initial_parameters={"Na+.sigma": 2.7},
+        lower_bounds={"Na+.sigma": 2.5},
+        upper_bounds={"Na+.sigma": 3.1},
+        max_iterations=2,
+        tolerance=1.0e-8,
+        log_parameters=False,
+    )
+
+    payload = fit.to_dict()
+    summary = epcsaft.summarize_regression_result(fit)
+    target_counts = fit.objective_result.batch_result.diagnostics["target_family_counts"]
+
+    assert fit.status in {"converged", "max_iterations", "line_search_failed"}
+    assert fit.objective_final < fit.objective_initial
+    assert fit.objective_result.batch_result.success_count == 1
+    assert fit.objective_result.batch_result.failure_count == 0
+    assert target_counts["partial_pressure"] == 1
+    assert target_counts["speciation"] == 1
+    assert payload["status"] == fit.status
+    assert payload["termination_reason"] == fit.termination_reason
+    assert payload["objective_initial"] == pytest.approx(fit.objective_initial)
+    assert payload["objective_final"] == pytest.approx(fit.objective_final)
+    assert "bounded_incomplete" not in str(payload)
+    assert summary["fit_status"] == fit.status
+    assert "bounded_incomplete" not in str(summary)
+
+
 def test_fit_reactive_electrolyte_parameters_reports_nonconverged_fit(monkeypatch) -> None:
     def fake_solve(**kwargs):
         mix = kwargs["mixture_factory"](kwargs["initial_x"], kwargs["T"], kwargs["P_seed"])
@@ -600,6 +688,9 @@ def test_fit_reactive_electrolyte_parameters_reports_nonconverged_fit(monkeypatc
 
     assert fit.success is False
     assert fit.message == "maximum iterations reached"
+    assert fit.status == "max_iterations"
+    assert fit.termination_reason == "max_iterations"
+    assert fit.objective_final <= fit.objective_initial
     assert fit.iterations == 1
 
 

@@ -543,7 +543,13 @@ class ReactiveRegressionFitResult:
 
     success: bool
     message: str
+    status: str
+    termination_reason: str
     iterations: int
+    objective_initial: float
+    objective_final: float
+    gradient_norm: float | None
+    step_norm: float | None
     parameter_map: Mapping[str, float]
     seed_map: Mapping[str, float]
     lower_bounds: Mapping[str, float | None]
@@ -559,7 +565,13 @@ class ReactiveRegressionFitResult:
         return {
             "success": bool(self.success),
             "message": self.message,
+            "status": self.status,
+            "termination_reason": self.termination_reason,
             "iterations": int(self.iterations),
+            "objective_initial": float(self.objective_initial),
+            "objective_final": float(self.objective_final),
+            "gradient_norm": None if self.gradient_norm is None else float(self.gradient_norm),
+            "step_norm": None if self.step_norm is None else float(self.step_norm),
             "parameter_map": _json_like(self.parameter_map),
             "seed_map": _json_like(self.seed_map),
             "lower_bounds": _json_like(self.lower_bounds),
@@ -1026,7 +1038,13 @@ def summarize_regression_result(
         fit_payload = {
             "fit_success": bool(result.success),
             "fit_message": result.message,
+            "fit_status": result.status,
+            "termination_reason": result.termination_reason,
             "fit_iterations": int(result.iterations),
+            "objective_initial": float(result.objective_initial),
+            "objective_final": float(result.objective_final),
+            "gradient_norm": None if result.gradient_norm is None else float(result.gradient_norm),
+            "step_norm": None if result.step_norm is None else float(result.step_norm),
             "parameter_map": _json_like(result.parameter_map),
             "seed_map": _json_like(result.seed_map),
             "lower_bounds": _json_like(result.lower_bounds),
@@ -1043,7 +1061,13 @@ def summarize_regression_result(
         fit_payload = {
             "fit_success": None,
             "fit_message": "",
+            "fit_status": "not_a_fit",
+            "termination_reason": "objective_only",
             "fit_iterations": None,
+            "objective_initial": None,
+            "objective_final": float(objective_result.objective),
+            "gradient_norm": None,
+            "step_norm": None,
             "covariance_available": False,
             "identifiability_status": "unavailable",
             "covariance_status": "unavailable",
@@ -1256,9 +1280,12 @@ def _fit_reactive_parameters_impl(
 
     trajectory: list[dict[str, Any]] = []
     objective_result = context.evaluate_objective(current)
+    objective_initial = float(objective_result.objective)
     converged = False
     message = "maximum iterations reached"
+    termination_reason = "max_iterations"
     final_jacobian: ReactiveRegressionJacobianResult | None = None
+    last_step_norm: float | None = None
 
     for iteration in range(1, max_iterations + 1):
         jacobian = context.finite_difference_jacobian(
@@ -1278,6 +1305,7 @@ def _fit_reactive_parameters_impl(
         except np.linalg.LinAlgError:
             step = -np.linalg.pinv(jtj + regularization) @ jtr
         step *= float(damping)
+        last_step_norm = float(np.linalg.norm(step))
         trial = dict(current)
         for idx, name in enumerate(parameter_names):
             trial[name] = float(current[name] + step[idx])
@@ -1307,7 +1335,7 @@ def _fit_reactive_parameters_impl(
                 "iteration": iteration,
                 "objective": float(objective_result.objective),
                 "accepted": bool(accepted),
-                "step_norm": float(np.linalg.norm(step)),
+                "step_norm": last_step_norm,
             }
         )
         if accepted:
@@ -1317,13 +1345,16 @@ def _fit_reactive_parameters_impl(
             if delta <= tolerance:
                 converged = True
                 message = "parameter step tolerance reached"
+                termination_reason = "parameter_step_tolerance"
                 break
-            if np.linalg.norm(step) <= tolerance:
+            if last_step_norm <= tolerance:
                 converged = True
                 message = "gauss-newton step norm reached tolerance"
+                termination_reason = "step_norm_tolerance"
                 break
         else:
             message = "line search failed to improve objective"
+            termination_reason = "line_search_failed"
             break
 
     covariance_available = False
@@ -1355,10 +1386,29 @@ def _fit_reactive_parameters_impl(
         )
         for name in parameter_names
     }
+    gradient_norm = None if final_jacobian is None else float(np.linalg.norm(final_jacobian.gradient))
+    success = bool(converged and objective_result.batch_result.failure_count == 0)
+    if success:
+        status = "converged"
+    elif objective_result.batch_result.failure_count:
+        status = "failed_rows"
+        if converged:
+            termination_reason = "failed_rows"
+            message = "fit converged with failed objective rows"
+    elif termination_reason == "line_search_failed":
+        status = "line_search_failed"
+    else:
+        status = "max_iterations"
     return ReactiveRegressionFitResult(
-        success=converged,
+        success=success,
         message=message,
+        status=status,
+        termination_reason=termination_reason,
         iterations=len(trajectory),
+        objective_initial=objective_initial,
+        objective_final=float(objective_result.objective),
+        gradient_norm=gradient_norm,
+        step_norm=last_step_norm,
         parameter_map=current,
         seed_map=seed_map,
         lower_bounds=lower,
@@ -1727,13 +1777,15 @@ def _pack_row_residuals(
     for label, target in row.target_partial_pressures.items():
         names.append(f"{row.row_id}.partial_pressure.{label}")
         predicted = float(row_result.partial_pressures.get(label, float("nan")))
-        raw = _normalize_log_ratio(predicted, float(target), penalty_value)
+        raw = penalty_value if not row_result.success else _normalize_log_ratio(predicted, float(target), penalty_value)
         values.append(base_scale * family_scale["partial_pressure"] * _apply_clip(raw, objective.residual_clip))
     if row.target_pressure is not None:
         names.append(f"{row.row_id}.pressure")
         predicted = float(row_result.pressure if row_result.pressure is not None else float("nan"))
         target = float(row.target_pressure)
-        if objective.pressure_family == "pressure_linear":
+        if not row_result.success:
+            raw = penalty_value
+        elif objective.pressure_family == "pressure_linear":
             raw = penalty_value if not math.isfinite(predicted) else (predicted - target) / max(abs(target), 1.0)
         else:
             raw = _normalize_log_ratio(predicted, target, penalty_value)
@@ -1741,7 +1793,9 @@ def _pack_row_residuals(
     for label, target in row.target_speciation.items():
         names.append(f"{row.row_id}.x.{label}")
         predicted = float(row_result.composition.get(label, float("nan")))
-        if objective.speciation_family == "speciation_mole_fraction":
+        if not row_result.success:
+            raw = penalty_value
+        elif objective.speciation_family == "speciation_mole_fraction":
             raw = penalty_value if not math.isfinite(predicted) else (predicted - target) / max(abs(target), 1.0e-12)
         else:
             raw = _normalize_log_ratio(predicted, float(target), penalty_value)
@@ -1749,7 +1803,9 @@ def _pack_row_residuals(
     for label, target in row.target_activity.items():
         names.append(f"{row.row_id}.activity.{label}")
         predicted = float(row_result.activity_coefficients.get(label, float("nan")))
-        if objective.activity_family == "activity_coefficient":
+        if not row_result.success:
+            raw = penalty_value
+        elif objective.activity_family == "activity_coefficient":
             raw = penalty_value if not math.isfinite(predicted) else (predicted - target) / max(abs(target), 1.0e-12)
         else:
             raw = _normalize_log_ratio(predicted, float(target), penalty_value)
@@ -1757,7 +1813,9 @@ def _pack_row_residuals(
     for label, target in row.target_fugacity.items():
         names.append(f"{row.row_id}.ln_phi.{label}")
         predicted = float(row_result.ln_fugacity.get(label, float("nan")))
-        if objective.fugacity_family == "fugacity_coefficient":
+        if not row_result.success:
+            raw = penalty_value
+        elif objective.fugacity_family == "fugacity_coefficient":
             pred_phi = math.exp(predicted) if math.isfinite(predicted) else float("nan")
             raw = penalty_value if not math.isfinite(pred_phi) else (pred_phi - target) / max(abs(target), 1.0e-12)
         else:
@@ -1768,7 +1826,7 @@ def _pack_row_residuals(
         predicted = float(row_result.density if row_result.density is not None else float("nan"))
         raw = (
             penalty_value
-            if not math.isfinite(predicted)
+            if not row_result.success or not math.isfinite(predicted)
             else (predicted - float(row.target_density)) / max(abs(float(row.target_density)), 1.0)
         )
         values.append(base_scale * family_scale["density"] * _apply_clip(raw, objective.residual_clip))
@@ -1779,14 +1837,18 @@ def _pack_row_residuals(
         )
         raw = (
             penalty_value
-            if not math.isfinite(predicted)
+            if not row_result.success or not math.isfinite(predicted)
             else (predicted - float(row.target_relative_permittivity))
             / max(abs(float(row.target_relative_permittivity)), 1.0)
         )
         values.append(base_scale * family_scale["relative_permittivity"] * _apply_clip(raw, objective.residual_clip))
     for name in reaction_names:
         names.append(f"{row.row_id}.reaction.{name}")
-        predicted = float(row_result.named_reaction_residuals.get(name, penalty_value))
+        predicted = (
+            penalty_value
+            if not row_result.success
+            else float(row_result.named_reaction_residuals.get(name, penalty_value))
+        )
         if not math.isfinite(predicted):
             predicted = penalty_value
         values.append(base_scale * family_scale["reaction"] * _apply_clip(predicted, objective.residual_clip))

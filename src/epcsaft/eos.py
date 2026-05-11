@@ -2,8 +2,13 @@
 
 from .epcsaft import ActivityCoefficientResult, ePCSAFTMixture, ePCSAFTState
 
+Mixture = ePCSAFTMixture
+State = ePCSAFTState
+
 __all__ = [
     "ActivityCoefficientResult",
+    "Mixture",
+    "State",
     "ePCSAFTMixture",
     "ePCSAFTState",
 ]

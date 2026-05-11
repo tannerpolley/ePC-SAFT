@@ -38,6 +38,8 @@ def test_organized_public_import_modules_are_available():
     import epcsaft.reactive
 
     assert epcsaft.eos.ePCSAFTMixture is epcsaft.ePCSAFTMixture
+    assert epcsaft.eos.Mixture is epcsaft.ePCSAFTMixture
+    assert epcsaft.eos.State is epcsaft.ePCSAFTState
     assert epcsaft.electrolyte.ElectrolyteLLEProblem is epcsaft.ElectrolyteLLEProblem
     assert epcsaft.reactive.ReactiveSpeciationProblem is epcsaft.ReactiveSpeciationProblem
     assert epcsaft.diagnostics.capabilities is epcsaft.capabilities
@@ -53,6 +55,19 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert capabilities["native_extension"] is True
     ipopt = capabilities["optimizers"]["ipopt"]
     assert ipopt["backend"] == "cyipopt"
+    fit_contract = capabilities["regression"]["reactive_electrolyte_batch_context"]["fit_status_contract"]
+    assert fit_contract["available"] is True
+    assert "bounded_incomplete" not in fit_contract["statuses"]
+    assert fit_contract["public_placeholder_statuses"] == []
+    mixed_regression = capabilities["regression"]["reactive_electrolyte_batch_context"][
+        "bounded_mixed_pressure_speciation_regression"
+    ]
+    assert mixed_regression["available"] is True
+    assert mixed_regression["status"] == "production"
+    assert mixed_regression["supports_pressure_targets"] is True
+    assert mixed_regression["supports_speciation_targets"] is True
+    assert mixed_regression["supports_bounds"] is True
+    assert mixed_regression["native_hot_loop"] is False
     assert ipopt["available"] is ipopt_backend.cyipopt_available()
     assert ipopt["formulations"] == ["bound_constrained_residual_minimization"]
     assert ipopt["full_constrained_nlp_available"] is False
