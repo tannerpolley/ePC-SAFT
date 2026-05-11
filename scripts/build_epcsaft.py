@@ -109,7 +109,7 @@ def _generator_args(env: dict[str, str], configured_generator: str | None = None
     return []
 
 
-def _configure(env: dict[str, str]) -> None:
+def _configure(env: dict[str, str], args: argparse.Namespace) -> None:
     pybind11_dir = _capture([sys.executable, "-m", "pybind11", "--cmakedir"], env=env)
     cmd = [
         "cmake",
@@ -123,8 +123,25 @@ def _configure(env: dict[str, str]) -> None:
         f"-DPython_EXECUTABLE={sys.executable}",
         f"-Dpybind11_DIR={pybind11_dir}",
     ]
+    cmd.extend(_dependency_args(args))
     cmd.extend(_generator_args(env, _configured_generator()))
     _run(cmd, env=env)
+
+
+def _dependency_args(args: argparse.Namespace) -> list[str]:
+    args = argparse.Namespace() if args is None else args
+    flags: list[str] = []
+    enable_ceres = bool(getattr(args, "enable_ceres", False) or getattr(args, "use_system_ceres", False))
+    enable_cppad = bool(getattr(args, "enable_cppad", False) or getattr(args, "use_system_cppad", False))
+    if enable_ceres:
+        flags.append("-DEPCSAFT_ENABLE_CERES=ON")
+        if getattr(args, "use_system_ceres", False):
+            flags.append("-DEPCSAFT_USE_SYSTEM_CERES=ON")
+    if enable_cppad:
+        flags.append("-DEPCSAFT_ENABLE_CPPAD=ON")
+        if getattr(args, "use_system_cppad", False):
+            flags.append("-DEPCSAFT_USE_SYSTEM_CPPAD=ON")
+    return flags
 
 
 def _build(env: dict[str, str], parallel: str | None) -> None:
@@ -151,6 +168,18 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--build-only", action="store_true", help="Build the existing CMake dev build tree without reconfiguring."
     )
+    parser.add_argument("--enable-ceres", action="store_true", help="Enable package-wide native Ceres support.")
+    parser.add_argument(
+        "--use-system-ceres",
+        action="store_true",
+        help="Use system Ceres instead of FetchContent; implies --enable-ceres.",
+    )
+    parser.add_argument("--enable-cppad", action="store_true", help="Enable package-wide CppAD support.")
+    parser.add_argument(
+        "--use-system-cppad",
+        action="store_true",
+        help="Use an installed CppAD package; implies --enable-cppad.",
+    )
     parser.add_argument("--parallel", help="Optional CMake build parallelism value.")
     parser.add_argument(
         "--generator",
@@ -174,10 +203,14 @@ def main() -> int:
         _timed("clean", _clean)
 
     env = _env()
+    if args.use_system_ceres:
+        args.enable_ceres = True
+    if args.use_system_cppad:
+        args.enable_cppad = True
     if args.generator != "auto":
         env["EPCSAFT_CMAKE_GENERATOR"] = args.generator
     if not args.build_only:
-        _timed("configure", lambda: _configure(env))
+        _timed("configure", lambda: _configure(env, args))
     else:
         print("Timing: configure skipped (--build-only)", flush=True)
     if not args.configure_only:

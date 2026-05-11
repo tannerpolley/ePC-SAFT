@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import pandas as pd
 from matplotlib import colors as mcolors

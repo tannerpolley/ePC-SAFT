@@ -97,6 +97,85 @@ def _git_commit(source_root: Path | None) -> str:
     return commit if completed.returncode == 0 and commit else "unknown"
 
 
+def _parse_cmake_cache(cache_path: Path | None) -> dict[str, str]:
+    if cache_path is None or not cache_path.exists():
+        return {}
+    pattern = re.compile(r"^(?P<key>[^:]+):[^=]*=(?P<value>.*)$")
+    entries: dict[str, str] = {}
+    for line in cache_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        match = pattern.match(line)
+        if match:
+            entries[match.group("key")] = match.group("value")
+    return entries
+
+
+def _cmake_bool(entries: dict[str, str], key: str) -> bool | None:
+    value = entries.get(key)
+    if value is None:
+        return None
+    return value.upper() in {"ON", "YES", "TRUE", "1"}
+
+
+def _native_dependency_profile(
+    cache_path: Path | None, enabled_key: str, available_key: str, use_system_key: str
+) -> dict[str, object]:
+    entries = _parse_cmake_cache(cache_path)
+    enabled = _cmake_bool(entries, enabled_key)
+    found = _cmake_bool(entries, available_key)
+    use_system = _cmake_bool(entries, use_system_key)
+    if enabled is None:
+        return {
+            "enabled": False,
+            "use_system": False,
+            "found": False,
+            "available": False,
+            "status": "not_configured",
+        }
+    if not enabled:
+        return {
+            "enabled": False,
+            "use_system": bool(use_system),
+            "found": bool(found),
+            "available": False,
+            "status": "disabled",
+        }
+    if found is None:
+        return {
+            "enabled": True,
+            "use_system": bool(use_system),
+            "found": False,
+            "available": False,
+            "status": "not_detected",
+        }
+    if not found:
+        return {
+            "enabled": True,
+            "use_system": bool(use_system),
+            "found": False,
+            "available": False,
+            "status": "missing",
+        }
+    return {
+        "enabled": True,
+        "use_system": bool(use_system),
+        "found": True,
+        "available": True,
+        "status": "available",
+    }
+
+
+def _native_dependency_status(source_root: Path | None) -> dict[str, dict[str, object]]:
+    cache_path = None if source_root is None else source_root / "build" / "dev" / "CMakeCache.txt"
+    return {
+        "ceres": _native_dependency_profile(
+            cache_path, "EPCSAFT_ENABLE_CERES", "EPCSAFT_CERES_AVAILABLE", "EPCSAFT_USE_SYSTEM_CERES"
+        ),
+        "cppad": _native_dependency_profile(
+            cache_path, "EPCSAFT_ENABLE_CPPAD", "EPCSAFT_CPPAD_AVAILABLE", "EPCSAFT_USE_SYSTEM_CPPAD"
+        ),
+    }
+
+
 def _native_extension_path() -> Path | None:
     try:
         from . import _core
@@ -119,6 +198,7 @@ def runtime_build_info() -> dict[str, object]:
     source_root = _source_checkout_from_package() or _source_checkout_from_direct_url(direct_url)
     native_path = _native_extension_path()
     cyipopt = cyipopt_backend_info()
+    native_dependencies = _native_dependency_status(source_root)
     direct_url_info = direct_url.get("dir_info") if isinstance(direct_url.get("dir_info"), dict) else {}
     return {
         "package_version": __version__,
@@ -136,15 +216,19 @@ def runtime_build_info() -> dict[str, object]:
         "optional_dependencies": {
             "cyipopt": cyipopt,
         },
+        "native_dependencies": native_dependencies,
     }
 
 
 def capabilities() -> dict[str, object]:
     """Return structured availability flags for high-level package workflows."""
 
-    cyipopt = dict(runtime_build_info()["optional_dependencies"]["cyipopt"])  # type: ignore[index]
+    build_info = runtime_build_info()
+    cyipopt = dict(build_info["optional_dependencies"]["cyipopt"])  # type: ignore[index]
+    native_dependencies = build_info["native_dependencies"]  # type: ignore[index]
     return {
-        "native_extension": bool(runtime_build_info()["native_extension_available"]),
+        "native_extension": bool(build_info["native_extension_available"]),
+        "native_dependencies": native_dependencies,
         "optimizers": {
             "ipopt": {
                 **cyipopt,
@@ -246,6 +330,7 @@ def capabilities() -> dict[str, object]:
             "pure_neutral": {"available": True, "backend": "native"},
             "pure_ion": {"available": True, "backend": "native"},
             "binary_pair": {"available": True, "backend": "native"},
+            "native_dependencies": native_dependencies,
             "mea_co2_h2o_electrolyte_benchmark": {
                 "available": True,
                 "backend": "native",
@@ -262,6 +347,16 @@ def capabilities() -> dict[str, object]:
                 "fit_status_contract": {
                     "available": True,
                     "statuses": ["converged", "max_iterations", "line_search_failed", "failed_rows"],
+                    "canonical_statuses_target": [
+                        "converged",
+                        "max_iterations",
+                        "line_search_failed",
+                        "singular_jacobian",
+                        "all_rows_failed",
+                        "nonfinite_objective",
+                        "bounds_inconsistent",
+                        "invalid_input",
+                    ],
                     "fields": [
                         "status",
                         "termination_reason",
@@ -274,8 +369,10 @@ def capabilities() -> dict[str, object]:
                 },
                 "bounded_mixed_pressure_speciation_regression": {
                     "available": True,
-                    "status": "production",
-                    "optimizer": "bounded_gauss_newton_least_squares",
+                    "status": "native_boundary_contract_slice",
+                    "optimizer": "native_residual_record_regression",
+                    "compatibility_optimizer": "python_bounded_gauss_newton_compatibility",
+                    "issue53_native_production_ready": False,
                     "supports_pressure_targets": True,
                     "supports_speciation_targets": True,
                     "supports_activity_targets": True,
@@ -284,8 +381,16 @@ def capabilities() -> dict[str, object]:
                     "supports_relative_permittivity_targets": True,
                     "supports_bounds": True,
                     "native_hot_loop": False,
+                    "native_optimizer_boundary": True,
                     "thermodynamic_backend": "native",
-                    "python_role": "row orchestration, finite-difference Jacobian, bounded step control, diagnostics",
+                    "required_native_dependencies": ["ceres", "cppad"],
+                    "public_default_backend": "native",
+                    "compatibility_backend": "python_compat",
+                    "production_blockers": [
+                        "full thermodynamic Ceres parameter iteration is still represented by the native residual-record boundary slice",
+                        "supported residual families do not all have parameter sensitivity derivatives wired into Ceres yet",
+                    ],
+                    "python_role": "row orchestration, residual-record packing, diagnostics, optional compatibility optimizer",
                 },
                 "classes": [
                     "ReactiveElectrolyteBatch",
@@ -297,6 +402,22 @@ def capabilities() -> dict[str, object]:
                     "uv run python scripts/benchmark_reactive_regression.py --warmup 3 --repeat 10 --json build/benchmarks/reactive_regression_main.json",
                     "uv run python scripts/benchmark_reactive_regression.py --case reactive_regression_objective_tiny --warmup 3 --repeat 20 --json build/benchmarks/reactive_regression_objective_main.json",
                     "uv run python scripts/benchmark_reactive_regression.py --case reactive_regression_parameter_perturbation --warmup 3 --repeat 20 --json build/benchmarks/reactive_regression_perturbation_main.json",
+                ],
+            },
+            "native_residual_record_regression": {
+                "available": True,
+                "backend": "native",
+                "optimizer": "analytic_linear_native",
+                "status": "production_contract_slice",
+                "supports_bounds": True,
+                "supports_fixed_shape_residuals": True,
+                "supports_row_diagnostics": True,
+                "supports_penalty_residuals": True,
+                "production_finite_difference_allowed": False,
+                "methods": [
+                    "native_regression_contract_schema",
+                    "evaluate_native_regression_residual_records",
+                    "solve_native_regression_residual_records",
                 ],
             },
         },

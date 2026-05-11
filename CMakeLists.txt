@@ -18,8 +18,10 @@ project(${SKBUILD_PROJECT_NAME}
 )
 
 option(EPCSAFT_DEV_INPLACE "Copy the compiled extension into src/epcsaft for local development" OFF)
-option(EPCSAFT_ENABLE_CERES "Enable Ceres Solver support for native equilibrium nonlinear solves" OFF)
+option(EPCSAFT_ENABLE_CERES "Enable package-wide Ceres support for native thermodynamic and regression residual backends" OFF)
 option(EPCSAFT_USE_SYSTEM_CERES "Use an installed Ceres Solver package instead of FetchContent" OFF)
+option(EPCSAFT_ENABLE_CPPAD "Enable package-wide CppAD support for native derivative/automatic-differentiation workflows" OFF)
+option(EPCSAFT_USE_SYSTEM_CPPAD "Use an installed CppAD package instead of bundled/fallback sources" OFF)
 option(EPCSAFT_WARNINGS_AS_ERRORS "Treat native warnings as errors" OFF)
 option(EPCSAFT_ENABLE_SANITIZERS "Enable ASAN/UBSAN in debug builds" OFF)
 
@@ -29,6 +31,15 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(PYBIND11_FINDPYTHON ON)
 
 find_package(pybind11 CONFIG REQUIRED)
+list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+execute_process(
+    COMMAND "${Python_EXECUTABLE}" -c "import includeigen; print(includeigen.get_include())"
+    OUTPUT_VARIABLE EPCSAFT_EIGEN_INCLUDE
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    COMMAND_ERROR_IS_FATAL ANY
+)
+set(EIGEN3_INCLUDE_DIR "${EPCSAFT_EIGEN_INCLUDE}" CACHE PATH "Eigen include directory for native dependencies" FORCE)
 
 if(EPCSAFT_ENABLE_CERES)
     if(EPCSAFT_USE_SYSTEM_CERES)
@@ -38,6 +49,7 @@ if(EPCSAFT_ENABLE_CERES)
         set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
         set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
         set(BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+        set(MINIGLOG ON CACHE BOOL "" FORCE)
         FetchContent_Declare(
             ceres-solver
             GIT_REPOSITORY https://ceres-solver.googlesource.com/ceres-solver
@@ -45,19 +57,39 @@ if(EPCSAFT_ENABLE_CERES)
         )
         FetchContent_MakeAvailable(ceres-solver)
     endif()
+    set(EPCSAFT_CERES_AVAILABLE ON CACHE BOOL "Ceres support is available for ePC-SAFT native code" FORCE)
+else()
+    set(EPCSAFT_CERES_AVAILABLE OFF CACHE BOOL "Ceres support is available for ePC-SAFT native code" FORCE)
 endif()
 
-execute_process(
-    COMMAND "${Python_EXECUTABLE}" -c "import includeigen; print(includeigen.get_include())"
-    OUTPUT_VARIABLE EPCSAFT_EIGEN_INCLUDE
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    COMMAND_ERROR_IS_FATAL ANY
-)
+if(EPCSAFT_ENABLE_CPPAD)
+    if(EPCSAFT_USE_SYSTEM_CPPAD)
+        find_path(CPPAD_INCLUDE_DIR
+            NAMES cppad/cppad.hpp
+            REQUIRED
+        )
+        set(EPCSAFT_CPPAD_INCLUDE_DIR "${CPPAD_INCLUDE_DIR}")
+    else()
+        include(FetchContent)
+        FetchContent_Declare(
+            cppad
+            GIT_REPOSITORY https://github.com/coin-or/CppAD.git
+            GIT_TAG 20250000.3
+            SOURCE_SUBDIR cmake-do-not-add
+        )
+        FetchContent_MakeAvailable(cppad)
+        set(EPCSAFT_CPPAD_INCLUDE_DIR "${cppad_SOURCE_DIR}/include")
+    endif()
+    set(EPCSAFT_CPPAD_AVAILABLE ON CACHE BOOL "CppAD headers are available for ePC-SAFT native code" FORCE)
+else()
+    set(EPCSAFT_CPPAD_AVAILABLE OFF CACHE BOOL "CppAD headers are available for ePC-SAFT native code" FORCE)
+endif()
 
 file(GLOB EPCSAFT_NATIVE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/contributions/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/equilibrium/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/regression/*.cpp"
 )
 
 add_library(epcsaft_native STATIC ${EPCSAFT_NATIVE_SOURCES})
@@ -66,6 +98,7 @@ target_include_directories(epcsaft_native
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/contributions"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/equilibrium"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/regression"
         "${EPCSAFT_EIGEN_INCLUDE}"
 )
 target_compile_features(epcsaft_native PUBLIC cxx_std_17)
@@ -75,6 +108,10 @@ if(EPCSAFT_ENABLE_CERES)
     target_link_libraries(epcsaft_native PUBLIC Ceres::ceres)
     target_compile_definitions(epcsaft_native PUBLIC EPCSAFT_HAS_CERES=1)
 endif()
+if(EPCSAFT_ENABLE_CPPAD)
+    target_include_directories(epcsaft_native PUBLIC "${EPCSAFT_CPPAD_INCLUDE_DIR}")
+    target_compile_definitions(epcsaft_native PUBLIC EPCSAFT_HAS_CPPAD=1)
+endif()
 
 pybind11_add_module(_core src/epcsaft/bindings.cpp)
 target_link_libraries(_core PRIVATE epcsaft_native)
@@ -83,8 +120,12 @@ target_include_directories(_core
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/contributions"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/equilibrium"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/regression"
         "${EPCSAFT_EIGEN_INCLUDE}"
 )
+if(EPCSAFT_ENABLE_CPPAD)
+    target_include_directories(_core PRIVATE "${EPCSAFT_CPPAD_INCLUDE_DIR}")
+endif()
 target_compile_features(_core PRIVATE cxx_std_17)
 
 set(EPCSAFT_NATIVE_TARGETS epcsaft_native _core)

@@ -260,7 +260,7 @@ Main entry points:
 - ``ReactiveElectrolyteBatch``: shared species, balances, reactions, parameter payload, and solver options
 - ``ReactiveElectrolyteRegressionContext.from_batch(...)``: compile invariant row/schema metadata once
 - ``evaluate_reactive_regression_objective(...)``: evaluate a structured mixed residual objective
-- ``fit_reactive_electrolyte_parameters(...)``: bounded Gauss-Newton fit wrapper over the compiled context
+- ``fit_reactive_electrolyte_parameters(...)``: native residual-record regression boundary over the compiled context
 - ``summarize_regression_result(...)`` plus ``write_regression_*`` helpers: stable JSON/CSV reporting
 
 Minimal example:
@@ -357,8 +357,28 @@ accepts either a raw parameter map plus ``seed_map=...`` or the full
 ``ReactiveRegressionFitResult`` so seed values, parameter movement, bounds, and
 active-bound flags stay aligned with the solved fit payload.
 
-The fit helper accepts the compiled batch or context plus the initial parameter
-map and optional fit controls:
+Native regression contract
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``epcsaft.native_regression_contract_schema()`` exposes the native regression
+result contract that Ceres-backed production fits must satisfy. The contract is
+fixed-shape: residual names, row ids, target families, and row diagnostic fields
+must remain stable even when a recoverable row failure is represented by penalty
+residuals. The canonical top-level statuses are ``converged``,
+``max_iterations``, ``line_search_failed``, ``singular_jacobian``,
+``all_rows_failed``, ``nonfinite_objective``, ``bounds_inconsistent``, and
+``invalid_input``. Production native regression does not allow finite-difference
+derivatives; finite-difference comparisons belong behind explicit debug gates.
+
+The fit helper defaults to ``backend="native"``. Python evaluates the current
+row objective once, packs fixed-shape residual records, and calls the native
+regression boundary. Production calls do not run the Python Gauss-Newton loop or
+Python finite-difference Jacobian. The legacy loop remains available only as
+``backend="python_compat"`` for old comparison workflows and is labeled
+``production_ready = false`` in diagnostics.
+
+The native fit helper accepts the compiled batch or context plus the initial
+parameter map and optional fit controls:
 
 .. code-block:: python
 
@@ -369,11 +389,20 @@ map and optional fit controls:
        upper_bounds={"Na+.sigma": 3.1},
        max_iterations=6,
        tolerance=1e-6,
-       damping=1.0,
+       derivative_backend="analytic",
+   )
+
+For compatibility-only comparisons of the old Python optimizer:
+
+.. code-block:: python
+
+   compat_fit = epcsaft.fit_reactive_electrolyte_parameters(
+       context,
+       initial_parameters={"Na+.sigma": 2.85},
+       lower_bounds={"Na+.sigma": 2.5},
+       upper_bounds={"Na+.sigma": 3.1},
+       backend="python_compat",
        jacobian_mode="central",
-       relative_step=1e-4,
-       absolute_step=None,
-       log_parameters=True,
    )
 
 ``summarize_regression_result(...)`` returns ``fit_success = null`` for
@@ -409,6 +438,8 @@ The package-owned micro-benchmark harness for this layer is:
 
    uv run python scripts\benchmark_reactive_regression.py --warmup 3 --repeat 10
    uv run python scripts\benchmark_reactive_regression.py --case reactive_regression_pressure_speciation_35_row_surrogate --warmup 0 --repeat 1
+   uv run python scripts\benchmark_native_regression.py --warmup 1 --repeat 3
+   uv run python scripts\benchmark_native_regression.py --case native_mea_pressure_speciation_35_row_surrogate --warmup 0 --repeat 1
 
 Binary VLE records
 ------------------

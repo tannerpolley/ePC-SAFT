@@ -29,6 +29,7 @@ def test_package_exports_are_available():
     assert callable(epcsaft.evaluate_fugacity_coefficients)
     assert callable(epcsaft.evaluate_fugacity_coefficients_batch)
     assert callable(epcsaft.validate_dataset_bundle)
+    assert callable(epcsaft.native_regression_contract_schema)
 
 
 def test_organized_public_import_modules_are_available():
@@ -63,11 +64,17 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         "bounded_mixed_pressure_speciation_regression"
     ]
     assert mixed_regression["available"] is True
-    assert mixed_regression["status"] == "production"
+    assert mixed_regression["status"] == "native_boundary_contract_slice"
+    assert mixed_regression["issue53_native_production_ready"] is False
     assert mixed_regression["supports_pressure_targets"] is True
     assert mixed_regression["supports_speciation_targets"] is True
     assert mixed_regression["supports_bounds"] is True
     assert mixed_regression["native_hot_loop"] is False
+    assert mixed_regression["native_optimizer_boundary"] is True
+    assert mixed_regression["public_default_backend"] == "native"
+    assert mixed_regression["compatibility_backend"] == "python_compat"
+    assert mixed_regression["required_native_dependencies"] == ["ceres", "cppad"]
+    assert "Ceres" in mixed_regression["production_blockers"][0]
     assert ipopt["available"] is ipopt_backend.cyipopt_available()
     assert ipopt["formulations"] == ["bound_constrained_residual_minimization"]
     assert ipopt["full_constrained_nlp_available"] is False
@@ -112,10 +119,25 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert batch_context["backend"] == "python_batched_native_solvers"
     assert "ReactiveElectrolyteRegressionContext" in batch_context["classes"]
     assert "finite_difference_jacobian" in batch_context["methods"]
+    assert "singular_jacobian" in batch_context["fit_status_contract"]["canonical_statuses_target"]
+    native_record_regression = capabilities["regression"]["native_residual_record_regression"]
+    assert native_record_regression["available"] is True
+    assert native_record_regression["backend"] == "native"
+    assert native_record_regression["production_finite_difference_allowed"] is False
+    assert native_record_regression["supports_fixed_shape_residuals"] is True
+    assert "solve_native_regression_residual_records" in native_record_regression["methods"]
     assert capabilities["equilibrium"]["problem_objects"]["entrypoint"] == "mixture.solve_equilibrium(problem)"
     assert (
         capabilities["equilibrium"]["contribution_maps"]["activity_coefficient_term_decomposition_available"] is False
     )
+    native_dependencies = capabilities["native_dependencies"]
+    assert set(native_dependencies.keys()) == {"ceres", "cppad"}
+    for dependency in native_dependencies.values():
+        assert dependency["enabled"] in [True, False]
+        assert dependency["found"] in [True, False]
+        assert dependency["available"] in [True, False]
+        assert dependency["status"] in ["not_configured", "disabled", "not_detected", "missing", "available"]
+    assert capabilities["regression"]["native_dependencies"] == native_dependencies
 
 
 def test_cyipopt_import_prepares_configured_windows_dll_directory(monkeypatch, tmp_path):

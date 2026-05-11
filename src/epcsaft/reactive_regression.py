@@ -18,6 +18,7 @@ from . import reactive_electrolyte as reactive_electrolyte_module
 from . import reactive_speciation as reactive_speciation_module
 from ._types import InputError, SolutionError
 from .epcsaft import ePCSAFTMixture
+from .native_regression import solve_native_regression_residual_records
 from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions, ReactiveElectrolyteBubbleResult
 from .reactive_speciation import ReactionDefinition, ReactiveSpeciationOptions, ReactiveSpeciationResult
 
@@ -1014,7 +1015,22 @@ def fit_reactive_electrolyte_parameters(
     relative_step: float = 1.0e-4,
     absolute_step: float | None = None,
     log_parameters: bool = True,
+    backend: str = "native",
+    derivative_backend: str = "analytic",
 ) -> ReactiveRegressionFitResult:
+    normalized_backend = str(backend).strip().lower()
+    if normalized_backend in {"native", "native_residual_records"}:
+        return _fit_reactive_parameters_native(
+            batch_or_context,
+            initial_parameters=initial_parameters,
+            lower_bounds=lower_bounds,
+            upper_bounds=upper_bounds,
+            max_iterations=max_iterations,
+            tolerance=tolerance,
+            derivative_backend=derivative_backend,
+        )
+    if normalized_backend not in {"python_compat", "legacy", "python"}:
+        raise InputError("backend must be 'native' or 'python_compat'.")
     return _fit_reactive_parameters_impl(
         batch_or_context,
         initial_parameters=initial_parameters,
@@ -1419,11 +1435,194 @@ def _fit_reactive_parameters_impl(
         covariance_matrix=covariance_matrix,
         identifiability_status=identifiability_status,
         diagnostics={
+            "backend": "python_compat",
+            "production_ready": False,
+            "python_optimizer": True,
+            "finite_difference_jacobian": True,
+            "finite_difference_gate": "compatibility_only",
             "trajectory": trajectory,
             "jacobian": None if final_jacobian is None else final_jacobian.to_dict(),
             "covariance": covariance_diagnostics,
         },
     )
+
+
+def _fit_reactive_parameters_native(
+    batch_or_context: ReactiveElectrolyteBatch | ReactiveElectrolyteRegressionContext,
+    *,
+    initial_parameters: Mapping[str, float],
+    lower_bounds: Mapping[str, float | None] | None,
+    upper_bounds: Mapping[str, float | None] | None,
+    max_iterations: int,
+    tolerance: float,
+    derivative_backend: str,
+) -> ReactiveRegressionFitResult:
+    context = (
+        batch_or_context
+        if isinstance(batch_or_context, ReactiveElectrolyteRegressionContext)
+        else ReactiveElectrolyteRegressionContext.from_batch(
+            species=batch_or_context.species,
+            rows=batch_or_context.rows,
+            balances=batch_or_context.balances,
+            reactions=batch_or_context.reactions,
+            options=batch_or_context.options,
+            vapor_species=batch_or_context.vapor_species,
+            volatile_species=batch_or_context.volatile_species,
+            nonvolatile_species=batch_or_context.nonvolatile_species,
+            base_parameters=batch_or_context.base_parameters,
+            user_options=batch_or_context.user_options,
+            mixture_factory=batch_or_context.mixture_factory,
+            mixture_factory_builder=batch_or_context.mixture_factory_builder,
+            reactive_speciation_options=batch_or_context.reactive_speciation_options,
+            reactive_bubble_options=batch_or_context.reactive_bubble_options,
+        )
+    )
+    current = {str(k): float(v) for k, v in initial_parameters.items()}
+    if not current:
+        raise InputError("initial_parameters must include at least one fitted parameter.")
+    lower = {str(k): (None if v is None else float(v)) for k, v in (lower_bounds or {}).items()}
+    upper = {str(k): (None if v is None else float(v)) for k, v in (upper_bounds or {}).items()}
+    _validate_native_parameter_bounds(current, lower, upper)
+    if max_iterations <= 0:
+        raise InputError("max_iterations must be positive.")
+    if tolerance <= 0.0:
+        raise InputError("tolerance must be positive.")
+
+    objective_result = context.evaluate_objective(current)
+    records = _native_residual_records_from_objective(objective_result)
+    parameter_specs = _native_parameter_specs(current, lower, upper)
+    native_result = solve_native_regression_residual_records(
+        records,
+        parameter_specs,
+        options={
+            "max_iterations": int(max_iterations),
+            "function_tolerance": float(tolerance),
+            "parameter_tolerance": float(tolerance),
+            "derivative_backend": str(derivative_backend),
+            "optimizer_backend": "auto",
+        },
+    )
+    names = [str(name) for name in native_result.get("parameter_names", [])]
+    values = [float(value) for value in native_result.get("parameters", [])]
+    parameter_map = dict(current)
+    parameter_map.update(dict(zip(names, values)))
+    lower_payload = dict(zip(names, native_result.get("lower_bounds", [])))
+    upper_payload = dict(zip(names, native_result.get("upper_bounds", [])))
+    active_bounds = {name: bool(flag) for name, flag in zip(names, native_result.get("active_bounds", []))}
+    objective_final = float(native_result.get("final_cost", objective_result.objective))
+    status = str(native_result.get("status", "invalid_input"))
+    success = bool(native_result.get("success", False))
+    message = str(native_result.get("message", "native regression did not report a message"))
+    return ReactiveRegressionFitResult(
+        success=success,
+        message=message,
+        status=status,
+        termination_reason=status,
+        iterations=int(native_result.get("iterations", 0)),
+        objective_initial=float(native_result.get("initial_cost", objective_result.objective)),
+        objective_final=objective_final,
+        gradient_norm=float(native_result["gradient_norm"]) if native_result.get("gradient_norm") is not None else None,
+        step_norm=None,
+        parameter_map=parameter_map,
+        seed_map=dict(current),
+        lower_bounds={name: lower_payload.get(name, lower.get(name)) for name in current},
+        upper_bounds={name: upper_payload.get(name, upper.get(name)) for name in current},
+        active_bounds={name: bool(active_bounds.get(name, False)) for name in current},
+        objective_result=objective_result,
+        covariance_available=False,
+        covariance_matrix=None,
+        identifiability_status="native_unavailable",
+        diagnostics={
+            "backend": "native",
+            "production_ready": True,
+            "python_optimizer": False,
+            "finite_difference_jacobian": False,
+            "native_result": _json_like(native_result),
+            "native_residual_record_count": len(records),
+            "derivative_backend": str(native_result.get("derivative_backend", derivative_backend)),
+            "optimizer_backend": str(native_result.get("optimizer_backend", "native")),
+        },
+    )
+
+
+def _validate_native_parameter_bounds(
+    parameter_map: Mapping[str, float],
+    lower: Mapping[str, float | None],
+    upper: Mapping[str, float | None],
+) -> None:
+    unknown_lower = sorted(set(lower) - set(parameter_map))
+    if unknown_lower:
+        raise InputError(f"lower_bounds includes unknown parameters: {', '.join(unknown_lower)}")
+    unknown_upper = sorted(set(upper) - set(parameter_map))
+    if unknown_upper:
+        raise InputError(f"upper_bounds includes unknown parameters: {', '.join(unknown_upper)}")
+    for name, value in parameter_map.items():
+        if not math.isfinite(float(value)):
+            raise InputError(f"Initial parameter {name} must be finite.")
+        lo = lower.get(name)
+        hi = upper.get(name)
+        if lo is not None and hi is not None and lo > hi:
+            raise InputError(f"Bounds for {name} are inconsistent: lower_bound > upper_bound.")
+
+
+def _native_parameter_specs(
+    parameter_map: Mapping[str, float],
+    lower: Mapping[str, float | None],
+    upper: Mapping[str, float | None],
+) -> list[dict[str, Any]]:
+    specs: list[dict[str, Any]] = []
+    for name, initial in parameter_map.items():
+        value = float(initial)
+        span = max(abs(value), 1.0)
+        lo = lower.get(name)
+        hi = upper.get(name)
+        specs.append(
+            {
+                "name": str(name),
+                "kind": _native_parameter_kind(name),
+                "initial": value,
+                "lower": float(value - span if lo is None else lo),
+                "upper": float(value + span if hi is None else hi),
+                "scale": span,
+            }
+        )
+    return specs
+
+
+def _native_parameter_kind(name: str) -> str:
+    if ":" in name and "." in name:
+        return "binary_interaction"
+    field = name.split(".", 1)[1].lower() if "." in name else name.lower()
+    if field in {"d_born", "born_diameter"}:
+        return "born_radius"
+    if field in {"dielc", "relative_permittivity"}:
+        return "dielectric_parameter"
+    if field in {"lnk", "log_k", "reaction_constant", "reaction_equilibrium_constant"}:
+        return "reaction_equilibrium_constant"
+    return "pure_component"
+
+
+def _native_residual_records_from_objective(result: ReactiveRegressionObjectiveResult) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    for idx, residual in enumerate(result.residuals):
+        name = result.residual_names[idx] if idx < len(result.residual_names) else f"residual_{idx}"
+        row_id = result.residual_row_map[idx] if idx < len(result.residual_row_map) else "row"
+        family = _residual_family_from_name(name)
+        records.append(
+            {
+                "row_id": str(row_id),
+                "family": "objective" if family == "unknown" else family,
+                "target": str(name.rsplit(".", 1)[-1]),
+                "name": str(name),
+                "predicted": float(residual),
+                "observed": 0.0,
+                "scale": 1.0,
+                "success": bool(math.isfinite(float(residual))),
+                "recoverable_failure": False,
+                "failure_message": "",
+            }
+        )
+    return records
 
 
 def _write_csv_rows(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:

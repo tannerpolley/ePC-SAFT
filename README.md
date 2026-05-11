@@ -16,6 +16,7 @@ The main user objects are:
 - `TPFlash`, `ElectrolyteLLEProblem`, `ReactiveSpeciationProblem`, and related problem objects: optional typed wrappers for `mixture.solve_equilibrium(problem)`.
 - `create_parameter_template(...)`: creates a user-owned parameter folder to fill in.
 - `fit_pure_neutral(...)`, `fit_pure_ion(...)`, and related helpers: fit supported parameter sets.
+- `fit_reactive_electrolyte_parameters(...)`: calls the native residual-record regression boundary by default, with the old Python optimizer available only as explicit compatibility mode.
 - `capabilities()`: reports which runtime and solver paths are available in the current install.
 
 ## Install
@@ -215,6 +216,29 @@ Important boundaries:
 For examples, see the equilibrium cookbook:
 
 <https://epcsaft.readthedocs.io/en/latest/equilibrium_cookbook.html>
+
+## Regression And Benchmarks
+
+Production-facing regression helpers use native package-owned boundaries where
+implemented. Reactive electrolyte fitting defaults to the native fixed-shape
+residual-record solve surface:
+
+```python
+fit = epcsaft.fit_reactive_electrolyte_parameters(
+    context_or_batch,
+    initial_parameters={"Na+.sigma": 2.85},
+    lower_bounds={"Na+.sigma": 2.5},
+    upper_bounds={"Na+.sigma": 3.1},
+)
+```
+
+The compatibility Python Gauss-Newton loop is still callable as
+`backend="python_compat"` for old comparisons, but it is not the production
+path. Native regression diagnostics and benchmarks are available through:
+
+```powershell
+python scripts/benchmark_native_regression.py --warmup 1 --repeat 3
+```
 
 ## Documentation
 

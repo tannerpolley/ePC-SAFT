@@ -9,6 +9,7 @@
 
 #include "epcsaft_chemical_equilibrium.h"
 #include "epcsaft_equilibrium.h"
+#include "regression_types.h"
 
 namespace py = pybind11;
 
@@ -200,6 +201,248 @@ py::dict generic_regression_debug_to_dict(const GenericRegressionDebugResult& re
     out["hessian_fallback_used"] = result.hessian_fallback_used;
     out["hessian_fallback_reason"] = result.hessian_fallback_reason;
     return out;
+}
+
+py::dict native_regression_parameter_spec_to_dict(const NativeRegressionParameterSpec& spec) {
+    py::dict out;
+    out["name"] = spec.name;
+    out["path"] = spec.path;
+    out["kind"] = spec.kind;
+    out["initial"] = spec.initial;
+    out["lower"] = spec.lower;
+    out["upper"] = spec.upper;
+    out["scale"] = spec.scale;
+    out["fixed"] = spec.fixed;
+    py::dict metadata;
+    for (const auto& item : spec.metadata) {
+        metadata[py::str(item.first)] = item.second;
+    }
+    out["metadata"] = metadata;
+    return out;
+}
+
+py::dict native_regression_residual_schema_entry_to_dict(const NativeRegressionResidualSchemaEntry& entry) {
+    py::dict out;
+    out["name"] = entry.name;
+    out["row_id"] = entry.row_id;
+    out["family"] = entry.family;
+    out["target"] = entry.target;
+    out["scale"] = entry.scale;
+    out["residual_index"] = entry.residual_index;
+    out["required"] = entry.required;
+    return out;
+}
+
+py::dict native_regression_row_diagnostic_to_dict(const NativeRegressionRowDiagnostic& diagnostic) {
+    py::dict out;
+    out["row_id"] = diagnostic.row_id;
+    out["success"] = diagnostic.success;
+    out["status"] = diagnostic.status;
+    out["message"] = diagnostic.message;
+    out["residual_start"] = diagnostic.residual_start;
+    out["residual_count"] = diagnostic.residual_count;
+    out["penalty_applied"] = diagnostic.penalty_applied;
+    out["solve_backend"] = diagnostic.solve_backend;
+    out["derivative_backend"] = diagnostic.derivative_backend;
+    return out;
+}
+
+py::dict native_regression_contract_to_dict(const NativeRegressionProblemContract& contract) {
+    py::dict out;
+    py::list parameters;
+    for (const auto& spec : contract.parameters) {
+        parameters.append(native_regression_parameter_spec_to_dict(spec));
+    }
+    py::list residual_schema;
+    for (const auto& entry : contract.residual_schema) {
+        residual_schema.append(native_regression_residual_schema_entry_to_dict(entry));
+    }
+    out["statuses"] = native_regression_status_names();
+    out["parameters"] = parameters;
+    out["residual_schema"] = residual_schema;
+    out["supported_target_families"] = contract.supported_target_families;
+    out["supported_parameter_kinds"] = contract.supported_parameter_kinds;
+    out["fixed_shape_residuals"] = contract.fixed_shape_residuals;
+    out["production_finite_difference_allowed"] = contract.production_finite_difference_allowed;
+    out["row_diagnostic_fields"] = std::vector<std::string>{
+        "row_id",
+        "success",
+        "status",
+        "message",
+        "residual_start",
+        "residual_count",
+        "penalty_applied",
+        "solve_backend",
+        "derivative_backend",
+    };
+    return out;
+}
+
+NativeRegressionResidualRecord native_regression_residual_record_from_dict(const py::dict& input) {
+    NativeRegressionResidualRecord record;
+    record.row_id = input["row_id"].cast<std::string>();
+    record.family = input["family"].cast<std::string>();
+    record.target = input["target"].cast<std::string>();
+    if (input.contains("row_kind") && !input["row_kind"].is_none()) {
+        record.row_kind = input["row_kind"].cast<std::string>();
+    }
+    if (input.contains("name") && !input["name"].is_none()) {
+        record.name = input["name"].cast<std::string>();
+    }
+    record.predicted = input["predicted"].cast<double>();
+    record.observed = input["observed"].cast<double>();
+    if (input.contains("scale") && !input["scale"].is_none()) {
+        record.scale = input["scale"].cast<double>();
+    }
+    if (input.contains("sensitivities") && !input["sensitivities"].is_none()) {
+        py::dict sensitivities = input["sensitivities"].cast<py::dict>();
+        for (const auto& item : sensitivities) {
+            record.sensitivities[item.first.cast<std::string>()] = item.second.cast<double>();
+        }
+    }
+    if (input.contains("success") && !input["success"].is_none()) {
+        record.success = input["success"].cast<bool>();
+    }
+    if (input.contains("recoverable_failure") && !input["recoverable_failure"].is_none()) {
+        record.recoverable_failure = input["recoverable_failure"].cast<bool>();
+    }
+    if (input.contains("failure_message") && !input["failure_message"].is_none()) {
+        record.failure_message = input["failure_message"].cast<std::string>();
+    }
+    return record;
+}
+
+NativeRegressionParameterSpec native_regression_parameter_spec_from_dict(const py::dict& input) {
+    NativeRegressionParameterSpec spec;
+    spec.name = input["name"].cast<std::string>();
+    if (input.contains("path") && !input["path"].is_none()) {
+        spec.path = input["path"].cast<std::string>();
+    }
+    if (input.contains("kind") && !input["kind"].is_none()) {
+        spec.kind = input["kind"].cast<std::string>();
+    }
+    spec.initial = input["initial"].cast<double>();
+    spec.lower = input["lower"].cast<double>();
+    spec.upper = input["upper"].cast<double>();
+    if (input.contains("scale") && !input["scale"].is_none()) {
+        spec.scale = input["scale"].cast<double>();
+    }
+    if (input.contains("fixed") && !input["fixed"].is_none()) {
+        spec.fixed = input["fixed"].cast<bool>();
+    }
+    if (input.contains("metadata") && !input["metadata"].is_none()) {
+        py::dict metadata = input["metadata"].cast<py::dict>();
+        for (const auto& item : metadata) {
+            spec.metadata[item.first.cast<std::string>()] = item.second.cast<std::string>();
+        }
+    }
+    return spec;
+}
+
+std::vector<NativeRegressionResidualRecord> native_regression_residual_records_from_list(const py::list& records) {
+    std::vector<NativeRegressionResidualRecord> out;
+    out.reserve(py::len(records));
+    for (const py::handle item : records) {
+        out.push_back(native_regression_residual_record_from_dict(item.cast<py::dict>()));
+    }
+    return out;
+}
+
+std::vector<NativeRegressionParameterSpec> native_regression_parameter_specs_from_list(const py::list& parameters) {
+    std::vector<NativeRegressionParameterSpec> out;
+    out.reserve(py::len(parameters));
+    for (const py::handle item : parameters) {
+        out.push_back(native_regression_parameter_spec_from_dict(item.cast<py::dict>()));
+    }
+    return out;
+}
+
+NativeRegressionFitOptions native_regression_fit_options_from_dict(const py::dict& input) {
+    NativeRegressionFitOptions options;
+    if (input.contains("max_iterations") && !input["max_iterations"].is_none()) {
+        options.max_iterations = input["max_iterations"].cast<int>();
+    }
+    if (input.contains("gradient_tolerance") && !input["gradient_tolerance"].is_none()) {
+        options.gradient_tolerance = input["gradient_tolerance"].cast<double>();
+    }
+    if (input.contains("function_tolerance") && !input["function_tolerance"].is_none()) {
+        options.function_tolerance = input["function_tolerance"].cast<double>();
+    }
+    if (input.contains("parameter_tolerance") && !input["parameter_tolerance"].is_none()) {
+        options.parameter_tolerance = input["parameter_tolerance"].cast<double>();
+    }
+    if (input.contains("penalty_residual") && !input["penalty_residual"].is_none()) {
+        options.penalty_residual = input["penalty_residual"].cast<double>();
+    }
+    if (input.contains("derivative_backend") && !input["derivative_backend"].is_none()) {
+        options.derivative_backend = input["derivative_backend"].cast<std::string>();
+    }
+    if (input.contains("optimizer_backend") && !input["optimizer_backend"].is_none()) {
+        options.optimizer_backend = input["optimizer_backend"].cast<std::string>();
+    }
+    return options;
+}
+
+py::dict native_regression_residual_evaluation_to_dict(const NativeRegressionResidualEvaluation& result) {
+    py::dict out;
+    out["residuals"] = result.residuals;
+    py::list residual_schema;
+    for (const auto& entry : result.residual_schema) {
+        residual_schema.append(native_regression_residual_schema_entry_to_dict(entry));
+    }
+    py::list row_diagnostics;
+    for (const auto& diagnostic : result.row_diagnostics) {
+        row_diagnostics.append(native_regression_row_diagnostic_to_dict(diagnostic));
+    }
+    out["residual_schema"] = residual_schema;
+    out["row_diagnostics"] = row_diagnostics;
+    out["cost"] = result.cost;
+    out["residual_norm"] = result.residual_norm;
+    out["success_count"] = result.success_count;
+    out["failure_count"] = result.failure_count;
+    out["fixed_shape_residuals"] = result.fixed_shape_residuals;
+    return out;
+}
+
+py::dict native_regression_fit_result_to_dict(const NativeRegressionFitResult& result) {
+    py::dict out;
+    out["success"] = result.success;
+    out["status"] = result.status;
+    out["message"] = result.message;
+    out["optimizer_backend"] = result.optimizer_backend;
+    out["derivative_backend"] = result.derivative_backend;
+    out["parameters"] = result.parameters;
+    out["parameter_names"] = result.parameter_names;
+    out["lower_bounds"] = result.lower_bounds;
+    out["upper_bounds"] = result.upper_bounds;
+    out["active_bounds"] = result.active_bounds;
+    out["initial_cost"] = result.initial_cost;
+    out["final_cost"] = result.final_cost;
+    out["residual_norm"] = result.residual_norm;
+    out["gradient_norm"] = result.gradient_norm;
+    out["iterations"] = result.iterations;
+    out["function_evaluations"] = result.function_evaluations;
+    out["objective_result"] = native_regression_residual_evaluation_to_dict(result.objective_result);
+    return out;
+}
+
+py::dict evaluate_native_regression_residual_records_binding(const py::list& records, double penalty_residual) {
+    NativeRegressionResidualEvaluation result =
+        evaluate_native_regression_residual_records(native_regression_residual_records_from_list(records), penalty_residual);
+    return native_regression_residual_evaluation_to_dict(result);
+}
+
+py::dict solve_native_regression_residual_records_binding(
+    const py::list& records,
+    const py::list& parameters,
+    const py::dict& options
+) {
+    NativeRegressionFitResult result = solve_native_regression_residual_records(
+        native_regression_residual_records_from_list(records),
+        native_regression_parameter_specs_from_list(parameters),
+        native_regression_fit_options_from_dict(options)
+    );
+    return native_regression_fit_result_to_dict(result);
 }
 
 GenericRegressionRecord generic_record_from_dict(const py::dict& input) {
@@ -1304,6 +1547,22 @@ PYBIND11_MODULE(_core, m) {
     m.def("_fit_pure_neutral_native_debug", &evaluate_pure_neutral_objective_debug_binding);
     m.def("_fit_generic_native_least_squares", &fit_generic_native_least_squares_binding);
     m.def("_evaluate_generic_native_debug", &evaluate_generic_native_debug_binding);
+    m.def("_native_regression_contract_schema", []() {
+        return native_regression_contract_to_dict(native_regression_contract_schema());
+    });
+    m.def(
+        "_evaluate_native_regression_residual_records",
+        &evaluate_native_regression_residual_records_binding,
+        py::arg("records"),
+        py::arg("penalty_residual") = 1.0e6
+    );
+    m.def(
+        "_solve_native_regression_residual_records",
+        &solve_native_regression_residual_records_binding,
+        py::arg("records"),
+        py::arg("parameters"),
+        py::arg("options") = py::dict()
+    );
     m.def("_solve_equilibrium_native", &solve_equilibrium_native_binding);
     m.def("_evaluate_electrolyte_lle_residual_native", &evaluate_electrolyte_lle_residual_native_binding);
     m.def("_solve_electrolyte_bubble_native", &solve_electrolyte_bubble_native_binding);

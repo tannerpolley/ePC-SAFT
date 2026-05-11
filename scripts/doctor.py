@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import re
 import shutil
 import subprocess
 import sys
@@ -87,6 +88,30 @@ def _tracked_generated_count() -> int | None:
     return count
 
 
+def _cache_entries(cache_path: Path) -> dict[str, str]:
+    if not cache_path.exists():
+        return {}
+    entries: dict[str, str] = {}
+    pattern = re.compile(r"^(?P<key>[^:]+):[^=]*=(?P<value>.*)$")
+    for line in cache_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        match = pattern.match(line)
+        if match:
+            entries[match.group("key")] = match.group("value")
+    return entries
+
+
+def _cache_state(cmake_cache: dict[str, str], enabled_key: str, found_key: str) -> str:
+    enabled = cmake_cache.get(enabled_key, "<missing>")
+    found = cmake_cache.get(found_key, "<missing>")
+    if enabled not in {"ON", "TRUE", "1", "YES"}:
+        return f"enabled={enabled}, found={found}, available=False, status=disabled"
+    if found not in {"ON", "TRUE", "1", "YES"}:
+        if found == "<missing>":
+            return f"enabled={enabled}, found=<missing>, available=False, status=not_detected"
+        return f"enabled={enabled}, found={found}, available=False, status=missing"
+    return f"enabled={enabled}, found={found}, available=True, status=available"
+
+
 def _stale_report_state() -> str:
     stale = [path.relative_to(REPO_ROOT).as_posix() for path in STALE_TRACKED_REPORTS if path.exists()]
     return ", ".join(stale) if stale else "<none>"
@@ -121,6 +146,9 @@ def main() -> int:
     missing_core_symbols = _missing_core_symbols() if core_path is not None else ()
     print(f"epcsaft_core_missing_symbols: {', '.join(missing_core_symbols) if missing_core_symbols else '<none>'}")
     print(f"stale_generated_reports: {_stale_report_state()}")
+    cmake_cache = _cache_entries(DEV_BUILD_CACHE)
+    print(f"native_dependency_ceres: {_cache_state(cmake_cache, 'EPCSAFT_ENABLE_CERES', 'EPCSAFT_CERES_AVAILABLE')}")
+    print(f"native_dependency_cppad: {_cache_state(cmake_cache, 'EPCSAFT_ENABLE_CPPAD', 'EPCSAFT_CPPAD_AVAILABLE')}")
     tracked_generated = _tracked_generated_count()
     print(f"tracked_generated_run_files: {tracked_generated if tracked_generated is not None else '<unknown>'}")
 

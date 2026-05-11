@@ -180,6 +180,21 @@ The regression API remains Python-facing, but ``fit_pure_neutral(...)`` now dele
    :undoc-members:
    :no-index:
 
+.. autoclass:: epcsaft.ReactiveElectrolyteBatch
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: epcsaft.ReactiveElectrolyteRegressionContext
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: epcsaft.ReactiveRegressionFitResult
+   :members:
+   :undoc-members:
+   :no-index:
+
 .. autofunction:: epcsaft.load_regression_records
 
 .. autofunction:: epcsaft.validate_regression_provenance
@@ -190,6 +205,15 @@ The regression API remains Python-facing, but ``fit_pure_neutral(...)`` now dele
 
 .. autofunction:: epcsaft.evaluate_reactive_electrolyte_bubble_residuals
 
-.. autofunction:: epcsaft.write_fit_result
+.. autofunction:: epcsaft.evaluate_reactive_regression_objective
 
+.. autofunction:: epcsaft.fit_reactive_electrolyte_parameters
+
+.. autofunction:: epcsaft.native_regression_contract_schema
+
+.. autofunction:: epcsaft.evaluate_native_regression_residual_records
+
+.. autofunction:: epcsaft.solve_native_regression_residual_records
+
+.. autofunction:: epcsaft.write_fit_result
 

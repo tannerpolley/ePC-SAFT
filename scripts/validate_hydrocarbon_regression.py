@@ -3,9 +3,11 @@ from __future__ import annotations
 import argparse
 
 from epcsaft import fit_pure_neutral
-from tests.helpers.regression_cases import _load_workbook_reference_rows
-from tests.helpers.regression_cases import _neutral_fixed_parameters
-from tests.helpers.regression_cases import _real_saturation_records
+from tests.helpers.regression_cases import (
+    _load_workbook_reference_rows,
+    _neutral_fixed_parameters,
+    _real_saturation_records,
+)
 
 
 def _print_benchmark_table(rows: list[dict[str, float]]) -> None:

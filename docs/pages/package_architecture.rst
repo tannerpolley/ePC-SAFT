@@ -44,3 +44,21 @@ Package-owned regression, equilibrium, and speciation workflows must use native
 runtime kernels for thermodynamic calculations. Python may batch rows, validate
 inputs, manage continuation seeds, and report diagnostics, but it should not
 silently become the production thermodynamic solver.
+
+Native Build-Time Dependency Controls
+-------------------------------------
+
+``cmake`` options used by the package and workflow scripts are intentionally
+explicit:
+
+* ``EPCSAFT_ENABLE_CERES`` enables package-wide Ceres support for native residual
+  and regression backends.
+* ``EPCSAFT_USE_SYSTEM_CERES`` requests an installed Ceres package instead of
+  the fallback fetch path.
+* ``EPCSAFT_ENABLE_CPPAD`` enables package-wide CppAD support where native
+  derivative workflows are active.
+* ``EPCSAFT_USE_SYSTEM_CPPAD`` requests an installed CppAD package.
+
+The public CLI (``scripts/build_epcsaft.py``) exposes equivalent switches:
+``--enable-ceres``, ``--use-system-ceres``, ``--enable-cppad``, and
+``--use-system-cppad``.

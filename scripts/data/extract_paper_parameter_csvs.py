@@ -1,3 +1,4 @@
+# ruff: noqa: RUF001, UP035
 """Extract per-paper binary interaction matrices and pure-component parameter CSVs.
 
 Outputs:
@@ -18,9 +19,10 @@ import json
 import re
 import shutil
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
@@ -130,7 +132,7 @@ RUNTIME_REQUIRED_KEYS = {
     "bjeruum_treatment",
     "debug",
 }
-RUNTIME_SENTINELS: Dict[str, Dict[str, Any]] = {
+RUNTIME_SENTINELS: dict[str, dict[str, Any]] = {
     "2005_Cameretti": {"include_born_model": False, "dielc_rule": 0, "d_ion_mode": 1},
     "2008_Held": {"include_born_model": False, "dielc_rule": 0, "d_ion_mode": 1},
     "2014_Held": {"include_born_model": False, "dielc_rule": 0, "d_ion_mode": 1},
@@ -146,7 +148,7 @@ RUNTIME_SENTINELS: Dict[str, Dict[str, Any]] = {
         "mu_born_diff_mode": 1,
     },
 }
-DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
+DATASET_USER_OPTIONS: dict[str, dict[str, Any]] = {
     "2005_Cameretti": {
         "elec_model": {
             "rel_perm": {"rule": "constant", "differential_mode": "analytical"},
@@ -340,7 +342,7 @@ def _is_missing_value(value: str) -> bool:
     return s in {"", "-", "n.a.", "n.a", "na", "n/a"}
 
 
-def _normalize_component(raw: str) -> Optional[str]:
+def _normalize_component(raw: str) -> str | None:
     s = raw.strip()
     if not s:
         return None
@@ -369,7 +371,7 @@ def _normalize_component(raw: str) -> Optional[str]:
     return None
 
 
-def _normalize_value(raw: str) -> Optional[str]:
+def _normalize_value(raw: str) -> str | None:
     if _is_missing_value(raw):
         return None
     s = _clean_cell(raw)
@@ -390,7 +392,7 @@ def _normalize_value(raw: str) -> Optional[str]:
     return format(num, ".15g")
 
 
-def _markdown_table_after_anchor(lines: Sequence[str], anchor: str) -> List[List[str]]:
+def _markdown_table_after_anchor(lines: Sequence[str], anchor: str) -> list[list[str]]:
     anchor_idx = None
     anchor_low = anchor.lower()
     for idx, line in enumerate(lines):
@@ -414,7 +416,7 @@ def _markdown_table_after_anchor(lines: Sequence[str], anchor: str) -> List[List
     if start_idx is None:
         raise ValueError(f"Could not find markdown table after anchor: {anchor}")
 
-    rows: List[List[str]] = []
+    rows: list[list[str]] = []
     for idx in range(start_idx, len(lines)):
         line = lines[idx].strip()
         if not line.startswith("|"):
@@ -426,14 +428,14 @@ def _markdown_table_after_anchor(lines: Sequence[str], anchor: str) -> List[List
     return rows
 
 
-def _empty_matrix() -> Dict[str, Dict[str, str]]:
-    matrix: Dict[str, Dict[str, str]] = {}
+def _empty_matrix() -> dict[str, dict[str, str]]:
+    matrix: dict[str, dict[str, str]] = {}
     for i in COMPONENT_ORDER:
         matrix[i] = {j: "0" for j in COMPONENT_ORDER}
     return matrix
 
 
-def _is_zero(value: Optional[str]) -> bool:
+def _is_zero(value: str | None) -> bool:
     if value is None:
         return True
     s = value.strip()
@@ -446,10 +448,10 @@ def _is_zero(value: Optional[str]) -> bool:
 
 
 def _set_pair(
-    matrix: Dict[str, Dict[str, str]],
+    matrix: dict[str, dict[str, str]],
     comp_i: str,
     comp_j: str,
-    value: Optional[str],
+    value: str | None,
     allow_override: bool,
 ) -> None:
     if comp_i not in TARGET_COMPONENTS or comp_j not in TARGET_COMPONENTS:
@@ -464,7 +466,7 @@ def _set_pair(
         raise ValueError(f"Conflicting values for {comp_i}/{comp_j}: {current} vs {value}")
 
 
-def _enforce_symmetry(matrix: Dict[str, Dict[str, str]]) -> None:
+def _enforce_symmetry(matrix: dict[str, dict[str, str]]) -> None:
     for i, comp_i in enumerate(COMPONENT_ORDER):
         for comp_j in COMPONENT_ORDER[i + 1 :]:
             a = matrix[comp_i][comp_j]
@@ -491,7 +493,7 @@ def _dataset_pure_dir(dataset_key: str) -> Path:
     return _dataset_dir(dataset_key) / "pure"
 
 
-def _dataset_pure_path(dataset_key: str) -> Optional[Path]:
+def _dataset_pure_path(dataset_key: str) -> Path | None:
     filename = PURE_FILENAME_BY_DATASET.get(dataset_key, "any_solvent.csv")
     if filename is None:
         return None
@@ -502,7 +504,7 @@ def _dataset_binary_dir(dataset_key: str) -> Path:
     return _dataset_dir(dataset_key) / "mixed" / "binary_interaction"
 
 
-def _matrix_has_parameter_data(matrix: Dict[str, Dict[str, str]]) -> bool:
+def _matrix_has_parameter_data(matrix: dict[str, dict[str, str]]) -> bool:
     for i, comp_i in enumerate(COMPONENT_ORDER):
         for comp_j in COMPONENT_ORDER[i + 1 :]:
             if not _is_zero(matrix[comp_i][comp_j]):
@@ -510,7 +512,7 @@ def _matrix_has_parameter_data(matrix: Dict[str, Dict[str, str]]) -> bool:
     return False
 
 
-def _set_cation_anion_kij_one(matrix: Dict[str, Dict[str, str]]) -> None:
+def _set_cation_anion_kij_one(matrix: dict[str, dict[str, str]]) -> None:
     cations = ["Li+", "Na+", "K+"]
     anions = ["Cl-", "Br-", "I-"]
     for cat in cations:
@@ -518,7 +520,7 @@ def _set_cation_anion_kij_one(matrix: Dict[str, Dict[str, str]]) -> None:
             _set_pair(matrix, cat, an, "1.0", allow_override=True)
 
 
-def _resolve_runtime_payload(canonical_options: Dict[str, Any]) -> Dict[str, Any]:
+def _resolve_runtime_payload(canonical_options: dict[str, Any]) -> dict[str, Any]:
     from epcsaft.parameters import _resolve_runtime_options
 
     resolved = _resolve_runtime_options(canonical_options)
@@ -528,7 +530,7 @@ def _resolve_runtime_payload(canonical_options: Dict[str, Any]) -> Dict[str, Any
     }
 
 
-def _build_user_options_payload(dataset_key: str, canonical_options: Dict[str, Any]) -> Dict[str, Any]:
+def _build_user_options_payload(dataset_key: str, canonical_options: dict[str, Any]) -> dict[str, Any]:
     from epcsaft.parameters import minimize_user_options
 
     if dataset_key not in PAPER_KEY_BY_DATASET:
@@ -536,14 +538,14 @@ def _build_user_options_payload(dataset_key: str, canonical_options: Dict[str, A
     return minimize_user_options(canonical_options)
 
 
-def _assert_runtime_sentinels(dataset_key: str, runtime_options: Dict[str, Any]) -> None:
+def _assert_runtime_sentinels(dataset_key: str, runtime_options: dict[str, Any]) -> None:
     for key, expected_value in RUNTIME_SENTINELS[dataset_key].items():
         actual_value = runtime_options.get(key)
         if actual_value != expected_value:
             raise ValueError(f"{dataset_key}: runtime sentinel mismatch for {key}: {actual_value} != {expected_value}")
 
 
-def _validate_user_options_payload(dataset_key: str, payload: Dict[str, Any]) -> None:
+def _validate_user_options_payload(dataset_key: str, payload: dict[str, Any]) -> None:
     if not isinstance(payload, dict):
         raise ValueError(f"{dataset_key}: user_options payload must be a dict")
     runtime_options = _resolve_runtime_payload(payload)["runtime_options"]
@@ -553,16 +555,16 @@ def _validate_user_options_payload(dataset_key: str, payload: Dict[str, Any]) ->
     _assert_runtime_sentinels(dataset_key, runtime_options)
 
 
-def _write_user_options_json(path: Path, payload: Dict[str, Any]) -> None:
+def _write_user_options_json(path: Path, payload: dict[str, Any]) -> None:
     with path.open("w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2)
         handle.write("\n")
 
 
-def _write_binary_csv(path: Path, matrix: Dict[str, Dict[str, str]]) -> None:
+def _write_binary_csv(path: Path, matrix: dict[str, dict[str, str]]) -> None:
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["component"] + DISPLAY_COMPONENT_ORDER)
+        writer.writerow(["component", *DISPLAY_COMPONENT_ORDER])
         for row_comp in COMPONENT_ORDER:
             writer.writerow(
                 [_display_component(row_comp)] + [matrix[row_comp][col_comp] for col_comp in COMPONENT_ORDER]
@@ -571,7 +573,7 @@ def _write_binary_csv(path: Path, matrix: Dict[str, Dict[str, str]]) -> None:
 
 def _write_pure_csv(path: Path, rows: Sequence[PureRow]) -> None:
     # Streamlined wide schema regardless of paper source.
-    out_rows: Dict[str, Dict[str, str]] = {}
+    out_rows: dict[str, dict[str, str]] = {}
     for comp in COMPONENT_ORDER:
         display = _display_component(comp)
         out_rows[display] = {col: "" for col in PURE_WIDE_COLUMNS}
@@ -598,9 +600,9 @@ def _write_pure_csv(path: Path, rows: Sequence[PureRow]) -> None:
             writer.writerow(out_rows[display])
 
 
-def _extract_2005(lines: Sequence[str], paper_key: str) -> Tuple[Dict[str, Dict[str, str]], List[PureRow]]:
+def _extract_2005(lines: Sequence[str], paper_key: str) -> tuple[dict[str, dict[str, str]], list[PureRow]]:
     matrix = _empty_matrix()
-    pure_rows: List[PureRow] = []
+    pure_rows: list[PureRow] = []
 
     t1 = _markdown_table_after_anchor(lines, "Table 1. ePC-SAFT Parameters for Water")
     # Vertical table: parameter | value
@@ -642,9 +644,9 @@ def _extract_2005(lines: Sequence[str], paper_key: str) -> Tuple[Dict[str, Dict[
     return matrix, pure_rows
 
 
-def _extract_2008(lines: Sequence[str], paper_key: str) -> Tuple[Dict[str, Dict[str, str]], List[PureRow]]:
+def _extract_2008(lines: Sequence[str], paper_key: str) -> tuple[dict[str, dict[str, str]], list[PureRow]]:
     matrix = _empty_matrix()
-    pure_rows: List[PureRow] = []
+    pure_rows: list[PureRow] = []
 
     t1 = _markdown_table_after_anchor(lines, "Table 1")
     for row in t1[1:]:
@@ -700,9 +702,9 @@ def _extract_2008(lines: Sequence[str], paper_key: str) -> Tuple[Dict[str, Dict[
     return matrix, pure_rows
 
 
-def _extract_2014(text: str, paper_key: str) -> Tuple[Dict[str, Dict[str, str]], List[PureRow]]:
+def _extract_2014(text: str, paper_key: str) -> tuple[dict[str, dict[str, str]], list[PureRow]]:
     matrix = _empty_matrix()
-    pure_rows: List[PureRow] = []
+    pure_rows: list[PureRow] = []
 
     # Table 1 water parameters
     m_match = re.search(r"\\hline \$m_\{i\}\^\{\\text \{seg \}\}\$ & ([^&]+) &", text)
@@ -819,7 +821,7 @@ def _extract_2014(text: str, paper_key: str) -> Tuple[Dict[str, Dict[str, str]],
 
     # Table 3 cation-anion matrix
     in_table3 = False
-    cations: List[str] = []
+    cations: list[str] = []
     for line in lines:
         s = line.strip()
         if "Table 3 - Binary" in s:
@@ -859,9 +861,9 @@ def _extract_2014(text: str, paper_key: str) -> Tuple[Dict[str, Dict[str, str]],
     return matrix, pure_rows
 
 
-def _extract_2020(lines: Sequence[str], paper_key: str) -> Tuple[Dict[str, Dict[str, str]], List[PureRow]]:
+def _extract_2020(lines: Sequence[str], paper_key: str) -> tuple[dict[str, dict[str, str]], list[PureRow]]:
     matrix = _empty_matrix()
-    pure_rows: List[PureRow] = []
+    pure_rows: list[PureRow] = []
 
     t1 = _markdown_table_after_anchor(lines, "Table 1")
     for row in t1[1:]:
@@ -928,9 +930,9 @@ def _extract_2020(lines: Sequence[str], paper_key: str) -> Tuple[Dict[str, Dict[
     return matrix, pure_rows
 
 
-def _extract_2021(lines: Sequence[str], paper_key: str) -> Tuple[Dict[str, Dict[str, str]], List[PureRow]]:
+def _extract_2021(lines: Sequence[str], paper_key: str) -> tuple[dict[str, dict[str, str]], list[PureRow]]:
     matrix = _empty_matrix()
-    pure_rows: List[PureRow] = []
+    pure_rows: list[PureRow] = []
 
     t1 = _markdown_table_after_anchor(lines, "Table 1")
     for row in t1[1:]:
@@ -1003,9 +1005,9 @@ def _extract_2021(lines: Sequence[str], paper_key: str) -> Tuple[Dict[str, Dict[
     return matrix, pure_rows
 
 
-def _extract_2025(lines: Sequence[str], paper_key: str) -> Tuple[Dict[str, Dict[str, str]], List[PureRow]]:
+def _extract_2025(lines: Sequence[str], paper_key: str) -> tuple[dict[str, dict[str, str]], list[PureRow]]:
     matrix = _empty_matrix()
-    pure_rows: List[PureRow] = []
+    pure_rows: list[PureRow] = []
 
     t2 = _markdown_table_after_anchor(lines, "Table 2.")
     header = [h.strip().lower() for h in t2[0][1:]]
@@ -1090,7 +1092,7 @@ def _extract_2025(lines: Sequence[str], paper_key: str) -> Tuple[Dict[str, Dict[
 def _extract_optional_interactions(
     paper_key: str,
     text: str,
-) -> Dict[str, Dict[str, Dict[str, str]]]:
+) -> dict[str, dict[str, dict[str, str]]]:
     # Placeholder routing for optional interaction tables.
     # Under the current scoped components, no l_ij or khb_ij matrices are emitted.
     _ = paper_key
@@ -1101,7 +1103,7 @@ def _extract_optional_interactions(
 def _extract_for_paper(
     paper_key: str,
     text: str,
-) -> Tuple[Dict[str, Dict[str, str]], List[PureRow], Dict[str, Dict[str, Dict[str, str]]]]:
+) -> tuple[dict[str, dict[str, str]], list[PureRow], dict[str, dict[str, dict[str, str]]]]:
     lines = text.splitlines()
     if paper_key == "2005_Cameretti":
         matrix, pure_rows = _extract_2005(lines, paper_key)
@@ -1123,8 +1125,8 @@ def _extract_for_paper(
 
 
 def _validate_outputs(
-    data_by_paper: Dict[str, Tuple[Dict[str, Dict[str, str]], List[PureRow], Dict[str, Dict[str, Dict[str, str]]]]],
-    user_options_by_dataset: Dict[str, Dict[str, Any]],
+    data_by_paper: dict[str, tuple[dict[str, dict[str, str]], list[PureRow], dict[str, dict[str, dict[str, str]]]]],
+    user_options_by_dataset: dict[str, dict[str, Any]],
     wrote_files: bool,
 ) -> None:
     # In-memory validations.
@@ -1230,14 +1232,14 @@ def build(check_only: bool) -> None:
     if set(EXPECTED_BASENAMES) != set(DATASET_USER_OPTIONS.keys()):
         raise ValueError("DATASET_USER_OPTIONS keys must match EXPECTED_BASENAMES exactly")
 
-    user_options_by_dataset: Dict[str, Dict[str, Any]] = {}
+    user_options_by_dataset: dict[str, dict[str, Any]] = {}
     for dataset_key in EXPECTED_BASENAMES:
         user_options_by_dataset[dataset_key] = _build_user_options_payload(
             dataset_key,
             DATASET_USER_OPTIONS[dataset_key],
         )
 
-    extracted: Dict[str, Tuple[Dict[str, Dict[str, str]], List[PureRow], Dict[str, Dict[str, Dict[str, str]]]]] = {}
+    extracted: dict[str, tuple[dict[str, dict[str, str]], list[PureRow], dict[str, dict[str, dict[str, str]]]]] = {}
     for base_name, md_file in PAPER_FILES.items():
         src = PAPER_DIR / md_file
         if not src.exists():

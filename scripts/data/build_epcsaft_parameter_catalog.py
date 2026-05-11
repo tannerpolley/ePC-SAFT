@@ -1,3 +1,4 @@
+# ruff: noqa: RUF001, UP035
 """Build ePC-SAFT electrolyte parameter catalog JSON + CSV reference tables.
 
 This script curates paper tables into a set-aware catalog for:
@@ -73,16 +74,16 @@ SOURCE_NOTES = {
 }
 
 
-def _water_sigma_expr() -> Dict[str, Any]:
+def _water_sigma_expr() -> dict[str, Any]:
     return {"type": "water_sigma_2008"}
 
 
-def _linear_t(a: float, b: float) -> Dict[str, Any]:
+def _linear_t(a: float, b: float) -> dict[str, Any]:
     return {"type": "linear_t", "a": a, "b": b}
 
 
-def _build_catalog() -> Dict[str, Any]:
-    component_parameters: Dict[str, Dict[str, Dict[str, Any]]] = {
+def _build_catalog() -> dict[str, Any]:
+    component_parameters: dict[str, dict[str, dict[str, Any]]] = {
         "H2O": {
             "MW": {"default": 18.01528e-3},
             "m": {
@@ -521,8 +522,8 @@ def _build_catalog() -> Dict[str, Any]:
     }
 
 
-def _eval_csv_rows(catalog: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
-    rows_by_set: Dict[str, List[Dict[str, Any]]] = {k: [] for k in SOURCE_NOTES}
+def _eval_csv_rows(catalog: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
+    rows_by_set: dict[str, list[dict[str, Any]]] = {k: [] for k in SOURCE_NOTES}
     for comp, params in catalog["component_parameters"].items():
         for pname, set_values in params.items():
             for set_key, value in set_values.items():

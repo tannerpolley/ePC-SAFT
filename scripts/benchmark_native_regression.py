@@ -10,22 +10,14 @@ SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from epcsaft.benchmarks.reactive_regression import (
-    CASE_BUILDERS,
-    render_benchmark_table,
-    run_reactive_regression_benchmarks,
-)
+from epcsaft.benchmarks.native_regression import CASE_BUILDERS, render_benchmark_table, run_native_regression_benchmarks
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Benchmark reactive electrolyte regression workflows.")
-    parser.add_argument("--warmup", type=int, default=3, help="Number of warmup iterations before measurement.")
-    parser.add_argument("--repeat", type=int, default=10, help="Number of measured iterations per case.")
-    parser.add_argument(
-        "--case",
-        choices=tuple(CASE_BUILDERS),
-        help="Run only one named benchmark case.",
-    )
+    parser = argparse.ArgumentParser(description="Benchmark native regression contract workflows.")
+    parser.add_argument("--warmup", type=int, default=1, help="Number of warmup iterations before measurement.")
+    parser.add_argument("--repeat", type=int, default=3, help="Number of measured iterations per case.")
+    parser.add_argument("--case", choices=tuple(CASE_BUILDERS), help="Run only one named benchmark case.")
     parser.add_argument("--json", type=Path, dest="json_path", help="Write benchmark output as JSON.")
     parser.add_argument("--baseline-json", type=Path, help="Optional baseline JSON to compare medians against.")
     return parser.parse_args()
@@ -33,7 +25,7 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = _parse_args()
-    payload = run_reactive_regression_benchmarks(
+    payload = run_native_regression_benchmarks(
         warmup=args.warmup,
         repeat=args.repeat,
         case=args.case,

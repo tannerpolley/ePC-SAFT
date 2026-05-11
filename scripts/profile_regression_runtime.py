@@ -27,9 +27,11 @@ if str(REPO_ROOT) not in sys.path:
 
 from epcsaft import fit_pure_neutral
 from epcsaft.regression import _fit_pure_neutral_least_squares_internal
-from tests.helpers.regression_cases import _load_workbook_reference_rows
-from tests.helpers.regression_cases import _neutral_fixed_parameters
-from tests.helpers.regression_cases import _real_saturation_records
+from tests.helpers.regression_cases import (
+    _load_workbook_reference_rows,
+    _neutral_fixed_parameters,
+    _real_saturation_records,
+)
 
 REPORT_DIR = REPO_ROOT / "build" / "runtime_profile"
 REPORT_CSV = REPORT_DIR / "regression_runtime_profile.csv"

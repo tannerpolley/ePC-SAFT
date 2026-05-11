@@ -1,3 +1,4 @@
+# ruff: noqa: UP035
 """Merge/sync MIAC CSV variants (molality, miac_m, mole_fraction, miac).
 
 This script can:
@@ -16,8 +17,9 @@ from __future__ import annotations
 import argparse
 import csv
 import math
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, List, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -106,13 +108,13 @@ def _sum_nu_from_salt(salt: str) -> int:
     return int((za // g) + (zc // g))
 
 
-def _read_rows(path: Path) -> Tuple[List[str], List[Dict[str, str]]]:
+def _read_rows(path: Path) -> tuple[list[str], list[dict[str, str]]]:
     with path.open("r", newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         fields = [h.strip() for h in (reader.fieldnames or []) if h and h.strip()]
-        rows: List[Dict[str, str]] = []
+        rows: list[dict[str, str]] = []
         for row in reader:
-            clean: Dict[str, str] = {}
+            clean: dict[str, str] = {}
             for k, v in row.items():
                 if not k:
                     continue
@@ -124,7 +126,7 @@ def _read_rows(path: Path) -> Tuple[List[str], List[Dict[str, str]]]:
     return fields, rows
 
 
-def _write_rows(path: Path, fieldnames: List[str], rows: List[Dict[str, str]]) -> None:
+def _write_rows(path: Path, fieldnames: list[str], rows: list[dict[str, str]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
@@ -132,7 +134,7 @@ def _write_rows(path: Path, fieldnames: List[str], rows: List[Dict[str, str]]) -
         writer.writerows(rows)
 
 
-def _lookup(fields: Iterable[str]) -> Dict[str, str]:
+def _lookup(fields: Iterable[str]) -> dict[str, str]:
     return {f.strip().lower(): f for f in fields if f and f.strip()}
 
 
@@ -151,12 +153,12 @@ def _solvent_key_from_col(col: str) -> str | None:
     return None
 
 
-def _extract_comp(row: Dict[str, str], solvent_system: str) -> Dict[str, float]:
+def _extract_comp(row: dict[str, str], solvent_system: str) -> dict[str, float]:
     solvents = [s for s in solvent_system.split("-") if s]
     if len(solvents) <= 1:
         return {solvents[0]: 1.0} if solvents else {}
 
-    comp: Dict[str, float] = {}
+    comp: dict[str, float] = {}
     for col, val in row.items():
         key = _solvent_key_from_col(col)
         if key is None or key not in solvents:
@@ -167,7 +169,7 @@ def _extract_comp(row: Dict[str, str], solvent_system: str) -> Dict[str, float]:
 
     if len(solvents) == 2 and len(comp) == 1:
         known = next(iter(comp.keys()))
-        other = [s for s in solvents if s != known][0]
+        other = next(s for s in solvents if s != known)
         comp[other] = 1.0 - comp[known]
 
     if not comp:
@@ -181,7 +183,7 @@ def _extract_comp(row: Dict[str, str], solvent_system: str) -> Dict[str, float]:
     return {s: comp[s] / denom for s in solvents}
 
 
-def _mw_mix(solvent_system: str, comp: Dict[str, float]) -> float:
+def _mw_mix(solvent_system: str, comp: dict[str, float]) -> float:
     solvents = [s for s in solvent_system.split("-") if s]
     if not solvents:
         raise ValueError("Empty solvent system")
@@ -194,7 +196,7 @@ def _mw_mix(solvent_system: str, comp: Dict[str, float]) -> float:
     return total
 
 
-def _composition_columns(solvent_system: str) -> List[str]:
+def _composition_columns(solvent_system: str) -> list[str]:
     solvents = [s for s in solvent_system.split("-") if s]
     if len(solvents) <= 1:
         return []
@@ -205,30 +207,25 @@ def _format(v: float | None) -> str:
     return "" if v is None else f"{float(v):.12g}"
 
 
-def _row_key(row: Dict[str, str], comp_cols: List[str], include_source: bool) -> Tuple:
+def _row_key(row: dict[str, str], comp_cols: list[str], include_source: bool) -> tuple:
     def _f(name: str) -> float:
         val = _to_float(row.get(name, ""))
         return round(val if val is not None else float("nan"), 12)
 
     comp = tuple(_f(c) for c in comp_cols)
-    key = comp + (
-        _f("molality"),
-        _f("miac_m"),
-        _f("mole_fraction"),
-        _f("miac"),
-    )
+    key = (*comp, _f("molality"), _f("miac_m"), _f("mole_fraction"), _f("miac"))
     if include_source:
         src = str(row.get("source", "") or "").strip().lower()
-        key = key + (src,)
+        key = (*key, src)
     return key
 
 
 def _solve_and_normalize_rows(
-    rows: List[Dict[str, str]],
-    source_fields: List[str],
+    rows: list[dict[str, str]],
+    source_fields: list[str],
     solvent_system: str,
     salt: str,
-) -> Tuple[List[Dict[str, str]], int]:
+) -> tuple[list[dict[str, str]], int]:
     look = _lookup(source_fields)
     m_key = None
     for c in ("molality", "molality (kg/mol)", "m", "m (mol/kg)", "x"):
@@ -240,7 +237,7 @@ def _solve_and_normalize_rows(
     x_key = next((look[c] for c in ("mole_fraction", "x_salt") if c in look), None)
     source_key = next((look[c] for c in ("source",) if c in look), None)
 
-    normalized: List[Dict[str, str]] = []
+    normalized: list[dict[str, str]] = []
     skipped = 0
     sum_nu = _sum_nu_from_salt(salt)
 
@@ -279,7 +276,7 @@ def _solve_and_normalize_rows(
             skipped += 1
             continue
 
-        out: Dict[str, str] = {}
+        out: dict[str, str] = {}
         for comp_col in _composition_columns(solvent_system):
             s = "water" if comp_col == "x_H2O" else comp_col.split("_", 1)[1].lower()
             out[comp_col] = _format(comp.get(s, 0.0))
@@ -295,8 +292,8 @@ def _solve_and_normalize_rows(
 
 
 def merge_and_sync(
-    target_csv: Path, merge_csvs: List[Path], solvent_system: str | None = None, salt: str | None = None
-) -> Dict[str, int]:
+    target_csv: Path, merge_csvs: list[Path], solvent_system: str | None = None, salt: str | None = None
+) -> dict[str, int]:
     target_csv = target_csv.resolve()
     if not target_csv.exists():
         raise FileNotFoundError(f"Target CSV not found: {target_csv}")
@@ -322,7 +319,7 @@ def merge_and_sync(
     target_norm, target_skipped = _solve_and_normalize_rows(target_rows, target_fields, solvent_system, salt)
 
     source_fields_seen = [target_fields]
-    merged_norm: List[Dict[str, str]] = list(target_norm)
+    merged_norm: list[dict[str, str]] = list(target_norm)
     incoming_total = 0
     incoming_skipped = 0
     for mpath in merge_csvs:
@@ -336,7 +333,7 @@ def merge_and_sync(
     include_source = any("source" in _lookup(fields) for fields in source_fields_seen)
 
     comp_cols = _composition_columns(solvent_system)
-    unique_rows: List[Dict[str, str]] = []
+    unique_rows: list[dict[str, str]] = []
     seen = set()
     for row in merged_norm:
         key = _row_key(row, comp_cols, include_source=include_source)
@@ -350,7 +347,7 @@ def merge_and_sync(
     else:
         unique_rows.sort(key=lambda r: float(r["molality"]))
 
-    out_fields = comp_cols + ["molality", "miac_m", "mole_fraction", "miac"]
+    out_fields = [*comp_cols, "molality", "miac_m", "mole_fraction", "miac"]
     if include_source:
         out_fields.append("source")
     _write_rows(target_csv, out_fields, unique_rows)

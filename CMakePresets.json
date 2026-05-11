@@ -17,6 +17,10 @@
         "CMAKE_TRY_COMPILE_TARGET_TYPE": "STATIC_LIBRARY",
         "EPCSAFT_DEV_INPLACE": "ON",
         "EPCSAFT_WARNINGS_AS_ERRORS": "OFF",
+        "EPCSAFT_ENABLE_CERES": "OFF",
+        "EPCSAFT_USE_SYSTEM_CERES": "OFF",
+        "EPCSAFT_ENABLE_CPPAD": "OFF",
+        "EPCSAFT_USE_SYSTEM_CPPAD": "OFF",
         "EPCSAFT_ENABLE_SANITIZERS": "OFF",
         "Python_EXECUTABLE": "${sourceDir}/.venv/Scripts/python.exe",
         "pybind11_DIR": "${sourceDir}/.venv/Lib/site-packages/pybind11/share/cmake/pybind11"

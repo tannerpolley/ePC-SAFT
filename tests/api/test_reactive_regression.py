@@ -438,6 +438,7 @@ def test_fit_reactive_electrolyte_parameters_returns_fit_result_and_applies_boun
         max_iterations=4,
         tolerance=1.0e-10,
         log_parameters=False,
+        backend="python_compat",
     )
 
     assert isinstance(fit, epcsaft.ReactiveRegressionFitResult)
@@ -532,6 +533,76 @@ def test_fit_reactive_electrolyte_parameters_rejects_invalid_parameter_inputs(mo
             lower_bounds={"A.sigma": 3.2},
             upper_bounds={"A.sigma": 3.1},
         )
+    with pytest.raises(epcsaft.InputError, match="backend"):
+        epcsaft.fit_reactive_electrolyte_parameters(
+            batch,
+            initial_parameters={"A.sigma": 3.0},
+            backend="scipy",
+        )
+
+
+def test_fit_reactive_electrolyte_parameters_defaults_to_native_boundary(monkeypatch) -> None:
+    def fake_solve(**kwargs):
+        mix = kwargs["mixture_factory"](kwargs["initial_x"], kwargs["T"], kwargs["P_seed"])
+        sigma = float(np.asarray(mix._params["s"], dtype=float)[0])
+        return epcsaft.ReactiveElectrolyteBubbleResult(
+            success=True,
+            message="converged",
+            x_liq={"A": 0.2, "B": 0.8},
+            activity_coefficients={"A": 1.0, "B": 1.0},
+            mass_balance_residuals={"total": 0.0},
+            charge_residual=0.0,
+            reaction_residuals=[],
+            named_reaction_residuals={},
+            P_total=100000.0 + sigma,
+            y_vap={"A": 0.3, "B": 0.7},
+            partial_pressures={"A": 30000.0},
+            fugacity_residual={"A": 0.0},
+            fugacity_residual_norm=1.0e-9,
+            state_failure_count=0,
+            penalty_residuals=[],
+            diagnostics={},
+        )
+
+    monkeypatch.setattr("epcsaft.reactive_electrolyte.solve_reactive_electrolyte_bubble", fake_solve)
+
+    batch = epcsaft.ReactiveElectrolyteBatch(
+        species=["A", "B"],
+        rows=[
+            epcsaft.ReactiveElectrolyteRow(
+                row_id="row1",
+                T=298.15,
+                P_seed=101325.0,
+                totals={"A": 0.2, "B": 0.8},
+                initial_x=[0.2, 0.8],
+                balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},
+                reactions=[],
+                vapor_species=["A", "B"],
+                target_pressure=100000.0,
+                target_speciation={"A": 0.2},
+            )
+        ],
+        balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},
+        reactions=[],
+        vapor_species=["A", "B"],
+        base_parameters=_tiny_base_parameters(),
+        options=epcsaft.ReactiveElectrolyteBatchOptions(include_state_outputs=False),
+    )
+
+    fit = epcsaft.fit_reactive_electrolyte_parameters(
+        batch,
+        initial_parameters={"A.sigma": 3.0},
+        lower_bounds={"A.sigma": 2.0},
+        upper_bounds={"A.sigma": 4.0},
+    )
+
+    assert fit.status == "converged"
+    assert fit.iterations == 0
+    assert fit.parameter_map["A.sigma"] == pytest.approx(3.0)
+    assert fit.diagnostics["backend"] == "native"
+    assert fit.diagnostics["python_optimizer"] is False
+    assert fit.diagnostics["finite_difference_jacobian"] is False
+    assert fit.diagnostics["native_result"]["objective_result"]["fixed_shape_residuals"] is True
 
 
 def test_fit_reactive_electrolyte_parameters_accepts_speciation_rows(monkeypatch) -> None:
@@ -585,6 +656,7 @@ def test_fit_reactive_electrolyte_parameters_accepts_speciation_rows(monkeypatch
         max_iterations=3,
         tolerance=1.0e-12,
         log_parameters=False,
+        backend="python_compat",
     )
 
     summary = epcsaft.summarize_regression_result(fit)
@@ -606,6 +678,7 @@ def test_fit_reactive_electrolyte_parameters_real_mixed_objective_improves() -> 
         max_iterations=2,
         tolerance=1.0e-8,
         log_parameters=False,
+        backend="python_compat",
     )
 
     payload = fit.to_dict()
@@ -684,6 +757,7 @@ def test_fit_reactive_electrolyte_parameters_reports_nonconverged_fit(monkeypatc
         damping=0.25,
         tolerance=1.0e-12,
         log_parameters=False,
+        backend="python_compat",
     )
 
     assert fit.success is False

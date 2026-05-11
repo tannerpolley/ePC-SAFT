@@ -48,3 +48,15 @@ def test_build_script_reads_version_from_pyproject() -> None:
     pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
     assert build._pyproject_version() == pyproject["project"]["version"]
+
+
+def test_build_script_dependency_flags_are_emitted_from_parse_args() -> None:
+    build = _load_script()
+    args = build._parser().parse_args(["--enable-ceres", "--use-system-ceres", "--use-system-cppad"])
+
+    flags = build._dependency_args(args)
+
+    assert "-DEPCSAFT_ENABLE_CERES=ON" in flags
+    assert "-DEPCSAFT_USE_SYSTEM_CERES=ON" in flags
+    assert "-DEPCSAFT_ENABLE_CPPAD=ON" in flags
+    assert "-DEPCSAFT_USE_SYSTEM_CPPAD=ON" in flags

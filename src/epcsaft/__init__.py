@@ -26,6 +26,12 @@ from .equilibrium import (
     electrolyte_feed_from_molality,
     initial_phases_from_result,
 )
+from .native_regression import (
+    CANONICAL_NATIVE_REGRESSION_STATUSES,
+    evaluate_native_regression_residual_records,
+    native_regression_contract_schema,
+    solve_native_regression_residual_records,
+)
 from .parameter_schema import (
     AssociationSite,
     BinaryRecord,
@@ -100,6 +106,7 @@ from .regression import (
 from .runtime import __git_commit__, __version__, capabilities, runtime_build_info
 
 __all__ = [
+    "CANONICAL_NATIVE_REGRESSION_STATUSES",
     "DATASET_ROOT",
     "ActivityCoefficientResult",
     "AssociationSite",
@@ -167,6 +174,7 @@ __all__ = [
     "evaluate_fugacity_coefficients",
     "evaluate_fugacity_coefficients_batch",
     "evaluate_generic_regression_derivatives",
+    "evaluate_native_regression_residual_records",
     "evaluate_pure_neutral_derivatives",
     "evaluate_reactive_electrolyte_bubble_residuals",
     "evaluate_reactive_regression_objective",
@@ -180,7 +188,9 @@ __all__ = [
     "load_regression_records",
     "molality_to_molefraction",
     "molefraction_to_molality",
+    "native_regression_contract_schema",
     "runtime_build_info",
+    "solve_native_regression_residual_records",
     "solve_reactive_electrolyte_bubble",
     "solve_reactive_electrolyte_bubble_sweep",
     "solve_reactive_speciation",

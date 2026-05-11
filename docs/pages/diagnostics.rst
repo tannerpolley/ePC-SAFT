@@ -21,9 +21,13 @@ It lists the public fit statuses, the top-level convergence fields, and the
 empty ``public_placeholder_statuses`` list that downstream agents can use to
 confirm the package is not returning provisional labels. The sibling
 ``bounded_mixed_pressure_speciation_regression`` capability advertises the
-bounded least-squares production path, its supported target families, and the
-fact that Python still owns row orchestration and bounded step control while the
-thermodynamic calculations remain native.
+supported target families and the current production-readiness gate. The public
+default fit backend now calls the native residual-record solve boundary, while
+``backend="python_compat"`` is the explicit compatibility-only Python
+Gauss-Newton path. The capability reports
+``status="native_boundary_contract_slice"`` and
+``issue53_native_production_ready=False`` until full Ceres parameter iteration
+and all production parameter sensitivities are wired.
 
 Contribution Maps
 -----------------
@@ -64,3 +68,20 @@ coverage; it reports ``target_family_counts`` so CI or release notes can prove
 that pressure and speciation residual families both ran. It is intentionally
 excluded from the default all-case benchmark command because it is a slower
 end-to-end mixed residual check.
+
+Native Regression Benchmarks
+----------------------------
+
+Use the native benchmark script when changing the fixed-shape native regression
+contract, status handling, derivative policy, or public production boundary:
+
+.. code-block:: powershell
+
+   uv run python scripts/benchmark_native_regression.py --warmup 1 --repeat 3 --json build/benchmarks/native_regression_main.json
+   uv run python scripts/benchmark_native_regression.py --case native_mea_pressure_speciation_35_row_surrogate --warmup 0 --repeat 1 --json build/benchmarks/native_regression_mea_35row_smoke.json
+
+The native benchmark includes tiny neutral, binary ``k_ij``, and reactive
+Born/``k_ij`` fixtures plus a 35-row public MEA-style pressure/speciation
+surrogate. The benchmark payload records target families, parameter kinds,
+fixed-shape residual status, derivative backend, and whether finite differences
+are allowed in production.

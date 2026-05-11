@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from epcsaft import InputError
-from epcsaft import ePCSAFTMixture
-from epcsaft import ePCSAFTState
+from epcsaft import InputError, ePCSAFTMixture, ePCSAFTState
 
 
 def _as_array(values) -> np.ndarray:
