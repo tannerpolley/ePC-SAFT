@@ -57,7 +57,7 @@ agents:
   judge: installed
   worker: installed
 
-active_task: T030
+active_task: T032
 
 tasks:
   - id: T001
@@ -1420,6 +1420,7 @@ tasks:
       - "docs/pages/diagnostics.rst"
       - "docs/goals/issue-53-native-regression-production/notes/**"
       - "docs/goals/issue-53-native-regression-production/notes/T029-ceres-release-proof.md"
+      - "docs/goals/issue-53-native-regression-production/notes/T030-derivative-tranche-stop.md"
       - "docs/goals/issue-53-native-regression-production/state.yaml"
     verify:
       - "uv run python scripts/build_epcsaft.py"
@@ -1459,7 +1460,7 @@ tasks:
   - id: T030
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement or formally stop on the smallest real derivative tranche for issue #53: reactive-electrolyte bubble pressure residual/Jacobian support or Born-SSM+DS d_born/f_solv sensitivities."
     allowed_files:
@@ -1473,6 +1474,7 @@ tasks:
       - "docs/pages/parameter_regression.rst"
       - "docs/pages/diagnostics.rst"
       - "docs/goals/issue-53-native-regression-production/notes/**"
+      - "docs/goals/issue-53-native-regression-production/notes/T030-derivative-tranche-stop.md"
       - "docs/goals/issue-53-native-regression-production/state.yaml"
     verify:
       - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
@@ -1481,6 +1483,69 @@ tasks:
     stop_if:
       - "A correct derivative path requires a broad scalar-templating rewrite beyond this branch's safe scope."
       - "The implementation cannot prove non-finite-difference sensitivities for the selected tranche."
+    receipt:
+      result: done
+      summary: "Stopped on the remaining derivative tranche because both viable paths require broad native derivative architecture: bubble pressure needs an implicit residual/Jacobian system through log-pressure, vapor composition, and fugacity states; Born-SSM+DS needs scalar-templated or CppAD-backed d_born/f_solv sensitivities through activity/fugacity and density closure. No finite-difference production shortcut was added."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T030-derivative-tranche-stop.md"
+        - "src/epcsaft/native/regression/thermo_regression.cpp"
+        - "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
+        - "tests/native/test_native_ceres_reactive_pressure_speciation.py"
+        - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      changed_files:
+        - "docs/goals/issue-53-native-regression-production/notes/T030-derivative-tranche-stop.md"
+        - "docs/goals/issue-53-native-regression-production/state.yaml"
+      commands:
+        - cmd: "rg -n \"derivative_backend|backend_unavailable|reactive_electrolyte_bubble|bubble\" tests/native/test_native_ceres_reactive_pressure_speciation.py src/epcsaft/runtime.py src/epcsaft/native/regression/thermo_regression.cpp"
+          status: pass
+          summary: "Confirmed bubble rows are native-evaluated but not_differentiated and Ceres fitting is gated as backend_unavailable."
+        - cmd: "rg -n \"born_intermediate|dadx_born|f_solv|d_born|born\" src/epcsaft/native -g\"*.cpp\" -g\"*.h\""
+          status: pass
+          summary: "Confirmed d_born/f_solv parameter application exists while SSM/DS Born derivative plumbing remains blocked."
+      stop_condition: "A correct derivative path requires a broad scalar-templating or implicit-derivative rewrite beyond this tranche's safe scope."
+
+  - id: T031
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Decide final branch disposition after T029 proof and T030 derivative stop: partial PR now, or continue only after a new broad native derivative architecture plan."
+    inputs:
+      - "T029 Ceres release-path proof."
+      - "T030 derivative tranche stop receipt."
+      - "Issue #53 definition of done."
+      - "Current branch commits and validation evidence."
+    constraints:
+      - "Do not mark issue #53 complete."
+      - "Do not close issue #53."
+      - "Recommend partial PR only if branch evidence is useful independently."
+    expected_output:
+      - "Disposition: partial PR, continue with new architecture plan, or abandon branch."
+      - "Required PR wording if partial."
+      - "Required next goal/tranche if continuing."
+    receipt:
+      result: done
+      decision: "Partial PR candidate only; do not close issue #53."
+      summary: "The branch is independently useful because it adds public native-thermo routing, Ceres/CppAD build proof, and honest blocker surfacing, but full issue #53 still requires a broader native derivative architecture tranche."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T031-disposition.md"
+        - "docs/goals/issue-53-native-regression-production/notes/T029-ceres-release-proof.md"
+        - "docs/goals/issue-53-native-regression-production/notes/T030-derivative-tranche-stop.md"
+      recommendation: "Ask before pushing/opening a partial PR, because repo policy says do not push unless explicitly requested."
+
+  - id: T032
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: medium
+    objective: "Await user decision: publish the partial PR, or start a new broad native-derivative architecture tranche for full issue #53 completion."
+    constraints:
+      - "Do not push without explicit user request."
+      - "Do not close issue #53."
+      - "Do not claim mixed pressure/speciation reactive-electrolyte fitting is production-complete."
+    expected_output:
+      - "If user chooses partial PR: push branch, open PR with partial wording, do not close issue."
+      - "If user chooses continued implementation: create/activate a new architecture-first tranche."
     receipt: null
 
   - id: T023
