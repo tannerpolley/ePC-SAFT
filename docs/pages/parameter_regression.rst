@@ -260,7 +260,8 @@ Main entry points:
 - ``ReactiveElectrolyteBatch``: shared species, balances, reactions, parameter payload, and solver options
 - ``ReactiveElectrolyteRegressionContext.from_batch(...)``: compile invariant row/schema metadata once
 - ``evaluate_reactive_regression_objective(...)``: evaluate a structured mixed residual objective
-- ``fit_reactive_electrolyte_parameters(...)``: native residual-record regression boundary over the compiled context
+- ``fit_reactive_electrolyte_parameters(...)``: production native thermodynamic regression for the supported
+  reactive-speciation slice, with an explicit residual-record compatibility boundary for broader legacy cases
 - ``summarize_regression_result(...)`` plus ``write_regression_*`` helpers: stable JSON/CSV reporting
 
 Minimal example:
@@ -369,17 +370,62 @@ residuals. The canonical top-level statuses are ``converged``,
 ``all_rows_failed``, ``nonfinite_objective``, ``bounds_inconsistent``,
 ``invalid_input``, and ``backend_unavailable``. Unsupported native optimizer or
 derivative combinations use ``backend_unavailable`` rather than silently falling
-back. Production native
-regression does not allow finite-difference derivatives; finite-difference
-comparisons belong behind explicit debug gates such as
+back. Production native regression does not allow finite-difference derivatives;
+finite-difference comparisons belong behind explicit debug gates such as
 ``EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG=1``.
 
-The fit helper defaults to ``backend="native"``. Python evaluates the current
-row objective once, packs fixed-shape residual records, and calls the native
-regression boundary. Production calls do not run the Python Gauss-Newton loop or
-Python finite-difference Jacobian. The legacy loop remains available only as
-``backend="python_compat"`` for old comparison workflows and is labeled
-``production_ready = false`` in diagnostics.
+The current native Ceres thermodynamic fit slice is intentionally narrow:
+``reactive_speciation`` rows, ideal-mole-fraction reaction standard states,
+speciation targets, and reaction ``logK`` parameters. Born-SSM+DS ``d_born`` and
+``f_solv`` parameters are applied to native mixtures, but they do not yet have
+production Ceres sensitivities for the activity/fugacity path. Those parameters
+therefore report ``backend_unavailable`` instead of falling back to finite
+differences. The missing scalar-templated derivative path is:
+``NativeThermoCeresCostFunction::Evaluate`` ->
+``evaluate_native_thermo_regression_rows`` ->
+``chemical_equilibrium_native`` /
+``evaluate_chemical_equilibrium_residual_native`` ->
+``activity_coefficients`` ->
+``ePCSAFTStateNative::activity_coefficient_native`` ->
+``residual_chemical_potential_result_cpp`` ->
+``composition_contribution_result_cpp`` ->
+``ares_contributions_cpp`` ->
+``born_intermediate_state_cpp`` / ``dadx_born_cpp`` for Born-SSM+DS ``d_born``
+and ``f_solv``, including any ``solve_density_scoped`` pressure-closure
+sensitivities used by activity or concentration standard states.
+
+Binary interaction parameters are a separate regression family. Use
+``fit_binary_pair(...)`` for ``k_ij``, ``l_ij``, and ``k_hb_ij`` against direct
+binary VLE composition data; do not treat those generic binary fits as reactive
+speciation/Born-SSM+DS regression tests.
+
+Reactive-electrolyte bubble-pressure rows are also native-evaluated but not yet
+production-differentiated for Ceres. The missing residual system is the coupled
+log-pressure and vapor-composition solve used by
+``electrolyte_bubble_pressure_native``:
+
+- liquid state fugacity/activity at fixed liquid composition;
+- vapor submixture state fugacity at the trial pressure and vapor composition;
+- vapor normalization;
+- fugacity equality residuals
+  ``log(y_i) + log(phi_i^vap) - log(x_i) - log(phi_i^liq)``;
+- pressure target residuals through the solved ``P``.
+
+Until those residuals expose analytic, CppAD, or implicit sensitivities with
+respect to fitted parameters and continuation variables, the Ceres fit path
+returns ``backend_unavailable`` for bubble-pressure rows.
+
+The fit helper defaults to ``backend="native"``. For the currently supported
+production slice (reactive speciation rows, ideal-mole-fraction reaction
+standard states, linear speciation targets, and reaction ``logK`` parameters),
+Python serializes the batch once and calls ``fit_native_thermo_regression(...)``;
+the C++ layer owns the thermodynamic row solves, Ceres loop, and derivative
+policy. Broader native compatibility cases can still use
+``backend="native_residual_records"``, which evaluates the Python objective once
+and sends fixed-shape residual records across the native boundary. The legacy
+Python Gauss-Newton loop remains available only as ``backend="python_compat"``
+for old comparison workflows and is labeled ``production_ready = false`` in
+diagnostics.
 
 The native fit helper accepts the compiled batch or context plus the initial
 parameter map and optional fit controls:

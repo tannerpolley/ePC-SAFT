@@ -11,7 +11,7 @@ def test_native_regression_benchmark_cases_and_order():
     assert tuple(CASE_BUILDERS) == (
         "native_neutral_density_tiny",
         "native_binary_kij_tiny",
-        "native_reactive_born_kij_tiny",
+        "native_reactive_born_ssmds_tiny",
         "native_mea_pressure_speciation_35_row_surrogate",
     )
     assert DEFAULT_CASES == tuple(CASE_BUILDERS)
@@ -23,17 +23,17 @@ def test_native_regression_benchmark_schema_and_reactive_coverage():
     payload = run_native_regression_benchmarks(
         warmup=0,
         repeat=1,
-        case="native_reactive_born_kij_tiny",
+        case="native_reactive_born_ssmds_tiny",
     )
     case_payload = payload["cases"][0]
 
-    assert case_payload["case"] == "native_reactive_born_kij_tiny"
+    assert case_payload["case"] == "native_reactive_born_ssmds_tiny"
     assert case_payload["success"] is True
     assert case_payload["status"] == "converged"
     assert case_payload["fixed_shape_residuals"] is True
     assert case_payload["production_finite_difference_allowed"] is False
     assert {"pressure", "speciation", "activity"} <= set(case_payload["target_families"])
-    assert {"born_radius", "binary_interaction"} <= set(case_payload["parameter_kinds"])
+    assert {"born_radius", "solvation_factor"} <= set(case_payload["parameter_kinds"])
 
 
 def test_native_regression_benchmark_has_35_row_public_surrogate():
@@ -49,9 +49,7 @@ def test_native_regression_benchmark_has_35_row_public_surrogate():
     assert case_payload["row_count"] == 35
     assert case_payload["residual_count"] == 105
     assert {"pressure", "speciation"} <= set(case_payload["target_families"])
-    assert {"born_radius", "binary_interaction", "reaction_equilibrium_constant"} <= set(
-        case_payload["parameter_kinds"]
-    )
+    assert {"born_radius", "solvation_factor", "reaction_equilibrium_constant"} <= set(case_payload["parameter_kinds"])
 
 
 def test_native_regression_benchmark_baseline_merge(tmp_path):

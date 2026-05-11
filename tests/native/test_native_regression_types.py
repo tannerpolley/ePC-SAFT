@@ -28,7 +28,7 @@ def test_native_regression_contract_schema_is_exposed_from_core() -> None:
     assert schema["fixed_shape_residuals"] is True
     assert schema["production_finite_difference_allowed"] is False
     assert {"pressure", "speciation", "activity"}.issubset(schema["supported_target_families"])
-    assert {"binary_interaction", "born_radius"}.issubset(schema["supported_parameter_kinds"])
+    assert {"binary_interaction", "born_radius", "solvation_factor"}.issubset(schema["supported_parameter_kinds"])
     assert schema["row_diagnostic_fields"] == [
         "row_id",
         "success",

@@ -122,10 +122,10 @@ def _native_binary_kij_tiny() -> PreparedNativeRegressionCase:
     )
 
 
-def _native_reactive_born_kij_tiny() -> PreparedNativeRegressionCase:
+def _native_reactive_born_ssmds_tiny() -> PreparedNativeRegressionCase:
     return PreparedNativeRegressionCase(
-        case="native_reactive_born_kij_tiny",
-        description="reactive electrolyte pressure/speciation residual contract with Born and k_ij parameters",
+        case="native_reactive_born_ssmds_tiny",
+        description="reactive electrolyte pressure/speciation residual contract with Born SSM+DS d_born and f_solv parameters",
         records=(
             _record(
                 "reactive_1",
@@ -134,7 +134,7 @@ def _native_reactive_born_kij_tiny() -> PreparedNativeRegressionCase:
                 101900.0,
                 101325.0,
                 scale=1.0e-5,
-                sensitivities={"water:Na+.k_ij": 150.0},
+                sensitivities={"water.f_solv": 40.0},
             ),
             _record(
                 "reactive_1",
@@ -161,12 +161,12 @@ def _native_reactive_born_kij_tiny() -> PreparedNativeRegressionCase:
                 0.83,
                 0.85,
                 scale=10.0,
-                sensitivities={"Na+.d_born": 0.02, "water:Na+.k_ij": -0.1},
+                sensitivities={"Na+.d_born": 0.02, "water.f_solv": -0.1},
             ),
         ),
         parameters=(
             _parameter("Na+.d_born", "born_radius", 3.445, 2.0, 6.0),
-            _parameter("water:Na+.k_ij", "binary_interaction", 0.0045, -0.5, 0.5),
+            _parameter("water.f_solv", "solvation_factor", 1.5, 0.5, 3.0),
         ),
     )
 
@@ -184,7 +184,7 @@ def _native_mea_35_row_surrogate() -> PreparedNativeRegressionCase:
                 2400.0 + 120.0 * loading_shift,
                 2380.0 + 110.0 * loading_shift,
                 scale=1.0e-4,
-                sensitivities={"MEA:CO2.k_ij": 80.0 + 10.0 * loading_shift},
+                sensitivities={"MEA.f_solv": 20.0 + 5.0 * loading_shift},
             )
         )
         records.append(
@@ -215,7 +215,7 @@ def _native_mea_35_row_surrogate() -> PreparedNativeRegressionCase:
         records=tuple(records),
         parameters=(
             _parameter("MEAH+.d_born", "born_radius", 3.2, 2.0, 6.0),
-            _parameter("MEA:CO2.k_ij", "binary_interaction", -0.02, -0.5, 0.5),
+            _parameter("MEA.f_solv", "solvation_factor", 1.5, 0.5, 3.0),
             _parameter("carbamate.log_k", "reaction_equilibrium_constant", -3.0, -12.0, 4.0),
         ),
     )
@@ -225,7 +225,7 @@ CASE_BUILDERS: Mapping[str, Callable[[], PreparedNativeRegressionCase]] = Ordere
     (
         ("native_neutral_density_tiny", _native_neutral_tiny),
         ("native_binary_kij_tiny", _native_binary_kij_tiny),
-        ("native_reactive_born_kij_tiny", _native_reactive_born_kij_tiny),
+        ("native_reactive_born_ssmds_tiny", _native_reactive_born_ssmds_tiny),
         ("native_mea_pressure_speciation_35_row_surrogate", _native_mea_35_row_surrogate),
     )
 )

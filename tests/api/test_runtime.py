@@ -75,6 +75,10 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert mixed_regression["compatibility_backend"] == "python_compat"
     assert mixed_regression["required_native_dependencies"] == ["ceres", "cppad"]
     assert "reactive-speciation" in mixed_regression["production_blockers"][0]
+    assert "log-pressure unknown" in mixed_regression["missing_bubble_derivative_residuals"][0]
+    assert "dadx_born_cpp" in " ".join(mixed_regression["missing_derivative_call_graph"])
+    assert "f_solv" in " ".join(mixed_regression["missing_derivative_call_graph"])
+    assert "fit_binary_pair" in mixed_regression["generic_binary_regression_path"]
     native_ceres = capabilities["regression"]["reactive_electrolyte_batch_context"][
         "native_ceres_thermodynamic_regression"
     ]
@@ -82,6 +86,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert native_ceres["python_objective_used"] is False
     assert native_ceres["finite_difference_used"] is False
     assert native_ceres["unsupported_status"] == "backend_unavailable"
+    assert set(native_ceres["blocked_parameter_kinds"]) >= {"born_radius", "f_solv"}
     assert ipopt["available"] is ipopt_backend.cyipopt_available()
     assert ipopt["formulations"] == ["bound_constrained_residual_minimization"]
     assert ipopt["full_constrained_nlp_available"] is False

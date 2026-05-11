@@ -179,6 +179,8 @@ void apply_native_thermo_parameters(
             }
         } else if (parameter.kind == "born_radius" || parameter.kind == "born_diameter") {
             set_vector_parameter(args.d_born, metadata_int(parameter, "component_index"), value, parameter.kind);
+        } else if (parameter.kind == "solvation_factor" || parameter.kind == "f_solv") {
+            set_vector_parameter(args.f_solv, metadata_int(parameter, "component_index"), value, parameter.kind);
         } else if (parameter.kind == "binary_interaction" || parameter.kind == "k_ij") {
             set_symmetric_matrix_parameter(
                 args.k_ij,

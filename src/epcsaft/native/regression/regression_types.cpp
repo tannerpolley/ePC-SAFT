@@ -123,6 +123,7 @@ NativeRegressionProblemContract native_regression_contract_schema() {
         "binary_interaction",
         "reaction_equilibrium_constant",
         "born_radius",
+        "solvation_factor",
         "dielectric_parameter",
     };
     contract.fixed_shape_residuals = true;

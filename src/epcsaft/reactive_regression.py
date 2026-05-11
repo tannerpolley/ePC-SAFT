@@ -18,7 +18,7 @@ from . import reactive_electrolyte as reactive_electrolyte_module
 from . import reactive_speciation as reactive_speciation_module
 from ._types import InputError, SolutionError
 from .epcsaft import ePCSAFTMixture
-from .native_regression import solve_native_regression_residual_records
+from .native_regression import fit_native_thermo_regression, solve_native_regression_residual_records
 from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions, ReactiveElectrolyteBubbleResult
 from .reactive_speciation import ReactionDefinition, ReactiveSpeciationOptions, ReactiveSpeciationResult
 
@@ -71,6 +71,23 @@ _BINARY_FIELD_ALIASES = {
     "l_ij": "l_ij",
     "k_hb_ij": "k_hb_ij",
 }
+_REACTION_STANDARD_STATE_CODES = {
+    "mole_fraction_activity": 0,
+    "ideal_mole_fraction": 1,
+    "concentration": 2,
+}
+_REACTION_PARAMETER_FIELDS = {
+    "lnk",
+    "log_k",
+    "logk",
+    "log_equilibrium_constant",
+    "reaction_constant",
+    "reaction_equilibrium_constant",
+}
+
+
+class _UnsupportedNativeThermoRegression(ValueError):
+    """Internal marker for cases outside the production native thermo slice."""
 
 
 def _json_like(value: Any) -> Any:
@@ -1019,7 +1036,17 @@ def fit_reactive_electrolyte_parameters(
     derivative_backend: str = "analytic",
 ) -> ReactiveRegressionFitResult:
     normalized_backend = str(backend).strip().lower()
-    if normalized_backend in {"native", "native_residual_records"}:
+    if normalized_backend == "native":
+        return _fit_reactive_parameters_native_thermo(
+            batch_or_context,
+            initial_parameters=initial_parameters,
+            lower_bounds=lower_bounds,
+            upper_bounds=upper_bounds,
+            max_iterations=max_iterations,
+            tolerance=tolerance,
+            derivative_backend=derivative_backend,
+        )
+    if normalized_backend == "native_residual_records":
         return _fit_reactive_parameters_native(
             batch_or_context,
             initial_parameters=initial_parameters,
@@ -1447,6 +1474,335 @@ def _fit_reactive_parameters_impl(
     )
 
 
+def _fit_reactive_parameters_native_thermo(
+    batch_or_context: ReactiveElectrolyteBatch | ReactiveElectrolyteRegressionContext,
+    *,
+    initial_parameters: Mapping[str, float],
+    lower_bounds: Mapping[str, float | None] | None,
+    upper_bounds: Mapping[str, float | None] | None,
+    max_iterations: int,
+    tolerance: float,
+    derivative_backend: str,
+) -> ReactiveRegressionFitResult:
+    context = _context_from_batch_or_context(batch_or_context)
+    current = {str(k): float(v) for k, v in initial_parameters.items()}
+    if not current:
+        raise InputError("initial_parameters must include at least one fitted parameter.")
+    lower = {str(k): (None if v is None else float(v)) for k, v in (lower_bounds or {}).items()}
+    upper = {str(k): (None if v is None else float(v)) for k, v in (upper_bounds or {}).items()}
+    _validate_native_parameter_bounds(current, lower, upper)
+    if max_iterations <= 0:
+        raise InputError("max_iterations must be positive.")
+    if tolerance <= 0.0:
+        raise InputError("tolerance must be positive.")
+
+    try:
+        mixture, request = _native_thermo_regression_request(
+            context,
+            current=current,
+            lower=lower,
+            upper=upper,
+            max_iterations=max_iterations,
+            tolerance=tolerance,
+            derivative_backend=derivative_backend,
+        )
+    except _UnsupportedNativeThermoRegression:
+        return _fit_reactive_parameters_native(
+            context,
+            initial_parameters=current,
+            lower_bounds=lower,
+            upper_bounds=upper,
+            max_iterations=max_iterations,
+            tolerance=tolerance,
+            derivative_backend=derivative_backend,
+        )
+
+    native_result = fit_native_thermo_regression(mixture, request)
+    objective_result = _objective_result_from_native_thermo(context, native_result.get("objective_result", {}))
+    names = [str(name) for name in native_result.get("parameter_names", [])]
+    values = [float(value) for value in native_result.get("parameters", [])]
+    parameter_map = dict(current)
+    parameter_map.update(dict(zip(names, values)))
+    lower_payload = dict(zip(names, native_result.get("lower_bounds", [])))
+    upper_payload = dict(zip(names, native_result.get("upper_bounds", [])))
+    active_bounds = {name: bool(flag) for name, flag in zip(names, native_result.get("active_bounds", []))}
+    status = str(native_result.get("status", "invalid_input"))
+    return ReactiveRegressionFitResult(
+        success=bool(native_result.get("success", False)),
+        message=str(native_result.get("message", "native thermodynamic regression did not report a message")),
+        status=status,
+        termination_reason=status,
+        iterations=int(native_result.get("iterations", 0)),
+        objective_initial=float(native_result.get("initial_cost", objective_result.objective)),
+        objective_final=float(native_result.get("final_cost", objective_result.objective)),
+        gradient_norm=float(native_result["gradient_norm"]) if native_result.get("gradient_norm") is not None else None,
+        step_norm=None,
+        parameter_map=parameter_map,
+        seed_map=dict(current),
+        lower_bounds={name: lower_payload.get(name, lower.get(name)) for name in current},
+        upper_bounds={name: upper_payload.get(name, upper.get(name)) for name in current},
+        active_bounds={name: bool(active_bounds.get(name, False)) for name in current},
+        objective_result=objective_result,
+        covariance_available=False,
+        covariance_matrix=None,
+        identifiability_status="native_unavailable",
+        diagnostics={
+            "backend": "native_thermo",
+            "production_ready": True,
+            "python_optimizer": False,
+            "finite_difference_jacobian": False,
+            "native_result": _json_like(native_result),
+            "native_thermo_row_count": len(request["rows"]),
+            "derivative_backend": str(native_result.get("derivative_backend", derivative_backend)),
+            "optimizer_backend": str(native_result.get("optimizer_backend", "native")),
+        },
+    )
+
+
+def _context_from_batch_or_context(
+    batch_or_context: ReactiveElectrolyteBatch | ReactiveElectrolyteRegressionContext,
+) -> ReactiveElectrolyteRegressionContext:
+    if isinstance(batch_or_context, ReactiveElectrolyteRegressionContext):
+        return batch_or_context
+    return ReactiveElectrolyteRegressionContext.from_batch(
+        species=batch_or_context.species,
+        rows=batch_or_context.rows,
+        balances=batch_or_context.balances,
+        reactions=batch_or_context.reactions,
+        options=batch_or_context.options,
+        vapor_species=batch_or_context.vapor_species,
+        volatile_species=batch_or_context.volatile_species,
+        nonvolatile_species=batch_or_context.nonvolatile_species,
+        base_parameters=batch_or_context.base_parameters,
+        user_options=batch_or_context.user_options,
+        mixture_factory=batch_or_context.mixture_factory,
+        mixture_factory_builder=batch_or_context.mixture_factory_builder,
+        reactive_speciation_options=batch_or_context.reactive_speciation_options,
+        reactive_bubble_options=batch_or_context.reactive_bubble_options,
+    )
+
+
+def _native_thermo_regression_request(
+    context: ReactiveElectrolyteRegressionContext,
+    *,
+    current: Mapping[str, float],
+    lower: Mapping[str, float | None],
+    upper: Mapping[str, float | None],
+    max_iterations: int,
+    tolerance: float,
+    derivative_backend: str,
+) -> tuple[ePCSAFTMixture, dict[str, Any]]:
+    batch = context.batch
+    if context.objective.speciation_family != "speciation_mole_fraction":
+        raise _UnsupportedNativeThermoRegression("native thermodynamic regression requires linear speciation targets.")
+    if any(row.mode != "speciation" for row in batch.rows):
+        raise _UnsupportedNativeThermoRegression("native thermodynamic regression supports speciation rows only.")
+    if any(row.target_activity or row.target_fugacity or row.target_partial_pressures for row in batch.rows):
+        raise _UnsupportedNativeThermoRegression("native thermodynamic regression supports speciation targets only.")
+    if any(row.target_pressure is not None or row.target_density is not None for row in batch.rows):
+        raise _UnsupportedNativeThermoRegression("native thermodynamic regression supports speciation targets only.")
+    if any(row.target_relative_permittivity is not None for row in batch.rows):
+        raise _UnsupportedNativeThermoRegression("native thermodynamic regression supports speciation targets only.")
+
+    first_row = batch.rows[0]
+    mixture = _build_row_mixture(
+        batch,
+        first_row,
+        {},
+        x_override=_row_seed_x(first_row, context.species),
+        P_override=first_row.P or first_row.P_seed or 101325.0,
+    )
+    rows = [_native_thermo_speciation_row(context, row) for row in batch.rows]
+    parameters = _native_thermo_parameter_specs(context, current, lower, upper)
+    return mixture, {
+        "species": list(context.species),
+        "rows": rows,
+        "parameters": parameters,
+        "options": {
+            "max_iterations": int(max_iterations),
+            "function_tolerance": float(tolerance),
+            "parameter_tolerance": float(tolerance),
+            "derivative_backend": str(derivative_backend),
+            "optimizer_backend": "auto",
+            "penalty_residual": float(batch.options.penalty_value),
+        },
+        "penalty_residual": float(batch.options.penalty_value),
+    }
+
+
+def _native_thermo_speciation_row(
+    context: ReactiveElectrolyteRegressionContext,
+    row: ReactiveElectrolyteRow,
+) -> dict[str, Any]:
+    reactions = tuple(row.reactions or context.batch.reactions)
+    if any(reaction.standard_state != "ideal_mole_fraction" for reaction in reactions):
+        raise _UnsupportedNativeThermoRegression(
+            "native thermodynamic regression derivatives require ideal mole-fraction reactions."
+        )
+    balances = row.balances or context.batch.balances
+    balance_names = tuple(str(name) for name in balances)
+    balance_matrix = [
+        float(balances[balance_name].get(species_name, 0.0))
+        for balance_name in balance_names
+        for species_name in context.species
+    ]
+    total_vector = [float(row.totals.get(balance_name, 0.0)) for balance_name in balance_names]
+    reaction_stoichiometry = [
+        float(reaction.stoichiometry.get(species_name, 0.0))
+        for reaction in reactions
+        for species_name in context.species
+    ]
+    targets: list[dict[str, Any]] = []
+    row_weight = float(context.objective.row_weights.get(row.row_id, 1.0))
+    source_weight = float(context.objective.source_weights.get(row.source, 1.0))
+    split_weight = float(context.objective.split_weights.get(row.split, 1.0))
+    family_weight = float(context.objective.residual_weights.get("speciation", 1.0))
+    base_scale = math.sqrt(row_weight * source_weight * split_weight * family_weight)
+    for species_name, observed in row.target_speciation.items():
+        target = float(observed)
+        targets.append(
+            {
+                "family": "speciation",
+                "target": species_name,
+                "index": int(context.species_index[species_name]),
+                "observed": target,
+                "scale": base_scale / max(abs(target), 1.0e-12),
+            }
+        )
+    if not targets:
+        raise _UnsupportedNativeThermoRegression("native thermodynamic regression requires at least one target.")
+    return {
+        "row_id": row.row_id,
+        "row_mode": "reactive_speciation",
+        "T": float(row.T),
+        "P": float(row.P or row.P_seed or 101325.0),
+        "initial_x": [float(value) for value in _row_seed_x(row, context.species)],
+        "balance_matrix": balance_matrix,
+        "balance_rows": len(balance_names),
+        "total_vector": total_vector,
+        "reaction_stoichiometry": reaction_stoichiometry,
+        "reaction_rows": len(reactions),
+        "log_equilibrium_constants": [float(reaction.log_equilibrium_constant) for reaction in reactions],
+        "reaction_standard_states": [
+            int(_REACTION_STANDARD_STATE_CODES[reaction.standard_state]) for reaction in reactions
+        ],
+        "options": {"jacobian_backend": "auto", "max_iterations": 50, "tolerance": 1.0e-8},
+        "targets": targets,
+    }
+
+
+def _native_thermo_parameter_specs(
+    context: ReactiveElectrolyteRegressionContext,
+    parameter_map: Mapping[str, float],
+    lower: Mapping[str, float | None],
+    upper: Mapping[str, float | None],
+) -> list[dict[str, Any]]:
+    specs: list[dict[str, Any]] = []
+    reaction_index = {name: idx for idx, name in enumerate(context.reaction_names)}
+    for name, value_raw in parameter_map.items():
+        component, field = _split_parameter_label(name)
+        if field not in _REACTION_PARAMETER_FIELDS:
+            raise _UnsupportedNativeThermoRegression(
+                "native thermodynamic regression supports reaction log-equilibrium constants only."
+            )
+        if component in reaction_index:
+            index = reaction_index[component]
+        elif len(reaction_index) == 1:
+            index = 0
+        else:
+            raise _UnsupportedNativeThermoRegression(f"Could not map parameter {name!r} to a unique reaction index.")
+        value = float(value_raw)
+        span = max(abs(value), 1.0)
+        lo = lower.get(name)
+        hi = upper.get(name)
+        specs.append(
+            {
+                "name": str(name),
+                "kind": "reaction_equilibrium_constant",
+                "initial": value,
+                "lower": float(value - span if lo is None else lo),
+                "upper": float(value + span if hi is None else hi),
+                "scale": span,
+                "metadata": {"reaction_index": str(index)},
+            }
+        )
+    return specs
+
+
+def _split_parameter_label(name: str) -> tuple[str, str]:
+    if "." not in name:
+        return "", name.strip().lower()
+    component, field = name.split(".", 1)
+    return component.strip(), field.strip().lower()
+
+
+def _objective_result_from_native_thermo(
+    context: ReactiveElectrolyteRegressionContext,
+    native_objective: Mapping[str, Any],
+) -> ReactiveRegressionObjectiveResult:
+    residuals = np.asarray(native_objective.get("residuals", []), dtype=float).reshape(-1)
+    schema = [dict(item) for item in native_objective.get("residual_schema", [])]
+    diagnostics_by_row = {
+        str(item.get("row_id", "")): dict(item) for item in native_objective.get("row_diagnostics", [])
+    }
+    residual_names = tuple(str(item.get("name", f"residual_{idx}")) for idx, item in enumerate(schema))
+    residual_row_map = tuple(str(item.get("row_id", "")) for item in schema)
+    row_results: list[ReactiveElectrolyteRowResult] = []
+    for row in context.batch.rows:
+        row_indices = [idx for idx, row_id in enumerate(residual_row_map) if row_id == row.row_id]
+        row_residuals = {residual_names[idx]: float(residuals[idx]) for idx in row_indices if idx < residuals.size}
+        native_row_diag = diagnostics_by_row.get(row.row_id, {})
+        row_results.append(
+            ReactiveElectrolyteRowResult(
+                row_id=row.row_id,
+                success=bool(native_row_diag.get("success", not native_row_diag.get("penalty_applied", False))),
+                message=str(native_row_diag.get("message", "")),
+                composition={},
+                pressure=row.P,
+                ln_fugacity={},
+                activity_coefficients={},
+                density=None,
+                relative_permittivity=None,
+                residuals=row_residuals,
+                residual_names=tuple(row_residuals),
+                failure_diagnostics={"native_thermo": _json_like(native_row_diag)},
+                active_bounds={},
+                solver_status=str(native_row_diag.get("status", "")),
+                elapsed_seconds=0.0,
+                cache_stats={"solve_backend": native_row_diag.get("solve_backend", "native_thermo")},
+                source=row.source,
+                split=row.split,
+                metadata=row.metadata,
+            )
+        )
+    batch_result = ReactiveElectrolyteBatchResult(
+        success_count=int(native_objective.get("success_count", 0)),
+        failure_count=int(native_objective.get("failure_count", 0)),
+        row_results=tuple(row_results),
+        residuals=residuals,
+        residual_names=residual_names,
+        residual_row_map=residual_row_map,
+        diagnostics={
+            "native_thermo_objective": _json_like(native_objective),
+            "target_family_counts": dict(Counter(str(item.get("family", "unknown")) for item in schema)),
+            "context": _json_like(context.context_diagnostics),
+        },
+        cache_stats={},
+        timing_summary={},
+    )
+    return ReactiveRegressionObjectiveResult(
+        batch_result=batch_result,
+        residuals=residuals,
+        residual_names=residual_names,
+        residual_row_map=residual_row_map,
+        metrics=_objective_metrics(batch_result),
+        diagnostics={
+            "objective": asdict(context.objective),
+            "native_thermo": _json_like(native_objective),
+        },
+    )
+
+
 def _fit_reactive_parameters_native(
     batch_or_context: ReactiveElectrolyteBatch | ReactiveElectrolyteRegressionContext,
     *,
@@ -1595,9 +1951,11 @@ def _native_parameter_kind(name: str) -> str:
     field = name.split(".", 1)[1].lower() if "." in name else name.lower()
     if field in {"d_born", "born_diameter"}:
         return "born_radius"
+    if field in {"f_solv", "solvation_factor"}:
+        return "solvation_factor"
     if field in {"dielc", "relative_permittivity"}:
         return "dielectric_parameter"
-    if field in {"lnk", "log_k", "reaction_constant", "reaction_equilibrium_constant"}:
+    if field in _REACTION_PARAMETER_FIELDS:
         return "reaction_equilibrium_constant"
     return "pure_component"
 

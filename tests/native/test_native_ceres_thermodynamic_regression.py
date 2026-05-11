@@ -147,6 +147,44 @@ def test_native_thermo_regression_fit_reports_unavailable_without_ceres() -> Non
     assert result["objective_result"]["fixed_shape_residuals"] is True
 
 
+def test_native_thermo_regression_reports_ssmds_born_derivatives_unavailable() -> None:
+    species = ["H2O", "NaCl", "Na+", "Cl-"]
+    mix = _salt_speciation_mixture()
+    log_k = math.log(0.0005) + math.log(0.0005) - math.log(0.001)
+
+    result = epcsaft.fit_native_thermo_regression(
+        mix,
+        {
+            "species": species,
+            "rows": [_salt_speciation_row(log_k, 0.00065)],
+            "parameters": [
+                {
+                    "name": "Na+.d_born",
+                    "kind": "born_radius",
+                    "initial": 3.445,
+                    "lower": 2.0,
+                    "upper": 5.0,
+                    "metadata": {"component_index": "2"},
+                },
+                {
+                    "name": "H2O.f_solv",
+                    "kind": "f_solv",
+                    "initial": 1.5,
+                    "lower": 0.5,
+                    "upper": 3.0,
+                    "metadata": {"component_index": "0"},
+                },
+            ],
+            "options": {"max_iterations": 3, "derivative_backend": "implicit"},
+        },
+    )
+
+    assert result["status"] == "backend_unavailable"
+    assert result["optimizer_backend"] == "backend_unavailable"
+    assert "reaction log-equilibrium constants only" in result["message"]
+    assert result["objective_result"]["fixed_shape_residuals"] is True
+
+
 def test_native_thermo_regression_penalizes_unsupported_row_mode() -> None:
     mix = _salt_speciation_mixture()
 

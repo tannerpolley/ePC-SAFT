@@ -605,6 +605,78 @@ def test_fit_reactive_electrolyte_parameters_defaults_to_native_boundary(monkeyp
     assert fit.diagnostics["native_result"]["objective_result"]["fixed_shape_residuals"] is True
 
 
+def test_fit_reactive_electrolyte_parameters_routes_supported_speciation_batch_to_native_thermo() -> None:
+    log_k = np.log(2.5e-4)
+    row = epcsaft.ReactiveElectrolyteRow(
+        row_id="native-speciation",
+        T=298.15,
+        P=101325.0,
+        initial_x=[0.998, 0.001, 0.0005, 0.0005],
+        balances={
+            "water": {"H2O": 1.0},
+            "sodium": {"NaCl": 1.0, "Na+": 1.0},
+            "chloride": {"NaCl": 1.0, "Cl-": 1.0},
+        },
+        totals={"water": 0.998, "sodium": 0.0015, "chloride": 0.0015},
+        reactions=[
+            epcsaft.ReactionDefinition(
+                {"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
+                log_k,
+                name="salt_dissociation",
+                standard_state="ideal_mole_fraction",
+            )
+        ],
+        target_speciation={"Na+": 0.00065},
+        mode="speciation",
+    )
+    batch = epcsaft.ReactiveElectrolyteBatch(
+        species=["H2O", "NaCl", "Na+", "Cl-"],
+        rows=[row],
+        balances=row.balances,
+        reactions=row.reactions,
+        base_parameters={
+            "MW": np.asarray([18.01528e-3, 58.44e-3, 22.989e-3, 35.45e-3]),
+            "m": np.asarray([1.2047, 1.0, 1.0, 1.0]),
+            "s": np.asarray([2.7927, 3.0, 2.8232, 2.7560]),
+            "e": np.asarray([353.95, 200.0, 230.0, 170.0]),
+            "z": np.asarray([0.0, 0.0, 1.0, -1.0]),
+            "dielc": np.asarray([78.09, 8.0, 8.0, 8.0]),
+            "d_born": np.asarray([0.0, 0.0, 3.445, 4.1]),
+        },
+        options=epcsaft.ReactiveElectrolyteBatchOptions(include_state_outputs=False),
+    )
+    context = epcsaft.ReactiveElectrolyteRegressionContext.from_batch(
+        species=batch.species,
+        rows=batch.rows,
+        balances=batch.balances,
+        reactions=batch.reactions,
+        base_parameters=batch.base_parameters,
+        options=batch.options,
+        objective=epcsaft.build_reactive_regression_objective(
+            batch,
+            speciation_family="speciation_mole_fraction",
+            scalar_families=(),
+        ),
+    )
+
+    fit = epcsaft.fit_reactive_electrolyte_parameters(
+        context,
+        initial_parameters={"salt_dissociation.log_k": log_k},
+        lower_bounds={"salt_dissociation.log_k": log_k - 5.0},
+        upper_bounds={"salt_dissociation.log_k": log_k + 5.0},
+        max_iterations=3,
+        tolerance=1.0e-8,
+    )
+
+    assert isinstance(fit, epcsaft.ReactiveRegressionFitResult)
+    assert fit.diagnostics["backend"] == "native_thermo"
+    assert fit.diagnostics["python_optimizer"] is False
+    assert fit.diagnostics["finite_difference_jacobian"] is False
+    assert fit.diagnostics["native_result"]["objective_result"]["fixed_shape_residuals"] is True
+    assert fit.objective_result.residual_names == ("native-speciation:speciation:Na+",)
+    assert fit.status in {"backend_unavailable", "converged", "max_iterations"}
+
+
 def test_fit_reactive_electrolyte_parameters_accepts_speciation_rows(monkeypatch) -> None:
     def fake_speciation(**kwargs):
         mix = kwargs["mixture_factory"](kwargs["initial_x"], kwargs["T"], kwargs["P"])
