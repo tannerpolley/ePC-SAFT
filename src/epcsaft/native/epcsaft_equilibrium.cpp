@@ -1,4 +1,5 @@
 #include "epcsaft_equilibrium.h"
+#include "autodiff/debug_gate.h"
 #include "equilibrium/equilibrium_helpers.h"
 
 #include <Eigen/Dense>
@@ -7,7 +8,6 @@
 #include <chrono>
 #include <cctype>
 #include <cmath>
-#include <cstdlib>
 #include <functional>
 #include <limits>
 #include <numeric>
@@ -16,11 +16,6 @@
 #include <utility>
 
 namespace {
-
-bool finite_difference_debug_enabled() {
-    const char* value = std::getenv("EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG");
-    return value != nullptr && std::string(value) == "1";
-}
 
 struct PhaseStateNative {
     std::shared_ptr<ePCSAFTStateNative> state;
@@ -3018,10 +3013,9 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
             "finite difference is only available when jacobian_backend='finite_difference' is requested explicitly."
         );
     }
-    if (!finite_difference_debug_enabled()) {
+    if (!epcsaft::autodiff::finite_difference_debug_enabled()) {
         throw ValueError(
-            "electrolyte LLE finite_difference jacobian_backend is debug-only; "
-            "set EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG=1 to use it for explicit diagnostics."
+            epcsaft::autodiff::finite_difference_debug_only_message("electrolyte LLE")
         );
     }
     std::vector<double> feed = normalize_feed(raw_feed, mixture->ncomp(), options.min_composition, "electrolyte_lle");

@@ -57,7 +57,7 @@ agents:
   judge: installed
   worker: installed
 
-active_task: T032
+active_task: T035
 
 tasks:
   - id: T001
@@ -1536,7 +1536,7 @@ tasks:
   - id: T032
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: medium
     objective: "Await user decision: publish the partial PR, or start a new broad native-derivative architecture tranche for full issue #53 completion."
     constraints:
@@ -1546,6 +1546,113 @@ tasks:
     expected_output:
       - "If user chooses partial PR: push branch, open PR with partial wording, do not close issue."
       - "If user chooses continued implementation: create/activate a new architecture-first tranche."
+    receipt:
+      result: done
+      summary: "User explicitly chose continued implementation and a broader native derivative architecture tranche instead of a partial PR."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T032-user-decision.md"
+
+  - id: T033
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Choose the first bounded implementation inside the broader native derivative architecture tranche."
+    inputs:
+      - "T030 derivative tranche stop receipt."
+      - "T031 partial-PR disposition."
+      - "Latest user instruction to continue and start a broader native derivative architecture tranche."
+    constraints:
+      - "Do not relabel issue #53 as complete."
+      - "Do not widen production capability claims without real sensitivities."
+      - "Choose the smaller real derivative seam before the bubble-pressure Jacobian system if possible."
+    expected_output:
+      - "First bounded architecture slice."
+      - "Priority order for Born/speciation versus bubble-pressure work."
+      - "Next active Worker task."
+    receipt:
+      result: done
+      decision: "Prioritize Born/speciation derivative substrate before bubble-pressure derivatives."
+      summary: "The broader tranche starts with shared native derivative-policy scaffolding and scalar-templated Born cleanup under native/autodiff, then proceeds to real reactive-speciation parameter sensitivities for d_born, f_solv, and generic binary parameters."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T033-judge-broader-derivative-tranche.md"
+
+  - id: T034
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Implement the first broader-tranche architecture slice: shared native derivative-policy helpers and scalar-templated Born cleanup without changing production capability claims."
+    allowed_files:
+      - "src/epcsaft/native/autodiff/**"
+      - "src/epcsaft/native/autodiff/debug_gate.h"
+      - "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "tests/native/**"
+      - "docs/goals/issue-53-native-regression-production/notes/**"
+      - "docs/goals/issue-53-native-regression-production/notes/T034-shared-derivative-policy-slice.md"
+      - "docs/goals/issue-53-native-regression-production/state.yaml"
+    verify:
+      - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py tests/native/test_cppad_eos_derivatives.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_cppad_bubble_derivatives.py tests/native/test_chemical_equilibrium_native.py tests/native/test_equilibrium_native_contracts.py -q"
+    stop_if:
+      - "The shared derivative-policy layer requires a broad public API or pybind redesign before code can compile."
+      - "The Born cleanup changes thermodynamic behavior instead of remaining a structural substrate change."
+    receipt:
+      result: done
+      summary: "Added a shared native finite-difference debug-gate helper under native/autodiff and removed duplicated double-versus-autodiff solvent-reference dielectric logic in the Born path. This slice is structural only; production capability claims remain unchanged."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T034-shared-derivative-policy-slice.md"
+        - "src/epcsaft/native/autodiff/debug_gate.h"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+        - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+        - "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
+      changed_files:
+        - "src/epcsaft/native/autodiff/debug_gate.h"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+        - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+        - "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
+        - "docs/goals/issue-53-native-regression-production/notes/T034-shared-derivative-policy-slice.md"
+        - "docs/goals/issue-53-native-regression-production/state.yaml"
+      commands:
+        - cmd: "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+          summary: "Native rebuild passed; total about 16.5s"
+        - cmd: "uv run python run_pytest.py tests/native/test_cppad_eos_derivatives.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_cppad_bubble_derivatives.py tests/native/test_chemical_equilibrium_native.py tests/native/test_equilibrium_native_contracts.py -q"
+          status: pass
+          summary: "32 passed in 3.31s"
+
+  - id: T035
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: xhigh
+    objective: "Implement the first real non-logK reactive-speciation parameter-sensitivity path for native thermodynamic regression: d_born, f_solv, and generic binary parameters must own explicit thermo-to-residual sensitivity plumbing without finite differences."
+    allowed_files:
+      - "src/epcsaft/native/regression/**"
+      - "src/epcsaft/native/contributions/**"
+      - "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      - "src/epcsaft/native/epcsaft_regression.cpp"
+      - "src/epcsaft/native/epcsaft_core_internal.h"
+      - "src/epcsaft/native/**/*.h"
+      - "src/epcsaft/native/**/*.cpp"
+      - "src/epcsaft/reactive_regression.py"
+      - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      - "tests/api/test_reactive_regression.py"
+      - "tests/api/test_runtime.py"
+      - "docs/pages/parameter_regression.rst"
+      - "docs/pages/diagnostics.rst"
+      - "docs/goals/issue-53-native-regression-production/notes/**"
+      - "docs/goals/issue-53-native-regression-production/state.yaml"
+    verify:
+      - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py tests/native/test_native_ceres_thermodynamic_regression.py tests/api/test_reactive_regression.py tests/api/test_runtime.py -q"
+      - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 3"
+    stop_if:
+      - "Correct d_born, f_solv, or k_ij sensitivities require a broader whole-EOS scalar templating pass than this branch can safely absorb."
+      - "The only viable implementation path reintroduces finite-difference production derivatives."
+      - "Bubble-pressure derivative work becomes an immediate prerequisite instead of staying independently gated."
     receipt: null
 
   - id: T023

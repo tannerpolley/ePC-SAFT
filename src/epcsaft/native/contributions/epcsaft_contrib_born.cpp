@@ -5,6 +5,39 @@ using thermo_detail::BornSSMDSData;
 using thermo_detail::parameter_setup_detail::ion_born_radius_cpp;
 using thermo_detail::parameter_setup_detail::ion_born_radius_cpp_dt;
 
+namespace {
+
+template <class Scalar>
+Scalar dielectric_rule_scalar_fallback(const vector<Scalar> &x, const add_args &cppargs) {
+    vector<double> xd(x.size(), 0.0);
+    for (int i = 0; i < static_cast<int>(x.size()); ++i) {
+        xd[static_cast<size_t>(i)] = scalar_value(x[static_cast<size_t>(i)]);
+    }
+    return scalar_constant<Scalar>(dielectric_constant_rule_cpp(cppargs.dielc_rule, xd, cppargs));
+}
+
+template <class Scalar>
+Scalar reference_solvent_dielectric_constant_scalar(const vector<Scalar> &x, const add_args &cppargs) {
+    int ncomp = static_cast<int>(x.size());
+    if (cppargs.z.size() != static_cast<size_t>(ncomp)) {
+        return dielectric_rule_scalar_fallback(x, cppargs);
+    }
+    Scalar x_sol = scalar_constant<Scalar>(0.0);
+    Scalar eps_sol_num = scalar_constant<Scalar>(0.0);
+    for (int i = 0; i < ncomp; i++) {
+        if (std::abs(cppargs.z[i]) <= 1.0e-12) {
+            x_sol += x[i];
+            eps_sol_num += x[i] * cppargs.dielc[i];
+        }
+    }
+    if (scalar_value(x_sol) <= 0.0) {
+        return dielectric_rule_scalar_fallback(x, cppargs);
+    }
+    return eps_sol_num / x_sol;
+}
+
+}  // namespace
+
 // EqID: f_mix
 // EqID: delta_d_born
 // EqID: ddelta_d_dxi
@@ -90,22 +123,7 @@ BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, dou
 }
 
 double reference_solvent_dielectric_constant_cpp(const vector<double> &x, const add_args &cppargs) {
-    int ncomp = static_cast<int>(x.size());
-    if (cppargs.z.size() != static_cast<size_t>(ncomp)) {
-        return dielectric_constant_rule_cpp(cppargs.dielc_rule, x, cppargs);
-    }
-    double x_sol = 0.0;
-    double eps_sol_num = 0.0;
-    for (int i = 0; i < ncomp; i++) {
-        if (std::abs(cppargs.z[i]) <= 1e-12) {
-            x_sol += x[i];
-            eps_sol_num += x[i] * cppargs.dielc[i];
-        }
-    }
-    if (x_sol <= 0.0) {
-        return dielectric_constant_rule_cpp(cppargs.dielc_rule, x, cppargs);
-    }
-    return eps_sol_num / x_sol;
+    return reference_solvent_dielectric_constant_scalar(x, cppargs);
 }
 
 vector<double> reference_solvent_dielectric_derivative_cpp(const vector<double> &x, const add_args &cppargs) {
@@ -135,30 +153,7 @@ vector<double> reference_solvent_dielectric_derivative_cpp(const vector<double> 
 }
 
 AutoDual reference_solvent_dielectric_constant_ad_cpp(const vector<AutoDual> &x, const add_args &cppargs) {
-    int ncomp = static_cast<int>(x.size());
-    if (cppargs.z.size() != static_cast<size_t>(ncomp)) {
-        vector<double> xd(ncomp, 0.0);
-        for (int i = 0; i < ncomp; ++i) {
-            xd[i] = scalar_value(x[i]);
-        }
-        return make_autodiff_scalar(dielectric_constant_rule_cpp(cppargs.dielc_rule, xd, cppargs), 0.0);
-    }
-    AutoDual x_sol = make_autodiff_scalar(0.0, 0.0);
-    AutoDual eps_sol_num = make_autodiff_scalar(0.0, 0.0);
-    for (int i = 0; i < ncomp; i++) {
-        if (std::abs(cppargs.z[i]) <= 1e-12) {
-            x_sol += x[i];
-            eps_sol_num += x[i] * cppargs.dielc[i];
-        }
-    }
-    if (scalar_value(x_sol) <= 0.0) {
-        vector<double> xd(ncomp, 0.0);
-        for (int i = 0; i < ncomp; ++i) {
-            xd[i] = scalar_value(x[i]);
-        }
-        return make_autodiff_scalar(dielectric_constant_rule_cpp(cppargs.dielc_rule, xd, cppargs), 0.0);
-    }
-    return eps_sol_num / x_sol;
+    return reference_solvent_dielectric_constant_scalar(x, cppargs);
 }
 
 // EqID: born_mode_set
