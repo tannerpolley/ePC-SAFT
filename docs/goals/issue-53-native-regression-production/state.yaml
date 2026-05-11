@@ -57,7 +57,7 @@ agents:
   judge: installed
   worker: installed
 
-active_task: T035
+active_task: T037
 
 tasks:
   - id: T001
@@ -1626,7 +1626,7 @@ tasks:
   - id: T035
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: xhigh
     objective: "Implement the first real non-logK reactive-speciation parameter-sensitivity path for native thermodynamic regression: d_born, f_solv, and generic binary parameters must own explicit thermo-to-residual sensitivity plumbing without finite differences."
     allowed_files:
@@ -1644,6 +1644,7 @@ tasks:
       - "docs/pages/parameter_regression.rst"
       - "docs/pages/diagnostics.rst"
       - "docs/goals/issue-53-native-regression-production/notes/**"
+      - "docs/goals/issue-53-native-regression-production/notes/T035-nonlogk-blocker.md"
       - "docs/goals/issue-53-native-regression-production/state.yaml"
     verify:
       - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
@@ -1653,6 +1654,78 @@ tasks:
       - "Correct d_born, f_solv, or k_ij sensitivities require a broader whole-EOS scalar templating pass than this branch can safely absorb."
       - "The only viable implementation path reintroduces finite-difference production derivatives."
       - "Bubble-pressure derivative work becomes an immediate prerequisite instead of staying independently gated."
+    receipt:
+      result: done
+      summary: "Stopped on this task as scoped. The currently supported native thermodynamic regression slice only permits ideal mole-fraction reactive-speciation residuals, and those residuals do not depend on d_born, f_solv, or k_ij. Non-logK thermodynamic parameter sensitivities therefore require a prerequisite chemical-equilibrium derivative tranche for concentration- or activity-coupled standard states."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T035-nonlogk-blocker.md"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+        - "src/epcsaft/native/regression/thermo_regression.cpp"
+        - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      changed_files:
+        - "docs/goals/issue-53-native-regression-production/notes/T035-nonlogk-blocker.md"
+        - "tests/native/test_native_ceres_thermodynamic_regression.py"
+        - "docs/goals/issue-53-native-regression-production/state.yaml"
+      commands:
+        - cmd: "uv run python run_pytest.py tests/native/test_native_ceres_thermodynamic_regression.py -q"
+          status: pass
+          summary: "Focused invariance/blocker slice passed."
+      stop_condition: "The next honest prerequisite is native chemical-equilibrium derivatives for nonideal standard states; enabling d_born, f_solv, or k_ij in the current ideal-speciation slice would be fake progress."
+
+  - id: T036
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: xhigh
+    objective: "Retarget the broader derivative tranche after the T035 blocker: decide the next honest prerequisite between concentration-standard-state derivatives and activity-coupled standard-state derivatives for native chemical equilibrium."
+    inputs:
+      - "T035 blocker receipt."
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "src/epcsaft/native/regression/thermo_regression.cpp"
+      - "tests/api/test_reactive_speciation.py"
+    constraints:
+      - "Do not pretend d_born/f_solv/k_ij sensitivities can be added to the current ideal-mole-fraction thermo-regression slice."
+      - "Pick the smallest mathematically valid prerequisite tranche."
+      - "Preserve the issue #53 rule that production finite differences remain debug-only."
+    expected_output:
+      - "Decision on whether concentration or activity standard states are the next derivative target."
+      - "Clear next Worker scope."
+      - "Explicit statement of what remains gated as backend_unavailable."
+    receipt:
+      result: done
+      decision: "Concentration-standard-state derivatives are the next honest prerequisite."
+      summary: "Concentration-coupled native chemical-equilibrium derivatives are the smallest mathematically valid next slice because they add density coupling without yet requiring activity-coefficient sensitivities. Activity-coupled standard states remain a later gated derivative tranche."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T036-judge-next-prerequisite.md"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+        - "tests/api/test_reactive_speciation.py"
+
+  - id: T037
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: xhigh
+    objective: "Implement native concentration-standard-state chemical-equilibrium derivatives as the next issue #53 prerequisite, then expose that support to native thermodynamic regression while keeping activity-coupled standard states gated."
+    allowed_files:
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.h"
+      - "src/epcsaft/native/regression/**"
+      - "src/epcsaft/reactive_regression.py"
+      - "tests/native/test_chemical_equilibrium_native.py"
+      - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      - "tests/api/test_reactive_regression.py"
+      - "tests/api/test_runtime.py"
+      - "docs/pages/parameter_regression.rst"
+      - "docs/pages/diagnostics.rst"
+      - "docs/goals/issue-53-native-regression-production/notes/**"
+      - "docs/goals/issue-53-native-regression-production/state.yaml"
+    verify:
+      - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py tests/native/test_chemical_equilibrium_native.py tests/native/test_native_ceres_thermodynamic_regression.py tests/api/test_reactive_regression.py tests/api/test_runtime.py -q"
+    stop_if:
+      - "Concentration-standard-state derivatives still require the full activity-coefficient derivative path."
+      - "The only viable implementation path reintroduces production finite differences."
+      - "Thermodynamic regression cannot consume the new concentration-standard-state derivative payload without a broader contract rewrite."
     receipt: null
 
   - id: T023

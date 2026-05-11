@@ -185,6 +185,40 @@ def test_native_thermo_regression_reports_ssmds_born_derivatives_unavailable() -
     assert result["objective_result"]["fixed_shape_residuals"] is True
 
 
+def test_native_thermo_regression_ideal_speciation_targets_are_invariant_to_born_inputs() -> None:
+    species = ["H2O", "NaCl", "Na+", "Cl-"]
+    initial_x = [0.998, 0.001, 0.0005, 0.0005]
+    log_k = math.log(initial_x[2]) + math.log(initial_x[3]) - math.log(initial_x[1])
+
+    baseline = epcsaft.evaluate_native_thermo_regression_rows(
+        _salt_speciation_mixture(),
+        {"species": species, "rows": [_salt_speciation_row(log_k, 0.00065)]},
+    )
+
+    shifted = epcsaft.ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([1.2047, 1.0, 1.0, 1.0]),
+            "s": np.asarray([2.7927, 3.0, 2.8232, 2.7560]),
+            "e": np.asarray([353.95, 200.0, 230.0, 170.0]),
+            "z": np.asarray([0.0, 0.0, 1.0, -1.0]),
+            "dielc": np.asarray([78.09, 8.0, 8.0, 8.0]),
+            "d_born": np.asarray([0.0, 0.0, 4.2, 4.8], dtype=float),
+            "f_solv": np.asarray([2.25, 1.0, 1.0, 1.0], dtype=float),
+            "MW": np.asarray([18.01528e-3, 58.44e-3, 22.989e-3, 35.45e-3]),
+        },
+        species=species,
+    )
+    moved = epcsaft.evaluate_native_thermo_regression_rows(
+        shifted,
+        {"species": species, "rows": [_salt_speciation_row(log_k, 0.00065)]},
+    )
+
+    assert baseline["row_diagnostics"][0]["derivative_backend"] == "analytic"
+    assert moved["row_diagnostics"][0]["derivative_backend"] == "analytic"
+    assert baseline["residuals"] == pytest.approx(moved["residuals"], abs=1.0e-12)
+    assert baseline["cost"] == pytest.approx(moved["cost"], abs=1.0e-12)
+
+
 def test_native_thermo_regression_penalizes_unsupported_row_mode() -> None:
     mix = _salt_speciation_mixture()
 
