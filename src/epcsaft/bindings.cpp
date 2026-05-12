@@ -43,6 +43,24 @@ py::dict cppad_smoke_to_dict(const epcsaft::native::autodiff::ADDerivativeResult
     return out;
 }
 
+py::dict born_ssmds_derivative_to_dict(const BornSSMDSDerivativeResult& result) {
+    py::dict out;
+    out["supported"] = result.supported;
+    out["backend"] = result.backend;
+    out["message"] = result.message;
+    out["ncomp"] = result.ncomp;
+    out["shape"] = py::make_tuple(result.ncomp, result.ncomp);
+    out["a_born_d_d_born"] = result.a_born_d_d_born;
+    out["a_born_d_f_solv"] = result.a_born_d_f_solv;
+    out["mu_res_d_d_born_row_major"] = result.mu_res_d_d_born_row_major;
+    out["mu_res_d_f_solv_row_major"] = result.mu_res_d_f_solv_row_major;
+    out["lnfug_d_d_born_row_major"] = result.lnfug_d_d_born_row_major;
+    out["lnfug_d_f_solv_row_major"] = result.lnfug_d_f_solv_row_major;
+    out["lngamma_d_d_born_row_major"] = result.lngamma_d_d_born_row_major;
+    out["lngamma_d_f_solv_row_major"] = result.lngamma_d_f_solv_row_major;
+    return out;
+}
+
 std::vector<double> array_to_double_vector(const py::array& array) {
     py::array_t<double, py::array::forcecast> casted(array);
     py::buffer_info info = casted.request();
@@ -1323,6 +1341,9 @@ PYBIND11_MODULE(_core, m) {
         .def("ln_fugacity_coefficient", &ePCSAFTStateNative::ln_fugacity_coefficient)
         .def("fugacity_coefficient", &ePCSAFTStateNative::fugacity_coefficient)
         .def("fugacity_coefficient_result", &ePCSAFTStateNative::fugacity_coefficient_result)
+        .def("born_ssmds_liquid_derivatives", [](ePCSAFTStateNative& state) {
+            return born_ssmds_derivative_to_dict(state.born_ssmds_liquid_derivatives());
+        })
         .def("relative_permittivity", &ePCSAFTStateNative::relative_permittivity)
         .def("osmotic_coefficient", &ePCSAFTStateNative::osmotic_coefficient)
         .def("solvation_free_energy", &ePCSAFTStateNative::solvation_free_energy)
