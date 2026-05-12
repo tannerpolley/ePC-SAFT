@@ -35,6 +35,7 @@ from .parameters import (
 PURE_NEUTRAL_MODE = "pure_neutral"
 PURE_ION_MODE = "pure_ion"
 BINARY_PAIR_MODE = "binary_pair"
+LIQUID_ELECTROLYTE_MODE = "liquid_electrolyte"
 
 TERM_DENSITY = "density"
 TERM_PURE_VLE = "pure_vle_fugacity_balance"
@@ -119,10 +120,28 @@ NATIVE_TERM_KINDS = {
 }
 
 HESSIAN_NOT_IMPLEMENTED_REASON = "Hessian support is a skeleton for future IPOPT-compatible optimizer integration."
+LIQUID_ELECTROLYTE_BACKEND_UNAVAILABLE_REASON = (
+    "backend_unavailable: liquid-electrolyte parameter fitting needs native optimizer internals that are not part "
+    "of this API-contract slice."
+)
 
 
 def _copy_mapping(mapping: Mapping[str, Any] | None) -> dict[str, Any]:
     return {} if mapping is None else {str(k): v for k, v in mapping.items()}
+
+
+def _copy_bounds_contract(
+    bounds: Mapping[str, tuple[float | None, float | None]] | FitBounds | None,
+) -> dict[str, tuple[float | None, float | None]]:
+    if bounds is None:
+        return {}
+    if isinstance(bounds, FitBounds):
+        names = sorted(set(bounds.lower) | set(bounds.upper))
+        return {name: (bounds.lower.get(name), bounds.upper.get(name)) for name in names}
+    return {
+        str(name): (None if pair[0] is None else float(pair[0]), None if pair[1] is None else float(pair[1]))
+        for name, pair in bounds.items()
+    }
 
 
 _DBORN_DIRECT_SOURCES = {
@@ -420,6 +439,11 @@ class FitProblem:
     optimization_parameters: tuple[str, ...] = field(default_factory=tuple)
     fixed_parameters: dict[str, Any] = field(default_factory=dict, repr=False)
     initial_guess: dict[str, float] = field(default_factory=dict, repr=False)
+    bounds: dict[str, tuple[float | None, float | None]] = field(default_factory=dict)
+    weights: dict[str, float] = field(default_factory=dict)
+    loss: str = "linear"
+    solver_options: dict[str, Any] = field(default_factory=dict, repr=False)
+    output_report: bool = False
     assoc_scheme: str = ""
     temperature_model: str = "constant"
     terms: tuple[FitTerm, ...] = field(default_factory=tuple)
@@ -436,6 +460,11 @@ class FitProblem:
         self.optimization_parameters = tuple(str(name) for name in self.optimization_parameters)
         self.fixed_parameters = _copy_mapping(self.fixed_parameters)
         self.initial_guess = {str(k): float(v) for k, v in self.initial_guess.items()}
+        self.bounds = _copy_bounds_contract(self.bounds)
+        self.weights = {str(k): float(v) for k, v in self.weights.items()}
+        self.loss = str(self.loss)
+        self.solver_options = _copy_mapping(self.solver_options)
+        self.output_report = bool(self.output_report)
         self.assoc_scheme = str(self.assoc_scheme or "")
         self.temperature_model = str(self.temperature_model)
         self.terms = tuple(self.terms)
@@ -1268,7 +1297,9 @@ def evaluate_generic_regression_derivatives(
     backend = str(jacobian_backend).strip().lower()
     if backend not in {"auto", "autodiff", "analytic"}:
         raise InputError("jacobian_backend must be 'auto', 'autodiff', or 'analytic'.")
-    raise InputError("backend_unavailable: generic regression sensitivities are not implemented for this residual path.")
+    raise InputError(
+        "backend_unavailable: generic regression sensitivities are not implemented for this residual path."
+    )
 
     normalized_species = tuple(_normalize_component(str(name)) for name in species)
     normalized_pair = None if pair is None else _normalize_pair(pair)
@@ -2120,6 +2151,116 @@ def evaluate_pure_neutral_derivatives(
     )
 
 
+_USER_TARGET_ALIASES = {
+    "sigma": "s",
+    "epsilon": "e",
+    "epsilon_k": "e",
+    "epsilon_over_k": "e",
+    "association_energy": "e_assoc",
+    "association_volume": "vol_a",
+    "born_diameter": "d_born",
+    "solvation_factor": "f_solv",
+}
+
+
+def _reject_finite_difference_options(options: Any) -> None:
+    tokens = ("finite_difference", "finite-difference", "finite difference")
+
+    def visit(value: Any) -> bool:
+        if isinstance(value, str):
+            return any(token in value.lower() for token in tokens)
+        if isinstance(value, Mapping):
+            return any(visit(key) or visit(item) for key, item in value.items())
+        if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+            return any(visit(item) for item in value)
+        return False
+
+    if visit(options):
+        raise InputError("finite-difference derivative options are not part of the public regression API.")
+
+
+def _normalize_user_targets(parameters_to_fit: Iterable[str] | None, default: Sequence[str]) -> tuple[str, ...]:
+    raw_targets = tuple(default if parameters_to_fit is None else parameters_to_fit)
+    return tuple(_USER_TARGET_ALIASES.get(str(target), str(target)) for target in raw_targets)
+
+
+def _fit_species_tuple(species: str | Sequence[str]) -> tuple[str, ...]:
+    if isinstance(species, str):
+        return (species,)
+    labels = tuple(str(label) for label in species)
+    if not labels:
+        raise InputError("species must contain at least one component label.")
+    return labels
+
+
+def _annotate_contract_problem(
+    result: FitResult,
+    *,
+    bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None,
+    weights: Mapping[str, float] | None,
+    loss: str,
+    solver_options: Mapping[str, Any] | None,
+    output_report: bool,
+    fixed_parameters: Mapping[str, Any] | None = None,
+) -> FitResult:
+    result.problem.bounds = _copy_bounds_contract(bounds)
+    result.problem.weights = {str(k): float(v) for k, v in (weights or {}).items()}
+    result.problem.loss = str(loss)
+    result.problem.solver_options = _copy_mapping(solver_options)
+    result.problem.output_report = bool(output_report)
+    if fixed_parameters is not None:
+        result.problem.fixed_parameters = _copy_mapping(fixed_parameters)
+    return result
+
+
+def fit_pure_parameters(
+    *,
+    species: str | Sequence[str],
+    data_rows: Any,
+    parameter_set: str | Path | None = None,
+    parameters_to_fit: Iterable[str] | None = None,
+    fixed_parameters: Mapping[str, Any] | None = None,
+    bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
+    weights: Mapping[str, float] | None = None,
+    loss: str = "linear",
+    solver_options: Mapping[str, Any] | None = None,
+    output_report: bool = False,
+    assoc_scheme: str = "",
+    initial_guess: Mapping[str, float] | None = None,
+    pure_set: str | None = None,
+    user_options: Mapping[str, Any] | None = None,
+) -> FitResult:
+    """Fit pure-component parameters through the easy regression API contract."""
+
+    _reject_finite_difference_options(solver_options)
+    labels = _fit_species_tuple(species)
+    if len(labels) != 1:
+        raise InputError("fit_pure_parameters expects exactly one species label.")
+    targets = _normalize_user_targets(parameters_to_fit, DEFAULT_TARGETS[PURE_NEUTRAL_MODE]["nonassociating"])
+    result = fit_pure_neutral(
+        data_rows,
+        labels[0],
+        assoc_scheme=assoc_scheme,
+        dataset=parameter_set,
+        pure_set=pure_set,
+        fit_targets=targets,
+        fixed_parameters=fixed_parameters,
+        initial_guess=initial_guess,
+        bounds=bounds,
+        user_options=user_options,
+        multistart=int((solver_options or {}).get("multistart", 0)),
+    )
+    return _annotate_contract_problem(
+        result,
+        bounds=bounds,
+        weights=weights,
+        loss=loss,
+        solver_options=solver_options,
+        output_report=output_report,
+        fixed_parameters=fixed_parameters,
+    )
+
+
 def fit_pure_ion(
     records: Any,
     component: str,
@@ -2152,6 +2293,56 @@ def fit_pure_ion(
     )
 
 
+def fit_binary_parameters(
+    *,
+    species: Sequence[str],
+    data_rows: Any,
+    parameter_set: str | Path,
+    parameters_to_fit: Iterable[str] | None = None,
+    fixed_parameters: Mapping[str, Any] | None = None,
+    bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
+    weights: Mapping[str, float] | None = None,
+    loss: str = "linear",
+    solver_options: Mapping[str, Any] | None = None,
+    output_report: bool = False,
+    temperature_model: str = "constant",
+    initial_guess: Mapping[str, float] | None = None,
+    user_options: Mapping[str, Any] | None = None,
+    provenance: Sequence[BinaryInteraction] | Mapping[str, str] | None = None,
+    allow_unsupported_parameters: bool = False,
+) -> FitResult:
+    """Fit binary interaction parameters through the easy regression API contract."""
+
+    _reject_finite_difference_options(solver_options)
+    labels = _fit_species_tuple(species)
+    if len(labels) != 2:
+        raise InputError("fit_binary_parameters expects exactly two species labels.")
+    targets = _normalize_user_targets(parameters_to_fit, DEFAULT_TARGETS[BINARY_PAIR_MODE])
+    result = fit_binary_pair(
+        data_rows,
+        labels,
+        dataset=parameter_set,
+        species=labels,
+        fit_targets=targets,
+        temperature_model=temperature_model,
+        initial_guess=initial_guess,
+        bounds=bounds,
+        user_options=user_options,
+        provenance=provenance,
+        allow_unsupported_parameters=allow_unsupported_parameters,
+        multistart=int((solver_options or {}).get("multistart", 0)),
+    )
+    return _annotate_contract_problem(
+        result,
+        bounds=bounds,
+        weights=weights,
+        loss=loss,
+        solver_options=solver_options,
+        output_report=output_report,
+        fixed_parameters=fixed_parameters,
+    )
+
+
 def fit_binary_pair(
     records: Any,
     pair: Sequence[str],
@@ -2181,6 +2372,95 @@ def fit_binary_pair(
         provenance=provenance,
         allow_unsupported_parameters=allow_unsupported_parameters,
         multistart=multistart,
+    )
+
+
+def _build_liquid_electrolyte_terms(
+    records: Sequence[dict[str, Any]], weights: Mapping[str, float] | None
+) -> tuple[FitTerm, ...]:
+    weight_map = {str(k): float(v) for k, v in (weights or {}).items()}
+    families: list[tuple[str, str, tuple[str, ...]]] = [
+        (TERM_DENSITY, "density", (*PURE_DENSITY_KEYS_MOLAR, *PURE_DENSITY_KEYS_MASS)),
+        (TERM_RELATIVE_PERMITTIVITY, "relative_permittivity", ("epsilon_r_exp", "relative_permittivity")),
+        (TERM_OSMOTIC, "osmotic_coefficient", ("osmotic_coefficient", "osmotic")),
+        (TERM_MIAC, "mean_ionic_activity", ("mean_ionic_activity", "mean_ionic_activity_coefficient", "miac")),
+        (TERM_BINARY_VLE, "binary_vle", ("y_",)),
+        (TERM_BINARY_LLE, "binary_lle", ("x_phase2_",)),
+    ]
+    terms: list[FitTerm] = []
+    for term_type, weight_key, keys in families:
+        selected: list[dict[str, Any]] = []
+        for record in records:
+            if any(key.endswith("_") and any(str(name).startswith(key) for name in record) for key in keys):
+                selected.append(record)
+            elif any(key in record for key in keys if not key.endswith("_")):
+                selected.append(record)
+        if selected:
+            terms.append(
+                FitTerm(
+                    term_type=term_type,
+                    records=tuple(selected),
+                    weight=weight_map.get(weight_key, weight_map.get(term_type, 1.0)),
+                    residual_count=len(selected),
+                )
+            )
+    if not terms:
+        raise InputError("fit_liquid_electrolyte_parameters requires at least one supported data row family.")
+    return tuple(terms)
+
+
+def fit_liquid_electrolyte_parameters(
+    *,
+    species: Sequence[str],
+    data_rows: Any,
+    parameter_set: str | Path,
+    parameters_to_fit: Iterable[str],
+    fixed_parameters: Mapping[str, Any] | None = None,
+    bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
+    weights: Mapping[str, float] | None = None,
+    loss: str = "linear",
+    solver_options: Mapping[str, Any] | None = None,
+    output_report: bool = False,
+    initial_guess: Mapping[str, float] | None = None,
+    user_options: Mapping[str, Any] | None = None,
+    provenance: Sequence[FitParameter | BinaryInteraction] | Mapping[str, str] | None = None,
+) -> FitResult:
+    """Declare a liquid-electrolyte regression problem without running unavailable optimizer internals."""
+
+    _reject_finite_difference_options(solver_options)
+    labels = _fit_species_tuple(species)
+    if len(labels) < 2:
+        raise InputError("fit_liquid_electrolyte_parameters expects at least two species labels.")
+    records = _normalize_records(data_rows)
+    targets = _normalize_user_targets(parameters_to_fit, ())
+    problem = FitProblem(
+        mode=LIQUID_ELECTROLYTE_MODE,
+        records=tuple(records),
+        dataset=_source_dataset_label(parameter_set),
+        fit_targets=targets,
+        optimization_parameters=targets,
+        fixed_parameters=fixed_parameters or {},
+        initial_guess=initial_guess or {},
+        bounds=_copy_bounds_contract(bounds),
+        weights=weights or {},
+        loss=loss,
+        solver_options=solver_options or {},
+        output_report=output_report,
+        terms=_build_liquid_electrolyte_terms(records, weights),
+    )
+    provenance_report: dict[str, Any] = {}
+    if provenance:
+        provenance_report = validate_regression_provenance(provenance, species=labels, strict=False)
+    if user_options:
+        problem.solver_options = {**problem.solver_options, "user_options": _copy_mapping(user_options)}
+    return FitResult(
+        problem=problem,
+        success=False,
+        status=-1,
+        message=LIQUID_ELECTROLYTE_BACKEND_UNAVAILABLE_REASON,
+        backend="backend_unavailable",
+        backend_unavailable_reason=LIQUID_ELECTROLYTE_BACKEND_UNAVAILABLE_REASON,
+        provenance_report=provenance_report,
     )
 
 
