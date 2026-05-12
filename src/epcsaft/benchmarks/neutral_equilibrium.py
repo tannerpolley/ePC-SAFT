@@ -92,7 +92,6 @@ def _fallback_used_from_diagnostics(diagnostics: dict[str, Any]) -> bool:
         diagnostics.get("neutral_fallback_used", False)
         or diagnostics.get("density_fallback_used", False)
         or diagnostics.get("jacobian_fallback_used", False)
-        or diagnostics.get("finite_difference_fallback_used", False)
         or diagnostics.get("hessian_fallback_used", False)
     )
 
@@ -207,7 +206,7 @@ def _prepare_lle_seeded() -> PreparedBenchmarkCase:
         max_iterations=240,
         tolerance=1.0e-10,
         damping=0.5,
-        jacobian_backend="finite_difference",
+        jacobian_backend="auto",
     )
 
     def runner() -> BenchmarkObservation:

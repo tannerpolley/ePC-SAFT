@@ -45,7 +45,6 @@ class ReactiveSpeciationOptions:
     tolerance: float = 1.0e-8
     damping: float = 0.5
     min_mole_fraction: float = 1.0e-14
-    finite_difference_step: float = 1.0e-6
     jacobian_backend: str = "auto"
     solver_backend: str = "auto"
     hessian_strategy: str = "gauss_newton"
@@ -231,8 +230,8 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
         raise InputError("options must be a ReactiveSpeciationOptions instance.")
     if options.max_iterations < 0:
         raise InputError("ReactiveSpeciationOptions.max_iterations must be non-negative.")
-    if options.tolerance <= 0.0 or options.min_mole_fraction <= 0.0 or options.finite_difference_step <= 0.0:
-        raise InputError("ReactiveSpeciationOptions tolerances and steps must be positive.")
+    if options.tolerance <= 0.0 or options.min_mole_fraction <= 0.0:
+        raise InputError("ReactiveSpeciationOptions tolerances must be positive.")
     if not (0.0 < options.damping <= 1.0):
         raise InputError("ReactiveSpeciationOptions.damping must be in (0, 1].")
     if not isinstance(options.return_best_effort, bool):
@@ -245,12 +244,10 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
         raise InputError("ReactiveSpeciationOptions.activity_output must be 'auto', 'always', or 'never'.")
     return_best_effort = bool(options.return_best_effort or error_mode == "result")
     jacobian_backend = str(options.jacobian_backend).strip().lower()
-    if jacobian_backend in {"numerical", "fd"}:
-        jacobian_backend = "finite_difference"
-    if jacobian_backend not in {"auto", "autodiff", "finite_difference"}:
-        raise InputError(
-            "ReactiveSpeciationOptions.jacobian_backend must be 'auto', 'autodiff', or 'finite_difference'."
-        )
+    if jacobian_backend == "analytic":
+        jacobian_backend = "auto"
+    if jacobian_backend not in {"auto", "autodiff"}:
+        raise InputError("ReactiveSpeciationOptions.jacobian_backend must be 'auto', 'autodiff', or 'analytic'.")
     solver_backend = str(options.solver_backend).strip().lower()
     if solver_backend not in {"auto", "newton", "ipopt"}:
         raise InputError("ReactiveSpeciationOptions.solver_backend must be 'auto', 'newton', or 'ipopt'.")
@@ -277,7 +274,6 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
         tolerance=options.tolerance,
         damping=options.damping,
         min_mole_fraction=options.min_mole_fraction,
-        finite_difference_step=options.finite_difference_step,
         jacobian_backend=jacobian_backend,
         solver_backend=solver_backend,
         hessian_strategy=hessian_strategy,
@@ -333,7 +329,6 @@ def _solve_reactive_speciation_native(
             "tolerance": float(options.tolerance),
             "damping": float(options.damping),
             "min_mole_fraction": float(options.min_mole_fraction),
-            "finite_difference_step": float(options.finite_difference_step),
             "jacobian_backend": str(options.jacobian_backend),
             "solver_backend": str(options.solver_backend),
             "hessian_strategy": str(options.hessian_strategy),
@@ -341,7 +336,10 @@ def _solve_reactive_speciation_native(
             "activity_output": str(options.activity_output),
         },
     }
-    payload = _core._solve_chemical_equilibrium_native(native, request)
+    try:
+        payload = _core._solve_chemical_equilibrium_native(native, request)
+    except _core.NativeValueError as exc:
+        raise InputError(str(exc)) from exc
     x = {label: float(value) for label, value in zip(species, payload["composition"])}
     activity_coefficients = {label: float(value) for label, value in zip(species, payload["activity_coefficients"])}
     mass_balance_residuals = {

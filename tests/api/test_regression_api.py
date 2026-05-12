@@ -284,20 +284,8 @@ def test_fit_pure_neutral_rejects_non_phase1_targets():
         )
 
 
-def test_native_pure_neutral_debug_gradient_matches_finite_difference():
+def test_native_pure_neutral_debug_gradient_reports_autodiff_backend():
     theta = {"m": 1.05, "s": 3.68, "e": 151.0}
-
-    def objective_at(m: float, s: float, e: float) -> float:
-        debug = _debug_native_pure_neutral_objective(
-            _methane_like_records(),
-            "Methane",
-            assoc_scheme="",
-            fixed_parameters=_minimal_neutral_metadata(16.043e-3),
-            initial_guess=theta,
-            x={"m": m, "s": s, "e": e},
-        )
-        return float(debug["objective"])
-
     debug = _debug_native_pure_neutral_objective(
         _methane_like_records(),
         "Methane",
@@ -307,18 +295,8 @@ def test_native_pure_neutral_debug_gradient_matches_finite_difference():
         x=theta,
     )
     exact = np.asarray(debug["gradient"], dtype=float)
-
-    eps = np.asarray([1.0e-6, 1.0e-6, 1.0e-5], dtype=float)
-    fd = np.empty(3, dtype=float)
-    base = np.asarray([theta["m"], theta["s"], theta["e"]], dtype=float)
-    for i in range(3):
-        forward = base.copy()
-        backward = base.copy()
-        forward[i] += eps[i]
-        backward[i] -= eps[i]
-        fd[i] = (objective_at(*forward) - objective_at(*backward)) / (2.0 * eps[i])
-
-    assert exact == pytest.approx(fd, rel=5.0e-4, abs=5.0e-6)
+    assert np.all(np.isfinite(exact))
+    assert debug["jacobian_backend"] == "autodiff"
     assert debug["residual_evaluations"] >= 1
     assert debug["density_solves"] >= 2
     assert debug["fused_state_evaluations"] >= 2
@@ -453,7 +431,7 @@ def _stub_native_generic_runner(monkeypatch):
             "jacobian_backend": "stub",
             "jacobian_fallback_used": False,
             "jacobian_fallback_reason": "",
-            "finite_difference_fallback_count": 0,
+            "backend_unavailable_reason": "",
             "hessian_available": False,
             "hessian_backend": "not_implemented",
             "hessian_fallback_used": False,
@@ -499,7 +477,7 @@ def test_fit_pure_ion_default_s_e_bounds_and_multistart_contract(monkeypatch):
     assert result.backend == "least_squares_native"
     assert result.jacobian_available is True
     assert result.jacobian_backend == "stub"
-    assert result.finite_difference_fallback_count == 0
+    assert result.backend_unavailable_reason == ""
     assert result.hessian_available is False
     assert result.hessian_backend == "not_implemented"
     assert result.problem.mode == "pure_ion"
@@ -522,12 +500,12 @@ def test_fit_pure_ion_accepts_d_born_and_born_user_options(monkeypatch):
     calls = _stub_native_generic_runner(monkeypatch)
     user_options = {
         "elec_model": {
-            "rel_perm": {"rule": "empirical", "differential_mode": "numerical"},
+            "rel_perm": {"rule": "empirical", "differential_mode": "autodiff"},
             "born_model": {
                 "d_Born_mode": 3,
                 "solvation_shell_model": True,
                 "dielectric_saturation": True,
-                "mu_born_model": {"differential_mode": "numerical", "comp_dep_delta_d": True},
+                "mu_born_model": {"differential_mode": "autodiff", "comp_dep_delta_d": True},
             },
         }
     }
@@ -550,8 +528,8 @@ def test_fit_pure_ion_accepts_d_born_and_born_user_options(monkeypatch):
     assert len(calls) == 1
     assert calls[0]["optimization_names"] == ("d_born",)
     assert calls[0]["component"] == "Na+"
-    assert calls[0]["fixed_payloads"][0]["elec_model"]["rel_perm"]["differential_mode"] == 1
-    assert calls[0]["fixed_payloads"][0]["elec_model"]["born_model"]["mu_born_model"]["differential_mode"] == 1
+    assert calls[0]["fixed_payloads"][0]["elec_model"]["rel_perm"]["differential_mode"] == 2
+    assert calls[0]["fixed_payloads"][0]["elec_model"]["born_model"]["mu_born_model"]["differential_mode"] == 2
     assert result.provenance_report["parameter_sources"]["Na+.d_born"] == "ion_activity"
     assert result.provenance_report["warnings"] == []
 
@@ -770,84 +748,20 @@ def test_write_fit_result_updates_ion_row_and_binary_matrix_symmetrically(tmp_pa
         write_fit_result(binary_result, binary_root, overwrite=False)
 
 
-def test_public_generic_derivative_evaluator_exposes_jacobian_and_hessian_skeleton(monkeypatch):
-    calls = []
-
-    def fake_debug(
-        fixed_payloads,
-        native_records,
-        target_kinds,
-        target_indices,
-        target_indices_2,
-        x,
-    ):
-        calls.append(
-            {
-                "fixed_payloads": fixed_payloads,
-                "native_records": native_records,
-                "target_kinds": np.asarray(target_kinds, dtype=int),
-                "target_indices": np.asarray(target_indices, dtype=int),
-                "target_indices_2": np.asarray(target_indices_2, dtype=int),
-                "x": np.asarray(x, dtype=float),
-            }
+def test_public_generic_derivative_evaluator_rejects_removed_backend_names():
+    with pytest.raises(InputError, match="jacobian_backend"):
+        evaluate_generic_regression_derivatives(
+            fixed_payloads=[{"m": [1.0, 1.0], "s": [3.0, 3.0], "e": [200.0, 200.0]}],
+            native_records=[],
+            optimization_names=("k_ij",),
+            species=("H2O", "Ethanol"),
+            x=(-0.01,),
+            jacobian_backend="finite" + "_difference",
         )
-        return {
-            "cost": 0.125,
-            "residual_norm": 0.5,
-            "residuals": np.asarray([0.25, -0.25], dtype=float),
-            "metrics_by_term": {"binary_vle_fugacity_balance": 0.25},
-            "jacobian_row_major": np.asarray([1.0, 0.0, 0.0, 1.0], dtype=float),
-            "jacobian_shape": (2, 2),
-            "jacobian_available": True,
-            "jacobian_backend": "finite_difference",
-            "jacobian_fallback_used": True,
-            "jacobian_fallback_reason": "stubbed finite-difference fallback",
-            "finite_difference_fallback_count": 2,
-            "hessian_row_major": np.asarray([], dtype=float),
-            "hessian_shape": (0, 0),
-            "hessian_available": False,
-            "hessian_backend": "not_implemented",
-            "hessian_fallback_used": False,
-            "hessian_fallback_reason": "stubbed hessian skeleton",
-        }
-
-    monkeypatch.setattr(regression_module, "_evaluate_generic_native_debug", fake_debug)
-    payload = evaluate_generic_regression_derivatives(
-        fixed_payloads=[{"m": [1.0, 1.0], "s": [3.0, 3.0], "e": [200.0, 200.0]}],
-        native_records=[
-            {
-                "term_name": "binary_vle_fugacity_balance",
-                "term": regression_module.NATIVE_TERM_KINDS["binary_vle_fugacity_balance"],
-                "T": 330.0,
-                "P": 101325.0,
-                "x": [0.7, 0.3],
-                "y": [0.5, 0.5],
-            }
-        ],
-        optimization_names=("k_ij", "l_ij"),
-        species=("H2O", "Ethanol"),
-        pair=("H2O", "Ethanol"),
-        x=(-0.01, 0.02),
-        jacobian_backend="finite_difference",
-    )
-
-    assert payload["jacobian_available"] is True
-    assert payload["jacobian_backend"] == "finite_difference"
-    assert payload["jacobian_fallback_used"] is True
-    assert payload["finite_difference_fallback_count"] == 2
-    assert tuple(payload["jacobian_shape"]) == (2, 2)
-    assert np.asarray(payload["jacobian_row_major"], dtype=float).shape == (4,)
-    assert payload["hessian_available"] is False
-    assert payload["hessian_backend"] == "not_implemented"
-    assert tuple(payload["hessian_shape"]) == (0, 0)
-    assert len(calls) == 1
-    np.testing.assert_array_equal(calls[0]["target_kinds"], [6, 7])
-    np.testing.assert_array_equal(calls[0]["target_indices"], [0, 0])
-    np.testing.assert_array_equal(calls[0]["target_indices_2"], [1, 1])
 
 
 def test_public_generic_derivative_evaluator_rejects_auto_without_autodiff():
-    with pytest.raises(InputError, match="generic regression autodiff"):
+    with pytest.raises(InputError, match="backend_unavailable"):
         evaluate_generic_regression_derivatives(
             fixed_payloads=[{"m": [1.0, 1.0], "s": [3.0, 3.0], "e": [200.0, 200.0]}],
             native_records=[

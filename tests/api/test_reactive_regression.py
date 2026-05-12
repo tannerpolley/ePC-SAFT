@@ -113,19 +113,12 @@ def test_reactive_regression_context_runs_native_speciation_objective_and_jacobi
     )
 
     objective = context.evaluate_objective({"Na+.sigma": 2.8232})
-    jacobian = context.finite_difference_jacobian(
-        {"Na+.sigma": 2.8232},
-        parameters=["Na+.sigma"],
-        mode="forward",
-        relative_step=1.0e-4,
-        log_parameters=False,
-    )
-
     assert objective.batch_result.success_count == 1
     assert objective.batch_result.failure_count == 0
     assert objective.residual_names == ("native-row.reaction.salt_dissociation",)
     assert objective.residuals.shape == (1,)
-    assert jacobian.jacobian.shape == (1, 1)
+    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+        context.evaluate_derivatives({"Na+.sigma": 2.8232}, parameters=["Na+.sigma"])
 
 
 def test_reactive_regression_context_evaluates_batch_and_reuses_warm_starts(monkeypatch) -> None:
@@ -299,17 +292,9 @@ def test_reactive_regression_objective_and_jacobian_are_consistent(monkeypatch) 
     )
 
     objective = context.evaluate_objective({"A.sigma": 3.0})
-    jacobian = context.finite_difference_jacobian(
-        {"A.sigma": 3.0},
-        parameters=["A.sigma"],
-        mode="central",
-        relative_step=1.0e-5,
-        log_parameters=False,
-    )
-
     assert objective.residuals.shape == (2,)
-    assert jacobian.jacobian.shape == (2, 1)
-    np.testing.assert_allclose(jacobian.gradient, jacobian.jacobian.T @ objective.residuals, rtol=1.0e-8, atol=1.0e-8)
+    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+        context.evaluate_derivatives({"A.sigma": 3.0}, parameters=["A.sigma"])
 
 
 def test_reactive_regression_reporting_helpers_write_outputs(monkeypatch, tmp_path: Path) -> None:
@@ -437,24 +422,23 @@ def test_fit_reactive_electrolyte_parameters_returns_fit_result_and_applies_boun
         upper_bounds={"A.sigma": 3.05},
         max_iterations=4,
         tolerance=1.0e-10,
-        log_parameters=False,
     )
 
     assert isinstance(fit, epcsaft.ReactiveRegressionFitResult)
-    assert fit.status == "converged"
-    assert fit.termination_reason in {"parameter_step_tolerance", "step_norm_tolerance"}
-    assert fit.objective_final <= fit.objective_initial
-    assert fit.gradient_norm is not None
-    assert fit.step_norm is not None
-    assert fit.parameter_map["A.sigma"] == pytest.approx(3.05)
-    assert fit.active_bounds["A.sigma"] is True
-    assert fit.covariance_available is True
+    assert fit.status == "backend_unavailable"
+    assert fit.termination_reason == "backend_unavailable"
+    assert fit.objective_final == pytest.approx(fit.objective_initial)
+    assert fit.gradient_norm is None
+    assert fit.step_norm is None
+    assert fit.parameter_map["A.sigma"] == pytest.approx(2.8)
+    assert fit.active_bounds["A.sigma"] is False
+    assert fit.covariance_available is False
     summary = epcsaft.summarize_regression_result(fit)
-    assert summary["fit_success"] is True
-    assert summary["fit_status"] == "converged"
+    assert summary["fit_success"] is False
+    assert summary["fit_status"] == "backend_unavailable"
     assert summary["termination_reason"] == fit.termination_reason
     assert summary["upper_bounds"]["A.sigma"] == pytest.approx(3.05)
-    assert summary["covariance_status"] == "available"
+    assert summary["covariance_status"] == "unavailable"
 
     summary_path = tmp_path / "fit_summary.json"
     rows_path = tmp_path / "fit_rows.csv"
@@ -465,7 +449,7 @@ def test_fit_reactive_electrolyte_parameters_returns_fit_result_and_applies_boun
     epcsaft.write_regression_residual_table(fit, residuals_path)
     epcsaft.write_regression_parameter_table(fit, params_path)
 
-    assert '"fit_success": true' in summary_path.read_text(encoding="utf-8")
+    assert '"fit_success": false' in summary_path.read_text(encoding="utf-8")
     assert "active_bound" in params_path.read_text(encoding="utf-8")
     assert rows_path.exists()
     assert residuals_path.exists()
@@ -584,7 +568,6 @@ def test_fit_reactive_electrolyte_parameters_accepts_speciation_rows(monkeypatch
         initial_parameters={"A.sigma": 2.9},
         max_iterations=3,
         tolerance=1.0e-12,
-        log_parameters=False,
     )
 
     summary = epcsaft.summarize_regression_result(fit)
@@ -605,15 +588,14 @@ def test_fit_reactive_electrolyte_parameters_real_mixed_objective_improves() -> 
         upper_bounds={"Na+.sigma": 3.1},
         max_iterations=2,
         tolerance=1.0e-8,
-        log_parameters=False,
     )
 
     payload = fit.to_dict()
     summary = epcsaft.summarize_regression_result(fit)
     target_counts = fit.objective_result.batch_result.diagnostics["target_family_counts"]
 
-    assert fit.status in {"converged", "max_iterations", "line_search_failed"}
-    assert fit.objective_final < fit.objective_initial
+    assert fit.status == "backend_unavailable"
+    assert fit.objective_final == pytest.approx(fit.objective_initial)
     assert fit.objective_result.batch_result.success_count == 1
     assert fit.objective_result.batch_result.failure_count == 0
     assert target_counts["partial_pressure"] == 1
@@ -683,15 +665,14 @@ def test_fit_reactive_electrolyte_parameters_reports_nonconverged_fit(monkeypatc
         max_iterations=1,
         damping=0.25,
         tolerance=1.0e-12,
-        log_parameters=False,
     )
 
     assert fit.success is False
-    assert fit.message == "maximum iterations reached"
-    assert fit.status == "max_iterations"
-    assert fit.termination_reason == "max_iterations"
+    assert fit.message == "backend_unavailable: reactive-regression sensitivities are not implemented."
+    assert fit.status == "backend_unavailable"
+    assert fit.termination_reason == "backend_unavailable"
     assert fit.objective_final <= fit.objective_initial
-    assert fit.iterations == 1
+    assert fit.iterations == 0
 
 
 def test_reactive_regression_legacy_wrapper_keeps_fixed_shape(monkeypatch) -> None:

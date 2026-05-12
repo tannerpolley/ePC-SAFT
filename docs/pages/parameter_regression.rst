@@ -470,7 +470,7 @@ Normal ``FitResult`` payloads report compact derivative metadata:
 - ``jacobian_backend``
 - ``jacobian_fallback_used``
 - ``jacobian_fallback_reason``
-- ``finite_difference_fallback_count``
+- ``backend_unavailable_reason``
 - ``hessian_available``
 - ``hessian_backend``
 - ``hessian_fallback_used``
@@ -478,7 +478,7 @@ Normal ``FitResult`` payloads report compact derivative metadata:
 
 Large matrices are exposed only through explicit derivative-evaluation helpers. Use ``evaluate_pure_neutral_derivatives(...)`` for the native pure-neutral objective. It returns residuals, gradient, ``jacobian_row_major``, ``jacobian_shape``, and Hessian skeleton fields. Pure-neutral Jacobians use the native autodiff path.
 
-For lower-level generic native records, use ``evaluate_generic_regression_derivatives(..., jacobian_backend="finite_difference")`` when an explicit finite-difference comparison Jacobian is needed. The default ``auto`` mode raises until generic residual state calls have analytic/autodiff coverage.
+For lower-level generic native records, ``evaluate_generic_regression_derivatives(...)`` reports ``backend_unavailable`` until generic residual state calls have analytic or autodiff coverage.
 
 Reactive electrolyte residual evaluator
 ---------------------------------------
@@ -533,19 +533,19 @@ Derivative availability
      - Current Jacobian access
      - Hessian status
    * - Runtime ``dadt()``, ``dadx()``, ``z(return_contribution_terms=True)``, ``mures(return_contribution_terms=True)``
-     - Analytical where available, autodiff where implemented; explicit finite difference only where requested
+     - Analytical where available, autodiff where implemented; unsupported derivative paths raise clearly
      - Not exposed
    * - Pure-neutral regression
      - Native autodiff Jacobian through ``evaluate_pure_neutral_derivatives(...)``
      - Skeleton metadata only
    * - Generic ion/binary regression
-     - Explicit finite-difference Jacobian through ``evaluate_generic_regression_derivatives(..., jacobian_backend="finite_difference")`` until generic autodiff coverage is implemented
+     - ``backend_unavailable`` until analytic or autodiff generic residual coverage is implemented
      - Skeleton metadata only
    * - Neutral LLE
-     - Native Newton solve remains available; derivative callback paths require explicit finite difference until autodiff residual coverage is implemented
+     - Native stability and seed checks remain available; solve derivative callbacks report ``backend_unavailable`` until residual coverage is implemented
      - Skeleton metadata only
    * - Chemical equilibrium / reactive speciation
-     - Analytic log-amount Jacobian for ideal-mole-fraction reactions under ``auto``; activity/concentration paths require explicit finite difference until derivative coverage is implemented
+     - Analytic log-amount Jacobian for ideal-mole-fraction reactions under ``auto``; activity/concentration paths report ``backend_unavailable`` until derivative coverage is implemented
      - Opt-in cyipopt accepts Gauss-Newton or L-BFGS approximate Hessian strategies
 
 The Hessian fields are deliberately a contract skeleton for future

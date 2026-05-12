@@ -52,11 +52,11 @@ the selected reaction standard state needs them or when
 paying for unused activity calls under the default ``activity_output="auto"``.
 The derivative default is native-owned and diagnostic-friendly:
 ``jacobian_backend="auto"`` uses the analytic log-amount Jacobian for
-``standard_state="ideal_mole_fraction"`` and automatically selects the native
-finite-difference residual Jacobian for activity- or concentration-coupled
-standard states. Diagnostics report ``requested_jacobian_backend``,
-``jacobian_backend``, ``finite_difference_fallback_used``, and
-``jacobian_fallback_reason`` so users can see when this fallback was used.
+``standard_state="ideal_mole_fraction"``. Activity- or concentration-coupled
+standard states currently raise ``backend_unavailable`` until analytic or
+autodiff residual derivatives are implemented. Diagnostics report
+``requested_jacobian_backend``, ``derivative_backend``, ``derivative_status``,
+and ``backend_unavailable_reason`` so users can see the active support boundary.
 Explicit ``jacobian_backend="autodiff"`` remains strict and raises when the
 requested derivative path is unavailable.
 
@@ -91,7 +91,7 @@ requested derivative path is unavailable.
 ``ReactiveSpeciationOptions`` keeps strict failure behavior by default. Failed
 native solves raise ``SolutionError``. For diagnostic grid work, opt into
 ``error_mode="result"`` or ``return_best_effort=True`` to receive a
-``ReactiveSpeciationResult(success=False, ...)`` from the best finite native
+``ReactiveSpeciationResult(success=False, ...)`` from the best native
 payload instead. Diagnostics include ``best_x``,
 ``best_activity_coefficients``, family residual norms, and named reaction
 residuals. ``mass_tolerance``, ``charge_tolerance``, and

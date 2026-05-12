@@ -119,8 +119,7 @@ def _cache_delta(start: Mapping[str, int], end: Mapping[str, int], key: str) -> 
 def _fallback_used_from_diagnostics(diagnostics: Mapping[str, Any] | None) -> bool:
     diag = diagnostics or {}
     return bool(
-        diag.get("finite_difference_fallback_used", False)
-        or diag.get("jacobian_fallback_used", False)
+        diag.get("jacobian_fallback_used", False)
         or diag.get("hessian_fallback_used", False)
         or diag.get("state_solver_fallback", False)
         or diag.get("phase_handoff", False)

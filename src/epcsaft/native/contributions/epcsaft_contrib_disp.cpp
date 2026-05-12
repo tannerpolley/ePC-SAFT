@@ -99,7 +99,7 @@ ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChain
     }
 
     if (cppargs.disp_dadx_diff_mode == 1) {
-        result.dadx = contribution_dadx_fd_cpp(AresContributionKind::DISP, t, rho, x, cppargs, result.ares);
+        throw ValueError("backend_unavailable: dispersion composition derivative backend is unavailable.");
     } else if (cppargs.disp_dadx_diff_mode == 2) {
         result.dadx = contribution_dadx_autodiff_cpp(AresContributionKind::DISP, t, rho, x, cppargs);
     }

@@ -122,32 +122,26 @@ def test_public_electrolyte_stability_uses_native_backend() -> None:
     assert result.diagnostics["native_entrypoint"] == "_solve_equilibrium_native"
 
 
-def test_public_electrolyte_lle_uses_native_backend_with_initial_phases() -> None:
+def test_public_electrolyte_lle_reports_unavailable_solver_derivatives() -> None:
     mix = _electrolyte_mixture()
     aq = np.asarray([0.798324680201737, 0.016320352824141723, 0.09267748348706063, 0.09267748348706063], dtype=float)
     org = np.asarray([0.37006036048879404, 0.6214918588210971, 0.004223890345054407, 0.004223890345054407], dtype=float)
     beta_org = 0.613766575013417
     feed = (1.0 - beta_org) * aq + beta_org * org
 
-    result = mix.equilibrium(
-        kind="electrolyte_lle",
-        T=298.15,
-        P=1.013e5,
-        z=feed,
-        backend="native",
-        initial_phases={"aq": aq, "org": org, "phase_fraction": beta_org},
-        options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8),
-    )
-
-    assert result.backend == "electrolyte_lle"
-    assert result.split_detected is True
-    assert result.diagnostics["solver_language"] == "c++"
-    assert result.diagnostics["native_entrypoint"] == "_solve_equilibrium_native"
-    assert result.diagnostics["solver_method"] == "native_transformed_newton"
-    assert "ceres" not in json.dumps(result.diagnostics).lower()
+    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+        mix.equilibrium(
+            kind="electrolyte_lle",
+            T=298.15,
+            P=1.013e5,
+            z=feed,
+            backend="native",
+            initial_phases={"aq": aq, "org": org, "phase_fraction": beta_org},
+            options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8),
+        )
 
 
-def test_native_electrolyte_lle_residual_evaluator_exposes_transformed_jacobian() -> None:
+def test_native_electrolyte_lle_residual_evaluator_reports_unavailable_derivatives() -> None:
     mix = _electrolyte_mixture()
     aq = np.asarray([0.798324680201737, 0.016320352824141723, 0.09267748348706063, 0.09267748348706063], dtype=float)
     org = np.asarray([0.37006036048879404, 0.6214918588210971, 0.004223890345054407, 0.004223890345054407], dtype=float)
@@ -163,48 +157,12 @@ def test_native_electrolyte_lle_residual_evaluator_exposes_transformed_jacobian(
             "max_iterations": 80,
             "tolerance": 1.0e-8,
             "min_composition": 1.0e-12,
-            "jacobian_backend": "finite_difference",
+            "jacobian_backend": "auto",
         },
     }
 
-    payload = _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
-
-    assert payload["variable_model"] == "ascani_transformed_salt_pairs"
-    assert payload["jacobian_backend"] == "finite_difference"
-    assert payload["hessian_backend"] == "gauss_newton"
-    diagnostics = payload["diagnostics"]
-    assert diagnostics["finite_difference_scheme"] == "forward"
-    assert diagnostics["finite_difference_variable_space"] == "transformed_formula_variables"
-    assert diagnostics["finite_difference_step_rule"] == "absolute_transformed_variable_step"
-    assert diagnostics["finite_difference_effective_step"] == pytest.approx(1.0e-7)
-    assert diagnostics["derivative_backend_selected"] == "finite_difference"
-    assert diagnostics["finite_difference_allowed"] is True
-    assert diagnostics["explicit_finite_difference"] is True
-    assert diagnostics["exact_hessian_available"] is False
-    assert diagnostics["hessian_kind"] == "approximate_least_squares_gauss_newton"
-    assert diagnostics["hessian_includes_second_residual_derivatives"] is False
-    residual = np.asarray(payload["residual"], dtype=float)
-    gradient = np.asarray(payload["gradient"], dtype=float)
-    jacobian = np.asarray(payload["jacobian_row_major"], dtype=float).reshape(payload["jacobian_shape"])
-    lower = np.asarray(payload["lower_bounds"], dtype=float)
-    variables = np.asarray(payload["variables"], dtype=float)
-    upper = np.asarray(payload["upper_bounds"], dtype=float)
-    assert residual.shape[0] == payload["jacobian_shape"][0]
-    assert gradient.shape[0] == payload["jacobian_shape"][1]
-    assert np.isfinite(payload["objective"])
-    assert np.all(np.isfinite(residual))
-    assert np.all(np.isfinite(gradient))
-    assert np.all(np.isfinite(jacobian))
-    assert np.all(np.isfinite(lower))
-    assert np.all(np.isfinite(variables))
-    assert np.all(np.isfinite(upper))
-    assert np.all(lower < upper)
-    assert np.all(variables >= lower)
-    assert np.all(variables <= upper)
-    np.testing.assert_allclose(gradient, jacobian.T @ residual, rtol=1.0e-8, atol=1.0e-10)
-    assert payload["objective"] == pytest.approx(0.5 * float(residual @ residual))
-    assert len(payload["lower_bounds"]) == len(payload["variables"]) == len(payload["upper_bounds"])
-    assert abs(payload["charge_balance_error"]) <= 1.0e-8
+    with pytest.raises(_core.NativeValueError, match="backend_unavailable"):
+        _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
 
 
 def test_native_electrolyte_lle_residual_evaluator_rejects_auto_without_autodiff() -> None:
@@ -222,7 +180,7 @@ def test_native_electrolyte_lle_residual_evaluator_rejects_auto_without_autodiff
         "options": {"max_iterations": 80, "tolerance": 1.0e-8, "min_composition": 1.0e-12},
     }
 
-    with pytest.raises(Exception, match="electrolyte LLE residual jacobian"):
+    with pytest.raises(_core.NativeValueError, match="backend_unavailable"):
         _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
 
 

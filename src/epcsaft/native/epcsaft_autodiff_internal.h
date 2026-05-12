@@ -10,7 +10,7 @@ using AutoDual = Eigen::AutoDiffScalar<AutoDualDerivative>;
 
 enum class DerivativeBackend {
     Analytic = 0,
-    FiniteDifference = 1,
+    BackendUnavailable = 1,
     Autodiff = 2,
     Auto = 3,
 };
@@ -20,7 +20,7 @@ inline DerivativeBackend derivative_backend_from_int(int mode) {
         case 0:
             return DerivativeBackend::Analytic;
         case 1:
-            return DerivativeBackend::FiniteDifference;
+            return DerivativeBackend::BackendUnavailable;
         case 2:
             return DerivativeBackend::Autodiff;
         case 3:
@@ -34,8 +34,8 @@ inline std::string derivative_backend_name(DerivativeBackend backend) {
     switch (backend) {
         case DerivativeBackend::Analytic:
             return "analytic";
-        case DerivativeBackend::FiniteDifference:
-            return "finite_difference";
+        case DerivativeBackend::BackendUnavailable:
+            return "backend_unavailable";
         case DerivativeBackend::Autodiff:
             return "autodiff";
         case DerivativeBackend::Auto:

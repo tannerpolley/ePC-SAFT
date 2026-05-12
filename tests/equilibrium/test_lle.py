@@ -55,106 +55,34 @@ def _assert_json_like(value):
         assert not isinstance(value, np.ndarray)
 
 
-def test_methanol_cyclohexane_lle_flash_closes_material_and_fugacity_balance() -> None:
+def test_methanol_cyclohexane_lle_flash_reports_unavailable_solver_derivatives() -> None:
     mix = _methanol_cyclohexane_mixture()
     feed, initial_phases = _methanol_cyclohexane_lle_benchmark()
 
-    result = mix.equilibrium(
-        kind="lle_flash",
-        T=298.15,
-        P=1.013e5,
-        z=feed,
-        backend="neutral_lle",
-        initial_phases=initial_phases,
-        options=epcsaft.EquilibriumOptions(
-            max_iterations=240,
-            tolerance=1.0e-10,
-            damping=0.5,
-            jacobian_backend="finite_difference",
-        ),
-    )
-
-    assert result.split_detected is True
-    assert result.stable is False
-    assert result.backend == "neutral_lle"
-    assert result.problem_kind == "lle_flash"
-    assert result.phase_labels == ["liq1", "liq2"]
-    liq1, liq2 = result.phases
-    assert 0.0 < liq1.phase_fraction < 1.0
-    assert 0.0 < liq2.phase_fraction < 1.0
-    np.testing.assert_allclose(liq1.composition.sum(), 1.0)
-    np.testing.assert_allclose(liq2.composition.sum(), 1.0)
-    assert np.all(liq1.composition > 0.0)
-    assert np.all(liq2.composition > 0.0)
-
-    np.testing.assert_allclose(liq1.composition, [0.1175783826, 0.8824216174], atol=5.0e-8)
-    np.testing.assert_allclose(liq2.composition, [0.7985874309, 0.2014125691], atol=5.0e-8)
-    np.testing.assert_allclose(liq2.phase_fraction, 0.4881309848, atol=5.0e-8)
-    assert result.diagnostics["phase_distance"] > 0.65
-    assert result.diagnostics["seed_name"] == "user"
-    assert result.diagnostics["attempt_count"] == 1
-    assert result.diagnostics["stability_analysis"] == "neutral_tpd"
-    assert result.diagnostics["stability_stable"] is False
-    assert result.diagnostics["min_tpd"] < -1.0e-4
-    assert result.diagnostics["parent_phase"] == "liq"
-    assert result.diagnostics["trial_phase"] == "liq"
-    assert result.diagnostics["unstable_trial_count"] >= 1
-    assert result.diagnostics["stability_max_iterations"] == 40
-    assert result.diagnostics["stability_tolerance"] == pytest.approx(1.0e-8)
-    assert result.diagnostics["requested_jacobian_backend"] == "finite_difference"
-    assert result.diagnostics["jacobian_backend"] == "finite_difference"
-    assert result.diagnostics["jacobian_available"] is True
-    assert result.diagnostics["jacobian_fallback_used"] is False
-    assert result.diagnostics["finite_difference_fallback_used"] is False
-    assert result.diagnostics["hessian_available"] is False
-    assert result.diagnostics["hessian_backend"] == "not_implemented"
-    assert result.diagnostics["hessian_fallback_used"] is False
-    assert "IPOPT-compatible optimizer integration" in result.diagnostics["hessian_fallback_reason"]
-
-    reconstructed = liq1.phase_fraction * liq1.composition + liq2.phase_fraction * liq2.composition
-    np.testing.assert_allclose(reconstructed, feed, atol=1.0e-10)
-    assert result.diagnostics["material_balance_error"] < 1.0e-10
-    assert result.diagnostics["fugacity_residual_norm"] < 1.0e-9
-
-    fugacity_residual = (
-        np.log(liq2.composition)
-        + liq2.ln_fugacity_coefficient
-        - np.log(liq1.composition)
-        - liq1.ln_fugacity_coefficient
-    )
-    np.testing.assert_allclose(fugacity_residual, np.zeros_like(feed), atol=1.0e-9)
-
-    payload = result.to_dict()
-    assert payload["phase_labels"] == ["liq1", "liq2"]
-    json.dumps(payload, allow_nan=False)
-    _assert_json_like(payload)
+    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+        mix.equilibrium(
+            kind="lle_flash",
+            T=298.15,
+            P=1.013e5,
+            z=feed,
+            backend="neutral_lle",
+            initial_phases=initial_phases,
+            options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10, damping=0.5),
+        )
 
 
-def test_lle_flash_without_initial_phases_finds_methanol_cyclohexane_split() -> None:
+def test_lle_flash_without_initial_phases_reports_unavailable_solver_derivatives() -> None:
     mix = _methanol_cyclohexane_mixture()
     feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
 
-    result = mix.equilibrium(
-        kind="lle_flash",
-        T=298.15,
-        P=1.013e5,
-        z=feed,
-        options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10, damping=0.5),
-    )
-
-    assert result.split_detected is True
-    assert result.phase_labels == ["liq1", "liq2"]
-    liq1, liq2 = result.phases
-    np.testing.assert_allclose(liq1.composition, [0.1175783826, 0.8824216174], atol=5.0e-8)
-    np.testing.assert_allclose(liq2.composition, [0.7985874309, 0.2014125691], atol=5.0e-8)
-    np.testing.assert_allclose(liq2.phase_fraction, 0.4881309848, atol=5.0e-8)
-    assert result.diagnostics["material_balance_error"] < 1.0e-10
-    assert result.diagnostics["fugacity_residual_norm"] < 1.0e-9
-    assert result.diagnostics["phase_distance"] > 0.65
-    assert result.diagnostics["stability_analysis"] == "neutral_tpd"
-    assert result.diagnostics["min_tpd"] < -1.0e-4
-    assert result.diagnostics["attempt_count"] == 1
-    assert result.diagnostics["seed_name"] == "tpd_liq_trial"
+    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+        mix.equilibrium(
+            kind="lle_flash",
+            T=298.15,
+            P=1.013e5,
+            z=feed,
+            options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10, damping=0.5),
+        )
 
 
 def test_lle_flash_reports_no_split_for_identical_initial_phases() -> None:
@@ -205,31 +133,24 @@ def test_lle_flash_can_skip_stability_precheck_for_debug_workflows() -> None:
     assert "min_tpd" not in result.diagnostics
 
 
-def test_lle_flash_phase_diagnostics_are_json_serializable_when_requested() -> None:
+def test_lle_flash_phase_diagnostics_request_reports_unavailable_solver_derivatives() -> None:
     mix = _methanol_cyclohexane_mixture()
     feed, initial_phases = _methanol_cyclohexane_lle_benchmark()
 
-    result = mix.equilibrium(
-        kind="lle_flash",
-        T=298.15,
-        P=1.013e5,
-        z=feed,
-        initial_phases=initial_phases,
-        options=epcsaft.EquilibriumOptions(
-            max_iterations=240,
-            tolerance=1.0e-10,
-            damping=0.5,
-            include_phase_diagnostics=True,
-        ),
-    )
-
-    payload = result.to_dict()
-    json.dumps(payload, allow_nan=False)
-    for phase, phase_payload in zip(result.phases, payload["phases"]):
-        assert phase.diagnostics is not None
-        assert "phase" in phase_payload["diagnostics"]
-        assert "density" in phase_payload["diagnostics"]
-        assert "fugacity_coefficient_terms" in phase_payload["diagnostics"]
+    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+        mix.equilibrium(
+            kind="lle_flash",
+            T=298.15,
+            P=1.013e5,
+            z=feed,
+            initial_phases=initial_phases,
+            options=epcsaft.EquilibriumOptions(
+                max_iterations=240,
+                tolerance=1.0e-10,
+                damping=0.5,
+                include_phase_diagnostics=True,
+            ),
+        )
 
 
 def test_equilibrium_options_expose_explicit_solver_backend_controls() -> None:
@@ -248,11 +169,11 @@ def test_equilibrium_options_expose_explicit_solver_backend_controls() -> None:
     assert epcsaft.EquilibriumOptions().return_best_effort is False
 
 
-def test_lle_flash_distinct_stalled_seed_raises_solution_error() -> None:
+def test_lle_flash_distinct_seed_reports_unavailable_solver_derivatives() -> None:
     mix = _methanol_cyclohexane_mixture()
     feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
 
-    with pytest.raises(epcsaft.SolutionError, match=r"neutral LLE flash did not converge|residual improvement stalled"):
+    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
         mix.equilibrium(
             kind="lle_flash",
             T=298.15,

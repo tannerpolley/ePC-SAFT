@@ -446,7 +446,7 @@ ContributionDadxResult dadx_assoc_cpp(const MixtureState &thermo, const HardChai
     }
 
     if (cppargs.assoc_dadx_diff_mode == 1) {
-        result.dadx = contribution_dadx_fd_cpp(AresContributionKind::ASSOC, t, rho, x, cppargs, result.ares);
+        throw ValueError("backend_unavailable: association composition derivative backend is unavailable.");
     } else if (cppargs.assoc_dadx_diff_mode == 2) {
         result.dadx = contribution_dadx_autodiff_cpp(AresContributionKind::ASSOC, t, rho, x, cppargs);
     }

@@ -461,7 +461,7 @@ class FitResult:
     jacobian_backend: str = "not_available"
     jacobian_fallback_used: bool = False
     jacobian_fallback_reason: str = ""
-    finite_difference_fallback_count: int = 0
+    backend_unavailable_reason: str = ""
     hessian_available: bool = False
     hessian_backend: str = "not_implemented"
     hessian_fallback_used: bool = False
@@ -488,7 +488,7 @@ class FitResult:
         self.jacobian_backend = str(self.jacobian_backend)
         self.jacobian_fallback_used = bool(self.jacobian_fallback_used)
         self.jacobian_fallback_reason = str(self.jacobian_fallback_reason)
-        self.finite_difference_fallback_count = int(self.finite_difference_fallback_count)
+        self.backend_unavailable_reason = str(self.backend_unavailable_reason)
         self.hessian_available = bool(self.hessian_available)
         self.hessian_backend = str(self.hessian_backend)
         self.hessian_fallback_used = bool(self.hessian_fallback_used)
@@ -546,7 +546,7 @@ def _fit_derivative_metadata(result: Mapping[str, Any]) -> dict[str, Any]:
         "jacobian_backend": str(result.get("jacobian_backend", "not_available")),
         "jacobian_fallback_used": bool(result.get("jacobian_fallback_used", False)),
         "jacobian_fallback_reason": str(result.get("jacobian_fallback_reason", "")),
-        "finite_difference_fallback_count": int(result.get("finite_difference_fallback_count", 0)),
+        "backend_unavailable_reason": str(result.get("backend_unavailable_reason", "")),
         "hessian_available": bool(result.get("hessian_available", False)),
         "hessian_backend": str(result.get("hessian_backend", "not_implemented")),
         "hessian_fallback_used": bool(result.get("hessian_fallback_used", False)),
@@ -1263,18 +1263,12 @@ def evaluate_generic_regression_derivatives(
     pair: Sequence[str] | None = None,
     jacobian_backend: str = "auto",
 ) -> dict[str, Any]:
-    """Evaluate native generic-regression residuals and an explicit Jacobian payload."""
+    """Evaluate native generic-regression residual derivative payloads where available."""
 
     backend = str(jacobian_backend).strip().lower()
-    if backend in {"numerical", "fd"}:
-        backend = "finite_difference"
-    if backend not in {"auto", "autodiff", "finite_difference"}:
-        raise InputError("jacobian_backend must be 'auto', 'autodiff', or 'finite_difference'.")
-    if backend != "finite_difference":
-        raise InputError(
-            "generic regression autodiff Jacobians are not implemented for the generic residual state path yet; "
-            "finite difference is only available when jacobian_backend='finite_difference' is requested explicitly."
-        )
+    if backend not in {"auto", "autodiff", "analytic"}:
+        raise InputError("jacobian_backend must be 'auto', 'autodiff', or 'analytic'.")
+    raise InputError("backend_unavailable: generic regression sensitivities are not implemented for this residual path.")
 
     normalized_species = tuple(_normalize_component(str(name)) for name in species)
     normalized_pair = None if pair is None else _normalize_pair(pair)
