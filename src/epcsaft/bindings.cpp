@@ -1620,6 +1620,14 @@ PYBIND11_MODULE(_core, m) {
         .def_readonly("finite_difference_fallback_used", &CompositionContributionResult::finite_difference_fallback_used)
         .def_readonly("finite_difference_fallback_reason", &CompositionContributionResult::finite_difference_fallback_reason);
 
+    py::class_<PressureCompositionDerivativeResult>(m, "PressureCompositionDerivativeResult")
+        .def_readonly("dpdx", &PressureCompositionDerivativeResult::dpdx)
+        .def_readonly("pressure", &PressureCompositionDerivativeResult::pressure)
+        .def_readonly("supported", &PressureCompositionDerivativeResult::supported)
+        .def_readonly("derivative_backend", &PressureCompositionDerivativeResult::derivative_backend)
+        .def_readonly("finite_difference_fallback_used", &PressureCompositionDerivativeResult::finite_difference_fallback_used)
+        .def_readonly("finite_difference_fallback_reason", &PressureCompositionDerivativeResult::finite_difference_fallback_reason);
+
     py::class_<ResidualChemicalPotentialResult>(m, "ResidualChemicalPotentialResult")
         .def_readonly("mu", &ResidualChemicalPotentialResult::mu)
         .def_readonly("composition", &ResidualChemicalPotentialResult::composition);
@@ -1688,6 +1696,7 @@ PYBIND11_MODULE(_core, m) {
         .def("residual_chemical_potential", &ePCSAFTStateNative::residual_chemical_potential)
         .def("residual_chemical_potential_result", &ePCSAFTStateNative::residual_chemical_potential_result)
         .def("composition_derivative_residual_helmholtz_result", &ePCSAFTStateNative::composition_derivative_residual_helmholtz_result)
+        .def("pressure_composition_derivative_result", &ePCSAFTStateNative::pressure_composition_derivative_result)
         .def("ln_fugacity_coefficient", &ePCSAFTStateNative::ln_fugacity_coefficient)
         .def("fugacity_coefficient", &ePCSAFTStateNative::fugacity_coefficient)
         .def("fugacity_coefficient_result", &ePCSAFTStateNative::fugacity_coefficient_result)

@@ -57,7 +57,7 @@ agents:
   judge: installed
   worker: installed
 
-active_task: T039
+active_task: T041
 
 tasks:
   - id: T001
@@ -1778,7 +1778,7 @@ tasks:
   - id: T039
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: medium
     objective: "Checkpoint after the documented T037 blocker: either start a broad native pressure-composition derivative architecture tranche next, or publish the current blocker checkpoint as a partial issue-53 progress branch."
     constraints:
@@ -1788,6 +1788,84 @@ tasks:
     expected_output:
       - "If continuing: create the next broad architecture tranche."
       - "If stopping: leave the branch at the verified blocker checkpoint."
+    receipt:
+      result: done
+      summary: "Continued. The next broad tranche started with a real native pressure-composition derivative slice for supported nonassociating states."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T040-pressure-composition-derivative-slice.md"
+
+  - id: T040
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: xhigh
+    objective: "Implement the first real native pressure-composition derivative substrate slice after T039, expose it through the EOS/state layer, and validate it on supported nonassociating states without reintroducing production finite differences."
+    allowed_files:
+      - "src/epcsaft/native/epcsaft_Z.cpp"
+      - "src/epcsaft/native/epcsaft_core_internal.h"
+      - "src/epcsaft/native/epcsaft_electrolyte.h"
+      - "src/epcsaft/native/epcsaft_state.cpp"
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/epcsaft.py"
+      - "tests/native/test_runtime_contracts.py"
+      - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      - "docs/goals/issue-53-native-regression-production/notes/**"
+      - "docs/goals/issue-53-native-regression-production/notes/T040-pressure-composition-derivative-slice.md"
+      - "docs/goals/issue-53-native-regression-production/state.yaml"
+    verify:
+      - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py tests/native/test_runtime_contracts.py tests/native/test_native_ceres_thermodynamic_regression.py -q"
+    stop_if:
+      - "The only implementation path requires production finite differences."
+      - "The slice cannot be validated independently of the later dp/drho work."
+    receipt:
+      result: done
+      summary: "Added a finite-difference-free native pressure-composition derivative result surface for supported nonassociating states, exposed it through the state layer, and validated it against focused runtime finite-difference checks."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T040-pressure-composition-derivative-slice.md"
+        - "src/epcsaft/native/epcsaft_Z.cpp"
+        - "src/epcsaft/native/epcsaft_electrolyte.h"
+        - "src/epcsaft/native/epcsaft_state.cpp"
+        - "src/epcsaft/bindings.cpp"
+        - "src/epcsaft/epcsaft.py"
+        - "tests/native/test_runtime_contracts.py"
+      changed_files:
+        - "src/epcsaft/native/epcsaft_Z.cpp"
+        - "src/epcsaft/native/epcsaft_core_internal.h"
+        - "src/epcsaft/native/epcsaft_electrolyte.h"
+        - "src/epcsaft/native/epcsaft_state.cpp"
+        - "src/epcsaft/bindings.cpp"
+        - "src/epcsaft/epcsaft.py"
+        - "tests/native/test_runtime_contracts.py"
+        - "docs/goals/issue-53-native-regression-production/notes/T040-pressure-composition-derivative-slice.md"
+        - "docs/goals/issue-53-native-regression-production/state.yaml"
+      commands:
+        - cmd: "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+          summary: "Native build passed with the new pressure-composition derivative slice."
+        - cmd: "uv run python run_pytest.py tests/native/test_runtime_contracts.py tests/native/test_native_ceres_thermodynamic_regression.py -q"
+          status: pass
+          summary: "Focused runtime and thermo-regression validation passed with 29 tests."
+
+  - id: T041
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: xhigh
+    objective: "After T040, decide the next honest prerequisite for native concentration-standard-state thermodynamic regression: whether to implement a finite-difference-free dp/drho substrate next, or stop here with the narrower remaining blocker documented."
+    inputs:
+      - "T037 blocker receipt."
+      - "T040 pressure-composition derivative receipt."
+      - "src/epcsaft/native/epcsaft_Z.cpp"
+      - "src/epcsaft/native/epcsaft_density.cpp"
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+    constraints:
+      - "Do not claim concentration-standard-state regression support is done."
+      - "Do not blur the difference between dP/dx and dp/drho."
+      - "Do not reintroduce production finite differences."
+    expected_output:
+      - "Decision on whether the next tranche is a real dp/drho architecture slice."
+      - "If stopping, an explicit narrower blocker statement."
     receipt: null
 
   - id: T023

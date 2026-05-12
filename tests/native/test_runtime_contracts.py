@@ -23,6 +23,25 @@ def _assert_finite_mapping_values(values: dict[str, float]) -> None:
     assert all(np.isfinite(float(value)) for value in values.values())
 
 
+def _nonassociating_ionic_state() -> tuple[object, list[str], float, float, float, np.ndarray]:
+    species = ["H2O", "NaCl", "Na+", "Cl-"]
+    params = {
+        "m": np.asarray([1.2047, 1.0, 1.0, 1.0]),
+        "s": np.asarray([2.7927, 3.0, 2.8232, 2.7560]),
+        "e": np.asarray([353.95, 200.0, 230.0, 170.0]),
+        "z": np.asarray([0.0, 0.0, 1.0, -1.0]),
+        "dielc": np.asarray([78.09, 8.0, 8.0, 8.0]),
+        "d_born": np.asarray([0.0, 0.0, 3.445, 4.1]),
+        "MW": np.asarray([18.01528e-3, 58.44e-3, 22.989e-3, 35.45e-3]),
+    }
+    mix = ePCSAFTMixture.from_params(params, species=species)
+    composition = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
+    temperature = 298.15
+    pressure = 1.0e5
+    density = mix.state(T=temperature, P=pressure, x=composition, phase="liq").molar_density()
+    return mix, species, pressure, density, temperature, composition
+
+
 def test_pressure_based_and_density_based_states_match_for_neutral_system() -> None:
     mix, _, pressure, density, temperature, composition = _neutral_state()
     from_rho = mix.state(T=temperature, x=composition, rho=density)
@@ -276,6 +295,42 @@ def test_composition_derivative_matches_constrained_composition_finite_differenc
             ) / (2.0 * delta_x)
 
             assert derivative[i] - derivative[j] == pytest.approx(finite_difference, rel=1e-7, abs=1e-8)
+
+
+def test_pressure_composition_derivative_matches_finite_difference_for_supported_states() -> None:
+    for state_factory in (_neutral_state, _nonassociating_ionic_state):
+        mix, _, _, density, temperature, composition = state_factory()
+        state = mix.state(T=temperature, x=composition, rho=density)
+        derivative = state.pressure_composition_derivative()
+
+        assert derivative["supported"] is True
+        assert derivative["derivative_backend"] == "autodiff_composition"
+        assert derivative["finite_difference_fallback_used"] is False
+
+        for i, j in ((0, 1), (1, 2), (composition.size - 2, composition.size - 1)):
+            delta_x = min(1.0e-7, 0.25 * float(composition[i]), 0.25 * float(composition[j]))
+            plus = composition.copy()
+            minus = composition.copy()
+            plus[i] += delta_x
+            plus[j] -= delta_x
+            minus[i] -= delta_x
+            minus[j] += delta_x
+            finite_difference = (
+                mix.state(T=temperature, x=plus, rho=density).pressure()
+                - mix.state(T=temperature, x=minus, rho=density).pressure()
+            ) / (2.0 * delta_x)
+            assert derivative["dpdx"][i] - derivative["dpdx"][j] == pytest.approx(finite_difference, rel=1e-6, abs=5.0e-1)
+
+
+def test_pressure_composition_derivative_reports_association_gate() -> None:
+    mix, _, _, density, temperature, composition = _ionic_state()
+    state = mix.state(T=temperature, x=composition, rho=density)
+    derivative = state.pressure_composition_derivative()
+
+    assert derivative["supported"] is False
+    assert derivative["derivative_backend"] == "unsupported"
+    assert "nonassociating states only" in derivative["finite_difference_fallback_reason"]
+    assert np.isnan(derivative["dpdx"]).all()
 
 
 def test_runtime_cache_stats_track_density_and_reference_state_reuse() -> None:

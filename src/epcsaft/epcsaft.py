@@ -1126,6 +1126,18 @@ class ePCSAFTState:
         """Return the composition-derivative contribution breakdown."""
         return self._composition_derivative_residual_helmholtz_result()
 
+    def pressure_composition_derivative(self):
+        """Return the finite-difference-free native pressure-composition derivative payload."""
+        result = self._native.pressure_composition_derivative_result()
+        return {
+            "dpdx": np.asarray(result.dpdx, dtype=float),
+            "pressure": float(result.pressure),
+            "supported": bool(result.supported),
+            "derivative_backend": str(result.derivative_backend),
+            "finite_difference_fallback_used": bool(result.finite_difference_fallback_used),
+            "finite_difference_fallback_reason": str(result.finite_difference_fallback_reason),
+        }
+
     def residual_enthalpy(self):
         """Return the residual enthalpy."""
         return float(self._native.residual_enthalpy())

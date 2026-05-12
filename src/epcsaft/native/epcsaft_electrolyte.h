@@ -118,6 +118,15 @@ struct CompositionContributionResult {
     std::string finite_difference_fallback_reason;
 };
 
+struct PressureCompositionDerivativeResult {
+    vector<double> dpdx;
+    double pressure = 0.0;
+    bool supported = false;
+    std::string derivative_backend = "unsupported";
+    bool finite_difference_fallback_used = false;
+    std::string finite_difference_fallback_reason;
+};
+
 struct ResidualChemicalPotentialResult {
     VectorContributionTerms mu;
     CompositionContributionResult composition;
@@ -343,6 +352,7 @@ public:
     vector<double> residual_chemical_potential();
     ResidualChemicalPotentialResult residual_chemical_potential_result();
     CompositionContributionResult composition_derivative_residual_helmholtz_result();
+    PressureCompositionDerivativeResult pressure_composition_derivative_result();
     vector<double> ln_fugacity_coefficient();
     vector<double> fugacity_coefficient();
     FugacityContributionResult fugacity_coefficient_result();

@@ -527,6 +527,12 @@ CompositionContributionResult ePCSAFTStateNative::composition_derivative_residua
     return composition_derivative_residual_helmholtz_result_cpp(t_, density(), x_, args);
 }
 
+PressureCompositionDerivativeResult ePCSAFTStateNative::pressure_composition_derivative_result()
+{
+    const add_args& args = mixture_->args();
+    return pressure_composition_derivative_result_cpp(t_, density(), x_, args);
+}
+
 vector<double> ePCSAFTStateNative::ln_fugacity_coefficient()
 {
     const add_args& args = mixture_->args();
