@@ -57,7 +57,7 @@ agents:
   judge: installed
   worker: installed
 
-active_task: T047
+active_task: T048
 
 tasks:
   - id: T001
@@ -2098,7 +2098,7 @@ tasks:
   - id: T047
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Audit the remaining issue #53 production gaps after T046 and choose the next honest derivative tranche: bubble-pressure differentiation, non-logK thermo parameter sensitivities, or another prerequisite substrate."
     inputs:
@@ -2117,6 +2117,50 @@ tasks:
       - "Exact remaining blocker statement."
       - "Chosen next task with file scope."
       - "Why the rejected alternatives are not the next step."
+    receipt:
+      result: done
+      decision: "The pressure-composition derivative substrate is already present; the next tranche is supported non-logK thermodynamic parameter sensitivities on native reactive_speciation rows, while bubble differentiation remains a larger downstream architecture jump."
+      summary: "Post-activity audit confirmed that all three supported reactive_speciation logK benchmark cases now run as ceres + cppad_implicit. The remaining production gaps are bubble regression differentiation and non-logK parameter sensitivities such as d_born, f_solv, and k_ij."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T047-post-activity-audit.md"
+        - "src/epcsaft/native/epcsaft_Z.cpp"
+        - "src/epcsaft/native/regression/thermo_regression.cpp"
+        - "tests/native/test_native_ceres_reactive_pressure_speciation.py"
+        - "tests/native/test_native_ceres_thermodynamic_regression.py"
+        - "scripts/benchmark_native_ceres_thermo_regression.py"
+
+  - id: T048
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: xhigh
+    objective: "Implement the next supported native thermodynamic derivative tranche: non-logK parameter sensitivities for reactive_speciation rows on the supported nonassociating slice, starting with d_born, f_solv, and generic binary parameters such as k_ij, without production finite differences."
+    allowed_files:
+      - "src/epcsaft/native/regression/thermo_regression.cpp"
+      - "src/epcsaft/native/regression/implicit_sensitivity.cpp"
+      - "src/epcsaft/native/regression/**"
+      - "src/epcsaft/native/epcsaft_activity.cpp"
+      - "src/epcsaft/native/epcsaft_fugcoef.cpp"
+      - "src/epcsaft/native/epcsaft_Z.cpp"
+      - "src/epcsaft/native/epcsaft_core_internal.h"
+      - "src/epcsaft/native/epcsaft_electrolyte.h"
+      - "src/epcsaft/native/epcsaft_regression.cpp"
+      - "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      - "src/epcsaft/benchmarks/native_ceres_thermo_regression.py"
+      - "scripts/benchmark_native_ceres_thermo_regression.py"
+      - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      - "tests/native/test_cppad_reactive_speciation_derivatives.py"
+      - "tests/workflows/test_benchmark_native_regression.py"
+      - "docs/goals/issue-53-native-regression-production/notes/**"
+      - "docs/goals/issue-53-native-regression-production/state.yaml"
+    verify:
+      - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/workflows/test_benchmark_native_regression.py -q"
+      - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 1"
+    stop_if:
+      - "The supported non-logK parameter slice still requires production finite differences."
+      - "Parameter sensitivities require a broad whole-package parameter-dual rewrite beyond the supported nonassociating reactive_speciation subset."
+      - "No truthful cppad_implicit benchmark or focused test can be produced for the added parameter kinds."
     receipt: null
 
   - id: T023
@@ -2143,12 +2187,13 @@ tasks:
     receipt: null
 
 checks:
-  dirty_fingerprint: "local-dirty-during-T047-post-activity-audit"
+  dirty_fingerprint: "local-dirty-during-T048-nonlogk-sensitivity-tranche"
   last_verification:
     result: passed
-    task: T046
+    task: T047
     commands:
-        - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
-        - "uv run python run_pytest.py tests/native/test_chemical_equilibrium_native.py tests/api/test_reactive_speciation.py tests/native/test_runtime_contracts.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_native_ceres_thermodynamic_regression.py tests/workflows/test_benchmark_native_regression.py -q"
-        - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --case reactive_speciation_activity_logk_implicit --warmup 1 --repeat 1"
+      - "uv run python run_pytest.py tests/native/test_native_ceres_reactive_pressure_speciation.py tests/native/test_native_ceres_thermodynamic_regression.py::test_native_thermo_regression_reports_ssmds_born_derivatives_unavailable -q"
+      - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --case reactive_speciation_logk_implicit --warmup 1 --repeat 1"
+      - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --case reactive_speciation_concentration_logk_implicit --warmup 1 --repeat 1"
+      - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --case reactive_speciation_activity_logk_implicit --warmup 1 --repeat 1"
 
