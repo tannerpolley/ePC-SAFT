@@ -109,7 +109,7 @@ def _generator_args(env: dict[str, str], configured_generator: str | None = None
     return []
 
 
-def _configure(env: dict[str, str]) -> None:
+def _configure(env: dict[str, str], *, enable_cppad: bool, use_system_cppad: bool) -> None:
     pybind11_dir = _capture([sys.executable, "-m", "pybind11", "--cmakedir"], env=env)
     cmd = [
         "cmake",
@@ -118,6 +118,8 @@ def _configure(env: dict[str, str]) -> None:
         "-B",
         str(BUILD_DIR),
         "-DEPCSAFT_DEV_INPLACE=ON",
+        f"-DEPCSAFT_ENABLE_CPPAD={'ON' if enable_cppad else 'OFF'}",
+        f"-DEPCSAFT_USE_SYSTEM_CPPAD={'ON' if use_system_cppad else 'OFF'}",
         "-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY",
         f"-DSKBUILD_PROJECT_VERSION={_pyproject_version()}",
         f"-DPython_EXECUTABLE={sys.executable}",
@@ -158,6 +160,12 @@ def _parser() -> argparse.ArgumentParser:
         default="auto",
         help="CMake generator for a new configure. Auto prefers Ninja when available.",
     )
+    parser.add_argument("--enable-cppad", action="store_true", help="Enable package-wide CppAD support.")
+    parser.add_argument(
+        "--use-system-cppad",
+        action="store_true",
+        help="Use an installed CppAD include tree. Implies --enable-cppad.",
+    )
     return parser
 
 
@@ -168,6 +176,8 @@ def main() -> int:
         parser.error("--clean cannot be combined with --build-only")
     if args.configure_only and args.build_only:
         parser.error("--configure-only cannot be combined with --build-only")
+    if args.use_system_cppad:
+        args.enable_cppad = True
 
     total_start = time.perf_counter()
     if args.clean:
@@ -177,7 +187,10 @@ def main() -> int:
     if args.generator != "auto":
         env["EPCSAFT_CMAKE_GENERATOR"] = args.generator
     if not args.build_only:
-        _timed("configure", lambda: _configure(env))
+        _timed(
+            "configure",
+            lambda: _configure(env, enable_cppad=args.enable_cppad, use_system_cppad=args.use_system_cppad),
+        )
     else:
         print("Timing: configure skipped (--build-only)", flush=True)
     if not args.configure_only:
