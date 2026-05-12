@@ -75,7 +75,8 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert mixed_regression["compatibility_backend"] == "python_compat"
     assert mixed_regression["required_native_dependencies"] == ["ceres", "cppad"]
     assert "reactive-speciation" in mixed_regression["production_blockers"][0]
-    assert "log-pressure unknown" in mixed_regression["missing_bubble_derivative_residuals"][0]
+    assert "single-vapor pressure-only slice" in mixed_regression["production_blockers"][1]
+    assert "multi-vapor composition unknowns" in mixed_regression["missing_bubble_derivative_residuals"][0]
     assert "dadx_born_cpp" in " ".join(mixed_regression["missing_derivative_call_graph"])
     assert "f_solv" in " ".join(mixed_regression["missing_derivative_call_graph"])
     assert "fit_binary_pair" in mixed_regression["generic_binary_regression_path"]
@@ -93,12 +94,20 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         "concentration",
         "mole_fraction_activity",
     ]
+    assert set(native_ceres["supported_slice"]["row_modes"]) >= {
+        "reactive_speciation",
+        "reactive_electrolyte_bubble",
+    }
     assert set(native_ceres["supported_slice"]["parameter_kinds"]) >= {
         "reaction_equilibrium_constant",
         "log_equilibrium_constant",
         "born_radius",
         "f_solv",
     }
+    assert set(native_ceres["supported_slice"]["target_families"]) >= {"speciation", "pressure"}
+    assert "single neutral vapor species" in native_ceres["supported_slice"]["row_mode_constraints"][
+        "reactive_electrolyte_bubble"
+    ]
     assert native_ceres["unsupported_status"] == "backend_unavailable"
     assert set(native_ceres["blocked_parameter_kinds"]) >= {"k_ij", "l_ij"}
     assert ipopt["available"] is ipopt_backend.cyipopt_available()

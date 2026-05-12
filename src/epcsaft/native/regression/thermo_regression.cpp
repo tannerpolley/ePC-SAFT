@@ -110,6 +110,47 @@ double bubble_prediction(const EquilibriumResultNative& result, const NativeTher
     throw std::runtime_error("unsupported reactive electrolyte bubble target family: " + target.family);
 }
 
+int species_index_from_label_or_throw(
+    const std::vector<std::string>& species,
+    const std::string& label,
+    const std::string& field
+) {
+    auto found = std::find(species.begin(), species.end(), label);
+    if (found == species.end()) {
+        throw std::runtime_error(field + " species label not found in species list: " + label);
+    }
+    return static_cast<int>(std::distance(species.begin(), found));
+}
+
+bool supported_single_vapor_bubble_row(
+    const NativeThermoRegressionRow& row,
+    std::string* reason = nullptr
+) {
+    const std::vector<std::string>& vapor_species =
+        row.vapor_species.empty() ? row.targets_species : row.vapor_species;
+    if (vapor_species.size() != 1) {
+        if (reason != nullptr) {
+            *reason = "native Ceres bubble derivatives currently support exactly one neutral vapor species.";
+        }
+        return false;
+    }
+    if (row.targets.empty()) {
+        if (reason != nullptr) {
+            *reason = "native Ceres bubble derivatives require at least one target.";
+        }
+        return false;
+    }
+    for (const auto& target : row.targets) {
+        if (target.family != "pressure") {
+            if (reason != nullptr) {
+                *reason = "native Ceres bubble derivatives currently support pressure targets only.";
+            }
+            return false;
+        }
+    }
+    return true;
+}
+
 int metadata_int(const NativeRegressionParameterSpec& parameter, const std::string& key, int fallback = -1) {
     auto found = parameter.metadata.find(key);
     if (found == parameter.metadata.end() || found->second.empty()) {
@@ -255,9 +296,25 @@ bool thermo_derivative_supported(
         saw_non_logk_parameter = saw_non_logk_parameter || born_parameter;
     }
     for (const auto& row : rows) {
+        if (row.row_mode == "reactive_electrolyte_bubble") {
+            if (!saw_non_logk_parameter) {
+                if (reason != nullptr) {
+                    *reason = "native Ceres bubble derivatives currently require supported Born/SSM+DS parameter kinds.";
+                }
+                return false;
+            }
+            std::string bubble_reason;
+            if (!supported_single_vapor_bubble_row(row, &bubble_reason)) {
+                if (reason != nullptr) {
+                    *reason = bubble_reason;
+                }
+                return false;
+            }
+            continue;
+        }
         if (row.row_mode != "reactive_speciation") {
             if (reason != nullptr) {
-                *reason = "native Ceres thermodynamic derivatives currently support reactive_speciation rows only.";
+                *reason = "native Ceres thermodynamic derivatives currently support reactive_speciation rows plus a single-vapor pressure-only reactive_electrolyte_bubble slice.";
             }
             return false;
         }
@@ -470,6 +527,124 @@ void fill_implicit_speciation_jacobian(
     }
 }
 
+void fill_single_vapor_bubble_jacobian(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    const std::vector<std::string>& species,
+    const NativeThermoRegressionRow& row,
+    const std::vector<NativeRegressionParameterSpec>& parameters,
+    double* jacobian,
+    int residual_offset,
+    int parameter_count
+) {
+    std::string bubble_reason;
+    if (!supported_single_vapor_bubble_row(row, &bubble_reason)) {
+        throw std::runtime_error(bubble_reason);
+    }
+
+    const std::vector<std::string>& vapor_species =
+        row.vapor_species.empty() ? row.targets_species : row.vapor_species;
+    const int vapor_full_index = species_index_from_label_or_throw(species, vapor_species.front(), "vapor_species");
+    const std::vector<double> x_liq = row.x_liq.empty() ? row.initial_x : row.x_liq;
+
+    EquilibriumResultNative solved = electrolyte_bubble_pressure_native(
+        mixture,
+        row.t,
+        x_liq,
+        row.bubble_options,
+        species,
+        vapor_species
+    );
+    const bool success = solved.diagnostics_bool.count("success")
+        ? solved.diagnostics_bool.at("success")
+        : solved.split_detected;
+    if (!success) {
+        throw std::runtime_error("single-vapor bubble derivative slice requires a converged inner bubble solve.");
+    }
+    const auto pressure_it = solved.diagnostics_double.find("best_P");
+    if (pressure_it == solved.diagnostics_double.end() || !(pressure_it->second > 0.0)) {
+        throw std::runtime_error("single-vapor bubble derivative slice requires a solved positive pressure.");
+    }
+    const double p = pressure_it->second;
+
+    auto liquid = mixture->state(row.t, x_liq, 0, true, p, false, 0.0);
+    std::vector<double> y_vap_full(mixture->ncomp(), 0.0);
+    y_vap_full[static_cast<std::size_t>(vapor_full_index)] = 1.0;
+    auto vapor = mixture->state(row.t, y_vap_full, 1, true, p, false, 0.0);
+
+    PressureDensityDerivativeResult liquid_dpdrho =
+        pressure_density_derivative_result_cpp(row.t, liquid->density(), x_liq, mixture->args());
+    PressureDensityDerivativeResult vapor_dpdrho =
+        pressure_density_derivative_result_cpp(row.t, vapor->density(), y_vap_full, mixture->args());
+    LnfugDensityDerivativeResult liquid_dlnfugdrho =
+        lnfug_density_derivative_result_cpp(row.t, liquid->density(), x_liq, mixture->args());
+    LnfugDensityDerivativeResult vapor_dlnfugdrho =
+        lnfug_density_derivative_result_cpp(row.t, vapor->density(), y_vap_full, mixture->args());
+
+    if (!liquid_dpdrho.supported || !vapor_dpdrho.supported || !liquid_dlnfugdrho.supported || !vapor_dlnfugdrho.supported) {
+        throw std::runtime_error("single-vapor bubble derivative slice requires supported density and lnphi derivatives.");
+    }
+    if (!std::isfinite(liquid_dpdrho.dpdrho) || !std::isfinite(vapor_dpdrho.dpdrho)
+        || std::abs(liquid_dpdrho.dpdrho) <= 1.0e-14 || std::abs(vapor_dpdrho.dpdrho) <= 1.0e-14) {
+        throw std::runtime_error("single-vapor bubble derivative slice encountered singular density closure.");
+    }
+
+    const double dresidual_dlogp =
+        vapor_dlnfugdrho.dlnfugdrho[0] * p / vapor_dpdrho.dpdrho
+        - liquid_dlnfugdrho.dlnfugdrho[static_cast<std::size_t>(vapor_full_index)] * p / liquid_dpdrho.dpdrho;
+    if (!std::isfinite(dresidual_dlogp) || std::abs(dresidual_dlogp) <= 1.0e-14) {
+        throw std::runtime_error("single-vapor bubble derivative slice encountered a singular log-pressure Jacobian.");
+    }
+
+    for (int target_index = 0; target_index < static_cast<int>(row.targets.size()); ++target_index) {
+        const auto& target = row.targets[static_cast<std::size_t>(target_index)];
+        for (int p_index = 0; p_index < parameter_count; ++p_index) {
+            const auto& parameter = parameters[static_cast<std::size_t>(p_index)];
+            if (!parameter_matches_row(parameter, row)) {
+                continue;
+            }
+            const int parameter_component = metadata_int(parameter, "component_index");
+            if (parameter_component < 0) {
+                throw std::runtime_error("single-vapor bubble derivative slice requires component_index metadata.");
+            }
+            LnfugParameterDerivativeResult liquid_param = lnfug_parameter_derivative_result_cpp(
+                row.t,
+                liquid->density(),
+                x_liq,
+                mixture->args(),
+                parameter.kind,
+                parameter_component
+            );
+            if (!liquid_param.supported) {
+                throw std::runtime_error(
+                    "single-vapor bubble liquid parameter derivative unsupported: " + liquid_param.finite_difference_fallback_reason
+                );
+            }
+            double vapor_theta = 0.0;
+            if (parameter_component == vapor_full_index) {
+                LnfugParameterDerivativeResult vapor_param = lnfug_parameter_derivative_result_cpp(
+                    row.t,
+                    vapor->density(),
+                    y_vap_full,
+                    mixture->args(),
+                    parameter.kind,
+                    parameter_component
+                );
+                if (!vapor_param.supported) {
+                    throw std::runtime_error(
+                        "single-vapor bubble vapor parameter derivative unsupported: " + vapor_param.finite_difference_fallback_reason
+                    );
+                }
+                vapor_theta = vapor_param.dlnfugdtheta[0];
+            }
+            const double residual_theta =
+                vapor_theta - liquid_param.dlnfugdtheta[static_cast<std::size_t>(vapor_full_index)];
+            const double dlogp_dtheta = -residual_theta / dresidual_dlogp;
+            jacobian[(residual_offset + target_index) * parameter_count + p_index] =
+                target.scale * p * dlogp_dtheta;
+        }
+    }
+}
+
 #ifdef EPCSAFT_HAS_CERES
 class NativeThermoCeresCostFunction final : public ceres::CostFunction {
 public:
@@ -506,8 +681,20 @@ public:
             const int parameter_count = static_cast<int>(parameters_.size());
             std::fill(jacobians[0], jacobians[0] + num_residuals() * parameter_count, 0.0);
             int residual_offset = 0;
-            for (const auto& row : rows) {
-                fill_implicit_speciation_jacobian(mixture, row, parameters_, jacobians[0], residual_offset, parameter_count);
+            for (const auto& row : rows_) {
+                if (row.row_mode == "reactive_speciation") {
+                    fill_implicit_speciation_jacobian(mixture, row, parameters_, jacobians[0], residual_offset, parameter_count);
+                } else if (row.row_mode == "reactive_electrolyte_bubble") {
+                    fill_single_vapor_bubble_jacobian(
+                        mixture,
+                        species_,
+                        row,
+                        parameters_,
+                        jacobians[0],
+                        residual_offset,
+                        parameter_count
+                    );
+                }
                 residual_offset += static_cast<int>(row.targets.size());
             }
         }
@@ -601,7 +788,7 @@ NativeRegressionResidualEvaluation evaluate_native_thermo_regression_rows(
                     ? result.diagnostics_string.at("message")
                     : "";
                 diagnostic.solve_backend = "native_electrolyte_bubble";
-                diagnostic.derivative_backend = "not_differentiated";
+                diagnostic.derivative_backend = supported_single_vapor_bubble_row(row) ? "autodiff" : "not_differentiated";
                 if (!success) {
                     append_penalty_row(out, row, diagnostic.message, penalty_residual);
                     continue;

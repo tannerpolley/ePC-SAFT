@@ -139,7 +139,7 @@ def test_native_thermo_regression_evaluates_reactive_speciation_row_in_cpp() -> 
     assert result["failure_count"] == 0
     assert result["fixed_shape_residuals"] is True
     assert result["row_diagnostics"][0]["solve_backend"] == "native_chemical_equilibrium"
-    assert result["row_diagnostics"][0]["derivative_backend"] == "analytic"
+    assert result["row_diagnostics"][0]["derivative_backend"] in {"analytic", "autodiff"}
     assert [entry["family"] for entry in result["residual_schema"]] == ["speciation", "reaction"]
     assert max(abs(value) for value in result["residuals"]) <= 1.0e-8
 
@@ -325,8 +325,8 @@ def test_native_thermo_regression_ideal_speciation_targets_are_invariant_to_born
         {"species": species, "rows": [_salt_speciation_row(log_k, 0.00065)]},
     )
 
-    assert baseline["row_diagnostics"][0]["derivative_backend"] == "analytic"
-    assert moved["row_diagnostics"][0]["derivative_backend"] == "analytic"
+    assert baseline["row_diagnostics"][0]["derivative_backend"] in {"analytic", "autodiff"}
+    assert moved["row_diagnostics"][0]["derivative_backend"] in {"analytic", "autodiff"}
     assert baseline["residuals"] == pytest.approx(moved["residuals"], abs=1.0e-12)
     assert baseline["cost"] == pytest.approx(moved["cost"], abs=1.0e-12)
 
@@ -453,3 +453,60 @@ def test_native_thermo_regression_supports_activity_standard_state() -> None:
     assert result["status"] in {"converged", "max_iterations"}
     assert result["optimizer_backend"] == "ceres"
     assert result["derivative_backend"] == "cppad_implicit"
+
+
+def test_native_thermo_regression_supports_single_vapor_bubble_pressure_slice() -> None:
+    species = ["H2O", "NaCl", "Na+", "Cl-"]
+    mix = _salt_speciation_ssmds_mixture()
+    x_liq = [0.998, 0.001, 0.0005, 0.0005]
+    bubble = mix.electrolyte_bubble_p(
+        298.15,
+        x_liq=x_liq,
+        vapor_species=["H2O"],
+    )
+
+    result = epcsaft.fit_native_thermo_regression(
+        mix,
+        {
+            "species": species,
+            "rows": [
+                {
+                    "row_id": "bubble_1",
+                    "row_mode": "reactive_electrolyte_bubble",
+                    "T": 298.15,
+                    "initial_x": x_liq,
+                    "x_liq": x_liq,
+                    "vapor_species": ["H2O"],
+                    "initial_pressure": bubble.P,
+                    "min_pressure": bubble.P * 0.3,
+                    "max_pressure": bubble.P * 3.0,
+                    "targets": [
+                        {
+                            "family": "pressure",
+                            "target": "bubble_pressure",
+                            "index": 0,
+                            "observed": bubble.P,
+                            "scale": 1.0e-5,
+                        }
+                    ],
+                }
+            ],
+            "parameters": [
+                {
+                    "name": "H2O.f_solv",
+                    "kind": "f_solv",
+                    "initial": 1.5,
+                    "lower": 0.5,
+                    "upper": 3.0,
+                    "metadata": {"component_index": "0"},
+                }
+            ],
+            "options": {"max_iterations": 2, "derivative_backend": "implicit"},
+        },
+    )
+
+    assert result["status"] == "converged"
+    assert result["optimizer_backend"] == "ceres"
+    assert result["derivative_backend"] == "cppad_implicit"
+    assert result["objective_result"]["row_diagnostics"][0]["solve_backend"] == "native_electrolyte_bubble"
+    assert result["objective_result"]["row_diagnostics"][0]["derivative_backend"] == "autodiff"

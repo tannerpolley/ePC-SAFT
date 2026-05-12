@@ -396,15 +396,12 @@ def capabilities() -> dict[str, object]:
                     "compatibility_backend": "python_compat",
                     "production_blockers": [
                         "Ceres thermodynamic hot loop currently supports only reactive-speciation rows with reaction logK parameters, ideal standard states, and speciation targets",
-                        "reactive electrolyte bubble, Born/SSM+DS d_born/f_solv, activity, pressure, and activity-coupled standard-state derivatives still report backend_unavailable",
+                        "general reactive electrolyte bubble derivatives beyond the single-vapor pressure-only slice still report backend_unavailable",
                     ],
                     "missing_bubble_derivative_residuals": [
-                        "log-pressure unknown for bubble pressure",
-                        "vapor-composition unknowns and normalization",
-                        "liquid fixed-composition fugacity/activity state",
-                        "vapor submixture fugacity state",
-                        "fugacity equality residuals log(y_i)+log(phi_i_vap)-log(x_i)-log(phi_i_liq)",
-                        "pressure target residual through solved P",
+                        "multi-vapor composition unknowns and normalization",
+                        "multi-species fugacity equality residual vector",
+                        "vapor-composition targets through solved y",
                     ],
                     "missing_derivative_call_graph": [
                         "NativeThermoCeresCostFunction::Evaluate",
@@ -432,7 +429,7 @@ def capabilities() -> dict[str, object]:
                     "python_objective_used": False,
                     "finite_difference_used": False,
                     "supported_slice": {
-                        "row_modes": ["reactive_speciation"],
+                        "row_modes": ["reactive_speciation", "reactive_electrolyte_bubble"],
                         "parameter_kinds": [
                             "reaction_equilibrium_constant",
                             "log_equilibrium_constant",
@@ -441,7 +438,7 @@ def capabilities() -> dict[str, object]:
                             "f_solv",
                             "solvation_factor",
                         ],
-                        "target_families": ["speciation"],
+                        "target_families": ["speciation", "pressure"],
                         "reaction_standard_states": [
                             "ideal_mole_fraction",
                             "concentration",
@@ -454,6 +451,10 @@ def capabilities() -> dict[str, object]:
                             "born_diameter": "supported activity-standard-state reactive_speciation rows on the nonassociating ionic Born/SSM+DS slice",
                             "f_solv": "supported activity-standard-state reactive_speciation rows on the nonassociating ionic Born/SSM+DS slice",
                             "solvation_factor": "supported activity-standard-state reactive_speciation rows on the nonassociating ionic Born/SSM+DS slice",
+                        },
+                        "row_mode_constraints": {
+                            "reactive_speciation": "speciation targets on the supported ideal, concentration, and activity-standard-state slices",
+                            "reactive_electrolyte_bubble": "single neutral vapor species, pressure targets only, and supported born_radius/f_solv parameter kinds",
                         },
                     },
                     "blocked_parameter_kinds": {
