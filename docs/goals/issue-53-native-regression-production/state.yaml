@@ -57,7 +57,7 @@ agents:
   judge: installed
   worker: installed
 
-active_task: T057
+active_task: T058
 
 tasks:
   - id: T001
@@ -2463,7 +2463,7 @@ tasks:
   - id: T057
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Audit the next remaining derivative gap after the single-vapor pressure-only bubble slice and decide whether the next honest tranche is multi-vapor bubble state derivatives, vapor-composition target support, or a broader completion audit against the active thread goal."
     inputs:
@@ -2481,6 +2481,34 @@ tasks:
       - "A concrete statement of the next remaining blocker after T056."
       - "A narrow recommendation for the next tranche or for the final pre-completion audit path."
       - "The validation slice needed for that next step."
+    receipt: "notes/T057-post-bubble-slice-audit.md"
+
+  - id: T058
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: xhigh
+    objective: "Implement the next honest reactive-electrolyte bubble derivative tranche: move beyond the single-vapor pressure-only slice by adding a real multi-vapor state Jacobian and at least one solved-y vapor_composition target path without production finite differences."
+    allowed_files:
+      - "src/epcsaft/native/regression/thermo_regression.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_core_internal.h"
+      - "src/epcsaft/native/epcsaft_autodiff_internal.h"
+      - "src/epcsaft/runtime.py"
+      - "tests/native/test_cppad_bubble_derivatives.py"
+      - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      - "tests/api/test_runtime.py"
+      - "tests/workflows/test_benchmark_native_regression.py"
+      - "docs/goals/issue-53-native-regression-production/notes/**"
+      - "docs/goals/issue-53-native-regression-production/state.yaml"
+    verify:
+      - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py tests/native/test_cppad_bubble_derivatives.py tests/native/test_native_ceres_thermodynamic_regression.py tests/api/test_runtime.py -q"
+      - "uv run python run_pytest.py tests/workflows/test_benchmark_native_regression.py -q"
+    stop_if:
+      - "A real multi-vapor bubble derivative slice requires a broader equilibrium reformulation than issue #53 can safely absorb in this branch."
+      - "The only viable multi-vapor bubble path would use production finite differences or fake capability reporting."
+      - "The tranche cannot isolate a stable solved-y state Jacobian for the supported multi-vapor slice."
     receipt: null
 
   - id: T023
