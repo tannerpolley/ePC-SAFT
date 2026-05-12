@@ -57,7 +57,7 @@ agents:
   judge: installed
   worker: installed
 
-active_task: T049
+active_task: T051
 
 tasks:
   - id: T001
@@ -2201,7 +2201,7 @@ tasks:
   - id: T049
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Audit the next remaining derivative scope after the SSM+DS Born non-logK tranche: decide whether reactive-speciation thermo k_ij support belongs in issue #53 or should remain generic-regression-only, and reaffirm the remaining bubble derivative blocker."
     inputs:
@@ -2215,6 +2215,88 @@ tasks:
     expected_output:
       - "Updated scope decision for the next tranche."
       - "Truthful statement of what issue #53 still lacks after T048."
+    receipt:
+      result: done
+      decision: approved_with_scope_narrowing
+      summary: "Pressure-composition derivatives are already present, T048 closed the Born d_born/f_solv thermo slice, and the next real gap is not thermo k_ij. The remaining meaningful CppAD-unification work is the default/auto runtime derivative policy: dadx contribution surfaces still default to analytic, ideal chemical-equilibrium auto/default still routes to analytic, and bubble differentiation remains the later blocker."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T049-post-born-scope-audit.md"
+        - "tests/api/test_runtime.py"
+        - "src/epcsaft/native/epcsaft_ares.cpp"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+        - "tests/native/test_chemical_equilibrium_native.py"
+        - "tests/native/test_native_ceres_reactive_pressure_speciation.py"
+
+  - id: T050
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: xhigh
+    objective: "Push the remaining supported default derivative surfaces toward CppAD: make auto/default runtime dadx contribution backends prefer autodiff where supported, and make auto/default ideal chemical-equilibrium Jacobian selection prefer autodiff on the supported log-amount slice, while keeping explicit finite-difference debug-only behavior intact."
+    allowed_files:
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
+      - "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
+      - "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
+      - "src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp"
+      - "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
+      - "tests/api/test_runtime.py"
+      - "tests/native/test_chemical_equilibrium_native.py"
+      - "tests/api/test_reactive_speciation.py"
+      - "tests/native/test_cppad_reactive_speciation_derivatives.py"
+      - "docs/goals/issue-53-native-regression-production/notes/T050-default-derivative-slice.md"
+      - "docs/goals/issue-53-native-regression-production/notes/**"
+      - "docs/goals/issue-53-native-regression-production/state.yaml"
+    verify:
+      - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py tests/api/test_runtime.py tests/api/test_reactive_speciation.py tests/native/test_chemical_equilibrium_native.py tests/native/test_cppad_reactive_speciation_derivatives.py -q"
+    stop_if:
+      - "Default auto policy cannot move to autodiff without breaking supported public contracts beyond this issue scope."
+      - "The ideal chemical-equilibrium autodiff path is materially slower or less stable than the exact analytic path with no capability gain."
+      - "A required surface still falls back to finite differences in production."
+    receipt:
+      result: done
+      summary: "Completed the safe part of the default-derivative tranche: ideal chemical-equilibrium auto/default now prefers autodiff on the supported log-amount slice when CppAD is compiled. The broader public runtime dadx auto-policy shift was tested and reverted because it perturbed established public runtime outputs and exposed unsupported/default-sensitive behavior on the SSM+DS Born activity path."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T050-default-derivative-slice.md"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+        - "tests/native/test_chemical_equilibrium_native.py"
+        - "tests/api/test_runtime.py"
+      changed_files:
+        - "docs/goals/issue-53-native-regression-production/notes/T050-default-derivative-slice.md"
+        - "docs/goals/issue-53-native-regression-production/state.yaml"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+        - "tests/native/test_chemical_equilibrium_native.py"
+      commands:
+        - cmd: "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/api/test_runtime.py tests/api/test_reactive_speciation.py tests/native/test_chemical_equilibrium_native.py tests/native/test_cppad_reactive_speciation_derivatives.py -q"
+          status: pass
+          summary: "80 passed, 1 skipped in 1.72s"
+
+  - id: T051
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Audit the remaining public runtime default-derivative gap after T050 and decide whether the dadx auto policy should stay analytic by design, move contribution-by-contribution behind stronger support checks, or be deferred outside issue #53."
+    inputs:
+      - "docs/goals/issue-53-native-regression-production/notes/T050-default-derivative-slice.md"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp"
+      - "src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp"
+      - "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
+      - "src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp"
+      - "src/epcsaft/native/contributions/epcsaft_contrib_born.cpp"
+      - "tests/api/test_runtime.py"
+    constraints:
+      - "Read-only unless updating goal notes/state."
+      - "Do not reintroduce a broader runtime auto-autodiff shift without evidence that public runtime reference outputs remain acceptable."
+      - "Separate issue #53 regression-production needs from nicer-to-have public runtime default policy changes."
+    expected_output:
+      - "Decision on whether runtime dadx auto stays analytic, becomes mixed-support autodiff, or moves out of scope."
+      - "Exact next worker scope if more implementation is justified."
     receipt: null
 
   - id: T023
@@ -2244,10 +2326,8 @@ checks:
   dirty_fingerprint: "local-dirty-during-T048-nonlogk-sensitivity-tranche"
   last_verification:
     result: passed
-    task: T047
+    task: T050
     commands:
-      - "uv run python run_pytest.py tests/native/test_native_ceres_reactive_pressure_speciation.py tests/native/test_native_ceres_thermodynamic_regression.py::test_native_thermo_regression_reports_ssmds_born_derivatives_unavailable -q"
-      - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --case reactive_speciation_logk_implicit --warmup 1 --repeat 1"
-      - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --case reactive_speciation_concentration_logk_implicit --warmup 1 --repeat 1"
-      - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --case reactive_speciation_activity_logk_implicit --warmup 1 --repeat 1"
+      - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py tests/api/test_runtime.py tests/api/test_reactive_speciation.py tests/native/test_chemical_equilibrium_native.py tests/native/test_cppad_reactive_speciation_derivatives.py -q"
 

@@ -319,6 +319,11 @@ ChemicalDerivativeSelection select_chemical_derivative_backend(
         throw ValueError("chemical equilibrium jacobian_backend must be 'auto', 'autodiff', or 'finite_difference'.");
     }
     if (standard_states_all_ideal_mole_fraction(reaction_standard_states)) {
+        if (epcsaft::autodiff::cppad_compiled()) {
+            selection.backend = "autodiff";
+            selection.capability_path = "chemical_equilibrium:ideal_mole_fraction:log_amounts:cppad";
+            return selection;
+        }
         selection.backend = "analytic";
         selection.capability_path = "chemical_equilibrium:ideal_mole_fraction:log_amounts";
         return selection;

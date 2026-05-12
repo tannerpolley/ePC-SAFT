@@ -133,7 +133,7 @@ def test_native_chemical_equilibrium_entrypoint_is_exposed() -> None:
     assert hasattr(_core, "_evaluate_chemical_equilibrium_residual_native")
 
 
-def test_native_chemical_equilibrium_residual_evaluator_uses_analytic_jacobian_by_default() -> None:
+def test_native_chemical_equilibrium_residual_evaluator_prefers_cppad_jacobian_by_default_when_available() -> None:
     mix = epcsaft.ePCSAFTMixture.from_params(
         {
             "m": np.asarray([1.0, 1.0]),
@@ -157,13 +157,20 @@ def test_native_chemical_equilibrium_residual_evaluator_uses_analytic_jacobian_b
     }
 
     payload = _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
+    cppad_enabled = bool(epcsaft.runtime_build_info()["native_dependencies"]["cppad"]["enabled"])
+    expected_backend = "autodiff" if cppad_enabled else "analytic"
+    expected_path = (
+        "chemical_equilibrium:ideal_mole_fraction:log_amounts:cppad"
+        if cppad_enabled
+        else "chemical_equilibrium:ideal_mole_fraction:log_amounts"
+    )
 
     assert payload["variable_model"] == "log_species_amounts"
-    assert payload["jacobian_backend"] == "analytic"
+    assert payload["jacobian_backend"] == expected_backend
     assert payload["hessian_backend"] == "gauss_newton"
     diagnostics = payload["diagnostics"]
-    assert diagnostics["derivative_backend_selected"] == "analytic"
-    assert diagnostics["derivative_capability_path"] == "chemical_equilibrium:ideal_mole_fraction:log_amounts"
+    assert diagnostics["derivative_backend_selected"] == expected_backend
+    assert diagnostics["derivative_capability_path"] == expected_path
     assert diagnostics["finite_difference_allowed"] is False
     assert diagnostics["unsupported_derivative_reason"] == ""
     assert diagnostics["exact_hessian_available"] is False
@@ -435,11 +442,13 @@ def test_native_chemical_equilibrium_solves_easy_ideal_reaction() -> None:
     assert result.diagnostics["native_entrypoint"] == "_solve_chemical_equilibrium_native"
     assert result.diagnostics["activity_model"] == "epcsaft_neutral_fugacity_activity"
     assert result.diagnostics["requested_jacobian_backend"] == "auto"
-    assert result.diagnostics["jacobian_backend"] == "analytic"
+    cppad_enabled = bool(epcsaft.runtime_build_info()["native_dependencies"]["cppad"]["enabled"])
+    expected_backend = "autodiff" if cppad_enabled else "analytic"
+    assert result.diagnostics["jacobian_backend"] == expected_backend
     assert result.diagnostics["jacobian_available"] is True
     assert result.diagnostics["jacobian_fallback_used"] is False
     assert result.diagnostics["finite_difference_fallback_used"] is False
-    assert result.diagnostics["derivative_backend_selected"] == "analytic"
+    assert result.diagnostics["derivative_backend_selected"] == expected_backend
     assert result.diagnostics["finite_difference_allowed"] is False
     assert result.diagnostics["hessian_available"] is False
     assert result.diagnostics["hessian_backend"] == "not_implemented"
