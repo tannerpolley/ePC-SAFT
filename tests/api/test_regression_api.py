@@ -21,6 +21,9 @@ from tests.helpers.regression_cases import _methane_like_records, _minimal_neutr
 
 
 def test_public_regression_surface_includes_ion_and_binary_v1():
+    assert hasattr(epcsaft, "fit_pure_parameters")
+    assert hasattr(epcsaft, "fit_binary_parameters")
+    assert hasattr(epcsaft, "fit_liquid_electrolyte_parameters")
     assert hasattr(epcsaft, "fit_pure_neutral")
     assert hasattr(epcsaft, "fit_pure_ion")
     assert hasattr(epcsaft, "fit_binary_pair")

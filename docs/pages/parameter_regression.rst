@@ -6,6 +6,20 @@ The package-owned regression helpers are record-driven. They accept flat in-memo
 Supported workflows
 -------------------
 
+- ``fit_pure_parameters(...)`` is the easy public wrapper for pure-component
+  fits. It accepts issue-style names such as ``species``, ``data_rows``,
+  ``parameters_to_fit``, ``fixed_parameters``, ``bounds``, ``weights``,
+  ``loss``, ``solver_options``, and ``output_report``. The current
+  implementation delegates to ``fit_pure_neutral(...)`` and records the easy
+  API metadata on ``result.problem``.
+- ``fit_binary_parameters(...)`` is the easy public wrapper for binary
+  interaction fits. It accepts a two-component ``species`` pair and delegates
+  to ``fit_binary_pair(...)`` for the supported constant binary-interaction
+  targets.
+- ``fit_liquid_electrolyte_parameters(...)`` is an API-contract entry point for
+  liquid-electrolyte regression problem declarations. It normalizes supported
+  data-row families and returns a stable ``FitResult`` with
+  ``backend="backend_unavailable"`` until native optimizer internals are added.
 - ``fit_pure_neutral(...)`` fits nonassociating neutral pure-component ``m``, ``s``, and ``e`` against density and vapor-pressure records with the native least-squares backend.
 - ``fit_pure_ion(...)`` fits ion ``s`` and ``e`` by default, and can fit ``d_born`` when requested, with the native least-squares backend and provenance guardrails.
 - ``fit_binary_pair(...)`` fits constant binary interaction values from direct VLE x/y records with the native least-squares backend and provenance guardrails.
@@ -13,6 +27,84 @@ Supported workflows
 Ion and binary V1 intentionally do not add dataset manifests or new regression-specific parameter namespaces. The helpers build runtime states from the existing dataset loader and caller-provided records.
 
 Non-native optimizer loops are not an approved production backend for package-owned regression helpers. Python code may prepare records, declare provenance, and call native regression, but coupled electrolyte, reactive, phase-equilibrium, ``d_born``, and ``k_ij`` fitting should use the native backend.
+
+The public easy APIs intentionally do not expose finite-difference derivative
+configuration. Unsupported derivative or optimizer paths report
+``backend_unavailable`` instead of silently falling back to finite differences.
+
+Easy API examples
+-----------------
+
+Pure-component fits use the vocabulary a new user would expect while retaining
+the native-backed lower-level implementation:
+
+.. code-block:: python
+
+   from epcsaft import fit_pure_parameters
+
+   result = fit_pure_parameters(
+       species="Methane",
+       data_rows=[
+           {"T": 100.0, "P": 34375.892, "rho_sat_liq_kg_m3": 438.88524},
+           {"T": 110.0, "P": 88130.038, "rho_sat_liq_kg_m3": 424.77725},
+       ],
+       parameters_to_fit=("m", "sigma", "epsilon"),
+       fixed_parameters={
+           "MW": 0.0160428,
+           "z": 0.0,
+           "e_assoc": 0.0,
+           "vol_a": 0.0,
+           "dielc": 8.0,
+           "d_born": 0.0,
+           "f_solv": 1.0,
+       },
+       bounds={"m": (0.8, 1.4)},
+       weights={"density": 2.0},
+       loss="linear",
+       solver_options={"max_nfev": 20},
+   )
+
+Binary interaction fits accept a two-species pair:
+
+.. code-block:: python
+
+   from epcsaft import fit_binary_parameters
+
+   result = fit_binary_parameters(
+       species=("H2O", "Ethanol"),
+       parameter_set="2026_Khudaida",
+       data_rows=[
+           {
+               "T": 330.0,
+               "P": 101325.0,
+               "x_H2O": 0.7,
+               "x_Ethanol": 0.3,
+               "y_H2O": 0.5,
+               "y_Ethanol": 0.5,
+           },
+       ],
+       parameters_to_fit=("k_ij",),
+       bounds={"k_ij": (-0.2, 0.2)},
+   )
+
+Liquid-electrolyte fits can be declared before the full optimizer backend
+exists:
+
+.. code-block:: python
+
+   from epcsaft import fit_liquid_electrolyte_parameters
+
+   result = fit_liquid_electrolyte_parameters(
+       species=("H2O", "Na+", "Cl-"),
+       parameter_set="2026_Khudaida",
+       data_rows=[
+           {"T": 298.15, "P": 101325.0, "molality": 0.1, "osmotic_coefficient": 0.933},
+       ],
+       parameters_to_fit=("d_born", "f_solv"),
+       weights={"osmotic_coefficient": 1.0},
+   )
+
+   assert result.backend == "backend_unavailable"
 
 Build prerequisite
 ------------------

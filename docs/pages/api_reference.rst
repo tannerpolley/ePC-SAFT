@@ -142,7 +142,11 @@ using only outer process timeouts.
 Regression helpers
 ------------------
 
-The regression API remains Python-facing, but ``fit_pure_neutral(...)`` now delegates to the native least-squares regression engine exposed through ``epcsaft._core``. The shipped v1 scope is a nonassociating neutral pure-component fit of \(m\), \(s\), and \(e\) against liquid-density and pure-VLE records.
+The regression API remains Python-facing. The easy public entry points
+``fit_pure_parameters(...)``, ``fit_binary_parameters(...)``, and
+``fit_liquid_electrolyte_parameters(...)`` provide stable problem contracts for
+pure-component, binary, and liquid-electrolyte parameter fitting. The lower-level
+native-backed helpers remain available for code that already targets them.
 
 .. autoclass:: epcsaft.FitBounds
    :members:
@@ -188,7 +192,17 @@ The regression API remains Python-facing, but ``fit_pure_neutral(...)`` now dele
 
 .. autofunction:: epcsaft.validate_regression_provenance
 
+.. autofunction:: epcsaft.fit_pure_parameters
+
+.. autofunction:: epcsaft.fit_binary_parameters
+
+.. autofunction:: epcsaft.fit_liquid_electrolyte_parameters
+
 .. autofunction:: epcsaft.fit_pure_neutral
+
+.. autofunction:: epcsaft.fit_pure_ion
+
+.. autofunction:: epcsaft.fit_binary_pair
 
 .. autofunction:: epcsaft.fit_mea_co2_h2o_electrolyte
 
