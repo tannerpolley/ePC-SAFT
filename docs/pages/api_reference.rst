@@ -1,6 +1,10 @@
 API Reference
 =============
 
+Package boundary guidance lives in :doc:`package_architecture`. The public API
+continues to support top-level imports while subsystem modules provide clearer
+navigation for new equilibrium and regression code.
+
 Mixture model
 -------------
 

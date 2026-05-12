@@ -7,6 +7,68 @@ orchestration. The equation-of-state runtime and package-owned phase,
 chemical-equilibrium, and regression kernels are native C++ exposed through
 ``pybind11``.
 
+Organization Boundary
+---------------------
+
+``epcsaft`` remains one installable distribution package. The project uses
+clean internal subsystem boundaries instead of splitting EOS, equilibrium,
+regression, native, data, or benchmark code into separate packages.
+
+The target internal shape is:
+
+.. code-block:: text
+
+   src/epcsaft/
+     eos/
+     equilibrium/
+     regression/
+     native/
+     data/
+     benchmarks/
+
+The current source tree may keep some compatibility modules as single Python
+files while those boundaries settle. Documentation, tests, and new code should
+still treat the subsystems below as the ownership model.
+
+Subsystem Boundaries
+--------------------
+
+EOS harness
+   Owns ``ePCSAFTMixture``, ``ePCSAFTState``, state construction, property
+   evaluation wrappers, and the Python-facing equation-of-state contract. It
+   validates user inputs and delegates thermodynamic calculations to the native
+   runtime.
+
+Equilibrium
+   Owns phase-equilibrium, stability, bubble/dew, electrolyte LLE, and
+   chemical-equilibrium orchestration. It may use Python for problem objects,
+   seed handling, diagnostics, and continuation control, but production
+   thermodynamic evaluations should route through the EOS/native boundary.
+
+Regression
+   Owns fitting problem definitions, records, provenance validation, objective
+   assembly, derivative diagnostics, and fit-result serialization. Public
+   regression helpers remain Python-facing while expensive objective and
+   derivative work should use native kernels when available.
+
+Native
+   Owns C++ kernels, pybind11 bindings, native capability reporting, and
+   internal C++ helpers. Python code should call native functionality through
+   the public runtime surfaces or thin package-owned adapters, not by reaching
+   into build artifacts directly.
+
+Data
+   Owns packaged parameter datasets, dataset validation, reference-data loading
+   contracts, and reusable package data. Analysis-local inputs belong under the
+   relevant ``analyses/<id>/data`` tree instead of becoming hidden package
+   dependencies.
+
+Benchmarks
+   Owns package-maintained timing, smoke, and regression benchmarks that protect
+   runtime expectations. Benchmarks may consume the public package API and
+   packaged/reference data, but they should not become required import-time
+   dependencies for normal users.
+
 Core Surfaces
 -------------
 
@@ -25,6 +87,53 @@ Use these imports for new code:
 
 Top-level imports remain stable for existing users. The organized modules are
 navigation aids, not a breaking API move.
+
+Import Policy
+-------------
+
+Public user code should import from the top-level package or from documented
+subsystem modules:
+
+* ``import epcsaft``
+* ``from epcsaft import ePCSAFTMixture``
+* ``from epcsaft.equilibrium import ...``
+* ``from epcsaft.regression import ...``
+
+Internal modules may share package-owned helpers when that keeps behavior
+centralized, but subsystem code should avoid circular ownership. In particular,
+benchmarks and docs may depend on public APIs, while core runtime modules must
+not depend on benchmark entrypoints or generated analysis artifacts.
+
+Compatibility Policy
+--------------------
+
+Current public imports must continue working across boundary cleanups:
+
+.. code-block:: python
+
+   import epcsaft
+
+   epcsaft.ePCSAFTMixture
+   epcsaft.solve_reactive_speciation
+   epcsaft.fit_pure_neutral
+
+Cleaner subsystem imports may be added over time, but large module moves must
+land in small refactor PRs with compatibility imports and focused API tests.
+Do not use package-boundary work as a reason to break downstream notebooks,
+MEA/Li extraction consumers, or existing documented imports.
+
+Optional Dependency Policy
+--------------------------
+
+The default install should keep the lightweight runtime usable. Heavy or
+platform-sensitive dependencies belong behind optional dependency groups,
+feature flags, or runtime capability checks. For example, Ipopt-dependent
+workflows must fail with actionable diagnostics when ``cyipopt`` is not
+installed instead of making the base package import fail.
+
+Native build capabilities should be reported through ``capabilities()`` and
+``runtime_build_info()`` so downstream projects can select supported workflows
+without probing private modules.
 
 Repository Layout
 -----------------
