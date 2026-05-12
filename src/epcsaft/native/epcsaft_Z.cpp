@@ -1,5 +1,6 @@
 #include "epcsaft_core_internal.h"
 #include "contributions/epcsaft_contrib_internal.h"
+#include "autodiff/ad_scalar.h"
 
 using namespace thermo_detail;
 
@@ -146,6 +147,21 @@ DispersionAutodiffState<Scalar> dispersion_autodiff_state_cpp(const Scalar &m_av
     return state;
 }
 
+template <typename Scalar>
+Scalar pressure_dielectric_constant_supported_scalar_cpp(const vector<Scalar>& x, const add_args& cppargs) {
+    if (cppargs.dielc_rule == 0) {
+        return scalar_constant<Scalar>(*std::max_element(cppargs.dielc.begin(), cppargs.dielc.end()));
+    }
+    if (cppargs.dielc_rule == 1) {
+        Scalar eps = scalar_constant<Scalar>(0.0);
+        for (int i = 0; i < static_cast<int>(x.size()); ++i) {
+            eps += x[static_cast<size_t>(i)] * cppargs.dielc[static_cast<size_t>(i)];
+        }
+        return eps;
+    }
+    throw ValueError("native pressure derivatives currently support dielc_rule 0 or 1 only.");
+}
+
 bool pressure_composition_derivative_supported_cpp(const add_args &cppargs, std::string *reason) {
     if (!cppargs.assoc_num.empty() || !cppargs.assoc_matrix.empty() || !cppargs.k_hb.empty()
         || !cppargs.e_assoc.empty() || !cppargs.vol_a.empty()) {
@@ -157,6 +173,12 @@ bool pressure_composition_derivative_supported_cpp(const add_args &cppargs, std:
     if (cppargs.DH_model == 2) {
         if (reason != nullptr) {
             *reason = "native pressure-composition derivatives do not support DH_model=2.";
+        }
+        return false;
+    }
+    if (cppargs.dielc_rule != 0 && cppargs.dielc_rule != 1) {
+        if (reason != nullptr) {
+            *reason = "native pressure-composition derivatives currently support dielc_rule 0 or 1 only.";
         }
         return false;
     }
@@ -187,7 +209,7 @@ Scalar pressure_scalar_supported_cpp(double t, const Scalar &rho, const vector<S
             q2_sum += x[static_cast<size_t>(i)] * cppargs.z[static_cast<size_t>(i)] * cppargs.z[static_cast<size_t>(i)];
         }
         if (scalar_value(q2_sum) > 0.0) {
-            Scalar eps = dielectric_constant_rule_autodiff_cpp(cppargs.dielc_rule, x, cppargs);
+            Scalar eps = pressure_dielectric_constant_supported_scalar_cpp(x, cppargs);
             Scalar kappa = scalar_sqrt(thermo.den * E_CHRG * E_CHRG / kb / t / perm_vac * q2_sum / eps);
             Scalar sigma_sum = scalar_constant<Scalar>(0.0);
             for (int i = 0; i < ncomp; ++i) {
@@ -206,9 +228,47 @@ Scalar pressure_scalar_supported_cpp(double t, const Scalar &rho, const vector<S
     return z_total * kb * t * thermo.den * 1.0e30;
 }
 
-AutoDual pressure_autodiff_supported_cpp(double t, double rho, const vector<AutoDual> &x_dual, const add_args &cppargs) {
-    return pressure_scalar_supported_cpp(t, make_autodiff_scalar(rho, 0.0), x_dual, cppargs);
+#ifdef EPCSAFT_HAS_CPPAD
+std::vector<double> pressure_composition_jacobian_cppad_cpp(
+    double t,
+    double rho,
+    const vector<double>& x,
+    const add_args& cppargs
+) {
+    using epcsaft::autodiff::CppADScalar;
+    const std::size_t ncomp = x.size();
+    std::vector<CppADScalar> independent(ncomp);
+    for (std::size_t i = 0; i < ncomp; ++i) {
+        independent[i] = x[i];
+    }
+    CppAD::Independent(independent);
+    std::vector<CppADScalar> dependent(1);
+    dependent[0] = pressure_scalar_supported_cpp(t, CppADScalar(rho), independent, cppargs);
+    CppAD::ADFun<double> tape(independent, dependent);
+    return tape.Jacobian(x);
 }
+
+double pressure_density_jacobian_cppad_cpp(
+    double t,
+    double rho,
+    const vector<double>& x,
+    const add_args& cppargs
+) {
+    using epcsaft::autodiff::CppADScalar;
+    std::vector<CppADScalar> independent(1);
+    independent[0] = rho;
+    CppAD::Independent(independent);
+    std::vector<CppADScalar> x_const(x.size());
+    for (std::size_t i = 0; i < x.size(); ++i) {
+        x_const[i] = x[i];
+    }
+    std::vector<CppADScalar> dependent(1);
+    dependent[0] = pressure_scalar_supported_cpp(t, independent[0], x_const, cppargs);
+    CppAD::ADFun<double> tape(independent, dependent);
+    const std::vector<double> jacobian = tape.Jacobian(std::vector<double>{rho});
+    return jacobian[0];
+}
+#endif
 
 }  // namespace
 
@@ -309,6 +369,16 @@ PressureCompositionDerivativeResult pressure_composition_derivative_result_cpp(
 
     const int ncomp = static_cast<int>(x.size());
     result.dpdx.assign(ncomp, 0.0);
+#ifdef EPCSAFT_HAS_CPPAD
+    const std::vector<double> jacobian = pressure_composition_jacobian_cppad_cpp(t, rho, x, cppargs);
+    for (int i = 0; i < ncomp; ++i) {
+        result.dpdx[static_cast<size_t>(i)] = jacobian[static_cast<size_t>(i)];
+        if (!std::isfinite(result.dpdx[static_cast<size_t>(i)])) {
+            throw ValueError("Non-finite native pressure-composition derivative.");
+        }
+    }
+    result.derivative_backend = "cppad_composition";
+#else
     for (int i = 0; i < ncomp; ++i) {
         vector<AutoDual> x_dual(static_cast<size_t>(ncomp), make_autodiff_scalar(0.0, 0.0));
         for (int j = 0; j < ncomp; ++j) {
@@ -320,8 +390,9 @@ PressureCompositionDerivativeResult pressure_composition_derivative_result_cpp(
             throw ValueError("Non-finite native pressure-composition derivative.");
         }
     }
-    result.supported = true;
     result.derivative_backend = "autodiff_composition";
+#endif
+    result.supported = true;
     return result;
 }
 
@@ -342,6 +413,10 @@ PressureDensityDerivativeResult pressure_density_derivative_result_cpp(
         return result;
     }
 
+#ifdef EPCSAFT_HAS_CPPAD
+    result.dpdrho = pressure_density_jacobian_cppad_cpp(t, rho, x, cppargs);
+    result.derivative_backend = "cppad_density";
+#else
     const int ncomp = static_cast<int>(x.size());
     vector<AutoDual> x_const(static_cast<size_t>(ncomp), make_autodiff_scalar(0.0, 0.0));
     for (int i = 0; i < ncomp; ++i) {
@@ -349,10 +424,11 @@ PressureDensityDerivativeResult pressure_density_derivative_result_cpp(
     }
     AutoDual pressure = pressure_scalar_supported_cpp(t, make_autodiff_scalar(rho, 1.0), x_const, cppargs);
     result.dpdrho = scalar_derivative(pressure);
+    result.derivative_backend = "autodiff_density";
+#endif
     if (!std::isfinite(result.dpdrho)) {
         throw ValueError("Non-finite native pressure-density derivative.");
     }
     result.supported = true;
-    result.derivative_backend = "autodiff_density";
     return result;
 }

@@ -1,4 +1,5 @@
 #include "epcsaft_core_internal.h"
+#include "autodiff/ad_scalar.h"
 
 #include <algorithm>
 #include <array>
@@ -47,6 +48,13 @@ double scalar_value(const Eigen::AutoDiffScalar<DerType> &x) {
     return x.value();
 }
 
+#ifdef EPCSAFT_HAS_CPPAD
+template <typename Base>
+double scalar_value(const CppAD::AD<Base> &x) {
+    return CppAD::Value(x);
+}
+#endif
+
 double scalar_log(double x) {
     return std::log(x);
 }
@@ -56,6 +64,13 @@ auto scalar_log(const Eigen::AutoDiffScalar<DerType> &x) -> decltype(log(x)) {
     using std::log;
     return log(x);
 }
+
+#ifdef EPCSAFT_HAS_CPPAD
+template <typename Base>
+CppAD::AD<Base> scalar_log(const CppAD::AD<Base> &x) {
+    return CppAD::log(x);
+}
+#endif
 
 double scalar_exp(double x) {
     return std::exp(x);
@@ -67,6 +82,13 @@ auto scalar_exp(const Eigen::AutoDiffScalar<DerType> &x) -> decltype(exp(x)) {
     return exp(x);
 }
 
+#ifdef EPCSAFT_HAS_CPPAD
+template <typename Base>
+CppAD::AD<Base> scalar_exp(const CppAD::AD<Base> &x) {
+    return CppAD::exp(x);
+}
+#endif
+
 double scalar_pow(double x, int exponent) {
     return std::pow(x, exponent);
 }
@@ -77,6 +99,13 @@ auto scalar_pow(const Eigen::AutoDiffScalar<DerType> &x, int exponent) -> declty
     return pow(x, static_cast<double>(exponent));
 }
 
+#ifdef EPCSAFT_HAS_CPPAD
+template <typename Base>
+CppAD::AD<Base> scalar_pow(const CppAD::AD<Base> &x, int exponent) {
+    return CppAD::pow(x, static_cast<double>(exponent));
+}
+#endif
+
 double scalar_pow(double x, double exponent) {
     return std::pow(x, exponent);
 }
@@ -86,6 +115,13 @@ auto scalar_pow(const Eigen::AutoDiffScalar<DerType> &x, double exponent) -> dec
     using std::pow;
     return pow(x, exponent);
 }
+
+#ifdef EPCSAFT_HAS_CPPAD
+template <typename Base>
+CppAD::AD<Base> scalar_pow(const CppAD::AD<Base> &x, double exponent) {
+    return CppAD::pow(x, exponent);
+}
+#endif
 
 template <typename Scalar>
 Scalar regression_scalar_constant(double value) {
@@ -295,15 +331,32 @@ PureNeutralStateScalar<Scalar> pure_neutral_state_scalar_cpp(
 }
 
 PureNeutralFusedState evaluate_fused_state_cpp(double t, double rho, const vector<double> &x) {
+    PureNeutralFusedState out;
+#ifdef EPCSAFT_HAS_CPPAD
+    using epcsaft::autodiff::CppADScalar;
+    std::vector<CppADScalar> independent(1);
+    independent[0] = rho;
+    CppAD::Independent(independent);
+    auto rho_state = pure_neutral_state_scalar_cpp<CppADScalar>(t, independent[0], x[0], x[1], x[2]);
+    std::vector<CppADScalar> dependent(2);
+    dependent[0] = rho_state.pressure;
+    dependent[1] = rho_state.lnfug;
+    CppAD::ADFun<double> tape(independent, dependent);
+    const std::vector<double> jacobian = tape.Jacobian(std::vector<double>{rho});
+    out.pressure = scalar_value(rho_state.pressure);
+    out.lnfug = scalar_value(rho_state.lnfug);
+    out.Z = scalar_value(rho_state.Z);
+    out.dpdrho = jacobian[0];
+    out.dlnfug_drho = jacobian[1];
+#else
     AutoDual rho_dual = make_autodiff_scalar(rho, 1.0);
     auto rho_state = pure_neutral_state_scalar_cpp<AutoDual>(t, rho_dual, x[0], x[1], x[2]);
-
-    PureNeutralFusedState out;
     out.pressure = scalar_value(rho_state.pressure);
     out.lnfug = scalar_value(rho_state.lnfug);
     out.Z = scalar_value(rho_state.Z);
     out.dpdrho = scalar_derivative_at(rho_state.pressure, 0);
     out.dlnfug_drho = scalar_derivative_at(rho_state.lnfug, 0);
+#endif
     auto theta_state = pure_neutral_state_scalar_cpp<ParamDual>(
         t,
         make_param_dual(rho),

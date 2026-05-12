@@ -9,6 +9,7 @@ import pytest
 from epcsaft._core import NativeValueError
 
 from epcsaft import InputError, SolutionError, ePCSAFTMixture
+from epcsaft.runtime import capabilities
 from tests.helpers.native_cases import _ionic_state, _neutral_state
 
 
@@ -298,13 +299,14 @@ def test_composition_derivative_matches_constrained_composition_finite_differenc
 
 
 def test_pressure_composition_derivative_matches_finite_difference_for_supported_states() -> None:
+    expected_backend = "cppad_composition" if capabilities()["native_dependencies"]["cppad"]["enabled"] else "autodiff_composition"
     for state_factory in (_neutral_state, _nonassociating_ionic_state):
         mix, _, _, density, temperature, composition = state_factory()
         state = mix.state(T=temperature, x=composition, rho=density)
         derivative = state.pressure_composition_derivative()
 
         assert derivative["supported"] is True
-        assert derivative["derivative_backend"] == "autodiff_composition"
+        assert derivative["derivative_backend"] == expected_backend
         assert derivative["finite_difference_fallback_used"] is False
 
         for i, j in ((0, 1), (1, 2), (composition.size - 2, composition.size - 1)):
@@ -374,13 +376,14 @@ def test_lnfug_composition_derivative_reports_association_gate() -> None:
 
 
 def test_pressure_density_derivative_matches_finite_difference_for_supported_states() -> None:
+    expected_backend = "cppad_density" if capabilities()["native_dependencies"]["cppad"]["enabled"] else "autodiff_density"
     for state_factory in (_neutral_state, _nonassociating_ionic_state):
         mix, _, _, density, temperature, composition = state_factory()
         state = mix.state(T=temperature, x=composition, rho=density)
         derivative = state.pressure_density_derivative()
 
         assert derivative["supported"] is True
-        assert derivative["derivative_backend"] == "autodiff_density"
+        assert derivative["derivative_backend"] == expected_backend
         assert derivative["finite_difference_fallback_used"] is False
 
         delta_rho = max(1.0e-6, 1.0e-7 * abs(float(density)))
