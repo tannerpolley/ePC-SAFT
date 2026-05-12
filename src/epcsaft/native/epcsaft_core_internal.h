@@ -289,6 +289,7 @@ ScalarContributionTerms residual_helmholtz_result_cpp(double t, double rho, vect
 CompositionContributionResult composition_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 FugacityContributionResult fugacity_coefficient_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+BornSSMDSDerivativeResult born_ssmds_liquid_derivatives_cpp(double t, double rho, int phase, vector<double> x, const add_args &cppargs);
 ScalarContributionTerms temperature_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 ActivityCoefficientNative activity_coefficient_values_cpp(
     ePCSAFTMixtureNative* mixture,

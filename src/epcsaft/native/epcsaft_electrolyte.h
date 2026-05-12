@@ -127,6 +127,21 @@ struct FugacityContributionResult {
     CompositionContributionResult composition;
 };
 
+struct BornSSMDSDerivativeResult {
+    bool supported = false;
+    std::string backend = "backend_unavailable";
+    std::string message;
+    vector<double> a_born_d_d_born;
+    vector<double> a_born_d_f_solv;
+    vector<double> mu_res_d_d_born_row_major;
+    vector<double> mu_res_d_f_solv_row_major;
+    vector<double> lnfug_d_d_born_row_major;
+    vector<double> lnfug_d_f_solv_row_major;
+    vector<double> lngamma_d_d_born_row_major;
+    vector<double> lngamma_d_f_solv_row_major;
+    int ncomp = 0;
+};
+
 struct ReferenceStateKey {
     double t = 0.0;
     double p = 0.0;
@@ -344,6 +359,7 @@ public:
     vector<double> ln_fugacity_coefficient();
     vector<double> fugacity_coefficient();
     FugacityContributionResult fugacity_coefficient_result();
+    BornSSMDSDerivativeResult born_ssmds_liquid_derivatives();
     vector<double> relative_permittivity();
     double osmotic_coefficient();
     vector<double> solvation_free_energy();

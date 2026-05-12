@@ -181,7 +181,14 @@ def capabilities() -> dict[str, object]:
                 **cppad,
                 "scope": "package-wide scalar substrate; production EOS derivative routing remains explicit per API",
                 "production_eos_coverage": False,
-            }
+            },
+            "ssmds_born_derivatives": {
+                "available": True,
+                "backend": "analytic",
+                "phase_scope": "liquid_electrolyte_only",
+                "parameters": ["d_born", "f_solv"],
+                "vapor_support": False,
+            },
         },
         "optimizers": {
             "ipopt": {

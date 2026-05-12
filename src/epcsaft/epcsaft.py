@@ -1265,6 +1265,38 @@ class ePCSAFTState:
             "terms": _public_contribution_terms(payload["terms"]),
         }
 
+    def born_ssmds_liquid_derivatives(self):
+        """Return analytic liquid-electrolyte SSM+DS Born parameter derivatives."""
+        payload = dict(self._native.born_ssmds_liquid_derivatives())
+        ncomp = int(payload.get("ncomp", self._x.size))
+        for key in (
+            "a_born_d_d_born",
+            "a_born_d_f_solv",
+            "mu_res_d_d_born_row_major",
+            "mu_res_d_f_solv_row_major",
+            "lnfug_d_d_born_row_major",
+            "lnfug_d_f_solv_row_major",
+            "lngamma_d_d_born_row_major",
+            "lngamma_d_f_solv_row_major",
+        ):
+            payload[key] = np.asarray(payload[key], dtype=float)
+        for key in (
+            "mu_res_d_d_born",
+            "mu_res_d_f_solv",
+            "lnfug_d_d_born",
+            "lnfug_d_f_solv",
+            "lngamma_d_d_born",
+            "lngamma_d_f_solv",
+        ):
+            row_major_key = key + "_row_major"
+            payload[key] = np.asarray(payload[row_major_key], dtype=float).reshape((ncomp, ncomp))
+        payload["parameter_order"] = tuple(self._mixture.species)
+        payload["component_order"] = tuple(self._mixture.species)
+        payload["phase_scope"] = "liquid_electrolyte_only"
+        payload["parameters"] = ("d_born", "f_solv")
+        payload["vapor_support"] = False
+        return payload
+
     def relative_permittivity(self):
         """Return the dielectric model evaluation for the current state."""
         flat = vector_to_array(self._native.relative_permittivity())
