@@ -57,7 +57,7 @@ agents:
   judge: installed
   worker: installed
 
-active_task: T055
+active_task: T056
 
 tasks:
   - id: T001
@@ -2412,7 +2412,7 @@ tasks:
   - id: T055
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Audit the next remaining derivative gap after the runtime/helper CppAD migration and choose the next honest tranche between generic reactive-speciation `k_ij`/`l_ij`/`k_hb_ij` sensitivities and reactive-electrolyte bubble differentiation."
     inputs:
@@ -2430,6 +2430,34 @@ tasks:
       - "A concrete statement of which derivative surface is now the next blocker."
       - "A narrow recommendation for the next implementation tranche."
       - "Any required validation slice for that tranche."
+    receipt: "notes/T055-bubble-vs-generic-binary-audit.md"
+
+  - id: T056
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: xhigh
+    objective: "Implement the first honest reactive-electrolyte bubble derivative tranche for issue #53 by locking the supported unknown/residual layout and moving one narrow native bubble regression slice onto real CppAD/implicit derivatives without finite-difference production fallback."
+    allowed_files:
+      - "src/epcsaft/native/regression/thermo_regression.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_core_internal.h"
+      - "src/epcsaft/native/epcsaft_autodiff_internal.h"
+      - "src/epcsaft/native/contributions/**"
+      - "src/epcsaft/runtime.py"
+      - "tests/native/test_cppad_bubble_derivatives.py"
+      - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      - "tests/api/test_runtime.py"
+      - "docs/goals/issue-53-native-regression-production/notes/**"
+      - "docs/goals/issue-53-native-regression-production/state.yaml"
+    verify:
+      - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py tests/native/test_cppad_bubble_derivatives.py tests/native/test_native_ceres_thermodynamic_regression.py tests/api/test_runtime.py -q"
+    stop_if:
+      - "A real bubble derivative slice requires a broader equilibrium reformulation than issue #53 can safely absorb in this branch."
+      - "The only viable bubble path would use production finite differences or fake capability reporting."
+      - "The tranche cannot isolate a narrow supported bubble unknown/residual layout."
     receipt: null
 
   - id: T023
