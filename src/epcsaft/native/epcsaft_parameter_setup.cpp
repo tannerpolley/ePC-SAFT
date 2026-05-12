@@ -92,7 +92,6 @@ Scalar mixed_dielectric_constant_scalar_cpp(const vector<Scalar> &x, const add_a
     Scalar c_eff = c_num / x_org;
     return eps_org + ((a_eff * xw_sf + b_eff) * xw_sf + c_eff) * xw_sf;
 }
-
 template <typename Scalar>
 // EqID: mw_bar
 // EqID: mw_solvent_bar
@@ -246,26 +245,26 @@ void dielectric_inputs_valid_cpp(const vector<double> &x, const add_args &cpparg
     if (cppargs.dielc.size() != static_cast<size_t>(ncomp)) {
         throw ValueError("params['dielc'] must be an array with length equal to ncomp.");
     }
-    if (cppargs.dielc_diff_mode < 0 || cppargs.dielc_diff_mode > 3) {
-        throw ValueError("Unknown dielc_diff_mode. Supported values are 0 (analytic), 1 (finite-diff), 2 (autodiff), and 3 (auto).");
+    if (cppargs.dielc_diff_mode < 0 || cppargs.dielc_diff_mode > 3 || cppargs.dielc_diff_mode == 1) {
+        throw ValueError("Unknown dielc_diff_mode. Supported values are 0 (analytic), 2 (autodiff), and 3 (auto).");
     }
-    if (cppargs.hc_dadx_diff_mode < 0 || cppargs.hc_dadx_diff_mode > 3) {
-        throw ValueError("Unknown hc_model dadx_differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3).");
+    if (cppargs.hc_dadx_diff_mode < 0 || cppargs.hc_dadx_diff_mode > 3 || cppargs.hc_dadx_diff_mode == 1) {
+        throw ValueError("Unknown hc_model dadx_differential_mode. Supported values are analytic/autodiff/auto (0/2/3).");
     }
-    if (cppargs.disp_dadx_diff_mode < 0 || cppargs.disp_dadx_diff_mode > 3) {
-        throw ValueError("Unknown disp_model dadx_differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3).");
+    if (cppargs.disp_dadx_diff_mode < 0 || cppargs.disp_dadx_diff_mode > 3 || cppargs.disp_dadx_diff_mode == 1) {
+        throw ValueError("Unknown disp_model dadx_differential_mode. Supported values are analytic/autodiff/auto (0/2/3).");
     }
-    if (cppargs.assoc_dadx_diff_mode < 0 || cppargs.assoc_dadx_diff_mode > 3) {
-        throw ValueError("Unknown assoc_model dadx_differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3).");
+    if (cppargs.assoc_dadx_diff_mode < 0 || cppargs.assoc_dadx_diff_mode > 3 || cppargs.assoc_dadx_diff_mode == 1) {
+        throw ValueError("Unknown assoc_model dadx_differential_mode. Supported values are analytic/autodiff/auto (0/2/3).");
     }
-    if (cppargs.born_diff_mode < 0 || cppargs.born_diff_mode > 5) {
-        throw ValueError("Unknown born_diff_mode. Supported values are 0 (analytic), 1 (finite-diff), 2 (Eq.133-style), 3 (no dielectric-concentration term), 4 (autodiff), and 5 (auto).");
+    if (cppargs.born_diff_mode < 0 || cppargs.born_diff_mode > 5 || cppargs.born_diff_mode == 1) {
+        throw ValueError("Unknown born_diff_mode. Supported values are 0 (analytic), 2 (Eq.133-style), 3 (no dielectric-concentration term), 4 (autodiff), and 5 (auto).");
     }
     if (cppargs.d_ion_mode < 0 || cppargs.d_ion_mode > 2) {
         throw ValueError("Unknown d_ion_mode. Supported values are 0, 1, 2.");
     }
-    if (cppargs.mu_DH_diff_mode < 0 || cppargs.mu_DH_diff_mode > 3) {
-        throw ValueError("Unknown mu_DH differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3).");
+    if (cppargs.mu_DH_diff_mode < 0 || cppargs.mu_DH_diff_mode > 3 || cppargs.mu_DH_diff_mode == 1) {
+        throw ValueError("Unknown mu_DH differential_mode. Supported values are analytic/autodiff/auto (0/2/3).");
     }
     if (cppargs.mu_DH_comp_dep_rel_perm != 0 && cppargs.mu_DH_comp_dep_rel_perm != 1) {
         throw ValueError("mu_DH comp_dep_rel_perm must be 0 or 1.");
@@ -282,8 +281,8 @@ void dielectric_inputs_valid_cpp(const vector<double> &x, const add_args &cpparg
     if (cppargs.born_bulk_mode != 0 && cppargs.born_bulk_mode != 1) {
         throw ValueError("Unknown born bulk_mode. Supported values are mix/solvent (0/1).");
     }
-    if (cppargs.mu_born_diff_mode < 0 || cppargs.mu_born_diff_mode > 3) {
-        throw ValueError("Unknown mu_born differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3).");
+    if (cppargs.mu_born_diff_mode < 0 || cppargs.mu_born_diff_mode > 3 || cppargs.mu_born_diff_mode == 1) {
+        throw ValueError("Unknown mu_born differential_mode. Supported values are analytic/autodiff/auto (0/2/3).");
     }
     if (cppargs.born_eps_mode != 0 && cppargs.born_eps_mode != 1) {
         throw ValueError("Unknown born_eps_mode. Supported values are 0 (eps_r,mix) and 1 (eps_r,solvent).");
@@ -648,7 +647,7 @@ vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x,
         return deps_dx;
     }
     if (rule == 8) {
-        return dielectric_derivative_rule_fd_cpp(rule, x, cppargs);
+        throw ValueError("backend_unavailable: analytic dielectric derivative is unavailable for dielc_rule=8.");
     }
     if (rule == 2) {
         double mw_bar = 0.0;
@@ -762,30 +761,6 @@ vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x,
     throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7, 8, 9.");
 }
 
-vector<double> dielectric_derivative_rule_fd_cpp(int rule, const vector<double> &x, const add_args &cppargs) {
-    int ncomp = static_cast<int>(x.size());
-    vector<double> deps_dx(ncomp, 0.0);
-    double f0 = dielectric_constant_rule_cpp(rule, x, cppargs);
-    for (int i = 0; i < ncomp; i++) {
-        double h = 1e-6 * std::max(1.0, std::abs(x[i]));
-        vector<double> xp = x;
-        xp[i] += h;
-        double fp = dielectric_constant_rule_cpp(rule, xp, cppargs);
-        if (x[i] - h >= 0.0) {
-            vector<double> xm = x;
-            xm[i] -= h;
-            double fm = dielectric_constant_rule_cpp(rule, xm, cppargs);
-            deps_dx[i] = (fp - fm) / (2.0 * h);
-        } else {
-            deps_dx[i] = (fp - f0) / h;
-        }
-        if (!std::isfinite(deps_dx[i])) {
-            throw ValueError("Non-finite dielectric finite-difference derivative.");
-        }
-    }
-    return deps_dx;
-}
-
 vector<double> dielectric_derivative_rule_ad_cpp(int rule, const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     vector<double> deps_dx(ncomp, 0.0);
@@ -811,7 +786,7 @@ DielectricState dielectric_state_cpp(const vector<double> &x, const add_args &cp
     } else if (cppargs.dielc_diff_mode == 2 || cppargs.dielc_diff_mode == 3) {
         state.deps_dx = dielectric_derivative_rule_ad_cpp(cppargs.dielc_rule, x, cppargs);
     } else {
-        state.deps_dx = dielectric_derivative_rule_fd_cpp(cppargs.dielc_rule, x, cppargs);
+        throw ValueError("backend_unavailable: requested dielectric derivative backend is unavailable.");
     }
     return state;
 }
@@ -885,29 +860,6 @@ vector<double> contribution_dadx_autodiff_cpp(AresContributionKind kind, double 
         dadx[i] = scalar_derivative(value);
         if (!std::isfinite(dadx[i])) {
             throw ValueError("Non-finite contribution autodiff derivative.");
-        }
-    }
-    return dadx;
-}
-
-vector<double> contribution_dadx_fd_cpp(AresContributionKind kind, double t, double rho, const vector<double> &x, const add_args &cppargs, double a0) {
-    int ncomp = static_cast<int>(x.size());
-    vector<double> dadx(ncomp, 0.0);
-    for (int i = 0; i < ncomp; ++i) {
-        double h = 1e-6 * std::max(1.0, std::abs(x[i]));
-        vector<double> xp = x;
-        xp[i] += h;
-        double fp = ares_contribution_value_cpp(ares_contributions_cpp(t, rho, xp, cppargs), kind);
-        if (x[i] - h >= 0.0) {
-            vector<double> xm = x;
-            xm[i] -= h;
-            double fm = ares_contribution_value_cpp(ares_contributions_cpp(t, rho, xm, cppargs), kind);
-            dadx[i] = (fp - fm) / (2.0 * h);
-        } else {
-            dadx[i] = (fp - a0) / h;
-        }
-        if (!std::isfinite(dadx[i])) {
-            throw ValueError("Non-finite contribution finite-difference derivative.");
         }
     }
     return dadx;

@@ -187,11 +187,3 @@ vector<double> contribution_dadx_autodiff_cpp(
     const vector<double> &x,
     const add_args &cppargs
 );
-vector<double> contribution_dadx_fd_cpp(
-    AresContributionKind kind,
-    double t,
-    double rho,
-    const vector<double> &x,
-    const add_args &cppargs,
-    double a0
-);

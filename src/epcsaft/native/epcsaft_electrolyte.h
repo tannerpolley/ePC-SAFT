@@ -112,8 +112,8 @@ struct CompositionContributionResult {
     ScalarContributionTerms z_raw;
     ScalarContributionTerms z;
     std::map<std::string, std::string> derivative_backend;
-    bool finite_difference_fallback_used = false;
-    std::string finite_difference_fallback_reason;
+    bool derivative_available = true;
+    std::string backend_unavailable_reason;
 };
 
 struct ResidualChemicalPotentialResult {
@@ -276,10 +276,10 @@ struct GenericRegressionDebugResult {
     int jacobian_rows = 0;
     int jacobian_cols = 0;
     bool jacobian_available = true;
-    std::string jacobian_backend = "finite_difference";
+    std::string jacobian_backend = "backend_unavailable";
     bool jacobian_fallback_used = true;
-    std::string jacobian_fallback_reason = "Generic regression autodiff Jacobian is not implemented for all residual state calls yet.";
-    int finite_difference_fallback_count = 0;
+    std::string jacobian_fallback_reason = "Generic regression sensitivities are not implemented for all residual state calls yet.";
+    std::string backend_unavailable_reason = "backend_unavailable";
     vector<double> hessian_row_major;
     int hessian_rows = 0;
     int hessian_cols = 0;
@@ -303,10 +303,10 @@ struct GenericRegressionResult {
     int iterations = 0;
     int starts_tried = 0;
     bool jacobian_available = true;
-    std::string jacobian_backend = "finite_difference";
+    std::string jacobian_backend = "backend_unavailable";
     bool jacobian_fallback_used = true;
-    std::string jacobian_fallback_reason = "Generic regression autodiff Jacobian is not implemented for all residual state calls yet.";
-    int finite_difference_fallback_count = 0;
+    std::string jacobian_fallback_reason = "Generic regression sensitivities are not implemented for all residual state calls yet.";
+    std::string backend_unavailable_reason = "backend_unavailable";
     bool hessian_available = false;
     std::string hessian_backend = "not_implemented";
     bool hessian_fallback_used = false;

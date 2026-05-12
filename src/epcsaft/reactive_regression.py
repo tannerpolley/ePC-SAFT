@@ -509,7 +509,7 @@ class ReactiveRegressionObjectiveResult:
 
 @dataclass(frozen=True, slots=True)
 class ReactiveRegressionJacobianResult:
-    """Finite-difference Jacobian result."""
+    """Derivative payload for reactive regression paths with implemented sensitivities."""
 
     jacobian: np.ndarray
     gradient: np.ndarray
@@ -857,73 +857,14 @@ class ReactiveElectrolyteRegressionContext:
             },
         )
 
-    def finite_difference_jacobian(
+    def evaluate_derivatives(
         self,
         parameter_map: Mapping[str, float],
         *,
         parameters: Sequence[str],
-        mode: str = "central",
-        relative_step: float = 1.0e-4,
-        absolute_step: float | None = None,
-        log_parameters: bool = True,
     ) -> ReactiveRegressionJacobianResult:
-        mode_token = str(mode).strip().lower()
-        if mode_token not in {"central", "forward"}:
-            raise InputError("finite_difference_jacobian mode must be 'central' or 'forward'.")
-        rel_step = _positive(relative_step, "relative_step")
-        base_map = {str(k): float(v) for k, v in parameter_map.items()}
-        base = self.evaluate_objective(base_map)
-        labels = tuple(str(name) for name in parameters)
-        jac = np.zeros((base.residuals.size, len(labels)), dtype=float)
-        failures: dict[str, str] = {}
-
-        for col, label in enumerate(labels):
-            base_value = float(base_map[label])
-            step = float(absolute_step) if absolute_step is not None else rel_step * max(abs(base_value), 1.0)
-            if log_parameters and base_value > 0.0:
-                plus_map = dict(base_map)
-                plus_map[label] = base_value * math.exp(step)
-                if mode_token == "central":
-                    minus_map = dict(base_map)
-                    minus_map[label] = base_value * math.exp(-step)
-                    plus = self.evaluate_objective(plus_map)
-                    minus = self.evaluate_objective(minus_map)
-                    jac[:, col] = (plus.residuals - minus.residuals) / (plus_map[label] - minus_map[label])
-                else:
-                    plus = self.evaluate_objective(plus_map)
-                    jac[:, col] = (plus.residuals - base.residuals) / (plus_map[label] - base_value)
-                continue
-            plus_map = dict(base_map)
-            plus_map[label] = base_value + step
-            try:
-                plus = self.evaluate_objective(plus_map)
-                if mode_token == "central":
-                    minus_map = dict(base_map)
-                    minus_map[label] = base_value - step
-                    minus = self.evaluate_objective(minus_map)
-                    jac[:, col] = (plus.residuals - minus.residuals) / (2.0 * step)
-                else:
-                    jac[:, col] = (plus.residuals - base.residuals) / step
-            except Exception as exc:
-                failures[label] = f"{type(exc).__name__}: {exc}"
-                jac[:, col] = np.nan
-
-        gradient = jac.T @ base.residuals
-        return ReactiveRegressionJacobianResult(
-            jacobian=jac,
-            gradient=gradient,
-            residuals=base.residuals,
-            residual_names=base.residual_names,
-            residual_row_map=base.residual_row_map,
-            parameter_names=labels,
-            diagnostics={
-                "mode": mode_token,
-                "relative_step": rel_step,
-                "absolute_step": absolute_step,
-                "log_parameters": bool(log_parameters),
-                "failed_parameters": failures,
-            },
-        )
+        _ = parameter_map, parameters
+        raise InputError("backend_unavailable: reactive-regression sensitivities are not implemented.")
 
     def _resolve_row_seed(
         self,
@@ -1010,10 +951,6 @@ def fit_reactive_electrolyte_parameters(
     max_iterations: int = 6,
     tolerance: float = 1.0e-6,
     damping: float = 1.0,
-    jacobian_mode: str = "central",
-    relative_step: float = 1.0e-4,
-    absolute_step: float | None = None,
-    log_parameters: bool = True,
 ) -> ReactiveRegressionFitResult:
     return _fit_reactive_parameters_impl(
         batch_or_context,
@@ -1023,10 +960,6 @@ def fit_reactive_electrolyte_parameters(
         max_iterations=max_iterations,
         tolerance=tolerance,
         damping=damping,
-        jacobian_mode=jacobian_mode,
-        relative_step=relative_step,
-        absolute_step=absolute_step,
-        log_parameters=log_parameters,
     )
 
 
@@ -1229,10 +1162,6 @@ def _fit_reactive_parameters_impl(
     max_iterations: int = 6,
     tolerance: float = 1.0e-6,
     damping: float = 1.0,
-    jacobian_mode: str = "central",
-    relative_step: float = 1.0e-4,
-    absolute_step: float | None = None,
-    log_parameters: bool = True,
 ) -> ReactiveRegressionFitResult:
     if isinstance(batch_or_context, ReactiveElectrolyteRegressionContext):
         context = batch_or_context
@@ -1281,81 +1210,10 @@ def _fit_reactive_parameters_impl(
     trajectory: list[dict[str, Any]] = []
     objective_result = context.evaluate_objective(current)
     objective_initial = float(objective_result.objective)
-    converged = False
-    message = "maximum iterations reached"
-    termination_reason = "max_iterations"
+    message = "backend_unavailable: reactive-regression sensitivities are not implemented."
+    termination_reason = "backend_unavailable"
     final_jacobian: ReactiveRegressionJacobianResult | None = None
     last_step_norm: float | None = None
-
-    for iteration in range(1, max_iterations + 1):
-        jacobian = context.finite_difference_jacobian(
-            current,
-            parameters=parameter_names,
-            mode=jacobian_mode,
-            relative_step=relative_step,
-            absolute_step=absolute_step,
-            log_parameters=log_parameters,
-        )
-        final_jacobian = jacobian
-        jtj = jacobian.jacobian.T @ jacobian.jacobian
-        jtr = jacobian.jacobian.T @ objective_result.residuals
-        regularization = 1.0e-8 * np.eye(jtj.shape[0], dtype=float)
-        try:
-            step = -np.linalg.solve(jtj + regularization, jtr)
-        except np.linalg.LinAlgError:
-            step = -np.linalg.pinv(jtj + regularization) @ jtr
-        step *= float(damping)
-        last_step_norm = float(np.linalg.norm(step))
-        trial = dict(current)
-        for idx, name in enumerate(parameter_names):
-            trial[name] = float(current[name] + step[idx])
-            lo = lower.get(name)
-            hi = upper.get(name)
-            if lo is not None:
-                trial[name] = max(trial[name], lo)
-            if hi is not None:
-                trial[name] = min(trial[name], hi)
-        trial_result = context.evaluate_objective(trial)
-        accepted = trial_result.objective <= objective_result.objective
-        if not accepted:
-            line_scale = 0.5
-            for _ in range(6):
-                retry = {
-                    name: float(current[name] + line_scale * (trial[name] - current[name])) for name in parameter_names
-                }
-                retry_result = context.evaluate_objective(retry)
-                if retry_result.objective <= objective_result.objective:
-                    trial = retry
-                    trial_result = retry_result
-                    accepted = True
-                    break
-                line_scale *= 0.5
-        trajectory.append(
-            {
-                "iteration": iteration,
-                "objective": float(objective_result.objective),
-                "accepted": bool(accepted),
-                "step_norm": last_step_norm,
-            }
-        )
-        if accepted:
-            delta = max(abs(trial[name] - current[name]) for name in parameter_names)
-            current = trial
-            objective_result = trial_result
-            if delta <= tolerance:
-                converged = True
-                message = "parameter step tolerance reached"
-                termination_reason = "parameter_step_tolerance"
-                break
-            if last_step_norm <= tolerance:
-                converged = True
-                message = "gauss-newton step norm reached tolerance"
-                termination_reason = "step_norm_tolerance"
-                break
-        else:
-            message = "line search failed to improve objective"
-            termination_reason = "line_search_failed"
-            break
 
     covariance_available = False
     covariance_matrix: np.ndarray | None = None
@@ -1387,18 +1245,13 @@ def _fit_reactive_parameters_impl(
         for name in parameter_names
     }
     gradient_norm = None if final_jacobian is None else float(np.linalg.norm(final_jacobian.gradient))
-    success = bool(converged and objective_result.batch_result.failure_count == 0)
-    if success:
-        status = "converged"
-    elif objective_result.batch_result.failure_count:
+    success = False
+    if objective_result.batch_result.failure_count:
         status = "failed_rows"
-        if converged:
-            termination_reason = "failed_rows"
-            message = "fit converged with failed objective rows"
     elif termination_reason == "line_search_failed":
         status = "line_search_failed"
     else:
-        status = "max_iterations"
+        status = "backend_unavailable"
     return ReactiveRegressionFitResult(
         success=success,
         message=message,
@@ -1422,6 +1275,8 @@ def _fit_reactive_parameters_impl(
             "trajectory": trajectory,
             "jacobian": None if final_jacobian is None else final_jacobian.to_dict(),
             "covariance": covariance_diagnostics,
+            "derivative_status": "backend_unavailable",
+            "backend_unavailable_reason": message,
         },
     )
 

@@ -85,7 +85,7 @@ namespace {
 
 std::string contribution_backend_name(int mode) {
     if (mode == 0) return "analytic";
-    if (mode == 1) return "finite_difference";
+    if (mode == 1) return "backend_unavailable";
     if (mode == 2) return "autodiff";
     if (mode == 3 || mode == 5) {
         return "analytic";
@@ -238,6 +238,13 @@ CompositionContributionResult composition_derivative_residual_helmholtz_result_c
     }
     result.dadx.total = total;
     result.derivative_backend = composition_derivative_backend_map(cppargs);
-    result.finite_difference_fallback_used = false;
+    result.derivative_available = true;
+    for (const auto& item : result.derivative_backend) {
+        if (item.second == "backend_unavailable") {
+            result.derivative_available = false;
+            result.backend_unavailable_reason = "backend_unavailable";
+            break;
+        }
+    }
     return result;
 }

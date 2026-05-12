@@ -12,7 +12,6 @@ struct ChemicalEquilibriumOptionsNative {
     double tolerance = 1.0e-8;
     double damping = 0.5;
     double min_mole_fraction = 1.0e-14;
-    double finite_difference_step = 1.0e-6;
     std::string jacobian_backend = "auto";
     std::string phase = "liq";
     std::string activity_output = "auto";

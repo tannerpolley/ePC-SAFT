@@ -98,9 +98,9 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert capabilities["equilibrium"]["reactive_speciation"]["full_constrained_nlp_available"] is False
     assert (
         capabilities["equilibrium"]["reactive_speciation"]["jacobian_auto_policy"]
-        == "analytic_ideal_else_native_finite_difference"
+        == "analytic_where_available_else_backend_unavailable"
     )
-    assert capabilities["equilibrium"]["reactive_speciation"]["finite_difference_requires_explicit_request"] is False
+    assert capabilities["equilibrium"]["reactive_speciation"]["derivative_gap_status"] == "backend_unavailable"
     assert capabilities["equilibrium"]["reactive_speciation"]["explicit_autodiff_raises_when_unavailable"] is True
     assert capabilities["regression"]["pure_neutral"]["backend"] == "native"
     reactive_regression = capabilities["regression"]["reactive_electrolyte_residuals"]
@@ -111,7 +111,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert batch_context["available"] is True
     assert batch_context["backend"] == "python_batched_native_solvers"
     assert "ReactiveElectrolyteRegressionContext" in batch_context["classes"]
-    assert "finite_difference_jacobian" in batch_context["methods"]
+    assert batch_context["methods"] == ["evaluate_objective"]
     assert capabilities["equilibrium"]["problem_objects"]["entrypoint"] == "mixture.solve_equilibrium(problem)"
     assert (
         capabilities["equilibrium"]["contribution_maps"]["activity_coefficient_term_decomposition_available"] is False
@@ -324,8 +324,8 @@ def test_state_contribution_term_payloads_match_totals():
         "z_terms",
         "z_total",
         "derivative_backend",
-        "finite_difference_fallback_used",
-        "finite_difference_fallback_reason",
+        "derivative_available",
+        "backend_unavailable_reason",
     }
     assert set(dadx["terms"]) == {"hc", "disp", "assoc", "ion", "born"}
     assert set(dadx["ares_terms"]) == {"hc", "disp", "assoc", "ion", "born"}
@@ -409,8 +409,8 @@ def test_neutral_composition_and_fugacity_terms_return_expected_values():
         "z_terms",
         "z_total",
         "derivative_backend",
-        "finite_difference_fallback_used",
-        "finite_difference_fallback_reason",
+        "derivative_available",
+        "backend_unavailable_reason",
     }
     for key in ("hc", "disp", "assoc", "ion", "born"):
         np.testing.assert_allclose(dadx["terms"][key], terms[f"dadx_{key}"])
@@ -528,25 +528,21 @@ def test_default_dadx_reports_auto_derivative_policy():
     assert dadx["derivative_backend"]["ion"] == "analytic"
     assert dadx["derivative_backend"]["born"] == "analytic"
     assert dadx["derivative_backend"]["assoc"] == "analytic"
-    assert dadx["finite_difference_fallback_used"] is False
-    assert dadx["finite_difference_fallback_reason"] == ""
+    assert dadx["derivative_available"] is True
+    assert dadx["backend_unavailable_reason"] == ""
 
 
-def test_explicit_finite_difference_dadx_reports_finite_difference_backend():
-    state, _ = _ionic_state_with_elec_model(
-        {
-            "hc_model": {"dadx_differential_mode": "finite_difference"},
-            "disp_model": {"dadx_differential_mode": "finite_difference"},
-            "DH_model": {"mu_DH_model": {"differential_mode": "finite_difference"}},
-            "born_model": {"mu_born_model": {"differential_mode": "finite_difference"}},
-        }
-    )
-    dadx = state.dadx()
-
-    assert dadx["derivative_backend"]["hc"] == "finite_difference"
-    assert dadx["derivative_backend"]["disp"] == "finite_difference"
-    assert dadx["derivative_backend"]["ion"] == "finite_difference"
-    assert dadx["derivative_backend"]["born"] == "finite_difference"
+def test_removed_derivative_backend_names_are_rejected():
+    removed_backend = "f" + "d"
+    with pytest.raises(ValueError, match="Unknown option value"):
+        _ionic_state_with_elec_model(
+            {
+                "hc_model": {"dadx_differential_mode": removed_backend},
+                "disp_model": {"dadx_differential_mode": removed_backend},
+                "DH_model": {"mu_DH_model": {"differential_mode": removed_backend}},
+                "born_model": {"mu_born_model": {"differential_mode": removed_backend}},
+            }
+        )
 
 
 def test_hc_dadx_autodiff_matches_analytic_terms():

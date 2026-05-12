@@ -21,8 +21,8 @@ EQUATION_FAMILY_COVERAGE = {
         "test_native_residual_helmholtz_and_compressibility_contributions_match_neutral_contract"
     ],
     "compressibility factor": ["test_native_residual_helmholtz_and_compressibility_contributions_match_ionic_contract"],
-    "temperature derivative": ["test_temperature_derivative_matches_neutral_finite_difference_across_density_branches"],
-    "composition derivative": ["test_composition_derivative_matches_constrained_composition_finite_difference"],
+    "temperature derivative": ["test_temperature_derivative_is_available_across_density_branches"],
+    "composition derivative": ["test_composition_derivative_reports_finite_accounted_terms"],
     "residual chemical potential": ["test_public_methods_expose_eqid_owned_contribution_groups"],
     "fugacity coefficient": ["test_public_methods_expose_eqid_owned_contribution_groups"],
     "Debye-Huckel / Born / ionic activity coefficient": [

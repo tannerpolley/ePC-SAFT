@@ -168,7 +168,7 @@ py::dict generic_regression_result_to_dict(const GenericRegressionResult& result
     out["jacobian_backend"] = result.jacobian_backend;
     out["jacobian_fallback_used"] = result.jacobian_fallback_used;
     out["jacobian_fallback_reason"] = result.jacobian_fallback_reason;
-    out["finite_difference_fallback_count"] = result.finite_difference_fallback_count;
+    out["backend_unavailable_reason"] = result.backend_unavailable_reason;
     out["hessian_available"] = result.hessian_available;
     out["hessian_backend"] = result.hessian_backend;
     out["hessian_fallback_used"] = result.hessian_fallback_used;
@@ -192,7 +192,7 @@ py::dict generic_regression_debug_to_dict(const GenericRegressionDebugResult& re
     out["jacobian_backend"] = result.jacobian_backend;
     out["jacobian_fallback_used"] = result.jacobian_fallback_used;
     out["jacobian_fallback_reason"] = result.jacobian_fallback_reason;
-    out["finite_difference_fallback_count"] = result.finite_difference_fallback_count;
+    out["backend_unavailable_reason"] = result.backend_unavailable_reason;
     out["hessian_row_major"] = result.hessian_row_major;
     out["hessian_shape"] = py::make_tuple(result.hessian_rows, result.hessian_cols);
     out["hessian_available"] = result.hessian_available;
@@ -523,7 +523,7 @@ py::dict native_chemical_residual_evaluation_to_dict(const ChemicalResidualEvalu
     out["jacobian_shape"] = py::make_tuple(result.jacobian_rows, result.jacobian_cols);
     out["jacobian_backend"] = result.diagnostics_string.count("jacobian_backend")
         ? result.diagnostics_string.at("jacobian_backend")
-        : "finite_difference";
+        : "backend_unavailable";
     out["hessian_backend"] = result.diagnostics_string.count("hessian_backend")
         ? result.diagnostics_string.at("hessian_backend")
         : "gauss_newton";
@@ -555,7 +555,7 @@ py::dict native_electrolyte_lle_residual_evaluation_to_dict(const ElectrolyteLLE
     out["jacobian_shape"] = py::make_tuple(result.jacobian_rows, result.jacobian_cols);
     out["jacobian_backend"] = result.diagnostics_string.count("jacobian_backend")
         ? result.diagnostics_string.at("jacobian_backend")
-        : "finite_difference";
+        : "backend_unavailable";
     out["hessian_backend"] = result.diagnostics_string.count("hessian_backend")
         ? result.diagnostics_string.at("hessian_backend")
         : "gauss_newton";
@@ -730,9 +730,6 @@ ChemicalEquilibriumOptionsNative chemical_options_from_request(const py::dict& r
     }
     if (input.contains("min_mole_fraction")) {
         options.min_mole_fraction = input["min_mole_fraction"].cast<double>();
-    }
-    if (input.contains("finite_difference_step")) {
-        options.finite_difference_step = input["finite_difference_step"].cast<double>();
     }
     if (input.contains("jacobian_backend")) {
         options.jacobian_backend = input["jacobian_backend"].cast<std::string>();
@@ -1215,8 +1212,8 @@ PYBIND11_MODULE(_core, m) {
         .def_readonly("z_raw", &CompositionContributionResult::z_raw)
         .def_readonly("z", &CompositionContributionResult::z)
         .def_readonly("derivative_backend", &CompositionContributionResult::derivative_backend)
-        .def_readonly("finite_difference_fallback_used", &CompositionContributionResult::finite_difference_fallback_used)
-        .def_readonly("finite_difference_fallback_reason", &CompositionContributionResult::finite_difference_fallback_reason);
+        .def_readonly("derivative_available", &CompositionContributionResult::derivative_available)
+        .def_readonly("backend_unavailable_reason", &CompositionContributionResult::backend_unavailable_reason);
 
     py::class_<ResidualChemicalPotentialResult>(m, "ResidualChemicalPotentialResult")
         .def_readonly("mu", &ResidualChemicalPotentialResult::mu)

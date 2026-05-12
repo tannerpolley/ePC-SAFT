@@ -243,7 +243,7 @@ ContributionDadxResult dadx_born_cpp(const BornIntermediateState &born_state, do
         result.ares = -Kborn * (1.0 - 1.0 / born_state.eps_value) * born_state.charge_radius_sum;
 
         if (cppargs.born_diff_mode == 1) {
-            result.dadx = contribution_dadx_fd_cpp(AresContributionKind::BORN, t, rho, x, cppargs, result.ares);
+            throw ValueError("backend_unavailable: Born composition derivative backend is unavailable.");
         } else if (cppargs.born_diff_mode == 4) {
             result.dadx = contribution_dadx_autodiff_cpp(AresContributionKind::BORN, t, rho, x, cppargs);
         } else {
@@ -270,7 +270,7 @@ ContributionDadxResult dadx_born_cpp(const BornIntermediateState &born_state, do
         result.ares = -Kborn * born_state.shell.sum_bracket;
 
         if (cppargs.born_diff_mode == 1) {
-            result.dadx = contribution_dadx_fd_cpp(AresContributionKind::BORN, t, rho, x, cppargs, result.ares);
+            throw ValueError("backend_unavailable: Born composition derivative backend is unavailable.");
         } else if (cppargs.born_diff_mode == 4) {
             result.dadx = contribution_dadx_autodiff_cpp(AresContributionKind::BORN, t, rho, x, cppargs);
         } else {
