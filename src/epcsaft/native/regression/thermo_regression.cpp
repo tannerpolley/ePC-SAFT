@@ -53,7 +53,7 @@ void append_penalty_row(
     diagnostic.residual_count = static_cast<int>(row.targets.size());
     diagnostic.penalty_applied = true;
     diagnostic.solve_backend = row.row_mode;
-    diagnostic.derivative_backend = "backend_unavailable";
+    diagnostic.derivative_backend = "unsupported_derivative";
     for (const auto& target : row.targets) {
         const int index = static_cast<int>(out.residuals.size());
         out.residual_schema.push_back(schema_entry(row, target, index));
@@ -122,15 +122,15 @@ int species_index_from_label_or_throw(
     return static_cast<int>(std::distance(species.begin(), found));
 }
 
-bool supported_single_vapor_bubble_row(
+bool supported_bubble_row(
     const NativeThermoRegressionRow& row,
     std::string* reason = nullptr
 ) {
     const std::vector<std::string>& vapor_species =
         row.vapor_species.empty() ? row.targets_species : row.vapor_species;
-    if (vapor_species.size() != 1) {
+    if (vapor_species.empty()) {
         if (reason != nullptr) {
-            *reason = "native Ceres bubble derivatives currently support exactly one neutral vapor species.";
+            *reason = "native Ceres bubble derivatives require at least one neutral vapor species.";
         }
         return false;
     }
@@ -141,9 +141,16 @@ bool supported_single_vapor_bubble_row(
         return false;
     }
     for (const auto& target : row.targets) {
-        if (target.family != "pressure") {
+        if (target.family != "pressure" && target.family != "vapor_composition") {
             if (reason != nullptr) {
-                *reason = "native Ceres bubble derivatives currently support pressure targets only.";
+                *reason = "native Ceres bubble derivatives currently support pressure and vapor_composition targets only.";
+            }
+            return false;
+        }
+        if (target.family == "vapor_composition"
+            && (target.index < 0 || static_cast<std::size_t>(target.index) >= vapor_species.size())) {
+            if (reason != nullptr) {
+                *reason = "native Ceres bubble vapor_composition target index is out of range.";
             }
             return false;
         }
@@ -254,9 +261,9 @@ NativeRegressionFitResult unavailable_native_thermo_fit_result(
 ) {
     NativeRegressionFitResult out;
     out.success = false;
-    out.status = native_regression_status_name(NativeRegressionStatus::BACKEND_UNAVAILABLE);
+    out.status = native_regression_status_name(NativeRegressionStatus::unsupported_derivative);
     out.message = message;
-    out.optimizer_backend = "backend_unavailable";
+    out.optimizer_backend = "unsupported_derivative";
     out.derivative_backend = options.derivative_backend;
     out.objective_result = evaluate_native_thermo_regression_rows(mixture, species, rows, options.penalty_residual);
     out.initial_cost = out.objective_result.cost;
@@ -304,7 +311,7 @@ bool thermo_derivative_supported(
                 return false;
             }
             std::string bubble_reason;
-            if (!supported_single_vapor_bubble_row(row, &bubble_reason)) {
+            if (!supported_bubble_row(row, &bubble_reason)) {
                 if (reason != nullptr) {
                     *reason = bubble_reason;
                 }
@@ -314,7 +321,7 @@ bool thermo_derivative_supported(
         }
         if (row.row_mode != "reactive_speciation") {
             if (reason != nullptr) {
-                *reason = "native Ceres thermodynamic derivatives currently support reactive_speciation rows plus a single-vapor pressure-only reactive_electrolyte_bubble slice.";
+                *reason = "native Ceres thermodynamic derivatives currently support reactive_speciation rows plus a supported reactive_electrolyte_bubble slice.";
             }
             return false;
         }
@@ -479,7 +486,7 @@ void fill_implicit_speciation_jacobian(
         if (!activity.supported) {
             throw std::runtime_error(
                 "implicit reactive-speciation thermodynamic sensitivity failed: "
-                + activity.finite_difference_fallback_reason
+                + activity.unsupported_derivative_fallback_reason
             );
         }
         for (int reaction_index = 0; reaction_index < row.reaction_rows; ++reaction_index) {
@@ -527,7 +534,7 @@ void fill_implicit_speciation_jacobian(
     }
 }
 
-void fill_single_vapor_bubble_jacobian(
+void fill_bubble_jacobian(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
     const std::vector<std::string>& species,
     const NativeThermoRegressionRow& row,
@@ -537,13 +544,17 @@ void fill_single_vapor_bubble_jacobian(
     int parameter_count
 ) {
     std::string bubble_reason;
-    if (!supported_single_vapor_bubble_row(row, &bubble_reason)) {
+    if (!supported_bubble_row(row, &bubble_reason)) {
         throw std::runtime_error(bubble_reason);
     }
 
     const std::vector<std::string>& vapor_species =
         row.vapor_species.empty() ? row.targets_species : row.vapor_species;
-    const int vapor_full_index = species_index_from_label_or_throw(species, vapor_species.front(), "vapor_species");
+    std::vector<int> vapor_full_indices;
+    vapor_full_indices.reserve(vapor_species.size());
+    for (const auto& label : vapor_species) {
+        vapor_full_indices.push_back(species_index_from_label_or_throw(species, label, "vapor_species"));
+    }
     const std::vector<double> x_liq = row.x_liq.empty() ? row.initial_x : row.x_liq;
 
     EquilibriumResultNative solved = electrolyte_bubble_pressure_native(
@@ -558,18 +569,26 @@ void fill_single_vapor_bubble_jacobian(
         ? solved.diagnostics_bool.at("success")
         : solved.split_detected;
     if (!success) {
-        throw std::runtime_error("single-vapor bubble derivative slice requires a converged inner bubble solve.");
+        throw std::runtime_error("bubble derivative slice requires a converged inner bubble solve.");
     }
     const auto pressure_it = solved.diagnostics_double.find("best_P");
     if (pressure_it == solved.diagnostics_double.end() || !(pressure_it->second > 0.0)) {
-        throw std::runtime_error("single-vapor bubble derivative slice requires a solved positive pressure.");
+        throw std::runtime_error("bubble derivative slice requires a solved positive pressure.");
     }
     const double p = pressure_it->second;
 
     auto liquid = mixture->state(row.t, x_liq, 0, true, p, false, 0.0);
+    auto y_it = solved.diagnostics_vector.find("best_y_vap");
+    if (y_it == solved.diagnostics_vector.end() || y_it->second.size() != vapor_species.size()) {
+        throw std::runtime_error("bubble derivative slice requires solved best_y_vap diagnostics.");
+    }
+    const std::vector<double>& y_vap = y_it->second;
     std::vector<double> y_vap_full(mixture->ncomp(), 0.0);
-    y_vap_full[static_cast<std::size_t>(vapor_full_index)] = 1.0;
+    for (std::size_t i = 0; i < vapor_species.size(); ++i) {
+        y_vap_full[static_cast<std::size_t>(vapor_full_indices[i])] = y_vap[i];
+    }
     auto vapor = mixture->state(row.t, y_vap_full, 1, true, p, false, 0.0);
+    const int nvap = static_cast<int>(vapor_species.size());
 
     PressureDensityDerivativeResult liquid_dpdrho =
         pressure_density_derivative_result_cpp(row.t, liquid->density(), x_liq, mixture->args());
@@ -579,68 +598,186 @@ void fill_single_vapor_bubble_jacobian(
         lnfug_density_derivative_result_cpp(row.t, liquid->density(), x_liq, mixture->args());
     LnfugDensityDerivativeResult vapor_dlnfugdrho =
         lnfug_density_derivative_result_cpp(row.t, vapor->density(), y_vap_full, mixture->args());
+    PressureCompositionDerivativeResult vapor_dpdx =
+        pressure_composition_derivative_result_cpp(row.t, vapor->density(), y_vap_full, mixture->args());
+    LnfugCompositionDerivativeResult vapor_dlnfugdx =
+        lnfug_composition_derivative_result_cpp(row.t, vapor->density(), y_vap_full, mixture->args());
 
-    if (!liquid_dpdrho.supported || !vapor_dpdrho.supported || !liquid_dlnfugdrho.supported || !vapor_dlnfugdrho.supported) {
-        throw std::runtime_error("single-vapor bubble derivative slice requires supported density and lnphi derivatives.");
+    if (!liquid_dpdrho.supported || !vapor_dpdrho.supported || !liquid_dlnfugdrho.supported
+        || !vapor_dlnfugdrho.supported || !vapor_dpdx.supported || !vapor_dlnfugdx.supported) {
+        throw std::runtime_error("bubble derivative slice requires supported density, composition, and lnphi derivatives.");
     }
     if (!std::isfinite(liquid_dpdrho.dpdrho) || !std::isfinite(vapor_dpdrho.dpdrho)
         || std::abs(liquid_dpdrho.dpdrho) <= 1.0e-14 || std::abs(vapor_dpdrho.dpdrho) <= 1.0e-14) {
-        throw std::runtime_error("single-vapor bubble derivative slice encountered singular density closure.");
+        throw std::runtime_error("bubble derivative slice encountered singular density closure.");
     }
 
-    const double dresidual_dlogp =
-        vapor_dlnfugdrho.dlnfugdrho[0] * p / vapor_dpdrho.dpdrho
-        - liquid_dlnfugdrho.dlnfugdrho[static_cast<std::size_t>(vapor_full_index)] * p / liquid_dpdrho.dpdrho;
-    if (!std::isfinite(dresidual_dlogp) || std::abs(dresidual_dlogp) <= 1.0e-14) {
-        throw std::runtime_error("single-vapor bubble derivative slice encountered a singular log-pressure Jacobian.");
+    auto vapor_row_major = [&](int species_row, int species_col) {
+        return vapor_dlnfugdx.dlnfugdx_row_major[
+            static_cast<std::size_t>(species_row) * static_cast<std::size_t>(vapor_dlnfugdx.cols)
+            + static_cast<std::size_t>(species_col)
+        ];
+    };
+
+    std::vector<double> residual_u(static_cast<std::size_t>(nvap * nvap), 0.0);
+    std::vector<double> residual_theta(static_cast<std::size_t>(nvap * parameter_count), 0.0);
+
+    const int last_pos = nvap - 1;
+    const int last_full = vapor_full_indices[static_cast<std::size_t>(last_pos)];
+    const double drho_liq_dlogp = p / liquid_dpdrho.dpdrho;
+    const double drho_vap_dlogp = p / vapor_dpdrho.dpdrho;
+    for (int i = 0; i < nvap - 1; ++i) {
+        const int full_i = vapor_full_indices[static_cast<std::size_t>(i)];
+        residual_u[static_cast<std::size_t>(i) * static_cast<std::size_t>(nvap)] =
+            vapor_dlnfugdrho.dlnfugdrho[static_cast<std::size_t>(full_i)] * drho_vap_dlogp
+            - liquid_dlnfugdrho.dlnfugdrho[static_cast<std::size_t>(full_i)] * drho_liq_dlogp;
+        for (int j = 0; j < nvap - 1; ++j) {
+            const int full_j = vapor_full_indices[static_cast<std::size_t>(j)];
+            const double drho_vap_dyj =
+                -(vapor_dpdx.dpdx[static_cast<std::size_t>(full_j)] - vapor_dpdx.dpdx[static_cast<std::size_t>(last_full)])
+                / vapor_dpdrho.dpdrho;
+            const double dlnphi_v_dyj =
+                vapor_row_major(full_i, full_j)
+                - vapor_row_major(full_i, last_full)
+                + vapor_dlnfugdrho.dlnfugdrho[static_cast<std::size_t>(full_i)] * drho_vap_dyj;
+            residual_u[static_cast<std::size_t>(i) * static_cast<std::size_t>(nvap) + static_cast<std::size_t>(j + 1)] =
+                ((i == j) ? 1.0 / std::max(y_vap[static_cast<std::size_t>(i)], row.bubble_options.min_composition) : 0.0)
+                + dlnphi_v_dyj;
+        }
+    }
+
+    double objective_logp = 0.0;
+    std::vector<double> objective_y(static_cast<std::size_t>(nvap - 1), 0.0);
+    std::vector<double> raw_terms(static_cast<std::size_t>(nvap), 0.0);
+    for (int i = 0; i < nvap; ++i) {
+        const int full_i = vapor_full_indices[static_cast<std::size_t>(i)];
+        raw_terms[static_cast<std::size_t>(i)] =
+            std::max(x_liq[static_cast<std::size_t>(full_i)], row.bubble_options.min_composition)
+            * std::exp(
+                liquid->ln_fugacity_coefficient()[static_cast<std::size_t>(full_i)]
+                - vapor->ln_fugacity_coefficient()[static_cast<std::size_t>(full_i)]
+            );
+        objective_logp += raw_terms[static_cast<std::size_t>(i)] * (
+            liquid_dlnfugdrho.dlnfugdrho[static_cast<std::size_t>(full_i)] * drho_liq_dlogp
+            - vapor_dlnfugdrho.dlnfugdrho[static_cast<std::size_t>(full_i)] * drho_vap_dlogp
+        );
+        for (int j = 0; j < nvap - 1; ++j) {
+            const int full_j = vapor_full_indices[static_cast<std::size_t>(j)];
+            const double drho_vap_dyj =
+                -(vapor_dpdx.dpdx[static_cast<std::size_t>(full_j)] - vapor_dpdx.dpdx[static_cast<std::size_t>(last_full)])
+                / vapor_dpdrho.dpdrho;
+            const double dlnphi_v_dyj =
+                vapor_row_major(full_i, full_j)
+                - vapor_row_major(full_i, last_full)
+                + vapor_dlnfugdrho.dlnfugdrho[static_cast<std::size_t>(full_i)] * drho_vap_dyj;
+            objective_y[static_cast<std::size_t>(j)] += -raw_terms[static_cast<std::size_t>(i)] * dlnphi_v_dyj;
+        }
+    }
+    residual_u[static_cast<std::size_t>(last_pos) * static_cast<std::size_t>(nvap)] = objective_logp;
+    for (int j = 0; j < nvap - 1; ++j) {
+        residual_u[static_cast<std::size_t>(last_pos) * static_cast<std::size_t>(nvap) + static_cast<std::size_t>(j + 1)] =
+            objective_y[static_cast<std::size_t>(j)];
+    }
+
+    for (int p_index = 0; p_index < parameter_count; ++p_index) {
+        const auto& parameter = parameters[static_cast<std::size_t>(p_index)];
+        if (!parameter_matches_row(parameter, row)) {
+            continue;
+        }
+        const int parameter_component = metadata_int(parameter, "component_index");
+        if (parameter_component < 0) {
+            throw std::runtime_error("bubble derivative slice requires component_index metadata.");
+        }
+        LnfugParameterDerivativeResult liquid_param = lnfug_parameter_derivative_result_cpp(
+            row.t,
+            liquid->density(),
+            x_liq,
+            mixture->args(),
+            parameter.kind,
+            parameter_component
+        );
+        if (!liquid_param.supported) {
+            throw std::runtime_error(
+                "bubble liquid parameter derivative unsupported: " + liquid_param.unsupported_derivative_fallback_reason
+            );
+        }
+        std::vector<double> vapor_theta(static_cast<std::size_t>(nvap), 0.0);
+        if (parameter_component == last_full
+            || std::find(vapor_full_indices.begin(), vapor_full_indices.end(), parameter_component) != vapor_full_indices.end()) {
+            LnfugParameterDerivativeResult vapor_param = lnfug_parameter_derivative_result_cpp(
+                row.t,
+                vapor->density(),
+                y_vap_full,
+                mixture->args(),
+                parameter.kind,
+                parameter_component
+            );
+            if (!vapor_param.supported) {
+                throw std::runtime_error(
+                    "bubble vapor parameter derivative unsupported: " + vapor_param.unsupported_derivative_fallback_reason
+                );
+            }
+            for (int i = 0; i < nvap; ++i) {
+                vapor_theta[static_cast<std::size_t>(i)] =
+                    vapor_param.dlnfugdtheta[static_cast<std::size_t>(vapor_full_indices[static_cast<std::size_t>(i)])];
+            }
+        }
+
+        for (int i = 0; i < nvap - 1; ++i) {
+            const int full_i = vapor_full_indices[static_cast<std::size_t>(i)];
+            residual_theta[static_cast<std::size_t>(i) * static_cast<std::size_t>(parameter_count) + static_cast<std::size_t>(p_index)] =
+                vapor_theta[static_cast<std::size_t>(i)] - liquid_param.dlnfugdtheta[static_cast<std::size_t>(full_i)];
+        }
+        double objective_theta = 0.0;
+        for (int i = 0; i < nvap; ++i) {
+            const int full_i = vapor_full_indices[static_cast<std::size_t>(i)];
+            objective_theta += raw_terms[static_cast<std::size_t>(i)] * (
+                liquid_param.dlnfugdtheta[static_cast<std::size_t>(full_i)] - vapor_theta[static_cast<std::size_t>(i)]
+            );
+        }
+        residual_theta[static_cast<std::size_t>(last_pos) * static_cast<std::size_t>(parameter_count) + static_cast<std::size_t>(p_index)] =
+            objective_theta;
+    }
+
+    NativeImplicitSensitivityResult sensitivity = solve_native_implicit_sensitivity(
+        residual_u,
+        nvap,
+        nvap,
+        residual_theta,
+        parameter_count
+    );
+    if (!sensitivity.success) {
+        throw std::runtime_error("bubble implicit sensitivity failed: " + sensitivity.message);
     }
 
     for (int target_index = 0; target_index < static_cast<int>(row.targets.size()); ++target_index) {
         const auto& target = row.targets[static_cast<std::size_t>(target_index)];
         for (int p_index = 0; p_index < parameter_count; ++p_index) {
-            const auto& parameter = parameters[static_cast<std::size_t>(p_index)];
-            if (!parameter_matches_row(parameter, row)) {
-                continue;
-            }
-            const int parameter_component = metadata_int(parameter, "component_index");
-            if (parameter_component < 0) {
-                throw std::runtime_error("single-vapor bubble derivative slice requires component_index metadata.");
-            }
-            LnfugParameterDerivativeResult liquid_param = lnfug_parameter_derivative_result_cpp(
-                row.t,
-                liquid->density(),
-                x_liq,
-                mixture->args(),
-                parameter.kind,
-                parameter_component
-            );
-            if (!liquid_param.supported) {
-                throw std::runtime_error(
-                    "single-vapor bubble liquid parameter derivative unsupported: " + liquid_param.finite_difference_fallback_reason
-                );
-            }
-            double vapor_theta = 0.0;
-            if (parameter_component == vapor_full_index) {
-                LnfugParameterDerivativeResult vapor_param = lnfug_parameter_derivative_result_cpp(
-                    row.t,
-                    vapor->density(),
-                    y_vap_full,
-                    mixture->args(),
-                    parameter.kind,
-                    parameter_component
-                );
-                if (!vapor_param.supported) {
-                    throw std::runtime_error(
-                        "single-vapor bubble vapor parameter derivative unsupported: " + vapor_param.finite_difference_fallback_reason
-                    );
+            const double dlogp_dtheta =
+                sensitivity.sensitivities_row_major[static_cast<std::size_t>(p_index)];
+            if (target.family == "pressure") {
+                jacobian[(residual_offset + target_index) * parameter_count + p_index] =
+                    target.scale * p * dlogp_dtheta;
+            } else if (target.family == "vapor_composition") {
+                if (target.index == last_pos) {
+                    double value = 0.0;
+                    for (int j = 0; j < nvap - 1; ++j) {
+                        value -= sensitivity.sensitivities_row_major[
+                            static_cast<std::size_t>(j + 1) * static_cast<std::size_t>(parameter_count)
+                            + static_cast<std::size_t>(p_index)
+                        ];
+                    }
+                    jacobian[(residual_offset + target_index) * parameter_count + p_index] = target.scale * value;
+                } else {
+                    jacobian[(residual_offset + target_index) * parameter_count + p_index] =
+                        target.scale * sensitivity.sensitivities_row_major[
+                            static_cast<std::size_t>(target.index + 1) * static_cast<std::size_t>(parameter_count)
+                            + static_cast<std::size_t>(p_index)
+                        ];
                 }
-                vapor_theta = vapor_param.dlnfugdtheta[0];
+            } else {
+                throw std::runtime_error("unsupported differentiated bubble target family: " + target.family);
             }
-            const double residual_theta =
-                vapor_theta - liquid_param.dlnfugdtheta[static_cast<std::size_t>(vapor_full_index)];
-            const double dlogp_dtheta = -residual_theta / dresidual_dlogp;
-            jacobian[(residual_offset + target_index) * parameter_count + p_index] =
-                target.scale * p * dlogp_dtheta;
         }
     }
 }
@@ -685,7 +822,7 @@ public:
                 if (row.row_mode == "reactive_speciation") {
                     fill_implicit_speciation_jacobian(mixture, row, parameters_, jacobians[0], residual_offset, parameter_count);
                 } else if (row.row_mode == "reactive_electrolyte_bubble") {
-                    fill_single_vapor_bubble_jacobian(
+                    fill_bubble_jacobian(
                         mixture,
                         species_,
                         row,
@@ -727,7 +864,7 @@ NativeRegressionResidualEvaluation evaluate_native_thermo_regression_rows(
         diagnostic.residual_count = static_cast<int>(row.targets.size());
         diagnostic.penalty_applied = false;
         diagnostic.solve_backend = row.row_mode;
-        diagnostic.derivative_backend = "backend_unavailable";
+        diagnostic.derivative_backend = "unsupported_derivative";
         try {
             if (row.row_mode == "reactive_speciation") {
                 ChemicalEquilibriumResultNative result = chemical_equilibrium_native(
@@ -752,7 +889,7 @@ NativeRegressionResidualEvaluation evaluate_native_thermo_regression_rows(
                 diagnostic.solve_backend = "native_chemical_equilibrium";
                 auto backend = result.diagnostics_string.find("jacobian_backend");
                 diagnostic.derivative_backend = backend == result.diagnostics_string.end()
-                    ? "backend_unavailable"
+                    ? "unsupported_derivative"
                     : backend->second;
                 if (!result.success) {
                     append_penalty_row(out, row, result.message, penalty_residual);
@@ -788,7 +925,7 @@ NativeRegressionResidualEvaluation evaluate_native_thermo_regression_rows(
                     ? result.diagnostics_string.at("message")
                     : "";
                 diagnostic.solve_backend = "native_electrolyte_bubble";
-                diagnostic.derivative_backend = supported_single_vapor_bubble_row(row) ? "autodiff" : "not_differentiated";
+                diagnostic.derivative_backend = supported_bubble_row(row) ? "autodiff" : "not_differentiated";
                 if (!success) {
                     append_penalty_row(out, row, diagnostic.message, penalty_residual);
                     continue;
@@ -947,7 +1084,10 @@ NativeRegressionFitResult fit_native_thermo_regression(
         out.status = native_regression_status_name(NativeRegressionStatus::MAX_ITERATIONS);
     }
     out.message = summary.BriefReport()
-        + "; native_hot_loop=true; python_objective_used=false; finite_difference_used=false";
+        + "; native_hot_loop=true; python_objective_used=false; unsupported_derivative_used=false";
     return out;
 #endif
 }
+
+
+

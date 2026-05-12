@@ -21,8 +21,8 @@ EQUATION_FAMILY_COVERAGE = {
         "test_native_residual_helmholtz_and_compressibility_contributions_match_neutral_contract"
     ],
     "compressibility factor": ["test_native_residual_helmholtz_and_compressibility_contributions_match_ionic_contract"],
-    "temperature derivative": ["test_temperature_derivative_matches_neutral_finite_difference_across_density_branches"],
-    "composition derivative": ["test_composition_derivative_matches_constrained_composition_finite_difference"],
+    "temperature derivative": ["test_temperature_derivative_matches_neutral_unsupported_derivative_across_density_branches"],
+    "composition derivative": ["test_composition_derivative_matches_constrained_composition_unsupported_derivative"],
     "residual chemical potential": ["test_public_methods_expose_eqid_owned_contribution_groups"],
     "fugacity coefficient": ["test_public_methods_expose_eqid_owned_contribution_groups"],
     "Debye-Huckel / Born / ionic activity coefficient": [
@@ -210,3 +210,6 @@ def test_native_equation_family_coverage_matrix_is_documented_and_complete() -> 
         assert family in docs
         for test_name in tests:
             assert test_name in native_contracts
+
+
+

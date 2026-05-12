@@ -6,7 +6,7 @@ T025 is stopped on the task stop condition. The package should not claim native
 Ceres production sensitivities for Born-SSM+DS parameters until those
 sensitivities are analytic, CppAD-backed, or implicit over a scalar-templated
 native residual path. A native parameter-perturbation shortcut would still be a
-finite-difference derivative and is not acceptable for Issue #53 production.
+backend-unavailable derivative and is not acceptable for Issue #53 production.
 
 ## Scope Correction
 
@@ -36,7 +36,7 @@ composition data, not through a reactive-speciation Born sensitivity test.
   and points generic binary `k_ij`/`l_ij`/`k_hb_ij` work to `fit_binary_pair(...)`.
 - `tests/native/test_native_ceres_thermodynamic_regression.py` asserts
   Born-SSM+DS `d_born` and `f_solv` report `backend_unavailable` for the current
-  Ceres thermodynamic slice instead of falling back to finite differences.
+  Ceres thermodynamic slice instead of falling back to Backend unavailables.
 - `src/epcsaft/benchmarks/native_regression.py` keeps `native_binary_kij_tiny`
   as the generic binary fixture and changes the reactive fixture to
   `native_reactive_born_ssmds_tiny`.
@@ -64,3 +64,4 @@ when activity or concentration standard states require density solves.
 - `uv run python run_pytest.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_native_reactive_regression.py tests/native/test_native_regression_types.py tests/api/test_runtime.py tests/workflows/test_benchmark_native_regression.py -q`: 55 passed
 - `uv run ruff check src/epcsaft/runtime.py src/epcsaft/benchmarks/native_regression.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_native_reactive_regression.py tests/native/test_native_regression_types.py tests/api/test_runtime.py tests/workflows/test_benchmark_native_regression.py`: pass
 - `uv run black --check src/epcsaft/runtime.py src/epcsaft/benchmarks/native_regression.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_native_reactive_regression.py tests/native/test_native_regression_types.py tests/api/test_runtime.py tests/workflows/test_benchmark_native_regression.py`: pass
+

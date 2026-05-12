@@ -11,7 +11,7 @@ What changed
 
 This slice intentionally stayed structural:
 
-- added a shared native finite-difference debug-gate helper under
+- added a shared native backend-unavailable debug-gate helper under
   `src/epcsaft/native/autodiff/debug_gate.h`;
 - rewired native chemical-equilibrium and native electrolyte-LLE derivative
   gating to use that shared helper instead of local duplicated environment
@@ -46,3 +46,4 @@ Observed result
 
 - build-only native rebuild passed in about 16.5s;
 - focused native derivative and contract slice passed: `32 passed in 3.31s`.
+

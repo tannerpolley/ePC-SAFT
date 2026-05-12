@@ -23,7 +23,7 @@ Implementation
   to the native `fit_native_thermo_regression(...)` request payload.
 - Added normalized `ReactiveRegressionFitResult` wrapping for the native
   thermodynamic fit result, with diagnostics `backend="native_thermo"`,
-  `python_optimizer=False`, and `finite_difference_jacobian=False`.
+  `python_optimizer=False`, and `Backend_unavailable_jacobian=False`.
 - Added route coverage for a supported speciation/logK batch.
 - Updated docs to distinguish the production native thermodynamic slice from
   the residual-record compatibility boundary and Python compatibility loop.
@@ -48,4 +48,5 @@ Remaining gap
 This task does not close issue #53 by itself. Earlier receipts still show that
 production Ceres sensitivities for Born-SSM+DS `d_born`/`f_solv` and reactive
 electrolyte bubble pressure rows are not implemented; they report
-`backend_unavailable` rather than using finite-difference shortcuts.
+`backend_unavailable` rather than using backend-unavailable shortcuts.
+

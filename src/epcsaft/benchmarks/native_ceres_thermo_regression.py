@@ -209,12 +209,81 @@ def _activity_ssmds_born_radius_case_payload() -> tuple[epcsaft.ePCSAFTMixture, 
     return mixture, request
 
 
+def _multivapor_bubble_ssmds_case_payload() -> tuple[epcsaft.ePCSAFTMixture, dict[str, Any]]:
+    params = {
+        "m": np.asarray([1.2047, 2.3827, 2.844, 1.0, 1.0]),
+        "s": np.asarray([2.7990379398694616, 3.1771, 3.5561, 2.8232, 2.7560]),
+        "e": np.asarray([353.95, 198.24, 257.13, 230.0, 170.0]),
+        "z": np.asarray([0.0, 0.0, 0.0, 1.0, -1.0]),
+        "dielc": np.asarray([78.09, 24.88, 17.2, 8.0, 8.0]),
+        "d_born": np.asarray([0.0, 0.0, 0.0, 3.445, 4.1]),
+        "f_solv": np.asarray([1.5, 1.6, 1.5, 1.0, 1.0]),
+        "MW": np.asarray([18.01528e-3, 46.068e-3, 74.1216e-3, 22.98e-3, 35.45e-3]),
+        "k_ij": np.zeros((5, 5)),
+        "elec_model": {
+            "include_born_model": True,
+            "born_model": {
+                "d_Born_mode": 3,
+                "solvation_shell_model": True,
+                "dielectric_saturation": True,
+                "bulk_mode": "solvent",
+                "mu_born_model": {
+                    "comp_dep_rel_perm": True,
+                    "include_sum_term": True,
+                    "comp_dep_delta_d": True,
+                },
+            },
+        },
+    }
+    mixture = epcsaft.ePCSAFTMixture.from_params(
+        params,
+        species=["H2O", "Ethanol", "Butanol", "Na+", "Cl-"],
+    )
+    x_liq = [0.7140075467144562, 0.08377081431417623, 0.02344138026740494, 0.08939012935198135, 0.08939012935198135]
+    vapor_species = ["H2O", "Ethanol", "Butanol"]
+    bubble = mixture.electrolyte_bubble_p(293.15, x_liq=x_liq, vapor_species=vapor_species)
+    request = {
+        "species": ["H2O", "Ethanol", "Butanol", "Na+", "Cl-"],
+        "rows": [
+            {
+                "row_id": "bubble_multivapor_ssmds",
+                "row_mode": "reactive_electrolyte_bubble",
+                "T": 293.15,
+                "initial_x": x_liq,
+                "x_liq": x_liq,
+                "vapor_species": vapor_species,
+                "initial_pressure": bubble.P,
+                "min_pressure": bubble.P * 0.5,
+                "max_pressure": bubble.P * 2.0,
+                "targets": [
+                    {"family": "pressure", "target": "bubble_pressure", "index": 0, "observed": bubble.P, "scale": 1.0e-5},
+                    {"family": "vapor_composition", "target": "y_H2O", "index": 0, "observed": bubble.y_vap["H2O"], "scale": 1.0},
+                    {"family": "vapor_composition", "target": "y_Butanol", "index": 2, "observed": bubble.y_vap["Butanol"], "scale": 1.0},
+                ],
+            }
+        ],
+        "parameters": [
+            {
+                "name": "Na+.d_born",
+                "kind": "born_radius",
+                "initial": 3.2,
+                "lower": 2.0,
+                "upper": 5.0,
+                "metadata": {"component_index": "3"},
+            }
+        ],
+        "options": {"max_iterations": 10, "derivative_backend": "implicit"},
+    }
+    return mixture, request
+
+
 CASE_BUILDERS = OrderedDict(
     [
         ("reactive_speciation_logk_implicit", _ideal_case_payload),
         ("reactive_speciation_concentration_logk_implicit", _concentration_case_payload),
         ("reactive_speciation_activity_logk_implicit", _activity_case_payload),
         ("reactive_speciation_activity_ssmds_born_radius_implicit", _activity_ssmds_born_radius_case_payload),
+        ("reactive_electrolyte_bubble_multivapor_ssmds_born_radius_implicit", _multivapor_bubble_ssmds_case_payload),
     ]
 )
 
@@ -256,7 +325,7 @@ def run_native_ceres_thermo_regression_benchmark(
         "derivative_backend": str(last_result["derivative_backend"]),
         "native_hot_loop": str(last_result["optimizer_backend"]) == "ceres",
         "python_objective_used": False,
-        "finite_difference_used": False,
+        "unsupported_derivative_used": False,
         "initial_cost": float(last_result["initial_cost"]),
         "final_cost": float(last_result["final_cost"]),
         "objective_decreased": float(last_result["final_cost"]) < float(last_result["initial_cost"]),
@@ -271,3 +340,6 @@ def render_benchmark_table(payload: dict[str, Any]) -> str:
         f"{payload['optimizer_backend']} {payload['derivative_backend']} "
         f"{payload['native_hot_loop']} {payload['initial_cost']:.6g} {payload['final_cost']:.6g}"
     )
+
+
+

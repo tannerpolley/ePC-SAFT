@@ -10,9 +10,9 @@ from epcsaft import _core
 def test_cppad_reaction_residual_derivative_check_is_finite_when_available() -> None:
     payload = _core._native_autodiff_derivative_checks()
 
-    assert payload["finite_difference_used"] is False
+    assert payload["unsupported_derivative_used"] is False
     assert "reaction_log_residual" in payload["checked_residuals"]
-    if payload["status"] == "backend_unavailable":
+    if payload["status"] == "unsupported_derivative":
         assert payload["derivative_backend"] == "cppad_unavailable"
         return
 
@@ -33,7 +33,7 @@ def test_native_implicit_sensitivity_solves_nested_speciation_linearization() ->
 
     assert payload["success"] is True
     assert payload["status"] == "converged"
-    assert payload["finite_difference_used"] is False
+    assert payload["unsupported_derivative_used"] is False
     assert payload["sensitivity_backend"] == "analytic_implicit"
     assert payload["shape"] == (2, 1)
     assert payload["sensitivities_row_major"] == [3.0, -2.0]
@@ -57,7 +57,10 @@ def test_native_implicit_sensitivity_accepts_overdetermined_full_rank_system() -
 
     assert payload["success"] is True
     assert payload["status"] == "converged"
-    assert payload["finite_difference_used"] is False
+    assert payload["unsupported_derivative_used"] is False
     assert payload["sensitivity_backend"] == "analytic_implicit"
     assert payload["shape"] == (2, 1)
     assert payload["sensitivities_row_major"] == pytest.approx([2.0, -4.0])
+
+
+

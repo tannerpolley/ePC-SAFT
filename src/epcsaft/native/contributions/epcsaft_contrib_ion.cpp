@@ -124,9 +124,7 @@ ContributionDadxResult dadx_ion_cpp(const MixtureState &thermo, const IonInterme
     result.ares = -K0 * ion_state.kappa / ion_state.dielectric.eps * ion_state.chi_sum;
     result.z = -ion_state.kappa / 24.0 / PI / kb / t / (ion_state.dielectric.eps * perm_vac) * ion_state.sigma_sum * E_CHRG * E_CHRG;
 
-    if (cppargs.mu_DH_diff_mode == 1) {
-        result.dadx = contribution_dadx_fd_cpp(AresContributionKind::ION, t, rho, x, cppargs, result.ares);
-    } else if (cppargs.mu_DH_diff_mode == 2) {
+    if (cppargs.mu_DH_diff_mode == 2) {
         result.dadx = contribution_dadx_autodiff_cpp(AresContributionKind::ION, t, rho, x, cppargs);
     } else {
         const bool use_dh_deps = (cppargs.mu_DH_comp_dep_rel_perm != 0);

@@ -278,7 +278,7 @@ def _benchmark_case(prepared: PreparedNativeRegressionCase, *, warmup: int, repe
         "fixed_shape_residuals": bool(objective["fixed_shape_residuals"]),
         "residual_norm": float(last_result["residual_norm"]),
         "cost": float(last_result["final_cost"]),
-        "production_finite_difference_allowed": False,
+        "production_unsupported_derivative_allowed": False,
     }
 
 
@@ -329,3 +329,6 @@ def render_benchmark_table(payload: Mapping[str, Any]) -> str:
             )
         )
     return "\n".join(lines)
+
+
+

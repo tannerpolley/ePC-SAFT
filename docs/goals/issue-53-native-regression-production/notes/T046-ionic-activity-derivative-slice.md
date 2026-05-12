@@ -8,7 +8,7 @@ T046 is complete.
 
 This worker tranche now covers both halves of the scoped activity slice:
 
-- finite-difference-free state-level derivative support for the supported
+- backend-unavailable-free state-level derivative support for the supported
   nonassociating ionic `epcsaft_component_activity` path
 - native chemical-equilibrium and native thermodynamic regression support for
   activity-coupled `reactive_speciation` `logK` rows on that same slice
@@ -47,7 +47,7 @@ What is verified
 ----------------
 
 - native activity-coupled chemical-equilibrium autodiff Jacobian matches the
-  existing finite-difference path on the supported salt case
+  existing backend-unavailable path on the supported salt case
 - public `solve_reactive_speciation(..., jacobian_backend="auto")` routes the
   supported activity-standard-state case to autodiff
 - native Ceres thermodynamic regression now accepts the activity-standard-state
@@ -90,3 +90,4 @@ The next honest unresolved surfaces are still:
 - non-`logK` thermodynamic parameter sensitivities such as `d_born`, `f_solv`,
   and generic binary parameters through the production native regression path
 - broader activity/concentration mixed standard-state combinations
+

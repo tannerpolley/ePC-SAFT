@@ -1628,19 +1628,19 @@ EquilibriumResultNative lle_two_phase_result(
     result.diagnostics_string["point_solver_message"] = "converged";
     result.diagnostics_string["solver_language"] = "c++";
     result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
-    result.diagnostics_string["nonlinear_solver"] = "native_finite_difference_newton";
+    result.diagnostics_string["nonlinear_solver"] = "native_unsupported_derivative_newton";
     result.diagnostics_string["requested_jacobian_backend"] = options.jacobian_backend;
-    result.diagnostics_string["jacobian_backend"] = "finite_difference";
+    result.diagnostics_string["jacobian_backend"] = "unsupported_derivative";
     result.diagnostics_bool["jacobian_available"] = true;
     if (options.jacobian_backend == "auto" || options.jacobian_backend == "autodiff") {
-        result.diagnostics_bool["finite_difference_fallback_used"] = true;
+        result.diagnostics_bool["unsupported_derivative_fallback_used"] = true;
         result.diagnostics_bool["jacobian_fallback_used"] = true;
-        result.diagnostics_string["finite_difference_fallback_reason"] =
+        result.diagnostics_string["unsupported_derivative_fallback_reason"] =
             "autodiff neutral LLE residual jacobian is not implemented for native state calls yet";
         result.diagnostics_string["jacobian_fallback_reason"] =
             "autodiff neutral LLE residual jacobian is not implemented for native state calls yet";
     } else {
-        result.diagnostics_bool["finite_difference_fallback_used"] = false;
+        result.diagnostics_bool["unsupported_derivative_fallback_used"] = false;
         result.diagnostics_bool["jacobian_fallback_used"] = false;
         result.diagnostics_string["jacobian_fallback_reason"] = "";
     }
@@ -1676,17 +1676,17 @@ EquilibriumResultNative lle_no_split_result(
     result.diagnostics_string["solver_language"] = "c++";
     result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
     result.diagnostics_string["requested_jacobian_backend"] = options.jacobian_backend;
-    result.diagnostics_string["jacobian_backend"] = "finite_difference";
+    result.diagnostics_string["jacobian_backend"] = "unsupported_derivative";
     result.diagnostics_bool["jacobian_available"] = true;
     if (options.jacobian_backend == "auto" || options.jacobian_backend == "autodiff") {
-        result.diagnostics_bool["finite_difference_fallback_used"] = true;
+        result.diagnostics_bool["unsupported_derivative_fallback_used"] = true;
         result.diagnostics_bool["jacobian_fallback_used"] = true;
-        result.diagnostics_string["finite_difference_fallback_reason"] =
+        result.diagnostics_string["unsupported_derivative_fallback_reason"] =
             "autodiff neutral LLE residual jacobian is not implemented for native state calls yet";
         result.diagnostics_string["jacobian_fallback_reason"] =
             "autodiff neutral LLE residual jacobian is not implemented for native state calls yet";
     } else {
-        result.diagnostics_bool["finite_difference_fallback_used"] = false;
+        result.diagnostics_bool["unsupported_derivative_fallback_used"] = false;
         result.diagnostics_bool["jacobian_fallback_used"] = false;
         result.diagnostics_string["jacobian_fallback_reason"] = "";
     }
@@ -3007,15 +3007,15 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
     if (!mixture->has_ionic()) {
         throw ValueError("electrolyte_lle residual evaluation requires an ion-containing mixture.");
     }
-    if (options.jacobian_backend != "finite_difference") {
+    if (options.jacobian_backend != "unsupported_derivative") {
         throw ValueError(
             "electrolyte LLE residual jacobian does not yet have analytic/autodiff coverage; "
-            "finite difference is only available when jacobian_backend='finite_difference' is requested explicitly."
+            "unsupported derivative is only available when jacobian_backend='unsupported_derivative' is requested explicitly."
         );
     }
-    if (!epcsaft::autodiff::finite_difference_debug_enabled()) {
+    if (!epcsaft::autodiff::unsupported_derivative_debug_enabled()) {
         throw ValueError(
-            epcsaft::autodiff::finite_difference_debug_only_message("electrolyte LLE")
+            epcsaft::autodiff::unsupported_derivative_debug_only_message("electrolyte LLE")
         );
     }
     std::vector<double> feed = normalize_feed(raw_feed, mixture->ncomp(), options.min_composition, "electrolyte_lle");
@@ -3142,20 +3142,20 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
     out.diagnostics_string["native_entrypoint"] = "_evaluate_electrolyte_lle_residual_native";
     out.diagnostics_string["phase_equilibrium_model"] = "electrolyte_lle_v5_native_charge_constrained_solve";
     out.diagnostics_string["variable_model"] = basis.variable_model;
-    out.diagnostics_string["jacobian_backend"] = "finite_difference";
-    out.diagnostics_string["derivative_backend_selected"] = "finite_difference";
-    out.diagnostics_string["derivative_capability_path"] = "electrolyte_lle:explicit_finite_difference:transformed_formula_variables";
+    out.diagnostics_string["jacobian_backend"] = "unsupported_derivative";
+    out.diagnostics_string["derivative_backend_selected"] = "unsupported_derivative";
+    out.diagnostics_string["derivative_capability_path"] = "electrolyte_lle:explicit_unsupported_derivative:transformed_formula_variables";
     out.diagnostics_string["unsupported_derivative_reason"] = "";
     out.diagnostics_string["hessian_backend"] = "gauss_newton";
-    out.diagnostics_string["finite_difference_scheme"] = "forward";
-    out.diagnostics_string["finite_difference_variable_space"] = "transformed_formula_variables";
-    out.diagnostics_string["finite_difference_step_rule"] = "absolute_transformed_variable_step";
+    out.diagnostics_string["unsupported_derivative_scheme"] = "forward";
+    out.diagnostics_string["unsupported_derivative_variable_space"] = "transformed_formula_variables";
+    out.diagnostics_string["unsupported_derivative_step_rule"] = "absolute_transformed_variable_step";
     out.diagnostics_string["hessian_kind"] = "approximate_least_squares_gauss_newton";
     out.diagnostics_string["hessian_structure"] = "dense_lower_triangular";
     out.diagnostics_bool["jacobian_available"] = true;
-    out.diagnostics_bool["finite_difference_allowed"] = true;
-    out.diagnostics_bool["explicit_finite_difference"] = true;
-    out.diagnostics_bool["finite_difference_fallback_used"] = false;
+    out.diagnostics_bool["unsupported_derivative_allowed"] = true;
+    out.diagnostics_bool["explicit_unsupported_derivative"] = true;
+    out.diagnostics_bool["unsupported_derivative_fallback_used"] = false;
     out.diagnostics_bool["hessian_available"] = true;
     out.diagnostics_bool["exact_hessian_available"] = false;
     out.diagnostics_bool["hessian_callback_available"] = true;
@@ -3169,9 +3169,12 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
     out.diagnostics_double["phase_distance"] = current.phase_distance_value;
     out.diagnostics_double["gibbs_delta"] = current.gibbs_delta;
     out.diagnostics_double["objective"] = objective;
-    out.diagnostics_double["finite_difference_base_step"] = options.min_composition;
-    out.diagnostics_double["finite_difference_effective_step"] = step;
+    out.diagnostics_double["unsupported_derivative_base_step"] = options.min_composition;
+    out.diagnostics_double["unsupported_derivative_effective_step"] = step;
     out.diagnostics_vector["feed_composition"] = feed;
     out.diagnostics_vector["fugacity_residual"] = base_residual;
     return out;
 }
+
+
+

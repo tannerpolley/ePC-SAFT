@@ -54,12 +54,12 @@ The derivative default is native-owned and diagnostic-friendly:
 ``jacobian_backend="auto"`` uses the analytic log-amount Jacobian for
 ``standard_state="ideal_mole_fraction"``. For activity- or
 concentration-coupled standard states, production ``auto`` now reports
-``backend_unavailable`` until an analytic, autodiff, or implicit derivative path
-exists. Explicit finite-difference Jacobians are debug-only: set
-``EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG=1`` and request
-``jacobian_backend="finite_difference"`` when you need a comparison diagnostic.
+``unsupported_derivative`` until an analytic, autodiff, or implicit derivative path
+exists. Explicit backend-unavailable Jacobians are debug-only: set
+``EPCSAFT_ALLOW_DERIVATIVE_BACKEND_DEBUG=1`` and request
+``jacobian_backend="unsupported_derivative"`` when you need a comparison diagnostic.
 Diagnostics report ``requested_jacobian_backend``, ``jacobian_backend``,
-``finite_difference_fallback_used``, and ``jacobian_fallback_reason`` for debug
+``unsupported_derivative_fallback_used``, and ``jacobian_fallback_reason`` for debug
 runs.
 Explicit ``jacobian_backend="autodiff"`` remains strict and raises when the
 requested derivative path is unavailable.
@@ -172,3 +172,6 @@ sweeps, set ``ReactiveElectrolyteBubbleOptions(error_mode="result")`` to return
 a structured ``ReactiveElectrolyteBubbleResult(success=False, ...)`` containing
 the successful speciation payload plus the failed bubble diagnostics. Complete
 examples are in :doc:`equilibrium_cookbook`.
+
+
+

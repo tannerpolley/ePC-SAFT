@@ -39,16 +39,16 @@ def _parameters() -> list[dict[str, object]]:
     ]
 
 
-def test_native_regression_solve_rejects_finite_difference_derivatives() -> None:
+def test_native_regression_solve_rejects_unsupported_derivative_derivatives() -> None:
     result = solve_native_regression_residual_records(
         _records(),
         _parameters(),
-        options={"derivative_backend": "finite_difference"},
+        options={"derivative_backend": "unsupported_derivative"},
     )
 
     assert result["success"] is False
     assert result["status"] == "invalid_input"
-    assert "finite_difference is debug-only" in result["message"]
+    assert "unsupported_derivative is debug-only" in result["message"]
 
 
 def test_native_regression_solve_accepts_analytic_derivative_policy() -> None:
@@ -79,3 +79,6 @@ def test_native_regression_solve_reports_bounds_inconsistent() -> None:
 
     assert result["success"] is False
     assert result["status"] == "bounds_inconsistent"
+
+
+

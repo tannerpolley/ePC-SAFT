@@ -368,18 +368,18 @@ must remain stable even when a recoverable row failure is represented by penalty
 residuals. The canonical top-level statuses are ``converged``,
 ``max_iterations``, ``line_search_failed``, ``singular_jacobian``,
 ``all_rows_failed``, ``nonfinite_objective``, ``bounds_inconsistent``,
-``invalid_input``, and ``backend_unavailable``. Unsupported native optimizer or
-derivative combinations use ``backend_unavailable`` rather than silently falling
-back. Production native regression does not allow finite-difference derivatives;
-finite-difference comparisons belong behind explicit debug gates such as
-``EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG=1``.
+``invalid_input``, and ``unsupported_derivative``. Unsupported native optimizer or
+derivative combinations use ``unsupported_derivative`` rather than silently falling
+back. Production native regression does not allow backend-unavailable derivatives;
+backend-unavailable comparisons belong behind explicit debug gates such as
+``EPCSAFT_ALLOW_DERIVATIVE_BACKEND_DEBUG=1``.
 
 The current native Ceres thermodynamic fit slice is intentionally narrow:
 ``reactive_speciation`` rows, ideal-mole-fraction reaction standard states,
 speciation targets, and reaction ``logK`` parameters. Born-SSM+DS ``d_born`` and
 ``f_solv`` parameters are applied to native mixtures, but they do not yet have
 production Ceres sensitivities for the activity/fugacity path. Those parameters
-therefore report ``backend_unavailable`` instead of falling back to finite
+therefore report ``unsupported_derivative`` instead of falling back to finite
 differences. The missing scalar-templated derivative path is:
 ``NativeThermoCeresCostFunction::Evaluate`` ->
 ``evaluate_native_thermo_regression_rows`` ->
@@ -413,7 +413,7 @@ log-pressure and vapor-composition solve used by
 
 Until those residuals expose analytic, CppAD, or implicit sensitivities with
 respect to fitted parameters and continuation variables, the Ceres fit path
-returns ``backend_unavailable`` for bubble-pressure rows.
+returns ``unsupported_derivative`` for bubble-pressure rows.
 
 The fit helper defaults to ``backend="native"``. For the currently supported
 production slice (reactive speciation rows, ideal-mole-fraction reaction
@@ -493,10 +493,10 @@ The package-owned micro-benchmark harness for this layer is:
    uv run python scripts\benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 3
 
 ``benchmark_native_ceres_thermo_regression.py`` reports
-``native_hot_loop``, ``python_objective_used``, ``finite_difference_used``,
+``native_hot_loop``, ``python_objective_used``, ``unsupported_derivative_used``,
 ``initial_cost``, and ``final_cost`` for the supported Ceres thermodynamic
 slice. With a default build that does not enable Ceres, the benchmark exits
-successfully but reports ``backend_unavailable``. Rebuild with
+successfully but reports ``unsupported_derivative``. Rebuild with
 ``EPCSAFT_ENABLE_CERES=ON`` to verify Ceres-owned parameter iteration and
 objective decrease.
 
@@ -560,7 +560,7 @@ Normal ``FitResult`` payloads report compact derivative metadata:
 - ``jacobian_backend``
 - ``jacobian_fallback_used``
 - ``jacobian_fallback_reason``
-- ``finite_difference_fallback_count``
+- ``unsupported_derivative_fallback_count``
 - ``hessian_available``
 - ``hessian_backend``
 - ``hessian_fallback_used``
@@ -568,7 +568,7 @@ Normal ``FitResult`` payloads report compact derivative metadata:
 
 Large matrices are exposed only through explicit derivative-evaluation helpers. Use ``evaluate_pure_neutral_derivatives(...)`` for the native pure-neutral objective. It returns residuals, gradient, ``jacobian_row_major``, ``jacobian_shape``, and Hessian skeleton fields. Pure-neutral Jacobians use the native autodiff path.
 
-For lower-level generic native records, use ``evaluate_generic_regression_derivatives(..., jacobian_backend="finite_difference")`` when an explicit finite-difference comparison Jacobian is needed. The default ``auto`` mode raises until generic residual state calls have analytic/autodiff coverage.
+For lower-level generic native records, use ``evaluate_generic_regression_derivatives(..., jacobian_backend="unsupported_derivative")`` when an explicit backend-unavailable comparison Jacobian is needed. The default ``auto`` mode raises until generic residual state calls have analytic/autodiff coverage.
 
 Reactive electrolyte residual evaluator
 ---------------------------------------
@@ -623,21 +623,24 @@ Derivative availability
      - Current Jacobian access
      - Hessian status
    * - Runtime ``dadt()``, ``dadx()``, ``z(return_contribution_terms=True)``, ``mures(return_contribution_terms=True)``
-     - Analytical where available, autodiff where implemented; explicit finite difference only where requested
+     - Analytical where available, autodiff where implemented; explicit unsupported derivative only where requested
      - Not exposed
    * - Pure-neutral regression
      - Native autodiff Jacobian through ``evaluate_pure_neutral_derivatives(...)``
      - Skeleton metadata only
    * - Generic ion/binary regression
-     - Explicit finite-difference Jacobian through ``evaluate_generic_regression_derivatives(..., jacobian_backend="finite_difference")`` until generic autodiff coverage is implemented
+     - Explicit backend-unavailable Jacobian through ``evaluate_generic_regression_derivatives(..., jacobian_backend="unsupported_derivative")`` until generic autodiff coverage is implemented
      - Skeleton metadata only
    * - Neutral LLE
-     - Native Newton solve remains available; derivative callback paths require explicit finite difference until autodiff residual coverage is implemented
+     - Native Newton solve remains available; derivative callback paths require explicit unsupported derivative until autodiff residual coverage is implemented
      - Skeleton metadata only
    * - Chemical equilibrium / reactive speciation
-     - Analytic log-amount Jacobian for ideal-mole-fraction reactions under ``auto``; activity/concentration paths require explicit finite difference until derivative coverage is implemented
+     - Analytic log-amount Jacobian for ideal-mole-fraction reactions under ``auto``; activity/concentration paths require explicit unsupported derivative until derivative coverage is implemented
      - Opt-in cyipopt accepts Gauss-Newton or L-BFGS approximate Hessian strategies
 
 The Hessian fields are deliberately a contract skeleton for future
 IPOPT-compatible optimizer integration. They do not mean exact second-derivative
 evaluation is implemented.
+
+
+

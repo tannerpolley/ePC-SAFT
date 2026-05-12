@@ -527,7 +527,7 @@ class ReactiveRegressionObjectiveResult:
 
 @dataclass(frozen=True, slots=True)
 class ReactiveRegressionJacobianResult:
-    """Finite-difference Jacobian result."""
+    """backend-unavailable Jacobian result."""
 
     jacobian: np.ndarray
     gradient: np.ndarray
@@ -875,7 +875,7 @@ class ReactiveElectrolyteRegressionContext:
             },
         )
 
-    def finite_difference_jacobian(
+    def unsupported_derivative_jacobian(
         self,
         parameter_map: Mapping[str, float],
         *,
@@ -887,7 +887,7 @@ class ReactiveElectrolyteRegressionContext:
     ) -> ReactiveRegressionJacobianResult:
         mode_token = str(mode).strip().lower()
         if mode_token not in {"central", "forward"}:
-            raise InputError("finite_difference_jacobian mode must be 'central' or 'forward'.")
+            raise InputError("unsupported_derivative_jacobian mode must be 'central' or 'forward'.")
         rel_step = _positive(relative_step, "relative_step")
         base_map = {str(k): float(v) for k, v in parameter_map.items()}
         base = self.evaluate_objective(base_map)
@@ -1331,7 +1331,7 @@ def _fit_reactive_parameters_impl(
     last_step_norm: float | None = None
 
     for iteration in range(1, max_iterations + 1):
-        jacobian = context.finite_difference_jacobian(
+        jacobian = context.unsupported_derivative_jacobian(
             current,
             parameters=parameter_names,
             mode=jacobian_mode,
@@ -1465,8 +1465,8 @@ def _fit_reactive_parameters_impl(
             "backend": "python_compat",
             "production_ready": False,
             "python_optimizer": True,
-            "finite_difference_jacobian": True,
-            "finite_difference_gate": "compatibility_only",
+            "unsupported_derivative_jacobian": True,
+            "unsupported_derivative_gate": "compatibility_only",
             "trajectory": trajectory,
             "jacobian": None if final_jacobian is None else final_jacobian.to_dict(),
             "covariance": covariance_diagnostics,
@@ -1550,7 +1550,7 @@ def _fit_reactive_parameters_native_thermo(
             "backend": "native_thermo",
             "production_ready": True,
             "python_optimizer": False,
-            "finite_difference_jacobian": False,
+            "unsupported_derivative_jacobian": False,
             "native_result": _json_like(native_result),
             "native_thermo_row_count": len(request["rows"]),
             "derivative_backend": str(native_result.get("derivative_backend", derivative_backend)),
@@ -1892,7 +1892,7 @@ def _fit_reactive_parameters_native(
             "backend": "native",
             "production_ready": True,
             "python_optimizer": False,
-            "finite_difference_jacobian": False,
+            "unsupported_derivative_jacobian": False,
             "native_result": _json_like(native_result),
             "native_residual_record_count": len(records),
             "derivative_backend": str(native_result.get("derivative_backend", derivative_backend)),
@@ -2523,3 +2523,6 @@ __all__ = [
     "write_regression_row_table",
     "write_regression_summary",
 ]
+
+
+

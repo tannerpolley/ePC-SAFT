@@ -28,7 +28,7 @@ In `src/epcsaft/native/regression/thermo_regression.cpp`:
    - reconstructs liquid and vapor native states at the solved pressure
    - uses native `dlnphi/drho` and `dP/drho` helpers to form the single implicit log-pressure state derivative
    - uses native `dlnphi/dtheta` helpers for the supported Born/SSM+DS parameter kinds
-   - writes the pressure-target Jacobian directly into the Ceres hot loop with no finite-difference production fallback
+   - writes the pressure-target Jacobian directly into the Ceres hot loop with no backend-unavailable production fallback
 4. Routed `NativeThermoCeresCostFunction::Evaluate(...)` to this Jacobian builder for bubble rows.
 5. Updated row diagnostics so the supported bubble slice reports `derivative_backend = autodiff` instead of `not_differentiated`.
 
@@ -66,4 +66,5 @@ Still unsupported:
 - multi-vapor bubble unknowns and normalization
 - vapor-composition targets through solved `y`
 - broader bubble derivative call graphs beyond the single-vapor pressure-only slice
-- any bubble slice that would require fake finite differences or unsupported parameter kinds
+- any bubble slice that would require fake Backend unavailables or unsupported parameter kinds
+

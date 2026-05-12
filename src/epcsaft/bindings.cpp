@@ -175,7 +175,7 @@ py::dict generic_regression_result_to_dict(const GenericRegressionResult& result
     out["jacobian_backend"] = result.jacobian_backend;
     out["jacobian_fallback_used"] = result.jacobian_fallback_used;
     out["jacobian_fallback_reason"] = result.jacobian_fallback_reason;
-    out["finite_difference_fallback_count"] = result.finite_difference_fallback_count;
+    out["unsupported_derivative_fallback_count"] = result.unsupported_derivative_fallback_count;
     out["hessian_available"] = result.hessian_available;
     out["hessian_backend"] = result.hessian_backend;
     out["hessian_fallback_used"] = result.hessian_fallback_used;
@@ -199,7 +199,7 @@ py::dict generic_regression_debug_to_dict(const GenericRegressionDebugResult& re
     out["jacobian_backend"] = result.jacobian_backend;
     out["jacobian_fallback_used"] = result.jacobian_fallback_used;
     out["jacobian_fallback_reason"] = result.jacobian_fallback_reason;
-    out["finite_difference_fallback_count"] = result.finite_difference_fallback_count;
+    out["unsupported_derivative_fallback_count"] = result.unsupported_derivative_fallback_count;
     out["hessian_row_major"] = result.hessian_row_major;
     out["hessian_shape"] = py::make_tuple(result.hessian_rows, result.hessian_cols);
     out["hessian_available"] = result.hessian_available;
@@ -233,7 +233,7 @@ py::dict native_autodiff_derivative_check_to_dict(
     py::dict out;
     out["cppad_compiled"] = result.cppad_compiled;
     out["cppad_used"] = result.cppad_used;
-    out["finite_difference_used"] = result.finite_difference_used;
+    out["unsupported_derivative_used"] = result.unsupported_derivative_used;
     out["status"] = result.status;
     out["derivative_backend"] = result.derivative_backend;
     out["checked_residuals"] = result.checked_residuals;
@@ -254,7 +254,7 @@ py::dict native_implicit_sensitivity_to_dict(const NativeImplicitSensitivityResu
     out["sensitivities_row_major"] = result.sensitivities_row_major;
     out["shape"] = py::make_tuple(result.rows, result.cols);
     out["residual_jacobian_condition_proxy"] = result.residual_jacobian_condition_proxy;
-    out["finite_difference_used"] = false;
+    out["unsupported_derivative_used"] = false;
     out["sensitivity_backend"] = "analytic_implicit";
     return out;
 }
@@ -301,7 +301,7 @@ py::dict native_regression_contract_to_dict(const NativeRegressionProblemContrac
     out["supported_target_families"] = contract.supported_target_families;
     out["supported_parameter_kinds"] = contract.supported_parameter_kinds;
     out["fixed_shape_residuals"] = contract.fixed_shape_residuals;
-    out["production_finite_difference_allowed"] = contract.production_finite_difference_allowed;
+    out["production_unsupported_derivative_allowed"] = contract.production_unsupported_derivative_allowed;
     out["row_diagnostic_fields"] = std::vector<std::string>{
         "row_id",
         "success",
@@ -925,7 +925,7 @@ py::dict native_chemical_residual_evaluation_to_dict(const ChemicalResidualEvalu
     out["jacobian_shape"] = py::make_tuple(result.jacobian_rows, result.jacobian_cols);
     out["jacobian_backend"] = result.diagnostics_string.count("jacobian_backend")
         ? result.diagnostics_string.at("jacobian_backend")
-        : "finite_difference";
+        : "unsupported_derivative";
     out["hessian_backend"] = result.diagnostics_string.count("hessian_backend")
         ? result.diagnostics_string.at("hessian_backend")
         : "gauss_newton";
@@ -957,7 +957,7 @@ py::dict native_electrolyte_lle_residual_evaluation_to_dict(const ElectrolyteLLE
     out["jacobian_shape"] = py::make_tuple(result.jacobian_rows, result.jacobian_cols);
     out["jacobian_backend"] = result.diagnostics_string.count("jacobian_backend")
         ? result.diagnostics_string.at("jacobian_backend")
-        : "finite_difference";
+        : "unsupported_derivative";
     out["hessian_backend"] = result.diagnostics_string.count("hessian_backend")
         ? result.diagnostics_string.at("hessian_backend")
         : "gauss_newton";
@@ -1133,8 +1133,8 @@ ChemicalEquilibriumOptionsNative chemical_options_from_request(const py::dict& r
     if (input.contains("min_mole_fraction")) {
         options.min_mole_fraction = input["min_mole_fraction"].cast<double>();
     }
-    if (input.contains("finite_difference_step")) {
-        options.finite_difference_step = input["finite_difference_step"].cast<double>();
+    if (input.contains("unsupported_derivative_step")) {
+        options.unsupported_derivative_step = input["unsupported_derivative_step"].cast<double>();
     }
     if (input.contains("jacobian_backend")) {
         options.jacobian_backend = input["jacobian_backend"].cast<std::string>();
@@ -1617,24 +1617,24 @@ PYBIND11_MODULE(_core, m) {
         .def_readonly("z_raw", &CompositionContributionResult::z_raw)
         .def_readonly("z", &CompositionContributionResult::z)
         .def_readonly("derivative_backend", &CompositionContributionResult::derivative_backend)
-        .def_readonly("finite_difference_fallback_used", &CompositionContributionResult::finite_difference_fallback_used)
-        .def_readonly("finite_difference_fallback_reason", &CompositionContributionResult::finite_difference_fallback_reason);
+        .def_readonly("unsupported_derivative_fallback_used", &CompositionContributionResult::unsupported_derivative_fallback_used)
+        .def_readonly("unsupported_derivative_fallback_reason", &CompositionContributionResult::unsupported_derivative_fallback_reason);
 
     py::class_<PressureCompositionDerivativeResult>(m, "PressureCompositionDerivativeResult")
         .def_readonly("dpdx", &PressureCompositionDerivativeResult::dpdx)
         .def_readonly("pressure", &PressureCompositionDerivativeResult::pressure)
         .def_readonly("supported", &PressureCompositionDerivativeResult::supported)
         .def_readonly("derivative_backend", &PressureCompositionDerivativeResult::derivative_backend)
-        .def_readonly("finite_difference_fallback_used", &PressureCompositionDerivativeResult::finite_difference_fallback_used)
-        .def_readonly("finite_difference_fallback_reason", &PressureCompositionDerivativeResult::finite_difference_fallback_reason);
+        .def_readonly("unsupported_derivative_fallback_used", &PressureCompositionDerivativeResult::unsupported_derivative_fallback_used)
+        .def_readonly("unsupported_derivative_fallback_reason", &PressureCompositionDerivativeResult::unsupported_derivative_fallback_reason);
 
     py::class_<PressureDensityDerivativeResult>(m, "PressureDensityDerivativeResult")
         .def_readonly("pressure", &PressureDensityDerivativeResult::pressure)
         .def_readonly("dpdrho", &PressureDensityDerivativeResult::dpdrho)
         .def_readonly("supported", &PressureDensityDerivativeResult::supported)
         .def_readonly("derivative_backend", &PressureDensityDerivativeResult::derivative_backend)
-        .def_readonly("finite_difference_fallback_used", &PressureDensityDerivativeResult::finite_difference_fallback_used)
-        .def_readonly("finite_difference_fallback_reason", &PressureDensityDerivativeResult::finite_difference_fallback_reason);
+        .def_readonly("unsupported_derivative_fallback_used", &PressureDensityDerivativeResult::unsupported_derivative_fallback_used)
+        .def_readonly("unsupported_derivative_fallback_reason", &PressureDensityDerivativeResult::unsupported_derivative_fallback_reason);
 
     py::class_<LnfugCompositionDerivativeResult>(m, "LnfugCompositionDerivativeResult")
         .def_readonly("lnfug", &LnfugCompositionDerivativeResult::lnfug)
@@ -1643,8 +1643,8 @@ PYBIND11_MODULE(_core, m) {
         .def_readonly("cols", &LnfugCompositionDerivativeResult::cols)
         .def_readonly("supported", &LnfugCompositionDerivativeResult::supported)
         .def_readonly("derivative_backend", &LnfugCompositionDerivativeResult::derivative_backend)
-        .def_readonly("finite_difference_fallback_used", &LnfugCompositionDerivativeResult::finite_difference_fallback_used)
-        .def_readonly("finite_difference_fallback_reason", &LnfugCompositionDerivativeResult::finite_difference_fallback_reason);
+        .def_readonly("unsupported_derivative_fallback_used", &LnfugCompositionDerivativeResult::unsupported_derivative_fallback_used)
+        .def_readonly("unsupported_derivative_fallback_reason", &LnfugCompositionDerivativeResult::unsupported_derivative_fallback_reason);
 
     py::class_<ResidualChemicalPotentialResult>(m, "ResidualChemicalPotentialResult")
         .def_readonly("mu", &ResidualChemicalPotentialResult::mu)
@@ -1793,3 +1793,6 @@ PYBIND11_MODULE(_core, m) {
     m.def("_solve_chemical_equilibrium_native", &solve_chemical_equilibrium_native_binding);
     m.def("_evaluate_chemical_equilibrium_residual_native", &evaluate_chemical_equilibrium_residual_native_binding);
 }
+
+
+

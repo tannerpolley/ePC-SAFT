@@ -177,10 +177,6 @@ def _native_dependency_status(source_root: Path | None) -> dict[str, dict[str, o
     }
 
 
-def _finite_difference_debug_enabled() -> bool:
-    return os.environ.get("EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG") == "1"
-
-
 def _native_extension_path() -> Path | None:
     try:
         from . import _core
@@ -282,16 +278,13 @@ def capabilities() -> dict[str, object]:
                 "sweep_available": True,
                 "continuation_state_available": True,
                 "activity_output_modes": ["auto", "always", "never"],
-                "jacobian_auto_policy": "cppad_supported_else_debug_fd_or_backend_unavailable",
+                "jacobian_auto_policy": "cppad_supported_else_unsupported_derivative",
                 "jacobian_auto_supported_standard_states": [
                     "ideal_mole_fraction",
                     "concentration",
                     "mole_fraction_activity",
                 ],
                 "jacobian_auto_ideal_without_cppad": "analytic",
-                "finite_difference_requires_explicit_request": True,
-                "finite_difference_debug_gate": "EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG=1",
-                "finite_difference_debug_enabled": _finite_difference_debug_enabled(),
                 "explicit_autodiff_raises_when_unavailable": True,
                 "solver_backends": ["auto", "newton", "ipopt"],
                 "ipopt_available": bool(cyipopt["available"]),
@@ -363,7 +356,7 @@ def capabilities() -> dict[str, object]:
                         "nonfinite_objective",
                         "bounds_inconsistent",
                         "invalid_input",
-                        "backend_unavailable",
+                        "unsupported_derivative",
                     ],
                     "fields": [
                         "status",
@@ -396,7 +389,7 @@ def capabilities() -> dict[str, object]:
                     "compatibility_backend": "python_compat",
                     "production_blockers": [
                         "Ceres thermodynamic hot loop currently supports only reactive-speciation rows with reaction logK parameters, ideal standard states, and speciation targets",
-                        "general reactive electrolyte bubble derivatives beyond the single-vapor pressure-only slice still report backend_unavailable",
+                        "general reactive electrolyte bubble derivatives beyond the single-vapor pressure-only slice still report unsupported_derivative",
                     ],
                     "missing_bubble_derivative_residuals": [
                         "multi-vapor composition unknowns and normalization",
@@ -423,11 +416,11 @@ def capabilities() -> dict[str, object]:
                     "backend": "native",
                     "optimizer_backend": "ceres_when_EPCSAFT_ENABLE_CERES",
                     "derivative_backend": (
-                        "cppad_implicit" if bool(native_dependencies["cppad"]["enabled"]) else "backend_unavailable_without_cppad"
+                        "cppad_implicit" if bool(native_dependencies["cppad"]["enabled"]) else "unsupported_derivative_without_cppad"
                     ),
                     "native_hot_loop": True,
                     "python_objective_used": False,
-                    "finite_difference_used": False,
+                    "unsupported_derivative_used": False,
                     "supported_slice": {
                         "row_modes": ["reactive_speciation", "reactive_electrolyte_bubble"],
                         "parameter_kinds": [
@@ -438,7 +431,7 @@ def capabilities() -> dict[str, object]:
                             "f_solv",
                             "solvation_factor",
                         ],
-                        "target_families": ["speciation", "pressure"],
+                        "target_families": ["speciation", "pressure", "vapor_composition"],
                         "reaction_standard_states": [
                             "ideal_mole_fraction",
                             "concentration",
@@ -454,7 +447,7 @@ def capabilities() -> dict[str, object]:
                         },
                         "row_mode_constraints": {
                             "reactive_speciation": "speciation targets on the supported ideal, concentration, and activity-standard-state slices",
-                            "reactive_electrolyte_bubble": "single neutral vapor species, pressure targets only, and supported born_radius/f_solv parameter kinds",
+                            "reactive_electrolyte_bubble": "one or more neutral vapor species, pressure or vapor_composition targets, and supported born_radius/f_solv parameter kinds",
                         },
                     },
                     "blocked_parameter_kinds": {
@@ -462,7 +455,7 @@ def capabilities() -> dict[str, object]:
                         "l_ij": "generic EOS binary interaction sensitivities are not yet wired through the native reactive_speciation thermo regression path",
                         "k_hb_ij": "association interaction sensitivities are not yet wired through the native reactive_speciation thermo regression path",
                     },
-                    "unsupported_status": "backend_unavailable",
+                    "unsupported_status": "unsupported_derivative",
                     "benchmark_command": "uv run python scripts/benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 3",
                 },
                 "classes": [
@@ -470,7 +463,7 @@ def capabilities() -> dict[str, object]:
                     "ReactiveElectrolyteRegressionContext",
                     "ReactiveRegressionObjective",
                 ],
-                "methods": ["evaluate_objective", "finite_difference_jacobian"],
+                "methods": ["evaluate_objective"],
                 "benchmark_commands": [
                     "uv run python scripts/benchmark_reactive_regression.py --warmup 3 --repeat 10 --json build/benchmarks/reactive_regression_main.json",
                     "uv run python scripts/benchmark_reactive_regression.py --case reactive_regression_objective_tiny --warmup 3 --repeat 20 --json build/benchmarks/reactive_regression_objective_main.json",
@@ -486,7 +479,7 @@ def capabilities() -> dict[str, object]:
                 "supports_fixed_shape_residuals": True,
                 "supports_row_diagnostics": True,
                 "supports_penalty_residuals": True,
-                "production_finite_difference_allowed": False,
+                "production_unsupported_derivative_allowed": False,
                 "methods": [
                     "native_regression_contract_schema",
                     "evaluate_native_regression_residual_records",
@@ -498,3 +491,6 @@ def capabilities() -> dict[str, object]:
 
 
 __git_commit__ = str(runtime_build_info()["source_git_commit"])
+
+
+

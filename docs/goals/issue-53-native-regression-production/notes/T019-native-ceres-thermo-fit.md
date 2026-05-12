@@ -8,7 +8,7 @@ Implemented an honest first native thermodynamic Ceres fit slice:
 - C++ now applies serialized parameter vectors inside the native hot loop.
 - Supported production fit slice is currently reactive-speciation rows with reaction log-equilibrium-constant parameters, ideal mole-fraction standard states, and speciation targets.
 - Ceres owns parameter iteration when `EPCSAFT_ENABLE_CERES=ON`.
-- Jacobians for that slice use analytic/implicit sensitivities from the converged native speciation residual Jacobian. No Python objective loop and no finite-difference derivative path is used.
+- Jacobians for that slice use analytic/implicit sensitivities from the converged native speciation residual Jacobian. No Python objective loop and no backend-unavailable derivative path is used.
 - Unsupported row/parameter derivative combinations return canonical `backend_unavailable`.
 
 ## Scope And Limitations
@@ -33,7 +33,7 @@ This is not the full issue #53 completion slice yet. It does not yet provide Cer
   - `derivative_backend=analytic_implicit`
   - `initial_cost=0.05174377188057001`
   - `final_cost=1.1771098705162825e-19`
-  - message includes `native_hot_loop=true; python_objective_used=false; finite_difference_used=false`
+  - message includes `native_hot_loop=true; python_objective_used=false; Backend_unavailable_used=false`
 
 ## Files
 
@@ -51,3 +51,4 @@ This is not the full issue #53 completion slice yet. It does not yet provide Cer
 - `tests/native/test_cppad_reactive_speciation_derivatives.py`
 - `tests/native/test_native_ceres_thermodynamic_regression.py`
 - `tests/native/test_native_regression_types.py`
+

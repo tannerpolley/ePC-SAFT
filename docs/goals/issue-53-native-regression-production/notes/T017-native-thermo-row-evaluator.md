@@ -18,7 +18,7 @@ Unsupported row modes receive fixed-shape penalty residuals instead of falling b
 
 ## Important Limit
 
-This task adds native thermodynamic row evaluation, not Ceres parameter iteration and not implicit sensitivities. `reactive_speciation` can still report a finite-difference Jacobian internally for nonideal standard states until T018/T020 harden derivative policy. The T017 speciation test uses an ideal mole-fraction standard state so the native row evaluator reports `analytic`.
+This task adds native thermodynamic row evaluation, not Ceres parameter iteration and not implicit sensitivities. `reactive_speciation` can still report a backend-unavailable Jacobian internally for nonideal standard states until T018/T020 harden derivative policy. The T017 speciation test uses an ideal mole-fraction standard state so the native row evaluator reports `analytic`.
 
 ## Validation
 
@@ -30,3 +30,4 @@ This task adds native thermodynamic row evaluation, not Ceres parameter iteratio
   - pass
 - `uv run black --check src/epcsaft/native_regression.py src/epcsaft/__init__.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_native_ceres_reactive_pressure_speciation.py`
   - pass
+

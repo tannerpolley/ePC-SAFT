@@ -9,7 +9,7 @@ def test_native_reactive_regression_contract_covers_pressure_speciation_and_ssmd
     assert {"pressure", "speciation"}.issubset(schema["supported_target_families"])
     assert "born_radius" in schema["supported_parameter_kinds"]
     assert "solvation_factor" in schema["supported_parameter_kinds"]
-    assert schema["production_finite_difference_allowed"] is False
+    assert schema["production_unsupported_derivative_allowed"] is False
 
 
 def test_native_reactive_regression_minimum_pressure_speciation_slice_runs() -> None:
@@ -60,3 +60,6 @@ def test_native_reactive_regression_minimum_pressure_speciation_slice_runs() -> 
     assert result["objective_result"]["success_count"] == 2
     assert [entry["family"] for entry in result["objective_result"]["residual_schema"]] == ["speciation", "pressure"]
     assert result["parameter_names"] == ["MEAH+.d_born", "MEA.f_solv"]
+
+
+

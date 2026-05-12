@@ -24,7 +24,7 @@ Reason:
 
 Land the shared derivative-policy scaffolding that the broader tranche needs:
 
-- move native finite-difference debug gating to a shared helper under
+- move native backend-unavailable debug gating to a shared helper under
   `src/epcsaft/native/autodiff/`;
 - start scalar-templating cleanup in the Born path where double and autodiff
   logic are currently duplicated;
@@ -45,3 +45,4 @@ Add the first real non-logK native parameter-sensitivity path for
 3. extend implicit speciation `R_theta` assembly;
 4. keep bubble-pressure rows gated as `backend_unavailable` until their own
    implicit derivative system exists.
+

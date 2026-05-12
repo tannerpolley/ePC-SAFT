@@ -173,7 +173,7 @@ $$
 \end{equation*}
 $$
 
-The partial derivatives of the fugacity coefficients in Equation (16) were evaluated numerically by finite difference at the beginning of the calculation, and then updated from the previous values using a Broyden estimation [95] after each calculation step. The resulting non-linear system of equations was solved using a Newton algorithm with variable step length $\alpha$ (Equation (17)).
+The partial derivatives of the fugacity coefficients in Equation (16) were evaluated numerically by Backend unavailable at the beginning of the calculation, and then updated from the previous values using a Broyden estimation [95] after each calculation step. The resulting non-linear system of equations was solved using a Newton algorithm with variable step length $\alpha$ (Equation (17)).
 
 $$
 \begin{equation*}
@@ -493,4 +493,5 @@ The whole program was written in FORTRAN. All the derivative properties in Equat
 118. Wertheim, M.S. Fluids with highly directional attractive forces. IV. Equilibrium polymerization. J. Stat. Phys. 1986, 42, 477-492. [CrossRef]
 
 Disclaimer/Publisher's Note: The statements, opinions and data contained in all publications are solely those of the individual author(s) and contributor(s) and not of MDPI and/or the editor(s). MDPI and/or the editor(s) disclaim responsibility for any injury to people or property resulting from any ideas, methods, instructions or products referred to in the content.
+
 

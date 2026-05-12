@@ -7,8 +7,8 @@ Added a slice-scoped native AD scaffold under `src/epcsaft/native/autodiff/`:
 - `ad_scalar.h` provides the optional CppAD scalar type and templated residual primitives.
 - `ad_derivative_checks.h/.cpp` provides an internal derivative-check surface for scaled, pressure-log, and reaction-log residual primitives.
 - `_core._native_autodiff_derivative_checks()` exposes the check payload for native tests.
-- Default builds without CppAD return `backend_unavailable` and `finite_difference_used=false`.
-- CppAD-enabled builds return real CppAD derivatives for the check residuals and still report `finite_difference_used=false`.
+- Default builds without CppAD return `backend_unavailable` and `Backend_unavailable_used=false`.
+- CppAD-enabled builds return real CppAD derivatives for the check residuals and still report `Backend_unavailable_used=false`.
 
 This is intentionally not a whole-EOS AD conversion. It is the first native substrate needed by the supported production regression slice.
 
@@ -31,8 +31,9 @@ The bundled FetchContent CppAD setup needed generated `cppad/configure.hpp` and 
 - `cmake --build build/temp/cppad-ad-check --target _core --parallel 10`
   - pass
 - `uv run python -c "import sys; sys.path.insert(0, r'build/temp/cppad-ad-check'); import _core; print(_core._native_autodiff_derivative_checks())"`
-  - pass; reports `cppad_compiled=True`, `cppad_used=True`, `derivative_backend='cppad'`, `finite_difference_used=False`, `max_abs_error=0.0`
+  - pass; reports `cppad_compiled=True`, `cppad_used=True`, `derivative_backend='cppad'`, `Backend_unavailable_used=False`, `max_abs_error=0.0`
 
 ## Remaining Scope
 
-T017 still has to wire real native thermodynamic row objects/evaluator for reactive speciation and reactive electrolyte bubble rows. The AD scaffold only proves the optional CppAD substrate compiles and can provide native derivatives without finite differences.
+T017 still has to wire real native thermodynamic row objects/evaluator for reactive speciation and reactive electrolyte bubble rows. The AD scaffold only proves the optional CppAD substrate compiles and can provide native derivatives without Backend unavailables.
+

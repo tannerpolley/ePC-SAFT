@@ -13,8 +13,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.fixture(autouse=True)
-def _allow_finite_difference_debug(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG", "1")
+def _allow_unsupported_derivative_debug(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("EPCSAFT_ALLOW_DERIVATIVE_BACKEND_DEBUG", "1")
 
 
 def _hydrocarbon_mixture() -> ePCSAFTMixture:
@@ -168,23 +168,23 @@ def test_native_electrolyte_lle_residual_evaluator_exposes_transformed_jacobian(
             "max_iterations": 80,
             "tolerance": 1.0e-8,
             "min_composition": 1.0e-12,
-            "jacobian_backend": "finite_difference",
+            "jacobian_backend": "unsupported_derivative",
         },
     }
 
     payload = _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
 
     assert payload["variable_model"] == "ascani_transformed_salt_pairs"
-    assert payload["jacobian_backend"] == "finite_difference"
+    assert payload["jacobian_backend"] == "unsupported_derivative"
     assert payload["hessian_backend"] == "gauss_newton"
     diagnostics = payload["diagnostics"]
-    assert diagnostics["finite_difference_scheme"] == "forward"
-    assert diagnostics["finite_difference_variable_space"] == "transformed_formula_variables"
-    assert diagnostics["finite_difference_step_rule"] == "absolute_transformed_variable_step"
-    assert diagnostics["finite_difference_effective_step"] == pytest.approx(1.0e-7)
-    assert diagnostics["derivative_backend_selected"] == "finite_difference"
-    assert diagnostics["finite_difference_allowed"] is True
-    assert diagnostics["explicit_finite_difference"] is True
+    assert diagnostics["unsupported_derivative_scheme"] == "forward"
+    assert diagnostics["unsupported_derivative_variable_space"] == "transformed_formula_variables"
+    assert diagnostics["unsupported_derivative_step_rule"] == "absolute_transformed_variable_step"
+    assert diagnostics["unsupported_derivative_effective_step"] == pytest.approx(1.0e-7)
+    assert diagnostics["derivative_backend_selected"] == "unsupported_derivative"
+    assert diagnostics["unsupported_derivative_allowed"] is True
+    assert diagnostics["explicit_unsupported_derivative"] is True
     assert diagnostics["exact_hessian_available"] is False
     assert diagnostics["hessian_kind"] == "approximate_least_squares_gauss_newton"
     assert diagnostics["hessian_includes_second_residual_derivatives"] is False
@@ -272,3 +272,6 @@ def test_public_equilibrium_does_not_expose_python_backend_tokens() -> None:
     assert '"python"' not in source
     assert "Python-first" not in equilibrium_source
     assert "np.linalg.lstsq" not in equilibrium_source
+
+
+

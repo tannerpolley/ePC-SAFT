@@ -98,9 +98,7 @@ ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChain
             + thermo.m_avg * dispersion.C1 * dispersion.I2 * dm2e2s3_dx);
     }
 
-    if (cppargs.disp_dadx_diff_mode == 1) {
-        result.dadx = contribution_dadx_fd_cpp(AresContributionKind::DISP, t, rho, x, cppargs, result.ares);
-    } else if (cppargs.disp_dadx_diff_mode == 2) {
+    if (cppargs.disp_dadx_diff_mode == 2) {
         result.dadx = contribution_dadx_autodiff_cpp(AresContributionKind::DISP, t, rho, x, cppargs);
     }
 

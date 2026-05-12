@@ -86,8 +86,8 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     cppad_enabled = bool(capabilities["native_dependencies"]["cppad"]["enabled"])
     assert native_ceres["native_hot_loop"] is True
     assert native_ceres["python_objective_used"] is False
-    assert native_ceres["finite_difference_used"] is False
-    expected_derivative_backend = "cppad_implicit" if cppad_enabled else "backend_unavailable_without_cppad"
+    assert native_ceres["unsupported_derivative_used"] is False
+    expected_derivative_backend = "cppad_implicit" if cppad_enabled else "unsupported_derivative_without_cppad"
     assert native_ceres["derivative_backend"] == expected_derivative_backend
     assert native_ceres["supported_slice"]["reaction_standard_states"] == [
         "ideal_mole_fraction",
@@ -104,11 +104,11 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         "born_radius",
         "f_solv",
     }
-    assert set(native_ceres["supported_slice"]["target_families"]) >= {"speciation", "pressure"}
-    assert "single neutral vapor species" in native_ceres["supported_slice"]["row_mode_constraints"][
+    assert set(native_ceres["supported_slice"]["target_families"]) >= {"speciation", "pressure", "vapor_composition"}
+    assert "one or more neutral vapor species" in native_ceres["supported_slice"]["row_mode_constraints"][
         "reactive_electrolyte_bubble"
     ]
-    assert native_ceres["unsupported_status"] == "backend_unavailable"
+    assert native_ceres["unsupported_status"] == "unsupported_derivative"
     assert set(native_ceres["blocked_parameter_kinds"]) >= {"k_ij", "l_ij"}
     assert ipopt["available"] is ipopt_backend.cyipopt_available()
     assert ipopt["formulations"] == ["bound_constrained_residual_minimization"]
@@ -140,7 +140,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert capabilities["equilibrium"]["reactive_speciation"]["full_constrained_nlp_available"] is False
     assert (
         capabilities["equilibrium"]["reactive_speciation"]["jacobian_auto_policy"]
-        == "cppad_supported_else_debug_fd_or_backend_unavailable"
+        == "cppad_supported_else_unsupported_derivative"
     )
     assert capabilities["equilibrium"]["reactive_speciation"]["jacobian_auto_supported_standard_states"] == [
         "ideal_mole_fraction",
@@ -148,11 +148,6 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         "mole_fraction_activity",
     ]
     assert capabilities["equilibrium"]["reactive_speciation"]["jacobian_auto_ideal_without_cppad"] == "analytic"
-    assert capabilities["equilibrium"]["reactive_speciation"]["finite_difference_requires_explicit_request"] is True
-    assert (
-        capabilities["equilibrium"]["reactive_speciation"]["finite_difference_debug_gate"]
-        == "EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG=1"
-    )
     assert capabilities["equilibrium"]["reactive_speciation"]["explicit_autodiff_raises_when_unavailable"] is True
     assert capabilities["regression"]["pure_neutral"]["backend"] == "native"
     reactive_regression = capabilities["regression"]["reactive_electrolyte_residuals"]
@@ -163,12 +158,12 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert batch_context["available"] is True
     assert batch_context["backend"] == "python_batched_native_solvers"
     assert "ReactiveElectrolyteRegressionContext" in batch_context["classes"]
-    assert "finite_difference_jacobian" in batch_context["methods"]
+    assert batch_context["methods"] == ["evaluate_objective"]
     assert "singular_jacobian" in batch_context["fit_status_contract"]["canonical_statuses_target"]
     native_record_regression = capabilities["regression"]["native_residual_record_regression"]
     assert native_record_regression["available"] is True
     assert native_record_regression["backend"] == "native"
-    assert native_record_regression["production_finite_difference_allowed"] is False
+    assert native_record_regression["production_unsupported_derivative_allowed"] is False
     assert native_record_regression["supports_fixed_shape_residuals"] is True
     assert "solve_native_regression_residual_records" in native_record_regression["methods"]
     assert capabilities["equilibrium"]["problem_objects"]["entrypoint"] == "mixture.solve_equilibrium(problem)"
@@ -391,8 +386,8 @@ def test_state_contribution_term_payloads_match_totals():
         "z_terms",
         "z_total",
         "derivative_backend",
-        "finite_difference_fallback_used",
-        "finite_difference_fallback_reason",
+        "unsupported_derivative_fallback_used",
+        "unsupported_derivative_fallback_reason",
     }
     assert set(dadx["terms"]) == {"hc", "disp", "assoc", "ion", "born"}
     assert set(dadx["ares_terms"]) == {"hc", "disp", "assoc", "ion", "born"}
@@ -476,8 +471,8 @@ def test_neutral_composition_and_fugacity_terms_return_expected_values():
         "z_terms",
         "z_total",
         "derivative_backend",
-        "finite_difference_fallback_used",
-        "finite_difference_fallback_reason",
+        "unsupported_derivative_fallback_used",
+        "unsupported_derivative_fallback_reason",
     }
     for key in ("hc", "disp", "assoc", "ion", "born"):
         np.testing.assert_allclose(dadx["terms"][key], terms[f"dadx_{key}"])
@@ -595,25 +590,25 @@ def test_default_dadx_reports_auto_derivative_policy():
     assert dadx["derivative_backend"]["ion"] == "analytic"
     assert dadx["derivative_backend"]["born"] == "analytic"
     assert dadx["derivative_backend"]["assoc"] == "analytic"
-    assert dadx["finite_difference_fallback_used"] is False
-    assert dadx["finite_difference_fallback_reason"] == ""
+    assert dadx["unsupported_derivative_fallback_used"] is False
+    assert dadx["unsupported_derivative_fallback_reason"] == ""
 
 
-def test_explicit_finite_difference_dadx_reports_finite_difference_backend():
+def test_explicit_unsupported_derivative_dadx_reports_unsupported_derivative_backend():
     state, _ = _ionic_state_with_elec_model(
         {
-            "hc_model": {"dadx_differential_mode": "finite_difference"},
-            "disp_model": {"dadx_differential_mode": "finite_difference"},
-            "DH_model": {"mu_DH_model": {"differential_mode": "finite_difference"}},
-            "born_model": {"mu_born_model": {"differential_mode": "finite_difference"}},
+            "hc_model": {"dadx_differential_mode": "unsupported_derivative"},
+            "disp_model": {"dadx_differential_mode": "unsupported_derivative"},
+            "DH_model": {"mu_DH_model": {"differential_mode": "unsupported_derivative"}},
+            "born_model": {"mu_born_model": {"differential_mode": "unsupported_derivative"}},
         }
     )
     dadx = state.dadx()
 
-    assert dadx["derivative_backend"]["hc"] == "finite_difference"
-    assert dadx["derivative_backend"]["disp"] == "finite_difference"
-    assert dadx["derivative_backend"]["ion"] == "finite_difference"
-    assert dadx["derivative_backend"]["born"] == "finite_difference"
+    assert dadx["derivative_backend"]["hc"] == "unsupported_derivative"
+    assert dadx["derivative_backend"]["disp"] == "unsupported_derivative"
+    assert dadx["derivative_backend"]["ion"] == "unsupported_derivative"
+    assert dadx["derivative_backend"]["born"] == "unsupported_derivative"
 
 
 def test_hc_dadx_autodiff_matches_analytic_terms():
@@ -884,3 +879,6 @@ def test_density_based_native_constructor_failure_raises_public_solution_error(m
     assert "x=[1.0]" in message
     assert "simulated density native failure" in message
     assert excinfo.value.__cause__ is not None
+
+
+

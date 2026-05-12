@@ -6,7 +6,7 @@ Result
 
 Stopped the first activity-coupled worker tranche at its `stop_if` boundary.
 
-The current native code does **not** yet expose the finite-difference-free
+The current native code does **not** yet expose the backend-unavailable-free
 state-level derivative substrate needed to differentiate
 `mole_fraction_activity` reaction residuals honestly.
 
@@ -39,8 +39,8 @@ Why this blocks T044
 --------------------
 
 To differentiate activity-coupled reaction residuals with respect to the
-chemical-equilibrium variables without finite differences, the package needs a
-finite-difference-free derivative of:
+chemical-equilibrium variables without Backend unavailables, the package needs a
+backend-unavailable-free derivative of:
 
 - `ln_gamma_i`
 - equivalently `ln_phi_i`
@@ -63,7 +63,7 @@ Concrete missing substrate
 What is missing is not just a small glue change in
 `epcsaft_chemical_equilibrium.cpp`. The next architecture slice needs one of:
 
-- a native finite-difference-free `d ln(phi_i) / d log(n_j)` or equivalent
+- a native backend-unavailable-free `d ln(phi_i) / d log(n_j)` or equivalent
   state-level fugacity-derivative result for supported states, or
 - a broader second-derivative/Hessian-capable EOS composition-derivative
   substrate that can be used to build that surface honestly
@@ -84,3 +84,4 @@ Evidence
 - `src/epcsaft/native/epcsaft_mu.cpp`
 - `src/epcsaft/native/epcsaft_electrolyte.h`
 - `src/epcsaft/native/regression/thermo_regression.cpp`
+

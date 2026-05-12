@@ -362,7 +362,7 @@ PressureCompositionDerivativeResult pressure_composition_derivative_result_cpp(
     if (!pressure_composition_derivative_supported_cpp(cppargs, &unsupported_reason)) {
         result.supported = false;
         result.derivative_backend = "unsupported";
-        result.finite_difference_fallback_reason = unsupported_reason;
+        result.unsupported_derivative_fallback_reason = unsupported_reason;
         result.dpdx.assign(x.size(), std::numeric_limits<double>::quiet_NaN());
         return result;
     }
@@ -408,7 +408,7 @@ PressureDensityDerivativeResult pressure_density_derivative_result_cpp(
     if (!pressure_composition_derivative_supported_cpp(cppargs, &unsupported_reason)) {
         result.supported = false;
         result.derivative_backend = "unsupported";
-        result.finite_difference_fallback_reason = unsupported_reason;
+        result.unsupported_derivative_fallback_reason = unsupported_reason;
         result.dpdrho = std::numeric_limits<double>::quiet_NaN();
         return result;
     }
@@ -432,3 +432,6 @@ PressureDensityDerivativeResult pressure_density_derivative_result_cpp(
     result.supported = true;
     return result;
 }
+
+
+

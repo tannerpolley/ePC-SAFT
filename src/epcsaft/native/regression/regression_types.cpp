@@ -88,8 +88,8 @@ std::string native_regression_status_name(NativeRegressionStatus status) {
             return "bounds_inconsistent";
         case NativeRegressionStatus::INVALID_INPUT:
             return "invalid_input";
-        case NativeRegressionStatus::BACKEND_UNAVAILABLE:
-            return "backend_unavailable";
+        case NativeRegressionStatus::unsupported_derivative:
+            return "unsupported_derivative";
     }
     throw std::invalid_argument("Unknown native regression status.");
 }
@@ -104,7 +104,7 @@ std::vector<std::string> native_regression_status_names() {
         native_regression_status_name(NativeRegressionStatus::NONFINITE_OBJECTIVE),
         native_regression_status_name(NativeRegressionStatus::BOUNDS_INCONSISTENT),
         native_regression_status_name(NativeRegressionStatus::INVALID_INPUT),
-        native_regression_status_name(NativeRegressionStatus::BACKEND_UNAVAILABLE),
+        native_regression_status_name(NativeRegressionStatus::unsupported_derivative),
     };
 }
 
@@ -127,7 +127,7 @@ NativeRegressionProblemContract native_regression_contract_schema() {
         "dielectric_parameter",
     };
     contract.fixed_shape_residuals = true;
-    contract.production_finite_difference_allowed = false;
+    contract.production_unsupported_derivative_allowed = false;
     return contract;
 }
 
@@ -222,7 +222,7 @@ NativeRegressionFitResult solve_native_regression_residual_records(
         && options.derivative_backend != "cppad"
         && options.derivative_backend != "implicit") {
         out.status = native_regression_status_name(NativeRegressionStatus::INVALID_INPUT);
-        out.message = "native production regression derivatives must be analytic, implicit, or CppAD; finite_difference is debug-only.";
+        out.message = "native production regression derivatives must be analytic, implicit, or CppAD; unsupported_derivative is debug-only.";
         return out;
     }
     if (parameters.empty()) {
@@ -370,9 +370,12 @@ NativeRegressionFitResult solve_native_regression_residual_records(
     out.success = true;
     out.status = native_regression_status_name(NativeRegressionStatus::CONVERGED);
     if (has_sensitivity) {
-        out.message = "native analytic sensitivity regression converged without production finite differences.";
+        out.message = "native analytic sensitivity regression converged without production unsupported derivatives.";
     } else {
-        out.message = "analytic fixed-shape residual contract evaluated without production finite differences.";
+        out.message = "analytic fixed-shape residual contract evaluated without production unsupported derivatives.";
     }
     return out;
 }
+
+
+

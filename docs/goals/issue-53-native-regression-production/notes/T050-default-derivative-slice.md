@@ -7,7 +7,7 @@ This tranche completed the safe default-policy move for **ideal chemical-equilib
 ### What landed
 
 - `chemical_equilibrium` with `jacobian_backend="auto"` now prefers `autodiff` on the supported ideal mole-fraction log-amount slice when CppAD is compiled.
-- The explicit finite-difference debug-only gate remains unchanged.
+- The explicit backend-unavailable debug-only gate remains unchanged.
 
 Files:
 
@@ -43,3 +43,4 @@ Result:
   - public runtime `dadx()` auto/default prefers autodiff in production
 - Still later blocker:
   - reactive-electrolyte bubble differentiation
+

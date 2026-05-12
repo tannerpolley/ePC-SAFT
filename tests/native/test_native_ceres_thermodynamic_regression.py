@@ -49,6 +49,38 @@ def _salt_speciation_ssmds_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_params(params, species=["H2O", "NaCl", "Na+", "Cl-"])
 
 
+def _multivapor_electrolyte_ssmds_mixture() -> epcsaft.ePCSAFTMixture:
+    params = {
+        "m": np.asarray([1.2047, 2.3827, 2.844, 1.0, 1.0]),
+        "s": np.asarray([2.7990379398694616, 3.1771, 3.5561, 2.8232, 2.7560]),
+        "e": np.asarray([353.95, 198.24, 257.13, 230.0, 170.0]),
+        "z": np.asarray([0.0, 0.0, 0.0, 1.0, -1.0]),
+        "dielc": np.asarray([78.09, 24.88, 17.2, 8.0, 8.0]),
+        "d_born": np.asarray([0.0, 0.0, 0.0, 3.445, 4.1]),
+        "f_solv": np.asarray([1.5, 1.6, 1.5, 1.0, 1.0]),
+        "MW": np.asarray([18.01528e-3, 46.068e-3, 74.1216e-3, 22.98e-3, 35.45e-3]),
+        "k_ij": np.zeros((5, 5)),
+        "elec_model": {
+            "include_born_model": True,
+            "born_model": {
+                "d_Born_mode": 3,
+                "solvation_shell_model": True,
+                "dielectric_saturation": True,
+                "bulk_mode": "solvent",
+                "mu_born_model": {
+                    "comp_dep_rel_perm": True,
+                    "include_sum_term": True,
+                    "comp_dep_delta_d": True,
+                },
+            },
+        },
+    }
+    return epcsaft.ePCSAFTMixture.from_params(
+        params,
+        species=["H2O", "Ethanol", "Butanol", "Na+", "Cl-"],
+    )
+
+
 def _salt_speciation_row(log_k: float, observed_na: float) -> dict[str, object]:
     initial_x = [0.998, 0.001, 0.0005, 0.0005]
     return {
@@ -168,8 +200,8 @@ def test_native_thermo_regression_fit_reports_fixed_shape_result() -> None:
         },
     )
 
-    assert result["status"] in {"backend_unavailable", "converged", "max_iterations"}
-    assert result["optimizer_backend"] in {"backend_unavailable", "ceres"}
+    assert result["status"] in {"unsupported_derivative", "converged", "max_iterations"}
+    assert result["optimizer_backend"] in {"unsupported_derivative", "ceres"}
     assert result["derivative_backend"] in {"implicit", "analytic_implicit", "cppad_implicit"}
     assert result["initial_cost"] >= 0.0
     assert result["objective_result"]["fixed_shape_residuals"] is True
@@ -207,8 +239,8 @@ def test_native_thermo_regression_reports_ssmds_born_derivatives_unavailable() -
         },
     )
 
-    assert result["status"] == "backend_unavailable"
-    assert result["optimizer_backend"] == "backend_unavailable"
+    assert result["status"] == "unsupported_derivative"
+    assert result["optimizer_backend"] == "unsupported_derivative"
     assert "activity-standard-state reactive_speciation rows only" in result["message"]
     assert result["objective_result"]["fixed_shape_residuals"] is True
 
@@ -246,7 +278,7 @@ def test_native_thermo_regression_supports_ssmds_born_radius_parameter_on_activi
 
     cppad_enabled = bool(epcsaft.runtime_build_info()["native_dependencies"]["cppad"]["enabled"])
     if not cppad_enabled:
-        assert result["status"] == "backend_unavailable"
+        assert result["status"] == "unsupported_derivative"
         assert "CppAD-enabled build" in result["message"]
         return
 
@@ -288,7 +320,7 @@ def test_native_thermo_regression_supports_ssmds_solvation_factor_parameter_on_a
 
     cppad_enabled = bool(epcsaft.runtime_build_info()["native_dependencies"]["cppad"]["enabled"])
     if not cppad_enabled:
-        assert result["status"] == "backend_unavailable"
+        assert result["status"] == "unsupported_derivative"
         assert "CppAD-enabled build" in result["message"]
         return
 
@@ -404,7 +436,7 @@ def test_native_thermo_regression_supports_concentration_standard_state() -> Non
 
     cppad_enabled = bool(epcsaft.runtime_build_info()["native_dependencies"]["cppad"]["enabled"])
     if not cppad_enabled:
-        assert result["status"] == "backend_unavailable"
+        assert result["status"] == "unsupported_derivative"
         assert "CppAD-enabled build" in result["message"]
         return
 
@@ -446,7 +478,7 @@ def test_native_thermo_regression_supports_activity_standard_state() -> None:
 
     cppad_enabled = bool(epcsaft.runtime_build_info()["native_dependencies"]["cppad"]["enabled"])
     if not cppad_enabled:
-        assert result["status"] == "backend_unavailable"
+        assert result["status"] == "unsupported_derivative"
         assert "CppAD-enabled build" in result["message"]
         return
 
@@ -510,3 +542,78 @@ def test_native_thermo_regression_supports_single_vapor_bubble_pressure_slice() 
     assert result["derivative_backend"] == "cppad_implicit"
     assert result["objective_result"]["row_diagnostics"][0]["solve_backend"] == "native_electrolyte_bubble"
     assert result["objective_result"]["row_diagnostics"][0]["derivative_backend"] == "autodiff"
+
+
+def test_native_thermo_regression_supports_multivapor_bubble_pressure_and_y_targets() -> None:
+    species = ["H2O", "Ethanol", "Butanol", "Na+", "Cl-"]
+    mix = _multivapor_electrolyte_ssmds_mixture()
+    x_liq = [0.7140075467144562, 0.08377081431417623, 0.02344138026740494, 0.08939012935198135, 0.08939012935198135]
+    vapor_species = ["H2O", "Ethanol", "Butanol"]
+    bubble = mix.electrolyte_bubble_p(
+        293.15,
+        x_liq=x_liq,
+        vapor_species=vapor_species,
+    )
+
+    result = epcsaft.fit_native_thermo_regression(
+        mix,
+        {
+            "species": species,
+            "rows": [
+                {
+                    "row_id": "bubble_multivapor_1",
+                    "row_mode": "reactive_electrolyte_bubble",
+                    "T": 293.15,
+                    "initial_x": x_liq,
+                    "x_liq": x_liq,
+                    "vapor_species": vapor_species,
+                    "initial_pressure": bubble.P,
+                    "min_pressure": bubble.P * 0.5,
+                    "max_pressure": bubble.P * 2.0,
+                    "targets": [
+                        {
+                            "family": "pressure",
+                            "target": "bubble_pressure",
+                            "index": 0,
+                            "observed": bubble.P,
+                            "scale": 1.0e-5,
+                        },
+                        {
+                            "family": "vapor_composition",
+                            "target": "y_H2O",
+                            "index": 0,
+                            "observed": bubble.y_vap["H2O"],
+                            "scale": 1.0,
+                        },
+                        {
+                            "family": "vapor_composition",
+                            "target": "y_Butanol",
+                            "index": 2,
+                            "observed": bubble.y_vap["Butanol"],
+                            "scale": 1.0,
+                        },
+                    ],
+                }
+            ],
+            "parameters": [
+                {
+                    "name": "Na+.d_born",
+                    "kind": "born_radius",
+                    "initial": 3.2,
+                    "lower": 2.0,
+                    "upper": 5.0,
+                    "metadata": {"component_index": "3"},
+                }
+            ],
+            "options": {"max_iterations": 5, "derivative_backend": "implicit"},
+        },
+    )
+
+    assert result["status"] == "converged"
+    assert result["optimizer_backend"] == "ceres"
+    assert result["derivative_backend"] == "cppad_implicit"
+    assert result["initial_cost"] > result["final_cost"]
+    assert result["objective_result"]["row_diagnostics"][0]["solve_backend"] == "native_electrolyte_bubble"
+    assert result["objective_result"]["row_diagnostics"][0]["derivative_backend"] == "autodiff"
+
+

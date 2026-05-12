@@ -43,7 +43,7 @@ def solve_native_regression_residual_records(
 
     The current supported slice validates production derivative policy and
     status handling for already-evaluated residual records. It rejects
-    finite-difference production derivatives instead of silently falling back.
+    backend-unavailable production derivatives instead of silently falling back.
     """
 
     return dict(_core._solve_native_regression_residual_records(records, parameters, dict(options or {})))
@@ -66,8 +66,8 @@ def fit_native_thermo_regression(mixture: Any, request: Mapping[str, Any]) -> di
 
     Python serializes the problem once. Native C++ applies parameters, evaluates
     thermodynamic rows, and owns the optimizer/derivative loop. Unsupported
-    row/parameter derivative combinations return ``backend_unavailable`` rather
-    than falling back to finite differences.
+    row/parameter derivative combinations return ``unsupported_derivative`` rather
+    than falling back to unsupported derivatives.
     """
 
     native_mixture = getattr(mixture, "_native", mixture)
@@ -85,3 +85,6 @@ __all__ = [
     "native_regression_contract_schema",
     "solve_native_regression_residual_records",
 ]
+
+
+

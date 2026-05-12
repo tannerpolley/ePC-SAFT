@@ -7,7 +7,7 @@ Decision
 Continue issue #53, but narrow the next implementation tranche to the most
 relevant supported activity path first:
 
-- build a finite-difference-free **state-level activity / fugacity derivative
+- build a backend-unavailable-free **state-level activity / fugacity derivative
   substrate for the ionic `epcsaft_component_activity` path**
 - then use that to unlock activity-coupled `reactive_speciation` `logK` rows
   in native thermo regression
@@ -21,7 +21,7 @@ Why this is the next honest step
 1. The current worker blocker is real:
 
    - activity-coupled residuals already evaluate, but the native code does not
-     yet expose a finite-difference-free state-level derivative of
+     yet expose a backend-unavailable-free state-level derivative of
      `ln(gamma)` / `ln(phi)` under density closure
 
 2. The ionic component-activity path is the best next slice within issue #53:
@@ -67,3 +67,4 @@ Evidence
 - `src/epcsaft/native/epcsaft_activity.cpp`
 - `src/epcsaft/native/regression/thermo_regression.cpp`
 - `tests/native/test_chemical_equilibrium_native.py`
+

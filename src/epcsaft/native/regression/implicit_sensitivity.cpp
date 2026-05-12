@@ -20,7 +20,7 @@ NativeImplicitSensitivityResult solve_native_implicit_sensitivity(
         return result;
     }
     if (residual_rows < state_cols) {
-        result.status = "backend_unavailable";
+        result.status = "unsupported_derivative";
         result.message = "implicit sensitivity requires at least as many residual equations as state variables.";
         return result;
     }
@@ -71,3 +71,5 @@ NativeImplicitSensitivityResult solve_native_implicit_sensitivity(
     result.message = "implicit sensitivity solved from converged inner residual Jacobians.";
     return result;
 }
+
+

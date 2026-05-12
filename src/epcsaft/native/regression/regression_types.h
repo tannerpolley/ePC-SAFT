@@ -13,7 +13,7 @@ enum class NativeRegressionStatus {
     NONFINITE_OBJECTIVE = 5,
     BOUNDS_INCONSISTENT = 6,
     INVALID_INPUT = 7,
-    BACKEND_UNAVAILABLE = 8,
+    unsupported_derivative = 8,
 };
 
 struct NativeRegressionParameterSpec {
@@ -112,7 +112,7 @@ struct NativeRegressionProblemContract {
     std::vector<std::string> supported_target_families;
     std::vector<std::string> supported_parameter_kinds;
     bool fixed_shape_residuals = true;
-    bool production_finite_difference_allowed = false;
+    bool production_unsupported_derivative_allowed = false;
 };
 
 std::string native_regression_status_name(NativeRegressionStatus status);
@@ -127,3 +127,6 @@ NativeRegressionFitResult solve_native_regression_residual_records(
     const std::vector<NativeRegressionParameterSpec>& parameters,
     const NativeRegressionFitOptions& options
 );
+
+
+

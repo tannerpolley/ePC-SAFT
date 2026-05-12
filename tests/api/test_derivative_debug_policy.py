@@ -61,10 +61,10 @@ def _solve_concentration_case(
     )
 
 
-def test_auto_finite_difference_fallback_is_rejected_without_debug_gate() -> None:
+def test_auto_unsupported_derivative_fallback_is_rejected_without_debug_gate() -> None:
     mix, log_k, initial_x = _concentration_reaction_case()
 
-    with pytest.raises(Exception, match="backend_unavailable"):
+    with pytest.raises(Exception, match="unsupported_derivative"):
         _solve_concentration_case(
             mix=mix,
             log_k=log_k,
@@ -73,7 +73,7 @@ def test_auto_finite_difference_fallback_is_rejected_without_debug_gate() -> Non
         )
 
 
-def test_explicit_finite_difference_requires_debug_gate() -> None:
+def test_explicit_unsupported_derivative_requires_debug_gate() -> None:
     mix, log_k, initial_x = _concentration_reaction_case()
 
     with pytest.raises(Exception, match="debug-only"):
@@ -83,13 +83,13 @@ def test_explicit_finite_difference_requires_debug_gate() -> None:
             initial_x=initial_x,
             options=epcsaft.ReactiveSpeciationOptions(
                 max_iterations=20,
-                jacobian_backend="finite_difference",
+                jacobian_backend="unsupported_derivative",
             ),
         )
 
 
-def test_explicit_finite_difference_runs_when_debug_gate_is_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG", "1")
+def test_explicit_unsupported_derivative_runs_when_debug_gate_is_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("EPCSAFT_ALLOW_DERIVATIVE_BACKEND_DEBUG", "1")
     mix, log_k, initial_x = _concentration_reaction_case()
 
     result = _solve_concentration_case(
@@ -98,11 +98,14 @@ def test_explicit_finite_difference_runs_when_debug_gate_is_enabled(monkeypatch:
         initial_x=initial_x,
         options=epcsaft.ReactiveSpeciationOptions(
             max_iterations=20,
-            jacobian_backend="finite_difference",
+            jacobian_backend="unsupported_derivative",
         ),
     )
 
     assert result.success is True
-    assert result.diagnostics["jacobian_backend"] == "finite_difference"
-    assert result.diagnostics["finite_difference_allowed"] is True
-    assert result.diagnostics["explicit_finite_difference"] is True
+    assert result.diagnostics["jacobian_backend"] == "unsupported_derivative"
+    assert result.diagnostics["unsupported_derivative_allowed"] is True
+    assert result.diagnostics["explicit_unsupported_derivative"] is True
+
+
+

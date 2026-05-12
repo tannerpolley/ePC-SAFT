@@ -721,12 +721,12 @@ LnfugCompositionDerivativeResult lnfug_composition_derivative_result_cpp(double 
     result.dlnfugdx_row_major.assign(x.size() * x.size(), std::numeric_limits<double>::quiet_NaN());
     std::string unsupported_reason;
     if (!fugcoef_detail::lnfug_composition_derivative_supported_cpp(cppargs, &unsupported_reason)) {
-        result.finite_difference_fallback_reason = unsupported_reason;
+        result.unsupported_derivative_fallback_reason = unsupported_reason;
         return result;
     }
 #ifndef EPCSAFT_HAS_CPPAD
-    result.finite_difference_fallback_reason =
-        "backend_unavailable: native lnphi-composition derivatives require a CppAD-enabled build.";
+    result.unsupported_derivative_fallback_reason =
+        "unsupported_derivative: native lnphi-composition derivatives require a CppAD-enabled build.";
     return result;
 #else
     using epcsaft::autodiff::CppADScalar;
@@ -742,7 +742,7 @@ LnfugCompositionDerivativeResult lnfug_composition_derivative_result_cpp(double 
     const std::vector<double> canonical_lnfug = lnfug_cpp(t, rho, x, cppargs);
     result.supported = true;
     result.derivative_backend = "cppad_composition";
-    result.finite_difference_fallback_used = false;
+    result.unsupported_derivative_fallback_used = false;
     result.lnfug = canonical_lnfug;
     result.dlnfugdx_row_major = jacobian;
     return result;
@@ -756,12 +756,12 @@ LnfugDensityDerivativeResult lnfug_density_derivative_result_cpp(double t, doubl
     result.dlnfugdrho.assign(x.size(), std::numeric_limits<double>::quiet_NaN());
     std::string unsupported_reason;
     if (!fugcoef_detail::lnfug_composition_derivative_supported_cpp(cppargs, &unsupported_reason)) {
-        result.finite_difference_fallback_reason = unsupported_reason;
+        result.unsupported_derivative_fallback_reason = unsupported_reason;
         return result;
     }
 #ifndef EPCSAFT_HAS_CPPAD
-    result.finite_difference_fallback_reason =
-        "backend_unavailable: native lnphi-density derivatives require a CppAD-enabled build.";
+    result.unsupported_derivative_fallback_reason =
+        "unsupported_derivative: native lnphi-density derivatives require a CppAD-enabled build.";
     return result;
 #else
     using epcsaft::autodiff::CppADScalar;
@@ -779,7 +779,7 @@ LnfugDensityDerivativeResult lnfug_density_derivative_result_cpp(double t, doubl
     const std::vector<double> canonical_lnfug = lnfug_cpp(t, rho, x, cppargs);
     result.supported = true;
     result.derivative_backend = "cppad_density";
-    result.finite_difference_fallback_used = false;
+    result.unsupported_derivative_fallback_used = false;
     result.lnfug = canonical_lnfug;
     for (std::size_t i = 0; i < ncomp; ++i) {
         result.dlnfugdrho[i] = jacobian[i];
@@ -973,12 +973,12 @@ LnfugParameterDerivativeResult lnfug_parameter_derivative_result_cpp(
     result.dlnfugdtheta.assign(x.size(), std::numeric_limits<double>::quiet_NaN());
     std::string unsupported_reason;
     if (!fugcoef_detail::lnfug_parameter_derivative_supported_cpp(cppargs, parameter_kind, component_index, &unsupported_reason)) {
-        result.finite_difference_fallback_reason = unsupported_reason;
+        result.unsupported_derivative_fallback_reason = unsupported_reason;
         return result;
     }
 #ifndef EPCSAFT_HAS_CPPAD
-    result.finite_difference_fallback_reason =
-        "backend_unavailable: native lnphi-parameter derivatives require a CppAD-enabled build.";
+    result.unsupported_derivative_fallback_reason =
+        "unsupported_derivative: native lnphi-parameter derivatives require a CppAD-enabled build.";
     return result;
 #else
     using epcsaft::autodiff::CppADScalar;
@@ -1006,7 +1006,7 @@ LnfugParameterDerivativeResult lnfug_parameter_derivative_result_cpp(
     const std::vector<double> jacobian = tape.Jacobian(std::vector<double>{parameter_value});
     result.supported = true;
     result.derivative_backend = "cppad_parameter";
-    result.finite_difference_fallback_used = false;
+    result.unsupported_derivative_fallback_used = false;
     for (std::size_t i = 0; i < jacobian.size(); ++i) {
         result.dlnfugdtheta[i] = jacobian[i];
         if (!std::isfinite(result.dlnfugdtheta[i])) {
@@ -1016,3 +1016,6 @@ LnfugParameterDerivativeResult lnfug_parameter_derivative_result_cpp(
     return result;
 #endif
 }
+
+
+

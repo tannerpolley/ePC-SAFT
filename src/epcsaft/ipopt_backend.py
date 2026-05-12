@@ -477,7 +477,7 @@ def solve_reactive_speciation_ipopt(**kwargs: Any) -> Any:
             "tolerance": float(options.tolerance),
             "damping": float(options.damping),
             "min_mole_fraction": float(options.min_mole_fraction),
-            "finite_difference_step": float(options.finite_difference_step),
+            "unsupported_derivative_step": float(options.unsupported_derivative_step),
             "jacobian_backend": str(options.jacobian_backend),
             "phase": str(options.phase),
             "activity_output": str(options.activity_output),
@@ -587,3 +587,6 @@ def solve_reactive_speciation_ipopt(**kwargs: Any) -> Any:
 
         raise SolutionError(result.message, _json_like(diagnostics))
     return result
+
+
+

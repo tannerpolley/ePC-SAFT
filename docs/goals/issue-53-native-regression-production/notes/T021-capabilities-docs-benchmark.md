@@ -7,12 +7,12 @@ Added the public reporting and benchmark layer for the new native Ceres thermody
 - Runtime capabilities now expose ``native_ceres_thermodynamic_regression`` with:
   - ``native_hot_loop=True``
   - ``python_objective_used=False``
-  - ``finite_difference_used=False``
+  - ``Backend_unavailable_used=False``
   - supported slice details
   - unsupported combinations returning ``backend_unavailable``
 - ``bounded_mixed_pressure_speciation_regression`` now reports a partial native Ceres thermodynamic slice rather than the older residual-record-only status.
 - Added ``scripts/benchmark_native_ceres_thermo_regression.py`` and the backing benchmark module.
-- README and docs now explain the Ceres-enabled benchmark, finite-difference debug gate, and current limitations.
+- README and docs now explain the Ceres-enabled benchmark, backend-unavailable debug gate, and current limitations.
 
 ## Important Limitation
 
@@ -28,7 +28,7 @@ The Ceres-enabled temp build from T019 proved the same native fit path can execu
 - ``derivative_backend=analytic_implicit``
 - ``initial_cost=0.05174377188057001``
 - ``final_cost=1.1771098705162825e-19``
-- ``native_hot_loop=true; python_objective_used=false; finite_difference_used=false``
+- ``native_hot_loop=true; python_objective_used=false; Backend_unavailable_used=false``
 
 ## Evidence
 
@@ -52,3 +52,4 @@ The Ceres-enabled temp build from T019 proved the same native fit path can execu
 - `README.md`
 - `docs/pages/diagnostics.rst`
 - `docs/pages/parameter_regression.rst`
+

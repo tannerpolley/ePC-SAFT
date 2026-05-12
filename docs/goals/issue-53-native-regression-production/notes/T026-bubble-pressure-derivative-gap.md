@@ -4,8 +4,8 @@
 
 T026 is stopped on the task stop condition. `reactive_electrolyte_bubble` rows
 are native-evaluated, but they are value-only regression rows today. They do not
-have a production Ceres derivative path, and adding a finite-difference pressure
-or vapor-composition sensitivity would violate the Issue #53 finite-difference
+have a production Ceres derivative path, and adding a backend-unavailable pressure
+or vapor-composition sensitivity would violate the Issue #53 backend-unavailable
 debug-only policy.
 
 ## Evidence
@@ -45,3 +45,4 @@ parameter families and continuation variables before it can be wired into
 ## Validation
 
 - `uv run python run_pytest.py tests/native/test_native_ceres_reactive_pressure_speciation.py tests/native/test_cppad_bubble_derivatives.py tests/api/test_runtime.py -q`: 41 passed
+

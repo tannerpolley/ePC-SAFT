@@ -274,12 +274,6 @@ _DIFF_MODE_ALIASES = {
     "automatic": 3,
     "analytic": 0,
     "analytical": 0,
-    "numeric": 1,
-    "numerical": 1,
-    "finite_difference": 1,
-    "finite-difference": 1,
-    "finite difference": 1,
-    "fd": 1,
     "autodiff": 2,
     "automatic_differentiation": 2,
     "automatic-differentiation": 2,
@@ -1723,3 +1717,4 @@ def get_prop_dict(
     prop_dic["solvated_ion_diameter_mixing_rule"] = bool(runtime["solvated_ion_diameter_mixing_rule"])
     prop_dic["ion_dispersion_mixing_rule"] = bool(runtime["ion_dispersion_mixing_rule"])
     return prop_dic
+

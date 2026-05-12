@@ -583,25 +583,25 @@ ComponentActivityLogDerivativeResult component_activity_log_derivative_result_im
     out.dloggamma_dlogn_row_major.assign(x.size() * x.size(), std::numeric_limits<double>::quiet_NaN());
 
     if (!epcsaft::autodiff::cppad_compiled()) {
-        out.finite_difference_fallback_reason =
-            "backend_unavailable: native component-activity derivatives require a CppAD-enabled build.";
+        out.unsupported_derivative_fallback_reason =
+            "unsupported_derivative: native component-activity derivatives require a CppAD-enabled build.";
         return out;
     }
     std::string unsupported_reason;
     if (!component_activity_log_derivative_supported_cpp(args, &unsupported_reason)) {
-        out.finite_difference_fallback_reason = unsupported_reason;
+        out.unsupported_derivative_fallback_reason = unsupported_reason;
         return out;
     }
 
     ChargeGroups groups = collect_charge_groups(args, x.size());
     if (groups.cations.empty() || groups.anions.empty()) {
-        out.finite_difference_fallback_reason =
-            "backend_unavailable: native component-activity derivatives require at least one cation and one anion.";
+        out.unsupported_derivative_fallback_reason =
+            "unsupported_derivative: native component-activity derivatives require at least one cation and one anion.";
         return out;
     }
     if (groups.solvents.empty()) {
-        out.finite_difference_fallback_reason =
-            "backend_unavailable: native component-activity derivatives require a neutral solvent reference.";
+        out.unsupported_derivative_fallback_reason =
+            "unsupported_derivative: native component-activity derivatives require a neutral solvent reference.";
         return out;
     }
 
@@ -615,13 +615,13 @@ ComponentActivityLogDerivativeResult component_activity_log_derivative_result_im
     PressureCompositionDerivativeResult current_pressure_x = pressure_composition_derivative_result_cpp(t, rho, x, args);
     PressureDensityDerivativeResult current_pressure_rho = pressure_density_derivative_result_cpp(t, rho, x, args);
     if (!(current_lnfug_x.supported && current_lnfug_rho.supported && current_pressure_x.supported && current_pressure_rho.supported)) {
-        out.finite_difference_fallback_reason =
-            "backend_unavailable: native component-activity derivatives require supported lnphi and pressure derivatives on the current state.";
+        out.unsupported_derivative_fallback_reason =
+            "unsupported_derivative: native component-activity derivatives require supported lnphi and pressure derivatives on the current state.";
         return out;
     }
     if (!std::isfinite(current_pressure_rho.dpdrho) || std::abs(current_pressure_rho.dpdrho) <= 1.0e-18) {
-        out.finite_difference_fallback_reason =
-            "backend_unavailable: native component-activity derivatives require a finite current-state dp/drho.";
+        out.unsupported_derivative_fallback_reason =
+            "unsupported_derivative: native component-activity derivatives require a finite current-state dp/drho.";
         return out;
     }
 
@@ -637,13 +637,13 @@ ComponentActivityLogDerivativeResult component_activity_log_derivative_result_im
     PressureCompositionDerivativeResult ref_pressure_x = pressure_composition_derivative_result_cpp(t, ref.rho, x_ref, args);
     PressureDensityDerivativeResult ref_pressure_rho = pressure_density_derivative_result_cpp(t, ref.rho, x_ref, args);
     if (!(ref_lnfug_x.supported && ref_lnfug_rho.supported && ref_pressure_x.supported && ref_pressure_rho.supported)) {
-        out.finite_difference_fallback_reason =
-            "backend_unavailable: native component-activity derivatives require supported lnphi and pressure derivatives on the reference state.";
+        out.unsupported_derivative_fallback_reason =
+            "unsupported_derivative: native component-activity derivatives require supported lnphi and pressure derivatives on the reference state.";
         return out;
     }
     if (!std::isfinite(ref_pressure_rho.dpdrho) || std::abs(ref_pressure_rho.dpdrho) <= 1.0e-18) {
-        out.finite_difference_fallback_reason =
-            "backend_unavailable: native component-activity derivatives require a finite reference-state dp/drho.";
+        out.unsupported_derivative_fallback_reason =
+            "unsupported_derivative: native component-activity derivatives require a finite reference-state dp/drho.";
         return out;
     }
 
@@ -673,7 +673,7 @@ ComponentActivityLogDerivativeResult component_activity_log_derivative_result_im
     out.dloggamma_dlogn_row_major = compose_jacobians_cpp(dloggamma_dx, dx_dlogn, out.rows, out.cols, out.cols);
     out.supported = true;
     out.derivative_backend = "cppad_component_activity_log_amounts";
-    out.finite_difference_fallback_used = false;
+    out.unsupported_derivative_fallback_used = false;
     return out;
 }
 
@@ -758,25 +758,25 @@ ComponentActivityParameterDerivativeResult component_activity_parameter_derivati
 
     if (args.assoc_num.size() != 0 || !args.assoc_matrix.empty() || !args.k_hb.empty()
         || !args.e_assoc.empty() || !args.vol_a.empty()) {
-        out.finite_difference_fallback_reason =
-            "backend_unavailable: native component-activity parameter derivatives currently support nonassociating states only.";
+        out.unsupported_derivative_fallback_reason =
+            "unsupported_derivative: native component-activity parameter derivatives currently support nonassociating states only.";
         return out;
     }
     if (args.DH_model == 2) {
-        out.finite_difference_fallback_reason =
-            "backend_unavailable: native component-activity parameter derivatives do not support DH_model=2.";
+        out.unsupported_derivative_fallback_reason =
+            "unsupported_derivative: native component-activity parameter derivatives do not support DH_model=2.";
         return out;
     }
     if (args.dielc_rule != 0 && args.dielc_rule != 1) {
-        out.finite_difference_fallback_reason =
-            "backend_unavailable: native component-activity parameter derivatives currently support dielc_rule 0 or 1 only.";
+        out.unsupported_derivative_fallback_reason =
+            "unsupported_derivative: native component-activity parameter derivatives currently support dielc_rule 0 or 1 only.";
         return out;
     }
 
     ChargeGroups groups = collect_charge_groups(args, x.size());
     if (groups.cations.empty() || groups.anions.empty() || groups.solvents.empty()) {
-        out.finite_difference_fallback_reason =
-            "backend_unavailable: native component-activity parameter derivatives require ionic and solvent species.";
+        out.unsupported_derivative_fallback_reason =
+            "unsupported_derivative: native component-activity parameter derivatives require ionic and solvent species.";
         return out;
     }
 
@@ -798,7 +798,7 @@ ComponentActivityParameterDerivativeResult component_activity_parameter_derivati
         component_index
     );
     if (!current.supported) {
-        out.finite_difference_fallback_reason = current.finite_difference_fallback_reason;
+        out.unsupported_derivative_fallback_reason = current.unsupported_derivative_fallback_reason;
         return out;
     }
     LnfugParameterDerivativeResult reference = lnfug_parameter_derivative_result_cpp(
@@ -810,14 +810,17 @@ ComponentActivityParameterDerivativeResult component_activity_parameter_derivati
         component_index
     );
     if (!reference.supported) {
-        out.finite_difference_fallback_reason = reference.finite_difference_fallback_reason;
+        out.unsupported_derivative_fallback_reason = reference.unsupported_derivative_fallback_reason;
         return out;
     }
     out.supported = true;
     out.derivative_backend = "cppad_component_activity_parameter";
-    out.finite_difference_fallback_used = false;
+    out.unsupported_derivative_fallback_used = false;
     for (std::size_t i = 0; i < current.dlnfugdtheta.size(); ++i) {
         out.dloggamma_dtheta[i] = current.dlnfugdtheta[i] - reference.dlnfugdtheta[i];
     }
     return out;
 }
+
+
+

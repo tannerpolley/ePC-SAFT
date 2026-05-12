@@ -244,7 +244,7 @@ python scripts/benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 3
 The Ceres thermodynamic benchmark reports `backend_unavailable` unless the
 native extension was built with `EPCSAFT_ENABLE_CERES=ON`. On a Ceres-enabled
 build it verifies `native_hot_loop=True`, `python_objective_used=False`, and
-`finite_difference_used=False` for the currently supported reactive-speciation
+`Backend_unavailable_used=False` for the currently supported reactive-speciation
 logK slice.
 
 ## Documentation
@@ -260,3 +260,4 @@ For source contributors, see `docs/pages/development_workflows.rst` in the repos
 ## License
 
 GNU General Public License v3.0. See `LICENSE`.
+

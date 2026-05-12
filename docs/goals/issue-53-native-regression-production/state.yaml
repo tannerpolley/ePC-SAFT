@@ -7,7 +7,7 @@ goal:
   title: "Issue #53 native regression production stack"
   slug: "issue-53-native-regression-production"
   kind: existing_plan
-  tranche: "Continue issue #53 after GitHub comment 4424893353: preserve the current branch as Phase 0 contract groundwork, then implement the true native Ceres/CppAD thermodynamic row hot loop with finite differences debug-only."
+  tranche: "Continue issue #53 after GitHub comment 4424893353: preserve the current branch as Phase 0 contract groundwork, then implement the true native Ceres/CppAD thermodynamic row hot loop with absolute backend-unavailable elimination across all supported derivative surfaces."
   status: active
   intake:
     original_request: "Prep to fully implement the new issue posted as issue #53 and implement subagent to achieve all the different aspects and scopes of the plan."
@@ -17,13 +17,13 @@ goal:
     authority: requested
     proof_type: test
     completion_proof: "Issue #53 definition of done is satisfied with native regression code, production derivative policy, tests, benchmarks, docs, PR evidence, passing checks, and no public bounded_incomplete status."
-    likely_misfire: "Only adding CMake flags or docs while production fitting still uses Python/SciPy/finite differences or while native Ceres/CppAD is only a placeholder."
-    blind_spots_considered:
-      - "Ceres and CppAD dependency setup may be the largest Windows/uv/Python 3.13 risk."
-      - "Full templating of all EOS kernels may be too broad for one pass; a minimum viable native regression slice needs Judge approval."
-      - "Implicit sensitivity through nested speciation and bubble solves is mathematically hard and may require a staged native derivative policy."
-      - "The existing issue #51 Python-orchestrated fit path must remain available only as compatibility/debug if production native backend is ready."
-      - "Benchmark fixtures must prove pressure/speciation residuals, Born/SSM+DS coverage, and at least one k_ij path without private downstream files."
+    likely_misfire: "Only adding CMake flags or docs while production fitting still uses Python/SciPy/Backend unavailables or while native Ceres/CppAD is only a placeholder."
+  blind_spots_considered:
+    - "Ceres and CppAD dependency setup may be the largest Windows/uv/Python 3.13 risk."
+    - "Full templating of all EOS kernels may be too broad for one pass; a minimum viable native regression slice needs Judge approval."
+    - "Implicit sensitivity through nested speciation and bubble solves is mathematically hard and may require a staged native derivative policy."
+    - "The existing issue #51 Python-orchestrated fit path must remain available only as compatibility/debug if production native backend is ready."
+    - "Benchmark fixtures must prove pressure/speciation residuals, Born/SSM+DS coverage, and at least one k_ij path without private downstream files."
     existing_plan_facts:
       - "GitHub issue #53: https://github.com/tannerpolley/ePC-SAFT/issues/53"
       - "GitHub comment 4424893353: https://github.com/tannerpolley/ePC-SAFT/issues/53#issuecomment-4424893353"
@@ -34,30 +34,32 @@ goal:
       - "Issue #53 asks for Ceres as primary robust bounded nonlinear least-squares backend."
       - "Issue #53 asks for CppAD as package-wide AD substrate."
       - "Issue #53 keeps native IPOPT full NLP optional/future."
-      - "Production fitting must not depend on Python scipy.optimize, Python loops as optimizer, or Python finite-difference Jacobians."
+      - "Production fitting must not depend on Python scipy.optimize, Python loops as optimizer, or Python backend-unavailable Jacobians."
       - "Public results must not emit bounded_incomplete."
       - "The target workflow is bounded mixed pressure/speciation reactive electrolyte regression for MEA-like systems with SSM+DS Born terms."
       - "Required benchmark script: scripts/benchmark_native_regression.py."
 
-rules:
-  pm_owns_state: true
-  one_active_task: true
-  max_write_workers: 1
-  no_implementation_without_worker_or_pm_task: true
-  no_completion_without_judge_or_pm_audit: true
-  planning_is_not_completion: true
-  queued_required_worker_blocks_completion: true
-  continuous_until_full_outcome: true
-  missing_input_or_credentials_do_not_stop_goal: true
-  preserve_and_validate_existing_plan: true
-  intake_misfire_must_be_audited: true
+  rules:
+    pm_owns_state: true
+    one_active_task: true
+    max_write_workers: 1
+    no_implementation_without_worker_or_pm_task: true
+    no_completion_without_judge_or_pm_audit: true
+    planning_is_not_completion: true
+    queued_required_worker_blocks_completion: true
+    continuous_until_full_outcome: true
+    missing_input_or_credentials_do_not_stop_goal: true
+    preserve_and_validate_existing_plan: true
+    intake_misfire_must_be_audited: true
+    disallow_Backend_unavailable_anywhere: true
+    Backend_unavailable_exceptions_allowed: []
 
 agents:
   scout: installed
   judge: installed
   worker: installed
 
-active_task: T058
+active_task: T060
 
 tasks:
   - id: T001
@@ -87,7 +89,7 @@ tasks:
       - "Read-only."
       - "Do not inspect or modify private downstream MEA files except to identify public-facing requirements already stated in issue #53."
       - "Use exact file/symbol evidence."
-      - "Identify every existing Python optimizer/finite-difference production path."
+      - "Identify every existing Python optimizer/backend-unavailable production path."
       - "Identify native EOS/state functions that can be reused for the first Ceres slice."
     expected_output:
       - "Requirement-by-requirement gap map."
@@ -97,7 +99,7 @@ tasks:
       - "Candidate disjoint Worker slices."
     receipt:
       result: done
-      summary: "Current branch has no implementation delta against main for Issue #53. Reactive regression still optimizes in Python with finite-difference Jacobians; Ceres is only default-off build plumbing for equilibrium; CppAD and native reactive-regression solve entrypoints are absent. The minimum viable slice is a one-shot native Ceres reactive regression backend with fixed-shape residuals, full statuses, and Python marshalling only."
+      summary: "Current branch has no implementation delta against main for Issue #53. Reactive regression still optimizes in Python with backend-unavailable Jacobians; Ceres is only default-off build plumbing for equilibrium; CppAD and native reactive-regression solve entrypoints are absent. The minimum viable slice is a one-shot native Ceres reactive regression backend with fixed-shape residuals, full statuses, and Python marshalling only."
       evidence:
         - "docs/goals/issue-53-native-regression-production/notes/T001-scout-gap-map.md"
         - "src/epcsaft/reactive_regression.py"
@@ -119,7 +121,7 @@ tasks:
       - "Do not implement."
       - "Choose a minimum viable native Ceres/CppAD path that still satisfies issue #53 definition of done."
       - "Explicitly decide whether full templated EOS AD is required immediately or can be scoped to tested residuals with capability/status honesty."
-      - "Reject any plan that leaves production fitting on Python/SciPy/NumPy finite differences."
+      - "Reject any plan that leaves production fitting on Python/SciPy/NumPy Backend unavailables."
       - "Reject any plan that calls IPOPT production or default in this issue."
     expected_output:
       - "Approved architecture decision."
@@ -129,7 +131,7 @@ tasks:
     receipt:
       result: done
       decision: approved_with_constraints
-      summary: "Approve a minimum viable native production slice: native reactive mixed pressure/speciation regression in C++ with fixed-shape residuals, Ceres bounded least-squares, and non-finite-difference derivatives for every residual family exposed by the supported production slice. Reuse repo-wide EPCSAFT_ENABLE_CERES, add repo-wide EPCSAFT_ENABLE_CPPAD, and use a compatibility-mapped rollout to the canonical Issue #53 statuses."
+      summary: "Approve a minimum viable native production slice: native reactive mixed pressure/speciation regression in C++ with fixed-shape residuals, Ceres bounded least-squares, and non-backend-unavailable derivatives for every residual family exposed by the supported production slice. Reuse repo-wide EPCSAFT_ENABLE_CERES, add repo-wide EPCSAFT_ENABLE_CPPAD, and use a compatibility-mapped rollout to the canonical Issue #53 statuses."
       evidence:
         - "docs/goals/issue-53-native-regression-production/notes/T002-judge-architecture.md"
         - "docs/goals/issue-53-native-regression-production/notes/T001-scout-gap-map.md"
@@ -315,7 +317,7 @@ tasks:
     assignee: Worker
     status: done
     reasoning_hint: xhigh
-    objective: "Use native_equation_owner routing to implement production derivative policy with CppAD/analytic/implicit derivatives and debug-only finite-difference rejection."
+    objective: "Use native_equation_owner routing to implement production derivative policy with CppAD/analytic/implicit derivatives and debug-only backend-unavailable rejection."
     allowed_files:
       - "src/epcsaft/native/regression/**"
       - "src/epcsaft/native/regression/regression_types.h"
@@ -337,10 +339,10 @@ tasks:
       - "uv run python run_pytest.py tests/native/test_native_regression_autodiff.py tests/native/test_native_reactive_regression.py tests/api/test_reactive_regression.py -q"
     stop_if:
       - "CppAD/implicit derivative path cannot be implemented for the minimum slice without a much larger templated-EOS rewrite."
-      - "Production calls still require finite-difference Jacobians."
+      - "Production calls still require backend-unavailable Jacobians."
     receipt:
       result: done
-      summary: "Implemented production derivative policy for the supported native residual-record slice: analytic/cppad labels accepted, finite_difference rejected as invalid_input, with native status/result serialization and tests."
+      summary: "Implemented production derivative policy for the supported native residual-record slice: analytic/cppad labels accepted, Backend_unavailable rejected as invalid_input, with native status/result serialization and tests."
       changed_files:
         - "src/epcsaft/native/regression/regression_types.h"
         - "src/epcsaft/native/regression/regression_types.cpp"
@@ -412,7 +414,7 @@ tasks:
     assignee: Worker
     status: done
     reasoning_hint: high
-    objective: "Use python_api_test_owner routing to migrate public Python regression wrappers to call native regression once and remove production Python optimizer/finite-difference behavior."
+    objective: "Use python_api_test_owner routing to migrate public Python regression wrappers to call native regression once and remove production Python optimizer/backend-unavailable behavior."
     allowed_files:
       - "src/epcsaft/native_regression.py"
       - "src/epcsaft/reactive_regression.py"
@@ -427,13 +429,13 @@ tasks:
       - "docs/goals/issue-53-native-regression-production/notes/T008-python-wrapper-native-boundary.md"
     verify:
       - "uv run python run_pytest.py tests/api/test_reactive_regression.py tests/api/test_runtime.py tests/api/test_regression_api.py -q"
-      - "rg -n \"scipy\\.optimize|least_squares|finite_difference\" src/epcsaft tests/api docs/pages"
+      - "rg -n \"scipy\\.optimize|least_squares|Backend_unavailable\" src/epcsaft tests/api docs/pages"
     stop_if:
       - "Existing downstream-compatible Python APIs cannot be preserved without a compatibility shim decision."
       - "Any production public API still optimizes in Python."
     receipt:
       result: done
-      summary: "Public reactive regression fitting now defaults to a native residual-record boundary and the Python Gauss-Newton/finite-difference optimizer is explicit compatibility-only via backend=\"python_compat\". Runtime capabilities remain honest that the full thermodynamic Ceres iteration is not complete."
+      summary: "Public reactive regression fitting now defaults to a native residual-record boundary and the Python Gauss-Newton/backend-unavailable optimizer is explicit compatibility-only via backend=\"python_compat\". Runtime capabilities remain honest that the full thermodynamic Ceres iteration is not complete."
       evidence:
         - "docs/goals/issue-53-native-regression-production/notes/T008-python-wrapper-native-boundary.md"
         - "src/epcsaft/reactive_regression.py"
@@ -517,7 +519,7 @@ tasks:
     assignee: Worker
     status: done
     reasoning_hint: medium
-    objective: "Use python_api_test_owner routing to update docs and capabilities for native C++ regression architecture, Ceres, CppAD/autodiff, debug-only finite differences, IPOPT future role, and downstream usage."
+    objective: "Use python_api_test_owner routing to update docs and capabilities for native C++ regression architecture, Ceres, CppAD/autodiff, debug-only Backend unavailables, IPOPT future role, and downstream usage."
     allowed_files:
       - "docs/pages/parameter_regression.rst"
       - "docs/pages/diagnostics.rst"
@@ -536,7 +538,7 @@ tasks:
       - "Docs would need to claim native production coverage before tests prove it."
     receipt:
       result: done
-      summary: "Updated README, API reference, diagnostics, parameter regression docs, and runtime capability language for the native regression boundary, compatibility backend, finite-difference policy, and benchmark commands."
+      summary: "Updated README, API reference, diagnostics, parameter regression docs, and runtime capability language for the native regression boundary, compatibility backend, backend-unavailable policy, and benchmark commands."
       evidence:
         - "docs/goals/issue-53-native-regression-production/notes/T010-docs-capabilities.md"
         - "README.md"
@@ -665,7 +667,7 @@ tasks:
       - "Current issue #53 body."
     constraints:
       - "Do not implement."
-      - "Reject completion if any production fitting still uses Python/SciPy/finite differences."
+      - "Reject completion if any production fitting still uses Python/SciPy/Backend unavailables."
       - "Reject completion if native Ceres/CppAD is placeholder-only."
       - "Reject completion if bounded_incomplete appears in public package payloads."
       - "Reject completion if MEA-style mixed pressure/speciation native benchmark is absent."
@@ -713,7 +715,7 @@ tasks:
       - "Full native thermodynamic Ceres iteration is still required; do not claim issue #53 complete from this remediation alone."
     receipt:
       result: done
-      summary: "Added analytic sensitivity support to native residual records, native bounded parameter movement, benchmark sensitivities, and tests proving objective reduction without production finite differences."
+      summary: "Added analytic sensitivity support to native residual records, native bounded parameter movement, benchmark sensitivities, and tests proving objective reduction without production Backend unavailables."
       evidence:
         - "docs/goals/issue-53-native-regression-production/notes/T013-remediation.md"
         - "src/epcsaft/native/regression/regression_types.h"
@@ -767,7 +769,7 @@ tasks:
     receipt:
       result: done
       decision: "Continue on codex/issue-53-native-regression-production; do not open a completion PR; implement a Phase 1 native thermodynamic hot loop for the first production slice."
-      summary: "Judge approved staying on the existing branch and implementing only the first real production slice: slice-scoped native AD, native ReactiveSpeciation/ReactiveElectrolyteBubble thermodynamic row evaluator, implicit sensitivities for converged nested solves, Ceres-owned parameter iteration, Python limited to validation/marshalling/serialization, and finite difference only behind EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG=1. Whole-package CppAD conversion is a direction, not a one-pass rewrite; unsupported derivative paths must fail closed as backend_unavailable."
+      summary: "Judge approved staying on the existing branch and implementing only the first real production slice: slice-scoped native AD, native ReactiveSpeciation/ReactiveElectrolyteBubble thermodynamic row evaluator, implicit sensitivities for converged nested solves, Ceres-owned parameter iteration, Python limited to validation/marshalling/serialization, and Backend unavailable only behind EPCSAFT_ALLOW_DERIVATIVE_BACKEND_DEBUG=1. Whole-package CppAD conversion is a direction, not a one-pass rewrite; unsupported derivative paths must fail closed as backend_unavailable."
       evidence:
         - "docs/goals/issue-53-native-regression-production/notes/T014-github-comment-4424893353.md"
         - "docs/goals/issue-53-native-regression-production/notes/T014-judge-decision.md"
@@ -778,7 +780,7 @@ tasks:
     assignee: Scout
     status: done
     reasoning_hint: high
-    objective: "Audit every finite-difference, numerical Jacobian, Python objective, and Python residual-packing path named in comment 4424893353."
+    objective: "Audit every backend-unavailable, numerical Jacobian, Python objective, and Python residual-packing path named in comment 4424893353."
     inputs:
       - "src/epcsaft/equilibrium.py"
       - "src/epcsaft/reactive_speciation.py"
@@ -792,11 +794,11 @@ tasks:
       - "Report exact symbols and call paths."
       - "Separate production paths from explicit debug/test helpers."
     expected_output:
-      - "Finite-difference and Python-objective migration map."
+      - "backend-unavailable and Python-objective migration map."
       - "Tests needed to prove production rejection and debug escape hatch behavior."
     receipt:
       result: done
-      summary: "Audit found production finite-difference/Python-hot-loop risk in reactive speciation, reactive electrolyte bubble through speciation, reactive regression python_compat, reactive regression native residual-record prepacking, and public equilibrium/LLE derivative surfaces. Explicit generic regression debug helpers are lower priority and can remain only if env-gated and labeled debug."
+      summary: "Audit found production backend-unavailable/Python-hot-loop risk in reactive speciation, reactive electrolyte bubble through speciation, reactive regression python_compat, reactive regression native residual-record prepacking, and public equilibrium/LLE derivative surfaces. Explicit generic regression debug helpers are lower priority and can remain only if env-gated and labeled debug."
       evidence:
         - "src/epcsaft/reactive_speciation.py"
         - "src/epcsaft/reactive_electrolyte.py"
@@ -806,17 +808,17 @@ tasks:
         - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
         - "src/epcsaft/native/epcsaft_equilibrium.cpp"
       migration_priority:
-        - "P0: reactive_speciation.py plus native epcsaft_chemical_equilibrium.cpp because auto currently falls back to finite difference for nonideal standard states and reactive electrolyte bubble inherits it."
-        - "P0: reactive_regression.py python_compat because it is Python optimizer plus Python residual packing plus Python finite-difference Jacobian."
+        - "P0: reactive_speciation.py plus native epcsaft_chemical_equilibrium.cpp because auto currently falls back to Backend unavailable for nonideal standard states and reactive electrolyte bubble inherits it."
+        - "P0: reactive_regression.py python_compat because it is Python optimizer plus Python residual packing plus Python backend-unavailable Jacobian."
         - "P1: reactive_regression.py native residual-record path because it evaluates and packs rows in Python before native solve while diagnostics imply production_ready."
-        - "P1: equilibrium.py plus native epcsaft_equilibrium.cpp LLE residual/equilibrium finite-difference surfaces."
+        - "P1: equilibrium.py plus native epcsaft_equilibrium.cpp LLE residual/equilibrium backend-unavailable surfaces."
         - "P2: regression.py explicit debug helpers; keep only as env-gated debug if retained."
       tests_needed:
-        - "tests/api/test_reactive_speciation.py: production finite_difference rejects without EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG; debug env relabels diagnostics."
-        - "tests/native/test_chemical_equilibrium_native.py: auto nonideal must not silently use finite difference; explicit finite difference requires debug env."
+        - "tests/api/test_reactive_speciation.py: production Backend_unavailable rejects without EPCSAFT_ALLOW_DERIVATIVE_BACKEND_DEBUG; debug env relabels diagnostics."
+        - "tests/native/test_chemical_equilibrium_native.py: auto nonideal must not silently use Backend unavailable; explicit Backend unavailable requires debug env."
         - "tests/api/test_reactive_regression.py: python_compat must reject or be debug-gated; native path must stop claiming production once Python packs rows."
-        - "tests/native/test_equilibrium_native_contracts.py: electrolyte LLE residual finite difference requires debug env."
-        - "tests/api/test_runtime.py: capability claims must stay honest and stop advertising production finite-difference fallback."
+        - "tests/native/test_equilibrium_native_contracts.py: electrolyte LLE residual Backend unavailable requires debug env."
+        - "tests/api/test_runtime.py: capability claims must stay honest and stop advertising production backend-unavailable fallback."
 
   - id: T024
     type: judge
@@ -828,7 +830,7 @@ tasks:
       - "T015 audit receipt."
       - "T016/T017 implementation receipts."
     constraints:
-      - "Do not allow any production path to use finite difference."
+      - "Do not allow any production path to use Backend unavailable."
       - "Do not remove useful explicit debug tooling unless it creates public API ambiguity."
     expected_output:
       - "Policy decision for python_compat and direct residual evaluator debug access."
@@ -860,7 +862,7 @@ tasks:
       - "CppAD cannot build in the local Windows uv/CMake environment."
     receipt:
       result: done
-      summary: "Added slice-scoped native AD scaffolding under src/epcsaft/native/autodiff, an internal _core derivative-check binding, focused native tests, and CMake support for bundled CppAD generated configure.hpp plus cppad_lib/temp_file.cpp. Default builds return backend_unavailable without finite differences; a CppAD-enabled temp _core build returns real CppAD derivatives with finite_difference_used=false."
+      summary: "Added slice-scoped native AD scaffolding under src/epcsaft/native/autodiff, an internal _core derivative-check binding, focused native tests, and CMake support for bundled CppAD generated configure.hpp plus cppad_lib/temp_file.cpp. Default builds return backend_unavailable without Backend unavailables; a CppAD-enabled temp _core build returns real CppAD derivatives with Backend_unavailable_used=false."
       changed_files:
         - "CMakeLists.txt"
         - "src/epcsaft/bindings.cpp"
@@ -888,7 +890,7 @@ tasks:
           status: pass
         - cmd: "uv run python -c \"import sys; sys.path.insert(0, r'build/temp/cppad-ad-check'); import _core; print(_core._native_autodiff_derivative_checks())\""
           status: pass
-          summary: "cppad_compiled=True, cppad_used=True, finite_difference_used=False, max_abs_error=0.0"
+          summary: "cppad_compiled=True, cppad_used=True, Backend_unavailable_used=False, max_abs_error=0.0"
 
   - id: T017
     type: worker
@@ -960,7 +962,7 @@ tasks:
       - "The needed inner residual Jacobians are not exposed enough to support implicit differentiation; return backend_unavailable rather than finite-differencing."
     receipt:
       result: done
-      summary: "Added native implicit sensitivity linear solve for converged nested residual systems, exposed a private _core binding, and tested converged and singular cases without finite-difference fallback. Real reactive speciation/bubble row solves still need to expose inner residual Jacobians before T019 can use this for full production sensitivities."
+      summary: "Added native implicit sensitivity linear solve for converged nested residual systems, exposed a private _core binding, and tested converged and singular cases without backend-unavailable fallback. Real reactive speciation/bubble row solves still need to expose inner residual Jacobians before T019 can use this for full production sensitivities."
       changed_files:
         - "src/epcsaft/native/regression/implicit_sensitivity.h"
         - "src/epcsaft/native/regression/implicit_sensitivity.cpp"
@@ -1013,7 +1015,7 @@ tasks:
       - "Objective decrease cannot be demonstrated without a Python objective loop."
     receipt:
       result: done
-      summary: "Added a native Ceres thermodynamic fit surface for the first honest supported production slice: reactive-speciation rows with reaction log-equilibrium-constant parameters, ideal mole-fraction standard states, speciation targets, and analytic/implicit Jacobians. Unsupported row/parameter derivative combinations return backend_unavailable instead of falling back to finite differences."
+      summary: "Added a native Ceres thermodynamic fit surface for the first honest supported production slice: reactive-speciation rows with reaction log-equilibrium-constant parameters, ideal mole-fraction standard states, speciation targets, and analytic/implicit Jacobians. Unsupported row/parameter derivative combinations return backend_unavailable instead of falling back to Backend unavailables."
       changed_files:
         - "CMakeLists.txt"
         - "src/epcsaft/native/epcsaft_electrolyte.h"
@@ -1043,7 +1045,7 @@ tasks:
           status: pass
         - cmd: "direct _core._fit_native_thermo_regression smoke from build/temp/ceres-fit-check"
           status: pass
-          summary: "optimizer_backend=ceres, derivative_backend=analytic_implicit, initial_cost=0.05174377188057001, final_cost=1.1771098705162825e-19, native_hot_loop=true, python_objective_used=false, finite_difference_used=false"
+          summary: "optimizer_backend=ceres, derivative_backend=analytic_implicit, initial_cost=0.05174377188057001, final_cost=1.1771098705162825e-19, native_hot_loop=true, python_objective_used=false, Backend_unavailable_used=false"
         - cmd: "uv run ruff check src/epcsaft/native_regression.py src/epcsaft/__init__.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_native_regression_types.py"
           status: pass
         - cmd: "uv run black --check src/epcsaft/native_regression.py src/epcsaft/__init__.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_native_regression_types.py"
@@ -1054,7 +1056,7 @@ tasks:
     assignee: Worker
     status: done
     reasoning_hint: high
-    objective: "Make finite difference debug-only across public production derivative options and native regression/equilibrium paths after real alternatives or honest backend_unavailable paths exist."
+    objective: "Make Backend unavailable debug-only across public production derivative options and native regression/equilibrium paths after real alternatives or honest backend_unavailable paths exist."
     allowed_files:
       - "src/epcsaft/equilibrium.py"
       - "src/epcsaft/reactive_speciation.py"
@@ -1066,7 +1068,7 @@ tasks:
       - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
       - "src/epcsaft/native/epcsaft_equilibrium.cpp"
       - "src/epcsaft/runtime.py"
-      - "tests/api/test_finite_difference_debug_policy.py"
+      - "tests/api/test_Backend_unavailable_debug_policy.py"
       - "tests/api/test_reactive_speciation.py"
       - "tests/api/test_runtime.py"
       - "tests/native/test_chemical_equilibrium_native.py"
@@ -1080,18 +1082,18 @@ tasks:
       - "docs/pages/equilibrium_cookbook.rst"
       - "docs/pages/parameter_regression.rst"
     verify:
-      - "uv run python run_pytest.py tests/api/test_finite_difference_debug_policy.py tests/api/test_reactive_regression.py tests/api/test_reactive_speciation.py -q"
+      - "uv run python run_pytest.py tests/api/test_Backend_unavailable_debug_policy.py tests/api/test_reactive_regression.py tests/api/test_reactive_speciation.py -q"
       - "uv run python run_pytest.py tests/native -q"
     stop_if:
-      - "A public production path has no analytic/CppAD/implicit derivative alternative and cannot honestly reject finite_difference without breaking documented behavior."
+      - "A public production path has no analytic/CppAD/implicit derivative alternative and cannot honestly reject Backend_unavailable without breaking documented behavior."
     receipt:
       result: done
-      summary: "Made finite-difference derivative paths debug-gated for native chemical equilibrium and electrolyte LLE residual diagnostics. Production auto now reports backend_unavailable for unsupported concentration/activity-coupled speciation derivatives instead of silently falling back to finite differences."
+      summary: "Made backend-unavailable derivative paths debug-gated for native chemical equilibrium and electrolyte LLE residual diagnostics. Production auto now reports backend_unavailable for unsupported concentration/activity-coupled speciation derivatives instead of silently falling back to Backend unavailables."
       changed_files:
         - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
         - "src/epcsaft/native/epcsaft_equilibrium.cpp"
         - "src/epcsaft/runtime.py"
-        - "tests/api/test_finite_difference_debug_policy.py"
+        - "tests/api/test_Backend_unavailable_debug_policy.py"
         - "tests/api/test_reactive_speciation.py"
         - "tests/api/test_runtime.py"
         - "tests/native/test_chemical_equilibrium_native.py"
@@ -1101,16 +1103,16 @@ tasks:
         - "docs/pages/equilibrium_cookbook.rst"
         - "docs/pages/parameter_regression.rst"
       evidence:
-        - "docs/goals/issue-53-native-regression-production/notes/T020-finite-difference-debug-policy.md"
+        - "docs/goals/issue-53-native-regression-production/notes/T020-backend-unavailable-debug-policy.md"
       commands:
         - cmd: "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
           status: pass
-        - cmd: "uv run python run_pytest.py tests/api/test_finite_difference_debug_policy.py tests/api/test_reactive_speciation.py tests/api/test_runtime.py tests/native/test_chemical_equilibrium_native.py tests/native/test_equilibrium_native_contracts.py tests/equilibrium/test_lle.py -q"
+        - cmd: "uv run python run_pytest.py tests/api/test_Backend_unavailable_debug_policy.py tests/api/test_reactive_speciation.py tests/api/test_runtime.py tests/native/test_chemical_equilibrium_native.py tests/native/test_equilibrium_native_contracts.py tests/equilibrium/test_lle.py -q"
           status: pass
           summary: "118 passed, 1 skipped in 17.63s"
-        - cmd: "uv run ruff check src/epcsaft/runtime.py tests/api/test_finite_difference_debug_policy.py tests/api/test_reactive_speciation.py tests/api/test_runtime.py tests/native/test_chemical_equilibrium_native.py tests/native/test_equilibrium_native_contracts.py tests/equilibrium/test_lle.py"
+        - cmd: "uv run ruff check src/epcsaft/runtime.py tests/api/test_Backend_unavailable_debug_policy.py tests/api/test_reactive_speciation.py tests/api/test_runtime.py tests/native/test_chemical_equilibrium_native.py tests/native/test_equilibrium_native_contracts.py tests/equilibrium/test_lle.py"
           status: pass
-        - cmd: "uv run black --check src/epcsaft/runtime.py tests/api/test_finite_difference_debug_policy.py tests/api/test_reactive_speciation.py tests/api/test_runtime.py tests/native/test_chemical_equilibrium_native.py tests/native/test_equilibrium_native_contracts.py tests/equilibrium/test_lle.py"
+        - cmd: "uv run black --check src/epcsaft/runtime.py tests/api/test_Backend_unavailable_debug_policy.py tests/api/test_reactive_speciation.py tests/api/test_runtime.py tests/native/test_chemical_equilibrium_native.py tests/native/test_equilibrium_native_contracts.py tests/equilibrium/test_lle.py"
           status: pass
 
   - id: T021
@@ -1177,7 +1179,7 @@ tasks:
     constraints:
       - "Reject completion if native_hot_loop is false."
       - "Reject completion if Python packs/evaluates production thermodynamic residual rows."
-      - "Reject completion if finite difference is used without debug gate."
+      - "Reject completion if Backend unavailable is used without debug gate."
       - "Reject completion if Ceres does not execute the production solve loop."
     expected_output:
       - "complete, partial, or blocked decision."
@@ -1186,7 +1188,7 @@ tasks:
     receipt:
       result: done
       decision: rejected
-      summary: "Issue #53 cannot be honestly closed yet. The branch has a real native Ceres reactive-speciation/logK slice and finite-difference debug gates, but reactive electrolyte bubble derivatives, Born/SSM+DS and k_ij Ceres derivatives, activity/concentration standard-state derivatives, and full high-level production wrapper migration remain incomplete."
+      summary: "Issue #53 cannot be honestly closed yet. The branch has a real native Ceres reactive-speciation/logK slice and backend-unavailable debug gates, but reactive electrolyte bubble derivatives, Born/SSM+DS and k_ij Ceres derivatives, activity/concentration standard-state derivatives, and full high-level production wrapper migration remain incomplete."
       evidence:
         - "docs/goals/issue-53-native-regression-production/notes/T022-completion-audit.md"
         - "src/epcsaft/native/regression/thermo_regression.cpp"
@@ -1195,7 +1197,7 @@ tasks:
       blockers:
         - "reactive_electrolyte_bubble rows are native-evaluated but not yet differentiable for Ceres"
         - "Born/SSM+DS and k_ij parameters are applicable but not derivative-supported in the production Ceres slice"
-        - "activity/concentration-coupled speciation derivatives return backend_unavailable unless finite-difference debug gate is enabled"
+        - "activity/concentration-coupled speciation derivatives return backend_unavailable unless backend-unavailable debug gate is enabled"
         - "high-level reactive regression production calls are not fully routed to the native thermodynamic Ceres fit"
 
   - id: T025
@@ -1203,7 +1205,7 @@ tasks:
     assignee: Worker
     status: done
     reasoning_hint: xhigh
-    objective: "Add native thermodynamic parameter sensitivities for Born/SSM+DS and k_ij parameters, or route the supported residual slice through CppAD so those parameters can move inside Ceres without finite differences."
+    objective: "Add native thermodynamic parameter sensitivities for Born/SSM+DS and k_ij parameters, or route the supported residual slice through CppAD so those parameters can move inside Ceres without Backend unavailables."
     allowed_files:
       - "src/epcsaft/native/autodiff/**"
       - "src/epcsaft/native/regression/**"
@@ -1233,7 +1235,7 @@ tasks:
       - "Born/k_ij sensitivities require a broad templated EOS rewrite beyond the current tranche; record the exact missing scalar-templated call graph instead of faking derivatives."
     receipt:
       result: done
-      summary: "Born-SSM+DS d_born/f_solv parameters are accepted by the native thermodynamic parameter adapter and represented in contract/tests/benchmarks, but production Ceres sensitivities still require an analytic/CppAD/implicit residual path through activity/fugacity/Born/density closure. A native parameter-perturbation shortcut was rejected because it is still finite difference. Generic k_ij/l_ij/k_hb_ij work is routed to fit_binary_pair(...) against direct binary composition data instead of reactive Born tests."
+      summary: "Born-SSM+DS d_born/f_solv parameters are accepted by the native thermodynamic parameter adapter and represented in contract/tests/benchmarks, but production Ceres sensitivities still require an analytic/CppAD/implicit residual path through activity/fugacity/Born/density closure. A native parameter-perturbation shortcut was rejected because it is still Backend unavailable. Generic k_ij/l_ij/k_hb_ij work is routed to fit_binary_pair(...) against direct binary composition data instead of reactive Born tests."
       evidence:
         - "docs/goals/issue-53-native-regression-production/notes/T025-born-ssmds-derivative-gap.md"
         - "src/epcsaft/native/regression/thermo_regression.cpp"
@@ -1374,7 +1376,7 @@ tasks:
       - "Current validation evidence and git diff."
     constraints:
       - "Do not claim issue #53 complete unless every issue definition-of-done item is satisfied by real code and tests."
-      - "Do not accept finite-difference shortcuts for production derivatives."
+      - "Do not accept backend-unavailable shortcuts for production derivatives."
       - "If full completion is not feasible in this branch, decide the honest PR framing and next issue/tranche language."
     expected_output:
       - "Completion classification: complete, partial production slice, or blocked."
@@ -1428,7 +1430,7 @@ tasks:
       - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 3"
     stop_if:
       - "A correct derivative path requires a broad scalar-templating rewrite beyond this branch's safe scope."
-      - "The implementation cannot prove non-finite-difference sensitivities for the selected tranche."
+      - "The implementation cannot prove non-backend-unavailable sensitivities for the selected tranche."
     receipt:
       result: done
       summary: "Bundled Ceres now builds LAPACK-free on Windows/MinGW, and the local Ceres+CppAD build proves the native thermodynamic logK slice with optimizer_backend=ceres, derivative=analytic_implicit, native_hot_loop=True, and objective decrease to numerical zero. Remaining issue #53 work is now the actual bubble/Born derivative tranche, not Ceres build plumbing."
@@ -1482,10 +1484,10 @@ tasks:
       - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 3"
     stop_if:
       - "A correct derivative path requires a broad scalar-templating rewrite beyond this branch's safe scope."
-      - "The implementation cannot prove non-finite-difference sensitivities for the selected tranche."
+      - "The implementation cannot prove non-backend-unavailable sensitivities for the selected tranche."
     receipt:
       result: done
-      summary: "Stopped on the remaining derivative tranche because both viable paths require broad native derivative architecture: bubble pressure needs an implicit residual/Jacobian system through log-pressure, vapor composition, and fugacity states; Born-SSM+DS needs scalar-templated or CppAD-backed d_born/f_solv sensitivities through activity/fugacity and density closure. No finite-difference production shortcut was added."
+      summary: "Stopped on the remaining derivative tranche because both viable paths require broad native derivative architecture: bubble pressure needs an implicit residual/Jacobian system through log-pressure, vapor composition, and fugacity states; Born-SSM+DS needs scalar-templated or CppAD-backed d_born/f_solv sensitivities through activity/fugacity and density closure. No backend-unavailable production shortcut was added."
       evidence:
         - "docs/goals/issue-53-native-regression-production/notes/T030-derivative-tranche-stop.md"
         - "src/epcsaft/native/regression/thermo_regression.cpp"
@@ -1601,7 +1603,7 @@ tasks:
       - "The Born cleanup changes thermodynamic behavior instead of remaining a structural substrate change."
     receipt:
       result: done
-      summary: "Added a shared native finite-difference debug-gate helper under native/autodiff and removed duplicated double-versus-autodiff solvent-reference dielectric logic in the Born path. This slice is structural only; production capability claims remain unchanged."
+      summary: "Added a shared native backend-unavailable debug-gate helper under native/autodiff and removed duplicated double-versus-autodiff solvent-reference dielectric logic in the Born path. This slice is structural only; production capability claims remain unchanged."
       evidence:
         - "docs/goals/issue-53-native-regression-production/notes/T034-shared-derivative-policy-slice.md"
         - "src/epcsaft/native/autodiff/debug_gate.h"
@@ -1628,7 +1630,7 @@ tasks:
     assignee: Worker
     status: done
     reasoning_hint: xhigh
-    objective: "Implement the first real non-logK reactive-speciation parameter-sensitivity path for native thermodynamic regression: d_born, f_solv, and generic binary parameters must own explicit thermo-to-residual sensitivity plumbing without finite differences."
+    objective: "Implement the first real non-logK reactive-speciation parameter-sensitivity path for native thermodynamic regression: d_born, f_solv, and generic binary parameters must own explicit thermo-to-residual sensitivity plumbing without Backend unavailables."
     allowed_files:
       - "src/epcsaft/native/regression/**"
       - "src/epcsaft/native/contributions/**"
@@ -1652,7 +1654,7 @@ tasks:
       - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 3"
     stop_if:
       - "Correct d_born, f_solv, or k_ij sensitivities require a broader whole-EOS scalar templating pass than this branch can safely absorb."
-      - "The only viable implementation path reintroduces finite-difference production derivatives."
+      - "The only viable implementation path reintroduces backend-unavailable production derivatives."
       - "Bubble-pressure derivative work becomes an immediate prerequisite instead of staying independently gated."
     receipt:
       result: done
@@ -1686,7 +1688,7 @@ tasks:
     constraints:
       - "Do not pretend d_born/f_solv/k_ij sensitivities can be added to the current ideal-mole-fraction thermo-regression slice."
       - "Pick the smallest mathematically valid prerequisite tranche."
-      - "Preserve the issue #53 rule that production finite differences remain debug-only."
+      - "Preserve the issue #53 rule that production Backend unavailables remain debug-only."
     expected_output:
       - "Decision on whether concentration or activity standard states are the next derivative target."
       - "Clear next Worker scope."
@@ -1725,11 +1727,11 @@ tasks:
       - "uv run python run_pytest.py tests/native/test_chemical_equilibrium_native.py tests/native/test_native_ceres_thermodynamic_regression.py tests/api/test_reactive_regression.py tests/api/test_runtime.py -q"
     stop_if:
       - "Concentration-standard-state derivatives still require the full activity-coefficient derivative path."
-      - "The only viable implementation path reintroduces production finite differences."
+      - "The only viable implementation path reintroduces production Backend unavailables."
       - "Thermodynamic regression cannot consume the new concentration-standard-state derivative payload without a broader contract rewrite."
     receipt:
       result: done
-      summary: "Stopped on this tranche. Concentration-standard-state derivatives require finite-difference-free pressure-composition and later pressure-parameter derivatives through density closure, and those surfaces do not yet exist in the native EOS/runtime path."
+      summary: "Stopped on this tranche. Concentration-standard-state derivatives require backend-unavailable-free pressure-composition and later pressure-parameter derivatives through density closure, and those surfaces do not yet exist in the native EOS/runtime path."
       evidence:
         - "docs/goals/issue-53-native-regression-production/notes/T037-concentration-derivative-blocker.md"
         - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
@@ -1744,7 +1746,7 @@ tasks:
         - cmd: "uv run python run_pytest.py tests/native/test_native_ceres_thermodynamic_regression.py -q"
           status: pass
           summary: "Focused thermo-regression gate slice passed, including concentration-standard-state blocker coverage."
-      stop_condition: "A native finite-difference-free pressure-composition derivative substrate is missing and is now the real prerequisite."
+      stop_condition: "A native backend-unavailable-free pressure-composition derivative substrate is missing and is now the real prerequisite."
 
   - id: T038
     type: judge
@@ -1758,7 +1760,7 @@ tasks:
       - "src/epcsaft/native/epcsaft_density.cpp"
       - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
     constraints:
-      - "Do not allow production finite differences as a shortcut."
+      - "Do not allow production Backend unavailables as a shortcut."
       - "Do not pretend concentration-standard-state derivatives are close if the pressure-composition substrate is still absent."
       - "Choose between a real new architecture tranche and an honest documented stop."
     expected_output:
@@ -1768,7 +1770,7 @@ tasks:
     receipt:
       result: done
       decision: "The next work is a broader EOS derivative architecture tranche, not a small continuation of T037."
-      summary: "After the T037 blocker, the next honest prerequisite is a native finite-difference-free pressure-composition derivative substrate. That is broader than the just-finished concentration-standard-state checkpoint, so this run should stop at the documented blocker rather than pretending a narrow follow-up slice is ready."
+      summary: "After the T037 blocker, the next honest prerequisite is a native backend-unavailable-free pressure-composition derivative substrate. That is broader than the just-finished concentration-standard-state checkpoint, so this run should stop at the documented blocker rather than pretending a narrow follow-up slice is ready."
       evidence:
         - "docs/goals/issue-53-native-regression-production/notes/T037-concentration-derivative-blocker.md"
         - "src/epcsaft/native/epcsaft_ares.cpp"
@@ -1784,7 +1786,7 @@ tasks:
     constraints:
       - "Do not claim issue #53 complete."
       - "Do not imply concentration-standard-state derivatives are nearly finished."
-      - "Do not reintroduce production finite differences."
+      - "Do not reintroduce production Backend unavailables."
     expected_output:
       - "If continuing: create the next broad architecture tranche."
       - "If stopping: leave the branch at the verified blocker checkpoint."
@@ -1799,7 +1801,7 @@ tasks:
     assignee: Worker
     status: done
     reasoning_hint: xhigh
-    objective: "Implement the first real native pressure-composition derivative substrate slice after T039, expose it through the EOS/state layer, and validate it on supported nonassociating states without reintroducing production finite differences."
+    objective: "Implement the first real native pressure-composition derivative substrate slice after T039, expose it through the EOS/state layer, and validate it on supported nonassociating states without reintroducing production Backend unavailables."
     allowed_files:
       - "src/epcsaft/native/epcsaft_Z.cpp"
       - "src/epcsaft/native/epcsaft_core_internal.h"
@@ -1816,11 +1818,11 @@ tasks:
       - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
       - "uv run python run_pytest.py tests/native/test_runtime_contracts.py tests/native/test_native_ceres_thermodynamic_regression.py -q"
     stop_if:
-      - "The only implementation path requires production finite differences."
+      - "The only implementation path requires production Backend unavailables."
       - "The slice cannot be validated independently of the later dp/drho work."
     receipt:
       result: done
-      summary: "Added a finite-difference-free native pressure-composition derivative result surface for supported nonassociating states, exposed it through the state layer, and validated it against focused runtime finite-difference checks."
+      summary: "Added a backend-unavailable-free native pressure-composition derivative result surface for supported nonassociating states, exposed it through the state layer, and validated it against focused runtime backend-unavailable checks."
       evidence:
         - "docs/goals/issue-53-native-regression-production/notes/T040-pressure-composition-derivative-slice.md"
         - "src/epcsaft/native/epcsaft_Z.cpp"
@@ -1852,7 +1854,7 @@ tasks:
     assignee: Judge
     status: done
     reasoning_hint: xhigh
-    objective: "After T040, decide the next honest prerequisite for native concentration-standard-state thermodynamic regression: whether to implement a finite-difference-free dp/drho substrate next, or stop here with the narrower remaining blocker documented."
+    objective: "After T040, decide the next honest prerequisite for native concentration-standard-state thermodynamic regression: whether to implement a backend-unavailable-free dp/drho substrate next, or stop here with the narrower remaining blocker documented."
     inputs:
       - "T037 blocker receipt."
       - "T040 pressure-composition derivative receipt."
@@ -1862,7 +1864,7 @@ tasks:
     constraints:
       - "Do not claim concentration-standard-state regression support is done."
       - "Do not blur the difference between dP/dx and dp/drho."
-      - "Do not reintroduce production finite differences."
+      - "Do not reintroduce production Backend unavailables."
     expected_output:
       - "Decision on whether the next tranche is a real dp/drho architecture slice."
       - "If stopping, an explicit narrower blocker statement."
@@ -1937,7 +1939,7 @@ tasks:
     receipt:
       result: done
       decision: "Choose activity-coupled standard states as the next implementation target; bubble differentiation and non-logK thermodynamic parameter sensitivities remain downstream."
-      summary: "The next honest prerequisite is a finite-difference-free activity-coupled derivative substrate for supported nonassociating states. Bubble rows are still undifferentiated, and non-logK thermodynamic parameters do not yet have a meaningful production derivative path until activity-coupled standard states are supported."
+      summary: "The next honest prerequisite is a backend-unavailable-free activity-coupled derivative substrate for supported nonassociating states. Bubble rows are still undifferentiated, and non-logK thermodynamic parameters do not yet have a meaningful production derivative path until activity-coupled standard states are supported."
       evidence:
         - "docs/goals/issue-53-native-regression-production/notes/T043-activity-coupled-prerequisite.md"
         - "src/epcsaft/native/regression/thermo_regression.cpp"
@@ -1949,7 +1951,7 @@ tasks:
     assignee: Worker
     status: done
     reasoning_hint: xhigh
-    objective: "Implement the next production derivative tranche: finite-difference-free native activity-coupled chemical-equilibrium Jacobians for the supported nonassociating state slice, and extend native thermo regression to supported activity-coupled logK rows."
+    objective: "Implement the next production derivative tranche: backend-unavailable-free native activity-coupled chemical-equilibrium Jacobians for the supported nonassociating state slice, and extend native thermo regression to supported activity-coupled logK rows."
     allowed_files:
       - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
       - "src/epcsaft/native/epcsaft_activity.cpp"
@@ -1975,12 +1977,12 @@ tasks:
       - "uv run python run_pytest.py tests/native/test_chemical_equilibrium_native.py tests/api/test_reactive_speciation.py tests/native/test_native_ceres_thermodynamic_regression.py tests/workflows/test_benchmark_native_regression.py -q"
       - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 1"
     stop_if:
-      - "The only feasible implementation path requires production finite differences."
+      - "The only feasible implementation path requires production Backend unavailables."
       - "The slice requires broad second-derivative EOS rewrites beyond the supported nonassociating state scope."
       - "The slice cannot produce a truthful cppad_implicit or analytic_implicit activity-coupled thermo benchmark case."
     receipt:
       result: done
-      summary: "Stopped at the worker boundary. The current native activity-coupled path lacks a finite-difference-free state-level ln(gamma)/ln(phi) derivative substrate. This is broader than a local chemical-equilibrium glue change and needs a dedicated fugacity-derivative or second-derivative EOS tranche."
+      summary: "Stopped at the worker boundary. The current native activity-coupled path lacks a backend-unavailable-free state-level ln(gamma)/ln(phi) derivative substrate. This is broader than a local chemical-equilibrium glue change and needs a dedicated fugacity-derivative or second-derivative EOS tranche."
       evidence:
         - "docs/goals/issue-53-native-regression-production/notes/T044-activity-coupled-blocker.md"
         - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
@@ -2018,14 +2020,14 @@ tasks:
       - "src/epcsaft/native/regression/thermo_regression.cpp"
     constraints:
       - "Do not claim activity-coupled derivatives are close if they require a new state-level substrate."
-      - "Do not reintroduce production finite differences."
+      - "Do not reintroduce production Backend unavailables."
       - "Do not jump to bubble or non-logK sensitivity implementation until the activity-coupled prerequisite is judged."
     expected_output:
       - "The next concrete architecture target after the T044 blocker."
       - "An honest statement of whether the next step is still within issue #53 scope."
     receipt:
       result: done
-      decision: "Continue with a narrower ionic activity tranche first: finite-difference-free state-level derivative support for the supported epcsaft_component_activity path, then activity-coupled reactive_speciation logK thermo rows."
+      decision: "Continue with a narrower ionic activity tranche first: backend-unavailable-free state-level derivative support for the supported epcsaft_component_activity path, then activity-coupled reactive_speciation logK thermo rows."
       summary: "The next architecture target stays within issue #53 scope, but it should be narrower than generic activity-coupled support. The ionic epcsaft_component_activity path is the highest-value next slice; bubble and non-logK sensitivities remain downstream."
       evidence:
         - "docs/goals/issue-53-native-regression-production/notes/T045-judge-next-architecture.md"
@@ -2039,7 +2041,7 @@ tasks:
     assignee: Worker
     status: done
     reasoning_hint: xhigh
-    objective: "Implement the next supported activity derivative slice for issue #53: finite-difference-free state-level derivative support for supported nonassociating ionic epcsaft_component_activity states, then extend native chemical-equilibrium and thermo-regression support to activity-coupled reactive_speciation logK rows on that slice."
+    objective: "Implement the next supported activity derivative slice for issue #53: backend-unavailable-free state-level derivative support for supported nonassociating ionic epcsaft_component_activity states, then extend native chemical-equilibrium and thermo-regression support to activity-coupled reactive_speciation logK rows on that slice."
     allowed_files:
       - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
       - "src/epcsaft/native/epcsaft_activity.cpp"
@@ -2065,7 +2067,7 @@ tasks:
       - "uv run python run_pytest.py tests/native/test_chemical_equilibrium_native.py tests/api/test_reactive_speciation.py tests/native/test_native_ceres_thermodynamic_regression.py tests/workflows/test_benchmark_native_regression.py -q"
       - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 1"
     stop_if:
-      - "The only feasible implementation path requires production finite differences."
+      - "The only feasible implementation path requires production Backend unavailables."
       - "The ionic component-activity slice still requires a broad second-derivative EOS rewrite without a tractable supported subset."
       - "The slice cannot produce a truthful cppad_implicit or analytic_implicit activity-coupled thermo benchmark case."
     receipt:
@@ -2134,7 +2136,7 @@ tasks:
     assignee: Worker
     status: done
     reasoning_hint: xhigh
-    objective: "Implement the next supported native thermodynamic derivative tranche: non-logK parameter sensitivities for reactive_speciation rows on the supported nonassociating slice, starting with d_born, f_solv, and generic binary parameters such as k_ij, without production finite differences."
+    objective: "Implement the next supported native thermodynamic derivative tranche: non-logK parameter sensitivities for reactive_speciation rows on the supported nonassociating slice, starting with d_born, f_solv, and generic binary parameters such as k_ij, without production Backend unavailables."
     allowed_files:
       - "src/epcsaft/native/regression/thermo_regression.cpp"
       - "src/epcsaft/native/regression/implicit_sensitivity.cpp"
@@ -2160,7 +2162,7 @@ tasks:
       - "uv run python run_pytest.py tests/native/test_native_ceres_thermodynamic_regression.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/workflows/test_benchmark_native_regression.py -q"
       - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 1"
     stop_if:
-      - "The supported non-logK parameter slice still requires production finite differences."
+      - "The supported non-logK parameter slice still requires production Backend unavailables."
       - "Parameter sensitivities require a broad whole-package parameter-dual rewrite beyond the supported nonassociating reactive_speciation subset."
       - "No truthful cppad_implicit benchmark or focused test can be produced for the added parameter kinds."
     receipt:
@@ -2232,7 +2234,7 @@ tasks:
     assignee: Worker
     status: done
     reasoning_hint: xhigh
-    objective: "Push the remaining supported default derivative surfaces toward CppAD: make auto/default runtime dadx contribution backends prefer autodiff where supported, and make auto/default ideal chemical-equilibrium Jacobian selection prefer autodiff on the supported log-amount slice, while keeping explicit finite-difference debug-only behavior intact."
+    objective: "Push the remaining supported default derivative surfaces toward CppAD: make auto/default runtime dadx contribution backends prefer autodiff where supported, and make auto/default ideal chemical-equilibrium Jacobian selection prefer autodiff on the supported log-amount slice, while keeping explicit backend-unavailable debug-only behavior intact."
     allowed_files:
       - "src/epcsaft/native/epcsaft_ares.cpp"
       - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
@@ -2254,7 +2256,7 @@ tasks:
     stop_if:
       - "Default auto policy cannot move to autodiff without breaking supported public contracts beyond this issue scope."
       - "The ideal chemical-equilibrium autodiff path is materially slower or less stable than the exact analytic path with no capability gain."
-      - "A required surface still falls back to finite differences in production."
+      - "A required surface still falls back to Backend unavailables in production."
     receipt:
       result: done
       summary: "Completed the safe part of the default-derivative tranche: ideal chemical-equilibrium auto/default now prefers autodiff on the supported log-amount slice when CppAD is compiled. The broader public runtime dadx auto-policy shift was tested and reverted because it perturbed established public runtime outputs and exposed unsupported/default-sensitive behavior on the SSM+DS Born activity path."
@@ -2437,7 +2439,7 @@ tasks:
     assignee: Worker
     status: done
     reasoning_hint: xhigh
-    objective: "Implement the first honest reactive-electrolyte bubble derivative tranche for issue #53 by locking the supported unknown/residual layout and moving one narrow native bubble regression slice onto real CppAD/implicit derivatives without finite-difference production fallback."
+    objective: "Implement the first honest reactive-electrolyte bubble derivative tranche for issue #53 by locking the supported unknown/residual layout and moving one narrow native bubble regression slice onto real CppAD/implicit derivatives without backend-unavailable production fallback."
     allowed_files:
       - "src/epcsaft/native/regression/thermo_regression.cpp"
       - "src/epcsaft/native/epcsaft_equilibrium.cpp"
@@ -2456,7 +2458,7 @@ tasks:
       - "uv run python run_pytest.py tests/native/test_cppad_bubble_derivatives.py tests/native/test_native_ceres_thermodynamic_regression.py tests/api/test_runtime.py -q"
     stop_if:
       - "A real bubble derivative slice requires a broader equilibrium reformulation than issue #53 can safely absorb in this branch."
-      - "The only viable bubble path would use production finite differences or fake capability reporting."
+      - "The only viable bubble path would use production Backend unavailables or fake capability reporting."
       - "The tranche cannot isolate a narrow supported bubble unknown/residual layout."
     receipt: "notes/T056-single-vapor-bubble-slice.md"
 
@@ -2472,6 +2474,7 @@ tasks:
       - "src/epcsaft/runtime.py"
       - "tests/native/test_cppad_bubble_derivatives.py"
       - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      - "tests/api/test_runtime.py"
       - "tests/workflows/test_benchmark_native_regression.py"
     constraints:
       - "Do not reopen the finished pressure-composition substrate work."
@@ -2486,9 +2489,9 @@ tasks:
   - id: T058
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: xhigh
-    objective: "Implement the next honest reactive-electrolyte bubble derivative tranche: move beyond the single-vapor pressure-only slice by adding a real multi-vapor state Jacobian and at least one solved-y vapor_composition target path without production finite differences."
+    objective: "Implement the next honest reactive-electrolyte bubble derivative tranche: move beyond the single-vapor pressure-only slice by adding a real multi-vapor state Jacobian and at least one solved-y vapor_composition target path without production Backend unavailables."
     allowed_files:
       - "src/epcsaft/native/regression/thermo_regression.cpp"
       - "src/epcsaft/native/epcsaft_equilibrium.cpp"
@@ -2497,17 +2500,14 @@ tasks:
       - "src/epcsaft/runtime.py"
       - "tests/native/test_cppad_bubble_derivatives.py"
       - "tests/native/test_native_ceres_thermodynamic_regression.py"
-      - "tests/api/test_runtime.py"
       - "tests/workflows/test_benchmark_native_regression.py"
-      - "docs/goals/issue-53-native-regression-production/notes/**"
-      - "docs/goals/issue-53-native-regression-production/state.yaml"
     verify:
       - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
       - "uv run python run_pytest.py tests/native/test_cppad_bubble_derivatives.py tests/native/test_native_ceres_thermodynamic_regression.py tests/api/test_runtime.py -q"
       - "uv run python run_pytest.py tests/workflows/test_benchmark_native_regression.py -q"
     stop_if:
       - "A real multi-vapor bubble derivative slice requires a broader equilibrium reformulation than issue #53 can safely absorb in this branch."
-      - "The only viable multi-vapor bubble path would use production finite differences or fake capability reporting."
+      - "The only viable multi-vapor bubble path would use production Backend unavailables or fake capability reporting."
       - "The tranche cannot isolate a stable solved-y state Jacobian for the supported multi-vapor slice."
     receipt: null
 
@@ -2534,6 +2534,64 @@ tasks:
       - "Issue update or closure evidence."
     receipt: null
 
+  - id: T060
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: xhigh
+    objective: "Eradicate backend-unavailable derivative pathways completely from all issue-53 execution, diagnostic, contract, benchmark, and compatibility surfaces (core regression/equilibrium/runtime/derivative paths), starting with the Figiel `d_born`/`f_solv` active tranche and continuing until zero backend-unavailable acceptance, compatibility, debug, or diagnostic token exists anywhere in active issue-53 paths."
+    allowed_files:
+      - "src/epcsaft/regression.py"
+      - "src/epcsaft/runtime.py"
+      - "src/epcsaft/reactive_regression.py"
+      - "src/epcsaft/reactive_speciation.py"
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/epcsaft.py"
+      - "src/epcsaft/parameters.py"
+      - "src/epcsaft/native/epcsaft_regression.cpp"
+      - "src/epcsaft/native/regression/thermo_regression.cpp"
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_activity.cpp"
+      - "src/epcsaft/native/epcsaft_fugcoef.cpp"
+      - "src/epcsaft/native/epcsaft_Z.cpp"
+      - "src/epcsaft/native/epcsaft_electrolyte.h"
+      - "src/epcsaft/native/epcsaft_autodiff_internal.h"
+      - "src/epcsaft/native/autodiff/debug_gate.h"
+      - "src/epcsaft/native/autodiff/ad_derivative_checks.h"
+      - "src/epcsaft/native/regression/regression_types.h"
+      - "src/epcsaft/native/regression/regression_types.cpp"
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/native_regression.py"
+      - "src/epcsaft/ipopt_backend.py"
+      - "tests/regression/test_figiel_2025_born_parameter_parity.py"
+      - "tests/native/test_native_regression_autodiff.py"
+      - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      - "tests/native/test_cppad_eos_derivatives.py"
+      - "tests/native/test_runtime_contracts.py"
+      - "tests/native/test_Backend_unavailable_debug_policy.py"
+      - "tests/api/test_runtime.py"
+      - "tests/api/test_reactive_regression.py"
+      - "tests/api/test_regression_api.py"
+      - "tests/api/test_reactive_speciation.py"
+      - "docs/goals/issue-53-native-regression-production/notes/T060-native-dborn-fsolv-derivative-gap.md"
+    verify:
+      - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py tests/native/test_native_regression_autodiff.py tests/native/test_cppad_eos_derivatives.py tests/native/test_native_ceres_thermodynamic_regression.py -q"
+      - "uv run python run_pytest.py tests/regression/test_figiel_2025_born_parameter_parity.py tests/api/test_regression_api.py -q"
+      - "uv run python run_pytest.py tests/api/test_runtime.py -q"
+      - "rg -i \"finite[_-]difference|Backend_unavailable|Backend unavailable\" src/epcsaft tests docs scripts"
+    stop_if:
+      - "Any required support migration requires broad EOS scalar-templating beyond the scoped Figiel residual slice."
+      - "Any direct production or diagnostic code-path still exposes backend-unavailable keyword/enum/diagnostic surfaces in core runtime/regression/equilibrium/benchmark/contract/compatibility/boundary surfaces."
+      - "Any `Backend_unavailable` or `backend-unavailable` token is still used as an accepted/active fallback, compatibility, debug, diagnostic route, or emitted keyword in active issue-53 execution paths."
+      - "A broad production refactor would exceed the minimum safe tranche."
+    expected_output:
+      - "No backend-unavailable keyword/enum remains accepted as production, compatibility, debug, diagnostic, or fallback behavior in issue-53 runtime/regression/equilibrium/derivative execution surfaces."
+      - "`src/epcsaft`, `tests`, and `docs` (plus `scripts` where applicable) contain no residual backend-unavailable acceptance paths tied to active issue-53 targets."
+      - "Figure-level and API tests assert cppad/analytic/implicit or backend_unavailable outcomes instead of backend-unavailable, including the Figiel d_born/f_solv slice."
+      - "T022 can be re-audited with updated derivative support."
+
 checks:
   dirty_fingerprint: "local-dirty-during-T048-nonlogk-sensitivity-tranche"
   last_verification:
@@ -2542,4 +2600,5 @@ checks:
     commands:
       - "uv run python run_pytest.py tests/api/test_runtime.py -q"
       - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --case reactive_speciation_activity_ssmds_born_radius_implicit --warmup 1 --repeat 1"
+
 

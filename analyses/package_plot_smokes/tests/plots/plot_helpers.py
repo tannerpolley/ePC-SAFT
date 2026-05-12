@@ -544,7 +544,7 @@ def save_contribution_term_breakdown_plot(
     return output_path
 
 
-def finite_difference_gradient_values() -> tuple[np.ndarray, np.ndarray]:
+def Backend_unavailable_gradient_values() -> tuple[np.ndarray, np.ndarray]:
     theta = {"m": 1.05, "s": 3.68, "e": 151.0}
 
     def objective_at(m: float, s: float, e: float) -> float:
@@ -577,3 +577,4 @@ def finite_difference_gradient_values() -> tuple[np.ndarray, np.ndarray]:
         backward[i] -= eps[i]
         fd[i] = (objective_at(*forward) - objective_at(*backward)) / (2.0 * eps[i])
     return exact, fd
+

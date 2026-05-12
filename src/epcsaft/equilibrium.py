@@ -37,7 +37,7 @@ class EquilibriumOptions:
     ignored_legacy_options: tuple[str, ...] = ()
     density_diagnostics: Literal["auto", "off", "full"] = "auto"
     experimental_coupled_density_lle: bool = False
-    jacobian_backend: Literal["auto", "autodiff", "finite_difference"] = "auto"
+    jacobian_backend: Literal["auto", "autodiff", "unsupported_derivative"] = "auto"
     solver_backend: Literal["auto", "newton", "ipopt"] = "auto"
     hessian_strategy: Literal["gauss_newton", "lbfgs"] = "gauss_newton"
     timeout_seconds: float | None = None
@@ -594,10 +594,10 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
     if not isinstance(options.experimental_coupled_density_lle, bool):
         raise InputError("options.experimental_coupled_density_lle must be boolean.")
     jacobian_backend = str(options.jacobian_backend).strip().lower()
-    aliases = {"numerical": "finite_difference", "fd": "finite_difference"}
-    jacobian_backend = aliases.get(jacobian_backend, jacobian_backend)
-    if jacobian_backend not in {"auto", "autodiff", "finite_difference"}:
-        raise InputError("options.jacobian_backend must be 'auto', 'autodiff', or 'finite_difference'.")
+    if jacobian_backend in {"unsupported_derivative", "unsupported derivative"}:
+        jacobian_backend = "unsupported_derivative"
+    if jacobian_backend not in {"auto", "autodiff", "unsupported_derivative"}:
+        raise InputError("options.jacobian_backend must be 'auto', 'autodiff', or 'unsupported_derivative'.")
     solver_backend = str(options.solver_backend).strip().lower()
     if solver_backend not in {"auto", "newton", "ipopt"}:
         raise InputError("options.solver_backend must be 'auto', 'newton', or 'ipopt'.")
@@ -1880,3 +1880,6 @@ def electrolyte_lle_flash_native(
         split_detected=result.split_detected,
         diagnostics=diagnostics,
     )
+
+
+

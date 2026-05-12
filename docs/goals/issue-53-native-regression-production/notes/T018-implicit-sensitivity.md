@@ -15,7 +15,7 @@ R(u, theta) = 0
 u_theta = -R_u^{-1} R_theta
 ```
 
-It reports explicit failure states (`invalid_input`, `backend_unavailable`, `nonfinite_objective`, `singular_jacobian`) and always reports `finite_difference_used=false`.
+It reports explicit failure states (`invalid_input`, `backend_unavailable`, `nonfinite_objective`, `singular_jacobian`) and always reports `Backend_unavailable_used=false`.
 
 ## Important Limit
 
@@ -31,3 +31,4 @@ This is the native linear algebra primitive T019 can use. The reactive speciatio
   - pass
 - `uv run black --check tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_cppad_bubble_derivatives.py`
   - pass
+

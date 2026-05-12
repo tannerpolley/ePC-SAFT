@@ -26,9 +26,9 @@ T003 must broaden the option meaning from equilibrium-only to package-wide nativ
 
 ## CppAD Scope Decision
 
-Production may ship before CppAD is threaded through every residual family in the entire package, but not before every residual family in the supported Issue #53 production slice has a non-finite-difference derivative path.
+Production may ship before CppAD is threaded through every residual family in the entire package, but not before every residual family in the supported Issue #53 production slice has a non-backend-unavailable derivative path.
 
-Finite differences may exist only behind explicit debug gates. No Python, SciPy, NumPy, or Ceres numeric-differentiation fallback is acceptable for production regression.
+Backend unavailables may exist only behind explicit debug gates. No Python, SciPy, NumPy, or Ceres numeric-differentiation fallback is acceptable for production regression.
 
 ## Status Taxonomy Decision
 
@@ -71,9 +71,9 @@ Partial row failures belong in row diagnostics and penalty residual accounting, 
 
 - Stop after T003 if robust Windows/uv build plumbing for Ceres or CppAD cannot be made reproducible without a separate bootstrap decision.
 - Stop after T005 if fixed-shape residual count/order cannot be guaranteed for recoverable row failures.
-- Stop immediately if T006/T007 can only work by reintroducing Python/SciPy optimization, NumPy finite-difference Jacobians, Ceres numeric differentiation as production policy, or IPOPT as default/production.
-- Stop for re-scope if the supported mixed pressure/speciation slice cannot get non-finite-difference derivatives without a broad whole-EOS templating rewrite.
-- Do not mark any capability or docs path as production while `runtime.py` still reports `python_batched_native_solvers`, `native_hot_loop=False`, or Python finite-difference step control for the Issue #53 production route.
+- Stop immediately if T006/T007 can only work by reintroducing Python/SciPy optimization, NumPy backend-unavailable Jacobians, Ceres numeric differentiation as production policy, or IPOPT as default/production.
+- Stop for re-scope if the supported mixed pressure/speciation slice cannot get non-backend-unavailable derivatives without a broad whole-EOS templating rewrite.
+- Do not mark any capability or docs path as production while `runtime.py` still reports `python_batched_native_solvers`, `native_hot_loop=False`, or Python backend-unavailable step control for the Issue #53 production route.
 
 ## Native Rebuild Coordination
 
@@ -82,3 +82,4 @@ Partial row failures belong in row diagnostics and penalty residual accounting, 
 - Workers must not run clean/repair or delete `_core` artifacts as routine validation.
 - Rebuild after any CMake, `bindings.cpp`, or `native/regression/**` signature change.
 - If `_core*.pyd` is locked, stop importing processes first; do not paper over with clean rebuild churn.
+

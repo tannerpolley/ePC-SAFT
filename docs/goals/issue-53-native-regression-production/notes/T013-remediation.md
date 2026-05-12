@@ -6,7 +6,7 @@ Added analytic-sensitivity parameter movement to the native residual-record solv
 
 - `NativeRegressionResidualRecord` now accepts per-parameter `sensitivities`.
 - Pybind parses `sensitivities` from Python dictionaries.
-- Native solve builds and solves a small analytic normal-equation step, clamps parameters to bounds, re-evaluates residuals, and reports improved cost/residuals without production finite differences.
+- Native solve builds and solves a small analytic normal-equation step, clamps parameters to bounds, re-evaluates residuals, and reports improved cost/residuals without production Backend unavailables.
 - Native benchmark records now include sensitivities for neutral, binary `k_ij`, reactive Born/`k_ij`, and 35-row MEA-style surrogate cases.
 - Added a native test proving bounded parameter movement and objective reduction.
 
@@ -36,3 +36,4 @@ native_binary_kij_tiny 0.069 1 3 2 converged analytic_linear_native
 native_reactive_born_kij_tiny 0.068 1 4 2 converged analytic_linear_native
 native_mea_pressure_speciation_35_row_surrogate 1.144 35 105 3 converged analytic_linear_native
 ```
+

@@ -17,7 +17,7 @@ NativeAutodiffDerivativeCheckResult native_autodiff_derivative_checks() {
     };
 
 #ifndef EPCSAFT_HAS_CPPAD
-    result.status = "backend_unavailable";
+    result.status = "unsupported_derivative";
     result.derivative_backend = "cppad_unavailable";
     return result;
 #else
@@ -54,3 +54,5 @@ NativeAutodiffDerivativeCheckResult native_autodiff_derivative_checks() {
 }
 
 }  // namespace epcsaft::autodiff
+
+

@@ -10,7 +10,7 @@ checkpoint.
 What changed
 ------------
 
-Added a finite-difference-free native pressure-composition derivative result
+Added a backend-unavailable-free native pressure-composition derivative result
 surface for the currently supported nonassociating EOS slice.
 
 Implemented surfaces:
@@ -34,7 +34,7 @@ Supported:
 Explicitly still gated:
 
 - associating states
-- any tranche that still needs finite-difference-free `dp/drho`
+- any tranche that still needs backend-unavailable-free `dp/drho`
 - concentration-standard-state reactive-speciation derivatives in native thermo
   regression
 
@@ -47,7 +47,7 @@ substrate at all. That is no longer true for the supported nonassociating slice.
 The remaining blocker is now narrower and more precise:
 
 - native concentration-standard-state regression still needs a real
-  finite-difference-free `dp/drho` path through density closure
+  backend-unavailable-free `dp/drho` path through density closure
 
 Validation evidence
 -------------------
@@ -65,7 +65,8 @@ Key test coverage added
 -----------------------
 
 - supported-state `pressure_composition_derivative()` matches constrained
-  finite-difference pressure changes
+  backend-unavailable pressure changes
 - associating ionic runtime reports the explicit nonassociating gate instead of
   pretending support
+
 

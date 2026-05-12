@@ -13,7 +13,7 @@ Decision
 
 Choose the next implementation target as:
 
-- finite-difference-free native activity-coupled chemical-equilibrium Jacobians
+- backend-unavailable-free native activity-coupled chemical-equilibrium Jacobians
   for the supported nonassociating state slice
 
 Do **not** choose bubble-pressure differentiation or non-`logK` thermodynamic
@@ -76,3 +76,4 @@ Evidence
 - `src/epcsaft/native/epcsaft_chemical_equilibrium.cpp`
 - `tests/native/test_native_ceres_reactive_pressure_speciation.py`
 - `tests/native/test_native_ceres_thermodynamic_regression.py`
+

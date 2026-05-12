@@ -114,8 +114,8 @@ struct CompositionContributionResult {
     ScalarContributionTerms z_raw;
     ScalarContributionTerms z;
     std::map<std::string, std::string> derivative_backend;
-    bool finite_difference_fallback_used = false;
-    std::string finite_difference_fallback_reason;
+    bool unsupported_derivative_fallback_used = false;
+    std::string unsupported_derivative_fallback_reason;
 };
 
 struct PressureCompositionDerivativeResult {
@@ -123,8 +123,8 @@ struct PressureCompositionDerivativeResult {
     double pressure = 0.0;
     bool supported = false;
     std::string derivative_backend = "unsupported";
-    bool finite_difference_fallback_used = false;
-    std::string finite_difference_fallback_reason;
+    bool unsupported_derivative_fallback_used = false;
+    std::string unsupported_derivative_fallback_reason;
 };
 
 struct PressureDensityDerivativeResult {
@@ -132,8 +132,8 @@ struct PressureDensityDerivativeResult {
     double dpdrho = 0.0;
     bool supported = false;
     std::string derivative_backend = "unsupported";
-    bool finite_difference_fallback_used = false;
-    std::string finite_difference_fallback_reason;
+    bool unsupported_derivative_fallback_used = false;
+    std::string unsupported_derivative_fallback_reason;
 };
 
 struct LnfugCompositionDerivativeResult {
@@ -143,8 +143,8 @@ struct LnfugCompositionDerivativeResult {
     int cols = 0;
     bool supported = false;
     std::string derivative_backend = "unsupported";
-    bool finite_difference_fallback_used = false;
-    std::string finite_difference_fallback_reason;
+    bool unsupported_derivative_fallback_used = false;
+    std::string unsupported_derivative_fallback_reason;
 };
 
 struct LnfugDensityDerivativeResult {
@@ -153,8 +153,8 @@ struct LnfugDensityDerivativeResult {
     int size = 0;
     bool supported = false;
     std::string derivative_backend = "unsupported";
-    bool finite_difference_fallback_used = false;
-    std::string finite_difference_fallback_reason;
+    bool unsupported_derivative_fallback_used = false;
+    std::string unsupported_derivative_fallback_reason;
 };
 
 struct LnfugParameterDerivativeResult {
@@ -162,8 +162,8 @@ struct LnfugParameterDerivativeResult {
     int size = 0;
     bool supported = false;
     std::string derivative_backend = "unsupported";
-    bool finite_difference_fallback_used = false;
-    std::string finite_difference_fallback_reason;
+    bool unsupported_derivative_fallback_used = false;
+    std::string unsupported_derivative_fallback_reason;
 };
 
 struct ComponentActivityLogDerivativeResult {
@@ -173,8 +173,8 @@ struct ComponentActivityLogDerivativeResult {
     int cols = 0;
     bool supported = false;
     std::string derivative_backend = "unsupported";
-    bool finite_difference_fallback_used = false;
-    std::string finite_difference_fallback_reason;
+    bool unsupported_derivative_fallback_used = false;
+    std::string unsupported_derivative_fallback_reason;
 };
 
 struct ComponentActivityParameterDerivativeResult {
@@ -182,8 +182,8 @@ struct ComponentActivityParameterDerivativeResult {
     int size = 0;
     bool supported = false;
     std::string derivative_backend = "unsupported";
-    bool finite_difference_fallback_used = false;
-    std::string finite_difference_fallback_reason;
+    bool unsupported_derivative_fallback_used = false;
+    std::string unsupported_derivative_fallback_reason;
 };
 
 struct ResidualChemicalPotentialResult {
@@ -346,10 +346,10 @@ struct GenericRegressionDebugResult {
     int jacobian_rows = 0;
     int jacobian_cols = 0;
     bool jacobian_available = true;
-    std::string jacobian_backend = "finite_difference";
+    std::string jacobian_backend = "unsupported_derivative";
     bool jacobian_fallback_used = true;
     std::string jacobian_fallback_reason = "Generic regression autodiff Jacobian is not implemented for all residual state calls yet.";
-    int finite_difference_fallback_count = 0;
+    int unsupported_derivative_fallback_count = 0;
     vector<double> hessian_row_major;
     int hessian_rows = 0;
     int hessian_cols = 0;
@@ -373,10 +373,10 @@ struct GenericRegressionResult {
     int iterations = 0;
     int starts_tried = 0;
     bool jacobian_available = true;
-    std::string jacobian_backend = "finite_difference";
+    std::string jacobian_backend = "unsupported_derivative";
     bool jacobian_fallback_used = true;
     std::string jacobian_fallback_reason = "Generic regression autodiff Jacobian is not implemented for all residual state calls yet.";
-    int finite_difference_fallback_count = 0;
+    int unsupported_derivative_fallback_count = 0;
     bool hessian_available = false;
     std::string hessian_backend = "not_implemented";
     bool hessian_fallback_used = false;
@@ -590,5 +590,8 @@ vector<double> association_site_fraction_dt_cpp(vector<double> delta_ij, double 
     vector<double> XA, vector<double> ddelta_dt, vector<double> x);
 vector<double> association_site_fraction_dx_cpp(vector<int> assoc_num, vector<double> delta_ij,
     double den, vector<double> XA, vector<double> ddelta_dx, vector<double> x);
+
+
+
 
 

@@ -11,12 +11,12 @@ SPECIES = ["H2O", "MEA", "CO2", "MEAH+", "MEACOO-", "HCO3-"]
 
 ADVANCED_USER_OPTIONS = {
     "elec_model": {
-        "rel_perm": {"rule": "empirical", "differential_mode": "numerical"},
+        "rel_perm": {"rule": "empirical", "differential_mode": "autodiff"},
         "born_model": {
             "d_Born_mode": 3,
             "solvation_shell_model": True,
             "dielectric_saturation": True,
-            "mu_born_model": {"differential_mode": "numerical", "comp_dep_delta_d": True},
+            "mu_born_model": {"differential_mode": "autodiff", "comp_dep_delta_d": True},
         },
     }
 }

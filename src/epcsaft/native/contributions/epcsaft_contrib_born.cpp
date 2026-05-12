@@ -243,9 +243,7 @@ ContributionDadxResult dadx_born_cpp(const BornIntermediateState &born_state, do
         double Kborn = E_CHRG * E_CHRG / (4.0 * PI * kb * t * perm_vac);
         result.ares = -Kborn * (1.0 - 1.0 / born_state.eps_value) * born_state.charge_radius_sum;
 
-        if (cppargs.born_diff_mode == 1) {
-            result.dadx = contribution_dadx_fd_cpp(AresContributionKind::BORN, t, rho, x, cppargs, result.ares);
-        } else if (cppargs.born_diff_mode == 4) {
+        if (cppargs.born_diff_mode == 4) {
             result.dadx = contribution_dadx_autodiff_cpp(AresContributionKind::BORN, t, rho, x, cppargs);
         } else {
             for (int i = 0; i < ncomp; ++i) {
@@ -270,9 +268,7 @@ ContributionDadxResult dadx_born_cpp(const BornIntermediateState &born_state, do
         const double Kborn = E_CHRG * E_CHRG / (4.0 * PI * kb * t * perm_vac);
         result.ares = -Kborn * born_state.shell.sum_bracket;
 
-        if (cppargs.born_diff_mode == 1) {
-            result.dadx = contribution_dadx_fd_cpp(AresContributionKind::BORN, t, rho, x, cppargs, result.ares);
-        } else if (cppargs.born_diff_mode == 4) {
+        if (cppargs.born_diff_mode == 4) {
             result.dadx = contribution_dadx_autodiff_cpp(AresContributionKind::BORN, t, rho, x, cppargs);
         } else {
             const double inv_eps2 = 1.0 / (born_state.eps_value * born_state.eps_value);

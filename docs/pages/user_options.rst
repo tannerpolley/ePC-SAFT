@@ -52,19 +52,19 @@ Only the documented nested keys are supported.
   - ``7`` or ``linear-saltfraction``
   - ``8`` or ``aqueous-organic``
   - ``9`` or ``salt-free-massfraction`` for a solvent-only mass-fraction average that ignores ions in the dielectric average
-- ``differential_mode``: choose ``auto`` (default), ``analytical``, ``numerical``/``finite_difference``, or ``autodiff``
+- ``differential_mode``: choose ``auto`` (default), ``analytical``, or ``autodiff``
 
 ``hc_model``, ``disp_model``, ``assoc_model``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- ``dadx_differential_mode``: choose ``auto`` (default), ``analytical``, ``numerical``/``finite_difference``, or ``autodiff``
+- ``dadx_differential_mode``: choose ``auto`` (default), ``analytical``, or ``autodiff``
 
 ``DH_model``
 ~~~~~~~~~~~~
 
 - ``d_ion_mode``: choose ``0``, ``1``, or ``2``
 - ``bjeruum_treatment``: enable or disable Bjerrum treatment
-- ``mu_DH_model.differential_mode``: choose ``auto`` (default), ``analytical``, ``numerical``/``finite_difference``, or ``autodiff``
+- ``mu_DH_model.differential_mode``: choose ``auto`` (default), ``analytical``, or ``autodiff``
 - ``mu_DH_model.comp_dep_rel_perm``: include composition-dependent permittivity in the derivative model
 - ``mu_DH_model.include_sum_term``: include the sum term in the derivative model
 
@@ -75,7 +75,7 @@ Only the documented nested keys are supported.
 - ``solvation_shell_model``: enable or disable the solvation-shell model
 - ``dielectric_saturation``: enable or disable dielectric saturation
 - ``bulk_mode``: choose ``mix`` or ``solvent``
-- ``mu_born_model.differential_mode``: choose ``auto`` (default), ``analytical``, ``numerical``/``finite_difference``, or ``autodiff``
+- ``mu_born_model.differential_mode``: choose ``auto`` (default), ``analytical``, or ``autodiff``
 - ``mu_born_model.comp_dep_rel_perm``: include composition-dependent permittivity in the derivative model
 - ``mu_born_model.include_sum_term``: include the sum term in the derivative model
 - ``mu_born_model.comp_dep_delta_d``: include the delta-d composition term
@@ -132,7 +132,10 @@ Tips
 
 - Start from a small file and add only the settings you actually need.
 - If a value is left out, the package keeps its default.
-- The default derivative policy is ``auto``: use validated analytical derivatives where they already exist, then autodiff for implemented derivative paths. It does not silently select finite difference.
-- ``autodiff`` is stricter than ``auto``. It requests the autodiff backend directly and raises for unsupported paths instead of quietly selecting an analytical formula or finite-difference approximation.
-- Finite difference is available only through explicit ``finite_difference`` overrides for comparison or hard-case diagnostics. Unsupported ``auto``/``autodiff`` derivative paths raise clear errors.
+- The default derivative policy is ``auto``: use validated analytical derivatives where they already exist, then autodiff for implemented derivative paths. It does not silently select unsupported derivative.
+- ``autodiff`` is stricter than ``auto``. It requests the autodiff backend directly and raises for unsupported paths instead of quietly selecting an analytical formula or backend-unavailable approximation.
+- unsupported derivative is available only through explicit ``unsupported_derivative`` overrides for comparison or hard-case diagnostics. Unsupported ``auto``/``autodiff`` derivative paths raise clear errors.
 - If you are unsure, keep ``user_options.json`` empty and add settings one at a time.
+
+
+

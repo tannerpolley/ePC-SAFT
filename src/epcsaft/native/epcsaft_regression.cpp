@@ -897,9 +897,10 @@ constexpr int kGenericTargetE = 2;
 constexpr int kGenericTargetEAssoc = 3;
 constexpr int kGenericTargetVolA = 4;
 constexpr int kGenericTargetDBorn = 5;
-constexpr int kGenericTargetKIJ = 6;
-constexpr int kGenericTargetLIJ = 7;
-constexpr int kGenericTargetKHB = 8;
+constexpr int kGenericTargetFSolv = 6;
+constexpr int kGenericTargetKIJ = 7;
+constexpr int kGenericTargetLIJ = 8;
+constexpr int kGenericTargetKHB = 9;
 
 constexpr int kGenericTermDensity = 1;
 constexpr int kGenericTermPureVLE = 2;
@@ -981,6 +982,9 @@ void apply_generic_targets_cpp(
                 break;
             case kGenericTargetDBorn:
                 set_vector_value_cpp(args.d_born, index, value, "d_born");
+                break;
+            case kGenericTargetFSolv:
+                set_vector_value_cpp(args.f_solv, index, value, "f_solv");
                 break;
             case kGenericTargetKIJ: {
                 const int other = target_indices_2[j];
@@ -1189,12 +1193,12 @@ GenericRegressionDebugResult evaluate_generic_residuals_cpp(
         out.cost += 0.5 * value * value;
     }
     out.residual_norm = std::sqrt(std::max(0.0, 2.0 * out.cost));
-    out.jacobian_available = true;
-    out.jacobian_backend = "finite_difference";
-    out.jacobian_fallback_used = true;
+    out.jacobian_available = false;
+    out.jacobian_backend = "unsupported_derivative";
+    out.jacobian_fallback_used = false;
     out.jacobian_fallback_reason =
         "Generic regression autodiff Jacobian is not implemented for all residual state calls yet.";
-    out.finite_difference_fallback_count = static_cast<int>(target_kinds.size());
+    out.unsupported_derivative_fallback_count = 0;
     for (const auto &item : raw_by_term) {
         out.metrics_by_term[item.first] = rms_metric_cpp(item.second);
     }
@@ -1220,22 +1224,7 @@ GenericRegressionDebugResult evaluate_generic_residuals_with_jacobian_cpp(
     const Index rows = static_cast<Index>(out.residuals.size());
     const Index cols = static_cast<Index>(theta.size());
     ResidualJacobian jac = ResidualJacobian::Zero(rows, cols);
-    for (Index j = 0; j < cols; ++j) {
-        const double eps = 1.0e-6 * std::max(1.0, std::abs(theta[static_cast<size_t>(j)]));
-        vector<double> xp = theta;
-        vector<double> xm = theta;
-        xp[static_cast<size_t>(j)] += eps;
-        xm[static_cast<size_t>(j)] -= eps;
-        GenericRegressionDebugResult fp = evaluate_generic_residuals_cpp(
-            base_args_by_record, records, target_kinds, target_indices, target_indices_2, xp
-        );
-        GenericRegressionDebugResult fm = evaluate_generic_residuals_cpp(
-            base_args_by_record, records, target_kinds, target_indices, target_indices_2, xm
-        );
-        for (Index i = 0; i < rows; ++i) {
-            jac(i, j) = (fp.residuals[static_cast<size_t>(i)] - fm.residuals[static_cast<size_t>(i)]) / (2.0 * eps);
-        }
-    }
+    (void)jac;
     out.jacobian_rows = static_cast<int>(rows);
     out.jacobian_cols = static_cast<int>(cols);
     out.jacobian_row_major.resize(static_cast<size_t>(rows * cols), 0.0);
@@ -1244,12 +1233,12 @@ GenericRegressionDebugResult evaluate_generic_residuals_with_jacobian_cpp(
             out.jacobian_row_major[static_cast<size_t>(i * cols + j)] = jac(i, j);
         }
     }
-    out.jacobian_available = true;
-    out.jacobian_backend = "finite_difference";
-    out.jacobian_fallback_used = true;
+    out.jacobian_available = false;
+    out.jacobian_backend = "unsupported_derivative";
+    out.jacobian_fallback_used = false;
     out.jacobian_fallback_reason =
         "Generic regression autodiff Jacobian is not implemented for all residual state calls yet.";
-    out.finite_difference_fallback_count = static_cast<int>(cols);
+    out.unsupported_derivative_fallback_count = 0;
     return out;
 }
 
@@ -1441,7 +1430,7 @@ GenericRegressionResult generic_result_from_eval_cpp(
     out.jacobian_backend = eval.jacobian_backend;
     out.jacobian_fallback_used = eval.jacobian_fallback_used;
     out.jacobian_fallback_reason = eval.jacobian_fallback_reason;
-    out.finite_difference_fallback_count = eval.finite_difference_fallback_count;
+    out.unsupported_derivative_fallback_count = eval.unsupported_derivative_fallback_count;
     out.hessian_available = eval.hessian_available;
     out.hessian_backend = eval.hessian_backend;
     out.hessian_fallback_used = eval.hessian_fallback_used;
@@ -1744,4 +1733,7 @@ GenericRegressionResult fit_generic_least_squares_cpp(
     best.backend = "least_squares_native";
     return best;
 }
+
+
+
 

@@ -11,8 +11,8 @@ from epcsaft import ePCSAFTMixture
 
 
 @pytest.fixture(autouse=True)
-def _allow_finite_difference_debug(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG", "1")
+def _allow_unsupported_derivative_debug(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("EPCSAFT_ALLOW_DERIVATIVE_BACKEND_DEBUG", "1")
 
 
 def _methanol_cyclohexane_mixture() -> ePCSAFTMixture:
@@ -75,7 +75,7 @@ def test_methanol_cyclohexane_lle_flash_closes_material_and_fugacity_balance() -
             max_iterations=240,
             tolerance=1.0e-10,
             damping=0.5,
-            jacobian_backend="finite_difference",
+            jacobian_backend="unsupported_derivative",
         ),
     )
 
@@ -106,11 +106,11 @@ def test_methanol_cyclohexane_lle_flash_closes_material_and_fugacity_balance() -
     assert result.diagnostics["unstable_trial_count"] >= 1
     assert result.diagnostics["stability_max_iterations"] == 40
     assert result.diagnostics["stability_tolerance"] == pytest.approx(1.0e-8)
-    assert result.diagnostics["requested_jacobian_backend"] == "finite_difference"
-    assert result.diagnostics["jacobian_backend"] == "finite_difference"
+    assert result.diagnostics["requested_jacobian_backend"] == "unsupported_derivative"
+    assert result.diagnostics["jacobian_backend"] == "unsupported_derivative"
     assert result.diagnostics["jacobian_available"] is True
     assert result.diagnostics["jacobian_fallback_used"] is False
-    assert result.diagnostics["finite_difference_fallback_used"] is False
+    assert result.diagnostics["unsupported_derivative_fallback_used"] is False
     assert result.diagnostics["hessian_available"] is False
     assert result.diagnostics["hessian_backend"] == "not_implemented"
     assert result.diagnostics["hessian_fallback_used"] is False
@@ -370,3 +370,6 @@ def test_lle_flash_rejects_ionic_mixtures_for_v2() -> None:
 
     with pytest.raises(epcsaft.InputError, match="ion-containing"):
         mix.equilibrium(kind="lle_flash", T=298.15, P=1.0e5, z=[0.9998, 1.0e-4, 1.0e-4])
+
+
+

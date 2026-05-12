@@ -24,12 +24,12 @@ def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_params(params, species=["H2O", "NaCl", "Na+", "Cl-"])
 
 
-def _allow_finite_difference_debug(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG", "1")
+def _allow_unsupported_derivative_debug(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("EPCSAFT_ALLOW_DERIVATIVE_BACKEND_DEBUG", "1")
 
 
 def test_solve_reactive_speciation_returns_balanced_activity_coupled_state(monkeypatch: pytest.MonkeyPatch) -> None:
-    _allow_finite_difference_debug(monkeypatch)
+    _allow_unsupported_derivative_debug(monkeypatch)
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
     initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
@@ -63,7 +63,7 @@ def test_solve_reactive_speciation_returns_balanced_activity_coupled_state(monke
             mass_tolerance=1.0e-8,
             charge_tolerance=1.0e-8,
             reaction_tolerance=1.0e-8,
-            jacobian_backend="finite_difference",
+            jacobian_backend="unsupported_derivative",
         ),
     )
 
@@ -109,7 +109,7 @@ def test_reaction_definition_rejects_unknown_standard_state() -> None:
 def test_solve_reactive_speciation_concentration_standard_state_uses_molar_density(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _allow_finite_difference_debug(monkeypatch)
+    _allow_unsupported_derivative_debug(monkeypatch)
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
     initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
@@ -141,7 +141,7 @@ def test_solve_reactive_speciation_concentration_standard_state_uses_molar_densi
         options=epcsaft.ReactiveSpeciationOptions(
             max_iterations=50,
             tolerance=1.0e-8,
-            jacobian_backend="finite_difference",
+            jacobian_backend="unsupported_derivative",
         ),
     )
 
@@ -285,7 +285,7 @@ def test_reactive_speciation_auto_jacobian_support_for_activity_standard_state()
 
 
 def test_concentration_standard_state_can_skip_activity_output(monkeypatch: pytest.MonkeyPatch) -> None:
-    _allow_finite_difference_debug(monkeypatch)
+    _allow_unsupported_derivative_debug(monkeypatch)
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
     initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
@@ -312,7 +312,7 @@ def test_concentration_standard_state_can_skip_activity_output(monkeypatch: pyte
             )
         ],
         initial_x=initial_x,
-        options=epcsaft.ReactiveSpeciationOptions(activity_output="never", jacobian_backend="finite_difference"),
+        options=epcsaft.ReactiveSpeciationOptions(activity_output="never", jacobian_backend="unsupported_derivative"),
     )
 
     assert result.success is True
@@ -322,7 +322,7 @@ def test_concentration_standard_state_can_skip_activity_output(monkeypatch: pyte
 
 
 def test_solve_reactive_speciation_strict_failure_reports_best_state(monkeypatch: pytest.MonkeyPatch) -> None:
-    _allow_finite_difference_debug(monkeypatch)
+    _allow_unsupported_derivative_debug(monkeypatch)
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
 
@@ -349,7 +349,7 @@ def test_solve_reactive_speciation_strict_failure_reports_best_state(monkeypatch
             options=epcsaft.ReactiveSpeciationOptions(
                 max_iterations=0,
                 tolerance=1.0e-12,
-                jacobian_backend="finite_difference",
+                jacobian_backend="unsupported_derivative",
             ),
         )
 
@@ -362,7 +362,7 @@ def test_solve_reactive_speciation_strict_failure_reports_best_state(monkeypatch
 
 
 def test_solve_reactive_speciation_best_effort_returns_nonconverged_result(monkeypatch: pytest.MonkeyPatch) -> None:
-    _allow_finite_difference_debug(monkeypatch)
+    _allow_unsupported_derivative_debug(monkeypatch)
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
 
@@ -389,7 +389,7 @@ def test_solve_reactive_speciation_best_effort_returns_nonconverged_result(monke
             max_iterations=0,
             tolerance=1.0e-12,
             return_best_effort=True,
-            jacobian_backend="finite_difference",
+            jacobian_backend="unsupported_derivative",
         ),
     )
 
@@ -665,3 +665,6 @@ def test_solve_reactive_speciation_rejects_invalid_chemistry_inputs(kwargs: dict
 
     with pytest.raises(epcsaft.InputError, match=message):
         epcsaft.solve_reactive_speciation(**request)
+
+
+

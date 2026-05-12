@@ -34,7 +34,7 @@ parameters, ideal mole-fraction standard states, and speciation targets.
 For reactive speciation, ``capabilities()["equilibrium"]["reactive_speciation"]``
 now reports the implemented default Jacobian truth:
 
-* ``jacobian_auto_policy="cppad_supported_else_debug_fd_or_backend_unavailable"``
+* ``jacobian_auto_policy="cppad_supported_else_unsupported_derivative"``
 * auto/default supports ``ideal_mole_fraction``, ``concentration``, and
   ``mole_fraction_activity`` on the supported native CppAD slice
 * without CppAD, the ideal mole-fraction path still falls back to the exact
@@ -98,12 +98,12 @@ The native benchmark includes tiny neutral, generic binary ``k_ij``, and
 reactive Born-SSM+DS ``d_born``/``f_solv`` fixtures plus a 35-row public
 MEA-style pressure/speciation surrogate. The benchmark payload records target
 families, parameter kinds, fixed-shape residual status, derivative backend, and
-whether finite differences are allowed in production.
+whether unsupported derivatives are allowed in production.
 
-The Ceres thermodynamic benchmark reports ``backend_unavailable`` on builds
+The Ceres thermodynamic benchmark reports ``unsupported_derivative`` on builds
 without ``EPCSAFT_ENABLE_CERES=ON``. On a Ceres-enabled build it should report
 ``optimizer_backend="ceres"``, ``native_hot_loop=True``,
-``python_objective_used=False``, ``finite_difference_used=False``, and a lower
+``python_objective_used=False``, ``unsupported_derivative_used=False``, and a lower
 ``final_cost`` than ``initial_cost`` for the supported slice.
 
 The runtime capability entry
@@ -119,3 +119,6 @@ tracks the same supported slice. It now advertises:
 Generic binary interaction parameters such as ``k_ij`` remain blocked on this
 thermodynamic regression path and should still use the direct binary-regression
 workflow.
+
+
+

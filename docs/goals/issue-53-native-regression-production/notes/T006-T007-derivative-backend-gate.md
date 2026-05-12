@@ -12,7 +12,7 @@ Done for the supported native residual-record production contract slice.
 - Added native solve surface for already-evaluated fixed-shape residual records.
 - Enforced production derivative policy:
   - `analytic` and `cppad` are accepted derivative labels for the supported slice.
-  - `finite_difference` returns `invalid_input`; there is no silent production fallback.
+  - `Backend_unavailable` returns `invalid_input`; there is no silent production fallback.
 - Added native status handling for:
   - `converged`
   - `all_rows_failed`
@@ -21,9 +21,9 @@ Done for the supported native residual-record production contract slice.
 - Added active-bound reporting and structured result serialization.
 - Exposed `_core._solve_native_regression_residual_records(...)`.
 - Added `epcsaft.solve_native_regression_residual_records(...)`.
-- Added runtime capability entry for `native_residual_record_regression` with `production_finite_difference_allowed=False`.
+- Added runtime capability entry for `native_residual_record_regression` with `production_Backend_unavailable_allowed=False`.
 - Added tests for:
-  - finite-difference production rejection;
+  - backend-unavailable production rejection;
   - analytic derivative policy acceptance;
   - bounds-inconsistent mapping;
   - fixed-shape objective result payload;
@@ -43,4 +43,5 @@ Done for the supported native residual-record production contract slice.
 
 ## Scope And Honesty
 
-This tranche is not a full thermodynamic nonlinear reactive-regression optimizer. It establishes the native production contract slice for fixed-shape residual records and rejects production finite differences. The existing `ReactiveElectrolyteRegressionContext` Python-batched fitter remains marked as compatibility, not Issue #53 native production.
+This tranche is not a full thermodynamic nonlinear reactive-regression optimizer. It establishes the native production contract slice for fixed-shape residual records and rejects production Backend unavailables. The existing `ReactiveElectrolyteRegressionContext` Python-batched fitter remains marked as compatibility, not Issue #53 native production.
+

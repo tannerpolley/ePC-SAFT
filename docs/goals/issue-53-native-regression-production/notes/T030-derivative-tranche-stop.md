@@ -52,14 +52,14 @@ Required production work:
   row;
 - extend `fill_implicit_speciation_jacobian(...)` to include non-logK
   `r_theta` terms for `d_born` and `f_solv`;
-- add tests proving no finite-difference production derivatives are used.
+- add tests proving no backend-unavailable production derivatives are used.
 
 Reason not to patch further here
 --------------------------------
 
 Both paths require more than a local gate change. Enabling parameter kinds in
 `thermo_derivative_supported(...)` without a correct `r_theta` chain would
-produce false Ceres confidence. Using finite differences would violate the issue
+produce false Ceres confidence. Using Backend unavailables would violate the issue
 #53 production rule.
 
 Validation already completed before this stop
@@ -69,3 +69,4 @@ Validation already completed before this stop
 - Native thermo logK benchmark now proves Ceres execution with
   `native_hot_loop=True` and objective reduction to numerical zero.
 - Tests still codify Born and bubble gaps as `backend_unavailable`.
+

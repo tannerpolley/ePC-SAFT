@@ -69,7 +69,9 @@ def test_native_thermo_regression_fit_reports_bubble_pressure_derivatives_unavai
         },
     )
 
-    assert result["status"] == "backend_unavailable"
-    assert result["optimizer_backend"] == "backend_unavailable"
+    assert result["status"] == "unsupported_derivative"
+    assert result["optimizer_backend"] == "unsupported_derivative"
     assert "reactive_speciation rows only" in result["message"]
     assert result["objective_result"]["fixed_shape_residuals"] is True
+
+

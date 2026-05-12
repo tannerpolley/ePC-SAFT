@@ -445,9 +445,7 @@ ContributionDadxResult dadx_assoc_cpp(const MixtureState &thermo, const HardChai
         result.ares += x[component_index] * (std::log(assoc_state.XA[i]) - 0.5 * assoc_state.XA[i] + 0.5);
     }
 
-    if (cppargs.assoc_dadx_diff_mode == 1) {
-        result.dadx = contribution_dadx_fd_cpp(AresContributionKind::ASSOC, t, rho, x, cppargs, result.ares);
-    } else if (cppargs.assoc_dadx_diff_mode == 2) {
+    if (cppargs.assoc_dadx_diff_mode == 2) {
         result.dadx = contribution_dadx_autodiff_cpp(AresContributionKind::ASSOC, t, rho, x, cppargs);
     }
 

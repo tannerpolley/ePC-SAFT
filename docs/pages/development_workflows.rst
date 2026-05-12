@@ -43,7 +43,7 @@ Command matrix
      - Public wrapper, parameter-template, or regression API edits.
    * - Equilibrium/speciation workflows
      - ``uv run python run_pytest.py --equilibrium-api -q``
-     - Fast representative check for neutral equilibrium, electrolyte LLE, reactive speciation, reactive electrolyte bubble, autodiff/finite-difference contracts, and capability reporting.
+     - Fast representative check for neutral equilibrium, electrolyte LLE, reactive speciation, reactive electrolyte bubble, autodiff/backend-unavailable contracts, and capability reporting.
    * - Native or density/equation work
      - ``uv run python scripts/build_epcsaft.py --build-only --parallel 10`` then ``uv run python run_pytest.py --runtime -q``
      - C++ iteration after ``build/dev`` is already configured.
@@ -178,3 +178,4 @@ Troubleshooting
 Run ``uv run python scripts/doctor.py`` whenever imports, tool paths, ``_core`` state, or generated-output tracking are unclear. It reports the active Python, git ref, uv/cmake/ninja paths, ``epcsaft`` import path, ``epcsaft._core`` path, required native symbol presence, generated artifact state, and the next recommended command.
 
 If ``scripts/build_epcsaft.py`` appears slow, first check whether ``build/dev/CMakeCache.txt`` reports ``CMAKE_GENERATOR:INTERNAL=MinGW Makefiles``. A clean one-time switch to Ninja can materially reduce rebuild overhead on Windows systems where Ninja is already installed. Full configure/build can still take far longer than the fast rebuild path; incremental ``--build-only --parallel 10`` is the intended C++ edit loop.
+

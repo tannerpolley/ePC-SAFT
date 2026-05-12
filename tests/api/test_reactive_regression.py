@@ -113,7 +113,7 @@ def test_reactive_regression_context_runs_native_speciation_objective_and_jacobi
     )
 
     objective = context.evaluate_objective({"Na+.sigma": 2.8232})
-    jacobian = context.finite_difference_jacobian(
+    jacobian = context.unsupported_derivative_jacobian(
         {"Na+.sigma": 2.8232},
         parameters=["Na+.sigma"],
         mode="forward",
@@ -299,7 +299,7 @@ def test_reactive_regression_objective_and_jacobian_are_consistent(monkeypatch) 
     )
 
     objective = context.evaluate_objective({"A.sigma": 3.0})
-    jacobian = context.finite_difference_jacobian(
+    jacobian = context.unsupported_derivative_jacobian(
         {"A.sigma": 3.0},
         parameters=["A.sigma"],
         mode="central",
@@ -601,7 +601,7 @@ def test_fit_reactive_electrolyte_parameters_defaults_to_native_boundary(monkeyp
     assert fit.parameter_map["A.sigma"] == pytest.approx(3.0)
     assert fit.diagnostics["backend"] == "native"
     assert fit.diagnostics["python_optimizer"] is False
-    assert fit.diagnostics["finite_difference_jacobian"] is False
+    assert fit.diagnostics["unsupported_derivative_jacobian"] is False
     assert fit.diagnostics["native_result"]["objective_result"]["fixed_shape_residuals"] is True
 
 
@@ -671,10 +671,10 @@ def test_fit_reactive_electrolyte_parameters_routes_supported_speciation_batch_t
     assert isinstance(fit, epcsaft.ReactiveRegressionFitResult)
     assert fit.diagnostics["backend"] == "native_thermo"
     assert fit.diagnostics["python_optimizer"] is False
-    assert fit.diagnostics["finite_difference_jacobian"] is False
+    assert fit.diagnostics["unsupported_derivative_jacobian"] is False
     assert fit.diagnostics["native_result"]["objective_result"]["fixed_shape_residuals"] is True
     assert fit.objective_result.residual_names == ("native-speciation:speciation:Na+",)
-    assert fit.status in {"backend_unavailable", "converged", "max_iterations"}
+    assert fit.status in {"unsupported_derivative", "converged", "max_iterations"}
 
 
 def test_fit_reactive_electrolyte_parameters_accepts_speciation_rows(monkeypatch) -> None:
@@ -888,3 +888,6 @@ def test_reactive_regression_legacy_wrapper_keeps_fixed_shape(monkeypatch) -> No
     assert result.failure_count == 0
     assert result.residuals.shape == (2,)
     assert result.residual_names == ("row1.partial_pressure.A", "row1.x.A")
+
+
+

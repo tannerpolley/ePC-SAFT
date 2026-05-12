@@ -88,7 +88,7 @@ The next concrete worker should target:
    - prefer CppAD for supported `dadx()` contribution surfaces when CppAD is compiled
 2. default/auto ideal chemical-equilibrium Jacobian policy:
    - prefer CppAD on the supported ideal log-amount path
-3. keep explicit finite-difference debug gating intact
+3. keep explicit backend-unavailable debug gating intact
 
 Bubble differentiation stays as the later blocker after that.
 
@@ -101,3 +101,4 @@ Why:
 - default runtime derivative surfaces are still not uniformly CppAD-backed
 - ideal chemical-equilibrium auto/default is still analytic
 - bubble regression differentiation is still missing
+

@@ -16,7 +16,7 @@ using DynamicDual = Eigen::AutoDiffScalar<DynamicDualDerivative>;
 
 enum class DerivativeBackend {
     Analytic = 0,
-    FiniteDifference = 1,
+    backendUnavailable = 1,
     Autodiff = 2,
     Auto = 3,
 };
@@ -26,7 +26,7 @@ inline DerivativeBackend derivative_backend_from_int(int mode) {
         case 0:
             return DerivativeBackend::Analytic;
         case 1:
-            return DerivativeBackend::FiniteDifference;
+            return DerivativeBackend::backendUnavailable;
         case 2:
             return DerivativeBackend::Autodiff;
         case 3:
@@ -40,8 +40,8 @@ inline std::string derivative_backend_name(DerivativeBackend backend) {
     switch (backend) {
         case DerivativeBackend::Analytic:
             return "analytic";
-        case DerivativeBackend::FiniteDifference:
-            return "finite_difference";
+        case DerivativeBackend::backendUnavailable:
+            return "unsupported_derivative";
         case DerivativeBackend::Autodiff:
             return "autodiff";
         case DerivativeBackend::Auto:
@@ -190,3 +190,6 @@ inline CppAD::AD<Base> scalar_pow(const CppAD::AD<Base> &x, double exponent) {
     return CppAD::pow(x, exponent);
 }
 #endif
+
+
+

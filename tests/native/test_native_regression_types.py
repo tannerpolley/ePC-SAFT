@@ -23,10 +23,10 @@ def test_native_regression_contract_schema_is_exposed_from_core() -> None:
         "nonfinite_objective",
         "bounds_inconsistent",
         "invalid_input",
-        "backend_unavailable",
+        "unsupported_derivative",
     ]
     assert schema["fixed_shape_residuals"] is True
-    assert schema["production_finite_difference_allowed"] is False
+    assert schema["production_unsupported_derivative_allowed"] is False
     assert {"pressure", "speciation", "activity"}.issubset(schema["supported_target_families"])
     assert {"binary_interaction", "born_radius", "solvation_factor"}.issubset(schema["supported_parameter_kinds"])
     assert schema["row_diagnostic_fields"] == [
@@ -113,3 +113,6 @@ def test_native_residual_record_evaluation_rejects_invalid_scale() -> None:
         assert "scale" in str(exc)
     else:  # pragma: no cover
         raise AssertionError("invalid scale was accepted")
+
+
+

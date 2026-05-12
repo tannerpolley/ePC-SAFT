@@ -231,21 +231,21 @@ def test_native_residual_helmholtz_and_compressibility_contributions_match_ionic
     )
 
 
-def test_temperature_derivative_matches_neutral_finite_difference() -> None:
+def test_temperature_derivative_matches_neutral_unsupported_derivative() -> None:
     mix, _, _, density, temperature, composition = _neutral_state()
     state = mix.state(T=temperature, x=composition, rho=density)
     delta_t = 1.0e-3
 
     plus = mix.state(T=temperature + delta_t, x=composition, rho=density)
     minus = mix.state(T=temperature - delta_t, x=composition, rho=density)
-    finite_difference = (plus.ares() - minus.ares()) / (2.0 * delta_t)
+    unsupported_derivative = (plus.ares() - minus.ares()) / (2.0 * delta_t)
     derivative = state.temperature_derivative_residual_helmholtz(return_contribution_terms=True)
 
-    assert derivative["total"] == pytest.approx(finite_difference, rel=1e-9, abs=1e-11)
+    assert derivative["total"] == pytest.approx(unsupported_derivative, rel=1e-9, abs=1e-11)
     assert sum(derivative["terms"].values()) == pytest.approx(derivative["total"])
 
 
-def test_temperature_derivative_matches_neutral_finite_difference_across_density_branches() -> None:
+def test_temperature_derivative_matches_neutral_unsupported_derivative_across_density_branches() -> None:
     mix, _, _, _, _, composition = _neutral_state()
     states = [
         mix.state(T=300.0, x=composition, P=1.0e3, phase="vap"),
@@ -257,10 +257,10 @@ def test_temperature_derivative_matches_neutral_finite_difference_across_density
         density = state.density()
         plus = mix.state(T=state.T + delta_t, x=composition, rho=density, phase="liq")
         minus = mix.state(T=state.T - delta_t, x=composition, rho=density, phase="liq")
-        finite_difference = (plus.ares() - minus.ares()) / (2.0 * delta_t)
+        unsupported_derivative = (plus.ares() - minus.ares()) / (2.0 * delta_t)
         derivative = state.temperature_derivative_residual_helmholtz(return_contribution_terms=True)
 
-        assert derivative["total"] == pytest.approx(finite_difference, rel=1e-8, abs=1e-10)
+        assert derivative["total"] == pytest.approx(unsupported_derivative, rel=1e-8, abs=1e-10)
         assert sum(derivative["terms"].values()) == pytest.approx(derivative["total"])
 
 
@@ -276,7 +276,7 @@ def test_composition_derivative_contribution_terms_are_accounted_for() -> None:
         assert set(derivative["terms"]) == {"hc", "disp", "assoc", "ion", "born"}
 
 
-def test_composition_derivative_matches_constrained_composition_finite_difference() -> None:
+def test_composition_derivative_matches_constrained_composition_unsupported_derivative() -> None:
     for state_factory in (_neutral_state, _ionic_state):
         mix, _, _, density, temperature, composition = state_factory()
         state = mix.state(T=temperature, x=composition, rho=density)
@@ -290,15 +290,15 @@ def test_composition_derivative_matches_constrained_composition_finite_differenc
             plus[j] -= delta_x
             minus[i] -= delta_x
             minus[j] += delta_x
-            finite_difference = (
+            unsupported_derivative = (
                 mix.state(T=temperature, x=plus, rho=density).ares()
                 - mix.state(T=temperature, x=minus, rho=density).ares()
             ) / (2.0 * delta_x)
 
-            assert derivative[i] - derivative[j] == pytest.approx(finite_difference, rel=1e-7, abs=1e-8)
+            assert derivative[i] - derivative[j] == pytest.approx(unsupported_derivative, rel=1e-7, abs=1e-8)
 
 
-def test_pressure_composition_derivative_matches_finite_difference_for_supported_states() -> None:
+def test_pressure_composition_derivative_matches_unsupported_derivative_for_supported_states() -> None:
     expected_backend = "cppad_composition" if capabilities()["native_dependencies"]["cppad"]["enabled"] else "autodiff_composition"
     for state_factory in (_neutral_state, _nonassociating_ionic_state):
         mix, _, _, density, temperature, composition = state_factory()
@@ -307,7 +307,7 @@ def test_pressure_composition_derivative_matches_finite_difference_for_supported
 
         assert derivative["supported"] is True
         assert derivative["derivative_backend"] == expected_backend
-        assert derivative["finite_difference_fallback_used"] is False
+        assert derivative["unsupported_derivative_fallback_used"] is False
 
         for i, j in ((0, 1), (1, 2), (composition.size - 2, composition.size - 1)):
             delta_x = min(1.0e-7, 0.25 * float(composition[i]), 0.25 * float(composition[j]))
@@ -317,11 +317,11 @@ def test_pressure_composition_derivative_matches_finite_difference_for_supported
             plus[j] -= delta_x
             minus[i] -= delta_x
             minus[j] += delta_x
-            finite_difference = (
+            unsupported_derivative = (
                 mix.state(T=temperature, x=plus, rho=density).pressure()
                 - mix.state(T=temperature, x=minus, rho=density).pressure()
             ) / (2.0 * delta_x)
-            assert derivative["dpdx"][i] - derivative["dpdx"][j] == pytest.approx(finite_difference, rel=1e-6, abs=5.0e-1)
+            assert derivative["dpdx"][i] - derivative["dpdx"][j] == pytest.approx(unsupported_derivative, rel=1e-6, abs=5.0e-1)
 
 
 def test_pressure_composition_derivative_reports_association_gate() -> None:
@@ -331,11 +331,11 @@ def test_pressure_composition_derivative_reports_association_gate() -> None:
 
     assert derivative["supported"] is False
     assert derivative["derivative_backend"] == "unsupported"
-    assert "nonassociating states only" in derivative["finite_difference_fallback_reason"]
+    assert "nonassociating states only" in derivative["unsupported_derivative_fallback_reason"]
     assert np.isnan(derivative["dpdx"]).all()
 
 
-def test_lnfug_composition_derivative_matches_fugacity_and_finite_difference_for_supported_states() -> None:
+def test_lnfug_composition_derivative_matches_fugacity_and_unsupported_derivative_for_supported_states() -> None:
     mix, _, _, density, temperature, composition = _nonassociating_ionic_state()
     state = mix.state(T=temperature, x=composition, rho=density)
     derivative = state.lnfug_composition_derivative()
@@ -343,7 +343,7 @@ def test_lnfug_composition_derivative_matches_fugacity_and_finite_difference_for
 
     assert derivative["supported"] is True
     assert derivative["derivative_backend"] == expected_backend
-    assert derivative["finite_difference_fallback_used"] is False
+    assert derivative["unsupported_derivative_fallback_used"] is False
     np.testing.assert_allclose(derivative["lnfug"], state.fugacity_coefficient(natural_log=True))
 
     jac = np.asarray(derivative["dlnfugdx"], dtype=float)
@@ -357,11 +357,11 @@ def test_lnfug_composition_derivative_matches_fugacity_and_finite_difference_for
         plus[j] -= delta_x
         minus[i] -= delta_x
         minus[j] += delta_x
-        finite_difference = (
+        unsupported_derivative = (
             mix.state(T=temperature, x=plus, rho=density).fugacity_coefficient(natural_log=True)
             - mix.state(T=temperature, x=minus, rho=density).fugacity_coefficient(natural_log=True)
         ) / (2.0 * delta_x)
-        np.testing.assert_allclose(jac[:, i] - jac[:, j], finite_difference, rtol=2.0e-4, atol=1.0)
+        np.testing.assert_allclose(jac[:, i] - jac[:, j], unsupported_derivative, rtol=2.0e-4, atol=1.0)
 
 
 def test_lnfug_composition_derivative_reports_association_gate() -> None:
@@ -371,12 +371,12 @@ def test_lnfug_composition_derivative_reports_association_gate() -> None:
 
     assert derivative["supported"] is False
     assert derivative["derivative_backend"] == "unsupported"
-    assert "nonassociating states only" in derivative["finite_difference_fallback_reason"]
+    assert "nonassociating states only" in derivative["unsupported_derivative_fallback_reason"]
     assert np.isnan(derivative["lnfug"]).all()
     assert np.isnan(derivative["dlnfugdx"]).all()
 
 
-def test_pressure_density_derivative_matches_finite_difference_for_supported_states() -> None:
+def test_pressure_density_derivative_matches_unsupported_derivative_for_supported_states() -> None:
     expected_backend = "cppad_density" if capabilities()["native_dependencies"]["cppad"]["enabled"] else "autodiff_density"
     for state_factory in (_neutral_state, _nonassociating_ionic_state):
         mix, _, _, density, temperature, composition = state_factory()
@@ -385,13 +385,13 @@ def test_pressure_density_derivative_matches_finite_difference_for_supported_sta
 
         assert derivative["supported"] is True
         assert derivative["derivative_backend"] == expected_backend
-        assert derivative["finite_difference_fallback_used"] is False
+        assert derivative["unsupported_derivative_fallback_used"] is False
 
         delta_rho = max(1.0e-6, 1.0e-7 * abs(float(density)))
         plus = mix.state(T=temperature, x=composition, rho=density + delta_rho)
         minus = mix.state(T=temperature, x=composition, rho=density - delta_rho)
-        finite_difference = (plus.pressure() - minus.pressure()) / (2.0 * delta_rho)
-        assert derivative["dpdrho"] == pytest.approx(finite_difference, rel=1e-6, abs=5.0e-1)
+        unsupported_derivative = (plus.pressure() - minus.pressure()) / (2.0 * delta_rho)
+        assert derivative["dpdrho"] == pytest.approx(unsupported_derivative, rel=1e-6, abs=5.0e-1)
 
 
 def test_pressure_density_derivative_reports_association_gate() -> None:
@@ -401,7 +401,7 @@ def test_pressure_density_derivative_reports_association_gate() -> None:
 
     assert derivative["supported"] is False
     assert derivative["derivative_backend"] == "unsupported"
-    assert "nonassociating states only" in derivative["finite_difference_fallback_reason"]
+    assert "nonassociating states only" in derivative["unsupported_derivative_fallback_reason"]
     assert np.isnan(derivative["dpdrho"])
 
 
@@ -585,3 +585,6 @@ def test_miac_activity_cache_reuse_keeps_results_stable() -> None:
     assert second.density() == pytest.approx(first.density())
     assert second_gamma == pytest.approx(first_gamma)
     assert stats["density_warm_start_hits"] >= 1
+
+
+

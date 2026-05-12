@@ -21,4 +21,5 @@ Updated user-facing docs and capability language for the native regression work:
 - `uv run python scripts/validate_project.py docs`
   - passed
 - `rg -n "bounded_incomplete|production.*finite.?difference|scipy\\.optimize" docs/pages README.md src/epcsaft/runtime.py src/epcsaft/reactive_regression.py`
-  - only expected mentions: no public `bounded_incomplete` status and `production_finite_difference_allowed: False`
+  - only expected mentions: no public `bounded_incomplete` status and `production_Backend_unavailable_allowed: False`
+

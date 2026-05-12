@@ -18,7 +18,7 @@ Completed production pieces
   reactive-speciation/logK/linear-speciation-target contexts.
 - Python compatibility fitting remains explicit behind `backend="python_compat"`
   and diagnostics label it non-production.
-- Production finite differences remain gated/rejected rather than silently used.
+- Production Backend unavailables remain gated/rejected rather than silently used.
 - Generic binary parameters are documented as a separate `fit_binary_pair(...)`
   path; reactive-regression tests for the Born SSM+DS gap now focus on
   `d_born` and `f_solv`.
@@ -62,3 +62,4 @@ Validation evidence
   - pass on touched Python files
 - `uv run black --check ...`
   - pass on touched Python files
+

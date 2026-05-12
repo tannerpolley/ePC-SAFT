@@ -8,7 +8,7 @@
 
 - Native regression status/schema/result contracts exist.
 - Fixed-shape residual evaluation and row diagnostics exist.
-- Production finite-difference derivative requests are rejected in the native solve boundary.
+- Production backend-unavailable derivative requests are rejected in the native solve boundary.
 - Public default `fit_reactive_electrolyte_parameters(...)` calls the native residual-record boundary.
 - The Python Gauss-Newton path is explicit `backend="python_compat"` and marked non-production.
 - Native benchmark fixtures cover neutral, binary `k_ij`, reactive Born/`k_ij`, and a 35-row public pressure/speciation surrogate.
@@ -26,8 +26,9 @@
 Add a remediation tranche before PR:
 
 1. Implement a true native Ceres bounded least-squares path where Ceres is available, at minimum for analytic-sensitivity residual records.
-2. Keep the no-finite-difference production gate.
-3. Add tests that prove native parameter movement occurs without Python finite differences.
+2. Keep the no-backend-unavailable production gate.
+3. Add tests that prove native parameter movement occurs without Python Backend unavailables.
 4. Keep runtime status honest if the full thermodynamic row objective still remains Python-orchestrated.
 
 Full completion still requires moving mixed pressure/speciation thermodynamic residual and derivative iteration into native C++ rather than using Python-packed residual records.
+

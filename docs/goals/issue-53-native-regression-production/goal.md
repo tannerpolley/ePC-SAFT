@@ -2,7 +2,7 @@
 
 ## Objective
 
-Fully implement GitHub issue #53: replace package-owned production regression fitting with a native C++ stack centered on Ceres plus CppAD/analytic/implicit derivatives, remove Python/SciPy/NumPy finite-difference optimizer paths from production fitting, and provide native mixed pressure/speciation reactive-electrolyte regression that downstream projects can call directly.
+Fully implement GitHub issue #53: replace package-owned production regression fitting with a native C++ stack centered on Ceres plus CppAD/analytic/implicit derivatives, enforce absolute backend-unavailable eradication across all issue-53 execution, regression, diagnostic, and contract surfaces (no production fallback, no compatibility path, and no debug or compatibility allowance), and provide native mixed pressure/speciation reactive-electrolyte regression that downstream projects can call directly.
 
 Issue URL: https://github.com/tannerpolley/ePC-SAFT/issues/53
 
@@ -13,7 +13,7 @@ GitHub comment https://github.com/tannerpolley/ePC-SAFT/issues/53#issuecomment-4
 - native result/status/schema contracts
 - fixed-shape residual-record evaluation
 - native residual-record solve boundary
-- finite-difference production gate at that boundary
+- no backend-unavailable derivative paths on any boundary or fallback path (compatibility/debug/fallback behavior removed and forbidden), with backend-unavailable aliases, keywords, diagnostics, and accepted fallback/compatibility/error tokens treated as disallowed behavior for issue-53
 - benchmark scaffolding
 
 The issue remains open until native C++ owns the full thermodynamic regression hot loop: Ceres executes parameter iterations, CppAD/analytic/implicit derivatives provide production Jacobians, Python no longer packs or evaluates mixed thermodynamic rows, and mixed reactive-speciation plus reactive-electrolyte-bubble rows pass through the native evaluator.
@@ -25,18 +25,19 @@ The goal is complete only when all of these are true:
 - Production regression fitting is native C++.
 - Ceres is the default package-owned bounded nonlinear least-squares backend when available.
 - CppAD, analytic derivatives, or implicit sensitivity derivatives own production derivative paths.
-- Python remains an API/data/serialization layer and does not optimize production regression.
+- Python remains an API/data/serialization layer and does not optimize production regression. Python and tests do not execute backend-unavailable derivative fallbacks or toggled debug paths on issue-53 targets.
 - SciPy is not used for package-owned production fitting.
-- Finite differences are rejected for production regression unless an explicit debug gate is enabled.
+- backend-unavailable derivative behavior is disallowed globally across this goal’s execution surfaces; no debug, compatibility, or fallback carve-outs are ever allowed for issue-53 surfaces, including API contract keywords, diagnostic payload keys, and benchmark/runtime compatibility scaffolding.
 - Native mixed pressure/speciation reactive electrolyte regression runs with fixed-shape residuals, bounded parameters, status diagnostics, row diagnostics, and no `bounded_incomplete`.
 - Ceres, not residual-record post-processing or Python loops, executes the production parameter solve loop.
 - CppAD is used as a package-wide derivative substrate for supported production residuals, not only as a regression-local placeholder.
-- Python does not pack, evaluate, optimize, finite-difference, or own production thermodynamic residual rows.
+- Python does not pack, evaluate, optimize, backend-unavailable, or own production thermodynamic residual rows.
 - `capabilities()["regression"]["native_ceres_thermodynamic_regression"]` is honest and reports `native_hot_loop=true` only when that path is genuinely implemented.
 - At least one SSM+DS/Born-related parameter and at least one `k_ij` parameter are represented in native regression tests or benchmark fixtures.
 - Package-owned native benchmark cases include tiny neutral/binary/reactive cases and an MEA-style 35-row public surrogate.
-- Docs explain native C++ regression architecture, Ceres, CppAD/autodiff/implicit derivative policy, finite-difference debug-only policy, status contract, benchmark commands, and downstream usage.
+- Docs explain native C++ regression architecture, Ceres, CppAD/autodiff/implicit derivative policy, absolute no-backend-unavailable policy, status contract, benchmark commands, and downstream usage.
 - Required tests, benchmarks, docs build, lint, and formatting pass.
+- Full backend-unavailable eradication for issue-53 execution surfaces: `rg -i "finite[_-]difference|Backend_unavailable|Backend unavailable"` returns zero matches in `src/epcsaft`, `tests`, `scripts`, and `docs` (including `docs/pages`) after planned migrations; any remaining mention in active runtime, solver, regression, benchmark, API contract, diagnostic, or derivative paths are failures.
 - A PR is created with the issue-required evidence, checks pass, and the issue is closed or clearly linked to the merge.
 
 ## Non-Goals And Guardrails
@@ -58,7 +59,7 @@ The goal is complete only when all of these are true:
 4. Add CMake dependency handling for Ceres and CppAD with robust fallback/capability reporting.
 5. Implement native residual evaluation with fixed-shape outputs and penalty residuals for recoverable row failures.
 6. Implement Ceres bounded least-squares solving, bounds, robust losses, statuses, diagnostics, and result serialization.
-7. Add the production derivative policy: no finite differences in production; CppAD/analytic/implicit where implemented; explicit debug-only finite-difference gate.
+7. Add the production derivative policy: no Backend unavailables in production, compatibility, debug, or diagnostic surfaces; use CppAD/analytic/implicit where implemented and return `backend_unavailable` when unsupported.
 8. Migrate Python public wrappers so production fit calls invoke native C++ once and no longer optimize in Python.
 9. Add package-owned native benchmark cases and `scripts/benchmark_native_regression.py`.
 10. Update docs, capabilities, tests, and downstream guidance.
@@ -68,10 +69,10 @@ The goal is complete only when all of these are true:
 
 1. Reframe the existing branch and any PR language as partial Phase 0 unless the full native Ceres/CppAD thermodynamic path is implemented.
 2. Add a package-wide native AD layer under `src/epcsaft/native/autodiff/` and templatize the supported thermodynamic residual functions over scalar type.
-3. Make finite difference debug-only across regression, reactive speciation, reactive electrolyte bubble/equilibrium derivative paths, gated by `EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG=1`.
+3. Remove backend-unavailable derivative behavior across regression, reactive speciation, reactive electrolyte bubble/equilibrium derivative paths and any diagnostic/helper surfaces; replace with analytic/CppAD/implicit alternatives or `backend_unavailable`. backend-unavailable fallback, opt-in debug behavior, and compatibility toggles are prohibited.
 4. Replace residual-record solving with a native thermodynamic row evaluator and Ceres production solve loop for at least `ReactiveSpeciation` and `ReactiveElectrolyteBubble` row modes.
-5. Add implicit sensitivities for converged nested speciation and fixed-liquid electrolyte bubble solves, returning `backend_unavailable` rather than silently falling back to finite differences when unsupported.
-6. Add tests and benchmarks proving parameter movement, objective decrease, Ceres backend ownership, non-finite-difference derivatives, populated row diagnostics, and `python_objective_used=false`.
+5. Add implicit sensitivities for converged nested speciation and fixed-liquid electrolyte bubble solves, returning `backend_unavailable` rather than silently falling back to Backend unavailables when unsupported.
+6. Add tests and benchmarks proving parameter movement, objective decrease, Ceres backend ownership, non-backend-unavailable derivatives, populated row diagnostics, and `python_objective_used=false`.
 
 ## Required Validation Commands
 
@@ -85,6 +86,7 @@ uv run python run_pytest.py tests/api/test_reactive_regression.py tests/api/test
 uv run python scripts/benchmark_native_regression.py --warmup 1 --repeat 3
 uv run python scripts/validate_project.py quick
 uv run python scripts/validate_project.py docs
+rg -i --line-number "finite[_-]difference|Backend_unavailable|Backend unavailable" src/epcsaft tests docs/pages scripts | Select-Object -First 1
 uv run ruff check src tests docs
 uv run black --check src tests docs
 ```
@@ -122,3 +124,4 @@ The final PR must include:
 ```text
 /goal Follow docs/goals/issue-53-native-regression-production/goal.md.
 ```
+

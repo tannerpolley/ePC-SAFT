@@ -998,8 +998,8 @@ class ePCSAFTState:
             "z_terms": {name: float(z_terms[name]) for name in _CONTRIBUTION_NAMES},
             "z_total": float(z_terms["total"]),
             "derivative_backend": {str(k): str(v) for k, v in dict(result.derivative_backend).items()},
-            "finite_difference_fallback_used": bool(result.finite_difference_fallback_used),
-            "finite_difference_fallback_reason": str(result.finite_difference_fallback_reason),
+            "unsupported_derivative_fallback_used": bool(result.unsupported_derivative_fallback_used),
+            "unsupported_derivative_fallback_reason": str(result.unsupported_derivative_fallback_reason),
         }
 
     def _fugacity_coefficient_term_result(self):
@@ -1127,27 +1127,27 @@ class ePCSAFTState:
         return self._composition_derivative_residual_helmholtz_result()
 
     def pressure_composition_derivative(self):
-        """Return the finite-difference-free native pressure-composition derivative payload."""
+        """Return the backend-unavailable-free native pressure-composition derivative payload."""
         result = self._native.pressure_composition_derivative_result()
         return {
             "dpdx": np.asarray(result.dpdx, dtype=float),
             "pressure": float(result.pressure),
             "supported": bool(result.supported),
             "derivative_backend": str(result.derivative_backend),
-            "finite_difference_fallback_used": bool(result.finite_difference_fallback_used),
-            "finite_difference_fallback_reason": str(result.finite_difference_fallback_reason),
+            "unsupported_derivative_fallback_used": bool(result.unsupported_derivative_fallback_used),
+            "unsupported_derivative_fallback_reason": str(result.unsupported_derivative_fallback_reason),
         }
 
     def pressure_density_derivative(self):
-        """Return the finite-difference-free native pressure-density derivative payload."""
+        """Return the backend-unavailable-free native pressure-density derivative payload."""
         result = self._native.pressure_density_derivative_result()
         return {
             "pressure": float(result.pressure),
             "dpdrho": float(result.dpdrho),
             "supported": bool(result.supported),
             "derivative_backend": str(result.derivative_backend),
-            "finite_difference_fallback_used": bool(result.finite_difference_fallback_used),
-            "finite_difference_fallback_reason": str(result.finite_difference_fallback_reason),
+            "unsupported_derivative_fallback_used": bool(result.unsupported_derivative_fallback_used),
+            "unsupported_derivative_fallback_reason": str(result.unsupported_derivative_fallback_reason),
         }
 
     def lnfug_composition_derivative(self):
@@ -1158,8 +1158,8 @@ class ePCSAFTState:
             "dlnfugdx": np.asarray(result.dlnfugdx_row_major, dtype=float).reshape((int(result.rows), int(result.cols))),
             "supported": bool(result.supported),
             "derivative_backend": str(result.derivative_backend),
-            "finite_difference_fallback_used": bool(result.finite_difference_fallback_used),
-            "finite_difference_fallback_reason": str(result.finite_difference_fallback_reason),
+            "unsupported_derivative_fallback_used": bool(result.unsupported_derivative_fallback_used),
+            "unsupported_derivative_fallback_reason": str(result.unsupported_derivative_fallback_reason),
         }
 
     def residual_enthalpy(self):
@@ -1755,12 +1755,6 @@ def create_struct(params):
         "automatic": 3,
         "analytic": 0,
         "analytical": 0,
-        "numeric": 1,
-        "numerical": 1,
-        "finite_difference": 1,
-        "finite-difference": 1,
-        "finite difference": 1,
-        "fd": 1,
         "autodiff": 2,
         "automatic_differentiation": 2,
         "automatic-differentiation": 2,
@@ -1819,24 +1813,24 @@ def create_struct(params):
 
     cppargs.dielc_rule = _as_int_alias(rel_perm.get("rule", 1), rule_alias)
     cppargs.dielc_diff_mode = _as_int_alias(rel_perm.get("differential_mode", "auto"), diff_alias)
-    if cppargs.dielc_diff_mode not in (0, 1, 2, 3):
+    if cppargs.dielc_diff_mode not in (0, 2, 3):
         raise ValueError(
-            "Unknown rel_perm differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3)."
+            "Unknown rel_perm differential_mode. Supported values are analytical/autodiff/auto (0/2/3)."
         )
     cppargs.hc_dadx_diff_mode = _as_int_alias(hc_model_dict.get("dadx_differential_mode", "auto"), diff_alias)
-    if cppargs.hc_dadx_diff_mode not in (0, 1, 2, 3):
+    if cppargs.hc_dadx_diff_mode not in (0, 2, 3):
         raise ValueError(
-            "Unknown hc_model dadx_differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3)."
+            "Unknown hc_model dadx_differential_mode. Supported values are analytical/autodiff/auto (0/2/3)."
         )
     cppargs.disp_dadx_diff_mode = _as_int_alias(disp_model_dict.get("dadx_differential_mode", "auto"), diff_alias)
-    if cppargs.disp_dadx_diff_mode not in (0, 1, 2, 3):
+    if cppargs.disp_dadx_diff_mode not in (0, 2, 3):
         raise ValueError(
-            "Unknown disp_model dadx_differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3)."
+            "Unknown disp_model dadx_differential_mode. Supported values are analytical/autodiff/auto (0/2/3)."
         )
     cppargs.assoc_dadx_diff_mode = _as_int_alias(assoc_model_dict.get("dadx_differential_mode", "auto"), diff_alias)
-    if cppargs.assoc_dadx_diff_mode not in (0, 1, 2, 3):
+    if cppargs.assoc_dadx_diff_mode not in (0, 2, 3):
         raise ValueError(
-            "Unknown assoc_model dadx_differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3)."
+            "Unknown assoc_model dadx_differential_mode. Supported values are analytical/autodiff/auto (0/2/3)."
         )
     if cppargs.dielc_rule < 0 or cppargs.dielc_rule > 9:
         raise ValueError("Unknown rel_perm rule. Supported values are 0..9.")
@@ -1846,9 +1840,9 @@ def create_struct(params):
         raise ValueError("Unknown d_ion_mode. Supported values are 0,1,2.")
     bjeruum = _as_bool(dh_model_dict.get("bjeruum_treatment", False))
     cppargs.mu_DH_diff_mode = _as_int_alias(mu_dh.get("differential_mode", "auto"), diff_alias)
-    if cppargs.mu_DH_diff_mode not in (0, 1, 2, 3):
+    if cppargs.mu_DH_diff_mode not in (0, 2, 3):
         raise ValueError(
-            "Unknown mu_DH differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3)."
+            "Unknown mu_DH differential_mode. Supported values are analytical/autodiff/auto (0/2/3)."
         )
     cppargs.mu_DH_comp_dep_rel_perm = int(_as_bool(mu_dh.get("comp_dep_rel_perm", True)))
     cppargs.mu_DH_include_sum_term = int(_as_bool(mu_dh.get("include_sum_term", True)))
@@ -1861,9 +1855,9 @@ def create_struct(params):
     cppargs.born_dielectric_saturation = int(_as_bool(born_model_dict.get("dielectric_saturation", False)))
     cppargs.born_bulk_mode = _as_int_alias(born_model_dict.get("bulk_mode", "mix"), bulk_alias)
     cppargs.mu_born_diff_mode = _as_int_alias(mu_born.get("differential_mode", "auto"), diff_alias)
-    if cppargs.mu_born_diff_mode not in (0, 1, 2, 3):
+    if cppargs.mu_born_diff_mode not in (0, 2, 3):
         raise ValueError(
-            "Unknown mu_born differential_mode. Supported values are analytical/numerical/autodiff/auto (0/1/2/3)."
+            "Unknown mu_born differential_mode. Supported values are analytical/autodiff/auto (0/2/3)."
         )
     cppargs.mu_born_comp_dep_rel_perm = int(_as_bool(mu_born.get("comp_dep_rel_perm", True)))
     cppargs.mu_born_include_sum_term = int(_as_bool(mu_born.get("include_sum_term", True)))
@@ -2114,7 +2108,7 @@ def _fit_generic_native_least_squares(
                 "",
             )
         ),
-        "finite_difference_fallback_count": int(result.get("finite_difference_fallback_count", 0)),
+        "unsupported_derivative_fallback_count": int(result.get("unsupported_derivative_fallback_count", 0)),
         "hessian_available": bool(result.get("hessian_available", False)),
         "hessian_backend": str(result.get("hessian_backend", "not_implemented")),
         "hessian_fallback_used": bool(result.get("hessian_fallback_used", False)),
@@ -2159,7 +2153,7 @@ def _evaluate_generic_native_debug(
                 "",
             )
         ),
-        "finite_difference_fallback_count": int(result.get("finite_difference_fallback_count", 0)),
+        "unsupported_derivative_fallback_count": int(result.get("unsupported_derivative_fallback_count", 0)),
         "hessian_row_major": vector_to_array(result.get("hessian_row_major", [])),
         "hessian_shape": tuple(result.get("hessian_shape", (0, 0))),
         "hessian_available": bool(result.get("hessian_available", False)),
@@ -2172,3 +2166,6 @@ def _evaluate_generic_native_debug(
             )
         ),
     }
+
+
+

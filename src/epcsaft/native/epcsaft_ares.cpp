@@ -85,7 +85,6 @@ namespace {
 
 std::string contribution_backend_name(int mode) {
     if (mode == 0) return "analytic";
-    if (mode == 1) return "finite_difference";
     if (mode == 2) return "autodiff";
     if (mode == 3 || mode == 5) {
         return "analytic";
@@ -238,6 +237,9 @@ CompositionContributionResult composition_derivative_residual_helmholtz_result_c
     }
     result.dadx.total = total;
     result.derivative_backend = composition_derivative_backend_map(cppargs);
-    result.finite_difference_fallback_used = false;
+    result.unsupported_derivative_fallback_used = false;
     return result;
 }
+
+
+

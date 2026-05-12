@@ -297,9 +297,7 @@ ContributionDadxResult dadx_hc_cpp(const MixtureState &thermo, const HardChainSt
             - (cppargs.m[i] - 1.0) * std::log(hc_state.ghs[i * ncomp + i]);
     }
 
-    if (cppargs.hc_dadx_diff_mode == 1) {
-        result.dadx = contribution_dadx_fd_cpp(AresContributionKind::HC, t, rho, x, cppargs, result.ares);
-    } else if (cppargs.hc_dadx_diff_mode == 2) {
+    if (cppargs.hc_dadx_diff_mode == 2) {
         result.dadx = contribution_dadx_autodiff_cpp(AresContributionKind::HC, t, rho, x, cppargs);
     }
 

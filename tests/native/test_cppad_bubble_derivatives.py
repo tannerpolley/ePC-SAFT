@@ -8,9 +8,9 @@ from epcsaft import _core
 def test_cppad_pressure_residual_derivative_check_is_finite_when_available() -> None:
     payload = _core._native_autodiff_derivative_checks()
 
-    assert payload["finite_difference_used"] is False
+    assert payload["unsupported_derivative_used"] is False
     assert "pressure_log_residual" in payload["checked_residuals"]
-    if payload["status"] == "backend_unavailable":
+    if payload["status"] == "unsupported_derivative":
         assert payload["derivative_backend"] == "cppad_unavailable"
         return
 
@@ -31,4 +31,7 @@ def test_native_implicit_sensitivity_reports_singular_bubble_linearization() -> 
 
     assert payload["success"] is False
     assert payload["status"] == "singular_jacobian"
-    assert payload["finite_difference_used"] is False
+    assert payload["unsupported_derivative_used"] is False
+
+
+

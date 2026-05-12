@@ -102,9 +102,11 @@ NATIVE_TARGET_KINDS = {
     "e_assoc": 3,
     "vol_a": 4,
     "d_born": 5,
-    "k_ij": 6,
-    "l_ij": 7,
-    "k_hb_ij": 8,
+    "solvation_factor": 6,
+    "f_solv": 6,
+    "k_ij": 7,
+    "l_ij": 8,
+    "k_hb_ij": 9,
 }
 
 NATIVE_TERM_KINDS = {
@@ -461,7 +463,7 @@ class FitResult:
     jacobian_backend: str = "not_available"
     jacobian_fallback_used: bool = False
     jacobian_fallback_reason: str = ""
-    finite_difference_fallback_count: int = 0
+    unsupported_derivative_fallback_count: int = 0
     hessian_available: bool = False
     hessian_backend: str = "not_implemented"
     hessian_fallback_used: bool = False
@@ -488,7 +490,7 @@ class FitResult:
         self.jacobian_backend = str(self.jacobian_backend)
         self.jacobian_fallback_used = bool(self.jacobian_fallback_used)
         self.jacobian_fallback_reason = str(self.jacobian_fallback_reason)
-        self.finite_difference_fallback_count = int(self.finite_difference_fallback_count)
+        self.unsupported_derivative_fallback_count = int(self.unsupported_derivative_fallback_count)
         self.hessian_available = bool(self.hessian_available)
         self.hessian_backend = str(self.hessian_backend)
         self.hessian_fallback_used = bool(self.hessian_fallback_used)
@@ -546,7 +548,7 @@ def _fit_derivative_metadata(result: Mapping[str, Any]) -> dict[str, Any]:
         "jacobian_backend": str(result.get("jacobian_backend", "not_available")),
         "jacobian_fallback_used": bool(result.get("jacobian_fallback_used", False)),
         "jacobian_fallback_reason": str(result.get("jacobian_fallback_reason", "")),
-        "finite_difference_fallback_count": int(result.get("finite_difference_fallback_count", 0)),
+        "unsupported_derivative_fallback_count": int(result.get("unsupported_derivative_fallback_count", 0)),
         "hessian_available": bool(result.get("hessian_available", False)),
         "hessian_backend": str(result.get("hessian_backend", "not_implemented")),
         "hessian_fallback_used": bool(result.get("hessian_fallback_used", False)),
@@ -1266,14 +1268,11 @@ def evaluate_generic_regression_derivatives(
     """Evaluate native generic-regression residuals and an explicit Jacobian payload."""
 
     backend = str(jacobian_backend).strip().lower()
-    if backend in {"numerical", "fd"}:
-        backend = "finite_difference"
-    if backend not in {"auto", "autodiff", "finite_difference"}:
-        raise InputError("jacobian_backend must be 'auto', 'autodiff', or 'finite_difference'.")
-    if backend != "finite_difference":
+    if backend not in {"auto", "autodiff"}:
+        raise InputError("jacobian_backend must be 'auto' or 'autodiff'.")
+    if backend != "autodiff":
         raise InputError(
-            "generic regression autodiff Jacobians are not implemented for the generic residual state path yet; "
-            "finite difference is only available when jacobian_backend='finite_difference' is requested explicitly."
+            "generic regression autodiff Jacobians are not implemented for the generic residual state path yet."
         )
 
     normalized_species = tuple(_normalize_component(str(name)) for name in species)
@@ -2931,3 +2930,6 @@ def write_fit_result(
         return written
 
     raise InputError(f"Unsupported fit result mode '{problem.mode}'.")
+
+
+

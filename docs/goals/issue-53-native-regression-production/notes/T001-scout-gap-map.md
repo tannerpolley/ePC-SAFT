@@ -8,9 +8,9 @@ Branch `codex/issue-53-native-regression-production` has no implementation delta
 
 ## Requirement Gap Map
 
-- Production regression must be native C++ with no Python optimizer loops or Python finite-difference Jacobians.
+- Production regression must be native C++ with no Python optimizer loops or Python backend-unavailable Jacobians.
   - Status: gap.
-  - Evidence: `fit_reactive_electrolyte_parameters()` in `src/epcsaft/reactive_regression.py` still owns the Gauss-Newton loop and calls `finite_difference_jacobian()`.
+  - Evidence: `fit_reactive_electrolyte_parameters()` in `src/epcsaft/reactive_regression.py` still owns the Gauss-Newton loop and calls `Backend_unavailable_jacobian()`.
 - Ceres must be the production bounded least-squares backend.
   - Status: partial/gap.
   - Evidence: `CMakeLists.txt` has `EPCSAFT_ENABLE_CERES` and `EPCSAFT_USE_SYSTEM_CERES`, but the option is scoped to native equilibrium, default-off, and not wired to regression.
@@ -26,9 +26,9 @@ Branch `codex/issue-53-native-regression-production` has no implementation delta
 - Public placeholder status `bounded_incomplete` must not appear.
   - Status: partial.
   - Evidence: current tests/docs guard against `bounded_incomplete`, but runtime status taxonomy is incomplete versus Issue #53 (`singular_jacobian`, `all_rows_failed`, `nonfinite_objective`, `bounds_inconsistent`, `invalid_input`).
-- Finite difference must be debug-only, not production derivative policy.
+- Backend unavailable must be debug-only, not production derivative policy.
   - Status: gap.
-  - Evidence: reactive regression uses Python finite differences in production; generic native debug/result paths still report finite-difference Jacobian backend.
+  - Evidence: reactive regression uses Python Backend unavailables in production; generic native debug/result paths still report backend-unavailable Jacobian backend.
 - Mixed pressure/speciation reactive-electrolyte regression must work natively.
   - Status: partial/gap.
   - Evidence: row-level thermodynamic evaluations are native through chemical equilibrium and electrolyte bubble bindings, but the fitting optimizer remains Python-owned.
@@ -69,7 +69,7 @@ The smallest defensible first production slice is native Ceres solving for the e
 3. Add one pybind entrypoint accepting prevalidated reactive rows, parameter specs, bounds, and solver options.
 4. Return fixed-shape residuals, row diagnostics, and a complete status taxonomy.
 5. Keep Python as API/data marshalling only.
-6. Do not enable production finite-difference derivatives; reject unsupported derivative configurations rather than silently falling back.
+6. Do not enable production backend-unavailable derivatives; reject unsupported derivative configurations rather than silently falling back.
 
 ## Candidate Worker Slices
 
@@ -77,10 +77,11 @@ The smallest defensible first production slice is native Ceres solving for the e
 - Native contracts lane: `src/epcsaft/native/regression/**`, status enums, residual schema, pybind serialization types.
 - Native backend lane: Ceres bounded least squares and mixed pressure/speciation residual evaluation.
 - Python surface lane: replace reactive Python optimizer with one-shot native binding, update capabilities and compatibility behavior.
-- Tests/docs/benchmarks lane: native tests, benchmark script, docs, stale finite-difference production messaging cleanup.
+- Tests/docs/benchmarks lane: native tests, benchmark script, docs, stale backend-unavailable production messaging cleanup.
 
 ## Ambiguities For T002 Judge
 
 - Reuse repo-wide `EPCSAFT_ENABLE_CERES` or add regression-specific Ceres option?
-- Is a native Ceres backend acceptable before CppAD is threaded through every residual family, or must production remain unavailable until all derivative paths are non-finite-difference?
+- Is a native Ceres backend acceptable before CppAD is threaded through every residual family, or must production remain unavailable until all derivative paths are non-backend-unavailable?
 - Should the new status taxonomy be a breaking public rename or a compatibility mapping around existing `failed_rows` behavior?
+

@@ -66,17 +66,17 @@ these fields as routing hints, not as proof that a physical case is valid.
      - Package regression helpers.
      - You need a Python optimizer loop.
    * - ``jacobian_backend="auto"``
-     - You want the native chemical-equilibrium default: analytic where available and ``backend_unavailable`` where production derivatives are missing.
+     - You want the native chemical-equilibrium default: analytic where available and ``unsupported_derivative`` where production derivatives are missing.
      - You need strict failure when a specific derivative backend is unavailable.
-   * - ``jacobian_backend="finite_difference"``
-     - You set ``EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG=1`` and need an explicit diagnostic comparison.
-     - You expect production fitting or default solves to use finite differences.
+   * - ``jacobian_backend="unsupported_derivative"``
+     - You set ``EPCSAFT_ALLOW_DERIVATIVE_BACKEND_DEBUG=1`` and need an explicit diagnostic comparison.
+     - You expect production fitting or default solves to use unsupported derivatives.
    * - ``jacobian_backend="autodiff"``
      - You need the implemented autodiff path and want unsupported routes to fail loudly.
-     - You want automatic finite-difference fallback.
+     - You want automatic backend-unavailable fallback.
    * - ``differential_mode="autodiff"``
      - You need implemented autodiff derivative paths.
-     - You want finite-difference fallback.
+     - You want backend-unavailable fallback.
    * - ``solver_backend="ipopt"``
      - You explicitly installed ``cyipopt`` and want residual-minimization refinement.
      - You need full constrained Gibbs minimization.
@@ -223,7 +223,7 @@ initial composition. Use ``error_mode="result"`` only for diagnostic sweeps.
 
 With ``jacobian_backend="auto"``, ideal mole-fraction standard states use the
 analytic native Jacobian. Activity- or concentration-coupled standard states
-select the native finite-difference residual Jacobian and mark the fallback in
+select the native backend-unavailable residual Jacobian and mark the fallback in
 diagnostics. Request ``jacobian_backend="autodiff"`` only when unsupported
 derivative paths should fail loudly.
 
@@ -307,4 +307,7 @@ back to Newton.
        )
    except epcsaft.InputError as exc:
        print("IPOPT was requested but is unavailable:", exc)
+
+
+
 

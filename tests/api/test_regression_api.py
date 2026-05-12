@@ -284,7 +284,7 @@ def test_fit_pure_neutral_rejects_non_phase1_targets():
         )
 
 
-def test_native_pure_neutral_debug_gradient_matches_finite_difference():
+def test_native_pure_neutral_debug_gradient_matches_unsupported_derivative():
     theta = {"m": 1.05, "s": 3.68, "e": 151.0}
 
     def objective_at(m: float, s: float, e: float) -> float:
@@ -453,7 +453,7 @@ def _stub_native_generic_runner(monkeypatch):
             "jacobian_backend": "stub",
             "jacobian_fallback_used": False,
             "jacobian_fallback_reason": "",
-            "finite_difference_fallback_count": 0,
+            "unsupported_derivative_fallback_count": 0,
             "hessian_available": False,
             "hessian_backend": "not_implemented",
             "hessian_fallback_used": False,
@@ -499,7 +499,7 @@ def test_fit_pure_ion_default_s_e_bounds_and_multistart_contract(monkeypatch):
     assert result.backend == "least_squares_native"
     assert result.jacobian_available is True
     assert result.jacobian_backend == "stub"
-    assert result.finite_difference_fallback_count == 0
+    assert result.unsupported_derivative_fallback_count == 0
     assert result.hessian_available is False
     assert result.hessian_backend == "not_implemented"
     assert result.problem.mode == "pure_ion"
@@ -522,12 +522,12 @@ def test_fit_pure_ion_accepts_d_born_and_born_user_options(monkeypatch):
     calls = _stub_native_generic_runner(monkeypatch)
     user_options = {
         "elec_model": {
-            "rel_perm": {"rule": "empirical", "differential_mode": "numerical"},
+            "rel_perm": {"rule": "empirical", "differential_mode": "autodiff"},
             "born_model": {
                 "d_Born_mode": 3,
                 "solvation_shell_model": True,
                 "dielectric_saturation": True,
-                "mu_born_model": {"differential_mode": "numerical", "comp_dep_delta_d": True},
+                "mu_born_model": {"differential_mode": "autodiff", "comp_dep_delta_d": True},
             },
         }
     }
@@ -550,8 +550,8 @@ def test_fit_pure_ion_accepts_d_born_and_born_user_options(monkeypatch):
     assert len(calls) == 1
     assert calls[0]["optimization_names"] == ("d_born",)
     assert calls[0]["component"] == "Na+"
-    assert calls[0]["fixed_payloads"][0]["elec_model"]["rel_perm"]["differential_mode"] == 1
-    assert calls[0]["fixed_payloads"][0]["elec_model"]["born_model"]["mu_born_model"]["differential_mode"] == 1
+    assert calls[0]["fixed_payloads"][0]["elec_model"]["rel_perm"]["differential_mode"] == 2
+    assert calls[0]["fixed_payloads"][0]["elec_model"]["born_model"]["mu_born_model"]["differential_mode"] == 2
     assert result.provenance_report["parameter_sources"]["Na+.d_born"] == "ion_activity"
     assert result.provenance_report["warnings"] == []
 
@@ -799,10 +799,10 @@ def test_public_generic_derivative_evaluator_exposes_jacobian_and_hessian_skelet
             "jacobian_row_major": np.asarray([1.0, 0.0, 0.0, 1.0], dtype=float),
             "jacobian_shape": (2, 2),
             "jacobian_available": True,
-            "jacobian_backend": "finite_difference",
+            "jacobian_backend": "unsupported_derivative",
             "jacobian_fallback_used": True,
-            "jacobian_fallback_reason": "stubbed finite-difference fallback",
-            "finite_difference_fallback_count": 2,
+            "jacobian_fallback_reason": "stubbed backend-unavailable fallback",
+            "unsupported_derivative_fallback_count": 2,
             "hessian_row_major": np.asarray([], dtype=float),
             "hessian_shape": (0, 0),
             "hessian_available": False,
@@ -828,20 +828,20 @@ def test_public_generic_derivative_evaluator_exposes_jacobian_and_hessian_skelet
         species=("H2O", "Ethanol"),
         pair=("H2O", "Ethanol"),
         x=(-0.01, 0.02),
-        jacobian_backend="finite_difference",
+        jacobian_backend="unsupported_derivative",
     )
 
     assert payload["jacobian_available"] is True
-    assert payload["jacobian_backend"] == "finite_difference"
+    assert payload["jacobian_backend"] == "unsupported_derivative"
     assert payload["jacobian_fallback_used"] is True
-    assert payload["finite_difference_fallback_count"] == 2
+    assert payload["unsupported_derivative_fallback_count"] == 2
     assert tuple(payload["jacobian_shape"]) == (2, 2)
     assert np.asarray(payload["jacobian_row_major"], dtype=float).shape == (4,)
     assert payload["hessian_available"] is False
     assert payload["hessian_backend"] == "not_implemented"
     assert tuple(payload["hessian_shape"]) == (0, 0)
     assert len(calls) == 1
-    np.testing.assert_array_equal(calls[0]["target_kinds"], [6, 7])
+    np.testing.assert_array_equal(calls[0]["target_kinds"], [7, 8])
     np.testing.assert_array_equal(calls[0]["target_indices"], [0, 0])
     np.testing.assert_array_equal(calls[0]["target_indices_2"], [1, 1])
 
@@ -865,3 +865,6 @@ def test_public_generic_derivative_evaluator_rejects_auto_without_autodiff():
             pair=("H2O", "Ethanol"),
             x=(-0.01, 0.02),
         )
+
+
+

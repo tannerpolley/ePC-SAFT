@@ -31,7 +31,7 @@ def test_native_regression_benchmark_schema_and_reactive_coverage():
     assert case_payload["success"] is True
     assert case_payload["status"] == "converged"
     assert case_payload["fixed_shape_residuals"] is True
-    assert case_payload["production_finite_difference_allowed"] is False
+    assert case_payload["production_unsupported_derivative_allowed"] is False
     assert {"pressure", "speciation", "activity"} <= set(case_payload["target_families"])
     assert {"born_radius", "solvation_factor"} <= set(case_payload["parameter_kinds"])
 
@@ -109,12 +109,12 @@ def test_native_ceres_thermo_regression_benchmark_schema():
         payload = run_native_ceres_thermo_regression_benchmark(warmup=0, repeat=1, case=case)
 
         assert payload["case"] == case
-        assert payload["optimizer_backend"] in {"backend_unavailable", "ceres"}
+        assert payload["optimizer_backend"] in {"unsupported_derivative", "ceres"}
         assert payload["derivative_backend"] in {"implicit", "analytic_implicit", "cppad_implicit"}
-        if cppad_enabled and payload["status"] != "backend_unavailable":
+        if cppad_enabled and payload["status"] != "unsupported_derivative":
             assert payload["derivative_backend"] == "cppad_implicit"
         assert payload["python_objective_used"] is False
-        assert payload["finite_difference_used"] is False
+        assert payload["unsupported_derivative_used"] is False
         assert payload["initial_cost"] >= 0.0
         assert payload["final_cost"] >= 0.0
 
@@ -143,4 +143,7 @@ def test_native_ceres_thermo_regression_benchmark_script_executes_and_writes_jso
     assert "reactive_speciation_concentration_logk_implicit" in result.stdout
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     assert payload["python_objective_used"] is False
-    assert payload["finite_difference_used"] is False
+    assert payload["unsupported_derivative_used"] is False
+
+
+

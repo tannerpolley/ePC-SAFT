@@ -40,7 +40,7 @@ There is no existing native pressure-composition derivative surface:
 - `CompositionContributionResult` exposes `dadx`, `ares`, and `z_raw` term
   values, but not `dP/dx` or `dZ/dx`;
 - `solve_density_scoped(...)` and the current density validity path use a
-  finite-difference `dpdrho` check inside `epcsaft_density.cpp`;
+  backend-unavailable `dpdrho` check inside `epcsaft_density.cpp`;
 - there is no package-owned native `dpdx`, `dPdx`, or parameterized pressure
   derivative callback that `chemical_equilibrium.cpp` can reuse for production
   derivatives.
@@ -52,14 +52,14 @@ derivative substrate.
 Why this is a real blocker
 --------------------------
 
-Using finite differences here would violate the issue #53 production derivative
+Using Backend unavailables here would violate the issue #53 production derivative
 policy. Pretending concentration derivatives are available without a real
 pressure-composition derivative path would be false.
 
 Minimum next prerequisite
 -------------------------
 
-Add a native finite-difference-free pressure derivative substrate for the
+Add a native backend-unavailable-free pressure derivative substrate for the
 general EOS state, sufficient to recover:
 
 - `dp/drho` from a production derivative path;
@@ -68,3 +68,4 @@ general EOS state, sufficient to recover:
 
 Only after that can concentration-standard-state chemical-equilibrium
 derivatives be implemented honestly.
+

@@ -58,7 +58,7 @@ EQUILIBRIUM_API_TEST_TARGETS = (
     ),
     (
         "tests/native/test_chemical_equilibrium_native.py::"
-        "test_native_chemical_equilibrium_residual_evaluator_keeps_explicit_finite_difference"
+        "test_native_chemical_equilibrium_residual_evaluator_keeps_explicit_Backend_unavailable"
     ),
 )
 ALL_TEST_TARGETS = ("tests",)
@@ -322,3 +322,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

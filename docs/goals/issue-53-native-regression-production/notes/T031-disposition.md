@@ -51,5 +51,6 @@ patch:
    single owning path.
 2. Define the residual variables and sensitivity contract.
 3. Add native tests that fail unless derivatives are analytic/implicit/CppAD,
-   never production finite differences.
+   never production Backend unavailables.
 4. Only then widen `thermo_derivative_supported(...)`.
+

@@ -10,8 +10,8 @@ from epcsaft import _core
 
 
 @pytest.fixture(autouse=True)
-def _allow_finite_difference_debug(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("EPCSAFT_ALLOW_FINITE_DIFFERENCE_DEBUG", "1")
+def _allow_unsupported_derivative_debug(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("EPCSAFT_ALLOW_DERIVATIVE_BACKEND_DEBUG", "1")
 
 
 def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
@@ -171,7 +171,7 @@ def test_native_chemical_equilibrium_residual_evaluator_prefers_cppad_jacobian_b
     diagnostics = payload["diagnostics"]
     assert diagnostics["derivative_backend_selected"] == expected_backend
     assert diagnostics["derivative_capability_path"] == expected_path
-    assert diagnostics["finite_difference_allowed"] is False
+    assert diagnostics["unsupported_derivative_allowed"] is False
     assert diagnostics["unsupported_derivative_reason"] == ""
     assert diagnostics["exact_hessian_available"] is False
     assert diagnostics["hessian_kind"] == "approximate_least_squares_gauss_newton"
@@ -244,7 +244,7 @@ def test_native_chemical_equilibrium_residual_evaluator_supports_explicit_autodi
     assert len(payload["lower_bounds"]) == len(payload["variables"]) == len(payload["upper_bounds"])
 
 
-def test_native_chemical_equilibrium_residual_evaluator_keeps_explicit_finite_difference() -> None:
+def test_native_chemical_equilibrium_residual_evaluator_keeps_explicit_unsupported_derivative() -> None:
     mix = epcsaft.ePCSAFTMixture.from_params(
         {
             "m": np.asarray([1.0, 1.0]),
@@ -264,20 +264,20 @@ def test_native_chemical_equilibrium_residual_evaluator_keeps_explicit_finite_di
         "reaction_rows": 1,
         "log_equilibrium_constants": [math.log(3.0)],
         "reaction_standard_states": [1],
-        "options": {"jacobian_backend": "finite_difference", "finite_difference_step": 1.0e-7},
+        "options": {"jacobian_backend": "unsupported_derivative", "unsupported_derivative_step": 1.0e-7},
     }
 
     payload = _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
 
-    assert payload["jacobian_backend"] == "finite_difference"
+    assert payload["jacobian_backend"] == "unsupported_derivative"
     diagnostics = payload["diagnostics"]
-    assert diagnostics["derivative_backend_selected"] == "finite_difference"
-    assert diagnostics["finite_difference_allowed"] is True
-    assert diagnostics["explicit_finite_difference"] is True
-    assert diagnostics["finite_difference_scheme"] == "forward"
+    assert diagnostics["derivative_backend_selected"] == "unsupported_derivative"
+    assert diagnostics["unsupported_derivative_allowed"] is True
+    assert diagnostics["explicit_unsupported_derivative"] is True
+    assert diagnostics["unsupported_derivative_scheme"] == "forward"
 
 
-def test_native_chemical_equilibrium_concentration_autodiff_matches_finite_difference() -> None:
+def test_native_chemical_equilibrium_concentration_autodiff_matches_unsupported_derivative() -> None:
     mix = _salt_speciation_mixture()
     initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
     density = mix.state(T=298.15, P=1.0e5, x=initial_x, phase="liq").molar_density()
@@ -308,7 +308,7 @@ def test_native_chemical_equilibrium_concentration_autodiff_matches_finite_diffe
         return
 
     autodiff_payload = _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
-    request["options"] = {"tolerance": 1.0e-9, "jacobian_backend": "finite_difference", "finite_difference_step": 1.0e-7}
+    request["options"] = {"tolerance": 1.0e-9, "jacobian_backend": "unsupported_derivative", "unsupported_derivative_step": 1.0e-7}
     fd_payload = _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
 
     assert autodiff_payload["jacobian_backend"] == "autodiff"
@@ -320,7 +320,7 @@ def test_native_chemical_equilibrium_concentration_autodiff_matches_finite_diffe
     np.testing.assert_allclose(autodiff_jac, fd_jac, rtol=3.0e-4, atol=3.0e-4)
 
 
-def test_native_chemical_equilibrium_activity_autodiff_matches_finite_difference() -> None:
+def test_native_chemical_equilibrium_activity_autodiff_matches_unsupported_derivative() -> None:
     mix = _salt_speciation_mixture()
     initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
     stoich = {"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0}
@@ -353,7 +353,7 @@ def test_native_chemical_equilibrium_activity_autodiff_matches_finite_difference
         return
 
     autodiff_payload = _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
-    request["options"] = {"tolerance": 1.0e-9, "jacobian_backend": "finite_difference", "finite_difference_step": 1.0e-7}
+    request["options"] = {"tolerance": 1.0e-9, "jacobian_backend": "unsupported_derivative", "unsupported_derivative_step": 1.0e-7}
     fd_payload = _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
 
     assert autodiff_payload["jacobian_backend"] == "autodiff"
@@ -396,7 +396,7 @@ def test_native_chemical_equilibrium_activity_autodiff_supports_ssmds_born_path(
         return
 
     autodiff_payload = _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
-    request["options"] = {"tolerance": 1.0e-9, "jacobian_backend": "finite_difference", "finite_difference_step": 1.0e-7}
+    request["options"] = {"tolerance": 1.0e-9, "jacobian_backend": "unsupported_derivative", "unsupported_derivative_step": 1.0e-7}
     fd_payload = _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
 
     assert autodiff_payload["jacobian_backend"] == "autodiff"
@@ -447,9 +447,9 @@ def test_native_chemical_equilibrium_solves_easy_ideal_reaction() -> None:
     assert result.diagnostics["jacobian_backend"] == expected_backend
     assert result.diagnostics["jacobian_available"] is True
     assert result.diagnostics["jacobian_fallback_used"] is False
-    assert result.diagnostics["finite_difference_fallback_used"] is False
+    assert result.diagnostics["unsupported_derivative_fallback_used"] is False
     assert result.diagnostics["derivative_backend_selected"] == expected_backend
-    assert result.diagnostics["finite_difference_allowed"] is False
+    assert result.diagnostics["unsupported_derivative_allowed"] is False
     assert result.diagnostics["hessian_available"] is False
     assert result.diagnostics["hessian_backend"] == "not_implemented"
     assert result.diagnostics["hessian_fallback_used"] is False
@@ -530,7 +530,7 @@ def test_native_chemical_equilibrium_matches_activity_coupled_salt_speciation() 
         totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
         reactions=[epcsaft.ReactionDefinition(stoich, log_k)],
         initial_x=initial_x,
-        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-8, jacobian_backend="finite_difference"),
+        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-8, jacobian_backend="unsupported_derivative"),
     )
 
     assert result.success is True
@@ -572,7 +572,7 @@ def test_native_chemical_equilibrium_solves_hard_mea_like_speciation_and_returns
             tolerance=1.0e-7,
             max_iterations=40,
             damping=0.7,
-            jacobian_backend="finite_difference",
+            jacobian_backend="unsupported_derivative",
         ),
     )
 
@@ -603,7 +603,7 @@ def test_native_chemical_equilibrium_uses_convex_soft_start_for_bad_neutral_seed
         options=epcsaft.ReactiveSpeciationOptions(
             tolerance=1.0e-9,
             max_iterations=35,
-            jacobian_backend="finite_difference",
+            jacobian_backend="unsupported_derivative",
         ),
     )
 
@@ -655,7 +655,7 @@ def test_native_chemical_equilibrium_soft_start_reports_for_hard_ionic_speciatio
             tolerance=1.0e-7,
             max_iterations=45,
             damping=0.7,
-            jacobian_backend="finite_difference",
+            jacobian_backend="unsupported_derivative",
         ),
     )
 
@@ -729,7 +729,7 @@ def test_native_chemical_equilibrium_handles_trace_species_seed_without_invalid_
         options=epcsaft.ReactiveSpeciationOptions(
             tolerance=1.0e-8,
             min_mole_fraction=1.0e-14,
-            jacobian_backend="finite_difference",
+            jacobian_backend="unsupported_derivative",
         ),
     )
 
@@ -771,7 +771,7 @@ def test_reactive_stability_chemical_equilibrates_feed_before_native_tpd() -> No
         ],
         parent_phase="liq",
         trial_phases=("liq",),
-        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10, jacobian_backend="finite_difference"),
+        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10, jacobian_backend="unsupported_derivative"),
     )
 
     assert isinstance(result, epcsaft.StabilityResult)
@@ -800,7 +800,7 @@ def test_native_chemical_equilibrium_uses_epcsaft_activities_for_neutral_reactio
         totals={"total": 1.0},
         reactions=[epcsaft.ReactionDefinition(stoich, log_k)],
         initial_x=[0.5, 0.5],
-        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-9, jacobian_backend="finite_difference"),
+        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-9, jacobian_backend="unsupported_derivative"),
     )
 
     assert result.success is True
@@ -825,7 +825,7 @@ def test_native_chemical_equilibrium_solution_shifts_when_fugacity_model_changes
         totals={"total": 1.0},
         reactions=[epcsaft.ReactionDefinition(stoich, log_k)],
         initial_x=[0.5, 0.5],
-        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-9, jacobian_backend="finite_difference"),
+        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-9, jacobian_backend="unsupported_derivative"),
     )
 
     perturbed_mix = _methanol_cyclohexane_mixture(kij=0.0)
@@ -838,7 +838,7 @@ def test_native_chemical_equilibrium_solution_shifts_when_fugacity_model_changes
         totals={"total": 1.0},
         reactions=[epcsaft.ReactionDefinition(stoich, log_k)],
         initial_x=[0.5, 0.5],
-        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-9, jacobian_backend="finite_difference"),
+        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-9, jacobian_backend="unsupported_derivative"),
     )
 
     assert base_result.success is True
@@ -850,3 +850,6 @@ def test_native_chemical_equilibrium_solution_shifts_when_fugacity_model_changes
     assert perturbed_result.diagnostics["activity_model"] == "epcsaft_neutral_fugacity_activity"
     assert max(abs(value) for value in perturbed_result.reaction_residuals) <= 1.0e-8
     assert perturbed_result.x["Methanol"] - base_result.x["Methanol"] > 0.1
+
+
+

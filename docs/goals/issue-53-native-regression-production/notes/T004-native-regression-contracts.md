@@ -23,7 +23,7 @@ Done.
 - Added `epcsaft.native_regression_contract_schema()` and `CANONICAL_NATIVE_REGRESSION_STATUSES`.
 - Exported the contract helper and status tuple from the public package.
 - Added native contract tests.
-- Documented the contract and finite-difference production ban in `docs/pages/parameter_regression.rst`.
+- Documented the contract and backend-unavailable production ban in `docs/pages/parameter_regression.rst`.
 
 ## Validation
 
@@ -39,4 +39,5 @@ Done.
 ## Notes
 
 - This is contract-only. It does not implement Ceres solving or residual evaluation.
-- The schema intentionally reports `production_finite_difference_allowed=False`.
+- The schema intentionally reports `production_Backend_unavailable_allowed=False`.
+
