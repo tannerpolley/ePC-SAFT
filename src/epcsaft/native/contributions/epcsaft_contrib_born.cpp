@@ -156,6 +156,12 @@ AutoDual reference_solvent_dielectric_constant_ad_cpp(const vector<AutoDual> &x,
     return reference_solvent_dielectric_constant_scalar(x, cppargs);
 }
 
+#ifdef EPCSAFT_HAS_CPPAD
+CppAD::AD<double> reference_solvent_dielectric_constant_cppad_cpp(const vector<CppAD::AD<double>> &x, const add_args &cppargs) {
+    return reference_solvent_dielectric_constant_scalar(x, cppargs);
+}
+#endif
+
 // EqID: born_mode_set
 // EqID: born_mode_medium
 BornIntermediateState born_intermediate_state_cpp(

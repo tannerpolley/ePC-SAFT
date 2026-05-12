@@ -264,6 +264,9 @@ vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x,
 vector<double> dielectric_derivative_rule_fd_cpp(int rule, const vector<double> &x, const add_args &cppargs);
 AutoDual reference_solvent_dielectric_constant_ad_cpp(const vector<AutoDual> &x, const add_args &cppargs);
 AutoDual dielectric_constant_rule_autodiff_cpp(int rule, const vector<AutoDual> &x, const add_args &cppargs);
+#ifdef EPCSAFT_HAS_CPPAD
+CppAD::AD<double> reference_solvent_dielectric_constant_cppad_cpp(const vector<CppAD::AD<double>> &x, const add_args &cppargs);
+#endif
 vector<double> dielectric_derivative_rule_ad_cpp(int rule, const vector<double> &x, const add_args &cppargs);
 DielectricState dielectric_state_cpp(const vector<double> &x, const add_args &cppargs);
 DadrhoResult dadrho_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);

@@ -339,9 +339,10 @@ def test_lnfug_composition_derivative_matches_fugacity_and_finite_difference_for
     mix, _, _, density, temperature, composition = _nonassociating_ionic_state()
     state = mix.state(T=temperature, x=composition, rho=density)
     derivative = state.lnfug_composition_derivative()
+    expected_backend = "cppad_composition" if capabilities()["native_dependencies"]["cppad"]["enabled"] else "autodiff_composition"
 
     assert derivative["supported"] is True
-    assert derivative["derivative_backend"] == "autodiff_composition"
+    assert derivative["derivative_backend"] == expected_backend
     assert derivative["finite_difference_fallback_used"] is False
     np.testing.assert_allclose(derivative["lnfug"], state.fugacity_coefficient(natural_log=True))
 

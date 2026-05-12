@@ -672,7 +672,7 @@ ComponentActivityLogDerivativeResult component_activity_log_derivative_result_im
     }
     out.dloggamma_dlogn_row_major = compose_jacobians_cpp(dloggamma_dx, dx_dlogn, out.rows, out.cols, out.cols);
     out.supported = true;
-    out.derivative_backend = "autodiff_component_activity_log_amounts";
+    out.derivative_backend = "cppad_component_activity_log_amounts";
     out.finite_difference_fallback_used = false;
     return out;
 }
@@ -814,7 +814,7 @@ ComponentActivityParameterDerivativeResult component_activity_parameter_derivati
         return out;
     }
     out.supported = true;
-    out.derivative_backend = "autodiff_component_activity_parameter";
+    out.derivative_backend = "cppad_component_activity_parameter";
     out.finite_difference_fallback_used = false;
     for (std::size_t i = 0; i < current.dlnfugdtheta.size(); ++i) {
         out.dloggamma_dtheta[i] = current.dlnfugdtheta[i] - reference.dlnfugdtheta[i];

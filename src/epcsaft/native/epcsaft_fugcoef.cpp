@@ -741,7 +741,7 @@ LnfugCompositionDerivativeResult lnfug_composition_derivative_result_cpp(double 
     const std::vector<double> jacobian = tape.Jacobian(x);
     const std::vector<double> canonical_lnfug = lnfug_cpp(t, rho, x, cppargs);
     result.supported = true;
-    result.derivative_backend = "autodiff_composition";
+    result.derivative_backend = "cppad_composition";
     result.finite_difference_fallback_used = false;
     result.lnfug = canonical_lnfug;
     result.dlnfugdx_row_major = jacobian;
@@ -778,7 +778,7 @@ LnfugDensityDerivativeResult lnfug_density_derivative_result_cpp(double t, doubl
     const std::vector<double> jacobian = tape.Jacobian(std::vector<double>{rho});
     const std::vector<double> canonical_lnfug = lnfug_cpp(t, rho, x, cppargs);
     result.supported = true;
-    result.derivative_backend = "autodiff_density";
+    result.derivative_backend = "cppad_density";
     result.finite_difference_fallback_used = false;
     result.lnfug = canonical_lnfug;
     for (std::size_t i = 0; i < ncomp; ++i) {
@@ -1005,7 +1005,7 @@ LnfugParameterDerivativeResult lnfug_parameter_derivative_result_cpp(
     CppAD::ADFun<double> tape(independent, dependent);
     const std::vector<double> jacobian = tape.Jacobian(std::vector<double>{parameter_value});
     result.supported = true;
-    result.derivative_backend = "autodiff_parameter";
+    result.derivative_backend = "cppad_parameter";
     result.finite_difference_fallback_used = false;
     for (std::size_t i = 0; i < jacobian.size(); ++i) {
         result.dlnfugdtheta[i] = jacobian[i];

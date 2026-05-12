@@ -57,7 +57,7 @@ agents:
   judge: installed
   worker: installed
 
-active_task: T054
+active_task: T055
 
 tasks:
   - id: T001
@@ -2385,7 +2385,7 @@ tasks:
   - id: T054
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: xhigh
     objective: "Migrate the remaining supported public/runtime derivative helpers from the older AutoDual substrate onto the native CppAD substrate for supported nonassociating states, without re-opening the public dadx auto-policy shift or pretending bubble differentiation is solved."
     allowed_files:
@@ -2407,6 +2407,29 @@ tasks:
       - "The supported public/runtime derivative helpers cannot move to CppAD without a larger behavior change than issue #53 should absorb."
       - "The only viable migration path would silently change the public runtime dadx auto/default contract."
       - "The work turns into bubble-pressure derivative architecture instead of a substrate migration."
+    receipt: "notes/T054-cppad-runtime-helper-migration.md"
+
+  - id: T055
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: high
+    objective: "Audit the next remaining derivative gap after the runtime/helper CppAD migration and choose the next honest tranche between generic reactive-speciation `k_ij`/`l_ij`/`k_hb_ij` sensitivities and reactive-electrolyte bubble differentiation."
+    inputs:
+      - "notes/T054-cppad-runtime-helper-migration.md"
+      - "src/epcsaft/native/regression/thermo_regression.cpp"
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      - "tests/native/test_cppad_bubble_derivatives.py"
+      - "tests/workflows/test_benchmark_native_regression.py"
+    constraints:
+      - "Do not reopen the finished helper-substrate migration."
+      - "Do not claim issue #53 complete while bubble or generic reactive binary sensitivities remain backend_unavailable."
+    expected_output:
+      - "A concrete statement of which derivative surface is now the next blocker."
+      - "A narrow recommendation for the next implementation tranche."
+      - "Any required validation slice for that tranche."
     receipt: null
 
   - id: T023

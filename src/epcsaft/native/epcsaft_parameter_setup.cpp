@@ -333,27 +333,37 @@ void dielectric_inputs_valid_cpp(const vector<double> &x, const add_args &cpparg
     }
 }
 
-struct AutodiffMixtureState {
+template <typename Scalar>
+struct ContributionMixtureState {
     vector<double> d;
     vector<double> s_ij;
     vector<double> e_ij;
     double den = 0.0;
-    AutoDual m_avg = make_autodiff_scalar(0.0, 0.0);
-    AutoDual m2es3 = make_autodiff_scalar(0.0, 0.0);
-    AutoDual m2e2s3 = make_autodiff_scalar(0.0, 0.0);
+    Scalar m_avg = scalar_constant<Scalar>(0.0);
+    Scalar m2es3 = scalar_constant<Scalar>(0.0);
+    Scalar m2e2s3 = scalar_constant<Scalar>(0.0);
 };
 
-struct AutodiffDispersionState {
+template <typename Scalar>
+struct ContributionDispersionState {
     std::array<double, 7> a{};
     std::array<double, 7> b{};
-    AutoDual I1 = make_autodiff_scalar(0.0, 0.0);
-    AutoDual I2 = make_autodiff_scalar(0.0, 0.0);
-    AutoDual C1 = make_autodiff_scalar(0.0, 0.0);
+    Scalar I1 = scalar_constant<Scalar>(0.0);
+    Scalar I2 = scalar_constant<Scalar>(0.0);
+    Scalar C1 = scalar_constant<Scalar>(0.0);
 };
 
-AutodiffMixtureState mixture_state_autodiff_cpp(double t, double rho, const vector<AutoDual> &x, const add_args &cppargs) {
+template <typename Scalar>
+struct ContributionHardChainState {
+    vector<Scalar> zeta;
+    vector<Scalar> ghs;
+    Scalar eta = scalar_constant<Scalar>(0.0);
+};
+
+template <typename Scalar>
+ContributionMixtureState<Scalar> mixture_state_scalar_cpp(double t, double rho, const vector<Scalar> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
-    AutodiffMixtureState state;
+    ContributionMixtureState<Scalar> state;
     state.d.assign(ncomp, 0.0);
     state.e_ij.assign(ncomp * ncomp, 0.0);
     state.s_ij.assign(ncomp * ncomp, 0.0);
@@ -383,8 +393,9 @@ AutodiffMixtureState mixture_state_autodiff_cpp(double t, double rho, const vect
     return state;
 }
 
-AutodiffDispersionState dispersion_state_autodiff_cpp(const AutoDual &m_avg, const AutoDual &eta) {
-    AutodiffDispersionState state;
+template <typename Scalar>
+ContributionDispersionState<Scalar> dispersion_state_scalar_cpp(const Scalar &m_avg, const Scalar &eta) {
+    ContributionDispersionState<Scalar> state;
     for (int i = 0; i < 7; ++i) {
         state.a[i] = kDispersionA0[i] + (1.0 - 1.0 / scalar_value(m_avg)) * kDispersionA1[i]
             + (1.0 - 1.0 / scalar_value(m_avg)) * (1.0 - 2.0 / scalar_value(m_avg)) * kDispersionA2[i];
@@ -400,6 +411,54 @@ AutodiffDispersionState dispersion_state_autodiff_cpp(const AutoDual &m_avg, con
             / scalar_pow((1.0 - eta) * (2.0 - eta), 2)
     );
     return state;
+}
+
+template <typename Scalar>
+ContributionHardChainState<Scalar> hard_chain_state_scalar_cpp(
+    double den,
+    const vector<double> &d,
+    const vector<Scalar> &x,
+    const add_args &cppargs
+) {
+    ContributionHardChainState<Scalar> state;
+    int ncomp = static_cast<int>(x.size());
+    state.zeta.assign(4, scalar_constant<Scalar>(0.0));
+    state.ghs.assign(ncomp * ncomp, scalar_constant<Scalar>(0.0));
+
+    for (int k = 0; k < 4; ++k) {
+        Scalar summ = scalar_constant<Scalar>(0.0);
+        for (int j = 0; j < ncomp; ++j) {
+            summ += x[static_cast<size_t>(j)] * cppargs.m[static_cast<size_t>(j)] * scalar_pow(d[static_cast<size_t>(j)], k);
+        }
+        state.zeta[static_cast<size_t>(k)] = PI / 6.0 * den * summ;
+    }
+
+    state.eta = state.zeta[3];
+
+    int idx = -1;
+    for (int i = 0; i < ncomp; ++i) {
+        for (int j = 0; j < ncomp; ++j) {
+            ++idx;
+            double pair_diameter = pair_diameter_cpp(d[static_cast<size_t>(i)], d[static_cast<size_t>(j)]);
+            state.ghs[static_cast<size_t>(idx)] = 1.0 / (1.0 - state.zeta[3])
+                + pair_diameter * 3.0 * state.zeta[2] / scalar_pow(1.0 - state.zeta[3], 2)
+                + scalar_pow(pair_diameter, 2.0) * 2.0 * state.zeta[2] * state.zeta[2] / scalar_pow(1.0 - state.zeta[3], 3);
+        }
+    }
+
+    return state;
+}
+
+using AutodiffMixtureState = ContributionMixtureState<AutoDual>;
+using AutodiffDispersionState = ContributionDispersionState<AutoDual>;
+using AutodiffHardChainStateLocal = ContributionHardChainState<AutoDual>;
+
+AutodiffMixtureState mixture_state_autodiff_cpp(double t, double rho, const vector<AutoDual> &x, const add_args &cppargs) {
+    return mixture_state_scalar_cpp<AutoDual>(t, rho, x, cppargs);
+}
+
+AutodiffDispersionState dispersion_state_autodiff_cpp(const AutoDual &m_avg, const AutoDual &eta) {
+    return dispersion_state_scalar_cpp<AutoDual>(m_avg, eta);
 }
 
 double pair_diameter_cpp(double d_i, double d_j) {
@@ -789,6 +848,24 @@ vector<double> dielectric_derivative_rule_fd_cpp(int rule, const vector<double> 
 vector<double> dielectric_derivative_rule_ad_cpp(int rule, const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     vector<double> deps_dx(ncomp, 0.0);
+#ifdef EPCSAFT_HAS_CPPAD
+    std::vector<CppAD::AD<double>> independent(static_cast<size_t>(ncomp));
+    for (int i = 0; i < ncomp; ++i) {
+        independent[static_cast<size_t>(i)] = x[static_cast<size_t>(i)];
+    }
+    CppAD::Independent(independent);
+    std::vector<CppAD::AD<double>> dependent(1);
+    dependent[0] = dielectric_constant_rule_scalar_cpp(rule, independent, cppargs);
+    CppAD::ADFun<double> tape(independent, dependent);
+    const std::vector<double> jacobian = tape.Jacobian(x);
+    for (int i = 0; i < ncomp; ++i) {
+        deps_dx[static_cast<size_t>(i)] = jacobian[static_cast<size_t>(i)];
+        if (!std::isfinite(deps_dx[static_cast<size_t>(i)])) {
+            throw ValueError("Non-finite dielectric autodiff derivative.");
+        }
+    }
+    return deps_dx;
+#else
     for (int i = 0; i < ncomp; ++i) {
         vector<AutoDual> x_dual(ncomp, make_autodiff_scalar(0.0, 0.0));
         for (int j = 0; j < ncomp; ++j) {
@@ -800,6 +877,7 @@ vector<double> dielectric_derivative_rule_ad_cpp(int rule, const vector<double> 
         }
     }
     return deps_dx;
+#endif
 }
 
 DielectricState dielectric_state_cpp(const vector<double> &x, const add_args &cppargs) {
@@ -826,6 +904,92 @@ vector<double> contribution_dadx_autodiff_cpp(AresContributionKind kind, double 
     }
 
     vector<double> dadx(ncomp, 0.0);
+#ifdef EPCSAFT_HAS_CPPAD
+    if (kind != AresContributionKind::ASSOC && !(kind == AresContributionKind::BORN && cppargs.born_model == 2)) {
+        std::vector<CppAD::AD<double>> independent(static_cast<size_t>(ncomp));
+        for (int i = 0; i < ncomp; ++i) {
+            independent[static_cast<size_t>(i)] = x[static_cast<size_t>(i)];
+        }
+        CppAD::Independent(independent);
+
+        CppAD::AD<double> value = scalar_constant<CppAD::AD<double>>(0.0);
+        if (kind == AresContributionKind::HC || kind == AresContributionKind::DISP) {
+            auto thermo = thermo_detail::parameter_setup_detail::mixture_state_scalar_cpp<CppAD::AD<double>>(t, rho, independent, cppargs);
+            auto hc_state = thermo_detail::parameter_setup_detail::hard_chain_state_scalar_cpp<CppAD::AD<double>>(
+                thermo.den,
+                thermo.d,
+                independent,
+                cppargs
+            );
+            if (kind == AresContributionKind::HC) {
+                CppAD::AD<double> ares_hs = 1.0 / hc_state.zeta[0] * (
+                    3.0 * hc_state.zeta[1] * hc_state.zeta[2] / (1.0 - hc_state.zeta[3])
+                    + scalar_pow(hc_state.zeta[2], 3) / (hc_state.zeta[3] * scalar_pow(1.0 - hc_state.zeta[3], 2))
+                    + (scalar_pow(hc_state.zeta[2], 3) / scalar_pow(hc_state.zeta[3], 2) - hc_state.zeta[0])
+                        * scalar_log(1.0 - hc_state.zeta[3])
+                );
+                CppAD::AD<double> log_sum = scalar_constant<CppAD::AD<double>>(0.0);
+                for (int k = 0; k < ncomp; ++k) {
+                    log_sum += independent[static_cast<size_t>(k)] * (cppargs.m[static_cast<size_t>(k)] - 1.0)
+                        * scalar_log(hc_state.ghs[static_cast<size_t>(k * ncomp + k)]);
+                }
+                value = thermo.m_avg * ares_hs - log_sum;
+            } else {
+                auto dispersion = thermo_detail::parameter_setup_detail::dispersion_state_scalar_cpp<CppAD::AD<double>>(
+                    thermo.m_avg,
+                    hc_state.eta
+                );
+                value = -2.0 * PI * thermo.den * dispersion.I1 * thermo.m2es3
+                    - PI * thermo.den * thermo.m_avg * dispersion.C1 * dispersion.I2 * thermo.m2e2s3;
+            }
+        } else if (kind == AresContributionKind::ION) {
+            CppAD::AD<double> q2_sum = scalar_constant<CppAD::AD<double>>(0.0);
+            for (int k = 0; k < ncomp; ++k) {
+                q2_sum += independent[static_cast<size_t>(k)] * cppargs.z[static_cast<size_t>(k)] * cppargs.z[static_cast<size_t>(k)];
+            }
+            CppAD::AD<double> eps = dielectric_constant_rule_scalar_cpp(cppargs.dielc_rule, independent, cppargs);
+            CppAD::AD<double> kappa =
+                scalar_sqrt((rho * N_AV / 1.0e30) * E_CHRG * E_CHRG / kb / t / perm_vac * q2_sum / eps);
+            CppAD::AD<double> chi_sum = scalar_constant<CppAD::AD<double>>(0.0);
+            for (int k = 0; k < ncomp; ++k) {
+                double d_k = ion_diameter_cpp(k, t, cppargs);
+                CppAD::AD<double> ka = kappa * d_k;
+                CppAD::AD<double> chi = 3.0 / scalar_pow(ka, 3)
+                    * (1.5 + scalar_log(1.0 + ka) - 2.0 * (1.0 + ka) + 0.5 * scalar_pow(1.0 + ka, 2));
+                chi_sum += independent[static_cast<size_t>(k)] * cppargs.z[static_cast<size_t>(k)]
+                    * cppargs.z[static_cast<size_t>(k)] * chi;
+            }
+            const double K0 = E_CHRG * E_CHRG / (12.0 * PI * kb * t * perm_vac);
+            value = -K0 * kappa / eps * chi_sum;
+        } else {
+            CppAD::AD<double> eps = (cppargs.born_eps_mode == 1)
+                ? reference_solvent_dielectric_constant_cppad_cpp(independent, cppargs)
+                : dielectric_constant_rule_scalar_cpp(cppargs.dielc_rule, independent, cppargs);
+            CppAD::AD<double> charge_radius_sum = scalar_constant<CppAD::AD<double>>(0.0);
+            for (int k = 0; k < ncomp; ++k) {
+                if (is_ion_species(cppargs, k)) {
+                    charge_radius_sum += independent[static_cast<size_t>(k)] * cppargs.z[static_cast<size_t>(k)]
+                        * cppargs.z[static_cast<size_t>(k)] / ion_born_radius_cpp(k, t, cppargs);
+                }
+            }
+            const double Kborn = E_CHRG * E_CHRG / (4.0 * PI * kb * t * perm_vac);
+            value = -Kborn * (1.0 - 1.0 / eps) * charge_radius_sum;
+        }
+
+        std::vector<CppAD::AD<double>> dependent(1);
+        dependent[0] = value;
+        CppAD::ADFun<double> tape(independent, dependent);
+        const std::vector<double> jacobian = tape.Jacobian(x);
+        for (int i = 0; i < ncomp; ++i) {
+            dadx[static_cast<size_t>(i)] = jacobian[static_cast<size_t>(i)];
+            if (!std::isfinite(dadx[static_cast<size_t>(i)])) {
+                throw ValueError("Non-finite contribution autodiff derivative.");
+            }
+        }
+        return dadx;
+    }
+#endif
+
     for (int i = 0; i < ncomp; ++i) {
         vector<AutoDual> x_dual(ncomp, make_autodiff_scalar(0.0, 0.0));
         for (int j = 0; j < ncomp; ++j) {
