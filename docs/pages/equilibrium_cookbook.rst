@@ -143,6 +143,44 @@ Supported derivative labels are ``analytic``, ``cppad``,
 Unsupported combinations report ``backend_unavailable``. ``auto`` never falls
 back to finite differences.
 
+Staged reactive workflow boundary
+---------------------------------
+
+Reactive equilibrium examples in this package should use fixed or literature
+reaction constants first. Create those inputs with
+``ReactionDefinition(log_equilibrium_constant=...)`` or the more explicit
+``ReactionDefinition.from_literature_constant(...)`` helper, then run staged
+speciation before the phase route.
+
+.. code-block:: python
+
+   reaction = epcsaft.ReactionDefinition.from_literature_constant(
+       {"A": -1.0, "B": 1.0},
+       log_equilibrium_constant=log_k_literature,
+       name="literature_a_to_b",
+       standard_state="ideal_mole_fraction",
+       source="Smith et al. table 2",
+   )
+
+   result = epcsaft.solve_reactive_staged_equilibrium(
+       species=["A", "B"],
+       mixture_factory=mixture_factory,
+       T=298.15,
+       P=1.0e5,
+       balances={"total": {"A": 1.0, "B": 1.0}},
+       totals={"total": 1.0},
+       reactions=[reaction],
+       initial_x=[0.5, 0.5],
+       phase_kind="tp_flash",
+   )
+
+The resulting diagnostics identify the workflow as staged, keep
+reaction-constant fitting as ``secondary_optional``, and state that full
+simultaneous reactive NLP is not the active route. Fit pure, binary, or
+electrolyte ePC-SAFT parameters after this fixed-constant speciation and phase
+handoff. Do not make reaction-constant regression a prerequisite for those
+parameter fits.
+
 Electrolyte LLE
 ---------------
 

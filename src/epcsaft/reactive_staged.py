@@ -59,6 +59,7 @@ def solve_reactive_staged_equilibrium(
     speciation_options: ReactiveSpeciationOptions | None = None,
     phase_options: Any = None,
     phase_kwargs: Mapping[str, Any] | None = None,
+    workflow_options: Mapping[str, Any] | None = None,
 ) -> ReactiveStagedEquilibriumResult:
     """Solve chemical equilibrium first, then pass the staged feed to a phase route.
 
@@ -76,6 +77,7 @@ def solve_reactive_staged_equilibrium(
         raise InputError("phase_kwargs must not include z; the staged chemical composition is used as the feed.")
     if "kind" in extra_phase_kwargs:
         raise InputError("phase_kwargs must not include kind; use phase_kind.")
+    workflow = _normalize_workflow_options(workflow_options)
 
     chemical = solve_reactive_speciation(
         species=labels,
@@ -105,6 +107,24 @@ def solve_reactive_staged_equilibrium(
     diagnostics = {
         "workflow": "chemical_equilibrium_then_phase_equilibrium",
         "reactive_workflow_class": "staged",
+        "reaction_constant_policy": "fixed_literature_constants_first",
+        "reaction_constant_fitting_role": workflow["reaction_constant_fitting"],
+        "parameter_regression_boundary": "fit_epcsaft_parameters_after_fixed_constant_speciation",
+        "full_simultaneous_reactive_nlp": False,
+        "derivative_policy": {
+            "finite_difference_backend_available": False,
+            "accepted_derivative_backends": [
+                "auto",
+                "analytic",
+                "cppad",
+                "analytic_implicit",
+                "cppad_implicit",
+                "eigen_forward",
+                "legacy_eigen_forward",
+                "backend_unavailable",
+            ],
+            "unsupported_derivative_status": "backend_unavailable",
+        },
         "phase_kind": kind,
         "chemical_success": bool(chemical.success),
         "phase_success": phase_success,
@@ -119,6 +139,25 @@ def solve_reactive_staged_equilibrium(
         phase=phase,
         diagnostics=diagnostics,
     )
+
+
+def _normalize_workflow_options(workflow_options: Mapping[str, Any] | None) -> dict[str, str]:
+    workflow = dict(workflow_options or {})
+    reaction_constant_fitting = str(workflow.get("reaction_constant_fitting", "secondary_optional")).strip().lower()
+    aliases = {
+        "secondary": "secondary_optional",
+        "optional": "secondary_optional",
+        "lower_priority": "secondary_optional",
+        "fixed": "secondary_optional",
+    }
+    reaction_constant_fitting = aliases.get(reaction_constant_fitting, reaction_constant_fitting)
+    if reaction_constant_fitting in {"primary", "default", "required", "blocking"}:
+        raise InputError("reaction-constant fitting is not a staged default; keep constants fixed/literature first.")
+    if reaction_constant_fitting != "secondary_optional":
+        raise InputError(
+            "workflow_options.reaction_constant_fitting must be 'secondary_optional' for staged workflows."
+        )
+    return {"reaction_constant_fitting": reaction_constant_fitting}
 
 
 def _solve_phase_route(

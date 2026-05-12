@@ -25,6 +25,7 @@ class ReactionDefinition:
     log_equilibrium_constant: float
     name: str = ""
     standard_state: str = "mole_fraction_activity"
+    metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "stoichiometry", {str(k): float(v) for k, v in self.stoichiometry.items()})
@@ -35,6 +36,32 @@ class ReactionDefinition:
             supported = "', '".join(_REACTION_STANDARD_STATES)
             raise InputError(f"ReactionDefinition.standard_state must be one of '{supported}'.")
         object.__setattr__(self, "standard_state", standard_state)
+        object.__setattr__(self, "metadata", {str(k): _json_like(v) for k, v in dict(self.metadata).items()})
+
+    @classmethod
+    def from_literature_constant(
+        cls,
+        stoichiometry: Mapping[str, float],
+        *,
+        log_equilibrium_constant: float,
+        name: str = "",
+        standard_state: str = "mole_fraction_activity",
+        source: str = "",
+        metadata: Mapping[str, Any] | None = None,
+    ) -> ReactionDefinition:
+        """Build a reaction with an explicitly fixed literature equilibrium constant."""
+        merged_metadata = dict(metadata or {})
+        merged_metadata.setdefault("constant_source", "literature")
+        merged_metadata.setdefault("fitting_role", "fixed_input")
+        if source:
+            merged_metadata.setdefault("source", str(source))
+        return cls(
+            stoichiometry=stoichiometry,
+            log_equilibrium_constant=log_equilibrium_constant,
+            name=name,
+            standard_state=standard_state,
+            metadata=merged_metadata,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -371,6 +398,8 @@ def _solve_reactive_speciation_native(
     handoff["activity_basis"] = activity_basis
     diagnostics["phase_equilibrium_handoff"] = handoff
     diagnostics["reaction_standard_states"] = [reaction.standard_state for reaction in reactions]
+    diagnostics["reaction_constant_sources"] = _reaction_constant_sources(reactions)
+    diagnostics["reaction_constant_policy"] = "fixed_literature_constants_first"
     diagnostics.update(
         {
             "activity_basis": activity_basis,
@@ -459,6 +488,38 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
     diagnostics.setdefault("best_state", {"source": "native_chemical_equilibrium_result"})
     diagnostics.setdefault("row_failure_count", int(diagnostics.get("state_failure_count", 0)))
     diagnostics.setdefault("association_solver_status", "backend_unavailable_if_active")
+    diagnostics.setdefault(
+        "derivative_policy",
+        {
+            "finite_difference_backend_available": False,
+            "accepted_derivative_backends": [
+                "auto",
+                "analytic",
+                "cppad",
+                "analytic_implicit",
+                "cppad_implicit",
+                "eigen_forward",
+                "legacy_eigen_forward",
+                "backend_unavailable",
+            ],
+            "unsupported_derivative_status": "backend_unavailable",
+        },
+    )
+    diagnostics.setdefault(
+        "solved_state_derivative_blocks",
+        [
+            "association_site_fractions",
+            "reactive_speciation_variables",
+            "density_roots",
+            "bubble_pressure_roots",
+            "phase_equilibrium_variables",
+        ],
+    )
+    diagnostics["derivative_backend_by_block"].setdefault(
+        "reactive_speciation_variables",
+        derivative_backend,
+    )
+    diagnostics["derivative_backend_by_block"].setdefault("association_site_fractions", "backend_unavailable")
 
 
 def _named_reaction_residuals(reactions: list[ReactionDefinition], reaction_residuals: list[float]) -> dict[str, float]:
@@ -470,6 +531,18 @@ def _named_reaction_residuals(reactions: list[ReactionDefinition], reaction_resi
         counts[base] = count + 1
         names.append(base if count == 0 else f"{base}_{count}")
     return {name: float(value) for name, value in zip(names, reaction_residuals)}
+
+
+def _reaction_constant_sources(reactions: list[ReactionDefinition]) -> dict[str, str]:
+    sources: dict[str, str] = {}
+    counts: dict[str, int] = {}
+    for index, reaction in enumerate(reactions):
+        base = reaction.name.strip() if reaction.name.strip() else f"reaction_{index}"
+        count = counts.get(base, 0)
+        counts[base] = count + 1
+        name = base if count == 0 else f"{base}_{count}"
+        sources[name] = str(reaction.metadata.get("constant_source", "fixed_input"))
+    return sources
 
 
 def _reaction_standard_state_summary(reactions: list[ReactionDefinition]) -> str:

@@ -44,6 +44,21 @@ the C++ chemical-equilibrium kernel. The caller owns the chemistry: species
 labels, material balances, totals, reactions, equilibrium constants, and the
 ``mixture_factory`` used to create the native ePC-SAFT mixture.
 
+The near-term reactive workflow is staged and fixed-constant first:
+
+1. pass fixed or literature reaction constants through
+   ``ReactionDefinition.log_equilibrium_constant`` or
+   ``ReactionDefinition.from_literature_constant(...)``;
+2. evaluate activity-coupled reactive speciation with ePC-SAFT states;
+3. hand the equilibrated composition to phase or electrolyte-equilibrium
+   routes; and
+4. regress ePC-SAFT pure, binary, or electrolyte parameters against that fixed
+   chemistry boundary.
+
+Reaction-constant fitting is therefore an optional later refinement, not the
+default workflow and not a blocking dependency for pure, binary, or electrolyte
+parameter regression.
+
 The native backend solves material balances, charge balance, and reaction
 residuals in log mole amounts. Activity coefficients are evaluated only when
 the selected reaction standard state needs them or when
@@ -169,3 +184,24 @@ sweeps, set ``ReactiveElectrolyteBubbleOptions(error_mode="result")`` to return
 a structured ``ReactiveElectrolyteBubbleResult(success=False, ...)`` containing
 the successful speciation payload plus the failed bubble diagnostics. Complete
 examples are in :doc:`equilibrium_cookbook`.
+
+Solved-state derivative boundary
+--------------------------------
+
+Staged reactive workflows contain nested solved states: association site
+fractions, reactive speciation variables, density roots, bubble-pressure roots,
+and phase-equilibrium variables. These blocks must report derivatives through
+analytic residual derivatives, CppAD residual partials, implicit sensitivities,
+or ``backend_unavailable`` when coverage is incomplete. Finite-difference
+derivatives are not a supported fallback.
+
+For active association, the preferred staged derivative boundary is to solve
+the association site fractions, compute residual partials, solve the implicit
+sensitivity system, and propagate those sensitivities into activity, fugacity,
+or chemical-potential derivatives. Direct CppAD through the association
+fixed-point iteration is not required for the staged fixed-constant workflow.
+
+Future simultaneous root systems, Ceres residual systems, or Ipopt constrained
+NLP formulations may be useful for harder coupled systems, but they are future
+architecture options. They are not the default fixed-literature-constant
+workflow and are not required for reactive electrolyte VLE handoffs.
