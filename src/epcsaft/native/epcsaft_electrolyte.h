@@ -157,11 +157,29 @@ struct LnfugDensityDerivativeResult {
     std::string finite_difference_fallback_reason;
 };
 
+struct LnfugParameterDerivativeResult {
+    vector<double> dlnfugdtheta;
+    int size = 0;
+    bool supported = false;
+    std::string derivative_backend = "unsupported";
+    bool finite_difference_fallback_used = false;
+    std::string finite_difference_fallback_reason;
+};
+
 struct ComponentActivityLogDerivativeResult {
     vector<double> ln_gamma;
     vector<double> dloggamma_dlogn_row_major;
     int rows = 0;
     int cols = 0;
+    bool supported = false;
+    std::string derivative_backend = "unsupported";
+    bool finite_difference_fallback_used = false;
+    std::string finite_difference_fallback_reason;
+};
+
+struct ComponentActivityParameterDerivativeResult {
+    vector<double> dloggamma_dtheta;
+    int size = 0;
     bool supported = false;
     std::string derivative_backend = "unsupported";
     bool finite_difference_fallback_used = false;

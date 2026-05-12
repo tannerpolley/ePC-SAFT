@@ -27,6 +27,34 @@ def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_params(params, species=["H2O", "NaCl", "Na+", "Cl-"])
 
 
+def _salt_speciation_ssmds_mixture() -> epcsaft.ePCSAFTMixture:
+    params = {
+        "m": np.asarray([1.2047, 1.0, 1.0, 1.0]),
+        "s": np.asarray([2.7927, 3.0, 2.8232, 2.7560]),
+        "e": np.asarray([353.95, 200.0, 230.0, 170.0]),
+        "z": np.asarray([0.0, 0.0, 1.0, -1.0]),
+        "dielc": np.asarray([78.09, 8.0, 8.0, 8.0]),
+        "d_born": np.asarray([0.0, 0.0, 3.445, 4.1]),
+        "f_solv": np.asarray([1.5, 1.0, 1.0, 1.0]),
+        "MW": np.asarray([18.01528e-3, 58.44e-3, 22.989e-3, 35.45e-3]),
+        "elec_model": {
+            "include_born_model": True,
+            "born_model": {
+                "d_Born_mode": 3,
+                "solvation_shell_model": True,
+                "dielectric_saturation": True,
+                "bulk_mode": "solvent",
+                "mu_born_model": {
+                    "comp_dep_rel_perm": True,
+                    "include_sum_term": True,
+                    "comp_dep_delta_d": True,
+                },
+            },
+        },
+    }
+    return epcsaft.ePCSAFTMixture.from_params(params, species=["H2O", "NaCl", "Na+", "Cl-"])
+
+
 def _mea_like_mixture() -> epcsaft.ePCSAFTMixture:
     params = {
         "m": np.asarray([1.2047, 2.5, 1.0, 1.0, 2.2, 2.7, 1.0]),
@@ -328,6 +356,49 @@ def test_native_chemical_equilibrium_activity_autodiff_matches_finite_difference
     autodiff_jac = np.asarray(autodiff_payload["jacobian_row_major"], dtype=float).reshape(autodiff_payload["jacobian_shape"])
     fd_jac = np.asarray(fd_payload["jacobian_row_major"], dtype=float).reshape(fd_payload["jacobian_shape"])
     np.testing.assert_allclose(autodiff_jac, fd_jac, rtol=5.0e-4, atol=5.0e-4)
+
+
+def test_native_chemical_equilibrium_activity_autodiff_supports_ssmds_born_path() -> None:
+    mix = _salt_speciation_ssmds_mixture()
+    initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
+    stoich = {"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0}
+    log_k = _log_k_from_state(mix, 298.15, 1.0e5, initial_x, stoich)
+
+    request = {
+        "T": 298.15,
+        "P": 1.0e5,
+        "initial_x": initial_x.tolist(),
+        "balance_matrix": [
+            1.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 1.0, 0.0,
+            0.0, 1.0, 0.0, 1.0,
+        ],
+        "balance_rows": 3,
+        "total_vector": [initial_x[0], initial_x[1] + initial_x[2], initial_x[1] + initial_x[3]],
+        "reaction_stoichiometry": [0.0, -1.0, 1.0, 1.0],
+        "reaction_rows": 1,
+        "log_equilibrium_constants": [log_k],
+        "reaction_standard_states": [0],
+        "options": {"tolerance": 1.0e-9, "jacobian_backend": "autodiff"},
+    }
+
+    cppad_enabled = bool(epcsaft.runtime_build_info()["native_dependencies"]["cppad"]["enabled"])
+    if not cppad_enabled:
+        with pytest.raises(ValueError, match="CppAD-enabled build"):
+            _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
+        return
+
+    autodiff_payload = _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
+    request["options"] = {"tolerance": 1.0e-9, "jacobian_backend": "finite_difference", "finite_difference_step": 1.0e-7}
+    fd_payload = _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
+
+    assert autodiff_payload["jacobian_backend"] == "autodiff"
+    assert autodiff_payload["diagnostics"]["derivative_capability_path"] == (
+        "chemical_equilibrium:mole_fraction_activity:log_amounts:component_activity_cppad"
+    )
+    autodiff_jac = np.asarray(autodiff_payload["jacobian_row_major"], dtype=float).reshape(autodiff_payload["jacobian_shape"])
+    fd_jac = np.asarray(fd_payload["jacobian_row_major"], dtype=float).reshape(fd_payload["jacobian_shape"])
+    np.testing.assert_allclose(autodiff_jac, fd_jac, rtol=2.0e-3, atol=2.0e-3)
 
 
 def test_native_chemical_equilibrium_solves_easy_ideal_reaction() -> None:

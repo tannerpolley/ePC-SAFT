@@ -21,6 +21,34 @@ def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_params(params, species=["H2O", "NaCl", "Na+", "Cl-"])
 
 
+def _salt_speciation_ssmds_mixture() -> epcsaft.ePCSAFTMixture:
+    params = {
+        "m": np.asarray([1.2047, 1.0, 1.0, 1.0]),
+        "s": np.asarray([2.7927, 3.0, 2.8232, 2.7560]),
+        "e": np.asarray([353.95, 200.0, 230.0, 170.0]),
+        "z": np.asarray([0.0, 0.0, 1.0, -1.0]),
+        "dielc": np.asarray([78.09, 8.0, 8.0, 8.0]),
+        "d_born": np.asarray([0.0, 0.0, 3.445, 4.1]),
+        "f_solv": np.asarray([1.5, 1.0, 1.0, 1.0]),
+        "MW": np.asarray([18.01528e-3, 58.44e-3, 22.989e-3, 35.45e-3]),
+        "elec_model": {
+            "include_born_model": True,
+            "born_model": {
+                "d_Born_mode": 3,
+                "solvation_shell_model": True,
+                "dielectric_saturation": True,
+                "bulk_mode": "solvent",
+                "mu_born_model": {
+                    "comp_dep_rel_perm": True,
+                    "include_sum_term": True,
+                    "comp_dep_delta_d": True,
+                },
+            },
+        },
+    }
+    return epcsaft.ePCSAFTMixture.from_params(params, species=["H2O", "NaCl", "Na+", "Cl-"])
+
+
 def _salt_speciation_row(log_k: float, observed_na: float) -> dict[str, object]:
     initial_x = [0.998, 0.001, 0.0005, 0.0005]
     return {
@@ -181,8 +209,92 @@ def test_native_thermo_regression_reports_ssmds_born_derivatives_unavailable() -
 
     assert result["status"] == "backend_unavailable"
     assert result["optimizer_backend"] == "backend_unavailable"
-    assert "reaction log-equilibrium constants only" in result["message"]
+    assert "activity-standard-state reactive_speciation rows only" in result["message"]
     assert result["objective_result"]["fixed_shape_residuals"] is True
+
+
+def test_native_thermo_regression_supports_ssmds_born_radius_parameter_on_activity_rows() -> None:
+    species = ["H2O", "NaCl", "Na+", "Cl-"]
+    mix = _salt_speciation_ssmds_mixture()
+    initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
+    state = mix.state(T=298.15, P=1.0e5, x=initial_x, phase="liq")
+    gamma = state.activity_coefficient(species=species)
+    log_k = math.log(initial_x[2] * gamma["Na+"]) + math.log(initial_x[3] * gamma["Cl-"])
+    log_k -= math.log(initial_x[1] * gamma["NaCl"])
+
+    row = _salt_speciation_row(log_k, 0.00065)
+    row["reaction_standard_states"] = [0]
+
+    result = epcsaft.fit_native_thermo_regression(
+        mix,
+        {
+            "species": species,
+            "rows": [row],
+            "parameters": [
+                {
+                    "name": "Na+.d_born",
+                    "kind": "born_radius",
+                    "initial": 3.30,
+                    "lower": 2.0,
+                    "upper": 5.0,
+                    "metadata": {"component_index": "2"},
+                }
+            ],
+            "options": {"max_iterations": 3, "derivative_backend": "implicit"},
+        },
+    )
+
+    cppad_enabled = bool(epcsaft.runtime_build_info()["native_dependencies"]["cppad"]["enabled"])
+    if not cppad_enabled:
+        assert result["status"] == "backend_unavailable"
+        assert "CppAD-enabled build" in result["message"]
+        return
+
+    assert result["status"] in {"converged", "max_iterations"}
+    assert result["optimizer_backend"] == "ceres"
+    assert result["derivative_backend"] in {"analytic_implicit", "cppad_implicit", "mixed_implicit"}
+
+
+def test_native_thermo_regression_supports_ssmds_solvation_factor_parameter_on_activity_rows() -> None:
+    species = ["H2O", "NaCl", "Na+", "Cl-"]
+    mix = _salt_speciation_ssmds_mixture()
+    initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
+    state = mix.state(T=298.15, P=1.0e5, x=initial_x, phase="liq")
+    gamma = state.activity_coefficient(species=species)
+    log_k = math.log(initial_x[2] * gamma["Na+"]) + math.log(initial_x[3] * gamma["Cl-"])
+    log_k -= math.log(initial_x[1] * gamma["NaCl"])
+
+    row = _salt_speciation_row(log_k, 0.00065)
+    row["reaction_standard_states"] = [0]
+
+    result = epcsaft.fit_native_thermo_regression(
+        mix,
+        {
+            "species": species,
+            "rows": [row],
+            "parameters": [
+                {
+                    "name": "H2O.f_solv",
+                    "kind": "f_solv",
+                    "initial": 1.35,
+                    "lower": 0.5,
+                    "upper": 3.0,
+                    "metadata": {"component_index": "0"},
+                }
+            ],
+            "options": {"max_iterations": 3, "derivative_backend": "implicit"},
+        },
+    )
+
+    cppad_enabled = bool(epcsaft.runtime_build_info()["native_dependencies"]["cppad"]["enabled"])
+    if not cppad_enabled:
+        assert result["status"] == "backend_unavailable"
+        assert "CppAD-enabled build" in result["message"]
+        return
+
+    assert result["status"] in {"converged", "max_iterations"}
+    assert result["optimizer_backend"] == "ceres"
+    assert result["derivative_backend"] in {"analytic_implicit", "cppad_implicit", "mixed_implicit"}
 
 
 def test_native_thermo_regression_ideal_speciation_targets_are_invariant_to_born_inputs() -> None:

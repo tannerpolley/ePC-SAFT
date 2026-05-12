@@ -57,7 +57,7 @@ agents:
   judge: installed
   worker: installed
 
-active_task: T048
+active_task: T049
 
 tasks:
   - id: T001
@@ -2132,7 +2132,7 @@ tasks:
   - id: T048
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: xhigh
     objective: "Implement the next supported native thermodynamic derivative tranche: non-logK parameter sensitivities for reactive_speciation rows on the supported nonassociating slice, starting with d_born, f_solv, and generic binary parameters such as k_ij, without production finite differences."
     allowed_files:
@@ -2148,9 +2148,11 @@ tasks:
       - "src/epcsaft/native/epcsaft_parameter_setup.cpp"
       - "src/epcsaft/benchmarks/native_ceres_thermo_regression.py"
       - "scripts/benchmark_native_ceres_thermo_regression.py"
+      - "tests/native/test_chemical_equilibrium_native.py"
       - "tests/native/test_native_ceres_thermodynamic_regression.py"
       - "tests/native/test_cppad_reactive_speciation_derivatives.py"
       - "tests/workflows/test_benchmark_native_regression.py"
+      - "docs/goals/issue-53-native-regression-production/notes/T048-ssmds-born-thermo-slice.md"
       - "docs/goals/issue-53-native-regression-production/notes/**"
       - "docs/goals/issue-53-native-regression-production/state.yaml"
     verify:
@@ -2161,6 +2163,58 @@ tasks:
       - "The supported non-logK parameter slice still requires production finite differences."
       - "Parameter sensitivities require a broad whole-package parameter-dual rewrite beyond the supported nonassociating reactive_speciation subset."
       - "No truthful cppad_implicit benchmark or focused test can be produced for the added parameter kinds."
+    receipt:
+      result: done
+      summary: "Implemented the first honest non-logK native thermo regression slice for the SSM+DS Born activity-standard-state path: native lnphi/component-activity derivatives now support that slice, fixed-rho born_radius/f_solv parameter derivatives exist, thermo R_theta uses them, and a new Ceres benchmark proves native_hot_loop with cppad_implicit."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T048-ssmds-born-thermo-slice.md"
+        - "src/epcsaft/native/epcsaft_fugcoef.cpp"
+        - "src/epcsaft/native/epcsaft_activity.cpp"
+        - "src/epcsaft/native/regression/thermo_regression.cpp"
+        - "src/epcsaft/benchmarks/native_ceres_thermo_regression.py"
+        - "tests/native/test_chemical_equilibrium_native.py"
+        - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      changed_files:
+        - "docs/goals/issue-53-native-regression-production/notes/T048-ssmds-born-thermo-slice.md"
+        - "docs/goals/issue-53-native-regression-production/state.yaml"
+        - "src/epcsaft/benchmarks/native_ceres_thermo_regression.py"
+        - "src/epcsaft/native/epcsaft_activity.cpp"
+        - "src/epcsaft/native/epcsaft_core_internal.h"
+        - "src/epcsaft/native/epcsaft_electrolyte.h"
+        - "src/epcsaft/native/epcsaft_fugcoef.cpp"
+        - "src/epcsaft/native/regression/thermo_regression.cpp"
+        - "tests/native/test_chemical_equilibrium_native.py"
+        - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      commands:
+        - cmd: "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/test_chemical_equilibrium_native.py tests/native/test_native_ceres_thermodynamic_regression.py -q"
+          status: pass
+          summary: "29 passed in 2.08s"
+        - cmd: "uv run python run_pytest.py tests/api/test_reactive_speciation.py tests/native/test_runtime_contracts.py tests/workflows/test_benchmark_native_regression.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_chemical_equilibrium_native.py tests/native/test_native_ceres_thermodynamic_regression.py -q"
+          status: pass
+          summary: "87 passed, 1 skipped in 6.51s"
+        - cmd: "uv run python scripts/benchmark_native_ceres_thermo_regression.py --case reactive_speciation_activity_ssmds_born_radius_implicit --warmup 1 --repeat 1"
+          status: pass
+          summary: "backend=ceres derivative=cppad_implicit native_hot_loop=True initial_cost=0.0202084 final_cost=0.0201522"
+
+  - id: T049
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Audit the next remaining derivative scope after the SSM+DS Born non-logK tranche: decide whether reactive-speciation thermo k_ij support belongs in issue #53 or should remain generic-regression-only, and reaffirm the remaining bubble derivative blocker."
+    inputs:
+      - "T048 receipt."
+      - "Current native thermo regression capability surface."
+      - "User direction that d_born/f_solv are the required Born-SSM+DS regression focus and k_ij can remain generic binary regression elsewhere."
+    constraints:
+      - "Do not implement yet."
+      - "Do not re-open the stale pressure-substrate blocker."
+      - "Be explicit whether the next worker tranche is thermo k_ij, bubble, or completion audit."
+    expected_output:
+      - "Updated scope decision for the next tranche."
+      - "Truthful statement of what issue #53 still lacks after T048."
     receipt: null
 
   - id: T023

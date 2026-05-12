@@ -289,6 +289,14 @@ CompositionContributionResult composition_derivative_residual_helmholtz_result_c
 PressureCompositionDerivativeResult pressure_composition_derivative_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 PressureDensityDerivativeResult pressure_density_derivative_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 LnfugDensityDerivativeResult lnfug_density_derivative_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+LnfugParameterDerivativeResult lnfug_parameter_derivative_result_cpp(
+    double t,
+    double rho,
+    vector<double> x,
+    const add_args &cppargs,
+    const std::string& parameter_kind,
+    int component_index
+);
 ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 LnfugCompositionDerivativeResult lnfug_composition_derivative_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 FugacityContributionResult fugacity_coefficient_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
@@ -320,4 +328,15 @@ ComponentActivityLogDerivativeResult component_activity_log_derivative_result_cp
     int phase,
     const vector<double>& x,
     const add_args& args
+);
+ComponentActivityParameterDerivativeResult component_activity_parameter_derivative_result_cpp(
+    ePCSAFTMixtureNative* mixture,
+    double t,
+    double rho,
+    double p,
+    int phase,
+    const vector<double>& x,
+    const add_args& args,
+    const std::string& parameter_kind,
+    int component_index
 );

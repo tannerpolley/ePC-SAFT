@@ -155,6 +155,178 @@ static Scalar supported_dielectric_constant_scalar_cpp(const vector<Scalar>& x, 
     return eps;
 }
 
+template <typename Scalar>
+static Scalar supported_reference_solvent_dielectric_scalar_cpp(const vector<Scalar>& x, const add_args& cppargs) {
+    if (cppargs.z.size() != x.size()) {
+        return supported_dielectric_constant_scalar_cpp(x, cppargs);
+    }
+    Scalar x_sol = scalar_constant<Scalar>(0.0);
+    Scalar eps_sol_num = scalar_constant<Scalar>(0.0);
+    for (int i = 0; i < static_cast<int>(x.size()); ++i) {
+        if (std::abs(cppargs.z[static_cast<size_t>(i)]) <= 1.0e-12) {
+            x_sol += x[static_cast<size_t>(i)];
+            eps_sol_num += x[static_cast<size_t>(i)] * cppargs.dielc[static_cast<size_t>(i)];
+        }
+    }
+    if (!(scalar_value(x_sol) > 0.0)) {
+        return supported_dielectric_constant_scalar_cpp(x, cppargs);
+    }
+    return eps_sol_num / x_sol;
+}
+
+template <typename Scalar>
+static Scalar supported_born_dielectric_scalar_cpp(const vector<Scalar>& x, const add_args& cppargs) {
+    if (cppargs.born_eps_mode == 1) {
+        return supported_reference_solvent_dielectric_scalar_cpp(x, cppargs);
+    }
+    return supported_dielectric_constant_scalar_cpp(x, cppargs);
+}
+
+static vector<double> supported_born_dielectric_derivative_cpp(const vector<double>& x, const add_args& cppargs) {
+    if (cppargs.born_eps_mode == 1) {
+        return reference_solvent_dielectric_derivative_cpp(x, cppargs);
+    }
+    return dielectric_diff_cpp(x, cppargs);
+}
+
+template <typename Scalar>
+static Scalar active_born_radius_scalar_cpp(
+    int i,
+    double t,
+    const add_args& cppargs,
+    const std::string* parameter_kind = nullptr,
+    int component_index = -1,
+    const Scalar* active_value = nullptr
+) {
+    const bool active_born_radius =
+        parameter_kind != nullptr
+        && active_value != nullptr
+        && (*parameter_kind == "born_radius" || *parameter_kind == "born_diameter")
+        && component_index == i;
+    if (!is_ion_species(cppargs, i)) {
+        if (active_born_radius && cppargs.d_born.size() > static_cast<size_t>(i) && cppargs.d_born[static_cast<size_t>(i)] > 0.0) {
+            return *active_value;
+        }
+        if (cppargs.d_born.size() > static_cast<size_t>(i) && cppargs.d_born[static_cast<size_t>(i)] > 0.0) {
+            return scalar_constant<Scalar>(cppargs.d_born[static_cast<size_t>(i)]);
+        }
+        return scalar_constant<Scalar>(cppargs.s[static_cast<size_t>(i)]);
+    }
+    const int mode = cppargs.d_born_mode;
+    if (mode == 0) {
+        return scalar_constant<Scalar>(cppargs.s[static_cast<size_t>(i)]);
+    }
+    if (mode == 1) {
+        return scalar_constant<Scalar>(cppargs.s[static_cast<size_t>(i)] * (1.0 - 0.12));
+    }
+    if (mode == 2) {
+        return scalar_constant<Scalar>(
+            cppargs.s[static_cast<size_t>(i)] * (1.0 - 0.12 * std::exp(-3.0 * cppargs.e[static_cast<size_t>(i)] / t))
+        );
+    }
+    if (mode == 3) {
+        if (active_born_radius) {
+            return *active_value;
+        }
+        return scalar_constant<Scalar>(parameter_setup_detail::ion_born_radius_cpp(i, t, cppargs));
+    }
+    throw ValueError("Unknown d_Born_mode. Supported values are 0, 1, 2, 3.");
+}
+
+template <typename Scalar>
+struct SupportedBornShellStateScalar {
+    vector<Scalar> d_born;
+    vector<Scalar> D;
+    vector<Scalar> ddelta_prefac;
+    vector<Scalar> f_k;
+    vector<Scalar> bracket;
+    Scalar sum_bracket = scalar_constant<Scalar>(0.0);
+    Scalar sum_gap = scalar_constant<Scalar>(0.0);
+    Scalar sum_dpref_over_D2 = scalar_constant<Scalar>(0.0);
+};
+
+template <typename Scalar>
+static SupportedBornShellStateScalar<Scalar> supported_born_shell_state_scalar_cpp(
+    const vector<Scalar>& x,
+    const add_args& cppargs,
+    double t,
+    const Scalar& eps_r,
+    double eps_r_ion,
+    const std::string* parameter_kind = nullptr,
+    int component_index = -1,
+    const Scalar* active_value = nullptr
+) {
+    const bool use_ssm = (cppargs.born_solvation_shell_model != 0);
+    const bool use_ds = (cppargs.born_dielectric_saturation != 0);
+    SupportedBornShellStateScalar<Scalar> data;
+    const int ncomp = static_cast<int>(x.size());
+    data.d_born.assign(static_cast<size_t>(ncomp), scalar_constant<Scalar>(1.0));
+    data.D.assign(static_cast<size_t>(ncomp), scalar_constant<Scalar>(1.0));
+    data.ddelta_prefac.assign(static_cast<size_t>(ncomp), scalar_constant<Scalar>(0.0));
+    data.f_k.assign(static_cast<size_t>(ncomp), scalar_constant<Scalar>(1.0));
+    data.bracket.assign(static_cast<size_t>(ncomp), scalar_constant<Scalar>(0.0));
+
+    Scalar f_mix = scalar_constant<Scalar>(0.0);
+    for (int i = 0; i < ncomp; ++i) {
+        const bool is_ion = is_ion_species(cppargs, i);
+        Scalar fi = scalar_constant<Scalar>(1.0);
+        const bool active_f_solv =
+            parameter_kind != nullptr
+            && active_value != nullptr
+            && (*parameter_kind == "solvation_factor" || *parameter_kind == "f_solv")
+            && component_index == i
+            && !is_ion;
+        if (active_f_solv) {
+            fi = *active_value;
+        } else if (!is_ion && cppargs.f_solv.size() > static_cast<size_t>(i)) {
+            fi = scalar_constant<Scalar>(cppargs.f_solv[static_cast<size_t>(i)]);
+        }
+        data.f_k[static_cast<size_t>(i)] = fi;
+        f_mix += x[static_cast<size_t>(i)] * fi;
+        data.d_born[static_cast<size_t>(i)] = active_born_radius_scalar_cpp(
+            i,
+            t,
+            cppargs,
+            parameter_kind,
+            component_index,
+            active_value
+        );
+        if (is_ion) {
+            data.ddelta_prefac[static_cast<size_t>(i)] =
+                data.d_born[static_cast<size_t>(i)] / scalar_constant<Scalar>(std::abs(cppargs.z[static_cast<size_t>(i)]));
+        }
+    }
+
+    const Scalar inv_eps = scalar_constant<Scalar>(1.0) / eps_r;
+    const Scalar shell_coeff = scalar_constant<Scalar>(1.0 / eps_r_ion) - inv_eps;
+    for (int i = 0; i < ncomp; ++i) {
+        const bool is_ion = std::abs(cppargs.z[static_cast<size_t>(i)]) > 1.0e-12;
+        if (!is_ion) {
+            data.D[static_cast<size_t>(i)] = data.d_born[static_cast<size_t>(i)];
+            continue;
+        }
+        const Scalar delta_di = use_ssm
+            ? ((f_mix - scalar_constant<Scalar>(1.0)) * data.ddelta_prefac[static_cast<size_t>(i)])
+            : scalar_constant<Scalar>(0.0);
+        data.D[static_cast<size_t>(i)] = data.d_born[static_cast<size_t>(i)] + delta_di;
+        const Scalar invD = scalar_constant<Scalar>(1.0) / data.D[static_cast<size_t>(i)];
+        const Scalar gap = scalar_constant<Scalar>(1.0) / data.d_born[static_cast<size_t>(i)] - invD;
+        const Scalar base_term = (scalar_constant<Scalar>(1.0) - inv_eps) * invD;
+        const Scalar ds_term = use_ds
+            ? ((scalar_constant<Scalar>(1.0) - scalar_constant<Scalar>(1.0 / eps_r_ion)) * gap)
+            : scalar_constant<Scalar>(0.0);
+        data.bracket[static_cast<size_t>(i)] = base_term + ds_term;
+        const double z2 = cppargs.z[static_cast<size_t>(i)] * cppargs.z[static_cast<size_t>(i)];
+        data.sum_bracket += x[static_cast<size_t>(i)] * scalar_constant<Scalar>(z2) * data.bracket[static_cast<size_t>(i)];
+        data.sum_gap += x[static_cast<size_t>(i)] * scalar_constant<Scalar>(z2) * gap;
+        if (use_ssm) {
+            data.sum_dpref_over_D2 += x[static_cast<size_t>(i)] * scalar_constant<Scalar>(z2)
+                * data.ddelta_prefac[static_cast<size_t>(i)] * invD * invD;
+        }
+    }
+    return data;
+}
+
 static bool lnfug_composition_derivative_supported_cpp(const add_args& cppargs, std::string* reason) {
     if (!cppargs.assoc_num.empty() || !cppargs.assoc_matrix.empty() || !cppargs.k_hb.empty()
         || !cppargs.e_assoc.empty() || !cppargs.vol_a.empty()) {
@@ -172,12 +344,6 @@ static bool lnfug_composition_derivative_supported_cpp(const add_args& cppargs, 
     if (cppargs.dielc_rule != 0 && cppargs.dielc_rule != 1) {
         if (reason != nullptr) {
             *reason = "native lnphi-composition derivatives currently support dielc_rule 0 or 1 only.";
-        }
-        return false;
-    }
-    if (cppargs.born_model == 2 || cppargs.born_eps_mode == 1) {
-        if (reason != nullptr) {
-            *reason = "native lnphi-composition derivatives do not yet support SSM/DS Born or solvent-reference Born epsilon modes.";
         }
         return false;
     }
@@ -435,13 +601,13 @@ static vector<Scalar> supported_lnfug_scalar_cpp(double t, const Scalar& rho, co
         for (int i = 0; i < ncomp; ++i) {
             x_value[static_cast<size_t>(i)] = scalar_value(x[static_cast<size_t>(i)]);
         }
-        const vector<double> deps_dx = dielectric_diff_cpp(x_value, cppargs);
-        Scalar eps_born = supported_dielectric_constant_scalar_cpp(x, cppargs);
+        const vector<double> deps_dx = supported_born_dielectric_derivative_cpp(x_value, cppargs);
+        Scalar eps_born = supported_born_dielectric_scalar_cpp(x, cppargs);
         Scalar charge_radius_sum = scalar_constant<Scalar>(0.0);
         for (int i = 0; i < ncomp; ++i) {
             if (is_ion_species(cppargs, i)) {
                 charge_radius_sum += x[static_cast<size_t>(i)] * cppargs.z[static_cast<size_t>(i)] * cppargs.z[static_cast<size_t>(i)]
-                    / parameter_setup_detail::ion_born_radius_cpp(i, t, cppargs);
+                    / active_born_radius_scalar_cpp<Scalar>(i, t, cppargs);
             }
         }
         const double Kborn = E_CHRG * E_CHRG / (4.0 * PI * kb * t * perm_vac);
@@ -450,10 +616,43 @@ static vector<Scalar> supported_lnfug_scalar_cpp(double t, const Scalar& rho, co
             Scalar ion_part = scalar_constant<Scalar>(0.0);
             if (is_ion_species(cppargs, i)) {
                 ion_part = (1.0 - 1.0 / eps_born) * cppargs.z[static_cast<size_t>(i)] * cppargs.z[static_cast<size_t>(i)]
-                    / parameter_setup_detail::ion_born_radius_cpp(i, t, cppargs);
+                    / active_born_radius_scalar_cpp<Scalar>(i, t, cppargs);
             }
             Scalar eps_part = charge_radius_sum * deps_dx[static_cast<size_t>(i)] / (eps_born * eps_born);
             dadx_born[static_cast<size_t>(i)] = -Kborn * (ion_part + eps_part);
+        }
+    } else if (cppargs.born_model == 2) {
+        vector<double> x_value(static_cast<size_t>(ncomp), 0.0);
+        for (int i = 0; i < ncomp; ++i) {
+            x_value[static_cast<size_t>(i)] = scalar_value(x[static_cast<size_t>(i)]);
+        }
+        const vector<double> deps_dx = supported_born_dielectric_derivative_cpp(x_value, cppargs);
+        const Scalar eps_born = supported_born_dielectric_scalar_cpp(x, cppargs);
+        const double eps_r_ion = 8.0;
+        const auto shell = supported_born_shell_state_scalar_cpp<Scalar>(x, cppargs, t, eps_born, eps_r_ion);
+        const double Kborn = E_CHRG * E_CHRG / (4.0 * PI * kb * t * perm_vac);
+        ares_born = -Kborn * shell.sum_bracket;
+
+        const Scalar inv_eps2 = scalar_constant<Scalar>(1.0) / (eps_born * eps_born);
+        const Scalar shell_coeff = scalar_constant<Scalar>(1.0 / eps_r_ion) - scalar_constant<Scalar>(1.0) / eps_born;
+        const bool use_deps = (cppargs.mu_born_comp_dep_rel_perm != 0);
+        const bool use_shell_chain = (cppargs.mu_born_comp_dep_delta_d != 0);
+        const Scalar deps_multiplier = (cppargs.mu_born_include_sum_term != 0)
+            ? shell.sum_gap
+            : scalar_constant<Scalar>(1.0);
+        for (int k = 0; k < ncomp; ++k) {
+            Scalar direct_part = scalar_constant<Scalar>(0.0);
+            if (std::abs(cppargs.z[static_cast<size_t>(k)]) > 1.0e-12) {
+                direct_part = cppargs.z[static_cast<size_t>(k)] * cppargs.z[static_cast<size_t>(k)]
+                    * shell.bracket[static_cast<size_t>(k)];
+            }
+            const Scalar deps_part = use_deps
+                ? deps_multiplier * deps_dx[static_cast<size_t>(k)] * inv_eps2
+                : scalar_constant<Scalar>(0.0);
+            const Scalar ddelta_part = use_shell_chain
+                ? shell_coeff * shell.sum_dpref_over_D2 * shell.f_k[static_cast<size_t>(k)]
+                : scalar_constant<Scalar>(0.0);
+            dadx_born[static_cast<size_t>(k)] = -Kborn * (direct_part + deps_part + ddelta_part);
         }
     }
 
@@ -586,6 +785,232 @@ LnfugDensityDerivativeResult lnfug_density_derivative_result_cpp(double t, doubl
         result.dlnfugdrho[i] = jacobian[i];
         if (!std::isfinite(result.dlnfugdrho[i])) {
             throw ValueError("Non-finite native lnphi-density derivative.");
+        }
+    }
+    return result;
+#endif
+}
+
+namespace fugcoef_detail {
+
+static bool lnfug_parameter_derivative_supported_cpp(
+    const add_args& cppargs,
+    const std::string& parameter_kind,
+    int component_index,
+    std::string* reason
+) {
+    std::string unsupported_reason;
+    if (!lnfug_composition_derivative_supported_cpp(cppargs, &unsupported_reason)) {
+        if (reason != nullptr) {
+            *reason = unsupported_reason;
+        }
+        return false;
+    }
+    const bool born_radius = (parameter_kind == "born_radius" || parameter_kind == "born_diameter");
+    const bool f_solv = (parameter_kind == "solvation_factor" || parameter_kind == "f_solv");
+    if (!born_radius && !f_solv) {
+        if (reason != nullptr) {
+            *reason = "native lnphi-parameter derivatives currently support born_radius and f_solv only.";
+        }
+        return false;
+    }
+    if (component_index < 0 || static_cast<size_t>(component_index) >= cppargs.s.size()) {
+        if (reason != nullptr) {
+            *reason = "native lnphi-parameter derivative component index is out of range.";
+        }
+        return false;
+    }
+    if (born_radius) {
+        if (is_ion_species(cppargs, component_index)) {
+            if (cppargs.d_born_mode != 3) {
+                if (reason != nullptr) {
+                    *reason = "native lnphi born_radius derivatives for ionic species require d_born_mode=3.";
+                }
+                return false;
+            }
+            return true;
+        }
+        if (cppargs.d_born.size() > static_cast<size_t>(component_index)
+            && cppargs.d_born[static_cast<size_t>(component_index)] > 0.0) {
+            return true;
+        }
+        if (reason != nullptr) {
+            *reason = "native lnphi born_radius derivatives for neutral species require an explicit positive d_born entry.";
+        }
+        return false;
+    }
+    if (is_ion_species(cppargs, component_index)) {
+        if (reason != nullptr) {
+            *reason = "native lnphi f_solv derivatives require a neutral solvent component.";
+        }
+        return false;
+    }
+    if (cppargs.born_model != 2) {
+        if (reason != nullptr) {
+            *reason = "native lnphi f_solv derivatives currently require born_model=2.";
+        }
+        return false;
+    }
+    return true;
+}
+
+template <typename Scalar>
+static vector<Scalar> born_lnfug_parameter_scalar_cpp(
+    double t,
+    double rho,
+    const vector<double>& x,
+    const add_args& cppargs,
+    const std::string& parameter_kind,
+    int component_index,
+    const Scalar& active_value
+) {
+    const int ncomp = static_cast<int>(x.size());
+    vector<Scalar> out(static_cast<size_t>(ncomp), scalar_constant<Scalar>(0.0));
+    vector<Scalar> x_scalar(static_cast<size_t>(ncomp), scalar_constant<Scalar>(0.0));
+    for (int i = 0; i < ncomp; ++i) {
+        x_scalar[static_cast<size_t>(i)] = scalar_constant<Scalar>(x[static_cast<size_t>(i)]);
+    }
+
+    const vector<double> deps_dx = supported_born_dielectric_derivative_cpp(x, cppargs);
+    const Scalar eps_born = supported_born_dielectric_scalar_cpp(x_scalar, cppargs);
+    vector<Scalar> dadx_born(static_cast<size_t>(ncomp), scalar_constant<Scalar>(0.0));
+    Scalar ares_born = scalar_constant<Scalar>(0.0);
+
+    if (cppargs.born_model == 1) {
+        Scalar charge_radius_sum = scalar_constant<Scalar>(0.0);
+        for (int i = 0; i < ncomp; ++i) {
+            if (is_ion_species(cppargs, i)) {
+                charge_radius_sum += x_scalar[static_cast<size_t>(i)]
+                    * cppargs.z[static_cast<size_t>(i)] * cppargs.z[static_cast<size_t>(i)]
+                    / active_born_radius_scalar_cpp<Scalar>(
+                        i,
+                        t,
+                        cppargs,
+                        &parameter_kind,
+                        component_index,
+                        &active_value
+                    );
+            }
+        }
+        const double Kborn = E_CHRG * E_CHRG / (4.0 * PI * kb * t * perm_vac);
+        ares_born = -Kborn * (scalar_constant<Scalar>(1.0) - scalar_constant<Scalar>(1.0) / eps_born) * charge_radius_sum;
+        for (int i = 0; i < ncomp; ++i) {
+            Scalar ion_part = scalar_constant<Scalar>(0.0);
+            if (is_ion_species(cppargs, i)) {
+                ion_part = (scalar_constant<Scalar>(1.0) - scalar_constant<Scalar>(1.0) / eps_born)
+                    * cppargs.z[static_cast<size_t>(i)] * cppargs.z[static_cast<size_t>(i)]
+                    / active_born_radius_scalar_cpp<Scalar>(
+                        i,
+                        t,
+                        cppargs,
+                        &parameter_kind,
+                        component_index,
+                        &active_value
+                    );
+            }
+            const Scalar eps_part = charge_radius_sum * deps_dx[static_cast<size_t>(i)] / (eps_born * eps_born);
+            dadx_born[static_cast<size_t>(i)] = -Kborn * (ion_part + eps_part);
+        }
+    } else if (cppargs.born_model == 2) {
+        const double eps_r_ion = 8.0;
+        const auto shell = supported_born_shell_state_scalar_cpp<Scalar>(
+            x_scalar,
+            cppargs,
+            t,
+            eps_born,
+            eps_r_ion,
+            &parameter_kind,
+            component_index,
+            &active_value
+        );
+        const double Kborn = E_CHRG * E_CHRG / (4.0 * PI * kb * t * perm_vac);
+        ares_born = -Kborn * shell.sum_bracket;
+        const Scalar inv_eps2 = scalar_constant<Scalar>(1.0) / (eps_born * eps_born);
+        const Scalar shell_coeff = scalar_constant<Scalar>(1.0 / eps_r_ion) - scalar_constant<Scalar>(1.0) / eps_born;
+        const bool use_deps = (cppargs.mu_born_comp_dep_rel_perm != 0);
+        const bool use_shell_chain = (cppargs.mu_born_comp_dep_delta_d != 0);
+        const Scalar deps_multiplier = (cppargs.mu_born_include_sum_term != 0)
+            ? shell.sum_gap
+            : scalar_constant<Scalar>(1.0);
+        for (int k = 0; k < ncomp; ++k) {
+            Scalar direct_part = scalar_constant<Scalar>(0.0);
+            if (std::abs(cppargs.z[static_cast<size_t>(k)]) > 1.0e-12) {
+                direct_part = cppargs.z[static_cast<size_t>(k)] * cppargs.z[static_cast<size_t>(k)]
+                    * shell.bracket[static_cast<size_t>(k)];
+            }
+            const Scalar deps_part = use_deps
+                ? deps_multiplier * deps_dx[static_cast<size_t>(k)] * inv_eps2
+                : scalar_constant<Scalar>(0.0);
+            const Scalar ddelta_part = use_shell_chain
+                ? shell_coeff * shell.sum_dpref_over_D2 * shell.f_k[static_cast<size_t>(k)]
+                : scalar_constant<Scalar>(0.0);
+            dadx_born[static_cast<size_t>(k)] = -Kborn * (direct_part + deps_part + ddelta_part);
+        }
+    }
+
+    Scalar sum_x_dadx_born = scalar_constant<Scalar>(0.0);
+    for (int i = 0; i < ncomp; ++i) {
+        sum_x_dadx_born += x_scalar[static_cast<size_t>(i)] * dadx_born[static_cast<size_t>(i)];
+    }
+    for (int i = 0; i < ncomp; ++i) {
+        out[static_cast<size_t>(i)] = ares_born + dadx_born[static_cast<size_t>(i)] - sum_x_dadx_born;
+    }
+    return out;
+}
+
+}  // namespace fugcoef_detail
+
+LnfugParameterDerivativeResult lnfug_parameter_derivative_result_cpp(
+    double t,
+    double rho,
+    vector<double> x,
+    const add_args& cppargs,
+    const std::string& parameter_kind,
+    int component_index
+) {
+    LnfugParameterDerivativeResult result;
+    result.size = static_cast<int>(x.size());
+    result.dlnfugdtheta.assign(x.size(), std::numeric_limits<double>::quiet_NaN());
+    std::string unsupported_reason;
+    if (!fugcoef_detail::lnfug_parameter_derivative_supported_cpp(cppargs, parameter_kind, component_index, &unsupported_reason)) {
+        result.finite_difference_fallback_reason = unsupported_reason;
+        return result;
+    }
+#ifndef EPCSAFT_HAS_CPPAD
+    result.finite_difference_fallback_reason =
+        "backend_unavailable: native lnphi-parameter derivatives require a CppAD-enabled build.";
+    return result;
+#else
+    using epcsaft::autodiff::CppADScalar;
+    double parameter_value = 0.0;
+    if (parameter_kind == "born_radius" || parameter_kind == "born_diameter") {
+        parameter_value = fugcoef_detail::active_born_radius_scalar_cpp<double>(component_index, t, cppargs);
+    } else {
+        parameter_value = (cppargs.f_solv.size() > static_cast<size_t>(component_index))
+            ? cppargs.f_solv[static_cast<size_t>(component_index)]
+            : 1.0;
+    }
+    std::vector<CppADScalar> independent(1);
+    independent[0] = parameter_value;
+    CppAD::Independent(independent);
+    std::vector<CppADScalar> dependent = fugcoef_detail::born_lnfug_parameter_scalar_cpp(
+        t,
+        rho,
+        x,
+        cppargs,
+        parameter_kind,
+        component_index,
+        independent[0]
+    );
+    CppAD::ADFun<double> tape(independent, dependent);
+    const std::vector<double> jacobian = tape.Jacobian(std::vector<double>{parameter_value});
+    result.supported = true;
+    result.derivative_backend = "autodiff_parameter";
+    result.finite_difference_fallback_used = false;
+    for (std::size_t i = 0; i < jacobian.size(); ++i) {
+        result.dlnfugdtheta[i] = jacobian[i];
+        if (!std::isfinite(result.dlnfugdtheta[i])) {
+            throw ValueError("Non-finite native lnphi-parameter derivative.");
         }
     }
     return result;

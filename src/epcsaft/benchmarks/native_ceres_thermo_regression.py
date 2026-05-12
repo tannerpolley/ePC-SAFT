@@ -144,11 +144,77 @@ def _activity_case_payload() -> tuple[epcsaft.ePCSAFTMixture, dict[str, Any]]:
     return mixture, request
 
 
+def _activity_ssmds_born_radius_case_payload() -> tuple[epcsaft.ePCSAFTMixture, dict[str, Any]]:
+    params = {
+        "m": np.asarray([1.2047, 1.0, 1.0, 1.0]),
+        "s": np.asarray([2.7927, 3.0, 2.8232, 2.7560]),
+        "e": np.asarray([353.95, 200.0, 230.0, 170.0]),
+        "z": np.asarray([0.0, 0.0, 1.0, -1.0]),
+        "dielc": np.asarray([78.09, 8.0, 8.0, 8.0]),
+        "d_born": np.asarray([0.0, 0.0, 3.445, 4.1]),
+        "f_solv": np.asarray([1.5, 1.0, 1.0, 1.0]),
+        "MW": np.asarray([18.01528e-3, 58.44e-3, 22.989e-3, 35.45e-3]),
+        "elec_model": {
+            "include_born_model": True,
+            "born_model": {
+                "d_Born_mode": 3,
+                "solvation_shell_model": True,
+                "dielectric_saturation": True,
+                "bulk_mode": "solvent",
+                "mu_born_model": {
+                    "comp_dep_rel_perm": True,
+                    "include_sum_term": True,
+                    "comp_dep_delta_d": True,
+                },
+            },
+        },
+    }
+    mixture = epcsaft.ePCSAFTMixture.from_params(params, species=["H2O", "NaCl", "Na+", "Cl-"])
+    initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
+    state = mixture.state(T=298.15, P=1.0e5, x=initial_x, phase="liq")
+    gamma = state.activity_coefficient(species=["H2O", "NaCl", "Na+", "Cl-"])
+    log_k = math.log(initial_x[2] * gamma["Na+"]) + math.log(initial_x[3] * gamma["Cl-"])
+    log_k -= math.log(initial_x[1] * gamma["NaCl"])
+    row = {
+        "row_id": "salt_speciation_activity_ssmds",
+        "row_mode": "reactive_speciation",
+        "T": 298.15,
+        "P": 1.0e5,
+        "initial_x": initial_x.tolist(),
+        "balance_matrix": [1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1],
+        "balance_rows": 3,
+        "total_vector": [0.998, 0.0015, 0.0015],
+        "reaction_stoichiometry": [0, -1, 1, 1],
+        "reaction_rows": 1,
+        "log_equilibrium_constants": [log_k - 0.25],
+        "reaction_standard_states": [0],
+        "options": {"jacobian_backend": "auto", "max_iterations": 50, "tolerance": 1.0e-10},
+        "targets": [{"family": "speciation", "target": "Na+", "index": 2, "observed": 0.00065, "scale": 1000.0}],
+    }
+    request = {
+        "species": ["H2O", "NaCl", "Na+", "Cl-"],
+        "rows": [row],
+        "parameters": [
+            {
+                "name": "Na+.d_born",
+                "kind": "born_radius",
+                "initial": 3.30,
+                "lower": 2.0,
+                "upper": 5.0,
+                "metadata": {"component_index": "2"},
+            }
+        ],
+        "options": {"max_iterations": 20, "derivative_backend": "implicit"},
+    }
+    return mixture, request
+
+
 CASE_BUILDERS = OrderedDict(
     [
         ("reactive_speciation_logk_implicit", _ideal_case_payload),
         ("reactive_speciation_concentration_logk_implicit", _concentration_case_payload),
         ("reactive_speciation_activity_logk_implicit", _activity_case_payload),
+        ("reactive_speciation_activity_ssmds_born_radius_implicit", _activity_ssmds_born_radius_case_payload),
     ]
 )
 

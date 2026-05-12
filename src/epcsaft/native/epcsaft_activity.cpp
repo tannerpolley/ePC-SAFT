@@ -25,12 +25,6 @@ bool component_activity_log_derivative_supported_cpp(const add_args& args, std::
         }
         return false;
     }
-    if (args.born_model == 2 || args.born_eps_mode == 1) {
-        if (reason != nullptr) {
-            *reason = "native component-activity derivatives do not yet support SSM/DS Born or solvent-reference Born epsilon modes.";
-        }
-        return false;
-    }
     return true;
 }
 
@@ -612,7 +606,7 @@ ComponentActivityLogDerivativeResult component_activity_log_derivative_result_im
     }
 
     const double eps = 1.0e-12;
-    const vector<double> x_ref = build_infinite_dilution_reference_cpp(x, groups, eps);
+    const vector<double> x_ref = miac_detail::build_infinite_dilution_reference_cpp(x, groups, eps);
     const vector<double> dx_dlogn = x_to_logn_jacobian_cpp(x);
     const vector<double> dxref_dx = reference_composition_jacobian_cpp(x, groups, eps);
 
@@ -636,7 +630,7 @@ ComponentActivityLogDerivativeResult component_activity_log_derivative_result_im
     key.p = p;
     key.phase = 0;
     key.x_ref = x_ref;
-    ReferenceStateValue ref = reference_state_from_cache_or_build_cpp(mixture, key, args);
+    ReferenceStateValue ref = miac_detail::reference_state_from_cache_or_build_cpp(mixture, key, args);
 
     LnfugCompositionDerivativeResult ref_lnfug_x = lnfug_composition_derivative_result_cpp(t, ref.rho, x_ref, args);
     LnfugDensityDerivativeResult ref_lnfug_rho = lnfug_density_derivative_result_cpp(t, ref.rho, x_ref, args);
@@ -745,4 +739,85 @@ ComponentActivityLogDerivativeResult component_activity_log_derivative_result_cp
         x,
         args
     );
+}
+
+ComponentActivityParameterDerivativeResult component_activity_parameter_derivative_result_cpp(
+    ePCSAFTMixtureNative* mixture,
+    double t,
+    double rho,
+    double p,
+    int phase,
+    const vector<double>& x,
+    const add_args& args,
+    const std::string& parameter_kind,
+    int component_index
+) {
+    ComponentActivityParameterDerivativeResult out;
+    out.size = static_cast<int>(x.size());
+    out.dloggamma_dtheta.assign(x.size(), std::numeric_limits<double>::quiet_NaN());
+
+    if (args.assoc_num.size() != 0 || !args.assoc_matrix.empty() || !args.k_hb.empty()
+        || !args.e_assoc.empty() || !args.vol_a.empty()) {
+        out.finite_difference_fallback_reason =
+            "backend_unavailable: native component-activity parameter derivatives currently support nonassociating states only.";
+        return out;
+    }
+    if (args.DH_model == 2) {
+        out.finite_difference_fallback_reason =
+            "backend_unavailable: native component-activity parameter derivatives do not support DH_model=2.";
+        return out;
+    }
+    if (args.dielc_rule != 0 && args.dielc_rule != 1) {
+        out.finite_difference_fallback_reason =
+            "backend_unavailable: native component-activity parameter derivatives currently support dielc_rule 0 or 1 only.";
+        return out;
+    }
+
+    ChargeGroups groups = collect_charge_groups(args, x.size());
+    if (groups.cations.empty() || groups.anions.empty() || groups.solvents.empty()) {
+        out.finite_difference_fallback_reason =
+            "backend_unavailable: native component-activity parameter derivatives require ionic and solvent species.";
+        return out;
+    }
+
+    const double eps = 1.0e-12;
+    const vector<double> x_ref = miac_detail::build_infinite_dilution_reference_cpp(x, groups, eps);
+    ReferenceStateKey key;
+    key.t = t;
+    key.p = p;
+    key.phase = 0;
+    key.x_ref = x_ref;
+    ReferenceStateValue ref = miac_detail::reference_state_from_cache_or_build_cpp(mixture, key, args);
+
+    LnfugParameterDerivativeResult current = lnfug_parameter_derivative_result_cpp(
+        t,
+        rho,
+        x,
+        args,
+        parameter_kind,
+        component_index
+    );
+    if (!current.supported) {
+        out.finite_difference_fallback_reason = current.finite_difference_fallback_reason;
+        return out;
+    }
+    LnfugParameterDerivativeResult reference = lnfug_parameter_derivative_result_cpp(
+        t,
+        ref.rho,
+        x_ref,
+        args,
+        parameter_kind,
+        component_index
+    );
+    if (!reference.supported) {
+        out.finite_difference_fallback_reason = reference.finite_difference_fallback_reason;
+        return out;
+    }
+    out.supported = true;
+    out.derivative_backend = "autodiff_component_activity_parameter";
+    out.finite_difference_fallback_used = false;
+    for (std::size_t i = 0; i < current.dlnfugdtheta.size(); ++i) {
+        out.dloggamma_dtheta[i] = current.dlnfugdtheta[i] - reference.dlnfugdtheta[i];
+    }
+    return out;
 }

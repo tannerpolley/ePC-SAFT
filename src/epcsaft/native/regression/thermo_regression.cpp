@@ -1,5 +1,6 @@
 #include "thermo_regression.h"
 
+#include "epcsaft_core_internal.h"
 #include "epcsaft_electrolyte.h"
 #include "implicit_sensitivity.h"
 
@@ -235,14 +236,23 @@ bool thermo_derivative_supported(
     const std::vector<NativeRegressionParameterSpec>& parameters,
     std::string* reason
 ) {
+    bool saw_non_logk_parameter = false;
     for (const auto& parameter : parameters) {
-        if (parameter.kind != "reaction_equilibrium_constant"
-            && parameter.kind != "log_equilibrium_constant") {
+        const bool logk_parameter =
+            parameter.kind == "reaction_equilibrium_constant"
+            || parameter.kind == "log_equilibrium_constant";
+        const bool born_parameter =
+            parameter.kind == "born_radius"
+            || parameter.kind == "born_diameter"
+            || parameter.kind == "solvation_factor"
+            || parameter.kind == "f_solv";
+        if (!logk_parameter && !born_parameter) {
             if (reason != nullptr) {
-                *reason = "native Ceres thermodynamic derivatives currently support reaction log-equilibrium constants only.";
+                *reason = "native Ceres thermodynamic derivatives currently support reaction log-equilibrium constants plus born_radius/f_solv reactive-speciation slices only.";
             }
             return false;
         }
+        saw_non_logk_parameter = saw_non_logk_parameter || born_parameter;
     }
     for (const auto& row : rows) {
         if (row.row_mode != "reactive_speciation") {
@@ -267,6 +277,14 @@ bool thermo_derivative_supported(
             if (target.family != "speciation") {
                 if (reason != nullptr) {
                     *reason = "native Ceres thermodynamic derivatives currently support speciation targets only.";
+                }
+                return false;
+            }
+        }
+        if (saw_non_logk_parameter) {
+            if (has_concentration || !has_activity) {
+                if (reason != nullptr) {
+                    *reason = "native Ceres non-logK thermodynamic derivatives currently support activity-standard-state reactive_speciation rows only.";
                 }
                 return false;
             }
@@ -328,16 +346,34 @@ void fill_implicit_speciation_jacobian(
     int residual_offset,
     int parameter_count
 ) {
+    ChemicalEquilibriumResultNative solved = chemical_equilibrium_native(
+        mixture,
+        row.t,
+        row.p,
+        row.initial_x,
+        row.balance_matrix_row_major,
+        row.balance_rows,
+        row.total_vector,
+        row.reaction_stoichiometry_row_major,
+        row.reaction_rows,
+        row.log_equilibrium_constants,
+        row.reaction_standard_states,
+        row.speciation_options
+    );
+    if (!solved.success) {
+        throw std::runtime_error("implicit reactive-speciation sensitivity requires a converged inner state.");
+    }
+    const std::vector<double>& composition = solved.composition;
     std::vector<double> log_x;
-    log_x.reserve(row.initial_x.size());
-    for (double x : row.initial_x) {
+    log_x.reserve(composition.size());
+    for (double x : composition) {
         log_x.push_back(std::log(std::max(x, row.speciation_options.min_mole_fraction)));
     }
     ChemicalResidualEvaluationNative residual_eval = evaluate_chemical_equilibrium_residual_native(
         mixture,
         row.t,
         row.p,
-        row.initial_x,
+        composition,
         log_x,
         true,
         row.balance_matrix_row_major,
@@ -355,12 +391,53 @@ void fill_implicit_speciation_jacobian(
         if (!parameter_matches_row(parameter, row)) {
             continue;
         }
-        const int reaction_index = metadata_int(parameter, "reaction_index", 0);
-        const int residual_row = row.balance_rows + 1 + reaction_index;
-        if (residual_row < 0 || residual_row >= residual_eval.jacobian_rows) {
-            throw std::runtime_error("reaction_equilibrium_constant derivative row is out of range.");
+        if (parameter.kind == "reaction_equilibrium_constant" || parameter.kind == "log_equilibrium_constant") {
+            const int reaction_index = metadata_int(parameter, "reaction_index", 0);
+            const int residual_row = row.balance_rows + 1 + reaction_index;
+            if (residual_row < 0 || residual_row >= residual_eval.jacobian_rows) {
+                throw std::runtime_error("reaction_equilibrium_constant derivative row is out of range.");
+            }
+            r_theta[static_cast<std::size_t>(residual_row * parameter_count + p)] = -1.0;
+            continue;
         }
-        r_theta[static_cast<std::size_t>(residual_row * parameter_count + p)] = -1.0;
+        const int phase_int = row.speciation_options.phase == "vap" ? 1 : 0;
+        ComponentActivityParameterDerivativeResult activity =
+            component_activity_parameter_derivative_result_cpp(
+                mixture.get(),
+                row.t,
+                mixture->solve_density_scoped(
+                    row.t,
+                    row.p,
+                    composition,
+                    phase_int,
+                    "thermo_regression_activity_parameter"
+                ),
+                row.p,
+                phase_int,
+                composition,
+                mixture->args(),
+                parameter.kind,
+                metadata_int(parameter, "component_index")
+            );
+        if (!activity.supported) {
+            throw std::runtime_error(
+                "implicit reactive-speciation thermodynamic sensitivity failed: "
+                + activity.finite_difference_fallback_reason
+            );
+        }
+        for (int reaction_index = 0; reaction_index < row.reaction_rows; ++reaction_index) {
+            if (row.reaction_standard_states[static_cast<std::size_t>(reaction_index)] != 0) {
+                continue;
+            }
+            const int residual_row = row.balance_rows + 1 + reaction_index;
+            double derivative_value = 0.0;
+            for (std::size_t species_index = 0; species_index < composition.size(); ++species_index) {
+                derivative_value += row.reaction_stoichiometry_row_major[
+                    static_cast<std::size_t>(reaction_index) * composition.size() + species_index
+                ] * activity.dloggamma_dtheta[species_index];
+            }
+            r_theta[static_cast<std::size_t>(residual_row * parameter_count + p)] = derivative_value;
+        }
     }
     NativeImplicitSensitivityResult sensitivity = solve_native_implicit_sensitivity(
         residual_eval.jacobian_row_major,
