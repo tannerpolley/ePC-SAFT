@@ -92,6 +92,133 @@ def _vector_terms_dict(terms, expected_size, label):
     return out
 
 
+def _derivative_result_payload(
+    *,
+    supported,
+    backend,
+    message,
+    value,
+    jacobian,
+    shape=None,
+    **extra,
+):
+    value_arr = np.asarray(value, dtype=float)
+    jac_arr = np.asarray(jacobian, dtype=float)
+    if shape is None:
+        if jac_arr.ndim == 2:
+            shape = [int(jac_arr.shape[0]), int(jac_arr.shape[1])]
+        elif value_arr.ndim == 0:
+            shape = [1, int(jac_arr.size)]
+        else:
+            shape = [int(value_arr.size), int(jac_arr.size // max(int(value_arr.size), 1))]
+    payload = {
+        "supported": bool(supported),
+        "backend": str(backend),
+        "message": str(message),
+        "value": value_arr,
+        "jacobian": jac_arr.reshape(tuple(shape)) if bool(supported) and jac_arr.size else jac_arr,
+        "shape": [int(shape[0]), int(shape[1])],
+    }
+    payload.update(extra)
+    return payload
+
+
+def _backend_from_contribution_details(details, *, available=True, reason=""):
+    if not available:
+        return "backend_unavailable", reason or "backend_unavailable"
+    labels = {str(v) for v in dict(details).values()}
+    if "backend_unavailable" in labels:
+        return "backend_unavailable", reason or "backend_unavailable"
+    if "cppad" in labels:
+        return "cppad", "mixed CppAD/analytic derivative contributions"
+    if "cppad_implicit" in labels:
+        return "cppad_implicit", "mixed implicit CppAD/analytic derivative contributions"
+    if "analytic_implicit" in labels:
+        return "analytic_implicit", "mixed implicit analytic/analytic derivative contributions"
+    if "legacy_eigen_forward" in labels:
+        return "legacy_eigen_forward", "legacy Eigen forward-mode derivative contributions"
+    return "analytic", "analytic derivative contributions"
+
+
+def _backend_unavailable_result(value, rows, cols, message, **extra):
+    return _derivative_result_payload(
+        supported=False,
+        backend="backend_unavailable",
+        message=message,
+        value=value,
+        jacobian=np.asarray([], dtype=float),
+        shape=[rows, cols],
+        **extra,
+    )
+
+
+def _as_rule_number(value, aliases, default):
+    if value is None:
+        return int(default)
+    if isinstance(value, (int, np.integer)):
+        return int(value)
+    token = str(value).strip().lower()
+    if token in aliases:
+        return int(aliases[token])
+    if token.isdigit() or (token.startswith("-") and token[1:].isdigit()):
+        return int(token)
+    return int(default)
+
+
+def _state_rel_perm_rule_and_mode(params):
+    z = np.asarray(params.get("z", []), dtype=float).flatten()
+    default_rule = 1 if z.size else 0
+    elec_model = params.get("elec_model") if isinstance(params.get("elec_model"), dict) else {}
+    rel_perm = elec_model.get("rel_perm", {}) if isinstance(elec_model.get("rel_perm", {}), dict) else {}
+    rule_alias = {
+        "constant": 0,
+        "rule0": 0,
+        "linear": 1,
+        "linear-molefraction": 1,
+        "linear-mixing-mole": 1,
+        "rule1": 1,
+        "linear-massfraction": 2,
+        "linear-mixing-weight": 2,
+        "rule2": 2,
+        "combined": 3,
+        "rule3": 3,
+        "empirical": 4,
+        "rule4": 4,
+        "rule5": 5,
+        "rule6": 6,
+        "aqueous-organic": 8,
+        "aqueous_organic": 8,
+        "mixed-aqueous-organic": 8,
+        "mixed_aqueous_organic": 8,
+        "rule8": 8,
+        "salt-free-massfraction": 9,
+        "salt_free_massfraction": 9,
+        "salt-free-solvent-massfraction": 9,
+        "salt_free_solvent_weight": 9,
+        "rule9": 9,
+    }
+    diff_alias = {
+        "auto": 3,
+        "automatic": 3,
+        "analytic": 0,
+        "analytical": 0,
+        "autodiff": 2,
+        "automatic_differentiation": 2,
+        "automatic-differentiation": 2,
+        "automatic differentiation": 2,
+    }
+    rule = _as_rule_number(rel_perm.get("rule"), rule_alias, default_rule)
+    mode = _as_rule_number(rel_perm.get("differential_mode"), diff_alias, 3)
+    return rule, mode
+
+
+def _relative_permittivity_backend(params):
+    rule, mode = _state_rel_perm_rule_and_mode(params)
+    if mode == 2 or (mode == 3 and rule == 8):
+        return "legacy_eigen_forward"
+    return "analytic"
+
+
 class ePCSAFTMixture:
     """Native-backed ePC-SAFT parameter model and state factory."""
 
@@ -975,6 +1102,324 @@ class ePCSAFTState:
         if mw.size != self._x.size:
             raise InputError("Mass density requires one molecular-weight value per component.")
         return float(self.molar_density() * float(np.dot(np.asarray(self._x, dtype=float), mw)))
+
+    def _native_args_copy(self):
+        return create_struct(self._mixture._params)
+
+    def pressure_density_derivative_result(self):
+        """Return the pressure derivative with respect to density in result-contract form."""
+        ncomp = int(self._x.size)
+        try:
+            raw = _core._native_cppad_pressure_density(
+                self._T,
+                self.molar_density(),
+                np_to_vector_double(self._x),
+                self._native_args_copy(),
+            )
+        except Exception as exc:
+            return _backend_unavailable_result(
+                [self.pressure()],
+                1,
+                1,
+                f"backend_unavailable: pressure-density derivative backend failed: {exc}",
+                variable_order=("density",),
+            )
+        if not bool(raw.get("cppad_compiled", False)):
+            return _backend_unavailable_result(
+                [self.pressure()],
+                1,
+                1,
+                str(raw.get("message", "backend_unavailable: CppAD support is disabled in this native build")),
+                variable_order=("density",),
+            )
+        return _derivative_result_payload(
+            supported=bool(raw.get("cppad_used", False)),
+            backend=str(raw.get("derivative_backend", "cppad")),
+            message=str(raw.get("message", "CppAD pressure-density derivative available")),
+            value=[self.pressure()],
+            jacobian=np.asarray(raw.get("jacobian_row_major", []), dtype=float),
+            shape=[1, 1],
+            variable_order=("density",),
+            component_order=tuple(self._mixture.species[:ncomp]),
+        )
+
+    def pressure_composition_derivative_result(self):
+        """Return pressure composition-derivative support status."""
+        return _backend_unavailable_result(
+            [self.pressure()],
+            1,
+            int(self._x.size),
+            "backend_unavailable: pressure composition derivatives require EOS pressure sensitivity routing.",
+            variable_order=tuple(self._mixture.species),
+        )
+
+    def pressure_parameter_derivative_result(self):
+        """Return pressure parameter-derivative support status."""
+        return _backend_unavailable_result(
+            [self.pressure()],
+            1,
+            0,
+            "backend_unavailable: pressure parameter derivatives are not implemented.",
+            parameter_order=(),
+        )
+
+    def density_pressure_derivative_result(self):
+        """Return density pressure-derivative support status for pressure-root states."""
+        return _backend_unavailable_result(
+            [self.molar_density()],
+            1,
+            1,
+            "backend_unavailable: density-root implicit pressure derivatives are not implemented.",
+            variable_order=("pressure",),
+        )
+
+    def ares_composition_derivative_result(self):
+        """Return residual-Helmholtz composition derivatives in the public result shape."""
+        result = self._composition_derivative_residual_helmholtz_result()
+        backend, message = _backend_from_contribution_details(
+            result["derivative_backend"],
+            available=bool(result["derivative_available"]),
+            reason=str(result["backend_unavailable_reason"]),
+        )
+        return _derivative_result_payload(
+            supported=backend != "backend_unavailable",
+            backend=backend,
+            message=message,
+            value=[self.residual_helmholtz()],
+            jacobian=np.asarray(result["total"], dtype=float).reshape((1, int(self._x.size))),
+            shape=[1, int(self._x.size)],
+            variable_order=tuple(self._mixture.species),
+            backend_details=dict(result["derivative_backend"]),
+            source_equation_ids=("ares_total",),
+        )
+
+    def chemical_potential_composition_derivative_result(self):
+        """Return chemical-potential composition-derivative support status."""
+        ncomp = int(self._x.size)
+        return _backend_unavailable_result(
+            self.residual_chemical_potential(),
+            ncomp,
+            ncomp,
+            "backend_unavailable: chemical-potential composition Jacobians require second composition derivatives.",
+            variable_order=tuple(self._mixture.species),
+            component_order=tuple(self._mixture.species),
+        )
+
+    def ln_fugacity_composition_derivative_result(self):
+        """Return ln-fugacity composition-derivative support status."""
+        ncomp = int(self._x.size)
+        return _backend_unavailable_result(
+            self.fugacity_coefficient(natural_log=True),
+            ncomp,
+            ncomp,
+            "backend_unavailable: ln-fugacity composition Jacobians require second composition derivatives.",
+            variable_order=tuple(self._mixture.species),
+            component_order=tuple(self._mixture.species),
+        )
+
+    def ln_fugacity_parameter_derivative_result(self):
+        """Return ln-fugacity parameter derivatives where production support exists."""
+        ncomp = int(self._x.size)
+        value = self.fugacity_coefficient(natural_log=True)
+        born = self.born_ssmds_liquid_derivatives()
+        if not bool(born.get("supported", False)):
+            return _backend_unavailable_result(
+                value,
+                ncomp,
+                0,
+                str(born.get("message", "backend_unavailable: ln-fugacity parameter derivatives are not implemented.")),
+                component_order=tuple(self._mixture.species),
+                parameter_order=(),
+            )
+        jacobian = np.concatenate(
+            [
+                np.asarray(born["lnfug_d_d_born"], dtype=float),
+                np.asarray(born["lnfug_d_f_solv"], dtype=float),
+            ],
+            axis=1,
+        )
+        parameter_order = tuple(f"d_born:{name}" for name in self._mixture.species) + tuple(
+            f"f_solv:{name}" for name in self._mixture.species
+        )
+        return _derivative_result_payload(
+            supported=True,
+            backend=str(born.get("backend", "analytic")),
+            message=str(born.get("message", "analytic liquid-electrolyte SSM+DS Born parameter derivatives available")),
+            value=value,
+            jacobian=jacobian,
+            shape=[ncomp, 2 * ncomp],
+            component_order=tuple(self._mixture.species),
+            parameter_order=parameter_order,
+            phase_scope="liquid_electrolyte_only",
+        )
+
+    def activity_composition_derivative_result(self, species=None):
+        """Return activity-coefficient composition-derivative support status."""
+        species = self._mixture.species if species is None else [str(s) for s in species]
+        ncomp = int(self._x.size)
+        try:
+            values = np.asarray([self.activity_coefficient(species=species)[label] for label in species], dtype=float)
+        except Exception:
+            values = np.asarray([], dtype=float)
+        return _backend_unavailable_result(
+            values,
+            ncomp,
+            ncomp,
+            "backend_unavailable: activity-coefficient composition Jacobians are not implemented.",
+            variable_order=tuple(species),
+            component_order=tuple(species),
+        )
+
+    def activity_parameter_derivative_result(self, species=None):
+        """Return activity-coefficient parameter derivatives where production support exists."""
+        species = self._mixture.species if species is None else [str(s) for s in species]
+        ncomp = int(self._x.size)
+        born = self.born_ssmds_liquid_derivatives()
+        try:
+            gamma = self.activity_coefficient(species=species)
+            value = np.log(np.asarray([gamma[label] for label in species], dtype=float))
+        except Exception:
+            value = np.asarray([], dtype=float)
+        if not bool(born.get("supported", False)):
+            return _backend_unavailable_result(
+                value,
+                ncomp,
+                0,
+                str(born.get("message", "backend_unavailable: activity parameter derivatives are not implemented.")),
+                component_order=tuple(species),
+                parameter_order=(),
+                value_basis="natural_log_activity_coefficient",
+            )
+        jacobian = np.concatenate(
+            [
+                np.asarray(born["lngamma_d_d_born"], dtype=float),
+                np.asarray(born["lngamma_d_f_solv"], dtype=float),
+            ],
+            axis=1,
+        )
+        parameter_order = tuple(f"d_born:{name}" for name in self._mixture.species) + tuple(
+            f"f_solv:{name}" for name in self._mixture.species
+        )
+        return _derivative_result_payload(
+            supported=True,
+            backend=str(born.get("backend", "analytic")),
+            message=str(born.get("message", "analytic liquid-electrolyte SSM+DS Born activity derivatives available")),
+            value=value,
+            jacobian=jacobian,
+            shape=[ncomp, 2 * ncomp],
+            component_order=tuple(species),
+            parameter_order=parameter_order,
+            value_basis="natural_log_activity_coefficient",
+            phase_scope="liquid_electrolyte_only",
+        )
+
+    def relative_permittivity_composition_derivative_result(self):
+        """Return relative-permittivity composition derivatives in result-contract form."""
+        try:
+            epsilon, deps_dx = self.relative_permittivity()
+        except Exception as exc:
+            return _backend_unavailable_result(
+                [],
+                1,
+                int(self._x.size),
+                f"backend_unavailable: relative-permittivity derivative backend failed: {exc}",
+                variable_order=tuple(self._mixture.species),
+            )
+        return _derivative_result_payload(
+            supported=True,
+            backend=_relative_permittivity_backend(self._mixture._params),
+            message="relative-permittivity composition derivative available",
+            value=[float(epsilon)],
+            jacobian=np.asarray(deps_dx, dtype=float).reshape((1, int(self._x.size))),
+            shape=[1, int(self._x.size)],
+            variable_order=tuple(self._mixture.species),
+            source_equation_ids=("relative_permittivity",),
+        )
+
+    def relative_permittivity_parameter_derivative_result(self):
+        """Return relative-permittivity parameter derivatives for supported dielectric rules."""
+        params = self._mixture._params
+        try:
+            epsilon, _ = self.relative_permittivity()
+        except Exception as exc:
+            return _backend_unavailable_result(
+                [],
+                1,
+                0,
+                f"backend_unavailable: relative-permittivity derivative backend failed: {exc}",
+                parameter_order=(),
+            )
+        rule, _mode = _state_rel_perm_rule_and_mode(params)
+        dielc = np.asarray(params.get("dielc", []), dtype=float).flatten()
+        if rule != 1 or dielc.size != self._x.size:
+            return _backend_unavailable_result(
+                [float(epsilon)],
+                1,
+                0,
+                "backend_unavailable: relative-permittivity parameter derivatives are implemented for linear mole-fraction mixing only.",
+                parameter_order=(),
+            )
+        return _derivative_result_payload(
+            supported=True,
+            backend="analytic",
+            message="analytic linear-mixing relative-permittivity parameter derivatives available",
+            value=[float(epsilon)],
+            jacobian=np.asarray(self._x, dtype=float).reshape((1, int(self._x.size))),
+            shape=[1, int(self._x.size)],
+            parameter_order=tuple(f"relative_permittivity:{name}" for name in self._mixture.species),
+            source_equation_ids=("relative_permittivity",),
+        )
+
+    def derivative_coverage_matrix(self):
+        """Return structured derivative backend coverage for EOS property workflows."""
+        ncomp = int(self._x.size)
+        rows = []
+
+        def add(quantity, derivative, result, *, not_applicable=False, source_equation_ids=()):
+            rows.append(
+                {
+                    "quantity": quantity,
+                    "derivative": derivative,
+                    "backend": str(result.get("backend", "backend_unavailable")),
+                    "supported": bool(result.get("supported", False)),
+                    "not_applicable": bool(not_applicable),
+                    "backend_unavailable_reason": "" if result.get("supported", False) else str(result.get("message", "")),
+                    "source_equation_ids": list(source_equation_ids),
+                }
+            )
+
+        composition = self._composition_derivative_residual_helmholtz_result()
+        details = dict(composition["derivative_backend"])
+        assoc_active = bool(np.asarray(self._mixture._params.get("assoc_num", []), dtype=int).size)
+        for key, quantity, eqid in (
+            ("hc", "hard_chain", "ares_hc"),
+            ("disp", "dispersion", "ares_disp"),
+            ("assoc", "association", "ares_assoc"),
+            ("ion", "debye_huckel / ion", "ares_dh"),
+            ("born", "born_direct", "ares_born"),
+        ):
+            backend = details.get(key, "backend_unavailable")
+            if key == "assoc" and assoc_active and backend == "analytic":
+                backend = "analytic_implicit"
+            add(
+                quantity,
+                "composition",
+                {"supported": backend != "backend_unavailable", "backend": backend, "message": ""},
+                not_applicable=(key in {"assoc", "ion", "born"} and np.allclose(composition["terms"][key], 0.0)),
+                source_equation_ids=(eqid,),
+            )
+
+        born_result = self.born_ssmds_liquid_derivatives()
+        add("born_ssmds_liquid", "d_born/f_solv", born_result, source_equation_ids=("ares_born",))
+        add("relative_permittivity", "composition", self.relative_permittivity_composition_derivative_result())
+        add("pressure", "density", self.pressure_density_derivative_result(), source_equation_ids=("pressure_from_z",))
+        add("fugacity", "composition", self.ln_fugacity_composition_derivative_result(), source_equation_ids=("lnphi_total",))
+        add("activity", "composition", self.activity_composition_derivative_result(), source_equation_ids=("lngamma_sym",))
+        add("chemical_potential", "composition", self.chemical_potential_composition_derivative_result(), source_equation_ids=("mu_res",))
+        add("density_root", "pressure", self.density_pressure_derivative_result(), source_equation_ids=("density_root",))
+        if ncomp == 0:
+            raise SolutionError("Derivative coverage matrix requires at least one component.")
+        return rows
 
     def _temperature_derivative_residual_helmholtz_term_result(self):
         result = self._native.temperature_derivative_residual_helmholtz_result()

@@ -346,11 +346,11 @@ namespace {
 std::string contribution_backend_name(int mode) {
     if (mode == 0) return "analytic";
     if (mode == 1) return "backend_unavailable";
-    if (mode == 2) return "autodiff";
+    if (mode == 2) return "legacy_eigen_forward";
     if (mode == 3 || mode == 5) {
         return "analytic";
     }
-    if (mode == 4) return "autodiff";
+    if (mode == 4) return "legacy_eigen_forward";
     return "unknown";
 }
 

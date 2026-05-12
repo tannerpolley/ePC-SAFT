@@ -670,8 +670,8 @@
     P = ZRT\rho = Zk_{B}T\rho_{N}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_Z.cpp"
-      line: 77
-      comment_line: 76
+      line: 81
+      comment_line: 80
       context: "double p_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {"
 - eqid: "z_from_rho"
   section: "Density"
@@ -692,8 +692,8 @@
         1+\rho\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\rho}\right)_{T,x_{i}}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_Z.cpp"
-      line: 64
-      comment_line: 62
+      line: 68
+      comment_line: 66
       context: "CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {"
 - eqid: "density_solve_residual"
   section: "Density"
@@ -743,9 +743,9 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_ares.cpp"
-      line: 20
-      comment_line: 19
-      context: "static double ares_hs_cpp(const HardChainState &hc_state) {"
+      line: 152
+      comment_line: 151
+      context: "template <typename Scalar>"
 - eqid: "hs_ares_dadrho"
   section: "Contribution Intermediates"
   subsection: "Hard-Chain"
@@ -1802,8 +1802,8 @@
     \tilde{a}^{\mathrm{res}}=\tilde{a}^{h c}+\tilde{a}^{\text {disp }}+\tilde{a}^{\text {assoc }}+\tilde{a}^{\text {DH }}+\tilde{a}^{\text {Born }}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_ares.cpp"
-      line: 126
-      comment_line: 125
+      line: 386
+      comment_line: 385
       context: "AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "dares_dT"
   section: "Residual Helmholtz Energy"
@@ -1823,8 +1823,8 @@
         +\left(\frac{\partial\tilde{a}^\mathrm{Born}}{\partial T}\right)_{\rho,x_{i}}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_ares.cpp"
-      line: 183
-      comment_line: 182
+      line: 501
+      comment_line: 500
       context: "ScalarContributionTerms temperature_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {"
 - eqid: "ares_hc"
   section: "Residual Helmholtz Energy"
@@ -1846,9 +1846,9 @@
         \end{aligned}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_ares.cpp"
-      line: 30
-      comment_line: 29
-      context: "static double ares_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const vector<double> &x, const add_args &cppargs) {"
+      line: 163
+      comment_line: 162
+      context: "template <typename Scalar>"
 - eqid: "hc_ares_dadrho"
   section: "Residual Helmholtz Energy"
   subsection: "Hard-Chain Reference Contribution"
@@ -1935,9 +1935,9 @@
     \tilde{a}^{\mathrm{disp}}=-2 \pi \rho I_{1}(\eta, \bar{m}) \overline{m^2 \epsilon \sigma^3}-\pi \rho \bar{m} C_{1} I_{2}(\eta, \bar{m}) \overline{m^2 \epsilon^2 \sigma^3}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_ares.cpp"
-      line: 40
-      comment_line: 39
-      context: "static double ares_disp_cpp(const MixtureState &thermo, const DispersionPolynomialState &dispersion) {"
+      line: 174
+      comment_line: 173
+      context: "template <typename Scalar>"
 - eqid: "disp_ares_dadrho"
   section: "Residual Helmholtz Energy"
   subsection: "Dispersion Contribution"
@@ -2021,9 +2021,9 @@
     \tilde{a}^{\mathrm{assoc}}= \sum_{i} x_{i}\sum_{\mathrm{A}_{i}}\left(\ln X^{\mathrm{A}_{i}}-\frac{X^{\mathrm{A}_{i}}}{2}+\frac{1}{2}\right)
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_ares.cpp"
-      line: 46
-      comment_line: 45
-      context: "static double ares_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {"
+      line: 222
+      comment_line: 221
+      context: "template <typename Scalar>"
 - eqid: "assoc_ares_dadrho"
   section: "Residual Helmholtz Energy"
   subsection: "Association Contribution"
@@ -2104,9 +2104,9 @@
     \tilde{a}^{DH}=-\frac{\kappa e^{2}}{12\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}\sum_{i}x_{i}z_{i}^{2}\chi_{i}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_ares.cpp"
-      line: 59
-      comment_line: 58
-      context: "static double ares_ion_cpp(double t, const IonIntermediateState &ion_state) {"
+      line: 244
+      comment_line: 243
+      context: "template <typename Scalar>"
 - eqid: "dh_ares_dadrho"
   section: "Residual Helmholtz Energy"
   subsection: "Debye and Huckel Contribution"
@@ -2213,9 +2213,9 @@
     D_{i,\delta}^{(m_\delta)},
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_ares.cpp"
-      line: 68
-      comment_line: 67
-      context: "static double ares_born_cpp(double t, const BornIntermediateState &born_state) {"
+      line: 283
+      comment_line: 282
+      context: "template <typename Scalar>"
 - eqid: "born_ares_dadrho"
   section: "Residual Helmholtz Energy"
   subsection: "Born Contribution"
@@ -2416,8 +2416,8 @@
         + \rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_Z.cpp"
-      line: 64
-      comment_line: 63
+      line: 68
+      comment_line: 67
       context: "CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {"
 - eqid: "z_alpha"
   section: "Compressibility Factor"
@@ -2439,8 +2439,8 @@
         \alpha\in\{hc,disp,assoc,DH,Born\}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_Z.cpp"
-      line: 51
-      comment_line: 50
+      line: 55
+      comment_line: 54
       context: "ScalarContributionTerms compressibility_terms_from_dadrho_cpp(const DadrhoResult &result) {"
 - eqid: "mu_res"
   section: "Chemical Potential"
