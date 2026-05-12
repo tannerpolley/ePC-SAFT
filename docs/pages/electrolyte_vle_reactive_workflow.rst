@@ -53,12 +53,13 @@ paying for unused activity calls under the default ``activity_output="auto"``.
 The derivative default is native-owned and diagnostic-friendly:
 ``jacobian_backend="auto"`` uses the analytic log-amount Jacobian for
 ``standard_state="ideal_mole_fraction"``. Activity- or concentration-coupled
-standard states currently raise ``backend_unavailable`` until analytic or
-autodiff residual derivatives are implemented. Diagnostics report
+standard states currently raise ``backend_unavailable`` until analytic, CppAD,
+or implicit residual derivatives are implemented. Diagnostics report
 ``requested_jacobian_backend``, ``derivative_backend``, ``derivative_status``,
 and ``backend_unavailable_reason`` so users can see the active support boundary.
-Explicit ``jacobian_backend="autodiff"`` remains strict and raises when the
-requested derivative path is unavailable.
+Explicit legacy Eigen forward-mode requests remain strict and raise when the
+requested derivative path is unavailable. Finite-difference Jacobians are not a
+supported fallback.
 
 .. code-block:: python
 

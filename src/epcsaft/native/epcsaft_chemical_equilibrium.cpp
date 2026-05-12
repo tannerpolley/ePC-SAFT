@@ -268,13 +268,14 @@ ChemicalDerivativeSelection select_chemical_derivative_backend(
 ) {
     ChemicalDerivativeSelection selection;
     const std::string requested = options.jacobian_backend;
-    if (requested == "autodiff") {
-        selection.backend_unavailable_reason =
-            "backend_unavailable: autodiff chemical-equilibrium residual jacobian is not implemented for log-species amounts.";
+    if (requested == "autodiff" || requested == "cppad") {
+        selection.backend_unavailable_reason = requested == "cppad"
+            ? "backend_unavailable: CppAD chemical-equilibrium residual jacobian is not implemented for log-species amounts."
+            : "backend_unavailable: legacy Eigen forward-mode chemical-equilibrium residual jacobian is not implemented for log-species amounts.";
         throw ValueError(selection.backend_unavailable_reason);
     }
     if (requested != "auto" && requested != "analytic") {
-        throw ValueError("chemical equilibrium jacobian_backend must be 'auto', 'autodiff', or 'analytic'.");
+        throw ValueError("chemical equilibrium jacobian_backend must be 'auto', 'autodiff', 'analytic', or 'cppad'.");
     }
     if (standard_states_all_ideal_mole_fraction(reaction_standard_states)) {
         selection.backend = "analytic";
@@ -285,7 +286,7 @@ ChemicalDerivativeSelection select_chemical_derivative_backend(
     selection.backend = "backend_unavailable";
     selection.capability_path = "chemical_equilibrium:activity_or_concentration:log_amounts";
     selection.backend_unavailable_reason =
-        "backend_unavailable: analytic/autodiff chemical-equilibrium residual jacobian is unavailable for activity- or concentration-coupled standard states.";
+        "backend_unavailable: analytic/CppAD/implicit chemical-equilibrium residual jacobian is unavailable for activity- or concentration-coupled standard states.";
     throw ValueError(selection.backend_unavailable_reason);
     return selection;
 }

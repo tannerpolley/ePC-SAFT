@@ -37,7 +37,7 @@ class EquilibriumOptions:
     ignored_legacy_options: tuple[str, ...] = ()
     density_diagnostics: Literal["auto", "off", "full"] = "auto"
     experimental_coupled_density_lle: bool = False
-    jacobian_backend: Literal["auto", "autodiff", "analytic"] = "auto"
+    jacobian_backend: Literal["auto", "autodiff", "analytic", "cppad"] = "auto"
     solver_backend: Literal["auto", "newton", "ipopt"] = "auto"
     hessian_strategy: Literal["gauss_newton", "lbfgs"] = "gauss_newton"
     timeout_seconds: float | None = None
@@ -594,8 +594,8 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
     if not isinstance(options.experimental_coupled_density_lle, bool):
         raise InputError("options.experimental_coupled_density_lle must be boolean.")
     jacobian_backend = str(options.jacobian_backend).strip().lower()
-    if jacobian_backend not in {"auto", "autodiff", "analytic"}:
-        raise InputError("options.jacobian_backend must be 'auto', 'autodiff', or 'analytic'.")
+    if jacobian_backend not in {"auto", "autodiff", "analytic", "cppad"}:
+        raise InputError("options.jacobian_backend must be 'auto', 'autodiff', 'analytic', or 'cppad'.")
     solver_backend = str(options.solver_backend).strip().lower()
     if solver_backend not in {"auto", "newton", "ipopt"}:
         raise InputError("options.solver_backend must be 'auto', 'newton', or 'ipopt'.")
@@ -1092,7 +1092,114 @@ def _native_trial_from_payload(payload: dict[str, Any]) -> StabilityTrial:
     )
 
 
+def _residual_norm_from_diagnostics(diagnostics: dict[str, Any]) -> float | None:
+    for key in ("solver_residual_norm", "fugacity_residual_norm", "residual_norm", "best_fugacity_residual_norm"):
+        if key in diagnostics:
+            try:
+                return float(diagnostics[key])
+            except (TypeError, ValueError):
+                return None
+    return None
+
+
+def _solved_internal_states(problem_kind: str) -> list[str]:
+    by_kind = {
+        "tp_flash": ["density_roots", "phase_compositions"],
+        "bubble_p": ["density_roots", "bubble_pressure_root", "phase_compositions"],
+        "bubble_t": ["density_roots", "bubble_temperature_root", "phase_compositions"],
+        "dew_p": ["density_roots", "dew_pressure_root", "phase_compositions"],
+        "dew_t": ["density_roots", "dew_temperature_root", "phase_compositions"],
+        "lle_flash": ["density_roots", "phase_compositions"],
+        "electrolyte_lle": ["density_roots", "charge_constrained_formula_basis", "phase_compositions"],
+        "electrolyte_lle_flash": ["density_roots", "charge_constrained_formula_basis", "phase_compositions"],
+        "stability": ["density_roots", "tpd_trial_compositions"],
+        "electrolyte_stability": ["density_roots", "charge_constrained_formula_basis", "tpd_trial_compositions"],
+    }
+    return list(by_kind.get(problem_kind, ["density_roots"]))
+
+
+def _derivative_backend_blocks(problem_kind: str, derivative_backend: str) -> dict[str, str]:
+    blocks: dict[str, str] = {
+        "density_root": "backend_unavailable",
+        "eos_state_properties": "analytic",
+    }
+    if "bubble" in problem_kind:
+        blocks["bubble_pressure_root" if problem_kind == "bubble_p" else "bubble_or_dew_root"] = derivative_backend
+    elif "dew" in problem_kind:
+        blocks["dew_root"] = derivative_backend
+    elif "lle" in problem_kind:
+        blocks["lle_residual"] = derivative_backend
+    elif "stability" in problem_kind:
+        blocks["tpd_trial_residual"] = derivative_backend
+    else:
+        blocks["phase_equilibrium_residual"] = derivative_backend
+    return blocks
+
+
+def _normalize_derivative_diagnostics(
+    diagnostics: dict[str, Any],
+    *,
+    problem_kind: str,
+    phase_count: int = 0,
+) -> dict[str, Any]:
+    diagnostics = dict(diagnostics)
+    derivative_backend = str(diagnostics.get("derivative_backend", "backend_unavailable"))
+    diagnostics.setdefault("thermodynamic_backend", "epcsaft_state_fugacity_activity_property_api")
+    diagnostics.setdefault(
+        "solver_backend", diagnostics.get("nonlinear_solver", diagnostics.get("selected_solver_backend", "native"))
+    )
+    diagnostics.setdefault("requested_jacobian_backend", "auto")
+    diagnostics.setdefault("derivative_backend", derivative_backend)
+    diagnostics.setdefault("derivative_status", derivative_backend)
+    diagnostics.setdefault("jacobian_fallback_used", False)
+    diagnostics.setdefault("hessian_fallback_used", False)
+    if derivative_backend == "backend_unavailable":
+        diagnostics.setdefault(
+            "backend_unavailable_reason",
+            "backend_unavailable: equilibrium sensitivities are not implemented for this route.",
+        )
+        diagnostics.setdefault("derivative_available", False)
+        diagnostics.setdefault("jacobian_available", False)
+    residual_norm = _residual_norm_from_diagnostics(diagnostics)
+    if residual_norm is not None:
+        diagnostics.setdefault("residual_norm", residual_norm)
+    diagnostics.setdefault("solved_internal_states", _solved_internal_states(problem_kind))
+    diagnostics.setdefault("derivative_backend_by_block", _derivative_backend_blocks(problem_kind, derivative_backend))
+    diagnostics.setdefault("implicit_sensitivity_blocks", [])
+    residual_by_block: dict[str, float] = {}
+    if "solver_residual_norm" in diagnostics:
+        residual_by_block["solver"] = float(diagnostics["solver_residual_norm"])
+    if "fugacity_residual_norm" in diagnostics:
+        residual_by_block["fugacity"] = float(diagnostics["fugacity_residual_norm"])
+    if "material_balance_error" in diagnostics:
+        residual_by_block["material_balance"] = float(diagnostics["material_balance_error"])
+    if "charge_balance_error" in diagnostics:
+        residual_by_block["charge_balance"] = float(diagnostics["charge_balance_error"])
+    diagnostics.setdefault("residual_norm_by_block", residual_by_block)
+    best_available = bool(
+        phase_count
+        or diagnostics.get("best_noncollapsed_candidate") == "accepted"
+        or diagnostics.get("best_noncollapsed_candidate") == "available"
+        or "best_P" in diagnostics
+    )
+    diagnostics.setdefault("best_state_available", best_available)
+    if best_available:
+        diagnostics.setdefault("best_state", {"phase_count": int(phase_count), "source": "native_equilibrium_result"})
+    diagnostics.setdefault(
+        "row_failure_count", int(diagnostics.get("state_failure_count", diagnostics.get("density_failure_count", 0)))
+    )
+    diagnostics.setdefault("association_solver_status", "backend_unavailable_if_active")
+    return diagnostics
+
+
 def _native_result_from_payload(payload: dict[str, Any]) -> EquilibriumResult | StabilityResult:
+    diagnostics = _normalize_derivative_diagnostics(
+        payload.get("diagnostics") or {},
+        problem_kind=str(payload.get("problem_kind", "")),
+        phase_count=len(payload.get("phases", ()) or ()),
+    )
+    payload = dict(payload)
+    payload["diagnostics"] = diagnostics
     if payload.get("result_type") == "stability":
         return StabilityResult(
             backend=payload["backend"],
@@ -1626,6 +1733,7 @@ def _neutral_bubble_dew_result(
         "neutral_fallback_used": bool(neutral_fallback_used),
         "neutral_fallback_reason": str(neutral_fallback_reason),
     }
+    diagnostics = _normalize_derivative_diagnostics(diagnostics, problem_kind=problem_kind, phase_count=len(phases))
     return EquilibriumResult(
         backend="neutral_bubble_dew",
         problem_kind=problem_kind,
@@ -1862,6 +1970,12 @@ def electrolyte_lle_flash_native(
             options=opts,
             diagnostics=diagnostics,
         )
+        if diagnostics is not None:
+            diagnostics = _normalize_derivative_diagnostics(
+                diagnostics,
+                problem_kind="electrolyte_lle",
+                phase_count=0,
+            )
         raise SolutionError("electrolyte LLE flash did not converge", _json_like(diagnostics)) from exc
     assert isinstance(result, EquilibriumResult)
     diagnostics = dict(result.diagnostics)
@@ -1870,6 +1984,11 @@ def electrolyte_lle_flash_native(
     diagnostics.setdefault("e_matrix", np.asarray(basis_payload["e_matrix"], dtype=float).tolist())
     diagnostics.setdefault("salt_pairs", [dict(pair) for pair in basis_payload["salt_pairs"]])
     diagnostics.update(feed_diagnostics)
+    diagnostics = _normalize_derivative_diagnostics(
+        diagnostics,
+        problem_kind=result.problem_kind,
+        phase_count=len(result.phases),
+    )
     return EquilibriumResult(
         backend=result.backend,
         problem_kind=result.problem_kind,

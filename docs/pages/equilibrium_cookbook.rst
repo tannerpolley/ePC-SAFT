@@ -66,11 +66,14 @@ these fields as routing hints, not as proof that a physical case is valid.
      - Package regression helpers.
      - You need a Python optimizer loop.
    * - ``jacobian_backend="auto"``
-     - You want the native chemical-equilibrium default: analytic where available, clear ``backend_unavailable`` errors otherwise.
+     - You want the native chemical-equilibrium default: analytic, CppAD, or implicit sensitivities where available, clear ``backend_unavailable`` diagnostics otherwise.
      - You need strict failure when a specific derivative backend is unavailable.
    * - ``jacobian_backend="autodiff"``
-     - You need the implemented autodiff path and want unsupported routes to fail loudly.
+     - You need an existing legacy Eigen forward-mode path and want unsupported routes to fail loudly.
      - You need a fallback to an analytical formula.
+   * - ``jacobian_backend="cppad"``
+     - You need a CppAD residual derivative path and want unsupported routes to return ``backend_unavailable``.
+     - You need a finite-difference fallback.
    * - ``differential_mode="autodiff"``
      - You need implemented autodiff derivative paths.
      - You need a fallback to analytical derivatives.
@@ -116,6 +119,29 @@ For neutral TP flash and neutral bubble/dew diagnostics, check these fields befo
 - ``diagnostics["neutral_fallback_reason"]``
 
 The fast-path flag means the current native or local-first neutral route handled the solve directly. A fallback flag means the optimized route dropped to the more conservative path while preserving the same result contract.
+
+Derivative policy
+-----------------
+
+Equilibrium solvers do not execute finite-difference Jacobians. Solver and
+result diagnostics report the derivative status explicitly:
+
+- ``thermodynamic_backend``
+- ``solver_backend``
+- ``derivative_backend``
+- ``derivative_status``
+- ``backend_unavailable_reason``
+- ``solved_internal_states``
+- ``derivative_backend_by_block``
+- ``implicit_sensitivity_blocks``
+- ``residual_norm_by_block``
+- ``best_state_available``
+- ``association_solver_status``
+
+Supported derivative labels are ``analytic``, ``cppad``,
+``analytic_implicit``, ``cppad_implicit``, and ``legacy_eigen_forward``.
+Unsupported combinations report ``backend_unavailable``. ``auto`` never falls
+back to finite differences.
 
 Electrolyte LLE
 ---------------
