@@ -9,12 +9,26 @@
 
 #include "epcsaft_chemical_equilibrium.h"
 #include "epcsaft_equilibrium.h"
+#include "ad_derivative_checks.h"
 
 namespace py = pybind11;
 
 namespace {
 
 py::object native_solution_error_type;
+
+py::dict cppad_smoke_to_dict(const epcsaft::native::autodiff::ADDerivativeResult& result) {
+    py::dict out;
+    out["cppad_compiled"] = epcsaft::native::autodiff::cppad_compiled();
+    out["cppad_used"] = result.supported && result.backend == "cppad";
+    out["status"] = epcsaft::native::autodiff::cppad_build_status();
+    out["derivative_backend"] = result.backend;
+    out["message"] = result.message;
+    out["value"] = result.value;
+    out["jacobian_row_major"] = result.jacobian_row_major;
+    out["shape"] = py::make_tuple(result.rows, result.cols);
+    return out;
+}
 
 std::vector<double> array_to_double_vector(const py::array& array) {
     py::array_t<double, py::array::forcecast> casted(array);
@@ -1138,6 +1152,10 @@ PYBIND11_MODULE(_core, m) {
     py::register_exception<ValueError>(m, "NativeValueError");
     py::register_exception<SolutionError>(m, "NativeSolutionError");
     native_solution_error_type = m.attr("NativeSolutionError");
+
+    m.def("_native_cppad_smoke", []() {
+        return cppad_smoke_to_dict(epcsaft::native::autodiff::cppad_square_smoke_derivative(3.0));
+    });
 
     py::class_<add_args>(m, "NativeArgs")
         .def(py::init<>())

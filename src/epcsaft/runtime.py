@@ -105,6 +105,35 @@ def _native_extension_path() -> Path | None:
     return Path(_core.__file__).resolve()
 
 
+def _native_cppad_backend_info() -> dict[str, object]:
+    try:
+        from . import _core
+    except Exception:
+        return {
+            "backend": "cppad",
+            "status": "not_configured",
+            "compiled": False,
+            "available": False,
+        }
+    try:
+        smoke = _core._native_cppad_smoke()
+    except AttributeError:
+        return {
+            "backend": "cppad",
+            "status": "not_configured",
+            "compiled": False,
+            "available": False,
+        }
+    status = str(smoke.get("status", "not_configured"))
+    compiled = bool(smoke.get("cppad_compiled", False))
+    return {
+        "backend": "cppad",
+        "status": status,
+        "compiled": compiled,
+        "available": status == "enabled_available" and compiled,
+    }
+
+
 def _mtime_utc(path: Path) -> str:
     return datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat()
 
@@ -135,6 +164,7 @@ def runtime_build_info() -> dict[str, object]:
         "machine": platform.machine(),
         "optional_dependencies": {
             "cyipopt": cyipopt,
+            "cppad": _native_cppad_backend_info(),
         },
     }
 
@@ -143,8 +173,16 @@ def capabilities() -> dict[str, object]:
     """Return structured availability flags for high-level package workflows."""
 
     cyipopt = dict(runtime_build_info()["optional_dependencies"]["cyipopt"])  # type: ignore[index]
+    cppad = dict(runtime_build_info()["optional_dependencies"]["cppad"])  # type: ignore[index]
     return {
         "native_extension": bool(runtime_build_info()["native_extension_available"]),
+        "derivatives": {
+            "cppad": {
+                **cppad,
+                "scope": "package-wide scalar substrate; production EOS derivative routing remains explicit per API",
+                "production_eos_coverage": False,
+            }
+        },
         "optimizers": {
             "ipopt": {
                 **cyipopt,

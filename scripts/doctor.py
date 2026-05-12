@@ -15,6 +15,7 @@ REQUIRED_CORE_SYMBOLS = (
     "_fit_generic_native_least_squares",
     "_evaluate_generic_native_debug",
     "_solve_equilibrium_native",
+    "_native_cppad_smoke",
     "NativeSolutionError",
 )
 
@@ -48,6 +49,22 @@ def _missing_core_symbols() -> tuple[str, ...]:
     except Exception:
         return ()
     return tuple(name for name in REQUIRED_CORE_SYMBOLS if not hasattr(core, name))
+
+
+def _cppad_status() -> str:
+    try:
+        import epcsaft
+
+        info = epcsaft.runtime_build_info()
+    except Exception:
+        return "<unknown>"
+    optional = info.get("optional_dependencies", {})
+    if not isinstance(optional, dict):
+        return "<unknown>"
+    cppad = optional.get("cppad", {})
+    if not isinstance(cppad, dict):
+        return "<unknown>"
+    return str(cppad.get("status", "<unknown>"))
 
 
 def _tool_path(name: str) -> str:
@@ -120,6 +137,7 @@ def main() -> int:
     print(f"epcsaft_core_error: {core_error or '<none>'}")
     missing_core_symbols = _missing_core_symbols() if core_path is not None else ()
     print(f"epcsaft_core_missing_symbols: {', '.join(missing_core_symbols) if missing_core_symbols else '<none>'}")
+    print(f"cppad_status: {_cppad_status()}")
     print(f"stale_generated_reports: {_stale_report_state()}")
     tracked_generated = _tracked_generated_count()
     print(f"tracked_generated_run_files: {tracked_generated if tracked_generated is not None else '<unknown>'}")

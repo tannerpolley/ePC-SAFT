@@ -74,6 +74,15 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert ipopt["default_auto_uses_ipopt"] is False
     assert ipopt["exact_hessian_available"] is False
     assert info["optional_dependencies"]["cyipopt"]["available"] is ipopt["available"]
+    cppad = info["optional_dependencies"]["cppad"]
+    assert cppad["backend"] == "cppad"
+    assert cppad["status"] in {"disabled", "enabled_available", "enabled_missing", "not_configured"}
+    assert cppad["compiled"] is (cppad["status"] == "enabled_available")
+    assert capabilities["derivatives"]["cppad"] == {
+        **cppad,
+        "scope": "package-wide scalar substrate; production EOS derivative routing remains explicit per API",
+        "production_eos_coverage": False,
+    }
     assert capabilities["equilibrium"]["neutral_tp_flash"]["available"] is True
     assert capabilities["equilibrium"]["neutral_bubble_dew"] == {
         "available": True,
