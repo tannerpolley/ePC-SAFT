@@ -31,6 +31,17 @@ and all production parameter sensitivities are wired. The first supported Ceres
 thermodynamic slice is native reactive speciation with reaction logK
 parameters, ideal mole-fraction standard states, and speciation targets.
 
+For reactive speciation, ``capabilities()["equilibrium"]["reactive_speciation"]``
+now reports the implemented default Jacobian truth:
+
+* ``jacobian_auto_policy="cppad_supported_else_debug_fd_or_backend_unavailable"``
+* auto/default supports ``ideal_mole_fraction``, ``concentration``, and
+  ``mole_fraction_activity`` on the supported native CppAD slice
+* without CppAD, the ideal mole-fraction path still falls back to the exact
+  analytic Jacobian
+* public runtime ``state.dadx()`` auto/default remains analytic; that runtime
+  policy is separate from the reactive-speciation Jacobian selection
+
 Contribution Maps
 -----------------
 
@@ -94,3 +105,17 @@ without ``EPCSAFT_ENABLE_CERES=ON``. On a Ceres-enabled build it should report
 ``optimizer_backend="ceres"``, ``native_hot_loop=True``,
 ``python_objective_used=False``, ``finite_difference_used=False``, and a lower
 ``final_cost`` than ``initial_cost`` for the supported slice.
+
+The runtime capability entry
+``capabilities()["regression"]["reactive_electrolyte_batch_context"]["native_ceres_thermodynamic_regression"]``
+tracks the same supported slice. It now advertises:
+
+* ``derivative_backend="cppad_implicit"`` on CppAD-enabled builds
+* reactive-speciation ``logK`` rows for ``ideal_mole_fraction``,
+  ``concentration``, and supported ``mole_fraction_activity`` standard states
+* the supported Born-SSM+DS parameter lane for ``born_radius`` / ``d_born`` and
+  ``f_solv`` / ``solvation_factor``
+
+Generic binary interaction parameters such as ``k_ij`` remain blocked on this
+thermodynamic regression path and should still use the direct binary-regression
+workflow.

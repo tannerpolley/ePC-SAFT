@@ -82,11 +82,25 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     native_ceres = capabilities["regression"]["reactive_electrolyte_batch_context"][
         "native_ceres_thermodynamic_regression"
     ]
+    cppad_enabled = bool(capabilities["native_dependencies"]["cppad"]["enabled"])
     assert native_ceres["native_hot_loop"] is True
     assert native_ceres["python_objective_used"] is False
     assert native_ceres["finite_difference_used"] is False
+    expected_derivative_backend = "cppad_implicit" if cppad_enabled else "backend_unavailable_without_cppad"
+    assert native_ceres["derivative_backend"] == expected_derivative_backend
+    assert native_ceres["supported_slice"]["reaction_standard_states"] == [
+        "ideal_mole_fraction",
+        "concentration",
+        "mole_fraction_activity",
+    ]
+    assert set(native_ceres["supported_slice"]["parameter_kinds"]) >= {
+        "reaction_equilibrium_constant",
+        "log_equilibrium_constant",
+        "born_radius",
+        "f_solv",
+    }
     assert native_ceres["unsupported_status"] == "backend_unavailable"
-    assert set(native_ceres["blocked_parameter_kinds"]) >= {"born_radius", "f_solv"}
+    assert set(native_ceres["blocked_parameter_kinds"]) >= {"k_ij", "l_ij"}
     assert ipopt["available"] is ipopt_backend.cyipopt_available()
     assert ipopt["formulations"] == ["bound_constrained_residual_minimization"]
     assert ipopt["full_constrained_nlp_available"] is False
@@ -117,8 +131,14 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert capabilities["equilibrium"]["reactive_speciation"]["full_constrained_nlp_available"] is False
     assert (
         capabilities["equilibrium"]["reactive_speciation"]["jacobian_auto_policy"]
-        == "analytic_ideal_else_backend_unavailable"
+        == "cppad_supported_else_debug_fd_or_backend_unavailable"
     )
+    assert capabilities["equilibrium"]["reactive_speciation"]["jacobian_auto_supported_standard_states"] == [
+        "ideal_mole_fraction",
+        "concentration",
+        "mole_fraction_activity",
+    ]
+    assert capabilities["equilibrium"]["reactive_speciation"]["jacobian_auto_ideal_without_cppad"] == "analytic"
     assert capabilities["equilibrium"]["reactive_speciation"]["finite_difference_requires_explicit_request"] is True
     assert (
         capabilities["equilibrium"]["reactive_speciation"]["finite_difference_debug_gate"]

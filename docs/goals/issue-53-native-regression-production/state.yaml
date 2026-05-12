@@ -57,7 +57,7 @@ agents:
   judge: installed
   worker: installed
 
-active_task: T051
+active_task: T054
 
 tasks:
   - id: T001
@@ -2278,7 +2278,7 @@ tasks:
   - id: T051
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Audit the remaining public runtime default-derivative gap after T050 and decide whether the dadx auto policy should stay analytic by design, move contribution-by-contribution behind stronger support checks, or be deferred outside issue #53."
     inputs:
@@ -2297,6 +2297,116 @@ tasks:
     expected_output:
       - "Decision on whether runtime dadx auto stays analytic, becomes mixed-support autodiff, or moves out of scope."
       - "Exact next worker scope if more implementation is justified."
+    receipt:
+      result: done
+      decision: keep_runtime_dadx_auto_analytic
+      summary: "The public runtime dadx auto/default policy should stay analytic for issue #53. The attempted auto-autodiff expansion was not a clean production move, so the next worker should only update runtime capability/reporting and docs to match the implemented Jacobian truth rather than re-open a broad runtime default-derivative rewrite."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T051-runtime-auto-scope-audit.md"
+        - "docs/goals/issue-53-native-regression-production/notes/T050-default-derivative-slice.md"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+        - "tests/api/test_runtime.py"
+        - "src/epcsaft/runtime.py"
+
+  - id: T052
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Make the runtime capability and diagnostics/reporting layer match the implemented derivative truth after T050: reactive-speciation auto/default Jacobian reporting should reflect the CppAD-backed supported standard states, while public runtime dadx auto remains analytic."
+    allowed_files:
+      - "src/epcsaft/runtime.py"
+      - "tests/api/test_runtime.py"
+      - "docs/pages/diagnostics.rst"
+      - "docs/goals/issue-53-native-regression-production/notes/T052-runtime-reporting-alignment.md"
+      - "docs/goals/issue-53-native-regression-production/notes/**"
+      - "docs/goals/issue-53-native-regression-production/state.yaml"
+    verify:
+      - "uv run python run_pytest.py tests/api/test_runtime.py -q"
+    stop_if:
+      - "The reporting change requires broader behavioral edits outside runtime/docs/tests."
+      - "A truthful stable policy string cannot be defined without first changing more solver behavior."
+    receipt:
+      result: done
+      summary: "Aligned runtime capability and diagnostics reporting with the implemented derivative truth: reactive-speciation auto/default Jacobian policy now reports the supported CppAD-backed standard states, and the native Ceres thermo capability now advertises the real supported activity/concentration/Born slice instead of stale analytic/Born-blocked metadata."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T052-runtime-reporting-alignment.md"
+        - "src/epcsaft/runtime.py"
+        - "tests/api/test_runtime.py"
+        - "docs/pages/diagnostics.rst"
+      changed_files:
+        - "docs/goals/issue-53-native-regression-production/notes/T052-runtime-reporting-alignment.md"
+        - "docs/goals/issue-53-native-regression-production/state.yaml"
+        - "src/epcsaft/runtime.py"
+        - "tests/api/test_runtime.py"
+        - "docs/pages/diagnostics.rst"
+      commands:
+        - cmd: "uv run python run_pytest.py tests/api/test_runtime.py -q"
+          status: pass
+          summary: "37 passed in 1.12s"
+        - cmd: "uv run python scripts/benchmark_native_ceres_thermo_regression.py --case reactive_speciation_activity_ssmds_born_radius_implicit --warmup 1 --repeat 1"
+          status: pass
+          summary: "backend=ceres derivative=cppad_implicit native_hot_loop=True initial_cost=0.0202084 final_cost=0.0201522"
+
+  - id: T053
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit the remaining concrete gaps against the active goal after T052: confirm which differential surfaces are still not using CppAD in production, separate deliberate analytic-by-design paths from missing derivative substrate, and choose the next real implementation tranche."
+    inputs:
+      - "docs/goals/issue-53-native-regression-production/notes/T052-runtime-reporting-alignment.md"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_fugcoef.cpp"
+      - "src/epcsaft/native/epcsaft_activity.cpp"
+      - "src/epcsaft/native/regression/thermo_regression.cpp"
+      - "tests/api/test_runtime.py"
+      - "tests/native/test_native_ceres_reactive_pressure_speciation.py"
+    constraints:
+      - "Read-only unless updating goal notes/state."
+      - "Do not re-open the already-false missing pressure-composition derivative blocker."
+      - "Call out deliberate analytic-by-design surfaces separately from unsupported production derivative gaps."
+    expected_output:
+      - "Concrete remaining gap list."
+      - "Decision on the next implementation tranche."
+    receipt:
+      result: done
+      decision: "Convert the remaining supported public/runtime AutoDual derivative helpers to the native CppAD substrate next; keep runtime dadx auto analytic by design, and leave bubble differentiation as the larger downstream blocker."
+      summary: "The supported native thermo production slices already benchmark as ceres + cppad_implicit. The remaining concrete gaps are public/runtime EOS derivative helpers still implemented on AutoDual and the still-undifferentiated bubble path. Runtime dadx auto/default remains analytic by design for issue #53 rather than being treated as a missing CppAD production bug."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T053-remaining-derivative-gap-audit.md"
+        - "src/epcsaft/native/epcsaft_Z.cpp"
+        - "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+        - "src/epcsaft/native/epcsaft_regression.cpp"
+        - "src/epcsaft/native/regression/thermo_regression.cpp"
+        - "tests/native/test_native_ceres_reactive_pressure_speciation.py"
+
+  - id: T054
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: xhigh
+    objective: "Migrate the remaining supported public/runtime derivative helpers from the older AutoDual substrate onto the native CppAD substrate for supported nonassociating states, without re-opening the public dadx auto-policy shift or pretending bubble differentiation is solved."
+    allowed_files:
+      - "src/epcsaft/native/autodiff/**"
+      - "src/epcsaft/native/epcsaft_Z.cpp"
+      - "src/epcsaft/native/epcsaft_parameter_setup.cpp"
+      - "src/epcsaft/native/epcsaft_regression.cpp"
+      - "src/epcsaft/native/epcsaft_core_internal.h"
+      - "src/epcsaft/native/contributions/epcsaft_contrib_internal.h"
+      - "tests/native/test_cppad_eos_derivatives.py"
+      - "tests/native/test_runtime_contracts.py"
+      - "tests/api/test_runtime.py"
+      - "docs/goals/issue-53-native-regression-production/notes/**"
+      - "docs/goals/issue-53-native-regression-production/state.yaml"
+    verify:
+      - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py tests/native/test_cppad_eos_derivatives.py tests/native/test_runtime_contracts.py tests/api/test_runtime.py -q"
+    stop_if:
+      - "The supported public/runtime derivative helpers cannot move to CppAD without a larger behavior change than issue #53 should absorb."
+      - "The only viable migration path would silently change the public runtime dadx auto/default contract."
+      - "The work turns into bubble-pressure derivative architecture instead of a substrate migration."
     receipt: null
 
   - id: T023
@@ -2326,8 +2436,8 @@ checks:
   dirty_fingerprint: "local-dirty-during-T048-nonlogk-sensitivity-tranche"
   last_verification:
     result: passed
-    task: T050
+    task: T052
     commands:
-      - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
-      - "uv run python run_pytest.py tests/api/test_runtime.py tests/api/test_reactive_speciation.py tests/native/test_chemical_equilibrium_native.py tests/native/test_cppad_reactive_speciation_derivatives.py -q"
+      - "uv run python run_pytest.py tests/api/test_runtime.py -q"
+      - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --case reactive_speciation_activity_ssmds_born_radius_implicit --warmup 1 --repeat 1"
 
