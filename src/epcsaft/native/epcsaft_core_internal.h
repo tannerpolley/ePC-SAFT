@@ -11,6 +11,7 @@
 
 #include "epcsaft_electrolyte.h"
 #include "epcsaft_autodiff_internal.h"
+#include "autodiff/ad_derivative_result.h"
 
 namespace thermo_detail {
 
@@ -258,6 +259,8 @@ vector<double> reference_solvent_dielectric_derivative_cpp(const vector<double> 
 BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion);
 double ares_contribution_value_cpp(const AresContributions &terms, AresContributionKind kind);
 AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs);
+epcsaft::native::autodiff::ADDerivativeResult cppad_eos_contribution_derivatives_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs);
+epcsaft::native::autodiff::ADDerivativeResult cppad_pressure_density_derivative_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs);
 double dielectric_constant_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs);
 vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs);
 AutoDual reference_solvent_dielectric_constant_ad_cpp(const vector<AutoDual> &x, const add_args &cppargs);
