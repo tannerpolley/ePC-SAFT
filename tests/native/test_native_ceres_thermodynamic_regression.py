@@ -142,7 +142,7 @@ def test_native_thermo_regression_fit_reports_fixed_shape_result() -> None:
 
     assert result["status"] in {"backend_unavailable", "converged", "max_iterations"}
     assert result["optimizer_backend"] in {"backend_unavailable", "ceres"}
-    assert result["derivative_backend"] in {"implicit", "analytic_implicit"}
+    assert result["derivative_backend"] in {"implicit", "analytic_implicit", "cppad_implicit"}
     assert result["initial_cost"] >= 0.0
     assert result["objective_result"]["fixed_shape_residuals"] is True
 
@@ -219,6 +219,23 @@ def test_native_thermo_regression_ideal_speciation_targets_are_invariant_to_born
     assert baseline["cost"] == pytest.approx(moved["cost"], abs=1.0e-12)
 
 
+def test_native_thermo_regression_row_can_request_autodiff_speciation_jacobian() -> None:
+    species = ["H2O", "NaCl", "Na+", "Cl-"]
+    mix = _salt_speciation_mixture()
+    log_k = math.log(0.0005) + math.log(0.0005) - math.log(0.001)
+    row = _salt_speciation_row(log_k, 0.00065)
+    row["options"] = {"jacobian_backend": "autodiff", "max_iterations": 50, "tolerance": 1.0e-8}
+
+    cppad_enabled = bool(epcsaft.runtime_build_info()["native_dependencies"]["cppad"]["enabled"])
+    if not cppad_enabled:
+        with pytest.raises(ValueError, match="CppAD-enabled build"):
+            epcsaft.evaluate_native_thermo_regression_rows(mix, {"species": species, "rows": [row]})
+        return
+
+    result = epcsaft.evaluate_native_thermo_regression_rows(mix, {"species": species, "rows": [row]})
+    assert result["row_diagnostics"][0]["derivative_backend"] == "autodiff"
+
+
 def test_native_thermo_regression_penalizes_unsupported_row_mode() -> None:
     mix = _salt_speciation_mixture()
 
@@ -244,7 +261,7 @@ def test_native_thermo_regression_penalizes_unsupported_row_mode() -> None:
     assert result["row_diagnostics"][0]["penalty_applied"] is True
 
 
-def test_native_thermo_regression_reports_concentration_standard_state_unavailable() -> None:
+def test_native_thermo_regression_supports_concentration_standard_state() -> None:
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
     initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
@@ -273,5 +290,54 @@ def test_native_thermo_regression_reports_concentration_standard_state_unavailab
         },
     )
 
-    assert result["status"] == "backend_unavailable"
-    assert "ideal mole-fraction reaction standard states" in result["message"]
+    cppad_enabled = bool(epcsaft.runtime_build_info()["native_dependencies"]["cppad"]["enabled"])
+    if not cppad_enabled:
+        assert result["status"] == "backend_unavailable"
+        assert "CppAD-enabled build" in result["message"]
+        return
+
+    assert result["status"] in {"converged", "max_iterations"}
+    assert result["optimizer_backend"] == "ceres"
+    assert result["derivative_backend"] == "cppad_implicit"
+
+
+def test_native_thermo_regression_supports_activity_standard_state() -> None:
+    species = ["H2O", "NaCl", "Na+", "Cl-"]
+    mix = _salt_speciation_mixture()
+    initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
+    state = mix.state(T=298.15, P=1.0e5, x=initial_x, phase="liq")
+    gamma = state.activity_coefficient(species=species)
+    log_k = math.log(initial_x[2] * gamma["Na+"]) + math.log(initial_x[3] * gamma["Cl-"])
+    log_k -= math.log(initial_x[1] * gamma["NaCl"])
+
+    row = _salt_speciation_row(log_k, 0.00065)
+    row["reaction_standard_states"] = [0]
+
+    result = epcsaft.fit_native_thermo_regression(
+        mix,
+        {
+            "species": species,
+            "rows": [row],
+            "parameters": [
+                {
+                    "name": "salt.logK",
+                    "kind": "reaction_equilibrium_constant",
+                    "initial": log_k,
+                    "lower": log_k - 5.0,
+                    "upper": log_k + 5.0,
+                    "metadata": {"row_id": "speciation_1", "reaction_index": "0"},
+                }
+            ],
+            "options": {"max_iterations": 3, "derivative_backend": "implicit"},
+        },
+    )
+
+    cppad_enabled = bool(epcsaft.runtime_build_info()["native_dependencies"]["cppad"]["enabled"])
+    if not cppad_enabled:
+        assert result["status"] == "backend_unavailable"
+        assert "CppAD-enabled build" in result["message"]
+        return
+
+    assert result["status"] in {"converged", "max_iterations"}
+    assert result["optimizer_backend"] == "ceres"
+    assert result["derivative_backend"] == "cppad_implicit"

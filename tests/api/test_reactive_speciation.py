@@ -151,37 +151,137 @@ def test_solve_reactive_speciation_concentration_standard_state_uses_molar_densi
     assert result.diagnostics["activity_basis"] == "concentration"
 
 
-def test_reactive_speciation_auto_jacobian_reports_backend_unavailable_for_concentration_standard_state() -> None:
+def test_reactive_speciation_auto_jacobian_support_for_concentration_standard_state() -> None:
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
     initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
     density = mix.state(T=298.15, P=1.0e5, x=initial_x, phase="liq").molar_density()
     log_k = math.log(density * initial_x[2]) + math.log(density * initial_x[3])
     log_k -= math.log(density * initial_x[1])
+    cppad_enabled = bool(epcsaft.runtime_build_info()["native_dependencies"]["cppad"]["enabled"])
 
-    with pytest.raises(Exception, match="backend_unavailable"):
-        epcsaft.solve_reactive_speciation(
-            species=species,
-            mixture_factory=lambda x, T, P: mix,
-            T=298.15,
-            P=1.0e5,
-            balances={
-                "water_total": {"H2O": 1.0},
-                "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
-                "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
-            },
-            totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
-            reactions=[
-                epcsaft.ReactionDefinition(
-                    stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
-                    log_equilibrium_constant=log_k,
-                    name="salt_dissociation",
-                    standard_state="concentration",
-                )
-            ],
-            initial_x=initial_x,
-            options=epcsaft.ReactiveSpeciationOptions(max_iterations=50, tolerance=1.0e-8),
-        )
+    if not cppad_enabled:
+        with pytest.raises(Exception, match="CppAD-enabled build"):
+            epcsaft.solve_reactive_speciation(
+                species=species,
+                mixture_factory=lambda x, T, P: mix,
+                T=298.15,
+                P=1.0e5,
+                balances={
+                    "water_total": {"H2O": 1.0},
+                    "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
+                    "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
+                },
+                totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
+                reactions=[
+                    epcsaft.ReactionDefinition(
+                        stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
+                        log_equilibrium_constant=log_k,
+                        name="salt_dissociation",
+                        standard_state="concentration",
+                    )
+                ],
+                initial_x=initial_x,
+                options=epcsaft.ReactiveSpeciationOptions(max_iterations=50, tolerance=1.0e-8),
+            )
+        return
+
+    result = epcsaft.solve_reactive_speciation(
+        species=species,
+        mixture_factory=lambda x, T, P: mix,
+        T=298.15,
+        P=1.0e5,
+        balances={
+            "water_total": {"H2O": 1.0},
+            "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
+            "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
+        },
+        totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
+        reactions=[
+            epcsaft.ReactionDefinition(
+                stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
+                log_equilibrium_constant=log_k,
+                name="salt_dissociation",
+                standard_state="concentration",
+            )
+        ],
+        initial_x=initial_x,
+        options=epcsaft.ReactiveSpeciationOptions(max_iterations=50, tolerance=1.0e-8),
+    )
+
+    assert result.success is True
+    assert result.reaction_residuals == pytest.approx([0.0], abs=1.0e-8)
+    assert result.diagnostics["jacobian_backend"] == "autodiff"
+    assert result.diagnostics["derivative_backend_selected"] == "autodiff"
+    assert result.diagnostics["activity_basis"] == "concentration"
+
+
+def test_reactive_speciation_auto_jacobian_support_for_activity_standard_state() -> None:
+    species = ["H2O", "NaCl", "Na+", "Cl-"]
+    mix = _salt_speciation_mixture()
+    initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
+    state = mix.state(T=298.15, P=1.0e5, x=initial_x, phase="liq")
+    gamma = state.activity_coefficient(species=species)
+    log_k = math.log(initial_x[2] * gamma["Na+"]) + math.log(initial_x[3] * gamma["Cl-"])
+    log_k -= math.log(initial_x[1] * gamma["NaCl"])
+
+    cppad_enabled = bool(epcsaft.runtime_build_info()["native_dependencies"]["cppad"]["enabled"])
+    if not cppad_enabled:
+        with pytest.raises(epcsaft.InputError, match="CppAD-enabled build"):
+            epcsaft.solve_reactive_speciation(
+                species=species,
+                mixture_factory=lambda x, T, P: mix,
+                T=298.15,
+                P=1.0e5,
+                balances={
+                    "water_total": {"H2O": 1.0},
+                    "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
+                    "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
+                },
+                totals={"water_total": initial_x[0], "sodium_total": initial_x[1] + initial_x[2], "chloride_total": initial_x[1] + initial_x[3]},
+                reactions=[
+                    epcsaft.ReactionDefinition(
+                        {"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
+                        log_k,
+                        name="salt_dissociation",
+                        standard_state="mole_fraction_activity",
+                    )
+                ],
+                initial_x=initial_x,
+                options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-8, jacobian_backend="autodiff"),
+            )
+        return
+
+    result = epcsaft.solve_reactive_speciation(
+        species=species,
+        mixture_factory=lambda x, T, P: mix,
+        T=298.15,
+        P=1.0e5,
+        balances={
+            "water_total": {"H2O": 1.0},
+            "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
+            "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
+        },
+        totals={"water_total": initial_x[0], "sodium_total": initial_x[1] + initial_x[2], "chloride_total": initial_x[1] + initial_x[3]},
+        reactions=[
+            epcsaft.ReactionDefinition(
+                {"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
+                log_k,
+                name="salt_dissociation",
+                standard_state="mole_fraction_activity",
+            )
+        ],
+        initial_x=initial_x,
+        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-8, jacobian_backend="auto"),
+    )
+
+    assert result.success is True
+    assert max(abs(value) for value in result.reaction_residuals) <= 1.0e-8
+    assert result.diagnostics["jacobian_backend"] == "autodiff"
+    assert result.diagnostics["derivative_backend_selected"] == "autodiff"
+    assert result.diagnostics["derivative_capability_path"] == (
+        "chemical_equilibrium:mole_fraction_activity:log_amounts:component_activity_cppad"
+    )
 
 
 def test_concentration_standard_state_can_skip_activity_output(monkeypatch: pytest.MonkeyPatch) -> None:

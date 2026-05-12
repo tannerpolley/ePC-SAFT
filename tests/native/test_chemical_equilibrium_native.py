@@ -154,6 +154,50 @@ def test_native_chemical_equilibrium_residual_evaluator_uses_analytic_jacobian_b
     assert np.all(np.isfinite(residual))
     assert np.all(np.isfinite(gradient))
     assert np.all(np.isfinite(jacobian))
+
+
+def test_native_chemical_equilibrium_residual_evaluator_supports_explicit_autodiff() -> None:
+    mix = epcsaft.ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([1.0, 1.0]),
+            "s": np.asarray([3.0, 3.0]),
+            "e": np.asarray([200.0, 200.0]),
+        },
+        species=["A", "B"],
+    )
+    request = {
+        "T": 298.15,
+        "P": 1.0e5,
+        "initial_x": [0.5, 0.5],
+        "balance_matrix": [1.0, 1.0],
+        "balance_rows": 1,
+        "total_vector": [1.0],
+        "reaction_stoichiometry": [-1.0, 1.0],
+        "reaction_rows": 1,
+        "log_equilibrium_constants": [math.log(3.0)],
+        "reaction_standard_states": [1],
+        "options": {"tolerance": 1.0e-10, "jacobian_backend": "autodiff"},
+    }
+
+    cppad_enabled = bool(epcsaft.runtime_build_info()["native_dependencies"]["cppad"]["enabled"])
+    if not cppad_enabled:
+        with pytest.raises(ValueError, match="CppAD-enabled build"):
+            _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
+        return
+
+    payload = _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
+
+    assert payload["jacobian_backend"] == "autodiff"
+    diagnostics = payload["diagnostics"]
+    assert diagnostics["derivative_backend_selected"] == "autodiff"
+    assert diagnostics["derivative_capability_path"] == "chemical_equilibrium:ideal_mole_fraction:log_amounts:cppad"
+    jacobian = np.asarray(payload["jacobian_row_major"], dtype=float).reshape(payload["jacobian_shape"])
+    residual = np.asarray(payload["residual"], dtype=float)
+    gradient = np.asarray(payload["gradient"], dtype=float)
+    lower = np.asarray(payload["lower_bounds"], dtype=float)
+    variables = np.asarray(payload["variables"], dtype=float)
+    upper = np.asarray(payload["upper_bounds"], dtype=float)
+    assert np.all(np.isfinite(jacobian))
     assert np.all(np.isfinite(lower))
     assert np.all(np.isfinite(variables))
     assert np.all(np.isfinite(upper))
@@ -196,6 +240,94 @@ def test_native_chemical_equilibrium_residual_evaluator_keeps_explicit_finite_di
     assert diagnostics["finite_difference_allowed"] is True
     assert diagnostics["explicit_finite_difference"] is True
     assert diagnostics["finite_difference_scheme"] == "forward"
+
+
+def test_native_chemical_equilibrium_concentration_autodiff_matches_finite_difference() -> None:
+    mix = _salt_speciation_mixture()
+    initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
+    density = mix.state(T=298.15, P=1.0e5, x=initial_x, phase="liq").molar_density()
+    log_k = math.log(density * initial_x[2]) + math.log(density * initial_x[3]) - math.log(density * initial_x[1])
+
+    request = {
+        "T": 298.15,
+        "P": 1.0e5,
+        "initial_x": initial_x.tolist(),
+        "balance_matrix": [
+            1.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 1.0, 0.0,
+            0.0, 1.0, 0.0, 1.0,
+        ],
+        "balance_rows": 3,
+        "total_vector": [0.998, 0.0015, 0.0015],
+        "reaction_stoichiometry": [0.0, -1.0, 1.0, 1.0],
+        "reaction_rows": 1,
+        "log_equilibrium_constants": [log_k],
+        "reaction_standard_states": [2],
+        "options": {"tolerance": 1.0e-9, "jacobian_backend": "autodiff"},
+    }
+
+    cppad_enabled = bool(epcsaft.runtime_build_info()["native_dependencies"]["cppad"]["enabled"])
+    if not cppad_enabled:
+        with pytest.raises(ValueError, match="CppAD-enabled build"):
+            _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
+        return
+
+    autodiff_payload = _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
+    request["options"] = {"tolerance": 1.0e-9, "jacobian_backend": "finite_difference", "finite_difference_step": 1.0e-7}
+    fd_payload = _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
+
+    assert autodiff_payload["jacobian_backend"] == "autodiff"
+    assert autodiff_payload["diagnostics"]["derivative_capability_path"] == (
+        "chemical_equilibrium:concentration:log_amounts:pressure_closure_cppad"
+    )
+    autodiff_jac = np.asarray(autodiff_payload["jacobian_row_major"], dtype=float).reshape(autodiff_payload["jacobian_shape"])
+    fd_jac = np.asarray(fd_payload["jacobian_row_major"], dtype=float).reshape(fd_payload["jacobian_shape"])
+    np.testing.assert_allclose(autodiff_jac, fd_jac, rtol=3.0e-4, atol=3.0e-4)
+
+
+def test_native_chemical_equilibrium_activity_autodiff_matches_finite_difference() -> None:
+    mix = _salt_speciation_mixture()
+    initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
+    stoich = {"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0}
+    log_k = _log_k_from_state(mix, 298.15, 1.0e5, initial_x, stoich)
+
+    request = {
+        "T": 298.15,
+        "P": 1.0e5,
+        "initial_x": initial_x.tolist(),
+        "balance_matrix": [
+            1.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 1.0, 0.0,
+            0.0, 1.0, 0.0, 1.0,
+        ],
+        "balance_rows": 3,
+        "total_vector": [initial_x[0], initial_x[1] + initial_x[2], initial_x[1] + initial_x[3]],
+        "reaction_stoichiometry": [
+            0.0, -1.0, 1.0, 1.0,
+        ],
+        "reaction_rows": 1,
+        "log_equilibrium_constants": [log_k],
+        "reaction_standard_states": [0],
+        "options": {"tolerance": 1.0e-9, "jacobian_backend": "autodiff"},
+    }
+
+    cppad_enabled = bool(epcsaft.runtime_build_info()["native_dependencies"]["cppad"]["enabled"])
+    if not cppad_enabled:
+        with pytest.raises(ValueError, match="CppAD-enabled build"):
+            _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
+        return
+
+    autodiff_payload = _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
+    request["options"] = {"tolerance": 1.0e-9, "jacobian_backend": "finite_difference", "finite_difference_step": 1.0e-7}
+    fd_payload = _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
+
+    assert autodiff_payload["jacobian_backend"] == "autodiff"
+    assert autodiff_payload["diagnostics"]["derivative_capability_path"] == (
+        "chemical_equilibrium:mole_fraction_activity:log_amounts:component_activity_cppad"
+    )
+    autodiff_jac = np.asarray(autodiff_payload["jacobian_row_major"], dtype=float).reshape(autodiff_payload["jacobian_shape"])
+    fd_jac = np.asarray(fd_payload["jacobian_row_major"], dtype=float).reshape(fd_payload["jacobian_shape"])
+    np.testing.assert_allclose(autodiff_jac, fd_jac, rtol=5.0e-4, atol=5.0e-4)
 
 
 def test_native_chemical_equilibrium_solves_easy_ideal_reaction() -> None:

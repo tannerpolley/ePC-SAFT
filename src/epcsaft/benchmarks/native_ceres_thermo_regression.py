@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import statistics
 import time
+from collections import OrderedDict
 from typing import Any
 
 import numpy as np
@@ -26,7 +27,7 @@ def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_params(params, species=["H2O", "NaCl", "Na+", "Cl-"])
 
 
-def _case_payload() -> tuple[epcsaft.ePCSAFTMixture, dict[str, Any]]:
+def _ideal_case_payload() -> tuple[epcsaft.ePCSAFTMixture, dict[str, Any]]:
     initial_x = [0.998, 0.001, 0.0005, 0.0005]
     log_k = math.log(initial_x[2]) + math.log(initial_x[3]) - math.log(initial_x[1])
     row = {
@@ -42,7 +43,7 @@ def _case_payload() -> tuple[epcsaft.ePCSAFTMixture, dict[str, Any]]:
         "reaction_rows": 1,
         "log_equilibrium_constants": [log_k - 1.0],
         "reaction_standard_states": [1],
-        "options": {"jacobian_backend": "auto", "max_iterations": 50, "tolerance": 1.0e-10},
+        "options": {"jacobian_backend": "autodiff", "max_iterations": 50, "tolerance": 1.0e-10},
         "targets": [{"family": "speciation", "target": "Na+", "index": 2, "observed": 0.00065, "scale": 1000.0}],
     }
     request = {
@@ -63,10 +64,106 @@ def _case_payload() -> tuple[epcsaft.ePCSAFTMixture, dict[str, Any]]:
     return _salt_speciation_mixture(), request
 
 
-def run_native_ceres_thermo_regression_benchmark(*, warmup: int = 1, repeat: int = 3) -> dict[str, Any]:
+def _concentration_case_payload() -> tuple[epcsaft.ePCSAFTMixture, dict[str, Any]]:
+    mixture = _salt_speciation_mixture()
+    initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
+    density = mixture.state(T=298.15, P=1.0e5, x=initial_x, phase="liq").molar_density()
+    log_k = math.log(density * initial_x[2]) + math.log(density * initial_x[3]) - math.log(density * initial_x[1])
+    row = {
+        "row_id": "salt_speciation_concentration",
+        "row_mode": "reactive_speciation",
+        "T": 298.15,
+        "P": 1.0e5,
+        "initial_x": initial_x.tolist(),
+        "balance_matrix": [1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1],
+        "balance_rows": 3,
+        "total_vector": [0.998, 0.0015, 0.0015],
+        "reaction_stoichiometry": [0, -1, 1, 1],
+        "reaction_rows": 1,
+        "log_equilibrium_constants": [log_k - 0.25],
+        "reaction_standard_states": [2],
+        "options": {"jacobian_backend": "auto", "max_iterations": 50, "tolerance": 1.0e-10},
+        "targets": [{"family": "speciation", "target": "Na+", "index": 2, "observed": 0.00065, "scale": 1000.0}],
+    }
+    request = {
+        "species": ["H2O", "NaCl", "Na+", "Cl-"],
+        "rows": [row],
+        "parameters": [
+            {
+                "name": "salt.logK",
+                "kind": "reaction_equilibrium_constant",
+                "initial": log_k - 0.25,
+                "lower": log_k - 5.0,
+                "upper": log_k + 5.0,
+                "metadata": {"row_id": "salt_speciation_concentration", "reaction_index": "0"},
+            }
+        ],
+        "options": {"max_iterations": 20, "derivative_backend": "implicit"},
+    }
+    return mixture, request
+
+
+def _activity_case_payload() -> tuple[epcsaft.ePCSAFTMixture, dict[str, Any]]:
+    mixture = _salt_speciation_mixture()
+    initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
+    state = mixture.state(T=298.15, P=1.0e5, x=initial_x, phase="liq")
+    gamma = state.activity_coefficient(species=["H2O", "NaCl", "Na+", "Cl-"])
+    log_k = math.log(initial_x[2] * gamma["Na+"]) + math.log(initial_x[3] * gamma["Cl-"])
+    log_k -= math.log(initial_x[1] * gamma["NaCl"])
+    row = {
+        "row_id": "salt_speciation_activity",
+        "row_mode": "reactive_speciation",
+        "T": 298.15,
+        "P": 1.0e5,
+        "initial_x": initial_x.tolist(),
+        "balance_matrix": [1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1],
+        "balance_rows": 3,
+        "total_vector": [0.998, 0.0015, 0.0015],
+        "reaction_stoichiometry": [0, -1, 1, 1],
+        "reaction_rows": 1,
+        "log_equilibrium_constants": [log_k - 0.25],
+        "reaction_standard_states": [0],
+        "options": {"jacobian_backend": "auto", "max_iterations": 50, "tolerance": 1.0e-10},
+        "targets": [{"family": "speciation", "target": "Na+", "index": 2, "observed": 0.00065, "scale": 1000.0}],
+    }
+    request = {
+        "species": ["H2O", "NaCl", "Na+", "Cl-"],
+        "rows": [row],
+        "parameters": [
+            {
+                "name": "salt.logK",
+                "kind": "reaction_equilibrium_constant",
+                "initial": log_k - 0.25,
+                "lower": log_k - 5.0,
+                "upper": log_k + 5.0,
+                "metadata": {"row_id": "salt_speciation_activity", "reaction_index": "0"},
+            }
+        ],
+        "options": {"max_iterations": 20, "derivative_backend": "implicit"},
+    }
+    return mixture, request
+
+
+CASE_BUILDERS = OrderedDict(
+    [
+        ("reactive_speciation_logk_implicit", _ideal_case_payload),
+        ("reactive_speciation_concentration_logk_implicit", _concentration_case_payload),
+        ("reactive_speciation_activity_logk_implicit", _activity_case_payload),
+    ]
+)
+
+
+def run_native_ceres_thermo_regression_benchmark(
+    *,
+    warmup: int = 1,
+    repeat: int = 3,
+    case: str = "reactive_speciation_logk_implicit",
+) -> dict[str, Any]:
     if warmup < 0 or repeat <= 0:
         raise ValueError("warmup must be nonnegative and repeat must be positive.")
-    mixture, request = _case_payload()
+    if case not in CASE_BUILDERS:
+        raise ValueError(f"unknown benchmark case: {case}")
+    mixture, request = CASE_BUILDERS[case]()
     for _ in range(warmup):
         epcsaft.fit_native_thermo_regression(mixture, request)
 
@@ -80,7 +177,7 @@ def run_native_ceres_thermo_regression_benchmark(*, warmup: int = 1, repeat: int
 
     return {
         "benchmark": "native_ceres_thermo_regression",
-        "case": "reactive_speciation_logk_implicit",
+        "case": case,
         "warmup": warmup,
         "repeat": repeat,
         "median_ns": int(statistics.median(timings)),

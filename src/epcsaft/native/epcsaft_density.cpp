@@ -164,25 +164,30 @@ bool density_root_valid_cpp(
         return false;
     }
 
-    double h = std::max(1e-12, std::abs(rho) * 1e-6);
     double dpdrho = 0.0;
     try {
-        double p_plus = p_cpp(t, rho + h, x, cppargs);
-        if (!std::isfinite(p_plus)) {
-            return false;
-        }
-        if (rho > h) {
-            double p_minus = p_cpp(t, rho - h, x, cppargs);
-            if (!std::isfinite(p_minus)) {
-                return false;
-            }
-            dpdrho = (p_plus - p_minus) / (2.0 * h);
+        PressureDensityDerivativeResult derivative = pressure_density_derivative_result_cpp(t, rho, x, cppargs);
+        if (derivative.supported) {
+            dpdrho = derivative.dpdrho;
         }
         else {
-            dpdrho = (p_plus - p_calc) / h;
+            double h = std::max(1e-12, std::abs(rho) * 1e-6);
+            double p_plus = p_cpp(t, rho + h, x, cppargs);
+            if (!std::isfinite(p_plus)) {
+                return false;
+            }
+            if (rho > h) {
+                double p_minus = p_cpp(t, rho - h, x, cppargs);
+                if (!std::isfinite(p_minus)) {
+                    return false;
+                }
+                dpdrho = (p_plus - p_minus) / (2.0 * h);
+            }
+            else {
+                dpdrho = (p_plus - p_calc) / h;
+            }
         }
-    }
-    catch (const std::exception&) {
+    } catch (const std::exception&) {
         return false;
     }
     if (!(std::isfinite(dpdrho) && dpdrho > 0.0)) {
@@ -360,24 +365,28 @@ DensityRootCandidate density_near_root_candidate_cpp(
     catch (const std::exception&) {
     }
     try {
-        double h = std::max(1e-12, std::abs(rho) * 1e-6);
-        double p_plus = p_cpp(t, rho + h, x, cppargs);
-        if (std::isfinite(p_plus)) {
-            if (rho > h) {
-                double p_minus = p_cpp(t, rho - h, x, cppargs);
-                if (std::isfinite(p_minus)) {
-                    candidate.dpdrho = (p_plus - p_minus) / (2.0 * h);
+        PressureDensityDerivativeResult derivative = pressure_density_derivative_result_cpp(t, rho, x, cppargs);
+        if (derivative.supported) {
+            candidate.dpdrho = derivative.dpdrho;
+        } else {
+            double h = std::max(1e-12, std::abs(rho) * 1e-6);
+            double p_plus = p_cpp(t, rho + h, x, cppargs);
+            if (std::isfinite(p_plus)) {
+                if (rho > h) {
+                    double p_minus = p_cpp(t, rho - h, x, cppargs);
+                    if (std::isfinite(p_minus)) {
+                        candidate.dpdrho = (p_plus - p_minus) / (2.0 * h);
+                    }
                 }
-            }
-            else {
-                double p_calc = p_cpp(t, rho, x, cppargs);
-                if (std::isfinite(p_calc)) {
-                    candidate.dpdrho = (p_plus - p_calc) / h;
+                else {
+                    double p_calc = p_cpp(t, rho, x, cppargs);
+                    if (std::isfinite(p_calc)) {
+                        candidate.dpdrho = (p_plus - p_calc) / h;
+                    }
                 }
             }
         }
-    }
-    catch (const std::exception&) {
+    } catch (const std::exception&) {
     }
     try {
         double gres = gres_cpp(t, rho, x, cppargs);

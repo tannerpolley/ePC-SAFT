@@ -1,8 +1,10 @@
 #include "epcsaft_chemical_equilibrium.h"
+#include "autodiff/ad_scalar.h"
 #include "autodiff/debug_gate.h"
 
 #include <Eigen/Dense>
 
+#include "epcsaft_core_internal.h"
 #include "epcsaft_electrolyte.h"
 
 #include <algorithm>
@@ -241,6 +243,7 @@ struct ChemicalEvaluation {
     std::vector<double> n;
     std::vector<double> x;
     std::vector<double> gamma;
+    double molar_density = 0.0;
     std::vector<double> mass_residuals;
     double charge_residual = 0.0;
     std::vector<double> reaction_residuals;
@@ -266,7 +269,8 @@ struct ChemicalDerivativeSelection {
 
 ChemicalDerivativeSelection select_chemical_derivative_backend(
     const ChemicalEquilibriumOptionsNative& options,
-    const std::vector<int>& reaction_standard_states
+    const std::vector<int>& reaction_standard_states,
+    const std::string& activity_model
 ) {
     ChemicalDerivativeSelection selection;
     const std::string requested = options.jacobian_backend;
@@ -283,9 +287,32 @@ ChemicalDerivativeSelection select_chemical_derivative_backend(
         return selection;
     }
     if (requested == "autodiff") {
+        if (!epcsaft::autodiff::cppad_compiled()) {
+            selection.unsupported_reason =
+                "backend_unavailable: autodiff chemical-equilibrium residual jacobian requires a CppAD-enabled build.";
+            throw ValueError(selection.unsupported_reason);
+        }
+        if (standard_states_all_ideal_mole_fraction(reaction_standard_states)) {
+            selection.backend = "autodiff";
+            selection.capability_path = "chemical_equilibrium:ideal_mole_fraction:log_amounts:cppad";
+            return selection;
+        }
+        if (standard_states_need_concentration(reaction_standard_states)
+            && !standard_states_need_activity(reaction_standard_states)) {
+            selection.backend = "autodiff";
+            selection.capability_path = "chemical_equilibrium:concentration:log_amounts:pressure_closure_cppad";
+            return selection;
+        }
+        if (standard_states_need_activity(reaction_standard_states)
+            && !standard_states_need_concentration(reaction_standard_states)
+            && activity_model == "epcsaft_component_activity") {
+            selection.backend = "autodiff";
+            selection.capability_path = "chemical_equilibrium:mole_fraction_activity:log_amounts:component_activity_cppad";
+            return selection;
+        }
         selection.unsupported_reason =
-            "autodiff chemical-equilibrium residual jacobian is not implemented for log-species amounts; "
-            "use jacobian_backend='auto' for analytic supported paths or jacobian_backend='finite_difference' explicitly for comparison.";
+            "autodiff chemical-equilibrium residual jacobian is not implemented for activity- or concentration-coupled "
+            "standard states.";
         throw ValueError(selection.unsupported_reason);
     }
     if (requested != "auto") {
@@ -294,6 +321,21 @@ ChemicalDerivativeSelection select_chemical_derivative_backend(
     if (standard_states_all_ideal_mole_fraction(reaction_standard_states)) {
         selection.backend = "analytic";
         selection.capability_path = "chemical_equilibrium:ideal_mole_fraction:log_amounts";
+        return selection;
+    }
+    if (standard_states_need_concentration(reaction_standard_states)
+        && !standard_states_need_activity(reaction_standard_states)
+        && epcsaft::autodiff::cppad_compiled()) {
+        selection.backend = "autodiff";
+        selection.capability_path = "chemical_equilibrium:concentration:log_amounts:pressure_closure_cppad";
+        return selection;
+    }
+    if (standard_states_need_activity(reaction_standard_states)
+        && !standard_states_need_concentration(reaction_standard_states)
+        && activity_model == "epcsaft_component_activity"
+        && epcsaft::autodiff::cppad_compiled()) {
+        selection.backend = "autodiff";
+        selection.capability_path = "chemical_equilibrium:mole_fraction_activity:log_amounts:component_activity_cppad";
         return selection;
     }
     if (!epcsaft::autodiff::finite_difference_debug_enabled()) {
@@ -364,6 +406,244 @@ Eigen::MatrixXd analytic_ideal_log_amount_jacobian(
         const Eigen::Index row = balances.rows() + 1 + r;
         for (Eigen::Index j = 0; j < nvars; ++j) {
             jac(row, j) = reactions(r, j) - stoich_sum * base.x[static_cast<std::size_t>(j)];
+        }
+    }
+    return jac;
+}
+
+Eigen::MatrixXd autodiff_ideal_log_amount_jacobian(
+    const Eigen::VectorXd& log_n,
+    const Eigen::MatrixXd& balances,
+    const Eigen::VectorXd& totals,
+    const Eigen::MatrixXd& reactions,
+    const Eigen::VectorXd& log_k,
+    const std::vector<double>& charges,
+    double min_mole_fraction
+) {
+#ifndef EPCSAFT_HAS_CPPAD
+    (void)log_n;
+    (void)balances;
+    (void)totals;
+    (void)reactions;
+    (void)log_k;
+    (void)charges;
+    (void)min_mole_fraction;
+    throw ValueError("autodiff chemical-equilibrium Jacobian requires a CppAD-enabled build.");
+#else
+    using epcsaft::autodiff::CppADScalar;
+    const std::size_t nvars = static_cast<std::size_t>(log_n.size());
+    const std::size_t rows = static_cast<std::size_t>(balances.rows() + 1 + reactions.rows());
+    std::vector<double> independent_values(nvars, 0.0);
+    for (std::size_t i = 0; i < nvars; ++i) {
+        independent_values[i] = log_n[static_cast<Eigen::Index>(i)];
+    }
+
+    std::vector<CppADScalar> independent(nvars);
+    for (std::size_t i = 0; i < nvars; ++i) {
+        independent[i] = independent_values[i];
+    }
+    CppAD::Independent(independent);
+
+    std::vector<CppADScalar> n(nvars);
+    CppADScalar ntotal = CppADScalar(0.0);
+    for (std::size_t i = 0; i < nvars; ++i) {
+        n[i] = CppAD::exp(independent[i]);
+        ntotal += n[i];
+    }
+    std::vector<CppADScalar> x(nvars);
+    for (std::size_t i = 0; i < nvars; ++i) {
+        x[i] = n[i] / ntotal;
+    }
+
+    std::vector<double> x_nominal(nvars, 0.0);
+    for (std::size_t i = 0; i < nvars; ++i) {
+        x_nominal[i] = std::exp(independent_values[i]);
+    }
+    const double ntotal_nominal = std::accumulate(x_nominal.begin(), x_nominal.end(), 0.0);
+    for (double& value : x_nominal) {
+        value /= ntotal_nominal;
+        if (!(std::isfinite(value) && value > min_mole_fraction)) {
+            throw ValueError("autodiff chemical-equilibrium Jacobian requires an unclipped positive composition.");
+        }
+    }
+
+    std::vector<CppADScalar> residual(rows, CppADScalar(0.0));
+    for (Eigen::Index r = 0; r < balances.rows(); ++r) {
+        CppADScalar value = CppADScalar(-totals[r]);
+        for (std::size_t j = 0; j < nvars; ++j) {
+            value += CppADScalar(balances(r, static_cast<Eigen::Index>(j))) * n[j];
+        }
+        residual[static_cast<std::size_t>(r)] = value;
+    }
+
+    const std::size_t charge_row = static_cast<std::size_t>(balances.rows());
+    CppADScalar charge_value = CppADScalar(0.0);
+    if (charges.size() == nvars) {
+        for (std::size_t j = 0; j < nvars; ++j) {
+            charge_value += CppADScalar(charges[j]) * n[j];
+        }
+    }
+    residual[charge_row] = charge_value;
+
+    for (Eigen::Index r = 0; r < reactions.rows(); ++r) {
+        CppADScalar value = CppADScalar(-log_k[r]);
+        for (std::size_t j = 0; j < nvars; ++j) {
+            value += CppADScalar(reactions(r, static_cast<Eigen::Index>(j))) * CppAD::log(x[j]);
+        }
+        residual[static_cast<std::size_t>(balances.rows() + 1 + r)] = value;
+    }
+
+    CppAD::ADFun<double> tape(independent, residual);
+    const std::vector<double> jacobian_row_major = tape.Jacobian(independent_values);
+    Eigen::MatrixXd jac(static_cast<Eigen::Index>(rows), static_cast<Eigen::Index>(nvars));
+    for (std::size_t r = 0; r < rows; ++r) {
+        for (std::size_t c = 0; c < nvars; ++c) {
+            jac(static_cast<Eigen::Index>(r), static_cast<Eigen::Index>(c)) =
+                jacobian_row_major[r * nvars + c];
+        }
+    }
+    return jac;
+#endif
+}
+
+Eigen::VectorXd concentration_log_density_sensitivity(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double rho,
+    const std::vector<double>& x
+) {
+    PressureCompositionDerivativeResult composition = pressure_composition_derivative_result_cpp(
+        t,
+        rho,
+        x,
+        mixture->args()
+    );
+    if (composition.derivative_backend == "unsupported") {
+        throw ValueError(
+            "backend_unavailable: concentration-standard-state chemical-equilibrium autodiff requires "
+            "supported native pressure-composition derivatives."
+        );
+    }
+    PressureDensityDerivativeResult density = pressure_density_derivative_result_cpp(t, rho, x, mixture->args());
+    if (density.derivative_backend == "unsupported" || !std::isfinite(density.dpdrho) || std::abs(density.dpdrho) <= 1.0e-18) {
+        throw ValueError(
+            "backend_unavailable: concentration-standard-state chemical-equilibrium autodiff requires "
+            "supported native pressure-density derivatives."
+        );
+    }
+    const Eigen::Index nvars = static_cast<Eigen::Index>(x.size());
+    Eigen::VectorXd x_vec = Eigen::Map<const Eigen::VectorXd>(x.data(), nvars);
+    Eigen::VectorXd dlnrho = Eigen::VectorXd::Zero(nvars);
+    for (Eigen::Index j = 0; j < nvars; ++j) {
+        double dpressure = 0.0;
+        for (Eigen::Index i = 0; i < nvars; ++i) {
+            const double dx_i_dlogn_j =
+                x_vec[i] * ((i == j) ? 1.0 - x_vec[j] : -x_vec[j]);
+            dpressure += composition.dpdx[static_cast<std::size_t>(i)] * dx_i_dlogn_j;
+        }
+        const double drho_dlogn = -dpressure / density.dpdrho;
+        dlnrho[j] = drho_dlogn / rho;
+    }
+    return dlnrho;
+}
+
+Eigen::MatrixXd autodiff_concentration_log_amount_jacobian(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    const ChemicalEvaluation& base,
+    const Eigen::MatrixXd& balances,
+    const Eigen::MatrixXd& reactions,
+    const std::vector<double>& charges,
+    double min_mole_fraction
+) {
+    if (!(std::isfinite(base.molar_density) && base.molar_density > 0.0)) {
+        throw ValueError("autodiff concentration Jacobian requires a finite positive molar density.");
+    }
+    Eigen::MatrixXd jac = analytic_ideal_log_amount_jacobian(
+        base,
+        balances,
+        reactions,
+        charges,
+        min_mole_fraction
+    );
+    Eigen::VectorXd dlnrho = concentration_log_density_sensitivity(
+        mixture,
+        t,
+        base.molar_density,
+        base.x
+    );
+    for (Eigen::Index r = 0; r < reactions.rows(); ++r) {
+        double stoich_sum = 0.0;
+        for (Eigen::Index i = 0; i < reactions.cols(); ++i) {
+            stoich_sum += reactions(r, i);
+        }
+        const Eigen::Index row = balances.rows() + 1 + r;
+        for (Eigen::Index j = 0; j < dlnrho.size(); ++j) {
+            jac(row, j) += stoich_sum * dlnrho[j];
+        }
+    }
+    return jac;
+}
+
+Eigen::MatrixXd autodiff_component_activity_log_amount_jacobian(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    int phase_int,
+    const ChemicalEvaluation& base,
+    const Eigen::MatrixXd& balances,
+    const Eigen::MatrixXd& reactions,
+    const std::vector<int>& reaction_standard_states,
+    const std::vector<double>& charges,
+    double min_mole_fraction,
+    ChemicalEvaluationCounters* counters
+) {
+    Eigen::MatrixXd jac = analytic_ideal_log_amount_jacobian(
+        base,
+        balances,
+        reactions,
+        charges,
+        min_mole_fraction
+    );
+    if (counters != nullptr) {
+        counters->density_solves += 1;
+        counters->state_evaluations += 1;
+    }
+    double rho = mixture->solve_density_scoped(
+        t,
+        p,
+        base.x,
+        phase_int,
+        "chemical_equilibrium_activity_standard_state"
+    );
+    ComponentActivityLogDerivativeResult activity = component_activity_log_derivative_result_cpp(
+        mixture.get(),
+        t,
+        rho,
+        p,
+        phase_int,
+        base.x,
+        mixture->args()
+    );
+    if (!activity.supported) {
+        throw ValueError(
+            "backend_unavailable: activity-coupled chemical-equilibrium autodiff requires supported native "
+            "component-activity log derivatives."
+        );
+    }
+    const Eigen::Index ncomp = static_cast<Eigen::Index>(base.x.size());
+    for (Eigen::Index r = 0; r < reactions.rows(); ++r) {
+        if (reaction_standard_states[static_cast<std::size_t>(r)] != STANDARD_STATE_MOLE_FRACTION_ACTIVITY) {
+            continue;
+        }
+        const Eigen::Index row = balances.rows() + 1 + r;
+        for (Eigen::Index j = 0; j < ncomp; ++j) {
+            double dloggamma = 0.0;
+            for (Eigen::Index i = 0; i < ncomp; ++i) {
+                dloggamma += reactions(r, i)
+                    * activity.dloggamma_dlogn_row_major[static_cast<std::size_t>(i * ncomp + j)];
+            }
+            jac(row, j) += dloggamma;
         }
     }
     return jac;
@@ -699,6 +979,7 @@ ChemicalEvaluation evaluate_chemical(
                 phase_int,
                 "chemical_equilibrium_concentration_standard_state"
             );
+            out.molar_density = molar_density;
         } catch (...) {
             if (state_failure_count != nullptr) {
                 *state_failure_count += 1;
@@ -813,7 +1094,11 @@ Eigen::MatrixXd chemical_residual_jacobian(
     ChemicalEvaluationCounters* counters,
     ChemicalDerivativeSelection* selection
 ) {
-    ChemicalDerivativeSelection selected = select_chemical_derivative_backend(options, reaction_standard_states);
+    ChemicalDerivativeSelection selected = select_chemical_derivative_backend(
+        options,
+        reaction_standard_states,
+        activity_model
+    );
     if (selection != nullptr) {
         *selection = selected;
     }
@@ -825,6 +1110,49 @@ Eigen::MatrixXd chemical_residual_jacobian(
             current,
             balances,
             reactions,
+            mixture->args().z,
+            options.min_mole_fraction
+        );
+    }
+    if (selected.backend == "autodiff") {
+        if (counters != nullptr) {
+            counters->jacobian_evaluations += 1;
+        }
+        if (standard_states_need_concentration(reaction_standard_states)
+            && !standard_states_need_activity(reaction_standard_states)) {
+            return autodiff_concentration_log_amount_jacobian(
+                mixture,
+                t,
+                current,
+                balances,
+                reactions,
+                mixture->args().z,
+                options.min_mole_fraction
+            );
+        }
+        if (standard_states_need_activity(reaction_standard_states)
+            && !standard_states_need_concentration(reaction_standard_states)
+            && activity_model == "epcsaft_component_activity") {
+            return autodiff_component_activity_log_amount_jacobian(
+                mixture,
+                t,
+                p,
+                phase_int,
+                current,
+                balances,
+                reactions,
+                reaction_standard_states,
+                mixture->args().z,
+                options.min_mole_fraction,
+                counters
+            );
+        }
+        return autodiff_ideal_log_amount_jacobian(
+            log_n,
+            balances,
+            totals,
+            reactions,
+            log_k,
             mixture->args().z,
             options.min_mole_fraction
         );
@@ -943,7 +1271,8 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
         : "epcsaft_neutral_fugacity_activity";
     ChemicalDerivativeSelection derivative_selection = select_chemical_derivative_backend(
         options,
-        reaction_standard_states
+        reaction_standard_states,
+        activity_model
     );
     int state_failure_count = 0;
     ChemicalEvaluationCounters counters;
@@ -1113,7 +1442,8 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
         : "epcsaft_neutral_fugacity_activity";
     ChemicalDerivativeSelection derivative_selection = select_chemical_derivative_backend(
         options,
-        reaction_standard_states
+        reaction_standard_states,
+        activity_model
     );
     int state_failure_count = 0;
     ChemicalEvaluationCounters counters;

@@ -333,6 +333,74 @@ def test_pressure_composition_derivative_reports_association_gate() -> None:
     assert np.isnan(derivative["dpdx"]).all()
 
 
+def test_lnfug_composition_derivative_matches_fugacity_and_finite_difference_for_supported_states() -> None:
+    mix, _, _, density, temperature, composition = _nonassociating_ionic_state()
+    state = mix.state(T=temperature, x=composition, rho=density)
+    derivative = state.lnfug_composition_derivative()
+
+    assert derivative["supported"] is True
+    assert derivative["derivative_backend"] == "autodiff_composition"
+    assert derivative["finite_difference_fallback_used"] is False
+    np.testing.assert_allclose(derivative["lnfug"], state.fugacity_coefficient(natural_log=True))
+
+    jac = np.asarray(derivative["dlnfugdx"], dtype=float)
+    assert jac.shape == (composition.size, composition.size)
+
+    for i, j in ((0, 1), (1, 2), (composition.size - 2, composition.size - 1)):
+        delta_x = min(1.0e-7, 0.25 * float(composition[i]), 0.25 * float(composition[j]))
+        plus = composition.copy()
+        minus = composition.copy()
+        plus[i] += delta_x
+        plus[j] -= delta_x
+        minus[i] -= delta_x
+        minus[j] += delta_x
+        finite_difference = (
+            mix.state(T=temperature, x=plus, rho=density).fugacity_coefficient(natural_log=True)
+            - mix.state(T=temperature, x=minus, rho=density).fugacity_coefficient(natural_log=True)
+        ) / (2.0 * delta_x)
+        np.testing.assert_allclose(jac[:, i] - jac[:, j], finite_difference, rtol=2.0e-4, atol=1.0)
+
+
+def test_lnfug_composition_derivative_reports_association_gate() -> None:
+    mix, _, _, density, temperature, composition = _ionic_state()
+    state = mix.state(T=temperature, x=composition, rho=density)
+    derivative = state.lnfug_composition_derivative()
+
+    assert derivative["supported"] is False
+    assert derivative["derivative_backend"] == "unsupported"
+    assert "nonassociating states only" in derivative["finite_difference_fallback_reason"]
+    assert np.isnan(derivative["lnfug"]).all()
+    assert np.isnan(derivative["dlnfugdx"]).all()
+
+
+def test_pressure_density_derivative_matches_finite_difference_for_supported_states() -> None:
+    for state_factory in (_neutral_state, _nonassociating_ionic_state):
+        mix, _, _, density, temperature, composition = state_factory()
+        state = mix.state(T=temperature, x=composition, rho=density)
+        derivative = state.pressure_density_derivative()
+
+        assert derivative["supported"] is True
+        assert derivative["derivative_backend"] == "autodiff_density"
+        assert derivative["finite_difference_fallback_used"] is False
+
+        delta_rho = max(1.0e-6, 1.0e-7 * abs(float(density)))
+        plus = mix.state(T=temperature, x=composition, rho=density + delta_rho)
+        minus = mix.state(T=temperature, x=composition, rho=density - delta_rho)
+        finite_difference = (plus.pressure() - minus.pressure()) / (2.0 * delta_rho)
+        assert derivative["dpdrho"] == pytest.approx(finite_difference, rel=1e-6, abs=5.0e-1)
+
+
+def test_pressure_density_derivative_reports_association_gate() -> None:
+    mix, _, _, density, temperature, composition = _ionic_state()
+    state = mix.state(T=temperature, x=composition, rho=density)
+    derivative = state.pressure_density_derivative()
+
+    assert derivative["supported"] is False
+    assert derivative["derivative_backend"] == "unsupported"
+    assert "nonassociating states only" in derivative["finite_difference_fallback_reason"]
+    assert np.isnan(derivative["dpdrho"])
+
+
 def test_runtime_cache_stats_track_density_and_reference_state_reuse() -> None:
     mix, species, pressure, _, temperature, composition = _ionic_state()
     mix.clear_runtime_caches()

@@ -251,13 +251,17 @@ bool thermo_derivative_supported(
             }
             return false;
         }
+        bool has_activity = false;
+        bool has_concentration = false;
         for (int standard_state : row.reaction_standard_states) {
-            if (standard_state != 1) {
-                if (reason != nullptr) {
-                    *reason = "implicit reactive-speciation derivatives require ideal mole-fraction reaction standard states.";
-                }
-                return false;
+            has_activity = has_activity || standard_state == 0;
+            has_concentration = has_concentration || standard_state == 2;
+        }
+        if (has_activity && has_concentration) {
+            if (reason != nullptr) {
+                *reason = "implicit reactive-speciation derivatives do not yet support mixed activity- and concentration-coupled reaction standard states in one row.";
             }
+            return false;
         }
         for (const auto& target : row.targets) {
             if (target.family != "speciation") {
@@ -278,6 +282,31 @@ std::vector<double> initial_theta(const std::vector<NativeRegressionParameterSpe
         theta.push_back(std::max(parameter.lower, std::min(parameter.upper, parameter.initial)));
     }
     return theta;
+}
+
+std::string infer_native_thermo_derivative_backend(const NativeRegressionResidualEvaluation& objective_result) {
+    bool saw_autodiff = false;
+    bool saw_analytic = false;
+    for (const auto& row : objective_result.row_diagnostics) {
+        if (!row.success) {
+            continue;
+        }
+        if (row.derivative_backend == "autodiff") {
+            saw_autodiff = true;
+        } else if (row.derivative_backend == "analytic") {
+            saw_analytic = true;
+        }
+    }
+    if (saw_autodiff && !saw_analytic) {
+        return "cppad_implicit";
+    }
+    if (saw_analytic && !saw_autodiff) {
+        return "analytic_implicit";
+    }
+    if (saw_autodiff && saw_analytic) {
+        return "mixed_implicit";
+    }
+    return "implicit";
 }
 
 std::shared_ptr<ePCSAFTMixtureNative> mixture_for_theta(
@@ -533,7 +562,7 @@ NativeRegressionFitResult fit_native_thermo_regression(
 ) {
     NativeRegressionFitResult out;
     out.optimizer_backend = "ceres";
-    out.derivative_backend = "analytic_implicit";
+    out.derivative_backend = "implicit";
     for (const auto& parameter : parameters) {
         out.parameter_names.push_back(parameter.name);
         out.lower_bounds.push_back(parameter.lower);
@@ -577,6 +606,7 @@ NativeRegressionFitResult fit_native_thermo_regression(
         initial_rows,
         options.penalty_residual
     );
+    out.derivative_backend = infer_native_thermo_derivative_backend(out.objective_result);
     out.initial_cost = out.objective_result.cost;
     out.final_cost = out.initial_cost;
     out.residual_norm = out.objective_result.residual_norm;

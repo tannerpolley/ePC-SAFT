@@ -176,18 +176,6 @@ ParamDual make_param_dual(double value, int seed_index) {
     return x;
 }
 
-double scalar_derivative_at(double, int) {
-    return 0.0;
-}
-
-double scalar_derivative_at(const AutoDual &x, int idx) {
-    return idx == 0 ? scalar_derivative(x) : 0.0;
-}
-
-double scalar_derivative_at(const ParamDual &x, int idx) {
-    return (idx < x.derivatives().size()) ? x.derivatives()[idx] : 0.0;
-}
-
 void validate_pure_neutral_base_args_cpp(const add_args &base_args) {
     if (base_args.m.size() != 1 || base_args.s.size() != 1 || base_args.e.size() != 1) {
         throw ValueError("Native pure-neutral regression requires exactly one component.");

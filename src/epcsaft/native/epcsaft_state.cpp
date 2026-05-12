@@ -533,6 +533,18 @@ PressureCompositionDerivativeResult ePCSAFTStateNative::pressure_composition_der
     return pressure_composition_derivative_result_cpp(t_, density(), x_, args);
 }
 
+PressureDensityDerivativeResult ePCSAFTStateNative::pressure_density_derivative_result()
+{
+    const add_args& args = mixture_->args();
+    return pressure_density_derivative_result_cpp(t_, density(), x_, args);
+}
+
+LnfugCompositionDerivativeResult ePCSAFTStateNative::lnfug_composition_derivative_result()
+{
+    const add_args& args = mixture_->args();
+    return lnfug_composition_derivative_result_cpp(t_, density(), x_, args);
+}
+
 vector<double> ePCSAFTStateNative::ln_fugacity_coefficient()
 {
     const add_args& args = mixture_->args();

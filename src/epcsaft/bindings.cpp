@@ -1628,6 +1628,24 @@ PYBIND11_MODULE(_core, m) {
         .def_readonly("finite_difference_fallback_used", &PressureCompositionDerivativeResult::finite_difference_fallback_used)
         .def_readonly("finite_difference_fallback_reason", &PressureCompositionDerivativeResult::finite_difference_fallback_reason);
 
+    py::class_<PressureDensityDerivativeResult>(m, "PressureDensityDerivativeResult")
+        .def_readonly("pressure", &PressureDensityDerivativeResult::pressure)
+        .def_readonly("dpdrho", &PressureDensityDerivativeResult::dpdrho)
+        .def_readonly("supported", &PressureDensityDerivativeResult::supported)
+        .def_readonly("derivative_backend", &PressureDensityDerivativeResult::derivative_backend)
+        .def_readonly("finite_difference_fallback_used", &PressureDensityDerivativeResult::finite_difference_fallback_used)
+        .def_readonly("finite_difference_fallback_reason", &PressureDensityDerivativeResult::finite_difference_fallback_reason);
+
+    py::class_<LnfugCompositionDerivativeResult>(m, "LnfugCompositionDerivativeResult")
+        .def_readonly("lnfug", &LnfugCompositionDerivativeResult::lnfug)
+        .def_readonly("dlnfugdx_row_major", &LnfugCompositionDerivativeResult::dlnfugdx_row_major)
+        .def_readonly("rows", &LnfugCompositionDerivativeResult::rows)
+        .def_readonly("cols", &LnfugCompositionDerivativeResult::cols)
+        .def_readonly("supported", &LnfugCompositionDerivativeResult::supported)
+        .def_readonly("derivative_backend", &LnfugCompositionDerivativeResult::derivative_backend)
+        .def_readonly("finite_difference_fallback_used", &LnfugCompositionDerivativeResult::finite_difference_fallback_used)
+        .def_readonly("finite_difference_fallback_reason", &LnfugCompositionDerivativeResult::finite_difference_fallback_reason);
+
     py::class_<ResidualChemicalPotentialResult>(m, "ResidualChemicalPotentialResult")
         .def_readonly("mu", &ResidualChemicalPotentialResult::mu)
         .def_readonly("composition", &ResidualChemicalPotentialResult::composition);
@@ -1697,6 +1715,8 @@ PYBIND11_MODULE(_core, m) {
         .def("residual_chemical_potential_result", &ePCSAFTStateNative::residual_chemical_potential_result)
         .def("composition_derivative_residual_helmholtz_result", &ePCSAFTStateNative::composition_derivative_residual_helmholtz_result)
         .def("pressure_composition_derivative_result", &ePCSAFTStateNative::pressure_composition_derivative_result)
+        .def("pressure_density_derivative_result", &ePCSAFTStateNative::pressure_density_derivative_result)
+        .def("lnfug_composition_derivative_result", &ePCSAFTStateNative::lnfug_composition_derivative_result)
         .def("ln_fugacity_coefficient", &ePCSAFTStateNative::ln_fugacity_coefficient)
         .def("fugacity_coefficient", &ePCSAFTStateNative::fugacity_coefficient)
         .def("fugacity_coefficient_result", &ePCSAFTStateNative::fugacity_coefficient_result)

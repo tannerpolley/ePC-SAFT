@@ -127,6 +127,47 @@ struct PressureCompositionDerivativeResult {
     std::string finite_difference_fallback_reason;
 };
 
+struct PressureDensityDerivativeResult {
+    double pressure = 0.0;
+    double dpdrho = 0.0;
+    bool supported = false;
+    std::string derivative_backend = "unsupported";
+    bool finite_difference_fallback_used = false;
+    std::string finite_difference_fallback_reason;
+};
+
+struct LnfugCompositionDerivativeResult {
+    vector<double> lnfug;
+    vector<double> dlnfugdx_row_major;
+    int rows = 0;
+    int cols = 0;
+    bool supported = false;
+    std::string derivative_backend = "unsupported";
+    bool finite_difference_fallback_used = false;
+    std::string finite_difference_fallback_reason;
+};
+
+struct LnfugDensityDerivativeResult {
+    vector<double> lnfug;
+    vector<double> dlnfugdrho;
+    int size = 0;
+    bool supported = false;
+    std::string derivative_backend = "unsupported";
+    bool finite_difference_fallback_used = false;
+    std::string finite_difference_fallback_reason;
+};
+
+struct ComponentActivityLogDerivativeResult {
+    vector<double> ln_gamma;
+    vector<double> dloggamma_dlogn_row_major;
+    int rows = 0;
+    int cols = 0;
+    bool supported = false;
+    std::string derivative_backend = "unsupported";
+    bool finite_difference_fallback_used = false;
+    std::string finite_difference_fallback_reason;
+};
+
 struct ResidualChemicalPotentialResult {
     VectorContributionTerms mu;
     CompositionContributionResult composition;
@@ -353,6 +394,8 @@ public:
     ResidualChemicalPotentialResult residual_chemical_potential_result();
     CompositionContributionResult composition_derivative_residual_helmholtz_result();
     PressureCompositionDerivativeResult pressure_composition_derivative_result();
+    PressureDensityDerivativeResult pressure_density_derivative_result();
+    LnfugCompositionDerivativeResult lnfug_composition_derivative_result();
     vector<double> ln_fugacity_coefficient();
     vector<double> fugacity_coefficient();
     FugacityContributionResult fugacity_coefficient_result();

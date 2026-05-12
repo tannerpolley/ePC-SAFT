@@ -1,8 +1,120 @@
 #include "epcsaft_core_internal.h"
+#include "autodiff/ad_scalar.h"
 
 using namespace thermo_detail;
 
 namespace miac_detail {
+
+bool component_activity_log_derivative_supported_cpp(const add_args& args, std::string* reason) {
+    if (!args.assoc_num.empty() || !args.assoc_matrix.empty() || !args.k_hb.empty()
+        || !args.e_assoc.empty() || !args.vol_a.empty()) {
+        if (reason != nullptr) {
+            *reason = "native component-activity derivatives currently support nonassociating states only.";
+        }
+        return false;
+    }
+    if (args.DH_model == 2) {
+        if (reason != nullptr) {
+            *reason = "native component-activity derivatives do not support DH_model=2.";
+        }
+        return false;
+    }
+    if (args.dielc_rule != 0 && args.dielc_rule != 1) {
+        if (reason != nullptr) {
+            *reason = "native component-activity derivatives currently support dielc_rule 0 or 1 only.";
+        }
+        return false;
+    }
+    if (args.born_model == 2 || args.born_eps_mode == 1) {
+        if (reason != nullptr) {
+            *reason = "native component-activity derivatives do not yet support SSM/DS Born or solvent-reference Born epsilon modes.";
+        }
+        return false;
+    }
+    return true;
+}
+
+vector<double> x_to_logn_jacobian_cpp(const vector<double>& x) {
+    const int ncomp = static_cast<int>(x.size());
+    vector<double> out(static_cast<size_t>(ncomp * ncomp), 0.0);
+    for (int k = 0; k < ncomp; ++k) {
+        for (int j = 0; j < ncomp; ++j) {
+            out[static_cast<size_t>(k * ncomp + j)] =
+                x[static_cast<size_t>(k)] * ((k == j) ? (1.0 - x[static_cast<size_t>(j)]) : (-x[static_cast<size_t>(j)]));
+        }
+    }
+    return out;
+}
+
+vector<double> reference_composition_jacobian_cpp(
+    const vector<double>& x,
+    const ChargeGroups& groups,
+    double eps
+) {
+    const int ncomp = static_cast<int>(x.size());
+    vector<double> out(static_cast<size_t>(ncomp * ncomp), 0.0);
+    double solvent_sum = 0.0;
+    for (int idx : groups.solvents) {
+        solvent_sum += x[static_cast<size_t>(idx)];
+    }
+    if (!(std::isfinite(solvent_sum) && solvent_sum > 0.0)) {
+        throw ValueError("miac derivative requires a positive solvent fraction.");
+    }
+    const double solvent_budget = std::max(
+        1.0 - eps * static_cast<double>(ncomp - groups.solvents.size()),
+        eps * static_cast<double>(groups.solvents.size())
+    );
+    for (int row : groups.solvents) {
+        const double xi = x[static_cast<size_t>(row)];
+        for (int col : groups.solvents) {
+            const double numer = ((row == col) ? solvent_sum : 0.0) - xi;
+            out[static_cast<size_t>(row * ncomp + col)] = solvent_budget * numer / (solvent_sum * solvent_sum);
+        }
+    }
+    return out;
+}
+
+vector<double> pressure_closure_drho_dx_cpp(
+    const PressureCompositionDerivativeResult& composition,
+    const PressureDensityDerivativeResult& density
+) {
+    const int ncomp = static_cast<int>(composition.dpdx.size());
+    vector<double> out(static_cast<size_t>(ncomp), 0.0);
+    for (int j = 0; j < ncomp; ++j) {
+        out[static_cast<size_t>(j)] = -composition.dpdx[static_cast<size_t>(j)] / density.dpdrho;
+    }
+    return out;
+}
+
+vector<double> fixed_pressure_lnfug_dx_cpp(
+    const LnfugCompositionDerivativeResult& composition,
+    const LnfugDensityDerivativeResult& density,
+    const vector<double>& drho_dx
+) {
+    const int ncomp = composition.rows;
+    vector<double> out(static_cast<size_t>(ncomp * ncomp), 0.0);
+    for (int i = 0; i < ncomp; ++i) {
+        for (int j = 0; j < ncomp; ++j) {
+            const std::size_t idx = static_cast<std::size_t>(i * ncomp + j);
+            out[idx] = composition.dlnfugdx_row_major[idx] + density.dlnfugdrho[static_cast<size_t>(i)] * drho_dx[static_cast<size_t>(j)];
+        }
+    }
+    return out;
+}
+
+vector<double> compose_jacobians_cpp(const vector<double>& left, const vector<double>& right, int rows, int inner, int cols) {
+    vector<double> out(static_cast<size_t>(rows * cols), 0.0);
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            double value = 0.0;
+            for (int k = 0; k < inner; ++k) {
+                value += left[static_cast<size_t>(i * inner + k)] * right[static_cast<size_t>(k * cols + j)];
+            }
+            out[static_cast<size_t>(i * cols + j)] = value;
+        }
+    }
+    return out;
+}
 
 vector<double> build_infinite_dilution_reference_cpp(
     const vector<double>& x,
@@ -461,6 +573,116 @@ ActivityCoefficientNative activity_coefficient_values_impl_cpp(
     return out;
 }
 
+ComponentActivityLogDerivativeResult component_activity_log_derivative_result_impl_cpp(
+    ePCSAFTMixtureNative* mixture,
+    double t,
+    double rho,
+    double p,
+    int phase,
+    const vector<double>& x,
+    const add_args& args
+) {
+    ComponentActivityLogDerivativeResult out;
+    out.rows = static_cast<int>(x.size());
+    out.cols = static_cast<int>(x.size());
+    out.ln_gamma.assign(x.size(), std::numeric_limits<double>::quiet_NaN());
+    out.dloggamma_dlogn_row_major.assign(x.size() * x.size(), std::numeric_limits<double>::quiet_NaN());
+
+    if (!epcsaft::autodiff::cppad_compiled()) {
+        out.finite_difference_fallback_reason =
+            "backend_unavailable: native component-activity derivatives require a CppAD-enabled build.";
+        return out;
+    }
+    std::string unsupported_reason;
+    if (!component_activity_log_derivative_supported_cpp(args, &unsupported_reason)) {
+        out.finite_difference_fallback_reason = unsupported_reason;
+        return out;
+    }
+
+    ChargeGroups groups = collect_charge_groups(args, x.size());
+    if (groups.cations.empty() || groups.anions.empty()) {
+        out.finite_difference_fallback_reason =
+            "backend_unavailable: native component-activity derivatives require at least one cation and one anion.";
+        return out;
+    }
+    if (groups.solvents.empty()) {
+        out.finite_difference_fallback_reason =
+            "backend_unavailable: native component-activity derivatives require a neutral solvent reference.";
+        return out;
+    }
+
+    const double eps = 1.0e-12;
+    const vector<double> x_ref = build_infinite_dilution_reference_cpp(x, groups, eps);
+    const vector<double> dx_dlogn = x_to_logn_jacobian_cpp(x);
+    const vector<double> dxref_dx = reference_composition_jacobian_cpp(x, groups, eps);
+
+    LnfugCompositionDerivativeResult current_lnfug_x = lnfug_composition_derivative_result_cpp(t, rho, x, args);
+    LnfugDensityDerivativeResult current_lnfug_rho = lnfug_density_derivative_result_cpp(t, rho, x, args);
+    PressureCompositionDerivativeResult current_pressure_x = pressure_composition_derivative_result_cpp(t, rho, x, args);
+    PressureDensityDerivativeResult current_pressure_rho = pressure_density_derivative_result_cpp(t, rho, x, args);
+    if (!(current_lnfug_x.supported && current_lnfug_rho.supported && current_pressure_x.supported && current_pressure_rho.supported)) {
+        out.finite_difference_fallback_reason =
+            "backend_unavailable: native component-activity derivatives require supported lnphi and pressure derivatives on the current state.";
+        return out;
+    }
+    if (!std::isfinite(current_pressure_rho.dpdrho) || std::abs(current_pressure_rho.dpdrho) <= 1.0e-18) {
+        out.finite_difference_fallback_reason =
+            "backend_unavailable: native component-activity derivatives require a finite current-state dp/drho.";
+        return out;
+    }
+
+    ReferenceStateKey key;
+    key.t = t;
+    key.p = p;
+    key.phase = 0;
+    key.x_ref = x_ref;
+    ReferenceStateValue ref = reference_state_from_cache_or_build_cpp(mixture, key, args);
+
+    LnfugCompositionDerivativeResult ref_lnfug_x = lnfug_composition_derivative_result_cpp(t, ref.rho, x_ref, args);
+    LnfugDensityDerivativeResult ref_lnfug_rho = lnfug_density_derivative_result_cpp(t, ref.rho, x_ref, args);
+    PressureCompositionDerivativeResult ref_pressure_x = pressure_composition_derivative_result_cpp(t, ref.rho, x_ref, args);
+    PressureDensityDerivativeResult ref_pressure_rho = pressure_density_derivative_result_cpp(t, ref.rho, x_ref, args);
+    if (!(ref_lnfug_x.supported && ref_lnfug_rho.supported && ref_pressure_x.supported && ref_pressure_rho.supported)) {
+        out.finite_difference_fallback_reason =
+            "backend_unavailable: native component-activity derivatives require supported lnphi and pressure derivatives on the reference state.";
+        return out;
+    }
+    if (!std::isfinite(ref_pressure_rho.dpdrho) || std::abs(ref_pressure_rho.dpdrho) <= 1.0e-18) {
+        out.finite_difference_fallback_reason =
+            "backend_unavailable: native component-activity derivatives require a finite reference-state dp/drho.";
+        return out;
+    }
+
+    const vector<double> drho_cur_dx = pressure_closure_drho_dx_cpp(current_pressure_x, current_pressure_rho);
+    const vector<double> dlnphi_cur_dx = fixed_pressure_lnfug_dx_cpp(current_lnfug_x, current_lnfug_rho, drho_cur_dx);
+
+    const vector<double> drho_ref_dxref = pressure_closure_drho_dx_cpp(ref_pressure_x, ref_pressure_rho);
+    const vector<double> dlnphi_ref_dxref = fixed_pressure_lnfug_dx_cpp(ref_lnfug_x, ref_lnfug_rho, drho_ref_dxref);
+    const vector<double> dlnphi_ref_dx = compose_jacobians_cpp(dlnphi_ref_dxref, dxref_dx, out.rows, out.cols, out.cols);
+
+    const vector<double> dloggamma_dx = [&]() {
+        vector<double> values(static_cast<size_t>(out.rows * out.cols), 0.0);
+        for (int i = 0; i < out.rows; ++i) {
+            for (int j = 0; j < out.cols; ++j) {
+                const std::size_t idx = static_cast<std::size_t>(i * out.cols + j);
+                values[idx] = dlnphi_cur_dx[idx] - dlnphi_ref_dx[idx];
+            }
+        }
+        return values;
+    }();
+
+    out.ln_gamma.assign(x.size(), 0.0);
+    for (int i = 0; i < out.rows; ++i) {
+        out.ln_gamma[static_cast<size_t>(i)] =
+            current_lnfug_x.lnfug[static_cast<size_t>(i)] - ref_lnfug_x.lnfug[static_cast<size_t>(i)];
+    }
+    out.dloggamma_dlogn_row_major = compose_jacobians_cpp(dloggamma_dx, dx_dlogn, out.rows, out.cols, out.cols);
+    out.supported = true;
+    out.derivative_backend = "autodiff_component_activity_log_amounts";
+    out.finite_difference_fallback_used = false;
+    return out;
+}
+
 } // namespace miac_detail
 
 // EqID: gamma_asym_inf
@@ -502,5 +724,25 @@ ActivityCoefficientNative activity_coefficient_values_cpp(
         include_aux,
         has_solvent_override,
         solvent_override_index
+    );
+}
+
+ComponentActivityLogDerivativeResult component_activity_log_derivative_result_cpp(
+    ePCSAFTMixtureNative* mixture,
+    double t,
+    double rho,
+    double p,
+    int phase,
+    const vector<double>& x,
+    const add_args& args
+) {
+    return miac_detail::component_activity_log_derivative_result_impl_cpp(
+        mixture,
+        t,
+        rho,
+        p,
+        phase,
+        x,
+        args
     );
 }

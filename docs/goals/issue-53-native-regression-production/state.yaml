@@ -57,7 +57,7 @@ agents:
   judge: installed
   worker: installed
 
-active_task: T041
+active_task: T047
 
 tasks:
   - id: T001
@@ -1850,7 +1850,7 @@ tasks:
   - id: T041
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: xhigh
     objective: "After T040, decide the next honest prerequisite for native concentration-standard-state thermodynamic regression: whether to implement a finite-difference-free dp/drho substrate next, or stop here with the narrower remaining blocker documented."
     inputs:
@@ -1866,6 +1866,257 @@ tasks:
     expected_output:
       - "Decision on whether the next tranche is a real dp/drho architecture slice."
       - "If stopping, an explicit narrower blocker statement."
+    receipt:
+      result: done
+      decision: "The dp/drho prerequisite is no longer the active blocker; the next honest tranche is explicit CppAD chemical-equilibrium Jacobians for the supported ideal-mole-fraction slice plus benchmark truthfulness for the thermo Ceres path."
+      summary: "Continued beyond the original dp/drho decision point: the substrate blocker is closed, explicit CppAD chemical-equilibrium Jacobians now work for the supported ideal-mole-fraction slice, and the thermo Ceres benchmark now truthfully reports cppad_implicit."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T041-cppad-chemical-jacobian-tranche.md"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+        - "src/epcsaft/native/regression/thermo_regression.cpp"
+        - "src/epcsaft/benchmarks/native_ceres_thermo_regression.py"
+        - "tests/native/test_chemical_equilibrium_native.py"
+        - "tests/native/test_native_ceres_thermodynamic_regression.py"
+        - "tests/workflows/test_benchmark_native_regression.py"
+
+  - id: T042
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: xhigh
+    objective: "After the supported cppad_implicit thermo benchmark proof, identify the next highest-value remaining production derivative gap for issue #53 and frame it honestly: activity/concentration chemical-equilibrium Jacobians, bubble-pressure differentiation, or non-logK thermo parameter sensitivities."
+    inputs:
+      - "T041 tranche receipt."
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "src/epcsaft/native/regression/thermo_regression.cpp"
+      - "src/epcsaft/benchmarks/native_ceres_thermo_regression.py"
+      - "scripts/benchmark_native_regression.py"
+      - "scripts/benchmark_native_ceres_thermo_regression.py"
+    constraints:
+      - "Do not claim issue #53 complete."
+      - "Do not blur the residual-record benchmark with the thermo Ceres benchmark."
+      - "Do not describe unsupported bubble or non-logK parameter derivatives as solved."
+    expected_output:
+      - "A concrete next implementation target."
+      - "An honest blocker statement for the remaining unsupported facets."
+    receipt:
+      result: done
+      decision: "Extend the supported thermo slice to concentration-standard-state logK rows first, because the new pressure-closure derivative substrate makes that possible without opening the larger non-logK parameter or bubble-pressure problem."
+      summary: "Supported concentration-standard-state reactive-speciation logK rows now run through the native Ceres hot loop with cppad_implicit derivatives."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T042-concentration-thermo-tranche.md"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+        - "src/epcsaft/native/regression/thermo_regression.cpp"
+        - "src/epcsaft/benchmarks/native_ceres_thermo_regression.py"
+        - "scripts/benchmark_native_ceres_thermo_regression.py"
+        - "tests/native/test_chemical_equilibrium_native.py"
+        - "tests/native/test_native_ceres_thermodynamic_regression.py"
+        - "tests/api/test_reactive_speciation.py"
+        - "tests/workflows/test_benchmark_native_regression.py"
+
+  - id: T043
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: xhigh
+    objective: "After supported ideal and concentration cppad_implicit thermo slices, choose the next highest-value remaining production derivative gap: activity-coupled standard states, reactive-electrolyte bubble differentiation, or non-logK thermo parameter sensitivities such as d_born/f_solv/k_ij."
+    inputs:
+      - "T041 receipt."
+      - "T042 receipt."
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "src/epcsaft/native/regression/thermo_regression.cpp"
+      - "src/epcsaft/benchmarks/native_ceres_thermo_regression.py"
+      - "tests/native/test_native_ceres_thermodynamic_regression.py"
+    constraints:
+      - "Do not claim issue #53 complete."
+      - "Do not blur supported logK rows with unsupported non-logK parameter sensitivities."
+      - "Do not claim bubble rows are differentiated while row diagnostics still say not_differentiated."
+    expected_output:
+      - "The next concrete implementation target."
+      - "An explicit unsupported-surface statement for what remains."
+    receipt:
+      result: done
+      decision: "Choose activity-coupled standard states as the next implementation target; bubble differentiation and non-logK thermodynamic parameter sensitivities remain downstream."
+      summary: "The next honest prerequisite is a finite-difference-free activity-coupled derivative substrate for supported nonassociating states. Bubble rows are still undifferentiated, and non-logK thermodynamic parameters do not yet have a meaningful production derivative path until activity-coupled standard states are supported."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T043-activity-coupled-prerequisite.md"
+        - "src/epcsaft/native/regression/thermo_regression.cpp"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+        - "tests/native/test_native_ceres_reactive_pressure_speciation.py"
+
+  - id: T044
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: xhigh
+    objective: "Implement the next production derivative tranche: finite-difference-free native activity-coupled chemical-equilibrium Jacobians for the supported nonassociating state slice, and extend native thermo regression to supported activity-coupled logK rows."
+    allowed_files:
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_activity.cpp"
+      - "src/epcsaft/native/epcsaft_fugcoef.cpp"
+      - "src/epcsaft/native/epcsaft_mu.cpp"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/epcsaft_Z.cpp"
+      - "src/epcsaft/native/epcsaft_core_internal.h"
+      - "src/epcsaft/native/epcsaft_electrolyte.h"
+      - "src/epcsaft/native/epcsaft_state.cpp"
+      - "src/epcsaft/native/regression/thermo_regression.cpp"
+      - "src/epcsaft/benchmarks/native_ceres_thermo_regression.py"
+      - "scripts/benchmark_native_ceres_thermo_regression.py"
+      - "tests/native/test_chemical_equilibrium_native.py"
+      - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      - "tests/api/test_reactive_speciation.py"
+      - "tests/workflows/test_benchmark_native_regression.py"
+      - "docs/goals/issue-53-native-regression-production/notes/**"
+      - "docs/goals/issue-53-native-regression-production/notes/T044-activity-coupled-blocker.md"
+      - "docs/goals/issue-53-native-regression-production/state.yaml"
+    verify:
+      - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py tests/native/test_chemical_equilibrium_native.py tests/api/test_reactive_speciation.py tests/native/test_native_ceres_thermodynamic_regression.py tests/workflows/test_benchmark_native_regression.py -q"
+      - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 1"
+    stop_if:
+      - "The only feasible implementation path requires production finite differences."
+      - "The slice requires broad second-derivative EOS rewrites beyond the supported nonassociating state scope."
+      - "The slice cannot produce a truthful cppad_implicit or analytic_implicit activity-coupled thermo benchmark case."
+    receipt:
+      result: done
+      summary: "Stopped at the worker boundary. The current native activity-coupled path lacks a finite-difference-free state-level ln(gamma)/ln(phi) derivative substrate. This is broader than a local chemical-equilibrium glue change and needs a dedicated fugacity-derivative or second-derivative EOS tranche."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T044-activity-coupled-blocker.md"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+        - "src/epcsaft/native/epcsaft_fugcoef.cpp"
+        - "src/epcsaft/native/epcsaft_mu.cpp"
+        - "src/epcsaft/native/epcsaft_electrolyte.h"
+        - "src/epcsaft/native/regression/thermo_regression.cpp"
+      changed_files:
+        - "docs/goals/issue-53-native-regression-production/notes/T044-activity-coupled-blocker.md"
+        - "docs/goals/issue-53-native-regression-production/state.yaml"
+      commands:
+        - cmd: "rg -n 'mole_fraction_activity|activity-coupled|epcsaft_component_activity|epcsaft_neutral_fugacity_activity' src/epcsaft/native/epcsaft_chemical_equilibrium.cpp src/epcsaft/native/regression/thermo_regression.cpp tests/native/test_native_ceres_reactive_pressure_speciation.py"
+          status: pass
+          summary: "Confirmed that activity-coupled standard states remain unsupported in native thermo regression while bubble rows remain not_differentiated."
+        - cmd: "rg -n 'struct CompositionContributionResult|struct ResidualChemicalPotentialResult|struct FugacityContributionResult|dadx|sum_x_dadx' src/epcsaft/native/epcsaft_electrolyte.h src/epcsaft/native/epcsaft_core_internal.h"
+          status: pass
+          summary: "Confirmed the current native fugacity path exposes value plus first composition-derivative data, but not a state-level ln(phi) derivative substrate."
+        - cmd: "node C:\\Users\\Tanner\\.codex\\skills\\goalbuddy\\scripts\\check-goal-state.mjs docs/goals/issue-53-native-regression-production/state.yaml"
+          status: pass
+          summary: "Board was updated to hand the blocker forward to T045."
+
+  - id: T045
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: xhigh
+    objective: "After the T044 blocker, decide the next honest architecture tranche: add a supported state-level fugacity-derivative surface for activity-coupled rows, broaden the EOS composition-derivative substrate toward second derivatives, or stop here with the blocker recorded."
+    inputs:
+      - "T043 receipt."
+      - "T044 blocker receipt."
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_fugcoef.cpp"
+      - "src/epcsaft/native/epcsaft_mu.cpp"
+      - "src/epcsaft/native/epcsaft_electrolyte.h"
+      - "src/epcsaft/native/regression/thermo_regression.cpp"
+    constraints:
+      - "Do not claim activity-coupled derivatives are close if they require a new state-level substrate."
+      - "Do not reintroduce production finite differences."
+      - "Do not jump to bubble or non-logK sensitivity implementation until the activity-coupled prerequisite is judged."
+    expected_output:
+      - "The next concrete architecture target after the T044 blocker."
+      - "An honest statement of whether the next step is still within issue #53 scope."
+    receipt:
+      result: done
+      decision: "Continue with a narrower ionic activity tranche first: finite-difference-free state-level derivative support for the supported epcsaft_component_activity path, then activity-coupled reactive_speciation logK thermo rows."
+      summary: "The next architecture target stays within issue #53 scope, but it should be narrower than generic activity-coupled support. The ionic epcsaft_component_activity path is the highest-value next slice; bubble and non-logK sensitivities remain downstream."
+      evidence:
+        - "docs/goals/issue-53-native-regression-production/notes/T045-judge-next-architecture.md"
+        - "docs/goals/issue-53-native-regression-production/notes/T044-activity-coupled-blocker.md"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+        - "src/epcsaft/native/epcsaft_activity.cpp"
+        - "src/epcsaft/native/regression/thermo_regression.cpp"
+
+  - id: T046
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: xhigh
+    objective: "Implement the next supported activity derivative slice for issue #53: finite-difference-free state-level derivative support for supported nonassociating ionic epcsaft_component_activity states, then extend native chemical-equilibrium and thermo-regression support to activity-coupled reactive_speciation logK rows on that slice."
+    allowed_files:
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_activity.cpp"
+      - "src/epcsaft/native/epcsaft_fugcoef.cpp"
+      - "src/epcsaft/native/epcsaft_mu.cpp"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/epcsaft_Z.cpp"
+      - "src/epcsaft/native/epcsaft_core_internal.h"
+      - "src/epcsaft/native/epcsaft_electrolyte.h"
+      - "src/epcsaft/native/epcsaft_state.cpp"
+      - "src/epcsaft/native/regression/thermo_regression.cpp"
+      - "src/epcsaft/benchmarks/native_ceres_thermo_regression.py"
+      - "scripts/benchmark_native_ceres_thermo_regression.py"
+      - "tests/native/test_chemical_equilibrium_native.py"
+      - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      - "tests/api/test_reactive_speciation.py"
+      - "tests/workflows/test_benchmark_native_regression.py"
+      - "docs/goals/issue-53-native-regression-production/notes/**"
+      - "docs/goals/issue-53-native-regression-production/notes/T046-ionic-activity-derivative-slice.md"
+      - "docs/goals/issue-53-native-regression-production/state.yaml"
+    verify:
+      - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py tests/native/test_chemical_equilibrium_native.py tests/api/test_reactive_speciation.py tests/native/test_native_ceres_thermodynamic_regression.py tests/workflows/test_benchmark_native_regression.py -q"
+      - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --warmup 1 --repeat 1"
+    stop_if:
+      - "The only feasible implementation path requires production finite differences."
+      - "The ionic component-activity slice still requires a broad second-derivative EOS rewrite without a tractable supported subset."
+      - "The slice cannot produce a truthful cppad_implicit or analytic_implicit activity-coupled thermo benchmark case."
+    receipt:
+      result: done
+      summary: "Completed the supported ionic component-activity derivative slice: added native lnphi density derivatives, MIAC dloggamma/dlogn support, activity-coupled chemical-equilibrium autodiff routing, activity-coupled native thermo-regression support, and an activity benchmark case. Focused build/tests passed and the activity benchmark reported backend=ceres, derivative=cppad_implicit."
+      changed_files:
+        - "src/epcsaft/native/epcsaft_activity.cpp"
+        - "src/epcsaft/native/epcsaft_fugcoef.cpp"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+        - "src/epcsaft/native/regression/thermo_regression.cpp"
+        - "src/epcsaft/native/epcsaft_core_internal.h"
+        - "src/epcsaft/native/epcsaft_electrolyte.h"
+        - "src/epcsaft/benchmarks/native_ceres_thermo_regression.py"
+        - "tests/native/test_chemical_equilibrium_native.py"
+        - "tests/native/test_native_ceres_thermodynamic_regression.py"
+        - "tests/api/test_reactive_speciation.py"
+        - "docs/goals/issue-53-native-regression-production/notes/T046-ionic-activity-derivative-slice.md"
+        - "docs/goals/issue-53-native-regression-production/state.yaml"
+      commands:
+        - cmd: "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+          summary: "Native rebuild passed in 5.16s after the activity-thermo slice updates."
+        - cmd: "uv run python run_pytest.py tests/native/test_chemical_equilibrium_native.py tests/api/test_reactive_speciation.py tests/native/test_runtime_contracts.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_native_ceres_thermodynamic_regression.py tests/workflows/test_benchmark_native_regression.py -q"
+          status: pass
+          summary: "84 passed, 1 skipped in 7.16s."
+        - cmd: "uv run python scripts/benchmark_native_ceres_thermo_regression.py --case reactive_speciation_activity_logk_implicit --warmup 1 --repeat 1"
+          status: pass
+          summary: "Activity thermo benchmark converged with backend=ceres and derivative=cppad_implicit."
+
+  - id: T047
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Audit the remaining issue #53 production gaps after T046 and choose the next honest derivative tranche: bubble-pressure differentiation, non-logK thermo parameter sensitivities, or another prerequisite substrate."
+    inputs:
+      - "docs/goals/issue-53-native-regression-production/notes/T046-ionic-activity-derivative-slice.md"
+      - "src/epcsaft/native/regression/thermo_regression.cpp"
+      - "src/epcsaft/native/regression/implicit_sensitivity.cpp"
+      - "tests/native/test_native_ceres_reactive_pressure_speciation.py"
+      - "tests/native/test_cppad_bubble_derivatives.py"
+      - "tests/native/test_native_ceres_thermodynamic_regression.py"
+      - "scripts/benchmark_native_ceres_thermo_regression.py"
+    constraints:
+      - "Read-only unless updating goal notes/state."
+      - "Do not mark issue #53 complete."
+      - "Prefer the smallest tranche that moves a production blocker rather than a broad rewrite."
+    expected_output:
+      - "Exact remaining blocker statement."
+      - "Chosen next task with file scope."
+      - "Why the rejected alternatives are not the next step."
     receipt: null
 
   - id: T023
@@ -1892,9 +2143,12 @@ tasks:
     receipt: null
 
 checks:
-  dirty_fingerprint: unknown
+  dirty_fingerprint: "local-dirty-during-T047-post-activity-audit"
   last_verification:
-    result: unknown
-    task: null
-    commands: []
+    result: passed
+    task: T046
+    commands:
+        - "uv run python scripts/build_epcsaft.py --build-only --parallel 10"
+        - "uv run python run_pytest.py tests/native/test_chemical_equilibrium_native.py tests/api/test_reactive_speciation.py tests/native/test_runtime_contracts.py tests/native/test_cppad_reactive_speciation_derivatives.py tests/native/test_native_ceres_thermodynamic_regression.py tests/workflows/test_benchmark_native_regression.py -q"
+        - "uv run python scripts/benchmark_native_ceres_thermo_regression.py --case reactive_speciation_activity_logk_implicit --warmup 1 --repeat 1"
 

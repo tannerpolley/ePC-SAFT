@@ -1138,6 +1138,30 @@ class ePCSAFTState:
             "finite_difference_fallback_reason": str(result.finite_difference_fallback_reason),
         }
 
+    def pressure_density_derivative(self):
+        """Return the finite-difference-free native pressure-density derivative payload."""
+        result = self._native.pressure_density_derivative_result()
+        return {
+            "pressure": float(result.pressure),
+            "dpdrho": float(result.dpdrho),
+            "supported": bool(result.supported),
+            "derivative_backend": str(result.derivative_backend),
+            "finite_difference_fallback_used": bool(result.finite_difference_fallback_used),
+            "finite_difference_fallback_reason": str(result.finite_difference_fallback_reason),
+        }
+
+    def lnfug_composition_derivative(self):
+        """Return the fixed-rho native ln(phi)-composition derivative payload."""
+        result = self._native.lnfug_composition_derivative_result()
+        return {
+            "lnfug": np.asarray(result.lnfug, dtype=float),
+            "dlnfugdx": np.asarray(result.dlnfugdx_row_major, dtype=float).reshape((int(result.rows), int(result.cols))),
+            "supported": bool(result.supported),
+            "derivative_backend": str(result.derivative_backend),
+            "finite_difference_fallback_used": bool(result.finite_difference_fallback_used),
+            "finite_difference_fallback_reason": str(result.finite_difference_fallback_reason),
+        }
+
     def residual_enthalpy(self):
         """Return the residual enthalpy."""
         return float(self._native.residual_enthalpy())

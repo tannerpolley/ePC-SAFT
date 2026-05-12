@@ -2,28 +2,68 @@
 #include "contributions/epcsaft_contrib_internal.h"
 
 using namespace thermo_detail;
-using thermo_detail::AutodiffHardChainState;
 
 namespace {
 
-struct PressureAutodiffMixtureState {
+template <typename Scalar>
+struct PressureMixtureStateScalar {
     vector<double> d;
-    double den = 0.0;
-    AutoDual m_avg = make_autodiff_scalar(0.0, 0.0);
-    AutoDual m2es3 = make_autodiff_scalar(0.0, 0.0);
-    AutoDual m2e2s3 = make_autodiff_scalar(0.0, 0.0);
+    Scalar den = scalar_constant<Scalar>(0.0);
+    Scalar m_avg = scalar_constant<Scalar>(0.0);
+    Scalar m2es3 = scalar_constant<Scalar>(0.0);
+    Scalar m2e2s3 = scalar_constant<Scalar>(0.0);
 };
 
-PressureAutodiffMixtureState pressure_autodiff_mixture_state_cpp(
-    double t,
-    double rho,
-    const vector<AutoDual> &x_dual,
+template <typename Scalar>
+struct PressureHardChainStateScalar {
+    vector<Scalar> zeta;
+    vector<Scalar> ghs;
+    Scalar eta = scalar_constant<Scalar>(0.0);
+};
+
+template <typename Scalar>
+PressureHardChainStateScalar<Scalar> pressure_hard_chain_state_scalar_cpp(
+    const Scalar &den,
+    const vector<double> &d,
+    const vector<Scalar> &x,
     const add_args &cppargs
 ) {
-    const int ncomp = static_cast<int>(x_dual.size());
-    PressureAutodiffMixtureState state;
+    PressureHardChainStateScalar<Scalar> state;
+    const int ncomp = static_cast<int>(x.size());
+    state.zeta.assign(4, scalar_constant<Scalar>(0.0));
+    state.ghs.assign(static_cast<size_t>(ncomp * ncomp), scalar_constant<Scalar>(0.0));
+    for (int k = 0; k < 4; ++k) {
+        Scalar summ = scalar_constant<Scalar>(0.0);
+        for (int j = 0; j < ncomp; ++j) {
+            summ += x[static_cast<size_t>(j)] * cppargs.m[static_cast<size_t>(j)] * scalar_pow(d[static_cast<size_t>(j)], k);
+        }
+        state.zeta[static_cast<size_t>(k)] = PI / 6.0 * den * summ;
+    }
+    state.eta = state.zeta[3];
+    int idx = -1;
+    for (int i = 0; i < ncomp; ++i) {
+        for (int j = 0; j < ncomp; ++j) {
+            ++idx;
+            const double pair_diameter = parameter_setup_detail::pair_diameter_cpp(d[static_cast<size_t>(i)], d[static_cast<size_t>(j)]);
+            state.ghs[static_cast<size_t>(idx)] = 1.0 / (1.0 - state.zeta[3])
+                + pair_diameter * 3.0 * state.zeta[2] / scalar_pow(1.0 - state.zeta[3], 2)
+                + scalar_pow(pair_diameter, 2.0) * 2.0 * state.zeta[2] * state.zeta[2] / scalar_pow(1.0 - state.zeta[3], 3);
+        }
+    }
+    return state;
+}
+
+template <typename Scalar>
+PressureMixtureStateScalar<Scalar> pressure_mixture_state_scalar_cpp(
+    double t,
+    const Scalar &rho,
+    const vector<Scalar> &x,
+    const add_args &cppargs
+) {
+    const int ncomp = static_cast<int>(x.size());
+    PressureMixtureStateScalar<Scalar> state;
     state.d.assign(static_cast<size_t>(ncomp), 0.0);
-    state.den = rho * N_AV / 1.0e30;
+    state.den = rho * (N_AV / 1.0e30);
 
     for (int i = 0; i < ncomp; ++i) {
         state.d[static_cast<size_t>(i)] = cppargs.s[static_cast<size_t>(i)]
@@ -31,7 +71,7 @@ PressureAutodiffMixtureState pressure_autodiff_mixture_state_cpp(
         if (!cppargs.z.empty() && std::abs(cppargs.z[static_cast<size_t>(i)]) > 1.0e-12) {
             state.d[static_cast<size_t>(i)] = parameter_setup_detail::ion_diameter_cpp(i, t, cppargs);
         }
-        state.m_avg += x_dual[static_cast<size_t>(i)] * cppargs.m[static_cast<size_t>(i)];
+        state.m_avg += x[static_cast<size_t>(i)] * cppargs.m[static_cast<size_t>(i)];
     }
 
     int idx = -1;
@@ -40,10 +80,10 @@ PressureAutodiffMixtureState pressure_autodiff_mixture_state_cpp(
             ++idx;
             const double sigma_ij = parameter_setup_detail::pair_sigma_cpp(static_cast<size_t>(idx), i, j, cppargs);
             const double epsilon_ij = parameter_setup_detail::pair_epsilon_cpp(static_cast<size_t>(idx), i, j, cppargs);
-            state.m2es3 += x_dual[static_cast<size_t>(i)] * x_dual[static_cast<size_t>(j)]
+            state.m2es3 += x[static_cast<size_t>(i)] * x[static_cast<size_t>(j)]
                 * cppargs.m[static_cast<size_t>(i)] * cppargs.m[static_cast<size_t>(j)] * epsilon_ij / t
                 * scalar_pow(sigma_ij, 3.0);
-            state.m2e2s3 += x_dual[static_cast<size_t>(i)] * x_dual[static_cast<size_t>(j)]
+            state.m2e2s3 += x[static_cast<size_t>(i)] * x[static_cast<size_t>(j)]
                 * cppargs.m[static_cast<size_t>(i)] * cppargs.m[static_cast<size_t>(j)] * scalar_pow(epsilon_ij / t, 2.0)
                 * scalar_pow(sigma_ij, 3.0);
         }
@@ -123,46 +163,51 @@ bool pressure_composition_derivative_supported_cpp(const add_args &cppargs, std:
     return true;
 }
 
-AutoDual pressure_autodiff_supported_cpp(double t, double rho, const vector<AutoDual> &x_dual, const add_args &cppargs) {
-    const int ncomp = static_cast<int>(x_dual.size());
-    PressureAutodiffMixtureState thermo = pressure_autodiff_mixture_state_cpp(t, rho, x_dual, cppargs);
-    AutodiffHardChainState hc_state = hard_chain_state_autodiff_cpp(thermo.den, thermo.d, x_dual, cppargs);
+template <typename Scalar>
+Scalar pressure_scalar_supported_cpp(double t, const Scalar &rho, const vector<Scalar> &x, const add_args &cppargs) {
+    const int ncomp = static_cast<int>(x.size());
+    PressureMixtureStateScalar<Scalar> thermo = pressure_mixture_state_scalar_cpp(t, rho, x, cppargs);
+    PressureHardChainStateScalar<Scalar> hc_state = pressure_hard_chain_state_scalar_cpp(thermo.den, thermo.d, x, cppargs);
 
-    AutoDual z_hc = thermo.m_avg * dadrho_hs_scalar_cpp(hc_state.zeta);
+    Scalar z_hc = thermo.m_avg * dadrho_hs_scalar_cpp(hc_state.zeta);
     for (int i = 0; i < ncomp; ++i) {
-        const double pair_diameter = parameter_setup_detail::pair_diameter_cpp(thermo.d[i], thermo.d[i]);
-        z_hc -= x_dual[i] * (cppargs.m[i] - 1.0) / hc_state.ghs[i * ncomp + i]
+        const double pair_diameter = parameter_setup_detail::pair_diameter_cpp(thermo.d[static_cast<size_t>(i)], thermo.d[static_cast<size_t>(i)]);
+        z_hc -= x[static_cast<size_t>(i)] * (cppargs.m[static_cast<size_t>(i)] - 1.0) / hc_state.ghs[static_cast<size_t>(i * ncomp + i)]
             * hs_contact_density_derivative_scalar_cpp(pair_diameter, hc_state.zeta[2], hc_state.zeta[3]);
     }
 
-    DispersionAutodiffState<AutoDual> dispersion = dispersion_autodiff_state_cpp(thermo.m_avg, hc_state.eta);
-    AutoDual z_disp = -2.0 * PI * thermo.den * dispersion.dEtaI1_deta * thermo.m2es3
+    DispersionAutodiffState<Scalar> dispersion = dispersion_autodiff_state_cpp(thermo.m_avg, hc_state.eta);
+    Scalar z_disp = -2.0 * PI * thermo.den * dispersion.dEtaI1_deta * thermo.m2es3
         - PI * thermo.den * thermo.m_avg * (dispersion.C1 * dispersion.dEtaI2_deta + dispersion.C2 * hc_state.eta * dispersion.I2) * thermo.m2e2s3;
 
-    AutoDual z_ion = make_autodiff_scalar(0.0, 0.0);
+    Scalar z_ion = scalar_constant<Scalar>(0.0);
     if (!cppargs.z.empty()) {
-        AutoDual q2_sum = make_autodiff_scalar(0.0, 0.0);
+        Scalar q2_sum = scalar_constant<Scalar>(0.0);
         for (int i = 0; i < ncomp; ++i) {
-            q2_sum += x_dual[i] * cppargs.z[i] * cppargs.z[i];
+            q2_sum += x[static_cast<size_t>(i)] * cppargs.z[static_cast<size_t>(i)] * cppargs.z[static_cast<size_t>(i)];
         }
         if (scalar_value(q2_sum) > 0.0) {
-            AutoDual eps = dielectric_constant_rule_autodiff_cpp(cppargs.dielc_rule, x_dual, cppargs);
-            AutoDual kappa = scalar_sqrt((rho * N_AV / 1.0e30) * E_CHRG * E_CHRG / kb / t / perm_vac * q2_sum / eps);
-            AutoDual sigma_sum = make_autodiff_scalar(0.0, 0.0);
+            Scalar eps = dielectric_constant_rule_autodiff_cpp(cppargs.dielc_rule, x, cppargs);
+            Scalar kappa = scalar_sqrt(thermo.den * E_CHRG * E_CHRG / kb / t / perm_vac * q2_sum / eps);
+            Scalar sigma_sum = scalar_constant<Scalar>(0.0);
             for (int i = 0; i < ncomp; ++i) {
                 const double d_i = parameter_setup_detail::ion_diameter_cpp(i, t, cppargs);
-                AutoDual ka = kappa * d_i;
-                AutoDual chi = 3.0 / scalar_pow(ka, 3)
+                Scalar ka = kappa * d_i;
+                Scalar chi = 3.0 / scalar_pow(ka, 3)
                     * (1.5 + scalar_log(1.0 + ka) - 2.0 * (1.0 + ka) + 0.5 * scalar_pow(1.0 + ka, 2));
-                AutoDual sigma_k = -2.0 * chi + 3.0 / (1.0 + ka);
-                sigma_sum += x_dual[i] * cppargs.z[i] * cppargs.z[i] * sigma_k;
+                Scalar sigma_k = -2.0 * chi + 3.0 / (1.0 + ka);
+                sigma_sum += x[static_cast<size_t>(i)] * cppargs.z[static_cast<size_t>(i)] * cppargs.z[static_cast<size_t>(i)] * sigma_k;
             }
             z_ion = -kappa / 24.0 / PI / kb / t / (eps * perm_vac) * sigma_sum * E_CHRG * E_CHRG;
         }
     }
 
-    const AutoDual z_total = scalar_constant<AutoDual>(1.0) + z_hc + z_disp + z_ion;
-    return z_total * kb * t * (rho * N_AV / 1.0e30) * 1.0e30;
+    const Scalar z_total = scalar_constant<Scalar>(1.0) + z_hc + z_disp + z_ion;
+    return z_total * kb * t * thermo.den * 1.0e30;
+}
+
+AutoDual pressure_autodiff_supported_cpp(double t, double rho, const vector<AutoDual> &x_dual, const add_args &cppargs) {
+    return pressure_scalar_supported_cpp(t, make_autodiff_scalar(rho, 0.0), x_dual, cppargs);
 }
 
 }  // namespace
@@ -277,5 +322,37 @@ PressureCompositionDerivativeResult pressure_composition_derivative_result_cpp(
     }
     result.supported = true;
     result.derivative_backend = "autodiff_composition";
+    return result;
+}
+
+PressureDensityDerivativeResult pressure_density_derivative_result_cpp(
+    double t,
+    double rho,
+    vector<double> x,
+    const add_args &cppargs
+) {
+    PressureDensityDerivativeResult result;
+    result.pressure = p_cpp(t, rho, x, cppargs);
+    std::string unsupported_reason;
+    if (!pressure_composition_derivative_supported_cpp(cppargs, &unsupported_reason)) {
+        result.supported = false;
+        result.derivative_backend = "unsupported";
+        result.finite_difference_fallback_reason = unsupported_reason;
+        result.dpdrho = std::numeric_limits<double>::quiet_NaN();
+        return result;
+    }
+
+    const int ncomp = static_cast<int>(x.size());
+    vector<AutoDual> x_const(static_cast<size_t>(ncomp), make_autodiff_scalar(0.0, 0.0));
+    for (int i = 0; i < ncomp; ++i) {
+        x_const[static_cast<size_t>(i)] = make_autodiff_scalar(x[static_cast<size_t>(i)], 0.0);
+    }
+    AutoDual pressure = pressure_scalar_supported_cpp(t, make_autodiff_scalar(rho, 1.0), x_const, cppargs);
+    result.dpdrho = scalar_derivative(pressure);
+    if (!std::isfinite(result.dpdrho)) {
+        throw ValueError("Non-finite native pressure-density derivative.");
+    }
+    result.supported = true;
+    result.derivative_backend = "autodiff_density";
     return result;
 }

@@ -287,7 +287,10 @@ CompressibilityFactorResult compressibility_factor_result_cpp(double t, double r
 ScalarContributionTerms residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 CompositionContributionResult composition_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 PressureCompositionDerivativeResult pressure_composition_derivative_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+PressureDensityDerivativeResult pressure_density_derivative_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+LnfugDensityDerivativeResult lnfug_density_derivative_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+LnfugCompositionDerivativeResult lnfug_composition_derivative_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 FugacityContributionResult fugacity_coefficient_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 ScalarContributionTerms temperature_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 ActivityCoefficientNative activity_coefficient_values_cpp(
@@ -308,4 +311,13 @@ ActivityCoefficientNative activity_coefficient_values_cpp(
     bool include_aux,
     bool has_solvent_override,
     int solvent_override_index
+);
+ComponentActivityLogDerivativeResult component_activity_log_derivative_result_cpp(
+    ePCSAFTMixtureNative* mixture,
+    double t,
+    double rho,
+    double p,
+    int phase,
+    const vector<double>& x,
+    const add_args& args
 );

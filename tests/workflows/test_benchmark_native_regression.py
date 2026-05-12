@@ -98,17 +98,25 @@ def test_native_regression_benchmark_script_executes_and_writes_json(tmp_path):
 
 
 def test_native_ceres_thermo_regression_benchmark_schema():
-    from epcsaft.benchmarks.native_ceres_thermo_regression import run_native_ceres_thermo_regression_benchmark
+    from epcsaft.benchmarks.native_ceres_thermo_regression import (
+        CASE_BUILDERS,
+        run_native_ceres_thermo_regression_benchmark,
+    )
+    import epcsaft
 
-    payload = run_native_ceres_thermo_regression_benchmark(warmup=0, repeat=1)
+    cppad_enabled = bool(epcsaft.runtime_build_info()["native_dependencies"]["cppad"]["enabled"])
+    for case in CASE_BUILDERS:
+        payload = run_native_ceres_thermo_regression_benchmark(warmup=0, repeat=1, case=case)
 
-    assert payload["case"] == "reactive_speciation_logk_implicit"
-    assert payload["optimizer_backend"] in {"backend_unavailable", "ceres"}
-    assert payload["derivative_backend"] in {"implicit", "analytic_implicit"}
-    assert payload["python_objective_used"] is False
-    assert payload["finite_difference_used"] is False
-    assert payload["initial_cost"] >= 0.0
-    assert payload["final_cost"] >= 0.0
+        assert payload["case"] == case
+        assert payload["optimizer_backend"] in {"backend_unavailable", "ceres"}
+        assert payload["derivative_backend"] in {"implicit", "analytic_implicit", "cppad_implicit"}
+        if cppad_enabled and payload["status"] != "backend_unavailable":
+            assert payload["derivative_backend"] == "cppad_implicit"
+        assert payload["python_objective_used"] is False
+        assert payload["finite_difference_used"] is False
+        assert payload["initial_cost"] >= 0.0
+        assert payload["final_cost"] >= 0.0
 
 
 def test_native_ceres_thermo_regression_benchmark_script_executes_and_writes_json(tmp_path):
@@ -117,6 +125,8 @@ def test_native_ceres_thermo_regression_benchmark_script_executes_and_writes_jso
         [
             sys.executable,
             "scripts/benchmark_native_ceres_thermo_regression.py",
+            "--case",
+            "reactive_speciation_concentration_logk_implicit",
             "--warmup",
             "0",
             "--repeat",
@@ -130,7 +140,7 @@ def test_native_ceres_thermo_regression_benchmark_script_executes_and_writes_jso
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "reactive_speciation_logk_implicit" in result.stdout
+    assert "reactive_speciation_concentration_logk_implicit" in result.stdout
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     assert payload["python_objective_used"] is False
     assert payload["finite_difference_used"] is False
