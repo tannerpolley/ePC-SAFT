@@ -11,6 +11,19 @@
 #include "epcsaft_equilibrium.h"
 #include "ad_derivative_checks.h"
 
+epcsaft::native::autodiff::ADDerivativeResult cppad_eos_contribution_derivatives_cpp(
+    double t,
+    double rho,
+    const std::vector<double>& x,
+    const add_args& cppargs
+);
+epcsaft::native::autodiff::ADDerivativeResult cppad_pressure_density_derivative_cpp(
+    double t,
+    double rho,
+    const std::vector<double>& x,
+    const add_args& cppargs
+);
+
 namespace py = pybind11;
 
 namespace {
@@ -1155,6 +1168,12 @@ PYBIND11_MODULE(_core, m) {
 
     m.def("_native_cppad_smoke", []() {
         return cppad_smoke_to_dict(epcsaft::native::autodiff::cppad_square_smoke_derivative(3.0));
+    });
+    m.def("_native_cppad_eos_contributions", [](double t, double rho, const std::vector<double>& x, const add_args& args) {
+        return cppad_smoke_to_dict(cppad_eos_contribution_derivatives_cpp(t, rho, x, args));
+    });
+    m.def("_native_cppad_pressure_density", [](double t, double rho, const std::vector<double>& x, const add_args& args) {
+        return cppad_smoke_to_dict(cppad_pressure_density_derivative_cpp(t, rho, x, args));
     });
 
     py::class_<add_args>(m, "NativeArgs")

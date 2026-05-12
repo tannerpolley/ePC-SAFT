@@ -3,6 +3,10 @@
 #include <cmath>
 #include <string>
 
+#ifdef EPCSAFT_HAS_CPPAD
+#include <cppad/cppad.hpp>
+#endif
+
 #include <unsupported/Eigen/AutoDiff>
 
 using AutoDualDerivative = Eigen::Matrix<double, 1, 1>;
@@ -69,6 +73,12 @@ inline double scalar_value(const AutoDual &x) {
     return x.value();
 }
 
+#ifdef EPCSAFT_HAS_CPPAD
+inline double scalar_value(const CppAD::AD<double> &x) {
+    return CppAD::Value(x);
+}
+#endif
+
 inline double scalar_derivative(double) {
     return 0.0;
 }
@@ -86,6 +96,12 @@ inline AutoDual scalar_log(const AutoDual &x) {
     return log(x);
 }
 
+#ifdef EPCSAFT_HAS_CPPAD
+inline CppAD::AD<double> scalar_log(const CppAD::AD<double> &x) {
+    return CppAD::log(x);
+}
+#endif
+
 inline double scalar_exp(double x) {
     return std::exp(x);
 }
@@ -94,6 +110,12 @@ inline AutoDual scalar_exp(const AutoDual &x) {
     using std::exp;
     return exp(x);
 }
+
+#ifdef EPCSAFT_HAS_CPPAD
+inline CppAD::AD<double> scalar_exp(const CppAD::AD<double> &x) {
+    return CppAD::exp(x);
+}
+#endif
 
 inline double scalar_sqrt(double x) {
     return std::sqrt(x);
@@ -104,6 +126,12 @@ inline AutoDual scalar_sqrt(const AutoDual &x) {
     return sqrt(x);
 }
 
+#ifdef EPCSAFT_HAS_CPPAD
+inline CppAD::AD<double> scalar_sqrt(const CppAD::AD<double> &x) {
+    return CppAD::sqrt(x);
+}
+#endif
+
 inline double scalar_pow(double x, int exponent) {
     return std::pow(x, exponent);
 }
@@ -113,6 +141,12 @@ inline AutoDual scalar_pow(const AutoDual &x, int exponent) {
     return pow(x, static_cast<double>(exponent));
 }
 
+#ifdef EPCSAFT_HAS_CPPAD
+inline CppAD::AD<double> scalar_pow(const CppAD::AD<double> &x, int exponent) {
+    return CppAD::pow(x, static_cast<double>(exponent));
+}
+#endif
+
 inline double scalar_pow(double x, double exponent) {
     return std::pow(x, exponent);
 }
@@ -121,3 +155,9 @@ inline AutoDual scalar_pow(const AutoDual &x, double exponent) {
     using std::pow;
     return pow(x, exponent);
 }
+
+#ifdef EPCSAFT_HAS_CPPAD
+inline CppAD::AD<double> scalar_pow(const CppAD::AD<double> &x, double exponent) {
+    return CppAD::pow(x, exponent);
+}
+#endif

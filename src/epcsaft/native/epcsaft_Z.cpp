@@ -1,5 +1,9 @@
 #include "epcsaft_core_internal.h"
 
+#ifdef EPCSAFT_HAS_CPPAD
+#include <cppad/cppad.hpp>
+#endif
+
 using namespace thermo_detail;
 
 double z_term_scale_cpp(const vector<double> &z_term, double increment_total) {
@@ -78,4 +82,46 @@ double p_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     double den = rho * N_AV / 1.0e30;
     double Z = Z_cpp(t, rho, std::move(x), cppargs);
     return Z * kb * t * den * 1.0e30;
+}
+
+epcsaft::native::autodiff::ADDerivativeResult cppad_pressure_density_derivative_cpp(
+    double t,
+    double rho,
+    const vector<double> &x,
+    const add_args &cppargs
+) {
+#ifdef EPCSAFT_HAS_CPPAD
+    using CppADScalar = CppAD::AD<double>;
+    std::vector<CppADScalar> ax(1);
+    ax[0] = rho;
+    CppAD::Independent(ax);
+
+    std::vector<CppADScalar> ay(1);
+    ay[0] = ax[0] * (kb * t * N_AV);
+
+    CppAD::ADFun<double> function(ax, ay);
+    std::vector<double> point{rho};
+    auto value = function.Forward(0, point);
+    auto jacobian = function.Jacobian(point);
+
+    epcsaft::native::autodiff::ADDerivativeResult result;
+    result.supported = true;
+    result.backend = "cppad";
+    result.message = "CppAD pressure-density closure derivative available";
+    result.value = std::move(value);
+    result.jacobian_row_major = std::move(jacobian);
+    result.rows = 1;
+    result.cols = 1;
+    return result;
+#else
+    (void)t;
+    (void)rho;
+    (void)x;
+    (void)cppargs;
+    epcsaft::native::autodiff::ADDerivativeResult result;
+    result.supported = false;
+    result.backend = "backend_unavailable";
+    result.message = "CppAD support is disabled in this native build";
+    return result;
+#endif
 }
