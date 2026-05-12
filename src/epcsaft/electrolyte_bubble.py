@@ -179,6 +179,13 @@ def _result_from_native_payload(
     x_liq: np.ndarray,
 ) -> ElectrolyteBubbleResult:
     diagnostics = dict(payload.get("diagnostics") or {})
+    from .equilibrium import _normalize_derivative_diagnostics
+
+    diagnostics = _normalize_derivative_diagnostics(
+        diagnostics,
+        problem_kind="electrolyte_bubble_pressure",
+        phase_count=len(payload.get("phases", ()) or ()),
+    )
     success = bool(diagnostics.get("success", False))
     message = str(diagnostics.get("message", "converged" if success else "electrolyte bubble pressure failed"))
     vapor_indices = [species.index(label) for label in vapor_species]

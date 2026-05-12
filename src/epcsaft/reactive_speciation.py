@@ -246,8 +246,10 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
     jacobian_backend = str(options.jacobian_backend).strip().lower()
     if jacobian_backend == "analytic":
         jacobian_backend = "auto"
-    if jacobian_backend not in {"auto", "autodiff"}:
-        raise InputError("ReactiveSpeciationOptions.jacobian_backend must be 'auto', 'autodiff', or 'analytic'.")
+    if jacobian_backend not in {"auto", "autodiff", "cppad"}:
+        raise InputError(
+            "ReactiveSpeciationOptions.jacobian_backend must be 'auto', 'autodiff', 'analytic', or 'cppad'."
+        )
     solver_backend = str(options.solver_backend).strip().lower()
     if solver_backend not in {"auto", "newton", "ipopt"}:
         raise InputError("ReactiveSpeciationOptions.solver_backend must be 'auto', 'newton', or 'ipopt'.")
@@ -359,6 +361,7 @@ def _solve_reactive_speciation_native(
         and reaction_residual_norm <= reaction_tolerance
     )
     diagnostics = dict(payload["diagnostics"])
+    _normalize_reactive_derivative_diagnostics(diagnostics)
     activity_basis = _reaction_standard_state_summary(reactions)
     handoff = dict(diagnostics.get("phase_equilibrium_handoff", {}))
     handoff.setdefault("composition", [float(value) for value in payload["composition"]])
@@ -421,6 +424,41 @@ def _solve_reactive_speciation_native(
     if not success and not options.return_best_effort:
         raise SolutionError(message, _json_like(diagnostics))
     return result
+
+
+def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> None:
+    derivative_backend = str(diagnostics.get("derivative_backend", "backend_unavailable"))
+    diagnostics.setdefault("thermodynamic_backend", "epcsaft_state_activity_chemical_potential_api")
+    diagnostics.setdefault("solver_backend", diagnostics.get("nonlinear_solver", "native_newton"))
+    diagnostics.setdefault("derivative_backend", derivative_backend)
+    diagnostics.setdefault("derivative_status", derivative_backend)
+    diagnostics.setdefault("jacobian_fallback_used", False)
+    diagnostics.setdefault("hessian_fallback_used", False)
+    if derivative_backend == "backend_unavailable":
+        diagnostics.setdefault(
+            "backend_unavailable_reason",
+            "backend_unavailable: reactive speciation sensitivities are not implemented for this route.",
+        )
+        diagnostics.setdefault("derivative_available", False)
+        diagnostics.setdefault("jacobian_available", False)
+    if "residual_norm" in diagnostics:
+        diagnostics.setdefault("residual_norm_by_block", {"reactive_speciation": float(diagnostics["residual_norm"])})
+    else:
+        diagnostics.setdefault("residual_norm_by_block", {})
+    diagnostics.setdefault("solved_internal_states", ["reactive_speciation_log_amounts", "density_roots"])
+    diagnostics.setdefault(
+        "derivative_backend_by_block",
+        {
+            "reaction_residual_jacobian": derivative_backend,
+            "density_root": "backend_unavailable",
+            "activity_or_fugacity_state": "analytic" if derivative_backend == "analytic" else derivative_backend,
+        },
+    )
+    diagnostics.setdefault("implicit_sensitivity_blocks", [])
+    diagnostics.setdefault("best_state_available", True)
+    diagnostics.setdefault("best_state", {"source": "native_chemical_equilibrium_result"})
+    diagnostics.setdefault("row_failure_count", int(diagnostics.get("state_failure_count", 0)))
+    diagnostics.setdefault("association_solver_status", "backend_unavailable_if_active")
 
 
 def _named_reaction_residuals(reactions: list[ReactionDefinition], reaction_residuals: list[float]) -> dict[str, float]:

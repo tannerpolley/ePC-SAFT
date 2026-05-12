@@ -1,0 +1,58 @@
+from __future__ import annotations
+
+import numpy as np
+import pytest
+
+import epcsaft
+from epcsaft import _core
+
+
+def _associating_lle_mixture() -> epcsaft.ePCSAFTMixture:
+    return epcsaft.ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([1.5255, 2.5303]),
+            "s": np.asarray([3.2300, 3.8499]),
+            "e": np.asarray([188.90, 278.11]),
+            "e_assoc": np.asarray([2899.5, 0.0]),
+            "vol_a": np.asarray([0.035176, 0.0]),
+            "assoc_scheme": ["2B", None],
+            "k_ij": np.asarray([[0.0, 0.051], [0.051, 0.0]]),
+        },
+        species=["Methanol", "Cyclohexane"],
+    )
+
+
+def _electrolyte_mixture() -> epcsaft.ePCSAFTMixture:
+    feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
+    return epcsaft.ePCSAFTMixture.from_dataset("2022_Ascani", ["H2O", "Butanol", "Na+", "Cl-"], feed, 298.15)
+
+
+def test_associating_lle_reports_backend_unavailable_instead_of_omitting_sensitivities() -> None:
+    mix = _associating_lle_mixture()
+
+    with pytest.raises(epcsaft.InputError, match="backend_unavailable") as excinfo:
+        mix.lle_tp(T=298.15, P=1.013e5, z=[0.5, 0.5])
+
+    assert "native LLE sensitivities are not implemented" in str(excinfo.value)
+    assert "finite_difference" not in str(excinfo.value).lower()
+
+
+def test_electrolyte_lle_residual_sensitivities_are_explicitly_unavailable() -> None:
+    mix = _electrolyte_mixture()
+    aq = np.asarray([0.798324680201737, 0.016320352824141723, 0.09267748348706063, 0.09267748348706063])
+    org = np.asarray([0.37006036048879404, 0.6214918588210971, 0.004223890345054407, 0.004223890345054407])
+    beta_org = 0.613766575013417
+    feed = ((1.0 - beta_org) * aq + beta_org * org).tolist()
+    request = {
+        "T": 298.15,
+        "P": 1.013e5,
+        "z": feed,
+        "species": mix.species,
+        "initial_phases": {"aq": aq.tolist(), "org": org.tolist(), "phase_fraction": beta_org},
+        "options": {"max_iterations": 80, "tolerance": 1.0e-8, "min_composition": 1.0e-12},
+    }
+
+    with pytest.raises(_core.NativeValueError, match="backend_unavailable") as excinfo:
+        _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
+
+    assert "finite_difference" not in str(excinfo.value).lower()
