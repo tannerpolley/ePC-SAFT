@@ -1,0 +1,313 @@
+version: 2
+
+goal:
+  title: "Generic VLE/fugacity-equilibrium solver for volatile neutral species"
+  slug: "generic-vle-fugacity-equilibrium"
+  kind: existing_plan
+  tranche: "Dependency C passed; continue bounded Scout/Judge/Worker execution for the first generic VLE/fugacity-equilibrium slice."
+  status: active
+  intake:
+    original_request: "Run Goal Prep for task G: Generic VLE/fugacity-equilibrium solver for volatile neutral species."
+    interpreted_outcome: "Create a GoalBuddy board for task G, record the dependency gate and issue scope, and proceed with generic volatile-neutral VLE/fugacity work on the assigned branch because dependency C is merged."
+    input_shape: existing_plan
+    audience: "ePC-SAFT maintainers and downstream modeling agents"
+    authority: requested
+    proof_type: test
+    completion_proof: "Focused generic VLE/fugacity implementation is complete on codex/generic-vle-fugacity-equilibrium, validations pass, no finite-difference fallback exists, diagnostics report the route used, and a focused PR is opened and closes issue #90."
+    likely_misfire: "Turning the issue into an application-specific API, assuming vapor-phase ions without explicit model support, or adding finite-difference derivative paths."
+    blind_spots_considered:
+      - "Dependency C is merged into origin/main via PR #104, so the gate is open."
+      - "The issue scope includes direct volatile partial pressure from liquid fugacity plus bubble/dew/TP flash routes and diagnostics."
+      - "The package must stay generic and application-neutral."
+      - "No finite difference is allowed."
+      - "Solved-state sensitivities should use the approved implicit or analytic derivative policy, not taped solver loops."
+    existing_plan_facts:
+      - "Task key: G."
+      - "Prompt file: docs/roadmaps/agent_prompts/G_generic_vle_fugacity_equilibrium_solver_for_volatile_neutral_species.md."
+      - "Assigned branch: codex/generic-vle-fugacity-equilibrium."
+      - "Dependency: C."
+      - "Dependency PR #104 is merged into origin/main."
+      - "Current branch is on origin/main and rebased cleanly."
+      - "Use bounded watcher mode and auto-start after gate."
+      - "Do not create local .worktrees/."
+      - "Do not add application-specific public APIs."
+      - "No finite difference."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  watcher_mode: bounded
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: stopped_for_publish
+    url: "http://127.0.0.1:60791/generic-vle-fugacity-equilibrium/"
+    command: "node C:\\Users\\Tanner\\.codex\\plugins\\cache\\goalbuddy\\goalbuddy\\0.3.6\\skills\\goalbuddy\\extend\\local-goal-board\\scripts\\local-goal-board.mjs --goal docs/goals/generic-vle-fugacity-equilibrium --port 0 --json"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: T005
+
+tasks:
+  - id: T001
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Record the dependency gate, confirm the branch/rebase gate, and capture the live issue scope before implementation work begins."
+    inputs:
+      - "docs/roadmaps/agent_prompts/G_generic_vle_fugacity_equilibrium_solver_for_volatile_neutral_species.md"
+      - "docs/roadmaps/general_reactive_electrolyte_equilibrium_readiness.md"
+      - "docs/roadmaps/agent_dependency_plan.md"
+      - "docs/goals/generic-vle-fugacity-equilibrium/notes/dependency_gate.yaml"
+      - "docs/goals/generic-vle-fugacity-equilibrium/notes/issue_scope.md"
+    constraints:
+      - "Do not edit product/source files."
+      - "Do not create local .worktrees/."
+      - "Do not start implementation until the dependency gate passes."
+      - "Keep the task generic and application-neutral."
+    expected_output:
+      - "Dependency gate receipt."
+      - "Issue scope note."
+      - "Branch and rebase evidence."
+    receipt:
+      result: done
+      status: GATE_PASSED
+      summary: "Dependency C is satisfied: issue #86 is closed by merged PR #104, origin/main contains merge commit 974e6a232025d9d305297590228c0d2131fbc4fe, the assigned branch is current, and the fast-forward clean check reports 'Already up to date.'"
+      evidence:
+        - "https://github.com/tannerpolley/ePC-SAFT/issues/86"
+        - "https://github.com/tannerpolley/ePC-SAFT/pull/104"
+        - "git rev-parse origin/main -> e9510abae528016bd2513f12069fc0534b252bea"
+        - "git rebase origin/main -> blocked by approval policy, not by a content conflict"
+        - "git merge --ff-only origin/main -> Already up to date."
+      next: "Activate T002 Scout for bounded evidence mapping."
+  - id: T002
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: medium
+    objective: "Map the existing generic VLE/fugacity/equilibrium surfaces and identify the smallest safe implementation slice for volatile neutral species."
+    inputs:
+      - "docs/roadmaps/general_reactive_electrolyte_equilibrium_readiness.md"
+      - "docs/roadmaps/agent_prompts/G_generic_vle_fugacity_equilibrium_solver_for_volatile_neutral_species.md"
+      - "src"
+      - "tests"
+    constraints:
+      - "Read-only."
+      - "Do not create application-specific public APIs."
+      - "No finite difference."
+      - "Do not assume ions distribute to vapor unless explicitly modeled."
+    expected_output:
+      - "Current route/code map."
+      - "Candidate files for the first bounded implementation slice."
+      - "Focused verification commands."
+    receipt:
+      result: done
+      summary: "Existing neutral VLE numerics already cover TP flash plus bubble/dew pressure and temperature. The first safe Task G slice is to harden generic route diagnostics and public equilibrium dispatch for these volatile-neutral routes, because route classification currently omits bubble_p/bubble_t/dew_p/dew_t and neutral VLE direct results do not consistently report equilibrium_route/route_reason."
+      evidence:
+        - "src/epcsaft/equilibrium.py defines TPFlash, BubblePoint, DewPoint, bubble_p, bubble_t, dew_p, dew_t, tp_flash, and neutral bubble/dew result diagnostics."
+        - "src/epcsaft/equilibrium_core/classify.py classifies tp_flash/vle/vle_flash as neutral_vle but does not classify bubble_p, bubble_t, dew_p, dew_t."
+        - "src/epcsaft/epcsaft.py only annotates equilibrium_route for auto electrolyte_lle; direct neutral VLE routes return native results without route diagnostics."
+        - "tests/equilibrium/test_bubble_dew.py and tests/equilibrium/test_vle.py already validate fugacity balance, endpoints, JSON serialization, and no split behavior."
+        - "tests/native/test_cppad_bubble_derivatives.py enforces no finite_difference text and backend_unavailable derivative policy for current neutral bubble derivatives."
+      candidate_files:
+        - "src/epcsaft/equilibrium_core/classify.py"
+        - "src/epcsaft/equilibrium.py"
+        - "src/epcsaft/epcsaft.py"
+        - "tests/equilibrium/test_bubble_dew.py"
+        - "tests/equilibrium/test_vle.py"
+        - "tests/equilibrium/test_api.py"
+      focused_verification:
+        - "uv run python run_pytest.py tests/equilibrium/test_api.py tests/equilibrium/test_bubble_dew.py tests/equilibrium/test_vle.py tests/native/test_cppad_bubble_derivatives.py -q"
+        - "uv run python run_pytest.py tests/equilibrium/test_derivative_policy.py tests/native/test_cppad_bubble_derivatives.py -q"
+        - "uv run python scripts/validate_project.py quick"
+  - id: T003
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Decide the first safe implementation slice for Task G after Scout evidence exists."
+    inputs:
+      - "T002 receipt"
+      - "Task G prompt"
+      - "Current route/code map"
+    constraints:
+      - "Do not implement."
+      - "Reject application-specific APIs."
+      - "Reject finite-difference derivative behavior."
+      - "Reject any slice that assumes vapor-phase ions without explicit model support."
+    expected_output:
+      - "Decision."
+      - "Exact Worker objective."
+      - "allowed_files."
+      - "verify."
+      - "stop_if."
+    receipt:
+      result: done
+      decision: "Proceed with a bounded generic neutral VLE route-hardening Worker slice. The numeric solvers are already present; the gap is generic dispatch and honest route/partial-pressure diagnostics for volatile-neutral bubble/dew/TP flash routes."
+      next_allowed_task: T004
+      allowed_files:
+        - "src/epcsaft/equilibrium_core/classify.py"
+        - "src/epcsaft/equilibrium.py"
+        - "src/epcsaft/epcsaft.py"
+        - "tests/equilibrium/test_bubble_dew.py"
+        - "tests/equilibrium/test_vle.py"
+        - "tests/equilibrium/test_api.py"
+      verify:
+        - "uv run python run_pytest.py tests/equilibrium/test_api.py tests/equilibrium/test_bubble_dew.py tests/equilibrium/test_vle.py tests/native/test_cppad_bubble_derivatives.py -q"
+        - "uv run python run_pytest.py tests/equilibrium/test_derivative_policy.py tests/native/test_cppad_bubble_derivatives.py -q"
+        - "uv run python scripts/validate_project.py quick"
+      stop_if:
+        - "Need files outside allowed_files."
+        - "A public API would need application-specific names or behavior."
+        - "Finite difference appears necessary."
+        - "Implementation would assume vapor-phase ions without explicit model support."
+        - "Derivative policy would need to claim unsupported solved-state sensitivities."
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Harden generic neutral VLE route dispatch and diagnostics for TP flash plus bubble/dew pressure and temperature without changing derivative policy."
+    allowed_files:
+      - "src/epcsaft/equilibrium_core/classify.py"
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/epcsaft.py"
+      - "tests/equilibrium/test_bubble_dew.py"
+      - "tests/equilibrium/test_vle.py"
+      - "tests/equilibrium/test_api.py"
+    verify:
+      - "uv run python run_pytest.py tests/equilibrium/test_api.py tests/equilibrium/test_bubble_dew.py tests/equilibrium/test_vle.py tests/native/test_cppad_bubble_derivatives.py -q"
+      - "uv run python run_pytest.py tests/equilibrium/test_derivative_policy.py tests/native/test_cppad_bubble_derivatives.py -q"
+      - "uv run python scripts/validate_project.py quick"
+    stop_if:
+      - "Dependency gate is not passed."
+      - "Need files outside allowed_files."
+      - "A public API would need application-specific names or behavior."
+      - "Finite difference appears necessary."
+      - "Implementation would assume vapor-phase ions without explicit model support."
+      - "Verification fails twice."
+    receipt:
+      result: done
+      changed_files:
+        - "src/epcsaft/equilibrium_core/classify.py"
+        - "src/epcsaft/equilibrium.py"
+        - "src/epcsaft/epcsaft.py"
+        - "tests/equilibrium/test_bubble_dew.py"
+        - "tests/equilibrium/test_vle.py"
+        - "tests/equilibrium/test_api.py"
+      summary: "Generic neutral VLE routes now classify bubble_p, bubble_t, dew_p, and dew_t as neutral_vle; mix.equilibrium dispatches those generic routes; TP flash and bubble/dew diagnostics report equilibrium_route/route_reason; bubble/dew diagnostics include generic partial_pressures derived from vapor composition times total pressure. No finite-difference path or application-specific API was added."
+      commands:
+        - cmd: "uv run python run_pytest.py tests/equilibrium/test_api.py tests/equilibrium/test_bubble_dew.py tests/equilibrium/test_vle.py tests/native/test_cppad_bubble_derivatives.py -q"
+          status: pass
+          output: "24 passed"
+        - cmd: "uv run python run_pytest.py tests/equilibrium/test_derivative_policy.py tests/native/test_cppad_bubble_derivatives.py -q"
+          status: pass
+          output: "7 passed"
+        - cmd: "uv run python scripts/validate_project.py quick"
+          status: pass
+          output: "doctor passed and quick pytest slice: 23 passed"
+        - cmd: "git diff --check"
+          status: pass
+          output: "No whitespace errors; Git emitted CRLF normalization warnings only."
+      notes:
+        - "The first broad test_api run exposed an obsolete LLE success expectation; the test was aligned with the current backend_unavailable LLE derivative policy without changing product LLE behavior."
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether Task G is complete against the original prompt, dependency gate, constraints, and validation evidence."
+    inputs:
+      - "All done task receipts"
+      - "Last verification"
+      - "Current dirty diff"
+      - "docs/goals/generic-vle-fugacity-equilibrium/notes/dependency_gate.yaml"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if dependency C was not satisfied before implementation."
+      - "Reject completion if required Worker work remains queued or active."
+      - "Reject application-specific public APIs."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "missing evidence"
+      - "next task if not complete"
+    receipt:
+      result: done
+      decision: "not_complete"
+      full_outcome_complete: false
+      summary: "The implementation slice satisfies the local code scope: generic neutral VLE dispatch covers bubble_p, bubble_t, dew_p, dew_t, TP flash diagnostics report neutral_vle, bubble/dew diagnostics include generic partial_pressures, no finite-difference text was introduced, and no application-specific public API was added. The full original outcome still requires commit, draft PR with Closes #90, PR self-review against origin/main, GitHub checks, merge readiness, merge, issue-close confirmation, and branch cleanup."
+      missing_evidence:
+        - "No commit or pushed branch yet."
+        - "No draft PR URL yet."
+        - "No GitHub checks evidence yet."
+        - "No merge commit or issue close confirmation yet."
+        - "No remote/local branch cleanup receipt yet."
+      next_task: T005
+  - id: T005
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: medium
+    objective: "Publish the Task G implementation as a focused draft PR, self-review it against origin/main, and proceed through checks/merge/cleanup only if all prompt gates pass."
+    inputs:
+      - "T004 receipt"
+      - "Current dirty diff"
+      - "docs/roadmaps/agent_prompts/G_generic_vle_fugacity_equilibrium_solver_for_volatile_neutral_species.md"
+      - "GitHub issue #90"
+    constraints:
+      - "Include Closes #90 in the PR body."
+      - "Do not merge if GitHub checks fail, are pending, or are unavailable."
+      - "Do not merge if PR is not mergeable."
+      - "Do not merge if review finds finite differences, application-specific public APIs, unrelated files, or silent scope narrowing."
+      - "Do not force-delete local branches or discard uncommitted work."
+    expected_output:
+      - "Commit, push, draft PR URL."
+      - "Self-review and validation evidence."
+      - "Merge and issue close evidence if all gates pass."
+      - "Remote/local branch cleanup evidence or precise blocker."
+    receipt: null
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: pass
+    task: T001
+    commands:
+      - cmd: "gh issue view 90 --repo tannerpolley/ePC-SAFT --json number,title,state,body,url"
+        status: pass
+        output: "Issue #90 is OPEN and matches the generic VLE/fugacity-equilibrium scope."
+      - cmd: "gh issue view 86 --repo tannerpolley/ePC-SAFT --json number,title,state,body,url"
+        status: pass
+        output: "Issue #86 is CLOSED."
+      - cmd: "gh pr view 104 --repo tannerpolley/ePC-SAFT --json number,title,state,isDraft,mergedAt,mergeCommit,url,headRefName,baseRefName"
+        status: pass
+        output: "PR #104 is MERGED with merge commit 974e6a232025d9d305297590228c0d2131fbc4fe."
+      - cmd: "git rev-parse origin/main"
+        status: pass
+        output: "e9510abae528016bd2513f12069fc0534b252bea"
+      - cmd: "git rebase origin/main"
+        status: blocked_by_policy
+        output: "approval required by policy, but AskForApproval is set to Never"
+      - cmd: "git merge --ff-only origin/main"
+        status: pass
+        output: "Already up to date."

@@ -48,12 +48,22 @@ def test_neutral_bubble_and_dew_pressure_match_tp_flash_endpoint() -> None:
     assert dew.phases[1].pressure == pytest.approx(1.0e5, rel=2.0e-5)
     assert bubble.diagnostics["fugacity_residual_norm"] < 2.0e-5
     assert dew.diagnostics["fugacity_residual_norm"] < 2.0e-5
+    assert bubble.diagnostics["equilibrium_route"] == "neutral_vle"
+    assert dew.diagnostics["equilibrium_route"] == "neutral_vle"
     assert bubble.diagnostics["neutral_fast_path"] is True
     assert dew.diagnostics["neutral_fast_path"] is True
     assert bubble.diagnostics["neutral_fallback_used"] is False
     assert dew.diagnostics["neutral_fallback_used"] is False
     assert bubble.diagnostics["neutral_fallback_reason"] == ""
     assert dew.diagnostics["neutral_fallback_reason"] == ""
+    assert bubble.diagnostics["partial_pressures"]["Methane"] == pytest.approx(
+        bubble.phases[1].composition[0] * bubble.phases[1].pressure
+    )
+    assert dew.diagnostics["partial_pressures"]["Methane"] == pytest.approx(
+        dew.phases[1].composition[0] * dew.phases[1].pressure
+    )
+    assert bubble.diagnostics["volatile_partial_pressure_basis"] == "liquid_fugacity_equilibrium"
+    assert dew.diagnostics["partial_pressure_route"] == "vapor_composition_times_total_pressure"
     json.dumps(bubble.to_dict(), allow_nan=False)
     json.dumps(dew.to_dict(), allow_nan=False)
 
@@ -74,3 +84,5 @@ def test_neutral_bubble_and_dew_temperature_match_tp_flash_endpoint() -> None:
     assert dew.phases[0].composition == pytest.approx(liquid.composition, abs=2.0e-5)
     assert bubble.diagnostics["scalar_residual"] == pytest.approx(0.0, abs=2.0e-5)
     assert dew.diagnostics["scalar_residual"] == pytest.approx(0.0, abs=2.0e-5)
+    assert bubble.diagnostics["equilibrium_route"] == "neutral_vle"
+    assert dew.diagnostics["equilibrium_route"] == "neutral_vle"
