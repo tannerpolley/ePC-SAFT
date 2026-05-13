@@ -24,6 +24,19 @@ epcsaft::native::autodiff::ADDerivativeResult cppad_pressure_density_derivative_
     const std::vector<double>& x,
     const add_args& cppargs
 );
+epcsaft::native::autodiff::ADDerivativeResult cppad_pure_neutral_parameter_derivatives_cpp(
+    double t,
+    double rho,
+    const add_args& cppargs
+);
+NeutralBinaryKijPhaseDerivatives neutral_binary_pair_parameter_phase_derivatives_cpp(
+    double t,
+    double rho,
+    const std::vector<double>& x,
+    const add_args& cppargs,
+    int parameter_index,
+    const std::string& parameter_name
+);
 
 namespace py = pybind11;
 
@@ -59,6 +72,88 @@ py::dict born_ssmds_derivative_to_dict(const BornSSMDSDerivativeResult& result) 
     out["lnfug_d_f_solv_row_major"] = result.lnfug_d_f_solv_row_major;
     out["lngamma_d_d_born_row_major"] = result.lngamma_d_d_born_row_major;
     out["lngamma_d_f_solv_row_major"] = result.lngamma_d_f_solv_row_major;
+    return out;
+}
+
+py::dict neutral_binary_kij_property_derivatives_to_dict(
+    const NeutralBinaryKijPhaseDerivatives& forward,
+    const NeutralBinaryKijPhaseDerivatives& reverse
+) {
+    if (forward.lnphi.size() != reverse.lnphi.size()
+        || forward.dlnphi_dk_fixed_rho.size() != reverse.dlnphi_dk_fixed_rho.size()
+        || forward.mu_res.size() != reverse.mu_res.size()
+        || forward.dmu_res_dk_fixed_rho.size() != reverse.dmu_res_dk_fixed_rho.size()) {
+        throw ValueError("Neutral binary k_ij derivative payloads have inconsistent sizes.");
+    }
+    std::vector<double> dlnphi_dk;
+    std::vector<double> dmu_dk;
+    dlnphi_dk.reserve(forward.dlnphi_dk_fixed_rho.size());
+    dmu_dk.reserve(forward.dmu_res_dk_fixed_rho.size());
+    for (std::size_t i = 0; i < forward.dlnphi_dk_fixed_rho.size(); ++i) {
+        dlnphi_dk.push_back(forward.dlnphi_dk_fixed_rho[i] + reverse.dlnphi_dk_fixed_rho[i]);
+    }
+    for (std::size_t i = 0; i < forward.dmu_res_dk_fixed_rho.size(); ++i) {
+        dmu_dk.push_back(forward.dmu_res_dk_fixed_rho[i] + reverse.dmu_res_dk_fixed_rho[i]);
+    }
+    py::dict out;
+    out["supported"] = true;
+    out["backend"] = "cppad";
+    out["message"] = "CppAD neutral binary k_ij property derivatives available";
+    out["pressure"] = forward.pressure;
+    out["pressure_d_kij"] = forward.dpdk + reverse.dpdk;
+    out["residual_chemical_potential"] = forward.mu_res;
+    out["residual_chemical_potential_d_kij_fixed_rho"] = dmu_dk;
+    out["ln_fugacity"] = forward.lnphi;
+    out["ln_fugacity_d_kij_fixed_rho"] = dlnphi_dk;
+    return out;
+}
+
+void append_pair_parameter_derivatives(
+    py::dict& out,
+    const std::string& prefix,
+    const NeutralBinaryKijPhaseDerivatives& forward,
+    const NeutralBinaryKijPhaseDerivatives& reverse
+) {
+    if (forward.lnphi.size() != reverse.lnphi.size()
+        || forward.dlnphi_dk_fixed_rho.size() != reverse.dlnphi_dk_fixed_rho.size()
+        || forward.mu_res.size() != reverse.mu_res.size()
+        || forward.dmu_res_dk_fixed_rho.size() != reverse.dmu_res_dk_fixed_rho.size()) {
+        throw ValueError("Neutral binary pair-parameter derivative payloads have inconsistent sizes.");
+    }
+    std::vector<double> dlnphi;
+    std::vector<double> dmu;
+    dlnphi.reserve(forward.dlnphi_dk_fixed_rho.size());
+    dmu.reserve(forward.dmu_res_dk_fixed_rho.size());
+    for (std::size_t i = 0; i < forward.dlnphi_dk_fixed_rho.size(); ++i) {
+        dlnphi.push_back(forward.dlnphi_dk_fixed_rho[i] + reverse.dlnphi_dk_fixed_rho[i]);
+    }
+    for (std::size_t i = 0; i < forward.dmu_res_dk_fixed_rho.size(); ++i) {
+        dmu.push_back(forward.dmu_res_dk_fixed_rho[i] + reverse.dmu_res_dk_fixed_rho[i]);
+    }
+    out[(prefix + "_pressure").c_str()] = forward.pressure;
+    out[(prefix + "_pressure_derivative").c_str()] = forward.dpdk + reverse.dpdk;
+    out[(prefix + "_residual_chemical_potential").c_str()] = forward.mu_res;
+    out[(prefix + "_residual_chemical_potential_derivative").c_str()] = dmu;
+    out[(prefix + "_ln_fugacity").c_str()] = forward.lnphi;
+    out[(prefix + "_ln_fugacity_derivative").c_str()] = dlnphi;
+}
+
+py::dict neutral_binary_pair_property_derivatives_to_dict(
+    const NeutralBinaryKijPhaseDerivatives& kij_forward,
+    const NeutralBinaryKijPhaseDerivatives& kij_reverse,
+    const NeutralBinaryKijPhaseDerivatives* lij_forward,
+    const NeutralBinaryKijPhaseDerivatives* lij_reverse
+) {
+    py::dict out;
+    out["supported"] = true;
+    out["backend"] = "cppad";
+    out["message"] = "CppAD neutral binary pair-parameter property derivatives available";
+    append_pair_parameter_derivatives(out, "k_ij", kij_forward, kij_reverse);
+    out["parameter_names"] = std::vector<std::string>{"k_ij"};
+    if (lij_forward != nullptr && lij_reverse != nullptr) {
+        append_pair_parameter_derivatives(out, "l_ij", *lij_forward, *lij_reverse);
+        out["parameter_names"] = std::vector<std::string>{"k_ij", "l_ij"};
+    }
     return out;
 }
 
@@ -1290,6 +1385,24 @@ PYBIND11_MODULE(_core, m) {
     });
     m.def("_native_cppad_pressure_density", [](double t, double rho, const std::vector<double>& x, const add_args& args) {
         return cppad_smoke_to_dict(cppad_pressure_density_derivative_cpp(t, rho, x, args));
+    });
+    m.def("_native_cppad_pure_neutral_parameters", [](double t, double rho, const add_args& args) {
+        return cppad_smoke_to_dict(cppad_pure_neutral_parameter_derivatives_cpp(t, rho, args));
+    });
+    m.def("_native_cppad_neutral_binary_kij_properties", [](double t, double rho, const std::vector<double>& x, const add_args& args) {
+        NeutralBinaryKijPhaseDerivatives forward = neutral_binary_pair_parameter_phase_derivatives_cpp(t, rho, x, args, 1, "k_ij");
+        NeutralBinaryKijPhaseDerivatives reverse = neutral_binary_pair_parameter_phase_derivatives_cpp(t, rho, x, args, 2, "k_ij");
+        return neutral_binary_kij_property_derivatives_to_dict(forward, reverse);
+    });
+    m.def("_native_cppad_neutral_binary_pair_properties", [](double t, double rho, const std::vector<double>& x, const add_args& args) {
+        NeutralBinaryKijPhaseDerivatives kij_forward = neutral_binary_pair_parameter_phase_derivatives_cpp(t, rho, x, args, 1, "k_ij");
+        NeutralBinaryKijPhaseDerivatives kij_reverse = neutral_binary_pair_parameter_phase_derivatives_cpp(t, rho, x, args, 2, "k_ij");
+        if (args.l_ij.size() != 4) {
+            return neutral_binary_pair_property_derivatives_to_dict(kij_forward, kij_reverse, nullptr, nullptr);
+        }
+        NeutralBinaryKijPhaseDerivatives lij_forward = neutral_binary_pair_parameter_phase_derivatives_cpp(t, rho, x, args, 1, "l_ij");
+        NeutralBinaryKijPhaseDerivatives lij_reverse = neutral_binary_pair_parameter_phase_derivatives_cpp(t, rho, x, args, 2, "l_ij");
+        return neutral_binary_pair_property_derivatives_to_dict(kij_forward, kij_reverse, &lij_forward, &lij_reverse);
     });
 
     py::class_<add_args>(m, "NativeArgs")

@@ -24,7 +24,7 @@ template <typename Scalar>
 struct MixtureStateScalar {
     vector<double> d;
     vector<Scalar> e_ij;
-    vector<double> s_ij;
+    vector<Scalar> s_ij;
     Scalar den = scalar_constant<Scalar>(0.0);
     Scalar m_avg = scalar_constant<Scalar>(0.0);
     Scalar m2es3 = scalar_constant<Scalar>(0.0);
@@ -66,13 +66,15 @@ static MixtureStateScalar<Scalar> mixture_state_scalar_cpp(
     const vector<Scalar> &x,
     const add_args &cppargs,
     int k_override_index = -1,
-    const Scalar *k_override_value = nullptr
+    const Scalar *k_override_value = nullptr,
+    int l_override_index = -1,
+    const Scalar *l_override_value = nullptr
 ) {
     MixtureStateScalar<Scalar> state;
     int ncomp = static_cast<int>(x.size());
     state.d.assign(ncomp, 0.0);
     state.e_ij.assign(ncomp * ncomp, 0.0);
-    state.s_ij.assign(ncomp * ncomp, 0.0);
+    state.s_ij.assign(ncomp * ncomp, scalar_constant<Scalar>(0.0));
     state.den = rho * N_AV / 1.0e30;
 
     for (int i = 0; i < ncomp; ++i) {
@@ -87,7 +89,18 @@ static MixtureStateScalar<Scalar> mixture_state_scalar_cpp(
     for (int i = 0; i < ncomp; ++i) {
         for (int j = 0; j < ncomp; ++j) {
             ++idx;
-            state.s_ij[idx] = thermo_detail::parameter_setup_detail::pair_sigma_cpp(static_cast<size_t>(idx), i, j, cppargs);
+            if (l_override_value != nullptr && l_override_index >= 0) {
+                const int l_i = l_override_index / ncomp;
+                const int l_j = l_override_index % ncomp;
+                state.s_ij[idx] = 0.5 * (cppargs.s[i] + cppargs.s[j]);
+                if (idx == l_override_index || idx == (l_j * ncomp + l_i)) {
+                    state.s_ij[idx] *= (1.0 - *l_override_value);
+                } else if (!cppargs.l_ij.empty()) {
+                    state.s_ij[idx] *= (1.0 - cppargs.l_ij[static_cast<size_t>(idx)]);
+                }
+            } else {
+                state.s_ij[idx] = thermo_detail::parameter_setup_detail::pair_sigma_cpp(static_cast<size_t>(idx), i, j, cppargs);
+            }
             Scalar epsilon = scalar_sqrt(cppargs.e[i] * cppargs.e[j]);
             if (!cppargs.z.empty() && cppargs.z[i] * cppargs.z[j] > 0.0) {
                 epsilon = scalar_constant<Scalar>(0.0);
@@ -103,8 +116,8 @@ static MixtureStateScalar<Scalar> mixture_state_scalar_cpp(
                 epsilon *= (1.0 - cppargs.k_ij[static_cast<size_t>(idx)]);
             }
             state.e_ij[idx] = epsilon;
-            state.m2es3 += x[i] * x[j] * cppargs.m[i] * cppargs.m[j] * state.e_ij[idx] / t * std::pow(state.s_ij[idx], 3);
-            state.m2e2s3 += x[i] * x[j] * cppargs.m[i] * cppargs.m[j] * scalar_pow(state.e_ij[idx] / t, 2) * std::pow(state.s_ij[idx], 3);
+            state.m2es3 += x[i] * x[j] * cppargs.m[i] * cppargs.m[j] * state.e_ij[idx] / t * scalar_pow(state.s_ij[idx], 3);
+            state.m2e2s3 += x[i] * x[j] * cppargs.m[i] * cppargs.m[j] * scalar_pow(state.e_ij[idx] / t, 2) * scalar_pow(state.s_ij[idx], 3);
         }
     }
     return state;
@@ -377,10 +390,21 @@ static AresContributionsScalar<Scalar> ares_contributions_scalar_cpp(
     const vector<Scalar> &x,
     const add_args &cppargs,
     int k_override_index = -1,
-    const Scalar *k_override_value = nullptr
+    const Scalar *k_override_value = nullptr,
+    int l_override_index = -1,
+    const Scalar *l_override_value = nullptr
 ) {
     AresContributionsScalar<Scalar> out;
-    MixtureStateScalar<Scalar> thermo = mixture_state_scalar_cpp(t, rho, x, cppargs, k_override_index, k_override_value);
+    MixtureStateScalar<Scalar> thermo = mixture_state_scalar_cpp(
+        t,
+        rho,
+        x,
+        cppargs,
+        k_override_index,
+        k_override_value,
+        l_override_index,
+        l_override_value
+    );
     HardChainStateScalar<Scalar> hc_state = hard_chain_state_scalar_cpp(thermo, x, cppargs);
     DispersionPolynomialStateScalar<Scalar> dispersion = dispersion_polynomials_scalar_cpp(thermo.m_avg, hc_state.eta);
     out.hc = ares_hc_scalar_cpp(thermo, hc_state, x, cppargs);
@@ -539,31 +563,48 @@ NeutralBinaryKijPhaseDerivatives neutral_binary_kij_phase_derivatives_cpp(
     const add_args &cppargs,
     int k_index
 ) {
+    return neutral_binary_pair_parameter_phase_derivatives_cpp(t, rho, x, cppargs, k_index, "k_ij");
+}
+
+NeutralBinaryKijPhaseDerivatives neutral_binary_pair_parameter_phase_derivatives_cpp(
+    double t,
+    double rho,
+    const vector<double> &x,
+    const add_args &cppargs,
+    int parameter_index,
+    const std::string &parameter_name
+) {
 #ifdef EPCSAFT_HAS_CPPAD
     using CppADScalar = CppAD::AD<double>;
     const int ncomp = static_cast<int>(x.size());
     if (ncomp != 2 || cppargs.m.size() != 2 || cppargs.s.size() != 2 || cppargs.e.size() != 2) {
-        throw ValueError("backend_unavailable: native binary k_ij Ceres derivatives require exactly two neutral components.");
+        throw ValueError("backend_unavailable: native binary pair-parameter CppAD derivatives require exactly two neutral components.");
     }
     if (!cppargs.assoc_num.empty()) {
         for (int sites : cppargs.assoc_num) {
             if (sites > 0) {
-                throw ValueError("backend_unavailable: native binary k_ij Ceres derivatives do not support associating components.");
+                throw ValueError("backend_unavailable: native binary pair-parameter CppAD derivatives do not support associating components.");
             }
         }
     }
     if (!cppargs.z.empty()) {
         for (double charge : cppargs.z) {
             if (std::abs(charge) > 1.0e-12) {
-                throw ValueError("backend_unavailable: native binary k_ij Ceres derivatives do not support ionic components.");
+                throw ValueError("backend_unavailable: native binary pair-parameter CppAD derivatives do not support ionic components.");
             }
         }
     }
-    if (cppargs.k_ij.size() != static_cast<size_t>(ncomp * ncomp)) {
-        throw ValueError("backend_unavailable: native binary k_ij Ceres derivatives require a dense k_ij matrix.");
+    const bool is_kij = parameter_name == "k_ij";
+    const bool is_lij = parameter_name == "l_ij";
+    if (!is_kij && !is_lij) {
+        throw ValueError("Native binary pair-parameter derivative supports only k_ij and l_ij.");
     }
-    if (k_index < 0 || static_cast<size_t>(k_index) >= cppargs.k_ij.size()) {
-        throw ValueError("Native binary k_ij derivative index is out of range.");
+    const vector<double> &parameter_matrix = is_kij ? cppargs.k_ij : cppargs.l_ij;
+    if (parameter_matrix.size() != static_cast<size_t>(ncomp * ncomp)) {
+        throw ValueError("backend_unavailable: native binary pair-parameter CppAD derivatives require a dense parameter matrix.");
+    }
+    if (parameter_index < 0 || static_cast<size_t>(parameter_index) >= parameter_matrix.size()) {
+        throw ValueError("Native binary pair-parameter derivative index is out of range.");
     }
     if (!(t > 0.0) || !(rho > 0.0) || x.size() != 2 || !(x[0] > 0.0) || !(x[1] > 0.0)) {
         throw ValueError("Native binary k_ij derivative evaluation requires positive T, rho, and composition values.");
@@ -576,7 +617,7 @@ NeutralBinaryKijPhaseDerivatives neutral_binary_kij_phase_derivatives_cpp(
     constexpr int kVarCount = 4;
     std::vector<CppADScalar> avars(kVarCount);
     avars[kRhoIndex] = rho;
-    avars[kKijIndex] = cppargs.k_ij[static_cast<size_t>(k_index)];
+    avars[kKijIndex] = parameter_matrix[static_cast<size_t>(parameter_index)];
     avars[kX0Index] = x[0];
     avars[kX1Index] = x[1];
     CppAD::Independent(avars);
@@ -587,14 +628,16 @@ NeutralBinaryKijPhaseDerivatives neutral_binary_kij_phase_derivatives_cpp(
         avars[kRhoIndex],
         ax,
         cppargs,
-        k_index,
-        &avars[kKijIndex]
+        is_kij ? parameter_index : -1,
+        is_kij ? &avars[kKijIndex] : nullptr,
+        is_lij ? parameter_index : -1,
+        is_lij ? &avars[kKijIndex] : nullptr
     );
     std::vector<CppADScalar> ay(1);
     ay[0] = contributions.hc + contributions.disp + contributions.assoc + contributions.ion + contributions.born;
 
     CppAD::ADFun<double> function(avars, ay);
-    std::vector<double> point = {rho, cppargs.k_ij[static_cast<size_t>(k_index)], x[0], x[1]};
+    std::vector<double> point = {rho, parameter_matrix[static_cast<size_t>(parameter_index)], x[0], x[1]};
     auto values = function.Forward(0, point);
     auto jacobian = function.Jacobian(point);
     auto hessian = function.Hessian(point, 0);
@@ -632,6 +675,8 @@ NeutralBinaryKijPhaseDerivatives neutral_binary_kij_phase_derivatives_cpp(
         throw ValueError("Native binary k_ij derivative evaluation produced invalid dP/drho.");
     }
     out.drhodk = -out.dpdk / out.dpdrho;
+    out.mu_res.assign(2, 0.0);
+    out.dmu_res_dk_fixed_rho.assign(2, 0.0);
     out.lnphi.assign(2, 0.0);
     out.dlnphi_drho.assign(2, 0.0);
     out.dlnphi_dk_fixed_rho.assign(2, 0.0);
@@ -647,6 +692,8 @@ NeutralBinaryKijPhaseDerivatives neutral_binary_kij_phase_derivatives_cpp(
         const double mu = ares + z_raw + dadx[static_cast<size_t>(i)] - sum_x_dadx;
         const double dmu_drho = da_drho + dz_drho + dadx_drho[static_cast<size_t>(i)] - sum_x_dadx_drho;
         const double dmu_dk = da_dk + dz_dk + dadx_dk[static_cast<size_t>(i)] - sum_x_dadx_dk;
+        out.mu_res[static_cast<size_t>(i)] = mu;
+        out.dmu_res_dk_fixed_rho[static_cast<size_t>(i)] = dmu_dk;
         out.lnphi[static_cast<size_t>(i)] = mu - std::log(z);
         out.dlnphi_drho[static_cast<size_t>(i)] = dmu_drho - dz_drho / z;
         out.dlnphi_dk_fixed_rho[static_cast<size_t>(i)] = dmu_dk - dz_dk / z;
@@ -659,7 +706,8 @@ NeutralBinaryKijPhaseDerivatives neutral_binary_kij_phase_derivatives_cpp(
     (void)rho;
     (void)x;
     (void)cppargs;
-    (void)k_index;
+    (void)parameter_index;
+    (void)parameter_name;
     throw ValueError("backend_unavailable: CppAD support is not enabled in this native build.");
 #endif
 }

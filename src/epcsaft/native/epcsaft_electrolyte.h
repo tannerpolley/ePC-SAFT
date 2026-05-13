@@ -341,6 +341,8 @@ struct NeutralBinaryKijPhaseDerivatives {
     double dpdrho = 0.0;
     double dpdk = 0.0;
     double drhodk = 0.0;
+    vector<double> mu_res;
+    vector<double> dmu_res_dk_fixed_rho;
     vector<double> lnphi;
     vector<double> dlnphi_drho;
     vector<double> dlnphi_dk_fixed_rho;
@@ -466,6 +468,14 @@ NeutralBinaryKijPhaseDerivatives neutral_binary_kij_phase_derivatives_cpp(
     const vector<double> &x,
     const add_args &cppargs,
     int k_index
+);
+NeutralBinaryKijPhaseDerivatives neutral_binary_pair_parameter_phase_derivatives_cpp(
+    double t,
+    double rho,
+    const vector<double> &x,
+    const add_args &cppargs,
+    int parameter_index,
+    const std::string &parameter_name
 );
 double dadt_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 double hres_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
