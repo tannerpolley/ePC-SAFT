@@ -290,28 +290,33 @@ def test_mixture_equilibrium_rejects_non_native_chemical_equilibrium_backend() -
         )
 
 
-def test_native_chemical_equilibrium_reports_unavailable_activity_coupled_salt_speciation() -> None:
+def test_native_chemical_equilibrium_solves_activity_coupled_salt_speciation() -> None:
     mix = _salt_speciation_mixture()
     initial_x = np.asarray([0.998, 0.001, 0.0005, 0.0005], dtype=float)
     stoich = {"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0}
     log_k = _log_k_from_state(mix, 298.15, 1.0e5, initial_x, stoich)
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
-        epcsaft.solve_reactive_speciation(
-            species=mix.species,
-            mixture_factory=lambda x, T, P: mix,
-            T=298.15,
-            P=1.0e5,
-            balances={
-                "water_total": {"H2O": 1.0},
-                "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
-                "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
-            },
-            totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
-            reactions=[epcsaft.ReactionDefinition(stoich, log_k)],
-            initial_x=initial_x,
-            options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-8),
-        )
+    result = epcsaft.solve_reactive_speciation(
+        species=mix.species,
+        mixture_factory=lambda x, T, P: mix,
+        T=298.15,
+        P=1.0e5,
+        balances={
+            "water_total": {"H2O": 1.0},
+            "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
+            "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
+        },
+        totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
+        reactions=[epcsaft.ReactionDefinition(stoich, log_k)],
+        initial_x=initial_x,
+        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-8),
+    )
+
+    assert result.success is True
+    assert result.diagnostics["activity_model"] == "epcsaft_component_activity"
+    assert result.diagnostics["activity_fixed_point"] is True
+    assert result.diagnostics["backend_unavailable_reason"] == ""
+    assert max(abs(value) for value in result.reaction_residuals) <= 1.0e-8
 
 
 def test_native_chemical_equilibrium_solves_hard_mea_like_speciation_and_returns_phase_handoff() -> None:
@@ -325,49 +330,57 @@ def test_native_chemical_equilibrium_solves_hard_mea_like_speciation_and_returns
     ]
     log_k = [_log_k_from_state(mix, 313.15, 1.0e5, target_x, reaction) for reaction in reactions]
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
-        epcsaft.solve_reactive_speciation(
-            species=mix.species,
-            mixture_factory=lambda x, T, P: mix,
-            T=313.15,
-            P=1.0e5,
-            balances={
-                "water_total": {"H2O": 1.0},
-                "amine_total": {"MEA": 1.0, "MEAH+": 1.0, "MEACOO-": 1.0},
-                "carbon_total": {"CO2": 1.0, "HCO3-": 1.0, "MEACOO-": 1.0},
-            },
-            totals={
-                "water_total": float(target_x[0]),
-                "amine_total": float(target_x[1] + target_x[4] + target_x[5]),
-                "carbon_total": float(target_x[2] + target_x[3] + target_x[5]),
-            },
-            reactions=[epcsaft.ReactionDefinition(reaction, value) for reaction, value in zip(reactions, log_k)],
-            initial_x=initial_x,
-            options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-7, max_iterations=40, damping=0.7),
-        )
+    result = epcsaft.solve_reactive_speciation(
+        species=mix.species,
+        mixture_factory=lambda x, T, P: mix,
+        T=313.15,
+        P=1.0e5,
+        balances={
+            "water_total": {"H2O": 1.0},
+            "amine_total": {"MEA": 1.0, "MEAH+": 1.0, "MEACOO-": 1.0},
+            "carbon_total": {"CO2": 1.0, "HCO3-": 1.0, "MEACOO-": 1.0},
+        },
+        totals={
+            "water_total": float(target_x[0]),
+            "amine_total": float(target_x[1] + target_x[4] + target_x[5]),
+            "carbon_total": float(target_x[2] + target_x[3] + target_x[5]),
+        },
+        reactions=[epcsaft.ReactionDefinition(reaction, value) for reaction, value in zip(reactions, log_k)],
+        initial_x=initial_x,
+        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-7, max_iterations=40, damping=0.7),
+    )
+
+    assert result.success is True
+    assert result.diagnostics["activity_model"] == "epcsaft_component_activity"
+    assert result.diagnostics["phase_equilibrium_handoff"]["composition_map"] == result.x
+    assert max(abs(value) for value in result.reaction_residuals) <= 1.0e-7
 
 
-def test_native_chemical_equilibrium_reports_unavailable_neutral_activity_seed() -> None:
+def test_native_chemical_equilibrium_solves_neutral_activity_seed() -> None:
     mix = _methanol_cyclohexane_mixture()
     target_x = np.asarray([0.35, 0.65], dtype=float)
     stoich = {"Methanol": -1.0, "Cyclohexane": 1.0}
     log_k = _neutral_log_k_from_fugacity_activity(mix, 298.15, 1.013e5, target_x, stoich)
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
-        epcsaft.solve_reactive_speciation(
-            species=mix.species,
-            mixture_factory=lambda x, T, P: mix,
-            T=298.15,
-            P=1.013e5,
-            balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
-            totals={"total": 1.0},
-            reactions=[epcsaft.ReactionDefinition(stoich, log_k)],
-            initial_x=[0.999, 0.001],
-            options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-9, max_iterations=35),
-        )
+    result = epcsaft.solve_reactive_speciation(
+        species=mix.species,
+        mixture_factory=lambda x, T, P: mix,
+        T=298.15,
+        P=1.013e5,
+        balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
+        totals={"total": 1.0},
+        reactions=[epcsaft.ReactionDefinition(stoich, log_k)],
+        initial_x=[0.999, 0.001],
+        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-9, max_iterations=35),
+    )
+
+    assert result.success is True
+    assert result.diagnostics["selected_solver_backend"] == "scalar_binary_activity_bracket"
+    assert result.diagnostics["activity_model"] == "epcsaft_neutral_fugacity_activity"
+    assert max(abs(value) for value in result.reaction_residuals) <= 1.0e-9
 
 
-def test_native_chemical_equilibrium_reports_unavailable_hard_ionic_speciation() -> None:
+def test_native_chemical_equilibrium_solves_hard_ionic_speciation() -> None:
     mix = _mea_like_mixture()
     target_x = np.asarray([0.865, 0.075, 0.02, 0.008, 0.012, 0.012, 0.008], dtype=float)
     hard_initial_x = np.asarray([0.93, 0.035, 0.026, 0.001, 0.002, 0.001, 0.005], dtype=float)
@@ -378,26 +391,28 @@ def test_native_chemical_equilibrium_reports_unavailable_hard_ionic_speciation()
     ]
     log_k = [_log_k_from_state(mix, 313.15, 1.0e5, target_x, reaction) for reaction in reactions]
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
-        epcsaft.solve_reactive_speciation(
-            species=mix.species,
-            mixture_factory=lambda x, T, P: mix,
-            T=313.15,
-            P=1.0e5,
-            balances={
-                "water_total": {"H2O": 1.0},
-                "amine_total": {"MEA": 1.0, "MEAH+": 1.0, "MEACOO-": 1.0},
-                "carbon_total": {"CO2": 1.0, "HCO3-": 1.0, "MEACOO-": 1.0},
-            },
-            totals={
-                "water_total": float(target_x[0]),
-                "amine_total": float(target_x[1] + target_x[4] + target_x[5]),
-                "carbon_total": float(target_x[2] + target_x[3] + target_x[5]),
-            },
-            reactions=[epcsaft.ReactionDefinition(reaction, value) for reaction, value in zip(reactions, log_k)],
-            initial_x=hard_initial_x,
-            options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-7, max_iterations=45, damping=0.7),
-        )
+    result = epcsaft.solve_reactive_speciation(
+        species=mix.species,
+        mixture_factory=lambda x, T, P: mix,
+        T=313.15,
+        P=1.0e5,
+        balances={
+            "water_total": {"H2O": 1.0},
+            "amine_total": {"MEA": 1.0, "MEAH+": 1.0, "MEACOO-": 1.0},
+            "carbon_total": {"CO2": 1.0, "HCO3-": 1.0, "MEACOO-": 1.0},
+        },
+        totals={
+            "water_total": float(target_x[0]),
+            "amine_total": float(target_x[1] + target_x[4] + target_x[5]),
+            "carbon_total": float(target_x[2] + target_x[3] + target_x[5]),
+        },
+        reactions=[epcsaft.ReactionDefinition(reaction, value) for reaction, value in zip(reactions, log_k)],
+        initial_x=hard_initial_x,
+        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-7, max_iterations=45, damping=0.7),
+    )
+
+    assert result.success is True
+    assert max(abs(value) for value in result.reaction_residuals) <= 1.0e-7
 
 
 def test_native_chemical_equilibrium_skips_soft_start_when_no_reactions() -> None:
@@ -486,19 +501,20 @@ def test_reactive_stability_chemical_equilibrates_feed_before_native_tpd() -> No
     stoich = {"Methanol": -1.0, "Cyclohexane": 1.0}
     log_k = _neutral_log_k_from_fugacity_activity(mix, 298.15, 1.013e5, target_x, stoich)
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
-        mix.equilibrium(
-            kind="reactive_stability",
-            T=298.15,
-            P=1.013e5,
-            z=[0.5, 0.5],
-            balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
-            totals={"total": 1.0},
-            reactions=[epcsaft.ReactionDefinition(stoich, log_k)],
-            parent_phase="liq",
-            trial_phases=("liq",),
-            options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
-        )
+    result = mix.equilibrium(
+        kind="reactive_stability",
+        T=298.15,
+        P=1.013e5,
+        z=[0.5, 0.5],
+        balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
+        totals={"total": 1.0},
+        reactions=[epcsaft.ReactionDefinition(stoich, log_k)],
+        parent_phase="liq",
+        trial_phases=("liq",),
+        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
+    )
+
+    assert result.diagnostics["reactive_chemical_equilibrium"]["success"] is True
 
 
 def test_native_chemical_equilibrium_uses_epcsaft_activities_for_neutral_reaction() -> None:
@@ -507,18 +523,22 @@ def test_native_chemical_equilibrium_uses_epcsaft_activities_for_neutral_reactio
     stoich = {"Methanol": -1.0, "Cyclohexane": 1.0}
     log_k = _neutral_log_k_from_fugacity_activity(mix, 298.15, 1.013e5, target_x, stoich)
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
-        epcsaft.solve_reactive_speciation(
-            species=mix.species,
-            mixture_factory=lambda x, T, P: mix,
-            T=298.15,
-            P=1.013e5,
-            balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
-            totals={"total": 1.0},
-            reactions=[epcsaft.ReactionDefinition(stoich, log_k)],
-            initial_x=[0.5, 0.5],
-            options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-9),
-        )
+    result = epcsaft.solve_reactive_speciation(
+        species=mix.species,
+        mixture_factory=lambda x, T, P: mix,
+        T=298.15,
+        P=1.013e5,
+        balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
+        totals={"total": 1.0},
+        reactions=[epcsaft.ReactionDefinition(stoich, log_k)],
+        initial_x=[0.5, 0.5],
+        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-9),
+    )
+
+    assert result.success is True
+    assert result.x["Methanol"] == pytest.approx(target_x[0], abs=1.0e-7)
+    assert result.diagnostics["activity_model"] == "epcsaft_neutral_fugacity_activity"
+    assert result.diagnostics["finite_difference_backend_available"] is False
 
 
 def test_native_chemical_equilibrium_solution_shifts_when_fugacity_model_changes() -> None:
@@ -527,15 +547,30 @@ def test_native_chemical_equilibrium_solution_shifts_when_fugacity_model_changes
     stoich = {"Methanol": -1.0, "Cyclohexane": 1.0}
     log_k = _neutral_log_k_from_fugacity_activity(base_mix, 298.15, 1.013e5, target_x, stoich)
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
-        epcsaft.solve_reactive_speciation(
-            species=base_mix.species,
-            mixture_factory=lambda x, T, P: base_mix,
-            T=298.15,
-            P=1.013e5,
-            balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
-            totals={"total": 1.0},
-            reactions=[epcsaft.ReactionDefinition(stoich, log_k)],
-            initial_x=[0.5, 0.5],
-            options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-9),
-        )
+    base = epcsaft.solve_reactive_speciation(
+        species=base_mix.species,
+        mixture_factory=lambda x, T, P: base_mix,
+        T=298.15,
+        P=1.013e5,
+        balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
+        totals={"total": 1.0},
+        reactions=[epcsaft.ReactionDefinition(stoich, log_k)],
+        initial_x=[0.5, 0.5],
+        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-9),
+    )
+    perturbed_mix = _methanol_cyclohexane_mixture(kij=0.0)
+    perturbed = epcsaft.solve_reactive_speciation(
+        species=perturbed_mix.species,
+        mixture_factory=lambda x, T, P: perturbed_mix,
+        T=298.15,
+        P=1.013e5,
+        balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
+        totals={"total": 1.0},
+        reactions=[epcsaft.ReactionDefinition(stoich, log_k)],
+        initial_x=[0.5, 0.5],
+        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-9),
+    )
+
+    assert base.success is True
+    assert perturbed.success is True
+    assert abs(base.x["Methanol"] - perturbed.x["Methanol"]) > 1.0e-3

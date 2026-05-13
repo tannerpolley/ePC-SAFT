@@ -30,3 +30,16 @@ def test_equilibrium_capabilities_expose_derivative_policy() -> None:
         "residual_norm_by_block",
         "association_solver_status",
     }.issubset(set(policy["diagnostic_fields"]))
+
+
+def test_reactive_speciation_capabilities_include_activity_standard_states() -> None:
+    reactive = epcsaft.capabilities()["equilibrium"]["reactive_speciation"]
+
+    assert {
+        "ideal_mole_fraction",
+        "mole_fraction_activity",
+        "thermodynamic_activity",
+        "concentration",
+        "apparent",
+    }.issubset(set(reactive["jacobian_auto_supported_standard_states"]))
+    assert reactive["derivative_gap_status"] == "activity_derivatives_not_used_by_fixed_point_outer_iteration"

@@ -1,0 +1,219 @@
+version: 2
+
+goal:
+  title: "Generic speciation solver using ePC-SAFT activities"
+  slug: "generic-activity-speciation"
+  kind: specific
+  tranche: "Prepare the bounded dependency-gated task for generic liquid speciation solving using ePC-SAFT activities."
+  status: in_progress
+  intake:
+    original_request: "Run Goal Prep for task key F: Generic speciation solver using ePC-SAFT activities."
+    interpreted_outcome: "Prepare the assigned branch, record the issue scope, and proceed only after the dependency gate passes."
+    input_shape: specific
+    audience: "ePC-SAFT package maintainers and downstream modeling agents"
+    authority: requested
+    proof_type: artifact
+    completion_proof: "Goal charter exists, branch is correct, issue scope is recorded, and the dependency gate is documented."
+    likely_misfire: "Starting implementation before the dependency gate, introducing application-specific public APIs, or adding finite difference."
+    existing_plan_facts:
+      - "Task key F maps to docs/roadmaps/agent_prompts/F_generic_speciation_solver_using_epc_saft_activities.md."
+      - "Assigned branch is codex/generic-activity-speciation."
+      - "Task C / issue #86 is closed."
+      - "Task D / issue #87 is closed."
+      - "Do not create local .worktrees/."
+      - "No finite difference."
+      - "Do not add application-specific public APIs."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://127.0.0.1:60338/"
+    command: "node C:\\Users\\Tanner\\.codex\\skills\\goalbuddy\\extend\\local-goal-board\\scripts\\local-goal-board.mjs --goal docs/goals/generic-activity-speciation"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Prepare GoalBuddy state for Task F and record the issue scope after reading the GitHub issue."
+    receipt:
+      result: done
+      status: prepared
+      summary: "Task F charter and gate state were created on the assigned branch."
+      evidence:
+        - "docs/goals/generic-activity-speciation/goal.md"
+        - "docs/goals/generic-activity-speciation/state.yaml"
+        - "docs/goals/generic-activity-speciation/notes/dependency_gate.yaml"
+        - "docs/goals/generic-activity-speciation/notes/issue_scope.md"
+      commands:
+        - cmd: "gh issue view 89 --repo tannerpolley/ePC-SAFT --json number,title,state,body,url"
+          status: pass
+          summary: "Issue scope inspected."
+  - id: T002
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Rerun the dependency gate before implementation and continue only if it passes."
+    receipt:
+      result: done
+      status: GATE_PASSED
+      summary: "Task C and Task D issues are closed; current branch is codex/generic-activity-speciation; HEAD equals origin/main, so no rebase delta exists."
+      evidence:
+        - "https://github.com/tannerpolley/ePC-SAFT/issues/86"
+        - "https://github.com/tannerpolley/ePC-SAFT/issues/87"
+        - "docs/goals/generic-activity-speciation/notes/dependency_gate.yaml"
+      commands:
+        - cmd: "git fetch origin --prune"
+          status: pass
+          summary: "Fetched origin."
+        - cmd: "gh issue view 89 --repo tannerpolley/ePC-SAFT --json number,title,state,body,url"
+          status: pass
+          summary: "Issue #89 scope inspected."
+        - cmd: "git branch --show-current; git status --short"
+          status: pass
+          summary: "Current branch is codex/generic-activity-speciation; only GoalBuddy files are untracked."
+        - cmd: "git rebase origin/main"
+          status: skipped
+          summary: "Tool policy blocked the mutating rebase command before Git ran; non-mutating check showed HEAD equals origin/main and origin/main...HEAD is 0 0."
+        - cmd: "git rev-list --left-right --count origin/main...HEAD"
+          status: pass
+          summary: "Returned 0 0."
+  - id: T003
+    type: scout
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Map existing generic reaction/speciation APIs, diagnostics, and tests to select the smallest implementation slice for issue #89."
+    receipt:
+      result: done
+      status: completed
+      summary: "Existing ReactionConstantConvention, ReactionDefinition, native chemical-equilibrium routing, and staged workflow diagnostics already covered fixed/fitted K metadata; the missing package-owned slice was activity/concentration/apparent solving instead of backend_unavailable."
+      evidence:
+        - "src/epcsaft/reactive_speciation.py"
+        - "src/epcsaft/runtime.py"
+        - "tests/api/test_reactive_speciation.py"
+        - "tests/native/test_chemical_equilibrium_native.py"
+  - id: T004
+    type: worker
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Implement generic activity/concentration/apparent speciation support without finite difference or application-specific public APIs."
+    receipt:
+      result: done
+      status: implemented
+      summary: "Added a private activity fixed-point route for nonideal/apparent reaction standard states, a scalar binary activity bracket solve for two-species one-reaction cases, diagnostics for residual blocks and derivative status, and capability/test coverage for activity, concentration, apparent, fixed K, and fitted K paths."
+      changed_files:
+        - "src/epcsaft/reactive_speciation.py"
+        - "src/epcsaft/runtime.py"
+        - "tests/api/test_equilibrium_capabilities.py"
+        - "tests/api/test_reaction_constant_conventions.py"
+        - "tests/api/test_reactive_speciation.py"
+        - "tests/native/test_chemical_equilibrium_native.py"
+      scope_classification:
+        ideal_apparent_mode: implemented
+        activity_based_mode: implemented
+        fixed_k_mode: already_supported_with_tests
+        fitted_k_mode_support_where_schema_exists: implemented
+        residual_and_derivative_diagnostics: implemented
+        epcsaft_activities_fugacities_where_requested: implemented
+        mea_specific_speciation_apis: out_of_scope_by_roadmap
+        fit_reaction_constants_by_default: out_of_scope_by_roadmap
+  - id: T005
+    type: judge
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Validate and self-review the implementation slice before PR creation."
+    receipt:
+      result: done
+      status: validated
+      decision: approved_for_pr
+      summary: "Focused and prompt-required validations passed; changed files are in the assigned generic speciation scope, with no new public application-specific APIs and no finite-difference route."
+      commands:
+        - cmd: "uv run python run_pytest.py tests/api/test_reactive_speciation.py tests/api/test_reaction_constant_conventions.py tests/api/test_equilibrium_capabilities.py tests/native/test_chemical_equilibrium_native.py tests/native/test_reactive_speciation_implicit_sensitivity.py -q"
+          status: pass
+          summary: "52 passed, 1 skipped."
+        - cmd: "uv run python run_pytest.py tests/api/test_reactive_staged_workflow_contract.py tests/native/test_reactive_speciation_implicit_sensitivity.py -q"
+          status: pass
+          summary: "5 passed."
+        - cmd: "uv run python scripts/validate_project.py quick"
+          status: pass
+          summary: "Doctor passed; quick pytest slice reported 23 passed."
+        - cmd: "git diff --check"
+          status: pass
+          summary: "No whitespace errors; Git reported CRLF conversion warnings only."
+  - id: T999
+    type: judge
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Final audit before merge."
+    receipt:
+      result: done
+      status: complete
+      decision: complete
+      full_outcome_complete: true
+      issue_url: "https://github.com/tannerpolley/ePC-SAFT/issues/89"
+      pr_url: "https://github.com/tannerpolley/ePC-SAFT/pull/105"
+      summary: "Task F implementation, validation, PR self-review, and GitHub checks passed. The changed files are limited to generic reactive speciation, runtime capability metadata, tests, and GoalBuddy receipts."
+      scope_review:
+        no_finite_difference: true
+        no_application_specific_public_apis: true
+        no_silent_scope_narrowing: true
+        changed_files_in_scope: true
+        github_checks_passed: true
+        pr_mergeable: true
+      commands:
+        - cmd: "gh pr diff 105 --name-only"
+          status: pass
+          summary: "PR files are limited to GoalBuddy receipts, generic speciation implementation, runtime capabilities, and tests."
+        - cmd: "gh pr checks 105 --watch --fail-fast"
+          status: pass
+          summary: "fast workflow smoke and native default build passed; optional matrix jobs were skipped by workflow rules."
+        - cmd: "gh pr view 105 --json number,url,isDraft,mergeable,statusCheckRollup,headRefName,baseRefName"
+          status: pass
+          summary: "PR #105 was ready for review and mergeable before this final audit receipt commit."
+
+checks:
+  last_verification:
+    result: pass
+    task: T005
+    commands:
+      - cmd: "uv run python run_pytest.py tests/api/test_reactive_staged_workflow_contract.py tests/native/test_reactive_speciation_implicit_sensitivity.py -q"
+        status: pass
+        summary: "5 passed."
+      - cmd: "uv run python scripts/validate_project.py quick"
+        status: pass
+        summary: "23 passed."
+      - cmd: "git diff --check"
+        status: pass
+        summary: "No whitespace errors."
