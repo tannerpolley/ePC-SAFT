@@ -7,20 +7,54 @@ import shutil
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BUILD_DIR = REPO_ROOT / "build" / "dev"
 PACKAGE_DIR = REPO_ROOT / "src" / "epcsaft"
+LOG_FILE_NAME = "build_epcsaft.log"
+STALE_LOCK_SECONDS = 120
 
 
 def _run(cmd: list[str], *, env: dict[str, str]) -> None:
     print("Running:", " ".join(cmd), flush=True)
-    subprocess.run(cmd, cwd=str(REPO_ROOT), env=env, check=True)
+    _append_log(f"\n[{_timestamp()}] Running: {' '.join(cmd)}\n")
+    completed = subprocess.Popen(
+        cmd,
+        cwd=str(REPO_ROOT),
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    assert completed.stdout is not None
+    with _log_path().open("a", encoding="utf-8", errors="replace") as handle:
+        for line in completed.stdout:
+            print(line, end="", flush=True)
+            handle.write(line)
+    returncode = completed.wait()
+    if returncode != 0:
+        raise subprocess.CalledProcessError(returncode, cmd)
 
 
 def _capture(cmd: list[str], *, env: dict[str, str]) -> str:
     return subprocess.check_output(cmd, cwd=str(REPO_ROOT), env=env, text=True).strip()
+
+
+def _timestamp() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _log_path() -> Path:
+    BUILD_DIR.mkdir(parents=True, exist_ok=True)
+    return BUILD_DIR / LOG_FILE_NAME
+
+
+def _append_log(text: str) -> None:
+    with _log_path().open("a", encoding="utf-8", errors="replace") as handle:
+        handle.write(text)
 
 
 def _pyproject_version() -> str:
@@ -66,13 +100,121 @@ def _remove_extension_artifact(artifact: Path) -> None:
 
 
 def _configured_generator() -> str | None:
+    return _cmake_cache_value("CMAKE_GENERATOR")
+
+
+def _cmake_cache_value(name: str) -> str | None:
     cache = BUILD_DIR / "CMakeCache.txt"
     if not cache.exists():
         return None
+    prefix = f"{name}:"
     for line in cache.read_text(encoding="utf-8", errors="replace").splitlines():
-        if line.startswith("CMAKE_GENERATOR:INTERNAL="):
+        if line.startswith(prefix):
             return line.split("=", 1)[1].strip()
     return None
+
+
+def _native_artifacts() -> list[Path]:
+    return sorted([*PACKAGE_DIR.glob("_core*.pyd"), *PACKAGE_DIR.glob("_core*.so")])
+
+
+def _last_ninja_target() -> str | None:
+    log = BUILD_DIR / ".ninja_log"
+    if not log.exists():
+        return None
+    for line in reversed(log.read_text(encoding="utf-8", errors="replace").splitlines()):
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split("\t")
+        if len(parts) >= 4:
+            return parts[3]
+    return None
+
+
+def _repo_build_processes() -> list[str]:
+    if os.name != "nt":
+        return []
+    root = str(REPO_ROOT).replace("'", "''")
+    current_pid = os.getpid()
+    command = (
+        "$root = '" + root + "'; "
+        f"$currentPid = {current_pid}; "
+        "Get-CimInstance Win32_Process | "
+        "Where-Object { $_.Name -in @('python.exe','uv.exe','cmake.exe','ninja.exe') "
+        "-and $_.ProcessId -ne $currentPid "
+        '-and $_.CommandLine -like "*$root*" } | '
+        'ForEach-Object { "$($_.ProcessId) $($_.Name) $($_.CommandLine)" }'
+    )
+    try:
+        output = subprocess.check_output(
+            ["powershell.exe", "-NoProfile", "-Command", command],
+            cwd=str(REPO_ROOT),
+            text=True,
+            stderr=subprocess.DEVNULL,
+            timeout=5,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return []
+    processes = []
+    for line in output.splitlines():
+        process = line.strip()
+        normalized = process.lower().replace("\\", "/")
+        is_build_script = "scripts/build_epcsaft.py" in normalized and "--status" not in normalized
+        is_cmake_build = "cmake" in normalized and "--build" in normalized
+        is_ninja_build = "ninja.exe" in normalized
+        if is_build_script or is_cmake_build or is_ninja_build:
+            processes.append(process)
+    return processes
+
+
+def _status_lines(*, stale_lock_seconds: int = STALE_LOCK_SECONDS) -> list[str]:
+    generator = _configured_generator() or "<unconfigured>"
+    ceres = _cmake_cache_value("EPCSAFT_ENABLE_CERES") or "<unconfigured>"
+    cppad = _cmake_cache_value("EPCSAFT_ENABLE_CPPAD") or "<unconfigured>"
+    artifacts = _native_artifacts()
+    lock = BUILD_DIR / ".ninja_lock"
+    lock_present = lock.exists()
+    lock_age = time.time() - lock.stat().st_mtime if lock_present else None
+    stale_lock = bool(lock_present and lock_age is not None and lock_age >= stale_lock_seconds)
+    processes = _repo_build_processes()
+
+    lines = [
+        f"repo_root: {REPO_ROOT}",
+        f"build_dir: {BUILD_DIR}",
+        f"configured_generator: {generator}",
+        f"ceres_configured: {ceres}",
+        f"cppad_configured: {cppad}",
+        f"native_core: {'present' if artifacts else 'missing'}",
+        "native_core_paths: " + (", ".join(str(path) for path in artifacts) if artifacts else "<none>"),
+        f"ninja_lock: {'present' if lock_present else 'missing'}",
+        f"stale_ninja_lock: {'true' if stale_lock else 'false'}",
+        f"last_ninja_target: {_last_ninja_target() or '<none>'}",
+        f"live_build_processes: {len(processes)}",
+        f"log_file: {_log_path()}",
+    ]
+    lines.extend(f"live_build_process: {process}" for process in processes)
+    if stale_lock:
+        lines.append(
+            "stale_lock_remediation: inspect live_build_process entries; stop only repo-owned build processes before retrying"
+        )
+    return lines
+
+
+def _print_status() -> None:
+    for line in _status_lines():
+        print(line)
+
+
+def _warn_if_stale_build_lock() -> None:
+    lines = _status_lines()
+    if "stale_ninja_lock: true" not in lines:
+        return
+    print("Warning: stale Ninja lock detected for build/dev.", flush=True)
+    for line in lines:
+        if line.startswith(
+            ("ninja_lock:", "stale_ninja_lock:", "last_ninja_target:", "live_build_process", "stale_lock")
+        ):
+            print(line, flush=True)
 
 
 def _generator_args(env: dict[str, str], configured_generator: str | None = None) -> list[str]:
@@ -142,7 +284,31 @@ def _build(env: dict[str, str], parallel: str | None) -> None:
     cmd = ["cmake", "--build", str(BUILD_DIR)]
     if parallel:
         cmd.extend(["--parallel", parallel])
+    _warn_if_stale_build_lock()
     _run(cmd, env=env)
+
+
+def _verify_native_import(env: dict[str, str]) -> None:
+    cmd = [
+        sys.executable,
+        "-c",
+        "import epcsaft._core as core; print(core.__file__)",
+    ]
+    completed = subprocess.run(
+        cmd,
+        cwd=str(REPO_ROOT),
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
+    )
+    _append_log(f"[{_timestamp()}] Running native import check\n{completed.stdout}")
+    if completed.returncode != 0:
+        print(completed.stdout, end="", flush=True)
+        raise subprocess.CalledProcessError(completed.returncode, cmd)
+    core_path = completed.stdout.strip()
+    print(f"native import OK: {core_path}", flush=True)
 
 
 def _timed(label: str, action) -> float:
@@ -161,6 +327,9 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--build-only", action="store_true", help="Build the existing CMake dev build tree without reconfiguring."
+    )
+    parser.add_argument(
+        "--status", action="store_true", help="Report build/dev status without configuring or building."
     )
     parser.add_argument("--parallel", help="Optional CMake build parallelism value.")
     parser.add_argument(
@@ -187,6 +356,9 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> int:
     parser = _parser()
     args = parser.parse_args()
+    if args.status:
+        _print_status()
+        return 0
     if args.clean and args.build_only:
         parser.error("--clean cannot be combined with --build-only")
     if args.configure_only and args.build_only:
@@ -222,6 +394,7 @@ def main() -> int:
         print("Timing: configure skipped (--build-only)", flush=True)
     if not args.configure_only:
         _timed("build", lambda: _build(env, args.parallel))
+        _timed("native import", lambda: _verify_native_import(env))
     else:
         print("Timing: build skipped (--configure-only)", flush=True)
     print(f"Timing: total completed in {time.perf_counter() - total_start:.2f}s", flush=True)

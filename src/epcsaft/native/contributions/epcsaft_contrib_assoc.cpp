@@ -142,10 +142,8 @@ AssociationSetup association_setup_cpp(const vector<double> &x, const add_args &
     int idxa = 0;
     for (int i = 0; i < num_sites; ++i) {
         int comp_i = setup.site_component_index[i];
-        int idxi = comp_i * ncomp + comp_i;
         for (int j = 0; j < num_sites; ++j) {
             int comp_j = setup.site_component_index[j];
-            int idxj = comp_j * ncomp + comp_j;
             if (cppargs.assoc_matrix[idxa] != 0) {
                 double eABij = 0.5 * (cppargs.e_assoc[comp_i] + cppargs.e_assoc[comp_j]);
                 double volABij = association_volume_cpp(comp_i, comp_j, ncomp, s_ij, cppargs);
@@ -269,9 +267,7 @@ AssociationIntermediateState association_intermediate_state_cpp(
         }
 
         for (int i = 0; i < num_sites; ++i) {
-            int idxi = site_component_index[i] * ncomp + site_component_index[i];
             for (int j = 0; j < num_sites; ++j) {
-                int idxj = site_component_index[j] * ncomp + site_component_index[j];
                 if (cppargs.assoc_matrix[i * num_sites + j] != 0) {
                     double eABij = 0.5 * (cppargs.e_assoc[site_component_index[i]] + cppargs.e_assoc[site_component_index[j]]);
                     double volABij = association_volume_cpp(site_component_index[i], site_component_index[j], ncomp, thermo.s_ij, cppargs);

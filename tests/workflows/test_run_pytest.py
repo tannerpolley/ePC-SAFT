@@ -54,8 +54,20 @@ def test_validate_project_modes_route_to_standard_validation_bundles():
         for command in mode
     )
     assert "plots" not in validate_project.CHECK_COMMANDS
-    assert ("run_pytest.py", "-q") in validate_project.CHECK_COMMANDS["full"]
-    assert ("run_pytest.py", "--all", "-q") not in validate_project.CHECK_COMMANDS["full"]
+    assert validate_project.CHECK_COMMANDS["full"] == (
+        ("scripts/doctor.py",),
+        ("run_pytest.py", "--all", "-q"),
+    )
+    assert validate_project.CHECK_COMMANDS["ceres-cppad"] == (
+        ("scripts/build_epcsaft.py", "--enable-ceres", "--enable-cppad"),
+        (
+            "run_pytest.py",
+            "tests/native/test_ceres_pure_regression.py",
+            "tests/native/test_ceres_binary_regression.py",
+            "tests/regression/test_literature_binary_kij_regression.py",
+            "-q",
+        ),
+    )
 
 
 def test_doctor_tracks_native_symbols_added_by_recent_workflows():

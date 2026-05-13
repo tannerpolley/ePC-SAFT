@@ -1144,7 +1144,7 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - Description: Defines the density differential of the association strength term.
 - Change note: Re-homed under the association-strength definition so the \(\Delta^{A_iB_j}\) density derivative stays local to its owning baseline.
 - LaTeX: `docs/latex/equations.tex:1068`
-- C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:165` (static vector<double> association_site_fraction_density_terms_cpp()
+- C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:163` (static vector<double> association_site_fraction_density_terms_cpp()
 
 ```tex
 \left(\frac{\partial\Delta^{A_{i}B_{j}}}{\partial\rho}\right)_{T,x}=d_{ij}^3\kappa^{A_{i}B_{j}}\left[\exp(\epsilon^{A_{i}B_{j}}/kT)-1\right]\left(\frac{\partial g_{ij}^{hs}}{\partial\rho}\right)_{T,x}
@@ -1157,7 +1157,7 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - Description: Defines the composition differential of the association strength term.
 - Change note: Re-homed under the association-strength definition so the \(\Delta^{A_iB_j}\) composition derivative stays local to its owning baseline.
 - LaTeX: `docs/latex/equations.tex:1079`
-- C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:198` (static vector<double> association_site_fraction_composition_terms_cpp()
+- C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:196` (static vector<double> association_site_fraction_composition_terms_cpp()
 
 ```tex
 \left(\frac{\partial \Delta^{A_{i}B_{j}}}{\partial x_{k}}\right)_{T,v,x_{j\neq k}}
@@ -1669,7 +1669,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Provides the density differential of the association Helmholtz contribution.
 - Change note: Moved back under the association Helmholtz contribution so Section 4 owns all equations carrying the association contribution label.
 - LaTeX: `docs/latex/equations.tex:1562`
-- C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:327` (double dadrho_assoc_cpp()
+- C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:323` (double dadrho_assoc_cpp()
 
 ```tex
 \rho\left(\frac{\partial\tilde{a}^{assoc}}{\partial\rho}\right)_{T,x}
@@ -1683,7 +1683,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Provides the composition differential of the association Helmholtz contribution.
 - Change note: Moved back under the association Helmholtz contribution so Section 4 owns all equations carrying the association contribution label.
 - LaTeX: `docs/latex/equations.tex:1574`
-- C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:389` (ContributionDadxResult dadx_assoc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const AssociationIntermediateState &assoc_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:385` (ContributionDadxResult dadx_assoc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const AssociationIntermediateState &assoc_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \left(\frac{\partial \tilde a^{assoc}}{\partial x_{k}}\right)_{T,v,x_{i\neq k}}
@@ -1702,7 +1702,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Provides the analytical temperature differential of the association Helmholtz contribution.
 - Change note: Moved back under the association Helmholtz contribution so Section 4 owns all equations carrying the association contribution label.
 - LaTeX: `docs/latex/equations.tex:1591`
-- C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:377` (double dadt_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {)
+- C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:373` (double dadt_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {)
 
 ```tex
 \left(\frac{\partial\tilde{a}^{\mathrm{assoc}}}{\partial T}\right)_{\rho,x_i}

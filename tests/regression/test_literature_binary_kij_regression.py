@@ -8,7 +8,6 @@ import pytest
 import epcsaft
 from tests.helpers.binary_regression_cases import ethanol_water_jced2021_vle_records
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = REPO_ROOT / "tests" / "fixtures" / "literature" / "binary_kij" / "ethanol_water_jced2021_100kpa.json"
 DISALLOWED_BACKENDS = {"finite_difference", "fd", "numerical_derivative", "numerical_jacobian"}
@@ -30,6 +29,10 @@ def test_literature_binary_kij_fixture_records_provenance() -> None:
 
 
 def test_literature_binary_kij_regression_matches_reference_band() -> None:
+    ceres = epcsaft.runtime_build_info()["optional_dependencies"]["ceres"]
+    if not ceres["compiled"]:
+        pytest.skip("Ceres support is not enabled in this native build.")
+
     fixture = _load_fixture()
     result = epcsaft.fit_binary_pair(
         ethanol_water_jced2021_vle_records(smoke_only=True),

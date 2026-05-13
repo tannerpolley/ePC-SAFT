@@ -296,38 +296,6 @@ StabilityTrialNative solve_tpd_trial(
     return out;
 }
 
-StabilityTrialNative fixed_composition_tpd_trial(
-    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
-    double t,
-    double p,
-    const std::vector<double>& feed,
-    const std::vector<double>& parent_ln_phi,
-    const std::string& parent_phase,
-    const std::string& trial_phase,
-    const std::string& seed_name,
-    const std::vector<double>& trial_composition,
-    const EquilibriumOptionsNative& options,
-    double threshold
-) {
-    std::vector<double> composition = clip_normalize(trial_composition, options.min_composition);
-    PhaseStateNative trial = phase_state(mixture, t, p, composition, trial_phase);
-    double candidate_tpd = tpd_value(composition, trial.ln_phi, feed, parent_ln_phi);
-
-    StabilityTrialNative out;
-    out.parent_phase = parent_phase;
-    out.trial_phase = trial_phase;
-    out.seed_name = seed_name;
-    out.composition = composition;
-    out.tpd = candidate_tpd;
-    out.iterations = 1;
-    out.converged = true;
-    out.unstable = candidate_tpd < -threshold;
-    out.diagnostics_double["tpd_threshold"] = threshold;
-    out.diagnostics_double["final_max_composition_delta"] = 0.0;
-    out.diagnostics_string["message"] = out.unstable ? "negative TPD trial" : "non-negative TPD trial";
-    return out;
-}
-
 StabilityTrialNative fixed_composition_tpd_trial_from_state(
     const std::vector<double>& feed,
     const std::vector<double>& parent_ln_phi,
@@ -739,23 +707,6 @@ std::vector<double> normalize_nonnegative_composition(
     if (!std::isfinite(total) || total <= 0.0) {
         throw ValueError(field_name + " must have a positive finite sum.");
     }
-    for (double& value : out) {
-        value /= total;
-    }
-    return out;
-}
-
-std::vector<double> vapor_full_composition(
-    const std::vector<int>& vapor_indices,
-    const std::vector<double>& y_vap,
-    std::size_t ncomp,
-    double min_composition
-) {
-    std::vector<double> out(ncomp, min_composition);
-    for (std::size_t pos = 0; pos < vapor_indices.size(); ++pos) {
-        out[static_cast<std::size_t>(vapor_indices[pos])] = std::max(y_vap[pos], min_composition);
-    }
-    double total = std::accumulate(out.begin(), out.end(), 0.0);
     for (double& value : out) {
         value /= total;
     }

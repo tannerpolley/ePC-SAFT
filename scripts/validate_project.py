@@ -20,7 +20,17 @@ CHECK_COMMANDS: dict[str, tuple[tuple[str, ...], ...]] = {
     "docs": (("-m", "sphinx", "-b", "html", "docs", "build/docs-html"),),
     "full": (
         ("scripts/doctor.py",),
-        ("run_pytest.py", "-q"),
+        ("run_pytest.py", "--all", "-q"),
+    ),
+    "ceres-cppad": (
+        ("scripts/build_epcsaft.py", "--enable-ceres", "--enable-cppad"),
+        (
+            "run_pytest.py",
+            "tests/native/test_ceres_pure_regression.py",
+            "tests/native/test_ceres_binary_regression.py",
+            "tests/regression/test_literature_binary_kij_regression.py",
+            "-q",
+        ),
     ),
 }
 
@@ -46,7 +56,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "mode",
         choices=tuple(CHECK_COMMANDS),
-        help="Validation bundle to run: quick, confidence, docs, or full.",
+        help="Validation bundle to run.",
     )
     return parser
 
