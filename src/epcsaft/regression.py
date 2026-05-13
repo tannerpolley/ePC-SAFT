@@ -15,8 +15,8 @@ from ._types import InputError, phase_to_int
 from .epcsaft import (
     _core,
     _evaluate_generic_native_debug,
-    _fit_generic_native_least_squares,
     _fit_generic_native_ceres,
+    _fit_generic_native_least_squares,
     _fit_pure_neutral_native_debug,
     _fit_pure_neutral_native_least_squares,
     check_association,
@@ -52,6 +52,31 @@ TERM_RELATIVE_PERMITTIVITY = "relative_permittivity"
 TERM_MEA_CO2_H2O_DENSITY = "mea_co2_h2o_density"
 TERM_MEA_CO2_H2O_CO2_FUGACITY = "mea_co2_h2o_co2_fugacity"
 TERM_MEA_CO2_H2O_OSMOTIC = "mea_co2_h2o_osmotic_coefficient"
+
+TARGET_ROW_FAMILY_ALIASES = {
+    "density": "pure_density",
+    "pure_density": "pure_density",
+    "pure_vapor_pressure": "pure_vapor_pressure",
+    "pure_vle": "pure_vapor_pressure",
+    "p_rho_t": "p_rho_t",
+    "prt": "p_rho_t",
+    "binary_vle": "binary_vle",
+    "binary_lle": "binary_lle",
+    "osmotic": TERM_OSMOTIC,
+    "osmotic_coefficient": TERM_OSMOTIC,
+    "miac": TERM_MIAC,
+    "mean_ionic_activity": TERM_MIAC,
+    "relative_permittivity": TERM_RELATIVE_PERMITTIVITY,
+    "dielectric": TERM_RELATIVE_PERMITTIVITY,
+    "activity": "activity",
+    "fugacity": "fugacity",
+    "speciation": "speciation",
+    "vle_partial_pressure": "vle_partial_pressure",
+    "partial_pressure": "vle_partial_pressure",
+    "lle_phase_composition": "lle_phase_composition",
+    "regularization": "regularization",
+}
+TARGET_ROW_FAMILIES = tuple(dict.fromkeys(TARGET_ROW_FAMILY_ALIASES.values()))
 
 PURE_DENSITY_KEYS_MOLAR = ("rho",)
 PURE_DENSITY_KEYS_MASS = ("rho_kg_m3", "rho_mass_kg_m3", "rho_liq_kg_m3", "rho_sat_liq_kg_m3")
@@ -434,6 +459,221 @@ class FitTerm:
         self.residual_count = int(self.residual_count)
 
 
+def _normalize_target_row_family(row_family: str) -> str:
+    token = str(row_family).strip().lower().replace("-", "_").replace(" ", "_")
+    if token not in TARGET_ROW_FAMILY_ALIASES:
+        allowed = ", ".join(TARGET_ROW_FAMILIES)
+        raise InputError(f"Unsupported target row family '{row_family}'. Supported families: {allowed}.")
+    return TARGET_ROW_FAMILY_ALIASES[token]
+
+
+def _record_has_any(record: Mapping[str, Any], keys: Sequence[str]) -> bool:
+    return any(key in record and record[key] not in (None, "") for key in keys)
+
+
+def _record_has_prefixed(record: Mapping[str, Any], prefixes: Sequence[str]) -> bool:
+    return any(any(str(key).startswith(prefix) for key in record) for prefix in prefixes)
+
+
+def _require_target_row_fields(row_family: str, values: Mapping[str, Any]) -> None:
+    temperature_families = {
+        "pure_density",
+        "pure_vapor_pressure",
+        "p_rho_t",
+        "binary_vle",
+        "binary_lle",
+        TERM_OSMOTIC,
+        TERM_MIAC,
+        TERM_RELATIVE_PERMITTIVITY,
+        "activity",
+        "fugacity",
+        "speciation",
+        "vle_partial_pressure",
+        "lle_phase_composition",
+    }
+    if row_family == "regularization":
+        if not _record_has_any(values, ("parameter", "target_parameter", "name")):
+            raise InputError("regularization target rows require a parameter or target_parameter field.")
+        if not _record_has_any(values, ("target_value", "value", "prior", "center")):
+            raise InputError("regularization target rows require a target_value, value, prior, or center field.")
+        return
+
+    if row_family in temperature_families and not _record_has_any(values, ("T", "temperature", "temperature_K")):
+        raise InputError(f"{row_family} target rows require T or temperature_K.")
+
+    if row_family == "pure_density" and not _record_has_any(
+        values, (*PURE_DENSITY_KEYS_MOLAR, *PURE_DENSITY_KEYS_MASS)
+    ):
+        raise InputError("pure_density target rows require rho or a mass-density value.")
+    if row_family == "pure_vapor_pressure" and not _record_has_any(values, ("P", "vapor_pressure", "P_sat")):
+        raise InputError("pure_vapor_pressure target rows require P, vapor_pressure, or P_sat.")
+    if row_family == "p_rho_t" and (
+        not _record_has_any(values, ("P", "pressure", "pressure_Pa"))
+        or not _record_has_any(values, (*PURE_DENSITY_KEYS_MOLAR, *PURE_DENSITY_KEYS_MASS))
+    ):
+        raise InputError("p_rho_t target rows require pressure and density values.")
+    if row_family == "binary_vle" and not (
+        _record_has_prefixed(values, ("x_",)) and _record_has_prefixed(values, ("y_",))
+    ):
+        raise InputError("binary_vle target rows require x_* and y_* composition columns.")
+    if row_family == "binary_lle" and not (
+        (_record_has_prefixed(values, ("x_alpha_",)) and _record_has_prefixed(values, ("x_beta_",)))
+        or (_record_has_prefixed(values, ("x_phase1_",)) and _record_has_prefixed(values, ("x_phase2_",)))
+    ):
+        raise InputError("binary_lle target rows require alpha/beta or phase1/phase2 composition columns.")
+    if row_family == TERM_OSMOTIC and not _record_has_any(values, ("osmotic_coefficient", "osmotic")):
+        raise InputError("osmotic_coefficient target rows require osmotic_coefficient or osmotic.")
+    if row_family == TERM_MIAC and not _record_has_any(
+        values, ("mean_ionic_activity", "mean_ionic_activity_coefficient", "miac")
+    ):
+        raise InputError("mean_ionic_activity target rows require a MIAC value.")
+    if row_family == TERM_RELATIVE_PERMITTIVITY and not _record_has_any(
+        values, ("epsilon_r_exp", "relative_permittivity", "epsilon_r")
+    ):
+        raise InputError("relative_permittivity target rows require epsilon_r_exp or relative_permittivity.")
+    if row_family == "activity" and not (
+        _record_has_prefixed(values, ("activity_",)) or _record_has_any(values, ("target_activities", "activities"))
+    ):
+        raise InputError("activity target rows require activity_* columns or target_activities.")
+    if row_family == "fugacity" and not (
+        _record_has_prefixed(values, ("fugacity_",)) or _record_has_any(values, ("target_fugacities", "fugacities"))
+    ):
+        raise InputError("fugacity target rows require fugacity_* columns or target_fugacities.")
+    if row_family == "speciation" and not (
+        _record_has_prefixed(values, ("x_",))
+        or _record_has_any(values, ("target_x", "target_composition", "speciation_targets"))
+    ):
+        raise InputError("speciation target rows require x_* columns, target_x, or speciation_targets.")
+    if row_family == "vle_partial_pressure" and not _record_has_any(
+        values, ("target_partial_pressures", "partial_pressures", "target_pressure", "target_partial_pressure")
+    ):
+        raise InputError("vle_partial_pressure target rows require partial-pressure targets.")
+    if row_family == "lle_phase_composition" and not (
+        _record_has_prefixed(values, ("x_alpha_", "x_beta_", "x_phase1_", "x_phase2_"))
+        or _record_has_any(values, ("target_x_alpha", "target_x_beta", "phase_compositions"))
+    ):
+        raise InputError("lle_phase_composition target rows require phase-composition targets.")
+
+
+@dataclass(slots=True)
+class TargetRow:
+    """Application-neutral regression or validation target row."""
+
+    row_family: str
+    values: dict[str, Any] = field(default_factory=dict, repr=False)
+    row_id: str = ""
+    weight: float = 1.0
+    phase: str = ""
+    species: tuple[str, ...] = field(default_factory=tuple)
+    source: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict, repr=False)
+
+    def __post_init__(self) -> None:
+        self.row_family = _normalize_target_row_family(self.row_family)
+        self.values = dict(self.values)
+        self.row_id = str(self.row_id or self.values.get("row_id", self.values.get("id", "")))
+        self.weight = float(self.weight)
+        self.phase = str(self.phase or self.values.get("phase", ""))
+        self.species = tuple(str(label) for label in self.species)
+        self.source = str(self.source or self.values.get("source", ""))
+        self.metadata = _copy_mapping(self.metadata)
+        if not math.isfinite(self.weight) or self.weight <= 0.0:
+            raise InputError("TargetRow weight must be positive and finite.")
+        _require_target_row_fields(self.row_family, self.values)
+
+    @classmethod
+    def from_record(cls, record: Mapping[str, Any], *, default_family: str | None = None) -> TargetRow:
+        payload = dict(record)
+        family = payload.pop("row_family", payload.pop("target_family", payload.pop("family", default_family)))
+        if family is None:
+            raise InputError("Target rows require row_family, target_family, family, or a default_family.")
+        row_id = str(payload.pop("row_id", payload.pop("id", "")))
+        weight = float(payload.pop("weight", 1.0))
+        phase = str(payload.pop("phase", ""))
+        source = str(payload.pop("source", ""))
+        metadata = payload.pop("metadata", {})
+        species = payload.pop("species", ())
+        return cls(
+            str(family),
+            payload,
+            row_id=row_id,
+            weight=weight,
+            phase=phase,
+            species=tuple(species),
+            source=source,
+            metadata=metadata,
+        )
+
+    def to_record(self) -> dict[str, Any]:
+        record = {"row_family": self.row_family, **dict(self.values)}
+        if self.row_id:
+            record["row_id"] = self.row_id
+        if self.weight != 1.0:
+            record["weight"] = self.weight
+        if self.phase:
+            record["phase"] = self.phase
+        if self.species:
+            record["species"] = list(self.species)
+        if self.source:
+            record["source"] = self.source
+        if self.metadata:
+            record["metadata"] = _json_like_regression(self.metadata)
+        return record
+
+
+@dataclass(slots=True)
+class TargetDataset:
+    """Collection of generic target rows for regression and validation workflows."""
+
+    rows: tuple[TargetRow, ...] = field(default_factory=tuple)
+    name: str = ""
+    species: tuple[str, ...] = field(default_factory=tuple)
+    parameter_set: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict, repr=False)
+
+    def __post_init__(self) -> None:
+        self.rows = tuple(row if isinstance(row, TargetRow) else TargetRow.from_record(row) for row in self.rows)
+        if not self.rows:
+            raise InputError("TargetDataset requires at least one TargetRow.")
+        self.name = str(self.name)
+        self.species = tuple(str(label) for label in self.species)
+        self.parameter_set = None if self.parameter_set is None else str(self.parameter_set)
+        self.metadata = _copy_mapping(self.metadata)
+
+    @classmethod
+    def from_records(
+        cls,
+        records: Any,
+        *,
+        default_family: str | None = None,
+        name: str = "",
+        species: Sequence[str] = (),
+        parameter_set: str | Path | None = None,
+        metadata: Mapping[str, Any] | None = None,
+    ) -> TargetDataset:
+        rows = tuple(
+            TargetRow.from_record(record, default_family=default_family) for record in load_regression_records(records)
+        )
+        return cls(
+            rows=rows,
+            name=name,
+            species=tuple(str(label) for label in species),
+            parameter_set=_source_dataset_label(parameter_set),
+            metadata=_copy_mapping(metadata),
+        )
+
+    @property
+    def families(self) -> tuple[str, ...]:
+        return tuple(dict.fromkeys(row.row_family for row in self.rows))
+
+    def rows_for(self, row_family: str) -> tuple[TargetRow, ...]:
+        normalized = _normalize_target_row_family(row_family)
+        return tuple(row for row in self.rows if row.row_family == normalized)
+
+    def to_records(self) -> list[dict[str, Any]]:
+        return [row.to_record() for row in self.rows]
+
+
 @dataclass(slots=True)
 class FitProblem:
     """Normalized description of a regression problem."""
@@ -456,6 +696,7 @@ class FitProblem:
     assoc_scheme: str = ""
     temperature_model: str = "constant"
     terms: tuple[FitTerm, ...] = field(default_factory=tuple)
+    target_dataset: TargetDataset | None = None
     pure_file_hint: str | None = None
 
     def __post_init__(self) -> None:
@@ -477,6 +718,8 @@ class FitProblem:
         self.assoc_scheme = str(self.assoc_scheme or "")
         self.temperature_model = str(self.temperature_model)
         self.terms = tuple(self.terms)
+        if self.target_dataset is not None and not isinstance(self.target_dataset, TargetDataset):
+            self.target_dataset = TargetDataset.from_records(self.target_dataset)
         self.pure_file_hint = None if self.pure_file_hint is None else str(self.pure_file_hint)
 
 
@@ -1659,7 +1902,9 @@ def _fit_binary_pair_internal(
     multistart: int = 0,
     optimizer_backend: str = "least_squares_native",
 ) -> FitResult:
-    optimizer_backend = _optimizer_backend_from_options({"optimizer_backend": optimizer_backend}, "least_squares_native")
+    optimizer_backend = _optimizer_backend_from_options(
+        {"optimizer_backend": optimizer_backend}, "least_squares_native"
+    )
     normalized_pair = _normalize_pair(pair)
     normalized_records = _normalize_records(records)
     normalized_species = _binary_species_from_records(normalized_records, normalized_pair, species)
@@ -1944,7 +2189,7 @@ def _fit_pure_neutral_internal(
     initial_guess: Mapping[str, float] | None = None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
     multistart: int = 0,
-    optimizer_backend: str = "ceres",
+    optimizer_backend: str = "least_squares_native",
 ) -> FitResult:
     fit_result, _ = _fit_pure_neutral_internal_with_native(
         records,
@@ -1974,7 +2219,7 @@ def _fit_pure_neutral_internal_with_native(
     initial_guess: Mapping[str, float] | None = None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
     multistart: int = 0,
-    optimizer_backend: str = "ceres",
+    optimizer_backend: str = "least_squares_native",
 ) -> tuple[FitResult, dict[str, Any]]:
     normalized_component = _normalize_component(component)
     normalized_records = _normalize_records(records)
@@ -2090,8 +2335,10 @@ def fit_pure_neutral(
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
     user_options: Mapping[str, Any] | None = None,
     multistart: int = 0,
+    optimizer_backend: str = "least_squares_native",
 ) -> FitResult:
     """Fit neutral pure-component m, s, and e parameters."""
+    _ = user_options
     return _fit_pure_neutral_internal(
         records,
         component,
@@ -2103,6 +2350,9 @@ def fit_pure_neutral(
         initial_guess=initial_guess,
         bounds=bounds,
         multistart=multistart,
+        optimizer_backend=_optimizer_backend_from_options(
+            {"optimizer_backend": optimizer_backend}, "least_squares_native"
+        ),
     )
 
 

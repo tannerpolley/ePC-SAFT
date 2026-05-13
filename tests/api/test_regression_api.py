@@ -33,6 +33,8 @@ def test_public_regression_surface_includes_ion_and_binary_v1():
     assert hasattr(epcsaft, "validate_regression_provenance")
     assert hasattr(epcsaft, "evaluate_reactive_electrolyte_bubble_residuals")
     assert hasattr(epcsaft, "ReactiveElectrolyteRegressionResult")
+    assert hasattr(epcsaft, "TargetRow")
+    assert hasattr(epcsaft, "TargetDataset")
 
 
 def test_reactive_electrolyte_regression_residuals_keep_fixed_shape(monkeypatch):
