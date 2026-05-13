@@ -18,6 +18,8 @@ def test_capabilities_expose_property_derivative_result_apis() -> None:
     assert payload["finite_difference_backend_available"] is False
     assert "pressure_density_derivative_result" in payload["state_methods"]
     assert "relative_permittivity_parameter_derivative_result" in payload["state_methods"]
+    assert "k_hb_ij" in payload["parameter_families"]["blocker_requires_implicit_association_sensitivity"]["parameters"]
+    assert payload["parameter_families"]["blocker_requires_implicit_association_sensitivity"]["future_owner"] == "Task C"
     assert "finite_difference" not in str(payload["backend_labels"])
 
 
@@ -31,6 +33,7 @@ def test_public_derivative_result_methods_share_required_shape() -> None:
         "density_pressure_derivative_result",
         "ares_composition_derivative_result",
         "chemical_potential_composition_derivative_result",
+        "chemical_potential_parameter_derivative_result",
         "ln_fugacity_composition_derivative_result",
         "ln_fugacity_parameter_derivative_result",
     ):

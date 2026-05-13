@@ -1106,6 +1106,51 @@ class ePCSAFTState:
     def _native_args_copy(self):
         return create_struct(self._mixture._params)
 
+    def _neutral_binary_kij_property_derivatives(self):
+        if int(self._x.size) != 2:
+            return None
+        try:
+            raw = _core._native_cppad_neutral_binary_pair_properties(
+                self._T,
+                self.molar_density(),
+                np_to_vector_double(self._x),
+                self._native_args_copy(),
+            )
+        except Exception:
+            return None
+        return raw if bool(raw.get("supported", raw.get("cppad_used", False))) else None
+
+    def _neutral_binary_pair_parameter_order(self, raw):
+        species = tuple(self._mixture.species)
+        order = []
+        for name in tuple(raw.get("parameter_names", ("k_ij",))):
+            order.append(f"{name}:{species[0]}:{species[1]}")
+        return tuple(order)
+
+    @staticmethod
+    def _neutral_binary_pair_jacobian(raw, quantity, nrows):
+        columns = []
+        for name in tuple(raw.get("parameter_names", ("k_ij",))):
+            columns.append(np.asarray(raw[f"{name}_{quantity}_derivative"], dtype=float).reshape((nrows, 1)))
+        return np.concatenate(columns, axis=1) if columns else np.empty((nrows, 0), dtype=float)
+
+    def _pure_neutral_parameter_derivatives(self):
+        if int(self._x.size) != 1:
+            return None
+        try:
+            raw = _core._native_cppad_pure_neutral_parameters(
+                self._T,
+                self.molar_density(),
+                self._native_args_copy(),
+            )
+        except Exception:
+            return None
+        return raw if bool(raw.get("supported", raw.get("cppad_used", False))) else None
+
+    def _pure_neutral_parameter_order(self):
+        species = str(self._mixture.species[0])
+        return (f"m:{species}", f"sigma:{species}", f"epsilon:{species}")
+
     def pressure_density_derivative_result(self):
         """Return the pressure derivative with respect to density in result-contract form."""
         ncomp = int(self._x.size)
@@ -1155,6 +1200,32 @@ class ePCSAFTState:
 
     def pressure_parameter_derivative_result(self):
         """Return pressure parameter-derivative support status."""
+        raw = self._pure_neutral_parameter_derivatives()
+        if raw is not None:
+            jacobian = np.asarray(raw["jacobian_row_major"], dtype=float).reshape((3, 3))
+            return _derivative_result_payload(
+                supported=True,
+                backend=str(raw.get("derivative_backend", "cppad")),
+                message=str(raw.get("message", "CppAD pure-neutral m/sigma/epsilon pressure derivatives available")),
+                value=[float(np.asarray(raw["value"], dtype=float)[0])],
+                jacobian=jacobian[0:1, :],
+                shape=[1, 3],
+                parameter_order=self._pure_neutral_parameter_order(),
+                source_equation_ids=("pressure_from_z", "ares_hc", "ares_disp"),
+            )
+        raw = self._neutral_binary_kij_property_derivatives()
+        if raw is not None:
+            parameter_order = self._neutral_binary_pair_parameter_order(raw)
+            return _derivative_result_payload(
+                supported=True,
+                backend=str(raw.get("backend", "cppad")),
+                message=str(raw.get("message", "CppAD neutral binary pair-parameter pressure derivative available")),
+                value=[float(raw.get("k_ij_pressure", self.pressure()))],
+                jacobian=self._neutral_binary_pair_jacobian(raw, "pressure", 1),
+                shape=[1, len(parameter_order)],
+                parameter_order=parameter_order,
+                source_equation_ids=("pressure_from_z", "ares_disp"),
+            )
         return _backend_unavailable_result(
             [self.pressure()],
             1,
@@ -1205,6 +1276,61 @@ class ePCSAFTState:
             component_order=tuple(self._mixture.species),
         )
 
+    def chemical_potential_parameter_derivative_result(self):
+        """Return residual-chemical-potential parameter derivatives where production support exists."""
+        ncomp = int(self._x.size)
+        value = self.residual_chemical_potential()
+        raw = self._pure_neutral_parameter_derivatives()
+        if raw is not None:
+            jacobian = np.asarray(raw["jacobian_row_major"], dtype=float).reshape((3, 3))
+            return _derivative_result_payload(
+                supported=True,
+                backend=str(raw.get("derivative_backend", "cppad")),
+                message=str(
+                    raw.get(
+                        "message",
+                        "CppAD pure-neutral m/sigma/epsilon residual-chemical-potential derivatives available",
+                    )
+                ),
+                value=[float(np.asarray(raw["value"], dtype=float)[1])],
+                jacobian=jacobian[1:2, :],
+                shape=[1, 3],
+                component_order=tuple(self._mixture.species),
+                parameter_order=self._pure_neutral_parameter_order(),
+                value_basis="residual_chemical_potential",
+                source_equation_ids=("mu_res", "ares_hc", "ares_disp"),
+            )
+        raw = self._neutral_binary_kij_property_derivatives()
+        if raw is not None:
+            species = tuple(self._mixture.species)
+            parameter_order = self._neutral_binary_pair_parameter_order(raw)
+            return _derivative_result_payload(
+                supported=True,
+                backend=str(raw.get("backend", "cppad")),
+                message=str(
+                    raw.get(
+                        "message",
+                        "CppAD neutral binary pair-parameter residual-chemical-potential derivative available",
+                    )
+                ),
+                value=np.asarray(raw.get("k_ij_residual_chemical_potential", value), dtype=float),
+                jacobian=self._neutral_binary_pair_jacobian(raw, "residual_chemical_potential", ncomp),
+                shape=[ncomp, len(parameter_order)],
+                component_order=species,
+                parameter_order=parameter_order,
+                value_basis="residual_chemical_potential",
+                source_equation_ids=("mu_res", "ares_disp"),
+            )
+        return _backend_unavailable_result(
+            value,
+            ncomp,
+            0,
+            "backend_unavailable: chemical-potential parameter derivatives are not implemented.",
+            component_order=tuple(self._mixture.species),
+            parameter_order=(),
+            value_basis="residual_chemical_potential",
+        )
+
     def ln_fugacity_composition_derivative_result(self):
         """Return ln-fugacity composition-derivative support status."""
         ncomp = int(self._x.size)
@@ -1221,6 +1347,37 @@ class ePCSAFTState:
         """Return ln-fugacity parameter derivatives where production support exists."""
         ncomp = int(self._x.size)
         value = self.fugacity_coefficient(natural_log=True)
+        raw = self._pure_neutral_parameter_derivatives()
+        if raw is not None:
+            jacobian = np.asarray(raw["jacobian_row_major"], dtype=float).reshape((3, 3))
+            return _derivative_result_payload(
+                supported=True,
+                backend=str(raw.get("derivative_backend", "cppad")),
+                message=str(raw.get("message", "CppAD pure-neutral m/sigma/epsilon ln-fugacity derivatives available")),
+                value=[float(np.asarray(raw["value"], dtype=float)[2])],
+                jacobian=jacobian[2:3, :],
+                shape=[1, 3],
+                component_order=tuple(self._mixture.species),
+                parameter_order=self._pure_neutral_parameter_order(),
+                value_basis="natural_log_fugacity_coefficient",
+                source_equation_ids=("lnphi_total", "ares_hc", "ares_disp"),
+            )
+        raw = self._neutral_binary_kij_property_derivatives()
+        if raw is not None:
+            species = tuple(self._mixture.species)
+            parameter_order = self._neutral_binary_pair_parameter_order(raw)
+            return _derivative_result_payload(
+                supported=True,
+                backend=str(raw.get("backend", "cppad")),
+                message=str(raw.get("message", "CppAD neutral binary pair-parameter ln-fugacity derivative available")),
+                value=np.asarray(raw.get("k_ij_ln_fugacity", value), dtype=float),
+                jacobian=self._neutral_binary_pair_jacobian(raw, "ln_fugacity", ncomp),
+                shape=[ncomp, len(parameter_order)],
+                component_order=species,
+                parameter_order=parameter_order,
+                value_basis="natural_log_fugacity_coefficient",
+                source_equation_ids=("lnphi_total", "ares_disp"),
+            )
         born = self.born_ssmds_liquid_derivatives()
         if not bool(born.get("supported", False)):
             return _backend_unavailable_result(
@@ -1375,7 +1532,9 @@ class ePCSAFTState:
         ncomp = int(self._x.size)
         rows = []
 
-        def classify(*, supported, not_applicable):
+        def classify(*, supported, not_applicable, override=None):
+            if override:
+                return str(override)
             if not_applicable:
                 return "out_of_scope"
             if supported:
@@ -1392,11 +1551,17 @@ class ePCSAFTState:
                     "backend": str(result.get("backend", "backend_unavailable")),
                     "supported": supported,
                     "not_applicable": row_not_applicable,
-                    "classification": classify(supported=supported, not_applicable=row_not_applicable),
+                    "classification": classify(
+                        supported=supported,
+                        not_applicable=row_not_applicable,
+                        override=result.get("classification"),
+                    ),
                     "backend_unavailable_reason": (
                         "" if result.get("supported", False) else str(result.get("message", ""))
                     ),
                     "source_equation_ids": list(source_equation_ids),
+                    "parameter_family": str(result.get("parameter_family", "")),
+                    "future_owner": str(result.get("future_owner", "")),
                 }
             )
 
@@ -1424,11 +1589,19 @@ class ePCSAFTState:
         born_result = self.born_ssmds_liquid_derivatives()
         add("born_ssmds_liquid", "d_born/f_solv", born_result, source_equation_ids=("ares_born",))
         add("relative_permittivity", "composition", self.relative_permittivity_composition_derivative_result())
+        add("relative_permittivity", "parameter", self.relative_permittivity_parameter_derivative_result())
         add("pressure", "density", self.pressure_density_derivative_result(), source_equation_ids=("pressure_from_z",))
+        add("pressure", "parameter", self.pressure_parameter_derivative_result(), source_equation_ids=("pressure_from_z",))
         add(
             "fugacity",
             "composition",
             self.ln_fugacity_composition_derivative_result(),
+            source_equation_ids=("lnphi_total",),
+        )
+        add(
+            "fugacity",
+            "parameter",
+            self.ln_fugacity_parameter_derivative_result(),
             source_equation_ids=("lnphi_total",),
         )
         add(
@@ -1438,10 +1611,36 @@ class ePCSAFTState:
             source_equation_ids=("lngamma_sym",),
         )
         add(
+            "activity",
+            "parameter",
+            self.activity_parameter_derivative_result(),
+            source_equation_ids=("lngamma_sym",),
+        )
+        add(
             "chemical_potential",
             "composition",
             self.chemical_potential_composition_derivative_result(),
             source_equation_ids=("mu_res",),
+        )
+        add(
+            "chemical_potential",
+            "parameter",
+            self.chemical_potential_parameter_derivative_result(),
+            source_equation_ids=("mu_res",),
+        )
+        add(
+            "k_hb_ij",
+            "parameter",
+            _backend_unavailable_result(
+                [],
+                0,
+                1,
+                "backend_unavailable: k_hb_ij property/regression derivatives require implicit association site-fraction sensitivities owned by Task C.",
+                classification="blocker_requires_implicit_association_sensitivity",
+                parameter_family="k_hb_ij",
+                future_owner="Task C",
+            ),
+            source_equation_ids=("epsilon_assoc_mixing", "kappa_assoc_mixing", "ares_assoc"),
         )
         add(
             "density_root", "pressure", self.density_pressure_derivative_result(), source_equation_ids=("density_root",)

@@ -53,6 +53,27 @@ double scalar_value(const Eigen::AutoDiffScalar<DerType> &x) {
     return x.value();
 }
 
+#ifdef EPCSAFT_HAS_CPPAD
+double scalar_value(const CppAD::AD<double> &x) {
+    return CppAD::Value(x);
+}
+#endif
+
+bool scalar_domain_positive(double x) {
+    return x > 0.0;
+}
+
+template <typename DerType>
+bool scalar_domain_positive(const Eigen::AutoDiffScalar<DerType> &x) {
+    return x.value() > 0.0;
+}
+
+#ifdef EPCSAFT_HAS_CPPAD
+bool scalar_domain_positive(const CppAD::AD<double> &) {
+    return true;
+}
+#endif
+
 double scalar_log(double x) {
     return std::log(x);
 }
@@ -62,6 +83,12 @@ auto scalar_log(const Eigen::AutoDiffScalar<DerType> &x) -> decltype(log(x)) {
     using std::log;
     return log(x);
 }
+
+#ifdef EPCSAFT_HAS_CPPAD
+CppAD::AD<double> scalar_log(const CppAD::AD<double> &x) {
+    return CppAD::log(x);
+}
+#endif
 
 double scalar_exp(double x) {
     return std::exp(x);
@@ -73,6 +100,12 @@ auto scalar_exp(const Eigen::AutoDiffScalar<DerType> &x) -> decltype(exp(x)) {
     return exp(x);
 }
 
+#ifdef EPCSAFT_HAS_CPPAD
+CppAD::AD<double> scalar_exp(const CppAD::AD<double> &x) {
+    return CppAD::exp(x);
+}
+#endif
+
 double scalar_pow(double x, int exponent) {
     return std::pow(x, exponent);
 }
@@ -83,6 +116,12 @@ auto scalar_pow(const Eigen::AutoDiffScalar<DerType> &x, int exponent) -> declty
     return pow(x, static_cast<double>(exponent));
 }
 
+#ifdef EPCSAFT_HAS_CPPAD
+CppAD::AD<double> scalar_pow(const CppAD::AD<double> &x, int exponent) {
+    return CppAD::pow(x, static_cast<double>(exponent));
+}
+#endif
+
 double scalar_pow(double x, double exponent) {
     return std::pow(x, exponent);
 }
@@ -92,6 +131,12 @@ auto scalar_pow(const Eigen::AutoDiffScalar<DerType> &x, double exponent) -> dec
     using std::pow;
     return pow(x, exponent);
 }
+
+#ifdef EPCSAFT_HAS_CPPAD
+CppAD::AD<double> scalar_pow(const CppAD::AD<double> &x, double exponent) {
+    return CppAD::pow(x, exponent);
+}
+#endif
 
 template <typename Scalar>
 Scalar regression_scalar_constant(double value) {
@@ -136,6 +181,7 @@ struct PureNeutralStateScalar {
     Scalar zraw_total = regression_scalar_constant<Scalar>(0.0);
     Scalar Z = regression_scalar_constant<Scalar>(0.0);
     Scalar pressure = regression_scalar_constant<Scalar>(0.0);
+    Scalar mures = regression_scalar_constant<Scalar>(0.0);
     Scalar lnfug = regression_scalar_constant<Scalar>(0.0);
 };
 
@@ -312,10 +358,11 @@ PureNeutralStateScalar<Scalar> pure_neutral_state_scalar_cpp(
         - PI * state.den * m * (state.C1 * state.dEtaI2_deta + state.C2 * state.eta * state.I2) * state.m2e2s3;
     state.zraw_total = state.zraw_hc + state.zraw_disp;
     state.Z = 1.0 + state.zraw_total;
-    if (!(scalar_value(state.Z) > 0.0)) {
+    if (!scalar_domain_positive(state.Z)) {
         throw ValueError("Encountered non-positive compressibility factor during native regression evaluation.");
     }
     state.pressure = state.Z * kb * t * state.den * 1.0e30;
+    state.mures = state.ares_total + state.zraw_total;
     state.lnfug = state.ares_total + state.zraw_total - scalar_log(state.Z);
     return state;
 }
@@ -342,6 +389,66 @@ PureNeutralFusedState evaluate_fused_state_cpp(double t, double rho, const vecto
         out.dlnfugdtheta[static_cast<size_t>(j)] = scalar_derivative_at(theta_state.lnfug, j);
     }
     return out;
+}
+
+epcsaft::native::autodiff::ADDerivativeResult cppad_pure_neutral_parameter_derivatives_cpp(
+    double t,
+    double rho,
+    const add_args &base_args
+) {
+#ifdef EPCSAFT_HAS_CPPAD
+    if (base_args.m.size() != 1 || base_args.s.size() != 1 || base_args.e.size() != 1) {
+        throw ValueError("backend_unavailable: pure-neutral m/sigma/epsilon derivatives require exactly one component.");
+    }
+    if (!base_args.z.empty() && (base_args.z.size() != 1 || std::abs(base_args.z[0]) > 1.0e-12)) {
+        throw ValueError("backend_unavailable: pure-neutral m/sigma/epsilon derivatives support only neutral components.");
+    }
+    if (!base_args.assoc_num.empty() || !base_args.assoc_matrix.empty() || !base_args.k_hb.empty() || !base_args.e_assoc.empty() || !base_args.vol_a.empty()) {
+        throw ValueError("backend_unavailable: pure-neutral m/sigma/epsilon derivatives support only nonassociating components.");
+    }
+    using CppADScalar = CppAD::AD<double>;
+    std::vector<CppADScalar> ax(kThetaSize);
+    ax[0] = base_args.m[0];
+    ax[1] = base_args.s[0];
+    ax[2] = base_args.e[0];
+    CppAD::Independent(ax);
+
+    auto state = pure_neutral_state_scalar_cpp<CppADScalar>(
+        t,
+        CppADScalar(rho),
+        ax[0],
+        ax[1],
+        ax[2]
+    );
+    std::vector<CppADScalar> ay(3);
+    ay[0] = state.pressure;
+    ay[1] = state.mures;
+    ay[2] = state.lnfug;
+
+    CppAD::ADFun<double> function(ax, ay);
+    std::vector<double> point = {base_args.m[0], base_args.s[0], base_args.e[0]};
+    auto value = function.Forward(0, point);
+    auto jacobian = function.Jacobian(point);
+
+    epcsaft::native::autodiff::ADDerivativeResult result;
+    result.supported = true;
+    result.backend = "cppad";
+    result.message = "CppAD pure-neutral m/sigma/epsilon property derivatives available";
+    result.value = std::move(value);
+    result.jacobian_row_major = std::move(jacobian);
+    result.rows = 3;
+    result.cols = kThetaSize;
+    return result;
+#else
+    (void)t;
+    (void)rho;
+    (void)base_args;
+    epcsaft::native::autodiff::ADDerivativeResult result;
+    result.supported = false;
+    result.backend = "backend_unavailable";
+    result.message = "CppAD support is disabled in this native build";
+    return result;
+#endif
 }
 
 add_args pure_neutral_args_with_theta_cpp(const add_args &base_args, const vector<double> &x) {
@@ -1964,6 +2071,14 @@ using regression_detail::kGenericTargetKIJ;
 using regression_detail::solve_one_binary_kij_ceres_start_cpp;
 #endif
 using regression_detail::solve_one_generic_start_cpp;
+
+epcsaft::native::autodiff::ADDerivativeResult cppad_pure_neutral_parameter_derivatives_cpp(
+    double t,
+    double rho,
+    const add_args &base_args
+) {
+    return regression_detail::cppad_pure_neutral_parameter_derivatives_cpp(t, rho, base_args);
+}
 
 PureNeutralRegressionDebugResult evaluate_pure_neutral_objective_debug_cpp(
     const add_args &base_args,
