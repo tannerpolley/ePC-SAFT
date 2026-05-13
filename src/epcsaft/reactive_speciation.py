@@ -14,7 +14,110 @@ _REACTION_STANDARD_STATES = {
     "mole_fraction_activity": 0,
     "ideal_mole_fraction": 1,
     "concentration": 2,
+    "thermodynamic_activity": 0,
+    "molality": None,
+    "apparent": None,
 }
+
+_REACTION_STANDARD_STATE_DEFAULT_BASIS = {
+    "mole_fraction_activity": "mole_fraction",
+    "ideal_mole_fraction": "mole_fraction",
+    "concentration": "concentration",
+    "thermodynamic_activity": "activity",
+    "molality": "molality",
+    "apparent": "apparent",
+}
+
+_REACTION_CONSTANT_KINDS = {"thermodynamic", "apparent", "fitted", "corrected"}
+_REACTION_CONSTANT_FITTING_ROLES = {
+    "fixed_input",
+    "secondary_optional",
+    "fitted_parameter",
+    "regularized_correction",
+}
+
+
+@dataclass(frozen=True, slots=True)
+class ReactionConstantConvention:
+    """Explicit convention for interpreting a reaction equilibrium constant."""
+
+    standard_state: str = "mole_fraction_activity"
+    basis: str | None = None
+    constant_kind: str = "thermodynamic"
+    fitting_role: str = "fixed_input"
+    correction_terms: Mapping[str, float] = field(default_factory=dict)
+    source: str = ""
+
+    def __post_init__(self) -> None:
+        standard_state = str(self.standard_state).strip().lower()
+        if standard_state not in _REACTION_STANDARD_STATES:
+            supported = "', '".join(_REACTION_STANDARD_STATES)
+            raise InputError(f"ReactionConstantConvention.standard_state must be one of '{supported}'.")
+        basis = self.basis
+        if basis is None:
+            basis = _REACTION_STANDARD_STATE_DEFAULT_BASIS[standard_state]
+        basis = str(basis).strip().lower()
+        expected_basis = _REACTION_STANDARD_STATE_DEFAULT_BASIS[standard_state]
+        if basis != expected_basis:
+            raise InputError(
+                "ReactionConstantConvention.basis is incompatible with standard_state "
+                f"'{standard_state}'; expected '{expected_basis}'."
+            )
+        constant_kind = str(self.constant_kind).strip().lower()
+        if constant_kind not in _REACTION_CONSTANT_KINDS:
+            supported = "', '".join(sorted(_REACTION_CONSTANT_KINDS))
+            raise InputError(f"ReactionConstantConvention.constant_kind must be one of '{supported}'.")
+        fitting_role = str(self.fitting_role).strip().lower()
+        if fitting_role not in _REACTION_CONSTANT_FITTING_ROLES:
+            supported = "', '".join(sorted(_REACTION_CONSTANT_FITTING_ROLES))
+            raise InputError(f"ReactionConstantConvention.fitting_role must be one of '{supported}'.")
+        if constant_kind in {"fitted", "corrected"} and fitting_role == "fixed_input":
+            raise InputError("Fitted or corrected reaction constants require an explicit non-fixed fitting_role.")
+        corrections = {str(k): float(v) for k, v in dict(self.correction_terms).items()}
+        for name, value in corrections.items():
+            if not np.isfinite(value):
+                raise InputError(f"ReactionConstantConvention.correction_terms['{name}'] must be finite.")
+        object.__setattr__(self, "standard_state", standard_state)
+        object.__setattr__(self, "basis", basis)
+        object.__setattr__(self, "constant_kind", constant_kind)
+        object.__setattr__(self, "fitting_role", fitting_role)
+        object.__setattr__(self, "correction_terms", corrections)
+        object.__setattr__(self, "source", str(self.source))
+
+    @classmethod
+    def from_mapping(cls, value: Mapping[str, Any] | ReactionConstantConvention) -> ReactionConstantConvention:
+        """Normalize a mapping or convention instance."""
+        if isinstance(value, ReactionConstantConvention):
+            return value
+        return cls(**dict(value))
+
+    @property
+    def native_standard_state_code(self) -> int:
+        """Return the native standard-state code or fail loudly when unsupported."""
+        code = _REACTION_STANDARD_STATES[self.standard_state]
+        if code is None:
+            raise InputError(
+                "backend_unavailable: reaction constant convention "
+                f"'{self.standard_state}' is defined but is not supported by the native speciation backend."
+            )
+        return int(code)
+
+    @property
+    def requires_activity_coefficients(self) -> bool:
+        """Whether the convention needs activity coefficients in the current native route."""
+        return self.native_standard_state_code == _REACTION_STANDARD_STATES["mole_fraction_activity"]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-like convention payload."""
+        return {
+            "standard_state": self.standard_state,
+            "basis": self.basis,
+            "constant_kind": self.constant_kind,
+            "fitting_role": self.fitting_role,
+            "correction_terms": dict(self.correction_terms),
+            "source": self.source,
+            "native_standard_state_code": _REACTION_STANDARD_STATES[self.standard_state],
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,17 +129,37 @@ class ReactionDefinition:
     name: str = ""
     standard_state: str = "mole_fraction_activity"
     metadata: Mapping[str, Any] = field(default_factory=dict)
+    convention: ReactionConstantConvention | Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "stoichiometry", {str(k): float(v) for k, v in self.stoichiometry.items()})
         object.__setattr__(self, "log_equilibrium_constant", float(self.log_equilibrium_constant))
         object.__setattr__(self, "name", str(self.name))
+        metadata = {str(k): _json_like(v) for k, v in dict(self.metadata).items()}
         standard_state = str(self.standard_state).strip().lower()
-        if standard_state not in _REACTION_STANDARD_STATES:
-            supported = "', '".join(_REACTION_STANDARD_STATES)
-            raise InputError(f"ReactionDefinition.standard_state must be one of '{supported}'.")
+        if self.convention is None:
+            if standard_state not in _REACTION_STANDARD_STATES:
+                supported = "', '".join(_REACTION_STANDARD_STATES)
+                raise InputError(f"ReactionDefinition.standard_state must be one of '{supported}'.")
+            convention = ReactionConstantConvention(
+                standard_state=standard_state,
+                constant_kind=str(metadata.get("constant_kind", "thermodynamic")),
+                fitting_role=str(metadata.get("fitting_role", "fixed_input")),
+                source=str(metadata.get("source", "")),
+            )
+        else:
+            convention = ReactionConstantConvention.from_mapping(self.convention)
+            if standard_state != "mole_fraction_activity" and standard_state != convention.standard_state:
+                raise InputError("ReactionDefinition.standard_state is incompatible with convention.standard_state.")
+        standard_state = convention.standard_state
+        metadata.setdefault("constant_kind", convention.constant_kind)
+        metadata.setdefault("fitting_role", convention.fitting_role)
+        if convention.source:
+            metadata.setdefault("source", convention.source)
+        metadata.setdefault("constant_convention", convention.to_dict())
         object.__setattr__(self, "standard_state", standard_state)
-        object.__setattr__(self, "metadata", {str(k): _json_like(v) for k, v in dict(self.metadata).items()})
+        object.__setattr__(self, "metadata", metadata)
+        object.__setattr__(self, "convention", convention)
 
     @classmethod
     def from_literature_constant(
@@ -46,6 +169,7 @@ class ReactionDefinition:
         log_equilibrium_constant: float,
         name: str = "",
         standard_state: str = "mole_fraction_activity",
+        convention: ReactionConstantConvention | Mapping[str, Any] | None = None,
         source: str = "",
         metadata: Mapping[str, Any] | None = None,
     ) -> ReactionDefinition:
@@ -61,6 +185,33 @@ class ReactionDefinition:
             name=name,
             standard_state=standard_state,
             metadata=merged_metadata,
+            convention=convention,
+        )
+
+    @classmethod
+    def from_fitted_constant(
+        cls,
+        stoichiometry: Mapping[str, float],
+        *,
+        log_equilibrium_constant: float,
+        name: str = "",
+        convention: ReactionConstantConvention | Mapping[str, Any] | None = None,
+        metadata: Mapping[str, Any] | None = None,
+    ) -> ReactionDefinition:
+        """Build a reaction with an explicitly fitted equilibrium constant."""
+        merged_metadata = dict(metadata or {})
+        merged_metadata.setdefault("constant_source", "fit")
+        if convention is None:
+            convention = ReactionConstantConvention(
+                constant_kind="fitted",
+                fitting_role="fitted_parameter",
+            )
+        return cls(
+            stoichiometry=stoichiometry,
+            log_equilibrium_constant=log_equilibrium_constant,
+            name=name,
+            metadata=merged_metadata,
+            convention=convention,
         )
 
 
@@ -352,7 +503,7 @@ def _solve_reactive_speciation_native(
         "reaction_stoichiometry": reaction_matrix.reshape(-1).tolist(),
         "reaction_rows": int(reaction_matrix.shape[0]),
         "log_equilibrium_constants": [float(reaction.log_equilibrium_constant) for reaction in reactions],
-        "reaction_standard_states": [int(_REACTION_STANDARD_STATES[reaction.standard_state]) for reaction in reactions],
+        "reaction_standard_states": [reaction.convention.native_standard_state_code for reaction in reactions],
         "options": {
             "max_iterations": int(options.max_iterations),
             "tolerance": float(options.tolerance),
@@ -398,6 +549,7 @@ def _solve_reactive_speciation_native(
     handoff["activity_basis"] = activity_basis
     diagnostics["phase_equilibrium_handoff"] = handoff
     diagnostics["reaction_standard_states"] = [reaction.standard_state for reaction in reactions]
+    diagnostics["reaction_constant_conventions"] = _reaction_constant_conventions(reactions)
     diagnostics["reaction_constant_sources"] = _reaction_constant_sources(reactions)
     diagnostics["reaction_constant_policy"] = "fixed_literature_constants_first"
     diagnostics.update(
@@ -543,6 +695,18 @@ def _reaction_constant_sources(reactions: list[ReactionDefinition]) -> dict[str,
         name = base if count == 0 else f"{base}_{count}"
         sources[name] = str(reaction.metadata.get("constant_source", "fixed_input"))
     return sources
+
+
+def _reaction_constant_conventions(reactions: list[ReactionDefinition]) -> dict[str, dict[str, Any]]:
+    conventions: dict[str, dict[str, Any]] = {}
+    counts: dict[str, int] = {}
+    for index, reaction in enumerate(reactions):
+        base = reaction.name.strip() if reaction.name.strip() else f"reaction_{index}"
+        count = counts.get(base, 0)
+        counts[base] = count + 1
+        name = base if count == 0 else f"{base}_{count}"
+        conventions[name] = reaction.convention.to_dict()
+    return conventions
 
 
 def _reaction_standard_state_summary(reactions: list[ReactionDefinition]) -> str:

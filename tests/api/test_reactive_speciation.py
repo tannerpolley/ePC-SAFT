@@ -73,7 +73,7 @@ def test_reaction_definition_rejects_unknown_standard_state() -> None:
         epcsaft.ReactionDefinition(
             stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
             log_equilibrium_constant=0.0,
-            standard_state="molality",
+            standard_state="unknown_basis",
         )
 
 
@@ -121,26 +121,26 @@ def test_reactive_speciation_auto_jacobian_reports_unavailable_for_concentration
 
     with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
         epcsaft.solve_reactive_speciation(
-        species=species,
-        mixture_factory=lambda x, T, P: mix,
-        T=298.15,
-        P=1.0e5,
-        balances={
-            "water_total": {"H2O": 1.0},
-            "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
-            "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
-        },
-        totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
-        reactions=[
-            epcsaft.ReactionDefinition(
-                stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
-                log_equilibrium_constant=log_k,
-                name="salt_dissociation",
-                standard_state="concentration",
-            )
-        ],
-        initial_x=initial_x,
-        options=epcsaft.ReactiveSpeciationOptions(max_iterations=50, tolerance=1.0e-8),
+            species=species,
+            mixture_factory=lambda x, T, P: mix,
+            T=298.15,
+            P=1.0e5,
+            balances={
+                "water_total": {"H2O": 1.0},
+                "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
+                "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
+            },
+            totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
+            reactions=[
+                epcsaft.ReactionDefinition(
+                    stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
+                    log_equilibrium_constant=log_k,
+                    name="salt_dissociation",
+                    standard_state="concentration",
+                )
+            ],
+            initial_x=initial_x,
+            options=epcsaft.ReactiveSpeciationOptions(max_iterations=50, tolerance=1.0e-8),
         )
 
 
@@ -154,26 +154,26 @@ def test_concentration_standard_state_can_skip_activity_output() -> None:
 
     with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
         epcsaft.solve_reactive_speciation(
-        species=species,
-        mixture_factory=lambda x, T, P: mix,
-        T=298.15,
-        P=1.0e5,
-        balances={
-            "water_total": {"H2O": 1.0},
-            "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
-            "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
-        },
-        totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
-        reactions=[
-            epcsaft.ReactionDefinition(
-                {"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
-                log_equilibrium_constant=log_k,
-                standard_state="concentration",
-            )
-        ],
-        initial_x=initial_x,
-        options=epcsaft.ReactiveSpeciationOptions(activity_output="never"),
-    )
+            species=species,
+            mixture_factory=lambda x, T, P: mix,
+            T=298.15,
+            P=1.0e5,
+            balances={
+                "water_total": {"H2O": 1.0},
+                "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
+                "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
+            },
+            totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
+            reactions=[
+                epcsaft.ReactionDefinition(
+                    {"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
+                    log_equilibrium_constant=log_k,
+                    standard_state="concentration",
+                )
+            ],
+            initial_x=initial_x,
+            options=epcsaft.ReactiveSpeciationOptions(activity_output="never"),
+        )
 
 
 def test_solve_reactive_speciation_strict_failure_reports_best_state() -> None:
@@ -231,12 +231,12 @@ def test_solve_reactive_speciation_best_effort_returns_nonconverged_result() -> 
         },
         totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
         reactions=[
-                epcsaft.ReactionDefinition(
-                    stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
-                    log_equilibrium_constant=100.0,
-                    name="salt_dissociation",
-                    standard_state="ideal_mole_fraction",
-                )
+            epcsaft.ReactionDefinition(
+                stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
+                log_equilibrium_constant=100.0,
+                name="salt_dissociation",
+                standard_state="ideal_mole_fraction",
+            )
         ],
         initial_x=[0.998, 0.001, 0.0005, 0.0005],
         options=epcsaft.ReactiveSpeciationOptions(

@@ -70,6 +70,7 @@ from .reactive_regression import (
     write_regression_summary,
 )
 from .reactive_speciation import (
+    ReactionConstantConvention,
     ReactionDefinition,
     ReactiveSpeciationOptions,
     ReactiveSpeciationResult,
@@ -129,6 +130,7 @@ __all__ = [
     "ParameterSet",
     "PermittivityRecord",
     "PureRecord",
+    "ReactionConstantConvention",
     "ReactionDefinition",
     "ReactiveElectrolyteBatch",
     "ReactiveElectrolyteBatchOptions",
