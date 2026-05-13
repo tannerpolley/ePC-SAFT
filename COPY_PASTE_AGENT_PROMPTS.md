@@ -502,6 +502,11 @@ Do not use PR #56 as a base.
 Do not add application-specific public APIs.
 No finite difference.
 
+Task completion automation:
+- Open a focused draft PR if one does not already exist for the task branch.
+- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, no PR #56 dependency, and no silent scope narrowing.
+- If validation passes, GitHub checks pass, the PR is mergeable, and the final GoalBuddy audit says `full_outcome_complete: true`, mark the PR ready and merge without another yes.
+- After merge, delete the remote branch and switch off/delete the local task branch; record `BLOCKED_REMOTE_BRANCH_DELETE` or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
 After Goal Prep, follow the behavior defined in the loaded task prompt.
 ```
 ---
@@ -585,6 +590,11 @@ Do not use PR #56 as a base.
 Do not add application-specific public APIs.
 No finite difference.
 
+Task completion automation:
+- Open a focused draft PR if one does not already exist for the task branch.
+- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, no PR #56 dependency, and no silent scope narrowing.
+- If validation passes, GitHub checks pass, the PR is mergeable, and the final GoalBuddy audit says `full_outcome_complete: true`, mark the PR ready and merge without another yes.
+- After merge, delete the remote branch and switch off/delete the local task branch; record `BLOCKED_REMOTE_BRANCH_DELETE` or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
 After Goal Prep, follow the behavior defined in the loaded task prompt.
 ```
 ---
@@ -668,6 +678,11 @@ Do not use PR #56 as a base.
 Do not add application-specific public APIs.
 No finite difference.
 
+Task completion automation:
+- Open a focused draft PR if one does not already exist for the task branch.
+- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, no PR #56 dependency, and no silent scope narrowing.
+- If validation passes, GitHub checks pass, the PR is mergeable, and the final GoalBuddy audit says `full_outcome_complete: true`, mark the PR ready and merge without another yes.
+- After merge, delete the remote branch and switch off/delete the local task branch; record `BLOCKED_REMOTE_BRANCH_DELETE` or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
 After Goal Prep, follow the behavior defined in the loaded task prompt.
 ```
 ---
@@ -751,6 +766,11 @@ Do not use PR #56 as a base.
 Do not add application-specific public APIs.
 No finite difference.
 
+Task completion automation:
+- Open a focused draft PR if one does not already exist for the task branch.
+- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, no PR #56 dependency, and no silent scope narrowing.
+- If validation passes, GitHub checks pass, the PR is mergeable, and the final GoalBuddy audit says `full_outcome_complete: true`, mark the PR ready and merge without another yes.
+- After merge, delete the remote branch and switch off/delete the local task branch; record `BLOCKED_REMOTE_BRANCH_DELETE` or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
 After Goal Prep, follow the behavior defined in the loaded task prompt.
 ```
 ---
@@ -834,6 +854,11 @@ Do not use PR #56 as a base.
 Do not add application-specific public APIs.
 No finite difference.
 
+Task completion automation:
+- Open a focused draft PR if one does not already exist for the task branch.
+- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, no PR #56 dependency, and no silent scope narrowing.
+- If validation passes, GitHub checks pass, the PR is mergeable, and the final GoalBuddy audit says `full_outcome_complete: true`, mark the PR ready and merge without another yes.
+- After merge, delete the remote branch and switch off/delete the local task branch; record `BLOCKED_REMOTE_BRANCH_DELETE` or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
 After Goal Prep, follow the behavior defined in the loaded task prompt.
 ```
 ---
@@ -917,6 +942,11 @@ Do not use PR #56 as a base.
 Do not add application-specific public APIs.
 No finite difference.
 
+Task completion automation:
+- Open a focused draft PR if one does not already exist for the task branch.
+- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, no PR #56 dependency, and no silent scope narrowing.
+- If validation passes, GitHub checks pass, the PR is mergeable, and the final GoalBuddy audit says `full_outcome_complete: true`, mark the PR ready and merge without another yes.
+- After merge, delete the remote branch and switch off/delete the local task branch; record `BLOCKED_REMOTE_BRANCH_DELETE` or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
 After Goal Prep, follow the behavior defined in the loaded task prompt.
 ```
 ---
@@ -1000,6 +1030,11 @@ Do not use PR #56 as a base.
 Do not add application-specific public APIs.
 No finite difference.
 
+Task completion automation:
+- Open a focused draft PR if one does not already exist for the task branch.
+- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, no PR #56 dependency, and no silent scope narrowing.
+- If validation passes, GitHub checks pass, the PR is mergeable, and the final GoalBuddy audit says `full_outcome_complete: true`, mark the PR ready and merge without another yes.
+- After merge, delete the remote branch and switch off/delete the local task branch; record `BLOCKED_REMOTE_BRANCH_DELETE` or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
 After Goal Prep, follow the behavior defined in the loaded task prompt.
 ```
 ---
@@ -1083,5 +1118,10 @@ Do not use PR #56 as a base.
 Do not add application-specific public APIs.
 No finite difference.
 
+Task completion automation:
+- Open a focused draft PR if one does not already exist for the task branch.
+- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, no PR #56 dependency, and no silent scope narrowing.
+- If validation passes, GitHub checks pass, the PR is mergeable, and the final GoalBuddy audit says `full_outcome_complete: true`, mark the PR ready and merge without another yes.
+- After merge, delete the remote branch and switch off/delete the local task branch; record `BLOCKED_REMOTE_BRANCH_DELETE` or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
 After Goal Prep, follow the behavior defined in the loaded task prompt.
 ```

@@ -151,15 +151,62 @@ git rebase origin/main
 
 Verify prerequisite issues are closed and PRs are merged. If any dependency is missing or the rebase conflicts, stop with status `BLOCKED_DEPENDENCY_OR_REBASE`.
 
-## Implementation expectations
+## Implementation, PR, self-review, and merge automation
 
-- One issue per branch.
-- One PR for this issue.
-- Open a focused PR.
-- PR body includes issue link, summary, tests, limitations, and next dependencies.
-- Do not close unrelated issues.
-- Do not modify PR #56.
-- Do not base work on PR #56.
+This prompt pre-authorizes the agent to do the full issue lifecycle without asking for another yes when the gates below pass.
+
+Required sequence:
+
+1. Implement only the assigned roadmap task on the assigned branch.
+2. Run the task-specific validation commands and the repo-level validation named in this prompt.
+3. Run `git diff --check`.
+4. Rebase or fast-forward against `origin/main`, then review the branch against `origin/main`:
+   - `git fetch origin --prune`
+   - `git status --short`
+   - `git diff --stat origin/main...HEAD`
+   - inspect the changed files and confirm they match this task scope.
+5. Open a focused draft PR with the GitHub CLI if no PR exists for the branch.
+6. Self-review the PR against `origin/main` before marking it ready:
+   - no application-specific public APIs
+   - no finite-difference derivative route
+   - no PR #56 base or dependency
+   - no unrelated files
+   - all in-scope items are classified as `implemented`, `already_supported_with_tests`, `blocker_requires_followup`, or `out_of_scope_by_roadmap`
+   - no silent narrowing of the prompt scope
+7. If self-review passes, mark the PR ready for review.
+8. Wait for GitHub checks to finish.
+9. If checks pass, the PR is mergeable, and the final GoalBuddy audit says `full_outcome_complete: true`, merge the PR without asking for additional user confirmation.
+10. After merge, delete the remote branch and local branch used by this task without asking for additional user confirmation.
+11. Record the PR URL, merge commit, validation commands, remote branch deletion, local branch deletion, and any cleanup blocker in `state.yaml`.
+
+Suggested GitHub CLI commands:
+
+```powershell
+gh pr list --head <branch> --state open --json number,url,isDraft,mergeable,statusCheckRollup
+gh pr create --draft --base main --head <branch> --title "<task title>" --body "<summary, tests, limitations, dependencies>"
+gh pr diff <number> --name-only
+gh pr ready <number>
+gh pr checks <number> --watch --fail-fast
+gh pr merge <number> --merge --delete-branch
+git fetch origin main --prune
+git switch --detach origin/main
+git branch -d codex/generic-vle-fugacity-equilibrium
+```
+
+Do not merge if any of these are true:
+
+- required validation failed or was not run
+- GitHub checks failed, are pending, or are unavailable
+- PR is not mergeable
+- branch is not current with `origin/main`
+- final GoalBuddy audit is missing or says `full_outcome_complete: false`
+- task scope was narrowed silently
+- changed files are outside the assigned task scope
+- review finds application-specific APIs, finite differences, or PR #56 dependency
+- credentials, network, or GitHub policy prevent the merge
+- local branch cleanup would discard uncommitted work or delete the wrong branch
+
+If blocked, do not ask repeated confirmation questions. Stop with a precise status such as `BLOCKED_CHECKS_FAILED`, `BLOCKED_REBASE_CONFLICT`, `BLOCKED_SCOPE_GAP`, `BLOCKED_GITHUB_POLICY`, `BLOCKED_MERGE_CONFLICT`, `BLOCKED_REMOTE_BRANCH_DELETE`, or `BLOCKED_LOCAL_BRANCH_DELETE`, and write the exact blocker and next command to `state.yaml`.
 
 ## Validation
 
@@ -172,13 +219,20 @@ uv run python scripts/validate_project.py quick
 
 ## Branch cleanup after merge
 
-After the PR is merged, run or report the equivalent:
+After the PR is merged, delete both the remote and local task branch without asking again.
+
+Use this cleanup sequence:
 
 ```powershell
+git fetch origin main --prune
+git switch --detach origin/main
+git branch -d codex/generic-vle-fugacity-equilibrium
+git push origin --delete codex/generic-vle-fugacity-equilibrium  # only if gh pr merge --delete-branch did not already delete it
 git -C C:\Users\Tanner\Documents\git\ePC-SAFT fetch origin main --prune
 git -C C:\Users\Tanner\Documents\git\ePC-SAFT pull --ff-only origin main
-git push origin --delete codex/generic-vle-fugacity-equilibrium
 ```
+
+If local branch deletion fails because the branch is still checked out or has unmerged local work, stop with `BLOCKED_LOCAL_BRANCH_DELETE` and record the exact checkout path, branch name, and safe next command. Do not force-delete a branch with unmerged work.
 
 Report:
 
@@ -186,7 +240,8 @@ Report:
 issue URL
 PR URL
 merge commit
-branch deleted yes/no
+remote branch deleted yes/no
+local branch deleted yes/no
 local main updated yes/no
 next unblocked issues
 ```
