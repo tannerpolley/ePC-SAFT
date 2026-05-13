@@ -51,8 +51,8 @@ agents:
 visual_board:
   selected: local
   local:
-    status: live
-    url: "http://127.0.0.1:60262/"
+    status: generated
+    url: null
     command: "node C:\\Users\\Tanner\\.codex\\skills\\goalbuddy\\extend\\local-goal-board\\scripts\\local-goal-board.mjs --goal docs/goals/reaction-constant-conventions"
   github_projects:
     status: not_requested
