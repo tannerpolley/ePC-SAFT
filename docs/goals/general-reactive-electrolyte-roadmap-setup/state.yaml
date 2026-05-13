@@ -63,7 +63,7 @@ visual_board:
     missing:
       - "GitHub CLI token is missing required project scopes; gh project list failed with missing read:project."
 
-active_task: T006
+active_task: T007
 
 tasks:
   - id: T001
@@ -281,7 +281,7 @@ tasks:
   - id: T006
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: medium
     objective: "Open the setup PR with the requested body sections and merge only if validation and permissions allow."
     inputs:
@@ -294,11 +294,26 @@ tasks:
     expected_output:
       - "Setup PR URL."
       - "Merge result or explicit reason merge was not done."
-    receipt: null
+    receipt:
+      result: done
+      summary: "Opened setup PR #97, marked it ready for review, and confirmed GitHub checks passed with clean mergeability."
+      pr_url: "https://github.com/tannerpolley/ePC-SAFT/pull/97"
+      merged_before_branch_creation: false
+      commands:
+        - cmd: "git push -u origin codex/general-reactive-electrolyte-roadmap-setup"
+          status: pass
+        - cmd: "gh pr create --repo tannerpolley/ePC-SAFT --base main --head codex/general-reactive-electrolyte-roadmap-setup"
+          status: pass
+        - cmd: "gh pr ready 97 --repo tannerpolley/ePC-SAFT"
+          status: pass
+        - cmd: "gh pr checks 97 --repo tannerpolley/ePC-SAFT --watch --interval 15"
+          status: pass
+        - cmd: "gh pr view 97 --repo tannerpolley/ePC-SAFT --json isDraft,mergeStateStatus,mergeable,statusCheckRollup"
+          status: pass
   - id: T007
     type: pm
     assignee: PM
-    status: queued
+    status: active
     reasoning_hint: medium
     objective: "After setup PR merge only, fast-forward local main and create/push placeholder branches from docs/roadmaps/branch_setup_commands.md."
     inputs:
