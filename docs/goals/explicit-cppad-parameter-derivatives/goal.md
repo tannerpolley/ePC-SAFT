@@ -64,7 +64,7 @@ If this charter and `state.yaml` disagree, `state.yaml` wins for task status, ac
 
 Gate details live at:
 
-`docs/goals/explicit-cppad-parameter-derivatives/dependency_gate.yaml`
+`docs/goals/explicit-cppad-parameter-derivatives/notes/dependency_gate.yaml`
 
 ## Run Command
 
@@ -78,7 +78,7 @@ On every `/goal` continuation:
 
 1. Read this charter.
 2. Read `state.yaml`.
-3. Read `dependency_gate.yaml`.
+3. Read `notes/dependency_gate.yaml`.
 4. Run the bundled GoalBuddy update checker when available and mention a newer version without blocking.
 5. Re-check that dependency A is merged, `origin/main` contains the dependency merge, the current branch is correct, and the branch rebases cleanly on `origin/main`.
 6. Work only on the active board task.

@@ -42,6 +42,8 @@ New behavior:
 - If dependencies are not satisfied, run the bounded watcher.
 - If timeout, write PREPARED_WAITING and stop.
 - If rebase/merge conflicts occur, stop with BLOCKED_REBASE_CONFLICT.
+- After implementation is complete, open a focused draft PR if needed, self-review it against origin/main, mark ready only after validation passes, wait for checks, and merge without another yes only when checks pass, the PR is mergeable, and the final GoalBuddy audit says full_outcome_complete: true.
+- After merge, delete both the remote branch and the local task branch. If cleanup cannot be completed safely, stop with BLOCKED_REMOTE_BRANCH_DELETE or BLOCKED_LOCAL_BRANCH_DELETE and record the exact branch/path/next command.
 
 If git rebase is blocked by tool approval policy and this branch has no unique commits, use git merge --ff-only origin/main.
 

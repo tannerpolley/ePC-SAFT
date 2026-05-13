@@ -84,7 +84,7 @@ tasks:
       - "docs/roadmaps/agent_prompts/B_explicit_cppad_parameter_derivatives_for_eos_property_apis.md"
       - "docs/roadmaps/general_reactive_electrolyte_equilibrium_readiness.md"
       - "docs/roadmaps/agent_dependency_plan.md"
-      - "docs/goals/explicit-cppad-parameter-derivatives/dependency_gate.yaml"
+      - "docs/goals/explicit-cppad-parameter-derivatives/notes/dependency_gate.yaml"
     constraints:
       - "Do not edit product/source files."
       - "Do not inspect implementation files."
@@ -421,7 +421,8 @@ tasks:
       - "k_hb_ij included in coverage/capability as implemented, already_supported_with_tests, blocker_requires_implicit_association_sensitivity, or out_of_scope_by_roadmap"
       - "Test or handoff proving k_hb_ij is not silently omitted or overclaimed"
     receipt:
-      result: PR_OPENED
+      result: done
+      outcome: PR_OPENED
       pr:
         number: 102
         url: "https://github.com/tannerpolley/ePC-SAFT/pull/102"
