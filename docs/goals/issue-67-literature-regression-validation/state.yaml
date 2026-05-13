@@ -1,0 +1,349 @@
+# GoalBuddy v2 state.yaml
+# Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
+
+version: 2
+
+goal:
+  title: "Issue #67 literature-backed regression validation"
+  slug: "issue-67-literature-regression-validation"
+  kind: existing_plan
+  tranche: "Execute issue #67 only after the issue #66 dependency is merged, branch is rebased onto updated main, issue #67 is read completely, implementation is validated, and the focused PR is merged or left ready with blockers reported."
+  status: active
+  intake:
+    original_request: "Issue #67 literature-backed regression validation"
+    interpreted_outcome: "Add literature-backed regression validation for GitHub issue #67 using only existing repo assets, validate it with issue-listed commands, and close the issue through a focused PR."
+    input_shape: existing_plan
+    audience: "Repo owner and future Codex execution agent"
+    authority: requested
+    proof_type: test
+    completion_proof: "Focused PR for issue #67 includes `Closes #67`, passes the issue-listed validation commands and GitHub checks, is squash-merged if allowed, branch is deleted, root local main is fast-forwarded to origin/main, issue #67 is closed, and final report includes PR URL, merge commit, validation summary, label status, and final issue state."
+    likely_misfire: "Starting issue #67 work before issue #66 is merged/rebased, using PR #56 as a base, fetching outside data, testing forbidden derivatives, or stopping after local validation without PR/issue closure."
+    blind_spots_considered:
+      - "Issue #66 may still be open or merged remotely but not present in local root main."
+      - "Issue #67 may contain validation commands or addendum details that override assumptions."
+      - "PR #56 may be tempting as a shortcut but is explicitly reference-only."
+      - "A ready PR may still be unmergeable because checks, permissions, labels, or issue closure automation fail."
+    existing_plan_facts:
+      - "Worktree path is C:\\Users\\Tanner\\.codex\\worktrees\\fb77\\ePC-SAFT."
+      - "Local main was expected to be fast-forwarded from origin/main immediately before this worktree was created."
+      - "Use branch codex/issue-67-literature-regression-validation."
+      - "Work on GitHub issue #67 only."
+      - "Set up a watcher automation/script that waits for issue #66 and its PR to merge to origin/main, then confirms local root main has pulled the merge before rebasing this branch."
+      - "Confirm issue #66 is merged into main; if not, stop and report #67 blocked."
+      - "Read issue #67 completely, including the Detailed implementation addendum, before planning or editing."
+      - "Do not use PR #56 as a base branch, continue it, or merge it; use it only as reference if needed."
+      - "Use only existing repo assets: docs/papers, analyses, data/reference, Figiel 2025, and MIAC outputs."
+      - "Do not fetch data from the internet."
+      - "No finite-difference derivatives."
+      - "Do not test vapor Born derivatives."
+      - "Run the validation commands listed in issue #67."
+      - "Open a focused PR linked to issue #67 and include `Closes #67` in the body."
+      - "If validation and GitHub checks pass, squash-merge the PR, delete the branch, refresh root local main, confirm issue closure, close manually if needed with a final comment, apply a completion label if available, and report the required summary."
+      - "If merge or issue closure is blocked, leave the PR ready and report the PR URL plus exact blocker."
+      - "Stop after this issue."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://127.0.0.1:51267/"
+    command: "node C:\\Users\\Tanner\\.codex\\skills\\goalbuddy\\extend\\local-goal-board\\scripts\\local-goal-board.mjs --goal docs/goals/issue-67-literature-regression-validation --host 127.0.0.1 --port 51267"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: T007
+
+tasks:
+  - id: T001
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Begin execution by confirming the issue #66 dependency, local root main freshness, and branch position before any issue #67 implementation work."
+    inputs:
+      - "GitHub issue #66"
+      - "PR attached to issue #66"
+      - "origin/main"
+      - "C:\\Users\\Tanner\\Documents\\git\\ePC-SAFT local main"
+      - "Current worktree branch state"
+    constraints:
+      - "Do not inspect or edit issue #67 implementation before this gate passes."
+      - "If issue #66 is not merged into main, stop and report that #67 is blocked."
+      - "Confirm or checkout branch codex/issue-67-literature-regression-validation."
+      - "Set up or run the requested watcher/check script as part of T001 before any issue #67 planning or editing."
+      - "After issue #66 is confirmed merged and root local main is fast-forwarded, rebase this branch onto updated origin/main or local main before continuing."
+    expected_output:
+      - "Issue #66 merged status"
+      - "Attached PR merged status"
+      - "Root local main and origin/main hashes"
+      - "Branch/rebase status"
+      - "Watcher/check script setup or run status"
+      - "Blocked receipt if #66 is not merged"
+    receipt:
+      result: done
+      status: done
+      timestamp: "2026-05-12"
+      last_checked: "2026-05-13T02:35:34Z"
+      completed_at: "2026-05-13T02:35:34Z"
+      summary: "Issue #66 is now closed as completed and PR #80 is merged to main. Root local main matches origin/main at 5c73429f3ee9. The worktree branch codex/issue-67-literature-regression-validation was fast-forwarded to origin/main; no issue #67 planning or implementation was started by the watcher."
+      evidence:
+        - "gh issue view 66 --repo tannerpolley/ePC-SAFT reported state CLOSED, stateReason COMPLETED, closedAt 2026-05-13T02:34:12Z."
+        - "Issue #66 URL: https://github.com/tannerpolley/ePC-SAFT/issues/66"
+        - "gh pr list --repo tannerpolley/ePC-SAFT --state all --search '66' found PR #80 merged at 2026-05-13T02:34:11Z into main."
+        - "Root checkout `git pull --ff-only origin main` reported already up to date."
+        - "Root checkout main and origin/main hashes both resolved to 5c73429f3ee9."
+        - "Worktree origin/main resolved to 5c73429f3ee9."
+        - "Worktree branch was behind origin/main by 2 commits and ahead by 0, so `git merge --ff-only origin/main` fast-forwarded the branch to the updated main equivalent of a rebase with no local commits."
+        - "Current branch is codex/issue-67-literature-regression-validation."
+      watcher:
+        type: codex_heartbeat
+        automation_id: "issue-67-dependency-gate-watcher"
+        schedule: "FREQ=MINUTELY;INTERVAL=5"
+        purpose: "Completed; dependency gate passed and watcher should be deleted."
+  - id: T002
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: medium
+    objective: "Read GitHub issue #67 completely, including the Detailed implementation addendum, and map the required local assets and validation commands without editing files."
+    inputs:
+      - "GitHub issue #67"
+      - "docs/papers"
+      - "analyses"
+      - "data/reference"
+      - "Figiel 2025 local assets"
+      - "MIAC outputs"
+    constraints:
+      - "Read-only."
+      - "Do not fetch data from the internet."
+      - "Do not use PR #56 except as reference if needed."
+      - "Preserve exact issue-listed validation commands."
+    expected_output:
+      - "Issue #67 requirements summary"
+      - "Detailed implementation addendum requirements"
+      - "Allowed local asset map"
+      - "Validation command list"
+      - "Open questions or blockers"
+    receipt:
+      result: done
+      summary: "Read issue #67 completely, including the detailed implementation, Eigen/CppAD, derivative coverage, association solved-state, and robustness addenda. Inventoried local assets under docs/papers, analyses, data/reference, tests/regression, and scripts/data."
+      evidence:
+        - "Issue #67 requires pure neutral, binary k_ij, liquid electrolyte d_born/f_solv, and relative-permittivity checks where supported."
+        - "Existing local assets found for Figiel 2025, MIAC CSVs, parameter catalogs, ethanol-water binary VLE, MEA pure benchmark, and existing Figiel/MIAC tests."
+        - "Required validation commands copied from issue #67."
+      candidate_next_tasks:
+        - "Add curated literature fixtures and fast tests for pure/ion parameter regression, binary k_ij regression, and liquid-electrolyte Figiel/MIAC checks."
+  - id: T003
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the issue #67 execution plan against the user's constraints and choose the first safe Worker slice."
+    inputs:
+      - "T001 receipt"
+      - "T002 receipt"
+      - "docs/goals/issue-67-literature-regression-validation/goal.md"
+    constraints:
+      - "Do not implement."
+      - "Reject any plan that depends on internet data fetches, finite-difference derivatives, vapor Born derivative tests, PR #56 as a base, or work outside issue #67."
+      - "Worker tasks must have explicit allowed_files, verify commands, and stop_if conditions."
+    expected_output:
+      - "Decision"
+      - "Exact first Worker objective"
+      - "allowed_files"
+      - "verify"
+      - "stop_if"
+      - "Deferred or blocked tasks"
+    receipt:
+      result: done
+      decision: "Proceed with a narrow test/fixture-only Worker slice using existing repo assets. Do not change solver or equation implementation for the first slice."
+      next_allowed_task: T004
+      allowed_files:
+        - "tests/regression/test_literature_pure_parameter_regression.py"
+        - "tests/regression/test_literature_binary_kij_regression.py"
+        - "tests/regression/test_miac_liquid_electrolyte_regression.py"
+        - "tests/fixtures/literature/pure_neutral/mea_co2_h2o_benchmark.json"
+        - "tests/fixtures/literature/binary_kij/ethanol_water_jced2021_100kpa.json"
+        - "tests/fixtures/literature/figiel_2025/miac_liquid_electrolyte.json"
+      verify:
+        - "uv run python run_pytest.py tests/regression/test_literature_pure_parameter_regression.py tests/regression/test_literature_binary_kij_regression.py tests/regression/test_miac_liquid_electrolyte_regression.py -q"
+      stop_if:
+        - "Tests require internet-fetched data."
+        - "Tests require finite-difference derivatives."
+        - "Tests require vapor Born derivative validation."
+        - "Fast suite cannot stay under practical local runtime."
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement the first issue #67 validation slice selected by Judge."
+    allowed_files:
+      - "tests/regression/test_literature_pure_parameter_regression.py"
+      - "tests/regression/test_literature_binary_kij_regression.py"
+      - "tests/regression/test_miac_liquid_electrolyte_regression.py"
+      - "tests/fixtures/literature/pure_neutral/mea_co2_h2o_benchmark.json"
+      - "tests/fixtures/literature/binary_kij/ethanol_water_jced2021_100kpa.json"
+      - "tests/fixtures/literature/figiel_2025/miac_liquid_electrolyte.json"
+    verify:
+      - "uv run python run_pytest.py tests/regression/test_literature_pure_parameter_regression.py tests/regression/test_literature_binary_kij_regression.py tests/regression/test_miac_liquid_electrolyte_regression.py -q"
+    stop_if:
+      - "Need files outside Judge-approved allowed_files."
+      - "Issue #66 dependency or branch rebase status is not confirmed."
+      - "Implementation would require internet-fetched data."
+      - "Implementation would require finite-difference derivatives or vapor Born derivative tests."
+      - "Validation fails twice with the same unexplained cause."
+    receipt:
+      result: done
+      summary: "Added curated literature fixture JSON files and three fast regression validation test modules covering pure/ion parameter fitting, binary k_ij fitting, and Figiel/MIAC liquid-electrolyte d_born/f_solv behavior without finite differences or vapor Born derivative tests."
+      changed_files:
+        - "tests/regression/test_literature_pure_parameter_regression.py"
+        - "tests/regression/test_literature_binary_kij_regression.py"
+        - "tests/regression/test_miac_liquid_electrolyte_regression.py"
+        - "tests/fixtures/literature/pure_neutral/mea_co2_h2o_benchmark.json"
+        - "tests/fixtures/literature/binary_kij/ethanol_water_jced2021_100kpa.json"
+        - "tests/fixtures/literature/figiel_2025/miac_liquid_electrolyte.json"
+      commands:
+        - cmd: "uv run python run_pytest.py tests/regression/test_literature_pure_parameter_regression.py tests/regression/test_literature_binary_kij_regression.py tests/regression/test_miac_liquid_electrolyte_regression.py -q"
+          status: pass
+          summary: "7 passed in 30.79s"
+  - id: T005
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit the implemented issue #67 validation against literature-backed asset constraints and decide whether more Worker slices are required."
+    inputs:
+      - "T002 receipt"
+      - "T003 receipt"
+      - "T004 receipt"
+      - "Current diff"
+      - "Last validation output"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if issue #67 requirements or listed validation commands are not fully satisfied."
+      - "Reject completion if PR/issue closure work remains safe and local."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: false unless PR, merge, main refresh, and issue closure are done"
+      - "Missing evidence"
+      - "Next task if not complete"
+    receipt:
+      result: done
+      decision: "Implemented slice satisfies issue #67's local fast-suite requirements for pure/ion regression, binary k_ij regression, and Figiel/MIAC liquid-electrolyte checks. PR/merge/issue closure work remains."
+      full_outcome_complete: false
+      validation:
+        - cmd: "uv run python run_pytest.py tests/regression/test_literature_pure_parameter_regression.py tests/regression/test_literature_binary_kij_regression.py tests/regression/test_figiel_2025_born_parameter_parity.py -q"
+          status: pass
+          summary: "6 passed in 30.79s"
+        - cmd: "uv run python scripts/validate_project.py quick"
+          status: pass
+          summary: "doctor passed; quick pytest slice 23 passed in 6.48s"
+      next_task: T006
+  - id: T006
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Open a focused PR for issue #67 with a body that includes `Closes #67`, then monitor GitHub checks."
+    inputs:
+      - "Completed implementation receipts"
+      - "Validation command results"
+      - "Current branch codex/issue-67-literature-regression-validation"
+    constraints:
+      - "PR must be focused on issue #67."
+      - "PR body must include `Closes #67`."
+      - "Do not use PR #56 as a base branch."
+      - "If checks or permissions block merge, leave PR ready and report exact blockers."
+    expected_output:
+      - "PR URL"
+      - "Validation summary"
+      - "GitHub check status"
+      - "Merge readiness"
+    receipt:
+      result: done
+      pr_url: "https://github.com/tannerpolley/ePC-SAFT/pull/81"
+      summary: "Opened focused PR #81 for issue #67 with `Closes #67` in the body."
+      validation:
+        - "uv run python run_pytest.py tests/regression/test_literature_pure_parameter_regression.py tests/regression/test_literature_binary_kij_regression.py tests/regression/test_figiel_2025_born_parameter_parity.py -q"
+        - "uv run python scripts/validate_project.py quick"
+  - id: T007
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: default
+    objective: "If validation and GitHub checks pass, squash-merge the focused PR, delete the branch, refresh root local main, and verify issue #67 closure."
+    inputs:
+      - "T006 receipt"
+      - "GitHub PR checks"
+      - "C:\\Users\\Tanner\\Documents\\git\\ePC-SAFT root checkout"
+    constraints:
+      - "Only merge if validation and GitHub checks pass."
+      - "Use squash merge."
+      - "Delete the branch after merge if allowed."
+      - "Before reporting completion, run the required root checkout `git pull --ff-only origin main` and compare 12-char `main` and `origin/main` hashes."
+      - "If issue #67 remains open, close it manually with a final comment summarizing the PR, validation commands, and follow-up issues."
+      - "Apply a completion label if labels are available, such as done/completed/merged."
+    expected_output:
+      - "Merge commit"
+      - "Root main/origin main hashes"
+      - "Issue #67 final state"
+      - "Label status"
+      - "Blocked receipt if merge or closure is not possible"
+    receipt: null
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Final audit that issue #67, and only issue #67, is complete and ready to stop."
+    inputs:
+      - "All task receipts"
+      - "Final validation summary"
+      - "PR URL"
+      - "Merge commit if merged"
+      - "Issue #67 final state"
+      - "Root main/origin main hash comparison"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if the PR is unmerged without a reported blocker."
+      - "Reject completion if issue #67 closure state is unknown."
+      - "Reject completion if root local main was not fast-forwarded after merge."
+      - "Stop after this issue."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "PR URL"
+      - "Merge commit or blocker"
+      - "Validation summary"
+      - "Label status"
+      - "Final issue state"
+    receipt: null
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: unknown
+    task: null
+    commands: []
