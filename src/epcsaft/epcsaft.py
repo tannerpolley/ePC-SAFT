@@ -1375,15 +1375,27 @@ class ePCSAFTState:
         ncomp = int(self._x.size)
         rows = []
 
+        def classify(*, supported, not_applicable):
+            if not_applicable:
+                return "out_of_scope"
+            if supported:
+                return "production_supported"
+            return "blocker"
+
         def add(quantity, derivative, result, *, not_applicable=False, source_equation_ids=()):
+            supported = bool(result.get("supported", False))
+            row_not_applicable = bool(not_applicable)
             rows.append(
                 {
                     "quantity": quantity,
                     "derivative": derivative,
                     "backend": str(result.get("backend", "backend_unavailable")),
-                    "supported": bool(result.get("supported", False)),
-                    "not_applicable": bool(not_applicable),
-                    "backend_unavailable_reason": "" if result.get("supported", False) else str(result.get("message", "")),
+                    "supported": supported,
+                    "not_applicable": row_not_applicable,
+                    "classification": classify(supported=supported, not_applicable=row_not_applicable),
+                    "backend_unavailable_reason": (
+                        "" if result.get("supported", False) else str(result.get("message", ""))
+                    ),
                     "source_equation_ids": list(source_equation_ids),
                 }
             )
@@ -1413,10 +1425,27 @@ class ePCSAFTState:
         add("born_ssmds_liquid", "d_born/f_solv", born_result, source_equation_ids=("ares_born",))
         add("relative_permittivity", "composition", self.relative_permittivity_composition_derivative_result())
         add("pressure", "density", self.pressure_density_derivative_result(), source_equation_ids=("pressure_from_z",))
-        add("fugacity", "composition", self.ln_fugacity_composition_derivative_result(), source_equation_ids=("lnphi_total",))
-        add("activity", "composition", self.activity_composition_derivative_result(), source_equation_ids=("lngamma_sym",))
-        add("chemical_potential", "composition", self.chemical_potential_composition_derivative_result(), source_equation_ids=("mu_res",))
-        add("density_root", "pressure", self.density_pressure_derivative_result(), source_equation_ids=("density_root",))
+        add(
+            "fugacity",
+            "composition",
+            self.ln_fugacity_composition_derivative_result(),
+            source_equation_ids=("lnphi_total",),
+        )
+        add(
+            "activity",
+            "composition",
+            self.activity_composition_derivative_result(),
+            source_equation_ids=("lngamma_sym",),
+        )
+        add(
+            "chemical_potential",
+            "composition",
+            self.chemical_potential_composition_derivative_result(),
+            source_equation_ids=("mu_res",),
+        )
+        add(
+            "density_root", "pressure", self.density_pressure_derivative_result(), source_equation_ids=("density_root",)
+        )
         if ncomp == 0:
             raise SolutionError("Derivative coverage matrix requires at least one component.")
         return rows
@@ -2255,9 +2284,7 @@ def create_struct(params):
     cppargs.dielc_rule = _as_int_alias(rel_perm.get("rule", 1), rule_alias)
     cppargs.dielc_diff_mode = _as_int_alias(rel_perm.get("differential_mode", "auto"), diff_alias)
     if cppargs.dielc_diff_mode not in (0, 2, 3):
-        raise ValueError(
-            "Unknown rel_perm differential_mode. Supported values are analytic/autodiff/auto (0/2/3)."
-        )
+        raise ValueError("Unknown rel_perm differential_mode. Supported values are analytic/autodiff/auto (0/2/3).")
     cppargs.hc_dadx_diff_mode = _as_int_alias(hc_model_dict.get("dadx_differential_mode", "auto"), diff_alias)
     if cppargs.hc_dadx_diff_mode not in (0, 2, 3):
         raise ValueError(
@@ -2282,9 +2309,7 @@ def create_struct(params):
     bjeruum = _as_bool(dh_model_dict.get("bjeruum_treatment", False))
     cppargs.mu_DH_diff_mode = _as_int_alias(mu_dh.get("differential_mode", "auto"), diff_alias)
     if cppargs.mu_DH_diff_mode not in (0, 2, 3):
-        raise ValueError(
-            "Unknown mu_DH differential_mode. Supported values are analytic/autodiff/auto (0/2/3)."
-        )
+        raise ValueError("Unknown mu_DH differential_mode. Supported values are analytic/autodiff/auto (0/2/3).")
     cppargs.mu_DH_comp_dep_rel_perm = int(_as_bool(mu_dh.get("comp_dep_rel_perm", True)))
     cppargs.mu_DH_include_sum_term = int(_as_bool(mu_dh.get("include_sum_term", True)))
 
@@ -2297,9 +2322,7 @@ def create_struct(params):
     cppargs.born_bulk_mode = _as_int_alias(born_model_dict.get("bulk_mode", "mix"), bulk_alias)
     cppargs.mu_born_diff_mode = _as_int_alias(mu_born.get("differential_mode", "auto"), diff_alias)
     if cppargs.mu_born_diff_mode not in (0, 2, 3):
-        raise ValueError(
-            "Unknown mu_born differential_mode. Supported values are analytic/autodiff/auto (0/2/3)."
-        )
+        raise ValueError("Unknown mu_born differential_mode. Supported values are analytic/autodiff/auto (0/2/3).")
     cppargs.mu_born_comp_dep_rel_perm = int(_as_bool(mu_born.get("comp_dep_rel_perm", True)))
     cppargs.mu_born_include_sum_term = int(_as_bool(mu_born.get("include_sum_term", True)))
     cppargs.mu_born_comp_dep_delta_d = int(_as_bool(mu_born.get("comp_dep_delta_d", False)))

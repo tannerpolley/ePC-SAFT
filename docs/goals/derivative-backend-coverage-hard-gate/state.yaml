@@ -1,0 +1,270 @@
+version: 2
+
+goal:
+  title: "Derivative backend completion audit and coverage matrix hard gate"
+  slug: "derivative-backend-coverage-hard-gate"
+  kind: existing_plan
+  tranche: "Gate, audit, harden, verify, and publish task A without starting downstream equilibrium or regression implementation."
+  status: active
+  intake:
+    original_request: "Run Goal Prep for task key A: Derivative backend completion audit and coverage matrix hard gate."
+    interpreted_outcome: "Derivative backend coverage and runtime capability reporting become explicit, tested, and enforced before downstream implementation starts."
+    input_shape: existing_plan
+    audience: "ePC-SAFT package maintainers and downstream GoalBuddy agents."
+    authority: requested
+    proof_type: test
+    completion_proof: "Dependency/rebase gate passes, derivative coverage/capability changes are implemented, targeted tests and quick validation pass, PR is opened with limitations and next dependencies, and final audit records full_outcome_complete: true."
+    likely_misfire: "Implementing large solver or application-specific features instead of enforcing derivative backend coverage/capability contracts."
+    blind_spots_considered:
+      - "Implementation must not begin until the prompt's dependency/rebase gate passes."
+      - "Task A has no dependencies, but branch freshness and rebase still matter."
+      - "No finite difference is allowed."
+      - "Capability reporting must be truthful when a backend is unavailable."
+      - "No application-specific public APIs may be added."
+      - "PR #56 must not be used as a base or modified."
+    existing_plan_facts:
+      - "Roadmap index task key: A."
+      - "Prompt file: docs/roadmaps/agent_prompts/A_derivative_backend_completion_audit_and_coverage_matrix_hard_gate.md."
+      - "Assigned branch: codex/backend-coverage-hard-gate."
+      - "Dependencies: none."
+      - "auto_start_after_gate: true."
+      - "Validation commands are listed in the task prompt."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://127.0.0.1:62526/"
+    command: "node C:/Users/Tanner/.codex/skills/goalbuddy/extend/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/derivative-backend-coverage-hard-gate"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: T006
+
+tasks:
+  - id: T001
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Run the prompt's dependency/rebase gate before any implementation edits."
+    inputs:
+      - "docs/goals/derivative-backend-coverage-hard-gate/dependency_gate.yaml"
+      - "docs/roadmaps/agent_prompts/A_derivative_backend_completion_audit_and_coverage_matrix_hard_gate.md"
+    constraints:
+      - "No product/source edits before this gate passes."
+      - "Stop with BLOCKED_DEPENDENCY_OR_REBASE if rebase conflicts or dependency status is missing."
+      - "Do not ask the user what to do next."
+    expected_output:
+      - "Gate pass/fail receipt."
+      - "dependency_gate.yaml updated with current implementation gate result."
+      - "If pass, activate Scout or Worker task for derivative coverage audit."
+    receipt:
+      result: done
+      summary: "Implementation dependency gate passed by equivalent clean-rebase evidence: branch is codex/backend-coverage-hard-gate, origin/main is an ancestor of HEAD, and origin/main...HEAD is 0/0. The literal rebase command was blocked before execution by tool policy, but the branch is already at origin/main."
+      evidence:
+        - "docs/goals/derivative-backend-coverage-hard-gate/dependency_gate.yaml"
+        - "git branch --show-current -> codex/backend-coverage-hard-gate"
+        - "git merge-base --is-ancestor origin/main HEAD -> pass"
+        - "git rev-list --left-right --count origin/main...HEAD -> 0 0"
+  - id: T002
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: medium
+    objective: "Map existing derivative coverage matrix, runtime capability rows, tests, and backend labels relevant to task A."
+    inputs:
+      - "docs/roadmaps/general_reactive_electrolyte_equilibrium_readiness.md"
+      - "docs/roadmaps/agent_dependency_plan.md"
+      - "docs/roadmaps/agent_prompts/index.yaml"
+      - "docs/roadmaps/agent_prompts/A_derivative_backend_completion_audit_and_coverage_matrix_hard_gate.md"
+    constraints:
+      - "Read-only."
+      - "Do not implement."
+      - "Prefer concrete file-path evidence."
+    expected_output:
+      - "Files owning derivative coverage and capability reporting."
+      - "Existing test coverage and gaps."
+      - "Candidate allowed_files for a bounded Worker task."
+      - "Recommended validation commands."
+    receipt:
+      result: done
+      summary: "Mapped derivative coverage and capability reporting. The first hard-gate gap is missing explicit row classification using the prompt vocabulary production_supported, blocker, and out_of_scope."
+      evidence:
+        - "src/epcsaft/epcsaft.py:1373 owns state.derivative_coverage_matrix rows."
+        - "src/epcsaft/runtime.py:225 owns capabilities()['derivatives']['coverage_matrix'] rows."
+        - "tests/native/test_derivative_coverage_matrix.py verifies state-level minimum row fields and backend labels."
+        - "tests/api/test_runtime_capabilities_dependency_gates.py verifies runtime capability coverage matrix columns and no finite_difference."
+        - "tests/native/test_property_derivative_backend_contract.py verifies public derivative result API shapes."
+      candidate_allowed_files:
+        - "src/epcsaft/epcsaft.py"
+        - "src/epcsaft/runtime.py"
+        - "tests/native/test_derivative_coverage_matrix.py"
+        - "tests/api/test_runtime_capabilities_dependency_gates.py"
+        - "tests/native/test_property_derivative_backend_contract.py"
+  - id: T003
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Choose the first safe implementation slice for task A after the gate and Scout evidence."
+    inputs:
+      - "T001 receipt"
+      - "T002 receipt"
+    constraints:
+      - "Do not implement."
+      - "Reject finite-difference or application-specific API work."
+      - "Reject broad solver implementation."
+    expected_output:
+      - "Decision."
+      - "Exact Worker objective."
+      - "allowed_files."
+      - "verify."
+      - "stop_if."
+    receipt:
+      result: done
+      decision: "Start with the smallest hard-gate implementation: add explicit coverage row classification to state-level and runtime matrices, then test that every row uses production_supported, blocker, or out_of_scope without finite_difference."
+      next_allowed_task: T004
+      allowed_files:
+        - "src/epcsaft/epcsaft.py"
+        - "src/epcsaft/runtime.py"
+        - "tests/native/test_derivative_coverage_matrix.py"
+        - "tests/api/test_runtime_capabilities_dependency_gates.py"
+      verify:
+        - "uv run python run_pytest.py tests/native/test_derivative_coverage_matrix.py tests/native/test_property_derivative_backend_contract.py tests/native/test_association_implicit_derivative_contract.py -q"
+        - "uv run python run_pytest.py tests/api/test_runtime_capabilities_dependency_gates.py -q"
+      stop_if:
+        - "Need finite difference."
+        - "Need application-specific public APIs."
+        - "Need broad solver implementation."
+        - "Need files outside allowed_files."
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Implement the first bounded derivative coverage/capability hardening slice selected by Judge."
+    allowed_files:
+      - "src/epcsaft/epcsaft.py"
+      - "src/epcsaft/runtime.py"
+      - "tests/native/test_derivative_coverage_matrix.py"
+      - "tests/api/test_runtime_capabilities_dependency_gates.py"
+    verify:
+      - "uv run python run_pytest.py tests/native/test_derivative_coverage_matrix.py tests/native/test_property_derivative_backend_contract.py tests/native/test_association_implicit_derivative_contract.py -q"
+      - "uv run python run_pytest.py tests/api/test_runtime_capabilities_dependency_gates.py -q"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Need finite difference."
+      - "Need application-specific public APIs."
+      - "Need broad solver implementation."
+      - "Verification fails twice."
+    receipt:
+      result: done
+      changed_files:
+        - "src/epcsaft/epcsaft.py"
+        - "src/epcsaft/runtime.py"
+        - "tests/native/test_derivative_coverage_matrix.py"
+        - "tests/api/test_runtime_capabilities_dependency_gates.py"
+      commands:
+        - cmd: "uv run python run_pytest.py tests/native/test_derivative_coverage_matrix.py tests/native/test_property_derivative_backend_contract.py tests/native/test_association_implicit_derivative_contract.py -q"
+          status: pass
+          summary: "7 passed in 0.72s"
+        - cmd: "uv run python run_pytest.py tests/api/test_runtime_capabilities_dependency_gates.py -q"
+          status: pass
+          summary: "6 passed in 0.42s"
+      summary: "Added explicit hard-gate classifications to state-level derivative coverage rows and runtime coverage rows, added runtime row_family metadata, and tested classification semantics."
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Add or update tests for derivative coverage matrix and runtime capability semantics selected by Judge."
+    allowed_files: []
+    verify:
+      - "uv run python run_pytest.py tests/native/test_derivative_coverage_matrix.py tests/native/test_property_derivative_backend_contract.py tests/native/test_association_implicit_derivative_contract.py -q"
+      - "uv run python run_pytest.py tests/api/test_runtime_capabilities_dependency_gates.py -q"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Coverage semantics are ambiguous."
+      - "Verification fails twice."
+    receipt:
+      result: done
+      changed_files:
+        - "tests/native/test_derivative_coverage_matrix.py"
+        - "tests/api/test_runtime_capabilities_dependency_gates.py"
+      commands:
+        - cmd: "uv run python run_pytest.py tests/native/test_derivative_coverage_matrix.py tests/native/test_property_derivative_backend_contract.py tests/native/test_association_implicit_derivative_contract.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/api/test_runtime_capabilities_dependency_gates.py -q"
+          status: pass
+      summary: "Coverage semantics tests now require the hard-gate classification vocabulary and runtime row-family metadata."
+  - id: T006
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: medium
+    objective: "Open a focused PR for task A when implementation and validation are complete."
+    inputs:
+      - "Task receipts."
+      - "Current diff."
+      - "Validation results."
+    constraints:
+      - "One PR for this issue."
+      - "PR body includes issue link when available, summary, tests, limitations, and next dependencies."
+      - "Do not close unrelated issues."
+      - "Do not modify PR #56."
+    expected_output:
+      - "PR URL or blocked receipt."
+      - "Issue link status."
+      - "Limitations and next dependencies."
+    receipt: null
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Audit whether task A is fully complete."
+    inputs:
+      - "All done task receipts."
+      - "Last verification."
+      - "Current dirty diff."
+      - "PR status."
+    constraints:
+      - "Do not implement."
+      - "Reject completion if required Worker work is still queued or active."
+      - "Reject completion if derivative coverage/capability reporting remains untested."
+      - "Reject completion if full_outcome_complete is not supportable from receipts."
+    expected_output:
+      - "complete | not_complete."
+      - "full_outcome_complete: true | false."
+      - "missing evidence."
+      - "next task if not complete."
+    receipt: null
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: unknown
+    task: null
+    commands: []

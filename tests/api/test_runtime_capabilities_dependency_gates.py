@@ -44,12 +44,14 @@ def test_derivative_coverage_matrix_has_required_contract_and_no_finite_differen
 
     assert coverage["derivative_coverage_matrix_available"] is True
     assert coverage["minimum_columns"] == [
+        "row_family",
         "subsystem",
         "quantity",
         "derivative",
         "backend",
         "supported",
         "not_applicable",
+        "classification",
         "reason",
         "tests",
     ]
@@ -58,6 +60,29 @@ def test_derivative_coverage_matrix_has_required_contract_and_no_finite_differen
     for row in rows:
         assert set(coverage["minimum_columns"]).issubset(row)
     assert "finite_difference" not in json.dumps(coverage).lower()
+
+
+def test_derivative_coverage_matrix_classifies_runtime_rows_by_hard_gate_status() -> None:
+    coverage = epcsaft.capabilities()["derivatives"]["coverage_matrix"]
+    rows = coverage["rows"]
+
+    classifications = {row["classification"] for row in rows}
+    row_families = {row["row_family"] for row in rows}
+
+    assert classifications == {"production_supported", "blocker", "out_of_scope"}
+    assert {"regression", "solved_state", "electrolyte_property"}.issubset(row_families)
+    for row in rows:
+        if row["classification"] == "production_supported":
+            assert row["supported"] is True
+            assert row["not_applicable"] is False
+            assert row["backend"] != "backend_unavailable"
+        elif row["classification"] == "out_of_scope":
+            assert row["supported"] is False
+            assert row["not_applicable"] is True
+        else:
+            assert row["classification"] == "blocker"
+            assert row["supported"] is False
+            assert row["not_applicable"] is False
 
 
 def test_issue_68_required_coverage_gate_fields_are_reported_honestly() -> None:
