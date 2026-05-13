@@ -109,7 +109,14 @@ def _generator_args(env: dict[str, str], configured_generator: str | None = None
     return []
 
 
-def _configure(env: dict[str, str], *, enable_cppad: bool, use_system_cppad: bool) -> None:
+def _configure(
+    env: dict[str, str],
+    *,
+    enable_ceres: bool,
+    use_system_ceres: bool,
+    enable_cppad: bool,
+    use_system_cppad: bool,
+) -> None:
     pybind11_dir = _capture([sys.executable, "-m", "pybind11", "--cmakedir"], env=env)
     cmd = [
         "cmake",
@@ -118,6 +125,8 @@ def _configure(env: dict[str, str], *, enable_cppad: bool, use_system_cppad: boo
         "-B",
         str(BUILD_DIR),
         "-DEPCSAFT_DEV_INPLACE=ON",
+        f"-DEPCSAFT_ENABLE_CERES={'ON' if enable_ceres else 'OFF'}",
+        f"-DEPCSAFT_USE_SYSTEM_CERES={'ON' if use_system_ceres else 'OFF'}",
         f"-DEPCSAFT_ENABLE_CPPAD={'ON' if enable_cppad else 'OFF'}",
         f"-DEPCSAFT_USE_SYSTEM_CPPAD={'ON' if use_system_cppad else 'OFF'}",
         "-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY",
@@ -160,6 +169,12 @@ def _parser() -> argparse.ArgumentParser:
         default="auto",
         help="CMake generator for a new configure. Auto prefers Ninja when available.",
     )
+    parser.add_argument("--enable-ceres", action="store_true", help="Enable Ceres Solver support.")
+    parser.add_argument(
+        "--use-system-ceres",
+        action="store_true",
+        help="Use an installed Ceres Solver package. Implies --enable-ceres.",
+    )
     parser.add_argument("--enable-cppad", action="store_true", help="Enable package-wide CppAD support.")
     parser.add_argument(
         "--use-system-cppad",
@@ -178,6 +193,10 @@ def main() -> int:
         parser.error("--configure-only cannot be combined with --build-only")
     if args.use_system_cppad:
         args.enable_cppad = True
+    if args.use_system_ceres:
+        args.enable_ceres = True
+    if args.enable_ceres and args.parallel is None:
+        args.parallel = "2"
 
     total_start = time.perf_counter()
     if args.clean:
@@ -189,7 +208,13 @@ def main() -> int:
     if not args.build_only:
         _timed(
             "configure",
-            lambda: _configure(env, enable_cppad=args.enable_cppad, use_system_cppad=args.use_system_cppad),
+            lambda: _configure(
+                env,
+                enable_ceres=args.enable_ceres,
+                use_system_ceres=args.use_system_ceres,
+                enable_cppad=args.enable_cppad,
+                use_system_cppad=args.use_system_cppad,
+            ),
         )
     else:
         print("Timing: configure skipped (--build-only)", flush=True)

@@ -32,6 +32,33 @@ set(PYBIND11_FINDPYTHON ON)
 
 find_package(pybind11 CONFIG REQUIRED)
 
+execute_process(
+    COMMAND "${Python_EXECUTABLE}" -c "import includeigen; print(includeigen.get_include())"
+    OUTPUT_VARIABLE EPCSAFT_EIGEN_INCLUDE
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    COMMAND_ERROR_IS_FATAL ANY
+)
+file(TO_CMAKE_PATH "${EPCSAFT_EIGEN_INCLUDE}" EPCSAFT_EIGEN_INCLUDE_CMAKE)
+
+if(EPCSAFT_ENABLE_CERES AND NOT Eigen3_DIR)
+    set(EPCSAFT_EIGEN3_CONFIG_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated_eigen3_config")
+    file(MAKE_DIRECTORY "${EPCSAFT_EIGEN3_CONFIG_DIR}")
+    file(WRITE "${EPCSAFT_EIGEN3_CONFIG_DIR}/Eigen3Config.cmake"
+"if(NOT TARGET Eigen3::Eigen)
+    add_library(Eigen3::Eigen INTERFACE IMPORTED)
+    set_target_properties(Eigen3::Eigen PROPERTIES INTERFACE_INCLUDE_DIRECTORIES \"${EPCSAFT_EIGEN_INCLUDE_CMAKE}\")
+endif()
+set(Eigen3_VERSION 3.4.0)
+set(Eigen3_FOUND TRUE)
+")
+    file(WRITE "${EPCSAFT_EIGEN3_CONFIG_DIR}/Eigen3ConfigVersion.cmake"
+"set(PACKAGE_VERSION 3.4.0)
+set(PACKAGE_VERSION_COMPATIBLE TRUE)
+set(PACKAGE_VERSION_EXACT FALSE)
+")
+    set(Eigen3_DIR "${EPCSAFT_EIGEN3_CONFIG_DIR}" CACHE PATH "Generated Eigen3 package config for bundled includeigen")
+endif()
+
 if(EPCSAFT_ENABLE_CERES)
     if(EPCSAFT_USE_SYSTEM_CERES)
         find_package(Ceres CONFIG REQUIRED)
@@ -40,12 +67,22 @@ if(EPCSAFT_ENABLE_CERES)
         set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
         set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
         set(BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+        set(MINIGLOG ON CACHE BOOL "" FORCE)
+        set(GFLAGS OFF CACHE BOOL "" FORCE)
+        set(SUITESPARSE OFF CACHE BOOL "" FORCE)
+        set(EIGENSPARSE OFF CACHE BOOL "" FORCE)
+        set(LAPACK OFF CACHE BOOL "" FORCE)
+        set(USE_CUDA OFF CACHE BOOL "" FORCE)
+        set(SCHUR_SPECIALIZATIONS OFF CACHE BOOL "" FORCE)
         FetchContent_Declare(
             ceres-solver
             GIT_REPOSITORY https://ceres-solver.googlesource.com/ceres-solver
             GIT_TAG 2.2.0
         )
         FetchContent_MakeAvailable(ceres-solver)
+        if(TARGET ceres_internal AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+            target_compile_options(ceres_internal PRIVATE -include cstdint)
+        endif()
     endif()
 endif()
 
@@ -129,18 +166,12 @@ if(EPCSAFT_ENABLE_CPPAD)
     set(EPCSAFT_CPPAD_STATUS "enabled_available")
 endif()
 
-execute_process(
-    COMMAND "${Python_EXECUTABLE}" -c "import includeigen; print(includeigen.get_include())"
-    OUTPUT_VARIABLE EPCSAFT_EIGEN_INCLUDE
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    COMMAND_ERROR_IS_FATAL ANY
-)
-
 file(GLOB EPCSAFT_NATIVE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/autodiff/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/contributions/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/equilibrium/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/regression/*.cpp"
 )
 if(EPCSAFT_CPPAD_SOURCE_FILE)
     list(APPEND EPCSAFT_NATIVE_SOURCES "${EPCSAFT_CPPAD_SOURCE_FILE}")
@@ -153,6 +184,7 @@ target_include_directories(epcsaft_native
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/autodiff"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/contributions"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/equilibrium"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/regression"
         "${EPCSAFT_EIGEN_INCLUDE}"
 )
 target_compile_features(epcsaft_native PUBLIC cxx_std_17)
@@ -174,6 +206,7 @@ target_include_directories(_core
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/autodiff"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/contributions"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/equilibrium"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/regression"
         "${EPCSAFT_EIGEN_INCLUDE}"
 )
 target_compile_features(_core PRIVATE cxx_std_17)

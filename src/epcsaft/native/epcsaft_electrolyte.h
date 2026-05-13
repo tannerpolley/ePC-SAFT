@@ -256,6 +256,10 @@ struct PureNeutralRegressionResult {
     double solve_wall_time_s = 0.0;
     std::string message;
     std::string backend;
+    std::string optimizer_backend;
+    std::string derivative_backend;
+    double gradient_norm = 0.0;
+    double step_norm = 0.0;
     bool jacobian_available = true;
     std::string jacobian_backend = "autodiff";
     bool jacobian_fallback_used = false;
@@ -328,6 +332,20 @@ struct GenericRegressionResult {
     std::string hessian_fallback_reason = "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
     std::string message;
     std::string backend;
+};
+
+struct NeutralBinaryKijPhaseDerivatives {
+    double pressure = 0.0;
+    double rho = 0.0;
+    double z = 0.0;
+    double dpdrho = 0.0;
+    double dpdk = 0.0;
+    double drhodk = 0.0;
+    vector<double> lnphi;
+    vector<double> dlnphi_drho;
+    vector<double> dlnphi_dk_fixed_rho;
+    vector<double> dlnphi_dk_total;
+    std::string backend = "cppad_implicit";
 };
 
 class ePCSAFTMixtureNative;
@@ -442,6 +460,13 @@ vector<double> fugcoef_cpp(double t, double rho, vector<double> x, const add_arg
 double p_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 double den_cpp(double t, double p, vector<double> x, int phase, const add_args &cppargs);
 double ares_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
+NeutralBinaryKijPhaseDerivatives neutral_binary_kij_phase_derivatives_cpp(
+    double t,
+    double rho,
+    const vector<double> &x,
+    const add_args &cppargs,
+    int k_index
+);
 double dadt_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 double hres_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 double sres_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
@@ -473,6 +498,17 @@ PureNeutralRegressionResult fit_pure_neutral_least_squares_cpp(
     const vector<double> &upper,
     int multistart
 );
+PureNeutralRegressionResult fit_pure_neutral_ceres_cpp(
+    const add_args &base_args,
+    const vector<PureNeutralRegressionDensityRecord> &density_records,
+    double density_scale,
+    const vector<PureNeutralRegressionVLERecord> &pure_vle_records,
+    double pure_vle_scale,
+    const vector<double> &x0,
+    const vector<double> &lower,
+    const vector<double> &upper,
+    int multistart
+);
 PureNeutralRegressionDebugResult evaluate_pure_neutral_objective_debug_cpp(
     const add_args &base_args,
     const vector<PureNeutralRegressionDensityRecord> &density_records,
@@ -490,6 +526,18 @@ GenericRegressionDebugResult evaluate_generic_regression_debug_cpp(
     const vector<double> &x
 );
 GenericRegressionResult fit_generic_least_squares_cpp(
+    const vector<add_args> &base_args_by_record,
+    const vector<GenericRegressionRecord> &records,
+    const vector<int> &target_kinds,
+    const vector<int> &target_indices,
+    const vector<int> &target_indices_2,
+    const vector<double> &x0,
+    const vector<double> &lower,
+    const vector<double> &upper,
+    int multistart,
+    int max_nfev
+);
+GenericRegressionResult fit_generic_ceres_cpp(
     const vector<add_args> &base_args_by_record,
     const vector<GenericRegressionRecord> &records,
     const vector<int> &target_kinds,

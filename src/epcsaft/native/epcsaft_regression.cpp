@@ -11,6 +11,12 @@
 
 #include <unsupported/Eigen/LevenbergMarquardt>
 
+#ifdef EPCSAFT_HAS_CERES
+#include <ceres/cost_function.h>
+#include <ceres/problem.h>
+#include <ceres/solver.h>
+#endif
+
 using Index = Eigen::Index;
 using thermo_detail::kDispersionA0;
 using thermo_detail::kDispersionA1;
@@ -165,6 +171,14 @@ struct PureNeutralObjectiveEvaluation {
     vector<double> density_raw_residuals;
     vector<double> pure_vle_raw_residuals;
 };
+
+double pure_neutral_gradient_norm_cpp(const PureNeutralObjectiveEvaluation &eval) {
+    double norm_sq = 0.0;
+    for (double value : eval.gradient) {
+        norm_sq += value * value;
+    }
+    return std::sqrt(norm_sq);
+}
 
 ParamDual make_param_dual(double value, int seed_index) {
     ParamDual x;
@@ -810,6 +824,9 @@ PureNeutralRegressionResult solve_one_start_least_squares_cpp(
     out.fused_state_evaluations = functor.profiling.fused_state_evaluations;
     out.callback_wall_time_s = functor.profiling.callback_wall_time_s;
     out.backend = "least_squares_native";
+    out.optimizer_backend = "eigen_levenberg_marquardt";
+    out.derivative_backend = "legacy_eigen_forward";
+    out.jacobian_backend = out.derivative_backend;
     out.solve_wall_time_s = std::chrono::duration<double>(std::chrono::steady_clock::now() - solve_start).count();
 
     PureNeutralResidualEvaluation final_eval = evaluate_residual_jacobian_cpp(
@@ -824,6 +841,8 @@ PureNeutralRegressionResult solve_one_start_least_squares_cpp(
     PureNeutralObjectiveEvaluation final_objective = objective_from_residual_eval_cpp(final_eval);
     out.cost = final_objective.objective;
     out.residual_norm = std::sqrt(std::max(0.0, 2.0 * final_objective.objective));
+    out.gradient_norm = pure_neutral_gradient_norm_cpp(final_objective);
+    out.step_norm = 0.0;
     out.density_metric = rms_metric_cpp(final_objective.density_raw_residuals);
     out.pure_vle_metric = rms_metric_cpp(final_objective.pure_vle_raw_residuals);
     out.residual_evaluations = functor.profiling.residual_evaluations;
@@ -832,6 +851,161 @@ PureNeutralRegressionResult solve_one_start_least_squares_cpp(
     out.callback_wall_time_s = functor.profiling.callback_wall_time_s;
     return out;
 }
+
+#ifdef EPCSAFT_HAS_CERES
+class PureNeutralCeresCostFunction final : public ceres::CostFunction {
+public:
+    PureNeutralCeresCostFunction(
+        add_args base_args,
+        vector<PureNeutralRegressionDensityRecord> density_records,
+        double density_scale,
+        vector<PureNeutralRegressionVLERecord> pure_vle_records,
+        double pure_vle_scale,
+        RegressionProfilingStats *profiling
+    )
+        : base_args_(std::move(base_args)),
+          density_records_(std::move(density_records)),
+          density_scale_(density_scale),
+          pure_vle_records_(std::move(pure_vle_records)),
+          pure_vle_scale_(pure_vle_scale),
+          profiling_(profiling)
+    {
+        set_num_residuals(static_cast<int>(density_records_.size() + pure_vle_records_.size()));
+        mutable_parameter_block_sizes()->push_back(kThetaSize);
+    }
+
+    bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const override {
+        try {
+            vector<double> theta(parameters[0], parameters[0] + kThetaSize);
+            PureNeutralResidualEvaluation eval = evaluate_residual_jacobian_cpp(
+                base_args_,
+                density_records_,
+                density_scale_,
+                pure_vle_records_,
+                pure_vle_scale_,
+                theta,
+                profiling_
+            );
+            for (Eigen::Index row = 0; row < eval.residuals.size(); ++row) {
+                residuals[row] = eval.residuals[row];
+            }
+            if (jacobians != nullptr && jacobians[0] != nullptr) {
+                for (Eigen::Index row = 0; row < eval.jacobian.rows(); ++row) {
+                    for (Eigen::Index col = 0; col < eval.jacobian.cols(); ++col) {
+                        jacobians[0][row * kThetaSize + col] = eval.jacobian(row, col);
+                    }
+                }
+            }
+            return true;
+        } catch (...) {
+            return false;
+        }
+    }
+
+private:
+    add_args base_args_;
+    vector<PureNeutralRegressionDensityRecord> density_records_;
+    double density_scale_ = 1.0;
+    vector<PureNeutralRegressionVLERecord> pure_vle_records_;
+    double pure_vle_scale_ = 1.0;
+    RegressionProfilingStats *profiling_ = nullptr;
+};
+
+PureNeutralRegressionResult solve_one_start_ceres_cpp(
+    const add_args &base_args,
+    const vector<PureNeutralRegressionDensityRecord> &density_records,
+    double density_scale,
+    const vector<PureNeutralRegressionVLERecord> &pure_vle_records,
+    double pure_vle_scale,
+    const vector<double> &start,
+    const vector<double> &lower,
+    const vector<double> &upper
+) {
+    auto solve_start = std::chrono::steady_clock::now();
+    PureNeutralObjectiveEvaluation initial_eval = evaluate_pure_neutral_objective_cpp(
+        base_args,
+        density_records,
+        density_scale,
+        pure_vle_records,
+        pure_vle_scale,
+        start,
+        nullptr
+    );
+
+    vector<double> theta = start;
+    RegressionProfilingStats profiling;
+    ceres::Problem problem;
+    auto *cost = new PureNeutralCeresCostFunction(
+        base_args,
+        density_records,
+        density_scale,
+        pure_vle_records,
+        pure_vle_scale,
+        &profiling
+    );
+    problem.AddResidualBlock(cost, nullptr, theta.data());
+    for (int j = 0; j < kThetaSize; ++j) {
+        problem.SetParameterLowerBound(theta.data(), j, lower[static_cast<size_t>(j)]);
+        problem.SetParameterUpperBound(theta.data(), j, upper[static_cast<size_t>(j)]);
+    }
+
+    ceres::Solver::Options options;
+    options.linear_solver_type = ceres::DENSE_QR;
+    options.minimizer_progress_to_stdout = false;
+    options.logging_type = ceres::SILENT;
+    options.max_num_iterations = 100;
+    options.function_tolerance = 1.0e-10;
+    options.gradient_tolerance = 1.0e-10;
+    options.parameter_tolerance = 1.0e-10;
+
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+
+    PureNeutralResidualEvaluation final_eval = evaluate_residual_jacobian_cpp(
+        base_args,
+        density_records,
+        density_scale,
+        pure_vle_records,
+        pure_vle_scale,
+        theta,
+        &profiling
+    );
+    PureNeutralObjectiveEvaluation final_objective = objective_from_residual_eval_cpp(final_eval);
+    PureNeutralRegressionResult out;
+    out.x = theta;
+    out.initial_cost = initial_eval.objective;
+    out.initial_density_metric = rms_metric_cpp(initial_eval.density_raw_residuals);
+    out.initial_pure_vle_metric = rms_metric_cpp(initial_eval.pure_vle_raw_residuals);
+    out.cost = final_objective.objective;
+    out.residual_norm = std::sqrt(std::max(0.0, 2.0 * final_objective.objective));
+    out.density_metric = rms_metric_cpp(final_objective.density_raw_residuals);
+    out.pure_vle_metric = rms_metric_cpp(final_objective.pure_vle_raw_residuals);
+    out.success = summary.IsSolutionUsable();
+    out.status = static_cast<int>(summary.termination_type);
+    out.message = summary.BriefReport();
+    out.nfev = static_cast<int>(summary.num_residual_evaluations + summary.num_jacobian_evaluations);
+    out.iterations = static_cast<int>(summary.iterations.size());
+    out.objective_evaluations = static_cast<int>(summary.num_residual_evaluations);
+    out.gradient_evaluations = static_cast<int>(summary.num_jacobian_evaluations);
+    out.residual_evaluations = profiling.residual_evaluations;
+    out.density_solves = profiling.density_solves;
+    out.fused_state_evaluations = profiling.fused_state_evaluations;
+    out.callback_wall_time_s = profiling.callback_wall_time_s;
+    out.solve_wall_time_s = std::chrono::duration<double>(std::chrono::steady_clock::now() - solve_start).count();
+    out.backend = "ceres";
+    out.optimizer_backend = "ceres";
+    out.derivative_backend = "legacy_eigen_forward";
+    out.jacobian_backend = out.derivative_backend;
+    out.gradient_norm = pure_neutral_gradient_norm_cpp(final_objective);
+    double step_norm_sq = 0.0;
+    for (int j = 0; j < kThetaSize; ++j) {
+        double diff = theta[static_cast<size_t>(j)] - start[static_cast<size_t>(j)];
+        step_norm_sq += diff * diff;
+    }
+    out.step_norm = std::sqrt(step_norm_sq);
+    return out;
+}
+#endif
 
 PureNeutralRegressionResult choose_better_result_cpp(
     bool have_result,
@@ -1176,6 +1350,161 @@ GenericRegressionDebugResult evaluate_generic_residuals_with_jacobian_cpp(
     throw ValueError("backend_unavailable: generic regression sensitivities are not implemented.");
 }
 
+struct BinaryKijResidualEvaluation {
+    ResidualVector residuals;
+    ResidualJacobian jacobian;
+    double cost = 0.0;
+    double residual_norm = 0.0;
+    std::map<std::string, double> metrics_by_term;
+};
+
+int generic_residual_count_from_records_cpp(const vector<GenericRegressionRecord> &records) {
+    int count = 0;
+    for (const auto &record : records) {
+        if (record.term == kGenericTermBinaryVLE) {
+            if (record.target_index >= 0) {
+                ++count;
+            }
+            if (record.target_index_2 >= 0) {
+                ++count;
+            }
+        } else {
+            ++count;
+        }
+    }
+    return std::max(1, count);
+}
+
+void validate_binary_kij_ceres_problem_cpp(
+    const vector<add_args> &base_args_by_record,
+    const vector<GenericRegressionRecord> &records,
+    const vector<int> &target_kinds,
+    const vector<int> &target_indices,
+    const vector<int> &target_indices_2,
+    const vector<double> &theta
+) {
+    if (base_args_by_record.size() != records.size()) {
+        throw ValueError("Native Ceres binary k_ij regression requires one base parameter payload per record.");
+    }
+    if (target_kinds.size() != 1 || target_indices.size() != 1 || target_indices_2.size() != 1 || theta.size() != 1) {
+        throw ValueError("backend_unavailable: native Ceres generic regression currently supports one binary k_ij target only.");
+    }
+    if (target_kinds[0] != kGenericTargetKIJ) {
+        throw ValueError("backend_unavailable: native Ceres generic regression currently supports binary k_ij targets only.");
+    }
+    if (records.empty()) {
+        throw ValueError("Native Ceres binary k_ij regression requires at least one VLE record.");
+    }
+    for (size_t r = 0; r < records.size(); ++r) {
+        const auto &record = records[r];
+        const auto &args = base_args_by_record[r];
+        if (record.term != kGenericTermBinaryVLE) {
+            throw ValueError("backend_unavailable: native Ceres binary k_ij regression supports binary VLE rows only.");
+        }
+        if (args.m.size() != 2 || args.s.size() != 2 || args.e.size() != 2) {
+            throw ValueError("backend_unavailable: native Ceres binary k_ij regression requires exactly two neutral components.");
+        }
+        if (!args.assoc_num.empty()) {
+            for (int sites : args.assoc_num) {
+                if (sites > 0) {
+                    throw ValueError("backend_unavailable: native Ceres binary k_ij regression does not support association rows.");
+                }
+            }
+        }
+        if (!args.z.empty()) {
+            for (double charge : args.z) {
+                if (std::abs(charge) > 1.0e-12) {
+                    throw ValueError("backend_unavailable: native Ceres binary k_ij regression does not support ionic rows.");
+                }
+            }
+        }
+        if (args.k_ij.size() != 4) {
+            throw ValueError("backend_unavailable: native Ceres binary k_ij regression requires a dense 2x2 k_ij matrix.");
+        }
+        if (record.x.size() != 2 || record.y.size() != 2 || !(record.p > 0.0) || !(record.t > 0.0)) {
+            throw ValueError("Native Ceres binary k_ij regression requires positive T/P and binary x/y records.");
+        }
+        for (int index : {record.target_index, record.target_index_2}) {
+            if (index >= 0 && index >= 2) {
+                throw ValueError("Native Ceres binary k_ij residual component index is out of range.");
+            }
+        }
+    }
+}
+
+BinaryKijResidualEvaluation evaluate_binary_kij_residual_jacobian_cpp(
+    const vector<add_args> &base_args_by_record,
+    const vector<GenericRegressionRecord> &records,
+    const vector<int> &target_kinds,
+    const vector<int> &target_indices,
+    const vector<int> &target_indices_2,
+    const vector<double> &theta
+) {
+    validate_binary_kij_ceres_problem_cpp(
+        base_args_by_record,
+        records,
+        target_kinds,
+        target_indices,
+        target_indices_2,
+        theta
+    );
+    const int nres = generic_residual_count_from_records_cpp(records);
+    BinaryKijResidualEvaluation out;
+    out.residuals = ResidualVector::Zero(nres);
+    out.jacobian = ResidualJacobian::Zero(nres, 1);
+    vector<double> raw;
+    int row = 0;
+    for (size_t r = 0; r < records.size(); ++r) {
+        add_args args = base_args_by_record[r];
+        apply_generic_targets_cpp(args, target_kinds, target_indices, target_indices_2, theta);
+        const auto &record = records[r];
+        const int i = target_indices[0];
+        const int j = target_indices_2[0];
+        const int k_index = i * 2 + j;
+        const double rho_liq = den_cpp(record.t, record.p, record.x, 0, args);
+        const double rho_vap = den_cpp(record.t, record.p, record.y, 1, args);
+        NeutralBinaryKijPhaseDerivatives liq = neutral_binary_kij_phase_derivatives_cpp(
+            record.t,
+            rho_liq,
+            record.x,
+            args,
+            k_index
+        );
+        NeutralBinaryKijPhaseDerivatives vap = neutral_binary_kij_phase_derivatives_cpp(
+            record.t,
+            rho_vap,
+            record.y,
+            args,
+            k_index
+        );
+        for (int index : {record.target_index, record.target_index_2}) {
+            if (index < 0) {
+                continue;
+            }
+            const double xi = record.x.at(static_cast<size_t>(index));
+            const double yi = record.y.at(static_cast<size_t>(index));
+            if (!(xi > 0.0) || !(yi > 0.0)) {
+                throw ValueError("Native Ceres binary k_ij VLE records require positive x/y values.");
+            }
+            const double residual = std::log(xi) + liq.lnphi.at(static_cast<size_t>(index))
+                - std::log(yi) - vap.lnphi.at(static_cast<size_t>(index));
+            const double derivative = liq.dlnphi_dk_total.at(static_cast<size_t>(index))
+                - vap.dlnphi_dk_total.at(static_cast<size_t>(index));
+            raw.push_back(residual);
+            out.residuals[row] = record.scale * residual;
+            out.jacobian(row, 0) = record.scale * derivative;
+            ++row;
+        }
+    }
+    out.cost = 0.0;
+    for (Eigen::Index idx = 0; idx < out.residuals.size(); ++idx) {
+        out.cost += 0.5 * out.residuals[idx] * out.residuals[idx];
+    }
+    out.residual_norm = std::sqrt(std::max(0.0, 2.0 * out.cost));
+    out.metrics_by_term["binary_vle_fugacity_balance"] = rms_metric_cpp(raw);
+    return out;
+}
+
 struct GenericBoundedTransformResult {
     vector<double> x;
 };
@@ -1446,6 +1775,153 @@ GenericRegressionResult solve_one_generic_start_cpp(
     return out;
 }
 
+#ifdef EPCSAFT_HAS_CERES
+class BinaryKijCeresCostFunction final : public ceres::CostFunction {
+public:
+    BinaryKijCeresCostFunction(
+        vector<add_args> base_args_by_record,
+        vector<GenericRegressionRecord> records,
+        vector<int> target_kinds,
+        vector<int> target_indices,
+        vector<int> target_indices_2
+    )
+        : base_args_by_record_(std::move(base_args_by_record)),
+          records_(std::move(records)),
+          target_kinds_(std::move(target_kinds)),
+          target_indices_(std::move(target_indices)),
+          target_indices_2_(std::move(target_indices_2))
+    {
+        set_num_residuals(generic_residual_count_from_records_cpp(records_));
+        mutable_parameter_block_sizes()->push_back(1);
+    }
+
+    bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const override {
+        try {
+            vector<double> theta = {parameters[0][0]};
+            BinaryKijResidualEvaluation eval = evaluate_binary_kij_residual_jacobian_cpp(
+                base_args_by_record_,
+                records_,
+                target_kinds_,
+                target_indices_,
+                target_indices_2_,
+                theta
+            );
+            for (Eigen::Index row = 0; row < eval.residuals.size(); ++row) {
+                residuals[row] = eval.residuals[row];
+            }
+            if (jacobians != nullptr && jacobians[0] != nullptr) {
+                for (Eigen::Index row = 0; row < eval.jacobian.rows(); ++row) {
+                    jacobians[0][row] = eval.jacobian(row, 0);
+                }
+            }
+            return true;
+        } catch (...) {
+            return false;
+        }
+    }
+
+private:
+    vector<add_args> base_args_by_record_;
+    vector<GenericRegressionRecord> records_;
+    vector<int> target_kinds_;
+    vector<int> target_indices_;
+    vector<int> target_indices_2_;
+};
+
+GenericRegressionResult solve_one_binary_kij_ceres_start_cpp(
+    const vector<add_args> &base_args_by_record,
+    const vector<GenericRegressionRecord> &records,
+    const vector<int> &target_kinds,
+    const vector<int> &target_indices,
+    const vector<int> &target_indices_2,
+    const vector<double> &start,
+    const vector<double> &lower,
+    const vector<double> &upper,
+    int max_nfev
+) {
+    BinaryKijResidualEvaluation initial_eval = evaluate_binary_kij_residual_jacobian_cpp(
+        base_args_by_record,
+        records,
+        target_kinds,
+        target_indices,
+        target_indices_2,
+        start
+    );
+    vector<double> theta = start;
+    if (max_nfev > 1) {
+        ceres::Problem problem;
+        auto *cost = new BinaryKijCeresCostFunction(
+            base_args_by_record,
+            records,
+            target_kinds,
+            target_indices,
+            target_indices_2
+        );
+        problem.AddResidualBlock(cost, nullptr, theta.data());
+        problem.SetParameterLowerBound(theta.data(), 0, lower[0]);
+        problem.SetParameterUpperBound(theta.data(), 0, upper[0]);
+
+        ceres::Solver::Options options;
+        options.linear_solver_type = ceres::DENSE_QR;
+        options.minimizer_progress_to_stdout = false;
+        options.logging_type = ceres::SILENT;
+        options.max_num_iterations = std::max(1, max_nfev);
+        options.function_tolerance = 1.0e-10;
+        options.gradient_tolerance = 1.0e-10;
+        options.parameter_tolerance = 1.0e-10;
+
+        ceres::Solver::Summary summary;
+        ceres::Solve(options, &problem, &summary);
+        BinaryKijResidualEvaluation final_eval = evaluate_binary_kij_residual_jacobian_cpp(
+            base_args_by_record,
+            records,
+            target_kinds,
+            target_indices,
+            target_indices_2,
+            theta
+        );
+        GenericRegressionResult out;
+        out.x = theta;
+        out.cost = final_eval.cost;
+        out.residual_norm = final_eval.residual_norm;
+        out.initial_cost = initial_eval.cost;
+        out.initial_residual_norm = initial_eval.residual_norm;
+        out.metrics_by_term = final_eval.metrics_by_term;
+        out.success = summary.IsSolutionUsable() || final_eval.cost <= initial_eval.cost + 1.0e-12;
+        out.status = static_cast<int>(summary.termination_type);
+        out.message = summary.BriefReport();
+        out.nfev = static_cast<int>(summary.num_residual_evaluations + summary.num_jacobian_evaluations);
+        out.iterations = static_cast<int>(summary.iterations.size());
+        out.backend = "ceres";
+        out.jacobian_available = true;
+        out.jacobian_backend = "cppad_implicit";
+        out.jacobian_fallback_used = false;
+        out.jacobian_fallback_reason = "";
+        out.backend_unavailable_reason = "";
+        return out;
+    }
+    GenericRegressionResult out;
+    out.x = start;
+    out.cost = initial_eval.cost;
+    out.residual_norm = initial_eval.residual_norm;
+    out.initial_cost = initial_eval.cost;
+    out.initial_residual_norm = initial_eval.residual_norm;
+    out.metrics_by_term = initial_eval.metrics_by_term;
+    out.success = std::isfinite(initial_eval.residual_norm);
+    out.status = 0;
+    out.message = "evaluated initial native Ceres binary k_ij residual without optimizer";
+    out.nfev = 1;
+    out.iterations = 0;
+    out.backend = "ceres";
+    out.jacobian_available = true;
+    out.jacobian_backend = "cppad_implicit";
+    out.jacobian_fallback_used = false;
+    out.jacobian_fallback_reason = "";
+    out.backend_unavailable_reason = "";
+    return out;
+}
+#endif
+
 GenericRegressionResult choose_better_generic_result_cpp(
     bool have_result,
     const GenericRegressionResult &best,
@@ -1476,10 +1952,17 @@ using regression_detail::kThetaSize;
 using regression_detail::objective_from_residual_eval_cpp;
 using regression_detail::solve_one_start_least_squares_cpp;
 using regression_detail::validate_pure_neutral_base_args_cpp;
+#ifdef EPCSAFT_HAS_CERES
+using regression_detail::solve_one_start_ceres_cpp;
+#endif
 using regression_detail::choose_better_generic_result_cpp;
 using regression_detail::evaluate_generic_residuals_cpp;
 using regression_detail::evaluate_generic_residuals_with_jacobian_cpp;
 using regression_detail::generic_candidate_starts_cpp;
+using regression_detail::kGenericTargetKIJ;
+#ifdef EPCSAFT_HAS_CERES
+using regression_detail::solve_one_binary_kij_ceres_start_cpp;
+#endif
 using regression_detail::solve_one_generic_start_cpp;
 
 PureNeutralRegressionDebugResult evaluate_pure_neutral_objective_debug_cpp(
@@ -1601,6 +2084,64 @@ PureNeutralRegressionResult fit_pure_neutral_least_squares_cpp(
     return best;
 }
 
+PureNeutralRegressionResult fit_pure_neutral_ceres_cpp(
+    const add_args &base_args,
+    const vector<PureNeutralRegressionDensityRecord> &density_records,
+    double density_scale,
+    const vector<PureNeutralRegressionVLERecord> &pure_vle_records,
+    double pure_vle_scale,
+    const vector<double> &x0,
+    const vector<double> &lower,
+    const vector<double> &upper,
+    int multistart
+) {
+    validate_pure_neutral_base_args_cpp(base_args);
+    if (density_records.empty() || pure_vle_records.empty()) {
+        throw ValueError("Native Ceres pure-neutral regression requires both density and pure-VLE record families.");
+    }
+    if (x0.size() != kThetaSize || lower.size() != kThetaSize || upper.size() != kThetaSize) {
+        throw ValueError("Native Ceres pure-neutral regression requires 3-variable starts and bounds for m, s, and e.");
+    }
+#ifndef EPCSAFT_HAS_CERES
+    (void)density_scale;
+    (void)pure_vle_scale;
+    (void)multistart;
+    throw ValueError("backend_unavailable: Ceres support is not enabled in this native build.");
+#else
+    vector<vector<double>> starts = candidate_starts_cpp(x0, lower, upper, multistart);
+    bool have_result = false;
+    PureNeutralRegressionResult best;
+    int starts_tried = 0;
+    for (const auto &start : starts) {
+        try {
+            PureNeutralRegressionResult candidate = solve_one_start_ceres_cpp(
+                base_args,
+                density_records,
+                density_scale,
+                pure_vle_records,
+                pure_vle_scale,
+                start,
+                lower,
+                upper
+            );
+            ++starts_tried;
+            best = choose_better_result_cpp(have_result, best, candidate);
+            have_result = true;
+        } catch (...) {
+        }
+    }
+    if (!have_result) {
+        throw ValueError("Native Ceres pure-neutral regression did not generate any candidate starts.");
+    }
+    best.starts_tried = starts_tried;
+    best.backend = "ceres";
+    best.optimizer_backend = "ceres";
+    best.derivative_backend = "legacy_eigen_forward";
+    best.jacobian_backend = best.derivative_backend;
+    return best;
+#endif
+}
+
 GenericRegressionDebugResult evaluate_generic_regression_debug_cpp(
     const vector<add_args> &base_args_by_record,
     const vector<GenericRegressionRecord> &records,
@@ -1666,5 +2207,72 @@ GenericRegressionResult fit_generic_least_squares_cpp(
     best.nfev = nfev_total;
     best.backend = "least_squares_native";
     return best;
+}
+
+GenericRegressionResult fit_generic_ceres_cpp(
+    const vector<add_args> &base_args_by_record,
+    const vector<GenericRegressionRecord> &records,
+    const vector<int> &target_kinds,
+    const vector<int> &target_indices,
+    const vector<int> &target_indices_2,
+    const vector<double> &x0,
+    const vector<double> &lower,
+    const vector<double> &upper,
+    int multistart,
+    int max_nfev
+) {
+    if (target_kinds.empty()) {
+        throw ValueError("Native Ceres generic regression requires at least one optimization target.");
+    }
+    if (x0.size() != target_kinds.size() || lower.size() != target_kinds.size() || upper.size() != target_kinds.size()) {
+        throw ValueError("Native Ceres generic regression target arrays must have matching lengths.");
+    }
+    if (target_kinds.size() != 1 || target_kinds[0] != kGenericTargetKIJ) {
+        throw ValueError("backend_unavailable: native Ceres generic regression currently supports one binary k_ij target only.");
+    }
+#ifndef EPCSAFT_HAS_CERES
+    (void)base_args_by_record;
+    (void)records;
+    (void)target_indices;
+    (void)target_indices_2;
+    (void)multistart;
+    (void)max_nfev;
+    throw ValueError("backend_unavailable: Ceres support is not enabled in this native build.");
+#else
+    vector<vector<double>> starts = generic_candidate_starts_cpp(x0, lower, upper, multistart);
+    bool have_result = false;
+    GenericRegressionResult best;
+    int starts_tried = 0;
+    int nfev_total = 0;
+    for (const auto &start : starts) {
+        GenericRegressionResult candidate = solve_one_binary_kij_ceres_start_cpp(
+            base_args_by_record,
+            records,
+            target_kinds,
+            target_indices,
+            target_indices_2,
+            start,
+            lower,
+            upper,
+            max_nfev
+        );
+        ++starts_tried;
+        nfev_total += candidate.nfev;
+        best = choose_better_generic_result_cpp(have_result, best, candidate);
+        have_result = true;
+    }
+    if (!have_result) {
+        throw ValueError("Native Ceres binary k_ij regression did not generate any candidate starts.");
+    }
+    best.starts_tried = starts_tried;
+    best.nfev = nfev_total;
+    best.backend = "ceres";
+    best.jacobian_available = true;
+    best.jacobian_backend = "cppad_implicit";
+    best.jacobian_fallback_used = false;
+    best.jacobian_fallback_reason = "";
+    best.backend_unavailable_reason = "";
+    return best;
+#endif
 }
 
