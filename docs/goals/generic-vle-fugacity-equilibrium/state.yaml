@@ -5,7 +5,7 @@ goal:
   slug: "generic-vle-fugacity-equilibrium"
   kind: existing_plan
   tranche: "Dependency C passed; continue bounded Scout/Judge/Worker execution for the first generic VLE/fugacity-equilibrium slice."
-  status: active
+  status: done
   intake:
     original_request: "Run Goal Prep for task G: Generic VLE/fugacity-equilibrium solver for volatile neutral species."
     interpreted_outcome: "Create a GoalBuddy board for task G, record the dependency gate and issue scope, and proceed with generic volatile-neutral VLE/fugacity work on the assigned branch because dependency C is merged."
@@ -64,7 +64,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T007
+active_task: null
 
 tasks:
   - id: T001
@@ -346,7 +346,7 @@ tasks:
   - id: T007
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: medium
     objective: "Merge PR #106, confirm issue #90 is closed, and clean up the remote and local task branches if all safety gates remain true."
     inputs:
@@ -364,7 +364,25 @@ tasks:
       - "Remote branch cleanup status."
       - "Local branch cleanup status."
       - "Local main update status."
-    receipt: null
+    receipt:
+      result: done
+      issue:
+        number: 90
+        url: "https://github.com/tannerpolley/ePC-SAFT/issues/90"
+        closed: true
+      pr:
+        number: 106
+        url: "https://github.com/tannerpolley/ePC-SAFT/pull/106"
+        merged: true
+        merge_commit: "ec5702cdda23698387742e6298fc84702890c15e"
+      cleanup:
+        remote_branch_deleted: true
+        local_branch_deleted: true
+        local_branch_name: "codex/generic-vle-fugacity-equilibrium"
+        current_checkout: "detached origin/main"
+        local_main_updated: true
+        root_checkout_updated: true
+      summary: "PR #106 merged, issue #90 is closed, the remote task branch no longer exists, the local task branch was deleted after switching to detached origin/main, and the root checkout at C:\\Users\\Tanner\\Documents\\git\\ePC-SAFT fast-forwarded to origin/main."
 
 checks:
   dirty_fingerprint: unknown
