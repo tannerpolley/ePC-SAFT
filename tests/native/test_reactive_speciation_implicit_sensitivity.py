@@ -40,11 +40,15 @@ def test_reactive_speciation_reports_solved_state_derivative_boundaries() -> Non
     assert diagnostics["derivative_policy"]["unsupported_derivative_status"] == "backend_unavailable"
     assert "reactive_speciation_variables" in diagnostics["solved_state_derivative_blocks"]
     assert "association_site_fractions" in diagnostics["solved_state_derivative_blocks"]
+    assert diagnostics["derivative_backend_by_block"]["reactive_speciation_variables"] == "analytic_implicit"
     assert diagnostics["derivative_backend_by_block"]["association_site_fractions"] in {
         "analytic_implicit",
         "cppad_implicit",
         "backend_unavailable",
     }
+    implicit_results = diagnostics["implicit_solve_results"]
+    assert implicit_results["reactive_speciation_variables"]["backend"] == "analytic_implicit"
+    assert implicit_results["reactive_speciation_variables"]["status"] == "residual_jacobian_available"
     backend_values = {str(value).lower() for value in diagnostics["derivative_backend_by_block"].values()}
     assert "finite_difference" not in backend_values
 

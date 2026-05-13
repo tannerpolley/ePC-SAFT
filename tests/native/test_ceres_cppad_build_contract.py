@@ -42,7 +42,8 @@ def test_ceres_cppad_capability_claims_are_dependency_gated() -> None:
         "not_validated_for_production",
     }
     khb = next(row for row in coverage["rows"] if row["quantity"] == "binary_khb_ij")
-    assert khb["classification"] == "blocker_requires_implicit_association_sensitivity"
+    assert khb["classification"] == "blocker"
+    assert khb["blocker_detail"] == "blocker_requires_implicit_association_sensitivity"
     assert khb["supported"] is False
     assert khb["future_owner"] == "Task C"
     assert khb["parameters"] == ["k_hb_ij"]

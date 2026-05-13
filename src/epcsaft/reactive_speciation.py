@@ -9,6 +9,11 @@ from typing import Any
 import numpy as np
 
 from ._types import InputError, SolutionError
+from .implicit_sensitivity import (
+    ImplicitSolveResult,
+    backend_unavailable_implicit_result,
+    implicit_backend_for_residual_backend,
+)
 
 _REACTION_STANDARD_STATES = {
     "mole_fraction_activity": 0,
@@ -609,6 +614,7 @@ def _solve_reactive_speciation_native(
 
 def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> None:
     derivative_backend = str(diagnostics.get("derivative_backend", "backend_unavailable"))
+    solved_state_backend = implicit_backend_for_residual_backend(derivative_backend)
     diagnostics.setdefault("thermodynamic_backend", "epcsaft_state_activity_chemical_potential_api")
     diagnostics.setdefault("solver_backend", diagnostics.get("nonlinear_solver", "native_newton"))
     diagnostics.setdefault("derivative_backend", derivative_backend)
@@ -669,9 +675,37 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
     )
     diagnostics["derivative_backend_by_block"].setdefault(
         "reactive_speciation_variables",
-        derivative_backend,
+        solved_state_backend,
     )
     diagnostics["derivative_backend_by_block"].setdefault("association_site_fractions", "backend_unavailable")
+    if solved_state_backend == "backend_unavailable":
+        reactive_implicit_result = backend_unavailable_implicit_result(
+            reason="reactive speciation implicit sensitivities are unavailable for this residual backend.",
+            diagnostics={"residual_backend": derivative_backend},
+        )
+    else:
+        reactive_implicit_result = ImplicitSolveResult(
+            state=(),
+            residual=(),
+            jacobians={},
+            sensitivity=(),
+            backend=solved_state_backend,
+            status="residual_jacobian_available",
+            diagnostics={
+                "residual_backend": derivative_backend,
+                "sensitivity_scope": "generic implicit solved-state contract",
+            },
+        )
+    diagnostics.setdefault(
+        "implicit_solve_results",
+        {
+            "reactive_speciation_variables": reactive_implicit_result.to_dict(),
+            "association_site_fractions": backend_unavailable_implicit_result(
+                reason="association site-fraction implicit sensitivities are unavailable for this reactive speciation route.",
+                diagnostics={"residual_backend": "backend_unavailable"},
+            ).to_dict(),
+        },
+    )
 
 
 def _named_reaction_residuals(reactions: list[ReactionDefinition], reaction_residuals: list[float]) -> dict[str, float]:
