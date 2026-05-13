@@ -146,10 +146,3 @@ Capability status summary
    * - IPOPT
      - Experimental opt-in
      - Residual-minimization refinement only; ``auto`` never selects IPOPT.
-
-MEA benchmark scope
--------------------
-
-``fit_mea_co2_h2o_electrolyte(...)`` is a fixed-composition native benchmark helper. It is useful for checking electrolyte pure-parameter regression plumbing, provenance, bounds, and native objective behavior.
-
-It is not reactive bubble-pressure fitting. Fixed-liquid fugacity-coefficient residuals should not be interpreted as a full MEA absorber VLE regression objective, especially when fitted values hit bounds or residuals remain large.
