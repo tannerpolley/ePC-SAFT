@@ -7,6 +7,66 @@
   },
   "configurePresets": [
     {
+      "name": "native-default",
+      "displayName": "Native build profile: default",
+      "description": "Default native extension build with optional Ceres and CppAD dependencies disabled.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/native-default",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_TRY_COMPILE_TARGET_TYPE": "STATIC_LIBRARY",
+        "EPCSAFT_DEV_INPLACE": "ON",
+        "EPCSAFT_ENABLE_CERES": "OFF",
+        "EPCSAFT_USE_SYSTEM_CERES": "OFF",
+        "EPCSAFT_ENABLE_CPPAD": "OFF",
+        "EPCSAFT_USE_SYSTEM_CPPAD": "OFF",
+        "EPCSAFT_WARNINGS_AS_ERRORS": "OFF",
+        "EPCSAFT_ENABLE_SANITIZERS": "OFF",
+        "Python_EXECUTABLE": "${sourceDir}/.venv/Scripts/python.exe",
+        "pybind11_DIR": "${sourceDir}/.venv/Lib/site-packages/pybind11/share/cmake/pybind11"
+      }
+    },
+    {
+      "name": "native-cppad",
+      "displayName": "Native build profile: CppAD",
+      "description": "Native extension build with CppAD enabled and Ceres disabled.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/native-cppad",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_TRY_COMPILE_TARGET_TYPE": "STATIC_LIBRARY",
+        "EPCSAFT_DEV_INPLACE": "ON",
+        "EPCSAFT_ENABLE_CERES": "OFF",
+        "EPCSAFT_USE_SYSTEM_CERES": "OFF",
+        "EPCSAFT_ENABLE_CPPAD": "ON",
+        "EPCSAFT_USE_SYSTEM_CPPAD": "OFF",
+        "EPCSAFT_WARNINGS_AS_ERRORS": "OFF",
+        "EPCSAFT_ENABLE_SANITIZERS": "OFF",
+        "Python_EXECUTABLE": "${sourceDir}/.venv/Scripts/python.exe",
+        "pybind11_DIR": "${sourceDir}/.venv/Lib/site-packages/pybind11/share/cmake/pybind11"
+      }
+    },
+    {
+      "name": "native-ceres-cppad",
+      "displayName": "Native build profile: Ceres + CppAD",
+      "description": "Native extension build with both Ceres and CppAD enabled.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/native-ceres-cppad",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_TRY_COMPILE_TARGET_TYPE": "STATIC_LIBRARY",
+        "EPCSAFT_DEV_INPLACE": "ON",
+        "EPCSAFT_ENABLE_CERES": "ON",
+        "EPCSAFT_USE_SYSTEM_CERES": "OFF",
+        "EPCSAFT_ENABLE_CPPAD": "ON",
+        "EPCSAFT_USE_SYSTEM_CPPAD": "OFF",
+        "EPCSAFT_WARNINGS_AS_ERRORS": "OFF",
+        "EPCSAFT_ENABLE_SANITIZERS": "OFF",
+        "Python_EXECUTABLE": "${sourceDir}/.venv/Scripts/python.exe",
+        "pybind11_DIR": "${sourceDir}/.venv/Lib/site-packages/pybind11/share/cmake/pybind11"
+      }
+    },
+    {
       "name": "dev-mingw",
       "displayName": "Optional IDE build (Windows MinGW)",
       "description": "Optional Windows MinGW preset for IDE/manual CMake use. The canonical local native build is uv run python scripts/build_epcsaft.py.",
@@ -26,6 +86,21 @@
     }
   ],
   "buildPresets": [
+    {
+      "name": "native-default",
+      "displayName": "Build native default profile",
+      "configurePreset": "native-default"
+    },
+    {
+      "name": "native-cppad",
+      "displayName": "Build native CppAD profile",
+      "configurePreset": "native-cppad"
+    },
+    {
+      "name": "native-ceres-cppad",
+      "displayName": "Build native Ceres + CppAD profile",
+      "configurePreset": "native-ceres-cppad"
+    },
     {
       "name": "dev-mingw",
       "displayName": "Optional IDE extension build",

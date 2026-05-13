@@ -14,4 +14,5 @@ def test_runtime_reports_cppad_build_contract() -> None:
     capabilities = epcsaft.capabilities()
     assert capabilities["derivatives"]["cppad"]["status"] == cppad["status"]
     assert capabilities["derivatives"]["cppad"]["compiled"] is cppad["compiled"]
+    assert capabilities["derivatives"]["cppad"]["production"] is False
     assert capabilities["derivatives"]["cppad"]["production_eos_coverage"] is False

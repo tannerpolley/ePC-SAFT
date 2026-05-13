@@ -10,6 +10,7 @@
 #include "epcsaft_chemical_equilibrium.h"
 #include "epcsaft_equilibrium.h"
 #include "ad_derivative_checks.h"
+#include "ceres_backend.h"
 
 epcsaft::native::autodiff::ADDerivativeResult cppad_eos_contribution_derivatives_cpp(
     double t,
@@ -1274,6 +1275,15 @@ PYBIND11_MODULE(_core, m) {
 
     m.def("_native_cppad_smoke", []() {
         return cppad_smoke_to_dict(epcsaft::native::autodiff::cppad_square_smoke_derivative(3.0));
+    });
+    m.def("_native_ceres_smoke", []() {
+        py::dict out;
+        const bool compiled = epcsaft::native::regression::ceres_backend_compiled();
+        out["backend"] = "ceres";
+        out["compiled"] = compiled;
+        out["available"] = compiled;
+        out["status"] = compiled ? "enabled_available" : "disabled";
+        return out;
     });
     m.def("_native_cppad_eos_contributions", [](double t, double rho, const std::vector<double>& x, const add_args& args) {
         return cppad_smoke_to_dict(cppad_eos_contribution_derivatives_cpp(t, rho, x, args));
