@@ -88,6 +88,30 @@ def test_explicit_flash_tp_matches_legacy_equilibrium_dispatch() -> None:
     np.testing.assert_allclose(direct.phases[1].composition, legacy.phases[1].composition)
 
 
+def test_equilibrium_dispatch_accepts_generic_neutral_bubble_and_dew_routes() -> None:
+    mix = _hydrocarbon_mixture()
+    flash = mix.flash_tp(T=220.0, P=1.0e5, z=[0.1, 0.3, 0.6])
+    liquid, vapor = flash.phases
+
+    bubble_p = mix.equilibrium(kind="bubble_p", T=220.0, x_liq=liquid.composition)
+    bubble_t = mix.equilibrium(kind="bubble_t", P=1.0e5, z=liquid.composition)
+    dew_p = mix.equilibrium(kind="dew_p", T=220.0, z=vapor.composition)
+    dew_t = mix.equilibrium(kind="dew_t", P=1.0e5, z=vapor.composition)
+
+    assert bubble_p.problem_kind == "bubble_p"
+    assert bubble_t.problem_kind == "bubble_t"
+    assert dew_p.problem_kind == "dew_p"
+    assert dew_t.problem_kind == "dew_t"
+    assert bubble_p.diagnostics["equilibrium_route"] == "neutral_vle"
+    assert dew_p.diagnostics["equilibrium_route"] == "neutral_vle"
+    assert bubble_p.diagnostics["partial_pressures"]["Methane"] == pytest.approx(
+        bubble_p.phases[1].composition[0] * bubble_p.phases[1].pressure
+    )
+    assert bubble_t.phases[0].temperature == pytest.approx(220.0, abs=2.0e-4)
+    assert dew_p.phases[1].pressure == pytest.approx(1.0e5, rel=2.0e-5)
+    assert dew_t.phases[1].temperature == pytest.approx(220.0, abs=2.0e-4)
+
+
 def test_solve_equilibrium_accepts_typed_problem_objects() -> None:
     mix = _hydrocarbon_mixture()
     feed = np.asarray([0.1, 0.3, 0.6])
@@ -126,7 +150,7 @@ def test_explicit_stability_tp_matches_legacy_equilibrium_dispatch() -> None:
     assert direct.min_tpd == pytest.approx(legacy.min_tpd)
 
 
-def test_explicit_lle_tp_matches_legacy_equilibrium_dispatch() -> None:
+def test_explicit_lle_tp_matches_legacy_equilibrium_dispatch_policy() -> None:
     mix = ePCSAFTMixture.from_params(
         {
             "m": np.asarray([1.5255, 2.5303]),
@@ -141,13 +165,10 @@ def test_explicit_lle_tp_matches_legacy_equilibrium_dispatch() -> None:
     )
     feed = np.asarray([0.5, 0.5])
 
-    direct = mix.lle_tp(T=298.15, P=1.013e5, z=feed)
-    legacy = mix.equilibrium(kind="lle_flash", T=298.15, P=1.013e5, z=feed)
-
-    assert isinstance(direct, epcsaft.EquilibriumResult)
-    assert direct.problem_kind == legacy.problem_kind
-    assert direct.phase_labels == legacy.phase_labels
-    assert direct.split_detected == legacy.split_detected
+    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+        mix.lle_tp(T=298.15, P=1.013e5, z=feed)
+    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+        mix.equilibrium(kind="lle_flash", T=298.15, P=1.013e5, z=feed)
 
 
 def test_explicit_chemical_equilibrium_matches_legacy_equilibrium_dispatch() -> None:

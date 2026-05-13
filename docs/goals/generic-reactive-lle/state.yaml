@@ -1,0 +1,153 @@
+version: 2
+
+goal:
+  title: "Generic reactive LLE and chemical phase equilibrium"
+  slug: "generic-reactive-lle"
+  kind: existing_plan
+  tranche: "Bounded Goal Prep now; capture issue scope, verify the dependency gate, and then continue with gated implementation once the prerequisites are satisfied."
+  status: active
+  intake:
+    original_request: "Run Goal Prep for task key J: Generic reactive LLE and chemical phase equilibrium."
+    interpreted_outcome: "Create a GoalBuddy board for Task J, record the issue scope for #93 during /goal execution, verify dependencies I/D/F and the branch gate, and only then proceed to implementation."
+    input_shape: existing_plan
+    audience: "epcsaft package maintainers and downstream modeling agents"
+    authority: requested
+    proof_type: artifact
+    completion_proof: "Issue #93 scope is recorded, dependencies I/D/F are closed and merged, the branch rebases cleanly on origin/main, implementation and validations pass, a focused draft PR closes #93, and the final audit records full_outcome_complete: true."
+    likely_misfire: "Starting implementation before the dependency gate passes, treating the task as application-specific instead of generic, or adding finite-difference derivatives."
+    blind_spots_considered:
+      - "The current issue scope must be read from GitHub during /goal execution and captured in notes/issue_scope.md."
+      - "Dependencies I, D, and F must all be satisfied before implementation."
+      - "The branch must stay generic and avoid application-specific public APIs."
+      - "No finite difference is allowed."
+    existing_plan_facts:
+      - "Task key: J."
+      - "GitHub issue: #93."
+      - "Title: Generic reactive LLE and chemical phase equilibrium."
+      - "Assigned branch: codex/generic-reactive-lle."
+      - "Dependencies: I, D, F."
+      - "Prompt file: docs/roadmaps/agent_prompts/J_generic_reactive_lle_and_chemical_phase_equilibrium.md."
+      - "Use local live GoalBuddy board in Codex."
+      - "Use bounded watcher mode with auto_start_after_gate true, poll_interval_seconds 120, max_wait_minutes 480."
+      - "Do not create local .worktrees/."
+      - "Do not add application-specific public APIs."
+      - "No finite difference."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+
+agents:
+  scout: unknown
+  worker: unknown
+  judge: unknown
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/generic-reactive-lle/"
+    command: "node C:\\Users\\Tanner\\.codex\\plugins\\cache\\goalbuddy\\goalbuddy\\0.3.6\\skills\\goalbuddy\\extend\\local-goal-board\\scripts\\local-goal-board.mjs --goal docs/goals/generic-reactive-lle"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: T001
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: active
+    reasoning_hint: medium
+    objective: "Read GitHub issue #93 during /goal execution, record the current issue scope in notes/issue_scope.md, and verify the dependency gate inputs before any implementation starts."
+    inputs:
+      - "docs/roadmaps/agent_prompts/J_generic_reactive_lle_and_chemical_phase_equilibrium.md"
+      - "docs/roadmaps/agent_prompts/index.yaml"
+      - "docs/roadmaps/general_reactive_electrolyte_equilibrium_readiness.md"
+      - "docs/roadmaps/agent_dependency_plan.md"
+    constraints:
+      - "Read-only until the gate passes."
+      - "Do not edit implementation files."
+      - "Do not create local .worktrees/."
+      - "Keep branch codex/generic-reactive-lle."
+      - "Do not add application-specific public APIs."
+      - "No finite difference."
+    expected_output:
+      - "Issue scope note"
+      - "Dependency gate evidence"
+      - "Gate pass or blocker"
+    receipt: null
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Review the issue-scope note and dependency gate evidence, then decide whether implementation may start or the board must stay in PREPARED_WAITING."
+    inputs:
+      - "T001 receipt"
+      - "notes/issue_scope.md"
+      - "notes/dependency_gate.yaml"
+    constraints:
+      - "Do not implement."
+      - "Keep the task generic."
+      - "Reject any silent scope narrowing."
+    expected_output:
+      - "Decision"
+      - "Exact Worker objective"
+      - "allowed_files"
+      - "verify"
+      - "stop_if"
+    receipt: null
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: medium
+    objective: "Implement the first safe generic reactive LLE / chemical phase equilibrium slice selected by Judge after the gate passes."
+    allowed_files: []
+    verify: []
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Behavior is ambiguous."
+      - "Verification fails twice."
+    receipt: null
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Audit whether the implemented slice satisfies the original user outcome for this tranche."
+    inputs:
+      - "All done task receipts"
+      - "Last verification"
+      - "Current dirty diff"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if required Worker work is still queued or active."
+      - "Reject completion if the broader original outcome still has safe local follow-up slices."
+      - "Reject stopping only because a slice needs owner input, credentials, production access, destructive operations, or policy decisions."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "missing evidence"
+      - "next task if not complete"
+    receipt: null
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: unknown
+    task: null
+    commands: []

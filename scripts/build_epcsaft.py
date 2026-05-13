@@ -195,6 +195,8 @@ def main() -> int:
         args.enable_cppad = True
     if args.use_system_ceres:
         args.enable_ceres = True
+    if args.parallel is None and os.name == "nt":
+        args.parallel = "1"
     if args.enable_ceres and args.parallel is None:
         args.parallel = "2"
 

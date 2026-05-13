@@ -18,7 +18,19 @@ def classify_equilibrium_route(mixture: Any, kind: str, backend: str | None = No
         return {"route": "electrolyte_lle", "reason": "requested electrolyte liquid-liquid path"}
     if token in {"lle", "lle_flash"}:
         return {"route": "neutral_lle", "reason": "requested neutral liquid-liquid path"}
-    if token in {"tp_flash", "vle", "vle_flash"}:
+    if token in {
+        "tp_flash",
+        "vle",
+        "vle_flash",
+        "bubble_p",
+        "bubble_t",
+        "dew_p",
+        "dew_t",
+        "neutral_bubble_p",
+        "neutral_bubble_t",
+        "neutral_dew_p",
+        "neutral_dew_t",
+    }:
         return {"route": "neutral_vle", "reason": "requested vapor-liquid path"}
     if token == "stability":
         return {"route": "neutral_tpd", "reason": "requested neutral stability path"}

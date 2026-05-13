@@ -5,18 +5,19 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from epcsaft import create_parameter_template, ePCSAFTMixture, fit_mea_co2_h2o_electrolyte, write_fit_result
+from epcsaft import create_parameter_template, ePCSAFTMixture, write_fit_result
+from epcsaft.regression import _fit_mea_co2_h2o_pure_parameter_benchmark
 
 SPECIES = ["H2O", "MEA", "CO2", "MEAH+", "MEACOO-", "HCO3-"]
 
 ADVANCED_USER_OPTIONS = {
     "elec_model": {
-        "rel_perm": {"rule": "empirical", "differential_mode": "numerical"},
+        "rel_perm": {"rule": "empirical", "differential_mode": "auto"},
         "born_model": {
             "d_Born_mode": 3,
             "solvation_shell_model": True,
             "dielectric_saturation": True,
-            "mu_born_model": {"differential_mode": "numerical", "comp_dep_delta_d": True},
+            "mu_born_model": {"differential_mode": "auto", "comp_dep_delta_d": True},
         },
     }
 }
@@ -117,7 +118,7 @@ def test_mea_co2_h2o_benchmark_smoke_fits_only_pure_parameters(tmp_path):
     )
     before_binary = (fit_root / "mixed" / "binary_interaction" / "k_ij.csv").read_text(encoding="utf-8")
 
-    results = fit_mea_co2_h2o_electrolyte(
+    results = _fit_mea_co2_h2o_pure_parameter_benchmark(
         records,
         dataset=fit_root,
         species=SPECIES,
@@ -148,7 +149,7 @@ def test_mea_co2_h2o_benchmark_writes_only_pure_rows_and_protects_existing_cells
         },
         "MEA_CO2_H2O_Fit",
     )
-    results = fit_mea_co2_h2o_electrolyte(
+    results = _fit_mea_co2_h2o_pure_parameter_benchmark(
         records,
         dataset=fit_root,
         species=SPECIES,
@@ -182,7 +183,7 @@ def test_mea_co2_h2o_benchmark_opt_in_real_multistart(tmp_path):
         "MEA_CO2_H2O_Fit",
     )
 
-    results = fit_mea_co2_h2o_electrolyte(
+    results = _fit_mea_co2_h2o_pure_parameter_benchmark(
         records,
         dataset=fit_root,
         species=SPECIES,
