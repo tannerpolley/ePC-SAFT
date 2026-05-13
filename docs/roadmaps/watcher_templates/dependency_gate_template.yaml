@@ -2,7 +2,8 @@
 task_key: A
 issue: null
 branch: codex/backend-coverage-hard-gate
-auto_start_after_gate: false
+watcher_mode: bounded
+auto_start_after_gate: true
 poll_interval_seconds: 120
 max_wait_minutes: 480
 
@@ -27,7 +28,7 @@ on_gate_pass:
   action: start_goal_without_asking_if_auto_start_true
 
 on_gate_fail:
-  action: stop_with_status
+  action: run_bounded_watcher_or_stop_with_status
 
 on_timeout:
   action: stop_with_prepared_waiting

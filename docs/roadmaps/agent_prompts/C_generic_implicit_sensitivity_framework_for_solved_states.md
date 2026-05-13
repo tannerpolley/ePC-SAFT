@@ -44,7 +44,7 @@ Create:
 - docs/goals/<slug>/goal.md
 - docs/goals/<slug>/state.yaml
 - docs/goals/<slug>/notes/
-- docs/goals/<slug>/dependency_gate.yaml
+- docs/goals/<slug>/notes/dependency_gate.yaml
 
 After branch bootstrap, current branch must be:
 
@@ -60,12 +60,16 @@ Dependencies:
 - A
 - B
 
-After Goal Prep, do exactly one of:
-1. If dependencies are not satisfied: write PREPARED_WAITING and stop.
-2. If dependencies are satisfied and auto_start_after_gate is true: begin following goal.md directly without asking.
-3. If dependencies are satisfied and auto_start_after_gate is false: write PREPARED_READY and stop.
+After Goal Prep, use bounded watcher auto-run:
+1. Create or update `docs/goals/<slug>/notes/dependency_gate.yaml`.
+2. Create or update `docs/goals/<slug>/notes/watch_dependency.ps1` when dependencies are not already satisfied.
+3. Set `watcher_mode: bounded`, `auto_start_after_gate: true`, `poll_interval_seconds: 120`, and `max_wait_minutes: 480` in local GoalBuddy/dependency files.
+4. If dependencies are satisfied, start implementation immediately without asking.
+5. If dependencies are not satisfied, run the bounded watcher, poll every 120 seconds, stop after 480 minutes with `PREPARED_WAITING` if still blocked, and start implementation without asking when the gate passes.
 
+Do not stop at `PREPARED_READY` merely because `auto_start_after_gate` is false. That manual checkpoint mode is retired unless the user explicitly asks for it in a future issue.
 Do not ask the user what to do next.
+Do not ask repeated confirmation questions.
 ```
 
 
