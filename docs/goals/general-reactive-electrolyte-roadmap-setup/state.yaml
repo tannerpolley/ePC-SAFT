@@ -112,7 +112,7 @@ tasks:
       - "Preserve repo organization and avoid extra temp folders."
     allowed_files:
       - "SETUP_AGENT_PROMPT.md"
-      - "COPY_PASTE_AGENT_PROMPTS.md"
+      - "docs/COPY_PASTE_AGENT_PROMPTS.md"
       - "BRANCH_CHECKOUT_CAVEAT.md"
       - "docs/roadmaps/general_reactive_electrolyte_equilibrium_readiness.md"
       - "docs/roadmaps/agent_dependency_plan.md"
@@ -142,7 +142,7 @@ tasks:
       result: done
       changed_files:
         - "SETUP_AGENT_PROMPT.md"
-        - "COPY_PASTE_AGENT_PROMPTS.md"
+        - "docs/COPY_PASTE_AGENT_PROMPTS.md"
         - "BRANCH_CHECKOUT_CAVEAT.md"
         - "docs/roadmaps/general_reactive_electrolyte_equilibrium_readiness.md"
         - "docs/roadmaps/agent_dependency_plan.md"
@@ -257,7 +257,7 @@ tasks:
       - "uv run python scripts/validate_project.py docs"
       - "git status --short"
       - "Verify requested docs/roadmaps files exist."
-      - "Verify SETUP_AGENT_PROMPT.md, COPY_PASTE_AGENT_PROMPTS.md, BRANCH_CHECKOUT_CAVEAT.md, and docs/roadmaps/branch_bootstrap_instructions.md exist."
+      - "Verify SETUP_AGENT_PROMPT.md, docs/COPY_PASTE_AGENT_PROMPTS.md, BRANCH_CHECKOUT_CAVEAT.md, and docs/roadmaps/branch_bootstrap_instructions.md exist."
       - "Confirm no files under src/ or package implementation paths changed."
     stop_if:
       - "Validation requires source-code changes."

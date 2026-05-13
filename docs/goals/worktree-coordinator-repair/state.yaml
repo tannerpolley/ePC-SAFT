@@ -195,7 +195,7 @@ tasks:
     reasoning_hint: medium
     objective: "Patch repo roadmap or prompt policy only if T001/T002 prove it is needed."
     allowed_files:
-      - "COPY_PASTE_AGENT_PROMPTS.md"
+      - "docs/COPY_PASTE_AGENT_PROMPTS.md"
       - "docs/roadmaps/setup_agent_prompt.md"
       - "docs/roadmaps/agent_prompts/index.yaml"
       - "docs/roadmaps/agent_prompts/README.md"
@@ -229,7 +229,7 @@ tasks:
     receipt:
       result: done
       changed_files:
-        - "COPY_PASTE_AGENT_PROMPTS.md"
+        - "docs/COPY_PASTE_AGENT_PROMPTS.md"
         - "docs/roadmaps/setup_agent_prompt.md"
         - "docs/roadmaps/agent_prompts/index.yaml"
         - "docs/roadmaps/agent_prompts/README.md"
@@ -252,7 +252,7 @@ tasks:
         - "docs/roadmaps/agent_scope_contract_policy.md"
         - "docs/roadmaps/running_agent_repair_prompts.md"
       commands:
-        - cmd: "rg -n \"auto_start_after_gate: false|docs/goals/<slug>/dependency_gate.yaml|docs/goals/<slug>/watch_dependency.ps1|write PREPARED_READY|PREPARED_READY and stop\" docs/roadmaps COPY_PASTE_AGENT_PROMPTS.md"
+        - cmd: "rg -n \"auto_start_after_gate: false|docs/goals/<slug>/dependency_gate.yaml|docs/goals/<slug>/watch_dependency.ps1|write PREPARED_READY|PREPARED_READY and stop\" docs/roadmaps docs/COPY_PASTE_AGENT_PROMPTS.md"
           status: pass
           summary: "No matches."
         - cmd: "uv run python scripts/validate_project.py docs"

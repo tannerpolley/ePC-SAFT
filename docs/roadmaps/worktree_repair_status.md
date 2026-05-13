@@ -123,7 +123,7 @@ The coordinator `/goal` run is changing state normally in `docs/goals/worktree-c
 
 ## Repo Files Patched
 
-- `COPY_PASTE_AGENT_PROMPTS.md`
+- `docs/COPY_PASTE_AGENT_PROMPTS.md`
 - `docs/roadmaps/agent_prompts/index.yaml`
 - `docs/roadmaps/agent_prompts/README.md`
 - `docs/roadmaps/agent_prompts/A_derivative_backend_completion_audit_and_coverage_matrix_hard_gate.md`
