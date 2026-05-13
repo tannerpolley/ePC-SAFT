@@ -73,7 +73,7 @@ tasks:
       - "docs/roadmaps/agent_prompts/index.yaml"
       - "docs/roadmaps/agent_prompts/D_general_reaction_and_equilibrium_constant_convention_layer.md"
       - "docs/roadmaps/agent_dependency_plan.md"
-      - "docs/goals/reaction-constant-conventions/dependency_gate.yaml"
+      - "docs/goals/reaction-constant-conventions/notes/dependency_gate.yaml"
     constraints:
       - "Do not edit product/source files."
       - "Do not start implementation while dependency A is missing."

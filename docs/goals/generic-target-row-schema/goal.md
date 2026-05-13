@@ -65,7 +65,7 @@ On every `/goal` continuation:
 
 1. Read this charter.
 2. Read `state.yaml`.
-3. Read `dependency_gate.yaml`.
+3. Read `notes/dependency_gate.yaml`.
 4. Run the bundled GoalBuddy update checker when available and mention a newer version without blocking.
 5. Work only on the active board task.
 6. Re-check dependency A / PR #98 before implementation.

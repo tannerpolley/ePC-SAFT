@@ -60,7 +60,7 @@ Machine truth lives at:
 
 The dependency gate lives at:
 
-`docs/goals/reaction-constant-conventions/dependency_gate.yaml`
+`docs/goals/reaction-constant-conventions/notes/dependency_gate.yaml`
 
 If this charter and `state.yaml` disagree, `state.yaml` wins for task status, active task, receipts, verification freshness, and completion truth.
 
@@ -76,7 +76,7 @@ On every `/goal` continuation:
 
 1. Read this charter.
 2. Read `state.yaml`.
-3. Read `dependency_gate.yaml`.
+3. Read `notes/dependency_gate.yaml`.
 4. Re-run the dependency gate from the task prompt before any implementation or planning beyond board maintenance.
 5. Work only on the active board task.
 6. If dependency A is still missing or the branch cannot rebase cleanly on `origin/main`, update the gate receipt and stop with `PREPARED_WAITING` or `BLOCKED_DEPENDENCY_OR_REBASE`.

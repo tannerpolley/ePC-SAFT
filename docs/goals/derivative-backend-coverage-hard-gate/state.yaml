@@ -70,7 +70,7 @@ tasks:
     reasoning_hint: high
     objective: "Run the prompt's dependency/rebase gate before any implementation edits."
     inputs:
-      - "docs/goals/derivative-backend-coverage-hard-gate/dependency_gate.yaml"
+      - "docs/goals/derivative-backend-coverage-hard-gate/notes/dependency_gate.yaml"
       - "docs/roadmaps/agent_prompts/A_derivative_backend_completion_audit_and_coverage_matrix_hard_gate.md"
     constraints:
       - "No product/source edits before this gate passes."
@@ -84,7 +84,7 @@ tasks:
       result: done
       summary: "Implementation dependency gate passed by equivalent clean-rebase evidence: branch is codex/backend-coverage-hard-gate, origin/main is an ancestor of HEAD, and origin/main...HEAD is 0/0. The literal rebase command was blocked before execution by tool policy, but the branch is already at origin/main."
       evidence:
-        - "docs/goals/derivative-backend-coverage-hard-gate/dependency_gate.yaml"
+        - "docs/goals/derivative-backend-coverage-hard-gate/notes/dependency_gate.yaml"
         - "git branch --show-current -> codex/backend-coverage-hard-gate"
         - "git merge-base --is-ancestor origin/main HEAD -> pass"
         - "git rev-list --left-right --count origin/main...HEAD -> 0 0"
@@ -200,7 +200,9 @@ tasks:
     status: done
     reasoning_hint: default
     objective: "Add or update tests for derivative coverage matrix and runtime capability semantics selected by Judge."
-    allowed_files: []
+    allowed_files:
+      - "tests/native/test_derivative_coverage_matrix.py"
+      - "tests/api/test_runtime_capabilities_dependency_gates.py"
     verify:
       - "uv run python run_pytest.py tests/native/test_derivative_coverage_matrix.py tests/native/test_property_derivative_backend_contract.py tests/native/test_association_implicit_derivative_contract.py -q"
       - "uv run python run_pytest.py tests/api/test_runtime_capabilities_dependency_gates.py -q"
