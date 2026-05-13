@@ -153,6 +153,17 @@ py::dict regression_result_to_dict(const PureNeutralRegressionResult& result) {
     out["solve_wall_time_s"] = result.solve_wall_time_s;
     out["message"] = result.message;
     out["backend"] = result.backend;
+    out["optimizer_backend"] = result.optimizer_backend.empty() ? result.backend : result.optimizer_backend;
+    out["derivative_backend"] = result.derivative_backend.empty() ? result.jacobian_backend : result.derivative_backend;
+    out["objective_initial"] = result.initial_cost;
+    out["objective_final"] = result.cost;
+    out["residual_norm_initial"] = std::sqrt(std::max(0.0, 2.0 * result.initial_cost));
+    out["residual_norm_final"] = result.residual_norm;
+    out["n_residual_evaluations"] = result.objective_evaluations;
+    out["n_jacobian_evaluations"] = result.gradient_evaluations;
+    out["gradient_norm"] = result.gradient_norm;
+    out["step_norm"] = result.step_norm;
+    out["python_objective_used"] = false;
     out["jacobian_available"] = result.jacobian_available;
     out["jacobian_backend"] = result.jacobian_backend;
     out["jacobian_fallback_used"] = result.jacobian_fallback_used;
@@ -1077,6 +1088,44 @@ py::dict fit_pure_neutral_native_least_squares_binding(
     return regression_result_to_dict(result);
 }
 
+py::dict fit_pure_neutral_native_ceres_binding(
+    const add_args& args,
+    const py::array& density_t,
+    const py::array& density_p,
+    const py::array& density_rho_exp,
+    const py::array& density_phase,
+    double density_scale,
+    const py::array& vle_t,
+    const py::array& vle_p,
+    double pure_vle_scale,
+    const py::array& x0,
+    const py::array& lower,
+    const py::array& upper,
+    int multistart
+) {
+    auto density_records = density_records_from_arrays(density_t, density_p, density_rho_exp, density_phase);
+    auto pure_vle_records = vle_records_from_arrays(vle_t, vle_p);
+    auto cpp_x0 = array_to_double_vector(x0);
+    auto cpp_lower = array_to_double_vector(lower);
+    auto cpp_upper = array_to_double_vector(upper);
+    PureNeutralRegressionResult result;
+    {
+        py::gil_scoped_release release;
+        result = fit_pure_neutral_ceres_cpp(
+            args,
+            density_records,
+            density_scale,
+            pure_vle_records,
+            pure_vle_scale,
+            cpp_x0,
+            cpp_lower,
+            cpp_upper,
+            multistart
+        );
+    }
+    return regression_result_to_dict(result);
+}
+
 py::dict evaluate_pure_neutral_objective_debug_binding(
     const add_args& args,
     const py::array& density_t,
@@ -1131,6 +1180,45 @@ py::dict fit_generic_native_least_squares_binding(
     {
         py::gil_scoped_release release;
         result = fit_generic_least_squares_cpp(
+            cpp_args,
+            cpp_records,
+            cpp_target_kinds,
+            cpp_target_indices,
+            cpp_target_indices_2,
+            cpp_x0,
+            cpp_lower,
+            cpp_upper,
+            multistart,
+            max_nfev
+        );
+    }
+    return generic_regression_result_to_dict(result);
+}
+
+py::dict fit_generic_native_ceres_binding(
+    const py::list& args_by_record,
+    const py::list& records,
+    const py::array& target_kinds,
+    const py::array& target_indices,
+    const py::array& target_indices_2,
+    const py::array& x0,
+    const py::array& lower,
+    const py::array& upper,
+    int multistart,
+    int max_nfev
+) {
+    auto cpp_args = native_args_from_list(args_by_record);
+    auto cpp_records = generic_records_from_list(records);
+    auto cpp_target_kinds = array_to_int_vector(target_kinds);
+    auto cpp_target_indices = array_to_int_vector(target_indices);
+    auto cpp_target_indices_2 = array_to_int_vector(target_indices_2);
+    auto cpp_x0 = array_to_double_vector(x0);
+    auto cpp_lower = array_to_double_vector(lower);
+    auto cpp_upper = array_to_double_vector(upper);
+    GenericRegressionResult result;
+    {
+        py::gil_scoped_release release;
+        result = fit_generic_ceres_cpp(
             cpp_args,
             cpp_records,
             cpp_target_kinds,
@@ -1356,8 +1444,10 @@ PYBIND11_MODULE(_core, m) {
         );
 
     m.def("_fit_pure_neutral_native_least_squares", &fit_pure_neutral_native_least_squares_binding);
+    m.def("_fit_pure_neutral_native_ceres", &fit_pure_neutral_native_ceres_binding);
     m.def("_fit_pure_neutral_native_debug", &evaluate_pure_neutral_objective_debug_binding);
     m.def("_fit_generic_native_least_squares", &fit_generic_native_least_squares_binding);
+    m.def("_fit_generic_native_ceres", &fit_generic_native_ceres_binding);
     m.def("_evaluate_generic_native_debug", &evaluate_generic_native_debug_binding);
     m.def("_solve_equilibrium_native", &solve_equilibrium_native_binding);
     m.def("_evaluate_electrolyte_lle_residual_native", &evaluate_electrolyte_lle_residual_native_binding);

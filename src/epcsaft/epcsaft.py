@@ -2562,6 +2562,61 @@ def _fit_generic_native_least_squares(
     }
 
 
+def _fit_generic_native_ceres(
+    fixed_payloads,
+    records,
+    target_kinds,
+    target_indices,
+    target_indices_2,
+    x0,
+    lower,
+    upper,
+    multistart=0,
+    max_nfev=200,
+):
+    result = _core._fit_generic_native_ceres(
+        _native_args_sequence(fixed_payloads),
+        list(records),
+        np.asarray(target_kinds, dtype=int),
+        np.asarray(target_indices, dtype=int),
+        np.asarray(target_indices_2, dtype=int),
+        np.asarray(x0, dtype=float),
+        np.asarray(lower, dtype=float),
+        np.asarray(upper, dtype=float),
+        int(multistart),
+        int(max_nfev),
+    )
+    return {
+        "x": vector_to_array(result["x"]),
+        "cost": float(result["cost"]),
+        "residual_norm": float(result["residual_norm"]),
+        "initial_cost": float(result["initial_cost"]),
+        "initial_residual_norm": float(result["initial_residual_norm"]),
+        "metrics_by_term": {str(k): float(v) for k, v in dict(result["metrics_by_term"]).items()},
+        "success": bool(result["success"]),
+        "status": int(result["status"]),
+        "nfev": int(result["nfev"]),
+        "iterations": int(result["iterations"]),
+        "starts_tried": int(result["starts_tried"]),
+        "message": str(result["message"]),
+        "backend": str(result["backend"]),
+        "jacobian_available": bool(result.get("jacobian_available", True)),
+        "jacobian_backend": str(result.get("jacobian_backend", "not_available")),
+        "jacobian_fallback_used": bool(result.get("jacobian_fallback_used", False)),
+        "jacobian_fallback_reason": str(result.get("jacobian_fallback_reason", "")),
+        "backend_unavailable_reason": str(result.get("backend_unavailable_reason", "")),
+        "hessian_available": bool(result.get("hessian_available", False)),
+        "hessian_backend": str(result.get("hessian_backend", "not_implemented")),
+        "hessian_fallback_used": bool(result.get("hessian_fallback_used", False)),
+        "hessian_fallback_reason": str(
+            result.get(
+                "hessian_fallback_reason",
+                "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.",
+            )
+        ),
+    }
+
+
 def _evaluate_generic_native_debug(
     fixed_payloads,
     records,

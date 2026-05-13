@@ -23,7 +23,7 @@ namespace ares_detail {
 template <typename Scalar>
 struct MixtureStateScalar {
     vector<double> d;
-    vector<double> e_ij;
+    vector<Scalar> e_ij;
     vector<double> s_ij;
     Scalar den = scalar_constant<Scalar>(0.0);
     Scalar m_avg = scalar_constant<Scalar>(0.0);
@@ -60,7 +60,14 @@ struct AresContributionsScalar {
 };
 
 template <typename Scalar>
-static MixtureStateScalar<Scalar> mixture_state_scalar_cpp(double t, const Scalar &rho, const vector<Scalar> &x, const add_args &cppargs) {
+static MixtureStateScalar<Scalar> mixture_state_scalar_cpp(
+    double t,
+    const Scalar &rho,
+    const vector<Scalar> &x,
+    const add_args &cppargs,
+    int k_override_index = -1,
+    const Scalar *k_override_value = nullptr
+) {
     MixtureStateScalar<Scalar> state;
     int ncomp = static_cast<int>(x.size());
     state.d.assign(ncomp, 0.0);
@@ -81,9 +88,23 @@ static MixtureStateScalar<Scalar> mixture_state_scalar_cpp(double t, const Scala
         for (int j = 0; j < ncomp; ++j) {
             ++idx;
             state.s_ij[idx] = thermo_detail::parameter_setup_detail::pair_sigma_cpp(static_cast<size_t>(idx), i, j, cppargs);
-            state.e_ij[idx] = thermo_detail::parameter_setup_detail::pair_epsilon_cpp(static_cast<size_t>(idx), i, j, cppargs);
+            Scalar epsilon = scalar_sqrt(cppargs.e[i] * cppargs.e[j]);
+            if (!cppargs.z.empty() && cppargs.z[i] * cppargs.z[j] > 0.0) {
+                epsilon = scalar_constant<Scalar>(0.0);
+            } else if (k_override_value != nullptr && k_override_index >= 0) {
+                const int k_i = k_override_index / ncomp;
+                const int k_j = k_override_index % ncomp;
+                if (idx == k_override_index || idx == (k_j * ncomp + k_i)) {
+                    epsilon *= (1.0 - *k_override_value);
+                } else if (!cppargs.k_ij.empty()) {
+                    epsilon *= (1.0 - cppargs.k_ij[static_cast<size_t>(idx)]);
+                }
+            } else if (!cppargs.k_ij.empty()) {
+                epsilon *= (1.0 - cppargs.k_ij[static_cast<size_t>(idx)]);
+            }
+            state.e_ij[idx] = epsilon;
             state.m2es3 += x[i] * x[j] * cppargs.m[i] * cppargs.m[j] * state.e_ij[idx] / t * std::pow(state.s_ij[idx], 3);
-            state.m2e2s3 += x[i] * x[j] * cppargs.m[i] * cppargs.m[j] * std::pow(state.e_ij[idx] / t, 2) * std::pow(state.s_ij[idx], 3);
+            state.m2e2s3 += x[i] * x[j] * cppargs.m[i] * cppargs.m[j] * scalar_pow(state.e_ij[idx] / t, 2) * std::pow(state.s_ij[idx], 3);
         }
     }
     return state;
@@ -223,7 +244,11 @@ template <typename Scalar>
 static Scalar ares_assoc_scalar_cpp(const vector<Scalar> &x, const add_args &cppargs) {
     (void)x;
     if (!cppargs.assoc_num.empty()) {
-        throw ValueError("backend_unavailable: CppAD association recording is unavailable because site fractions require an iterative solve.");
+        for (int sites : cppargs.assoc_num) {
+            if (sites > 0) {
+                throw ValueError("backend_unavailable: CppAD association recording is unavailable because site fractions require an iterative solve.");
+            }
+        }
     }
     return scalar_constant<Scalar>(0.0);
 }
@@ -244,6 +269,16 @@ static double ares_assoc_cpp(const AssociationIntermediateState &assoc_state, co
 template <typename Scalar>
 static Scalar ares_ion_scalar_cpp(double t, const MixtureStateScalar<Scalar> &thermo, const vector<Scalar> &x, const add_args &cppargs) {
     if (cppargs.z.empty()) {
+        return scalar_constant<Scalar>(0.0);
+    }
+    bool has_charge = false;
+    for (double charge : cppargs.z) {
+        if (std::abs(charge) > 1.0e-12) {
+            has_charge = true;
+            break;
+        }
+    }
+    if (!has_charge) {
         return scalar_constant<Scalar>(0.0);
     }
     Scalar q2_sum = scalar_constant<Scalar>(0.0);
@@ -283,6 +318,16 @@ static double ares_ion_cpp(double t, const IonIntermediateState &ion_state) {
 template <typename Scalar>
 static Scalar ares_born_scalar_cpp(double t, const vector<Scalar> &x, const add_args &cppargs) {
     if (cppargs.z.empty() || cppargs.born_model == 0) {
+        return scalar_constant<Scalar>(0.0);
+    }
+    bool has_charge = false;
+    for (double charge : cppargs.z) {
+        if (std::abs(charge) > 1.0e-12) {
+            has_charge = true;
+            break;
+        }
+    }
+    if (!has_charge) {
         return scalar_constant<Scalar>(0.0);
     }
     if (cppargs.born_model != 1) {
@@ -326,9 +371,16 @@ static double ares_born_cpp(double t, const BornIntermediateState &born_state) {
 }
 
 template <typename Scalar>
-static AresContributionsScalar<Scalar> ares_contributions_scalar_cpp(double t, const Scalar &rho, const vector<Scalar> &x, const add_args &cppargs) {
+static AresContributionsScalar<Scalar> ares_contributions_scalar_cpp(
+    double t,
+    const Scalar &rho,
+    const vector<Scalar> &x,
+    const add_args &cppargs,
+    int k_override_index = -1,
+    const Scalar *k_override_value = nullptr
+) {
     AresContributionsScalar<Scalar> out;
-    MixtureStateScalar<Scalar> thermo = mixture_state_scalar_cpp(t, rho, x, cppargs);
+    MixtureStateScalar<Scalar> thermo = mixture_state_scalar_cpp(t, rho, x, cppargs, k_override_index, k_override_value);
     HardChainStateScalar<Scalar> hc_state = hard_chain_state_scalar_cpp(thermo, x, cppargs);
     DispersionPolynomialStateScalar<Scalar> dispersion = dispersion_polynomials_scalar_cpp(thermo.m_avg, hc_state.eta);
     out.hc = ares_hc_scalar_cpp(thermo, hc_state, x, cppargs);
@@ -427,7 +479,11 @@ epcsaft::native::autodiff::ADDerivativeResult cppad_eos_contribution_derivatives
 #ifdef EPCSAFT_HAS_CPPAD
     using CppADScalar = CppAD::AD<double>;
     if (!cppargs.assoc_num.empty()) {
-        throw ValueError("backend_unavailable: CppAD association recording is unavailable because site fractions require an iterative solve.");
+        for (int sites : cppargs.assoc_num) {
+            if (sites > 0) {
+                throw ValueError("backend_unavailable: CppAD association recording is unavailable because site fractions require an iterative solve.");
+            }
+        }
     }
     if (!cppargs.z.empty() && cppargs.born_model > 1) {
         throw ValueError("backend_unavailable: CppAD Born recording supports direct Born model=1 formulas only.");
@@ -473,6 +529,138 @@ epcsaft::native::autodiff::ADDerivativeResult cppad_eos_contribution_derivatives
     result.backend = "backend_unavailable";
     result.message = "CppAD support is disabled in this native build";
     return result;
+#endif
+}
+
+NeutralBinaryKijPhaseDerivatives neutral_binary_kij_phase_derivatives_cpp(
+    double t,
+    double rho,
+    const vector<double> &x,
+    const add_args &cppargs,
+    int k_index
+) {
+#ifdef EPCSAFT_HAS_CPPAD
+    using CppADScalar = CppAD::AD<double>;
+    const int ncomp = static_cast<int>(x.size());
+    if (ncomp != 2 || cppargs.m.size() != 2 || cppargs.s.size() != 2 || cppargs.e.size() != 2) {
+        throw ValueError("backend_unavailable: native binary k_ij Ceres derivatives require exactly two neutral components.");
+    }
+    if (!cppargs.assoc_num.empty()) {
+        for (int sites : cppargs.assoc_num) {
+            if (sites > 0) {
+                throw ValueError("backend_unavailable: native binary k_ij Ceres derivatives do not support associating components.");
+            }
+        }
+    }
+    if (!cppargs.z.empty()) {
+        for (double charge : cppargs.z) {
+            if (std::abs(charge) > 1.0e-12) {
+                throw ValueError("backend_unavailable: native binary k_ij Ceres derivatives do not support ionic components.");
+            }
+        }
+    }
+    if (cppargs.k_ij.size() != static_cast<size_t>(ncomp * ncomp)) {
+        throw ValueError("backend_unavailable: native binary k_ij Ceres derivatives require a dense k_ij matrix.");
+    }
+    if (k_index < 0 || static_cast<size_t>(k_index) >= cppargs.k_ij.size()) {
+        throw ValueError("Native binary k_ij derivative index is out of range.");
+    }
+    if (!(t > 0.0) || !(rho > 0.0) || x.size() != 2 || !(x[0] > 0.0) || !(x[1] > 0.0)) {
+        throw ValueError("Native binary k_ij derivative evaluation requires positive T, rho, and composition values.");
+    }
+
+    constexpr int kRhoIndex = 0;
+    constexpr int kKijIndex = 1;
+    constexpr int kX0Index = 2;
+    constexpr int kX1Index = 3;
+    constexpr int kVarCount = 4;
+    std::vector<CppADScalar> avars(kVarCount);
+    avars[kRhoIndex] = rho;
+    avars[kKijIndex] = cppargs.k_ij[static_cast<size_t>(k_index)];
+    avars[kX0Index] = x[0];
+    avars[kX1Index] = x[1];
+    CppAD::Independent(avars);
+
+    std::vector<CppADScalar> ax = {avars[kX0Index], avars[kX1Index]};
+    auto contributions = ares_detail::ares_contributions_scalar_cpp(
+        t,
+        avars[kRhoIndex],
+        ax,
+        cppargs,
+        k_index,
+        &avars[kKijIndex]
+    );
+    std::vector<CppADScalar> ay(1);
+    ay[0] = contributions.hc + contributions.disp + contributions.assoc + contributions.ion + contributions.born;
+
+    CppAD::ADFun<double> function(avars, ay);
+    std::vector<double> point = {rho, cppargs.k_ij[static_cast<size_t>(k_index)], x[0], x[1]};
+    auto values = function.Forward(0, point);
+    auto jacobian = function.Jacobian(point);
+    auto hessian = function.Hessian(point, 0);
+
+    const double ares = values[0];
+    const double da_drho = jacobian[kRhoIndex];
+    const double da_dk = jacobian[kKijIndex];
+    const double da_dx0 = jacobian[kX0Index];
+    const double da_dx1 = jacobian[kX1Index];
+    const auto h = [&](int row, int col) {
+        return hessian[static_cast<size_t>(row * kVarCount + col)];
+    };
+    const double d2a_drho2 = h(kRhoIndex, kRhoIndex);
+    const double d2a_drho_dk = h(kRhoIndex, kKijIndex);
+    const double d2a_dx0_drho = h(kX0Index, kRhoIndex);
+    const double d2a_dx1_drho = h(kX1Index, kRhoIndex);
+    const double d2a_dx0_dk = h(kX0Index, kKijIndex);
+    const double d2a_dx1_dk = h(kX1Index, kKijIndex);
+
+    const double z_raw = rho * da_drho;
+    const double z = 1.0 + z_raw;
+    if (!(z > 0.0)) {
+        throw ValueError("Native binary k_ij derivative evaluation produced non-positive Z.");
+    }
+    const double dz_drho = da_drho + rho * d2a_drho2;
+    const double dz_dk = rho * d2a_drho_dk;
+    const double pressure_factor = kb * t * N_AV;
+    NeutralBinaryKijPhaseDerivatives out;
+    out.rho = rho;
+    out.z = z;
+    out.pressure = rho * pressure_factor * z;
+    out.dpdrho = pressure_factor * (z + rho * dz_drho);
+    out.dpdk = rho * pressure_factor * dz_dk;
+    if (!(std::isfinite(out.dpdrho)) || std::abs(out.dpdrho) <= 0.0) {
+        throw ValueError("Native binary k_ij derivative evaluation produced invalid dP/drho.");
+    }
+    out.drhodk = -out.dpdk / out.dpdrho;
+    out.lnphi.assign(2, 0.0);
+    out.dlnphi_drho.assign(2, 0.0);
+    out.dlnphi_dk_fixed_rho.assign(2, 0.0);
+    out.dlnphi_dk_total.assign(2, 0.0);
+
+    const std::array<double, 2> dadx = {da_dx0, da_dx1};
+    const std::array<double, 2> dadx_drho = {d2a_dx0_drho, d2a_dx1_drho};
+    const std::array<double, 2> dadx_dk = {d2a_dx0_dk, d2a_dx1_dk};
+    const double sum_x_dadx = x[0] * dadx[0] + x[1] * dadx[1];
+    const double sum_x_dadx_drho = x[0] * dadx_drho[0] + x[1] * dadx_drho[1];
+    const double sum_x_dadx_dk = x[0] * dadx_dk[0] + x[1] * dadx_dk[1];
+    for (int i = 0; i < 2; ++i) {
+        const double mu = ares + z_raw + dadx[static_cast<size_t>(i)] - sum_x_dadx;
+        const double dmu_drho = da_drho + dz_drho + dadx_drho[static_cast<size_t>(i)] - sum_x_dadx_drho;
+        const double dmu_dk = da_dk + dz_dk + dadx_dk[static_cast<size_t>(i)] - sum_x_dadx_dk;
+        out.lnphi[static_cast<size_t>(i)] = mu - std::log(z);
+        out.dlnphi_drho[static_cast<size_t>(i)] = dmu_drho - dz_drho / z;
+        out.dlnphi_dk_fixed_rho[static_cast<size_t>(i)] = dmu_dk - dz_dk / z;
+        out.dlnphi_dk_total[static_cast<size_t>(i)] =
+            out.dlnphi_dk_fixed_rho[static_cast<size_t>(i)] + out.dlnphi_drho[static_cast<size_t>(i)] * out.drhodk;
+    }
+    return out;
+#else
+    (void)t;
+    (void)rho;
+    (void)x;
+    (void)cppargs;
+    (void)k_index;
+    throw ValueError("backend_unavailable: CppAD support is not enabled in this native build.");
 #endif
 }
 

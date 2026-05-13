@@ -595,7 +595,7 @@ R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
 - Description: Provides a residual Helmholtz-energy relation for hard-chain reference contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
 - LaTeX: `docs/latex/equations.tex:562`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:152` (template <typename Scalar>)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:173` (template <typename Scalar>)
 
 ```tex
 \begin{aligned}
@@ -1481,7 +1481,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Provides a residual Helmholtz-energy relation for residual helmholz energy.
 - Change note: No explicit citation on this equation block in the source file.
 - LaTeX: `docs/latex/equations.tex:1390`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:386` (AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:438` (AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \tilde{a}^{\mathrm{res}}=\tilde{a}^{h c}+\tilde{a}^{\text {disp }}+\tilde{a}^{\text {assoc }}+\tilde{a}^{\text {DH }}+\tilde{a}^{\text {Born }}
@@ -1494,7 +1494,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Provides the total temperature differential of the residual Helmholtz energy.
 - Change note: Moved here from the removed standalone temperature-differential section so one downstream total-\(d\tilde a^\mathrm{res}/dT\) summary relation remains available.
 - LaTeX: `docs/latex/equations.tex:1402`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:501` (ScalarContributionTerms temperature_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:689` (ScalarContributionTerms temperature_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
 ```tex
 \left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial T}\right)_{\rho,x_{i}} =\left(\frac{\partial\tilde{a}^\mathrm{hc}}{\partial T}\right)_{\rho,x_{i}} +\left(\frac{\partial\tilde{a}^\mathrm{disp}}{\partial T}\right)_{\rho,x_{i}}
@@ -1512,7 +1512,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Provides a residual Helmholtz-energy relation for hard-chain reference contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
 - LaTeX: `docs/latex/equations.tex:1418`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:163` (template <typename Scalar>)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:184` (template <typename Scalar>)
 
 ```tex
 \begin{aligned}
@@ -1588,7 +1588,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
 - LaTeX: `docs/latex/equations.tex:1488`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:174` (template <typename Scalar>)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:195` (template <typename Scalar>)
 
 ```tex
 \tilde{a}^{\mathrm{disp}}=-2 \pi \rho I_{1}(\eta, \bar{m}) \overline{m^2 \epsilon \sigma^3}-\pi \rho \bar{m} C_{1} I_{2}(\eta, \bar{m}) \overline{m^2 \epsilon^2 \sigma^3}
@@ -1656,7 +1656,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Provides a residual Helmholtz-energy relation for association contribution.
 - Change note: Association Helmholtz form is traced to Chapman/Wertheim SAFT association theory, but the exact numbered equation is not present in the local progression PDFs.
 - LaTeX: `docs/latex/equations.tex:1550`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:222` (template <typename Scalar>)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:243` (template <typename Scalar>)
 
 ```tex
 \tilde{a}^{\mathrm{assoc}}= \sum_{i} x_{i}\sum_{\mathrm{A}_{i}}\left(\ln X^{\mathrm{A}_{i}}-\frac{X^{\mathrm{A}_{i}}}{2}+\frac{1}{2}\right)
@@ -1721,7 +1721,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
 - LaTeX: `docs/latex/equations.tex:1609`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:244` (template <typename Scalar>)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:269` (template <typename Scalar>)
 
 ```tex
 \tilde{a}^{DH}=-\frac{\kappa e^{2}}{12\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}\sum_{i}x_{i}z_{i}^{2}\chi_{i}
@@ -1804,7 +1804,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Provides a residual Helmholtz-energy relation for born electrolyte term contribution.
 - Change note: Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation.
 - LaTeX: `docs/latex/equations.tex:1686`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:283` (template <typename Scalar>)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:318` (template <typename Scalar>)
 
 ```tex
 \tilde{a}^{\mathrm{Born}}

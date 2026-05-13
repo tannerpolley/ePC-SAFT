@@ -13,10 +13,15 @@ import numpy as np
 
 from ._types import InputError, phase_to_int
 from .epcsaft import (
+    _core,
     _evaluate_generic_native_debug,
     _fit_generic_native_least_squares,
+    _fit_generic_native_ceres,
     _fit_pure_neutral_native_debug,
     _fit_pure_neutral_native_least_squares,
+    check_association,
+    create_struct,
+    vector_to_array,
 )
 from .parameter_templates import _infer_pure_template_name
 from .parameters import (
@@ -123,6 +128,10 @@ HESSIAN_NOT_IMPLEMENTED_REASON = "Hessian support is a skeleton for future IPOPT
 LIQUID_ELECTROLYTE_BACKEND_UNAVAILABLE_REASON = (
     "backend_unavailable: liquid-electrolyte parameter fitting needs native optimizer internals that are not part "
     "of this API-contract slice."
+)
+BINARY_CERES_BACKEND_UNAVAILABLE_REASON = (
+    "backend_unavailable: binary Ceres regression requires real k_ij residual derivatives through fugacity "
+    "and density-root sensitivities; the legacy generic binary optimizer is finite-difference only."
 )
 
 
@@ -486,6 +495,18 @@ class FitResult:
     message: str = ""
     nfev: int = 0
     backend: str = "least_squares_native"
+    optimizer_backend: str = "least_squares_native"
+    derivative_backend: str = "not_available"
+    objective_initial: float = float("nan")
+    objective_final: float = float("nan")
+    n_residual_evaluations: int = 0
+    n_jacobian_evaluations: int = 0
+    gradient_norm: float = float("nan")
+    step_norm: float = float("nan")
+    python_objective_used: bool = False
+    parameter_map: dict[str, float] = field(default_factory=dict)
+    row_diagnostics: list[dict[str, Any]] = field(default_factory=list)
+    active_bounds: list[str] = field(default_factory=list)
     jacobian_available: bool = False
     jacobian_backend: str = "not_available"
     jacobian_fallback_used: bool = False
@@ -513,6 +534,18 @@ class FitResult:
         self.message = str(self.message)
         self.nfev = int(self.nfev)
         self.backend = str(self.backend)
+        self.optimizer_backend = str(self.optimizer_backend)
+        self.derivative_backend = str(self.derivative_backend)
+        self.objective_initial = float(self.objective_initial)
+        self.objective_final = float(self.objective_final)
+        self.n_residual_evaluations = int(self.n_residual_evaluations)
+        self.n_jacobian_evaluations = int(self.n_jacobian_evaluations)
+        self.gradient_norm = float(self.gradient_norm)
+        self.step_norm = float(self.step_norm)
+        self.python_objective_used = bool(self.python_objective_used)
+        self.parameter_map = {str(k): float(v) for k, v in self.parameter_map.items()}
+        self.row_diagnostics = [dict(row) for row in self.row_diagnostics]
+        self.active_bounds = [str(item) for item in self.active_bounds]
         self.jacobian_available = bool(self.jacobian_available)
         self.jacobian_backend = str(self.jacobian_backend)
         self.jacobian_fallback_used = bool(self.jacobian_fallback_used)
@@ -571,6 +604,15 @@ def _fit_derivative_metadata(result: Mapping[str, Any]) -> dict[str, Any]:
     """Extract compact Jacobian/Hessian metadata from native regression payloads."""
 
     return {
+        "optimizer_backend": str(result.get("optimizer_backend", result.get("backend", "not_available"))),
+        "derivative_backend": str(result.get("derivative_backend", result.get("jacobian_backend", "not_available"))),
+        "objective_initial": float(result.get("objective_initial", result.get("initial_cost", float("nan")))),
+        "objective_final": float(result.get("objective_final", result.get("cost", float("nan")))),
+        "n_residual_evaluations": int(result.get("n_residual_evaluations", result.get("objective_evaluations", 0))),
+        "n_jacobian_evaluations": int(result.get("n_jacobian_evaluations", result.get("gradient_evaluations", 0))),
+        "gradient_norm": float(result.get("gradient_norm", float("nan"))),
+        "step_norm": float(result.get("step_norm", float("nan"))),
+        "python_objective_used": bool(result.get("python_objective_used", False)),
         "jacobian_available": bool(result.get("jacobian_available", False)),
         "jacobian_backend": str(result.get("jacobian_backend", "not_available")),
         "jacobian_fallback_used": bool(result.get("jacobian_fallback_used", False)),
@@ -1255,6 +1297,40 @@ def _run_native_generic_least_squares(
     )
 
 
+def _run_native_generic_ceres(
+    fixed_payloads: Sequence[Mapping[str, Any]],
+    native_records: Sequence[Mapping[str, Any]],
+    optimization_names: Sequence[str],
+    species: Sequence[str],
+    theta0: np.ndarray,
+    lower: np.ndarray,
+    upper: np.ndarray,
+    *,
+    component: str | None = None,
+    pair: tuple[str, str] | None = None,
+    multistart: int = 0,
+    max_nfev: int = 200,
+) -> dict[str, Any]:
+    target_kinds, target_indices, target_indices_2 = _native_target_payload(
+        optimization_names,
+        species,
+        component=component,
+        pair=pair,
+    )
+    return _fit_generic_native_ceres(
+        [dict(payload) for payload in fixed_payloads],
+        [dict(record) for record in native_records],
+        target_kinds,
+        target_indices,
+        target_indices_2,
+        theta0,
+        lower,
+        upper,
+        multistart=int(multistart),
+        max_nfev=int(max_nfev),
+    )
+
+
 def _run_native_generic_derivative_debug(
     fixed_payloads: Sequence[Mapping[str, Any]],
     native_records: Sequence[Mapping[str, Any]],
@@ -1581,7 +1657,9 @@ def _fit_binary_pair_internal(
     provenance: Sequence[BinaryInteraction] | Mapping[str, str] | None = None,
     allow_unsupported_parameters: bool = False,
     multistart: int = 0,
+    optimizer_backend: str = "least_squares_native",
 ) -> FitResult:
+    optimizer_backend = _optimizer_backend_from_options({"optimizer_backend": optimizer_backend}, "least_squares_native")
     normalized_pair = _normalize_pair(pair)
     normalized_records = _normalize_records(records)
     normalized_species = _binary_species_from_records(normalized_records, normalized_pair, species)
@@ -1631,6 +1709,17 @@ def _fit_binary_pair_internal(
     lower, upper = bounds_obj.arrays_for(optimization_names)
     theta0 = np.asarray([initial_map[name] for name in optimization_names], dtype=float)
     pair_indices = tuple(normalized_species.index(name) for name in normalized_pair)
+    problem = FitProblem(
+        mode=BINARY_PAIR_MODE,
+        records=tuple(normalized_records),
+        pair=normalized_pair,
+        dataset=_source_dataset_label(dataset),
+        fit_targets=normalized_fit_targets,
+        optimization_parameters=optimization_names,
+        initial_guess=initial_map,
+        temperature_model=normalized_temperature_model,
+        terms=terms,
+    )
 
     native_records: list[dict[str, Any]] = []
     fixed_payloads: list[dict[str, Any]] = []
@@ -1660,29 +1749,33 @@ def _fit_binary_pair_internal(
             )
             fixed_payloads.append(_params_for_native_record(dataset, normalized_species, x_liq, T, user_options))
 
-    result = _run_native_generic_least_squares(
-        fixed_payloads,
-        native_records,
-        optimization_names,
-        normalized_species,
-        theta0,
-        lower,
-        upper,
-        pair=normalized_pair,
-        multistart=int(multistart),
-    )
+    if optimizer_backend == "ceres":
+        if normalized_fit_targets != ("k_ij",):
+            raise InputError("backend_unavailable: binary_pair Ceres currently supports only the target 'k_ij'.")
+        result = _run_native_generic_ceres(
+            fixed_payloads,
+            native_records,
+            optimization_names,
+            normalized_species,
+            theta0,
+            lower,
+            upper,
+            pair=normalized_pair,
+            multistart=int(multistart),
+        )
+    else:
+        result = _run_native_generic_least_squares(
+            fixed_payloads,
+            native_records,
+            optimization_names,
+            normalized_species,
+            theta0,
+            lower,
+            upper,
+            pair=normalized_pair,
+            multistart=int(multistart),
+        )
     vector_map = _normalize_vector_map(optimization_names, result["x"])
-    problem = FitProblem(
-        mode=BINARY_PAIR_MODE,
-        records=tuple(normalized_records),
-        pair=normalized_pair,
-        dataset=_source_dataset_label(dataset),
-        fit_targets=normalized_fit_targets,
-        optimization_parameters=optimization_names,
-        initial_guess=initial_map,
-        temperature_model=normalized_temperature_model,
-        terms=terms,
-    )
     return FitResult(
         problem=problem,
         fitted_values=vector_map,
@@ -1764,6 +1857,81 @@ def _native_pure_neutral_runner_args(
     }
 
 
+def _fit_pure_neutral_native_ceres(
+    fixed_payload,
+    density_T,
+    density_P,
+    density_rho_exp,
+    density_phase,
+    density_scale,
+    vle_T,
+    vle_P,
+    pure_vle_scale,
+    x0,
+    lower,
+    upper,
+    multistart=0,
+) -> dict[str, Any]:
+    params = check_association(dict(fixed_payload))
+    cppargs = create_struct(params)
+    result = _core._fit_pure_neutral_native_ceres(
+        cppargs,
+        np.asarray(density_T, dtype=float),
+        np.asarray(density_P, dtype=float),
+        np.asarray(density_rho_exp, dtype=float),
+        np.asarray(density_phase, dtype=int),
+        float(density_scale),
+        np.asarray(vle_T, dtype=float),
+        np.asarray(vle_P, dtype=float),
+        float(pure_vle_scale),
+        np.asarray(x0, dtype=float),
+        np.asarray(lower, dtype=float),
+        np.asarray(upper, dtype=float),
+        int(multistart),
+    )
+    return {
+        "x": vector_to_array(result["x"]),
+        "cost": float(result["cost"]),
+        "residual_norm": float(result["residual_norm"]),
+        "density_metric": float(result["density_metric"]),
+        "pure_vle_metric": float(result["pure_vle_metric"]),
+        "initial_cost": float(result["initial_cost"]),
+        "initial_density_metric": float(result["initial_density_metric"]),
+        "initial_pure_vle_metric": float(result["initial_pure_vle_metric"]),
+        "success": bool(result["success"]),
+        "status": int(result["status"]),
+        "nfev": int(result["nfev"]),
+        "iterations": int(result["iterations"]),
+        "starts_tried": int(result["starts_tried"]),
+        "objective_evaluations": int(result["objective_evaluations"]),
+        "gradient_evaluations": int(result["gradient_evaluations"]),
+        "residual_evaluations": int(result["residual_evaluations"]),
+        "density_solves": int(result["density_solves"]),
+        "fused_state_evaluations": int(result["fused_state_evaluations"]),
+        "callback_wall_time_s": float(result["callback_wall_time_s"]),
+        "solve_wall_time_s": float(result["solve_wall_time_s"]),
+        "message": str(result["message"]),
+        "backend": str(result["backend"]),
+        "optimizer_backend": str(result.get("optimizer_backend", result["backend"])),
+        "derivative_backend": str(result.get("derivative_backend", result.get("jacobian_backend", "not_available"))),
+        "objective_initial": float(result.get("objective_initial", result["initial_cost"])),
+        "objective_final": float(result.get("objective_final", result["cost"])),
+        "n_residual_evaluations": int(result.get("n_residual_evaluations", result["objective_evaluations"])),
+        "n_jacobian_evaluations": int(result.get("n_jacobian_evaluations", result["gradient_evaluations"])),
+        "gradient_norm": float(result.get("gradient_norm", float("nan"))),
+        "step_norm": float(result.get("step_norm", float("nan"))),
+        "python_objective_used": bool(result.get("python_objective_used", False)),
+        "jacobian_available": bool(result.get("jacobian_available", True)),
+        "jacobian_backend": str(result.get("jacobian_backend", result.get("derivative_backend", "not_available"))),
+        "jacobian_fallback_used": bool(result.get("jacobian_fallback_used", False)),
+        "jacobian_fallback_reason": str(result.get("jacobian_fallback_reason", "")),
+        "hessian_available": bool(result.get("hessian_available", False)),
+        "hessian_backend": str(result.get("hessian_backend", "not_implemented")),
+        "hessian_fallback_used": bool(result.get("hessian_fallback_used", False)),
+        "hessian_fallback_reason": str(result.get("hessian_fallback_reason", HESSIAN_NOT_IMPLEMENTED_REASON)),
+    }
+
+
 def _fit_pure_neutral_internal(
     records: Any,
     component: str,
@@ -1776,6 +1944,7 @@ def _fit_pure_neutral_internal(
     initial_guess: Mapping[str, float] | None = None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
     multistart: int = 0,
+    optimizer_backend: str = "ceres",
 ) -> FitResult:
     fit_result, _ = _fit_pure_neutral_internal_with_native(
         records,
@@ -1788,6 +1957,7 @@ def _fit_pure_neutral_internal(
         initial_guess=initial_guess,
         bounds=bounds,
         multistart=multistart,
+        optimizer_backend=optimizer_backend,
     )
     return fit_result
 
@@ -1804,6 +1974,7 @@ def _fit_pure_neutral_internal_with_native(
     initial_guess: Mapping[str, float] | None = None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
     multistart: int = 0,
+    optimizer_backend: str = "ceres",
 ) -> tuple[FitResult, dict[str, Any]]:
     normalized_component = _normalize_component(component)
     normalized_records = _normalize_records(records)
@@ -1824,21 +1995,40 @@ def _fit_pure_neutral_internal_with_native(
         bounds,
     )
     theta0 = np.asarray([payload["initial_map"][name] for name in payload["optimization_names"]], dtype=float)
-    native_result = _fit_pure_neutral_native_least_squares(
-        payload["fixed_payload"],
-        payload["density_T"],
-        payload["density_P"],
-        payload["density_rho_exp"],
-        payload["density_phase"],
-        payload["density_scale"],
-        payload["vle_T"],
-        payload["vle_P"],
-        payload["pure_vle_scale"],
-        theta0,
-        payload["lower"],
-        payload["upper"],
-        multistart=int(multistart),
-    )
+    if optimizer_backend == "least_squares_native":
+        native_result = _fit_pure_neutral_native_least_squares(
+            payload["fixed_payload"],
+            payload["density_T"],
+            payload["density_P"],
+            payload["density_rho_exp"],
+            payload["density_phase"],
+            payload["density_scale"],
+            payload["vle_T"],
+            payload["vle_P"],
+            payload["pure_vle_scale"],
+            theta0,
+            payload["lower"],
+            payload["upper"],
+            multistart=int(multistart),
+        )
+    elif optimizer_backend == "ceres":
+        native_result = _fit_pure_neutral_native_ceres(
+            payload["fixed_payload"],
+            payload["density_T"],
+            payload["density_P"],
+            payload["density_rho_exp"],
+            payload["density_phase"],
+            payload["density_scale"],
+            payload["vle_T"],
+            payload["vle_P"],
+            payload["pure_vle_scale"],
+            theta0,
+            payload["lower"],
+            payload["upper"],
+            multistart=int(multistart),
+        )
+    else:
+        raise InputError(f"Unsupported pure-neutral optimizer backend: {optimizer_backend}")
 
     vector_map = _normalize_vector_map(payload["optimization_names"], native_result["x"])
     problem = FitProblem(
@@ -1855,6 +2045,10 @@ def _fit_pure_neutral_internal_with_native(
         pure_file_hint=payload["pure_file_hint"],
     )
     rendered = {name: float(vector_map[name]) for name in normalized_fit_targets}
+    row_diagnostics = [
+        {"row_family": TERM_DENSITY, "metric": float(native_result["density_metric"])},
+        {"row_family": TERM_PURE_VLE, "metric": float(native_result["pure_vle_metric"])},
+    ]
     fit_result = FitResult(
         problem=problem,
         fitted_values=vector_map,
@@ -1870,6 +2064,14 @@ def _fit_pure_neutral_internal_with_native(
         message=str(native_result["message"]),
         nfev=int(native_result["nfev"]),
         backend=str(native_result["backend"]),
+        parameter_map=vector_map,
+        row_diagnostics=row_diagnostics,
+        active_bounds=[
+            name
+            for name in payload["optimization_names"]
+            if math.isclose(vector_map[name], float(payload["lower"][payload["optimization_names"].index(name)]))
+            or math.isclose(vector_map[name], float(payload["upper"][payload["optimization_names"].index(name)]))
+        ],
         **_fit_derivative_metadata(native_result),
     )
     return fit_result, native_result
@@ -1929,6 +2131,7 @@ def _fit_pure_neutral_least_squares_internal(
         initial_guess=initial_guess,
         bounds=bounds,
         multistart=multistart,
+        optimizer_backend="least_squares_native",
     )
 
 
@@ -2179,6 +2382,19 @@ def _reject_finite_difference_options(options: Any) -> None:
         raise InputError("finite-difference derivative options are not part of the public regression API.")
 
 
+def _optimizer_backend_from_options(options: Mapping[str, Any] | None, default: str) -> str:
+    backend = str((options or {}).get("optimizer_backend", default)).strip().lower()
+    aliases = {
+        "native": "least_squares_native",
+        "least_squares": "least_squares_native",
+        "least_squares_native": "least_squares_native",
+        "ceres": "ceres",
+    }
+    if backend not in aliases:
+        raise InputError(f"Unsupported optimizer_backend: {backend}")
+    return aliases[backend]
+
+
 def _normalize_user_targets(parameters_to_fit: Iterable[str] | None, default: Sequence[str]) -> tuple[str, ...]:
     raw_targets = tuple(default if parameters_to_fit is None else parameters_to_fit)
     return tuple(_USER_TARGET_ALIASES.get(str(target), str(target)) for target in raw_targets)
@@ -2331,6 +2547,7 @@ def fit_binary_parameters(
         provenance=provenance,
         allow_unsupported_parameters=allow_unsupported_parameters,
         multistart=int((solver_options or {}).get("multistart", 0)),
+        optimizer_backend=_optimizer_backend_from_options(solver_options, "least_squares_native"),
     )
     return _annotate_contract_problem(
         result,
@@ -2357,6 +2574,7 @@ def fit_binary_pair(
     provenance: Sequence[BinaryInteraction] | Mapping[str, str] | None = None,
     allow_unsupported_parameters: bool = False,
     multistart: int = 0,
+    optimizer_backend: str = "least_squares_native",
 ) -> FitResult:
     """Fit V1 binary interaction parameters against VLE x/y records."""
     return _fit_binary_pair_internal(
@@ -2372,6 +2590,7 @@ def fit_binary_pair(
         provenance=provenance,
         allow_unsupported_parameters=allow_unsupported_parameters,
         multistart=multistart,
+        optimizer_backend=optimizer_backend,
     )
 
 
@@ -2453,13 +2672,28 @@ def fit_liquid_electrolyte_parameters(
         provenance_report = validate_regression_provenance(provenance, species=labels, strict=False)
     if user_options:
         problem.solver_options = {**problem.solver_options, "user_options": _copy_mapping(user_options)}
+    optimizer_backend = _optimizer_backend_from_options(solver_options, "ceres")
     return FitResult(
         problem=problem,
         success=False,
         status=-1,
         message=LIQUID_ELECTROLYTE_BACKEND_UNAVAILABLE_REASON,
         backend="backend_unavailable",
+        optimizer_backend=optimizer_backend,
+        derivative_backend="backend_unavailable",
+        jacobian_backend="backend_unavailable",
+        jacobian_available=False,
+        jacobian_fallback_used=False,
+        python_objective_used=False,
         backend_unavailable_reason=LIQUID_ELECTROLYTE_BACKEND_UNAVAILABLE_REASON,
+        row_diagnostics=[
+            {
+                "row_family": term.term_type,
+                "supported": False,
+                "backend_unavailable_reason": LIQUID_ELECTROLYTE_BACKEND_UNAVAILABLE_REASON,
+            }
+            for term in problem.terms
+        ],
         provenance_report=provenance_report,
     )
 
