@@ -617,9 +617,24 @@ class ePCSAFTMixture:
         from .equilibrium_core.classify import classify_equilibrium_route
         from .reactive_speciation import ReactiveSpeciationOptions
 
-        if kind in {"reactive_staged_equilibrium", "reactive_staged"}:
+        if kind in {
+            "reactive_staged_equilibrium",
+            "reactive_staged",
+            "reactive_lle",
+            "reactive_lle_flash",
+            "reactive_electrolyte_lle",
+            "reactive_electrolyte_lle_flash",
+        }:
             if balances is None or totals is None or reactions is None:
-                raise InputError("reactive_staged_equilibrium requires balances, totals, and reactions.")
+                raise InputError(f"{kind} requires balances, totals, and reactions.")
+            if kind in {"reactive_lle", "reactive_lle_flash"}:
+                if phase_kind is not None and phase_kind not in {"lle_flash", "lle_tp"}:
+                    raise InputError("reactive_lle phase_kind must be 'lle_flash' when provided.")
+                phase_kind = "lle_flash"
+            if kind in {"reactive_electrolyte_lle", "reactive_electrolyte_lle_flash"}:
+                if phase_kind is not None and phase_kind not in {"electrolyte_lle", "electrolyte_lle_tp"}:
+                    raise InputError("reactive_electrolyte_lle phase_kind must be 'electrolyte_lle' when provided.")
+                phase_kind = "electrolyte_lle"
             phase_kwargs = {
                 "vapor_species": vapor_species,
                 "volatile_species": volatile_species,
@@ -981,7 +996,7 @@ class ePCSAFTMixture:
                 trial_phases=trial_phases,
             )
         raise InputError(
-            "Only kind='tp_flash', kind='auto', kind='bubble_p', kind='bubble_t', kind='dew_p', kind='dew_t', kind='lle_flash', kind='electrolyte_lle', kind='electrolyte_bubble_pressure', kind='electrolyte_stability', kind='stability', kind='chemical_equilibrium', kind='reactive_staged_equilibrium', kind='reactive_stability', or kind='reactive_electrolyte_bubble_pressure' is supported by equilibrium."
+            "Only kind='tp_flash', kind='auto', kind='bubble_p', kind='bubble_t', kind='dew_p', kind='dew_t', kind='lle_flash', kind='electrolyte_lle', kind='electrolyte_bubble_pressure', kind='electrolyte_stability', kind='stability', kind='chemical_equilibrium', kind='reactive_staged_equilibrium', kind='reactive_lle', kind='reactive_electrolyte_lle', kind='reactive_stability', or kind='reactive_electrolyte_bubble_pressure' is supported by equilibrium."
         )
 
     def equilibrium_curve(self, points, *, kind="electrolyte_lle", T=None, P=None, options=None, initial_phases=None):

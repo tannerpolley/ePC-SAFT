@@ -63,13 +63,13 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T001
+active_task: T999
 
 tasks:
   - id: T001
     type: scout
     assignee: Scout
-    status: active
+    status: done
     reasoning_hint: medium
     objective: "Read GitHub issue #93 during /goal execution, record the current issue scope in notes/issue_scope.md, and verify the dependency gate inputs before any implementation starts."
     inputs:
@@ -88,11 +88,23 @@ tasks:
       - "Issue scope note"
       - "Dependency gate evidence"
       - "Gate pass or blocker"
-    receipt: null
+    receipt:
+      result: done
+      status: gate_passed
+      summary: "Issue #93 scope recorded and dependencies I/D/F verified as closed and merged."
+      evidence:
+        - "docs/goals/generic-reactive-lle/notes/issue_scope.md"
+        - "gh issue view 92 --repo tannerpolley/ePC-SAFT --json number,title,state,url"
+        - "gh issue view 87 --repo tannerpolley/ePC-SAFT --json number,title,state,url"
+        - "gh issue view 89 --repo tannerpolley/ePC-SAFT --json number,title,state,url"
+        - "gh pr view 110 --repo tannerpolley/ePC-SAFT --json number,state,mergedAt,mergeCommit,url"
+        - "gh pr view 99 --repo tannerpolley/ePC-SAFT --json number,state,mergedAt,mergeCommit,url"
+        - "gh pr view 105 --repo tannerpolley/ePC-SAFT --json number,state,mergedAt,mergeCommit,url"
+      gate: "GATE_PASS Dependencies #92/#87/#89 are closed and PRs #110/#99/#105 are merged."
   - id: T002
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Review the issue-scope note and dependency gate evidence, then decide whether implementation may start or the board must stay in PREPARED_WAITING."
     inputs:
@@ -109,24 +121,67 @@ tasks:
       - "allowed_files"
       - "verify"
       - "stop_if"
-    receipt: null
+    receipt:
+      result: done
+      decision: start_implementation
+      summary: "Dependency gate is GATE_PASSED; implementation may start without asking."
+      evidence:
+        - "docs/goals/generic-reactive-lle/notes/dependency_gate.yaml"
+        - "powershell.exe -NoProfile -ExecutionPolicy Bypass -File docs/goals/generic-reactive-lle/notes/watch_dependency.ps1"
+        - "watcher output: GATE_PASS"
+        - "branch fast-forwarded to origin/main at d7485537aa472febe51cbbd7ad50ca62ba2ab165"
+      worker_constraints:
+        - "Keep APIs generic."
+        - "No finite difference."
+        - "No application-specific public APIs."
+        - "Classify all issue-scope items."
   - id: T003
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     reasoning_hint: medium
     objective: "Implement the first safe generic reactive LLE / chemical phase equilibrium slice selected by Judge after the gate passes."
-    allowed_files: []
-    verify: []
+    allowed_files:
+      - "src/epcsaft/**"
+      - "tests/equilibrium/test_reactive_lle.py"
+      - "tests/api/test_reactive_staged_workflow_contract.py"
+      - "docs/goals/generic-reactive-lle/**"
+    verify:
+      - "uv run python run_pytest.py tests/equilibrium/test_reactive_lle.py tests/api/test_reactive_staged_workflow_contract.py -q"
+      - "uv run python scripts/validate_project.py quick"
+      - "git diff --check"
     stop_if:
       - "Need files outside allowed_files."
       - "Behavior is ambiguous."
       - "Verification fails twice."
-    receipt: null
+    receipt:
+      result: done
+      status: implemented
+      summary: "Added generic reactive phase-equilibrium/LLE route aliases, a typed ReactivePhaseEquilibriumProblem, and staged diagnostics for reaction coordinates, element balances, reaction residuals, phase split, fugacity equality, nonnegativity, and Ascani benchmark status."
+      changed_files:
+        - "src/epcsaft/__init__.py"
+        - "src/epcsaft/epcsaft.py"
+        - "src/epcsaft/equilibrium.py"
+        - "src/epcsaft/reactive_staged.py"
+        - "tests/equilibrium/test_reactive_lle.py"
+        - "tests/api/test_reactive_staged_workflow_contract.py"
+      validation:
+        - "uv run python run_pytest.py tests/equilibrium/test_reactive_lle.py tests/api/test_reactive_staged_workflow_contract.py -q"
+        - "uv run python scripts/validate_project.py quick"
+        - "git diff --check"
+      commands:
+        - command: "uv run python run_pytest.py tests/equilibrium/test_reactive_lle.py tests/api/test_reactive_staged_workflow_contract.py -q"
+          status: pass
+        - command: "uv run python scripts/validate_project.py quick"
+          status: pass
+        - command: "git diff --check"
+          status: pass
+      derivative_policy: "No finite-difference route was added; diagnostics explicitly report finite_difference_backend_available=false."
+      public_api_policy: "Only generic reactive phase-equilibrium names were added; no application-specific public APIs were added."
   - id: T999
     type: judge
     assignee: Judge
-    status: queued
+    status: active
     reasoning_hint: high
     objective: "Audit whether the implemented slice satisfies the original user outcome for this tranche."
     inputs:
