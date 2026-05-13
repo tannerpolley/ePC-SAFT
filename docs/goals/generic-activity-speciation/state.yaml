@@ -171,6 +171,37 @@ tasks:
         - cmd: "git diff --check"
           status: pass
           summary: "No whitespace errors; Git reported CRLF conversion warnings only."
+  - id: T999
+    type: judge
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Final audit before merge."
+    receipt:
+      result: done
+      status: complete
+      decision: complete
+      full_outcome_complete: true
+      issue_url: "https://github.com/tannerpolley/ePC-SAFT/issues/89"
+      pr_url: "https://github.com/tannerpolley/ePC-SAFT/pull/105"
+      summary: "Task F implementation, validation, PR self-review, and GitHub checks passed. The changed files are limited to generic reactive speciation, runtime capability metadata, tests, and GoalBuddy receipts."
+      scope_review:
+        no_finite_difference: true
+        no_application_specific_public_apis: true
+        no_silent_scope_narrowing: true
+        changed_files_in_scope: true
+        github_checks_passed: true
+        pr_mergeable: true
+      commands:
+        - cmd: "gh pr diff 105 --name-only"
+          status: pass
+          summary: "PR files are limited to GoalBuddy receipts, generic speciation implementation, runtime capabilities, and tests."
+        - cmd: "gh pr checks 105 --watch --fail-fast"
+          status: pass
+          summary: "fast workflow smoke and native default build passed; optional matrix jobs were skipped by workflow rules."
+        - cmd: "gh pr view 105 --json number,url,isDraft,mergeable,statusCheckRollup,headRefName,baseRefName"
+          status: pass
+          summary: "PR #105 was ready for review and mergeable before this final audit receipt commit."
 
 checks:
   last_verification:
