@@ -7,6 +7,9 @@ from tests.helpers.regression_cases import _methane_like_records, _minimal_neutr
 
 
 def test_ceres_pure_neutral_regression_owns_optimizer_loop() -> None:
+    ceres = epcsaft.runtime_build_info()["optional_dependencies"]["ceres"]
+    if not ceres["compiled"]:
+        pytest.skip("Ceres support is not enabled in this native build.")
     initial_guess = {"m": 1.08, "s": 3.55, "e": 155.0}
 
     result = epcsaft.fit_pure_neutral(
@@ -20,6 +23,7 @@ def test_ceres_pure_neutral_regression_owns_optimizer_loop() -> None:
             "s": (2.0, 5.0),
             "e": (50.0, 400.0),
         },
+        optimizer_backend="ceres",
     )
 
     assert result.success, result.message
@@ -34,4 +38,3 @@ def test_ceres_pure_neutral_regression_owns_optimizer_loop() -> None:
     assert result.row_diagnostics
     assert result.n_residual_evaluations >= 1
     assert result.n_jacobian_evaluations >= 1
-

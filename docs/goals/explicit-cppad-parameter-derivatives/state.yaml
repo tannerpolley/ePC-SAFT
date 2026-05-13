@@ -1,0 +1,463 @@
+version: 2
+
+goal:
+  title: "Explicit CppAD Parameter Derivatives"
+  slug: "explicit-cppad-parameter-derivatives"
+  kind: existing_plan
+  tranche: "Implementation active after dependency gate passed; bounded watcher auto-start is enabled."
+  status: active
+  intake:
+    original_request: "Run Goal Prep for Task B: Explicit CppAD parameter derivatives for EOS/property APIs."
+    interpreted_outcome: "Task B has a GoalBuddy board and dependency gate, with Task A merged into origin/main and implementation started automatically under bounded watcher settings."
+    input_shape: existing_plan
+    audience: "ePC-SAFT package maintainers and downstream regression/equilibrium users"
+    authority: requested
+    proof_type: test
+    completion_proof: "CppAD-enabled build, targeted native CppAD derivative tests, quick project validation, focused PR, and final audit all pass after dependency A is merged."
+    likely_misfire: "Implementing before Task A merges, using finite differences, adding application-specific APIs, or treating solved-state implicit sensitivities as part of Task B."
+    blind_spots_considered:
+      - "Dependency A is merged into origin/main."
+      - "The branch must rebase cleanly on origin/main before implementation."
+      - "PR #56 must not be used as a base."
+      - "Explicit algebraic derivatives are in scope; implicit solved-state sensitivities are out of scope."
+    existing_plan_facts:
+      - "Task key: B."
+      - "Title: Explicit CppAD parameter derivatives for EOS/property APIs."
+      - "Branch: codex/cppad-explicit-parameter-derivatives."
+      - "Dependency: A."
+      - "watcher_mode: bounded."
+      - "auto_start_after_gate: true."
+      - "poll_interval_seconds: 120."
+      - "max_wait_minutes: 480."
+      - "No finite difference."
+      - "No application-specific public APIs."
+      - "Do not create local .worktrees/."
+      - "Do not use PR #56 as a base."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+
+watcher:
+  mode: bounded
+  auto_start_after_gate: true
+  poll_interval_seconds: 120
+  max_wait_minutes: 480
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://127.0.0.1:60272"
+    command: "node C:\\Users\\Tanner\\.codex\\skills\\goalbuddy\\extend\\local-goal-board\\scripts\\local-goal-board.mjs --goal docs/goals/explicit-cppad-parameter-derivatives"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: T010
+
+tasks:
+  - id: T001
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Record dependency gate result and stop according to the Task B prompt."
+    inputs:
+      - "docs/roadmaps/agent_prompts/index.yaml"
+      - "docs/roadmaps/agent_prompts/B_explicit_cppad_parameter_derivatives_for_eos_property_apis.md"
+      - "docs/roadmaps/general_reactive_electrolyte_equilibrium_readiness.md"
+      - "docs/roadmaps/agent_dependency_plan.md"
+      - "docs/goals/explicit-cppad-parameter-derivatives/dependency_gate.yaml"
+    constraints:
+      - "Do not edit product/source files."
+      - "Do not inspect implementation files."
+      - "Do not start implementation."
+      - "Corrected by operator: do not stop at PREPARED_READY when dependencies pass because bounded watcher auto-start is enabled."
+    expected_output:
+      - "AUTO_STARTED"
+      - "Dependency A evidence"
+      - "Implementation started after gate"
+    receipt:
+      result: done
+      status: AUTO_STARTED
+      summary: "Task A is merged and this branch was fast-forwarded onto origin/main; a later correction set bounded watcher auto-start, so Task B implementation started without stopping at PREPARED_READY."
+      evidence:
+        - "Task A PR #98 is merged: https://github.com/tannerpolley/ePC-SAFT/pull/98"
+        - "Commit 224601f is contained in origin/main."
+        - "git merge --ff-only origin/main succeeded on codex/cppad-explicit-parameter-derivatives."
+        - "Corrected Task B watcher settings: bounded, auto_start_after_gate true, poll_interval_seconds 120, max_wait_minutes 480."
+      next: "Continue implementation from the active GoalBuddy task."
+  - id: T002
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: medium
+    objective: "After dependency A merges, map derivative coverage artifacts, relevant EOS/property derivative paths, and existing CppAD tests without editing files."
+    inputs:
+      - "Task A merged output on origin/main"
+      - "Derivative coverage matrix and hard gate from Task A"
+      - "Native CppAD derivative tests"
+    constraints:
+      - "Read-only."
+      - "Do not inspect PR #56 as a base."
+      - "Do not propose finite-difference coverage."
+    expected_output:
+      - "Coverage gaps for explicit algebraic parameter derivatives"
+      - "Relevant files and APIs"
+      - "Candidate bounded Worker tasks"
+    receipt:
+      result: done
+      note: notes/T002-scout-map.md
+      summary: "Mapped Task A derivative coverage and found the smallest existing production path: neutral binary k_ij CppAD property derivatives are already implemented natively for regression but not exposed through state/property result methods."
+      evidence:
+        - "src/epcsaft/epcsaft.py"
+        - "src/epcsaft/native/epcsaft_ares.cpp"
+        - "src/epcsaft/native/epcsaft_regression.cpp"
+        - "tests/native/test_cppad_pressure_derivatives.py"
+        - "tests/native/test_cppad_fugacity_derivatives.py"
+      spawned_tasks:
+        - T003
+  - id: T003
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Choose the first safe implementation slice for explicit CppAD parameter derivatives after Scout evidence is available."
+    inputs:
+      - "T002 receipt"
+      - "Dependency gate result"
+    constraints:
+      - "Do not implement."
+      - "Reject finite differences."
+      - "Reject application-specific APIs."
+      - "Keep implicit solved-state sensitivities out of scope."
+    expected_output:
+      - "Decision"
+      - "Exact Worker objective"
+      - "allowed_files"
+      - "verify"
+      - "stop_if"
+    receipt:
+      result: done
+      decision: "Implement neutral binary k_ij pressure and ln-fugacity parameter derivatives through existing state/property result methods first."
+      rationale:
+        - "It reuses an existing native CppAD derivative evaluator already consumed by regression."
+        - "It is generic package functionality and does not add application-specific public APIs."
+        - "It avoids finite differences and avoids implicit solved-state work except for reporting only fixed-rho property derivatives."
+        - "It keeps unsupported m/s/e, l_ij, k_hb_ij, ionic, associating, and non-binary cases truthful until separate slices handle them. Later Task B slices added pure-neutral m/sigma/epsilon and neutral-binary l_ij support."
+      next_allowed_task: T004
+      allowed_files:
+        - "src/epcsaft/bindings.cpp"
+        - "src/epcsaft/epcsaft.py"
+        - "tests/native/test_cppad_pressure_derivatives.py"
+        - "tests/native/test_cppad_fugacity_derivatives.py"
+        - "tests/native/test_derivative_coverage_matrix.py"
+      verify:
+        - "uv run python scripts/build_epcsaft.py --enable-cppad"
+        - "uv run python run_pytest.py tests/native/test_cppad_pressure_derivatives.py tests/native/test_cppad_fugacity_derivatives.py tests/native/test_cppad_activity_derivatives.py tests/native/test_cppad_relative_permittivity_derivatives.py tests/native/test_derivative_coverage_matrix.py -q"
+        - "uv run python scripts/validate_project.py quick"
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Execute the first bounded implementation slice selected by Judge for explicit CppAD parameter derivatives."
+    allowed_files:
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/epcsaft.py"
+      - "tests/native/test_cppad_pressure_derivatives.py"
+      - "tests/native/test_cppad_fugacity_derivatives.py"
+      - "tests/native/test_derivative_coverage_matrix.py"
+    verify:
+      - "uv run python scripts/build_epcsaft.py --enable-cppad"
+      - "uv run python run_pytest.py tests/native/test_cppad_pressure_derivatives.py tests/native/test_cppad_fugacity_derivatives.py tests/native/test_cppad_activity_derivatives.py tests/native/test_cppad_relative_permittivity_derivatives.py -q"
+      - "uv run python scripts/validate_project.py quick"
+    stop_if:
+      - "Dependency A is not merged into origin/main."
+      - "Branch is not codex/cppad-explicit-parameter-derivatives."
+      - "Branch does not rebase cleanly on origin/main."
+      - "Need files outside allowed_files."
+      - "Derivative path would require finite differences."
+      - "Implementation would add application-specific public APIs."
+      - "Implementation would tape solver loops or implement implicit solved-state sensitivities."
+      - "Verification fails twice for the same unclear reason."
+    receipt:
+      result: done
+      changed_files:
+        - "src/epcsaft/bindings.cpp"
+        - "src/epcsaft/epcsaft.py"
+        - "tests/native/test_cppad_pressure_derivatives.py"
+        - "tests/native/test_cppad_fugacity_derivatives.py"
+        - "tests/native/test_derivative_coverage_matrix.py"
+      commands:
+        - cmd: "uv run python scripts/build_epcsaft.py --enable-cppad"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/test_cppad_pressure_derivatives.py tests/native/test_cppad_fugacity_derivatives.py tests/native/test_cppad_activity_derivatives.py tests/native/test_cppad_relative_permittivity_derivatives.py tests/native/test_derivative_coverage_matrix.py -q"
+          status: pass
+        - cmd: "uv run python scripts/validate_project.py quick"
+          status: pass
+      summary: "Exposed the existing neutral binary k_ij CppAD derivative path through pressure and ln-fugacity parameter result methods, added parameter rows to the state coverage matrix, and tightened tests so the neutral binary k_ij case must report supported cppad derivatives."
+  - id: T005
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit the first slice and choose the next safe Task B implementation slice."
+    inputs:
+      - "T004 receipt"
+      - "T002 Scout map"
+    constraints:
+      - "Do not implement."
+      - "Reject finite differences."
+      - "Keep implementation generic."
+    expected_output:
+      - "complete | not_complete"
+      - "next Worker task"
+      - "allowed_files"
+      - "verify"
+      - "stop_if"
+    receipt:
+      result: done
+      decision: "Task B is not complete after T004; continue with pure-neutral m/sigma/epsilon pressure and ln-fugacity parameter derivatives using CppAD."
+      full_outcome_complete: false
+      missing_evidence:
+        - "Pure-neutral m/sigma/epsilon state/property parameter derivatives are still not exposed."
+        - "l_ij and k_hb_ij remain unsupported at this point. Later T008 added neutral-binary l_ij support; k_hb_ij remains unsupported."
+        - "Chemical-potential parameter derivatives are not yet covered."
+      next_allowed_task: T006
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Expose CppAD pure-neutral m/sigma/epsilon pressure and ln-fugacity parameter derivatives through existing state/property result methods."
+    allowed_files:
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/epcsaft.py"
+      - "src/epcsaft/native/epcsaft_regression.cpp"
+      - "tests/native/test_cppad_pressure_derivatives.py"
+      - "tests/native/test_cppad_fugacity_derivatives.py"
+    verify:
+      - "uv run python scripts/build_epcsaft.py --enable-cppad"
+      - "uv run python run_pytest.py tests/native/test_cppad_pressure_derivatives.py tests/native/test_cppad_fugacity_derivatives.py -q"
+      - "uv run python scripts/validate_project.py quick"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Implementation would use finite differences."
+      - "Implementation would add application-specific public APIs."
+      - "Pure-neutral derivative equations cannot be reused or taped without duplicating substantial EOS logic."
+      - "Verification fails twice for the same unclear reason."
+    receipt:
+      result: done
+      changed_files:
+        - "src/epcsaft/bindings.cpp"
+        - "src/epcsaft/epcsaft.py"
+        - "src/epcsaft/native/epcsaft_regression.cpp"
+        - "tests/native/test_cppad_pressure_derivatives.py"
+        - "tests/native/test_cppad_fugacity_derivatives.py"
+      commands:
+        - cmd: "uv run python scripts/build_epcsaft.py --enable-cppad"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/test_cppad_pressure_derivatives.py tests/native/test_cppad_fugacity_derivatives.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/test_cppad_pressure_derivatives.py tests/native/test_cppad_fugacity_derivatives.py tests/native/test_cppad_activity_derivatives.py tests/native/test_cppad_relative_permittivity_derivatives.py tests/native/test_derivative_coverage_matrix.py -q"
+          status: pass
+        - cmd: "uv run python scripts/validate_project.py quick"
+          status: pass
+      summary: "Added CppAD pure-neutral m/sigma/epsilon pressure and ln-fugacity parameter derivatives through existing result methods. Fixed the regression-local scalar helper layer so CppAD variables can record pure-neutral expressions without extracting values during tape construction."
+  - id: T007
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: medium
+    objective: "Map remaining Task B gaps for l_ij, k_hb_ij, chemical-potential parameter derivatives, and coverage/capability reporting before the next implementation slice."
+    inputs:
+      - "T004 receipt"
+      - "T006 receipt"
+      - "Current diff"
+      - "src/epcsaft/epcsaft.py"
+      - "src/epcsaft/native"
+      - "tests/native/test_cppad_*_derivatives.py"
+    constraints:
+      - "Read-only."
+      - "Do not implement."
+      - "Reject finite differences."
+      - "Identify exact implementation owners and validation commands."
+    expected_output:
+      - "Remaining gap map"
+      - "Whether the next safe slice is chemical-potential, l_ij, k_hb_ij, or coverage reporting"
+      - "Candidate Worker allowed_files and verify commands"
+    receipt:
+      result: done
+      note: notes/T007-remaining-gap-map.md
+      summary: "Mapped remaining Task B gaps and selected the next safe slice: residual-chemical-potential parameter derivatives plus neutral binary l_ij direct effects using the existing explicit CppAD property tape pattern."
+      evidence:
+        - "src/epcsaft/epcsaft.py exposed no chemical_potential_parameter_derivative_result method."
+        - "neutral_binary_kij_phase_derivatives_cpp already computed residual chemical-potential terms internally."
+        - "mixture_state_scalar_cpp could be generalized to tape l_ij by making s_ij tape-local scalar storage."
+      spawned_tasks:
+        - T008
+  - id: T008
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Expose explicit CppAD residual-chemical-potential parameter derivatives and neutral-binary l_ij direct effects through generic state/property result APIs."
+    allowed_files:
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/epcsaft.py"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/epcsaft_electrolyte.h"
+      - "src/epcsaft/native/epcsaft_regression.cpp"
+      - "src/epcsaft/runtime.py"
+      - "tests/native/test_cppad_pressure_derivatives.py"
+      - "tests/native/test_cppad_fugacity_derivatives.py"
+      - "tests/native/test_derivative_coverage_matrix.py"
+      - "tests/native/test_property_derivative_backend_contract.py"
+      - "docs/equations.md"
+      - "docs/equations_registry.yaml"
+    verify:
+      - "uv run python scripts/build_epcsaft.py --enable-cppad"
+      - "uv run python run_pytest.py tests/native/test_cppad_pressure_derivatives.py tests/native/test_cppad_fugacity_derivatives.py tests/native/test_cppad_activity_derivatives.py tests/native/test_cppad_relative_permittivity_derivatives.py tests/native/test_property_derivative_backend_contract.py tests/native/test_derivative_coverage_matrix.py -q"
+      - "uv run python scripts/validate_project.py quick"
+    stop_if:
+      - "Derivative path would require finite differences."
+      - "Implementation would add application-specific public APIs."
+      - "Implementation would tape solver loops or implement implicit solved-state sensitivities."
+      - "k_hb_ij requires associating implicit behavior beyond this explicit nonassociating slice."
+    receipt:
+      result: done
+      changed_files:
+        - "src/epcsaft/bindings.cpp"
+        - "src/epcsaft/epcsaft.py"
+        - "src/epcsaft/native/epcsaft_ares.cpp"
+        - "src/epcsaft/native/epcsaft_electrolyte.h"
+        - "src/epcsaft/native/epcsaft_regression.cpp"
+        - "src/epcsaft/runtime.py"
+        - "tests/native/test_cppad_fugacity_derivatives.py"
+        - "tests/native/test_cppad_pressure_derivatives.py"
+        - "tests/native/test_derivative_coverage_matrix.py"
+        - "tests/native/test_property_derivative_backend_contract.py"
+        - "docs/equations.md"
+        - "docs/equations_registry.yaml"
+      commands:
+        - cmd: "uv run python scripts/build_epcsaft.py --enable-cppad"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/test_cppad_pressure_derivatives.py tests/native/test_cppad_fugacity_derivatives.py tests/native/test_cppad_activity_derivatives.py tests/native/test_cppad_relative_permittivity_derivatives.py tests/native/test_property_derivative_backend_contract.py tests/native/test_derivative_coverage_matrix.py -q"
+          status: pass
+        - cmd: "uv run python scripts/validate_project.py quick"
+          status: pass
+      summary: "Added chemical_potential_parameter_derivative_result, exposed pure-neutral m/sigma/epsilon residual-chemical-potential CppAD derivatives, generalized neutral binary pair-parameter CppAD property derivatives to include l_ij, updated runtime capability reporting, tests, and synced equation registry line references."
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether Task B is complete and ready for a focused PR."
+    inputs:
+      - "All done task receipts"
+      - "Last verification"
+      - "Current dirty diff"
+      - "Dependency gate result"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if required Worker work is still queued or active."
+      - "Reject completion if tests or CppAD-enabled build have not passed."
+      - "Reject completion if finite differences or application-specific APIs were introduced."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "missing evidence"
+      - "next task if not complete"
+    receipt:
+      result: done
+      decision: not_complete
+      full_outcome_complete: false
+      summary: "Implementation now covers pure-neutral m/sigma/epsilon and neutral-binary k_ij/l_ij pressure, ln-fugacity, and residual-chemical-potential parameter derivatives, plus existing dielectric/Born parameter paths. k_hb_ij remains unavailable because it is associating-specific and should not be represented as explicit support without a separately validated association CppAD path. A focused PR has not been opened in this run."
+      evidence:
+        - "uv run python scripts/build_epcsaft.py --enable-cppad: pass"
+        - "Targeted derivative suite: 20 passed"
+        - "uv run python scripts/validate_project.py quick: 23 passed"
+      missing_evidence:
+        - "Focused PR not opened."
+        - "k_hb_ij explicit property derivatives not implemented for associating systems."
+      next_task: T009
+  - id: T009
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Finalize Task B according to operator intent: open the focused PR from the validated implementation or stop with BLOCKED_SCOPE_GAP if k_hb_ij cannot be truthfully represented."
+    inputs:
+      - "T008 receipt"
+      - "T999 audit"
+      - "Current dirty diff"
+      - "Task B prompt"
+    constraints:
+      - "Do not create local .worktrees/."
+      - "Do not write files on main."
+      - "Do not use finite differences."
+      - "Do not add application-specific public APIs."
+    expected_output:
+      - "PR_OPENED with truthful coverage/capability language"
+      - "or BLOCKED_SCOPE_GAP with exact missing derivative/function, file/function, parameter family, reason, and Task C ownership"
+      - "k_hb_ij included in coverage/capability as implemented, already_supported_with_tests, blocker_requires_implicit_association_sensitivity, or out_of_scope_by_roadmap"
+      - "Test or handoff proving k_hb_ij is not silently omitted or overclaimed"
+    receipt:
+      result: PR_OPENED
+      pr:
+        number: 102
+        url: "https://github.com/tannerpolley/ePC-SAFT/pull/102"
+        draft: true
+      summary: "Opened a focused draft PR with explicit CppAD parameter derivatives, truthful k_hb_ij coverage/capability blocker classification, validation evidence, and Task C ownership for implicit association site-fraction sensitivities."
+      commands:
+        - cmd: "git push -u origin codex/cppad-explicit-parameter-derivatives"
+          status: "pass"
+        - cmd: "gh pr create --repo tannerpolley/ePC-SAFT --base main --head codex/cppad-explicit-parameter-derivatives --draft"
+          status: "pass"
+  - id: T010
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: medium
+    objective: "Monitor PR #102 checks/review and address requested changes without weakening the Task B scope contract."
+    inputs:
+      - "https://github.com/tannerpolley/ePC-SAFT/pull/102"
+      - "T009 PR_OPENED receipt"
+    constraints:
+      - "Do not use finite differences."
+      - "Do not add application-specific public APIs."
+      - "Preserve k_hb_ij blocker_requires_implicit_association_sensitivity classification unless Task C implicit association support is implemented."
+    expected_output:
+      - "PR checks/review addressed or merge-ready status"
+    receipt: null
+
+checks:
+  dirty_fingerprint: "Task B implementation active on codex/cppad-explicit-parameter-derivatives; GoalBuddy files, CppAD derivative implementation, tests, runtime capabilities, and synced equation registry outputs are modified."
+  last_verification:
+    result: pass
+    task: T008
+    commands:
+      - cmd: "uv run python scripts/build_epcsaft.py --enable-cppad"
+        status: "pass"
+      - cmd: "uv run python run_pytest.py tests/native/test_cppad_pressure_derivatives.py tests/native/test_cppad_fugacity_derivatives.py tests/native/test_cppad_activity_derivatives.py tests/native/test_cppad_relative_permittivity_derivatives.py tests/native/test_property_derivative_backend_contract.py tests/native/test_derivative_coverage_matrix.py -q"
+        status: "pass"
+      - cmd: "uv run python scripts/validate_project.py quick"
+        status: "pass"

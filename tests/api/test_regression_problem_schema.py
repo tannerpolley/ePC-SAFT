@@ -6,7 +6,7 @@ import pytest
 
 import epcsaft
 import epcsaft.regression as regression_module
-from epcsaft import FitProblem, FitResult
+from epcsaft import FitProblem, FitResult, TargetDataset, TargetRow
 from epcsaft._types import InputError
 
 
@@ -119,6 +119,92 @@ def test_fit_liquid_electrolyte_parameters_returns_stable_backend_unavailable_co
     assert result.problem.fit_targets == ("d_born", "f_solv")
     assert result.problem.dataset == "2026_Khudaida"
     assert result.problem.weights == {"osmotic_coefficient": 1.0}
+
+
+def test_target_dataset_accepts_generic_row_families_and_round_trips_records():
+    dataset = TargetDataset.from_records(
+        [
+            {"row_family": "pure_density", "row_id": "rho-1", "T": 298.15, "P": 101325.0, "rho_kg_m3": 997.0},
+            {"row_family": "pure_vapor_pressure", "T": 373.15, "vapor_pressure": 101325.0},
+            {
+                "row_family": "binary_vle",
+                "T": 330.0,
+                "P": 101325.0,
+                "x_H2O": 0.7,
+                "x_Ethanol": 0.3,
+                "y_H2O": 0.5,
+                "y_Ethanol": 0.5,
+            },
+            {
+                "row_family": "binary_lle",
+                "T": 298.15,
+                "P": 101325.0,
+                "x_alpha_H2O": 0.8,
+                "x_alpha_Ethanol": 0.2,
+                "x_beta_H2O": 0.1,
+                "x_beta_Ethanol": 0.9,
+            },
+            {"row_family": "osmotic_coefficient", "T": 298.15, "P": 101325.0, "osmotic_coefficient": 0.93},
+            {"row_family": "MIAC", "T": 298.15, "mean_ionic_activity": 0.91},
+            {"row_family": "relative_permittivity", "T": 298.15, "epsilon_r_exp": 78.3},
+            {"row_family": "activity", "T": 298.15, "activity_H2O": 0.98},
+            {"row_family": "fugacity", "T": 298.15, "fugacity_CO2": 1200.0},
+            {"row_family": "speciation", "T": 298.15, "target_x": {"CO2": 0.01}},
+            {"row_family": "vle_partial_pressure", "T": 313.15, "target_partial_pressures": {"CO2": 25000.0}},
+            {"row_family": "lle_phase_composition", "T": 298.15, "target_x_alpha": {"H2O": 0.8}},
+            {"row_family": "regularization", "parameter": "k_ij", "target_value": 0.0},
+        ],
+        name="generic-schema-smoke",
+        species=("H2O", "Ethanol", "CO2"),
+    )
+
+    assert dataset.name == "generic-schema-smoke"
+    assert dataset.species == ("H2O", "Ethanol", "CO2")
+    assert dataset.families == (
+        "pure_density",
+        "pure_vapor_pressure",
+        "binary_vle",
+        "binary_lle",
+        "osmotic_coefficient",
+        "mean_ionic_activity",
+        "relative_permittivity",
+        "activity",
+        "fugacity",
+        "speciation",
+        "vle_partial_pressure",
+        "lle_phase_composition",
+        "regularization",
+    )
+    assert dataset.rows[5].row_family == "mean_ionic_activity"
+    assert dataset.to_records()[0]["row_id"] == "rho-1"
+    assert dataset.to_records()[0]["rho_kg_m3"] == 997.0
+
+
+def test_target_row_schema_rejects_unknown_family_missing_targets_and_bad_weights():
+    with pytest.raises(InputError, match="Unsupported target row family"):
+        TargetRow("lithium_extraction", {"T": 298.15})
+
+    with pytest.raises(InputError, match="binary_vle"):
+        TargetRow("binary_vle", {"T": 330.0, "P": 101325.0, "x_H2O": 0.7})
+
+    with pytest.raises(InputError, match="weight"):
+        TargetRow("regularization", {"parameter": "k_ij", "target_value": 0.0}, weight=0.0)
+
+
+def test_fit_problem_can_carry_target_dataset_schema_without_optimizer_internals():
+    dataset = TargetDataset(
+        rows=(
+            TargetRow("p_rho_t", {"T": 300.0, "P": 101325.0, "rho": 55000.0}),
+            TargetRow("regularization", {"parameter": "m", "target_value": 1.0}, weight=0.1),
+        ),
+        name="schema-only",
+    )
+
+    problem = FitProblem(mode="generic", target_dataset=dataset)
+
+    assert problem.target_dataset is not None
+    assert problem.target_dataset.families == ("p_rho_t", "regularization")
+    assert problem.target_dataset.to_records()[1]["parameter"] == "m"
 
 
 @pytest.mark.parametrize(
