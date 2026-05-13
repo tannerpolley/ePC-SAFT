@@ -217,3 +217,13 @@ checks:
       - cmd: "git diff --check"
         status: pass
         summary: "No whitespace errors."
+  completion_automation:
+    issue_url: "https://github.com/tannerpolley/ePC-SAFT/issues/89"
+    issue_closed: true
+    pr_url: "https://github.com/tannerpolley/ePC-SAFT/pull/105"
+    merge_commit: "7443a5fee8affbeda3df94b9c0268d0149bfa783"
+    remote_branch_deleted: true
+    local_branch_deleted: true
+    local_main_updated: true
+    cleanup_blocker: null
+    status: COMPLETE
