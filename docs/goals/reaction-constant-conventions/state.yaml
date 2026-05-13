@@ -1,0 +1,273 @@
+version: 2
+
+goal:
+  title: "General reaction and equilibrium-constant convention layer"
+  slug: "reaction-constant-conventions"
+  kind: existing_plan
+  tranche: "Implement task D in bounded watcher mode because dependency A is merged and the operator set auto_start_after_gate true."
+  status: done
+  intake:
+    original_request: "Run Goal Prep for task D, General reaction and equilibrium-constant convention layer."
+    interpreted_outcome: "A local live GoalBuddy board and dependency gate exist for task D, with dependency A satisfied and implementation authorized by operator override."
+    input_shape: existing_plan
+    audience: "epcsaft maintainers and downstream package consumers"
+    authority: requested
+    proof_type: artifact
+    completion_proof: "Dependency A is satisfied, a generic convention layer is implemented without application-specific APIs or finite difference, focused tests pass, and quick validation passes or is explicitly reported."
+    likely_misfire: "Starting implementation or designing application-specific public APIs before dependency A is merged."
+    blind_spots_considered:
+      - "Dependency A branch was deleted after merge, so PR #98 and merge commit 660ca5884821e9b693478bb9ca9bbdd8abe934b0 are the dependency evidence."
+      - "Task D prompt originally had auto_start_after_gate false, but the operator explicitly changed it to true on 2026-05-13."
+      - "Reaction-constant conventions must stay generic and must not default to fitting."
+      - "No finite difference is allowed."
+      - "PR #56 must not be used as a base or modified."
+    existing_plan_facts:
+      - "Task key: D."
+      - "Prompt: docs/roadmaps/agent_prompts/D_general_reaction_and_equilibrium_constant_convention_layer.md."
+      - "Assigned branch: codex/reaction-constant-conventions."
+      - "Dependencies: A."
+      - "auto_start_after_gate: true by operator override on 2026-05-13."
+      - "watcher_mode: bounded by operator override on 2026-05-13."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: false
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  watcher_mode: bounded
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: generated
+    url: null
+    command: "node C:\\Users\\Tanner\\.codex\\skills\\goalbuddy\\extend\\local-goal-board\\scripts\\local-goal-board.mjs --goal docs/goals/reaction-constant-conventions"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Re-check dependency A and branch/rebase gate before any implementation work."
+    inputs:
+      - "docs/roadmaps/agent_prompts/index.yaml"
+      - "docs/roadmaps/agent_prompts/D_general_reaction_and_equilibrium_constant_convention_layer.md"
+      - "docs/roadmaps/agent_dependency_plan.md"
+      - "docs/goals/reaction-constant-conventions/dependency_gate.yaml"
+    constraints:
+      - "Do not edit product/source files."
+      - "Do not start implementation while dependency A is missing."
+      - "Do not create local .worktrees/."
+      - "Stop with PREPARED_WAITING if dependency A is not merged into origin/main."
+      - "Stop with BLOCKED_DEPENDENCY_OR_REBASE if rebase conflicts."
+    expected_output:
+      - "Gate status: PREPARED_WAITING, PREPARED_READY, or BLOCKED_DEPENDENCY_OR_REBASE."
+      - "Concrete evidence for dependency A."
+      - "Updated dependency_gate.yaml."
+    receipt:
+      result: done
+      status: GATE_PASSED
+      summary: "Dependency A is satisfied: PR #98 is merged into origin/main at 660ca5884821e9b693478bb9ca9bbdd8abe934b0. Operator set auto_start_after_gate true and watcher_mode bounded, so implementation may proceed."
+      evidence:
+        - "gh pr view 98 --repo tannerpolley/ePC-SAFT -> state MERGED, mergedAt 2026-05-13T15:13:16Z, mergeCommit 660ca5884821e9b693478bb9ca9bbdd8abe934b0"
+        - "git log --oneline origin/main -> 660ca58 Merge pull request #98 from tannerpolley/codex/backend-coverage-hard-gate"
+        - "git branch --show-current -> codex/reaction-constant-conventions"
+        - "git merge --ff-only origin/main -> Fast-forward 639a9f8..660ca58"
+        - "Second /goal check: git merge --ff-only origin/main -> Already up to date."
+      next: "Activate T002 Scout for bounded evidence mapping."
+  - id: T002
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: medium
+    objective: "After the dependency gate passes and execution is authorized, map existing reaction/speciation APIs, tests, and convention-related code paths."
+    inputs:
+      - "docs/roadmaps/general_reactive_electrolyte_equilibrium_readiness.md"
+      - "docs/roadmaps/agent_prompts/D_general_reaction_and_equilibrium_constant_convention_layer.md"
+      - "src"
+      - "tests"
+    constraints:
+      - "Read-only."
+      - "Do not inspect implementation files until dependency gate passes."
+      - "Preserve generic package scope."
+    expected_output:
+      - "Existing API/code map."
+      - "Candidate files for a bounded implementation task."
+      - "Focused verification commands."
+    receipt:
+      result: done
+      summary: "Mapped the existing generic reaction/speciation surface to ReactionDefinition and native standard-state request construction."
+      evidence:
+        - "src/epcsaft/reactive_speciation.py"
+        - "src/epcsaft/reactive.py"
+        - "src/epcsaft/__init__.py"
+        - "tests/api/test_reactive_speciation.py"
+        - "tests/api/test_reactive_staged_workflow_contract.py"
+      spawned_tasks:
+        - T003
+  - id: T003
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Choose the first safe implementation slice for generic reaction/equilibrium-constant conventions after Scout evidence exists."
+    inputs:
+      - "T002 receipt"
+      - "Task D prompt"
+      - "Dependency gate pass evidence"
+    constraints:
+      - "Do not implement."
+      - "Reject application-specific public APIs."
+      - "Reject finite-difference approaches."
+      - "Reject fitting reaction constants as a default behavior."
+    expected_output:
+      - "Decision."
+      - "Exact Worker objective."
+      - "allowed_files."
+      - "verify."
+      - "stop_if."
+    receipt:
+      result: done
+      decision: "Implement a bounded Python convention layer around ReactionDefinition, expose it through generic reactive APIs, and add focused API tests. Do not alter native solver residual equations beyond passing existing native standard-state codes."
+      next_allowed_task: T004
+      allowed_files:
+        - "src/epcsaft/reactive_speciation.py"
+        - "src/epcsaft/reactive.py"
+        - "src/epcsaft/__init__.py"
+        - "tests/api/test_reaction_constant_conventions.py"
+        - "tests/api/test_reactive_speciation.py"
+      verify:
+        - "uv run python run_pytest.py tests/api/test_reactive_staged_workflow_contract.py tests/api/test_reaction_constant_conventions.py -q"
+        - "uv run python run_pytest.py tests/api/test_reactive_staged_workflow_contract.py tests/api/test_reaction_constant_conventions.py tests/api/test_reactive_speciation.py tests/native/test_chemical_equilibrium_native.py tests/regression/test_fixed_reaction_constant_parameter_fit.py -q"
+        - "uv run ruff check src\\epcsaft\\reactive_speciation.py src\\epcsaft\\reactive.py src\\epcsaft\\__init__.py tests\\api\\test_reaction_constant_conventions.py tests\\api\\test_reactive_speciation.py"
+        - "uv run black --check src\\epcsaft\\reactive_speciation.py src\\epcsaft\\reactive.py src\\epcsaft\\__init__.py tests\\api\\test_reaction_constant_conventions.py tests\\api\\test_reactive_speciation.py"
+        - "uv run python scripts/validate_project.py quick"
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Execute the first safe implementation slice selected by Judge for task D."
+    allowed_files:
+      - "src/epcsaft/reactive_speciation.py"
+      - "src/epcsaft/reactive.py"
+      - "src/epcsaft/__init__.py"
+      - "tests/api/test_reaction_constant_conventions.py"
+      - "tests/api/test_reactive_speciation.py"
+    verify:
+      - "uv run python run_pytest.py tests/api/test_reactive_staged_workflow_contract.py tests/api/test_reaction_constant_conventions.py -q"
+      - "uv run python scripts/validate_project.py quick"
+    stop_if:
+      - "Dependency gate is not passed."
+      - "Need files outside allowed_files."
+      - "A public API would need application-specific names or behavior."
+      - "Finite difference appears necessary."
+      - "Verification fails twice."
+    receipt:
+      result: done
+      changed_files:
+        - "src/epcsaft/reactive_speciation.py"
+        - "src/epcsaft/reactive.py"
+        - "src/epcsaft/__init__.py"
+        - "tests/api/test_reaction_constant_conventions.py"
+        - "tests/api/test_reactive_speciation.py"
+      commands:
+        - cmd: "uv run python run_pytest.py tests/api/test_reactive_staged_workflow_contract.py tests/api/test_reaction_constant_conventions.py -q"
+          status: pass
+          output: "15 passed in 0.97s"
+        - cmd: "uv run python run_pytest.py tests/api/test_reactive_staged_workflow_contract.py tests/api/test_reaction_constant_conventions.py tests/api/test_reactive_speciation.py tests/native/test_chemical_equilibrium_native.py tests/regression/test_fixed_reaction_constant_parameter_fit.py -q"
+          status: pass
+          output: "51 passed, 1 skipped in 1.10s"
+        - cmd: "uv run ruff check src\\epcsaft\\reactive_speciation.py src\\epcsaft\\reactive.py src\\epcsaft\\__init__.py tests\\api\\test_reaction_constant_conventions.py tests\\api\\test_reactive_speciation.py"
+          status: pass
+          output: "All checks passed!"
+        - cmd: "uv run black --check src\\epcsaft\\reactive_speciation.py src\\epcsaft\\reactive.py src\\epcsaft\\__init__.py tests\\api\\test_reaction_constant_conventions.py tests\\api\\test_reactive_speciation.py"
+          status: pass
+          output: "5 files would be left unchanged."
+        - cmd: "uv run python scripts/validate_project.py quick"
+          status: pass
+          output: "doctor passed; quick pytest slice 23 passed in 6.28s"
+      summary: "Added ReactionConstantConvention, explicit fitted-constant construction, convention diagnostics, exported generic API, and tests for supported bases, optional fitting/correction roles, and unsupported native routes failing loudly."
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether task D is complete and ready for a focused PR."
+    inputs:
+      - "All done task receipts"
+      - "Last verification"
+      - "Current dirty diff"
+      - "Dependency gate evidence"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if dependency evidence is stale or missing."
+      - "Reject completion if required Worker work is still queued or active."
+      - "Reject completion if tests were skipped without an explicit blocker."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "missing evidence"
+      - "next task if not complete"
+    receipt:
+      result: done
+      decision: "complete"
+      full_outcome_complete: true
+      summary: "Task D implementation is complete for this tranche: dependency A passed, the generic reaction-constant convention layer was implemented, required validation passed, commit 4ace987 was pushed, and PR #99 was opened."
+      evidence:
+        - "commit: 4ace987 Add reaction constant conventions"
+        - "PR: https://github.com/tannerpolley/ePC-SAFT/pull/99"
+        - "dependency A: PR #98 merged at 660ca5884821e9b693478bb9ca9bbdd8abe934b0"
+        - "uv run python run_pytest.py tests/api/test_reactive_staged_workflow_contract.py tests/api/test_reaction_constant_conventions.py -q -> 15 passed"
+        - "uv run python run_pytest.py tests/api/test_reactive_staged_workflow_contract.py tests/api/test_reaction_constant_conventions.py tests/api/test_reactive_speciation.py tests/native/test_chemical_equilibrium_native.py tests/regression/test_fixed_reaction_constant_parameter_fit.py -q -> 51 passed, 1 skipped"
+        - "uv run python scripts/validate_project.py quick -> 23 passed"
+      missing_evidence: []
+      next_after_merge:
+        - "Report merge commit."
+        - "Delete codex/reaction-constant-conventions."
+        - "Update local main."
+
+checks:
+  dirty_fingerprint: "clean before Goal Prep writes"
+  last_verification:
+    result: pass
+    task: T004
+    commands:
+      - cmd: "git branch --show-current"
+        status: pass
+        output: "codex/reaction-constant-conventions"
+      - cmd: "gh pr view 98 --repo tannerpolley/ePC-SAFT --json number,state,mergedAt,mergeCommit,headRefName,baseRefName,title,url"
+        status: pass
+        output: "PR #98 MERGED at 2026-05-13T15:13:16Z, mergeCommit 660ca5884821e9b693478bb9ca9bbdd8abe934b0"
+      - cmd: "git log --oneline --decorate --max-count=20 origin/main"
+        status: pass
+        output: "660ca58 Merge pull request #98 from tannerpolley/codex/backend-coverage-hard-gate"
+      - cmd: "git rebase origin/main"
+        status: fail
+        output: "Blocked by tool approval policy before Git attempted rebase."
+      - cmd: "git merge --ff-only origin/main"
+        status: pass
+        output: "Already up to date on second /goal check after earlier fast-forward 639a9f8..660ca58"
+      - cmd: "node C:\\Users\\Tanner\\.codex\\skills\\goalbuddy\\scripts\\check-update.mjs --json"
+        status: pass
+        output: "No update reported; check_status unavailable because npm was not on PATH."

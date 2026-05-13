@@ -13,6 +13,7 @@ from .reactive_regression import (
     ReactiveElectrolyteRegressionContext,
 )
 from .reactive_speciation import (
+    ReactionConstantConvention,
     ReactionDefinition,
     ReactiveSpeciationOptions,
     ReactiveSpeciationResult,
@@ -21,6 +22,7 @@ from .reactive_speciation import (
 )
 
 __all__ = [
+    "ReactionConstantConvention",
     "ReactionDefinition",
     "ReactiveElectrolyteBatch",
     "ReactiveElectrolyteBatchOptions",
