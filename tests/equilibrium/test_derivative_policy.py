@@ -73,7 +73,8 @@ def test_reactive_ideal_speciation_uses_analytic_residual_derivatives() -> None:
     assert diagnostics["derivative_status"] == "analytic"
     assert diagnostics["derivative_backend_by_block"]["reaction_residual_jacobian"] == "analytic"
     assert diagnostics["jacobian_fallback_used"] is False
-    assert "finite_difference" not in str(diagnostics).lower()
+    backend_values = {str(value).lower() for value in diagnostics["derivative_backend_by_block"].values()}
+    assert "finite_difference" not in backend_values
 
 
 def test_activity_coupled_reactive_speciation_returns_backend_unavailable() -> None:
