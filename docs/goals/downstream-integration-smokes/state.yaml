@@ -1,0 +1,248 @@
+version: 2
+
+goal:
+  title: "Downstream integration smoke tests"
+  slug: "downstream-integration-smokes"
+  kind: existing_plan
+  tranche: "Prepare the dependency gate and bounded watcher for downstream smoke tests."
+  status: active
+  intake:
+    original_request: "Run Goal Prep for Task M: Downstream integration smoke tests."
+    interpreted_outcome: "A GoalBuddy board exists for Task M, records the dependency gate, and blocks implementation until dependencies F, G, I, J, and K are satisfied."
+    input_shape: existing_plan
+    audience: "epcsaft maintainers and downstream integration consumers"
+    authority: requested
+    proof_type: test
+    completion_proof: "Downstream projects can exercise generic epcsaft APIs without private workaround code, copied EOS implementation, or application-specific public APIs."
+    likely_misfire: "Starting implementation early or adding downstream-specific public APIs to epcsaft."
+    blind_spots_considered:
+      - "Task M must stay generic and downstream projects must compute their own application-specific metrics."
+      - "Issue scope for GitHub issue #96 will be recorded during /goal execution after the issue is read."
+      - "Bounded watcher auto-run is required."
+      - "No finite difference is allowed."
+    existing_plan_facts:
+      - "Task key: M."
+      - "Title: Downstream integration smoke tests."
+      - "Assigned branch: codex/downstream-integration-smokes."
+      - "Dependencies: F, G, I, J, K."
+      - "Prompt file: docs/roadmaps/agent_prompts/M_downstream_integration_smoke_tests.md."
+      - "Use the local live GoalBuddy board in Codex."
+      - "Do not create local .worktrees/."
+      - "Do not add application-specific public APIs."
+      - "No finite difference."
+      - "Do not start implementation until the dependency gate passes."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: pending
+    url: null
+    command: "node C:\\Users\\Tanner\\.codex\\plugins\\cache\\goalbuddy\\goalbuddy\\0.3.6\\skills\\goalbuddy\\extend\\local-goal-board\\scripts\\local-goal-board.mjs --goal docs/goals/downstream-integration-smokes"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: T003
+
+tasks:
+  - id: T001
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Record the dependency gate status for Task M and stop in PREPARED_WAITING until dependencies F, G, I, J, and K are all satisfied."
+    inputs:
+      - "docs/roadmaps/agent_prompts/M_downstream_integration_smoke_tests.md"
+      - "docs/roadmaps/agent_prompts/index.yaml"
+      - "docs/roadmaps/agent_dependency_plan.md"
+      - "docs/roadmaps/general_reactive_electrolyte_equilibrium_readiness.md"
+      - "docs/goals/downstream-integration-smokes/notes/dependency_gate.yaml"
+      - "docs/goals/downstream-integration-smokes/notes/watch_dependency.ps1"
+    constraints:
+      - "Do not edit product/source files."
+      - "Do not start implementation."
+      - "Do not create local .worktrees/."
+      - "Keep branch codex/downstream-integration-smokes."
+      - "Use watcher_mode bounded, auto_start_after_gate true, poll_interval_seconds 120, and max_wait_minutes 480."
+    expected_output:
+      - "PREPARED_WAITING recorded."
+      - "Dependency gate evidence recorded."
+      - "Next task remains blocked on dependency gate."
+    receipt:
+      result: done
+      status: GATE_PASS
+      summary: "The bounded watcher returned GATE_PASS after dependency issues #89, #90, #92, #93, and #94 closed and their required PRs merged. Implementation is unblocked."
+      evidence:
+        - "docs/goals/downstream-integration-smokes/notes/dependency_gate.yaml"
+        - "powershell.exe -NoProfile -ExecutionPolicy Bypass -File docs/goals/downstream-integration-smokes/notes/watch_dependency.ps1 -> GATE_PASS"
+        - "PR #105 merged for dependency F."
+        - "PR #106 merged for dependency G."
+        - "PR #110 merged for dependency I."
+        - "PR #111 merged for dependency J."
+        - "PR #108 merged for dependency K."
+      next: "Implement Task M downstream integration smoke tests."
+
+  - id: T002
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement Task M downstream integration smoke coverage using existing generic epcsaft APIs only."
+    inputs:
+      - "docs/roadmaps/agent_prompts/M_downstream_integration_smoke_tests.md"
+      - "docs/goals/downstream-integration-smokes/notes/issue_scope.md"
+      - "src/epcsaft/__init__.py"
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/regression.py"
+      - "src/epcsaft/reactive_speciation.py"
+    constraints:
+      - "Do not add application-specific public APIs."
+      - "Do not add finite-difference derivative routes."
+      - "Do not compute downstream-specific metrics inside epcsaft."
+      - "Do not create local .worktrees/."
+    verify:
+      - "uv run pytest tests/api/test_downstream_integration_smokes.py -q"
+      - "uv run python scripts/validate_project.py quick"
+      - "uv run python scripts/validate_project.py docs"
+      - "git diff --check"
+    stop_if:
+      - "Required validation fails for reasons that require source changes outside Task M."
+      - "A proposed fix would add application-specific public APIs."
+      - "A proposed fix would add or enable finite-difference derivative routes."
+      - "A proposed fix would modify local .worktrees/."
+    allowed_files:
+      - "tests/api/test_downstream_integration_smokes.py"
+      - "docs/pages/downstream_local_installs.rst"
+      - "docs/goals/downstream-integration-smokes/state.yaml"
+      - "docs/goals/downstream-integration-smokes/notes/*"
+    expected_output:
+      - "Smoke tests cover MEA-Thermodynamics, Lithium_Extraction, and MEA-Absorption-Column style use of generic APIs."
+      - "Documentation records the neutral downstream contract and limitations."
+      - "Validation passes for focused smoke tests and required project checks."
+    receipt:
+      result: done
+      status: IMPLEMENTED
+      summary: "Added downstream integration smoke tests and documented the generic downstream contract without package source changes, application-specific public APIs, or finite-difference routes."
+      evidence:
+        - "tests/api/test_downstream_integration_smokes.py"
+        - "docs/pages/downstream_local_installs.rst"
+        - "uv run pytest tests/api/test_downstream_integration_smokes.py -q -> 4 passed"
+        - "uv run python scripts/validate_project.py quick -> 23 passed"
+        - "uv run python scripts/validate_project.py docs -> build succeeded"
+        - "git diff --check -> pass"
+      changed_files:
+        - "tests/api/test_downstream_integration_smokes.py"
+        - "docs/pages/downstream_local_installs.rst"
+        - "docs/goals/downstream-integration-smokes/state.yaml"
+        - "docs/goals/downstream-integration-smokes/notes/issue_scope.md"
+        - "docs/goals/downstream-integration-smokes/notes/dependency_gate.yaml"
+      commands:
+        - cmd: "powershell.exe -NoProfile -ExecutionPolicy Bypass -File docs/goals/downstream-integration-smokes/notes/watch_dependency.ps1"
+          status: pass
+        - cmd: "uv run pytest tests/api/test_downstream_integration_smokes.py -q"
+          status: pass
+        - cmd: "uv run pytest tests/equilibrium/test_lle.py::test_methanol_cyclohexane_lle_flash_solves_seeded_phase_split -q"
+          status: pass
+        - cmd: "uv run python scripts/validate_project.py quick"
+          status: pass
+        - cmd: "uv run python scripts/validate_project.py docs"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      next: "Commit, open a focused draft PR, self-review, and run GitHub merge gates."
+
+  - id: T003
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: medium
+    objective: "Publish the Task M branch, create/review the PR, and complete final GoalBuddy audit only if all issue-lifecycle gates pass."
+    inputs:
+      - "docs/roadmaps/agent_prompts/M_downstream_integration_smoke_tests.md"
+      - "docs/goals/downstream-integration-smokes/notes/issue_scope.md"
+      - "tests/api/test_downstream_integration_smokes.py"
+      - "docs/pages/downstream_local_installs.rst"
+    constraints:
+      - "Do not mark full_outcome_complete true until validation, PR checks, mergeability, issue closure, and branch cleanup requirements are complete."
+      - "Do not merge if GitHub checks fail, are pending, or are unavailable."
+      - "Do not force-delete local branches."
+      - "Do not add application-specific public APIs or finite-difference derivative routes."
+    expected_output:
+      - "Focused draft PR with Closes #96."
+      - "Self-review against origin/main."
+      - "Final audit receipt with full_outcome_complete true only after merge and cleanup, or a precise BLOCKED_* status."
+    receipt:
+      result: pending
+      status: IN_PROGRESS
+      summary: "PR/final-audit task opened after implementation validation passed locally."
+      evidence: []
+      next: "Stage, commit, push, and create or update the task PR."
+
+watcher:
+  watcher_mode: bounded
+  auto_start_after_gate: true
+  poll_interval_seconds: 120
+  max_wait_minutes: 480
+  dependency_gate_path: "docs/goals/downstream-integration-smokes/notes/dependency_gate.yaml"
+  watch_script_path: "docs/goals/downstream-integration-smokes/notes/watch_dependency.ps1"
+  update_mode: ff-only
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: pass
+    task: T001
+    commands:
+      - cmd: "git branch --show-current"
+        status: pass
+        output: "codex/downstream-integration-smokes"
+      - cmd: "gh auth status"
+        status: pass
+        output: "GitHub CLI authenticated as tannerpolley."
+      - cmd: "gh issue view 89 --repo tannerpolley/ePC-SAFT --json number,title,state,url"
+        status: pass
+        output: "Issue #89 is OPEN."
+      - cmd: "gh pr list --repo tannerpolley/ePC-SAFT --state merged --head codex/generic-activity-speciation --json number,url,mergeCommit"
+        status: pass
+        output: "No merged PR found for codex/generic-activity-speciation."
+      - cmd: "powershell.exe -NoProfile -ExecutionPolicy Bypass -File docs/goals/downstream-integration-smokes/notes/watch_dependency.ps1"
+        status: PREPARED_WAITING
+        output: "PREPARED_WAITING dependencies not met."
+      - cmd: "gh issue view 89/90/92/93/94 --repo tannerpolley/ePC-SAFT --json number,title,state,url"
+        status: PREPARED_WAITING
+        output: "Issues #89, #90, #92, #93, and #94 are OPEN."
+      - cmd: "gh pr list --repo tannerpolley/ePC-SAFT --state all --head <dependency-branch> --json number,state,mergedAt,url,headRefName"
+        status: PREPARED_WAITING
+        output: "PR #105 for F and PR #106 for G are OPEN and unmerged; no PRs found for I, J, or K branches."
+      - cmd: "gh pr view 105/106 --repo tannerpolley/ePC-SAFT --json number,state,isDraft,mergeable,mergeStateStatus,statusCheckRollup,url,headRefName,baseRefName,mergedAt,mergeCommit"
+        status: PREPARED_WAITING
+        output: "PR #105 merged at 2026-05-13T20:05:22Z with commit 7443a5f. PR #106 merged at 2026-05-13T20:04:48Z with commit ec5702c. Issues #92, #93, and #94 remain open."
+      - cmd: "gh issue view 92/93/94 and gh pr list --head codex/generic-electrolyte-lle/codex-generic-reactive-lle/codex-generic-regression-backend"
+        status: PREPARED_WAITING
+        output: "Issues #92, #93, and #94 remain OPEN. PR #108 for K is OPEN and unmerged; no PRs were found for I or J branches."
+      - cmd: "gh pr view 108 --repo tannerpolley/ePC-SAFT --json number,state,isDraft,mergeable,mergeStateStatus,statusCheckRollup,url,headRefName"
+        status: PREPARED_WAITING
+        output: "PR #108 for K is OPEN as a draft, MERGEABLE, CLEAN, and has successful fast/native checks, but remains unmerged."
+      - cmd: "gh issue view 92/93/94 and gh pr list --head codex/generic-electrolyte-lle"
+        status: PREPARED_WAITING
+        output: "Issue #92 is CLOSED and PR #110 is MERGED at 2026-05-13T20:55:22Z. Issues #93 and #94 remain OPEN; PR #108 for K remains a draft."

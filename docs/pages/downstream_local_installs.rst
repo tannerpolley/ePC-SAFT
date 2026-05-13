@@ -146,3 +146,26 @@ Capability status summary
    * - IPOPT
      - Experimental opt-in
      - Residual-minimization refinement only; ``auto`` never selects IPOPT.
+
+Downstream integration smoke coverage
+-------------------------------------
+
+The upstream smoke tests cover three downstream workflow shapes without adding
+downstream-specific public APIs:
+
+* Reactive speciation with generic target rows for speciation, volatile partial
+  pressure, and activity observations.
+* Electrolyte LLE with generic solvent-feed, salt-molality, phase-composition,
+  mean-ionic-activity, and regularization rows.
+* Reactive electrolyte bubble pressure with generic speciation, fugacity, and
+  partial-pressure rows.
+
+Downstream projects should build their own project-specific metrics outside
+``epcsaft``. The package boundary is the generic problem, result, capability,
+and regression-target schema. Public API names are intentionally not tied to
+MEA, lithium extraction, absorption columns, distribution coefficients,
+selectivity, or other application labels.
+
+The smoke tests also assert that the public derivative contract keeps finite
+difference unavailable. Use ``analytic``, ``cppad``, ``analytic_implicit``, or
+``cppad_implicit`` derivative routes where derivatives are required.
