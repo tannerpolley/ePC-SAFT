@@ -37,6 +37,20 @@ _CONTRIBUTION_PUBLIC_NAMES = {
 _GAS_CONSTANT = 8.31446261815324
 
 
+def _result_with_route_diagnostics(result, route):
+    diagnostics = dict(result.diagnostics)
+    diagnostics["equilibrium_route"] = route["route"]
+    diagnostics["route_reason"] = route["reason"]
+    return type(result)(
+        backend=result.backend,
+        problem_kind=result.problem_kind,
+        phases=result.phases,
+        stable=result.stable,
+        split_detected=result.split_detected,
+        diagnostics=diagnostics,
+    )
+
+
 def _state_construction_error_message(T, x, phase, ncomp, mode_name, variable_name, variable_value, exc):
     return (
         f"{mode_name}-based state solve failed for "
@@ -783,7 +797,57 @@ class ePCSAFTMixture:
                 )
             if route["route"] == "neutral_lle":
                 return self.lle_tp(T=T, P=P, z=z, options=options, initial_phases=initial_phases)
-            return self.flash_tp(T=T, P=P, z=z, options=options)
+            return _result_with_route_diagnostics(self.flash_tp(T=T, P=P, z=z, options=options), route)
+        if kind in {
+            "bubble_p",
+            "neutral_bubble_p",
+            "bubble_t",
+            "neutral_bubble_t",
+            "dew_p",
+            "neutral_dew_p",
+            "dew_t",
+            "neutral_dew_t",
+        }:
+            route = classify_equilibrium_route(self, kind, backend)
+            if route["route"] != "neutral_vle":
+                raise InputError(f"kind='{kind}' is not a neutral vapor-liquid route.")
+            if solvent_feed is not None or salt_molality is not None:
+                raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
+            if volatile_species is not None or vapor_species is not None or nonvolatile_species is not None:
+                raise InputError(
+                    "vapor species controls are only supported for kind='electrolyte_bubble_pressure'."
+                )
+            if initial_phases is not None:
+                raise InputError("initial_phases is only supported for kind='lle_flash'.")
+            if parent_phase is not None or trial_phases is not None:
+                raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
+            if backend not in (None, "native", "neutral_vle"):
+                raise InputError("Neutral bubble/dew backend must be None, 'native', or 'neutral_vle'.")
+            if kind in {"bubble_p", "neutral_bubble_p"}:
+                if P is not None:
+                    raise InputError("P is solved by kind='bubble_p'.")
+                composition = x_liq if x_liq is not None else z
+                if composition is None:
+                    raise InputError("kind='bubble_p' requires x_liq or z as the liquid composition.")
+                return _result_with_route_diagnostics(self.bubble_p(T=T, x=composition, options=options), route)
+            if kind in {"bubble_t", "neutral_bubble_t"}:
+                if T is not None:
+                    raise InputError("T is solved by kind='bubble_t'.")
+                composition = x_liq if x_liq is not None else z
+                if composition is None:
+                    raise InputError("kind='bubble_t' requires x_liq or z as the liquid composition.")
+                return _result_with_route_diagnostics(self.bubble_t(P=P, x=composition, options=options), route)
+            if x_liq is not None:
+                raise InputError("x_liq is only supported for bubble-point routes.")
+            if z is None:
+                raise InputError(f"kind='{kind}' requires z as the vapor composition.")
+            if kind in {"dew_p", "neutral_dew_p"}:
+                if P is not None:
+                    raise InputError("P is solved by kind='dew_p'.")
+                return _result_with_route_diagnostics(self.dew_p(T=T, y=z, options=options), route)
+            if T is not None:
+                raise InputError("T is solved by kind='dew_t'.")
+            return _result_with_route_diagnostics(self.dew_t(P=P, y=z, options=options), route)
         if kind in {"electrolyte_bubble_pressure", "electrolyte_bubble", "bubble_pressure"}:
             if P is not None:
                 raise InputError(
@@ -826,7 +890,8 @@ class ePCSAFTMixture:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
             if backend not in (None, "native", "neutral_vle"):
                 raise InputError("TP flash backend must be None, 'native', or 'neutral_vle'.")
-            return self.flash_tp(T=T, P=P, z=z, options=options)
+            route = classify_equilibrium_route(self, kind, backend)
+            return _result_with_route_diagnostics(self.flash_tp(T=T, P=P, z=z, options=options), route)
         if kind == "lle_flash":
             if solvent_feed is not None or salt_molality is not None:
                 raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
@@ -916,7 +981,7 @@ class ePCSAFTMixture:
                 trial_phases=trial_phases,
             )
         raise InputError(
-            "Only kind='tp_flash', kind='auto', kind='lle_flash', kind='electrolyte_lle', kind='electrolyte_bubble_pressure', kind='electrolyte_stability', kind='stability', kind='chemical_equilibrium', kind='reactive_staged_equilibrium', kind='reactive_stability', or kind='reactive_electrolyte_bubble_pressure' is supported by equilibrium."
+            "Only kind='tp_flash', kind='auto', kind='bubble_p', kind='bubble_t', kind='dew_p', kind='dew_t', kind='lle_flash', kind='electrolyte_lle', kind='electrolyte_bubble_pressure', kind='electrolyte_stability', kind='stability', kind='chemical_equilibrium', kind='reactive_staged_equilibrium', kind='reactive_stability', or kind='reactive_electrolyte_bubble_pressure' is supported by equilibrium."
         )
 
     def equilibrium_curve(self, points, *, kind="electrolyte_lle", T=None, P=None, options=None, initial_phases=None):

@@ -56,6 +56,8 @@ def test_ternary_hydrocarbon_basis_tp_flash_closes_material_and_fugacity_balance
     np.testing.assert_allclose(reconstructed, feed, atol=1.0e-10)
     assert result.diagnostics["material_balance_error"] < 1.0e-10
     assert result.diagnostics["fugacity_residual_norm"] < 1.0e-6
+    assert result.diagnostics["equilibrium_route"] == "neutral_vle"
+    assert result.diagnostics["route_reason"] == "requested vapor-liquid path"
     assert result.diagnostics["stability_analysis"] == "neutral_tpd"
     assert result.diagnostics["neutral_fast_path"] is True
     assert result.diagnostics["neutral_fallback_used"] is False
