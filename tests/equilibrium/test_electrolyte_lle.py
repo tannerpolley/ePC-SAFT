@@ -330,6 +330,32 @@ def test_predictive_residual_uses_dependent_phase_material_balance() -> None:
     np.testing.assert_allclose(reconstructed, feed, atol=1.0e-10)
 
 
+def test_mixed_electrolyte_lle_reports_phase_charge_balance_for_distributed_ions() -> None:
+    mix = _case2_mixture()
+    result = mix.equilibrium(
+        kind="electrolyte_lle",
+        T=298.15,
+        P=1.0e5,
+        z=_case2_feed(),
+        options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8, damping=0.5),
+    )
+
+    charge_balance = result.diagnostics["phase_charge_balance"]
+    assert set(charge_balance) == {"feed", "aq", "org", "max_abs"}
+    assert charge_balance["feed"] == pytest.approx(0.0, abs=1.0e-12)
+    assert charge_balance["aq"] == pytest.approx(0.0, abs=1.0e-8)
+    assert charge_balance["org"] == pytest.approx(0.0, abs=1.0e-8)
+    assert charge_balance["max_abs"] == pytest.approx(result.diagnostics["charge_balance_error"], abs=1.0e-12)
+
+    salt_pairs = result.diagnostics["salt_pairs"]
+    assert [pair["label"] for pair in salt_pairs] == ["NaCl", "KCl"]
+    assert [(pair["cation"], pair["anion"]) for pair in salt_pairs] == [(2, 4), (3, 4)]
+    aq, org = result.phases
+    for ion_index in (2, 3, 4):
+        assert aq.composition[ion_index] > 0.0
+        assert org.composition[ion_index] > 0.0
+
+
 def test_electrolyte_lle_solver_failure_reports_unavailable_derivatives() -> None:
     mix = _case2_mixture()
 

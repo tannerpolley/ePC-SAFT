@@ -1102,6 +1102,18 @@ def _residual_norm_from_diagnostics(diagnostics: dict[str, Any]) -> float | None
     return None
 
 
+def _phase_charge_balance_from_phases(feed: np.ndarray, phases: Any, charges: np.ndarray) -> dict[str, float]:
+    charge_balance = {"feed": float(np.dot(feed, charges))}
+    max_abs = abs(charge_balance["feed"])
+    for index, phase in enumerate(phases):
+        label = str(getattr(phase, "label", "") or f"phase_{index}")
+        value = float(np.dot(np.asarray(phase.composition, dtype=float), charges))
+        charge_balance[label] = value
+        max_abs = max(max_abs, abs(value))
+    charge_balance["max_abs"] = max_abs
+    return charge_balance
+
+
 def _solved_internal_states(problem_kind: str) -> list[str]:
     by_kind = {
         "tp_flash": ["density_roots", "phase_compositions"],
@@ -2012,6 +2024,7 @@ def electrolyte_lle_flash_native(
     diagnostics.setdefault("basis_rank", int(basis_payload["basis_rank"]))
     diagnostics.setdefault("e_matrix", np.asarray(basis_payload["e_matrix"], dtype=float).tolist())
     diagnostics.setdefault("salt_pairs", [dict(pair) for pair in basis_payload["salt_pairs"]])
+    diagnostics.setdefault("phase_charge_balance", _phase_charge_balance_from_phases(feed, result.phases, charges))
     diagnostics.update(feed_diagnostics)
     diagnostics = _normalize_derivative_diagnostics(
         diagnostics,
