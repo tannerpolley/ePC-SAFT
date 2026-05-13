@@ -5,7 +5,7 @@ goal:
   slug: "reaction-constant-conventions"
   kind: existing_plan
   tranche: "Implement task D in bounded watcher mode because dependency A is merged and the operator set auto_start_after_gate true."
-  status: active
+  status: done
   intake:
     original_request: "Run Goal Prep for task D, General reaction and equilibrium-constant convention layer."
     interpreted_outcome: "A local live GoalBuddy board and dependency gate exist for task D, with dependency A satisfied and implementation authorized by operator override."
@@ -60,13 +60,13 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T999
+active_task: null
 
 tasks:
   - id: T001
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: medium
     objective: "Re-check dependency A and branch/rebase gate before any implementation work."
     inputs:
@@ -211,7 +211,7 @@ tasks:
   - id: T999
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Audit whether task D is complete and ready for a focused PR."
     inputs:
@@ -229,13 +229,29 @@ tasks:
       - "full_outcome_complete: true | false"
       - "missing evidence"
       - "next task if not complete"
-    receipt: null
+    receipt:
+      result: done
+      decision: "complete"
+      full_outcome_complete: true
+      summary: "Task D implementation is complete for this tranche: dependency A passed, the generic reaction-constant convention layer was implemented, required validation passed, commit 4ace987 was pushed, and PR #99 was opened."
+      evidence:
+        - "commit: 4ace987 Add reaction constant conventions"
+        - "PR: https://github.com/tannerpolley/ePC-SAFT/pull/99"
+        - "dependency A: PR #98 merged at 660ca5884821e9b693478bb9ca9bbdd8abe934b0"
+        - "uv run python run_pytest.py tests/api/test_reactive_staged_workflow_contract.py tests/api/test_reaction_constant_conventions.py -q -> 15 passed"
+        - "uv run python run_pytest.py tests/api/test_reactive_staged_workflow_contract.py tests/api/test_reaction_constant_conventions.py tests/api/test_reactive_speciation.py tests/native/test_chemical_equilibrium_native.py tests/regression/test_fixed_reaction_constant_parameter_fit.py -q -> 51 passed, 1 skipped"
+        - "uv run python scripts/validate_project.py quick -> 23 passed"
+      missing_evidence: []
+      next_after_merge:
+        - "Report merge commit."
+        - "Delete codex/reaction-constant-conventions."
+        - "Update local main."
 
 checks:
   dirty_fingerprint: "clean before Goal Prep writes"
   last_verification:
     result: pass
-    task: T001
+    task: T004
     commands:
       - cmd: "git branch --show-current"
         status: pass
