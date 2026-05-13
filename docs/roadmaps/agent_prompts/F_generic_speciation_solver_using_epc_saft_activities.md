@@ -45,6 +45,7 @@ Create:
 - docs/goals/<slug>/state.yaml
 - docs/goals/<slug>/notes/
 - docs/goals/<slug>/notes/dependency_gate.yaml
+- docs/goals/<slug>/notes/watch_dependency.ps1
 
 After branch bootstrap, current branch must be:
 
@@ -62,7 +63,7 @@ Dependencies:
 
 After Goal Prep, use bounded watcher auto-run:
 1. Create or update `docs/goals/<slug>/notes/dependency_gate.yaml`.
-2. Create or update `docs/goals/<slug>/notes/watch_dependency.ps1` when dependencies are not already satisfied.
+2. Create or update `docs/goals/<slug>/notes/watch_dependency.ps1` during Goal Prep, even if dependencies appear satisfied, so the GoalBuddy board and file-based watcher state are complete before `/goal` execution.
 3. Set `watcher_mode: bounded`, `auto_start_after_gate: true`, `poll_interval_seconds: 120`, and `max_wait_minutes: 480` in local GoalBuddy/dependency files.
 4. If dependencies are satisfied, start implementation immediately without asking.
 5. If dependencies are not satisfied, run the bounded watcher, poll every 120 seconds, stop after 480 minutes with `PREPARED_WAITING` if still blocked, and start implementation without asking when the gate passes.
