@@ -37,6 +37,7 @@ def test_derivative_coverage_matrix_enumerates_required_quantities() -> None:
                 "backend",
                 "supported",
                 "not_applicable",
+                "classification",
                 "backend_unavailable_reason",
                 "source_equation_ids",
             )
@@ -60,3 +61,19 @@ def test_derivative_coverage_matrix_uses_explicit_backend_labels() -> None:
             "backend_unavailable",
         }
     )
+
+
+def test_derivative_coverage_matrix_classifies_supported_blocked_and_out_of_scope_rows() -> None:
+    state = _state()
+
+    rows = state.derivative_coverage_matrix()
+    classifications = {row["classification"] for row in rows}
+
+    assert classifications.issubset({"production_supported", "blocker", "out_of_scope"})
+    for row in rows:
+        if row["not_applicable"]:
+            assert row["classification"] == "out_of_scope"
+        elif row["supported"]:
+            assert row["classification"] == "production_supported"
+        else:
+            assert row["classification"] == "blocker"
