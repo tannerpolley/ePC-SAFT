@@ -64,7 +64,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T005
+active_task: T007
 
 tasks:
   - id: T001
@@ -266,7 +266,7 @@ tasks:
   - id: T005
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: medium
     objective: "Publish the Task G implementation as a focused draft PR, self-review it against origin/main, and proceed through checks/merge/cleanup only if all prompt gates pass."
     inputs:
@@ -285,6 +285,85 @@ tasks:
       - "Self-review and validation evidence."
       - "Merge and issue close evidence if all gates pass."
       - "Remote/local branch cleanup evidence or precise blocker."
+    receipt:
+      result: done
+      commit: "2cd340b65a8ffa933d93fa5bcea97238d693aa95"
+      pushed_branch: "origin/codex/generic-vle-fugacity-equilibrium"
+      pr:
+        number: 106
+        url: "https://github.com/tannerpolley/ePC-SAFT/pull/106"
+        draft_created: true
+        marked_ready: true
+        closes_issue: 90
+      self_review:
+        scope: pass
+        no_finite_difference: pass
+        no_application_specific_public_api: pass
+        no_silent_scope_narrowing: pass
+        changed_files_match_task: pass
+      checks:
+        fast_workflow_smoke: pass
+        native_default_build: pass
+        skipped_optional:
+          - "windows install smoke"
+          - "build sdist"
+          - "build wheels / ${{ matrix.os }}"
+          - "native CppAD build"
+          - "native Ceres + CppAD build"
+      mergeability:
+        mergeable: MERGEABLE
+        merge_state_status: CLEAN
+      next_task: T007
+  - id: T006
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Final pre-merge audit for Task G against scope, validation, checks, mergeability, and GoalBuddy receipts."
+    inputs:
+      - "T004 receipt"
+      - "T005 receipt"
+      - "PR #106"
+      - "Current branch diff against origin/main"
+    constraints:
+      - "Do not implement."
+      - "Reject merge readiness if checks are pending, failed, or unavailable."
+      - "Reject merge readiness if PR is not mergeable."
+      - "Reject completion if scope was narrowed silently."
+      - "Reject finite-difference or application-specific public API changes."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "ready_to_merge: true | false"
+      - "missing evidence"
+    receipt:
+      result: done
+      decision: "complete"
+      full_outcome_complete: true
+      ready_to_merge: true
+      summary: "Task G implementation and PR gates satisfy the prompt: dependency C is recorded as passed, issue #90 scope is recorded, generic neutral VLE routes cover TP flash plus bubble/dew pressure and temperature, diagnostics report neutral_vle route and generic partial_pressures, validation passed, GitHub checks passed, PR #106 is cleanly mergeable, and review found no finite-difference route, application-specific public API, unrelated files, or silent scope narrowing."
+      merge_authorized_for: T007
+  - id: T007
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: medium
+    objective: "Merge PR #106, confirm issue #90 is closed, and clean up the remote and local task branches if all safety gates remain true."
+    inputs:
+      - "T006 receipt"
+      - "PR #106"
+      - "GitHub issue #90"
+    constraints:
+      - "Recheck PR mergeability before merge."
+      - "Do not merge if checks changed to pending, failed, or unavailable."
+      - "Do not force-delete local branch."
+      - "Record blockers with precise status if issue close or branch cleanup fails."
+    expected_output:
+      - "Merge commit."
+      - "Issue close status."
+      - "Remote branch cleanup status."
+      - "Local branch cleanup status."
+      - "Local main update status."
     receipt: null
 
 checks:
