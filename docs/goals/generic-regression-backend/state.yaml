@@ -1,0 +1,341 @@
+version: 2
+
+goal:
+  title: "Generic regression row schema and native optimizer backend"
+  slug: "generic-regression-backend"
+  kind: existing_plan
+  tranche: "Bounded watcher auto-run plus Task K implementation."
+  status: done
+  intake:
+    original_request: "Run Goal Prep for Task K: Generic regression row schema and native optimizer backend."
+    interpreted_outcome: "A GoalBuddy board exists for Task K, the dependency gate is satisfied, and implementation can proceed on the assigned branch without a waiting checkpoint."
+    input_shape: existing_plan
+    audience: "epcsaft package maintainers and future roadmap agents"
+    authority: requested
+    proof_type: artifact
+    completion_proof: "Generic target-row compilation, parameter maps, native optimizer loop integration, and requested validation/PR lifecycle are complete with honest diagnostics and no application-specific public APIs."
+    likely_misfire: "Starting before dependencies B, C, and E are merged; adding application-specific public APIs; using finite differences; or routing production optimization through a Python-owned loop."
+    blind_spots_considered:
+      - "Dependency B / PR #102 is merged."
+      - "Dependency C / PR #104 is merged."
+      - "Dependency E / PR #101 is merged."
+      - "The branch is already on `codex/generic-regression-backend` and clean."
+      - "The package must remain application-neutral."
+      - "No finite-difference derivative behavior is allowed."
+      - "Native optimizers may only use analytic, CppAD, or implicit derivatives."
+    existing_plan_facts:
+      - "Task key: K."
+      - "Title: Generic regression row schema and native optimizer backend."
+      - "Assigned branch: codex/generic-regression-backend."
+      - "Dependencies: B, C, E."
+      - "Prompt file: docs/roadmaps/agent_prompts/K_generic_regression_row_schema_and_native_optimizer_backend.md."
+      - "Validation commands: uv run python scripts/build_epcsaft.py --enable-ceres --enable-cppad; uv run python run_pytest.py tests/native/test_ceres_pure_regression.py tests/native/test_ceres_binary_regression.py tests/api/test_regression_api.py -q; uv run python scripts/validate_project.py quick."
+      - "Do not add fit_lithium_extraction_parameters or fit_mea_absorption APIs."
+      - "Do not use finite difference or Python-owned production objective loops."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: generated
+    url: null
+    command: "node C:\\Users\\Tanner\\.codex\\skills\\goalbuddy\\extend\\local-goal-board\\scripts\\local-goal-board.mjs --goal docs/goals/generic-regression-backend"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Record the dependency gate result for Task K and auto-start the board because dependencies B, C, and E are merged."
+    inputs:
+      - "docs/roadmaps/agent_prompts/K_generic_regression_row_schema_and_native_optimizer_backend.md"
+      - "docs/roadmaps/agent_prompts/index.yaml"
+      - "docs/roadmaps/agent_dependency_plan.md"
+      - "docs/goals/generic-regression-backend/notes/dependency_gate.yaml"
+    constraints:
+      - "Do not edit product/source files."
+      - "Do not create local .worktrees/."
+      - "Keep branch codex/generic-regression-backend."
+      - "No finite difference."
+    expected_output:
+      - "PASSED_AUTOSTARTED recorded."
+      - "Dependency evidence recorded."
+      - "Next task moved into implementation instead of waiting."
+    receipt:
+      result: done
+      status: PASSED_AUTOSTARTED
+      summary: "Dependency gate passed on codex/generic-regression-backend: PR #102, PR #104, and PR #101 are merged into origin/main, the branch is current, and the issue scope was recorded for Task K."
+      evidence:
+        - "https://github.com/tannerpolley/ePC-SAFT/pull/102"
+        - "https://github.com/tannerpolley/ePC-SAFT/pull/104"
+        - "https://github.com/tannerpolley/ePC-SAFT/pull/101"
+        - "git rebase origin/main reported the branch is up to date."
+  - id: T002
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: medium
+    objective: "Map the current generic regression schema, parameter-map handling, and native optimizer backend surfaces for the smallest safe Task K implementation slice."
+    inputs:
+      - "Task K prompt"
+      - "docs/roadmaps/general_reactive_electrolyte_equilibrium_readiness.md"
+      - "docs/roadmaps/agent_dependency_plan.md"
+      - "src/epcsaft"
+      - "tests/api"
+      - "tests/native"
+    constraints:
+      - "Read-only."
+      - "Do not add application-specific public APIs."
+      - "No finite difference."
+      - "Do not use PR #56 as a base."
+    expected_output:
+      - "Existing generic regression and optimizer surface map."
+      - "Candidate implementation files."
+      - "Suggested validation commands."
+    receipt:
+      result: done
+      summary: "Mapped Task K surfaces. TargetRow/TargetDataset and FitResult already provide generic schema/result fields; pure-neutral Ceres fills parameter_map, row_diagnostics, and active_bounds; generic binary/native wrappers return thinner FitResult payloads and Ceres remains limited to one binary k_ij target."
+      evidence:
+        - "src/epcsaft/regression.py:129 defines NATIVE_TARGET_KINDS for generic parameter maps."
+        - "src/epcsaft/regression.py:559 and src/epcsaft/regression.py:625 define TargetRow and TargetDataset."
+        - "src/epcsaft/regression.py:727 defines FitResult with parameter_map, row_diagnostics, active_bounds, derivative metadata, and provenance_report."
+        - "src/epcsaft/regression.py:1889 builds binary_pair generic native records and selects either Ceres or native least-squares."
+        - "src/epcsaft/regression.py:2024 returns the binary_pair FitResult without parameter_map, row_diagnostics, or active_bounds."
+        - "src/epcsaft/regression.py:2293 returns pure-neutral row_diagnostics, parameter_map, and active_bounds."
+        - "src/epcsaft/native/epcsaft_electrolyte.h:273 defines GenericRegressionRecord; src/epcsaft/native/epcsaft_electrolyte.h:312 defines GenericRegressionResult without row diagnostics or active-bound metadata."
+        - "src/epcsaft/native/epcsaft_regression.cpp:2327 implements fit_generic_ceres_cpp and currently rejects any target set other than a single k_ij."
+        - "src/epcsaft/bindings.cpp:300 serializes GenericRegressionResult without row_diagnostics, parameter_map, or active_bounds."
+        - "tests/native/test_ceres_binary_regression.py validates the current Ceres binary k_ij path and cppad_implicit Jacobian metadata."
+        - "tests/native/test_ceres_pure_regression.py already asserts pure-neutral parameter_map and row_diagnostics."
+      recommended_slice:
+        - "Mirror the pure-neutral FitResult metadata contract into generic binary fits: parameter_map, row_diagnostics from metrics_by_term, and active_bounds computed from fitted values and bounds."
+        - "Add focused API/native tests for binary Ceres result diagnostics and active-bound reporting."
+        - "Only widen Ceres beyond one k_ij target if the native Jacobian path already has analytic/CppAD coverage; otherwise keep backend_unavailable loud and documented."
+      candidate_files:
+        - "src/epcsaft/regression.py"
+        - "tests/api/test_regression_api.py"
+        - "tests/native/test_ceres_binary_regression.py"
+        - "docs/pages/parameter_regression.rst"
+      suggested_validation:
+        - "uv run python run_pytest.py tests/native/test_ceres_binary_regression.py tests/api/test_regression_api.py -q"
+        - "uv run python run_pytest.py tests/native/test_ceres_pure_regression.py -q"
+        - "uv run python scripts/validate_project.py quick"
+  - id: T003
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Choose the first safe Task K implementation slice after Scout mapping."
+    inputs:
+      - "T002 receipt"
+      - "Task K prompt"
+    constraints:
+      - "Do not implement."
+      - "Reject application-specific APIs."
+      - "Reject finite-difference derivative behavior."
+    expected_output:
+      - "Decision."
+      - "Exact Worker objective."
+      - "allowed_files."
+      - "verify."
+      - "stop_if."
+    receipt:
+      result: done
+      decision: approved
+      summary: "Approved the first Task K implementation slice: remove the finite-difference generic least-squares path from public production wrappers, make Ceres the production generic binary k_ij route, and wire generic result diagnostics into FitResult."
+      rationale:
+        - "GenericLeastSquaresFunctor::df uses central differences in src/epcsaft/native/epcsaft_regression.cpp, so public wrappers cannot continue to route production generic regression through least_squares_native."
+        - "Native Ceres binary k_ij has an explicit cppad_implicit Jacobian path and already owns the optimizer loop."
+        - "The public schema and result fields already exist, so this slice should update behavior and tests rather than add new application-specific APIs."
+      worker_objective: "Update generic binary regression behavior so public production generic binary fitting uses Ceres for supported k_ij rows, reports parameter_map, row_diagnostics, active_bounds, and parameter movement, and rejects unsupported generic native optimizer targets without finite-difference fallback."
+      allowed_files:
+        - "src/epcsaft/regression.py"
+        - "tests/api/test_regression_api.py"
+        - "tests/native/test_ceres_binary_regression.py"
+        - "docs/pages/parameter_regression.rst"
+      verify:
+        - "uv run python run_pytest.py tests/native/test_ceres_binary_regression.py tests/api/test_regression_api.py -q"
+        - "uv run python run_pytest.py tests/native/test_ceres_pure_regression.py -q"
+        - "uv run python scripts/validate_project.py quick"
+      stop_if:
+        - "Need C++ native derivative work outside the supported k_ij Ceres path."
+        - "Need application-specific public APIs."
+        - "Need finite-difference fallback."
+        - "Required tests fail twice for the same reason."
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Update generic binary regression behavior so public production generic binary fitting uses Ceres for supported k_ij rows, reports parameter_map, row_diagnostics, active_bounds, and parameter movement, and rejects unsupported generic native optimizer targets without finite-difference fallback."
+    allowed_files:
+      - "src/epcsaft/regression.py"
+      - "tests/api/test_regression_api.py"
+      - "tests/native/test_ceres_binary_regression.py"
+      - "docs/pages/parameter_regression.rst"
+    verify:
+      - "uv run python run_pytest.py tests/native/test_ceres_binary_regression.py tests/api/test_regression_api.py -q"
+      - "uv run python run_pytest.py tests/native/test_ceres_pure_regression.py -q"
+      - "uv run python scripts/validate_project.py quick"
+    stop_if:
+      - "Need C++ native derivative work outside the supported k_ij Ceres path."
+      - "Need application-specific public APIs."
+      - "Need finite-difference fallback."
+      - "Required tests fail twice for the same reason."
+    expected_output:
+      - "Implementation changes."
+      - "Validation results."
+      - "No application-specific public APIs."
+      - "No finite differences."
+    receipt:
+      result: done
+      summary: "Binary generic regression now defaults to native Ceres for supported constant k_ij rows, rejects the generic native least-squares finite-difference backend, reports parameter_map, row_diagnostics, active_bounds, and parameter_movement, and documents the no-finite-difference support boundary."
+      changed_files:
+        - "src/epcsaft/regression.py"
+        - "tests/api/test_regression_api.py"
+        - "docs/pages/parameter_regression.rst"
+      commands:
+        - cmd: "uv run python scripts/build_epcsaft.py --enable-ceres --enable-cppad"
+          status: pass
+          output: "Native Ceres/CppAD build completed."
+        - cmd: "uv run python run_pytest.py tests/native/test_ceres_binary_regression.py tests/api/test_regression_api.py -q"
+          status: pass
+          output: "27 passed."
+        - cmd: "uv run python run_pytest.py tests/native/test_ceres_pure_regression.py -q"
+          status: pass
+          output: "1 passed."
+        - cmd: "uv run python scripts/validate_project.py quick"
+          status: pass
+          output: "doctor passed; quick pytest slice 23 passed."
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Disable remaining public generic regression routes that would call the generic native least-squares finite-difference optimizer, and document them as backend_unavailable until analytic, CppAD, or implicit derivatives exist."
+    allowed_files:
+      - "src/epcsaft/regression.py"
+      - "tests/api/test_regression_api.py"
+      - "docs/pages/parameter_regression.rst"
+    verify:
+      - "uv run python run_pytest.py tests/api/test_regression_api.py -q"
+      - "uv run python run_pytest.py tests/native/test_ceres_pure_regression.py tests/native/test_ceres_binary_regression.py -q"
+      - "uv run python scripts/validate_project.py quick"
+    stop_if:
+      - "Need C++ native derivative work for generic ion or associating-neutral rows."
+      - "Need application-specific public APIs."
+      - "Need finite-difference fallback."
+      - "Required tests fail twice for the same reason."
+    expected_output:
+      - "Public generic finite-difference routes are backend_unavailable."
+      - "Tests cover the backend_unavailable behavior."
+      - "Docs describe the supported native Ceres k_ij path and unsupported generic routes."
+    receipt:
+      result: done
+      summary: "Public pure-ion generic regression now returns backend_unavailable instead of invoking generic native least-squares; tests and docs record the no-finite-difference boundary."
+      changed_files:
+        - "src/epcsaft/regression.py"
+        - "tests/api/test_regression_api.py"
+        - "docs/pages/parameter_regression.rst"
+      commands:
+        - cmd: "uv run python run_pytest.py tests/api/test_regression_api.py -q"
+          status: pass
+          output: "26 passed."
+        - cmd: "uv run python run_pytest.py tests/native/test_ceres_pure_regression.py tests/native/test_ceres_binary_regression.py -q"
+          status: pass
+          output: "2 passed."
+        - cmd: "uv run python scripts/validate_project.py quick"
+          status: pass
+          output: "doctor passed; quick pytest slice 23 passed."
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether Task K is complete against the original prompt, dependency gate, constraints, and validation evidence."
+    inputs:
+      - "All done task receipts."
+      - "Last verification."
+      - "Current dirty diff."
+      - "docs/goals/generic-regression-backend/notes/dependency_gate.yaml"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if dependency B, C, or E was not satisfied before implementation."
+      - "Reject completion if required Worker work remains queued or active."
+      - "Reject application-specific public APIs."
+    expected_output:
+      - "complete | not_complete."
+      - "full_outcome_complete: true | false."
+      - "missing evidence."
+      - "next task if not complete."
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      summary: "Task K implementation is complete for the issue #94 scope: generic target-row schemas were already present, binary k_ij regression now uses the native Ceres cppad_implicit path by default, unsupported generic native optimizer routes are backend_unavailable instead of finite-difference fallbacks, and FitResult carries parameter_map, row_diagnostics, active_bounds, source summaries, and parameter movement for the supported binary path."
+      classified_scope:
+        - "generic target-row compilation: already_supported_with_tests"
+        - "generic parameter maps: implemented"
+        - "native optimizer loop integration: implemented for supported binary k_ij through Ceres"
+        - "other generic targets: out_of_scope_by_roadmap until analytic, CppAD, or implicit derivatives exist"
+        - "row diagnostics/source summaries/active bounds/parameter movement: implemented for supported binary k_ij and backend_unavailable ion declarations"
+      review:
+        no_finite_difference_route_added: true
+        unsupported_generic_routes_backend_unavailable: true
+        no_application_specific_public_api_added: true
+        pre_existing_application_specific_api_unchanged: "fit_mea_co2_h2o_electrolyte exists on origin/main and was not added or expanded by this task."
+        no_silent_scope_narrowing: true
+      commands:
+        - cmd: "uv run python scripts/build_epcsaft.py --enable-ceres --enable-cppad"
+          status: pass
+          output: "Native Ceres/CppAD build completed."
+        - cmd: "uv run python run_pytest.py tests/native/test_ceres_pure_regression.py tests/native/test_ceres_binary_regression.py tests/api/test_regression_api.py -q"
+          status: pass
+          output: "28 passed."
+        - cmd: "uv run python scripts/validate_project.py quick"
+          status: pass
+          output: "doctor passed; quick pytest slice 23 passed."
+        - cmd: "git diff --check"
+          status: pass
+          output: "No whitespace errors."
+
+checks:
+  dirty_fingerprint: audit_complete_changes_present
+  last_verification:
+    result: pass
+    task: T999
+    commands:
+      - cmd: "uv run python run_pytest.py tests/native/test_ceres_pure_regression.py tests/native/test_ceres_binary_regression.py tests/api/test_regression_api.py -q"
+        status: pass
+        output: "28 passed."
+      - cmd: "uv run python scripts/validate_project.py quick"
+        status: pass
+        output: "doctor passed; quick pytest slice 23 passed."
+      - cmd: "git diff --check"
+        status: pass
+        output: "No whitespace errors."
