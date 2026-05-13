@@ -3288,37 +3288,6 @@ def _fit_mea_co2_h2o_pure_parameter_benchmark(
     }
 
 
-def fit_mea_co2_h2o_electrolyte(
-    records: Any,
-    *,
-    dataset: str | Path,
-    species: Iterable[str] | None = None,
-    user_options: Mapping[str, Any] | None = None,
-    initial_guess: Mapping[str, Mapping[str, float]] | None = None,
-    bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
-    multistart: int = 0,
-    max_nfev: int = 1,
-) -> dict[str, FitResult]:
-    """Fit the dataset-driven MEA-CO2-H2O electrolyte pure-parameter benchmark.
-
-    This helper exposes the opt-in benchmark path for MEA solvent systems while
-    keeping records, chemistry, and dataset ownership outside the core runtime.
-    It returns one :class:`FitResult` per fitted pure component and includes
-    Born-diameter targets for the ionic species.
-    """
-
-    return _fit_mea_co2_h2o_pure_parameter_benchmark(
-        records,
-        dataset=dataset,
-        species=species,
-        user_options=user_options,
-        initial_guess=initial_guess,
-        bounds=bounds,
-        multistart=multistart,
-        max_nfev=max_nfev,
-    )
-
-
 def evaluate_reactive_electrolyte_bubble_residuals(
     records: Any,
     *,

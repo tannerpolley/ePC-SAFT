@@ -67,7 +67,10 @@ Benchmarks
    Owns package-maintained timing, smoke, and regression benchmarks that protect
    runtime expectations. Benchmarks may consume the public package API and
    packaged/reference data, but they should not become required import-time
-   dependencies for normal users.
+   dependencies for normal users. The package-owned literature benchmark suite
+   inventory also belongs here: it is the canonical classification surface for
+   which literature anchors are already supported by tests versus still blocked
+   on follow-up generic capability work.
 
 Core Surfaces
 -------------

@@ -204,8 +204,6 @@ native-backed helpers remain available for code that already targets them.
 
 .. autofunction:: epcsaft.fit_binary_pair
 
-.. autofunction:: epcsaft.fit_mea_co2_h2o_electrolyte
-
 .. autofunction:: epcsaft.evaluate_reactive_electrolyte_bubble_residuals
 
 .. autofunction:: epcsaft.write_fit_result
