@@ -1119,8 +1119,9 @@ def _solved_internal_states(problem_kind: str) -> list[str]:
 
 
 def _derivative_backend_blocks(problem_kind: str, derivative_backend: str) -> dict[str, str]:
+    density_backend = "not_applicable" if derivative_backend == "not_applicable" else "backend_unavailable"
     blocks: dict[str, str] = {
-        "density_root": "backend_unavailable",
+        "density_root": density_backend,
         "eos_state_properties": "analytic",
     }
     if "bubble" in problem_kind:

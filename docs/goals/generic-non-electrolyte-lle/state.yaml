@@ -1,0 +1,248 @@
+version: 2
+
+goal:
+  title: "Generic non-electrolyte LLE benchmark and solver hardening"
+  slug: "generic-non-electrolyte-lle"
+  kind: existing_plan
+  tranche: "Prepare the generic non-electrolyte LLE board after dependency C is verified as merged."
+  status: active
+  intake:
+    original_request: "Run Goal Prep for task key H: Generic non-electrolyte LLE benchmark and solver hardening."
+    interpreted_outcome: "Create a GoalBuddy board for Task H, record the current issue scope, and prepare bounded execution defaults after dependency C is confirmed merged."
+    input_shape: existing_plan
+    audience: "ePC-SAFT maintainers and downstream modeling agents"
+    authority: requested
+    proof_type: artifact
+    completion_proof: "A live GoalBuddy board exists, the dependency gate is documented, the issue scope is captured, the branch is current with origin/main, and the requested validation commands pass for the LLE slice."
+    likely_misfire: "Starting electrolyte accounting, adding application-specific public APIs, or forcing an unsuitable benchmark to pass."
+    blind_spots_considered:
+      - "Dependency C is already merged into origin/main."
+      - "The issue scope is limited to ordinary two-liquid-phase splitting before electrolyte constraints."
+      - "No finite difference is allowed."
+      - "The package must remain general-purpose."
+    existing_plan_facts:
+      - "Task key: H."
+      - "Title: Generic non-electrolyte LLE benchmark and solver hardening."
+      - "Prompt file: docs/roadmaps/agent_prompts/H_generic_non_electrolyte_lle_benchmark_and_solver_hardening.md."
+      - "Assigned branch: codex/generic-non-electrolyte-lle."
+      - "Dependency: C."
+      - "Watcher defaults: bounded / auto_start_after_gate true / poll_interval_seconds 120 / max_wait_minutes 480."
+      - "No local .worktrees/."
+      - "No application-specific public APIs."
+      - "No finite difference."
+      - "Do not include electrolyte accounting in this issue."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  watcher_mode: bounded
+
+watcher:
+  mode: bounded
+  auto_start_after_gate: true
+  poll_interval_seconds: 120
+  max_wait_minutes: 480
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://127.0.0.1:41737/generic-non-electrolyte-lle/"
+    command: "node C:\\Users\\Tanner\\.codex\\plugins\\cache\\goalbuddy\\goalbuddy\\0.3.6\\skills\\goalbuddy\\extend\\local-goal-board\\scripts\\local-goal-board.mjs --goal docs/goals/generic-non-electrolyte-lle"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: T999
+
+tasks:
+  - id: T001
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Record the dependency gate result and issue scope for Task H."
+    inputs:
+      - "docs/roadmaps/agent_prompts/index.yaml"
+      - "docs/roadmaps/agent_prompts/H_generic_non_electrolyte_lle_benchmark_and_solver_hardening.md"
+      - "docs/roadmaps/general_reactive_electrolyte_equilibrium_readiness.md"
+      - "docs/roadmaps/agent_dependency_plan.md"
+      - "docs/goals/generic-non-electrolyte-lle/notes/dependency_gate.yaml"
+      - "docs/goals/generic-non-electrolyte-lle/notes/issue_scope.md"
+    constraints:
+      - "Do not edit product/source files."
+      - "Do not create local .worktrees/."
+      - "Do not add application-specific public APIs."
+      - "No finite difference."
+      - "Do not include electrolyte accounting."
+    expected_output:
+      - "Dependency gate evidence recorded."
+      - "Current issue scope captured."
+      - "Board ready for bounded execution."
+    receipt:
+      result: done
+      status: GATE_PASSED
+      summary: "Dependency C is merged, the branch rebased cleanly on origin/main, and the Task H issue scope was recorded."
+      evidence:
+        - "https://github.com/tannerpolley/ePC-SAFT/issues/86"
+        - "https://github.com/tannerpolley/ePC-SAFT/pull/104"
+        - "Commit 974e6a232025d9d305297590228c0d2131fbc4fe in origin/main"
+        - "git rebase origin/main on codex/generic-non-electrolyte-lle returned cleanly"
+  - id: T002
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: medium
+    objective: "Map the existing non-electrolyte LLE solver, stability hooks, diagnostics, and benchmark candidates without editing files."
+    inputs:
+      - "docs/roadmaps/general_reactive_electrolyte_equilibrium_readiness.md"
+      - "docs/roadmaps/agent_prompts/H_generic_non_electrolyte_lle_benchmark_and_solver_hardening.md"
+      - "src/epcsaft"
+      - "tests"
+    constraints:
+      - "Read-only."
+      - "Do not add electrolyte accounting."
+      - "Do not use finite difference."
+      - "Preserve generic package scope."
+    expected_output:
+      - "Existing phase-split and diagnostic surfaces."
+      - "Candidate files for a bounded implementation slice."
+      - "Focused validation commands."
+    receipt:
+      result: done
+      summary: "Mapped the neutral LLE path to equilibrium.py -> native lle_flash_native in epcsaft_equilibrium.cpp, with stability/TPD seeds and anti-trivial split gates already present."
+      evidence:
+        - "src/epcsaft/equilibrium.py"
+        - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+        - "tests/equilibrium/test_lle.py"
+        - "tests/native/test_cppad_lle_derivatives.py"
+      findings:
+        - "Existing neutral LLE tests asserted backend_unavailable for required methanol/cyclohexane workflows."
+        - "Native residual already evaluates fugacity equality and material balance but the Newton step placeholder blocked neutral LLE solves."
+        - "Electrolyte LLE residual sensitivities remain out of scope for Task H."
+  - id: T003
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Choose the first safe implementation slice for generic non-electrolyte LLE after Scout evidence exists."
+    inputs:
+      - "T002 receipt"
+      - "Task H prompt"
+    constraints:
+      - "Do not implement."
+      - "Reject application-specific public APIs."
+      - "Reject finite-difference approaches."
+      - "Reject forcing a poor benchmark to pass."
+    expected_output:
+      - "Decision."
+      - "Exact Worker objective."
+      - "allowed_files."
+      - "verify."
+      - "stop_if."
+    receipt:
+      result: done
+      decision: "Proceed with a generic neutral LLE solver slice only."
+      worker_objective: "Replace the neutral LLE blocking Newton placeholder with a derivative-free residual minimization path, update generic diagnostics/capabilities, and convert methanol/cyclohexane tests to prove a real split without finite differences."
+      allowed_files:
+        - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+        - "src/epcsaft/equilibrium.py"
+        - "src/epcsaft/runtime.py"
+        - "tests/equilibrium/test_lle.py"
+        - "tests/native/test_cppad_lle_derivatives.py"
+        - "run_pytest.py"
+      verify:
+        - "uv run python run_pytest.py tests/equilibrium/test_lle.py tests/native/test_cppad_lle_derivatives.py -q"
+        - "uv run python scripts/validate_project.py quick"
+        - "git diff --check"
+      stop_if:
+        - "Any electrolyte accounting is required."
+        - "A finite-difference derivative route is introduced."
+        - "An application-specific public API is added."
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Execute the first bounded implementation slice selected by Judge for generic non-electrolyte LLE."
+    allowed_files:
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/runtime.py"
+      - "tests/equilibrium/test_lle.py"
+      - "tests/native/test_cppad_lle_derivatives.py"
+      - "run_pytest.py"
+    constraints:
+      - "Implement only the approved generic slice."
+      - "No application-specific public APIs."
+      - "No finite difference."
+      - "Do not include electrolyte accounting."
+    receipt:
+      result: done
+      summary: "Implemented a generic native derivative-free neutral LLE residual minimizer, kept electrolyte sensitivity unavailability out of scope, and hardened diagnostics/capability reporting."
+      changed_files:
+        - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+        - "src/epcsaft/equilibrium.py"
+        - "src/epcsaft/runtime.py"
+        - "tests/equilibrium/test_lle.py"
+        - "tests/native/test_cppad_lle_derivatives.py"
+        - "run_pytest.py"
+      evidence:
+        - "Seeded methanol/cyclohexane LLE split solves with fugacity residual < 1e-8 and material balance error < 1e-8."
+        - "Unseeded LLE uses neutral TPD seed and solves the same generic split."
+        - "Poor user seed still fails loudly instead of being forced to pass."
+        - "Neutral LLE diagnostics report derivative_backend=not_applicable and no finite_difference route."
+      commands:
+        - command: "uv run python scripts/build_epcsaft.py"
+          status: pass
+        - command: "uv run python run_pytest.py tests/equilibrium/test_lle.py tests/native/test_cppad_lle_derivatives.py -q"
+          status: pass
+  - id: T005
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Verify the requested validation commands and consolidate the outcome into the board."
+    constraints:
+      - "Run only the Task H validation commands."
+      - "Record any limitations truthfully."
+      - "Do not widen scope."
+    receipt:
+      result: done
+      validation:
+        - command: "uv run python scripts/build_epcsaft.py"
+          status: passed
+        - command: "uv run python run_pytest.py tests/equilibrium/test_lle.py tests/native/test_cppad_lle_derivatives.py -q"
+          status: passed
+          output: "34 passed in 6.81s"
+        - command: "uv run python run_pytest.py tests/workflows/test_benchmark_neutral_equilibrium.py tests/api/test_runtime_capabilities_dependency_gates.py -q"
+          status: passed
+          output: "9 passed in 2.40s"
+        - command: "uv run python scripts/validate_project.py quick"
+          status: passed
+          output: "23 passed in 10.13s"
+        - command: "git diff --check"
+          status: passed
+          output: "No whitespace errors; Git reported CRLF normalization warnings only."
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Audit whether Task H is complete for the current tranche."

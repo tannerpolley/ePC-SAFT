@@ -508,7 +508,15 @@ def capabilities() -> dict[str, object]:
                 ],
             },
             "neutral_tp_flash": {"available": True, "backend": "native"},
-            "neutral_lle_flash": {"available": True, "backend": "native"},
+            "neutral_lle_flash": {
+                "available": True,
+                "backend": "native",
+                "solver": "native_derivative_free_nelder_mead",
+                "derivative_backend": "not_applicable",
+                "stability_precheck": "neutral_tpd",
+                "anti_trivial_solution_strategy": "phase_fraction_and_phase_distance_gate",
+                "finite_difference_backend_available": False,
+            },
             "neutral_stability": {"available": True, "backend": "native"},
             "neutral_bubble_dew": {
                 "available": True,

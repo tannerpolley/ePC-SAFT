@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import pytest
 
@@ -27,14 +29,27 @@ def _electrolyte_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_dataset("2022_Ascani", ["H2O", "Butanol", "Na+", "Cl-"], feed, 298.15)
 
 
-def test_associating_lle_reports_backend_unavailable_instead_of_omitting_sensitivities() -> None:
+def test_associating_neutral_lle_solves_without_finite_difference_derivatives() -> None:
     mix = _associating_lle_mixture()
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable") as excinfo:
-        mix.lle_tp(T=298.15, P=1.013e5, z=[0.5, 0.5])
+    result = mix.lle_tp(
+        T=298.15,
+        P=1.013e5,
+        z=[0.5, 0.5],
+        options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-8),
+    )
 
-    assert "native LLE sensitivities are not implemented" in str(excinfo.value)
-    assert "finite_difference" not in str(excinfo.value).lower()
+    assert result.split_detected is True
+    assert result.phase_labels == ["liq1", "liq2"]
+    assert result.diagnostics["fugacity_residual_norm"] < 1.0e-8
+    assert result.diagnostics["material_balance_error"] < 1.0e-8
+    assert result.diagnostics["phase_distance"] > 0.1
+    assert result.diagnostics["nonlinear_solver"] == "native_derivative_free_nelder_mead"
+    assert result.diagnostics["derivative_backend"] == "not_applicable"
+    assert result.diagnostics["derivative_status"] == "not_required"
+    payload = json.dumps(result.to_dict(), default=str).lower()
+    assert "backend_unavailable" not in payload
+    assert "finite_difference" not in payload
 
 
 def test_electrolyte_lle_residual_sensitivities_are_explicitly_unavailable() -> None:

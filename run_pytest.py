@@ -15,7 +15,7 @@ GENERIC_TEST_TARGETS = (
     "tests/regression/test_hydrocarbon.py::test_methane_reference_parameters_keep_native_objective_pinned",
     "tests/equilibrium/test_api.py::test_tp_flash_returns_structured_result_and_json_like_dict",
     "tests/equilibrium/test_vle.py::test_ternary_hydrocarbon_basis_tp_flash_closes_material_and_fugacity_balance",
-    "tests/equilibrium/test_lle.py::test_methanol_cyclohexane_lle_flash_reports_unavailable_solver_derivatives",
+    "tests/equilibrium/test_lle.py::test_methanol_cyclohexane_lle_flash_solves_seeded_phase_split",
     "tests/equilibrium/test_stability.py::test_stability_returns_structured_result_and_json_like_dict",
     "tests/equilibrium/test_electrolyte_lle.py::test_one_salt_smoke_reports_unavailable_solver_derivatives",
     "tests/equilibrium/test_electrolyte_thermo_diagnostics.py::test_khudaida_fixture_loads_charge_neutral_explicit_ions",
@@ -41,7 +41,7 @@ EQUILIBRIUM_CONFIDENCE_TEST_TARGETS = (
 )
 EQUILIBRIUM_API_TEST_TARGETS = (
     "tests/equilibrium/test_api.py::test_tp_flash_returns_structured_result_and_json_like_dict",
-    "tests/equilibrium/test_lle.py::test_methanol_cyclohexane_lle_flash_reports_unavailable_solver_derivatives",
+    "tests/equilibrium/test_lle.py::test_methanol_cyclohexane_lle_flash_solves_seeded_phase_split",
     "tests/equilibrium/test_stability.py::test_stability_returns_structured_result_and_json_like_dict",
     "tests/equilibrium/test_electrolyte_lle.py::test_one_salt_smoke_reports_unavailable_solver_derivatives",
     "tests/api/test_runtime.py::test_runtime_build_info_and_capabilities_are_json_like",
