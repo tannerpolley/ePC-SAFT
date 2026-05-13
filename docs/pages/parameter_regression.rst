@@ -32,6 +32,22 @@ The public easy APIs intentionally do not expose finite-difference derivative
 configuration. Unsupported derivative or optimizer paths report
 ``backend_unavailable`` instead of silently falling back to finite differences.
 
+Generic target-row schemas
+--------------------------
+
+``TargetRow`` and ``TargetDataset`` provide schema-only, application-neutral
+containers for future regression and validation workflows. They validate row
+families such as ``pure_density``, ``pure_vapor_pressure``, ``p_rho_t``,
+``binary_vle``, ``binary_lle``, ``osmotic_coefficient``,
+``mean_ionic_activity``, ``relative_permittivity``, ``activity``,
+``fugacity``, ``speciation``, ``vle_partial_pressure``,
+``lle_phase_composition``, and ``regularization`` without running optimizer
+internals.
+
+These containers deliberately use generic thermodynamic terms. Downstream
+projects should keep process-specific metrics, reports, and application names
+outside the package-owned public API.
+
 Easy API examples
 -----------------
 
