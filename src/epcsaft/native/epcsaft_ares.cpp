@@ -20,9 +20,13 @@ using thermo_detail::MixtureState;
 
 namespace ares_detail {
 
+constexpr int kGenericTargetSLocal = 1;
+constexpr int kGenericTargetELocal = 2;
+constexpr int kGenericTargetDBornLocal = 5;
+
 template <typename Scalar>
 struct MixtureStateScalar {
-    vector<double> d;
+    vector<Scalar> d;
     vector<Scalar> e_ij;
     vector<Scalar> s_ij;
     Scalar den = scalar_constant<Scalar>(0.0);
@@ -60,6 +64,83 @@ struct AresContributionsScalar {
 };
 
 template <typename Scalar>
+static Scalar scalar_component_parameter_cpp(
+    int target_kind,
+    int target_index,
+    int component_index,
+    double base_value,
+    const Scalar *target_value
+) {
+    if (target_value != nullptr && target_index == component_index && target_kind >= 0) {
+        return *target_value;
+    }
+    return scalar_constant<Scalar>(base_value);
+}
+
+template <typename Scalar>
+static Scalar ion_diameter_scalar_cpp(
+    int i,
+    double t,
+    const add_args &cppargs,
+    const Scalar &sigma_i,
+    const Scalar &epsilon_i
+) {
+    if (!is_ion_species(cppargs, i)) {
+        return sigma_i;
+    }
+    int mode = cppargs.d_ion_mode;
+    if (mode == 0) {
+        return sigma_i;
+    }
+    if (mode == 1) {
+        return sigma_i * 0.88;
+    }
+    if (mode == 2) {
+        return sigma_i * (1.0 - 0.12 * scalar_exp(-3.0 * epsilon_i / t));
+    }
+    throw ValueError("Unknown d_ion_mode. Supported values are 0, 1, 2.");
+}
+
+template <typename Scalar>
+static Scalar ion_born_radius_scalar_cpp(
+    int i,
+    double t,
+    const add_args &cppargs,
+    const Scalar &sigma_i,
+    const Scalar &epsilon_i,
+    int target_kind,
+    int target_index,
+    const Scalar *target_value
+) {
+    if (!is_ion_species(cppargs, i)) {
+        return sigma_i;
+    }
+    int mode = cppargs.d_born_mode;
+    if (mode == 0) {
+        return sigma_i;
+    }
+    if (mode == 1) {
+        return sigma_i * 0.88;
+    }
+    if (mode == 2) {
+        return sigma_i * (1.0 - 0.12 * scalar_exp(-3.0 * epsilon_i / t));
+    }
+    if (mode == 3) {
+        if (cppargs.d_born.size() <= static_cast<size_t>(i) || cppargs.d_born[i] <= 0.0) {
+            throw ValueError("d_Born_mode=fitted_param requires positive ionic params['d_born'] values.");
+        }
+        return scalar_component_parameter_cpp(
+            target_kind,
+            target_index,
+            i,
+            cppargs.d_born[i],
+            target_kind == kGenericTargetDBornLocal ? target_value : nullptr
+        );
+    }
+    throw ValueError("Unknown d_Born_mode. Supported values are 0, 1, 2, 3.");
+}
+
+template <typename Scalar>
 static MixtureStateScalar<Scalar> mixture_state_scalar_cpp(
     double t,
     const Scalar &rho,
@@ -68,21 +149,38 @@ static MixtureStateScalar<Scalar> mixture_state_scalar_cpp(
     int k_override_index = -1,
     const Scalar *k_override_value = nullptr,
     int l_override_index = -1,
-    const Scalar *l_override_value = nullptr
+    const Scalar *l_override_value = nullptr,
+    int component_target_kind = -1,
+    int component_target_index = -1,
+    const Scalar *component_target_value = nullptr
 ) {
     MixtureStateScalar<Scalar> state;
     int ncomp = static_cast<int>(x.size());
-    state.d.assign(ncomp, 0.0);
+    state.d.assign(ncomp, scalar_constant<Scalar>(0.0));
     state.e_ij.assign(ncomp * ncomp, 0.0);
     state.s_ij.assign(ncomp * ncomp, scalar_constant<Scalar>(0.0));
     state.den = rho * N_AV / 1.0e30;
 
     for (int i = 0; i < ncomp; ++i) {
-        state.d[i] = cppargs.s[i] * (1.0 - 0.12 * std::exp(-3.0 * cppargs.e[i] / t));
+        Scalar sigma_i = scalar_component_parameter_cpp(
+            component_target_kind,
+            component_target_index,
+            i,
+            cppargs.s[i],
+            component_target_kind == kGenericTargetSLocal ? component_target_value : nullptr
+        );
+        Scalar epsilon_i = scalar_component_parameter_cpp(
+            component_target_kind,
+            component_target_index,
+            i,
+            cppargs.e[i],
+            component_target_kind == kGenericTargetELocal ? component_target_value : nullptr
+        );
+        state.d[i] = sigma_i * (1.0 - 0.12 * scalar_exp(-3.0 * epsilon_i / t));
         if (!cppargs.z.empty() && std::abs(cppargs.z[i]) > 1e-12) {
-            state.d[i] = thermo_detail::parameter_setup_detail::ion_diameter_cpp(i, t, cppargs);
+            state.d[i] = ion_diameter_scalar_cpp(i, t, cppargs, sigma_i, epsilon_i);
         }
-        state.m_avg += x[i] * cppargs.m[i];
+        state.m_avg += x[i] * scalar_constant<Scalar>(cppargs.m[i]);
     }
 
     int idx = -1;
@@ -92,16 +190,61 @@ static MixtureStateScalar<Scalar> mixture_state_scalar_cpp(
             if (l_override_value != nullptr && l_override_index >= 0) {
                 const int l_i = l_override_index / ncomp;
                 const int l_j = l_override_index % ncomp;
-                state.s_ij[idx] = 0.5 * (cppargs.s[i] + cppargs.s[j]);
+                Scalar sigma_i = scalar_component_parameter_cpp(
+                    component_target_kind,
+                    component_target_index,
+                    i,
+                    cppargs.s[i],
+                    component_target_kind == kGenericTargetSLocal ? component_target_value : nullptr
+                );
+                Scalar sigma_j = scalar_component_parameter_cpp(
+                    component_target_kind,
+                    component_target_index,
+                    j,
+                    cppargs.s[j],
+                    component_target_kind == kGenericTargetSLocal ? component_target_value : nullptr
+                );
+                state.s_ij[idx] = 0.5 * (sigma_i + sigma_j);
                 if (idx == l_override_index || idx == (l_j * ncomp + l_i)) {
                     state.s_ij[idx] *= (1.0 - *l_override_value);
                 } else if (!cppargs.l_ij.empty()) {
                     state.s_ij[idx] *= (1.0 - cppargs.l_ij[static_cast<size_t>(idx)]);
                 }
             } else {
-                state.s_ij[idx] = thermo_detail::parameter_setup_detail::pair_sigma_cpp(static_cast<size_t>(idx), i, j, cppargs);
+                Scalar sigma_i = scalar_component_parameter_cpp(
+                    component_target_kind,
+                    component_target_index,
+                    i,
+                    cppargs.s[i],
+                    component_target_kind == kGenericTargetSLocal ? component_target_value : nullptr
+                );
+                Scalar sigma_j = scalar_component_parameter_cpp(
+                    component_target_kind,
+                    component_target_index,
+                    j,
+                    cppargs.s[j],
+                    component_target_kind == kGenericTargetSLocal ? component_target_value : nullptr
+                );
+                state.s_ij[idx] = 0.5 * (sigma_i + sigma_j);
+                if (!cppargs.l_ij.empty()) {
+                    state.s_ij[idx] *= (1.0 - cppargs.l_ij[static_cast<size_t>(idx)]);
+                }
             }
-            Scalar epsilon = scalar_sqrt(cppargs.e[i] * cppargs.e[j]);
+            Scalar epsilon_i = scalar_component_parameter_cpp(
+                component_target_kind,
+                component_target_index,
+                i,
+                cppargs.e[i],
+                component_target_kind == kGenericTargetELocal ? component_target_value : nullptr
+            );
+            Scalar epsilon_j = scalar_component_parameter_cpp(
+                component_target_kind,
+                component_target_index,
+                j,
+                cppargs.e[j],
+                component_target_kind == kGenericTargetELocal ? component_target_value : nullptr
+            );
+            Scalar epsilon = scalar_sqrt(epsilon_i * epsilon_j);
             if (!cppargs.z.empty() && cppargs.z[i] * cppargs.z[j] > 0.0) {
                 epsilon = scalar_constant<Scalar>(0.0);
             } else if (k_override_value != nullptr && k_override_index >= 0) {
@@ -124,7 +267,7 @@ static MixtureStateScalar<Scalar> mixture_state_scalar_cpp(
 }
 
 template <typename Scalar>
-static Scalar hs_contact_value_scalar_cpp(double pair_diameter, const Scalar &zeta2, const Scalar &zeta3) {
+static Scalar hs_contact_value_scalar_cpp(const Scalar &pair_diameter, const Scalar &zeta2, const Scalar &zeta3) {
     const Scalar one = scalar_constant<Scalar>(1.0);
     return one / (one - zeta3)
         + pair_diameter * 3.0 * zeta2 / scalar_pow(one - zeta3, 2)
@@ -150,7 +293,7 @@ static HardChainStateScalar<Scalar> hard_chain_state_scalar_cpp(const MixtureSta
     for (int i = 0; i < ncomp; ++i) {
         for (int j = 0; j < ncomp; ++j) {
             ++idx;
-            double pair_diameter = thermo_detail::parameter_setup_detail::pair_diameter_cpp(thermo.d[i], thermo.d[j]);
+            Scalar pair_diameter = thermo.d[i] * thermo.d[j] / (thermo.d[i] + thermo.d[j]);
             state.ghs[idx] = hs_contact_value_scalar_cpp(pair_diameter, state.zeta[2], state.zeta[3]);
         }
     }
@@ -329,7 +472,14 @@ static double ares_ion_cpp(double t, const IonIntermediateState &ion_state) {
 
 // EqID: ares_born
 template <typename Scalar>
-static Scalar ares_born_scalar_cpp(double t, const vector<Scalar> &x, const add_args &cppargs) {
+static Scalar ares_born_scalar_cpp(
+    double t,
+    const vector<Scalar> &x,
+    const add_args &cppargs,
+    int component_target_kind = -1,
+    int component_target_index = -1,
+    const Scalar *component_target_value = nullptr
+) {
     if (cppargs.z.empty() || cppargs.born_model == 0) {
         return scalar_constant<Scalar>(0.0);
     }
@@ -362,7 +512,30 @@ static Scalar ares_born_scalar_cpp(double t, const vector<Scalar> &x, const add_
     Scalar charge_radius_sum = scalar_constant<Scalar>(0.0);
     for (int i = 0; i < static_cast<int>(x.size()); ++i) {
         if (is_ion_species(cppargs, i)) {
-            double d_born_i = thermo_detail::parameter_setup_detail::ion_born_radius_cpp(i, t, cppargs);
+            Scalar sigma_i = scalar_component_parameter_cpp(
+                component_target_kind,
+                component_target_index,
+                i,
+                cppargs.s[i],
+                component_target_kind == kGenericTargetSLocal ? component_target_value : nullptr
+            );
+            Scalar epsilon_i = scalar_component_parameter_cpp(
+                component_target_kind,
+                component_target_index,
+                i,
+                cppargs.e[i],
+                component_target_kind == kGenericTargetELocal ? component_target_value : nullptr
+            );
+            Scalar d_born_i = ion_born_radius_scalar_cpp(
+                i,
+                t,
+                cppargs,
+                sigma_i,
+                epsilon_i,
+                component_target_kind,
+                component_target_index,
+                component_target_value
+            );
             charge_radius_sum += x[i] * cppargs.z[i] * cppargs.z[i] / d_born_i;
         }
     }
@@ -392,7 +565,10 @@ static AresContributionsScalar<Scalar> ares_contributions_scalar_cpp(
     int k_override_index = -1,
     const Scalar *k_override_value = nullptr,
     int l_override_index = -1,
-    const Scalar *l_override_value = nullptr
+    const Scalar *l_override_value = nullptr,
+    int component_target_kind = -1,
+    int component_target_index = -1,
+    const Scalar *component_target_value = nullptr
 ) {
     AresContributionsScalar<Scalar> out;
     MixtureStateScalar<Scalar> thermo = mixture_state_scalar_cpp(
@@ -403,7 +579,10 @@ static AresContributionsScalar<Scalar> ares_contributions_scalar_cpp(
         k_override_index,
         k_override_value,
         l_override_index,
-        l_override_value
+        l_override_value,
+        component_target_kind,
+        component_target_index,
+        component_target_value
     );
     HardChainStateScalar<Scalar> hc_state = hard_chain_state_scalar_cpp(thermo, x, cppargs);
     DispersionPolynomialStateScalar<Scalar> dispersion = dispersion_polynomials_scalar_cpp(thermo.m_avg, hc_state.eta);
@@ -411,7 +590,7 @@ static AresContributionsScalar<Scalar> ares_contributions_scalar_cpp(
     out.disp = ares_disp_scalar_cpp(thermo, dispersion);
     out.assoc = ares_assoc_scalar_cpp(x, cppargs);
     out.ion = ares_ion_scalar_cpp(t, thermo, x, cppargs);
-    out.born = ares_born_scalar_cpp(t, x, cppargs);
+    out.born = ares_born_scalar_cpp(t, x, cppargs, component_target_kind, component_target_index, component_target_value);
     return out;
 }
 
@@ -708,6 +887,170 @@ NeutralBinaryKijPhaseDerivatives neutral_binary_pair_parameter_phase_derivatives
     (void)cppargs;
     (void)parameter_index;
     (void)parameter_name;
+    throw ValueError("backend_unavailable: CppAD support is not enabled in this native build.");
+#endif
+}
+
+NeutralBinaryKijPhaseDerivatives generic_component_parameter_phase_derivatives_cpp(
+    double t,
+    double rho,
+    const vector<double> &x,
+    const add_args &cppargs,
+    int target_kind,
+    int target_index
+) {
+#ifdef EPCSAFT_HAS_CPPAD
+    using CppADScalar = CppAD::AD<double>;
+    const int ncomp = static_cast<int>(x.size());
+    if (ncomp <= 0 || cppargs.s.size() != x.size() || cppargs.e.size() != x.size()) {
+        throw ValueError("backend_unavailable: generic component-parameter CppAD derivatives require aligned component parameters.");
+    }
+    if (target_kind != ares_detail::kGenericTargetSLocal
+        && target_kind != ares_detail::kGenericTargetELocal
+        && target_kind != ares_detail::kGenericTargetDBornLocal) {
+        throw ValueError("backend_unavailable: generic component-parameter CppAD derivatives support s, e, and d_born only.");
+    }
+    if (target_index < 0 || target_index >= ncomp) {
+        throw ValueError("Native generic component-parameter derivative target index is out of range.");
+    }
+    if (target_kind == ares_detail::kGenericTargetDBornLocal) {
+        if (cppargs.d_born.size() != x.size()) {
+            throw ValueError("backend_unavailable: d_born CppAD derivatives require aligned d_born values.");
+        }
+        if (cppargs.born_model != 1) {
+            throw ValueError("backend_unavailable: d_born CppAD derivatives currently support direct Born model=1.");
+        }
+    }
+    if (!(t > 0.0) || !(rho > 0.0)) {
+        throw ValueError("Native generic component-parameter derivative evaluation requires positive T and rho.");
+    }
+    for (double xi : x) {
+        if (!(xi >= 0.0)) {
+            throw ValueError("Native generic component-parameter derivative evaluation requires nonnegative composition.");
+        }
+    }
+
+    const int rho_index = 0;
+    const int theta_index = 1;
+    const int x_start = 2;
+    const int var_count = x_start + ncomp;
+    std::vector<CppADScalar> avars(static_cast<size_t>(var_count));
+    avars[static_cast<size_t>(rho_index)] = rho;
+    double theta0 = 0.0;
+    if (target_kind == ares_detail::kGenericTargetSLocal) {
+        theta0 = cppargs.s[static_cast<size_t>(target_index)];
+    } else if (target_kind == ares_detail::kGenericTargetELocal) {
+        theta0 = cppargs.e[static_cast<size_t>(target_index)];
+    } else {
+        theta0 = cppargs.d_born[static_cast<size_t>(target_index)];
+    }
+    avars[static_cast<size_t>(theta_index)] = theta0;
+    for (int i = 0; i < ncomp; ++i) {
+        avars[static_cast<size_t>(x_start + i)] = x[static_cast<size_t>(i)];
+    }
+    CppAD::Independent(avars);
+
+    std::vector<CppADScalar> ax(static_cast<size_t>(ncomp));
+    for (int i = 0; i < ncomp; ++i) {
+        ax[static_cast<size_t>(i)] = avars[static_cast<size_t>(x_start + i)];
+    }
+    const CppADScalar *no_pair_override = nullptr;
+    auto contributions = ares_detail::ares_contributions_scalar_cpp(
+        t,
+        avars[static_cast<size_t>(rho_index)],
+        ax,
+        cppargs,
+        -1,
+        no_pair_override,
+        -1,
+        no_pair_override,
+        target_kind,
+        target_index,
+        &avars[static_cast<size_t>(theta_index)]
+    );
+    std::vector<CppADScalar> ay(1);
+    ay[0] = contributions.hc + contributions.disp + contributions.assoc + contributions.ion + contributions.born;
+
+    CppAD::ADFun<double> function(avars, ay);
+    std::vector<double> point(static_cast<size_t>(var_count), 0.0);
+    point[static_cast<size_t>(rho_index)] = rho;
+    point[static_cast<size_t>(theta_index)] = theta0;
+    for (int i = 0; i < ncomp; ++i) {
+        point[static_cast<size_t>(x_start + i)] = x[static_cast<size_t>(i)];
+    }
+    auto values = function.Forward(0, point);
+    auto jacobian = function.Jacobian(point);
+    auto hessian = function.Hessian(point, 0);
+    const auto h = [&](int row, int col) {
+        return hessian[static_cast<size_t>(row * var_count + col)];
+    };
+
+    const double ares = values[0];
+    const double da_drho = jacobian[static_cast<size_t>(rho_index)];
+    const double da_dtheta = jacobian[static_cast<size_t>(theta_index)];
+    const double d2a_drho2 = h(rho_index, rho_index);
+    const double d2a_drho_dtheta = h(rho_index, theta_index);
+    const double z_raw = rho * da_drho;
+    const double z = 1.0 + z_raw;
+    if (!(z > 0.0)) {
+        throw ValueError("Native generic component-parameter derivative evaluation produced non-positive Z.");
+    }
+    const double dz_drho = da_drho + rho * d2a_drho2;
+    const double dz_dtheta = rho * d2a_drho_dtheta;
+    const double pressure_factor = kb * t * N_AV;
+    NeutralBinaryKijPhaseDerivatives out;
+    out.rho = rho;
+    out.z = z;
+    out.pressure = rho * pressure_factor * z;
+    out.dpdrho = pressure_factor * (z + rho * dz_drho);
+    out.dpdk = rho * pressure_factor * dz_dtheta;
+    if (!(std::isfinite(out.dpdrho)) || std::abs(out.dpdrho) <= 0.0) {
+        throw ValueError("Native generic component-parameter derivative evaluation produced invalid dP/drho.");
+    }
+    out.drhodk = -out.dpdk / out.dpdrho;
+    out.mu_res.assign(static_cast<size_t>(ncomp), 0.0);
+    out.dmu_res_dk_fixed_rho.assign(static_cast<size_t>(ncomp), 0.0);
+    out.lnphi.assign(static_cast<size_t>(ncomp), 0.0);
+    out.dlnphi_drho.assign(static_cast<size_t>(ncomp), 0.0);
+    out.dlnphi_dk_fixed_rho.assign(static_cast<size_t>(ncomp), 0.0);
+    out.dlnphi_dk_total.assign(static_cast<size_t>(ncomp), 0.0);
+
+    vector<double> dadx(static_cast<size_t>(ncomp), 0.0);
+    vector<double> dadx_drho(static_cast<size_t>(ncomp), 0.0);
+    vector<double> dadx_dtheta(static_cast<size_t>(ncomp), 0.0);
+    double sum_x_dadx = 0.0;
+    double sum_x_dadx_drho = 0.0;
+    double sum_x_dadx_dtheta = 0.0;
+    for (int i = 0; i < ncomp; ++i) {
+        const int xi = x_start + i;
+        dadx[static_cast<size_t>(i)] = jacobian[static_cast<size_t>(xi)];
+        dadx_drho[static_cast<size_t>(i)] = h(xi, rho_index);
+        dadx_dtheta[static_cast<size_t>(i)] = h(xi, theta_index);
+        sum_x_dadx += x[static_cast<size_t>(i)] * dadx[static_cast<size_t>(i)];
+        sum_x_dadx_drho += x[static_cast<size_t>(i)] * dadx_drho[static_cast<size_t>(i)];
+        sum_x_dadx_dtheta += x[static_cast<size_t>(i)] * dadx_dtheta[static_cast<size_t>(i)];
+    }
+    for (int i = 0; i < ncomp; ++i) {
+        const double mu = ares + z_raw + dadx[static_cast<size_t>(i)] - sum_x_dadx;
+        const double dmu_drho = da_drho + dz_drho + dadx_drho[static_cast<size_t>(i)] - sum_x_dadx_drho;
+        const double dmu_dtheta = da_dtheta + dz_dtheta + dadx_dtheta[static_cast<size_t>(i)] - sum_x_dadx_dtheta;
+        out.mu_res[static_cast<size_t>(i)] = mu;
+        out.dmu_res_dk_fixed_rho[static_cast<size_t>(i)] = dmu_dtheta;
+        out.lnphi[static_cast<size_t>(i)] = mu - std::log(z);
+        out.dlnphi_drho[static_cast<size_t>(i)] = dmu_drho - dz_drho / z;
+        out.dlnphi_dk_fixed_rho[static_cast<size_t>(i)] = dmu_dtheta - dz_dtheta / z;
+        out.dlnphi_dk_total[static_cast<size_t>(i)] =
+            out.dlnphi_dk_fixed_rho[static_cast<size_t>(i)] + out.dlnphi_drho[static_cast<size_t>(i)] * out.drhodk;
+    }
+    out.backend = "cppad_implicit";
+    return out;
+#else
+    (void)t;
+    (void)rho;
+    (void)x;
+    (void)cppargs;
+    (void)target_kind;
+    (void)target_index;
     throw ValueError("backend_unavailable: CppAD support is not enabled in this native build.");
 #endif
 }

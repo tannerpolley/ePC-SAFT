@@ -5,7 +5,7 @@ goal:
   slug: "generic-regression-backend"
   kind: existing_plan
   tranche: "Bounded watcher auto-run plus Task K implementation."
-  status: done
+  status: active
   intake:
     original_request: "Run Goal Prep for Task K: Generic regression row schema and native optimizer backend."
     interpreted_outcome: "A GoalBuddy board exists for Task K, the dependency gate is satisfied, and implementation can proceed on the assigned branch without a waiting checkpoint."
@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: null
+active_task: T008
 
 tasks:
   - id: T001
@@ -275,7 +275,7 @@ tasks:
   - id: T999
     type: judge
     assignee: Judge
-    status: done
+    status: blocked
     reasoning_hint: high
     objective: "Audit whether Task K is complete against the original prompt, dependency gate, constraints, and validation evidence."
     inputs:
@@ -295,9 +295,9 @@ tasks:
       - "next task if not complete."
     receipt:
       result: done
-      decision: complete
-      full_outcome_complete: true
-      summary: "Task K implementation is complete for the issue #94 scope: generic target-row schemas were already present, binary k_ij regression now uses the native Ceres cppad_implicit path by default, unsupported generic native optimizer routes are backend_unavailable instead of finite-difference fallbacks, and FitResult carries parameter_map, row_diagnostics, active_bounds, source summaries, and parameter movement for the supported binary path."
+      decision: not_complete
+      full_outcome_complete: false
+      summary: "Superseded by user clarification: fit_pure_ion must be rewired to an analytic/CppAD implicit native optimizer path where supported, not left as backend_unavailable and not mention finite-difference as an unavailable backend option."
       classified_scope:
         - "generic target-row compilation: already_supported_with_tests"
         - "generic parameter maps: implemented"
@@ -323,19 +323,158 @@ tasks:
         - cmd: "git diff --check"
           status: pass
           output: "No whitespace errors."
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Rewire fit_pure_ion away from generic least-squares by adding an explicit native Ceres analytic/CppAD-implicit path for ion s, e, and d_born targets, including density, osmotic, and mean-ionic activity rows."
+    allowed_files:
+      - "src/epcsaft/regression.py"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/epcsaft_regression.cpp"
+      - "src/epcsaft/native/epcsaft_electrolyte.h"
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/epcsaft.py"
+      - "tests/api/test_regression_api.py"
+      - "tests/native/test_ceres_pure_regression.py"
+      - "tests/native/test_ceres_liquid_electrolyte_regression.py"
+      - "tests/native/test_ceres_binary_regression.py"
+      - "docs/pages/parameter_regression.rst"
+      - "docs/equations.md"
+      - "docs/equations_registry.yaml"
+      - "docs/goals/generic-regression-backend/state.yaml"
+    verify:
+      - "uv run python scripts/build_epcsaft.py --enable-ceres --enable-cppad"
+      - "uv run python run_pytest.py tests/native/test_ceres_pure_regression.py tests/native/test_ceres_binary_regression.py tests/native/test_ceres_liquid_electrolyte_regression.py tests/api/test_regression_api.py -q"
+      - "uv run python scripts/validate_project.py quick"
+      - "git diff --check"
+    stop_if:
+      - "A required ion target has no analytic, CppAD, or implicit native derivative path."
+      - "Implementation would require finite differences."
+      - "Implementation would require application-specific public APIs."
+    expected_output:
+      - "fit_pure_ion uses a native Ceres optimizer for ion s, e, and d_born targets across density, osmotic, and mean-ionic activity rows."
+      - "The native ion path differentiates residuals through analytic/CppAD/implicit derivatives only."
+      - "Regression docs and tests present unsupported paths as missing native analytic/CppAD/implicit derivative coverage, not as derivative fallback options."
+    receipt:
+      result: done
+      summary: "fit_pure_ion now builds density, osmotic, and mean-ionic activity native records and routes ion s, e, and d_born targets through generic native Ceres with cppad_implicit Jacobians."
+      changed_files:
+        - "src/epcsaft/regression.py"
+        - "src/epcsaft/epcsaft.py"
+        - "src/epcsaft/native/epcsaft_ares.cpp"
+        - "src/epcsaft/native/epcsaft_electrolyte.h"
+        - "src/epcsaft/native/epcsaft_regression.cpp"
+        - "tests/api/test_regression_api.py"
+        - "tests/native/test_ceres_pure_regression.py"
+        - "docs/pages/parameter_regression.rst"
+        - "docs/equations.md"
+        - "docs/equations_registry.yaml"
+      commands:
+        - cmd: "uv run python scripts/build_epcsaft.py --enable-ceres --enable-cppad"
+          status: pass
+          output: "Native Ceres/CppAD build completed."
+        - cmd: "uv run python run_pytest.py tests/native/test_ceres_pure_regression.py tests/native/test_ceres_binary_regression.py tests/native/test_ceres_liquid_electrolyte_regression.py tests/api/test_regression_api.py -q"
+          status: pass
+          output: "30 passed."
+        - cmd: "uv run python scripts/validate_project.py quick"
+          status: pass
+          output: "doctor passed; quick pytest slice 23 passed."
+        - cmd: "git diff --check"
+          status: pass
+          output: "No whitespace errors."
+        - cmd: "node C:\\Users\\Tanner\\.codex\\plugins\\cache\\goalbuddy\\goalbuddy\\0.3.6\\skills\\goalbuddy\\scripts\\check-goal-state.mjs docs/goals/generic-regression-backend/state.yaml"
+          status: pass
+          output: "GoalBuddy state checker passed."
+  - id: T007
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit the updated Task K implementation after the fit_pure_ion native Ceres/CppAD implicit path work."
+    inputs:
+      - "All worker receipts, including T006."
+      - "Current diff against origin/main."
+      - "Validation results in checks.last_verification."
+      - "Original task prompt constraints."
+    constraints:
+      - "Do not implement."
+      - "Reject completion if finite-difference derivative behavior is added or exposed as a backend option."
+      - "Reject completion if fit_pure_ion lacks a native analytic/CppAD/implicit path for ion s, e, and d_born over density, osmotic, and mean-ionic activity rows."
+      - "Reject application-specific public APIs or silent scope narrowing."
+    expected_output:
+      - "complete | not_complete."
+      - "full_outcome_complete: true | false."
+      - "missing evidence."
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      summary: "The updated implementation satisfies the corrected fit_pure_ion scope: density, osmotic, and mean-ionic activity rows route through native Ceres with cppad_implicit derivatives for ion s, e, and d_born; no public finite-difference backend option was added; no application-specific public API was added."
+      evidence:
+        - "tests/native/test_ceres_pure_regression.py covers public fit_pure_ion over density, osmotic, and mean-ionic activity rows for s/e/d_born with backend=ceres and jacobian_backend=cppad_implicit."
+        - "src/epcsaft/regression.py routes fit_pure_ion through _run_native_generic_ceres."
+        - "src/epcsaft/native/epcsaft_regression.cpp owns the pure-ion Ceres cost function and residual Jacobian."
+        - "src/epcsaft/native/epcsaft_ares.cpp supplies the CppAD implicit component-parameter derivative carrier."
+      review:
+        full_outcome_complete: true
+        no_finite_difference_route_added: true
+        no_public_finite_difference_backend_option: true
+        fit_pure_ion_density_path_exists: true
+        fit_pure_ion_osmotic_path_exists: true
+        fit_pure_ion_miac_path_exists: true
+        no_application_specific_public_api_added: true
+        no_silent_scope_narrowing: true
+      commands:
+        - cmd: "uv run python scripts/build_epcsaft.py --enable-ceres --enable-cppad"
+          status: pass
+          output: "Native Ceres/CppAD build completed."
+        - cmd: "uv run python run_pytest.py tests/native/test_ceres_pure_regression.py tests/native/test_ceres_binary_regression.py tests/native/test_ceres_liquid_electrolyte_regression.py tests/api/test_regression_api.py -q"
+          status: pass
+          output: "30 passed."
+        - cmd: "uv run python scripts/validate_project.py quick"
+          status: pass
+          output: "doctor passed; quick pytest slice 23 passed."
+        - cmd: "git diff --check"
+          status: pass
+          output: "No whitespace errors."
+  - id: T008
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: medium
+    objective: "Publish the updated implementation to the existing draft PR and continue task completion automation."
+    allowed_files:
+      - "docs/goals/generic-regression-backend/state.yaml"
+    verify:
+      - "git status --short"
+      - "gh pr view 108 --repo tannerpolley/ePC-SAFT --json state,isDraft,mergeable,statusCheckRollup"
+    stop_if:
+      - "Local validation is not passing."
+      - "PR publication or cleanup cannot be completed safely."
+    expected_output:
+      - "Branch pushed to PR #108."
+      - "PR remains draft unless final automation gates are satisfied."
 
 checks:
-  dirty_fingerprint: audit_complete_changes_present
+  dirty_fingerprint: active_task_changes_present
   last_verification:
     result: pass
-    task: T999
+    task: T006
     commands:
-      - cmd: "uv run python run_pytest.py tests/native/test_ceres_pure_regression.py tests/native/test_ceres_binary_regression.py tests/api/test_regression_api.py -q"
+      - cmd: "uv run python scripts/build_epcsaft.py --enable-ceres --enable-cppad"
         status: pass
-        output: "28 passed."
+        output: "Native Ceres/CppAD build completed."
+      - cmd: "uv run python run_pytest.py tests/native/test_ceres_pure_regression.py tests/native/test_ceres_binary_regression.py tests/native/test_ceres_liquid_electrolyte_regression.py tests/api/test_regression_api.py -q"
+        status: pass
+        output: "30 passed."
       - cmd: "uv run python scripts/validate_project.py quick"
         status: pass
         output: "doctor passed; quick pytest slice 23 passed."
       - cmd: "git diff --check"
         status: pass
         output: "No whitespace errors."
+      - cmd: "node C:\\Users\\Tanner\\.codex\\plugins\\cache\\goalbuddy\\goalbuddy\\0.3.6\\skills\\goalbuddy\\scripts\\check-goal-state.mjs docs/goals/generic-regression-backend/state.yaml"
+        status: pass
+        output: "GoalBuddy state checker passed."

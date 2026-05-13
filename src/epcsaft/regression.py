@@ -158,9 +158,9 @@ BINARY_CERES_BACKEND_UNAVAILABLE_REASON = (
     "backend_unavailable: binary Ceres regression currently supports only constant k_ij with "
     "cppad_implicit Jacobians."
 )
-GENERIC_LEAST_SQUARES_BACKEND_UNAVAILABLE_REASON = (
-    "backend_unavailable: generic native least-squares uses finite-difference Jacobians and is not an "
-    "allowed production backend; use Ceres for supported k_ij binary regression."
+GENERIC_NATIVE_OPTIMIZER_BACKEND_UNAVAILABLE_REASON = (
+    "backend_unavailable: no native analytic/CppAD/implicit derivative path is registered for this "
+    "generic regression target set."
 )
 
 
@@ -1271,8 +1271,8 @@ def _build_pure_ion_terms(records: Sequence[dict[str, Any]]) -> tuple[FitTerm, .
         )
         is not None
     ]
-    if not osmotic_records and not miac_records:
-        raise InputError("pure_ion regression requires osmotic and/or mean-ionic activity records.")
+    if not density_records and not osmotic_records and not miac_records:
+        raise InputError("pure_ion regression requires density, osmotic, and/or mean-ionic activity records.")
     _require_record_value(density_records, PURE_ION_MODE, "P")
     _require_record_value(osmotic_records, PURE_ION_MODE, "P")
     _require_record_value(miac_records, PURE_ION_MODE, "P")
@@ -1815,8 +1815,7 @@ def _fit_pure_ion_internal(
     optimization_names = _optimization_parameter_names(PURE_ION_MODE, normalized_fit_targets, "constant")
     bounds_obj = _coerce_bounds(bounds)
     lower, upper = bounds_obj.arrays_for(optimization_names)
-    vector_map = {name: float(initial_map[name]) for name in optimization_names}
-    rendered = {name: float(vector_map[name]) for name in normalized_fit_targets}
+    theta0 = np.asarray([initial_map[name] for name in optimization_names], dtype=float)
     problem = FitProblem(
         mode=PURE_ION_MODE,
         records=tuple(normalized_records),
@@ -1832,30 +1831,95 @@ def _fit_pure_ion_internal(
             f"{source_key}.csv" if source_key is not None else _infer_pure_template_name([normalized_component])
         ),
     )
+    native_records: list[dict[str, Any]] = []
+    fixed_payloads: list[dict[str, Any]] = []
+    for term in terms:
+        scale = _family_scale(term)
+        for record in term.records:
+            T = _float_from_record(record, "T", required=True)
+            P = _float_from_record(record, "P", required=True)
+            assert T is not None and P is not None
+            x = _ion_composition_from_record(record, normalized_species, normalized_solvent)
+            if term.term_type == TERM_DENSITY:
+                native_record = _native_density_record(term.term_type, record, x, scale)
+                if native_record is None:
+                    continue
+            elif term.term_type == TERM_OSMOTIC:
+                native_record = {
+                    "term_name": term.term_type,
+                    "term": NATIVE_TERM_KINDS[term.term_type],
+                    "T": T,
+                    "P": P,
+                    "phase": phase_to_int(_value_from_record(record, "phase", required=False) or "liq"),
+                    "x": x.tolist(),
+                    "target": _float_from_record(record, "osmotic_coefficient", "osmotic", required=True),
+                    "solvent_index": -1 if normalized_solvent is None else normalized_species.index(normalized_solvent),
+                    "scale": scale,
+                }
+            elif term.term_type == TERM_MIAC:
+                cation_index, anion_index = _native_miac_pair_indices(record, normalized_species)
+                native_record = {
+                    "term_name": term.term_type,
+                    "term": NATIVE_TERM_KINDS[term.term_type],
+                    "T": T,
+                    "P": P,
+                    "phase": phase_to_int(_value_from_record(record, "phase", required=False) or "liq"),
+                    "x": x.tolist(),
+                    "target": _float_from_record(
+                        record,
+                        "mean_ionic_activity",
+                        "mean_ionic_activity_coefficient",
+                        "miac",
+                        required=True,
+                    ),
+                    "target_index": cation_index,
+                    "target_index_2": anion_index,
+                    "solvent_index": -1 if normalized_solvent is None else normalized_species.index(normalized_solvent),
+                    "scale": scale,
+                }
+            else:
+                raise InputError(
+                    "backend_unavailable: no native analytic/CppAD/implicit derivative path is registered for "
+                    f"pure-ion row family '{term.term_type}'."
+                )
+            fixed_payloads.append(_params_for_native_record(dataset, normalized_species, x, T, user_options))
+            native_records.append(native_record)
+    result = _run_native_generic_ceres(
+        fixed_payloads,
+        native_records,
+        optimization_names,
+        normalized_species,
+        theta0,
+        lower,
+        upper,
+        component=normalized_component,
+        multistart=int(multistart),
+    )
+    vector_map = _normalize_vector_map(optimization_names, result["x"])
+    provenance_payload = _copy_mapping(provenance_report)
+    provenance_payload["parameter_movement"] = _parameter_movement(optimization_names, initial_map, vector_map)
+    provenance_payload["source_summary"] = {
+        "dataset": _source_dataset_label(dataset),
+        "record_count": len(normalized_records),
+        "row_families": tuple(term.term_type for term in terms),
+    }
     return FitResult(
         problem=problem,
         fitted_values=vector_map,
-        rendered_values=rendered,
-        metrics_by_term={term.term_type: float("nan") for term in terms},
-        success=False,
-        status=0,
-        message=GENERIC_LEAST_SQUARES_BACKEND_UNAVAILABLE_REASON,
-        nfev=0,
-        backend="backend_unavailable",
-        optimizer_backend="backend_unavailable",
-        derivative_backend="backend_unavailable",
+        rendered_values={name: float(vector_map[name]) for name in normalized_fit_targets},
+        metrics_by_term=result["metrics_by_term"],
+        cost=float(result["cost"]),
+        residual_norm=float(result["residual_norm"]),
+        success=bool(result["success"]),
+        status=int(result["status"]),
+        message=str(result["message"]),
+        nfev=int(result["nfev"]),
+        backend=str(result["backend"]),
+        **_fit_derivative_metadata(result),
         parameter_map=vector_map,
-        row_diagnostics=[
-            {
-                "row_family": term.term_type,
-                "backend_unavailable_reason": GENERIC_LEAST_SQUARES_BACKEND_UNAVAILABLE_REASON,
-            }
-            for term in terms
-        ],
+        row_diagnostics=_row_diagnostics_from_metrics(result["metrics_by_term"]),
         active_bounds=_active_bounds_from_arrays(optimization_names, vector_map, lower, upper),
-        jacobian_backend="backend_unavailable",
-        backend_unavailable_reason=GENERIC_LEAST_SQUARES_BACKEND_UNAVAILABLE_REASON,
-        provenance_report=provenance_report,
+        provenance_report=provenance_payload,
     )
 
 
@@ -1980,7 +2044,7 @@ def _fit_binary_pair_internal(
             multistart=int(multistart),
         )
     else:
-        raise InputError(GENERIC_LEAST_SQUARES_BACKEND_UNAVAILABLE_REASON)
+        raise InputError(GENERIC_NATIVE_OPTIMIZER_BACKEND_UNAVAILABLE_REASON)
     vector_map = _normalize_vector_map(optimization_names, result["x"])
     provenance_payload = _copy_mapping(provenance_report)
     provenance_payload["parameter_movement"] = _parameter_movement(optimization_names, initial_map, vector_map)
