@@ -26,6 +26,12 @@ from .equilibrium import (
     electrolyte_feed_from_molality,
     initial_phases_from_result,
 )
+from .implicit_sensitivity import (
+    ImplicitSolveResult,
+    backend_unavailable_implicit_result,
+    implicit_backend_for_residual_backend,
+    implicit_sensitivity_from_jacobians,
+)
 from .parameter_schema import (
     AssociationSite,
     BinaryRecord,
@@ -128,6 +134,7 @@ __all__ = [
     "FitResult",
     "FitTerm",
     "InputError",
+    "ImplicitSolveResult",
     "LLEProblem",
     "ParameterSet",
     "PermittivityRecord",
@@ -163,6 +170,7 @@ __all__ = [
     "__git_commit__",
     "__version__",
     "available_datasets",
+    "backend_unavailable_implicit_result",
     "bubble_p",
     "bubble_t",
     "build_reactive_regression_objective",
@@ -189,6 +197,8 @@ __all__ = [
     "fit_reactive_electrolyte_parameters",
     "get_prop_dict",
     "initial_phases_from_result",
+    "implicit_backend_for_residual_backend",
+    "implicit_sensitivity_from_jacobians",
     "load_regression_records",
     "molality_to_molefraction",
     "molefraction_to_molality",
