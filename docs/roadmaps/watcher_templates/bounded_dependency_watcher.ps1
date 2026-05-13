@@ -1,12 +1,14 @@
 # Bounded dependency watcher template
-# Save per-agent copy under docs/goals/<slug>/watch_dependency.ps1 if needed.
+# Save per-agent copy under docs/goals/<slug>/notes/watch_dependency.ps1 if needed.
 
 param(
     [string]$Branch,
     [string[]]$IssueNumbers = @(),
     [string[]]$PrNumbers = @(),
     [int]$PollIntervalSeconds = 120,
-    [int]$MaxWaitMinutes = 480
+    [int]$MaxWaitMinutes = 480,
+    [ValidateSet("rebase", "ff-only")]
+    [string]$UpdateMode = "rebase"
 )
 
 $deadline = (Get-Date).AddMinutes($MaxWaitMinutes)
@@ -16,36 +18,68 @@ function Stop-WithStatus($Message) {
     exit 1
 }
 
+function Require-Tool($Name) {
+    if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
+        Stop-WithStatus "BLOCKED_MISSING_TOOL $Name"
+    }
+}
+
+function Test-Dependencies {
+    if (($IssueNumbers.Count -gt 0) -or ($PrNumbers.Count -gt 0)) {
+        Require-Tool "gh"
+    }
+
+    foreach ($issue in $IssueNumbers) {
+        $state = gh issue view $issue --json state --jq ".state"
+        if ($LASTEXITCODE -ne 0) {
+            Stop-WithStatus "BLOCKED_DEPENDENCY issue=$issue state_lookup_failed"
+        }
+        if ($state -ne "CLOSED") {
+            return $false
+        }
+    }
+
+    foreach ($pr in $PrNumbers) {
+        $mergedAt = gh pr view $pr --json mergedAt --jq ".mergedAt"
+        if ($LASTEXITCODE -ne 0) {
+            Stop-WithStatus "BLOCKED_DEPENDENCY pr=$pr state_lookup_failed"
+        }
+        if ([string]::IsNullOrWhiteSpace($mergedAt)) {
+            return $false
+        }
+    }
+
+    return $true
+}
+
+function Update-BranchFromMain {
+    if ($UpdateMode -eq "ff-only") {
+        git merge --ff-only origin/main
+        if ($LASTEXITCODE -ne 0) {
+            Stop-WithStatus "BLOCKED_REBASE_CONFLICT update_mode=ff-only"
+        }
+    } else {
+        git rebase origin/main
+        if ($LASTEXITCODE -ne 0) {
+            git rebase --abort 2>$null
+            Stop-WithStatus "BLOCKED_REBASE_CONFLICT update_mode=rebase"
+        }
+    }
+}
+
 while ((Get-Date) -lt $deadline) {
     git fetch origin --prune
+    if ($LASTEXITCODE -ne 0) {
+        Stop-WithStatus "BLOCKED_FETCH_ORIGIN"
+    }
 
     $currentBranch = (git branch --show-current).Trim()
     if ($currentBranch -ne $Branch) {
         Stop-WithStatus "BLOCKED_BRANCH_MISMATCH expected=$Branch actual=$currentBranch"
     }
 
-    $allIssuesClosed = $true
-    foreach ($issue in $IssueNumbers) {
-        $state = gh issue view $issue --json state --jq ".state"
-        if ($state -ne "CLOSED") {
-            $allIssuesClosed = $false
-        }
-    }
-
-    $allPrsMerged = $true
-    foreach ($pr in $PrNumbers) {
-        $mergedAt = gh pr view $pr --json mergedAt --jq ".mergedAt"
-        if ([string]::IsNullOrWhiteSpace($mergedAt)) {
-            $allPrsMerged = $false
-        }
-    }
-
-    if ($allIssuesClosed -and $allPrsMerged) {
-        git rebase origin/main
-        if ($LASTEXITCODE -ne 0) {
-            git rebase --abort
-            Stop-WithStatus "BLOCKED_REBASE_CONFLICT"
-        }
+    if (Test-Dependencies) {
+        Update-BranchFromMain
         Write-Host "GATE_PASS"
         exit 0
     }

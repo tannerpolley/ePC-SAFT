@@ -86,7 +86,7 @@ This setup task is docs/issues/project/branch/prompt setup only.
 
 Do not implement source code.
 
-After Goal Prep, print the exact `/goal Follow docs/goals/<slug>/goal.md.` command once and stop.
+After Goal Prep, print the exact `/goal Follow docs/goals/<slug>/goal.md` command once and stop.
 Do not ask what to do next.
 ```
 
