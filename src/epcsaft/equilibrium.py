@@ -251,6 +251,30 @@ class ReactiveElectrolyteBubbleProblem(ReactiveSpeciationProblem):
         )
 
 
+@dataclass(frozen=True, slots=True)
+class ReactivePhaseEquilibriumProblem(ReactiveSpeciationProblem):
+    """Reactive speciation followed by a generic phase-equilibrium route."""
+
+    phase_kind: str = "auto"
+    phase_options: Any | None = None
+    phase_kwargs: Mapping[str, Any] | None = None
+
+    def solve(self, mixture):
+        return mixture.reactive_staged_equilibrium(
+            T=self.T,
+            P=self.P,
+            balances=self.balances,
+            totals=self.totals,
+            reactions=self.reactions,
+            initial_x=self.initial_x,
+            z=self.z,
+            phase_kind=self.phase_kind,
+            options=self.options,
+            phase_options=self.phase_options,
+            phase_kwargs=self.phase_kwargs,
+        )
+
+
 @dataclass(frozen=True, slots=True, init=False)
 class EquilibriumPhase:
     """One phase returned by an equilibrium calculation."""

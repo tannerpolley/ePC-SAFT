@@ -104,13 +104,25 @@ def solve_reactive_staged_equilibrium(
     )
     phase_success = bool(getattr(phase, "success", True))
     success = bool(chemical.success and phase_success)
+    phase_audit = _phase_equilibrium_audit(phase)
+    chemical_audit = _chemical_equilibrium_audit(chemical)
     diagnostics = {
         "workflow": "chemical_equilibrium_then_phase_equilibrium",
         "reactive_workflow_class": "staged",
+        "reactive_phase_method": "chemical_equilibrium_then_phase_equilibrium",
+        "coupling_level": "staged_not_full_simultaneous_nlp",
         "reaction_constant_policy": "fixed_literature_constants_first",
         "reaction_constant_fitting_role": workflow["reaction_constant_fitting"],
         "parameter_regression_boundary": "fit_epcsaft_parameters_after_fixed_constant_speciation",
         "full_simultaneous_reactive_nlp": False,
+        "reaction_coordinates": chemical_audit["reaction_coordinates"],
+        "element_balance_residuals": chemical_audit["element_balance_residuals"],
+        "reaction_equilibrium_residuals": chemical_audit["reaction_equilibrium_residuals"],
+        "nonnegativity": chemical_audit["nonnegativity"],
+        "phase_split": phase_audit["phase_split"],
+        "fugacity_equality": phase_audit["fugacity_equality"],
+        "material_balance_error": phase_audit["material_balance_error"],
+        "ascani_benchmark_attempt": _ascani_benchmark_attempt(kind),
         "derivative_policy": {
             "finite_difference_backend_available": False,
             "accepted_derivative_backends": [
@@ -130,6 +142,7 @@ def solve_reactive_staged_equilibrium(
         "phase_success": phase_success,
         "phase_problem_kind": str(getattr(phase, "problem_kind", kind)),
         "staged_feed": dict(z),
+        "phase_equilibrium_diagnostics": phase_audit["diagnostics"],
     }
     return ReactiveStagedEquilibriumResult(
         success=success,
@@ -139,6 +152,73 @@ def solve_reactive_staged_equilibrium(
         phase=phase,
         diagnostics=diagnostics,
     )
+
+
+def _chemical_equilibrium_audit(chemical: ReactiveSpeciationResult) -> dict[str, Any]:
+    x = dict(chemical.x)
+    return {
+        "reaction_coordinates": {
+            "status": "implicit_in_solved_composition",
+            "reaction_count": len(chemical.reaction_residuals),
+            "named_reactions": list(chemical.named_reaction_residuals),
+        },
+        "element_balance_residuals": dict(chemical.mass_balance_residuals),
+        "reaction_equilibrium_residuals": dict(chemical.named_reaction_residuals),
+        "nonnegativity": {
+            "status": "pass" if all(value >= 0.0 for value in x.values()) else "fail",
+            "minimum_mole_fraction": min(x.values()) if x else 0.0,
+        },
+    }
+
+
+def _phase_equilibrium_audit(phase: Any) -> dict[str, Any]:
+    diagnostics = dict(getattr(phase, "diagnostics", {}) or {})
+    split_detected = bool(getattr(phase, "split_detected", False))
+    phases = tuple(getattr(phase, "phases", ()) or ())
+    return {
+        "phase_split": {
+            "status": "split_detected" if split_detected else "single_phase_or_not_detected",
+            "phase_count": len(phases),
+            "phase_labels": [str(getattr(item, "label", "")) for item in phases],
+            "phase_distance": _float_or_none(diagnostics.get("phase_distance")),
+        },
+        "fugacity_equality": {
+            "status": "reported" if "fugacity_residual_norm" in diagnostics else "not_reported_by_phase_route",
+            "fugacity_residual_norm": _float_or_none(diagnostics.get("fugacity_residual_norm")),
+        },
+        "material_balance_error": _float_or_none(diagnostics.get("material_balance_error")),
+        "diagnostics": diagnostics,
+    }
+
+
+def _ascani_benchmark_attempt(kind: str) -> dict[str, Any]:
+    route = str(kind).strip()
+    if route in {"electrolyte_lle", "electrolyte_lle_flash", "electrolyte_lle_tp"}:
+        return {
+            "status": "supported_route_available",
+            "reference": "Ascani electrolyte LLE transformed-basis route",
+            "route": route,
+        }
+    if route in {"lle_flash", "lle_tp"}:
+        return {
+            "status": "not_applicable_to_neutral_route",
+            "reference": "Ascani electrolyte benchmark requires an electrolyte LLE phase route",
+            "route": route,
+        }
+    return {
+        "status": "not_attempted_for_route",
+        "reference": "Use phase_kind='electrolyte_lle' for Ascani electrolyte benchmark attempts.",
+        "route": route,
+    }
+
+
+def _float_or_none(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _normalize_workflow_options(workflow_options: Mapping[str, Any] | None) -> dict[str, str]:

@@ -1,12 +1,22 @@
 ﻿{
-    "status":  "PREPARED_WAITING",
-    "message":  "Dependency gate is PREPARED_WAITING.",
-    "checked_at":  "2026-05-13T13:50:59.2562890-06:00",
-    "gate_path":  "C:\\Users\\Tanner\\Documents\\git\\ePC-SAFT\\docs\\goals\\generic-reactive-lle\\notes\\dependency_gate.yaml",
-    "observed_gate_status":  "PREPARED_WAITING",
+    "status":  "GATE_PASS",
+    "message":  "Dependencies are closed and merged; branch updated from origin/main with ff-only.",
+    "checked_at":  "2026-05-13T15:02:20.4040021-06:00",
+    "branch":  "codex/generic-reactive-lle",
+    "issue_numbers":  [
+                          "92",
+                          "87",
+                          "89"
+                      ],
+    "pr_numbers":  [
+                       "110",
+                       "99",
+                       "105"
+                   ],
     "watcher_mode":  "bounded",
     "auto_start_after_gate":  true,
-    "poll_interval_seconds":  120,
+    "poll_interval_seconds":  360,
     "max_wait_minutes":  480,
+    "update_mode":  "ff-only",
     "task_key":  "J"
 }

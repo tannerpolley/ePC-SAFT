@@ -2,13 +2,16 @@ task_key: J
 title: "Generic reactive LLE and chemical phase equilibrium"
 branch: "codex/generic-reactive-lle"
 prompt: "docs/roadmaps/agent_prompts/J_generic_reactive_lle_and_chemical_phase_equilibrium.md"
-status: PREPARED_WAITING
+status: GATE_PASSED
 watcher_mode: bounded
 auto_start_after_gate: true
 poll_interval_seconds: 120
 max_wait_minutes: 480
 prepared_at: "2026-05-13"
-last_checked_at: "2026-05-13T13:50:59.2562890-06:00"
+last_checked_at: "2026-05-13T15:02:52.8111494-06:00"
+
+watch_script: "docs/goals/generic-reactive-lle/notes/watch_dependency.ps1"
+dependency_gate: "docs/goals/generic-reactive-lle/notes/dependency_gate.yaml"
 
 dependencies:
   tasks:
@@ -20,36 +23,39 @@ dependencies:
       title: "Generic electrolyte LLE with distributed ions"
       url: "https://github.com/tannerpolley/ePC-SAFT/issues/92"
       required_state: closed
-      observed_state: unknown
+      observed_state: CLOSED
     - number: 87
       title: "General reaction and equilibrium-constant convention layer"
       url: "https://github.com/tannerpolley/ePC-SAFT/issues/87"
       required_state: closed
-      observed_state: unknown
+      observed_state: CLOSED
     - number: 89
       title: "Generic speciation solver using ePC-SAFT activities"
       url: "https://github.com/tannerpolley/ePC-SAFT/issues/89"
       required_state: closed
-      observed_state: unknown
+      observed_state: CLOSED
   prs:
     - branch: codex/generic-electrolyte-lle
       required_state: merged
-      observed_state: unknown
-      number: null
-      url: null
-      merge_commit: null
+      observed_state: MERGED
+      number: 110
+      url: "https://github.com/tannerpolley/ePC-SAFT/pull/110"
+      merge_commit: "4ff975c1f4760c27f235fb92d3f6d153cba3925f"
+      merged_at: "2026-05-13T20:55:22Z"
     - branch: codex/reaction-constant-conventions
       required_state: merged
-      observed_state: unknown
-      number: null
-      url: null
-      merge_commit: null
+      observed_state: MERGED
+      number: 99
+      url: "https://github.com/tannerpolley/ePC-SAFT/pull/99"
+      merge_commit: "a81f950069d01834746150fd673e1107a2d2dcf2"
+      merged_at: "2026-05-13T17:15:16Z"
     - branch: codex/generic-activity-speciation
       required_state: merged
-      observed_state: unknown
-      number: null
-      url: null
-      merge_commit: null
+      observed_state: MERGED
+      number: 105
+      url: "https://github.com/tannerpolley/ePC-SAFT/pull/105"
+      merge_commit: "7443a5fee8affbeda3df94b9c0268d0149bfa783"
+      merged_at: "2026-05-13T20:05:22Z"
 
 required_files:
   - docs/roadmaps/general_reactive_electrolyte_equilibrium_readiness.md
@@ -59,24 +65,25 @@ required_files:
 
 gate_checks:
   git_fetch_origin:
-    status: pending
-    evidence: "Will be re-run during /goal."
+    status: pass
+    evidence: "watch_dependency.ps1 fetched origin with --prune."
   current_branch_matches:
     status: pass
     expected: codex/generic-reactive-lle
     observed: codex/generic-reactive-lle
   dependency_issues_closed:
-    status: pending
-    evidence: "Will be rechecked with gh issue view during /goal."
+    status: pass
+    evidence: "gh issue view confirmed #92, #87, and #89 are CLOSED."
   dependency_prs_merged:
-    status: pending
-    evidence: "Will be rechecked with gh pr view during /goal."
+    status: pass
+    evidence: "gh pr view confirmed PRs #110, #99, and #105 are merged."
   origin_main_contains_dependency_merges:
-    status: pending
-    evidence: "Will be rechecked with git log or equivalent during /goal."
-  rebase_onto_origin_main_clean:
-    status: pending
-    evidence: "Will be rechecked with git rebase origin/main during /goal."
+    status: pass
+    evidence: "Branch fast-forwarded to origin/main at d7485537aa472febe51cbbd7ad50ca62ba2ab165."
+  update_onto_origin_main_clean:
+    status: pass
+    update_mode: ff-only
+    evidence: "watch_dependency.ps1 fast-forwarded codex/generic-reactive-lle to origin/main without conflict."
 
 on_gate_pass:
   action: "auto-start Task J implementation without asking"
@@ -88,13 +95,10 @@ on_implementation_gate_fail:
   action: "stop with status BLOCKED_DEPENDENCY_OR_REBASE"
 
 verification_commands_before_implementation:
-  - "git fetch origin --prune"
-  - "gh issue view 93 --repo tannerpolley/ePC-SAFT --json number,title,state,body,url"
-  - "git branch --show-current"
-  - "git status --short"
-  - "git rebase origin/main"
+  - "powershell.exe -NoProfile -ExecutionPolicy Bypass -File docs/goals/generic-reactive-lle/notes/watch_dependency.ps1"
+  - "node C:\\Users\\Tanner\\.codex\\plugins\\cache\\goalbuddy\\goalbuddy\\0.3.6\\skills\\goalbuddy\\scripts\\check-goal-state.mjs docs/goals/generic-reactive-lle/state.yaml"
 
 notes:
-  - "Do not start implementation until dependency gate passes."
+  - "Dependency gate passed on 2026-05-13 after PR #110 merged."
   - "Do not add application-specific public APIs."
   - "No finite difference."
