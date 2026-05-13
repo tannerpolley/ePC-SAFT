@@ -21,11 +21,13 @@ Copy/paste prompt:
 [$goal-prep](C:\Users\Tanner\.codex\skills\goalbuddy\SKILL.md)
 
 Task key: F
+GitHub issue: #89
 
 Read:
 docs/roadmaps/agent_prompts/index.yaml
 
 Load the prompt file for task key F.
+Read GitHub issue #89 and record the current issue scope in docs/goals/<slug>/notes/issue_scope.md during /goal execution.
 
 Run Goal Prep for this exact task:
 Generic speciation solver using ePC-SAFT activities
@@ -82,15 +84,16 @@ If a required value is missing, choose the safest conservative default and recor
 If the missing value prevents safe work, stop with BLOCKED_MISSING_INPUT.
 
 Do not create local .worktrees/.
-Do not use PR #56 as a base.
+
 Do not add application-specific public APIs.
 No finite difference.
 
 Task completion automation:
-- Open a focused draft PR if one does not already exist for the task branch.
-- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, no PR #56 dependency, and no silent scope narrowing.
+- Open a focused draft PR if one does not already exist for the task branch, and include `Closes #89` in the PR body.
+- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, and no silent scope narrowing.
 - If validation passes, GitHub checks pass, the PR is mergeable, and the final GoalBuddy audit says `full_outcome_complete: true`, mark the PR ready and merge without another yes.
-- After merge, delete the remote branch and switch off/delete the local task branch; record `BLOCKED_REMOTE_BRANCH_DELETE` or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
+- After merge, confirm the corresponding GitHub issue is closed; if it is still open, close it with a comment that names the merged PR and merge commit.
+- Delete the remote branch and switch off/delete the local task branch; record `BLOCKED_ISSUE_CLOSE_FAILED`, `BLOCKED_REMOTE_BRANCH_DELETE`, or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
 After Goal Prep, follow the behavior defined in the loaded task prompt.
 ````
 ---
@@ -109,11 +112,13 @@ Copy/paste prompt:
 [$goal-prep](C:\Users\Tanner\.codex\skills\goalbuddy\SKILL.md)
 
 Task key: G
+GitHub issue: #90
 
 Read:
 docs/roadmaps/agent_prompts/index.yaml
 
 Load the prompt file for task key G.
+Read GitHub issue #90 and record the current issue scope in docs/goals/<slug>/notes/issue_scope.md during /goal execution.
 
 Run Goal Prep for this exact task:
 Generic VLE/fugacity-equilibrium solver for volatile neutral species
@@ -170,15 +175,16 @@ If a required value is missing, choose the safest conservative default and recor
 If the missing value prevents safe work, stop with BLOCKED_MISSING_INPUT.
 
 Do not create local .worktrees/.
-Do not use PR #56 as a base.
+
 Do not add application-specific public APIs.
 No finite difference.
 
 Task completion automation:
-- Open a focused draft PR if one does not already exist for the task branch.
-- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, no PR #56 dependency, and no silent scope narrowing.
+- Open a focused draft PR if one does not already exist for the task branch, and include `Closes #90` in the PR body.
+- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, and no silent scope narrowing.
 - If validation passes, GitHub checks pass, the PR is mergeable, and the final GoalBuddy audit says `full_outcome_complete: true`, mark the PR ready and merge without another yes.
-- After merge, delete the remote branch and switch off/delete the local task branch; record `BLOCKED_REMOTE_BRANCH_DELETE` or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
+- After merge, confirm the corresponding GitHub issue is closed; if it is still open, close it with a comment that names the merged PR and merge commit.
+- Delete the remote branch and switch off/delete the local task branch; record `BLOCKED_ISSUE_CLOSE_FAILED`, `BLOCKED_REMOTE_BRANCH_DELETE`, or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
 After Goal Prep, follow the behavior defined in the loaded task prompt.
 ````
 ---
@@ -197,11 +203,13 @@ Copy/paste prompt:
 [$goal-prep](C:\Users\Tanner\.codex\skills\goalbuddy\SKILL.md)
 
 Task key: H
+GitHub issue: #91
 
 Read:
 docs/roadmaps/agent_prompts/index.yaml
 
 Load the prompt file for task key H.
+Read GitHub issue #91 and record the current issue scope in docs/goals/<slug>/notes/issue_scope.md during /goal execution.
 
 Run Goal Prep for this exact task:
 Generic non-electrolyte LLE benchmark and solver hardening
@@ -258,15 +266,16 @@ If a required value is missing, choose the safest conservative default and recor
 If the missing value prevents safe work, stop with BLOCKED_MISSING_INPUT.
 
 Do not create local .worktrees/.
-Do not use PR #56 as a base.
+
 Do not add application-specific public APIs.
 No finite difference.
 
 Task completion automation:
-- Open a focused draft PR if one does not already exist for the task branch.
-- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, no PR #56 dependency, and no silent scope narrowing.
+- Open a focused draft PR if one does not already exist for the task branch, and include `Closes #91` in the PR body.
+- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, and no silent scope narrowing.
 - If validation passes, GitHub checks pass, the PR is mergeable, and the final GoalBuddy audit says `full_outcome_complete: true`, mark the PR ready and merge without another yes.
-- After merge, delete the remote branch and switch off/delete the local task branch; record `BLOCKED_REMOTE_BRANCH_DELETE` or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
+- After merge, confirm the corresponding GitHub issue is closed; if it is still open, close it with a comment that names the merged PR and merge commit.
+- Delete the remote branch and switch off/delete the local task branch; record `BLOCKED_ISSUE_CLOSE_FAILED`, `BLOCKED_REMOTE_BRANCH_DELETE`, or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
 After Goal Prep, follow the behavior defined in the loaded task prompt.
 ````
 ---
@@ -285,11 +294,13 @@ Copy/paste prompt:
 [$goal-prep](C:\Users\Tanner\.codex\skills\goalbuddy\SKILL.md)
 
 Task key: I
+GitHub issue: #92
 
 Read:
 docs/roadmaps/agent_prompts/index.yaml
 
 Load the prompt file for task key I.
+Read GitHub issue #92 and record the current issue scope in docs/goals/<slug>/notes/issue_scope.md during /goal execution.
 
 Run Goal Prep for this exact task:
 Generic electrolyte LLE with distributed ions
@@ -346,15 +357,16 @@ If a required value is missing, choose the safest conservative default and recor
 If the missing value prevents safe work, stop with BLOCKED_MISSING_INPUT.
 
 Do not create local .worktrees/.
-Do not use PR #56 as a base.
+
 Do not add application-specific public APIs.
 No finite difference.
 
 Task completion automation:
-- Open a focused draft PR if one does not already exist for the task branch.
-- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, no PR #56 dependency, and no silent scope narrowing.
+- Open a focused draft PR if one does not already exist for the task branch, and include `Closes #92` in the PR body.
+- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, and no silent scope narrowing.
 - If validation passes, GitHub checks pass, the PR is mergeable, and the final GoalBuddy audit says `full_outcome_complete: true`, mark the PR ready and merge without another yes.
-- After merge, delete the remote branch and switch off/delete the local task branch; record `BLOCKED_REMOTE_BRANCH_DELETE` or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
+- After merge, confirm the corresponding GitHub issue is closed; if it is still open, close it with a comment that names the merged PR and merge commit.
+- Delete the remote branch and switch off/delete the local task branch; record `BLOCKED_ISSUE_CLOSE_FAILED`, `BLOCKED_REMOTE_BRANCH_DELETE`, or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
 After Goal Prep, follow the behavior defined in the loaded task prompt.
 ````
 ---
@@ -373,11 +385,13 @@ Copy/paste prompt:
 [$goal-prep](C:\Users\Tanner\.codex\skills\goalbuddy\SKILL.md)
 
 Task key: J
+GitHub issue: #93
 
 Read:
 docs/roadmaps/agent_prompts/index.yaml
 
 Load the prompt file for task key J.
+Read GitHub issue #93 and record the current issue scope in docs/goals/<slug>/notes/issue_scope.md during /goal execution.
 
 Run Goal Prep for this exact task:
 Generic reactive LLE and chemical phase equilibrium
@@ -434,15 +448,16 @@ If a required value is missing, choose the safest conservative default and recor
 If the missing value prevents safe work, stop with BLOCKED_MISSING_INPUT.
 
 Do not create local .worktrees/.
-Do not use PR #56 as a base.
+
 Do not add application-specific public APIs.
 No finite difference.
 
 Task completion automation:
-- Open a focused draft PR if one does not already exist for the task branch.
-- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, no PR #56 dependency, and no silent scope narrowing.
+- Open a focused draft PR if one does not already exist for the task branch, and include `Closes #93` in the PR body.
+- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, and no silent scope narrowing.
 - If validation passes, GitHub checks pass, the PR is mergeable, and the final GoalBuddy audit says `full_outcome_complete: true`, mark the PR ready and merge without another yes.
-- After merge, delete the remote branch and switch off/delete the local task branch; record `BLOCKED_REMOTE_BRANCH_DELETE` or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
+- After merge, confirm the corresponding GitHub issue is closed; if it is still open, close it with a comment that names the merged PR and merge commit.
+- Delete the remote branch and switch off/delete the local task branch; record `BLOCKED_ISSUE_CLOSE_FAILED`, `BLOCKED_REMOTE_BRANCH_DELETE`, or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
 After Goal Prep, follow the behavior defined in the loaded task prompt.
 ````
 ---
@@ -461,11 +476,13 @@ Copy/paste prompt:
 [$goal-prep](C:\Users\Tanner\.codex\skills\goalbuddy\SKILL.md)
 
 Task key: K
+GitHub issue: #94
 
 Read:
 docs/roadmaps/agent_prompts/index.yaml
 
 Load the prompt file for task key K.
+Read GitHub issue #94 and record the current issue scope in docs/goals/<slug>/notes/issue_scope.md during /goal execution.
 
 Run Goal Prep for this exact task:
 Generic regression row schema and native optimizer backend
@@ -522,15 +539,16 @@ If a required value is missing, choose the safest conservative default and recor
 If the missing value prevents safe work, stop with BLOCKED_MISSING_INPUT.
 
 Do not create local .worktrees/.
-Do not use PR #56 as a base.
+
 Do not add application-specific public APIs.
 No finite difference.
 
 Task completion automation:
-- Open a focused draft PR if one does not already exist for the task branch.
-- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, no PR #56 dependency, and no silent scope narrowing.
+- Open a focused draft PR if one does not already exist for the task branch, and include `Closes #94` in the PR body.
+- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, and no silent scope narrowing.
 - If validation passes, GitHub checks pass, the PR is mergeable, and the final GoalBuddy audit says `full_outcome_complete: true`, mark the PR ready and merge without another yes.
-- After merge, delete the remote branch and switch off/delete the local task branch; record `BLOCKED_REMOTE_BRANCH_DELETE` or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
+- After merge, confirm the corresponding GitHub issue is closed; if it is still open, close it with a comment that names the merged PR and merge commit.
+- Delete the remote branch and switch off/delete the local task branch; record `BLOCKED_ISSUE_CLOSE_FAILED`, `BLOCKED_REMOTE_BRANCH_DELETE`, or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
 After Goal Prep, follow the behavior defined in the loaded task prompt.
 ````
 ---
@@ -549,11 +567,13 @@ Copy/paste prompt:
 [$goal-prep](C:\Users\Tanner\.codex\skills\goalbuddy\SKILL.md)
 
 Task key: L
+GitHub issue: #95
 
 Read:
 docs/roadmaps/agent_prompts/index.yaml
 
 Load the prompt file for task key L.
+Read GitHub issue #95 and record the current issue scope in docs/goals/<slug>/notes/issue_scope.md during /goal execution.
 
 Run Goal Prep for this exact task:
 Literature benchmark suite
@@ -610,15 +630,16 @@ If a required value is missing, choose the safest conservative default and recor
 If the missing value prevents safe work, stop with BLOCKED_MISSING_INPUT.
 
 Do not create local .worktrees/.
-Do not use PR #56 as a base.
+
 Do not add application-specific public APIs.
 No finite difference.
 
 Task completion automation:
-- Open a focused draft PR if one does not already exist for the task branch.
-- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, no PR #56 dependency, and no silent scope narrowing.
+- Open a focused draft PR if one does not already exist for the task branch, and include `Closes #95` in the PR body.
+- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, and no silent scope narrowing.
 - If validation passes, GitHub checks pass, the PR is mergeable, and the final GoalBuddy audit says `full_outcome_complete: true`, mark the PR ready and merge without another yes.
-- After merge, delete the remote branch and switch off/delete the local task branch; record `BLOCKED_REMOTE_BRANCH_DELETE` or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
+- After merge, confirm the corresponding GitHub issue is closed; if it is still open, close it with a comment that names the merged PR and merge commit.
+- Delete the remote branch and switch off/delete the local task branch; record `BLOCKED_ISSUE_CLOSE_FAILED`, `BLOCKED_REMOTE_BRANCH_DELETE`, or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
 After Goal Prep, follow the behavior defined in the loaded task prompt.
 ````
 ---
@@ -637,11 +658,13 @@ Copy/paste prompt:
 [$goal-prep](C:\Users\Tanner\.codex\skills\goalbuddy\SKILL.md)
 
 Task key: M
+GitHub issue: #96
 
 Read:
 docs/roadmaps/agent_prompts/index.yaml
 
 Load the prompt file for task key M.
+Read GitHub issue #96 and record the current issue scope in docs/goals/<slug>/notes/issue_scope.md during /goal execution.
 
 Run Goal Prep for this exact task:
 Downstream integration smoke tests
@@ -698,14 +721,15 @@ If a required value is missing, choose the safest conservative default and recor
 If the missing value prevents safe work, stop with BLOCKED_MISSING_INPUT.
 
 Do not create local .worktrees/.
-Do not use PR #56 as a base.
+
 Do not add application-specific public APIs.
 No finite difference.
 
 Task completion automation:
-- Open a focused draft PR if one does not already exist for the task branch.
-- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, no PR #56 dependency, and no silent scope narrowing.
+- Open a focused draft PR if one does not already exist for the task branch, and include `Closes #96` in the PR body.
+- Review the PR against `origin/main` for task scope, no finite differences, no application-specific public APIs, and no silent scope narrowing.
 - If validation passes, GitHub checks pass, the PR is mergeable, and the final GoalBuddy audit says `full_outcome_complete: true`, mark the PR ready and merge without another yes.
-- After merge, delete the remote branch and switch off/delete the local task branch; record `BLOCKED_REMOTE_BRANCH_DELETE` or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
+- After merge, confirm the corresponding GitHub issue is closed; if it is still open, close it with a comment that names the merged PR and merge commit.
+- Delete the remote branch and switch off/delete the local task branch; record `BLOCKED_ISSUE_CLOSE_FAILED`, `BLOCKED_REMOTE_BRANCH_DELETE`, or `BLOCKED_LOCAL_BRANCH_DELETE` if cleanup cannot be completed safely.
 After Goal Prep, follow the behavior defined in the loaded task prompt.
 ````

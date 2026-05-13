@@ -13,7 +13,7 @@ Do not ask me to choose among options.
 
 Move or copy any root-level dependency gate:
 
-docs/goals/<slug>/notes/dependency_gate.yaml
+docs/goals/<slug>/dependency_gate.yaml
 
 to:
 
@@ -42,14 +42,16 @@ New behavior:
 - If dependencies are not satisfied, run the bounded watcher.
 - If timeout, write PREPARED_WAITING and stop.
 - If rebase/merge conflicts occur, stop with BLOCKED_REBASE_CONFLICT.
-- After implementation is complete, open a focused draft PR if needed, self-review it against origin/main, mark ready only after validation passes, wait for checks, and merge without another yes only when checks pass, the PR is mergeable, and the final GoalBuddy audit says full_outcome_complete: true.
+- Before implementation, inspect the corresponding GitHub issue and record its current scope in docs/goals/<slug>/notes/issue_scope.md.
+- After implementation is complete, open a focused draft PR if needed, include Closes #<corresponding issue number> in the PR body, self-review it against origin/main, mark ready only after validation passes, wait for checks, and merge without another yes only when checks pass, the PR is mergeable, and the final GoalBuddy audit says full_outcome_complete: true.
+- After merge, confirm the corresponding GitHub issue is closed; if still open, close it with a comment naming the merged PR and merge commit.
 - After merge, delete both the remote branch and the local task branch. If cleanup cannot be completed safely, stop with BLOCKED_REMOTE_BRANCH_DELETE or BLOCKED_LOCAL_BRANCH_DELETE and record the exact branch/path/next command.
 
 If git rebase is blocked by tool approval policy and this branch has no unique commits, use git merge --ff-only origin/main.
 
 Do not create local .worktrees/.
 Do not write files on main.
-Do not use PR #56 as a base.
+
 Do not add application-specific public APIs.
 No finite difference.
 ```
@@ -90,4 +92,3 @@ BLOCKED_SCOPE_GAP
 
 and list exact missing derivative/function, file/function, parameter family, why it cannot be completed now, and future owner.
 ```
-

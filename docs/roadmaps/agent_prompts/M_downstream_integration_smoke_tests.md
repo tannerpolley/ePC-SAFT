@@ -75,7 +75,6 @@ Do not ask the user what to do next.
 Do not ask repeated confirmation questions.
 ```
 
-
 ## Non-interaction rule
 
 Do not ask the user to choose among options.
@@ -122,6 +121,9 @@ CppAD is the default for explicit algebraic derivatives.
 Solved states use analytic_implicit or cppad_implicit sensitivities.
 Do not tape iterative solver loops as production derivatives.
 
+## GitHub issue
+
+#96
 
 ## Task summary
 
@@ -143,16 +145,17 @@ Prove downstream projects can use generic package APIs without private workaroun
 
 ## Dependency gate before implementation
 
-Before implementation, run the dependency gate again:
+Before implementation, read the GitHub issue and run the dependency gate again:
 
 ```powershell
 git fetch origin --prune
+gh issue view 96 --repo tannerpolley/ePC-SAFT --json number,title,state,body,url
 git branch --show-current
 git status --short
 git rebase origin/main
 ```
 
-Verify prerequisite issues are closed and PRs are merged. If any dependency is missing or the rebase conflicts, stop with status `BLOCKED_DEPENDENCY_OR_REBASE`.
+Read the GitHub issue before implementation and include its current scope in `docs/goals/<slug>/notes/issue_scope.md`. Verify prerequisite issues are closed and PRs are merged. If any dependency is missing or the rebase conflicts, stop with status `BLOCKED_DEPENDENCY_OR_REBASE`.
 
 ## Implementation, PR, self-review, and merge automation
 
@@ -160,7 +163,7 @@ This prompt pre-authorizes the agent to do the full issue lifecycle without aski
 
 Required sequence:
 
-1. Implement only the assigned roadmap task on the assigned branch.
+1. Inspect GitHub issue #96 and implement only that assigned roadmap task on the assigned branch.
 2. Run the task-specific validation commands and the repo-level validation named in this prompt.
 3. Run `git diff --check`.
 4. Rebase or fast-forward against `origin/main`, then review the branch against `origin/main`:
@@ -168,29 +171,33 @@ Required sequence:
    - `git status --short`
    - `git diff --stat origin/main...HEAD`
    - inspect the changed files and confirm they match this task scope.
-5. Open a focused draft PR with the GitHub CLI if no PR exists for the branch.
+5. Open a focused draft PR with the GitHub CLI if no PR exists for the branch, and include Closes #96 in the PR body.
 6. Self-review the PR against `origin/main` before marking it ready:
    - no application-specific public APIs
    - no finite-difference derivative route
-   - no PR #56 base or dependency
    - no unrelated files
    - all in-scope items are classified as `implemented`, `already_supported_with_tests`, `blocker_requires_followup`, or `out_of_scope_by_roadmap`
    - no silent narrowing of the prompt scope
 7. If self-review passes, mark the PR ready for review.
 8. Wait for GitHub checks to finish.
 9. If checks pass, the PR is mergeable, and the final GoalBuddy audit says `full_outcome_complete: true`, merge the PR without asking for additional user confirmation.
-10. After merge, delete the remote branch and local branch used by this task without asking for additional user confirmation.
-11. Record the PR URL, merge commit, validation commands, remote branch deletion, local branch deletion, and any cleanup blocker in `state.yaml`.
+10. After merge, confirm issue #96 is closed; if it is still open, close it with a comment that names the merged PR and merge commit.
+11. Delete the remote branch and local branch used by this task without asking for additional user confirmation.
+12. Record the issue URL, issue close status, PR URL, merge commit, validation commands, remote branch deletion, local branch deletion, and any cleanup blocker in `state.yaml`.
 
 Suggested GitHub CLI commands:
 
 ```powershell
 gh pr list --head <branch> --state open --json number,url,isDraft,mergeable,statusCheckRollup
-gh pr create --draft --base main --head <branch> --title "<task title>" --body "<summary, tests, limitations, dependencies>"
+gh pr create --draft --base main --head <branch> --title "<task title>" --body "<summary, tests, limitations, dependencies>
+
+Closes #96"
 gh pr diff <number> --name-only
 gh pr ready <number>
 gh pr checks <number> --watch --fail-fast
 gh pr merge <number> --merge --delete-branch
+gh issue view 96 --repo tannerpolley/ePC-SAFT --json state,url
+gh issue close 96 --repo tannerpolley/ePC-SAFT --comment "Completed by merged PR <number> at <merge commit>."  # only if still open
 git fetch origin main --prune
 git switch --detach origin/main
 git branch -d codex/downstream-integration-smokes
@@ -198,6 +205,7 @@ git branch -d codex/downstream-integration-smokes
 
 Do not merge if any of these are true:
 
+- GitHub issue scope was not inspected or recorded
 - required validation failed or was not run
 - GitHub checks failed, are pending, or are unavailable
 - PR is not mergeable
@@ -205,11 +213,11 @@ Do not merge if any of these are true:
 - final GoalBuddy audit is missing or says `full_outcome_complete: false`
 - task scope was narrowed silently
 - changed files are outside the assigned task scope
-- review finds application-specific APIs, finite differences, or PR #56 dependency
+- review finds application-specific APIs or finite differences
 - credentials, network, or GitHub policy prevent the merge
 - local branch cleanup would discard uncommitted work or delete the wrong branch
 
-If blocked, do not ask repeated confirmation questions. Stop with a precise status such as `BLOCKED_CHECKS_FAILED`, `BLOCKED_REBASE_CONFLICT`, `BLOCKED_SCOPE_GAP`, `BLOCKED_GITHUB_POLICY`, `BLOCKED_MERGE_CONFLICT`, `BLOCKED_REMOTE_BRANCH_DELETE`, or `BLOCKED_LOCAL_BRANCH_DELETE`, and write the exact blocker and next command to `state.yaml`.
+If blocked, do not ask repeated confirmation questions. Stop with a precise status such as `BLOCKED_ISSUE_SCOPE_UNREAD`, `BLOCKED_ISSUE_CLOSE_FAILED`, `BLOCKED_CHECKS_FAILED`, `BLOCKED_REBASE_CONFLICT`, `BLOCKED_SCOPE_GAP`, `BLOCKED_GITHUB_POLICY`, `BLOCKED_MERGE_CONFLICT`, `BLOCKED_REMOTE_BRANCH_DELETE`, or `BLOCKED_LOCAL_BRANCH_DELETE`, and write the exact blocker and next command to `state.yaml`.
 
 ## Validation
 
@@ -241,6 +249,7 @@ Report:
 
 ```text
 issue URL
+issue closed yes/no
 PR URL
 merge commit
 remote branch deleted yes/no

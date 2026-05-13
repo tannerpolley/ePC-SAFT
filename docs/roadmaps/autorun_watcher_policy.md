@@ -52,13 +52,15 @@ For roadmap tasks F-M, the task prompt pre-authorizes the agent to complete the 
 
 Required completion behavior:
 
-- Open a focused draft PR if one does not already exist for the assigned branch.
+- Inspect the corresponding GitHub issue before implementation and record the issue scope in the GoalBuddy notes.
+- Open a focused draft PR if one does not already exist for the assigned branch, and include `Closes #<corresponding issue number>` in the PR body.
 - Review the PR against `origin/main` before marking ready.
-- Confirm changed files match the task scope and do not include finite differences, application-specific public APIs, PR #56 dependency, unrelated files, or silent scope narrowing.
+- Confirm changed files match the task scope and do not include finite differences, application-specific public APIs, unrelated files, or silent scope narrowing.
 - Mark the PR ready only after task validation, `git diff --check`, and self-review pass.
 - Wait for GitHub checks to finish.
 - Merge only when checks pass, the branch is current with `origin/main`, the PR is mergeable, and the final GoalBuddy audit says `full_outcome_complete: true`.
-- After merge, delete both the remote and local task branch. If either cleanup step cannot be completed safely, record `BLOCKED_REMOTE_BRANCH_DELETE` or `BLOCKED_LOCAL_BRANCH_DELETE` with the exact next command.
+- After merge, confirm the corresponding GitHub issue is closed; if still open, close it with a comment naming the merged PR and merge commit.
+- Delete both the remote and local task branch. If issue closure or branch cleanup cannot be completed safely, record `BLOCKED_ISSUE_CLOSE_FAILED`, `BLOCKED_REMOTE_BRANCH_DELETE`, or `BLOCKED_LOCAL_BRANCH_DELETE` with the exact next command.
 
 ## Process Rules
 

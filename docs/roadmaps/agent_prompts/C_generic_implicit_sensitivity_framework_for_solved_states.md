@@ -72,7 +72,6 @@ Do not ask the user what to do next.
 Do not ask repeated confirmation questions.
 ```
 
-
 ## Non-interaction rule
 
 Do not ask the user to choose among options.
@@ -119,7 +118,6 @@ CppAD is the default for explicit algebraic derivatives.
 Solved states use analytic_implicit or cppad_implicit sensitivities.
 Do not tape iterative solver loops as production derivatives.
 
-
 ## Task summary
 
 Create reusable implicit-sensitivity machinery for solved internal states across EOS, equilibrium, and regression.
@@ -159,8 +157,6 @@ Verify prerequisite issues are closed and PRs are merged. If any dependency is m
 - Open a focused PR.
 - PR body includes issue link, summary, tests, limitations, and next dependencies.
 - Do not close unrelated issues.
-- Do not modify PR #56.
-- Do not base work on PR #56.
 
 ## Validation
 
