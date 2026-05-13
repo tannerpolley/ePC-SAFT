@@ -21,16 +21,17 @@ Supported workflows
   data-row families and returns a stable ``FitResult`` with
   ``backend="backend_unavailable"`` until native optimizer internals are added.
 - ``fit_pure_neutral(...)`` fits nonassociating neutral pure-component ``m``, ``s``, and ``e`` against density and vapor-pressure records with the native least-squares backend.
-- ``fit_pure_ion(...)`` fits ion ``s`` and ``e`` by default, and can fit ``d_born`` when requested, with the native least-squares backend and provenance guardrails.
-- ``fit_binary_pair(...)`` fits constant binary interaction values from direct VLE x/y records with the native least-squares backend and provenance guardrails.
+- ``fit_pure_ion(...)`` fits ion ``s``, ``e``, and ``d_born`` declarations with native provenance guardrails through the Ceres backend and ``cppad_implicit`` density-root sensitivities for density, osmotic-coefficient, and mean-ionic-activity rows.
+- ``fit_binary_pair(...)`` fits supported constant ``k_ij`` binary interaction values from direct VLE x/y records with the native Ceres backend and provenance guardrails. Constant ``l_ij`` and ``k_hb_ij`` declarations are validated, then report ``backend_unavailable`` until native analytic or autodiff derivatives are implemented for those targets.
 
 Ion and binary V1 intentionally do not add dataset manifests or new regression-specific parameter namespaces. The helpers build runtime states from the existing dataset loader and caller-provided records.
 
-Non-native optimizer loops are not an approved production backend for package-owned regression helpers. Python code may prepare records, declare provenance, and call native regression, but coupled electrolyte, reactive, phase-equilibrium, ``d_born``, and ``k_ij`` fitting should use the native backend.
+Non-native optimizer loops are not an approved production backend for package-owned regression helpers. Python code may prepare records, declare provenance, and call native regression, but coupled electrolyte, reactive, phase-equilibrium, ``d_born``, and ``k_ij`` fitting should use a native backend with explicit derivative metadata. Public production helpers route supported generic targets through native Ceres paths with analytic, CppAD, or implicit sensitivities.
 
-The public easy APIs intentionally do not expose finite-difference derivative
-configuration. Unsupported derivative or optimizer paths report
-``backend_unavailable`` instead of silently falling back to finite differences.
+The public easy APIs intentionally do not expose numerical derivative
+configuration. Unsupported derivative or optimizer paths report a loud
+``backend_unavailable`` diagnostic tied to the missing analytic, CppAD, or
+implicit derivative path.
 
 Generic target-row schemas
 --------------------------
@@ -256,18 +257,18 @@ Example:
 Ion records
 -----------
 
-``fit_pure_ion(...)`` records require ``T`` and ``P`` plus one composition basis:
+``fit_pure_ion(...)`` records require ``T`` and ``P`` plus one composition basis. The helper validates rows, targets, bounds, and provenance, then optimizes supported ion ``s``, ``e``, and ``d_born`` targets through native Ceres with ``cppad_implicit`` residual Jacobians:
 
 - full mole-fraction columns such as ``x_H2O``, ``x_Na+``, and ``x_Cl-``
 - or ``molality`` with explicit ``species=[...]`` and ``solvent=...``
 
 Each ion regression problem must include at least one of:
 
+- ``rho`` or a supported mass-density column
 - ``osmotic_coefficient`` or ``osmotic``
 - ``mean_ionic_activity``, ``mean_ionic_activity_coefficient``, or ``miac``
 
-Density is optional and is included when ``rho`` or a supported mass-density column is present.
-``d_born`` fitting additionally requires electrostatic provenance: dielectric or relative-permittivity data, ion-activity/osmotic data, or an explicit override. Results include ``result.provenance_report`` so downstream workflows can distinguish supported fitted values from provisional diagnostic values.
+``d_born`` declarations additionally require electrostatic provenance: dielectric or relative-permittivity data, ion-activity/osmotic data, or an explicit override. Results include ``result.provenance_report`` so downstream workflows can distinguish supported fitted values from provisional diagnostic values.
 
 Example:
 
@@ -528,7 +529,7 @@ Binary VLE records
 - liquid mole-fraction columns such as ``x_H2O`` and ``x_Ethanol``
 - vapor mole-fraction columns such as ``y_H2O`` and ``y_Ethanol``
 
-The V1 constant targets are ``k_ij``, ``l_ij``, and ``k_hb_ij``. Linear temperature models and LLE fitting are future phases and raise ``InputError``. Ion-involving binary targets require explicit provenance and are rejected by default unless they are tied to direct electrolyte/neutral-ion data or an explicit override.
+The V1 native optimizer target is constant ``k_ij`` through Ceres with ``cppad_implicit`` Jacobians. Constant ``l_ij`` and ``k_hb_ij`` remain schema-supported targets, but fitting them raises ``backend_unavailable`` until a native analytic, CppAD, or implicit derivative path is registered. Linear temperature models and LLE fitting are future phases and raise ``InputError``. Ion-involving binary targets require explicit provenance and are rejected by default unless they are tied to direct electrolyte/neutral-ion data or an explicit override.
 
 Example:
 
@@ -586,7 +587,7 @@ Normal ``FitResult`` payloads report compact derivative metadata:
 
 Large matrices are exposed only through explicit derivative-evaluation helpers. Use ``evaluate_pure_neutral_derivatives(...)`` for the native pure-neutral objective. It returns residuals, gradient, ``jacobian_row_major``, ``jacobian_shape``, and Hessian skeleton fields. Pure-neutral Jacobians use the native autodiff path.
 
-For lower-level generic native records, ``evaluate_generic_regression_derivatives(...)`` reports ``backend_unavailable`` until generic residual state calls have analytic or autodiff coverage.
+For lower-level generic native records, ``evaluate_generic_regression_derivatives(...)`` reports ``backend_unavailable`` until the requested residual state calls have analytic, CppAD, or implicit derivative coverage. Public generic fitting does not route through non-native optimizer loops.
 
 Reactive electrolyte residual evaluator
 ---------------------------------------
@@ -647,7 +648,7 @@ Derivative availability
      - Native autodiff Jacobian through ``evaluate_pure_neutral_derivatives(...)``
      - Skeleton metadata only
    * - Generic ion/binary regression
-     - ``backend_unavailable`` until analytic or autodiff generic residual coverage is implemented
+     - Binary ``k_ij`` fitting uses native Ceres ``cppad_implicit`` Jacobians; other generic residual families report ``backend_unavailable`` until analytic or autodiff coverage is implemented
      - Skeleton metadata only
    * - Neutral LLE
      - Native stability and seed checks remain available; solve derivative callbacks report ``backend_unavailable`` until residual coverage is implemented

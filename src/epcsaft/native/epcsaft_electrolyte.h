@@ -477,6 +477,14 @@ NeutralBinaryKijPhaseDerivatives neutral_binary_pair_parameter_phase_derivatives
     int parameter_index,
     const std::string &parameter_name
 );
+NeutralBinaryKijPhaseDerivatives generic_component_parameter_phase_derivatives_cpp(
+    double t,
+    double rho,
+    const vector<double> &x,
+    const add_args &cppargs,
+    int target_kind,
+    int target_index
+);
 double dadt_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 double hres_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 double sres_cpp(double t, double rho, vector<double> x, const add_args &cppargs);

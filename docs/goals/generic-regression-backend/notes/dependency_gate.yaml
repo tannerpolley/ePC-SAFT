@@ -1,0 +1,85 @@
+task_key: K
+title: "Generic regression row schema and native optimizer backend"
+branch: codex/generic-regression-backend
+prompt: docs/roadmaps/agent_prompts/K_generic_regression_row_schema_and_native_optimizer_backend.md
+status: PASSED_AUTOSTARTED
+watcher_mode: bounded
+auto_start_after_gate: true
+poll_interval_seconds: 120
+max_wait_minutes: 480
+prepared_at: "2026-05-13"
+last_checked_at: "2026-05-13"
+
+dependencies:
+  tasks:
+    - B
+    - C
+    - E
+  issues: []
+  prs:
+    - branch: codex/cppad-explicit-parameter-derivatives
+      required_state: merged
+      observed_state: merged
+      number: 102
+      url: "https://github.com/tannerpolley/ePC-SAFT/pull/102"
+      merge_commit: "e466007b650a227110e596a67c165d85f8fc89b5"
+    - branch: codex/generic-implicit-sensitivity-framework
+      required_state: merged
+      observed_state: merged
+      number: 104
+      url: "https://github.com/tannerpolley/ePC-SAFT/pull/104"
+      merge_commit: "974e6a232025d9d305297590228c0d2131fbc4fe"
+    - branch: codex/generic-target-row-schema
+      required_state: merged
+      observed_state: merged
+      number: 101
+      url: "https://github.com/tannerpolley/ePC-SAFT/pull/101"
+      merge_commit: "0f2b47fff778da9f43d09a76a65edeb7e41b5da7"
+
+required_files:
+  - docs/roadmaps/general_reactive_electrolyte_equilibrium_readiness.md
+  - docs/roadmaps/agent_dependency_plan.md
+  - docs/roadmaps/agent_prompts/index.yaml
+  - docs/roadmaps/agent_prompts/K_generic_regression_row_schema_and_native_optimizer_backend.md
+
+gate_checks:
+  git_fetch_origin:
+    status: pass
+    evidence: "git fetch origin --prune completed during dependency recheck."
+  current_branch_matches:
+    status: pass
+    expected: codex/generic-regression-backend
+    observed: codex/generic-regression-backend
+  dependency_issues_closed:
+    status: pass
+    evidence: "Dependency issues B, C, and E are already satisfied by merged PRs."
+  dependency_prs_merged:
+    status: pass
+    evidence: "PR #102, PR #104, and PR #101 are all merged."
+  origin_main_contains_dependency_merges:
+    status: pass
+    evidence: "origin/main contains the merge commits from PR #102, PR #104, and PR #101."
+  rebase_onto_origin_main_clean:
+    status: pass
+    evidence: "git rebase origin/main reported the branch is up to date."
+
+on_gate_pass:
+  action: "auto-start Task K implementation without asking"
+
+on_gate_fail:
+  action: "write PREPARED_WAITING and stop"
+
+on_implementation_gate_fail:
+  action: "stop with status BLOCKED_DEPENDENCY_OR_REBASE"
+
+verification_commands_before_implementation:
+  - "git fetch origin --prune"
+  - "git branch --show-current"
+  - "git status --short"
+  - "git rebase origin/main"
+
+notes:
+  - "Do not start implementation until dependency gate passes."
+  - "Do not add application-specific public APIs."
+  - "No finite difference."
+  - "Ceres is preferred when it owns the native loop."

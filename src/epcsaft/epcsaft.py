@@ -2627,11 +2627,6 @@ def create_struct(params):
         else:
             cppargs.born_diff_mode = 0
 
-    if cppargs.born_model == 1 and cppargs.born_radius_model == 5:
-        raise ValueError(
-            'd_Born_mode="fitted_param" requires SSM/DS Born path (include_born_model=true and SSM or DS true).'
-        )
-
     if cppargs.born_model > 0 and cppargs.born_radius_model in (4, 5):
         if z_arr is None:
             raise ValueError("fitted d_Born_mode requires params['z'] as a per-species array.")

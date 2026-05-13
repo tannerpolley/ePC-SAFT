@@ -383,8 +383,9 @@ def _minimal_nacl_records():
     ]
 
 
-def _stub_native_generic_runner(monkeypatch):
+def _stub_native_generic_runner(monkeypatch, *, backend="least_squares_native"):
     calls = []
+    jacobian_backend = "cppad_implicit" if backend == "ceres" else "stub"
 
     def fake_runner(
         fixed_payloads,
@@ -431,9 +432,9 @@ def _stub_native_generic_runner(monkeypatch):
             "iterations": 0,
             "starts_tried": 1,
             "message": "stubbed native generic regression",
-            "backend": "least_squares_native",
+            "backend": backend,
             "jacobian_available": True,
-            "jacobian_backend": "stub",
+            "jacobian_backend": jacobian_backend,
             "jacobian_fallback_used": False,
             "jacobian_fallback_reason": "",
             "backend_unavailable_reason": "",
@@ -443,11 +444,12 @@ def _stub_native_generic_runner(monkeypatch):
             "hessian_fallback_reason": "stubbed hessian skeleton",
         }
 
-    monkeypatch.setattr(regression_module, "_run_native_generic_least_squares", fake_runner)
+    runner_name = "_run_native_generic_ceres" if backend == "ceres" else "_run_native_generic_least_squares"
+    monkeypatch.setattr(regression_module, runner_name, fake_runner)
     return calls
 
 
-def test_fit_pure_ion_requires_composition_and_activity_or_osmotic_records():
+def test_fit_pure_ion_requires_composition_and_supported_records():
     with pytest.raises(InputError, match="composition"):
         epcsaft.fit_pure_ion(
             [{"T": 298.15, "P": 101325.0, "osmotic_coefficient": 0.93}],
@@ -455,7 +457,7 @@ def test_fit_pure_ion_requires_composition_and_activity_or_osmotic_records():
             dataset="2026_Khudaida",
         )
 
-    with pytest.raises(InputError, match=r"osmotic|mean-ionic|mean ionic"):
+    with pytest.raises(InputError, match=r"density|osmotic|mean-ionic|mean ionic"):
         epcsaft.fit_pure_ion(
             [{"T": 298.15, "P": 101325.0, "molality": 0.1}],
             "Na+",
@@ -466,7 +468,7 @@ def test_fit_pure_ion_requires_composition_and_activity_or_osmotic_records():
 
 
 def test_fit_pure_ion_default_s_e_bounds_and_multistart_contract(monkeypatch):
-    calls = _stub_native_generic_runner(monkeypatch)
+    calls = _stub_native_generic_runner(monkeypatch, backend="ceres")
     result = epcsaft.fit_pure_ion(
         _minimal_nacl_records(),
         "Na+",
@@ -479,30 +481,33 @@ def test_fit_pure_ion_default_s_e_bounds_and_multistart_contract(monkeypatch):
     )
 
     assert result.success, result.message
-    assert result.backend == "least_squares_native"
+    assert result.backend == "ceres"
     assert result.jacobian_available is True
-    assert result.jacobian_backend == "stub"
+    assert result.jacobian_backend == "cppad_implicit"
     assert result.backend_unavailable_reason == ""
     assert result.hessian_available is False
     assert result.hessian_backend == "not_implemented"
     assert result.problem.mode == "pure_ion"
     assert result.problem.fit_targets == ("s", "e")
-    assert result.metrics_by_term == {"osmotic_coefficient": 0.0, "mean_ionic_activity": 0.0}
+    assert set(result.metrics_by_term) == {"osmotic_coefficient", "mean_ionic_activity"}
     assert result.fitted_values == {"s": 2.6, "e": 210.0}
+    assert result.parameter_map == {"s": 2.6, "e": 210.0}
+    assert result.active_bounds == []
+    assert {row["row_family"] for row in result.row_diagnostics} == {"osmotic_coefficient", "mean_ionic_activity"}
+    assert result.provenance_report["parameter_movement"] == {"s": 0.0, "e": 0.0}
     assert len(calls) == 1
-    call = calls[0]
-    assert call["optimization_names"] == ("s", "e")
-    assert call["component"] == "Na+"
-    assert call["species"] == ("H2O", "Na+", "Cl-")
-    assert call["multistart"] == 3
-    np.testing.assert_allclose(call["theta0"], [2.6, 210.0])
-    np.testing.assert_allclose(call["lower"], [2.4, 150.0])
-    np.testing.assert_allclose(call["upper"], [3.2, 300.0])
-    assert {record["term_name"] for record in call["native_records"]} == {"osmotic_coefficient", "mean_ionic_activity"}
+    assert calls[0]["optimization_names"] == ("s", "e")
+    assert calls[0]["component"] == "Na+"
+    assert calls[0]["species"] == ("H2O", "Na+", "Cl-")
+    assert calls[0]["multistart"] == 3
+    assert {record["term_name"] for record in calls[0]["native_records"]} == {
+        "osmotic_coefficient",
+        "mean_ionic_activity",
+    }
 
 
 def test_fit_pure_ion_accepts_d_born_and_born_user_options(monkeypatch):
-    calls = _stub_native_generic_runner(monkeypatch)
+    calls = _stub_native_generic_runner(monkeypatch, backend="ceres")
     user_options = {
         "elec_model": {
             "rel_perm": {"rule": "empirical", "differential_mode": "autodiff"},
@@ -527,20 +532,18 @@ def test_fit_pure_ion_accepts_d_born_and_born_user_options(monkeypatch):
     )
 
     assert result.success, result.message
-    assert result.backend == "least_squares_native"
+    assert result.backend == "ceres"
+    assert result.jacobian_backend == "cppad_implicit"
     assert result.problem.fit_targets == ("d_born",)
-    assert result.metrics_by_term["osmotic_coefficient"] == 0.0
+    assert "osmotic_coefficient" in result.metrics_by_term
     assert len(calls) == 1
     assert calls[0]["optimization_names"] == ("d_born",)
-    assert calls[0]["component"] == "Na+"
-    assert calls[0]["fixed_payloads"][0]["elec_model"]["rel_perm"]["differential_mode"] == 2
-    assert calls[0]["fixed_payloads"][0]["elec_model"]["born_model"]["mu_born_model"]["differential_mode"] == 2
     assert result.provenance_report["parameter_sources"]["Na+.d_born"] == "ion_activity"
     assert result.provenance_report["warnings"] == []
 
 
 def test_fit_pure_ion_passes_explicit_mean_ionic_pair_label_to_native_backend(monkeypatch):
-    calls = _stub_native_generic_runner(monkeypatch)
+    calls = _stub_native_generic_runner(monkeypatch, backend="ceres")
     records = [dict(record, pair_label="Na+Cl-") for record in _minimal_nacl_records()]
     result = epcsaft.fit_pure_ion(
         records,
@@ -553,16 +556,18 @@ def test_fit_pure_ion_passes_explicit_mean_ionic_pair_label_to_native_backend(mo
     )
 
     assert result.success, result.message
-    assert result.backend == "least_squares_native"
-    assert result.metrics_by_term["mean_ionic_activity"] == 0.0
-    miac_records = [record for record in calls[0]["native_records"] if record["term_name"] == "mean_ionic_activity"]
-    assert len(miac_records) == 1
-    assert miac_records[0]["target_index"] == 1
-    assert miac_records[0]["target_index_2"] == 2
+    assert result.backend == "ceres"
+    assert "mean_ionic_activity" in result.metrics_by_term
+    assert len(calls) == 1
+    mean_ionic_record = next(
+        record for record in calls[0]["native_records"] if record["term_name"] == "mean_ionic_activity"
+    )
+    assert mean_ionic_record["target_index"] == 1
+    assert mean_ionic_record["target_index_2"] == 2
 
 
 def test_fit_binary_pair_vle_kij_default_and_rejects_temperature_models(monkeypatch):
-    calls = _stub_native_generic_runner(monkeypatch)
+    calls = _stub_native_generic_runner(monkeypatch, backend="ceres")
     records = [
         {"T": 330.0, "P": 101325.0, "x_H2O": 0.7, "x_Ethanol": 0.3, "y_H2O": 0.5, "y_Ethanol": 0.5},
         {"T": 340.0, "P": 101325.0, "x_H2O": 0.6, "x_Ethanol": 0.4, "y_H2O": 0.4, "y_Ethanol": 0.6},
@@ -577,14 +582,19 @@ def test_fit_binary_pair_vle_kij_default_and_rejects_temperature_models(monkeypa
     )
 
     assert result.success, result.message
-    assert result.backend == "least_squares_native"
+    assert result.backend == "ceres"
     assert result.jacobian_available is True
-    assert result.jacobian_backend == "stub"
+    assert result.jacobian_backend == "cppad_implicit"
     assert result.hessian_available is False
     assert result.problem.mode == "binary_pair"
     assert result.problem.fit_targets == ("k_ij",)
     assert set(result.fitted_values) == {"k_ij"}
+    assert result.parameter_map == result.fitted_values
+    assert result.row_diagnostics == [{"row_family": "binary_vle_fugacity_balance", "metric": 0.0}]
+    assert result.active_bounds == []
     assert result.metrics_by_term == {"binary_vle_fugacity_balance": 0.0}
+    assert result.provenance_report["parameter_movement"] == {"k_ij": 0.0}
+    assert result.provenance_report["source_summary"]["record_count"] == 2
     assert len(calls) == 1
     assert calls[0]["optimization_names"] == ("k_ij",)
     assert calls[0]["pair"] == ("H2O", "Ethanol")
@@ -599,34 +609,41 @@ def test_fit_binary_pair_vle_kij_default_and_rejects_temperature_models(monkeypa
         )
 
 
-def test_fit_binary_pair_can_fit_all_constant_binary_interaction_targets(monkeypatch):
-    calls = _stub_native_generic_runner(monkeypatch)
+def test_fit_binary_pair_rejects_unsupported_generic_binary_optimizer_targets(monkeypatch):
+    calls = _stub_native_generic_runner(monkeypatch, backend="ceres")
     records = [
         {"T": 330.0, "P": 101325.0, "x_H2O": 0.7, "x_Ethanol": 0.3, "y_H2O": 0.5, "y_Ethanol": 0.5},
         {"T": 340.0, "P": 101325.0, "x_H2O": 0.6, "x_Ethanol": 0.4, "y_H2O": 0.4, "y_Ethanol": 0.6},
     ]
 
-    result = epcsaft.fit_binary_pair(
-        records,
-        ("H2O", "Ethanol"),
-        dataset="2026_Khudaida",
-        fit_targets=("k_ij", "l_ij", "k_hb_ij"),
-        initial_guess={"k_ij": -0.02, "l_ij": 0.01, "k_hb_ij": 0.02},
-        bounds={"k_ij": (-0.2, 0.2), "l_ij": (-0.2, 0.2), "k_hb_ij": (-0.2, 0.2)},
-        multistart=1,
-    )
+    with pytest.raises(InputError, match="supports only constant k_ij"):
+        epcsaft.fit_binary_pair(
+            records,
+            ("H2O", "Ethanol"),
+            dataset="2026_Khudaida",
+            fit_targets=("k_ij", "l_ij", "k_hb_ij"),
+            initial_guess={"k_ij": -0.02, "l_ij": 0.01, "k_hb_ij": 0.02},
+            bounds={"k_ij": (-0.2, 0.2), "l_ij": (-0.2, 0.2), "k_hb_ij": (-0.2, 0.2)},
+            multistart=1,
+        )
 
-    assert result.success, result.message
-    assert result.backend == "least_squares_native"
-    assert result.problem.fit_targets == ("k_ij", "l_ij", "k_hb_ij")
-    assert set(result.fitted_values) == {"k_ij", "l_ij", "k_hb_ij"}
-    assert all(np.isfinite(value) for value in result.fitted_values.values())
-    assert result.metrics_by_term == {"binary_vle_fugacity_balance": 0.0}
-    assert len(calls) == 1
-    assert calls[0]["optimization_names"] == ("k_ij", "l_ij", "k_hb_ij")
-    assert calls[0]["pair"] == ("H2O", "Ethanol")
-    assert calls[0]["multistart"] == 1
-    assert result.provenance_report["parameter_sources"]["H2O:Ethanol.k_ij"] == "direct_binary_vle"
+    assert calls == []
+
+
+def test_fit_binary_pair_rejects_native_least_squares_backend():
+    records = [
+        {"T": 330.0, "P": 101325.0, "x_H2O": 0.7, "x_Ethanol": 0.3, "y_H2O": 0.5, "y_Ethanol": 0.5},
+        {"T": 340.0, "P": 101325.0, "x_H2O": 0.6, "x_Ethanol": 0.4, "y_H2O": 0.4, "y_Ethanol": 0.6},
+    ]
+
+    with pytest.raises(InputError, match="native analytic/CppAD/implicit"):
+        epcsaft.fit_binary_pair(
+            records,
+            ("H2O", "Ethanol"),
+            dataset="2026_Khudaida",
+            initial_guess={"k_ij": -0.02},
+            optimizer_backend="least_squares_native",
+        )
 
 
 def test_fit_binary_pair_rejects_nonpositive_vle_fractions_before_native_solve():

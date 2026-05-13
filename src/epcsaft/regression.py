@@ -155,8 +155,12 @@ LIQUID_ELECTROLYTE_BACKEND_UNAVAILABLE_REASON = (
     "of this API-contract slice."
 )
 BINARY_CERES_BACKEND_UNAVAILABLE_REASON = (
-    "backend_unavailable: binary Ceres regression requires real k_ij residual derivatives through fugacity "
-    "and density-root sensitivities; the legacy generic binary optimizer is finite-difference only."
+    "backend_unavailable: binary Ceres regression currently supports only constant k_ij with "
+    "cppad_implicit Jacobians."
+)
+GENERIC_NATIVE_OPTIMIZER_BACKEND_UNAVAILABLE_REASON = (
+    "backend_unavailable: no native analytic/CppAD/implicit derivative path is registered for this "
+    "generic regression target set."
 )
 
 
@@ -868,6 +872,36 @@ def _fit_derivative_metadata(result: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _row_diagnostics_from_metrics(metrics_by_term: Mapping[str, Any]) -> list[dict[str, Any]]:
+    return [{"row_family": str(name), "metric": float(value)} for name, value in metrics_by_term.items()]
+
+
+def _active_bounds_from_arrays(
+    names: Sequence[str],
+    values: Mapping[str, float],
+    lower: Sequence[float],
+    upper: Sequence[float],
+) -> list[str]:
+    active: list[str] = []
+    for idx, name in enumerate(names):
+        value = float(values[name])
+        lo = float(lower[idx])
+        hi = float(upper[idx])
+        if math.isfinite(lo) and math.isclose(value, lo, rel_tol=0.0, abs_tol=1.0e-10):
+            active.append(str(name))
+        elif math.isfinite(hi) and math.isclose(value, hi, rel_tol=0.0, abs_tol=1.0e-10):
+            active.append(str(name))
+    return active
+
+
+def _parameter_movement(
+    names: Sequence[str],
+    initial_map: Mapping[str, float],
+    fitted_map: Mapping[str, float],
+) -> dict[str, float]:
+    return {str(name): float(fitted_map[name]) - float(initial_map[name]) for name in names}
+
+
 def load_regression_records(records: Any) -> list[dict[str, Any]]:
     """Load flat regression records from CSV, tabular objects, or mappings."""
 
@@ -1237,8 +1271,8 @@ def _build_pure_ion_terms(records: Sequence[dict[str, Any]]) -> tuple[FitTerm, .
         )
         is not None
     ]
-    if not osmotic_records and not miac_records:
-        raise InputError("pure_ion regression requires osmotic and/or mean-ionic activity records.")
+    if not density_records and not osmotic_records and not miac_records:
+        raise InputError("pure_ion regression requires density, osmotic, and/or mean-ionic activity records.")
     _require_record_value(density_records, PURE_ION_MODE, "P")
     _require_record_value(osmotic_records, PURE_ION_MODE, "P")
     _require_record_value(miac_records, PURE_ION_MODE, "P")
@@ -1774,7 +1808,6 @@ def _fit_pure_ion_internal(
         species=normalized_species,
         strict=True,
     )
-
     T_ref = float(np.mean([_float_from_record(record, "T", required=True) for record in normalized_records]))
     seed_payload, source_key = _pure_seed_payload(normalized_component, T_ref, "", dataset, None)
     initial = _copy_mapping(initial_guess)
@@ -1783,10 +1816,23 @@ def _fit_pure_ion_internal(
     bounds_obj = _coerce_bounds(bounds)
     lower, upper = bounds_obj.arrays_for(optimization_names)
     theta0 = np.asarray([initial_map[name] for name in optimization_names], dtype=float)
-
+    problem = FitProblem(
+        mode=PURE_ION_MODE,
+        records=tuple(normalized_records),
+        component=normalized_component,
+        solvent=normalized_solvent,
+        dataset=_source_dataset_label(dataset),
+        fit_targets=normalized_fit_targets,
+        optimization_parameters=optimization_names,
+        fixed_parameters=seed_payload,
+        initial_guess=initial_map,
+        terms=terms,
+        pure_file_hint=(
+            f"{source_key}.csv" if source_key is not None else _infer_pure_template_name([normalized_component])
+        ),
+    )
     native_records: list[dict[str, Any]] = []
     fixed_payloads: list[dict[str, Any]] = []
-    solvent_index = -1 if normalized_solvent is None else normalized_species.index(normalized_solvent)
     for term in terms:
         scale = _family_scale(term)
         for record in term.records:
@@ -1807,15 +1853,11 @@ def _fit_pure_ion_internal(
                     "phase": phase_to_int(_value_from_record(record, "phase", required=False) or "liq"),
                     "x": x.tolist(),
                     "target": _float_from_record(record, "osmotic_coefficient", "osmotic", required=True),
+                    "solvent_index": -1 if normalized_solvent is None else normalized_species.index(normalized_solvent),
                     "scale": scale,
                 }
             elif term.term_type == TERM_MIAC:
-                basis = (
-                    str(_value_from_record(record, "activity_basis", "miac_basis", required=False) or "molality")
-                    .strip()
-                    .lower()
-                )
-                miac_i, miac_j = _native_miac_pair_indices(record, normalized_species)
+                cation_index, anion_index = _native_miac_pair_indices(record, normalized_species)
                 native_record = {
                     "term_name": term.term_type,
                     "term": NATIVE_TERM_KINDS[term.term_type],
@@ -1830,18 +1872,19 @@ def _fit_pure_ion_internal(
                         "miac",
                         required=True,
                     ),
-                    "target_index": miac_i,
-                    "target_index_2": miac_j,
-                    "activity_basis": 1 if basis in {"molality", "m"} else 0,
-                    "solvent_index": solvent_index,
+                    "target_index": cation_index,
+                    "target_index_2": anion_index,
+                    "solvent_index": -1 if normalized_solvent is None else normalized_species.index(normalized_solvent),
                     "scale": scale,
                 }
             else:
-                continue
+                raise InputError(
+                    "backend_unavailable: no native analytic/CppAD/implicit derivative path is registered for "
+                    f"pure-ion row family '{term.term_type}'."
+                )
             fixed_payloads.append(_params_for_native_record(dataset, normalized_species, x, T, user_options))
             native_records.append(native_record)
-
-    result = _run_native_generic_least_squares(
+    result = _run_native_generic_ceres(
         fixed_payloads,
         native_records,
         optimization_names,
@@ -1853,26 +1896,17 @@ def _fit_pure_ion_internal(
         multistart=int(multistart),
     )
     vector_map = _normalize_vector_map(optimization_names, result["x"])
-    rendered = {name: float(vector_map[name]) for name in normalized_fit_targets}
-    problem = FitProblem(
-        mode=PURE_ION_MODE,
-        records=tuple(normalized_records),
-        component=normalized_component,
-        solvent=normalized_solvent,
-        dataset=_source_dataset_label(dataset),
-        fit_targets=normalized_fit_targets,
-        optimization_parameters=optimization_names,
-        fixed_parameters=seed_payload,
-        initial_guess=initial_map,
-        terms=terms,
-        pure_file_hint=(
-            f"{source_key}.csv" if source_key is not None else _infer_pure_template_name([normalized_component])
-        ),
-    )
+    provenance_payload = _copy_mapping(provenance_report)
+    provenance_payload["parameter_movement"] = _parameter_movement(optimization_names, initial_map, vector_map)
+    provenance_payload["source_summary"] = {
+        "dataset": _source_dataset_label(dataset),
+        "record_count": len(normalized_records),
+        "row_families": tuple(term.term_type for term in terms),
+    }
     return FitResult(
         problem=problem,
         fitted_values=vector_map,
-        rendered_values=rendered,
+        rendered_values={name: float(vector_map[name]) for name in normalized_fit_targets},
         metrics_by_term=result["metrics_by_term"],
         cost=float(result["cost"]),
         residual_norm=float(result["residual_norm"]),
@@ -1882,7 +1916,10 @@ def _fit_pure_ion_internal(
         nfev=int(result["nfev"]),
         backend=str(result["backend"]),
         **_fit_derivative_metadata(result),
-        provenance_report=provenance_report,
+        parameter_map=vector_map,
+        row_diagnostics=_row_diagnostics_from_metrics(result["metrics_by_term"]),
+        active_bounds=_active_bounds_from_arrays(optimization_names, vector_map, lower, upper),
+        provenance_report=provenance_payload,
     )
 
 
@@ -1900,11 +1937,9 @@ def _fit_binary_pair_internal(
     provenance: Sequence[BinaryInteraction] | Mapping[str, str] | None = None,
     allow_unsupported_parameters: bool = False,
     multistart: int = 0,
-    optimizer_backend: str = "least_squares_native",
+    optimizer_backend: str = "ceres",
 ) -> FitResult:
-    optimizer_backend = _optimizer_backend_from_options(
-        {"optimizer_backend": optimizer_backend}, "least_squares_native"
-    )
+    optimizer_backend = _optimizer_backend_from_options({"optimizer_backend": optimizer_backend}, "ceres")
     normalized_pair = _normalize_pair(pair)
     normalized_records = _normalize_records(records)
     normalized_species = _binary_species_from_records(normalized_records, normalized_pair, species)
@@ -1996,7 +2031,7 @@ def _fit_binary_pair_internal(
 
     if optimizer_backend == "ceres":
         if normalized_fit_targets != ("k_ij",):
-            raise InputError("backend_unavailable: binary_pair Ceres currently supports only the target 'k_ij'.")
+            raise InputError(BINARY_CERES_BACKEND_UNAVAILABLE_REASON)
         result = _run_native_generic_ceres(
             fixed_payloads,
             native_records,
@@ -2009,18 +2044,15 @@ def _fit_binary_pair_internal(
             multistart=int(multistart),
         )
     else:
-        result = _run_native_generic_least_squares(
-            fixed_payloads,
-            native_records,
-            optimization_names,
-            normalized_species,
-            theta0,
-            lower,
-            upper,
-            pair=normalized_pair,
-            multistart=int(multistart),
-        )
+        raise InputError(GENERIC_NATIVE_OPTIMIZER_BACKEND_UNAVAILABLE_REASON)
     vector_map = _normalize_vector_map(optimization_names, result["x"])
+    provenance_payload = _copy_mapping(provenance_report)
+    provenance_payload["parameter_movement"] = _parameter_movement(optimization_names, initial_map, vector_map)
+    provenance_payload["source_summary"] = {
+        "dataset": _source_dataset_label(dataset),
+        "record_count": len(normalized_records),
+        "row_families": tuple(term.term_type for term in terms),
+    }
     return FitResult(
         problem=problem,
         fitted_values=vector_map,
@@ -2034,7 +2066,10 @@ def _fit_binary_pair_internal(
         nfev=int(result["nfev"]),
         backend=str(result["backend"]),
         **_fit_derivative_metadata(result),
-        provenance_report=provenance_report,
+        parameter_map=vector_map,
+        row_diagnostics=_row_diagnostics_from_metrics(result["metrics_by_term"]),
+        active_bounds=_active_bounds_from_arrays(optimization_names, vector_map, lower, upper),
+        provenance_report=provenance_payload,
     )
 
 
@@ -2797,7 +2832,7 @@ def fit_binary_parameters(
         provenance=provenance,
         allow_unsupported_parameters=allow_unsupported_parameters,
         multistart=int((solver_options or {}).get("multistart", 0)),
-        optimizer_backend=_optimizer_backend_from_options(solver_options, "least_squares_native"),
+        optimizer_backend=_optimizer_backend_from_options(solver_options, "ceres"),
     )
     return _annotate_contract_problem(
         result,
@@ -2824,7 +2859,7 @@ def fit_binary_pair(
     provenance: Sequence[BinaryInteraction] | Mapping[str, str] | None = None,
     allow_unsupported_parameters: bool = False,
     multistart: int = 0,
-    optimizer_backend: str = "least_squares_native",
+    optimizer_backend: str = "ceres",
 ) -> FitResult:
     """Fit V1 binary interaction parameters against VLE x/y records."""
     return _fit_binary_pair_internal(

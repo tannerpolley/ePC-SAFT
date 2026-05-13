@@ -1465,6 +1465,14 @@ struct BinaryKijResidualEvaluation {
     std::map<std::string, double> metrics_by_term;
 };
 
+struct PureIonBornResidualEvaluation {
+    ResidualVector residuals;
+    ResidualJacobian jacobian;
+    double cost = 0.0;
+    double residual_norm = 0.0;
+    std::map<std::string, double> metrics_by_term;
+};
+
 int generic_residual_count_from_records_cpp(const vector<GenericRegressionRecord> &records) {
     int count = 0;
     for (const auto &record : records) {
@@ -1480,6 +1488,218 @@ int generic_residual_count_from_records_cpp(const vector<GenericRegressionRecord
         }
     }
     return std::max(1, count);
+}
+
+double regression_normalize_mw_cpp(double mw) {
+    if (mw > 1.0) {
+        return mw / 1000.0;
+    }
+    return mw;
+}
+
+void validate_pure_ion_born_ceres_problem_cpp(
+    const vector<add_args> &base_args_by_record,
+    const vector<GenericRegressionRecord> &records,
+    const vector<int> &target_kinds,
+    const vector<int> &target_indices,
+    const vector<int> &target_indices_2,
+    const vector<double> &theta
+) {
+    if (base_args_by_record.size() != records.size()) {
+        throw ValueError("Native Ceres pure-ion regression requires one base parameter payload per record.");
+    }
+    if (target_kinds.empty()) {
+        throw ValueError("Native Ceres pure-ion regression requires at least one d_born target.");
+    }
+    if (target_kinds.size() != theta.size() || target_indices.size() != theta.size() || target_indices_2.size() != theta.size()) {
+        throw ValueError("Native Ceres pure-ion regression target arrays must match theta length.");
+    }
+    for (size_t j = 0; j < target_kinds.size(); ++j) {
+        if (target_kinds[j] != kGenericTargetS && target_kinds[j] != kGenericTargetE && target_kinds[j] != kGenericTargetDBorn) {
+            throw ValueError("backend_unavailable: native Ceres pure-ion regression supports s, e, and d_born targets only.");
+        }
+        (void)target_indices_2[j];
+    }
+    if (records.empty()) {
+        throw ValueError("Native Ceres pure-ion regression requires osmotic or mean-ionic activity records.");
+    }
+    for (size_t r = 0; r < records.size(); ++r) {
+        const auto &record = records[r];
+        const auto &args = base_args_by_record[r];
+        if (record.term != kGenericTermDensity && record.term != kGenericTermOsmotic && record.term != kGenericTermMIAC) {
+            throw ValueError("backend_unavailable: native Ceres pure-ion regression supports density, osmotic, and mean-ionic activity rows only.");
+        }
+        if (!(record.t > 0.0) || !(record.p > 0.0) || record.phase != 0) {
+            throw ValueError("Native Ceres pure-ion regression requires positive T/P liquid records.");
+        }
+        if (args.z.empty() || args.d_born.size() != args.z.size() || args.m.size() != args.z.size() || args.mw.size() != args.z.size()) {
+            throw ValueError("Native Ceres pure-ion regression requires aligned ionic parameter payloads.");
+        }
+        bool has_ion = false;
+        for (double charge : args.z) {
+            has_ion = has_ion || std::abs(charge) > 1.0e-12;
+        }
+        if (!has_ion) {
+            throw ValueError("Native Ceres pure-ion regression requires ionic species.");
+        }
+        for (int index : target_indices) {
+            if (index < 0 || static_cast<size_t>(index) >= args.d_born.size()) {
+                throw ValueError("Native Ceres pure-ion d_born target index is out of range.");
+            }
+        }
+    }
+}
+
+PureIonBornResidualEvaluation evaluate_pure_ion_born_residual_jacobian_cpp(
+    const vector<add_args> &base_args_by_record,
+    const vector<GenericRegressionRecord> &records,
+    const vector<int> &target_kinds,
+    const vector<int> &target_indices,
+    const vector<int> &target_indices_2,
+    const vector<double> &theta
+) {
+    validate_pure_ion_born_ceres_problem_cpp(
+        base_args_by_record,
+        records,
+        target_kinds,
+        target_indices,
+        target_indices_2,
+        theta
+    );
+    PureIonBornResidualEvaluation out;
+    out.residuals = ResidualVector::Zero(static_cast<int>(records.size()));
+    out.jacobian = ResidualJacobian::Zero(static_cast<int>(records.size()), static_cast<int>(theta.size()));
+    std::map<std::string, vector<double>> raw_by_term;
+    for (size_t r = 0; r < records.size(); ++r) {
+        add_args args = base_args_by_record[r];
+        apply_generic_targets_cpp(args, target_kinds, target_indices, target_indices_2, theta);
+        const auto &record = records[r];
+        auto mixture = std::make_shared<ePCSAFTMixtureNative>(args);
+        auto state = mixture->state(record.t, record.x, record.phase, true, record.p, false, 0.0);
+        const double rho = state->density();
+        double calc = 0.0;
+        vector<double> dcalc(theta.size(), 0.0);
+        if (record.term == kGenericTermDensity) {
+            calc = record.density_kind == 1 ? generic_mass_density_cpp(*state, args, record.x) : state->density();
+            double density_multiplier = 1.0;
+            if (record.density_kind == 1) {
+                if (args.mw.size() != record.x.size()) {
+                    throw ValueError("Native Ceres pure-ion density derivative requires one MW value per component.");
+                }
+                density_multiplier = 0.0;
+                for (size_t i = 0; i < record.x.size(); ++i) {
+                    density_multiplier += record.x[i] * args.mw[i];
+                }
+            }
+            for (size_t j = 0; j < theta.size(); ++j) {
+                NeutralBinaryKijPhaseDerivatives phase = generic_component_parameter_phase_derivatives_cpp(
+                    record.t,
+                    rho,
+                    record.x,
+                    args,
+                    target_kinds[j],
+                    target_indices[j]
+                );
+                dcalc[j] = density_multiplier * phase.drhodk;
+            }
+        } else if (record.term == kGenericTermOsmotic) {
+            ActivityCoefficientNative activity = state->activity_coefficient_native(true, record.solvent_index >= 0, record.solvent_index);
+            const int solvent = activity.solvent_index;
+            calc = activity.osmotic_coefficient;
+            const double mw_solvent = regression_normalize_mw_cpp(args.mw.at(static_cast<size_t>(solvent)));
+            double molality_sum = 0.0;
+            for (size_t i = 0; i < record.x.size(); ++i) {
+                if (static_cast<int>(i) == solvent) {
+                    continue;
+                }
+                molality_sum += record.x[i] / (record.x[static_cast<size_t>(solvent)] * mw_solvent);
+            }
+            if (!(molality_sum > 0.0)) {
+                throw ValueError("Native Ceres pure-ion osmotic record has zero total molality.");
+            }
+            vector<double> x0(record.x.size(), 0.0);
+            x0[static_cast<size_t>(solvent)] = 1.0;
+            const double rho_ref = mixture->solve_density(record.t, record.p, x0, record.phase);
+            for (size_t j = 0; j < theta.size(); ++j) {
+                const int target = target_indices[j];
+                NeutralBinaryKijPhaseDerivatives current = generic_component_parameter_phase_derivatives_cpp(
+                    record.t,
+                    rho,
+                    record.x,
+                    args,
+                    target_kinds[j],
+                    target
+                );
+                double reference_derivative = 0.0;
+                if (target >= 0 && static_cast<size_t>(target) < x0.size() && x0[static_cast<size_t>(target)] > 0.0) {
+                    NeutralBinaryKijPhaseDerivatives reference = generic_component_parameter_phase_derivatives_cpp(
+                        record.t,
+                        rho_ref,
+                        x0,
+                        args,
+                        target_kinds[j],
+                        target
+                    );
+                    reference_derivative = reference.dlnphi_dk_total.at(static_cast<size_t>(solvent));
+                }
+                const double dln_gamma = current.dlnphi_dk_total.at(static_cast<size_t>(solvent)) - reference_derivative;
+                dcalc[j] = -dln_gamma / (mw_solvent * molality_sum);
+            }
+        } else if (record.term == kGenericTermMIAC) {
+            ActivityCoefficientNative activity = state->activity_coefficient_native(false, record.solvent_index >= 0, record.solvent_index);
+            int pair_index = -1;
+            for (size_t k = 0; k < activity.pair_cation_indices.size(); ++k) {
+                const bool cation_matches = record.target_index < 0 || activity.pair_cation_indices[k] == record.target_index;
+                const bool anion_matches = record.target_index_2 < 0 || activity.pair_anion_indices[k] == record.target_index_2;
+                if (cation_matches && anion_matches) {
+                    pair_index = static_cast<int>(k);
+                    break;
+                }
+            }
+            if (pair_index < 0) {
+                throw ValueError("Native Ceres pure-ion MIAC pair was not present in the activity coefficient state.");
+            }
+            calc = record.activity_basis == 1
+                ? activity.mean_ionic_activity_coefficients_molality.at(static_cast<size_t>(pair_index))
+                : activity.mean_ionic_activity_coefficients_mole_fraction.at(static_cast<size_t>(pair_index));
+            const int ic = activity.pair_cation_indices.at(static_cast<size_t>(pair_index));
+            const int ia = activity.pair_anion_indices.at(static_cast<size_t>(pair_index));
+            const double nu_cat = static_cast<double>(activity.pair_nu_cation.at(static_cast<size_t>(pair_index)));
+            const double nu_an = static_cast<double>(activity.pair_nu_anion.at(static_cast<size_t>(pair_index)));
+            const double sum_nu = nu_cat + nu_an;
+            for (size_t j = 0; j < theta.size(); ++j) {
+                const int target = target_indices[j];
+                NeutralBinaryKijPhaseDerivatives phase = generic_component_parameter_phase_derivatives_cpp(
+                    record.t,
+                    rho,
+                    record.x,
+                    args,
+                    target_kinds[j],
+                    target
+                );
+                const double dln_gamma_pm = (
+                    nu_cat * phase.dlnphi_dk_total.at(static_cast<size_t>(ic))
+                    + nu_an * phase.dlnphi_dk_total.at(static_cast<size_t>(ia))
+                ) / sum_nu;
+                dcalc[j] = calc * dln_gamma_pm;
+            }
+        }
+        const double residual = relative_or_absolute_residual_cpp(calc, record.target);
+        raw_by_term[generic_term_name_cpp(record)].push_back(residual);
+        out.residuals[static_cast<int>(r)] = record.scale * residual;
+        const double residual_scale = std::abs(record.target) <= 1.0e-8 ? 1.0 : 1.0 / std::abs(record.target);
+        for (size_t j = 0; j < theta.size(); ++j) {
+            out.jacobian(static_cast<int>(r), static_cast<int>(j)) = record.scale * dcalc[j] * residual_scale;
+        }
+    }
+    for (Eigen::Index idx = 0; idx < out.residuals.size(); ++idx) {
+        out.cost += 0.5 * out.residuals[idx] * out.residuals[idx];
+    }
+    out.residual_norm = std::sqrt(std::max(0.0, 2.0 * out.cost));
+    for (const auto &item : raw_by_term) {
+        out.metrics_by_term[item.first] = rms_metric_cpp(item.second);
+    }
+    return out;
 }
 
 void validate_binary_kij_ceres_problem_cpp(
@@ -1883,6 +2103,155 @@ GenericRegressionResult solve_one_generic_start_cpp(
 }
 
 #ifdef EPCSAFT_HAS_CERES
+class PureIonCeresCostFunction final : public ceres::CostFunction {
+public:
+    PureIonCeresCostFunction(
+        vector<add_args> base_args_by_record,
+        vector<GenericRegressionRecord> records,
+        vector<int> target_kinds,
+        vector<int> target_indices,
+        vector<int> target_indices_2
+    )
+        : base_args_by_record_(std::move(base_args_by_record)),
+          records_(std::move(records)),
+          target_kinds_(std::move(target_kinds)),
+          target_indices_(std::move(target_indices)),
+          target_indices_2_(std::move(target_indices_2))
+    {
+        set_num_residuals(static_cast<int>(records_.size()));
+        mutable_parameter_block_sizes()->push_back(static_cast<int>(target_kinds_.size()));
+    }
+
+    bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const override {
+        try {
+            vector<double> theta(parameters[0], parameters[0] + target_kinds_.size());
+            PureIonBornResidualEvaluation eval = evaluate_pure_ion_born_residual_jacobian_cpp(
+                base_args_by_record_,
+                records_,
+                target_kinds_,
+                target_indices_,
+                target_indices_2_,
+                theta
+            );
+            for (Eigen::Index row = 0; row < eval.residuals.size(); ++row) {
+                residuals[row] = eval.residuals[row];
+            }
+            if (jacobians != nullptr && jacobians[0] != nullptr) {
+                for (Eigen::Index row = 0; row < eval.jacobian.rows(); ++row) {
+                    for (Eigen::Index col = 0; col < eval.jacobian.cols(); ++col) {
+                        jacobians[0][row * eval.jacobian.cols() + col] = eval.jacobian(row, col);
+                    }
+                }
+            }
+            return true;
+        } catch (...) {
+            return false;
+        }
+    }
+
+private:
+    vector<add_args> base_args_by_record_;
+    vector<GenericRegressionRecord> records_;
+    vector<int> target_kinds_;
+    vector<int> target_indices_;
+    vector<int> target_indices_2_;
+};
+
+GenericRegressionResult solve_one_pure_ion_ceres_start_cpp(
+    const vector<add_args> &base_args_by_record,
+    const vector<GenericRegressionRecord> &records,
+    const vector<int> &target_kinds,
+    const vector<int> &target_indices,
+    const vector<int> &target_indices_2,
+    const vector<double> &start,
+    const vector<double> &lower,
+    const vector<double> &upper,
+    int max_nfev
+) {
+    PureIonBornResidualEvaluation initial_eval = evaluate_pure_ion_born_residual_jacobian_cpp(
+        base_args_by_record,
+        records,
+        target_kinds,
+        target_indices,
+        target_indices_2,
+        start
+    );
+    vector<double> theta = start;
+    if (max_nfev > 1) {
+        ceres::Problem problem;
+        auto *cost = new PureIonCeresCostFunction(
+            base_args_by_record,
+            records,
+            target_kinds,
+            target_indices,
+            target_indices_2
+        );
+        problem.AddResidualBlock(cost, nullptr, theta.data());
+        for (int j = 0; j < static_cast<int>(theta.size()); ++j) {
+            problem.SetParameterLowerBound(theta.data(), j, lower[static_cast<size_t>(j)]);
+            problem.SetParameterUpperBound(theta.data(), j, upper[static_cast<size_t>(j)]);
+        }
+
+        ceres::Solver::Options options;
+        options.linear_solver_type = ceres::DENSE_QR;
+        options.minimizer_progress_to_stdout = false;
+        options.logging_type = ceres::SILENT;
+        options.max_num_iterations = std::max(1, max_nfev);
+        options.function_tolerance = 1.0e-10;
+        options.gradient_tolerance = 1.0e-10;
+        options.parameter_tolerance = 1.0e-10;
+
+        ceres::Solver::Summary summary;
+        ceres::Solve(options, &problem, &summary);
+        PureIonBornResidualEvaluation final_eval = evaluate_pure_ion_born_residual_jacobian_cpp(
+            base_args_by_record,
+            records,
+            target_kinds,
+            target_indices,
+            target_indices_2,
+            theta
+        );
+        GenericRegressionResult out;
+        out.x = theta;
+        out.cost = final_eval.cost;
+        out.residual_norm = final_eval.residual_norm;
+        out.initial_cost = initial_eval.cost;
+        out.initial_residual_norm = initial_eval.residual_norm;
+        out.metrics_by_term = final_eval.metrics_by_term;
+        out.success = summary.IsSolutionUsable() || final_eval.cost <= initial_eval.cost + 1.0e-12;
+        out.status = static_cast<int>(summary.termination_type);
+        out.message = summary.BriefReport();
+        out.nfev = static_cast<int>(summary.num_residual_evaluations + summary.num_jacobian_evaluations);
+        out.iterations = static_cast<int>(summary.iterations.size());
+        out.backend = "ceres";
+        out.jacobian_available = true;
+        out.jacobian_backend = "cppad_implicit";
+        out.jacobian_fallback_used = false;
+        out.jacobian_fallback_reason = "";
+        out.backend_unavailable_reason = "";
+        return out;
+    }
+    GenericRegressionResult out;
+    out.x = start;
+    out.cost = initial_eval.cost;
+    out.residual_norm = initial_eval.residual_norm;
+    out.initial_cost = initial_eval.cost;
+    out.initial_residual_norm = initial_eval.residual_norm;
+    out.metrics_by_term = initial_eval.metrics_by_term;
+    out.success = std::isfinite(initial_eval.residual_norm);
+    out.status = 0;
+    out.message = "evaluated initial native Ceres pure-ion residual without optimizer";
+    out.nfev = 1;
+    out.iterations = 0;
+    out.backend = "ceres";
+    out.jacobian_available = true;
+    out.jacobian_backend = "cppad_implicit";
+    out.jacobian_fallback_used = false;
+    out.jacobian_fallback_reason = "";
+    out.backend_unavailable_reason = "";
+    return out;
+}
+
 class BinaryKijCeresCostFunction final : public ceres::CostFunction {
 public:
     BinaryKijCeresCostFunction(
@@ -2066,9 +2435,13 @@ using regression_detail::choose_better_generic_result_cpp;
 using regression_detail::evaluate_generic_residuals_cpp;
 using regression_detail::evaluate_generic_residuals_with_jacobian_cpp;
 using regression_detail::generic_candidate_starts_cpp;
+using regression_detail::kGenericTargetDBorn;
+using regression_detail::kGenericTargetE;
 using regression_detail::kGenericTargetKIJ;
+using regression_detail::kGenericTargetS;
 #ifdef EPCSAFT_HAS_CERES
 using regression_detail::solve_one_binary_kij_ceres_start_cpp;
+using regression_detail::solve_one_pure_ion_ceres_start_cpp;
 #endif
 using regression_detail::solve_one_generic_start_cpp;
 
@@ -2342,8 +2715,16 @@ GenericRegressionResult fit_generic_ceres_cpp(
     if (x0.size() != target_kinds.size() || lower.size() != target_kinds.size() || upper.size() != target_kinds.size()) {
         throw ValueError("Native Ceres generic regression target arrays must have matching lengths.");
     }
-    if (target_kinds.size() != 1 || target_kinds[0] != kGenericTargetKIJ) {
-        throw ValueError("backend_unavailable: native Ceres generic regression currently supports one binary k_ij target only.");
+    const bool is_binary_kij = target_kinds.size() == 1 && target_kinds[0] == kGenericTargetKIJ;
+    bool is_pure_ion_parameter_set = !target_kinds.empty();
+    for (int kind : target_kinds) {
+        if (kind != kGenericTargetS && kind != kGenericTargetE && kind != kGenericTargetDBorn) {
+            is_pure_ion_parameter_set = false;
+            break;
+        }
+    }
+    if (!is_binary_kij && !is_pure_ion_parameter_set) {
+        throw ValueError("backend_unavailable: native Ceres generic regression has no native analytic/CppAD/implicit derivative path for this target set.");
     }
 #ifndef EPCSAFT_HAS_CERES
     (void)base_args_by_record;
@@ -2360,24 +2741,36 @@ GenericRegressionResult fit_generic_ceres_cpp(
     int starts_tried = 0;
     int nfev_total = 0;
     for (const auto &start : starts) {
-        GenericRegressionResult candidate = solve_one_binary_kij_ceres_start_cpp(
-            base_args_by_record,
-            records,
-            target_kinds,
-            target_indices,
-            target_indices_2,
-            start,
-            lower,
-            upper,
-            max_nfev
-        );
+        GenericRegressionResult candidate = is_binary_kij
+            ? solve_one_binary_kij_ceres_start_cpp(
+                base_args_by_record,
+                records,
+                target_kinds,
+                target_indices,
+                target_indices_2,
+                start,
+                lower,
+                upper,
+                max_nfev
+            )
+            : solve_one_pure_ion_ceres_start_cpp(
+                base_args_by_record,
+                records,
+                target_kinds,
+                target_indices,
+                target_indices_2,
+                start,
+                lower,
+                upper,
+                max_nfev
+            );
         ++starts_tried;
         nfev_total += candidate.nfev;
         best = choose_better_generic_result_cpp(have_result, best, candidate);
         have_result = true;
     }
     if (!have_result) {
-        throw ValueError("Native Ceres binary k_ij regression did not generate any candidate starts.");
+        throw ValueError("Native Ceres generic regression did not generate any candidate starts.");
     }
     best.starts_tried = starts_tried;
     best.nfev = nfev_total;
