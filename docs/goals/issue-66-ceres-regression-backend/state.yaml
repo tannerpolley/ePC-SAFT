@@ -8,7 +8,7 @@ goal:
   slug: "issue-66-ceres-regression-backend"
   kind: existing_plan
   tranche: "Complete GitHub issue #66 from evidence mapping through focused PR, validation, merge, branch deletion, and root-main fast-forward."
-  status: active
+  status: done
   intake:
     original_request: "Issue #66 Ceres pure and binary regression backend"
     interpreted_outcome: "Native Ceres-backed pure and binary ePC-SAFT parameter regression is implemented, validated, merged, and closed through a focused PR."
@@ -97,7 +97,7 @@ setup_evidence:
     url: "https://github.com/tannerpolley/ePC-SAFT/issues/66"
     read_during_goal_prep: true
 
-active_task: T091
+active_task: null
 
 tasks:
   - id: T001
@@ -760,7 +760,7 @@ tasks:
   - id: T091
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: medium
     objective: "After validation and GitHub checks pass, squash-merge the PR, delete the branch, and fast-forward the root checkout local main."
     inputs:
@@ -774,12 +774,28 @@ tasks:
       - "Merged PR"
       - "Deleted branch"
       - "Root checkout main fast-forward evidence"
-    receipt: null
+    receipt:
+      result: done
+      pr_url: "https://github.com/tannerpolley/ePC-SAFT/pull/80"
+      merge_commit: "5c73429f3ee973b536c0cbd53ed5c555cde4fa1f"
+      issue_url: "https://github.com/tannerpolley/ePC-SAFT/issues/66"
+      summary: "Merged PR #80 by squash through the GitHub API after checks passed, confirmed issue #66 closed, confirmed the remote feature branch no longer exists, and fast-forwarded the root checkout main to 5c73429."
+      commands:
+        - command: "gh pr view 80 --json number,state,isDraft,mergeStateStatus,statusCheckRollup,url"
+          status: pass
+        - command: "gh api -X PUT repos/tannerpolley/ePC-SAFT/pulls/80/merge -f merge_method=squash -f commit_title=\"Implement issue 66 Ceres regression backend\""
+          status: pass
+        - command: "gh issue view 66 --json number,state,url"
+          status: pass
+        - command: "git ls-remote --heads origin codex/issue-66-ceres-regression-backend-2"
+          status: pass
+        - command: "git fetch origin main; git merge --ff-only origin/main"
+          status: pass
 
   - id: T999
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Audit whether issue #66 is fully complete."
     inputs:
@@ -800,7 +816,27 @@ tasks:
       - "full_outcome_complete: true | false"
       - "missing evidence"
       - "next task if not complete"
-    receipt: null
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      summary: "Issue #66 is complete: implementation PR #80 was merged, issue #66 is closed, GitHub fast smoke passed, local validation passed, the feature branch is gone from origin, and the root checkout main was fast-forwarded to the merge commit."
+      evidence:
+        - "PR #80 merged at 2026-05-13T02:34:11Z with merge commit 5c73429f3ee973b536c0cbd53ed5c555cde4fa1f."
+        - "Issue #66 state: CLOSED."
+        - "GitHub fast workflow smoke: SUCCESS."
+        - "Root checkout main fast-forwarded from f90d38f to 5c73429."
+      commands:
+        - command: "uv run python scripts/build_epcsaft.py --enable-ceres --enable-cppad"
+          status: pass
+        - command: "uv run python run_pytest.py tests/native/test_ceres_binary_regression.py tests/native/test_ceres_pure_regression.py -q"
+          status: pass
+        - command: "uv run python run_pytest.py tests/regression/test_ethanol_water_binary_vle_regression.py tests/api/test_regression_api.py::test_fit_binary_pair_vle_kij_default_and_rejects_temperature_models -q"
+          status: pass
+        - command: "uv run python run_pytest.py tests/native/test_ceres_pure_regression.py tests/native/test_ceres_binary_regression.py tests/native/test_ceres_liquid_electrolyte_regression.py -q"
+          status: pass
+        - command: "uv run python scripts/validate_project.py quick"
+          status: pass
 
 checks:
   dirty_fingerprint: unknown
