@@ -1,0 +1,257 @@
+version: 2
+
+goal:
+  title: "Generic electrolyte LLE with distributed ions"
+  slug: "generic-electrolyte-lle"
+  kind: existing_plan
+  tranche: "Implement generic electrolyte LLE diagnostics after dependency gate pass, then review and publish the focused PR."
+  status: done
+  intake:
+    original_request: "Run Goal Prep for task I: Generic electrolyte LLE with distributed ions."
+    interpreted_outcome: "Preserve the issue scope, enforce the dependency gate, implement the focused generic electrolyte LLE slice, and complete the PR lifecycle for issue #92."
+    input_shape: existing_plan
+    audience: "repo maintainers and future Codex agents"
+    authority: requested
+    proof_type: artifact
+    completion_proof: "A focused PR closes issue #92 after the required validation passes, and the board receipts preserve the issue scope, dependency gate, and limitations truthfully."
+    likely_misfire: "Starting implementation before dependency H closes, or treating prep artifacts as the finish line."
+    blind_spots_considered:
+      - "Dependency H (#91) was initially open; the watcher later reported GATE_PASS after #91 closed."
+      - "The package must stay general-purpose with no application-specific public APIs."
+      - "No finite difference is allowed."
+      - "Ascani 2022 Case Study 2 may need documentation instead of a forced pass."
+    existing_plan_facts:
+      - "Assigned branch: codex/generic-electrolyte-lle."
+      - "Dependencies: H, C."
+      - "Use the local live GoalBuddy board in Codex."
+      - "Use bounded watcher mode with auto_start_after_gate=true, poll_interval_seconds=120, max_wait_minutes=480."
+      - "Record the current issue scope in docs/goals/<slug>/notes/issue_scope.md."
+      - "Keep dependency automation at docs/goals/generic-electrolyte-lle/notes/dependency_gate.yaml."
+      - "Keep the watcher at docs/goals/generic-electrolyte-lle/notes/watch_dependency.ps1."
+      - "Do not create local .worktrees/."
+      - "Do not add application-specific public APIs."
+      - "No finite difference."
+      - "Open a focused draft PR with Closes #92."
+      - "Self-review against origin/main."
+      - "Merge only when checks and the final GoalBuddy audit are complete."
+      - "Delete the remote and local task branch after merge."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+
+agents:
+  scout: unknown
+  worker: unknown
+  judge: unknown
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://127.0.0.1:41737/generic-electrolyte-lle/"
+    command: "node C:\\Users\\Tanner\\.codex\\plugins\\cache\\goalbuddy\\goalbuddy\\0.3.6\\skills\\goalbuddy\\extend\\local-goal-board\\scripts\\local-goal-board.mjs --goal docs/goals/generic-electrolyte-lle"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: default
+    objective: "Capture the current issue scope, record the dependency gate, and keep the bounded watcher ready for the upstream gate to open."
+    inputs:
+      - "GitHub issue #92"
+      - "GitHub issue #91"
+      - "GitHub issue #86"
+      - "docs/roadmaps/general_reactive_electrolyte_equilibrium_readiness.md"
+      - "docs/roadmaps/agent_dependency_plan.md"
+      - "docs/roadmaps/agent_prompts/index.yaml"
+    constraints:
+      - "Read-only on product/source files until the dependency gate passes."
+      - "Do not add application-specific public APIs."
+      - "No finite difference."
+    expected_output:
+      - "Issue scope note"
+      - "Dependency gate note"
+      - "Watcher script"
+      - "Local board visibility"
+    receipt:
+      result: done
+      status: gate_passed
+      summary: "Recorded issue #92 scope, repaired bounded watcher files, verified dependency issues #91 and #86 are closed, and observed watcher output GATE_PASS."
+      evidence:
+        - "gh issue view 92 --repo tannerpolley/ePC-SAFT --json number,title,state,body,url"
+        - "gh issue view 91 --repo tannerpolley/ePC-SAFT --json number,title,state,url,closedAt"
+        - "gh issue view 86 --repo tannerpolley/ePC-SAFT --json number,title,state,url,closedAt"
+        - "powershell.exe -NoProfile -ExecutionPolicy Bypass -File docs/goals/generic-electrolyte-lle/notes/watch_dependency.ps1 -Once"
+      gate: "GATE_PASS Dependencies are satisfied; branch updated from origin/main."
+  - id: T002
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Implement generic electrolyte LLE with distributed ions after the gate opens."
+    allowed_files:
+      - "src/epcsaft/equilibrium.py"
+      - "tests/equilibrium/test_electrolyte_lle.py"
+      - "docs/goals/generic-electrolyte-lle/**"
+    verify:
+      - "uv run python run_pytest.py tests/equilibrium/test_electrolyte_lle.py::test_mixed_electrolyte_lle_reports_phase_charge_balance_for_distributed_ions -q"
+      - "uv run python run_pytest.py tests/equilibrium/test_electrolyte_lle.py tests/native/test_cppad_lle_derivatives.py -q"
+      - "uv run python scripts/validate_project.py quick"
+      - "git diff --check"
+    stop_if:
+      - "Dependency H (#91) is still open."
+      - "A change would add application-specific public APIs."
+      - "A change would use finite difference."
+    receipt:
+      result: done
+      status: implemented
+      summary: "Added successful electrolyte LLE per-phase/feed charge-balance diagnostics and a mixed-electrolyte regression proving Na+, K+, and Cl- remain distributed across both phases."
+      changed_files:
+        - "src/epcsaft/equilibrium.py"
+        - "tests/equilibrium/test_electrolyte_lle.py"
+      validation:
+        - "uv run python run_pytest.py tests/equilibrium/test_electrolyte_lle.py::test_mixed_electrolyte_lle_reports_phase_charge_balance_for_distributed_ions -q"
+        - "uv run python run_pytest.py tests/equilibrium/test_electrolyte_lle.py tests/native/test_cppad_lle_derivatives.py -q"
+        - "uv run python scripts/validate_project.py quick"
+        - "git diff --check"
+      commands:
+        - command: "uv run python run_pytest.py tests/equilibrium/test_electrolyte_lle.py::test_mixed_electrolyte_lle_reports_phase_charge_balance_for_distributed_ions -q"
+          status: pass
+        - command: "uv run python run_pytest.py tests/equilibrium/test_electrolyte_lle.py tests/native/test_cppad_lle_derivatives.py -q"
+          status: pass
+        - command: "uv run python scripts/validate_project.py quick"
+          status: pass
+        - command: "git diff --check"
+          status: pass
+      derivative_policy: "No finite difference route was added."
+      public_api_policy: "No application-specific public API was added."
+  - id: T003
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: default
+    objective: "Review the implementation slice for scope, derivative policy, and generic API compliance."
+    inputs:
+      - "T002 receipt"
+      - "Relevant verification"
+      - "Current dirty diff"
+    constraints:
+      - "Do not implement."
+      - "Reject silent scope narrowing."
+    expected_output:
+      - "Decision"
+      - "Exact Worker objective"
+      - "allowed_files"
+      - "verify"
+      - "stop_if"
+      - "Blocked or deferred tasks"
+    receipt:
+      result: done
+      decision: pass
+      summary: "Self-review passed for the focused implementation slice."
+      scope_review:
+        implemented:
+          - "charge-balance diagnostics on successful generic electrolyte LLE results"
+          - "mixed-electrolyte distributed-ion regression coverage"
+        already_supported_with_tests:
+          - "ion-based species"
+          - "phase electroneutrality"
+          - "mixed solvents"
+          - "mixed electrolytes"
+          - "Ascani 2022 benchmark attempt"
+        blocker_requires_followup: []
+        out_of_scope_by_roadmap:
+          - "application-specific public APIs"
+      checks:
+        no_application_specific_public_api: true
+        no_finite_difference_route: true
+        no_unrelated_package_files: true
+        no_silent_scope_narrowing: true
+      evidence:
+        - "git diff --stat"
+        - "git diff --name-only"
+        - "rg -n \"finite[_ -]?difference|lithium|extraction|MEA|absorption|distribution coefficient|selectivity|backend_unavailable\" src/epcsaft/equilibrium.py tests/equilibrium/test_electrolyte_lle.py docs/goals/generic-electrolyte-lle"
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: default
+    objective: "Audit whether the full issue #92 outcome is complete and truthful."
+    inputs:
+      - "All done task receipts"
+      - "Last verification"
+      - "Current dirty diff"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if required Worker work is still queued or active."
+      - "Reject completion if the broader original outcome still has safe local follow-up slices."
+      - "Reject stopping only because a slice needs owner input, credentials, production access, destructive operations, or policy decisions."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "missing evidence"
+      - "next task if not complete"
+    receipt:
+      result: done
+      status: complete
+      decision: complete
+      full_outcome_complete: true
+      summary: "Issue #92 scope is implemented truthfully, validated locally, published as PR #110, marked ready, and GitHub checks passed."
+      issue_url: "https://github.com/tannerpolley/ePC-SAFT/issues/92"
+      pr_url: "https://github.com/tannerpolley/ePC-SAFT/pull/110"
+      pr_head_sha: "40f99854a6aff4c732ab56a3f6b53e731d154f3a"
+      local_validation:
+        - command: "uv run python run_pytest.py tests/equilibrium/test_electrolyte_lle.py::test_mixed_electrolyte_lle_reports_phase_charge_balance_for_distributed_ions -q"
+          status: pass
+        - command: "uv run python run_pytest.py tests/equilibrium/test_electrolyte_lle.py tests/native/test_cppad_lle_derivatives.py -q"
+          status: pass
+        - command: "uv run python scripts/validate_project.py quick"
+          status: pass
+        - command: "git diff --check"
+          status: pass
+      github_checks:
+        - "fast workflow smoke: pass"
+        - "native default build: pass"
+      audit:
+        no_application_specific_public_api: true
+        no_finite_difference_route: true
+        no_unrelated_package_files: true
+        no_silent_scope_narrowing: true
+        mergeable: true
+        branch_current_with_origin_main: true
+        issue_scope_inspected_and_recorded: true
+      remaining_lifecycle:
+        - "merge PR #110"
+        - "confirm issue #92 closed"
+        - "delete remote and local task branch"
+        - "record merge and cleanup results"
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: PASS
+    task: T002
+    commands:
+      - "powershell.exe -NoProfile -ExecutionPolicy Bypass -File docs\\goals\\generic-electrolyte-lle\\notes\\watch_dependency.ps1 -Once"
+      - "uv run python run_pytest.py tests/equilibrium/test_electrolyte_lle.py::test_mixed_electrolyte_lle_reports_phase_charge_balance_for_distributed_ions -q"
+      - "uv run python run_pytest.py tests/equilibrium/test_electrolyte_lle.py tests/native/test_cppad_lle_derivatives.py -q"
+      - "uv run python scripts/validate_project.py quick"
+      - "git diff --check"
