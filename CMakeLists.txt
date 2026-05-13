@@ -177,7 +177,7 @@ if(EPCSAFT_CPPAD_SOURCE_FILE)
     list(APPEND EPCSAFT_NATIVE_SOURCES "${EPCSAFT_CPPAD_SOURCE_FILE}")
 endif()
 
-add_library(epcsaft_native STATIC ${EPCSAFT_NATIVE_SOURCES})
+add_library(epcsaft_native OBJECT ${EPCSAFT_NATIVE_SOURCES})
 target_include_directories(epcsaft_native
     PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native"

@@ -1137,6 +1137,22 @@ def _derivative_backend_blocks(problem_kind: str, derivative_backend: str) -> di
     return blocks
 
 
+def _route_diagnostics_for_problem_kind(problem_kind: str) -> dict[str, str]:
+    if problem_kind in {"tp_flash", "bubble_p", "bubble_t", "dew_p", "dew_t"}:
+        return {"equilibrium_route": "neutral_vle", "route_reason": "requested vapor-liquid path"}
+    if problem_kind == "lle_flash":
+        return {"equilibrium_route": "neutral_lle", "route_reason": "requested neutral liquid-liquid path"}
+    if problem_kind == "stability":
+        return {"equilibrium_route": "neutral_tpd", "route_reason": "requested neutral stability path"}
+    if problem_kind in {"electrolyte_lle", "electrolyte_lle_flash"}:
+        return {"equilibrium_route": "electrolyte_lle", "route_reason": "requested electrolyte liquid-liquid path"}
+    if problem_kind == "electrolyte_stability":
+        return {"equilibrium_route": "electrolyte_lle", "route_reason": "requested electrolyte stability path"}
+    if problem_kind == "electrolyte_bubble_pressure":
+        return {"equilibrium_route": "electrolyte_bubble", "route_reason": "requested electrolyte bubble-pressure path"}
+    return {"equilibrium_route": "unsupported", "route_reason": "unsupported equilibrium kind"}
+
+
 def _normalize_derivative_diagnostics(
     diagnostics: dict[str, Any],
     *,
@@ -1144,6 +1160,9 @@ def _normalize_derivative_diagnostics(
     phase_count: int = 0,
 ) -> dict[str, Any]:
     diagnostics = dict(diagnostics)
+    route_diagnostics = _route_diagnostics_for_problem_kind(problem_kind)
+    diagnostics.setdefault("equilibrium_route", route_diagnostics["equilibrium_route"])
+    diagnostics.setdefault("route_reason", route_diagnostics["route_reason"])
     derivative_backend = str(diagnostics.get("derivative_backend", "backend_unavailable"))
     diagnostics.setdefault("thermodynamic_backend", "epcsaft_state_fugacity_activity_property_api")
     diagnostics.setdefault(
@@ -1716,6 +1735,9 @@ def _neutral_bubble_dew_result(
         diagnostics=evaluation["incipient_state"]["diagnostics"],
     )
     phases = (source, incipient) if source_phase == "liq" else (incipient, source)
+    vapor = incipient if incipient_phase == "vap" else source
+    partial_pressure_vector = np.asarray(vapor.composition, dtype=float) * float(evaluation["P"])
+    species = list(getattr(mixture, "species", []))
     diagnostics = {
         "solver_method": "scalar_outer_composition_inner_update",
         "problem_kind": problem_kind,
@@ -1729,7 +1751,13 @@ def _neutral_bubble_dew_result(
         "residual_history": [{"variable": item["variable"], "residual": item["residual"]} for item in history],
         "state_failures": failures[:10],
         "min_composition": float(options.min_composition),
-        "species": list(getattr(mixture, "species", [])),
+        "species": species,
+        "partial_pressures": {label: float(value) for label, value in zip(species, partial_pressure_vector)},
+        "partial_pressure_vector": partial_pressure_vector.tolist(),
+        "partial_pressure_route": "vapor_composition_times_total_pressure",
+        "volatile_partial_pressure_basis": (
+            "liquid_fugacity_equilibrium" if source_phase == "liq" else "dew_vapor_composition"
+        ),
         "neutral_fast_path": bool(neutral_fast_path),
         "neutral_fallback_used": bool(neutral_fallback_used),
         "neutral_fallback_reason": str(neutral_fallback_reason),

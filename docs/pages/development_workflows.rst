@@ -62,6 +62,9 @@ Command matrix
    * - Neutral equilibrium benchmark
      - ``uv run python scripts/benchmark_neutral_equilibrium.py --warmup 20 --repeat 100``
      - Measure neutral state, TP flash, bubble pressure, dew pressure, and seeded neutral LLE without any FeOs dependency.
+   * - Literature benchmark inventory
+     - ``uv run python scripts/benchmark_literature_suite.py``
+     - Review the package-owned literature benchmark scope, including which issue anchors are already supported by tests and which still require follow-up work.
    * - Full method-speed check
      - ``uv run python run_pytest.py --profile-full -q -s``
      - Comprehensive runtime, MIAC, and regression profiling before making broad speed claims. This can take about a minute locally; allow at least 120 seconds.
@@ -171,6 +174,23 @@ The harness benchmarks these package-owned neutral cases:
 - ``lle_seeded`` for the methanol/cyclohexane seeded LLE fixture
 
 Each case reports a deterministic fingerprint plus medians, spread metrics, failures, and whether a neutral fast path or fallback was used. This harness does not require FeOs and should remain the local performance guardrail for issue-driven neutral-equilibrium work.
+
+Literature benchmark inventory
+------------------------------
+
+Use the package-owned literature suite inventory when the question is coverage
+and benchmark scope rather than runtime speed.
+
+.. code-block:: powershell
+
+   uv run python scripts/benchmark_literature_suite.py
+   uv run python scripts/benchmark_literature_suite.py --case figiel_2025_ssm_ds_born
+   uv run python scripts/benchmark_literature_suite.py --json build/benchmarks/literature_suite.json
+
+The inventory reports each issue-scope literature anchor with a classification
+such as ``already_supported_with_tests`` or ``blocker_requires_followup`` plus
+the owning package/test surfaces. Use it to keep benchmark claims honest and to
+avoid silently treating blocked literature routes as complete.
 
 Troubleshooting
 ---------------

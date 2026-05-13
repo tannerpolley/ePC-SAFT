@@ -77,7 +77,7 @@ Do not ask repeated confirmation questions.
 Use the defaults written in the task prompt.
 Use bounded watcher mode for dependency waits.
 Set `watcher_mode: bounded`, `auto_start_after_gate: true`, `poll_interval_seconds: 120`, and `max_wait_minutes: 480` in the local GoalBuddy/dependency files.
-If dependencies are not satisfied, create the GoalBuddy board, create/update the per-goal watcher, run the bounded watcher, write PREPARED_WAITING only on timeout/blocker, and stop.
+Create/update docs/goals/<slug>/notes/watch_dependency.ps1 during Goal Prep. If dependencies are not satisfied, create the GoalBuddy board, run the bounded watcher, write PREPARED_WAITING only on timeout/blocker, and stop.
 If dependencies are satisfied or the watcher returns GATE_PASS, continue implementation without asking.
 Do not stop at PREPARED_READY merely because auto_start_after_gate is false; that manual checkpoint mode is retired unless explicitly requested.
 If a required value is missing, choose the safest conservative default and record it in docs/goals/<slug>/notes/assumptions.md.
@@ -168,7 +168,7 @@ Do not ask repeated confirmation questions.
 Use the defaults written in the task prompt.
 Use bounded watcher mode for dependency waits.
 Set `watcher_mode: bounded`, `auto_start_after_gate: true`, `poll_interval_seconds: 120`, and `max_wait_minutes: 480` in the local GoalBuddy/dependency files.
-If dependencies are not satisfied, create the GoalBuddy board, create/update the per-goal watcher, run the bounded watcher, write PREPARED_WAITING only on timeout/blocker, and stop.
+Create/update docs/goals/<slug>/notes/watch_dependency.ps1 during Goal Prep. If dependencies are not satisfied, create the GoalBuddy board, run the bounded watcher, write PREPARED_WAITING only on timeout/blocker, and stop.
 If dependencies are satisfied or the watcher returns GATE_PASS, continue implementation without asking.
 Do not stop at PREPARED_READY merely because auto_start_after_gate is false; that manual checkpoint mode is retired unless explicitly requested.
 If a required value is missing, choose the safest conservative default and record it in docs/goals/<slug>/notes/assumptions.md.
@@ -259,7 +259,7 @@ Do not ask repeated confirmation questions.
 Use the defaults written in the task prompt.
 Use bounded watcher mode for dependency waits.
 Set `watcher_mode: bounded`, `auto_start_after_gate: true`, `poll_interval_seconds: 120`, and `max_wait_minutes: 480` in the local GoalBuddy/dependency files.
-If dependencies are not satisfied, create the GoalBuddy board, create/update the per-goal watcher, run the bounded watcher, write PREPARED_WAITING only on timeout/blocker, and stop.
+Create/update docs/goals/<slug>/notes/watch_dependency.ps1 during Goal Prep. If dependencies are not satisfied, create the GoalBuddy board, run the bounded watcher, write PREPARED_WAITING only on timeout/blocker, and stop.
 If dependencies are satisfied or the watcher returns GATE_PASS, continue implementation without asking.
 Do not stop at PREPARED_READY merely because auto_start_after_gate is false; that manual checkpoint mode is retired unless explicitly requested.
 If a required value is missing, choose the safest conservative default and record it in docs/goals/<slug>/notes/assumptions.md.
@@ -350,7 +350,7 @@ Do not ask repeated confirmation questions.
 Use the defaults written in the task prompt.
 Use bounded watcher mode for dependency waits.
 Set `watcher_mode: bounded`, `auto_start_after_gate: true`, `poll_interval_seconds: 120`, and `max_wait_minutes: 480` in the local GoalBuddy/dependency files.
-If dependencies are not satisfied, create the GoalBuddy board, create/update the per-goal watcher, run the bounded watcher, write PREPARED_WAITING only on timeout/blocker, and stop.
+Create/update docs/goals/<slug>/notes/watch_dependency.ps1 during Goal Prep. If dependencies are not satisfied, create the GoalBuddy board, run the bounded watcher, write PREPARED_WAITING only on timeout/blocker, and stop.
 If dependencies are satisfied or the watcher returns GATE_PASS, continue implementation without asking.
 Do not stop at PREPARED_READY merely because auto_start_after_gate is false; that manual checkpoint mode is retired unless explicitly requested.
 If a required value is missing, choose the safest conservative default and record it in docs/goals/<slug>/notes/assumptions.md.
@@ -441,7 +441,7 @@ Do not ask repeated confirmation questions.
 Use the defaults written in the task prompt.
 Use bounded watcher mode for dependency waits.
 Set `watcher_mode: bounded`, `auto_start_after_gate: true`, `poll_interval_seconds: 120`, and `max_wait_minutes: 480` in the local GoalBuddy/dependency files.
-If dependencies are not satisfied, create the GoalBuddy board, create/update the per-goal watcher, run the bounded watcher, write PREPARED_WAITING only on timeout/blocker, and stop.
+Create/update docs/goals/<slug>/notes/watch_dependency.ps1 during Goal Prep. If dependencies are not satisfied, create the GoalBuddy board, run the bounded watcher, write PREPARED_WAITING only on timeout/blocker, and stop.
 If dependencies are satisfied or the watcher returns GATE_PASS, continue implementation without asking.
 Do not stop at PREPARED_READY merely because auto_start_after_gate is false; that manual checkpoint mode is retired unless explicitly requested.
 If a required value is missing, choose the safest conservative default and record it in docs/goals/<slug>/notes/assumptions.md.
@@ -532,7 +532,7 @@ Do not ask repeated confirmation questions.
 Use the defaults written in the task prompt.
 Use bounded watcher mode for dependency waits.
 Set `watcher_mode: bounded`, `auto_start_after_gate: true`, `poll_interval_seconds: 120`, and `max_wait_minutes: 480` in the local GoalBuddy/dependency files.
-If dependencies are not satisfied, create the GoalBuddy board, create/update the per-goal watcher, run the bounded watcher, write PREPARED_WAITING only on timeout/blocker, and stop.
+Create/update docs/goals/<slug>/notes/watch_dependency.ps1 during Goal Prep. If dependencies are not satisfied, create the GoalBuddy board, run the bounded watcher, write PREPARED_WAITING only on timeout/blocker, and stop.
 If dependencies are satisfied or the watcher returns GATE_PASS, continue implementation without asking.
 Do not stop at PREPARED_READY merely because auto_start_after_gate is false; that manual checkpoint mode is retired unless explicitly requested.
 If a required value is missing, choose the safest conservative default and record it in docs/goals/<slug>/notes/assumptions.md.
@@ -623,7 +623,7 @@ Do not ask repeated confirmation questions.
 Use the defaults written in the task prompt.
 Use bounded watcher mode for dependency waits.
 Set `watcher_mode: bounded`, `auto_start_after_gate: true`, `poll_interval_seconds: 120`, and `max_wait_minutes: 480` in the local GoalBuddy/dependency files.
-If dependencies are not satisfied, create the GoalBuddy board, create/update the per-goal watcher, run the bounded watcher, write PREPARED_WAITING only on timeout/blocker, and stop.
+Create/update docs/goals/<slug>/notes/watch_dependency.ps1 during Goal Prep. If dependencies are not satisfied, create the GoalBuddy board, run the bounded watcher, write PREPARED_WAITING only on timeout/blocker, and stop.
 If dependencies are satisfied or the watcher returns GATE_PASS, continue implementation without asking.
 Do not stop at PREPARED_READY merely because auto_start_after_gate is false; that manual checkpoint mode is retired unless explicitly requested.
 If a required value is missing, choose the safest conservative default and record it in docs/goals/<slug>/notes/assumptions.md.
@@ -714,7 +714,7 @@ Do not ask repeated confirmation questions.
 Use the defaults written in the task prompt.
 Use bounded watcher mode for dependency waits.
 Set `watcher_mode: bounded`, `auto_start_after_gate: true`, `poll_interval_seconds: 120`, and `max_wait_minutes: 480` in the local GoalBuddy/dependency files.
-If dependencies are not satisfied, create the GoalBuddy board, create/update the per-goal watcher, run the bounded watcher, write PREPARED_WAITING only on timeout/blocker, and stop.
+Create/update docs/goals/<slug>/notes/watch_dependency.ps1 during Goal Prep. If dependencies are not satisfied, create the GoalBuddy board, run the bounded watcher, write PREPARED_WAITING only on timeout/blocker, and stop.
 If dependencies are satisfied or the watcher returns GATE_PASS, continue implementation without asking.
 Do not stop at PREPARED_READY merely because auto_start_after_gate is false; that manual checkpoint mode is retired unless explicitly requested.
 If a required value is missing, choose the safest conservative default and record it in docs/goals/<slug>/notes/assumptions.md.

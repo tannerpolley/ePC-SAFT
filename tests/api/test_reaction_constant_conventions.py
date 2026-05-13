@@ -114,6 +114,40 @@ def test_reactive_speciation_reports_reaction_constant_conventions() -> None:
     assert convention["fitting_role"] == "fixed_input"
 
 
+def test_reactive_speciation_supports_apparent_and_fitted_constants_without_default_fitting() -> None:
+    mix = _toy_mixture()
+    reaction = epcsaft.ReactionDefinition.from_fitted_constant(
+        {"A": -1.0, "B": 1.0},
+        log_equilibrium_constant=math.log(2.0),
+        name="fitted_apparent_a_to_b",
+        convention=epcsaft.ReactionConstantConvention(
+            standard_state="apparent",
+            constant_kind="fitted",
+            fitting_role="fitted_parameter",
+        ),
+    )
+
+    result = epcsaft.solve_reactive_speciation(
+        species=mix.species,
+        mixture_factory=lambda x, T, P: mix,
+        T=298.15,
+        P=1.0e5,
+        balances={"total": {"A": 1.0, "B": 1.0}},
+        totals={"total": 1.0},
+        reactions=[reaction],
+        initial_x=[0.5, 0.5],
+        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
+    )
+
+    convention = result.diagnostics["reaction_constant_conventions"]["fitted_apparent_a_to_b"]
+    assert result.success is True
+    assert result.x["B"] / result.x["A"] == pytest.approx(2.0, rel=1.0e-8)
+    assert convention["standard_state"] == "apparent"
+    assert convention["constant_kind"] == "fitted"
+    assert convention["fitting_role"] == "fitted_parameter"
+    assert result.diagnostics["reaction_constant_policy"] == "fixed_literature_constants_first"
+
+
 def test_unsupported_molality_native_route_fails_loudly() -> None:
     mix = _toy_mixture()
     reaction = epcsaft.ReactionDefinition(

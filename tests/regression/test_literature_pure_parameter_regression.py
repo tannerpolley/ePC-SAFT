@@ -5,7 +5,8 @@ from pathlib import Path
 
 import numpy as np
 
-from epcsaft import ePCSAFTMixture, fit_mea_co2_h2o_electrolyte
+from epcsaft import ePCSAFTMixture
+from epcsaft.regression import _fit_mea_co2_h2o_pure_parameter_benchmark
 from tests.regression.test_mea_co2_h2o_pure_parameter_benchmark import (
     SPECIES,
     _benchmark_dataset,
@@ -68,7 +69,7 @@ def test_literature_pure_parameter_regression_uses_local_benchmark_fixture(tmp_p
     records = _benchmark_records(reference_root)
     fit_root = _benchmark_dataset(tmp_path, fixture["initial_guess"], "MEA_CO2_H2O_Fit")
 
-    results = fit_mea_co2_h2o_electrolyte(
+    results = _fit_mea_co2_h2o_pure_parameter_benchmark(
         records,
         dataset=fit_root,
         species=SPECIES,
