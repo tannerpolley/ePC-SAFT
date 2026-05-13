@@ -1,0 +1,26 @@
+{
+  "family": "binary k_ij regression",
+  "source": {
+    "paper": "Susial et al. 2021",
+    "doi": "10.1021/acs.jced.0c00686",
+    "local_assets": [
+      "data/reference/regression/binary/ethanol_water_jced2021_vle_100kpa.csv",
+      "data/reference/regression/binary/ethanol_water_jced2021_source_notes.md"
+    ]
+  },
+  "species": [
+    "Ethanol",
+    "H2O"
+  ],
+  "dataset": "2012_Held",
+  "initial_k_ij": -0.049,
+  "literature_k_ij": -0.0269,
+  "bounds": {
+    "k_ij": [
+      -0.15,
+      0.1
+    ]
+  },
+  "max_fugacity_balance": 0.04,
+  "max_abs_kij_error": 0.01
+}

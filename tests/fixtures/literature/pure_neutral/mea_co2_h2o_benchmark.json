@@ -1,0 +1,87 @@
+{
+  "family": "pure neutral parameter regression",
+  "validation_role": "fast smoke benchmark",
+  "source": {
+    "paper": "Baygi and Pahlavanzadeh 2015",
+    "local_asset": "docs/papers/md/Baygi and Pahlavanzadeh - 2015 - Application of the PC-SAFT equation of state for modeling CO2 solub.md",
+    "notes": "Fixture mirrors the local MEA/CO2/H2O benchmark already used by tests/regression/test_mea_co2_h2o_pure_parameter_benchmark.py."
+  },
+  "components": [
+    "MEA",
+    "MEAH+",
+    "MEACOO-",
+    "HCO3-"
+  ],
+  "fit_targets": {
+    "MEA": [
+      "m",
+      "s",
+      "e",
+      "e_assoc",
+      "vol_a"
+    ],
+    "MEAH+": [
+      "s",
+      "e",
+      "d_born"
+    ],
+    "MEACOO-": [
+      "s",
+      "e",
+      "d_born"
+    ],
+    "HCO3-": [
+      "s",
+      "e",
+      "d_born"
+    ]
+  },
+  "reference_values": {
+    "MEA": {
+      "m": 3.0353,
+      "s": 3.0435,
+      "e": 277.174,
+      "e_assoc": 2586.3,
+      "vol_a": 0.03747
+    },
+    "MEAH+": {
+      "s": 2.78,
+      "e": 260.0,
+      "d_born": 3.3
+    },
+    "MEACOO-": {
+      "s": 3.18,
+      "e": 240.0,
+      "d_born": 3.75
+    },
+    "HCO3-": {
+      "s": 2.9,
+      "e": 230.0,
+      "d_born": 3.55
+    }
+  },
+  "initial_guess": {
+    "MEA": {
+      "m": 2.8,
+      "s": 2.9,
+      "e": 250.0,
+      "e_assoc": 2200.0,
+      "vol_a": 0.025
+    },
+    "MEAH+": {
+      "s": 2.5,
+      "e": 220.0,
+      "d_born": 2.8
+    },
+    "MEACOO-": {
+      "s": 2.9,
+      "e": 210.0,
+      "d_born": 3.2
+    },
+    "HCO3-": {
+      "s": 2.6,
+      "e": 205.0,
+      "d_born": 3.1
+    }
+  }
+}
