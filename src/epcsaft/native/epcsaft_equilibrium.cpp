@@ -1311,6 +1311,104 @@ bool lle_converged(const LLECandidateNative& candidate, const EquilibriumOptions
         && !lle_degenerate(candidate, options);
 }
 
+struct LLEMinimizeResultNative {
+    std::vector<double> variables;
+    double objective = std::numeric_limits<double>::infinity();
+    int iterations = 0;
+};
+
+LLEMinimizeResultNative minimize_lle_residual_variables(
+    const std::function<double(const std::vector<double>&)>& objective,
+    const std::vector<double>& start,
+    int max_iterations
+) {
+    LLEMinimizeResultNative result;
+    result.variables = start;
+    result.objective = objective(start);
+    if (start.empty() || max_iterations <= 0) {
+        return result;
+    }
+    const std::size_t n = start.size();
+    std::vector<std::vector<double>> simplex(n + 1, start);
+    for (std::size_t i = 0; i < n; ++i) {
+        simplex[i + 1][i] += 0.5;
+    }
+    std::vector<double> values(simplex.size(), 0.0);
+    auto refresh = [&]() {
+        for (std::size_t i = 0; i < simplex.size(); ++i) {
+            values[i] = objective(simplex[i]);
+        }
+    };
+    refresh();
+    for (result.iterations = 0; result.iterations < max_iterations; ++result.iterations) {
+        std::vector<std::size_t> order(simplex.size());
+        std::iota(order.begin(), order.end(), 0);
+        std::sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) { return values[a] < values[b]; });
+        std::vector<std::vector<double>> ordered_simplex;
+        std::vector<double> ordered_values;
+        for (std::size_t index : order) {
+            ordered_simplex.push_back(simplex[index]);
+            ordered_values.push_back(values[index]);
+        }
+        simplex = ordered_simplex;
+        values = ordered_values;
+        double spread = 0.0;
+        for (double value : values) {
+            spread = std::max(spread, std::abs(value - values.front()));
+        }
+        if (spread <= 1.0e-14) {
+            break;
+        }
+        std::vector<double> centroid(n, 0.0);
+        for (std::size_t i = 0; i < n; ++i) {
+            for (std::size_t row = 0; row < n; ++row) {
+                centroid[i] += simplex[row][i];
+            }
+            centroid[i] /= static_cast<double>(n);
+        }
+        std::vector<double> reflected(n, 0.0);
+        for (std::size_t i = 0; i < n; ++i) {
+            reflected[i] = centroid[i] + (centroid[i] - simplex.back()[i]);
+        }
+        double reflected_value = objective(reflected);
+        if (reflected_value < values.front()) {
+            std::vector<double> expanded(n, 0.0);
+            for (std::size_t i = 0; i < n; ++i) {
+                expanded[i] = centroid[i] + 2.0 * (reflected[i] - centroid[i]);
+            }
+            double expanded_value = objective(expanded);
+            simplex.back() = expanded_value < reflected_value ? expanded : reflected;
+            values.back() = std::min(expanded_value, reflected_value);
+            continue;
+        }
+        if (reflected_value < values[n - 1]) {
+            simplex.back() = reflected;
+            values.back() = reflected_value;
+            continue;
+        }
+        std::vector<double> contracted(n, 0.0);
+        for (std::size_t i = 0; i < n; ++i) {
+            contracted[i] = centroid[i] + 0.5 * (simplex.back()[i] - centroid[i]);
+        }
+        double contracted_value = objective(contracted);
+        if (contracted_value < values.back()) {
+            simplex.back() = contracted;
+            values.back() = contracted_value;
+            continue;
+        }
+        for (std::size_t row = 1; row < simplex.size(); ++row) {
+            for (std::size_t i = 0; i < n; ++i) {
+                simplex[row][i] = simplex.front()[i] + 0.5 * (simplex[row][i] - simplex.front()[i]);
+            }
+        }
+        refresh();
+    }
+    std::size_t best = static_cast<std::size_t>(std::min_element(values.begin(), values.end()) - values.begin());
+    result.variables = simplex[best];
+    result.objective = values[best];
+    return result;
+}
+
 std::vector<double> newton_step(
     const std::function<std::vector<double>(const std::vector<double>&)>& residual_fn,
     const std::vector<double>& variables,
@@ -1319,7 +1417,7 @@ std::vector<double> newton_step(
     (void)residual_fn;
     (void)variables;
     (void)residual;
-    throw ValueError("backend_unavailable: native LLE sensitivities are not implemented.");
+    throw ValueError("backend_unavailable: electrolyte LLE residual sensitivities are not implemented.");
 }
 
 std::vector<std::pair<std::string, std::vector<double>>> deterministic_formula_multistart_variables(
@@ -1523,55 +1621,22 @@ LLEAttemptNative solve_lle_attempt(
         return attempt;
     }
     std::vector<double> variables = pack_lle_variables(seed.beta, seed.comp1, seed.comp2);
-    LLECandidateNative best;
-    double best_objective = std::numeric_limits<double>::infinity();
-    bool has_best = false;
-    for (int iteration = 1; iteration <= options.max_iterations; ++iteration) {
-        LLECandidateNative current = evaluate_lle_variables(mixture, t, p, feed, variables, options);
-        double objective = l2_norm(current.residual);
-        current.iteration = iteration;
-        current.objective = objective;
-        if (objective < best_objective) {
-            best = current;
-            best_objective = objective;
-            has_best = true;
+    auto objective_fn = [&](const std::vector<double>& candidate) {
+        try {
+            return l2_norm(evaluate_lle_variables(mixture, t, p, feed, candidate, options).residual);
+        } catch (const std::exception&) {
+            return std::numeric_limits<double>::infinity();
         }
-        if (lle_converged(current, options)) {
-            attempt.status = "converged";
-            attempt.candidate = current;
-            return attempt;
-        }
-        if (lle_degenerate(current, options)) {
-            attempt.status = "degenerate";
-            attempt.message = "no V2 LLE split found; phase split collapsed during iteration";
-            attempt.candidate = current;
-            return attempt;
-        }
-        auto residual_fn = [&](const std::vector<double>& candidate) {
-            return evaluate_lle_variables(mixture, t, p, feed, candidate, options).residual;
-        };
-        std::vector<double> step = newton_step(residual_fn, variables, current.residual);
-        bool accepted = false;
-        for (double scale : damping_schedule(options.damping)) {
-            std::vector<double> candidate_vars = variables;
-            for (std::size_t i = 0; i < candidate_vars.size(); ++i) {
-                candidate_vars[i] += scale * step[i];
-            }
-            LLECandidateNative candidate = evaluate_lle_variables(mixture, t, p, feed, candidate_vars, options);
-            if (l2_norm(candidate.residual) < objective) {
-                variables = candidate_vars;
-                accepted = true;
-                break;
-            }
-        }
-        if (!accepted) {
-            attempt.status = "failed";
-            attempt.message = "residual improvement stalled";
-            attempt.candidate = has_best ? best : current;
-            return attempt;
-        }
-    }
+    };
+    LLEMinimizeResultNative minimized = minimize_lle_residual_variables(objective_fn, variables, options.max_iterations);
+    LLECandidateNative best = evaluate_lle_variables(mixture, t, p, feed, minimized.variables, options);
+    best.iteration = minimized.iterations;
+    best.objective = minimized.objective;
     attempt.candidate = best;
+    if (lle_converged(best, options)) {
+        attempt.status = "converged";
+        return attempt;
+    }
     if (lle_degenerate(best, options)) {
         attempt.status = "degenerate";
         attempt.message = "no V2 LLE split found; best candidate collapsed to one liquid phase";
@@ -1608,12 +1673,12 @@ EquilibriumResultNative lle_two_phase_result(
     result.diagnostics_string["point_solver_message"] = "converged";
     result.diagnostics_string["solver_language"] = "c++";
     result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
-    result.diagnostics_string["nonlinear_solver"] = "native_newton";
+    result.diagnostics_string["nonlinear_solver"] = "native_derivative_free_nelder_mead";
     result.diagnostics_string["requested_jacobian_backend"] = options.jacobian_backend;
-    result.diagnostics_string["derivative_backend"] = "backend_unavailable";
-    result.diagnostics_string["derivative_status"] = "backend_unavailable";
-    result.diagnostics_string["backend_unavailable_reason"] =
-        "backend_unavailable: native LLE sensitivities are not implemented.";
+    result.diagnostics_string["derivative_backend"] = "not_applicable";
+    result.diagnostics_string["derivative_status"] = "not_required";
+    result.diagnostics_string["derivative_not_required_reason"] =
+        "phase split solve uses derivative-free residual minimization without finite differences.";
     result.diagnostics_bool["derivative_available"] = false;
     result.diagnostics_bool["jacobian_available"] = false;
     result.diagnostics_bool["jacobian_fallback_used"] = false;
@@ -1623,6 +1688,8 @@ EquilibriumResultNative lle_two_phase_result(
     result.diagnostics_bool["hessian_fallback_used"] = false;
     result.diagnostics_string["hessian_fallback_reason"] =
         "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
+    result.diagnostics_string["anti_trivial_solution_strategy"] = "phase_fraction_and_phase_distance_gate";
+    result.diagnostics_string["association_solver_status"] = "not_active";
     return result;
 }
 
@@ -1649,11 +1716,12 @@ EquilibriumResultNative lle_no_split_result(
     result.diagnostics_string["point_solver_message"] = attempt.message;
     result.diagnostics_string["solver_language"] = "c++";
     result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
+    result.diagnostics_string["nonlinear_solver"] = "native_derivative_free_nelder_mead";
     result.diagnostics_string["requested_jacobian_backend"] = options.jacobian_backend;
-    result.diagnostics_string["derivative_backend"] = "backend_unavailable";
-    result.diagnostics_string["derivative_status"] = "backend_unavailable";
-    result.diagnostics_string["backend_unavailable_reason"] =
-        "backend_unavailable: native LLE sensitivities are not implemented.";
+    result.diagnostics_string["derivative_backend"] = "not_applicable";
+    result.diagnostics_string["derivative_status"] = "not_required";
+    result.diagnostics_string["derivative_not_required_reason"] =
+        "phase split solve uses derivative-free residual minimization without finite differences.";
     result.diagnostics_bool["derivative_available"] = false;
     result.diagnostics_bool["jacobian_available"] = false;
     result.diagnostics_bool["jacobian_fallback_used"] = false;
@@ -1663,6 +1731,8 @@ EquilibriumResultNative lle_no_split_result(
     result.diagnostics_bool["hessian_fallback_used"] = false;
     result.diagnostics_string["hessian_fallback_reason"] =
         "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
+    result.diagnostics_string["anti_trivial_solution_strategy"] = "phase_fraction_and_phase_distance_gate";
+    result.diagnostics_string["association_solver_status"] = "not_active";
     return result;
 }
 

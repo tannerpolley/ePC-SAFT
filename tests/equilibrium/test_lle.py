@@ -55,34 +55,68 @@ def _assert_json_like(value):
         assert not isinstance(value, np.ndarray)
 
 
-def test_methanol_cyclohexane_lle_flash_reports_unavailable_solver_derivatives() -> None:
+def _assert_no_backend_or_finite_difference_payload(value) -> None:
+    payload = json.dumps(value, default=str).lower()
+    assert "backend_unavailable" not in payload
+    assert "finite_difference" not in payload
+
+
+def _assert_methanol_cyclohexane_split(result: epcsaft.EquilibriumResult, feed: np.ndarray) -> None:
+    assert result.split_detected is True
+    assert result.stable is False
+    assert result.phase_labels == ["liq1", "liq2"]
+    assert len(result.phases) == 2
+    beta = float(result.phases[1].phase_fraction)
+    material = (1.0 - beta) * result.phases[0].composition + beta * result.phases[1].composition
+    np.testing.assert_allclose(material, feed, atol=1.0e-10)
+    assert result.diagnostics["fugacity_residual_norm"] < 1.0e-8
+    assert result.diagnostics["material_balance_error"] < 1.0e-8
+    assert result.diagnostics["phase_distance"] > 0.1
+    assert result.diagnostics["nonlinear_solver"] == "native_derivative_free_nelder_mead"
+    assert result.diagnostics["stability_analysis"] == "neutral_tpd"
+    assert result.diagnostics["anti_trivial_solution_strategy"] == "phase_fraction_and_phase_distance_gate"
+    assert result.diagnostics["derivative_backend"] == "not_applicable"
+    assert result.diagnostics["derivative_status"] == "not_required"
+    assert result.diagnostics["derivative_available"] is False
+    assert result.diagnostics["jacobian_available"] is False
+    _assert_json_like(result.to_dict())
+    _assert_no_backend_or_finite_difference_payload(result.to_dict())
+
+
+def test_methanol_cyclohexane_lle_flash_solves_seeded_phase_split() -> None:
     mix = _methanol_cyclohexane_mixture()
     feed, initial_phases = _methanol_cyclohexane_lle_benchmark()
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
-        mix.equilibrium(
-            kind="lle_flash",
-            T=298.15,
-            P=1.013e5,
-            z=feed,
-            backend="neutral_lle",
-            initial_phases=initial_phases,
-            options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10, damping=0.5),
-        )
+    result = mix.equilibrium(
+        kind="lle_flash",
+        T=298.15,
+        P=1.013e5,
+        z=feed,
+        backend="neutral_lle",
+        initial_phases=initial_phases,
+        options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10, damping=0.5),
+    )
+
+    _assert_methanol_cyclohexane_split(result, feed)
+    assert result.diagnostics["seed_name"] == "user"
+    assert result.diagnostics["attempt_count"] == 1
 
 
-def test_lle_flash_without_initial_phases_reports_unavailable_solver_derivatives() -> None:
+def test_lle_flash_without_initial_phases_solves_from_stability_seed() -> None:
     mix = _methanol_cyclohexane_mixture()
     feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
-        mix.equilibrium(
-            kind="lle_flash",
-            T=298.15,
-            P=1.013e5,
-            z=feed,
-            options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10, damping=0.5),
-        )
+    result = mix.equilibrium(
+        kind="lle_flash",
+        T=298.15,
+        P=1.013e5,
+        z=feed,
+        options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10, damping=0.5),
+    )
+
+    _assert_methanol_cyclohexane_split(result, feed)
+    assert result.diagnostics["seed_name"].startswith("tpd_")
+    assert result.diagnostics["attempt_count"] >= 1
 
 
 def test_lle_flash_reports_no_split_for_identical_initial_phases() -> None:
@@ -133,24 +167,30 @@ def test_lle_flash_can_skip_stability_precheck_for_debug_workflows() -> None:
     assert "min_tpd" not in result.diagnostics
 
 
-def test_lle_flash_phase_diagnostics_request_reports_unavailable_solver_derivatives() -> None:
+def test_lle_flash_phase_diagnostics_request_returns_clear_phase_details() -> None:
     mix = _methanol_cyclohexane_mixture()
     feed, initial_phases = _methanol_cyclohexane_lle_benchmark()
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
-        mix.equilibrium(
-            kind="lle_flash",
-            T=298.15,
-            P=1.013e5,
-            z=feed,
-            initial_phases=initial_phases,
-            options=epcsaft.EquilibriumOptions(
-                max_iterations=240,
-                tolerance=1.0e-10,
-                damping=0.5,
-                include_phase_diagnostics=True,
-            ),
-        )
+    result = mix.equilibrium(
+        kind="lle_flash",
+        T=298.15,
+        P=1.013e5,
+        z=feed,
+        initial_phases=initial_phases,
+        options=epcsaft.EquilibriumOptions(
+            max_iterations=240,
+            tolerance=1.0e-10,
+            damping=0.5,
+            include_phase_diagnostics=True,
+        ),
+    )
+
+    _assert_methanol_cyclohexane_split(result, feed)
+    for phase in result.phases:
+        assert phase.diagnostics is not None
+        assert phase.diagnostics["phase"] == phase.label
+        assert phase.diagnostics["density"] > 0.0
+        assert "fugacity_coefficient_terms" in phase.diagnostics
 
 
 def test_equilibrium_options_expose_explicit_solver_backend_controls() -> None:
@@ -169,11 +209,11 @@ def test_equilibrium_options_expose_explicit_solver_backend_controls() -> None:
     assert epcsaft.EquilibriumOptions().return_best_effort is False
 
 
-def test_lle_flash_distinct_seed_reports_unavailable_solver_derivatives() -> None:
+def test_lle_flash_distinct_poor_seed_fails_loudly_without_forced_pass() -> None:
     mix = _methanol_cyclohexane_mixture()
     feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+    with pytest.raises(epcsaft.SolutionError, match="neutral LLE flash did not converge") as excinfo:
         mix.equilibrium(
             kind="lle_flash",
             T=298.15,
@@ -182,6 +222,11 @@ def test_lle_flash_distinct_seed_reports_unavailable_solver_derivatives() -> Non
             initial_phases={"liq1": [0.25, 0.75], "liq2": [0.65, 0.35], "phase_fraction": 0.5},
             options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-6, damping=0.5),
         )
+
+    message = str(excinfo.value)
+    assert "best_seed=user" in message
+    assert "maximum iterations" in message
+    assert "finite_difference" not in message.lower()
 
 
 @pytest.mark.parametrize(
