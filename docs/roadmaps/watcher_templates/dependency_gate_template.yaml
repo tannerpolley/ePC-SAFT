@@ -1,0 +1,33 @@
+# dependency_gate.yaml template
+task_key: A
+issue: null
+branch: codex/backend-coverage-hard-gate
+auto_start_after_gate: false
+poll_interval_seconds: 120
+max_wait_minutes: 480
+
+dependencies:
+  tasks: []
+  issues: []
+  prs: []
+
+required_files:
+  - docs/roadmaps/general_reactive_electrolyte_equilibrium_readiness.md
+  - docs/roadmaps/agent_prompts/index.yaml
+
+gate_checks:
+  - git_fetch_origin
+  - current_branch_matches
+  - dependency_issues_closed
+  - dependency_prs_merged
+  - origin_main_contains_dependency_merges
+  - rebase_onto_origin_main_clean
+
+on_gate_pass:
+  action: start_goal_without_asking_if_auto_start_true
+
+on_gate_fail:
+  action: stop_with_status
+
+on_timeout:
+  action: stop_with_prepared_waiting
