@@ -1,0 +1,498 @@
+# GoalBuddy v2 state.yaml
+# Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
+
+version: 2
+
+goal:
+  title: "Issue #68 Ceres/CppAD CI and capability gates"
+  slug: "issue-68-ceres-cppad-ci-capability-gates"
+  kind: existing_plan
+  tranche: "Execute issue #68 end to end only after issue #67 and its PR are confirmed merged to origin/main, local root main is updated, and this branch is rebased onto current main."
+  status: active
+  intake:
+    original_request: "Initiate Goal Prep for Issue #68 Ceres/CppAD CI and capability gates."
+    interpreted_outcome: "Prepare a GoalBuddy board that will gate issue #68 execution on issue #67 merge/main freshness, then implement and validate #68 through focused PR merge and issue closure."
+    input_shape: existing_plan
+    audience: "ePC-SAFT maintainers, CI users, and downstream modeling agents"
+    authority: requested
+    proof_type: test
+    completion_proof: "Focused PR for #68 includes Closes #68, required issue #68 validation commands and GitHub checks pass, PR is squash-merged, branch is deleted, root checkout local main is fast-forwarded to origin/main with matching hashes including the merge commit, issue #68 is closed and labeled when possible, and final report includes PR URL, merge commit, validation summary, label status, and issue state."
+    likely_misfire: "Implementing from a stale or wrong base, using PR #56 as the base, skipping #67 prerequisite confirmation, fetching new validation data, using finite-difference derivatives, testing vapor Born derivatives, or closing #68 without the issue-listed validation commands."
+    blind_spots_considered:
+      - "Issue #68 Detailed implementation addendum must be read before planning or editing."
+      - "Issue #67 or its attached PR may still block the correct base."
+      - "GitHub permissions may block merge, branch deletion, labeling, or issue closure."
+      - "Validation data must be restricted to existing repo assets and named literature/MIAC outputs."
+      - "PR #56 can be a reference only, never the base or continuation target."
+    existing_plan_facts:
+      - "Use local live GoalBuddy board in Codex."
+      - "Do not start /goal execution during Goal Prep."
+      - "Do not edit product/source files during Goal Prep."
+      - "Work on GitHub issue #68 only."
+      - "Worktree was created from updated local main; local main should have been fast-forwarded from origin/main immediately before worktree creation."
+      - "Checkout into branch codex/issue-68-ceres-cppad-ci-capabilities."
+      - "Confirm issue #67 and its attached PR merged to origin/main before starting issue #68 work."
+      - "Confirm the #67 merge has been pulled to local root main."
+      - "Set up an automation watcher script for the #67 gate if needed."
+      - "After #67/root-main confirmation, rebase this branch onto current origin/main or local main before starting issue #68."
+      - "If #67 is not merged, stop and report #67 is blocked."
+      - "Read issue #68 completely, including Detailed implementation addendum, before planning or editing."
+      - "Do not use PR #56 as a base branch, continue it, or merge it; PR #56 is reference only if needed."
+      - "Use only existing validation assets: docs/papers, analyses, data/reference, Figiel 2025, and MIAC outputs."
+      - "Do not fetch validation data from the internet."
+      - "No finite-difference derivatives."
+      - "Do not test vapor Born derivatives."
+      - "Run validation commands listed in issue #68."
+      - "Open a focused PR linked to issue #68 with Closes #68 in the body."
+      - "If validation and GitHub checks pass, squash-merge PR, delete branch, fast-forward root checkout local main, confirm issue closure, close manually if needed, apply completion label if available, and report required final facts."
+      - "If merge or issue closure is blocked, leave PR ready and report PR URL and exact blocker."
+      - "Stop after this issue."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://127.0.0.1:41737/"
+    command: "node C:/Users/Tanner/.codex/skills/goalbuddy/extend/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/issue-68-ceres-cppad-ci-capability-gates"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: T006
+
+tasks:
+  - id: T001
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Run the prerequisite gate before any issue #68 planning or implementation."
+    inputs:
+      - "GitHub issue #67 and its attached PR."
+      - "origin/main and root checkout local main at C:/Users/Tanner/Documents/git/ePC-SAFT."
+      - "Current Codex app worktree at C:/Users/Tanner/.codex/worktrees/7c19/ePC-SAFT."
+    constraints:
+      - "Do not edit product/source files."
+      - "Do not read or plan issue #68 implementation until #67 is confirmed merged and local root main is updated."
+      - "If #67 is not merged, stop and report that #67 is blocked."
+      - "Set up a watcher script for the #67 prerequisite gate if #67 is not yet merged, without touching product/source files."
+      - "Before proceeding after #67 merge confirmation, checkout or confirm branch codex/issue-68-ceres-cppad-ci-capabilities and rebase it onto current origin/main or local main."
+      - "Apply GIT_AND_SANDBOX.md, COMMAND_CONTEXT_VALIDATION.md, and PROCESS_AND_CLEANUP.md before Git, GitHub CLI, watcher, or long-running-process operations."
+    expected_output:
+      - "#67 merged state and attached PR state."
+      - "Watcher script path if created, or reason it was not needed."
+      - "Root checkout local main hash and origin/main hash, confirmed matching after pull."
+      - "Current branch confirmation."
+      - "Rebase result."
+      - "Explicit proceed/block decision for issue #68."
+    receipt:
+      result: done
+      status: prerequisite_gate_passed
+      summary: "Issue #67 closed via merged PR #81. The watcher script updated the root checkout local main, confirmed root main and origin/main match, switched this worktree to codex/issue-68-ceres-cppad-ci-capabilities, and rebased it onto origin/main. Issue #68 may now proceed."
+      issue_67:
+        state: CLOSED
+        url: "https://github.com/tannerpolley/ePC-SAFT/issues/67"
+        title: "Roadmap slice 10: add literature-backed regression validation using existing papers and analysis outputs"
+        closed_at: "2026-05-13T03:22:35Z"
+        attached_closing_pr:
+          number: 81
+          title: "Add literature-backed regression validation"
+          url: "https://github.com/tannerpolley/ePC-SAFT/pull/81"
+          merged_at: "2026-05-13T03:22:34Z"
+          base_ref: "main"
+          head_ref: "codex/issue-67-literature-regression-validation"
+        last_checked: "2026-05-13T03:23:04.455Z"
+      watcher_script: "docs/goals/issue-68-ceres-cppad-ci-capability-gates/notes/watch-issue-67-merge.ps1"
+      codex_automation:
+        id: "watch-issue-67-for-issue-68-start"
+        kind: "heartbeat"
+        schedule: "every 5 minutes"
+        status: "deleted_after_gate_passed"
+        verified_at: "2026-05-12 16:57:49-06:00"
+        behavior: "Wake this thread every 5 minutes to check the issue #67 gate. If the gate passes, run the watcher script, checkout/rebase codex/issue-68-ceres-cppad-ci-capabilities, then continue /goal execution from goal.md until the goal is complete or a real blocker is reached. Otherwise report blocked without reading issue #68."
+      root_checkout:
+        path: "C:/Users/Tanner/Documents/git/ePC-SAFT"
+        status: "main and origin/main match after watcher pull."
+        main_short_hash: "153829bca27d"
+        origin_main_short_hash: "153829bca27d"
+      current_worktree:
+        path: "C:/Users/Tanner/.codex/worktrees/7c19/ePC-SAFT"
+        branch: "codex/issue-68-ceres-cppad-ci-capabilities"
+        desired_branch: "codex/issue-68-ceres-cppad-ci-capabilities"
+        head_short_hash: "153829bca27d"
+      commands:
+        - cmd: "gh issue view 67 --repo tannerpolley/ePC-SAFT --json number,title,state,stateReason,url,closedAt,comments"
+          status: pass
+          summary: "Issue #67 state is CLOSED."
+        - cmd: "git -C C:/Users/Tanner/Documents/git/ePC-SAFT status --short --branch; git -C C:/Users/Tanner/Documents/git/ePC-SAFT rev-parse --short=12 main; git -C C:/Users/Tanner/Documents/git/ePC-SAFT rev-parse --short=12 origin/main"
+          status: pass
+          summary: "Root main 153829bca27d; origin/main 153829bca27d."
+        - cmd: "git status --short --branch; git branch --show-current"
+          status: pass
+          summary: "Current worktree is on codex/issue-68-ceres-cppad-ci-capabilities."
+        - cmd: "powershell.exe -NoProfile -ExecutionPolicy Bypass -File docs/goals/issue-68-ceres-cppad-ci-capability-gates/notes/watch-issue-67-merge.ps1 -IntervalSeconds 1"
+          status: pass
+          summary: "Watcher switched to codex/issue-68-ceres-cppad-ci-capabilities and rebased onto origin/main."
+        - cmd: "PowerShell parse check for notes/watch-issue-67-merge.ps1"
+          status: pass
+          summary: "PowerShell parse OK."
+      proceed_decision: "proceed_to_T002"
+  - id: T002
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: medium
+    objective: "Read issue #68 completely, including the Detailed implementation addendum, and map requirements without editing files."
+    inputs:
+      - "GitHub issue #68."
+      - "Detailed implementation addendum from issue #68."
+      - "Existing repo assets named by the user: docs/papers, analyses, data/reference, Figiel 2025, and MIAC outputs."
+      - "PR #56 only as optional reference, not base or continuation target."
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files."
+      - "Do not fetch validation data from the internet."
+      - "Do not use PR #56 as a base branch."
+      - "Do not plan implementation before fully reading issue #68 and its addendum."
+      - "No finite-difference derivatives."
+      - "Do not test vapor Born derivatives."
+    expected_output:
+      - "Requirement-by-requirement issue #68 map."
+      - "Detailed implementation addendum summary."
+      - "Required validation commands exactly as listed in issue #68."
+      - "Existing repo asset map for literature-backed regression validation."
+      - "Risks, blockers, and candidate task slices."
+    receipt:
+      result: done
+      status: issue_68_mapped
+      summary: "Issue #68 was read completely, including the Detailed implementation addendum, Eigen AutoDiff/CppAD clarification addendum, derivative coverage/solved-state addendum, and the post-#62 comment. Current code has CMake flags and partial CppAD runtime reporting, but lacks CI build profile workflows, explicit Ceres runtime reporting, derivative coverage gating fields/artifact tests, and two of the three requested test files."
+      evidence:
+        - "gh issue view 68 --repo tannerpolley/ePC-SAFT --json number,title,state,body,comments,url,labels"
+        - ".github/workflows contained only publish-pypi.yml and wheels.yml before issue #68 CI work."
+        - "CMakePresets.json contained only the dev-mingw configure/build preset before issue #68 profile work."
+      issue_68:
+        url: "https://github.com/tannerpolley/ePC-SAFT/issues/68"
+        title: "Roadmap slice 11: add Ceres/CppAD build matrix, CI gates, and honest capabilities reporting"
+        state: OPEN
+        required_profiles:
+          - "default"
+          - "CppAD-enabled"
+          - "Ceres+CppAD-enabled"
+        required_validation_commands:
+          - "uv run python scripts/build_epcsaft.py --clean"
+          - "uv run python scripts/build_epcsaft.py --clean --enable-cppad"
+          - "uv run python scripts/build_epcsaft.py --clean --enable-ceres --enable-cppad"
+          - "uv run python run_pytest.py tests/api/test_runtime_capabilities_dependency_gates.py tests/native/test_cppad_runtime_contract.py -q"
+      current_state:
+        present:
+          - "CMakeLists.txt defines EPCSAFT_ENABLE_CERES, EPCSAFT_USE_SYSTEM_CERES, EPCSAFT_ENABLE_CPPAD, and EPCSAFT_USE_SYSTEM_CPPAD."
+          - "scripts/build_epcsaft.py accepts --enable-ceres, --use-system-ceres, --enable-cppad, and --use-system-cppad."
+          - "runtime_build_info() reports optional_dependencies.cppad using _native_cppad_smoke()."
+          - "capabilities()['derivatives']['cppad'] mirrors CppAD build status and marks production_eos_coverage false."
+          - "tests/native/test_cppad_runtime_contract.py exists and checks current CppAD reporting contract."
+          - "Figiel 2025 and MIAC assets exist under docs/papers, analyses/2025_figiel, data/reference/epcsaft_parameters/2025_Figiel, and data/reference/MIAC."
+        missing_or_incomplete:
+          - ".github/workflows has publish-pypi.yml and wheels.yml only; no default/CppAD/Ceres+CppAD CI build matrix workflow was found."
+          - "CMakePresets.json has only dev-mingw and no named default/cppad/ceres-cppad profiles."
+          - "runtime_build_info() does not report optional_dependencies.ceres."
+          - "capabilities() has no explicit Ceres capability block and does not gate native_hot_loop/optimizer_backend=ceres claims against Ceres runtime state."
+          - "tests/api/test_runtime_capabilities_dependency_gates.py is missing."
+          - "tests/native/test_ceres_cppad_build_contract.py is missing."
+          - "No build/derivative_coverage_matrix.json producer or contract test was found in the inspected files."
+      constraints_preserved:
+        - "No issue #68 implementation was done during T002."
+        - "No internet validation data was fetched."
+        - "PR #56 was not used as a base or continuation target."
+        - "Finite difference remains forbidden."
+        - "Vapor Born derivative tests remain out of scope."
+      candidate_slices:
+        - "Add runtime capability dependency gates and API tests for disabled default builds."
+        - "Add Ceres build/runtime reporting and native Ceres/CppAD contract tests."
+        - "Add CMakePresets/build profile names and CI workflow entries for default, CppAD, and Ceres+CppAD builds."
+        - "Add derivative coverage matrix capability structure or artifact contract using existing repo coverage information."
+      proceed_decision: "activate_T003_for_judge_selection"
+  - id: T003
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the issue #68 requirement map and choose the first safe implementation slice."
+    inputs:
+      - "T001 receipt."
+      - "T002 receipt."
+    constraints:
+      - "Do not implement."
+      - "Reject any plan that violates the #67 prerequisite gate, PR #56 restriction, validation asset restriction, no-finite-difference rule, or no-vapor-Born-derivative-test rule."
+      - "Select small reviewable work with explicit allowed_files, verify commands, and stop_if conditions."
+    expected_output:
+      - "Decision."
+      - "Implementation sequence at task-slice granularity only."
+      - "First Worker objective."
+      - "allowed_files."
+      - "verify."
+      - "stop_if."
+      - "Blocked or deferred tasks."
+    receipt:
+      result: done
+      decision: "Start with dependency-gated runtime capability reporting and disabled-build API tests. This is the smallest slice that directly prevents default builds from claiming production Ceres/CppAD support and creates the contract later CI/profile work can rely on."
+      first_worker_objective: "Add runtime Ceres/CppAD dependency gates, derivative coverage capability fields, and API/native tests that disabled/default builds cannot claim production Ceres/CppAD support."
+      allowed_files:
+        - "src/epcsaft/bindings.cpp"
+        - "src/epcsaft/runtime.py"
+        - "tests/api/test_runtime.py"
+        - "tests/api/test_runtime_capabilities_dependency_gates.py"
+        - "tests/native/test_cppad_runtime_contract.py"
+        - "tests/native/test_ceres_cppad_build_contract.py"
+      verify:
+        - "uv run python scripts/build_epcsaft.py --clean"
+        - "uv run python run_pytest.py tests/api/test_runtime_capabilities_dependency_gates.py tests/native/test_cppad_runtime_contract.py tests/native/test_ceres_cppad_build_contract.py tests/api/test_runtime.py -q"
+        - "uv run ruff check src/epcsaft/runtime.py tests/api/test_runtime.py tests/api/test_runtime_capabilities_dependency_gates.py tests/native/test_cppad_runtime_contract.py tests/native/test_ceres_cppad_build_contract.py"
+        - "uv run black --check src/epcsaft/runtime.py tests/api/test_runtime.py tests/api/test_runtime_capabilities_dependency_gates.py tests/native/test_cppad_runtime_contract.py tests/native/test_ceres_cppad_build_contract.py"
+      stop_if:
+        - "Need to fetch validation data from the internet."
+        - "Need finite-difference derivatives."
+        - "Need vapor Born derivative tests."
+        - "Default clean build cannot be rebuilt locally because an existing process holds epcsaft._core locked."
+        - "Ceres runtime symbol cannot be exposed without broader native refactoring."
+      deferred_tasks:
+        - "Add CI workflow/build profiles for default, CppAD, and Ceres+CppAD builds."
+        - "Run the CppAD-enabled and Ceres+CppAD-enabled clean builds from issue #68."
+        - "Wire any generated derivative coverage matrix artifact if a static capability matrix is insufficient."
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Add runtime Ceres/CppAD dependency gates, derivative coverage capability fields, and API/native tests that disabled/default builds cannot claim production Ceres/CppAD support."
+    allowed_files:
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/runtime.py"
+      - "tests/api/test_runtime.py"
+      - "tests/api/test_runtime_capabilities_dependency_gates.py"
+      - "tests/native/test_cppad_runtime_contract.py"
+      - "tests/native/test_ceres_cppad_build_contract.py"
+    verify:
+      - "uv run python scripts/build_epcsaft.py --clean"
+      - "uv run python run_pytest.py tests/api/test_runtime_capabilities_dependency_gates.py tests/native/test_cppad_runtime_contract.py tests/native/test_ceres_cppad_build_contract.py tests/api/test_runtime.py -q"
+      - "uv run ruff check src/epcsaft/runtime.py tests/api/test_runtime.py tests/api/test_runtime_capabilities_dependency_gates.py tests/native/test_cppad_runtime_contract.py tests/native/test_ceres_cppad_build_contract.py"
+      - "uv run black --check src/epcsaft/runtime.py tests/api/test_runtime.py tests/api/test_runtime_capabilities_dependency_gates.py tests/native/test_cppad_runtime_contract.py tests/native/test_ceres_cppad_build_contract.py"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Need validation data from the internet."
+      - "Need finite-difference derivatives."
+      - "Need vapor Born derivative tests."
+      - "Need to base work on or continue PR #56."
+      - "Issue #68 requirements or validation commands are ambiguous."
+      - "Verification fails twice for reasons outside the selected slice."
+    receipt:
+      result: done
+      status: implemented
+      summary: "Added Ceres runtime smoke reporting, dependency-gated Ceres/CppAD capability payloads, derivative coverage capability fields, and disabled/default-build tests that prevent production Ceres/CppAD claims without compiled dependencies."
+      changed_files:
+        - "src/epcsaft/bindings.cpp"
+        - "src/epcsaft/runtime.py"
+        - "tests/api/test_runtime.py"
+        - "tests/api/test_runtime_capabilities_dependency_gates.py"
+        - "tests/native/test_cppad_runtime_contract.py"
+        - "tests/native/test_ceres_cppad_build_contract.py"
+      commands:
+        - cmd: "uv run python scripts/build_epcsaft.py --clean"
+          status: pass
+          summary: "Default clean native build completed; root extension rebuilt with Ceres disabled and CppAD disabled."
+        - cmd: "uv run python run_pytest.py tests/api/test_runtime_capabilities_dependency_gates.py tests/native/test_cppad_runtime_contract.py tests/native/test_ceres_cppad_build_contract.py tests/api/test_runtime.py -q"
+          status: pass
+          summary: "45 passed in 2.11s after formatting."
+        - cmd: "uv run ruff check src/epcsaft/runtime.py tests/api/test_runtime.py tests/api/test_runtime_capabilities_dependency_gates.py tests/native/test_cppad_runtime_contract.py tests/native/test_ceres_cppad_build_contract.py"
+          status: pass
+        - cmd: "uv run black --check src/epcsaft/runtime.py tests/api/test_runtime.py tests/api/test_runtime_capabilities_dependency_gates.py tests/native/test_cppad_runtime_contract.py tests/native/test_ceres_cppad_build_contract.py"
+          status: pass
+      next_task: T007
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Add explicit default, CppAD-enabled, and Ceres+CppAD build profile/CI surfaces without changing solver behavior."
+    allowed_files:
+      - "CMakePresets.json"
+      - ".github/workflows/native-build-profiles.yml"
+      - "docs/goals/issue-68-ceres-cppad-ci-capability-gates/state.yaml"
+    verify:
+      - "uv run python -c \"import json; json.load(open('CMakePresets.json', encoding='utf-8'))\""
+      - "uv run python run_pytest.py tests/api/test_runtime_capabilities_dependency_gates.py tests/native/test_cppad_runtime_contract.py tests/native/test_ceres_cppad_build_contract.py -q"
+    stop_if:
+      - "CI runner optional dependency support requires credentials or repository settings not visible locally."
+      - "Workflow needs secret tokens or external validation data."
+      - "Need to edit product/source files beyond build/profile surfaces."
+    receipt:
+      result: done
+      status: implemented
+      summary: "Added explicit native-default, native-cppad, and native-ceres-cppad CMake configure/build presets, plus a native-build-profiles GitHub Actions workflow. The default profile runs on PR/main pushes; CppAD and Ceres+CppAD profiles run on scheduled/manual triggers."
+      changed_files:
+        - "CMakePresets.json"
+        - ".github/workflows/native-build-profiles.yml"
+      commands:
+        - cmd: "uv run python -c \"import json; json.load(open('CMakePresets.json', encoding='utf-8')); print('CMakePresets.json OK')\""
+          status: pass
+          summary: "CMakePresets.json OK"
+        - cmd: "uv run python run_pytest.py tests/api/test_runtime_capabilities_dependency_gates.py tests/native/test_cppad_runtime_contract.py tests/native/test_ceres_cppad_build_contract.py -q"
+          status: pass
+          summary: "8 passed in 0.38s"
+      next_task: T008
+  - id: T008
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Run the required issue #68 local validation commands for default, CppAD, and Ceres+CppAD builds, then record exact outcomes before PR creation."
+    allowed_files:
+      - "docs/goals/issue-68-ceres-cppad-ci-capability-gates/state.yaml"
+    verify:
+      - "uv run python scripts/build_epcsaft.py --clean"
+      - "uv run python scripts/build_epcsaft.py --clean --enable-cppad"
+      - "uv run python scripts/build_epcsaft.py --clean --enable-ceres --enable-cppad"
+      - "uv run python run_pytest.py tests/api/test_runtime_capabilities_dependency_gates.py tests/native/test_cppad_runtime_contract.py -q"
+    stop_if:
+      - "Optional dependency build fails for an environment or upstream dependency reason that cannot be fixed in this issue without changing scope."
+      - "Validation requires fetching external validation data from the internet."
+      - "Tests expose a production Ceres/CppAD capability claim that needs more product/source changes than already selected."
+    receipt:
+      result: done
+      status: validation_passed
+      summary: "Ran the issue #68 required local validation commands. Default, CppAD-enabled, and Ceres+CppAD clean native builds completed, and the targeted runtime capability tests passed against the final Ceres+CppAD build."
+      changed_files:
+        - "docs/goals/issue-68-ceres-cppad-ci-capability-gates/state.yaml"
+      commands:
+        - cmd: "uv run python scripts/build_epcsaft.py --clean"
+          status: pass
+          summary: "Default native build completed with Ceres OFF and CppAD OFF."
+        - cmd: "uv run python scripts/build_epcsaft.py --clean --enable-cppad"
+          status: pass
+          summary: "CppAD-enabled native build completed with Ceres OFF and CppAD ON."
+        - cmd: "uv run python scripts/build_epcsaft.py --clean --enable-ceres --enable-cppad"
+          status: pass
+          summary: "Ceres+CppAD native build completed with Ceres ON and CppAD ON."
+        - cmd: "uv run python run_pytest.py tests/api/test_runtime_capabilities_dependency_gates.py tests/native/test_cppad_runtime_contract.py -q"
+          status: pass
+          summary: "6 passed in 0.40s."
+      next_task: T005
+  - id: T005
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Open and manage the focused PR for issue #68 once implementation and local validation are ready."
+    inputs:
+      - "All implementation receipts."
+      - "Issue #68 validation commands."
+      - "Current branch diff."
+    constraints:
+      - "PR must be focused on issue #68."
+      - "PR body must include Closes #68."
+      - "Do not use PR #56 as the base or continuation target."
+      - "If GitHub auth, checks, merge, or issue closure is blocked, leave the PR ready and report the exact blocker."
+    expected_output:
+      - "PR URL."
+      - "PR body confirms Closes #68."
+      - "Validation summary."
+      - "GitHub check status or blocker."
+    receipt:
+      result: done
+      status: pr_opened
+      summary: "Opened the focused issue #68 pull request from codex/issue-68-ceres-cppad-ci-capabilities into main. The PR body includes Closes #68 and the local validation command summary."
+      pr:
+        url: "https://github.com/tannerpolley/ePC-SAFT/pull/82"
+        number: 82
+        title: "Add Ceres/CppAD capability gates"
+        base: "main"
+        head: "codex/issue-68-ceres-cppad-ci-capabilities"
+        body_contains_closes_68: true
+      commands:
+        - cmd: "gh pr create --repo tannerpolley/ePC-SAFT --base main --head codex/issue-68-ceres-cppad-ci-capabilities --title 'Add Ceres/CppAD capability gates'"
+          status: pass
+          summary: "Created PR #82."
+      next_task: T006
+  - id: T006
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: medium
+    objective: "If validation and GitHub checks pass, squash-merge the PR, delete the branch, update root checkout main, and confirm issue closure."
+    inputs:
+      - "T005 receipt."
+      - "Passing GitHub checks."
+    constraints:
+      - "Squash-merge only if validation and GitHub checks pass."
+      - "Delete the branch after successful merge."
+      - "Before continuing or reporting completion, run the required root checkout fast-forward commands."
+      - "Root checkout local main and origin/main hashes must match and include the PR merge commit."
+      - "Confirm issue #68 was automatically closed; if still open, close manually with a final comment summarizing PR, validation commands, and follow-up issues."
+      - "Apply a completion label if labels are available, such as done/completed/merged."
+      - "If any step is blocked, report exact blocker and do not claim completion."
+    expected_output:
+      - "Merge commit."
+      - "Deleted branch status."
+      - "Root checkout main/origin-main hash confirmation."
+      - "Issue #68 final state."
+      - "Label status."
+      - "Blocker report if incomplete."
+    receipt: null
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Audit whether the issue #68 outcome is fully complete and no forbidden path was used."
+    inputs:
+      - "All done task receipts."
+      - "Issue #68 validation commands and results."
+      - "PR URL and merge commit."
+      - "Root checkout main/origin-main hash confirmation."
+      - "Final issue #68 state."
+      - "Current dirty diff."
+    constraints:
+      - "Do not implement."
+      - "Reject completion if issue #67 prerequisite evidence is missing."
+      - "Reject completion if issue #68 was not fully read including Detailed implementation addendum."
+      - "Reject completion if PR body lacks Closes #68."
+      - "Reject completion if validation commands from issue #68 were skipped without blocker evidence."
+      - "Reject completion if internet data, finite-difference derivatives, vapor Born derivative tests, or PR #56 as base/continuation were used."
+      - "Reject completion if root checkout local main was not fast-forwarded to match origin/main after merge."
+    expected_output:
+      - "complete | not_complete."
+      - "full_outcome_complete: true | false."
+      - "Evidence map back to the original request and issue #68."
+      - "PR URL, merge commit, validation summary, label status, and final issue state."
+      - "Next task or blocker if not complete."
+    receipt: null
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: blocked
+    task: T001
+    commands:
+      - "gh issue view 67 --repo tannerpolley/ePC-SAFT --json number,title,state,stateReason,url,closedAt,comments"
+      - "gh api graphql issue #67 CLOSED_EVENT timeline check"
+      - "git -C C:/Users/Tanner/Documents/git/ePC-SAFT status --short --branch"
+      - "PowerShell parse check for notes/watch-issue-67-merge.ps1"

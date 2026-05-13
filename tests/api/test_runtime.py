@@ -68,6 +68,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert mixed_regression["supports_speciation_targets"] is True
     assert mixed_regression["supports_bounds"] is True
     assert mixed_regression["native_hot_loop"] is False
+    assert mixed_regression["ceres"]["production"] is False
     assert ipopt["available"] is ipopt_backend.cyipopt_available()
     assert ipopt["formulations"] == ["bound_constrained_residual_minimization"]
     assert ipopt["full_constrained_nlp_available"] is False
@@ -78,11 +79,26 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert cppad["backend"] == "cppad"
     assert cppad["status"] in {"disabled", "enabled_available", "enabled_missing", "not_configured"}
     assert cppad["compiled"] is (cppad["status"] == "enabled_available")
+    assert capabilities["derivatives"]["finite_difference"] == {
+        "available": False,
+        "production": False,
+        "reason": "finite_difference_derivatives_forbidden",
+    }
+    assert capabilities["derivatives"]["eigen_forward"]["scope"] == "legacy/local forward-mode AD"
+    assert capabilities["derivatives"]["eigen_forward"]["available"] is True
     assert capabilities["derivatives"]["cppad"] == {
         **cppad,
-        "scope": "package-wide scalar substrate; production EOS derivative routing remains explicit per API",
+        "production": False,
+        "reason": "dependency_not_compiled" if not cppad["available"] else "not_validated_for_production",
+        "scope": "package-wide AD substrate",
         "production_eos_coverage": False,
     }
+    ceres = info["optional_dependencies"]["ceres"]
+    assert ceres["backend"] == "ceres"
+    assert ceres["status"] in {"disabled", "enabled_available", "not_configured"}
+    assert ceres["compiled"] is (ceres["status"] == "enabled_available")
+    assert capabilities["optimizers"]["ceres"]["available"] is ceres["available"]
+    assert capabilities["optimizers"]["ceres"]["production"] is False
     assert capabilities["equilibrium"]["neutral_tp_flash"]["available"] is True
     assert capabilities["equilibrium"]["neutral_bubble_dew"] == {
         "available": True,

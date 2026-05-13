@@ -134,6 +134,35 @@ def _native_cppad_backend_info() -> dict[str, object]:
     }
 
 
+def _native_ceres_backend_info() -> dict[str, object]:
+    try:
+        from . import _core
+    except Exception:
+        return {
+            "backend": "ceres",
+            "status": "not_configured",
+            "compiled": False,
+            "available": False,
+        }
+    try:
+        smoke = _core._native_ceres_smoke()
+    except AttributeError:
+        return {
+            "backend": "ceres",
+            "status": "not_configured",
+            "compiled": False,
+            "available": False,
+        }
+    status = str(smoke.get("status", "not_configured"))
+    compiled = bool(smoke.get("compiled", False))
+    return {
+        "backend": "ceres",
+        "status": status,
+        "compiled": compiled,
+        "available": status == "enabled_available" and compiled,
+    }
+
+
 def _mtime_utc(path: Path) -> str:
     return datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat()
 
@@ -148,6 +177,7 @@ def runtime_build_info() -> dict[str, object]:
     source_root = _source_checkout_from_package() or _source_checkout_from_direct_url(direct_url)
     native_path = _native_extension_path()
     cyipopt = cyipopt_backend_info()
+    ceres = _native_ceres_backend_info()
     direct_url_info = direct_url.get("dir_info") if isinstance(direct_url.get("dir_info"), dict) else {}
     return {
         "package_version": __version__,
@@ -164,7 +194,152 @@ def runtime_build_info() -> dict[str, object]:
         "machine": platform.machine(),
         "optional_dependencies": {
             "cyipopt": cyipopt,
+            "ceres": ceres,
             "cppad": _native_cppad_backend_info(),
+        },
+    }
+
+
+def _dependency_capability(
+    dependency: dict[str, object],
+    *,
+    production: bool = False,
+    reason: str | None = None,
+    **extra: object,
+) -> dict[str, object]:
+    available = bool(dependency.get("available", False))
+    payload: dict[str, object] = {
+        **dependency,
+        "production": bool(production and available),
+    }
+    if reason is not None:
+        payload["reason"] = reason
+    elif not available:
+        payload["reason"] = "dependency_not_compiled"
+    elif not payload["production"]:
+        payload["reason"] = "not_validated_for_production"
+    payload.update(extra)
+    return payload
+
+
+def _derivative_coverage_capabilities(cppad: dict[str, object], ceres: dict[str, object]) -> dict[str, object]:
+    cppad_available = bool(cppad.get("available", False))
+    ceres_available = bool(ceres.get("available", False))
+    coverage_rows = [
+        {
+            "subsystem": "regression",
+            "quantity": "pure_neutral_parameters",
+            "derivative": "objective_jacobian",
+            "backend": "legacy_eigen_forward",
+            "supported": True,
+            "not_applicable": False,
+            "reason": "validated local Eigen forward-mode regression slice",
+            "tests": ["tests/native/test_ceres_pure_regression.py"],
+        },
+        {
+            "subsystem": "regression",
+            "quantity": "binary_kij",
+            "derivative": "objective_jacobian",
+            "backend": "cppad" if cppad_available and ceres_available else "backend_unavailable",
+            "supported": False,
+            "not_applicable": False,
+            "reason": (
+                "requires Ceres and CppAD compiled"
+                if not (cppad_available and ceres_available)
+                else "explicit Ceres/CppAD residual Jacobians are not production validated"
+            ),
+            "tests": [
+                "tests/native/test_ceres_cppad_build_contract.py",
+                "tests/regression/test_literature_binary_kij_regression.py",
+            ],
+        },
+        {
+            "subsystem": "equilibrium",
+            "quantity": "association_site_fractions",
+            "derivative": "direct_cppad_recording",
+            "backend": "backend_unavailable",
+            "supported": False,
+            "not_applicable": False,
+            "reason": "active association uses solved site fractions; production derivative is implicit",
+            "tests": ["tests/native/test_association_implicit_derivative_contract.py"],
+        },
+        {
+            "subsystem": "equilibrium",
+            "quantity": "bubble_pressure",
+            "derivative": "root_implicit_sensitivity",
+            "backend": "backend_unavailable",
+            "supported": False,
+            "not_applicable": False,
+            "reason": "implicit bubble-pressure sensitivity is not production validated",
+            "tests": ["tests/native/test_cppad_bubble_derivatives.py"],
+        },
+        {
+            "subsystem": "electrolyte",
+            "quantity": "ssmds_born_liquid",
+            "derivative": "parameter_sensitivity",
+            "backend": "analytic",
+            "supported": True,
+            "not_applicable": False,
+            "reason": "liquid electrolyte SSM+DS Born derivatives are analytic; vapor Born derivatives are not claimed",
+            "tests": ["tests/api/test_runtime.py"],
+        },
+    ]
+    return {
+        "derivative_coverage_matrix_available": True,
+        "minimum_columns": [
+            "subsystem",
+            "quantity",
+            "derivative",
+            "backend",
+            "supported",
+            "not_applicable",
+            "reason",
+            "tests",
+        ],
+        "rows": coverage_rows,
+        "association_direct_cppad_recording": {
+            "available": False,
+            "production": False,
+            "reason": "active association uses solved site fractions; production derivative is implicit",
+        },
+        "association_implicit_sensitivities": {
+            "available": True,
+            "production": True,
+            "scope": "validated association solved-state reporting and implicit-sensitivity diagnostics",
+        },
+        "density_root_implicit_sensitivities": {
+            "available": False,
+            "production": False,
+            "reason": "backend_unavailable",
+        },
+        "speciation_implicit_sensitivities": {
+            "available": True,
+            "production": True,
+            "scope": "standard-state slices with analytic residual Jacobians",
+        },
+        "bubble_pressure_implicit_sensitivities": {
+            "available": False,
+            "production": False,
+            "reason": "backend_unavailable",
+        },
+        "born_ssmds_liquid_derivatives": {
+            "available": True,
+            "production": True,
+            "phase_scope": "liquid_electrolyte_only",
+            "vapor_support": False,
+        },
+        "regression_ceres_explicit_cppad_jacobians": {
+            "available": bool(cppad_available and ceres_available),
+            "production": False,
+            "reason": (
+                "not_validated_for_production" if cppad_available and ceres_available else "dependency_not_compiled"
+            ),
+            "requires": ["ceres", "cppad"],
+        },
+        "regression_ceres_implicit_jacobians": {
+            "available": False,
+            "production": False,
+            "reason": "backend_unavailable",
         },
     }
 
@@ -173,17 +348,39 @@ def capabilities() -> dict[str, object]:
     """Return structured availability flags for high-level package workflows."""
 
     cyipopt = dict(runtime_build_info()["optional_dependencies"]["cyipopt"])  # type: ignore[index]
+    ceres = dict(runtime_build_info()["optional_dependencies"]["ceres"])  # type: ignore[index]
     cppad = dict(runtime_build_info()["optional_dependencies"]["cppad"])  # type: ignore[index]
+    cppad_capability = _dependency_capability(
+        cppad,
+        production=False,
+        scope="package-wide AD substrate",
+        production_eos_coverage=False,
+    )
+    ceres_capability = _dependency_capability(
+        ceres,
+        production=False,
+        scope="native optimizer backend for explicitly supported regression paths",
+        native_hot_loop=False,
+    )
+    derivative_coverage = _derivative_coverage_capabilities(cppad, ceres)
     return {
         "native_extension": bool(runtime_build_info()["native_extension_available"]),
         "derivatives": {
-            "cppad": {
-                **cppad,
-                "scope": "package-wide scalar substrate; production EOS derivative routing remains explicit per API",
-                "production_eos_coverage": False,
+            "finite_difference": {
+                "available": False,
+                "production": False,
+                "reason": "finite_difference_derivatives_forbidden",
             },
+            "eigen_forward": {
+                "available": True,
+                "production": True,
+                "scope": "legacy/local forward-mode AD",
+            },
+            "cppad": cppad_capability,
+            "coverage_matrix": derivative_coverage,
             "ssmds_born_derivatives": {
                 "available": True,
+                "production": True,
                 "backend": "analytic",
                 "phase_scope": "liquid_electrolyte_only",
                 "parameters": ["d_born", "f_solv"],
@@ -219,6 +416,7 @@ def capabilities() -> dict[str, object]:
             },
         },
         "optimizers": {
+            "ceres": ceres_capability,
             "ipopt": {
                 **cyipopt,
                 "solver_backend": "ipopt",
@@ -229,7 +427,7 @@ def capabilities() -> dict[str, object]:
                 "default_auto_uses_ipopt": False,
                 "exact_hessian_available": False,
                 "hessian_includes_second_residual_derivatives": False,
-            }
+            },
         },
         "equilibrium": {
             "derivative_policy": {
@@ -384,6 +582,11 @@ def capabilities() -> dict[str, object]:
                     "supports_relative_permittivity_targets": True,
                     "supports_bounds": True,
                     "native_hot_loop": False,
+                    "ceres": {
+                        "available": bool(ceres["available"]),
+                        "production": False,
+                        "reason": ("reactive batch regression is python-orchestrated bounded Gauss-Newton, not Ceres"),
+                    },
                     "thermodynamic_backend": "native",
                     "python_role": "row orchestration, bounded step control, diagnostics",
                 },
