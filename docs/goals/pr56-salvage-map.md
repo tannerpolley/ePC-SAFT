@@ -52,7 +52,7 @@ PR #56 changed 159 files with roughly 15.7k insertions and 647 deletions. The in
 - Python runtime and public surfaces: `src/epcsaft/__init__.py`, `src/epcsaft/epcsaft.py`, `src/epcsaft/equilibrium.py`, `src/epcsaft/ipopt_backend.py`, `src/epcsaft/native_regression.py`, `src/epcsaft/parameters.py`, `src/epcsaft/reactive_regression.py`, `src/epcsaft/reactive_speciation.py`, `src/epcsaft/regression.py`, `src/epcsaft/runtime.py`.
 - Benchmark modules and scripts: `src/epcsaft/benchmarks/*`, `scripts/benchmark_native_ceres_thermo_regression.py`, `scripts/benchmark_native_regression.py`, `scripts/benchmark_neutral_equilibrium.py`, `scripts/benchmark_reactive_regression.py`, `scripts/profile_regression_runtime.py`, `scripts/validate_hydrocarbon_regression.py`.
 - Native bindings and kernels: `src/epcsaft/bindings.cpp`, `src/epcsaft/native/autodiff/*`, `src/epcsaft/native/contributions/*`, `src/epcsaft/native/epcsaft_*.cpp`, `src/epcsaft/native/epcsaft_*.h`, `src/epcsaft/native/regression/*`.
-- Tests: `tests/api/*`, `tests/equilibrium/test_lle.py`, `tests/native/*`, `tests/regression/*`, `tests/workflows/*`, plus package plot smoke tests under `analyses/package_plot_smokes/tests/plots/`.
+- Tests: `tests/api/*`, `tests/equilibrium/test_lle.py`, `tests/native/*`, `tests/regression/*`, `tests/workflows/*`, plus package plot smoke tests under `analyses/package_validation/package_plot_smokes/tests/plots/`.
 - Data and maintenance scripts touched incidentally: `scripts/_env.py`, `scripts/_epcsaft_oop.py`, `scripts/data/*`, `scripts/plot_outputs.py`, `scripts/sync_equation_registry.py`, `run_pytest.py`, and one archival paper markdown file.
 
 ## Follow-up issues

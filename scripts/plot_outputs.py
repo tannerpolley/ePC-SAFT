@@ -9,13 +9,17 @@ from matplotlib import colors as mcolors
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ANALYSES_ROOT = REPO_ROOT / "analyses"
-PAPER_VALIDATION_SOURCE_ROOT = ANALYSES_ROOT
-FITS_ANALYSIS_ROOT = ANALYSES_ROOT / "miac_fits"
+PAPER_VALIDATION_SOURCE_ROOT = ANALYSES_ROOT / "paper_validation"
+PAPER_VALIDATION_NATIVE_ROOT = PAPER_VALIDATION_SOURCE_ROOT / "native"
+PAPER_VALIDATION_APPLICATION_ROOT = PAPER_VALIDATION_SOURCE_ROOT / "application"
+DATA_VALIDATION_ROOT = ANALYSES_ROOT / "data_validation"
+PACKAGE_VALIDATION_ROOT = ANALYSES_ROOT / "package_validation"
+FITS_ANALYSIS_ROOT = DATA_VALIDATION_ROOT / "miac_fits"
 FITS_CATEGORY_ROOTS = {
-    "dielectric": ANALYSES_ROOT / "dielectric_fits",
-    "osmotic": ANALYSES_ROOT / "osmotic_validation",
+    "dielectric": DATA_VALIDATION_ROOT / "dielectric_fits",
+    "osmotic": DATA_VALIDATION_ROOT / "osmotic_validation",
 }
-TEST_PLOTS_ANALYSIS_ROOT = ANALYSES_ROOT / "package_plot_smokes"
+TEST_PLOTS_ANALYSIS_ROOT = PACKAGE_VALIDATION_ROOT / "package_plot_smokes"
 TEST_PLOT_CATEGORY_ROOTS = {
     ("api", "parity"): "api_parity",
     ("contributions", "neutral"): "contribution_outputs",
@@ -38,6 +42,7 @@ FIGURES_DIR_NAME = "figures"
 FIGURE_INPUT_DIR_NAME = "input"
 FIGURE_OUTPUT_DIR_NAME = "output"
 FIGURE_SCRIPTS_DIR_NAME = "scripts"
+ANALYSIS_METADATA_NAME = "analysis.yaml"
 
 
 def _clean_analysis_name(name: str) -> str:
@@ -46,14 +51,32 @@ def _clean_analysis_name(name: str) -> str:
 
 def _analysis_root_for(source_path: str | Path) -> Path:
     source = Path(source_path).resolve()
-    parts = source.parts
+    source_dir = source if source.is_dir() else source.parent
     try:
-        analyses_index = max(index for index, part in enumerate(parts) if part == "analyses")
+        source_dir.relative_to(ANALYSES_ROOT)
     except ValueError as exc:
         raise ValueError(f"path is not inside analyses/: {source}") from exc
-    if analyses_index + 1 >= len(parts):
-        raise ValueError(f"path does not include an analysis id: {source}")
-    return Path(*parts[: analyses_index + 2])
+
+    for candidate in (source_dir, *source_dir.parents):
+        if candidate == ANALYSES_ROOT.parent:
+            break
+        if (candidate / ANALYSIS_METADATA_NAME).is_file():
+            return candidate
+
+    raise ValueError(f"path does not include an analysis metadata root: {source}")
+
+
+def analysis_root(source_path: str | Path) -> Path:
+    return _analysis_root_for(source_path)
+
+
+def repo_root_for(source_path: str | Path) -> Path:
+    source = Path(source_path).resolve()
+    try:
+        source.relative_to(REPO_ROOT)
+    except ValueError as exc:
+        raise ValueError(f"path is not inside repo root {REPO_ROOT}: {source}") from exc
+    return REPO_ROOT
 
 
 def _figure_root_for(source_path: str | Path) -> Path | None:
@@ -68,6 +91,17 @@ def _figure_root_for(source_path: str | Path) -> Path | None:
     if len(parts) >= 2 and parts[0] == FIGURES_DIR_NAME:
         return analysis_root / FIGURES_DIR_NAME / parts[1]
     return None
+
+
+def figure_root_dir(source_path: str | Path) -> Path:
+    figure_root = _figure_root_for_any(source_path)
+    if figure_root is None:
+        raise ValueError(f"path is not inside analyses/*/figures/*: {Path(source_path).resolve()}")
+    return figure_root
+
+
+def analysis_scripts_dir(source_path: str | Path) -> Path:
+    return analysis_root(source_path) / FIGURE_SCRIPTS_DIR_NAME
 
 
 def _figure_root_for_script(source_path: str | Path) -> Path | None:

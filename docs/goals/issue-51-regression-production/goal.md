@@ -29,7 +29,7 @@ Complete issue #51 end to end. The safe first slice is read-only evidence mappin
 
 ## Non-Negotiable Constraints
 
-- Do not modify or remove `analyses/2014_held/...`.
+- Do not modify or remove `analyses/paper_validation/native/2014_held/...`.
 - Do not undo PR #50 architecture changes.
 - Do not remove legacy dictionary parameter support or existing top-level imports.
 - Do not silently relabel incomplete regression as production.

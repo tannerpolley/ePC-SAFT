@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 
 import epcsaft
-from analyses.miac_fits.scripts import validate_miac_fits as vmf
+from analyses.data_validation.miac_fits.scripts import validate_miac_fits as vmf
 from scripts._epcsaft_oop import as_mixture
 
 

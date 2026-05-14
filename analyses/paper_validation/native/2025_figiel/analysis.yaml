@@ -1,0 +1,11 @@
+analysis_id: 2025_figiel
+title: Figiel 2025 paper validation
+kind: paper_validation
+status: migrated
+package: epcsaft
+commands:
+  generate: uv run python analyses/paper_validation/native/2025_figiel/scripts/generate_figure_data.py
+  validate: uv run python analyses/paper_validation/native/2025_figiel/scripts/validate_figure_data.py
+outputs:
+  figures: figures/<figure_id>/output
+  runs: figures/<figure_id>/output/runs

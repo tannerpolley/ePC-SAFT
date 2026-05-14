@@ -1,0 +1,11 @@
+analysis_id: 2015_baygi
+title: Baygi 2015 pure MEA validation
+kind: paper_validation
+status: migrated
+package: epcsaft
+commands:
+  run_all: uv run python analyses/paper_validation/application/2015_baygi/scripts/run_all.py
+  smoke_test: uv run python run_pytest.py analyses/package_validation/package_plot_smokes/tests/plots/test_2015_baygi_outputs.py -q
+outputs:
+  figures: figures/<figure_id>/output
+  runs: figures/<figure_id>/output/runs

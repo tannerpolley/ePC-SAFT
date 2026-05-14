@@ -13,7 +13,7 @@ Package Surfaces
     Package/API/native/workflow contracts. Top-level domains stay broad, with second-level subgroup folders such as ``tests/api/runtime/``, ``tests/equilibrium/electrolyte/``, ``tests/native/cppad/``, and ``tests/workflows/repo/`` when a domain gets large. Default tests should stay fast and should not reproduce full scientific studies, regenerate plot galleries, or run long fitting/equilibrium sweeps.
 
 ``scripts/``
-    Repository tooling only: native builds, doctor checks, validation orchestration, packaging, docs, reference-data curation, LaTeX sync, and issue triage. Analysis-specific coordinators may live under ``analyses/<short_id>/scripts/``, while figure-local generation and rendering scripts belong under ``analyses/<short_id>/figures/<figure_id>/scripts/``.
+    Repository tooling only: native builds, doctor checks, validation orchestration, packaging, docs, reference-data curation, LaTeX sync, and issue triage. Analysis-specific coordinators may live under ``analyses/<category>/<short_id>/scripts/``, while figure-local generation and rendering scripts belong under ``analyses/<category>/<short_id>/figures/<figure_id>/scripts/``.
 
 ``data/reference/``
     Reusable checkout data: parameter datasets, benchmark records, literature tables, and curation sources that may be shared by several analyses or package tests.
@@ -24,13 +24,13 @@ Package Surfaces
 Analysis Workflows
 ------------------
 
-Scientific reproductions, validation plots, fits, and paper figure workflows live under ``analyses/<short_id>/``.
+Scientific reproductions, validation plots, fits, and paper figure workflows live under categorized analysis roots such as ``analyses/paper_validation/native/<short_id>/`` or ``analyses/data_validation/<short_id>/``.
 
 Use this layout for new analyses:
 
 .. code-block:: text
 
-   analyses/<short_id>/
+   analyses/<category>/<short_id>/
      README.md
      analysis.yaml
      references.bib
@@ -55,7 +55,7 @@ Use ``data/reference/`` for stable reusable inputs:
 - equilibrium benchmark fixtures under ``data/reference/equilibrium_benchmarks/``
 - reusable literature data such as ``MIAC``, ``osmotic``, ``pure_component``, and regression tables
 
-Use ``data/reference/`` for stable reusable inputs shared by multiple analyses. Use ``analyses/<short_id>/figures/<figure_id>/input/`` for hand-curated, digitized, or figure-owned parameter snapshots. Use ``analyses/<short_id>/figures/<figure_id>/output/`` for generated model tables and the exact plotted data retained with that figure.
+Use ``data/reference/`` for stable reusable inputs shared by multiple analyses. Use ``analyses/<category>/<short_id>/figures/<figure_id>/input/`` for hand-curated, digitized, or figure-owned parameter snapshots. Use ``analyses/<category>/<short_id>/figures/<figure_id>/output/`` for generated model tables and the exact plotted data retained with that figure.
 
 Output Policy
 -------------

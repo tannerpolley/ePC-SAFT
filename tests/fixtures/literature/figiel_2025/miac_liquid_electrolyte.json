@@ -9,7 +9,7 @@
       "data/reference/epcsaft_parameters/2025_Figiel/pure/any_solvent.csv",
       "data/reference/epcsaft_parameters/2025_Figiel/mixed/binary_interaction/k_ij.csv",
       "data/reference/MIAC/water/water-NaBr.csv",
-      "analyses/2025_figiel/figures/figure_5/output/figure_5_series.csv"
+      "analyses/paper_validation/native/2025_figiel/figures/figure_5/output/figure_5_series.csv"
     ]
   },
   "regression_probe": {

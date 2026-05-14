@@ -70,7 +70,7 @@ def test_confidence_suite_smoke_mode_writes_bounded_report(tmp_path: Path) -> No
 
 
 def test_khudaida_paper_validation_recompute_uses_native_lle() -> None:
-    common = importlib.import_module("analyses.2026_khudaida.scripts._common")
+    common = importlib.import_module("analyses.paper_validation.application.2026_khudaida.scripts._common")
     exp_row = common._experimental_rows(0.05, 293.15)[0]
     feed_row = common._digitized_feed_rows_for_figure(2, 293.15, 0.05)[0]
     result = common._solve_formula_feed(

@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from analyses.miac_fits.scripts import validate_miac_fits as vmf
+from analyses.data_validation.miac_fits.scripts import validate_miac_fits as vmf
 from scripts._epcsaft_oop import as_mixture
 
 

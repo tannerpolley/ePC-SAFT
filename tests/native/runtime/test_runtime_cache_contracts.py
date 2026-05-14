@@ -85,7 +85,7 @@ def test_runtime_cache_stats_track_warm_start_fallbacks_without_hiding_failures(
     assert after_failure["density_warm_start_fallbacks"] == 1
 
 def test_miac_electrolyte_variants_cover_water_nonaqueous_and_mixed_solvents() -> None:
-    from analyses.miac_fits.scripts import validate_miac_fits as vmf
+    from analyses.data_validation.miac_fits.scripts import validate_miac_fits as vmf
     from scripts._epcsaft_oop import as_mixture
 
     def find_combo(solvent_system: str, salt: str, comp_signature=None) -> dict[str, object]:
@@ -135,7 +135,7 @@ def test_miac_electrolyte_variants_cover_water_nonaqueous_and_mixed_solvents() -
         assert state.pressure() == pytest.approx(vmf.P_REF)
 
 def test_miac_activity_cache_reuse_keeps_results_stable() -> None:
-    from analyses.miac_fits.scripts import validate_miac_fits as vmf
+    from analyses.data_validation.miac_fits.scripts import validate_miac_fits as vmf
     from scripts._epcsaft_oop import as_mixture
 
     combo = next(

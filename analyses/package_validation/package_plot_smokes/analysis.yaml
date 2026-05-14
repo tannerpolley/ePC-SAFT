@@ -1,0 +1,11 @@
+analysis_id: package_plot_smokes
+title: Package plot output smoke tests
+kind: test_support
+status: migrated
+package: epcsaft
+commands:
+  baygi_smoke: uv run python analyses/package_validation/package_plot_smokes/figures/baygi_outputs/scripts/plot_baygi_outputs.py
+  run_all: uv run python analyses/package_validation/package_plot_smokes/scripts/run_all.py
+outputs:
+  figures: figures/<figure_id>/output
+  runs: figures/<figure_id>/output/runs

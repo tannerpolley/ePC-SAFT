@@ -2,10 +2,22 @@
 
 This directory contains source-controlled scientific analysis, validation, and figure workflows that are useful for developing and checking `epcsaft` but are not package runtime code.
 
-Each analysis should be self-contained:
+The analysis taxonomy is:
 
 ```text
-analyses/<short_id>/
+analyses/
+  _template/
+  paper_validation/
+    native/
+    application/
+  data_validation/
+  package_validation/
+```
+
+Each real analysis should be self-contained inside one of those category folders:
+
+```text
+analyses/<category>/<short_id>/
   README.md
   analysis.yaml
   config/

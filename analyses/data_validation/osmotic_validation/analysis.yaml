@@ -1,0 +1,10 @@
+analysis_id: osmotic_validation
+title: Osmotic coefficient validation
+kind: fit_validation
+status: migrated
+package: epcsaft
+commands:
+  validate: uv run python analyses/data_validation/osmotic_validation/figures/held_2014_repro/scripts/validation_2014_repro.py
+outputs:
+  figures: figures/<figure_id>/output
+  runs: figures/<figure_id>/output/runs

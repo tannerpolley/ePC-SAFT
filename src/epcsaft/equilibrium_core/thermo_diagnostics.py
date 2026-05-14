@@ -15,7 +15,7 @@ from epcsaft.equilibrium import EquilibriumOptions, _json_like, _phase_state
 from epcsaft.equilibrium_core.electrolyte_basis import build_electrolyte_basis
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-KHUIDAIDA_ANALYSIS = REPO_ROOT / "analyses" / "2026_khudaida"
+KHUIDAIDA_ANALYSIS = REPO_ROOT / "analyses" / "paper_validation" / "application" / "2026_khudaida"
 KHUIDAIDA_PARAMS = REPO_ROOT / "data" / "reference" / "epcsaft_parameters" / "2026_Khudaida"
 DATASET = "2026_Khudaida"
 SPECIES = ["H2O", "Ethanol", "Butanol", "Na+", "Cl-"]

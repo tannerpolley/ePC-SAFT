@@ -24,7 +24,8 @@ from epcsaft.equilibrium import EquilibriumOptions, _phase_state
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 BENCHMARK_ROOT = REPO_ROOT / "data" / "reference" / "equilibrium_benchmarks" / "electrolyte_lle"
-DEFAULT_OUTPUT_ROOT = REPO_ROOT / "analyses" / "2026_khudaida" / "results" / "final" / "reports"
+KHUIDAIDA_ANALYSIS = REPO_ROOT / "analyses" / "paper_validation" / "application" / "2026_khudaida"
+DEFAULT_OUTPUT_ROOT = KHUIDAIDA_ANALYSIS / "results" / "final" / "reports"
 PRESSURE_PA = 100000.0
 FORMULA_SPECIES = ("H2O", "Ethanol", "Butanol", "NaCl")
 EXPLICIT_SPECIES = ("H2O", "Ethanol", "Butanol", "Na+", "Cl-")
