@@ -54,6 +54,25 @@ def _figure_root_for(source_path: str | Path) -> Path | None:
     return None
 
 
+def _figure_root_for_script(source_path: str | Path) -> Path | None:
+    source = Path(source_path).resolve()
+    source_dir = source if source.is_dir() else source.parent
+    analysis_root = _analysis_root_for(source_dir)
+    scripts_root = analysis_root / "scripts"
+    try:
+        relative = source_dir.relative_to(scripts_root)
+    except ValueError:
+        return None
+    parts = [part for part in relative.parts if part not in ("", ".")]
+    if not parts:
+        return None
+    return analysis_root / FIGURES_DIR_NAME / Path(*parts)
+
+
+def _figure_root_for_any(source_path: str | Path) -> Path | None:
+    return _figure_root_for(source_path) or _figure_root_for_script(source_path)
+
+
 def _relative_script_parts(source_path: str | Path) -> list[str]:
     source = Path(source_path).resolve()
     source_dir = source if source.is_dir() else source.parent
@@ -100,6 +119,19 @@ def analysis_plot_set_dir(
     *,
     category: str | Path | Iterable[str | Path] | None = None,
 ) -> Path:
+    figure_root = _figure_root_for_any(source_path)
+    if figure_root is not None:
+        target = figure_root / FIGURE_OUTPUT_DIR_NAME
+        if category is not None:
+            if isinstance(category, (str, Path)):
+                category_parts = [category]
+            else:
+                category_parts = list(category)
+            if category_parts:
+                target = target.joinpath(*[part for part in category_parts if str(part) not in ("", ".")])
+        target.mkdir(parents=True, exist_ok=True)
+        return target
+
     analysis_root = _analysis_root_for(source_path)
     if category is None:
         plot_set_parts: list[str | Path] = _relative_script_parts(source_path)
@@ -136,18 +168,37 @@ def analysis_data_dir(
     kind: str | Path | Iterable[str | Path] = "input",
     category: str | Path | Iterable[str | Path] | None = None,
 ) -> Path:
-    analysis_root = _analysis_root_for(source_path)
     kind_parts = _data_kind_parts(kind)
+    figure_root = _figure_root_for_any(source_path)
+    explicit_category = category is not None
     if category is None:
-        category_parts: list[str | Path] = _relative_script_parts(source_path)
+        category_parts: list[str | Path] = []
     elif isinstance(category, (str, Path)):
         category_parts = [category]
     else:
         category_parts = list(category)
 
+    if figure_root is not None:
+        if kind_parts and kind_parts[0] == "input":
+            target = figure_root / FIGURE_INPUT_DIR_NAME
+            kind_tail = kind_parts[1:]
+        else:
+            target = figure_root / FIGURE_OUTPUT_DIR_NAME
+            kind_tail = kind_parts
+        if kind_tail:
+            target = target.joinpath(*kind_tail)
+        if explicit_category and category_parts:
+            target = target.joinpath(*[part for part in category_parts if str(part) not in ("", ".")])
+        target.mkdir(parents=True, exist_ok=True)
+        return target
+
+    analysis_root = _analysis_root_for(source_path)
     target = analysis_root / "data"
     if kind_parts:
         target = target.joinpath(*kind_parts)
+    if category_parts or not explicit_category:
+        if not explicit_category:
+            category_parts = _relative_script_parts(source_path)
     if category_parts:
         target = target.joinpath(*[part for part in category_parts if str(part) not in ("", ".")])
     target.mkdir(parents=True, exist_ok=True)
@@ -172,15 +223,27 @@ def analysis_runs_dir(
     *,
     category: str | Path | Iterable[str | Path] | None = None,
 ) -> Path:
-    analysis_root = _analysis_root_for(source_path)
+    explicit_category = category is not None
     if category is None:
-        category_parts: list[str | Path] = _relative_script_parts(source_path)
+        category_parts: list[str | Path] = []
     elif isinstance(category, (str, Path)):
         category_parts = [category]
     else:
         category_parts = list(category)
 
+    figure_root = _figure_root_for_any(source_path)
+    if figure_root is not None:
+        target = figure_root / FIGURE_OUTPUT_DIR_NAME / RUNS_DIR_NAME
+        if explicit_category and category_parts:
+            target = target.joinpath(*[part for part in category_parts if str(part) not in ("", ".")])
+        target.mkdir(parents=True, exist_ok=True)
+        return target
+
+    analysis_root = _analysis_root_for(source_path)
     target = analysis_root / RESULTS_DIR_NAME / RUNS_DIR_NAME
+    if category_parts or not explicit_category:
+        if not explicit_category:
+            category_parts = _relative_script_parts(source_path)
     if category_parts:
         target = target.joinpath(*[part for part in category_parts if str(part) not in ("", ".")])
     target.mkdir(parents=True, exist_ok=True)
@@ -200,7 +263,7 @@ def analysis_runs_path(
 
 
 def figure_input_dir(source_path: str | Path) -> Path:
-    figure_root = _figure_root_for(source_path)
+    figure_root = _figure_root_for_any(source_path)
     if figure_root is None:
         raise ValueError(f"path is not inside analyses/*/figures/*: {Path(source_path).resolve()}")
     target = figure_root / FIGURE_INPUT_DIR_NAME
@@ -215,7 +278,7 @@ def figure_input_path(source_path: str | Path, filename: str | Path) -> Path:
 
 
 def figure_output_dir(source_path: str | Path) -> Path:
-    figure_root = _figure_root_for(source_path)
+    figure_root = _figure_root_for_any(source_path)
     if figure_root is None:
         raise ValueError(f"path is not inside analyses/*/figures/*: {Path(source_path).resolve()}")
     target = figure_root / FIGURE_OUTPUT_DIR_NAME
@@ -250,7 +313,7 @@ def analysis_final_path(source_path: str | Path, filename: str | Path, category:
 
 def paper_validation_path(source_path: str | Path, filename: str | None = None) -> Path:
     source = Path(source_path).resolve()
-    figure_root = _figure_root_for(source)
+    figure_root = _figure_root_for_any(source)
     if figure_root is not None:
         return figure_output_path(source, filename if filename is not None else source.name)
     target = analysis_plot_set_dir(source, filename if filename is not None else source.name) / Path(
@@ -261,7 +324,7 @@ def paper_validation_path(source_path: str | Path, filename: str | None = None) 
 
 
 def paper_validation_dir(source_path: str | Path) -> Path:
-    figure_root = _figure_root_for(source_path)
+    figure_root = _figure_root_for_any(source_path)
     if figure_root is not None:
         return figure_output_dir(source_path)
     return analysis_plot_set_dir(source_path)
@@ -269,7 +332,7 @@ def paper_validation_dir(source_path: str | Path) -> Path:
 
 def paper_validation_output_path(path: str | Path) -> Path:
     source = Path(path).resolve()
-    figure_root = _figure_root_for(source)
+    figure_root = _figure_root_for_any(source)
     if figure_root is not None:
         if FIGURE_OUTPUT_DIR_NAME in source.parts:
             target = source
@@ -295,15 +358,19 @@ def paper_validation_output_path(path: str | Path) -> Path:
 def fits_plot_path(*parts: str | Path) -> Path:
     raw_parts = [str(part) for part in parts]
     analysis_root = FITS_CATEGORY_ROOTS.get(raw_parts[0], FITS_ANALYSIS_ROOT) if raw_parts else FITS_ANALYSIS_ROOT
+    figure_root = analysis_root / FIGURES_DIR_NAME
     if raw_parts and Path(raw_parts[-1]).suffix:
         filename = Path(raw_parts[-1])
-        plot_set_parts = raw_parts[:-1]
-        if _is_placeholder_filename(filename):
-            target = _plot_set_dir(analysis_root, plot_set_parts) / filename
-        else:
-            target = _plot_set_dir(analysis_root, plot_set_parts, filename) / filename
+        figure_parts = raw_parts[:-1]
+        target = figure_root
+        if figure_parts:
+            target = target.joinpath(*figure_parts)
+        target = target / FIGURE_OUTPUT_DIR_NAME / filename
     else:
-        target = _plot_set_dir(analysis_root, raw_parts)
+        target = figure_root
+        if raw_parts:
+            target = target.joinpath(*raw_parts)
+        target = target / FIGURE_OUTPUT_DIR_NAME
     target.parent.mkdir(parents=True, exist_ok=True)
     return target
 
@@ -339,7 +406,10 @@ def test_plot_path(
 ) -> Path:
     category_parts = _test_plot_category_parts(category)
     if category_parts is not None:
-        target = _plot_set_dir(TEST_PLOTS_ANALYSIS_ROOT, [*category_parts], filename) / Path(filename)
+        target = TEST_PLOTS_ANALYSIS_ROOT / FIGURES_DIR_NAME
+        if category_parts:
+            target = target.joinpath(*category_parts)
+        target = target / FIGURE_OUTPUT_DIR_NAME / Path(filename)
         target.parent.mkdir(parents=True, exist_ok=True)
         return target
 
@@ -355,7 +425,10 @@ def test_plot_path(
         if module_name.startswith("test_"):
             module_name = module_name.removeprefix("test_")
         rel_parts = [*rel_parts[:-1], module_name]
-    target = _plot_set_dir(TEST_PLOTS_ANALYSIS_ROOT, rel_parts, filename) / Path(filename)
+    target = TEST_PLOTS_ANALYSIS_ROOT / FIGURES_DIR_NAME
+    if rel_parts:
+        target = target.joinpath(*rel_parts)
+    target = target / FIGURE_OUTPUT_DIR_NAME / Path(filename)
     target.parent.mkdir(parents=True, exist_ok=True)
     return target
 

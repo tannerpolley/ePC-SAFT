@@ -2,7 +2,7 @@
 
 Mean ionic activity coefficient fitting and validation workflows.
 
-Reusable input datasets are loaded from `data/reference/MIAC/**`. For new or reorganized figure workflows, keep each retained figure under its own `figures/<figure_id>/` folder with local `input/`, `output/`, and `scripts/` subfolders. Historical MIAC fit outputs that still live under `results/` should migrate toward that figure-owned layout instead of adding new analysis-level plot-set roots.
+Reusable input datasets are loaded from `data/reference/MIAC/**`. For new or reorganized figure workflows, keep each retained figure under its own `figures/<figure_id>/` folder with local `input/`, `output/`, and `scripts/` subfolders. Historical MIAC fit outputs now belong under the figure-owned layout instead of the old analysis-level plot-set roots.
 
 The main validation entrypoint is:
 

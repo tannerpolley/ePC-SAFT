@@ -591,8 +591,7 @@ def _figure_data_dir(figure: int) -> Path:
 
 def _khudaida_analysis_data_dir(result_set: str) -> Path:
     candidates = [
-        KHUIDAIDA_ANALYSIS / "results" / result_set / "data",
-        KHUIDAIDA_ANALYSIS / "scripts" / result_set / "data",
+        KHUIDAIDA_ANALYSIS / "figures" / result_set / "output" / "data",
     ]
     for path in candidates:
         if path.is_dir():

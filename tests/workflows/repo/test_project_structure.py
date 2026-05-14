@@ -17,6 +17,7 @@ ANALYSIS_IDS = {
     "osmotic_validation",
     "package_plot_smokes",
 }
+MIGRATED_ANALYSIS_IDS = ANALYSIS_IDS - {"2025_figiel"}
 TEST_SUBGROUP_ROOTS = {
     "tests/api/package",
     "tests/api/parameters",
@@ -112,6 +113,14 @@ def test_analysis_metadata_does_not_reference_removed_final_results_layout() -> 
     for path in metadata_files:
         text = path.read_text(encoding="utf-8")
         assert "results/final" not in text, path
+
+
+def test_migrated_analysis_metadata_uses_figure_owned_outputs() -> None:
+    for analysis_id in sorted(MIGRATED_ANALYSIS_IDS):
+        path = REPO_ROOT / "analyses" / analysis_id / "analysis.yaml"
+        text = path.read_text(encoding="utf-8")
+        assert "figures: figures/<figure_id>/output" in text, path
+        assert "runs: figures/<figure_id>/output/runs" in text, path
 
 
 def test_analysis_template_uses_figure_owned_outputs() -> None:

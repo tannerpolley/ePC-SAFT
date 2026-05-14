@@ -11,7 +11,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[4]
 PLOT_ROOT = REPO_ROOT / "analyses" / "2015_baygi"
 SCRIPT_ROOT = PLOT_ROOT / "scripts"
-REGRESSED_PARAMETERS = PLOT_ROOT / "results" / "regressed_parameters" / "regressed_parameters.csv"
+REGRESSED_PARAMETERS = PLOT_ROOT / "figures" / "regressed_parameters" / "output" / "regressed_parameters.csv"
 RUN_ALL = SCRIPT_ROOT / "run_all.py"
 EXPECTED_LABELS = {"DIPPR", "MEA 2B", "MEA 3B", "MEA 4C"}
 EXPECTED_FIGURES = ("figure_2", "figure_3", "figure_2_regressed", "figure_3_regressed")
@@ -44,7 +44,7 @@ def _seed_cached_baygi_outputs() -> None:
 
     for figure in EXPECTED_FIGURES:
         common.write_csv_rows(
-            PLOT_ROOT / "results" / figure / "data" / f"{figure}_diagnostics.csv",
+            PLOT_ROOT / "figures" / figure / "output" / "data" / f"{figure}_diagnostics.csv",
             fields,
             [*dippr, *diagnostics],
         )
@@ -122,7 +122,7 @@ def _aard_by_series(rows: list[dict[str, str]], field: str) -> dict[str, float]:
 def test_2015_baygi_figure_2_and_3_workflow_outputs_expected_series():
     assert REGRESSED_PARAMETERS.exists()
     for figure in EXPECTED_FIGURES:
-        figure_dir = PLOT_ROOT / "results" / figure
+        figure_dir = PLOT_ROOT / "figures" / figure / "output"
         image = figure_dir / f"{figure}.png"
         svg = figure_dir / f"{figure}.svg"
         plot_data = figure_dir / f"{figure}.csv"
@@ -144,10 +144,10 @@ def test_2015_baygi_figure_2_and_3_workflow_outputs_expected_series():
 
 
 def test_2015_baygi_figures_report_numeric_fit_quality():
-    figure_2_rows = _diagnostic_rows(PLOT_ROOT / "results" / "figure_2" / "data" / "figure_2_diagnostics.csv")
-    figure_3_rows = _diagnostic_rows(PLOT_ROOT / "results" / "figure_3" / "data" / "figure_3_diagnostics.csv")
-    figure_2_metrics = _metric_rows(PLOT_ROOT / "results" / "figure_2" / "data" / "figure_2_metrics.csv")
-    figure_3_metrics = _metric_rows(PLOT_ROOT / "results" / "figure_3" / "data" / "figure_3_metrics.csv")
+    figure_2_rows = _diagnostic_rows(PLOT_ROOT / "figures" / "figure_2" / "output" / "data" / "figure_2_diagnostics.csv")
+    figure_3_rows = _diagnostic_rows(PLOT_ROOT / "figures" / "figure_3" / "output" / "data" / "figure_3_diagnostics.csv")
+    figure_2_metrics = _metric_rows(PLOT_ROOT / "figures" / "figure_2" / "output" / "data" / "figure_2_metrics.csv")
+    figure_3_metrics = _metric_rows(PLOT_ROOT / "figures" / "figure_3" / "output" / "data" / "figure_3_metrics.csv")
 
     psat_aard = _aard_by_series(figure_2_rows, "P_Pa")
     rho_aard = _aard_by_series(figure_3_rows, "rho_mol_m3")
