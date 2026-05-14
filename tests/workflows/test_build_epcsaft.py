@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from scripts import build_epcsaft
+from scripts.dev import build_epcsaft
 
 
 def test_build_script_rejects_clean_build_only_combination(monkeypatch, capsys) -> None:

@@ -17,7 +17,7 @@ function Invoke-Git {
     }
 }
 
-$repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
+$repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "../..")).Path
 $sourceRoot = Join-Path $repoRoot "docs\latex"
 if (-not (Test-Path -LiteralPath $sourceRoot)) {
     throw "Missing LaTeX source directory: $sourceRoot"
@@ -26,7 +26,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $sourceRoot "equations.tex"))) {
     throw "Missing LaTeX source file: $(Join-Path $sourceRoot 'equations.tex')"
 }
 if (-not (Test-Path -LiteralPath (Join-Path $MirrorRoot ".git"))) {
-    throw "Missing LaTeX mirror Git repository: $MirrorRoot. Run scripts\setup_latex_mirror.ps1 first."
+    throw "Missing LaTeX mirror Git repository: $MirrorRoot. Run scripts\docs\setup_latex_mirror.ps1 first."
 }
 
 $actualRemote = (& git -C $MirrorRoot remote get-url origin).Trim()

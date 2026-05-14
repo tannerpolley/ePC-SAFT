@@ -5,25 +5,25 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 CHECK_COMMANDS: dict[str, tuple[tuple[str, ...], ...]] = {
     "quick": (
-        ("scripts/doctor.py",),
+        ("scripts/dev/doctor.py",),
         ("run_pytest.py", "-q"),
     ),
     "confidence": (
-        ("scripts/doctor.py",),
+        ("scripts/dev/doctor.py",),
         ("run_pytest.py", "--confidence", "-q"),
     ),
     "docs": (("-m", "sphinx", "-b", "html", "docs", "build/docs-html"),),
     "full": (
-        ("scripts/doctor.py",),
+        ("scripts/dev/doctor.py",),
         ("run_pytest.py", "--all", "-q"),
     ),
     "ceres-cppad": (
-        ("scripts/build_epcsaft.py",),
+        ("scripts/dev/build_epcsaft.py",),
         (
             "run_pytest.py",
             "tests/native/test_ceres_pure_regression.py",

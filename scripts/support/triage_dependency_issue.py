@@ -171,12 +171,12 @@ def recommended_commands(
     if any(field in missing_fields for field in GATING_FIELDS):
         commands.append(f"gh issue edit {number} --repo {REPOSITORY} --add-label needs-repro")
         return commands
-    commands.append(f"uv run python scripts/triage_dependency_issue.py --issue {number} --json")
+    commands.append(f"uv run python scripts/support/triage_dependency_issue.py --issue {number} --json")
     commands.append("uv run python run_pytest.py <focused-test-targets> -q")
     if classification in {"native", "packaging"}:
-        commands.append("uv run python scripts/build_epcsaft.py")
-        commands.append("uv run python scripts/doctor.py")
-    commands.append("uv run python scripts/validate_project.py quick")
+        commands.append("uv run python scripts/dev/build_epcsaft.py")
+        commands.append("uv run python scripts/dev/doctor.py")
+    commands.append("uv run python scripts/dev/validate_project.py quick")
     return commands
 
 

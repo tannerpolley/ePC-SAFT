@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 import run_pytest
-from scripts import doctor, validate_project
+from scripts.dev import doctor, validate_project
 
 
 def test_confidence_slice_extends_generic_targets_without_changing_generic():
@@ -45,7 +45,7 @@ def test_all_shortcut_is_the_explicit_exhaustive_pytest_route():
 
 def test_validate_project_modes_route_to_standard_validation_bundles():
     assert validate_project.CHECK_COMMANDS["quick"] == (
-        ("scripts/doctor.py",),
+        ("scripts/dev/doctor.py",),
         ("run_pytest.py", "-q"),
     )
     assert all(
@@ -55,11 +55,11 @@ def test_validate_project_modes_route_to_standard_validation_bundles():
     )
     assert "plots" not in validate_project.CHECK_COMMANDS
     assert validate_project.CHECK_COMMANDS["full"] == (
-        ("scripts/doctor.py",),
+        ("scripts/dev/doctor.py",),
         ("run_pytest.py", "--all", "-q"),
     )
     assert validate_project.CHECK_COMMANDS["ceres-cppad"] == (
-        ("scripts/build_epcsaft.py",),
+        ("scripts/dev/build_epcsaft.py",),
         (
             "run_pytest.py",
             "tests/native/test_ceres_pure_regression.py",
@@ -80,7 +80,7 @@ def test_doctor_tracks_native_symbols_added_by_recent_workflows():
 def test_doctor_recommends_ninja_migration_for_mingw_build_tree():
     command = doctor._ninja_migration_recommendation("MinGW Makefiles", "C:/tools/ninja.exe")
 
-    assert command == "uv run python scripts\\build_epcsaft.py --clean --generator ninja"
+    assert command == "uv run python scripts\\dev\\build_epcsaft.py --clean --generator ninja"
 
 
 def test_doctor_does_not_recommend_ninja_migration_when_already_ninja():

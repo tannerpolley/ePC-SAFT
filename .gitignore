@@ -26,6 +26,8 @@ analyses/**/.ipynb_checkpoints/
 analyses/**/data/interim/
 analyses/**/data/raw/large/
 analyses/**/results/**/_draft/
+scripts/fits/
+scripts/paper_validation/
 docs/latex/out/
 docs/latex/references.bib
 data/MIAC/*/plot_fits/

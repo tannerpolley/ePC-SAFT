@@ -1,6 +1,6 @@
 # Equation Index
 
-This file is generated from `docs/latex/equations.tex` by `scripts/sync_equation_registry.py`.
+This file is generated from `docs/latex/equations.tex` by `scripts/docs/sync_equation_registry.py`.
 The LaTeX document remains the current source of truth; this Markdown view and `docs/equations_registry.yaml` stay aligned with it.
 
 ## Parameter Setup

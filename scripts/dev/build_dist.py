@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 DIST_ROOT = REPO_ROOT / "dist"
 TEMPFILE_SITE = REPO_ROOT / "scripts" / "sandbox_tempfile_site"
 

@@ -46,7 +46,7 @@ def test_literature_benchmark_script_runs_and_writes_json(tmp_path):
     result = subprocess.run(
         [
             sys.executable,
-            "scripts/benchmark_literature_suite.py",
+            "scripts/benchmarks/benchmark_literature_suite.py",
             "--case",
             "figiel_2025_ssm_ds_born",
             "--json",

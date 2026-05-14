@@ -10,20 +10,20 @@ def _read(path: str) -> str:
 
 
 def test_bootstrap_scripts_use_normal_build_and_fast_suite() -> None:
-    for path in ("scripts/bootstrap_uv.ps1", "scripts/bootstrap_uv.sh"):
+    for path in ("scripts/dev/bootstrap_uv.ps1", "scripts/dev/bootstrap_uv.sh"):
         content = _read(path)
 
         assert "uv python pin 3.13" in content
         assert "uv sync --no-install-project" in content
-        assert "scripts/build_epcsaft.py --clean" not in content
-        assert "scripts\\build_epcsaft.py --clean" not in content
-        assert "scripts\\validate_project.py quick" in content or "scripts/validate_project.py quick" in content
+        assert "scripts/dev/build_epcsaft.py --clean" not in content
+        assert "scripts\\dev\\build_epcsaft.py --clean" not in content
+        assert "scripts\\dev\\validate_project.py quick" in content or "scripts/dev/validate_project.py quick" in content
         assert "run_pytest.py tests/test_runtime.py -q" not in content
         assert "run_pytest.py tests\\test_runtime.py -q" not in content
 
 
 def test_clean_scripts_announce_repair_only_scope() -> None:
-    for path in ("scripts/clean_build.ps1", "scripts/clean_build.sh"):
+    for path in ("scripts/dev/clean_build.ps1", "scripts/dev/clean_build.sh"):
         content = _read(path)
 
         assert "REPAIR-ONLY" in content
@@ -60,7 +60,7 @@ def test_docs_make_confidence_suite_the_default_runtime_check() -> None:
     assert "publishing" in docs_index
     assert "native/equation debugging guide" not in getting_started
     assert "Start every fresh source checkout with this sequence" in development_workflows
-    assert "uv run python scripts/build_epcsaft.py --build-only --parallel 10" in development_workflows
+    assert "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10" in development_workflows
     assert "uv run python run_pytest.py --runtime -q" in development_workflows
     assert "uv run python run_pytest.py --profile -q" in development_workflows
     assert "uv run python run_pytest.py --profile-full -q -s" in development_workflows
@@ -70,7 +70,7 @@ def test_docs_make_confidence_suite_the_default_runtime_check() -> None:
     assert "``--profile`` is the quick runtime-only profile" in development_workflows
     assert "``--profile-full`` runs runtime, MIAC, and regression profiles" in development_workflows
     assert "allow at least 120 seconds" in development_workflows
-    assert "uv run python scripts/build_dist.py" in development_workflows
+    assert "uv run python scripts/dev/build_dist.py" in development_workflows
     assert "Do not use ``--clean`` for routine validation" in development_workflows
 
 

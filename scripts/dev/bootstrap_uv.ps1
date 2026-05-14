@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$RepoRoot = Split-Path -Parent $ScriptDir
+$RepoRoot = Split-Path -Parent (Split-Path -Parent $ScriptDir)
 Set-Location $RepoRoot
 
 if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
@@ -11,6 +11,6 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
 uv --version
 uv python pin 3.13
 uv sync --no-install-project
-uv run python scripts\build_epcsaft.py
-uv run python scripts\doctor.py
-uv run python scripts\validate_project.py quick
+uv run python scripts\dev\build_epcsaft.py
+uv run python scripts\dev\doctor.py
+uv run python scripts\dev\validate_project.py quick

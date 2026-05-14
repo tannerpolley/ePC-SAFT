@@ -10,7 +10,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 BUILD_DIR = REPO_ROOT / "build" / "dev"
 PACKAGE_DIR = REPO_ROOT / "src" / "epcsaft"
 LOG_FILE_NAME = "build_epcsaft.log"
@@ -159,7 +159,7 @@ def _repo_build_processes() -> list[str]:
     for line in output.splitlines():
         process = line.strip()
         normalized = process.lower().replace("\\", "/")
-        is_build_script = "scripts/build_epcsaft.py" in normalized and "--status" not in normalized
+        is_build_script = "scripts/dev/build_epcsaft.py" in normalized and "--status" not in normalized
         is_cmake_build = "cmake" in normalized and "--build" in normalized
         is_ninja_build = "ninja.exe" in normalized
         if is_build_script or is_cmake_build or is_ninja_build:

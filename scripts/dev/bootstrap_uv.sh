@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 cd "${REPO_ROOT}"
 
 if ! command -v uv >/dev/null 2>&1; then
@@ -13,6 +13,6 @@ fi
 uv --version
 uv python pin 3.13
 uv sync --no-install-project
-uv run python scripts/build_epcsaft.py
-uv run python scripts/doctor.py
-uv run python scripts/validate_project.py quick
+uv run python scripts/dev/build_epcsaft.py
+uv run python scripts/dev/doctor.py
+uv run python scripts/dev/validate_project.py quick

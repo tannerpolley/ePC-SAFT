@@ -75,10 +75,10 @@ For normal ePC-SAFT source development, keep using the explicit in-place dev bui
 
 .. code-block:: powershell
 
-   uv run python scripts\build_epcsaft.py
-   uv run python scripts\build_epcsaft.py --build-only --parallel 10
+   uv run python scripts\dev\build_epcsaft.py
+   uv run python scripts\dev\build_epcsaft.py --build-only --parallel 10
 
-New dev build configurations prefer Ninja when available. Existing ``build/dev`` trees keep their configured generator until you run the coordinated repair command ``uv run python scripts\build_epcsaft.py --clean --generator ninja``.
+New dev build configurations prefer Ninja when available. Existing ``build/dev`` trees keep their configured generator until you run the coordinated repair command ``uv run python scripts\dev\build_epcsaft.py --clean --generator ninja``.
 
 Windows ``_core`` lock failures
 -------------------------------

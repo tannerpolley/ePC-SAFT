@@ -16,7 +16,7 @@ if (-not (Test-Path -LiteralPath $hookDir)) {
     New-Item -ItemType Directory -Path $hookDir | Out-Null
 }
 
-$syncScript = (Join-Path $repoRoot "scripts/sync_latex_mirror.ps1").Replace("\", "/")
+$syncScript = (Join-Path $repoRoot "scripts/docs/sync_latex_mirror.ps1").Replace("\", "/")
 $hookContent = @"
 #!/bin/sh
 set -eu

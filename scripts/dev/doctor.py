@@ -6,7 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = REPO_ROOT / "src"
 DEV_BUILD_CACHE = REPO_ROOT / "build" / "dev" / "CMakeCache.txt"
 STALE_TRACKED_REPORTS: tuple[Path, ...] = ()
@@ -82,7 +82,7 @@ def _cmake_generator(cache_path: Path = DEV_BUILD_CACHE) -> str | None:
 
 def _ninja_migration_recommendation(generator: str | None, ninja_path: str) -> str | None:
     if generator == "MinGW Makefiles" and ninja_path != "<missing>":
-        return "uv run python scripts\\build_epcsaft.py --clean --generator ninja"
+        return "uv run python scripts\\dev\\build_epcsaft.py --clean --generator ninja"
     return None
 
 
@@ -148,11 +148,11 @@ def main() -> int:
         return 1
     if core_path is None:
         print("install_state: missing-core")
-        print("next_command: uv run python scripts\\build_epcsaft.py")
+        print("next_command: uv run python scripts\\dev\\build_epcsaft.py")
         return 1
     if missing_core_symbols:
         print("install_state: stale-core")
-        print("next_command: uv run python scripts\\build_epcsaft.py")
+        print("next_command: uv run python scripts\\dev\\build_epcsaft.py")
         return 1
     print("install_state: current")
     print("next_command: none")

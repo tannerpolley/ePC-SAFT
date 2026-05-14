@@ -6,7 +6,7 @@ from pathlib import Path
 
 import yaml
 
-from scripts import triage_dependency_issue as triage
+from scripts.support import triage_dependency_issue as triage
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ISSUE_FORMS = (
@@ -104,7 +104,7 @@ def test_complete_downstream_issue_returns_ready_triage() -> None:
     assert result.ready is True
     assert result.missing_fields == []
     assert result.classification == "solver"
-    assert "uv run python scripts/validate_project.py quick" in result.recommended_commands
+    assert "uv run python scripts/dev/validate_project.py quick" in result.recommended_commands
     assert result.fields["Imported epcsaft path"].endswith("epcsaft\\__init__.py")
 
 

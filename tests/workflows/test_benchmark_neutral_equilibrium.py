@@ -54,7 +54,7 @@ def test_neutral_benchmark_script_runs_tp_flash_case_and_writes_json(tmp_path):
     result = subprocess.run(
         [
             sys.executable,
-            "scripts/benchmark_neutral_equilibrium.py",
+            "scripts/benchmarks/benchmark_neutral_equilibrium.py",
             "--case",
             "tp_flash",
             "--warmup",

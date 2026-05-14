@@ -7,7 +7,7 @@ import pytest
 import tomllib
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT_PATH = REPO_ROOT / "scripts" / "build_epcsaft.py"
+SCRIPT_PATH = REPO_ROOT / "scripts" / "dev" / "build_epcsaft.py"
 
 
 def _load_script():

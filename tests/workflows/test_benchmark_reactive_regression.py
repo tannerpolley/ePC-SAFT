@@ -201,7 +201,7 @@ def test_reactive_regression_benchmark_script_executes_and_writes_json(tmp_path)
     result = subprocess.run(
         [
             sys.executable,
-            "scripts/benchmark_reactive_regression.py",
+            "scripts/benchmarks/benchmark_reactive_regression.py",
             "--case",
             "reactive_speciation_batch_tiny",
             "--warmup",

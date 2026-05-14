@@ -8,7 +8,7 @@ This compares:
 Run directly with:
 
     set ePCSAFT_RUN_PERF=1
-    uv run python scripts\profile_regression_runtime.py
+    uv run python scripts\benchmarks\profile_regression_runtime.py
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 

@@ -29,7 +29,7 @@ jobs:
         run: uv python install 3.13
 
       - name: Build default native profile
-        run: uv run python scripts/build_epcsaft.py --clean
+        run: uv run python scripts/dev/build_epcsaft.py --clean
 
       - name: Validate dependency-gated capabilities
         run: uv run python run_pytest.py tests/api/test_runtime_capabilities_dependency_gates.py tests/native/test_cppad_runtime_contract.py tests/native/test_ceres_cppad_build_contract.py -q
@@ -51,7 +51,7 @@ jobs:
         run: uv python install 3.13
 
       - name: Build CppAD native profile
-        run: uv run python scripts/build_epcsaft.py --clean --enable-cppad
+        run: uv run python scripts/dev/build_epcsaft.py --clean --enable-cppad
 
       - name: Validate CppAD runtime contract
         run: uv run python run_pytest.py tests/api/test_runtime_capabilities_dependency_gates.py tests/native/test_cppad_runtime_contract.py -q

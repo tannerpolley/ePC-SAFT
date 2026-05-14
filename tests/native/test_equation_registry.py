@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts import sync_equation_registry
+from scripts.docs import sync_equation_registry
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TEX_PATH = REPO_ROOT / "docs" / "latex" / "equations.tex"
@@ -41,7 +41,7 @@ def test_equation_registry_outputs_are_synced() -> None:
     assert TEX_PATH.exists(), "docs/latex/equations.tex must be present as a tracked repo file"
 
     result = subprocess.run(
-        [sys.executable, "scripts/sync_equation_registry.py", "--check"],
+        [sys.executable, "scripts/docs/sync_equation_registry.py", "--check"],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
@@ -54,7 +54,7 @@ def test_equation_registry_strict_traceability_passes_current_registry() -> None
     assert TEX_PATH.exists(), "docs/latex/equations.tex must be present as a tracked repo file"
 
     result = subprocess.run(
-        [sys.executable, "scripts/sync_equation_registry.py", "--check", "--strict-traceability"],
+        [sys.executable, "scripts/docs/sync_equation_registry.py", "--check", "--strict-traceability"],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
@@ -189,7 +189,7 @@ def test_validate_links_fails_unknown_cpp_eqid() -> None:
 
 def test_sync_equation_registry_help_includes_strict_traceability_flag() -> None:
     result = subprocess.run(
-        [sys.executable, "scripts/sync_equation_registry.py", "--help"],
+        [sys.executable, "scripts/docs/sync_equation_registry.py", "--help"],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,

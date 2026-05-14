@@ -8,7 +8,7 @@ import re
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 TEX_PATH = REPO_ROOT / "docs" / "latex" / "equations.tex"
 MARKDOWN_PATH = REPO_ROOT / "docs" / "equations.md"
 REGISTRY_PATH = REPO_ROOT / "docs" / "equations_registry.yaml"
@@ -263,7 +263,7 @@ def yaml_quote(value: object) -> str:
 
 def render_yaml(entries: list[dict]) -> str:
     out: list[str] = []
-    out.append("# Generated from docs/latex/equations.tex by scripts/sync_equation_registry.py")
+    out.append("# Generated from docs/latex/equations.tex by scripts/docs/sync_equation_registry.py")
     out.append("")
     for entry in entries:
         out.append(f"- eqid: {yaml_quote(entry['eqid'])}")
@@ -301,7 +301,7 @@ def render_markdown(entries: list[dict]) -> str:
     out: list[str] = []
     out.append("# Equation Index")
     out.append("")
-    out.append("This file is generated from `docs/latex/equations.tex` by `scripts/sync_equation_registry.py`.")
+    out.append("This file is generated from `docs/latex/equations.tex` by `scripts/docs/sync_equation_registry.py`.")
     out.append(
         "The LaTeX document remains the current source of truth; this Markdown view and `docs/equations_registry.yaml` stay aligned with it."
     )

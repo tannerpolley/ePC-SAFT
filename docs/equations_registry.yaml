@@ -1,4 +1,4 @@
-# Generated from docs/latex/equations.tex by scripts/sync_equation_registry.py
+# Generated from docs/latex/equations.tex by scripts/docs/sync_equation_registry.py
 
 - eqid: "m_bar"
   section: "Parameter Setup"
