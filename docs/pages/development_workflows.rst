@@ -144,7 +144,7 @@ Use the smallest relevant test first, then run ``scripts/dev/validate_project.py
 
 - Python wrapper/API changes: ``uv run python run_pytest.py --api -q`` first, then ``uv run python run_pytest.py --confidence -q``.
 - Native/equation changes: ``uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10`` first, then ``uv run python run_pytest.py --runtime -q``, then ``uv run python run_pytest.py --confidence -q``.
-- Equation traceability changes: ``uv run python scripts/docs/sync_equation_registry.py --check --strict-traceability`` then ``uv run python run_pytest.py tests/native/test_equation_registry.py -q``.
+- Equation traceability changes: ``uv run python scripts/docs/sync_equation_registry.py --check --strict-traceability`` then ``uv run python run_pytest.py tests/native/contracts/test_equation_registry.py -q``.
 - Performance claims: ``uv run python run_pytest.py --profile -q -s`` is the quick runtime-only profile; use ``uv run python run_pytest.py --profile-full -q -s`` only for broad speed claims. Read the generated ``build/runtime_profile/*.md`` reports. Do not rely on skipped profile tests or code inspection alone.
 - Plot asset changes: run the owning ``analyses/<short_id>/scripts`` entrypoint or a targeted opt-in test under ``analyses/package_plot_smokes/tests`` only when regenerating local plot outputs is explicitly part of the task.
 

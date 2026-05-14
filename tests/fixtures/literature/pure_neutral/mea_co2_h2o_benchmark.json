@@ -4,7 +4,7 @@
   "source": {
     "paper": "Baygi and Pahlavanzadeh 2015",
     "local_asset": "docs/papers/md/Baygi and Pahlavanzadeh - 2015 - Application of the PC-SAFT equation of state for modeling CO2 solub.md",
-    "notes": "Fixture mirrors the local MEA/CO2/H2O benchmark already used by tests/regression/test_mea_co2_h2o_pure_parameter_benchmark.py."
+    "notes": "Fixture mirrors the local MEA/CO2/H2O benchmark already used by tests/regression/literature/test_mea_co2_h2o_pure_parameter_benchmark.py."
   },
   "components": [
     "MEA",

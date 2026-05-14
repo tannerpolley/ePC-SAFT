@@ -40,7 +40,7 @@ def main() -> None:
     if not args.skip_backend:
         _run([sys.executable, "scripts/build_epcsaft.py"])
         _run([sys.executable, "scripts/doctor.py"])
-        _run([sys.executable, "run_pytest.py", "tests/api/test_runtime.py", "-q"])
+        _run([sys.executable, "run_pytest.py", "tests/api/runtime/test_runtime_exports_and_metadata.py", "-q"])
 
     failures = figure_data.compare_all(rtol=args.rtol, atol=args.atol)
     if failures:

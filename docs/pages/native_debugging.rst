@@ -54,7 +54,7 @@ Native owner comments use ``// EqID: <id>`` near the implementing C++ function. 
 .. code-block:: powershell
 
    uv run python scripts/docs/sync_equation_registry.py --check --strict-traceability
-   uv run python run_pytest.py tests/native/test_equation_registry.py -q
+   uv run python run_pytest.py tests/native/contracts/test_equation_registry.py -q
 
 See :doc:`equation_traceability` for the EqID classification and owner-comment checklist.
 
@@ -67,4 +67,4 @@ Debugging checklist
 - Request contribution terms with ``return_contribution_terms=True`` when debugging residual Helmholtz, compressibility factor, chemical potential, or fugacity totals.
 - Request contribution terms and compare ``hc``, ``disp``, ``assoc``, ``ion``, and ``born`` totals before adding temporary native instrumentation.
 - Run ``uv run python scripts/docs/sync_equation_registry.py --check --strict-traceability`` before making equation ownership claims. If that check passes but registry entries still show ``cpp_refs: []``, treat those EqIDs as documentation or supplemental equations unless the task proves they should map to implementation code.
-- Use ``tests/native/test_runtime_contracts.py`` for fast neutral and ionic contribution-map regression coverage.
+- Use ``tests/native/runtime/`` for fast neutral closure, contribution-map, and runtime-cache regression coverage.

@@ -47,7 +47,7 @@ For equation work, run:
 
    uv run python scripts/docs/sync_equation_registry.py
    uv run python scripts/docs/sync_equation_registry.py --check --strict-traceability
-   uv run python run_pytest.py tests/native/test_equation_registry.py -q
+   uv run python run_pytest.py tests/native/contracts/test_equation_registry.py -q
 
 Before handoff after native/equation changes, also run:
 

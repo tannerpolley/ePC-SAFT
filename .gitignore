@@ -1,5 +1,7 @@
 docs/_build/
 build/
+!tests/workflows/build/
+!tests/workflows/build/**
 .worktrees/
 dist/
 __pycache__
