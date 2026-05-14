@@ -6,7 +6,7 @@ Add a deterministic repo-owned cleanup workflow for JetBrains project metadata s
 
 ## Scope For The Follow-On Agent
 
-Implement a repo-owned script at `scripts/configure_jetbrains_project.py` and keep this work separate from the user-level Codex migration tranche.
+Implement a repo-owned script at `scripts/dev/configure_jetbrains_project.py` and keep this work separate from the user-level Codex migration tranche.
 
 The script should:
 
@@ -46,9 +46,9 @@ Warn about stale module dependencies that no longer exist in `.idea/modules.xml`
 Run:
 
 ```powershell
-uv run python scripts/configure_jetbrains_project.py --dry-run
-uv run python scripts/configure_jetbrains_project.py --apply
-uv run python scripts/configure_jetbrains_project.py --dry-run
+uv run python scripts/dev/configure_jetbrains_project.py --dry-run
+uv run python scripts/dev/configure_jetbrains_project.py --apply
+uv run python scripts/dev/configure_jetbrains_project.py --dry-run
 ```
 
 The second dry run must report no pending changes.
@@ -56,7 +56,7 @@ The second dry run must report no pending changes.
 Then inspect:
 
 ```powershell
-git diff -- .idea scripts/configure_jetbrains_project.py
+git diff -- .idea scripts/dev/configure_jetbrains_project.py
 ```
 
 ## Repo Policy Updates To Include In That Tranche
