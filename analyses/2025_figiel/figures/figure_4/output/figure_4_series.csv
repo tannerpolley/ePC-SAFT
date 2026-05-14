@@ -1,0 +1,19 @@
+figure_id,panel_id,series_id,series_label,source_type,dataset,parameter_set,salt,ion,solvent_system,composition,composition_basis,target_w_org,x_name,x_value,x_units,y_name,y_value,y_units,curve_points,user_options,source_file,category,display_order
+figure_4,combined,literature,Literature,literature,,,,Li+,water,,,,ion_index,0,,negative_gsolv,486.48648650000001,kJ/mol,,{},analyses/2025_figiel/figures/figure_4/input/water.csv,Li+,0
+figure_4,combined,model_2025_Figiel,ePC-SAFT 2025,model,2025_Figiel,2025_Figiel,,Li+,water,"{""water"":1.0}",mole_fraction,,ion_index,0,,negative_gsolv,487.01822461666177,kJ/mol,1,{},,Li+,0
+figure_4,combined,model_2020_Bulow,ePC-SAFT 2020,model,2020_Bulow,2020_Bulow,,Li+,water,"{""water"":1.0}",mole_fraction,,ion_index,0,,negative_gsolv,555.02498710546536,kJ/mol,1,{},,Li+,0
+figure_4,combined,literature,Literature,literature,,,,Na+,water,,,,ion_index,1,,negative_gsolv,378.37837839999997,kJ/mol,,{},analyses/2025_figiel/figures/figure_4/input/water.csv,Na+,1
+figure_4,combined,model_2025_Figiel,ePC-SAFT 2025,model,2025_Figiel,2025_Figiel,,Na+,water,"{""water"":1.0}",mole_fraction,,ion_index,1,,negative_gsolv,381.92802125090111,kJ/mol,1,{},,Na+,1
+figure_4,combined,model_2020_Bulow,ePC-SAFT 2020,model,2020_Bulow,2020_Bulow,,Na+,water,"{""water"":1.0}",mole_fraction,,ion_index,1,,negative_gsolv,541.70943161214052,kJ/mol,1,{},,Na+,1
+figure_4,combined,literature,Literature,literature,,,,K+,water,,,,ion_index,2,,negative_gsolv,306.30630630000002,kJ/mol,,{},analyses/2025_figiel/figures/figure_4/input/water.csv,K+,2
+figure_4,combined,model_2025_Figiel,ePC-SAFT 2025,model,2025_Figiel,2025_Figiel,,K+,water,"{""water"":1.0}",mole_fraction,,ion_index,2,,negative_gsolv,308.89056830550271,kJ/mol,1,{},,K+,2
+figure_4,combined,model_2020_Bulow,ePC-SAFT 2020,model,2020_Bulow,2020_Bulow,,K+,water,"{""water"":1.0}",mole_fraction,,ion_index,2,,negative_gsolv,446.36841241478294,kJ/mol,1,{},,K+,2
+figure_4,combined,literature,Literature,literature,,,,Cl-,water,,,,ion_index,3,,negative_gsolv,312.88343559999998,kJ/mol,,{},analyses/2025_figiel/figures/figure_4/input/water.csv,Cl-,3
+figure_4,combined,model_2025_Figiel,ePC-SAFT 2025,model,2025_Figiel,2025_Figiel,,Cl-,water,"{""water"":1.0}",mole_fraction,,ion_index,3,,negative_gsolv,315.01823880734685,kJ/mol,1,{},,Cl-,3
+figure_4,combined,model_2020_Bulow,ePC-SAFT 2020,model,2020_Bulow,2020_Bulow,,Cl-,water,"{""water"":1.0}",mole_fraction,,ion_index,3,,negative_gsolv,557.43584437013658,kJ/mol,1,{},,Cl-,3
+figure_4,combined,literature,Literature,literature,,,,Br-,water,,,,ion_index,4,,negative_gsolv,289.57055209999999,kJ/mol,,{},analyses/2025_figiel/figures/figure_4/input/water.csv,Br-,4
+figure_4,combined,model_2025_Figiel,ePC-SAFT 2025,model,2025_Figiel,2025_Figiel,,Br-,water,"{""water"":1.0}",mole_fraction,,ion_index,4,,negative_gsolv,290.70260420509203,kJ/mol,1,{},,Br-,4
+figure_4,combined,model_2020_Bulow,ePC-SAFT 2020,model,2020_Bulow,2020_Bulow,,Br-,water,"{""water"":1.0}",mole_fraction,,ion_index,4,,negative_gsolv,502.14870767383655,kJ/mol,1,{},,Br-,4
+figure_4,combined,literature,Literature,literature,,,,I-,water,,,,ion_index,5,,negative_gsolv,251.5337423,kJ/mol,,{},analyses/2025_figiel/figures/figure_4/input/water.csv,I-,5
+figure_4,combined,model_2025_Figiel,ePC-SAFT 2025,model,2025_Figiel,2025_Figiel,,I-,water,"{""water"":1.0}",mole_fraction,,ion_index,5,,negative_gsolv,253.48464545923289,kJ/mol,1,{},,I-,5
+figure_4,combined,model_2020_Bulow,ePC-SAFT 2020,model,2020_Bulow,2020_Bulow,,I-,water,"{""water"":1.0}",mole_fraction,,ion_index,5,,negative_gsolv,422.36565647183448,kJ/mol,1,{},,I-,5

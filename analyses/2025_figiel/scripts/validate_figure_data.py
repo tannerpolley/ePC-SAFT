@@ -9,16 +9,18 @@ ROOT = Path(__file__).resolve().parent
 REPO_ROOT = ROOT.parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+if str(ROOT.parent) not in sys.path:
+    sys.path.insert(0, str(ROOT.parent))
 
-import figure_data
+from shared import figure_data
 
 PLOT_SCRIPTS = [
-    ROOT / "figure_4" / "plot_figure_4.py",
-    ROOT / "figure_5" / "plot_figure_5.py",
-    ROOT / "figure_6" / "plot_figure_6.py",
-    ROOT / "figure_7" / "plot_figure_7.py",
-    ROOT / "figure_8" / "plot_figure_8.py",
-    ROOT / "figure_9" / "plot_figure_9.py",
+    ROOT.parent / "figures" / "figure_4" / "scripts" / "plot_figure_4.py",
+    ROOT.parent / "figures" / "figure_5" / "scripts" / "plot_figure_5.py",
+    ROOT.parent / "figures" / "figure_6" / "scripts" / "plot_figure_6.py",
+    ROOT.parent / "figures" / "figure_7" / "scripts" / "plot_figure_7.py",
+    ROOT.parent / "figures" / "figure_8" / "scripts" / "plot_figure_8.py",
+    ROOT.parent / "figures" / "figure_9" / "scripts" / "plot_figure_9.py",
 ]
 
 
@@ -38,8 +40,8 @@ def main() -> None:
     args = parser.parse_args()
 
     if not args.skip_backend:
-        _run([sys.executable, "scripts/build_epcsaft.py"])
-        _run([sys.executable, "scripts/doctor.py"])
+        _run([sys.executable, "scripts/dev/build_epcsaft.py"])
+        _run([sys.executable, "scripts/dev/doctor.py"])
         _run([sys.executable, "run_pytest.py", "tests/api/runtime/test_runtime_exports_and_metadata.py", "-q"])
 
     failures = figure_data.compare_all(rtol=args.rtol, atol=args.atol)

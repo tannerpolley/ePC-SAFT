@@ -60,7 +60,7 @@ Native
 Data
    Owns packaged parameter datasets, dataset validation, reference-data loading
    contracts, and reusable package data. Analysis-local inputs belong under the
-   relevant ``analyses/<id>/data`` tree instead of becoming hidden package
+   relevant ``analyses/<id>/figures/<figure_id>/input`` tree instead of becoming hidden package
    dependencies.
 
 Benchmarks

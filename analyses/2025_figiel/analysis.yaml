@@ -4,7 +4,8 @@ kind: paper_validation
 status: migrated
 package: epcsaft
 commands:
+  generate: uv run python analyses/2025_figiel/scripts/generate_figure_data.py
   validate: uv run python analyses/2025_figiel/scripts/validate_figure_data.py
 outputs:
-  plot_sets: results/<plot_set>
-  runs: results/runs
+  figures: figures/<figure_id>/output
+  runs: figures/<figure_id>/output/runs

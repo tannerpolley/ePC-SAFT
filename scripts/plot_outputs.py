@@ -18,6 +18,10 @@ FITS_CATEGORY_ROOTS = {
 TEST_PLOTS_ANALYSIS_ROOT = ANALYSES_ROOT / "package_plot_smokes"
 RESULTS_DIR_NAME = "results"
 RUNS_DIR_NAME = "runs"
+FIGURES_DIR_NAME = "figures"
+FIGURE_INPUT_DIR_NAME = "input"
+FIGURE_OUTPUT_DIR_NAME = "output"
+FIGURE_SCRIPTS_DIR_NAME = "scripts"
 
 
 def _clean_analysis_name(name: str) -> str:
@@ -34,6 +38,20 @@ def _analysis_root_for(source_path: str | Path) -> Path:
     if analyses_index + 1 >= len(parts):
         raise ValueError(f"path does not include an analysis id: {source}")
     return Path(*parts[: analyses_index + 2])
+
+
+def _figure_root_for(source_path: str | Path) -> Path | None:
+    source = Path(source_path).resolve()
+    source_dir = source if source.is_dir() else source.parent
+    analysis_root = _analysis_root_for(source_dir)
+    try:
+        relative = source_dir.relative_to(analysis_root)
+    except ValueError:
+        return None
+    parts = relative.parts
+    if len(parts) >= 2 and parts[0] == FIGURES_DIR_NAME:
+        return analysis_root / FIGURES_DIR_NAME / parts[1]
+    return None
 
 
 def _relative_script_parts(source_path: str | Path) -> list[str]:
@@ -181,12 +199,46 @@ def analysis_runs_path(
     return path
 
 
+def figure_input_dir(source_path: str | Path) -> Path:
+    figure_root = _figure_root_for(source_path)
+    if figure_root is None:
+        raise ValueError(f"path is not inside analyses/*/figures/*: {Path(source_path).resolve()}")
+    target = figure_root / FIGURE_INPUT_DIR_NAME
+    target.mkdir(parents=True, exist_ok=True)
+    return target
+
+
+def figure_input_path(source_path: str | Path, filename: str | Path) -> Path:
+    target = figure_input_dir(source_path) / Path(filename)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    return target
+
+
+def figure_output_dir(source_path: str | Path) -> Path:
+    figure_root = _figure_root_for(source_path)
+    if figure_root is None:
+        raise ValueError(f"path is not inside analyses/*/figures/*: {Path(source_path).resolve()}")
+    target = figure_root / FIGURE_OUTPUT_DIR_NAME
+    target.mkdir(parents=True, exist_ok=True)
+    return target
+
+
+def figure_output_path(source_path: str | Path, filename: str | Path | None = None) -> Path:
+    source = Path(source_path).resolve()
+    target = figure_output_dir(source)
+    name = Path(filename) if filename is not None else source.name
+    path = target / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def analysis_final_dir(source_path: str | Path, category: str = "figures") -> Path:
     """Compatibility alias for analysis-owned curated result directories.
 
-    New analysis outputs should use ``results/<plot_set>/`` folders. This
-    legacy-named helper now maps to a plot-set-like directory under
-    ``results/<category>/`` instead of ``results/final/<category>/``.
+    New analysis outputs should use figure-owned ``figures/<figure_id>/output``
+    folders. Historical analyses that still use analysis-level curated result
+    directories map this helper to ``results/<category>/`` instead of the
+    older ``results/final/<category>/`` layout.
     """
 
     return analysis_plot_set_dir(source_path, category=category)
@@ -198,6 +250,9 @@ def analysis_final_path(source_path: str | Path, filename: str | Path, category:
 
 def paper_validation_path(source_path: str | Path, filename: str | None = None) -> Path:
     source = Path(source_path).resolve()
+    figure_root = _figure_root_for(source)
+    if figure_root is not None:
+        return figure_output_path(source, filename if filename is not None else source.name)
     target = analysis_plot_set_dir(source, filename if filename is not None else source.name) / Path(
         filename if filename is not None else source.name
     )
@@ -206,11 +261,22 @@ def paper_validation_path(source_path: str | Path, filename: str | None = None) 
 
 
 def paper_validation_dir(source_path: str | Path) -> Path:
+    figure_root = _figure_root_for(source_path)
+    if figure_root is not None:
+        return figure_output_dir(source_path)
     return analysis_plot_set_dir(source_path)
 
 
 def paper_validation_output_path(path: str | Path) -> Path:
     source = Path(path).resolve()
+    figure_root = _figure_root_for(source)
+    if figure_root is not None:
+        if FIGURE_OUTPUT_DIR_NAME in source.parts:
+            target = source
+        else:
+            target = figure_output_path(source)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        return target
     if source.is_relative_to(ANALYSES_ROOT):
         if RESULTS_DIR_NAME in source.parts:
             target = source

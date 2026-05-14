@@ -23,11 +23,13 @@ artifacts/
 outputs/
 **/out/
 analyses/**/results/runs/
+analyses/**/figures/**/output/runs/
 analyses/**/logs/
 analyses/**/.ipynb_checkpoints/
 analyses/**/data/interim/
 analyses/**/data/raw/large/
 analyses/**/results/**/_draft/
+analyses/**/figures/**/output/_draft/
 scripts/fits/
 scripts/paper_validation/
 docs/latex/out/

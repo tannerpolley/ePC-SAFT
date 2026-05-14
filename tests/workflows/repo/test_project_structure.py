@@ -100,15 +100,35 @@ def test_generated_output_roots_are_not_tracked_in_analyses() -> None:
         if "/out/" in path.replace("\\", "/")
         or "/results/runs/" in path.replace("\\", "/")
         or "/results/final/" in path.replace("\\", "/")
+        or "/figures/" in path.replace("\\", "/") and "/output/runs/" in path.replace("\\", "/")
     ]
     assert stale == []
 
 
-def test_analysis_metadata_uses_plot_set_outputs() -> None:
+def test_analysis_metadata_does_not_reference_removed_final_results_layout() -> None:
     tracked = _tracked_files("analyses")
     metadata_files = [REPO_ROOT / path for path in tracked if path.endswith("/analysis.yaml")]
     assert metadata_files
     for path in metadata_files:
         text = path.read_text(encoding="utf-8")
-        assert "plot_sets: results/<plot_set>" in text, path
         assert "results/final" not in text, path
+
+
+def test_analysis_template_uses_figure_owned_outputs() -> None:
+    text = (REPO_ROOT / "analyses" / "_template" / "analysis.yaml").read_text(encoding="utf-8")
+    assert "figures: figures/<figure_id>/output" in text
+    assert "runs: figures/<figure_id>/output/runs" in text
+
+
+def test_figiel_analysis_is_migrated_to_figure_owned_layout() -> None:
+    root = REPO_ROOT / "analyses" / "2025_figiel"
+    text = (root / "analysis.yaml").read_text(encoding="utf-8")
+    assert "figures: figures/<figure_id>/output" in text
+    assert "runs: figures/<figure_id>/output/runs" in text
+    assert not (root / "data").exists()
+    assert (root / "figures").is_dir()
+    for figure_id in ("figure_4", "figure_5", "figure_6", "figure_7", "figure_8", "figure_9"):
+        figure_root = root / "figures" / figure_id
+        assert (figure_root / "input").is_dir(), figure_id
+        assert (figure_root / "output").is_dir(), figure_id
+        assert (figure_root / "scripts").is_dir(), figure_id

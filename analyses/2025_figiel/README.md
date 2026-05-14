@@ -1,6 +1,6 @@
 # 2025 Figiel Analysis
 
-Paper-validation workflow with split figure-data and plot rendering scripts.
+Paper-validation workflow using figure-owned folders under `figures/<figure_id>/`.
 
 Entry point:
 

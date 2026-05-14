@@ -126,7 +126,7 @@ Insert (optional):
 - Sets the right foundation for LLE coupling because electrostatics respond correctly to solvent composition
 
 Insert (optional):
-- DH/Born model comparisons: historical generated plots should be placed under the owning analysis `results/<plot_set>/` folder if regenerated.
+- DH/Born model comparisons: regenerated analysis-owned plots should be placed under the owning `figures/<figure_id>/output/` folder.
 
 ---
 

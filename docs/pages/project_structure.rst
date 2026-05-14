@@ -13,7 +13,7 @@ Package Surfaces
     Package/API/native/workflow contracts. Top-level domains stay broad, with second-level subgroup folders such as ``tests/api/runtime/``, ``tests/equilibrium/electrolyte/``, ``tests/native/cppad/``, and ``tests/workflows/repo/`` when a domain gets large. Default tests should stay fast and should not reproduce full scientific studies, regenerate plot galleries, or run long fitting/equilibrium sweeps.
 
 ``scripts/``
-    Repository tooling only: native builds, doctor checks, validation orchestration, packaging, docs, reference-data curation, LaTeX sync, and issue triage. Analysis-specific scripts belong under ``analyses/<short_id>/scripts/``.
+    Repository tooling only: native builds, doctor checks, validation orchestration, packaging, docs, reference-data curation, LaTeX sync, and issue triage. Analysis-specific coordinators may live under ``analyses/<short_id>/scripts/``, while figure-local generation and rendering scripts belong under ``analyses/<short_id>/figures/<figure_id>/scripts/``.
 
 ``data/reference/``
     Reusable checkout data: parameter datasets, benchmark records, literature tables, and curation sources that may be shared by several analyses or package tests.
@@ -36,17 +36,11 @@ Use this layout for new analyses:
      references.bib
      config/
      scripts/
-     data/
-       input/
-       raw/
-       processed/
-     results/
-       runs/
-       <plot_set>/
-         <plot_set>.csv
-         <plot_set>.svg
-         <plot_set>.png
-         <plot_set>.mpl.yaml
+     figures/
+       <figure_id>/
+         input/
+         output/
+         scripts/
      notebooks/
      tests/
 
@@ -61,26 +55,26 @@ Use ``data/reference/`` for stable reusable inputs:
 - equilibrium benchmark fixtures under ``data/reference/equilibrium_benchmarks/``
 - reusable literature data such as ``MIAC``, ``osmotic``, ``pure_component``, and regression tables
 
-Use ``analyses/<short_id>/data/input/`` for hand-curated or digitized inputs that are specific to one analysis. Use ``analyses/<short_id>/data/processed/`` for canonical plot-ready intermediate tables when those tables should be retained as analysis inputs.
+Use ``data/reference/`` for stable reusable inputs shared by multiple analyses. Use ``analyses/<short_id>/figures/<figure_id>/input/`` for hand-curated, digitized, or figure-owned parameter snapshots. Use ``analyses/<short_id>/figures/<figure_id>/output/`` for generated model tables and the exact plotted data retained with that figure.
 
 Output Policy
 -------------
 
-Generated outputs use ``results/``:
+Generated figure outputs use figure-owned ``output/`` folders:
 
-- ``results/runs/`` for ignored run-specific payloads, logs, sweeps, and exploratory output
-- ``results/<plot_set>/`` for curated plot sets that are intentionally retained
+- ``figures/<figure_id>/output/runs/`` for ignored run-specific payloads, logs, sweeps, and exploratory output
+- ``figures/<figure_id>/output/`` for curated generated tables, exact plotted data snapshots, rendered figures, and editable sidecars that are intentionally retained
 
-Each curated plot set keeps the figure, exact plotted data snapshot, and editable Matplotlib sidecar together:
+Each figure-owned output folder keeps the figure, exact plotted data snapshot, and editable Matplotlib sidecar together:
 
 .. code-block:: text
 
-   results/response_curve/
+   figures/response_curve/output/
      response_curve.csv
      response_curve.svg
      response_curve.png
      response_curve.mpl.yaml
 
-Use one meaningful plot-set folder per figure or figure family. This layout is designed so external tools such as ``mplgallery`` can discover analysis-owned plots directly without a package-owned gallery index, server, or manifest.
+Use one meaningful figure folder per figure or figure family. This layout is designed so external tools such as ``mplgallery`` can discover analysis-owned plots directly without a package-owned gallery index, server, or manifest.
 
 Do not add new gallery index, server, or manifest workflows to this package. External visualization tools should discover analysis-owned assets directly.
