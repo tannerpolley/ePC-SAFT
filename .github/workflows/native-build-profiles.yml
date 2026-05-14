@@ -32,7 +32,7 @@ jobs:
         run: uv run python scripts/build_epcsaft.py --clean
 
       - name: Validate dependency-gated capabilities
-        run: uv run python run_pytest.py tests/api/test_runtime_capabilities_dependency_gates.py tests/native/test_cppad_runtime_contract.py -q
+        run: uv run python run_pytest.py tests/api/test_runtime_capabilities_dependency_gates.py tests/native/test_cppad_runtime_contract.py tests/native/test_ceres_cppad_build_contract.py -q
 
   cppad-build:
     name: native CppAD build
@@ -56,24 +56,3 @@ jobs:
       - name: Validate CppAD runtime contract
         run: uv run python run_pytest.py tests/api/test_runtime_capabilities_dependency_gates.py tests/native/test_cppad_runtime_contract.py -q
 
-  ceres-cppad-build:
-    name: native Ceres + CppAD build
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
-    runs-on: windows-latest
-
-    steps:
-      - uses: actions/checkout@v6.0.2
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v8.1.0
-        with:
-          enable-cache: true
-
-      - name: Install Python
-        run: uv python install 3.13
-
-      - name: Build Ceres + CppAD native profile
-        run: uv run python scripts/build_epcsaft.py --clean --enable-ceres --enable-cppad
-
-      - name: Validate Ceres/CppAD build contract
-        run: uv run python run_pytest.py tests/api/test_runtime_capabilities_dependency_gates.py tests/native/test_cppad_runtime_contract.py tests/native/test_ceres_cppad_build_contract.py -q

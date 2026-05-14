@@ -338,13 +338,36 @@ def _parser() -> argparse.ArgumentParser:
         default="auto",
         help="CMake generator for a new configure. Auto prefers Ninja when available.",
     )
-    parser.add_argument("--enable-ceres", action="store_true", help="Enable Ceres Solver support.")
+    parser.set_defaults(enable_ceres=True, enable_cppad=True)
+    parser.add_argument(
+        "--enable-ceres",
+        dest="enable_ceres",
+        action="store_true",
+        help="Enable Ceres Solver support (default: enabled).",
+    )
+    parser.add_argument(
+        "--disable-ceres",
+        dest="enable_ceres",
+        action="store_false",
+        help="Disable Ceres Solver support for this build.",
+    )
     parser.add_argument(
         "--use-system-ceres",
         action="store_true",
         help="Use an installed Ceres Solver package. Implies --enable-ceres.",
     )
-    parser.add_argument("--enable-cppad", action="store_true", help="Enable package-wide CppAD support.")
+    parser.add_argument(
+        "--enable-cppad",
+        dest="enable_cppad",
+        action="store_true",
+        help="Enable package-wide CppAD support (default: enabled).",
+    )
+    parser.add_argument(
+        "--disable-cppad",
+        dest="enable_cppad",
+        action="store_false",
+        help="Disable package-wide CppAD support for this build.",
+    )
     parser.add_argument(
         "--use-system-cppad",
         action="store_true",

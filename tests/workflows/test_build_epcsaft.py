@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from scripts import build_epcsaft
@@ -25,6 +27,36 @@ def test_build_script_help_lists_incremental_workflow_flags(capsys) -> None:
     assert "--build-only" in help_text
     assert "--parallel" in help_text
     assert "--status" in help_text
+
+
+def test_build_script_defaults_enable_ceres_and_cppad() -> None:
+    args = build_epcsaft._parser().parse_args([])
+
+    assert args.enable_ceres is True
+    assert args.enable_cppad is True
+
+
+def test_build_script_disable_flags_turn_off_optional_native_dependencies() -> None:
+    args = build_epcsaft._parser().parse_args(["--disable-ceres", "--disable-cppad"])
+
+    assert args.enable_ceres is False
+    assert args.enable_cppad is False
+
+
+def test_cmake_and_presets_match_cli_default_dependency_state() -> None:
+    cmake_text = (build_epcsaft.REPO_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+    presets = json.loads((build_epcsaft.REPO_ROOT / "CMakePresets.json").read_text(encoding="utf-8"))
+
+    assert 'option(EPCSAFT_ENABLE_CERES "Enable Ceres Solver support for native equilibrium nonlinear solves" ON)' in cmake_text
+    assert 'option(EPCSAFT_ENABLE_CPPAD "Enable package-wide CppAD support" ON)' in cmake_text
+
+    native_default = next(p for p in presets["configurePresets"] if p["name"] == "native-default")
+    assert native_default["cacheVariables"]["EPCSAFT_ENABLE_CERES"] == "ON"
+    assert native_default["cacheVariables"]["EPCSAFT_ENABLE_CPPAD"] == "ON"
+
+    dev_mingw = next(p for p in presets["configurePresets"] if p["name"] == "dev-mingw")
+    assert dev_mingw["cacheVariables"]["EPCSAFT_ENABLE_CERES"] == "OFF"
+    assert dev_mingw["cacheVariables"]["EPCSAFT_ENABLE_CPPAD"] == "OFF"
 
 
 def test_build_status_reports_generator_core_optional_flags_and_stale_lock(tmp_path, monkeypatch) -> None:

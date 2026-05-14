@@ -9,16 +9,16 @@
     {
       "name": "native-default",
       "displayName": "Native build profile: default",
-      "description": "Default native extension build with optional Ceres and CppAD dependencies disabled.",
+      "description": "Default native extension build with Ceres and CppAD enabled.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/native-default",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_TRY_COMPILE_TARGET_TYPE": "STATIC_LIBRARY",
         "EPCSAFT_DEV_INPLACE": "ON",
-        "EPCSAFT_ENABLE_CERES": "OFF",
+        "EPCSAFT_ENABLE_CERES": "ON",
         "EPCSAFT_USE_SYSTEM_CERES": "OFF",
-        "EPCSAFT_ENABLE_CPPAD": "OFF",
+        "EPCSAFT_ENABLE_CPPAD": "ON",
         "EPCSAFT_USE_SYSTEM_CPPAD": "OFF",
         "EPCSAFT_WARNINGS_AS_ERRORS": "OFF",
         "EPCSAFT_ENABLE_SANITIZERS": "OFF",
@@ -49,7 +49,7 @@
     {
       "name": "native-ceres-cppad",
       "displayName": "Native build profile: Ceres + CppAD",
-      "description": "Native extension build with both Ceres and CppAD enabled.",
+      "description": "Explicit Ceres + CppAD profile matching the canonical default build.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/native-ceres-cppad",
       "cacheVariables": {
@@ -69,13 +69,14 @@
     {
       "name": "dev-mingw",
       "displayName": "Optional IDE build (Windows MinGW)",
-      "description": "Optional Windows MinGW preset for IDE/manual CMake use. The canonical local native build is uv run python scripts/build_epcsaft.py.",
+      "description": "Optional Windows MinGW preset for IDE/manual CMake use with Ceres and CppAD disabled. The canonical local native build is uv run python scripts/build_epcsaft.py.",
       "generator": "MinGW Makefiles",
       "binaryDir": "${sourceDir}/build/dev",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_TRY_COMPILE_TARGET_TYPE": "STATIC_LIBRARY",
         "EPCSAFT_DEV_INPLACE": "ON",
+        "EPCSAFT_ENABLE_CERES": "OFF",
         "EPCSAFT_ENABLE_CPPAD": "OFF",
         "EPCSAFT_USE_SYSTEM_CPPAD": "OFF",
         "EPCSAFT_WARNINGS_AS_ERRORS": "OFF",

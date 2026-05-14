@@ -5,7 +5,7 @@ import json
 import epcsaft
 
 
-def test_disabled_default_build_does_not_claim_cppad_or_ceres_production() -> None:
+def test_default_build_reports_cppad_and_ceres_capabilities_honestly() -> None:
     info = epcsaft.runtime_build_info()
     capabilities = epcsaft.capabilities()
 
@@ -112,7 +112,7 @@ def test_issue_68_required_coverage_gate_fields_are_reported_honestly() -> None:
     }
 
 
-def test_reactive_batch_context_never_claims_ceres_native_hot_loop_in_default_contract() -> None:
+def test_reactive_batch_context_never_claims_ceres_native_hot_loop_in_default_build_contract() -> None:
     batch = epcsaft.capabilities()["regression"]["reactive_electrolyte_batch_context"]
     mixed = batch["bounded_mixed_pressure_speciation_regression"]
 

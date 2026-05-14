@@ -86,14 +86,14 @@ The canonical native build command is:
 
 Use ``--build-only --parallel 10`` only after the CMake tree already exists. Use ``--configure-only`` when you need to refresh CMake configuration without compiling. For a new ``build/dev`` tree, ``scripts/build_epcsaft.py`` now prefers Ninja when ``ninja`` is available on ``PATH`` because it is usually faster than MinGW Makefiles for repeated local rebuilds. Existing CMake trees keep their original generator; doctor reports ``build_generator_recommendation`` when ``uv run python scripts/build_epcsaft.py --clean --generator ninja`` is the appropriate one-time migration from an older MinGW tree.
 
-Every native build writes ``build/dev/build_epcsaft.log`` and finishes with an ``epcsaft._core`` import check when compilation runs. Use ``uv run python scripts/build_epcsaft.py --status`` when you need a non-mutating check of the configured generator, optional Ceres/CppAD flags, importable ``_core`` artifacts, stale ``.ninja_lock`` state, last Ninja target, and live repo-owned build processes. This is the safest first check when an IDE run or interrupted terminal build appears hung.
+Every native build writes ``build/dev/build_epcsaft.log`` and finishes with an ``epcsaft._core`` import check when compilation runs. Use ``uv run python scripts/build_epcsaft.py --status`` when you need a non-mutating check of the configured generator, Ceres/CppAD flags, importable ``_core`` artifacts, stale ``.ninja_lock`` state, last Ninja target, and live repo-owned build processes. This is the safest first check when an IDE run or interrupted terminal build appears hung.
 
 For IDE run configurations, keep commands explicit instead of relying on one overloaded target:
 
 - Native build status: ``uv run python scripts/build_epcsaft.py --status``
 - Native incremental build: ``uv run python scripts/build_epcsaft.py --build-only --parallel 1``
 - Native configure/build: ``uv run python scripts/build_epcsaft.py --parallel 1``
-- Optional Ceres/CppAD build: ``uv run python scripts/build_epcsaft.py --clean --enable-ceres --enable-cppad``
+- Minimal native build without Ceres/CppAD: ``uv run python scripts/build_epcsaft.py --clean --disable-ceres --disable-cppad``
 
 Do not use ``--clean`` for routine validation. ``uv run python scripts/build_epcsaft.py --clean`` is a repair action for stale CMake state or stale/locked ``_core`` artifacts. If Windows reports that ``_core*.pyd`` is locked, stop Python REPLs, tests, IDE run configurations, or parallel workers that imported ``epcsaft._core`` before retrying. If ``--status`` reports a stale Ninja lock, inspect the listed process ids and stop only repo-owned build processes before retrying.
 
@@ -208,4 +208,4 @@ Run ``uv run python scripts/doctor.py`` whenever imports, tool paths, ``_core`` 
 
 If ``scripts/build_epcsaft.py`` appears slow, run ``uv run python scripts/build_epcsaft.py --status`` first. If the status output shows a stale Ninja lock and live repo-owned build processes, resolve those processes before retrying. If the status output is clean, check whether ``build/dev/CMakeCache.txt`` reports ``CMAKE_GENERATOR:INTERNAL=MinGW Makefiles``. A clean one-time switch to Ninja can materially reduce rebuild overhead on Windows systems where Ninja is already installed. Full configure/build can still take far longer than the fast rebuild path; incremental ``--build-only --parallel 10`` is the intended C++ edit loop.
 
-Optional Ceres/CppAD validation is intentionally separate from the default build. The default ``quick`` profile does not require optional native optimizer dependencies. Use ``uv run python scripts/validate_project.py ceres-cppad`` only after installing the optional dependency toolchain needed for ``uv run python scripts/build_epcsaft.py --enable-ceres --enable-cppad``.
+The canonical native build now enables Ceres and CppAD by default. The ``quick`` validation profile stays focused on the standard fast contract suite, while ``uv run python scripts/validate_project.py ceres-cppad`` remains the targeted regression/backend slice for Ceres-specific coverage. Use ``uv run python scripts/build_epcsaft.py --disable-ceres --disable-cppad`` only when you intentionally need the minimal native profile.
