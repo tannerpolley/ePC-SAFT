@@ -1,0 +1,67 @@
+version = 1
+name = "ePC-SAFT"
+
+[setup]
+script = '''
+$ErrorActionPreference = "Stop"
+Set-StrictMode -Version Latest
+
+$repoRoot = (git rev-parse --show-toplevel).Trim()
+Set-Location $repoRoot
+
+if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+    throw "uv is required for this repo workflow. Install uv, then rerun setup."
+}
+
+uv sync --no-install-project
+uv run python scripts/dev/build_epcsaft.py --parallel 1
+uv run python scripts/dev/doctor.py
+'''
+
+[[actions]]
+name = "Sync Environment"
+icon = "download"
+command = "uv sync --no-install-project"
+platform = "win32"
+
+[[actions]]
+name = "Doctor"
+icon = "inspect"
+command = "uv run python scripts/dev/doctor.py"
+platform = "win32"
+
+[[actions]]
+name = "Build Native Extension"
+icon = "run"
+command = "uv run python scripts/dev/build_epcsaft.py"
+platform = "win32"
+
+[[actions]]
+name = "Build Native Extension (Bounded)"
+icon = "run"
+command = "uv run python scripts/dev/build_epcsaft.py --parallel 1"
+platform = "win32"
+
+[[actions]]
+name = "Validate Quick"
+icon = "test"
+command = "uv run python scripts/dev/validate_project.py quick"
+platform = "win32"
+
+[[actions]]
+name = "Validate Confidence"
+icon = "test"
+command = "uv run python scripts/dev/validate_project.py confidence"
+platform = "win32"
+
+[[actions]]
+name = "Build Docs"
+icon = "document"
+command = "uv run python scripts/dev/validate_project.py docs"
+platform = "win32"
+
+[[actions]]
+name = "Build Distribution"
+icon = "package"
+command = "uv run python scripts/dev/build_dist.py"
+platform = "win32"

@@ -1,47 +1,60 @@
-# IntelliJ-Backed Navigation Policy for `ePC-SAFT`
+# JetBrains `.idea` Cleanup Tranche for `ePC-SAFT`
 
 ## Summary
-Establish a repo-supported workflow where agents proactively suggest IntelliJ-backed tooling when it is clearly the more efficient option, while keeping project opening user-approved and automation minimal. The goal is to make semantic navigation, IDE diagnostics, and safe semantic refactors part of the normal toolbox for `ePC-SAFT`, instead of leaving agents on shell and `rg` by default even when the IDE index would be better.
+Implement a deterministic JetBrains metadata cleanup workflow as `scripts/dev/configure_jetbrains_project.py`, not at the repo-root `scripts/` level. The script should normalize all discovered `.iml` files generically, use stable sorted output for relevant root entries, warn about stale module dependencies without failing, and update the plan note plus repo `AGENTS.md` so the documented path matches the implemented one.
 
 ## Key Changes
-- Update this repo’s `AGENTS.md` to state that agents should propose IntelliJ-backed tooling unprompted when it is clearly the better option for `ePC-SAFT` work.
-- Clarify in the user-level `TOOL_AND_REFACTORING.md` that read-only IntelliJ semantic navigation and IDE diagnostics are encouraged when symbol meaning matters, while semantic refactor tools are allowed when they are clearly the best fit.
-- Keep the approval boundary explicit:
-  - Agents may suggest opening IntelliJ.
-  - Agents must ask before launching or focusing IntelliJ for the repo.
-  - After approval, automation stays minimal: launch or focus IntelliJ for `C:\Users\Tanner\Documents\git\ePC-SAFT`, wait for indexing readiness, then use MCP tools.
-- Explicitly promote these tool categories once the project is open and indexed:
-  - Semantic navigation: definitions, references, implementations, super methods, call hierarchy, type hierarchy, indexed file/class lookup.
-  - IDE diagnostics: file analysis, build errors, test result diagnostics.
-  - Safe semantic refactors: rename, move, and safe delete when they are clearly preferable to manual edits.
-- Add concrete trigger examples in policy text so agents do not miss the opportunity:
-  - tracing wrapper-to-`_core` call paths
-  - checking where a public API symbol is used
-  - following override or implementation chains
-  - verifying whether code is truly unused before deletion
-  - using semantic rename/move/delete instead of text-based edits
+- Add `scripts/dev/configure_jetbrains_project.py` with:
+  - `--dry-run` to report pending changes
+  - `--apply` to rewrite files in place
+  - idempotent behavior and explicit reporting of every proposed/applied change
+- Parse `.idea/*.iml` and root-level `*.iml` as XML.
+- Never touch `.idea/workspace.xml`.
+- Apply cleanup rules across all discovered `.iml` files, not just the main Python module.
+- If a module lacks editable content-root structure, create the missing structure even for non-Python module types in this repo, then apply the same cleanup model.
+- Enforce a universal root model after cleanup:
+  - ensure `src` is present as a non-test source root
+  - ensure `tests` is present as a test source root
+- Remove transient or generated `sourceFolder` entries under paths such as:
+  - `build`, `dist`, `.venv`, `.worktrees`, `_codex`, `.pytest_cache`, `.ruff_cache`, `.mypy_cache`, `docs/_build`, `docs/latex/out`, `results/runs`
+- Add `excludeFolder` entries for those generated/transient paths when they exist.
+- Generalize redundant nested-exclude cleanup:
+  - if a parent path is excluded, remove redundant nested excludes under that parent anywhere in the module, not only under `.worktrees`
+- Sort rewritten `sourceFolder` and `excludeFolder` entries deterministically so reruns stay clean and diffs are stable.
+- Inspect `.idea/modules.xml` and warn when `.iml` files reference missing module dependencies such as the current `feos` entry, but keep exit code `0` in both dry-run and apply modes.
+- Update `docs/plans/PLAN_IDEA_CLEANUP.md` and any affected `AGENTS.md` command text to use the `scripts/dev/` path.
 
-## Interface And Behavior Changes
-- No product/API change to `intellij-index` itself is assumed.
-- The behavior change is policy-level:
-  - `intellij-index` is treated as an IDE-backed index over open IntelliJ projects, not as a generic filesystem indexer.
-  - Agents should pass `project_path` when multiple projects may be open.
-  - Agents should continue using shell and `rg` for plain text search, config files, generated files, repo-wide mechanical checks, and files outside the IntelliJ project.
+## Current State To Target
+- `.idea/ePC-SAFT.iml` currently contains transient `build/uv-cache/.../numpy` source roots that should be removed.
+- `src` exists and is already a source root in the main module.
+- `tests` exists but is not currently marked as a test source root.
+- `.idea/ePC-SAFT.iml` currently contains nested `.worktrees/.../.venv` excludes instead of excluding `.worktrees` broadly.
+- `.idea/modules.xml` declares only the local project modules, while `.idea/ePC-SAFT.iml` still references a stale `feos` module dependency.
+- `.idea/ePC-SAFT.CMake.iml` currently has minimal XML and should be brought into the same deterministic cleanup model rather than skipped.
 
 ## Test Plan
-- Review the updated policy text for consistency between repo-local and user-level guidance.
-- Validate the decision flow against representative `ePC-SAFT` tasks:
-  - plain text/config lookup still stays on shell/`rg`
-  - semantic definition/reference tracing leads to an IntelliJ suggestion
-  - safe rename/move/delete is allowed only when clearly the best fit
-  - IntelliJ opening remains suggestion-first and approval-gated
-- Confirm the documented flow matches real tool behavior:
-  - project must be open in IntelliJ
-  - indexing readiness is checked before relying on IDE-backed tools
-  - no brittle UI choreography is required beyond launch/focus and readiness waiting
+- Pre-check:
+  - confirm the transient `build/uv-cache` source roots are present before cleanup
+  - confirm `tests` exists and is not yet marked as a test root
+  - confirm stale module dependency warnings are expected from the current `feos` entry
+- Run:
+  - `uv run python scripts/dev/configure_jetbrains_project.py --dry-run`
+  - `uv run python scripts/dev/configure_jetbrains_project.py --apply`
+  - `uv run python scripts/dev/configure_jetbrains_project.py --dry-run`
+- Acceptance criteria:
+  - first dry run reports the expected pending changes
+  - apply mode reports each actual rewrite
+  - second dry run reports no pending changes
+  - stale module dependency warnings are visible but do not fail the run
+  - `git diff -- .idea scripts/dev/configure_jetbrains_project.py docs/plans/PLAN_IDEA_CLEANUP.md AGENTS.md` shows only intended script/metadata/doc updates
+- Optional IDE verification:
+  - if IntelliJ is open, call `ide_sync_files` once on the touched `.idea` files after edits
+  - use `ide_diagnostics` only if IDE-side metadata problems need confirmation
 
-## Assumptions
-- The IntelliJ MCP remains available only through an active IntelliJ instance with the repo open and indexed.
-- The initial rollout is intentionally limited to `C:\Users\Tanner\Documents\git\ePC-SAFT`.
-- “Clearly better” means materially more efficient or safer than shell-based navigation for the task at hand, not merely available.
-- Minimal automation means launch/focus plus readiness waiting only; no scripted clicking or typing inside IntelliJ by default.
+## Assumptions And Locked Decisions
+- The documented path is intentionally changing from `scripts/configure_jetbrains_project.py` to `scripts/dev/configure_jetbrains_project.py`.
+- Repo docs update is limited to `PLAN_IDEA_CLEANUP.md` plus affected `AGENTS.md` text; no broader docs sweep is part of this tranche.
+- All `.iml` files should be normalized generically.
+- Missing editable structure should be created for any discovered module type in this repo.
+- `src` and `tests` should be enforced universally after cleanup.
+- Redundant nested excludes should be collapsed under any excluded ancestor, not only `.worktrees`.
