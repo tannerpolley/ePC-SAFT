@@ -2,6 +2,7 @@
 
 ## Startup Reads
 - Read `C:\Users\Tanner\Documents\git\ePC-SAFT\docs\.codex-journal\user_preferences.md`.
+- Read `C:\Users\Tanner\Documents\git\ePC-SAFT\docs\roadmaps\FULL_ROADMAP.md` before planning, coding, reviewing, or merging any new repo task. Treat it as the authoritative package-context and completion-standard roadmap unless the user explicitly narrows scope for the current task.
 - Use the user-level `chemical-engineer` skill for ePC-SAFT thermodynamics, phase/chemical equilibrium, equation tracing, Python/pybind/native seams, and scientific validation work. Load only the specific user-level chemical-engineer references needed for the task.
 - Use the user-level `jetbrains` skill when IntelliJ-backed semantic navigation, IDE diagnostics, or safe semantic refactors would materially improve correctness or speed for `ePC-SAFT` work.
 
