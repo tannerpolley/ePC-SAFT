@@ -17,11 +17,11 @@ def run_script(path: Path) -> None:
 
 
 def main() -> None:
-    run_script(ROOT / "figure_2d" / "plot_figure_2d.py")
-    run_script(ROOT / "figure_3" / "plot_figure_3.py")
-    run_script(ROOT / "figure_5" / "plot_figure_5.py")
-    run_script(ROOT / "figure_6" / "plot_figure_6.py")
-    run_script(ROOT / "figure_7" / "plot_figure_7.py")
+    figure_ids = ("figure_2d", "figure_3", "figure_5", "figure_6", "figure_7")
+    for figure_id in figure_ids:
+        figure_scripts = ROOT.parent / "figures" / figure_id / "scripts"
+        run_script(figure_scripts / "generate_data.py")
+        run_script(figure_scripts / f"plot_{figure_id}.py")
     print("[done] 2012 figure scripts completed.")
     print(f"[note] Data-gap report: {ROOT / 'data_gap_report.md'}")
 

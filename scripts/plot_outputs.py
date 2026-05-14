@@ -16,6 +16,22 @@ FITS_CATEGORY_ROOTS = {
     "osmotic": ANALYSES_ROOT / "osmotic_validation",
 }
 TEST_PLOTS_ANALYSIS_ROOT = ANALYSES_ROOT / "package_plot_smokes"
+TEST_PLOT_CATEGORY_ROOTS = {
+    ("api", "parity"): "api_parity",
+    ("contributions", "neutral"): "contribution_outputs",
+    ("contributions", "ionic"): "contribution_outputs",
+    ("equilibrium", "vle"): "equilibrium_outputs",
+    ("equilibrium", "lle"): "equilibrium_outputs",
+    ("equilibrium", "electrolyte_lle"): "equilibrium_outputs",
+    ("equilibrium", "stability"): "equilibrium_outputs",
+    ("native", "branches"): "native_outputs",
+    ("native", "derivatives"): "native_outputs",
+    ("properties", "residual_energy"): "property_outputs",
+    ("properties", "activity_fugacity"): "property_outputs",
+    ("regression", "hydrocarbon"): "regression_outputs",
+    ("regression", "gradients"): "regression_outputs",
+    ("regression", "binary_ethanol_water"): "regression_outputs",
+}
 RESULTS_DIR_NAME = "results"
 RUNS_DIR_NAME = "runs"
 FIGURES_DIR_NAME = "figures"
@@ -407,6 +423,11 @@ def test_plot_path(
     category_parts = _test_plot_category_parts(category)
     if category_parts is not None:
         target = TEST_PLOTS_ANALYSIS_ROOT / FIGURES_DIR_NAME
+        mapped_figure_id = TEST_PLOT_CATEGORY_ROOTS.get(tuple(category_parts))
+        if mapped_figure_id is not None:
+            target = target / mapped_figure_id / FIGURE_OUTPUT_DIR_NAME / Path(filename)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            return target
         if category_parts:
             target = target.joinpath(*category_parts)
         target = target / FIGURE_OUTPUT_DIR_NAME / Path(filename)

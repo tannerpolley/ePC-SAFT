@@ -14,10 +14,16 @@ def run_script(path: Path) -> None:
 
 
 def main() -> None:
-    run_script(ROOT / "figure_2" / "plot_figure_2.py")
-    run_script(ROOT / "figure_3" / "plot_figure_3.py")
-    run_script(ROOT / "figure_2_regressed" / "plot_figure_2_regressed.py")
-    run_script(ROOT / "figure_3_regressed" / "plot_figure_3_regressed.py")
+    workflows = (
+        ("figure_2", "plot_figure_2.py"),
+        ("figure_3", "plot_figure_3.py"),
+        ("figure_2_regressed", "plot_figure_2_regressed.py"),
+        ("figure_3_regressed", "plot_figure_3_regressed.py"),
+    )
+    for figure_id, plot_script in workflows:
+        figure_scripts = ROOT.parent / "figures" / figure_id / "scripts"
+        run_script(figure_scripts / "generate_data.py")
+        run_script(figure_scripts / plot_script)
     print("[done] 2015 Baygi figure scripts completed.")
 
 

@@ -72,7 +72,7 @@ def test_migrated_analyses_have_local_contract_files() -> None:
         root = REPO_ROOT / "analyses" / analysis_id
         assert (root / "README.md").is_file(), analysis_id
         assert (root / "analysis.yaml").is_file(), analysis_id
-        assert (root / "scripts").is_dir() or analysis_id == "package_plot_smokes", analysis_id
+        assert (root / "scripts").is_dir(), analysis_id
 
 
 def test_old_gallery_and_script_roots_are_not_tracked() -> None:
@@ -121,6 +121,18 @@ def test_migrated_analysis_metadata_uses_figure_owned_outputs() -> None:
         text = path.read_text(encoding="utf-8")
         assert "figures: figures/<figure_id>/output" in text, path
         assert "runs: figures/<figure_id>/output/runs" in text, path
+
+
+def test_migrated_analyses_use_complete_figure_owned_roots() -> None:
+    for analysis_id in sorted(MIGRATED_ANALYSIS_IDS):
+        figures_root = REPO_ROOT / "analyses" / analysis_id / "figures"
+        assert figures_root.is_dir(), analysis_id
+        figure_roots = sorted(path for path in figures_root.iterdir() if path.is_dir())
+        assert figure_roots, analysis_id
+        for figure_root in figure_roots:
+            assert (figure_root / "input").is_dir(), figure_root
+            assert (figure_root / "output").is_dir(), figure_root
+            assert (figure_root / "scripts").is_dir(), figure_root
 
 
 def test_analysis_template_uses_figure_owned_outputs() -> None:

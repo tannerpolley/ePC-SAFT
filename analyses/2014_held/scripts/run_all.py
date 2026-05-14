@@ -14,14 +14,20 @@ def run_script(path: Path) -> None:
 
 
 def main() -> None:
-    run_script(ROOT / "figure_1" / "plot_figure_1.py")
-    run_script(ROOT / "figure_2" / "plot_figure_2.py")
-    run_script(ROOT / "figure_3" / "plot_figure_3.py")
-    run_script(ROOT / "figure_4" / "plot_figure_4a.py")
-    run_script(ROOT / "figure_4" / "plot_figure_4b.py")
-    run_script(ROOT / "figure_5" / "plot_figure_5.py")
-    run_script(ROOT / "figure_6" / "plot_figure_6a.py")
-    run_script(ROOT / "figure_6" / "plot_figure_6b.py")
+    workflows = (
+        ("figure_1", "plot_figure_1.py"),
+        ("figure_2", "plot_figure_2.py"),
+        ("figure_3", "plot_figure_3.py"),
+        ("figure_4a", "plot_figure_4a.py"),
+        ("figure_4b", "plot_figure_4b.py"),
+        ("figure_5", "plot_figure_5.py"),
+        ("figure_6a", "plot_figure_6a.py"),
+        ("figure_6b", "plot_figure_6b.py"),
+    )
+    for figure_id, plot_script in workflows:
+        figure_scripts = ROOT.parent / "figures" / figure_id / "scripts"
+        run_script(figure_scripts / "generate_data.py")
+        run_script(figure_scripts / plot_script)
     print("[done] 2014 figure scripts completed.")
     print(f"[note] Data-gap report: {ROOT / 'data_gap_report.md'}")
 

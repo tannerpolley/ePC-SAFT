@@ -4,7 +4,7 @@ kind: fit_validation
 status: migrated
 package: epcsaft
 commands:
-  validate: uv run python analyses/osmotic_validation/scripts/validation_2014_repro.py
+  validate: uv run python analyses/osmotic_validation/figures/held_2014_repro/scripts/validation_2014_repro.py
 outputs:
   figures: figures/<figure_id>/output
   runs: figures/<figure_id>/output/runs
