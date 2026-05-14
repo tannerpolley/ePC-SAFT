@@ -6,69 +6,85 @@ import uuid
 from pathlib import Path
 
 GENERIC_TEST_TARGETS = (
-    "tests/api/test_package_main.py::test_python_m_epcsaft_reports_package_and_core_status",
-    "tests/api/test_runtime.py::test_package_exports_are_available",
-    "tests/api/test_runtime.py::test_neutral_scalar_methods_return_expected_values",
-    "tests/api/test_runtime.py::test_ionic_activity_and_solution_methods_return_expected_values",
-    "tests/api/test_parameter_templates.py::test_runtime_options_accept_autodiff_modes_and_preserve_explicit_overrides",
-    "tests/api/test_regression_api.py::test_internal_native_least_squares_backend_matches_methane_reference_band",
-    "tests/regression/test_hydrocarbon.py::test_methane_reference_parameters_keep_native_objective_pinned",
-    "tests/equilibrium/test_api.py::test_tp_flash_returns_structured_result_and_json_like_dict",
-    "tests/equilibrium/test_vle.py::test_ternary_hydrocarbon_basis_tp_flash_closes_material_and_fugacity_balance",
-    "tests/equilibrium/test_lle.py::test_methanol_cyclohexane_lle_flash_solves_seeded_phase_split",
-    "tests/equilibrium/test_stability.py::test_stability_returns_structured_result_and_json_like_dict",
-    "tests/equilibrium/test_electrolyte_lle.py::test_one_salt_smoke_reports_unavailable_solver_derivatives",
-    "tests/equilibrium/test_electrolyte_thermo_diagnostics.py::test_khudaida_fixture_loads_charge_neutral_explicit_ions",
-    "tests/native/test_equilibrium_native_contracts.py::test_native_equilibrium_entrypoint_is_exposed",
-    "tests/native/test_runtime_contracts.py::test_pressure_based_and_density_based_states_match_for_neutral_system",
-    "tests/native/test_equation_registry.py::test_equation_registry_outputs_are_synced",
-    "tests/workflows/test_project_structure.py",
-    "tests/workflows/test_run_pytest.py::test_list_slices_exits_without_running_pytest",
-    "tests/workflows/test_workflow_entrypoints.py::test_docs_make_confidence_suite_the_default_runtime_check",
+    "tests/api/package/test_package_main.py::test_python_m_epcsaft_reports_package_and_core_status",
+    "tests/api/runtime/test_runtime_exports_and_metadata.py::test_package_exports_are_available",
+    "tests/api/runtime/test_runtime_neutral_methods.py::test_neutral_scalar_methods_return_expected_values",
+    "tests/api/runtime/test_runtime_ionic_methods.py::test_ionic_activity_and_solution_methods_return_expected_values",
+    "tests/api/parameters/test_parameter_templates.py::test_runtime_options_accept_autodiff_modes_and_preserve_explicit_overrides",
+    "tests/api/regression/test_regression_api_native_backends.py::test_internal_native_least_squares_backend_matches_methane_reference_band",
+    "tests/regression/core/test_hydrocarbon.py::test_methane_reference_parameters_keep_native_objective_pinned",
+    "tests/equilibrium/core/test_api.py::test_tp_flash_returns_structured_result_and_json_like_dict",
+    "tests/equilibrium/core/test_vle.py::test_ternary_hydrocarbon_basis_tp_flash_closes_material_and_fugacity_balance",
+    "tests/equilibrium/core/test_lle.py::test_methanol_cyclohexane_lle_flash_solves_seeded_phase_split",
+    "tests/equilibrium/core/test_stability.py::test_stability_returns_structured_result_and_json_like_dict",
+    "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::test_one_salt_smoke_reports_unavailable_solver_derivatives",
+    "tests/equilibrium/electrolyte/test_electrolyte_thermo_diagnostics.py::test_khudaida_fixture_loads_charge_neutral_explicit_ions",
+    "tests/native/contracts/test_equilibrium_native_contracts.py::test_native_equilibrium_entrypoint_is_exposed",
+    "tests/native/runtime/test_runtime_density_closure.py::test_pressure_based_and_density_based_states_match_for_neutral_system",
+    "tests/native/contracts/test_equation_registry.py::test_equation_registry_outputs_are_synced",
+    "tests/workflows/repo/test_project_structure.py",
+    "tests/workflows/repo/test_run_pytest.py::test_list_slices_exits_without_running_pytest",
+    "tests/workflows/repo/test_workflow_entrypoints.py::test_docs_make_confidence_suite_the_default_runtime_check",
 )
 FAST_TEST_TARGETS = GENERIC_TEST_TARGETS
 CONFIDENCE_TEST_TARGETS = GENERIC_TEST_TARGETS + (
-    "tests/native/test_runtime_contracts.py::test_pressure_based_and_density_based_states_match_for_ionic_system",
-    "tests/native/test_runtime_contracts.py::test_native_residual_helmholtz_and_compressibility_contributions_match_neutral_contract",
-    "tests/native/test_equilibrium_native_contracts.py::test_public_equilibrium_result_comes_from_native_backend",
+    "tests/native/runtime/test_runtime_density_closure.py::test_pressure_based_and_density_based_states_match_for_ionic_system",
+    "tests/native/runtime/test_runtime_contribution_contracts.py::test_native_residual_helmholtz_and_compressibility_contributions_match_neutral_contract",
+    "tests/native/contracts/test_equilibrium_native_contracts.py::test_public_equilibrium_result_comes_from_native_backend",
 )
 EQUILIBRIUM_CONFIDENCE_TEST_TARGETS = (
-    "tests/equilibrium/test_electrolyte_lle_confidence.py::test_khudaida_benchmark_fixture_loads_charge_neutral_cases",
+    "tests/equilibrium/electrolyte/test_electrolyte_lle_confidence.py::test_khudaida_benchmark_fixture_loads_charge_neutral_cases",
     (
-        "tests/equilibrium/test_electrolyte_thermo_diagnostics.py::"
+        "tests/equilibrium/electrolyte/test_electrolyte_thermo_diagnostics.py::"
         "test_khudaida_package_tieline_fixed_phase_residual_is_internally_consistent"
     ),
 )
 EQUILIBRIUM_API_TEST_TARGETS = (
-    "tests/equilibrium/test_api.py::test_tp_flash_returns_structured_result_and_json_like_dict",
-    "tests/equilibrium/test_lle.py::test_methanol_cyclohexane_lle_flash_solves_seeded_phase_split",
-    "tests/equilibrium/test_stability.py::test_stability_returns_structured_result_and_json_like_dict",
-    "tests/equilibrium/test_electrolyte_lle.py::test_one_salt_smoke_reports_unavailable_solver_derivatives",
-    "tests/api/test_runtime.py::test_runtime_build_info_and_capabilities_are_json_like",
+    "tests/equilibrium/core/test_api.py::test_tp_flash_returns_structured_result_and_json_like_dict",
+    "tests/equilibrium/core/test_lle.py::test_methanol_cyclohexane_lle_flash_solves_seeded_phase_split",
+    "tests/equilibrium/core/test_stability.py::test_stability_returns_structured_result_and_json_like_dict",
+    "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::test_one_salt_smoke_reports_unavailable_solver_derivatives",
+    "tests/api/runtime/test_runtime_exports_and_metadata.py::test_runtime_build_info_and_capabilities_are_json_like",
     (
-        "tests/api/test_reactive_speciation.py::"
-        "test_solve_reactive_speciation_activity_coupled_state_reports_unavailable_derivatives"
+        "tests/api/reactive/test_reactive_speciation_results.py::"
+        "test_solve_reactive_speciation_activity_coupled_state_uses_epcsaft_activities"
     ),
-    "tests/api/test_reactive_speciation.py::test_reactive_speciation_options_expose_jacobian_backend_selector",
-    "tests/api/test_reactive_speciation.py::test_reactive_speciation_requested_ipopt_requires_cyipopt",
-    "tests/api/test_reactive_electrolyte_bubble.py",
+    "tests/api/reactive/test_reactive_speciation_options.py::test_reactive_speciation_options_expose_jacobian_backend_selector",
+    "tests/api/reactive/test_reactive_speciation_options.py::test_reactive_speciation_requested_ipopt_requires_cyipopt",
+    "tests/api/reactive/test_reactive_electrolyte_bubble_setup.py",
+    "tests/api/reactive/test_reactive_electrolyte_bubble_results.py",
     (
-        "tests/native/test_chemical_equilibrium_native.py::"
+        "tests/native/equilibrium/test_chemical_equilibrium_native_api.py::"
         "test_native_chemical_equilibrium_residual_evaluator_uses_analytic_jacobian_by_default"
     ),
     (
-        "tests/native/test_chemical_equilibrium_native.py::"
+        "tests/native/equilibrium/test_chemical_equilibrium_native_errors.py::"
         "test_native_chemical_equilibrium_residual_evaluator_rejects_removed_backend"
     ),
 )
 ALL_TEST_TARGETS = ("tests",)
-RUNTIME_TEST_TARGETS = ("tests/api/test_runtime.py", "tests/native/test_runtime_contracts.py")
-API_TEST_TARGETS = (
-    "tests/api/test_runtime.py",
-    "tests/api/test_parameter_templates.py",
-    "tests/api/test_regression_api.py",
+RUNTIME_TEST_TARGETS = (
+    "tests/api/runtime/test_runtime_exports_and_metadata.py",
+    "tests/api/runtime/test_runtime_neutral_methods.py",
+    "tests/api/runtime/test_runtime_ionic_methods.py",
+    "tests/native/runtime/test_runtime_density_closure.py",
+    "tests/native/runtime/test_runtime_contribution_contracts.py",
+    "tests/native/runtime/test_runtime_cache_contracts.py",
 )
-NATIVE_TEST_TARGETS = ("tests/native/test_runtime_contracts.py",)
+API_TEST_TARGETS = (
+    "tests/api/runtime/test_runtime_exports_and_metadata.py",
+    "tests/api/runtime/test_runtime_neutral_methods.py",
+    "tests/api/runtime/test_runtime_ionic_methods.py",
+    "tests/api/parameters/test_parameter_templates.py",
+    "tests/api/regression/test_regression_api_public_contracts.py",
+    "tests/api/regression/test_regression_api_native_backends.py",
+    "tests/api/regression/test_regression_api_results_and_errors.py",
+)
+NATIVE_TEST_TARGETS = (
+    "tests/native/runtime/test_runtime_density_closure.py",
+    "tests/native/runtime/test_runtime_contribution_contracts.py",
+    "tests/native/runtime/test_runtime_cache_contracts.py",
+)
 PROFILE_TEST_TARGETS = ("tests/profile/test_runtime_profile.py",)
 FULL_PROFILE_TEST_TARGETS = (
     "tests/profile/test_runtime_profile.py",

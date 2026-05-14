@@ -2,29 +2,35 @@
 
 This directory contains source-controlled scientific analysis, validation, and figure workflows that are useful for developing and checking `epcsaft` but are not package runtime code.
 
-Each analysis should be self-contained:
+The analysis taxonomy is:
 
 ```text
-analyses/<short_id>/
+analyses/
+  _template/
+  paper_validation/
+    native/
+    application/
+  data_validation/
+  package_validation/
+```
+
+Each real analysis should be self-contained inside one of those category folders:
+
+```text
+analyses/<category>/<short_id>/
   README.md
   analysis.yaml
   config/
   scripts/
-  data/
-    input/
-    raw/
-    processed/
-  results/
-    runs/
-    <plot_set>/
-      <plot_set>.csv
-      <plot_set>.svg
-      <plot_set>.png
-      <plot_set>.mpl.yaml
+  figures/
+    <figure_id>/
+      input/
+      output/
+      scripts/
   notebooks/
   tests/
 ```
 
-Only create optional folders when the analysis needs them. Stable literature inputs that are reused by multiple analyses belong under `data/reference/`; analysis-specific inputs stay local under `analyses/<short_id>/data/input/` or beside the figure script when the current workflow has not yet been normalized.
+Only create optional folders when the analysis needs them. Stable literature inputs that are reused by multiple analyses belong under `data/reference/`; analysis-specific inputs stay local under the owning `figures/<figure_id>/input/` folder.
 
-Generated run payloads belong under `results/runs/` and are ignored. Curated plot-producing outputs belong under `results/<plot_set>/`, with the figure, exact plotted data snapshot, and `<plot_set>.mpl.yaml` sidecar in the same folder so `mplgallery` can discover plot sets directly. The package-level `scripts/` directory is reserved for repo tooling such as builds, validation, data curation, packaging, and docs.
+Generated figure-local run payloads belong under `figures/<figure_id>/output/runs/` and are ignored. Retained model CSVs, plotted data snapshots, rendered figures, and `.mpl.yaml` sidecars belong together under the owning `figures/<figure_id>/output/` folder. The package-level `scripts/` directory is reserved for repo tooling such as builds, validation, data curation, packaging, and docs.

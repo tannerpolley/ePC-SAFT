@@ -1,0 +1,13 @@
+analysis_id: miac_fits
+title: Mean ionic activity coefficient fits
+kind: fit_validation
+status: migrated
+package: epcsaft
+commands:
+  validate: uv run python analyses/data_validation/miac_fits/scripts/validate_miac_fits.py
+  profile: uv run python analyses/data_validation/miac_fits/scripts/profile_miac_runtime.py
+  presentation_plot: uv run python analyses/data_validation/miac_fits/figures/presentation_miac/scripts/plot_2025_presentation_miac.py
+  solvent_comparison_plot: uv run python analyses/data_validation/miac_fits/figures/salt_solvent_comparison/scripts/plot_2025_salt_solvent_comparison.py
+outputs:
+  figures: figures/<figure_id>/output
+  runs: figures/<figure_id>/output/runs

@@ -72,8 +72,8 @@ a^{res} = a^{hc} + a^{disp} + a^{assoc} + a^{DH} + a^{Born}
 - This is the key ingredient for credible water → alcohol/organic electrolyte predictions
 
 Insert (optional):
-- Dielectric fits: generated plot set under `analyses/dielectric_fits/results/dielectric/test_dielc_fit_salts_in_water_fit/`
-- Dielectric derivative check: generated plot set under `analyses/dielectric_fits/results/dielectric/test_dielc_diff_salts_in_water_fit/`
+- Dielectric fits: generated plot set under `analyses/data_validation/dielectric_fits/results/dielectric/test_dielc_fit_salts_in_water_fit/`
+- Dielectric derivative check: generated plot set under `analyses/data_validation/dielectric_fits/results/dielectric/test_dielc_diff_salts_in_water_fit/`
 
 ---
 
@@ -102,8 +102,8 @@ Insert (optional):
 - These fits establish the ion parameter base before moving into mixed-solvent and extraction scenarios
 
 Insert (optional):
-- Water MIAC fits: generated plot sets under `analyses/miac_fits/results/miac/water/miac_m/`
-- Osmotic validation: generated plot set under `analyses/osmotic_validation/results/osmotic/water/validation_2014_repro_NaCl_KBr_fit/`
+- Water MIAC fits: generated plot sets under `analyses/data_validation/miac_fits/results/miac/water/miac_m/`
+- Osmotic validation: generated plot set under `analyses/data_validation/osmotic_validation/results/osmotic/water/validation_2014_repro_NaCl_KBr_fit/`
 
 ---
 
@@ -114,8 +114,8 @@ Insert (optional):
 - The non-aqueous performance is where the 2020 dielectric-dependent Born treatment shows its value
 
 Insert (optional):
-- Methanol MIAC fits: generated plot sets under `analyses/miac_fits/results/miac/methanol/miac_m/`
-- Ethanol MIAC fits: generated plot sets under `analyses/miac_fits/results/miac/ethanol/miac_m/`
+- Methanol MIAC fits: generated plot sets under `analyses/data_validation/miac_fits/results/miac/methanol/miac_m/`
+- Ethanol MIAC fits: generated plot sets under `analyses/data_validation/miac_fits/results/miac/ethanol/miac_m/`
 
 ---
 
@@ -126,7 +126,7 @@ Insert (optional):
 - Sets the right foundation for LLE coupling because electrostatics respond correctly to solvent composition
 
 Insert (optional):
-- DH/Born model comparisons: historical generated plots should be placed under the owning analysis `results/<plot_set>/` folder if regenerated.
+- DH/Born model comparisons: regenerated analysis-owned plots should be placed under the owning `figures/<figure_id>/output/` folder.
 
 ---
 

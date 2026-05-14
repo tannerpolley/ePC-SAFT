@@ -210,7 +210,7 @@ tasks:
           - "runtime_build_info() reports optional_dependencies.cppad using _native_cppad_smoke()."
           - "capabilities()['derivatives']['cppad'] mirrors CppAD build status and marks production_eos_coverage false."
           - "tests/native/test_cppad_runtime_contract.py exists and checks current CppAD reporting contract."
-          - "Figiel 2025 and MIAC assets exist under docs/papers, analyses/2025_figiel, data/reference/epcsaft_parameters/2025_Figiel, and data/reference/MIAC."
+          - "Figiel 2025 and MIAC assets exist under docs/papers, analyses/paper_validation/native/2025_figiel, data/reference/epcsaft_parameters/2025_Figiel, and data/reference/MIAC."
         missing_or_incomplete:
           - ".github/workflows has publish-pypi.yml and wheels.yml only; no default/CppAD/Ceres+CppAD CI build matrix workflow was found."
           - "CMakePresets.json has only dev-mingw and no named default/cppad/ceres-cppad profiles."

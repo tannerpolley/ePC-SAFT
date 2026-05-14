@@ -15,7 +15,7 @@ Before changing code that depends on equilibrium behavior, run:
 
    uv run python run_pytest.py --equilibrium-api -q
 
-Use ``uv run python scripts/validate_project.py quick`` before publishing a
+Use ``uv run python scripts/dev/validate_project.py quick`` before publishing a
 change. Use ``--equilibrium-confidence`` only for the bounded electrolyte
 confidence checks; full scientific reports remain explicit opt-ins.
 

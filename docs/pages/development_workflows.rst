@@ -11,10 +11,10 @@ Start every fresh source checkout with this sequence:
 .. code-block:: powershell
 
    uv sync --no-install-project
-   uv run python scripts/build_epcsaft.py
-   uv run python scripts/validate_project.py quick
+   uv run python scripts/dev/build_epcsaft.py
+   uv run python scripts/dev/validate_project.py quick
 
-This is the expected healthy baseline. It creates the uv environment, builds the in-place pybind11 ``epcsaft._core`` extension, verifies imports/tool paths and generated-output state through doctor, then runs the fast contract suite. The default test route intentionally samples representative API, native, regression, equilibrium, and workflow contracts instead of running full equilibrium/regression reproductions or generated plot production. Use ``uv run python scripts/validate_project.py confidence`` before release or broad runtime claims when extra native runtime contracts should be included.
+This is the expected healthy baseline. It creates the uv environment, builds the in-place pybind11 ``epcsaft._core`` extension, verifies imports/tool paths and generated-output state through doctor, then runs the fast contract suite. The default test route intentionally samples representative API, native, regression, equilibrium, and workflow contracts instead of running full equilibrium/regression reproductions or generated plot production. Use ``uv run python scripts/dev/validate_project.py confidence`` before release or broad runtime claims when extra native runtime contracts should be included.
 The current development and CI smoke baseline is Python 3.13, while ``pyproject.toml`` still declares package compatibility with Python ``>=3.9``.
 
 Use ``uv run python run_pytest.py ...`` for repo validation. Direct ``uv run python -m pytest ...`` works, but the wrapper sets ``src`` on the import path and uses a per-run pytest temp directory that is safer for Windows and parallel local runs.
@@ -30,13 +30,13 @@ Command matrix
      - Command
      - Use when
    * - First setup or uncertain state
-     - ``uv sync --no-install-project`` then ``uv run python scripts/build_epcsaft.py`` then ``uv run python scripts/doctor.py``
+     - ``uv sync --no-install-project`` then ``uv run python scripts/dev/build_epcsaft.py`` then ``uv run python scripts/dev/doctor.py``
      - Starting a fresh thread, after dependency changes, or after a failed import.
    * - Handoff validation
-     - ``uv run python scripts/validate_project.py confidence``
+     - ``uv run python scripts/dev/validate_project.py confidence``
      - Before claiming repo runtime confidence. This includes doctor and the confidence slice.
    * - Fast generic validation
-     - ``uv run python scripts/validate_project.py quick``
+     - ``uv run python scripts/dev/validate_project.py quick``
      - Quick checks for Python/runtime/regression API changes when native contract coverage is not required yet.
    * - Python API work
      - ``uv run python run_pytest.py --api -q``
@@ -45,7 +45,7 @@ Command matrix
      - ``uv run python run_pytest.py --equilibrium-api -q``
      - Fast representative check for neutral equilibrium, electrolyte LLE, reactive speciation, reactive electrolyte bubble, derivative-backend contracts, and capability reporting.
    * - Native or density/equation work
-     - ``uv run python scripts/build_epcsaft.py --build-only --parallel 10`` then ``uv run python run_pytest.py --runtime -q``
+     - ``uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10`` then ``uv run python run_pytest.py --runtime -q``
      - C++ iteration after ``build/dev`` is already configured.
    * - Native contract only
      - ``uv run python run_pytest.py --native -q``
@@ -54,22 +54,22 @@ Command matrix
      - ``uv run python run_pytest.py --equilibrium-confidence -q -s``
      - Bounded Khudaida fixture plus cached fixed-phase residual contract. Native confidence solving and full report generation remain explicit opt-ins.
    * - Docs check
-     - ``uv run python scripts/validate_project.py docs``
+     - ``uv run python scripts/dev/validate_project.py docs``
      - Build Sphinx HTML under ``build/docs-html``.
    * - Quick method-speed check
      - ``uv run python run_pytest.py --profile -q``
      - Runtime-only profiling. The wrapper enables the required performance environment flag.
    * - Neutral equilibrium benchmark
-     - ``uv run python scripts/benchmark_neutral_equilibrium.py --warmup 20 --repeat 100``
+     - ``uv run python scripts/benchmarks/benchmark_neutral_equilibrium.py --warmup 20 --repeat 100``
      - Measure neutral state, TP flash, bubble pressure, dew pressure, and seeded neutral LLE without any FeOs dependency.
    * - Literature benchmark inventory
-     - ``uv run python scripts/benchmark_literature_suite.py``
+     - ``uv run python scripts/benchmarks/benchmark_literature_suite.py``
      - Review the package-owned literature benchmark scope, including which issue anchors are already supported by tests and which still require follow-up work.
    * - Full method-speed check
      - ``uv run python run_pytest.py --profile-full -q -s``
      - Comprehensive runtime, MIAC, and regression profiling before making broad speed claims. This can take about a minute locally; allow at least 120 seconds.
    * - Package boundary
-     - ``uv run python scripts/build_dist.py``
+     - ``uv run python scripts/dev/build_dist.py``
      - Wheel/sdist and smoke-import validation.
    * - Installed/source diagnostic
      - ``uv run python -m epcsaft``
@@ -82,11 +82,20 @@ The canonical native build command is:
 
 .. code-block:: powershell
 
-   uv run python scripts/build_epcsaft.py
+   uv run python scripts/dev/build_epcsaft.py
 
-Use ``--build-only --parallel 10`` only after the CMake tree already exists. Use ``--configure-only`` when you need to refresh CMake configuration without compiling. For a new ``build/dev`` tree, ``scripts/build_epcsaft.py`` now prefers Ninja when ``ninja`` is available on ``PATH`` because it is usually faster than MinGW Makefiles for repeated local rebuilds. Existing CMake trees keep their original generator; doctor reports ``build_generator_recommendation`` when ``uv run python scripts/build_epcsaft.py --clean --generator ninja`` is the appropriate one-time migration from an older MinGW tree.
+Use ``--build-only --parallel 10`` only after the CMake tree already exists. Use ``--configure-only`` when you need to refresh CMake configuration without compiling. For a new ``build/dev`` tree, ``scripts/dev/build_epcsaft.py`` now prefers Ninja when ``ninja`` is available on ``PATH`` because it is usually faster than MinGW Makefiles for repeated local rebuilds. Existing CMake trees keep their original generator; doctor reports ``build_generator_recommendation`` when ``uv run python scripts/dev/build_epcsaft.py --clean --generator ninja`` is the appropriate one-time migration from an older MinGW tree.
 
-Do not use ``--clean`` for routine validation. ``uv run python scripts/build_epcsaft.py --clean`` is a repair action for stale CMake state or stale/locked ``_core`` artifacts. If Windows reports that ``_core*.pyd`` is locked, stop Python REPLs, tests, IDE run configurations, or parallel workers that imported ``epcsaft._core`` before retrying.
+Every native build writes ``build/dev/build_epcsaft.log`` and finishes with an ``epcsaft._core`` import check when compilation runs. Use ``uv run python scripts/dev/build_epcsaft.py --status`` when you need a non-mutating check of the configured generator, Ceres/CppAD flags, importable ``_core`` artifacts, stale ``.ninja_lock`` state, last Ninja target, and live repo-owned build processes. This is the safest first check when an IDE run or interrupted terminal build appears hung.
+
+For IDE run configurations, keep commands explicit instead of relying on one overloaded target:
+
+- Native build status: ``uv run python scripts/dev/build_epcsaft.py --status``
+- Native incremental build: ``uv run python scripts/dev/build_epcsaft.py --build-only --parallel 1``
+- Native configure/build: ``uv run python scripts/dev/build_epcsaft.py --parallel 1``
+- Minimal native build without Ceres/CppAD: ``uv run python scripts/dev/build_epcsaft.py --clean --disable-ceres --disable-cppad``
+
+Do not use ``--clean`` for routine validation. ``uv run python scripts/dev/build_epcsaft.py --clean`` is a repair action for stale CMake state or stale/locked ``_core`` artifacts. If Windows reports that ``_core*.pyd`` is locked, stop Python REPLs, tests, IDE run configurations, or parallel workers that imported ``epcsaft._core`` before retrying. If ``--status`` reports a stale Ninja lock, inspect the listed process ids and stop only repo-owned build processes before retrying.
 
 LaTeX and Overleaf mirror
 -------------------------
@@ -97,13 +106,13 @@ Use this once to create or validate the external Overleaf checkout:
 
 .. code-block:: powershell
 
-   .\scripts\setup_latex_mirror.ps1
+   .\scripts\docs\setup_latex_mirror.ps1
 
 After LaTeX edits are committed or ready to publish, mirror the current ``docs/latex`` tree to Overleaf:
 
 .. code-block:: powershell
 
-   .\scripts\sync_latex_mirror.ps1
+   .\scripts\docs\sync_latex_mirror.ps1
 
 The mirror lives at ``C:\Users\Tanner\Documents\git\LaTeX-Projects\ePC-SAFT-LaTeX`` and owns the Overleaf Git remote. The sync script copies the current LaTeX source tree and intentional top-level artifacts; generated ``docs/latex/out`` build products remain ignored in this repo.
 
@@ -120,27 +129,27 @@ The dev build tree and temp/profile outputs under ``build/`` are shared disposab
 Project-local Git worktrees
 ---------------------------
 
-Use ``scripts/create_dev_worktree.ps1`` from the primary checkout instead of raw ``git worktree add`` when a contributor needs a project-local worktree under ``.worktrees/``. The helper creates ``.worktrees/<name>`` and registers the new checkout path as a Git ``safe.directory`` so future Git commands inside that worktree do not fail on Windows when the checkout is accessed by tools running under different user contexts.
+Use ``scripts/dev/create_dev_worktree.ps1`` from the primary checkout instead of raw ``git worktree add`` when a contributor needs a project-local worktree under ``.worktrees/``. The helper creates ``.worktrees/<name>`` and registers the new checkout path as a Git ``safe.directory`` so future Git commands inside that worktree do not fail on Windows when the checkout is accessed by tools running under different user contexts.
 
 .. code-block:: powershell
 
-   .\scripts\create_dev_worktree.ps1 -Name equilibrium-v3 -Branch feature/equilibrium-v3
+   .\scripts\dev\create_dev_worktree.ps1 -Name equilibrium-v3 -Branch feature/equilibrium-v3
 
 ``.worktrees/`` must stay ignored in ``.gitignore`` before using the helper. The ``safe.directory`` registration is intentionally path-specific and global to the current Windows user. Use ``-SkipSafeDirectory`` only when you plan to use per-command ``git -c safe.directory=<path> ...`` overrides instead.
 
 Test selection rules
 --------------------
 
-Use the smallest relevant test first, then run ``scripts/validate_project.py confidence`` before release, merge, or broad runtime claims. Use ``uv run python run_pytest.py --all -q`` only when you explicitly need the exhaustive historical suite.
+Use the smallest relevant test first, then run ``scripts/dev/validate_project.py confidence`` before release, merge, or broad runtime claims. Use ``uv run python run_pytest.py --all -q`` only when you explicitly need the exhaustive historical suite.
 
 - Python wrapper/API changes: ``uv run python run_pytest.py --api -q`` first, then ``uv run python run_pytest.py --confidence -q``.
-- Native/equation changes: ``uv run python scripts/build_epcsaft.py --build-only --parallel 10`` first, then ``uv run python run_pytest.py --runtime -q``, then ``uv run python run_pytest.py --confidence -q``.
-- Equation traceability changes: ``uv run python scripts/sync_equation_registry.py --check --strict-traceability`` then ``uv run python run_pytest.py tests/native/test_equation_registry.py -q``.
+- Native/equation changes: ``uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10`` first, then ``uv run python run_pytest.py --runtime -q``, then ``uv run python run_pytest.py --confidence -q``.
+- Equation traceability changes: ``uv run python scripts/docs/sync_equation_registry.py --check --strict-traceability`` then ``uv run python run_pytest.py tests/native/contracts/test_equation_registry.py -q``.
 - Performance claims: ``uv run python run_pytest.py --profile -q -s`` is the quick runtime-only profile; use ``uv run python run_pytest.py --profile-full -q -s`` only for broad speed claims. Read the generated ``build/runtime_profile/*.md`` reports. Do not rely on skipped profile tests or code inspection alone.
-- Plot asset changes: run the owning ``analyses/<short_id>/scripts`` entrypoint or a targeted opt-in test under ``analyses/package_plot_smokes/tests`` only when regenerating local plot outputs is explicitly part of the task.
+- Plot asset changes: run the owning ``analyses/<category>/<short_id>/scripts`` coordinator or the figure-local ``analyses/<category>/<short_id>/figures/<figure_id>/scripts`` entrypoint, plus any targeted opt-in test under ``analyses/package_validation/package_plot_smokes/tests``, only when regenerating local plot outputs is explicitly part of the task.
 
 ``--profile`` is the quick runtime-only profile. ``--profile-full`` runs runtime, MIAC, and regression profiles and is the preferred evidence path for comprehensive speed reviews; use a timeout of at least 120 seconds.
-- Packaging changes: ``scripts/build_dist.py``.
+- Packaging changes: ``scripts/dev/build_dist.py``.
 
 Keep generated plot assets and generated CSV workflows out of normal validation unless the task explicitly asks for them. There is no named plot validation slice; target the owning script or test file directly when plot output work is in scope.
 
@@ -160,10 +169,10 @@ Use the package-owned benchmark harness when the claim is specifically about neu
 
 .. code-block:: powershell
 
-   uv run python scripts/benchmark_neutral_equilibrium.py --warmup 20 --repeat 100
-   uv run python scripts/benchmark_neutral_equilibrium.py --case tp_flash --warmup 20 --repeat 200
-   uv run python scripts/benchmark_neutral_equilibrium.py --warmup 20 --repeat 100 --json build/benchmarks/neutral_equilibrium.json
-   uv run python scripts/benchmark_neutral_equilibrium.py --warmup 20 --repeat 100 --baseline-json build/benchmarks/neutral_equilibrium_baseline_issue43.json
+   uv run python scripts/benchmarks/benchmark_neutral_equilibrium.py --warmup 20 --repeat 100
+   uv run python scripts/benchmarks/benchmark_neutral_equilibrium.py --case tp_flash --warmup 20 --repeat 200
+   uv run python scripts/benchmarks/benchmark_neutral_equilibrium.py --warmup 20 --repeat 100 --json build/benchmarks/neutral_equilibrium.json
+   uv run python scripts/benchmarks/benchmark_neutral_equilibrium.py --warmup 20 --repeat 100 --baseline-json build/benchmarks/neutral_equilibrium_baseline_issue43.json
 
 The harness benchmarks these package-owned neutral cases:
 
@@ -183,9 +192,9 @@ and benchmark scope rather than runtime speed.
 
 .. code-block:: powershell
 
-   uv run python scripts/benchmark_literature_suite.py
-   uv run python scripts/benchmark_literature_suite.py --case figiel_2025_ssm_ds_born
-   uv run python scripts/benchmark_literature_suite.py --json build/benchmarks/literature_suite.json
+   uv run python scripts/benchmarks/benchmark_literature_suite.py
+   uv run python scripts/benchmarks/benchmark_literature_suite.py --case figiel_2025_ssm_ds_born
+   uv run python scripts/benchmarks/benchmark_literature_suite.py --json build/benchmarks/literature_suite.json
 
 The inventory reports each issue-scope literature anchor with a classification
 such as ``already_supported_with_tests`` or ``blocker_requires_followup`` plus
@@ -195,6 +204,8 @@ avoid silently treating blocked literature routes as complete.
 Troubleshooting
 ---------------
 
-Run ``uv run python scripts/doctor.py`` whenever imports, tool paths, ``_core`` state, or generated-output tracking are unclear. It reports the active Python, git ref, uv/cmake/ninja paths, ``epcsaft`` import path, ``epcsaft._core`` path, required native symbol presence, generated artifact state, and the next recommended command.
+Run ``uv run python scripts/dev/doctor.py`` whenever imports, tool paths, ``_core`` state, or generated-output tracking are unclear. It reports the active Python, git ref, uv/cmake/ninja paths, ``epcsaft`` import path, ``epcsaft._core`` path, required native symbol presence, generated artifact state, and the next recommended command.
 
-If ``scripts/build_epcsaft.py`` appears slow, first check whether ``build/dev/CMakeCache.txt`` reports ``CMAKE_GENERATOR:INTERNAL=MinGW Makefiles``. A clean one-time switch to Ninja can materially reduce rebuild overhead on Windows systems where Ninja is already installed. Full configure/build can still take far longer than the fast rebuild path; incremental ``--build-only --parallel 10`` is the intended C++ edit loop.
+If ``scripts/dev/build_epcsaft.py`` appears slow, run ``uv run python scripts/dev/build_epcsaft.py --status`` first. If the status output shows a stale Ninja lock and live repo-owned build processes, resolve those processes before retrying. If the status output is clean, check whether ``build/dev/CMakeCache.txt`` reports ``CMAKE_GENERATOR:INTERNAL=MinGW Makefiles``. A clean one-time switch to Ninja can materially reduce rebuild overhead on Windows systems where Ninja is already installed. Full configure/build can still take far longer than the fast rebuild path; incremental ``--build-only --parallel 10`` is the intended C++ edit loop.
+
+The canonical native build now enables Ceres and CppAD by default. The ``quick`` validation profile stays focused on the standard fast contract suite, while ``uv run python scripts/dev/validate_project.py ceres-cppad`` remains the targeted regression/backend slice for Ceres-specific coverage. Use ``uv run python scripts/dev/build_epcsaft.py --disable-ceres --disable-cppad`` only when you intentionally need the minimal native profile.

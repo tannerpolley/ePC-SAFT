@@ -11,7 +11,7 @@ Classify EqIDs
 - Implemented: the equation has at least one nearby native owner comment, ``// EqID: <id>``.
 - Documentation-only: the equation is reference material, notation, derivation, or explanatory context with no direct native owner.
 
-Do not hand-edit ``docs/equations.md`` or ``docs/equations_registry.yaml``. Regenerate them with ``scripts/sync_equation_registry.py``.
+Do not hand-edit ``docs/equations.md`` or ``docs/equations_registry.yaml``. Regenerate them with ``scripts/docs/sync_equation_registry.py``.
 
 Place Owner Comments
 --------------------
@@ -27,7 +27,7 @@ Documentation-only EqIDs are exempt from strict C++ owner enforcement, but they 
 
 .. code-block:: powershell
 
-   uv run python scripts/sync_equation_registry.py --check --strict-traceability --docs-only-audit
+   uv run python scripts/docs/sync_equation_registry.py --check --strict-traceability --docs-only-audit
 
 The generated Markdown view labels these entries as documentation-only instead of implying a missing owner.
 
@@ -45,9 +45,9 @@ For equation work, run:
 
 .. code-block:: powershell
 
-   uv run python scripts/sync_equation_registry.py
-   uv run python scripts/sync_equation_registry.py --check --strict-traceability
-   uv run python run_pytest.py tests/native/test_equation_registry.py -q
+   uv run python scripts/docs/sync_equation_registry.py
+   uv run python scripts/docs/sync_equation_registry.py --check --strict-traceability
+   uv run python run_pytest.py tests/native/contracts/test_equation_registry.py -q
 
 Before handoff after native/equation changes, also run:
 

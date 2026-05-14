@@ -61,10 +61,10 @@ LITERATURE_CASES: OrderedDict[str, LiteratureBenchmarkEntry] = OrderedDict(
                 classification="already_supported_with_tests",
                 coverage_kind="smoke_regression",
                 package_surface=(
-                    "tests/regression/test_mea_co2_h2o_pure_parameter_benchmark.py",
-                    "tests/regression/test_literature_pure_parameter_regression.py",
+                    "tests/regression/literature/test_mea_co2_h2o_pure_parameter_benchmark.py",
+                    "tests/regression/literature/test_literature_pure_parameter_regression.py",
                 ),
-                validation_paths=("tests/regression/test_literature_pure_parameter_regression.py",),
+                validation_paths=("tests/regression/literature/test_literature_pure_parameter_regression.py",),
                 notes=(
                     "Current coverage exists through a private benchmark-only regression path rather than a "
                     "documented application-specific public API."
@@ -94,11 +94,11 @@ LITERATURE_CASES: OrderedDict[str, LiteratureBenchmarkEntry] = OrderedDict(
                 classification="already_supported_with_tests",
                 coverage_kind="smoke_regression",
                 package_surface=(
-                    "tests/regression/test_figiel_2025_born_parameter_parity.py",
-                    "tests/regression/test_miac_liquid_electrolyte_regression.py",
-                    "tests/regression/test_miac_liquid_electrolyte_parity.py",
+                    "tests/regression/literature/test_figiel_2025_born_parameter_parity.py",
+                    "tests/regression/electrolyte/test_miac_liquid_electrolyte_regression.py",
+                    "tests/regression/electrolyte/test_miac_liquid_electrolyte_parity.py",
                 ),
-                validation_paths=("tests/regression/test_figiel_2025_born_parameter_parity.py",),
+                validation_paths=("tests/regression/literature/test_figiel_2025_born_parameter_parity.py",),
                 notes="Liquid-electrolyte Born parity and backend-unavailable contracts are already covered by tests.",
             ),
         ),
@@ -168,9 +168,9 @@ LITERATURE_CASES: OrderedDict[str, LiteratureBenchmarkEntry] = OrderedDict(
                 coverage_kind="suite_smoke_and_opt_in",
                 package_surface=(
                     "src/epcsaft/equilibrium_core/confidence.py",
-                    "tests/equilibrium/test_electrolyte_lle_confidence.py",
+                    "tests/equilibrium/electrolyte/test_electrolyte_lle_confidence.py",
                 ),
-                validation_paths=("tests/equilibrium/test_electrolyte_lle_confidence.py",),
+                validation_paths=("tests/equilibrium/electrolyte/test_electrolyte_lle_confidence.py",),
                 notes=(
                     "The package already ships a dedicated Khudaida confidence suite with smoke and opt-in full modes."
                 ),
@@ -183,8 +183,8 @@ LITERATURE_CASES: OrderedDict[str, LiteratureBenchmarkEntry] = OrderedDict(
                 title="Hubach/Yu lithium-related equilibrium benchmark",
                 classification="already_supported_with_tests",
                 coverage_kind="fixture_and_opt_in_hard_case",
-                package_surface=("tests/equilibrium/test_hubach_electrolyte_lle.py",),
-                validation_paths=("tests/equilibrium/test_hubach_electrolyte_lle.py",),
+                package_surface=("tests/equilibrium/electrolyte/test_hubach_electrolyte_lle.py",),
+                validation_paths=("tests/equilibrium/electrolyte/test_hubach_electrolyte_lle.py",),
                 notes=(
                     "Fixture, seed, and diagnostics coverage exists now; the distinct native split solve remains an "
                     "opt-in hard-case regression."

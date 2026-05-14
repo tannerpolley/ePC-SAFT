@@ -133,7 +133,7 @@ native build:
 .. code-block:: powershell
 
    uv sync --no-install-project
-   uv run python scripts\build_epcsaft.py
+   uv run python scripts\dev\build_epcsaft.py
 
 For experimental IPOPT work, install the optional Python adapter dependency
 with the ``ipopt`` extra or dependency group:
@@ -150,7 +150,7 @@ local ``ipopt.pc`` shim and run uv:
 .. code-block:: powershell
 
    conda install -n epcsaft-cyipopt-test -c conda-forge pkg-config
-   .\scripts\setup_windows_cyipopt_uv.ps1 -IpoptPrefix C:\ProgramData\miniconda3\envs\epcsaft-cyipopt-test\Library
+   .\scripts\dev\setup_windows_cyipopt_uv.ps1 -IpoptPrefix C:\ProgramData\miniconda3\envs\epcsaft-cyipopt-test\Library
 
 The IPOPT path uses ``cyipopt`` and remains explicit opt-in through
 ``solver_backend="ipopt"``. It is not a replacement for native least-squares or
@@ -516,8 +516,8 @@ The package-owned micro-benchmark harness for this layer is:
 
 .. code-block:: powershell
 
-   uv run python scripts\benchmark_reactive_regression.py --warmup 3 --repeat 10
-   uv run python scripts\benchmark_reactive_regression.py --case reactive_regression_pressure_speciation_35_row_surrogate --warmup 0 --repeat 1
+   uv run python scripts\benchmarks\benchmark_reactive_regression.py --warmup 3 --repeat 10
+   uv run python scripts\benchmarks\benchmark_reactive_regression.py --case reactive_regression_pressure_speciation_35_row_surrogate --warmup 0 --repeat 1
 
 Binary VLE records
 ------------------

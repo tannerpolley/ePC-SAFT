@@ -1,5 +1,7 @@
 docs/_build/
 build/
+!tests/workflows/build/
+!tests/workflows/build/**
 .worktrees/
 dist/
 __pycache__
@@ -9,6 +11,7 @@ tests/__pycache__
 *.py[cod]
 .mypy_cache/
 .ruff_cache/
+.uv-cache/
 .venv/
 venv/
 .env/
@@ -20,11 +23,15 @@ artifacts/
 outputs/
 **/out/
 analyses/**/results/runs/
+analyses/**/figures/**/output/runs/
 analyses/**/logs/
 analyses/**/.ipynb_checkpoints/
 analyses/**/data/interim/
 analyses/**/data/raw/large/
 analyses/**/results/**/_draft/
+analyses/**/figures/**/output/_draft/
+scripts/fits/
+scripts/paper_validation/
 docs/latex/out/
 docs/latex/references.bib
 data/MIAC/*/plot_fits/

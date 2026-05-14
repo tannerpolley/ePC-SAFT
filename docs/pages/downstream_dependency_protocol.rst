@@ -46,11 +46,11 @@ code, and validate with the smallest relevant ladder:
 .. code-block:: powershell
 
    uv run python run_pytest.py <focused-test-targets> -q
-   uv run python scripts/validate_project.py quick
+   uv run python scripts/dev/validate_project.py quick
 
-Run ``uv run python scripts/build_epcsaft.py`` and ``uv run python
-scripts/doctor.py`` when native code or package import state is involved. Use
-``uv run python scripts/validate_project.py confidence`` only for broad or
+Run ``uv run python scripts/dev/build_epcsaft.py`` and ``uv run python
+scripts/dev/doctor.py`` when native code or package import state is involved. Use
+``uv run python scripts/dev/validate_project.py confidence`` only for broad or
 native-risk changes.
 
 Before handing the issue back, comment with the root cause, files or APIs
@@ -66,8 +66,8 @@ Use the read-only helper to inspect one issue and choose the first command:
 
 .. code-block:: powershell
 
-   uv run python scripts/triage_dependency_issue.py --issue 12
-   uv run python scripts/triage_dependency_issue.py --issue https://github.com/tannerpolley/ePC-SAFT/issues/12 --json
+   uv run python scripts/support/triage_dependency_issue.py --issue 12
+   uv run python scripts/support/triage_dependency_issue.py --issue https://github.com/tannerpolley/ePC-SAFT/issues/12 --json
 
 The helper fetches the issue through GitHub CLI, checks the required sections,
 classifies the likely area from labels and body text, and prints recommended

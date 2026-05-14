@@ -1,0 +1,10 @@
+analysis_id: 2026_khudaida
+title: Khudaida 2026 electrolyte LLE validation
+kind: paper_validation
+status: migrated
+package: epcsaft
+commands:
+  run_all: uv run python analyses/paper_validation/application/2026_khudaida/scripts/run_all.py
+outputs:
+  figures: figures/<figure_id>/output
+  runs: figures/<figure_id>/output/runs

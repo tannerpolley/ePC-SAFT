@@ -109,7 +109,7 @@ PAPER_KEY_BY_DATASET = {
     "2021_Bulow": "2021",
     "2025_Figiel": "2025",
 }
-CANONICAL_USER_OPTIONS_SOURCE = "analyses/miac_fits/scripts/validate_miac_fits.py"
+CANONICAL_USER_OPTIONS_SOURCE = "analyses/data_validation/miac_fits/scripts/validate_miac_fits.py"
 RESOLVER_SOURCE = "epcsaft.parameters::_resolve_runtime_options"
 RUNTIME_REQUIRED_KEYS = {
     "dielc_rule",

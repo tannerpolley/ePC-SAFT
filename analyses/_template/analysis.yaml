@@ -4,8 +4,8 @@ kind: modeling
 status: template
 package: epcsaft
 commands:
-  generate_data: uv run python analyses/<short_id>/scripts/generate_data.py
-  render_plots: uv run python analyses/<short_id>/scripts/plot_results.py
+  generate_data: uv run python analyses/<category>/<short_id>/figures/<figure_id>/scripts/generate_data.py
+  render_plots: uv run python analyses/<category>/<short_id>/figures/<figure_id>/scripts/render_figure.py
 outputs:
-  plot_sets: results/<plot_set>
-  runs: results/runs
+  figures: figures/<figure_id>/output
+  runs: figures/<figure_id>/output/runs

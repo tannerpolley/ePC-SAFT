@@ -1,4 +1,4 @@
-# Generated from docs/latex/equations.tex by scripts/sync_equation_registry.py
+# Generated from docs/latex/equations.tex by scripts/docs/sync_equation_registry.py
 
 - eqid: "m_bar"
   section: "Parameter Setup"
@@ -1407,8 +1407,8 @@
     \left(\frac{\partial\Delta^{A_{i}B_{j}}}{\partial\rho}\right)_{T,x}=d_{ij}^3\kappa^{A_{i}B_{j}}\left[\exp(\epsilon^{A_{i}B_{j}}/kT)-1\right]\left(\frac{\partial g_{ij}^{hs}}{\partial\rho}\right)_{T,x}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
-      line: 165
-      comment_line: 164
+      line: 163
+      comment_line: 162
       context: "static vector<double> association_site_fraction_density_terms_cpp("
 - eqid: "ddelta_assoc_dxk"
   section: "Contribution Intermediates"
@@ -1429,8 +1429,8 @@
         \left(\frac{\partial g_{ij}^{hs}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
-      line: 198
-      comment_line: 197
+      line: 196
+      comment_line: 195
       context: "static vector<double> association_site_fraction_composition_terms_cpp("
 - eqid: "kappa_dh"
   section: "Contribution Intermediates"
@@ -2040,8 +2040,8 @@
         =\rho\sum_{i}x_{i}\sum_{A_{i}}\left(\frac{1}{X^{A_{i}}}-\frac{1}{2}\right)\left(\frac{\partial X^{A_{i}}}{\partial\rho}\right)_{T,x}.
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
-      line: 327
-      comment_line: 326
+      line: 323
+      comment_line: 322
       context: "double dadrho_assoc_cpp("
 - eqid: "assoc_ares_dxk"
   section: "Residual Helmholtz Energy"
@@ -2064,8 +2064,8 @@
         \left(\frac{\partial X^{A_{i}}}{\partial x_{k}}\right)_{T,v,x_{i\neq k}}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
-      line: 389
-      comment_line: 388
+      line: 385
+      comment_line: 384
       context: "ContributionDadxResult dadx_assoc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const AssociationIntermediateState &assoc_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "assoc_ares_dT"
   section: "Residual Helmholtz Energy"
@@ -2086,8 +2086,8 @@
         \left(\frac{\partial X^{A_i}}{\partial T}\right)_{\rho,x_i}
   cpp_refs:
     - file: "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
-      line: 377
-      comment_line: 376
+      line: 373
+      comment_line: 372
       context: "double dadt_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {"
 - eqid: "ares_dh"
   section: "Residual Helmholtz Energy"
