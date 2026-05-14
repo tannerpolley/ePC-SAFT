@@ -15,20 +15,17 @@ if str(ANALYSIS_SCRIPTS) not in sys.path:
 import _common as common
 
 OUTPUT = Path(__file__).with_name("figure_2.png")
-DIGITIZED_SOURCES = (
-    common.REPO_ROOT / "data" / "osmotic" / "water" / "2014_Held_figure_2_digitized.csv",
-    common.analysis_data_path(__file__, "figure_2_digitized.csv", kind="input"),
-)
+DIGITIZED_PATH = common.analysis_data_path(__file__, "figure_2_digitized.csv", kind="input")
+NACL_DATA_PATH = common.analysis_data_path(__file__, "NaCl.csv", kind="input")
 
 
 def _load_optional_digitized() -> dict[tuple[str, float], tuple[np.ndarray, np.ndarray]]:
     out: dict[tuple[str, float], tuple[np.ndarray, np.ndarray]] = {}
-    data_path = next((path for path in DIGITIZED_SOURCES if path.exists()), None)
-    if data_path is None:
+    if not DIGITIZED_PATH.exists():
         return out
 
     grouped: dict[tuple[str, float], list[tuple[float, float]]] = {}
-    with data_path.open("r", newline="", encoding="utf-8-sig") as handle:
+    with DIGITIZED_PATH.open("r", newline="", encoding="utf-8-sig") as handle:
         reader = csv.DictReader(handle)
         for row in reader:
             salt = str(row.get("salt", "")).strip()
@@ -94,7 +91,7 @@ def main() -> None:
                 )
 
     # Exact NaCl 298.15 K points are available in machine-readable CSV.
-    m_nacl, phi_nacl = common.load_osmotic_data("NaCl")
+    m_nacl, phi_nacl = common.load_osmotic_data(NACL_DATA_PATH)
     ax.scatter(
         m_nacl,
         phi_nacl,

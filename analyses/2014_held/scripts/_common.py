@@ -234,14 +234,10 @@ def calc_osmotic_curve(salt: str, m_values: np.ndarray, strategy: str, T: float 
     return out
 
 
-def load_osmotic_data(salt: str, m_min: float = 0.0, m_max: float = 4.0) -> tuple[np.ndarray, np.ndarray]:
-    candidates = [
-        REPO_ROOT / "data" / "osmotic" / "water" / f"{salt}.csv",
-        REPO_ROOT / "data" / "osmotic" / f"{salt}.csv",
-    ]
-    data_path = next((p for p in candidates if p.exists()), None)
-    if data_path is None:
-        raise FileNotFoundError(f"No osmotic CSV found for {salt}. Checked: {candidates}")
+def load_osmotic_data(source: str | Path, m_min: float = 0.0, m_max: float = 4.0) -> tuple[np.ndarray, np.ndarray]:
+    data_path = Path(source)
+    if not data_path.exists():
+        raise FileNotFoundError(f"No osmotic CSV found at {data_path}")
 
     molality = []
     osmotic = []

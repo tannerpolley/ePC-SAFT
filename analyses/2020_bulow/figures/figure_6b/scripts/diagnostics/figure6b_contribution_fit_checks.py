@@ -48,6 +48,9 @@ import matplotlib.pyplot as plt
 OUTPUT_ROOT = paper_validation_dir(Path(__file__).resolve().parent)
 OUTPUT_DATA_DIR = OUTPUT_ROOT / "data"
 OUTPUT_PLOTS_DIR = OUTPUT_ROOT / "plots"
+FIGURE_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_MIAC_DATA = FIGURE_ROOT / "input" / "ethanol-LiBr.csv"
+DEFAULT_DIGITIZED = FIGURE_ROOT / "output" / "processed" / "Figure6b_curves.csv"
 
 CONTRIBUTION_ORDER = ["born", "dh", "hc", "disp", "assoc", "total"]
 FILE_LABELS = {
@@ -318,26 +321,16 @@ def run_analysis(
 
 
 def _parse_args() -> argparse.Namespace:
-    default_digitized = (
-        REPO_ROOT
-        / "scripts"
-        / "paper_validation"
-        / "2020_Bulow_analysis"
-        / "figure_6"
-        / "figure_6b"
-        / "data"
-        / "Figure6b_curves.csv"
-    )
     parser = argparse.ArgumentParser(description="Generate per-contribution Figure 6b model-vs-digitized fit plots")
     parser.add_argument(
         "--miac-data",
         type=Path,
-        default=REPO_ROOT / "data" / "reference" / "MIAC" / "ethanol" / "ethanol-LiBr.csv",
+        default=DEFAULT_MIAC_DATA,
     )
     parser.add_argument(
         "--digitized",
         type=Path,
-        default=default_digitized,
+        default=DEFAULT_DIGITIZED,
     )
     parser.add_argument(
         "--out-dir",

@@ -26,7 +26,7 @@ import _plot_common as common
 from epcsaft.parameters import get_prop_dict
 from scripts._epcsaft_oop import epcsaft_density, epcsaft_solvation_free_energy
 
-DATA_PATH = common.analysis_data_path(__file__, "water_comparisons.csv", kind="processed")
+DATA_PATH = common.analysis_data_path(__file__, "water_comparisons.csv", kind="input")
 OUTPUT_PATH = SCRIPT_DIR / "figure_2.png"
 T_REF = 298.15
 P_REF = 1.0e5

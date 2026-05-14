@@ -33,6 +33,8 @@ import matplotlib.pyplot as plt
 
 OUTPUT_ROOT = paper_validation_dir(Path(__file__).resolve().parent)
 OUTPUT_PLOTS_DIR = OUTPUT_ROOT / "plots"
+FIGURE_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_MIAC_DATA = FIGURE_ROOT / "input" / "ethanol-LiBr.csv"
 
 
 T_REF = 298.15
@@ -381,7 +383,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--data",
         type=Path,
-        default=REPO_ROOT / "data" / "reference" / "MIAC" / "ethanol" / "ethanol-LiBr.csv",
+        default=DEFAULT_MIAC_DATA,
         help="Input CSV with columns including molality, source, and miac/miac_m.",
     )
     parser.add_argument(

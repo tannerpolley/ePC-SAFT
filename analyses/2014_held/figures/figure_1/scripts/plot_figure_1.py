@@ -13,6 +13,7 @@ if str(ANALYSIS_SCRIPTS) not in sys.path:
 import _common as common
 
 OUTPUT = Path(__file__).with_name("figure_1.png")
+INPUT_DIR = Path(__file__).resolve().parents[1] / "input"
 
 
 def main() -> None:
@@ -22,7 +23,7 @@ def main() -> None:
 
     data = {}
     for salt in ("NaCl", "KBr"):
-        m_exp, phi_exp = common.load_osmotic_data(salt)
+        m_exp, phi_exp = common.load_osmotic_data(INPUT_DIR / f"{salt}.csv")
         data[salt] = {
             "m_exp": m_exp,
             "phi_exp": phi_exp,

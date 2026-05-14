@@ -13,7 +13,7 @@ if str(ANALYSIS_SCRIPTS) not in sys.path:
 import _common as common
 
 OUTPUT = Path(__file__).with_name("figure_6.png")
-DATA_PATH = common.REPO_ROOT / "data" / "MIAC" / "water-methanol" / "water-methanol-NaBr.csv"
+DATA_PATH = common.analysis_data_path(__file__, "water-methanol-NaBr.csv", kind="input")
 SERIES = [
     {
         "w_methanol": 0.6,
@@ -50,7 +50,7 @@ def _load_grouped_data() -> dict[float, list[dict[str, float]]]:
     _, rows = common.read_csv_rows(DATA_PATH)
     grouped: dict[float, list[dict[str, float]]] = {}
     for row in rows:
-        w_methanol = common.parse_float(row.get("x_Methanol"))
+        w_methanol = common.parse_float(row.get("x_Methanol")) or common.parse_float(row.get("w_Methanol"))
         molality = common.parse_float(row.get("molality"))
         gamma = (
             common.parse_float(row.get("miac_m"))

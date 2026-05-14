@@ -23,16 +23,12 @@ import _plot_common as common
 import _model_overlay as overlay
 
 DATASETS = [
-    ("a", "ethanol", common.analysis_data_path(__file__, "water-ethanol-contributions.csv", kind="processed")),
-    ("b", "methanol", common.analysis_data_path(__file__, "water-methanol-contributions.csv", kind="processed")),
+    ("a", "ethanol", common.analysis_data_path(__file__, "water-ethanol-contributions.csv", kind="input")),
+    ("b", "methanol", common.analysis_data_path(__file__, "water-methanol-contributions.csv", kind="input")),
 ]
 FIGURE4_DATA = {
-    "methanol": common.analysis_data_path(
-        ANALYSIS_ROOT / "figure_4", "water-methanol-comparison.csv", kind="processed", category="figure_4"
-    ),
-    "ethanol": common.analysis_data_path(
-        ANALYSIS_ROOT / "figure_4", "water-ethanol-comparison.csv", kind="processed", category="figure_4"
-    ),
+    "methanol": common.analysis_data_path(__file__, "water-methanol-comparison.csv", kind="input"),
+    "ethanol": common.analysis_data_path(__file__, "water-ethanol-comparison.csv", kind="input"),
 }
 IONS = [("Na+", "#2b6cb0"), ("Cl-", "#c44e52"), ("I-", "#3a923a")]
 TERMS = [

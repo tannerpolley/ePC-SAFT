@@ -27,10 +27,7 @@ T_REF = 298.15
 P_REF = 1.0e5
 OUTPUT = Path(__file__).with_name("figure_3.png")
 DIGITIZED = common.analysis_data_path(__file__, "figure_3_digitized.csv", kind="input")
-RAW_DATA_SOURCES = (
-    common.REPO_ROOT / "data" / "osmotic" / "water" / "LiAc-NaAc-KAc.csv",
-    common.analysis_data_path(__file__, "LiAc-NaAc-KAc.csv", kind="input"),
-)
+RAW_DATA_PATH = common.analysis_data_path(__file__, "LiAc-NaAc-KAc.csv", kind="input")
 
 SALT_SPECS = {
     "LiAc": ("Li+", "Ac-"),
@@ -40,10 +37,9 @@ SALT_SPECS = {
 
 
 def _load_digitized() -> dict[str, tuple[np.ndarray, np.ndarray]]:
-    raw_path = next((path for path in RAW_DATA_SOURCES if path.exists()), None)
-    if raw_path is not None:
+    if RAW_DATA_PATH.exists():
         grouped: dict[str, list[tuple[float, float]]] = {k: [] for k in SALT_SPECS}
-        with raw_path.open("r", newline="", encoding="utf-8-sig") as handle:
+        with RAW_DATA_PATH.open("r", newline="", encoding="utf-8-sig") as handle:
             reader = csv.reader(handle)
             next(reader, None)
             for row in reader:

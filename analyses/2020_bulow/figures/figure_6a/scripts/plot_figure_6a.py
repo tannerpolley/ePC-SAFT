@@ -32,7 +32,7 @@ def main() -> None:
         )
 
     run_analysis(
-        data_path=REPO_ROOT / "data" / "MIAC" / "ethanol" / "ethanol-LiBr.csv",
+        data_path=ANALYSIS_ROOT / "figures" / "figure_6a" / "input" / "ethanol-LiBr.csv",
         output_path=output_path,
         x_min=0.0,
         x_max=0.2,

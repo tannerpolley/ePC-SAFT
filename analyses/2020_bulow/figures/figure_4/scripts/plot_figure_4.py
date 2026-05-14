@@ -27,8 +27,8 @@ from epcsaft.parameters import get_prop_dict
 from scripts._epcsaft_oop import epcsaft_density, epcsaft_solvation_free_energy
 
 DATASETS = [
-    ("a", "Water to methanol", "methanol", common.analysis_data_path(__file__, "water-methanol-comparison.csv", kind="processed")),
-    ("b", "Water to ethanol", "ethanol", common.analysis_data_path(__file__, "water-ethanol-comparison.csv", kind="processed")),
+    ("a", "Water to methanol", "methanol", common.analysis_data_path(__file__, "water-methanol-comparison.csv", kind="input")),
+    ("b", "Water to ethanol", "ethanol", common.analysis_data_path(__file__, "water-ethanol-comparison.csv", kind="input")),
 ]
 SERIES = [
     ("data median", "Literature median", "#bdbdbd", None),

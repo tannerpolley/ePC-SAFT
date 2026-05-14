@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 
 T_REF = 298.15
 P_REF = 1.0e5
-DATA_DIR = common.analysis_data_path(__file__, "_placeholder", kind="processed").parent
+DATA_DIR = common.analysis_data_path(__file__, "_placeholder", kind="input").parent
 
 SOLVENT_MW = {
     "methanol": 32.04e-3,

@@ -19,7 +19,7 @@ from figure6b_libr_ethanol_contributions import run_analysis
 
 def main() -> None:
     run_analysis(
-        data_path=REPO_ROOT / "data" / "MIAC" / "ethanol" / "ethanol-LiBr.csv",
+        data_path=ANALYSIS_ROOT / "figures" / "figure_6b" / "input" / "ethanol-LiBr.csv",
         output_path=paper_validation_path(__file__, "figure_6b.png"),
         x_min=0.0,
         x_max=0.2,

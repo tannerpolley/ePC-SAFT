@@ -135,6 +135,25 @@ def test_migrated_analyses_use_complete_figure_owned_roots() -> None:
             assert (figure_root / "scripts").is_dir(), figure_root
 
 
+def test_selected_figure_scripts_do_not_read_canonical_data_root_directly() -> None:
+    analysis_ids = ("2012_held", "2014_held", "2019_bulow", "2020_bulow")
+    forbidden_snippets = (
+        'REPO_ROOT / "data"',
+        "REPO_ROOT / 'data'",
+        'common.REPO_ROOT / "data"',
+        "common.REPO_ROOT / 'data'",
+        'data/reference',
+    )
+    for analysis_id in analysis_ids:
+        figures_root = REPO_ROOT / "analyses" / analysis_id / "figures"
+        for path in sorted(figures_root.rglob("*.py")):
+            if path.name == "generate_data.py":
+                continue
+            text = path.read_text(encoding="utf-8")
+            for snippet in forbidden_snippets:
+                assert snippet not in text, f"{path} still references canonical data root via {snippet!r}"
+
+
 def test_analysis_template_uses_figure_owned_outputs() -> None:
     text = (REPO_ROOT / "analyses" / "_template" / "analysis.yaml").read_text(encoding="utf-8")
     assert "figures: figures/<figure_id>/output" in text
