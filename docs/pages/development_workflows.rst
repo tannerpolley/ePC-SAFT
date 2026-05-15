@@ -116,7 +116,7 @@ Package install builds are different. Wheel/editable/path installs go through th
 
 Use ``--build-only --parallel 10`` only after the CMake tree already exists. ``--build-only`` does not reconfigure profile flags; it builds whatever ``build/dev/CMakeCache.txt`` already says. Use ``--configure-only`` when you need to refresh CMake configuration without compiling. For a new ``build/dev`` tree, ``scripts/dev/build_epcsaft.py`` now prefers Ninja when ``ninja`` is available on ``PATH`` because it is usually faster than MinGW Makefiles for repeated local rebuilds. Existing CMake trees keep their original generator; doctor reports ``build_generator_recommendation`` when ``uv run python scripts/dev/build_epcsaft.py --clean --generator ninja`` is the appropriate one-time migration from an older MinGW tree.
 
-Every native build writes ``build/dev/build_epcsaft.log`` and finishes with an ``epcsaft._core`` import check when compilation runs. Use ``uv run python scripts/dev/build_epcsaft.py --status`` when you need a non-mutating check of the configured generator, Ceres/CppAD flags, importable ``_core`` artifacts, stale ``.ninja_lock`` state, last Ninja target, and live repo-owned build processes. This is the safest first check when an IDE run or interrupted terminal build appears hung.
+Every native build writes ``build/dev/build_epcsaft.log`` and finishes with an ``epcsaft._core`` import check when compilation runs. Use ``uv run python scripts/dev/build_epcsaft.py --status`` when you need a non-mutating check of the configured generator, Ceres/CppAD flags, system-Ceres/Ceres_DIR state, importable ``_core`` artifacts, stale ``.ninja_lock`` state, last Ninja target, and live repo-owned build processes. This is the safest first check when an IDE run or interrupted terminal build appears hung.
 
 For IDE run configurations, keep commands explicit instead of relying on one overloaded target:
 
@@ -133,9 +133,21 @@ If Ceres becomes part of a repeated local workflow, build or install Ceres once 
 
 .. code-block:: powershell
 
+   uv run python scripts/dev/build_system_ceres.py --parallel 4
    uv run python scripts/dev/build_epcsaft.py --profile full --use-system-ceres --ceres-dir C:\path\to\lib\cmake\Ceres
 
 ``--ceres-dir`` should point at the directory containing ``CeresConfig.cmake``. Ceres' own CMake documentation supports consuming either an installed Ceres package or an exported Ceres build directory through ``find_package(Ceres)`` and ``Ceres::ceres``.
+
+The same prebuilt Ceres package can accelerate downstream path installs without changing package defaults:
+
+.. code-block:: powershell
+
+   $env:EPCSAFT_PEP517_CERES_DIR = "C:\path\to\lib\cmake\Ceres"
+   $env:EPCSAFT_PEP517_USE_SYSTEM_CERES = "1"
+   $env:EPCSAFT_PEP517_BUILD_DIR = "$PWD\.uv-cache\epcsaft-build"
+   uv sync --reinstall-package epcsaft
+
+Without those environment variables, wheel/editable/path installs still build the default Ceres-enabled package through ``FetchContent``.
 
 LaTeX and Overleaf mirror
 -------------------------

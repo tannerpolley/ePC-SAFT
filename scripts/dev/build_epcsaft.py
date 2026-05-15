@@ -212,6 +212,8 @@ def _repo_build_processes() -> list[str]:
 def _status_lines(*, stale_lock_seconds: int = STALE_LOCK_SECONDS) -> list[str]:
     generator = _configured_generator() or "<unconfigured>"
     ceres = _cmake_cache_value("EPCSAFT_ENABLE_CERES") or "<unconfigured>"
+    system_ceres = _cmake_cache_value("EPCSAFT_USE_SYSTEM_CERES") or "<unconfigured>"
+    ceres_dir = _cmake_cache_value("Ceres_DIR") or "<unconfigured>"
     cppad = _cmake_cache_value("EPCSAFT_ENABLE_CPPAD") or "<unconfigured>"
     artifacts = _native_artifacts()
     lock = BUILD_DIR / ".ninja_lock"
@@ -225,6 +227,8 @@ def _status_lines(*, stale_lock_seconds: int = STALE_LOCK_SECONDS) -> list[str]:
         f"build_dir: {BUILD_DIR}",
         f"configured_generator: {generator}",
         f"ceres_configured: {ceres}",
+        f"system_ceres_configured: {system_ceres}",
+        f"ceres_dir: {ceres_dir}",
         f"cppad_configured: {cppad}",
         f"profile_hint: {_profile_hint(ceres=ceres, cppad=cppad)}",
         f"native_core: {'present' if artifacts else 'missing'}",

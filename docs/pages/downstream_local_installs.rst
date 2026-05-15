@@ -71,6 +71,37 @@ If you intentionally want a persistent build directory for a downstream reinstal
    $env:EPCSAFT_PEP517_BUILD_DIR = "$PWD\.uv-cache\epcsaft-build"
    uv sync --reinstall-package epcsaft
 
+This keeps the package-install build tree around so a repeated full install can
+reuse CMake/Ninja dependency state instead of rebuilding Ceres from scratch.
+
+Reusable Ceres package
+----------------------
+
+Full package installs keep Ceres enabled by default. When repeated local or
+downstream path installs spend most of their time compiling Ceres, build Ceres
+once and point package installs at the prebuilt CMake package:
+
+.. code-block:: powershell
+
+   cd C:\path\to\ePC-SAFT
+   uv run python scripts\dev\build_system_ceres.py --parallel 4
+
+The helper prints the exact environment variables to reuse the result. The
+manual form is:
+
+.. code-block:: powershell
+
+   $env:EPCSAFT_PEP517_CERES_DIR = "C:\path\to\ePC-SAFT\build\system-ceres\2.2.0\install\lib\cmake\Ceres"
+   $env:EPCSAFT_PEP517_USE_SYSTEM_CERES = "1"
+   $env:EPCSAFT_PEP517_BUILD_DIR = "$PWD\.uv-cache\epcsaft-build"
+   uv sync --reinstall-package epcsaft
+
+``EPCSAFT_PEP517_CERES_DIR`` must point at the directory containing
+``CeresConfig.cmake``. The build backend then passes
+``EPCSAFT_USE_SYSTEM_CERES=ON`` and ``Ceres_DIR=...`` to CMake. If the
+environment variables are not set, package installs still use the package
+default Ceres ``FetchContent`` path.
+
 For normal ePC-SAFT source development, keep using the explicit in-place dev build:
 
 .. code-block:: powershell

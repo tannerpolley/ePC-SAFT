@@ -67,6 +67,26 @@
       }
     },
     {
+      "name": "native-system-ceres",
+      "displayName": "Native build profile: system Ceres + CppAD",
+      "description": "Full native profile that consumes an installed or exported Ceres package through find_package(Ceres).",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/native-system-ceres",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_TRY_COMPILE_TARGET_TYPE": "STATIC_LIBRARY",
+        "EPCSAFT_DEV_INPLACE": "ON",
+        "EPCSAFT_ENABLE_CERES": "ON",
+        "EPCSAFT_USE_SYSTEM_CERES": "ON",
+        "EPCSAFT_ENABLE_CPPAD": "ON",
+        "EPCSAFT_USE_SYSTEM_CPPAD": "OFF",
+        "EPCSAFT_WARNINGS_AS_ERRORS": "OFF",
+        "EPCSAFT_ENABLE_SANITIZERS": "OFF",
+        "Python_EXECUTABLE": "${sourceDir}/.venv/Scripts/python.exe",
+        "pybind11_DIR": "${sourceDir}/.venv/Lib/site-packages/pybind11/share/cmake/pybind11"
+      }
+    },
+    {
       "name": "dev-mingw",
       "displayName": "Optional IDE build (Windows MinGW)",
       "description": "Optional Windows MinGW preset for IDE/manual CMake use with Ceres and CppAD disabled. The canonical local native build is uv run python scripts/dev/build_epcsaft.py.",
@@ -101,6 +121,11 @@
       "name": "native-ceres-cppad",
       "displayName": "Build native Ceres + CppAD profile",
       "configurePreset": "native-ceres-cppad"
+    },
+    {
+      "name": "native-system-ceres",
+      "displayName": "Build native system-Ceres + CppAD profile",
+      "configurePreset": "native-system-ceres"
     },
     {
       "name": "dev-mingw",

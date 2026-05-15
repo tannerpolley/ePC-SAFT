@@ -52,6 +52,44 @@ def _has_build_dir(config_settings) -> bool:
     return any(str(key).replace("_", "-") == "build-dir" for key in config_settings)
 
 
+def _truthy_env(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _config_has(config: dict, key: str) -> bool:
+    return any(str(existing).replace("_", "-") == key.replace("_", "-") for existing in config)
+
+
+def _set_config_default(config: dict, key: str, value: str) -> None:
+    if not _config_has(config, key):
+        config[key] = value
+
+
+def _validate_ceres_dir(raw_path: str) -> Path:
+    ceres_dir = Path(raw_path).expanduser().resolve()
+    if not ceres_dir.is_dir():
+        raise FileNotFoundError(f"EPCSAFT_PEP517_CERES_DIR does not exist or is not a directory: {ceres_dir}")
+    if not any((ceres_dir / name).is_file() for name in ("CeresConfig.cmake", "ceres-config.cmake")):
+        raise FileNotFoundError(
+            "EPCSAFT_PEP517_CERES_DIR must point at the directory containing CeresConfig.cmake "
+            f"or ceres-config.cmake: {ceres_dir}"
+        )
+    return ceres_dir
+
+
+def _apply_system_ceres_config(config: dict) -> dict:
+    ceres_dir_env = os.environ.get("EPCSAFT_PEP517_CERES_DIR") or os.environ.get("Ceres_DIR")
+    use_system_ceres = bool(ceres_dir_env) or _truthy_env("EPCSAFT_PEP517_USE_SYSTEM_CERES")
+    if not use_system_ceres:
+        return config
+
+    _set_config_default(config, "cmake.define.EPCSAFT_ENABLE_CERES", "ON")
+    _set_config_default(config, "cmake.define.EPCSAFT_USE_SYSTEM_CERES", "ON")
+    if ceres_dir_env:
+        _set_config_default(config, "cmake.define.Ceres_DIR", str(_validate_ceres_dir(ceres_dir_env)))
+    return config
+
+
 def _source_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
@@ -85,7 +123,7 @@ def _external_temp_root() -> Path | None:
 def _isolated_build_config(config_settings=None):
     config = dict(config_settings or {})
     if _has_build_dir(config):
-        return config
+        return _apply_system_ceres_config(config)
     persistent = os.environ.get("EPCSAFT_PEP517_BUILD_DIR")
     if persistent:
         build_dir = Path(persistent).expanduser().resolve()
@@ -93,7 +131,7 @@ def _isolated_build_config(config_settings=None):
     else:
         build_dir = Path(tempfile.mkdtemp(prefix="epcsaft-pep517-build-", dir=_external_temp_root())).resolve()
     config["build-dir"] = str(build_dir)
-    return config
+    return _apply_system_ceres_config(config)
 
 
 def build_wheel(wheel_directory, config_settings=None, metadata_directory=None):

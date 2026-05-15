@@ -17,6 +17,9 @@ Use ``uv run python scripts/dev/build_epcsaft.py --profile full`` or
 needs Ceres regression/backend coverage.
 This local dev-script default does not change package installs; editable, wheel,
 and downstream path installs still inherit the CMake default with Ceres ON.
+For repeated full package installs, build reusable Ceres once with
+``uv run python scripts/dev/build_system_ceres.py --parallel 4`` and set the
+printed ``EPCSAFT_PEP517_CERES_DIR`` / ``EPCSAFT_PEP517_BUILD_DIR`` variables.
 
 The action list should stay lean and limited to the normal project workflow:
 

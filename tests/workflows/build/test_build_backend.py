@@ -3,6 +3,8 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 BACKEND_PATH = REPO_ROOT / "build_backend" / "epcsaft_build_backend.py"
 
@@ -47,6 +49,44 @@ def test_pep517_build_backend_honors_persistent_build_dir_env(tmp_path, monkeypa
 
     assert Path(config["build-dir"]) == requested.resolve()
     assert requested.exists()
+
+
+def test_pep517_build_backend_uses_prebuilt_ceres_env(tmp_path, monkeypatch) -> None:
+    backend = _load_backend()
+    ceres_dir = tmp_path / "ceres" / "lib" / "cmake" / "Ceres"
+    ceres_dir.mkdir(parents=True)
+    (ceres_dir / "CeresConfig.cmake").write_text("# test config\n", encoding="utf-8")
+    monkeypatch.setenv("EPCSAFT_PEP517_CERES_DIR", str(ceres_dir))
+
+    config = backend._isolated_build_config(None)
+
+    assert config["cmake.define.EPCSAFT_ENABLE_CERES"] == "ON"
+    assert config["cmake.define.EPCSAFT_USE_SYSTEM_CERES"] == "ON"
+    assert Path(config["cmake.define.Ceres_DIR"]) == ceres_dir.resolve()
+
+
+def test_pep517_build_backend_does_not_disable_ceres_by_default(monkeypatch) -> None:
+    backend = _load_backend()
+    monkeypatch.delenv("EPCSAFT_PEP517_CERES_DIR", raising=False)
+    monkeypatch.delenv("EPCSAFT_PEP517_USE_SYSTEM_CERES", raising=False)
+    monkeypatch.delenv("Ceres_DIR", raising=False)
+
+    config = backend._isolated_build_config(None)
+
+    assert "cmake.define.EPCSAFT_ENABLE_CERES" not in config
+    assert "cmake.define.EPCSAFT_USE_SYSTEM_CERES" not in config
+    assert "cmake.define.Ceres_DIR" not in config
+
+
+def test_pep517_build_backend_rejects_bad_ceres_dir_env(tmp_path, monkeypatch) -> None:
+    backend = _load_backend()
+    bad_dir = tmp_path / "missing-config"
+    bad_dir.mkdir()
+    monkeypatch.setenv("EPCSAFT_PEP517_CERES_DIR", str(bad_dir))
+
+    with pytest.raises(FileNotFoundError) as excinfo:
+        backend._isolated_build_config(None)
+    assert "CeresConfig.cmake" in str(excinfo.value)
 
 
 def test_pep660_editable_hook_uses_isolated_build_dir(tmp_path, monkeypatch) -> None:

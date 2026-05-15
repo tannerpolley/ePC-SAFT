@@ -61,6 +61,8 @@ endif()
 
 if(EPCSAFT_ENABLE_CERES)
     if(EPCSAFT_USE_SYSTEM_CERES)
+        unset(Ceres_BINARY_DIR CACHE)
+        unset(Ceres_SOURCE_DIR CACHE)
         find_package(Ceres CONFIG REQUIRED)
     else()
         include(FetchContent)
@@ -78,6 +80,7 @@ if(EPCSAFT_ENABLE_CERES)
             ceres-solver
             GIT_REPOSITORY https://ceres-solver.googlesource.com/ceres-solver
             GIT_TAG 2.2.0
+            GIT_SHALLOW TRUE
         )
         FetchContent_MakeAvailable(ceres-solver)
         if(TARGET ceres_internal AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

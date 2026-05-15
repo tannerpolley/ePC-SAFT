@@ -25,6 +25,7 @@
 - Preferred setup: `uv sync --no-install-project`.
 - Preferred native build: `uv run python scripts/dev/build_epcsaft.py`, which defaults to `--profile fast` (Ceres OFF, CppAD ON). Use `uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10` only after `build/dev` is already configured.
 - Package install builds still default to Ceres ON through `CMakeLists.txt`; do not change package-install defaults to speed up local Codex iteration.
+- For repeated full Ceres installs, use a persistent package build dir plus prebuilt Ceres: `uv run python scripts/dev/build_system_ceres.py --parallel 4`, then set `EPCSAFT_PEP517_CERES_DIR`, `EPCSAFT_PEP517_USE_SYSTEM_CERES=1`, and `EPCSAFT_PEP517_BUILD_DIR` before reinstalling.
 - Ceres is not part of routine dev-script setup or clean repair. Use `uv run python scripts/dev/build_epcsaft.py --profile full` or `uv run python scripts/dev/validate_project.py ceres-cppad` only for Ceres regression/backend validation or final full-backend checks.
 - For clean CppAD proof without rebuilding Ceres, use `uv run python scripts/dev/build_epcsaft.py --clean --profile cppad`, not a clean full Ceres build.
 - Preferred tests: `uv run python run_pytest.py <focused-test-targets> -q`. Prefer this wrapper over direct `pytest` for Codex/Windows work because it sets the source path and manages per-run pytest temp state.
