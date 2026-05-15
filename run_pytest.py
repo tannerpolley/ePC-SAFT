@@ -110,7 +110,7 @@ FULL_PROFILE_RUNTIME_NOTE = (
 )
 SLICE_SELECTION_NOTE = (
     "Slice flags are mutually exclusive. Developers should normally start with "
-    "`uv run python scripts/validate_project.py quick` or `uv run python run_pytest.py -q`. "
+    "`uv run python scripts/dev/validate_project.py quick` or `uv run python run_pytest.py -q`. "
     "Use `--all` only when you explicitly need the exhaustive historical suite. "
     "Extra positional pytest targets after a slice are appended and will run in addition to that slice."
 )

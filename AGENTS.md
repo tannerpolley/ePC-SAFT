@@ -18,15 +18,18 @@
 ## Repo Workflow
 - Current backend: uv-managed Python, direct CMake dev builds, pybind11 `_core`, native C++ equations, pure Python public API wrappers.
 - Public repo tools intentionally use developer-neutral names. Do not add new tracked files, tests, scripts, or docs with Codex-specific names unless they are local-only agent instructions.
-- Best new-agent workflow: `uv sync --no-install-project`, then `uv run python scripts/build_epcsaft.py`, then `uv run python scripts/doctor.py`, then `uv run python scripts/validate_project.py quick`.
+- Best new-agent workflow: `uv sync --no-install-project`, then `uv run python scripts/dev/build_epcsaft.py`, then `uv run python scripts/dev/doctor.py`, then `uv run python scripts/dev/validate_project.py quick`.
+- Setup or uncertain state: `uv sync --no-install-project`, then `uv run python scripts/dev/build_epcsaft.py`, then `uv run python scripts/dev/doctor.py`.
+- Standard fast validation: `uv run python scripts/dev/validate_project.py quick`.
+- Package boundary: `uv run python scripts/dev/build_dist.py`.
 - Preferred setup: `uv sync --no-install-project`.
-- Preferred native build: `uv run python scripts/build_epcsaft.py`; use `uv run python scripts/build_epcsaft.py --build-only --parallel 10` only after `build/dev` is already configured.
+- Preferred native build: `uv run python scripts/dev/build_epcsaft.py`; use `uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10` only after `build/dev` is already configured.
 - Preferred tests: `uv run python run_pytest.py <focused-test-targets> -q`. Prefer this wrapper over direct `pytest` for Codex/Windows work because it sets the source path and manages per-run pytest temp state.
-- Preferred high-level validation: `uv run python scripts/validate_project.py quick` for normal fast validation; `uv run python scripts/validate_project.py confidence` before handoff when native runtime confidence matters; `uv run python scripts/validate_project.py docs` for Sphinx.
-- Preferred doctor: `uv run python scripts/doctor.py`.
-- Preferred distribution check: `uv run python scripts/build_dist.py` or `uv build` when specifically testing the packaging boundary.
+- Preferred high-level validation: `uv run python scripts/dev/validate_project.py quick` for normal fast validation; `uv run python scripts/dev/validate_project.py confidence` before handoff when native runtime confidence matters; `uv run python scripts/dev/validate_project.py docs` for Sphinx.
+- Preferred doctor: `uv run python scripts/dev/doctor.py`.
+- Preferred distribution check: `uv run python scripts/dev/build_dist.py`.
 - Use `.codex\environments\environment.toml` actions when available; they are aligned to the uv/CMake/pybind workflow.
-- Prefer normal native builds. Treat `scripts/build_epcsaft.py --clean`, `Repair Native Build (Clean)`, and `Clean Build Artifacts` as coordinated repair actions, not routine validation.
+- Prefer normal native builds. Treat `scripts/dev/build_epcsaft.py --clean`, `Repair Native Build (Clean)`, and `Clean Build Artifacts` as coordinated repair actions, not routine validation.
 - Coordinate native rebuilds through the main thread when multiple agents or processes may be active. Prefer one `_core` builder at a time.
 - Do not run `_core`-deleting clean/repair actions in parallel with tests, Python REPLs, IDE run configurations, or sub-agents that may import `epcsaft._core`.
 - If `_core*.pyd` is locked, stop the importing Python/test/IDE/Codex process, rerun the normal native build, then run doctor.
@@ -64,22 +67,23 @@
 - Standing user preference: use repo sub-agents for non-trivial ePC-SAFT work when the task has clear non-blocking slices.
 - Main agent acts as orchestrator for cross-cutting work: keep final decisions, integration, sandbox escalation decisions, and immediately blocking implementation on the main thread.
 - Main agent owns `_core` rebuild, clean, and repair coordination. Sub-agents may inspect files and run focused tests, but should not rebuild `_core` or run `_core`-deleting repair/cleanup commands unless explicitly assigned and coordinated.
-- Prefer Spark owner agents for sidecar exploration, review, validation, and bounded implementation because they are cheaper and focused.
+- Prefer focused owner agents for sidecar exploration, review, validation, and bounded implementation.
 - Do not use sub-agents for simple Q&A, tiny one-file edits, mechanical text edits, or when the next step is blocked on the delegated result.
 - When using sub-agents, assign explicit ownership by file/module area and avoid overlapping writes.
 - Use multiple sub-agents early only when their work can run in parallel without blocking the main thread.
 
 ## Repo Owner Agents
-- `build_packaging_owner`: package/build workflow owner for uv, CMake, pybind, scikit-build, wheels/sdists, and build scripts.
-- `native_equation_owner`: read-only native math/equation reviewer for C++ equation logic, contribution accounting, density/phase closure, and equation-doc consistency.
-- `python_api_test_owner`: Python API/test owner for public wrappers, pytest workflow, focused tests, and validation against `epcsaft._core`.
-- `command_runner`: validation-only runner for non-blocking doctor/build/test/smoke commands. It should not edit files.
+- `build_packaging_owner`: package/build workflow owner for uv, CMake, pybind, `validate_project`, distribution checks, wheels/sdists, and build scripts.
+- `native_equation_owner`: read-only EqID-backed EOS/state/property kernel reviewer for equation/code mapping, density closure, contribution accounting, cache correctness, and equation-doc consistency.
+- `native_solver_backend_owner`: native equilibrium/regression/autodiff backend owner for solver algorithms, derivative backend completeness, solver/result contracts, and focused native backend edits/tests.
+- `python_api_test_owner`: Python API/test owner for public wrappers, named pytest slices, focused tests, and validation against `epcsaft._core`.
+- `command_runner`: validation-only runner for non-blocking doctor/build/status/test/smoke/package-boundary commands. It should not edit files.
 
 ## Routing Playbooks
 - Build/package changes: delegate build/package review or bounded edits to `build_packaging_owner`; delegate independent command validation to `command_runner`.
-- Native/equation changes: delegate correctness review to `native_equation_owner`; delegate focused API/test coverage to `python_api_test_owner`.
-- Python API/runtime changes: delegate tests and API risk checks to `python_api_test_owner`; involve `native_equation_owner` if behavior crosses into native equation logic.
-- Cross-layer changes: use `native_equation_owner` for correctness risk, `python_api_test_owner` for API/test evidence, `build_packaging_owner` for build/package impact, and `command_runner` for parallel validation.
+- Native/equation changes: delegate EqID-backed thermodynamic-kernel correctness review to `native_equation_owner`; delegate equilibrium/regression/autodiff/backend work to `native_solver_backend_owner`; delegate focused API/test coverage to `python_api_test_owner`.
+- Python API/runtime changes: delegate tests and API risk checks to `python_api_test_owner`; involve `native_equation_owner` for EOS/property-kernel risk and `native_solver_backend_owner` for native solver/backend contract risk.
+- Cross-layer changes: use `native_equation_owner` for thermodynamic-kernel correctness risk, `native_solver_backend_owner` for backend/solver risk, `python_api_test_owner` for API/test evidence, `build_packaging_owner` for build/package impact, and `command_runner` for parallel validation.
 - Branch review/change audit: use owner agents by concern area, then have the main thread synthesize findings and decide edits.
 
 ## IntelliJ-Backed Tooling

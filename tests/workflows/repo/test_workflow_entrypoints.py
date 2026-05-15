@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import tomllib
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -72,6 +73,53 @@ def test_docs_make_confidence_suite_the_default_runtime_check() -> None:
     assert "allow at least 120 seconds" in development_workflows
     assert "uv run python scripts/dev/build_dist.py" in development_workflows
     assert "Do not use ``--clean`` for routine validation" in development_workflows
+
+
+def test_repo_local_agent_guidance_uses_current_dev_workflow_and_roster() -> None:
+    agents_md = _read("AGENTS.md")
+    env_toml = _read(".codex/environments/environment.toml")
+
+    for token in (
+        "uv run python scripts/dev/build_epcsaft.py",
+        "uv run python scripts/dev/doctor.py",
+        "uv run python scripts/dev/validate_project.py quick",
+        "uv run python scripts/dev/validate_project.py confidence",
+        "uv run python scripts/dev/validate_project.py docs",
+        "uv run python scripts/dev/build_dist.py",
+        "native_solver_backend_owner",
+    ):
+        assert token in agents_md
+
+    for stale in (
+        "uv run python scripts/build_epcsaft.py",
+        "uv run python scripts/doctor.py",
+        "uv run python scripts/validate_project.py quick",
+        "uv run python scripts/validate_project.py confidence",
+        "uv run python scripts/validate_project.py docs",
+        "uv run python scripts/build_dist.py",
+        "Prefer Spark owner agents",
+    ):
+        assert stale not in agents_md
+
+    assert 'name = "Build Native Extension (Bounded)"' not in env_toml
+
+
+def test_repo_local_agent_roster_uses_supported_models_and_expected_scopes() -> None:
+    expected_agents = {
+        "build_packaging_owner.toml": ("gpt-5.4", "workspace-write"),
+        "command_runner.toml": ("gpt-5.4", "workspace-write"),
+        "native_equation_owner.toml": ("gpt-5.4", "read-only"),
+        "native_solver_backend_owner.toml": ("gpt-5.4", "workspace-write"),
+        "python_api_test_owner.toml": ("gpt-5.4", "workspace-write"),
+    }
+
+    agents_dir = REPO_ROOT / ".codex" / "agents"
+    for filename, (model, sandbox_mode) in expected_agents.items():
+        path = agents_dir / filename
+        assert path.is_file(), filename
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+        assert data["model"] == model
+        assert data["sandbox_mode"] == sandbox_mode
 
 
 def test_github_default_smoke_uses_downstream_path_install_not_wheel_build() -> None:

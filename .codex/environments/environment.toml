@@ -14,7 +14,7 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
 }
 
 uv sync --no-install-project
-uv run python scripts/dev/build_epcsaft.py --parallel 1
+uv run python scripts/dev/build_epcsaft.py
 uv run python scripts/dev/doctor.py
 '''
 
@@ -34,12 +34,6 @@ platform = "win32"
 name = "Build Native Extension"
 icon = "run"
 command = "uv run python scripts/dev/build_epcsaft.py"
-platform = "win32"
-
-[[actions]]
-name = "Build Native Extension (Bounded)"
-icon = "run"
-command = "uv run python scripts/dev/build_epcsaft.py --parallel 1"
 platform = "win32"
 
 [[actions]]

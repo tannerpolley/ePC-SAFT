@@ -12,6 +12,7 @@ Start every fresh source checkout with this sequence:
 
    uv sync --no-install-project
    uv run python scripts/dev/build_epcsaft.py
+   uv run python scripts/dev/doctor.py
    uv run python scripts/dev/validate_project.py quick
 
 This is the expected healthy baseline. It creates the uv environment, builds the in-place pybind11 ``epcsaft._core`` extension, verifies imports/tool paths and generated-output state through doctor, then runs the fast contract suite. The default test route intentionally samples representative API, native, regression, equilibrium, and workflow contracts instead of running full equilibrium/regression reproductions or generated plot production. Use ``uv run python scripts/dev/validate_project.py confidence`` before release or broad runtime claims when extra native runtime contracts should be included.
@@ -140,7 +141,7 @@ Use ``scripts/dev/create_dev_worktree.ps1`` from the primary checkout instead of
 Test selection rules
 --------------------
 
-Use the smallest relevant test first, then run ``scripts/dev/validate_project.py confidence`` before release, merge, or broad runtime claims. Use ``uv run python run_pytest.py --all -q`` only when you explicitly need the exhaustive historical suite.
+Use the smallest relevant test first, then run ``uv run python scripts/dev/validate_project.py confidence`` before release, merge, or broad runtime claims. Use ``uv run python run_pytest.py --all -q`` only when you explicitly need the exhaustive historical suite.
 
 - Python wrapper/API changes: ``uv run python run_pytest.py --api -q`` first, then ``uv run python run_pytest.py --confidence -q``.
 - Native/equation changes: ``uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10`` first, then ``uv run python run_pytest.py --runtime -q``, then ``uv run python run_pytest.py --confidence -q``.
@@ -149,7 +150,7 @@ Use the smallest relevant test first, then run ``scripts/dev/validate_project.py
 - Plot asset changes: run the owning ``analyses/<category>/<short_id>/scripts`` coordinator or the figure-local ``analyses/<category>/<short_id>/figures/<figure_id>/scripts`` entrypoint, plus any targeted opt-in test under ``analyses/package_validation/package_plot_smokes/tests``, only when regenerating local plot outputs is explicitly part of the task.
 
 ``--profile`` is the quick runtime-only profile. ``--profile-full`` runs runtime, MIAC, and regression profiles and is the preferred evidence path for comprehensive speed reviews; use a timeout of at least 120 seconds.
-- Packaging changes: ``scripts/dev/build_dist.py``.
+- Packaging changes: ``uv run python scripts/dev/build_dist.py``.
 
 Keep generated plot assets and generated CSV workflows out of normal validation unless the task explicitly asks for them. There is no named plot validation slice; target the owning script or test file directly when plot output work is in scope.
 

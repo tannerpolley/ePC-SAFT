@@ -261,6 +261,11 @@ def test_list_slices_exits_without_running_pytest():
     assert "Running:" not in result.stdout
 
 
+def test_slice_selection_note_uses_dev_validate_project_path():
+    assert "`uv run python scripts/dev/validate_project.py quick`" in run_pytest.SLICE_SELECTION_NOTE
+    assert "`uv run python scripts/validate_project.py quick`" not in run_pytest.SLICE_SELECTION_NOTE
+
+
 def test_help_mentions_slice_append_semantics():
     result = subprocess.run(
         [sys.executable, "run_pytest.py", "--help"],
