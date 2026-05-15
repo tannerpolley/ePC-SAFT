@@ -350,6 +350,26 @@ struct NeutralBinaryKijPhaseDerivatives {
     std::string backend = "cppad_implicit";
 };
 
+struct PhaseStateCompositionSensitivityResult {
+    bool supported = false;
+    std::string backend = "not_available";
+    std::string density_backend = "not_available";
+    std::string message;
+    double temperature = 0.0;
+    double pressure = 0.0;
+    double density = 0.0;
+    double pressure_density_derivative = 0.0;
+    int rows = 0;
+    int cols = 0;
+    vector<double> composition;
+    vector<double> ln_fugacity;
+    vector<double> density_composition_derivative;
+    vector<double> pressure_composition_fixed_density_derivative;
+    vector<double> ln_fugacity_density_derivative;
+    vector<double> fixed_density_jacobian_row_major;
+    vector<double> jacobian_row_major;
+};
+
 class ePCSAFTMixtureNative;
 
 class ePCSAFTStateNative {

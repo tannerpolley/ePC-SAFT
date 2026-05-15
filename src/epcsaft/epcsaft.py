@@ -854,9 +854,7 @@ class ePCSAFTMixture:
             if solvent_feed is not None or salt_molality is not None:
                 raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
             if volatile_species is not None or vapor_species is not None or nonvolatile_species is not None:
-                raise InputError(
-                    "vapor species controls are only supported for kind='electrolyte_bubble_pressure'."
-                )
+                raise InputError("vapor species controls are only supported for kind='electrolyte_bubble_pressure'.")
             if initial_phases is not None:
                 raise InputError("initial_phases is only supported for kind='lle_flash'.")
             if parent_phase is not None or trial_phases is not None:
@@ -1444,15 +1442,85 @@ class ePCSAFTState:
         )
 
     def ln_fugacity_composition_derivative_result(self):
-        """Return ln-fugacity composition-derivative support status."""
+        """Return ln-fugacity composition derivatives for pressure-based native states."""
         ncomp = int(self._x.size)
-        return _not_available_result(
-            self.fugacity_coefficient(natural_log=True),
-            ncomp,
-            ncomp,
-            "not_available: ln-fugacity composition Jacobians require second composition derivatives.",
-            variable_order=tuple(self._mixture.species),
-            component_order=tuple(self._mixture.species),
+        if self._P is None:
+            return _not_available_result(
+                self.fugacity_coefficient(natural_log=True),
+                ncomp,
+                ncomp,
+                "not_available: ln-fugacity composition Jacobians require second composition derivatives through a pressure-based phase state.",
+                variable_order=tuple(self._mixture.species),
+                component_order=tuple(self._mixture.species),
+            )
+        try:
+            raw = _core._native_phase_state_ln_fugacity_composition_sensitivity(
+                self._T,
+                self._P,
+                np_to_vector_double(self._x),
+                self._phase,
+                self._native_args_copy(),
+            )
+        except _NATIVE_CALL_ERRORS as exc:
+            return _not_available_result(
+                self.fugacity_coefficient(natural_log=True),
+                ncomp,
+                ncomp,
+                f"not_available: phase-state ln-fugacity composition sensitivity backend failed: {exc}",
+                variable_order=tuple(self._mixture.species),
+                component_order=tuple(self._mixture.species),
+            )
+        if not bool(raw.get("supported", False)):
+            return _not_available_result(
+                self.fugacity_coefficient(natural_log=True),
+                ncomp,
+                ncomp,
+                str(
+                    raw.get(
+                        "message",
+                        "not_available: phase-state ln-fugacity composition sensitivities are not implemented.",
+                    )
+                ),
+                variable_order=tuple(self._mixture.species),
+                component_order=tuple(self._mixture.species),
+                density_backend=str(raw.get("density_backend", "not_available")),
+                density=float(raw.get("density", self.molar_density())),
+            )
+        shape = [int(raw["shape"][0]), int(raw["shape"][1])]
+        return (
+            _not_available_result(
+                self.fugacity_coefficient(natural_log=True),
+                ncomp,
+                ncomp,
+                "not_available: invalid phase-state sensitivity payload.",
+                variable_order=tuple(self._mixture.species),
+                component_order=tuple(self._mixture.species),
+            )
+            if shape != [ncomp, ncomp]
+            else _derivative_result_payload(
+                supported=True,
+                backend=str(raw.get("backend", "cppad_implicit")),
+                message=str(raw.get("message", "CppAD phase-state ln-fugacity composition sensitivities available.")),
+                value=np.asarray(raw.get("ln_fugacity", self.fugacity_coefficient(natural_log=True)), dtype=float),
+                jacobian=np.asarray(raw.get("jacobian_row_major", []), dtype=float),
+                shape=shape,
+                component_order=tuple(self._mixture.species),
+                variable_order=tuple(self._mixture.species),
+                value_basis="natural_log_fugacity_coefficient_at_fixed_pressure",
+                density=float(raw.get("density", self.molar_density())),
+                density_backend=str(raw.get("density_backend", "implicit_density_root")),
+                density_composition_derivative=np.asarray(raw.get("density_composition_derivative", []), dtype=float),
+                pressure_density_derivative=float(raw.get("pressure_density_derivative", 0.0)),
+                pressure_composition_fixed_density_derivative=np.asarray(
+                    raw.get("pressure_composition_fixed_density_derivative", []),
+                    dtype=float,
+                ),
+                ln_fugacity_density_derivative=np.asarray(raw.get("ln_fugacity_density_derivative", []), dtype=float),
+                fixed_density_jacobian=np.asarray(raw.get("fixed_density_jacobian_row_major", []), dtype=float).reshape(
+                    (ncomp, ncomp)
+                ),
+                source_equation_ids=("lnphi_total", "pressure_from_z", "density_root_implicit"),
+            )
         )
 
     def ln_fugacity_parameter_derivative_result(self):
@@ -1670,9 +1738,7 @@ class ePCSAFTState:
                         not_applicable=row_not_applicable,
                         override=result.get("classification"),
                     ),
-                    "not_available_reason": (
-                        "" if result.get("supported", False) else str(result.get("message", ""))
-                    ),
+                    "not_available_reason": ("" if result.get("supported", False) else str(result.get("message", ""))),
                     "source_equation_ids": list(source_equation_ids),
                     "parameter_family": str(result.get("parameter_family", "")),
                     "future_owner": str(result.get("future_owner", "")),
@@ -1705,7 +1771,12 @@ class ePCSAFTState:
         add("relative_permittivity", "composition", self.relative_permittivity_composition_derivative_result())
         add("relative_permittivity", "parameter", self.relative_permittivity_parameter_derivative_result())
         add("pressure", "density", self.pressure_density_derivative_result(), source_equation_ids=("pressure_from_z",))
-        add("pressure", "parameter", self.pressure_parameter_derivative_result(), source_equation_ids=("pressure_from_z",))
+        add(
+            "pressure",
+            "parameter",
+            self.pressure_parameter_derivative_result(),
+            source_equation_ids=("pressure_from_z",),
+        )
         add(
             "fugacity",
             "composition",

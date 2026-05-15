@@ -38,10 +38,10 @@ def test_electrolyte_lle_residual_surface_returns_transformed_payload() -> None:
     assert len(payload["lower_bounds"]) == len(payload["variables"])
     assert len(payload["upper_bounds"]) == len(payload["variables"])
     assert payload["jacobian_shape"] == (len(payload["residual"]), len(payload["variables"]))
-    assert payload["jacobian_row_major"] == []
-    assert payload["gradient"] == []
-    assert payload["jacobian_backend"] == "not_available"
-    assert diagnostics["jacobian_available"] is False
+    assert len(payload["jacobian_row_major"]) == len(payload["residual"]) * len(payload["variables"])
+    assert len(payload["gradient"]) == len(payload["variables"])
+    assert payload["jacobian_backend"] == "cppad_implicit"
+    assert diagnostics["jacobian_available"] is True
     assert diagnostics["residual_surface"] == "native_electrolyte_lle_transformed_variables"
     assert diagnostics["residual_blocks"] == "phase_equilibrium,material_balance"
     assert diagnostics["phase_equilibrium_residual_size"] == 3
@@ -67,5 +67,6 @@ def test_electrolyte_lle_residual_surface_reuses_explicit_variables() -> None:
     repeated = _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
 
     np.testing.assert_allclose(repeated["residual"], initial["residual"], atol=1.0e-10)
+    np.testing.assert_allclose(repeated["jacobian_row_major"], initial["jacobian_row_major"], atol=1.0e-10)
     np.testing.assert_allclose(repeated["aq_composition"], initial["aq_composition"], atol=1.0e-12)
     np.testing.assert_allclose(repeated["org_composition"], initial["org_composition"], atol=1.0e-12)

@@ -14,6 +14,14 @@
 #include <stdexcept>
 #include <utility>
 
+PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensitivity_cpp(
+    double t,
+    double p,
+    std::vector<double> x,
+    int phase,
+    const add_args &cppargs
+);
+
 namespace {
 
 struct PhaseStateNative {
@@ -77,6 +85,28 @@ struct ElectrolyteTpdSearchNative {
     std::vector<StabilityTrialNative> trials;
     int multistart_count = 0;
     int polish_iterations = 0;
+};
+
+struct ElectrolyteCandidateNative {
+    double beta_formula = 0.5;
+    double beta_org = 0.5;
+    std::vector<double> aq_formula;
+    std::vector<double> org_formula;
+    std::vector<double> aq_comp;
+    std::vector<double> org_comp;
+    PhaseStateNative aq_state;
+    PhaseStateNative org_state;
+    std::vector<double> residual;
+    std::vector<double> material_residual;
+    double solver_residual_norm = std::numeric_limits<double>::infinity();
+    double material_error = std::numeric_limits<double>::infinity();
+    double charge_balance_error = std::numeric_limits<double>::infinity();
+    double gibbs_feed = 0.0;
+    double gibbs_split = 0.0;
+    double gibbs_delta = 0.0;
+    double phase_distance_value = 0.0;
+    int iteration = 0;
+    double objective = std::numeric_limits<double>::infinity();
 };
 
 bool rachford_rice_beta(const std::vector<double>& feed, const std::vector<double>& k_values, double& beta, std::string& message);
@@ -1020,6 +1050,233 @@ std::vector<double> electrolyte_residual_vector(
         residuals.push_back(org_pair - aq_pair);
     }
     return residuals;
+}
+
+struct ElectrolyteTransformJacobianNative {
+    std::vector<double> aq_comp_dvar;
+    std::vector<double> org_comp_dvar;
+    std::vector<double> beta_org_dvar;
+    int ncomp = 0;
+    int nvar = 0;
+};
+
+std::vector<double> formula_expansion_matrix_row_major(const ElectrolyteBasisNative& basis, std::size_t ncomp) {
+    const std::size_t nformula = basis.formula_feed.size();
+    std::vector<double> matrix(ncomp * nformula, 0.0);
+    for (std::size_t pos = 0; pos < basis.neutral_indices.size(); ++pos) {
+        matrix[static_cast<std::size_t>(basis.neutral_indices[pos]) * nformula + pos] = 1.0;
+    }
+    std::size_t offset = basis.neutral_indices.size();
+    for (std::size_t salt_pos = 0; salt_pos < basis.salt_pairs.size(); ++salt_pos) {
+        const auto& pair = basis.salt_pairs[salt_pos];
+        const std::size_t col = offset + salt_pos;
+        matrix[static_cast<std::size_t>(pair.cation) * nformula + col] = static_cast<double>(pair.cation_stoich);
+        matrix[static_cast<std::size_t>(pair.anion) * nformula + col] = static_cast<double>(pair.anion_stoich);
+    }
+    return matrix;
+}
+
+std::vector<double> formula_expansion_column_sums(const ElectrolyteBasisNative& basis, std::size_t ncomp) {
+    const std::size_t nformula = basis.formula_feed.size();
+    std::vector<double> sums(nformula, 0.0);
+    std::vector<double> matrix = formula_expansion_matrix_row_major(basis, ncomp);
+    for (std::size_t col = 0; col < nformula; ++col) {
+        for (std::size_t row = 0; row < ncomp; ++row) {
+            sums[col] += matrix[row * nformula + col];
+        }
+    }
+    return sums;
+}
+
+std::vector<double> formula_to_explicit_jacobian_row_major(
+    const std::vector<double>& formula,
+    const ElectrolyteBasisNative& basis,
+    std::size_t ncomp
+) {
+    const std::size_t nformula = formula.size();
+    std::vector<double> matrix = formula_expansion_matrix_row_major(basis, ncomp);
+    std::vector<double> amounts(ncomp, 0.0);
+    std::vector<double> col_sums(nformula, 0.0);
+    for (std::size_t i = 0; i < ncomp; ++i) {
+        for (std::size_t k = 0; k < nformula; ++k) {
+            double value = matrix[i * nformula + k];
+            amounts[i] += value * formula[k];
+            col_sums[k] += value;
+        }
+    }
+    double scale = std::accumulate(amounts.begin(), amounts.end(), 0.0);
+    if (!(scale > 0.0) || !std::isfinite(scale)) {
+        throw SolutionError("Formula-basis explicit-composition Jacobian received a non-positive expansion scale.");
+    }
+    std::vector<double> jacobian(ncomp * nformula, 0.0);
+    for (std::size_t i = 0; i < ncomp; ++i) {
+        for (std::size_t k = 0; k < nformula; ++k) {
+            jacobian[i * nformula + k] = (matrix[i * nformula + k] * scale - amounts[i] * col_sums[k])
+                / (scale * scale);
+        }
+    }
+    return jacobian;
+}
+
+ElectrolyteTransformJacobianNative electrolyte_transform_jacobian(
+    const std::vector<double>& feed,
+    const ElectrolyteBasisNative& basis,
+    const ElectrolyteCandidateNative& candidate
+) {
+    const std::size_t ncomp = feed.size();
+    const std::size_t nformula = basis.formula_feed.size();
+    const std::size_t nvar = nformula;
+    ElectrolyteTransformJacobianNative out;
+    out.ncomp = static_cast<int>(ncomp);
+    out.nvar = static_cast<int>(nvar);
+    out.aq_comp_dvar.assign(ncomp * nvar, 0.0);
+    out.org_comp_dvar.assign(ncomp * nvar, 0.0);
+    out.beta_org_dvar.assign(nvar, 0.0);
+
+    std::vector<double> dbeta_formula_dvar(nvar, 0.0);
+    dbeta_formula_dvar[0] = candidate.beta_formula * (1.0 - candidate.beta_formula);
+
+    std::vector<double> dorg_formula_dvar(nformula * nvar, 0.0);
+    for (std::size_t var = 1; var < nvar; ++var) {
+        const std::size_t logit_index = var - 1;
+        for (std::size_t k = 0; k < nformula; ++k) {
+            double delta = (k == logit_index) ? 1.0 : 0.0;
+            dorg_formula_dvar[k * nvar + var] = candidate.org_formula[k] * (delta - candidate.org_formula[logit_index]);
+        }
+    }
+
+    std::vector<double> daq_formula_dvar(nformula * nvar, 0.0);
+    const double denom = 1.0 - candidate.beta_formula;
+    for (std::size_t k = 0; k < nformula; ++k) {
+        daq_formula_dvar[k * nvar] =
+            dbeta_formula_dvar[0] * (basis.formula_feed[k] - candidate.org_formula[k]) / (denom * denom);
+        for (std::size_t var = 1; var < nvar; ++var) {
+            daq_formula_dvar[k * nvar + var] =
+                -candidate.beta_formula / denom * dorg_formula_dvar[k * nvar + var];
+        }
+    }
+
+    std::vector<double> aq_formula_to_explicit = formula_to_explicit_jacobian_row_major(candidate.aq_formula, basis, ncomp);
+    std::vector<double> org_formula_to_explicit = formula_to_explicit_jacobian_row_major(candidate.org_formula, basis, ncomp);
+    for (std::size_t i = 0; i < ncomp; ++i) {
+        for (std::size_t var = 0; var < nvar; ++var) {
+            for (std::size_t k = 0; k < nformula; ++k) {
+                out.aq_comp_dvar[i * nvar + var] += aq_formula_to_explicit[i * nformula + k] * daq_formula_dvar[k * nvar + var];
+                out.org_comp_dvar[i * nvar + var] += org_formula_to_explicit[i * nformula + k] * dorg_formula_dvar[k * nvar + var];
+            }
+        }
+    }
+
+    std::vector<double> column_sums = formula_expansion_column_sums(basis, ncomp);
+    double aq_scale = 0.0;
+    double org_scale = 0.0;
+    for (std::size_t k = 0; k < nformula; ++k) {
+        aq_scale += column_sums[k] * candidate.aq_formula[k];
+        org_scale += column_sums[k] * candidate.org_formula[k];
+    }
+    double beta_denominator = (1.0 - candidate.beta_formula) * aq_scale + candidate.beta_formula * org_scale;
+    if (!(beta_denominator > 0.0) || !std::isfinite(beta_denominator)) {
+        throw SolutionError("Electrolyte transformed-variable Jacobian produced an invalid phase-fraction denominator.");
+    }
+    double beta_numerator = candidate.beta_formula * org_scale;
+    for (std::size_t var = 0; var < nvar; ++var) {
+        double d_aq_scale = 0.0;
+        double d_org_scale = 0.0;
+        for (std::size_t k = 0; k < nformula; ++k) {
+            d_aq_scale += column_sums[k] * daq_formula_dvar[k * nvar + var];
+            d_org_scale += column_sums[k] * dorg_formula_dvar[k * nvar + var];
+        }
+        double d_beta_formula = dbeta_formula_dvar[var];
+        double d_num = d_beta_formula * org_scale + candidate.beta_formula * d_org_scale;
+        double d_den = d_beta_formula * (org_scale - aq_scale)
+            + (1.0 - candidate.beta_formula) * d_aq_scale
+            + candidate.beta_formula * d_org_scale;
+        out.beta_org_dvar[var] = (d_num * beta_denominator - beta_numerator * d_den)
+            / (beta_denominator * beta_denominator);
+    }
+    return out;
+}
+
+double phase_log_fugacity_derivative_for_species(
+    const std::vector<double>& composition,
+    const std::vector<double>& dcomp_dvar,
+    const std::vector<double>& lnphi_jacobian,
+    std::size_t species_index,
+    std::size_t var,
+    std::size_t ncomp,
+    std::size_t nvar
+) {
+    double value = dcomp_dvar[species_index * nvar + var] / composition[species_index];
+    for (std::size_t j = 0; j < ncomp; ++j) {
+        value += lnphi_jacobian[species_index * ncomp + j] * dcomp_dvar[j * nvar + var];
+    }
+    return value;
+}
+
+std::vector<double> electrolyte_residual_jacobian_row_major(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const ElectrolyteBasisNative& basis,
+    const ElectrolyteCandidateNative& candidate
+) {
+    const std::size_t ncomp = feed.size();
+    const std::size_t nvar = basis.formula_feed.size();
+    ElectrolyteTransformJacobianNative transform = electrolyte_transform_jacobian(feed, basis, candidate);
+    PhaseStateCompositionSensitivityResult aq_sensitivity =
+        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, candidate.aq_comp, phase_token_to_int("liq"), mixture->args());
+    PhaseStateCompositionSensitivityResult org_sensitivity =
+        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, candidate.org_comp, phase_token_to_int("liq"), mixture->args());
+    if (!aq_sensitivity.supported || !org_sensitivity.supported) {
+        throw SolutionError("Electrolyte residual Jacobian requires supported phase-state fugacity composition sensitivities.");
+    }
+    const std::size_t phase_rows = basis.neutral_indices.size() + basis.salt_pairs.size();
+    const std::size_t rows = phase_rows + ncomp;
+    std::vector<double> jacobian(rows * nvar, 0.0);
+    std::size_t row = 0;
+    auto add_species_contribution = [&](std::size_t output_row, std::size_t species_index, double coefficient) {
+        for (std::size_t var = 0; var < nvar; ++var) {
+            double org_value = phase_log_fugacity_derivative_for_species(
+                candidate.org_comp,
+                transform.org_comp_dvar,
+                org_sensitivity.jacobian_row_major,
+                species_index,
+                var,
+                ncomp,
+                nvar
+            );
+            double aq_value = phase_log_fugacity_derivative_for_species(
+                candidate.aq_comp,
+                transform.aq_comp_dvar,
+                aq_sensitivity.jacobian_row_major,
+                species_index,
+                var,
+                ncomp,
+                nvar
+            );
+            jacobian[output_row * nvar + var] += coefficient * (org_value - aq_value);
+        }
+    };
+    for (int index : basis.neutral_indices) {
+        add_species_contribution(row, static_cast<std::size_t>(index), 1.0);
+        ++row;
+    }
+    for (const auto& pair : basis.salt_pairs) {
+        add_species_contribution(row, static_cast<std::size_t>(pair.cation), static_cast<double>(pair.cation_stoich));
+        add_species_contribution(row, static_cast<std::size_t>(pair.anion), static_cast<double>(pair.anion_stoich));
+        ++row;
+    }
+    for (std::size_t i = 0; i < ncomp; ++i) {
+        for (std::size_t var = 0; var < nvar; ++var) {
+            jacobian[row * nvar + var] =
+                (candidate.org_comp[i] - candidate.aq_comp[i]) * transform.beta_org_dvar[var]
+                + (1.0 - candidate.beta_org) * transform.aq_comp_dvar[i * nvar + var]
+                + candidate.beta_org * transform.org_comp_dvar[i * nvar + var];
+        }
+        ++row;
+    }
+    return jacobian;
 }
 
 StabilityTrialNative electrolyte_trial_from_formula(
@@ -2300,28 +2557,6 @@ EquilibriumResultNative lle_flash_native(
     return result;
 }
 
-struct ElectrolyteCandidateNative {
-    double beta_formula = 0.5;
-    double beta_org = 0.5;
-    std::vector<double> aq_formula;
-    std::vector<double> org_formula;
-    std::vector<double> aq_comp;
-    std::vector<double> org_comp;
-    PhaseStateNative aq_state;
-    PhaseStateNative org_state;
-    std::vector<double> residual;
-    std::vector<double> material_residual;
-    double solver_residual_norm = std::numeric_limits<double>::infinity();
-    double material_error = std::numeric_limits<double>::infinity();
-    double charge_balance_error = std::numeric_limits<double>::infinity();
-    double gibbs_feed = 0.0;
-    double gibbs_split = 0.0;
-    double gibbs_delta = 0.0;
-    double phase_distance_value = 0.0;
-    int iteration = 0;
-    double objective = std::numeric_limits<double>::infinity();
-};
-
 void add_electrolyte_candidate_state_diagnostics(
     EquilibriumResultNative& result,
     const ElectrolyteBasisNative& basis,
@@ -3172,6 +3407,13 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
     for (double value : residual) {
         objective += 0.5 * value * value;
     }
+    std::vector<double> jacobian = electrolyte_residual_jacobian_row_major(mixture, t, p, feed, basis, candidate);
+    std::vector<double> gradient(eval_variables.size(), 0.0);
+    for (std::size_t row = 0; row < residual.size(); ++row) {
+        for (std::size_t col = 0; col < eval_variables.size(); ++col) {
+            gradient[col] += jacobian[row * eval_variables.size() + col] * residual[row];
+        }
+    }
 
     ElectrolyteLLEResidualEvaluationNative out;
     out.variable_model = basis.variable_model;
@@ -3182,6 +3424,8 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
     out.jacobian_rows = static_cast<int>(residual.size());
     out.jacobian_cols = static_cast<int>(eval_variables.size());
     out.objective = objective;
+    out.gradient = gradient;
+    out.jacobian_row_major = jacobian;
     out.aq_composition = candidate.aq_comp;
     out.org_composition = candidate.org_comp;
     out.aq_ln_fugacity_coefficient = candidate.aq_state.ln_phi;
@@ -3195,11 +3439,11 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
     out.gibbs_delta = candidate.gibbs_delta;
     out.diagnostics_string["residual_surface"] = "native_electrolyte_lle_transformed_variables";
     out.diagnostics_string["residual_blocks"] = "phase_equilibrium,material_balance";
-    out.diagnostics_string["jacobian_backend"] = "not_available";
-    out.diagnostics_string["derivative_backend"] = "not_available";
-    out.diagnostics_string["not_available_reason"] = "not_available: electrolyte LLE transformed-variable Jacobian is not implemented.";
-    out.diagnostics_bool["jacobian_available"] = false;
-    out.diagnostics_bool["derivative_available"] = false;
+    out.diagnostics_string["jacobian_backend"] = "cppad_implicit";
+    out.diagnostics_string["derivative_backend"] = "cppad_implicit";
+    out.diagnostics_string["jacobian_scope"] = "transformed_variables_phase_state_implicit_density";
+    out.diagnostics_bool["jacobian_available"] = true;
+    out.diagnostics_bool["derivative_available"] = true;
     out.diagnostics_bool["phase_charge_enforced_by_basis"] = true;
     out.diagnostics_bool["material_balance_enforced_by_formula_transform"] = true;
     out.diagnostics_int["basis_rank"] = basis.basis_rank;

@@ -23,6 +23,13 @@ epcsaft::native::cppad_support::CppADDerivativeResult cppad_pressure_density_der
     const std::vector<double>& x,
     const add_args& cppargs
 );
+PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensitivity_cpp(
+    double t,
+    double p,
+    std::vector<double> x,
+    int phase,
+    const add_args& cppargs
+);
 epcsaft::native::cppad_support::CppADDerivativeResult cppad_pure_neutral_parameter_derivatives_cpp(
     double t,
     double rho,
@@ -55,6 +62,28 @@ py::dict cppad_smoke_to_dict(const epcsaft::native::cppad_support::CppADDerivati
     out["outputs"] = result.outputs;
     out["variables"] = result.variables;
     out["shape"] = py::make_tuple(result.rows, result.cols);
+    return out;
+}
+
+py::dict phase_state_sensitivity_to_dict(const PhaseStateCompositionSensitivityResult& result) {
+    py::dict out;
+    out["supported"] = result.supported;
+    out["backend"] = result.backend;
+    out["derivative_backend"] = result.backend;
+    out["density_backend"] = result.density_backend;
+    out["message"] = result.message;
+    out["temperature"] = result.temperature;
+    out["pressure"] = result.pressure;
+    out["density"] = result.density;
+    out["pressure_density_derivative"] = result.pressure_density_derivative;
+    out["shape"] = py::make_tuple(result.rows, result.cols);
+    out["composition"] = result.composition;
+    out["ln_fugacity"] = result.ln_fugacity;
+    out["density_composition_derivative"] = result.density_composition_derivative;
+    out["pressure_composition_fixed_density_derivative"] = result.pressure_composition_fixed_density_derivative;
+    out["ln_fugacity_density_derivative"] = result.ln_fugacity_density_derivative;
+    out["fixed_density_jacobian_row_major"] = result.fixed_density_jacobian_row_major;
+    out["jacobian_row_major"] = result.jacobian_row_major;
     return out;
 }
 
@@ -1398,6 +1427,17 @@ PYBIND11_MODULE(_core, m) {
     });
     m.def("_native_cppad_pressure_density", [](double t, double rho, const std::vector<double>& x, const add_args& args) {
         return cppad_smoke_to_dict(cppad_pressure_density_derivative_cpp(t, rho, x, args));
+    });
+    m.def("_native_phase_state_ln_fugacity_composition_sensitivity", [](
+        double t,
+        double p,
+        const std::vector<double>& x,
+        int phase,
+        const add_args& args
+    ) {
+        return phase_state_sensitivity_to_dict(
+            phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, x, phase, args)
+        );
     });
     m.def("_native_cppad_pure_neutral_parameters", [](double t, double rho, const add_args& args) {
         return cppad_smoke_to_dict(cppad_pure_neutral_parameter_derivatives_cpp(t, rho, args));

@@ -261,6 +261,13 @@ double ares_contribution_value_cpp(const AresContributions &terms, AresContribut
 AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs);
 epcsaft::native::cppad_support::CppADDerivativeResult cppad_eos_contribution_derivatives_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs);
 epcsaft::native::cppad_support::CppADDerivativeResult cppad_pressure_density_derivative_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs);
+PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensitivity_cpp(
+    double t,
+    double p,
+    vector<double> x,
+    int phase,
+    const add_args &cppargs
+);
 double dielectric_constant_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs);
 vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs);
 #ifdef EPCSAFT_HAS_CPPAD

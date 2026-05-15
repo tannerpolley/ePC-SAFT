@@ -5,7 +5,7 @@ goal:
   slug: "phase-state-sensitivities"
   kind: existing_plan
   tranche: "Build the derivative foundation required by parent issue #116 T017."
-  status: active
+  status: done
   intake:
     original_request: "Unblock issue #116 production electrolyte LLE residual Jacobian and Ceres solve."
     interpreted_outcome: "A native phase-state sensitivity surface exists and is verified enough for the parent electrolyte LLE residual evaluator to build a real transformed-variable Jacobian."
@@ -36,13 +36,13 @@ agents:
   worker: installed
   judge: installed
 
-active_task: T001
+active_task: null
 
 tasks:
   - id: T001
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Approve the smallest safe implementation package for native phase-state fugacity and density sensitivities."
     inputs:
@@ -60,34 +60,154 @@ tasks:
     expected_output:
       - "Approved Worker allowed_files, verify commands, and stop conditions."
       - "Decision on fixed-density versus implicit-density first slice."
-    receipt: null
+    receipt:
+      result: done
+      decision: implicit_density_first_slice
+      summary: "Approved an implicit-density-first phase-state sensitivity Worker and rejected fixed-density-only support as insufficient for the parent electrolyte LLE residual state."
+      artifacts:
+        - "docs/goals/native-lle-reactive-production-solvers/subgoals/phase-state-sensitivities/notes/T001-implementation-boundary.md"
+      evidence:
+        - "Parent residual evaluation solves density before computing phase fugacity coefficients."
+        - "Issue #116 requires the Jacobian of the actual transformed-variable residual state, not a fixed-density diagnostic surface."
+        - "Existing CppAD explicit surfaces do not yet provide the complete pressure-based phase-state fugacity composition Jacobian."
 
   - id: T002
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     reasoning_hint: high
-    objective: "Implement the approved native phase-state sensitivity surface."
+    objective: "Implement the approved implicit-density native phase-state sensitivity surface slice for the actual phase-state fugacity path."
     allowed_files:
-      - "src/epcsaft/native/**"
+      - "src/epcsaft/native/epcsaft_core_internal.h"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/epcsaft_Z.cpp"
+      - "src/epcsaft/native/epcsaft_fugcoef.cpp"
+      - "src/epcsaft/native/epcsaft_electrolyte.h"
+      - "src/epcsaft/native/epcsaft_state.cpp"
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/epcsaft.py"
       - "tests/native/cppad/**"
       - "tests/native/equilibrium/**"
       - "docs/goals/native-lle-reactive-production-solvers/subgoals/phase-state-sensitivities/notes/**"
     constraints:
       - "The sensitivity surface must differentiate the actual state used by electrolyte LLE residual evaluation."
       - "Diagnostics must label derivative backend and density-sensitivity scope honestly."
+      - "Reject fixed-density-only support as completion for this slice."
+      - "Do not differentiate through density iteration history."
+      - "Do not use manually perturbed derivatives as production proof."
     verify:
       - "uv run python scripts/dev/build_epcsaft.py --profile full"
       - "uv run python run_pytest.py tests/native/cppad tests/native/equilibrium -q"
     stop_if:
       - "The implementation would require a broad EOS rewrite outside a reversible slice."
-      - "Derivative proof depends on a manual numeric perturbation oracle."
-    receipt: null
+      - "Derivative proof depends on a manually perturbed derivative oracle."
+      - "The surface cannot be wired to the same density/fugacity state used by `_evaluate_electrolyte_lle_residual_native`."
+    receipt:
+      result: done
+      summary: "Implemented the first implicit-density native phase-state sensitivity surface for pressure-based non-associating states."
+      changed_files:
+        - "src/epcsaft/native/epcsaft_electrolyte.h"
+        - "src/epcsaft/native/epcsaft_core_internal.h"
+        - "src/epcsaft/native/epcsaft_ares.cpp"
+        - "src/epcsaft/bindings.cpp"
+        - "src/epcsaft/epcsaft.py"
+        - "tests/native/cppad/test_phase_state_sensitivities.py"
+        - "docs/goals/native-lle-reactive-production-solvers/subgoals/phase-state-sensitivities/notes/T002-phase-state-sensitivity-surface.md"
+      evidence:
+        - "The native surface solves the selected density root and applies the implicit pressure chain rule for composition sensitivities."
+        - "The returned payload includes density sensitivity, fixed-density pressure-composition terms, fixed-density fugacity Jacobian, and total fugacity Jacobian."
+        - "Active association remains an explicit follow-up gate, so parent T017 is still blocked."
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --profile full"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/cppad/test_phase_state_sensitivities.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/cppad tests/native/equilibrium -q"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+
+  - id: T003
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Decide the remaining association and Born SSM/DS sensitivity path before the child can unblock parent T017."
+    inputs:
+      - "T001 receipt"
+      - "T002 receipt"
+      - "docs/goals/native-lle-reactive-production-solvers/subgoals/phase-state-sensitivities/notes/T002-phase-state-sensitivity-surface.md"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp"
+      - "tests/native/contracts/test_association_implicit_derivative_contract.py"
+      - "Parent issue #116 benchmark requirements"
+    constraints:
+      - "Do not implement."
+      - "Reject child completion while active association blocks the required electrolyte fixture path."
+      - "Choose the next largest safe Worker slice or record a precise blocker."
+    expected_output:
+      - "Decision on association second composition derivative ownership."
+      - "Decision on whether Born SSM/DS composition sensitivity is required for the selected #116 fixtures."
+      - "Allowed files, verify commands, and stop conditions for the next Worker."
+    receipt:
+      result: done
+      decision: implement_association_extension_next
+      summary: "Approved an association-extension Worker; Born SSM/DS composition sensitivity is not required for the current ionic fixture gate."
+      artifacts:
+        - "docs/goals/native-lle-reactive-production-solvers/subgoals/phase-state-sensitivities/notes/T003-association-followup-decision.md"
+      evidence:
+        - "The repo ionic helper has active water association with `assoc_num = [2, 0, 0]`."
+        - "The helper uses direct Born model 1 and linear dielectric mixing, so the next blocking path is association solved-state composition sensitivity."
+        - "`association_implicit_terms_scalar_cpp(...)` already records association outputs and residuals against site fractions."
+
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Extend the phase-state sensitivity surface through association solved-state composition sensitivities for the issue #116 electrolyte fixture class."
+    allowed_files:
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "tests/native/cppad/test_phase_state_sensitivities.py"
+      - "docs/goals/native-lle-reactive-production-solvers/subgoals/phase-state-sensitivities/notes/**"
+    constraints:
+      - "Differentiate association outputs and residual equations with respect to rho, composition, and solved site fractions."
+      - "Use implicit solved-state sensitivities for site fractions."
+      - "Do not differentiate through density or association iteration histories."
+      - "Do not use manually perturbed derivatives as production proof."
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --profile full"
+      - "uv run python run_pytest.py tests/native/cppad/test_phase_state_sensitivities.py tests/native/contracts/test_association_implicit_derivative_contract.py -q"
+      - "uv run python run_pytest.py tests/native/cppad tests/native/equilibrium -q"
+    stop_if:
+      - "The association residual sensitivity matrix is singular for the fixture."
+      - "The implementation requires a broad association model rewrite."
+      - "The proof would rely on a manually perturbed derivative oracle."
+    receipt:
+      result: done
+      summary: "Extended the native phase-state sensitivity surface through active association solved-state sensitivities."
+      changed_files:
+        - "src/epcsaft/native/epcsaft_ares.cpp"
+        - "tests/native/cppad/test_phase_state_sensitivities.py"
+        - "docs/goals/native-lle-reactive-production-solvers/subgoals/phase-state-sensitivities/notes/T004-association-sensitivity-extension.md"
+      evidence:
+        - "Association outputs and residual equations are recorded with rho, composition, and solved site-fraction variables."
+        - "The association residual sensitivity system supplies site-fraction responses for rho and composition variables."
+        - "The active-association ionic helper now returns a supported phase-state fugacity composition sensitivity payload."
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --profile full"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/cppad/test_phase_state_sensitivities.py tests/native/contracts/test_association_implicit_derivative_contract.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/cppad tests/native/equilibrium -q"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
 
   - id: T999
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Audit child goal completion and decide whether parent T017 may resume."
     inputs:
@@ -100,12 +220,38 @@ tasks:
     expected_output:
       - "complete or not_complete"
       - "parent_t017_unblocked true or false"
-    receipt: null
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      parent_t017_unblocked: true
+      summary: "The child phase-state sensitivity foundation is complete for the parent T017 direct-Born associating electrolyte fixture class."
+      artifacts:
+        - "docs/goals/native-lle-reactive-production-solvers/subgoals/phase-state-sensitivities/notes/T999-child-audit.md"
+      evidence:
+        - "The native surface solves the pressure-based phase state and returns row-major fugacity composition sensitivities."
+        - "The active-association ionic helper returns a supported sensitivity payload through implicit site-fraction responses."
+        - "Parent T017 can now chain transformed variables through this surface to residual rows."
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --profile full"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/cppad/test_phase_state_sensitivities.py tests/native/contracts/test_association_implicit_derivative_contract.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/cppad tests/native/equilibrium -q"
+          status: pass
+        - cmd: "node C:\\Users\\Tanner\\.codex\\plugins\\cache\\goalbuddy\\goalbuddy\\0.3.6\\skills\\goalbuddy\\scripts\\check-goal-state.mjs docs/goals/native-lle-reactive-production-solvers/subgoals/phase-state-sensitivities/state.yaml"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
 
 checks:
-  dirty_fingerprint: "child-goal-created"
+  dirty_fingerprint: "phase-state-sensitivity-child-complete"
   last_verification:
-    result: pending
-    task: T001
+    result: pass
+    task: T999
     commands:
       - "node C:\\Users\\Tanner\\.codex\\plugins\\cache\\goalbuddy\\goalbuddy\\0.3.6\\skills\\goalbuddy\\scripts\\check-goal-state.mjs docs/goals/native-lle-reactive-production-solvers/subgoals/phase-state-sensitivities/state.yaml"
+      - "uv run python scripts/dev/build_epcsaft.py --profile full"
+      - "uv run python run_pytest.py tests/native/cppad/test_phase_state_sensitivities.py tests/native/contracts/test_association_implicit_derivative_contract.py -q"
+      - "uv run python run_pytest.py tests/native/cppad tests/native/equilibrium -q"
+      - "git diff --check"
