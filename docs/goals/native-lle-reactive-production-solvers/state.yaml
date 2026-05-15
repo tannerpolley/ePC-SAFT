@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T022
+active_task: T024
 
 tasks:
   - id: T001
@@ -819,7 +819,7 @@ tasks:
   - id: T022
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement issue #116 Ceres trust-region electrolyte LLE accepted solve using the transformed residual and Jacobian from T021."
     allowed_files:
@@ -842,12 +842,82 @@ tasks:
       - "Ceres cannot produce finite residual/Jacobian diagnostics on the repo-contained electrolyte fixture."
       - "Accepted diagnostics would still depend on the old hand-coded minimizer as production."
       - "Ceres support is unavailable in the full native build."
-    receipt: null
+    receipt:
+      result: done
+      summary: "Installed the native Ceres trust-region accepted electrolyte LLE solve and kept issue #116 open for analytic multi-salt Jacobian proof."
+      changed_files:
+        - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+        - "tests/native/equilibrium/test_electrolyte_lle_ceres_solver.py"
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T022-ceres-accepted-solve.md"
+      evidence:
+        - "Accepted electrolyte LLE diagnostics now report `solver_backend = ceres` and `solver_method = ceres_trust_region_residual_solve`."
+        - "The old transformed Newton accepted path was removed from the electrolyte LLE production route."
+        - "The distributed-ion diagnostic case converges through the Ceres route, but the Ceres cost currently uses a local residual slope while T021 analytic multi-salt correctness remains unproven."
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --profile full"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium/test_electrolyte_lle_ceres_solver.py tests/native/equilibrium/test_electrolyte_lle_residual_jacobian.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium tests/native/cppad -q"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+
+  - id: T023
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Resolve the issue #116 production-Jacobian gap exposed by T022 for multi-salt distributed-ion Ceres solves."
+    allowed_files:
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/epcsaft_core_internal.h"
+      - "src/epcsaft/native/epcsaft_electrolyte.h"
+      - "tests/native/cppad/test_phase_state_sensitivities.py"
+      - "tests/native/equilibrium/test_electrolyte_lle_ceres_solver.py"
+      - "tests/native/equilibrium/test_electrolyte_lle_residual_jacobian.py"
+      - "tests/native/equilibrium/test_electrolyte_lle_residual_surface.py"
+      - "docs/goals/native-lle-reactive-production-solvers/notes/**"
+    constraints:
+      - "Do not close issue #116 while Ceres accepted diagnostics depend on an unqualified local residual slope."
+      - "Either repair and prove the analytic transformed-variable Jacobian for multi-salt residuals or make the production derivative backend diagnostics honest."
+      - "Keep Ceres as the accepted production solver; do not reintroduce the old transformed Newton or derivative-free accepted route."
+      - "Keep route guards loud if production derivative support is not available."
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --profile full"
+      - "uv run python run_pytest.py tests/native/equilibrium/test_electrolyte_lle_ceres_solver.py tests/native/equilibrium/test_electrolyte_lle_residual_jacobian.py tests/native/cppad/test_phase_state_sensitivities.py -q"
+      - "uv run python run_pytest.py tests/native/equilibrium tests/native/cppad -q"
+      - "git diff --check"
+    stop_if:
+      - "A source-backed derivative correction cannot be made without broad EOS fugacity-derivative redesign."
+      - "The only passing route would require hiding a local residual slope behind `cppad_implicit` diagnostics."
+    receipt:
+      result: done
+      summary: "Made the accepted Ceres solve derivative diagnostics honest by separating the solver slope backend from the public residual-surface CppAD backend."
+      changed_files:
+        - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+        - "tests/native/equilibrium/test_electrolyte_lle_ceres_solver.py"
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T023-derivative-backend-honesty.md"
+      evidence:
+        - "Accepted electrolyte LLE solve diagnostics now report `jacobian_backend = local_residual_slope`."
+        - "Residual-surface diagnostics remain available as `residual_surface_jacobian_backend = cppad_implicit`."
+        - "Issue #116 remains subject to final audit because this is an honest production-derivative boundary, not a completed analytic multi-salt Jacobian repair."
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --profile full"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium/test_electrolyte_lle_ceres_solver.py tests/native/equilibrium/test_electrolyte_lle_residual_jacobian.py tests/native/cppad/test_phase_state_sensitivities.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium tests/native/cppad -q"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
 
   - id: T999
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Final audit: prove the full original outcome and both GitHub issue definitions of done are complete."
     inputs:
@@ -876,6 +946,59 @@ tasks:
       - "Public API proof."
       - "Tests that would fail on regression."
       - "Next task if not complete."
+    receipt:
+      result: done
+      decision: not_complete
+      verdict: not_complete
+      full_outcome_complete: false
+      summary: "Rejected full completion: #116 has a Ceres accepted solve but not an accepted production analytic multi-salt Jacobian, and #117 remains gated."
+      artifacts:
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T999-audit-not-complete.md"
+      issue_116:
+        complete: false
+        done:
+          - "Native electrolyte LLE residual surface exists."
+          - "Accepted electrolyte LLE route now uses Ceres trust-region residual solving."
+          - "Distributed-ion native tests validate finite accepted Ceres phases and split diagnostics."
+        remaining:
+          - "Accepted Ceres solve reports `jacobian_backend = local_residual_slope`."
+          - "CppAD implicit transformed-variable residual-surface Jacobian is not yet proven as the accepted multi-salt solver Jacobian."
+      issue_117:
+        complete: false
+        remaining:
+          - "Native coupled reactive phase-equilibrium Ceres path remains gated behind #116 derivative closure."
+      next_task: T024
+
+  - id: T024
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Repair issue #116 accepted-solve derivative closure by replacing `local_residual_slope` with a proven analytic multi-salt transformed-variable Jacobian, or produce a blocker receipt with exact source evidence."
+    allowed_files:
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/epcsaft_core_internal.h"
+      - "src/epcsaft/native/epcsaft_electrolyte.h"
+      - "tests/native/cppad/test_phase_state_sensitivities.py"
+      - "tests/native/equilibrium/test_electrolyte_lle_ceres_solver.py"
+      - "tests/native/equilibrium/test_electrolyte_lle_residual_jacobian.py"
+      - "tests/native/equilibrium/test_electrolyte_lle_residual_surface.py"
+      - "docs/goals/native-lle-reactive-production-solvers/notes/**"
+    constraints:
+      - "Do not hide a local residual slope behind CppAD or analytic diagnostics."
+      - "Do not reintroduce the old transformed Newton, Nelder-Mead, or direct Gibbs minimizer as the accepted production solve."
+      - "Add a multi-salt derivative proof that would fail if the accepted Ceres Jacobian regresses."
+      - "If the analytic repair needs a broader EOS fugacity-derivative redesign, stop with a blocker receipt instead of weakening the definition of done."
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --profile full"
+      - "uv run python run_pytest.py tests/native/equilibrium/test_electrolyte_lle_ceres_solver.py tests/native/equilibrium/test_electrolyte_lle_residual_jacobian.py tests/native/cppad/test_phase_state_sensitivities.py -q"
+      - "uv run python run_pytest.py tests/native/equilibrium tests/native/cppad -q"
+      - "git diff --check"
+    stop_if:
+      - "The phase-state fugacity sensitivity formulas do not match source-evaluated perturbation behavior and cannot be repaired within this slice."
+      - "The accepted distributed-ion Ceres solve only converges with a local residual slope."
     receipt: null
 
 checks:
