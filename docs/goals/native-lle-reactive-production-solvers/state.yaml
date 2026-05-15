@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T013
+active_task: T014
 
 tasks:
   - id: T001
@@ -526,6 +526,7 @@ tasks:
     allowed_files:
       - "docs/goals/native-lle-reactive-production-solvers/**"
       - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/epcsaft.py"
       - "src/epcsaft/equilibrium.py"
       - "src/epcsaft/reactive.py"
       - "src/epcsaft/reactive_speciation.py"
@@ -584,6 +585,7 @@ tasks:
     allowed_files:
       - "docs/goals/native-lle-reactive-production-solvers/**"
       - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/epcsaft.py"
       - "src/epcsaft/equilibrium.py"
       - "src/epcsaft/reactive.py"
       - "src/epcsaft/reactive_speciation.py"
@@ -636,17 +638,19 @@ tasks:
   - id: T013
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement issue #117 Stages 7-9: generic Python route, neutral reactive LLE benchmark, reactive electrolyte LLE benchmark, and tests that reject staged production behavior."
     allowed_files:
       - "docs/goals/native-lle-reactive-production-solvers/**"
       - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/epcsaft.py"
       - "src/epcsaft/equilibrium.py"
       - "src/epcsaft/reactive.py"
       - "src/epcsaft/reactive_speciation.py"
       - "src/epcsaft/reactive_staged.py"
       - "src/epcsaft/native/**"
+      - "tests/equilibrium/reactive/test_reactive_lle.py"
       - "tests/equilibrium/reactive/test_reactive_lle_coupled_solver.py"
       - "tests/equilibrium/reactive/test_reactive_electrolyte_lle_coupled_solver.py"
       - "tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py"
@@ -664,12 +668,37 @@ tasks:
       - "Required benchmark data cannot be repo-contained without fabrication."
       - "ReactivePhaseEquilibriumProblem.solve still calls staged route for production."
       - "Public API would need application-specific metric names."
-    receipt: null
+    receipt:
+      result: done
+      summary: "Implemented the issue #117 public production route and benchmark/API tests for native coupled reactive LLE."
+      changed_files:
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T013-public-api-benchmarks.md"
+        - "docs/goals/native-lle-reactive-production-solvers/state.yaml"
+        - "src/epcsaft/epcsaft.py"
+        - "src/epcsaft/equilibrium.py"
+        - "tests/equilibrium/reactive/test_reactive_lle.py"
+        - "tests/equilibrium/reactive/test_reactive_lle_coupled_solver.py"
+        - "tests/equilibrium/reactive/test_reactive_electrolyte_lle_coupled_solver.py"
+        - "tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py"
+        - "tests/api/reactive/test_staged_reactive_route_not_production.py"
+      evidence:
+        - "`ReactivePhaseEquilibriumProblem.solve(...)` now routes through `reactive_phase_equilibrium(...)`, which calls `_solve_reactive_phase_equilibrium_native(...)`."
+        - "`kind=\"reactive_lle\"` and `kind=\"reactive_electrolyte_lle\"` now use the native coupled production route; `kind=\"reactive_staged\"` remains the explicit staged compatibility route."
+        - "Neutral and electrolyte reactive LLE benchmark tests assert coupled native diagnostics, residual norms, material/element/charge balance, phase distance, phase compositions, phase amounts, and reaction extents."
+        - "API route tests fail if production calls `reactive_staged_equilibrium(...)` or accepts staged-only controls silently."
+      commands:
+        - cmd: "uv run python run_pytest.py tests/equilibrium/reactive/test_reactive_lle.py tests/equilibrium/reactive/test_reactive_lle_coupled_solver.py tests/equilibrium/reactive/test_reactive_electrolyte_lle_coupled_solver.py tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py tests/api/reactive/test_staged_reactive_route_not_production.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/equilibrium/reactive -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/api/reactive -q"
+          status: pass
+      next_task: T014
 
   - id: T014
     type: worker
     assignee: Worker
-    status: queued
+    status: active
     reasoning_hint: medium
     objective: "Run issue #117 Stage 10 validation and targeted route guards, then repair only failures within #117 scope."
     allowed_files:

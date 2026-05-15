@@ -77,7 +77,7 @@ def _phase_result(feed: np.ndarray) -> epcsaft.EquilibriumResult:
     )
 
 
-def test_reactive_lle_stages_reaction_coordinates_into_neutral_lle_split(monkeypatch) -> None:
+def test_explicit_reactive_staged_equilibrium_routes_reaction_coordinates_into_neutral_lle_split(monkeypatch) -> None:
     mix = _reactive_lle_mixture()
     feed, initial_phases = _lle_seed()
     monkeypatch.setattr(
@@ -86,16 +86,16 @@ def test_reactive_lle_stages_reaction_coordinates_into_neutral_lle_split(monkeyp
         lambda *, T, P, z, options=None, initial_phases=None: _phase_result(np.asarray(z, dtype=float)),
     )
 
-    result = mix.equilibrium(
-        kind="reactive_lle",
+    result = mix.reactive_staged_equilibrium(
         T=298.15,
         P=1.013e5,
         z=[0.5, 0.5],
         balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
         totals={"total": 1.0},
         reactions=[_reaction_for_feed(feed)],
+        phase_kind="lle_flash",
         phase_options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10, damping=0.5),
-        initial_phases=initial_phases,
+        phase_kwargs={"initial_phases": initial_phases},
     )
 
     assert result.success is True
@@ -118,11 +118,11 @@ def test_reactive_lle_stages_reaction_coordinates_into_neutral_lle_split(monkeyp
     np.testing.assert_allclose([result.z["Methanol"], result.z["Cyclohexane"]], feed, atol=1.0e-10)
 
 
-def test_reactive_phase_equilibrium_problem_routes_generic_lle() -> None:
+def test_explicit_reactive_staged_equilibrium_routes_generic_lle() -> None:
     mix = _reactive_lle_mixture()
     feed, initial_phases = _lle_seed()
     mix.lle_tp = lambda *, T, P, z, options=None, initial_phases=None: _phase_result(np.asarray(z, dtype=float))
-    problem = epcsaft.ReactivePhaseEquilibriumProblem(
+    result = mix.reactive_staged_equilibrium(
         T=298.15,
         P=1.013e5,
         z=[0.5, 0.5],
@@ -133,8 +133,6 @@ def test_reactive_phase_equilibrium_problem_routes_generic_lle() -> None:
         phase_options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10, damping=0.5),
         phase_kwargs={"initial_phases": initial_phases},
     )
-
-    result = mix.solve_equilibrium(problem)
 
     assert result.success is True
     assert result.phase.split_detected is True

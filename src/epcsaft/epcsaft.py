@@ -642,14 +642,41 @@ class ePCSAFTMixture:
         from .equilibrium_core.classify import classify_equilibrium_route
         from .reactive_speciation import ReactiveSpeciationOptions
 
+        if kind in {"reactive_staged_equilibrium", "reactive_staged"}:
+            if balances is None or totals is None or reactions is None:
+                raise InputError(f"{kind} requires balances, totals, and reactions.")
+            phase_kwargs = {
+                "vapor_species": vapor_species,
+                "volatile_species": volatile_species,
+                "nonvolatile_species": nonvolatile_species,
+                "solvent_feed": solvent_feed,
+                "salt_molality": salt_molality,
+                "initial_phases": initial_phases,
+                "parent_phase": parent_phase,
+                "trial_phases": trial_phases,
+            }
+            return self.reactive_staged_equilibrium(
+                T=T,
+                P=P,
+                balances=balances,
+                totals=totals,
+                reactions=reactions,
+                initial_x=initial_x,
+                z=z,
+                phase_kind=phase_kind if phase_kind is not None else ("auto" if backend is None else str(backend)),
+                options=options,
+                phase_options=phase_options,
+                phase_kwargs=phase_kwargs,
+            )
+
         if kind in {
-            "reactive_staged_equilibrium",
-            "reactive_staged",
             "reactive_lle",
             "reactive_lle_flash",
             "reactive_electrolyte_lle",
             "reactive_electrolyte_lle_flash",
         }:
+            from .equilibrium import reactive_phase_equilibrium
+
             if balances is None or totals is None or reactions is None:
                 raise InputError(f"{kind} requires balances, totals, and reactions.")
             if kind in {"reactive_lle", "reactive_lle_flash"}:
@@ -670,7 +697,8 @@ class ePCSAFTMixture:
                 "parent_phase": parent_phase,
                 "trial_phases": trial_phases,
             }
-            return self.reactive_staged_equilibrium(
+            return reactive_phase_equilibrium(
+                self,
                 T=T,
                 P=P,
                 balances=balances,
@@ -678,7 +706,7 @@ class ePCSAFTMixture:
                 reactions=reactions,
                 initial_x=initial_x,
                 z=z,
-                phase_kind=phase_kind if phase_kind is not None else ("auto" if backend is None else str(backend)),
+                phase_kind=phase_kind,
                 options=options,
                 phase_options=phase_options,
                 phase_kwargs=phase_kwargs,
