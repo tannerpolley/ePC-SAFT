@@ -23,7 +23,7 @@ CHECK_COMMANDS: dict[str, tuple[tuple[str, ...], ...]] = {
         ("run_pytest.py", "--all", "-q"),
     ),
     "ceres-cppad": (
-        ("scripts/dev/build_epcsaft.py",),
+        ("scripts/dev/build_epcsaft.py", "--profile", "full"),
         (
             "run_pytest.py",
             "tests/native/ceres/test_ceres_pure_regression.py",

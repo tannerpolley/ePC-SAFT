@@ -165,10 +165,13 @@ def test_explicit_lle_tp_matches_legacy_equilibrium_dispatch_policy() -> None:
     )
     feed = np.asarray([0.5, 0.5])
 
-    with pytest.raises(epcsaft.InputError, match="not_available"):
-        mix.lle_tp(T=298.15, P=1.013e5, z=feed)
-    with pytest.raises(epcsaft.InputError, match="not_available"):
-        mix.equilibrium(kind="lle_flash", T=298.15, P=1.013e5, z=feed)
+    direct = mix.lle_tp(T=298.15, P=1.013e5, z=feed)
+    dispatched = mix.equilibrium(kind="lle_flash", T=298.15, P=1.013e5, z=feed)
+
+    assert direct.problem_kind == "lle_flash"
+    assert dispatched.problem_kind == direct.problem_kind
+    assert dispatched.diagnostics["nonlinear_solver"] == direct.diagnostics["nonlinear_solver"]
+    assert dispatched.phases[0].composition.tolist() == pytest.approx(direct.phases[0].composition.tolist())
 
 
 def test_explicit_chemical_equilibrium_matches_legacy_equilibrium_dispatch() -> None:

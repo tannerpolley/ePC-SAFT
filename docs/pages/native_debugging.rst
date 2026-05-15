@@ -29,6 +29,8 @@ Use the normal build path first:
    uv run python scripts/dev/doctor.py
    uv run python run_pytest.py --confidence -q
 
+The normal local dev build is the fast profile: Ceres OFF, CppAD ON. This is only for debugging and quick Codex iteration; package install builds still inherit the CMake default with Ceres ON. Use ``uv run python scripts/dev/build_epcsaft.py --profile full`` when the debug task needs Ceres regression/backend coverage.
+
 For C++ iteration after the build tree is configured:
 
 .. code-block:: powershell

@@ -1629,7 +1629,7 @@ EquilibriumResultNative lle_two_phase_result(
     result.diagnostics_string["derivative_backend"] = "not_applicable";
     result.diagnostics_string["derivative_status"] = "not_required";
     result.diagnostics_string["derivative_not_required_reason"] =
-        "phase split solve uses derivative-free residual minimization without numeric differencing.";
+        "phase split solve does not require residual Jacobians.";
     result.diagnostics_bool["derivative_available"] = false;
     result.diagnostics_bool["jacobian_available"] = false;
     result.diagnostics_bool["jacobian_fallback_used"] = false;
@@ -1672,7 +1672,7 @@ EquilibriumResultNative lle_no_split_result(
     result.diagnostics_string["derivative_backend"] = "not_applicable";
     result.diagnostics_string["derivative_status"] = "not_required";
     result.diagnostics_string["derivative_not_required_reason"] =
-        "phase split solve uses derivative-free residual minimization without numeric differencing.";
+        "phase split solve does not require residual Jacobians.";
     result.diagnostics_bool["derivative_available"] = false;
     result.diagnostics_bool["jacobian_available"] = false;
     result.diagnostics_bool["jacobian_fallback_used"] = false;

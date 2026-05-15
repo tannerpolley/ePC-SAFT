@@ -2769,8 +2769,8 @@ _USER_TARGET_ALIASES = {
 def _reject_numerical_derivative_options(options: Any) -> None:
     legacy_underscore_token = "finite" + "_" + "difference"
     legacy_hyphen_token = "finite" + "-" + "difference"
-    legacy_phrase = "finite" + " " + "difference"
-    tokens = (legacy_underscore_token, "numerical_derivative", legacy_hyphen_token, legacy_phrase)
+    legacy_phrase_token = "finite" + " " + "difference"
+    tokens = (legacy_underscore_token, "numerical_derivative", legacy_hyphen_token, legacy_phrase_token)
 
     def visit(value: Any) -> bool:
         if isinstance(value, str):
@@ -2782,7 +2782,7 @@ def _reject_numerical_derivative_options(options: Any) -> None:
         return False
 
     if visit(options):
-        raise InputError("Numeric-differencing derivative options are not part of the public regression API.")
+        raise InputError("Perturbation derivative options are not part of the public regression API.")
 
 
 def _optimizer_backend_from_options(options: Mapping[str, Any] | None, default: str) -> str:

@@ -76,7 +76,7 @@ def test_reactive_phase_equilibrium_problem_is_public_generic_contract() -> None
 def test_staged_workflow_rejects_reaction_constant_fit_as_default_role() -> None:
     mix = _toy_mixture()
 
-    with pytest.raises(epcsaft.InputError, match="reaction-constant fitting is not a staged default"):
+    with pytest.raises(epcsaft.InputError, match="reaction-constant fitting is not a default"):
         epcsaft.solve_reactive_staged_equilibrium(
             species=mix.species,
             mixture_factory=lambda x, T, P: mix,

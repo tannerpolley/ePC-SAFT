@@ -544,7 +544,7 @@ def save_contribution_term_breakdown_plot(
     return output_path
 
 
-def finite_difference_gradient_values() -> tuple[np.ndarray, np.ndarray]:
+def centered_delta_gradient_values() -> tuple[np.ndarray, np.ndarray]:
     theta = {"m": 1.05, "s": 3.68, "e": 151.0}
 
     def objective_at(m: float, s: float, e: float) -> float:

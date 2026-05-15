@@ -55,9 +55,13 @@ def test_solve_reactive_speciation_activity_coupled_state_uses_epcsaft_activitie
 
     assert result.success is True
     assert result.diagnostics["activity_model"] == "epcsaft_component_activity"
-    assert result.diagnostics["activity_fixed_point"] is True
+    assert result.diagnostics["solver_language"] == "c++"
+    assert result.diagnostics["selected_solver_backend"] == "native"
+    assert result.diagnostics["activity_fixed_point"] is False
+    assert result.diagnostics["activity_fixed_point_updates"] == 0
+    assert result.diagnostics["activity_or_fugacity_terms_in_residual"] is True
     assert result.diagnostics["numerical_derivative_backend_available"] is False
-    assert result.diagnostics["activity_derivative_in_jacobian"] is False
+    assert result.diagnostics["activity_derivative_in_jacobian"] is True
     assert result.named_reaction_residuals["salt_dissociation"] == pytest.approx(0.0, abs=1.0e-8)
 
 def test_solve_reactive_speciation_concentration_standard_state_solves_with_density_activity() -> None:
@@ -130,7 +134,7 @@ def test_reactive_speciation_auto_jacobian_solves_concentration_standard_state()
 
     assert result.success is True
     assert result.diagnostics["jacobian_backend"] == "analytic"
-    assert result.diagnostics["activity_derivative_policy"] == "not_used_by_fixed_point_outer_iteration"
+    assert result.diagnostics["activity_derivative_policy"] == "native_log_amount_residual_jacobian"
 
 def test_concentration_standard_state_can_skip_activity_output() -> None:
     species = ["H2O", "NaCl", "Na+", "Cl-"]

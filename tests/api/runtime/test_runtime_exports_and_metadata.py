@@ -113,17 +113,17 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert reactive_bubble["backend"] == "native"
     assert (
         reactive_bubble["scope"]
-        == "native chemical speciation followed by native fixed-liquid electrolyte bubble pressure"
+        == "native chemical speciation with fixed-liquid native bubble-pressure handoff and explicit partial-pressure diagnostics"
     )
     assert capabilities["equilibrium"]["reactive_speciation"]["default_auto_uses_ipopt"] is False
     assert capabilities["equilibrium"]["reactive_speciation"]["full_constrained_nlp_available"] is False
     assert (
         capabilities["equilibrium"]["reactive_speciation"]["jacobian_auto_policy"]
-        == "analytic_inner_solve_with_activity_fixed_point_for_nonideal_standard_states"
+        == "native_analytic_log_amount_residual_jacobian_with_implicit_sensitivity"
     )
     assert (
         capabilities["equilibrium"]["reactive_speciation"]["derivative_gap_status"]
-        == "activity_derivatives_not_used_by_fixed_point_outer_iteration"
+        == "implicit_sensitivity_available_for_reaction_constant_response"
     )
     assert capabilities["equilibrium"]["reactive_speciation"]["explicit_autodiff_raises_when_unavailable"] is True
     assert capabilities["regression"]["pure_neutral"]["backend"] == "native"

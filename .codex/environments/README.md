@@ -10,6 +10,14 @@ uv run python scripts/dev/build_epcsaft.py
 uv run python scripts/dev/doctor.py
 ```
 
+The native build action intentionally uses the script default ``--profile fast``
+(Ceres OFF, CppAD ON). Ceres builds are explicit validation work, not setup.
+Use ``uv run python scripts/dev/build_epcsaft.py --profile full`` or
+``uv run python scripts/dev/validate_project.py ceres-cppad`` only when the task
+needs Ceres regression/backend coverage.
+This local dev-script default does not change package installs; editable, wheel,
+and downstream path installs still inherit the CMake default with Ceres ON.
+
 The action list should stay lean and limited to the normal project workflow:
 
 - `Sync Environment`
