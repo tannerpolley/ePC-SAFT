@@ -47,4 +47,4 @@ def test_ceres_cppad_capability_claims_are_dependency_gated() -> None:
     assert khb["supported"] is False
     assert khb["future_owner"] == "Task C"
     assert khb["parameters"] == ["k_hb_ij"]
-    assert "finite_difference" not in json.dumps({"ceres": ceres, "cppad": cppad, "coverage": coverage}).lower()
+    assert "numerical_derivative" not in json.dumps({"ceres": ceres, "cppad": cppad, "coverage": coverage}).lower()

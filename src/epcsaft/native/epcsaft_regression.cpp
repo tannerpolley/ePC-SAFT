@@ -36,25 +36,16 @@ constexpr int kSeedS = 2;
 constexpr int kSeedE = 3;
 constexpr int kSeedCount = 4;
 
-using ParamDerivative = Eigen::VectorXd;
-using ParamDual = Eigen::AutoDiffScalar<ParamDerivative>;
 using ResidualVector = Eigen::VectorXd;
 using ResidualJacobian = Eigen::MatrixXd;
 using LMInputVector = Eigen::VectorXd;
-
-ParamDual make_param_dual(double value, int seed_index = -1);
 
 double scalar_value(double x) {
     return x;
 }
 
-template <typename DerType>
-double scalar_value(const Eigen::AutoDiffScalar<DerType> &x) {
-    return x.value();
-}
-
 #ifdef EPCSAFT_HAS_CPPAD
-double scalar_value(const CppAD::AD<double> &x) {
+double scalar_value(const CppADScalar &x) {
     return CppAD::Value(x);
 }
 #endif
@@ -63,13 +54,8 @@ bool scalar_domain_positive(double x) {
     return x > 0.0;
 }
 
-template <typename DerType>
-bool scalar_domain_positive(const Eigen::AutoDiffScalar<DerType> &x) {
-    return x.value() > 0.0;
-}
-
 #ifdef EPCSAFT_HAS_CPPAD
-bool scalar_domain_positive(const CppAD::AD<double> &) {
+bool scalar_domain_positive(const CppADScalar &) {
     return true;
 }
 #endif
@@ -78,14 +64,8 @@ double scalar_log(double x) {
     return std::log(x);
 }
 
-template <typename DerType>
-auto scalar_log(const Eigen::AutoDiffScalar<DerType> &x) -> decltype(log(x)) {
-    using std::log;
-    return log(x);
-}
-
 #ifdef EPCSAFT_HAS_CPPAD
-CppAD::AD<double> scalar_log(const CppAD::AD<double> &x) {
+CppADScalar scalar_log(const CppADScalar &x) {
     return CppAD::log(x);
 }
 #endif
@@ -94,14 +74,8 @@ double scalar_exp(double x) {
     return std::exp(x);
 }
 
-template <typename DerType>
-auto scalar_exp(const Eigen::AutoDiffScalar<DerType> &x) -> decltype(exp(x)) {
-    using std::exp;
-    return exp(x);
-}
-
 #ifdef EPCSAFT_HAS_CPPAD
-CppAD::AD<double> scalar_exp(const CppAD::AD<double> &x) {
+CppADScalar scalar_exp(const CppADScalar &x) {
     return CppAD::exp(x);
 }
 #endif
@@ -110,14 +84,8 @@ double scalar_pow(double x, int exponent) {
     return std::pow(x, exponent);
 }
 
-template <typename DerType>
-auto scalar_pow(const Eigen::AutoDiffScalar<DerType> &x, int exponent) -> decltype(pow(x, static_cast<double>(exponent))) {
-    using std::pow;
-    return pow(x, static_cast<double>(exponent));
-}
-
 #ifdef EPCSAFT_HAS_CPPAD
-CppAD::AD<double> scalar_pow(const CppAD::AD<double> &x, int exponent) {
+CppADScalar scalar_pow(const CppADScalar &x, int exponent) {
     return CppAD::pow(x, static_cast<double>(exponent));
 }
 #endif
@@ -126,14 +94,8 @@ double scalar_pow(double x, double exponent) {
     return std::pow(x, exponent);
 }
 
-template <typename DerType>
-auto scalar_pow(const Eigen::AutoDiffScalar<DerType> &x, double exponent) -> decltype(pow(x, exponent)) {
-    using std::pow;
-    return pow(x, exponent);
-}
-
 #ifdef EPCSAFT_HAS_CPPAD
-CppAD::AD<double> scalar_pow(const CppAD::AD<double> &x, double exponent) {
+CppADScalar scalar_pow(const CppADScalar &x, double exponent) {
     return CppAD::pow(x, exponent);
 }
 #endif
@@ -141,16 +103,6 @@ CppAD::AD<double> scalar_pow(const CppAD::AD<double> &x, double exponent) {
 template <typename Scalar>
 Scalar regression_scalar_constant(double value) {
     return scalar_constant<Scalar>(value);
-}
-
-template <>
-AutoDual regression_scalar_constant<AutoDual>(double value) {
-    return make_autodiff_scalar(value, 0.0);
-}
-
-template <>
-ParamDual regression_scalar_constant<ParamDual>(double value) {
-    return make_param_dual(value);
 }
 
 template <typename Scalar>
@@ -224,28 +176,6 @@ double pure_neutral_gradient_norm_cpp(const PureNeutralObjectiveEvaluation &eval
         norm_sq += value * value;
     }
     return std::sqrt(norm_sq);
-}
-
-ParamDual make_param_dual(double value, int seed_index) {
-    ParamDual x;
-    x.value() = value;
-    x.derivatives() = ParamDerivative::Zero(kThetaSize);
-    if (seed_index >= 0) {
-        x.derivatives()[seed_index] = 1.0;
-    }
-    return x;
-}
-
-double scalar_derivative_at(double, int) {
-    return 0.0;
-}
-
-double scalar_derivative_at(const AutoDual &x, int idx) {
-    return idx == 0 ? scalar_derivative(x) : 0.0;
-}
-
-double scalar_derivative_at(const ParamDual &x, int idx) {
-    return (idx < x.derivatives().size()) ? x.derivatives()[idx] : 0.0;
 }
 
 void validate_pure_neutral_base_args_cpp(const add_args &base_args) {
@@ -368,43 +298,64 @@ PureNeutralStateScalar<Scalar> pure_neutral_state_scalar_cpp(
 }
 
 PureNeutralFusedState evaluate_fused_state_cpp(double t, double rho, const vector<double> &x) {
-    AutoDual rho_dual = make_autodiff_scalar(rho, 1.0);
-    auto rho_state = pure_neutral_state_scalar_cpp<AutoDual>(t, rho_dual, x[0], x[1], x[2]);
+#ifndef EPCSAFT_HAS_CPPAD
+    (void)t;
+    (void)rho;
+    (void)x;
+    throw ValueError("CppAD support is disabled in this native build.");
+#else
+    std::vector<CppADScalar> ax(kSeedCount);
+    ax[kSeedRho] = rho;
+    ax[kSeedM] = x[0];
+    ax[kSeedS] = x[1];
+    ax[kSeedE] = x[2];
+    CppAD::Independent(ax);
+
+    auto state = pure_neutral_state_scalar_cpp<CppADScalar>(
+        t,
+        ax[kSeedRho],
+        ax[kSeedM],
+        ax[kSeedS],
+        ax[kSeedE]
+    );
+    std::vector<CppADScalar> ay(3);
+    ay[0] = state.pressure;
+    ay[1] = state.lnfug;
+    ay[2] = state.Z;
+
+    CppAD::ADFun<double> function(ax, ay);
+    std::vector<double> point = {rho, x[0], x[1], x[2]};
+    std::vector<double> value = function.Forward(0, point);
+    std::vector<double> jacobian = function.Jacobian(point);
 
     PureNeutralFusedState out;
-    out.pressure = scalar_value(rho_state.pressure);
-    out.lnfug = scalar_value(rho_state.lnfug);
-    out.Z = scalar_value(rho_state.Z);
-    out.dpdrho = scalar_derivative_at(rho_state.pressure, 0);
-    out.dlnfug_drho = scalar_derivative_at(rho_state.lnfug, 0);
-    auto theta_state = pure_neutral_state_scalar_cpp<ParamDual>(
-        t,
-        make_param_dual(rho),
-        make_param_dual(x[0], 0),
-        make_param_dual(x[1], 1),
-        make_param_dual(x[2], 2)
-    );
+    out.pressure = value[0];
+    out.lnfug = value[1];
+    out.Z = value[2];
+    out.dpdrho = jacobian[0 * kSeedCount + kSeedRho];
+    out.dlnfug_drho = jacobian[1 * kSeedCount + kSeedRho];
     for (int j = 0; j < kThetaSize; ++j) {
-        out.dpdtheta[static_cast<size_t>(j)] = scalar_derivative_at(theta_state.pressure, j);
-        out.dlnfugdtheta[static_cast<size_t>(j)] = scalar_derivative_at(theta_state.lnfug, j);
+        out.dpdtheta[static_cast<size_t>(j)] = jacobian[0 * kSeedCount + j + 1];
+        out.dlnfugdtheta[static_cast<size_t>(j)] = jacobian[1 * kSeedCount + j + 1];
     }
     return out;
+#endif
 }
 
-epcsaft::native::autodiff::ADDerivativeResult cppad_pure_neutral_parameter_derivatives_cpp(
+epcsaft::native::cppad_support::CppADDerivativeResult cppad_pure_neutral_parameter_derivatives_cpp(
     double t,
     double rho,
     const add_args &base_args
 ) {
 #ifdef EPCSAFT_HAS_CPPAD
     if (base_args.m.size() != 1 || base_args.s.size() != 1 || base_args.e.size() != 1) {
-        throw ValueError("backend_unavailable: pure-neutral m/sigma/epsilon derivatives require exactly one component.");
+        throw ValueError("not_available: pure-neutral m/sigma/epsilon derivatives require exactly one component.");
     }
     if (!base_args.z.empty() && (base_args.z.size() != 1 || std::abs(base_args.z[0]) > 1.0e-12)) {
-        throw ValueError("backend_unavailable: pure-neutral m/sigma/epsilon derivatives support only neutral components.");
+        throw ValueError("not_available: pure-neutral m/sigma/epsilon derivatives support only neutral components.");
     }
     if (!base_args.assoc_num.empty() || !base_args.assoc_matrix.empty() || !base_args.k_hb.empty() || !base_args.e_assoc.empty() || !base_args.vol_a.empty()) {
-        throw ValueError("backend_unavailable: pure-neutral m/sigma/epsilon derivatives support only nonassociating components.");
+        throw ValueError("not_available: pure-neutral m/sigma/epsilon derivatives support only nonassociating components.");
     }
     using CppADScalar = CppAD::AD<double>;
     std::vector<CppADScalar> ax(kThetaSize);
@@ -430,12 +381,14 @@ epcsaft::native::autodiff::ADDerivativeResult cppad_pure_neutral_parameter_deriv
     auto value = function.Forward(0, point);
     auto jacobian = function.Jacobian(point);
 
-    epcsaft::native::autodiff::ADDerivativeResult result;
+    epcsaft::native::cppad_support::CppADDerivativeResult result;
     result.supported = true;
     result.backend = "cppad";
     result.message = "CppAD pure-neutral m/sigma/epsilon property derivatives available";
     result.value = std::move(value);
     result.jacobian_row_major = std::move(jacobian);
+    result.outputs = {"pressure", "mu_res", "ln_fugacity"};
+    result.variables = {"m", "sigma", "epsilon"};
     result.rows = 3;
     result.cols = kThetaSize;
     return result;
@@ -443,9 +396,9 @@ epcsaft::native::autodiff::ADDerivativeResult cppad_pure_neutral_parameter_deriv
     (void)t;
     (void)rho;
     (void)base_args;
-    epcsaft::native::autodiff::ADDerivativeResult result;
+    epcsaft::native::cppad_support::CppADDerivativeResult result;
     result.supported = false;
-    result.backend = "backend_unavailable";
+    result.backend = "not_available";
     result.message = "CppAD support is disabled in this native build";
     return result;
 #endif
@@ -932,7 +885,7 @@ PureNeutralRegressionResult solve_one_start_least_squares_cpp(
     out.callback_wall_time_s = functor.profiling.callback_wall_time_s;
     out.backend = "least_squares_native";
     out.optimizer_backend = "eigen_levenberg_marquardt";
-    out.derivative_backend = "legacy_eigen_forward";
+    out.derivative_backend = "cppad_implicit";
     out.jacobian_backend = out.derivative_backend;
     out.solve_wall_time_s = std::chrono::duration<double>(std::chrono::steady_clock::now() - solve_start).count();
 
@@ -1101,7 +1054,7 @@ PureNeutralRegressionResult solve_one_start_ceres_cpp(
     out.solve_wall_time_s = std::chrono::duration<double>(std::chrono::steady_clock::now() - solve_start).count();
     out.backend = "ceres";
     out.optimizer_backend = "ceres";
-    out.derivative_backend = "legacy_eigen_forward";
+    out.derivative_backend = "cppad_implicit";
     out.jacobian_backend = out.derivative_backend;
     out.gradient_norm = pure_neutral_gradient_norm_cpp(final_objective);
     double step_norm_sq = 0.0;
@@ -1430,10 +1383,10 @@ GenericRegressionDebugResult evaluate_generic_residuals_cpp(
     }
     out.residual_norm = std::sqrt(std::max(0.0, 2.0 * out.cost));
     out.jacobian_available = false;
-    out.jacobian_backend = "backend_unavailable";
+    out.jacobian_backend = "not_available";
     out.jacobian_fallback_used = false;
     out.jacobian_fallback_reason = "";
-    out.backend_unavailable_reason = "backend_unavailable: generic regression sensitivities are not implemented.";
+    out.not_available_reason = "not_available: generic regression sensitivities are not implemented.";
     for (const auto &item : raw_by_term) {
         out.metrics_by_term[item.first] = rms_metric_cpp(item.second);
     }
@@ -1454,7 +1407,7 @@ GenericRegressionDebugResult evaluate_generic_residuals_with_jacobian_cpp(
     (void)target_indices;
     (void)target_indices_2;
     (void)theta;
-    throw ValueError("backend_unavailable: generic regression sensitivities are not implemented.");
+    throw ValueError("not_available: generic regression sensitivities are not implemented.");
 }
 
 struct BinaryKijResidualEvaluation {
@@ -1516,7 +1469,7 @@ void validate_pure_ion_born_ceres_problem_cpp(
     }
     for (size_t j = 0; j < target_kinds.size(); ++j) {
         if (target_kinds[j] != kGenericTargetS && target_kinds[j] != kGenericTargetE && target_kinds[j] != kGenericTargetDBorn) {
-            throw ValueError("backend_unavailable: native Ceres pure-ion regression supports s, e, and d_born targets only.");
+            throw ValueError("not_available: native Ceres pure-ion regression supports s, e, and d_born targets only.");
         }
         (void)target_indices_2[j];
     }
@@ -1527,7 +1480,7 @@ void validate_pure_ion_born_ceres_problem_cpp(
         const auto &record = records[r];
         const auto &args = base_args_by_record[r];
         if (record.term != kGenericTermDensity && record.term != kGenericTermOsmotic && record.term != kGenericTermMIAC) {
-            throw ValueError("backend_unavailable: native Ceres pure-ion regression supports density, osmotic, and mean-ionic activity rows only.");
+            throw ValueError("not_available: native Ceres pure-ion regression supports density, osmotic, and mean-ionic activity rows only.");
         }
         if (!(record.t > 0.0) || !(record.p > 0.0) || record.phase != 0) {
             throw ValueError("Native Ceres pure-ion regression requires positive T/P liquid records.");
@@ -1714,10 +1667,10 @@ void validate_binary_kij_ceres_problem_cpp(
         throw ValueError("Native Ceres binary k_ij regression requires one base parameter payload per record.");
     }
     if (target_kinds.size() != 1 || target_indices.size() != 1 || target_indices_2.size() != 1 || theta.size() != 1) {
-        throw ValueError("backend_unavailable: native Ceres generic regression currently supports one binary k_ij target only.");
+        throw ValueError("not_available: native Ceres generic regression currently supports one binary k_ij target only.");
     }
     if (target_kinds[0] != kGenericTargetKIJ) {
-        throw ValueError("backend_unavailable: native Ceres generic regression currently supports binary k_ij targets only.");
+        throw ValueError("not_available: native Ceres generic regression currently supports binary k_ij targets only.");
     }
     if (records.empty()) {
         throw ValueError("Native Ceres binary k_ij regression requires at least one VLE record.");
@@ -1726,27 +1679,20 @@ void validate_binary_kij_ceres_problem_cpp(
         const auto &record = records[r];
         const auto &args = base_args_by_record[r];
         if (record.term != kGenericTermBinaryVLE) {
-            throw ValueError("backend_unavailable: native Ceres binary k_ij regression supports binary VLE rows only.");
+            throw ValueError("not_available: native Ceres binary k_ij regression supports binary VLE rows only.");
         }
         if (args.m.size() != 2 || args.s.size() != 2 || args.e.size() != 2) {
-            throw ValueError("backend_unavailable: native Ceres binary k_ij regression requires exactly two neutral components.");
-        }
-        if (!args.assoc_num.empty()) {
-            for (int sites : args.assoc_num) {
-                if (sites > 0) {
-                    throw ValueError("backend_unavailable: native Ceres binary k_ij regression does not support association rows.");
-                }
-            }
+            throw ValueError("not_available: native Ceres binary k_ij regression requires exactly two neutral components.");
         }
         if (!args.z.empty()) {
             for (double charge : args.z) {
                 if (std::abs(charge) > 1.0e-12) {
-                    throw ValueError("backend_unavailable: native Ceres binary k_ij regression does not support ionic rows.");
+                    throw ValueError("not_available: native Ceres binary k_ij regression does not support ionic rows.");
                 }
             }
         }
         if (args.k_ij.size() != 4) {
-            throw ValueError("backend_unavailable: native Ceres binary k_ij regression requires a dense 2x2 k_ij matrix.");
+            throw ValueError("not_available: native Ceres binary k_ij regression requires a dense 2x2 k_ij matrix.");
         }
         if (record.x.size() != 2 || record.y.size() != 2 || !(record.p > 0.0) || !(record.t > 0.0)) {
             throw ValueError("Native Ceres binary k_ij regression requires positive T/P and binary x/y records.");
@@ -1788,21 +1734,36 @@ BinaryKijResidualEvaluation evaluate_binary_kij_residual_jacobian_cpp(
         const int i = target_indices[0];
         const int j = target_indices_2[0];
         const int k_index = i * 2 + j;
+        const int reverse_k_index = j * 2 + i;
         const double rho_liq = den_cpp(record.t, record.p, record.x, 0, args);
         const double rho_vap = den_cpp(record.t, record.p, record.y, 1, args);
-        NeutralBinaryKijPhaseDerivatives liq = neutral_binary_kij_phase_derivatives_cpp(
+        NeutralBinaryKijPhaseDerivatives liq_forward = neutral_binary_kij_phase_derivatives_cpp(
             record.t,
             rho_liq,
             record.x,
             args,
             k_index
         );
-        NeutralBinaryKijPhaseDerivatives vap = neutral_binary_kij_phase_derivatives_cpp(
+        NeutralBinaryKijPhaseDerivatives vap_forward = neutral_binary_kij_phase_derivatives_cpp(
             record.t,
             rho_vap,
             record.y,
             args,
             k_index
+        );
+        NeutralBinaryKijPhaseDerivatives liq_reverse = neutral_binary_kij_phase_derivatives_cpp(
+            record.t,
+            rho_liq,
+            record.x,
+            args,
+            reverse_k_index
+        );
+        NeutralBinaryKijPhaseDerivatives vap_reverse = neutral_binary_kij_phase_derivatives_cpp(
+            record.t,
+            rho_vap,
+            record.y,
+            args,
+            reverse_k_index
         );
         for (int index : {record.target_index, record.target_index_2}) {
             if (index < 0) {
@@ -1813,10 +1774,13 @@ BinaryKijResidualEvaluation evaluate_binary_kij_residual_jacobian_cpp(
             if (!(xi > 0.0) || !(yi > 0.0)) {
                 throw ValueError("Native Ceres binary k_ij VLE records require positive x/y values.");
             }
-            const double residual = std::log(xi) + liq.lnphi.at(static_cast<size_t>(index))
-                - std::log(yi) - vap.lnphi.at(static_cast<size_t>(index));
-            const double derivative = liq.dlnphi_dk_total.at(static_cast<size_t>(index))
-                - vap.dlnphi_dk_total.at(static_cast<size_t>(index));
+            const double residual = std::log(xi) + liq_forward.lnphi.at(static_cast<size_t>(index))
+                - std::log(yi) - vap_forward.lnphi.at(static_cast<size_t>(index));
+            const double derivative =
+                liq_forward.dlnphi_dk_total.at(static_cast<size_t>(index))
+                + liq_reverse.dlnphi_dk_total.at(static_cast<size_t>(index))
+                - vap_forward.dlnphi_dk_total.at(static_cast<size_t>(index))
+                - vap_reverse.dlnphi_dk_total.at(static_cast<size_t>(index));
             raw.push_back(residual);
             out.residuals[row] = record.scale * residual;
             out.jacobian(row, 0) = record.scale * derivative;
@@ -2020,7 +1984,7 @@ GenericRegressionResult generic_result_from_eval_cpp(
     out.jacobian_backend = eval.jacobian_backend;
     out.jacobian_fallback_used = eval.jacobian_fallback_used;
     out.jacobian_fallback_reason = eval.jacobian_fallback_reason;
-    out.backend_unavailable_reason = eval.backend_unavailable_reason;
+    out.not_available_reason = eval.not_available_reason;
     out.hessian_available = eval.hessian_available;
     out.hessian_backend = eval.hessian_backend;
     out.hessian_fallback_used = eval.hessian_fallback_used;
@@ -2228,7 +2192,7 @@ GenericRegressionResult solve_one_pure_ion_ceres_start_cpp(
         out.jacobian_backend = "cppad_implicit";
         out.jacobian_fallback_used = false;
         out.jacobian_fallback_reason = "";
-        out.backend_unavailable_reason = "";
+        out.not_available_reason = "";
         return out;
     }
     GenericRegressionResult out;
@@ -2248,7 +2212,7 @@ GenericRegressionResult solve_one_pure_ion_ceres_start_cpp(
     out.jacobian_backend = "cppad_implicit";
     out.jacobian_fallback_used = false;
     out.jacobian_fallback_reason = "";
-    out.backend_unavailable_reason = "";
+    out.not_available_reason = "";
     return out;
 }
 
@@ -2373,7 +2337,7 @@ GenericRegressionResult solve_one_binary_kij_ceres_start_cpp(
         out.jacobian_backend = "cppad_implicit";
         out.jacobian_fallback_used = false;
         out.jacobian_fallback_reason = "";
-        out.backend_unavailable_reason = "";
+        out.not_available_reason = "";
         return out;
     }
     GenericRegressionResult out;
@@ -2393,7 +2357,7 @@ GenericRegressionResult solve_one_binary_kij_ceres_start_cpp(
     out.jacobian_backend = "cppad_implicit";
     out.jacobian_fallback_used = false;
     out.jacobian_fallback_reason = "";
-    out.backend_unavailable_reason = "";
+    out.not_available_reason = "";
     return out;
 }
 #endif
@@ -2445,7 +2409,7 @@ using regression_detail::solve_one_pure_ion_ceres_start_cpp;
 #endif
 using regression_detail::solve_one_generic_start_cpp;
 
-epcsaft::native::autodiff::ADDerivativeResult cppad_pure_neutral_parameter_derivatives_cpp(
+epcsaft::native::cppad_support::CppADDerivativeResult cppad_pure_neutral_parameter_derivatives_cpp(
     double t,
     double rho,
     const add_args &base_args
@@ -2594,7 +2558,7 @@ PureNeutralRegressionResult fit_pure_neutral_ceres_cpp(
     (void)density_scale;
     (void)pure_vle_scale;
     (void)multistart;
-    throw ValueError("backend_unavailable: Ceres support is not enabled in this native build.");
+    throw ValueError("not_available: Ceres support is not enabled in this native build.");
 #else
     vector<vector<double>> starts = candidate_starts_cpp(x0, lower, upper, multistart);
     bool have_result = false;
@@ -2624,7 +2588,7 @@ PureNeutralRegressionResult fit_pure_neutral_ceres_cpp(
     best.starts_tried = starts_tried;
     best.backend = "ceres";
     best.optimizer_backend = "ceres";
-    best.derivative_backend = "legacy_eigen_forward";
+    best.derivative_backend = "cppad_implicit";
     best.jacobian_backend = best.derivative_backend;
     return best;
 #endif
@@ -2724,7 +2688,7 @@ GenericRegressionResult fit_generic_ceres_cpp(
         }
     }
     if (!is_binary_kij && !is_pure_ion_parameter_set) {
-        throw ValueError("backend_unavailable: native Ceres generic regression has no native analytic/CppAD/implicit derivative path for this target set.");
+        throw ValueError("not_available: native Ceres generic regression has no native analytic/CppAD/implicit derivative path for this target set.");
     }
 #ifndef EPCSAFT_HAS_CERES
     (void)base_args_by_record;
@@ -2733,7 +2697,7 @@ GenericRegressionResult fit_generic_ceres_cpp(
     (void)target_indices_2;
     (void)multistart;
     (void)max_nfev;
-    throw ValueError("backend_unavailable: Ceres support is not enabled in this native build.");
+    throw ValueError("not_available: Ceres support is not enabled in this native build.");
 #else
     vector<vector<double>> starts = generic_candidate_starts_cpp(x0, lower, upper, multistart);
     bool have_result = false;
@@ -2779,7 +2743,7 @@ GenericRegressionResult fit_generic_ceres_cpp(
     best.jacobian_backend = "cppad_implicit";
     best.jacobian_fallback_used = false;
     best.jacobian_fallback_reason = "";
-    best.backend_unavailable_reason = "";
+    best.not_available_reason = "";
     return best;
 #endif
 }

@@ -33,7 +33,7 @@ def test_derivative_coverage_matrix_enumerates_required_quantities() -> None:
     assert {"relative_permittivity", "pressure", "fugacity", "activity", "chemical_potential"}.issubset(
         {row["quantity"] for row in parameter_rows}
     )
-    assert "finite_difference" not in str(rows).lower()
+    assert "numerical_derivative" not in str(rows).lower()
     for row in rows:
         assert set(
             (
@@ -43,7 +43,7 @@ def test_derivative_coverage_matrix_enumerates_required_quantities() -> None:
                 "supported",
                 "not_applicable",
                 "classification",
-                "backend_unavailable_reason",
+                "not_available_reason",
                 "source_equation_ids",
                 "parameter_family",
                 "future_owner",
@@ -64,8 +64,7 @@ def test_derivative_coverage_matrix_uses_explicit_backend_labels() -> None:
             "cppad",
             "analytic_implicit",
             "cppad_implicit",
-            "legacy_eigen_forward",
-            "backend_unavailable",
+            "not_available",
         }
     )
 
@@ -105,8 +104,8 @@ def test_derivative_coverage_matrix_tracks_khbij_without_overclaiming() -> None:
     row = khb_rows[0]
     assert row["quantity"] == "k_hb_ij"
     assert row["derivative"] == "parameter"
-    assert row["backend"] == "backend_unavailable"
+    assert row["backend"] == "not_available"
     assert row["supported"] is False
     assert row["classification"] == "blocker_requires_implicit_association_sensitivity"
     assert row["future_owner"] == "Task C"
-    assert "implicit association site-fraction sensitivities" in row["backend_unavailable_reason"]
+    assert "implicit association site-fraction sensitivities" in row["not_available_reason"]

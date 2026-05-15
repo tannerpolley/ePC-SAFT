@@ -25,21 +25,20 @@ def test_default_build_reports_cppad_and_ceres_capabilities_honestly() -> None:
     assert capabilities["optimizers"]["ceres"]["native_hot_loop"] is False
 
 
-def test_capabilities_keep_eigen_forward_separate_from_cppad() -> None:
+def test_capabilities_report_cppad_without_legacy_forward_backend() -> None:
     derivatives = epcsaft.capabilities()["derivatives"]
 
-    assert derivatives["finite_difference"] == {
+    assert derivatives["numerical_derivative"] == {
         "available": False,
         "production": False,
-        "reason": "finite_difference_derivatives_forbidden",
+        "reason": "numerical_derivative_derivatives_forbidden",
     }
-    assert derivatives["eigen_forward"]["available"] is True
-    assert derivatives["eigen_forward"]["scope"] == "legacy/local forward-mode AD"
     assert derivatives["cppad"]["scope"] == "package-wide AD substrate"
     assert "autodiff" not in derivatives
+    assert "eigen_forward" not in derivatives
 
 
-def test_derivative_coverage_matrix_has_required_contract_and_no_finite_difference() -> None:
+def test_derivative_coverage_matrix_has_required_contract_and_no_numerical_derivative() -> None:
     coverage = epcsaft.capabilities()["derivatives"]["coverage_matrix"]
 
     assert coverage["derivative_coverage_matrix_available"] is True
@@ -59,7 +58,7 @@ def test_derivative_coverage_matrix_has_required_contract_and_no_finite_differen
     assert rows
     for row in rows:
         assert set(coverage["minimum_columns"]).issubset(row)
-    assert "finite_difference" not in json.dumps(coverage).lower()
+    assert "numerical_derivative" not in json.dumps(coverage).lower()
 
 
 def test_derivative_coverage_matrix_classifies_runtime_rows_by_hard_gate_status() -> None:
@@ -75,7 +74,7 @@ def test_derivative_coverage_matrix_classifies_runtime_rows_by_hard_gate_status(
         if row["classification"] == "production_supported":
             assert row["supported"] is True
             assert row["not_applicable"] is False
-            assert row["backend"] != "backend_unavailable"
+            assert row["backend"] != "not_available"
         elif row["classification"] == "out_of_scope":
             assert row["supported"] is False
             assert row["not_applicable"] is True
@@ -108,7 +107,7 @@ def test_issue_68_required_coverage_gate_fields_are_reported_honestly() -> None:
     assert coverage["regression_ceres_implicit_jacobians"] == {
         "available": False,
         "production": False,
-        "reason": "backend_unavailable",
+        "reason": "not_available",
     }
 
 
@@ -119,4 +118,4 @@ def test_reactive_batch_context_never_claims_ceres_native_hot_loop_in_default_bu
     assert mixed["native_hot_loop"] is False
     assert mixed["optimizer"] == "bounded_gauss_newton_least_squares"
     assert mixed["ceres"]["production"] is False
-    assert "finite_difference" not in json.dumps(batch).lower()
+    assert "numerical_derivative" not in json.dumps(batch).lower()

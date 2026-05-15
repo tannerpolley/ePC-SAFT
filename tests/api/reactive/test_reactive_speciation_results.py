@@ -56,7 +56,7 @@ def test_solve_reactive_speciation_activity_coupled_state_uses_epcsaft_activitie
     assert result.success is True
     assert result.diagnostics["activity_model"] == "epcsaft_component_activity"
     assert result.diagnostics["activity_fixed_point"] is True
-    assert result.diagnostics["finite_difference_backend_available"] is False
+    assert result.diagnostics["numerical_derivative_backend_available"] is False
     assert result.diagnostics["activity_derivative_in_jacobian"] is False
     assert result.named_reaction_residuals["salt_dissociation"] == pytest.approx(0.0, abs=1.0e-8)
 

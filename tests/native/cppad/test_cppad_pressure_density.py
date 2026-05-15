@@ -19,11 +19,13 @@ def test_cppad_pressure_density_closure_records_density_dependence() -> None:
     result = _core._native_cppad_pressure_density(t, rho, [1.0], args)
 
     if not result["cppad_compiled"]:
-        assert result["derivative_backend"] == "backend_unavailable"
+        assert result["derivative_backend"] == "not_available"
         return
 
     assert result["cppad_used"] is True
     assert result["derivative_backend"] == "cppad"
+    assert result["outputs"] == ["pressure"]
+    assert result["variables"] == ["rho"]
     assert result["shape"] == (1, 1)
     assert result["value"][0] == pytest.approx(1.380649e-23 * t * rho * 6.02214076e23)
     assert result["jacobian_row_major"][0] == pytest.approx(1.380649e-23 * t * 6.02214076e23)

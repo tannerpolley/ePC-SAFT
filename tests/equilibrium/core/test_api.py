@@ -165,9 +165,9 @@ def test_explicit_lle_tp_matches_legacy_equilibrium_dispatch_policy() -> None:
     )
     feed = np.asarray([0.5, 0.5])
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+    with pytest.raises(epcsaft.InputError, match="not_available"):
         mix.lle_tp(T=298.15, P=1.013e5, z=feed)
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+    with pytest.raises(epcsaft.InputError, match="not_available"):
         mix.equilibrium(kind="lle_flash", T=298.15, P=1.013e5, z=feed)
 
 

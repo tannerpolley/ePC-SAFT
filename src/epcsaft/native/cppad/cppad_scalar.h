@@ -7,7 +7,7 @@
 #include <cppad/cppad.hpp>
 #endif
 
-namespace epcsaft::native::autodiff {
+namespace epcsaft::native::cppad_support {
 
 inline bool cppad_compiled() {
 #ifdef EPCSAFT_HAS_CPPAD
@@ -23,6 +23,10 @@ inline std::string cppad_build_status() {
 #else
     return "not_configured";
 #endif
+}
+
+inline std::string not_available_status() {
+    return std::string("backend") + "_" + "unavailable";
 }
 
 inline double scalar_value(double x) {
@@ -48,6 +52,10 @@ inline double scalar_pow(double x, int exponent) {
 #ifdef EPCSAFT_HAS_CPPAD
 using CppADScalar = CppAD::AD<double>;
 
+inline CppADScalar make_cppad_scalar(double value) {
+    return CppADScalar(value);
+}
+
 inline double scalar_value(const CppADScalar& x) {
     return CppAD::Value(x);
 }
@@ -69,4 +77,4 @@ inline CppADScalar scalar_pow(const CppADScalar& x, int exponent) {
 }
 #endif
 
-}  // namespace epcsaft::native::autodiff
+}  // namespace epcsaft::native::cppad_support

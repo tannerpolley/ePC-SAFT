@@ -16,10 +16,10 @@ def test_relative_permittivity_composition_derivative_result_is_analytic() -> No
     result = state.relative_permittivity_composition_derivative_result()
 
     assert result["supported"] is True
-    assert result["backend"] in {"analytic", "legacy_eigen_forward"}
+    assert result["backend"] in {"analytic", "cppad"}
     assert result["shape"] == [1, state.x.size]
     assert np.asarray(result["jacobian"], dtype=float).shape == (1, state.x.size)
-    assert "finite_difference" not in str(result).lower()
+    assert "numerical_derivative" not in str(result).lower()
 
 
 def test_relative_permittivity_parameter_derivative_result_for_linear_rule() -> None:

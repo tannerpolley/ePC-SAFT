@@ -1163,7 +1163,7 @@ def _solved_internal_states(problem_kind: str) -> list[str]:
 
 
 def _derivative_backend_blocks(problem_kind: str, derivative_backend: str) -> dict[str, str]:
-    density_backend = "not_applicable" if derivative_backend == "not_applicable" else "backend_unavailable"
+    density_backend = "not_applicable" if derivative_backend == "not_applicable" else "not_available"
     blocks: dict[str, str] = {
         "density_root": density_backend,
         "eos_state_properties": "analytic",
@@ -1207,7 +1207,7 @@ def _normalize_derivative_diagnostics(
     route_diagnostics = _route_diagnostics_for_problem_kind(problem_kind)
     diagnostics.setdefault("equilibrium_route", route_diagnostics["equilibrium_route"])
     diagnostics.setdefault("route_reason", route_diagnostics["route_reason"])
-    derivative_backend = str(diagnostics.get("derivative_backend", "backend_unavailable"))
+    derivative_backend = str(diagnostics.get("derivative_backend", "not_available"))
     diagnostics.setdefault("thermodynamic_backend", "epcsaft_state_fugacity_activity_property_api")
     diagnostics.setdefault(
         "solver_backend", diagnostics.get("nonlinear_solver", diagnostics.get("selected_solver_backend", "native"))
@@ -1217,10 +1217,10 @@ def _normalize_derivative_diagnostics(
     diagnostics.setdefault("derivative_status", derivative_backend)
     diagnostics.setdefault("jacobian_fallback_used", False)
     diagnostics.setdefault("hessian_fallback_used", False)
-    if derivative_backend == "backend_unavailable":
+    if derivative_backend == "not_available":
         diagnostics.setdefault(
-            "backend_unavailable_reason",
-            "backend_unavailable: equilibrium sensitivities are not implemented for this route.",
+            "not_available_reason",
+            "not_available: equilibrium sensitivities are not implemented for this route.",
         )
         diagnostics.setdefault("derivative_available", False)
         diagnostics.setdefault("jacobian_available", False)
@@ -1252,7 +1252,7 @@ def _normalize_derivative_diagnostics(
     diagnostics.setdefault(
         "row_failure_count", int(diagnostics.get("state_failure_count", diagnostics.get("density_failure_count", 0)))
     )
-    diagnostics.setdefault("association_solver_status", "backend_unavailable_if_active")
+    diagnostics.setdefault("association_solver_status", "not_available_if_active")
     return diagnostics
 
 

@@ -129,7 +129,7 @@ def test_native_chemical_equilibrium_solves_easy_ideal_reaction() -> None:
     assert result.diagnostics["derivative_backend"] == "analytic"
     assert result.diagnostics["derivative_status"] == "analytic"
     assert result.diagnostics["derivative_available"] is True
-    assert result.diagnostics["backend_unavailable_reason"] == ""
+    assert result.diagnostics["not_available_reason"] == ""
     assert result.diagnostics["hessian_available"] is False
     assert result.diagnostics["hessian_backend"] == "not_implemented"
     assert result.diagnostics["hessian_fallback_used"] is False
@@ -160,7 +160,7 @@ def test_native_chemical_equilibrium_solves_activity_coupled_salt_speciation() -
     assert result.success is True
     assert result.diagnostics["activity_model"] == "epcsaft_component_activity"
     assert result.diagnostics["activity_fixed_point"] is True
-    assert result.diagnostics["backend_unavailable_reason"] == ""
+    assert result.diagnostics["not_available_reason"] == ""
     assert max(abs(value) for value in result.reaction_residuals) <= 1.0e-8
 
 def test_native_chemical_equilibrium_solves_hard_mea_like_speciation_and_returns_phase_handoff() -> None:
@@ -277,7 +277,7 @@ def test_native_chemical_equilibrium_uses_epcsaft_activities_for_neutral_reactio
     assert result.success is True
     assert result.x["Methanol"] == pytest.approx(target_x[0], abs=1.0e-7)
     assert result.diagnostics["activity_model"] == "epcsaft_neutral_fugacity_activity"
-    assert result.diagnostics["finite_difference_backend_available"] is False
+    assert result.diagnostics["numerical_derivative_backend_available"] is False
 
 def test_native_chemical_equilibrium_solution_shifts_when_fugacity_model_changes() -> None:
     base_mix = _methanol_cyclohexane_mixture(kij=0.051)

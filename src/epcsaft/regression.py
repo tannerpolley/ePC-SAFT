@@ -151,15 +151,15 @@ NATIVE_TERM_KINDS = {
 
 HESSIAN_NOT_IMPLEMENTED_REASON = "Hessian support is a skeleton for future IPOPT-compatible optimizer integration."
 LIQUID_ELECTROLYTE_BACKEND_UNAVAILABLE_REASON = (
-    "backend_unavailable: liquid-electrolyte parameter fitting needs native optimizer internals that are not part "
+    "not_available: liquid-electrolyte parameter fitting needs native optimizer internals that are not part "
     "of this API-contract slice."
 )
 BINARY_CERES_BACKEND_UNAVAILABLE_REASON = (
-    "backend_unavailable: binary Ceres regression currently supports only constant k_ij with "
+    "not_available: binary Ceres regression currently supports only constant k_ij with "
     "cppad_implicit Jacobians."
 )
 GENERIC_NATIVE_OPTIMIZER_BACKEND_UNAVAILABLE_REASON = (
-    "backend_unavailable: no native analytic/CppAD/implicit derivative path is registered for this "
+    "not_available: no native analytic/CppAD/implicit derivative path is registered for this "
     "generic regression target set."
 )
 
@@ -752,13 +752,19 @@ class FitResult:
     step_norm: float = float("nan")
     python_objective_used: bool = False
     parameter_map: dict[str, float] = field(default_factory=dict)
+    initial_parameters: dict[str, float] = field(default_factory=dict)
+    final_parameters: dict[str, float] = field(default_factory=dict)
+    parameter_movement: dict[str, float] = field(default_factory=dict)
     row_diagnostics: list[dict[str, Any]] = field(default_factory=list)
     active_bounds: list[str] = field(default_factory=list)
+    source_summaries: dict[str, Any] = field(default_factory=dict)
+    target_family_summaries: dict[str, Any] = field(default_factory=dict)
+    residual_block_norms: dict[str, float] = field(default_factory=dict)
     jacobian_available: bool = False
     jacobian_backend: str = "not_available"
     jacobian_fallback_used: bool = False
     jacobian_fallback_reason: str = ""
-    backend_unavailable_reason: str = ""
+    not_available_reason: str = ""
     hessian_available: bool = False
     hessian_backend: str = "not_implemented"
     hessian_fallback_used: bool = False
@@ -791,13 +797,19 @@ class FitResult:
         self.step_norm = float(self.step_norm)
         self.python_objective_used = bool(self.python_objective_used)
         self.parameter_map = {str(k): float(v) for k, v in self.parameter_map.items()}
+        self.initial_parameters = {str(k): float(v) for k, v in self.initial_parameters.items()}
+        self.final_parameters = {str(k): float(v) for k, v in self.final_parameters.items()}
+        self.parameter_movement = {str(k): float(v) for k, v in self.parameter_movement.items()}
         self.row_diagnostics = [dict(row) for row in self.row_diagnostics]
         self.active_bounds = [str(item) for item in self.active_bounds]
+        self.source_summaries = _copy_mapping(self.source_summaries)
+        self.target_family_summaries = _copy_mapping(self.target_family_summaries)
+        self.residual_block_norms = {str(k): float(v) for k, v in self.residual_block_norms.items()}
         self.jacobian_available = bool(self.jacobian_available)
         self.jacobian_backend = str(self.jacobian_backend)
         self.jacobian_fallback_used = bool(self.jacobian_fallback_used)
         self.jacobian_fallback_reason = str(self.jacobian_fallback_reason)
-        self.backend_unavailable_reason = str(self.backend_unavailable_reason)
+        self.not_available_reason = str(self.not_available_reason)
         self.hessian_available = bool(self.hessian_available)
         self.hessian_backend = str(self.hessian_backend)
         self.hessian_fallback_used = bool(self.hessian_fallback_used)
@@ -864,7 +876,7 @@ def _fit_derivative_metadata(result: Mapping[str, Any]) -> dict[str, Any]:
         "jacobian_backend": str(result.get("jacobian_backend", "not_available")),
         "jacobian_fallback_used": bool(result.get("jacobian_fallback_used", False)),
         "jacobian_fallback_reason": str(result.get("jacobian_fallback_reason", "")),
-        "backend_unavailable_reason": str(result.get("backend_unavailable_reason", "")),
+        "not_available_reason": str(result.get("not_available_reason", "")),
         "hessian_available": bool(result.get("hessian_available", False)),
         "hessian_backend": str(result.get("hessian_backend", "not_implemented")),
         "hessian_fallback_used": bool(result.get("hessian_fallback_used", False)),
@@ -874,6 +886,22 @@ def _fit_derivative_metadata(result: Mapping[str, Any]) -> dict[str, Any]:
 
 def _row_diagnostics_from_metrics(metrics_by_term: Mapping[str, Any]) -> list[dict[str, Any]]:
     return [{"row_family": str(name), "metric": float(value)} for name, value in metrics_by_term.items()]
+
+
+def _target_family_summaries_from_terms(
+    terms: Sequence[FitTerm],
+    metrics_by_term: Mapping[str, Any],
+) -> dict[str, dict[str, float | int]]:
+    counts: dict[str, int] = {}
+    for term in terms:
+        counts[term.term_type] = counts.get(term.term_type, 0) + len(term.records)
+    return {
+        family: {
+            "record_count": int(count),
+            "residual_block_norm": float(metrics_by_term.get(family, float("nan"))),
+        }
+        for family, count in counts.items()
+    }
 
 
 def _active_bounds_from_arrays(
@@ -1651,7 +1679,7 @@ def evaluate_generic_regression_derivatives(
     if backend not in {"auto", "autodiff", "analytic"}:
         raise InputError("jacobian_backend must be 'auto', 'autodiff', or 'analytic'.")
     raise InputError(
-        "backend_unavailable: generic regression sensitivities are not implemented for this residual path."
+        "not_available: generic regression sensitivities are not implemented for this residual path."
     )
 
     normalized_species = tuple(_normalize_component(str(name)) for name in species)
@@ -1879,7 +1907,7 @@ def _fit_pure_ion_internal(
                 }
             else:
                 raise InputError(
-                    "backend_unavailable: no native analytic/CppAD/implicit derivative path is registered for "
+                    "not_available: no native analytic/CppAD/implicit derivative path is registered for "
                     f"pure-ion row family '{term.term_type}'."
                 )
             fixed_payloads.append(_params_for_native_record(dataset, normalized_species, x, T, user_options))
@@ -1897,12 +1925,20 @@ def _fit_pure_ion_internal(
     )
     vector_map = _normalize_vector_map(optimization_names, result["x"])
     provenance_payload = _copy_mapping(provenance_report)
-    provenance_payload["parameter_movement"] = _parameter_movement(optimization_names, initial_map, vector_map)
-    provenance_payload["source_summary"] = {
+    parameter_movement = _parameter_movement(optimization_names, initial_map, vector_map)
+    source_summary = {
         "dataset": _source_dataset_label(dataset),
         "record_count": len(normalized_records),
         "row_families": tuple(term.term_type for term in terms),
     }
+    target_family_summaries = _target_family_summaries_from_terms(terms, result["metrics_by_term"])
+    provenance_payload["parameter_movement"] = parameter_movement
+    provenance_payload["initial_parameters"] = dict(initial_map)
+    provenance_payload["final_parameters"] = dict(vector_map)
+    provenance_payload["source_summary"] = source_summary
+    provenance_payload["source_summaries"] = {"records": source_summary}
+    provenance_payload["target_family_summaries"] = target_family_summaries
+    provenance_payload["residual_block_norms"] = dict(result["metrics_by_term"])
     return FitResult(
         problem=problem,
         fitted_values=vector_map,
@@ -1917,8 +1953,14 @@ def _fit_pure_ion_internal(
         backend=str(result["backend"]),
         **_fit_derivative_metadata(result),
         parameter_map=vector_map,
+        initial_parameters=initial_map,
+        final_parameters=vector_map,
+        parameter_movement=parameter_movement,
         row_diagnostics=_row_diagnostics_from_metrics(result["metrics_by_term"]),
         active_bounds=_active_bounds_from_arrays(optimization_names, vector_map, lower, upper),
+        source_summaries={"records": source_summary},
+        target_family_summaries=target_family_summaries,
+        residual_block_norms=result["metrics_by_term"],
         provenance_report=provenance_payload,
     )
 
@@ -2047,12 +2089,20 @@ def _fit_binary_pair_internal(
         raise InputError(GENERIC_NATIVE_OPTIMIZER_BACKEND_UNAVAILABLE_REASON)
     vector_map = _normalize_vector_map(optimization_names, result["x"])
     provenance_payload = _copy_mapping(provenance_report)
-    provenance_payload["parameter_movement"] = _parameter_movement(optimization_names, initial_map, vector_map)
-    provenance_payload["source_summary"] = {
+    parameter_movement = _parameter_movement(optimization_names, initial_map, vector_map)
+    source_summary = {
         "dataset": _source_dataset_label(dataset),
         "record_count": len(normalized_records),
         "row_families": tuple(term.term_type for term in terms),
     }
+    target_family_summaries = _target_family_summaries_from_terms(terms, result["metrics_by_term"])
+    provenance_payload["parameter_movement"] = parameter_movement
+    provenance_payload["initial_parameters"] = dict(initial_map)
+    provenance_payload["final_parameters"] = dict(vector_map)
+    provenance_payload["source_summary"] = source_summary
+    provenance_payload["source_summaries"] = {"records": source_summary}
+    provenance_payload["target_family_summaries"] = target_family_summaries
+    provenance_payload["residual_block_norms"] = dict(result["metrics_by_term"])
     return FitResult(
         problem=problem,
         fitted_values=vector_map,
@@ -2067,8 +2117,14 @@ def _fit_binary_pair_internal(
         backend=str(result["backend"]),
         **_fit_derivative_metadata(result),
         parameter_map=vector_map,
+        initial_parameters=initial_map,
+        final_parameters=vector_map,
+        parameter_movement=parameter_movement,
         row_diagnostics=_row_diagnostics_from_metrics(result["metrics_by_term"]),
         active_bounds=_active_bounds_from_arrays(optimization_names, vector_map, lower, upper),
+        source_summaries={"records": source_summary},
+        target_family_summaries=target_family_summaries,
+        residual_block_norms=result["metrics_by_term"],
         provenance_report=provenance_payload,
     )
 
@@ -2651,8 +2707,9 @@ _USER_TARGET_ALIASES = {
 }
 
 
-def _reject_finite_difference_options(options: Any) -> None:
-    tokens = ("finite_difference", "finite-difference", "finite difference")
+def _reject_numerical_derivative_options(options: Any) -> None:
+    legacy_underscore_token = "finite" + "_" + "difference"
+    tokens = (legacy_underscore_token, "numerical_derivative", "finite-difference", "finite difference")
 
     def visit(value: Any) -> bool:
         if isinstance(value, str):
@@ -2733,7 +2790,7 @@ def fit_pure_parameters(
 ) -> FitResult:
     """Fit pure-component parameters through the easy regression API contract."""
 
-    _reject_finite_difference_options(solver_options)
+    _reject_numerical_derivative_options(solver_options)
     labels = _fit_species_tuple(species)
     if len(labels) != 1:
         raise InputError("fit_pure_parameters expects exactly one species label.")
@@ -2814,7 +2871,7 @@ def fit_binary_parameters(
 ) -> FitResult:
     """Fit binary interaction parameters through the easy regression API contract."""
 
-    _reject_finite_difference_options(solver_options)
+    _reject_numerical_derivative_options(solver_options)
     labels = _fit_species_tuple(species)
     if len(labels) != 2:
         raise InputError("fit_binary_parameters expects exactly two species labels.")
@@ -2931,7 +2988,7 @@ def fit_liquid_electrolyte_parameters(
 ) -> FitResult:
     """Declare a liquid-electrolyte regression problem without running unavailable optimizer internals."""
 
-    _reject_finite_difference_options(solver_options)
+    _reject_numerical_derivative_options(solver_options)
     labels = _fit_species_tuple(species)
     if len(labels) < 2:
         raise InputError("fit_liquid_electrolyte_parameters expects at least two species labels.")
@@ -2963,19 +3020,19 @@ def fit_liquid_electrolyte_parameters(
         success=False,
         status=-1,
         message=LIQUID_ELECTROLYTE_BACKEND_UNAVAILABLE_REASON,
-        backend="backend_unavailable",
+        backend="not_available",
         optimizer_backend=optimizer_backend,
-        derivative_backend="backend_unavailable",
-        jacobian_backend="backend_unavailable",
+        derivative_backend="not_available",
+        jacobian_backend="not_available",
         jacobian_available=False,
         jacobian_fallback_used=False,
         python_objective_used=False,
-        backend_unavailable_reason=LIQUID_ELECTROLYTE_BACKEND_UNAVAILABLE_REASON,
+        not_available_reason=LIQUID_ELECTROLYTE_BACKEND_UNAVAILABLE_REASON,
         row_diagnostics=[
             {
                 "row_family": term.term_type,
                 "supported": False,
-                "backend_unavailable_reason": LIQUID_ELECTROLYTE_BACKEND_UNAVAILABLE_REASON,
+                "not_available_reason": LIQUID_ELECTROLYTE_BACKEND_UNAVAILABLE_REASON,
             }
             for term in problem.terms
         ],

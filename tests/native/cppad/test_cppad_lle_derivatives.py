@@ -29,7 +29,7 @@ def _electrolyte_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_dataset("2022_Ascani", ["H2O", "Butanol", "Na+", "Cl-"], feed, 298.15)
 
 
-def test_associating_neutral_lle_solves_without_finite_difference_derivatives() -> None:
+def test_associating_neutral_lle_solves_without_numerical_derivative_derivatives() -> None:
     mix = _associating_lle_mixture()
 
     result = mix.lle_tp(
@@ -48,8 +48,8 @@ def test_associating_neutral_lle_solves_without_finite_difference_derivatives() 
     assert result.diagnostics["derivative_backend"] == "not_applicable"
     assert result.diagnostics["derivative_status"] == "not_required"
     payload = json.dumps(result.to_dict(), default=str).lower()
-    assert "backend_unavailable" not in payload
-    assert "finite_difference" not in payload
+    assert "not_available" not in payload
+    assert "numerical_derivative" not in payload
 
 
 def test_electrolyte_lle_residual_sensitivities_are_explicitly_unavailable() -> None:
@@ -67,7 +67,7 @@ def test_electrolyte_lle_residual_sensitivities_are_explicitly_unavailable() -> 
         "options": {"max_iterations": 80, "tolerance": 1.0e-8, "min_composition": 1.0e-12},
     }
 
-    with pytest.raises(_core.NativeValueError, match="backend_unavailable") as excinfo:
+    with pytest.raises(_core.NativeValueError, match="not_available") as excinfo:
         _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
 
-    assert "finite_difference" not in str(excinfo.value).lower()
+    assert "numerical_derivative" not in str(excinfo.value).lower()

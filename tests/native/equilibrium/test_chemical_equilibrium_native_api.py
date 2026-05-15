@@ -126,7 +126,7 @@ def test_native_chemical_equilibrium_residual_evaluator_uses_analytic_jacobian_b
     assert diagnostics["derivative_status"] == "analytic"
     assert diagnostics["derivative_capability_path"] == "chemical_equilibrium:ideal_mole_fraction:log_amounts"
     assert diagnostics["derivative_available"] is True
-    assert diagnostics["backend_unavailable_reason"] == ""
+    assert diagnostics["not_available_reason"] == ""
     assert diagnostics["exact_hessian_available"] is False
     assert diagnostics["hessian_kind"] == "approximate_least_squares_gauss_newton"
     assert diagnostics["hessian_includes_second_residual_derivatives"] is False

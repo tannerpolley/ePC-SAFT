@@ -113,7 +113,7 @@ struct CompositionContributionResult {
     ScalarContributionTerms z;
     std::map<std::string, std::string> derivative_backend;
     bool derivative_available = true;
-    std::string backend_unavailable_reason;
+    std::string not_available_reason;
 };
 
 struct ResidualChemicalPotentialResult {
@@ -129,7 +129,7 @@ struct FugacityContributionResult {
 
 struct BornSSMDSDerivativeResult {
     bool supported = false;
-    std::string backend = "backend_unavailable";
+    std::string backend = "not_available";
     std::string message;
     vector<double> a_born_d_d_born;
     vector<double> a_born_d_f_solv;
@@ -295,10 +295,10 @@ struct GenericRegressionDebugResult {
     int jacobian_rows = 0;
     int jacobian_cols = 0;
     bool jacobian_available = true;
-    std::string jacobian_backend = "backend_unavailable";
+    std::string jacobian_backend = "not_available";
     bool jacobian_fallback_used = true;
     std::string jacobian_fallback_reason = "Generic regression sensitivities are not implemented for all residual state calls yet.";
-    std::string backend_unavailable_reason = "backend_unavailable";
+    std::string not_available_reason = "not_available";
     vector<double> hessian_row_major;
     int hessian_rows = 0;
     int hessian_cols = 0;
@@ -322,10 +322,10 @@ struct GenericRegressionResult {
     int iterations = 0;
     int starts_tried = 0;
     bool jacobian_available = true;
-    std::string jacobian_backend = "backend_unavailable";
+    std::string jacobian_backend = "not_available";
     bool jacobian_fallback_used = true;
     std::string jacobian_fallback_reason = "Generic regression sensitivities are not implemented for all residual state calls yet.";
-    std::string backend_unavailable_reason = "backend_unavailable";
+    std::string not_available_reason = "not_available";
     bool hessian_available = false;
     std::string hessian_backend = "not_implemented";
     bool hessian_fallback_used = false;

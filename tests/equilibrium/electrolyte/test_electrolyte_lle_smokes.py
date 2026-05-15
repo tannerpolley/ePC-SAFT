@@ -61,7 +61,7 @@ def test_electrolyte_lle_direct_feed_reports_unavailable_solver_derivatives() ->
     feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
     mix = _ascani_water_butanol_nacl_mixture(feed)
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+    with pytest.raises(epcsaft.InputError, match="not_available"):
         mix.equilibrium(
             kind="electrolyte_lle",
             T=298.15,
@@ -75,7 +75,7 @@ def test_electrolyte_lle_direct_feed_solves_ipopt_predictive_split() -> None:
     feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
     mix = _ascani_water_butanol_nacl_mixture(feed)
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+    with pytest.raises(epcsaft.InputError, match="not_available"):
         mix.equilibrium(
             kind="electrolyte_lle",
             T=298.15,
@@ -92,7 +92,7 @@ def test_electrolyte_lle_direct_feed_solves_ipopt_predictive_split() -> None:
 def test_electrolyte_lle_molality_feed_reports_unavailable_solver_derivatives() -> None:
     mix = _ascani_water_butanol_nacl_mixture()
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+    with pytest.raises(epcsaft.InputError, match="not_available"):
         mix.equilibrium(
             kind="electrolyte_lle",
             T=298.15,
@@ -153,7 +153,7 @@ def test_one_salt_smoke_reports_unavailable_solver_derivatives() -> None:
     feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
     mix = _ascani_water_butanol_nacl_mixture(feed)
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+    with pytest.raises(epcsaft.InputError, match="not_available"):
         mix.equilibrium(
             kind="electrolyte_lle",
             T=298.15,

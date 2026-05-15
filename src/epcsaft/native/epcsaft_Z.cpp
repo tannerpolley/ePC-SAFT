@@ -84,7 +84,7 @@ double p_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
     return Z * kb * t * den * 1.0e30;
 }
 
-epcsaft::native::autodiff::ADDerivativeResult cppad_pressure_density_derivative_cpp(
+epcsaft::native::cppad_support::CppADDerivativeResult cppad_pressure_density_derivative_cpp(
     double t,
     double rho,
     const vector<double> &x,
@@ -104,12 +104,14 @@ epcsaft::native::autodiff::ADDerivativeResult cppad_pressure_density_derivative_
     auto value = function.Forward(0, point);
     auto jacobian = function.Jacobian(point);
 
-    epcsaft::native::autodiff::ADDerivativeResult result;
+    epcsaft::native::cppad_support::CppADDerivativeResult result;
     result.supported = true;
     result.backend = "cppad";
     result.message = "CppAD pressure-density closure derivative available";
     result.value = std::move(value);
     result.jacobian_row_major = std::move(jacobian);
+    result.outputs = {"pressure"};
+    result.variables = {"rho"};
     result.rows = 1;
     result.cols = 1;
     return result;
@@ -118,9 +120,9 @@ epcsaft::native::autodiff::ADDerivativeResult cppad_pressure_density_derivative_
     (void)rho;
     (void)x;
     (void)cppargs;
-    epcsaft::native::autodiff::ADDerivativeResult result;
+    epcsaft::native::cppad_support::CppADDerivativeResult result;
     result.supported = false;
-    result.backend = "backend_unavailable";
+    result.backend = "not_available";
     result.message = "CppAD support is disabled in this native build";
     return result;
 #endif

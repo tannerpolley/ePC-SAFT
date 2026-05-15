@@ -107,9 +107,9 @@ def test_default_dadx_reports_auto_derivative_policy():
     assert dadx["derivative_backend"]["disp"] == "analytic"
     assert dadx["derivative_backend"]["ion"] == "analytic"
     assert dadx["derivative_backend"]["born"] == "analytic"
-    assert dadx["derivative_backend"]["assoc"] == "analytic"
+    assert dadx["derivative_backend"]["assoc"] == "analytic_implicit"
     assert dadx["derivative_available"] is True
-    assert dadx["backend_unavailable_reason"] == ""
+    assert dadx["not_available_reason"] == ""
 
 def test_removed_derivative_backend_names_are_rejected():
     removed_backend = "f" + "d"

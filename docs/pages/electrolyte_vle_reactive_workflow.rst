@@ -68,10 +68,10 @@ paying for unused activity calls under the default ``activity_output="auto"``.
 The derivative default is native-owned and diagnostic-friendly:
 ``jacobian_backend="auto"`` uses the analytic log-amount Jacobian for
 ``standard_state="ideal_mole_fraction"``. Activity- or concentration-coupled
-standard states currently raise ``backend_unavailable`` until analytic, CppAD,
+standard states currently raise ``not_available`` until analytic, CppAD,
 or implicit residual derivatives are implemented. Diagnostics report
 ``requested_jacobian_backend``, ``derivative_backend``, ``derivative_status``,
-and ``backend_unavailable_reason`` so users can see the active support boundary.
+and ``not_available_reason`` so users can see the active support boundary.
 Explicit legacy Eigen forward-mode requests remain strict and raise when the
 requested derivative path is unavailable. Finite-difference Jacobians are not a
 supported substitute.
@@ -192,7 +192,7 @@ Sequential reactive workflows contain nested solved states: association site
 fractions, reactive speciation variables, density roots, bubble-pressure roots,
 and phase-equilibrium variables. These blocks must report derivatives through
 analytic residual derivatives, CppAD residual partials, implicit sensitivities,
-or ``backend_unavailable`` when coverage is incomplete. Finite-difference
+or ``not_available`` when coverage is incomplete. Finite-difference
 derivatives are not a supported fallback.
 
 For active association, the preferred sequential derivative boundary is to solve

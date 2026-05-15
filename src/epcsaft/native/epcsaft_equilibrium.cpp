@@ -1368,7 +1368,7 @@ std::vector<double> newton_step(
     (void)residual_fn;
     (void)variables;
     (void)residual;
-    throw ValueError("backend_unavailable: electrolyte LLE residual sensitivities are not implemented.");
+    throw ValueError("not_available: electrolyte LLE residual sensitivities are not implemented.");
 }
 
 std::vector<std::pair<std::string, std::vector<double>>> deterministic_formula_multistart_variables(
@@ -3007,5 +3007,5 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
     (void)initial_org;
     (void)initial_beta_org;
     (void)has_initial_phases;
-    throw ValueError("backend_unavailable: electrolyte LLE residual sensitivities are not implemented.");
+    throw ValueError("not_available: electrolyte LLE residual sensitivities are not implemented.");
 }

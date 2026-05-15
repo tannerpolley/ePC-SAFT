@@ -15,12 +15,15 @@ def test_capabilities_expose_property_derivative_result_apis() -> None:
     payload = capabilities["derivatives"]["property_derivative_result_apis"]
 
     assert payload["available"] is True
-    assert payload["finite_difference_backend_available"] is False
+    assert payload["numerical_derivative_backend_available"] is False
+    assert "outputs" in payload["result_shape"]
+    assert "variables" in payload["result_shape"]
+    assert "derivative_backend" in payload["result_shape"]
     assert "pressure_density_derivative_result" in payload["state_methods"]
     assert "relative_permittivity_parameter_derivative_result" in payload["state_methods"]
     assert "k_hb_ij" in payload["parameter_families"]["blocker_requires_implicit_association_sensitivity"]["parameters"]
     assert payload["parameter_families"]["blocker_requires_implicit_association_sensitivity"]["future_owner"] == "Task C"
-    assert "finite_difference" not in str(payload["backend_labels"])
+    assert "numerical_derivative" not in str(payload["backend_labels"])
 
 
 def test_public_derivative_result_methods_share_required_shape() -> None:
@@ -38,7 +41,11 @@ def test_public_derivative_result_methods_share_required_shape() -> None:
         "ln_fugacity_parameter_derivative_result",
     ):
         result = getattr(state, method_name)()
-        assert set(("supported", "backend", "message", "value", "jacobian", "shape")).issubset(result)
+        assert set(
+            ("supported", "backend", "derivative_backend", "message", "value", "jacobian", "outputs", "variables", "shape")
+        ).issubset(result)
         assert isinstance(result["shape"], list)
         assert len(result["shape"]) == 2
-        assert "finite_difference" not in str(result).lower()
+        assert isinstance(result["outputs"], list)
+        assert isinstance(result["variables"], list)
+        assert "numerical_derivative" not in str(result).lower()

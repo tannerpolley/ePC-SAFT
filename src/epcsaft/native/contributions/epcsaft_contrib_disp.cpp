@@ -99,9 +99,9 @@ ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChain
     }
 
     if (cppargs.disp_dadx_diff_mode == 1) {
-        throw ValueError("backend_unavailable: dispersion composition derivative backend is unavailable.");
+        throw ValueError("not_available: dispersion composition derivative backend is unavailable.");
     } else if (cppargs.disp_dadx_diff_mode == 2) {
-        result.dadx = contribution_dadx_autodiff_cpp(AresContributionKind::DISP, t, rho, x, cppargs);
+        result.dadx = contribution_dadx_cppad_cpp(AresContributionKind::DISP, t, rho, x, cppargs);
     }
 
     result.z = -2.0 * PI * thermo.den * dispersion.dEtaI1_deta * thermo.m2es3

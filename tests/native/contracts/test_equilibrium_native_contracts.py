@@ -129,7 +129,7 @@ def test_public_electrolyte_lle_reports_unavailable_solver_derivatives() -> None
     beta_org = 0.613766575013417
     feed = (1.0 - beta_org) * aq + beta_org * org
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+    with pytest.raises(epcsaft.InputError, match="not_available"):
         mix.equilibrium(
             kind="electrolyte_lle",
             T=298.15,
@@ -161,7 +161,7 @@ def test_native_electrolyte_lle_residual_evaluator_reports_unavailable_derivativ
         },
     }
 
-    with pytest.raises(_core.NativeValueError, match="backend_unavailable"):
+    with pytest.raises(_core.NativeValueError, match="not_available"):
         _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
 
 
@@ -180,7 +180,7 @@ def test_native_electrolyte_lle_residual_evaluator_rejects_auto_without_autodiff
         "options": {"max_iterations": 80, "tolerance": 1.0e-8, "min_composition": 1.0e-12},
     }
 
-    with pytest.raises(_core.NativeValueError, match="backend_unavailable"):
+    with pytest.raises(_core.NativeValueError, match="not_available"):
         _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
 
 

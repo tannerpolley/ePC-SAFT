@@ -12,7 +12,7 @@ from scripts._epcsaft_oop import as_mixture
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE = REPO_ROOT / "tests" / "fixtures" / "literature" / "figiel_2025" / "miac_liquid_electrolyte.json"
-DISALLOWED_BACKENDS = {"finite_difference", "fd", "numerical_derivative", "numerical_jacobian"}
+DISALLOWED_BACKENDS = {"numerical_derivative", "fd", "numerical_derivative", "numerical_jacobian"}
 
 
 def _load_fixture() -> dict:
@@ -31,7 +31,7 @@ def test_miac_liquid_electrolyte_fixture_records_figiel_provenance() -> None:
     assert fixture["excluded_scope"] == "vapor Born derivatives"
 
 
-def test_miac_liquid_electrolyte_reports_backend_unavailable_without_finite_difference() -> None:
+def test_miac_liquid_electrolyte_reports_not_available_without_numerical_derivative() -> None:
     fixture = _load_fixture()
     result = epcsaft.fit_liquid_electrolyte_parameters(
         species=tuple(fixture["regression_probe"]["species"]),
@@ -44,14 +44,14 @@ def test_miac_liquid_electrolyte_reports_backend_unavailable_without_finite_diff
     )
 
     assert result.success is False
-    assert result.backend == "backend_unavailable"
+    assert result.backend == "not_available"
     assert result.optimizer_backend == "ceres"
-    assert result.derivative_backend == "backend_unavailable"
-    assert result.jacobian_backend == "backend_unavailable"
+    assert result.derivative_backend == "not_available"
+    assert result.jacobian_backend == "not_available"
     assert result.jacobian_fallback_used is False
     assert result.derivative_backend.lower() not in DISALLOWED_BACKENDS
     assert result.jacobian_backend.lower() not in DISALLOWED_BACKENDS
-    assert "backend_unavailable" in result.backend_unavailable_reason
+    assert "not_available" in result.not_available_reason
 
 
 def test_miac_liquid_electrolyte_figiel_outputs_and_coverage_matrix_are_finite() -> None:

@@ -36,7 +36,7 @@ def _generic_result_payload(problem_kind: str, species: tuple[str, ...]) -> dict
         split_detected=False,
         diagnostics={
             "derivative_policy": {
-                "finite_difference_backend_available": False,
+                "numerical_derivative_backend_available": False,
                 "accepted_derivative_backends": ["analytic", "cppad", "analytic_implicit", "cppad_implicit"],
             }
         },
@@ -58,14 +58,14 @@ def _generic_chemical_payload(species: tuple[str, ...]) -> dict[str, object]:
         diagnostics={
             "backend": "native",
             "derivative_policy": {
-                "finite_difference_backend_available": False,
+                "numerical_derivative_backend_available": False,
                 "accepted_derivative_backends": ["analytic", "cppad", "analytic_implicit", "cppad_implicit"],
             },
         },
     ).to_dict()
 
 
-def test_public_api_stays_application_neutral_and_finite_difference_free() -> None:
+def test_public_api_stays_application_neutral_and_numerical_derivative_free() -> None:
     forbidden_tokens = {
         "absorption",
         "column",
@@ -80,9 +80,9 @@ def test_public_api_stays_application_neutral_and_finite_difference_free() -> No
     assert not {name for name in public_names for token in forbidden_tokens if token in name}
 
     capabilities = epcsaft.capabilities()
-    finite_difference = capabilities["derivatives"]["finite_difference"]
-    assert finite_difference["available"] is False
-    assert finite_difference["reason"] == "finite_difference_derivatives_forbidden"
+    numerical_derivative = capabilities["derivatives"]["numerical_derivative"]
+    assert numerical_derivative["available"] is False
+    assert numerical_derivative["reason"] == "numerical_derivative_derivatives_forbidden"
     assert capabilities["equilibrium"]["problem_objects"]["entrypoint"] == "mixture.solve_equilibrium(problem)"
 
 
@@ -121,7 +121,7 @@ def test_mea_thermodynamics_smoke_uses_generic_reactive_problem_and_targets() ->
     assert isinstance(problem, epcsaft.EquilibriumProblem)
     assert dataset.families == ("speciation", "vle_partial_pressure", "activity")
     assert output["x"]["CO2"] > 0.0
-    assert output["diagnostics"]["derivative_policy"]["finite_difference_backend_available"] is False
+    assert output["diagnostics"]["derivative_policy"]["numerical_derivative_backend_available"] is False
 
 
 def test_lithium_extraction_smoke_uses_generic_electrolyte_lle_contracts() -> None:
@@ -193,4 +193,4 @@ def test_absorption_column_smoke_uses_generic_reactive_bubble_contracts() -> Non
     assert isinstance(problem, epcsaft.EquilibriumProblem)
     assert dataset.families == ("vle_partial_pressure", "speciation", "fugacity")
     assert output["problem_kind"] == "reactive_electrolyte_bubble_pressure"
-    assert output["diagnostics"]["derivative_policy"]["finite_difference_backend_available"] is False
+    assert output["diagnostics"]["derivative_policy"]["numerical_derivative_backend_available"] is False

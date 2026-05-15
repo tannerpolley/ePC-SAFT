@@ -14,17 +14,17 @@ def test_activity_composition_derivative_result_truthfully_unavailable() -> None
     result = state.activity_composition_derivative_result()
 
     assert result["supported"] is False
-    assert result["backend"] == "backend_unavailable"
+    assert result["backend"] == "not_available"
     assert result["shape"] == [state.x.size, state.x.size]
-    assert "finite_difference" not in str(result).lower()
+    assert "numerical_derivative" not in str(result).lower()
 
 
-def test_activity_parameter_derivative_result_reports_backend_unavailable_without_ssmds_path() -> None:
+def test_activity_parameter_derivative_result_reports_not_available_without_ssmds_path() -> None:
     state = _state()
 
     result = state.activity_parameter_derivative_result()
 
     assert result["supported"] is False
-    assert result["backend"] == "backend_unavailable"
+    assert result["backend"] == "not_available"
     assert result["shape"] == [state.x.size, 0]
-    assert "finite_difference" not in str(result).lower()
+    assert "numerical_derivative" not in str(result).lower()

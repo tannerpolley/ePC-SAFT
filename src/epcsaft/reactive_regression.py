@@ -864,7 +864,7 @@ class ReactiveElectrolyteRegressionContext:
         parameters: Sequence[str],
     ) -> ReactiveRegressionJacobianResult:
         _ = parameter_map, parameters
-        raise InputError("backend_unavailable: reactive-regression sensitivities are not implemented.")
+        raise InputError("not_available: reactive-regression sensitivities are not implemented.")
 
     def _resolve_row_seed(
         self,
@@ -1210,8 +1210,8 @@ def _fit_reactive_parameters_impl(
     trajectory: list[dict[str, Any]] = []
     objective_result = context.evaluate_objective(current)
     objective_initial = float(objective_result.objective)
-    message = "backend_unavailable: reactive-regression sensitivities are not implemented."
-    termination_reason = "backend_unavailable"
+    message = "not_available: reactive-regression sensitivities are not implemented."
+    termination_reason = "not_available"
     final_jacobian: ReactiveRegressionJacobianResult | None = None
     last_step_norm: float | None = None
 
@@ -1251,7 +1251,7 @@ def _fit_reactive_parameters_impl(
     elif termination_reason == "line_search_failed":
         status = "line_search_failed"
     else:
-        status = "backend_unavailable"
+        status = "not_available"
     return ReactiveRegressionFitResult(
         success=success,
         message=message,
@@ -1275,8 +1275,8 @@ def _fit_reactive_parameters_impl(
             "trajectory": trajectory,
             "jacobian": None if final_jacobian is None else final_jacobian.to_dict(),
             "covariance": covariance_diagnostics,
-            "derivative_status": "backend_unavailable",
-            "backend_unavailable_reason": message,
+            "derivative_status": "not_available",
+            "not_available_reason": message,
         },
     )
 

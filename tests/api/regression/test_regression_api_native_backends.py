@@ -86,7 +86,7 @@ def _stub_native_generic_runner(monkeypatch, *, backend="least_squares_native"):
             "jacobian_backend": jacobian_backend,
             "jacobian_fallback_used": False,
             "jacobian_fallback_reason": "",
-            "backend_unavailable_reason": "",
+            "not_available_reason": "",
             "hessian_available": False,
             "hessian_backend": "not_implemented",
             "hessian_fallback_used": False,
@@ -229,7 +229,7 @@ def test_fit_pure_ion_default_s_e_bounds_and_multistart_contract(monkeypatch):
     assert result.backend == "ceres"
     assert result.jacobian_available is True
     assert result.jacobian_backend == "cppad_implicit"
-    assert result.backend_unavailable_reason == ""
+    assert result.not_available_reason == ""
     assert result.hessian_available is False
     assert result.hessian_backend == "not_implemented"
     assert result.problem.mode == "pure_ion"
@@ -332,8 +332,17 @@ def test_fit_binary_pair_vle_kij_default_and_rejects_temperature_models(monkeypa
     assert result.problem.fit_targets == ("k_ij",)
     assert set(result.fitted_values) == {"k_ij"}
     assert result.parameter_map == result.fitted_values
+    assert result.initial_parameters == {"k_ij": -0.02}
+    assert result.final_parameters == result.fitted_values
+    assert result.parameter_movement == {"k_ij": 0.0}
     assert result.row_diagnostics == [{"row_family": "binary_vle_fugacity_balance", "metric": 0.0}]
     assert result.active_bounds == []
+    assert result.residual_block_norms == {"binary_vle_fugacity_balance": 0.0}
+    assert result.source_summaries["records"]["record_count"] == 2
+    assert result.target_family_summaries["binary_vle_fugacity_balance"] == {
+        "record_count": 2,
+        "residual_block_norm": 0.0,
+    }
     assert result.metrics_by_term == {"binary_vle_fugacity_balance": 0.0}
     assert result.provenance_report["parameter_movement"] == {"k_ij": 0.0}
     assert result.provenance_report["source_summary"]["record_count"] == 2

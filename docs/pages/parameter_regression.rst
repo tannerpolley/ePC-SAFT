@@ -19,10 +19,10 @@ Supported workflows
 - ``fit_liquid_electrolyte_parameters(...)`` is an API-contract entry point for
   liquid-electrolyte regression problem declarations. It normalizes supported
   data-row families and returns a stable ``FitResult`` with
-  ``backend="backend_unavailable"`` until native optimizer internals are added.
+  ``backend="not_available"`` until native optimizer internals are added.
 - ``fit_pure_neutral(...)`` fits nonassociating neutral pure-component ``m``, ``s``, and ``e`` against density and vapor-pressure records with the native least-squares backend.
 - ``fit_pure_ion(...)`` fits ion ``s``, ``e``, and ``d_born`` declarations with native provenance guardrails through the Ceres backend and ``cppad_implicit`` density-root sensitivities for density, osmotic-coefficient, and mean-ionic-activity rows.
-- ``fit_binary_pair(...)`` fits supported constant ``k_ij`` binary interaction values from direct VLE x/y records with the native Ceres backend and provenance guardrails. Constant ``l_ij`` and ``k_hb_ij`` declarations are validated, then report ``backend_unavailable`` until native analytic or autodiff derivatives are implemented for those targets.
+- ``fit_binary_pair(...)`` fits supported constant ``k_ij`` binary interaction values from direct VLE x/y records with the native Ceres backend and provenance guardrails. Constant ``l_ij`` and ``k_hb_ij`` declarations are validated, then report ``not_available`` until native analytic or autodiff derivatives are implemented for those targets.
 
 Ion and binary V1 intentionally do not add dataset manifests or new regression-specific parameter namespaces. The helpers build runtime states from the existing dataset loader and caller-provided records.
 
@@ -30,7 +30,7 @@ Non-native optimizer loops are not an approved production backend for package-ow
 
 The public easy APIs intentionally do not expose numerical derivative
 configuration. Unsupported derivative or optimizer paths report a loud
-``backend_unavailable`` diagnostic tied to the missing analytic, CppAD, or
+``not_available`` diagnostic tied to the missing analytic, CppAD, or
 implicit derivative path.
 
 Generic target-row schemas
@@ -121,7 +121,7 @@ exists:
        weights={"osmotic_coefficient": 1.0},
    )
 
-   assert result.backend == "backend_unavailable"
+   assert result.backend == "not_available"
 
 Build prerequisite
 ------------------
@@ -529,7 +529,7 @@ Binary VLE records
 - liquid mole-fraction columns such as ``x_H2O`` and ``x_Ethanol``
 - vapor mole-fraction columns such as ``y_H2O`` and ``y_Ethanol``
 
-The V1 native optimizer target is constant ``k_ij`` through Ceres with ``cppad_implicit`` Jacobians. Constant ``l_ij`` and ``k_hb_ij`` remain schema-supported targets, but fitting them raises ``backend_unavailable`` until a native analytic, CppAD, or implicit derivative path is registered. Linear temperature models and LLE fitting are future phases and raise ``InputError``. Ion-involving binary targets require explicit provenance and are rejected by default unless they are tied to direct electrolyte/neutral-ion data or an explicit override.
+The V1 native optimizer target is constant ``k_ij`` through Ceres with ``cppad_implicit`` Jacobians, including neutral associating binaries where the constant-pressure response combines CppAD explicit EOS terms with association site-fraction implicit density sensitivities. Constant ``l_ij`` and ``k_hb_ij`` remain schema-supported targets, but fitting them raises ``not_available`` until a native analytic, CppAD, or implicit derivative path is registered. Linear temperature models and LLE fitting are future phases and raise ``InputError``. Ion-involving binary targets require explicit provenance and are rejected by default unless they are tied to direct electrolyte/neutral-ion data or an explicit override.
 
 Example:
 
@@ -557,10 +557,18 @@ Inspect and write results
 
    print(result.success)
    print(result.backend)
+   print(result.optimizer_backend)
+   print(result.derivative_backend)
    print(result.jacobian_backend)
    print(result.hessian_backend)
    print(result.fitted_values)
+   print(result.initial_parameters)
+   print(result.final_parameters)
+   print(result.parameter_movement)
    print(result.metrics_by_term)
+   print(result.residual_block_norms)
+   print(result.target_family_summaries)
+   print(result.source_summaries)
    print(result.provenance_report)
 
    from epcsaft import write_fit_result
@@ -575,11 +583,24 @@ Derivative and Jacobian access
 
 Normal ``FitResult`` payloads report compact derivative metadata:
 
+- ``optimizer_backend``
+- ``derivative_backend``
+- ``objective_initial``
+- ``objective_final``
+- ``initial_parameters``
+- ``final_parameters``
+- ``parameter_movement``
+- ``parameter_map``
+- ``active_bounds``
+- ``row_diagnostics``
+- ``source_summaries``
+- ``target_family_summaries``
+- ``residual_block_norms``
 - ``jacobian_available``
 - ``jacobian_backend``
 - ``jacobian_fallback_used``
 - ``jacobian_fallback_reason``
-- ``backend_unavailable_reason``
+- ``not_available_reason``
 - ``hessian_available``
 - ``hessian_backend``
 - ``hessian_fallback_used``
@@ -587,7 +608,7 @@ Normal ``FitResult`` payloads report compact derivative metadata:
 
 Large matrices are exposed only through explicit derivative-evaluation helpers. Use ``evaluate_pure_neutral_derivatives(...)`` for the native pure-neutral objective. It returns residuals, gradient, ``jacobian_row_major``, ``jacobian_shape``, and Hessian skeleton fields. Pure-neutral Jacobians use the native autodiff path.
 
-For lower-level generic native records, ``evaluate_generic_regression_derivatives(...)`` reports ``backend_unavailable`` until the requested residual state calls have analytic, CppAD, or implicit derivative coverage. Public generic fitting does not route through non-native optimizer loops.
+For lower-level generic native records, ``evaluate_generic_regression_derivatives(...)`` reports ``not_available`` until the requested residual state calls have analytic, CppAD, or implicit derivative coverage. Public generic fitting does not route through non-native optimizer loops.
 
 Reactive electrolyte residual evaluator
 ---------------------------------------
@@ -648,13 +669,13 @@ Derivative availability
      - Native autodiff Jacobian through ``evaluate_pure_neutral_derivatives(...)``
      - Skeleton metadata only
    * - Generic ion/binary regression
-     - Binary ``k_ij`` fitting uses native Ceres ``cppad_implicit`` Jacobians; other generic residual families report ``backend_unavailable`` until analytic or autodiff coverage is implemented
+     - Binary ``k_ij`` fitting uses native Ceres ``cppad_implicit`` Jacobians; other generic residual families report ``not_available`` until analytic or autodiff coverage is implemented
      - Skeleton metadata only
    * - Neutral LLE
-     - Native stability and seed checks remain available; solve derivative callbacks report ``backend_unavailable`` until residual coverage is implemented
+     - Native stability and seed checks remain available; solve derivative callbacks report ``not_available`` until residual coverage is implemented
      - Skeleton metadata only
    * - Chemical equilibrium / reactive speciation
-     - Analytic log-amount Jacobian for ideal-mole-fraction reactions under ``auto``; activity/concentration paths report ``backend_unavailable`` until derivative coverage is implemented
+     - Analytic log-amount Jacobian for ideal-mole-fraction reactions under ``auto``; activity/concentration paths report ``not_available`` until derivative coverage is implemented
      - Opt-in cyipopt accepts Gauss-Newton or L-BFGS approximate Hessian strategies
 
 The Hessian fields are deliberately a contract skeleton for future

@@ -10,11 +10,13 @@ struct HardChainState {
     double eta = 0.0;
 };
 
-struct AutodiffHardChainState {
-    vector<AutoDual> zeta;
-    vector<AutoDual> ghs;
-    AutoDual eta = make_autodiff_scalar(0.0, 0.0);
+#ifdef EPCSAFT_HAS_CPPAD
+struct CppADHardChainState {
+    vector<CppADScalar> zeta;
+    vector<CppADScalar> ghs;
+    CppADScalar eta = make_cppad_scalar(0.0);
 };
+#endif
 
 struct ContributionDadxResult {
     vector<double> dadx;
@@ -56,14 +58,18 @@ struct BornIntermediateState {
 }  // namespace thermo_detail
 
 using thermo_detail::HardChainState;
-using thermo_detail::AutodiffHardChainState;
+#ifdef EPCSAFT_HAS_CPPAD
+using thermo_detail::CppADHardChainState;
+#endif
 using thermo_detail::AssociationIntermediateState;
 using thermo_detail::BornIntermediateState;
 using thermo_detail::ContributionDadxResult;
 using thermo_detail::IonIntermediateState;
 
 HardChainState hard_chain_state_cpp(const MixtureState &thermo, const vector<double> &x, const add_args &cppargs);
-AutodiffHardChainState hard_chain_state_autodiff_cpp(double den, const vector<double> &d, const vector<AutoDual> &x, const add_args &cppargs);
+#ifdef EPCSAFT_HAS_CPPAD
+CppADHardChainState hard_chain_state_cppad_cpp(double den, const vector<double> &d, const vector<CppADScalar> &x, const add_args &cppargs);
+#endif
 double hs_contact_value_cpp(double pair_diameter, double zeta2, double zeta3);
 
 AssociationIntermediateState association_intermediate_state_cpp(
@@ -180,7 +186,7 @@ ContributionDadxResult dadx_born_cpp(
     const add_args &cppargs
 );
 
-vector<double> contribution_dadx_autodiff_cpp(
+vector<double> contribution_dadx_cppad_cpp(
     AresContributionKind kind,
     double t,
     double rho,

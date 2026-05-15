@@ -134,17 +134,18 @@ vector<double> reference_solvent_dielectric_derivative_cpp(const vector<double> 
     return deps;
 }
 
-AutoDual reference_solvent_dielectric_constant_ad_cpp(const vector<AutoDual> &x, const add_args &cppargs) {
+#ifdef EPCSAFT_HAS_CPPAD
+CppADScalar reference_solvent_dielectric_constant_cppad_cpp(const vector<CppADScalar> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     if (cppargs.z.size() != static_cast<size_t>(ncomp)) {
         vector<double> xd(ncomp, 0.0);
         for (int i = 0; i < ncomp; ++i) {
             xd[i] = scalar_value(x[i]);
         }
-        return make_autodiff_scalar(dielectric_constant_rule_cpp(cppargs.dielc_rule, xd, cppargs), 0.0);
+        return make_cppad_scalar(dielectric_constant_rule_cpp(cppargs.dielc_rule, xd, cppargs));
     }
-    AutoDual x_sol = make_autodiff_scalar(0.0, 0.0);
-    AutoDual eps_sol_num = make_autodiff_scalar(0.0, 0.0);
+    CppADScalar x_sol = make_cppad_scalar(0.0);
+    CppADScalar eps_sol_num = make_cppad_scalar(0.0);
     for (int i = 0; i < ncomp; i++) {
         if (std::abs(cppargs.z[i]) <= 1e-12) {
             x_sol += x[i];
@@ -156,10 +157,11 @@ AutoDual reference_solvent_dielectric_constant_ad_cpp(const vector<AutoDual> &x,
         for (int i = 0; i < ncomp; ++i) {
             xd[i] = scalar_value(x[i]);
         }
-        return make_autodiff_scalar(dielectric_constant_rule_cpp(cppargs.dielc_rule, xd, cppargs), 0.0);
+        return make_cppad_scalar(dielectric_constant_rule_cpp(cppargs.dielc_rule, xd, cppargs));
     }
     return eps_sol_num / x_sol;
 }
+#endif
 
 // EqID: born_mode_set
 // EqID: born_mode_medium
@@ -243,9 +245,9 @@ ContributionDadxResult dadx_born_cpp(const BornIntermediateState &born_state, do
         result.ares = -Kborn * (1.0 - 1.0 / born_state.eps_value) * born_state.charge_radius_sum;
 
         if (cppargs.born_diff_mode == 1) {
-            throw ValueError("backend_unavailable: Born composition derivative backend is unavailable.");
+            throw ValueError("not_available: Born composition derivative backend is unavailable.");
         } else if (cppargs.born_diff_mode == 4) {
-            result.dadx = contribution_dadx_autodiff_cpp(AresContributionKind::BORN, t, rho, x, cppargs);
+            result.dadx = contribution_dadx_cppad_cpp(AresContributionKind::BORN, t, rho, x, cppargs);
         } else {
             for (int i = 0; i < ncomp; ++i) {
                 double ion_part = 0.0;
@@ -270,9 +272,9 @@ ContributionDadxResult dadx_born_cpp(const BornIntermediateState &born_state, do
         result.ares = -Kborn * born_state.shell.sum_bracket;
 
         if (cppargs.born_diff_mode == 1) {
-            throw ValueError("backend_unavailable: Born composition derivative backend is unavailable.");
+            throw ValueError("not_available: Born composition derivative backend is unavailable.");
         } else if (cppargs.born_diff_mode == 4) {
-            result.dadx = contribution_dadx_autodiff_cpp(AresContributionKind::BORN, t, rho, x, cppargs);
+            result.dadx = contribution_dadx_cppad_cpp(AresContributionKind::BORN, t, rho, x, cppargs);
         } else {
             const double inv_eps2 = 1.0 / (born_state.eps_value * born_state.eps_value);
             const double shell_coeff = 1.0 / eps_r_ion - 1.0 / born_state.eps_value;

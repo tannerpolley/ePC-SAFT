@@ -3,7 +3,7 @@ from __future__ import annotations
 import epcsaft
 
 
-def test_ceres_liquid_electrolyte_regression_reports_backend_unavailable() -> None:
+def test_ceres_liquid_electrolyte_regression_reports_not_available() -> None:
     result = epcsaft.fit_liquid_electrolyte_parameters(
         species=("H2O", "Na+", "Cl-"),
         data_rows=[
@@ -23,13 +23,13 @@ def test_ceres_liquid_electrolyte_regression_reports_backend_unavailable() -> No
     )
 
     assert result.success is False
-    assert result.backend == "backend_unavailable"
+    assert result.backend == "not_available"
     assert result.optimizer_backend == "ceres"
-    assert result.derivative_backend == "backend_unavailable"
-    assert result.jacobian_backend == "backend_unavailable"
+    assert result.derivative_backend == "not_available"
+    assert result.jacobian_backend == "not_available"
     assert result.jacobian_fallback_used is False
     assert result.python_objective_used is False
-    assert "backend_unavailable" in result.backend_unavailable_reason
+    assert "not_available" in result.not_available_reason
     assert result.problem.mode == "liquid_electrolyte"
     assert result.problem.fit_targets == ("d_born", "f_solv")
     assert result.row_diagnostics
