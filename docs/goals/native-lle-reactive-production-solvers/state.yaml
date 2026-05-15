@@ -63,13 +63,13 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T001
+active_task: T015
 
 tasks:
   - id: T001
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Perform the shared dependency gate and create the exact issue-required intake notes before any source edits."
     inputs:
@@ -89,12 +89,31 @@ tasks:
       - "docs/goals/native-coupled-reactive-lle/notes/dependency_gate.md completed for issue #117 dependency gate."
       - "docs/goals/native-coupled-reactive-lle/notes/intake.md completed for issue #117 Stage 0."
       - "Receipt with origin/main SHA, branch, dependency status, selected fixtures, and source-edit gate status."
-    receipt: null
+    receipt:
+      result: done
+      summary: "Dependency gate passed and issue-required intake notes were written before any source edits."
+      artifacts:
+        - "docs/goals/native-electrolyte-lle-distributed-ions/notes/intake.md"
+        - "docs/goals/native-coupled-reactive-lle/notes/dependency_gate.md"
+        - "docs/goals/native-coupled-reactive-lle/notes/intake.md"
+      evidence:
+        - "Branch `#116-117` at `4f1efb046b4614e9a941ded5371349d9246924bd`; origin/main at `f3ce3cc332bc06e8504ece122e478c8396bc27b8`."
+        - "`git fetch origin --prune` completed and `git merge --ff-only origin/main` reported already up to date."
+        - "PR #123, #124, and #125 merge commits were verified as ancestors of HEAD."
+        - "Current electrolyte LLE production route maps through `src/epcsaft/equilibrium.py` and native `epcsaft_equilibrium.cpp`; `src/epcsaft/electrolyte_lle.py` is absent."
+        - "Current reactive LLE route is staged and remains gated behind issue #116 completion."
+      commands:
+        - "gh issue view 116 --repo tannerpolley/ePC-SAFT --json number,title,state,url,updatedAt,body"
+        - "gh issue view 117 --repo tannerpolley/ePC-SAFT --json number,title,state,url,updatedAt,body"
+        - "git fetch origin --prune"
+        - "git merge --ff-only origin/main"
+        - "git status --short"
+        - "git merge-base --is-ancestor <PR123|PR124|PR125 merge commit> HEAD"
 
   - id: T002
     type: scout
     assignee: Scout
-    status: queued
+    status: done
     reasoning_hint: medium
     objective: "Map issue #116 current electrolyte LLE routes, solver labels, hand-coded minimizer paths, residual/Jacobian gaps, Python API path, and tests that would still pass on the old route."
     inputs:
@@ -114,12 +133,24 @@ tasks:
       - "Current newton_step behavior and electrolyte residual sensitivity gaps."
       - "Candidate Ascani-style and salting-out fixtures."
       - "Candidate next Worker package boundaries."
-    receipt: null
+    receipt:
+      result: done
+      summary: "Mapped issue #116 current public/native routes, hand-coded optimizer paths, residual sensitivity gaps, and fixtures."
+      artifacts:
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T002-issue-116-route-map.md"
+      evidence:
+        - "`ElectrolyteLLEProblem.solve` delegates to `mixture.electrolyte_lle_tp(...)`; native route enters `_call_native_equilibrium(kind=\"electrolyte_lle\", ...)`."
+        - "`minimize_lle_residual_variables`, `polish_formula_tpd_variables`, `nelder_mead_variables`, and `solve_lle_attempt` are old hand-coded optimizer paths that cannot remain accepted production behavior."
+        - "`newton_step` and `_evaluate_electrolyte_lle_residual_native` currently report unavailable electrolyte residual sensitivities."
+        - "Ascani-style, Khudaida 2026 salting-out, and optional Hubach 2024 hard-case fixtures were identified."
+      commands:
+        - "rg -n \"ElectrolyteLLEProblem|electrolyte_lle_flash_native|build_electrolyte_basis_native|newton_step|_evaluate_electrolyte_lle_residual_native\" src tests"
+        - "rg -n \"minimize_lle_residual_variables|polish_formula_tpd_variables|nelder_mead_variables|solve_lle_attempt\" src/epcsaft/native/epcsaft_equilibrium.cpp"
 
   - id: T003
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Approve the issue #116 implementation package boundaries and verification gates before source edits."
     inputs:
@@ -136,12 +167,23 @@ tasks:
       - "Decision for #116 source-edit readiness."
       - "Worker package boundaries for #116 stages 1-10."
       - "Required allowed_files, verify commands, and stop conditions."
-    receipt: null
+    receipt:
+      result: done
+      decision: approved_for_source_edits_on_issue_116
+      summary: "Approved the issue #116 Worker boundaries and verification gates; issue #117 remains blocked until T008 audits #116 complete."
+      artifacts:
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T003-issue-116-boundary-decision.md"
+      evidence:
+        - "T004 must establish native solver ownership, basis diagnostics, transformed feasible variables, and charge/material accounting."
+        - "T005 must add production residual blocks, real Jacobian support, and Ceres trust-region accepted solve diagnostics."
+        - "T006 must wire the generic Python route and distributed-ion plus salting-out benchmark tests."
+        - "T007 must run route guards and the issue #116 validation ladder before T008 can unlock #117."
+      commands: []
 
   - id: T004
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Implement issue #116 Stages 1-3: native electrolyte LLE solver ownership, distributed-ion basis, diagnostics basis report, and transformed feasible variables."
     allowed_files:
@@ -162,12 +204,31 @@ tasks:
       - "Cannot satisfy electroneutral independent ion-combination basis."
       - "Transform cannot enforce or diagnose material and charge balance."
       - "Verification fails twice for the same unexplained reason."
-    receipt: null
+    receipt:
+      result: done
+      summary: "Implemented issue #116 Stages 1-3 basis and transformed-variable diagnostics in the native electrolyte LLE route."
+      changed_files:
+        - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+        - "tests/native/equilibrium/test_electrolyte_lle_native_diagnostics.py"
+        - "docs/goals/native-electrolyte-lle-distributed-ions/notes/variable_transform.md"
+      evidence:
+        - "Native electrolyte LLE now reports basis_model, basis_vector_model, species index groups, species charge vector, row-major public-species basis vectors, formula feed, salt-pair stoichiometry, and transform guarantee flags."
+        - "Accepted split diagnostics now report phase charge balances, accepted formula compositions, accepted beta values, and material balance residuals from the solved state."
+        - "The Ceres residual solve and production Jacobian remain intentionally queued for T005."
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium/test_electrolyte_lle_native_diagnostics.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/equilibrium/electrolyte/test_electrolyte_lle_results.py::test_mixed_electrolyte_lle_reports_phase_charge_balance_for_distributed_ions -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium -q"
+          status: pass
 
   - id: T005
     type: worker
     assignee: Worker
-    status: queued
+    status: blocked
     reasoning_hint: high
     objective: "Implement issue #116 Stages 4-6: electrolyte LLE residual blocks, scaled norms, production Jacobian, and Ceres trust-region residual solve."
     allowed_files:
@@ -189,7 +250,21 @@ tasks:
       - "CppAD or implicit sensitivity path cannot be made for a required residual."
       - "Accepted production diagnostics can still report old hand-coded minimizer labels."
       - "Ceres solve cannot produce finite residual/Jacobian diagnostics on a repo-contained fixture."
-    receipt: null
+    receipt:
+      result: blocked
+      summary: "Stopped before T005 source edits because the native code lacks a trustworthy electrolyte LLE residual/Jacobian surface for transformed variables."
+      blocker: "A real production Jacobian cannot be made from the current electrolyte LLE residual route without a boundary decision on CppAD or implicit sensitivity ownership."
+      note: "docs/goals/native-lle-reactive-production-solvers/notes/T005-blocker.md"
+      evidence:
+        - "Current runtime build info reports CppAD compiled and Ceres disabled in the fast local build."
+        - "Ceres support is present for native regression, not for electrolyte LLE phase-equilibrium residuals."
+        - "`newton_step` and `_evaluate_electrolyte_lle_residual_native` still report unavailable electrolyte LLE residual sensitivities."
+        - "Existing native derivative surfaces do not expose a complete residual/Jacobian for transformed electrolyte LLE variables, density closure, and fugacity residuals."
+      stop_if_triggered:
+        - "CppAD or implicit sensitivity path cannot be made for a required residual without a boundary decision."
+      commands:
+        - "uv run python -c \"import epcsaft, json; print(json.dumps(epcsaft.runtime_build_info()['optional_dependencies'], indent=2))\""
+        - "rg -n \"EPCSAFT_ENABLE_CERES|ceres|CppAD|jacobian_backend|jacobian_available\" src/epcsaft/native CMakeLists.txt scripts/dev tests/native"
 
   - id: T006
     type: worker
@@ -460,6 +535,32 @@ tasks:
       - "Full validation is too expensive or blocked without a clear narrower proof path."
     receipt: null
 
+  - id: T015
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Resolve the issue #116 T005 residual/Jacobian blocker before further electrolyte LLE source edits."
+    inputs:
+      - "T004 receipt"
+      - "T005 blocker note"
+      - "GitHub issue #116 Stages 4-6"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/epcsaft_fugcoef.cpp"
+      - "src/epcsaft/native/epcsaft_state.cpp"
+      - "src/epcsaft/native/equilibrium/**"
+    constraints:
+      - "Do not implement."
+      - "Reject any path that relabels the old predictive route as Ceres production."
+      - "Reject any path with a placeholder, identity, stale, or manual numeric perturbation Jacobian."
+      - "Choose either an expanded Worker boundary, a child subgoal, or a concrete blocked handoff."
+    expected_output:
+      - "Decision for how to implement or block T005."
+      - "Allowed_files and verify commands if implementation may proceed."
+      - "Exact stop conditions and required proof for residual/Jacobian correctness."
+    receipt: null
+
   - id: T999
     type: judge
     assignee: Judge
@@ -495,8 +596,13 @@ tasks:
     receipt: null
 
 checks:
-  dirty_fingerprint: unknown
+  dirty_fingerprint: "t004-complete-t005-blocked-t015-active"
   last_verification:
-    result: unknown
-    task: null
-    commands: []
+    result: pass
+    task: T015
+    commands:
+      - "node C:\\Users\\Tanner\\.codex\\plugins\\cache\\goalbuddy\\goalbuddy\\0.3.6\\skills\\goalbuddy\\scripts\\check-goal-state.mjs docs/goals/native-lle-reactive-production-solvers/state.yaml"
+      - "uv run python scripts/dev/build_epcsaft.py"
+      - "uv run python run_pytest.py tests/native/equilibrium -q"
+      - "rg -n \"backend[_]unavailable|finite[_]difference\" docs/goals/native-lle-reactive-production-solvers docs/goals/native-electrolyte-lle-distributed-ions docs/goals/native-coupled-reactive-lle"
+      - "git diff --check"
