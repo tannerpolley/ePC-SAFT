@@ -1,4 +1,9 @@
-"""Downstream integration smoke tests for generic public contracts."""
+"""Package-side generic contract smoke tests for downstream-facing APIs.
+
+These tests prove that a local package install exposes generic public problem,
+result, target, and capability contracts. They do not replace the real
+downstream workflow runs required by issue #119.
+"""
 
 from __future__ import annotations
 

@@ -41,15 +41,15 @@ checkout:
 Recommended local dependency loop
 ---------------------------------
 
-Install or refresh the local package once, then run checks without implicit
-sync:
+Install or refresh the local package once, then prove the installed package and
+the downstream repo-local integration wrapper without implicit sync:
 
 .. code-block:: powershell
 
    $env:UV_CACHE_DIR = "$PWD\.uv-cache"
    uv sync --reinstall-package epcsaft
-   uv run --no-sync python -m unittest tests.test_epcsaft_ionic -v
-   uv run --no-sync python -m MEA.epcsaft_ionic.smoke
+   uv run --no-sync python -m epcsaft
+   uv run --no-sync python scripts/check_epcsaft_integration.py --mode dev
 
 The repo's current CI path-install smoke uses Python 3.13. The package
 metadata remains broader, but Python 3.13 is the baseline to match when
@@ -58,6 +58,14 @@ checking current local-install behavior.
 Use ``uv run --no-sync`` after a known-good install because ordinary ``uv run`` is allowed to sync the environment. For a local native path dependency, that sync can rebuild ePC-SAFT when the downstream goal is only to run a smoke test.
 
 Do not start multiple downstream ``uv run`` commands in parallel until the reinstall has completed. If parallel checks are needed, run the reinstall once first, then use ``uv run --no-sync`` for every parallel check.
+
+The current downstream repos ``MEA-Thermodynamics``, ``Lithium_Extraction``,
+and ``MEA-Absorption-Column`` all expose the repo-local install check
+``scripts/check_epcsaft_integration.py --mode dev``. Run that first in the
+downstream repo after reinstalling the local package, then run one real
+workflow command from that repo separately. The real workflow runs are not
+replaced by package-side smokes; issue #119 tracks them as a later release-gate
+phase.
 
 Build directory behavior
 ------------------------
@@ -178,11 +186,11 @@ Capability status summary
      - Optional opt-in bridge
      - Residual-minimization refinement only; ``auto`` never selects IPOPT.
 
-Downstream integration smoke coverage
--------------------------------------
+Package-side generic contract smoke coverage
+--------------------------------------------
 
-The upstream smoke tests cover three downstream workflow shapes without adding
-downstream-specific public APIs:
+The upstream package tests cover three downstream-shaped generic API contracts
+without adding downstream-specific public APIs:
 
 * Reactive speciation with generic target rows for speciation, volatile partial
   pressure, and activity observations.
@@ -196,6 +204,13 @@ Downstream projects should build their own project-specific metrics outside
 and regression-target schema. Public API names are intentionally not tied to
 MEA, lithium extraction, absorption columns, distribution coefficients,
 selectivity, or other application labels.
+
+These package-side tests do not count as the real downstream workflow proof
+required by issue #119. They verify that a local install exposes the generic
+package contracts that downstream repos consume. The required downstream proof
+is still one real recorded workflow run each in ``MEA-Thermodynamics``,
+``Lithium_Extraction``, and ``MEA-Absorption-Column`` after the local install
+check has passed.
 
 The smoke tests also assert that the public derivative contract keeps finite
 difference unavailable. Use ``analytic``, ``cppad``, ``analytic_implicit``, or
