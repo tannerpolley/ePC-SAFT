@@ -1,0 +1,54 @@
+id: rezaee_2026_paper_validation
+title: Rezaee 2025/2026 paper validation
+status: active
+summary: Package-facing validation of Rezaee source rows, reaction-equilibrium conventions, and Section 3.2 reaction-coordinate replication.
+owner: project
+boundary:
+  objective: Validate the local epcsaft package against source-backed Rezaee paper data before any surrogate generation.
+  not_objectives:
+    - Generate calibrated surrogate rows.
+    - Generate PrOMMiS/IDAES transfer or costing files.
+    - Generate presentation or deck artifacts.
+    - Claim direct published-constant closure when the source/reference-state diagnostics do not pass.
+epcsaft_dependency:
+  required: true
+  package_source: C:\Users\Tanner\Documents\git\ePC-SAFT
+  notes:
+    - Uses Rezaee paper-reported DES/TOPO/RLi/RNa PC-SAFT parameters and binary interactions as source truth.
+    - Uses epcsaft activity and fugacity coefficient APIs for the validation calculations.
+    - Keeps generated evidence inside analyses/paper_validation/application/2026_rezaee.
+inputs:
+  - path: analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2026_reaction_constants.csv
+    kind: source_transcription
+  - path: analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2026_organic_pcsaft_parameters.csv
+    kind: source_transcription
+  - path: analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2026_organic_binary_interactions.csv
+    kind: source_transcription
+  - path: analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2026_si_density_tables.csv
+    kind: source_transcription
+  - path: analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2025_doe_extraction_responses.csv
+    kind: source_transcription
+  - path: analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2025_extraction_equilibrium_mole_fractions.csv
+    kind: source_transcription
+outputs:
+  - path: analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2025_extraction_target_summary.csv
+    kind: generated_target_summary
+  - path: analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2026_section32_basis_inference_rows.csv
+    kind: generated_basis_inference
+  - path: analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2026_section32_equilibrium_replication_rows.csv
+    kind: generated_pre_surrogate_validation_rows
+  - path: analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_section32_equilibrium_replication_summary.json
+    kind: generated_validation_summary
+commands:
+  paper_validation:
+    - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_des_epcsaft_parameter_smoke.py
+    - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_2025_target_summary.py
+    - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_equilibrium_replay.py
+    - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_equilibrium_fit.py
+    - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_convention_scan.py
+    - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_epcsaft_option_scan.py
+    - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_paper_basis_reaction_coordinate.py
+    - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_section32_basis_inference.py
+    - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_section32_equilibrium_replication.py
+runtime:
+  last_validated_seconds: 130

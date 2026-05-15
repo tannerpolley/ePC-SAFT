@@ -72,13 +72,13 @@ def _assert_methanol_cyclohexane_split(result: epcsaft.EquilibriumResult, feed: 
     assert result.diagnostics["fugacity_residual_norm"] < 1.0e-8
     assert result.diagnostics["material_balance_error"] < 1.0e-8
     assert result.diagnostics["phase_distance"] > 0.1
-    assert result.diagnostics["nonlinear_solver"] == "native_derivative_free_nelder_mead"
+    assert result.diagnostics["nonlinear_solver"] == "ceres_trust_region_residual_solve"
     assert result.diagnostics["stability_analysis"] == "neutral_tpd"
     assert result.diagnostics["anti_trivial_solution_strategy"] == "phase_fraction_and_phase_distance_gate"
-    assert result.diagnostics["derivative_backend"] == "not_applicable"
-    assert result.diagnostics["derivative_status"] == "not_required"
-    assert result.diagnostics["derivative_available"] is False
-    assert result.diagnostics["jacobian_available"] is False
+    assert result.diagnostics["derivative_backend"] == "cppad_implicit"
+    assert result.diagnostics["derivative_status"] == "residual_jacobian_available"
+    assert result.diagnostics["derivative_available"] is True
+    assert result.diagnostics["jacobian_available"] is True
     _assert_json_like(result.to_dict())
     _assert_no_backend_or_numerical_derivative_payload(result.to_dict())
 

@@ -148,6 +148,7 @@ class ReactionDefinition:
     standard_state: str = "mole_fraction_activity"
     metadata: Mapping[str, Any] = field(default_factory=dict)
     convention: ReactionConstantConvention | Mapping[str, Any] | None = None
+    phase_stoichiometry: Mapping[str, Mapping[str, float]] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "stoichiometry", {str(k): float(v) for k, v in self.stoichiometry.items()})
@@ -175,9 +176,17 @@ class ReactionDefinition:
         if convention.source:
             metadata.setdefault("source", convention.source)
         metadata.setdefault("constant_convention", convention.to_dict())
+        phase_stoichiometry = None
+        if self.phase_stoichiometry is not None:
+            phase_stoichiometry = {
+                str(phase): {str(label): float(coeff) for label, coeff in dict(coeffs).items()}
+                for phase, coeffs in dict(self.phase_stoichiometry).items()
+            }
+            metadata.setdefault("reaction_phase_scope", "phase_tagged_cross_phase")
         object.__setattr__(self, "standard_state", standard_state)
         object.__setattr__(self, "metadata", metadata)
         object.__setattr__(self, "convention", convention)
+        object.__setattr__(self, "phase_stoichiometry", phase_stoichiometry)
 
     @classmethod
     def from_literature_constant(
@@ -188,6 +197,7 @@ class ReactionDefinition:
         name: str = "",
         standard_state: str = "mole_fraction_activity",
         convention: ReactionConstantConvention | Mapping[str, Any] | None = None,
+        phase_stoichiometry: Mapping[str, Mapping[str, float]] | None = None,
         source: str = "",
         metadata: Mapping[str, Any] | None = None,
     ) -> ReactionDefinition:
@@ -204,6 +214,7 @@ class ReactionDefinition:
             standard_state=standard_state,
             metadata=merged_metadata,
             convention=convention,
+            phase_stoichiometry=phase_stoichiometry,
         )
 
     @classmethod
@@ -214,6 +225,7 @@ class ReactionDefinition:
         log_equilibrium_constant: float,
         name: str = "",
         convention: ReactionConstantConvention | Mapping[str, Any] | None = None,
+        phase_stoichiometry: Mapping[str, Mapping[str, float]] | None = None,
         metadata: Mapping[str, Any] | None = None,
     ) -> ReactionDefinition:
         """Build a reaction with an explicitly fitted equilibrium constant."""
@@ -230,6 +242,7 @@ class ReactionDefinition:
             name=name,
             metadata=merged_metadata,
             convention=convention,
+            phase_stoichiometry=phase_stoichiometry,
         )
 
 
@@ -934,6 +947,13 @@ def _normalize_reactions(species: list[str], reactions: Any) -> list[ReactionDef
         for label in reaction.stoichiometry:
             if label not in species:
                 raise InputError(f"Unknown species '{label}' in reaction stoichiometry.")
+        if reaction.phase_stoichiometry is not None:
+            for phase, coeffs in reaction.phase_stoichiometry.items():
+                if not coeffs:
+                    raise InputError(f"phase_stoichiometry for phase '{phase}' must include at least one species.")
+                for label in coeffs:
+                    if label not in species:
+                        raise InputError(f"Unknown species '{label}' in reaction phase_stoichiometry.")
         out.append(reaction)
     return out
 

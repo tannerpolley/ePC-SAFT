@@ -1,0 +1,30 @@
+{
+  "status": "source_reference_state_gap",
+  "equilibrium_rows_available": 26,
+  "equilibrium_rows_used_as_benchmark": 26,
+  "equilibrium_row_count_note": "Rezaee 2026 text says 36 equilibrium data points, but the source SI table available for this workflow contains 26 designed-experiment equilibrium rows. Treat 36 as a clerical source-text mismatch unless a new source table is supplied.",
+  "paper_constants": {
+    "Li": 3.2983e-09,
+    "Na": 1.1476e-12
+  },
+  "paper_lnK": {
+    "Li": -19.52985865272526,
+    "Na": -27.493348310803476
+  },
+  "best_variant": {
+    "variant": "paper_eq14_no_activity_vs_inverse_k",
+    "combined_median_abs_ln_residual": 9.506579080295277,
+    "source_supported": false,
+    "description": "Mole-fraction quotient compared against reciprocal reported constants."
+  },
+  "source_supported_variant": {
+    "variant": "paper_eq14_with_activity_vs_paper_k",
+    "combined_median_abs_ln_residual": 35.24471894044258,
+    "source_supported": true,
+    "description": "Rezaee Eq. 14/15 exactly as implemented from the paper text, with ePC-SAFT/PC-SAFT activity coefficients."
+  },
+  "acceptance": {
+    "closed_by_simple_convention_scan": false,
+    "threshold_combined_median_abs_ln_residual": 2.0
+  }
+}

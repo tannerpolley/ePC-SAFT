@@ -1502,6 +1502,11 @@ def reactive_phase_equilibrium(
         [[float(reaction.stoichiometry.get(label, 0.0)) for label in species] for reaction in reaction_defs],
         dtype=float,
     )
+    reaction_phase_matrix, reaction_phase_scope = _reaction_phase_stoichiometry_matrix(
+        species,
+        reaction_defs,
+        route,
+    )
     request = {
         "T": temperature,
         "P": pressure,
@@ -1514,6 +1519,9 @@ def reactive_phase_equilibrium(
         "reaction_rows": int(reaction_matrix.shape[0]),
         "log_equilibrium_constants": [float(reaction.log_equilibrium_constant) for reaction in reaction_defs],
         "reaction_standard_states": [reaction.convention.native_standard_state_code for reaction in reaction_defs],
+        "reaction_phase_stoichiometry": None
+        if reaction_phase_matrix is None
+        else reaction_phase_matrix.reshape(-1).tolist(),
         "options": _options_to_native_dict(solver_options),
     }
     try:
@@ -1534,6 +1542,7 @@ def reactive_phase_equilibrium(
         balance_names=balance_names,
         reactions=reaction_defs,
         reaction_matrix=reaction_matrix,
+        reaction_phase_scope=reaction_phase_scope,
         reactive_options=reactive_options,
         charges=charges,
     )
@@ -1620,6 +1629,55 @@ def _equilibrium_options_from_reactive_options(options: Any) -> EquilibriumOptio
     )
 
 
+def _reaction_phase_stoichiometry_matrix(
+    species: list[str],
+    reactions: list[Any],
+    route: str,
+) -> tuple[np.ndarray | None, str]:
+    has_phase_terms = [reaction.phase_stoichiometry is not None for reaction in reactions]
+    if not any(has_phase_terms):
+        return None, "per_phase_same_stoichiometry"
+    if not all(has_phase_terms):
+        raise InputError("All reactions must use phase_stoichiometry when any reaction uses phase-tagged terms.")
+    aliases = {
+        "phase1": 0,
+        "liq1": 0,
+        "liquid1": 0,
+        "phase_1": 0,
+        "aqueous": 0,
+        "aq": 0,
+        "water": 0,
+        "phase2": 1,
+        "liq2": 1,
+        "liquid2": 1,
+        "phase_2": 1,
+        "organic": 1,
+        "org": 1,
+        "solvent": 1,
+    }
+    if route == "lle_flash":
+        aliases.update({"reactant_liquid": 0, "extract_liquid": 1})
+    matrix = np.zeros((len(reactions), 2, len(species)), dtype=float)
+    for reaction_index, reaction in enumerate(reactions):
+        assert reaction.phase_stoichiometry is not None
+        seen_phases: set[int] = set()
+        for phase_label, coeffs in reaction.phase_stoichiometry.items():
+            phase_key = str(phase_label).strip().lower()
+            if phase_key not in aliases:
+                supported = "', '".join(sorted(aliases))
+                raise InputError(
+                    f"Unknown phase label '{phase_label}' in reaction phase_stoichiometry; "
+                    f"supported labels include '{supported}'."
+                )
+            phase_index = aliases[phase_key]
+            seen_phases.add(phase_index)
+            for label, coefficient in coeffs.items():
+                matrix[reaction_index, phase_index, species.index(str(label))] = float(coefficient)
+        if seen_phases != {0, 1}:
+            raise InputError("phase-tagged reactions must include terms for both liquid phases.")
+    return matrix, "phase_tagged_cross_phase"
+
+
 def _reactive_phase_result_diagnostics(
     result: EquilibriumResult,
     *,
@@ -1629,6 +1687,7 @@ def _reactive_phase_result_diagnostics(
     balance_names: list[str],
     reactions: list[Any],
     reaction_matrix: np.ndarray,
+    reaction_phase_scope: str,
     reactive_options: Any,
     charges: np.ndarray | None,
 ) -> dict[str, Any]:
@@ -1642,14 +1701,18 @@ def _reactive_phase_result_diagnostics(
     element_residual = list(diagnostics.get("element_balance_residual", []))
     phase1_reaction = list(diagnostics.get("reaction_residual_phase1", []))
     phase2_reaction = list(diagnostics.get("reaction_residual_phase2", []))
+    cross_phase_reaction = list(diagnostics.get("reaction_residual_cross_phase", []))
     named_reaction_residuals: dict[str, float] = {}
     for index, name in enumerate(reaction_names):
-        values = []
-        if index < len(phase1_reaction):
-            values.append(float(phase1_reaction[index]))
-        if index < len(phase2_reaction):
-            values.append(float(phase2_reaction[index]))
-        named_reaction_residuals[name] = max((abs(value) for value in values), default=0.0)
+        if index < len(cross_phase_reaction):
+            named_reaction_residuals[name] = abs(float(cross_phase_reaction[index]))
+        else:
+            values = []
+            if index < len(phase1_reaction):
+                values.append(float(phase1_reaction[index]))
+            if index < len(phase2_reaction):
+                values.append(float(phase2_reaction[index]))
+            named_reaction_residuals[name] = max((abs(value) for value in values), default=0.0)
     ionic_residual = list(diagnostics.get("ionic_equilibrium_residual", []))
     diagnostics.update(
         {
@@ -1662,6 +1725,8 @@ def _reactive_phase_result_diagnostics(
             "production_route": "native_coupled_reactive_phase_equilibrium",
             "staged_route_used": False,
             "reaction_and_phase_residuals_share_state": True,
+            "reaction_phase_scope": str(diagnostics.get("reaction_phase_scope", reaction_phase_scope)),
+            "phase_tagged_reaction_stoichiometry": reaction_phase_scope == "phase_tagged_cross_phase",
             "reaction_constant_policy": "fixed_literature_constants_first",
             "reaction_constant_sources": {
                 name: str(reaction.metadata.get("constant_source", "unspecified"))

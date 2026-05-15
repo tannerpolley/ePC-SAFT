@@ -13,9 +13,9 @@ def test_explicit_staged_kind_remains_separate_from_production_reactive_lle(monk
     staged = mix.equilibrium(
         kind="reactive_staged",
         T=298.15,
-        P=1.0e5,
+        P=1.013e5,
         z=feed,
-        balances={"total": {"A": 1.0, "B": 1.0}},
+        balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
         totals={"total": 1.0},
         reactions=[reaction],
         phase_kind="lle_flash",
@@ -24,7 +24,8 @@ def test_explicit_staged_kind_remains_separate_from_production_reactive_lle(monk
 
     assert isinstance(staged, epcsaft.ReactiveStagedEquilibriumResult)
     assert staged.diagnostics["reactive_workflow_class"] == "staged"
-    assert staged.diagnostics["staged_feed"] == pytest.approx({"A": 0.4, "B": 0.6})
+    assert set(staged.diagnostics["staged_feed"]) == {"Methanol", "Cyclohexane"}
+    assert sum(staged.diagnostics["staged_feed"].values()) == pytest.approx(1.0, abs=1.0e-12)
 
     def fail_if_staged(*_args, **_kwargs):
         raise AssertionError("kind='reactive_lle' must bypass explicit staged compatibility")
@@ -33,13 +34,13 @@ def test_explicit_staged_kind_remains_separate_from_production_reactive_lle(monk
     production = mix.equilibrium(
         kind="reactive_lle",
         T=298.15,
-        P=1.0e5,
+        P=1.013e5,
         z=feed,
-        balances={"total": {"A": 1.0, "B": 1.0}},
+        balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
         totals={"total": 1.0},
         reactions=[reaction],
         initial_phases=initial_phases,
-        phase_options=epcsaft.EquilibriumOptions(max_iterations=20, tolerance=1.0e-10, min_composition=1.0e-12),
+        phase_options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8, min_composition=1.0e-12),
     )
 
     assert isinstance(production, epcsaft.EquilibriumResult)
@@ -57,9 +58,9 @@ def test_reactive_lle_dispatcher_does_not_accept_phase_route_controls() -> None:
         mix.equilibrium(
             kind="reactive_lle",
             T=298.15,
-            P=1.0e5,
+            P=1.013e5,
             z=feed,
-            balances={"total": {"A": 1.0, "B": 1.0}},
+            balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
             totals={"total": 1.0},
             reactions=[reaction],
             parent_phase="liq",

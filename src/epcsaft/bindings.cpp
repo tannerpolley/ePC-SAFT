@@ -796,6 +796,7 @@ py::dict native_reactive_phase_residual_evaluation_to_dict(const ReactivePhaseRe
     out["element_balance_residuals"] = result.element_balance_residuals;
     out["reaction_residuals_phase1"] = result.reaction_residuals_phase1;
     out["reaction_residuals_phase2"] = result.reaction_residuals_phase2;
+    out["reaction_residuals_cross_phase"] = result.reaction_residuals_cross_phase;
     out["neutral_phase_equilibrium_residuals"] = result.neutral_phase_equilibrium_residuals;
     out["ionic_equilibrium_residuals"] = result.ionic_equilibrium_residuals;
     out["phase_charge_residuals"] = result.phase_charge_residuals;
@@ -1154,6 +1155,10 @@ py::dict evaluate_reactive_phase_equilibrium_residual_native_binding(
     } else {
         reaction_standard_states = std::vector<int>(static_cast<std::size_t>(reaction_rows), 0);
     }
+    std::vector<double> reaction_phase_stoichiometry;
+    if (request.contains("reaction_phase_stoichiometry") && !request["reaction_phase_stoichiometry"].is_none()) {
+        reaction_phase_stoichiometry = request["reaction_phase_stoichiometry"].cast<std::vector<double>>();
+    }
     std::vector<double> variables;
     bool has_variables = false;
     if (request.contains("variables") && !request["variables"].is_none()) {
@@ -1199,6 +1204,7 @@ py::dict evaluate_reactive_phase_equilibrium_residual_native_binding(
             reaction_rows,
             log_equilibrium_constants,
             reaction_standard_states,
+            reaction_phase_stoichiometry,
             variables,
             has_variables,
             phase1,
@@ -1229,6 +1235,10 @@ py::dict solve_reactive_phase_equilibrium_native_binding(
         reaction_standard_states = request["reaction_standard_states"].cast<std::vector<int>>();
     } else {
         reaction_standard_states = std::vector<int>(static_cast<std::size_t>(reaction_rows), 0);
+    }
+    std::vector<double> reaction_phase_stoichiometry;
+    if (request.contains("reaction_phase_stoichiometry") && !request["reaction_phase_stoichiometry"].is_none()) {
+        reaction_phase_stoichiometry = request["reaction_phase_stoichiometry"].cast<std::vector<double>>();
     }
     std::vector<double> phase1;
     std::vector<double> phase2;
@@ -1269,11 +1279,16 @@ py::dict solve_reactive_phase_equilibrium_native_binding(
             reaction_rows,
             log_equilibrium_constants,
             reaction_standard_states,
+            reaction_phase_stoichiometry,
             phase1,
             phase2,
             beta2,
             has_initial
         );
+    }
+    const std::string acceptance_gate = result.diagnostics_string["acceptance_gate"];
+    if (!result.split_detected && acceptance_gate == "reactive_solve_failed") {
+        raise_native_solution_error_with_diagnostics("reactive phase equilibrium did not converge", result);
     }
     return native_equilibrium_to_dict(result);
 }

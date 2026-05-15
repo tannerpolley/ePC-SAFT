@@ -1,0 +1,52 @@
+{
+  "status": "paper_basis_reaction_coordinate_benchmark_complete",
+  "mode_count": 3,
+  "row_count": 26,
+  "best_mode_by_li_abs_error": {
+    "mode": "2025_born_no_ssm_empirical",
+    "row_count": 26,
+    "mean_li_abs_pct_error": 35.8153846150372,
+    "mean_na_abs_pct_error": 11.756153846066601,
+    "median_li_extraction_pct_calc": 3.4720473594763114e-10,
+    "median_na_extraction_pct_calc": 7.663360786271179e-11,
+    "median_initial_oh_mol": 0.0001,
+    "median_initial_li_mol": 0.1440922190201729,
+    "median_oh_to_li_mol_ratio": 0.0006940000000000001
+  },
+  "summary_rows": [
+    {
+      "mode": "2025_born_no_ssm_empirical",
+      "row_count": 26,
+      "mean_li_abs_pct_error": 35.8153846150372,
+      "mean_na_abs_pct_error": 11.756153846066601,
+      "median_li_extraction_pct_calc": 3.4720473594763114e-10,
+      "median_na_extraction_pct_calc": 7.663360786271179e-11,
+      "median_initial_oh_mol": 0.0001,
+      "median_initial_li_mol": 0.1440922190201729,
+      "median_oh_to_li_mol_ratio": 0.0006940000000000001
+    },
+    {
+      "mode": "ideal",
+      "row_count": 26,
+      "mean_li_abs_pct_error": 35.81538461503759,
+      "mean_na_abs_pct_error": 11.756153846066603,
+      "median_li_extraction_pct_calc": 3.4701919169994887e-10,
+      "median_na_extraction_pct_calc": 7.663257001083231e-11,
+      "median_initial_oh_mol": 0.0001,
+      "median_initial_li_mol": 0.1440922190201729,
+      "median_oh_to_li_mol_ratio": 0.0006940000000000001
+    },
+    {
+      "mode": "package_struct_default_no_explicit_elec_model",
+      "row_count": 26,
+      "mean_li_abs_pct_error": 35.8153846150375,
+      "mean_na_abs_pct_error": 11.756153846066603,
+      "median_li_extraction_pct_calc": 3.470594515103567e-10,
+      "median_na_extraction_pct_calc": 7.663286570421158e-11,
+      "median_initial_oh_mol": 0.0001,
+      "median_initial_li_mol": 0.1440922190201729,
+      "median_oh_to_li_mol_ratio": 0.0006940000000000001
+    }
+  ],
+  "interpretation": "Literal pH-derived OH- stoichiometry makes Reaction A/B OH-limited by orders of magnitude. This benchmark therefore does not reproduce the reported extraction percentages with the published K values before any parameter refit."
+}

@@ -1,0 +1,3787 @@
+{
+  "status": "option_scan_complete_no_direct_closure",
+  "option_count": 16,
+  "row_count": 26,
+  "best_option": {
+    "option_id": "2025_born_no_ssm_empirical",
+    "description": "Born term retained but solvation-shell/dielectric-saturation option disabled.",
+    "normalization": "modern_nested_elec_model",
+    "elec_model_preset": "2025",
+    "born_model": 1,
+    "born_diff_mode": 0,
+    "born_eps_mode": 0,
+    "DH_model": 1,
+    "dielc_rule": 4,
+    "dielc_diff_mode": 0,
+    "bjeruum_treatment": false,
+    "combined_median_abs_ln_residual": 33.99079517617261,
+    "li_median_ln_residual": 31.313657854605555,
+    "na_median_ln_residual": 36.66793249773967,
+    "li_median_abs_ln_residual": 31.313657854605555,
+    "na_median_abs_ln_residual": 36.66793249773967,
+    "li_median_gamma": 1.540106950933074,
+    "na_median_gamma": 1.3486012989964156,
+    "oh_median_gamma_for_li_rows": 1.2711231405255388
+  },
+  "baseline_option": {
+    "option_id": "package_struct_default_no_explicit_elec_model",
+    "description": "Existing replay behavior: strip legacy electrolyte option keys and let package defaults construct add_args.",
+    "normalization": "strip_all_electrolyte_option_keys",
+    "elec_model_preset": "legacy_default",
+    "born_model": 1,
+    "born_diff_mode": 0,
+    "born_eps_mode": 0,
+    "DH_model": 1,
+    "dielc_rule": 1,
+    "dielc_diff_mode": 0,
+    "bjeruum_treatment": false,
+    "combined_median_abs_ln_residual": 35.24471894044258,
+    "li_median_ln_residual": 32.516847093178185,
+    "na_median_ln_residual": 37.97259078770697,
+    "li_median_abs_ln_residual": 32.516847093178185,
+    "na_median_abs_ln_residual": 37.97259078770697,
+    "li_median_gamma": 0.7987714301157618,
+    "na_median_gamma": 0.697210289563513,
+    "oh_median_gamma_for_li_rows": 0.6734694317508567
+  },
+  "accepted": false,
+  "parameter_audit": {
+    "dataset_id": "rezaee_2026_des_topo_li_na_epcsaft",
+    "aqueous_species": [
+      "H2O",
+      "Li+",
+      "Na+",
+      "Cl-",
+      "H+",
+      "OH-",
+      "NH4+"
+    ],
+    "organic_species": [
+      "DES",
+      "TOPO",
+      "RLi",
+      "RNa"
+    ],
+    "expected_organic_species": [
+      "DES",
+      "TOPO",
+      "RLi",
+      "RNa"
+    ],
+    "organic_species_match": true,
+    "organic_parameter_rows": 4,
+    "organic_binary_interaction_rows": 6,
+    "reaction_constant_rows": 2,
+    "equilibrium_rows_available": 26,
+    "equilibrium_rows_used_as_benchmark": 26,
+    "equilibrium_row_count_note": "The 2025 SI Tables S1/S2 provide 26 designed-experiment equilibrium rows. The 2026 text mentions 36 data points, but this scan treats that as a clerical source-text mismatch unless a new source table is supplied.",
+    "notes": [
+      "Organic phase uses Rezaee Table 4/6/8 pure parameters and Table 9 binary interactions without refitting.",
+      "Aqueous phase uses the package ePC-SAFT component catalog for H2O, Li+, Na+, Cl-, H+, OH-, and a local NH4+ cation placeholder to match the SI composition columns.",
+      "Option scan changes only the aqueous electrolyte model configuration; organic parameters and reaction constants remain fixed to the paper values."
+    ]
+  },
+  "option_metadata": [
+    {
+      "option_id": "package_struct_default_no_explicit_elec_model",
+      "description": "Existing replay behavior: strip legacy electrolyte option keys and let package defaults construct add_args.",
+      "normalization": "strip_all_electrolyte_option_keys",
+      "user_options": null,
+      "resolved_options": {
+        "elec_model_preset": "legacy_default",
+        "legacy_runtime": {
+          "born_model": 1,
+          "born_diff_mode": 0,
+          "born_eps_mode": 0,
+          "DH_model": 1,
+          "dielc_rule": 1,
+          "dielc_diff_mode": 0,
+          "bjeruum_treatment": false
+        },
+        "legacy_elec_model": {
+          "born_contrib": true,
+          "ssm_ds": false,
+          "dielc_rule": "linear-mixing-mole",
+          "dielc_diff_rule": "same",
+          "dielc_diff_mode": "analytic",
+          "born_diff_model": "analytic",
+          "born_diff_options": {
+            "include_sum_term": true,
+            "include_dielc_conc_dep": true,
+            "include_delta_d_i_conc_dep": true
+          },
+          "eps_r_bulk": "mix",
+          "bjeruum_treatment": false
+        }
+      },
+      "clean_parameter_snapshot": {
+        "m": [
+          1.09528,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "s": [
+          2.8898,
+          2.8449,
+          2.8232,
+          2.756,
+          3.0,
+          3.0,
+          3.574
+        ],
+        "e": [
+          365.956,
+          360.0,
+          230.0,
+          170.0,
+          300.0,
+          300.0,
+          230.0
+        ],
+        "e_assoc": [
+          2515.6706,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "vol_a": [
+          0.0348679836,
+          100.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "assoc_scheme": [
+          "2B",
+          "2B",
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "z": [
+          0.0,
+          1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0
+        ],
+        "dielc": [
+          78.09,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0
+        ],
+        "d_born": [
+          0.0,
+          2.784,
+          3.445,
+          4.1,
+          0.0,
+          0.0,
+          3.0
+        ],
+        "f_solv": [
+          1.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "k_ij": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.8,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.317,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.8,
+            0.317,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ]
+      }
+    },
+    {
+      "option_id": "legacy_default_born_linear_mole",
+      "description": "Legacy/default aqueous ePC-SAFT option payload converted to the current nested package API.",
+      "normalization": "modern_nested_elec_model",
+      "user_options": {
+        "elec_model": {
+          "base": "legacy_default"
+        }
+      },
+      "resolved_options": {
+        "elec_model_preset": "legacy_default",
+        "legacy_runtime": {
+          "born_model": 1,
+          "born_diff_mode": 0,
+          "born_eps_mode": 0,
+          "DH_model": 1,
+          "dielc_rule": 1,
+          "dielc_diff_mode": 0,
+          "bjeruum_treatment": false
+        },
+        "legacy_elec_model": {
+          "born_contrib": true,
+          "ssm_ds": false,
+          "dielc_rule": "linear-mixing-mole",
+          "dielc_diff_rule": "same",
+          "dielc_diff_mode": "analytic",
+          "born_diff_model": "analytic",
+          "born_diff_options": {
+            "include_sum_term": true,
+            "include_dielc_conc_dep": true,
+            "include_delta_d_i_conc_dep": true
+          },
+          "eps_r_bulk": "mix",
+          "bjeruum_treatment": false,
+          "base": "legacy_default"
+        }
+      },
+      "clean_parameter_snapshot": {
+        "m": [
+          1.09528,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "s": [
+          2.8898,
+          2.8449,
+          2.8232,
+          2.756,
+          3.0,
+          3.0,
+          3.574
+        ],
+        "e": [
+          365.956,
+          360.0,
+          230.0,
+          170.0,
+          300.0,
+          300.0,
+          230.0
+        ],
+        "e_assoc": [
+          2515.6706,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "vol_a": [
+          0.0348679836,
+          100.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "assoc_scheme": [
+          "2B",
+          "2B",
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "z": [
+          0.0,
+          1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0
+        ],
+        "dielc": [
+          78.09,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0
+        ],
+        "d_born": [
+          0.0,
+          2.784,
+          3.445,
+          4.1,
+          0.0,
+          0.0,
+          3.0
+        ],
+        "f_solv": [
+          1.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "k_ij": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.8,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.317,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.8,
+            0.317,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "elec_model": {
+          "rel_perm": {
+            "rule": "linear-mixing-mole",
+            "differential_mode": "analytic"
+          },
+          "hc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "disp_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "assoc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "DH_model": {
+            "d_ion_mode": 1,
+            "bjeruum_treatment": false,
+            "mu_DH_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true
+            }
+          },
+          "include_born_model": true,
+          "born_model": {
+            "d_Born_mode": 0,
+            "solvation_shell_model": false,
+            "dielectric_saturation": false,
+            "bulk_mode": "mix",
+            "mu_born_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true,
+              "comp_dep_delta_d": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "option_id": "held_2005_no_born_constant_eps",
+      "description": "Older Held-style no-Born constant-dielectric preset.",
+      "normalization": "modern_nested_elec_model",
+      "user_options": {
+        "elec_model": "2005"
+      },
+      "resolved_options": {
+        "elec_model_preset": "2005",
+        "legacy_runtime": {
+          "born_model": 0,
+          "born_diff_mode": 0,
+          "born_eps_mode": 0,
+          "DH_model": 1,
+          "dielc_rule": 0,
+          "dielc_diff_mode": 0,
+          "bjeruum_treatment": false
+        },
+        "legacy_elec_model": {
+          "born_contrib": false,
+          "ssm_ds": false,
+          "dielc_rule": "constant",
+          "dielc_diff_rule": "same",
+          "dielc_diff_mode": "analytic",
+          "born_diff_model": "analytic",
+          "born_diff_options": {
+            "include_sum_term": false,
+            "include_dielc_conc_dep": false,
+            "include_delta_d_i_conc_dep": false
+          },
+          "eps_r_bulk": "mix",
+          "bjeruum_treatment": false
+        }
+      },
+      "clean_parameter_snapshot": {
+        "m": [
+          1.09528,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "s": [
+          2.8898,
+          2.8449,
+          2.8232,
+          2.756,
+          3.0,
+          3.0,
+          3.574
+        ],
+        "e": [
+          365.956,
+          360.0,
+          230.0,
+          170.0,
+          300.0,
+          300.0,
+          230.0
+        ],
+        "e_assoc": [
+          2515.6706,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "vol_a": [
+          0.0348679836,
+          100.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "assoc_scheme": [
+          "2B",
+          "2B",
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "z": [
+          0.0,
+          1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0
+        ],
+        "dielc": [
+          78.09,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0
+        ],
+        "d_born": [
+          0.0,
+          2.784,
+          3.445,
+          4.1,
+          0.0,
+          0.0,
+          3.0
+        ],
+        "f_solv": [
+          1.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "k_ij": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.8,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.317,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.8,
+            0.317,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "elec_model": {
+          "rel_perm": {
+            "rule": "constant",
+            "differential_mode": "analytic"
+          },
+          "hc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "disp_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "assoc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "DH_model": {
+            "d_ion_mode": 1,
+            "bjeruum_treatment": false,
+            "mu_DH_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true
+            }
+          },
+          "include_born_model": false,
+          "born_model": {
+            "d_Born_mode": 0,
+            "solvation_shell_model": false,
+            "dielectric_saturation": false,
+            "bulk_mode": "mix",
+            "mu_born_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": false,
+              "include_sum_term": false,
+              "comp_dep_delta_d": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "option_id": "held_2008_no_born_constant_eps",
+      "description": "2008 no-Born constant-dielectric preset.",
+      "normalization": "modern_nested_elec_model",
+      "user_options": {
+        "elec_model": "2008"
+      },
+      "resolved_options": {
+        "elec_model_preset": "2008",
+        "legacy_runtime": {
+          "born_model": 0,
+          "born_diff_mode": 0,
+          "born_eps_mode": 0,
+          "DH_model": 1,
+          "dielc_rule": 0,
+          "dielc_diff_mode": 0,
+          "bjeruum_treatment": false
+        },
+        "legacy_elec_model": {
+          "born_contrib": false,
+          "ssm_ds": false,
+          "dielc_rule": "constant",
+          "dielc_diff_rule": "same",
+          "dielc_diff_mode": "analytic",
+          "born_diff_model": "analytic",
+          "born_diff_options": {
+            "include_sum_term": false,
+            "include_dielc_conc_dep": false,
+            "include_delta_d_i_conc_dep": false
+          },
+          "eps_r_bulk": "mix",
+          "bjeruum_treatment": false
+        }
+      },
+      "clean_parameter_snapshot": {
+        "m": [
+          1.09528,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "s": [
+          2.8898,
+          2.8449,
+          2.8232,
+          2.756,
+          3.0,
+          3.0,
+          3.574
+        ],
+        "e": [
+          365.956,
+          360.0,
+          230.0,
+          170.0,
+          300.0,
+          300.0,
+          230.0
+        ],
+        "e_assoc": [
+          2515.6706,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "vol_a": [
+          0.0348679836,
+          100.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "assoc_scheme": [
+          "2B",
+          "2B",
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "z": [
+          0.0,
+          1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0
+        ],
+        "dielc": [
+          78.09,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0
+        ],
+        "d_born": [
+          0.0,
+          2.784,
+          3.445,
+          4.1,
+          0.0,
+          0.0,
+          3.0
+        ],
+        "f_solv": [
+          1.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "k_ij": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.8,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.317,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.8,
+            0.317,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "elec_model": {
+          "rel_perm": {
+            "rule": "constant",
+            "differential_mode": "analytic"
+          },
+          "hc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "disp_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "assoc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "DH_model": {
+            "d_ion_mode": 1,
+            "bjeruum_treatment": false,
+            "mu_DH_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true
+            }
+          },
+          "include_born_model": false,
+          "born_model": {
+            "d_Born_mode": 0,
+            "solvation_shell_model": false,
+            "dielectric_saturation": false,
+            "bulk_mode": "mix",
+            "mu_born_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": false,
+              "include_sum_term": false,
+              "comp_dep_delta_d": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "option_id": "held_2014_s1_no_born_constant_eps",
+      "description": "2014 S1 no-Born constant-dielectric preset.",
+      "normalization": "modern_nested_elec_model",
+      "user_options": {
+        "elec_model": "2014_s1"
+      },
+      "resolved_options": {
+        "elec_model_preset": "2014_s1",
+        "legacy_runtime": {
+          "born_model": 0,
+          "born_diff_mode": 0,
+          "born_eps_mode": 0,
+          "DH_model": 1,
+          "dielc_rule": 0,
+          "dielc_diff_mode": 0,
+          "bjeruum_treatment": false
+        },
+        "legacy_elec_model": {
+          "born_contrib": false,
+          "ssm_ds": false,
+          "dielc_rule": "constant",
+          "dielc_diff_rule": "same",
+          "dielc_diff_mode": "analytic",
+          "born_diff_model": "analytic",
+          "born_diff_options": {
+            "include_sum_term": false,
+            "include_dielc_conc_dep": false,
+            "include_delta_d_i_conc_dep": false
+          },
+          "eps_r_bulk": "mix",
+          "bjeruum_treatment": false
+        }
+      },
+      "clean_parameter_snapshot": {
+        "m": [
+          1.09528,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "s": [
+          2.8898,
+          2.8449,
+          2.8232,
+          2.756,
+          3.0,
+          3.0,
+          3.574
+        ],
+        "e": [
+          365.956,
+          360.0,
+          230.0,
+          170.0,
+          300.0,
+          300.0,
+          230.0
+        ],
+        "e_assoc": [
+          2515.6706,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "vol_a": [
+          0.0348679836,
+          100.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "assoc_scheme": [
+          "2B",
+          "2B",
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "z": [
+          0.0,
+          1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0
+        ],
+        "dielc": [
+          78.09,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0
+        ],
+        "d_born": [
+          0.0,
+          2.784,
+          3.445,
+          4.1,
+          0.0,
+          0.0,
+          3.0
+        ],
+        "f_solv": [
+          1.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "k_ij": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.8,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.317,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.8,
+            0.317,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "elec_model": {
+          "rel_perm": {
+            "rule": "constant",
+            "differential_mode": "analytic"
+          },
+          "hc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "disp_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "assoc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "DH_model": {
+            "d_ion_mode": 1,
+            "bjeruum_treatment": false,
+            "mu_DH_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true
+            }
+          },
+          "include_born_model": false,
+          "born_model": {
+            "d_Born_mode": 0,
+            "solvation_shell_model": false,
+            "dielectric_saturation": false,
+            "bulk_mode": "mix",
+            "mu_born_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": false,
+              "include_sum_term": false,
+              "comp_dep_delta_d": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "option_id": "held_2014_s2_no_born_constant_eps",
+      "description": "2014 S2 no-Born constant-dielectric preset.",
+      "normalization": "modern_nested_elec_model",
+      "user_options": {
+        "elec_model": "2014_s2"
+      },
+      "resolved_options": {
+        "elec_model_preset": "2014_s2",
+        "legacy_runtime": {
+          "born_model": 0,
+          "born_diff_mode": 0,
+          "born_eps_mode": 0,
+          "DH_model": 1,
+          "dielc_rule": 0,
+          "dielc_diff_mode": 0,
+          "bjeruum_treatment": false
+        },
+        "legacy_elec_model": {
+          "born_contrib": false,
+          "ssm_ds": false,
+          "dielc_rule": "constant",
+          "dielc_diff_rule": "same",
+          "dielc_diff_mode": "analytic",
+          "born_diff_model": "analytic",
+          "born_diff_options": {
+            "include_sum_term": false,
+            "include_dielc_conc_dep": false,
+            "include_delta_d_i_conc_dep": false
+          },
+          "eps_r_bulk": "mix",
+          "bjeruum_treatment": false
+        }
+      },
+      "clean_parameter_snapshot": {
+        "m": [
+          1.09528,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "s": [
+          2.8898,
+          2.8449,
+          2.8232,
+          2.756,
+          3.0,
+          3.0,
+          3.574
+        ],
+        "e": [
+          365.956,
+          360.0,
+          230.0,
+          170.0,
+          300.0,
+          300.0,
+          230.0
+        ],
+        "e_assoc": [
+          2515.6706,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "vol_a": [
+          0.0348679836,
+          100.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "assoc_scheme": [
+          "2B",
+          "2B",
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "z": [
+          0.0,
+          1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0
+        ],
+        "dielc": [
+          78.09,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0
+        ],
+        "d_born": [
+          0.0,
+          2.784,
+          3.445,
+          4.1,
+          0.0,
+          0.0,
+          3.0
+        ],
+        "f_solv": [
+          1.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "k_ij": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.8,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.317,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.8,
+            0.317,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "elec_model": {
+          "rel_perm": {
+            "rule": "constant",
+            "differential_mode": "analytic"
+          },
+          "hc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "disp_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "assoc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "DH_model": {
+            "d_ion_mode": 1,
+            "bjeruum_treatment": false,
+            "mu_DH_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true
+            }
+          },
+          "include_born_model": false,
+          "born_model": {
+            "d_Born_mode": 0,
+            "solvation_shell_model": false,
+            "dielectric_saturation": false,
+            "bulk_mode": "mix",
+            "mu_born_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": false,
+              "include_sum_term": false,
+              "comp_dep_delta_d": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "option_id": "held_2020_born_no_ssm_linear_mole",
+      "description": "2020 Born-enabled preset without solvation-shell/dielectric-saturation behavior.",
+      "normalization": "modern_nested_elec_model",
+      "user_options": {
+        "elec_model": "2020"
+      },
+      "resolved_options": {
+        "elec_model_preset": "2020",
+        "legacy_runtime": {
+          "born_model": 1,
+          "born_diff_mode": 0,
+          "born_eps_mode": 0,
+          "DH_model": 1,
+          "dielc_rule": 1,
+          "dielc_diff_mode": 0,
+          "bjeruum_treatment": false
+        },
+        "legacy_elec_model": {
+          "born_contrib": true,
+          "ssm_ds": false,
+          "dielc_rule": "linear-mixing-mole",
+          "dielc_diff_rule": "same",
+          "dielc_diff_mode": "analytic",
+          "born_diff_model": "analytic",
+          "born_diff_options": {
+            "include_sum_term": true,
+            "include_dielc_conc_dep": true,
+            "include_delta_d_i_conc_dep": true
+          },
+          "eps_r_bulk": "mix",
+          "bjeruum_treatment": false
+        }
+      },
+      "clean_parameter_snapshot": {
+        "m": [
+          1.09528,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "s": [
+          2.8898,
+          2.8449,
+          2.8232,
+          2.756,
+          3.0,
+          3.0,
+          3.574
+        ],
+        "e": [
+          365.956,
+          360.0,
+          230.0,
+          170.0,
+          300.0,
+          300.0,
+          230.0
+        ],
+        "e_assoc": [
+          2515.6706,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "vol_a": [
+          0.0348679836,
+          100.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "assoc_scheme": [
+          "2B",
+          "2B",
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "z": [
+          0.0,
+          1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0
+        ],
+        "dielc": [
+          78.09,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0
+        ],
+        "d_born": [
+          0.0,
+          2.784,
+          3.445,
+          4.1,
+          0.0,
+          0.0,
+          3.0
+        ],
+        "f_solv": [
+          1.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "k_ij": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.8,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.317,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.8,
+            0.317,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "elec_model": {
+          "rel_perm": {
+            "rule": "linear-mixing-mole",
+            "differential_mode": "analytic"
+          },
+          "hc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "disp_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "assoc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "DH_model": {
+            "d_ion_mode": 1,
+            "bjeruum_treatment": false,
+            "mu_DH_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true
+            }
+          },
+          "include_born_model": true,
+          "born_model": {
+            "d_Born_mode": 0,
+            "solvation_shell_model": false,
+            "dielectric_saturation": false,
+            "bulk_mode": "mix",
+            "mu_born_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true,
+              "comp_dep_delta_d": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "option_id": "current_2025_born_ssm_ds_empirical",
+      "description": "Current 2025 preset with Born term, solvation-shell model, and empirical dielectric rule.",
+      "normalization": "modern_nested_elec_model",
+      "user_options": {
+        "elec_model": "2025"
+      },
+      "resolved_options": {
+        "elec_model_preset": "2025",
+        "legacy_runtime": {
+          "born_model": 5,
+          "born_diff_mode": 0,
+          "born_eps_mode": 0,
+          "DH_model": 1,
+          "dielc_rule": 4,
+          "dielc_diff_mode": 0,
+          "bjeruum_treatment": false
+        },
+        "legacy_elec_model": {
+          "born_contrib": true,
+          "ssm_ds": true,
+          "dielc_rule": "empirical",
+          "dielc_diff_rule": "same",
+          "dielc_diff_mode": "analytic",
+          "born_diff_model": "analytic",
+          "born_diff_options": {
+            "include_sum_term": true,
+            "include_dielc_conc_dep": true,
+            "include_delta_d_i_conc_dep": true
+          },
+          "eps_r_bulk": "mix",
+          "bjeruum_treatment": false
+        }
+      },
+      "clean_parameter_snapshot": {
+        "m": [
+          1.09528,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "s": [
+          2.8898,
+          2.8449,
+          2.8232,
+          2.756,
+          3.0,
+          3.0,
+          3.574
+        ],
+        "e": [
+          365.956,
+          360.0,
+          230.0,
+          170.0,
+          300.0,
+          300.0,
+          230.0
+        ],
+        "e_assoc": [
+          2515.6706,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "vol_a": [
+          0.0348679836,
+          100.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "assoc_scheme": [
+          "2B",
+          "2B",
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "z": [
+          0.0,
+          1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0
+        ],
+        "dielc": [
+          78.09,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0
+        ],
+        "d_born": [
+          0.0,
+          2.784,
+          3.445,
+          4.1,
+          0.0,
+          0.0,
+          3.0
+        ],
+        "f_solv": [
+          1.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "k_ij": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.8,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.317,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.8,
+            0.317,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "elec_model": {
+          "rel_perm": {
+            "rule": "empirical",
+            "differential_mode": "analytic"
+          },
+          "hc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "disp_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "assoc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "DH_model": {
+            "d_ion_mode": 1,
+            "bjeruum_treatment": false,
+            "mu_DH_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true
+            }
+          },
+          "include_born_model": true,
+          "born_model": {
+            "d_Born_mode": 0,
+            "solvation_shell_model": true,
+            "dielectric_saturation": false,
+            "bulk_mode": "mix",
+            "mu_born_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true,
+              "comp_dep_delta_d": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "option_id": "2025_no_born_empirical",
+      "description": "Current 2025 aqueous parameters with Born contribution disabled and empirical dielectric rule retained.",
+      "normalization": "modern_nested_elec_model",
+      "user_options": {
+        "elec_model": {
+          "base": "2025",
+          "born_contrib": false,
+          "dielc_rule": "empirical"
+        }
+      },
+      "resolved_options": {
+        "elec_model_preset": "2025",
+        "legacy_runtime": {
+          "born_model": 0,
+          "born_diff_mode": 0,
+          "born_eps_mode": 0,
+          "DH_model": 1,
+          "dielc_rule": 4,
+          "dielc_diff_mode": 0,
+          "bjeruum_treatment": false
+        },
+        "legacy_elec_model": {
+          "born_contrib": false,
+          "ssm_ds": true,
+          "dielc_rule": "empirical",
+          "dielc_diff_rule": "same",
+          "dielc_diff_mode": "analytic",
+          "born_diff_model": "analytic",
+          "born_diff_options": {
+            "include_sum_term": true,
+            "include_dielc_conc_dep": true,
+            "include_delta_d_i_conc_dep": true
+          },
+          "eps_r_bulk": "mix",
+          "bjeruum_treatment": false,
+          "base": "2025"
+        }
+      },
+      "clean_parameter_snapshot": {
+        "m": [
+          1.09528,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "s": [
+          2.8898,
+          2.8449,
+          2.8232,
+          2.756,
+          3.0,
+          3.0,
+          3.574
+        ],
+        "e": [
+          365.956,
+          360.0,
+          230.0,
+          170.0,
+          300.0,
+          300.0,
+          230.0
+        ],
+        "e_assoc": [
+          2515.6706,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "vol_a": [
+          0.0348679836,
+          100.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "assoc_scheme": [
+          "2B",
+          "2B",
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "z": [
+          0.0,
+          1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0
+        ],
+        "dielc": [
+          78.09,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0
+        ],
+        "d_born": [
+          0.0,
+          2.784,
+          3.445,
+          4.1,
+          0.0,
+          0.0,
+          3.0
+        ],
+        "f_solv": [
+          1.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "k_ij": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.8,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.317,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.8,
+            0.317,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "elec_model": {
+          "rel_perm": {
+            "rule": "empirical",
+            "differential_mode": "analytic"
+          },
+          "hc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "disp_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "assoc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "DH_model": {
+            "d_ion_mode": 1,
+            "bjeruum_treatment": false,
+            "mu_DH_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true
+            }
+          },
+          "include_born_model": false,
+          "born_model": {
+            "d_Born_mode": 0,
+            "solvation_shell_model": true,
+            "dielectric_saturation": false,
+            "bulk_mode": "mix",
+            "mu_born_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true,
+              "comp_dep_delta_d": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "option_id": "2025_no_born_constant_eps",
+      "description": "Current 2025 aqueous parameters with Born contribution disabled and constant dielectric rule.",
+      "normalization": "modern_nested_elec_model",
+      "user_options": {
+        "elec_model": {
+          "base": "2025",
+          "born_contrib": false,
+          "dielc_rule": "constant"
+        }
+      },
+      "resolved_options": {
+        "elec_model_preset": "2025",
+        "legacy_runtime": {
+          "born_model": 0,
+          "born_diff_mode": 0,
+          "born_eps_mode": 0,
+          "DH_model": 1,
+          "dielc_rule": 0,
+          "dielc_diff_mode": 0,
+          "bjeruum_treatment": false
+        },
+        "legacy_elec_model": {
+          "born_contrib": false,
+          "ssm_ds": true,
+          "dielc_rule": "constant",
+          "dielc_diff_rule": "same",
+          "dielc_diff_mode": "analytic",
+          "born_diff_model": "analytic",
+          "born_diff_options": {
+            "include_sum_term": true,
+            "include_dielc_conc_dep": true,
+            "include_delta_d_i_conc_dep": true
+          },
+          "eps_r_bulk": "mix",
+          "bjeruum_treatment": false,
+          "base": "2025"
+        }
+      },
+      "clean_parameter_snapshot": {
+        "m": [
+          1.09528,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "s": [
+          2.8898,
+          2.8449,
+          2.8232,
+          2.756,
+          3.0,
+          3.0,
+          3.574
+        ],
+        "e": [
+          365.956,
+          360.0,
+          230.0,
+          170.0,
+          300.0,
+          300.0,
+          230.0
+        ],
+        "e_assoc": [
+          2515.6706,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "vol_a": [
+          0.0348679836,
+          100.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "assoc_scheme": [
+          "2B",
+          "2B",
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "z": [
+          0.0,
+          1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0
+        ],
+        "dielc": [
+          78.09,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0
+        ],
+        "d_born": [
+          0.0,
+          2.784,
+          3.445,
+          4.1,
+          0.0,
+          0.0,
+          3.0
+        ],
+        "f_solv": [
+          1.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "k_ij": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.8,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.317,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.8,
+            0.317,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "elec_model": {
+          "rel_perm": {
+            "rule": "constant",
+            "differential_mode": "analytic"
+          },
+          "hc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "disp_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "assoc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "DH_model": {
+            "d_ion_mode": 1,
+            "bjeruum_treatment": false,
+            "mu_DH_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true
+            }
+          },
+          "include_born_model": false,
+          "born_model": {
+            "d_Born_mode": 0,
+            "solvation_shell_model": true,
+            "dielectric_saturation": false,
+            "bulk_mode": "mix",
+            "mu_born_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true,
+              "comp_dep_delta_d": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "option_id": "2025_no_born_linear_mole",
+      "description": "Current 2025 aqueous parameters with Born contribution disabled and linear mole-fraction dielectric rule.",
+      "normalization": "modern_nested_elec_model",
+      "user_options": {
+        "elec_model": {
+          "base": "2025",
+          "born_contrib": false,
+          "dielc_rule": "linear-mixing-mole"
+        }
+      },
+      "resolved_options": {
+        "elec_model_preset": "2025",
+        "legacy_runtime": {
+          "born_model": 0,
+          "born_diff_mode": 0,
+          "born_eps_mode": 0,
+          "DH_model": 1,
+          "dielc_rule": 1,
+          "dielc_diff_mode": 0,
+          "bjeruum_treatment": false
+        },
+        "legacy_elec_model": {
+          "born_contrib": false,
+          "ssm_ds": true,
+          "dielc_rule": "linear-mixing-mole",
+          "dielc_diff_rule": "same",
+          "dielc_diff_mode": "analytic",
+          "born_diff_model": "analytic",
+          "born_diff_options": {
+            "include_sum_term": true,
+            "include_dielc_conc_dep": true,
+            "include_delta_d_i_conc_dep": true
+          },
+          "eps_r_bulk": "mix",
+          "bjeruum_treatment": false,
+          "base": "2025"
+        }
+      },
+      "clean_parameter_snapshot": {
+        "m": [
+          1.09528,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "s": [
+          2.8898,
+          2.8449,
+          2.8232,
+          2.756,
+          3.0,
+          3.0,
+          3.574
+        ],
+        "e": [
+          365.956,
+          360.0,
+          230.0,
+          170.0,
+          300.0,
+          300.0,
+          230.0
+        ],
+        "e_assoc": [
+          2515.6706,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "vol_a": [
+          0.0348679836,
+          100.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "assoc_scheme": [
+          "2B",
+          "2B",
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "z": [
+          0.0,
+          1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0
+        ],
+        "dielc": [
+          78.09,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0
+        ],
+        "d_born": [
+          0.0,
+          2.784,
+          3.445,
+          4.1,
+          0.0,
+          0.0,
+          3.0
+        ],
+        "f_solv": [
+          1.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "k_ij": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.8,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.317,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.8,
+            0.317,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "elec_model": {
+          "rel_perm": {
+            "rule": "linear-mixing-mole",
+            "differential_mode": "analytic"
+          },
+          "hc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "disp_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "assoc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "DH_model": {
+            "d_ion_mode": 1,
+            "bjeruum_treatment": false,
+            "mu_DH_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true
+            }
+          },
+          "include_born_model": false,
+          "born_model": {
+            "d_Born_mode": 0,
+            "solvation_shell_model": true,
+            "dielectric_saturation": false,
+            "bulk_mode": "mix",
+            "mu_born_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true,
+              "comp_dep_delta_d": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "option_id": "2025_born_no_ssm_empirical",
+      "description": "Born term retained but solvation-shell/dielectric-saturation option disabled.",
+      "normalization": "modern_nested_elec_model",
+      "user_options": {
+        "elec_model": {
+          "base": "2025",
+          "born_contrib": true,
+          "ssm_ds": false,
+          "dielc_rule": "empirical"
+        }
+      },
+      "resolved_options": {
+        "elec_model_preset": "2025",
+        "legacy_runtime": {
+          "born_model": 1,
+          "born_diff_mode": 0,
+          "born_eps_mode": 0,
+          "DH_model": 1,
+          "dielc_rule": 4,
+          "dielc_diff_mode": 0,
+          "bjeruum_treatment": false
+        },
+        "legacy_elec_model": {
+          "born_contrib": true,
+          "ssm_ds": false,
+          "dielc_rule": "empirical",
+          "dielc_diff_rule": "same",
+          "dielc_diff_mode": "analytic",
+          "born_diff_model": "analytic",
+          "born_diff_options": {
+            "include_sum_term": true,
+            "include_dielc_conc_dep": true,
+            "include_delta_d_i_conc_dep": true
+          },
+          "eps_r_bulk": "mix",
+          "bjeruum_treatment": false,
+          "base": "2025"
+        }
+      },
+      "clean_parameter_snapshot": {
+        "m": [
+          1.09528,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "s": [
+          2.8898,
+          2.8449,
+          2.8232,
+          2.756,
+          3.0,
+          3.0,
+          3.574
+        ],
+        "e": [
+          365.956,
+          360.0,
+          230.0,
+          170.0,
+          300.0,
+          300.0,
+          230.0
+        ],
+        "e_assoc": [
+          2515.6706,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "vol_a": [
+          0.0348679836,
+          100.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "assoc_scheme": [
+          "2B",
+          "2B",
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "z": [
+          0.0,
+          1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0
+        ],
+        "dielc": [
+          78.09,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0
+        ],
+        "d_born": [
+          0.0,
+          2.784,
+          3.445,
+          4.1,
+          0.0,
+          0.0,
+          3.0
+        ],
+        "f_solv": [
+          1.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "k_ij": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.8,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.317,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.8,
+            0.317,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "elec_model": {
+          "rel_perm": {
+            "rule": "empirical",
+            "differential_mode": "analytic"
+          },
+          "hc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "disp_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "assoc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "DH_model": {
+            "d_ion_mode": 1,
+            "bjeruum_treatment": false,
+            "mu_DH_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true
+            }
+          },
+          "include_born_model": true,
+          "born_model": {
+            "d_Born_mode": 0,
+            "solvation_shell_model": false,
+            "dielectric_saturation": false,
+            "bulk_mode": "mix",
+            "mu_born_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true,
+              "comp_dep_delta_d": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "option_id": "2025_born_ssm_no_sum_empirical",
+      "description": "Born plus solvation-shell model retained with the mu Born sum term disabled.",
+      "normalization": "modern_nested_elec_model",
+      "user_options": {
+        "elec_model": {
+          "base": "2025",
+          "born_contrib": true,
+          "ssm_ds": true,
+          "dielc_rule": "empirical",
+          "born_diff_options": {
+            "include_sum_term": false,
+            "include_dielc_conc_dep": true,
+            "include_delta_d_i_conc_dep": true
+          }
+        }
+      },
+      "resolved_options": {
+        "elec_model_preset": "2025",
+        "legacy_runtime": {
+          "born_model": 5,
+          "born_diff_mode": 0,
+          "born_eps_mode": 0,
+          "DH_model": 1,
+          "dielc_rule": 4,
+          "dielc_diff_mode": 0,
+          "bjeruum_treatment": false
+        },
+        "legacy_elec_model": {
+          "born_contrib": true,
+          "ssm_ds": true,
+          "dielc_rule": "empirical",
+          "dielc_diff_rule": "same",
+          "dielc_diff_mode": "analytic",
+          "born_diff_model": "analytic",
+          "born_diff_options": {
+            "include_sum_term": false,
+            "include_dielc_conc_dep": true,
+            "include_delta_d_i_conc_dep": true
+          },
+          "eps_r_bulk": "mix",
+          "bjeruum_treatment": false,
+          "base": "2025"
+        }
+      },
+      "clean_parameter_snapshot": {
+        "m": [
+          1.09528,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "s": [
+          2.8898,
+          2.8449,
+          2.8232,
+          2.756,
+          3.0,
+          3.0,
+          3.574
+        ],
+        "e": [
+          365.956,
+          360.0,
+          230.0,
+          170.0,
+          300.0,
+          300.0,
+          230.0
+        ],
+        "e_assoc": [
+          2515.6706,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "vol_a": [
+          0.0348679836,
+          100.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "assoc_scheme": [
+          "2B",
+          "2B",
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "z": [
+          0.0,
+          1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0
+        ],
+        "dielc": [
+          78.09,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0
+        ],
+        "d_born": [
+          0.0,
+          2.784,
+          3.445,
+          4.1,
+          0.0,
+          0.0,
+          3.0
+        ],
+        "f_solv": [
+          1.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "k_ij": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.8,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.317,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.8,
+            0.317,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "elec_model": {
+          "rel_perm": {
+            "rule": "empirical",
+            "differential_mode": "analytic"
+          },
+          "hc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "disp_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "assoc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "DH_model": {
+            "d_ion_mode": 1,
+            "bjeruum_treatment": false,
+            "mu_DH_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true
+            }
+          },
+          "include_born_model": true,
+          "born_model": {
+            "d_Born_mode": 0,
+            "solvation_shell_model": true,
+            "dielectric_saturation": false,
+            "bulk_mode": "mix",
+            "mu_born_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": false,
+              "comp_dep_delta_d": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "option_id": "2025_born_no_ssm_no_sum_empirical",
+      "description": "Born retained without solvation-shell model and with the mu Born sum term disabled.",
+      "normalization": "modern_nested_elec_model",
+      "user_options": {
+        "elec_model": {
+          "base": "2025",
+          "born_contrib": true,
+          "ssm_ds": false,
+          "dielc_rule": "empirical",
+          "born_diff_options": {
+            "include_sum_term": false,
+            "include_dielc_conc_dep": true,
+            "include_delta_d_i_conc_dep": true
+          }
+        }
+      },
+      "resolved_options": {
+        "elec_model_preset": "2025",
+        "legacy_runtime": {
+          "born_model": 1,
+          "born_diff_mode": 0,
+          "born_eps_mode": 0,
+          "DH_model": 1,
+          "dielc_rule": 4,
+          "dielc_diff_mode": 0,
+          "bjeruum_treatment": false
+        },
+        "legacy_elec_model": {
+          "born_contrib": true,
+          "ssm_ds": false,
+          "dielc_rule": "empirical",
+          "dielc_diff_rule": "same",
+          "dielc_diff_mode": "analytic",
+          "born_diff_model": "analytic",
+          "born_diff_options": {
+            "include_sum_term": false,
+            "include_dielc_conc_dep": true,
+            "include_delta_d_i_conc_dep": true
+          },
+          "eps_r_bulk": "mix",
+          "bjeruum_treatment": false,
+          "base": "2025"
+        }
+      },
+      "clean_parameter_snapshot": {
+        "m": [
+          1.09528,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "s": [
+          2.8898,
+          2.8449,
+          2.8232,
+          2.756,
+          3.0,
+          3.0,
+          3.574
+        ],
+        "e": [
+          365.956,
+          360.0,
+          230.0,
+          170.0,
+          300.0,
+          300.0,
+          230.0
+        ],
+        "e_assoc": [
+          2515.6706,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "vol_a": [
+          0.0348679836,
+          100.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "assoc_scheme": [
+          "2B",
+          "2B",
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "z": [
+          0.0,
+          1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0
+        ],
+        "dielc": [
+          78.09,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0
+        ],
+        "d_born": [
+          0.0,
+          2.784,
+          3.445,
+          4.1,
+          0.0,
+          0.0,
+          3.0
+        ],
+        "f_solv": [
+          1.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "k_ij": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.8,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.317,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.8,
+            0.317,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "elec_model": {
+          "rel_perm": {
+            "rule": "empirical",
+            "differential_mode": "analytic"
+          },
+          "hc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "disp_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "assoc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "DH_model": {
+            "d_ion_mode": 1,
+            "bjeruum_treatment": false,
+            "mu_DH_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true
+            }
+          },
+          "include_born_model": true,
+          "born_model": {
+            "d_Born_mode": 0,
+            "solvation_shell_model": false,
+            "dielectric_saturation": false,
+            "bulk_mode": "mix",
+            "mu_born_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": false,
+              "comp_dep_delta_d": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "option_id": "2025_born_no_comp_dep_rel_perm",
+      "description": "Born retained with composition-dependent relative permittivity disabled in the chemical-potential derivative.",
+      "normalization": "modern_nested_elec_model",
+      "user_options": {
+        "elec_model": {
+          "base": "2025",
+          "born_contrib": true,
+          "ssm_ds": true,
+          "dielc_rule": "empirical",
+          "born_diff_options": {
+            "include_sum_term": true,
+            "include_dielc_conc_dep": false,
+            "include_delta_d_i_conc_dep": false
+          }
+        }
+      },
+      "resolved_options": {
+        "elec_model_preset": "2025",
+        "legacy_runtime": {
+          "born_model": 2,
+          "born_diff_mode": 0,
+          "born_eps_mode": 0,
+          "DH_model": 1,
+          "dielc_rule": 4,
+          "dielc_diff_mode": 0,
+          "bjeruum_treatment": false
+        },
+        "legacy_elec_model": {
+          "born_contrib": true,
+          "ssm_ds": true,
+          "dielc_rule": "empirical",
+          "dielc_diff_rule": "same",
+          "dielc_diff_mode": "analytic",
+          "born_diff_model": "analytic",
+          "born_diff_options": {
+            "include_sum_term": true,
+            "include_dielc_conc_dep": false,
+            "include_delta_d_i_conc_dep": false
+          },
+          "eps_r_bulk": "mix",
+          "bjeruum_treatment": false,
+          "base": "2025"
+        }
+      },
+      "clean_parameter_snapshot": {
+        "m": [
+          1.09528,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "s": [
+          2.8898,
+          2.8449,
+          2.8232,
+          2.756,
+          3.0,
+          3.0,
+          3.574
+        ],
+        "e": [
+          365.956,
+          360.0,
+          230.0,
+          170.0,
+          300.0,
+          300.0,
+          230.0
+        ],
+        "e_assoc": [
+          2515.6706,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "vol_a": [
+          0.0348679836,
+          100.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "assoc_scheme": [
+          "2B",
+          "2B",
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "z": [
+          0.0,
+          1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0
+        ],
+        "dielc": [
+          78.09,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0
+        ],
+        "d_born": [
+          0.0,
+          2.784,
+          3.445,
+          4.1,
+          0.0,
+          0.0,
+          3.0
+        ],
+        "f_solv": [
+          1.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "k_ij": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.8,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.317,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.8,
+            0.317,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "elec_model": {
+          "rel_perm": {
+            "rule": "empirical",
+            "differential_mode": "analytic"
+          },
+          "hc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "disp_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "assoc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "DH_model": {
+            "d_ion_mode": 1,
+            "bjeruum_treatment": false,
+            "mu_DH_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true
+            }
+          },
+          "include_born_model": true,
+          "born_model": {
+            "d_Born_mode": 0,
+            "solvation_shell_model": true,
+            "dielectric_saturation": false,
+            "bulk_mode": "mix",
+            "mu_born_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": false,
+              "include_sum_term": true,
+              "comp_dep_delta_d": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "option_id": "2025_born_solvent_bulk_empirical",
+      "description": "Born retained but bulk relative permittivity taken from the solvent mode instead of mixture mode.",
+      "normalization": "modern_nested_elec_model",
+      "user_options": {
+        "elec_model": {
+          "base": "2025",
+          "born_contrib": true,
+          "ssm_ds": true,
+          "dielc_rule": "empirical",
+          "eps_r_bulk": "solvent"
+        }
+      },
+      "resolved_options": {
+        "elec_model_preset": "2025",
+        "legacy_runtime": {
+          "born_model": 5,
+          "born_diff_mode": 0,
+          "born_eps_mode": 1,
+          "DH_model": 1,
+          "dielc_rule": 4,
+          "dielc_diff_mode": 0,
+          "bjeruum_treatment": false
+        },
+        "legacy_elec_model": {
+          "born_contrib": true,
+          "ssm_ds": true,
+          "dielc_rule": "empirical",
+          "dielc_diff_rule": "same",
+          "dielc_diff_mode": "analytic",
+          "born_diff_model": "analytic",
+          "born_diff_options": {
+            "include_sum_term": true,
+            "include_dielc_conc_dep": true,
+            "include_delta_d_i_conc_dep": true
+          },
+          "eps_r_bulk": "solvent",
+          "bjeruum_treatment": false,
+          "base": "2025"
+        }
+      },
+      "clean_parameter_snapshot": {
+        "m": [
+          1.09528,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "s": [
+          2.8898,
+          2.8449,
+          2.8232,
+          2.756,
+          3.0,
+          3.0,
+          3.574
+        ],
+        "e": [
+          365.956,
+          360.0,
+          230.0,
+          170.0,
+          300.0,
+          300.0,
+          230.0
+        ],
+        "e_assoc": [
+          2515.6706,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "vol_a": [
+          0.0348679836,
+          100.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "assoc_scheme": [
+          "2B",
+          "2B",
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "z": [
+          0.0,
+          1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0
+        ],
+        "dielc": [
+          78.09,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0
+        ],
+        "d_born": [
+          0.0,
+          2.784,
+          3.445,
+          4.1,
+          0.0,
+          0.0,
+          3.0
+        ],
+        "f_solv": [
+          1.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "k_ij": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.8,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.317,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.8,
+            0.317,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "elec_model": {
+          "rel_perm": {
+            "rule": "empirical",
+            "differential_mode": "analytic"
+          },
+          "hc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "disp_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "assoc_model": {
+            "dadx_differential_mode": "analytical"
+          },
+          "DH_model": {
+            "d_ion_mode": 1,
+            "bjeruum_treatment": false,
+            "mu_DH_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true
+            }
+          },
+          "include_born_model": true,
+          "born_model": {
+            "d_Born_mode": 0,
+            "solvation_shell_model": true,
+            "dielectric_saturation": false,
+            "bulk_mode": "solvent",
+            "mu_born_model": {
+              "differential_mode": "analytic",
+              "comp_dep_rel_perm": true,
+              "include_sum_term": true,
+              "comp_dep_delta_d": true
+            }
+          }
+        }
+      }
+    }
+  ],
+  "failed_options": [
+    {
+      "option_id": "2025_bjeruum_on",
+      "description": "Current 2025 preset with Bjerrum treatment enabled.",
+      "user_options": {
+        "elec_model": "2025",
+        "bjeruum_treatment": true
+      },
+      "error_type": "ValueError",
+      "message": "Bjerrum treatment is reserved and not implemented (DH_model=2)."
+    }
+  ]
+}

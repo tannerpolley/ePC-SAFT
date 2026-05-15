@@ -160,6 +160,7 @@ struct ReactivePhaseResidualEvaluationNative {
     std::vector<double> element_balance_residuals;
     std::vector<double> reaction_residuals_phase1;
     std::vector<double> reaction_residuals_phase2;
+    std::vector<double> reaction_residuals_cross_phase;
     std::vector<double> neutral_phase_equilibrium_residuals;
     std::vector<double> ionic_equilibrium_residuals;
     std::vector<double> phase_charge_residuals;
@@ -251,6 +252,7 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     int reaction_rows,
     const std::vector<double>& log_equilibrium_constants,
     const std::vector<int>& reaction_standard_states,
+    const std::vector<double>& reaction_phase_stoichiometry_row_major = {},
     const std::vector<double>& variables = {},
     bool has_variables = false,
     const std::vector<double>& initial_phase1 = {},
@@ -272,6 +274,7 @@ EquilibriumResultNative reactive_phase_equilibrium_native(
     int reaction_rows,
     const std::vector<double>& log_equilibrium_constants,
     const std::vector<int>& reaction_standard_states,
+    const std::vector<double>& reaction_phase_stoichiometry_row_major = {},
     const std::vector<double>& initial_phase1 = {},
     const std::vector<double>& initial_phase2 = {},
     double initial_phase_fraction_phase2 = 0.5,
