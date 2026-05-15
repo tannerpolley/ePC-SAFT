@@ -1,0 +1,502 @@
+version: 2
+
+goal:
+  title: "Native LLE and Reactive Production Solvers"
+  slug: "native-lle-reactive-production-solvers"
+  kind: existing_plan
+  tranche: "Execute GitHub issues #116 and #117 as a dependency-gated production-solver implementation tranche."
+  status: active
+  intake:
+    original_request: "Read issue #116 and #117 on GitHub and set up a GoalBuddy board for all phases to follow issue #116 and #117 explicitly in all of its steps."
+    interpreted_outcome: "A GoalBuddy board exists that operationalizes every phase of issues #116 and #117, with #117 gated behind #116 and with explicit proof requirements."
+    input_shape: existing_plan
+    audience: "ePC-SAFT package maintainers and downstream consumers"
+    authority: requested
+    proof_type: artifact
+    completion_proof: "Final audit maps completed receipts and passing validation back to every definition-of-done line in GitHub issues #116 and #117."
+    likely_misfire: "Treating inventory, diagnostics, staged routes, synthetic fixtures, capability labels, or limitation notes as completion."
+    blind_spots_considered:
+      - "Dependency PR ancestry and current origin/main state must be verified before source edits."
+      - "Issue #117 depends on issue #116 production solver completion unless both are implemented in one branch with #116 first."
+      - "Goal and source text must avoid exact banned backend-policy tokens from the master roadmap."
+      - "Public APIs must remain generic and must not expose downstream application metrics."
+    existing_plan_facts:
+      - "Issue #116: replace hand-coded electrolyte LLE minimizers with a Ceres trust-region residual solve on transformed variables."
+      - "Issue #116: production route must report residuals, charge balance, material balance, phase distance, and derivative provenance from solved state."
+      - "Issue #116: required stages are dependency gate, intake, native solver ownership, distributed-ion basis, transformed variables, residual vector, Jacobian, Ceres solve, TPD/g-hat use, Python API, benchmarks/tests, validation, and definition-of-done audit."
+      - "Issue #117: replace staged reactive phase equilibrium with one coupled native reactive phase-equilibrium residual solve."
+      - "Issue #117: required stages are dependency gate, intake, native solver ownership, coupled variables, coupled residual vector, Jacobian and solved-state sensitivities, Ceres solve, use of #115/#116 only as subcomponents, Python API, benchmarks, tests, validation, and definition-of-done audit."
+      - "GitHub sources read: https://github.com/tannerpolley/ePC-SAFT/issues/116 and https://github.com/tannerpolley/ePC-SAFT/issues/117."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://127.0.0.1:41737/native-lle-reactive-production-solvers/"
+    command: "C:\\Users\\Tanner\\Documents\\git\\codex-maintenance\\scripts\\start-goalbuddy-board.ps1 -Goal docs/goals/native-lle-reactive-production-solvers"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: T001
+
+tasks:
+  - id: T001
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: high
+    objective: "Perform the shared dependency gate and create the exact issue-required intake notes before any source edits."
+    inputs:
+      - "GitHub issue #116"
+      - "GitHub issue #117"
+      - "docs/roadmaps/FULL_ROADMAP.md"
+      - "git fetch origin --prune"
+      - "git merge --ff-only origin/main"
+      - "git status --short"
+    constraints:
+      - "May edit only docs/goals/native-lle-reactive-production-solvers/**, docs/goals/native-electrolyte-lle-distributed-ions/notes/intake.md, docs/goals/native-coupled-reactive-lle/notes/dependency_gate.md, and docs/goals/native-coupled-reactive-lle/notes/intake.md."
+      - "No source, test, build, API, or benchmark edits before the issue-required intake notes are complete."
+      - "Record origin/main SHA, current branch, dependency PR ancestry, current production routes, old solver labels/routes, missing Jacobian behavior, and chosen fixtures."
+      - "If the branch cannot fast-forward to origin/main, stop implementation and record the blocker."
+    expected_output:
+      - "docs/goals/native-electrolyte-lle-distributed-ions/notes/intake.md completed for issue #116 Stage 0."
+      - "docs/goals/native-coupled-reactive-lle/notes/dependency_gate.md completed for issue #117 dependency gate."
+      - "docs/goals/native-coupled-reactive-lle/notes/intake.md completed for issue #117 Stage 0."
+      - "Receipt with origin/main SHA, branch, dependency status, selected fixtures, and source-edit gate status."
+    receipt: null
+
+  - id: T002
+    type: scout
+    assignee: Scout
+    status: queued
+    reasoning_hint: medium
+    objective: "Map issue #116 current electrolyte LLE routes, solver labels, hand-coded minimizer paths, residual/Jacobian gaps, Python API path, and tests that would still pass on the old route."
+    inputs:
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/electrolyte_lle.py"
+      - "tests/equilibrium/electrolyte/"
+      - "tests/native/equilibrium/"
+    constraints:
+      - "Read-only."
+      - "Use issue #116 stage names and report concrete file/function evidence."
+      - "Do not propose completion by inventory or diagnostics."
+    expected_output:
+      - "Current neutral and electrolyte LLE production route evidence."
+      - "All hand-coded simplex/Powell/Nelder-Mead-style helpers found."
+      - "Current newton_step behavior and electrolyte residual sensitivity gaps."
+      - "Candidate Ascani-style and salting-out fixtures."
+      - "Candidate next Worker package boundaries."
+    receipt: null
+
+  - id: T003
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Approve the issue #116 implementation package boundaries and verification gates before source edits."
+    inputs:
+      - "T001 receipt"
+      - "T002 receipt"
+      - "GitHub issue #116"
+      - "docs/roadmaps/FULL_ROADMAP.md"
+    constraints:
+      - "Do not implement."
+      - "Reject any plan that leaves accepted production electrolyte LLE on hand-coded simplex/Powell/Nelder-Mead routes."
+      - "Reject any plan without production Jacobian proof and benchmark assertions."
+      - "Choose the largest safe useful #116 Worker slices with explicit allowed_files, verify commands, and stop_if clauses."
+    expected_output:
+      - "Decision for #116 source-edit readiness."
+      - "Worker package boundaries for #116 stages 1-10."
+      - "Required allowed_files, verify commands, and stop conditions."
+    receipt: null
+
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Implement issue #116 Stages 1-3: native electrolyte LLE solver ownership, distributed-ion basis, diagnostics basis report, and transformed feasible variables."
+    allowed_files:
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "src/epcsaft/native/equilibrium/**"
+      - "tests/native/equilibrium/**"
+      - "docs/goals/native-electrolyte-lle-distributed-ions/notes/variable_transform.md"
+    constraints:
+      - "Separate basis construction, variable pack/unpack, residual evaluation, Jacobian evaluation, Ceres solve, diagnostic construction, and benchmark routing."
+      - "Represent public species explicitly, including ions; formula variables may be only coordinates."
+      - "Add diagnostics for variable_model, basis_rank, basis_vectors, charged and neutral species indices, and phase charge balances."
+      - "Reject infeasible transformed candidates before accepted reporting."
+    verify:
+      - "uv run python run_pytest.py tests/native/equilibrium -q"
+    stop_if:
+      - "Need source files outside allowed_files."
+      - "Cannot satisfy electroneutral independent ion-combination basis."
+      - "Transform cannot enforce or diagnose material and charge balance."
+      - "Verification fails twice for the same unexplained reason."
+    receipt: null
+
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Implement issue #116 Stages 4-6: electrolyte LLE residual blocks, scaled norms, production Jacobian, and Ceres trust-region residual solve."
+    allowed_files:
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "src/epcsaft/native/equilibrium/**"
+      - "tests/native/equilibrium/test_electrolyte_lle_ceres_solver.py"
+      - "tests/native/equilibrium/test_electrolyte_lle_residual_jacobian.py"
+    constraints:
+      - "Residuals must include neutral phase equilibrium and electroneutral ion-combination equilibrium."
+      - "Material and charge balance must be residuals or explicit diagnostics depending on transform enforcement."
+      - "Diagnostics must include neutral fugacity, ionic equilibrium, material balance, phase charge, phase distance, scaled, and unscaled norms."
+      - "Production Jacobian must be analytic, CppAD, analytic-implicit, CppAD-implicit, or Ceres-with-CppAD provenance."
+      - "Ceres diagnostics must report backend, method, trust-region strategy, linear solver, termination, costs, iterations, Jacobian backend, derivative backend, and jacobian_available true."
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-ceres --enable-cppad"
+      - "uv run python run_pytest.py tests/native/equilibrium/test_electrolyte_lle_ceres_solver.py tests/native/equilibrium/test_electrolyte_lle_residual_jacobian.py -q"
+    stop_if:
+      - "CppAD or implicit sensitivity path cannot be made for a required residual."
+      - "Accepted production diagnostics can still report old hand-coded minimizer labels."
+      - "Ceres solve cannot produce finite residual/Jacobian diagnostics on a repo-contained fixture."
+    receipt: null
+
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Implement issue #116 Stages 7-9: constrain TPD/g-hat to seed/stability roles, wire the generic Python API, and add distributed-ion and salting-out benchmark tests."
+    allowed_files:
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "src/epcsaft/native/equilibrium/**"
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/electrolyte_lle.py"
+      - "tests/equilibrium/electrolyte/test_distributed_ion_lle_production_solver.py"
+      - "tests/equilibrium/electrolyte/test_salting_out_lle_benchmark.py"
+      - "tests/api/equilibrium/test_electrolyte_lle_problem_production_route.py"
+      - "tests/native/equilibrium/**"
+    constraints:
+      - "TPD and g-hat may support stability, trial phase generation, seed selection, phase-count decisions, post-solve stability checks, and acceptance checks only."
+      - "No TPD-only or g-hat-only accepted LLE result."
+      - "Python may validate and format, but must not own the production solve loop."
+      - "Benchmarks must assert two phases, finite densities, composition normalization, phase charge balance, material balance, residual norms, g-hat split support, phase distance, solver_backend ceres, and jacobian_available true."
+    verify:
+      - "uv run python run_pytest.py tests/equilibrium/electrolyte -q"
+      - "uv run python run_pytest.py tests/api/equilibrium/test_electrolyte_lle_problem_production_route.py -q"
+    stop_if:
+      - "Required benchmark data cannot be repo-contained without fabrication."
+      - "Accepted production route still depends on staged or hand-coded minimizer output."
+      - "Generic API would need downstream-specific metric names."
+    receipt: null
+
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: medium
+    objective: "Run issue #116 Stage 10 validation and targeted guard searches, then repair only failures within #116 scope."
+    allowed_files:
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "src/epcsaft/native/equilibrium/**"
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/electrolyte_lle.py"
+      - "tests/native/equilibrium/**"
+      - "tests/equilibrium/electrolyte/**"
+      - "tests/equilibrium/core/**"
+      - "tests/api/equilibrium/**"
+      - "docs/goals/native-electrolyte-lle-distributed-ions/notes/**"
+    constraints:
+      - "Use the exact issue #116 validation ladder unless a command is impossible; record exact blockers."
+      - "Any remaining route-guard match must be justified as rejected old path, compatibility-only route, or test asserting the old route is not accepted."
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-ceres --enable-cppad"
+      - "uv run python run_pytest.py tests/native/equilibrium -q"
+      - "uv run python run_pytest.py tests/equilibrium/electrolyte -q"
+      - "uv run python run_pytest.py tests/equilibrium/core -q"
+      - "uv run python run_pytest.py tests/api/equilibrium -q"
+      - "uv run python scripts/dev/validate_project.py quick"
+      - "uv run python scripts/dev/validate_project.py docs"
+      - "git diff --check"
+      - "rg \"native_derivative_free_nelder_mead|not_required.*phase split solve|newton_step\\(.*not_available|reactive_staged_equilibrium\" src tests docs"
+    stop_if:
+      - "Validation failure indicates missing production Jacobian or missing Ceres backend rather than a narrow repair."
+      - "A remaining guard match could be interpreted as accepted production behavior."
+      - "Full validation is too expensive or blocked without a clear narrower proof path."
+    receipt: null
+
+  - id: T008
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Audit issue #116 definition of done and decide whether #117 may start."
+    inputs:
+      - "T001 through T007 receipts"
+      - "GitHub issue #116 definition of done"
+      - "Last validation output"
+      - "Current diff"
+    constraints:
+      - "Do not implement."
+      - "Reject #116 completion if accepted electrolyte LLE is not solved by Ceres trust-region residual solve."
+      - "Reject #116 completion if production residuals, production Jacobian, explicit distributed-ion diagnostics, electroneutral phases, benchmark proof, generic Python API, or validation commands are missing."
+      - "If #116 is incomplete, create the next #116 Worker task instead of starting #117."
+    expected_output:
+      - "approved_for_117 true or false"
+      - "Full #116 definition-of-done mapping"
+      - "Missing evidence and next task if not approved"
+    receipt: null
+
+  - id: T009
+    type: scout
+    assignee: Scout
+    status: queued
+    reasoning_hint: medium
+    objective: "Map issue #117 current reactive phase-equilibrium routes, staged production behavior, native chemical-equilibrium path, #116 solver availability, and tests that would still pass on staged behavior."
+    inputs:
+      - "T008 receipt"
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/reactive.py"
+      - "src/epcsaft/reactive_speciation.py"
+      - "src/epcsaft/reactive_staged.py"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.h"
+      - "tests/equilibrium/reactive/"
+      - "tests/api/reactive/"
+      - "tests/native/equilibrium/"
+    constraints:
+      - "Read-only."
+      - "Do not start #117 source edits unless T008 approved #116 or explicitly selected same-branch #116-first continuation."
+      - "Use issue #117 stage names and report concrete file/function evidence."
+    expected_output:
+      - "Current ReactivePhaseEquilibriumProblem.solve route."
+      - "Current reactive_staged_equilibrium route and staged-test gaps."
+      - "Current native chemical-equilibrium route from #115."
+      - "Current #116 neutral/electrolyte LLE production solver route."
+      - "Candidate neutral reactive LLE and reactive electrolyte LLE fixtures."
+    receipt: null
+
+  - id: T010
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Approve issue #117 implementation package boundaries and verification gates before reactive source edits."
+    inputs:
+      - "T008 receipt"
+      - "T009 receipt"
+      - "GitHub issue #117"
+      - "docs/roadmaps/FULL_ROADMAP.md"
+    constraints:
+      - "Do not implement."
+      - "Reject any plan where ReactivePhaseEquilibriumProblem production remains chemical-then-phase staged."
+      - "Reject any plan where reaction and phase residuals are evaluated from different solved states."
+      - "Reject any plan without production Jacobian and coupled benchmark proof."
+    expected_output:
+      - "Decision for #117 source-edit readiness."
+      - "Worker package boundaries for #117 stages 1-10."
+      - "Required allowed_files, verify commands, and stop conditions."
+    receipt: null
+
+  - id: T011
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Implement issue #117 Stages 1-3: native coupled reactive solver ownership, coupled variables, and coupled residual vector."
+    allowed_files:
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/reactive.py"
+      - "src/epcsaft/reactive_speciation.py"
+      - "src/epcsaft/reactive_staged.py"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.h"
+      - "src/epcsaft/native/equilibrium/**"
+      - "tests/native/equilibrium/**"
+    constraints:
+      - "Separate problem construction, phase/species masks, variable pack/unpack, reaction residuals, phase residuals, charge residuals, Jacobian evaluation, Ceres solve, and diagnostics."
+      - "Represent phase fractions, phase compositions/species amounts, reaction extents, ion-combination variables where charged species exist, and density/pressure closure variables if required."
+      - "Residuals must include element or material balance, reaction equilibrium from ePC-SAFT activities, neutral interphase equilibrium, ionic interphase equilibrium, charge balance, normalization when needed, and closure residuals where required."
+      - "All mole numbers must remain nonnegative through transforms, not post-solve clamping."
+    verify:
+      - "uv run python run_pytest.py tests/native/equilibrium -q"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Cannot represent reaction and phase residuals in one solved state."
+      - "Charged phase charge balance cannot be enforced or diagnosed."
+      - "Verification fails twice for the same unexplained reason."
+    receipt: null
+
+  - id: T012
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Implement issue #117 Stages 4-6: coupled Jacobian, solved-state sensitivity diagnostics, Ceres solve, and strict use of #115/#116 only as subcomponents."
+    allowed_files:
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/reactive.py"
+      - "src/epcsaft/reactive_speciation.py"
+      - "src/epcsaft/reactive_staged.py"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.h"
+      - "src/epcsaft/native/equilibrium/**"
+      - "tests/native/equilibrium/test_reactive_phase_equilibrium_ceres_solver.py"
+      - "tests/native/equilibrium/test_reactive_phase_equilibrium_residual_jacobian.py"
+    constraints:
+      - "Production residual solve must expose a real Jacobian through CppAD, analytic blocks, or implicit solved-state sensitivities."
+      - "Diagnostics must include jacobian_available true, jacobian_backend, solved_state_sensitivity_available true, and solved_state_sensitivity_backend."
+      - "Ceres diagnostics must include solver_backend ceres and method ceres_trust_region_coupled_reactive_phase_equilibrium."
+      - "#115 native activity speciation, #116 electrolyte LLE, TPD/g-hat, and staged routes may only initialize, compare, or choose seeds; final result must come from one coupled residual solve."
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-ceres --enable-cppad"
+      - "uv run python run_pytest.py tests/native/equilibrium/test_reactive_phase_equilibrium_ceres_solver.py tests/native/equilibrium/test_reactive_phase_equilibrium_residual_jacobian.py -q"
+    stop_if:
+      - "Coupled Jacobian cannot be produced for required residuals."
+      - "Accepted production diagnostics can still report staged reactive equilibrium."
+      - "Reaction and phase residuals come from different solved states."
+    receipt: null
+
+  - id: T013
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Implement issue #117 Stages 7-9: generic Python route, neutral reactive LLE benchmark, reactive electrolyte LLE benchmark, and tests that reject staged production behavior."
+    allowed_files:
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/reactive.py"
+      - "src/epcsaft/reactive_speciation.py"
+      - "src/epcsaft/reactive_staged.py"
+      - "src/epcsaft/native/**"
+      - "tests/equilibrium/reactive/test_reactive_lle_coupled_solver.py"
+      - "tests/equilibrium/reactive/test_reactive_electrolyte_lle_coupled_solver.py"
+      - "tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py"
+      - "tests/api/reactive/test_staged_reactive_route_not_production.py"
+      - "tests/native/equilibrium/**"
+    constraints:
+      - "ReactivePhaseEquilibriumProblem.solve must route production reactive LLE and reactive electrolyte LLE cases to native coupled production solve."
+      - "Any staged compatibility route must be clearly separate and must not be the production implementation."
+      - "Benchmarks must check reaction, phase, ionic where relevant, material, element, charge, phase distance, compositions, amounts, extents, solver backend, solver method, Jacobian backend, and derivative backend."
+      - "Package public API must not expose downstream extraction, selectivity, efficiency, absorber, or solvent-screening metrics."
+    verify:
+      - "uv run python run_pytest.py tests/equilibrium/reactive -q"
+      - "uv run python run_pytest.py tests/api/reactive -q"
+    stop_if:
+      - "Required benchmark data cannot be repo-contained without fabrication."
+      - "ReactivePhaseEquilibriumProblem.solve still calls staged route for production."
+      - "Public API would need application-specific metric names."
+    receipt: null
+
+  - id: T014
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: medium
+    objective: "Run issue #117 Stage 10 validation and targeted route guards, then repair only failures within #117 scope."
+    allowed_files:
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/reactive.py"
+      - "src/epcsaft/reactive_speciation.py"
+      - "src/epcsaft/reactive_staged.py"
+      - "src/epcsaft/native/**"
+      - "tests/native/equilibrium/**"
+      - "tests/equilibrium/reactive/**"
+      - "tests/api/reactive/**"
+      - "docs/goals/native-coupled-reactive-lle/notes/**"
+    constraints:
+      - "Use the exact issue #117 validation ladder unless a command is impossible; record exact blockers."
+      - "Any remaining route-guard match must be justified as compatibility-only, initialization-only, or test proving the old route is not production."
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-ceres --enable-cppad"
+      - "uv run python run_pytest.py tests/native/equilibrium -q"
+      - "uv run python run_pytest.py tests/equilibrium/reactive -q"
+      - "uv run python run_pytest.py tests/api/reactive -q"
+      - "uv run python scripts/dev/validate_project.py quick"
+      - "uv run python scripts/dev/validate_project.py docs"
+      - "git diff --check"
+      - "rg \"ReactivePhaseEquilibriumProblem|reactive_staged_equilibrium|staged chemical|native_derivative_free_nelder_mead|not_required.*phase\" src tests docs"
+    stop_if:
+      - "Validation failure indicates missing coupled production solve or missing production Jacobian rather than a narrow repair."
+      - "A remaining guard match could be interpreted as accepted production staged behavior."
+      - "Full validation is too expensive or blocked without a clear narrower proof path."
+    receipt: null
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Final audit: prove the full original outcome and both GitHub issue definitions of done are complete."
+    inputs:
+      - "All task receipts"
+      - "GitHub issue #116 definition of done"
+      - "GitHub issue #117 definition of done"
+      - "docs/roadmaps/FULL_ROADMAP.md completion standard"
+      - "Last validation output"
+      - "git status --short"
+      - "Current diff"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if any required Worker task remains queued, active, or unjustifiably skipped."
+      - "Reject completion unless #116 and #117 accepted production paths use Ceres trust-region residual solves with production Jacobians."
+      - "Reject completion unless public generic APIs exercise the workflows and benchmark/test evidence is real, executable, and tolerance-checked."
+      - "Reject completion if route guards show accepted old production paths, staged production results, or manual numeric perturbation Jacobians."
+    expected_output:
+      - "complete or not_complete"
+      - "full_outcome_complete: true or false"
+      - "Issue #116 definition-of-done mapping."
+      - "Issue #117 definition-of-done mapping."
+      - "Downstream workflow unlocked."
+      - "Production native code path."
+      - "Derivative path used."
+      - "Real data or benchmark proof."
+      - "Public API proof."
+      - "Tests that would fail on regression."
+      - "Next task if not complete."
+    receipt: null
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: unknown
+    task: null
+    commands: []
