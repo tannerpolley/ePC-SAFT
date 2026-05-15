@@ -27,7 +27,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.parse_args(argv)
     try:
         package, core = _load_modules()
-    except Exception as exc:
+    except (ImportError, OSError) as exc:
         print(_failure_message(exc))
         return 1
 

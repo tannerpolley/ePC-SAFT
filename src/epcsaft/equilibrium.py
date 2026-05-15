@@ -12,6 +12,14 @@ import numpy as np
 from ._types import InputError, SolutionError
 from .equilibrium_core.electrolyte_basis import build_electrolyte_basis
 
+_SOLVER_EVALUATION_ERRORS = (
+    InputError,
+    SolutionError,
+    ValueError,
+    RuntimeError,
+    ArithmeticError,
+)
+
 _ASCANI_2022_REFERENCE = {
     "authors": "Ascani, Sadowski, and Held",
     "year": 2022,
@@ -983,7 +991,7 @@ def _phase_state(
         state = mixture.state(T=T, P=P, x=composition, phase=label)
     except SolutionError:
         raise
-    except Exception as exc:
+    except (InputError, ValueError, RuntimeError, ArithmeticError) as exc:
         raise SolutionError(f"Failed to construct {label} phase during {context}: {exc}") from exc
     diagnostics = state.state_diagnostics(species=mixture.species) if options.include_phase_diagnostics else None
     return {
@@ -1522,7 +1530,7 @@ def _neutral_bubble_dew_outer(
                 incipient_phase=incipient_phase,
                 options=options,
             )
-        except Exception as exc:
+        except _SOLVER_EVALUATION_ERRORS as exc:
             failures.append({"variable": str(float(candidate)), "message": str(exc)})
             continue
         evaluations.append(evaluation)
@@ -1559,7 +1567,7 @@ def _neutral_bubble_dew_outer(
                     incipient_phase=incipient_phase,
                     options=options,
                 )
-            except Exception as exc:
+            except _SOLVER_EVALUATION_ERRORS as exc:
                 failures.append({"variable": str(float(candidate)), "message": str(exc)})
                 continue
             evaluations.append(evaluation)

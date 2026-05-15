@@ -1,4 +1,4 @@
-"""Staged reactive-equilibrium workflow helpers."""
+"""Sequential reactive-equilibrium workflow helpers, not a full reactive flash."""
 
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ class ReactiveStagedEquilibriumResult:
         object.__setattr__(self, "diagnostics", dict(self.diagnostics))
 
     def to_dict(self) -> dict[str, Any]:
-        """Return a JSON-like staged workflow payload."""
+        """Return a JSON-like sequential workflow payload."""
         phase_payload = self.phase.to_dict() if hasattr(self.phase, "to_dict") else self.phase
         return {
             "success": self.success,
@@ -61,9 +61,9 @@ def solve_reactive_staged_equilibrium(
     phase_kwargs: Mapping[str, Any] | None = None,
     workflow_options: Mapping[str, Any] | None = None,
 ) -> ReactiveStagedEquilibriumResult:
-    """Solve chemical equilibrium first, then pass the staged feed to a phase route.
+    """Solve chemical equilibrium first, then pass the speciated feed to a phase route.
 
-    This helper is intentionally staged and explicit; it does not claim to be a
+    This helper is intentionally sequential and explicit; it does not claim to be a
     fully coupled reactive flash calculation.
     """
     labels = [str(label) for label in species]
@@ -71,10 +71,10 @@ def solve_reactive_staged_equilibrium(
     if not kind:
         raise InputError("phase_kind must be a non-empty equilibrium route label.")
     if kind == "reactive_flash_tp":
-        raise InputError("reactive_flash_tp is not exposed; use an explicit staged phase_kind.")
+        raise InputError("reactive_flash_tp is not exposed; use an explicit downstream phase_kind.")
     extra_phase_kwargs = dict(phase_kwargs or {})
     if "z" in extra_phase_kwargs:
-        raise InputError("phase_kwargs must not include z; the staged chemical composition is used as the feed.")
+        raise InputError("phase_kwargs must not include z; the chemical-equilibrium composition is used as the feed.")
     if "kind" in extra_phase_kwargs:
         raise InputError("phase_kwargs must not include kind; use phase_kind.")
     workflow = _normalize_workflow_options(workflow_options)
@@ -146,7 +146,7 @@ def solve_reactive_staged_equilibrium(
     }
     return ReactiveStagedEquilibriumResult(
         success=success,
-        message="converged" if success else "staged reactive equilibrium did not converge",
+        message="converged" if success else "sequential reactive equilibrium did not converge",
         z=z,
         chemical=chemical,
         phase=phase,
@@ -232,10 +232,10 @@ def _normalize_workflow_options(workflow_options: Mapping[str, Any] | None) -> d
     }
     reaction_constant_fitting = aliases.get(reaction_constant_fitting, reaction_constant_fitting)
     if reaction_constant_fitting in {"primary", "default", "required", "blocking"}:
-        raise InputError("reaction-constant fitting is not a staged default; keep constants fixed/literature first.")
+        raise InputError("reaction-constant fitting is not a default in sequential workflows; keep constants fixed/literature first.")
     if reaction_constant_fitting != "secondary_optional":
         raise InputError(
-            "workflow_options.reaction_constant_fitting must be 'secondary_optional' for staged workflows."
+            "workflow_options.reaction_constant_fitting must be 'secondary_optional' for sequential workflows."
         )
     return {"reaction_constant_fitting": reaction_constant_fitting}
 

@@ -15,6 +15,21 @@ from .implicit_sensitivity import (
     implicit_backend_for_residual_backend,
 )
 
+_SPECIATION_EVALUATION_ERRORS = (
+    InputError,
+    SolutionError,
+    ValueError,
+    RuntimeError,
+    ArithmeticError,
+    np.linalg.LinAlgError,
+)
+_COMPOSITION_NORMALIZATION_ERRORS = (
+    InputError,
+    TypeError,
+    ValueError,
+    ArithmeticError,
+)
+
 _REACTION_STANDARD_STATES = {
     "mole_fraction_activity": 0,
     "ideal_mole_fraction": 1,
@@ -712,7 +727,7 @@ def _solve_reactive_speciation_activity_fixed_point(
                 reactions=reactions,
                 options=options,
             )
-        except Exception:
+        except _SPECIATION_EVALUATION_ERRORS:
             state_failure_count += 1
             raise
         activity_evaluation_count += int(activity_payload.get("activity_evaluation_count", 0))
@@ -894,7 +909,7 @@ def _try_scalar_binary_activity_solve(
     for point in grid:
         try:
             residual, payload = evaluate(float(point))
-        except Exception:
+        except _SPECIATION_EVALUATION_ERRORS:
             continue
         if np.isfinite(residual):
             values.append((float(point), residual, payload))
@@ -1441,7 +1456,7 @@ def _structured_failure_result(
 ) -> ReactiveSpeciationResult:
     try:
         x_array = _normalize_composition(point.get("initial_x"), len(species), options.min_mole_fraction)
-    except Exception:
+    except _COMPOSITION_NORMALIZATION_ERRORS:
         x_array = np.full(len(species), 1.0 / max(len(species), 1), dtype=float)
     x = {label: float(value) for label, value in zip(species, x_array)}
     diagnostics = {

@@ -1,0 +1,11 @@
+Command:
+git ls-files | rg "(__pycache__|\.pyc$|\.pyo$|\.pyd$|\.so$|\.dll$|\.dylib$|\.egg-info/|(^|/)build/|(^|/)dist/)"
+
+Output:
+tests/workflows/build/__init__.py
+tests/workflows/build/test_build_backend.py
+tests/workflows/build/test_build_epcsaft.py
+tests/workflows/build/test_build_epcsaft_script.py
+
+Classification:
+These paths are intentional workflow test files under tests/workflows/build, not generated build artifacts. They are explicitly unignored in .gitignore and must not be removed as generated clutter.

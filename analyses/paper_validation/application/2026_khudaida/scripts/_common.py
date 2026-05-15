@@ -47,9 +47,9 @@ platform.machine = _fast_machine
 
 import scripts._epcsaft_oop as pcs
 import epcsaft
-from epcsaft.equilibrium_core.confidence import explicit_to_formula
-from epcsaft.equilibrium_core.confidence import formula_to_explicit
-from epcsaft.equilibrium_core.confidence import material_balanced_initial_phases
+from scripts.validation.equilibrium_core.confidence import explicit_to_formula
+from scripts.validation.equilibrium_core.confidence import formula_to_explicit
+from scripts.validation.equilibrium_core.confidence import material_balanced_initial_phases
 from epcsaft.parameters import get_prop_dict
 
 P_REF = 1.0e5

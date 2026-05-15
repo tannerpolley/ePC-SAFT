@@ -12,8 +12,8 @@ and package workflow status. The important backend labels are:
   iteration while native states and fugacity calculations own thermodynamics.
 * ``python_batched_native_solvers``: Python batches rows and manages seeds;
   native solvers evaluate thermodynamics and residuals.
-* ``legacy wrapper``: compatibility path retained for older callers.
-* ``experimental IPOPT``: explicit opt-in residual-minimization refinement.
+* ``legacy wrapper``: compatibility-shim path retained for older callers.
+* ``optional IPOPT bridge``: explicit opt-in residual-minimization refinement.
 
 For reactive electrolyte regression, inspect
 ``capabilities()["regression"]["reactive_electrolyte_batch_context"]["fit_status_contract"]``.

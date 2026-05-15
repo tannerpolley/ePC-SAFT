@@ -100,7 +100,7 @@ def _git_commit(source_root: Path | None) -> str:
 def _native_extension_path() -> Path | None:
     try:
         from . import _core
-    except Exception:
+    except (ImportError, OSError):
         return None
     return Path(_core.__file__).resolve()
 
@@ -108,7 +108,7 @@ def _native_extension_path() -> Path | None:
 def _native_cppad_backend_info() -> dict[str, object]:
     try:
         from . import _core
-    except Exception:
+    except (ImportError, OSError):
         return {
             "backend": "cppad",
             "status": "not_configured",
@@ -137,7 +137,7 @@ def _native_cppad_backend_info() -> dict[str, object]:
 def _native_ceres_backend_info() -> dict[str, object]:
     try:
         from . import _core
-    except Exception:
+    except (ImportError, OSError):
         return {
             "backend": "ceres",
             "status": "not_configured",
@@ -250,7 +250,7 @@ def _derivative_coverage_capabilities(cppad: dict[str, object], ceres: dict[str,
             "reason": (
                 "requires Ceres and CppAD compiled"
                 if not (cppad_available and ceres_available)
-                else "explicit Ceres/CppAD residual Jacobians are not production validated"
+                else "explicit Ceres/CppAD residual Jacobians lack production validation"
             ),
             "tests": [
                 "tests/native/contracts/test_ceres_cppad_build_contract.py",
@@ -296,7 +296,7 @@ def _derivative_coverage_capabilities(cppad: dict[str, object], ceres: dict[str,
             "supported": False,
             "not_applicable": False,
             "classification": "blocker",
-            "reason": "implicit bubble-pressure sensitivity is not production validated",
+            "reason": "implicit bubble-pressure sensitivity lacks production validation",
             "tests": ["tests/native/cppad/test_cppad_bubble_derivatives.py"],
         },
         {
@@ -596,7 +596,7 @@ def capabilities() -> dict[str, object]:
             "dataset_validation": {
                 "available": True,
                 "helper": "validate_dataset_bundle",
-                "scope": "external parameter bundle structure and reaction/species compatibility checks",
+                "scope": "external parameter bundle structure and reaction/species consistency checks",
             },
         },
         "regression": {

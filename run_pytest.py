@@ -18,7 +18,10 @@ GENERIC_TEST_TARGETS = (
     "tests/equilibrium/core/test_lle.py::test_methanol_cyclohexane_lle_flash_solves_seeded_phase_split",
     "tests/equilibrium/core/test_stability.py::test_stability_returns_structured_result_and_json_like_dict",
     "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::test_one_salt_smoke_reports_unavailable_solver_derivatives",
-    "tests/equilibrium/electrolyte/test_electrolyte_thermo_diagnostics.py::test_khudaida_fixture_loads_charge_neutral_explicit_ions",
+    (
+        "tests/workflows/validation/equilibrium_core/test_electrolyte_thermo_diagnostics.py::"
+        "test_khudaida_fixture_loads_charge_neutral_explicit_ions"
+    ),
     "tests/native/contracts/test_equilibrium_native_contracts.py::test_native_equilibrium_entrypoint_is_exposed",
     "tests/native/runtime/test_runtime_density_closure.py::test_pressure_based_and_density_based_states_match_for_neutral_system",
     "tests/native/contracts/test_equation_registry.py::test_equation_registry_outputs_are_synced",
@@ -33,9 +36,12 @@ CONFIDENCE_TEST_TARGETS = GENERIC_TEST_TARGETS + (
     "tests/native/contracts/test_equilibrium_native_contracts.py::test_public_equilibrium_result_comes_from_native_backend",
 )
 EQUILIBRIUM_CONFIDENCE_TEST_TARGETS = (
-    "tests/equilibrium/electrolyte/test_electrolyte_lle_confidence.py::test_khudaida_benchmark_fixture_loads_charge_neutral_cases",
     (
-        "tests/equilibrium/electrolyte/test_electrolyte_thermo_diagnostics.py::"
+        "tests/workflows/validation/equilibrium_core/test_electrolyte_lle_confidence.py::"
+        "test_khudaida_benchmark_fixture_loads_charge_neutral_cases"
+    ),
+    (
+        "tests/workflows/validation/equilibrium_core/test_electrolyte_thermo_diagnostics.py::"
         "test_khudaida_package_tieline_fixed_phase_residual_is_internally_consistent"
     ),
 )

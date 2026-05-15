@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 def test_neutral_benchmark_module_exposes_required_cases():
-    from epcsaft.benchmarks.neutral_equilibrium import CASE_BUILDERS
+    from scripts.benchmarks.helpers.neutral_equilibrium import CASE_BUILDERS
 
     assert tuple(CASE_BUILDERS) == (
         "neutral_state",
@@ -19,7 +19,7 @@ def test_neutral_benchmark_module_exposes_required_cases():
 
 
 def test_neutral_benchmark_module_applies_baseline_speedup(tmp_path):
-    from epcsaft.benchmarks.neutral_equilibrium import run_neutral_equilibrium_benchmarks
+    from scripts.benchmarks.helpers.neutral_equilibrium import run_neutral_equilibrium_benchmarks
 
     baseline_path = tmp_path / "baseline.json"
     baseline_path.write_text(

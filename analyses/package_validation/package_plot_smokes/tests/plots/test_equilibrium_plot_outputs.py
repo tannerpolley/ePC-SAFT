@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import epcsaft
-from epcsaft.equilibrium_core.thermo_diagnostics import evaluate_khudaida_solver_gate
+from scripts.validation.equilibrium_core.thermo_diagnostics import evaluate_khudaida_solver_gate
 from scripts import plot_outputs
 from analyses.package_validation.package_plot_smokes.tests.plots.plot_helpers import assert_plot_with_data
 from analyses.package_validation.package_plot_smokes.tests.plots.plot_helpers import hydrocarbon_basis_mixture

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from epcsaft.equilibrium_core.confidence import run_confidence_suite
+from scripts.validation.equilibrium_core.confidence import run_confidence_suite
 from analyses.package_validation.package_plot_smokes.tests.plots.plot_helpers import assert_plot_with_data
 
 

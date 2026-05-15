@@ -26,9 +26,9 @@ The target internal shape is:
      data/
      benchmarks/
 
-The current source tree may keep some compatibility modules as single Python
-files while those boundaries settle. Documentation, tests, and new code should
-still treat the subsystems below as the ownership model.
+The current source tree may keep some compatibility-shim modules as single
+Python files while those boundaries settle. Documentation, tests, and new code
+should still treat the subsystems below as the ownership model.
 
 Subsystem Boundaries
 --------------------
@@ -85,11 +85,12 @@ Use these imports for new code:
   pressure, and reactive regression batch/context objects.
 * ``epcsaft.regression`` for public fitting helpers.
 * ``epcsaft.parameters`` for packaged parameter dataset loading.
-* ``epcsaft.benchmarks`` for package-owned timing and smoke benchmarks.
+* ``scripts/benchmarks`` for package-owned timing and smoke benchmarks.
 * ``epcsaft.diagnostics`` for ``capabilities()`` and ``runtime_build_info()``.
 
-Top-level imports remain stable for existing users. The organized modules are
-navigation aids, not a breaking API move.
+Top-level imports remain stable for existing users. Benchmark execution helpers
+are validation assets, not runtime thermodynamic APIs; any
+``epcsaft.benchmarks`` imports are temporary compatibility shims.
 
 Import Policy
 -------------
@@ -121,7 +122,8 @@ Current public imports must continue working across boundary cleanups:
    epcsaft.fit_pure_neutral
 
 Cleaner subsystem imports may be added over time, but large module moves must
-land in small refactor PRs with compatibility imports and focused API tests.
+land in small refactor PRs with compatibility-shim imports and focused API
+tests.
 Do not use package-boundary work as a reason to break downstream notebooks,
 MEA/Li extraction consumers, or existing documented imports.
 

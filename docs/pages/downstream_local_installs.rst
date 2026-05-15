@@ -116,7 +116,7 @@ Use ``capabilities()`` before wiring high-level downstream workflows:
 
 Native neutral TP flash, neutral LLE, electrolyte LLE, electrolyte bubble pressure, reactive speciation, reactive electrolyte bubble pressure, and native regression helpers are available. The electrolyte bubble-pressure workflow is scoped to fixed liquid composition with neutral vapor species; ions remain liquid-only. The reactive electrolyte bubble workflow performs native chemical speciation before the native fixed-liquid electrolyte bubble-pressure solve.
 
-For routing examples and the production/experimental solver table, see
+For routing examples and the production/opt-in solver table, see
 :doc:`equilibrium_cookbook`.
 
 Capability status summary
@@ -141,10 +141,10 @@ Capability status summary
      - Production native, scoped
      - Fixed liquid composition and neutral vapor species; ions remain liquid-only.
    * - Reactive electrolyte bubble
-     - Staged production native, scoped
+     - Sequential native substeps, scoped
      - Native speciation followed by native fixed-liquid electrolyte bubble pressure.
    * - IPOPT
-     - Experimental opt-in
+     - Optional opt-in bridge
      - Residual-minimization refinement only; ``auto`` never selects IPOPT.
 
 Downstream integration smoke coverage
