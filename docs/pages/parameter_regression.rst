@@ -16,10 +16,12 @@ Supported workflows
   interaction fits. It accepts a two-component ``species`` pair and delegates
   to ``fit_binary_pair(...)`` for the supported constant binary-interaction
   targets.
-- ``fit_liquid_electrolyte_parameters(...)`` is an API-contract entry point for
-  liquid-electrolyte regression problem declarations. It normalizes supported
-  data-row families and returns a stable ``FitResult`` with
-  ``backend="not_available"`` until native optimizer internals are added.
+- ``fit_liquid_electrolyte_parameters(...)`` fits liquid-electrolyte
+  ``s``, ``e``, ``d_born``, ``f_solv``, and ``dielc`` targets through native
+  Ceres. Supported row families are density, osmotic coefficient,
+  mean-ionic activity coefficient, and relative permittivity. The path is
+  liquid-only and reports ``cppad_implicit`` Jacobian metadata; it does not
+  imply vapor electrolyte Born support.
 - ``fit_pure_neutral(...)`` fits nonassociating neutral pure-component ``m``, ``s``, and ``e`` against density and vapor-pressure records with the native least-squares backend.
 - ``fit_pure_ion(...)`` fits ion ``s``, ``e``, and ``d_born`` declarations with native provenance guardrails through the Ceres backend and ``cppad_implicit`` density-root sensitivities for density, osmotic-coefficient, and mean-ionic-activity rows.
 - ``fit_binary_pair(...)`` fits supported constant ``k_ij`` binary interaction values from direct VLE x/y records with the native Ceres backend and provenance guardrails. Constant ``l_ij`` and ``k_hb_ij`` declarations are validated, then report ``not_available`` until native analytic or autodiff derivatives are implemented for those targets.
@@ -104,8 +106,7 @@ Binary interaction fits accept a two-species pair:
        bounds={"k_ij": (-0.2, 0.2)},
    )
 
-Liquid-electrolyte fits can be declared before the full optimizer backend
-exists:
+Liquid-electrolyte fits use native Ceres for the supported liquid row families:
 
 .. code-block:: python
 
@@ -115,13 +116,26 @@ exists:
        species=("H2O", "Na+", "Cl-"),
        parameter_set="2026_Khudaida",
        data_rows=[
-           {"T": 298.15, "P": 101325.0, "molality": 0.1, "osmotic_coefficient": 0.933},
+           {
+               "T": 298.15,
+               "P": 101325.0,
+               "x_H2O": 0.98,
+               "x_Na+": 0.01,
+               "x_Cl-": 0.01,
+               "rho": 41.0,
+               "osmotic_coefficient": 1.05,
+               "mean_ionic_activity": 1.01,
+               "epsilon_r_exp": 76.6,
+           },
        ],
        parameters_to_fit=("d_born", "f_solv"),
+       initial_guess={"d_born": 2.0, "f_solv": 0.5},
+       bounds={"d_born": (1.0, 8.0), "f_solv": (0.1, 3.0)},
        weights={"osmotic_coefficient": 1.0},
    )
 
-   assert result.backend == "not_available"
+   assert result.backend == "ceres"
+   assert result.jacobian_backend == "cppad_implicit"
 
 Build prerequisite
 ------------------

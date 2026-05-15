@@ -9,7 +9,6 @@ import epcsaft
 from analyses.data_validation.miac_fits.scripts import validate_miac_fits as vmf
 from scripts._epcsaft_oop import as_mixture
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE = REPO_ROOT / "tests" / "fixtures" / "literature" / "figiel_2025" / "miac_liquid_electrolyte.json"
 DISALLOWED_BACKENDS = {"numerical_derivative", "fd", "numerical_derivative", "numerical_jacobian"}
@@ -31,7 +30,7 @@ def test_miac_liquid_electrolyte_fixture_records_figiel_provenance() -> None:
     assert fixture["excluded_scope"] == "vapor Born derivatives"
 
 
-def test_miac_liquid_electrolyte_reports_not_available_without_numerical_derivative() -> None:
+def test_miac_liquid_electrolyte_regression_uses_native_ceres_without_numerical_derivative() -> None:
     fixture = _load_fixture()
     result = epcsaft.fit_liquid_electrolyte_parameters(
         species=tuple(fixture["regression_probe"]["species"]),
@@ -43,15 +42,24 @@ def test_miac_liquid_electrolyte_reports_not_available_without_numerical_derivat
         solver_options={"optimizer_backend": "ceres"},
     )
 
-    assert result.success is False
-    assert result.backend == "not_available"
+    assert result.success is True
+    assert result.backend == "ceres"
     assert result.optimizer_backend == "ceres"
-    assert result.derivative_backend == "not_available"
-    assert result.jacobian_backend == "not_available"
+    assert result.derivative_backend == "cppad_implicit"
+    assert result.jacobian_backend == "cppad_implicit"
     assert result.jacobian_fallback_used is False
     assert result.derivative_backend.lower() not in DISALLOWED_BACKENDS
     assert result.jacobian_backend.lower() not in DISALLOWED_BACKENDS
-    assert "not_available" in result.not_available_reason
+    assert result.python_objective_used is False
+    assert result.objective_final <= result.objective_initial
+    assert result.parameter_movement.keys() == {"d_born", "f_solv"}
+    assert any(abs(value) > 1.0e-8 for value in result.parameter_movement.values())
+    assert {row["row_family"] for row in result.row_diagnostics} == {
+        "density",
+        "relative_permittivity",
+        "osmotic_coefficient",
+        "mean_ionic_activity",
+    }
 
 
 def test_miac_liquid_electrolyte_figiel_outputs_and_coverage_matrix_are_finite() -> None:

@@ -115,6 +115,8 @@ DEFAULT_BOUNDS = {
     "e_assoc": (0.0, 20000.0),
     "vol_a": (0.0, 1.0),
     "d_born": (0.1, 10.0),
+    "f_solv": (0.1, 5.0),
+    "dielc": (1.0, 150.0),
     "k_ij": (-2.0, 2.0),
     "l_ij": (-2.0, 2.0),
     "k_hb_ij": (-2.0, 2.0),
@@ -136,6 +138,8 @@ NATIVE_TARGET_KINDS = {
     "k_ij": 6,
     "l_ij": 7,
     "k_hb_ij": 8,
+    "f_solv": 9,
+    "dielc": 10,
 }
 
 NATIVE_TERM_KINDS = {
@@ -144,19 +148,15 @@ NATIVE_TERM_KINDS = {
     TERM_OSMOTIC: 3,
     TERM_MIAC: 4,
     TERM_BINARY_VLE: 5,
+    TERM_RELATIVE_PERMITTIVITY: 7,
     TERM_MEA_CO2_H2O_DENSITY: 1,
     TERM_MEA_CO2_H2O_OSMOTIC: 3,
     TERM_MEA_CO2_H2O_CO2_FUGACITY: 6,
 }
 
 HESSIAN_NOT_IMPLEMENTED_REASON = "Hessian support is a skeleton for future IPOPT-compatible optimizer integration."
-LIQUID_ELECTROLYTE_BACKEND_UNAVAILABLE_REASON = (
-    "not_available: liquid-electrolyte parameter fitting needs native optimizer internals that are not part "
-    "of this API-contract slice."
-)
 BINARY_CERES_BACKEND_UNAVAILABLE_REASON = (
-    "not_available: binary Ceres regression currently supports only constant k_ij with "
-    "cppad_implicit Jacobians."
+    "not_available: binary Ceres regression currently supports only constant k_ij with " "cppad_implicit Jacobians."
 )
 GENERIC_NATIVE_OPTIMIZER_BACKEND_UNAVAILABLE_REASON = (
     "not_available: no native analytic/CppAD/implicit derivative path is registered for this "
@@ -1530,6 +1530,64 @@ def _native_target_payload(
     )
 
 
+def _native_target_payload_for_components(
+    optimization_names: Sequence[str],
+    species: Sequence[str],
+    component_by_target: Mapping[str, str],
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    kinds: list[int] = []
+    indices: list[int] = []
+    indices_2: list[int] = []
+    for name in optimization_names:
+        if name not in NATIVE_TARGET_KINDS:
+            raise InputError(f"Native regression does not support optimization parameter '{name}'.")
+        if name not in component_by_target:
+            raise InputError(f"Liquid-electrolyte regression requires a target component for '{name}'.")
+        component = component_by_target[name]
+        if component not in species:
+            raise InputError(f"Target component '{component}' for '{name}' is not present in the species list.")
+        kinds.append(NATIVE_TARGET_KINDS[name])
+        indices.append(species.index(component))
+        indices_2.append(-1)
+    return (
+        np.asarray(kinds, dtype=int),
+        np.asarray(indices, dtype=int),
+        np.asarray(indices_2, dtype=int),
+    )
+
+
+def _run_native_generic_ceres_with_target_components(
+    fixed_payloads: Sequence[Mapping[str, Any]],
+    native_records: Sequence[Mapping[str, Any]],
+    optimization_names: Sequence[str],
+    species: Sequence[str],
+    component_by_target: Mapping[str, str],
+    theta0: np.ndarray,
+    lower: np.ndarray,
+    upper: np.ndarray,
+    *,
+    multistart: int = 0,
+    max_nfev: int = 200,
+) -> dict[str, Any]:
+    target_kinds, target_indices, target_indices_2 = _native_target_payload_for_components(
+        optimization_names,
+        species,
+        component_by_target,
+    )
+    return _fit_generic_native_ceres(
+        [dict(payload) for payload in fixed_payloads],
+        [dict(record) for record in native_records],
+        target_kinds,
+        target_indices,
+        target_indices_2,
+        theta0,
+        lower,
+        upper,
+        multistart=int(multistart),
+        max_nfev=int(max_nfev),
+    )
+
+
 def _native_density_record(
     term_name: str,
     record: Mapping[str, Any],
@@ -1678,9 +1736,7 @@ def evaluate_generic_regression_derivatives(
     backend = str(jacobian_backend).strip().lower()
     if backend not in {"auto", "autodiff", "analytic"}:
         raise InputError("jacobian_backend must be 'auto', 'autodiff', or 'analytic'.")
-    raise InputError(
-        "not_available: generic regression sensitivities are not implemented for this residual path."
-    )
+    raise InputError("not_available: generic regression sensitivities are not implemented for this residual path.")
 
     normalized_species = tuple(_normalize_component(str(name)) for name in species)
     normalized_pair = None if pair is None else _normalize_pair(pair)
@@ -2704,6 +2760,9 @@ _USER_TARGET_ALIASES = {
     "association_volume": "vol_a",
     "born_diameter": "d_born",
     "solvation_factor": "f_solv",
+    "relative_permittivity": "dielc",
+    "dielectric": "dielc",
+    "epsilon_r": "dielc",
 }
 
 
@@ -2972,6 +3031,67 @@ def _build_liquid_electrolyte_terms(
     return tuple(terms)
 
 
+def _liquid_electrolyte_composition_from_record(record: Mapping[str, Any], species: Sequence[str]) -> np.ndarray:
+    if _prefixed_species_values(record, "x_"):
+        return _composition_from_record(record, "x_", species)
+    raise InputError("liquid-electrolyte native regression records require composition columns with prefix 'x_'.")
+
+
+def _liquid_electrolyte_target_components(
+    targets: Sequence[str],
+    species: Sequence[str],
+    sample_payload: Mapping[str, Any],
+    solver_options: Mapping[str, Any] | None,
+) -> dict[str, str]:
+    z = np.asarray(sample_payload.get("z", []), dtype=float).flatten()
+    if z.size != len(species):
+        raise InputError("liquid-electrolyte native regression requires a charge vector aligned to species.")
+    solvent_indices = [idx for idx, charge in enumerate(z.tolist()) if abs(charge) <= 1.0e-12]
+    ion_indices = [idx for idx, charge in enumerate(z.tolist()) if abs(charge) > 1.0e-12]
+    if not solvent_indices or not ion_indices:
+        raise InputError("liquid-electrolyte native regression requires at least one solvent and one ionic species.")
+    explicit = _copy_mapping((solver_options or {}).get("target_components", {}))
+    component_by_target: dict[str, str] = {}
+    for target in targets:
+        if target in explicit:
+            component = _normalize_component(str(explicit[target]))
+        elif target in {"d_born", "s", "e"}:
+            component = species[ion_indices[0]]
+        elif target in {"f_solv", "dielc"}:
+            component = species[solvent_indices[0]]
+        else:
+            raise InputError(f"liquid-electrolyte native regression does not support target '{target}'.")
+        if component not in species:
+            raise InputError(f"target component '{component}' for '{target}' is not present in species.")
+        component_by_target[target] = component
+    return component_by_target
+
+
+def _seed_value_for_component_target(
+    name: str,
+    component: str,
+    species: Sequence[str],
+    initial_guess: Mapping[str, float],
+    current: Mapping[str, Any],
+) -> float:
+    if name in initial_guess:
+        value = float(initial_guess[name])
+    elif name in current:
+        raw = current[name]
+        values = np.asarray(raw, dtype=float).flatten()
+        if values.size > 1:
+            if values.size != len(species):
+                raise InputError(f"Current values for '{name}' must align with species.")
+            value = float(values[species.index(component)])
+        else:
+            value = float(values[0])
+    else:
+        raise InputError(f"An initial guess is required for regression target '{name}'.")
+    if not math.isfinite(value):
+        raise InputError(f"Initial guess for '{name}' must be finite.")
+    return value
+
+
 def fit_liquid_electrolyte_parameters(
     *,
     species: Sequence[str],
@@ -2988,7 +3108,7 @@ def fit_liquid_electrolyte_parameters(
     user_options: Mapping[str, Any] | None = None,
     provenance: Sequence[FitParameter | BinaryInteraction] | Mapping[str, str] | None = None,
 ) -> FitResult:
-    """Declare a liquid-electrolyte regression problem without running unavailable optimizer internals."""
+    """Fit liquid-electrolyte parameters through the native Ceres regression backend."""
 
     _reject_numerical_derivative_options(solver_options)
     labels = _fit_species_tuple(species)
@@ -2996,6 +3116,140 @@ def fit_liquid_electrolyte_parameters(
         raise InputError("fit_liquid_electrolyte_parameters expects at least two species labels.")
     records = _normalize_records(data_rows)
     targets = _normalize_user_targets(parameters_to_fit, ())
+    unsupported_targets = [target for target in targets if target not in {"s", "e", "d_born", "f_solv", "dielc"}]
+    if unsupported_targets:
+        raise InputError("liquid-electrolyte native regression supports only s, e, d_born, f_solv, and dielc targets.")
+    terms = _build_liquid_electrolyte_terms(records, weights)
+    unsupported_terms = [
+        term.term_type
+        for term in terms
+        if term.term_type not in {TERM_DENSITY, TERM_OSMOTIC, TERM_MIAC, TERM_RELATIVE_PERMITTIVITY}
+    ]
+    if unsupported_terms:
+        raise InputError(
+            "liquid-electrolyte native Ceres regression supports density, osmotic coefficient, "
+            "mean ionic activity, and relative permittivity rows only."
+        )
+    provenance_report: dict[str, Any] = {}
+    if provenance:
+        provenance_report = validate_regression_provenance(provenance, species=labels, strict=False)
+    optimizer_backend = _optimizer_backend_from_options(solver_options, "ceres")
+    if optimizer_backend != "ceres":
+        raise InputError("liquid-electrolyte regression is currently implemented for optimizer_backend='ceres'.")
+    fixed_payloads: list[dict[str, Any]] = []
+    native_records: list[dict[str, Any]] = []
+    sample_payload: dict[str, Any] | None = None
+    for term in terms:
+        scale = _family_scale(term)
+        for record in term.records:
+            T = _float_from_record(record, "T", required=True)
+            P = _float_from_record(record, "P", required=True)
+            assert T is not None and P is not None
+            x = _liquid_electrolyte_composition_from_record(record, labels)
+            payload = _params_for_native_record(parameter_set, labels, x, T, user_options)
+            if sample_payload is None:
+                sample_payload = payload
+            if term.term_type == TERM_DENSITY:
+                native_record = _native_density_record(term.term_type, record, x, scale)
+                if native_record is None:
+                    continue
+            elif term.term_type == TERM_RELATIVE_PERMITTIVITY:
+                native_record = {
+                    "term_name": term.term_type,
+                    "term": NATIVE_TERM_KINDS[term.term_type],
+                    "T": T,
+                    "P": P,
+                    "phase": phase_to_int(_value_from_record(record, "phase", required=False) or "liq"),
+                    "x": x.tolist(),
+                    "target": _float_from_record(
+                        record, "epsilon_r_exp", "relative_permittivity", "epsilon_r", required=True
+                    ),
+                    "scale": scale,
+                }
+            elif term.term_type == TERM_OSMOTIC:
+                native_record = {
+                    "term_name": term.term_type,
+                    "term": NATIVE_TERM_KINDS[term.term_type],
+                    "T": T,
+                    "P": P,
+                    "phase": phase_to_int(_value_from_record(record, "phase", required=False) or "liq"),
+                    "x": x.tolist(),
+                    "target": _float_from_record(record, "osmotic_coefficient", "osmotic", required=True),
+                    "solvent_index": -1,
+                    "scale": scale,
+                }
+            elif term.term_type == TERM_MIAC:
+                cation_index, anion_index = _native_miac_pair_indices(record, labels)
+                native_record = {
+                    "term_name": term.term_type,
+                    "term": NATIVE_TERM_KINDS[term.term_type],
+                    "T": T,
+                    "P": P,
+                    "phase": phase_to_int(_value_from_record(record, "phase", required=False) or "liq"),
+                    "x": x.tolist(),
+                    "target": _float_from_record(
+                        record,
+                        "mean_ionic_activity",
+                        "mean_ionic_activity_coefficient",
+                        "miac",
+                        required=True,
+                    ),
+                    "target_index": cation_index,
+                    "target_index_2": anion_index,
+                    "solvent_index": -1,
+                    "scale": scale,
+                }
+            else:
+                raise InputError(f"Unsupported liquid-electrolyte row family '{term.term_type}'.")
+            fixed_payloads.append(payload)
+            native_records.append(native_record)
+    if sample_payload is None or not native_records:
+        raise InputError("liquid-electrolyte native regression generated no native residual records.")
+    target_components = _liquid_electrolyte_target_components(targets, labels, sample_payload, solver_options)
+    initial = _copy_mapping(initial_guess)
+    initial_map = {
+        target: _seed_value_for_component_target(
+            target,
+            target_components[target],
+            labels,
+            initial,
+            sample_payload,
+        )
+        for target in targets
+    }
+    bounds_obj = _coerce_bounds(bounds)
+    lower, upper = bounds_obj.arrays_for(targets)
+    theta0 = np.asarray([initial_map[name] for name in targets], dtype=float)
+    result = _run_native_generic_ceres_with_target_components(
+        fixed_payloads,
+        native_records,
+        targets,
+        labels,
+        target_components,
+        theta0,
+        lower,
+        upper,
+        multistart=int((solver_options or {}).get("multistart", 0)),
+        max_nfev=int((solver_options or {}).get("max_nfev", 200)),
+    )
+    vector_map = _normalize_vector_map(targets, result["x"])
+    parameter_movement = _parameter_movement(targets, initial_map, vector_map)
+    source_summary = {
+        "dataset": _source_dataset_label(parameter_set),
+        "record_count": len(records),
+        "row_families": tuple(term.term_type for term in terms),
+        "target_components": dict(target_components),
+    }
+    target_family_summaries = _target_family_summaries_from_terms(terms, result["metrics_by_term"])
+    provenance_payload = _copy_mapping(provenance_report)
+    provenance_payload["parameter_movement"] = parameter_movement
+    provenance_payload["initial_parameters"] = dict(initial_map)
+    provenance_payload["final_parameters"] = dict(vector_map)
+    provenance_payload["target_components"] = dict(target_components)
+    provenance_payload["source_summary"] = source_summary
+    provenance_payload["source_summaries"] = {"records": source_summary}
+    provenance_payload["target_family_summaries"] = target_family_summaries
+    provenance_payload["residual_block_norms"] = dict(result["metrics_by_term"])
     problem = FitProblem(
         mode=LIQUID_ELECTROLYTE_MODE,
         records=tuple(records),
@@ -3003,42 +3257,41 @@ def fit_liquid_electrolyte_parameters(
         fit_targets=targets,
         optimization_parameters=targets,
         fixed_parameters=fixed_parameters or {},
-        initial_guess=initial_guess or {},
+        initial_guess=initial_map,
         bounds=_copy_bounds_contract(bounds),
         weights=weights or {},
         loss=loss,
-        solver_options=solver_options or {},
+        solver_options={
+            **(solver_options or {}),
+            "target_components": dict(target_components),
+            **({"user_options": _copy_mapping(user_options)} if user_options else {}),
+        },
         output_report=output_report,
-        terms=_build_liquid_electrolyte_terms(records, weights),
+        terms=terms,
     )
-    provenance_report: dict[str, Any] = {}
-    if provenance:
-        provenance_report = validate_regression_provenance(provenance, species=labels, strict=False)
-    if user_options:
-        problem.solver_options = {**problem.solver_options, "user_options": _copy_mapping(user_options)}
-    optimizer_backend = _optimizer_backend_from_options(solver_options, "ceres")
     return FitResult(
         problem=problem,
-        success=False,
-        status=-1,
-        message=LIQUID_ELECTROLYTE_BACKEND_UNAVAILABLE_REASON,
-        backend="not_available",
-        optimizer_backend=optimizer_backend,
-        derivative_backend="not_available",
-        jacobian_backend="not_available",
-        jacobian_available=False,
-        jacobian_fallback_used=False,
-        python_objective_used=False,
-        not_available_reason=LIQUID_ELECTROLYTE_BACKEND_UNAVAILABLE_REASON,
-        row_diagnostics=[
-            {
-                "row_family": term.term_type,
-                "supported": False,
-                "not_available_reason": LIQUID_ELECTROLYTE_BACKEND_UNAVAILABLE_REASON,
-            }
-            for term in problem.terms
-        ],
-        provenance_report=provenance_report,
+        fitted_values=vector_map,
+        rendered_values={name: float(vector_map[name]) for name in targets},
+        metrics_by_term=result["metrics_by_term"],
+        cost=float(result["cost"]),
+        residual_norm=float(result["residual_norm"]),
+        success=bool(result["success"]),
+        status=int(result["status"]),
+        message=str(result["message"]),
+        nfev=int(result["nfev"]),
+        backend=str(result["backend"]),
+        **_fit_derivative_metadata(result),
+        parameter_map=vector_map,
+        initial_parameters=initial_map,
+        final_parameters=vector_map,
+        parameter_movement=parameter_movement,
+        row_diagnostics=_row_diagnostics_from_metrics(result["metrics_by_term"]),
+        active_bounds=_active_bounds_from_arrays(targets, vector_map, lower, upper),
+        source_summaries={"records": source_summary},
+        target_family_summaries=target_family_summaries,
+        residual_block_norms=result["metrics_by_term"],
+        provenance_report=provenance_payload,
     )
 
 

@@ -99,10 +99,19 @@ def test_fit_binary_parameters_accepts_minimal_user_contract(monkeypatch):
     assert calls[0][2]["dataset"] == "2026_Khudaida"
 
 
-def test_fit_liquid_electrolyte_parameters_returns_stable_not_available_contract():
+def test_fit_liquid_electrolyte_parameters_uses_native_ceres_contract():
     result = epcsaft.fit_liquid_electrolyte_parameters(
         species=("H2O", "Na+", "Cl-"),
-        data_rows=[{"T": 298.15, "P": 101325.0, "molality": 0.1, "osmotic_coefficient": 0.933}],
+        data_rows=[
+            {
+                "T": 298.15,
+                "P": 101325.0,
+                "x_H2O": 0.98,
+                "x_Na+": 0.01,
+                "x_Cl-": 0.01,
+                "osmotic_coefficient": 1.0,
+            }
+        ],
         parameter_set="2026_Khudaida",
         parameters_to_fit=("d_born", "f_solv"),
         fixed_parameters={"H2O": {"m": 1.0}},
@@ -111,14 +120,18 @@ def test_fit_liquid_electrolyte_parameters_returns_stable_not_available_contract
         solver_options={"max_nfev": 1},
     )
 
-    assert result.success is False
-    assert result.status == -1
-    assert result.backend == "not_available"
-    assert result.not_available_reason
+    assert result.success is True
+    assert result.status == 0
+    assert result.backend == "ceres"
+    assert result.optimizer_backend == "ceres"
+    assert result.derivative_backend == "cppad_implicit"
+    assert result.jacobian_backend == "cppad_implicit"
+    assert result.python_objective_used is False
     assert result.problem.mode == "liquid_electrolyte"
     assert result.problem.fit_targets == ("d_born", "f_solv")
     assert result.problem.dataset == "2026_Khudaida"
     assert result.problem.weights == {"osmotic_coefficient": 1.0}
+    assert {row["row_family"] for row in result.row_diagnostics} == {"osmotic_coefficient"}
 
 
 def test_target_dataset_accepts_generic_row_families_and_round_trips_records():
