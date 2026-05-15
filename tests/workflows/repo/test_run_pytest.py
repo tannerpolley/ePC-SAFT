@@ -31,8 +31,23 @@ def test_default_pytest_route_uses_fast_contracts_not_exhaustive_suite():
     assert default_args[: len(run_pytest.FAST_TEST_TARGETS)] == list(run_pytest.FAST_TEST_TARGETS)
     assert "tests" not in default_args
     assert not any(target.startswith("tests/plots/") for target in default_args)
-    assert "tests/equilibrium/electrolyte/test_electrolyte_lle_confidence.py" not in default_args
+    assert "tests/workflows/validation/equilibrium_core/test_electrolyte_lle_confidence.py" not in default_args
     assert default_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
+
+
+def test_predefined_pytest_targets_reference_existing_files():
+    repo_root = Path(__file__).resolve().parents[3]
+    missing: set[str] = set()
+
+    for targets in run_pytest.SLICE_TARGETS.values():
+        for target in targets:
+            if target == "tests":
+                continue
+            target_path = target.split("::", 1)[0]
+            if not (repo_root / target_path).exists():
+                missing.add(target_path)
+
+    assert not sorted(missing)
 
 
 def test_all_shortcut_is_the_explicit_exhaustive_pytest_route():

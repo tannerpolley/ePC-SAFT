@@ -7,12 +7,14 @@ import sys
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = REPO_ROOT / "src"
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from epcsaft.benchmarks.literature import LITERATURE_CASES
-from epcsaft.benchmarks.literature import render_literature_benchmark_table
-from epcsaft.benchmarks.literature import run_literature_benchmarks
+from scripts.benchmarks.helpers.literature import LITERATURE_CASES
+from scripts.benchmarks.helpers.literature import render_literature_benchmark_table
+from scripts.benchmarks.helpers.literature import run_literature_benchmarks
 
 
 def _parse_args() -> argparse.Namespace:

@@ -23,7 +23,7 @@ without ``cyipopt`` instead of falling back to Newton. The adapter solves a
 bounded log-amount residual-minimization NLP through native residual/Jacobian
 callbacks and preserves mass, charge, and reaction residual diagnostics.
 
-The current IPOPT formulation is experimental residual minimization, not full
+The current IPOPT formulation is an explicit residual-minimization bridge, not full
 constrained Gibbs minimization. Diagnostics report ``formulation``,
 ``ipopt_success``, residual/physical gate status, and approximate Hessian
 metadata separately. ``hessian_strategy="gauss_newton"`` supplies a
@@ -44,7 +44,7 @@ the C++ chemical-equilibrium kernel. The caller owns the chemistry: species
 labels, material balances, totals, reactions, equilibrium constants, and the
 ``mixture_factory`` used to create the native ePC-SAFT mixture.
 
-The near-term reactive workflow is staged and fixed-constant first:
+The near-term reactive workflow is sequential and fixed-constant first:
 
 1. pass fixed or literature reaction constants through
    ``ReactionDefinition.log_equilibrium_constant`` or
@@ -74,7 +74,7 @@ or implicit residual derivatives are implemented. Diagnostics report
 and ``backend_unavailable_reason`` so users can see the active support boundary.
 Explicit legacy Eigen forward-mode requests remain strict and raise when the
 requested derivative path is unavailable. Finite-difference Jacobians are not a
-supported fallback.
+supported substitute.
 
 .. code-block:: python
 
@@ -155,8 +155,8 @@ Electrolyte bubble pressure
 ``solve_reactive_electrolyte_bubble(...)`` are native-backed fixed-liquid
 bubble-pressure workflows. Ions remain liquid-only. Vapor fugacity is evaluated
 with a neutral vapor submixture built from the declared vapor species.
-These paths do not fall back to Python pressure, speciation, or regression
-loops.
+These paths do not route through Python pressure, speciation, or regression
+loops when the native route is selected.
 
 For reactive electrolyte bubbles, the package first solves homogeneous
 chemical equilibrium with the native chemical solver and then hands the
@@ -188,18 +188,18 @@ examples are in :doc:`equilibrium_cookbook`.
 Solved-state derivative boundary
 --------------------------------
 
-Staged reactive workflows contain nested solved states: association site
+Sequential reactive workflows contain nested solved states: association site
 fractions, reactive speciation variables, density roots, bubble-pressure roots,
 and phase-equilibrium variables. These blocks must report derivatives through
 analytic residual derivatives, CppAD residual partials, implicit sensitivities,
 or ``backend_unavailable`` when coverage is incomplete. Finite-difference
 derivatives are not a supported fallback.
 
-For active association, the preferred staged derivative boundary is to solve
+For active association, the preferred sequential derivative boundary is to solve
 the association site fractions, compute residual partials, solve the implicit
 sensitivity system, and propagate those sensitivities into activity, fugacity,
 or chemical-potential derivatives. Direct CppAD through the association
-fixed-point iteration is not required for the staged fixed-constant workflow.
+fixed-point iteration is not required for the sequential fixed-constant workflow.
 
 Future simultaneous root systems, Ceres residual systems, or Ipopt constrained
 NLP formulations may be useful for harder coupled systems, but they are future

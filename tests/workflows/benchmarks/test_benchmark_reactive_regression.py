@@ -6,7 +6,7 @@ import sys
 
 
 def test_reactive_regression_benchmark_cases_and_order():
-    from epcsaft.benchmarks.reactive_regression import CASE_BUILDERS, DEFAULT_CASES
+    from scripts.benchmarks.helpers.reactive_regression import CASE_BUILDERS, DEFAULT_CASES
 
     assert tuple(CASE_BUILDERS) == (
         "reactive_speciation_batch_tiny",
@@ -25,7 +25,7 @@ def test_reactive_regression_benchmark_cases_and_order():
 
 
 def test_reactive_regression_benchmark_schema_for_one_case():
-    from epcsaft.benchmarks.reactive_regression import run_reactive_regression_benchmarks
+    from scripts.benchmarks.helpers.reactive_regression import run_reactive_regression_benchmarks
 
     payload = run_reactive_regression_benchmarks(warmup=1, repeat=1, case="reactive_regression_objective_tiny")
     case_payload = payload["cases"][0]
@@ -82,7 +82,7 @@ def test_reactive_regression_benchmark_schema_for_one_case():
 
 
 def test_reactive_regression_benchmark_baseline_merge(tmp_path):
-    from epcsaft.benchmarks.reactive_regression import run_reactive_regression_benchmarks
+    from scripts.benchmarks.helpers.reactive_regression import run_reactive_regression_benchmarks
 
     baseline_path = tmp_path / "baseline.json"
     baseline_path.write_text(
@@ -103,7 +103,7 @@ def test_reactive_regression_benchmark_baseline_merge(tmp_path):
 
 
 def test_reactive_regression_benchmark_excludes_failed_repeats_from_timing(monkeypatch):
-    from epcsaft.benchmarks import reactive_regression as bench
+    from scripts.benchmarks.helpers import reactive_regression as bench
 
     calls = {"count": 0}
 
@@ -143,7 +143,7 @@ def test_reactive_regression_benchmark_excludes_failed_repeats_from_timing(monke
 
 
 def test_reactive_regression_benchmark_raises_when_all_repeats_fail():
-    from epcsaft.benchmarks import reactive_regression as bench
+    from scripts.benchmarks.helpers import reactive_regression as bench
 
     prepared = bench.PreparedBenchmarkCase(
         case="synthetic_all_failed",
@@ -158,7 +158,7 @@ def test_reactive_regression_benchmark_raises_when_all_repeats_fail():
 
 
 def test_reactive_regression_benchmark_has_35_row_public_surrogate():
-    from epcsaft.benchmarks.reactive_regression import run_reactive_regression_benchmarks
+    from scripts.benchmarks.helpers.reactive_regression import run_reactive_regression_benchmarks
 
     payload = run_reactive_regression_benchmarks(
         warmup=0,
@@ -176,7 +176,7 @@ def test_reactive_regression_benchmark_has_35_row_public_surrogate():
 
 
 def test_reactive_regression_benchmark_has_35_row_pressure_speciation_surrogate():
-    from epcsaft.benchmarks.reactive_regression import run_reactive_regression_benchmarks
+    from scripts.benchmarks.helpers.reactive_regression import run_reactive_regression_benchmarks
 
     payload = run_reactive_regression_benchmarks(
         warmup=0,

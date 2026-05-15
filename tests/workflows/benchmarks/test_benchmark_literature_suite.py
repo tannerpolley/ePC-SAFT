@@ -6,7 +6,7 @@ import sys
 
 
 def test_literature_benchmark_module_exposes_issue_scope_order():
-    from epcsaft.benchmarks.literature import LITERATURE_CASES
+    from scripts.benchmarks.helpers.literature import LITERATURE_CASES
 
     assert tuple(LITERATURE_CASES) == (
         "mea_simple_workflow",
@@ -22,7 +22,7 @@ def test_literature_benchmark_module_exposes_issue_scope_order():
 
 
 def test_literature_benchmark_payload_classifies_supported_and_blocked_cases():
-    from epcsaft.benchmarks.literature import run_literature_benchmarks
+    from scripts.benchmarks.helpers.literature import run_literature_benchmarks
 
     payload = run_literature_benchmarks()
 

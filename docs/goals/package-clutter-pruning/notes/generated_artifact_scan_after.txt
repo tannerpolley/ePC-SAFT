@@ -1,0 +1,17 @@
+Command:
+git ls-files | rg "(__pycache__|\.pyc$|\.pyo$|\.pyd$|\.so$|\.dll$|\.dylib$|\.egg-info/|(^|/)build/|(^|/)dist/)"
+
+Output:
+tests/workflows/build/__init__.py
+tests/workflows/build/test_build_backend.py
+tests/workflows/build/test_build_epcsaft.py
+tests/workflows/build/test_build_epcsaft_script.py
+
+Phase 1 result:
+No tracked __pycache__, bytecode, compiled extensions, egg-info directories, dist outputs, or generated package build artifacts were found.
+
+Justified exception:
+The remaining matches are the intentional tests/workflows/build test package. They match the issue #120 regex only because their path includes a directory named "build". Deleting them would remove source tests, not generated artifacts.
+
+.gitignore check:
+.gitignore already covers build/, dist/, __pycache__, *.py[cod], *.pyd, *.so, *.dll, *.dylib, *.egg-info, .ninja_deps, .ninja_log, and cmake-build-*/. It also intentionally unignores tests/workflows/build/.

@@ -20,7 +20,7 @@ from scripts.plot_outputs import REPO_ROOT
 
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from epcsaft.equilibrium_core.thermo_diagnostics import evaluate_khudaida_solver_gate
+from scripts.validation.equilibrium_core.thermo_diagnostics import evaluate_khudaida_solver_gate
 
 
 def main() -> int:

@@ -8,11 +8,20 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from epcsaft.equilibrium_core.confidence import (
+from scripts.validation.equilibrium_core.confidence import (
     benchmark_case_to_native_inputs,
     load_benchmark_suite,
     run_confidence_suite,
     run_smoke_cases,
+)
+
+TRUTHY = {"1", "true", "yes", "on"}
+RUN_KHUDAIDA_VALIDATION = os.environ.get("EPCSAFT_KHUDAIDA_VALIDATION", "").lower() in TRUTHY
+RUN_CONFIDENCE_VALIDATION = os.environ.get("EPCSAFT_EQUILIBRIUM_CONFIDENCE", "").lower() in TRUTHY
+
+requires_khudaida_validation = pytest.mark.skipif(
+    not RUN_KHUDAIDA_VALIDATION,
+    reason="Set EPCSAFT_KHUDAIDA_VALIDATION=1 to run hard Khudaida native validation cases.",
 )
 
 
@@ -38,6 +47,7 @@ def test_khudaida_benchmark_fixture_loads_charge_neutral_cases() -> None:
         assert abs(float(native.initial_org[3] - native.initial_org[4])) <= 1.0e-12
 
 
+@requires_khudaida_validation
 def test_khudaida_smoke_cases_return_results_or_diagnostic_failures() -> None:
     suite = load_benchmark_suite("khudaida_2026")
     predictions = run_smoke_cases(suite, case_keys=("0.05:293.15:1",))
@@ -58,6 +68,7 @@ def test_khudaida_smoke_cases_return_results_or_diagnostic_failures() -> None:
             assert diagnostics["best_failure_reason"]
 
 
+@requires_khudaida_validation
 def test_confidence_suite_smoke_mode_writes_bounded_report(tmp_path: Path) -> None:
     report = run_confidence_suite("khudaida_2026", mode="smoke", output_root=tmp_path)
     summary = json.loads(report.summary_path.read_text(encoding="utf-8"))
@@ -69,6 +80,7 @@ def test_confidence_suite_smoke_mode_writes_bounded_report(tmp_path: Path) -> No
     assert summary["sensitivity_rows"] == 1
 
 
+@requires_khudaida_validation
 def test_khudaida_paper_validation_recompute_uses_native_lle() -> None:
     common = importlib.import_module("analyses.paper_validation.application.2026_khudaida.scripts._common")
     exp_row = common._experimental_rows(0.05, 293.15)[0]
@@ -88,7 +100,7 @@ def test_khudaida_paper_validation_recompute_uses_native_lle() -> None:
 
 
 @pytest.mark.skipif(
-    os.environ.get("EPCSAFT_EQUILIBRIUM_CONFIDENCE", "").lower() not in {"1", "true", "yes", "on"},
+    not RUN_CONFIDENCE_VALIDATION,
     reason="Set EPCSAFT_EQUILIBRIUM_CONFIDENCE=1 to run opt-in electrolyte LLE confidence checks.",
 )
 def test_opt_in_confidence_report_generates_full_outputs(tmp_path: Path) -> None:

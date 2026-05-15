@@ -135,7 +135,7 @@ native build:
    uv sync --no-install-project
    uv run python scripts\dev\build_epcsaft.py
 
-For experimental IPOPT work, install the optional Python adapter dependency
+For explicit IPOPT residual-minimization work, install the optional Python adapter dependency
 with the ``ipopt`` extra or dependency group:
 
 .. code-block:: powershell
@@ -159,8 +159,8 @@ Newton defaults.
 Current IPOPT scope
 -------------------
 
-The current IPOPT support is an experimental
-``bound_constrained_residual_minimization`` backend for selected equilibrium
+The current IPOPT support is an opt-in
+``bound_constrained_residual_minimization`` bridge for selected equilibrium
 routes. It does not yet expose a full constrained thermodynamic NLP: material
 balances, charge balance, and equilibrium residuals are not formal IPOPT
 equality constraints in this phase. Runtime capabilities report
@@ -185,7 +185,7 @@ Solver-selection guidance
      - Usually not appropriate
    * - Small smooth residual system
      - Native Newton/trust-region residual solve
-     - Explicit fallback or refinement only
+     - Explicit refinement bridge only
    * - Least-squares parameter estimation
      - Gauss-Newton, LM, or trust-region least squares
      - Use only when bounds or constraints dominate

@@ -5,6 +5,24 @@ import numpy as np
 from . import _core
 from ._types import ActivityCoefficientResult, InputError, SolutionError, phase_to_int, vector_to_array
 
+_NATIVE_CALL_ERRORS = (
+    InputError,
+    SolutionError,
+    ValueError,
+    RuntimeError,
+    ArithmeticError,
+    getattr(_core, "NativeValueError", ValueError),
+    getattr(_core, "NativeSolutionError", SolutionError),
+)
+_DERIVATIVE_VALUE_ERRORS = (
+    InputError,
+    SolutionError,
+    KeyError,
+    ValueError,
+    RuntimeError,
+    ArithmeticError,
+)
+
 STATE_METHOD_ALIAS_MAP = {
     "pressure": "p",
     "density": "rho",
@@ -1108,7 +1126,7 @@ class ePCSAFTState:
                 has_rho_guess,
                 float(rho_guess) if rho_guess is not None else 0.0,
             )
-        except Exception as exc:
+        except _NATIVE_CALL_ERRORS as exc:
             variable_name = "P" if has_p else "rho"
             mode_name = "pressure" if has_p else "density"
             variable_value = P if has_p else rho
@@ -1196,7 +1214,7 @@ class ePCSAFTState:
                 np_to_vector_double(self._x),
                 self._native_args_copy(),
             )
-        except Exception:
+        except _NATIVE_CALL_ERRORS:
             return None
         return raw if bool(raw.get("supported", raw.get("cppad_used", False))) else None
 
@@ -1223,7 +1241,7 @@ class ePCSAFTState:
                 self.molar_density(),
                 self._native_args_copy(),
             )
-        except Exception:
+        except _NATIVE_CALL_ERRORS:
             return None
         return raw if bool(raw.get("supported", raw.get("cppad_used", False))) else None
 
@@ -1241,7 +1259,7 @@ class ePCSAFTState:
                 np_to_vector_double(self._x),
                 self._native_args_copy(),
             )
-        except Exception as exc:
+        except _NATIVE_CALL_ERRORS as exc:
             return _backend_unavailable_result(
                 [self.pressure()],
                 1,
@@ -1496,7 +1514,7 @@ class ePCSAFTState:
         ncomp = int(self._x.size)
         try:
             values = np.asarray([self.activity_coefficient(species=species)[label] for label in species], dtype=float)
-        except Exception:
+        except _DERIVATIVE_VALUE_ERRORS:
             values = np.asarray([], dtype=float)
         return _backend_unavailable_result(
             values,
@@ -1515,7 +1533,7 @@ class ePCSAFTState:
         try:
             gamma = self.activity_coefficient(species=species)
             value = np.log(np.asarray([gamma[label] for label in species], dtype=float))
-        except Exception:
+        except _DERIVATIVE_VALUE_ERRORS:
             value = np.asarray([], dtype=float)
         if not bool(born.get("supported", False)):
             return _backend_unavailable_result(
@@ -1554,7 +1572,7 @@ class ePCSAFTState:
         """Return relative-permittivity composition derivatives in result-contract form."""
         try:
             epsilon, deps_dx = self.relative_permittivity()
-        except Exception as exc:
+        except _DERIVATIVE_VALUE_ERRORS as exc:
             return _backend_unavailable_result(
                 [],
                 1,
@@ -1578,7 +1596,7 @@ class ePCSAFTState:
         params = self._mixture._params
         try:
             epsilon, _ = self.relative_permittivity()
-        except Exception as exc:
+        except _DERIVATIVE_VALUE_ERRORS as exc:
             return _backend_unavailable_result(
                 [],
                 1,

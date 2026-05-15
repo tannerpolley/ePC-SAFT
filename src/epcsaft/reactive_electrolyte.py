@@ -1,4 +1,4 @@
-"""Native-only reactive electrolyte bubble workflow contracts."""
+"""Sequential reactive-electrolyte bubble workflow contracts."""
 
 from __future__ import annotations
 

@@ -10,7 +10,6 @@
 #include "epcsaft_chemical_equilibrium.h"
 #include "epcsaft_equilibrium.h"
 #include "ad_derivative_checks.h"
-#include "ceres_backend.h"
 
 epcsaft::native::autodiff::ADDerivativeResult cppad_eos_contribution_derivatives_cpp(
     double t,
@@ -1373,7 +1372,11 @@ PYBIND11_MODULE(_core, m) {
     });
     m.def("_native_ceres_smoke", []() {
         py::dict out;
-        const bool compiled = epcsaft::native::regression::ceres_backend_compiled();
+#ifdef EPCSAFT_HAS_CERES
+        const bool compiled = true;
+#else
+        const bool compiled = false;
+#endif
         out["backend"] = "ceres";
         out["compiled"] = compiled;
         out["available"] = compiled;

@@ -45,6 +45,7 @@ Repository = "https://github.com/tannerpolley/ePC-SAFT"
 test = [
     "matplotlib>=3.8",
     "pytest>=8.0",
+    "pyyaml>=6.0",
 ]
 style = [
     "black>=24.0",

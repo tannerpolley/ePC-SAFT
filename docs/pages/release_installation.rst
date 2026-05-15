@@ -116,7 +116,7 @@ want an implicit sync to rebuild the package again.
 Optional IPOPT support
 ----------------------
 
-IPOPT support is optional and experimental. Install it only when the platform
+IPOPT support is optional and explicit opt-in. Install it only when the platform
 already has the required IPOPT and ``cyipopt`` prerequisites:
 
 .. code-block:: powershell

@@ -79,7 +79,7 @@ Insert (optional):
 
 ## Slide 8 — What We Implemented in This Package (Compared to the Papers)
 - Side-by-side model presets (2005 / 2008 / 2014 / 2020) to reproduce literature assumptions consistently
-- A dielectric “engine” with selectable mixing rules and analytic derivatives (with safe numerical fallback)
+- A dielectric engine with selectable mixing rules and analytic derivatives, plus explicit numerical validation checks
 - Altered Born contribution options to match 2020-style composition-dependent ε behavior
 - Guardrails: SSM+DS-style Born solvation shell + dielectric saturation is not part of the current baseline workflow
 

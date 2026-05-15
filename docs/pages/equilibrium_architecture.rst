@@ -39,10 +39,11 @@ Example
 Solver Selection
 ----------------
 
-``solver_backend="auto"`` uses the production native defaults. IPOPT is
-experimental and explicit opt-in; it is not selected automatically and is not a
-full constrained Gibbs/NLP formulation. Use ``epcsaft.capabilities()`` to check
-which optional solver paths are available in the current install.
+``solver_backend="auto"`` uses the production native defaults. IPOPT is an
+explicit opt-in residual-minimization bridge; it is not selected automatically
+and is not a full constrained Gibbs/NLP formulation. Use
+``epcsaft.capabilities()`` to check which optional solver paths are available
+in the current install.
 
 Repeated State Work
 -------------------

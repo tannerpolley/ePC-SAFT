@@ -7,12 +7,14 @@ import sys
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = REPO_ROOT / "src"
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from epcsaft.benchmarks.reactive_regression import CASE_BUILDERS
-from epcsaft.benchmarks.reactive_regression import render_benchmark_table
-from epcsaft.benchmarks.reactive_regression import run_reactive_regression_benchmarks
+from scripts.benchmarks.helpers.reactive_regression import CASE_BUILDERS
+from scripts.benchmarks.helpers.reactive_regression import render_benchmark_table
+from scripts.benchmarks.helpers.reactive_regression import run_reactive_regression_benchmarks
 
 
 def _parse_args() -> argparse.Namespace:

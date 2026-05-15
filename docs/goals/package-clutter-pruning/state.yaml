@@ -65,13 +65,13 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T001
+active_task: T019
 
 tasks:
   - id: T001
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: medium
     objective: "Phase 0 - establish the intake and safety baseline exactly as issue #120 comment requires."
     inputs:
@@ -92,11 +92,42 @@ tasks:
       - "Updated notes/intake.md with baseline evidence."
       - "State receipt naming any baseline blockers."
       - "Decision whether cleanup phases can proceed."
-    receipt: null
+    receipt:
+      result: done
+      summary:
+        - "Phase 0 intake baseline recorded in docs/goals/package-clutter-pruning/notes/intake.md."
+        - "Branch codex/package-cleanup contains origin/main 8f0ea57c8e5fed3b82ced58f8da9b86b31426932; fetch and ff-only merge completed with no changes."
+        - "Artifact scan currently matches tests/workflows/build/* false positives, not generated package artifacts."
+        - "Benchmark modules, top-level staged/optional modules, __init__ public-surface risks, and 30 broad exception sites were inventoried."
+        - "Baseline validation passed quick, docs, package API, and runtime API; repo workflow tests fail pre-cleanup on missing yaml dependency."
+      commands:
+        - command: "git fetch origin --prune; git merge --ff-only origin/main"
+          status: pass
+          evidence: "Already up to date."
+        - command: "git ls-files | rg \"(__pycache__|\\.pyc$|\\.pyo$|\\.pyd$|\\.so$|\\.dll$|\\.dylib$|\\.egg-info/|(^|/)build/|(^|/)dist/)\""
+          status: note
+          evidence: "Matched tests/workflows/build/*, which are workflow tests rather than generated artifacts."
+        - command: "uv run python scripts/dev/validate_project.py quick"
+          status: pass
+          evidence: "31 passed in bundled quick pytest slice."
+        - command: "uv run python scripts/dev/validate_project.py docs"
+          status: pass
+          evidence: "Sphinx build succeeded."
+        - command: "uv run python run_pytest.py tests/api/package -q"
+          status: pass
+          evidence: "6 passed."
+        - command: "uv run python run_pytest.py tests/api/runtime -q"
+          status: pass
+          evidence: "43 passed."
+        - command: "uv run python run_pytest.py tests/workflows/repo -q"
+          status: fail
+          evidence: "Pre-cleanup collection failure: ModuleNotFoundError: No module named 'yaml'."
+      next:
+        - "T002 Judge should decide whether cleanup may proceed with a recorded baseline blocker or whether to first add/fix the missing repo-workflow test dependency."
   - id: T002
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Review Phase 0 evidence and authorize or narrow the cleanup sequence."
     inputs:
@@ -111,11 +142,22 @@ tasks:
       - "Decision to proceed, block, or narrow scope."
       - "Any phase sequencing changes needed for safety."
       - "Exact Worker instructions if T003 needs adjustment."
-    receipt: null
+    receipt:
+      result: done
+      decision: prerequisite_worker_required
+      full_outcome_complete: false
+      summary:
+        - "Phase 0 evidence is sufficient, but cleanup phases should not start while the final required repo-workflow validation is known-red."
+        - "Baseline failure is pre-cleanup: tests/workflows/repo/test_dependency_issue_triage.py imports yaml, but the test/development dependencies do not include a YAML parser."
+        - "Artifact scan currently matches tests/workflows/build/* only; those are intentional workflow tests and must not be deleted as generated artifacts."
+      next:
+        - "Activate T015 to add the missing YAML parser as a test/development dependency before Phase 1."
+        - "Keep T003 queued until T015 passes."
+        - "Block final completion while tests/workflows/repo -q is red."
   - id: T003
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     reasoning_hint: medium
     objective: "Phase 1 - remove tracked generated and compiled artifacts and harden ignore rules."
     allowed_files:
@@ -135,19 +177,80 @@ tasks:
       - "git diff --check"
     stop_if:
       - "A matched file appears to be an intentional source fixture rather than generated output."
+      - "The only scan matches are tests/workflows/build/* workflow tests; treat those as justified false positives, not deletion targets."
       - "Removing a file changes import behavior unexpectedly."
       - "Need files outside allowed_files."
     constraints:
       - "Use git rm only for tracked generated or compiled artifacts."
       - "Do not delete benchmark fixtures, CSV fixtures, or docs that are intentionally tracked."
+      - "Do not delete tests/workflows/build/* unless later evidence proves those files are generated artifacts."
     expected_output:
       - "Before/after artifact scan saved under notes."
       - "Zero tracked generated or compiled artifact matches, or explicit justified exceptions."
-    receipt: null
+    receipt:
+      result: done
+      changed_files:
+        - "docs/goals/package-clutter-pruning/notes/generated_artifact_scan_before.txt"
+        - "docs/goals/package-clutter-pruning/notes/generated_artifact_scan_after.txt"
+      commands:
+        - command: "git ls-files | rg \"(__pycache__|\\.pyc$|\\.pyo$|\\.pyd$|\\.so$|\\.dll$|\\.dylib$|\\.egg-info/|(^|/)build/|(^|/)dist/)\""
+          status: pass
+          evidence: "Only tests/workflows/build/* matched; these are intentional workflow tests and were recorded as justified false positives."
+        - command: "git diff --check"
+          status: pass
+          evidence: "No whitespace errors."
+      summary:
+        - "No tracked generated bytecode, compiled extension, egg-info, dist, or generated package build artifact was found."
+        - "Saved before/after scan notes with the tests/workflows/build/* false-positive classification."
+        - ".gitignore already covers the issue #120 generated artifact classes and intentionally unignores the workflow build tests."
+  - id: T015
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: low
+    objective: "Phase 0 prerequisite - restore repo workflow test dependency so final #120 validation has a clean baseline."
+    allowed_files:
+      - "pyproject.toml"
+      - "uv.lock"
+    verify:
+      - "uv run python run_pytest.py tests/workflows/repo -q"
+      - "uv run python scripts/dev/validate_project.py quick"
+      - "git diff --check"
+    stop_if:
+      - "Fix requires changing test behavior or source behavior instead of declaring the missing test dependency."
+      - "Dependency resolution changes unrelated packages unexpectedly."
+      - "Repo workflow tests still fail after the YAML parser dependency is installed."
+      - "Need files outside allowed_files."
+    constraints:
+      - "Add the missing YAML parser as a test/development dependency, not as runtime package API behavior."
+      - "Do not change scientific implementation, public capability claims, or issue #114-#119 work."
+    expected_output:
+      - "pyproject.toml and uv.lock include the missing YAML parser for test/development workflows."
+      - "tests/workflows/repo -q passes."
+      - "quick validation still passes."
+    receipt:
+      result: done
+      changed_files:
+        - "pyproject.toml"
+        - "uv.lock"
+      commands:
+        - command: "uv run python run_pytest.py tests/workflows/repo -q"
+          status: pass
+          evidence: "52 passed in 6.45s."
+        - command: "uv run python scripts/dev/validate_project.py quick"
+          status: pass
+          evidence: "31 passed in 3.11s."
+        - command: "git diff --check"
+          status: pass
+          evidence: "No whitespace errors."
+      summary:
+        - "Added PyYAML to the test dependency group and regenerated uv.lock."
+        - "Repo workflow tests now pass from the cleanup branch baseline."
+        - "No source/test behavior changed."
   - id: T004
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Phase 2 - move benchmark execution logic out of the installable runtime package."
     allowed_files:
@@ -174,11 +277,50 @@ tasks:
       - "benchmark_module_inventory.md."
       - "Benchmark execution moved to scripts, tests, or analyses."
       - "Imports and docs updated to new paths."
-    receipt: null
+    receipt:
+      result: done
+      changed_files:
+        - "src/epcsaft/benchmarks/__init__.py"
+        - "src/epcsaft/benchmarks/literature.py"
+        - "src/epcsaft/benchmarks/neutral_equilibrium.py"
+        - "src/epcsaft/benchmarks/reactive_regression.py"
+        - "scripts/benchmarks/helpers/__init__.py"
+        - "scripts/benchmarks/helpers/literature.py"
+        - "scripts/benchmarks/helpers/neutral_equilibrium.py"
+        - "scripts/benchmarks/helpers/reactive_regression.py"
+        - "scripts/benchmarks/benchmark_literature_suite.py"
+        - "scripts/benchmarks/benchmark_neutral_equilibrium.py"
+        - "scripts/benchmarks/benchmark_reactive_regression.py"
+        - "tests/workflows/benchmarks/test_benchmark_literature_suite.py"
+        - "tests/workflows/benchmarks/test_benchmark_neutral_equilibrium.py"
+        - "tests/workflows/benchmarks/test_benchmark_reactive_regression.py"
+        - "docs/pages/package_architecture.rst"
+        - "docs/goals/package-clutter-pruning/notes/benchmark_module_inventory.md"
+      commands:
+        - command: "uv run python run_pytest.py tests/workflows/benchmarks -q"
+          status: pass
+          evidence: "14 passed in 20.43s."
+        - command: "uv run python scripts/benchmarks/benchmark_literature_suite.py"
+          status: pass
+          evidence: "Rendered literature benchmark suite table."
+        - command: "uv run python -c \"from epcsaft.benchmarks.literature import run_literature_benchmarks; from epcsaft.benchmarks.neutral_equilibrium import run_neutral_equilibrium_benchmarks; from epcsaft.benchmarks.reactive_regression import run_reactive_regression_benchmarks; print('benchmark shims ok')\""
+          status: pass
+          evidence: "benchmark shims ok"
+        - command: "rg \"epcsaft\\.benchmarks|from epcsaft\\.benchmarks|import epcsaft\\.benchmarks\" ."
+          status: pass
+          evidence: "Only compatibility documentation/notes mention epcsaft.benchmarks; scripts and workflow tests import scripts.benchmarks.helpers."
+        - command: "git diff --check"
+          status: pass
+          evidence: "No whitespace errors."
+      summary:
+        - "Moved benchmark execution implementations to scripts/benchmarks/helpers."
+        - "Converted src/epcsaft/benchmarks modules to thin import-forwarding compatibility shims."
+        - "Updated benchmark scripts, workflow tests, and architecture docs to stop presenting benchmark execution as runtime API."
+        - "No benchmark targets, tolerances, equations, or scientific outputs were changed."
   - id: T005
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Phase 3 - move analysis and confidence scoring out of runtime diagnostics."
     allowed_files:
@@ -187,6 +329,7 @@ tasks:
       - "scripts/validation/**"
       - "tests/workflows/**"
       - "analyses/package_validation/**"
+      - "analyses/paper_validation/application/2026_khudaida/scripts/**"
       - "tests/equilibrium/**"
       - "tests/api/runtime/**"
       - "docs/**"
@@ -208,18 +351,69 @@ tasks:
       - "equilibrium_diagnostics_inventory.md."
       - "Runtime diagnostics reduced to production result fields."
       - "Analysis and validation helpers relocated."
-    receipt: null
+    receipt:
+      result: done
+      changed_files:
+        - "src/epcsaft/equilibrium_core/confidence.py"
+        - "src/epcsaft/equilibrium_core/thermo_diagnostics.py"
+        - "scripts/validation/equilibrium_core/__init__.py"
+        - "scripts/validation/equilibrium_core/confidence.py"
+        - "scripts/validation/equilibrium_core/thermo_diagnostics.py"
+        - "scripts/validation/validate_electrolyte_lle_confidence.py"
+        - "tests/workflows/validation/__init__.py"
+        - "tests/workflows/validation/equilibrium_core/__init__.py"
+        - "tests/workflows/validation/equilibrium_core/test_electrolyte_lle_confidence.py"
+        - "tests/workflows/validation/equilibrium_core/test_electrolyte_thermo_diagnostics.py"
+        - "analyses/package_validation/package_plot_smokes/tests/plots/test_equilibrium_confidence_plot_outputs.py"
+        - "analyses/package_validation/package_plot_smokes/tests/plots/test_equilibrium_plot_outputs.py"
+        - "analyses/paper_validation/application/2026_khudaida/scripts/_common.py"
+        - "analyses/paper_validation/application/2026_khudaida/scripts/diagnose_khudaida_seeded_lle.py"
+        - "docs/plans/equilibrium_current_state_architecture_plan.md"
+        - "docs/goals/package-clutter-pruning/notes/equilibrium_diagnostics_inventory.md"
+      summary:
+        - "Relocation implementation is behavior-preserving: moved implementation file hashes match the pre-move files exactly."
+        - "Runtime shims import the relocated modules, and compatibility imports pass."
+        - "REPO_ROOT constants in relocated modules still resolve to the repository root."
+        - "tests/api/runtime -q passed with 43 tests and tests/workflows/benchmarks -q passed with 14 tests."
+        - "T017 reclassified relocated validation tests into tests/workflows/validation/equilibrium_core and made hard Khudaida/generated-data checks explicit opt-ins."
+        - "No scripts.validation.equilibrium_core imports remain under tests/equilibrium."
+      commands:
+        - command: "git show HEAD:src/epcsaft/equilibrium_core/confidence.py | git hash-object --stdin; git hash-object scripts/validation/equilibrium_core/confidence.py"
+          status: pass
+          evidence: "Old and new hashes match."
+        - command: "git show HEAD:src/epcsaft/equilibrium_core/thermo_diagnostics.py | git hash-object --stdin; git hash-object scripts/validation/equilibrium_core/thermo_diagnostics.py"
+          status: pass
+          evidence: "Old and new hashes match."
+        - command: "uv run python -c \"from epcsaft.equilibrium_core.confidence import run_confidence_suite; from epcsaft.equilibrium_core.thermo_diagnostics import evaluate_khudaida_solver_gate; from scripts.validation.equilibrium_core.confidence import run_confidence_suite as direct; print(run_confidence_suite is direct)\""
+          status: pass
+          evidence: "Compatibility shim resolved to relocated implementation."
+        - command: "uv run python run_pytest.py tests/api/runtime -q"
+          status: pass
+          evidence: "43 passed."
+        - command: "uv run python run_pytest.py tests/workflows/benchmarks -q"
+          status: pass
+          evidence: "14 passed."
+        - command: "uv run python run_pytest.py tests/workflows/validation/equilibrium_core -q"
+          status: pass
+          evidence: "6 passed, 12 skipped behind explicit opt-in gates."
+        - command: "rg \"scripts.validation.equilibrium_core\" tests/equilibrium"
+          status: pass
+          evidence: "No matches."
+        - command: "git diff --check"
+          status: pass
+          evidence: "No whitespace errors."
   - id: T006
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Phase 4 - clarify native-regression scaffolding by removing placeholders or making the folder real."
     allowed_files:
       - "src/epcsaft/native/regression/**"
       - "src/epcsaft/native/epcsaft_regression.cpp"
       - "src/epcsaft/native/epcsaft_regression.h"
-      - "src/epcsaft/native/bindings.cpp"
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/bindings.cpp"
       - "CMakeLists.txt"
       - "src/epcsaft/native/CMakeLists.txt"
       - "tests/native/ceres/**"
@@ -241,11 +435,145 @@ tasks:
       - "native_regression_scaffold_inventory.md."
       - "One explicit path chosen: remove placeholders or make folder own real compiled code."
       - "Native build and regression validations recorded."
-    receipt: null
+    receipt:
+      result: done
+      changed_files:
+        - "CMakeLists.txt"
+        - "src/epcsaft/bindings.cpp"
+        - "src/epcsaft/native/regression/ceres_backend.cpp"
+        - "src/epcsaft/native/regression/ceres_backend.h"
+        - "src/epcsaft/native/regression/parameter_map.h"
+        - "src/epcsaft/native/regression/regression_problem.cpp"
+        - "src/epcsaft/native/regression/regression_problem.h"
+        - "src/epcsaft/native/regression/target_rows.h"
+        - "src/epcsaft/native/regression/thermo_evaluator.h"
+        - "docs/goals/package-clutter-pruning/notes/native_regression_scaffold_inventory.md"
+      commands:
+        - command: "uv run python scripts/dev/build_epcsaft.py --clean --enable-ceres --enable-cppad"
+          status: pass
+          evidence: "Clean configure/build/import completed; _core native import OK."
+        - command: "uv run python run_pytest.py tests/native/ceres -q"
+          status: pass
+          evidence: "4 passed."
+        - command: "uv run python run_pytest.py tests/api/regression -q"
+          status: pass
+          evidence: "35 passed."
+        - command: "uv run python run_pytest.py tests/native/contracts/test_ceres_cppad_build_contract.py -q"
+          status: pass
+          evidence: "2 passed."
+        - command: "uv run python scripts/dev/build_dist.py"
+          status: pass
+          evidence: "Built sdist and wheel; wheel smoke import/state check passed."
+        - command: "rg -n \"native/regression|src/epcsaft/native/regression|ceres_backend.h|regression_problem.h|parameter_map.h|target_rows.h|thermo_evaluator.h|ceres_backend_compiled|regression_problem_uses_python_objective_loop|RegressionProblemContract|ThermoEvaluatorContract|TargetRowKind|kPureNeutralMseParameterMap\" CMakeLists.txt src tests scripts docs/roadmaps docs/goals/package-clutter-pruning/notes/native_regression_scaffold_inventory.md"
+          status: pass
+          evidence: "Only the Phase 4 inventory note references the removed scaffold paths/names."
+        - command: "git diff --check"
+          status: pass
+          evidence: "No whitespace errors."
+      summary:
+        - "Removed the placeholder native regression scaffold folder instead of making it a parallel implementation."
+        - "Left real native regression behavior in src/epcsaft/native/epcsaft_regression.cpp and public declarations in epcsaft_electrolyte.h."
+        - "Replaced the scaffold-backed Ceres smoke helper with a direct compile-flag check in bindings.cpp."
+        - "Removed the scaffold folder from CMake source/include ownership."
+        - "No regression objective math, solver algorithm, targets, parameters, or scientific outputs were changed."
+  - id: T016
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "T005 follow-up - reclassify relocated equilibrium diagnostic tests and define the correct verification boundary."
+    inputs:
+      - "T005 blocked receipt"
+      - "docs/goals/package-clutter-pruning/notes/equilibrium_diagnostics_inventory.md"
+      - "tests/equilibrium/electrolyte/test_electrolyte_lle_confidence.py"
+      - "tests/equilibrium/electrolyte/test_electrolyte_thermo_diagnostics.py"
+      - "scripts/validation/equilibrium_core/confidence.py"
+      - "scripts/validation/equilibrium_core/thermo_diagnostics.py"
+    constraints:
+      - "Do not implement."
+      - "Do not paste exact banned backend or derivative-status tokens into board receipts."
+      - "Decide whether these diagnostics belong in opt-in validation/workflow tests, need fixture regeneration, or require a package capability blocker."
+      - "Do not let Phase 4 activate until this decision is recorded."
+    expected_output:
+      - "Decision: clean scoped verifier, blocked external debt, or Worker task."
+      - "Exact next active task."
+      - "allowed_files, verify, and stop_if if Worker work is required."
+      - "Whether T005 can be converted from blocked to done."
+    receipt:
+      result: done
+      decision: decision_ready
+      full_outcome_complete: false
+      summary:
+        - "Relocated Khudaida/confidence tests should move out of tests/equilibrium because they exercise scripts/validation helpers, report generation, paper-validation data, and hard-case validation behavior."
+        - "Correct destination is tests/workflows/validation/equilibrium_core."
+        - "T005 remains blocked until a bounded Worker performs the test reclassification."
+      next:
+        - "Activate T017 to move/reclassify the tests and define default versus opt-in validation boundaries."
+        - "After T017 passes, PM may convert T005 from blocked to done and activate T006."
+  - id: T017
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Reclassify relocated equilibrium validation tests into workflow validation and define default/opt-in boundaries."
+    allowed_files:
+      - "tests/equilibrium/electrolyte/test_electrolyte_lle_confidence.py"
+      - "tests/equilibrium/electrolyte/test_electrolyte_thermo_diagnostics.py"
+      - "tests/workflows/validation/**"
+      - "docs/goals/package-clutter-pruning/notes/equilibrium_diagnostics_inventory.md"
+    verify:
+      - "uv run python run_pytest.py tests/workflows/validation/equilibrium_core -q"
+      - "uv run python run_pytest.py tests/api/runtime -q"
+      - "uv run python run_pytest.py tests/workflows/benchmarks -q"
+      - "rg \"scripts.validation.equilibrium_core\" tests/equilibrium"
+      - "git diff --check"
+    stop_if:
+      - "Reclassification requires changing solver behavior, equations, scientific targets, or validation data."
+      - "A default test would hide a real regression from this cleanup slice."
+      - "Files outside allowed_files are needed."
+      - "Exact banned status tokens would be written into committed text."
+    constraints:
+      - "Move validation-helper tests out of tests/equilibrium and into tests/workflows/validation/equilibrium_core."
+      - "Keep default tests for pure data/schema/helper behavior that does not require unavailable native support or missing generated paper-validation data."
+      - "Mark unavailable-native-support or generated-data-dependent validation cases as opt-in or skipped with explicit reason."
+    expected_output:
+      - "Relocated workflow validation tests."
+      - "Default workflow validation command passes."
+      - "No scripts.validation.equilibrium_core imports remain under tests/equilibrium."
+    receipt:
+      result: done
+      changed_files:
+        - "tests/equilibrium/electrolyte/test_electrolyte_lle_confidence.py"
+        - "tests/equilibrium/electrolyte/test_electrolyte_thermo_diagnostics.py"
+        - "tests/workflows/validation/__init__.py"
+        - "tests/workflows/validation/equilibrium_core/__init__.py"
+        - "tests/workflows/validation/equilibrium_core/test_electrolyte_lle_confidence.py"
+        - "tests/workflows/validation/equilibrium_core/test_electrolyte_thermo_diagnostics.py"
+        - "docs/goals/package-clutter-pruning/notes/equilibrium_diagnostics_inventory.md"
+      commands:
+        - command: "uv run python run_pytest.py tests/workflows/validation/equilibrium_core -q"
+          status: pass
+          evidence: "6 passed, 12 skipped behind EPCSAFT_KHUDAIDA_VALIDATION, EPCSAFT_EQUILIBRIUM_CONFIDENCE, or EPCSAFT_KHUDAIDA_DIGITIZED_DATA."
+        - command: "uv run python run_pytest.py tests/api/runtime -q"
+          status: pass
+          evidence: "43 passed."
+        - command: "uv run python run_pytest.py tests/workflows/benchmarks -q"
+          status: pass
+          evidence: "14 passed."
+        - command: "rg \"scripts.validation.equilibrium_core\" tests/equilibrium"
+          status: pass
+          evidence: "No matches."
+        - command: "git diff --check"
+          status: pass
+          evidence: "No whitespace errors."
+      summary:
+        - "Moved confidence and Khudaida diagnostic tests from tests/equilibrium into tests/workflows/validation/equilibrium_core."
+        - "Kept default workflow coverage for fixture/schema/cache checks available in the checkout."
+        - "Marked hard native validation, full confidence report generation, and generated digitized CSV checks as explicit opt-ins."
   - id: T007
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Phase 5 - quarantine staged and optional top-level helpers so they are not mistaken for production APIs."
     allowed_files:
@@ -253,6 +581,7 @@ tasks:
       - "src/epcsaft/electrolyte_bubble.py"
       - "src/epcsaft/reactive_electrolyte.py"
       - "src/epcsaft/ipopt_backend.py"
+      - "src/epcsaft/reactive.py"
       - "src/epcsaft/_compat/**"
       - "src/epcsaft/_experimental/**"
       - "src/epcsaft/_optional_backends/**"
@@ -279,11 +608,45 @@ tasks:
       - "staged_optional_module_inventory.md."
       - "Moved or clearly marked internal helpers."
       - "Docs/tests updated to intended import paths."
-    receipt: null
+    receipt:
+      result: done
+      changed_files:
+        - "src/epcsaft/ipopt_backend.py"
+        - "src/epcsaft/_optional_backends/__init__.py"
+        - "src/epcsaft/_optional_backends/ipopt.py"
+        - "src/epcsaft/reactive.py"
+        - "src/epcsaft/reactive_electrolyte.py"
+        - "src/epcsaft/reactive_staged.py"
+        - "docs/goals/package-clutter-pruning/notes/staged_optional_module_inventory.md"
+      commands:
+        - command: "uv run python run_pytest.py tests/api/reactive -q"
+          status: pass
+          evidence: "61 passed, 1 skipped."
+        - command: "uv run python run_pytest.py tests/equilibrium/reactive -q"
+          status: pass
+          evidence: "2 passed."
+        - command: "uv run python run_pytest.py tests/api/package -q"
+          status: pass
+          evidence: "6 passed."
+        - command: "uv run python run_pytest.py tests/api/runtime -q"
+          status: pass
+          evidence: "43 passed."
+        - command: "rg \"reactive_staged|electrolyte_bubble|reactive_electrolyte|ipopt_backend\" docs tests src scripts analyses"
+          status: pass
+          evidence: "References are stable public contracts, compatibility imports, tests, docs, or Phase 5 inventory notes."
+        - command: "git diff --check"
+          status: pass
+          evidence: "No whitespace errors."
+      summary:
+        - "Moved the optional IPOPT implementation to src/epcsaft/_optional_backends/ipopt.py."
+        - "Kept epcsaft.ipopt_backend as a compatibility module alias so existing imports and monkeypatch seams still work."
+        - "Kept electrolyte_bubble.py, reactive_electrolyte.py, and reactive_staged.py in place because they are current public contracts."
+        - "Added staged workflow exports to epcsaft.reactive and tightened staged/sequential module wording."
+        - "No solver behavior, equations, reactive speciation logic, bubble-pressure logic, or regression targets changed."
   - id: T008
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Phase 6 - create module ownership and safe split plan for high-bloat modules."
     allowed_files:
@@ -295,12 +658,12 @@ tasks:
       - "src/epcsaft/equilibrium.py"
       - "src/epcsaft/reactive_regression.py"
       - "src/epcsaft/parameters.py"
-      - "src/epcsaft/native/bindings.cpp"
+      - "src/epcsaft/bindings.cpp"
       - "src/epcsaft/reactive_speciation.py"
       - "docs/goals/package-clutter-pruning/notes/**"
     verify:
       - "Test-Path docs/roadmaps/module_ownership_and_split_plan.md"
-      - "rg \"src/epcsaft/regression.py|src/epcsaft/native/epcsaft_equilibrium.cpp|src/epcsaft/epcsaft.py|src/epcsaft/native/epcsaft_regression.cpp|src/epcsaft/equilibrium.py|src/epcsaft/reactive_regression.py|src/epcsaft/parameters.py|src/epcsaft/native/bindings.cpp|src/epcsaft/reactive_speciation.py\" docs/roadmaps/module_ownership_and_split_plan.md"
+      - "rg \"src/epcsaft/regression.py|src/epcsaft/native/epcsaft_equilibrium.cpp|src/epcsaft/epcsaft.py|src/epcsaft/native/epcsaft_regression.cpp|src/epcsaft/equilibrium.py|src/epcsaft/reactive_regression.py|src/epcsaft/parameters.py|src/epcsaft/bindings.cpp|src/epcsaft/reactive_speciation.py\" docs/roadmaps/module_ownership_and_split_plan.md"
     stop_if:
       - "A proposed extraction would touch EOS equations, association internals, native equilibrium residuals, Ceres objective evaluation, or binding signatures without tests."
       - "The plan cannot identify tests that must move with a future split."
@@ -311,11 +674,31 @@ tasks:
     expected_output:
       - "module_ownership_and_split_plan.md covers every required file."
       - "Any optional extraction is mechanically behavior-preserving and validated."
-    receipt: null
+    receipt:
+      result: done
+      changed_files:
+        - "docs/roadmaps/module_ownership_and_split_plan.md"
+      commands:
+        - command: "Test-Path docs/roadmaps/module_ownership_and_split_plan.md"
+          status: pass
+          evidence: "True."
+        - command: "rg \"src/epcsaft/regression.py|src/epcsaft/native/epcsaft_equilibrium.cpp|src/epcsaft/epcsaft.py|src/epcsaft/native/epcsaft_regression.cpp|src/epcsaft/equilibrium.py|src/epcsaft/reactive_regression.py|src/epcsaft/parameters.py|src/epcsaft/bindings.cpp|src/epcsaft/reactive_speciation.py\" docs/roadmaps/module_ownership_and_split_plan.md"
+          status: pass
+          evidence: "All required high-bloat module paths are covered."
+        - command: "git diff --check"
+          status: pass
+          evidence: "No whitespace errors."
+        - command: "Project-banned status-token scan over goal docs and current diff"
+          status: pass
+          evidence: "No matches in new goal notes or staged diff."
+      summary:
+        - "Created docs/roadmaps/module_ownership_and_split_plan.md for every issue #120 Phase 6 high-bloat module."
+        - "Documented current runtime ownership, validation/docs ownership, safe future split targets, unsafe split boundaries, and tests that must move with a future split."
+        - "No code, native binding, solver, equation, parameter, or public API behavior changed in this phase."
   - id: T009
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Phase 7 - classify and reduce broad exception handling without hiding solver failures."
     allowed_files:
@@ -341,11 +724,41 @@ tasks:
       - "exception_handling_cleanup_report.md."
       - "Obvious bad broad catches reduced."
       - "Remaining broad catches justified."
-    receipt: null
+    receipt:
+      result: done
+      changed_files:
+        - "src/epcsaft/__main__.py"
+        - "src/epcsaft/_optional_backends/ipopt.py"
+        - "src/epcsaft/epcsaft.py"
+        - "src/epcsaft/equilibrium.py"
+        - "src/epcsaft/reactive_speciation.py"
+        - "src/epcsaft/runtime.py"
+        - "docs/roadmaps/exception_handling_cleanup_report.md"
+      commands:
+        - command: "rg \"except Exception|except BaseException|except:\" src/epcsaft"
+          status: pass
+          evidence: "Only two broad catches remain: reactive_regression row result conversion and reactive_speciation sweep result-mode conversion."
+        - command: "uv run python -m compileall -q src/epcsaft"
+          status: pass
+          evidence: "Package source compiles."
+        - command: "uv run python run_pytest.py tests/api -q"
+          status: pass
+          evidence: "165 passed, 1 skipped."
+        - command: "uv run python run_pytest.py tests/native/runtime -q"
+          status: pass
+          evidence: "21 passed."
+        - command: "git diff --check"
+          status: pass
+          evidence: "No whitespace errors."
+      summary:
+        - "Reduced broad exception catches in src/epcsaft from 23 to 2."
+        - "Narrowed native import probes, optional IPOPT status parsing, native derivative probes, neutral bubble/dew candidate evaluation, and reactive speciation candidate normalization."
+        - "Fixed stale moved-module imports in the optional IPOPT backend so it imports epcsaft._core from the package root."
+        - "Documented every original broad-catch category and justified the two remaining result-mode boundaries."
   - id: T010
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     reasoning_hint: medium
     objective: "Phase 8 - rewrite ambiguous compatibility, staged, debug-route, and optional-backend language."
     allowed_files:
@@ -370,11 +783,49 @@ tasks:
     expected_output:
       - "Ambiguous wording rewritten or justified."
       - "Docs validation result recorded."
-    receipt: null
+    receipt:
+      result: done
+      changed_files:
+        - "docs/goals/package-clutter-pruning/notes/ambiguous_wording_audit.md"
+        - "docs/pages/README.rst"
+        - "docs/pages/diagnostics.rst"
+        - "docs/pages/downstream_local_installs.rst"
+        - "docs/pages/electrolyte_vle_reactive_workflow.rst"
+        - "docs/pages/equilibrium_architecture.rst"
+        - "docs/pages/equilibrium_cookbook.rst"
+        - "docs/pages/package_architecture.rst"
+        - "docs/pages/parameter_regression.rst"
+        - "docs/pages/release_installation.rst"
+        - "docs/plans/equilibrium_current_state_architecture_plan.md"
+        - "docs/presentations/epcsaft_lithium_produced_water_deck.md"
+        - "docs/releases/v1.5.0.md"
+        - "src/epcsaft/reactive_staged.py"
+        - "src/epcsaft/runtime.py"
+      commands:
+        - command: "rg \"fall back|fallback|staged|diagnostic-only|diagnostics-only|not production|experimental|compatibility\" src docs tests scripts analyses"
+          status: pass
+          evidence: "Remaining matches are documented as public API or diagnostic keys, source-literature data labels, Git staging language, explicit roadmap warnings, or compatibility-shim language."
+        - command: "uv run python -m compileall -q src/epcsaft"
+          status: pass
+          evidence: "Package source compiles."
+        - command: "uv run python scripts/dev/validate_project.py docs"
+          status: pass
+          evidence: "Sphinx build succeeded."
+        - command: "git diff --check"
+          status: pass
+          evidence: "No whitespace errors."
+        - command: "Project-banned status-token scan over current diff"
+          status: pass
+          evidence: "No matches in current diff."
+      summary:
+        - "Rewrote package-facing IPOPT wording as an explicit opt-in residual-minimization bridge."
+        - "Rewrote reactive workflow prose toward sequential coupling where staged wording could imply a fully coupled reactive flash."
+        - "Preserved public API names, diagnostic keys, source-literature experimental labels, Git staging language, and explicit roadmap warnings."
+        - "Added a Phase 8 audit note classifying remaining wording scan matches."
   - id: T011
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Phase 9 - audit and tighten the public API surface."
     allowed_files:
@@ -402,11 +853,86 @@ tasks:
       - "public_api_surface_report.md."
       - "Stable generic exports are explicit."
       - "Staged, experimental, optional, and validation-only surfaces are hidden, marked internal, or justified."
-    receipt: null
+    receipt:
+      result: done
+      changed_files:
+        - "docs/roadmaps/public_api_surface_report.md"
+      commands:
+        - command: "uv run python run_pytest.py tests/api/package -q"
+          status: pass
+          evidence: "6 passed."
+        - command: "uv run python run_pytest.py tests/api/runtime -q"
+          status: pass
+          evidence: "43 passed."
+        - command: "uv run python scripts/dev/validate_project.py docs"
+          status: pass
+          evidence: "Sphinx build succeeded."
+        - command: "git diff --check"
+          status: pass
+          evidence: "No whitespace errors."
+        - command: "Project-banned status-token scan over current diff"
+          status: pass
+          evidence: "No matches in current diff."
+        - command: "python_api_test_owner public API contract audit"
+          status: pass
+          evidence: "No public exports should be hidden in this cleanup PR; narrow contract test set passed 49 tests."
+      summary:
+        - "Added the Phase 9 public API surface report."
+        - "Confirmed 104 top-level exports, no project scripts, no project entry-point groups, and python -m epcsaft as the supported command-style surface."
+        - "Classified stable public modules, compatibility shims, private modules, optional backend bridge, validation helpers, and future API cleanup candidates."
+        - "Kept existing broad public imports intact; no export removal is safe in this cleanup PR without a deprecation decision."
+  - id: T018
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: low
+    objective: "Repair stale validation target references introduced by the Phase 3 diagnostics test move."
+    allowed_files:
+      - "run_pytest.py"
+      - "scripts/benchmarks/helpers/literature.py"
+      - "tests/workflows/repo/test_run_pytest.py"
+    verify:
+      - "uv run python run_pytest.py tests/workflows/repo/test_run_pytest.py -q"
+      - "uv run python scripts/dev/validate_project.py quick"
+      - "git diff --check"
+    stop_if:
+      - "Repair requires changing test behavior instead of updating moved path references."
+      - "The quick validation failure is not caused by stale moved diagnostics paths."
+      - "Need files outside allowed_files."
+    constraints:
+      - "Do not change scientific equations, solver behavior, regression math, or benchmark targets."
+      - "Keep the diagnostics validation tests in the workflow validation location selected by Phase 3."
+    expected_output:
+      - "Default and equilibrium confidence test slices reference existing moved diagnostics paths."
+      - "Workflow tests guard against stale predefined pytest targets."
+      - "Quick validation passes again."
+    receipt:
+      result: done
+      changed_files:
+        - "run_pytest.py"
+        - "scripts/benchmarks/helpers/literature.py"
+        - "tests/workflows/repo/test_run_pytest.py"
+      commands:
+        - command: "uv run python run_pytest.py tests/workflows/repo/test_run_pytest.py -q"
+          status: pass
+          evidence: "23 passed."
+        - command: "uv run python scripts/dev/validate_project.py quick"
+          status: pass
+          evidence: "31 passed after stale moved diagnostics paths were repaired."
+        - command: "git diff --check"
+          status: pass
+          evidence: "No whitespace errors."
+        - command: "Stale moved diagnostics path scan over executable workflow files"
+          status: pass
+          evidence: "No stale moved diagnostics test path references remain in run_pytest.py, benchmark helpers, or workflow tests."
+      summary:
+        - "Updated predefined pytest slices and benchmark metadata to reference the Phase 3 workflow validation test locations."
+        - "Added a workflow guard that checks predefined pytest target files exist."
+        - "Removed an empty generated local figure directory tree that made the repo-structure quick check fail; it contained no files and no tracked content."
   - id: T012
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     reasoning_hint: medium
     objective: "Run final #120 validation and assemble PR-ready evidence."
     allowed_files:
@@ -432,11 +958,43 @@ tasks:
     expected_output:
       - "PR-ready evidence summary in notes."
       - "Final validation results with exact command statuses."
-    receipt: null
+    receipt:
+      result: done
+      changed_files:
+        - "docs/goals/package-clutter-pruning/notes/final_pr_evidence.md"
+      commands:
+        - command: "uv run python scripts/dev/validate_project.py quick"
+          status: pass
+          evidence: "31 passed; doctor reported current install state and no native core errors."
+        - command: "uv run python scripts/dev/validate_project.py docs"
+          status: pass
+          evidence: "Sphinx build succeeded."
+        - command: "uv run python run_pytest.py tests/api/package -q"
+          status: pass
+          evidence: "6 passed."
+        - command: "uv run python run_pytest.py tests/api/runtime -q"
+          status: pass
+          evidence: "43 passed."
+        - command: "uv run python run_pytest.py tests/workflows/repo -q"
+          status: pass
+          evidence: "53 passed."
+        - command: "git diff --check"
+          status: pass
+          evidence: "No whitespace errors."
+        - command: "git ls-files | rg generated-or-build-artifact-patterns"
+          status: pass
+          evidence: "Only tests/workflows/build/* matched; classified as intentional workflow tests."
+        - command: "Project-banned status-token scan over current diff"
+          status: pass
+          evidence: "No matches in current diff."
+      summary:
+        - "Added the final PR evidence note covering every issue #120 cleanup phase."
+        - "Final validation passed after T018 repaired stale predefined pytest target paths."
+        - "No scientific equations, solver algorithms, regression objectives, benchmark target values, or public runtime semantics were intentionally changed."
   - id: T013
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Final audit for issue #120 completion."
     inputs:
@@ -458,11 +1016,22 @@ tasks:
       - "full_outcome_complete: true or false"
       - "Missing evidence, if any"
       - "PR readiness recommendation"
-    receipt: null
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      missing_evidence: []
+      pr_readiness: "Ready for local commit and PR body preparation; do not push or open PR unless explicitly requested."
+      summary:
+        - "Every issue #120 phase has a receipt or final evidence note, including generated-artifact scan, benchmark relocation, diagnostics relocation, native scaffold pruning, optional module cleanup, ownership plan, broad exception cleanup, wording audit, and public API audit."
+        - "No required Worker tasks remain queued after T018 repaired stale workflow validation targets."
+        - "Final validation passed quick, docs, package API, runtime API, repo workflow, whitespace, artifact scan, and current-diff project token checks."
+        - "Targeted source and native diffs show cleanup, import shims, wording, and exception-boundary changes; no equation forms, solver algorithms, regression objectives, or benchmark target values were intentionally changed."
+        - "No #114-#119 vertical implementation work is required for this PR."
   - id: T014
     type: pm
     assignee: PM
-    status: queued
+    status: done
     reasoning_hint: medium
     objective: "Commit, prepare PR body, and decide whether to open a draft or ready PR based on the final audit."
     inputs:
@@ -477,6 +1046,44 @@ tasks:
       - "Local commit or clear reason not committed."
       - "PR body draft covering every issue #120 checklist item."
       - "Cleanup hook result."
+    receipt:
+      result: done
+      changed_files:
+        - "docs/goals/package-clutter-pruning/notes/pr_body.md"
+        - "docs/goals/package-clutter-pruning/state.yaml"
+      commands:
+        - command: "pwsh.exe -NoProfile -ExecutionPolicy Bypass -File \"$env:USERPROFILE\\.codex\\hooks\\codex-cleanup.ps1\" -RepoRoot ."
+          status: pass
+          evidence: "No matching leftover Codex processes under the repo."
+        - command: "Local commit"
+          status: pass
+          evidence: "Commit created after writing this final board receipt; final response reports the hash."
+      summary:
+        - "Prepared a PR body draft covering the issue #120 cleanup checklist and validation."
+        - "Ran the repo cleanup hook before handoff."
+        - "No push or PR creation was performed because the active run did not explicitly request it."
+  - id: T019
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: medium
+    objective: "Publish, open PR, merge to main, check out main, and clean stale cleanup branch refs after the user expanded the goal."
+    inputs:
+      - "T014 receipt"
+      - "docs/goals/package-clutter-pruning/notes/pr_body.md"
+      - "Final validation evidence from T012"
+    constraints:
+      - "Commit all intended cleanup changes before pushing."
+      - "Push the cleanup branch, open a PR, merge it to main, then check out main."
+      - "Delete stale local and remote cleanup branches after merge if they still exist."
+      - "Do not force push or use destructive reset/checkout commands."
+      - "If PR creation or merge fails, record exact failure and stop with the branch pushed."
+    expected_output:
+      - "Local commit hash."
+      - "PR URL."
+      - "Merge result."
+      - "Main checkout status."
+      - "Local and remote cleanup branch deletion result."
     receipt: null
 
 checks:

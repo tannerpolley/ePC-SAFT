@@ -44,10 +44,10 @@ these fields as routing hints, not as proof that a physical case is valid.
      - Production native, scoped
      - Fixed-liquid electrolyte bubble pressure with neutral vapor species only.
    * - Reactive electrolyte bubble
-     - Staged production native, scoped
+     - Sequential native substeps, scoped
      - Native speciation followed by fixed-liquid electrolyte bubble pressure.
    * - IPOPT
-     - Experimental opt-in
+     - Optional opt-in bridge
      - Bound-constrained residual-minimization refinement only; not full Gibbs/NLP.
 
 .. list-table::
@@ -70,13 +70,13 @@ these fields as routing hints, not as proof that a physical case is valid.
      - You need strict failure when a specific derivative backend is unavailable.
    * - ``jacobian_backend="autodiff"``
      - You need an existing legacy Eigen forward-mode path and want unsupported routes to fail loudly.
-     - You need a fallback to an analytical formula.
+     - You need an automatic analytical substitute.
    * - ``jacobian_backend="cppad"``
      - You need a CppAD residual derivative path and want unsupported routes to return ``backend_unavailable``.
-     - You need a finite-difference fallback.
+     - You need a numerical-derivative substitute.
    * - ``differential_mode="autodiff"``
      - You need implemented autodiff derivative paths.
-     - You need a fallback to analytical derivatives.
+     - You need an automatic analytical substitute.
    * - ``solver_backend="ipopt"``
      - You explicitly installed ``cyipopt`` and want residual-minimization refinement.
      - You need full constrained Gibbs minimization.
@@ -85,7 +85,8 @@ Neutral VLE, LLE, and stability
 -------------------------------
 
 Use explicit mixture methods in new code. Use string-dispatched
-``mixture.equilibrium(kind=...)`` only for compatibility with older scripts.
+``mixture.equilibrium(kind=...)`` only as a compatibility shim for older
+scripts.
 
 .. code-block:: python
 
@@ -118,7 +119,10 @@ For neutral TP flash and neutral bubble/dew diagnostics, check these fields befo
 - ``diagnostics["neutral_fallback_used"]``
 - ``diagnostics["neutral_fallback_reason"]``
 
-The fast-path flag means the current native or local-first neutral route handled the solve directly. A fallback flag means the optimized route dropped to the more conservative path while preserving the same result contract.
+The fast-path flag means the current native or local-first neutral route handled
+the solve directly. The ``neutral_fallback_*`` keys are legacy diagnostics:
+they indicate the optimized route used the more conservative neutral path while
+preserving the same result contract.
 
 Derivative policy
 -----------------
@@ -143,13 +147,13 @@ Supported derivative labels are ``analytic``, ``cppad``,
 Unsupported combinations report ``backend_unavailable``. ``auto`` never falls
 back to finite differences.
 
-Staged reactive workflow boundary
----------------------------------
+Sequential Reactive Workflow Boundary
+-------------------------------------
 
 Reactive equilibrium examples in this package should use fixed or literature
 reaction constants first. Create those inputs with
 ``ReactionDefinition(log_equilibrium_constant=...)`` or the more explicit
-``ReactionDefinition.from_literature_constant(...)`` helper, then run staged
+``ReactionDefinition.from_literature_constant(...)`` helper, then run chemical
 speciation before the phase route.
 
 .. code-block:: python
@@ -174,7 +178,7 @@ speciation before the phase route.
        phase_kind="tp_flash",
    )
 
-The resulting diagnostics identify the workflow as staged, keep
+The resulting diagnostics identify the sequential coupling level, keep
 reaction-constant fitting as ``secondary_optional``, and state that full
 simultaneous reactive NLP is not the active route. Fit pure, binary, or
 electrolyte ePC-SAFT parameters after this fixed-constant speciation and phase

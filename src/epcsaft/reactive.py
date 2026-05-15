@@ -20,6 +20,7 @@ from .reactive_speciation import (
     solve_reactive_speciation,
     solve_reactive_speciation_sweep,
 )
+from .reactive_staged import ReactiveStagedEquilibriumResult, solve_reactive_staged_equilibrium
 
 __all__ = [
     "ReactionConstantConvention",
@@ -33,8 +34,10 @@ __all__ = [
     "ReactiveSpeciationOptions",
     "ReactiveSpeciationProblem",
     "ReactiveSpeciationResult",
+    "ReactiveStagedEquilibriumResult",
     "solve_reactive_electrolyte_bubble",
     "solve_reactive_electrolyte_bubble_sweep",
     "solve_reactive_speciation",
     "solve_reactive_speciation_sweep",
+    "solve_reactive_staged_equilibrium",
 ]

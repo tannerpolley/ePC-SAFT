@@ -34,7 +34,7 @@ Observed results:
 
 - The central principle is still correct: expose problem-specific public methods while sharing native thermodynamic primitives internally.
 - The native core should remain responsible for density, residual Helmholtz terms, fugacity/activity, TPD, LLE/VLE solves, chemical equilibrium, and performance-critical numerical work.
-- The current `equilibrium(kind=...)` dispatcher should remain for compatibility, but it should stop being the primary API.
+- The current `equilibrium(kind=...)` dispatcher should remain as a compatibility shim, but it should stop being the primary API.
 - Bubble, dew, flash, stability, chemical equilibrium, and reactive equilibrium should reuse common state, residual, composition, and diagnostics machinery.
 - Reactive flash must eventually solve phase equilibrium and reaction equilibrium together; the current sequential reactive workflows should not be renamed as rigorous reactive flash.
 
@@ -48,7 +48,7 @@ The older handoff treats several items as future or placeholder work that are no
 - `src/epcsaft/reactive_speciation.py` implements homogeneous activity-coupled reactive speciation through `_core._solve_chemical_equilibrium_native`.
 - `src/epcsaft/reactive_electrolyte.py` implements a composed native workflow: chemical speciation followed by fixed-liquid electrolyte bubble pressure.
 - `src/epcsaft/native/epcsaft_chemical_equilibrium.cpp` is already split out from the main equilibrium file.
-- `src/epcsaft/equilibrium_core/electrolyte_basis.py`, `electrolyte_seeds.py`, `confidence.py`, and `thermo_diagnostics.py` already hold electrolyte workflow helpers and validation diagnostics.
+- `src/epcsaft/equilibrium_core/electrolyte_basis.py` and `electrolyte_seeds.py` hold runtime electrolyte helpers; electrolyte confidence and fixed-phase validation diagnostics live under `scripts/validation/equilibrium_core/`.
 
 The outdated docs/tests must be updated before broad architecture work, otherwise future agents will keep planning around false negatives.
 
@@ -56,7 +56,7 @@ The outdated docs/tests must be updated before broad architecture work, otherwis
 
 1. `ePCSAFTMixture.equilibrium(...)` is too broad.
 
-It imports and dispatches every equilibrium mode, validates unrelated arguments in repeated branches, and requires callers to remember string mode names. It is useful as compatibility glue, but it is the wrong long-term primary API.
+It imports and dispatches every equilibrium mode, validates unrelated arguments in repeated branches, and requires callers to remember string mode names. It is useful as compatibility-shim glue, but it is the wrong long-term primary API.
 
 2. `src/epcsaft/native/epcsaft_equilibrium.cpp` is too large.
 
@@ -131,7 +131,7 @@ mix.dew_t(P, y, *, liquid_species=None, options=None, initial_guess=None)
 mix.reactive_flash_tp(T, P, z, reactions, *, phases=("liquid", "vapor"), options=None, initial_guess=None)
 ```
 
-Do not add a public `reactive_flash_tp` that only performs chemical equilibrium followed by ordinary flash. If a sequential helper is needed, name it as a staged workflow.
+Do not add a public `reactive_flash_tp` that only performs chemical equilibrium followed by ordinary flash. If a sequential helper is needed, name it as a sequential workflow.
 
 ## Method-by-Method Status
 
@@ -145,7 +145,7 @@ Do not add a public `reactive_flash_tp` that only performs chemical equilibrium 
 | `equilibrium(kind="electrolyte_lle")` | Native electrolyte LLE with charge-constrained transformed basis and continuation helpers. | Add `electrolyte_lle_tp(...)`; continue improving diagnostics, not API churn. |
 | `equilibrium(kind="electrolyte_bubble_pressure")` | Native fixed-liquid electrolyte bubble pressure, neutral vapor species only. | Update stale runtime tests/docs; add `electrolyte_bubble_p(...)` wrapper. |
 | `solve_reactive_speciation(...)` and `kind="chemical_equilibrium"` | Native homogeneous activity-coupled speciation. | Add `standard_state` to reaction API with backward-compatible default; document current convention. |
-| `kind="reactive_stability"` | Sequential chemical equilibrium then native TPD. | Keep, but document as staged reactive stability, not rigorous reactive flash. |
+| `kind="reactive_stability"` | Sequential chemical equilibrium then native TPD. | Keep, but document as sequential reactive stability, not rigorous reactive flash. |
 | `solve_reactive_electrolyte_bubble(...)` and `kind="reactive_electrolyte_bubble_pressure"` | Sequential chemical speciation then fixed-liquid electrolyte bubble pressure. | Keep, harden docs/tests, and do not label as rigorous reactive VLE. |
 | Neutral `bubble_p`, `bubble_t`, `dew_p`, `dew_t` | Missing. | Implement before true reactive flash. |
 | Electrolyte dew or full electrolyte VLE flash | Missing. | Defer until neutral bubble/dew and fixed-liquid electrolyte bubble contracts are stable. |
@@ -165,7 +165,7 @@ Do not add a public `reactive_flash_tp` that only performs chemical equilibrium 
 
 - [ ] Update `tests/api/test_runtime.py` so `electrolyte_bubble_pressure` and `reactive_electrolyte_bubble` are expected available with native backend metadata.
 - [ ] Update docs that still call those paths placeholders.
-- [ ] Preserve the important caveat: reactive electrolyte bubble is staged speciation plus fixed-liquid bubble pressure, not rigorous reactive flash.
+- [ ] Preserve the important caveat: reactive electrolyte bubble is sequential speciation plus fixed-liquid bubble pressure, not rigorous reactive flash.
 - [ ] Run:
 
 ```powershell
@@ -193,10 +193,10 @@ Expected: pass.
 - Test: `tests/api/test_reactive_electrolyte_bubble.py`
 
 - [ ] Add `flash_tp`, `lle_tp`, `stability_tp`, `electrolyte_stability_tp`, `electrolyte_lle_tp`, `electrolyte_bubble_p`, `chemical_equilibrium`, `reactive_stability_tp`, and `reactive_electrolyte_bubble_p` methods to `ePCSAFTMixture`.
-- [ ] Make each wrapper call the existing module-level helper or staged workflow.
+- [ ] Make each wrapper call the existing module-level helper or sequential workflow.
 - [ ] Refactor `equilibrium(kind=...)` branches to call the wrappers after preserving current argument validation and error messages.
 - [ ] Add parity tests comparing each wrapper to the legacy dispatcher for the same request.
-- [ ] Do not emit deprecation warnings yet. The compatibility path is still actively used in tests and downstream scripts.
+- [ ] Do not emit deprecation warnings yet. The compatibility-shim path is still actively used in tests and downstream scripts.
 - [ ] Run:
 
 ```powershell
@@ -322,7 +322,7 @@ Expected: pass.
 - [ ] Extract reaction-affinity residual evaluation from the standalone solver loop.
 - [ ] Extract balance residual evaluation from the standalone solver loop.
 - [ ] Keep state/activity evaluation centralized so future reactive flash does not duplicate fugacity/activity logic.
-- [ ] Preserve all current diagnostics: activity model, state failure counts, residual families, Jacobian fallback reason, and phase equilibrium handoff.
+- [ ] Preserve all current diagnostics: activity model, state failure counts, residual families, derivative-route reason, and phase equilibrium handoff.
 - [ ] Run:
 
 ```powershell
@@ -332,7 +332,7 @@ uv run python run_pytest.py tests/native/test_chemical_equilibrium_native.py -q
 
 Expected: pass.
 
-### Task 8: Formalize Staged Reactive Workflows
+### Task 8: Formalize Sequential Reactive Workflows
 
 **Files:**
 
@@ -344,7 +344,7 @@ Expected: pass.
 
 - [ ] Keep `reactive_stability` described as chemical equilibrium then TPD.
 - [ ] Keep `reactive_electrolyte_bubble_pressure` described as chemical equilibrium then fixed-liquid electrolyte bubble pressure.
-- [ ] Add diagnostics field `reactive_workflow_class = "staged"` to staged workflows.
+- [ ] Add diagnostics field `reactive_workflow_class = "staged"` to sequential workflows that retain the existing diagnostic value.
 - [ ] Add docs warning that these are useful workflow approximations or handoffs, not coupled reactive flash.
 - [ ] Run:
 
@@ -380,7 +380,7 @@ Update docs in this order:
 
 1. Runtime capabilities and downstream install docs.
 2. API reference with explicit wrappers.
-3. Equilibrium workflow page that separates neutral flash, LLE, electrolyte LLE, fixed-liquid electrolyte bubble pressure, homogeneous reactive speciation, staged reactive stability, staged reactive electrolyte bubble pressure, and future rigorous reactive flash.
+3. Equilibrium workflow page that separates neutral flash, LLE, electrolyte LLE, fixed-liquid electrolyte bubble pressure, homogeneous reactive speciation, sequential reactive stability, sequential reactive electrolyte bubble pressure, and future rigorous reactive flash.
 4. Developer native architecture page explaining the split native ownership and validation commands.
 
 Docs must avoid saying "placeholder" for implemented native paths. They should instead state exact scope and limitations.
@@ -432,11 +432,11 @@ Recommended answer: electrolyte fixed-liquid bubble pressure already exists, so 
 
 4. Should `reactive_electrolyte_bubble_pressure` become `reactive_flash_tp`?
 
-Recommended answer: no. It is a staged workflow. Keep it, document it, and reserve `reactive_flash_tp` for a coupled solve.
+Recommended answer: no. It is a sequential workflow. Keep it, document it, and reserve `reactive_flash_tp` for a coupled solve.
 
 5. Should old `equilibrium(kind=...)` calls be deprecated immediately?
 
-Recommended answer: no. Add explicit wrappers first, keep compatibility, then consider warnings only after docs and downstream scripts have moved.
+Recommended answer: no. Add explicit wrappers first, keep the compatibility shim, then consider warnings only after docs and downstream scripts have moved.
 
 ## Stop Conditions
 
@@ -446,4 +446,4 @@ Stop and re-plan if any of these occur:
 - Native file splitting changes solver diagnostics or acceptance gates.
 - A bubble/dew implementation passes residual tests but fails TP flash consistency in a simple binary case.
 - Chemical standard-state changes alter existing reaction solutions without an intentional migration path.
-- Reactive workflow naming starts hiding the difference between staged composition and rigorous coupled equilibrium.
+- Reactive workflow naming starts hiding the difference between sequential composition and rigorous coupled equilibrium.
