@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T012
+active_task: T013
 
 tasks:
   - id: T001
@@ -578,7 +578,7 @@ tasks:
   - id: T012
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement issue #117 Stages 4-6: coupled Jacobian, solved-state sensitivity diagnostics, Ceres solve, and strict use of #115/#116 only as subcomponents."
     allowed_files:
@@ -607,12 +607,36 @@ tasks:
       - "Coupled Jacobian cannot be produced for required residuals."
       - "Accepted production diagnostics can still report staged reactive equilibrium."
       - "Reaction and phase residuals come from different solved states."
-    receipt: null
+    receipt:
+      result: done
+      summary: "Implemented the native coupled residual Jacobian and direct Ceres route for reactive phase equilibrium."
+      changed_files:
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T012-reactive-phase-jacobian-ceres.md"
+        - "docs/goals/native-lle-reactive-production-solvers/state.yaml"
+        - "src/epcsaft/bindings.cpp"
+        - "src/epcsaft/native/epcsaft_equilibrium.h"
+        - "src/epcsaft/native/equilibrium/reactive_phase_equilibrium_problem.cpp"
+        - "tests/native/equilibrium/test_reactive_phase_equilibrium_ceres_solver.py"
+        - "tests/native/equilibrium/test_reactive_phase_equilibrium_residual_jacobian.py"
+      evidence:
+        - "The coupled residual evaluator can return a `cppad_implicit` row-major Jacobian with `jacobian_available = true`."
+        - "The Jacobian test matches source-evaluated residual perturbations for the coupled residual vector."
+        - "`_solve_reactive_phase_equilibrium_native` returns `solver_backend = ceres` and `solver_method = ceres_trust_region_coupled_reactive_phase_equilibrium`."
+        - "Accepted native diagnostics report `solved_state_sensitivity_available = true` and `solved_state_sensitivity_backend = cppad_implicit`."
+        - "T013 still owns public Python API routing and reactive LLE benchmark coverage."
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --clean --enable-ceres --enable-cppad"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium/test_reactive_phase_equilibrium_ceres_solver.py tests/native/equilibrium/test_reactive_phase_equilibrium_residual_jacobian.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium -q"
+          status: pass
+      next_task: T013
 
   - id: T013
     type: worker
     assignee: Worker
-    status: queued
+    status: active
     reasoning_hint: high
     objective: "Implement issue #117 Stages 7-9: generic Python route, neutral reactive LLE benchmark, reactive electrolyte LLE benchmark, and tests that reject staged production behavior."
     allowed_files:

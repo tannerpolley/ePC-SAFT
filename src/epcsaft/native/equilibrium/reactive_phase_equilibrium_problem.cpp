@@ -2,9 +2,24 @@
 
 #include "equilibrium_helpers.h"
 
+#ifdef EPCSAFT_HAS_CERES
+#include <ceres/cost_function.h>
+#include <ceres/problem.h>
+#include <ceres/solver.h>
+#endif
+
 #include <algorithm>
 #include <cmath>
 #include <numeric>
+#include <sstream>
+
+PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensitivity_cpp(
+    double t,
+    double p,
+    std::vector<double> x,
+    int phase,
+    const add_args& cppargs
+);
 
 namespace {
 
@@ -14,6 +29,7 @@ using epcsaft::native::equilibrium::l2_norm;
 using epcsaft::native::equilibrium::max_abs;
 using epcsaft::native::equilibrium::normalize_feed;
 using epcsaft::native::equilibrium::phase_distance;
+using epcsaft::native::equilibrium::split_distance_tolerance;
 
 std::vector<double> matrix_vector_residual(
     const std::vector<double>& matrix_row_major,
@@ -222,6 +238,237 @@ void append_block(std::vector<double>& target, const std::vector<double>& block)
     target.insert(target.end(), block.begin(), block.end());
 }
 
+std::vector<double> phase_ln_activity_log_amount_jacobian(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const ReactivePhaseState& state
+) {
+    const std::size_t ncomp = state.composition.size();
+    PhaseStateCompositionSensitivityResult sensitivity =
+        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, state.composition, 0, mixture->args());
+    if (!sensitivity.supported || sensitivity.jacobian_row_major.size() != ncomp * ncomp) {
+        throw ValueError("reactive phase residual Jacobian requires supported phase-state fugacity sensitivities.");
+    }
+    std::vector<double> jacobian(ncomp * ncomp, 0.0);
+    for (std::size_t species = 0; species < ncomp; ++species) {
+        for (std::size_t variable = 0; variable < ncomp; ++variable) {
+            const double dlogx = (species == variable ? 1.0 : 0.0) - state.composition[variable];
+            double dlnphi = 0.0;
+            for (std::size_t k = 0; k < ncomp; ++k) {
+                const double dxk_dlogn =
+                    state.composition[k] * ((k == variable ? 1.0 : 0.0) - state.composition[variable]);
+                dlnphi += sensitivity.jacobian_row_major[species * ncomp + k] * dxk_dlogn;
+            }
+            jacobian[species * ncomp + variable] = dlogx + dlnphi;
+        }
+    }
+    return jacobian;
+}
+
+std::vector<double> reactive_phase_residual_jacobian_row_major(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& balance_matrix_row_major,
+    int balance_rows,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    int reaction_rows,
+    const ReactivePhaseState& phase1,
+    const ReactivePhaseState& phase2,
+    const std::vector<double>& charges,
+    const ReactivePhaseResidualEvaluationNative& residual_eval
+) {
+    const std::size_t ncomp = phase1.composition.size();
+    const std::size_t nvars = 2 * ncomp;
+    std::vector<double> jacobian(residual_eval.residual.size() * nvars, 0.0);
+    std::vector<double> activity_jac1 = phase_ln_activity_log_amount_jacobian(mixture, t, p, phase1);
+    std::vector<double> activity_jac2 = phase_ln_activity_log_amount_jacobian(mixture, t, p, phase2);
+    std::size_t row = 0;
+
+    for (int balance = 0; balance < balance_rows; ++balance) {
+        for (std::size_t species = 0; species < ncomp; ++species) {
+            const double coefficient = balance_matrix_row_major[static_cast<std::size_t>(balance) * ncomp + species];
+            jacobian[row * nvars + species] = coefficient * phase1.amounts[species];
+            jacobian[row * nvars + ncomp + species] = coefficient * phase2.amounts[species];
+        }
+        ++row;
+    }
+
+    for (int reaction = 0; reaction < reaction_rows; ++reaction) {
+        for (std::size_t variable = 0; variable < ncomp; ++variable) {
+            double value = 0.0;
+            for (std::size_t species = 0; species < ncomp; ++species) {
+                value += reaction_stoichiometry_row_major[static_cast<std::size_t>(reaction) * ncomp + species]
+                    * activity_jac1[species * ncomp + variable];
+            }
+            jacobian[row * nvars + variable] = value;
+        }
+        ++row;
+    }
+
+    for (int reaction = 0; reaction < reaction_rows; ++reaction) {
+        for (std::size_t variable = 0; variable < ncomp; ++variable) {
+            double value = 0.0;
+            for (std::size_t species = 0; species < ncomp; ++species) {
+                value += reaction_stoichiometry_row_major[static_cast<std::size_t>(reaction) * ncomp + species]
+                    * activity_jac2[species * ncomp + variable];
+            }
+            jacobian[row * nvars + ncomp + variable] = value;
+        }
+        ++row;
+    }
+
+    for (std::size_t species = 0; species < ncomp; ++species) {
+        if (std::abs(charges[species]) > 1.0e-12) {
+            continue;
+        }
+        for (std::size_t variable = 0; variable < ncomp; ++variable) {
+            jacobian[row * nvars + variable] = activity_jac1[species * ncomp + variable];
+            jacobian[row * nvars + ncomp + variable] = -activity_jac2[species * ncomp + variable];
+        }
+        ++row;
+    }
+
+    std::vector<int> cations;
+    std::vector<int> anions;
+    for (std::size_t species = 0; species < ncomp; ++species) {
+        if (charges[species] > 1.0e-12) {
+            cations.push_back(static_cast<int>(species));
+        } else if (charges[species] < -1.0e-12) {
+            anions.push_back(static_cast<int>(species));
+        }
+    }
+    for (int cation : cations) {
+        for (int anion : anions) {
+            const std::size_t c = static_cast<std::size_t>(cation);
+            const std::size_t a = static_cast<std::size_t>(anion);
+            const double cation_weight = std::abs(charges[a]);
+            const double anion_weight = std::abs(charges[c]);
+            for (std::size_t variable = 0; variable < ncomp; ++variable) {
+                jacobian[row * nvars + variable] =
+                    cation_weight * activity_jac1[c * ncomp + variable]
+                    + anion_weight * activity_jac1[a * ncomp + variable];
+                jacobian[row * nvars + ncomp + variable] =
+                    -cation_weight * activity_jac2[c * ncomp + variable]
+                    - anion_weight * activity_jac2[a * ncomp + variable];
+            }
+            ++row;
+        }
+    }
+
+    for (std::size_t species = 0; species < ncomp; ++species) {
+        jacobian[row * nvars + species] = charges[species] * phase1.amounts[species];
+    }
+    ++row;
+    for (std::size_t species = 0; species < ncomp; ++species) {
+        jacobian[row * nvars + ncomp + species] = charges[species] * phase2.amounts[species];
+    }
+    return jacobian;
+}
+
+bool should_compute_jacobian(const EquilibriumOptionsNative& options) {
+    return options.jacobian_backend != "auto";
+}
+
+#ifdef EPCSAFT_HAS_CERES
+std::string ceres_termination_type_name_reactive(ceres::TerminationType type) {
+    switch (type) {
+        case ceres::CONVERGENCE:
+            return "convergence";
+        case ceres::NO_CONVERGENCE:
+            return "no_convergence";
+        case ceres::FAILURE:
+            return "failure";
+        case ceres::USER_SUCCESS:
+            return "user_success";
+        case ceres::USER_FAILURE:
+            return "user_failure";
+        default:
+            return "unknown";
+    }
+}
+
+class ReactivePhaseEquilibriumCostFunction final : public ceres::CostFunction {
+public:
+    ReactivePhaseEquilibriumCostFunction(
+        std::shared_ptr<ePCSAFTMixtureNative> mixture,
+        double t,
+        double p,
+        std::vector<double> feed,
+        EquilibriumOptionsNative options,
+        std::vector<double> balance_matrix,
+        int balance_rows,
+        std::vector<double> total_vector,
+        std::vector<double> reaction_stoichiometry,
+        int reaction_rows,
+        std::vector<double> log_equilibrium_constants,
+        std::vector<int> reaction_standard_states,
+        int residual_size,
+        int variable_count
+    )
+        : mixture_(std::move(mixture)),
+          t_(t),
+          p_(p),
+          feed_(std::move(feed)),
+          options_(std::move(options)),
+          balance_matrix_(std::move(balance_matrix)),
+          balance_rows_(balance_rows),
+          total_vector_(std::move(total_vector)),
+          reaction_stoichiometry_(std::move(reaction_stoichiometry)),
+          reaction_rows_(reaction_rows),
+          log_equilibrium_constants_(std::move(log_equilibrium_constants)),
+          reaction_standard_states_(std::move(reaction_standard_states)) {
+        set_num_residuals(residual_size);
+        mutable_parameter_block_sizes()->push_back(variable_count);
+    }
+
+    bool Evaluate(double const* const* parameters, double* residuals, double** jacobians) const override {
+        std::vector<double> variables(parameters[0], parameters[0] + parameter_block_sizes()[0]);
+        ReactivePhaseResidualEvaluationNative eval = evaluate_reactive_phase_equilibrium_residual_native(
+            mixture_,
+            t_,
+            p_,
+            feed_,
+            options_,
+            balance_matrix_,
+            balance_rows_,
+            total_vector_,
+            reaction_stoichiometry_,
+            reaction_rows_,
+            log_equilibrium_constants_,
+            reaction_standard_states_,
+            variables,
+            true
+        );
+        for (std::size_t i = 0; i < eval.residual.size(); ++i) {
+            residuals[i] = eval.residual[i];
+        }
+        if (jacobians != nullptr && jacobians[0] != nullptr) {
+            if (eval.jacobian_row_major.size() != eval.residual.size() * variables.size()) {
+                return false;
+            }
+            std::copy(eval.jacobian_row_major.begin(), eval.jacobian_row_major.end(), jacobians[0]);
+        }
+        return true;
+    }
+
+private:
+    std::shared_ptr<ePCSAFTMixtureNative> mixture_;
+    double t_;
+    double p_;
+    std::vector<double> feed_;
+    EquilibriumOptionsNative options_;
+    std::vector<double> balance_matrix_;
+    int balance_rows_;
+    std::vector<double> total_vector_;
+    std::vector<double> reaction_stoichiometry_;
+    int reaction_rows_;
+    std::vector<double> log_equilibrium_constants_;
+    std::vector<int> reaction_standard_states_;
+};
+#endif
+
 }  // namespace
 
 ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residual_native(
@@ -342,22 +589,45 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     for (double value : out.residual) {
         out.objective += 0.5 * value * value;
     }
-    out.gradient.assign(eval_variables.size(), 0.0);
     out.jacobian_rows = static_cast<int>(out.residual.size());
     out.jacobian_cols = static_cast<int>(eval_variables.size());
     out.phase_distance = phase_distance(phase1.composition, phase2.composition);
+    if (should_compute_jacobian(options)) {
+        out.jacobian_row_major = reactive_phase_residual_jacobian_row_major(
+            mixture,
+            t,
+            p,
+            balance_matrix_row_major,
+            balance_rows,
+            reaction_stoichiometry_row_major,
+            reaction_rows,
+            phase1,
+            phase2,
+            charges,
+            out
+        );
+        out.gradient.assign(eval_variables.size(), 0.0);
+        for (std::size_t row = 0; row < out.residual.size(); ++row) {
+            for (std::size_t col = 0; col < eval_variables.size(); ++col) {
+                out.gradient[col] += out.jacobian_row_major[row * eval_variables.size() + col] * out.residual[row];
+            }
+        }
+    } else {
+        out.gradient.assign(eval_variables.size(), 0.0);
+    }
 
     out.diagnostics_string["residual_surface"] = "native_reactive_phase_equilibrium_coupled_state";
     out.diagnostics_string["variable_model"] = out.variable_model;
     out.diagnostics_string["residual_blocks"] = "element_balance,reaction_equilibrium,neutral_phase_equilibrium,ionic_equilibrium,phase_charge";
     out.diagnostics_string["solver_backend"] = "residual_surface_only";
     out.diagnostics_string["solver_method"] = "not_started_until_ceres_slice";
-    out.diagnostics_string["jacobian_backend"] = "not_available";
-    out.diagnostics_string["derivative_backend"] = "not_available";
+    out.diagnostics_string["jacobian_backend"] = should_compute_jacobian(options) ? "cppad_implicit" : "not_available";
+    out.diagnostics_string["derivative_backend"] = should_compute_jacobian(options) ? "cppad_implicit" : "not_available";
     out.diagnostics_string["coupling_level"] = "single_native_residual_state";
     out.diagnostics_string["phase_model"] = "two_liquid_phases";
-    out.diagnostics_bool["jacobian_available"] = false;
-    out.diagnostics_bool["derivative_available"] = false;
+    out.diagnostics_bool["jacobian_available"] = should_compute_jacobian(options);
+    out.diagnostics_bool["derivative_available"] = should_compute_jacobian(options);
+    out.diagnostics_bool["solved_state_sensitivity_available"] = should_compute_jacobian(options);
     out.diagnostics_bool["reaction_and_phase_residuals_share_state"] = true;
     out.diagnostics_bool["nonnegative_amounts_enforced_by_transform"] = true;
     out.diagnostics_bool["composition_normalization_enforced_by_transform"] = true;
@@ -401,4 +671,166 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
         reaction_standard_states.end()
     );
     return out;
+}
+
+EquilibriumResultNative reactive_phase_equilibrium_native(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& raw_feed,
+    const EquilibriumOptionsNative& options,
+    const std::vector<double>& balance_matrix_row_major,
+    int balance_rows,
+    const std::vector<double>& total_vector,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    int reaction_rows,
+    const std::vector<double>& log_equilibrium_constants,
+    const std::vector<int>& reaction_standard_states,
+    const std::vector<double>& initial_phase1,
+    const std::vector<double>& initial_phase2,
+    double initial_phase_fraction_phase2,
+    bool has_initial_phases
+) {
+#ifndef EPCSAFT_HAS_CERES
+    (void)mixture;
+    (void)t;
+    (void)p;
+    (void)raw_feed;
+    (void)options;
+    (void)balance_matrix_row_major;
+    (void)balance_rows;
+    (void)total_vector;
+    (void)reaction_stoichiometry_row_major;
+    (void)reaction_rows;
+    (void)log_equilibrium_constants;
+    (void)reaction_standard_states;
+    (void)initial_phase1;
+    (void)initial_phase2;
+    (void)initial_phase_fraction_phase2;
+    (void)has_initial_phases;
+    throw ValueError("Ceres support is required for native reactive phase-equilibrium solve.");
+#else
+    EquilibriumOptionsNative solve_options = options;
+    solve_options.jacobian_backend = "cppad";
+    ReactivePhaseResidualEvaluationNative initial = evaluate_reactive_phase_equilibrium_residual_native(
+        mixture,
+        t,
+        p,
+        raw_feed,
+        solve_options,
+        balance_matrix_row_major,
+        balance_rows,
+        total_vector,
+        reaction_stoichiometry_row_major,
+        reaction_rows,
+        log_equilibrium_constants,
+        reaction_standard_states,
+        {},
+        false,
+        initial_phase1,
+        initial_phase2,
+        initial_phase_fraction_phase2,
+        has_initial_phases
+    );
+    std::vector<double> variables = initial.variables;
+    ceres::Problem problem;
+    auto* cost = new ReactivePhaseEquilibriumCostFunction(
+        mixture,
+        t,
+        p,
+        raw_feed,
+        solve_options,
+        balance_matrix_row_major,
+        balance_rows,
+        total_vector,
+        reaction_stoichiometry_row_major,
+        reaction_rows,
+        log_equilibrium_constants,
+        reaction_standard_states,
+        static_cast<int>(initial.residual.size()),
+        static_cast<int>(variables.size())
+    );
+    problem.AddResidualBlock(cost, nullptr, variables.data());
+    ceres::Solver::Options ceres_options;
+    ceres_options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
+    ceres_options.linear_solver_type = ceres::DENSE_QR;
+    ceres_options.max_num_iterations = options.max_iterations;
+    ceres_options.minimizer_progress_to_stdout = false;
+    ceres_options.logging_type = ceres::SILENT;
+    ceres_options.function_tolerance = std::min(1.0e-12, std::max(1.0e-18, options.tolerance * options.tolerance));
+    ceres_options.gradient_tolerance = std::min(1.0e-10, std::max(1.0e-14, options.tolerance));
+    ceres_options.parameter_tolerance = std::min(1.0e-10, std::max(1.0e-14, options.tolerance));
+    ceres::Solver::Summary summary;
+    ceres::Solve(ceres_options, &problem, &summary);
+    ReactivePhaseResidualEvaluationNative final_eval = evaluate_reactive_phase_equilibrium_residual_native(
+        mixture,
+        t,
+        p,
+        raw_feed,
+        solve_options,
+        balance_matrix_row_major,
+        balance_rows,
+        total_vector,
+        reaction_stoichiometry_row_major,
+        reaction_rows,
+        log_equilibrium_constants,
+        reaction_standard_states,
+        variables,
+        true
+    );
+
+    EquilibriumResultNative result;
+    result.backend = "reactive_phase_equilibrium";
+    result.problem_kind = "reactive_phase_equilibrium";
+    result.stable = false;
+    result.split_detected = final_eval.phase_distance > split_distance_tolerance(options);
+    EquilibriumPhaseNative phase1;
+    phase1.label = "liq1";
+    phase1.composition = final_eval.phase1_composition;
+    phase1.density = final_eval.phase1_density;
+    phase1.temperature = t;
+    phase1.pressure = p;
+    phase1.phase_fraction = 1.0 - final_eval.phase_fraction_phase2;
+    phase1.ln_fugacity_coefficient = final_eval.phase1_ln_fugacity_coefficient;
+    EquilibriumPhaseNative phase2;
+    phase2.label = "liq2";
+    phase2.composition = final_eval.phase2_composition;
+    phase2.density = final_eval.phase2_density;
+    phase2.temperature = t;
+    phase2.pressure = p;
+    phase2.phase_fraction = final_eval.phase_fraction_phase2;
+    phase2.ln_fugacity_coefficient = final_eval.phase2_ln_fugacity_coefficient;
+    result.phases = {phase1, phase2};
+
+    result.diagnostics_string = final_eval.diagnostics_string;
+    result.diagnostics_string["native_entrypoint"] = "_solve_reactive_phase_equilibrium_native";
+    result.diagnostics_string["equilibrium_route"] = "reactive_phase_equilibrium";
+    result.diagnostics_string["solver_backend"] = "ceres";
+    result.diagnostics_string["selected_solver_backend"] = "ceres";
+    result.diagnostics_string["solver_method"] = "ceres_trust_region_coupled_reactive_phase_equilibrium";
+    result.diagnostics_string["ceres_trust_region_strategy"] = "levenberg_marquardt";
+    result.diagnostics_string["ceres_linear_solver"] = "dense_qr";
+    result.diagnostics_string["ceres_termination_type"] = ceres_termination_type_name_reactive(summary.termination_type);
+    result.diagnostics_string["ceres_summary"] = summary.BriefReport();
+    result.diagnostics_string["jacobian_backend"] = "cppad_implicit";
+    result.diagnostics_string["derivative_backend"] = "cppad_implicit";
+    result.diagnostics_string["solved_state_sensitivity_backend"] = "cppad_implicit";
+    result.diagnostics_bool = final_eval.diagnostics_bool;
+    result.diagnostics_bool["ceres_accepted_solve"] = true;
+    result.diagnostics_bool["jacobian_available"] = true;
+    result.diagnostics_bool["derivative_available"] = true;
+    result.diagnostics_bool["solved_state_sensitivity_available"] = true;
+    result.diagnostics_int = final_eval.diagnostics_int;
+    result.diagnostics_int["ceres_iteration_count"] = static_cast<int>(summary.iterations.size());
+    result.diagnostics_int["ceres_status"] = static_cast<int>(summary.termination_type);
+    result.diagnostics_double = final_eval.diagnostics_double;
+    result.diagnostics_double["ceres_initial_cost"] = summary.initial_cost;
+    result.diagnostics_double["ceres_final_cost"] = summary.final_cost;
+    result.diagnostics_double["phase_distance"] = final_eval.phase_distance;
+    result.diagnostics_vector = final_eval.diagnostics_vector;
+    result.diagnostics_vector["variables"] = final_eval.variables;
+    result.diagnostics_vector["residual"] = final_eval.residual;
+    result.diagnostics_vector["jacobian_row_major"] = final_eval.jacobian_row_major;
+    return result;
+#endif
 }

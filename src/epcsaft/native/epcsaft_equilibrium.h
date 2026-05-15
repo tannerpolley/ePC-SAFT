@@ -259,6 +259,25 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     bool has_initial_phases = false
 );
 
+EquilibriumResultNative reactive_phase_equilibrium_native(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const EquilibriumOptionsNative& options,
+    const std::vector<double>& balance_matrix_row_major,
+    int balance_rows,
+    const std::vector<double>& total_vector,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    int reaction_rows,
+    const std::vector<double>& log_equilibrium_constants,
+    const std::vector<int>& reaction_standard_states,
+    const std::vector<double>& initial_phase1 = {},
+    const std::vector<double>& initial_phase2 = {},
+    double initial_phase_fraction_phase2 = 0.5,
+    bool has_initial_phases = false
+);
+
 EquilibriumResultNative electrolyte_bubble_pressure_native(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
     double t,
