@@ -52,7 +52,7 @@ def test_associating_neutral_lle_solves_without_numerical_derivative_derivatives
     assert "numerical_derivative" not in payload
 
 
-def test_electrolyte_lle_residual_sensitivities_are_explicitly_unavailable() -> None:
+def test_electrolyte_lle_residual_surface_reports_missing_jacobian_without_numeric_derivatives() -> None:
     mix = _electrolyte_mixture()
     aq = np.asarray([0.798324680201737, 0.016320352824141723, 0.09267748348706063, 0.09267748348706063])
     org = np.asarray([0.37006036048879404, 0.6214918588210971, 0.004223890345054407, 0.004223890345054407])
@@ -67,7 +67,9 @@ def test_electrolyte_lle_residual_sensitivities_are_explicitly_unavailable() -> 
         "options": {"max_iterations": 80, "tolerance": 1.0e-8, "min_composition": 1.0e-12},
     }
 
-    with pytest.raises(_core.NativeValueError, match="not_available") as excinfo:
-        _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
+    payload = _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
 
-    assert "numerical_derivative" not in str(excinfo.value).lower()
+    assert payload["jacobian_backend"] == "not_available"
+    assert payload["diagnostics"]["jacobian_available"] is False
+    assert payload["diagnostics"]["residual_surface"] == "native_electrolyte_lle_transformed_variables"
+    assert "numerical_derivative" not in json.dumps(payload, default=str).lower()

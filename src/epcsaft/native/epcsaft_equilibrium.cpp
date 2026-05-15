@@ -3109,16 +3109,123 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
     if (!mixture->has_ionic()) {
         throw ValueError("electrolyte_lle residual evaluation requires an ion-containing mixture.");
     }
-    (void)t;
-    (void)p;
-    (void)raw_feed;
-    (void)options;
-    (void)species;
-    (void)variables;
-    (void)has_variables;
-    (void)initial_aq;
-    (void)initial_org;
-    (void)initial_beta_org;
-    (void)has_initial_phases;
-    throw ValueError("not_available: electrolyte LLE residual sensitivities are not implemented.");
+    std::vector<double> feed = normalize_feed(raw_feed, mixture->ncomp(), options.min_composition, "electrolyte_lle");
+    const std::vector<double>& charges = mixture->args().z;
+    if (std::abs(composition_charge(feed, charges)) > 1.0e-10) {
+        throw ValueError("electrolyte_lle residual evaluation feed must be charge neutral.");
+    }
+    ElectrolyteBasisNative basis = build_electrolyte_basis_native(mixture, feed, species);
+    std::vector<double> eval_variables = variables;
+    if (!has_variables) {
+        std::vector<double> org_formula = basis.formula_feed;
+        double beta_formula = 0.5;
+        if (has_initial_phases) {
+            if (initial_aq.size() != feed.size() || initial_org.size() != feed.size()) {
+                throw ValueError("initial_phases aq/org length must match mixture component count.");
+            }
+            if (!(initial_beta_org > 0.0 && initial_beta_org < 1.0) || !std::isfinite(initial_beta_org)) {
+                throw ValueError("initial_phases phase_fraction must be > 0 and < 1.");
+            }
+            std::vector<double> aq_comp_initial = clip_normalize(initial_aq, options.min_composition);
+            std::vector<double> org_comp_initial = clip_normalize(initial_org, options.min_composition);
+            double aq_charge_initial = composition_charge(aq_comp_initial, charges);
+            double org_charge_initial = composition_charge(org_comp_initial, charges);
+            if (std::max(std::abs(aq_charge_initial), std::abs(org_charge_initial)) > 1.0e-8) {
+                throw ValueError("initial_phases aq and org must be charge neutral for electrolyte_lle residual evaluation.");
+            }
+            std::vector<double> material_residual_initial(feed.size(), 0.0);
+            for (std::size_t i = 0; i < feed.size(); ++i) {
+                material_residual_initial[i] = (1.0 - initial_beta_org) * aq_comp_initial[i]
+                    + initial_beta_org * org_comp_initial[i] - feed[i];
+            }
+            if (max_abs(material_residual_initial) > 1.0e-7) {
+                throw ValueError("initial_phases aq/org/phase_fraction must reconstruct the electrolyte_lle feed.");
+            }
+            std::vector<double> aq_formula = explicit_to_formula(aq_comp_initial, basis);
+            org_formula = explicit_to_formula(org_comp_initial, basis);
+            auto aq_expanded = formula_to_explicit(aq_formula, basis, feed.size());
+            auto org_expanded = formula_to_explicit(org_formula, basis, feed.size());
+            double numerator = initial_beta_org / org_expanded.second;
+            double denominator = numerator + (1.0 - initial_beta_org) / aq_expanded.second;
+            if (denominator > 0.0) {
+                beta_formula = std::max(1.0e-12, std::min(1.0 - 1.0e-12, numerator / denominator));
+            }
+        }
+        eval_variables = pack_predictive_electrolyte_variables(beta_formula, org_formula);
+    }
+
+    PhaseStateNative feed_state = phase_state(mixture, t, p, feed, "liq", "feed");
+    double gibbs_feed = electrolyte_gibbs_proxy(feed, feed_state);
+    ElectrolyteCandidateNative candidate = evaluate_predictive_electrolyte_variables(
+        mixture,
+        t,
+        p,
+        feed,
+        basis,
+        eval_variables,
+        options,
+        gibbs_feed
+    );
+    std::vector<double> residual = candidate.residual;
+    residual.insert(residual.end(), candidate.material_residual.begin(), candidate.material_residual.end());
+    double objective = 0.0;
+    for (double value : residual) {
+        objective += 0.5 * value * value;
+    }
+
+    ElectrolyteLLEResidualEvaluationNative out;
+    out.variable_model = basis.variable_model;
+    out.variables = eval_variables;
+    out.lower_bounds.assign(eval_variables.size(), -100.0);
+    out.upper_bounds.assign(eval_variables.size(), 100.0);
+    out.residual = residual;
+    out.jacobian_rows = static_cast<int>(residual.size());
+    out.jacobian_cols = static_cast<int>(eval_variables.size());
+    out.objective = objective;
+    out.aq_composition = candidate.aq_comp;
+    out.org_composition = candidate.org_comp;
+    out.aq_ln_fugacity_coefficient = candidate.aq_state.ln_phi;
+    out.org_ln_fugacity_coefficient = candidate.org_state.ln_phi;
+    out.aq_density = candidate.aq_state.density;
+    out.org_density = candidate.org_state.density;
+    out.phase_fraction_org = candidate.beta_org;
+    out.material_balance_error = candidate.material_error;
+    out.charge_balance_error = candidate.charge_balance_error;
+    out.phase_distance = candidate.phase_distance_value;
+    out.gibbs_delta = candidate.gibbs_delta;
+    out.diagnostics_string["residual_surface"] = "native_electrolyte_lle_transformed_variables";
+    out.diagnostics_string["residual_blocks"] = "phase_equilibrium,material_balance";
+    out.diagnostics_string["jacobian_backend"] = "not_available";
+    out.diagnostics_string["derivative_backend"] = "not_available";
+    out.diagnostics_string["not_available_reason"] = "not_available: electrolyte LLE transformed-variable Jacobian is not implemented.";
+    out.diagnostics_bool["jacobian_available"] = false;
+    out.diagnostics_bool["derivative_available"] = false;
+    out.diagnostics_bool["phase_charge_enforced_by_basis"] = true;
+    out.diagnostics_bool["material_balance_enforced_by_formula_transform"] = true;
+    out.diagnostics_int["basis_rank"] = basis.basis_rank;
+    out.diagnostics_int["phase_equilibrium_residual_size"] = static_cast<int>(candidate.residual.size());
+    out.diagnostics_int["material_balance_residual_size"] = static_cast<int>(candidate.material_residual.size());
+    out.diagnostics_int["residual_size"] = static_cast<int>(residual.size());
+    out.diagnostics_int["variable_count"] = static_cast<int>(eval_variables.size());
+    out.diagnostics_double["phase_equilibrium_residual_norm"] = candidate.solver_residual_norm;
+    out.diagnostics_double["solver_residual_norm"] = max_abs(residual);
+    out.diagnostics_double["fugacity_residual_norm"] = candidate.solver_residual_norm;
+    out.diagnostics_double["material_balance_error"] = candidate.material_error;
+    out.diagnostics_double["charge_balance_error"] = candidate.charge_balance_error;
+    out.diagnostics_double["phase_distance"] = candidate.phase_distance_value;
+    out.diagnostics_double["gibbs_feed"] = candidate.gibbs_feed;
+    out.diagnostics_double["gibbs_split"] = candidate.gibbs_split;
+    out.diagnostics_double["gibbs_delta"] = candidate.gibbs_delta;
+    out.diagnostics_double["phase_charge_balance_feed"] = composition_charge(feed, basis.species_charges);
+    out.diagnostics_double["phase_charge_balance_aq"] = composition_charge(candidate.aq_comp, basis.species_charges);
+    out.diagnostics_double["phase_charge_balance_org"] = composition_charge(candidate.org_comp, basis.species_charges);
+    out.diagnostics_vector["feed_composition"] = feed;
+    out.diagnostics_vector["phase_equilibrium_residual"] = candidate.residual;
+    out.diagnostics_vector["material_balance_residual"] = candidate.material_residual;
+    out.diagnostics_vector["formula_feed"] = basis.formula_feed;
+    out.diagnostics_vector["aq_formula"] = candidate.aq_formula;
+    out.diagnostics_vector["org_formula"] = candidate.org_formula;
+    out.diagnostics_vector["basis_vectors_row_major"] = electrolyte_basis_vectors_row_major(basis, feed.size());
+    out.diagnostics_vector["species_charge_vector"] = basis.species_charges;
+    return out;
 }

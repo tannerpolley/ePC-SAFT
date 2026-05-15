@@ -161,8 +161,16 @@ def test_native_electrolyte_lle_residual_evaluator_reports_unavailable_derivativ
         },
     }
 
-    with pytest.raises(_core.NativeValueError, match="not_available"):
-        _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
+    payload = _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
+
+    assert payload["variable_model"] == "ascani_transformed_salt_pairs"
+    assert payload["jacobian_backend"] == "not_available"
+    assert payload["jacobian_row_major"] == []
+    assert payload["gradient"] == []
+    assert payload["diagnostics"]["jacobian_available"] is False
+    assert payload["diagnostics"]["residual_surface"] == "native_electrolyte_lle_transformed_variables"
+    assert payload["material_balance_error"] <= 1.0e-10
+    assert payload["charge_balance_error"] <= 1.0e-8
 
 
 def test_native_electrolyte_lle_residual_evaluator_rejects_auto_without_autodiff() -> None:
@@ -180,8 +188,12 @@ def test_native_electrolyte_lle_residual_evaluator_rejects_auto_without_autodiff
         "options": {"max_iterations": 80, "tolerance": 1.0e-8, "min_composition": 1.0e-12},
     }
 
-    with pytest.raises(_core.NativeValueError, match="not_available"):
-        _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
+    payload = _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
+
+    assert payload["jacobian_backend"] == "not_available"
+    assert payload["diagnostics"]["derivative_available"] is False
+    assert "not_available" in payload["diagnostics"]["not_available_reason"]
+    assert "numerical_derivative" not in json.dumps(payload, default=str).lower()
 
 
 def test_equilibrium_runtime_does_not_import_external_optimizers() -> None:

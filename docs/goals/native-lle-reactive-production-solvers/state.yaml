@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T015
+active_task: T020
 
 tasks:
   - id: T001
@@ -538,7 +538,7 @@ tasks:
   - id: T015
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Resolve the issue #116 T005 residual/Jacobian blocker before further electrolyte LLE source edits."
     inputs:
@@ -559,6 +559,197 @@ tasks:
       - "Decision for how to implement or block T005."
       - "Allowed_files and verify commands if implementation may proceed."
       - "Exact stop conditions and required proof for residual/Jacobian correctness."
+    receipt:
+      result: done
+      decision: split_t005_into_residual_surface_then_jacobian_ceres
+      summary: "Resolved the T005 blocker by splitting residual-surface ownership from the production Jacobian/Ceres solve."
+      artifacts:
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T015-residual-jacobian-boundary-decision.md"
+      evidence:
+        - "The current residual evaluator throws before returning a native residual payload."
+        - "A real residual payload can be implemented with the existing transformed variables without claiming production Jacobian or Ceres completion."
+        - "The production Jacobian and Ceres route remain deferred to a separate Worker with stricter proof gates."
+      commands:
+        - "rg -n \"electrolyte_residual_vector|ElectrolyteLLEResidualEvaluationNative|evaluate_electrolyte_lle_residual_native|newton_step|solve_predictive_electrolyte_attempt\" src/epcsaft/native/epcsaft_equilibrium.cpp"
+
+  - id: T016
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Implement the issue #116 residual-surface prerequisite: make the native electrolyte LLE residual evaluator return a real transformed-variable residual payload without claiming Jacobian or Ceres production completion."
+    allowed_files:
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "tests/native/equilibrium/test_electrolyte_lle_residual_surface.py"
+      - "tests/native/contracts/test_equilibrium_native_contracts.py"
+      - "tests/native/cppad/test_cppad_lle_derivatives.py"
+      - "docs/goals/native-lle-reactive-production-solvers/notes/T016-residual-surface.md"
+    constraints:
+      - "Use the T004 transformed electrolyte variables and formula-basis diagnostics."
+      - "Return finite residual, phase composition, density, phase fraction, material, charge, phase distance, Gibbs, objective, and residual block diagnostics."
+      - "Do not report jacobian_available true, solver_backend ceres, or a Ceres production method."
+      - "Do not call the accepted predictive solve loop from the residual evaluator."
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py"
+      - "uv run python run_pytest.py tests/native/equilibrium/test_electrolyte_lle_residual_surface.py tests/native/contracts/test_equilibrium_native_contracts.py tests/native/cppad/test_cppad_lle_derivatives.py -q"
+    stop_if:
+      - "The evaluator cannot produce a finite residual payload from initial phases or explicit variables."
+      - "Residual evaluation requires old accepted predictive solve-loop ownership."
+      - "Tests would require claiming Jacobian or Ceres availability before that work is implemented."
+    receipt:
+      result: done
+      summary: "Implemented the native electrolyte LLE residual evaluation surface for transformed variables without claiming Jacobian or Ceres production completion."
+      changed_files:
+        - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+        - "tests/native/equilibrium/test_electrolyte_lle_residual_surface.py"
+        - "tests/native/contracts/test_equilibrium_native_contracts.py"
+        - "tests/native/cppad/test_cppad_lle_derivatives.py"
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T016-residual-surface.md"
+      evidence:
+        - "`_evaluate_electrolyte_lle_residual_native` now returns transformed variables, bounds, phase-equilibrium and material-balance residuals, phase compositions, densities, phase fraction, material, charge, phase-distance, Gibbs, objective, and block diagnostics."
+        - "The payload still reports `jacobian_backend = not_available` and `jacobian_available = false`."
+        - "The accepted electrolyte LLE solve route is unchanged and still does not claim Ceres production completion."
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium/test_electrolyte_lle_residual_surface.py tests/native/contracts/test_equilibrium_native_contracts.py tests/native/cppad/test_cppad_lle_derivatives.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium -q"
+          status: pass
+
+  - id: T017
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: high
+    objective: "Implement the issue #116 production Jacobian and Ceres trust-region electrolyte LLE solve after T016 residual-surface proof."
+    allowed_files:
+      - "src/epcsaft/native/**"
+      - "src/epcsaft/equilibrium.py"
+      - "tests/native/equilibrium/test_electrolyte_lle_ceres_solver.py"
+      - "tests/native/equilibrium/test_electrolyte_lle_residual_jacobian.py"
+      - "tests/native/contracts/test_equilibrium_native_contracts.py"
+      - "docs/goals/native-lle-reactive-production-solvers/notes/T017-jacobian-ceres.md"
+    constraints:
+      - "Residual Jacobian must be analytic, CppAD, analytic-implicit, CppAD-implicit, or Ceres-with-CppAD provenance."
+      - "Reject placeholder, identity, stale, or manual numeric perturbation Jacobians."
+      - "Accepted electrolyte LLE production diagnostics must report solver_backend ceres and jacobian_available true only after Ceres owns the accepted solve."
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --profile full"
+      - "uv run python run_pytest.py tests/native/equilibrium/test_electrolyte_lle_ceres_solver.py tests/native/equilibrium/test_electrolyte_lle_residual_jacobian.py -q"
+    stop_if:
+      - "Density or fugacity sensitivity ownership needs a broader design task."
+      - "Ceres cannot be built locally after one clean full-profile attempt."
+      - "A real residual Jacobian cannot be produced for the required transformed variables."
+    receipt:
+      result: blocked
+      summary: "The full Ceres+CppAD build works, but T017 is blocked by missing phase-state sensitivities for the transformed electrolyte LLE residual Jacobian."
+      blocker: "A truthful production Jacobian needs sensitivities from transformed variables through formula/explicit composition, density closure, fugacity coefficients, and residual rows."
+      note: "docs/goals/native-lle-reactive-production-solvers/notes/T017-blocker.md"
+      evidence:
+        - "`uv run python scripts/dev/build_epcsaft.py --profile full` passed."
+        - "Runtime build info reports Ceres and CppAD compiled and available."
+        - "T016 residual evaluator returns finite residual payloads but still reports `jacobian_available = false`."
+        - "No exported native surface currently provides the complete transformed-variable phase-state residual Jacobian."
+      commands:
+        - "uv run python scripts/dev/build_epcsaft.py --profile full"
+        - "uv run python -c \"import epcsaft, json; print(json.dumps(epcsaft.runtime_build_info()['optional_dependencies'], indent=2))\""
+
+  - id: T018
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: high
+    objective: "Map the exact native phase-state sensitivity path needed to unblock issue #116 production electrolyte LLE Jacobian/Ceres work."
+    inputs:
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/epcsaft_fugcoef.cpp"
+      - "src/epcsaft/native/epcsaft_mu.cpp"
+      - "src/epcsaft/native/epcsaft_state.cpp"
+      - "src/epcsaft/native/epcsaft_Z.cpp"
+      - "src/epcsaft/native/epcsaft_electrolyte.h"
+      - "src/epcsaft/native/cppad/**"
+      - "tests/native/cppad/**"
+      - "tests/native/ceres/**"
+    constraints:
+      - "Read-only."
+      - "Identify exact owner files/functions for density closure, fugacity coefficients, composition derivatives, and CppAD support."
+      - "Do not propose a placeholder, identity, stale, or manual numeric perturbation Jacobian."
+      - "Output the smallest safe Worker boundary if an implementation path exists."
+    expected_output:
+      - "Phase-state sensitivity dependency map."
+      - "Existing derivative surfaces and missing exported surfaces."
+      - "Recommended next Worker allowed_files, tests, and stop conditions."
+    receipt:
+      result: done
+      summary: "Mapped the missing phase-state sensitivity chain required for issue #116 production electrolyte LLE Jacobian/Ceres work."
+      note: "docs/goals/native-lle-reactive-production-solvers/notes/T018-sensitivity-map.md"
+      evidence:
+        - "Phase-state evaluation in `epcsaft_equilibrium.cpp` calls density solve, native state construction, and fugacity coefficient evaluation."
+        - "Density root ownership is in `epcsaft_density.cpp`; fugacity assembly is in `epcsaft_fugcoef.cpp`; residual chemical potentials and composition terms are in `epcsaft_mu.cpp` and `epcsaft_ares.cpp`."
+        - "Existing Ceres regression paths show the required pattern of a dedicated residual/Jacobian evaluator feeding a Ceres cost function."
+        - "No exported native surface currently returns transformed-variable electrolyte LLE residual Jacobian rows."
+      commands:
+        - "rg -n \"phase_state\\(|DensitySolveResult|density_solve_report_cpp|cppad_pressure_density_derivative_cpp\" src/epcsaft/native"
+        - "rg -n \"fugacity_coefficient_result_cpp|composition_derivative_residual_helmholtz_result_cpp|AssociationDensityResponse\" src/epcsaft/native"
+        - "rg -n \"class .*CeresCostFunction|ceres::Problem|evaluate_residual_jacobian_cpp|cppad_implicit\" src/epcsaft/native/epcsaft_regression.cpp tests/native/ceres"
+
+  - id: T019
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Decide the next #116 path after T018: derivative-foundation child goal, expanded phase-state sensitivity Worker, or blocked handoff."
+    inputs:
+      - "T018 sensitivity map"
+      - "GitHub issue #116 Stages 4-6"
+      - "docs/roadmaps/FULL_ROADMAP.md"
+      - "src/epcsaft/native/epcsaft_density.cpp"
+      - "src/epcsaft/native/epcsaft_fugcoef.cpp"
+      - "src/epcsaft/native/epcsaft_mu.cpp"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+    constraints:
+      - "Do not implement."
+      - "Reject any path that claims issue #116 completion without transformed-variable Jacobian proof."
+      - "Prefer the largest safe useful local implementation path if one can be bounded."
+      - "Use a child goal only if the derivative-foundation work is too broad for a single reversible Worker."
+    expected_output:
+      - "Decision for the next active #116 task."
+      - "Allowed_files, verify commands, and stop_if clauses if a Worker may proceed."
+      - "Blocked handoff if no local source path is safe."
+    receipt:
+      result: done
+      decision: create_derivative_foundation_child_goal
+      summary: "Decided to isolate the missing phase-state sensitivity foundation in a child goal before resuming parent T017."
+      artifacts:
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T019-derivative-foundation-decision.md"
+        - "docs/goals/native-lle-reactive-production-solvers/subgoals/phase-state-sensitivities/goal.md"
+        - "docs/goals/native-lle-reactive-production-solvers/subgoals/phase-state-sensitivities/state.yaml"
+      evidence:
+        - "The derivative path crosses density closure, fugacity coefficients, residual chemical potentials, composition derivative terms, CppAD support, and equilibrium residual assembly."
+        - "Keeping that work inside the original T017 Worker would make the slice too broad and would risk a false production-Jacobian claim."
+      commands: []
+
+  - id: T020
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: medium
+    objective: "Execute or hand off the phase-state sensitivity child goal before parent T017 resumes."
+    subgoal:
+      status: active
+      path: "subgoals/phase-state-sensitivities/state.yaml"
+      owner: PM
+      depth: 1
+    constraints:
+      - "Parent T017 remains blocked until the child goal audit reports parent_t017_unblocked true."
+      - "Do not mark issue #116 complete while child Worker tasks remain queued or active."
+    expected_output:
+      - "Child goal completed or an explicit child blocker receipt."
+      - "Parent T017 resume decision."
     receipt: null
 
   - id: T999
@@ -596,13 +787,14 @@ tasks:
     receipt: null
 
 checks:
-  dirty_fingerprint: "t004-complete-t005-blocked-t015-active"
+  dirty_fingerprint: "t019-child-goal-created-t020-active"
   last_verification:
     result: pass
-    task: T015
+    task: T020
     commands:
       - "node C:\\Users\\Tanner\\.codex\\plugins\\cache\\goalbuddy\\goalbuddy\\0.3.6\\skills\\goalbuddy\\scripts\\check-goal-state.mjs docs/goals/native-lle-reactive-production-solvers/state.yaml"
-      - "uv run python scripts/dev/build_epcsaft.py"
-      - "uv run python run_pytest.py tests/native/equilibrium -q"
+      - "node C:\\Users\\Tanner\\.codex\\plugins\\cache\\goalbuddy\\goalbuddy\\0.3.6\\skills\\goalbuddy\\scripts\\check-goal-state.mjs docs/goals/native-lle-reactive-production-solvers/subgoals/phase-state-sensitivities/state.yaml"
+      - "uv run python scripts/dev/build_epcsaft.py --profile full"
+      - "uv run python run_pytest.py tests/native/equilibrium/test_electrolyte_lle_residual_surface.py tests/native/contracts/test_equilibrium_native_contracts.py tests/native/cppad/test_cppad_lle_derivatives.py -q"
       - "rg -n \"backend[_]unavailable|finite[_]difference\" docs/goals/native-lle-reactive-production-solvers docs/goals/native-electrolyte-lle-distributed-ions docs/goals/native-coupled-reactive-lle"
       - "git diff --check"

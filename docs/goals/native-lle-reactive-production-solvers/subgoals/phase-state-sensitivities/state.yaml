@@ -1,0 +1,111 @@
+version: 2
+
+goal:
+  title: "Native Phase-State Sensitivities For Electrolyte LLE"
+  slug: "phase-state-sensitivities"
+  kind: existing_plan
+  tranche: "Build the derivative foundation required by parent issue #116 T017."
+  status: active
+  intake:
+    original_request: "Unblock issue #116 production electrolyte LLE residual Jacobian and Ceres solve."
+    interpreted_outcome: "A native phase-state sensitivity surface exists and is verified enough for the parent electrolyte LLE residual evaluator to build a real transformed-variable Jacobian."
+    input_shape: existing_plan
+    audience: "ePC-SAFT package maintainers"
+    authority: inferred
+    proof_type: test
+    completion_proof: "Parent T017 can consume the child surface and report a real electrolyte LLE residual Jacobian without placeholder or manual numeric perturbation derivatives."
+    likely_misfire: "Adding a diagnostic label or disconnected derivative helper that does not differentiate the actual residual state."
+    blind_spots_considered:
+      - "Density closure sensitivity may require implicit differentiation of the selected root."
+      - "Fugacity sensitivity must include density and composition dependence."
+      - "Association and electrolyte contributions may need analytic-implicit or CppAD-implicit handling."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+active_task: T001
+
+tasks:
+  - id: T001
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Approve the smallest safe implementation package for native phase-state fugacity and density sensitivities."
+    inputs:
+      - "docs/goals/native-lle-reactive-production-solvers/notes/T018-sensitivity-map.md"
+      - "src/epcsaft/native/epcsaft_density.cpp"
+      - "src/epcsaft/native/epcsaft_fugcoef.cpp"
+      - "src/epcsaft/native/epcsaft_mu.cpp"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "tests/native/cppad/**"
+    constraints:
+      - "Do not implement."
+      - "Reject any package that does not feed the actual electrolyte LLE residual state."
+      - "Reject placeholder, stale, identity-only, or manual numeric perturbation derivatives."
+    expected_output:
+      - "Approved Worker allowed_files, verify commands, and stop conditions."
+      - "Decision on fixed-density versus implicit-density first slice."
+    receipt: null
+
+  - id: T002
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Implement the approved native phase-state sensitivity surface."
+    allowed_files:
+      - "src/epcsaft/native/**"
+      - "tests/native/cppad/**"
+      - "tests/native/equilibrium/**"
+      - "docs/goals/native-lle-reactive-production-solvers/subgoals/phase-state-sensitivities/notes/**"
+    constraints:
+      - "The sensitivity surface must differentiate the actual state used by electrolyte LLE residual evaluation."
+      - "Diagnostics must label derivative backend and density-sensitivity scope honestly."
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --profile full"
+      - "uv run python run_pytest.py tests/native/cppad tests/native/equilibrium -q"
+    stop_if:
+      - "The implementation would require a broad EOS rewrite outside a reversible slice."
+      - "Derivative proof depends on a manual numeric perturbation oracle."
+    receipt: null
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Audit child goal completion and decide whether parent T017 may resume."
+    inputs:
+      - "All child task receipts"
+      - "Last validation output"
+      - "Parent T017 requirements"
+    constraints:
+      - "Do not implement."
+      - "Reject completion unless the parent residual evaluator can consume the sensitivity surface for a real transformed-variable Jacobian."
+    expected_output:
+      - "complete or not_complete"
+      - "parent_t017_unblocked true or false"
+    receipt: null
+
+checks:
+  dirty_fingerprint: "child-goal-created"
+  last_verification:
+    result: pending
+    task: T001
+    commands:
+      - "node C:\\Users\\Tanner\\.codex\\plugins\\cache\\goalbuddy\\goalbuddy\\0.3.6\\skills\\goalbuddy\\scripts\\check-goal-state.mjs docs/goals/native-lle-reactive-production-solvers/subgoals/phase-state-sensitivities/state.yaml"
