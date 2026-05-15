@@ -8,7 +8,7 @@ goal:
   slug: "package-clutter-pruning"
   kind: existing_plan
   tranche: "Execute issue #120 phases in order, preserving scientific behavior and producing PR-ready evidence."
-  status: active
+  status: done
   intake:
     original_request: "Read issue #120 on Github and set up a GoalBuddy board for all phases, following the issue explicitly."
     interpreted_outcome: "A phase-complete GoalBuddy board exists for issue #120 with queued Scout, Judge, Worker, and PM tasks ready for cleanup execution."
@@ -65,7 +65,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T019
+active_task: null
 
 tasks:
   - id: T001
@@ -1065,7 +1065,7 @@ tasks:
   - id: T019
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: medium
     objective: "Publish, open PR, merge to main, check out main, and clean stale cleanup branch refs after the user expanded the goal."
     inputs:
@@ -1084,7 +1084,27 @@ tasks:
       - "Merge result."
       - "Main checkout status."
       - "Local and remote cleanup branch deletion result."
-    receipt: null
+    receipt:
+      result: done
+      local_cleanup_commit: "6dbe574"
+      pull_request: "https://github.com/tannerpolley/ePC-SAFT/pull/121"
+      post_receipt_actions:
+        - "Merge PR #121 into main."
+        - "Check out main and fast-forward to origin/main."
+        - "Delete local and remote codex/package-cleanup branch refs if still present."
+      commands:
+        - command: "git commit -m \"Prune package clutter\""
+          status: pass
+          evidence: "Created cleanup commit 6dbe574."
+        - command: "git push -u origin codex/package-cleanup"
+          status: pass
+          evidence: "Pushed branch and set upstream."
+        - command: "gh pr create --base main --head codex/package-cleanup --title \"Prune package clutter\" --body-file docs\\goals\\package-clutter-pruning\\notes\\pr_body.md"
+          status: pass
+          evidence: "Opened https://github.com/tannerpolley/ePC-SAFT/pull/121."
+      summary:
+        - "Published the cleanup branch and opened PR #121."
+        - "This receipt is committed before the PR merge so main keeps the board evidence; merge and branch deletion occur after this receipt commit and are reported in the final response."
 
 checks:
   dirty_fingerprint: "Board created from clean working tree on codex/package-cleanup at 8f0ea57."
