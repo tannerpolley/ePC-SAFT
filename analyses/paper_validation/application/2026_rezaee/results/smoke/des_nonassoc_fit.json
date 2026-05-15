@@ -1,0 +1,379 @@
+{
+  "density_source": {
+    "filter": "reported_material == DES",
+    "input": "analyses/rezaee_2026_pcsaft_epcsaft/data/input/rezaee_2026_si_density_tables.csv",
+    "source_table": "Rezaee2026_SI_TableS5"
+  },
+  "des_mw_kg_mol": 0.20748,
+  "des_mw_note": "Average formula-unit molecular weight for TBAC + 2 decanoic acid divided by 3. This is a diagnostic pseudo-component basis for the density fit, not a general DES molecular definition.",
+  "fit_result": {
+    "active_bounds": [],
+    "backend": "least_squares_native",
+    "cost": 5.3081250411304765e-05,
+    "derivative_backend": "cppad_implicit",
+    "final_parameters": {},
+    "fitted_values": {
+      "e": 311.1917999999999,
+      "m": 11.319494,
+      "s": 3.09386
+    },
+    "gradient_norm": NaN,
+    "hessian_available": false,
+    "hessian_backend": "not_implemented",
+    "hessian_fallback_reason": "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.",
+    "hessian_fallback_used": false,
+    "initial_parameters": {},
+    "jacobian_available": true,
+    "jacobian_backend": "cppad_implicit",
+    "jacobian_fallback_reason": "",
+    "jacobian_fallback_used": false,
+    "message": "Levenberg-Marquardt terminated early by user request.",
+    "metrics_by_term": {
+      "density": 0.010303518856323288,
+      "pure_vle_fugacity_balance": 0.0
+    },
+    "n_jacobian_evaluations": 1,
+    "n_residual_evaluations": 2,
+    "nfev": 3,
+    "not_available_reason": "",
+    "objective_final": 5.3081250411304765e-05,
+    "objective_initial": 5.308125041130658e-05,
+    "optimizer_backend": "least_squares_native",
+    "parameter_map": {
+      "e": 311.1917999999999,
+      "m": 11.319494,
+      "s": 3.09386
+    },
+    "parameter_movement": {},
+    "problem": {
+      "assoc_scheme": "",
+      "bounds": {},
+      "component": "Rezaee_DES",
+      "dataset": null,
+      "fit_targets": [
+        "m",
+        "s",
+        "e"
+      ],
+      "fixed_parameters": {
+        "MW": [
+          0.20748
+        ],
+        "assoc_scheme": "",
+        "d_born": [
+          0.0
+        ],
+        "dielc": [
+          2.5
+        ],
+        "e": [
+          305.09
+        ],
+        "e_assoc": [
+          0.0
+        ],
+        "f_solv": [
+          1.0
+        ],
+        "m": [
+          10.9898
+        ],
+        "s": [
+          3.157
+        ],
+        "vol_a": [
+          0.0
+        ],
+        "z": [
+          0.0
+        ]
+      },
+      "initial_guess": {
+        "e": 305.09,
+        "m": 10.9898,
+        "s": 3.157
+      },
+      "loss": "linear",
+      "mode": "pure_neutral",
+      "optimization_parameters": [
+        "m",
+        "s",
+        "e"
+      ],
+      "output_report": false,
+      "pair": null,
+      "pure_file_hint": "any_solvent.csv",
+      "records": [
+        {
+          "P": 101325.0,
+          "T": 272.04,
+          "T_C": -1.1099999999999568,
+          "phase": "liq",
+          "rho_kg_m3": 932.2,
+          "source": "Rezaee2026_SI_TableS5"
+        },
+        {
+          "P": 101325.0,
+          "T": 280.37,
+          "T_C": 7.220000000000027,
+          "phase": "liq",
+          "rho_kg_m3": 926.7,
+          "source": "Rezaee2026_SI_TableS5"
+        },
+        {
+          "P": 101325.0,
+          "T": 288.7,
+          "T_C": 15.550000000000011,
+          "phase": "liq",
+          "rho_kg_m3": 921.3,
+          "source": "Rezaee2026_SI_TableS5"
+        },
+        {
+          "P": 101325.0,
+          "T": 297.04,
+          "T_C": 23.890000000000043,
+          "phase": "liq",
+          "rho_kg_m3": 916.0,
+          "source": "Rezaee2026_SI_TableS5"
+        },
+        {
+          "P": 101325.0,
+          "T": 305.37,
+          "T_C": 32.22000000000003,
+          "phase": "liq",
+          "rho_kg_m3": 910.7,
+          "source": "Rezaee2026_SI_TableS5"
+        },
+        {
+          "P": 101325.0,
+          "T": 322.04,
+          "T_C": 48.89000000000004,
+          "phase": "liq",
+          "rho_kg_m3": 900.1,
+          "source": "Rezaee2026_SI_TableS5"
+        },
+        {
+          "P": 101325.0,
+          "T": 330.37,
+          "T_C": 57.22000000000003,
+          "phase": "liq",
+          "rho_kg_m3": 894.7,
+          "source": "Rezaee2026_SI_TableS5"
+        }
+      ],
+      "solvent": null,
+      "solver_options": {},
+      "target_dataset": null,
+      "temperature_model": "constant",
+      "terms": [
+        {
+          "records": [
+            {
+              "P": 101325.0,
+              "T": 272.04,
+              "T_C": -1.1099999999999568,
+              "phase": "liq",
+              "rho_kg_m3": 932.2,
+              "source": "Rezaee2026_SI_TableS5"
+            },
+            {
+              "P": 101325.0,
+              "T": 280.37,
+              "T_C": 7.220000000000027,
+              "phase": "liq",
+              "rho_kg_m3": 926.7,
+              "source": "Rezaee2026_SI_TableS5"
+            },
+            {
+              "P": 101325.0,
+              "T": 288.7,
+              "T_C": 15.550000000000011,
+              "phase": "liq",
+              "rho_kg_m3": 921.3,
+              "source": "Rezaee2026_SI_TableS5"
+            },
+            {
+              "P": 101325.0,
+              "T": 297.04,
+              "T_C": 23.890000000000043,
+              "phase": "liq",
+              "rho_kg_m3": 916.0,
+              "source": "Rezaee2026_SI_TableS5"
+            },
+            {
+              "P": 101325.0,
+              "T": 305.37,
+              "T_C": 32.22000000000003,
+              "phase": "liq",
+              "rho_kg_m3": 910.7,
+              "source": "Rezaee2026_SI_TableS5"
+            },
+            {
+              "P": 101325.0,
+              "T": 322.04,
+              "T_C": 48.89000000000004,
+              "phase": "liq",
+              "rho_kg_m3": 900.1,
+              "source": "Rezaee2026_SI_TableS5"
+            },
+            {
+              "P": 101325.0,
+              "T": 330.37,
+              "T_C": 57.22000000000003,
+              "phase": "liq",
+              "rho_kg_m3": 894.7,
+              "source": "Rezaee2026_SI_TableS5"
+            }
+          ],
+          "residual_count": 7,
+          "term_type": "density",
+          "weight": 1.0
+        },
+        {
+          "records": [
+            {
+              "P": 101325.0,
+              "T": 272.04,
+              "T_C": -1.1099999999999568,
+              "phase": "liq",
+              "rho_kg_m3": 932.2,
+              "source": "Rezaee2026_SI_TableS5"
+            },
+            {
+              "P": 101325.0,
+              "T": 280.37,
+              "T_C": 7.220000000000027,
+              "phase": "liq",
+              "rho_kg_m3": 926.7,
+              "source": "Rezaee2026_SI_TableS5"
+            },
+            {
+              "P": 101325.0,
+              "T": 288.7,
+              "T_C": 15.550000000000011,
+              "phase": "liq",
+              "rho_kg_m3": 921.3,
+              "source": "Rezaee2026_SI_TableS5"
+            },
+            {
+              "P": 101325.0,
+              "T": 297.04,
+              "T_C": 23.890000000000043,
+              "phase": "liq",
+              "rho_kg_m3": 916.0,
+              "source": "Rezaee2026_SI_TableS5"
+            },
+            {
+              "P": 101325.0,
+              "T": 305.37,
+              "T_C": 32.22000000000003,
+              "phase": "liq",
+              "rho_kg_m3": 910.7,
+              "source": "Rezaee2026_SI_TableS5"
+            },
+            {
+              "P": 101325.0,
+              "T": 322.04,
+              "T_C": 48.89000000000004,
+              "phase": "liq",
+              "rho_kg_m3": 900.1,
+              "source": "Rezaee2026_SI_TableS5"
+            },
+            {
+              "P": 101325.0,
+              "T": 330.37,
+              "T_C": 57.22000000000003,
+              "phase": "liq",
+              "rho_kg_m3": 894.7,
+              "source": "Rezaee2026_SI_TableS5"
+            }
+          ],
+          "residual_count": 7,
+          "term_type": "pure_vle_fugacity_balance",
+          "weight": 1.0
+        }
+      ],
+      "weights": {}
+    },
+    "provenance_report": {},
+    "python_objective_used": false,
+    "rendered_values": {
+      "e": 311.1917999999999,
+      "m": 11.319494,
+      "s": 3.09386
+    },
+    "residual_block_norms": {},
+    "residual_norm": 0.010303518856323286,
+    "row_diagnostics": [
+      {
+        "metric": 0.010303518856323288,
+        "row_family": "density"
+      },
+      {
+        "metric": 0.0,
+        "row_family": "pure_vle_fugacity_balance"
+      }
+    ],
+    "source_summaries": {},
+    "status": 9,
+    "step_norm": NaN,
+    "success": false,
+    "target_family_summaries": {}
+  },
+  "model_status": "nonassociating_diagnostic_fit",
+  "reported_rezaee_parameters": {
+    "DES": {
+      "association_sites": 2,
+      "epsilon_assoc_over_k_K": 6900.0,
+      "epsilon_over_k_K": 305.09,
+      "kappa_assoc": 0.15,
+      "m": 10.9898,
+      "sigma_A": 3.157
+    },
+    "RLi": {
+      "epsilon_over_k_K": 392.09,
+      "m": 11.1223,
+      "sigma_A": 3.8327
+    },
+    "RNa": {
+      "epsilon_over_k_K": 427.44,
+      "m": 11.1504,
+      "sigma_A": 4.0254
+    },
+    "TOPO": {
+      "association_sites": 1,
+      "epsilon_assoc_over_k_K": 1520.0,
+      "epsilon_over_k_K": 395.55,
+      "kappa_assoc": 0.01,
+      "m": 13.209,
+      "sigma_A": 3.755
+    },
+    "organic_binary_interactions": {
+      "DES_RLi": 0.0104,
+      "DES_RNa": 0.0158,
+      "DES_TOPO": 0.0623,
+      "RLi_RNa": -0.0127,
+      "TOPO_RLi": 0.0115,
+      "TOPO_RNa": -0.0139
+    }
+  },
+  "source": {
+    "boundary": "organic phase PC-SAFT plus aqueous phase ePC-SAFT; not a full reactive HBTA/TOPO ePC-SAFT model",
+    "citation_key": "Rezaee2026",
+    "doi": "10.1016/j.fluid.2026.114737",
+    "title": "Thermodynamic modeling of lithium extraction from synthetic brine using deep eutectic solvents: A PC-SAFT approach",
+    "zotero_key": "3NMV5MF2"
+  },
+  "source_inputs": {
+    "doe_extraction_responses": "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2025_doe_extraction_responses.csv",
+    "extraction_equilibrium_mole_fractions": "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2025_extraction_equilibrium_mole_fractions.csv",
+    "headline_extraction_points": "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2025_headline_extraction_points.csv",
+    "optimum_neighborhood": "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2025_optimum_neighborhood.csv",
+    "organic_binary_interactions": "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2026_organic_binary_interactions.csv",
+    "organic_pcsaft_parameters": "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2026_organic_pcsaft_parameters.csv",
+    "reaction_constants": "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2026_reaction_constants.csv",
+    "real_brine_extraction": "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2025_real_brine_extraction.csv",
+    "screening_extraction": "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2025_screening_extraction.csv",
+    "si_density_tables": "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2026_si_density_tables.csv"
+  }
+}

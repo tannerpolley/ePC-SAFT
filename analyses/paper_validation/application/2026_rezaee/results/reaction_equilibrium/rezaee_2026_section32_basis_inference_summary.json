@@ -1,0 +1,23 @@
+{
+  "status": "section32_basis_inference_complete",
+  "row_count": 26,
+  "conservation_diagnostics": {
+    "median_N_aq_total_Li_over_Na": 0.884441445349643,
+    "min_N_aq_total_Li_over_Na": 0.5819088000525385,
+    "max_N_aq_total_Li_over_Na": 1.0048083299737331,
+    "median_N_org_total_RLi_over_RNa": 3.6375026056361,
+    "min_N_org_total_RLi_over_RNa": 2.5051178803465155,
+    "max_N_org_total_RLi_over_RNa": 5.67225377185503,
+    "max_abs_aqueous_charge_residual": 8.000000000008868e-07
+  },
+  "basis_diagnostics": {
+    "median_xOH_SI_over_pH_estimate": 0.9999690361888166,
+    "median_H_mol_over_extracted_Li_plus_Na": 0.7407749435988276,
+    "median_OH_mol_over_extracted_Li_plus_Na": 0.0007005621825199862,
+    "median_N_aq_total_from_Li": 45.49389749745885,
+    "median_N_aq_total_from_Na": 51.19236943007712,
+    "median_N_org_total_from_RLi": 11.300658961448672,
+    "median_N_org_total_from_RNa": 3.562819060117471
+  },
+  "interpretation": "The SI aqueous rows are nearly charge balanced and the OH- mole fractions track the reported pH. However, combining Table 5 extraction percentages with SI organic RLi/RNa mole fractions does not produce one consistent organic phase total for one-metal RLi/RNa complexes. This is a source-basis blocker for exact Section 3.2 reproduction until the original initial-mole/reaction-coordinate worksheet or a documented phase-amount convention is available."
+}

@@ -1,0 +1,2 @@
+source,fit_label,success,m,sigma_A,epsilon_over_k_K,density_metric,pure_vle_metric,reported_DES_m,reported_DES_sigma_A,reported_DES_epsilon_over_k_K,boundary
+Rezaee2026,DES_nonassociating_density_fit,False,11.319494,3.09386,311.1917999999999,0.010303518856323288,0.0,10.9898,3.157,305.09,organic phase PC-SAFT plus aqueous phase ePC-SAFT; not a full reactive HBTA/TOPO ePC-SAFT model

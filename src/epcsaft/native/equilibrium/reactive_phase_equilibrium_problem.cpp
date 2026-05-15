@@ -31,6 +31,50 @@ using epcsaft::native::equilibrium::normalize_feed;
 using epcsaft::native::equilibrium::phase_distance;
 using epcsaft::native::equilibrium::split_distance_tolerance;
 
+constexpr int STANDARD_STATE_MOLE_FRACTION_ACTIVITY = 0;
+constexpr int STANDARD_STATE_IDEAL_MOLE_FRACTION = 1;
+constexpr int STANDARD_STATE_CONCENTRATION = 2;
+
+std::string reaction_standard_state_name(int standard_state) {
+    if (standard_state == STANDARD_STATE_MOLE_FRACTION_ACTIVITY) {
+        return "mole_fraction_activity";
+    }
+    if (standard_state == STANDARD_STATE_IDEAL_MOLE_FRACTION) {
+        return "ideal_mole_fraction";
+    }
+    if (standard_state == STANDARD_STATE_CONCENTRATION) {
+        return "concentration";
+    }
+    return "unsupported";
+}
+
+std::string reaction_standard_state_summary(const std::vector<int>& reaction_standard_states) {
+    if (reaction_standard_states.empty()) {
+        return "none";
+    }
+    std::ostringstream out;
+    for (std::size_t i = 0; i < reaction_standard_states.size(); ++i) {
+        if (i > 0) {
+            out << ",";
+        }
+        out << reaction_standard_state_name(reaction_standard_states[i]);
+    }
+    return out.str();
+}
+
+void validate_reaction_standard_states(const std::vector<int>& reaction_standard_states, int reaction_rows) {
+    if (reaction_standard_states.size() != static_cast<std::size_t>(reaction_rows)) {
+        throw ValueError("reaction_standard_states length must match reaction row count.");
+    }
+    for (int standard_state : reaction_standard_states) {
+        if (standard_state != STANDARD_STATE_MOLE_FRACTION_ACTIVITY
+            && standard_state != STANDARD_STATE_IDEAL_MOLE_FRACTION
+            && standard_state != STANDARD_STATE_CONCENTRATION) {
+            throw ValueError("reaction standard state contains an unsupported code.");
+        }
+    }
+}
+
 std::vector<double> matrix_vector_residual(
     const std::vector<double>& matrix_row_major,
     int rows,
@@ -164,12 +208,41 @@ std::vector<double> ln_activities(const ReactivePhaseState& state, double floor)
     return out;
 }
 
+std::vector<double> reaction_standard_state_log_terms(
+    const ReactivePhaseState& state,
+    int standard_state,
+    double floor
+) {
+    std::vector<double> out(state.composition.size(), 0.0);
+    if (standard_state == STANDARD_STATE_MOLE_FRACTION_ACTIVITY) {
+        return ln_activities(state, floor);
+    }
+    if (standard_state == STANDARD_STATE_IDEAL_MOLE_FRACTION) {
+        for (std::size_t i = 0; i < out.size(); ++i) {
+            out[i] = std::log(std::max(state.composition[i], floor));
+        }
+        return out;
+    }
+    if (standard_state == STANDARD_STATE_CONCENTRATION) {
+        if (!(std::isfinite(state.density) && state.density > 0.0)) {
+            throw ValueError("concentration reaction standard state requires a finite positive molar density.");
+        }
+        for (std::size_t i = 0; i < out.size(); ++i) {
+            out[i] = std::log(std::max(state.composition[i] * state.density, floor));
+        }
+        return out;
+    }
+    throw ValueError("reaction standard state contains an unsupported code.");
+}
+
 std::vector<double> reaction_residuals(
     const std::vector<double>& stoichiometry_row_major,
     int reaction_rows,
     int ncomp,
     const std::vector<double>& log_equilibrium_constants,
-    const std::vector<double>& ln_activity
+    const std::vector<int>& reaction_standard_states,
+    const ReactivePhaseState& phase,
+    double floor
 ) {
     if (reaction_rows < 0) {
         throw ValueError("reaction row count must be non-negative.");
@@ -180,16 +253,88 @@ std::vector<double> reaction_residuals(
     if (log_equilibrium_constants.size() != static_cast<std::size_t>(reaction_rows)) {
         throw ValueError("log equilibrium constant length must match reaction row count.");
     }
+    validate_reaction_standard_states(reaction_standard_states, reaction_rows);
     std::vector<double> residual(static_cast<std::size_t>(reaction_rows), 0.0);
     for (int r = 0; r < reaction_rows; ++r) {
+        const std::vector<double> log_terms = reaction_standard_state_log_terms(
+            phase,
+            reaction_standard_states[static_cast<std::size_t>(r)],
+            floor
+        );
         double value = 0.0;
         for (int i = 0; i < ncomp; ++i) {
             value += stoichiometry_row_major[static_cast<std::size_t>(r * ncomp + i)]
-                * ln_activity[static_cast<std::size_t>(i)];
+                * log_terms[static_cast<std::size_t>(i)];
         }
         residual[static_cast<std::size_t>(r)] = value - log_equilibrium_constants[static_cast<std::size_t>(r)];
     }
     return residual;
+}
+
+bool has_phase_tagged_reaction_stoichiometry(
+    const std::vector<double>& phase_stoichiometry_row_major,
+    int reaction_rows,
+    int ncomp
+) {
+    if (phase_stoichiometry_row_major.empty()) {
+        return false;
+    }
+    if (reaction_rows < 0) {
+        throw ValueError("reaction row count must be non-negative.");
+    }
+    if (phase_stoichiometry_row_major.size() != static_cast<std::size_t>(reaction_rows * 2 * ncomp)) {
+        throw ValueError("reaction_phase_stoichiometry has an invalid row-major size.");
+    }
+    return true;
+}
+
+std::vector<double> cross_phase_reaction_residuals(
+    const std::vector<double>& phase_stoichiometry_row_major,
+    int reaction_rows,
+    int ncomp,
+    const std::vector<double>& log_equilibrium_constants,
+    const std::vector<int>& reaction_standard_states,
+    const ReactivePhaseState& phase1,
+    const ReactivePhaseState& phase2,
+    double floor
+) {
+    if (!has_phase_tagged_reaction_stoichiometry(phase_stoichiometry_row_major, reaction_rows, ncomp)) {
+        return {};
+    }
+    if (log_equilibrium_constants.size() != static_cast<std::size_t>(reaction_rows)) {
+        throw ValueError("log equilibrium constant length must match reaction row count.");
+    }
+    validate_reaction_standard_states(reaction_standard_states, reaction_rows);
+    std::vector<double> residual(static_cast<std::size_t>(reaction_rows), 0.0);
+    for (int r = 0; r < reaction_rows; ++r) {
+        const std::vector<double> log_terms1 = reaction_standard_state_log_terms(
+            phase1,
+            reaction_standard_states[static_cast<std::size_t>(r)],
+            floor
+        );
+        const std::vector<double> log_terms2 = reaction_standard_state_log_terms(
+            phase2,
+            reaction_standard_states[static_cast<std::size_t>(r)],
+            floor
+        );
+        double value = 0.0;
+        const std::size_t row_offset = static_cast<std::size_t>(r * 2 * ncomp);
+        for (int i = 0; i < ncomp; ++i) {
+            value += phase_stoichiometry_row_major[row_offset + static_cast<std::size_t>(i)]
+                * log_terms1[static_cast<std::size_t>(i)];
+            value += phase_stoichiometry_row_major[row_offset + static_cast<std::size_t>(ncomp + i)]
+                * log_terms2[static_cast<std::size_t>(i)];
+        }
+        residual[static_cast<std::size_t>(r)] = value - log_equilibrium_constants[static_cast<std::size_t>(r)];
+    }
+    return residual;
+}
+
+double reaction_residual_norm(const ReactivePhaseResidualEvaluationNative& eval) {
+    if (!eval.reaction_residuals_cross_phase.empty()) {
+        return max_abs(eval.reaction_residuals_cross_phase);
+    }
+    return std::max(max_abs(eval.reaction_residuals_phase1), max_abs(eval.reaction_residuals_phase2));
 }
 
 std::vector<double> neutral_phase_residuals(
@@ -204,6 +349,24 @@ std::vector<double> neutral_phase_residuals(
         }
     }
     return residual;
+}
+
+bool composition_vector_physical(const std::vector<double>& composition, double tolerance) {
+    if (composition.empty()) {
+        return false;
+    }
+    double sum = 0.0;
+    for (double value : composition) {
+        if (!std::isfinite(value) || value < -tolerance) {
+            return false;
+        }
+        sum += value;
+    }
+    return std::isfinite(sum) && std::abs(sum - 1.0) <= tolerance;
+}
+
+bool density_physical(double density) {
+    return std::isfinite(density) && density > 0.0;
 }
 
 std::vector<double> ionic_phase_residuals(
@@ -238,6 +401,18 @@ void append_block(std::vector<double>& target, const std::vector<double>& block)
     target.insert(target.end(), block.begin(), block.end());
 }
 
+std::vector<double> phase_log_mole_fraction_log_amount_jacobian(const ReactivePhaseState& state) {
+    const std::size_t ncomp = state.composition.size();
+    std::vector<double> jacobian(ncomp * ncomp, 0.0);
+    for (std::size_t species = 0; species < ncomp; ++species) {
+        for (std::size_t variable = 0; variable < ncomp; ++variable) {
+            jacobian[species * ncomp + variable] =
+                (species == variable ? 1.0 : 0.0) - state.composition[variable];
+        }
+    }
+    return jacobian;
+}
+
 std::vector<double> phase_ln_activity_log_amount_jacobian(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
     double t,
@@ -266,6 +441,60 @@ std::vector<double> phase_ln_activity_log_amount_jacobian(
     return jacobian;
 }
 
+std::vector<double> phase_log_concentration_log_amount_jacobian(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const ReactivePhaseState& state
+) {
+    const std::size_t ncomp = state.composition.size();
+    PhaseStateCompositionSensitivityResult sensitivity =
+        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, state.composition, 0, mixture->args());
+    if (!sensitivity.supported || sensitivity.density_composition_derivative.size() != ncomp) {
+        throw ValueError("concentration reaction residual Jacobian requires supported density composition sensitivities.");
+    }
+    const double density = sensitivity.density > 0.0 ? sensitivity.density : state.density;
+    if (!(std::isfinite(density) && density > 0.0)) {
+        throw ValueError("concentration reaction residual Jacobian requires a finite positive molar density.");
+    }
+    std::vector<double> jacobian = phase_log_mole_fraction_log_amount_jacobian(state);
+    std::vector<double> dlogrho_dlogn(ncomp, 0.0);
+    for (std::size_t variable = 0; variable < ncomp; ++variable) {
+        double drho_dlogn = 0.0;
+        for (std::size_t k = 0; k < ncomp; ++k) {
+            const double dxk_dlogn =
+                state.composition[k] * ((k == variable ? 1.0 : 0.0) - state.composition[variable]);
+            drho_dlogn += sensitivity.density_composition_derivative[k] * dxk_dlogn;
+        }
+        dlogrho_dlogn[variable] = drho_dlogn / density;
+    }
+    for (std::size_t species = 0; species < ncomp; ++species) {
+        for (std::size_t variable = 0; variable < ncomp; ++variable) {
+            jacobian[species * ncomp + variable] += dlogrho_dlogn[variable];
+        }
+    }
+    return jacobian;
+}
+
+std::vector<double> phase_reaction_standard_state_log_amount_jacobian(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const ReactivePhaseState& state,
+    int standard_state
+) {
+    if (standard_state == STANDARD_STATE_MOLE_FRACTION_ACTIVITY) {
+        return phase_ln_activity_log_amount_jacobian(mixture, t, p, state);
+    }
+    if (standard_state == STANDARD_STATE_IDEAL_MOLE_FRACTION) {
+        return phase_log_mole_fraction_log_amount_jacobian(state);
+    }
+    if (standard_state == STANDARD_STATE_CONCENTRATION) {
+        return phase_log_concentration_log_amount_jacobian(mixture, t, p, state);
+    }
+    throw ValueError("reaction standard state contains an unsupported code.");
+}
+
 std::vector<double> reactive_phase_residual_jacobian_row_major(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
     double t,
@@ -274,6 +503,8 @@ std::vector<double> reactive_phase_residual_jacobian_row_major(
     int balance_rows,
     const std::vector<double>& reaction_stoichiometry_row_major,
     int reaction_rows,
+    const std::vector<int>& reaction_standard_states,
+    const std::vector<double>& reaction_phase_stoichiometry_row_major,
     const ReactivePhaseState& phase1,
     const ReactivePhaseState& phase2,
     const std::vector<double>& charges,
@@ -284,6 +515,12 @@ std::vector<double> reactive_phase_residual_jacobian_row_major(
     std::vector<double> jacobian(residual_eval.residual.size() * nvars, 0.0);
     std::vector<double> activity_jac1 = phase_ln_activity_log_amount_jacobian(mixture, t, p, phase1);
     std::vector<double> activity_jac2 = phase_ln_activity_log_amount_jacobian(mixture, t, p, phase2);
+    validate_reaction_standard_states(reaction_standard_states, reaction_rows);
+    const bool phase_tagged_reactions = has_phase_tagged_reaction_stoichiometry(
+        reaction_phase_stoichiometry_row_major,
+        reaction_rows,
+        static_cast<int>(ncomp)
+    );
     std::size_t row = 0;
 
     for (int balance = 0; balance < balance_rows; ++balance) {
@@ -295,28 +532,75 @@ std::vector<double> reactive_phase_residual_jacobian_row_major(
         ++row;
     }
 
-    for (int reaction = 0; reaction < reaction_rows; ++reaction) {
-        for (std::size_t variable = 0; variable < ncomp; ++variable) {
-            double value = 0.0;
-            for (std::size_t species = 0; species < ncomp; ++species) {
-                value += reaction_stoichiometry_row_major[static_cast<std::size_t>(reaction) * ncomp + species]
-                    * activity_jac1[species * ncomp + variable];
+    if (phase_tagged_reactions) {
+        for (int reaction = 0; reaction < reaction_rows; ++reaction) {
+            const std::vector<double> reaction_jac1 = phase_reaction_standard_state_log_amount_jacobian(
+                mixture,
+                t,
+                p,
+                phase1,
+                reaction_standard_states[static_cast<std::size_t>(reaction)]
+            );
+            const std::vector<double> reaction_jac2 = phase_reaction_standard_state_log_amount_jacobian(
+                mixture,
+                t,
+                p,
+                phase2,
+                reaction_standard_states[static_cast<std::size_t>(reaction)]
+            );
+            const std::size_t reaction_offset = static_cast<std::size_t>(reaction) * 2 * ncomp;
+            for (std::size_t variable = 0; variable < ncomp; ++variable) {
+                double phase1_value = 0.0;
+                double phase2_value = 0.0;
+                for (std::size_t species = 0; species < ncomp; ++species) {
+                    phase1_value += reaction_phase_stoichiometry_row_major[reaction_offset + species]
+                        * reaction_jac1[species * ncomp + variable];
+                    phase2_value += reaction_phase_stoichiometry_row_major[reaction_offset + ncomp + species]
+                        * reaction_jac2[species * ncomp + variable];
+                }
+                jacobian[row * nvars + variable] = phase1_value;
+                jacobian[row * nvars + ncomp + variable] = phase2_value;
             }
-            jacobian[row * nvars + variable] = value;
+            ++row;
         }
-        ++row;
-    }
+    } else {
+        for (int reaction = 0; reaction < reaction_rows; ++reaction) {
+            const std::vector<double> reaction_jac1 = phase_reaction_standard_state_log_amount_jacobian(
+                mixture,
+                t,
+                p,
+                phase1,
+                reaction_standard_states[static_cast<std::size_t>(reaction)]
+            );
+            for (std::size_t variable = 0; variable < ncomp; ++variable) {
+                double value = 0.0;
+                for (std::size_t species = 0; species < ncomp; ++species) {
+                    value += reaction_stoichiometry_row_major[static_cast<std::size_t>(reaction) * ncomp + species]
+                        * reaction_jac1[species * ncomp + variable];
+                }
+                jacobian[row * nvars + variable] = value;
+            }
+            ++row;
+        }
 
-    for (int reaction = 0; reaction < reaction_rows; ++reaction) {
-        for (std::size_t variable = 0; variable < ncomp; ++variable) {
-            double value = 0.0;
-            for (std::size_t species = 0; species < ncomp; ++species) {
-                value += reaction_stoichiometry_row_major[static_cast<std::size_t>(reaction) * ncomp + species]
-                    * activity_jac2[species * ncomp + variable];
+        for (int reaction = 0; reaction < reaction_rows; ++reaction) {
+            const std::vector<double> reaction_jac2 = phase_reaction_standard_state_log_amount_jacobian(
+                mixture,
+                t,
+                p,
+                phase2,
+                reaction_standard_states[static_cast<std::size_t>(reaction)]
+            );
+            for (std::size_t variable = 0; variable < ncomp; ++variable) {
+                double value = 0.0;
+                for (std::size_t species = 0; species < ncomp; ++species) {
+                    value += reaction_stoichiometry_row_major[static_cast<std::size_t>(reaction) * ncomp + species]
+                        * reaction_jac2[species * ncomp + variable];
+                }
+                jacobian[row * nvars + ncomp + variable] = value;
             }
-            jacobian[row * nvars + ncomp + variable] = value;
+            ++row;
         }
-        ++row;
     }
 
     for (std::size_t species = 0; species < ncomp; ++species) {
@@ -404,6 +688,7 @@ public:
         int reaction_rows,
         std::vector<double> log_equilibrium_constants,
         std::vector<int> reaction_standard_states,
+        std::vector<double> reaction_phase_stoichiometry,
         int residual_size,
         int variable_count
     )
@@ -418,7 +703,8 @@ public:
           reaction_stoichiometry_(std::move(reaction_stoichiometry)),
           reaction_rows_(reaction_rows),
           log_equilibrium_constants_(std::move(log_equilibrium_constants)),
-          reaction_standard_states_(std::move(reaction_standard_states)) {
+          reaction_standard_states_(std::move(reaction_standard_states)),
+          reaction_phase_stoichiometry_(std::move(reaction_phase_stoichiometry)) {
         set_num_residuals(residual_size);
         mutable_parameter_block_sizes()->push_back(variable_count);
     }
@@ -438,6 +724,7 @@ public:
             reaction_rows_,
             log_equilibrium_constants_,
             reaction_standard_states_,
+            reaction_phase_stoichiometry_,
             variables,
             true
         );
@@ -466,6 +753,7 @@ private:
     int reaction_rows_;
     std::vector<double> log_equilibrium_constants_;
     std::vector<int> reaction_standard_states_;
+    std::vector<double> reaction_phase_stoichiometry_;
 };
 #endif
 
@@ -484,6 +772,7 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     int reaction_rows,
     const std::vector<double>& log_equilibrium_constants,
     const std::vector<int>& reaction_standard_states,
+    const std::vector<double>& reaction_phase_stoichiometry_row_major,
     const std::vector<double>& variables,
     bool has_variables,
     const std::vector<double>& initial_phase1,
@@ -536,6 +825,11 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     std::vector<double> ln_activity1 = ln_activities(phase1, options.min_composition);
     std::vector<double> ln_activity2 = ln_activities(phase2, options.min_composition);
     const int ncomp_int = static_cast<int>(ncomp);
+    const bool phase_tagged_reactions = has_phase_tagged_reaction_stoichiometry(
+        reaction_phase_stoichiometry_row_major,
+        reaction_rows,
+        ncomp_int
+    );
 
     ReactivePhaseResidualEvaluationNative out;
     out.variable_model = "log_phase_species_amounts";
@@ -559,20 +853,37 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
         total_amounts,
         total_vector
     );
-    out.reaction_residuals_phase1 = reaction_residuals(
-        reaction_stoichiometry_row_major,
-        reaction_rows,
-        ncomp_int,
-        log_equilibrium_constants,
-        ln_activity1
-    );
-    out.reaction_residuals_phase2 = reaction_residuals(
-        reaction_stoichiometry_row_major,
-        reaction_rows,
-        ncomp_int,
-        log_equilibrium_constants,
-        ln_activity2
-    );
+    if (phase_tagged_reactions) {
+        out.reaction_residuals_cross_phase = cross_phase_reaction_residuals(
+            reaction_phase_stoichiometry_row_major,
+            reaction_rows,
+            ncomp_int,
+            log_equilibrium_constants,
+            reaction_standard_states,
+            phase1,
+            phase2,
+            options.min_composition
+        );
+    } else {
+        out.reaction_residuals_phase1 = reaction_residuals(
+            reaction_stoichiometry_row_major,
+            reaction_rows,
+            ncomp_int,
+            log_equilibrium_constants,
+            reaction_standard_states,
+            phase1,
+            options.min_composition
+        );
+        out.reaction_residuals_phase2 = reaction_residuals(
+            reaction_stoichiometry_row_major,
+            reaction_rows,
+            ncomp_int,
+            log_equilibrium_constants,
+            reaction_standard_states,
+            phase2,
+            options.min_composition
+        );
+    }
     const std::vector<double>& charges = mixture->args().z;
     out.phase_charge_residuals = {
         composition_charge(phase1.amounts, charges),
@@ -581,8 +892,12 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     out.neutral_phase_equilibrium_residuals = neutral_phase_residuals(charges, ln_activity1, ln_activity2);
     out.ionic_equilibrium_residuals = ionic_phase_residuals(charges, ln_activity1, ln_activity2);
     append_block(out.residual, out.element_balance_residuals);
-    append_block(out.residual, out.reaction_residuals_phase1);
-    append_block(out.residual, out.reaction_residuals_phase2);
+    if (phase_tagged_reactions) {
+        append_block(out.residual, out.reaction_residuals_cross_phase);
+    } else {
+        append_block(out.residual, out.reaction_residuals_phase1);
+        append_block(out.residual, out.reaction_residuals_phase2);
+    }
     append_block(out.residual, out.neutral_phase_equilibrium_residuals);
     append_block(out.residual, out.ionic_equilibrium_residuals);
     append_block(out.residual, out.phase_charge_residuals);
@@ -601,6 +916,8 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
             balance_rows,
             reaction_stoichiometry_row_major,
             reaction_rows,
+            reaction_standard_states,
+            reaction_phase_stoichiometry_row_major,
             phase1,
             phase2,
             charges,
@@ -618,17 +935,26 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
 
     out.diagnostics_string["residual_surface"] = "native_reactive_phase_equilibrium_coupled_state";
     out.diagnostics_string["variable_model"] = out.variable_model;
-    out.diagnostics_string["residual_blocks"] = "element_balance,reaction_equilibrium,neutral_phase_equilibrium,ionic_equilibrium,phase_charge";
+    out.diagnostics_string["residual_blocks"] = phase_tagged_reactions
+        ? "element_balance,phase_tagged_reaction_equilibrium,neutral_phase_equilibrium,ionic_equilibrium,phase_charge"
+        : "element_balance,reaction_equilibrium,neutral_phase_equilibrium,ionic_equilibrium,phase_charge";
     out.diagnostics_string["solver_backend"] = "residual_surface_only";
     out.diagnostics_string["solver_method"] = "not_started_until_ceres_slice";
     out.diagnostics_string["jacobian_backend"] = should_compute_jacobian(options) ? "cppad_implicit" : "not_available";
     out.diagnostics_string["derivative_backend"] = should_compute_jacobian(options) ? "cppad_implicit" : "not_available";
     out.diagnostics_string["coupling_level"] = "single_native_residual_state";
     out.diagnostics_string["phase_model"] = "two_liquid_phases";
+    out.diagnostics_string["reaction_residual_basis"] = reaction_standard_state_summary(reaction_standard_states);
+    out.diagnostics_string["reaction_phase_scope"] = phase_tagged_reactions
+        ? "phase_tagged_cross_phase"
+        : "per_phase_same_stoichiometry";
     out.diagnostics_bool["jacobian_available"] = should_compute_jacobian(options);
     out.diagnostics_bool["derivative_available"] = should_compute_jacobian(options);
     out.diagnostics_bool["solved_state_sensitivity_available"] = should_compute_jacobian(options);
     out.diagnostics_bool["reaction_and_phase_residuals_share_state"] = true;
+    out.diagnostics_bool["reaction_residual_standard_state_applied"] = true;
+    out.diagnostics_bool["phase_tagged_reaction_stoichiometry"] = phase_tagged_reactions;
+    out.diagnostics_bool["cross_phase_reaction_residuals"] = phase_tagged_reactions;
     out.diagnostics_bool["nonnegative_amounts_enforced_by_transform"] = true;
     out.diagnostics_bool["composition_normalization_enforced_by_transform"] = true;
     out.diagnostics_bool["ceres_accepted_solve"] = false;
@@ -640,14 +966,15 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     out.diagnostics_int["residual_size"] = static_cast<int>(out.residual.size());
     out.diagnostics_int["element_balance_residual_size"] = static_cast<int>(out.element_balance_residuals.size());
     out.diagnostics_int["reaction_residual_size_per_phase"] = static_cast<int>(out.reaction_residuals_phase1.size());
+    out.diagnostics_int["cross_phase_reaction_residual_size"] = static_cast<int>(out.reaction_residuals_cross_phase.size());
+    out.diagnostics_int["reaction_residual_size"] = phase_tagged_reactions
+        ? static_cast<int>(out.reaction_residuals_cross_phase.size())
+        : static_cast<int>(out.reaction_residuals_phase1.size() + out.reaction_residuals_phase2.size());
     out.diagnostics_int["neutral_phase_equilibrium_residual_size"] = static_cast<int>(out.neutral_phase_equilibrium_residuals.size());
     out.diagnostics_int["ionic_equilibrium_residual_size"] = static_cast<int>(out.ionic_equilibrium_residuals.size());
     out.diagnostics_int["phase_charge_residual_size"] = static_cast<int>(out.phase_charge_residuals.size());
     out.diagnostics_double["element_balance_norm"] = max_abs(out.element_balance_residuals);
-    out.diagnostics_double["reaction_residual_norm"] = std::max(
-        max_abs(out.reaction_residuals_phase1),
-        max_abs(out.reaction_residuals_phase2)
-    );
+    out.diagnostics_double["reaction_residual_norm"] = reaction_residual_norm(out);
     out.diagnostics_double["phase_equilibrium_residual_norm"] = std::max(
         max_abs(out.neutral_phase_equilibrium_residuals),
         max_abs(out.ionic_equilibrium_residuals)
@@ -663,6 +990,7 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     out.diagnostics_vector["element_balance_residual"] = out.element_balance_residuals;
     out.diagnostics_vector["reaction_residual_phase1"] = out.reaction_residuals_phase1;
     out.diagnostics_vector["reaction_residual_phase2"] = out.reaction_residuals_phase2;
+    out.diagnostics_vector["reaction_residual_cross_phase"] = out.reaction_residuals_cross_phase;
     out.diagnostics_vector["neutral_phase_equilibrium_residual"] = out.neutral_phase_equilibrium_residuals;
     out.diagnostics_vector["ionic_equilibrium_residual"] = out.ionic_equilibrium_residuals;
     out.diagnostics_vector["phase_charge_residual"] = out.phase_charge_residuals;
@@ -670,6 +998,7 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
         reaction_standard_states.begin(),
         reaction_standard_states.end()
     );
+    out.diagnostics_vector["reaction_standard_state_codes"] = out.diagnostics_vector["reaction_standard_states"];
     return out;
 }
 
@@ -686,6 +1015,7 @@ EquilibriumResultNative reactive_phase_equilibrium_native(
     int reaction_rows,
     const std::vector<double>& log_equilibrium_constants,
     const std::vector<int>& reaction_standard_states,
+    const std::vector<double>& reaction_phase_stoichiometry_row_major,
     const std::vector<double>& initial_phase1,
     const std::vector<double>& initial_phase2,
     double initial_phase_fraction_phase2,
@@ -704,6 +1034,7 @@ EquilibriumResultNative reactive_phase_equilibrium_native(
     (void)reaction_rows;
     (void)log_equilibrium_constants;
     (void)reaction_standard_states;
+    (void)reaction_phase_stoichiometry_row_major;
     (void)initial_phase1;
     (void)initial_phase2;
     (void)initial_phase_fraction_phase2;
@@ -725,6 +1056,7 @@ EquilibriumResultNative reactive_phase_equilibrium_native(
         reaction_rows,
         log_equilibrium_constants,
         reaction_standard_states,
+        reaction_phase_stoichiometry_row_major,
         {},
         false,
         initial_phase1,
@@ -747,6 +1079,7 @@ EquilibriumResultNative reactive_phase_equilibrium_native(
         reaction_rows,
         log_equilibrium_constants,
         reaction_standard_states,
+        reaction_phase_stoichiometry_row_major,
         static_cast<int>(initial.residual.size()),
         static_cast<int>(variables.size())
     );
@@ -775,9 +1108,126 @@ EquilibriumResultNative reactive_phase_equilibrium_native(
         reaction_rows,
         log_equilibrium_constants,
         reaction_standard_states,
+        reaction_phase_stoichiometry_row_major,
         variables,
         true
     );
+    const double final_residual_norm = max_abs(final_eval.residual);
+    const double residual_acceptance_tolerance = std::max(1.0e-7, 100.0 * options.tolerance);
+    const double physical_acceptance_tolerance = std::max(1.0e-8, 100.0 * options.tolerance);
+    const bool final_residuals_finite = std::all_of(
+        final_eval.residual.begin(),
+        final_eval.residual.end(),
+        [](double value) { return std::isfinite(value); }
+    );
+    const bool ceres_solution_usable = summary.IsSolutionUsable();
+    const bool ceres_converged = summary.termination_type == ceres::CONVERGENCE;
+    const bool final_residuals_accepted =
+        final_residuals_finite && final_residual_norm <= residual_acceptance_tolerance;
+    const bool element_balance_accepted =
+        max_abs(final_eval.element_balance_residuals) <= physical_acceptance_tolerance;
+    const bool reaction_residuals_accepted =
+        reaction_residual_norm(final_eval) <= residual_acceptance_tolerance;
+    const bool phase_equilibrium_accepted =
+        std::max(max_abs(final_eval.neutral_phase_equilibrium_residuals), max_abs(final_eval.ionic_equilibrium_residuals))
+            <= residual_acceptance_tolerance;
+    const bool phase_charge_accepted =
+        max_abs(final_eval.phase_charge_residuals) <= std::max(1.0e-8, physical_acceptance_tolerance);
+    const bool phase_fraction_accepted =
+        std::isfinite(final_eval.phase_fraction_phase2)
+        && final_eval.phase_fraction_phase2 > options.min_composition
+        && final_eval.phase_fraction_phase2 < 1.0 - options.min_composition;
+    const bool phase_distance_accepted =
+        std::isfinite(final_eval.phase_distance)
+        && final_eval.phase_distance > split_distance_tolerance(options);
+    const bool densities_accepted =
+        density_physical(final_eval.phase1_density) && density_physical(final_eval.phase2_density);
+    const bool compositions_accepted =
+        composition_vector_physical(final_eval.phase1_composition, physical_acceptance_tolerance)
+        && composition_vector_physical(final_eval.phase2_composition, physical_acceptance_tolerance);
+    const bool physical_gates_accepted =
+        element_balance_accepted
+        && reaction_residuals_accepted
+        && phase_equilibrium_accepted
+        && phase_charge_accepted
+        && phase_fraction_accepted
+        && phase_distance_accepted
+        && densities_accepted
+        && compositions_accepted;
+    const bool accepted_solve =
+        ceres_solution_usable && ceres_converged && final_residuals_accepted && physical_gates_accepted;
+    if (!accepted_solve) {
+        std::ostringstream message;
+        message << "reactive phase Ceres solve was not accepted"
+                << ": termination=" << ceres_termination_type_name_reactive(summary.termination_type)
+                << ", solution_usable=" << (ceres_solution_usable ? "true" : "false")
+                << ", final_residual_norm=" << final_residual_norm
+                << ", physical_gates_accepted=" << (physical_gates_accepted ? "true" : "false")
+                << ", residual_acceptance_tolerance=" << residual_acceptance_tolerance
+                << ", summary=" << summary.BriefReport();
+        EquilibriumResultNative failed;
+        failed.backend = "reactive_phase_equilibrium";
+        failed.problem_kind = "reactive_phase_equilibrium";
+        failed.stable = true;
+        failed.split_detected = false;
+        failed.diagnostics_string = final_eval.diagnostics_string;
+        failed.diagnostics_string["native_entrypoint"] = "_solve_reactive_phase_equilibrium_native";
+        failed.diagnostics_string["equilibrium_route"] = "reactive_phase_equilibrium";
+        failed.diagnostics_string["solver_attempted"] = "ceres";
+        failed.diagnostics_string["solver_attempt_result"] = "failed";
+        failed.diagnostics_string["accepted_solver_backend"] = "none";
+        failed.diagnostics_string["accepted_solver_method"] = "none";
+        failed.diagnostics_string["accepted_derivative_backend"] = "none";
+        failed.diagnostics_string["solver_backend"] = "none";
+        failed.diagnostics_string["selected_solver_backend"] = "none";
+        failed.diagnostics_string["attempted_solver_backend"] = "ceres";
+        failed.diagnostics_string["attempted_solver_method"] = "ceres_trust_region_coupled_reactive_phase_equilibrium";
+        failed.diagnostics_string["attempted_jacobian_backend"] = "cppad_implicit";
+        failed.diagnostics_string["attempted_derivative_backend"] = "cppad_implicit";
+        failed.diagnostics_string["acceptance_gate"] = "reactive_solve_failed";
+        failed.diagnostics_string["rejection_reason"] = message.str();
+        failed.diagnostics_string["message"] = "reactive phase equilibrium did not converge to an accepted two-phase state";
+        failed.diagnostics_string["ceres_trust_region_strategy"] = "levenberg_marquardt";
+        failed.diagnostics_string["ceres_linear_solver"] = "dense_qr";
+        failed.diagnostics_string["ceres_termination_type"] = ceres_termination_type_name_reactive(summary.termination_type);
+        failed.diagnostics_string["ceres_summary"] = summary.BriefReport();
+        failed.diagnostics_bool = final_eval.diagnostics_bool;
+        failed.diagnostics_bool["solution_accepted"] = false;
+        failed.diagnostics_bool["ceres_solution_usable"] = ceres_solution_usable;
+        failed.diagnostics_bool["ceres_converged"] = ceres_converged;
+        failed.diagnostics_bool["ceres_residuals_accepted"] = final_residuals_accepted;
+        failed.diagnostics_bool["ceres_physical_gates_accepted"] = physical_gates_accepted;
+        failed.diagnostics_bool["ceres_accepted_solve"] = false;
+        failed.diagnostics_bool["element_balance_accepted"] = element_balance_accepted;
+        failed.diagnostics_bool["reaction_residuals_accepted"] = reaction_residuals_accepted;
+        failed.diagnostics_bool["phase_equilibrium_accepted"] = phase_equilibrium_accepted;
+        failed.diagnostics_bool["phase_charge_accepted"] = phase_charge_accepted;
+        failed.diagnostics_bool["phase_fraction_accepted"] = phase_fraction_accepted;
+        failed.diagnostics_bool["phase_distance_accepted"] = phase_distance_accepted;
+        failed.diagnostics_bool["densities_accepted"] = densities_accepted;
+        failed.diagnostics_bool["compositions_accepted"] = compositions_accepted;
+        failed.diagnostics_bool["attempted_jacobian_available"] = true;
+        failed.diagnostics_bool["attempted_derivative_available"] = true;
+        failed.diagnostics_bool["jacobian_available"] = false;
+        failed.diagnostics_bool["derivative_available"] = false;
+        failed.diagnostics_bool["solved_state_sensitivity_available"] = false;
+        failed.diagnostics_bool["jacobian_available_for_accepted_state"] = false;
+        failed.diagnostics_bool["derivative_available_for_accepted_state"] = false;
+        failed.diagnostics_int = final_eval.diagnostics_int;
+        failed.diagnostics_int["ceres_iteration_count"] = static_cast<int>(summary.iterations.size());
+        failed.diagnostics_int["ceres_status"] = static_cast<int>(summary.termination_type);
+        failed.diagnostics_double = final_eval.diagnostics_double;
+        failed.diagnostics_double["ceres_initial_cost"] = summary.initial_cost;
+        failed.diagnostics_double["ceres_final_cost"] = summary.final_cost;
+        failed.diagnostics_double["final_residual_norm"] = final_residual_norm;
+        failed.diagnostics_double["residual_acceptance_tolerance"] = residual_acceptance_tolerance;
+        failed.diagnostics_double["physical_acceptance_tolerance"] = physical_acceptance_tolerance;
+        failed.diagnostics_vector = final_eval.diagnostics_vector;
+        failed.diagnostics_vector["variables"] = final_eval.variables;
+        failed.diagnostics_vector["residual"] = final_eval.residual;
+        failed.diagnostics_vector["jacobian_row_major"] = final_eval.jacobian_row_major;
+        return failed;
+    }
 
     EquilibriumResultNative result;
     result.backend = "reactive_phase_equilibrium";
@@ -815,8 +1265,29 @@ EquilibriumResultNative reactive_phase_equilibrium_native(
     result.diagnostics_string["jacobian_backend"] = "cppad_implicit";
     result.diagnostics_string["derivative_backend"] = "cppad_implicit";
     result.diagnostics_string["solved_state_sensitivity_backend"] = "cppad_implicit";
+    result.diagnostics_string["acceptance_gate"] = "ceres_residual_and_physical_gates";
+    result.diagnostics_string["solver_attempted"] = "ceres";
+    result.diagnostics_string["solver_attempt_result"] = "accepted";
+    result.diagnostics_string["accepted_solver_backend"] = "ceres";
+    result.diagnostics_string["accepted_solver_method"] = "ceres_trust_region_coupled_reactive_phase_equilibrium";
+    result.diagnostics_string["accepted_derivative_backend"] = "cppad_implicit";
     result.diagnostics_bool = final_eval.diagnostics_bool;
-    result.diagnostics_bool["ceres_accepted_solve"] = true;
+    result.diagnostics_bool["solution_accepted"] = true;
+    result.diagnostics_bool["ceres_solution_usable"] = ceres_solution_usable;
+    result.diagnostics_bool["ceres_converged"] = ceres_converged;
+    result.diagnostics_bool["ceres_residuals_accepted"] = final_residuals_accepted;
+    result.diagnostics_bool["ceres_physical_gates_accepted"] = physical_gates_accepted;
+    result.diagnostics_bool["ceres_accepted_solve"] = accepted_solve;
+    result.diagnostics_bool["element_balance_accepted"] = element_balance_accepted;
+    result.diagnostics_bool["reaction_residuals_accepted"] = reaction_residuals_accepted;
+    result.diagnostics_bool["phase_equilibrium_accepted"] = phase_equilibrium_accepted;
+    result.diagnostics_bool["phase_charge_accepted"] = phase_charge_accepted;
+    result.diagnostics_bool["phase_fraction_accepted"] = phase_fraction_accepted;
+    result.diagnostics_bool["phase_distance_accepted"] = phase_distance_accepted;
+    result.diagnostics_bool["densities_accepted"] = densities_accepted;
+    result.diagnostics_bool["compositions_accepted"] = compositions_accepted;
+    result.diagnostics_bool["jacobian_available_for_accepted_state"] = true;
+    result.diagnostics_bool["derivative_available_for_accepted_state"] = true;
     result.diagnostics_bool["jacobian_available"] = true;
     result.diagnostics_bool["derivative_available"] = true;
     result.diagnostics_bool["solved_state_sensitivity_available"] = true;

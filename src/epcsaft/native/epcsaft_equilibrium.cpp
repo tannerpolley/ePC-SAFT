@@ -1,5 +1,6 @@
 #include "epcsaft_equilibrium.h"
 #include "equilibrium/equilibrium_helpers.h"
+#include "equilibrium/residual_solver.h"
 
 #ifdef EPCSAFT_HAS_CERES
 #include <ceres/cost_function.h>
@@ -1592,6 +1593,128 @@ LLECandidateNative evaluate_lle_variables(
     return out;
 }
 
+std::vector<double> composition_logit_jacobian(const std::vector<double>& composition) {
+    const std::size_t ncomp = composition.size();
+    const std::size_t nvar = ncomp - 1;
+    std::vector<double> jacobian(ncomp * nvar, 0.0);
+    for (std::size_t species = 0; species < ncomp; ++species) {
+        for (std::size_t var = 0; var < nvar; ++var) {
+            const double delta = species == var ? 1.0 : 0.0;
+            jacobian[species * nvar + var] = composition[species] * (delta - composition[var]);
+        }
+    }
+    return jacobian;
+}
+
+std::vector<double> lle_residual_jacobian_row_major(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const LLECandidateNative& candidate
+) {
+    const std::size_t ncomp = feed.size();
+    const std::size_t nlogit = ncomp - 1;
+    const std::size_t nvar = 1 + 2 * nlogit;
+    const std::size_t rows = 2 * ncomp;
+    std::vector<double> jacobian(rows * nvar, 0.0);
+    std::vector<double> comp1_logit_jac = composition_logit_jacobian(candidate.comp1);
+    std::vector<double> comp2_logit_jac = composition_logit_jacobian(candidate.comp2);
+    PhaseStateCompositionSensitivityResult sensitivity1 =
+        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, candidate.comp1, phase_token_to_int("liq"), mixture->args());
+    PhaseStateCompositionSensitivityResult sensitivity2 =
+        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, candidate.comp2, phase_token_to_int("liq"), mixture->args());
+    if (!sensitivity1.supported || !sensitivity2.supported) {
+        throw SolutionError("Neutral LLE residual Jacobian requires supported phase-state fugacity composition sensitivities.");
+    }
+
+    const double dbeta_deta = candidate.beta * (1.0 - candidate.beta);
+    for (std::size_t species = 0; species < ncomp; ++species) {
+        const std::size_t phase_row = species;
+        const std::size_t material_row = ncomp + species;
+        jacobian[material_row * nvar] = dbeta_deta * (candidate.comp2[species] - candidate.comp1[species]);
+        for (std::size_t var = 0; var < nlogit; ++var) {
+            const std::size_t var1 = 1 + var;
+            const std::size_t var2 = 1 + nlogit + var;
+            double dlogf1 = phase_log_fugacity_derivative_for_species(
+                candidate.comp1,
+                comp1_logit_jac,
+                sensitivity1.jacobian_row_major,
+                species,
+                var,
+                ncomp,
+                nlogit
+            );
+            double dlogf2 = phase_log_fugacity_derivative_for_species(
+                candidate.comp2,
+                comp2_logit_jac,
+                sensitivity2.jacobian_row_major,
+                species,
+                var,
+                ncomp,
+                nlogit
+            );
+            jacobian[phase_row * nvar + var1] = -dlogf1;
+            jacobian[phase_row * nvar + var2] = dlogf2;
+            jacobian[material_row * nvar + var1] =
+                (1.0 - candidate.beta) * comp1_logit_jac[species * nlogit + var];
+            jacobian[material_row * nvar + var2] =
+                candidate.beta * comp2_logit_jac[species * nlogit + var];
+        }
+    }
+    return jacobian;
+}
+
+class NeutralLLEResidualProblem final : public NativeResidualProblem {
+public:
+    NeutralLLEResidualProblem(
+        std::shared_ptr<ePCSAFTMixtureNative> mixture,
+        double t,
+        double p,
+        std::vector<double> feed,
+        EquilibriumOptionsNative options
+    )
+        : mixture_(std::move(mixture)),
+          t_(t),
+          p_(p),
+          feed_(std::move(feed)),
+          options_(std::move(options)) {}
+
+    int variable_count() const override {
+        return static_cast<int>(1 + 2 * (feed_.size() - 1));
+    }
+
+    int residual_count() const override {
+        return static_cast<int>(2 * feed_.size());
+    }
+
+    NativeResidualEvaluation evaluate(const std::vector<double>& variables, bool need_jacobian) const override {
+        LLECandidateNative candidate = evaluate_lle_variables(mixture_, t_, p_, feed_, variables, options_);
+        NativeResidualEvaluation out;
+        out.success = true;
+        out.residual = candidate.residual;
+        out.rows = static_cast<int>(candidate.residual.size());
+        out.cols = static_cast<int>(variables.size());
+        out.diagnostics_double["fugacity_residual_norm"] = candidate.fugacity_residual_norm;
+        out.diagnostics_double["material_balance_norm"] = candidate.material_error;
+        out.diagnostics_double["phase_distance"] = phase_distance(candidate.comp1, candidate.comp2);
+        out.diagnostics_string["residual_surface"] = "native_neutral_lle_transformed_variables";
+        out.diagnostics_string["jacobian_backend"] = "cppad_implicit";
+        out.diagnostics_bool["jacobian_available"] = need_jacobian;
+        if (need_jacobian) {
+            out.jacobian_row_major = lle_residual_jacobian_row_major(mixture_, t_, p_, feed_, candidate);
+        }
+        return out;
+    }
+
+private:
+    std::shared_ptr<ePCSAFTMixtureNative> mixture_;
+    double t_ = 0.0;
+    double p_ = 0.0;
+    std::vector<double> feed_;
+    EquilibriumOptionsNative options_;
+};
+
 bool lle_degenerate(const LLECandidateNative& candidate, const EquilibriumOptionsNative& options) {
     return candidate.beta <= options.min_composition
         || candidate.beta >= 1.0 - options.min_composition
@@ -1602,104 +1725,6 @@ bool lle_converged(const LLECandidateNative& candidate, const EquilibriumOptions
     return candidate.fugacity_residual_norm <= options.tolerance
         && candidate.material_error <= std::max(options.tolerance, 1.0e-10)
         && !lle_degenerate(candidate, options);
-}
-
-struct LLEMinimizeResultNative {
-    std::vector<double> variables;
-    double objective = std::numeric_limits<double>::infinity();
-    int iterations = 0;
-};
-
-LLEMinimizeResultNative minimize_lle_residual_variables(
-    const std::function<double(const std::vector<double>&)>& objective,
-    const std::vector<double>& start,
-    int max_iterations
-) {
-    LLEMinimizeResultNative result;
-    result.variables = start;
-    result.objective = objective(start);
-    if (start.empty() || max_iterations <= 0) {
-        return result;
-    }
-    const std::size_t n = start.size();
-    std::vector<std::vector<double>> simplex(n + 1, start);
-    for (std::size_t i = 0; i < n; ++i) {
-        simplex[i + 1][i] += 0.5;
-    }
-    std::vector<double> values(simplex.size(), 0.0);
-    auto refresh = [&]() {
-        for (std::size_t i = 0; i < simplex.size(); ++i) {
-            values[i] = objective(simplex[i]);
-        }
-    };
-    refresh();
-    for (result.iterations = 0; result.iterations < max_iterations; ++result.iterations) {
-        std::vector<std::size_t> order(simplex.size());
-        std::iota(order.begin(), order.end(), 0);
-        std::sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) { return values[a] < values[b]; });
-        std::vector<std::vector<double>> ordered_simplex;
-        std::vector<double> ordered_values;
-        for (std::size_t index : order) {
-            ordered_simplex.push_back(simplex[index]);
-            ordered_values.push_back(values[index]);
-        }
-        simplex = ordered_simplex;
-        values = ordered_values;
-        double spread = 0.0;
-        for (double value : values) {
-            spread = std::max(spread, std::abs(value - values.front()));
-        }
-        if (spread <= 1.0e-14) {
-            break;
-        }
-        std::vector<double> centroid(n, 0.0);
-        for (std::size_t i = 0; i < n; ++i) {
-            for (std::size_t row = 0; row < n; ++row) {
-                centroid[i] += simplex[row][i];
-            }
-            centroid[i] /= static_cast<double>(n);
-        }
-        std::vector<double> reflected(n, 0.0);
-        for (std::size_t i = 0; i < n; ++i) {
-            reflected[i] = centroid[i] + (centroid[i] - simplex.back()[i]);
-        }
-        double reflected_value = objective(reflected);
-        if (reflected_value < values.front()) {
-            std::vector<double> expanded(n, 0.0);
-            for (std::size_t i = 0; i < n; ++i) {
-                expanded[i] = centroid[i] + 2.0 * (reflected[i] - centroid[i]);
-            }
-            double expanded_value = objective(expanded);
-            simplex.back() = expanded_value < reflected_value ? expanded : reflected;
-            values.back() = std::min(expanded_value, reflected_value);
-            continue;
-        }
-        if (reflected_value < values[n - 1]) {
-            simplex.back() = reflected;
-            values.back() = reflected_value;
-            continue;
-        }
-        std::vector<double> contracted(n, 0.0);
-        for (std::size_t i = 0; i < n; ++i) {
-            contracted[i] = centroid[i] + 0.5 * (simplex.back()[i] - centroid[i]);
-        }
-        double contracted_value = objective(contracted);
-        if (contracted_value < values.back()) {
-            simplex.back() = contracted;
-            values.back() = contracted_value;
-            continue;
-        }
-        for (std::size_t row = 1; row < simplex.size(); ++row) {
-            for (std::size_t i = 0; i < n; ++i) {
-                simplex[row][i] = simplex.front()[i] + 0.5 * (simplex[row][i] - simplex.front()[i]);
-            }
-        }
-        refresh();
-    }
-    std::size_t best = static_cast<std::size_t>(std::min_element(values.begin(), values.end()) - values.begin());
-    result.variables = simplex[best];
-    result.objective = values[best];
-    return result;
 }
 
 std::vector<std::pair<std::string, std::vector<double>>> deterministic_formula_multistart_variables(
@@ -1903,19 +1928,19 @@ LLEAttemptNative solve_lle_attempt(
         return attempt;
     }
     std::vector<double> variables = pack_lle_variables(seed.beta, seed.comp1, seed.comp2);
-    auto objective_fn = [&](const std::vector<double>& candidate) {
-        try {
-            return l2_norm(evaluate_lle_variables(mixture, t, p, feed, candidate, options).residual);
-        } catch (const std::exception&) {
-            return std::numeric_limits<double>::infinity();
-        }
-    };
-    LLEMinimizeResultNative minimized = minimize_lle_residual_variables(objective_fn, variables, options.max_iterations);
-    LLECandidateNative best = evaluate_lle_variables(mixture, t, p, feed, minimized.variables, options);
-    best.iteration = minimized.iterations;
-    best.objective = minimized.objective;
+    NativeResidualSolveOptions residual_options;
+    residual_options.max_iterations = options.max_iterations;
+    residual_options.residual_tolerance = options.tolerance;
+    residual_options.function_tolerance = std::min(1.0e-12, std::max(1.0e-18, options.tolerance * options.tolerance));
+    residual_options.gradient_tolerance = std::min(1.0e-10, std::max(1.0e-14, options.tolerance));
+    residual_options.parameter_tolerance = std::min(1.0e-10, std::max(1.0e-14, options.tolerance));
+    NeutralLLEResidualProblem residual_problem(mixture, t, p, feed, options);
+    NativeResidualSolveResult solved = solve_native_residual_problem(residual_problem, variables, residual_options);
+    LLECandidateNative best = evaluate_lle_variables(mixture, t, p, feed, solved.variables, options);
+    best.iteration = solved.iterations;
+    best.objective = solved.residual_norm_l2;
     attempt.candidate = best;
-    if (lle_converged(best, options)) {
+    if (solved.accepted && lle_converged(best, options)) {
         attempt.status = "converged";
         return attempt;
     }
@@ -1924,7 +1949,7 @@ LLEAttemptNative solve_lle_attempt(
         attempt.message = "no V2 LLE split found; best candidate collapsed to one liquid phase";
     } else {
         attempt.status = "failed";
-        attempt.message = "maximum iterations reached";
+        attempt.message = solved.rejection_reason.empty() ? "native residual solve was not accepted" : solved.rejection_reason;
     }
     return attempt;
 }
@@ -1955,21 +1980,32 @@ EquilibriumResultNative lle_two_phase_result(
     result.diagnostics_string["point_solver_message"] = "converged";
     result.diagnostics_string["solver_language"] = "c++";
     result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
-    result.diagnostics_string["nonlinear_solver"] = "native_derivative_free_nelder_mead";
+    result.diagnostics_string["acceptance_gate"] = "residual_and_physical_gates";
+    result.diagnostics_string["solver_backend"] = "ceres";
+    result.diagnostics_string["selected_solver_backend"] = "ceres";
+    result.diagnostics_string["solver_method"] = "ceres_trust_region_residual_solve";
+    result.diagnostics_string["nonlinear_solver"] = "ceres_trust_region_residual_solve";
+    result.diagnostics_string["solver_attempted"] = "ceres";
+    result.diagnostics_string["solver_attempt_result"] = "accepted";
+    result.diagnostics_string["accepted_solver_backend"] = "ceres";
+    result.diagnostics_string["accepted_solver_method"] = "ceres_trust_region_residual_solve";
     result.diagnostics_string["requested_jacobian_backend"] = options.jacobian_backend;
-    result.diagnostics_string["derivative_backend"] = "not_applicable";
-    result.diagnostics_string["derivative_status"] = "not_required";
-    result.diagnostics_string["derivative_not_required_reason"] =
-        "phase split solve does not require residual Jacobians.";
-    result.diagnostics_bool["derivative_available"] = false;
-    result.diagnostics_bool["jacobian_available"] = false;
+    result.diagnostics_string["jacobian_backend"] = "cppad_implicit";
+    result.diagnostics_string["derivative_backend"] = "cppad_implicit";
+    result.diagnostics_string["accepted_derivative_backend"] = "cppad_implicit";
+    result.diagnostics_string["derivative_status"] = "residual_jacobian_available";
+    result.diagnostics_bool["solution_accepted"] = true;
+    result.diagnostics_bool["derivative_available"] = true;
+    result.diagnostics_bool["jacobian_available"] = true;
+    result.diagnostics_bool["jacobian_available_for_accepted_state"] = true;
+    result.diagnostics_bool["derivative_available_for_accepted_state"] = true;
     result.diagnostics_bool["jacobian_fallback_used"] = false;
     result.diagnostics_string["jacobian_fallback_reason"] = "";
     result.diagnostics_bool["hessian_available"] = false;
     result.diagnostics_string["hessian_backend"] = "not_implemented";
     result.diagnostics_bool["hessian_fallback_used"] = false;
     result.diagnostics_string["hessian_fallback_reason"] =
-        "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
+        "Hessian support is reserved for future constrained optimizer integration.";
     result.diagnostics_string["anti_trivial_solution_strategy"] = "phase_fraction_and_phase_distance_gate";
     result.diagnostics_string["association_solver_status"] = "not_active";
     return result;
@@ -1998,21 +2034,35 @@ EquilibriumResultNative lle_no_split_result(
     result.diagnostics_string["point_solver_message"] = attempt.message;
     result.diagnostics_string["solver_language"] = "c++";
     result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
-    result.diagnostics_string["nonlinear_solver"] = "native_derivative_free_nelder_mead";
+    result.diagnostics_string["acceptance_gate"] = "neutral_lle_not_accepted";
+    result.diagnostics_string["solver_backend"] = "none";
+    result.diagnostics_string["selected_solver_backend"] = "none";
+    result.diagnostics_string["solver_method"] = "none";
+    result.diagnostics_string["nonlinear_solver"] = "none";
+    result.diagnostics_string["solver_attempted"] = attempt.candidate.residual.empty() ? "none" : "ceres";
+    result.diagnostics_string["solver_attempt_result"] = "failed";
+    result.diagnostics_string["accepted_solver_backend"] = "none";
+    result.diagnostics_string["accepted_solver_method"] = "none";
     result.diagnostics_string["requested_jacobian_backend"] = options.jacobian_backend;
-    result.diagnostics_string["derivative_backend"] = "not_applicable";
-    result.diagnostics_string["derivative_status"] = "not_required";
-    result.diagnostics_string["derivative_not_required_reason"] =
-        "phase split solve does not require residual Jacobians.";
+    result.diagnostics_string["derivative_backend"] = "none";
+    result.diagnostics_string["derivative_status"] = "no_accepted_state";
+    result.diagnostics_string["accepted_derivative_backend"] = "none";
+    result.diagnostics_string["attempted_jacobian_backend"] = attempt.candidate.residual.empty() ? "none" : "cppad_implicit";
+    result.diagnostics_string["attempted_derivative_backend"] = attempt.candidate.residual.empty() ? "none" : "cppad_implicit";
+    result.diagnostics_bool["solution_accepted"] = false;
     result.diagnostics_bool["derivative_available"] = false;
     result.diagnostics_bool["jacobian_available"] = false;
+    result.diagnostics_bool["attempted_jacobian_available"] = !attempt.candidate.residual.empty();
+    result.diagnostics_bool["attempted_derivative_available"] = !attempt.candidate.residual.empty();
+    result.diagnostics_bool["jacobian_available_for_accepted_state"] = false;
+    result.diagnostics_bool["derivative_available_for_accepted_state"] = false;
     result.diagnostics_bool["jacobian_fallback_used"] = false;
     result.diagnostics_string["jacobian_fallback_reason"] = "";
     result.diagnostics_bool["hessian_available"] = false;
     result.diagnostics_string["hessian_backend"] = "not_implemented";
     result.diagnostics_bool["hessian_fallback_used"] = false;
     result.diagnostics_string["hessian_fallback_reason"] =
-        "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
+        "Hessian support is reserved for future constrained optimizer integration.";
     result.diagnostics_string["anti_trivial_solution_strategy"] = "phase_fraction_and_phase_distance_gate";
     result.diagnostics_string["association_solver_status"] = "not_active";
     return result;
@@ -2758,14 +2808,22 @@ EquilibriumResultNative electrolyte_lle_failure_result(
     result.diagnostics_string["stability_analysis"] = "electrolyte_tpd";
     result.diagnostics_string["variable_model"] = basis.variable_model;
     result.diagnostics_string["acceptance_gate"] = "predictive_solve_failed";
-    result.diagnostics_string["solver_backend"] = "ceres";
-    result.diagnostics_string["selected_solver_backend"] = "ceres";
+    result.diagnostics_string["solver_attempted"] = "ceres";
+    result.diagnostics_string["solver_attempt_result"] = "failed";
+    result.diagnostics_string["solver_backend"] = "none";
+    result.diagnostics_string["selected_solver_backend"] = "none";
+    result.diagnostics_string["accepted_solver_backend"] = "none";
+    result.diagnostics_string["accepted_solver_method"] = "none";
     result.diagnostics_string["solver_seed_name"] = best_seed;
-    result.diagnostics_string["solver_method"] = "ceres_trust_region_residual_solve";
+    result.diagnostics_string["solver_method"] = "none";
+    result.diagnostics_string["attempted_solver_method"] = "ceres_trust_region_residual_solve";
     result.diagnostics_string["solver_language"] = "c++";
     result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
-    result.diagnostics_string["jacobian_backend"] = "cppad_implicit";
-    result.diagnostics_string["derivative_backend"] = "cppad_implicit";
+    result.diagnostics_string["jacobian_backend"] = "none";
+    result.diagnostics_string["derivative_backend"] = "none";
+    result.diagnostics_string["accepted_derivative_backend"] = "none";
+    result.diagnostics_string["attempted_jacobian_backend"] = "cppad_implicit";
+    result.diagnostics_string["attempted_derivative_backend"] = "cppad_implicit";
     result.diagnostics_string["residual_surface_jacobian_backend"] = "cppad_implicit";
     result.diagnostics_string["residual_surface_derivative_backend"] = "cppad_implicit";
     result.diagnostics_string["jacobian_scope"] = "transformed_variables_phase_state_implicit_density";
@@ -2785,8 +2843,14 @@ EquilibriumResultNative electrolyte_lle_failure_result(
     result.diagnostics_bool["stability_stable"] = stability.stable;
     result.diagnostics_bool["unstable_feed_collapsed_all_candidates"] = stability.min_tpd < -std::max(options.tolerance, 1.0e-8)
         && reason == "candidate collapsed to one phase";
-    result.diagnostics_bool["jacobian_available"] = true;
-    result.diagnostics_bool["derivative_available"] = true;
+    result.diagnostics_bool["solution_accepted"] = false;
+    result.diagnostics_bool["ceres_accepted_solve"] = false;
+    result.diagnostics_bool["jacobian_available"] = false;
+    result.diagnostics_bool["derivative_available"] = false;
+    result.diagnostics_bool["attempted_jacobian_available"] = has_best;
+    result.diagnostics_bool["attempted_derivative_available"] = has_best;
+    result.diagnostics_bool["jacobian_available_for_accepted_state"] = false;
+    result.diagnostics_bool["derivative_available_for_accepted_state"] = false;
     add_electrolyte_basis_diagnostics(result, basis, feed.size());
     add_electrolyte_candidate_state_diagnostics(result, basis, feed, best, has_best, false);
     result.diagnostics_int["basis_rank"] = basis.basis_rank;
@@ -3291,6 +3355,7 @@ EquilibriumResultNative electrolyte_lle_native(
         );
         ElectrolyteCandidateNative candidate = ceres_attempt.candidate;
         bool candidate_accepted = ceres_attempt.solution_usable
+            && ceres_attempt.termination_type == "convergence"
             && predictive_electrolyte_accepted(candidate, solver_options);
         attempts.push_back(electrolyte_attempt_diagnostics(seed.first, candidate, solver_options, candidate_accepted));
         if (!has_best || candidate.objective < best.objective) {
@@ -3371,12 +3436,17 @@ EquilibriumResultNative electrolyte_lle_native(
     result.diagnostics_string["acceptance_gate"] = "ceres_residual_solve";
     result.diagnostics_string["solver_backend"] = "ceres";
     result.diagnostics_string["selected_solver_backend"] = "ceres";
+    result.diagnostics_string["solver_attempted"] = "ceres";
+    result.diagnostics_string["solver_attempt_result"] = "accepted";
+    result.diagnostics_string["accepted_solver_backend"] = "ceres";
+    result.diagnostics_string["accepted_solver_method"] = "ceres_trust_region_residual_solve";
     result.diagnostics_string["solver_seed_name"] = best_seed;
     result.diagnostics_string["solver_method"] = "ceres_trust_region_residual_solve";
     result.diagnostics_string["solver_language"] = "c++";
     result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
     result.diagnostics_string["jacobian_backend"] = "cppad_implicit";
     result.diagnostics_string["derivative_backend"] = "cppad_implicit";
+    result.diagnostics_string["accepted_derivative_backend"] = "cppad_implicit";
     result.diagnostics_string["residual_surface_jacobian_backend"] = "cppad_implicit";
     result.diagnostics_string["residual_surface_derivative_backend"] = "cppad_implicit";
     result.diagnostics_string["jacobian_scope"] = "transformed_variables_phase_state_implicit_density";
@@ -3398,8 +3468,14 @@ EquilibriumResultNative electrolyte_lle_native(
     result.diagnostics_bool["best_effort_phases_returned"] = false;
     result.diagnostics_bool["stability_checked"] = true;
     result.diagnostics_bool["stability_stable"] = stability.stable;
+    result.diagnostics_bool["solution_accepted"] = true;
+    result.diagnostics_bool["ceres_accepted_solve"] = true;
+    result.diagnostics_bool["ceres_solution_usable"] = has_best_ceres ? best_ceres.solution_usable : false;
+    result.diagnostics_bool["ceres_converged"] = has_best_ceres && best_ceres.termination_type == "convergence";
     result.diagnostics_bool["jacobian_available"] = true;
     result.diagnostics_bool["derivative_available"] = true;
+    result.diagnostics_bool["jacobian_available_for_accepted_state"] = true;
+    result.diagnostics_bool["derivative_available_for_accepted_state"] = true;
     add_electrolyte_basis_diagnostics(result, basis, feed.size());
     add_electrolyte_candidate_state_diagnostics(result, basis, feed, best, true, true);
     result.diagnostics_int["basis_rank"] = basis.basis_rank;

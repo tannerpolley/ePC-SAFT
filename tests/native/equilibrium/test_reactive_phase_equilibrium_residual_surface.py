@@ -75,6 +75,48 @@ def test_reactive_phase_residual_surface_exposes_single_coupled_state() -> None:
     assert len(payload["reaction_residuals_phase2"]) == 1
 
 
+def test_reactive_phase_reaction_standard_states_define_residual_basis() -> None:
+    mix = _neutral_reactive_lle_mixture()
+    liq1 = np.asarray([0.05, 0.95], dtype=float)
+    liq2 = np.asarray([0.85, 0.15], dtype=float)
+    feed = (0.5 * liq1 + 0.5 * liq2).tolist()
+    request = {
+        "T": 298.15,
+        "P": 1.013e5,
+        "z": feed,
+        "initial_phases": {"liq1": liq1.tolist(), "liq2": liq2.tolist(), "phase_fraction": 0.5},
+        "balance_matrix": [1.0, 1.0],
+        "balance_rows": 1,
+        "total_vector": [1.0],
+        "reaction_stoichiometry": [-1.0, 2.0],
+        "reaction_rows": 1,
+        "log_equilibrium_constants": [0.0],
+        "reaction_standard_states": [1],
+        "options": {"min_composition": 1.0e-12, "tolerance": 1.0e-10},
+    }
+
+    ideal = _core._evaluate_reactive_phase_equilibrium_residual_native(mix._native, request)
+    activity_request = dict(request)
+    activity_request["reaction_standard_states"] = [0]
+    activity = _core._evaluate_reactive_phase_equilibrium_residual_native(mix._native, activity_request)
+    concentration_request = dict(request)
+    concentration_request["reaction_standard_states"] = [2]
+    concentration = _core._evaluate_reactive_phase_equilibrium_residual_native(mix._native, concentration_request)
+
+    x1 = np.asarray(ideal["phase1_composition"], dtype=float)
+    ln_phi1 = np.asarray(ideal["phase1_ln_fugacity_coefficient"], dtype=float)
+    rho1 = float(ideal["phase1_density"])
+    expected_ideal = -math.log(x1[0]) + 2.0 * math.log(x1[1])
+    expected_activity = expected_ideal - float(ln_phi1[0]) + 2.0 * float(ln_phi1[1])
+    expected_concentration = expected_ideal + math.log(rho1)
+
+    assert ideal["reaction_residuals_phase1"][0] == pytest.approx(expected_ideal, abs=1.0e-12)
+    assert activity["reaction_residuals_phase1"][0] == pytest.approx(expected_activity, abs=1.0e-12)
+    assert concentration["reaction_residuals_phase1"][0] == pytest.approx(expected_concentration, abs=1.0e-10)
+    assert ideal["reaction_residuals_phase1"][0] != pytest.approx(activity["reaction_residuals_phase1"][0])
+    assert concentration["reaction_residuals_phase1"][0] != pytest.approx(ideal["reaction_residuals_phase1"][0])
+
+
 def test_reactive_electrolyte_residual_surface_includes_ion_and_charge_blocks() -> None:
     mix = _electrolyte_reactive_lle_mixture()
     aq = np.asarray([0.798324680201737, 0.016320352824141723, 0.09267748348706063, 0.09267748348706063])

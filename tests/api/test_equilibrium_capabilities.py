@@ -41,4 +41,18 @@ def test_reactive_speciation_capabilities_include_activity_standard_states() -> 
         "concentration",
         "apparent",
     }.issubset(set(reactive["jacobian_auto_supported_standard_states"]))
-    assert reactive["derivative_gap_status"] == "activity_derivatives_not_used_by_fixed_point_outer_iteration"
+    assert reactive["derivative_gap_status"] == "implicit_sensitivity_available_for_reaction_constant_response"
+
+
+def test_reactive_phase_equilibrium_capabilities_state_reaction_scope() -> None:
+    reactive = epcsaft.capabilities()["equilibrium"]["reactive_phase_equilibrium"]
+
+    assert reactive["available"] is True
+    assert {"reactive_lle", "reactive_electrolyte_lle"}.issubset(set(reactive["methods"]))
+    assert reactive["problem_class"] == "ReactivePhaseEquilibriumProblem"
+    assert reactive["solver_dependency"] == "ceres"
+    assert "same_phase_activity_reaction" in reactive["supported_reaction_scopes"]
+    assert "phase_tagged_cross_phase_quotient" in reactive["supported_reaction_scopes"]
+    assert reactive["unsupported_reaction_scopes"] == []
+    assert reactive["cross_phase_reaction_quotients"]["available"] is True
+    assert reactive["cross_phase_reaction_quotients"]["api"] == "ReactionDefinition.phase_stoichiometry"

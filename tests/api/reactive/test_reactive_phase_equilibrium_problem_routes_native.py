@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import math
-
 import numpy as np
 
 import epcsaft
@@ -15,26 +13,31 @@ def _toy_reactive_phase_case() -> tuple[
 ]:
     mix = epcsaft.ePCSAFTMixture.from_params(
         {
-            "m": np.asarray([1.0, 1.0]),
-            "s": np.asarray([3.0, 3.0]),
-            "e": np.asarray([200.0, 200.0]),
+            "MW": np.asarray([32.042e-3, 84.147e-3]),
+            "m": np.asarray([1.5255, 2.5303]),
+            "s": np.asarray([3.2300, 3.8499]),
+            "e": np.asarray([188.90, 278.11]),
+            "e_assoc": np.asarray([2899.5, 0.0]),
+            "vol_a": np.asarray([0.035176, 0.0]),
+            "assoc_scheme": ["2B", None],
+            "k_ij": np.asarray([[0.0, 0.051], [0.051, 0.0]]),
             "z": np.asarray([0.0, 0.0]),
-            "dielc": np.asarray([2.0, 2.0]),
+            "dielc": np.asarray([33.05, 2.02]),
         },
-        species=["A", "B"],
+        species=["Methanol", "Cyclohexane"],
     )
-    feed = np.asarray([0.4, 0.6], dtype=float)
-    state = mix.state(T=298.15, P=1.0e5, x=feed, phase="liq")
-    ln_phi = state.fugacity_coefficient(natural_log=True)
-    log_k = -math.log(feed[0]) - float(ln_phi[0]) + math.log(feed[1]) + float(ln_phi[1])
+    liq1 = np.asarray([0.11757838279937723, 0.8824216172006228])
+    liq2 = np.asarray([0.7985874308392054, 0.20141256916079467])
+    beta2 = 0.48813098468607985
+    feed = (1.0 - beta2) * liq1 + beta2 * liq2
     reaction = epcsaft.ReactionDefinition.from_literature_constant(
-        {"A": -1.0, "B": 1.0},
-        log_equilibrium_constant=log_k,
-        name="a_to_b",
+        {"Methanol": -1.0, "Cyclohexane": 1.0},
+        log_equilibrium_constant=-0.079259405371,
+        name="methanol_to_cyclohexane",
         standard_state="mole_fraction_activity",
         source="public route smoke fixture",
     )
-    return mix, feed, {"liq1": feed, "liq2": feed, "phase_fraction": 0.5}, reaction
+    return mix, feed, {"liq1": liq1, "liq2": liq2, "phase_fraction": beta2}, reaction
 
 
 def test_reactive_phase_equilibrium_problem_solves_with_native_coupled_route(monkeypatch) -> None:
@@ -46,13 +49,13 @@ def test_reactive_phase_equilibrium_problem_solves_with_native_coupled_route(mon
     monkeypatch.setattr(mix, "reactive_staged_equilibrium", fail_if_staged)
     problem = epcsaft.ReactivePhaseEquilibriumProblem(
         T=298.15,
-        P=1.0e5,
+        P=1.013e5,
         z=feed,
-        balances={"total": {"A": 1.0, "B": 1.0}},
+        balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
         totals={"total": 1.0},
         reactions=[reaction],
         phase_kind="lle_flash",
-        phase_options=epcsaft.EquilibriumOptions(max_iterations=20, tolerance=1.0e-10, min_composition=1.0e-12),
+        phase_options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8, min_composition=1.0e-12),
         phase_kwargs={"initial_phases": initial_phases},
     )
 
@@ -71,9 +74,9 @@ def test_reactive_phase_equilibrium_problem_rejects_non_lle_production_kind() ->
     mix, feed, _initial_phases, reaction = _toy_reactive_phase_case()
     problem = epcsaft.ReactivePhaseEquilibriumProblem(
         T=298.15,
-        P=1.0e5,
+        P=1.013e5,
         z=feed,
-        balances={"total": {"A": 1.0, "B": 1.0}},
+        balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
         totals={"total": 1.0},
         reactions=[reaction],
         phase_kind="tp_flash",

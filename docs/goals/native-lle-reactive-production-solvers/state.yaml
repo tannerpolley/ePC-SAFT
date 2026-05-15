@@ -5,7 +5,7 @@ goal:
   slug: "native-lle-reactive-production-solvers"
   kind: existing_plan
   tranche: "Execute GitHub issues #116 and #117 as a dependency-gated production-solver implementation tranche."
-  status: done
+  status: active
   intake:
     original_request: "Read issue #116 and #117 on GitHub and set up a GoalBuddy board for all phases to follow issue #116 and #117 explicitly in all of its steps."
     interpreted_outcome: "A GoalBuddy board exists that operationalizes every phase of issues #116 and #117, with #117 gated behind #116 and with explicit proof requirements."
@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: null
+active_task: T029
 
 tasks:
   - id: T001
@@ -1376,19 +1376,115 @@ tasks:
         - "gh issue view 117 --repo tannerpolley/ePC-SAFT --json number,title,state,url,updatedAt,body"
         - "git status --short"
 
-checks:
-  dirty_fingerprint: "t027-final-audit"
-  last_verification:
-    result: pass
-    task: T027
-    commands:
-      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-ceres --enable-cppad"
+  - id: T028
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Reopen the PR #126 audit from the post-merge findings and turn every finding into an explicit remediation gate."
+    inputs:
+      - "Merged PR #126 at commit 869e3354ddc0b52075ddc9efe687b34d6aa98316."
+      - "GitHub issue #116 closed by PR #126."
+      - "GitHub issue #117 closed by PR #126."
+      - "Unresolved PR #126 P1 review thread: Honor reaction standard-state codes in residual equations."
+      - "Unresolved PR #126 P1 review thread: Gate reactive solve success on Ceres usability."
+      - "Post-merge review finding: reactive electrolyte benchmark uses spectator ions and a neutral reaction."
+      - "Post-merge review finding: neutral reactive LLE benchmark is synthetic, not Ascani-style esterification proof."
+      - "Post-merge review finding: T999 not-complete audit was later contradicted by T027 complete audit."
+    constraints:
+      - "Do not edit source under this task."
+      - "Do not overwrite or erase the prior T999 and T027 receipts; record that the later review supersedes the completion claim."
+      - "No final completion claim is allowed until every reopened gate has executable validation evidence."
+    expected_output:
+      - "A note that maps each post-merge finding to a source/test/audit remediation gate."
+      - "Subsequent worker/judge tasks queued for all reopened gates."
+    receipt:
+      result: done
+      summary: "Reopened the PR #126 audit gates and recorded the post-merge findings without deleting the contradictory prior receipts."
+      artifacts:
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T028-pr126-post-merge-review.md"
+      evidence:
+        - "GitHub PR #126 review threads remain unresolved for reaction standard-state residuals and Ceres acceptance gating."
+        - "Current merged tests use a synthetic neutral reactive LLE fixture and a spectator-ion reactive electrolyte fixture."
+        - "T027 is treated as superseded by the post-merge review rather than erased."
+      next_task: T029
+
+  - id: T029
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Fix native reactive phase residuals so reaction_standard_states control reaction residual values and Jacobians, then gate accepted Ceres solves on usable converged solutions and strict residual checks."
+    allowed_files:
+      - "src/epcsaft/native/equilibrium/reactive_phase_equilibrium_problem.cpp"
+      - "tests/native/equilibrium/test_reactive_phase_equilibrium_residual_surface.py"
+      - "tests/native/equilibrium/test_reactive_phase_equilibrium_residual_jacobian.py"
+      - "tests/native/equilibrium/test_reactive_phase_equilibrium_ceres_solver.py"
+      - "tests/equilibrium/reactive/test_reactive_lle_coupled_solver.py"
+      - "tests/equilibrium/reactive/test_reactive_electrolyte_lle_coupled_solver.py"
+      - "docs/goals/native-lle-reactive-production-solvers/notes/**"
+    constraints:
+      - "Start with tests that fail on merged PR #126 behavior."
+      - "Support mole_fraction_activity, ideal_mole_fraction, and concentration standard states in both residual values and residual Jacobians."
+      - "Failure or no-convergence from Ceres must not return an accepted production result."
+    stop_if:
+      - "The native residual/Jacobian cannot support a standard-state convention already accepted by the Python API without a broader derivative-design change."
+      - "A Ceres failure path still returns an accepted result after the acceptance gate is added."
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --profile full"
+      - "uv run python run_pytest.py tests/native/equilibrium/test_reactive_phase_equilibrium_residual_surface.py tests/native/equilibrium/test_reactive_phase_equilibrium_residual_jacobian.py tests/native/equilibrium/test_reactive_phase_equilibrium_ceres_solver.py -q"
+      - "uv run python run_pytest.py tests/equilibrium/reactive/test_reactive_lle_coupled_solver.py tests/equilibrium/reactive/test_reactive_electrolyte_lle_coupled_solver.py -q"
+      - "git diff --check"
+
+  - id: T030
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Replace weak reactive benchmarks with source-backed cases: an Ascani-style neutral esterification LLE proof and a reactive electrolyte LLE proof where charged species participate in the reaction."
+    allowed_files:
+      - "tests/equilibrium/reactive/test_reactive_lle_coupled_solver.py"
+      - "tests/equilibrium/reactive/test_reactive_electrolyte_lle_coupled_solver.py"
+      - "tests/native/equilibrium/test_reactive_phase_equilibrium_residual_surface.py"
+      - "tests/native/equilibrium/test_reactive_phase_equilibrium_residual_jacobian.py"
+      - "docs/goals/native-lle-reactive-production-solvers/notes/**"
+    constraints:
+      - "Do not present synthetic-only fixtures as the issue #117 benchmark proof."
+      - "Do not use spectator ions as the reactive electrolyte proof."
+      - "Benchmark source strings and diagnostics must name the source basis and numeric tolerances without inventing unsupported literature claims."
+    verify:
+      - "uv run python run_pytest.py tests/equilibrium/reactive/test_reactive_lle_coupled_solver.py tests/equilibrium/reactive/test_reactive_electrolyte_lle_coupled_solver.py -q"
+      - "uv run python run_pytest.py tests/native/equilibrium/test_reactive_phase_equilibrium_residual_surface.py tests/native/equilibrium/test_reactive_phase_equilibrium_residual_jacobian.py -q"
+
+  - id: T031
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Perform a final reopened audit that explicitly resolves every PR #126 post-merge finding and does not claim #116/#117 complete unless all gates pass."
+    inputs:
+      - "T028 through T030 receipts."
+      - "Unresolved PR #126 review threads."
+      - "GitHub issues #116 and #117 definitions of done."
+      - "Current validation output."
+    constraints:
+      - "Do not mark complete if any benchmark remains synthetic-only or spectator-ion-only."
+      - "Do not mark complete if Ceres failure/no-convergence can still be reported as accepted."
+      - "Do not mark complete if non-activity reaction standard states are ignored by residuals or Jacobians."
+      - "Call out the older T027 completion receipt as superseded, not erased."
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --clean --profile full"
       - "uv run python run_pytest.py tests/native/equilibrium -q"
-      - "uv run python run_pytest.py tests/equilibrium/electrolyte -q"
-      - "uv run python run_pytest.py tests/equilibrium/core -q"
-      - "uv run python run_pytest.py tests/api/equilibrium -q"
       - "uv run python run_pytest.py tests/equilibrium/reactive -q"
       - "uv run python run_pytest.py tests/api/reactive -q"
       - "uv run python scripts/dev/validate_project.py quick"
       - "uv run python scripts/dev/validate_project.py docs"
       - "git diff --check"
+
+checks:
+  dirty_fingerprint: "t028-pr126-review-reopened"
+  last_verification:
+    result: stale_reopened
+    task: T028
+    commands:
+      - "PR #126 post-merge review reopened #116/#117 completion gates."
