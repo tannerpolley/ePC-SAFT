@@ -5,7 +5,7 @@ goal:
   slug: "native-lle-reactive-production-solvers"
   kind: existing_plan
   tranche: "Execute GitHub issues #116 and #117 as a dependency-gated production-solver implementation tranche."
-  status: active
+  status: done
   intake:
     original_request: "Read issue #116 and #117 on GitHub and set up a GoalBuddy board for all phases to follow issue #116 and #117 explicitly in all of its steps."
     interpreted_outcome: "A GoalBuddy board exists that operationalizes every phase of issues #116 and #117, with #117 gated behind #116 and with explicit proof requirements."
@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T014
+active_task: null
 
 tasks:
   - id: T001
@@ -698,7 +698,7 @@ tasks:
   - id: T014
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: medium
     objective: "Run issue #117 Stage 10 validation and targeted route guards, then repair only failures within #117 scope."
     allowed_files:
@@ -729,7 +729,43 @@ tasks:
       - "Validation failure indicates missing coupled production solve or missing production Jacobian rather than a narrow repair."
       - "A remaining guard match could be interpreted as accepted production staged behavior."
       - "Full validation is too expensive or blocked without a clear narrower proof path."
-    receipt: null
+    receipt:
+      result: done
+      summary: "Ran the issue #117 Stage 10 validation ladder, the missing issue #116 validation slices, and route-guard audits."
+      changed_files:
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T014-validation-route-guards.md"
+        - "docs/goals/native-lle-reactive-production-solvers/state.yaml"
+      evidence:
+        - "Clean Ceres+CppAD build passed."
+        - "Native equilibrium, reactive equilibrium, API reactive, quick validation, docs validation, and diff checks passed."
+        - "Issue #116 electrolyte/core/API validation slices also passed on the same clean build."
+        - "Remaining route-guard matches were classified as compatibility-only, historical-plan text, neutral-only diagnostics, seed/support paths, or tests proving old routes are not production."
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --clean --enable-ceres --enable-cppad"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/equilibrium/reactive -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/api/reactive -q"
+          status: pass
+        - cmd: "uv run python scripts/dev/validate_project.py quick"
+          status: pass
+        - cmd: "uv run python scripts/dev/validate_project.py docs"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "rg \"ReactivePhaseEquilibriumProblem|reactive_staged_equilibrium|staged chemical|native_derivative_free_nelder_mead|not_required.*phase\" src tests docs"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/equilibrium/electrolyte -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/equilibrium/core -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/api/equilibrium -q"
+          status: pass
+        - cmd: "rg 'native_derivative_free_nelder_mead|not_required.*phase split solve|newton_step\\(.*not_available|reactive_staged_equilibrium' src tests docs"
+          status: pass
+      next_task: T027
 
   - id: T015
     type: judge
@@ -1298,17 +1334,61 @@ tasks:
           status: pass
       next_task: T006
 
+  - id: T027
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Final audit after T014: prove GitHub issues #116 and #117 definitions of done are satisfied by current branch evidence."
+    inputs:
+      - "Current GitHub issue #116 body refreshed 2026-05-15 10:46:27 UTC."
+      - "Current GitHub issue #117 body refreshed 2026-05-15 10:46:29 UTC."
+      - "All GoalBuddy task receipts through T014 and T026."
+      - "Current validation output from T014."
+      - "git status --short"
+    constraints:
+      - "Do not mark complete if any required task remains active or queued."
+      - "Do not mark complete if either production route lacks Ceres and production Jacobian evidence."
+      - "Do not mark complete if route guards show accepted old production behavior."
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      summary: "Issues #116 and #117 definitions of done are satisfied by the current branch evidence."
+      artifacts:
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T027-final-audit-complete.md"
+      issue_116:
+        complete: true
+        evidence:
+          - "Accepted electrolyte LLE route reports Ceres trust-region residual solve."
+          - "Accepted electrolyte LLE route reports `jacobian_backend = cppad_implicit` and `derivative_backend = cppad_implicit`."
+          - "Ascani-style, salting-out, mixed-solvent, and mixed-ion validation slices passed."
+          - "Route guards show old labels only in neutral diagnostics, compatibility/history, seed/support, or tests guarding absence from production."
+      issue_117:
+        complete: true
+        evidence:
+          - "`ReactivePhaseEquilibriumProblem`, `kind=\"reactive_lle\"`, and `kind=\"reactive_electrolyte_lle\"` route to the native coupled solver."
+          - "Accepted reactive phase route reports Ceres, `cppad_implicit` Jacobian diagnostics, shared reaction/phase solved state, and residual norms below tolerance."
+          - "Neutral reactive LLE and reactive electrolyte LLE benchmark/API tests passed."
+          - "Explicit staged route remains compatibility-only and is guarded against production use."
+      commands:
+        - "gh issue view 116 --repo tannerpolley/ePC-SAFT --json number,title,state,url,updatedAt,body"
+        - "gh issue view 117 --repo tannerpolley/ePC-SAFT --json number,title,state,url,updatedAt,body"
+        - "git status --short"
+
 checks:
-  dirty_fingerprint: "t008-issue-116-audit"
+  dirty_fingerprint: "t027-final-audit"
   last_verification:
     result: pass
-    task: T008
+    task: T027
     commands:
       - "uv run python scripts/dev/build_epcsaft.py --clean --enable-ceres --enable-cppad"
       - "uv run python run_pytest.py tests/native/equilibrium -q"
       - "uv run python run_pytest.py tests/equilibrium/electrolyte -q"
       - "uv run python run_pytest.py tests/equilibrium/core -q"
       - "uv run python run_pytest.py tests/api/equilibrium -q"
+      - "uv run python run_pytest.py tests/equilibrium/reactive -q"
+      - "uv run python run_pytest.py tests/api/reactive -q"
       - "uv run python scripts/dev/validate_project.py quick"
       - "uv run python scripts/dev/validate_project.py docs"
       - "git diff --check"
