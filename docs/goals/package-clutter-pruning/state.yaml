@@ -1,0 +1,488 @@
+# GoalBuddy v2 state.yaml
+# Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
+
+version: 2
+
+goal:
+  title: "Package clutter pruning before vertical implementation"
+  slug: "package-clutter-pruning"
+  kind: existing_plan
+  tranche: "Execute issue #120 phases in order, preserving scientific behavior and producing PR-ready evidence."
+  status: active
+  intake:
+    original_request: "Read issue #120 on Github and set up a GoalBuddy board for all phases, following the issue explicitly."
+    interpreted_outcome: "A phase-complete GoalBuddy board exists for issue #120 with queued Scout, Judge, Worker, and PM tasks ready for cleanup execution."
+    input_shape: existing_plan
+    audience: "Future ePC-SAFT cleanup agents and the package maintainer."
+    authority: requested
+    proof_type: artifact
+    completion_proof: "docs/goals/package-clutter-pruning/goal.md and state.yaml validate, include every issue #120 phase, and preserve issue constraints."
+    likely_misfire: "Treating cleanup planning or inventories as completion, or using this cleanup issue to start #114-#119 vertical implementation work."
+    blind_spots_considered:
+      - "Baseline validation may already be red; Phase 0 must record failures and continue only when unrelated to cleanup."
+      - "Runtime imports may be public by accident; compatibility shims must be temporary and explicit."
+      - "Native rebuilds must be coordinated by the main thread because _core artifacts can be locked by Python, tests, IDEs, or agents."
+      - "Documentation and code wording must not imply staged or debug routes satisfy production workflows."
+    existing_plan_facts:
+      - "Issue #120 body defines cleanup scope, non-goals, deliverables, validation, and definition of done."
+      - "Issue comment 4456462579 defines Phase 0 through Phase 9 execution sequence and final PR checklist."
+      - "Goal root requested by issue comment: docs/goals/package-clutter-pruning."
+      - "Current prep branch at board creation: codex/package-cleanup."
+      - "Current prep base at board creation: origin/main and local main both point at 8f0ea57."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: false
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: none
+  local:
+    status: not_requested
+    url: null
+    command: "node C:/Users/Tanner/.codex/plugins/cache/goalbuddy/goalbuddy/0.3.6/skills/goalbuddy/extend/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/package-clutter-pruning --host 127.0.0.1 --port 0"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: T001
+
+tasks:
+  - id: T001
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: medium
+    objective: "Phase 0 - establish the intake and safety baseline exactly as issue #120 comment requires."
+    inputs:
+      - "https://github.com/tannerpolley/ePC-SAFT/issues/120"
+      - "https://github.com/tannerpolley/ePC-SAFT/issues/120#issuecomment-4456462579"
+      - "docs/goals/package-clutter-pruning/notes/intake.md"
+      - "docs/roadmaps/FULL_ROADMAP.md"
+      - "docs/.codex-journal/user_preferences.md"
+    constraints:
+      - "Start from a clean branch based on current origin/main before edits."
+      - "Run git status --short, git fetch origin --prune, and git merge --ff-only origin/main."
+      - "Record origin/main SHA, current branch, artifact scan, __init__ import/export surface, benchmark modules, staged/optional modules, and broad exception sites in notes/intake.md."
+      - "Run baseline quick, docs, package, runtime, and repo validation before product edits."
+      - "If baseline validation is red, record exact failure and continue only when clearly unrelated to cleanup."
+      - "Do not change scientific implementation in Phase 0."
+      - "Recommended helper: command_runner for long validation capture; PM owns branch and state decisions."
+    expected_output:
+      - "Updated notes/intake.md with baseline evidence."
+      - "State receipt naming any baseline blockers."
+      - "Decision whether cleanup phases can proceed."
+    receipt: null
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Review Phase 0 evidence and authorize or narrow the cleanup sequence."
+    inputs:
+      - "T001 receipt"
+      - "docs/goals/package-clutter-pruning/notes/intake.md"
+    constraints:
+      - "Do not implement."
+      - "Reject proceeding if the branch is not clean/current or baseline failures are plausibly caused by the cleanup setup."
+      - "Keep #114-#119 implementation work out of scope."
+      - "Choose the largest safe next cleanup slice without creating overlapping writes."
+    expected_output:
+      - "Decision to proceed, block, or narrow scope."
+      - "Any phase sequencing changes needed for safety."
+      - "Exact Worker instructions if T003 needs adjustment."
+    receipt: null
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: medium
+    objective: "Phase 1 - remove tracked generated and compiled artifacts and harden ignore rules."
+    allowed_files:
+      - ".gitignore"
+      - "**/__pycache__/**"
+      - "**/*.pyc"
+      - "**/*.pyo"
+      - "**/*.pyd"
+      - "**/*.so"
+      - "**/*.dll"
+      - "**/*.dylib"
+      - "**/*.egg-info/**"
+      - "docs/goals/package-clutter-pruning/notes/generated_artifact_scan_before.txt"
+      - "docs/goals/package-clutter-pruning/notes/generated_artifact_scan_after.txt"
+    verify:
+      - "git ls-files | rg \"(__pycache__|\\.pyc$|\\.pyo$|\\.pyd$|\\.so$|\\.dll$|\\.dylib$|\\.egg-info/|(^|/)build/|(^|/)dist/)\""
+      - "git diff --check"
+    stop_if:
+      - "A matched file appears to be an intentional source fixture rather than generated output."
+      - "Removing a file changes import behavior unexpectedly."
+      - "Need files outside allowed_files."
+    constraints:
+      - "Use git rm only for tracked generated or compiled artifacts."
+      - "Do not delete benchmark fixtures, CSV fixtures, or docs that are intentionally tracked."
+    expected_output:
+      - "Before/after artifact scan saved under notes."
+      - "Zero tracked generated or compiled artifact matches, or explicit justified exceptions."
+    receipt: null
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Phase 2 - move benchmark execution logic out of the installable runtime package."
+    allowed_files:
+      - "src/epcsaft/benchmarks/**"
+      - "scripts/benchmarks/**"
+      - "tests/workflows/benchmarks/**"
+      - "analyses/package_validation/**"
+      - "tests/**"
+      - "docs/**"
+      - "docs/goals/package-clutter-pruning/notes/benchmark_module_inventory.md"
+    verify:
+      - "uv run python run_pytest.py tests/workflows/benchmarks -q"
+      - "uv run python scripts/benchmarks/benchmark_literature_suite.py"
+      - "rg \"epcsaft\\.benchmarks|from epcsaft\\.benchmarks|import epcsaft\\.benchmarks\" ."
+    stop_if:
+      - "A benchmark module is actually load-bearing runtime model code."
+      - "Existing public imports require a compatibility shim decision from Judge."
+      - "Expected benchmark script paths do not exist and need remapping."
+    constraints:
+      - "Runtime package may keep only minimal metadata or import-forwarding shims when tests prove they are needed."
+      - "No application-specific benchmark execution logic should remain in src/epcsaft."
+      - "Do not change benchmark targets or tolerances."
+    expected_output:
+      - "benchmark_module_inventory.md."
+      - "Benchmark execution moved to scripts, tests, or analyses."
+      - "Imports and docs updated to new paths."
+    receipt: null
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Phase 3 - move analysis and confidence scoring out of runtime diagnostics."
+    allowed_files:
+      - "src/epcsaft/equilibrium_core/confidence.py"
+      - "src/epcsaft/equilibrium_core/thermo_diagnostics.py"
+      - "scripts/validation/**"
+      - "tests/workflows/**"
+      - "analyses/package_validation/**"
+      - "tests/equilibrium/**"
+      - "tests/api/runtime/**"
+      - "docs/**"
+      - "docs/goals/package-clutter-pruning/notes/equilibrium_diagnostics_inventory.md"
+    verify:
+      - "uv run python run_pytest.py tests/equilibrium -q"
+      - "uv run python run_pytest.py tests/workflows/benchmarks -q"
+      - "uv run python run_pytest.py tests/api/runtime -q"
+      - "rg \"equilibrium_core\\.confidence|equilibrium_core\\.thermo_diagnostics|confidence_score|thermo_diagnostics\" src tests scripts docs analyses"
+    stop_if:
+      - "A diagnostic field is directly part of public result objects and needs a minimal runtime contract decision."
+      - "Moving analysis helpers would change solver result semantics."
+      - "Need files outside allowed_files."
+    constraints:
+      - "Keep production runtime diagnostics limited to solve-result explanation."
+      - "Move benchmark confidence scoring, reports, and validation policy out of runtime."
+      - "Do not change equilibrium residual math or solver behavior."
+    expected_output:
+      - "equilibrium_diagnostics_inventory.md."
+      - "Runtime diagnostics reduced to production result fields."
+      - "Analysis and validation helpers relocated."
+    receipt: null
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Phase 4 - clarify native-regression scaffolding by removing placeholders or making the folder real."
+    allowed_files:
+      - "src/epcsaft/native/regression/**"
+      - "src/epcsaft/native/epcsaft_regression.cpp"
+      - "src/epcsaft/native/epcsaft_regression.h"
+      - "src/epcsaft/native/bindings.cpp"
+      - "CMakeLists.txt"
+      - "src/epcsaft/native/CMakeLists.txt"
+      - "tests/native/ceres/**"
+      - "tests/api/regression/**"
+      - "docs/goals/package-clutter-pruning/notes/native_regression_scaffold_inventory.md"
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-ceres --enable-cppad"
+      - "uv run python run_pytest.py tests/native/ceres -q"
+      - "uv run python run_pytest.py tests/api/regression -q"
+    stop_if:
+      - "The folder contains real behavior and the safe choice between remove versus make-real is ambiguous."
+      - "A native rebuild could conflict with active Python, test, IDE, or sub-agent imports."
+      - "Need C++ algorithm changes beyond relocation or placeholder removal."
+    constraints:
+      - "Main thread coordinates _core rebuild and any clean build."
+      - "Do not change Ceres objective math or regression targets."
+      - "Recommended reviewers: native_solver_backend_owner and build_packaging_owner."
+    expected_output:
+      - "native_regression_scaffold_inventory.md."
+      - "One explicit path chosen: remove placeholders or make folder own real compiled code."
+      - "Native build and regression validations recorded."
+    receipt: null
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Phase 5 - quarantine staged and optional top-level helpers so they are not mistaken for production APIs."
+    allowed_files:
+      - "src/epcsaft/reactive_staged.py"
+      - "src/epcsaft/electrolyte_bubble.py"
+      - "src/epcsaft/reactive_electrolyte.py"
+      - "src/epcsaft/ipopt_backend.py"
+      - "src/epcsaft/_compat/**"
+      - "src/epcsaft/_experimental/**"
+      - "src/epcsaft/_optional_backends/**"
+      - "src/epcsaft/_initializers/**"
+      - "tests/api/reactive/**"
+      - "tests/equilibrium/reactive/**"
+      - "tests/api/package/**"
+      - "docs/**"
+      - "docs/goals/package-clutter-pruning/notes/staged_optional_module_inventory.md"
+    verify:
+      - "uv run python run_pytest.py tests/api/reactive -q"
+      - "uv run python run_pytest.py tests/equilibrium/reactive -q"
+      - "uv run python run_pytest.py tests/api/package -q"
+      - "rg \"reactive_staged|electrolyte_bubble|reactive_electrolyte|ipopt_backend\" docs tests src scripts analyses"
+    stop_if:
+      - "A top-level import is stable public API and needs a compatibility-shim decision."
+      - "Moving a module would change scientific behavior."
+      - "Need files outside allowed_files."
+    constraints:
+      - "Top-level shims, if kept, contain import forwarding and clear compatibility notes only."
+      - "Staged routes may be initialization or comparison helpers, not production coupled-equilibrium proof."
+      - "Optional optimizer bridges must not be described as required package functionality."
+    expected_output:
+      - "staged_optional_module_inventory.md."
+      - "Moved or clearly marked internal helpers."
+      - "Docs/tests updated to intended import paths."
+    receipt: null
+  - id: T008
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Phase 6 - create module ownership and safe split plan for high-bloat modules."
+    allowed_files:
+      - "docs/roadmaps/module_ownership_and_split_plan.md"
+      - "src/epcsaft/regression.py"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/epcsaft.py"
+      - "src/epcsaft/native/epcsaft_regression.cpp"
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/reactive_regression.py"
+      - "src/epcsaft/parameters.py"
+      - "src/epcsaft/native/bindings.cpp"
+      - "src/epcsaft/reactive_speciation.py"
+      - "docs/goals/package-clutter-pruning/notes/**"
+    verify:
+      - "Test-Path docs/roadmaps/module_ownership_and_split_plan.md"
+      - "rg \"src/epcsaft/regression.py|src/epcsaft/native/epcsaft_equilibrium.cpp|src/epcsaft/epcsaft.py|src/epcsaft/native/epcsaft_regression.cpp|src/epcsaft/equilibrium.py|src/epcsaft/reactive_regression.py|src/epcsaft/parameters.py|src/epcsaft/native/bindings.cpp|src/epcsaft/reactive_speciation.py\" docs/roadmaps/module_ownership_and_split_plan.md"
+    stop_if:
+      - "A proposed extraction would touch EOS equations, association internals, native equilibrium residuals, Ceres objective evaluation, or binding signatures without tests."
+      - "The plan cannot identify tests that must move with a future split."
+      - "Need behavior-changing refactors instead of documentation or safe extraction."
+    constraints:
+      - "Document current responsibilities, runtime responsibilities, validation/docs responsibilities, future split targets, owning future issue where obvious, tests, safe extractions, and unsafe extractions."
+      - "Optional code extractions are allowed only for pure dataclasses, report writers, CLI-only helpers, formatting helpers, or import-only constants with obvious tests."
+    expected_output:
+      - "module_ownership_and_split_plan.md covers every required file."
+      - "Any optional extraction is mechanically behavior-preserving and validated."
+    receipt: null
+  - id: T009
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Phase 7 - classify and reduce broad exception handling without hiding solver failures."
+    allowed_files:
+      - "src/epcsaft/**"
+      - "docs/roadmaps/exception_handling_cleanup_report.md"
+      - "tests/api/**"
+      - "tests/native/runtime/**"
+      - "docs/goals/package-clutter-pruning/notes/**"
+    verify:
+      - "rg \"except Exception|except BaseException|except:\" src/epcsaft"
+      - "uv run python run_pytest.py tests/api -q"
+      - "uv run python run_pytest.py tests/native/runtime -q"
+    stop_if:
+      - "A catch wraps native solver failures and the correct typed exception boundary is unclear."
+      - "Replacing a catch changes user-facing behavior without tests."
+      - "Need thermodynamic or numerical-method changes."
+    constraints:
+      - "Classify every broad catch in src/epcsaft."
+      - "Replace clear unnecessary over-protection and bug-hiding catches with specific exceptions or no catch."
+      - "Preserve exception chaining for native and solver failure conversions."
+      - "Use chemical-engineer verification if a catch protects chemistry, equilibrium, regression, or numerical-method logic."
+    expected_output:
+      - "exception_handling_cleanup_report.md."
+      - "Obvious bad broad catches reduced."
+      - "Remaining broad catches justified."
+    receipt: null
+  - id: T010
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: medium
+    objective: "Phase 8 - rewrite ambiguous compatibility, staged, debug-route, and optional-backend language."
+    allowed_files:
+      - "src/**"
+      - "docs/**"
+      - "tests/**"
+      - "scripts/**"
+      - "analyses/**"
+      - "docs/goals/package-clutter-pruning/notes/**"
+    verify:
+      - "rg \"fall back|fallback|staged|diagnostic-only|diagnostics-only|not production|experimental|compatibility\" src docs tests scripts analyses"
+      - "uv run python scripts/dev/validate_project.py docs"
+      - "git diff --check"
+    stop_if:
+      - "A wording change would alter behavior or public capability claims."
+      - "A staged route is being documented as production-complete."
+      - "Need a product API decision before wording can be made precise."
+    constraints:
+      - "Prefer exact role terms: compatibility shim, initial guess generator, debug-only route, optional dependency bridge, validation helper, or not a production solver."
+      - "Do not write language that allows implementation issues to close on staged or debug-route proof."
+      - "Avoid exact banned backend and derivative-status tokens in committed text."
+    expected_output:
+      - "Ambiguous wording rewritten or justified."
+      - "Docs validation result recorded."
+    receipt: null
+  - id: T011
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Phase 9 - audit and tighten the public API surface."
+    allowed_files:
+      - "src/epcsaft/__init__.py"
+      - "src/epcsaft/epcsaft.py"
+      - "pyproject.toml"
+      - "docs/roadmaps/public_api_surface_report.md"
+      - "docs/**"
+      - "tests/api/package/**"
+      - "tests/api/runtime/**"
+      - "docs/goals/package-clutter-pruning/notes/**"
+    verify:
+      - "uv run python run_pytest.py tests/api/package -q"
+      - "uv run python run_pytest.py tests/api/runtime -q"
+      - "uv run python scripts/dev/validate_project.py docs"
+    stop_if:
+      - "Hiding or moving an export breaks documented public API without a compatibility decision."
+      - "An application-specific helper appears intentionally public and needs owner decision."
+      - "Need files outside allowed_files."
+    constraints:
+      - "List objects imported by epcsaft.__init__, top-level modules under src/epcsaft, and console scripts or entrypoints."
+      - "Classify every export/module as stable public API, internal implementation, compatibility shim, experimental helper, optional backend bridge, validation/benchmark only, or should move later."
+      - "Keep public APIs generic and package-owned."
+    expected_output:
+      - "public_api_surface_report.md."
+      - "Stable generic exports are explicit."
+      - "Staged, experimental, optional, and validation-only surfaces are hidden, marked internal, or justified."
+    receipt: null
+  - id: T012
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: medium
+    objective: "Run final #120 validation and assemble PR-ready evidence."
+    allowed_files:
+      - "docs/goals/package-clutter-pruning/notes/**"
+      - "docs/roadmaps/module_ownership_and_split_plan.md"
+      - "docs/roadmaps/exception_handling_cleanup_report.md"
+      - "docs/roadmaps/public_api_surface_report.md"
+    verify:
+      - "uv run python scripts/dev/validate_project.py quick"
+      - "uv run python scripts/dev/validate_project.py docs"
+      - "uv run python run_pytest.py tests/api/package -q"
+      - "uv run python run_pytest.py tests/api/runtime -q"
+      - "uv run python run_pytest.py tests/workflows/repo -q"
+      - "git diff --check"
+      - "git ls-files | rg \"(__pycache__|\\.pyc$|\\.pyo$|\\.pyd$|\\.so$|\\.dll$|\\.dylib$|\\.egg-info/|(^|/)build/|(^|/)dist/)\""
+    stop_if:
+      - "Any final validation fails and cannot be clearly classified as unrelated."
+      - "Any required deliverable is missing."
+      - "Scientific equations, solver algorithms, regression math, benchmark targets, or scientific outputs changed without explicit approval."
+    constraints:
+      - "Record generated artifact scan before/after, benchmark relocation summary, runtime diagnostics relocation summary, native regression scaffolding decision, staged/optional module decision, broad exception handling summary, public API surface summary, validation commands/results, and no-scientific-change confirmation."
+      - "Recommended helper: command_runner for validation-only command capture."
+    expected_output:
+      - "PR-ready evidence summary in notes."
+      - "Final validation results with exact command statuses."
+    receipt: null
+  - id: T013
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Final audit for issue #120 completion."
+    inputs:
+      - "All task receipts"
+      - "docs/roadmaps/module_ownership_and_split_plan.md"
+      - "docs/roadmaps/exception_handling_cleanup_report.md"
+      - "docs/roadmaps/public_api_surface_report.md"
+      - "Final validation evidence from T012"
+      - "Current git diff"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if any #120 deliverable is missing."
+      - "Reject completion if queued required Worker tasks remain."
+      - "Reject completion if cleanup changed scientific behavior."
+      - "Reject completion if #114-#119 implementation work slipped into the diff."
+      - "If incomplete, keep issue open and draft any PR rather than marking done."
+    expected_output:
+      - "decision: complete or not_complete"
+      - "full_outcome_complete: true or false"
+      - "Missing evidence, if any"
+      - "PR readiness recommendation"
+    receipt: null
+  - id: T014
+    type: pm
+    assignee: PM
+    status: queued
+    reasoning_hint: medium
+    objective: "Commit, prepare PR body, and decide whether to open a draft or ready PR based on the final audit."
+    inputs:
+      - "T013 final audit"
+      - "T012 PR-ready evidence"
+    constraints:
+      - "Do not push or open a PR unless explicitly requested in the active run."
+      - "For tracked repo changes, commit locally unless the user explicitly says not to."
+      - "Run repo cleanup hook before final handoff."
+      - "If any phase cannot be safely completed, PR must stay draft and issue #120 remains open."
+    expected_output:
+      - "Local commit or clear reason not committed."
+      - "PR body draft covering every issue #120 checklist item."
+      - "Cleanup hook result."
+    receipt: null
+
+checks:
+  dirty_fingerprint: "Board created from clean working tree on codex/package-cleanup at 8f0ea57."
+  last_verification:
+    result: pass
+    task: "board-prep"
+    commands:
+      - "node C:/Users/Tanner/.codex/plugins/cache/goalbuddy/goalbuddy/0.3.6/skills/goalbuddy/scripts/check-goal-state.mjs docs/goals/package-clutter-pruning/state.yaml"
