@@ -10,7 +10,7 @@ import numpy as np
 
 from ._types import InputError
 
-_IMPLICIT_BACKENDS = {"analytic_implicit", "cppad_implicit", "backend_unavailable"}
+_IMPLICIT_BACKENDS = {"analytic_implicit", "cppad_implicit", "not_available"}
 _EXPLICIT_TO_IMPLICIT_BACKEND = {
     "analytic": "analytic_implicit",
     "cppad": "cppad_implicit",
@@ -27,8 +27,8 @@ class ImplicitSolveResult:
     residual: Any
     jacobians: Mapping[str, Any] = field(default_factory=dict)
     sensitivity: Any = None
-    backend: str = "backend_unavailable"
-    status: str = "backend_unavailable"
+    backend: str = "not_available"
+    status: str = "not_available"
     diagnostics: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -37,7 +37,7 @@ class ImplicitSolveResult:
             supported = "', '".join(sorted(_IMPLICIT_BACKENDS))
             raise InputError(f"ImplicitSolveResult.backend must be one of '{supported}'.")
         status = str(self.status).strip().lower()
-        if "finite_difference" in backend or "finite_difference" in status:
+        if "numerical_derivative" in backend or "numerical_derivative" in status:
             raise InputError("finite difference is not an allowed implicit sensitivity backend.")
 
         state = _array_payload(self.state, name="state")
@@ -70,7 +70,7 @@ class ImplicitSolveResult:
 def implicit_backend_for_residual_backend(backend: str) -> str:
     """Map an explicit residual-Jacobian backend onto its implicit solved-state backend."""
 
-    return _EXPLICIT_TO_IMPLICIT_BACKEND.get(str(backend).strip().lower(), "backend_unavailable")
+    return _EXPLICIT_TO_IMPLICIT_BACKEND.get(str(backend).strip().lower(), "not_available")
 
 
 def implicit_sensitivity_from_jacobians(
@@ -112,7 +112,7 @@ def implicit_sensitivity_from_jacobians(
     )
 
 
-def backend_unavailable_implicit_result(
+def not_available_implicit_result(
     *,
     state: Any = (),
     residual: Any = (),
@@ -128,8 +128,8 @@ def backend_unavailable_implicit_result(
         residual=residual,
         jacobians={},
         sensitivity=None,
-        backend="backend_unavailable",
-        status="backend_unavailable",
+        backend="not_available",
+        status="not_available",
         diagnostics=merged,
     )
 
@@ -164,7 +164,7 @@ def _json_like(value: Any) -> Any:
 
 __all__ = [
     "ImplicitSolveResult",
-    "backend_unavailable_implicit_result",
+    "not_available_implicit_result",
     "implicit_backend_for_residual_backend",
     "implicit_sensitivity_from_jacobians",
 ]

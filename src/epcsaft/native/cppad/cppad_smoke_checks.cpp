@@ -1,12 +1,12 @@
-#include "ad_derivative_checks.h"
+#include "cppad_smoke_checks.h"
 
 #ifdef EPCSAFT_HAS_CPPAD
 #include <cppad/cppad.hpp>
 #endif
 
-namespace epcsaft::native::autodiff {
+namespace epcsaft::native::cppad_support {
 
-ADDerivativeResult cppad_square_smoke_derivative(double x) {
+CppADDerivativeResult cppad_square_smoke_derivative(double x) {
 #ifdef EPCSAFT_HAS_CPPAD
     std::vector<CppADScalar> ax(1);
     ax[0] = x;
@@ -20,23 +20,25 @@ ADDerivativeResult cppad_square_smoke_derivative(double x) {
     std::vector<double> value = function.Forward(0, point);
     std::vector<double> jacobian = function.Jacobian(point);
 
-    ADDerivativeResult result;
+    CppADDerivativeResult result;
     result.supported = true;
     result.backend = "cppad";
     result.message = "CppAD smoke derivative available";
     result.value = value;
     result.jacobian_row_major = jacobian;
+    result.outputs = {"x_squared"};
+    result.variables = {"x"};
     result.rows = 1;
     result.cols = 1;
     return result;
 #else
     (void)x;
-    ADDerivativeResult result;
+    CppADDerivativeResult result;
     result.supported = false;
-    result.backend = "backend_unavailable";
+    result.backend = not_available_status();
     result.message = "CppAD support is disabled in this native build";
     return result;
 #endif
 }
 
-}  // namespace epcsaft::native::autodiff
+}  // namespace epcsaft::native::cppad_support

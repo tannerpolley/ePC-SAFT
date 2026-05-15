@@ -66,13 +66,13 @@ these fields as routing hints, not as proof that a physical case is valid.
      - Package regression helpers.
      - You need a Python optimizer loop.
    * - ``jacobian_backend="auto"``
-     - You want the native chemical-equilibrium default: analytic, CppAD, or implicit sensitivities where available, clear ``backend_unavailable`` diagnostics otherwise.
+     - You want the native chemical-equilibrium default: analytic, CppAD, or implicit sensitivities where available, clear ``not_available`` diagnostics otherwise.
      - You need strict failure when a specific derivative backend is unavailable.
    * - ``jacobian_backend="autodiff"``
      - You need an existing legacy Eigen forward-mode path and want unsupported routes to fail loudly.
      - You need an automatic analytical substitute.
    * - ``jacobian_backend="cppad"``
-     - You need a CppAD residual derivative path and want unsupported routes to return ``backend_unavailable``.
+     - You need a CppAD residual derivative path and want unsupported routes to return ``not_available``.
      - You need a numerical-derivative substitute.
    * - ``differential_mode="autodiff"``
      - You need implemented autodiff derivative paths.
@@ -134,7 +134,7 @@ result diagnostics report the derivative status explicitly:
 - ``solver_backend``
 - ``derivative_backend``
 - ``derivative_status``
-- ``backend_unavailable_reason``
+- ``not_available_reason``
 - ``solved_internal_states``
 - ``derivative_backend_by_block``
 - ``implicit_sensitivity_blocks``
@@ -143,8 +143,8 @@ result diagnostics report the derivative status explicitly:
 - ``association_solver_status``
 
 Supported derivative labels are ``analytic``, ``cppad``,
-``analytic_implicit``, ``cppad_implicit``, and ``legacy_eigen_forward``.
-Unsupported combinations report ``backend_unavailable``. ``auto`` never falls
+``analytic_implicit`` and ``cppad_implicit``.
+Unsupported combinations report ``not_available``. ``auto`` never falls
 back to finite differences.
 
 Sequential Reactive Workflow Boundary
@@ -288,7 +288,7 @@ initial composition. Use ``error_mode="result"`` only for diagnostic sweeps.
 
 With ``jacobian_backend="auto"``, ideal mole-fraction standard states use the
 analytic native Jacobian. Activity- or concentration-coupled standard states
-raise ``backend_unavailable`` until analytic or autodiff residual derivatives
+raise ``not_available`` until analytic or autodiff residual derivatives
 are implemented. Request ``jacobian_backend="autodiff"`` only when unsupported
 derivative paths should fail loudly.
 

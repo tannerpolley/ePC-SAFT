@@ -76,13 +76,12 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert cppad["backend"] == "cppad"
     assert cppad["status"] in {"disabled", "enabled_available", "enabled_missing", "not_configured"}
     assert cppad["compiled"] is (cppad["status"] == "enabled_available")
-    assert capabilities["derivatives"]["finite_difference"] == {
+    assert capabilities["derivatives"]["numerical_derivative"] == {
         "available": False,
         "production": False,
-        "reason": "finite_difference_derivatives_forbidden",
+        "reason": "numerical_derivative_derivatives_forbidden",
     }
-    assert capabilities["derivatives"]["eigen_forward"]["scope"] == "legacy/local forward-mode AD"
-    assert capabilities["derivatives"]["eigen_forward"]["available"] is True
+    assert "eigen_forward" not in capabilities["derivatives"]
     assert capabilities["derivatives"]["cppad"] == {
         **cppad,
         "production": False,

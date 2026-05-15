@@ -36,24 +36,24 @@ def test_reactive_speciation_reports_solved_state_derivative_boundaries() -> Non
     )
 
     diagnostics = result.diagnostics
-    assert diagnostics["derivative_policy"]["finite_difference_backend_available"] is False
-    assert diagnostics["derivative_policy"]["unsupported_derivative_status"] == "backend_unavailable"
+    assert diagnostics["derivative_policy"]["numerical_derivative_backend_available"] is False
+    assert diagnostics["derivative_policy"]["unsupported_derivative_status"] == "not_available"
     assert "reactive_speciation_variables" in diagnostics["solved_state_derivative_blocks"]
     assert "association_site_fractions" in diagnostics["solved_state_derivative_blocks"]
     assert diagnostics["derivative_backend_by_block"]["reactive_speciation_variables"] == "analytic_implicit"
     assert diagnostics["derivative_backend_by_block"]["association_site_fractions"] in {
         "analytic_implicit",
         "cppad_implicit",
-        "backend_unavailable",
+        "not_available",
     }
     implicit_results = diagnostics["implicit_solve_results"]
     assert implicit_results["reactive_speciation_variables"]["backend"] == "analytic_implicit"
     assert implicit_results["reactive_speciation_variables"]["status"] == "residual_jacobian_available"
     backend_values = {str(value).lower() for value in diagnostics["derivative_backend_by_block"].values()}
-    assert "finite_difference" not in backend_values
+    assert "numerical_derivative" not in backend_values
 
 
-def test_explicit_cppad_request_reports_backend_unavailable_without_finite_difference() -> None:
+def test_explicit_cppad_request_reports_not_available_without_numerical_derivative() -> None:
     mix = epcsaft.ePCSAFTMixture.from_params(
         {
             "m": np.asarray([1.0, 1.0]),
@@ -63,7 +63,7 @@ def test_explicit_cppad_request_reports_backend_unavailable_without_finite_diffe
         species=["A", "B"],
     )
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+    with pytest.raises(epcsaft.InputError, match="not_available"):
         epcsaft.solve_reactive_speciation(
             species=["A", "B"],
             mixture_factory=lambda x, T, P: mix,

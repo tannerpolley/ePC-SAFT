@@ -99,7 +99,7 @@ def test_fit_binary_parameters_accepts_minimal_user_contract(monkeypatch):
     assert calls[0][2]["dataset"] == "2026_Khudaida"
 
 
-def test_fit_liquid_electrolyte_parameters_returns_stable_backend_unavailable_contract():
+def test_fit_liquid_electrolyte_parameters_returns_stable_not_available_contract():
     result = epcsaft.fit_liquid_electrolyte_parameters(
         species=("H2O", "Na+", "Cl-"),
         data_rows=[{"T": 298.15, "P": 101325.0, "molality": 0.1, "osmotic_coefficient": 0.933}],
@@ -113,8 +113,8 @@ def test_fit_liquid_electrolyte_parameters_returns_stable_backend_unavailable_co
 
     assert result.success is False
     assert result.status == -1
-    assert result.backend == "backend_unavailable"
-    assert result.backend_unavailable_reason
+    assert result.backend == "not_available"
+    assert result.not_available_reason
     assert result.problem.mode == "liquid_electrolyte"
     assert result.problem.fit_targets == ("d_born", "f_solv")
     assert result.problem.dataset == "2026_Khudaida"
@@ -234,6 +234,6 @@ def test_fit_problem_can_carry_target_dataset_schema_without_optimizer_internals
         ),
     ],
 )
-def test_easy_regression_apis_reject_finite_difference_solver_options(function, kwargs):
+def test_easy_regression_apis_reject_numerical_derivative_solver_options(function, kwargs):
     with pytest.raises(InputError, match="finite-difference"):
         function(**kwargs, solver_options={"jacobian_backend": "finite" + "_difference"})

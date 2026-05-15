@@ -135,7 +135,7 @@ def test_state_contribution_term_payloads_match_totals():
         "z_total",
         "derivative_backend",
         "derivative_available",
-        "backend_unavailable_reason",
+        "not_available_reason",
     }
     assert set(dadx["terms"]) == {"hc", "disp", "assoc", "ion", "born"}
     assert set(dadx["ares_terms"]) == {"hc", "disp", "assoc", "ion", "born"}
@@ -216,7 +216,7 @@ def test_neutral_composition_and_fugacity_terms_return_expected_values():
         "z_total",
         "derivative_backend",
         "derivative_available",
-        "backend_unavailable_reason",
+        "not_available_reason",
     }
     for key in ("hc", "disp", "assoc", "ion", "born"):
         np.testing.assert_allclose(dadx["terms"][key], terms[f"dadx_{key}"])

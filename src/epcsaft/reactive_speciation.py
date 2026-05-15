@@ -11,7 +11,7 @@ import numpy as np
 from ._types import InputError, SolutionError
 from .implicit_sensitivity import (
     ImplicitSolveResult,
-    backend_unavailable_implicit_result,
+    not_available_implicit_result,
     implicit_backend_for_residual_backend,
 )
 
@@ -123,7 +123,7 @@ class ReactionConstantConvention:
         code = _REACTION_STANDARD_STATES[self.standard_state]
         if code is None:
             raise InputError(
-                "backend_unavailable: reaction constant convention "
+                "not_available: reaction constant convention "
                 f"'{self.standard_state}' is defined but is not supported by the native speciation backend."
             )
         return int(code)
@@ -451,7 +451,7 @@ def _activity_fixed_point_payload(
             log_factors.append(np.full(len(species), np.log(molar_density), dtype=float))
             continue
         raise InputError(
-            "backend_unavailable: reaction constant convention "
+            "not_available: reaction constant convention "
             f"'{standard_state}' is defined but is not supported by activity fixed-point speciation."
         )
     exposes_activity_coefficients = activity_model.startswith("epcsaft_") or options.activity_output == "always"
@@ -623,10 +623,10 @@ def _activity_fixed_point_diagnostics(
             "derivative_status": "analytic",
             "derivative_available": True,
             "jacobian_available": True,
-            "backend_unavailable_reason": "",
+            "not_available_reason": "",
             "jacobian_fallback_used": False,
             "hessian_fallback_used": False,
-            "finite_difference_backend_available": False,
+            "numerical_derivative_backend_available": False,
             "activity_derivative_in_jacobian": False,
             "activity_derivative_policy": "not_used_by_fixed_point_outer_iteration",
             "residual_norm": float(residual_norm),
@@ -680,12 +680,12 @@ def _solve_reactive_speciation_activity_fixed_point(
 ) -> ReactiveSpeciationResult:
     if options.jacobian_backend in {"autodiff", "cppad"}:
         raise InputError(
-            "backend_unavailable: explicit autodiff/CppAD chemical-equilibrium residual Jacobian is not "
+            "not_available: explicit autodiff/CppAD chemical-equilibrium residual Jacobian is not "
             "implemented for activity-fixed-point speciation."
         )
     if options.solver_backend == "ipopt":
         raise InputError(
-            "backend_unavailable: solver_backend='ipopt' is not implemented for activity-fixed-point speciation."
+            "not_available: solver_backend='ipopt' is not implemented for activity-fixed-point speciation."
         )
 
     scalar_result = _try_scalar_binary_activity_solve(
@@ -1270,7 +1270,7 @@ def _solve_reactive_speciation_native(
 
 
 def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> None:
-    derivative_backend = str(diagnostics.get("derivative_backend", "backend_unavailable"))
+    derivative_backend = str(diagnostics.get("derivative_backend", "not_available"))
     solved_state_backend = implicit_backend_for_residual_backend(derivative_backend)
     diagnostics.setdefault("thermodynamic_backend", "epcsaft_state_activity_chemical_potential_api")
     diagnostics.setdefault("solver_backend", diagnostics.get("nonlinear_solver", "native_newton"))
@@ -1278,10 +1278,10 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
     diagnostics.setdefault("derivative_status", derivative_backend)
     diagnostics.setdefault("jacobian_fallback_used", False)
     diagnostics.setdefault("hessian_fallback_used", False)
-    if derivative_backend == "backend_unavailable":
+    if derivative_backend == "not_available":
         diagnostics.setdefault(
-            "backend_unavailable_reason",
-            "backend_unavailable: reactive speciation sensitivities are not implemented for this route.",
+            "not_available_reason",
+            "not_available: reactive speciation sensitivities are not implemented for this route.",
         )
         diagnostics.setdefault("derivative_available", False)
         diagnostics.setdefault("jacobian_available", False)
@@ -1294,7 +1294,7 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
         "derivative_backend_by_block",
         {
             "reaction_residual_jacobian": derivative_backend,
-            "density_root": "backend_unavailable",
+            "density_root": "not_available",
             "activity_or_fugacity_state": "analytic" if derivative_backend == "analytic" else derivative_backend,
         },
     )
@@ -1302,22 +1302,20 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
     diagnostics.setdefault("best_state_available", True)
     diagnostics.setdefault("best_state", {"source": "native_chemical_equilibrium_result"})
     diagnostics.setdefault("row_failure_count", int(diagnostics.get("state_failure_count", 0)))
-    diagnostics.setdefault("association_solver_status", "backend_unavailable_if_active")
+    diagnostics.setdefault("association_solver_status", "not_available_if_active")
     diagnostics.setdefault(
         "derivative_policy",
         {
-            "finite_difference_backend_available": False,
+            "numerical_derivative_backend_available": False,
             "accepted_derivative_backends": [
                 "auto",
                 "analytic",
                 "cppad",
                 "analytic_implicit",
                 "cppad_implicit",
-                "eigen_forward",
-                "legacy_eigen_forward",
-                "backend_unavailable",
+                "not_available",
             ],
-            "unsupported_derivative_status": "backend_unavailable",
+            "unsupported_derivative_status": "not_available",
         },
     )
     diagnostics.setdefault(
@@ -1334,9 +1332,9 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
         "reactive_speciation_variables",
         solved_state_backend,
     )
-    diagnostics["derivative_backend_by_block"].setdefault("association_site_fractions", "backend_unavailable")
-    if solved_state_backend == "backend_unavailable":
-        reactive_implicit_result = backend_unavailable_implicit_result(
+    diagnostics["derivative_backend_by_block"].setdefault("association_site_fractions", "not_available")
+    if solved_state_backend == "not_available":
+        reactive_implicit_result = not_available_implicit_result(
             reason="reactive speciation implicit sensitivities are unavailable for this residual backend.",
             diagnostics={"residual_backend": derivative_backend},
         )
@@ -1357,9 +1355,9 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
         "implicit_solve_results",
         {
             "reactive_speciation_variables": reactive_implicit_result.to_dict(),
-            "association_site_fractions": backend_unavailable_implicit_result(
+            "association_site_fractions": not_available_implicit_result(
                 reason="association site-fraction implicit sensitivities are unavailable for this reactive speciation route.",
-                diagnostics={"residual_backend": "backend_unavailable"},
+                diagnostics={"residual_backend": "not_available"},
             ).to_dict(),
         },
     )

@@ -55,10 +55,10 @@ def _assert_json_like(value):
         assert not isinstance(value, np.ndarray)
 
 
-def _assert_no_backend_or_finite_difference_payload(value) -> None:
+def _assert_no_backend_or_numerical_derivative_payload(value) -> None:
     payload = json.dumps(value, default=str).lower()
-    assert "backend_unavailable" not in payload
-    assert "finite_difference" not in payload
+    assert "not_available" not in payload
+    assert "numerical_derivative" not in payload
 
 
 def _assert_methanol_cyclohexane_split(result: epcsaft.EquilibriumResult, feed: np.ndarray) -> None:
@@ -80,7 +80,7 @@ def _assert_methanol_cyclohexane_split(result: epcsaft.EquilibriumResult, feed: 
     assert result.diagnostics["derivative_available"] is False
     assert result.diagnostics["jacobian_available"] is False
     _assert_json_like(result.to_dict())
-    _assert_no_backend_or_finite_difference_payload(result.to_dict())
+    _assert_no_backend_or_numerical_derivative_payload(result.to_dict())
 
 
 def test_methanol_cyclohexane_lle_flash_solves_seeded_phase_split() -> None:
@@ -226,7 +226,7 @@ def test_lle_flash_distinct_poor_seed_fails_loudly_without_forced_pass() -> None
     message = str(excinfo.value)
     assert "best_seed=user" in message
     assert "maximum iterations" in message
-    assert "finite_difference" not in message.lower()
+    assert "numerical_derivative" not in message.lower()
 
 
 @pytest.mark.parametrize(

@@ -125,8 +125,8 @@ def test_fit_reactive_electrolyte_parameters_returns_fit_result_and_applies_boun
     )
 
     assert isinstance(fit, epcsaft.ReactiveRegressionFitResult)
-    assert fit.status == "backend_unavailable"
-    assert fit.termination_reason == "backend_unavailable"
+    assert fit.status == "not_available"
+    assert fit.termination_reason == "not_available"
     assert fit.objective_final == pytest.approx(fit.objective_initial)
     assert fit.gradient_norm is None
     assert fit.step_norm is None
@@ -135,7 +135,7 @@ def test_fit_reactive_electrolyte_parameters_returns_fit_result_and_applies_boun
     assert fit.covariance_available is False
     summary = epcsaft.summarize_regression_result(fit)
     assert summary["fit_success"] is False
-    assert summary["fit_status"] == "backend_unavailable"
+    assert summary["fit_status"] == "not_available"
     assert summary["termination_reason"] == fit.termination_reason
     assert summary["upper_bounds"]["A.sigma"] == pytest.approx(3.05)
     assert summary["covariance_status"] == "unavailable"
@@ -291,7 +291,7 @@ def test_fit_reactive_electrolyte_parameters_real_mixed_objective_improves() -> 
     summary = epcsaft.summarize_regression_result(fit)
     target_counts = fit.objective_result.batch_result.diagnostics["target_family_counts"]
 
-    assert fit.status == "backend_unavailable"
+    assert fit.status == "not_available"
     assert fit.objective_final == pytest.approx(fit.objective_initial)
     assert fit.objective_result.batch_result.success_count == 1
     assert fit.objective_result.batch_result.failure_count == 0
@@ -364,8 +364,8 @@ def test_fit_reactive_electrolyte_parameters_reports_nonconverged_fit(monkeypatc
     )
 
     assert fit.success is False
-    assert fit.message == "backend_unavailable: reactive-regression sensitivities are not implemented."
-    assert fit.status == "backend_unavailable"
-    assert fit.termination_reason == "backend_unavailable"
+    assert fit.message == "not_available: reactive-regression sensitivities are not implemented."
+    assert fit.status == "not_available"
+    assert fit.termination_reason == "not_available"
     assert fit.objective_final <= fit.objective_initial
     assert fit.iterations == 0

@@ -66,11 +66,11 @@ def test_liquid_ssmds_born_derivatives_are_supported_for_figiel_d_born_and_f_sol
     np.testing.assert_allclose(payload["lnfug_d_f_solv"], payload["mu_res_d_f_solv"])
 
 
-def test_vapor_ssmds_born_derivatives_report_backend_unavailable() -> None:
+def test_vapor_ssmds_born_derivatives_report_not_available() -> None:
     _, state = _figiel_nabr_water_state("vap")
 
     payload = state.born_ssmds_liquid_derivatives()
 
     assert payload["supported"] is False
-    assert payload["backend"] == "backend_unavailable"
+    assert payload["backend"] == "not_available"
     assert payload["message"] == "SSM+DS Born derivatives are liquid-electrolyte only"

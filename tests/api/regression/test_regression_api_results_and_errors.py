@@ -86,7 +86,7 @@ def _stub_native_generic_runner(monkeypatch, *, backend="least_squares_native"):
             "jacobian_backend": jacobian_backend,
             "jacobian_fallback_used": False,
             "jacobian_fallback_reason": "",
-            "backend_unavailable_reason": "",
+            "not_available_reason": "",
             "hessian_available": False,
             "hessian_backend": "not_implemented",
             "hessian_fallback_used": False,
@@ -265,7 +265,7 @@ def test_public_generic_derivative_evaluator_rejects_removed_backend_names():
         )
 
 def test_public_generic_derivative_evaluator_rejects_auto_without_autodiff():
-    with pytest.raises(InputError, match="backend_unavailable"):
+    with pytest.raises(InputError, match="not_available"):
         evaluate_generic_regression_derivatives(
             fixed_payloads=[{"m": [1.0, 1.0], "s": [3.0, 3.0], "e": [200.0, 200.0]}],
             native_records=[

@@ -1,7 +1,9 @@
 #include "epcsaft_contrib_internal.h"
 
-using thermo_detail::AutodiffHardChainState;
 using thermo_detail::ContributionDadxResult;
+#ifdef EPCSAFT_HAS_CPPAD
+using thermo_detail::CppADHardChainState;
+#endif
 using thermo_detail::HardChainState;
 using thermo_detail::MixtureState;
 using thermo_detail::parameter_setup_detail::pair_diameter_cpp;
@@ -71,14 +73,16 @@ HardChainState hard_chain_state_cpp(const MixtureState &thermo, const vector<dou
     return state;
 }
 
-AutodiffHardChainState hard_chain_state_autodiff_cpp(double den, const vector<double> &d, const vector<AutoDual> &x, const add_args &cppargs) {
+#ifdef EPCSAFT_HAS_CPPAD
+CppADHardChainState hard_chain_state_cppad_cpp(double den, const vector<double> &d, const vector<CppADScalar> &x, const add_args &cppargs) {
     auto scalar_state = hard_chain_detail::hard_chain_state_scalar_cpp(den, d, x, cppargs);
-    AutodiffHardChainState state;
+    CppADHardChainState state;
     state.zeta = std::move(scalar_state.zeta);
     state.ghs = std::move(scalar_state.ghs);
     state.eta = scalar_state.eta;
     return state;
 }
+#endif
 
 namespace hard_chain_detail {
 
@@ -298,9 +302,9 @@ ContributionDadxResult dadx_hc_cpp(const MixtureState &thermo, const HardChainSt
     }
 
     if (cppargs.hc_dadx_diff_mode == 1) {
-        throw ValueError("backend_unavailable: hard-chain composition derivative backend is unavailable.");
+        throw ValueError("not_available: hard-chain composition derivative backend is unavailable.");
     } else if (cppargs.hc_dadx_diff_mode == 2) {
-        result.dadx = contribution_dadx_autodiff_cpp(AresContributionKind::HC, t, rho, x, cppargs);
+        result.dadx = contribution_dadx_cppad_cpp(AresContributionKind::HC, t, rho, x, cppargs);
     }
 
     double z_correction = 0.0;

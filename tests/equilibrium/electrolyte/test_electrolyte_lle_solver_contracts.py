@@ -118,7 +118,7 @@ def test_predictive_residual_uses_dependent_phase_material_balance() -> None:
 def test_electrolyte_lle_solver_failure_reports_unavailable_derivatives() -> None:
     mix = _case2_mixture()
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+    with pytest.raises(epcsaft.InputError, match="not_available"):
         mix.equilibrium(
             kind="electrolyte_lle",
             T=298.15,
@@ -130,7 +130,7 @@ def test_electrolyte_lle_solver_failure_reports_unavailable_derivatives() -> Non
 def test_electrolyte_lle_best_effort_reports_unavailable_derivatives() -> None:
     mix = _case2_mixture()
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+    with pytest.raises(epcsaft.InputError, match="not_available"):
         mix.equilibrium(
             kind="electrolyte_lle",
             T=298.15,
@@ -147,7 +147,7 @@ def test_electrolyte_lle_best_effort_reports_unavailable_derivatives() -> None:
 def test_electrolyte_lle_seed_budget_reports_unavailable_derivatives() -> None:
     mix = _case2_mixture()
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+    with pytest.raises(epcsaft.InputError, match="not_available"):
         mix.equilibrium(
             kind="electrolyte_lle",
             T=298.15,
@@ -185,7 +185,7 @@ def test_electrolyte_lle_objective_budget_reports_unavailable_derivatives() -> N
 def test_experimental_coupled_density_lle_option_is_reported_without_changing_default_gate() -> None:
     mix = _case2_mixture()
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+    with pytest.raises(epcsaft.InputError, match="not_available"):
         mix.equilibrium(
             kind="electrolyte_lle",
             T=298.15,
@@ -203,7 +203,7 @@ def test_experimental_coupled_density_lle_option_is_reported_without_changing_de
 def test_electrolyte_lle_accepts_legacy_option_dict_before_unavailable_derivatives() -> None:
     mix = _case2_mixture()
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+    with pytest.raises(epcsaft.InputError, match="not_available"):
         mix.equilibrium(
             kind="electrolyte_lle",
             T=298.15,

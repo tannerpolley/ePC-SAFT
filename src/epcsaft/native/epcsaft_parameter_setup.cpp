@@ -1,5 +1,5 @@
 #include "epcsaft_core_internal.h"
-#include "epcsaft_autodiff_internal.h"
+#include "epcsaft_cppad_internal.h"
 #include "contributions/epcsaft_contrib_internal.h"
 
 using thermo_detail::AresContributionKind;
@@ -332,27 +332,28 @@ void dielectric_inputs_valid_cpp(const vector<double> &x, const add_args &cpparg
     }
 }
 
-struct AutodiffMixtureState {
+#ifdef EPCSAFT_HAS_CPPAD
+struct CppADMixtureState {
     vector<double> d;
     vector<double> s_ij;
     vector<double> e_ij;
     double den = 0.0;
-    AutoDual m_avg = make_autodiff_scalar(0.0, 0.0);
-    AutoDual m2es3 = make_autodiff_scalar(0.0, 0.0);
-    AutoDual m2e2s3 = make_autodiff_scalar(0.0, 0.0);
+    CppADScalar m_avg = make_cppad_scalar(0.0);
+    CppADScalar m2es3 = make_cppad_scalar(0.0);
+    CppADScalar m2e2s3 = make_cppad_scalar(0.0);
 };
 
-struct AutodiffDispersionState {
+struct CppADDispersionState {
     std::array<double, 7> a{};
     std::array<double, 7> b{};
-    AutoDual I1 = make_autodiff_scalar(0.0, 0.0);
-    AutoDual I2 = make_autodiff_scalar(0.0, 0.0);
-    AutoDual C1 = make_autodiff_scalar(0.0, 0.0);
+    CppADScalar I1 = make_cppad_scalar(0.0);
+    CppADScalar I2 = make_cppad_scalar(0.0);
+    CppADScalar C1 = make_cppad_scalar(0.0);
 };
 
-AutodiffMixtureState mixture_state_autodiff_cpp(double t, double rho, const vector<AutoDual> &x, const add_args &cppargs) {
+CppADMixtureState mixture_state_cppad_cpp(double t, double rho, const vector<CppADScalar> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
-    AutodiffMixtureState state;
+    CppADMixtureState state;
     state.d.assign(ncomp, 0.0);
     state.e_ij.assign(ncomp * ncomp, 0.0);
     state.s_ij.assign(ncomp * ncomp, 0.0);
@@ -382,8 +383,8 @@ AutodiffMixtureState mixture_state_autodiff_cpp(double t, double rho, const vect
     return state;
 }
 
-AutodiffDispersionState dispersion_state_autodiff_cpp(const AutoDual &m_avg, const AutoDual &eta) {
-    AutodiffDispersionState state;
+CppADDispersionState dispersion_state_cppad_cpp(const CppADScalar &m_avg, const CppADScalar &eta) {
+    CppADDispersionState state;
     for (int i = 0; i < 7; ++i) {
         state.a[i] = kDispersionA0[i] + (1.0 - 1.0 / scalar_value(m_avg)) * kDispersionA1[i]
             + (1.0 - 1.0 / scalar_value(m_avg)) * (1.0 - 2.0 / scalar_value(m_avg)) * kDispersionA2[i];
@@ -400,6 +401,7 @@ AutodiffDispersionState dispersion_state_autodiff_cpp(const AutoDual &m_avg, con
     );
     return state;
 }
+#endif
 
 double pair_diameter_cpp(double d_i, double d_j) {
     return d_i * d_j / (d_i + d_j);
@@ -496,18 +498,20 @@ double ion_born_radius_cpp_dt(int i, double t, const add_args &cppargs) {
 }  // namespace parameter_setup_detail
 }  // namespace thermo_detail
 
-using thermo_detail::parameter_setup_detail::AutodiffDispersionState;
-using thermo_detail::parameter_setup_detail::AutodiffMixtureState;
 using thermo_detail::parameter_setup_detail::dielectric_constant_rule_scalar_cpp;
 using thermo_detail::parameter_setup_detail::dielectric_inputs_valid_cpp;
-using thermo_detail::parameter_setup_detail::dispersion_state_autodiff_cpp;
 using thermo_detail::parameter_setup_detail::ion_born_radius_cpp;
 using thermo_detail::parameter_setup_detail::ion_diameter_cpp;
 using thermo_detail::parameter_setup_detail::ion_diameter_cpp_dt;
 using thermo_detail::parameter_setup_detail::mixed_dielectric_constant_scalar_cpp;
-using thermo_detail::parameter_setup_detail::mixture_state_autodiff_cpp;
 using thermo_detail::parameter_setup_detail::pair_epsilon_cpp;
 using thermo_detail::parameter_setup_detail::pair_sigma_cpp;
+#ifdef EPCSAFT_HAS_CPPAD
+using thermo_detail::parameter_setup_detail::CppADDispersionState;
+using thermo_detail::parameter_setup_detail::CppADMixtureState;
+using thermo_detail::parameter_setup_detail::dispersion_state_cppad_cpp;
+using thermo_detail::parameter_setup_detail::mixture_state_cppad_cpp;
+#endif
 
 ScalarContributionTerms make_scalar_terms(double hc, double disp, double assoc, double ion, double born, double total) {
     ScalarContributionTerms out;
@@ -589,9 +593,11 @@ MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, co
     return state;
 }
 
-AutoDual dielectric_constant_rule_autodiff_cpp(int rule, const vector<AutoDual> &x, const add_args &cppargs) {
+#ifdef EPCSAFT_HAS_CPPAD
+CppADScalar dielectric_constant_rule_cppad_cpp(int rule, const vector<CppADScalar> &x, const add_args &cppargs) {
     return dielectric_constant_rule_scalar_cpp(rule, x, cppargs);
 }
+#endif
 
 double dielectric_constant_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {
     return dielectric_constant_rule_scalar_cpp(rule, x, cppargs);
@@ -647,7 +653,7 @@ vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x,
         return deps_dx;
     }
     if (rule == 8) {
-        throw ValueError("backend_unavailable: analytic dielectric derivative is unavailable for dielc_rule=8.");
+        throw ValueError("not_available: analytic dielectric derivative is unavailable for dielc_rule=8.");
     }
     if (rule == 2) {
         double mw_bar = 0.0;
@@ -761,19 +767,27 @@ vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x,
     throw ValueError("Unknown dielc_rule. Supported rules are 0, 1, 2, 3, 4, 5, 6, 7, 8, 9.");
 }
 
-vector<double> dielectric_derivative_rule_ad_cpp(int rule, const vector<double> &x, const add_args &cppargs) {
+vector<double> dielectric_derivative_rule_cppad_cpp(int rule, const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     vector<double> deps_dx(ncomp, 0.0);
+#ifndef EPCSAFT_HAS_CPPAD
+    throw ValueError("CppAD support is disabled in this native build.");
+#else
+    vector<CppADScalar> ax(ncomp);
+    for (int j = 0; j < ncomp; ++j) {
+        ax[j] = x[j];
+    }
+    CppAD::Independent(ax);
+    vector<CppADScalar> ay(1);
+    ay[0] = dielectric_constant_rule_cppad_cpp(rule, ax, cppargs);
+    CppAD::ADFun<double> function(ax, ay);
+    deps_dx = function.Jacobian(x);
     for (int i = 0; i < ncomp; ++i) {
-        vector<AutoDual> x_dual(ncomp, make_autodiff_scalar(0.0, 0.0));
-        for (int j = 0; j < ncomp; ++j) {
-            x_dual[j] = make_autodiff_scalar(x[j], (i == j) ? 1.0 : 0.0);
-        }
-        deps_dx[i] = scalar_derivative(dielectric_constant_rule_autodiff_cpp(rule, x_dual, cppargs));
         if (!std::isfinite(deps_dx[i])) {
-            throw ValueError("Non-finite dielectric autodiff derivative.");
+            throw ValueError("Non-finite dielectric CppAD derivative.");
         }
     }
+#endif
     return deps_dx;
 }
 
@@ -784,83 +798,91 @@ DielectricState dielectric_state_cpp(const vector<double> &x, const add_args &cp
     if ((cppargs.dielc_diff_mode == 0 || cppargs.dielc_diff_mode == 3) && cppargs.dielc_rule != 8) {
         state.deps_dx = dielectric_derivative_rule_cpp(cppargs.dielc_rule, x, cppargs);
     } else if (cppargs.dielc_diff_mode == 2 || cppargs.dielc_diff_mode == 3) {
-        state.deps_dx = dielectric_derivative_rule_ad_cpp(cppargs.dielc_rule, x, cppargs);
+        state.deps_dx = dielectric_derivative_rule_cppad_cpp(cppargs.dielc_rule, x, cppargs);
     } else {
-        throw ValueError("backend_unavailable: requested dielectric derivative backend is unavailable.");
+        throw ValueError("not_available: requested dielectric derivative backend is unavailable.");
     }
     return state;
 }
 
-vector<double> contribution_dadx_autodiff_cpp(AresContributionKind kind, double t, double rho, const vector<double> &x, const add_args &cppargs) {
+vector<double> contribution_dadx_cppad_cpp(AresContributionKind kind, double t, double rho, const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     if (kind == AresContributionKind::ASSOC) {
-        throw ValueError("autodiff differential_mode is not implemented for this contribution yet.");
+        throw ValueError("CppAD differential_mode is not implemented for this contribution yet.");
     }
     if (kind == AresContributionKind::BORN && cppargs.born_model == 2) {
-        throw ValueError("autodiff differential_mode is not implemented for the SSM/DS Born composition derivative yet.");
+        throw ValueError("CppAD differential_mode is not implemented for the SSM/DS Born composition derivative yet.");
     }
 
     vector<double> dadx(ncomp, 0.0);
+#ifndef EPCSAFT_HAS_CPPAD
+    throw ValueError("CppAD support is disabled in this native build.");
+#else
+    vector<CppADScalar> ax(ncomp);
+    for (int j = 0; j < ncomp; ++j) {
+        ax[j] = x[j];
+    }
+    CppAD::Independent(ax);
+
+    CppADScalar value = make_cppad_scalar(0.0);
+    if (kind == AresContributionKind::HC || kind == AresContributionKind::DISP) {
+        CppADMixtureState thermo = mixture_state_cppad_cpp(t, rho, ax, cppargs);
+        CppADHardChainState hc_state = hard_chain_state_cppad_cpp(thermo.den, thermo.d, ax, cppargs);
+        if (kind == AresContributionKind::HC) {
+            CppADScalar ares_hs = 1.0 / hc_state.zeta[0] * (
+                3.0 * hc_state.zeta[1] * hc_state.zeta[2] / (1.0 - hc_state.zeta[3])
+                + scalar_pow(hc_state.zeta[2], 3) / (hc_state.zeta[3] * scalar_pow(1.0 - hc_state.zeta[3], 2))
+                + (scalar_pow(hc_state.zeta[2], 3) / scalar_pow(hc_state.zeta[3], 2) - hc_state.zeta[0]) * scalar_log(1.0 - hc_state.zeta[3])
+            );
+            CppADScalar log_sum = make_cppad_scalar(0.0);
+            for (int k = 0; k < ncomp; ++k) {
+                log_sum += ax[k] * (cppargs.m[k] - 1.0) * scalar_log(hc_state.ghs[k * ncomp + k]);
+            }
+            value = thermo.m_avg * ares_hs - log_sum;
+        } else {
+            CppADDispersionState dispersion = dispersion_state_cppad_cpp(thermo.m_avg, hc_state.eta);
+            value = -2.0 * PI * thermo.den * dispersion.I1 * thermo.m2es3
+                - PI * thermo.den * thermo.m_avg * dispersion.C1 * dispersion.I2 * thermo.m2e2s3;
+        }
+    } else if (kind == AresContributionKind::ION) {
+        CppADScalar q2_sum = make_cppad_scalar(0.0);
+        for (int k = 0; k < ncomp; ++k) {
+            q2_sum += ax[k] * cppargs.z[k] * cppargs.z[k];
+        }
+        CppADScalar eps = dielectric_constant_rule_cppad_cpp(cppargs.dielc_rule, ax, cppargs);
+        CppADScalar kappa = scalar_sqrt((rho * N_AV / 1.0e30) * E_CHRG * E_CHRG / kb / t / perm_vac * q2_sum / eps);
+        CppADScalar chi_sum = make_cppad_scalar(0.0);
+        for (int k = 0; k < ncomp; ++k) {
+            double d_k = ion_diameter_cpp(k, t, cppargs);
+            CppADScalar ka = kappa * d_k;
+            CppADScalar chi = 3.0 / scalar_pow(ka, 3) * (1.5 + scalar_log(1.0 + ka) - 2.0 * (1.0 + ka) + 0.5 * scalar_pow(1.0 + ka, 2));
+            chi_sum += ax[k] * cppargs.z[k] * cppargs.z[k] * chi;
+        }
+        double K0 = E_CHRG * E_CHRG / (12.0 * PI * kb * t * perm_vac);
+        value = -K0 * kappa / eps * chi_sum;
+    } else if (kind == AresContributionKind::BORN) {
+        CppADScalar eps = (cppargs.born_eps_mode == 1)
+            ? reference_solvent_dielectric_constant_cppad_cpp(ax, cppargs)
+            : dielectric_constant_rule_cppad_cpp(cppargs.dielc_rule, ax, cppargs);
+        CppADScalar charge_radius_sum = make_cppad_scalar(0.0);
+        for (int k = 0; k < ncomp; ++k) {
+            if (is_ion_species(cppargs, k)) {
+                charge_radius_sum += ax[k] * cppargs.z[k] * cppargs.z[k] / ion_born_radius_cpp(k, t, cppargs);
+            }
+        }
+        const double Kborn = E_CHRG * E_CHRG / (4.0 * PI * kb * t * perm_vac);
+        value = -Kborn * (1.0 - 1.0 / eps) * charge_radius_sum;
+    }
+
+    vector<CppADScalar> ay(1);
+    ay[0] = value;
+    CppAD::ADFun<double> function(ax, ay);
+    dadx = function.Jacobian(x);
     for (int i = 0; i < ncomp; ++i) {
-        vector<AutoDual> x_dual(ncomp, make_autodiff_scalar(0.0, 0.0));
-        for (int j = 0; j < ncomp; ++j) {
-            x_dual[j] = make_autodiff_scalar(x[j], (i == j) ? 1.0 : 0.0);
-        }
-
-        AutoDual value = make_autodiff_scalar(0.0, 0.0);
-        if (kind == AresContributionKind::HC || kind == AresContributionKind::DISP) {
-            AutodiffMixtureState thermo = mixture_state_autodiff_cpp(t, rho, x_dual, cppargs);
-            AutodiffHardChainState hc_state = hard_chain_state_autodiff_cpp(thermo.den, thermo.d, x_dual, cppargs);
-            if (kind == AresContributionKind::HC) {
-                AutoDual ares_hs = 1.0 / hc_state.zeta[0] * (
-                    3.0 * hc_state.zeta[1] * hc_state.zeta[2] / (1.0 - hc_state.zeta[3])
-                    + scalar_pow(hc_state.zeta[2], 3) / (hc_state.zeta[3] * scalar_pow(1.0 - hc_state.zeta[3], 2))
-                    + (scalar_pow(hc_state.zeta[2], 3) / scalar_pow(hc_state.zeta[3], 2) - hc_state.zeta[0]) * scalar_log(1.0 - hc_state.zeta[3])
-                );
-                AutoDual log_sum = make_autodiff_scalar(0.0, 0.0);
-                for (int k = 0; k < ncomp; ++k) {
-                    log_sum += x_dual[k] * (cppargs.m[k] - 1.0) * scalar_log(hc_state.ghs[k * ncomp + k]);
-                }
-                value = thermo.m_avg * ares_hs - log_sum;
-            } else {
-                AutodiffDispersionState dispersion = dispersion_state_autodiff_cpp(thermo.m_avg, hc_state.eta);
-                value = -2.0 * PI * thermo.den * dispersion.I1 * thermo.m2es3
-                    - PI * thermo.den * thermo.m_avg * dispersion.C1 * dispersion.I2 * thermo.m2e2s3;
-            }
-        } else if (kind == AresContributionKind::ION) {
-            AutoDual q2_sum = make_autodiff_scalar(0.0, 0.0);
-            for (int k = 0; k < ncomp; ++k) {
-                q2_sum += x_dual[k] * cppargs.z[k] * cppargs.z[k];
-            }
-            AutoDual eps = dielectric_constant_rule_autodiff_cpp(cppargs.dielc_rule, x_dual, cppargs);
-            AutoDual kappa = scalar_sqrt((rho * N_AV / 1.0e30) * E_CHRG * E_CHRG / kb / t / perm_vac * q2_sum / eps);
-            AutoDual chi_sum = make_autodiff_scalar(0.0, 0.0);
-            for (int k = 0; k < ncomp; ++k) {
-                double d_k = ion_diameter_cpp(k, t, cppargs);
-                AutoDual ka = kappa * d_k;
-                AutoDual chi = 3.0 / scalar_pow(ka, 3) * (1.5 + scalar_log(1.0 + ka) - 2.0 * (1.0 + ka) + 0.5 * scalar_pow(1.0 + ka, 2));
-                chi_sum += x_dual[k] * cppargs.z[k] * cppargs.z[k] * chi;
-            }
-            double K0 = E_CHRG * E_CHRG / (12.0 * PI * kb * t * perm_vac);
-            value = -K0 * kappa / eps * chi_sum;
-        } else if (kind == AresContributionKind::BORN) {
-            AutoDual eps = (cppargs.born_eps_mode == 1)
-                ? reference_solvent_dielectric_constant_ad_cpp(x_dual, cppargs)
-                : dielectric_constant_rule_autodiff_cpp(cppargs.dielc_rule, x_dual, cppargs);
-            AutoDual charge_radius_sum = make_autodiff_scalar(0.0, 0.0);
-            for (int k = 0; k < ncomp; ++k) {
-                if (is_ion_species(cppargs, k)) {
-                    charge_radius_sum += x_dual[k] * cppargs.z[k] * cppargs.z[k] / ion_born_radius_cpp(k, t, cppargs);
-                }
-            }
-            const double Kborn = E_CHRG * E_CHRG / (4.0 * PI * kb * t * perm_vac);
-            value = -Kborn * (1.0 - 1.0 / eps) * charge_radius_sum;
-        }
-
-        dadx[i] = scalar_derivative(value);
         if (!std::isfinite(dadx[i])) {
-            throw ValueError("Non-finite contribution autodiff derivative.");
+            throw ValueError("Non-finite contribution CppAD derivative.");
         }
     }
+#endif
     return dadx;
 }

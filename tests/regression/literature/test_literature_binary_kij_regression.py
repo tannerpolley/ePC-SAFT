@@ -10,7 +10,7 @@ from tests.helpers.binary_regression_cases import ethanol_water_jced2021_vle_rec
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE = REPO_ROOT / "tests" / "fixtures" / "literature" / "binary_kij" / "ethanol_water_jced2021_100kpa.json"
-DISALLOWED_BACKENDS = {"finite_difference", "fd", "numerical_derivative", "numerical_jacobian"}
+DISALLOWED_BACKENDS = {"numerical_derivative", "fd", "numerical_derivative", "numerical_jacobian"}
 
 
 def _load_fixture() -> dict:
@@ -44,10 +44,19 @@ def test_literature_binary_kij_regression_matches_reference_band() -> None:
     )
 
     assert result.success, result.message
-    assert result.backend == "least_squares_native"
+    assert result.backend == "ceres"
+    assert result.optimizer_backend == "ceres"
     assert result.problem.mode == "binary_pair"
     assert result.problem.fit_targets == ("k_ij",)
     assert result.derivative_backend.lower() not in DISALLOWED_BACKENDS
     assert result.jacobian_backend.lower() not in DISALLOWED_BACKENDS
+    assert result.objective_final < result.objective_initial
+    assert abs(result.parameter_movement["k_ij"]) > 1.0e-5
+    assert result.initial_parameters == {"k_ij": pytest.approx(fixture["initial_k_ij"])}
+    assert result.final_parameters == pytest.approx(result.fitted_values)
+    assert result.residual_block_norms["binary_vle_fugacity_balance"] == pytest.approx(
+        result.metrics_by_term["binary_vle_fugacity_balance"]
+    )
+    assert result.target_family_summaries["binary_vle_fugacity_balance"]["record_count"] == 5
     assert result.metrics_by_term["binary_vle_fugacity_balance"] < fixture["max_fugacity_balance"]
     assert abs(result.fitted_values["k_ij"] - fixture["literature_k_ij"]) < fixture["max_abs_kij_error"]

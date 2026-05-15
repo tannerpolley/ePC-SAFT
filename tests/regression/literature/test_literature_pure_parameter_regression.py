@@ -15,7 +15,7 @@ from tests.regression.literature.test_mea_co2_h2o_pure_parameter_benchmark impor
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE = REPO_ROOT / "tests" / "fixtures" / "literature" / "pure_neutral" / "mea_co2_h2o_benchmark.json"
-DISALLOWED_BACKENDS = {"finite_difference", "fd", "numerical_derivative", "numerical_jacobian"}
+DISALLOWED_BACKENDS = {"numerical_derivative", "fd", "numerical_derivative", "numerical_jacobian"}
 LITERATURE_USER_OPTIONS = {
     "elec_model": {
         "rel_perm": {"rule": "empirical", "differential_mode": "auto"},

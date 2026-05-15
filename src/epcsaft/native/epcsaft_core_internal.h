@@ -10,8 +10,8 @@
 #include "Eigen/Dense"
 
 #include "epcsaft_electrolyte.h"
-#include "epcsaft_autodiff_internal.h"
-#include "autodiff/ad_derivative_result.h"
+#include "epcsaft_cppad_internal.h"
+#include "cppad/cppad_derivative_result.h"
 
 namespace thermo_detail {
 
@@ -259,13 +259,15 @@ vector<double> reference_solvent_dielectric_derivative_cpp(const vector<double> 
 BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion);
 double ares_contribution_value_cpp(const AresContributions &terms, AresContributionKind kind);
 AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs);
-epcsaft::native::autodiff::ADDerivativeResult cppad_eos_contribution_derivatives_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs);
-epcsaft::native::autodiff::ADDerivativeResult cppad_pressure_density_derivative_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs);
+epcsaft::native::cppad_support::CppADDerivativeResult cppad_eos_contribution_derivatives_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs);
+epcsaft::native::cppad_support::CppADDerivativeResult cppad_pressure_density_derivative_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs);
 double dielectric_constant_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs);
 vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs);
-AutoDual reference_solvent_dielectric_constant_ad_cpp(const vector<AutoDual> &x, const add_args &cppargs);
-AutoDual dielectric_constant_rule_autodiff_cpp(int rule, const vector<AutoDual> &x, const add_args &cppargs);
-vector<double> dielectric_derivative_rule_ad_cpp(int rule, const vector<double> &x, const add_args &cppargs);
+#ifdef EPCSAFT_HAS_CPPAD
+CppADScalar reference_solvent_dielectric_constant_cppad_cpp(const vector<CppADScalar> &x, const add_args &cppargs);
+CppADScalar dielectric_constant_rule_cppad_cpp(int rule, const vector<CppADScalar> &x, const add_args &cppargs);
+#endif
+vector<double> dielectric_derivative_rule_cppad_cpp(int rule, const vector<double> &x, const add_args &cppargs);
 DielectricState dielectric_state_cpp(const vector<double> &x, const add_args &cppargs);
 DadrhoResult dadrho_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs);
 double hs_contact_density_derivative_cpp(double pair_diameter, double zeta2, double zeta3);

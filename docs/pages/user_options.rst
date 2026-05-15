@@ -132,6 +132,6 @@ Tips
 
 - Start from a small file and add only the settings you actually need.
 - If a value is left out, the package keeps its default.
-- The default derivative policy is ``auto``: use validated analytical derivatives where they already exist, then autodiff for implemented derivative paths. Unsupported paths raise clear ``backend_unavailable`` errors.
+- The default derivative policy is ``auto``: use validated analytical derivatives where they already exist, then autodiff for implemented derivative paths. Unsupported paths raise clear ``not_available`` errors.
 - ``autodiff`` is stricter than ``auto``. It requests the autodiff backend directly and raises for unsupported paths instead of selecting an analytical formula.
 - If you are unsure, keep ``user_options.json`` empty and add settings one at a time.

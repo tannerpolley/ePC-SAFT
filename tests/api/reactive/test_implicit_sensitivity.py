@@ -24,7 +24,7 @@ def test_implicit_sensitivity_from_jacobians_solves_linearized_state_response() 
     np.testing.assert_allclose(result.sensitivity, [[-3.0], [-2.0]])
     payload = result.to_dict()
     assert payload["jacobians"]["residual_state"] == [[2.0, 0.0], [0.0, 4.0]]
-    assert "finite_difference" not in json.dumps(payload).lower()
+    assert "numerical_derivative" not in json.dumps(payload).lower()
 
 
 def test_implicit_sensitivity_rejects_nonimplicit_backend() -> None:
@@ -38,14 +38,14 @@ def test_implicit_sensitivity_rejects_nonimplicit_backend() -> None:
         )
 
 
-def test_backend_unavailable_implicit_result_is_structured() -> None:
-    result = epcsaft.backend_unavailable_implicit_result(
+def test_not_available_implicit_result_is_structured() -> None:
+    result = epcsaft.not_available_implicit_result(
         state=[1.0],
         residual=[0.0],
         reason="missing residual parameter jacobian",
     )
 
-    assert result.backend == "backend_unavailable"
-    assert result.status == "backend_unavailable"
+    assert result.backend == "not_available"
+    assert result.status == "not_available"
     assert result.sensitivity is None
     assert result.to_dict()["diagnostics"]["reason"] == "missing residual parameter jacobian"

@@ -132,6 +132,8 @@ def _derivative_result_payload(
     value,
     jacobian,
     shape=None,
+    outputs=None,
+    variables=None,
     **extra,
 ):
     value_arr = np.asarray(value, dtype=float)
@@ -143,12 +145,19 @@ def _derivative_result_payload(
             shape = [1, int(jac_arr.size)]
         else:
             shape = [int(value_arr.size), int(jac_arr.size // max(int(value_arr.size), 1))]
+    if outputs is None:
+        outputs = extra.get("output_order", extra.get("component_order", ()))
+    if variables is None:
+        variables = extra.get("variable_order", extra.get("parameter_order", ()))
     payload = {
         "supported": bool(supported),
         "backend": str(backend),
+        "derivative_backend": str(backend),
         "message": str(message),
         "value": value_arr,
         "jacobian": jac_arr.reshape(tuple(shape)) if bool(supported) and jac_arr.size else jac_arr,
+        "outputs": [str(item) for item in (outputs or [])],
+        "variables": [str(item) for item in (variables or [])],
         "shape": [int(shape[0]), int(shape[1])],
     }
     payload.update(extra)
@@ -157,25 +166,23 @@ def _derivative_result_payload(
 
 def _backend_from_contribution_details(details, *, available=True, reason=""):
     if not available:
-        return "backend_unavailable", reason or "backend_unavailable"
+        return "not_available", reason or "not_available"
     labels = {str(v) for v in dict(details).values()}
-    if "backend_unavailable" in labels:
-        return "backend_unavailable", reason or "backend_unavailable"
+    if "not_available" in labels:
+        return "not_available", reason or "not_available"
     if "cppad" in labels:
         return "cppad", "mixed CppAD/analytic derivative contributions"
     if "cppad_implicit" in labels:
         return "cppad_implicit", "mixed implicit CppAD/analytic derivative contributions"
     if "analytic_implicit" in labels:
         return "analytic_implicit", "mixed implicit analytic/analytic derivative contributions"
-    if "legacy_eigen_forward" in labels:
-        return "legacy_eigen_forward", "legacy Eigen forward-mode derivative contributions"
     return "analytic", "analytic derivative contributions"
 
 
-def _backend_unavailable_result(value, rows, cols, message, **extra):
+def _not_available_result(value, rows, cols, message, **extra):
     return _derivative_result_payload(
         supported=False,
-        backend="backend_unavailable",
+        backend="not_available",
         message=message,
         value=value,
         jacobian=np.asarray([], dtype=float),
@@ -247,7 +254,7 @@ def _state_rel_perm_rule_and_mode(params):
 def _relative_permittivity_backend(params):
     rule, mode = _state_rel_perm_rule_and_mode(params)
     if mode == 2 or (mode == 3 and rule == 8):
-        return "legacy_eigen_forward"
+        return "cppad"
     return "analytic"
 
 
@@ -1260,19 +1267,19 @@ class ePCSAFTState:
                 self._native_args_copy(),
             )
         except _NATIVE_CALL_ERRORS as exc:
-            return _backend_unavailable_result(
+            return _not_available_result(
                 [self.pressure()],
                 1,
                 1,
-                f"backend_unavailable: pressure-density derivative backend failed: {exc}",
+                f"not_available: pressure-density derivative backend failed: {exc}",
                 variable_order=("density",),
             )
         if not bool(raw.get("cppad_compiled", False)):
-            return _backend_unavailable_result(
+            return _not_available_result(
                 [self.pressure()],
                 1,
                 1,
-                str(raw.get("message", "backend_unavailable: CppAD support is disabled in this native build")),
+                str(raw.get("message", "not_available: CppAD support is disabled in this native build")),
                 variable_order=("density",),
             )
         return _derivative_result_payload(
@@ -1282,17 +1289,19 @@ class ePCSAFTState:
             value=[self.pressure()],
             jacobian=np.asarray(raw.get("jacobian_row_major", []), dtype=float),
             shape=[1, 1],
+            output_order=("pressure",),
             variable_order=("density",),
             component_order=tuple(self._mixture.species[:ncomp]),
         )
 
     def pressure_composition_derivative_result(self):
         """Return pressure composition-derivative support status."""
-        return _backend_unavailable_result(
+        return _not_available_result(
             [self.pressure()],
             1,
             int(self._x.size),
-            "backend_unavailable: pressure composition derivatives require EOS pressure sensitivity routing.",
+            "not_available: pressure composition derivatives require EOS pressure sensitivity routing.",
+            output_order=("pressure",),
             variable_order=tuple(self._mixture.species),
         )
 
@@ -1308,6 +1317,7 @@ class ePCSAFTState:
                 value=[float(np.asarray(raw["value"], dtype=float)[0])],
                 jacobian=jacobian[0:1, :],
                 shape=[1, 3],
+                output_order=("pressure",),
                 parameter_order=self._pure_neutral_parameter_order(),
                 source_equation_ids=("pressure_from_z", "ares_hc", "ares_disp"),
             )
@@ -1321,24 +1331,27 @@ class ePCSAFTState:
                 value=[float(raw.get("k_ij_pressure", self.pressure()))],
                 jacobian=self._neutral_binary_pair_jacobian(raw, "pressure", 1),
                 shape=[1, len(parameter_order)],
+                output_order=("pressure",),
                 parameter_order=parameter_order,
                 source_equation_ids=("pressure_from_z", "ares_disp"),
             )
-        return _backend_unavailable_result(
+        return _not_available_result(
             [self.pressure()],
             1,
             0,
-            "backend_unavailable: pressure parameter derivatives are not implemented.",
+            "not_available: pressure parameter derivatives are not implemented.",
+            output_order=("pressure",),
             parameter_order=(),
         )
 
     def density_pressure_derivative_result(self):
         """Return density pressure-derivative support status for pressure-root states."""
-        return _backend_unavailable_result(
+        return _not_available_result(
             [self.molar_density()],
             1,
             1,
-            "backend_unavailable: density-root implicit pressure derivatives are not implemented.",
+            "not_available: density-root implicit pressure derivatives are not implemented.",
+            output_order=("density",),
             variable_order=("pressure",),
         )
 
@@ -1348,15 +1361,16 @@ class ePCSAFTState:
         backend, message = _backend_from_contribution_details(
             result["derivative_backend"],
             available=bool(result["derivative_available"]),
-            reason=str(result["backend_unavailable_reason"]),
+            reason=str(result["not_available_reason"]),
         )
         return _derivative_result_payload(
-            supported=backend != "backend_unavailable",
+            supported=backend != "not_available",
             backend=backend,
             message=message,
             value=[self.residual_helmholtz()],
             jacobian=np.asarray(result["total"], dtype=float).reshape((1, int(self._x.size))),
             shape=[1, int(self._x.size)],
+            output_order=("ares_residual",),
             variable_order=tuple(self._mixture.species),
             backend_details=dict(result["derivative_backend"]),
             source_equation_ids=("ares_total",),
@@ -1365,11 +1379,11 @@ class ePCSAFTState:
     def chemical_potential_composition_derivative_result(self):
         """Return chemical-potential composition-derivative support status."""
         ncomp = int(self._x.size)
-        return _backend_unavailable_result(
+        return _not_available_result(
             self.residual_chemical_potential(),
             ncomp,
             ncomp,
-            "backend_unavailable: chemical-potential composition Jacobians require second composition derivatives.",
+            "not_available: chemical-potential composition Jacobians require second composition derivatives.",
             variable_order=tuple(self._mixture.species),
             component_order=tuple(self._mixture.species),
         )
@@ -1419,11 +1433,11 @@ class ePCSAFTState:
                 value_basis="residual_chemical_potential",
                 source_equation_ids=("mu_res", "ares_disp"),
             )
-        return _backend_unavailable_result(
+        return _not_available_result(
             value,
             ncomp,
             0,
-            "backend_unavailable: chemical-potential parameter derivatives are not implemented.",
+            "not_available: chemical-potential parameter derivatives are not implemented.",
             component_order=tuple(self._mixture.species),
             parameter_order=(),
             value_basis="residual_chemical_potential",
@@ -1432,11 +1446,11 @@ class ePCSAFTState:
     def ln_fugacity_composition_derivative_result(self):
         """Return ln-fugacity composition-derivative support status."""
         ncomp = int(self._x.size)
-        return _backend_unavailable_result(
+        return _not_available_result(
             self.fugacity_coefficient(natural_log=True),
             ncomp,
             ncomp,
-            "backend_unavailable: ln-fugacity composition Jacobians require second composition derivatives.",
+            "not_available: ln-fugacity composition Jacobians require second composition derivatives.",
             variable_order=tuple(self._mixture.species),
             component_order=tuple(self._mixture.species),
         )
@@ -1478,11 +1492,11 @@ class ePCSAFTState:
             )
         born = self.born_ssmds_liquid_derivatives()
         if not bool(born.get("supported", False)):
-            return _backend_unavailable_result(
+            return _not_available_result(
                 value,
                 ncomp,
                 0,
-                str(born.get("message", "backend_unavailable: ln-fugacity parameter derivatives are not implemented.")),
+                str(born.get("message", "not_available: ln-fugacity parameter derivatives are not implemented.")),
                 component_order=tuple(self._mixture.species),
                 parameter_order=(),
             )
@@ -1516,11 +1530,11 @@ class ePCSAFTState:
             values = np.asarray([self.activity_coefficient(species=species)[label] for label in species], dtype=float)
         except _DERIVATIVE_VALUE_ERRORS:
             values = np.asarray([], dtype=float)
-        return _backend_unavailable_result(
+        return _not_available_result(
             values,
             ncomp,
             ncomp,
-            "backend_unavailable: activity-coefficient composition Jacobians are not implemented.",
+            "not_available: activity-coefficient composition Jacobians are not implemented.",
             variable_order=tuple(species),
             component_order=tuple(species),
         )
@@ -1536,11 +1550,11 @@ class ePCSAFTState:
         except _DERIVATIVE_VALUE_ERRORS:
             value = np.asarray([], dtype=float)
         if not bool(born.get("supported", False)):
-            return _backend_unavailable_result(
+            return _not_available_result(
                 value,
                 ncomp,
                 0,
-                str(born.get("message", "backend_unavailable: activity parameter derivatives are not implemented.")),
+                str(born.get("message", "not_available: activity parameter derivatives are not implemented.")),
                 component_order=tuple(species),
                 parameter_order=(),
                 value_basis="natural_log_activity_coefficient",
@@ -1573,11 +1587,11 @@ class ePCSAFTState:
         try:
             epsilon, deps_dx = self.relative_permittivity()
         except _DERIVATIVE_VALUE_ERRORS as exc:
-            return _backend_unavailable_result(
+            return _not_available_result(
                 [],
                 1,
                 int(self._x.size),
-                f"backend_unavailable: relative-permittivity derivative backend failed: {exc}",
+                f"not_available: relative-permittivity derivative backend failed: {exc}",
                 variable_order=tuple(self._mixture.species),
             )
         return _derivative_result_payload(
@@ -1587,6 +1601,7 @@ class ePCSAFTState:
             value=[float(epsilon)],
             jacobian=np.asarray(deps_dx, dtype=float).reshape((1, int(self._x.size))),
             shape=[1, int(self._x.size)],
+            output_order=("relative_permittivity",),
             variable_order=tuple(self._mixture.species),
             source_equation_ids=("relative_permittivity",),
         )
@@ -1597,21 +1612,21 @@ class ePCSAFTState:
         try:
             epsilon, _ = self.relative_permittivity()
         except _DERIVATIVE_VALUE_ERRORS as exc:
-            return _backend_unavailable_result(
+            return _not_available_result(
                 [],
                 1,
                 0,
-                f"backend_unavailable: relative-permittivity derivative backend failed: {exc}",
+                f"not_available: relative-permittivity derivative backend failed: {exc}",
                 parameter_order=(),
             )
         rule, _mode = _state_rel_perm_rule_and_mode(params)
         dielc = np.asarray(params.get("dielc", []), dtype=float).flatten()
         if rule != 1 or dielc.size != self._x.size:
-            return _backend_unavailable_result(
+            return _not_available_result(
                 [float(epsilon)],
                 1,
                 0,
-                "backend_unavailable: relative-permittivity parameter derivatives are implemented for linear mole-fraction mixing only.",
+                "not_available: relative-permittivity parameter derivatives are implemented for linear mole-fraction mixing only.",
                 parameter_order=(),
             )
         return _derivative_result_payload(
@@ -1621,6 +1636,7 @@ class ePCSAFTState:
             value=[float(epsilon)],
             jacobian=np.asarray(self._x, dtype=float).reshape((1, int(self._x.size))),
             shape=[1, int(self._x.size)],
+            output_order=("relative_permittivity",),
             parameter_order=tuple(f"relative_permittivity:{name}" for name in self._mixture.species),
             source_equation_ids=("relative_permittivity",),
         )
@@ -1646,7 +1662,7 @@ class ePCSAFTState:
                 {
                     "quantity": quantity,
                     "derivative": derivative,
-                    "backend": str(result.get("backend", "backend_unavailable")),
+                    "backend": str(result.get("backend", "not_available")),
                     "supported": supported,
                     "not_applicable": row_not_applicable,
                     "classification": classify(
@@ -1654,7 +1670,7 @@ class ePCSAFTState:
                         not_applicable=row_not_applicable,
                         override=result.get("classification"),
                     ),
-                    "backend_unavailable_reason": (
+                    "not_available_reason": (
                         "" if result.get("supported", False) else str(result.get("message", ""))
                     ),
                     "source_equation_ids": list(source_equation_ids),
@@ -1673,13 +1689,13 @@ class ePCSAFTState:
             ("ion", "debye_huckel / ion", "ares_dh"),
             ("born", "born_direct", "ares_born"),
         ):
-            backend = details.get(key, "backend_unavailable")
+            backend = details.get(key, "not_available")
             if key == "assoc" and assoc_active and backend == "analytic":
                 backend = "analytic_implicit"
             add(
                 quantity,
                 "composition",
-                {"supported": backend != "backend_unavailable", "backend": backend, "message": ""},
+                {"supported": backend != "not_available", "backend": backend, "message": ""},
                 not_applicable=(key in {"assoc", "ion", "born"} and np.allclose(composition["terms"][key], 0.0)),
                 source_equation_ids=(eqid,),
             )
@@ -1729,11 +1745,11 @@ class ePCSAFTState:
         add(
             "k_hb_ij",
             "parameter",
-            _backend_unavailable_result(
+            _not_available_result(
                 [],
                 0,
                 1,
-                "backend_unavailable: k_hb_ij property/regression derivatives require implicit association site-fraction sensitivities owned by Task C.",
+                "not_available: k_hb_ij property/regression derivatives require implicit association site-fraction sensitivities owned by Task C.",
                 classification="blocker_requires_implicit_association_sensitivity",
                 parameter_family="k_hb_ij",
                 future_owner="Task C",
@@ -1770,7 +1786,7 @@ class ePCSAFTState:
             "z_total": float(z_terms["total"]),
             "derivative_backend": {str(k): str(v) for k, v in dict(result.derivative_backend).items()},
             "derivative_available": bool(result.derivative_available),
-            "backend_unavailable_reason": str(result.backend_unavailable_reason),
+            "not_available_reason": str(result.not_available_reason),
         }
 
     def _fugacity_coefficient_term_result(self):
@@ -2864,7 +2880,7 @@ def _fit_generic_native_least_squares(
                 "",
             )
         ),
-        "backend_unavailable_reason": str(result.get("backend_unavailable_reason", "")),
+        "not_available_reason": str(result.get("not_available_reason", "")),
         "hessian_available": bool(result.get("hessian_available", False)),
         "hessian_backend": str(result.get("hessian_backend", "not_implemented")),
         "hessian_fallback_used": bool(result.get("hessian_fallback_used", False)),
@@ -2919,7 +2935,7 @@ def _fit_generic_native_ceres(
         "jacobian_backend": str(result.get("jacobian_backend", "not_available")),
         "jacobian_fallback_used": bool(result.get("jacobian_fallback_used", False)),
         "jacobian_fallback_reason": str(result.get("jacobian_fallback_reason", "")),
-        "backend_unavailable_reason": str(result.get("backend_unavailable_reason", "")),
+        "not_available_reason": str(result.get("not_available_reason", "")),
         "hessian_available": bool(result.get("hessian_available", False)),
         "hessian_backend": str(result.get("hessian_backend", "not_implemented")),
         "hessian_fallback_used": bool(result.get("hessian_fallback_used", False)),
@@ -2964,7 +2980,7 @@ def _evaluate_generic_native_debug(
                 "",
             )
         ),
-        "backend_unavailable_reason": str(result.get("backend_unavailable_reason", "")),
+        "not_available_reason": str(result.get("not_available_reason", "")),
         "hessian_row_major": vector_to_array(result.get("hessian_row_major", [])),
         "hessian_shape": tuple(result.get("hessian_shape", (0, 0))),
         "hessian_available": bool(result.get("hessian_available", False)),

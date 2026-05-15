@@ -9,21 +9,21 @@
 
 #include "epcsaft_chemical_equilibrium.h"
 #include "epcsaft_equilibrium.h"
-#include "ad_derivative_checks.h"
+#include "cppad_smoke_checks.h"
 
-epcsaft::native::autodiff::ADDerivativeResult cppad_eos_contribution_derivatives_cpp(
+epcsaft::native::cppad_support::CppADDerivativeResult cppad_eos_contribution_derivatives_cpp(
     double t,
     double rho,
     const std::vector<double>& x,
     const add_args& cppargs
 );
-epcsaft::native::autodiff::ADDerivativeResult cppad_pressure_density_derivative_cpp(
+epcsaft::native::cppad_support::CppADDerivativeResult cppad_pressure_density_derivative_cpp(
     double t,
     double rho,
     const std::vector<double>& x,
     const add_args& cppargs
 );
-epcsaft::native::autodiff::ADDerivativeResult cppad_pure_neutral_parameter_derivatives_cpp(
+epcsaft::native::cppad_support::CppADDerivativeResult cppad_pure_neutral_parameter_derivatives_cpp(
     double t,
     double rho,
     const add_args& cppargs
@@ -43,15 +43,17 @@ namespace {
 
 py::object native_solution_error_type;
 
-py::dict cppad_smoke_to_dict(const epcsaft::native::autodiff::ADDerivativeResult& result) {
+py::dict cppad_smoke_to_dict(const epcsaft::native::cppad_support::CppADDerivativeResult& result) {
     py::dict out;
-    out["cppad_compiled"] = epcsaft::native::autodiff::cppad_compiled();
+    out["cppad_compiled"] = epcsaft::native::cppad_support::cppad_compiled();
     out["cppad_used"] = result.supported && result.backend == "cppad";
-    out["status"] = epcsaft::native::autodiff::cppad_build_status();
+    out["status"] = epcsaft::native::cppad_support::cppad_build_status();
     out["derivative_backend"] = result.backend;
     out["message"] = result.message;
     out["value"] = result.value;
     out["jacobian_row_major"] = result.jacobian_row_major;
+    out["outputs"] = result.outputs;
+    out["variables"] = result.variables;
     out["shape"] = py::make_tuple(result.rows, result.cols);
     return out;
 }
@@ -145,8 +147,16 @@ py::dict neutral_binary_pair_property_derivatives_to_dict(
 ) {
     py::dict out;
     out["supported"] = true;
-    out["backend"] = "cppad";
-    out["message"] = "CppAD neutral binary pair-parameter property derivatives available";
+    bool uses_implicit = kij_forward.backend == "cppad_implicit" || kij_reverse.backend == "cppad_implicit";
+    if (lij_forward != nullptr && lij_reverse != nullptr) {
+        uses_implicit = uses_implicit
+            || lij_forward->backend == "cppad_implicit"
+            || lij_reverse->backend == "cppad_implicit";
+    }
+    out["backend"] = uses_implicit ? "cppad_implicit" : "cppad";
+    out["message"] = uses_implicit
+        ? "CppAD binary pair-parameter derivatives with implicit association value routing available"
+        : "CppAD neutral binary pair-parameter property derivatives available";
     append_pair_parameter_derivatives(out, "k_ij", kij_forward, kij_reverse);
     out["parameter_names"] = std::vector<std::string>{"k_ij"};
     if (lij_forward != nullptr && lij_reverse != nullptr) {
@@ -319,7 +329,7 @@ py::dict generic_regression_result_to_dict(const GenericRegressionResult& result
     out["jacobian_backend"] = result.jacobian_backend;
     out["jacobian_fallback_used"] = result.jacobian_fallback_used;
     out["jacobian_fallback_reason"] = result.jacobian_fallback_reason;
-    out["backend_unavailable_reason"] = result.backend_unavailable_reason;
+    out["not_available_reason"] = result.not_available_reason;
     out["hessian_available"] = result.hessian_available;
     out["hessian_backend"] = result.hessian_backend;
     out["hessian_fallback_used"] = result.hessian_fallback_used;
@@ -343,7 +353,7 @@ py::dict generic_regression_debug_to_dict(const GenericRegressionDebugResult& re
     out["jacobian_backend"] = result.jacobian_backend;
     out["jacobian_fallback_used"] = result.jacobian_fallback_used;
     out["jacobian_fallback_reason"] = result.jacobian_fallback_reason;
-    out["backend_unavailable_reason"] = result.backend_unavailable_reason;
+    out["not_available_reason"] = result.not_available_reason;
     out["hessian_row_major"] = result.hessian_row_major;
     out["hessian_shape"] = py::make_tuple(result.hessian_rows, result.hessian_cols);
     out["hessian_available"] = result.hessian_available;
@@ -674,7 +684,7 @@ py::dict native_chemical_residual_evaluation_to_dict(const ChemicalResidualEvalu
     out["jacobian_shape"] = py::make_tuple(result.jacobian_rows, result.jacobian_cols);
     out["jacobian_backend"] = result.diagnostics_string.count("jacobian_backend")
         ? result.diagnostics_string.at("jacobian_backend")
-        : "backend_unavailable";
+        : "not_available";
     out["hessian_backend"] = result.diagnostics_string.count("hessian_backend")
         ? result.diagnostics_string.at("hessian_backend")
         : "gauss_newton";
@@ -706,7 +716,7 @@ py::dict native_electrolyte_lle_residual_evaluation_to_dict(const ElectrolyteLLE
     out["jacobian_shape"] = py::make_tuple(result.jacobian_rows, result.jacobian_cols);
     out["jacobian_backend"] = result.diagnostics_string.count("jacobian_backend")
         ? result.diagnostics_string.at("jacobian_backend")
-        : "backend_unavailable";
+        : "not_available";
     out["hessian_backend"] = result.diagnostics_string.count("hessian_backend")
         ? result.diagnostics_string.at("hessian_backend")
         : "gauss_newton";
@@ -1368,7 +1378,7 @@ PYBIND11_MODULE(_core, m) {
     native_solution_error_type = m.attr("NativeSolutionError");
 
     m.def("_native_cppad_smoke", []() {
-        return cppad_smoke_to_dict(epcsaft::native::autodiff::cppad_square_smoke_derivative(3.0));
+        return cppad_smoke_to_dict(epcsaft::native::cppad_support::cppad_square_smoke_derivative(3.0));
     });
     m.def("_native_ceres_smoke", []() {
         py::dict out;
@@ -1482,7 +1492,7 @@ PYBIND11_MODULE(_core, m) {
         .def_readonly("z", &CompositionContributionResult::z)
         .def_readonly("derivative_backend", &CompositionContributionResult::derivative_backend)
         .def_readonly("derivative_available", &CompositionContributionResult::derivative_available)
-        .def_readonly("backend_unavailable_reason", &CompositionContributionResult::backend_unavailable_reason);
+        .def_readonly("not_available_reason", &CompositionContributionResult::not_available_reason);
 
     py::class_<ResidualChemicalPotentialResult>(m, "ResidualChemicalPotentialResult")
         .def_readonly("mu", &ResidualChemicalPotentialResult::mu)

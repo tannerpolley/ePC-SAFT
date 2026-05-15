@@ -86,7 +86,7 @@ def _stub_native_generic_runner(monkeypatch, *, backend="least_squares_native"):
             "jacobian_backend": jacobian_backend,
             "jacobian_fallback_used": False,
             "jacobian_fallback_reason": "",
-            "backend_unavailable_reason": "",
+            "not_available_reason": "",
             "hessian_available": False,
             "hessian_backend": "not_implemented",
             "hessian_fallback_used": False,

@@ -12,10 +12,10 @@ static double born_prefactor_cpp(double t)
     return E_CHRG * E_CHRG / (4.0 * PI * kb * t * perm_vac);
 }
 
-static void assign_backend_unavailable(BornSSMDSDerivativeResult& result, int ncomp, const std::string& message)
+static void assign_not_available(BornSSMDSDerivativeResult& result, int ncomp, const std::string& message)
 {
     result.supported = false;
-    result.backend = "backend_unavailable";
+    result.backend = "not_available";
     result.message = message;
     result.ncomp = ncomp;
     result.a_born_d_d_born.assign(ncomp, 0.0);
@@ -222,15 +222,15 @@ BornSSMDSDerivativeResult born_ssmds_liquid_derivatives_cpp(
     BornSSMDSDerivativeResult result;
 
     if (phase != 0) {
-        assign_backend_unavailable(result, ncomp, "SSM+DS Born derivatives are liquid-electrolyte only");
+        assign_not_available(result, ncomp, "SSM+DS Born derivatives are liquid-electrolyte only");
         return result;
     }
     if (cppargs.z.empty() || cppargs.born_model != 2) {
-        assign_backend_unavailable(result, ncomp, "backend_unavailable: SSM+DS Born derivatives require the liquid SSM/DS Born model.");
+        assign_not_available(result, ncomp, "not_available: SSM+DS Born derivatives require the liquid SSM/DS Born model.");
         return result;
     }
     if (cppargs.born_eps_mode == 1) {
-        assign_backend_unavailable(result, ncomp, "backend_unavailable: SSM+DS Born parameter derivatives currently use mixture dielectric routing.");
+        assign_not_available(result, ncomp, "not_available: SSM+DS Born parameter derivatives currently use mixture dielectric routing.");
         return result;
     }
 

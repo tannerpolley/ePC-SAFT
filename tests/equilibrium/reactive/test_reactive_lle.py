@@ -102,7 +102,7 @@ def test_reactive_lle_stages_reaction_coordinates_into_neutral_lle_split(monkeyp
     assert result.diagnostics["reactive_phase_method"] == "chemical_equilibrium_then_phase_equilibrium"
     assert result.diagnostics["coupling_level"] == "staged_not_full_simultaneous_nlp"
     assert result.diagnostics["full_simultaneous_reactive_nlp"] is False
-    assert result.diagnostics["derivative_policy"]["finite_difference_backend_available"] is False
+    assert result.diagnostics["derivative_policy"]["numerical_derivative_backend_available"] is False
     assert result.diagnostics["phase_kind"] == "lle_flash"
     assert result.diagnostics["reaction_coordinates"]["reaction_count"] == 1
     assert result.diagnostics["reaction_coordinates"]["named_reactions"] == ["methanol_to_cyclohexane"]

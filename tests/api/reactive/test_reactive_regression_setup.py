@@ -114,7 +114,7 @@ def test_reactive_regression_context_runs_native_speciation_objective_and_jacobi
     assert objective.batch_result.failure_count == 0
     assert objective.residual_names == ("native-row.reaction.salt_dissociation",)
     assert objective.residuals.shape == (1,)
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+    with pytest.raises(epcsaft.InputError, match="not_available"):
         context.evaluate_derivatives({"Na+.sigma": 2.8232}, parameters=["Na+.sigma"])
 
 def test_reactive_regression_context_evaluates_batch_and_reuses_warm_starts(monkeypatch) -> None:
@@ -288,5 +288,5 @@ def test_reactive_regression_objective_and_jacobian_are_consistent(monkeypatch) 
 
     objective = context.evaluate_objective({"A.sigma": 3.0})
     assert objective.residuals.shape == (2,)
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+    with pytest.raises(epcsaft.InputError, match="not_available"):
         context.evaluate_derivatives({"A.sigma": 3.0}, parameters=["A.sigma"])

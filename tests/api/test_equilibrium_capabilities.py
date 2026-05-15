@@ -6,24 +6,23 @@ import epcsaft
 def test_equilibrium_capabilities_expose_derivative_policy() -> None:
     policy = epcsaft.capabilities()["equilibrium"]["derivative_policy"]
 
-    assert policy["finite_difference_backend_available"] is False
-    assert policy["unsupported_derivative_status"] == "backend_unavailable"
-    assert policy["auto_policy"] == "analytic_or_cppad_or_implicit_where_available_else_backend_unavailable"
-    assert "finite_difference" not in {str(item).lower() for item in policy["accepted_derivative_backends"]}
+    assert policy["numerical_derivative_backend_available"] is False
+    assert policy["unsupported_derivative_status"] == "not_available"
+    assert policy["auto_policy"] == "analytic_or_cppad_or_implicit_where_available_else_not_available"
+    assert "numerical_derivative" not in {str(item).lower() for item in policy["accepted_derivative_backends"]}
     assert {
         "analytic",
         "cppad",
         "analytic_implicit",
         "cppad_implicit",
-        "legacy_eigen_forward",
-        "backend_unavailable",
+        "not_available",
     }.issubset(set(policy["accepted_derivative_backends"]))
     assert {
         "thermodynamic_backend",
         "solver_backend",
         "derivative_backend",
         "derivative_status",
-        "backend_unavailable_reason",
+        "not_available_reason",
         "solved_internal_states",
         "derivative_backend_by_block",
         "implicit_sensitivity_blocks",

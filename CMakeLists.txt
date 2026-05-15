@@ -168,7 +168,7 @@ endif()
 
 file(GLOB EPCSAFT_NATIVE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/autodiff/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/cppad/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/contributions/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/equilibrium/*.cpp"
 )
@@ -180,7 +180,7 @@ add_library(epcsaft_native OBJECT ${EPCSAFT_NATIVE_SOURCES})
 target_include_directories(epcsaft_native
     PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/autodiff"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/cppad"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/contributions"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/equilibrium"
         "${EPCSAFT_EIGEN_INCLUDE}"
@@ -201,7 +201,7 @@ target_link_libraries(_core PRIVATE epcsaft_native)
 target_include_directories(_core
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/autodiff"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/cppad"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/contributions"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/equilibrium"
         "${EPCSAFT_EIGEN_INCLUDE}"

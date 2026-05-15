@@ -256,9 +256,9 @@ struct ChemicalEvaluationCounters {
 };
 
 struct ChemicalDerivativeSelection {
-    std::string backend = "backend_unavailable";
+    std::string backend = "not_available";
     std::string capability_path = "";
-    std::string backend_unavailable_reason = "";
+    std::string not_available_reason = "";
     bool derivative_available = false;
 };
 
@@ -269,10 +269,10 @@ ChemicalDerivativeSelection select_chemical_derivative_backend(
     ChemicalDerivativeSelection selection;
     const std::string requested = options.jacobian_backend;
     if (requested == "autodiff" || requested == "cppad") {
-        selection.backend_unavailable_reason = requested == "cppad"
-            ? "backend_unavailable: CppAD chemical-equilibrium residual jacobian is not implemented for log-species amounts."
-            : "backend_unavailable: legacy Eigen forward-mode chemical-equilibrium residual jacobian is not implemented for log-species amounts.";
-        throw ValueError(selection.backend_unavailable_reason);
+        selection.not_available_reason = requested == "cppad"
+            ? "not_available: CppAD chemical-equilibrium residual jacobian is not implemented for log-species amounts."
+            : "not_available: legacy Eigen forward-mode chemical-equilibrium residual jacobian is not implemented for log-species amounts.";
+        throw ValueError(selection.not_available_reason);
     }
     if (requested != "auto" && requested != "analytic") {
         throw ValueError("chemical equilibrium jacobian_backend must be 'auto', 'autodiff', 'analytic', or 'cppad'.");
@@ -283,11 +283,11 @@ ChemicalDerivativeSelection select_chemical_derivative_backend(
         selection.derivative_available = true;
         return selection;
     }
-    selection.backend = "backend_unavailable";
+    selection.backend = "not_available";
     selection.capability_path = "chemical_equilibrium:activity_or_concentration:log_amounts";
-    selection.backend_unavailable_reason =
-        "backend_unavailable: analytic/CppAD/implicit chemical-equilibrium residual jacobian is unavailable for activity- or concentration-coupled standard states.";
-    throw ValueError(selection.backend_unavailable_reason);
+    selection.not_available_reason =
+        "not_available: analytic/CppAD/implicit chemical-equilibrium residual jacobian is unavailable for activity- or concentration-coupled standard states.";
+    throw ValueError(selection.not_available_reason);
     return selection;
 }
 
@@ -760,9 +760,9 @@ Eigen::MatrixXd chemical_residual_jacobian(
     (void)phase_int;
     (void)activity_model;
     (void)state_failure_count;
-    throw ValueError(selected.backend_unavailable_reason.empty()
-        ? "backend_unavailable: chemical-equilibrium residual jacobian is unavailable."
-        : selected.backend_unavailable_reason);
+    throw ValueError(selected.not_available_reason.empty()
+        ? "not_available: chemical-equilibrium residual jacobian is unavailable."
+        : selected.not_available_reason);
 }
 
 Eigen::MatrixXd matrix_from_row_major(const std::vector<double>& values, int rows, int cols, const std::string& name) {
@@ -936,7 +936,7 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     out.diagnostics_string["derivative_backend"] = derivative_selection.backend;
     out.diagnostics_string["derivative_status"] = derivative_selection.backend;
     out.diagnostics_string["derivative_capability_path"] = derivative_selection.capability_path;
-    out.diagnostics_string["backend_unavailable_reason"] = derivative_selection.backend_unavailable_reason;
+    out.diagnostics_string["not_available_reason"] = derivative_selection.not_available_reason;
     out.diagnostics_string["hessian_backend"] = "gauss_newton";
     out.diagnostics_string["hessian_kind"] = "approximate_least_squares_gauss_newton";
     out.diagnostics_string["hessian_structure"] = "dense_lower_triangular";
@@ -1134,7 +1134,7 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
             result.diagnostics_string["derivative_backend"] = derivative_selection.backend;
             result.diagnostics_string["derivative_status"] = derivative_selection.backend;
             result.diagnostics_string["derivative_capability_path"] = derivative_selection.capability_path;
-            result.diagnostics_string["backend_unavailable_reason"] = derivative_selection.backend_unavailable_reason;
+            result.diagnostics_string["not_available_reason"] = derivative_selection.not_available_reason;
             result.diagnostics_bool["derivative_available"] = derivative_selection.derivative_available;
             result.diagnostics_bool["jacobian_available"] = derivative_selection.derivative_available;
             result.diagnostics_bool["jacobian_fallback_used"] = false;
@@ -1237,7 +1237,7 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
     result.diagnostics_string["derivative_backend"] = derivative_selection.backend;
     result.diagnostics_string["derivative_status"] = derivative_selection.backend;
     result.diagnostics_string["derivative_capability_path"] = derivative_selection.capability_path;
-    result.diagnostics_string["backend_unavailable_reason"] = derivative_selection.backend_unavailable_reason;
+    result.diagnostics_string["not_available_reason"] = derivative_selection.not_available_reason;
     result.diagnostics_bool["derivative_available"] = derivative_selection.derivative_available;
     result.diagnostics_bool["jacobian_available"] = derivative_selection.derivative_available;
     result.diagnostics_bool["jacobian_fallback_used"] = false;

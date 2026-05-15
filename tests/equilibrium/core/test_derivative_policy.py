@@ -12,7 +12,7 @@ def _neutral_mixture() -> tuple[epcsaft.ePCSAFTMixture, np.ndarray]:
     return mix, composition
 
 
-def test_equilibrium_options_reject_removed_finite_difference_backend() -> None:
+def test_equilibrium_options_reject_removed_numerical_derivative_backend() -> None:
     mix, feed = _neutral_mixture()
     removed_backend = "finite" + "_difference"
 
@@ -25,7 +25,7 @@ def test_equilibrium_options_reject_removed_finite_difference_backend() -> None:
         )
 
 
-def test_auto_equilibrium_diagnostics_do_not_fallback_to_finite_difference() -> None:
+def test_auto_equilibrium_diagnostics_do_not_fallback_to_numerical_derivative() -> None:
     mix, feed = _neutral_mixture()
 
     result = mix.flash_tp(T=220.0, P=1.0e5, z=feed, options=epcsaft.EquilibriumOptions(jacobian_backend="auto"))
@@ -33,13 +33,13 @@ def test_auto_equilibrium_diagnostics_do_not_fallback_to_finite_difference() -> 
     diagnostics = result.diagnostics
     assert diagnostics["requested_jacobian_backend"] == "auto"
     assert diagnostics["jacobian_fallback_used"] is False
-    assert diagnostics["derivative_backend"] == "backend_unavailable"
-    assert diagnostics["derivative_status"] == "backend_unavailable"
-    assert diagnostics["backend_unavailable_reason"].startswith("backend_unavailable")
+    assert diagnostics["derivative_backend"] == "not_available"
+    assert diagnostics["derivative_status"] == "not_available"
+    assert diagnostics["not_available_reason"].startswith("not_available")
     assert diagnostics["thermodynamic_backend"] == "epcsaft_state_fugacity_activity_property_api"
     assert "density_roots" in diagnostics["solved_internal_states"]
-    assert diagnostics["derivative_backend_by_block"]["density_root"] == "backend_unavailable"
-    assert "finite_difference" not in str(diagnostics).lower()
+    assert diagnostics["derivative_backend_by_block"]["density_root"] == "not_available"
+    assert "numerical_derivative" not in str(diagnostics).lower()
 
 
 def test_reactive_ideal_speciation_uses_analytic_residual_derivatives() -> None:
@@ -74,10 +74,10 @@ def test_reactive_ideal_speciation_uses_analytic_residual_derivatives() -> None:
     assert diagnostics["derivative_backend_by_block"]["reaction_residual_jacobian"] == "analytic"
     assert diagnostics["jacobian_fallback_used"] is False
     backend_values = {str(value).lower() for value in diagnostics["derivative_backend_by_block"].values()}
-    assert "finite_difference" not in backend_values
+    assert "numerical_derivative" not in backend_values
 
 
-def test_activity_coupled_reactive_speciation_returns_backend_unavailable() -> None:
+def test_activity_coupled_reactive_speciation_returns_not_available() -> None:
     mix = epcsaft.ePCSAFTMixture.from_params(
         {
             "m": np.asarray([1.0, 1.0]),
@@ -87,7 +87,7 @@ def test_activity_coupled_reactive_speciation_returns_backend_unavailable() -> N
         species=["A", "B"],
     )
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+    with pytest.raises(epcsaft.InputError, match="not_available"):
         mix.chemical_equilibrium(
             T=298.15,
             P=1.0e5,
@@ -99,7 +99,7 @@ def test_activity_coupled_reactive_speciation_returns_backend_unavailable() -> N
         )
 
 
-def test_explicit_cppad_reactive_speciation_returns_backend_unavailable_until_supported() -> None:
+def test_explicit_cppad_reactive_speciation_returns_not_available_until_supported() -> None:
     mix = epcsaft.ePCSAFTMixture.from_params(
         {
             "m": np.asarray([1.0, 1.0]),
@@ -109,7 +109,7 @@ def test_explicit_cppad_reactive_speciation_returns_backend_unavailable_until_su
         species=["A", "B"],
     )
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable"):
+    with pytest.raises(epcsaft.InputError, match="not_available"):
         mix.chemical_equilibrium(
             T=298.15,
             P=1.0e5,

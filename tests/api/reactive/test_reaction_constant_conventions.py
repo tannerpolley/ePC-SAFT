@@ -156,7 +156,7 @@ def test_unsupported_molality_native_route_fails_loudly() -> None:
         convention=epcsaft.ReactionConstantConvention(standard_state="molality"),
     )
 
-    with pytest.raises(epcsaft.InputError, match="backend_unavailable: reaction constant convention 'molality'"):
+    with pytest.raises(epcsaft.InputError, match="not_available: reaction constant convention 'molality'"):
         epcsaft.solve_reactive_speciation(
             species=mix.species,
             mixture_factory=lambda x, T, P: mix,
