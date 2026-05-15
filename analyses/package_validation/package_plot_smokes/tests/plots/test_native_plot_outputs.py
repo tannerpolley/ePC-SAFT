@@ -86,7 +86,7 @@ def test_runtime_pressure_density_constructor_parity_plot() -> None:
     )
 
 
-def test_native_temperature_derivative_finite_difference_parity_plot() -> None:
+def test_native_temperature_derivative_centered_delta_parity_plot() -> None:
     mix, _species, _pressure, density, temperature, composition = _native_neutral_state()
     states = [
         ("rho state", mix.state(T=temperature, x=composition, rho=density)),
@@ -100,15 +100,15 @@ def test_native_temperature_derivative_finite_difference_parity_plot() -> None:
     for label, state in states:
         plus = mix.state(T=state.T + delta_t, x=composition, rho=state.density(), phase="liq")
         minus = mix.state(T=state.T - delta_t, x=composition, rho=state.density(), phase="liq")
-        finite_difference = (plus.ares() - minus.ares()) / (2.0 * delta_t)
+        centered_delta = (plus.ares() - minus.ares()) / (2.0 * delta_t)
         derivative = state.temperature_derivative_residual_helmholtz(return_contribution_terms=True)
         labels.append(label)
         actual.append(float(derivative["total"]))
-        expected.append(float(finite_difference))
+        expected.append(float(centered_delta))
 
     save_parity_plot(
-        "native_temperature_derivative_finite_difference_parity.png",
-        "Native temperature derivative vs finite difference",
+        "native_temperature_derivative_centered_delta_parity.png",
+        "Native temperature derivative vs centered perturbation",
         labels,
         np.asarray(actual, dtype=float),
         np.asarray(expected, dtype=float),
@@ -116,7 +116,7 @@ def test_native_temperature_derivative_finite_difference_parity_plot() -> None:
     )
 
 
-def test_native_composition_derivative_finite_difference_parity_plot() -> None:
+def test_native_composition_derivative_centered_delta_parity_plot() -> None:
     labels: list[str] = []
     actual: list[float] = []
     expected: list[float] = []
@@ -132,17 +132,17 @@ def test_native_composition_derivative_finite_difference_parity_plot() -> None:
             plus[j] -= delta_x
             minus[i] -= delta_x
             minus[j] += delta_x
-            finite_difference = (
+            centered_delta = (
                 mix.state(T=temperature, x=plus, rho=density).ares()
                 - mix.state(T=temperature, x=minus, rho=density).ares()
             ) / (2.0 * delta_x)
             labels.append(f"{state_name} d{i}-d{j}")
             actual.append(float(derivative[i] - derivative[j]))
-            expected.append(float(finite_difference))
+            expected.append(float(centered_delta))
 
     save_parity_plot(
-        "native_composition_derivative_finite_difference_parity.png",
-        "Native composition derivative vs constrained finite difference",
+        "native_composition_derivative_centered_delta_parity.png",
+        "Native composition derivative vs constrained centered perturbation",
         labels,
         np.asarray(actual, dtype=float),
         np.asarray(expected, dtype=float),

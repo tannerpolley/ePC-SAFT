@@ -26,33 +26,75 @@ def test_build_script_help_lists_incremental_workflow_flags(capsys) -> None:
     assert "--configure-only" in help_text
     assert "--build-only" in help_text
     assert "--parallel" in help_text
+    assert "--profile" in help_text
     assert "--status" in help_text
 
 
-def test_build_script_defaults_enable_ceres_and_cppad() -> None:
+def test_build_script_default_profile_skips_ceres_and_keeps_cppad() -> None:
     args = build_epcsaft._parser().parse_args([])
+    settings = build_epcsaft._resolve_settings(args)
 
-    assert args.enable_ceres is True
-    assert args.enable_cppad is True
+    assert args.profile == "fast"
+    assert settings.enable_ceres is False
+    assert settings.enable_cppad is True
+    assert settings.parallel == "2"
 
 
 def test_build_script_disable_flags_turn_off_optional_native_dependencies() -> None:
     args = build_epcsaft._parser().parse_args(["--disable-ceres", "--disable-cppad"])
+    settings = build_epcsaft._resolve_settings(args)
 
-    assert args.enable_ceres is False
-    assert args.enable_cppad is False
+    assert settings.enable_ceres is False
+    assert settings.enable_cppad is False
 
 
-def test_cmake_and_presets_match_cli_default_dependency_state() -> None:
+def test_build_script_profiles_resolve_optional_native_dependency_state() -> None:
+    full = build_epcsaft._resolve_settings(build_epcsaft._parser().parse_args(["--profile", "full"]))
+    cppad = build_epcsaft._resolve_settings(build_epcsaft._parser().parse_args(["--profile", "cppad"]))
+    minimal = build_epcsaft._resolve_settings(build_epcsaft._parser().parse_args(["--profile", "minimal"]))
+    explicit_ceres = build_epcsaft._resolve_settings(build_epcsaft._parser().parse_args(["--enable-ceres"]))
+    system_ceres = build_epcsaft._resolve_settings(
+        build_epcsaft._parser().parse_args(["--ceres-dir", "C:/ceres/lib/cmake/Ceres"])
+    )
+
+    assert full.enable_ceres is True
+    assert full.enable_cppad is True
+    assert full.parallel == "4"
+    assert cppad.enable_ceres is False
+    assert cppad.enable_cppad is True
+    assert cppad.parallel == "2"
+    assert minimal.enable_ceres is False
+    assert minimal.enable_cppad is False
+    assert explicit_ceres.enable_ceres is True
+    assert explicit_ceres.enable_cppad is True
+    assert system_ceres.enable_ceres is True
+    assert system_ceres.enable_cppad is True
+
+
+def test_package_defaults_keep_ceres_while_dev_script_offers_fast_profile() -> None:
     cmake_text = (build_epcsaft.REPO_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+    pyproject_text = (build_epcsaft.REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    backend_text = (build_epcsaft.REPO_ROOT / "build_backend" / "epcsaft_build_backend.py").read_text(
+        encoding="utf-8"
+    )
     presets = json.loads((build_epcsaft.REPO_ROOT / "CMakePresets.json").read_text(encoding="utf-8"))
 
     assert 'option(EPCSAFT_ENABLE_CERES "Enable Ceres Solver support for native equilibrium nonlinear solves" ON)' in cmake_text
     assert 'option(EPCSAFT_ENABLE_CPPAD "Enable package-wide CppAD support" ON)' in cmake_text
+    assert "EPCSAFT_ENABLE_CERES" not in pyproject_text
+    assert "EPCSAFT_ENABLE_CERES" not in backend_text
 
     native_default = next(p for p in presets["configurePresets"] if p["name"] == "native-default")
     assert native_default["cacheVariables"]["EPCSAFT_ENABLE_CERES"] == "ON"
     assert native_default["cacheVariables"]["EPCSAFT_ENABLE_CPPAD"] == "ON"
+
+    native_cppad = next(p for p in presets["configurePresets"] if p["name"] == "native-cppad")
+    assert native_cppad["cacheVariables"]["EPCSAFT_ENABLE_CERES"] == "OFF"
+    assert native_cppad["cacheVariables"]["EPCSAFT_ENABLE_CPPAD"] == "ON"
+
+    native_ceres_cppad = next(p for p in presets["configurePresets"] if p["name"] == "native-ceres-cppad")
+    assert native_ceres_cppad["cacheVariables"]["EPCSAFT_ENABLE_CERES"] == "ON"
+    assert native_ceres_cppad["cacheVariables"]["EPCSAFT_ENABLE_CPPAD"] == "ON"
 
     dev_mingw = next(p for p in presets["configurePresets"] if p["name"] == "dev-mingw")
     assert dev_mingw["cacheVariables"]["EPCSAFT_ENABLE_CERES"] == "OFF"
@@ -91,6 +133,7 @@ def test_build_status_reports_generator_core_optional_flags_and_stale_lock(tmp_p
     assert "native_core: present" in lines
     assert "ceres_configured: OFF" in lines
     assert "cppad_configured: ON" in lines
+    assert "profile_hint: fast/cppad" in lines
     assert "ninja_lock: present" in lines
     assert "stale_ninja_lock: true" in lines
     assert "last_ninja_target: CMakeFiles/example.cpp.obj" in lines

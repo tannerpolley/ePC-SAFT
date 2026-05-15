@@ -38,7 +38,7 @@ class ImplicitSolveResult:
             raise InputError(f"ImplicitSolveResult.backend must be one of '{supported}'.")
         status = str(self.status).strip().lower()
         if "numerical_derivative" in backend or "numerical_derivative" in status:
-            raise InputError("finite difference is not an allowed implicit sensitivity backend.")
+            raise InputError("Perturbation differencing is not an allowed implicit sensitivity backend.")
 
         state = _array_payload(self.state, name="state")
         residual = _array_payload(self.residual, name="residual")

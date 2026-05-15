@@ -39,13 +39,15 @@ these fields as routing hints, not as proof that a physical case is valid.
      - Fixed-species charge-neutral LLE, preferably after stability checks.
    * - Reactive speciation
      - Production native
-     - Homogeneous chemical equilibrium for a single phase.
+     - Homogeneous chemical equilibrium for a single phase, including activity-
+       and concentration-coupled standard states.
    * - Electrolyte bubble pressure
      - Production native, scoped
      - Fixed-liquid electrolyte bubble pressure with neutral vapor species only.
    * - Reactive electrolyte bubble
-     - Sequential native substeps, scoped
-     - Native speciation followed by fixed-liquid electrolyte bubble pressure.
+     - Native substeps with fixed-liquid handoff, scoped
+     - Native speciation followed by native fixed-liquid electrolyte bubble
+       pressure for neutral vapor species.
    * - IPOPT
      - Optional opt-in bridge
      - Bound-constrained residual-minimization refinement only; not full Gibbs/NLP.
@@ -127,7 +129,7 @@ preserving the same result contract.
 Derivative policy
 -----------------
 
-Equilibrium solvers do not execute finite-difference Jacobians. Solver and
+Equilibrium solvers do not execute perturbation-approximated Jacobians. Solver and
 result diagnostics report the derivative status explicitly:
 
 - ``thermodynamic_backend``
@@ -145,7 +147,7 @@ result diagnostics report the derivative status explicitly:
 Supported derivative labels are ``analytic``, ``cppad``,
 ``analytic_implicit`` and ``cppad_implicit``.
 Unsupported combinations report ``not_available``. ``auto`` never falls
-back to finite differences.
+back to perturbation derivative approximations.
 
 Sequential Reactive Workflow Boundary
 -------------------------------------
@@ -286,11 +288,24 @@ initial composition. Use ``error_mode="result"`` only for diagnostic sweeps.
    print(result.x, result.named_reaction_residuals)
    print(result.diagnostics["jacobian_backend"])
 
-With ``jacobian_backend="auto"``, ideal mole-fraction standard states use the
-analytic native Jacobian. Activity- or concentration-coupled standard states
-raise ``not_available`` until analytic or autodiff residual derivatives
-are implemented. Request ``jacobian_backend="autodiff"`` only when unsupported
-derivative paths should fail loudly.
+With ``jacobian_backend="auto"``, the native chemical-equilibrium residual uses
+the analytic log-amount Jacobian for ideal, activity-coupled, and
+concentration-coupled standard states. Activity and fugacity terms are
+evaluated inside the native residual, not from a cached external activity
+vector. Check these fields before treating a result as a production
+activity-coupled solve:
+
+- ``diagnostics["solver_language"] == "c++"``
+- ``diagnostics["activity_model"]``
+- ``diagnostics["reaction_standard_states"]``
+- ``diagnostics["activity_or_fugacity_terms_in_residual"]``
+- ``diagnostics["derivative_backend_by_block"]["reactive_speciation_variables"]``
+- ``diagnostics["implicit_sensitivity_blocks"]``
+- ``diagnostics["implicit_solve_results"]["reactive_speciation_variables"]``
+
+Request a specific derivative backend only when unsupported routes should fail
+loudly. The required solved composition sensitivity is reported as an implicit
+solved-state block rather than by differentiating through solver iterations.
 
 Electrolyte bubble and reactive bubble
 --------------------------------------
@@ -310,6 +325,8 @@ vapor species. Ions remain liquid-only.
 For reactive electrolyte bubbles, speciation runs first and the equilibrated
 liquid goes into the fixed-liquid bubble solve. Keep strict default behavior
 for single points; use ``error_mode="result"`` for sweeps that must continue.
+This route is suitable for native-backed volatile-neutral partial-pressure
+checks from an equilibrated liquid. It is not a simultaneous reactive NLP.
 
 .. code-block:: python
 
@@ -330,6 +347,14 @@ for single points; use ``error_mode="result"`` for sweeps that must continue.
        options=epcsaft.ReactiveElectrolyteBubbleOptions(error_mode="result"),
    )
    print(reactive_bubble.success, reactive_bubble.diagnostics)
+
+For a pressure/speciation proof, check both nested diagnostic blocks. The
+speciation block should report native activity coupling and implicit sensitivity;
+the bubble block should report ``native_entrypoint`` as
+``_solve_electrolyte_bubble_native`` plus ``partial_pressures`` and
+``fugacity_residual_norm`` for the volatile neutral species. Charged species
+must be absent from ``y_vap`` unless the caller has explicitly defined a charged
+vapor model.
 
 Repeated fugacity/property loops
 --------------------------------

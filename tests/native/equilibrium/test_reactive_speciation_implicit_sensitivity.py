@@ -47,8 +47,16 @@ def test_reactive_speciation_reports_solved_state_derivative_boundaries() -> Non
         "not_available",
     }
     implicit_results = diagnostics["implicit_solve_results"]
-    assert implicit_results["reactive_speciation_variables"]["backend"] == "analytic_implicit"
-    assert implicit_results["reactive_speciation_variables"]["status"] == "residual_jacobian_available"
+    reactive_implicit = implicit_results["reactive_speciation_variables"]
+    assert reactive_implicit["backend"] == "analytic_implicit"
+    assert reactive_implicit["status"] == "residual_jacobian_available"
+    assert reactive_implicit["state"]
+    assert reactive_implicit["residual"]
+    assert reactive_implicit["jacobians"]["residual_state"]
+    assert reactive_implicit["jacobians"]["residual_parameter"]
+    assert reactive_implicit["sensitivity"]
+    assert reactive_implicit["diagnostics"]["parameter"] == "log_equilibrium_constants"
+    assert "reactive_speciation_variables" in diagnostics["implicit_sensitivity_blocks"]
     backend_values = {str(value).lower() for value in diagnostics["derivative_backend_by_block"].values()}
     assert "numerical_derivative" not in backend_values
 

@@ -13,7 +13,7 @@ from tests.helpers.regression_cases import _methane_like_records
 from tests.helpers.regression_cases import _minimal_neutral_metadata
 from tests.helpers.regression_cases import _neutral_fixed_parameters
 from tests.helpers.regression_cases import _real_saturation_records
-from analyses.package_validation.package_plot_smokes.tests.plots.plot_helpers import finite_difference_gradient_values
+from analyses.package_validation.package_plot_smokes.tests.plots.plot_helpers import centered_delta_gradient_values
 from analyses.package_validation.package_plot_smokes.tests.plots.plot_helpers import save_comparison_plot
 from analyses.package_validation.package_plot_smokes.tests.plots.plot_helpers import save_parity_plot
 
@@ -80,11 +80,11 @@ def test_full_hydrocarbon_basis_parameter_comparison_plot() -> None:
     )
 
 
-def test_regression_gradient_finite_difference_parity_plot() -> None:
-    actual, expected = finite_difference_gradient_values()
+def test_regression_gradient_centered_delta_parity_plot() -> None:
+    actual, expected = centered_delta_gradient_values()
     save_parity_plot(
-        "regression_gradient_finite_difference_parity.png",
-        "Native regression gradient vs finite difference",
+        "regression_gradient_centered_delta_parity.png",
+        "Native regression gradient vs centered perturbation",
         ["m", "sigma", "epsilon"],
         actual,
         expected,

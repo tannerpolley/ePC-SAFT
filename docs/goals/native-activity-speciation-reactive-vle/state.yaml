@@ -1,0 +1,763 @@
+version: 2
+
+goal:
+  title: "Native Activity Speciation Reactive VLE"
+  slug: "native-activity-speciation-reactive-vle"
+  kind: existing_plan
+  tranche: "Complete the full issue #115 vertical implementation through native backend, derivative path, Python API, benchmark proof, docs, and validation."
+  status: done
+  intake:
+    original_request: "Read issue #115 on GitHub and set up a GoalBuddy board for all phases to follow issue #115 explicitly in all steps."
+    interpreted_outcome: "A GoalBuddy board exists that turns issue #115 into an executable phased plan with the issue completion contract preserved at every step."
+    input_shape: existing_plan
+    audience: "ePC-SAFT maintainers and downstream MEA-Thermodynamics consumers"
+    authority: requested
+    proof_type: artifact
+    completion_proof: "goal.md, state.yaml, and notes/intake.md exist, validate with the GoalBuddy checker, and encode all issue #115 stages, constraints, owned paths, validation commands, and completion gates."
+    likely_misfire: "A future /goal run could treat intake, diagnostics, staged support, schema support, synthetic payloads, or a partial benchmark as completing issue #115."
+    blind_spots_considered:
+      - "Issue #115 bans multiple implementation escape routes and requires a full vertical production path."
+      - "Goal files themselves must avoid the old contiguous missing-backend token and old numeric-differencing token family."
+      - "Downstream MEA-Thermodynamics evidence makes this package issue the active blocker, but the package API must stay generic."
+      - "Native regression code is explicitly out of edit scope."
+      - "JetBrains MCP should be used for semantic tracing when it materially improves correctness."
+    existing_plan_facts:
+      - "GitHub issue #115 title: Implement native coupled activity speciation and reactive VLE pressure benchmark."
+      - "Issue #115 completion requires native backend, derivative/sensitivity path, Python API surface, pytest suite, docs, and benchmark proof to pass together."
+      - "Stage 0 requires docs/goals/native-activity-speciation-reactive-vle/notes/intake.md before source edits."
+      - "Stage 1 requires native coupled activity speciation with ePC-SAFT activity/fugacity evaluation inside residuals."
+      - "Stage 2 requires implicit sensitivity for solved composition."
+      - "Stage 3 requires volatile-neutral fugacity-equilibrium pressure or partial-pressure path."
+      - "Stage 4 requires generic Python API exposure only."
+      - "Stage 5 requires a generic CO2 + amine + water pressure/speciation benchmark with repo-contained fixture data."
+      - "Required validation includes clean CppAD build, native equilibrium tests, reactive API tests, equilibrium tests, quick validation, docs validation, and git diff whitespace check."
+      - "Downstream comment states MEA-Thermodynamics issue #5 now has source-verified R1-R5 activity constants and needs a generic package route for activity-coupled true-species speciation."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://127.0.0.1:41737/native-activity-speciation-reactive-vle/"
+    command: "& C:\\Users\\Tanner\\Documents\\git\\codex-maintenance\\scripts\\start-goalbuddy-board.ps1 -Goal docs/goals/native-activity-speciation-reactive-vle"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Complete the issue #115 Stage 0 intake gate in notes/intake.md before any source edits."
+    inputs:
+      - "GitHub issue #115"
+      - "GitHub issue #115 downstream blocker comment"
+      - "docs/goals/native-activity-speciation-reactive-vle/notes/intake.md"
+      - "docs/roadmaps/FULL_ROADMAP.md"
+      - "src/epcsaft/native/equilibrium/"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "src/epcsaft/native/reactive_speciation.*"
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/reactive.py"
+      - "src/epcsaft/reactive_speciation.py"
+      - "src/epcsaft/runtime.py"
+      - "tests/native/equilibrium/"
+      - "tests/api/reactive/"
+      - "tests/equilibrium/"
+    constraints:
+      - "Read-only inspection except updating GoalBuddy control files and notes."
+      - "Use JetBrains MCP for semantic navigation if it helps identify wrapper-to-native or call-hierarchy ownership."
+      - "Do not edit source, tests, docs pages, native code, or benchmark fixtures in this task."
+      - "List current reactive/speciation solver files, VLE/bubble/dew files, Python wrapper files, staged/fixed-point tests, and chosen pressure/speciation benchmark."
+      - "Avoid writing the old missing-backend status token or old numeric-differencing token family as contiguous literals."
+    expected_output:
+      - "Updated notes/intake.md with exact current file and test paths."
+      - "Benchmark choice or fixture gap."
+      - "Receipt listing commands or inspections used."
+      - "Next recommended Judge task remains T002 unless a blocker is discovered."
+    receipt:
+      result: done
+      summary: "Completed issue #115 Stage 0 intake gate. The current native speciation owner is epcsaft_chemical_equilibrium.*, not native/reactive_speciation.*; activity-coupled standard states still rely on Python activity fixed-point behavior and derivative gap diagnostics. The Stage 5 benchmark target is a generic CO2 + amine + water pressure/speciation proof based on repo-contained public-smoke and surrogate fixture material."
+      changed_files:
+        - "docs/goals/native-activity-speciation-reactive-vle/notes/intake.md"
+        - "docs/goals/native-activity-speciation-reactive-vle/state.yaml"
+      evidence:
+        - "GitHub issue #115 body and downstream blocker comment loaded through GitHub connector."
+        - "JetBrains MCP index ready; references for ReactiveSpeciationProblem checked."
+        - "src/epcsaft/reactive_speciation.py:318"
+        - "src/epcsaft/reactive_speciation.py:667"
+        - "src/epcsaft/reactive_speciation.py:1132"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp:168"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp:204"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp:636"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp:791"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp:963"
+        - "src/epcsaft/equilibrium.py:212"
+        - "src/epcsaft/reactive_electrolyte.py:75"
+        - "tests/api/reactive/test_reactive_speciation_results.py"
+        - "tests/api/reactive/test_reactive_staged_workflow_contract.py"
+        - "tests/equilibrium/reactive/test_reactive_lle.py"
+        - "tests/api/package/test_downstream_integration_smokes.py"
+        - "scripts/benchmarks/helpers/reactive_regression.py"
+      commands:
+        - cmd: "git status --short --branch"
+          status: pass
+        - cmd: "GoalBuddy state checker"
+          status: pass
+        - cmd: "Targeted rg file and symbol searches"
+          status: pass
+        - cmd: "Focused source/test file reads"
+          status: pass
+      next_task: T002
+
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the Stage 0 intake against issue #115 and choose the first safe Stage 1 Worker slice."
+    inputs:
+      - "T001 receipt"
+      - "notes/intake.md"
+      - "GitHub issue #115"
+      - "docs/roadmaps/FULL_ROADMAP.md"
+    constraints:
+      - "Do not implement."
+      - "Reject any plan that completes by inventory, diagnostics, staged-only behavior, mocked payloads, or partial proof."
+      - "Pick the largest safe useful Stage 1 slice with exact allowed_files, verify commands, and stop conditions."
+      - "Confirm native-regression code remains out of scope."
+    expected_output:
+      - "Decision: approved | blocked | revise"
+      - "Exact Stage 1 Worker objective"
+      - "allowed_files"
+      - "verify"
+      - "stop_if"
+      - "Risks to carry into T010"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      summary: "Stage 0 intake is sufficient to start Stage 1, with a corrected write scope. The first useful slice is to make activity-coupled standard states use the native chemical-equilibrium residual/Jacobian path instead of Python activity fixed-point production behavior."
+      evidence:
+        - "notes/intake.md lists current reactive/speciation solver files, VLE/bubble/dew files, wrapper files, staged/fixed-point tests, and benchmark target."
+        - "Current native owner is src/epcsaft/native/epcsaft_chemical_equilibrium.cpp and .h."
+        - "No current src/epcsaft/native/reactive_speciation.* files were found."
+        - "Python dispatch in src/epcsaft/reactive_speciation.py currently diverts activity-coupled standard states through _solve_reactive_speciation_activity_fixed_point."
+        - "Native regression files remain out of scope."
+      worker_objective: "Stage 1: implement native coupled activity speciation for activity-coupled standard states by evaluating ePC-SAFT activity/fugacity terms inside the native residual and routing the Python public API to the native production solve."
+      allowed_files:
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.h"
+        - "src/epcsaft/bindings.cpp"
+        - "src/epcsaft/reactive_speciation.py"
+        - "tests/native/equilibrium/**"
+        - "tests/api/reactive/**"
+        - "docs/goals/native-activity-speciation-reactive-vle/**"
+      verify:
+        - "uv run python scripts/dev/build_epcsaft.py --clean --enable-cppad"
+        - "uv run python run_pytest.py tests/native/equilibrium -q"
+        - "uv run python run_pytest.py tests/api/reactive/test_reactive_speciation_results.py tests/api/reactive/test_reactive_speciation_options.py -q"
+        - "Run a banned-token scan using fragment construction for the old missing-backend token and old numeric-differencing token family."
+      stop_if:
+        - "Need to edit native regression code."
+        - "Need a Python production solve loop to pass tests."
+        - "Derivative mechanism cannot be analytic, CppAD, analytic implicit sensitivity, or CppAD implicit sensitivity."
+        - "Required standard-state convention behavior is ambiguous."
+        - "Need files outside allowed_files."
+        - "Verification fails twice for the same unexplained reason."
+      required_board_updates:
+        - "Set T010 active with corrected allowed_files and verify list."
+
+  - id: T010
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Stage 1: implement native coupled activity speciation for activity-coupled standard states by evaluating ePC-SAFT activity/fugacity terms inside the native residual and routing the Python public API to the native production solve."
+    inputs:
+      - "T002 decision"
+      - "notes/intake.md"
+      - "GitHub issue #115 Stage 1"
+    constraints:
+      - "No source edits outside allowed_files without stopping for PM/Judge."
+      - "No Python-owned production solve loop."
+      - "No derivative-free production minimizer."
+      - "Do not compute reaction residuals from stale activity vectors outside the solve."
+      - "Do not edit native regression code."
+      - "Keep APIs generic and package-scoped."
+      - "Avoid banned contiguous legacy tokens in committed text."
+    allowed_files:
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.h"
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/reactive_speciation.py"
+      - "tests/native/equilibrium/**"
+      - "tests/api/reactive/**"
+      - "docs/goals/native-activity-speciation-reactive-vle/**"
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-cppad"
+      - "uv run python run_pytest.py tests/native/equilibrium -q"
+      - "uv run python run_pytest.py tests/api/reactive/test_reactive_speciation_results.py tests/api/reactive/test_reactive_speciation_options.py -q"
+      - "Run a banned-token scan using fragment construction for the old missing-backend token and old numeric-differencing token family."
+    stop_if:
+      - "Need to edit native regression code."
+      - "Need a Python production solve loop to pass tests."
+      - "Derivative mechanism cannot be analytic, CppAD, analytic implicit sensitivity, or CppAD implicit sensitivity."
+      - "Required standard-state convention behavior is ambiguous."
+      - "Need files outside allowed_files."
+      - "Verification fails twice for the same unexplained reason."
+    receipt:
+      result: done
+      summary: "Stage 1 native activity-coupled speciation is implemented. Activity and concentration standard states now route through the native chemical-equilibrium residual path; the Python fixed-point production implementation was removed; native diagnostics report zero fixed-point updates and activity/fugacity terms inside the residual."
+      changed_files:
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+        - "src/epcsaft/reactive_speciation.py"
+        - "tests/native/equilibrium/test_chemical_equilibrium_native_residuals.py"
+        - "tests/api/reactive/test_reactive_speciation_results.py"
+        - "docs/goals/native-activity-speciation-reactive-vle/state.yaml"
+      evidence:
+        - "Native derivative selection no longer rejects activity/concentration standard states for the analytic log-amount residual path."
+        - "Native residual evaluation computes activity, fugacity, or concentration terms inside evaluate_chemical."
+        - "Native scalar binary activity root handling replaced the removed Python scalar route for neutral binary activity cases."
+        - "src/epcsaft/reactive_speciation.py no longer contains _solve_reactive_speciation_activity_fixed_point."
+        - "Diagnostics now report activity_fixed_point false and activity_fixed_point_updates 0 for activity-coupled public API results."
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --clean --enable-cppad"
+          status: pass
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/api/reactive/test_reactive_speciation_results.py tests/api/reactive/test_reactive_speciation_options.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium/test_chemical_equilibrium_native_residuals.py tests/api/reactive/test_reactive_speciation_results.py tests/api/reactive/test_reactive_speciation_options.py -q"
+          status: pass
+        - cmd: "Banned-token scan using fragment construction"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      next_task: T020
+
+  - id: T020
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Stage 2: add implicit sensitivity for solved composition and derivative diagnostics for solved composition and residual blocks."
+    inputs:
+      - "T010 receipt"
+      - "GitHub issue #115 Stage 2"
+    constraints:
+      - "Use implicit sensitivity for solved composition."
+      - "Do not direct-differentiate through iterative loops as production derivative support."
+      - "Report derivative backend for solved composition and each residual block."
+      - "Do not edit native regression code."
+      - "Avoid banned contiguous legacy tokens in committed text."
+    allowed_files:
+      - "src/epcsaft/native/equilibrium/**"
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "src/epcsaft/native/reactive_speciation.*"
+      - "src/epcsaft/reactive_speciation.py"
+      - "tests/native/equilibrium/**"
+      - "docs/goals/native-activity-speciation-reactive-vle/**"
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-cppad"
+      - "uv run python run_pytest.py tests/native/equilibrium -q"
+      - "Run a banned-token scan using fragment construction for the old missing-backend token and old numeric-differencing token family."
+    stop_if:
+      - "Sensitivity requires numeric-differencing Jacobians."
+      - "Need files outside allowed_files."
+      - "Diagnostics cannot truthfully identify derivative backend."
+      - "Verification fails twice for the same unexplained reason."
+    receipt:
+      result: done
+      summary: "Stage 2 implicit sensitivity diagnostics now carry native solved-state evidence. Native chemical-equilibrium results include the converged log-amount state, residual vector, residual-state Jacobian, reaction-constant Jacobian, and analytic implicit response of log amounts to log equilibrium constants; Python exposes that payload through ImplicitSolveResult."
+      changed_files:
+        - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+        - "src/epcsaft/reactive_speciation.py"
+        - "tests/native/equilibrium/test_reactive_speciation_implicit_sensitivity.py"
+        - "docs/goals/native-activity-speciation-reactive-vle/state.yaml"
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --clean --enable-cppad"
+          status: "pass"
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium -q"
+          status: pass
+        - cmd: "Banned-token scan using fragment construction"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      remaining_blockers: []
+
+  - id: T030
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Stage 3: implement volatile-neutral VLE or partial-pressure calculation with liquid and vapor fugacity consistency."
+    inputs:
+      - "T020 receipt"
+      - "GitHub issue #115 Stage 3"
+    constraints:
+      - "For volatile neutral species, enforce liquid/vapor fugacity consistency or the explicit direct partial-pressure diagnostic required by issue #115."
+      - "Vapor fugacity coefficient must be computed or explicitly set by the selected vapor model."
+      - "Charged species remain liquid-only unless a charged vapor model is explicitly defined."
+      - "Do not edit native regression code."
+      - "Avoid banned contiguous legacy tokens in committed text."
+    allowed_files:
+      - "src/epcsaft/native/equilibrium/**"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "src/epcsaft/native/reactive_speciation.*"
+      - "tests/native/equilibrium/**"
+      - "tests/equilibrium/**"
+      - "docs/goals/native-activity-speciation-reactive-vle/**"
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-cppad"
+      - "uv run python run_pytest.py tests/native/equilibrium -q"
+      - "uv run python run_pytest.py tests/equilibrium -q"
+      - "Run a banned-token scan using fragment construction for the old missing-backend token and old numeric-differencing token family."
+    stop_if:
+      - "Pressure path requires a staged-only production equilibrium."
+      - "Need files outside allowed_files."
+      - "Liquid/vapor standard-state or fugacity convention is ambiguous."
+      - "Verification fails twice for the same unexplained reason."
+    receipt:
+      result: done
+      summary: "Stage 3 volatile-neutral pressure proof is covered by equilibrium tests. The reactive electrolyte bubble route reports H2O partial pressure, liquid/vapor fugacity residuals, native bubble entrypoint diagnostics, and excludes charged species from vapor composition."
+      changed_files:
+        - "tests/equilibrium/electrolyte/test_reactive_electrolyte_bubble.py"
+        - "tests/equilibrium/core/test_api.py"
+        - "tests/equilibrium/core/test_derivative_policy.py"
+        - "docs/goals/native-activity-speciation-reactive-vle/state.yaml"
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/equilibrium -q"
+          status: pass
+        - cmd: "Banned-token scan using fragment construction"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      remaining_blockers: []
+
+  - id: T040
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Stage 4: expose the native production solve through generic Python APIs only."
+    inputs:
+      - "T030 receipt"
+      - "GitHub issue #115 Stage 4"
+    constraints:
+      - "Expose only generic APIs."
+      - "Do not add public APIs named after MEA, absorption columns, lithium extraction, solvent screening, selectivity, distribution coefficients, or other downstream applications."
+      - "Python may validate, construct problem objects, serialize, call native code, and format outputs, but must not own production solve iterations."
+      - "Use JetBrains MCP when tracing wrapper-to-native call paths or public API references."
+      - "Avoid banned contiguous legacy tokens in committed text."
+    allowed_files:
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/reactive.py"
+      - "src/epcsaft/reactive_speciation.py"
+      - "src/epcsaft/runtime.py"
+      - "src/epcsaft/native/equilibrium/**"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "src/epcsaft/native/reactive_speciation.*"
+      - "tests/api/reactive/**"
+      - "tests/api/runtime/**"
+      - "tests/equilibrium/**"
+      - "docs/goals/native-activity-speciation-reactive-vle/**"
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-cppad"
+      - "uv run python run_pytest.py tests/api/reactive -q"
+      - "uv run python run_pytest.py tests/equilibrium -q"
+      - "rg -n \"MEA|absorption column|lithium extraction|selectivity|distribution coefficient\" src/epcsaft tests/api/reactive tests/equilibrium"
+      - "Run a banned-token scan using fragment construction for the old missing-backend token and old numeric-differencing token family."
+    stop_if:
+      - "Generic public API contract is unclear."
+      - "Need application-specific public API to prove behavior."
+      - "Need files outside allowed_files."
+      - "Verification fails twice for the same unexplained reason."
+    receipt:
+      result: done
+      summary: "Stage 4 generic Python API exposure is complete. Public calls through solve_reactive_speciation and runtime capability metadata now route required activity-coupled speciation through the native production solve without adding application-specific public APIs."
+      changed_files:
+        - "src/epcsaft/reactive_speciation.py"
+        - "src/epcsaft/runtime.py"
+        - "tests/api/reactive/test_reactive_speciation_results.py"
+        - "tests/api/reactive/test_reactive_staged_workflow_contract.py"
+        - "tests/api/runtime/test_runtime_exports_and_metadata.py"
+        - "docs/goals/native-activity-speciation-reactive-vle/state.yaml"
+      evidence:
+        - "solve_reactive_speciation no longer owns activity-coupled production iterations in Python; it calls the native chemical-equilibrium solve except for the explicit ipopt backend."
+        - "runtime capabilities describe the native chemical-equilibrium residual and analytic implicit sensitivity path without adding a downstream-specific API."
+        - "The application-specific public API scan found only pre-existing internal MEA regression helper hooks outside the reactive public API work surface."
+        - "No new public APIs named for MEA, lithium extraction, absorption columns, selectivity, distribution coefficient, or solvent screening were added."
+      commands:
+        - cmd: "uv run python run_pytest.py tests/api/reactive -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/equilibrium -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/api/runtime/test_runtime_exports_and_metadata.py -q"
+          status: pass
+        - cmd: "rg -n \"MEA|absorption column|lithium extraction|selectivity|distribution coefficient\" src/epcsaft tests/api/reactive tests/equilibrium"
+          status: pass
+        - cmd: "Banned-token scan using fragment construction"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      next_task: T050
+
+  - id: T050
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Stage 5: add the pressure/speciation benchmark proof with repo-contained fixture data and numeric residual checks."
+    inputs:
+      - "T040 receipt"
+      - "GitHub issue #115 Stage 5"
+      - "notes/intake.md benchmark choice"
+    constraints:
+      - "Benchmark must use a generic CO2 + amine + water pressure/speciation case with repo-contained fixture data."
+      - "Preferred proof is the MEA-style nine-species liquid basis with fixed literature equilibrium constants and ePC-SAFT activity evaluation."
+      - "Report reaction, charge, and material residual norms; CO2 partial pressure; liquid speciation; activity convention; derivative backend; and native solver iteration diagnostics."
+      - "No synthetic-only or mocked proof."
+      - "Do not edit native regression code."
+      - "Avoid banned contiguous legacy tokens in committed text."
+    allowed_files:
+      - "tests/native/equilibrium/**"
+      - "tests/api/reactive/**"
+      - "tests/equilibrium/**"
+      - "src/epcsaft/native/equilibrium/**"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "src/epcsaft/native/reactive_speciation.*"
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/reactive.py"
+      - "src/epcsaft/reactive_speciation.py"
+      - "src/epcsaft/runtime.py"
+      - "src/epcsaft/regression.py"
+      - "src/epcsaft/implicit_sensitivity.py"
+      - "analyses/package_validation/package_plot_smokes/tests/plots/**"
+      - "docs/pages/equilibrium_cookbook.rst"
+      - "docs/papers/md/Ascani - 2023 - Simultaneous Predictions of Chemical and Phase Equilibria in Systems with an Esterif.md"
+      - "tests/api/regression/**"
+      - "docs/goals/native-activity-speciation-reactive-vle/**"
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-cppad"
+      - "uv run python run_pytest.py tests/native/equilibrium -q"
+      - "uv run python run_pytest.py tests/api/reactive -q"
+      - "uv run python run_pytest.py tests/equilibrium -q"
+      - "Run a banned-token scan using fragment construction for the old missing-backend token and old numeric-differencing token family."
+    stop_if:
+      - "Repo-contained fixture data is unavailable or scientifically ambiguous."
+      - "Benchmark cannot report all residual norms and derivative diagnostics required by issue #115."
+      - "Need files outside allowed_files."
+      - "Verification fails twice for the same unexplained reason."
+    receipt:
+      result: done
+      summary: "Stage 5 benchmark proof is implemented. A generic CO2 + amine + water reactive electrolyte bubble-pressure test uses repo-contained fixture parameter data, routes through the generic equilibrium API, and reports numeric reaction, charge, material, partial-pressure, speciation, activity-convention, derivative-backend, and native-iteration diagnostics."
+      changed_files:
+        - "tests/equilibrium/electrolyte/test_reactive_electrolyte_bubble.py"
+        - "src/epcsaft/regression.py"
+        - "src/epcsaft/implicit_sensitivity.py"
+        - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+        - "analyses/package_validation/package_plot_smokes/tests/plots/plot_helpers.py"
+        - "analyses/package_validation/package_plot_smokes/tests/plots/test_regression_plot_outputs.py"
+        - "analyses/package_validation/package_plot_smokes/tests/plots/test_native_plot_outputs.py"
+        - "docs/pages/equilibrium_cookbook.rst"
+        - "docs/papers/md/Ascani - 2023 - Simultaneous Predictions of Chemical and Phase Equilibria in Systems with an Esterif.md"
+        - "tests/api/regression/test_regression_problem_schema.py"
+        - "docs/goals/native-activity-speciation-reactive-vle/state.yaml"
+      evidence:
+        - "Benchmark test: test_generic_co2_amine_water_benchmark_reports_native_speciation_pressure_path."
+        - "The benchmark loads tests/fixtures/literature/pure_neutral/mea_co2_h2o_benchmark.json and maps those values to generic amine species labels."
+        - "The benchmark calls mix.equilibrium(kind='reactive_electrolyte_bubble_pressure') instead of a downstream-specific public API."
+        - "The benchmark report checks reaction residual norm, charge residual norm, material residual norm, CO2 partial pressure, liquid speciation, activity convention, solved-state derivative backend, and native solver iterations."
+        - "The exact old missing-backend token and old numeric-differencing token forms were removed from committed text through fragment-safe guards or neutral wording."
+      commands:
+        - cmd: "uv run python run_pytest.py tests/equilibrium/electrolyte/test_reactive_electrolyte_bubble.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/api/reactive -q"
+          status: pass
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/equilibrium -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/api/regression/test_regression_problem_schema.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py analyses/package_validation/package_plot_smokes/tests/plots/test_regression_plot_outputs.py analyses/package_validation/package_plot_smokes/tests/plots/test_native_plot_outputs.py -q"
+          status: pass
+        - cmd: "Banned-token scan using fragment construction, including underscore, space, and hyphen forms"
+          status: pass
+      next_task: T060
+
+  - id: T060
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Update generic equilibrium documentation and diagnostics pages to reflect the issue #115 production path without overclaiming."
+    inputs:
+      - "T050 receipt"
+      - "GitHub issue #115 owned docs paths"
+      - "docs/roadmaps/FULL_ROADMAP.md"
+    constraints:
+      - "Docs must describe generic package behavior, not downstream application APIs."
+      - "Do not claim completion beyond passing tests and benchmark evidence."
+      - "Do not add obsolete workaround history unless needed to prevent a recurring pitfall."
+      - "Avoid banned contiguous legacy tokens in committed text."
+    allowed_files:
+      - "docs/pages/equilibrium_cookbook.rst"
+      - "docs/pages/diagnostics.rst"
+      - "tests/api/reactive/**"
+      - "tests/equilibrium/**"
+      - "docs/goals/native-activity-speciation-reactive-vle/**"
+    verify:
+      - "uv run python scripts/dev/validate_project.py docs"
+      - "Run a banned-token scan using fragment construction for the old missing-backend token and old numeric-differencing token family."
+      - "git diff --check"
+    stop_if:
+      - "Docs require public API claims not proved by T050."
+      - "Need source files outside allowed_files."
+      - "Docs validation fails twice for the same unexplained reason."
+    receipt:
+      result: done
+      summary: "Generic equilibrium and diagnostics docs now describe the native activity/concentration speciation residual path, implicit solved-state sensitivity diagnostics, and the fixed-liquid reactive electrolyte bubble pressure diagnostics without adding downstream-specific API claims or claiming a simultaneous reactive NLP route."
+      changed_files:
+        - "docs/pages/equilibrium_cookbook.rst"
+        - "docs/pages/diagnostics.rst"
+        - "docs/goals/native-activity-speciation-reactive-vle/state.yaml"
+      evidence:
+        - "equilibrium_cookbook.rst now says activity and concentration standard states route through the native analytic log-amount residual/Jacobian path."
+        - "equilibrium_cookbook.rst documents the exact diagnostics to check for native activity coupling and implicit solved-state sensitivity."
+        - "diagnostics.rst now lists the nested speciation and bubble result fields for pressure/speciation benchmark validation."
+        - "Docs keep the scoped fixed-liquid handoff boundary explicit and do not claim a simultaneous reactive NLP route."
+      commands:
+        - cmd: "uv run python scripts/dev/validate_project.py docs"
+          status: pass
+        - cmd: "Banned-token scan using fragment construction, including underscore, space, and hyphen forms"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      next_task: T070
+
+  - id: T070
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether Stages 1 through 5 satisfy issue #115 before full validation."
+    inputs:
+      - "T010 receipt"
+      - "T020 receipt"
+      - "T030 receipt"
+      - "T040 receipt"
+      - "T050 receipt"
+      - "T060 receipt"
+      - "GitHub issue #115 completion definition"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if any required production path is still staged, mocked, Python-loop-owned, or partial."
+      - "Reject completion if derivative mechanism is not analytic, CppAD, analytic implicit sensitivity, or CppAD implicit sensitivity."
+      - "Reject completion if generic API and benchmark proof are not both present."
+    expected_output:
+      - "Decision: ready_for_full_validation | blocked | revise"
+      - "Missing issue #115 requirements, if any"
+      - "Required validation command list"
+      - "Whether T080 may start"
+    receipt:
+      result: done
+      decision: ready_for_full_validation
+      full_outcome_complete: false
+      summary: "Stages 1 through 5 have enough implementation and test evidence to start the full issue #115 validation ladder. The remaining completion gate is T080 full validation followed by T999 final audit."
+      completion_line_mapping:
+        native_coupled_activity_speciation: "T010 implemented native activity/concentration residual routing and removed the Python activity fixed-point production path."
+        activity_terms_inside_residual: "T010/T050 tests assert activity_or_fugacity_terms_in_residual for activity-coupled public API and benchmark results."
+        implicit_sensitivity_available: "T020 exposes reactive_speciation_variables as an analytic implicit solved-state block with residual-state and residual-parameter Jacobians."
+        volatile_neutral_pressure_path: "T030/T050 prove native fixed-liquid bubble pressure and CO2/H2O partial pressures for volatile neutral species, with ions excluded from vapor."
+        python_api_native_production_solve: "T040 verifies solve_reactive_speciation and reactive_electrolyte_bubble_pressure generic API routes call native production solves; Python does not own production iterations."
+        benchmark_numeric_checks: "T050 adds a generic CO2 + amine + water benchmark with numeric reaction, charge, material, pressure, speciation, activity convention, derivative backend, and native iteration checks."
+        no_application_specific_public_api: "Public __all__ scan found no MEA, lithium, absorption, selectivity, distribution, or screening public API names."
+        no_python_fixed_point_proof: "Source scan of reactive_speciation.py and reactive_electrolyte.py found no fixed-point production loop; only tests assert activity_fixed_point false."
+      evidence:
+        - "JetBrains MCP index was ready; post-edit IDE diagnostics reported no build errors."
+        - "GoalBuddy state checker passes for active T070 state."
+        - "Public API name scan prints an empty list for downstream-specific public API tokens."
+        - "Reactive source scan finds no fixed-point or Python optimizer-loop ownership patterns in reactive_speciation.py or reactive_electrolyte.py."
+      required_validation:
+        - "uv run python scripts/dev/build_epcsaft.py --clean --enable-cppad"
+        - "uv run python run_pytest.py tests/native/equilibrium -q"
+        - "uv run python run_pytest.py tests/api/reactive -q"
+        - "uv run python run_pytest.py tests/equilibrium -q"
+        - "uv run python scripts/dev/validate_project.py quick"
+        - "uv run python scripts/dev/validate_project.py docs"
+        - "git diff --check"
+        - "Banned-token scan using fragment construction"
+      commands:
+        - cmd: "JetBrains MCP ide_index_status and ide_diagnostics"
+          status: pass
+        - cmd: "GoalBuddy state checker"
+          status: pass
+        - cmd: "uv run python -c public API name scan"
+          status: pass
+        - cmd: "Reactive source fixed-point and Python-loop scan"
+          status: pass
+      next_task: T080
+
+  - id: T080
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Run the full issue #115 required validation ladder and record exact pass/fail evidence."
+    inputs:
+      - "T070 decision"
+      - "GitHub issue #115 required validation"
+    constraints:
+      - "Run validation from the repo root."
+      - "Coordinate native rebuilds from the main thread."
+      - "Do not clean or rebuild _core in parallel with tests or imports."
+      - "If a command fails, record the exact command and failure summary without marking the issue complete."
+    expected_output:
+      - "Clean CppAD build status"
+      - "Native equilibrium pytest status"
+      - "Reactive API pytest status"
+      - "Equilibrium pytest status"
+      - "Quick validation status"
+      - "Docs validation status"
+      - "git diff --check status"
+      - "Banned-token hygiene scan status"
+    receipt:
+      result: done
+      summary: "The full issue #115 validation ladder passes. The initial clean CppAD build exposed a Windows MinGW out-of-memory failure at parallel 10; the dev build profiles were updated so clean CppAD builds default to parallel 2, and the exact required clean CppAD command then passed."
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --clean --enable-cppad"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/api/reactive -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/equilibrium -q"
+          status: pass
+        - cmd: "uv run python scripts/dev/validate_project.py quick"
+          status: pass
+        - cmd: "uv run python scripts/dev/validate_project.py docs"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/workflows/build/test_build_epcsaft.py tests/workflows/repo/test_workflow_entrypoints.py -q"
+          status: pass
+        - cmd: "Banned-token scan using fragment construction, including underscore, space, and hyphen forms"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      validation_evidence:
+        clean_cppad_build: "pass; native import OK; CppAD enabled_available"
+        native_equilibrium_tests: "pass; 17 passed"
+        reactive_api_tests: "pass; 61 passed, 1 skipped"
+        equilibrium_tests: "pass; 111 passed, 7 skipped"
+        quick_validation: "pass; doctor plus quick pytest slice, 31 passed"
+        docs_validation: "pass; Sphinx build succeeded"
+        workflow_build_tests: "pass; 18 passed"
+        banned_token_scan: "pass; no matches"
+        diff_check: "pass; CRLF warnings only"
+      next_task: T999
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: xhigh
+    objective: "Final audit: decide whether issue #115 is complete under its non-negotiable completion contract."
+    inputs:
+      - "All done task receipts"
+      - "T080 validation receipt"
+      - "Current git diff"
+      - "GitHub issue #115"
+      - "docs/roadmaps/FULL_ROADMAP.md"
+    constraints:
+      - "Do not implement."
+      - "Reject completion unless every issue #115 completion-definition line is true."
+      - "Reject completion if any queued or active Worker task is still required."
+      - "Reject completion if downstream would still need a private package workaround."
+      - "Record full_outcome_complete: true only with explicit evidence."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Mapping from issue #115 completion lines to receipts and validation"
+      - "Missing evidence"
+      - "Next task if not complete"
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      summary: "Issue #115 is complete under its non-negotiable completion contract. The native activity-coupled speciation path, implicit solved-state sensitivity payload, volatile-neutral pressure path, generic API exposure, benchmark proof, documentation, and required validation ladder all pass together."
+      completion_line_mapping:
+        native_coupled_activity_speciation_works: "Implemented in src/epcsaft/native/epcsaft_chemical_equilibrium.cpp and routed through src/epcsaft/reactive_speciation.py; covered by tests/native/equilibrium and tests/api/reactive."
+        activity_fugacity_terms_inside_residual: "Native diagnostics set activity_or_fugacity_terms_in_residual true for coupled standard states; tests assert this for activity-coupled public API and benchmark paths."
+        implicit_sensitivity_available_for_solved_composition: "Native diagnostics expose reactive_speciation_variables state, residual, residual-state Jacobian, residual-parameter Jacobian, and sensitivity; Python wraps this in ImplicitSolveResult."
+        volatile_neutral_pressure_path_works: "Reactive electrolyte bubble pressure calls native speciation then native fixed-liquid electrolyte bubble; benchmark asserts CO2/H2O partial pressure, fugacity residual, and ion exclusion from vapor."
+        python_api_calls_native_production_solve: "Generic public APIs solve_reactive_speciation, mixture.equilibrium(kind='reactive_electrolyte_bubble_pressure'), and solve_reactive_electrolyte_bubble call native production solves; Python does not own required production iterations."
+        benchmark_numeric_residual_checks: "test_generic_co2_amine_water_benchmark_reports_native_speciation_pressure_path checks reaction, charge, material, pressure, liquid speciation, activity convention, derivative backend, and native iteration diagnostics."
+        no_application_specific_public_api_added: "Public API name scan found no downstream-specific public names, and docs describe generic package workflows only."
+        no_python_fixed_point_production_proof: "The old Python activity fixed-point production function is absent; tests assert activity_fixed_point false and zero fixed-point updates."
+      validation:
+        clean_cppad_build: "pass"
+        native_equilibrium_tests: "pass"
+        reactive_api_tests: "pass"
+        equilibrium_tests: "pass"
+        quick_validation: "pass"
+        docs_validation: "pass"
+        diff_check: "pass"
+        banned_token_scan: "pass"
+      residual_risk:
+        - "The reactive electrolyte pressure route is a native fixed-liquid handoff, not a simultaneous reactive NLP; docs state this boundary explicitly."
+        - "The first clean CppAD build attempt failed from Windows MinGW memory pressure at parallel 10; build profile defaults were corrected and the exact required command passed afterward."
+      commands:
+        - cmd: "GoalBuddy state checker before final audit"
+          status: pass
+        - cmd: "Full issue #115 validation ladder from T080"
+          status: pass
+
+checks:
+  dirty_fingerprint: "T010/T020/T030/T040/T050/T060/T080/T999 source/test/docs/build-workflow/board changes present"
+  last_verification:
+    result: pass
+    task: T999
+    commands:
+      - "GoalBuddy state checker before final audit"
+      - "Full issue #115 validation ladder from T080"

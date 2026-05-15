@@ -32,6 +32,7 @@ scripts/fits/
 scripts/paper_validation/
 docs/latex/out/
 docs/latex/references.bib
+docs/goals/**/.goalbuddy-board/
 data/MIAC/*/plot_fits/
 data/reference/MIAC/*/plot_fits/
 .idea/

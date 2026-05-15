@@ -544,15 +544,15 @@ def capabilities() -> dict[str, object]:
             "reactive_electrolyte_bubble": {
                 "available": True,
                 "backend": "native",
-                "scope": "native chemical speciation followed by native fixed-liquid electrolyte bubble pressure",
+                "scope": "native chemical speciation with fixed-liquid native bubble-pressure handoff and explicit partial-pressure diagnostics",
             },
             "reactive_speciation": {
                 "available": True,
-                "backend": "native activity evaluations with python fixed-point outer loop for nonideal constants",
+                "backend": "native chemical-equilibrium residual with ePC-SAFT activity/fugacity terms",
                 "sweep_available": True,
                 "continuation_state_available": True,
                 "activity_output_modes": ["auto", "always", "never"],
-                "jacobian_auto_policy": "analytic_inner_solve_with_activity_fixed_point_for_nonideal_standard_states",
+                "jacobian_auto_policy": "native_analytic_log_amount_residual_jacobian_with_implicit_sensitivity",
                 "jacobian_auto_supported_standard_states": [
                     "ideal_mole_fraction",
                     "mole_fraction_activity",
@@ -560,7 +560,7 @@ def capabilities() -> dict[str, object]:
                     "concentration",
                     "apparent",
                 ],
-                "derivative_gap_status": "activity_derivatives_not_used_by_fixed_point_outer_iteration",
+                "derivative_gap_status": "implicit_sensitivity_available_for_reaction_constant_response",
                 "explicit_autodiff_raises_when_unavailable": True,
                 "solver_backends": ["auto", "newton", "ipopt"],
                 "ipopt_available": bool(cyipopt["available"]),

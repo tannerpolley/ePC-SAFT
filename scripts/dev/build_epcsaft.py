@@ -9,12 +9,54 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import NamedTuple
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BUILD_DIR = REPO_ROOT / "build" / "dev"
 PACKAGE_DIR = REPO_ROOT / "src" / "epcsaft"
 LOG_FILE_NAME = "build_epcsaft.log"
 STALE_LOCK_SECONDS = 120
+
+
+class BuildProfile(NamedTuple):
+    enable_ceres: bool
+    enable_cppad: bool
+    windows_parallel: str
+    description: str
+
+
+class BuildSettings(NamedTuple):
+    enable_ceres: bool
+    enable_cppad: bool
+    parallel: str | None
+
+
+BUILD_PROFILES: dict[str, BuildProfile] = {
+    "fast": BuildProfile(
+        enable_ceres=False,
+        enable_cppad=True,
+        windows_parallel="2",
+        description="default local iteration profile: CppAD enabled, Ceres disabled",
+    ),
+    "cppad": BuildProfile(
+        enable_ceres=False,
+        enable_cppad=True,
+        windows_parallel="2",
+        description="explicit CppAD validation profile without the Ceres FetchContent build",
+    ),
+    "full": BuildProfile(
+        enable_ceres=True,
+        enable_cppad=True,
+        windows_parallel="4",
+        description="full optional native backend profile: Ceres and CppAD enabled",
+    ),
+    "minimal": BuildProfile(
+        enable_ceres=False,
+        enable_cppad=False,
+        windows_parallel="10",
+        description="smallest native extension profile: Ceres and CppAD disabled",
+    ),
+}
 
 
 def _run(cmd: list[str], *, env: dict[str, str]) -> None:
@@ -184,6 +226,7 @@ def _status_lines(*, stale_lock_seconds: int = STALE_LOCK_SECONDS) -> list[str]:
         f"configured_generator: {generator}",
         f"ceres_configured: {ceres}",
         f"cppad_configured: {cppad}",
+        f"profile_hint: {_profile_hint(ceres=ceres, cppad=cppad)}",
         f"native_core: {'present' if artifacts else 'missing'}",
         "native_core_paths: " + (", ".join(str(path) for path in artifacts) if artifacts else "<none>"),
         f"ninja_lock: {'present' if lock_present else 'missing'}",
@@ -198,6 +241,19 @@ def _status_lines(*, stale_lock_seconds: int = STALE_LOCK_SECONDS) -> list[str]:
             "stale_lock_remediation: inspect live_build_process entries; stop only repo-owned build processes before retrying"
         )
     return lines
+
+
+def _profile_hint(*, ceres: str, cppad: str) -> str:
+    if "<unconfigured>" in {ceres, cppad}:
+        return "<unconfigured>"
+    normalized = (ceres.upper(), cppad.upper())
+    if normalized == ("OFF", "ON"):
+        return "fast/cppad"
+    if normalized == ("ON", "ON"):
+        return "full"
+    if normalized == ("OFF", "OFF"):
+        return "minimal"
+    return "custom"
 
 
 def _print_status() -> None:
@@ -256,6 +312,7 @@ def _configure(
     *,
     enable_ceres: bool,
     use_system_ceres: bool,
+    ceres_dir: Path | None,
     enable_cppad: bool,
     use_system_cppad: bool,
 ) -> None:
@@ -276,6 +333,8 @@ def _configure(
         f"-DPython_EXECUTABLE={sys.executable}",
         f"-Dpybind11_DIR={pybind11_dir}",
     ]
+    if ceres_dir is not None:
+        cmd.append(f"-DCeres_DIR={ceres_dir}")
     cmd.extend(_generator_args(env, _configured_generator()))
     _run(cmd, env=env)
 
@@ -319,6 +378,24 @@ def _timed(label: str, action) -> float:
     return elapsed
 
 
+def _resolve_settings(args: argparse.Namespace) -> BuildSettings:
+    profile = BUILD_PROFILES[args.profile]
+    enable_ceres = profile.enable_ceres if args.enable_ceres is None else bool(args.enable_ceres)
+    enable_cppad = profile.enable_cppad if args.enable_cppad is None else bool(args.enable_cppad)
+    if args.use_system_cppad:
+        enable_cppad = True
+    if args.use_system_ceres or args.ceres_dir is not None:
+        enable_ceres = True
+
+    parallel = args.parallel
+    if parallel is None:
+        if os.name == "nt":
+            parallel = BUILD_PROFILES["full"].windows_parallel if enable_ceres else profile.windows_parallel
+        elif enable_ceres:
+            parallel = BUILD_PROFILES["full"].windows_parallel
+    return BuildSettings(enable_ceres=enable_ceres, enable_cppad=enable_cppad, parallel=parallel)
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Build epcsaft._core in-place with direct CMake.")
     parser.add_argument("--clean", action="store_true", help="Remove build/dev and any in-place _core artifact first.")
@@ -333,17 +410,26 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--parallel", help="Optional CMake build parallelism value.")
     parser.add_argument(
+        "--profile",
+        choices=tuple(BUILD_PROFILES),
+        default="fast",
+        help=(
+            "Native dependency profile. fast/cppad enable CppAD without Ceres; full enables Ceres and CppAD; "
+            "minimal disables both. Explicit --enable-* or --disable-* flags override the profile."
+        ),
+    )
+    parser.add_argument(
         "--generator",
         choices=("auto", "ninja", "mingw"),
         default="auto",
         help="CMake generator for a new configure. Auto prefers Ninja when available.",
     )
-    parser.set_defaults(enable_ceres=True, enable_cppad=True)
+    parser.set_defaults(enable_ceres=None, enable_cppad=None)
     parser.add_argument(
         "--enable-ceres",
         dest="enable_ceres",
         action="store_true",
-        help="Enable Ceres Solver support (default: enabled).",
+        help="Enable Ceres Solver support, overriding the selected profile.",
     )
     parser.add_argument(
         "--disable-ceres",
@@ -357,10 +443,15 @@ def _parser() -> argparse.ArgumentParser:
         help="Use an installed Ceres Solver package. Implies --enable-ceres.",
     )
     parser.add_argument(
+        "--ceres-dir",
+        type=Path,
+        help="Directory containing CeresConfig.cmake for a prebuilt/exported Ceres package. Implies --use-system-ceres.",
+    )
+    parser.add_argument(
         "--enable-cppad",
         dest="enable_cppad",
         action="store_true",
-        help="Enable package-wide CppAD support (default: enabled).",
+        help="Enable package-wide CppAD support, overriding the selected profile.",
     )
     parser.add_argument(
         "--disable-cppad",
@@ -386,14 +477,8 @@ def main() -> int:
         parser.error("--clean cannot be combined with --build-only")
     if args.configure_only and args.build_only:
         parser.error("--configure-only cannot be combined with --build-only")
-    if args.use_system_cppad:
-        args.enable_cppad = True
-    if args.use_system_ceres:
-        args.enable_ceres = True
-    if args.parallel is None and os.name == "nt":
-        args.parallel = "1"
-    if args.enable_ceres and args.parallel is None:
-        args.parallel = "2"
+    settings = _resolve_settings(args)
+    use_system_ceres = bool(args.use_system_ceres or args.ceres_dir is not None)
 
     total_start = time.perf_counter()
     if args.clean:
@@ -402,21 +487,32 @@ def main() -> int:
     env = _env()
     if args.generator != "auto":
         env["EPCSAFT_CMAKE_GENERATOR"] = args.generator
+    print(
+        "Build profile: "
+        f"{args.profile} ({BUILD_PROFILES[args.profile].description}); "
+        f"Ceres={'ON' if settings.enable_ceres else 'OFF'}, "
+        f"CeresSource={('system' if use_system_ceres else 'FetchContent') if settings.enable_ceres else 'disabled'}, "
+        f"CppAD={'ON' if settings.enable_cppad else 'OFF'}, "
+        f"parallel={settings.parallel or '<generator default>'}",
+        flush=True,
+    )
     if not args.build_only:
         _timed(
             "configure",
             lambda: _configure(
                 env,
-                enable_ceres=args.enable_ceres,
-                use_system_ceres=args.use_system_ceres,
-                enable_cppad=args.enable_cppad,
+                enable_ceres=settings.enable_ceres,
+                use_system_ceres=use_system_ceres,
+                ceres_dir=args.ceres_dir,
+                enable_cppad=settings.enable_cppad,
                 use_system_cppad=args.use_system_cppad,
             ),
         )
     else:
         print("Timing: configure skipped (--build-only)", flush=True)
+        print("Build profile does not reconfigure an existing CMake tree when --build-only is used.", flush=True)
     if not args.configure_only:
-        _timed("build", lambda: _build(env, args.parallel))
+        _timed("build", lambda: _build(env, settings.parallel))
         _timed("native import", lambda: _verify_native_import(env))
     else:
         print("Timing: build skipped (--configure-only)", flush=True)
