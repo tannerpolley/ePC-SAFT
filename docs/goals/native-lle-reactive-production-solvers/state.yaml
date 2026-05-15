@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T025
+active_task: T026
 
 tasks:
   - id: T001
@@ -1024,7 +1024,7 @@ tasks:
   - id: T025
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Decide the next source-backed repair plan for active association/ionic phase-state fugacity sensitivities before #116 can close."
     inputs:
@@ -1041,6 +1041,42 @@ tasks:
       - "Allowed files for the next Worker if repair_next."
       - "Exact validation commands."
       - "Stop condition for the next Worker."
+    receipt:
+      result: done
+      decision: repair_next
+      summary: "The next bounded task should repair active association/ionic phase-state fugacity sensitivities before #116 can close."
+      artifacts:
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T025-next-repair-decision.md"
+      next_task: T026
+
+  - id: T026
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Repair active association/ionic phase-state fugacity sensitivities so the electrolyte LLE accepted Ceres solve can use the analytic transformed-variable Jacobian."
+    allowed_files:
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/epcsaft_core_internal.h"
+      - "src/epcsaft/native/epcsaft_electrolyte.h"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "tests/native/cppad/test_phase_state_sensitivities.py"
+      - "tests/native/equilibrium/test_electrolyte_lle_ceres_solver.py"
+      - "tests/native/equilibrium/test_electrolyte_lle_residual_jacobian.py"
+      - "docs/goals/native-lle-reactive-production-solvers/notes/**"
+    constraints:
+      - "Start by adding projected solved-state perturbation tests for neutral and active association/ionic pressure states."
+      - "Repair the analytic sensitivity path before switching the accepted Ceres solve away from `local_residual_slope`."
+      - "Do not broaden into unrelated contribution rewrites unless the stop condition is triggered."
+      - "Do not hide local residual slopes behind analytic or CppAD diagnostics."
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --profile full"
+      - "uv run python run_pytest.py tests/native/cppad/test_phase_state_sensitivities.py tests/native/equilibrium/test_electrolyte_lle_ceres_solver.py tests/native/equilibrium/test_electrolyte_lle_residual_jacobian.py -q"
+      - "uv run python run_pytest.py tests/native/equilibrium tests/native/cppad -q"
+      - "git diff --check"
+    stop_if:
+      - "Projected perturbation failures require redesigning residual chemical potential or fugacity coefficient derivative ownership across contribution files."
+      - "Accepted distributed-ion Ceres solve still collapses when using the analytic transformed-variable Jacobian after the phase-state repair."
     receipt: null
 
 checks:
