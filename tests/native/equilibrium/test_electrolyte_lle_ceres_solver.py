@@ -26,10 +26,11 @@ def test_electrolyte_lle_native_accepted_solve_uses_ceres_jacobian_route() -> No
     assert diagnostics["ceres_trust_region_strategy"] == "levenberg_marquardt"
     assert diagnostics["ceres_linear_solver"] == "dense_qr"
     assert diagnostics["ceres_termination_type"] in {"convergence", "no_convergence"}
-    assert diagnostics["jacobian_backend"] == "local_residual_slope"
-    assert diagnostics["derivative_backend"] == "local_residual_slope"
+    assert diagnostics["jacobian_backend"] == "cppad_implicit"
+    assert diagnostics["derivative_backend"] == "cppad_implicit"
     assert diagnostics["residual_surface_jacobian_backend"] == "cppad_implicit"
     assert diagnostics["residual_surface_derivative_backend"] == "cppad_implicit"
+    assert "local_residual_slope" not in str(diagnostics)
     assert diagnostics["jacobian_available"] is True
     assert diagnostics["derivative_available"] is True
     assert diagnostics["ceres_final_cost"] <= diagnostics["ceres_initial_cost"]

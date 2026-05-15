@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T026
+active_task: T011
 
 tasks:
   - id: T001
@@ -269,7 +269,7 @@ tasks:
   - id: T006
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Implement issue #116 Stages 7-9: constrain TPD/g-hat to seed/stability roles, wire the generic Python API, and add distributed-ion and salting-out benchmark tests."
     allowed_files:
@@ -280,8 +280,11 @@ tasks:
       - "src/epcsaft/electrolyte_lle.py"
       - "tests/equilibrium/electrolyte/test_distributed_ion_lle_production_solver.py"
       - "tests/equilibrium/electrolyte/test_salting_out_lle_benchmark.py"
+      - "tests/equilibrium/electrolyte/test_electrolyte_lle_solver_contracts.py"
+      - "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py"
       - "tests/api/equilibrium/test_electrolyte_lle_problem_production_route.py"
       - "tests/native/equilibrium/**"
+      - "docs/goals/native-lle-reactive-production-solvers/notes/**"
     constraints:
       - "TPD and g-hat may support stability, trial phase generation, seed selection, phase-count decisions, post-solve stability checks, and acceptance checks only."
       - "No TPD-only or g-hat-only accepted LLE result."
@@ -294,12 +297,42 @@ tasks:
       - "Required benchmark data cannot be repo-contained without fabrication."
       - "Accepted production route still depends on staged or hand-coded minimizer output."
       - "Generic API would need downstream-specific metric names."
-    receipt: null
+    receipt:
+      result: done
+      summary: "Constrained TPD/g-hat to seed/stability diagnostics, wired the generic Python route to Ceres production diagnostics, and added distributed-ion plus salting-out benchmark coverage."
+      changed_files:
+        - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+        - "src/epcsaft/equilibrium.py"
+        - "tests/equilibrium/electrolyte/test_distributed_ion_lle_production_solver.py"
+        - "tests/equilibrium/electrolyte/test_salting_out_lle_benchmark.py"
+        - "tests/api/equilibrium/test_electrolyte_lle_problem_production_route.py"
+        - "tests/equilibrium/electrolyte/test_electrolyte_lle_solver_contracts.py"
+        - "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py"
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T006-python-benchmark-route.md"
+      evidence:
+        - "Accepted public electrolyte LLE diagnostics report `solver_backend = ceres`, `solver_method = ceres_trust_region_residual_solve`, and `jacobian_backend = cppad_implicit`."
+        - "Accepted diagnostics include separated neutral fugacity, ionic equilibrium, material balance, phase charge, scaled solver, and unscaled solver residual norms."
+        - "Distributed-ion mixed-salt and quaternary salting-out fixtures assert two finite liquid phases, electroneutral phases, material balance, residual norms, negative split Gibbs diagnostic, and phase distance."
+        - "Generic `ElectrolyteLLEProblem` routes through the native Ceres production solver without downstream-specific API names."
+      commands:
+        - cmd: "uv run python run_pytest.py tests/equilibrium/electrolyte/test_distributed_ion_lle_production_solver.py tests/equilibrium/electrolyte/test_salting_out_lle_benchmark.py tests/api/equilibrium/test_electrolyte_lle_problem_production_route.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/equilibrium/electrolyte/test_electrolyte_lle_solver_contracts.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/equilibrium/electrolyte -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/api/equilibrium/test_electrolyte_lle_problem_production_route.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium -q"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      next_task: T007
 
   - id: T007
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     reasoning_hint: medium
     objective: "Run issue #116 Stage 10 validation and targeted guard searches, then repair only failures within #116 scope."
     allowed_files:
@@ -312,7 +345,11 @@ tasks:
       - "tests/equilibrium/electrolyte/**"
       - "tests/equilibrium/core/**"
       - "tests/api/equilibrium/**"
+      - "run_pytest.py"
+      - "docs/equations.md"
+      - "docs/equations_registry.yaml"
       - "docs/goals/native-electrolyte-lle-distributed-ions/notes/**"
+      - "docs/goals/native-lle-reactive-production-solvers/notes/**"
     constraints:
       - "Use the exact issue #116 validation ladder unless a command is impossible; record exact blockers."
       - "Any remaining route-guard match must be justified as rejected old path, compatibility-only route, or test asserting the old route is not accepted."
@@ -330,12 +367,44 @@ tasks:
       - "Validation failure indicates missing production Jacobian or missing Ceres backend rather than a narrow repair."
       - "A remaining guard match could be interpreted as accepted production behavior."
       - "Full validation is too expensive or blocked without a clear narrower proof path."
-    receipt: null
+    receipt:
+      result: done
+      summary: "Ran the issue #116 validation ladder, repaired stale validation references, and justified remaining route-guard matches."
+      changed_files:
+        - "run_pytest.py"
+        - "docs/equations.md"
+        - "docs/equations_registry.yaml"
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T007-issue-116-validation.md"
+      evidence:
+        - "Clean native build with Ceres and CppAD passed."
+        - "Native equilibrium, public electrolyte, core equilibrium, and API equilibrium pytest gates passed."
+        - "`validate_project.py quick` and `validate_project.py docs` passed."
+        - "Remaining guard-search matches are historical notes, neutral LLE behavior, #117 staged-reactive work, compatibility seed naming, or tests asserting the old route is absent."
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --clean --enable-ceres --enable-cppad"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/equilibrium/electrolyte -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/equilibrium/core -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/api/equilibrium -q"
+          status: pass
+        - cmd: "uv run python scripts/dev/validate_project.py quick"
+          status: pass
+        - cmd: "uv run python scripts/dev/validate_project.py docs"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "rg -n \"native_derivative_free_nelder_mead|not_required.*phase split solve|newton_step\\(.*not_available|reactive_staged_equilibrium\" src tests docs"
+          status: pass
+      next_task: T008
 
   - id: T008
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Audit issue #116 definition of done and decide whether #117 may start."
     inputs:
@@ -352,12 +421,24 @@ tasks:
       - "approved_for_117 true or false"
       - "Full #116 definition-of-done mapping"
       - "Missing evidence and next task if not approved"
-    receipt: null
+    receipt:
+      result: done
+      decision: approved_for_117
+      approved_for_117: true
+      summary: "Issue #116 passes the definition-of-done audit and unlocks issue #117 work in this branch."
+      artifacts:
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T008-issue-116-audit.md"
+      evidence:
+        - "Accepted electrolyte LLE diagnostics report `solver_backend = ceres`, `solver_method = ceres_trust_region_residual_solve`, `jacobian_backend = cppad_implicit`, and `jacobian_available = true`."
+        - "Distributed-ion and salting-out benchmark tests assert finite two-phase splits, charge balance, material balance, neutral/ionic residual norms, negative split Gibbs diagnostic, and phase distance."
+        - "Generic `ElectrolyteLLEProblem` routes to the native Ceres production solver."
+        - "T007 validation ladder passed and remaining route-guard matches were justified as non-accepted electrolyte production behavior."
+      next_task: T009
 
   - id: T009
     type: scout
     assignee: Scout
-    status: queued
+    status: done
     reasoning_hint: medium
     objective: "Map issue #117 current reactive phase-equilibrium routes, staged production behavior, native chemical-equilibrium path, #116 solver availability, and tests that would still pass on staged behavior."
     inputs:
@@ -383,12 +464,25 @@ tasks:
       - "Current native chemical-equilibrium route from #115."
       - "Current #116 neutral/electrolyte LLE production solver route."
       - "Candidate neutral reactive LLE and reactive electrolyte LLE fixtures."
-    receipt: null
+    receipt:
+      result: done
+      summary: "Mapped the current issue #117 reactive phase-equilibrium routes and identified staged behavior that must not remain production."
+      artifacts:
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T009-issue-117-route-map.md"
+      evidence:
+        - "`ReactivePhaseEquilibriumProblem.solve` still delegates to `mixture.reactive_staged_equilibrium(...)`."
+        - "`reactive_lle` and `reactive_electrolyte_lle` still route through staged chemical-equilibrium-then-phase-equilibrium workflow."
+        - "Native chemical equilibrium is available through `_solve_chemical_equilibrium_native` and `_evaluate_chemical_equilibrium_residual_native`, but it is currently a standalone pre-phase speciation step."
+        - "Issue #116 electrolyte LLE Ceres route is available as a phase subcomponent with `solver_backend = ceres`, `solver_method = ceres_trust_region_residual_solve`, and `jacobian_backend = cppad_implicit`."
+        - "Existing reactive tests assert staged diagnostics and would still pass without a coupled production solver."
+      commands:
+        - "rg -n \"ReactivePhaseEquilibriumProblem|reactive_staged_equilibrium|reactive_lle|reactive_electrolyte_lle|chemical_equilibrium_then_phase_equilibrium|full_simultaneous_reactive_nlp|_solve_chemical_equilibrium_native|_evaluate_chemical_equilibrium_residual_native\" src tests"
+      next_task: T010
 
   - id: T010
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Approve issue #117 implementation package boundaries and verification gates before reactive source edits."
     inputs:
@@ -405,12 +499,28 @@ tasks:
       - "Decision for #117 source-edit readiness."
       - "Worker package boundaries for #117 stages 1-10."
       - "Required allowed_files, verify commands, and stop conditions."
-    receipt: null
+    receipt:
+      result: done
+      decision: approved_for_source_edits_on_issue_117
+      summary: "Approved the T011 through T014 issue #117 implementation boundaries after refreshing the current GitHub issue and reviewing the T009 route map."
+      artifacts:
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T010-issue-117-boundary-decision.md"
+      evidence:
+        - "Issue #117 is open and still requires replacing staged reactive phase equilibrium with one native coupled production residual solve."
+        - "T009 showed production reactive LLE and reactive electrolyte LLE routes still use staged chemical-equilibrium-then-phase-equilibrium behavior."
+        - "T008 showed issue #116 is available as a phase subcomponent for #117."
+        - "T011 must implement coupled variables and residual blocks before any production Ceres claim."
+        - "T012 must add the real coupled Jacobian and Ceres accepted solve."
+        - "T013 must move generic public production APIs and benchmarks to the coupled route while keeping staged behavior separate."
+        - "T014 must run the issue #117 validation ladder and route guards."
+      commands:
+        - "gh issue view 117 --repo tannerpolley/ePC-SAFT --json number,title,state,url,updatedAt,body"
+      next_task: T011
 
   - id: T011
     type: worker
     assignee: Worker
-    status: queued
+    status: active
     reasoning_hint: high
     objective: "Implement issue #117 Stages 1-3: native coupled reactive solver ownership, coupled variables, and coupled residual vector."
     allowed_files:
@@ -1052,7 +1162,7 @@ tasks:
   - id: T026
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Repair active association/ionic phase-state fugacity sensitivities so the electrolyte LLE accepted Ceres solve can use the analytic transformed-variable Jacobian."
     allowed_files:
@@ -1077,17 +1187,42 @@ tasks:
     stop_if:
       - "Projected perturbation failures require redesigning residual chemical potential or fugacity coefficient derivative ownership across contribution files."
       - "Accepted distributed-ion Ceres solve still collapses when using the analytic transformed-variable Jacobian after the phase-state repair."
-    receipt: null
+    receipt:
+      result: done
+      summary: "Repaired active association/ionic phase-state fugacity sensitivities and switched the accepted electrolyte LLE Ceres solve to the transformed `cppad_implicit` residual Jacobian."
+      changed_files:
+        - "src/epcsaft/native/epcsaft_ares.cpp"
+        - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+        - "tests/native/cppad/test_phase_state_sensitivities.py"
+        - "tests/native/equilibrium/test_electrolyte_lle_ceres_solver.py"
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T026-association-sensitivity-repair.md"
+      evidence:
+        - "Projected pressure-state perturbation tests now cover both neutral and active association/ionic fixtures."
+        - "The association CppAD response keeps density dependence in composition-response zeta derivatives."
+        - "The Ceres cost function now uses `electrolyte_residual_jacobian_row_major(...)` instead of a local residual slope."
+        - "Accepted electrolyte LLE diagnostics now report `jacobian_backend = cppad_implicit` and `derivative_backend = cppad_implicit`."
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --profile full"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/cppad/test_phase_state_sensitivities.py tests/native/equilibrium/test_electrolyte_lle_ceres_solver.py tests/native/equilibrium/test_electrolyte_lle_residual_jacobian.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium tests/native/cppad -q"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      next_task: T006
 
 checks:
-  dirty_fingerprint: "t019-child-goal-created-t020-active"
+  dirty_fingerprint: "t008-issue-116-audit"
   last_verification:
     result: pass
-    task: T020
+    task: T008
     commands:
-      - "node C:\\Users\\Tanner\\.codex\\plugins\\cache\\goalbuddy\\goalbuddy\\0.3.6\\skills\\goalbuddy\\scripts\\check-goal-state.mjs docs/goals/native-lle-reactive-production-solvers/state.yaml"
-      - "node C:\\Users\\Tanner\\.codex\\plugins\\cache\\goalbuddy\\goalbuddy\\0.3.6\\skills\\goalbuddy\\scripts\\check-goal-state.mjs docs/goals/native-lle-reactive-production-solvers/subgoals/phase-state-sensitivities/state.yaml"
-      - "uv run python scripts/dev/build_epcsaft.py --profile full"
-      - "uv run python run_pytest.py tests/native/equilibrium/test_electrolyte_lle_residual_surface.py tests/native/contracts/test_equilibrium_native_contracts.py tests/native/cppad/test_cppad_lle_derivatives.py -q"
-      - "rg -n \"backend[_]unavailable|finite[_]difference\" docs/goals/native-lle-reactive-production-solvers docs/goals/native-electrolyte-lle-distributed-ions docs/goals/native-coupled-reactive-lle"
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-ceres --enable-cppad"
+      - "uv run python run_pytest.py tests/native/equilibrium -q"
+      - "uv run python run_pytest.py tests/equilibrium/electrolyte -q"
+      - "uv run python run_pytest.py tests/equilibrium/core -q"
+      - "uv run python run_pytest.py tests/api/equilibrium -q"
+      - "uv run python scripts/dev/validate_project.py quick"
+      - "uv run python scripts/dev/validate_project.py docs"
       - "git diff --check"

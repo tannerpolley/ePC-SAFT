@@ -730,9 +730,11 @@ static AssociationImplicitTermsScalar<Scalar> association_implicit_terms_scalar_
                 if (cppargs.assoc_matrix[static_cast<size_t>(i * num_sites + j)] != 0) {
                     const Scalar pair_diameter = thermo.d[static_cast<size_t>(comp_i)] * thermo.d[static_cast<size_t>(comp_j)]
                         / (thermo.d[static_cast<size_t>(comp_i)] + thermo.d[static_cast<size_t>(comp_j)]);
-                    const Scalar dzeta2_dx = scalar_constant<Scalar>(PI / 6.0 * scalar_value(thermo.den) * cppargs.m[static_cast<size_t>(k)])
+                    const Scalar dzeta2_dx = scalar_constant<Scalar>(PI / 6.0 * cppargs.m[static_cast<size_t>(k)])
+                        * thermo.den
                         * scalar_pow(thermo.d[static_cast<size_t>(k)], 2.0);
-                    const Scalar dzeta3_dx = scalar_constant<Scalar>(PI / 6.0 * scalar_value(thermo.den) * cppargs.m[static_cast<size_t>(k)])
+                    const Scalar dzeta3_dx = scalar_constant<Scalar>(PI / 6.0 * cppargs.m[static_cast<size_t>(k)])
+                        * thermo.den
                         * scalar_pow(thermo.d[static_cast<size_t>(k)], 3.0);
                     const double eABij = 0.5 * (cppargs.e_assoc[static_cast<size_t>(comp_i)] + cppargs.e_assoc[static_cast<size_t>(comp_j)]);
                     const Scalar volABij = association_volume_scalar_cpp(comp_i, comp_j, ncomp, thermo.s_ij, cppargs);

@@ -12,15 +12,45 @@ def _neutral_pressure_state():
     return mix, pressure, temperature, composition
 
 
-def test_native_phase_state_sensitivity_uses_implicit_density_chain_rule() -> None:
-    mix, pressure, temperature, composition = _neutral_pressure_state()
-    raw = _core._native_phase_state_ln_fugacity_composition_sensitivity(
+def _phase_state_sensitivity(mix, temperature, pressure, composition):
+    return _core._native_phase_state_ln_fugacity_composition_sensitivity(
         temperature,
         pressure,
         composition.tolist(),
         0,
         create_struct(mix.parameters),
     )
+
+
+def _assert_projected_phase_state_sensitivity(raw, mix, temperature, pressure, composition, *, atol):
+    shape = raw["shape"]
+    jacobian = np.asarray(raw["jacobian_row_major"], dtype=float).reshape(shape)
+    weighted_columns = jacobian @ composition
+    step = 1.0e-6
+
+    for column in range(composition.size):
+        direction = -composition.copy()
+        direction[column] += 1.0
+        plus = composition + step * direction
+        minus = composition - step * direction
+        assert np.all(plus > 0.0)
+        assert np.all(minus > 0.0)
+        np.testing.assert_allclose(plus.sum(), 1.0, rtol=0.0, atol=1.0e-12)
+        np.testing.assert_allclose(minus.sum(), 1.0, rtol=0.0, atol=1.0e-12)
+
+        plus_raw = _phase_state_sensitivity(mix, temperature, pressure, plus)
+        minus_raw = _phase_state_sensitivity(mix, temperature, pressure, minus)
+        perturbation_derivative = (
+            np.asarray(plus_raw["ln_fugacity"], dtype=float)
+            - np.asarray(minus_raw["ln_fugacity"], dtype=float)
+        ) / (2.0 * step)
+        projected_column = jacobian[:, column] - weighted_columns
+        np.testing.assert_allclose(projected_column, perturbation_derivative, rtol=2.0e-5, atol=atol)
+
+
+def test_native_phase_state_sensitivity_uses_implicit_density_chain_rule() -> None:
+    mix, pressure, temperature, composition = _neutral_pressure_state()
+    raw = _phase_state_sensitivity(mix, temperature, pressure, composition)
 
     if not _core._native_cppad_smoke()["cppad_compiled"]:
         assert raw["supported"] is False
@@ -60,6 +90,7 @@ def test_native_phase_state_sensitivity_uses_implicit_density_chain_rule() -> No
         rtol=1.0e-12,
         atol=1.0e-12,
     )
+    _assert_projected_phase_state_sensitivity(raw, mix, temperature, pressure, composition, atol=5.0e-6)
 
 
 def test_public_pressure_state_ln_fugacity_composition_derivative_is_supported() -> None:
@@ -82,13 +113,7 @@ def test_public_pressure_state_ln_fugacity_composition_derivative_is_supported()
 
 def test_phase_state_sensitivity_supports_active_association_implicit_response() -> None:
     mix, _species, pressure, _density, temperature, composition = _ionic_state()
-    raw = _core._native_phase_state_ln_fugacity_composition_sensitivity(
-        temperature,
-        pressure,
-        composition.tolist(),
-        0,
-        create_struct(mix.parameters),
-    )
+    raw = _phase_state_sensitivity(mix, temperature, pressure, composition)
 
     if not _core._native_cppad_smoke()["cppad_compiled"]:
         assert raw["supported"] is False
@@ -114,3 +139,4 @@ def test_phase_state_sensitivity_supports_active_association_implicit_response()
         rtol=1.0e-12,
         atol=1.0e-12,
     )
+    _assert_projected_phase_state_sensitivity(raw, mix, temperature, pressure, composition, atol=2.0e-4)

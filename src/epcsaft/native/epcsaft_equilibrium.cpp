@@ -2552,6 +2552,15 @@ EquilibriumResultNative lle_flash_native(
     return result;
 }
 
+double residual_slice_max_abs(const std::vector<double>& residual, std::size_t begin, std::size_t end) {
+    double out = 0.0;
+    end = std::min(end, residual.size());
+    for (std::size_t i = begin; i < end; ++i) {
+        out = std::max(out, std::abs(residual[i]));
+    }
+    return out;
+}
+
 void add_electrolyte_candidate_state_diagnostics(
     EquilibriumResultNative& result,
     const ElectrolyteBasisNative& basis,
@@ -2574,6 +2583,18 @@ void add_electrolyte_candidate_state_diagnostics(
         std::abs(result.diagnostics_double["phase_charge_balance_feed"]),
         std::max(std::abs(aq_charge), std::abs(org_charge))
     );
+    const std::size_t neutral_rows = basis.neutral_indices.size();
+    const std::size_t ionic_rows = basis.salt_pairs.size();
+    result.diagnostics_double["neutral_fugacity_residual_norm"] =
+        residual_slice_max_abs(candidate.residual, 0, neutral_rows);
+    result.diagnostics_double["ionic_equilibrium_residual_norm"] =
+        residual_slice_max_abs(candidate.residual, neutral_rows, neutral_rows + ionic_rows);
+    result.diagnostics_double["phase_equilibrium_residual_norm"] = candidate.solver_residual_norm;
+    result.diagnostics_double["material_balance_norm"] = candidate.material_error;
+    result.diagnostics_double["phase_charge_balance_norm"] =
+        result.diagnostics_double["phase_charge_balance_max_abs"];
+    result.diagnostics_double["scaled_solver_residual_norm"] = candidate.solver_residual_norm;
+    result.diagnostics_double["unscaled_solver_residual_norm"] = candidate.solver_residual_norm;
     const std::string prefix = accepted_candidate ? "accepted" : "best_candidate";
     result.diagnostics_double[prefix + "_beta_formula"] = candidate.beta_formula;
     result.diagnostics_double[prefix + "_beta_org"] = candidate.beta_org;
@@ -2743,8 +2764,8 @@ EquilibriumResultNative electrolyte_lle_failure_result(
     result.diagnostics_string["solver_method"] = "ceres_trust_region_residual_solve";
     result.diagnostics_string["solver_language"] = "c++";
     result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
-    result.diagnostics_string["jacobian_backend"] = "local_residual_slope";
-    result.diagnostics_string["derivative_backend"] = "local_residual_slope";
+    result.diagnostics_string["jacobian_backend"] = "cppad_implicit";
+    result.diagnostics_string["derivative_backend"] = "cppad_implicit";
     result.diagnostics_string["residual_surface_jacobian_backend"] = "cppad_implicit";
     result.diagnostics_string["residual_surface_derivative_backend"] = "cppad_implicit";
     result.diagnostics_string["jacobian_scope"] = "transformed_variables_phase_state_implicit_density";
@@ -2909,54 +2930,6 @@ std::string ceres_termination_type_name(ceres::TerminationType type) {
     }
 }
 
-std::vector<double> electrolyte_residual_local_slope_row_major(
-    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
-    double t,
-    double p,
-    const std::vector<double>& feed,
-    const ElectrolyteBasisNative& basis,
-    const EquilibriumOptionsNative& options,
-    double gibbs_feed,
-    const std::vector<double>& variables,
-    std::size_t rows
-) {
-    const std::size_t cols = variables.size();
-    std::vector<double> jacobian(rows * cols, 0.0);
-    for (std::size_t col = 0; col < cols; ++col) {
-        const double step = 1.0e-6 * std::max(1.0, std::abs(variables[col]));
-        std::vector<double> plus = variables;
-        std::vector<double> minus = variables;
-        plus[col] += step;
-        minus[col] -= step;
-        ElectrolyteCandidateNative plus_candidate = evaluate_predictive_electrolyte_variables(
-            mixture,
-            t,
-            p,
-            feed,
-            basis,
-            plus,
-            options,
-            gibbs_feed
-        );
-        ElectrolyteCandidateNative minus_candidate = evaluate_predictive_electrolyte_variables(
-            mixture,
-            t,
-            p,
-            feed,
-            basis,
-            minus,
-            options,
-            gibbs_feed
-        );
-        std::vector<double> plus_residual = electrolyte_full_residual_vector(plus_candidate);
-        std::vector<double> minus_residual = electrolyte_full_residual_vector(minus_candidate);
-        for (std::size_t row = 0; row < rows; ++row) {
-            jacobian[row * cols + col] = (plus_residual[row] - minus_residual[row]) / (2.0 * step);
-        }
-    }
-    return jacobian;
-}
-
 class ElectrolyteLLEResidualCeresCostFunction final : public ceres::CostFunction {
 public:
     ElectrolyteLLEResidualCeresCostFunction(
@@ -3006,17 +2979,17 @@ public:
                 residuals[row] = residual[row];
             }
             if (jacobians != nullptr && jacobians[0] != nullptr) {
-                std::vector<double> jacobian = electrolyte_residual_local_slope_row_major(
+                std::vector<double> jacobian = electrolyte_residual_jacobian_row_major(
                     mixture_,
                     t_,
                     p_,
                     feed_,
                     basis_,
-                    options_,
-                    gibbs_feed_,
-                    variables,
-                    residual.size()
+                    candidate
                 );
+                if (jacobian.size() != residual.size() * variables.size()) {
+                    throw SolutionError("Electrolyte residual Jacobian shape does not match Ceres residual block.");
+                }
                 for (std::size_t i = 0; i < jacobian.size(); ++i) {
                     jacobians[0][i] = jacobian[i];
                 }
@@ -3402,8 +3375,8 @@ EquilibriumResultNative electrolyte_lle_native(
     result.diagnostics_string["solver_method"] = "ceres_trust_region_residual_solve";
     result.diagnostics_string["solver_language"] = "c++";
     result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
-    result.diagnostics_string["jacobian_backend"] = "local_residual_slope";
-    result.diagnostics_string["derivative_backend"] = "local_residual_slope";
+    result.diagnostics_string["jacobian_backend"] = "cppad_implicit";
+    result.diagnostics_string["derivative_backend"] = "cppad_implicit";
     result.diagnostics_string["residual_surface_jacobian_backend"] = "cppad_implicit";
     result.diagnostics_string["residual_surface_derivative_backend"] = "cppad_implicit";
     result.diagnostics_string["jacobian_scope"] = "transformed_variables_phase_state_implicit_density";

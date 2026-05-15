@@ -57,6 +57,20 @@ def _case2_mixture(feed=None) -> ePCSAFTMixture:
         feed = _case2_feed()
     return ePCSAFTMixture.from_dataset("2022_Ascani", ["H2O", "Butanol", "Na+", "K+", "Cl-"], feed, 298.15)
 
+def _assert_ceres_production_diagnostics(diagnostics: dict[str, object]) -> None:
+    assert diagnostics["solver_backend"] == "ceres"
+    assert diagnostics["selected_solver_backend"] == "ceres"
+    assert diagnostics["solver_method"] == "ceres_trust_region_residual_solve"
+    assert diagnostics["jacobian_backend"] == "cppad_implicit"
+    assert diagnostics["derivative_backend"] == "cppad_implicit"
+    assert diagnostics["jacobian_available"] is True
+    assert diagnostics["derivative_available"] is True
+    assert diagnostics["stability_analysis"] == "electrolyte_tpd"
+    assert diagnostics["tpd_method"] == "native_tpd_global_search"
+    assert diagnostics["gibbs_seed_method"] == "native_golden_section"
+    assert "native_transformed_newton" not in str(diagnostics)
+    assert "native_derivative_free_nelder_mead" not in str(diagnostics)
+
 def test_ascani_case2_mixed_salt_solves_without_local_model_fixture() -> None:
     mix = _case2_mixture()
 
@@ -69,8 +83,8 @@ def test_ascani_case2_mixed_salt_solves_without_local_model_fixture() -> None:
     )
 
     assert result.split_detected is True
-    assert result.diagnostics["solver_method"] == "native_transformed_newton"
-    assert result.diagnostics["acceptance_gate"] == "predictive_nonlinear_solve"
+    _assert_ceres_production_diagnostics(result.diagnostics)
+    assert result.diagnostics["acceptance_gate"] == "ceres_residual_solve"
 
 def test_auto_kind_routes_explicit_ionic_feed_to_electrolyte_lle() -> None:
     mix = _case2_mixture()
@@ -98,7 +112,7 @@ def test_native_gibbs_seed_path_reports_feasible_solver_diagnostics() -> None:
     )
 
     assert result.diagnostics["gibbs_seed_method"] == "native_golden_section"
-    assert result.diagnostics["solver_method"] == "native_transformed_newton"
+    _assert_ceres_production_diagnostics(result.diagnostics)
 
 def test_predictive_residual_uses_dependent_phase_material_balance() -> None:
     mix = _case2_mixture()
@@ -115,10 +129,10 @@ def test_predictive_residual_uses_dependent_phase_material_balance() -> None:
     reconstructed = aq.phase_fraction * aq.composition + org.phase_fraction * org.composition
     np.testing.assert_allclose(reconstructed, feed, atol=1.0e-10)
 
-def test_electrolyte_lle_solver_failure_reports_unavailable_derivatives() -> None:
+def test_electrolyte_lle_solver_failure_reports_production_derivatives() -> None:
     mix = _case2_mixture()
 
-    with pytest.raises(epcsaft.InputError, match="not_available"):
+    with pytest.raises(epcsaft.SolutionError) as excinfo:
         mix.equilibrium(
             kind="electrolyte_lle",
             T=298.15,
@@ -127,27 +141,36 @@ def test_electrolyte_lle_solver_failure_reports_unavailable_derivatives() -> Non
             options=epcsaft.EquilibriumOptions(max_iterations=1, tolerance=1.0e-12, legacy_candidate_mode="off"),
         )
 
-def test_electrolyte_lle_best_effort_reports_unavailable_derivatives() -> None:
+    diagnostics = excinfo.value.args[1]
+    assert diagnostics["acceptance_gate"] == "predictive_solve_failed"
+    _assert_ceres_production_diagnostics(diagnostics)
+
+def test_electrolyte_lle_best_effort_reports_production_derivatives() -> None:
     mix = _case2_mixture()
 
-    with pytest.raises(epcsaft.InputError, match="not_available"):
-        mix.equilibrium(
-            kind="electrolyte_lle",
-            T=298.15,
-            P=1.0e5,
-            z=_case2_feed(),
-            options=epcsaft.EquilibriumOptions(
-                max_iterations=1,
-                tolerance=1.0e-12,
-                legacy_candidate_mode="off",
-                return_best_effort=True,
-            ),
-        )
+    result = mix.equilibrium(
+        kind="electrolyte_lle",
+        T=298.15,
+        P=1.0e5,
+        z=_case2_feed(),
+        options=epcsaft.EquilibriumOptions(
+            max_iterations=1,
+            tolerance=1.0e-12,
+            legacy_candidate_mode="off",
+            return_best_effort=True,
+        ),
+    )
 
-def test_electrolyte_lle_seed_budget_reports_unavailable_derivatives() -> None:
+    assert result.split_detected is False
+    assert result.phases == ()
+    assert result.diagnostics["acceptance_gate"] == "predictive_solve_failed"
+    assert result.diagnostics["best_effort_phases_returned"] is False
+    _assert_ceres_production_diagnostics(result.diagnostics)
+
+def test_electrolyte_lle_seed_budget_reports_production_derivatives() -> None:
     mix = _case2_mixture()
 
-    with pytest.raises(epcsaft.InputError, match="not_available"):
+    with pytest.raises(epcsaft.SolutionError) as excinfo:
         mix.equilibrium(
             kind="electrolyte_lle",
             T=298.15,
@@ -161,7 +184,12 @@ def test_electrolyte_lle_seed_budget_reports_unavailable_derivatives() -> None:
             ),
         )
 
-def test_electrolyte_lle_objective_budget_reports_unavailable_derivatives() -> None:
+    diagnostics = excinfo.value.args[1]
+    assert diagnostics["acceptance_gate"] == "predictive_budget_exhausted"
+    assert diagnostics["budget_trigger"] == "max_seed_attempts"
+    _assert_ceres_production_diagnostics(diagnostics)
+
+def test_electrolyte_lle_objective_budget_reports_production_derivatives() -> None:
     mix = _case2_mixture()
 
     with pytest.raises(epcsaft.SolutionError) as excinfo:
@@ -181,11 +209,12 @@ def test_electrolyte_lle_objective_budget_reports_unavailable_derivatives() -> N
     diagnostics = excinfo.value.args[1]
     assert diagnostics["acceptance_gate"] == "predictive_budget_exhausted"
     assert diagnostics["budget_trigger"] == "max_total_objective_evaluations"
+    _assert_ceres_production_diagnostics(diagnostics)
 
 def test_experimental_coupled_density_lle_option_is_reported_without_changing_default_gate() -> None:
     mix = _case2_mixture()
 
-    with pytest.raises(epcsaft.InputError, match="not_available"):
+    with pytest.raises(epcsaft.SolutionError) as excinfo:
         mix.equilibrium(
             kind="electrolyte_lle",
             T=298.15,
@@ -200,10 +229,15 @@ def test_experimental_coupled_density_lle_option_is_reported_without_changing_de
             ),
         )
 
-def test_electrolyte_lle_accepts_legacy_option_dict_before_unavailable_derivatives() -> None:
+    diagnostics = excinfo.value.args[1]
+    assert diagnostics["coupled_density_lle_attempted"] is True
+    assert diagnostics["density_diagnostics_mode"] == "full"
+    _assert_ceres_production_diagnostics(diagnostics)
+
+def test_electrolyte_lle_accepts_legacy_option_dict_before_production_failure() -> None:
     mix = _case2_mixture()
 
-    with pytest.raises(epcsaft.InputError, match="not_available"):
+    with pytest.raises(epcsaft.SolutionError) as excinfo:
         mix.equilibrium(
             kind="electrolyte_lle",
             T=298.15,
@@ -222,3 +256,8 @@ def test_electrolyte_lle_accepts_legacy_option_dict_before_unavailable_derivativ
                 "force_seed_solve": True,
             },
         )
+
+    diagnostics = excinfo.value.args[1]
+    assert diagnostics["acceptance_gate"] == "predictive_solve_failed"
+    assert diagnostics["legacy_candidate_found"] is False
+    _assert_ceres_production_diagnostics(diagnostics)

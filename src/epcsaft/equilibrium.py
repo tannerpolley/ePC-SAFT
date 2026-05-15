@@ -1163,7 +1163,10 @@ def _solved_internal_states(problem_kind: str) -> list[str]:
 
 
 def _derivative_backend_blocks(problem_kind: str, derivative_backend: str) -> dict[str, str]:
-    density_backend = "not_applicable" if derivative_backend == "not_applicable" else "not_available"
+    if derivative_backend in {"analytic_implicit", "cppad_implicit"}:
+        density_backend = "implicit_density_root"
+    else:
+        density_backend = "not_applicable" if derivative_backend == "not_applicable" else "not_available"
     blocks: dict[str, str] = {
         "density_root": density_backend,
         "eos_state_properties": "analytic",
@@ -2024,9 +2027,15 @@ def electrolyte_lle_flash_native(
             "feed_composition": feed.tolist(),
             "stability_analysis": "electrolyte_tpd",
             "stability_checked": True,
-            "solver_method": "native_transformed_newton",
+            "solver_backend": "ceres",
+            "selected_solver_backend": "ceres",
+            "solver_method": "ceres_trust_region_residual_solve",
             "solver_language": "c++",
             "native_entrypoint": "_solve_equilibrium_native",
+            "jacobian_backend": "cppad_implicit",
+            "derivative_backend": "cppad_implicit",
+            "jacobian_available": True,
+            "derivative_available": True,
             "tpd_method": "native_tpd_global_search",
             "gibbs_seed_method": "native_golden_section",
             "acceptance_gate": "predictive_solve_failed",
