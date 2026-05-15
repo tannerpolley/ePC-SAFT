@@ -23,6 +23,8 @@ namespace ares_detail {
 constexpr int kGenericTargetSLocal = 1;
 constexpr int kGenericTargetELocal = 2;
 constexpr int kGenericTargetDBornLocal = 5;
+constexpr int kGenericTargetFSolvLocal = 9;
+constexpr int kGenericTargetDielcLocal = 10;
 
 template <typename Scalar>
 struct MixtureStateScalar {
@@ -95,6 +97,23 @@ static Scalar scalar_component_parameter_cpp(
         return *target_value;
     }
     return scalar_constant<Scalar>(base_value);
+}
+
+template <typename Scalar>
+static Scalar scalar_dielc_parameter_cpp(
+    int target_kind,
+    int target_index,
+    int component_index,
+    double base_value,
+    const Scalar *target_value
+) {
+    return scalar_component_parameter_cpp(
+        target_kind,
+        target_index,
+        component_index,
+        base_value,
+        target_kind == kGenericTargetDielcLocal ? target_value : nullptr
+    );
 }
 
 template <typename Scalar>
@@ -749,7 +768,15 @@ static AssociationImplicitTermsScalar<Scalar> association_implicit_terms_scalar_
 
 // EqID: ares_dh
 template <typename Scalar>
-static Scalar ares_ion_scalar_cpp(double t, const MixtureStateScalar<Scalar> &thermo, const vector<Scalar> &x, const add_args &cppargs) {
+static Scalar ares_ion_scalar_cpp(
+    double t,
+    const MixtureStateScalar<Scalar> &thermo,
+    const vector<Scalar> &x,
+    const add_args &cppargs,
+    int component_target_kind = -1,
+    int component_target_index = -1,
+    const Scalar *component_target_value = nullptr
+) {
     if (cppargs.z.empty()) {
         return scalar_constant<Scalar>(0.0);
     }
@@ -769,10 +796,19 @@ static Scalar ares_ion_scalar_cpp(double t, const MixtureStateScalar<Scalar> &th
     }
     Scalar eps = scalar_constant<Scalar>(0.0);
     if (cppargs.dielc_rule == 0) {
+        if (component_target_kind == kGenericTargetDielcLocal) {
+            throw ValueError("not_available: CppAD ionic dielectric-parameter recording requires dielc_rule=1.");
+        }
         eps = scalar_constant<Scalar>(*std::max_element(cppargs.dielc.begin(), cppargs.dielc.end()));
     } else if (cppargs.dielc_rule == 1) {
         for (int i = 0; i < static_cast<int>(x.size()); ++i) {
-            eps += x[i] * cppargs.dielc[i];
+            eps += x[i] * scalar_dielc_parameter_cpp(
+                component_target_kind,
+                component_target_index,
+                i,
+                cppargs.dielc[i],
+                component_target_value
+            );
         }
     } else {
         throw ValueError("not_available: CppAD ionic recording currently supports dielc_rule 0 or 1.");
@@ -820,14 +856,25 @@ static Scalar ares_born_scalar_cpp(
         return scalar_constant<Scalar>(0.0);
     }
     if (cppargs.born_model != 1) {
-        throw ValueError("not_available: CppAD Born recording supports direct Born model=1 formulas only.");
+        if (cppargs.born_model != 2) {
+            throw ValueError("Unknown born_model. Supported values are 0, 1, 2.");
+        }
     }
     Scalar eps = scalar_constant<Scalar>(0.0);
     if (cppargs.dielc_rule == 0) {
+        if (component_target_kind == kGenericTargetDielcLocal) {
+            throw ValueError("not_available: CppAD Born dielectric-parameter recording requires dielc_rule=1.");
+        }
         eps = scalar_constant<Scalar>(*std::max_element(cppargs.dielc.begin(), cppargs.dielc.end()));
     } else if (cppargs.dielc_rule == 1) {
         for (int i = 0; i < static_cast<int>(x.size()); ++i) {
-            eps += x[i] * cppargs.dielc[i];
+            eps += x[i] * scalar_dielc_parameter_cpp(
+                component_target_kind,
+                component_target_index,
+                i,
+                cppargs.dielc[i],
+                component_target_value
+            );
         }
     } else {
         throw ValueError("not_available: CppAD Born recording currently supports dielc_rule 0 or 1.");
@@ -835,9 +882,12 @@ static Scalar ares_born_scalar_cpp(
     if (cppargs.born_eps_mode == 1) {
         throw ValueError("not_available: CppAD Born reference-solvent dielectric routing is not implemented.");
     }
-    Scalar charge_radius_sum = scalar_constant<Scalar>(0.0);
-    for (int i = 0; i < static_cast<int>(x.size()); ++i) {
-        if (is_ion_species(cppargs, i)) {
+    if (cppargs.born_model == 1) {
+        Scalar charge_radius_sum = scalar_constant<Scalar>(0.0);
+        for (int i = 0; i < static_cast<int>(x.size()); ++i) {
+            if (!is_ion_species(cppargs, i)) {
+                continue;
+            }
             Scalar sigma_i = scalar_component_parameter_cpp(
                 component_target_kind,
                 component_target_index,
@@ -864,8 +914,70 @@ static Scalar ares_born_scalar_cpp(
             );
             charge_radius_sum += x[i] * cppargs.z[i] * cppargs.z[i] / d_born_i;
         }
+        return -E_CHRG * E_CHRG / (4.0 * PI * kb * t * perm_vac) * (1.0 - 1.0 / eps) * charge_radius_sum;
     }
-    return -E_CHRG * E_CHRG / (4.0 * PI * kb * t * perm_vac) * (1.0 - 1.0 / eps) * charge_radius_sum;
+
+    const bool use_ssm = (cppargs.born_solvation_shell_model != 0);
+    const bool use_ds = (cppargs.born_dielectric_saturation != 0);
+    const Scalar eps_ion = scalar_constant<Scalar>(8.0);
+    Scalar f_mix = scalar_constant<Scalar>(0.0);
+    for (int i = 0; i < static_cast<int>(x.size()); ++i) {
+        Scalar f_i = scalar_constant<Scalar>(1.0);
+        if (!is_ion_species(cppargs, i) && cppargs.f_solv.size() > static_cast<size_t>(i)) {
+            f_i = scalar_component_parameter_cpp(
+                component_target_kind,
+                component_target_index,
+                i,
+                cppargs.f_solv[i],
+                component_target_kind == kGenericTargetFSolvLocal ? component_target_value : nullptr
+            );
+        }
+        f_mix += x[i] * f_i;
+    }
+
+    Scalar sum_bracket = scalar_constant<Scalar>(0.0);
+    for (int i = 0; i < static_cast<int>(x.size()); ++i) {
+        if (!is_ion_species(cppargs, i)) {
+            continue;
+        }
+        Scalar sigma_i = scalar_component_parameter_cpp(
+            component_target_kind,
+            component_target_index,
+            i,
+            cppargs.s[i],
+            component_target_kind == kGenericTargetSLocal ? component_target_value : nullptr
+        );
+        Scalar epsilon_i = scalar_component_parameter_cpp(
+            component_target_kind,
+            component_target_index,
+            i,
+            cppargs.e[i],
+            component_target_kind == kGenericTargetELocal ? component_target_value : nullptr
+        );
+        Scalar d_born_i = ion_born_radius_scalar_cpp(
+            i,
+            t,
+            cppargs,
+            sigma_i,
+            epsilon_i,
+            component_target_kind,
+            component_target_index,
+            component_target_value
+        );
+        const double absz = std::abs(cppargs.z[i]);
+        const double z2 = cppargs.z[i] * cppargs.z[i];
+        Scalar delta_di = use_ssm ? ((f_mix - 1.0) * d_born_i / absz) : scalar_constant<Scalar>(0.0);
+        Scalar D_i = d_born_i + delta_di;
+        if (scalar_value(D_i) <= 0.0) {
+            throw ValueError("Born model generated a non-positive d_born + Delta d.");
+        }
+        Scalar invD = 1.0 / D_i;
+        Scalar gap = 1.0 / d_born_i - invD;
+        Scalar base_term = (1.0 - 1.0 / eps) * invD;
+        Scalar ds_term = use_ds ? ((1.0 - 1.0 / eps_ion) * gap) : scalar_constant<Scalar>(0.0);
+        sum_bracket += x[i] * z2 * (base_term + ds_term);
+    }
+    return -E_CHRG * E_CHRG / (4.0 * PI * kb * t * perm_vac) * sum_bracket;
 }
 
 static double ares_born_cpp(double t, const BornIntermediateState &born_state) {
@@ -915,7 +1027,15 @@ static AresContributionsScalar<Scalar> ares_contributions_scalar_cpp(
     out.hc = ares_hc_scalar_cpp(thermo, hc_state, x, cppargs);
     out.disp = ares_disp_scalar_cpp(thermo, dispersion);
     out.assoc = ares_assoc_scalar_cpp(x, cppargs);
-    out.ion = ares_ion_scalar_cpp(t, thermo, x, cppargs);
+    out.ion = ares_ion_scalar_cpp(
+        t,
+        thermo,
+        x,
+        cppargs,
+        component_target_kind,
+        component_target_index,
+        component_target_value
+    );
     out.born = ares_born_scalar_cpp(t, x, cppargs, component_target_kind, component_target_index, component_target_value);
     return out;
 }
@@ -1397,8 +1517,10 @@ NeutralBinaryKijPhaseDerivatives generic_component_parameter_phase_derivatives_c
     }
     if (target_kind != ares_detail::kGenericTargetSLocal
         && target_kind != ares_detail::kGenericTargetELocal
-        && target_kind != ares_detail::kGenericTargetDBornLocal) {
-        throw ValueError("not_available: generic component-parameter CppAD derivatives support s, e, and d_born only.");
+        && target_kind != ares_detail::kGenericTargetDBornLocal
+        && target_kind != ares_detail::kGenericTargetFSolvLocal
+        && target_kind != ares_detail::kGenericTargetDielcLocal) {
+        throw ValueError("not_available: generic component-parameter CppAD derivatives support s, e, d_born, f_solv, and dielc only.");
     }
     if (target_index < 0 || target_index >= ncomp) {
         throw ValueError("Native generic component-parameter derivative target index is out of range.");
@@ -1407,8 +1529,24 @@ NeutralBinaryKijPhaseDerivatives generic_component_parameter_phase_derivatives_c
         if (cppargs.d_born.size() != x.size()) {
             throw ValueError("not_available: d_born CppAD derivatives require aligned d_born values.");
         }
-        if (cppargs.born_model != 1) {
-            throw ValueError("not_available: d_born CppAD derivatives currently support direct Born model=1.");
+        if (cppargs.born_model != 1 && cppargs.born_model != 2) {
+            throw ValueError("not_available: d_born CppAD derivatives require a direct or SSM/DS Born model.");
+        }
+    }
+    if (target_kind == ares_detail::kGenericTargetFSolvLocal) {
+        if (cppargs.f_solv.size() != x.size()) {
+            throw ValueError("not_available: f_solv CppAD derivatives require aligned f_solv values.");
+        }
+        if (cppargs.born_model != 2) {
+            throw ValueError("not_available: f_solv CppAD derivatives require the SSM/DS Born model.");
+        }
+    }
+    if (target_kind == ares_detail::kGenericTargetDielcLocal) {
+        if (cppargs.dielc.size() != x.size()) {
+            throw ValueError("not_available: dielc CppAD derivatives require aligned relative-permittivity values.");
+        }
+        if (cppargs.dielc_rule != 1) {
+            throw ValueError("not_available: dielc CppAD derivatives require linear mole-fraction relative-permittivity mixing.");
         }
     }
     if (!(t > 0.0) || !(rho > 0.0)) {
@@ -1431,8 +1569,12 @@ NeutralBinaryKijPhaseDerivatives generic_component_parameter_phase_derivatives_c
         theta0 = cppargs.s[static_cast<size_t>(target_index)];
     } else if (target_kind == ares_detail::kGenericTargetELocal) {
         theta0 = cppargs.e[static_cast<size_t>(target_index)];
-    } else {
+    } else if (target_kind == ares_detail::kGenericTargetDBornLocal) {
         theta0 = cppargs.d_born[static_cast<size_t>(target_index)];
+    } else if (target_kind == ares_detail::kGenericTargetFSolvLocal) {
+        theta0 = cppargs.f_solv[static_cast<size_t>(target_index)];
+    } else {
+        theta0 = cppargs.dielc[static_cast<size_t>(target_index)];
     }
     avars[static_cast<size_t>(theta_index)] = theta0;
     for (int i = 0; i < ncomp; ++i) {

@@ -1093,6 +1093,8 @@ constexpr int kGenericTargetDBorn = 5;
 constexpr int kGenericTargetKIJ = 6;
 constexpr int kGenericTargetLIJ = 7;
 constexpr int kGenericTargetKHB = 8;
+constexpr int kGenericTargetFSolv = 9;
+constexpr int kGenericTargetDielc = 10;
 
 constexpr int kGenericTermDensity = 1;
 constexpr int kGenericTermPureVLE = 2;
@@ -1100,6 +1102,7 @@ constexpr int kGenericTermOsmotic = 3;
 constexpr int kGenericTermMIAC = 4;
 constexpr int kGenericTermBinaryVLE = 5;
 constexpr int kGenericTermComponentLnFugacity = 6;
+constexpr int kGenericTermRelativePermittivity = 7;
 
 double relative_residual_cpp(double calc, double exp) {
     double denom = std::max(std::abs(exp), 1.0e-8);
@@ -1130,6 +1133,8 @@ std::string generic_term_name_cpp(const GenericRegressionRecord &record) {
             return "binary_vle_fugacity_balance";
         case kGenericTermComponentLnFugacity:
             return "component_lnfugacity";
+        case kGenericTermRelativePermittivity:
+            return "relative_permittivity";
         default:
             return "unknown";
     }
@@ -1174,6 +1179,12 @@ void apply_generic_targets_cpp(
                 break;
             case kGenericTargetDBorn:
                 set_vector_value_cpp(args.d_born, index, value, "d_born");
+                break;
+            case kGenericTargetFSolv:
+                set_vector_value_cpp(args.f_solv, index, value, "f_solv");
+                break;
+            case kGenericTargetDielc:
+                set_vector_value_cpp(args.dielc, index, value, "dielc");
                 break;
             case kGenericTargetKIJ: {
                 const int other = target_indices_2[j];
@@ -1293,6 +1304,14 @@ void append_generic_residuals_cpp(
                 ? activity.mean_ionic_activity_coefficients_molality
                 : activity.mean_ionic_activity_coefficients_mole_fraction;
             double residual = relative_or_absolute_residual_cpp(values.at(static_cast<size_t>(pair_index)), record.target);
+            raw_by_term[term_name].push_back(residual);
+            scaled.push_back(record.scale * residual);
+            return;
+        }
+        if (record.term == kGenericTermRelativePermittivity) {
+            auto state = mixture->state(record.t, record.x, record.phase, true, record.p, false, 0.0);
+            vector<double> epsilon = state->relative_permittivity();
+            double residual = relative_or_absolute_residual_cpp(epsilon.at(0), record.target);
             raw_by_term[term_name].push_back(residual);
             scaled.push_back(record.scale * residual);
             return;
@@ -1468,8 +1487,12 @@ void validate_pure_ion_born_ceres_problem_cpp(
         throw ValueError("Native Ceres pure-ion regression target arrays must match theta length.");
     }
     for (size_t j = 0; j < target_kinds.size(); ++j) {
-        if (target_kinds[j] != kGenericTargetS && target_kinds[j] != kGenericTargetE && target_kinds[j] != kGenericTargetDBorn) {
-            throw ValueError("not_available: native Ceres pure-ion regression supports s, e, and d_born targets only.");
+        if (target_kinds[j] != kGenericTargetS
+            && target_kinds[j] != kGenericTargetE
+            && target_kinds[j] != kGenericTargetDBorn
+            && target_kinds[j] != kGenericTargetFSolv
+            && target_kinds[j] != kGenericTargetDielc) {
+            throw ValueError("not_available: native Ceres pure-ion regression supports s, e, d_born, f_solv, and dielc targets only.");
         }
         (void)target_indices_2[j];
     }
@@ -1479,8 +1502,11 @@ void validate_pure_ion_born_ceres_problem_cpp(
     for (size_t r = 0; r < records.size(); ++r) {
         const auto &record = records[r];
         const auto &args = base_args_by_record[r];
-        if (record.term != kGenericTermDensity && record.term != kGenericTermOsmotic && record.term != kGenericTermMIAC) {
-            throw ValueError("not_available: native Ceres pure-ion regression supports density, osmotic, and mean-ionic activity rows only.");
+        if (record.term != kGenericTermDensity
+            && record.term != kGenericTermOsmotic
+            && record.term != kGenericTermMIAC
+            && record.term != kGenericTermRelativePermittivity) {
+            throw ValueError("not_available: native Ceres pure-ion regression supports density, osmotic, mean-ionic activity, and relative-permittivity rows only.");
         }
         if (!(record.t > 0.0) || !(record.p > 0.0) || record.phase != 0) {
             throw ValueError("Native Ceres pure-ion regression requires positive T/P liquid records.");
@@ -1495,9 +1521,18 @@ void validate_pure_ion_born_ceres_problem_cpp(
         if (!has_ion) {
             throw ValueError("Native Ceres pure-ion regression requires ionic species.");
         }
-        for (int index : target_indices) {
+        for (size_t j = 0; j < target_indices.size(); ++j) {
+            const int index = target_indices[j];
             if (index < 0 || static_cast<size_t>(index) >= args.d_born.size()) {
-                throw ValueError("Native Ceres pure-ion d_born target index is out of range.");
+                throw ValueError("Native Ceres pure-ion target index is out of range.");
+            }
+            if (target_kinds[j] == kGenericTargetFSolv
+                && (args.f_solv.size() != args.z.size() || static_cast<size_t>(index) >= args.f_solv.size())) {
+                throw ValueError("Native Ceres pure-ion f_solv targets require aligned f_solv values.");
+            }
+            if (target_kinds[j] == kGenericTargetDielc
+                && (args.dielc.size() != args.z.size() || static_cast<size_t>(index) >= args.dielc.size())) {
+                throw ValueError("Native Ceres pure-ion dielc targets require aligned relative-permittivity values.");
             }
         }
     }
@@ -1545,6 +1580,11 @@ PureIonBornResidualEvaluation evaluate_pure_ion_born_residual_jacobian_cpp(
                 }
             }
             for (size_t j = 0; j < theta.size(); ++j) {
+                if ((target_kinds[j] == kGenericTargetDBorn || target_kinds[j] == kGenericTargetFSolv)
+                    && args.born_model == 2) {
+                    dcalc[j] = 0.0;
+                    continue;
+                }
                 NeutralBinaryKijPhaseDerivatives phase = generic_component_parameter_phase_derivatives_cpp(
                     record.t,
                     rho,
@@ -1575,6 +1615,46 @@ PureIonBornResidualEvaluation evaluate_pure_ion_born_residual_jacobian_cpp(
             const double rho_ref = mixture->solve_density(record.t, record.p, x0, record.phase);
             for (size_t j = 0; j < theta.size(); ++j) {
                 const int target = target_indices[j];
+                if ((target_kinds[j] == kGenericTargetDBorn || target_kinds[j] == kGenericTargetFSolv)
+                    && args.born_model == 2) {
+                    BornSSMDSDerivativeResult current = born_ssmds_liquid_derivatives_cpp(
+                        record.t,
+                        rho,
+                        record.phase,
+                        record.x,
+                        args
+                    );
+                    if (!current.supported) {
+                        throw ValueError(current.message);
+                    }
+                    const vector<double> &current_row_major = target_kinds[j] == kGenericTargetDBorn
+                        ? current.lnfug_d_d_born_row_major
+                        : current.lnfug_d_f_solv_row_major;
+                    double reference_derivative = 0.0;
+                    if (target >= 0 && static_cast<size_t>(target) < x0.size() && x0[static_cast<size_t>(target)] > 0.0) {
+                        BornSSMDSDerivativeResult reference = born_ssmds_liquid_derivatives_cpp(
+                            record.t,
+                            rho_ref,
+                            record.phase,
+                            x0,
+                            args
+                        );
+                        if (!reference.supported) {
+                            throw ValueError(reference.message);
+                        }
+                        const vector<double> &reference_row_major = target_kinds[j] == kGenericTargetDBorn
+                            ? reference.lnfug_d_d_born_row_major
+                            : reference.lnfug_d_f_solv_row_major;
+                        reference_derivative = reference_row_major.at(
+                            static_cast<size_t>(target) * record.x.size() + static_cast<size_t>(solvent)
+                        );
+                    }
+                    const double current_derivative = current_row_major.at(
+                        static_cast<size_t>(target) * record.x.size() + static_cast<size_t>(solvent)
+                    );
+                    dcalc[j] = -(current_derivative - reference_derivative) / (mw_solvent * molality_sum);
+                    continue;
+                }
                 NeutralBinaryKijPhaseDerivatives current = generic_component_parameter_phase_derivatives_cpp(
                     record.t,
                     rho,
@@ -1622,6 +1702,32 @@ PureIonBornResidualEvaluation evaluate_pure_ion_born_residual_jacobian_cpp(
             const double sum_nu = nu_cat + nu_an;
             for (size_t j = 0; j < theta.size(); ++j) {
                 const int target = target_indices[j];
+                if ((target_kinds[j] == kGenericTargetDBorn || target_kinds[j] == kGenericTargetFSolv)
+                    && args.born_model == 2) {
+                    BornSSMDSDerivativeResult current = born_ssmds_liquid_derivatives_cpp(
+                        record.t,
+                        rho,
+                        record.phase,
+                        record.x,
+                        args
+                    );
+                    if (!current.supported) {
+                        throw ValueError(current.message);
+                    }
+                    const vector<double> &current_row_major = target_kinds[j] == kGenericTargetDBorn
+                        ? current.lnfug_d_d_born_row_major
+                        : current.lnfug_d_f_solv_row_major;
+                    const double dln_gamma_pm = (
+                        nu_cat * current_row_major.at(
+                            static_cast<size_t>(target) * record.x.size() + static_cast<size_t>(ic)
+                        )
+                        + nu_an * current_row_major.at(
+                            static_cast<size_t>(target) * record.x.size() + static_cast<size_t>(ia)
+                        )
+                    ) / sum_nu;
+                    dcalc[j] = calc * dln_gamma_pm;
+                    continue;
+                }
                 NeutralBinaryKijPhaseDerivatives phase = generic_component_parameter_phase_derivatives_cpp(
                     record.t,
                     rho,
@@ -1635,6 +1741,19 @@ PureIonBornResidualEvaluation evaluate_pure_ion_born_residual_jacobian_cpp(
                     + nu_an * phase.dlnphi_dk_total.at(static_cast<size_t>(ia))
                 ) / sum_nu;
                 dcalc[j] = calc * dln_gamma_pm;
+            }
+        } else if (record.term == kGenericTermRelativePermittivity) {
+            vector<double> epsilon = state->relative_permittivity();
+            calc = epsilon.at(0);
+            for (size_t j = 0; j < theta.size(); ++j) {
+                if (target_kinds[j] == kGenericTargetDielc && args.dielc_rule == 1) {
+                    const int target = target_indices[j];
+                    dcalc[j] = target >= 0 && static_cast<size_t>(target) < record.x.size()
+                        ? record.x[static_cast<size_t>(target)]
+                        : 0.0;
+                } else {
+                    dcalc[j] = 0.0;
+                }
             }
         }
         const double residual = relative_or_absolute_residual_cpp(calc, record.target);
@@ -2400,7 +2519,9 @@ using regression_detail::evaluate_generic_residuals_cpp;
 using regression_detail::evaluate_generic_residuals_with_jacobian_cpp;
 using regression_detail::generic_candidate_starts_cpp;
 using regression_detail::kGenericTargetDBorn;
+using regression_detail::kGenericTargetDielc;
 using regression_detail::kGenericTargetE;
+using regression_detail::kGenericTargetFSolv;
 using regression_detail::kGenericTargetKIJ;
 using regression_detail::kGenericTargetS;
 #ifdef EPCSAFT_HAS_CERES
@@ -2682,7 +2803,11 @@ GenericRegressionResult fit_generic_ceres_cpp(
     const bool is_binary_kij = target_kinds.size() == 1 && target_kinds[0] == kGenericTargetKIJ;
     bool is_pure_ion_parameter_set = !target_kinds.empty();
     for (int kind : target_kinds) {
-        if (kind != kGenericTargetS && kind != kGenericTargetE && kind != kGenericTargetDBorn) {
+        if (kind != kGenericTargetS
+            && kind != kGenericTargetE
+            && kind != kGenericTargetDBorn
+            && kind != kGenericTargetFSolv
+            && kind != kGenericTargetDielc) {
             is_pure_ion_parameter_set = false;
             break;
         }

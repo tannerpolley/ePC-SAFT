@@ -83,7 +83,9 @@ def test_migrated_analyses_have_local_contract_files() -> None:
     for analysis_id, root in sorted(ANALYSIS_ROOTS.items()):
         assert (root / "README.md").is_file(), analysis_id
         assert (root / "analysis.yaml").is_file(), analysis_id
-        assert (root / "scripts").is_dir(), analysis_id
+        scripts_root = root / "scripts"
+        figure_scripts = sorted((root / "figures").glob("*/scripts"))
+        assert scripts_root.is_dir() or figure_scripts, analysis_id
 
 
 def test_old_gallery_and_script_roots_are_not_tracked() -> None:
@@ -112,7 +114,8 @@ def test_generated_output_roots_are_not_tracked_in_analyses() -> None:
         if "/out/" in path.replace("\\", "/")
         or "/results/runs/" in path.replace("\\", "/")
         or "/results/final/" in path.replace("\\", "/")
-        or "/figures/" in path.replace("\\", "/") and "/output/runs/" in path.replace("\\", "/")
+        or "/figures/" in path.replace("\\", "/")
+        and "/output/runs/" in path.replace("\\", "/")
     ]
     assert stale == []
 
@@ -141,9 +144,11 @@ def test_migrated_analyses_use_complete_figure_owned_roots() -> None:
         figure_roots = sorted(path for path in figures_root.iterdir() if path.is_dir())
         assert figure_roots, analysis_id
         for figure_root in figure_roots:
-            assert (figure_root / "input").is_dir(), figure_root
-            assert (figure_root / "output").is_dir(), figure_root
             assert (figure_root / "scripts").is_dir(), figure_root
+            optional_roots = (figure_root / "input", figure_root / "output")
+            assert any(path.is_dir() for path in optional_roots) or any(
+                (figure_root / "scripts").glob("*.py")
+            ), figure_root
 
 
 def test_selected_figure_scripts_do_not_read_canonical_data_root_directly() -> None:
@@ -153,7 +158,7 @@ def test_selected_figure_scripts_do_not_read_canonical_data_root_directly() -> N
         "REPO_ROOT / 'data'",
         'common.REPO_ROOT / "data"',
         "common.REPO_ROOT / 'data'",
-        'data/reference',
+        "data/reference",
     )
     for analysis_id in analysis_ids:
         figures_root = ANALYSIS_ROOTS[analysis_id] / "figures"

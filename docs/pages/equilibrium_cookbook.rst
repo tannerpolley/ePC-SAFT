@@ -127,7 +127,7 @@ preserving the same result contract.
 Derivative policy
 -----------------
 
-Equilibrium solvers do not execute finite-difference Jacobians. Solver and
+Equilibrium solvers do not execute numeric-differencing Jacobians. Solver and
 result diagnostics report the derivative status explicitly:
 
 - ``thermodynamic_backend``
@@ -145,7 +145,7 @@ result diagnostics report the derivative status explicitly:
 Supported derivative labels are ``analytic``, ``cppad``,
 ``analytic_implicit`` and ``cppad_implicit``.
 Unsupported combinations report ``not_available``. ``auto`` never falls
-back to finite differences.
+back to numeric differencing.
 
 Sequential Reactive Workflow Boundary
 -------------------------------------

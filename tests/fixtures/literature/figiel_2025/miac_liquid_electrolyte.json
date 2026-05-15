@@ -41,8 +41,12 @@
       {
         "T": 298.15,
         "P": 101325.0,
-        "rho": 55000.0,
-        "epsilon_r_exp": 78.3,
+        "x_H2O": 0.98,
+        "x_Na+": 0.01,
+        "x_Cl-": 0.01,
+        "rho": 41.0,
+        "epsilon_r_exp": 76.6,
+        "osmotic_coefficient": 1.05,
         "mean_ionic_activity": 0.75
       }
     ]
