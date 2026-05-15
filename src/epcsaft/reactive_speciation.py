@@ -36,7 +36,7 @@ _REACTION_STANDARD_STATES = {
     "concentration": 2,
     "thermodynamic_activity": 0,
     "molality": None,
-    "apparent": None,
+    "apparent": 1,
 }
 
 _REACTION_STANDARD_STATE_DEFAULT_BASIS = {
@@ -55,14 +55,6 @@ _REACTION_CONSTANT_FITTING_ROLES = {
     "fitted_parameter",
     "regularized_correction",
 }
-_PYTHON_FIXED_POINT_STANDARD_STATES = {
-    "mole_fraction_activity",
-    "thermodynamic_activity",
-    "concentration",
-    "apparent",
-}
-
-
 @dataclass(frozen=True, slots=True)
 class ReactionConstantConvention:
     """Explicit convention for interpreting a reaction equilibrium constant."""
@@ -357,20 +349,6 @@ def solve_reactive_speciation(
             initial_x_source=initial_source,
             options=opts,
         )
-    if _requires_python_activity_fixed_point(reaction_defs):
-        return _solve_reactive_speciation_activity_fixed_point(
-            species=labels,
-            mixture_factory=mixture_factory,
-            T=T,
-            P=P,
-            balance_matrix=balance_matrix,
-            total_vector=total_vector,
-            balance_names=balance_names,
-            reactions=reaction_defs,
-            initial_x=initial,
-            initial_x_source=initial_source,
-            options=opts,
-        )
     return _solve_reactive_speciation_native(
         species=labels,
         mixture_factory=mixture_factory,
@@ -384,628 +362,6 @@ def solve_reactive_speciation(
         initial_x_source=initial_source,
         options=opts,
     )
-
-
-def _requires_python_activity_fixed_point(reactions: list[ReactionDefinition]) -> bool:
-    return any(reaction.standard_state in _PYTHON_FIXED_POINT_STANDARD_STATES for reaction in reactions)
-
-
-def _validate_mixture_for_species(mixture: Any, species: list[str]) -> None:
-    native = getattr(mixture, "_native", None)
-    if native is None:
-        raise InputError("activity fixed-point speciation requires mixture_factory to return an ePCSAFTMixture.")
-    if list(getattr(mixture, "species", species)) != species:
-        raise InputError("activity fixed-point speciation requires mixture species to match the species argument.")
-
-
-def _activity_fixed_point_payload(
-    *,
-    species: list[str],
-    mixture: Any,
-    T: float,
-    P: float,
-    x: np.ndarray,
-    reactions: list[ReactionDefinition],
-    options: ReactiveSpeciationOptions,
-) -> dict[str, Any]:
-    _validate_mixture_for_species(mixture, species)
-    log_factors: list[np.ndarray] = []
-    activity_coefficients = np.ones(len(species), dtype=float)
-    activity_model = "ideal_or_apparent"
-    activity_evaluation_count = 0
-    density_solve_count = 0
-    state = None
-    for reaction in reactions:
-        standard_state = reaction.standard_state
-        if standard_state == "ideal_mole_fraction" or standard_state == "apparent":
-            log_factors.append(np.zeros(len(species), dtype=float))
-            continue
-        if standard_state in {"mole_fraction_activity", "thermodynamic_activity"}:
-            if state is None:
-                state = mixture.state(T=T, P=P, x=x, phase=options.phase)
-                density_solve_count += 1
-            if _mixture_has_ionic_species(mixture):
-                activity_model = "epcsaft_component_activity"
-                gamma_map = state.activity_coefficient(species=species)
-                activity_coefficients = np.asarray([gamma_map[label] for label in species], dtype=float)
-            else:
-                activity_model = "epcsaft_neutral_fugacity_activity"
-                activity_coefficients = _neutral_fugacity_activity_coefficients(
-                    mixture=mixture,
-                    T=T,
-                    P=P,
-                    x=x,
-                    phase=options.phase,
-                    min_mole_fraction=options.min_mole_fraction,
-                )
-                density_solve_count += len(species)
-            activity_evaluation_count += 1
-            log_factors.append(np.log(np.clip(activity_coefficients, options.min_mole_fraction, None)))
-            continue
-        if standard_state == "concentration":
-            if state is None:
-                state = mixture.state(T=T, P=P, x=x, phase=options.phase)
-                density_solve_count += 1
-            molar_density = max(float(state.molar_density()), options.min_mole_fraction)
-            activity_model = "concentration"
-            log_factors.append(np.full(len(species), np.log(molar_density), dtype=float))
-            continue
-        raise InputError(
-            "not_available: reaction constant convention "
-            f"'{standard_state}' is defined but is not supported by activity fixed-point speciation."
-        )
-    exposes_activity_coefficients = activity_model.startswith("epcsaft_") or options.activity_output == "always"
-    activity_coefficients_map = (
-        {label: float(value) for label, value in zip(species, activity_coefficients)}
-        if exposes_activity_coefficients
-        else {}
-    )
-    return {
-        "log_factors": log_factors,
-        "activity_coefficients": activity_coefficients.tolist(),
-        "activity_coefficients_map": activity_coefficients_map,
-        "activity_model": activity_model,
-        "activity_evaluation_count": activity_evaluation_count,
-        "density_solve_count": density_solve_count,
-    }
-
-
-def _neutral_fugacity_activity_coefficients(
-    *,
-    mixture: Any,
-    T: float,
-    P: float,
-    x: np.ndarray,
-    phase: str,
-    min_mole_fraction: float,
-) -> np.ndarray:
-    state = mixture.state(T=T, P=P, x=x, phase=phase)
-    ln_phi = np.asarray(state.fugacity_coefficient(natural_log=True), dtype=float)
-    ln_gamma: list[float] = []
-    ncomp = len(x)
-    for idx in range(ncomp):
-        x_ref = np.full(ncomp, max(min_mole_fraction, 1.0e-14), dtype=float)
-        x_ref[idx] = 1.0 - x_ref[0] * float(ncomp - 1)
-        x_ref = x_ref / float(np.sum(x_ref))
-        ref = mixture.state(T=T, P=P, x=x_ref, phase=phase)
-        ln_phi_ref = np.asarray(ref.fugacity_coefficient(natural_log=True), dtype=float)
-        ln_gamma.append(float(np.clip(ln_phi[idx] - ln_phi_ref[idx], -700.0, 700.0)))
-    return np.exp(np.asarray(ln_gamma, dtype=float))
-
-
-def _mixture_has_ionic_species(mixture: Any) -> bool:
-    charges = np.asarray(getattr(mixture, "parameters", {}).get("z", []), dtype=float).flatten()
-    return bool(charges.size and np.any(np.abs(charges) > 1.0e-12))
-
-
-def _idealized_reactions_for_activity_fixed_point(
-    species: list[str],
-    reactions: list[ReactionDefinition],
-    log_factors: list[np.ndarray],
-) -> list[ReactionDefinition]:
-    out: list[ReactionDefinition] = []
-    for reaction, factors in zip(reactions, log_factors):
-        correction = _reaction_log_factor_correction(species, reaction, factors)
-        metadata = dict(reaction.metadata)
-        metadata["activity_fixed_point_source_standard_state"] = reaction.standard_state
-        metadata["activity_fixed_point_constant_kind"] = reaction.convention.constant_kind
-        convention = ReactionConstantConvention(
-            standard_state="ideal_mole_fraction",
-            constant_kind=reaction.convention.constant_kind,
-            fitting_role=reaction.convention.fitting_role,
-            source=reaction.convention.source,
-        )
-        out.append(
-            ReactionDefinition(
-                stoichiometry=reaction.stoichiometry,
-                log_equilibrium_constant=reaction.log_equilibrium_constant - correction,
-                name=reaction.name,
-                metadata=metadata,
-                convention=convention,
-            )
-        )
-    return out
-
-
-def _reaction_log_factor_correction(
-    species: list[str],
-    reaction: ReactionDefinition,
-    factors: np.ndarray,
-) -> float:
-    return float(
-        sum(float(coeff) * float(factors[species.index(label)]) for label, coeff in reaction.stoichiometry.items())
-    )
-
-
-def _reaction_residuals_with_log_factors(
-    *,
-    species: list[str],
-    x: np.ndarray,
-    reactions: list[ReactionDefinition],
-    log_factors: list[np.ndarray],
-    min_mole_fraction: float,
-) -> list[float]:
-    ln_x = np.log(np.clip(np.asarray(x, dtype=float), min_mole_fraction, None))
-    residuals: list[float] = []
-    for reaction, factors in zip(reactions, log_factors):
-        value = -float(reaction.log_equilibrium_constant)
-        for label, coeff in reaction.stoichiometry.items():
-            value += float(coeff) * float(ln_x[species.index(label)] + factors[species.index(label)])
-        residuals.append(float(value))
-    return residuals
-
-
-def _charge_residual_from_mixture(mixture: Any, x: np.ndarray) -> float:
-    charges = np.asarray(getattr(mixture, "parameters", {}).get("z", []), dtype=float).flatten()
-    if charges.size != np.asarray(x).size:
-        return 0.0
-    return float(charges @ np.asarray(x, dtype=float))
-
-
-def _damped_composition_update(
-    current: np.ndarray,
-    candidate: np.ndarray,
-    damping: float,
-    min_mole_fraction: float,
-) -> np.ndarray:
-    updated = (1.0 - float(damping)) * np.asarray(current, dtype=float) + float(damping) * np.asarray(
-        candidate, dtype=float
-    )
-    return _normalize_composition(np.clip(updated, min_mole_fraction, None), len(updated), min_mole_fraction)
-
-
-def _activity_fixed_point_diagnostics(
-    *,
-    reactions: list[ReactionDefinition],
-    options: ReactiveSpeciationOptions,
-    inner: ReactiveSpeciationResult,
-    activity_payload: dict[str, Any],
-    iteration: int,
-    history: list[float],
-    initial_x_source: str,
-    mass_tolerance: float,
-    charge_tolerance: float,
-    reaction_tolerance: float,
-    mass_residual_norm: float,
-    charge_residual: float,
-    reaction_residual_norm: float,
-    residual_norm: float,
-    named_reaction_residuals: dict[str, float],
-    x_map: dict[str, float],
-    activity_evaluation_count: int,
-    density_solve_count: int,
-    state_failure_count: int,
-) -> dict[str, Any]:
-    diagnostics = dict(inner.diagnostics)
-    _normalize_reactive_derivative_diagnostics(diagnostics)
-    diagnostics.update(
-        {
-            "solver_language": "python",
-            "native_entrypoint": "_solve_chemical_equilibrium_native",
-            "problem_class": "homogeneous_chemical_equilibrium",
-            "activity_fixed_point": True,
-            "activity_fixed_point_updates": int(iteration),
-            "activity_model": activity_payload["activity_model"],
-            "activity_basis": _reaction_standard_state_summary(reactions),
-            "reaction_standard_states": [reaction.standard_state for reaction in reactions],
-            "reaction_constant_conventions": _reaction_constant_conventions(reactions),
-            "reaction_constant_sources": _reaction_constant_sources(reactions),
-            "reaction_constant_policy": "fixed_literature_constants_first",
-            "backend": "native_plus_python_activity_fixed_point",
-            "thermodynamic_backend": "epcsaft_state_activity_chemical_potential_api",
-            "selected_solver_backend": "activity_fixed_point_native_inner",
-            "solver_selection_reason": "nonideal_or_apparent_standard_state",
-            "requested_solver_backend": str(options.solver_backend),
-            "requested_hessian_strategy": str(options.hessian_strategy),
-            "requested_jacobian_backend": str(options.jacobian_backend),
-            "jacobian_backend": "analytic",
-            "derivative_backend": "analytic",
-            "derivative_status": "analytic",
-            "derivative_available": True,
-            "jacobian_available": True,
-            "not_available_reason": "",
-            "jacobian_fallback_used": False,
-            "hessian_fallback_used": False,
-            "numerical_derivative_backend_available": False,
-            "activity_derivative_in_jacobian": False,
-            "activity_derivative_policy": "not_used_by_fixed_point_outer_iteration",
-            "residual_norm": float(residual_norm),
-            "residual_norm_by_block": {
-                "material_balance": float(mass_residual_norm),
-                "charge_balance": float(abs(charge_residual)),
-                "reaction_affinity": float(reaction_residual_norm),
-            },
-            "history": [float(value) for value in history],
-            "iterations": int(iteration),
-            "state_failure_count": int(state_failure_count),
-            "activity_evaluation_count": int(activity_evaluation_count),
-            "density_solve_count": int(density_solve_count),
-            "activity_coefficients_evaluated": bool(activity_payload["activity_coefficients_map"]),
-            "mass_tolerance": float(mass_tolerance),
-            "charge_tolerance": float(charge_tolerance),
-            "reaction_tolerance": float(reaction_tolerance),
-            "mass_residual_norm": float(mass_residual_norm),
-            "charge_residual_abs": float(abs(charge_residual)),
-            "reaction_residual_norm": float(reaction_residual_norm),
-            "named_reaction_residuals": dict(named_reaction_residuals),
-            "best_x": dict(x_map),
-            "best_activity_coefficients": dict(activity_payload["activity_coefficients_map"]),
-            "initial_x_source": str(initial_x_source),
-            "continuation_used": str(initial_x_source) != "initial_x",
-        }
-    )
-    diagnostics["derivative_backend_by_block"].update(
-        {
-            "reaction_residual_jacobian": "analytic",
-            "activity_or_fugacity_state": "analytic",
-            "activity_fixed_point_outer_iteration": "analytic",
-        }
-    )
-    return diagnostics
-
-
-def _solve_reactive_speciation_activity_fixed_point(
-    *,
-    species: list[str],
-    mixture_factory: Any,
-    T: float,
-    P: float,
-    balance_matrix: np.ndarray,
-    total_vector: np.ndarray,
-    balance_names: list[str],
-    reactions: list[ReactionDefinition],
-    initial_x: np.ndarray,
-    options: ReactiveSpeciationOptions,
-    initial_x_source: str = "initial_x",
-) -> ReactiveSpeciationResult:
-    if options.jacobian_backend in {"autodiff", "cppad"}:
-        raise InputError(
-            "not_available: explicit autodiff/CppAD chemical-equilibrium residual Jacobian is not "
-            "implemented for activity-fixed-point speciation."
-        )
-    if options.solver_backend == "ipopt":
-        raise InputError(
-            "not_available: solver_backend='ipopt' is not implemented for activity-fixed-point speciation."
-        )
-
-    scalar_result = _try_scalar_binary_activity_solve(
-        species=species,
-        mixture_factory=mixture_factory,
-        T=T,
-        P=P,
-        balance_matrix=balance_matrix,
-        total_vector=total_vector,
-        balance_names=balance_names,
-        reactions=reactions,
-        initial_x=initial_x,
-        options=options,
-        initial_x_source=initial_x_source,
-    )
-    if scalar_result is not None:
-        return scalar_result
-
-    current = np.asarray(initial_x, dtype=float)
-    best_result: ReactiveSpeciationResult | None = None
-    best_residual_norm = float("inf")
-    history: list[float] = []
-    activity_evaluation_count = 0
-    density_solve_count = 0
-    state_failure_count = 0
-    last_activity_payload: dict[str, Any] = {}
-    fixed_point_success = False
-
-    for iteration in range(options.max_iterations + 1):
-        try:
-            mixture = mixture_factory(current, T, P)
-            _validate_mixture_for_species(mixture, species)
-            activity_payload = _activity_fixed_point_payload(
-                species=species,
-                mixture=mixture,
-                T=T,
-                P=P,
-                x=current,
-                reactions=reactions,
-                options=options,
-            )
-        except _SPECIATION_EVALUATION_ERRORS:
-            state_failure_count += 1
-            raise
-        activity_evaluation_count += int(activity_payload.get("activity_evaluation_count", 0))
-        density_solve_count += int(activity_payload.get("density_solve_count", 0))
-        last_activity_payload = activity_payload
-        ideal_reactions = _idealized_reactions_for_activity_fixed_point(
-            species,
-            reactions,
-            activity_payload["log_factors"],
-        )
-        inner_options = ReactiveSpeciationOptions(
-            max_iterations=options.max_iterations,
-            tolerance=options.tolerance,
-            damping=options.damping,
-            min_mole_fraction=options.min_mole_fraction,
-            jacobian_backend="auto",
-            solver_backend="auto",
-            hessian_strategy=options.hessian_strategy,
-            phase=options.phase,
-            return_best_effort=True,
-            error_mode="result",
-            activity_output="never",
-            mass_tolerance=options.mass_tolerance,
-            charge_tolerance=options.charge_tolerance,
-            reaction_tolerance=options.reaction_tolerance,
-        )
-        inner = _solve_reactive_speciation_native(
-            species=species,
-            mixture_factory=lambda x, t, p, _mixture=mixture: _mixture,
-            T=T,
-            P=P,
-            balance_matrix=balance_matrix,
-            total_vector=total_vector,
-            balance_names=balance_names,
-            reactions=ideal_reactions,
-            initial_x=current,
-            initial_x_source="activity_fixed_point",
-            options=inner_options,
-        )
-        candidate = _normalize_composition(list(inner.x.values()), len(species), options.min_mole_fraction)
-        full_payload = _activity_fixed_point_payload(
-            species=species,
-            mixture=mixture_factory(candidate, T, P),
-            T=T,
-            P=P,
-            x=candidate,
-            reactions=reactions,
-            options=options,
-        )
-        activity_evaluation_count += int(full_payload.get("activity_evaluation_count", 0))
-        density_solve_count += int(full_payload.get("density_solve_count", 0))
-        last_activity_payload = full_payload
-        reaction_residuals = _reaction_residuals_with_log_factors(
-            species=species,
-            x=candidate,
-            reactions=reactions,
-            log_factors=full_payload["log_factors"],
-            min_mole_fraction=options.min_mole_fraction,
-        )
-        x_map = {label: float(value) for label, value in zip(species, candidate)}
-        mass_balance_residuals = {
-            name: float(value)
-            for name, value in zip(balance_names, np.asarray(balance_matrix, dtype=float) @ candidate - total_vector)
-        }
-        charge_residual = _charge_residual_from_mixture(mixture_factory(candidate, T, P), candidate)
-        named_reaction_residuals = _named_reaction_residuals(reactions, reaction_residuals)
-        mass_tolerance = options.mass_tolerance if options.mass_tolerance is not None else options.tolerance
-        charge_tolerance = options.charge_tolerance if options.charge_tolerance is not None else options.tolerance
-        reaction_tolerance = options.reaction_tolerance if options.reaction_tolerance is not None else options.tolerance
-        mass_residual_norm = float(max((abs(value) for value in mass_balance_residuals.values()), default=0.0))
-        reaction_residual_norm = float(max((abs(value) for value in reaction_residuals), default=0.0))
-        residual_norm = max(mass_residual_norm, abs(charge_residual), reaction_residual_norm)
-        history.append(residual_norm)
-        residual_family_success = (
-            mass_residual_norm <= mass_tolerance
-            and abs(charge_residual) <= charge_tolerance
-            and reaction_residual_norm <= reaction_tolerance
-        )
-        diagnostics = _activity_fixed_point_diagnostics(
-            reactions=reactions,
-            options=options,
-            inner=inner,
-            activity_payload=full_payload,
-            iteration=iteration,
-            history=history,
-            initial_x_source=initial_x_source,
-            mass_tolerance=mass_tolerance,
-            charge_tolerance=charge_tolerance,
-            reaction_tolerance=reaction_tolerance,
-            mass_residual_norm=mass_residual_norm,
-            charge_residual=charge_residual,
-            reaction_residual_norm=reaction_residual_norm,
-            residual_norm=residual_norm,
-            named_reaction_residuals=named_reaction_residuals,
-            x_map=x_map,
-            activity_evaluation_count=activity_evaluation_count,
-            density_solve_count=density_solve_count,
-            state_failure_count=state_failure_count,
-        )
-        best_result = ReactiveSpeciationResult(
-            success=bool(inner.success and residual_family_success),
-            message="converged" if inner.success and residual_family_success else "activity fixed-point did not converge",
-            x=x_map,
-            activity_coefficients=full_payload["activity_coefficients_map"],
-            mass_balance_residuals=mass_balance_residuals,
-            charge_residual=charge_residual,
-            reaction_residuals=reaction_residuals,
-            named_reaction_residuals=named_reaction_residuals,
-            state_failure_count=state_failure_count,
-            diagnostics=diagnostics,
-            continuation_state=_continuation_state(x=x_map, T=T, P=P, diagnostics=diagnostics),
-        )
-        if residual_norm < best_residual_norm:
-            best_residual_norm = residual_norm
-        if best_result.success:
-            fixed_point_success = True
-            break
-        if iteration == options.max_iterations:
-            break
-        current = _damped_composition_update(current, candidate, options.damping, options.min_mole_fraction)
-
-    if best_result is None:
-        raise SolutionError("activity fixed-point speciation did not produce a result", _json_like(last_activity_payload))
-    if not fixed_point_success and not options.return_best_effort:
-        raise SolutionError(best_result.message, _json_like(best_result.diagnostics))
-    return best_result
-
-
-def _try_scalar_binary_activity_solve(
-    *,
-    species: list[str],
-    mixture_factory: Any,
-    T: float,
-    P: float,
-    balance_matrix: np.ndarray,
-    total_vector: np.ndarray,
-    balance_names: list[str],
-    reactions: list[ReactionDefinition],
-    initial_x: np.ndarray,
-    options: ReactiveSpeciationOptions,
-    initial_x_source: str,
-) -> ReactiveSpeciationResult | None:
-    if len(species) != 2 or len(reactions) != 1 or balance_matrix.shape != (1, 2):
-        return None
-    if not np.allclose(balance_matrix[0], np.ones(2), rtol=0.0, atol=1.0e-14):
-        return None
-    total = float(total_vector[0])
-    if not np.isfinite(total) or abs(total - 1.0) > 1.0e-12:
-        return None
-    reaction = reactions[0]
-    if any(label not in species for label in reaction.stoichiometry):
-        return None
-
-    def evaluate(x0: float) -> tuple[float, dict[str, Any]]:
-        x = _normalize_composition([x0, 1.0 - x0], 2, options.min_mole_fraction)
-        mixture = mixture_factory(x, T, P)
-        payload = _activity_fixed_point_payload(
-            species=species,
-            mixture=mixture,
-            T=T,
-            P=P,
-            x=x,
-            reactions=reactions,
-            options=options,
-        )
-        residual = _reaction_residuals_with_log_factors(
-            species=species,
-            x=x,
-            reactions=reactions,
-            log_factors=payload["log_factors"],
-            min_mole_fraction=options.min_mole_fraction,
-        )[0]
-        return float(residual), payload
-
-    lower = max(options.min_mole_fraction, 1.0e-12)
-    upper = 1.0 - lower
-    grid = np.linspace(lower, upper, 101)
-    values: list[tuple[float, float, dict[str, Any]]] = []
-    for point in grid:
-        try:
-            residual, payload = evaluate(float(point))
-        except _SPECIATION_EVALUATION_ERRORS:
-            continue
-        if np.isfinite(residual):
-            values.append((float(point), residual, payload))
-    if not values:
-        return None
-    brackets: list[tuple[float, float, float, float]] = []
-    for (x_left, f_left, _), (x_right, f_right, _) in zip(values, values[1:]):
-        if f_left == 0.0:
-            brackets.append((x_left, x_left, f_left, f_left))
-        elif f_left * f_right <= 0.0:
-            brackets.append((x_left, x_right, f_left, f_right))
-    if not brackets:
-        return None
-    seed = float(initial_x[0])
-    left, right, f_left, f_right = min(brackets, key=lambda item: abs(0.5 * (item[0] + item[1]) - seed))
-    payload = values[0][2]
-    history: list[float] = []
-    root = left
-    residual = f_left
-    for iteration in range(max(1, options.max_iterations * 4)):
-        root = 0.5 * (left + right)
-        residual, payload = evaluate(root)
-        history.append(abs(residual))
-        if abs(residual) <= options.tolerance or abs(right - left) <= options.min_mole_fraction:
-            break
-        if f_left * residual <= 0.0:
-            right = root
-            f_right = residual
-        else:
-            left = root
-            f_left = residual
-    del f_right
-    x = _normalize_composition([root, 1.0 - root], 2, options.min_mole_fraction)
-    mixture = mixture_factory(x, T, P)
-    mass_balance_residuals = {balance_names[0]: float(np.sum(x) - total)}
-    charge_residual = _charge_residual_from_mixture(mixture, x)
-    named_reaction_residuals = _named_reaction_residuals(reactions, [residual])
-    x_map = {label: float(value) for label, value in zip(species, x)}
-    mass_tolerance = options.mass_tolerance if options.mass_tolerance is not None else options.tolerance
-    charge_tolerance = options.charge_tolerance if options.charge_tolerance is not None else options.tolerance
-    reaction_tolerance = options.reaction_tolerance if options.reaction_tolerance is not None else options.tolerance
-    mass_residual_norm = abs(mass_balance_residuals[balance_names[0]])
-    reaction_residual_norm = abs(float(residual))
-    residual_norm = max(mass_residual_norm, abs(charge_residual), reaction_residual_norm)
-    inner = ReactiveSpeciationResult(
-        success=True,
-        message="scalar binary activity solve",
-        x=x_map,
-        activity_coefficients={},
-        mass_balance_residuals=mass_balance_residuals,
-        charge_residual=charge_residual,
-        reaction_residuals=[residual],
-        named_reaction_residuals=named_reaction_residuals,
-        state_failure_count=0,
-        diagnostics={"derivative_backend": "analytic", "residual_norm": residual_norm},
-    )
-    diagnostics = _activity_fixed_point_diagnostics(
-        reactions=reactions,
-        options=options,
-        inner=inner,
-        activity_payload=payload,
-        iteration=len(history),
-        history=history,
-        initial_x_source=initial_x_source,
-        mass_tolerance=mass_tolerance,
-        charge_tolerance=charge_tolerance,
-        reaction_tolerance=reaction_tolerance,
-        mass_residual_norm=mass_residual_norm,
-        charge_residual=charge_residual,
-        reaction_residual_norm=reaction_residual_norm,
-        residual_norm=residual_norm,
-        named_reaction_residuals=named_reaction_residuals,
-        x_map=x_map,
-        activity_evaluation_count=len(history),
-        density_solve_count=len(history) * (1 + len(species)),
-        state_failure_count=0,
-    )
-    diagnostics["selected_solver_backend"] = "scalar_binary_activity_bracket"
-    diagnostics["solver_selection_reason"] = "binary_reaction_scalar_activity_residual"
-    success = residual_norm <= max(mass_tolerance, charge_tolerance, reaction_tolerance)
-    result = ReactiveSpeciationResult(
-        success=success,
-        message="converged" if success else "scalar binary activity solve did not converge",
-        x=x_map,
-        activity_coefficients=payload["activity_coefficients_map"],
-        mass_balance_residuals=mass_balance_residuals,
-        charge_residual=charge_residual,
-        reaction_residuals=[residual],
-        named_reaction_residuals=named_reaction_residuals,
-        state_failure_count=0,
-        diagnostics=diagnostics,
-        continuation_state=_continuation_state(x=x_map, T=T, P=P, diagnostics=diagnostics),
-    )
-    if not success and not options.return_best_effort:
-        raise SolutionError(result.message, _json_like(result.diagnostics))
-    return result
 
 
 def solve_reactive_speciation_sweep(
@@ -1227,8 +583,13 @@ def _solve_reactive_speciation_native(
             "continuation_used": str(initial_x_source) != "initial_x",
             "requested_solver_backend": str(options.solver_backend),
             "requested_hessian_strategy": str(options.hessian_strategy),
-            "selected_solver_backend": "native",
-            "solver_selection_reason": "default_native" if options.solver_backend == "auto" else "explicit_request",
+            "selected_solver_backend": str(diagnostics.get("selected_solver_backend", "native")),
+            "solver_selection_reason": str(
+                diagnostics.get(
+                    "solver_selection_reason",
+                    "default_native" if options.solver_backend == "auto" else "explicit_request",
+                )
+            ),
             "default_auto_uses_ipopt": False,
             "mass_tolerance": float(mass_tolerance),
             "charge_tolerance": float(charge_tolerance),
@@ -1278,6 +639,7 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
     diagnostics.setdefault("derivative_status", derivative_backend)
     diagnostics.setdefault("jacobian_fallback_used", False)
     diagnostics.setdefault("hessian_fallback_used", False)
+    diagnostics.setdefault("numerical_derivative_backend_available", False)
     if derivative_backend == "not_available":
         diagnostics.setdefault(
             "not_available_reason",
@@ -1339,18 +701,16 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
             diagnostics={"residual_backend": derivative_backend},
         )
     else:
-        reactive_implicit_result = ImplicitSolveResult(
-            state=(),
-            residual=(),
-            jacobians={},
-            sensitivity=(),
-            backend=solved_state_backend,
-            status="residual_jacobian_available",
-            diagnostics={
-                "residual_backend": derivative_backend,
-                "sensitivity_scope": "generic implicit solved-state contract",
-            },
+        reactive_implicit_result = _native_reactive_implicit_result(
+            diagnostics,
+            solved_state_backend=solved_state_backend,
+            derivative_backend=derivative_backend,
         )
+        if reactive_implicit_result.backend != "not_available":
+            blocks = list(diagnostics.get("implicit_sensitivity_blocks", []))
+            if "reactive_speciation_variables" not in blocks:
+                blocks.append("reactive_speciation_variables")
+            diagnostics["implicit_sensitivity_blocks"] = blocks
     diagnostics.setdefault(
         "implicit_solve_results",
         {
@@ -1359,6 +719,52 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
                 reason="association site-fraction implicit sensitivities are unavailable for this reactive speciation route.",
                 diagnostics={"residual_backend": "not_available"},
             ).to_dict(),
+        },
+    )
+
+
+def _native_reactive_implicit_result(
+    diagnostics: dict[str, Any],
+    *,
+    solved_state_backend: str,
+    derivative_backend: str,
+) -> ImplicitSolveResult:
+    rows = int(diagnostics.get("reactive_speciation_residual_rows", 0))
+    state_size = int(diagnostics.get("reactive_speciation_state_size", 0))
+    parameter_size = int(diagnostics.get("reactive_speciation_parameter_size", 0))
+    if rows <= 0 or state_size <= 0 or parameter_size <= 0:
+        return not_available_implicit_result(
+            reason="native reactive speciation did not return implicit sensitivity matrices.",
+            diagnostics={"residual_backend": derivative_backend},
+        )
+    state = np.asarray(diagnostics.get("reactive_speciation_state", []), dtype=float)
+    residual = np.asarray(diagnostics.get("reactive_speciation_residual", []), dtype=float)
+    residual_state = np.asarray(
+        diagnostics.get("reactive_speciation_residual_state_jacobian_row_major", []),
+        dtype=float,
+    ).reshape(rows, state_size)
+    residual_parameter = np.asarray(
+        diagnostics.get("reactive_speciation_residual_parameter_jacobian_row_major", []),
+        dtype=float,
+    ).reshape(rows, parameter_size)
+    sensitivity = np.asarray(
+        diagnostics.get("reactive_speciation_log_amount_sensitivity_to_log_k_row_major", []),
+        dtype=float,
+    ).reshape(state_size, parameter_size)
+    return ImplicitSolveResult(
+        state=state,
+        residual=residual,
+        jacobians={
+            "residual_state": residual_state,
+            "residual_parameter": residual_parameter,
+        },
+        sensitivity=sensitivity,
+        backend=solved_state_backend,
+        status=str(diagnostics.get("implicit_sensitivity_status", "residual_jacobian_available")),
+        diagnostics={
+            "residual_backend": derivative_backend,
+            "sensitivity_scope": "log_amount_response_to_reaction_constants",
+            "parameter": str(diagnostics.get("reactive_speciation_sensitivity_parameter", "log_equilibrium_constants")),
         },
     )
 

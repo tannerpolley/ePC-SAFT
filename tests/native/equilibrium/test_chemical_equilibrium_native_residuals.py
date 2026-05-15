@@ -121,7 +121,7 @@ def test_native_chemical_equilibrium_solves_easy_ideal_reaction() -> None:
     assert result.x["B"] / result.x["A"] == pytest.approx(3.0, rel=1.0e-8)
     assert result.diagnostics["solver_language"] == "c++"
     assert result.diagnostics["native_entrypoint"] == "_solve_chemical_equilibrium_native"
-    assert result.diagnostics["activity_model"] == "epcsaft_neutral_fugacity_activity"
+    assert result.diagnostics["activity_model"] == "ideal"
     assert result.diagnostics["requested_jacobian_backend"] == "auto"
     assert result.diagnostics["jacobian_backend"] == "analytic"
     assert result.diagnostics["jacobian_available"] is True
@@ -159,7 +159,11 @@ def test_native_chemical_equilibrium_solves_activity_coupled_salt_speciation() -
 
     assert result.success is True
     assert result.diagnostics["activity_model"] == "epcsaft_component_activity"
-    assert result.diagnostics["activity_fixed_point"] is True
+    assert result.diagnostics["solver_language"] == "c++"
+    assert result.diagnostics["native_entrypoint"] == "_solve_chemical_equilibrium_native"
+    assert result.diagnostics["activity_fixed_point"] is False
+    assert result.diagnostics["activity_fixed_point_updates"] == 0
+    assert result.diagnostics["activity_or_fugacity_terms_in_residual"] is True
     assert result.diagnostics["not_available_reason"] == ""
     assert max(abs(value) for value in result.reaction_residuals) <= 1.0e-8
 
@@ -218,7 +222,7 @@ def test_native_chemical_equilibrium_solves_neutral_activity_seed() -> None:
     )
 
     assert result.success is True
-    assert result.diagnostics["selected_solver_backend"] == "scalar_binary_activity_bracket"
+    assert result.diagnostics["selected_solver_backend"] == "native_scalar_binary_activity_bracket"
     assert result.diagnostics["activity_model"] == "epcsaft_neutral_fugacity_activity"
     assert max(abs(value) for value in result.reaction_residuals) <= 1.0e-9
 

@@ -16,6 +16,8 @@ constexpr int STANDARD_STATE_MOLE_FRACTION_ACTIVITY = 0;
 constexpr int STANDARD_STATE_IDEAL_MOLE_FRACTION = 1;
 constexpr int STANDARD_STATE_CONCENTRATION = 2;
 
+bool has_ionic_species(const std::shared_ptr<ePCSAFTMixtureNative>& mixture);
+
 int phase_token_to_int_chemical(const std::string& phase) {
     if (phase == "liq" || phase == "liquid" || phase == "aq" || phase == "org") {
         return 0;
@@ -59,6 +61,19 @@ bool standard_states_all_ideal_mole_fraction(const std::vector<int>& standard_st
         }
     }
     return true;
+}
+
+std::string activity_model_for_standard_states(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    const std::vector<int>& standard_states
+) {
+    if (standard_states_need_activity(standard_states)) {
+        return has_ionic_species(mixture) ? "epcsaft_component_activity" : "epcsaft_neutral_fugacity_activity";
+    }
+    if (standard_states_need_concentration(standard_states)) {
+        return "concentration";
+    }
+    return "ideal";
 }
 
 std::string standard_state_label(int value) {
@@ -211,7 +226,7 @@ std::vector<double> activity_coefficients(
     double min_mole_fraction,
     int* state_failure_count
 ) {
-    if (activity_model == "ideal") {
+    if (activity_model == "ideal" || activity_model == "concentration") {
         return std::vector<double>(x.size(), 1.0);
     }
     try {
@@ -283,11 +298,9 @@ ChemicalDerivativeSelection select_chemical_derivative_backend(
         selection.derivative_available = true;
         return selection;
     }
-    selection.backend = "not_available";
+    selection.backend = "analytic";
     selection.capability_path = "chemical_equilibrium:activity_or_concentration:log_amounts";
-    selection.not_available_reason =
-        "not_available: analytic/CppAD/implicit chemical-equilibrium residual jacobian is unavailable for activity- or concentration-coupled standard states.";
-    throw ValueError(selection.not_available_reason);
+    selection.derivative_available = true;
     return selection;
 }
 
@@ -765,6 +778,337 @@ Eigen::MatrixXd chemical_residual_jacobian(
         : selected.not_available_reason);
 }
 
+bool is_scalar_binary_activity_problem(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    const Eigen::MatrixXd& balances,
+    const Eigen::VectorXd& totals,
+    const Eigen::MatrixXd& reactions,
+    const std::vector<int>& reaction_standard_states
+) {
+    if (has_ionic_species(mixture) || mixture->args().m.size() != 2 || balances.rows() != 1 || balances.cols() != 2) {
+        return false;
+    }
+    if (totals.size() != 1 || std::abs(totals[0] - 1.0) > 1.0e-12) {
+        return false;
+    }
+    if (reactions.rows() != 1 || reactions.cols() != 2 || reaction_standard_states.size() != 1) {
+        return false;
+    }
+    if (reaction_standard_states[0] != STANDARD_STATE_MOLE_FRACTION_ACTIVITY) {
+        return false;
+    }
+    return std::abs(balances(0, 0) - 1.0) <= 1.0e-12
+        && std::abs(balances(0, 1) - 1.0) <= 1.0e-12
+        && std::abs(reactions(0, 0) + 1.0) <= 1.0e-12
+        && std::abs(reactions(0, 1) - 1.0) <= 1.0e-12;
+}
+
+Eigen::VectorXd binary_log_amounts(double x0, double min_mole_fraction) {
+    Eigen::VectorXd log_n(2);
+    const double clipped = std::max(min_mole_fraction, std::min(1.0 - min_mole_fraction, x0));
+    log_n[0] = std::log(clipped);
+    log_n[1] = std::log(std::max(min_mole_fraction, 1.0 - clipped));
+    return log_n;
+}
+
+std::vector<double> matrix_to_row_major_vector(const Eigen::MatrixXd& matrix) {
+    std::vector<double> out;
+    out.reserve(static_cast<std::size_t>(matrix.rows() * matrix.cols()));
+    for (Eigen::Index r = 0; r < matrix.rows(); ++r) {
+        for (Eigen::Index c = 0; c < matrix.cols(); ++c) {
+            out.push_back(matrix(r, c));
+        }
+    }
+    return out;
+}
+
+void add_reactive_speciation_implicit_sensitivity_diagnostics(
+    ChemicalEquilibriumResultNative& result,
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const Eigen::VectorXd& log_n,
+    const ChemicalEvaluation& current,
+    const Eigen::MatrixXd& balances,
+    const Eigen::VectorXd& totals,
+    const Eigen::MatrixXd& reactions,
+    const Eigen::VectorXd& log_k,
+    const std::vector<int>& reaction_standard_states,
+    const ChemicalEquilibriumOptionsNative& options,
+    int phase_int,
+    const std::string& activity_model
+) {
+    try {
+        int state_failure_count = 0;
+        Eigen::MatrixXd residual_state_jacobian = chemical_residual_jacobian(
+            mixture,
+            t,
+            p,
+            log_n,
+            current,
+            balances,
+            totals,
+            reactions,
+            log_k,
+            reaction_standard_states,
+            options,
+            phase_int,
+            activity_model,
+            &state_failure_count,
+            nullptr,
+            nullptr
+        );
+        Eigen::MatrixXd residual_parameter_jacobian =
+            Eigen::MatrixXd::Zero(residual_state_jacobian.rows(), reactions.rows());
+        const Eigen::Index reaction_offset = balances.rows() + 1;
+        for (Eigen::Index r = 0; r < reactions.rows(); ++r) {
+            residual_parameter_jacobian(reaction_offset + r, r) = -1.0;
+        }
+        Eigen::MatrixXd sensitivity =
+            residual_state_jacobian.colPivHouseholderQr().solve(-residual_parameter_jacobian);
+
+        result.diagnostics_string["implicit_sensitivity_backend"] = "analytic_implicit";
+        result.diagnostics_string["implicit_sensitivity_status"] = "residual_jacobian_available";
+        result.diagnostics_string["reactive_speciation_sensitivity_parameter"] = "log_equilibrium_constants";
+        result.diagnostics_int["reactive_speciation_residual_rows"] =
+            static_cast<int>(residual_state_jacobian.rows());
+        result.diagnostics_int["reactive_speciation_state_size"] =
+            static_cast<int>(residual_state_jacobian.cols());
+        result.diagnostics_int["reactive_speciation_parameter_size"] =
+            static_cast<int>(reactions.rows());
+        result.diagnostics_vector["reactive_speciation_state"] = vector_from_eigen(log_n);
+        result.diagnostics_vector["reactive_speciation_residual"] = current.residuals;
+        result.diagnostics_vector["reactive_speciation_residual_state_jacobian_row_major"] =
+            matrix_to_row_major_vector(residual_state_jacobian);
+        result.diagnostics_vector["reactive_speciation_residual_parameter_jacobian_row_major"] =
+            matrix_to_row_major_vector(residual_parameter_jacobian);
+        result.diagnostics_vector["reactive_speciation_log_amount_sensitivity_to_log_k_row_major"] =
+            matrix_to_row_major_vector(sensitivity);
+    } catch (const std::exception& exc) {
+        result.diagnostics_string["implicit_sensitivity_backend"] = "not_available";
+        result.diagnostics_string["implicit_sensitivity_status"] = "not_available";
+        result.diagnostics_string["implicit_sensitivity_reason"] = exc.what();
+    }
+}
+
+bool try_scalar_binary_activity_solve_native(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const Eigen::MatrixXd& balances,
+    const Eigen::VectorXd& totals,
+    const Eigen::MatrixXd& reactions,
+    const Eigen::VectorXd& log_k,
+    const std::vector<int>& reaction_standard_states,
+    const ChemicalEquilibriumOptionsNative& options,
+    int phase_int,
+    const std::string& activity_model,
+    const ChemicalDerivativeSelection& derivative_selection,
+    double preferred_fraction,
+    ChemicalEquilibriumResultNative& result
+) {
+    if (!is_scalar_binary_activity_problem(mixture, balances, totals, reactions, reaction_standard_states)) {
+        return false;
+    }
+    int state_failure_count = 0;
+    ChemicalEvaluationCounters counters;
+    std::vector<double> history;
+    const double low = options.min_mole_fraction;
+    const double high = 1.0 - options.min_mole_fraction;
+
+    auto evaluate_fraction = [&](double x0) {
+        return evaluate_chemical(
+            mixture,
+            t,
+            p,
+            binary_log_amounts(x0, options.min_mole_fraction),
+            balances,
+            totals,
+            reactions,
+            log_k,
+            reaction_standard_states,
+            options,
+            phase_int,
+            activity_model,
+            &state_failure_count,
+            &counters
+        );
+    };
+
+    ChemicalEvaluation best;
+    double best_residual = std::numeric_limits<double>::infinity();
+    double best_fraction = std::numeric_limits<double>::infinity();
+    int iteration = 0;
+    const int max_iterations = std::max(1, options.max_iterations);
+    const int scan_points = std::max(64, max_iterations * 4);
+
+    auto consider_candidate = [&](double fraction, const ChemicalEvaluation& evaluation, double residual) {
+        const double preferred_distance = std::abs(fraction - preferred_fraction);
+        const double best_distance = std::abs(best_fraction - preferred_fraction);
+        if (!std::isfinite(best_residual) || preferred_distance < best_distance
+            || (std::abs(preferred_distance - best_distance) <= 1.0e-14
+                && std::abs(residual) < std::abs(best_residual))) {
+            best = evaluation;
+            best_residual = residual;
+            best_fraction = fraction;
+        }
+    };
+
+    double previous_x = low;
+    ChemicalEvaluation previous_eval;
+    double previous_residual = std::numeric_limits<double>::quiet_NaN();
+    try {
+        previous_eval = evaluate_fraction(previous_x);
+        previous_residual = previous_eval.reaction_residuals.empty()
+            ? previous_eval.residual_norm
+            : previous_eval.reaction_residuals[0];
+    } catch (...) {
+        return false;
+    }
+    if (!std::isfinite(previous_residual)) {
+        return false;
+    }
+    history.push_back(std::abs(previous_residual));
+    if (std::abs(previous_residual) <= options.tolerance) {
+        consider_candidate(previous_x, previous_eval, previous_residual);
+    }
+
+    for (int scan = 1; scan <= scan_points; ++scan) {
+        const double current_x = low + (high - low) * static_cast<double>(scan) / static_cast<double>(scan_points);
+        ChemicalEvaluation current_eval;
+        double current_residual = std::numeric_limits<double>::quiet_NaN();
+        try {
+            current_eval = evaluate_fraction(current_x);
+            current_residual = current_eval.reaction_residuals.empty()
+                ? current_eval.residual_norm
+                : current_eval.reaction_residuals[0];
+        } catch (...) {
+            previous_x = current_x;
+            continue;
+        }
+        if (!std::isfinite(current_residual)) {
+            previous_x = current_x;
+            continue;
+        }
+        history.push_back(std::abs(current_residual));
+        if (std::abs(current_residual) <= options.tolerance) {
+            consider_candidate(current_x, current_eval, current_residual);
+        }
+        if (previous_residual * current_residual <= 0.0) {
+            double left = previous_x;
+            double right = current_x;
+            double f_left = previous_residual;
+            ChemicalEvaluation bracket_best = std::abs(previous_residual) <= std::abs(current_residual)
+                ? previous_eval
+                : current_eval;
+            double bracket_residual = std::abs(previous_residual) <= std::abs(current_residual)
+                ? previous_residual
+                : current_residual;
+            double bracket_fraction = std::abs(previous_residual) <= std::abs(current_residual)
+                ? previous_x
+                : current_x;
+            for (int inner = 1; inner <= max_iterations; ++inner) {
+                ++iteration;
+                const double mid = 0.5 * (left + right);
+                ChemicalEvaluation mid_eval = evaluate_fraction(mid);
+                const double mid_residual = mid_eval.reaction_residuals.empty()
+                    ? mid_eval.residual_norm
+                    : mid_eval.reaction_residuals[0];
+                history.push_back(std::abs(mid_residual));
+                if (std::abs(mid_residual) < std::abs(bracket_residual)) {
+                    bracket_best = mid_eval;
+                    bracket_residual = mid_residual;
+                    bracket_fraction = mid;
+                }
+                if (std::abs(mid_residual) <= options.tolerance) {
+                    break;
+                }
+                if (f_left * mid_residual <= 0.0) {
+                    right = mid;
+                } else {
+                    left = mid;
+                    f_left = mid_residual;
+                }
+            }
+            consider_candidate(bracket_fraction, bracket_best, bracket_residual);
+        }
+        previous_x = current_x;
+        previous_eval = current_eval;
+        previous_residual = current_residual;
+    }
+    if (!std::isfinite(best_residual)) {
+        return false;
+    }
+
+    result.success = std::abs(best_residual) <= options.tolerance;
+    result.message = result.success ? "converged" : "scalar binary activity solve did not converge";
+    result.composition = best.x;
+    result.activity_coefficients = best.gamma;
+    result.mass_balance_residuals = best.mass_residuals;
+    result.charge_residual = best.charge_residual;
+    result.reaction_residuals = best.reaction_residuals;
+    result.diagnostics_string["solver_language"] = "c++";
+    result.diagnostics_string["native_entrypoint"] = "_solve_chemical_equilibrium_native";
+    result.diagnostics_string["problem_class"] = "homogeneous_chemical_equilibrium";
+    result.diagnostics_string["activity_model"] = activity_model;
+    result.diagnostics_string["activity_output"] = options.activity_output;
+    result.diagnostics_string["activity_basis"] = standard_state_summary(reaction_standard_states);
+    result.diagnostics_string["phase"] = options.phase;
+    result.diagnostics_string["requested_jacobian_backend"] = options.jacobian_backend;
+    result.diagnostics_string["jacobian_backend"] = derivative_selection.backend;
+    result.diagnostics_string["derivative_backend"] = derivative_selection.backend;
+    result.diagnostics_string["derivative_status"] = derivative_selection.backend;
+    result.diagnostics_string["derivative_capability_path"] = derivative_selection.capability_path;
+    result.diagnostics_string["not_available_reason"] = derivative_selection.not_available_reason;
+    result.diagnostics_string["selected_solver_backend"] = "native_scalar_binary_activity_bracket";
+    result.diagnostics_string["activity_derivative_policy"] = "native_scalar_activity_root";
+    result.diagnostics_bool["derivative_available"] = derivative_selection.derivative_available;
+    result.diagnostics_bool["jacobian_available"] = derivative_selection.derivative_available;
+    result.diagnostics_bool["jacobian_fallback_used"] = false;
+    result.diagnostics_string["jacobian_fallback_reason"] = "";
+    result.diagnostics_bool["activity_fixed_point"] = false;
+    result.diagnostics_int["activity_fixed_point_updates"] = 0;
+    result.diagnostics_bool["activity_or_fugacity_terms_in_residual"] = true;
+    result.diagnostics_bool["activity_derivative_in_jacobian"] = false;
+    result.diagnostics_bool["hessian_available"] = false;
+    result.diagnostics_string["hessian_backend"] = "not_implemented";
+    result.diagnostics_bool["hessian_fallback_used"] = false;
+    result.diagnostics_string["hessian_fallback_reason"] =
+        "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
+    result.diagnostics_int["iterations"] = iteration;
+    result.diagnostics_int["state_failure_count"] = state_failure_count;
+    result.diagnostics_int["residual_evaluation_count"] = counters.residual_evaluations;
+    result.diagnostics_int["jacobian_evaluation_count"] = 0;
+    result.diagnostics_int["state_evaluation_count"] = counters.state_evaluations;
+    result.diagnostics_int["activity_evaluation_count"] = counters.activity_evaluations;
+    result.diagnostics_int["density_solve_count"] = counters.density_solves;
+    result.diagnostics_bool["activity_coefficients_evaluated"] = !best.gamma.empty();
+    result.diagnostics_double["residual_norm"] = best.residual_norm;
+    result.diagnostics_double["tolerance"] = options.tolerance;
+    result.diagnostics_vector["history"] = history;
+    result.diagnostics_vector["phase_handoff_composition"] = best.x;
+    add_reactive_speciation_implicit_sensitivity_diagnostics(
+        result,
+        mixture,
+        t,
+        p,
+        binary_log_amounts(best_fraction, options.min_mole_fraction),
+        best,
+        balances,
+        totals,
+        reactions,
+        log_k,
+        reaction_standard_states,
+        options,
+        phase_int,
+        activity_model
+    );
+    ChemicalSoftStartResult no_soft_start;
+    no_soft_start.enabled = false;
+    add_soft_start_diagnostics(result, no_soft_start);
+    return true;
+}
+
 Eigen::MatrixXd matrix_from_row_major(const std::vector<double>& values, int rows, int cols, const std::string& name) {
     if (rows < 0 || cols < 0 || values.size() != static_cast<std::size_t>(rows * cols)) {
         throw ValueError(name + " has an invalid row-major matrix size.");
@@ -855,9 +1199,7 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     }
 
     const int phase_int = phase_token_to_int_chemical(options.phase);
-    const std::string activity_model = has_ionic_species(mixture)
-        ? "epcsaft_component_activity"
-        : "epcsaft_neutral_fugacity_activity";
+    const std::string activity_model = activity_model_for_standard_states(mixture, reaction_standard_states);
     ChemicalDerivativeSelection derivative_selection = select_chemical_derivative_backend(
         options,
         reaction_standard_states
@@ -1014,13 +1356,30 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
     }
 
     const int phase_int = phase_token_to_int_chemical(options.phase);
-    const std::string activity_model = has_ionic_species(mixture)
-        ? "epcsaft_component_activity"
-        : "epcsaft_neutral_fugacity_activity";
+    const std::string activity_model = activity_model_for_standard_states(mixture, reaction_standard_states);
     ChemicalDerivativeSelection derivative_selection = select_chemical_derivative_backend(
         options,
         reaction_standard_states
     );
+    ChemicalEquilibriumResultNative scalar_result;
+    if (try_scalar_binary_activity_solve_native(
+        mixture,
+        t,
+        p,
+        balances,
+        totals,
+        reactions,
+        log_k,
+        reaction_standard_states,
+        options,
+        phase_int,
+        activity_model,
+        derivative_selection,
+        initial[0],
+        scalar_result
+    )) {
+        return scalar_result;
+    }
     int state_failure_count = 0;
     ChemicalEvaluationCounters counters;
     ChemicalSoftStartResult soft_start = ideal_gibbs_soft_start_solve(
@@ -1139,6 +1498,14 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
             result.diagnostics_bool["jacobian_available"] = derivative_selection.derivative_available;
             result.diagnostics_bool["jacobian_fallback_used"] = false;
             result.diagnostics_string["jacobian_fallback_reason"] = "";
+            const bool coupled_standard_states = !standard_states_all_ideal_mole_fraction(reaction_standard_states);
+            result.diagnostics_bool["activity_fixed_point"] = false;
+            result.diagnostics_int["activity_fixed_point_updates"] = 0;
+            result.diagnostics_bool["activity_or_fugacity_terms_in_residual"] = coupled_standard_states;
+            result.diagnostics_bool["activity_derivative_in_jacobian"] = coupled_standard_states;
+            result.diagnostics_string["activity_derivative_policy"] = coupled_standard_states
+                ? "native_log_amount_residual_jacobian"
+                : "not_required_for_ideal_mole_fraction";
             result.diagnostics_bool["hessian_available"] = false;
             result.diagnostics_string["hessian_backend"] = "not_implemented";
             result.diagnostics_bool["hessian_fallback_used"] = false;
@@ -1156,6 +1523,22 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
             result.diagnostics_double["tolerance"] = options.tolerance;
             result.diagnostics_vector["history"] = history;
             result.diagnostics_vector["phase_handoff_composition"] = current.x;
+            add_reactive_speciation_implicit_sensitivity_diagnostics(
+                result,
+                mixture,
+                t,
+                p,
+                log_n,
+                current,
+                balances,
+                totals,
+                reactions,
+                log_k,
+                reaction_standard_states,
+                options,
+                phase_int,
+                activity_model
+            );
             add_soft_start_diagnostics(result, soft_start);
             return result;
         }

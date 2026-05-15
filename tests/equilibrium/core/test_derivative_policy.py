@@ -77,7 +77,7 @@ def test_reactive_ideal_speciation_uses_analytic_residual_derivatives() -> None:
     assert "numerical_derivative" not in backend_values
 
 
-def test_activity_coupled_reactive_speciation_returns_not_available() -> None:
+def test_activity_coupled_reactive_speciation_uses_native_activity_residual() -> None:
     mix = epcsaft.ePCSAFTMixture.from_params(
         {
             "m": np.asarray([1.0, 1.0]),
@@ -87,16 +87,21 @@ def test_activity_coupled_reactive_speciation_returns_not_available() -> None:
         species=["A", "B"],
     )
 
-    with pytest.raises(epcsaft.InputError, match="not_available"):
-        mix.chemical_equilibrium(
-            T=298.15,
-            P=1.0e5,
-            balances={"total": {"A": 1.0, "B": 1.0}},
-            totals={"total": 1.0},
-            reactions=[epcsaft.ReactionDefinition({"A": -1.0, "B": 1.0}, np.log(3.0))],
-            initial_x=[0.5, 0.5],
-            options=epcsaft.ReactiveSpeciationOptions(jacobian_backend="auto"),
-        )
+    result = mix.chemical_equilibrium(
+        T=298.15,
+        P=1.0e5,
+        balances={"total": {"A": 1.0, "B": 1.0}},
+        totals={"total": 1.0},
+        reactions=[epcsaft.ReactionDefinition({"A": -1.0, "B": 1.0}, np.log(3.0))],
+        initial_x=[0.5, 0.5],
+        options=epcsaft.ReactiveSpeciationOptions(jacobian_backend="auto"),
+    )
+
+    assert result.success is True
+    assert result.diagnostics["solver_language"] == "c++"
+    assert result.diagnostics["activity_fixed_point"] is False
+    assert result.diagnostics["activity_or_fugacity_terms_in_residual"] is True
+    assert result.diagnostics["derivative_backend_by_block"]["reactive_speciation_variables"] == "analytic_implicit"
 
 
 def test_explicit_cppad_reactive_speciation_returns_not_available_until_supported() -> None:

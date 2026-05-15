@@ -25,6 +25,37 @@ bounded least-squares production path, its supported target families, and the
 fact that Python still owns row orchestration and bounded step control while the
 thermodynamic calculations remain native.
 
+Reactive Speciation And Bubble Diagnostics
+------------------------------------------
+
+Native reactive speciation returns enough diagnostics to prove that the
+activity-coupled residual and solved composition sensitivity were actually used.
+For activity- or concentration-coupled reaction constants, check:
+
+* ``solver_language`` is ``c++``.
+* ``native_entrypoint`` is ``_solve_chemical_equilibrium_native``.
+* ``activity_or_fugacity_terms_in_residual`` is true.
+* ``reaction_standard_states`` records the public reaction-constant convention.
+* ``derivative_backend_by_block["reactive_speciation_variables"]`` reports an
+  implicit solved-state backend.
+* ``implicit_solve_results["reactive_speciation_variables"]`` includes the
+  state, residual, residual-state Jacobian, residual-parameter Jacobian, and
+  sensitivity payload.
+
+Reactive electrolyte bubble results contain nested dictionaries:
+
+* ``diagnostics["speciation"]`` is the homogeneous reactive speciation result.
+* ``diagnostics["bubble"]`` is the fixed-liquid electrolyte bubble-pressure
+  result.
+* ``partial_pressures`` maps volatile neutral species to pressure contributions.
+* ``fugacity_residual_norm`` measures the volatile-neutral fugacity equality
+  residual for the bubble solve.
+
+Use these fields together when validating a CO2 + amine + water pressure and
+speciation benchmark: reaction, charge, and material residual norms come from
+the speciation result; CO2 partial pressure and vapor composition come from the
+bubble result.
+
 Contribution Maps
 -----------------
 

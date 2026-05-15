@@ -23,7 +23,10 @@
 - Standard fast validation: `uv run python scripts/dev/validate_project.py quick`.
 - Package boundary: `uv run python scripts/dev/build_dist.py`.
 - Preferred setup: `uv sync --no-install-project`.
-- Preferred native build: `uv run python scripts/dev/build_epcsaft.py`; use `uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10` only after `build/dev` is already configured.
+- Preferred native build: `uv run python scripts/dev/build_epcsaft.py`, which defaults to `--profile fast` (Ceres OFF, CppAD ON). Use `uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10` only after `build/dev` is already configured.
+- Package install builds still default to Ceres ON through `CMakeLists.txt`; do not change package-install defaults to speed up local Codex iteration.
+- Ceres is not part of routine dev-script setup or clean repair. Use `uv run python scripts/dev/build_epcsaft.py --profile full` or `uv run python scripts/dev/validate_project.py ceres-cppad` only for Ceres regression/backend validation or final full-backend checks.
+- For clean CppAD proof without rebuilding Ceres, use `uv run python scripts/dev/build_epcsaft.py --clean --profile cppad`, not a clean full Ceres build.
 - Preferred tests: `uv run python run_pytest.py <focused-test-targets> -q`. Prefer this wrapper over direct `pytest` for Codex/Windows work because it sets the source path and manages per-run pytest temp state.
 - Preferred high-level validation: `uv run python scripts/dev/validate_project.py quick` for normal fast validation; `uv run python scripts/dev/validate_project.py confidence` before handoff when native runtime confidence matters; `uv run python scripts/dev/validate_project.py docs` for Sphinx.
 - Preferred doctor: `uv run python scripts/dev/doctor.py`.

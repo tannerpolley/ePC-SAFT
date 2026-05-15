@@ -173,7 +173,7 @@ $$
 \end{equation*}
 $$
 
-The partial derivatives of the fugacity coefficients in Equation (16) were evaluated numerically by finite difference at the beginning of the calculation, and then updated from the previous values using a Broyden estimation [95] after each calculation step. The resulting non-linear system of equations was solved using a Newton algorithm with variable step length $\alpha$ (Equation (17)).
+The partial derivatives of the fugacity coefficients in Equation (16) were evaluated numerically with a differencing perturbation at the beginning of the calculation, and then updated from the previous values using a Broyden estimation [95] after each calculation step. The resulting non-linear system of equations was solved using a Newton algorithm with variable step length $\alpha$ (Equation (17)).
 
 $$
 \begin{equation*}

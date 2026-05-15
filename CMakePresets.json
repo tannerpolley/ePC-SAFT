@@ -9,7 +9,7 @@
     {
       "name": "native-default",
       "displayName": "Native build profile: default",
-      "description": "Default native extension build with Ceres and CppAD enabled.",
+      "description": "Default CMake/package native extension build with Ceres and CppAD enabled.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/native-default",
       "cacheVariables": {
@@ -49,7 +49,7 @@
     {
       "name": "native-ceres-cppad",
       "displayName": "Native build profile: Ceres + CppAD",
-      "description": "Explicit Ceres + CppAD profile matching the canonical default build.",
+      "description": "Explicit full Ceres + CppAD profile for optional solver/regression validation.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/native-ceres-cppad",
       "cacheVariables": {
@@ -69,7 +69,7 @@
     {
       "name": "dev-mingw",
       "displayName": "Optional IDE build (Windows MinGW)",
-      "description": "Optional Windows MinGW preset for IDE/manual CMake use with Ceres and CppAD disabled. The canonical local native build is uv run python scripts/build_epcsaft.py.",
+      "description": "Optional Windows MinGW preset for IDE/manual CMake use with Ceres and CppAD disabled. The canonical local native build is uv run python scripts/dev/build_epcsaft.py.",
       "generator": "MinGW Makefiles",
       "binaryDir": "${sourceDir}/build/dev",
       "cacheVariables": {

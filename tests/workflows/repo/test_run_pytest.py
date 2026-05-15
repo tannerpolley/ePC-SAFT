@@ -75,7 +75,7 @@ def test_validate_project_modes_route_to_standard_validation_bundles():
         ("run_pytest.py", "--all", "-q"),
     )
     assert validate_project.CHECK_COMMANDS["ceres-cppad"] == (
-        ("scripts/dev/build_epcsaft.py",),
+        ("scripts/dev/build_epcsaft.py", "--profile", "full"),
         (
             "run_pytest.py",
             "tests/native/ceres/test_ceres_pure_regression.py",
