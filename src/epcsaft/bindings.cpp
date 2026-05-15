@@ -23,6 +23,13 @@ epcsaft::native::cppad_support::CppADDerivativeResult cppad_pressure_density_der
     const std::vector<double>& x,
     const add_args& cppargs
 );
+PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensitivity_cpp(
+    double t,
+    double p,
+    std::vector<double> x,
+    int phase,
+    const add_args& cppargs
+);
 epcsaft::native::cppad_support::CppADDerivativeResult cppad_pure_neutral_parameter_derivatives_cpp(
     double t,
     double rho,
@@ -55,6 +62,28 @@ py::dict cppad_smoke_to_dict(const epcsaft::native::cppad_support::CppADDerivati
     out["outputs"] = result.outputs;
     out["variables"] = result.variables;
     out["shape"] = py::make_tuple(result.rows, result.cols);
+    return out;
+}
+
+py::dict phase_state_sensitivity_to_dict(const PhaseStateCompositionSensitivityResult& result) {
+    py::dict out;
+    out["supported"] = result.supported;
+    out["backend"] = result.backend;
+    out["derivative_backend"] = result.backend;
+    out["density_backend"] = result.density_backend;
+    out["message"] = result.message;
+    out["temperature"] = result.temperature;
+    out["pressure"] = result.pressure;
+    out["density"] = result.density;
+    out["pressure_density_derivative"] = result.pressure_density_derivative;
+    out["shape"] = py::make_tuple(result.rows, result.cols);
+    out["composition"] = result.composition;
+    out["ln_fugacity"] = result.ln_fugacity;
+    out["density_composition_derivative"] = result.density_composition_derivative;
+    out["pressure_composition_fixed_density_derivative"] = result.pressure_composition_fixed_density_derivative;
+    out["ln_fugacity_density_derivative"] = result.ln_fugacity_density_derivative;
+    out["fixed_density_jacobian_row_major"] = result.fixed_density_jacobian_row_major;
+    out["jacobian_row_major"] = result.jacobian_row_major;
     return out;
 }
 
@@ -741,6 +770,46 @@ py::dict native_electrolyte_lle_residual_evaluation_to_dict(const ElectrolyteLLE
     return out;
 }
 
+py::dict native_reactive_phase_residual_evaluation_to_dict(const ReactivePhaseResidualEvaluationNative& result) {
+    py::dict out;
+    out["variable_model"] = result.variable_model;
+    out["variables"] = result.variables;
+    out["lower_bounds"] = result.lower_bounds;
+    out["upper_bounds"] = result.upper_bounds;
+    out["residual"] = result.residual;
+    out["objective"] = result.objective;
+    out["gradient"] = result.gradient;
+    out["jacobian_row_major"] = result.jacobian_row_major;
+    out["jacobian_shape"] = py::make_tuple(result.jacobian_rows, result.jacobian_cols);
+    out["jacobian_backend"] = result.diagnostics_string.count("jacobian_backend")
+        ? result.diagnostics_string.at("jacobian_backend")
+        : "not_available";
+    out["phase1_composition"] = result.phase1_composition;
+    out["phase2_composition"] = result.phase2_composition;
+    out["phase1_amounts"] = result.phase1_amounts;
+    out["phase2_amounts"] = result.phase2_amounts;
+    out["phase1_ln_fugacity_coefficient"] = result.phase1_ln_fugacity_coefficient;
+    out["phase2_ln_fugacity_coefficient"] = result.phase2_ln_fugacity_coefficient;
+    out["phase1_density"] = result.phase1_density;
+    out["phase2_density"] = result.phase2_density;
+    out["phase_fraction_phase2"] = result.phase_fraction_phase2;
+    out["element_balance_residuals"] = result.element_balance_residuals;
+    out["reaction_residuals_phase1"] = result.reaction_residuals_phase1;
+    out["reaction_residuals_phase2"] = result.reaction_residuals_phase2;
+    out["neutral_phase_equilibrium_residuals"] = result.neutral_phase_equilibrium_residuals;
+    out["ionic_equilibrium_residuals"] = result.ionic_equilibrium_residuals;
+    out["phase_charge_residuals"] = result.phase_charge_residuals;
+    out["phase_distance"] = result.phase_distance;
+    out["diagnostics"] = native_diagnostics_to_dict(
+        result.diagnostics_double,
+        result.diagnostics_int,
+        result.diagnostics_bool,
+        result.diagnostics_string,
+        result.diagnostics_vector
+    );
+    return out;
+}
+
 [[noreturn]] void raise_native_solution_error_with_diagnostics(
     const std::string& message,
     const EquilibriumResultNative& result
@@ -1063,6 +1132,150 @@ py::dict evaluate_electrolyte_lle_residual_native_binding(
         );
     }
     return native_electrolyte_lle_residual_evaluation_to_dict(result);
+}
+
+py::dict evaluate_reactive_phase_equilibrium_residual_native_binding(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    const py::dict& request
+) {
+    double t = request["T"].cast<double>();
+    double p = request["P"].cast<double>();
+    std::vector<double> feed = request["z"].cast<std::vector<double>>();
+    EquilibriumOptionsNative options = options_from_request(request);
+    std::vector<double> balance_matrix = request["balance_matrix"].cast<std::vector<double>>();
+    int balance_rows = request["balance_rows"].cast<int>();
+    std::vector<double> total_vector = request["total_vector"].cast<std::vector<double>>();
+    std::vector<double> reaction_stoichiometry = request["reaction_stoichiometry"].cast<std::vector<double>>();
+    int reaction_rows = request["reaction_rows"].cast<int>();
+    std::vector<double> log_equilibrium_constants = request["log_equilibrium_constants"].cast<std::vector<double>>();
+    std::vector<int> reaction_standard_states;
+    if (request.contains("reaction_standard_states") && !request["reaction_standard_states"].is_none()) {
+        reaction_standard_states = request["reaction_standard_states"].cast<std::vector<int>>();
+    } else {
+        reaction_standard_states = std::vector<int>(static_cast<std::size_t>(reaction_rows), 0);
+    }
+    std::vector<double> variables;
+    bool has_variables = false;
+    if (request.contains("variables") && !request["variables"].is_none()) {
+        variables = request["variables"].cast<std::vector<double>>();
+        has_variables = true;
+    }
+    std::vector<double> phase1;
+    std::vector<double> phase2;
+    double beta2 = 0.5;
+    bool has_initial = false;
+    if (request.contains("initial_phases") && !request["initial_phases"].is_none()) {
+        py::dict initial = request["initial_phases"].cast<py::dict>();
+        if (initial.contains("liq1")) {
+            phase1 = initial["liq1"].cast<std::vector<double>>();
+        } else if (initial.contains("aq")) {
+            phase1 = initial["aq"].cast<std::vector<double>>();
+        } else {
+            throw ValueError("initial reactive phases require liq1/liq2 or aq/org keys.");
+        }
+        if (initial.contains("liq2")) {
+            phase2 = initial["liq2"].cast<std::vector<double>>();
+        } else if (initial.contains("org")) {
+            phase2 = initial["org"].cast<std::vector<double>>();
+        } else {
+            throw ValueError("initial reactive phases require liq1/liq2 or aq/org keys.");
+        }
+        beta2 = initial["phase_fraction"].cast<double>();
+        has_initial = true;
+    }
+    ReactivePhaseResidualEvaluationNative result;
+    {
+        py::gil_scoped_release release;
+        result = evaluate_reactive_phase_equilibrium_residual_native(
+            mixture,
+            t,
+            p,
+            feed,
+            options,
+            balance_matrix,
+            balance_rows,
+            total_vector,
+            reaction_stoichiometry,
+            reaction_rows,
+            log_equilibrium_constants,
+            reaction_standard_states,
+            variables,
+            has_variables,
+            phase1,
+            phase2,
+            beta2,
+            has_initial
+        );
+    }
+    return native_reactive_phase_residual_evaluation_to_dict(result);
+}
+
+py::dict solve_reactive_phase_equilibrium_native_binding(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    const py::dict& request
+) {
+    double t = request["T"].cast<double>();
+    double p = request["P"].cast<double>();
+    std::vector<double> feed = request["z"].cast<std::vector<double>>();
+    EquilibriumOptionsNative options = options_from_request(request);
+    std::vector<double> balance_matrix = request["balance_matrix"].cast<std::vector<double>>();
+    int balance_rows = request["balance_rows"].cast<int>();
+    std::vector<double> total_vector = request["total_vector"].cast<std::vector<double>>();
+    std::vector<double> reaction_stoichiometry = request["reaction_stoichiometry"].cast<std::vector<double>>();
+    int reaction_rows = request["reaction_rows"].cast<int>();
+    std::vector<double> log_equilibrium_constants = request["log_equilibrium_constants"].cast<std::vector<double>>();
+    std::vector<int> reaction_standard_states;
+    if (request.contains("reaction_standard_states") && !request["reaction_standard_states"].is_none()) {
+        reaction_standard_states = request["reaction_standard_states"].cast<std::vector<int>>();
+    } else {
+        reaction_standard_states = std::vector<int>(static_cast<std::size_t>(reaction_rows), 0);
+    }
+    std::vector<double> phase1;
+    std::vector<double> phase2;
+    double beta2 = 0.5;
+    bool has_initial = false;
+    if (request.contains("initial_phases") && !request["initial_phases"].is_none()) {
+        py::dict initial = request["initial_phases"].cast<py::dict>();
+        if (initial.contains("liq1")) {
+            phase1 = initial["liq1"].cast<std::vector<double>>();
+        } else if (initial.contains("aq")) {
+            phase1 = initial["aq"].cast<std::vector<double>>();
+        } else {
+            throw ValueError("initial reactive phases require liq1/liq2 or aq/org keys.");
+        }
+        if (initial.contains("liq2")) {
+            phase2 = initial["liq2"].cast<std::vector<double>>();
+        } else if (initial.contains("org")) {
+            phase2 = initial["org"].cast<std::vector<double>>();
+        } else {
+            throw ValueError("initial reactive phases require liq1/liq2 or aq/org keys.");
+        }
+        beta2 = initial["phase_fraction"].cast<double>();
+        has_initial = true;
+    }
+    EquilibriumResultNative result;
+    {
+        py::gil_scoped_release release;
+        result = reactive_phase_equilibrium_native(
+            mixture,
+            t,
+            p,
+            feed,
+            options,
+            balance_matrix,
+            balance_rows,
+            total_vector,
+            reaction_stoichiometry,
+            reaction_rows,
+            log_equilibrium_constants,
+            reaction_standard_states,
+            phase1,
+            phase2,
+            beta2,
+            has_initial
+        );
+    }
+    return native_equilibrium_to_dict(result);
 }
 
 py::dict solve_equilibrium_native_binding(
@@ -1399,6 +1612,17 @@ PYBIND11_MODULE(_core, m) {
     m.def("_native_cppad_pressure_density", [](double t, double rho, const std::vector<double>& x, const add_args& args) {
         return cppad_smoke_to_dict(cppad_pressure_density_derivative_cpp(t, rho, x, args));
     });
+    m.def("_native_phase_state_ln_fugacity_composition_sensitivity", [](
+        double t,
+        double p,
+        const std::vector<double>& x,
+        int phase,
+        const add_args& args
+    ) {
+        return phase_state_sensitivity_to_dict(
+            phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, x, phase, args)
+        );
+    });
     m.def("_native_cppad_pure_neutral_parameters", [](double t, double rho, const add_args& args) {
         return cppad_smoke_to_dict(cppad_pure_neutral_parameter_derivatives_cpp(t, rho, args));
     });
@@ -1587,6 +1811,8 @@ PYBIND11_MODULE(_core, m) {
     m.def("_evaluate_generic_native_debug", &evaluate_generic_native_debug_binding);
     m.def("_solve_equilibrium_native", &solve_equilibrium_native_binding);
     m.def("_evaluate_electrolyte_lle_residual_native", &evaluate_electrolyte_lle_residual_native_binding);
+    m.def("_evaluate_reactive_phase_equilibrium_residual_native", &evaluate_reactive_phase_equilibrium_residual_native_binding);
+    m.def("_solve_reactive_phase_equilibrium_native", &solve_reactive_phase_equilibrium_native_binding);
     m.def("_solve_electrolyte_bubble_native", &solve_electrolyte_bubble_native_binding);
     m.def("_solve_chemical_equilibrium_native", &solve_chemical_equilibrium_native_binding);
     m.def("_evaluate_chemical_equilibrium_residual_native", &evaluate_chemical_equilibrium_residual_native_binding);

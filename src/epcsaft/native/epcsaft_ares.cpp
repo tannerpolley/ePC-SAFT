@@ -85,6 +85,16 @@ struct AssociationDensityResponse {
     vector<double> dmu_drho;
 };
 
+struct AssociationPhaseStateResponse {
+    bool active = false;
+    int ncomp = 0;
+    int base_var_count = 0;
+    double zraw = 0.0;
+    vector<double> mu;
+    vector<double> dzraw_dvar;
+    vector<double> dmu_dvar_row_major;
+};
+
 template <typename Scalar>
 static Scalar scalar_component_parameter_cpp(
     int target_kind,
@@ -720,9 +730,11 @@ static AssociationImplicitTermsScalar<Scalar> association_implicit_terms_scalar_
                 if (cppargs.assoc_matrix[static_cast<size_t>(i * num_sites + j)] != 0) {
                     const Scalar pair_diameter = thermo.d[static_cast<size_t>(comp_i)] * thermo.d[static_cast<size_t>(comp_j)]
                         / (thermo.d[static_cast<size_t>(comp_i)] + thermo.d[static_cast<size_t>(comp_j)]);
-                    const Scalar dzeta2_dx = scalar_constant<Scalar>(PI / 6.0 * scalar_value(thermo.den) * cppargs.m[static_cast<size_t>(k)])
+                    const Scalar dzeta2_dx = scalar_constant<Scalar>(PI / 6.0 * cppargs.m[static_cast<size_t>(k)])
+                        * thermo.den
                         * scalar_pow(thermo.d[static_cast<size_t>(k)], 2.0);
-                    const Scalar dzeta3_dx = scalar_constant<Scalar>(PI / 6.0 * scalar_value(thermo.den) * cppargs.m[static_cast<size_t>(k)])
+                    const Scalar dzeta3_dx = scalar_constant<Scalar>(PI / 6.0 * cppargs.m[static_cast<size_t>(k)])
+                        * thermo.den
                         * scalar_pow(thermo.d[static_cast<size_t>(k)], 3.0);
                     const double eABij = 0.5 * (cppargs.e_assoc[static_cast<size_t>(comp_i)] + cppargs.e_assoc[static_cast<size_t>(comp_j)]);
                     const Scalar volABij = association_volume_scalar_cpp(comp_i, comp_j, ncomp, thermo.s_ij, cppargs);
@@ -811,7 +823,14 @@ static Scalar ares_ion_scalar_cpp(
             );
         }
     } else {
-        throw ValueError("not_available: CppAD ionic recording currently supports dielc_rule 0 or 1.");
+        if (component_target_kind == kGenericTargetDielcLocal) {
+            throw ValueError("not_available: CppAD ionic dielectric-parameter recording requires dielc_rule=1.");
+        }
+#ifdef EPCSAFT_HAS_CPPAD
+        eps = dielectric_constant_rule_cppad_cpp(cppargs.dielc_rule, x, cppargs);
+#else
+        throw ValueError("CppAD ionic recording requires CppAD support for composition-dependent dielectric rules.");
+#endif
     }
     Scalar kappa = scalar_sqrt(thermo.den * E_CHRG * E_CHRG / kb / t / (eps * perm_vac) * q2_sum);
     Scalar chi_sum = scalar_constant<Scalar>(0.0);
@@ -877,7 +896,14 @@ static Scalar ares_born_scalar_cpp(
             );
         }
     } else {
-        throw ValueError("not_available: CppAD Born recording currently supports dielc_rule 0 or 1.");
+        if (component_target_kind == kGenericTargetDielcLocal) {
+            throw ValueError("not_available: CppAD Born dielectric-parameter recording requires dielc_rule=1.");
+        }
+#ifdef EPCSAFT_HAS_CPPAD
+        eps = dielectric_constant_rule_cppad_cpp(cppargs.dielc_rule, x, cppargs);
+#else
+        throw ValueError("CppAD Born recording requires CppAD support for composition-dependent dielectric rules.");
+#endif
     }
     if (cppargs.born_eps_mode == 1) {
         throw ValueError("not_available: CppAD Born reference-solvent dielectric routing is not implemented.");
@@ -1190,6 +1216,129 @@ ares_detail::AssociationDensityResponse association_density_response_cppad_cpp(
     }
     return out;
 }
+
+ares_detail::AssociationPhaseStateResponse association_phase_state_response_cppad_cpp(
+    double t,
+    double rho,
+    const vector<double> &x,
+    const add_args &cppargs
+) {
+    using CppADScalar = CppAD::AD<double>;
+    const int ncomp = static_cast<int>(x.size());
+    const int base_var_count = 1 + ncomp;
+    MixtureState thermo = mixture_state_cpp(t, rho, x, cppargs, false);
+    HardChainState hc_state = hard_chain_state_cpp(thermo, x, cppargs);
+    AssociationIntermediateState assoc_state = association_intermediate_state_cpp(thermo, hc_state, t, x, cppargs, false, false);
+
+    ares_detail::AssociationPhaseStateResponse out;
+    out.ncomp = ncomp;
+    out.base_var_count = base_var_count;
+    out.mu.assign(static_cast<size_t>(ncomp), 0.0);
+    out.dzraw_dvar.assign(static_cast<size_t>(base_var_count), 0.0);
+    out.dmu_dvar_row_major.assign(static_cast<size_t>(ncomp * base_var_count), 0.0);
+    if (!assoc_state.active) {
+        return out;
+    }
+    out.active = true;
+
+    const int num_sites = static_cast<int>(assoc_state.XA.size());
+    const int var_count = base_var_count + num_sites;
+    std::vector<CppADScalar> avars(static_cast<size_t>(var_count));
+    avars[0] = rho;
+    for (int i = 0; i < ncomp; ++i) {
+        avars[static_cast<size_t>(1 + i)] = x[static_cast<size_t>(i)];
+    }
+    for (int i = 0; i < num_sites; ++i) {
+        avars[static_cast<size_t>(base_var_count + i)] = assoc_state.XA[static_cast<size_t>(i)];
+    }
+    CppAD::Independent(avars);
+
+    std::vector<CppADScalar> ax(static_cast<size_t>(ncomp));
+    for (int i = 0; i < ncomp; ++i) {
+        ax[static_cast<size_t>(i)] = avars[static_cast<size_t>(1 + i)];
+    }
+    ares_detail::MixtureStateScalar<CppADScalar> scalar_thermo = ares_detail::mixture_state_scalar_cpp(
+        t,
+        avars[0],
+        ax,
+        cppargs
+    );
+    ares_detail::HardChainStateScalar<CppADScalar> scalar_hc = ares_detail::hard_chain_state_scalar_cpp(
+        scalar_thermo,
+        ax,
+        cppargs
+    );
+    std::vector<CppADScalar> site_vars(static_cast<size_t>(num_sites));
+    for (int i = 0; i < num_sites; ++i) {
+        site_vars[static_cast<size_t>(i)] = avars[static_cast<size_t>(base_var_count + i)];
+    }
+    auto assoc_terms = ares_detail::association_implicit_terms_scalar_cpp(
+        scalar_thermo,
+        scalar_hc,
+        t,
+        ax,
+        cppargs,
+        site_vars
+    );
+
+    std::vector<CppADScalar> ay;
+    ay.reserve(static_cast<size_t>(1 + ncomp + num_sites));
+    ay.push_back(assoc_terms.zraw);
+    for (int i = 0; i < ncomp; ++i) {
+        ay.push_back(assoc_terms.mu[static_cast<size_t>(i)]);
+    }
+    for (int i = 0; i < num_sites; ++i) {
+        ay.push_back(assoc_terms.residuals[static_cast<size_t>(i)]);
+    }
+
+    CppAD::ADFun<double> function(avars, ay);
+    std::vector<double> point(static_cast<size_t>(var_count), 0.0);
+    point[0] = rho;
+    for (int i = 0; i < ncomp; ++i) {
+        point[static_cast<size_t>(1 + i)] = x[static_cast<size_t>(i)];
+    }
+    for (int i = 0; i < num_sites; ++i) {
+        point[static_cast<size_t>(base_var_count + i)] = assoc_state.XA[static_cast<size_t>(i)];
+    }
+    auto values = function.Forward(0, point);
+    auto jacobian = function.Jacobian(point);
+    const auto jac = [&](int row, int col) {
+        return jacobian[static_cast<size_t>(row * var_count + col)];
+    };
+
+    const int residual_row0 = 1 + ncomp;
+    vector<double> residual_matrix(static_cast<size_t>(num_sites * num_sites), 0.0);
+    for (int i = 0; i < num_sites; ++i) {
+        for (int j = 0; j < num_sites; ++j) {
+            residual_matrix[static_cast<size_t>(i * num_sites + j)] =
+                jac(residual_row0 + i, base_var_count + j);
+        }
+    }
+
+    out.zraw = values[0];
+    for (int i = 0; i < ncomp; ++i) {
+        out.mu[static_cast<size_t>(i)] = values[static_cast<size_t>(1 + i)];
+    }
+    for (int v = 0; v < base_var_count; ++v) {
+        vector<double> rhs(static_cast<size_t>(num_sites), 0.0);
+        for (int i = 0; i < num_sites; ++i) {
+            rhs[static_cast<size_t>(i)] = -jac(residual_row0 + i, v);
+        }
+        vector<double> dxa_dv = ares_detail::solve_linear_system_scalar_cpp(residual_matrix, rhs, num_sites);
+        out.dzraw_dvar[static_cast<size_t>(v)] = jac(0, v);
+        for (int site = 0; site < num_sites; ++site) {
+            out.dzraw_dvar[static_cast<size_t>(v)] += jac(0, base_var_count + site) * dxa_dv[static_cast<size_t>(site)];
+        }
+        for (int i = 0; i < ncomp; ++i) {
+            double value = jac(1 + i, v);
+            for (int site = 0; site < num_sites; ++site) {
+                value += jac(1 + i, base_var_count + site) * dxa_dv[static_cast<size_t>(site)];
+            }
+            out.dmu_dvar_row_major[static_cast<size_t>(i * base_var_count + v)] = value;
+        }
+    }
+    return out;
+}
 #endif
 
 }  // namespace
@@ -1310,6 +1459,193 @@ epcsaft::native::cppad_support::CppADDerivativeResult cppad_eos_contribution_der
     result.backend = "not_available";
     result.message = "CppAD support is disabled in this native build";
     return result;
+#endif
+}
+
+PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensitivity_cpp(
+    double t,
+    double p,
+    vector<double> x,
+    int phase,
+    const add_args &cppargs
+) {
+    PhaseStateCompositionSensitivityResult out;
+    out.temperature = t;
+    out.pressure = p;
+    out.composition = x;
+    out.rows = static_cast<int>(x.size());
+    out.cols = static_cast<int>(x.size());
+
+    DensitySolveResult density = density_solve_report_cpp(t, p, x, phase, cppargs);
+    if (!density.valid || !(density.rho > 0.0) || !std::isfinite(density.rho)) {
+        out.message = density.diagnostics.rejection_reason.empty()
+            ? "Density root was not valid for phase-state sensitivity evaluation."
+            : density.diagnostics.rejection_reason;
+        return out;
+    }
+    out.density = density.rho;
+    out.ln_fugacity = fugacity_coefficient_result_cpp(t, density.rho, x, cppargs).lnfugcoef.total;
+
+#ifdef EPCSAFT_HAS_CPPAD
+    if (cppargs.born_model > 1) {
+        out.message =
+            "Born model 2 phase-state composition sensitivity requires a separate SSM/DS derivative proof.";
+        out.density_backend = "selected_density_root";
+        return out;
+    }
+
+    using CppADScalar = CppAD::AD<double>;
+    const int ncomp = static_cast<int>(x.size());
+    const int var_count = ncomp + 1;
+    std::vector<CppADScalar> avars(static_cast<size_t>(var_count));
+    avars[0] = density.rho;
+    for (int i = 0; i < ncomp; ++i) {
+        avars[static_cast<size_t>(1 + i)] = x[static_cast<size_t>(i)];
+    }
+    CppAD::Independent(avars);
+
+    std::vector<CppADScalar> ax(static_cast<size_t>(ncomp));
+    for (int i = 0; i < ncomp; ++i) {
+        ax[static_cast<size_t>(i)] = avars[static_cast<size_t>(1 + i)];
+    }
+    const bool active_association = has_association_sites(cppargs);
+    add_args recording_args = cppargs;
+    if (active_association) {
+        recording_args.assoc_num.clear();
+        recording_args.assoc_matrix.clear();
+        recording_args.e_assoc.clear();
+        recording_args.vol_a.clear();
+        recording_args.k_hb.clear();
+    }
+    auto contributions = ares_detail::ares_contributions_scalar_cpp(t, avars[0], ax, recording_args);
+    std::vector<CppADScalar> ay(1);
+    ay[0] = contributions.hc + contributions.disp + contributions.assoc + contributions.ion + contributions.born;
+
+    CppAD::ADFun<double> function(avars, ay);
+    std::vector<double> point(static_cast<size_t>(var_count), 0.0);
+    point[0] = density.rho;
+    for (int i = 0; i < ncomp; ++i) {
+        point[static_cast<size_t>(1 + i)] = x[static_cast<size_t>(i)];
+    }
+    auto values = function.Forward(0, point);
+    auto jacobian = function.Jacobian(point);
+    auto hessian = function.Hessian(point, 0);
+    const auto h = [&](int row, int col) {
+        return hessian[static_cast<size_t>(row * var_count + col)];
+    };
+    ares_detail::AssociationPhaseStateResponse association_response;
+    if (active_association) {
+        association_response = association_phase_state_response_cppad_cpp(t, density.rho, x, cppargs);
+        if (!association_response.active) {
+            out.message = "Association phase-state sensitivity expected active association but received no active site fractions.";
+            out.density_backend = "selected_density_root";
+            return out;
+        }
+    }
+
+    (void)values;
+    const double da_drho = jacobian[0];
+    const double association_zraw = active_association ? association_response.zraw : 0.0;
+    const double z_raw = density.rho * da_drho + association_zraw;
+    const double z = 1.0 + z_raw;
+    if (!(z > 0.0) || !std::isfinite(z)) {
+        out.message = "Phase-state sensitivity produced a non-positive compressibility factor.";
+        out.density_backend = "selected_density_root";
+        return out;
+    }
+
+    std::vector<double> dadx(static_cast<size_t>(ncomp), 0.0);
+    double sum_x_dadx = 0.0;
+    for (int i = 0; i < ncomp; ++i) {
+        dadx[static_cast<size_t>(i)] = jacobian[static_cast<size_t>(1 + i)];
+        sum_x_dadx += x[static_cast<size_t>(i)] * dadx[static_cast<size_t>(i)];
+    }
+
+    const auto base_dzraw_dvar = [&](int var_index) {
+        double value = density.rho * h(0, var_index);
+        if (var_index == 0) {
+            value += da_drho;
+        }
+        return value;
+    };
+    const auto dzraw_dvar = [&](int var_index) {
+        double value = base_dzraw_dvar(var_index);
+        if (active_association) {
+            value += association_response.dzraw_dvar[static_cast<size_t>(var_index)];
+        }
+        return value;
+    };
+    const auto pressure_dvar = [&](int var_index) {
+        const double dzraw = dzraw_dvar(var_index);
+        double value = density.rho * dzraw;
+        if (var_index == 0) {
+            value += z;
+        }
+        return kb * t * N_AV * value;
+    };
+    const auto sum_x_dadx_dvar = [&](int var_index) {
+        double value = 0.0;
+        if (var_index > 0) {
+            value += dadx[static_cast<size_t>(var_index - 1)];
+        }
+        for (int k = 0; k < ncomp; ++k) {
+            value += x[static_cast<size_t>(k)] * h(1 + k, var_index);
+        }
+        return value;
+    };
+    const auto dlnphi_dvar = [&](int component, int var_index) {
+        const double da_dvar = jacobian[static_cast<size_t>(var_index)];
+        const double dzraw = dzraw_dvar(var_index);
+        double dmu = da_dvar + base_dzraw_dvar(var_index) + h(1 + component, var_index) - sum_x_dadx_dvar(var_index);
+        if (active_association) {
+            dmu += association_response.dmu_dvar_row_major[
+                static_cast<size_t>(component * var_count + var_index)
+            ];
+        }
+        return dmu - dzraw / z;
+    };
+
+    const double dp_drho = pressure_dvar(0);
+    if (!std::isfinite(dp_drho) || std::abs(dp_drho) <= 1.0e-30) {
+        out.message = "Phase-state sensitivity produced a singular pressure-density derivative.";
+        out.density_backend = "selected_density_root";
+        return out;
+    }
+
+    out.pressure_density_derivative = dp_drho;
+    out.density_composition_derivative.assign(static_cast<size_t>(ncomp), 0.0);
+    out.pressure_composition_fixed_density_derivative.assign(static_cast<size_t>(ncomp), 0.0);
+    out.ln_fugacity_density_derivative.assign(static_cast<size_t>(ncomp), 0.0);
+    out.fixed_density_jacobian_row_major.assign(static_cast<size_t>(ncomp * ncomp), 0.0);
+    out.jacobian_row_major.assign(static_cast<size_t>(ncomp * ncomp), 0.0);
+
+    for (int j = 0; j < ncomp; ++j) {
+        const int var_index = 1 + j;
+        const double dp_dx_fixed = pressure_dvar(var_index);
+        out.pressure_composition_fixed_density_derivative[static_cast<size_t>(j)] = dp_dx_fixed;
+        out.density_composition_derivative[static_cast<size_t>(j)] = -dp_dx_fixed / dp_drho;
+    }
+    for (int i = 0; i < ncomp; ++i) {
+        const double dln_drho = dlnphi_dvar(i, 0);
+        out.ln_fugacity_density_derivative[static_cast<size_t>(i)] = dln_drho;
+        for (int j = 0; j < ncomp; ++j) {
+            const double fixed = dlnphi_dvar(i, 1 + j);
+            const double total = fixed + dln_drho * out.density_composition_derivative[static_cast<size_t>(j)];
+            const size_t index = static_cast<size_t>(i * ncomp + j);
+            out.fixed_density_jacobian_row_major[index] = fixed;
+            out.jacobian_row_major[index] = total;
+        }
+    }
+
+    out.supported = true;
+    out.backend = "cppad_implicit";
+    out.density_backend = "implicit_density_root";
+    out.message = "CppAD phase-state fugacity composition sensitivities with implicit density-root routing are available.";
+    return out;
+#else
+    out.message = "CppAD support is disabled in this native build.";
+    out.density_backend = "selected_density_root";
+    return out;
 #endif
 }
 

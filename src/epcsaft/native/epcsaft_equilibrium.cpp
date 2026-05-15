@@ -1,6 +1,12 @@
 #include "epcsaft_equilibrium.h"
 #include "equilibrium/equilibrium_helpers.h"
 
+#ifdef EPCSAFT_HAS_CERES
+#include <ceres/cost_function.h>
+#include <ceres/problem.h>
+#include <ceres/solver.h>
+#endif
+
 #include <Eigen/Dense>
 
 #include <algorithm>
@@ -13,6 +19,14 @@
 #include <sstream>
 #include <stdexcept>
 #include <utility>
+
+PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensitivity_cpp(
+    double t,
+    double p,
+    std::vector<double> x,
+    int phase,
+    const add_args &cppargs
+);
 
 namespace {
 
@@ -68,6 +82,7 @@ struct ElectrolyteBasisNative {
     std::vector<int> anion_indices;
     std::vector<ElectrolyteSaltPairNative> salt_pairs;
     std::vector<double> formula_feed;
+    std::vector<double> species_charges;
     int basis_rank = 0;
     std::string variable_model = "ascani_transformed_salt_pairs";
 };
@@ -76,6 +91,28 @@ struct ElectrolyteTpdSearchNative {
     std::vector<StabilityTrialNative> trials;
     int multistart_count = 0;
     int polish_iterations = 0;
+};
+
+struct ElectrolyteCandidateNative {
+    double beta_formula = 0.5;
+    double beta_org = 0.5;
+    std::vector<double> aq_formula;
+    std::vector<double> org_formula;
+    std::vector<double> aq_comp;
+    std::vector<double> org_comp;
+    PhaseStateNative aq_state;
+    PhaseStateNative org_state;
+    std::vector<double> residual;
+    std::vector<double> material_residual;
+    double solver_residual_norm = std::numeric_limits<double>::infinity();
+    double material_error = std::numeric_limits<double>::infinity();
+    double charge_balance_error = std::numeric_limits<double>::infinity();
+    double gibbs_feed = 0.0;
+    double gibbs_split = 0.0;
+    double gibbs_delta = 0.0;
+    double phase_distance_value = 0.0;
+    int iteration = 0;
+    double objective = std::numeric_limits<double>::infinity();
 };
 
 bool rachford_rice_beta(const std::vector<double>& feed, const std::vector<double>& k_values, double& beta, std::string& message);
@@ -507,6 +544,7 @@ ElectrolyteBasisNative build_electrolyte_basis_native(
         throw ValueError("mixture parameters must include one charge value per species in params['z'].");
     }
     ElectrolyteBasisNative basis;
+    basis.species_charges = charges;
     for (std::size_t i = 0; i < charges.size(); ++i) {
         if (std::abs(charges[i]) <= 1.0e-12) {
             basis.neutral_indices.push_back(static_cast<int>(i));
@@ -659,6 +697,83 @@ std::vector<double> explicit_to_formula(const std::vector<double>& composition, 
         values.push_back(composition[static_cast<std::size_t>(pair.cation)] / static_cast<double>(pair.cation_stoich));
     }
     return clip_normalize(values, 1.0e-300);
+}
+
+std::vector<double> indices_to_double_vector(const std::vector<int>& indices) {
+    std::vector<double> out;
+    out.reserve(indices.size());
+    for (int index : indices) {
+        out.push_back(static_cast<double>(index));
+    }
+    return out;
+}
+
+std::vector<int> charged_indices_from_basis(const ElectrolyteBasisNative& basis) {
+    std::vector<int> out = basis.cation_indices;
+    out.insert(out.end(), basis.anion_indices.begin(), basis.anion_indices.end());
+    return out;
+}
+
+std::vector<double> electrolyte_basis_vectors_row_major(const ElectrolyteBasisNative& basis, std::size_t ncomp) {
+    std::vector<double> out(basis.salt_pairs.size() * ncomp, 0.0);
+    for (std::size_t row = 0; row < basis.salt_pairs.size(); ++row) {
+        const auto& pair = basis.salt_pairs[row];
+        out[row * ncomp + static_cast<std::size_t>(pair.cation)] = static_cast<double>(pair.cation_stoich);
+        out[row * ncomp + static_cast<std::size_t>(pair.anion)] = static_cast<double>(pair.anion_stoich);
+    }
+    return out;
+}
+
+std::vector<double> salt_pair_field_vector(const ElectrolyteBasisNative& basis, const std::string& field) {
+    std::vector<double> out;
+    out.reserve(basis.salt_pairs.size());
+    for (const auto& pair : basis.salt_pairs) {
+        if (field == "cation") {
+            out.push_back(static_cast<double>(pair.cation));
+        } else if (field == "anion") {
+            out.push_back(static_cast<double>(pair.anion));
+        } else if (field == "cation_stoich") {
+            out.push_back(static_cast<double>(pair.cation_stoich));
+        } else if (field == "anion_stoich") {
+            out.push_back(static_cast<double>(pair.anion_stoich));
+        }
+    }
+    return out;
+}
+
+void add_electrolyte_basis_diagnostics(
+    EquilibriumResultNative& result,
+    const ElectrolyteBasisNative& basis,
+    std::size_t ncomp
+) {
+    result.diagnostics_string["basis_model"] = "charge_neutral_salt_pair_coordinates";
+    result.diagnostics_string["basis_vector_model"] = "salt_pair_stoichiometry_rows_by_public_species";
+    result.diagnostics_int["basis_rank"] = basis.basis_rank;
+    result.diagnostics_int["explicit_species_count"] = static_cast<int>(ncomp);
+    result.diagnostics_int["neutral_species_count"] = static_cast<int>(basis.neutral_indices.size());
+    result.diagnostics_int["charged_species_count"] = static_cast<int>(basis.cation_indices.size() + basis.anion_indices.size());
+    result.diagnostics_int["cation_species_count"] = static_cast<int>(basis.cation_indices.size());
+    result.diagnostics_int["anion_species_count"] = static_cast<int>(basis.anion_indices.size());
+    result.diagnostics_int["salt_pair_count"] = static_cast<int>(basis.salt_pairs.size());
+    result.diagnostics_int["formula_variable_count"] = static_cast<int>(basis.formula_feed.size());
+    result.diagnostics_int["transformed_variable_count"] = static_cast<int>(basis.formula_feed.size());
+    result.diagnostics_int["basis_vector_rows"] = static_cast<int>(basis.salt_pairs.size());
+    result.diagnostics_int["basis_vector_cols"] = static_cast<int>(ncomp);
+    result.diagnostics_bool["phase_charge_enforced_by_basis"] = true;
+    result.diagnostics_bool["material_balance_enforced_by_formula_transform"] = true;
+    result.diagnostics_bool["formula_phase_positivity_enforced_by_transform"] = true;
+    result.diagnostics_bool["explicit_public_species_reported"] = true;
+    result.diagnostics_vector["neutral_species_indices"] = indices_to_double_vector(basis.neutral_indices);
+    result.diagnostics_vector["cation_species_indices"] = indices_to_double_vector(basis.cation_indices);
+    result.diagnostics_vector["anion_species_indices"] = indices_to_double_vector(basis.anion_indices);
+    result.diagnostics_vector["charged_species_indices"] = indices_to_double_vector(charged_indices_from_basis(basis));
+    result.diagnostics_vector["species_charge_vector"] = basis.species_charges;
+    result.diagnostics_vector["formula_feed"] = basis.formula_feed;
+    result.diagnostics_vector["salt_pair_cation_indices"] = salt_pair_field_vector(basis, "cation");
+    result.diagnostics_vector["salt_pair_anion_indices"] = salt_pair_field_vector(basis, "anion");
+    result.diagnostics_vector["salt_pair_cation_stoich"] = salt_pair_field_vector(basis, "cation_stoich");
+    result.diagnostics_vector["salt_pair_anion_stoich"] = salt_pair_field_vector(basis, "anion_stoich");
+    result.diagnostics_vector["basis_vectors_row_major"] = electrolyte_basis_vectors_row_major(basis, ncomp);
 }
 
 std::vector<int> species_indices_from_labels(
@@ -941,6 +1056,233 @@ std::vector<double> electrolyte_residual_vector(
         residuals.push_back(org_pair - aq_pair);
     }
     return residuals;
+}
+
+struct ElectrolyteTransformJacobianNative {
+    std::vector<double> aq_comp_dvar;
+    std::vector<double> org_comp_dvar;
+    std::vector<double> beta_org_dvar;
+    int ncomp = 0;
+    int nvar = 0;
+};
+
+std::vector<double> formula_expansion_matrix_row_major(const ElectrolyteBasisNative& basis, std::size_t ncomp) {
+    const std::size_t nformula = basis.formula_feed.size();
+    std::vector<double> matrix(ncomp * nformula, 0.0);
+    for (std::size_t pos = 0; pos < basis.neutral_indices.size(); ++pos) {
+        matrix[static_cast<std::size_t>(basis.neutral_indices[pos]) * nformula + pos] = 1.0;
+    }
+    std::size_t offset = basis.neutral_indices.size();
+    for (std::size_t salt_pos = 0; salt_pos < basis.salt_pairs.size(); ++salt_pos) {
+        const auto& pair = basis.salt_pairs[salt_pos];
+        const std::size_t col = offset + salt_pos;
+        matrix[static_cast<std::size_t>(pair.cation) * nformula + col] = static_cast<double>(pair.cation_stoich);
+        matrix[static_cast<std::size_t>(pair.anion) * nformula + col] = static_cast<double>(pair.anion_stoich);
+    }
+    return matrix;
+}
+
+std::vector<double> formula_expansion_column_sums(const ElectrolyteBasisNative& basis, std::size_t ncomp) {
+    const std::size_t nformula = basis.formula_feed.size();
+    std::vector<double> sums(nformula, 0.0);
+    std::vector<double> matrix = formula_expansion_matrix_row_major(basis, ncomp);
+    for (std::size_t col = 0; col < nformula; ++col) {
+        for (std::size_t row = 0; row < ncomp; ++row) {
+            sums[col] += matrix[row * nformula + col];
+        }
+    }
+    return sums;
+}
+
+std::vector<double> formula_to_explicit_jacobian_row_major(
+    const std::vector<double>& formula,
+    const ElectrolyteBasisNative& basis,
+    std::size_t ncomp
+) {
+    const std::size_t nformula = formula.size();
+    std::vector<double> matrix = formula_expansion_matrix_row_major(basis, ncomp);
+    std::vector<double> amounts(ncomp, 0.0);
+    std::vector<double> col_sums(nformula, 0.0);
+    for (std::size_t i = 0; i < ncomp; ++i) {
+        for (std::size_t k = 0; k < nformula; ++k) {
+            double value = matrix[i * nformula + k];
+            amounts[i] += value * formula[k];
+            col_sums[k] += value;
+        }
+    }
+    double scale = std::accumulate(amounts.begin(), amounts.end(), 0.0);
+    if (!(scale > 0.0) || !std::isfinite(scale)) {
+        throw SolutionError("Formula-basis explicit-composition Jacobian received a non-positive expansion scale.");
+    }
+    std::vector<double> jacobian(ncomp * nformula, 0.0);
+    for (std::size_t i = 0; i < ncomp; ++i) {
+        for (std::size_t k = 0; k < nformula; ++k) {
+            jacobian[i * nformula + k] = (matrix[i * nformula + k] * scale - amounts[i] * col_sums[k])
+                / (scale * scale);
+        }
+    }
+    return jacobian;
+}
+
+ElectrolyteTransformJacobianNative electrolyte_transform_jacobian(
+    const std::vector<double>& feed,
+    const ElectrolyteBasisNative& basis,
+    const ElectrolyteCandidateNative& candidate
+) {
+    const std::size_t ncomp = feed.size();
+    const std::size_t nformula = basis.formula_feed.size();
+    const std::size_t nvar = nformula;
+    ElectrolyteTransformJacobianNative out;
+    out.ncomp = static_cast<int>(ncomp);
+    out.nvar = static_cast<int>(nvar);
+    out.aq_comp_dvar.assign(ncomp * nvar, 0.0);
+    out.org_comp_dvar.assign(ncomp * nvar, 0.0);
+    out.beta_org_dvar.assign(nvar, 0.0);
+
+    std::vector<double> dbeta_formula_dvar(nvar, 0.0);
+    dbeta_formula_dvar[0] = candidate.beta_formula * (1.0 - candidate.beta_formula);
+
+    std::vector<double> dorg_formula_dvar(nformula * nvar, 0.0);
+    for (std::size_t var = 1; var < nvar; ++var) {
+        const std::size_t logit_index = var - 1;
+        for (std::size_t k = 0; k < nformula; ++k) {
+            double delta = (k == logit_index) ? 1.0 : 0.0;
+            dorg_formula_dvar[k * nvar + var] = candidate.org_formula[k] * (delta - candidate.org_formula[logit_index]);
+        }
+    }
+
+    std::vector<double> daq_formula_dvar(nformula * nvar, 0.0);
+    const double denom = 1.0 - candidate.beta_formula;
+    for (std::size_t k = 0; k < nformula; ++k) {
+        daq_formula_dvar[k * nvar] =
+            dbeta_formula_dvar[0] * (basis.formula_feed[k] - candidate.org_formula[k]) / (denom * denom);
+        for (std::size_t var = 1; var < nvar; ++var) {
+            daq_formula_dvar[k * nvar + var] =
+                -candidate.beta_formula / denom * dorg_formula_dvar[k * nvar + var];
+        }
+    }
+
+    std::vector<double> aq_formula_to_explicit = formula_to_explicit_jacobian_row_major(candidate.aq_formula, basis, ncomp);
+    std::vector<double> org_formula_to_explicit = formula_to_explicit_jacobian_row_major(candidate.org_formula, basis, ncomp);
+    for (std::size_t i = 0; i < ncomp; ++i) {
+        for (std::size_t var = 0; var < nvar; ++var) {
+            for (std::size_t k = 0; k < nformula; ++k) {
+                out.aq_comp_dvar[i * nvar + var] += aq_formula_to_explicit[i * nformula + k] * daq_formula_dvar[k * nvar + var];
+                out.org_comp_dvar[i * nvar + var] += org_formula_to_explicit[i * nformula + k] * dorg_formula_dvar[k * nvar + var];
+            }
+        }
+    }
+
+    std::vector<double> column_sums = formula_expansion_column_sums(basis, ncomp);
+    double aq_scale = 0.0;
+    double org_scale = 0.0;
+    for (std::size_t k = 0; k < nformula; ++k) {
+        aq_scale += column_sums[k] * candidate.aq_formula[k];
+        org_scale += column_sums[k] * candidate.org_formula[k];
+    }
+    double beta_denominator = (1.0 - candidate.beta_formula) * aq_scale + candidate.beta_formula * org_scale;
+    if (!(beta_denominator > 0.0) || !std::isfinite(beta_denominator)) {
+        throw SolutionError("Electrolyte transformed-variable Jacobian produced an invalid phase-fraction denominator.");
+    }
+    double beta_numerator = candidate.beta_formula * org_scale;
+    for (std::size_t var = 0; var < nvar; ++var) {
+        double d_aq_scale = 0.0;
+        double d_org_scale = 0.0;
+        for (std::size_t k = 0; k < nformula; ++k) {
+            d_aq_scale += column_sums[k] * daq_formula_dvar[k * nvar + var];
+            d_org_scale += column_sums[k] * dorg_formula_dvar[k * nvar + var];
+        }
+        double d_beta_formula = dbeta_formula_dvar[var];
+        double d_num = d_beta_formula * org_scale + candidate.beta_formula * d_org_scale;
+        double d_den = d_beta_formula * (org_scale - aq_scale)
+            + (1.0 - candidate.beta_formula) * d_aq_scale
+            + candidate.beta_formula * d_org_scale;
+        out.beta_org_dvar[var] = (d_num * beta_denominator - beta_numerator * d_den)
+            / (beta_denominator * beta_denominator);
+    }
+    return out;
+}
+
+double phase_log_fugacity_derivative_for_species(
+    const std::vector<double>& composition,
+    const std::vector<double>& dcomp_dvar,
+    const std::vector<double>& lnphi_jacobian,
+    std::size_t species_index,
+    std::size_t var,
+    std::size_t ncomp,
+    std::size_t nvar
+) {
+    double value = dcomp_dvar[species_index * nvar + var] / composition[species_index];
+    for (std::size_t j = 0; j < ncomp; ++j) {
+        value += lnphi_jacobian[species_index * ncomp + j] * dcomp_dvar[j * nvar + var];
+    }
+    return value;
+}
+
+std::vector<double> electrolyte_residual_jacobian_row_major(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const ElectrolyteBasisNative& basis,
+    const ElectrolyteCandidateNative& candidate
+) {
+    const std::size_t ncomp = feed.size();
+    const std::size_t nvar = basis.formula_feed.size();
+    ElectrolyteTransformJacobianNative transform = electrolyte_transform_jacobian(feed, basis, candidate);
+    PhaseStateCompositionSensitivityResult aq_sensitivity =
+        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, candidate.aq_comp, phase_token_to_int("liq"), mixture->args());
+    PhaseStateCompositionSensitivityResult org_sensitivity =
+        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, candidate.org_comp, phase_token_to_int("liq"), mixture->args());
+    if (!aq_sensitivity.supported || !org_sensitivity.supported) {
+        throw SolutionError("Electrolyte residual Jacobian requires supported phase-state fugacity composition sensitivities.");
+    }
+    const std::size_t phase_rows = basis.neutral_indices.size() + basis.salt_pairs.size();
+    const std::size_t rows = phase_rows + ncomp;
+    std::vector<double> jacobian(rows * nvar, 0.0);
+    std::size_t row = 0;
+    auto add_species_contribution = [&](std::size_t output_row, std::size_t species_index, double coefficient) {
+        for (std::size_t var = 0; var < nvar; ++var) {
+            double org_value = phase_log_fugacity_derivative_for_species(
+                candidate.org_comp,
+                transform.org_comp_dvar,
+                org_sensitivity.jacobian_row_major,
+                species_index,
+                var,
+                ncomp,
+                nvar
+            );
+            double aq_value = phase_log_fugacity_derivative_for_species(
+                candidate.aq_comp,
+                transform.aq_comp_dvar,
+                aq_sensitivity.jacobian_row_major,
+                species_index,
+                var,
+                ncomp,
+                nvar
+            );
+            jacobian[output_row * nvar + var] += coefficient * (org_value - aq_value);
+        }
+    };
+    for (int index : basis.neutral_indices) {
+        add_species_contribution(row, static_cast<std::size_t>(index), 1.0);
+        ++row;
+    }
+    for (const auto& pair : basis.salt_pairs) {
+        add_species_contribution(row, static_cast<std::size_t>(pair.cation), static_cast<double>(pair.cation_stoich));
+        add_species_contribution(row, static_cast<std::size_t>(pair.anion), static_cast<double>(pair.anion_stoich));
+        ++row;
+    }
+    for (std::size_t i = 0; i < ncomp; ++i) {
+        for (std::size_t var = 0; var < nvar; ++var) {
+            jacobian[row * nvar + var] =
+                (candidate.org_comp[i] - candidate.aq_comp[i]) * transform.beta_org_dvar[var]
+                + (1.0 - candidate.beta_org) * transform.aq_comp_dvar[i * nvar + var]
+                + candidate.beta_org * transform.org_comp_dvar[i * nvar + var];
+        }
+        ++row;
+    }
+    return jacobian;
 }
 
 StabilityTrialNative electrolyte_trial_from_formula(
@@ -1358,17 +1700,6 @@ LLEMinimizeResultNative minimize_lle_residual_variables(
     result.variables = simplex[best];
     result.objective = values[best];
     return result;
-}
-
-std::vector<double> newton_step(
-    const std::function<std::vector<double>(const std::vector<double>&)>& residual_fn,
-    const std::vector<double>& variables,
-    const std::vector<double>& residual
-) {
-    (void)residual_fn;
-    (void)variables;
-    (void)residual;
-    throw ValueError("not_available: electrolyte LLE residual sensitivities are not implemented.");
 }
 
 std::vector<std::pair<std::string, std::vector<double>>> deterministic_formula_multistart_variables(
@@ -2221,27 +2552,56 @@ EquilibriumResultNative lle_flash_native(
     return result;
 }
 
-struct ElectrolyteCandidateNative {
-    double beta_formula = 0.5;
-    double beta_org = 0.5;
-    std::vector<double> aq_formula;
-    std::vector<double> org_formula;
-    std::vector<double> aq_comp;
-    std::vector<double> org_comp;
-    PhaseStateNative aq_state;
-    PhaseStateNative org_state;
-    std::vector<double> residual;
-    std::vector<double> material_residual;
-    double solver_residual_norm = std::numeric_limits<double>::infinity();
-    double material_error = std::numeric_limits<double>::infinity();
-    double charge_balance_error = std::numeric_limits<double>::infinity();
-    double gibbs_feed = 0.0;
-    double gibbs_split = 0.0;
-    double gibbs_delta = 0.0;
-    double phase_distance_value = 0.0;
-    int iteration = 0;
-    double objective = std::numeric_limits<double>::infinity();
-};
+double residual_slice_max_abs(const std::vector<double>& residual, std::size_t begin, std::size_t end) {
+    double out = 0.0;
+    end = std::min(end, residual.size());
+    for (std::size_t i = begin; i < end; ++i) {
+        out = std::max(out, std::abs(residual[i]));
+    }
+    return out;
+}
+
+void add_electrolyte_candidate_state_diagnostics(
+    EquilibriumResultNative& result,
+    const ElectrolyteBasisNative& basis,
+    const std::vector<double>& feed,
+    const ElectrolyteCandidateNative& candidate,
+    bool has_candidate,
+    bool accepted_candidate
+) {
+    result.diagnostics_bool["transformed_variable_candidate_available"] = has_candidate;
+    result.diagnostics_bool["accepted_transformed_variables_feasible"] = accepted_candidate;
+    result.diagnostics_double["phase_charge_balance_feed"] = composition_charge(feed, basis.species_charges);
+    if (!has_candidate) {
+        return;
+    }
+    const double aq_charge = composition_charge(candidate.aq_comp, basis.species_charges);
+    const double org_charge = composition_charge(candidate.org_comp, basis.species_charges);
+    result.diagnostics_double["phase_charge_balance_aq"] = aq_charge;
+    result.diagnostics_double["phase_charge_balance_org"] = org_charge;
+    result.diagnostics_double["phase_charge_balance_max_abs"] = std::max(
+        std::abs(result.diagnostics_double["phase_charge_balance_feed"]),
+        std::max(std::abs(aq_charge), std::abs(org_charge))
+    );
+    const std::size_t neutral_rows = basis.neutral_indices.size();
+    const std::size_t ionic_rows = basis.salt_pairs.size();
+    result.diagnostics_double["neutral_fugacity_residual_norm"] =
+        residual_slice_max_abs(candidate.residual, 0, neutral_rows);
+    result.diagnostics_double["ionic_equilibrium_residual_norm"] =
+        residual_slice_max_abs(candidate.residual, neutral_rows, neutral_rows + ionic_rows);
+    result.diagnostics_double["phase_equilibrium_residual_norm"] = candidate.solver_residual_norm;
+    result.diagnostics_double["material_balance_norm"] = candidate.material_error;
+    result.diagnostics_double["phase_charge_balance_norm"] =
+        result.diagnostics_double["phase_charge_balance_max_abs"];
+    result.diagnostics_double["scaled_solver_residual_norm"] = candidate.solver_residual_norm;
+    result.diagnostics_double["unscaled_solver_residual_norm"] = candidate.solver_residual_norm;
+    const std::string prefix = accepted_candidate ? "accepted" : "best_candidate";
+    result.diagnostics_double[prefix + "_beta_formula"] = candidate.beta_formula;
+    result.diagnostics_double[prefix + "_beta_org"] = candidate.beta_org;
+    result.diagnostics_vector[prefix + "_aq_formula"] = candidate.aq_formula;
+    result.diagnostics_vector[prefix + "_org_formula"] = candidate.org_formula;
+    result.diagnostics_vector["material_balance_residual"] = candidate.material_residual;
+}
 
 std::vector<double> pack_predictive_electrolyte_variables(double beta_formula, const std::vector<double>& org_formula) {
     beta_formula = std::max(1.0e-12, std::min(1.0 - 1.0e-12, beta_formula));
@@ -2316,19 +2676,18 @@ ElectrolyteCandidateNative evaluate_predictive_electrolyte_variables(
     return out;
 }
 
-std::vector<double> predictive_infeasible_residual(const std::vector<double>& variables, const ElectrolyteBasisNative& basis, const EquilibriumOptionsNative& options) {
-    std::vector<double> residual(basis.formula_feed.size(), 1.0e3);
-    try {
-        double beta_formula = 0.5;
-        std::vector<double> org_formula;
-        unpack_predictive_electrolyte_variables(variables, basis.formula_feed.size(), beta_formula, org_formula);
-        for (std::size_t i = 0; i < basis.formula_feed.size(); ++i) {
-            double aq = (basis.formula_feed[i] - beta_formula * org_formula[i]) / (1.0 - beta_formula);
-            residual[i] = 10.0 + 1.0e4 * std::max(options.min_composition - aq, 0.0);
-        }
-    } catch (const std::exception&) {
-    }
+std::vector<double> electrolyte_full_residual_vector(const ElectrolyteCandidateNative& candidate) {
+    std::vector<double> residual = candidate.residual;
+    residual.insert(residual.end(), candidate.material_residual.begin(), candidate.material_residual.end());
     return residual;
+}
+
+double electrolyte_residual_cost(const std::vector<double>& residual) {
+    double cost = 0.0;
+    for (double value : residual) {
+        cost += 0.5 * value * value;
+    }
+    return cost;
 }
 
 bool predictive_electrolyte_accepted(const ElectrolyteCandidateNative& candidate, const EquilibriumOptionsNative& options) {
@@ -2399,10 +2758,17 @@ EquilibriumResultNative electrolyte_lle_failure_result(
     result.diagnostics_string["stability_analysis"] = "electrolyte_tpd";
     result.diagnostics_string["variable_model"] = basis.variable_model;
     result.diagnostics_string["acceptance_gate"] = "predictive_solve_failed";
+    result.diagnostics_string["solver_backend"] = "ceres";
+    result.diagnostics_string["selected_solver_backend"] = "ceres";
     result.diagnostics_string["solver_seed_name"] = best_seed;
-    result.diagnostics_string["solver_method"] = "native_transformed_newton";
+    result.diagnostics_string["solver_method"] = "ceres_trust_region_residual_solve";
     result.diagnostics_string["solver_language"] = "c++";
     result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
+    result.diagnostics_string["jacobian_backend"] = "cppad_implicit";
+    result.diagnostics_string["derivative_backend"] = "cppad_implicit";
+    result.diagnostics_string["residual_surface_jacobian_backend"] = "cppad_implicit";
+    result.diagnostics_string["residual_surface_derivative_backend"] = "cppad_implicit";
+    result.diagnostics_string["jacobian_scope"] = "transformed_variables_phase_state_implicit_density";
     result.diagnostics_string["tpd_method"] = "native_tpd_global_search";
     result.diagnostics_string["gibbs_seed_method"] = "native_golden_section";
     result.diagnostics_string["best_failure_reason"] = reason;
@@ -2419,6 +2785,10 @@ EquilibriumResultNative electrolyte_lle_failure_result(
     result.diagnostics_bool["stability_stable"] = stability.stable;
     result.diagnostics_bool["unstable_feed_collapsed_all_candidates"] = stability.min_tpd < -std::max(options.tolerance, 1.0e-8)
         && reason == "candidate collapsed to one phase";
+    result.diagnostics_bool["jacobian_available"] = true;
+    result.diagnostics_bool["derivative_available"] = true;
+    add_electrolyte_basis_diagnostics(result, basis, feed.size());
+    add_electrolyte_candidate_state_diagnostics(result, basis, feed, best, has_best, false);
     result.diagnostics_int["basis_rank"] = basis.basis_rank;
     result.diagnostics_int["seed_attempt_count"] = static_cast<int>(attempts.size());
     result.diagnostics_int["iterations"] = has_best ? best.iteration : 0;
@@ -2453,93 +2823,6 @@ EquilibriumResultNative electrolyte_lle_failure_result(
     }
     result.attempt_diagnostics = attempts;
     return result;
-}
-
-std::vector<double> nelder_mead_variables(
-    const std::function<double(const std::vector<double>&)>& objective,
-    const std::vector<double>& start,
-    int max_iterations,
-    ElectrolyteLLEBudget* budget = nullptr
-) {
-    const std::size_t n = start.size();
-    std::vector<std::vector<double>> simplex(n + 1, start);
-    for (std::size_t i = 0; i < n; ++i) {
-        simplex[i + 1][i] += 0.25;
-    }
-    std::vector<double> values(n + 1, 0.0);
-    auto refresh = [&]() {
-        for (std::size_t i = 0; i < simplex.size(); ++i) {
-            values[i] = objective(simplex[i]);
-        }
-    };
-    refresh();
-    for (int iter = 0; iter < max_iterations; ++iter) {
-        if (budget != nullptr) {
-            budget->check_timeout();
-        }
-        std::vector<std::size_t> order(simplex.size());
-        std::iota(order.begin(), order.end(), 0);
-        std::sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) { return values[a] < values[b]; });
-        std::vector<std::vector<double>> sorted_simplex;
-        std::vector<double> sorted_values;
-        for (std::size_t idx : order) {
-            sorted_simplex.push_back(simplex[idx]);
-            sorted_values.push_back(values[idx]);
-        }
-        simplex = sorted_simplex;
-        values = sorted_values;
-        std::vector<double> centroid(n, 0.0);
-        for (std::size_t i = 0; i < n; ++i) {
-            for (std::size_t j = 0; j < n; ++j) {
-                centroid[j] += simplex[i][j];
-            }
-        }
-        for (double& value : centroid) {
-            value /= static_cast<double>(n);
-        }
-        auto transform = [&](double scale) {
-            std::vector<double> out(n, 0.0);
-            for (std::size_t j = 0; j < n; ++j) {
-                out[j] = centroid[j] + scale * (centroid[j] - simplex[n][j]);
-            }
-            return out;
-        };
-        std::vector<double> reflected = transform(1.0);
-        double reflected_value = objective(reflected);
-        if (reflected_value < values[0]) {
-            std::vector<double> expanded = transform(2.0);
-            double expanded_value = objective(expanded);
-            if (expanded_value < reflected_value) {
-                simplex[n] = expanded;
-                values[n] = expanded_value;
-            } else {
-                simplex[n] = reflected;
-                values[n] = reflected_value;
-            }
-        } else if (reflected_value < values[n - 1]) {
-            simplex[n] = reflected;
-            values[n] = reflected_value;
-        } else {
-            std::vector<double> contracted(n, 0.0);
-            for (std::size_t j = 0; j < n; ++j) {
-                contracted[j] = centroid[j] + 0.5 * (simplex[n][j] - centroid[j]);
-            }
-            double contracted_value = objective(contracted);
-            if (contracted_value < values[n]) {
-                simplex[n] = contracted;
-                values[n] = contracted_value;
-            } else {
-                for (std::size_t i = 1; i < simplex.size(); ++i) {
-                    for (std::size_t j = 0; j < n; ++j) {
-                        simplex[i][j] = simplex[0][j] + 0.5 * (simplex[i][j] - simplex[0][j]);
-                    }
-                }
-                refresh();
-            }
-        }
-    }
-    std::size_t best = static_cast<std::size_t>(std::min_element(values.begin(), values.end()) - values.begin());
-    return simplex[best];
 }
 
 std::vector<double> gibbs_seed_variables_from_trial(
@@ -2611,7 +2894,151 @@ std::vector<double> gibbs_seed_variables_from_trial(
     return pack_predictive_electrolyte_variables(beta_formula, org_formula);
 }
 
-ElectrolyteCandidateNative solve_predictive_electrolyte_attempt(
+struct ElectrolyteCeresAttemptNative {
+    ElectrolyteCandidateNative candidate;
+    std::vector<double> variables;
+    bool solution_usable = false;
+    bool budget_exceeded = false;
+    std::string budget_trigger;
+    std::string termination_type;
+    std::string message;
+    std::string trust_region_strategy = "levenberg_marquardt";
+    std::string linear_solver = "dense_qr";
+    double initial_cost = std::numeric_limits<double>::infinity();
+    double final_cost = std::numeric_limits<double>::infinity();
+    int status = 0;
+    int iterations = 0;
+    int residual_evaluations = 0;
+    int jacobian_evaluations = 0;
+};
+
+#ifdef EPCSAFT_HAS_CERES
+std::string ceres_termination_type_name(ceres::TerminationType type) {
+    switch (type) {
+        case ceres::CONVERGENCE:
+            return "convergence";
+        case ceres::NO_CONVERGENCE:
+            return "no_convergence";
+        case ceres::FAILURE:
+            return "failure";
+        case ceres::USER_SUCCESS:
+            return "user_success";
+        case ceres::USER_FAILURE:
+            return "user_failure";
+        default:
+            return std::to_string(static_cast<int>(type));
+    }
+}
+
+class ElectrolyteLLEResidualCeresCostFunction final : public ceres::CostFunction {
+public:
+    ElectrolyteLLEResidualCeresCostFunction(
+        std::shared_ptr<ePCSAFTMixtureNative> mixture,
+        double t,
+        double p,
+        std::vector<double> feed,
+        ElectrolyteBasisNative basis,
+        EquilibriumOptionsNative options,
+        double gibbs_feed,
+        std::vector<DensitySolveDiagnostics>* density_failures,
+        ElectrolyteLLEBudget* budget
+    )
+        : mixture_(std::move(mixture)),
+          t_(t),
+          p_(p),
+          feed_(std::move(feed)),
+          basis_(std::move(basis)),
+          options_(std::move(options)),
+          gibbs_feed_(gibbs_feed),
+          density_failures_(density_failures),
+          budget_(budget)
+    {
+        const std::size_t residual_count = basis_.neutral_indices.size() + basis_.salt_pairs.size() + feed_.size();
+        set_num_residuals(static_cast<int>(residual_count));
+        mutable_parameter_block_sizes()->push_back(static_cast<int>(basis_.formula_feed.size()));
+    }
+
+    bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const override {
+        try {
+            if (budget_ != nullptr) {
+                budget_->count_objective_evaluation();
+            }
+            std::vector<double> variables(parameters[0], parameters[0] + basis_.formula_feed.size());
+            ElectrolyteCandidateNative candidate = evaluate_predictive_electrolyte_variables(
+                mixture_,
+                t_,
+                p_,
+                feed_,
+                basis_,
+                variables,
+                options_,
+                gibbs_feed_
+            );
+            std::vector<double> residual = electrolyte_full_residual_vector(candidate);
+            for (std::size_t row = 0; row < residual.size(); ++row) {
+                residuals[row] = residual[row];
+            }
+            if (jacobians != nullptr && jacobians[0] != nullptr) {
+                std::vector<double> jacobian = electrolyte_residual_jacobian_row_major(
+                    mixture_,
+                    t_,
+                    p_,
+                    feed_,
+                    basis_,
+                    candidate
+                );
+                if (jacobian.size() != residual.size() * variables.size()) {
+                    throw SolutionError("Electrolyte residual Jacobian shape does not match Ceres residual block.");
+                }
+                for (std::size_t i = 0; i < jacobian.size(); ++i) {
+                    jacobians[0][i] = jacobian[i];
+                }
+            }
+            return true;
+        } catch (const EquilibriumBudgetExceeded& exc) {
+            budget_exceeded_ = true;
+            budget_trigger_ = exc.trigger;
+            return false;
+        } catch (const SolutionError&) {
+            append_last_density_failure(mixture_, density_failures_);
+            try {
+                if (budget_ != nullptr && density_failures_ != nullptr) {
+                    budget_->check_density_failure_count(density_failures_->size());
+                }
+            } catch (const EquilibriumBudgetExceeded& exc) {
+                budget_exceeded_ = true;
+                budget_trigger_ = exc.trigger;
+            }
+            return false;
+        } catch (const std::exception&) {
+            return false;
+        }
+    }
+
+    bool budget_exceeded() const {
+        return budget_exceeded_;
+    }
+
+    const std::string& budget_trigger() const {
+        return budget_trigger_;
+    }
+
+private:
+    std::shared_ptr<ePCSAFTMixtureNative> mixture_;
+    double t_ = 0.0;
+    double p_ = 0.0;
+    std::vector<double> feed_;
+    ElectrolyteBasisNative basis_;
+    EquilibriumOptionsNative options_;
+    double gibbs_feed_ = 0.0;
+    std::vector<DensitySolveDiagnostics>* density_failures_ = nullptr;
+    ElectrolyteLLEBudget* budget_ = nullptr;
+    mutable bool budget_exceeded_ = false;
+    mutable std::string budget_trigger_;
+};
+#endif
+
+ElectrolyteCeresAttemptNative solve_predictive_electrolyte_ceres_attempt(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
     double t,
     double p,
@@ -2625,95 +3052,91 @@ ElectrolyteCandidateNative solve_predictive_electrolyte_attempt(
     bool* budget_exceeded,
     std::string* budget_trigger
 ) {
-    std::vector<double> variables = seed_variables;
-    ElectrolyteCandidateNative best;
-    bool has_best = false;
+    ElectrolyteCeresAttemptNative out;
+    out.variables = seed_variables;
     try {
-        auto objective_fn = [&](const std::vector<double>& candidate) {
-            if (budget != nullptr) {
-                budget->count_objective_evaluation();
-            }
-            try {
-                return l2_norm(evaluate_predictive_electrolyte_variables(mixture, t, p, feed, basis, candidate, options, gibbs_feed).residual);
-            } catch (const SolutionError&) {
-                append_last_density_failure(mixture, density_failures);
-                if (budget != nullptr && density_failures != nullptr) {
-                    budget->check_density_failure_count(density_failures->size());
-                }
-                return l2_norm(predictive_infeasible_residual(candidate, basis, options));
-            }
-        };
-        if (basis.formula_feed.size() > 3) {
-            variables = nelder_mead_variables(objective_fn, variables, std::max(40, options.max_iterations * 4), budget);
+        if (budget != nullptr) {
+            budget->check_timeout();
         }
-        for (int iteration = 1; iteration <= options.max_iterations; ++iteration) {
-            if (budget != nullptr) {
-                budget->check_timeout();
-            }
-            ElectrolyteCandidateNative current;
-            try {
-                if (budget != nullptr) {
-                    budget->count_objective_evaluation();
-                }
-                current = evaluate_predictive_electrolyte_variables(mixture, t, p, feed, basis, variables, options, gibbs_feed);
-            } catch (const SolutionError&) {
-                append_last_density_failure(mixture, density_failures);
-                if (budget != nullptr && density_failures != nullptr) {
-                    budget->check_density_failure_count(density_failures->size());
-                }
-                std::vector<double> residual = predictive_infeasible_residual(variables, basis, options);
-                current.objective = l2_norm(residual);
-                current.solver_residual_norm = current.objective;
-                current.material_error = 1.0e300;
-                current.charge_balance_error = 1.0e300;
-                current.residual = residual;
-            }
-            current.iteration = iteration;
-            if (!has_best || current.objective < best.objective) {
-                best = current;
-                has_best = true;
-            }
-            if (has_best && predictive_electrolyte_accepted(best, options)) {
-                return best;
-            }
-            auto residual_fn = [&](const std::vector<double>& candidate) {
-                if (budget != nullptr) {
-                    budget->count_objective_evaluation();
-                }
-                try {
-                    return evaluate_predictive_electrolyte_variables(mixture, t, p, feed, basis, candidate, options, gibbs_feed).residual;
-                } catch (const SolutionError&) {
-                    append_last_density_failure(mixture, density_failures);
-                    if (budget != nullptr && density_failures != nullptr) {
-                        budget->check_density_failure_count(density_failures->size());
-                    }
-                    return predictive_infeasible_residual(candidate, basis, options);
-                }
-            };
-            std::vector<double> base_residual = residual_fn(variables);
-            std::vector<double> step = newton_step(residual_fn, variables, base_residual);
-            bool accepted = false;
-            double current_objective = l2_norm(base_residual);
-            for (double scale : damping_schedule(options.damping)) {
-                if (budget != nullptr) {
-                    budget->check_timeout();
-                }
-                std::vector<double> candidate_vars = variables;
-                for (std::size_t i = 0; i < candidate_vars.size(); ++i) {
-                    candidate_vars[i] += scale * step[i];
-                }
-                std::vector<double> candidate_residual = residual_fn(candidate_vars);
-                if (l2_norm(candidate_residual) < current_objective) {
-                    variables = candidate_vars;
-                    accepted = true;
-                    break;
-                }
-            }
-            if (!accepted) {
-                return best;
-            }
+#ifndef EPCSAFT_HAS_CERES
+        throw SolutionError("Ceres support is required for electrolyte LLE residual solving.");
+#else
+        ElectrolyteCandidateNative initial = evaluate_predictive_electrolyte_variables(
+            mixture,
+            t,
+            p,
+            feed,
+            basis,
+            out.variables,
+            options,
+            gibbs_feed
+        );
+        out.initial_cost = electrolyte_residual_cost(electrolyte_full_residual_vector(initial));
+
+        ceres::Problem problem;
+        auto *cost = new ElectrolyteLLEResidualCeresCostFunction(
+            mixture,
+            t,
+            p,
+            feed,
+            basis,
+            options,
+            gibbs_feed,
+            density_failures,
+            budget
+        );
+        problem.AddResidualBlock(cost, nullptr, out.variables.data());
+        for (int index = 0; index < static_cast<int>(out.variables.size()); ++index) {
+            problem.SetParameterLowerBound(out.variables.data(), index, -100.0);
+            problem.SetParameterUpperBound(out.variables.data(), index, 100.0);
         }
-        return best;
+
+        ceres::Solver::Options ceres_options;
+        ceres_options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
+        ceres_options.linear_solver_type = ceres::DENSE_QR;
+        ceres_options.max_num_iterations = options.max_iterations;
+        ceres_options.minimizer_progress_to_stdout = false;
+        ceres_options.logging_type = ceres::SILENT;
+        ceres_options.function_tolerance = std::min(1.0e-12, std::max(1.0e-18, options.tolerance * options.tolerance));
+        ceres_options.gradient_tolerance = std::min(1.0e-10, std::max(1.0e-14, options.tolerance));
+        ceres_options.parameter_tolerance = std::min(1.0e-10, std::max(1.0e-14, options.tolerance));
+        if (budget != nullptr && budget->timeout_seconds > 0.0) {
+            double remaining = budget->timeout_seconds - budget->elapsed_seconds();
+            if (remaining <= 0.0) {
+                throw EquilibriumBudgetExceeded("timeout_seconds");
+            }
+            ceres_options.max_solver_time_in_seconds = remaining;
+        }
+
+        ceres::Solver::Summary summary;
+        ceres::Solve(ceres_options, &problem, &summary);
+        if (cost->budget_exceeded()) {
+            out.budget_exceeded = true;
+            out.budget_trigger = cost->budget_trigger();
+        }
+        out.status = static_cast<int>(summary.termination_type);
+        out.termination_type = ceres_termination_type_name(summary.termination_type);
+        out.message = summary.BriefReport();
+        out.iterations = static_cast<int>(summary.iterations.size());
+        out.residual_evaluations = static_cast<int>(summary.num_residual_evaluations);
+        out.jacobian_evaluations = static_cast<int>(summary.num_jacobian_evaluations);
+        out.solution_usable = summary.IsSolutionUsable();
+        out.candidate = evaluate_predictive_electrolyte_variables(
+            mixture,
+            t,
+            p,
+            feed,
+            basis,
+            out.variables,
+            options,
+            gibbs_feed
+        );
+        out.candidate.iteration = out.iterations;
+        std::vector<double> final_residual = electrolyte_full_residual_vector(out.candidate);
+        out.final_cost = electrolyte_residual_cost(final_residual);
+        out.candidate.objective = std::sqrt(std::max(0.0, 2.0 * out.final_cost));
+        return out;
+#endif
     } catch (const EquilibriumBudgetExceeded& exc) {
         if (budget_exceeded != nullptr) {
             *budget_exceeded = true;
@@ -2721,18 +3144,20 @@ ElectrolyteCandidateNative solve_predictive_electrolyte_attempt(
         if (budget_trigger != nullptr) {
             *budget_trigger = exc.trigger;
         }
-        if (has_best) {
-            return best;
-        }
-        ElectrolyteCandidateNative failed;
-        failed.objective = 1.0e300;
-        failed.solver_residual_norm = 1.0e300;
-        failed.material_error = 1.0e300;
-        failed.charge_balance_error = 1.0e300;
-        failed.iteration = 0;
-        failed.residual.assign(std::max<std::size_t>(1, basis.formula_feed.size()), 1.0e300);
-        return failed;
+        out.budget_exceeded = true;
+        out.budget_trigger = exc.trigger;
+        out.message = exc.what();
+    } catch (const SolutionError& exc) {
+        append_last_density_failure(mixture, density_failures);
+        out.message = exc.what();
     }
+    out.candidate.objective = 1.0e300;
+    out.candidate.solver_residual_norm = 1.0e300;
+    out.candidate.material_error = 1.0e300;
+    out.candidate.charge_balance_error = 1.0e300;
+    out.candidate.iteration = 0;
+    out.candidate.residual.assign(std::max<std::size_t>(1, basis.formula_feed.size()), 1.0e300);
+    return out;
 }
 
 EquilibriumResultNative electrolyte_lle_native(
@@ -2833,8 +3258,10 @@ EquilibriumResultNative electrolyte_lle_native(
         }
     }
     ElectrolyteCandidateNative best;
+    ElectrolyteCeresAttemptNative best_ceres;
     std::string best_seed;
     bool has_best = false;
+    bool has_best_ceres = false;
     bool accepted = false;
     std::vector<EquilibriumAttemptDiagnosticsNative> attempts;
     std::vector<DensitySolveDiagnostics> density_failures;
@@ -2848,7 +3275,7 @@ EquilibriumResultNative electrolyte_lle_native(
         }
         bool attempt_budget_exceeded = false;
         std::string attempt_budget_trigger;
-        ElectrolyteCandidateNative candidate = solve_predictive_electrolyte_attempt(
+        ElectrolyteCeresAttemptNative ceres_attempt = solve_predictive_electrolyte_ceres_attempt(
             mixture,
             t,
             p,
@@ -2862,22 +3289,28 @@ EquilibriumResultNative electrolyte_lle_native(
             &attempt_budget_exceeded,
             &attempt_budget_trigger
         );
-        bool candidate_accepted = predictive_electrolyte_accepted(candidate, solver_options);
+        ElectrolyteCandidateNative candidate = ceres_attempt.candidate;
+        bool candidate_accepted = ceres_attempt.solution_usable
+            && predictive_electrolyte_accepted(candidate, solver_options);
         attempts.push_back(electrolyte_attempt_diagnostics(seed.first, candidate, solver_options, candidate_accepted));
         if (!has_best || candidate.objective < best.objective) {
             best = candidate;
+            best_ceres = ceres_attempt;
             best_seed = seed.first;
             has_best = true;
+            has_best_ceres = true;
         }
         if (candidate_accepted) {
             best = candidate;
+            best_ceres = ceres_attempt;
             best_seed = seed.first;
             accepted = true;
+            has_best_ceres = true;
             break;
         }
-        if (attempt_budget_exceeded) {
+        if (attempt_budget_exceeded || ceres_attempt.budget_exceeded) {
             budget_exceeded = true;
-            budget_trigger = attempt_budget_trigger;
+            budget_trigger = !attempt_budget_trigger.empty() ? attempt_budget_trigger : ceres_attempt.budget_trigger;
             break;
         }
         try {
@@ -2935,11 +3368,22 @@ EquilibriumResultNative electrolyte_lle_native(
     result.diagnostics_string["route_reason"] = "ion-containing mixture";
     result.diagnostics_string["stability_analysis"] = "electrolyte_tpd";
     result.diagnostics_string["variable_model"] = basis.variable_model;
-    result.diagnostics_string["acceptance_gate"] = "predictive_nonlinear_solve";
+    result.diagnostics_string["acceptance_gate"] = "ceres_residual_solve";
+    result.diagnostics_string["solver_backend"] = "ceres";
+    result.diagnostics_string["selected_solver_backend"] = "ceres";
     result.diagnostics_string["solver_seed_name"] = best_seed;
-    result.diagnostics_string["solver_method"] = "native_transformed_newton";
+    result.diagnostics_string["solver_method"] = "ceres_trust_region_residual_solve";
     result.diagnostics_string["solver_language"] = "c++";
     result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
+    result.diagnostics_string["jacobian_backend"] = "cppad_implicit";
+    result.diagnostics_string["derivative_backend"] = "cppad_implicit";
+    result.diagnostics_string["residual_surface_jacobian_backend"] = "cppad_implicit";
+    result.diagnostics_string["residual_surface_derivative_backend"] = "cppad_implicit";
+    result.diagnostics_string["jacobian_scope"] = "transformed_variables_phase_state_implicit_density";
+    result.diagnostics_string["ceres_trust_region_strategy"] = has_best_ceres ? best_ceres.trust_region_strategy : "";
+    result.diagnostics_string["ceres_linear_solver"] = has_best_ceres ? best_ceres.linear_solver : "";
+    result.diagnostics_string["ceres_termination_type"] = has_best_ceres ? best_ceres.termination_type : "";
+    result.diagnostics_string["ceres_summary"] = has_best_ceres ? best_ceres.message : "";
     result.diagnostics_string["tpd_method"] = "native_tpd_global_search";
     result.diagnostics_string["gibbs_seed_method"] = "native_golden_section";
     result.diagnostics_string["phase_label_basis"] = phase_label_basis;
@@ -2954,6 +3398,10 @@ EquilibriumResultNative electrolyte_lle_native(
     result.diagnostics_bool["best_effort_phases_returned"] = false;
     result.diagnostics_bool["stability_checked"] = true;
     result.diagnostics_bool["stability_stable"] = stability.stable;
+    result.diagnostics_bool["jacobian_available"] = true;
+    result.diagnostics_bool["derivative_available"] = true;
+    add_electrolyte_basis_diagnostics(result, basis, feed.size());
+    add_electrolyte_candidate_state_diagnostics(result, basis, feed, best, true, true);
     result.diagnostics_int["basis_rank"] = basis.basis_rank;
     result.diagnostics_int["seed_attempt_count"] = static_cast<int>(attempts.size());
     result.diagnostics_int["density_failure_count"] = static_cast<int>(density_failures.size());
@@ -2961,6 +3409,10 @@ EquilibriumResultNative electrolyte_lle_native(
     result.diagnostics_int["repeated_stability_iterations"] = 1;
     result.diagnostics_int["requested_max_iterations"] = options.max_iterations;
     result.diagnostics_int["effective_max_iterations"] = solver_options.max_iterations;
+    result.diagnostics_int["ceres_status"] = has_best_ceres ? best_ceres.status : 0;
+    result.diagnostics_int["ceres_iteration_count"] = has_best_ceres ? best_ceres.iterations : 0;
+    result.diagnostics_int["ceres_residual_evaluation_count"] = has_best_ceres ? best_ceres.residual_evaluations : 0;
+    result.diagnostics_int["ceres_jacobian_evaluation_count"] = has_best_ceres ? best_ceres.jacobian_evaluations : 0;
     result.diagnostics_double["solver_residual_norm"] = best.solver_residual_norm;
     result.diagnostics_double["fugacity_residual_norm"] = best.solver_residual_norm;
     result.diagnostics_double["material_balance_error"] = best.material_error;
@@ -2970,6 +3422,8 @@ EquilibriumResultNative electrolyte_lle_native(
     result.diagnostics_double["gibbs_delta"] = best.gibbs_delta;
     result.diagnostics_double["phase_distance"] = best.phase_distance_value;
     result.diagnostics_double["stability_min_tpd"] = stability.min_tpd;
+    result.diagnostics_double["ceres_initial_cost"] = has_best_ceres ? best_ceres.initial_cost : 0.0;
+    result.diagnostics_double["ceres_final_cost"] = has_best_ceres ? best_ceres.final_cost : 0.0;
     result.diagnostics_vector["feed_composition"] = feed;
     result.diagnostics_vector["fugacity_residual"] = best.residual;
     result.diagnostics_string["best_noncollapsed_candidate"] = "accepted";
@@ -2996,16 +3450,132 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
     if (!mixture->has_ionic()) {
         throw ValueError("electrolyte_lle residual evaluation requires an ion-containing mixture.");
     }
-    (void)t;
-    (void)p;
-    (void)raw_feed;
-    (void)options;
-    (void)species;
-    (void)variables;
-    (void)has_variables;
-    (void)initial_aq;
-    (void)initial_org;
-    (void)initial_beta_org;
-    (void)has_initial_phases;
-    throw ValueError("not_available: electrolyte LLE residual sensitivities are not implemented.");
+    std::vector<double> feed = normalize_feed(raw_feed, mixture->ncomp(), options.min_composition, "electrolyte_lle");
+    const std::vector<double>& charges = mixture->args().z;
+    if (std::abs(composition_charge(feed, charges)) > 1.0e-10) {
+        throw ValueError("electrolyte_lle residual evaluation feed must be charge neutral.");
+    }
+    ElectrolyteBasisNative basis = build_electrolyte_basis_native(mixture, feed, species);
+    std::vector<double> eval_variables = variables;
+    if (!has_variables) {
+        std::vector<double> org_formula = basis.formula_feed;
+        double beta_formula = 0.5;
+        if (has_initial_phases) {
+            if (initial_aq.size() != feed.size() || initial_org.size() != feed.size()) {
+                throw ValueError("initial_phases aq/org length must match mixture component count.");
+            }
+            if (!(initial_beta_org > 0.0 && initial_beta_org < 1.0) || !std::isfinite(initial_beta_org)) {
+                throw ValueError("initial_phases phase_fraction must be > 0 and < 1.");
+            }
+            std::vector<double> aq_comp_initial = clip_normalize(initial_aq, options.min_composition);
+            std::vector<double> org_comp_initial = clip_normalize(initial_org, options.min_composition);
+            double aq_charge_initial = composition_charge(aq_comp_initial, charges);
+            double org_charge_initial = composition_charge(org_comp_initial, charges);
+            if (std::max(std::abs(aq_charge_initial), std::abs(org_charge_initial)) > 1.0e-8) {
+                throw ValueError("initial_phases aq and org must be charge neutral for electrolyte_lle residual evaluation.");
+            }
+            std::vector<double> material_residual_initial(feed.size(), 0.0);
+            for (std::size_t i = 0; i < feed.size(); ++i) {
+                material_residual_initial[i] = (1.0 - initial_beta_org) * aq_comp_initial[i]
+                    + initial_beta_org * org_comp_initial[i] - feed[i];
+            }
+            if (max_abs(material_residual_initial) > 1.0e-7) {
+                throw ValueError("initial_phases aq/org/phase_fraction must reconstruct the electrolyte_lle feed.");
+            }
+            std::vector<double> aq_formula = explicit_to_formula(aq_comp_initial, basis);
+            org_formula = explicit_to_formula(org_comp_initial, basis);
+            auto aq_expanded = formula_to_explicit(aq_formula, basis, feed.size());
+            auto org_expanded = formula_to_explicit(org_formula, basis, feed.size());
+            double numerator = initial_beta_org / org_expanded.second;
+            double denominator = numerator + (1.0 - initial_beta_org) / aq_expanded.second;
+            if (denominator > 0.0) {
+                beta_formula = std::max(1.0e-12, std::min(1.0 - 1.0e-12, numerator / denominator));
+            }
+        }
+        eval_variables = pack_predictive_electrolyte_variables(beta_formula, org_formula);
+    }
+
+    PhaseStateNative feed_state = phase_state(mixture, t, p, feed, "liq", "feed");
+    double gibbs_feed = electrolyte_gibbs_proxy(feed, feed_state);
+    ElectrolyteCandidateNative candidate = evaluate_predictive_electrolyte_variables(
+        mixture,
+        t,
+        p,
+        feed,
+        basis,
+        eval_variables,
+        options,
+        gibbs_feed
+    );
+    std::vector<double> residual = candidate.residual;
+    residual.insert(residual.end(), candidate.material_residual.begin(), candidate.material_residual.end());
+    double objective = 0.0;
+    for (double value : residual) {
+        objective += 0.5 * value * value;
+    }
+    std::vector<double> jacobian = electrolyte_residual_jacobian_row_major(mixture, t, p, feed, basis, candidate);
+    std::vector<double> gradient(eval_variables.size(), 0.0);
+    for (std::size_t row = 0; row < residual.size(); ++row) {
+        for (std::size_t col = 0; col < eval_variables.size(); ++col) {
+            gradient[col] += jacobian[row * eval_variables.size() + col] * residual[row];
+        }
+    }
+
+    ElectrolyteLLEResidualEvaluationNative out;
+    out.variable_model = basis.variable_model;
+    out.variables = eval_variables;
+    out.lower_bounds.assign(eval_variables.size(), -100.0);
+    out.upper_bounds.assign(eval_variables.size(), 100.0);
+    out.residual = residual;
+    out.jacobian_rows = static_cast<int>(residual.size());
+    out.jacobian_cols = static_cast<int>(eval_variables.size());
+    out.objective = objective;
+    out.gradient = gradient;
+    out.jacobian_row_major = jacobian;
+    out.aq_composition = candidate.aq_comp;
+    out.org_composition = candidate.org_comp;
+    out.aq_ln_fugacity_coefficient = candidate.aq_state.ln_phi;
+    out.org_ln_fugacity_coefficient = candidate.org_state.ln_phi;
+    out.aq_density = candidate.aq_state.density;
+    out.org_density = candidate.org_state.density;
+    out.phase_fraction_org = candidate.beta_org;
+    out.material_balance_error = candidate.material_error;
+    out.charge_balance_error = candidate.charge_balance_error;
+    out.phase_distance = candidate.phase_distance_value;
+    out.gibbs_delta = candidate.gibbs_delta;
+    out.diagnostics_string["residual_surface"] = "native_electrolyte_lle_transformed_variables";
+    out.diagnostics_string["residual_blocks"] = "phase_equilibrium,material_balance";
+    out.diagnostics_string["jacobian_backend"] = "cppad_implicit";
+    out.diagnostics_string["derivative_backend"] = "cppad_implicit";
+    out.diagnostics_string["jacobian_scope"] = "transformed_variables_phase_state_implicit_density";
+    out.diagnostics_bool["jacobian_available"] = true;
+    out.diagnostics_bool["derivative_available"] = true;
+    out.diagnostics_bool["phase_charge_enforced_by_basis"] = true;
+    out.diagnostics_bool["material_balance_enforced_by_formula_transform"] = true;
+    out.diagnostics_int["basis_rank"] = basis.basis_rank;
+    out.diagnostics_int["phase_equilibrium_residual_size"] = static_cast<int>(candidate.residual.size());
+    out.diagnostics_int["material_balance_residual_size"] = static_cast<int>(candidate.material_residual.size());
+    out.diagnostics_int["residual_size"] = static_cast<int>(residual.size());
+    out.diagnostics_int["variable_count"] = static_cast<int>(eval_variables.size());
+    out.diagnostics_double["phase_equilibrium_residual_norm"] = candidate.solver_residual_norm;
+    out.diagnostics_double["solver_residual_norm"] = max_abs(residual);
+    out.diagnostics_double["fugacity_residual_norm"] = candidate.solver_residual_norm;
+    out.diagnostics_double["material_balance_error"] = candidate.material_error;
+    out.diagnostics_double["charge_balance_error"] = candidate.charge_balance_error;
+    out.diagnostics_double["phase_distance"] = candidate.phase_distance_value;
+    out.diagnostics_double["gibbs_feed"] = candidate.gibbs_feed;
+    out.diagnostics_double["gibbs_split"] = candidate.gibbs_split;
+    out.diagnostics_double["gibbs_delta"] = candidate.gibbs_delta;
+    out.diagnostics_double["phase_charge_balance_feed"] = composition_charge(feed, basis.species_charges);
+    out.diagnostics_double["phase_charge_balance_aq"] = composition_charge(candidate.aq_comp, basis.species_charges);
+    out.diagnostics_double["phase_charge_balance_org"] = composition_charge(candidate.org_comp, basis.species_charges);
+    out.diagnostics_vector["feed_composition"] = feed;
+    out.diagnostics_vector["phase_equilibrium_residual"] = candidate.residual;
+    out.diagnostics_vector["material_balance_residual"] = candidate.material_residual;
+    out.diagnostics_vector["formula_feed"] = basis.formula_feed;
+    out.diagnostics_vector["aq_formula"] = candidate.aq_formula;
+    out.diagnostics_vector["org_formula"] = candidate.org_formula;
+    out.diagnostics_vector["basis_vectors_row_major"] = electrolyte_basis_vectors_row_major(basis, feed.size());
+    out.diagnostics_vector["species_charge_vector"] = basis.species_charges;
+    return out;
 }
