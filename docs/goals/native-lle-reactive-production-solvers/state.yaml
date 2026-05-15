@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T024
+active_task: T025
 
 tasks:
   - id: T001
@@ -972,7 +972,7 @@ tasks:
   - id: T024
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Repair issue #116 accepted-solve derivative closure by replacing `local_residual_slope` with a proven analytic multi-salt transformed-variable Jacobian, or produce a blocker receipt with exact source evidence."
     allowed_files:
@@ -999,6 +999,48 @@ tasks:
     stop_if:
       - "The phase-state fugacity sensitivity formulas do not match source-evaluated perturbation behavior and cannot be repaired within this slice."
       - "The accepted distributed-ion Ceres solve only converges with a local residual slope."
+    receipt:
+      result: done
+      outcome: blocked
+      summary: "Stopped before claiming #116 derivative closure because active association/ionic phase-state fugacity sensitivities do not match source-evaluated perturbation behavior."
+      changed_files:
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T024-blocker-phase-state-sensitivity.md"
+      evidence:
+        - "Neutral phase-state sensitivities match projected perturbation behavior to about 1e-7."
+        - "The active association/ionic Ascani case shows order-one to order-ten projected sensitivity mismatches."
+        - "The accepted distributed-ion Ceres solve converges with `local_residual_slope` but not with the unqualified T021 analytic transformed-variable Jacobian."
+      triggered_stop_if:
+        - "The phase-state fugacity sensitivity formulas do not match source-evaluated perturbation behavior and cannot be repaired within this slice."
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --profile full"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium/test_electrolyte_lle_ceres_solver.py tests/native/equilibrium/test_electrolyte_lle_residual_jacobian.py tests/native/cppad/test_phase_state_sensitivities.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium tests/native/cppad -q"
+          status: pass
+        - cmd: "local projected sensitivity probes for neutral and active association/ionic phase states"
+          status: pass
+
+  - id: T025
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Decide the next source-backed repair plan for active association/ionic phase-state fugacity sensitivities before #116 can close."
+    inputs:
+      - "docs/goals/native-lle-reactive-production-solvers/notes/T024-blocker-phase-state-sensitivity.md"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/epcsaft_fugcoef.cpp"
+      - "tests/native/cppad/test_phase_state_sensitivities.py"
+    constraints:
+      - "Do not implement."
+      - "Pick the next bounded repair task or declare that issue #116 needs a broader design handoff."
+      - "Require projected solved-state sensitivity evidence for an active association/ionic distributed-ion fixture."
+    expected_output:
+      - "decision: repair_next or broader_design_blocker"
+      - "Allowed files for the next Worker if repair_next."
+      - "Exact validation commands."
+      - "Stop condition for the next Worker."
     receipt: null
 
 checks:
