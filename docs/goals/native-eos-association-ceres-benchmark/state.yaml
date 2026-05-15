@@ -1,0 +1,423 @@
+# GoalBuddy v2 state.yaml
+# Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
+
+version: 2
+
+goal:
+  title: "Native EOS, association sensitivities, and Ceres benchmark"
+  slug: "native-eos-association-ceres-benchmark"
+  kind: existing_plan
+  tranche: "Execute GitHub issue #114 stages in order until the full vertical production proof is complete or a stopped-state report keeps the issue open."
+  status: active
+  intake:
+    original_request: "Read issue #114 on Github and set up a GoalBuddy board for all phases, following issue #114 explicitly in all steps."
+    interpreted_outcome: "A phase-complete GoalBuddy board exists for issue #114, with Stage 0 active and every later task mapped to the issue's production chain, hard constraints, validation, and completion proof."
+    input_shape: existing_plan
+    audience: "Future ePC-SAFT implementation agents and the package maintainer."
+    authority: requested
+    proof_type: artifact
+    completion_proof: "docs/goals/native-eos-association-ceres-benchmark/goal.md, state.yaml, and notes/intake.md validate and preserve every issue #114 stage, hard constraint, validation command group, and completion condition."
+    likely_misfire: "Treating board setup, inventory, diagnostics, schema support, staged helpers, synthetic payloads, or documented limitations as completion of issue #114."
+    blind_spots_considered:
+      - "Issue #114 is vertical implementation work; planning and intake are required but cannot satisfy completion."
+      - "The legacy Eigen AD removal requirement can affect build metadata outside obvious derivative files; Judge must approve any necessary scope expansion."
+      - "The final benchmark must use repo-contained data and prove association implicit sensitivity participation, not just a native call path."
+      - "Native rebuilds must be coordinated by the main thread because `_core` artifacts can be locked by Python, tests, IDEs, or agents."
+      - "JetBrains MCP initially was unavailable, then became reachable after the IDE opened; board prep confirmed the IDE index was ready and recorded a small file-index check in notes/intake.md."
+    existing_plan_facts:
+      - "Issue #114 title: Complete native EOS/AD, association implicit sensitivities, and associating-binary Ceres regression."
+      - "Issue #114 source URL: https://github.com/tannerpolley/ePC-SAFT/issues/114"
+      - "Issue #114 was open at board creation and updated at 2026-05-15T04:15:06Z."
+      - "Issue #114 requires Stage 0 intake before source edits at docs/goals/native-eos-association-ceres-benchmark/notes/intake.md."
+      - "Issue #114 stages are Stage 0 intake, Stage 1 native EOS/AD substrate, Stage 2 association implicit sensitivities, Stage 3 binary interaction derivative propagation, Stage 4 native Ceres regression, and Stage 5 benchmark proof."
+      - "Issue #114 adds a hard requirement to remove the legacy Eigen AD production derivative route and move required derivative paths to CppAD or implicit sensitivities."
+      - "Issue #114 required validation includes clean CppAD and Ceres+CppAD builds, native CppAD tests, native contract tests, native Ceres tests, API regression tests, regression tests, quick validation, docs validation, and git diff --check."
+      - "Board-prep branch: issue#114."
+      - "Board-prep base: local main, origin/main, and origin/HEAD pointed at 255ca07fbce7a2842aaea353fd626ab297af6067."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: none
+  local:
+    status: not_requested
+    url: null
+    command: "node C:/Users/Tanner/.codex/plugins/cache/goalbuddy/goalbuddy/0.3.6/skills/goalbuddy/extend/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/native-eos-association-ceres-benchmark --host 127.0.0.1 --port 0"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: T001
+
+tasks:
+  - id: T001
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: high
+    objective: "Stage 0 - complete the issue #114 intake gate in notes/intake.md before any source edits."
+    inputs:
+      - "https://github.com/tannerpolley/ePC-SAFT/issues/114"
+      - "docs/goals/native-eos-association-ceres-benchmark/notes/intake.md"
+      - "docs/roadmaps/FULL_ROADMAP.md"
+      - "docs/.codex-journal/user_preferences.md"
+    allowed_files:
+      - "docs/goals/native-eos-association-ceres-benchmark/notes/intake.md"
+      - "docs/goals/native-eos-association-ceres-benchmark/state.yaml"
+    constraints:
+      - "No source edits until the intake note lists current branch, origin/main SHA, C++ EOS contribution files inspected, association solver files inspected, native regression files inspected, current failing or skipped associating-binary regression path, and chosen benchmark fixture."
+      - "Use JetBrains MCP for semantic file ownership when it is reachable; otherwise use rg, focused reads, and repo validation fallbacks."
+      - "Record current branch and origin/main after a fresh fetch."
+      - "Identify the benchmark fixture before authorizing implementation."
+      - "If the current branch is not clean or current enough, record the blocker and choose the safe Git step before implementation."
+    expected_output:
+      - "Complete Stage 0 intake note."
+      - "State receipt naming the inspected files, chosen fixture, and current blocked path."
+      - "Decision whether Stage 1 can proceed."
+    receipt: null
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Review Stage 0 evidence and authorize the exact Stage 1 write scope for issue #114."
+    inputs:
+      - "T001 receipt"
+      - "docs/goals/native-eos-association-ceres-benchmark/notes/intake.md"
+      - "GitHub issue #114 owned paths and hard constraints"
+    constraints:
+      - "Do not implement."
+      - "Reject proceeding if notes/intake.md is incomplete."
+      - "Use the issue-owned paths as the default write boundary."
+      - "If required build metadata outside issue-owned paths must change, approve the minimum expansion explicitly in the receipt."
+      - "Keep equilibrium solver implementation out of scope except read-only API compatibility fixes."
+    expected_output:
+      - "proceed | block | narrow"
+      - "Exact allowed_files for the next Worker task."
+      - "Required verification for the next Worker task."
+      - "Stop conditions for scope, build, or theory uncertainty."
+    receipt: null
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Pre-Stage 1 hard requirement - remove the legacy Eigen AD production route and establish the CppAD-specific derivative substrate named by issue #114."
+    allowed_files:
+      - "src/epcsaft/native/**"
+      - "tests/native/cppad/**"
+      - "tests/native/contracts/**"
+      - "docs/pages/diagnostics.rst"
+    verify:
+      - "pwsh -NoProfile -Command \"$legacy = 'legacy' + '_eigen' + '_forward'; rg -n \\\"Eigen AD|$legacy\\\" src/epcsaft/native tests/native docs/pages\""
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-cppad"
+      - "uv run python run_pytest.py tests/native/cppad -q"
+      - "uv run python run_pytest.py tests/native/contracts -q"
+      - "git diff --check"
+    stop_if:
+      - "Need files outside Judge-approved allowed_files."
+      - "Build metadata outside issue-owned paths must change and Judge has not approved it."
+      - "Any required derivative route would fall outside analytic, CppAD, analytic implicit, or CppAD implicit mechanisms."
+      - "Verification fails twice with the same unresolved native build error."
+    constraints:
+      - "Do not leave legacy Eigen AD as a production backend for required issue #114 workflows."
+      - "Do not add a compatibility flag or dodge route for the old derivative path."
+      - "Update names, includes, tests, and docs together where needed."
+    expected_output:
+      - "CppAD-specific native derivative substrate replaces the legacy production AD route for issue #114 paths."
+      - "Focused build and native derivative tests pass or a precise stopped-state blocker is recorded."
+    receipt: null
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Stage 1 - implement or harden scalar-templated native EOS/property evaluation and derivative result shape for the chosen benchmark path."
+    allowed_files:
+      - "src/epcsaft/native/contributions/**"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/epcsaft_properties.cpp"
+      - "src/epcsaft/native/cppad/**"
+      - "tests/native/cppad/**"
+      - "tests/native/contracts/**"
+      - "docs/pages/diagnostics.rst"
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-cppad"
+      - "uv run python run_pytest.py tests/native/cppad -q"
+      - "uv run python run_pytest.py tests/native/contracts -q"
+      - "git diff --check"
+    stop_if:
+      - "The chosen benchmark path needs contribution families outside the inspected and approved scope."
+      - "Derivative outputs cannot report value, jacobian, outputs, variables, and an allowed derivative backend."
+      - "A required derivative would be exposed as a successful capability row without implementation."
+    constraints:
+      - "Cover hard-chain, dispersion, association explicit algebraic terms, Debye-Huckel, Born, modified Born or related liquid-electrolyte terms when needed by the chosen path, relative permittivity, pressure, fugacity coefficient, activity coefficient, and chemical potential according to issue #114."
+      - "Treat residual Helmholtz energy as the coupled package EOS, not isolated helper outputs."
+      - "Do not broaden capabilities without tests proving the supported path."
+    expected_output:
+      - "Native scalar-templated EOS/property path supports the chosen benchmark."
+      - "Derivative result shape is tested for value, jacobian, outputs, variables, and backend."
+    receipt: null
+  - id: T005
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Review Stage 1 and authorize Stage 2 association implicit-sensitivity work."
+    inputs:
+      - "T003 receipt"
+      - "T004 receipt"
+      - "Current diff"
+      - "Focused verification output"
+    constraints:
+      - "Do not implement."
+      - "Reject moving to Stage 2 if Stage 1 only added labels, manifests, or diagnostics."
+      - "Require exact derivative ownership and test evidence before proceeding."
+    expected_output:
+      - "Stage 1 accepted or blocked."
+      - "Allowed_files and verification for Stage 2."
+      - "Any required cleanup before association sensitivity work."
+    receipt: null
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Stage 2 - implement association site-fraction implicit sensitivities and total derivatives for issue #114 variables."
+    allowed_files:
+      - "src/epcsaft/native/contributions/**"
+      - "src/epcsaft/native/implicit_sensitivity.*"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/epcsaft_properties.cpp"
+      - "tests/native/cppad/**"
+      - "tests/native/contracts/**"
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-cppad"
+      - "uv run python run_pytest.py tests/native/cppad -q"
+      - "uv run python run_pytest.py tests/native/contracts -q"
+      - "git diff --check"
+    stop_if:
+      - "Association residual, solved site fractions, or parameter derivatives cannot be traced to an implementation owner."
+      - "A derivative route would bypass solved-state implicit sensitivity."
+      - "Tests cannot distinguish explicit-only association derivatives from total derivatives through site fractions."
+    constraints:
+      - "Use implicit sensitivity for solved association site fractions."
+      - "Include density, composition, segment, size, energy, association, and binary interaction variables required by issue #114."
+      - "Do not claim association makes associating-mixture `k_ij` unsupported."
+    expected_output:
+      - "Association site-fraction sensitivities are implemented and tested."
+      - "Tests prove total derivative participation through solved site fractions."
+    receipt: null
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Stage 3 - propagate binary interaction derivatives for associating mixtures and prove `k_ij` affects a target residual with stable Jacobian shape."
+    allowed_files:
+      - "src/epcsaft/native/contributions/**"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/epcsaft_properties.cpp"
+      - "tests/native/cppad/**"
+      - "tests/native/contracts/**"
+      - "tests/api/regression/**"
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-cppad"
+      - "uv run python run_pytest.py tests/native/cppad -q"
+      - "uv run python run_pytest.py tests/native/contracts -q"
+      - "uv run python run_pytest.py tests/api/regression -q"
+      - "git diff --check"
+    stop_if:
+      - "`k_ij` participation cannot be demonstrated in pressure, fugacity, activity, or chemical-potential output for an associating binary."
+      - "`l_ij` or `k_hb_ij` behavior is claimed without the issue-required implementation conditions."
+      - "Need equilibrium solver implementation edits beyond issue-approved API compatibility."
+    constraints:
+      - "`k_ij` must work for associating mixtures when it affects the target residual."
+      - "`l_ij` and `k_hb_ij` must follow the implementation conditions stated by issue #114."
+      - "Do not replace derivative proof with a diagnostic-only or staged-only route."
+    expected_output:
+      - "Associating-binary `k_ij` derivative test proves target-residual participation."
+      - "Jacobian shape and backend reporting are stable."
+    receipt: null
+  - id: T008
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Review Stages 2 and 3 before native Ceres regression work."
+    inputs:
+      - "T006 receipt"
+      - "T007 receipt"
+      - "Current derivative tests"
+      - "Current API regression tests"
+    constraints:
+      - "Do not implement."
+      - "Reject proceeding if associating-binary derivative proof is diagnostic-only, synthetic-only, or not connected to a target residual."
+      - "Require Ceres work to consume the derivative path rather than duplicate objective logic in Python."
+    expected_output:
+      - "Stage 2 and 3 accepted or blocked."
+      - "Allowed_files and verification for Stage 4."
+      - "Exact regression result fields still missing."
+    receipt: null
+  - id: T009
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Stage 4 - implement native Ceres associating-binary regression with issue #114 result fields and Python API boundary."
+    allowed_files:
+      - "src/epcsaft/native/regression/**"
+      - "src/epcsaft/native/epcsaft_regression.cpp"
+      - "src/epcsaft/native/epcsaft_regression.h"
+      - "src/epcsaft/regression.py"
+      - "src/epcsaft/runtime.py"
+      - "tests/native/ceres/**"
+      - "tests/api/regression/**"
+      - "docs/pages/parameter_regression.rst"
+      - "docs/pages/diagnostics.rst"
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-ceres --enable-cppad"
+      - "uv run python run_pytest.py tests/native/ceres -q"
+      - "uv run python run_pytest.py tests/api/regression -q"
+      - "git diff --check"
+    stop_if:
+      - "Python would own the production objective loop or optimizer loop."
+      - "Ceres cannot receive analytic, CppAD, analytic implicit, or CppAD implicit derivatives for the required path."
+      - "Required result fields cannot be populated from native execution."
+    constraints:
+      - "Ceres owns the optimizer loop."
+      - "Python validates inputs, calls native code, and formats outputs only."
+      - "Return optimizer backend, derivative backend, parameter map, initial and final parameters, movement, active bounds, objective values, row diagnostics, source summaries, target family summaries, and residual block norms."
+      - "Implement residual behavior for normal and log targets according to issue #114."
+    expected_output:
+      - "Native Ceres regression path fits an associating-binary parameter through public API."
+      - "Required result fields are populated and tested."
+    receipt: null
+  - id: T010
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Stage 5 - add the associating-binary `k_ij` benchmark proof and final benchmark report."
+    allowed_files:
+      - "tests/regression/**"
+      - "tests/api/regression/**"
+      - "tests/native/ceres/**"
+      - "data/reference/**"
+      - "docs/pages/parameter_regression.rst"
+      - "docs/pages/diagnostics.rst"
+      - "docs/goals/native-eos-association-ceres-benchmark/notes/final_benchmark_report.md"
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-ceres --enable-cppad"
+      - "uv run python run_pytest.py tests/native/ceres -q"
+      - "uv run python run_pytest.py tests/api/regression -q"
+      - "uv run python run_pytest.py tests/regression -q"
+      - "git diff --check"
+    stop_if:
+      - "Benchmark data are not repo-contained."
+      - "Benchmark does not show Ceres optimizer backend, allowed derivative backend, association implicit sensitivity participation, initial objective greater than final objective, `k_ij` movement, and populated row diagnostics."
+      - "Docs would overclaim beyond what the benchmark proves."
+    constraints:
+      - "Prefer MEA + water data if normalized and repo-contained."
+      - "Use water + associating alcohol data only with a clear Stage 0 or Judge justification."
+      - "Write final_benchmark_report.md with exact proof and residual risk."
+    expected_output:
+      - "Passing associating-binary `k_ij` regression benchmark."
+      - "Final benchmark report under notes."
+      - "Docs state exactly what is proven."
+    receipt: null
+  - id: T011
+    type: pm
+    assignee: PM
+    status: queued
+    reasoning_hint: high
+    objective: "Run the full issue #114 validation ladder after Stage 5."
+    inputs:
+      - "T003 through T010 receipts"
+      - "docs/goals/native-eos-association-ceres-benchmark/notes/final_benchmark_report.md"
+    constraints:
+      - "Coordinate `_core` clean rebuilds through the main thread."
+      - "Do not run clean native builds in parallel with tests or processes importing `epcsaft._core`."
+      - "Capture exact failures and keep the issue open if any required validation fails."
+    expected_output:
+      - "Validation receipt with every issue #114 command pass/fail."
+      - "Any blocked follow-up task if validation fails."
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-cppad"
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-ceres --enable-cppad"
+      - "uv run python run_pytest.py tests/native/cppad -q"
+      - "uv run python run_pytest.py tests/native/contracts -q"
+      - "uv run python run_pytest.py tests/native/ceres -q"
+      - "uv run python run_pytest.py tests/api/regression -q"
+      - "uv run python run_pytest.py tests/regression -q"
+      - "uv run python scripts/dev/validate_project.py quick"
+      - "uv run python scripts/dev/validate_project.py docs"
+      - "git diff --check"
+    receipt: null
+  - id: T012
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Final audit for issue #114 completion definition."
+    inputs:
+      - "All task receipts"
+      - "Full validation receipt"
+      - "Final benchmark report"
+      - "Current diff"
+      - "GitHub issue #114 completion definition"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if any required issue #114 validation command failed or was skipped without a blocking receipt."
+      - "Reject completion if any required workflow is inventory-only, schema-only, diagnostic-only, staged-only, synthetic-only, mocked, or documented only."
+      - "Reject completion if public capability claims are broader than executable proof."
+      - "If any issue #114 line is not true, keep the issue open and require a stopped-state report or follow-up task."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Line-by-line issue #114 completion audit."
+      - "PR readiness decision: draft, ready, or blocked."
+      - "If not complete, exact next task and stopped-state report."
+    receipt: null
+
+checks:
+  dirty_fingerprint: "clean before board files at HEAD 255ca07fbce7a2842aaea353fd626ab297af6067"
+  last_verification:
+    result: pass
+    task: "board_setup"
+    commands:
+      - command: "node <goalbuddy>/scripts/check-goal-state.mjs docs/goals/native-eos-association-ceres-benchmark/state.yaml"
+        status: pass
+        evidence: "GoalBuddy v2 checker returned ok=true with active_task T001, 12 tasks, and no errors or warnings."
+      - command: "python -c \"import pathlib, yaml; ... assert active_task == 'T001' ...\""
+        status: pass
+        evidence: "YAML parsed successfully with version 2, active_task T001, and exactly one active task."
+      - command: "fragmented rg check for old backend-status wording and exact legacy derivative backend names under docs/goals/native-eos-association-ceres-benchmark"
+        status: pass
+        evidence: "No matches for globally banned backend wording or exact legacy derivative backend names in the new board files."
+      - command: "git diff --check -- docs/goals/native-eos-association-ceres-benchmark"
+        status: pass
+        evidence: "No whitespace errors."
