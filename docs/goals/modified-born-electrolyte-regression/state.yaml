@@ -1,0 +1,379 @@
+# GoalBuddy v2 state.yaml
+# Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
+
+version: 2
+
+goal:
+  title: "Modified Born / SSM / DS electrolyte regression and Figiel-Held benchmark proof"
+  slug: "modified-born-electrolyte-regression"
+  kind: existing_plan
+  tranche: "Execute GitHub issue #118 stages in order until the full native derivative, native Ceres regression, and literature benchmark proof is complete or a stopped-state report keeps the issue open."
+  status: active
+  intake:
+    original_request: "Read issue #118 on Github and set up a GoalBuddy board for all phases to follow issue #118 explicitly in all steps."
+    interpreted_outcome: "A phase-complete GoalBuddy board exists for issue #118 with Stage 0 active and every later task mapped to the issue's production chain, hard constraints, validation, and completion proof."
+    input_shape: existing_plan
+    audience: "Future ePC-SAFT implementation agents and the package maintainer."
+    authority: requested
+    proof_type: artifact
+    completion_proof: "docs/goals/modified-born-electrolyte-regression/goal.md and state.yaml validate, include every issue #118 stage, and preserve the issue constraints, validation commands, and completion definition."
+    likely_misfire: "Treating board setup, inventory, diagnostics, staged helpers, synthetic payloads, mocked results, documented limitations, or capability labels as completion of issue #118."
+    blind_spots_considered:
+      - "Issue #118 is vertical implementation work; planning and intake are required but cannot satisfy completion."
+      - "The modified Born / SSM / DS formula must be verified against repository equation sources and Figiel/Bulow/Held references before code changes."
+      - "The production claim is liquid-electrolyte only unless vapor electrolyte support is implemented and tested in this issue."
+      - "Native rebuilds must be coordinated by the main thread because `_core` artifacts can be locked by Python, tests, IDEs, or agents."
+      - "JetBrains MCP was probed for the active worktree and was not available because IntelliJ has the main checkout open, not this worktree; future semantic tasks may use it only if the active worktree is opened or approved."
+    existing_plan_facts:
+      - "Issue #118 title: Complete modified Born / SSM / DS electrolyte regression and Figiel-Held benchmark proof."
+      - "Issue #118 source URL: https://github.com/tannerpolley/ePC-SAFT/issues/118"
+      - "Issue #118 is open and had no comments when this board was created."
+      - "Issue #118 requires Stage 0 intake before source edits at docs/goals/modified-born-electrolyte-regression/notes/intake.md."
+      - "Issue #118 stages are Stage 0 intake, Stage 1 modified Born / SSM / DS derivatives, Stage 2 native Ceres electrolyte regression, and Stage 3 benchmark proof."
+      - "Issue #118 required derivative variables include d_born, f_solv, relative-permittivity parameters, ion diameter or solvated diameter, ion-solvent dispersion energy, composition, density, and temperature where required."
+      - "Issue #118 required regression target rows include density, osmotic coefficient, mean ionic activity coefficient, relative permittivity, and solvation or transfer Gibbs energy where fixtures exist."
+      - "Issue #118 required benchmark families include Figiel 2025 modified Born / SSM / DS, Held/Cameretti aqueous electrolyte density and MIAC, and Held alcohol/salt mixed-solvent density/osmotic/MIAC."
+      - "Issue #118 required final validation includes Ceres+CppAD clean native build, named CppAD Born derivative pytest, named native Ceres electrolyte regression pytest, literature-regression pytest, quick validation, docs validation, and git diff --check."
+      - "Board-prep branch: issue#18."
+      - "Board-prep base at creation: local HEAD and origin/main both pointed at 5391b401."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://127.0.0.1:41737/modified-born-electrolyte-regression/"
+    command: "C:/Users/Tanner/Documents/git/codex-maintenance/scripts/start-goalbuddy-board.ps1 -Goal docs/goals/modified-born-electrolyte-regression"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: T001
+
+tasks:
+  - id: T001
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: high
+    objective: "Stage 0 - complete the issue #118 intake gate in notes/intake.md before any source edits."
+    inputs:
+      - "https://github.com/tannerpolley/ePC-SAFT/issues/118"
+      - "docs/goals/modified-born-electrolyte-regression/notes/intake.md"
+      - "docs/roadmaps/FULL_ROADMAP.md"
+      - "docs/.codex-journal/user_preferences.md"
+      - "docs/latex/equations.tex"
+      - "docs/equations_registry.yaml"
+      - "src/epcsaft/native/contributions/"
+      - "src/epcsaft/native/regression/"
+      - "tests/native/cppad/"
+      - "tests/native/ceres/"
+      - "tests/regression/literature/"
+    allowed_files:
+      - "docs/goals/modified-born-electrolyte-regression/notes/intake.md"
+      - "docs/goals/modified-born-electrolyte-regression/state.yaml"
+    constraints:
+      - "No source edits until the intake note lists current Born / SSM / DS contribution files, current derivative tests, current Ceres electrolyte regression tests, current Figiel/Held fixture paths, and chosen final benchmark set."
+      - "Resolve the current branch, current HEAD, origin/main, issue #118 state, and dirty worktree state before authorizing implementation."
+      - "Use chemical-engineer evidence labels for any engineering claim: verified, inference, assumption, or unknown."
+      - "Use JetBrains MCP for semantic ownership only if the active worktree is open and indexed; otherwise use rg, focused reads, and repo validation tools."
+      - "Do not invent the modified Born / SSM / DS formula from memory or from the issue reminder."
+      - "If Figiel/Held fixtures are missing or metadata-only, record the exact blocker and choose the smallest package-owned fixture or source-backed path before source edits."
+    expected_output:
+      - "Complete Stage 0 intake note."
+      - "State receipt naming inspected contribution files, derivative tests, Ceres regression tests, Figiel/Held fixture paths, and chosen final benchmark set."
+      - "Decision whether Stage 1 can proceed."
+    receipt: null
+
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Review Stage 0 evidence and authorize the exact Stage 1 write scope for modified Born / SSM / DS liquid-electrolyte derivatives."
+    inputs:
+      - "T001 receipt"
+      - "docs/goals/modified-born-electrolyte-regression/notes/intake.md"
+      - "GitHub issue #118 owned paths and hard constraints"
+    constraints:
+      - "Do not implement."
+      - "Reject proceeding if notes/intake.md is incomplete."
+      - "Reject proceeding if the governing equation source or implementation owner is still unknown."
+      - "Use issue-owned paths as the default write boundary."
+      - "Keep phase-equilibrium solver implementation out of scope except import or path compatibility fixes."
+      - "Pick the largest safe useful Stage 1 slice with clear allowed_files, verify commands, and stop conditions."
+    expected_output:
+      - "proceed | block | narrow"
+      - "Exact allowed_files for the Stage 1 Worker task."
+      - "Required verification for the Stage 1 Worker task."
+      - "Stop conditions for scope, build, or theory uncertainty."
+    receipt: null
+
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Stage 1 - implement and test modified Born / SSM / DS liquid-electrolyte derivatives for all issue #118 required variables."
+    allowed_files:
+      - "src/epcsaft/native/contributions/**"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "tests/native/cppad/test_cppad_born*"
+      - "docs/pages/equation_traceability.rst"
+      - "docs/goals/modified-born-electrolyte-regression/state.yaml"
+      - "docs/goals/modified-born-electrolyte-regression/notes/**"
+    constraints:
+      - "Implement liquid-electrolyte derivative support only; do not imply vapor electrolyte Born support."
+      - "Derivative variables must include d_born, f_solv, relative-permittivity parameters, ion diameter or solvated diameter, ion-solvent dispersion energy, composition, density, and temperature where required."
+      - "Use analytic, CppAD, analytic implicit sensitivity, or CppAD implicit sensitivity only."
+      - "Trace any formula to repository equation sources and Figiel/Bulow/Held source equations."
+      - "Do not edit phase-equilibrium solvers except import or path compatibility fixes approved by Judge."
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-cppad"
+      - "uv run python run_pytest.py tests/native/cppad/test_cppad_born_ssmds_liquid_derivatives.py -q"
+    stop_if:
+      - "The equation source remains unknown after focused source lookup."
+      - "Required derivative support needs files outside allowed_files."
+      - "The implementation would require a Python-owned production optimizer or nonlinear-solver loop."
+      - "Verification fails twice for different root causes."
+    expected_output:
+      - "Derivative implementation summary by variable family."
+      - "Passing CppAD Born / SSM / DS derivative test evidence or exact blocker."
+      - "Any docs wording needed to keep scope liquid-electrolyte exact."
+    receipt: null
+
+  - id: T004
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Audit Stage 1 and decide whether native Ceres electrolyte regression can proceed."
+    inputs:
+      - "T003 receipt"
+      - "Stage 1 diff"
+      - "Stage 1 verification output"
+    constraints:
+      - "Do not implement."
+      - "Reject Stage 1 if derivative support is only synthetic, mocked, staged, or diagnostic."
+      - "Reject Stage 1 if docs or capabilities imply vapor electrolyte support without implementation and tests."
+      - "Reject proceeding if modified Born / SSM / DS formulas are not source-backed."
+    expected_output:
+      - "accepted | rejected | needs_fix"
+      - "Missing evidence, if any."
+      - "Exact Stage 2 Worker scope."
+    receipt: null
+
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Stage 2 - make native Ceres fit electrolyte parameters using the production derivative path from Stage 1."
+    allowed_files:
+      - "src/epcsaft/native/regression/**"
+      - "src/epcsaft/regression.py"
+      - "tests/native/ceres/test_ceres_liquid_electrolyte_regression.py"
+      - "docs/pages/parameter_regression.rst"
+      - "docs/goals/modified-born-electrolyte-regression/state.yaml"
+      - "docs/goals/modified-born-electrolyte-regression/notes/**"
+    constraints:
+      - "Ceres must own the optimizer loop."
+      - "Python may validate inputs, call native code, and format outputs only."
+      - "Required target rows are density, osmotic coefficient, mean ionic activity coefficient, relative permittivity, and solvation or transfer Gibbs energy where fixtures exist."
+      - "Required parameter families are ion diameter or solvated diameter, ion-solvent dispersion energy, d_born, f_solv, and relative-permittivity parameters."
+      - "Return or preserve required regression evidence: optimizer backend, derivative backend, parameter movement, active bounds, objective initial/final, target-family diagnostics, and convergence status."
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-ceres --enable-cppad"
+      - "uv run python run_pytest.py tests/native/ceres/test_ceres_liquid_electrolyte_regression.py -q"
+    stop_if:
+      - "A required target row or parameter family is unavailable and no source-backed fixture path exists."
+      - "The fix would move the production optimizer loop into Python."
+      - "Required implementation needs phase-equilibrium solver edits beyond import or path compatibility fixes."
+      - "Verification fails twice for different root causes."
+    expected_output:
+      - "Native Ceres regression implementation summary."
+      - "Evidence that production derivatives feed the regression Jacobian path."
+      - "Passing native Ceres electrolyte regression test evidence or exact blocker."
+    receipt: null
+
+  - id: T006
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Audit Stage 2 and decide whether Figiel/Held benchmark proof can proceed."
+    inputs:
+      - "T005 receipt"
+      - "Stage 2 diff"
+      - "Stage 2 verification output"
+    constraints:
+      - "Do not implement."
+      - "Reject Stage 2 if Ceres is not the optimizer owner."
+      - "Reject Stage 2 if electrolyte fitting is only schema support, diagnostics, synthetic payloads, or mocked solver output."
+      - "Reject proceeding if regression result fields cannot report parameter movement and objective decrease."
+    expected_output:
+      - "accepted | rejected | needs_fix"
+      - "Missing evidence, if any."
+      - "Exact Stage 3 Worker scope."
+    receipt: null
+
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Stage 3 - implement Figiel/Held literature-backed benchmark proof with numeric tolerances and a complete benchmark report."
+    allowed_files:
+      - "tests/regression/literature/**"
+      - "tests/regression/test_figiel_2025*"
+      - "tests/regression/test_miac*"
+      - "docs/pages/parameter_regression.rst"
+      - "docs/pages/equation_traceability.rst"
+      - "docs/goals/modified-born-electrolyte-regression/state.yaml"
+      - "docs/goals/modified-born-electrolyte-regression/notes/**"
+    constraints:
+      - "Benchmark families must include Figiel 2025 modified Born / SSM / DS, Held/Cameretti aqueous electrolyte density and MIAC, and Held alcohol/salt mixed-solvent density/osmotic/MIAC."
+      - "Benchmark proof must use real or literature-backed data with numeric tolerances."
+      - "Benchmark report must include source, target rows, initial parameters, final parameters, objective initial/final, parameter movement, active bounds, derivative backend, and tolerances."
+      - "Do not use synthetic-only data as completion proof."
+      - "Do not overclaim vapor electrolyte Born support."
+    verify:
+      - "uv run python run_pytest.py tests/regression/literature -q"
+      - "uv run python run_pytest.py tests/regression/test_figiel_2025* -q"
+      - "uv run python run_pytest.py tests/regression/test_miac* -q"
+    stop_if:
+      - "Required Figiel/Held data are not present and cannot be source-backed inside the branch."
+      - "Benchmark tolerances cannot be justified from source-backed expectations."
+      - "Benchmark proof depends on a mocked or staged-only equilibrium/regression payload."
+    expected_output:
+      - "Benchmark implementation summary."
+      - "Complete benchmark report in notes."
+      - "Passing benchmark pytest evidence or exact blocker."
+    receipt: null
+
+  - id: T008
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Audit Stage 3 benchmark evidence and docs scope before final validation."
+    inputs:
+      - "T007 receipt"
+      - "Benchmark report"
+      - "Benchmark pytest output"
+      - "Docs diff"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if benchmark data are not real or literature-backed."
+      - "Reject completion if parameter movement, objective decrease, active bounds, derivative backend, or tolerances are missing."
+      - "Reject completion if docs imply unsupported vapor electrolyte Born support."
+    expected_output:
+      - "accepted | rejected | needs_fix"
+      - "Missing evidence, if any."
+      - "Exact final validation scope."
+    receipt: null
+
+  - id: T009
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Run issue #118 required validation and make only issue-owned fixes needed for those checks."
+    allowed_files:
+      - "src/epcsaft/native/contributions/**"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/regression/**"
+      - "src/epcsaft/regression.py"
+      - "tests/native/cppad/test_cppad_born*"
+      - "tests/native/ceres/test_ceres_liquid_electrolyte_regression.py"
+      - "tests/regression/literature/**"
+      - "tests/regression/test_figiel_2025*"
+      - "tests/regression/test_miac*"
+      - "docs/pages/parameter_regression.rst"
+      - "docs/pages/equation_traceability.rst"
+      - "docs/goals/modified-born-electrolyte-regression/state.yaml"
+      - "docs/goals/modified-born-electrolyte-regression/notes/**"
+    constraints:
+      - "Run all issue #118 required validation commands before claiming completion."
+      - "Use the post-PR-113 build and validation commands from issue #118."
+      - "Do not broaden public capabilities beyond proven package behavior."
+      - "Do not introduce forbidden contiguous backend or numeric derivative text."
+      - "If validation failure requires files outside allowed_files, stop and ask Judge for a scoped follow-up."
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --clean"
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-cppad"
+      - "uv run python scripts/dev/build_epcsaft.py --clean --enable-ceres --enable-cppad"
+      - "uv run python run_pytest.py tests/native/cppad/test_cppad_born_ssmds_liquid_derivatives.py -q"
+      - "uv run python run_pytest.py tests/native/ceres/test_ceres_liquid_electrolyte_regression.py -q"
+      - "uv run python run_pytest.py tests/regression/literature -q"
+      - "uv run python scripts/dev/validate_project.py quick"
+      - "uv run python scripts/dev/validate_project.py docs"
+      - "git diff --check"
+      - "pwsh -NoProfile -Command \"$backend = 'backend' + '_' + 'unavailable'; $numeric = 'finite' + '_' + 'difference'; $phrase = 'finite' + ' ' + 'difference'; $pattern = ($backend, $numeric, $phrase) -join '|'; rg -n --hidden --glob '!docs/goals/modified-born-electrolyte-regression/state.yaml' --glob '!docs/goals/modified-born-electrolyte-regression/notes/**' $pattern CMakeLists.txt src tests docs; if ($LASTEXITCODE -eq 1) { exit 0 } else { exit $LASTEXITCODE }\""
+    stop_if:
+      - "Validation failure requires non-issue-owned architecture changes."
+      - "A native build artifact is locked by another process and main-thread coordination is required."
+      - "A validation command fails twice for different root causes."
+    expected_output:
+      - "Validation receipt with command, status, and compact evidence for every issue #118 command."
+      - "Any final issue-owned fixes required by validation."
+      - "Decision input for final audit."
+    receipt: null
+
+  - id: T010
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Final audit - decide whether issue #118 is actually complete or must remain open with a stopped-state report."
+    inputs:
+      - "All done task receipts"
+      - "Stage 0 intake note"
+      - "Final benchmark report"
+      - "Final validation receipt"
+      - "Current diff"
+      - "GitHub issue #118 completion definition"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if any required Worker work remains queued or active."
+      - "Reject completion if any issue #118 completion line is not true."
+      - "Reject completion if proof is inventory-only, diagnostics-only, staged-only, synthetic-only, mocked, or documented limitation-only."
+      - "Reject completion if docs overclaim beyond liquid-electrolyte support."
+      - "If not complete, write the exact missing evidence and next Worker task; keep the issue open or PR draft."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Answer to each final PR audit question from goal.md."
+      - "Missing evidence and next task if not complete."
+    receipt: null
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: unknown
+    task: null
+    commands: []
