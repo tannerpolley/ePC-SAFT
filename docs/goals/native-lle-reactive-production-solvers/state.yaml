@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T011
+active_task: T012
 
 tasks:
   - id: T001
@@ -520,10 +520,12 @@ tasks:
   - id: T011
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement issue #117 Stages 1-3: native coupled reactive solver ownership, coupled variables, and coupled residual vector."
     allowed_files:
+      - "docs/goals/native-lle-reactive-production-solvers/**"
+      - "src/epcsaft/bindings.cpp"
       - "src/epcsaft/equilibrium.py"
       - "src/epcsaft/reactive.py"
       - "src/epcsaft/reactive_speciation.py"
@@ -546,15 +548,42 @@ tasks:
       - "Cannot represent reaction and phase residuals in one solved state."
       - "Charged phase charge balance cannot be enforced or diagnosed."
       - "Verification fails twice for the same unexplained reason."
-    receipt: null
+    receipt:
+      result: done
+      summary: "Implemented the native coupled reactive phase-equilibrium residual surface without claiming production Ceres or Jacobian completion."
+      changed_files:
+        - "docs/goals/native-lle-reactive-production-solvers/notes/T011-reactive-phase-residual-surface.md"
+        - "docs/goals/native-lle-reactive-production-solvers/state.yaml"
+        - "src/epcsaft/bindings.cpp"
+        - "src/epcsaft/native/epcsaft_equilibrium.h"
+        - "src/epcsaft/native/equilibrium/reactive_phase_equilibrium_problem.cpp"
+        - "tests/native/equilibrium/test_reactive_phase_equilibrium_residual_surface.py"
+      evidence:
+        - "`_evaluate_reactive_phase_equilibrium_residual_native` exposes one `log_phase_species_amounts` native residual surface."
+        - "Residual blocks include balance rows, reaction equilibrium in both liquid phases, neutral phase equilibrium, ionic phase equilibrium, and phase charge residuals."
+        - "Diagnostics assert reaction and phase residuals share one unpacked native state."
+        - "Diagnostics intentionally report `ceres_accepted_solve = false` and `jacobian_available = false`; T012 owns production Jacobian and Ceres solve completion."
+        - "The first native-equilibrium slice run after the fast rebuild failed because Ceres was disabled for existing #116 tests; the same slice passed after the full Ceres+CppAD rebuild."
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium/test_reactive_phase_equilibrium_residual_surface.py -q"
+          status: pass
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --profile full"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium -q"
+          status: pass
+      next_task: T012
 
   - id: T012
     type: worker
     assignee: Worker
-    status: queued
+    status: active
     reasoning_hint: high
     objective: "Implement issue #117 Stages 4-6: coupled Jacobian, solved-state sensitivity diagnostics, Ceres solve, and strict use of #115/#116 only as subcomponents."
     allowed_files:
+      - "docs/goals/native-lle-reactive-production-solvers/**"
+      - "src/epcsaft/bindings.cpp"
       - "src/epcsaft/equilibrium.py"
       - "src/epcsaft/reactive.py"
       - "src/epcsaft/reactive_speciation.py"
@@ -587,6 +616,8 @@ tasks:
     reasoning_hint: high
     objective: "Implement issue #117 Stages 7-9: generic Python route, neutral reactive LLE benchmark, reactive electrolyte LLE benchmark, and tests that reject staged production behavior."
     allowed_files:
+      - "docs/goals/native-lle-reactive-production-solvers/**"
+      - "src/epcsaft/bindings.cpp"
       - "src/epcsaft/equilibrium.py"
       - "src/epcsaft/reactive.py"
       - "src/epcsaft/reactive_speciation.py"
@@ -618,6 +649,8 @@ tasks:
     reasoning_hint: medium
     objective: "Run issue #117 Stage 10 validation and targeted route guards, then repair only failures within #117 scope."
     allowed_files:
+      - "docs/goals/native-lle-reactive-production-solvers/**"
+      - "src/epcsaft/bindings.cpp"
       - "src/epcsaft/equilibrium.py"
       - "src/epcsaft/reactive.py"
       - "src/epcsaft/reactive_speciation.py"

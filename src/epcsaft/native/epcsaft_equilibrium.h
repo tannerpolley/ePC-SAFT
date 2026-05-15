@@ -137,6 +137,40 @@ struct ElectrolyteLLEResidualEvaluationNative {
     std::map<std::string, std::vector<double>> diagnostics_vector;
 };
 
+struct ReactivePhaseResidualEvaluationNative {
+    std::string variable_model = "log_phase_species_amounts";
+    std::vector<double> variables;
+    std::vector<double> lower_bounds;
+    std::vector<double> upper_bounds;
+    std::vector<double> residual;
+    std::vector<double> jacobian_row_major;
+    int jacobian_rows = 0;
+    int jacobian_cols = 0;
+    std::vector<double> gradient;
+    double objective = 0.0;
+    std::vector<double> phase1_composition;
+    std::vector<double> phase2_composition;
+    std::vector<double> phase1_amounts;
+    std::vector<double> phase2_amounts;
+    std::vector<double> phase1_ln_fugacity_coefficient;
+    std::vector<double> phase2_ln_fugacity_coefficient;
+    double phase1_density = 0.0;
+    double phase2_density = 0.0;
+    double phase_fraction_phase2 = 0.0;
+    std::vector<double> element_balance_residuals;
+    std::vector<double> reaction_residuals_phase1;
+    std::vector<double> reaction_residuals_phase2;
+    std::vector<double> neutral_phase_equilibrium_residuals;
+    std::vector<double> ionic_equilibrium_residuals;
+    std::vector<double> phase_charge_residuals;
+    double phase_distance = 0.0;
+    std::map<std::string, double> diagnostics_double;
+    std::map<std::string, int> diagnostics_int;
+    std::map<std::string, bool> diagnostics_bool;
+    std::map<std::string, std::string> diagnostics_string;
+    std::map<std::string, std::vector<double>> diagnostics_vector;
+};
+
 StabilityResultNative neutral_stability_native(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
     double t,
@@ -201,6 +235,27 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
     const std::vector<double>& initial_aq = {},
     const std::vector<double>& initial_org = {},
     double initial_beta_org = 0.5,
+    bool has_initial_phases = false
+);
+
+ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residual_native(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const EquilibriumOptionsNative& options,
+    const std::vector<double>& balance_matrix_row_major,
+    int balance_rows,
+    const std::vector<double>& total_vector,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    int reaction_rows,
+    const std::vector<double>& log_equilibrium_constants,
+    const std::vector<int>& reaction_standard_states,
+    const std::vector<double>& variables = {},
+    bool has_variables = false,
+    const std::vector<double>& initial_phase1 = {},
+    const std::vector<double>& initial_phase2 = {},
+    double initial_phase_fraction_phase2 = 0.5,
     bool has_initial_phases = false
 );
 
