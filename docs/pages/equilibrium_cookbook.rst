@@ -299,8 +299,8 @@ Electrolyte bubble and reactive bubble
 --------------------------------------
 
 Electrolyte bubble pressure and reactive electrolyte bubble pressure are route
-pending. The previous fixed-liquid scalar pressure search is disabled; these
-APIs raise until a native Ipopt electrolyte bubble route builder owns the solve.
+pending. These APIs raise until a native Ipopt electrolyte bubble route builder
+owns the solve.
 
 .. code-block:: python
 

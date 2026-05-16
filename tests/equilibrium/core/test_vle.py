@@ -26,7 +26,7 @@ def _hydrocarbon_basis_mixture() -> ePCSAFTMixture:
 def _assert_tp_flash_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.InputError]) -> None:
     message = str(excinfo.value)
     assert "tp_flash requires a native Ipopt equilibrium NLP route" in message
-    assert "previous native TP flash route is disabled" in message
+    assert "No package-owned alternate TP flash solver is available" in message
 
 
 def test_ternary_hydrocarbon_basis_tp_flash_requires_native_ipopt_route() -> None:

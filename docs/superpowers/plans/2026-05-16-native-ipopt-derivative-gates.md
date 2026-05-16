@@ -408,7 +408,7 @@ Task 8 continuation note: the public `EquilibriumOptions.hessian_strategy` knob 
 
 Task 8 continuation note: `EquilibriumOptions` no longer exposes the public `damping` control. Public equilibrium callers can no longer tune old manual damping behavior; remaining native damping code is transitional implementation debt until the Ipopt route builders replace those paths.
 
-Task 8 continuation note: the previous Python-owned neutral bubble/dew scalar solve path was removed from accepted public execution. The public methods remain declared, validate inputs, and fail loudly until native Ipopt route builders replace the removed path.
+Task 8 continuation note: public neutral bubble/dew scalar solve paths were removed from accepted public execution. The public methods remain declared, validate inputs, and fail loudly until native Ipopt route builders own those production solves.
 
 Task 8 continuation note: `EquilibriumOptions.jacobian_backend` no longer accepts the legacy `autodiff` spelling. Public equilibrium derivative selection is limited to `auto`, `analytic`, or `cppad`, matching the analytical/CppAD derivative gate outside Ceres-owned regression.
 
@@ -558,6 +558,8 @@ Task 12 continuation note: public neutral TP flash no longer executes the native
 Task 12 continuation note: public neutral and electrolyte stability routes no longer execute native TPD searches from `stability`, `stability_tp`, `electrolyte_stability`, `electrolyte_stability_tp`, typed `StabilityAnalysis`, or reactive-stability post-speciation dispatch. The public adapters validate inputs, phase labels, charge neutrality, and electrolyte formula bases, then raise until native Ipopt stability/NLP route builders own production stability analysis.
 
 Task 12 continuation note: obsolete PR #126 and issue-specific Ceres-equilibrium handoff documents were removed from active docs. Literature benchmark metadata for blocked Ascani electrolyte LLE and reactive phase-equilibrium cases now points at this native Ipopt gate plan instead of superseded Ceres-equilibrium planning artifacts.
+
+Task 12 continuation note: public route-pending errors for neutral flash/LLE/stability, electrolyte LLE/bubble, reactive speciation, and reactive phase equilibrium now state the native Ipopt ownership requirement directly without naming retired solver routes as compatibility context.
 
 ### Task 13: Final Validation And Cleanup
 

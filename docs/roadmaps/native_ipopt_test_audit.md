@@ -66,6 +66,7 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - The public `EquilibriumOptions.jacobian_backend` selector now rejects the same legacy backend spelling, keeping phase-equilibrium derivative requests aligned to analytical/CppAD semantics.
 - Stale native electrolyte LLE and reactive-phase tests that protected accepted Ceres equilibrium solves were deleted. Residual-surface derivative tests remain as private diagnostic coverage until native Ipopt route builders own production equilibrium.
 - Old PR #126 and issue-specific Ceres-equilibrium handoff documents were removed from active docs, and literature benchmark metadata now points blocked Ascani LLE/reactive-phase cases at the native Ipopt gate plan.
+- Public route-pending errors now describe the current Ipopt ownership requirement without naming retired solver routes as compatibility context.
 - The reactive phase diagnostic extent helper no longer uses NumPy's least-squares convenience path; it uses a direct library linear solve for the small stoichiometric normal system.
 - No-reaction, failed, and best-effort reactive speciation paths now omit implicit-sensitivity payloads when the native route has no reaction-constant sensitivity matrix instead of returning placeholders or raising during diagnostic normalization.
 - The MIAC electrolyte fixture check now uses a strict approximate comparison instead of exact binary float equality.

@@ -97,7 +97,7 @@ def electrolyte_bubble_pressure(
         raise InputError("x_liq length must match mixture species count.")
     raise InputError(
         "electrolyte_bubble_pressure requires the native Ipopt equilibrium route builder; "
-        "the previous package-owned pressure-search route is disabled."
+        "no package-owned alternate electrolyte bubble-pressure solver is available for this public route."
     )
 
 

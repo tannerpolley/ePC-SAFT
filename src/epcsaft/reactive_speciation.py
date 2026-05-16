@@ -59,7 +59,7 @@ _REACTION_CONSTANT_FITTING_ROLES = {
 def _raise_native_ipopt_reactive_speciation_required() -> None:
     raise InputError(
         "reactive_speciation requires a native Ipopt homogeneous reactive-speciation NLP route. "
-        "The previous native chemical-equilibrium residual route is disabled by the solver gate."
+        "No package-owned alternate homogeneous reactive-speciation solver is available for this public route."
     )
 
 

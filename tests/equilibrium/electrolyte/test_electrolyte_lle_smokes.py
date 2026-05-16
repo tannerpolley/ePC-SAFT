@@ -17,7 +17,7 @@ def _ascani_water_butanol_nacl_mixture(feed=None) -> ePCSAFTMixture:
 def _assert_electrolyte_lle_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.InputError]) -> None:
     message = str(excinfo.value)
     assert "electrolyte_lle requires a native Ipopt equilibrium NLP route" in message
-    assert "previous Ceres residual electrolyte LLE route is disabled" in message
+    assert "No package-owned alternate LLE solver is available" in message
 
 
 def test_one_salt_electrolyte_lle_direct_feed_requires_native_ipopt_route() -> None:

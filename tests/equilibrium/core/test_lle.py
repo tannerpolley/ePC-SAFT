@@ -46,7 +46,7 @@ def _methanol_cyclohexane_lle_benchmark() -> tuple[np.ndarray, dict[str, object]
 def _assert_neutral_lle_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.InputError]) -> None:
     message = str(excinfo.value)
     assert "lle_flash requires a native Ipopt equilibrium NLP route" in message
-    assert "previous Ceres residual LLE route is disabled" in message
+    assert "No package-owned alternate LLE solver is available" in message
 
 
 def test_methanol_cyclohexane_lle_flash_requires_native_ipopt_with_seed() -> None:

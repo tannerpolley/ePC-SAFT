@@ -38,7 +38,7 @@ def _neutral_reactive_lle_fixture() -> tuple[ePCSAFTMixture, np.ndarray, dict[st
 def _assert_reactive_phase_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.InputError]) -> None:
     message = str(excinfo.value)
     assert "native Ipopt reactive phase-equilibrium NLP route" in message
-    assert "previous Ceres coupled residual route is disabled" in message
+    assert "No package-owned alternate reactive phase-equilibrium solver is available" in message
 
 
 def test_neutral_reactive_lle_public_route_requires_native_ipopt() -> None:

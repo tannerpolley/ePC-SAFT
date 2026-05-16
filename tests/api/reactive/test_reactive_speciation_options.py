@@ -25,7 +25,7 @@ def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
 def _assert_reactive_speciation_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.InputError]) -> None:
     message = str(excinfo.value)
     assert "reactive_speciation requires a native Ipopt homogeneous reactive-speciation NLP route" in message
-    assert "previous native chemical-equilibrium residual route is disabled" in message
+    assert "No package-owned alternate homogeneous reactive-speciation solver is available" in message
 
 
 @pytest.mark.parametrize("standard_state", ["ideal_mole_fraction", "concentration", "mole_fraction_activity"])

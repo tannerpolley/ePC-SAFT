@@ -23,42 +23,43 @@ _ASCANI_2022_REFERENCE = {
 def _raise_native_ipopt_not_routed(route: str) -> None:
     raise InputError(
         f"solver_backend='ipopt' was requested, but the native Ipopt adapter for {route} is not wired to public "
-        "equilibrium routes yet. Use the current native route until the Ipopt NLP adapter is implemented."
+        "equilibrium routes yet. The public route will stay unavailable until the Ipopt NLP builder owns it."
     )
 
 
 def _raise_native_ipopt_equilibrium_required(route: str) -> None:
     raise InputError(
-        f"{route} requires a native Ipopt equilibrium NLP route. The previous Python scalar solve route was removed "
-        "by the solver gate."
+        f"{route} requires a native Ipopt equilibrium NLP route. No package-owned alternate equilibrium solver is "
+        "available for this public route."
     )
 
 
 def _raise_native_ipopt_reactive_phase_required(route: str) -> None:
     raise InputError(
         f"{route} requires a native Ipopt reactive phase-equilibrium NLP route. "
-        "The previous Ceres coupled residual route is disabled by the solver gate."
+        "No package-owned alternate reactive phase-equilibrium solver is available for this public route."
     )
 
 
-def _raise_native_ipopt_lle_required(route: str, *, previous_route: str = "Ceres residual LLE route") -> None:
+def _raise_native_ipopt_lle_required(route: str, *, previous_route: str = "") -> None:
+    del previous_route
     raise InputError(
-        f"{route} requires a native Ipopt equilibrium NLP route. "
-        f"The previous {previous_route} is disabled by the solver gate."
+        f"{route} requires a native Ipopt equilibrium NLP route. No package-owned alternate LLE solver is available "
+        "for this public route."
     )
 
 
 def _raise_native_ipopt_tp_flash_required() -> None:
     raise InputError(
         "tp_flash requires a native Ipopt equilibrium NLP route. "
-        "The previous native TP flash route is disabled by the solver gate."
+        "No package-owned alternate TP flash solver is available for this public route."
     )
 
 
 def _raise_native_ipopt_stability_required(route: str) -> None:
     raise InputError(
         f"{route} requires a native Ipopt equilibrium stability NLP route. "
-        "The previous native TPD stability route is disabled by the solver gate."
+        "No package-owned alternate stability solver is available for this public route."
     )
 
 

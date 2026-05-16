@@ -149,9 +149,9 @@ Electrolyte bubble pressure
 
 ``kind="electrolyte_bubble_pressure"`` and
 ``solve_reactive_electrolyte_bubble(...)`` are reserved public contract names.
-Their previous fixed-liquid pressure-search implementation is disabled
-because production equilibrium routes must be native Ipopt NLPs, not
-package-owned scalar pressure searches.
+They raise until native Ipopt route builders own the production solve because
+production equilibrium routes must be native Ipopt NLPs, not package-owned
+scalar pressure searches.
 
 The target reactive electrolyte bubble route will first solve homogeneous
 chemical equilibrium with the native chemical solver and then hand the
