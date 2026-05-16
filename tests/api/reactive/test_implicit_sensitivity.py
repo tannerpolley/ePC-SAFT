@@ -38,12 +38,12 @@ def test_implicit_sensitivity_rejects_nonimplicit_backend() -> None:
         )
 
 
-def test_implicit_solve_result_rejects_missing_backend_placeholder() -> None:
+def test_implicit_solve_result_rejects_unknown_backend_label() -> None:
     with pytest.raises(epcsaft.InputError, match="analytic_implicit"):
         epcsaft.ImplicitSolveResult(
             state=[1.0],
             residual=[0.0],
-            backend="missing_placeholder",
+            backend="unknown_backend",
         )
 
 
