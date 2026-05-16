@@ -72,7 +72,6 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert ipopt["production"] is ipopt["available"]
     assert ipopt["public_routes"] == ["reactive_speciation:ideal_mole_fraction"]
     assert ipopt["full_constrained_nlp_available"] is ipopt["available"]
-    assert ipopt["default_auto_uses_ipopt"] is False
     assert ipopt["exact_hessian_available"] is False
     assert info["optional_dependencies"]["ipopt"]["available"] is ipopt["available"]
     cppad = info["optional_dependencies"]["cppad"]
@@ -130,7 +129,6 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert electrolyte_lle["backend"] == "native_ipopt_equilibrium_nlp_required"
     assert electrolyte_lle["methods"] == ["electrolyte_lle", "electrolyte_lle_tp"]
     assert electrolyte_lle["status"] == "route_pending"
-    assert electrolyte_lle["default_auto_uses_ipopt"] is False
     assert electrolyte_lle["full_constrained_nlp_available"] is False
     electrolyte_stability = capabilities["equilibrium"]["electrolyte_stability"]
     assert electrolyte_stability["available"] is False
@@ -147,7 +145,6 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert reactive_speciation["status"] == ("available" if ipopt["available"] else "route_pending")
     assert reactive_speciation["sweep_available"] is ipopt["available"]
     assert reactive_speciation["continuation_state_available"] is ipopt["available"]
-    assert reactive_speciation["default_auto_uses_ipopt"] is False
     assert reactive_speciation["solver_backends"] == ["auto", "ipopt"]
     assert reactive_speciation["ipopt_routes"] == ["reactive_speciation:ideal_mole_fraction"]
     assert reactive_speciation["full_constrained_nlp_available"] is ipopt["available"]

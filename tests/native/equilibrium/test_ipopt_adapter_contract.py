@@ -26,7 +26,6 @@ def test_runtime_capabilities_report_ideal_speciation_ipopt_route() -> None:
     assert ipopt["adapter_kind"] == "native_tnlp_adapter"
     assert ipopt["public_routes"] == ["reactive_speciation:ideal_mole_fraction"]
     assert ipopt["full_constrained_nlp_available"] is ipopt["available"]
-    assert ipopt["default_auto_uses_ipopt"] is False
 
 
 def test_native_ipopt_quadratic_smoke_is_gated_by_compiled_dependency() -> None:

@@ -159,11 +159,10 @@ Current IPOPT scope
 -------------------
 
 The current package can discover and link a native system Ipopt dependency when
-explicitly requested, but public equilibrium and reactive-speciation routes are
-not yet wired through the native constrained-NLP adapter. Runtime capabilities
-therefore report ``adapter_available=False``,
-``full_constrained_nlp_available=False``, and ``default_auto_uses_ipopt=False``.
-``hessian_includes_second_residual_derivatives=False``.
+explicitly requested. Production regression routes use native Ceres; production
+equilibrium routes are gated to native Ipopt constrained-NLP builders. Runtime
+capabilities report the discovered adapter state, public Ipopt route list, and
+whether the current build has a constrained-NLP route available.
 
 Solver-selection guidance
 -------------------------
@@ -175,23 +174,23 @@ Solver-selection guidance
      - Preferred default
      - IPOPT role
    * - Scalar bubble/dew variable solve
-     - Brent or safeguarded Newton
-     - Usually not appropriate
+     - Native Ipopt constrained NLP route
+     - Required for production equilibrium
    * - Small smooth residual system
-     - Native Newton/trust-region residual solve
-     - Explicit refinement bridge only
+     - Native Ipopt constrained NLP route for equilibrium; native Ceres for regression residuals
+     - Required when the problem is an equilibrium route
    * - Least-squares parameter estimation
-     - Gauss-Newton, LM, or trust-region least squares
-     - Use only when bounds or constraints dominate
+     - Native Ceres regression route
+     - Not the production regression solver
    * - Noisy or nonsmooth black-box workflow
-     - Derivative-free or surrogate method
-     - Not preferred
+     - Not a production package route
+     - Not a production package route
    * - Phase equilibrium near active bounds
-     - Native safeguarded residual solve first
-     - Useful as explicit bounded residual refinement
+     - Native Ipopt constrained NLP route
+     - Required for production equilibrium
    * - Large sparse constrained NLP
-     - IPOPT or SQP with sparse derivatives
-     - Appropriate once constraints are explicit
+     - Native Ipopt constrained NLP route with exact gradients/Jacobians
+     - Required for production equilibrium
 
 Create a dataset folder
 -----------------------

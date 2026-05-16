@@ -575,7 +575,6 @@ def _solve_reactive_speciation_native(
             "requested_solver_backend": str(options.solver_backend),
             "selected_solver_backend": str(diagnostics.get("selected_solver_backend", "native_ipopt")),
             "solver_selection_reason": str(diagnostics.get("solver_selection_reason", "explicit_request")),
-            "default_auto_uses_ipopt": False,
             "mass_tolerance": float(mass_tolerance),
             "charge_tolerance": float(charge_tolerance),
             "reaction_tolerance": float(reaction_tolerance),

@@ -58,7 +58,7 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Test import and unused mock-argument bloat was mechanical and removed.
 - NumPy testing imports were removed from tests because the lazy `np.testing` import path can stall Windows validation before the thermodynamic assertion runs.
 - Several tests still assert legacy missing-status behavior instead of implemented derivative coverage.
-- Several tests still protect fallback diagnostics, debug skip controls, or legacy custom solver routes.
+- Remaining weak coverage is concentrated in opt-in diagnostics, debug skip controls, and legacy route-gate docs; continue deleting tests that only protect status/debug surfaces.
 - Ceres and CppAD are now required by the local dev script, package build backend, and CMake configure gate. Ipopt remains a system-dependency opt-in until the adapter is implemented.
 - Native derivative tests now avoid shifted-source oracle checks; the reactive-phase Jacobian test is rewritten around CppAD backend, shape, finite-value, and analytical row-contract evidence.
 - The electrolyte LLE confidence report no longer writes parameter-shift sensitivity CSV or plot artifacts; it keeps benchmark, continuation, oracle, stress, and residual/error outputs.
@@ -115,7 +115,7 @@ Completed in the first Task 2 slice:
 - Collected full-suite duration evidence and slowest-test list.
 - Confirmed current quick-gate duration.
 - Removed mechanical unused-import and unused-argument test bloat.
-- Rewrote one stale derivative-free LLE assertion to require the current Ceres plus CppAD-implicit route.
+- Rewrote one stale derivative-absent LLE assertion to require the current Ceres plus CppAD-implicit route.
 - Added this tracked audit artifact.
 - Removed NumPy testing import usage from the test tree to keep Windows validation deterministic.
 
