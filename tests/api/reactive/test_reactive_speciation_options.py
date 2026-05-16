@@ -121,6 +121,53 @@ def test_reactive_speciation_requested_ipopt_routes_ideal_speciation_when_compil
     assert result.diagnostics["problem_class"] == "homogeneous_ideal_gibbs_speciation"
     assert result.diagnostics["jacobian_backend"] == "analytic"
 
+def test_reactive_speciation_requested_ipopt_handles_charged_ideal_constraint_when_compiled() -> None:
+    from epcsaft import _core
+
+    mix = epcsaft.ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([1.0, 1.0, 1.0]),
+            "s": np.asarray([3.0, 3.0, 3.0]),
+            "e": np.asarray([200.0, 200.0, 200.0]),
+            "z": np.asarray([1.0, -1.0, 0.0]),
+            "dielc": np.asarray([78.0, 78.0, 78.0]),
+            "d_born": np.asarray([3.0, 3.0, 0.0]),
+            "MW": np.asarray([20.0e-3, 20.0e-3, 40.0e-3]),
+        },
+        species=["C+", "A-", "N"],
+    )
+    kwargs = {
+        "species": ["C+", "A-", "N"],
+        "mixture_factory": lambda x, T, P: mix,
+        "T": 298.15,
+        "P": 1.0e5,
+        "balances": {"formula_units": {"C+": 0.5, "A-": 0.5, "N": 1.0}},
+        "totals": {"formula_units": 0.75},
+        "reactions": [
+            epcsaft.ReactionDefinition(
+                {"C+": -1.0, "A-": -1.0, "N": 1.0},
+                log_equilibrium_constant=math.log(8.0),
+                standard_state="ideal_mole_fraction",
+            )
+        ],
+        "initial_x": [0.3, 0.3, 0.4],
+        "options": epcsaft.ReactiveSpeciationOptions(solver_backend="ipopt", tolerance=1.0e-9),
+    }
+
+    if not _core._native_ipopt_smoke()["compiled"]:
+        with pytest.raises(epcsaft.SolutionError, match=r"EPCSAFT_ENABLE_IPOPT=ON"):
+            epcsaft.solve_reactive_speciation(**kwargs)
+        return
+
+    result = epcsaft.solve_reactive_speciation(**kwargs)
+
+    assert result.success is True
+    assert result.x["C+"] == pytest.approx(0.25, rel=1.0e-7)
+    assert result.x["A-"] == pytest.approx(0.25, rel=1.0e-7)
+    assert result.x["N"] == pytest.approx(0.5, rel=1.0e-7)
+    assert result.charge_residual == pytest.approx(0.0, abs=1.0e-10)
+    assert result.diagnostics["charge_constraint_in_nlp"] is True
+
 def test_reactive_speciation_auto_uses_current_native_route() -> None:
     mix = epcsaft.ePCSAFTMixture.from_params(
         {

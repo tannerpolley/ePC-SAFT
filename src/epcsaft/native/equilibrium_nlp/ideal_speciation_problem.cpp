@@ -181,6 +181,38 @@ std::vector<double> canonical_initial_amounts(const IdealSpeciationRequest& requ
     return amounts;
 }
 
+bool has_nonzero_charge(const IdealSpeciationRequest& request) {
+    for (double charge : request.charges) {
+        if (std::abs(charge) > 1.0e-12) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool charge_constraint_increases_rank(const IdealSpeciationRequest& request) {
+    if (!has_nonzero_charge(request)) {
+        return false;
+    }
+    Eigen::MatrixXd balances(request.balance_rows, request.species_count);
+    for (int row = 0; row < request.balance_rows; ++row) {
+        for (int col = 0; col < request.species_count; ++col) {
+            balances(row, col) = request.balance_matrix_row_major[
+                static_cast<std::size_t>(row) * static_cast<std::size_t>(request.species_count)
+                + static_cast<std::size_t>(col)
+            ];
+        }
+    }
+    Eigen::MatrixXd with_charge(request.balance_rows + 1, request.species_count);
+    with_charge.topRows(request.balance_rows) = balances;
+    for (int col = 0; col < request.species_count; ++col) {
+        with_charge(request.balance_rows, col) = request.charges[static_cast<std::size_t>(col)];
+    }
+    const Eigen::FullPivLU<Eigen::MatrixXd> base_rank(balances);
+    const Eigen::FullPivLU<Eigen::MatrixXd> charged_rank(with_charge);
+    return charged_rank.rank() > base_rank.rank();
+}
+
 class IdealSpeciationProblem final : public NlpProblem {
 public:
     explicit IdealSpeciationProblem(IdealSpeciationRequest request)
@@ -193,6 +225,7 @@ public:
           )),
           initial_amounts_(canonical_initial_amounts(request_)) {
         total_scale_ = positive_scale_from_totals(request_.total_vector);
+        include_charge_constraint_ = charge_constraint_increases_rank(request_);
     }
 
     std::string name() const override {
@@ -204,11 +237,11 @@ public:
     }
 
     int constraint_count() const override {
-        return request_.balance_rows;
+        return request_.balance_rows + (include_charge_constraint_ ? 1 : 0);
     }
 
     int jacobian_nonzero_count() const override {
-        return request_.balance_rows * request_.species_count;
+        return constraint_count() * request_.species_count;
     }
 
     NlpBounds bounds() const override {
@@ -219,6 +252,10 @@ public:
         out.variable_upper.assign(static_cast<std::size_t>(request_.species_count), upper);
         out.constraint_lower = request_.total_vector;
         out.constraint_upper = request_.total_vector;
+        if (include_charge_constraint_) {
+            out.constraint_lower.push_back(0.0);
+            out.constraint_upper.push_back(0.0);
+        }
         return out;
     }
 
@@ -236,13 +273,19 @@ public:
 
     std::vector<double> constraints(const std::vector<double>& variables) const override {
         require_size(variables, static_cast<std::size_t>(request_.species_count), "Ideal Ipopt variables");
-        std::vector<double> out(static_cast<std::size_t>(request_.balance_rows), 0.0);
+        std::vector<double> out(static_cast<std::size_t>(constraint_count()), 0.0);
         for (int row = 0; row < request_.balance_rows; ++row) {
             for (int col = 0; col < request_.species_count; ++col) {
                 out[static_cast<std::size_t>(row)] += request_.balance_matrix_row_major[
                     static_cast<std::size_t>(row) * static_cast<std::size_t>(request_.species_count)
                     + static_cast<std::size_t>(col)
                 ] * variables[static_cast<std::size_t>(col)];
+            }
+        }
+        if (include_charge_constraint_) {
+            for (int col = 0; col < request_.species_count; ++col) {
+                out[static_cast<std::size_t>(request_.balance_rows)] +=
+                    request_.charges[static_cast<std::size_t>(col)] * variables[static_cast<std::size_t>(col)];
             }
         }
         return out;
@@ -258,12 +301,22 @@ public:
                 out.cols.push_back(col);
             }
         }
+        if (include_charge_constraint_) {
+            for (int col = 0; col < request_.species_count; ++col) {
+                out.rows.push_back(request_.balance_rows);
+                out.cols.push_back(col);
+            }
+        }
         return out;
     }
 
     std::vector<double> jacobian_values(const std::vector<double>& variables) const override {
         (void)variables;
-        return request_.balance_matrix_row_major;
+        std::vector<double> out = request_.balance_matrix_row_major;
+        if (include_charge_constraint_) {
+            out.insert(out.end(), request_.charges.begin(), request_.charges.end());
+        }
+        return out;
     }
 
     NlpScaling scaling() const override {
@@ -273,6 +326,9 @@ public:
         out.constraints.reserve(static_cast<std::size_t>(request_.balance_rows));
         for (double total : request_.total_vector) {
             out.constraints.push_back(1.0 / std::max(1.0, std::abs(total)));
+        }
+        if (include_charge_constraint_) {
+            out.constraints.push_back(1.0);
         }
         return out;
     }
@@ -286,6 +342,7 @@ private:
     std::vector<double> standard_mu_rt_;
     std::vector<double> initial_amounts_;
     double total_scale_ = 1.0;
+    bool include_charge_constraint_ = false;
 };
 
 std::vector<double> normalized_composition_from_amounts(const std::vector<double>& amounts) {
@@ -517,6 +574,7 @@ ChemicalEquilibriumResultNative solve_ideal_speciation_chemical_equilibrium_ipop
     result.diagnostics_bool["activity_or_fugacity_terms_in_residual"] = false;
     result.diagnostics_bool["activity_derivative_in_jacobian"] = false;
     result.diagnostics_bool["activity_coefficients_evaluated"] = !result.activity_coefficients.empty();
+    result.diagnostics_bool["charge_constraint_in_nlp"] = charge_constraint_increases_rank(request);
     result.diagnostics_bool["ipopt_solver_ran"] = ipopt_result.ipopt.solver_ran;
     result.diagnostics_bool["ipopt_accepted"] = ipopt_result.ipopt.accepted;
     result.diagnostics_int["activity_fixed_point_updates"] = 0;
