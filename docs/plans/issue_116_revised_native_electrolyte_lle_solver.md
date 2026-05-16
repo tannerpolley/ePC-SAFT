@@ -18,7 +18,7 @@ documented limitation
 capability label
 hand-coded simplex minimizer
 hand-coded Powell/Nelder-Mead production solver
-manual numeric perturbation Jacobian
+derivative-approximation Jacobian
 ```
 
 The old native residual minimizers may be used only as deleted code, test-only historical reference, or explicitly named seed generators if the production result does not depend on them. They must not be the accepted production solver.
@@ -46,9 +46,9 @@ ceres_solver_with_cppad_jacobian
 Forbidden derivative provenance for production completion:
 
 ```text
-manual numeric perturbation
+derivative approximation
 not_required for an accepted nonlinear equilibrium solve
-not_available for a required solve path
+missing required solve-path implementation
 ```
 
 Package APIs must remain generic. Do not add public APIs named after MEA, lithium extraction, extraction efficiency, selectivity, distribution coefficient, absorber columns, or solvent screening.
@@ -345,7 +345,7 @@ unscaled_solver_residual_norm
 
 ## Stage 5 — Jacobian evaluation
 
-Implement the production Jacobian. No manual numeric perturbation.
+Implement the production Jacobian. No derivative-approximation Jacobian.
 
 Expected implementation:
 
@@ -568,7 +568,7 @@ git diff --check
 Also run targeted guard searches:
 
 ```powershell
-rg "native_derivative_free_nelder_mead|not_required.*phase split solve|newton_step\\(.*not_available|reactive_staged_equilibrium" src tests docs
+rg "native_derivative_free_nelder_mead|not_required.*phase split solve|newton_step.*missing sensitivity|reactive_staged_equilibrium" src tests docs
 ```
 
 Any remaining match must be explicitly justified as a rejected old path, compatibility-only route, or test asserting the old path is not used.
@@ -580,7 +580,7 @@ This issue is complete only when every line is true:
 ```text
 accepted electrolyte LLE result is solved by Ceres trust-region residual solve
 production residuals use explicit ePC-SAFT fugacity/chemical-potential evaluations
-production Jacobian is analytic / CppAD / implicit, not manual numeric perturbation
+production Jacobian is analytic / CppAD / implicit, not an approximate derivative route
 old hand-coded simplex route cannot produce an accepted production result
 newton_step missing-sensitivity path is removed or no longer reachable for accepted production
 distributed-ion phase variables are explicit in public result and diagnostics

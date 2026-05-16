@@ -22,7 +22,7 @@
 
 ### Derivative Gates
 
-- No numerical perturbation derivative routes anywhere, including tests, examples, diagnostics, benchmarks, and analysis workflows that remain active.
+- No derivative-approximation routes anywhere, including tests, examples, diagnostics, benchmarks, and analysis workflows that remain active.
 - The old FD-derived concepts are banned even when used as a test oracle.
 - Derivatives must be one of:
   - exact analytical derivatives;
@@ -224,7 +224,7 @@ For standalone property/state calls:
 
 - density and association closures are evidence-gated internal exceptions;
 - replacement with Ceres/Ipopt is allowed only if runtime is near parity, or up to 2x slower with a documented accuracy/stability improvement;
-- if the current closure remains, remove numerical perturbation derivative checks and legacy status/dodge diagnostics from it.
+- if the current closure remains, remove derivative-approximation checks and legacy status/dodge diagnostics from it.
 
 ---
 
@@ -449,7 +449,7 @@ Task 9 continuation note: the Python reactive-phase diagnostics no longer call N
 
 Task 10 progress note: the first regression slice moves public nonassociating pure-neutral regression to the native Ceres route by default, rejects the old native least-squares backend from that public path, removes the Python and pybind private pure-neutral least-squares entry points, and updates capability metadata so Ceres is a production optimizer when compiled.
 
-Task 10 continuation note: the second regression slice removes the private generic Eigen Levenberg-Marquardt route, its perturbation Jacobian, its pybind/Python wrapper, and the doctor-required symbol. Supported generic production fits remain Ceres-owned. Associating and MEA-CO2-H2O benchmark helpers now do residual-only scoring and reject optimization until native analytic/CppAD/implicit Ceres derivative coverage exists for those target families.
+Task 10 continuation note: the second regression slice removes the private generic Eigen Levenberg-Marquardt route, its derivative-approximation Jacobian, its pybind/Python wrapper, and the doctor-required symbol. Supported generic production fits remain Ceres-owned. Associating and MEA-CO2-H2O benchmark helpers now do residual-only scoring and reject optimization until native analytic/CppAD/implicit Ceres derivative coverage exists for those target families.
 
 Task 10 continuation note: a tracked repo gate now scans native C++ sources and blocks Ceres numeric-diff APIs and legacy perturbation tokens. This closes the explicit test-gate item, while templated Ceres autodiff and broader implicit derivative coverage remain open.
 
@@ -506,6 +506,8 @@ Task 12 continuation note: liquid-electrolyte SSM/DS Born parameter derivatives 
 Task 12 continuation note: native EOS/CppAD derivative contracts no longer use the old missing-backend label in the C++ and Python property-derivative surfaces touched by the CppAD contract tests. Disabled CppAD reports `cppad_disabled`; unsupported derivative configurations raise typed `unsupported` errors or are excluded from implemented coverage rows.
 
 Task 12 continuation note: density closure diagnostics no longer expose legacy retry wording. Native/Python result payloads now report `density_best_candidate_refinement_used`, `density_best_candidate_rejection_reason`, and `density_warm_start_rejections`, with focused runtime and equilibrium tests updated to enforce the renamed contract. The underlying standalone density closure remains an evidence-gated internal exception rather than a completed Ipopt/Ceres replacement.
+
+Task 12 continuation note: stale planning and GoalBuddy notes no longer preserve the removed missing-backend label. The tracked text gate now also blocks common approximate-derivative wording so future docs, scripts, tests, and source files cannot reintroduce those routes under alternate spelling.
 
 ### Task 13: Final Validation And Cleanup
 

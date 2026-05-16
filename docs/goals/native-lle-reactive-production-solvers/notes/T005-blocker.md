@@ -16,7 +16,7 @@ The accepted electrolyte LLE production route cannot honestly move to a Ceres tr
 - Ceres support exists for regression problems, but not for electrolyte LLE phase-equilibrium residuals.
 - Existing CppAD surfaces cover contribution and regression derivative paths, but there is no complete native residual/Jacobian surface for electrolyte LLE transformed variables, density closure, and fugacity residuals.
 - `newton_step` and `_evaluate_electrolyte_lle_residual_native` still report unavailable electrolyte LLE residual sensitivities.
-- Implementing T005 by filling a placeholder Jacobian or by relying on a manual numeric perturbation Jacobian would violate issue #116 and the roadmap.
+- Implementing T005 by filling a placeholder Jacobian or by relying on a derivative-approximation Jacobian would violate issue #116 and the roadmap.
 
 ## Decision
 

@@ -42,7 +42,7 @@ returned matches, but none are accepted reactive production paths:
 The issue #116 guard search:
 
 ```powershell
-rg 'native_derivative_free_nelder_mead|not_required.*phase split solve|newton_step\(.*not_available|reactive_staged_equilibrium' src tests docs
+rg 'native_derivative_free_nelder_mead|not_required.*phase split solve|newton_step.*missing sensitivity|reactive_staged_equilibrium' src tests docs
 ```
 
 returned the same classes of acceptable hits plus seed-only/optional references:

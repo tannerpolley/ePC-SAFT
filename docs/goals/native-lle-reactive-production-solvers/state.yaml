@@ -362,7 +362,7 @@ tasks:
       - "uv run python scripts/dev/validate_project.py quick"
       - "uv run python scripts/dev/validate_project.py docs"
       - "git diff --check"
-      - "rg \"native_derivative_free_nelder_mead|not_required.*phase split solve|newton_step\\(.*not_available|reactive_staged_equilibrium\" src tests docs"
+      - "rg \"native_derivative_free_nelder_mead|not_required.*phase split solve|newton_step.*missing sensitivity|reactive_staged_equilibrium\" src tests docs"
     stop_if:
       - "Validation failure indicates missing production Jacobian or missing Ceres backend rather than a narrow repair."
       - "A remaining guard match could be interpreted as accepted production behavior."
@@ -397,7 +397,7 @@ tasks:
           status: pass
         - cmd: "git diff --check"
           status: pass
-        - cmd: "rg -n \"native_derivative_free_nelder_mead|not_required.*phase split solve|newton_step\\(.*not_available|reactive_staged_equilibrium\" src tests docs"
+        - cmd: "rg -n \"native_derivative_free_nelder_mead|not_required.*phase split solve|newton_step.*missing sensitivity|reactive_staged_equilibrium\" src tests docs"
           status: pass
       next_task: T008
 
@@ -763,7 +763,7 @@ tasks:
           status: pass
         - cmd: "uv run python run_pytest.py tests/api/equilibrium -q"
           status: pass
-        - cmd: "rg 'native_derivative_free_nelder_mead|not_required.*phase split solve|newton_step\\(.*not_available|reactive_staged_equilibrium' src tests docs"
+        - cmd: "rg 'native_derivative_free_nelder_mead|not_required.*phase split solve|newton_step.*missing sensitivity|reactive_staged_equilibrium' src tests docs"
           status: pass
       next_task: T027
 
@@ -785,7 +785,7 @@ tasks:
     constraints:
       - "Do not implement."
       - "Reject any path that relabels the old predictive route as Ceres production."
-      - "Reject any path with a placeholder, identity, stale, or manual numeric perturbation Jacobian."
+      - "Reject any path with a placeholder, identity, stale, or derivative-approximation Jacobian."
       - "Choose either an expanded Worker boundary, a child subgoal, or a concrete blocked handoff."
     expected_output:
       - "Decision for how to implement or block T005."
@@ -840,7 +840,7 @@ tasks:
         - "docs/goals/native-lle-reactive-production-solvers/notes/T016-residual-surface.md"
       evidence:
         - "`_evaluate_electrolyte_lle_residual_native` now returns transformed variables, bounds, phase-equilibrium and material-balance residuals, phase compositions, densities, phase fraction, material, charge, phase-distance, Gibbs, objective, and block diagnostics."
-        - "The payload still reports `jacobian_backend = not_available` and `jacobian_available = false`."
+        - "The payload still reports an unimplemented Jacobian backend and `jacobian_available = false`."
         - "The accepted electrolyte LLE solve route is unchanged and still does not claim Ceres production completion."
       commands:
         - cmd: "uv run python scripts/dev/build_epcsaft.py"
@@ -865,7 +865,7 @@ tasks:
       - "docs/goals/native-lle-reactive-production-solvers/notes/T017-jacobian-ceres.md"
     constraints:
       - "Residual Jacobian must be analytic, CppAD, analytic-implicit, CppAD-implicit, or Ceres-with-CppAD provenance."
-      - "Reject placeholder, identity, stale, or manual numeric perturbation Jacobians."
+      - "Reject placeholder, identity, stale, or derivative-approximation Jacobians."
       - "Accepted electrolyte LLE production diagnostics must report solver_backend ceres and jacobian_available true only after Ceres owns the accepted solve."
     verify:
       - "uv run python scripts/dev/build_epcsaft.py --profile full"
@@ -908,7 +908,7 @@ tasks:
     constraints:
       - "Read-only."
       - "Identify exact owner files/functions for density closure, fugacity coefficients, composition derivatives, and CppAD support."
-      - "Do not propose a placeholder, identity, stale, or manual numeric perturbation Jacobian."
+      - "Do not propose a placeholder, identity, stale, or derivative-approximation Jacobian."
       - "Output the smallest safe Worker boundary if an implementation path exists."
     expected_output:
       - "Phase-state sensitivity dependency map."
@@ -1165,7 +1165,7 @@ tasks:
       - "Reject completion if any required Worker task remains queued, active, or unjustifiably skipped."
       - "Reject completion unless #116 and #117 accepted production paths use Ceres trust-region residual solves with production Jacobians."
       - "Reject completion unless public generic APIs exercise the workflows and benchmark/test evidence is real, executable, and tolerance-checked."
-      - "Reject completion if route guards show accepted old production paths, staged production results, or manual numeric perturbation Jacobians."
+      - "Reject completion if route guards show accepted old production paths, staged production results, or derivative-approximation Jacobians."
     expected_output:
       - "complete or not_complete"
       - "full_outcome_complete: true or false"

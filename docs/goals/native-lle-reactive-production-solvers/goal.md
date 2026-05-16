@@ -33,7 +33,7 @@ Prepare and then execute the full issue #116 and #117 implementation sequence. T
 - Read `docs/roadmaps/FULL_ROADMAP.md` before execution and apply its completion standard.
 - Keep public APIs generic and avoid application-specific MEA, lithium extraction, absorber, selectivity, efficiency, or distribution-coefficient APIs.
 - Accepted production results must come from mature native solver backends with analytic, CppAD, analytic-implicit, CppAD-implicit, or Ceres-with-CppAD Jacobian provenance.
-- Do not close with inventory, manifests, schema-only support, diagnostic-only routes, staged-only routes, synthetic-only fixtures, mocked payloads, documented limitations, capability labels, hand-coded simplex/Powell/Nelder-Mead production solvers, or manual numeric perturbation Jacobians.
+- Do not close with inventory, manifests, schema-only support, diagnostic-only routes, staged-only routes, synthetic-only fixtures, mocked payloads, documented limitations, capability labels, hand-coded simplex/Powell/Nelder-Mead production solvers, or derivative-approximation Jacobians.
 - Preserve issue #116 before #117: #117 may use #116 only as an initialization/subcomponent source after #116 production behavior is implemented and verified.
 - Keep package behavior upstream and generic; downstream repos own downstream metrics.
 - Use the repo validation workflow from local `AGENTS.md` and the issue-specific commands.

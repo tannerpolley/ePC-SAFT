@@ -26,7 +26,7 @@ Issue #117 source edits are not open yet. The coupled reactive LLE production so
 - `ReactivePhaseEquilibriumProblem.solve` delegates to `mixture.reactive_staged_equilibrium(...)`.
 - Current diagnostics intentionally report `workflow = chemical_equilibrium_then_phase_equilibrium`, `reactive_workflow_class = staged`, `coupling_level = staged_not_full_simultaneous_nlp`, and `full_simultaneous_reactive_nlp = False`.
 - Native chemical equilibrium from issue #115 exists as a homogeneous chemical-equilibrium route. It is not a coupled reactive phase-equilibrium solver.
-- Issue #116 is not complete at this gate because electrolyte LLE residual sensitivities still report `not_available`, and accepted production electrolyte LLE is not yet a Ceres trust-region residual solve with a production Jacobian.
+- Issue #116 is not complete at this gate because electrolyte LLE residual sensitivities are still reported as missing, and accepted production electrolyte LLE is not yet a Ceres trust-region residual solve with a production Jacobian.
 
 ## Allowed Work Before #116 Audit
 

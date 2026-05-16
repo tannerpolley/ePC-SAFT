@@ -1226,7 +1226,7 @@ Ceres no-convergence can still be accepted
 failed result still reports accepted derivative status
 neutral LLE still accepts native_derivative_free_nelder_mead
 benchmark proof is still only Methanol ⇌ Cyclohexane or H2O ⇌ Butanol
-manual numeric perturbation is used for production derivatives
+derivative approximation is used for production derivatives
 source-backed benchmark data cannot be curated
 ```
 

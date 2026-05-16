@@ -25,7 +25,7 @@ Done. The issue #116 validation ladder passed after refreshing the quick-test sl
 Command:
 
 ```powershell
-rg -n "native_derivative_free_nelder_mead|not_required.*phase split solve|newton_step\(.*not_available|reactive_staged_equilibrium" src tests docs
+rg -n "native_derivative_free_nelder_mead|not_required.*phase split solve|newton_step.*missing sensitivity|reactive_staged_equilibrium" src tests docs
 ```
 
 Remaining matches are not accepted electrolyte LLE production behavior:

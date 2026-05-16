@@ -23,7 +23,7 @@ T016 implements the native electrolyte LLE residual evaluation surface that T005
 ## Deliberately Not Claimed
 
 - `jacobian_available` remains false.
-- `jacobian_backend` remains `not_available`.
+- The Jacobian backend remains unimplemented.
 - The accepted production electrolyte LLE route is still not a Ceres trust-region solve.
 
 ## Next Required Work

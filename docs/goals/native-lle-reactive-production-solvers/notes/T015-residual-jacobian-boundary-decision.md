@@ -22,7 +22,7 @@ T016 may implement the native electrolyte LLE residual evaluation surface only. 
 
 ## Deferred Worker
 
-T017 must handle the production Jacobian and Ceres solve. It must not proceed from placeholder, identity, stale, or manual numeric perturbation Jacobians. It may need expanded native files beyond `epcsaft_equilibrium.cpp` if the density/fugacity sensitivity chain needs new ownership.
+T017 must handle the production Jacobian and Ceres solve. It must not proceed from placeholder, identity, stale, or derivative-approximation Jacobians. It may need expanded native files beyond `epcsaft_equilibrium.cpp` if the density/fugacity sensitivity chain needs new ownership.
 
 ## Stop Conditions
 

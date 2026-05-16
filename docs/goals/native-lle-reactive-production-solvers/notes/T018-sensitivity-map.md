@@ -48,4 +48,4 @@ Do not resume T017 as a direct Ceres implementation. Create a Judge decision tas
 - creates a dedicated derivative-foundation child goal for phase-state fugacity sensitivities, or
 - expands the Worker boundary to include a full phase-state sensitivity implementation across `epcsaft_density.cpp`, `epcsaft_fugcoef.cpp`, `epcsaft_mu.cpp`, `epcsaft_ares.cpp`, `epcsaft_core_internal.h`, and equilibrium tests.
 
-The smallest safe implementation path is likely a new native phase-state sensitivity result type with tests that compare analytic or CppAD-implicit rows against exact known invariants, not against a manual numeric perturbation oracle.
+The smallest safe implementation path is likely a new native phase-state sensitivity result type with tests that compare analytic or CppAD-implicit rows against exact known invariants, not against a derivative-approximation oracle.

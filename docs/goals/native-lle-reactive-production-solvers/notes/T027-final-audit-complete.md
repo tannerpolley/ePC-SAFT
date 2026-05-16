@@ -15,7 +15,7 @@ This receipt audits implementation completion only; it does not close the GitHub
 
 - Accepted electrolyte LLE result is solved by Ceres trust-region residual solve: done. Native accepted diagnostics report `solver_backend = ceres` and `solver_method = ceres_trust_region_residual_solve`.
 - Production residuals use explicit ePC-SAFT fugacity/chemical-potential evaluations: done. The native electrolyte residual surface and accepted Ceres route evaluate phase fugacity/chemical-potential residual blocks from ePC-SAFT phase states.
-- Production Jacobian is analytic / CppAD / implicit, not manual numeric perturbation: done. Accepted diagnostics report `jacobian_backend = cppad_implicit` and `derivative_backend = cppad_implicit`; tests fail if `local_residual_slope` appears.
+- Production Jacobian is analytic / CppAD / implicit, not an approximate derivative route: done. Accepted diagnostics report `jacobian_backend = cppad_implicit` and `derivative_backend = cppad_implicit`; tests fail if `local_residual_slope` appears.
 - Old hand-coded simplex route cannot produce an accepted production result: done. Old helpers remain only as seed/support paths, and accepted production diagnostics are guarded against the old labels.
 - `newton_step` missing-sensitivity path is removed or no longer reachable for accepted production: done. Accepted production uses the Ceres residual solve and CppAD/implicit Jacobian diagnostics.
 - Distributed-ion phase variables are explicit in public result and diagnostics: done.
@@ -32,7 +32,7 @@ This receipt audits implementation completion only; it does not close the GitHub
 - `ReactivePhaseEquilibriumProblem` production route is native coupled solve: done.
 - Reaction and phase residuals are evaluated in one coupled solved state: done and asserted by native/API tests.
 - `solver_backend` is Ceres for accepted production benchmarks: done.
-- Jacobian is analytic / CppAD / implicit, not manual numeric perturbation: done, with `cppad_implicit` diagnostics.
+- Jacobian is analytic / CppAD / implicit, not an approximate derivative route: done, with `cppad_implicit` diagnostics.
 - Staged reactive route is not the production result: done. The staged route remains explicitly named and production tests monkeypatch it to fail if called.
 - #115 speciation and #116 LLE are used only as initialization/subcomponents: done.
 - Neutral reactive LLE benchmark passes: done.

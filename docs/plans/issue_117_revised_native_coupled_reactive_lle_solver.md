@@ -18,7 +18,7 @@ documented limitation
 capability label
 hand-coded simplex minimizer
 hand-coded Powell/Nelder-Mead production solver
-manual numeric perturbation Jacobian
+derivative-approximation Jacobian
 ```
 
 The old native residual minimizers may be used only as deleted code, test-only historical reference, or explicitly named seed generators if the production result does not depend on them. They must not be the accepted production solver.
@@ -46,9 +46,9 @@ ceres_solver_with_cppad_jacobian
 Forbidden derivative provenance for production completion:
 
 ```text
-manual numeric perturbation
+derivative approximation
 not_required for an accepted nonlinear equilibrium solve
-not_available for a required solve path
+missing required solve-path implementation
 ```
 
 Package APIs must remain generic. Do not add public APIs named after MEA, lithium extraction, extraction efficiency, selectivity, distribution coefficient, absorber columns, or solvent screening.
@@ -545,7 +545,7 @@ This issue is complete only when every line is true:
 ReactivePhaseEquilibriumProblem production route is native coupled solve
 reaction and phase residuals are evaluated in one coupled solved state
 solver_backend is ceres for accepted production benchmarks
-Jacobian is analytic / CppAD / implicit, not manual numeric perturbation
+Jacobian is analytic / CppAD / implicit, not an approximate derivative route
 staged reactive route is not the production result
 #115 speciation and #116 LLE are used only as initialization/subcomponents
 neutral reactive LLE benchmark passes

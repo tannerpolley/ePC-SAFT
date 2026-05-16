@@ -13,7 +13,7 @@ goal:
     audience: "ePC-SAFT package maintainers"
     authority: inferred
     proof_type: test
-    completion_proof: "Parent T017 can consume the child surface and report a real electrolyte LLE residual Jacobian without placeholder or manual numeric perturbation derivatives."
+    completion_proof: "Parent T017 can consume the child surface and report a real electrolyte LLE residual Jacobian without placeholder or derivative-approximation derivatives."
     likely_misfire: "Adding a diagnostic label or disconnected derivative helper that does not differentiate the actual residual state."
     blind_spots_considered:
       - "Density closure sensitivity may require implicit differentiation of the selected root."
@@ -56,7 +56,7 @@ tasks:
     constraints:
       - "Do not implement."
       - "Reject any package that does not feed the actual electrolyte LLE residual state."
-      - "Reject placeholder, stale, identity-only, or manual numeric perturbation derivatives."
+      - "Reject placeholder, stale, identity-only, or derivative-approximation derivatives."
     expected_output:
       - "Approved Worker allowed_files, verify commands, and stop conditions."
       - "Decision on fixed-density versus implicit-density first slice."

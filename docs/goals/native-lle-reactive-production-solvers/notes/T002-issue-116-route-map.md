@@ -24,7 +24,7 @@ Date: 2026-05-15
 
 ## Residual And Jacobian Gap
 
-- `newton_step` throws `not_available: electrolyte LLE residual sensitivities are not implemented.`
+- `newton_step` throws an unsupported-derivative error for electrolyte LLE residual sensitivities.
 - `_evaluate_electrolyte_lle_residual_native` throws the same unavailable sensitivity message.
 - Contract tests currently assert unavailable electrolyte residual sensitivities, so they document a gap rather than proving a production Jacobian.
 

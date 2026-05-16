@@ -8,7 +8,7 @@ Approved for issue #117. Issue #116 now has enough executable evidence to unlock
 
 - Accepted electrolyte LLE result is solved by Ceres trust-region residual solve: done. Accepted diagnostics report `solver_backend = ceres`, `solver_method = ceres_trust_region_residual_solve`, and `acceptance_gate = ceres_residual_solve`.
 - Production residuals use explicit ePC-SAFT fugacity/chemical-potential evaluations: done. Native residual rows are built from phase-state log fugacity and electroneutral salt-pair chemical-potential combinations.
-- Production Jacobian is analytic / CppAD / implicit, not manual numeric perturbation: done. Accepted diagnostics report `jacobian_backend = cppad_implicit`, `derivative_backend = cppad_implicit`, `jacobian_available = true`, and the Ceres cost uses `electrolyte_residual_jacobian_row_major(...)`.
+- Production Jacobian is analytic / CppAD / implicit, not an approximate derivative route: done. Accepted diagnostics report `jacobian_backend = cppad_implicit`, `derivative_backend = cppad_implicit`, `jacobian_available = true`, and the Ceres cost uses `electrolyte_residual_jacobian_row_major(...)`.
 - Old hand-coded simplex route cannot produce an accepted electrolyte LLE production result: done. The electrolyte accepted route is Ceres; old derivative-free helpers remain only in neutral LLE or TPD seed-polishing roles.
 - Missing-sensitivity Newton path is no longer the accepted production route: done. Public and native tests reject old accepted electrolyte labels.
 - Distributed-ion variables are explicit in public result and diagnostics: done. Basis diagnostics report explicit species, charged/neutral species indices, salt-pair basis vectors, formula feed, and phase compositions.

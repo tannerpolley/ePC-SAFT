@@ -33,8 +33,8 @@ Source-edit gate: open for issue #116 only after this intake is recorded. Issue 
 - Electrolyte TPD polishing uses `polish_formula_tpd_variables`, another hand-coded derivative-free polishing route.
 - `solve_lle_attempt` still calls the hand-coded neutral minimizer.
 - `solve_predictive_electrolyte_attempt` still calls `nelder_mead_variables` and then `newton_step`.
-- `newton_step` currently throws `not_available: electrolyte LLE residual sensitivities are not implemented.`
-- `_evaluate_electrolyte_lle_residual_native` currently throws `not_available: electrolyte LLE residual sensitivities are not implemented.`
+- `newton_step` currently throws an unsupported-derivative error for electrolyte LLE residual sensitivities.
+- `_evaluate_electrolyte_lle_residual_native` currently throws an unsupported-derivative error for electrolyte LLE residual sensitivities.
 - Neutral LLE diagnostics can still report `nonlinear_solver = native_derivative_free_nelder_mead`, `jacobian_available = false`, and derivative status values that are not acceptable for the issue #116 production route.
 
 ## Required #116 Production Direction

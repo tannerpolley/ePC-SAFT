@@ -65,7 +65,27 @@ def _blocked_terms() -> tuple[str, ...]:
     seventh = "perturbation" + "_" + "derivative"
     eighth = "numerical" + "diff"
     ninth = "levenberg" + "_" + "marquardt"
-    return (first, second, third, fourth, fifth, sixth, seventh, eighth, ninth)
+    tenth = "manual" + " numeric " + "perturbation"
+    eleventh = "numerical" + " perturbation"
+    twelfth = "numeric" + " perturbation"
+    thirteenth = "perturbation" + " jacobian"
+    fourteenth = "perturbation" + " derivative"
+    return (
+        first,
+        second,
+        third,
+        fourth,
+        fifth,
+        sixth,
+        seventh,
+        eighth,
+        ninth,
+        tenth,
+        eleventh,
+        twelfth,
+        thirteenth,
+        fourteenth,
+    )
 
 
 def main() -> int:

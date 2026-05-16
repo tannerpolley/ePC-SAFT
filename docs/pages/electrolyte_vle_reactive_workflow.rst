@@ -68,8 +68,8 @@ The derivative default is native-owned and diagnostic-friendly:
 standard states raise until analytic, CppAD, or implicit residual derivatives
 are implemented. Diagnostics report
 ``requested_jacobian_backend``, ``derivative_backend``, and ``derivative_status``
-for strict route-boundary failures. Numerical
-perturbation Jacobians are not a supported substitute.
+for strict route-boundary failures. Approximate Jacobian substitutes are not
+supported.
 
 .. code-block:: python
 
@@ -187,8 +187,8 @@ Sequential reactive workflows contain nested solved states: association site
 fractions, reactive speciation variables, density roots, bubble-pressure roots,
 and phase-equilibrium variables. These blocks must report derivatives through
 analytic residual derivatives, CppAD residual partials, implicit sensitivities,
-or strict route-boundary failures when coverage is incomplete. Numerical
-perturbation derivatives are not a supported substitute.
+or strict route-boundary failures when coverage is incomplete. Approximate
+derivative substitutes are not supported.
 
 For active association, the preferred sequential derivative boundary is to solve
 the association site fractions, compute residual partials, solve the implicit
