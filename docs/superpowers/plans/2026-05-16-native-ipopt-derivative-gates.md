@@ -563,6 +563,8 @@ Task 12 continuation note: public route-pending errors for neutral flash/LLE/sta
 
 Task 12 continuation note: reactive-regression runtime capability labels now describe structured residual-evaluation contexts instead of naming Python orchestration as a solver backend. The metadata keeps the route explicitly non-optimizer until native Ceres derivative coverage owns the production fit.
 
+Task 12 continuation note: the unreferenced tracked LaTeX backup `docs/latex/equations_old.tex` was deleted. The current source of truth remains `docs/latex/equations.tex`, with generated equation navigation kept in `docs/equations.md` and `docs/equations_registry.yaml`.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**
