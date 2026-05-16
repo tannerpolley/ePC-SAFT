@@ -116,15 +116,18 @@ want an implicit sync to rebuild the package again.
 Optional IPOPT support
 ----------------------
 
-IPOPT support is optional and explicit opt-in. Install it only when the platform
-already has the required IPOPT and ``cyipopt`` prerequisites:
+IPOPT support is a native build dependency, not a Python extra. Request it only
+when the platform already has a native Ipopt package that CMake can discover:
 
 .. code-block:: powershell
 
-   python -m pip install "epcsaft[ipopt] @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.2"
+   $env:EPCSAFT_PEP517_ENABLE_IPOPT = "1"
+   $env:EPCSAFT_PEP517_IPOPT_DIR = "C:\path\to\Ipopt\lib\cmake\Ipopt"
+   python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.2"
 
-IPOPT is explicit opt-in only. It is not selected by ``solver_backend="auto"``
-and it is not a full constrained Gibbs/NLP replacement.
+IPOPT is explicit opt-in only. It is not selected by ``solver_backend="auto"``.
+Public equilibrium routes still require the native adapter work before they can
+use Ipopt as a production solver.
 
 Verify the install
 ------------------

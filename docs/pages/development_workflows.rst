@@ -85,9 +85,9 @@ The canonical local native build command is:
 
    uv run python scripts/dev/build_epcsaft.py
 
-That command uses ``--profile fast`` by default: CppAD is enabled and Ceres is disabled. This is intentional for the local dev script only. CppAD is needed by the normal derivative-development path and is cheap to fetch/configure compared with Ceres. Ceres is a large nonlinear least-squares backend, so routine Codex setup, clean repair, and C++ edit loops should not compile Ceres unless the task is specifically Ceres regression or full-backend validation.
+That command uses ``--profile fast`` by default: Ceres and CppAD are enabled, and Ipopt is disabled unless explicitly requested. Ceres is required for native regression builds, and CppAD is required for derivative-capable package builds.
 
-Package install builds are different. Wheel/editable/path installs go through the PEP 517/scikit-build backend and inherit ``CMakeLists.txt`` defaults, where ``EPCSAFT_ENABLE_CERES`` and ``EPCSAFT_ENABLE_CPPAD`` are both ON. Do not change package-install defaults just to speed up local debugging; use the dev-script profiles below instead.
+Wheel/editable/path installs go through the PEP 517/scikit-build backend and use the same required Ceres/CppAD policy. Repeated clean builds can still avoid rebuilding Ceres by using a prebuilt system Ceres package.
 
 .. list-table::
    :header-rows: 1
@@ -98,21 +98,17 @@ Package install builds are different. Wheel/editable/path installs go through th
      - Default Windows parallelism
      - Use when
    * - ``fast``
-     - Ceres OFF, CppAD ON
-     - ``2``
+     - Ceres ON, CppAD ON
+     - ``4``
      - Normal source-checkout setup, C++ iteration, reactive/speciation work, and most validation.
-   * - ``cppad``
-     - Ceres OFF, CppAD ON
-     - ``2``
-     - Explicit clean CppAD proof without paying the Ceres FetchContent build cost.
    * - ``full``
      - Ceres ON, CppAD ON
      - ``4``
-     - Ceres regression/backend validation and final full-backend checks.
-   * - ``minimal``
-     - Ceres OFF, CppAD OFF
-     - ``10``
-     - Smallest native extension check when derivative and regression backends are intentionally out of scope.
+     - Alias for the required Ceres + CppAD dependency profile.
+   * - ``ipopt``
+     - Ceres ON, CppAD ON, Ipopt ON
+     - ``4``
+     - Native Ipopt adapter development or validation with a system Ipopt package.
 
 Use ``--build-only --parallel 10`` only after the CMake tree already exists. ``--build-only`` does not reconfigure profile flags; it builds whatever ``build/dev/CMakeCache.txt`` already says. Use ``--configure-only`` when you need to refresh CMake configuration without compiling. For a new ``build/dev`` tree, ``scripts/dev/build_epcsaft.py`` now prefers Ninja when ``ninja`` is available on ``PATH`` because it is usually faster than MinGW Makefiles for repeated local rebuilds. Existing CMake trees keep their original generator; doctor reports ``build_generator_recommendation`` when ``uv run python scripts/dev/build_epcsaft.py --clean --generator ninja`` is the appropriate one-time migration from an older MinGW tree.
 
@@ -123,11 +119,10 @@ For IDE run configurations, keep commands explicit instead of relying on one ove
 - Native build status: ``uv run python scripts/dev/build_epcsaft.py --status``
 - Native incremental build: ``uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10``
 - Native configure/build: ``uv run python scripts/dev/build_epcsaft.py --profile fast``
-- Clean CppAD proof without Ceres: ``uv run python scripts/dev/build_epcsaft.py --clean --profile cppad``
-- Full Ceres + CppAD proof: ``uv run python scripts/dev/build_epcsaft.py --clean --profile full --parallel 4``
-- Minimal native build without Ceres/CppAD: ``uv run python scripts/dev/build_epcsaft.py --clean --profile minimal``
+- Clean Ceres + CppAD proof: ``uv run python scripts/dev/build_epcsaft.py --clean --profile full --parallel 4``
+- Native Ipopt proof: ``uv run python scripts/dev/build_epcsaft.py --profile ipopt --ipopt-dir C:\path\to\lib\cmake\Ipopt``
 
-Do not use ``--clean`` for routine validation. ``uv run python scripts/dev/build_epcsaft.py --clean`` is a repair action for stale CMake state or stale/locked ``_core`` artifacts. A clean dev build deletes the reusable CMake tree, so enabling Ceres afterward forces Ceres source/configuration/build work under ``build/dev/_deps`` again. If Windows reports that ``_core*.pyd`` is locked, stop Python REPLs, tests, IDE run configurations, or parallel workers that imported ``epcsaft._core`` before retrying. If ``--status`` reports a stale Ninja lock, inspect the listed process ids and stop only repo-owned build processes before retrying.
+Do not use ``--clean`` for routine validation. ``uv run python scripts/dev/build_epcsaft.py --clean`` is a repair action for stale CMake state or stale/locked ``_core`` artifacts. A clean dev build deletes the reusable CMake tree, so Ceres source/configuration/build work under ``build/dev/_deps`` may run again unless you use a prebuilt system Ceres package. If Windows reports that ``_core*.pyd`` is locked, stop Python REPLs, tests, IDE run configurations, or parallel workers that imported ``epcsaft._core`` before retrying. If ``--status`` reports a stale Ninja lock, inspect the listed process ids and stop only repo-owned build processes before retrying.
 
 If Ceres becomes part of a repeated local workflow, build or install Ceres once outside ``build/dev`` and use the system-Ceres path instead of vendoring it through ``FetchContent`` on every clean full-profile configure. The supported command shape is:
 
@@ -258,6 +253,4 @@ Troubleshooting
 
 Run ``uv run python scripts/dev/doctor.py`` whenever imports, tool paths, ``_core`` state, or generated-output tracking are unclear. It reports the active Python, git ref, uv/cmake/ninja paths, ``epcsaft`` import path, ``epcsaft._core`` path, required native symbol presence, generated artifact state, and the next recommended command.
 
-If ``scripts/dev/build_epcsaft.py`` appears slow, run ``uv run python scripts/dev/build_epcsaft.py --status`` first. If the status output shows a stale Ninja lock and live repo-owned build processes, resolve those processes before retrying. If the status output is clean, check whether ``build/dev/CMakeCache.txt`` reports ``CMAKE_GENERATOR:INTERNAL=MinGW Makefiles`` or ``EPCSAFT_ENABLE_CERES:BOOL=ON``. A clean one-time switch to Ninja can materially reduce rebuild overhead on Windows systems where Ninja is already installed. A clean full-profile Ceres configure/build can still take far longer than the fast rebuild path; incremental ``--build-only --parallel 10`` is the intended C++ edit loop.
-
-The canonical local dev build uses ``--profile fast`` by default, not the Ceres backend. Package install builds still default to Ceres ON through ``CMakeLists.txt``. The ``quick`` validation profile stays focused on the standard fast contract suite, while ``uv run python scripts/dev/validate_project.py ceres-cppad`` explicitly reconfigures with ``--profile full`` before running the targeted regression/backend slice for Ceres-specific coverage. Use ``uv run python scripts/dev/build_epcsaft.py --profile minimal`` only when you intentionally need the native profile without Ceres or CppAD.
+If ``scripts/dev/build_epcsaft.py`` appears slow, run ``uv run python scripts/dev/build_epcsaft.py --status`` first. If the status output shows a stale Ninja lock and live repo-owned build processes, resolve those processes before retrying. If the status output is clean, check whether ``build/dev/CMakeCache.txt`` reports ``CMAKE_GENERATOR:INTERNAL=MinGW Makefiles``. A clean one-time switch to Ninja can materially reduce rebuild overhead on Windows systems where Ninja is already installed. Clean Ceres configure/builds can still take longer than incremental rebuilds; ``--build-only --parallel 10`` is the intended C++ edit loop after the tree is configured.

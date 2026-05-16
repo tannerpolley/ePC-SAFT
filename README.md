@@ -92,13 +92,15 @@ uv pip install -e .
 
 ### Optional IPOPT Support
 
-IPOPT support is optional and experimental. Install it only if you already have the `cyipopt`/IPOPT prerequisites working for your platform:
+IPOPT support is a native build dependency for the planned constrained-NLP equilibrium adapter. Request it only when CMake can discover a system Ipopt package:
 
 ```powershell
-python -m pip install "epcsaft[ipopt] @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.2"
+$env:EPCSAFT_PEP517_ENABLE_IPOPT = "1"
+$env:EPCSAFT_PEP517_IPOPT_DIR = "C:\path\to\Ipopt\lib\cmake\Ipopt"
+python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.2"
 ```
 
-IPOPT is never selected automatically by `solver_backend="auto"`; it is an explicit opt-in refinement path.
+IPOPT is never selected automatically by `solver_backend="auto"`. Public equilibrium routes require the native adapter work before they can use Ipopt as a production solver.
 
 ## Architecture And Diagnostics
 

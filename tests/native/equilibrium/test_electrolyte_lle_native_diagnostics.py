@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from epcsaft import _core, ePCSAFTMixture
+from tests.helpers.numeric import assert_allclose
 
 
 def _case2_feed() -> list[float]:
@@ -72,7 +73,7 @@ def test_native_electrolyte_lle_reports_basis_and_transform_diagnostics() -> Non
     cols = diagnostics["basis_vector_cols"]
     basis_vectors = np.asarray(diagnostics["basis_vectors_row_major"], dtype=float).reshape(rows, cols)
     species_charges = np.asarray(diagnostics["species_charge_vector"], dtype=float)
-    np.testing.assert_allclose(basis_vectors @ species_charges, np.zeros(rows), atol=1.0e-12)
+    assert_allclose(basis_vectors @ species_charges, np.zeros(rows), atol=1.0e-12)
 
     assert diagnostics["phase_charge_balance_feed"] == pytest.approx(0.0, abs=1.0e-12)
     assert diagnostics["phase_charge_balance_aq"] == pytest.approx(0.0, abs=1.0e-8)

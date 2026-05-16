@@ -7,6 +7,7 @@ import pytest
 
 import epcsaft
 
+
 def _tiny_base_parameters() -> dict[str, np.ndarray]:
     return {
         "m": np.asarray([1.0, 1.2], dtype=float),

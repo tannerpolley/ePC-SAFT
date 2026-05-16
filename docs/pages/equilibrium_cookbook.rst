@@ -80,8 +80,8 @@ these fields as routing hints, not as proof that a physical case is valid.
      - You need implemented autodiff derivative paths.
      - You need an automatic analytical substitute.
    * - ``solver_backend="ipopt"``
-     - You explicitly installed ``cyipopt`` and want residual-minimization refinement.
-     - You need full constrained Gibbs minimization.
+     - You are testing the future native Ipopt constrained-NLP route once it is implemented.
+     - You need the current native equilibrium route.
 
 Neutral VLE, LLE, and stability
 -------------------------------
@@ -379,12 +379,13 @@ the physical closure and pressure mismatch is acceptable or separately audited.
        rho_seed=next_seed,
    )
 
-IPOPT opt-in
-------------
+IPOPT route status
+------------------
 
-``solver_backend="ipopt"`` requires the optional ``cyipopt`` dependency. If it
-is not importable, the package raises ``InputError`` and does not silently fall
-back to Newton.
+``solver_backend="ipopt"`` is reserved for the native Ipopt constrained-NLP
+adapter. The old Python adapter has been removed. Until the native adapter is
+wired to public equilibrium routes, an explicit IPOPT request raises
+``InputError``.
 
 .. code-block:: python
 
@@ -396,5 +397,5 @@ back to Newton.
            options=epcsaft.EquilibriumOptions(solver_backend="ipopt"),
        )
    except epcsaft.InputError as exc:
-       print("IPOPT was requested but is unavailable:", exc)
+       print("IPOPT was requested before the native adapter was routed:", exc)
 

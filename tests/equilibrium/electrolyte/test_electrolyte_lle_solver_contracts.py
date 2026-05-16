@@ -8,6 +8,7 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
+from tests.helpers.numeric import assert_allclose
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -126,7 +127,7 @@ def test_predictive_residual_uses_dependent_phase_material_balance() -> None:
 
     aq, org = result.phases
     reconstructed = aq.phase_fraction * aq.composition + org.phase_fraction * org.composition
-    np.testing.assert_allclose(reconstructed, feed, atol=1.0e-10)
+    assert_allclose(reconstructed, feed, atol=1.0e-10)
 
 def test_electrolyte_lle_solver_failure_reports_production_derivatives() -> None:
     mix = _case2_mixture()

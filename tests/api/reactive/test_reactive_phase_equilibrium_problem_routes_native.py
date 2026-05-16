@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 import epcsaft
 
@@ -82,5 +83,5 @@ def test_reactive_phase_equilibrium_problem_rejects_non_lle_production_kind() ->
         phase_kind="tp_flash",
     )
 
-    with np.testing.assert_raises_regex(epcsaft.InputError, "reactive_staged_equilibrium"):
+    with pytest.raises(epcsaft.InputError, match="reactive_staged_equilibrium"):
         mix.solve_equilibrium(problem)

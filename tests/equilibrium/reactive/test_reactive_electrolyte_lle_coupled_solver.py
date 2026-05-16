@@ -6,6 +6,7 @@ import pytest
 import epcsaft
 from epcsaft import ePCSAFTMixture
 from tests.equilibrium.reactive.test_reactive_lle_coupled_solver import _assert_coupled_reactive_phase_diagnostics
+from tests.helpers.numeric import assert_allclose
 
 
 def _reactive_electrolyte_lle_fixture() -> tuple[
@@ -74,7 +75,7 @@ def test_reactive_electrolyte_lle_public_route_uses_coupled_native_solver() -> N
         assert phase.composition.sum() == pytest.approx(1.0, abs=1.0e-12)
         assert float(np.dot(phase.composition, charges)) == pytest.approx(0.0, abs=1.0e-8)
         reconstructed += phase.phase_fraction * phase.composition
-    np.testing.assert_allclose(
+    assert_allclose(
         [
             reconstructed[0] + reconstructed[1],
             reconstructed[2],

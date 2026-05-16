@@ -15,6 +15,7 @@ from epcsaft.regression import (
     evaluate_generic_regression_derivatives,
 )
 
+
 def _minimal_nacl_records():
     return [
         {

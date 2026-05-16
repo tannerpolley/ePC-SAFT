@@ -8,6 +8,7 @@ import pytest
 import epcsaft
 from epcsaft import ePCSAFTMixture
 from tests.equilibrium.electrolyte.test_electrolyte_lle_solver_contracts import _assert_ceres_production_diagnostics
+from tests.helpers.numeric import assert_allclose
 
 
 def _salting_out_fixture() -> tuple[ePCSAFTMixture, np.ndarray, dict[str, object]]:
@@ -52,7 +53,7 @@ def test_quaternary_salting_out_lle_benchmark_uses_production_solver() -> None:
         assert phase.composition.sum() == pytest.approx(1.0, abs=1.0e-12)
         assert float(np.dot(phase.composition, charges)) == pytest.approx(0.0, abs=1.0e-8)
         reconstructed += phase.phase_fraction * phase.composition
-    np.testing.assert_allclose(reconstructed, feed, atol=1.0e-10)
+    assert_allclose(reconstructed, feed, atol=1.0e-10)
     assert phases["aq"].composition[0] > phases["org"].composition[0]
     assert phases["org"].composition[1] > phases["aq"].composition[1]
     assert phases["aq"].composition[2] > phases["org"].composition[2]

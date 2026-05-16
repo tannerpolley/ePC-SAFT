@@ -121,7 +121,6 @@ behavior.
 | `epcsaft.runtime` | Public runtime metadata implementation module | Keep. |
 | `epcsaft.implicit_sensitivity` | Public sensitivity helper module | Keep, but status-token helper naming should be revisited only with API migration. |
 | `epcsaft._types` | Private implementation module | Do not promote. |
-| `epcsaft._optional_backends` | Private optional-backend implementation package | Do not promote as public API. |
 | `epcsaft.equilibrium_core` | Internal equilibrium support package | Keep internal; do not add top-level exports. |
 
 ## Entry Points
@@ -139,8 +138,8 @@ No entrypoint changes are needed for issue #120.
 - Public namespaces are now documented in `docs/pages/package_architecture.rst`.
 - Benchmark runtime logic has already moved out of the installable runtime
   package; benchmark helpers are imported from `scripts/benchmarks/helpers`.
-- Optional IPOPT implementation lives under `_optional_backends`; no top-level
-  compatibility alias remains in the runtime package.
+- Native IPOPT implementation work belongs under native equilibrium internals;
+  no Python optional backend module remains in the runtime package.
 - Sequential reactive workflow names remain public for compatibility, but docs
   now state the workflow boundary explicitly.
 - No application-specific downstream helper was found in `epcsaft.__all__` that

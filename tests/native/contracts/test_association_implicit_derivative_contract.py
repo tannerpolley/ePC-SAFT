@@ -6,6 +6,7 @@ import pytest
 from epcsaft import _core
 from epcsaft.epcsaft import create_struct
 from tests.helpers.native_cases import _ionic_state
+from tests.helpers.numeric import assert_allclose
 
 
 def _state():
@@ -77,7 +78,7 @@ def test_association_composition_derivative_includes_solved_site_fraction_respon
         central_perturbation.append((plus_value - minus_value) / (2.0 * step))
 
     assert np.any(np.abs(association_jacobian) > 1.0e-8)
-    np.testing.assert_allclose(association_jacobian, central_perturbation, rtol=2.0e-7, atol=2.0e-7)
+    assert_allclose(association_jacobian, central_perturbation, rtol=2.0e-7, atol=2.0e-7)
 
     public_result = mix.state(T=temperature, x=composition, rho=density).ares_composition_derivative_result()
     assert public_result["backend"] == "analytic_implicit"

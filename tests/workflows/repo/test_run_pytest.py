@@ -91,6 +91,7 @@ def test_doctor_tracks_native_symbols_added_by_recent_workflows():
     assert "_fit_generic_native_least_squares" in required
     assert "_evaluate_generic_native_debug" in required
     assert "_solve_equilibrium_native" in required
+    assert "_native_ipopt_smoke" in required
 
 
 def test_doctor_recommends_ninja_migration_for_mingw_build_tree():
@@ -163,6 +164,12 @@ def test_slice_targets_use_grouped_test_subpackages():
         "tests/equilibrium/core/test_vle.py::"
         "test_ternary_hydrocarbon_basis_tp_flash_closes_material_and_fugacity_balance"
     ) in run_pytest.GENERIC_TEST_TARGETS
+    assert "tests/equilibrium/core/test_lle.py::test_methanol_cyclohexane_lle_flash_solves_seeded_phase_split" in (
+        run_pytest.GENERIC_TEST_TARGETS
+    )
+    assert "tests/equilibrium/core/test_lle.py::test_lle_flash_requested_ipopt_requires_native_adapter" in (
+        run_pytest.GENERIC_TEST_TARGETS
+    )
     assert "tests/native/contracts/test_equation_registry.py::test_equation_registry_outputs_are_synced" in (
         run_pytest.GENERIC_TEST_TARGETS
     )

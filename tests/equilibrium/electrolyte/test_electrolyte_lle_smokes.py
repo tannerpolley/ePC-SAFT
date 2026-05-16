@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 
 import epcsaft
-from epcsaft._optional_backends import ipopt as ipopt_backend
 from epcsaft import ePCSAFTMixture
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -77,12 +76,11 @@ def test_electrolyte_lle_direct_feed_reports_production_solver_derivatives() -> 
 
     _assert_ceres_solver_diagnostics(result)
 
-@pytest.mark.skipif(not ipopt_backend.cyipopt_available(), reason="cyipopt is optional")
-def test_electrolyte_lle_direct_feed_solves_ipopt_predictive_split() -> None:
+def test_electrolyte_lle_direct_feed_requested_ipopt_requires_native_adapter() -> None:
     feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
     mix = _ascani_water_butanol_nacl_mixture(feed)
 
-    with pytest.raises(epcsaft.InputError, match="not_available"):
+    with pytest.raises(epcsaft.InputError, match=r"native Ipopt adapter.*electrolyte_lle"):
         mix.equilibrium(
             kind="electrolyte_lle",
             T=298.15,
@@ -134,7 +132,7 @@ def test_electrolyte_lle_rejects_neutral_lle_initial_phase_labels() -> None:
     mix = _ascani_water_butanol_nacl_mixture()
     feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
 
-    with np.testing.assert_raises_regex(epcsaft.InputError, "aq.*org.*phase_fraction"):
+    with pytest.raises(epcsaft.InputError, match="aq.*org.*phase_fraction"):
         mix.equilibrium(
             kind="electrolyte_lle",
             T=298.15,
@@ -174,12 +172,12 @@ def test_one_salt_smoke_reports_production_solver_derivatives() -> None:
 def test_electrolyte_lle_rejects_non_neutral_direct_feed() -> None:
     mix = _ascani_water_butanol_nacl_mixture()
 
-    with np.testing.assert_raises_regex(epcsaft.InputError, "charge neutral"):
+    with pytest.raises(epcsaft.InputError, match="charge neutral"):
         mix.equilibrium(kind="electrolyte_lle", T=298.15, P=1.013e5, z=[0.55, 0.40, 0.04, 0.01])
 
 def test_neutral_lle_keeps_rejecting_ionic_mixtures() -> None:
     feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
     mix = _ascani_water_butanol_nacl_mixture(feed)
 
-    with np.testing.assert_raises_regex(epcsaft.InputError, "ion-containing"):
+    with pytest.raises(epcsaft.InputError, match="ion-containing"):
         mix.equilibrium(kind="lle_flash", T=298.15, P=1.013e5, z=feed)

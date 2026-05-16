@@ -5,6 +5,7 @@ import math
 import numpy as np
 
 from epcsaft import _core
+from tests.helpers.numeric import assert_allclose
 from tests.native.equilibrium.test_reactive_phase_equilibrium_residual_surface import (
     _neutral_reactive_lle_mixture,
 )
@@ -60,7 +61,7 @@ def test_reactive_phase_residual_jacobian_matches_source_perturbation() -> None:
         2.0 * step
     )
 
-    np.testing.assert_allclose(jacobian @ direction, source_delta, rtol=2.0e-4, atol=2.0e-5)
+    assert_allclose(jacobian @ direction, source_delta, rtol=2.0e-4, atol=2.0e-5)
 
 
 def test_ideal_reaction_standard_state_jacobian_uses_log_mole_fraction_basis() -> None:
@@ -80,7 +81,7 @@ def test_ideal_reaction_standard_state_jacobian_uses_log_mole_fraction_basis() -
     expected_phase1 = np.asarray([-1.0, 2.0], dtype=float) - x1
     expected_phase2 = np.asarray([-1.0, 2.0], dtype=float) - x2
 
-    np.testing.assert_allclose(jacobian[1, :2], expected_phase1, rtol=1.0e-12, atol=1.0e-12)
-    np.testing.assert_allclose(jacobian[1, 2:], np.zeros(2), atol=1.0e-12)
-    np.testing.assert_allclose(jacobian[2, :2], np.zeros(2), atol=1.0e-12)
-    np.testing.assert_allclose(jacobian[2, 2:], expected_phase2, rtol=1.0e-12, atol=1.0e-12)
+    assert_allclose(jacobian[1, :2], expected_phase1, rtol=1.0e-12, atol=1.0e-12)
+    assert_allclose(jacobian[1, 2:], np.zeros(2), atol=1.0e-12)
+    assert_allclose(jacobian[2, :2], np.zeros(2), atol=1.0e-12)
+    assert_allclose(jacobian[2, 2:], expected_phase2, rtol=1.0e-12, atol=1.0e-12)

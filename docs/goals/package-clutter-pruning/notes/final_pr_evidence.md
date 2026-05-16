@@ -27,9 +27,9 @@ scope boundary used for the PR.
   `src/epcsaft/native/regression` scaffold, removed the CMake include/glob
   hooks, and kept the Ceres smoke binding tied directly to compiled Ceres
   availability.
-- Phase 5 optional module cleanup: moved the IPOPT implementation under
-  `src/epcsaft/_optional_backends`, kept `epcsaft.ipopt_backend` as a
-  compatibility alias, and clarified sequential reactive workflow wording.
+- Phase 5 optional module cleanup: the historical Python IPOPT bridge notes are
+  obsolete after the native Ipopt gate cleanup; sequential reactive workflow
+  wording remains the relevant part of this receipt.
 - Phase 6 ownership plan: added `docs/roadmaps/module_ownership_and_split_plan.md`
   for the large modules that remain too broad for this cleanup PR.
 - Phase 7 broad exception cleanup: narrowed broad catches in `src/epcsaft` and

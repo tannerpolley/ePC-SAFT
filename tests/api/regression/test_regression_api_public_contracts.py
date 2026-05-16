@@ -10,6 +10,7 @@ import pytest
 import epcsaft
 import epcsaft.regression as regression_module
 
+
 def _minimal_nacl_records():
     return [
         {

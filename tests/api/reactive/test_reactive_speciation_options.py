@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 import epcsaft
-from epcsaft._optional_backends import ipopt as ipopt_backend
+
 
 def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
     params = {
@@ -49,7 +49,7 @@ def test_reactive_speciation_options_expose_jacobian_backend_selector() -> None:
 @pytest.mark.parametrize(
     ("options", "message"),
     [
-        (epcsaft.ReactiveSpeciationOptions(solver_backend="cyipopt"), "solver_backend"),
+        (epcsaft.ReactiveSpeciationOptions(solver_backend="python_ipopt"), "solver_backend"),
         (epcsaft.ReactiveSpeciationOptions(hessian_strategy="exact"), "hessian_strategy"),
     ],
 )
@@ -79,12 +79,11 @@ def test_reactive_speciation_rejects_invalid_optimizer_options(options, message)
             options=options,
         )
 
-def test_reactive_speciation_requested_ipopt_requires_cyipopt(monkeypatch) -> None:
-    monkeypatch.setattr(ipopt_backend, "cyipopt_available", lambda: False)
+def test_reactive_speciation_requested_ipopt_requires_native_adapter() -> None:
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
 
-    with pytest.raises(epcsaft.InputError, match=r"cyipopt.*solver_backend='ipopt'"):
+    with pytest.raises(epcsaft.InputError, match=r"native Ipopt adapter.*reactive_speciation"):
         epcsaft.solve_reactive_speciation(
             species=species,
             mixture_factory=lambda x, T, P: mix,
@@ -106,8 +105,7 @@ def test_reactive_speciation_requested_ipopt_requires_cyipopt(monkeypatch) -> No
             options=epcsaft.ReactiveSpeciationOptions(solver_backend="ipopt"),
         )
 
-def test_reactive_speciation_auto_does_not_require_cyipopt(monkeypatch) -> None:
-    monkeypatch.setattr(ipopt_backend, "require_cyipopt", lambda route: (_ for _ in ()).throw(AssertionError(route)))
+def test_reactive_speciation_auto_uses_current_native_route() -> None:
     mix = epcsaft.ePCSAFTMixture.from_params(
         {
             "m": np.asarray([1.0, 1.0]),
@@ -137,47 +135,3 @@ def test_reactive_speciation_auto_does_not_require_cyipopt(monkeypatch) -> None:
     assert result.success is True
     assert result.diagnostics["selected_solver_backend"] == "native"
     assert result.diagnostics["solver_selection_reason"] == "default_native"
-
-@pytest.mark.skipif(not ipopt_backend.cyipopt_available(), reason="cyipopt is optional")
-def test_reactive_speciation_ipopt_solves_easy_ideal_reaction() -> None:
-    mix = epcsaft.ePCSAFTMixture.from_params(
-        {
-            "m": np.asarray([1.0, 1.0]),
-            "s": np.asarray([3.0, 3.0]),
-            "e": np.asarray([200.0, 200.0]),
-        },
-        species=["A", "B"],
-    )
-
-    result = epcsaft.solve_reactive_speciation(
-        species=["A", "B"],
-        mixture_factory=lambda x, T, P: mix,
-        T=298.15,
-        P=1.0e5,
-        balances={"total": {"A": 1.0, "B": 1.0}},
-        totals={"total": 1.0},
-        reactions=[epcsaft.ReactionDefinition({"A": -1.0, "B": 1.0}, log_equilibrium_constant=math.log(3.0))],
-        initial_x=[0.5, 0.5],
-        options=epcsaft.ReactiveSpeciationOptions(
-            solver_backend="ipopt",
-            hessian_strategy="lbfgs",
-            tolerance=1.0e-8,
-            max_iterations=80,
-        ),
-    )
-
-    assert result.success is True
-    assert result.x["B"] / result.x["A"] == pytest.approx(3.0, rel=1.0e-7)
-    assert result.diagnostics["backend"] == "ipopt"
-    assert result.diagnostics["solver_method"] == "cyipopt_bound_min_residual"
-    assert result.diagnostics["formulation"] == "bound_constrained_residual_minimization"
-    assert result.diagnostics["full_constrained_nlp"] is False
-    assert result.diagnostics["exact_hessian_available"] is False
-    assert result.diagnostics["hessian_strategy"] == "lbfgs"
-    assert result.diagnostics["hessian_kind"] == "ipopt_limited_memory"
-    assert result.diagnostics["hessian_includes_second_residual_derivatives"] is False
-    assert result.diagnostics["ipopt_success"] is True
-    assert result.diagnostics["residual_gate_success"] is True
-    assert result.diagnostics["accepted"] is True
-    assert result.diagnostics["selected_solver_backend"] == "ipopt"
-    assert result.diagnostics["solver_selection_reason"] == "explicit_request"

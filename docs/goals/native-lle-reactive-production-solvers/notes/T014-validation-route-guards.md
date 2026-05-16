@@ -9,7 +9,7 @@ Done. The issue #117 Stage 10 validation ladder passed on the current branch aft
 - `uv run python scripts/dev/build_epcsaft.py --clean --enable-ceres --enable-cppad`: pass.
 - `uv run python run_pytest.py tests/native/equilibrium -q`: pass, 26 tests.
 - `uv run python run_pytest.py tests/equilibrium/reactive -q`: pass, 4 tests.
-- `uv run python run_pytest.py tests/api/reactive -q`: pass, 65 passed and 1 skipped for optional `cyipopt`.
+- `uv run python run_pytest.py tests/api/reactive -q`: pass, 65 passed and 1 skipped for the then-optional Python IPOPT bridge.
 - `uv run python scripts/dev/validate_project.py quick`: pass, 31 tests.
 - `uv run python scripts/dev/validate_project.py docs`: pass.
 - `git diff --check`: pass.

@@ -14,8 +14,12 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Full duration command: `uv run python run_pytest.py --all -q --durations=30`
   - Result: failed; `496 passed, 8 failed, 27 skipped` in `239.64s`; wrapper wall time `240.664s`.
 - Quick validation command: `uv run python scripts/dev/validate_project.py quick`
-  - Result after the text gate landed: `32 passed in 20.48s`
+  - Result after the native dependency gate landed: `35 passed in 21.53s`
   - This is comfortably under the 10 minute quick-gate target.
+- Ceres/CppAD validation command: `uv run python scripts/dev/validate_project.py ceres-cppad`
+  - Result after the native dependency gate landed: `4 passed in 2.97s`; wrapper completed after an incremental full-profile native build.
+- Package boundary command: `uv run python scripts/dev/build_dist.py`
+  - Result after the Ceres dependency gate landed: wheel smoke passed and the built wheel had no vendored Ceres development artifacts.
 - Docs validation command: `uv run python scripts/dev/validate_project.py docs`
   - Result: Sphinx HTML build passed.
 - Text gate command: `uv run python scripts/dev/check_text_gates.py`
@@ -56,9 +60,10 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 ## Unnecessary Or Weak Coverage Found
 
 - Test import and unused mock-argument bloat was mechanical and removed.
+- NumPy testing imports were removed from tests because the lazy `np.testing` import path can stall Windows validation before the thermodynamic assertion runs.
 - Several tests still assert legacy missing-status behavior instead of implemented derivative coverage.
 - Several tests still protect fallback diagnostics, debug skip controls, or legacy custom solver routes.
-- Some Ceres and Ipopt tests currently skip when optional backends are absent; this conflicts with the new required native dependency direction and must be tightened after build gates are updated.
+- Ceres and CppAD are now required by the local dev script, package build backend, and CMake configure gate. Ipopt remains a system-dependency opt-in until the adapter is implemented.
 - `tests/native/equilibrium/test_reactive_phase_equilibrium_residual_jacobian.py` still uses source-perturbation comparison language and should be rewritten around analytical or CppAD Jacobian evidence.
 
 Full-suite failures from the duration run that align with planned cleanup or next implementation:
@@ -78,7 +83,8 @@ The last two failures were caused or exposed by this cleanup slice and were fixe
 
 - The first Task 3 slice removed the legacy numerical package from the test dependency group.
 - The first Task 3 slice deleted the legacy Rezaee fitting script and its generated fit outputs.
-- `src/epcsaft/_optional_backends/ipopt.py` still owns a Python `cyipopt` residual-minimization route.
+- The second Task 3 slice removed the Python IPOPT adapter, added native system Ipopt discovery, and added doctor/build status reporting. The native Ipopt adapter and public route wiring remain open.
+- The third Task 3 slice made Ceres and CppAD mandatory native dependencies for dev-script, package-backend, and CMake builds, excluded vendored Ceres install rules from package artifacts, and validated the actual local extension with Ceres enabled.
 - Public equilibrium options still expose `newton` and `ipopt` through Python-side routing.
 - Native and Python equilibrium paths still contain custom bracketing, bisection, golden-section, retry, and fallback behavior.
 - Regression still exposes native least-squares compatibility paths that must be replaced by Ceres-only production routes.
@@ -86,11 +92,11 @@ The last two failures were caused or exposed by this cleanup slice and were fixe
 ## Required Cleanup Still Open
 
 - Delete or rewrite tests that only protect legacy missing-status behavior.
-- Add passing tracked gates for no legacy numerical package/dev/test dependency after dependency cleanup.
+- Add passing tracked gates for no legacy numerical package/dev/test dependency after dependency cleanup. Done in the Task 3 dependency slices.
 - Add passing tracked gates for no Python production solve loop after native Ipopt routes exist.
 - Add passing tracked gates for no Eigen nonlinear optimizer route while still allowing Eigen linear algebra.
 - Move any slow scientific matrix coverage that is not already opt-in out of the quick gate.
-- Replace optional-backend skip behavior with required-backend validation once Ceres, CppAD, and native Ipopt build gates are in place.
+- Continue replacing optional-backend skip behavior with required-backend validation as solver routes move to Ipopt and regression routes become Ceres-only.
 
 ## Task 2 Status
 
@@ -102,6 +108,7 @@ Completed in the first Task 2 slice:
 - Removed mechanical unused-import and unused-argument test bloat.
 - Rewrote one stale derivative-free LLE assertion to require the current Ceres plus CppAD-implicit route.
 - Added this tracked audit artifact.
+- Removed NumPy testing import usage from the test tree to keep Windows validation deterministic.
 
 Not complete yet:
 

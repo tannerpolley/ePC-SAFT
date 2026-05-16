@@ -11,6 +11,7 @@ import epcsaft
 from epcsaft import ePCSAFTMixture
 from epcsaft.equilibrium import _explicit_to_formula_composition, _formula_to_explicit_composition
 from epcsaft.equilibrium_core.electrolyte_basis import build_electrolyte_basis
+from tests.helpers.numeric import assert_allclose
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -88,7 +89,7 @@ def test_divalent_two_to_one_salt_basis_reconstructs_charge_neutral_formula() ->
     assert payload["salt_pairs"][0]["label"] == "MgCl2"
     assert payload["salt_pairs"][0]["cation_stoich"] == 1
     assert payload["salt_pairs"][0]["anion_stoich"] == 2
-    np.testing.assert_allclose(explicit, feed, atol=1.0e-12)
+    assert_allclose(explicit, feed, atol=1.0e-12)
     assert abs(float(np.dot(explicit, charges))) <= 1.0e-12
 
 def test_one_to_two_salt_basis_reconstructs_charge_neutral_formula() -> None:
@@ -109,7 +110,7 @@ def test_one_to_two_salt_basis_reconstructs_charge_neutral_formula() -> None:
     assert payload["salt_pairs"][0]["label"] == "Na2SO4"
     assert payload["salt_pairs"][0]["cation_stoich"] == 2
     assert payload["salt_pairs"][0]["anion_stoich"] == 1
-    np.testing.assert_allclose(explicit, feed, atol=1.0e-12)
+    assert_allclose(explicit, feed, atol=1.0e-12)
     assert abs(float(np.dot(explicit, charges))) <= 1.0e-12
 
 def test_mixed_monovalent_divalent_shared_anion_basis_builds() -> None:

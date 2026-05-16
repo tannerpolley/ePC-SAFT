@@ -18,12 +18,21 @@ project(${SKBUILD_PROJECT_NAME}
 )
 
 option(EPCSAFT_DEV_INPLACE "Copy the compiled extension into src/epcsaft for local development" OFF)
-option(EPCSAFT_ENABLE_CERES "Enable Ceres Solver support for native equilibrium nonlinear solves" ON)
+option(EPCSAFT_ENABLE_CERES "Enable Ceres Solver support required for native regression solves" ON)
 option(EPCSAFT_USE_SYSTEM_CERES "Use an installed Ceres Solver package instead of FetchContent" OFF)
 option(EPCSAFT_ENABLE_CPPAD "Enable package-wide CppAD support" ON)
 option(EPCSAFT_USE_SYSTEM_CPPAD "Use installed CppAD instead of FetchContent" OFF)
+option(EPCSAFT_ENABLE_IPOPT "Enable native Ipopt support for production equilibrium NLP solves" OFF)
+option(EPCSAFT_USE_SYSTEM_IPOPT "Use an installed Ipopt package for native equilibrium NLP solves" ON)
 option(EPCSAFT_WARNINGS_AS_ERRORS "Treat native warnings as errors" OFF)
 option(EPCSAFT_ENABLE_SANITIZERS "Enable ASAN/UBSAN in debug builds" OFF)
+
+if(NOT EPCSAFT_ENABLE_CERES)
+    message(FATAL_ERROR "EPCSAFT_ENABLE_CERES=OFF is not supported; native regression builds require Ceres.")
+endif()
+if(NOT EPCSAFT_ENABLE_CPPAD)
+    message(FATAL_ERROR "EPCSAFT_ENABLE_CPPAD=OFF is not supported; derivative-capable package builds require CppAD.")
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -76,17 +85,58 @@ if(EPCSAFT_ENABLE_CERES)
         set(LAPACK OFF CACHE BOOL "" FORCE)
         set(USE_CUDA OFF CACHE BOOL "" FORCE)
         set(SCHUR_SPECIALIZATIONS OFF CACHE BOOL "" FORCE)
-        FetchContent_Declare(
-            ceres-solver
-            GIT_REPOSITORY https://ceres-solver.googlesource.com/ceres-solver
-            GIT_TAG 2.2.0
-            GIT_SHALLOW TRUE
-        )
-        FetchContent_MakeAvailable(ceres-solver)
+        if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.28")
+            FetchContent_Declare(
+                ceres_solver
+                GIT_REPOSITORY https://ceres-solver.googlesource.com/ceres-solver
+                GIT_TAG 2.2.0
+                GIT_SHALLOW TRUE
+                EXCLUDE_FROM_ALL
+            )
+            FetchContent_MakeAvailable(ceres_solver)
+        else()
+            FetchContent_Declare(
+                ceres_solver
+                GIT_REPOSITORY https://ceres-solver.googlesource.com/ceres-solver
+                GIT_TAG 2.2.0
+                GIT_SHALLOW TRUE
+            )
+            FetchContent_GetProperties(ceres_solver)
+            if(NOT ceres_solver_POPULATED)
+                FetchContent_Populate(ceres_solver)
+                add_subdirectory("${ceres_solver_SOURCE_DIR}" "${ceres_solver_BINARY_DIR}" EXCLUDE_FROM_ALL)
+            endif()
+        endif()
         if(TARGET ceres_internal AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
             target_compile_options(ceres_internal PRIVATE -include cstdint)
         endif()
     endif()
+endif()
+
+set(EPCSAFT_IPOPT_STATUS "disabled")
+set(EPCSAFT_IPOPT_TARGET "")
+if(EPCSAFT_ENABLE_IPOPT)
+    if(NOT EPCSAFT_USE_SYSTEM_IPOPT)
+        message(FATAL_ERROR "EPCSAFT_ENABLE_IPOPT=ON requires EPCSAFT_USE_SYSTEM_IPOPT=ON; vendored Ipopt builds are not supported.")
+    endif()
+    find_package(Ipopt CONFIG QUIET)
+    if(TARGET Ipopt::ipopt)
+        set(EPCSAFT_IPOPT_TARGET Ipopt::ipopt)
+    elseif(TARGET Ipopt::Ipopt)
+        set(EPCSAFT_IPOPT_TARGET Ipopt::Ipopt)
+    else()
+        find_package(PkgConfig QUIET)
+        if(PkgConfig_FOUND)
+            pkg_check_modules(EPCSAFT_IPOPT_PC QUIET IMPORTED_TARGET ipopt)
+        endif()
+        if(TARGET PkgConfig::EPCSAFT_IPOPT_PC)
+            set(EPCSAFT_IPOPT_TARGET PkgConfig::EPCSAFT_IPOPT_PC)
+        endif()
+    endif()
+    if(NOT EPCSAFT_IPOPT_TARGET)
+        message(FATAL_ERROR "EPCSAFT_ENABLE_IPOPT=ON requested, but native Ipopt was not found. Set Ipopt_DIR or provide pkg-config metadata for ipopt.")
+    endif()
+    set(EPCSAFT_IPOPT_STATUS "enabled_available")
 endif()
 
 if(EPCSAFT_USE_SYSTEM_CPPAD)
@@ -195,6 +245,10 @@ if(EPCSAFT_ENABLE_CERES)
     target_link_libraries(epcsaft_native PUBLIC Ceres::ceres)
     target_compile_definitions(epcsaft_native PUBLIC EPCSAFT_HAS_CERES=1)
 endif()
+if(EPCSAFT_ENABLE_IPOPT)
+    target_link_libraries(epcsaft_native PUBLIC "${EPCSAFT_IPOPT_TARGET}")
+    target_compile_definitions(epcsaft_native PUBLIC EPCSAFT_HAS_IPOPT=1)
+endif()
 if(EPCSAFT_CPPAD_LIBRARY)
     target_link_libraries(epcsaft_native PUBLIC "${EPCSAFT_CPPAD_LIBRARY}")
 endif()
@@ -214,7 +268,12 @@ target_compile_features(_core PRIVATE cxx_std_17)
 set(EPCSAFT_NATIVE_TARGETS epcsaft_native _core)
 
 foreach(target_name IN LISTS EPCSAFT_NATIVE_TARGETS)
-    target_compile_definitions(${target_name} PRIVATE EPCSAFT_CPPAD_STATUS="${EPCSAFT_CPPAD_STATUS}")
+    target_compile_definitions(
+        ${target_name}
+        PRIVATE
+            EPCSAFT_CPPAD_STATUS="${EPCSAFT_CPPAD_STATUS}"
+            EPCSAFT_IPOPT_STATUS="${EPCSAFT_IPOPT_STATUS}"
+    )
     if(EPCSAFT_ENABLE_CPPAD)
         if(EPCSAFT_CPPAD_GENERATED_INCLUDE_DIR)
             target_include_directories(${target_name} SYSTEM PRIVATE "${EPCSAFT_CPPAD_GENERATED_INCLUDE_DIR}")

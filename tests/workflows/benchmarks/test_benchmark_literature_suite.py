@@ -26,9 +26,7 @@ def test_literature_benchmark_module_exposes_issue_119_case_order():
 
 
 def test_literature_benchmark_payload_tracks_executable_and_blocked_issue_119_cases():
-    from scripts.benchmarks.helpers.literature import BLOCKED
-    from scripts.benchmarks.helpers.literature import EXECUTABLE
-    from scripts.benchmarks.helpers.literature import run_literature_benchmarks
+    from scripts.benchmarks.helpers.literature import BLOCKED, EXECUTABLE, run_literature_benchmarks
 
     payload = run_literature_benchmarks()
 
@@ -55,9 +53,7 @@ def test_literature_benchmark_payload_tracks_executable_and_blocked_issue_119_ca
 
 
 def test_literature_benchmark_payload_executes_only_executable_cases_with_injected_runner():
-    from scripts.benchmarks.helpers.literature import BLOCKED
-    from scripts.benchmarks.helpers.literature import EXECUTABLE
-    from scripts.benchmarks.helpers.literature import run_literature_benchmarks
+    from scripts.benchmarks.helpers.literature import BLOCKED, EXECUTABLE, run_literature_benchmarks
 
     calls: list[str] = []
 

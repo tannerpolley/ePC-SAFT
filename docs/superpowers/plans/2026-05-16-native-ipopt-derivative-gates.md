@@ -278,15 +278,15 @@ Task 1 note: the first committed gate covers the explicit backend-status and num
 
 - [x] Remove SciPy from package/dev/test dependency groups.
 - [x] Replace or delete the single SciPy-based Rezaee fitting analysis workflow.
-- [ ] Make Ceres required for regression builds.
-- [ ] Make CppAD required for derivative-capable builds.
-- [ ] Add native system Ipopt discovery and fail loudly when the required Ipopt build is requested but missing.
-- [ ] Remove Python `cyipopt` as a production backend.
-- [ ] Update doctor/build scripts to report Ceres, CppAD, and Ipopt status.
-- [ ] Validate TOML parsing and stale command searches.
-- [ ] Commit as `Require native solver dependency gates`.
+- [x] Make Ceres required for regression builds.
+- [x] Make CppAD required for derivative-capable builds.
+- [x] Add native system Ipopt discovery and fail loudly when the required Ipopt build is requested but missing.
+- [x] Remove the Python IPOPT wrapper as a production backend.
+- [x] Update doctor/build scripts to report Ceres, CppAD, and Ipopt status.
+- [x] Validate TOML parsing and stale command searches.
+- [x] Commit as `Require native solver dependency gates`.
 
-Task 3 note: the first dependency-boundary slice removed the external numerical package from test dependencies, refreshed the lockfile, and deleted the legacy Rezaee package-local fitting workflow. Ceres, CppAD, native Ipopt, and doctor/build status gates remain open.
+Task 3 note: the first dependency-boundary slice removed the external numerical package from test dependencies, refreshed the lockfile, and deleted the legacy Rezaee package-local fitting workflow. The second slice added explicit native system Ipopt discovery/reporting and removed the Python IPOPT wrapper. The third slice made Ceres and CppAD required for dev-script, package-backend, and CMake builds, excluded vendored Ceres install rules from the wheel boundary, and validated the local extension with Ceres enabled. Ceres-only regression ownership still remains open for Task 10.
 
 ### Task 4: Create Native Ipopt Adapter
 

@@ -584,7 +584,6 @@ tasks:
       - "src/epcsaft/reactive.py"
       - "src/epcsaft/_compat/**"
       - "src/epcsaft/_experimental/**"
-      - "src/epcsaft/_optional_backends/**"
       - "src/epcsaft/_initializers/**"
       - "tests/api/reactive/**"
       - "tests/equilibrium/reactive/**"
@@ -612,8 +611,6 @@ tasks:
       result: done
       changed_files:
         - "src/epcsaft/ipopt_backend.py"
-        - "src/epcsaft/_optional_backends/__init__.py"
-        - "src/epcsaft/_optional_backends/ipopt.py"
         - "src/epcsaft/reactive.py"
         - "src/epcsaft/reactive_electrolyte.py"
         - "src/epcsaft/reactive_staged.py"
@@ -638,8 +635,7 @@ tasks:
           status: pass
           evidence: "No whitespace errors."
       summary:
-        - "Moved the optional IPOPT implementation to src/epcsaft/_optional_backends/ipopt.py."
-        - "Kept epcsaft.ipopt_backend as a compatibility module alias so existing imports and monkeypatch seams still work."
+        - "Historical optional IPOPT bridge notes removed after native Ipopt gate cleanup."
         - "Kept electrolyte_bubble.py, reactive_electrolyte.py, and reactive_staged.py in place because they are current public contracts."
         - "Added staged workflow exports to epcsaft.reactive and tightened staged/sequential module wording."
         - "No solver behavior, equations, reactive speciation logic, bubble-pressure logic, or regression targets changed."
@@ -728,7 +724,6 @@ tasks:
       result: done
       changed_files:
         - "src/epcsaft/__main__.py"
-        - "src/epcsaft/_optional_backends/ipopt.py"
         - "src/epcsaft/epcsaft.py"
         - "src/epcsaft/equilibrium.py"
         - "src/epcsaft/reactive_speciation.py"

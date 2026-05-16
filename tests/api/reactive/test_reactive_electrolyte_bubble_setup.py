@@ -7,6 +7,7 @@ from epcsaft import reactive_electrolyte
 from epcsaft.electrolyte_bubble import ElectrolyteBubbleResult
 from epcsaft.reactive_speciation import ReactiveSpeciationResult
 
+
 def _salt_mixture(x, T, P):
     _ = P
     return epcsaft.ePCSAFTMixture.from_dataset("2026_Khudaida", ["H2O", "Na+", "Cl-"], x, T)

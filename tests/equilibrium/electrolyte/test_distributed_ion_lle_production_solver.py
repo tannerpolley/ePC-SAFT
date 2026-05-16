@@ -11,6 +11,7 @@ from tests.equilibrium.electrolyte.test_electrolyte_lle_solver_contracts import 
     _case2_feed,
     _case2_mixture,
 )
+from tests.helpers.numeric import assert_allclose
 
 
 def test_distributed_ion_lle_production_solver_reports_residual_proof() -> None:
@@ -47,7 +48,7 @@ def test_distributed_ion_lle_production_solver_reports_residual_proof() -> None:
         assert phase.composition.sum() == pytest.approx(1.0, abs=1.0e-12)
         assert float(np.dot(phase.composition, charges)) == pytest.approx(0.0, abs=1.0e-8)
         reconstructed += phase.phase_fraction * phase.composition
-    np.testing.assert_allclose(reconstructed, feed, atol=1.0e-10)
+    assert_allclose(reconstructed, feed, atol=1.0e-10)
 
     salt_pairs = diagnostics["salt_pairs"]
     assert [pair["label"] for pair in salt_pairs] == ["NaCl", "KCl"]

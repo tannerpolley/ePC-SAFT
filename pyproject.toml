@@ -31,11 +31,6 @@ classifiers = [
     "Operating System :: MacOS",
 ]
 
-[project.optional-dependencies]
-ipopt = [
-    "cyipopt",
-]
-
 [project.urls]
 Homepage = "https://github.com/tannerpolley/ePC-SAFT"
 Documentation = "https://epcsaft.readthedocs.io/en/latest/"
@@ -53,9 +48,6 @@ style = [
 ]
 docs = [
     "sphinx>=7.0",
-]
-ipopt = [
-    "cyipopt",
 ]
 build = [
     "build>=1.2",

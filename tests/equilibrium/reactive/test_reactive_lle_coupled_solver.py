@@ -5,6 +5,7 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
+from tests.helpers.numeric import assert_allclose
 
 
 def _neutral_reactive_lle_fixture() -> tuple[ePCSAFTMixture, np.ndarray, dict[str, object], epcsaft.ReactionDefinition]:
@@ -85,4 +86,4 @@ def test_neutral_reactive_lle_public_route_uses_coupled_native_solver() -> None:
     for phase in result.phases:
         assert phase.composition.sum() == pytest.approx(1.0, abs=1.0e-12)
         reconstructed += phase.phase_fraction * phase.composition
-    np.testing.assert_allclose(reconstructed, feed, atol=1.0e-10)
+    assert_allclose(reconstructed, feed, atol=1.0e-10)

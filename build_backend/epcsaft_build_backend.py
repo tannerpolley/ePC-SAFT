@@ -65,6 +65,26 @@ def _set_config_default(config: dict, key: str, value: str) -> None:
         config[key] = value
 
 
+def _config_value(config: dict, key: str) -> str | None:
+    normalized_key = key.replace("_", "-")
+    for existing, value in config.items():
+        if str(existing).replace("_", "-") == normalized_key:
+            return str(value)
+    return None
+
+
+def _apply_required_native_dependency_config(config: dict) -> dict:
+    for key, dependency in (
+        ("cmake.define.EPCSAFT_ENABLE_CERES", "Ceres"),
+        ("cmake.define.EPCSAFT_ENABLE_CPPAD", "CppAD"),
+    ):
+        value = _config_value(config, key)
+        if value is not None and value.strip().upper() in {"0", "FALSE", "NO", "OFF"}:
+            raise ValueError(f"{dependency} is required for native regression and derivative-capable package builds.")
+        _set_config_default(config, key, "ON")
+    return config
+
+
 def _validate_ceres_dir(raw_path: str) -> Path:
     ceres_dir = Path(raw_path).expanduser().resolve()
     if not ceres_dir.is_dir():
@@ -75,6 +95,18 @@ def _validate_ceres_dir(raw_path: str) -> Path:
             f"or ceres-config.cmake: {ceres_dir}"
         )
     return ceres_dir
+
+
+def _validate_ipopt_dir(raw_path: str) -> Path:
+    ipopt_dir = Path(raw_path).expanduser().resolve()
+    if not ipopt_dir.is_dir():
+        raise FileNotFoundError(f"EPCSAFT_PEP517_IPOPT_DIR does not exist or is not a directory: {ipopt_dir}")
+    if not any((ipopt_dir / name).is_file() for name in ("IpoptConfig.cmake", "ipopt-config.cmake")):
+        raise FileNotFoundError(
+            "EPCSAFT_PEP517_IPOPT_DIR must point at the directory containing IpoptConfig.cmake "
+            f"or ipopt-config.cmake: {ipopt_dir}"
+        )
+    return ipopt_dir
 
 
 def _apply_system_ceres_config(config: dict) -> dict:
@@ -88,6 +120,27 @@ def _apply_system_ceres_config(config: dict) -> dict:
     if ceres_dir_env:
         _set_config_default(config, "cmake.define.Ceres_DIR", str(_validate_ceres_dir(ceres_dir_env)))
     return config
+
+
+def _apply_system_ipopt_config(config: dict) -> dict:
+    ipopt_dir_env = os.environ.get("EPCSAFT_PEP517_IPOPT_DIR") or os.environ.get("Ipopt_DIR")
+    use_system_ipopt = (
+        bool(ipopt_dir_env)
+        or _truthy_env("EPCSAFT_PEP517_ENABLE_IPOPT")
+        or _truthy_env("EPCSAFT_PEP517_USE_SYSTEM_IPOPT")
+    )
+    if not use_system_ipopt:
+        return config
+
+    _set_config_default(config, "cmake.define.EPCSAFT_ENABLE_IPOPT", "ON")
+    _set_config_default(config, "cmake.define.EPCSAFT_USE_SYSTEM_IPOPT", "ON")
+    if ipopt_dir_env:
+        _set_config_default(config, "cmake.define.Ipopt_DIR", str(_validate_ipopt_dir(ipopt_dir_env)))
+    return config
+
+
+def _apply_native_dependency_config(config: dict) -> dict:
+    return _apply_system_ipopt_config(_apply_system_ceres_config(_apply_required_native_dependency_config(config)))
 
 
 def _source_root() -> Path:
@@ -123,7 +176,7 @@ def _external_temp_root() -> Path | None:
 def _isolated_build_config(config_settings=None):
     config = dict(config_settings or {})
     if _has_build_dir(config):
-        return _apply_system_ceres_config(config)
+        return _apply_native_dependency_config(config)
     persistent = os.environ.get("EPCSAFT_PEP517_BUILD_DIR")
     if persistent:
         build_dir = Path(persistent).expanduser().resolve()
@@ -131,7 +184,7 @@ def _isolated_build_config(config_settings=None):
     else:
         build_dir = Path(tempfile.mkdtemp(prefix="epcsaft-pep517-build-", dir=_external_temp_root())).resolve()
     config["build-dir"] = str(build_dir)
-    return _apply_system_ceres_config(config)
+    return _apply_native_dependency_config(config)
 
 
 def build_wheel(wheel_directory, config_settings=None, metadata_directory=None):

@@ -71,7 +71,13 @@ def _ionic_state_with_elec_model(elec_model):
 
 
 def _assert_array(actual, expected, rtol=1e-8, atol=1e-10):
-    np.testing.assert_allclose(np.asarray(actual, dtype=float), np.asarray(expected, dtype=float), rtol=rtol, atol=atol)
+    actual_array = np.asarray(actual, dtype=float)
+    expected_array = np.asarray(expected, dtype=float)
+    if actual_array.shape != expected_array.shape:
+        raise AssertionError(f"shape mismatch: {actual_array.shape} != {expected_array.shape}")
+    if not np.allclose(actual_array, expected_array, rtol=rtol, atol=atol):
+        diff = np.max(np.abs(actual_array - expected_array)) if actual_array.size else 0.0
+        raise AssertionError(f"array mismatch: max abs diff {diff}")
 
 
 def _sum_term_arrays(terms):

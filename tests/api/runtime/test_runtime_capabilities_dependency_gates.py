@@ -11,9 +11,11 @@ def test_default_build_reports_cppad_and_ceres_capabilities_honestly() -> None:
 
     cppad = info["optional_dependencies"]["cppad"]
     ceres = info["optional_dependencies"]["ceres"]
+    ipopt = info["optional_dependencies"]["ipopt"]
 
     assert cppad["available"] is cppad["compiled"]
     assert ceres["available"] is ceres["compiled"]
+    assert ipopt["available"] is ipopt["compiled"]
     if not cppad["compiled"]:
         assert capabilities["derivatives"]["cppad"]["available"] is False
         assert capabilities["derivatives"]["cppad"]["production"] is False
@@ -23,6 +25,8 @@ def test_default_build_reports_cppad_and_ceres_capabilities_honestly() -> None:
         assert capabilities["optimizers"]["ceres"]["production"] is False
         assert capabilities["optimizers"]["ceres"]["reason"] == "dependency_not_compiled"
     assert capabilities["optimizers"]["ceres"]["native_hot_loop"] is False
+    assert capabilities["optimizers"]["ipopt"]["production"] is False
+    assert capabilities["optimizers"]["ipopt"]["adapter_available"] is False
 
 
 def test_capabilities_report_cppad_without_legacy_forward_backend() -> None:

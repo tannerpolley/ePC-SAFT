@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 
-import epcsaft
 import pytest
+
+import epcsaft
 
 
 def _write_ssmds_dataset(tmp_path):

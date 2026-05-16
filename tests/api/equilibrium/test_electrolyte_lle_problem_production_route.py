@@ -4,6 +4,7 @@ import numpy as np
 
 import epcsaft
 from tests.equilibrium.electrolyte.test_salting_out_lle_benchmark import _salting_out_fixture
+from tests.helpers.numeric import assert_allclose
 
 
 def test_electrolyte_lle_problem_routes_to_native_ceres_production_solver() -> None:
@@ -36,4 +37,4 @@ def test_electrolyte_lle_problem_routes_to_native_ceres_production_solver() -> N
     reconstructed = np.zeros_like(feed)
     for phase in result.phases:
         reconstructed += phase.phase_fraction * phase.composition
-    np.testing.assert_allclose(reconstructed, feed, atol=1.0e-10)
+    assert_allclose(reconstructed, feed, atol=1.0e-10)

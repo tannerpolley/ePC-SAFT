@@ -7,6 +7,7 @@ import pytest
 
 from epcsaft import create_parameter_template, ePCSAFTMixture
 from epcsaft.parameters import _resolve_runtime_options, minimize_user_options
+from tests.helpers.numeric import assert_allclose
 
 
 def test_create_parameter_template_creates_loadable_scaffold(tmp_path):
@@ -34,8 +35,8 @@ def test_create_parameter_template_creates_loadable_scaffold(tmp_path):
 
     assert mixture.ncomp == 1
     assert mixture.parameters["z"].size == 0
-    np.testing.assert_allclose(mixture.parameters["m"], [1.2047])
-    np.testing.assert_allclose(mixture.parameters["k_ij"], np.zeros((1, 1)))
+    assert_allclose(mixture.parameters["m"], [1.2047])
+    assert_allclose(mixture.parameters["k_ij"], np.zeros((1, 1)))
 
 
 def test_create_parameter_template_accepts_explicit_legacy_schema(tmp_path):

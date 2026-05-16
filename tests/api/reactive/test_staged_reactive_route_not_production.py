@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import numpy as np
 import pytest
 
 import epcsaft
@@ -54,7 +53,7 @@ def test_explicit_staged_kind_remains_separate_from_production_reactive_lle(monk
 def test_reactive_lle_dispatcher_does_not_accept_phase_route_controls() -> None:
     mix, feed, _initial_phases, reaction = _toy_reactive_phase_case()
 
-    with np.testing.assert_raises_regex(epcsaft.InputError, "does not support phase_kwargs"):
+    with pytest.raises(epcsaft.InputError, match="does not support phase_kwargs"):
         mix.equilibrium(
             kind="reactive_lle",
             T=298.15,

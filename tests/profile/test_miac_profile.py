@@ -12,7 +12,11 @@ import os
 
 import pytest
 
-from analyses.data_validation.miac_fits.scripts.profile_miac_runtime import REPORT_CSV, REPORT_MD, run_miac_runtime_profile
+from analyses.data_validation.miac_fits.scripts.profile_miac_runtime import (
+    REPORT_CSV,
+    REPORT_MD,
+    run_miac_runtime_profile,
+)
 
 
 def _should_run_perf() -> bool:

@@ -10,13 +10,15 @@ uv run python scripts/dev/build_epcsaft.py
 uv run python scripts/dev/doctor.py
 ```
 
-The native build action intentionally uses the script default ``--profile fast``
-(Ceres OFF, CppAD ON). Ceres builds are explicit validation work, not setup.
-Use ``uv run python scripts/dev/build_epcsaft.py --profile full`` or
-``uv run python scripts/dev/validate_project.py ceres-cppad`` only when the task
-needs Ceres regression/backend coverage.
-This local dev-script default does not change package installs; editable, wheel,
-and downstream path installs still inherit the CMake default with Ceres ON.
+The native build action intentionally uses the script default ``--profile fast``:
+Ceres and CppAD are both required, while Ipopt is explicit adapter work.
+Use ``uv run python scripts/dev/validate_project.py ceres-cppad`` when the task
+needs the focused Ceres regression/backend slice.
+Native Ipopt discovery is explicit system-dependency work. Use
+``uv run python scripts/dev/build_epcsaft.py --profile ipopt --ipopt-dir <IpoptConfig-dir>``
+only for native Ipopt adapter development or validation.
+This local dev-script default matches package installs for required Ceres/CppAD
+dependencies.
 For repeated full package installs, build reusable Ceres once with
 ``uv run python scripts/dev/build_system_ceres.py --parallel 4`` and set the
 printed ``EPCSAFT_PEP517_CERES_DIR`` / ``EPCSAFT_PEP517_BUILD_DIR`` variables.

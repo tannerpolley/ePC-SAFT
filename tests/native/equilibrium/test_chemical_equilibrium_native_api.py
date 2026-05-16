@@ -7,6 +7,8 @@ import pytest
 
 import epcsaft
 from epcsaft import _core
+from tests.helpers.numeric import assert_allclose
+
 
 def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
     params = {
@@ -149,7 +151,7 @@ def test_native_chemical_equilibrium_residual_evaluator_uses_analytic_jacobian_b
     assert np.all(lower < upper)
     assert np.all(variables >= lower)
     assert np.all(variables <= upper)
-    np.testing.assert_allclose(gradient, jacobian.T @ residual, rtol=1.0e-10, atol=1.0e-10)
+    assert_allclose(gradient, jacobian.T @ residual, rtol=1.0e-10, atol=1.0e-10)
     assert payload["objective"] == pytest.approx(0.5 * float(residual @ residual))
     assert len(payload["lower_bounds"]) == len(payload["variables"]) == len(payload["upper_bounds"])
 

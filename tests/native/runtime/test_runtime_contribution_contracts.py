@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-
 import numpy as np
 import pytest
 from epcsaft._core import NativeValueError
 
 from tests.helpers.native_cases import _ionic_state, _neutral_state
+from tests.helpers.numeric import assert_allclose
+
 
 def _assert_close_terms(observed: dict[str, float], expected: dict[str, float]) -> None:
     assert set(observed) == set(expected)
@@ -118,7 +119,7 @@ def test_composition_derivative_contribution_terms_are_accounted_for() -> None:
         derivative = state.composition_derivative_residual_helmholtz()
 
         total_from_terms = sum(derivative["terms"].values())
-        np.testing.assert_allclose(total_from_terms, derivative["total"])
+        assert_allclose(total_from_terms, derivative["total"])
         assert derivative["z_total"] == pytest.approx(1.0 + sum(derivative["z_terms"].values()))
         assert set(derivative["terms"]) == {"hc", "disp", "assoc", "ion", "born"}
 
@@ -143,5 +144,5 @@ def test_public_methods_expose_eqid_owned_contribution_groups() -> None:
     assert set(ares["terms"]) == contribution_families
     assert set(mures["terms"]) == contribution_families
     assert set(fugcoef["terms"]) == contribution_families
-    np.testing.assert_allclose(sum(mures["terms"].values()), mures["total"])
-    np.testing.assert_allclose(fugcoef["terms_total_natural_log"], sum(fugcoef["terms"].values()))
+    assert_allclose(sum(mures["terms"].values()), mures["total"])
+    assert_allclose(fugcoef["terms_total_natural_log"], sum(fugcoef["terms"].values()))

@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from epcsaft import _core, ePCSAFTMixture
+from tests.helpers.numeric import assert_allclose
 
 
 def _electrolyte_mixture() -> ePCSAFTMixture:
@@ -66,7 +67,7 @@ def test_electrolyte_lle_residual_surface_reuses_explicit_variables() -> None:
     request["variables"] = initial["variables"]
     repeated = _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
 
-    np.testing.assert_allclose(repeated["residual"], initial["residual"], atol=1.0e-10)
-    np.testing.assert_allclose(repeated["jacobian_row_major"], initial["jacobian_row_major"], atol=1.0e-10)
-    np.testing.assert_allclose(repeated["aq_composition"], initial["aq_composition"], atol=1.0e-12)
-    np.testing.assert_allclose(repeated["org_composition"], initial["org_composition"], atol=1.0e-12)
+    assert_allclose(repeated["residual"], initial["residual"], atol=1.0e-10)
+    assert_allclose(repeated["jacobian_row_major"], initial["jacobian_row_major"], atol=1.0e-10)
+    assert_allclose(repeated["aq_composition"], initial["aq_composition"], atol=1.0e-12)
+    assert_allclose(repeated["org_composition"], initial["org_composition"], atol=1.0e-12)

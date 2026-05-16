@@ -6,12 +6,14 @@ import pytest
 import epcsaft
 import epcsaft.epcsaft as epcsaft_module
 from epcsaft import ePCSAFTMixture
+from tests.helpers.numeric import assert_allclose
 from tests.helpers.runtime_cases import (
     _assert_array,
     _ionic_state,
     _neutral_state,
     _sum_term_arrays,
 )
+
 
 def test_neutral_scalar_methods_return_expected_values():
     state, _species = _neutral_state()
@@ -39,7 +41,7 @@ def test_neutral_scalar_methods_return_expected_values():
     fugacity_coefficient_coeff = state.fugacity_coefficient(natural_log=False)
     _assert_array(fugacity_coefficient, [1.9324151168689134, -0.5740965595882255, -2.407779856320623])
     _assert_array(fugacity_coefficient_coeff, [6.906169322700795, 0.5632134688356544, 0.09001491894620331])
-    np.testing.assert_allclose(np.exp(fugacity_coefficient), fugacity_coefficient_coeff)
+    assert_allclose(np.exp(fugacity_coefficient), fugacity_coefficient_coeff)
 
 def test_state_method_aliases_match_canonical_methods():
     state, species = _ionic_state()
@@ -170,7 +172,7 @@ def test_state_contribution_map_aliases_use_public_family_names():
     assert set(ln_phi["terms"]) == families
     assert helmholtz["term_basis"] == "dimensionless_residual_helmholtz"
     assert pressure["term_basis"] == "pressure_from_compressibility_factor"
-    np.testing.assert_allclose(ln_phi["total"], state.fugacity_coefficient())
+    assert_allclose(ln_phi["total"], state.fugacity_coefficient())
 
 def test_activity_coefficient_contribution_map_is_explicitly_unsupported():
     state, _species = _ionic_state()
@@ -195,8 +197,8 @@ def test_dadrho_hierarchy_identities_hold_for_neutral_and_ionic_states():
             dadx["ares_terms"][key] + dadx["z_raw_terms"][key] + dadx["terms"][key] - dadx["sum_x_terms"][key]
             for key in ("hc", "disp", "assoc", "ion", "born")
         )
-        np.testing.assert_allclose(reconstructed_mu, mures)
-        np.testing.assert_allclose(lnfug, mures - np.log(state.z()))
+        assert_allclose(reconstructed_mu, mures)
+        assert_allclose(lnfug, mures - np.log(state.z()))
 
 def test_neutral_composition_and_fugacity_terms_return_expected_values():
     state, species = _neutral_state()
@@ -216,11 +218,11 @@ def test_neutral_composition_and_fugacity_terms_return_expected_values():
         "not_available_reason",
     }
     for key in ("hc", "disp", "assoc", "ion", "born"):
-        np.testing.assert_allclose(dadx["terms"][key], terms[f"dadx_{key}"])
-        np.testing.assert_allclose(dadx["ares_terms"][key], terms[f"a_{key}"])
-        np.testing.assert_allclose(dadx["sum_x_terms"][key], terms[f"sum_x_dadx_{key}"])
-        np.testing.assert_allclose(dadx["z_raw_terms"][key], terms[f"z_raw_{key}"])
-        np.testing.assert_allclose(dadx["z_terms"][key], terms[f"z_{key}"])
+        assert_allclose(dadx["terms"][key], terms[f"dadx_{key}"])
+        assert_allclose(dadx["ares_terms"][key], terms[f"a_{key}"])
+        assert_allclose(dadx["sum_x_terms"][key], terms[f"sum_x_dadx_{key}"])
+        assert_allclose(dadx["z_raw_terms"][key], terms[f"z_raw_{key}"])
+        assert_allclose(dadx["z_terms"][key], terms[f"z_{key}"])
     _assert_array(dadx["terms"]["hc"], [6.883394758977889, 9.511092421642308, 12.258394188218157])
     _assert_array(dadx["terms"]["disp"], [-7.506335725134188, -12.640545058126808, -17.221530131978034])
     _assert_array(dadx["terms"]["assoc"], [0.0, 0.0, 0.0])
@@ -234,7 +236,7 @@ def test_neutral_composition_and_fugacity_terms_return_expected_values():
         dadx["ares_terms"][key] + dadx["z_raw_terms"][key] + dadx["terms"][key] - dadx["sum_x_terms"][key]
         for key in ("hc", "disp", "assoc", "ion", "born")
     )
-    np.testing.assert_allclose(reconstructed_mu, state.residual_chemical_potential())
+    assert_allclose(reconstructed_mu, state.residual_chemical_potential())
 
 def test_state_diagnostics_matches_public_methods():
     neutral_state, neutral_species = _neutral_state()

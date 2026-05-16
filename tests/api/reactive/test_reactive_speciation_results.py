@@ -7,6 +7,7 @@ import pytest
 
 import epcsaft
 
+
 def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
     params = {
         "m": np.asarray([1.2047, 1.0, 1.0, 1.0]),

@@ -5,6 +5,7 @@ import pytest
 
 from analyses.data_validation.miac_fits.scripts import validate_miac_fits as vmf
 from scripts._epcsaft_oop import as_mixture
+from tests.helpers.numeric import assert_allclose
 
 
 def _figiel_nabr_water_state(phase: str = "liq"):
@@ -62,8 +63,8 @@ def test_liquid_ssmds_born_derivatives_are_supported_for_figiel_d_born_and_f_sol
         assert values.shape == (len(species), len(species))
         assert np.all(np.isfinite(values))
 
-    np.testing.assert_allclose(payload["lnfug_d_d_born"], payload["mu_res_d_d_born"])
-    np.testing.assert_allclose(payload["lnfug_d_f_solv"], payload["mu_res_d_f_solv"])
+    assert_allclose(payload["lnfug_d_d_born"], payload["mu_res_d_d_born"])
+    assert_allclose(payload["lnfug_d_f_solv"], payload["mu_res_d_f_solv"])
 
 
 def test_vapor_ssmds_born_derivatives_report_not_available() -> None:

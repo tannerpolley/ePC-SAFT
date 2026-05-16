@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -44,6 +45,27 @@ def _newest_wheel() -> Path:
     return wheels[-1]
 
 
+def _assert_wheel_has_no_solver_dev_artifacts(wheel: Path) -> None:
+    blocked_fragments = (
+        "/include/ceres/",
+        "/lib/cmake/ceres/",
+        "/libceres",
+        "numeric" + "_diff",
+    )
+    with zipfile.ZipFile(wheel) as archive:
+        offenders = [
+            name
+            for name in archive.namelist()
+            if any(fragment in f"/{name}".lower() for fragment in blocked_fragments)
+        ]
+    if offenders:
+        sample = "\n".join(f"  - {name}" for name in offenders[:20])
+        raise RuntimeError(
+            "wheel contains Ceres development artifacts; vendored solver dependencies must not be installed into epcsaft:\n"
+            f"{sample}"
+        )
+
+
 def _smoke_wheel(wheel: Path) -> None:
     target = REPO_ROOT / "build" / "wheel-smoke-target"
     shutil.rmtree(target, ignore_errors=True)
@@ -73,8 +95,10 @@ def main() -> int:
 
     _clean_dist()
     _run(["uv", "build"], env=_env())
+    wheel = _newest_wheel()
+    _assert_wheel_has_no_solver_dev_artifacts(wheel)
     if not args.skip_smoke:
-        _smoke_wheel(_newest_wheel())
+        _smoke_wheel(wheel)
     return 0
 
 

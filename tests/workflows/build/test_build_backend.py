@@ -65,17 +65,48 @@ def test_pep517_build_backend_uses_prebuilt_ceres_env(tmp_path, monkeypatch) -> 
     assert Path(config["cmake.define.Ceres_DIR"]) == ceres_dir.resolve()
 
 
-def test_pep517_build_backend_does_not_disable_ceres_by_default(monkeypatch) -> None:
+def test_pep517_build_backend_uses_system_ipopt_env(tmp_path, monkeypatch) -> None:
+    backend = _load_backend()
+    ipopt_dir = tmp_path / "ipopt" / "lib" / "cmake" / "Ipopt"
+    ipopt_dir.mkdir(parents=True)
+    (ipopt_dir / "IpoptConfig.cmake").write_text("# test config\n", encoding="utf-8")
+    monkeypatch.setenv("EPCSAFT_PEP517_IPOPT_DIR", str(ipopt_dir))
+
+    config = backend._isolated_build_config(None)
+
+    assert config["cmake.define.EPCSAFT_ENABLE_IPOPT"] == "ON"
+    assert config["cmake.define.EPCSAFT_USE_SYSTEM_IPOPT"] == "ON"
+    assert Path(config["cmake.define.Ipopt_DIR"]) == ipopt_dir.resolve()
+
+
+def test_pep517_build_backend_requires_ceres_and_cppad_by_default(monkeypatch) -> None:
     backend = _load_backend()
     monkeypatch.delenv("EPCSAFT_PEP517_CERES_DIR", raising=False)
     monkeypatch.delenv("EPCSAFT_PEP517_USE_SYSTEM_CERES", raising=False)
     monkeypatch.delenv("Ceres_DIR", raising=False)
+    monkeypatch.delenv("EPCSAFT_PEP517_IPOPT_DIR", raising=False)
+    monkeypatch.delenv("EPCSAFT_PEP517_ENABLE_IPOPT", raising=False)
+    monkeypatch.delenv("EPCSAFT_PEP517_USE_SYSTEM_IPOPT", raising=False)
+    monkeypatch.delenv("Ipopt_DIR", raising=False)
 
     config = backend._isolated_build_config(None)
 
-    assert "cmake.define.EPCSAFT_ENABLE_CERES" not in config
+    assert config["cmake.define.EPCSAFT_ENABLE_CERES"] == "ON"
+    assert config["cmake.define.EPCSAFT_ENABLE_CPPAD"] == "ON"
     assert "cmake.define.EPCSAFT_USE_SYSTEM_CERES" not in config
     assert "cmake.define.Ceres_DIR" not in config
+    assert "cmake.define.EPCSAFT_ENABLE_IPOPT" not in config
+    assert "cmake.define.EPCSAFT_USE_SYSTEM_IPOPT" not in config
+    assert "cmake.define.Ipopt_DIR" not in config
+
+
+def test_pep517_build_backend_rejects_disabled_required_native_dependencies() -> None:
+    backend = _load_backend()
+
+    with pytest.raises(ValueError, match="Ceres is required"):
+        backend._isolated_build_config({"cmake.define.EPCSAFT_ENABLE_CERES": "OFF"})
+    with pytest.raises(ValueError, match="CppAD is required"):
+        backend._isolated_build_config({"cmake.define.EPCSAFT_ENABLE_CPPAD": "OFF"})
 
 
 def test_pep517_build_backend_rejects_bad_ceres_dir_env(tmp_path, monkeypatch) -> None:
@@ -87,6 +118,17 @@ def test_pep517_build_backend_rejects_bad_ceres_dir_env(tmp_path, monkeypatch) -
     with pytest.raises(FileNotFoundError) as excinfo:
         backend._isolated_build_config(None)
     assert "CeresConfig.cmake" in str(excinfo.value)
+
+
+def test_pep517_build_backend_rejects_bad_ipopt_dir_env(tmp_path, monkeypatch) -> None:
+    backend = _load_backend()
+    bad_dir = tmp_path / "missing-config"
+    bad_dir.mkdir()
+    monkeypatch.setenv("EPCSAFT_PEP517_IPOPT_DIR", str(bad_dir))
+
+    with pytest.raises(FileNotFoundError) as excinfo:
+        backend._isolated_build_config(None)
+    assert "IpoptConfig.cmake" in str(excinfo.value)
 
 
 def test_pep660_editable_hook_uses_isolated_build_dir(tmp_path, monkeypatch) -> None:

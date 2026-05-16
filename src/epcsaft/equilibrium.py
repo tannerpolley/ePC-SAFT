@@ -28,6 +28,13 @@ _ASCANI_2022_REFERENCE = {
 }
 
 
+def _raise_native_ipopt_not_routed(route: str) -> None:
+    raise InputError(
+        f"solver_backend='ipopt' was requested, but the native Ipopt adapter for {route} is not wired to public "
+        "equilibrium routes yet. Use the current native route until the Ipopt NLP adapter is implemented."
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class EquilibriumOptions:
     """Numerical controls for equilibrium solvers."""
@@ -1303,9 +1310,7 @@ def _call_native_equilibrium(
     trial_phases: Any = None,
 ) -> EquilibriumResult | StabilityResult:
     if options.solver_backend == "ipopt":
-        from ._optional_backends.ipopt import unsupported_ipopt_route
-
-        unsupported_ipopt_route(kind)
+        _raise_native_ipopt_not_routed(kind)
     from . import _core
 
     request: dict[str, Any] = {
@@ -2354,18 +2359,7 @@ def electrolyte_lle_flash_native(
         }
         _ = seed
     if opts.solver_backend == "ipopt":
-        from ._optional_backends.ipopt import solve_electrolyte_lle_ipopt
-
-        return solve_electrolyte_lle_ipopt(
-            mixture=mixture,
-            T=temperature,
-            P=pressure,
-            feed=feed,
-            feed_diagnostics=feed_diagnostics,
-            basis_payload=basis_payload,
-            initial_phases=native_initial_phases,
-            options=opts,
-        )
+        _raise_native_ipopt_not_routed("electrolyte_lle")
     try:
         result = _call_native_equilibrium(
             mixture,

@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from tests.helpers.native_cases import _ionic_state
+from tests.helpers.numeric import assert_allclose
 
 
 def _state():
@@ -30,4 +31,4 @@ def test_relative_permittivity_parameter_derivative_result_for_linear_rule() -> 
     assert result["supported"] is True
     assert result["backend"] == "analytic"
     assert result["shape"] == [1, state.x.size]
-    np.testing.assert_allclose(np.asarray(result["jacobian"], dtype=float), state.x.reshape(1, -1))
+    assert_allclose(np.asarray(result["jacobian"], dtype=float), state.x.reshape(1, -1))

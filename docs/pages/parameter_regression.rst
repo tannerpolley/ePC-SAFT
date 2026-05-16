@@ -149,40 +149,21 @@ native build:
    uv sync --no-install-project
    uv run python scripts\dev\build_epcsaft.py
 
-For explicit IPOPT residual-minimization work, install the optional Python adapter dependency
-with the ``ipopt`` extra or dependency group:
+For native Ipopt development, request a system Ipopt package through the native
+build script or PEP 517 environment variables:
 
 .. code-block:: powershell
 
-   uv sync --extra ipopt
-
-On Windows, ``cyipopt`` builds from source and needs an IPOPT install that
-``pkg-config`` can describe. When using conda-forge IPOPT, first make sure the
-IPOPT environment also has ``pkg-config``, then let the helper create a corrected
-local ``ipopt.pc`` shim and run uv:
-
-.. code-block:: powershell
-
-   conda install -n epcsaft-cyipopt-test -c conda-forge pkg-config
-   .\scripts\dev\setup_windows_cyipopt_uv.ps1 -IpoptPrefix C:\ProgramData\miniconda3\envs\epcsaft-cyipopt-test\Library
-
-The IPOPT path uses ``cyipopt`` and remains explicit opt-in through
-``solver_backend="ipopt"``. It is not a replacement for native least-squares or
-Newton defaults.
+   uv run python scripts\dev\build_epcsaft.py --profile ipopt --ipopt-dir C:\path\to\Ipopt\lib\cmake\Ipopt
 
 Current IPOPT scope
 -------------------
 
-The current IPOPT support is an opt-in
-``bound_constrained_residual_minimization`` bridge for selected equilibrium
-routes. It does not yet expose a full constrained thermodynamic NLP: material
-balances, charge balance, and equilibrium residuals are not formal IPOPT
-equality constraints in this phase. Runtime capabilities report
-``full_constrained_nlp_available=False`` and ``default_auto_uses_ipopt=False``.
-
-Approximate Hessian diagnostics are intentionally explicit. Gauss-Newton means a
-least-squares ``J.T @ J`` callback; L-BFGS means IPOPT limited-memory Hessian
-approximation. Both report ``exact_hessian_available=False`` and
+The current package can discover and link a native system Ipopt dependency when
+explicitly requested, but public equilibrium and reactive-speciation routes are
+not yet wired through the native constrained-NLP adapter. Runtime capabilities
+therefore report ``adapter_available=False``,
+``full_constrained_nlp_available=False``, and ``default_auto_uses_ipopt=False``.
 ``hessian_includes_second_residual_derivatives=False``.
 
 Solver-selection guidance
@@ -690,7 +671,7 @@ Derivative availability
      - Skeleton metadata only
    * - Chemical equilibrium / reactive speciation
      - Analytic log-amount Jacobian for ideal-mole-fraction reactions under ``auto``; activity/concentration paths report ``not_available`` until derivative coverage is implemented
-     - Opt-in cyipopt accepts Gauss-Newton or L-BFGS approximate Hessian strategies
+     - Native Ipopt adapter work remains open
 
 The Hessian fields are deliberately a contract skeleton for future
 IPOPT-compatible optimizer integration. They do not mean exact second-derivative

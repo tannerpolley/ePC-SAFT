@@ -4,13 +4,13 @@ import numpy as np
 import pytest
 
 import epcsaft
-from epcsaft._optional_backends import ipopt as ipopt_backend
 from epcsaft import ePCSAFTMixture
 from tests.helpers.runtime_cases import (
     _assert_array,
     _ionic_params,
     _ionic_state,
 )
+
 
 def test_package_exports_are_available():
     assert hasattr(epcsaft, "ePCSAFTMixture")
@@ -47,7 +47,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     capabilities = epcsaft.capabilities()
     assert capabilities["native_extension"] is True
     ipopt = capabilities["optimizers"]["ipopt"]
-    assert ipopt["backend"] == "cyipopt"
+    assert ipopt["backend"] == "ipopt"
     fit_contract = capabilities["regression"]["reactive_electrolyte_batch_context"]["fit_status_contract"]
     assert fit_contract["available"] is True
     assert "bounded_incomplete" not in fit_contract["statuses"]
@@ -62,12 +62,14 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert mixed_regression["supports_bounds"] is True
     assert mixed_regression["native_hot_loop"] is False
     assert mixed_regression["ceres"]["production"] is False
-    assert ipopt["available"] is ipopt_backend.cyipopt_available()
-    assert ipopt["formulations"] == ["bound_constrained_residual_minimization"]
+    assert ipopt["available"] is info["optional_dependencies"]["ipopt"]["available"]
+    assert ipopt["formulations"] == ["thermodynamic_constrained_nlp"]
+    assert ipopt["adapter_available"] is False
+    assert ipopt["production"] is False
     assert ipopt["full_constrained_nlp_available"] is False
     assert ipopt["default_auto_uses_ipopt"] is False
     assert ipopt["exact_hessian_available"] is False
-    assert info["optional_dependencies"]["cyipopt"]["available"] is ipopt["available"]
+    assert info["optional_dependencies"]["ipopt"]["available"] is ipopt["available"]
     cppad = info["optional_dependencies"]["cppad"]
     assert cppad["backend"] == "cppad"
     assert cppad["status"] in {"disabled", "enabled_available", "enabled_missing", "not_configured"}
@@ -136,18 +138,6 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert (
         capabilities["equilibrium"]["contribution_maps"]["activity_coefficient_term_decomposition_available"] is False
     )
-
-def test_cyipopt_import_prepares_configured_windows_dll_directory(monkeypatch, tmp_path):
-    calls: list[str] = []
-    dll_dir = tmp_path / "ipopt-bin"
-    dll_dir.mkdir()
-
-    monkeypatch.setenv("EPCSAFT_IPOPT_DLL_DIR", str(dll_dir))
-    monkeypatch.setenv("PATH", "base-path")
-    monkeypatch.setattr(ipopt_backend.os, "add_dll_directory", lambda path: calls.append(str(path)), raising=False)
-    ipopt_backend._prepare_ipopt_dll_search_path()
-
-    assert calls == [str(dll_dir)]
 
 def test_fast_fugacity_helper_matches_state_call_and_reports_density() -> None:
     state, _ = _ionic_state()

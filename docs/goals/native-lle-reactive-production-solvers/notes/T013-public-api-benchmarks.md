@@ -16,7 +16,7 @@ Done. Production reactive LLE routes now call the native coupled reactive phase-
 
 - `uv run python run_pytest.py tests/equilibrium/reactive/test_reactive_lle.py tests/equilibrium/reactive/test_reactive_lle_coupled_solver.py tests/equilibrium/reactive/test_reactive_electrolyte_lle_coupled_solver.py tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py tests/api/reactive/test_staged_reactive_route_not_production.py -q`: pass, 8 tests.
 - `uv run python run_pytest.py tests/equilibrium/reactive -q`: pass, 4 tests.
-- `uv run python run_pytest.py tests/api/reactive -q`: pass, 65 passed and 1 skipped for optional `cyipopt`.
+- `uv run python run_pytest.py tests/api/reactive -q`: pass, 65 passed and 1 skipped for the then-optional Python IPOPT bridge.
 
 ## Next
 

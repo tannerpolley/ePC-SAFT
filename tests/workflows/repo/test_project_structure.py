@@ -81,19 +81,32 @@ def test_strict_solver_derivative_text_gate_passes() -> None:
 
 def test_removed_numerics_stack_is_not_a_package_dev_test_or_analysis_runtime_dependency() -> None:
     removed_dependency_name = "sci" + "py"
+    removed_python_ipopt_wrapper = "cy" + "ipopt"
     pyproject_text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8").lower()
+    lock_text = (REPO_ROOT / "uv.lock").read_text(encoding="utf-8").lower()
     assert removed_dependency_name not in pyproject_text
+    assert removed_python_ipopt_wrapper not in pyproject_text
+    assert removed_python_ipopt_wrapper not in lock_text
 
-    tracked = _tracked_files("src", "tests", "scripts", "analyses")
+    tracked = _tracked_files("src", "tests", "scripts", "analyses", "docs", "README.md", "CHANGELOG.md")
     import_offenders: list[str] = []
     import_snippets = (f"import {removed_dependency_name}", f"from {removed_dependency_name}")
     for relpath in tracked:
+        if relpath.replace("\\", "/").startswith("docs/papers/"):
+            continue
+        if not relpath.endswith(".py"):
+            if Path(relpath).suffix.lower() not in {".md", ".rst", ".toml", ".yaml", ".yml", ".txt", ".ps1"}:
+                continue
+        path = REPO_ROOT / relpath
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8", errors="ignore").lower()
+        assert removed_python_ipopt_wrapper not in text, relpath
         if not relpath.endswith(".py"):
             continue
         path = REPO_ROOT / relpath
         if not path.exists():
             continue
-        text = path.read_text(encoding="utf-8", errors="ignore").lower()
         if any(snippet in text for snippet in import_snippets):
             import_offenders.append(relpath)
     assert import_offenders == []
@@ -108,6 +121,9 @@ def test_removed_numerics_stack_is_not_a_package_dev_test_or_analysis_runtime_de
         )
     )
     assert not (REPO_ROOT / removed_fit_script).exists()
+    assert not (REPO_ROOT / "src" / "epcsaft" / ("_optional" + "_backends")).exists()
+    removed_ipopt_helper = REPO_ROOT / "scripts" / "dev" / ("setup_windows_" + removed_python_ipopt_wrapper + "_uv.ps1")
+    assert not removed_ipopt_helper.exists()
 
 
 def test_reference_data_root_is_canonical() -> None:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 import numpy as np
 import pytest
 
@@ -15,6 +14,7 @@ from epcsaft.regression import (
     _fit_pure_neutral_least_squares_internal,
 )
 from tests.helpers.regression_cases import _methane_like_records, _minimal_neutral_metadata
+
 
 def _minimal_nacl_records():
     return [

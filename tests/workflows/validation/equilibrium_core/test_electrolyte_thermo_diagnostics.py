@@ -16,6 +16,7 @@ from scripts.validation.equilibrium_core.thermo_diagnostics import (
     summarize_khudaida_digitized_paper_matrix,
     summarize_khudaida_matrix,
 )
+from tests.helpers.numeric import assert_allclose
 
 TRUTHY = {"1", "true", "yes", "on"}
 RUN_KHUDAIDA_VALIDATION = os.environ.get("EPCSAFT_KHUDAIDA_VALIDATION", "").lower() in TRUTHY
@@ -46,9 +47,9 @@ def test_khudaida_fixture_loads_charge_neutral_explicit_ions() -> None:
         assert abs(payload["feed_charge_balance"]) <= 1.0e-12
         assert abs(payload["organic_charge_balance"]) <= 1.0e-12
         assert abs(payload["aqueous_charge_balance"]) <= 1.0e-12
-        np.testing.assert_allclose(np.sum(payload["feed_composition"]), 1.0)
-        np.testing.assert_allclose(np.sum(payload["organic_composition"]), 1.0)
-        np.testing.assert_allclose(np.sum(payload["aqueous_composition"]), 1.0)
+        assert_allclose(np.sum(payload["feed_composition"]), 1.0)
+        assert_allclose(np.sum(payload["organic_composition"]), 1.0)
+        assert_allclose(np.sum(payload["aqueous_composition"]), 1.0)
 
     json.dumps(case, allow_nan=False)
 
@@ -153,7 +154,7 @@ def test_khudaida_digitized_paper_epcsaft_series_loads_from_figure_folders() -> 
     assert rows[0]["point_id"] == 1
     assert rows[0]["tie_line"] == 1
     assert rows[0]["source"] == "digitized_user_supplied"
-    np.testing.assert_allclose(np.sum(rows[0]["salt_free_composition"]), 1.0)
+    assert_allclose(np.sum(rows[0]["salt_free_composition"]), 1.0)
     assert set(rows[0]["salt_free_components"]) == {"H2O", "Ethanol", "Butanol"}
     json.dumps(rows, allow_nan=False)
 

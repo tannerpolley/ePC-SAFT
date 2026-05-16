@@ -256,7 +256,7 @@ tasks:
       blocker: "A real production Jacobian cannot be made from the current electrolyte LLE residual route without a boundary decision on CppAD or implicit sensitivity ownership."
       note: "docs/goals/native-lle-reactive-production-solvers/notes/T005-blocker.md"
       evidence:
-        - "Current runtime build info reports CppAD compiled and Ceres disabled in the fast local build."
+        - "Current runtime build info reports CppAD and Ceres compiled in the required native build."
         - "Ceres support is present for native regression, not for electrolyte LLE phase-equilibrium residuals."
         - "`newton_step` and `_evaluate_electrolyte_lle_residual_native` still report unavailable electrolyte LLE residual sensitivities."
         - "Existing native derivative surfaces do not expose a complete residual/Jacobian for transformed electrolyte LLE variables, density closure, and fugacity residuals."

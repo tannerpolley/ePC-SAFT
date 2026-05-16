@@ -11,6 +11,7 @@ import pytest
 import epcsaft
 from epcsaft import ePCSAFTMixture
 from epcsaft.equilibrium_core.electrolyte_seeds import charge_neutral_lle_seed_from_org_phase
+from tests.helpers.numeric import assert_allclose
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_DIR = REPO_ROOT / "data" / "reference" / "equilibrium_benchmarks" / "electrolyte_lle" / "hubach_2024"
@@ -42,7 +43,7 @@ def test_hubach_fixture_loads() -> None:
     mix = _hubach_mixture(feed)
 
     assert list(mix.species) == SPECIES
-    np.testing.assert_allclose(mix.parameters["z"], [0.0, 0.0, 0.0, 1.0, -1.0])
+    assert_allclose(mix.parameters["z"], [0.0, 0.0, 0.0, 1.0, -1.0])
     assert float(np.sum(feed)) == pytest.approx(1.0)
     assert abs(float(np.dot(feed, mix.parameters["z"]))) <= 1.0e-12
 
@@ -78,7 +79,7 @@ def test_hubach_seed_helper_constructs_charge_neutral_material_balanced_guess() 
     org_out = payload["org"]
     beta = payload["phase_fraction"]
 
-    np.testing.assert_allclose((1.0 - beta) * aq + beta * org_out, feed, atol=1.0e-12)
+    assert_allclose((1.0 - beta) * aq + beta * org_out, feed, atol=1.0e-12)
     assert abs(float(np.dot(aq, mix.parameters["z"]))) <= 1.0e-8
     assert abs(float(np.dot(org_out, mix.parameters["z"]))) <= 1.0e-8
     assert org_out[1] + org_out[2] > aq[1] + aq[2]
@@ -120,7 +121,7 @@ def test_hubach_row0_explicit_seed_converges_to_distinct_fixed_species_lle() -> 
         phases["org"].composition[1] + phases["org"].composition[2]
         > phases["aq"].composition[1] + phases["aq"].composition[2]
     )
-    np.testing.assert_allclose(reconstructed, feed, atol=1.0e-10)
+    assert_allclose(reconstructed, feed, atol=1.0e-10)
     json.dumps(result.to_dict(), allow_nan=False)
 
 

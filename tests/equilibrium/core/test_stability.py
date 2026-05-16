@@ -7,6 +7,7 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
+from tests.helpers.numeric import assert_allclose
 
 
 def _hydrocarbon_mixture() -> ePCSAFTMixture:
@@ -79,7 +80,7 @@ def test_stability_returns_structured_result_and_json_like_dict() -> None:
     assert result.problem_kind == "stability"
     assert result.parent_phase == "vap"
     assert result.trial_phase == "vap"
-    np.testing.assert_allclose(result.trial_composition.sum(), 1.0)
+    assert_allclose(result.trial_composition.sum(), 1.0)
     assert result.diagnostics["stability_analysis"] == "neutral_tpd"
     assert result.diagnostics["parent_phases"] == ["vap"]
     assert result.diagnostics["trial_phases"] == ["vap"]

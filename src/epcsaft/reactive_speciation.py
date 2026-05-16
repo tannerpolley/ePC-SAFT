@@ -11,8 +11,8 @@ import numpy as np
 from ._types import InputError, SolutionError
 from .implicit_sensitivity import (
     ImplicitSolveResult,
-    not_available_implicit_result,
     implicit_backend_for_residual_backend,
+    not_available_implicit_result,
 )
 
 _SPECIATION_EVALUATION_ERRORS = (
@@ -320,6 +320,13 @@ class ReactiveSpeciationResult:
         }
 
 
+def _raise_native_ipopt_not_routed() -> None:
+    raise InputError(
+        "solver_backend='ipopt' was requested, but the native Ipopt adapter for reactive_speciation is not wired to "
+        "public reactive speciation routes yet. Use the current native route until the Ipopt NLP adapter is implemented."
+    )
+
+
 def solve_reactive_speciation(
     *,
     species: Any,
@@ -347,21 +354,7 @@ def solve_reactive_speciation(
     balance_matrix, total_vector, balance_names = _normalize_balances(labels, balances, totals)
     reaction_defs = _normalize_reactions(labels, reactions)
     if opts.solver_backend == "ipopt":
-        from ._optional_backends.ipopt import solve_reactive_speciation_ipopt
-
-        return solve_reactive_speciation_ipopt(
-            species=labels,
-            mixture_factory=mixture_factory,
-            T=T,
-            P=P,
-            balance_matrix=balance_matrix,
-            total_vector=total_vector,
-            balance_names=balance_names,
-            reactions=reaction_defs,
-            initial_x=initial,
-            initial_x_source=initial_source,
-            options=opts,
-        )
+        _raise_native_ipopt_not_routed()
     return _solve_reactive_speciation_native(
         species=labels,
         mixture_factory=mixture_factory,

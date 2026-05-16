@@ -9,7 +9,6 @@ import pytest
 
 import epcsaft
 
-
 FIXTURE_ROOT = Path(__file__).resolve().parents[2] / "fixtures" / "literature" / "pure_neutral"
 
 

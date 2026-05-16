@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import platform
 import re
 import subprocess
@@ -104,6 +105,18 @@ def _native_extension_path() -> Path | None:
     return Path(_core.__file__).resolve()
 
 
+def _platform_label() -> str:
+    if os.name == "nt":
+        return sys.platform
+    return platform.platform()
+
+
+def _machine_label() -> str:
+    if os.name == "nt":
+        return os.environ.get("PROCESSOR_ARCHITECTURE", "unknown")
+    return platform.machine()
+
+
 def _native_cppad_backend_info() -> dict[str, object]:
     try:
         from . import _core
@@ -162,6 +175,35 @@ def _native_ceres_backend_info() -> dict[str, object]:
     }
 
 
+def _native_ipopt_backend_info() -> dict[str, object]:
+    try:
+        from . import _core
+    except (ImportError, OSError):
+        return {
+            "backend": "ipopt",
+            "status": "not_configured",
+            "compiled": False,
+            "available": False,
+        }
+    try:
+        smoke = _core._native_ipopt_smoke()
+    except AttributeError:
+        return {
+            "backend": "ipopt",
+            "status": "not_configured",
+            "compiled": False,
+            "available": False,
+        }
+    status = str(smoke.get("status", "not_configured"))
+    compiled = bool(smoke.get("compiled", False))
+    return {
+        "backend": "ipopt",
+        "status": status,
+        "compiled": compiled,
+        "available": status == "enabled_available" and compiled,
+    }
+
+
 def _mtime_utc(path: Path) -> str:
     return datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat()
 
@@ -170,12 +212,9 @@ def _mtime_utc(path: Path) -> str:
 def runtime_build_info() -> dict[str, object]:
     """Return JSON-like package, source, and native-extension metadata."""
 
-    from ._optional_backends.ipopt import cyipopt_backend_info
-
     direct_url = _direct_url_payload()
     source_root = _source_checkout_from_package() or _source_checkout_from_direct_url(direct_url)
     native_path = _native_extension_path()
-    cyipopt = cyipopt_backend_info()
     ceres = _native_ceres_backend_info()
     direct_url_info = direct_url.get("dir_info") if isinstance(direct_url.get("dir_info"), dict) else {}
     return {
@@ -189,12 +228,12 @@ def runtime_build_info() -> dict[str, object]:
         "native_extension_available": native_path is not None,
         "native_extension_mtime_utc": None if native_path is None else _mtime_utc(native_path),
         "python": sys.version.split()[0],
-        "platform": platform.platform(),
-        "machine": platform.machine(),
+        "platform": _platform_label(),
+        "machine": _machine_label(),
         "optional_dependencies": {
-            "cyipopt": cyipopt,
             "ceres": ceres,
             "cppad": _native_cppad_backend_info(),
+            "ipopt": _native_ipopt_backend_info(),
         },
     }
 
@@ -376,9 +415,9 @@ def _derivative_coverage_capabilities(cppad: dict[str, object], ceres: dict[str,
 def capabilities() -> dict[str, object]:
     """Return structured availability flags for high-level package workflows."""
 
-    cyipopt = dict(runtime_build_info()["optional_dependencies"]["cyipopt"])  # type: ignore[index]
     ceres = dict(runtime_build_info()["optional_dependencies"]["ceres"])  # type: ignore[index]
     cppad = dict(runtime_build_info()["optional_dependencies"]["cppad"])  # type: ignore[index]
+    ipopt = dict(runtime_build_info()["optional_dependencies"]["ipopt"])  # type: ignore[index]
     cppad_capability = _dependency_capability(
         cppad,
         production=False,
@@ -468,11 +507,14 @@ def capabilities() -> dict[str, object]:
         "optimizers": {
             "ceres": ceres_capability,
             "ipopt": {
-                **cyipopt,
+                **ipopt,
                 "solver_backend": "ipopt",
-                "scope": "explicit opt-in cyipopt backend; native Newton/default backends remain defaults",
-                "hessian_strategies": ["gauss_newton", "lbfgs"],
-                "formulations": ["bound_constrained_residual_minimization"],
+                "production": False,
+                "scope": "native Ipopt dependency for production equilibrium NLP routes",
+                "hessian_strategies": ["limited_memory"],
+                "formulations": ["thermodynamic_constrained_nlp"],
+                "adapter_available": False,
+                "public_routes": [],
                 "full_constrained_nlp_available": False,
                 "default_auto_uses_ipopt": False,
                 "exact_hessian_available": False,
@@ -531,10 +573,11 @@ def capabilities() -> dict[str, object]:
             "electrolyte_lle": {
                 "available": True,
                 "backend": "native",
-                "solver_backends": ["auto", "newton", "ipopt"],
-                "ipopt_available": bool(cyipopt["available"]),
+                "solver_backends": ["auto"],
+                "ipopt_available": bool(ipopt["available"]),
+                "explicit_ipopt_request": "raises_until_native_adapter_is_implemented",
                 "default_auto_uses_ipopt": False,
-                "ipopt_formulation": "bound_constrained_residual_minimization",
+                "ipopt_formulation": "thermodynamic_constrained_nlp",
                 "full_constrained_nlp_available": False,
             },
             "electrolyte_bubble_pressure": {
@@ -580,10 +623,11 @@ def capabilities() -> dict[str, object]:
                 ],
                 "derivative_gap_status": "implicit_sensitivity_available_for_reaction_constant_response",
                 "explicit_autodiff_raises_when_unavailable": True,
-                "solver_backends": ["auto", "newton", "ipopt"],
-                "ipopt_available": bool(cyipopt["available"]),
+                "solver_backends": ["auto"],
+                "ipopt_available": bool(ipopt["available"]),
+                "explicit_ipopt_request": "raises_until_native_adapter_is_implemented",
                 "default_auto_uses_ipopt": False,
-                "ipopt_formulation": "bound_constrained_residual_minimization",
+                "ipopt_formulation": "thermodynamic_constrained_nlp",
                 "full_constrained_nlp_available": False,
             },
             "repeated_state_properties": {

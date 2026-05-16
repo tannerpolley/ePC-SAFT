@@ -29,7 +29,7 @@ First official source-release baseline for `epcsaft`.
 - User-owned parameter-folder workflow with `create_parameter_template(...)` and `ePCSAFTMixture.from_dataset(...)`.
 - Supported regression helpers for pure-component, ionic, binary, and scoped electrolyte workflows.
 - Native-backed neutral equilibrium, electrolyte LLE, fixed-liquid electrolyte bubble pressure, reactive speciation, reactive staged equilibrium, and scoped reactive electrolyte bubble workflows.
-- Optional experimental IPOPT refinement when `cyipopt` and platform prerequisites are installed.
+- Native system Ipopt discovery is explicit build-gate work for the planned constrained-NLP adapter.
 
 ### Distribution
 

@@ -21,7 +21,7 @@ the remaining broad catches are intentional result-contract boundaries.
 | Activity-fixed-point and scalar-search speciation helpers in `src/epcsaft/reactive_speciation.py` | 3 narrowed, 1 retained | `_SPECIATION_EVALUATION_ERRORS` and `_COMPOSITION_NORMALIZATION_ERRORS` | Candidate and normalization failures remain structured, but unexpected bugs are no longer silently skipped in scalar search or initial failure shaping. |
 | Runtime metadata import probes in `src/epcsaft/runtime.py` | 3 | `(ImportError, OSError)` | Runtime metadata still handles missing or unloadable native extensions, while unrelated metadata bugs surface loudly. |
 | CLI import probe in `src/epcsaft/__main__.py` | 1 | `(ImportError, OSError)` | The CLI still reports import/load failures cleanly, but does not hide arbitrary execution errors. |
-| Optional IPOPT adapter in `src/epcsaft/_optional_backends/ipopt.py` | 3 | import/load, status-code, and native-seed typed boundaries | Optional dependency import diagnostics, IPOPT status parsing, and native seed failure recording now have specific exception boundaries. |
+| Native IPOPT adapter work | 0 | future native adapter status and route diagnostics | The old Python optional adapter was removed; new exception boundaries belong with the native constrained-NLP adapter. |
 
 ## Remaining Broad Catches
 
@@ -43,7 +43,6 @@ the remaining broad catches are intentional result-contract boundaries.
 - `src/epcsaft/runtime.py`: native extension path, CppAD metadata, and Ceres
   metadata import probes.
 - `src/epcsaft/__main__.py`: package/native import failure reporting.
-- `src/epcsaft/_optional_backends/ipopt.py`: optional dependency import
   diagnostics, status parsing, native seed failure recording, and stale moved
   `_core` imports.
 

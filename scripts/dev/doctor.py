@@ -16,6 +16,7 @@ REQUIRED_CORE_SYMBOLS = (
     "_evaluate_generic_native_debug",
     "_solve_equilibrium_native",
     "_native_cppad_smoke",
+    "_native_ipopt_smoke",
     "NativeSolutionError",
 )
 
@@ -52,6 +53,10 @@ def _missing_core_symbols() -> tuple[str, ...]:
 
 
 def _cppad_status() -> str:
+    return _runtime_optional_dependency_status("cppad")
+
+
+def _runtime_optional_dependency_status(name: str) -> str:
     try:
         import epcsaft
 
@@ -61,10 +66,28 @@ def _cppad_status() -> str:
     optional = info.get("optional_dependencies", {})
     if not isinstance(optional, dict):
         return "<unknown>"
-    cppad = optional.get("cppad", {})
-    if not isinstance(cppad, dict):
+    payload = optional.get(name, {})
+    if not isinstance(payload, dict):
         return "<unknown>"
-    return str(cppad.get("status", "<unknown>"))
+    return str(payload.get("status", "<unknown>"))
+
+
+def _ceres_status() -> str:
+    return _runtime_optional_dependency_status("ceres")
+
+
+def _ipopt_status() -> str:
+    return _runtime_optional_dependency_status("ipopt")
+
+
+def _cmake_cache_value(name: str, cache_path: Path = DEV_BUILD_CACHE) -> str | None:
+    if not cache_path.exists():
+        return None
+    prefix = f"{name}:"
+    for line in cache_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if line.startswith(prefix):
+            return line.split("=", 1)[1].strip()
+    return None
 
 
 def _tool_path(name: str) -> str:
@@ -137,7 +160,11 @@ def main() -> int:
     print(f"epcsaft_core_error: {core_error or '<none>'}")
     missing_core_symbols = _missing_core_symbols() if core_path is not None else ()
     print(f"epcsaft_core_missing_symbols: {', '.join(missing_core_symbols) if missing_core_symbols else '<none>'}")
+    print(f"ceres_configured: {_cmake_cache_value('EPCSAFT_ENABLE_CERES') or '<unconfigured>'}")
     print(f"cppad_status: {_cppad_status()}")
+    print(f"ceres_status: {_ceres_status()}")
+    print(f"ipopt_configured: {_cmake_cache_value('EPCSAFT_ENABLE_IPOPT') or '<unconfigured>'}")
+    print(f"ipopt_status: {_ipopt_status()}")
     print(f"stale_generated_reports: {_stale_report_state()}")
     tracked_generated = _tracked_generated_count()
     print(f"tracked_generated_run_files: {tracked_generated if tracked_generated is not None else '<unknown>'}")

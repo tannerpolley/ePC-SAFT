@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-
 import numpy as np
 import pytest
 
 import epcsaft
+
 
 def _tiny_base_parameters() -> dict[str, np.ndarray]:
     return {

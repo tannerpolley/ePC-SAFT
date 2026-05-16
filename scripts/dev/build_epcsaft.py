@@ -19,42 +19,31 @@ STALE_LOCK_SECONDS = 120
 
 
 class BuildProfile(NamedTuple):
-    enable_ceres: bool
-    enable_cppad: bool
+    enable_ipopt: bool
     windows_parallel: str
     description: str
 
 
 class BuildSettings(NamedTuple):
-    enable_ceres: bool
-    enable_cppad: bool
+    enable_ipopt: bool
     parallel: str | None
 
 
 BUILD_PROFILES: dict[str, BuildProfile] = {
     "fast": BuildProfile(
-        enable_ceres=False,
-        enable_cppad=True,
-        windows_parallel="2",
-        description="default local iteration profile: CppAD enabled, Ceres disabled",
-    ),
-    "cppad": BuildProfile(
-        enable_ceres=False,
-        enable_cppad=True,
-        windows_parallel="2",
-        description="explicit CppAD validation profile without the Ceres FetchContent build",
+        enable_ipopt=False,
+        windows_parallel="4",
+        description="default native dependency profile: Ceres and CppAD enabled, Ipopt disabled",
     ),
     "full": BuildProfile(
-        enable_ceres=True,
-        enable_cppad=True,
+        enable_ipopt=False,
         windows_parallel="4",
-        description="full optional native backend profile: Ceres and CppAD enabled",
+        description="full native dependency profile: Ceres and CppAD enabled, Ipopt disabled",
     ),
-    "minimal": BuildProfile(
-        enable_ceres=False,
-        enable_cppad=False,
-        windows_parallel="10",
-        description="smallest native extension profile: Ceres and CppAD disabled",
+    "ipopt": BuildProfile(
+        enable_ipopt=True,
+        windows_parallel="4",
+        description="native solver dependency profile: Ceres, CppAD, and system Ipopt enabled",
     ),
 }
 
@@ -215,6 +204,9 @@ def _status_lines(*, stale_lock_seconds: int = STALE_LOCK_SECONDS) -> list[str]:
     system_ceres = _cmake_cache_value("EPCSAFT_USE_SYSTEM_CERES") or "<unconfigured>"
     ceres_dir = _cmake_cache_value("Ceres_DIR") or "<unconfigured>"
     cppad = _cmake_cache_value("EPCSAFT_ENABLE_CPPAD") or "<unconfigured>"
+    ipopt = _cmake_cache_value("EPCSAFT_ENABLE_IPOPT") or "<unconfigured>"
+    system_ipopt = _cmake_cache_value("EPCSAFT_USE_SYSTEM_IPOPT") or "<unconfigured>"
+    ipopt_dir = _cmake_cache_value("Ipopt_DIR") or "<unconfigured>"
     artifacts = _native_artifacts()
     lock = BUILD_DIR / ".ninja_lock"
     lock_present = lock.exists()
@@ -230,7 +222,10 @@ def _status_lines(*, stale_lock_seconds: int = STALE_LOCK_SECONDS) -> list[str]:
         f"system_ceres_configured: {system_ceres}",
         f"ceres_dir: {ceres_dir}",
         f"cppad_configured: {cppad}",
-        f"profile_hint: {_profile_hint(ceres=ceres, cppad=cppad)}",
+        f"ipopt_configured: {ipopt}",
+        f"system_ipopt_configured: {system_ipopt}",
+        f"ipopt_dir: {ipopt_dir}",
+        f"profile_hint: {_profile_hint(ceres=ceres, cppad=cppad, ipopt=ipopt)}",
         f"native_core: {'present' if artifacts else 'missing'}",
         "native_core_paths: " + (", ".join(str(path) for path in artifacts) if artifacts else "<none>"),
         f"ninja_lock: {'present' if lock_present else 'missing'}",
@@ -247,16 +242,14 @@ def _status_lines(*, stale_lock_seconds: int = STALE_LOCK_SECONDS) -> list[str]:
     return lines
 
 
-def _profile_hint(*, ceres: str, cppad: str) -> str:
-    if "<unconfigured>" in {ceres, cppad}:
+def _profile_hint(*, ceres: str, cppad: str, ipopt: str) -> str:
+    if "<unconfigured>" in {ceres, cppad, ipopt}:
         return "<unconfigured>"
-    normalized = (ceres.upper(), cppad.upper())
-    if normalized == ("OFF", "ON"):
-        return "fast/cppad"
-    if normalized == ("ON", "ON"):
-        return "full"
-    if normalized == ("OFF", "OFF"):
-        return "minimal"
+    normalized = (ceres.upper(), cppad.upper(), ipopt.upper())
+    if normalized == ("ON", "ON", "OFF"):
+        return "fast/full"
+    if normalized == ("ON", "ON", "ON"):
+        return "ipopt"
     return "custom"
 
 
@@ -314,11 +307,12 @@ def _generator_args(env: dict[str, str], configured_generator: str | None = None
 def _configure(
     env: dict[str, str],
     *,
-    enable_ceres: bool,
     use_system_ceres: bool,
     ceres_dir: Path | None,
-    enable_cppad: bool,
     use_system_cppad: bool,
+    enable_ipopt: bool,
+    use_system_ipopt: bool,
+    ipopt_dir: Path | None,
 ) -> None:
     pybind11_dir = _capture([sys.executable, "-m", "pybind11", "--cmakedir"], env=env)
     cmd = [
@@ -328,10 +322,12 @@ def _configure(
         "-B",
         str(BUILD_DIR),
         "-DEPCSAFT_DEV_INPLACE=ON",
-        f"-DEPCSAFT_ENABLE_CERES={'ON' if enable_ceres else 'OFF'}",
+        "-DEPCSAFT_ENABLE_CERES=ON",
         f"-DEPCSAFT_USE_SYSTEM_CERES={'ON' if use_system_ceres else 'OFF'}",
-        f"-DEPCSAFT_ENABLE_CPPAD={'ON' if enable_cppad else 'OFF'}",
+        "-DEPCSAFT_ENABLE_CPPAD=ON",
         f"-DEPCSAFT_USE_SYSTEM_CPPAD={'ON' if use_system_cppad else 'OFF'}",
+        f"-DEPCSAFT_ENABLE_IPOPT={'ON' if enable_ipopt else 'OFF'}",
+        f"-DEPCSAFT_USE_SYSTEM_IPOPT={'ON' if use_system_ipopt else 'OFF'}",
         "-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY",
         f"-DSKBUILD_PROJECT_VERSION={_pyproject_version()}",
         f"-DPython_EXECUTABLE={sys.executable}",
@@ -339,6 +335,8 @@ def _configure(
     ]
     if ceres_dir is not None:
         cmd.append(f"-DCeres_DIR={ceres_dir}")
+    if ipopt_dir is not None:
+        cmd.append(f"-DIpopt_DIR={ipopt_dir}")
     cmd.extend(_generator_args(env, _configured_generator()))
     _run(cmd, env=env)
 
@@ -384,20 +382,22 @@ def _timed(label: str, action) -> float:
 
 def _resolve_settings(args: argparse.Namespace) -> BuildSettings:
     profile = BUILD_PROFILES[args.profile]
-    enable_ceres = profile.enable_ceres if args.enable_ceres is None else bool(args.enable_ceres)
-    enable_cppad = profile.enable_cppad if args.enable_cppad is None else bool(args.enable_cppad)
-    if args.use_system_cppad:
-        enable_cppad = True
-    if args.use_system_ceres or args.ceres_dir is not None:
-        enable_ceres = True
+    enable_ipopt = profile.enable_ipopt if args.enable_ipopt is None else bool(args.enable_ipopt)
+    if args.use_system_ipopt or args.ipopt_dir is not None:
+        enable_ipopt = True
 
     parallel = args.parallel
     if parallel is None:
-        if os.name == "nt":
-            parallel = BUILD_PROFILES["full"].windows_parallel if enable_ceres else profile.windows_parallel
-        elif enable_ceres:
+        if enable_ipopt:
+            parallel = BUILD_PROFILES["ipopt"].windows_parallel
+        elif os.name == "nt":
+            parallel = profile.windows_parallel
+        else:
             parallel = BUILD_PROFILES["full"].windows_parallel
-    return BuildSettings(enable_ceres=enable_ceres, enable_cppad=enable_cppad, parallel=parallel)
+    return BuildSettings(
+        enable_ipopt=enable_ipopt,
+        parallel=parallel,
+    )
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -418,8 +418,8 @@ def _parser() -> argparse.ArgumentParser:
         choices=tuple(BUILD_PROFILES),
         default="fast",
         help=(
-            "Native dependency profile. fast/cppad enable CppAD without Ceres; full enables Ceres and CppAD; "
-            "minimal disables both. Explicit --enable-* or --disable-* flags override the profile."
+            "Native dependency profile. fast/full require Ceres and CppAD; "
+            "ipopt additionally enables the system Ipopt dependency."
         ),
     )
     parser.add_argument(
@@ -428,23 +428,11 @@ def _parser() -> argparse.ArgumentParser:
         default="auto",
         help="CMake generator for a new configure. Auto prefers Ninja when available.",
     )
-    parser.set_defaults(enable_ceres=None, enable_cppad=None)
-    parser.add_argument(
-        "--enable-ceres",
-        dest="enable_ceres",
-        action="store_true",
-        help="Enable Ceres Solver support, overriding the selected profile.",
-    )
-    parser.add_argument(
-        "--disable-ceres",
-        dest="enable_ceres",
-        action="store_false",
-        help="Disable Ceres Solver support for this build.",
-    )
+    parser.set_defaults(enable_ipopt=None)
     parser.add_argument(
         "--use-system-ceres",
         action="store_true",
-        help="Use an installed Ceres Solver package. Implies --enable-ceres.",
+        help="Use an installed Ceres Solver package instead of FetchContent.",
     )
     parser.add_argument(
         "--ceres-dir",
@@ -452,21 +440,31 @@ def _parser() -> argparse.ArgumentParser:
         help="Directory containing CeresConfig.cmake for a prebuilt/exported Ceres package. Implies --use-system-ceres.",
     )
     parser.add_argument(
-        "--enable-cppad",
-        dest="enable_cppad",
-        action="store_true",
-        help="Enable package-wide CppAD support, overriding the selected profile.",
-    )
-    parser.add_argument(
-        "--disable-cppad",
-        dest="enable_cppad",
-        action="store_false",
-        help="Disable package-wide CppAD support for this build.",
-    )
-    parser.add_argument(
         "--use-system-cppad",
         action="store_true",
-        help="Use an installed CppAD include tree. Implies --enable-cppad.",
+        help="Use an installed CppAD include tree instead of FetchContent.",
+    )
+    parser.add_argument(
+        "--enable-ipopt",
+        dest="enable_ipopt",
+        action="store_true",
+        help="Enable native Ipopt support. Requires a system Ipopt package.",
+    )
+    parser.add_argument(
+        "--disable-ipopt",
+        dest="enable_ipopt",
+        action="store_false",
+        help="Disable native Ipopt support for this build.",
+    )
+    parser.add_argument(
+        "--use-system-ipopt",
+        action="store_true",
+        help="Use an installed Ipopt package. Implies --enable-ipopt.",
+    )
+    parser.add_argument(
+        "--ipopt-dir",
+        type=Path,
+        help="Directory containing IpoptConfig.cmake for a native Ipopt package. Implies --use-system-ipopt.",
     )
     return parser
 
@@ -483,6 +481,7 @@ def main() -> int:
         parser.error("--configure-only cannot be combined with --build-only")
     settings = _resolve_settings(args)
     use_system_ceres = bool(args.use_system_ceres or args.ceres_dir is not None)
+    use_system_ipopt = bool(settings.enable_ipopt or args.use_system_ipopt or args.ipopt_dir is not None)
 
     total_start = time.perf_counter()
     if args.clean:
@@ -494,9 +493,11 @@ def main() -> int:
     print(
         "Build profile: "
         f"{args.profile} ({BUILD_PROFILES[args.profile].description}); "
-        f"Ceres={'ON' if settings.enable_ceres else 'OFF'}, "
-        f"CeresSource={('system' if use_system_ceres else 'FetchContent') if settings.enable_ceres else 'disabled'}, "
-        f"CppAD={'ON' if settings.enable_cppad else 'OFF'}, "
+        "Ceres=ON, "
+        f"CeresSource={'system' if use_system_ceres else 'FetchContent'}, "
+        "CppAD=ON, "
+        f"Ipopt={'ON' if settings.enable_ipopt else 'OFF'}, "
+        f"IpoptSource={('system' if use_system_ipopt else 'disabled') if settings.enable_ipopt else 'disabled'}, "
         f"parallel={settings.parallel or '<generator default>'}",
         flush=True,
     )
@@ -505,11 +506,12 @@ def main() -> int:
             "configure",
             lambda: _configure(
                 env,
-                enable_ceres=settings.enable_ceres,
                 use_system_ceres=use_system_ceres,
                 ceres_dir=args.ceres_dir,
-                enable_cppad=settings.enable_cppad,
                 use_system_cppad=args.use_system_cppad,
+                enable_ipopt=settings.enable_ipopt,
+                use_system_ipopt=use_system_ipopt,
+                ipopt_dir=args.ipopt_dir,
             ),
         )
     else:

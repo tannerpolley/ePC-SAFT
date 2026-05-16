@@ -7,6 +7,7 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
+from tests.helpers.numeric import assert_allclose
 
 
 def _hydrocarbon_mixture() -> ePCSAFTMixture:
@@ -84,8 +85,8 @@ def test_explicit_flash_tp_matches_legacy_equilibrium_dispatch() -> None:
     assert isinstance(direct, epcsaft.EquilibriumResult)
     assert direct.problem_kind == legacy.problem_kind
     assert direct.phase_labels == legacy.phase_labels
-    np.testing.assert_allclose(direct.phases[0].composition, legacy.phases[0].composition)
-    np.testing.assert_allclose(direct.phases[1].composition, legacy.phases[1].composition)
+    assert_allclose(direct.phases[0].composition, legacy.phases[0].composition)
+    assert_allclose(direct.phases[1].composition, legacy.phases[1].composition)
 
 
 def test_equilibrium_dispatch_accepts_generic_neutral_bubble_and_dew_routes() -> None:
@@ -213,11 +214,11 @@ def test_equilibrium_phase_exposes_explicit_ln_fugacity_alias() -> None:
     result = mix.equilibrium(kind="tp_flash", T=220.0, P=1.0e5, z=np.asarray([0.1, 0.3, 0.6]))
 
     phase = result.phases[0]
-    np.testing.assert_allclose(phase.ln_fugacity_coefficient, phase.fugacity_coefficient)
+    assert_allclose(phase.ln_fugacity_coefficient, phase.fugacity_coefficient)
     payload = phase.to_dict()
     assert "ln_fugacity_coefficient" in payload
     assert "fugacity_coefficient" in payload
-    np.testing.assert_allclose(payload["ln_fugacity_coefficient"], payload["fugacity_coefficient"])
+    assert_allclose(payload["ln_fugacity_coefficient"], payload["fugacity_coefficient"])
     json.dumps(result.to_dict(), allow_nan=False)
 
 

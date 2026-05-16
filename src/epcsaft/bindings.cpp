@@ -1619,6 +1619,23 @@ PYBIND11_MODULE(_core, m) {
         out["status"] = compiled ? "enabled_available" : "disabled";
         return out;
     });
+    m.def("_native_ipopt_smoke", []() {
+        py::dict out;
+#ifdef EPCSAFT_HAS_IPOPT
+        const bool compiled = true;
+#else
+        const bool compiled = false;
+#endif
+        out["backend"] = "ipopt";
+        out["compiled"] = compiled;
+        out["available"] = compiled;
+#ifdef EPCSAFT_IPOPT_STATUS
+        out["status"] = EPCSAFT_IPOPT_STATUS;
+#else
+        out["status"] = compiled ? "enabled_available" : "disabled";
+#endif
+        return out;
+    });
     m.def("_native_cppad_eos_contributions", [](double t, double rho, const std::vector<double>& x, const add_args& args) {
         return cppad_smoke_to_dict(cppad_eos_contribution_derivatives_cpp(t, rho, x, args));
     });

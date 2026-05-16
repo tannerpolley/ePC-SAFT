@@ -17,24 +17,19 @@ bubble-pressure handoffs, structured results, and diagnostics.
 
 ``ReactiveSpeciationOptions`` accepts ``solver_backend="auto" | "newton" |
 "ipopt"`` and ``hessian_strategy="gauss_newton" | "lbfgs"``. ``auto`` keeps
-the current native chemical-equilibrium solve. ``ipopt`` is explicit opt-in,
-uses the optional ``cyipopt`` package, and raises ``InputError`` when requested
-without ``cyipopt`` instead of falling back to Newton. The adapter solves a
-bounded log-amount residual-minimization NLP through native residual/Jacobian
-callbacks and preserves mass, charge, and reaction residual diagnostics.
+the current native chemical-equilibrium solve. ``ipopt`` is reserved for the
+native Ipopt constrained-NLP adapter and raises ``InputError`` until that adapter
+is wired to public reactive speciation routes.
 
-The current IPOPT formulation is an explicit residual-minimization bridge, not full
-constrained Gibbs minimization. Diagnostics report ``formulation``,
-``ipopt_success``, residual/physical gate status, and approximate Hessian
-metadata separately. ``hessian_strategy="gauss_newton"`` supplies a
-least-squares ``J.T @ J`` callback; ``hessian_strategy="lbfgs"`` delegates to
-IPOPT limited-memory Hessian approximation. Neither route includes exact second
-residual derivatives.
+The target IPOPT formulation is constrained Gibbs minimization with formal
+material, charge, and reaction constraints plus exact gradients/Jacobians from
+analytic or CppAD-backed callbacks. Limited-memory Hessian handling is allowed
+only as Ipopt solver-internal behavior and is not reported as a package
+derivative backend.
 
 Solver-selection policy is intentionally conservative. ``auto`` keeps the native
-chemical-equilibrium solver. IPOPT is appropriate only as an explicit
-bound-constrained residual-minimization experiment until material, charge, and
-reaction constraints are exposed as formal NLP constraints.
+chemical-equilibrium solver until the native Ipopt adapter is implemented and
+validated.
 
 Homogeneous reactive speciation
 -------------------------------

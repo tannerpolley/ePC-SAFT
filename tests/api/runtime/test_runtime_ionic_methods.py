@@ -9,6 +9,7 @@ from tests.helpers.runtime_cases import (
     _ionic_state_with_elec_model,
 )
 
+
 def test_ionic_activity_and_solution_methods_return_expected_values():
     state, species = _ionic_state()
 

@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from epcsaft import _core
+from tests.helpers.numeric import assert_allclose
 from tests.native.equilibrium.test_electrolyte_lle_residual_surface import _electrolyte_mixture, _initial_request
 
 
@@ -49,4 +50,4 @@ def test_electrolyte_lle_native_accepted_solve_uses_ceres_jacobian_route() -> No
         assert float(phase["density"]) > 0.0
         assert composition.sum() == pytest.approx(1.0, abs=1.0e-12)
         reconstructed += fraction * composition
-    np.testing.assert_allclose(reconstructed, feed, atol=1.0e-10)
+    assert_allclose(reconstructed, feed, atol=1.0e-10)
