@@ -300,6 +300,10 @@ Task 2 continuation note: skipped Hubach electrolyte-LLE continuation tests that
 were deleted. The active electrolyte LLE smoke/fixture tests retain route-pending, charge-neutral seed, fixture, and
 removed-option coverage without keeping opt-in status-only duplicates.
 
+Task 2 continuation note: Hubach removed-option checks now run as normal fast tests because they fail during validation
+before any native route execution. The last Hubach-specific opt-in skip scaffolding was removed from the equilibrium
+test tree.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**

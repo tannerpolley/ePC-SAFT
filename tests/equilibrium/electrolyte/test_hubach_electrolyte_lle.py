@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import csv
-import os
 from pathlib import Path
 
 import numpy as np
@@ -85,10 +84,6 @@ def test_hubach_seed_helper_constructs_charge_neutral_material_balanced_guess() 
     assert aq[0] > org_out[0]
 
 
-@pytest.mark.skipif(
-    os.environ.get("EPCSAFT_RUN_HUBACH_LLE") != "1",
-    reason="Hubach cold-start failure is an opt-in hard-case regression.",
-)
 def test_hubach_cold_start_rejects_removed_option_dict_keys() -> None:
     feed = _row0_feed()
     mix = _hubach_mixture(feed)
@@ -105,10 +100,6 @@ def test_hubach_cold_start_rejects_removed_option_dict_keys() -> None:
         )
 
 
-@pytest.mark.skipif(
-    os.environ.get("EPCSAFT_RUN_HUBACH_LLE") != "1",
-    reason="Hubach density diagnostics are an opt-in hard-case regression.",
-)
 def test_hubach_rejects_removed_density_diagnostics_option() -> None:
     feed = _row0_feed()
     mix = _hubach_mixture(feed)
