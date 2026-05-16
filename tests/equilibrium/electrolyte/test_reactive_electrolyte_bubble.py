@@ -10,8 +10,8 @@ def _salt_mixture(x, T, P):
     return epcsaft.ePCSAFTMixture.from_dataset("2026_Khudaida", ["H2O", "Na+", "Cl-"], x, T)
 
 
-def test_reactive_electrolyte_bubble_requires_native_ipopt_bubble_route() -> None:
-    with pytest.raises(epcsaft.InputError, match="native Ipopt equilibrium route builder"):
+def test_reactive_electrolyte_bubble_requires_native_ipopt_speciation_route_first() -> None:
+    with pytest.raises(epcsaft.InputError, match="native Ipopt homogeneous reactive-speciation NLP route"):
         epcsaft.solve_reactive_electrolyte_bubble(
             species=["H2O", "Na+", "Cl-"],
             mixture_factory=_salt_mixture,

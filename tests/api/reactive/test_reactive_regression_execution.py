@@ -298,7 +298,7 @@ def test_fit_reactive_electrolyte_parameters_reports_route_pending_mixed_objecti
     assert fit.objective_result.batch_result.failure_count == 1
     assert row.success is False
     assert row.solver_status == "exception"
-    assert "native Ipopt equilibrium route builder" in row.message
+    assert "reactive_speciation requires a native Ipopt homogeneous reactive-speciation NLP route" in row.message
     assert target_counts["partial_pressure"] == 1
     assert target_counts["speciation"] == 1
     assert payload["status"] == fit.status

@@ -69,7 +69,8 @@ def test_reactive_regression_benchmark_schema_for_one_case():
     for field in required:
         assert field in case_payload
     assert case_payload["case"] == "reactive_regression_objective_tiny"
-    assert case_payload["success_count"] >= 1
+    assert case_payload["success_count"] == 0
+    assert case_payload["failure_count"] >= 1
     assert case_payload["measured_success_repeat_count"] == 1
     assert case_payload["failure_messages"] == []
     assert case_payload["baseline_repeat"] == 1
@@ -221,4 +222,5 @@ def test_reactive_regression_benchmark_script_executes_and_writes_json(tmp_path)
     assert payload["repeat"] == 1
     assert payload["cases"][0]["case"] == "reactive_speciation_batch_tiny"
     assert payload["cases"][0]["cache_hits"] >= 0
-    assert payload["cases"][0]["success_count"] >= 1
+    assert payload["cases"][0]["success_count"] == 0
+    assert payload["cases"][0]["failure_count"] >= 1

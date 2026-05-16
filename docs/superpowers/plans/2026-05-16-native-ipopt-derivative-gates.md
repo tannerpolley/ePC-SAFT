@@ -445,6 +445,8 @@ Task 9 continuation note: the Python reactive-phase diagnostics no longer call N
 
 Task 9 continuation note: public coupled reactive LLE and reactive electrolyte LLE no longer execute the transitional Ceres coupled residual route. Public `ReactivePhaseEquilibriumProblem` and `mixture.equilibrium(kind="reactive_lle" | "reactive_electrolyte_lle")` validate requests and raise until native Ipopt reactive phase-equilibrium route builders own those solves; the lower-level native residual surface remains diagnostic/private coverage.
 
+Task 9 continuation note: private tests that asserted accepted Ceres equilibrium solves for electrolyte LLE, neutral associating LLE, and coupled reactive phase equilibrium were deleted. Remaining native coverage for these transitional surfaces is limited to residual/Jacobian evaluators and public route-gate tests until native Ipopt NLP builders own accepted equilibrium solves.
+
 ### Task 10: Make Regression Ceres-Only
 
 **Files:**

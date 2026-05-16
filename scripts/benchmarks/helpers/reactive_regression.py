@@ -250,16 +250,28 @@ def _run_solve_reactive_bubble(points: Sequence[Mapping[str, Any]]) -> Callable[
         diagnostics_keys: list[str] = []
         residual_count = 0
 
-        results = epcsaft.solve_reactive_electrolyte_bubble_sweep(
-            species=list(SPECIES),
-            mixture_factory=factory,
-            points=points,
-            balances=BALANCES,
-            reactions=REACTIONS,
-            vapor_species=VAPOR_SPECIES,
-            continuation="none",
-            options=epcsaft.ReactiveElectrolyteBubbleOptions(error_mode="result"),
-        )
+        try:
+            results = epcsaft.solve_reactive_electrolyte_bubble_sweep(
+                species=list(SPECIES),
+                mixture_factory=factory,
+                points=points,
+                balances=BALANCES,
+                reactions=REACTIONS,
+                vapor_species=VAPOR_SPECIES,
+                continuation="none",
+                options=epcsaft.ReactiveElectrolyteBubbleOptions(error_mode="result"),
+            )
+        except Exception as exc:
+            results = []
+            failure_count += len(points)
+            for point in points:
+                row_fingerprints.append(
+                    {
+                        "success": False,
+                        "T": _to_float(point.get("T")),
+                        "message": f"{type(exc).__name__}: {exc}",
+                    }
+                )
         for point, result in zip(points, results, strict=False):
             if result.success:
                 success_count += 1

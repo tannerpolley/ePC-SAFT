@@ -488,6 +488,8 @@ def _solve_reactive_speciation_native(
     options: ReactiveSpeciationOptions,
     initial_x_source: str = "initial_x",
 ) -> ReactiveSpeciationResult:
+    if options.solver_backend != "ipopt":
+        _raise_native_ipopt_reactive_speciation_required()
     from . import _core
 
     mixture = mixture_factory(initial_x, T, P)
@@ -571,13 +573,8 @@ def _solve_reactive_speciation_native(
             "initial_x_source": str(initial_x_source),
             "continuation_used": str(initial_x_source) != "initial_x",
             "requested_solver_backend": str(options.solver_backend),
-            "selected_solver_backend": str(diagnostics.get("selected_solver_backend", "native")),
-            "solver_selection_reason": str(
-                diagnostics.get(
-                    "solver_selection_reason",
-                    "default_native" if options.solver_backend == "auto" else "explicit_request",
-                )
-            ),
+            "selected_solver_backend": str(diagnostics.get("selected_solver_backend", "native_ipopt")),
+            "solver_selection_reason": str(diagnostics.get("solver_selection_reason", "explicit_request")),
             "default_auto_uses_ipopt": False,
             "mass_tolerance": float(mass_tolerance),
             "charge_tolerance": float(charge_tolerance),
@@ -626,7 +623,7 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
     diagnostics.setdefault("thermodynamic_backend", "epcsaft_state_activity_chemical_potential_api")
     diagnostics.setdefault(
         "solver_backend",
-        diagnostics.get("selected_solver_backend", diagnostics.get("nonlinear_solver", "native")),
+        diagnostics.get("selected_solver_backend", diagnostics.get("nonlinear_solver", "native_ipopt")),
     )
     diagnostics.setdefault("derivative_backend", derivative_backend)
     diagnostics.setdefault("derivative_status", derivative_backend)

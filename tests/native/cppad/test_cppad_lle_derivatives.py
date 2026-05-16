@@ -6,53 +6,11 @@ import numpy as np
 
 import epcsaft
 from epcsaft import _core
-from epcsaft.equilibrium import _call_native_equilibrium
-
-
-def _associating_lle_mixture() -> epcsaft.ePCSAFTMixture:
-    return epcsaft.ePCSAFTMixture.from_params(
-        {
-            "m": np.asarray([1.5255, 2.5303]),
-            "s": np.asarray([3.2300, 3.8499]),
-            "e": np.asarray([188.90, 278.11]),
-            "e_assoc": np.asarray([2899.5, 0.0]),
-            "vol_a": np.asarray([0.035176, 0.0]),
-            "assoc_scheme": ["2B", None],
-            "k_ij": np.asarray([[0.0, 0.051], [0.051, 0.0]]),
-        },
-        species=["Methanol", "Cyclohexane"],
-    )
 
 
 def _electrolyte_mixture() -> epcsaft.ePCSAFTMixture:
     feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
     return epcsaft.ePCSAFTMixture.from_dataset("2022_Ascani", ["H2O", "Butanol", "Na+", "Cl-"], feed, 298.15)
-
-
-def test_associating_neutral_lle_solves_with_cppad_implicit_derivatives() -> None:
-    mix = _associating_lle_mixture()
-
-    result = _call_native_equilibrium(
-        mix,
-        kind="lle_flash",
-        T=298.15,
-        P=1.013e5,
-        z=[0.5, 0.5],
-        options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-8),
-    )
-
-    assert result.split_detected is True
-    assert result.phase_labels == ["liq1", "liq2"]
-    assert result.diagnostics["fugacity_residual_norm"] < 1.0e-8
-    assert result.diagnostics["material_balance_error"] < 1.0e-8
-    assert result.diagnostics["phase_distance"] > 0.1
-    assert result.diagnostics["nonlinear_solver"] == "ceres_trust_region_residual_solve"
-    assert result.diagnostics["derivative_backend"] == "cppad_implicit"
-    assert result.diagnostics["derivative_status"] == "residual_jacobian_available"
-    assert result.diagnostics["jacobian_available"] is True
-    payload = json.dumps(result.to_dict(), default=str).lower()
-    assert "unsupported" not in payload
-    assert "numerical_derivative" not in payload
 
 
 def test_electrolyte_lle_residual_surface_reports_cppad_implicit_jacobian() -> None:

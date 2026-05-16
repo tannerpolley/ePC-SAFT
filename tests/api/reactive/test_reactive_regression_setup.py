@@ -108,10 +108,13 @@ def test_reactive_regression_context_runs_native_speciation_objective_and_jacobi
     )
 
     objective = context.evaluate_objective({"Na+.sigma": 2.8232})
-    assert objective.batch_result.success_count == 1
-    assert objective.batch_result.failure_count == 0
+    assert objective.batch_result.success_count == 0
+    assert objective.batch_result.failure_count == 1
     assert objective.residual_names == ("native-row.reaction.salt_dissociation",)
     assert objective.residuals.shape == (1,)
+    assert "reactive_speciation requires a native Ipopt homogeneous reactive-speciation NLP route" in (
+        objective.batch_result.row_results[0].message
+    )
     with pytest.raises(epcsaft.InputError, match="native Ceres derivative coverage"):
         context.evaluate_derivatives({"Na+.sigma": 2.8232}, parameters=["Na+.sigma"])
 

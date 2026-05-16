@@ -64,7 +64,7 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - The public implicit-sensitivity placeholder helper was removed. Reactive speciation tests now require real analytical/CppAD-backed implicit solve payloads and raising behavior for unsupported implicit derivative requests.
 - The legacy reactive-speciation `jacobian_backend="autodiff"` selector was removed; option tests now reject it and explicit derivative requests are limited to analytical/CppAD semantics.
 - The public `EquilibriumOptions.jacobian_backend` selector now rejects the same legacy backend spelling, keeping phase-equilibrium derivative requests aligned to analytical/CppAD semantics.
-- Stale native electrolyte LLE contract tests now describe the existing Ceres route as transitional current coverage, not final production equilibrium ownership.
+- Stale native electrolyte LLE and reactive-phase tests that protected accepted Ceres equilibrium solves were deleted. Residual-surface derivative tests remain as private diagnostic coverage until native Ipopt route builders own production equilibrium.
 - The reactive phase diagnostic extent helper no longer uses NumPy's least-squares convenience path; it uses a direct library linear solve for the small stoichiometric normal system.
 - No-reaction, failed, and best-effort reactive speciation paths now omit implicit-sensitivity payloads when the native route has no reaction-constant sensitivity matrix instead of returning placeholders or raising during diagnostic normalization.
 - The MIAC electrolyte fixture check now uses a strict approximate comparison instead of exact binary float equality.
@@ -73,8 +73,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 
 - `tests/native/contracts/test_equilibrium_native_contracts.py::test_package_runtime_has_no_external_optimizer_dependency_or_imports`
-- `tests/native/cppad/test_cppad_lle_derivatives.py::test_associating_neutral_lle_solves_with_cppad_implicit_derivatives`
-- `tests/native/equilibrium/test_reactive_phase_equilibrium_ceres_solver.py::test_reactive_phase_native_ceres_solver_rejects_unusable_solution`
+- deleted obsolete accepted-solve coverage in `tests/native/cppad/test_cppad_lle_derivatives.py`
+- deleted obsolete accepted-solve coverage in `tests/native/equilibrium/test_reactive_phase_equilibrium_ceres_solver.py`
 - `tests/workflows/repo/test_dependency_issue_triage.py::test_issue_number_and_url_resolve_to_same_gh_issue_view_call`
 
 ## Dependency And Solver Gate Gaps

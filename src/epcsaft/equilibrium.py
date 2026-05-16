@@ -1319,7 +1319,7 @@ def _add_legacy_option_diagnostics(diagnostics: dict[str, Any], options: Equilib
     diagnostics.setdefault("requested_solver_backend", str(options.solver_backend))
     diagnostics.setdefault("selected_solver_backend", "native")
     diagnostics.setdefault(
-        "solver_selection_reason", "default_native" if options.solver_backend == "auto" else "explicit_request"
+        "solver_selection_reason", "transitional_private_native_route"
     )
     diagnostics.setdefault("default_auto_uses_ipopt", False)
     diagnostics.setdefault("density_failure_count", 0)
