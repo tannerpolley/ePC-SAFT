@@ -60,7 +60,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Several tests still assert legacy missing-status behavior instead of implemented derivative coverage.
 - Several tests still protect fallback diagnostics, debug skip controls, or legacy custom solver routes.
 - Ceres and CppAD are now required by the local dev script, package build backend, and CMake configure gate. Ipopt remains a system-dependency opt-in until the adapter is implemented.
-- Native derivative tests now avoid perturbation-derived oracle checks; the reactive-phase Jacobian test is rewritten around CppAD backend, shape, finite-value, and analytical row-contract evidence.
+- Native derivative tests now avoid shifted-source oracle checks; the reactive-phase Jacobian test is rewritten around CppAD backend, shape, finite-value, and analytical row-contract evidence.
+- The electrolyte LLE confidence report no longer writes parameter-shift sensitivity CSV or plot artifacts; it keeps benchmark, continuation, oracle, stress, and residual/error outputs.
 - The public implicit-sensitivity placeholder helper was removed. Reactive speciation tests now require real analytical/CppAD-backed implicit solve payloads and raising behavior for unsupported implicit derivative requests.
 - The legacy reactive-speciation `jacobian_backend="autodiff"` selector was removed; option tests now reject it and explicit derivative requests are limited to analytical/CppAD semantics.
 - The public `EquilibriumOptions.jacobian_backend` selector now rejects the same legacy backend spelling, keeping phase-equilibrium derivative requests aligned to analytical/CppAD semantics.
@@ -76,7 +77,7 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - The reactive phase diagnostic extent helper no longer uses NumPy's least-squares convenience path; it uses a direct library linear solve for the small stoichiometric normal system.
 - No-reaction, failed, and best-effort reactive speciation paths now omit implicit-sensitivity payloads when the native route has no reaction-constant sensitivity matrix instead of returning placeholders or raising during diagnostic normalization.
 - The MIAC electrolyte fixture check now uses a strict approximate comparison instead of exact binary float equality.
-- A repo workflow gate now scans native C++ sources for Ceres numeric-diff APIs and legacy perturbation route tokens.
+- A repo workflow gate now scans native C++ sources for Ceres numeric-diff APIs and legacy shifted-source route tokens.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 
@@ -93,7 +94,7 @@ The failure list from the initial full-duration run has been retired. Each liste
 - The third Task 3 slice made Ceres and CppAD mandatory native dependencies for dev-script, package-backend, and CMake builds, excluded vendored Ceres install rules from package artifacts, and validated the actual local extension with Ceres enabled.
 - Public `EquilibriumOptions` now accepts only `auto` and explicit `ipopt`; `ReactiveSpeciationOptions` has the same public solver selector shape.
 - Native equilibrium paths still contain custom bracketing, bisection, golden-section, retry, and fallback behavior, but the Python neutral bubble/dew scalar route has been removed from accepted public execution.
-- Regression public pure-neutral fitting now defaults to Ceres and rejects the old native least-squares backend. The private generic Eigen least-squares binding and perturbation-Jacobian route are removed; generic supported production fits go through Ceres, while associating/MEA benchmark helpers are residual scorers until native Ceres derivative coverage exists.
+- Regression public pure-neutral fitting now defaults to Ceres and rejects the old native least-squares backend. The private generic Eigen least-squares binding and shifted-source Jacobian route are removed; generic supported production fits go through Ceres, while associating/MEA benchmark helpers are residual scorers until native Ceres derivative coverage exists.
 - Runtime derivative capabilities now list implemented production coverage only. Open derivative blockers remain in the roadmap and state-level coverage matrices, not in `epcsaft.capabilities()` as capability rows.
 - Reactive electrolyte batch regression is no longer described as a production optimizer in runtime capabilities; it is a diagnostic residual context until native Ceres owns that route.
 

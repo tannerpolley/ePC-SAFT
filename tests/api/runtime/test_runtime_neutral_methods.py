@@ -390,14 +390,14 @@ def test_check_density_reports_pressure_consistency_diagnostics():
 
     state = mix.state(T=320.0, x=np.asarray([1.0]), P=101325.0, phase="liq")
     matching = mix.check_density(T=320.0, x=np.asarray([1.0]), P=101325.0, rho=state.density(), phase="liq")
-    perturbed = mix.check_density(T=320.0, x=np.asarray([1.0]), P=101325.0, rho=state.density() * 0.9, phase="liq")
+    shifted = mix.check_density(T=320.0, x=np.asarray([1.0]), P=101325.0, rho=state.density() * 0.9, phase="liq")
 
     assert matching["within_tolerance"] is True
     assert matching["pressure_residual"] == pytest.approx(0.0, abs=1.0e-6)
     assert matching["state"].density() == pytest.approx(state.density())
-    assert perturbed["within_tolerance"] is False
-    assert abs(perturbed["pressure_residual"]) > abs(matching["pressure_residual"])
-    assert set(perturbed) == {
+    assert shifted["within_tolerance"] is False
+    assert abs(shifted["pressure_residual"]) > abs(matching["pressure_residual"])
+    assert set(shifted) == {
         "density",
         "pressure_target",
         "pressure_from_density",

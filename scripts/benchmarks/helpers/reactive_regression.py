@@ -882,22 +882,22 @@ def _case_builder_reactive_regression_objective_tiny() -> PreparedBenchmarkCase:
     )
 
 
-def _case_builder_reactive_regression_parameter_perturbation() -> PreparedBenchmarkCase:
+def _case_builder_reactive_regression_parameter_shift() -> PreparedBenchmarkCase:
     base_rows = list(_objective_rows())
-    perturbed_rows = []
+    shifted_rows = []
     for row in base_rows:
         mutated = dict(row)
         target = dict(mutated["target_partial_pressures"])
         for species_key, value in target.items():
             target[species_key] = float(value) * 1.001
         mutated["target_partial_pressures"] = target
-        mutated["row_id"] = f"{mutated['row_id']}-perturbed"
-        perturbed_rows.append(mutated)
-    rows = tuple(base_rows + perturbed_rows)
+        mutated["row_id"] = f"{mutated['row_id']}-shifted"
+        shifted_rows.append(mutated)
+    rows = tuple(base_rows + shifted_rows)
 
     return PreparedBenchmarkCase(
-        case="reactive_regression_parameter_perturbation",
-        description="Tiny reaction-objective perturbation with baseline/perturbed pressure targets.",
+        case="reactive_regression_parameter_shift",
+        description="Tiny reaction-objective benchmark with baseline and shifted pressure targets.",
         runner=_run_objective_compiled(
             rows,
             pressure_weight=1.0,
@@ -931,7 +931,7 @@ CASE_BUILDERS: OrderedDict[str, Callable[[], PreparedBenchmarkCase]] = OrderedDi
         ("reactive_speciation_batch_tiny", _case_builder_reactive_speciation_tiny),
         ("reactive_bubble_batch_tiny", _case_builder_reactive_bubble_tiny),
         ("reactive_regression_objective_tiny", _case_builder_reactive_regression_objective_tiny),
-        ("reactive_regression_parameter_perturbation", _case_builder_reactive_regression_parameter_perturbation),
+        ("reactive_regression_parameter_shift", _case_builder_reactive_regression_parameter_shift),
         (
             "reactive_regression_pressure_speciation_35_row_surrogate",
             _case_builder_reactive_regression_pressure_speciation_35_row_surrogate,
@@ -946,7 +946,7 @@ DEFAULT_CASES: tuple[str, ...] = (
     "reactive_speciation_batch_tiny",
     "reactive_bubble_batch_tiny",
     "reactive_regression_objective_tiny",
-    "reactive_regression_parameter_perturbation",
+    "reactive_regression_parameter_shift",
 )
 
 

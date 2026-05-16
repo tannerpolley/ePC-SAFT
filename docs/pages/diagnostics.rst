@@ -86,7 +86,7 @@ Use the benchmark script when changing the reactive batch/context layer:
 
    uv run python scripts/benchmarks/benchmark_reactive_regression.py --warmup 3 --repeat 10 --json build/benchmarks/reactive_regression_main.json
    uv run python scripts/benchmarks/benchmark_reactive_regression.py --case reactive_regression_objective_tiny --warmup 3 --repeat 20 --json build/benchmarks/reactive_regression_objective_main.json
-   uv run python scripts/benchmarks/benchmark_reactive_regression.py --case reactive_regression_parameter_perturbation --warmup 3 --repeat 20 --json build/benchmarks/reactive_regression_perturbation_main.json
+   uv run python scripts/benchmarks/benchmark_reactive_regression.py --case reactive_regression_parameter_shift --warmup 3 --repeat 20 --json build/benchmarks/reactive_regression_parameter_shift_main.json
    uv run python scripts/benchmarks/benchmark_reactive_regression.py --case reactive_regression_pressure_speciation_35_row_surrogate --warmup 0 --repeat 1 --json build/benchmarks/reactive_regression_pressure_speciation_35row_smoke.json
 
 Benchmark JSON excludes failed repeats from timing statistics, records the

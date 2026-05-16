@@ -70,6 +70,9 @@ def _blocked_terms() -> tuple[str, ...]:
     twelfth = "numeric" + " perturbation"
     thirteenth = "perturbation" + " jacobian"
     fourteenth = "perturbation" + " derivative"
+    fifteenth = "perturbation" + "-" + "jacobian"
+    sixteenth = "perturbation" + "-" + "derivative"
+    seventeenth = "perturbation" + "-" + "derived"
     return (
         first,
         second,
@@ -85,6 +88,9 @@ def _blocked_terms() -> tuple[str, ...]:
         twelfth,
         thirteenth,
         fourteenth,
+        fifteenth,
+        sixteenth,
+        seventeenth,
     )
 
 

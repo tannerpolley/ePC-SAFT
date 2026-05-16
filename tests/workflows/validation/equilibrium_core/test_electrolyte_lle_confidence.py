@@ -77,7 +77,6 @@ def test_confidence_suite_smoke_mode_writes_bounded_report(tmp_path: Path) -> No
     assert summary["case_count"] == 2
     assert summary["oracle_rows"] == 1
     assert summary["stress_rows"] == 0
-    assert summary["sensitivity_rows"] == 1
 
 
 @requires_khudaida_validation
@@ -110,11 +109,9 @@ def test_opt_in_confidence_report_generates_full_outputs(tmp_path: Path) -> None
     assert report.benchmark_csv.exists()
     assert report.continuation_csv.exists()
     assert report.oracle_csv.exists()
-    assert report.sensitivity_csv.exists()
     assert report.residual_gate_plot.exists()
     assert report.error_plot.exists()
     assert report.continuation_plot.exists()
-    assert report.sensitivity_plot.exists()
 
     summary = json.loads(report.summary_path.read_text(encoding="utf-8"))
     assert summary["suite"] == "khudaida_2026"

@@ -107,30 +107,17 @@ class OracleCheck:
 
 
 @dataclass(frozen=True)
-class SensitivityMetrics:
-    case_key: str
-    parameter: str
-    perturbation: float
-    status: str
-    max_composition_delta: float
-    solver_residual_norm: float
-    gibbs_delta: float
-
-
-@dataclass(frozen=True)
 class ConfidenceReport:
     output_dir: Path
     summary_path: Path
     benchmark_csv: Path
     continuation_csv: Path
     oracle_csv: Path
-    sensitivity_csv: Path
     stress_csv: Path
     residual_gate_plot: Path
     error_plot: Path
     all_tielines_plot: Path
     continuation_plot: Path
-    sensitivity_plot: Path
 
 
 def load_benchmark_suite(name: str = "khudaida_2026") -> BenchmarkSuite:
@@ -215,13 +202,9 @@ def predict_case(
     *,
     max_iterations: int = 180,
     tolerance: float = 1.0e-8,
-    params_override: Mapping[str, Any] | None = None,
 ) -> BenchmarkPrediction:
     native = benchmark_case_to_native_inputs(case)
-    if params_override is None:
-        mixture = ePCSAFTMixture.from_dataset(suite.dataset, suite.species, native.feed, case.temperature_K)
-    else:
-        mixture = ePCSAFTMixture.from_params(dict(params_override), species=suite.species)
+    mixture = ePCSAFTMixture.from_dataset(suite.dataset, suite.species, native.feed, case.temperature_K)
     try:
         result = mixture.equilibrium(
             kind="electrolyte_lle",
@@ -280,11 +263,9 @@ def run_confidence_suite(
     if mode == "full":
         oracle = oracle_checks(benchmark_suite, predictions[: min(6, len(predictions))])
         stress = stress_cases(benchmark_suite)
-        sensitivity = sensitivity_metrics(benchmark_suite, _preferred_case(benchmark_suite, "0.10:303.15:1"))
     else:
         oracle = oracle_checks(benchmark_suite, predictions[:1])
         stress = []
-        sensitivity = _smoke_sensitivity_metrics(predictions)
 
     report = ConfidenceReport(
         output_dir=out_dir,
@@ -292,22 +273,19 @@ def run_confidence_suite(
         benchmark_csv=out_dir / "benchmark_predictions.csv",
         continuation_csv=out_dir / "continuation_metrics.csv",
         oracle_csv=out_dir / "oracle_checks.csv",
-        sensitivity_csv=out_dir / "sensitivity_metrics.csv",
         stress_csv=out_dir / "stress_cases.csv",
         residual_gate_plot=out_dir / "residual_gate_summary.png",
         error_plot=out_dir / "per_species_error_summary.png",
         all_tielines_plot=out_dir / "khudaida_2026_all_tielines.png",
         continuation_plot=out_dir / "continuation_smoothness.png",
-        sensitivity_plot=out_dir / "parameter_sensitivity_summary.png",
     )
 
     _write_benchmark_csv(report.benchmark_csv, predictions)
     _write_continuation_csv(report.continuation_csv, continuation)
     _write_oracle_csv(report.oracle_csv, oracle)
-    _write_sensitivity_csv(report.sensitivity_csv, sensitivity)
     _write_stress_csv(report.stress_csv, stress)
-    _write_summary(report.summary_path, benchmark_suite, mode, predictions, continuation, oracle, sensitivity, stress)
-    _write_plots(report, benchmark_suite, predictions, continuation, sensitivity)
+    _write_summary(report.summary_path, benchmark_suite, mode, predictions, continuation, oracle, stress)
+    _write_plots(report, benchmark_suite, predictions, continuation)
     if write_gallery:
         _write_gallery_copies(report)
     return report
@@ -435,67 +413,6 @@ def stress_cases(suite: BenchmarkSuite) -> list[BenchmarkPrediction]:
     return predictions
 
 
-def _smoke_sensitivity_metrics(predictions: Sequence[BenchmarkPrediction]) -> list[SensitivityMetrics]:
-    if not predictions:
-        return []
-    baseline = predictions[0]
-    return [
-        SensitivityMetrics(
-            case_key=baseline.case.case_key,
-            parameter="smoke_baseline",
-            perturbation=0.0,
-            status=baseline.status,
-            max_composition_delta=0.0,
-            solver_residual_norm=float(baseline.diagnostics.get("solver_residual_norm", math.nan)),
-            gibbs_delta=float(baseline.diagnostics.get("gibbs_delta", math.nan)),
-        )
-    ]
-
-
-def sensitivity_metrics(suite: BenchmarkSuite, case: BenchmarkCase) -> list[SensitivityMetrics]:
-    native = benchmark_case_to_native_inputs(case)
-    baseline_mix = ePCSAFTMixture.from_dataset(suite.dataset, suite.species, native.feed, case.temperature_K)
-    baseline_params = _copy_params(baseline_mix.parameters)
-    baseline = predict_case(suite, case, params_override=baseline_params, max_iterations=5)
-    rows = [
-        SensitivityMetrics(
-            case_key=case.case_key,
-            parameter="baseline",
-            perturbation=0.0,
-            status=baseline.status,
-            max_composition_delta=0.0,
-            solver_residual_norm=float(baseline.diagnostics.get("solver_residual_norm", math.nan)),
-            gibbs_delta=float(baseline.diagnostics.get("gibbs_delta", math.nan)),
-        )
-    ]
-    perturbations = (
-        ("k_ij", 0.01),
-        ("l_ij", 0.01),
-        ("k_hb", 0.01),
-        ("s", 0.005),
-        ("e", 0.01),
-        ("d_born", 0.01),
-        ("dielc", 0.01),
-    )
-    for parameter, scale in perturbations:
-        for sign in (-1.0, 1.0):
-            perturbed = _copy_params(baseline_params)
-            _perturb_parameter(perturbed, parameter, sign * scale)
-            pred = predict_case(suite, case, params_override=perturbed, max_iterations=5)
-            rows.append(
-                SensitivityMetrics(
-                    case_key=case.case_key,
-                    parameter=parameter,
-                    perturbation=sign * scale,
-                    status=pred.status,
-                    max_composition_delta=_composition_delta(baseline, pred),
-                    solver_residual_norm=float(pred.diagnostics.get("solver_residual_norm", math.nan)),
-                    gibbs_delta=float(pred.diagnostics.get("gibbs_delta", math.nan)),
-                )
-            )
-    return rows
-
-
 def formula_to_explicit(formula: Sequence[float]) -> np.ndarray:
     x = _normalize(np.asarray(formula, dtype=float))
     expanded = np.asarray([x[0], x[1], x[2], x[3], x[3]], dtype=float)
@@ -620,46 +537,6 @@ def _with_salt(feed_formula: np.ndarray, salt: float) -> np.ndarray:
     return _normalize(np.asarray([*(neutrals * (1.0 - salt)), salt], dtype=float))
 
 
-def _copy_params(params: Mapping[str, Any]) -> dict[str, Any]:
-    copied: dict[str, Any] = {}
-    for key, value in params.items():
-        if isinstance(value, np.ndarray):
-            copied[key] = np.array(value, dtype=value.dtype, copy=True)
-        elif isinstance(value, dict):
-            copied[key] = json.loads(json.dumps(value))
-        elif isinstance(value, list):
-            copied[key] = list(value)
-        else:
-            copied[key] = value
-    return copied
-
-
-def _perturb_parameter(params: dict[str, Any], key: str, perturbation: float) -> None:
-    if key not in params or not isinstance(params[key], np.ndarray):
-        return
-    arr = np.array(params[key], dtype=float, copy=True)
-    if arr.ndim == 2:
-        mask = ~np.eye(arr.shape[0], dtype=bool)
-        arr[mask] += perturbation
-    else:
-        charged = np.asarray([False, False, False, True, True])
-        arr[charged] *= 1.0 + perturbation
-    params[key] = arr
-
-
-def _composition_delta(left: BenchmarkPrediction, right: BenchmarkPrediction) -> float:
-    if left.status != "accepted" or right.status != "accepted":
-        return math.nan
-    assert left.organic_formula is not None and left.aqueous_formula is not None
-    assert right.organic_formula is not None and right.aqueous_formula is not None
-    return float(
-        max(
-            np.max(np.abs(left.organic_formula - right.organic_formula)),
-            np.max(np.abs(left.aqueous_formula - right.aqueous_formula)),
-        )
-    )
-
-
 def _write_benchmark_csv(path: Path, predictions: Sequence[BenchmarkPrediction]) -> None:
     fieldnames = [
         "case_key",
@@ -720,10 +597,6 @@ def _write_oracle_csv(path: Path, rows: Sequence[OracleCheck]) -> None:
     _write_csv(path, list(OracleCheck.__dataclass_fields__), [row.__dict__ for row in rows])
 
 
-def _write_sensitivity_csv(path: Path, rows: Sequence[SensitivityMetrics]) -> None:
-    _write_csv(path, list(SensitivityMetrics.__dataclass_fields__), [row.__dict__ for row in rows])
-
-
 def _write_stress_csv(path: Path, rows: Sequence[BenchmarkPrediction]) -> None:
     _write_csv(
         path,
@@ -758,7 +631,6 @@ def _write_summary(
     predictions: Sequence[BenchmarkPrediction],
     continuation: Sequence[ContinuationMetrics],
     oracle: Sequence[OracleCheck],
-    sensitivity: Sequence[SensitivityMetrics],
     stress: Sequence[BenchmarkPrediction],
 ) -> None:
     accepted = [item for item in predictions if item.status == "accepted"]
@@ -774,7 +646,6 @@ def _write_summary(
         "continuation_branch_flags": sum(1 for row in continuation if row.branch_collapse_flag),
         "oracle_rows": len(oracle),
         "oracle_flags": sum(1 for row in oracle if row.oracle_flags_native),
-        "sensitivity_rows": len(sensitivity),
         "stress_rows": len(stress),
     }
     path.write_text(json.dumps(_json_ready(summary), indent=2, allow_nan=False), encoding="utf-8")
@@ -785,7 +656,6 @@ def _write_plots(
     suite: BenchmarkSuite,
     predictions: Sequence[BenchmarkPrediction],
     continuation: Sequence[ContinuationMetrics],
-    sensitivity: Sequence[SensitivityMetrics],
 ) -> None:
     import matplotlib
 
@@ -834,13 +704,6 @@ def _write_plots(
         cont_labels,
         cont_values,
         "Adjacent composition jump",
-    )
-
-    sens = [row for row in sensitivity if row.parameter != "baseline"]
-    sens_labels = [f"{row.parameter} {row.perturbation:+.3g}" for row in sens]
-    sens_values = [row.max_composition_delta if np.isfinite(row.max_composition_delta) else 0.0 for row in sens]
-    _bar_plot(
-        report.sensitivity_plot, "Parameter sensitivity summary", sens_labels, sens_values, "Max composition delta"
     )
 
     plt.close("all")

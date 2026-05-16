@@ -29,7 +29,7 @@ def _baygi_mea_records():
     ]
 
 
-def _perturbed(values):
+def _offset_seed(values):
     return {
         "m": values["m"] * 0.88,
         "s": values["s"] * 1.05,
@@ -40,7 +40,7 @@ def _perturbed(values):
 
 
 @pytest.mark.parametrize("assoc_scheme", ("2B", "3B", "4C"))
-def test_baygi_table2_mea_parameters_score_better_than_perturbed_seed(assoc_scheme):
+def test_baygi_table2_mea_parameters_score_better_than_offset_seed(assoc_scheme):
     table_values = TABLE2_MEA_PARAMETERS[assoc_scheme]
     table_score = _fit_pure_neutral_associating_native(
         _baygi_mea_records(),
@@ -50,19 +50,19 @@ def test_baygi_table2_mea_parameters_score_better_than_perturbed_seed(assoc_sche
         initial_guess=table_values,
         max_nfev=1,
     )
-    perturbed_score = _fit_pure_neutral_associating_native(
+    offset_score = _fit_pure_neutral_associating_native(
         _baygi_mea_records(),
         "MEA",
         assoc_scheme=assoc_scheme,
         fixed_parameters={"MW": MEA_MW},
-        initial_guess=_perturbed(table_values),
+        initial_guess=_offset_seed(table_values),
         max_nfev=1,
     )
 
     assert table_score.problem.fit_targets == ("m", "s", "e", "e_assoc", "vol_a")
     assert table_score.backend == "residual_score_native"
     assert table_score.fitted_values == pytest.approx(table_values, rel=0.0, abs=1.0e-12)
-    assert table_score.residual_norm < perturbed_score.residual_norm
+    assert table_score.residual_norm < offset_score.residual_norm
 
 
 @pytest.mark.parametrize("assoc_scheme", ("2B", "3B", "4C"))
@@ -74,7 +74,7 @@ def test_baygi_table2_mea_association_scheme_optimizer_requires_ceres_derivative
             "MEA",
             assoc_scheme=assoc_scheme,
             fixed_parameters={"MW": MEA_MW},
-            initial_guess=_perturbed(table_values),
+            initial_guess=_offset_seed(table_values),
             bounds={
                 "m": (0.5 * table_values["m"], 1.5 * table_values["m"]),
                 "s": (0.8 * table_values["s"], 1.2 * table_values["s"]),

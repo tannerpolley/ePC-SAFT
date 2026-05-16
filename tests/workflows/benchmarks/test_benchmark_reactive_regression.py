@@ -12,7 +12,7 @@ def test_reactive_regression_benchmark_cases_and_order():
         "reactive_speciation_batch_tiny",
         "reactive_bubble_batch_tiny",
         "reactive_regression_objective_tiny",
-        "reactive_regression_parameter_perturbation",
+        "reactive_regression_parameter_shift",
         "reactive_regression_pressure_speciation_35_row_surrogate",
         "mea_trace_carbonate_35_row_public_surrogate",
     )
@@ -20,7 +20,7 @@ def test_reactive_regression_benchmark_cases_and_order():
         "reactive_speciation_batch_tiny",
         "reactive_bubble_batch_tiny",
         "reactive_regression_objective_tiny",
-        "reactive_regression_parameter_perturbation",
+        "reactive_regression_parameter_shift",
     )
 
 

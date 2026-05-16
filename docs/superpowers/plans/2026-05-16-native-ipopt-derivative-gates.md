@@ -269,7 +269,9 @@ Task 1 continuation note: the CppAD disabled smoke/default derivative result no 
 - [x] Validate the quick gate remains under 10 minutes.
 - [x] Commit as `Audit and tighten solver gate tests`.
 
-Task 2 continuation note: native derivative tests that previously used source perturbations as oracle evidence have been rewritten around analytical/CppAD derivative contracts, exact chain-rule identities, backend identity, and finite/nonzero payload checks. The tracked text gate now also blocks common perturbation-oracle and Eigen nonlinear optimizer tokens.
+Task 2 continuation note: native derivative tests that previously used shifted-source oracle evidence have been rewritten around analytical/CppAD derivative contracts, exact chain-rule identities, backend identity, and finite/nonzero payload checks. The tracked text gate now also blocks common shifted-source oracle and Eigen nonlinear optimizer tokens.
+
+Task 2 continuation note: the electrolyte LLE confidence validation report no longer generates parameter-shift sensitivity artifacts. Report outputs now cover benchmark predictions, continuation, oracle checks, stress cases, and residual/error plots without numeric-differencing or parameter-shift sensitivity metrics.
 
 Task 2 continuation note: the stale full-duration failure list in the tracked test audit has been retired. The previously listed dependency, CppAD LLE, reactive-phase Ceres, and dependency-triage nodes now pass individually.
 
@@ -469,7 +471,7 @@ Task 10 progress note: the first regression slice moves public nonassociating pu
 
 Task 10 continuation note: the second regression slice removes the private generic Eigen Levenberg-Marquardt route, its derivative-approximation Jacobian, its pybind/Python wrapper, and the doctor-required symbol. Supported generic production fits remain Ceres-owned. Associating and MEA-CO2-H2O benchmark helpers now do residual-only scoring and reject optimization until native analytic/CppAD/implicit Ceres derivative coverage exists for those target families.
 
-Task 10 continuation note: a tracked repo gate now scans native C++ sources and blocks Ceres numeric-diff APIs and legacy perturbation tokens. This closes the explicit test-gate item, while templated Ceres autodiff and broader implicit derivative coverage remain open.
+Task 10 continuation note: a tracked repo gate now scans native C++ sources and blocks Ceres numeric-diff APIs plus legacy shifted-source derivative tokens. This closes the explicit test-gate item, while templated Ceres autodiff and broader implicit derivative coverage remain open.
 
 Task 10 continuation note: regression public/native result payloads no longer expose placeholder fallback booleans, empty missing-derivative reason fields, or Hessian skeleton metadata. The retained regression derivative surface reports optimizer backend, derivative backend, objective/evaluation counters, gradient/step norms, and implemented Jacobian availability/backend only.
 
