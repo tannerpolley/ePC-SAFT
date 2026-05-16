@@ -1,5 +1,6 @@
 #include "eos_phase_block.h"
 
+#include "association_block.h"
 #include "electrolyte_block.h"
 #include "epcsaft_core_internal.h"
 
@@ -38,14 +39,21 @@ std::vector<std::string> amount_variable_names(std::size_t count) {
     return names;
 }
 
-std::vector<std::string> phase_system_variable_names(std::size_t phase_count, std::size_t species_count) {
+std::vector<std::string> phase_system_variable_names(
+    std::size_t phase_count,
+    std::size_t species_count,
+    std::size_t association_site_count
+) {
     std::vector<std::string> names;
-    names.reserve(phase_count * (species_count + 1));
+    names.reserve(phase_count * (species_count + 1 + association_site_count));
     for (std::size_t phase = 0; phase < phase_count; ++phase) {
         for (std::size_t species = 0; species < species_count; ++species) {
             names.push_back("phase_" + std::to_string(phase) + ".n_" + std::to_string(species));
         }
         names.push_back("phase_" + std::to_string(phase) + ".volume");
+        for (std::size_t site = 0; site < association_site_count; ++site) {
+            names.push_back("phase_" + std::to_string(phase) + ".association_site_" + std::to_string(site));
+        }
     }
     return names;
 }
@@ -84,6 +92,19 @@ void require_finite_nonnegative(double value, const std::string& label) {
         return;
     }
     throw ValueError(label + " must be finite and non-negative.");
+}
+
+bool association_block_enabled(
+    const std::vector<std::vector<double>>& association_site_fractions,
+    const std::vector<double>& association_delta_row_major
+) {
+    if (association_site_fractions.empty() && association_delta_row_major.empty()) {
+        return false;
+    }
+    if (association_site_fractions.empty() || association_delta_row_major.empty()) {
+        throw ValueError("EOS phase system association variables require site fractions and a delta matrix.");
+    }
+    return true;
 }
 
 }  // namespace
@@ -217,7 +238,9 @@ EosPhaseSystemResult evaluate_eos_phase_system(
     const std::vector<std::vector<double>>& phase_amounts,
     const std::vector<double>& volumes,
     const std::vector<double>& feed_amounts,
-    const std::vector<double>& charges
+    const std::vector<double>& charges,
+    const std::vector<std::vector<double>>& association_site_fractions,
+    const std::vector<double>& association_delta_row_major
 ) {
     if (phase_amounts.empty()) {
         throw ValueError("EOS phase system requires at least one phase.");
@@ -233,20 +256,39 @@ EosPhaseSystemResult evaluate_eos_phase_system(
     for (double amount : feed_amounts) {
         require_finite_nonnegative(amount, "EOS phase system feed amount");
     }
+    const bool include_association = association_block_enabled(
+        association_site_fractions,
+        association_delta_row_major
+    );
+    const std::size_t association_site_count = include_association ? species_count : 0;
+    if (include_association) {
+        if (association_site_fractions.size() != phase_count) {
+            throw ValueError("EOS phase system association site-fraction phase count must match phase count.");
+        }
+        if (association_delta_row_major.size() != association_site_count * association_site_count) {
+            throw ValueError("EOS phase system association delta matrix must be square over the species-site count.");
+        }
+        for (const auto& fractions : association_site_fractions) {
+            if (fractions.size() != association_site_count) {
+                throw ValueError("EOS phase system association site-fraction size must match species count.");
+            }
+        }
+    }
 
     EosPhaseSystemResult result;
     result.block = "eos_phase_system";
     result.derivative_backend = "analytic_cppad";
     result.phase_count = static_cast<int>(phase_count);
     result.species_count = static_cast<int>(species_count);
-    result.variable_names = phase_system_variable_names(phase_count, species_count);
+    result.variable_names = phase_system_variable_names(phase_count, species_count, association_site_count);
     result.constraint_names = phase_system_constraint_names(phase_count, species_count);
     result.temperature = temperature;
     result.target_pressure = target_pressure;
     result.feed_amounts = feed_amounts;
     result.phase_blocks.reserve(phase_count);
 
-    const std::size_t local_variable_count = species_count + 1;
+    const std::size_t base_local_variable_count = species_count + 1;
+    const std::size_t local_variable_count = base_local_variable_count + association_site_count;
     result.gradient.reserve(phase_count * local_variable_count);
     for (std::size_t phase = 0; phase < phase_count; ++phase) {
         if (phase_amounts[phase].size() != species_count) {
@@ -256,12 +298,15 @@ EosPhaseSystemResult evaluate_eos_phase_system(
             evaluate_eos_phase_block(args, temperature, target_pressure, phase_amounts[phase], volumes[phase])
         );
         const EosPhaseBlockResult& block = result.phase_blocks.back();
-        if (block.gradient.size() != local_variable_count
-            || block.pressure_jacobian_row_major.size() != local_variable_count) {
+        if (block.gradient.size() != base_local_variable_count) {
             throw ValueError("EOS phase block derivative size did not match the phase system variables.");
+        }
+        if (block.pressure_jacobian_row_major.size() != base_local_variable_count) {
+            throw ValueError("EOS phase block pressure derivative size did not match the phase system variables.");
         }
         result.objective += block.objective;
         result.gradient.insert(result.gradient.end(), block.gradient.begin(), block.gradient.end());
+        result.gradient.insert(result.gradient.end(), association_site_count, 0.0);
     }
 
     if (!charges.empty() && charges.size() != species_count) {
@@ -271,7 +316,26 @@ EosPhaseSystemResult evaluate_eos_phase_system(
         ? PhaseChargeBlockResult{}
         : evaluate_phase_charge_block(phase_amounts, charges, static_cast<int>(local_variable_count));
     const std::size_t charge_constraint_count = charge_block.residuals.size();
-    const std::size_t constraint_count = species_count + phase_count + charge_constraint_count;
+    std::vector<AssociationMassActionBlockResult> association_blocks;
+    association_blocks.reserve(include_association ? phase_count : 0);
+    for (std::size_t phase = 0; phase < phase_count && include_association; ++phase) {
+        association_blocks.push_back(
+            evaluate_association_mass_action_block(
+                result.phase_blocks[phase].density,
+                association_site_fractions[phase],
+                result.phase_blocks[phase].composition,
+                association_delta_row_major
+            )
+        );
+        const auto& block = association_blocks.back();
+        if (block.residuals.size() != association_site_count
+            || block.site_fraction_jacobian_row_major.size() != association_site_count * association_site_count) {
+            throw ValueError("EOS phase system association block size did not match the phase variable model.");
+        }
+    }
+    const std::size_t association_constraint_count = association_blocks.size() * association_site_count;
+    const std::size_t constraint_count =
+        species_count + phase_count + charge_constraint_count + association_constraint_count;
     const std::size_t variable_count = phase_count * local_variable_count;
     result.constraints.assign(constraint_count, 0.0);
     for (std::size_t species = 0; species < species_count; ++species) {
@@ -288,6 +352,18 @@ EosPhaseSystemResult evaluate_eos_phase_system(
         result.constraints[species_count + phase_count + row] = charge_block.residuals[row];
     }
     result.phase_charge_residuals = charge_block.residuals;
+    const std::size_t association_row_offset = species_count + phase_count + charge_constraint_count;
+    for (std::size_t phase = 0; phase < association_blocks.size(); ++phase) {
+        const auto& block = association_blocks[phase];
+        for (std::size_t site = 0; site < association_site_count; ++site) {
+            const std::size_t target_row = association_row_offset + phase * association_site_count + site;
+            result.constraint_names.push_back(
+                "phase_" + std::to_string(phase) + "." + block.constraint_names[site]
+            );
+            result.constraints[target_row] = block.residuals[site];
+            result.phase_association_residuals.push_back(block.residuals[site]);
+        }
+    }
 
     result.constraint_jacobian_backend = "analytic_cppad";
     result.constraint_jacobian_rows = static_cast<int>(constraint_count);
@@ -302,12 +378,12 @@ EosPhaseSystemResult evaluate_eos_phase_system(
     }
     for (std::size_t phase = 0; phase < phase_count; ++phase) {
         const EosPhaseBlockResult& block = result.phase_blocks[phase];
-        if (block.pressure_jacobian_row_major.size() != local_variable_count) {
+        if (block.pressure_jacobian_row_major.size() != base_local_variable_count) {
             throw ValueError("EOS phase pressure Jacobian size did not match the phase variable model.");
         }
         const std::size_t row = species_count + phase;
         const std::size_t col_offset = phase * local_variable_count;
-        for (std::size_t col = 0; col < local_variable_count; ++col) {
+        for (std::size_t col = 0; col < base_local_variable_count; ++col) {
             result.constraint_jacobian_row_major[row * variable_count + col_offset + col] =
                 block.pressure_jacobian_row_major[col];
         }
@@ -317,6 +393,32 @@ EosPhaseSystemResult evaluate_eos_phase_system(
         for (std::size_t col = 0; col < variable_count; ++col) {
             result.constraint_jacobian_row_major[target_row * variable_count + col] =
                 charge_block.jacobian_row_major[row * variable_count + col];
+        }
+    }
+    for (std::size_t phase = 0; phase < association_blocks.size(); ++phase) {
+        const auto& block = association_blocks[phase];
+        const std::size_t col_offset = phase * local_variable_count;
+        const auto& amounts = phase_amounts[phase];
+        const double volume = volumes[phase];
+        for (std::size_t site = 0; site < association_site_count; ++site) {
+            const std::size_t target_row = association_row_offset + phase * association_site_count + site;
+            const double site_fraction = association_site_fractions[phase][site];
+            double amount_weighted_delta_sum = 0.0;
+            for (std::size_t col = 0; col < association_site_count; ++col) {
+                const double col_fraction = association_site_fractions[phase][col];
+                const double delta = association_delta_row_major[site * association_site_count + col];
+                result.constraint_jacobian_row_major[target_row * variable_count + col_offset + col] =
+                    site_fraction * col_fraction * delta / volume;
+                amount_weighted_delta_sum += amounts[col] * col_fraction * delta;
+            }
+            result.constraint_jacobian_row_major[
+                target_row * variable_count + col_offset + species_count
+            ] = -site_fraction * amount_weighted_delta_sum / (volume * volume);
+            for (std::size_t col = 0; col < association_site_count; ++col) {
+                result.constraint_jacobian_row_major[
+                    target_row * variable_count + col_offset + base_local_variable_count + col
+                ] = block.site_fraction_jacobian_row_major[site * association_site_count + col];
+            }
         }
     }
     return result;

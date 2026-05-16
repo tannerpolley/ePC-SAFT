@@ -415,6 +415,12 @@ the equivalent normalized form `X_i * (1 + rho * sum_j x_j X_j Delta_ij) - 1` so
 without reciprocal residual scaling. It deliberately does not solve the association closure; coupling these rows into
 EOS phase-system variables and Ipopt route builders remains open.
 
+Task 7/9 continuation note: EOS phase-system assembly can now append association site-fraction variables and
+mass-action constraint rows for the current one-site-per-species block model. The global constraint Jacobian places exact
+analytical derivatives with respect to phase amounts, phase volume, and site fractions. This is association-constraint
+coupling only; association Helmholtz objective dependence on explicit site variables and production route-builder
+integration remain open.
+
 ### Task 8: Replace Neutral Equilibrium Routes
 
 **Files:**

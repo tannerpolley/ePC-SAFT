@@ -549,6 +549,7 @@ py::dict eos_phase_system_to_dict(const epcsaft::native::equilibrium_nlp::EosPha
     out["gradient"] = result.gradient;
     out["constraints"] = result.constraints;
     out["phase_charge_residuals"] = result.phase_charge_residuals;
+    out["phase_association_residuals"] = result.phase_association_residuals;
     out["constraint_jacobian_backend"] = result.constraint_jacobian_backend;
     out["constraint_jacobian_shape"] =
         py::make_tuple(result.constraint_jacobian_rows, result.constraint_jacobian_cols);
@@ -1407,7 +1408,9 @@ PYBIND11_MODULE(_core, m) {
         const std::vector<std::vector<double>>& phase_amounts,
         const std::vector<double>& volumes,
         const std::vector<double>& feed_amounts,
-        const std::vector<double>& charges
+        const std::vector<double>& charges,
+        const std::vector<std::vector<double>>& association_site_fractions,
+        const std::vector<double>& association_delta_row_major
     ) {
         if (!mixture) {
             throw ValueError("EOS phase system requires a native mixture.");
@@ -1419,7 +1422,9 @@ PYBIND11_MODULE(_core, m) {
             phase_amounts,
             volumes,
             feed_amounts,
-            charges
+            charges,
+            association_site_fractions,
+            association_delta_row_major
         ));
     }, py::arg("mixture"),
        py::arg("temperature"),
@@ -1427,7 +1432,9 @@ PYBIND11_MODULE(_core, m) {
        py::arg("phase_amounts"),
        py::arg("volumes"),
        py::arg("feed_amounts"),
-       py::arg("charges") = std::vector<double>{});
+       py::arg("charges") = std::vector<double>{},
+       py::arg("association_site_fractions") = std::vector<std::vector<double>>{},
+       py::arg("association_delta_row_major") = std::vector<double>{});
     m.def("_native_association_mass_action_block", [](
         double density,
         const std::vector<double>& site_fractions,

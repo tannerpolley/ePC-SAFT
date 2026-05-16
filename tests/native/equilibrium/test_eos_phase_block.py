@@ -239,3 +239,94 @@ def test_eos_phase_system_can_append_phase_charge_balance_rows() -> None:
     jacobian = np.asarray(payload["constraint_jacobian_row_major"], dtype=float).reshape((6, 6))
     assert jacobian[4, :] == pytest.approx([1.0, -1.0, 0.0, 0.0, 0.0, 0.0], abs=0.0)
     assert jacobian[5, :] == pytest.approx([0.0, 0.0, 0.0, 1.0, -1.0, 0.0], abs=0.0)
+
+
+def test_eos_phase_system_can_append_association_mass_action_rows() -> None:
+    mix, temperature, phase_amounts, volumes, feed_amounts, target_pressure = _two_phase_binary_case()
+    site_fractions = [
+        np.asarray([0.8, 0.6], dtype=float),
+        np.asarray([0.9, 0.7], dtype=float),
+    ]
+    delta = np.asarray([[0.0, 2.0], [3.0, 0.0]], dtype=float)
+
+    payload = _core._native_eos_phase_system(
+        mix._native,
+        temperature,
+        target_pressure,
+        [phase.tolist() for phase in phase_amounts],
+        volumes,
+        feed_amounts.tolist(),
+        [],
+        [values.tolist() for values in site_fractions],
+        delta.ravel().tolist(),
+    )
+
+    assert payload["variable_names"] == [
+        "phase_0.n_0",
+        "phase_0.n_1",
+        "phase_0.volume",
+        "phase_0.association_site_0",
+        "phase_0.association_site_1",
+        "phase_1.n_0",
+        "phase_1.n_1",
+        "phase_1.volume",
+        "phase_1.association_site_0",
+        "phase_1.association_site_1",
+    ]
+    assert payload["constraint_names"][-4:] == [
+        "phase_0.association_site_0",
+        "phase_0.association_site_1",
+        "phase_1.association_site_0",
+        "phase_1.association_site_1",
+    ]
+    assert payload["constraint_jacobian_shape"] == (8, 10)
+
+    jacobian = np.asarray(payload["constraint_jacobian_row_major"], dtype=float).reshape((8, 10))
+    association_rows = jacobian[4:, :]
+    assert association_rows[:2, 5:] == pytest.approx(np.zeros((2, 5)), abs=0.0)
+    assert association_rows[2:, :5] == pytest.approx(np.zeros((2, 5)), abs=0.0)
+
+    for phase_index, (amounts, volume, fractions) in enumerate(
+        zip(phase_amounts, volumes, site_fractions, strict=True)
+    ):
+        composition = amounts / amounts.sum()
+        density = amounts.sum() / volume
+        block = _core._native_association_mass_action_block(
+            density,
+            fractions.tolist(),
+            composition.tolist(),
+            delta.ravel().tolist(),
+        )
+        row_offset = phase_index * 2
+        col_offset = phase_index * 5
+        assert payload["phase_association_residuals"][row_offset : row_offset + 2] == pytest.approx(
+            block["residuals"],
+            rel=1.0e-14,
+            abs=1.0e-14,
+        )
+        assert payload["constraints"][4 + row_offset : 6 + row_offset] == pytest.approx(
+            block["residuals"],
+            rel=1.0e-14,
+            abs=1.0e-14,
+        )
+
+        expected_site_jacobian = np.asarray(block["site_fraction_jacobian_row_major"], dtype=float).reshape((2, 2))
+        assert association_rows[row_offset : row_offset + 2, col_offset + 3 : col_offset + 5] == pytest.approx(
+            expected_site_jacobian,
+            rel=1.0e-14,
+            abs=1.0e-14,
+        )
+        for site in range(2):
+            expected_amount_derivative = fractions[site] * fractions * delta[site, :] / volume
+            amount_sum = float(np.dot(amounts, fractions * delta[site, :]))
+            expected_volume_derivative = -fractions[site] * amount_sum / (volume * volume)
+            assert association_rows[row_offset + site, col_offset : col_offset + 2] == pytest.approx(
+                expected_amount_derivative,
+                rel=1.0e-14,
+                abs=1.0e-14,
+            )
+            assert association_rows[row_offset + site, col_offset + 2] == pytest.approx(
+                expected_volume_derivative,
+                rel=1.0e-14,
+                abs=1.0e-14,
+            )
