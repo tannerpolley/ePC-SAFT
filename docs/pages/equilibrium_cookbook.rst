@@ -42,12 +42,12 @@ these fields as routing hints, not as proof that a physical case is valid.
      - Homogeneous chemical equilibrium for a single phase, including activity-
        and concentration-coupled standard states.
    * - Electrolyte bubble pressure
-     - Production native, scoped
-     - Fixed-liquid electrolyte bubble pressure with neutral vapor species only.
+     - Route pending
+     - Requires the native Ipopt electrolyte bubble route builder.
    * - Reactive electrolyte bubble
-     - Native substeps with fixed-liquid handoff, scoped
-     - Native speciation followed by native fixed-liquid electrolyte bubble
-       pressure for neutral vapor species.
+     - Route pending
+     - Requires the native Ipopt electrolyte bubble route builder after
+       speciation.
    * - IPOPT
      - Optional native constrained-NLP backend
      - Wired for explicit homogeneous ideal reactive speciation; broader routes
@@ -298,51 +298,14 @@ solved-state block rather than by differentiating through solver iterations.
 Electrolyte bubble and reactive bubble
 --------------------------------------
 
-Use electrolyte bubble pressure only for a fixed liquid composition and neutral
-vapor species. Ions remain liquid-only.
+Electrolyte bubble pressure and reactive electrolyte bubble pressure are route
+pending. The previous fixed-liquid scalar pressure search is disabled; these
+APIs raise until a native Ipopt electrolyte bubble route builder owns the solve.
 
 .. code-block:: python
 
-   bubble = mixture.electrolyte_bubble_p(
-       T=298.15,
-       x_liq=[0.998, 0.001, 0.0005, 0.0005],
-       vapor_species=["H2O"],
-       options=epcsaft.ElectrolyteBubbleOptions(initial_pressure=101325.0),
-   )
-
-For reactive electrolyte bubbles, speciation runs first and the equilibrated
-liquid goes into the fixed-liquid bubble solve. Keep strict default behavior
-for single points; use ``error_mode="result"`` for sweeps that must continue.
-This route is suitable for native-backed volatile-neutral partial-pressure
-checks from an equilibrated liquid. It is not a simultaneous reactive NLP.
-
-.. code-block:: python
-
-   reactive_bubble = epcsaft.solve_reactive_electrolyte_bubble(
-       species=species,
-       mixture_factory=lambda x, T, P: mixture,
-       T=298.15,
-       P_seed=101325.0,
-       balances={
-           "water": {"H2O": 1.0},
-           "sodium": {"NaCl": 1.0, "Na+": 1.0},
-           "chloride": {"NaCl": 1.0, "Cl-": 1.0},
-       },
-       totals={"water": 0.998, "sodium": 0.0015, "chloride": 0.0015},
-       reactions=[],
-       initial_x=[0.998, 0.001, 0.0005, 0.0005],
-       vapor_species=["H2O"],
-       options=epcsaft.ReactiveElectrolyteBubbleOptions(error_mode="result"),
-   )
-   print(reactive_bubble.success, reactive_bubble.diagnostics)
-
-For a pressure/speciation proof, check both nested diagnostic blocks. The
-speciation block should report native activity coupling and implicit sensitivity;
-the bubble block should report ``native_entrypoint`` as
-``_solve_electrolyte_bubble_native`` plus ``partial_pressures`` and
-``fugacity_residual_norm`` for the volatile neutral species. Charged species
-must be absent from ``y_vap`` unless the caller has explicitly defined a charged
-vapor model.
+   caps = epcsaft.capabilities()
+   assert caps["equilibrium"]["electrolyte_bubble_pressure"]["status"] == "route_pending"
 
 Repeated fugacity/property loops
 --------------------------------

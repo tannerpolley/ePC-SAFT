@@ -1398,17 +1398,10 @@ def _merge_bubble_options(
 
         bubble_options = ElectrolyteBubbleOptions(
             initial_pressure=float(seed.get("pressure", bubble_options.initial_pressure)),
-            min_pressure=bubble_options.min_pressure,
-            max_pressure=bubble_options.max_pressure,
             max_iterations=bubble_options.max_iterations,
-            max_vapor_iterations=bubble_options.max_vapor_iterations,
-            max_bracket_expansions=bubble_options.max_bracket_expansions,
             tolerance=bubble_options.tolerance,
-            vapor_tolerance=bubble_options.vapor_tolerance,
-            pressure_factor=bubble_options.pressure_factor,
             min_composition=bubble_options.min_composition,
             charge_tolerance=bubble_options.charge_tolerance,
-            return_best_effort=bubble_options.return_best_effort,
             initial_y_vap=seed.get("y_vap"),
         )
     return ReactiveElectrolyteBubbleOptions(

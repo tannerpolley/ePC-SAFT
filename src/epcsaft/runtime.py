@@ -536,14 +536,16 @@ def capabilities() -> dict[str, object]:
                 "full_constrained_nlp_available": False,
             },
             "electrolyte_bubble_pressure": {
-                "available": True,
-                "backend": "native",
+                "available": False,
+                "backend": "native_ipopt_equilibrium_nlp_required",
                 "scope": "fixed liquid composition with neutral vapor species; ions remain liquid-only",
+                "status": "route_pending",
             },
             "reactive_electrolyte_bubble": {
-                "available": True,
-                "backend": "native",
-                "scope": "native chemical speciation with fixed-liquid native bubble-pressure handoff and explicit partial-pressure diagnostics",
+                "available": False,
+                "backend": "native_ipopt_equilibrium_nlp_required",
+                "scope": "native chemical speciation with fixed-liquid native Ipopt bubble-pressure handoff",
+                "status": "route_pending",
             },
             "reactive_phase_equilibrium": {
                 "available": True,

@@ -150,10 +150,10 @@ Use ``capabilities()`` before wiring high-level downstream workflows:
 
    caps = epcsaft.capabilities()
    assert caps["equilibrium"]["neutral_tp_flash"]["available"]
-   assert caps["equilibrium"]["electrolyte_bubble_pressure"]["available"]
-   assert caps["equilibrium"]["reactive_electrolyte_bubble"]["available"]
+   assert not caps["equilibrium"]["electrolyte_bubble_pressure"]["available"]
+   assert not caps["equilibrium"]["reactive_electrolyte_bubble"]["available"]
 
-Native neutral TP flash, neutral LLE, electrolyte LLE, electrolyte bubble pressure, reactive speciation, reactive electrolyte bubble pressure, and native regression helpers are available. Neutral bubble/dew methods are declared but require the native Ipopt route builders before use. The electrolyte bubble-pressure workflow is scoped to fixed liquid composition with neutral vapor species; ions remain liquid-only. The reactive electrolyte bubble workflow performs native chemical speciation before the native fixed-liquid electrolyte bubble-pressure solve.
+Native neutral TP flash, neutral LLE, electrolyte LLE, reactive speciation, and native regression helpers are available. Neutral bubble/dew, electrolyte bubble pressure, and reactive electrolyte bubble pressure are declared but require native Ipopt route builders before use.
 
 For routing examples and the production/opt-in solver table, see
 :doc:`equilibrium_cookbook`.
@@ -177,11 +177,11 @@ Capability status summary
      - Production native
      - Homogeneous one-phase chemistry with caller-owned balances and reactions.
    * - Electrolyte bubble pressure
-     - Production native, scoped
-     - Fixed liquid composition and neutral vapor species; ions remain liquid-only.
+     - Route pending
+     - Requires the native Ipopt electrolyte bubble route builder.
    * - Reactive electrolyte bubble
-     - Sequential native substeps, scoped
-     - Native speciation followed by native fixed-liquid electrolyte bubble pressure.
+     - Route pending
+     - Requires the native Ipopt electrolyte bubble route builder after speciation.
    * - IPOPT
      - Optional opt-in bridge
      - Residual-minimization refinement only; ``auto`` never selects IPOPT.

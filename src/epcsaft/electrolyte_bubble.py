@@ -8,25 +8,18 @@ from typing import Any
 
 import numpy as np
 
-from ._types import InputError, SolutionError
+from ._types import InputError
 
 
 @dataclass(frozen=True, slots=True)
 class ElectrolyteBubbleOptions:
-    """Numerical controls for native fixed-liquid electrolyte bubble pressure."""
+    """Route controls reserved for native Ipopt fixed-liquid electrolyte bubble pressure."""
 
     initial_pressure: float = 1.0e5
-    min_pressure: float = 1.0
-    max_pressure: float = 1.0e8
     max_iterations: int = 80
-    max_vapor_iterations: int = 30
-    max_bracket_expansions: int = 40
     tolerance: float = 1.0e-6
-    vapor_tolerance: float = 1.0e-10
-    pressure_factor: float = 2.0
     min_composition: float = 1.0e-14
     charge_tolerance: float = 1.0e-8
-    return_best_effort: bool = False
     initial_y_vap: Mapping[str, float] | None = None
 
 
@@ -76,9 +69,7 @@ def electrolyte_bubble_pressure(
     nonvolatile_species: Any = None,
     options: ElectrolyteBubbleOptions | None = None,
 ) -> ElectrolyteBubbleResult:
-    """Solve fixed-liquid electrolyte bubble pressure through the native backend."""
-    from . import _core
-
+    """Require the native Ipopt electrolyte bubble route builder before solving."""
     if options is None:
         options = ElectrolyteBubbleOptions()
     if not isinstance(options, ElectrolyteBubbleOptions):
@@ -104,26 +95,10 @@ def electrolyte_bubble_pressure(
     x_values = np.asarray(x_liq, dtype=float).flatten()
     if x_values.size != len(species):
         raise InputError("x_liq length must match mixture species count.")
-    request = {
-        "T": float(T),
-        "x_liq": x_values.tolist(),
-        "species": species,
-        "vapor_species": list(vapor_labels),
-        "options": _options_to_native_dict(options, vapor_species=vapor_labels),
-    }
-    try:
-        payload = _core._solve_electrolyte_bubble_native(mixture._native, request)
-    except _core.NativeValueError as exc:
-        raise InputError(str(exc)) from exc
-    result = _result_from_native_payload(
-        payload,
-        species=species,
-        vapor_species=vapor_labels,
-        x_liq=x_values,
+    raise InputError(
+        "electrolyte_bubble_pressure requires the native Ipopt equilibrium route builder; "
+        "the previous package-owned pressure-search route is disabled."
     )
-    if not result.success and not options.return_best_effort:
-        raise SolutionError(result.message, result.diagnostics)
-    return result
 
 
 def _normalize_species_labels(values: Any, *, field_name: str) -> tuple[str, ...]:
@@ -135,103 +110,3 @@ def _normalize_species_labels(values: Any, *, field_name: str) -> tuple[str, ...
         return tuple(str(value) for value in values)
     except TypeError as exc:
         raise InputError(f"{field_name} must be a string or sequence of strings.") from exc
-
-
-def _options_to_native_dict(options: ElectrolyteBubbleOptions, *, vapor_species: Sequence[str]) -> dict[str, Any]:
-    initial_y = None
-    if options.initial_y_vap is not None:
-        if isinstance(options.initial_y_vap, Mapping):
-            missing = [label for label in vapor_species if label not in options.initial_y_vap]
-            if missing:
-                raise InputError("initial_y_vap is missing vapor species: " + ", ".join(missing))
-            initial_y = [float(options.initial_y_vap[label]) for label in vapor_species]
-        else:
-            initial_y = [float(value) for value in options.initial_y_vap]
-    return {
-        "initial_pressure": float(options.initial_pressure),
-        "min_pressure": float(options.min_pressure),
-        "max_pressure": float(options.max_pressure),
-        "max_iterations": int(options.max_iterations),
-        "max_vapor_iterations": int(options.max_vapor_iterations),
-        "max_bracket_expansions": int(options.max_bracket_expansions),
-        "tolerance": float(options.tolerance),
-        "vapor_tolerance": float(options.vapor_tolerance),
-        "pressure_factor": float(options.pressure_factor),
-        "min_composition": float(options.min_composition),
-        "charge_tolerance": float(options.charge_tolerance),
-        "return_best_effort": bool(options.return_best_effort),
-        "initial_y_vap": initial_y,
-    }
-
-
-def _phase_by_label(payload: Mapping[str, Any], label: str) -> Mapping[str, Any] | None:
-    for phase in payload.get("phases", ()):
-        if phase.get("label") == label:
-            return phase
-    return None
-
-
-def _result_from_native_payload(
-    payload: Mapping[str, Any],
-    *,
-    species: Sequence[str],
-    vapor_species: Sequence[str],
-    x_liq: np.ndarray,
-) -> ElectrolyteBubbleResult:
-    diagnostics = dict(payload.get("diagnostics") or {})
-    from .equilibrium import _normalize_derivative_diagnostics
-
-    diagnostics = _normalize_derivative_diagnostics(
-        diagnostics,
-        problem_kind="electrolyte_bubble_pressure",
-        phase_count=len(payload.get("phases", ()) or ()),
-    )
-    success = bool(diagnostics.get("success", False))
-    message = str(diagnostics.get("message", "converged" if success else "electrolyte bubble pressure failed"))
-    vapor_indices = [species.index(label) for label in vapor_species]
-    liquid = _phase_by_label(payload, "liq")
-    vapor = _phase_by_label(payload, "vap")
-    liquid_ln_phi = np.asarray((liquid or {}).get("ln_fugacity_coefficient", []), dtype=float)
-    vapor_ln_phi = np.asarray((vapor or {}).get("ln_fugacity_coefficient", []), dtype=float)
-    y_values = np.asarray(diagnostics.get("best_y_vap", []), dtype=float)
-    if y_values.size != len(vapor_species) and vapor is not None:
-        vapor_comp = np.asarray(vapor.get("composition", []), dtype=float)
-        if vapor_comp.size == len(species):
-            y_values = vapor_comp[vapor_indices]
-            total = float(np.sum(y_values))
-            if total > 0.0:
-                y_values = y_values / total
-    if y_values.size != len(vapor_species):
-        y_values = np.zeros(len(vapor_species), dtype=float)
-    partial = np.asarray(diagnostics.get("best_partial_pressures", []), dtype=float)
-    if partial.size != len(vapor_species):
-        pressure = float(diagnostics.get("best_P", 0.0))
-        partial = y_values * pressure
-    residual = np.asarray(diagnostics.get("fugacity_residual", []), dtype=float)
-    if residual.size != len(vapor_species):
-        residual = np.full(len(vapor_species), float("nan"))
-    p_value = float(diagnostics.get("best_P", 0.0))
-    ln_phi_liq = {
-        label: float(liquid_ln_phi[index]) if liquid_ln_phi.size == len(species) else float("nan")
-        for label, index in zip(vapor_species, vapor_indices)
-    }
-    if vapor_ln_phi.size == len(species):
-        ln_phi_vap = {label: float(vapor_ln_phi[index]) for label, index in zip(vapor_species, vapor_indices)}
-    elif vapor_ln_phi.size == len(vapor_species):
-        ln_phi_vap = {label: float(vapor_ln_phi[pos]) for pos, label in enumerate(vapor_species)}
-    else:
-        ln_phi_vap = {label: float("nan") for label in vapor_species}
-    return ElectrolyteBubbleResult(
-        success=success,
-        message=message,
-        P=p_value,
-        y_vap={label: float(value) for label, value in zip(vapor_species, y_values)},
-        x_liq=[float(value) for value in x_liq],
-        ln_phi_liq=ln_phi_liq,
-        ln_phi_vap=ln_phi_vap,
-        fugacity_residual={label: float(value) for label, value in zip(vapor_species, residual)},
-        fugacity_residual_norm=float(diagnostics.get("best_fugacity_residual_norm", float("nan"))),
-        charge_residual=float(diagnostics.get("charge_residual", float("nan"))),
-        partial_pressures={label: float(value) for label, value in zip(vapor_species, partial)},
-        diagnostics=diagnostics,
-    )

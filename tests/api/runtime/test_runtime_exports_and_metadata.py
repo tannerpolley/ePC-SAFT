@@ -105,18 +105,16 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         "status": "route_pending",
     }
     electrolyte_bubble = capabilities["equilibrium"]["electrolyte_bubble_pressure"]
-    assert electrolyte_bubble["available"] is True
-    assert electrolyte_bubble["backend"] == "native"
+    assert electrolyte_bubble["available"] is False
+    assert electrolyte_bubble["backend"] == "native_ipopt_equilibrium_nlp_required"
+    assert electrolyte_bubble["status"] == "route_pending"
     assert electrolyte_bubble["scope"] == "fixed liquid composition with neutral vapor species; ions remain liquid-only"
     assert capabilities["equilibrium"]["electrolyte_lle"]["default_auto_uses_ipopt"] is False
     assert capabilities["equilibrium"]["electrolyte_lle"]["full_constrained_nlp_available"] is False
     reactive_bubble = capabilities["equilibrium"]["reactive_electrolyte_bubble"]
-    assert reactive_bubble["available"] is True
-    assert reactive_bubble["backend"] == "native"
-    assert (
-        reactive_bubble["scope"]
-        == "native chemical speciation with fixed-liquid native bubble-pressure handoff and explicit partial-pressure diagnostics"
-    )
+    assert reactive_bubble["available"] is False
+    assert reactive_bubble["backend"] == "native_ipopt_equilibrium_nlp_required"
+    assert reactive_bubble["status"] == "route_pending"
     assert capabilities["equilibrium"]["reactive_speciation"]["default_auto_uses_ipopt"] is False
     assert capabilities["equilibrium"]["reactive_speciation"]["solver_backends"] == ["auto", "ipopt"]
     assert capabilities["equilibrium"]["reactive_speciation"]["ipopt_routes"] == [

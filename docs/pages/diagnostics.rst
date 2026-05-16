@@ -40,10 +40,13 @@ For activity- or concentration-coupled reaction constants, check:
   state, residual, residual-state Jacobian, residual-parameter Jacobian, and
   sensitivity payload.
 
-Reactive electrolyte bubble results contain nested dictionaries:
+Reactive electrolyte bubble result fields are retained as the target structured
+diagnostics shape, but the public route currently raises ``InputError`` until
+the native Ipopt electrolyte bubble route builder owns the solve. After that
+route lands, results will contain nested dictionaries:
 
 * ``diagnostics["speciation"]`` is the homogeneous reactive speciation result.
-* ``diagnostics["bubble"]`` is the fixed-liquid electrolyte bubble-pressure
+* ``diagnostics["bubble"]`` is the native Ipopt electrolyte bubble-pressure
   result.
 * ``partial_pressures`` maps volatile neutral species to pressure contributions.
 * ``fugacity_residual_norm`` measures the volatile-neutral fugacity equality

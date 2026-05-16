@@ -65,15 +65,11 @@ remain declared API names, but their previous Python scalar route has been
 removed. They raise ``InputError`` until native Ipopt route builders replace
 that path.
 
-``ePCSAFTMixture.equilibrium(kind="electrolyte_bubble_pressure", ...)`` uses the
-native backend for fixed-liquid electrolyte bubble-pressure solves. Its current
-scope keeps ions liquid-only and permits neutral vapor species.
-``solve_reactive_electrolyte_bubble(...)`` and the matching sweep helper first
-run native chemical speciation, then call the same native fixed-liquid
-electrolyte bubble-pressure workflow.
-Use ``ReactiveElectrolyteBubbleOptions(error_mode="result")`` for diagnostic
-sweeps that should return structured nonconverged bubble-stage failures instead
-of raising immediately.
+``ePCSAFTMixture.equilibrium(kind="electrolyte_bubble_pressure", ...)`` and
+``solve_reactive_electrolyte_bubble(...)`` remain public contract names, but
+their previous fixed-liquid pressure-search route is disabled. They raise
+``InputError`` until the native Ipopt electrolyte bubble route builder replaces
+that path.
 
 ``evaluate_fugacity_coefficients_batch(...)`` is the intended lightweight helper
 for downstream-owned repeated property loops. It reuses the previous row's

@@ -87,7 +87,7 @@ def solve_reactive_electrolyte_bubble(
     nonvolatile_species: Any = None,
     options: ReactiveElectrolyteBubbleOptions | None = None,
 ) -> ReactiveElectrolyteBubbleResult:
-    """Run native chemical speciation followed by native electrolyte bubble pressure."""
+    """Run native chemical speciation followed by native Ipopt electrolyte bubble pressure."""
     if options is None:
         options = ReactiveElectrolyteBubbleOptions()
     if not isinstance(options, ReactiveElectrolyteBubbleOptions):
@@ -97,7 +97,6 @@ def solve_reactive_electrolyte_bubble(
     if bubble_options is None:
         bubble_options = ElectrolyteBubbleOptions(
             initial_pressure=float(P_seed),
-            return_best_effort=options.error_mode != "raise",
         )
     chemical = solve_reactive_speciation(
         species=species,
@@ -142,7 +141,7 @@ def solve_reactive_electrolyte_bubble(
         "speciation_phase_handoff_success": handoff["success"],
         "speciation_phase_handoff": handoff,
         "bubble_success": bool(bubble.success),
-        "native_entrypoint": "_solve_chemical_equilibrium_native_then__solve_electrolyte_bubble_native",
+        "native_entrypoint": "native_chemical_speciation_then_ipopt_electrolyte_bubble",
         "solver_language": "c++",
     }
     if bubble_failure is not None:
@@ -186,7 +185,7 @@ def solve_reactive_electrolyte_bubble_sweep(
     options: ReactiveElectrolyteBubbleOptions | None = None,
     continuation: str = "auto",
 ) -> list[ReactiveElectrolyteBubbleResult]:
-    """Run a native-backed reactive electrolyte bubble sweep with pressure/y continuation."""
+    """Apply the reactive electrolyte bubble route contract across sweep points."""
     continuation_mode = _normalize_continuation(continuation)
     if options is None:
         options = ReactiveElectrolyteBubbleOptions()
@@ -251,7 +250,6 @@ def _with_bubble_continuation(
 ) -> ReactiveElectrolyteBubbleOptions:
     base = options.bubble_options or ElectrolyteBubbleOptions(
         initial_pressure=float(default_pressure_seed),
-        return_best_effort=options.error_mode != "raise",
     )
     return replace(
         options,

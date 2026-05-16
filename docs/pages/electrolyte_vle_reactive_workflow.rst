@@ -12,9 +12,10 @@ ownership is moving to native Ipopt constrained NLPs; existing native residual
 routes remain transitional until each Ipopt route builder lands.
 
 Consequently, electrolyte bubble-pressure and composed reactive electrolyte
-bubble-pressure entry points route through native C++ kernels. The Python layer
-only coordinates native speciation, native phase-equilibrium calls, fixed-liquid
-bubble-pressure handoffs, structured results, and diagnostics.
+bubble-pressure entry points now fail loudly until native Ipopt route builders
+own those solves. The Python layer may coordinate native speciation, native
+phase-equilibrium calls, structured results, and diagnostics only after those
+native route builders exist.
 
 ``ReactiveSpeciationOptions`` accepts ``solver_backend="auto" | "ipopt"``.
 ``auto`` keeps the current native chemical-equilibrium solve while the full
@@ -147,23 +148,22 @@ Electrolyte bubble pressure
 ---------------------------
 
 ``kind="electrolyte_bubble_pressure"`` and
-``solve_reactive_electrolyte_bubble(...)`` are native-backed fixed-liquid
-bubble-pressure workflows. Ions remain liquid-only. Vapor fugacity is evaluated
-with a neutral vapor submixture built from the declared vapor species.
-These paths do not route through Python pressure, speciation, or regression
-loops when the native route is selected.
+``solve_reactive_electrolyte_bubble(...)`` are reserved public contract names.
+Their previous fixed-liquid pressure-search implementation is disabled
+because production equilibrium routes must be native Ipopt NLPs, not
+package-owned scalar pressure searches.
 
-For reactive electrolyte bubbles, the package first solves homogeneous
-chemical equilibrium with the native chemical solver and then hands the
-equilibrated liquid composition to the native electrolyte bubble solver.
-``ReactiveElectrolyteBubbleResult`` reports both strict speciation success and
-phase-handoff success:
+The target reactive electrolyte bubble route will first solve homogeneous
+chemical equilibrium with the native chemical solver and then hand the
+equilibrated liquid composition to the native Ipopt electrolyte bubble solver.
+``ReactiveElectrolyteBubbleResult`` is retained as the structured result shape
+for that route:
 
 - ``speciation_strict_success`` reflects the standalone native chemical
   equilibrium tolerances requested in ``ReactiveSpeciationOptions``.
 - ``speciation_phase_handoff_success`` reflects whether finite mass, charge,
   and reaction residuals are accurate enough for phase-equilibrium handoff.
-- ``bubble_success`` reflects the native electrolyte bubble-pressure solve.
+- ``bubble_success`` will reflect the native Ipopt electrolyte bubble-pressure solve.
 
 The handoff tolerances default to ``1e-8`` for mass, ``1e-8`` for charge, and
 ``1e-5`` for reaction residuals. They can be adjusted with
@@ -174,11 +174,9 @@ strict standalone chemical-equilibrium tolerances while accepting a looser,
 documented phase-equilibrium handoff envelope when the bubble solve itself is
 well converged.
 
-Strict default behavior still raises on bubble-stage failure. For diagnostic
-sweeps, set ``ReactiveElectrolyteBubbleOptions(error_mode="result")`` to return
-a structured ``ReactiveElectrolyteBubbleResult(success=False, ...)`` containing
-the successful speciation payload plus the failed bubble diagnostics. Complete
-examples are in :doc:`equilibrium_cookbook`.
+Strict default behavior currently raises ``InputError`` for the route-pending
+bubble stage. Diagnostic result-mode sweeps become meaningful again after the
+native Ipopt bubble route builder lands.
 
 Solved-state derivative boundary
 --------------------------------

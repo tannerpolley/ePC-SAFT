@@ -7,13 +7,14 @@ The recommended direct API remains method based:
 * ``mixture.stability_tp(...)``
 * ``mixture.lle_tp(...)``
 * ``mixture.electrolyte_lle_tp(...)``
-* ``mixture.electrolyte_bubble_p(...)``
 * ``mixture.chemical_equilibrium(...)``
-* ``mixture.reactive_electrolyte_bubble_p(...)``
 
 Neutral ``mixture.bubble_p(...)`` and ``mixture.dew_p(...)`` remain public API
 names, but they currently fail loudly until the native Ipopt route builders own
 those solves.
+``mixture.electrolyte_bubble_p(...)`` and
+``mixture.reactive_electrolyte_bubble_p(...)`` follow the same route-pending
+policy until native Ipopt electrolyte bubble builders land.
 
 For agents or workflow builders that need a serializable problem object, use
 ``mixture.solve_equilibrium(problem)`` with one of:

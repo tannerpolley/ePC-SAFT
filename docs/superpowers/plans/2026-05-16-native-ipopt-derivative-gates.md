@@ -517,6 +517,8 @@ Task 12 continuation note: reactive/speciation capabilities and staged reactive 
 
 Task 12 continuation note: the tracked text gate now enforces that active source, tests, and dev scripts stay free of old retry/default fallback tokens, while the broader documentation cleanup remains separate from executable surfaces.
 
+Task 12 continuation note: fixed-liquid electrolyte bubble pressure and composed reactive electrolyte bubble pressure no longer execute the package-owned pressure-search route from public Python entry points. The public contracts now validate inputs and raise `InputError` until native Ipopt route builders own those solves; capabilities, docs, and tests mark both routes as `route_pending`, and the public `ElectrolyteBubbleOptions` surface no longer carries the disabled pressure-search controls.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**
