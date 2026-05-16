@@ -83,6 +83,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - A repo workflow gate now scans native C++ sources for Ceres numeric-diff APIs and legacy shifted-source route tokens.
 - A repo workflow gate now scans public Python solver surfaces for external optimizer/root-loop calls, so Python facades
   remain request/result surfaces instead of owning production solve algorithms.
+- Duplicate distributed-ion electrolyte LLE route-pending checks were removed; mixed-salt public route-gate coverage
+  remains in the route-specific solver-contract test file.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

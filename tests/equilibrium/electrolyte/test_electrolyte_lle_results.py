@@ -12,7 +12,6 @@ from epcsaft import ePCSAFTMixture
 from epcsaft.equilibrium import _explicit_to_formula_composition, _formula_to_explicit_composition
 from epcsaft.equilibrium_core.electrolyte_basis import build_electrolyte_basis
 from tests.equilibrium.core.test_stability import _assert_stability_route_pending
-from tests.equilibrium.electrolyte.test_electrolyte_lle_smokes import _assert_electrolyte_lle_route_pending
 from tests.helpers.numeric import assert_allclose
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -140,17 +139,3 @@ def test_electrolyte_stability_requires_native_ipopt_route_after_validation() ->
         )
 
     _assert_stability_route_pending(excinfo, route="electrolyte_stability")
-
-def test_mixed_electrolyte_lle_requires_native_ipopt_route_for_distributed_ions() -> None:
-    mix = _case2_mixture()
-
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        mix.equilibrium(
-            kind="electrolyte_lle",
-            T=298.15,
-            P=1.0e5,
-            z=_case2_feed(),
-            options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
-        )
-
-    _assert_electrolyte_lle_route_pending(excinfo)

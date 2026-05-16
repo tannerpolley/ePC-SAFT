@@ -308,6 +308,10 @@ Task 2 continuation note: opt-in package plot smokes no longer build derivative 
 slopes. The stale regression plot smoke now calls the public Ceres-backed fit path, and redundant derivative-oracle
 plots were removed from the opt-in native/regression plot tests.
 
+Task 2 continuation note: duplicate distributed-ion electrolyte LLE route-pending checks were pruned. Mixed-salt public
+route-gate coverage remains in `test_electrolyte_lle_solver_contracts.py`, while the result-file test keeps basis and
+stability assertions without a second identical LLE pending assertion.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**
