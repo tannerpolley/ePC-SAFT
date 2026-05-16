@@ -83,7 +83,6 @@ def test_literature_pure_parameter_regression_uses_local_benchmark_fixture(tmp_p
         assert result.optimizer_backend == "residual_score_native"
         assert result.derivative_backend.lower() not in DISALLOWED_BACKENDS
         assert result.jacobian_backend.lower() not in DISALLOWED_BACKENDS
-        assert result.jacobian_fallback_used is False
         assert result.problem.fit_targets == tuple(fixture["fit_targets"][component])
         expected_mode = "pure_neutral" if component == "MEA" else "pure_ion"
         assert result.problem.mode == expected_mode

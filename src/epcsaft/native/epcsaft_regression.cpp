@@ -346,13 +346,13 @@ epcsaft::native::cppad_support::CppADDerivativeResult cppad_pure_neutral_paramet
 ) {
 #ifdef EPCSAFT_HAS_CPPAD
     if (base_args.m.size() != 1 || base_args.s.size() != 1 || base_args.e.size() != 1) {
-        throw ValueError("not_available: pure-neutral m/sigma/epsilon derivatives require exactly one component.");
+        throw ValueError("unsupported: pure-neutral m/sigma/epsilon derivatives require exactly one component.");
     }
     if (!base_args.z.empty() && (base_args.z.size() != 1 || std::abs(base_args.z[0]) > 1.0e-12)) {
-        throw ValueError("not_available: pure-neutral m/sigma/epsilon derivatives support only neutral components.");
+        throw ValueError("unsupported: pure-neutral m/sigma/epsilon derivatives support only neutral components.");
     }
     if (!base_args.assoc_num.empty() || !base_args.assoc_matrix.empty() || !base_args.k_hb.empty() || !base_args.e_assoc.empty() || !base_args.vol_a.empty()) {
-        throw ValueError("not_available: pure-neutral m/sigma/epsilon derivatives support only nonassociating components.");
+        throw ValueError("unsupported: pure-neutral m/sigma/epsilon derivatives support only nonassociating components.");
     }
     using CppADScalar = CppAD::AD<double>;
     std::vector<CppADScalar> ax(kThetaSize);
@@ -395,7 +395,7 @@ epcsaft::native::cppad_support::CppADDerivativeResult cppad_pure_neutral_paramet
     (void)base_args;
     epcsaft::native::cppad_support::CppADDerivativeResult result;
     result.supported = false;
-    result.backend = "not_available";
+    result.backend = "cppad_disabled";
     result.message = "CppAD support is disabled in this native build";
     return result;
 #endif
@@ -1130,10 +1130,7 @@ GenericRegressionDebugResult evaluate_generic_residuals_cpp(
     }
     out.residual_norm = std::sqrt(std::max(0.0, 2.0 * out.cost));
     out.jacobian_available = false;
-    out.jacobian_backend = "not_available";
-    out.jacobian_fallback_used = false;
-    out.jacobian_fallback_reason = "";
-    out.not_available_reason = "not_available: generic regression sensitivities are not implemented.";
+    out.jacobian_backend = "not_used";
     for (const auto &item : raw_by_term) {
         out.metrics_by_term[item.first] = rms_metric_cpp(item.second);
     }
@@ -1203,7 +1200,7 @@ void validate_pure_ion_born_ceres_problem_cpp(
             && target_kinds[j] != kGenericTargetDBorn
             && target_kinds[j] != kGenericTargetFSolv
             && target_kinds[j] != kGenericTargetDielc) {
-            throw ValueError("not_available: native Ceres pure-ion regression supports s, e, d_born, f_solv, and dielc targets only.");
+            throw ValueError("unsupported: native Ceres pure-ion regression supports s, e, d_born, f_solv, and dielc targets only.");
         }
         (void)target_indices_2[j];
     }
@@ -1217,7 +1214,7 @@ void validate_pure_ion_born_ceres_problem_cpp(
             && record.term != kGenericTermOsmotic
             && record.term != kGenericTermMIAC
             && record.term != kGenericTermRelativePermittivity) {
-            throw ValueError("not_available: native Ceres pure-ion regression supports density, osmotic, mean-ionic activity, and relative-permittivity rows only.");
+            throw ValueError("unsupported: native Ceres pure-ion regression supports density, osmotic, mean-ionic activity, and relative-permittivity rows only.");
         }
         if (!(record.t > 0.0) || !(record.p > 0.0) || record.phase != 0) {
             throw ValueError("Native Ceres pure-ion regression requires positive T/P liquid records.");
@@ -1497,10 +1494,10 @@ void validate_binary_kij_ceres_problem_cpp(
         throw ValueError("Native Ceres binary k_ij regression requires one base parameter payload per record.");
     }
     if (target_kinds.size() != 1 || target_indices.size() != 1 || target_indices_2.size() != 1 || theta.size() != 1) {
-        throw ValueError("not_available: native Ceres generic regression currently supports one binary k_ij target only.");
+        throw ValueError("unsupported: native Ceres generic regression currently supports one binary k_ij target only.");
     }
     if (target_kinds[0] != kGenericTargetKIJ) {
-        throw ValueError("not_available: native Ceres generic regression currently supports binary k_ij targets only.");
+        throw ValueError("unsupported: native Ceres generic regression currently supports binary k_ij targets only.");
     }
     if (records.empty()) {
         throw ValueError("Native Ceres binary k_ij regression requires at least one VLE record.");
@@ -1509,20 +1506,20 @@ void validate_binary_kij_ceres_problem_cpp(
         const auto &record = records[r];
         const auto &args = base_args_by_record[r];
         if (record.term != kGenericTermBinaryVLE) {
-            throw ValueError("not_available: native Ceres binary k_ij regression supports binary VLE rows only.");
+            throw ValueError("unsupported: native Ceres binary k_ij regression supports binary VLE rows only.");
         }
         if (args.m.size() != 2 || args.s.size() != 2 || args.e.size() != 2) {
-            throw ValueError("not_available: native Ceres binary k_ij regression requires exactly two neutral components.");
+            throw ValueError("unsupported: native Ceres binary k_ij regression requires exactly two neutral components.");
         }
         if (!args.z.empty()) {
             for (double charge : args.z) {
                 if (std::abs(charge) > 1.0e-12) {
-                    throw ValueError("not_available: native Ceres binary k_ij regression does not support ionic rows.");
+                    throw ValueError("unsupported: native Ceres binary k_ij regression does not support ionic rows.");
                 }
             }
         }
         if (args.k_ij.size() != 4) {
-            throw ValueError("not_available: native Ceres binary k_ij regression requires a dense 2x2 k_ij matrix.");
+            throw ValueError("unsupported: native Ceres binary k_ij regression requires a dense 2x2 k_ij matrix.");
         }
         if (record.x.size() != 2 || record.y.size() != 2 || !(record.p > 0.0) || !(record.t > 0.0)) {
             throw ValueError("Native Ceres binary k_ij regression requires positive T/P and binary x/y records.");
@@ -1782,9 +1779,6 @@ GenericRegressionResult solve_one_pure_ion_ceres_start_cpp(
         out.backend = "ceres";
         out.jacobian_available = true;
         out.jacobian_backend = "cppad_implicit";
-        out.jacobian_fallback_used = false;
-        out.jacobian_fallback_reason = "";
-        out.not_available_reason = "";
         return out;
     }
     GenericRegressionResult out;
@@ -1802,9 +1796,6 @@ GenericRegressionResult solve_one_pure_ion_ceres_start_cpp(
     out.backend = "ceres";
     out.jacobian_available = true;
     out.jacobian_backend = "cppad_implicit";
-    out.jacobian_fallback_used = false;
-    out.jacobian_fallback_reason = "";
-    out.not_available_reason = "";
     return out;
 }
 
@@ -1927,9 +1918,6 @@ GenericRegressionResult solve_one_binary_kij_ceres_start_cpp(
         out.backend = "ceres";
         out.jacobian_available = true;
         out.jacobian_backend = "cppad_implicit";
-        out.jacobian_fallback_used = false;
-        out.jacobian_fallback_reason = "";
-        out.not_available_reason = "";
         return out;
     }
     GenericRegressionResult out;
@@ -1947,9 +1935,6 @@ GenericRegressionResult solve_one_binary_kij_ceres_start_cpp(
     out.backend = "ceres";
     out.jacobian_available = true;
     out.jacobian_backend = "cppad_implicit";
-    out.jacobian_fallback_used = false;
-    out.jacobian_fallback_reason = "";
-    out.not_available_reason = "";
     return out;
 }
 #endif
@@ -2074,7 +2059,7 @@ PureNeutralRegressionResult fit_pure_neutral_ceres_cpp(
     (void)density_scale;
     (void)pure_vle_scale;
     (void)multistart;
-    throw ValueError("not_available: Ceres support is not enabled in this native build.");
+    throw ValueError("ceres_disabled: Ceres support is not enabled in this native build.");
 #else
     vector<vector<double>> starts = candidate_starts_cpp(x0, lower, upper, multistart);
     bool have_result = false;
@@ -2159,7 +2144,7 @@ GenericRegressionResult fit_generic_ceres_cpp(
         }
     }
     if (!is_binary_kij && !is_pure_ion_parameter_set) {
-        throw ValueError("not_available: native Ceres generic regression has no native analytic/CppAD/implicit derivative path for this target set.");
+        throw ValueError("unsupported: native Ceres generic regression has no native analytic/CppAD/implicit derivative path for this target set.");
     }
 #ifndef EPCSAFT_HAS_CERES
     (void)base_args_by_record;
@@ -2168,7 +2153,7 @@ GenericRegressionResult fit_generic_ceres_cpp(
     (void)target_indices_2;
     (void)multistart;
     (void)max_nfev;
-    throw ValueError("not_available: Ceres support is not enabled in this native build.");
+    throw ValueError("ceres_disabled: Ceres support is not enabled in this native build.");
 #else
     vector<vector<double>> starts = generic_candidate_starts_cpp(x0, lower, upper, multistart);
     bool have_result = false;
@@ -2212,9 +2197,6 @@ GenericRegressionResult fit_generic_ceres_cpp(
     best.backend = "ceres";
     best.jacobian_available = true;
     best.jacobian_backend = "cppad_implicit";
-    best.jacobian_fallback_used = false;
-    best.jacobian_fallback_reason = "";
-    best.not_available_reason = "";
     return best;
 #endif
 }

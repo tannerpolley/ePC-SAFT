@@ -81,13 +81,6 @@ def _stub_native_generic_runner(monkeypatch, *, backend="ceres"):
             "backend": backend,
             "jacobian_available": True,
             "jacobian_backend": jacobian_backend,
-            "jacobian_fallback_used": False,
-            "jacobian_fallback_reason": "",
-            "not_available_reason": "",
-            "hessian_available": False,
-            "hessian_backend": "not_implemented",
-            "hessian_fallback_used": False,
-            "hessian_fallback_reason": "stubbed hessian skeleton",
         }
 
     monkeypatch.setattr(regression_module, "_run_native_generic_ceres", fake_runner)
@@ -260,8 +253,8 @@ def test_public_generic_derivative_evaluator_rejects_removed_backend_names():
             jacobian_backend="finite" + "_difference",
         )
 
-def test_public_generic_derivative_evaluator_rejects_auto_without_autodiff():
-    with pytest.raises(InputError, match="not_available"):
+def test_public_generic_derivative_evaluator_rejects_auto_without_registered_derivatives():
+    with pytest.raises(InputError, match="unsupported"):
         evaluate_generic_regression_derivatives(
             fixed_payloads=[{"m": [1.0, 1.0], "s": [3.0, 3.0], "e": [200.0, 200.0]}],
             native_records=[

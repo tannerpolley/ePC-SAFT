@@ -301,12 +301,6 @@ py::dict regression_result_to_dict(const PureNeutralRegressionResult& result) {
     out["python_objective_used"] = false;
     out["jacobian_available"] = result.jacobian_available;
     out["jacobian_backend"] = result.jacobian_backend;
-    out["jacobian_fallback_used"] = result.jacobian_fallback_used;
-    out["jacobian_fallback_reason"] = result.jacobian_fallback_reason;
-    out["hessian_available"] = result.hessian_available;
-    out["hessian_backend"] = result.hessian_backend;
-    out["hessian_fallback_used"] = result.hessian_fallback_used;
-    out["hessian_fallback_reason"] = result.hessian_fallback_reason;
     return out;
 }
 
@@ -319,14 +313,6 @@ py::dict regression_debug_to_dict(const PureNeutralRegressionDebugResult& result
     out["jacobian_shape"] = py::make_tuple(result.jacobian_rows, result.jacobian_cols);
     out["jacobian_available"] = result.jacobian_available;
     out["jacobian_backend"] = result.jacobian_backend;
-    out["jacobian_fallback_used"] = result.jacobian_fallback_used;
-    out["jacobian_fallback_reason"] = result.jacobian_fallback_reason;
-    out["hessian_row_major"] = result.hessian_row_major;
-    out["hessian_shape"] = py::make_tuple(result.hessian_rows, result.hessian_cols);
-    out["hessian_available"] = result.hessian_available;
-    out["hessian_backend"] = result.hessian_backend;
-    out["hessian_fallback_used"] = result.hessian_fallback_used;
-    out["hessian_fallback_reason"] = result.hessian_fallback_reason;
     out["density_raw_residuals"] = result.density_raw_residuals;
     out["pure_vle_raw_residuals"] = result.pure_vle_raw_residuals;
     out["residual_evaluations"] = result.residual_evaluations;
@@ -357,13 +343,6 @@ py::dict generic_regression_result_to_dict(const GenericRegressionResult& result
     out["backend"] = result.backend;
     out["jacobian_available"] = result.jacobian_available;
     out["jacobian_backend"] = result.jacobian_backend;
-    out["jacobian_fallback_used"] = result.jacobian_fallback_used;
-    out["jacobian_fallback_reason"] = result.jacobian_fallback_reason;
-    out["not_available_reason"] = result.not_available_reason;
-    out["hessian_available"] = result.hessian_available;
-    out["hessian_backend"] = result.hessian_backend;
-    out["hessian_fallback_used"] = result.hessian_fallback_used;
-    out["hessian_fallback_reason"] = result.hessian_fallback_reason;
     return out;
 }
 
@@ -381,15 +360,6 @@ py::dict generic_regression_debug_to_dict(const GenericRegressionDebugResult& re
     out["jacobian_shape"] = py::make_tuple(result.jacobian_rows, result.jacobian_cols);
     out["jacobian_available"] = result.jacobian_available;
     out["jacobian_backend"] = result.jacobian_backend;
-    out["jacobian_fallback_used"] = result.jacobian_fallback_used;
-    out["jacobian_fallback_reason"] = result.jacobian_fallback_reason;
-    out["not_available_reason"] = result.not_available_reason;
-    out["hessian_row_major"] = result.hessian_row_major;
-    out["hessian_shape"] = py::make_tuple(result.hessian_rows, result.hessian_cols);
-    out["hessian_available"] = result.hessian_available;
-    out["hessian_backend"] = result.hessian_backend;
-    out["hessian_fallback_used"] = result.hessian_fallback_used;
-    out["hessian_fallback_reason"] = result.hessian_fallback_reason;
     return out;
 }
 

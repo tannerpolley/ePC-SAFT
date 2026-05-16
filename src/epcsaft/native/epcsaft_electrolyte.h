@@ -216,15 +216,6 @@ struct PureNeutralRegressionDebugResult {
     int jacobian_cols = 0;
     bool jacobian_available = true;
     std::string jacobian_backend = "autodiff";
-    bool jacobian_fallback_used = false;
-    std::string jacobian_fallback_reason;
-    vector<double> hessian_row_major;
-    int hessian_rows = 0;
-    int hessian_cols = 0;
-    bool hessian_available = false;
-    std::string hessian_backend = "not_implemented";
-    bool hessian_fallback_used = false;
-    std::string hessian_fallback_reason = "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
     vector<double> density_raw_residuals;
     vector<double> pure_vle_raw_residuals;
     int residual_evaluations = 0;
@@ -262,12 +253,6 @@ struct PureNeutralRegressionResult {
     double step_norm = 0.0;
     bool jacobian_available = true;
     std::string jacobian_backend = "autodiff";
-    bool jacobian_fallback_used = false;
-    std::string jacobian_fallback_reason;
-    bool hessian_available = false;
-    std::string hessian_backend = "not_implemented";
-    bool hessian_fallback_used = false;
-    std::string hessian_fallback_reason = "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
 };
 
 struct GenericRegressionRecord {
@@ -295,17 +280,7 @@ struct GenericRegressionDebugResult {
     int jacobian_rows = 0;
     int jacobian_cols = 0;
     bool jacobian_available = true;
-    std::string jacobian_backend = "not_available";
-    bool jacobian_fallback_used = true;
-    std::string jacobian_fallback_reason = "Generic regression sensitivities are not implemented for all residual state calls yet.";
-    std::string not_available_reason = "not_available";
-    vector<double> hessian_row_major;
-    int hessian_rows = 0;
-    int hessian_cols = 0;
-    bool hessian_available = false;
-    std::string hessian_backend = "not_implemented";
-    bool hessian_fallback_used = false;
-    std::string hessian_fallback_reason = "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
+    std::string jacobian_backend = "unspecified";
     std::map<std::string, double> metrics_by_term;
 };
 
@@ -322,14 +297,7 @@ struct GenericRegressionResult {
     int iterations = 0;
     int starts_tried = 0;
     bool jacobian_available = true;
-    std::string jacobian_backend = "not_available";
-    bool jacobian_fallback_used = true;
-    std::string jacobian_fallback_reason = "Generic regression sensitivities are not implemented for all residual state calls yet.";
-    std::string not_available_reason = "not_available";
-    bool hessian_available = false;
-    std::string hessian_backend = "not_implemented";
-    bool hessian_fallback_used = false;
-    std::string hessian_fallback_reason = "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
+    std::string jacobian_backend = "unspecified";
     std::string message;
     std::string backend;
 };

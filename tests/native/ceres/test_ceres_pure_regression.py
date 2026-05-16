@@ -104,7 +104,6 @@ def test_ceres_pure_ion_regression_uses_cppad_implicit_for_density_osmotic_miac(
     assert result.success, result.message
     assert result.backend == "ceres"
     assert result.jacobian_backend == "cppad_implicit"
-    assert result.jacobian_fallback_used is False
     assert result.python_objective_used is False
     assert result.problem.fit_targets == ("s", "e", "d_born")
     assert set(result.metrics_by_term) == {"density", "osmotic_coefficient", "mean_ionic_activity"}

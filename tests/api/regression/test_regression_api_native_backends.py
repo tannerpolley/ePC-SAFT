@@ -78,13 +78,6 @@ def _stub_native_generic_runner(monkeypatch, *, backend="ceres"):
             "backend": backend,
             "jacobian_available": True,
             "jacobian_backend": jacobian_backend,
-            "jacobian_fallback_used": False,
-            "jacobian_fallback_reason": "",
-            "not_available_reason": "",
-            "hessian_available": False,
-            "hessian_backend": "not_implemented",
-            "hessian_fallback_used": False,
-            "hessian_fallback_reason": "stubbed hessian skeleton",
         }
 
     monkeypatch.setattr(regression_module, "_run_native_generic_ceres", fake_runner)
@@ -130,13 +123,8 @@ def test_native_pure_neutral_debug_gradient_reports_autodiff_backend():
     assert debug["callback_wall_time_s"] >= 0.0
     assert debug["jacobian_available"] is True
     assert debug["jacobian_backend"] == "autodiff"
-    assert debug["jacobian_fallback_used"] is False
     assert tuple(debug["jacobian_shape"]) == (len(debug["residuals"]), 3)
     assert np.asarray(debug["jacobian_row_major"], dtype=float).shape == (len(debug["residuals"]) * 3,)
-    assert debug["hessian_available"] is False
-    assert debug["hessian_backend"] == "not_implemented"
-    assert tuple(debug["hessian_shape"]) == (0, 0)
-    assert np.asarray(debug["hessian_row_major"], dtype=float).size == 0
 
 def test_fit_pure_neutral_rejects_native_least_squares_backend():
     with pytest.raises(InputError, match="optimizer_backend='ceres'"):
@@ -218,9 +206,6 @@ def test_fit_pure_ion_default_s_e_bounds_and_multistart_contract(monkeypatch):
     assert result.backend == "ceres"
     assert result.jacobian_available is True
     assert result.jacobian_backend == "cppad_implicit"
-    assert result.not_available_reason == ""
-    assert result.hessian_available is False
-    assert result.hessian_backend == "not_implemented"
     assert result.problem.mode == "pure_ion"
     assert result.problem.fit_targets == ("s", "e")
     assert set(result.metrics_by_term) == {"osmotic_coefficient", "mean_ionic_activity"}
@@ -316,7 +301,6 @@ def test_fit_binary_pair_vle_kij_default_and_rejects_temperature_models(monkeypa
     assert result.backend == "ceres"
     assert result.jacobian_available is True
     assert result.jacobian_backend == "cppad_implicit"
-    assert result.hessian_available is False
     assert result.problem.mode == "binary_pair"
     assert result.problem.fit_targets == ("k_ij",)
     assert set(result.fitted_values) == {"k_ij"}

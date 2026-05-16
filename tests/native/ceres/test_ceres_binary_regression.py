@@ -59,7 +59,6 @@ def test_ceres_binary_kij_regression_uses_native_cppad_implicit_jacobian() -> No
     assert result["backend"] == "ceres"
     assert result["jacobian_backend"] == "cppad_implicit"
     assert result["jacobian_available"] is True
-    assert result["jacobian_fallback_used"] is False
     assert result["cost"] <= result["initial_cost"] + 1.0e-12
     assert -0.15 <= float(result["x"][0]) <= 0.10
     assert "binary_vle_fugacity_balance" in result["metrics_by_term"]

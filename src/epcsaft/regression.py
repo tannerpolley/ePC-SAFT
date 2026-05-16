@@ -151,12 +151,11 @@ NATIVE_TERM_KINDS = {
     TERM_MEA_CO2_H2O_CO2_FUGACITY: 6,
 }
 
-HESSIAN_NOT_IMPLEMENTED_REASON = "Hessian support is a skeleton for future IPOPT-compatible optimizer integration."
 BINARY_CERES_UNSUPPORTED_REASON = (
-    "not_available: binary Ceres regression currently supports only constant k_ij with " "cppad_implicit Jacobians."
+    "unsupported: binary Ceres regression currently supports only constant k_ij with cppad_implicit Jacobians."
 )
 GENERIC_NATIVE_OPTIMIZER_UNSUPPORTED_REASON = (
-    "not_available: no native analytic/CppAD/implicit derivative path is registered for this "
+    "unsupported: no native analytic/CppAD/implicit derivative path is registered for this "
     "generic regression target set."
 )
 
@@ -740,7 +739,7 @@ class FitResult:
     nfev: int = 0
     backend: str = "ceres"
     optimizer_backend: str = "ceres"
-    derivative_backend: str = "not_available"
+    derivative_backend: str = "unspecified"
     objective_initial: float = float("nan")
     objective_final: float = float("nan")
     n_residual_evaluations: int = 0
@@ -758,14 +757,7 @@ class FitResult:
     target_family_summaries: dict[str, Any] = field(default_factory=dict)
     residual_block_norms: dict[str, float] = field(default_factory=dict)
     jacobian_available: bool = False
-    jacobian_backend: str = "not_available"
-    jacobian_fallback_used: bool = False
-    jacobian_fallback_reason: str = ""
-    not_available_reason: str = ""
-    hessian_available: bool = False
-    hessian_backend: str = "not_implemented"
-    hessian_fallback_used: bool = False
-    hessian_fallback_reason: str = HESSIAN_NOT_IMPLEMENTED_REASON
+    jacobian_backend: str = "unspecified"
     provenance_report: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -804,13 +796,6 @@ class FitResult:
         self.residual_block_norms = {str(k): float(v) for k, v in self.residual_block_norms.items()}
         self.jacobian_available = bool(self.jacobian_available)
         self.jacobian_backend = str(self.jacobian_backend)
-        self.jacobian_fallback_used = bool(self.jacobian_fallback_used)
-        self.jacobian_fallback_reason = str(self.jacobian_fallback_reason)
-        self.not_available_reason = str(self.not_available_reason)
-        self.hessian_available = bool(self.hessian_available)
-        self.hessian_backend = str(self.hessian_backend)
-        self.hessian_fallback_used = bool(self.hessian_fallback_used)
-        self.hessian_fallback_reason = str(self.hessian_fallback_reason)
         self.provenance_report = _copy_mapping(self.provenance_report)
 
 
@@ -860,8 +845,8 @@ def _fit_derivative_metadata(result: Mapping[str, Any]) -> dict[str, Any]:
     """Extract compact Jacobian/Hessian metadata from native regression payloads."""
 
     return {
-        "optimizer_backend": str(result.get("optimizer_backend", result.get("backend", "not_available"))),
-        "derivative_backend": str(result.get("derivative_backend", result.get("jacobian_backend", "not_available"))),
+        "optimizer_backend": str(result.get("optimizer_backend", result.get("backend", "unspecified"))),
+        "derivative_backend": str(result.get("derivative_backend", result.get("jacobian_backend", "unspecified"))),
         "objective_initial": float(result.get("objective_initial", result.get("initial_cost", float("nan")))),
         "objective_final": float(result.get("objective_final", result.get("cost", float("nan")))),
         "n_residual_evaluations": int(result.get("n_residual_evaluations", result.get("objective_evaluations", 0))),
@@ -870,14 +855,7 @@ def _fit_derivative_metadata(result: Mapping[str, Any]) -> dict[str, Any]:
         "step_norm": float(result.get("step_norm", float("nan"))),
         "python_objective_used": bool(result.get("python_objective_used", False)),
         "jacobian_available": bool(result.get("jacobian_available", False)),
-        "jacobian_backend": str(result.get("jacobian_backend", "not_available")),
-        "jacobian_fallback_used": bool(result.get("jacobian_fallback_used", False)),
-        "jacobian_fallback_reason": str(result.get("jacobian_fallback_reason", "")),
-        "not_available_reason": str(result.get("not_available_reason", "")),
-        "hessian_available": bool(result.get("hessian_available", False)),
-        "hessian_backend": str(result.get("hessian_backend", "not_implemented")),
-        "hessian_fallback_used": bool(result.get("hessian_fallback_used", False)),
-        "hessian_fallback_reason": str(result.get("hessian_fallback_reason", HESSIAN_NOT_IMPLEMENTED_REASON)),
+        "jacobian_backend": str(result.get("jacobian_backend", "unspecified")),
     }
 
 
@@ -1676,13 +1654,6 @@ def _run_native_generic_score(
         "derivative_backend": "not_used",
         "jacobian_available": False,
         "jacobian_backend": "not_used",
-        "jacobian_fallback_used": False,
-        "jacobian_fallback_reason": "",
-        "not_available_reason": "",
-        "hessian_available": False,
-        "hessian_backend": "not_used",
-        "hessian_fallback_used": False,
-        "hessian_fallback_reason": "",
     }
 
 
@@ -1762,7 +1733,7 @@ def evaluate_generic_regression_derivatives(
     backend = str(jacobian_backend).strip().lower()
     if backend not in {"auto", "autodiff", "analytic"}:
         raise InputError("jacobian_backend must be 'auto', 'autodiff', or 'analytic'.")
-    raise InputError("not_available: generic regression sensitivities are not implemented for this residual path.")
+    raise InputError("unsupported: generic regression sensitivities are not implemented for this residual path.")
 
     normalized_species = tuple(_normalize_component(str(name)) for name in species)
     normalized_pair = None if pair is None else _normalize_pair(pair)
@@ -1989,7 +1960,7 @@ def _fit_pure_ion_internal(
                 }
             else:
                 raise InputError(
-                    "not_available: no native analytic/CppAD/implicit derivative path is registered for "
+                    "unsupported: no native analytic/CppAD/implicit derivative path is registered for "
                     f"pure-ion row family '{term.term_type}'."
                 )
             fixed_payloads.append(_params_for_native_record(dataset, normalized_species, x, T, user_options))
@@ -2331,7 +2302,7 @@ def _fit_pure_neutral_native_ceres(
         "message": str(result["message"]),
         "backend": str(result["backend"]),
         "optimizer_backend": str(result.get("optimizer_backend", result["backend"])),
-        "derivative_backend": str(result.get("derivative_backend", result.get("jacobian_backend", "not_available"))),
+        "derivative_backend": str(result.get("derivative_backend", result.get("jacobian_backend", "unspecified"))),
         "objective_initial": float(result.get("objective_initial", result["initial_cost"])),
         "objective_final": float(result.get("objective_final", result["cost"])),
         "n_residual_evaluations": int(result.get("n_residual_evaluations", result["objective_evaluations"])),
@@ -2340,13 +2311,7 @@ def _fit_pure_neutral_native_ceres(
         "step_norm": float(result.get("step_norm", float("nan"))),
         "python_objective_used": bool(result.get("python_objective_used", False)),
         "jacobian_available": bool(result.get("jacobian_available", True)),
-        "jacobian_backend": str(result.get("jacobian_backend", result.get("derivative_backend", "not_available"))),
-        "jacobian_fallback_used": bool(result.get("jacobian_fallback_used", False)),
-        "jacobian_fallback_reason": str(result.get("jacobian_fallback_reason", "")),
-        "hessian_available": bool(result.get("hessian_available", False)),
-        "hessian_backend": str(result.get("hessian_backend", "not_implemented")),
-        "hessian_fallback_used": bool(result.get("hessian_fallback_used", False)),
-        "hessian_fallback_reason": str(result.get("hessian_fallback_reason", HESSIAN_NOT_IMPLEMENTED_REASON)),
+        "jacobian_backend": str(result.get("jacobian_backend", result.get("derivative_backend", "unspecified"))),
     }
 
 

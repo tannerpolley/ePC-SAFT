@@ -48,7 +48,6 @@ def test_miac_liquid_electrolyte_regression_uses_native_ceres_without_numerical_
     assert result.optimizer_backend == "ceres"
     assert result.derivative_backend == "cppad_implicit"
     assert result.jacobian_backend == "cppad_implicit"
-    assert result.jacobian_fallback_used is False
     assert result.derivative_backend.lower() not in DISALLOWED_BACKENDS
     assert result.jacobian_backend.lower() not in DISALLOWED_BACKENDS
     assert result.python_objective_used is False

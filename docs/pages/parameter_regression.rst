@@ -555,7 +555,6 @@ Inspect and write results
    print(result.optimizer_backend)
    print(result.derivative_backend)
    print(result.jacobian_backend)
-   print(result.hessian_backend)
    print(result.fitted_values)
    print(result.initial_parameters)
    print(result.final_parameters)
@@ -593,10 +592,8 @@ Normal ``FitResult`` payloads report compact derivative metadata:
 - ``residual_block_norms``
 - ``jacobian_available``
 - ``jacobian_backend``
-- ``hessian_available``
-- ``hessian_backend``
 
-Large matrices are exposed only through explicit derivative-evaluation helpers. Use ``evaluate_pure_neutral_derivatives(...)`` for the native pure-neutral objective. It returns residuals, gradient, ``jacobian_row_major``, ``jacobian_shape``, and Hessian metadata fields. Pure-neutral Jacobians use the Ceres-owned autodiff path.
+Large matrices are exposed only through explicit derivative-evaluation helpers. Use ``evaluate_pure_neutral_derivatives(...)`` for the native pure-neutral objective. It returns residuals, gradient, ``jacobian_row_major``, and ``jacobian_shape``. Pure-neutral Jacobians use the Ceres-owned autodiff path.
 
 For lower-level generic native records, ``evaluate_generic_regression_derivatives(...)`` raises until the requested residual state calls have analytic, CppAD, or implicit derivative coverage. Public generic fitting does not route through non-native optimizer loops.
 

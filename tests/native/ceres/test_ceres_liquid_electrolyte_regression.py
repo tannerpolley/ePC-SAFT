@@ -85,7 +85,6 @@ def test_ceres_liquid_electrolyte_regression_uses_native_ssmds_derivatives(tmp_p
     assert result.optimizer_backend == "ceres"
     assert result.derivative_backend == "cppad_implicit"
     assert result.jacobian_backend == "cppad_implicit"
-    assert result.jacobian_fallback_used is False
     assert result.python_objective_used is False
     assert result.objective_final < result.objective_initial
     assert result.problem.mode == "liquid_electrolyte"
