@@ -18,6 +18,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Quick validation command: `uv run python scripts/dev/validate_project.py quick`
   - Result after the native dependency gate landed: `35 passed in 21.53s`
   - This is comfortably under the 10 minute quick-gate target.
+  - Latest result after the fixed-temperature pressure-route and workflow-gate slices: `41 passed in 4.21s`;
+    wrapper command completed in `6.6s`.
 - Ceres/CppAD validation command: `uv run python scripts/dev/validate_project.py ceres-cppad`
   - Result after the native dependency gate landed: `4 passed in 2.97s`; wrapper completed after an incremental full-profile native build.
 - Package boundary command: `uv run python scripts/dev/build_dist.py`
@@ -78,6 +80,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - No-reaction, failed, and best-effort reactive speciation paths now omit implicit-sensitivity payloads when the native route has no reaction-constant sensitivity matrix instead of returning placeholders or raising during diagnostic normalization.
 - The MIAC electrolyte fixture check now uses a strict approximate comparison instead of exact binary float equality.
 - A repo workflow gate now scans native C++ sources for Ceres numeric-diff APIs and legacy shifted-source route tokens.
+- A repo workflow gate now scans public Python solver surfaces for external optimizer/root-loop calls, so Python facades
+  remain request/result surfaces instead of owning production solve algorithms.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 
@@ -102,9 +106,9 @@ The failure list from the initial full-duration run has been retired. Each liste
 
 - Delete or rewrite tests that only protect legacy missing-status behavior.
 - Add passing tracked gates for no legacy numerical package/dev/test dependency after dependency cleanup. Done in the Task 3 dependency slices.
-- Add passing tracked gates for no Python production solve loop after native Ipopt routes exist.
-- Add passing tracked gates for no Eigen nonlinear optimizer route while still allowing Eigen linear algebra.
-- Move any slow scientific matrix coverage that is not already opt-in out of the quick gate.
+- Add passing tracked gates for no Python production solve loop after native Ipopt routes exist. Done for public Python solver surfaces.
+- Add passing tracked gates for no Eigen nonlinear optimizer route while still allowing Eigen linear algebra. Done for native regression sources, with Ceres numeric-diff sources gated separately.
+- Move any slow scientific matrix coverage that is not already opt-in out of the quick gate. Done for the current quick slice; continue checking when adding new validation tests.
 - Continue replacing optional-backend skip behavior with required-backend validation as solver routes move to Ipopt and regression routes become Ceres-only.
 
 ## Task 2 Status

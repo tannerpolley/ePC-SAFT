@@ -260,8 +260,8 @@ Task 1 continuation note: the CppAD disabled smoke/default derivative result no 
 - [x] Classify tests as fast gate, focused native, confidence, slow/scientific, docs, package-boundary, or obsolete.
 - [x] Identify tests that only protect legacy status/dodge behavior.
 - [ ] Delete or rewrite obsolete tests.
-- [ ] Move slow scientific matrix coverage out of the quick gate.
-- [ ] Add strict tests for new gates:
+- [x] Move slow scientific matrix coverage out of the quick gate.
+- [x] Add strict tests for new gates:
   - no banned derivative/status concepts;
   - no SciPy package/dev/test dependency;
   - no Eigen nonlinear optimizer route;
@@ -286,6 +286,11 @@ Task 2 continuation note: the strict text gate now blocks explicit Ceres trust-r
 Task 2 continuation note: the neutral equilibrium benchmark payload and table no longer report the retired legacy solver-dodge field; the workflow keeps timing, fingerprint, failure, and diagnostics-key evidence only.
 
 Task 2 continuation note: the reactive regression benchmark payload and table no longer aggregate retired solver-dodge flags, missing-counter lists, or density warm-start dodge counters. Benchmark evidence is now limited to timing, success/failure counts, fingerprints, diagnostic keys, target-family counts, cache hits/misses, and solve/evaluation counters.
+
+Task 2 continuation note: a repo workflow gate now scans public Python solver surfaces for external optimizer/root-loop
+calls. Together with the dependency gate, native Eigen nonlinear-optimizer gate, Ceres numeric-diff gate, and strict text
+gate, the tracked test suite now covers the required no-SciPy, no-Eigen-nonlinear, no-Python-production-solver-loop, and
+no banned derivative/status concepts. Obsolete status-only tests remain a separate cleanup stream.
 
 ### Task 3: Build Dependency Boundary
 

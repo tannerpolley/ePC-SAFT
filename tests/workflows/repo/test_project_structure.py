@@ -164,6 +164,35 @@ def test_removed_numerics_stack_is_not_a_package_dev_test_or_analysis_runtime_de
     assert not removed_ipopt_helper.exists()
 
 
+def test_public_python_solver_surfaces_do_not_own_optimizer_or_root_loops() -> None:
+    public_solver_sources = (
+        REPO_ROOT / "src" / "epcsaft" / "equilibrium.py",
+        REPO_ROOT / "src" / "epcsaft" / "reactive_speciation.py",
+        REPO_ROOT / "src" / "epcsaft" / "reactive_regression.py",
+        REPO_ROOT / "src" / "epcsaft" / "regression.py",
+    )
+    blocked_terms = (
+        "sci" + "py.optimize",
+        "minimize" + "_scalar",
+        "root" + "_scalar",
+        "least" + "_squares",
+        "differential" + "_evolution",
+        "brent" + "q",
+        "brent" + "h",
+        "f" + "solve",
+        "bisect" + "ion",
+        "golden" + "_section",
+    )
+
+    offenders: list[str] = []
+    for path in public_solver_sources:
+        text = path.read_text(encoding="utf-8", errors="ignore").lower()
+        for term in blocked_terms:
+            if term in text:
+                offenders.append(f"{path.relative_to(REPO_ROOT).as_posix()}: {term}")
+    assert offenders == []
+
+
 def test_package_import_is_lazy_across_equilibrium_and_regression_extensions() -> None:
     loaded = _probe_epcsaft_import_modules("import epcsaft")
     assert loaded == set()
