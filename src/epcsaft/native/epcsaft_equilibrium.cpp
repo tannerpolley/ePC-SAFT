@@ -1999,13 +1999,7 @@ EquilibriumResultNative lle_two_phase_result(
     result.diagnostics_bool["jacobian_available"] = true;
     result.diagnostics_bool["jacobian_available_for_accepted_state"] = true;
     result.diagnostics_bool["derivative_available_for_accepted_state"] = true;
-    result.diagnostics_bool["jacobian_fallback_used"] = false;
-    result.diagnostics_string["jacobian_fallback_reason"] = "";
     result.diagnostics_bool["hessian_available"] = false;
-    result.diagnostics_string["hessian_backend"] = "not_implemented";
-    result.diagnostics_bool["hessian_fallback_used"] = false;
-    result.diagnostics_string["hessian_fallback_reason"] =
-        "Hessian support is reserved for future constrained optimizer integration.";
     result.diagnostics_string["anti_trivial_solution_strategy"] = "phase_fraction_and_phase_distance_gate";
     result.diagnostics_string["association_solver_status"] = "not_active";
     return result;
@@ -2056,13 +2050,7 @@ EquilibriumResultNative lle_no_split_result(
     result.diagnostics_bool["attempted_derivative_available"] = !attempt.candidate.residual.empty();
     result.diagnostics_bool["jacobian_available_for_accepted_state"] = false;
     result.diagnostics_bool["derivative_available_for_accepted_state"] = false;
-    result.diagnostics_bool["jacobian_fallback_used"] = false;
-    result.diagnostics_string["jacobian_fallback_reason"] = "";
     result.diagnostics_bool["hessian_available"] = false;
-    result.diagnostics_string["hessian_backend"] = "not_implemented";
-    result.diagnostics_bool["hessian_fallback_used"] = false;
-    result.diagnostics_string["hessian_fallback_reason"] =
-        "Hessian support is reserved for future constrained optimizer integration.";
     result.diagnostics_string["anti_trivial_solution_strategy"] = "phase_fraction_and_phase_distance_gate";
     result.diagnostics_string["association_solver_status"] = "not_active";
     return result;
@@ -2203,8 +2191,6 @@ EquilibriumResultNative tp_flash_native(
         result.diagnostics_string["solver_language"] = "c++";
         result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
         result.diagnostics_bool["neutral_fast_path"] = true;
-        result.diagnostics_bool["neutral_fallback_used"] = false;
-        result.diagnostics_string["neutral_fallback_reason"] = "";
         return result;
     }
 
@@ -2285,8 +2271,6 @@ EquilibriumResultNative tp_flash_native(
             result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
             result.diagnostics_string["nonlinear_solver"] = "native_successive_substitution";
             result.diagnostics_bool["neutral_fast_path"] = true;
-            result.diagnostics_bool["neutral_fallback_used"] = false;
-            result.diagnostics_string["neutral_fallback_reason"] = "";
             return result;
         }
         for (std::size_t i = 0; i < feed.size(); ++i) {

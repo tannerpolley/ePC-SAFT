@@ -1057,17 +1057,11 @@ bool try_scalar_binary_activity_solve_native(
     result.diagnostics_string["activity_derivative_policy"] = "native_scalar_activity_root";
     result.diagnostics_bool["derivative_available"] = derivative_selection.derivative_available;
     result.diagnostics_bool["jacobian_available"] = derivative_selection.derivative_available;
-    result.diagnostics_bool["jacobian_fallback_used"] = false;
-    result.diagnostics_string["jacobian_fallback_reason"] = "";
     result.diagnostics_bool["activity_fixed_point"] = false;
     result.diagnostics_int["activity_fixed_point_updates"] = 0;
     result.diagnostics_bool["activity_or_fugacity_terms_in_residual"] = true;
     result.diagnostics_bool["activity_derivative_in_jacobian"] = false;
     result.diagnostics_bool["hessian_available"] = false;
-    result.diagnostics_string["hessian_backend"] = "not_implemented";
-    result.diagnostics_bool["hessian_fallback_used"] = false;
-    result.diagnostics_string["hessian_fallback_reason"] =
-        "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
     result.diagnostics_int["iterations"] = iteration;
     result.diagnostics_int["state_failure_count"] = state_failure_count;
     result.diagnostics_int["residual_evaluation_count"] = counters.residual_evaluations;
@@ -1513,8 +1507,6 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
             result.diagnostics_string["derivative_capability_path"] = derivative_selection.capability_path;
             result.diagnostics_bool["derivative_available"] = derivative_selection.derivative_available;
             result.diagnostics_bool["jacobian_available"] = derivative_selection.derivative_available;
-            result.diagnostics_bool["jacobian_fallback_used"] = false;
-            result.diagnostics_string["jacobian_fallback_reason"] = "";
             const bool coupled_standard_states = !standard_states_all_ideal_mole_fraction(reaction_standard_states);
             result.diagnostics_bool["activity_fixed_point"] = false;
             result.diagnostics_int["activity_fixed_point_updates"] = 0;
@@ -1524,10 +1516,6 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
                 ? "native_log_amount_residual_jacobian"
                 : "not_required_for_ideal_mole_fraction";
             result.diagnostics_bool["hessian_available"] = false;
-            result.diagnostics_string["hessian_backend"] = "not_implemented";
-            result.diagnostics_bool["hessian_fallback_used"] = false;
-            result.diagnostics_string["hessian_fallback_reason"] =
-                "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
             result.diagnostics_int["iterations"] = iteration;
             result.diagnostics_int["state_failure_count"] = state_failure_count;
             result.diagnostics_int["residual_evaluation_count"] = counters.residual_evaluations;
@@ -1639,13 +1627,7 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
     result.diagnostics_string["derivative_capability_path"] = derivative_selection.capability_path;
     result.diagnostics_bool["derivative_available"] = derivative_selection.derivative_available;
     result.diagnostics_bool["jacobian_available"] = derivative_selection.derivative_available;
-    result.diagnostics_bool["jacobian_fallback_used"] = false;
-    result.diagnostics_string["jacobian_fallback_reason"] = "";
     result.diagnostics_bool["hessian_available"] = false;
-    result.diagnostics_string["hessian_backend"] = "not_implemented";
-    result.diagnostics_bool["hessian_fallback_used"] = false;
-    result.diagnostics_string["hessian_fallback_reason"] =
-        "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.";
     result.diagnostics_int["iterations"] = options.max_iterations;
     result.diagnostics_int["state_failure_count"] = state_failure_count;
     result.diagnostics_int["residual_evaluation_count"] = counters.residual_evaluations;

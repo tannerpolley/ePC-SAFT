@@ -1182,8 +1182,6 @@ def _normalize_derivative_diagnostics(
     diagnostics.setdefault("requested_jacobian_backend", "auto")
     diagnostics.setdefault("derivative_backend", derivative_backend)
     diagnostics.setdefault("derivative_status", derivative_backend)
-    diagnostics.setdefault("jacobian_fallback_used", False)
-    diagnostics.setdefault("hessian_fallback_used", False)
     if derivative_backend == "not_applicable":
         diagnostics.setdefault("derivative_available", False)
         diagnostics.setdefault("jacobian_available", False)

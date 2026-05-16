@@ -627,8 +627,6 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
     diagnostics.setdefault("solver_backend", diagnostics.get("nonlinear_solver", "native_newton"))
     diagnostics.setdefault("derivative_backend", derivative_backend)
     diagnostics.setdefault("derivative_status", derivative_backend)
-    diagnostics.setdefault("jacobian_fallback_used", False)
-    diagnostics.setdefault("hessian_fallback_used", False)
     diagnostics.setdefault("numerical_derivative_backend_available", False)
     if "residual_norm" in diagnostics:
         diagnostics.setdefault("residual_norm_by_block", {"reactive_speciation": float(diagnostics["residual_norm"])})

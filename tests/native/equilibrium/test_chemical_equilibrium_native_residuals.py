@@ -125,16 +125,12 @@ def test_native_chemical_equilibrium_solves_easy_ideal_reaction() -> None:
     assert result.diagnostics["requested_jacobian_backend"] == "auto"
     assert result.diagnostics["jacobian_backend"] == "analytic"
     assert result.diagnostics["jacobian_available"] is True
-    assert result.diagnostics["jacobian_fallback_used"] is False
     assert result.diagnostics["derivative_backend"] == "analytic"
     assert result.diagnostics["derivative_status"] == "analytic"
     assert result.diagnostics["derivative_available"] is True
     removed_reason_key = "not" + "_available_reason"
     assert removed_reason_key not in result.diagnostics
     assert result.diagnostics["hessian_available"] is False
-    assert result.diagnostics["hessian_backend"] == "not_implemented"
-    assert result.diagnostics["hessian_fallback_used"] is False
-    assert "IPOPT-compatible optimizer integration" in result.diagnostics["hessian_fallback_reason"]
 
 def test_native_chemical_equilibrium_solves_activity_coupled_salt_speciation() -> None:
     mix = _salt_speciation_mixture()

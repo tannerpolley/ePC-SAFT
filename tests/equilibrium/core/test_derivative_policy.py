@@ -44,7 +44,6 @@ def test_auto_equilibrium_diagnostics_do_not_fallback_to_numerical_derivative() 
 
     diagnostics = result.diagnostics
     assert diagnostics["requested_jacobian_backend"] == "auto"
-    assert diagnostics["jacobian_fallback_used"] is False
     assert diagnostics["derivative_backend"] == "not_applicable"
     assert diagnostics["derivative_status"] == "not_applicable"
     removed_reason_key = "not" + "_available_reason"
@@ -85,7 +84,6 @@ def test_reactive_ideal_speciation_uses_analytic_residual_derivatives() -> None:
     assert diagnostics["derivative_backend"] == "analytic"
     assert diagnostics["derivative_status"] == "analytic"
     assert diagnostics["derivative_backend_by_block"]["reaction_residual_jacobian"] == "analytic"
-    assert diagnostics["jacobian_fallback_used"] is False
     backend_values = {str(value).lower() for value in diagnostics["derivative_backend_by_block"].values()}
     assert "numerical_derivative" not in backend_values
 
