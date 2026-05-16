@@ -102,8 +102,8 @@ supported.
 
 ``ReactiveSpeciationOptions`` keeps strict failure behavior by default. Failed
 native solves raise ``SolutionError``. For diagnostic grid work, opt into
-``error_mode="result"`` or ``return_best_effort=True`` to receive a
-``ReactiveSpeciationResult(success=False, ...)`` from the best native
+``error_mode="result"`` to receive a
+``ReactiveSpeciationResult(success=False, ...)`` from the native diagnostic
 payload instead. Diagnostics include ``best_x``,
 ``best_activity_coefficients``, family residual norms, and named reaction
 residuals. ``mass_tolerance``, ``charge_tolerance``, and

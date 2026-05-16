@@ -58,7 +58,7 @@ def test_solve_reactive_speciation_strict_failure_reports_best_state() -> None:
     assert diagnostics["native_success"] is False
     json.dumps(diagnostics, allow_nan=False)
 
-def test_solve_reactive_speciation_best_effort_returns_nonconverged_result() -> None:
+def test_solve_reactive_speciation_result_mode_returns_nonconverged_result() -> None:
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
 
@@ -85,7 +85,7 @@ def test_solve_reactive_speciation_best_effort_returns_nonconverged_result() -> 
         options=epcsaft.ReactiveSpeciationOptions(
             max_iterations=0,
             tolerance=1.0e-12,
-            return_best_effort=True,
+            error_mode="result",
         ),
     )
 

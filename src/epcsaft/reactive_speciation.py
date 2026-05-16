@@ -256,7 +256,6 @@ class ReactiveSpeciationOptions:
     jacobian_backend: str = "auto"
     solver_backend: str = "auto"
     phase: str = "liq"
-    return_best_effort: bool = False
     error_mode: str = "raise"
     activity_output: str = "auto"
     mass_tolerance: float | None = None
@@ -425,15 +424,12 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
         raise InputError("ReactiveSpeciationOptions tolerances must be positive.")
     if not (0.0 < options.damping <= 1.0):
         raise InputError("ReactiveSpeciationOptions.damping must be in (0, 1].")
-    if not isinstance(options.return_best_effort, bool):
-        raise InputError("ReactiveSpeciationOptions.return_best_effort must be a bool.")
     error_mode = str(options.error_mode).strip().lower()
     if error_mode not in {"raise", "result"}:
         raise InputError("ReactiveSpeciationOptions.error_mode must be 'raise' or 'result'.")
     activity_output = str(options.activity_output).strip().lower()
     if activity_output not in {"auto", "always", "never"}:
         raise InputError("ReactiveSpeciationOptions.activity_output must be 'auto', 'always', or 'never'.")
-    return_best_effort = bool(options.return_best_effort or error_mode == "result")
     jacobian_backend = str(options.jacobian_backend).strip().lower()
     if jacobian_backend == "analytic":
         jacobian_backend = "auto"
@@ -453,7 +449,6 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
         and solver_backend == options.solver_backend
         and error_mode == options.error_mode
         and activity_output == options.activity_output
-        and return_best_effort == options.return_best_effort
     ):
         return options
     return ReactiveSpeciationOptions(
@@ -464,7 +459,6 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
         jacobian_backend=jacobian_backend,
         solver_backend=solver_backend,
         phase=options.phase,
-        return_best_effort=return_best_effort,
         error_mode=error_mode,
         activity_output=activity_output,
         mass_tolerance=options.mass_tolerance,
@@ -613,7 +607,7 @@ def _solve_reactive_speciation_native(
             diagnostics=diagnostics,
         ),
     )
-    if not success and not options.return_best_effort:
+    if not success and options.error_mode != "result":
         raise SolutionError(message, _json_like(diagnostics))
     return result
 

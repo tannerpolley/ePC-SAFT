@@ -523,6 +523,8 @@ Task 12 continuation note: the private native electrolyte bubble pressure-search
 
 Task 12 continuation note: `EquilibriumOptions` no longer exposes the equilibrium-level best-effort result switch. Neutral/electrolyte LLE failures stay loud with JSON-safe diagnostics on `SolutionError`, and docs/tests now instruct downstream sweeps to catch failures rather than consume unaccepted phase results.
 
+Task 12 continuation note: the duplicate reactive-speciation best-effort option alias was removed. Diagnostic nonconverged reactive-speciation payloads now use the explicit `error_mode="result"` contract only, leaving active source, tests, and docs free of the old best-effort token.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**
