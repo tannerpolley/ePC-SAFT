@@ -449,16 +449,24 @@ derivatives. This is a contract scaffold for Ipopt wiring only; production neutr
 replacement remains open.
 
 Task 8 continuation note: the neutral two-phase EOS route builder can now be submitted to the generic native Ipopt
-adapter through a private native solve entrypoint. Local no-Ipopt builds return the explicit `requires_ipopt_build`
+adapter through private native route-result plumbing. Local no-Ipopt builds return the explicit `requires_ipopt_build`
 gate, while Ipopt-enabled builds run the adapter with exact objective gradients and constraint Jacobians. This is still
-private route-builder plumbing; public neutral equilibrium dispatch remains route-gated until route-specific postsolve
-acceptance and result translation are implemented.
+private route-builder plumbing; public neutral equilibrium dispatch remains route-gated until route-specific dispatch is
+implemented.
 
 Task 8 continuation note: neutral two-phase EOS postsolve gates now evaluate material balance, pressure consistency,
 chemical-potential consistency, and phase-distance acceptance from the native phase-system block. Focused coverage
 proves collapsed phases are rejected by the phase-distance gate, pressure-inconsistent phase states are rejected by the
 pressure gate, and chemical-potential-inconsistent phase states are rejected by the chemical-potential gate. The public
 neutral routes remain gated until result translation and route-specific dispatch are implemented.
+
+Task 8 continuation note: native neutral two-phase EOS result translation now exists below the public route boundary.
+The private route-result path combines one Ipopt adapter solve with exact postsolve acceptance, translates solver
+variables into phase amounts and volumes, and exposes the translated postsolve payload without adding Python solver
+orchestration. The separate accepted-candidate result builder produces phase payloads with composition, density,
+volume, phase fraction, EOS pressure diagnostics, log fugacity coefficients, and the existing log-value fugacity
+compatibility alias. Public neutral routes remain gated until canonical route-specific dispatch is wired to this native
+result layer.
 
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 

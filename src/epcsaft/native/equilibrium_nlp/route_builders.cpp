@@ -60,6 +60,31 @@ double chemical_potential_inf_norm(
     return norm;
 }
 
+std::vector<std::vector<double>> neutral_phase_amounts_from_route_variables(
+    const std::vector<double>& variables,
+    std::size_t species_count
+) {
+    const std::size_t local_variable_count = species_count + 1;
+    require_size(variables, 2 * local_variable_count, "Neutral EOS route result variable");
+    std::vector<std::vector<double>> phase_amounts(2, std::vector<double>(species_count, 0.0));
+    for (std::size_t phase = 0; phase < 2; ++phase) {
+        const std::size_t offset = phase * local_variable_count;
+        for (std::size_t species = 0; species < species_count; ++species) {
+            phase_amounts[phase][species] = variables[offset + species];
+        }
+    }
+    return phase_amounts;
+}
+
+std::vector<double> neutral_phase_volumes_from_route_variables(
+    const std::vector<double>& variables,
+    std::size_t species_count
+) {
+    const std::size_t local_variable_count = species_count + 1;
+    require_size(variables, 2 * local_variable_count, "Neutral EOS route result variable");
+    return {variables[species_count], variables[local_variable_count + species_count]};
+}
+
 class NeutralTwoPhaseEosProblem final : public NlpProblem {
 public:
     NeutralTwoPhaseEosProblem(
@@ -376,6 +401,74 @@ NeutralTwoPhaseEosPostsolve evaluate_neutral_two_phase_eos_postsolve(
     } else {
         out.rejection_reason = "phase_distance";
     }
+    return out;
+}
+
+NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_route(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<std::vector<double>>& phase_amounts,
+    const std::vector<double>& volumes,
+    const std::vector<double>& feed_amounts,
+    const IpoptSolveOptions& options,
+    double material_tolerance,
+    double pressure_tolerance,
+    double chemical_potential_tolerance,
+    double phase_distance_tolerance
+) {
+    const IpoptAdapterInfo adapter = native_ipopt_adapter_info();
+    NeutralTwoPhaseEosRouteResult out;
+    out.compiled = adapter.compiled;
+    out.adapter_available = adapter.adapter_available;
+    out.adapter_kind = adapter.adapter_kind;
+    out.hessian_strategy = adapter.hessian_strategy;
+    out.exact_gradient_required = adapter.exact_gradient_required;
+    out.exact_jacobian_required = adapter.exact_jacobian_required;
+    if (!adapter.compiled) {
+        out.status = "requires_ipopt_build";
+        return out;
+    }
+
+    const IpoptSolveResult solve = solve_neutral_two_phase_eos_ipopt(
+        args,
+        temperature,
+        target_pressure,
+        phase_amounts,
+        volumes,
+        feed_amounts,
+        options
+    );
+    out.ran = solve.solver_ran;
+    out.solver_accepted = solve.accepted;
+    out.solver_status = solve.solver_status;
+    out.application_status = solve.application_status;
+    out.hessian_strategy = solve.hessian_strategy;
+    out.objective = solve.objective;
+    out.variables = solve.variables;
+    out.constraints = solve.constraints;
+    if (!solve.accepted) {
+        out.status = "solver_rejected";
+        return out;
+    }
+
+    const std::size_t species_count = feed_amounts.size();
+    out.phase_amounts = neutral_phase_amounts_from_route_variables(solve.variables, species_count);
+    out.phase_volumes = neutral_phase_volumes_from_route_variables(solve.variables, species_count);
+    out.postsolve = evaluate_neutral_two_phase_eos_postsolve(
+        args,
+        temperature,
+        target_pressure,
+        out.phase_amounts,
+        out.phase_volumes,
+        feed_amounts,
+        material_tolerance,
+        pressure_tolerance,
+        chemical_potential_tolerance,
+        phase_distance_tolerance
+    );
+    out.accepted = out.postsolve.accepted;
+    out.status = out.accepted ? "accepted" : "postsolve_rejected";
     return out;
 }
 

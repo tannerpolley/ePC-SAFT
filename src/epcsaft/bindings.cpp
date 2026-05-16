@@ -15,6 +15,7 @@
 #include "gibbs_blocks.h"
 #include "ipopt_adapter.h"
 #include "reaction_block.h"
+#include "result_builder.h"
 #include "route_builders.h"
 
 epcsaft::native::cppad_support::CppADDerivativeResult cppad_eos_contribution_derivatives_cpp(
@@ -619,6 +620,101 @@ py::dict neutral_two_phase_eos_postsolve_to_dict(
     out["phase_amount_totals"] = result.phase_amount_totals;
     out["phase_volumes"] = result.phase_volumes;
     out["phase_compositions"] = result.phase_compositions;
+    return out;
+}
+
+py::dict neutral_two_phase_eos_route_result_to_dict(
+    const epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosRouteResult& result
+) {
+    py::dict out;
+    out["backend"] = result.backend;
+    out["compiled"] = result.compiled;
+    out["adapter_available"] = result.adapter_available;
+    out["adapter_kind"] = result.adapter_kind;
+    out["problem_name"] = result.problem_name;
+    out["derivative_backend"] = result.derivative_backend;
+    out["ran"] = result.ran;
+    out["solver_accepted"] = result.solver_accepted;
+    out["accepted"] = result.accepted;
+    out["exact_gradient_required"] = result.exact_gradient_required;
+    out["exact_jacobian_required"] = result.exact_jacobian_required;
+    out["status"] = result.status;
+    out["solver_status"] = result.solver_status;
+    out["application_status"] = result.application_status;
+    out["hessian_strategy"] = result.hessian_strategy;
+    out["objective"] = result.objective;
+    out["variables"] = result.variables;
+    out["constraints"] = result.constraints;
+    out["phase_amounts"] = result.phase_amounts;
+    out["phase_volumes"] = result.phase_volumes;
+    out["postsolve"] = neutral_two_phase_eos_postsolve_to_dict(result.postsolve);
+    return out;
+}
+
+py::dict neutral_two_phase_eos_phase_payload_to_dict(
+    const epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosPhasePayload& phase
+) {
+    py::dict diagnostics;
+    diagnostics["amount_total"] = phase.amount_total;
+    diagnostics["volume"] = phase.volume;
+    diagnostics["eos_pressure"] = phase.eos_pressure;
+    diagnostics["pressure_consistency_residual"] = phase.pressure_consistency_residual;
+    diagnostics["compressibility_factor"] = phase.compressibility_factor;
+
+    py::dict out;
+    out["label"] = phase.label;
+    out["composition"] = phase.composition;
+    out["density"] = phase.density;
+    out["temperature"] = phase.temperature;
+    out["pressure"] = phase.pressure;
+    out["phase_fraction"] = phase.phase_fraction;
+    out["ln_fugacity_coefficient"] = phase.ln_fugacity_coefficient;
+    out["fugacity_coefficient"] = phase.fugacity_coefficient;
+    out["amount_total"] = phase.amount_total;
+    out["volume"] = phase.volume;
+    out["eos_pressure"] = phase.eos_pressure;
+    out["diagnostics"] = diagnostics;
+    return out;
+}
+
+py::dict neutral_two_phase_eos_result_payload_to_dict(
+    const epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosResultPayload& result
+) {
+    py::list phases;
+    py::list labels;
+    for (const auto& phase : result.phases) {
+        phases.append(neutral_two_phase_eos_phase_payload_to_dict(phase));
+        labels.append(phase.label);
+    }
+
+    py::dict diagnostics;
+    diagnostics["derivative_backend"] = result.derivative_backend;
+    diagnostics["rejection_reason"] = result.rejection_reason;
+    diagnostics["objective"] = result.objective;
+    diagnostics["material_balance_norm"] = result.material_balance_norm;
+    diagnostics["pressure_consistency_norm"] = result.pressure_consistency_norm;
+    diagnostics["chemical_potential_consistency_norm"] = result.chemical_potential_consistency_norm;
+    diagnostics["phase_distance"] = result.phase_distance;
+    diagnostics["constraints"] = result.constraints;
+    diagnostics["feed_amounts"] = result.feed_amounts;
+
+    py::dict out;
+    out["accepted"] = result.accepted;
+    out["backend"] = result.backend;
+    out["problem_kind"] = result.problem_kind;
+    out["phase_labels"] = labels;
+    out["phases"] = phases;
+    out["stable"] = result.stable;
+    out["split_detected"] = result.split_detected;
+    out["derivative_backend"] = result.derivative_backend;
+    out["rejection_reason"] = result.rejection_reason;
+    out["objective"] = result.objective;
+    out["material_balance_norm"] = result.material_balance_norm;
+    out["pressure_consistency_norm"] = result.pressure_consistency_norm;
+    out["chemical_potential_consistency_norm"] = result.chemical_potential_consistency_norm;
+    out["phase_distance"] = result.phase_distance;
+    out["constraints"] = result.constraints;
+    out["diagnostics"] = diagnostics;
     return out;
 }
 
@@ -1369,7 +1465,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
-    m.def("_native_neutral_two_phase_eos_ipopt_solve", [](
+    m.def("_native_neutral_two_phase_eos_route_result", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
         double target_pressure,
@@ -1377,62 +1473,34 @@ PYBIND11_MODULE(_core, m) {
         const std::vector<double>& volumes,
         const std::vector<double>& feed_amounts,
         int max_iterations,
-        double tolerance
+        double tolerance,
+        double material_tolerance,
+        double pressure_tolerance,
+        double chemical_potential_tolerance,
+        double phase_distance_tolerance
     ) {
         if (!mixture) {
-            throw ValueError("Neutral two-phase EOS Ipopt solve requires a native mixture.");
-        }
-        py::dict out;
-        const auto adapter = epcsaft::native::equilibrium_nlp::native_ipopt_adapter_info();
-        out["backend"] = "ipopt";
-        out["compiled"] = adapter.compiled;
-        out["adapter_available"] = adapter.adapter_available;
-        out["adapter_kind"] = adapter.adapter_kind;
-        out["problem_name"] = "neutral_two_phase_eos";
-        out["derivative_backend"] = "analytic_cppad";
-        out["ran"] = false;
-        out["accepted"] = false;
-        out["exact_gradient_required"] = adapter.exact_gradient_required;
-        out["exact_jacobian_required"] = adapter.exact_jacobian_required;
-        if (!adapter.compiled) {
-            out["status"] = "requires_ipopt_build";
-            return out;
+            throw ValueError("Neutral two-phase EOS route result requires a native mixture.");
         }
         epcsaft::native::equilibrium_nlp::IpoptSolveOptions options;
         options.max_iterations = max_iterations;
         options.tolerance = tolerance;
         options.acceptable_tolerance = std::max(tolerance * 100.0, 1.0e-10);
-        const auto result = epcsaft::native::equilibrium_nlp::solve_neutral_two_phase_eos_ipopt(
-            mixture->args(),
-            temperature,
-            target_pressure,
-            phase_amounts,
-            volumes,
-            feed_amounts,
-            options
+        return neutral_two_phase_eos_route_result_to_dict(
+            epcsaft::native::equilibrium_nlp::solve_neutral_two_phase_eos_route(
+                mixture->args(),
+                temperature,
+                target_pressure,
+                phase_amounts,
+                volumes,
+                feed_amounts,
+                options,
+                material_tolerance,
+                pressure_tolerance,
+                chemical_potential_tolerance,
+                phase_distance_tolerance
+            )
         );
-        out["ran"] = result.solver_ran;
-        out["accepted"] = result.accepted;
-        out["status"] = result.solver_status;
-        out["solver_status"] = result.solver_status;
-        out["application_status"] = result.application_status;
-        out["objective"] = result.objective;
-        out["variables"] = result.variables;
-        out["constraints"] = result.constraints;
-        out["hessian_strategy"] = result.hessian_strategy;
-        double material_norm = 0.0;
-        double pressure_norm = 0.0;
-        const std::size_t species_count = feed_amounts.size();
-        for (std::size_t index = 0; index < result.constraints.size(); ++index) {
-            if (index < species_count) {
-                material_norm = std::max(material_norm, std::abs(result.constraints[index]));
-            } else {
-                pressure_norm = std::max(pressure_norm, std::abs(result.constraints[index]));
-            }
-        }
-        out["material_balance_norm"] = material_norm;
-        out["pressure_consistency_norm"] = pressure_norm;
-        return out;
     });
     m.def("_native_neutral_two_phase_eos_postsolve", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
@@ -1451,6 +1519,36 @@ PYBIND11_MODULE(_core, m) {
         }
         return neutral_two_phase_eos_postsolve_to_dict(
             epcsaft::native::equilibrium_nlp::evaluate_neutral_two_phase_eos_postsolve(
+                mixture->args(),
+                temperature,
+                target_pressure,
+                phase_amounts,
+                volumes,
+                feed_amounts,
+                material_tolerance,
+                pressure_tolerance,
+                chemical_potential_tolerance,
+                phase_distance_tolerance
+            )
+        );
+    });
+    m.def("_native_neutral_two_phase_eos_result", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        double target_pressure,
+        const std::vector<std::vector<double>>& phase_amounts,
+        const std::vector<double>& volumes,
+        const std::vector<double>& feed_amounts,
+        double material_tolerance,
+        double pressure_tolerance,
+        double chemical_potential_tolerance,
+        double phase_distance_tolerance
+    ) {
+        if (!mixture) {
+            throw ValueError("Neutral two-phase EOS result builder requires a native mixture.");
+        }
+        return neutral_two_phase_eos_result_payload_to_dict(
+            epcsaft::native::equilibrium_nlp::build_neutral_two_phase_eos_result(
                 mixture->args(),
                 temperature,
                 target_pressure,

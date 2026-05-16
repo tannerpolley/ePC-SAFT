@@ -47,6 +47,30 @@ struct NeutralTwoPhaseEosPostsolve {
     std::vector<std::vector<double>> phase_compositions;
 };
 
+struct NeutralTwoPhaseEosRouteResult {
+    bool compiled = false;
+    bool adapter_available = false;
+    bool ran = false;
+    bool solver_accepted = false;
+    bool accepted = false;
+    bool exact_gradient_required = true;
+    bool exact_jacobian_required = true;
+    std::string backend = "ipopt";
+    std::string adapter_kind = "native_tnlp_adapter";
+    std::string problem_name = "neutral_two_phase_eos";
+    std::string derivative_backend = "analytic_cppad";
+    std::string status = "not_started";
+    std::string solver_status = "not_started";
+    std::string application_status = "not_started";
+    std::string hessian_strategy = "limited_memory";
+    double objective = 0.0;
+    std::vector<double> variables;
+    std::vector<double> constraints;
+    std::vector<std::vector<double>> phase_amounts;
+    std::vector<double> phase_volumes;
+    NeutralTwoPhaseEosPostsolve postsolve;
+};
+
 NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_nlp_contract(
     const add_args& args,
     double temperature,
@@ -73,6 +97,20 @@ NeutralTwoPhaseEosPostsolve evaluate_neutral_two_phase_eos_postsolve(
     const std::vector<std::vector<double>>& phase_amounts,
     const std::vector<double>& volumes,
     const std::vector<double>& feed_amounts,
+    double material_tolerance,
+    double pressure_tolerance,
+    double chemical_potential_tolerance,
+    double phase_distance_tolerance
+);
+
+NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_route(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<std::vector<double>>& phase_amounts,
+    const std::vector<double>& volumes,
+    const std::vector<double>& feed_amounts,
+    const IpoptSolveOptions& options,
     double material_tolerance,
     double pressure_tolerance,
     double chemical_potential_tolerance,
