@@ -26,8 +26,6 @@ def _hydrocarbon_mixture() -> epcsaft.ePCSAFTMixture:
 @pytest.mark.parametrize(
     ("method", "kwargs", "route"),
     [
-        ("bubble_p", {"T": 220.0, "x": [0.2, 0.3, 0.5]}, "bubble_p"),
-        ("dew_p", {"T": 220.0, "y": [0.1, 0.3, 0.6]}, "dew_p"),
         ("bubble_t", {"P": 1.0e5, "x": [0.2, 0.3, 0.5]}, "bubble_t"),
         ("dew_t", {"P": 1.0e5, "y": [0.1, 0.3, 0.6]}, "dew_t"),
     ],

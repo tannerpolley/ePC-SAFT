@@ -47,8 +47,11 @@ std::vector<double> normalized_positive_values(const std::vector<double>& values
 }
 
 std::vector<double> shifted_composition(const std::vector<double>& composition) {
-    if (composition.size() <= 1) {
-        return composition;
+    if (composition.empty()) {
+        return {};
+    }
+    if (composition.size() == 1) {
+        return {composition.front()};
     }
     const double triangular_sum = 0.5 * static_cast<double>(composition.size() * (composition.size() + 1));
     std::vector<double> shifted;
@@ -159,7 +162,7 @@ public:
     }
 
     int constraint_count() const override {
-        return composition_constraint_count() + 2 * phase_count();
+        return composition_constraint_count() + 2 * phase_count() + species_count_ + 1;
     }
 
     int jacobian_nonzero_count() const override {
@@ -182,17 +185,20 @@ public:
         out.variable_upper.push_back(1.0e9);
         out.constraint_lower.assign(static_cast<std::size_t>(constraint_count()), 0.0);
         out.constraint_upper.assign(static_cast<std::size_t>(constraint_count()), 0.0);
+        out.constraint_lower.back() = minimum_phase_volume_gap_;
+        out.constraint_upper.back() = 1.0e12;
         return out;
     }
 
     std::vector<double> initial_point() const override {
         const std::vector<double> shifted = shifted_composition(fixed_composition_);
-        const double density = std::max(initial_pressure_ / (kGasConstant * temperature_), 1.0e-12);
+        const double vapor_density = std::max(initial_pressure_ / (kGasConstant * temperature_), 1.0e-12);
         std::vector<double> out;
         out.reserve(static_cast<std::size_t>(variable_count()));
         for (int phase = 0; phase < phase_count(); ++phase) {
             const std::vector<double>& composition = phase == fixed_phase_index_ ? fixed_composition_ : shifted;
             out.insert(out.end(), composition.begin(), composition.end());
+            const double density = phase == liquid_phase_index() ? initial_liquid_density_ : vapor_density;
             out.push_back(1.0 / density);
         }
         out.push_back(initial_pressure_);
@@ -235,9 +241,18 @@ public:
             out[static_cast<std::size_t>(row++)] =
                 std::accumulate(phase_amounts.begin(), phase_amounts.end(), 0.0) - 1.0;
         }
-        for (const EosPhaseBlockResult& block : phase_blocks(variables)) {
+        const auto blocks = phase_blocks(variables);
+        for (const EosPhaseBlockResult& block : blocks) {
             out[static_cast<std::size_t>(row++)] = block.pressure_consistency_residual;
         }
+        for (int species = 0; species < species_count_; ++species) {
+            out[static_cast<std::size_t>(row++)] =
+                blocks[0].gradient[static_cast<std::size_t>(species)]
+                - blocks[1].gradient[static_cast<std::size_t>(species)];
+        }
+        out[static_cast<std::size_t>(row++)] =
+            variables[static_cast<std::size_t>(vapor_volume_col())]
+            - variables[static_cast<std::size_t>(liquid_volume_col())];
         return out;
     }
 
@@ -288,6 +303,28 @@ public:
             out[static_cast<std::size_t>(row * variable_count() + variable_count() - 1)] = -1.0;
             ++row;
         }
+        for (int species = 0; species < species_count_; ++species) {
+            for (int phase = 0; phase < phase_count(); ++phase) {
+                const EosPhaseBlockResult& block = blocks[static_cast<std::size_t>(phase)];
+                if (block.objective_curvature_rows != local_variable_count()
+                    || block.objective_curvature_cols != local_variable_count()
+                    || block.objective_curvature_row_major.size()
+                        != static_cast<std::size_t>(local_variable_count() * local_variable_count())) {
+                    throw ValueError(problem_name_ + " chemical-potential Jacobian size did not match variables.");
+                }
+                const int offset = phase * local_variable_count();
+                const double sign = phase == 0 ? 1.0 : -1.0;
+                for (int col = 0; col < local_variable_count(); ++col) {
+                    out[static_cast<std::size_t>(row * variable_count() + offset + col)] =
+                        sign * block.objective_curvature_row_major[
+                            static_cast<std::size_t>(species * local_variable_count() + col)
+                        ];
+                }
+            }
+            ++row;
+        }
+        out[static_cast<std::size_t>(row * variable_count() + liquid_volume_col())] = -1.0;
+        out[static_cast<std::size_t>(row * variable_count() + vapor_volume_col())] = 1.0;
         return out;
     }
 
@@ -321,6 +358,22 @@ private:
         return fixed_phase_index_ * local_variable_count() + species;
     }
 
+    int liquid_phase_index() const {
+        return 0;
+    }
+
+    int vapor_phase_index() const {
+        return 1;
+    }
+
+    int liquid_volume_col() const {
+        return liquid_phase_index() * local_variable_count() + species_count_;
+    }
+
+    int vapor_volume_col() const {
+        return vapor_phase_index() * local_variable_count() + species_count_;
+    }
+
     std::vector<EosPhaseBlockResult> phase_blocks(const std::vector<double>& variables) const {
         require_size(variables, static_cast<std::size_t>(variable_count()), problem_name_ + " variable");
         const double pressure = variables.back();
@@ -346,6 +399,8 @@ private:
     add_args args_;
     double temperature_ = 0.0;
     double initial_pressure_ = 1.0e5;
+    double initial_liquid_density_ = 8000.0;
+    double minimum_phase_volume_gap_ = 1.0e-7;
     std::vector<double> fixed_composition_;
     int fixed_phase_index_ = 0;
     std::string problem_name_;

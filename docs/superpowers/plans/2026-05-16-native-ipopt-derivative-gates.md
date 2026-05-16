@@ -508,6 +508,13 @@ native route-result call, preserve the local no-Ipopt route gate, and convert ac
 native two-phase result converter using the pressure solved by the native NLP. Python does not own iterations, pressure
 search, retry logic, residual packing, or acceptance.
 
+Task 8 continuation note: the private fixed-temperature pressure NLP now includes chemical-potential equality rows in
+the Ipopt model instead of leaving fugacity equality as a postsolve-only check. The row Jacobian is exact and comes from
+the existing CppAD phase-objective curvature. The route also has one deterministic vapor-liquid phase-role guard through
+a volume-separation inequality and phase-role initial point. Ipopt-enabled proof tests cover the adapter, private route
+contract, and public bubble/dew wrappers; arbitrary states may still fail loudly when no accepted vapor-liquid split is
+found, and no public fallback search is allowed.
+
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
 **Files:**

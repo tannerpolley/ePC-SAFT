@@ -172,13 +172,19 @@ def test_neutral_fixed_temperature_pressure_route_contract_pins_specified_phase(
     assert payload["phase_count"] == 2
     assert payload["species_count"] == composition.size
     assert payload["variable_count"] == 2 * local_variable_count + 1
-    assert payload["constraint_count"] == composition.size + 3
+    assert payload["constraint_count"] == 2 * composition.size + 4
     assert payload["jacobian_nonzero_count"] == payload["variable_count"] * payload["constraint_count"]
     assert np.all(initial > 0.0)
     assert fixed_amounts / fixed_amounts.sum() == pytest.approx(composition)
     assert payload["constraints_at_initial"][: composition.size + 1] == pytest.approx([0.0, 0.0, 0.0])
-    assert jacobian[-2, pressure_col] == pytest.approx(-1.0)
-    assert jacobian[-1, pressure_col] == pytest.approx(-1.0)
+    pressure_row_start = composition.size + 1
+    assert jacobian[pressure_row_start, pressure_col] == pytest.approx(-1.0)
+    assert jacobian[pressure_row_start + 1, pressure_col] == pytest.approx(-1.0)
+    assert payload["constraint_lower_bounds"][-1] > 0.0
+    assert payload["constraint_upper_bounds"][-1] > payload["constraint_lower_bounds"][-1]
+    assert payload["constraints_at_initial"][-1] >= payload["constraint_lower_bounds"][-1]
+    assert jacobian[-1, local_variable_count - 1] == pytest.approx(-1.0)
+    assert jacobian[-1, 2 * local_variable_count - 1] == pytest.approx(1.0)
 
 
 @pytest.mark.parametrize(
