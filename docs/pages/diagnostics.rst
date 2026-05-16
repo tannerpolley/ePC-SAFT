@@ -16,8 +16,8 @@ and package workflow status. The important backend labels are:
 For reactive electrolyte regression, inspect
 ``capabilities()["regression"]["reactive_electrolyte_batch_context"]["fit_status_contract"]``.
 It lists the public fit statuses, the top-level convergence fields, and the
-empty ``public_placeholder_statuses`` list that downstream agents can use to
-confirm the package is not returning provisional labels. The sibling
+``diagnostic_only`` status used while native Ceres derivative coverage is not
+routed. The sibling
 ``bounded_mixed_pressure_speciation_regression`` capability advertises the
 diagnostic residual context, its supported target families, and the fact that
 it is not a production optimizer. Python still owns row orchestration and

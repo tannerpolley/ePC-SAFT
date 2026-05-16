@@ -642,7 +642,7 @@ def capabilities() -> dict[str, object]:
                 "backend": "python_batched_native_solvers",
                 "fit_status_contract": {
                     "available": True,
-                    "statuses": ["converged", "max_iterations", "line_search_failed", "failed_rows"],
+                    "statuses": ["converged", "max_iterations", "line_search_failed", "failed_rows", "diagnostic_only"],
                     "fields": [
                         "status",
                         "termination_reason",
@@ -651,7 +651,6 @@ def capabilities() -> dict[str, object]:
                         "gradient_norm",
                         "step_norm",
                     ],
-                    "public_placeholder_statuses": [],
                 },
                 "bounded_mixed_pressure_speciation_regression": {
                     "available": True,
