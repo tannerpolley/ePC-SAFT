@@ -4,6 +4,33 @@ This plan is the Phase 6 deliverable for issue #120. It documents ownership and
 future split boundaries for the largest source modules without changing runtime
 behavior.
 
+## Current Internal Subsystem Boundary
+
+The package remains one installable distribution, but the internal runtime
+boundary is now enforced at import time:
+
+- `epcsaft` is a lazy compatibility facade. Importing the package alone must
+  not import EOS, equilibrium, regression, reactive, or runtime implementation
+  modules.
+- EOS/property use is the core subsystem. `from epcsaft import ePCSAFTMixture`,
+  `import epcsaft.eos`, and `import epcsaft.properties` may load
+  `epcsaft.epcsaft`, `epcsaft.eos`, and `epcsaft.properties`, but must not load
+  `epcsaft.equilibrium`, `epcsaft.regression`, `epcsaft.reactive_regression`,
+  `epcsaft.reactive_speciation`, or `epcsaft.reactive_electrolyte`.
+- Equilibrium is an extension subsystem rooted at `epcsaft.equilibrium`,
+  `epcsaft.electrolyte`, `epcsaft.electrolyte_bubble`, `epcsaft.reactive`,
+  `epcsaft.reactive_speciation`, `epcsaft.reactive_electrolyte`,
+  `epcsaft.reactive_staged`, and `epcsaft.equilibrium_core`.
+- Regression is an extension subsystem rooted at `epcsaft.regression` and
+  `epcsaft.reactive_regression`, with production optimizer ownership delegated
+  to native Ceres entry points where available.
+- Public top-level names remain stable. A public name may import its owning
+  subsystem only when that name is accessed.
+
+The import boundary is covered by
+`tests/workflows/repo/test_project_structure.py` and should be extended whenever
+new public facade modules are added.
+
 ## Non-Goals
 
 - Do not change EOS equations, association internals, equilibrium residuals,

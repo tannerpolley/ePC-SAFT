@@ -1,10 +1,24 @@
 from __future__ import annotations
 
+import json
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+IMPORT_BOUNDARY_WATCHLIST = {
+    "epcsaft.electrolyte_bubble",
+    "epcsaft.epcsaft",
+    "epcsaft.eos",
+    "epcsaft.equilibrium",
+    "epcsaft.properties",
+    "epcsaft.reactive_electrolyte",
+    "epcsaft.reactive_regression",
+    "epcsaft.reactive_speciation",
+    "epcsaft.regression",
+    "epcsaft.runtime",
+}
 ANALYSIS_ROOTS = {
     "2012_held": REPO_ROOT / "analyses" / "paper_validation" / "native" / "2012_held",
     "2014_held": REPO_ROOT / "analyses" / "paper_validation" / "native" / "2014_held",
@@ -57,6 +71,30 @@ REPLACED_FLAT_TEST_FILES = {
     "tests/native/test_runtime_contracts.py",
     "tests/native/test_chemical_equilibrium_native.py",
 }
+
+
+def _probe_epcsaft_import_modules(source: str) -> set[str]:
+    probe = f"""
+import json
+import sys
+
+{source}
+
+watchlist = {sorted(IMPORT_BOUNDARY_WATCHLIST)!r}
+print(json.dumps(sorted(name for name in watchlist if name in sys.modules)))
+"""
+    env = os.environ.copy()
+    src_root = str(REPO_ROOT / "src")
+    env["PYTHONPATH"] = src_root + os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else src_root
+    result = subprocess.run(
+        [sys.executable, "-c", probe],
+        cwd=REPO_ROOT,
+        text=True,
+        capture_output=True,
+        check=True,
+        env=env,
+    )
+    return set(json.loads(result.stdout))
 
 
 def _tracked_files(*paths: str) -> list[str]:
@@ -124,6 +162,38 @@ def test_removed_numerics_stack_is_not_a_package_dev_test_or_analysis_runtime_de
     assert not (REPO_ROOT / "src" / "epcsaft" / ("_optional" + "_backends")).exists()
     removed_ipopt_helper = REPO_ROOT / "scripts" / "dev" / ("setup_windows_" + removed_python_ipopt_wrapper + "_uv.ps1")
     assert not removed_ipopt_helper.exists()
+
+
+def test_package_import_is_lazy_across_equilibrium_and_regression_extensions() -> None:
+    loaded = _probe_epcsaft_import_modules("import epcsaft")
+    assert loaded == set()
+
+
+def test_eos_and_property_imports_do_not_load_equilibrium_or_regression_extensions() -> None:
+    loaded = _probe_epcsaft_import_modules(
+        "from epcsaft import ePCSAFTMixture\n"
+        "import epcsaft.eos\n"
+        "import epcsaft.properties\n"
+        "_ = ePCSAFTMixture"
+    )
+    assert {"epcsaft.epcsaft", "epcsaft.eos", "epcsaft.properties"} <= loaded
+    assert loaded.isdisjoint(
+        {
+            "epcsaft.electrolyte_bubble",
+            "epcsaft.equilibrium",
+            "epcsaft.reactive_electrolyte",
+            "epcsaft.reactive_regression",
+            "epcsaft.reactive_speciation",
+            "epcsaft.regression",
+        }
+    )
+
+
+def test_top_level_public_exports_load_only_the_requested_extension() -> None:
+    loaded = _probe_epcsaft_import_modules("import epcsaft\n_ = epcsaft.EquilibriumOptions")
+    assert "epcsaft.equilibrium" in loaded
+    assert "epcsaft.regression" not in loaded
+    assert "epcsaft.reactive_regression" not in loaded
 
 
 def test_reference_data_root_is_canonical() -> None:

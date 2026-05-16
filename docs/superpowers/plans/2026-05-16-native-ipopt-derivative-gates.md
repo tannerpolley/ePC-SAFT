@@ -452,11 +452,17 @@ Task 10 continuation note: a tracked repo gate now scans native C++ sources and 
 - Modify: `src/epcsaft/regression.py`
 - Add subsystem modules as needed.
 
-- [ ] Ensure EOS/property imports do not import equilibrium/regression implementation modules.
-- [ ] Keep public facades stable while moving implementation behind internal modules.
-- [ ] Add import-boundary tests.
-- [ ] Update docs to describe EOS core, equilibrium extension, and regression extension as internal subsystems.
-- [ ] Commit as `Separate EOS equilibrium regression internals`.
+- [x] Ensure EOS/property imports do not import equilibrium/regression implementation modules.
+- [x] Keep public facades stable while moving implementation behind internal modules.
+- [x] Add import-boundary tests.
+- [x] Update docs to describe EOS core, equilibrium extension, and regression extension as internal subsystems.
+- [x] Commit as `Separate EOS equilibrium regression internals`.
+
+Task 11 progress note: the top-level `epcsaft` package is now a lazy compatibility facade. Importing
+`epcsaft`, importing the EOS namespace, or importing property helpers does not load equilibrium, regression, or
+reactive extension modules. Public exports remain available through the same top-level names and load only their owning
+subsystem on first access. Repo tests now enforce the import boundary and docs describe the EOS/property core,
+equilibrium extension, and regression extension split.
 
 ### Task 12: Capabilities, Docs, And Roadmap Cleanup
 

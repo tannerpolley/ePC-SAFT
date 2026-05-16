@@ -1,21 +1,22 @@
 # Public API Surface Report
 
 This report is the Phase 9 deliverable for issue #120. It audits the public
-package surface without removing documented imports or changing runtime
-behavior.
+package surface and the current facade/import-boundary behavior.
 
 ## Summary
 
-- `epcsaft.__all__` currently exposes 104 names.
+- `epcsaft.__all__` currently exposes 103 names.
 - `pyproject.toml` defines no `project.scripts` and no entry-point groups.
 - `python -m epcsaft` is supported through `src/epcsaft/__main__.py`.
 - The package intentionally provides both direct top-level exports and organized
   public namespace modules such as `epcsaft.eos`, `epcsaft.equilibrium`,
   `epcsaft.electrolyte`, `epcsaft.reactive`, `epcsaft.regression`, and
   `epcsaft.diagnostics`.
-- No export was removed in this cleanup phase. Removals require a deprecation
-  or compatibility-shim decision because tests, docs, and downstream smoke
-  checks currently exercise the broad surface.
+- Top-level exports are resolved lazily. Importing `epcsaft` or using the
+  EOS/property core must not import equilibrium, regression, or reactive
+  extension implementation modules until a name from that subsystem is accessed.
+- Further removals require a deliberate public API migration decision because
+  tests, docs, and downstream smoke checks exercise the remaining broad surface.
 
 ## Top-Level Export Groups
 
