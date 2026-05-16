@@ -374,6 +374,7 @@ def test_neutral_two_phase_eos_postsolve_rejects_collapsed_phases() -> None:
     assert payload["material_balance_norm"] <= 1.0e-12
     assert payload["pressure_consistency_norm"] <= 1.0e-6
     assert payload["chemical_potential_consistency_norm"] == pytest.approx(0.0, abs=1.0e-14)
+    assert payload["ln_fugacity_consistency_norm"] == pytest.approx(0.0, abs=1.0e-14)
     assert payload["phase_distance"] == pytest.approx(0.0, abs=1.0e-14)
 
 
@@ -411,6 +412,8 @@ def test_neutral_two_phase_eos_postsolve_reports_pressure_gate() -> None:
     assert payload["material_balance_norm"] <= 1.0e-12
     assert payload["pressure_consistency_norm"] > 1.0e-6
     assert "chemical_potential_consistency_norm" in payload
+    assert "ln_fugacity_consistency_norm" in payload
+    assert np.isfinite(payload["ln_fugacity_consistency_norm"])
     assert payload["phase_distance"] > 1.0e-3
 
 
@@ -449,4 +452,5 @@ def test_neutral_two_phase_eos_postsolve_reports_chemical_potential_gate() -> No
     assert payload["material_balance_norm"] <= 1.0e-12
     assert payload["pressure_consistency_norm"] <= 1.0e12
     assert payload["chemical_potential_consistency_norm"] > 1.0e-9
+    assert payload["ln_fugacity_consistency_norm"] > 1.0e-9
     assert payload["phase_distance"] > 1.0e-3

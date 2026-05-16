@@ -37,6 +37,7 @@ struct NeutralTwoPhaseEosResultPayload {
     double material_balance_norm = 0.0;
     double pressure_consistency_norm = 0.0;
     double chemical_potential_consistency_norm = 0.0;
+    double ln_fugacity_consistency_norm = 0.0;
     double phase_distance = 0.0;
     std::vector<double> feed_amounts;
     std::vector<double> constraints;

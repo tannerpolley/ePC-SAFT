@@ -545,6 +545,12 @@ root as a valid route region. A direct Ipopt probe on an arbitrary hydrocarbon s
 infeasibility rather than an accepted vapor-liquid split, so public capabilities remain unexpanded and no fallback search
 has been added.
 
+Task 8 continuation note: neutral two-phase EOS postsolve/result payloads now include an explicit
+`ln_fugacity_consistency_norm` diagnostic. The native postsolve computes the infinity norm of the reduced log fugacity
+residual, `ln(x_i) + ln(phi_i)`, from the same EOS phase blocks and native fugacity-coefficient kernel used by result
+translation. This is diagnostic exposure for thermodynamic acceptance evidence, not a new solver tolerance, retry path,
+or public capability expansion.
+
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
 **Files:**

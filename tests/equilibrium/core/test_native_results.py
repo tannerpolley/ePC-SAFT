@@ -16,6 +16,7 @@ def _accepted_native_payload() -> dict[str, object]:
         "material_balance_norm": 1.0e-12,
         "pressure_consistency_norm": 2.0e-8,
         "chemical_potential_consistency_norm": 3.0e-9,
+        "ln_fugacity_consistency_norm": 4.0e-9,
         "phase_distance": 0.4,
     }
     return {
@@ -63,6 +64,7 @@ def test_neutral_native_payload_converts_to_public_equilibrium_result() -> None:
     assert result.stable is False
     assert result.split_detected is True
     assert result.diagnostics["derivative_backend"] == "analytic_cppad"
+    assert result.diagnostics["ln_fugacity_consistency_norm"] == pytest.approx(4.0e-9)
     assert len(result.phases) == 2
     assert result.phases[0].label == "phase_0"
     assert np.allclose(result.phases[0].composition, [0.7, 0.3])

@@ -652,6 +652,7 @@ py::dict neutral_two_phase_eos_postsolve_to_dict(
     out["material_balance_norm"] = result.material_balance_norm;
     out["pressure_consistency_norm"] = result.pressure_consistency_norm;
     out["chemical_potential_consistency_norm"] = result.chemical_potential_consistency_norm;
+    out["ln_fugacity_consistency_norm"] = result.ln_fugacity_consistency_norm;
     out["fixed_composition_norm"] = result.fixed_composition_norm;
     out["phase_amount_total_norm"] = result.phase_amount_total_norm;
     out["phase_distance"] = result.phase_distance;
@@ -734,6 +735,7 @@ py::dict neutral_two_phase_eos_result_payload_to_dict(
     diagnostics["material_balance_norm"] = result.material_balance_norm;
     diagnostics["pressure_consistency_norm"] = result.pressure_consistency_norm;
     diagnostics["chemical_potential_consistency_norm"] = result.chemical_potential_consistency_norm;
+    diagnostics["ln_fugacity_consistency_norm"] = result.ln_fugacity_consistency_norm;
     diagnostics["phase_distance"] = result.phase_distance;
     diagnostics["constraints"] = result.constraints;
     diagnostics["feed_amounts"] = result.feed_amounts;
@@ -752,6 +754,7 @@ py::dict neutral_two_phase_eos_result_payload_to_dict(
     out["material_balance_norm"] = result.material_balance_norm;
     out["pressure_consistency_norm"] = result.pressure_consistency_norm;
     out["chemical_potential_consistency_norm"] = result.chemical_potential_consistency_norm;
+    out["ln_fugacity_consistency_norm"] = result.ln_fugacity_consistency_norm;
     out["phase_distance"] = result.phase_distance;
     out["constraints"] = result.constraints;
     out["diagnostics"] = diagnostics;

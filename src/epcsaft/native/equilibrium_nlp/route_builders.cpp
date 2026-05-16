@@ -1,7 +1,7 @@
 #include "route_builders.h"
 
 #include "eos_phase_block.h"
-#include "epcsaft_electrolyte.h"
+#include "epcsaft_core_internal.h"
 #include "ipopt_adapter.h"
 #include "nlp_problem.h"
 
@@ -154,6 +154,47 @@ double chemical_potential_inf_norm(
     double norm = 0.0;
     for (std::size_t species = 0; species < species_count; ++species) {
         norm = std::max(norm, std::abs(first.gradient[species] - second.gradient[species]));
+    }
+    return norm;
+}
+
+std::vector<double> reduced_ln_fugacity_values(
+    const add_args& args,
+    const EosPhaseBlockResult& block,
+    std::size_t species_count
+) {
+    if (block.composition.size() < species_count) {
+        throw ValueError("Neutral EOS postsolve phase composition size did not match species count.");
+    }
+    FugacityContributionResult fugacity = fugacity_coefficient_result_cpp(
+        block.temperature,
+        block.density,
+        block.composition,
+        args
+    );
+    if (fugacity.lnfugcoef.total.size() < species_count) {
+        throw ValueError("Neutral EOS postsolve fugacity payload size did not match species count.");
+    }
+    std::vector<double> values;
+    values.reserve(species_count);
+    for (std::size_t species = 0; species < species_count; ++species) {
+        require_positive_finite(block.composition[species], "Neutral EOS postsolve phase composition");
+        values.push_back(std::log(block.composition[species]) + fugacity.lnfugcoef.total[species]);
+    }
+    return values;
+}
+
+double ln_fugacity_inf_norm(
+    const add_args& args,
+    const EosPhaseBlockResult& first,
+    const EosPhaseBlockResult& second,
+    std::size_t species_count
+) {
+    const std::vector<double> first_values = reduced_ln_fugacity_values(args, first, species_count);
+    const std::vector<double> second_values = reduced_ln_fugacity_values(args, second, species_count);
+    double norm = 0.0;
+    for (std::size_t species = 0; species < species_count; ++species) {
+        norm = std::max(norm, std::abs(first_values[species] - second_values[species]));
     }
     return norm;
 }
@@ -522,6 +563,12 @@ NeutralTwoPhaseEosPostsolve evaluate_neutral_two_phase_eos_postsolve(
         system.constraints.size()
     );
     out.chemical_potential_consistency_norm = chemical_potential_inf_norm(
+        system.phase_blocks[0],
+        system.phase_blocks[1],
+        species_count
+    );
+    out.ln_fugacity_consistency_norm = ln_fugacity_inf_norm(
+        args,
         system.phase_blocks[0],
         system.phase_blocks[1],
         species_count

@@ -58,7 +58,18 @@ def test_neutral_two_phase_eos_result_builder_translates_accepted_candidate() ->
     assert payload["phase_distance"] > 1.0e-3
     assert payload["material_balance_norm"] <= 1.0e-12
     assert payload["diagnostics"]["material_balance_norm"] <= 1.0e-12
+    assert payload["diagnostics"]["ln_fugacity_consistency_norm"] == pytest.approx(
+        payload["ln_fugacity_consistency_norm"]
+    )
     assert len(payload["phases"]) == 2
+
+    reduced_ln_fugacity = []
+    for phase in payload["phases"]:
+        composition = np.asarray(phase["composition"], dtype=float)
+        ln_phi = np.asarray(phase["ln_fugacity_coefficient"], dtype=float)
+        reduced_ln_fugacity.append(np.log(composition) + ln_phi)
+    expected_ln_fugacity_norm = float(np.max(np.abs(reduced_ln_fugacity[0] - reduced_ln_fugacity[1])))
+    assert payload["ln_fugacity_consistency_norm"] == pytest.approx(expected_ln_fugacity_norm)
 
     total_amount = sum(float(phase.sum()) for phase in phase_amounts)
     for index, phase in enumerate(payload["phases"]):
@@ -113,4 +124,5 @@ def test_neutral_two_phase_eos_result_builder_returns_rejection_without_phases()
     assert payload["phase_labels"] == []
     assert payload["phases"] == []
     assert payload["phase_distance"] == pytest.approx(0.0, abs=1.0e-14)
+    assert payload["ln_fugacity_consistency_norm"] == pytest.approx(0.0, abs=1.0e-14)
     assert payload["diagnostics"]["rejection_reason"] == "phase_distance"

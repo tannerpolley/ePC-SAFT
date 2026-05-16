@@ -101,6 +101,7 @@ NeutralTwoPhaseEosResultPayload build_neutral_two_phase_eos_result(
     out.material_balance_norm = postsolve.material_balance_norm;
     out.pressure_consistency_norm = postsolve.pressure_consistency_norm;
     out.chemical_potential_consistency_norm = postsolve.chemical_potential_consistency_norm;
+    out.ln_fugacity_consistency_norm = postsolve.ln_fugacity_consistency_norm;
     out.phase_distance = postsolve.phase_distance;
     out.feed_amounts = feed_amounts;
     out.constraints = postsolve.constraints;
