@@ -45,10 +45,6 @@ class EquilibriumOptions:
     min_composition: float = 1.0e-12
     include_phase_diagnostics: bool = False
     stability_precheck: bool = True
-    legacy_candidate_mode: str = "auto"
-    legacy_candidate_residual_tolerance: float = 2.0e-1
-    legacy_candidate_split_tolerance: float = 1.0e-4
-    legacy_candidate_max_iterations: int = 80
     ignored_legacy_options: tuple[str, ...] = ()
     density_diagnostics: Literal["auto", "off", "full"] = "auto"
     experimental_coupled_density_lle: bool = False
@@ -548,8 +544,6 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
         legacy_map = {
             "max_nfev": "max_iterations",
             "solver_tol": "tolerance",
-            "split_tol": "legacy_candidate_split_tolerance",
-            "solver_accept_norm": "legacy_candidate_residual_tolerance",
         }
         for source, target in legacy_map.items():
             if source in raw:
@@ -566,10 +560,6 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
             "min_composition",
             "include_phase_diagnostics",
             "stability_precheck",
-            "legacy_candidate_mode",
-            "legacy_candidate_residual_tolerance",
-            "legacy_candidate_split_tolerance",
-            "legacy_candidate_max_iterations",
             "density_diagnostics",
             "experimental_coupled_density_lle",
             "jacobian_backend",
@@ -607,26 +597,6 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
         raise InputError("options.include_phase_diagnostics must be boolean.")
     if not isinstance(options.stability_precheck, bool):
         raise InputError("options.stability_precheck must be boolean.")
-    legacy_candidate_mode = str(options.legacy_candidate_mode).strip().lower()
-    if legacy_candidate_mode not in {"auto", "off"}:
-        raise InputError("options.legacy_candidate_mode must be 'auto' or 'off'.")
-    legacy_candidate_residual_tolerance = _finite_float_option(
-        options.legacy_candidate_residual_tolerance, "legacy_candidate_residual_tolerance"
-    )
-    if legacy_candidate_residual_tolerance <= 0.0:
-        raise InputError("options.legacy_candidate_residual_tolerance must be positive.")
-    legacy_candidate_split_tolerance = _finite_float_option(
-        options.legacy_candidate_split_tolerance, "legacy_candidate_split_tolerance"
-    )
-    if legacy_candidate_split_tolerance <= 0.0:
-        raise InputError("options.legacy_candidate_split_tolerance must be positive.")
-    if isinstance(options.legacy_candidate_max_iterations, bool) or not isinstance(
-        options.legacy_candidate_max_iterations, Integral
-    ):
-        raise InputError("options.legacy_candidate_max_iterations must be an integer greater than zero.")
-    legacy_candidate_max_iterations = int(options.legacy_candidate_max_iterations)
-    if legacy_candidate_max_iterations <= 0:
-        raise InputError("options.legacy_candidate_max_iterations must be an integer greater than zero.")
     ignored_legacy_options = tuple(str(item) for item in options.ignored_legacy_options)
     density_diagnostics = str(options.density_diagnostics).strip().lower()
     if density_diagnostics not in {"auto", "off", "full"}:
@@ -659,10 +629,6 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
         min_composition=min_composition,
         include_phase_diagnostics=options.include_phase_diagnostics,
         stability_precheck=options.stability_precheck,
-        legacy_candidate_mode=legacy_candidate_mode,
-        legacy_candidate_residual_tolerance=legacy_candidate_residual_tolerance,
-        legacy_candidate_split_tolerance=legacy_candidate_split_tolerance,
-        legacy_candidate_max_iterations=legacy_candidate_max_iterations,
         ignored_legacy_options=ignored_legacy_options,
         density_diagnostics=density_diagnostics,  # type: ignore[arg-type]
         experimental_coupled_density_lle=options.experimental_coupled_density_lle,
@@ -1333,11 +1299,7 @@ def _call_native_equilibrium(
     except _core.NativeSolutionError as exc:
         message = str(exc.args[0]) if getattr(exc, "args", ()) else str(exc)
         diagnostics = exc.args[1] if len(getattr(exc, "args", ())) > 1 and isinstance(exc.args[1], dict) else None
-        diagnostics = _diagnostics_with_legacy_candidate(
-            kind=kind,
-            options=options,
-            diagnostics=diagnostics,
-        )
+        diagnostics = _diagnostics_with_options(options=options, diagnostics=diagnostics)
         raise SolutionError(message, diagnostics) from exc
     if kind in {"electrolyte_lle", "electrolyte_lle_flash"}:
         diagnostics = dict(payload.get("diagnostics") or {})
@@ -1352,9 +1314,6 @@ def _call_native_equilibrium(
 
 
 def _add_legacy_option_diagnostics(diagnostics: dict[str, Any], options: EquilibriumOptions) -> None:
-    diagnostics.setdefault("legacy_candidate_mode", str(options.legacy_candidate_mode))
-    diagnostics.setdefault("legacy_candidate_residual_tolerance", float(options.legacy_candidate_residual_tolerance))
-    diagnostics.setdefault("legacy_candidate_split_tolerance", float(options.legacy_candidate_split_tolerance))
     diagnostics.setdefault("ignored_legacy_options", list(options.ignored_legacy_options))
     diagnostics.setdefault("density_diagnostics_mode", str(options.density_diagnostics))
     diagnostics.setdefault("experimental_coupled_density_lle", bool(options.experimental_coupled_density_lle))
@@ -1377,9 +1336,8 @@ def _add_legacy_option_diagnostics(diagnostics: dict[str, Any], options: Equilib
     diagnostics.setdefault("return_best_effort", bool(options.return_best_effort))
 
 
-def _diagnostics_with_legacy_candidate(
+def _diagnostics_with_options(
     *,
-    kind: str,
     options: EquilibriumOptions,
     diagnostics: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
@@ -1387,32 +1345,6 @@ def _diagnostics_with_legacy_candidate(
         return None
     out = dict(diagnostics)
     _add_legacy_option_diagnostics(out, options)
-    if kind not in {"electrolyte_lle", "electrolyte_lle_flash"}:
-        return out
-    if str(options.legacy_candidate_mode) != "auto":
-        out.setdefault("legacy_candidate_found", False)
-        out.setdefault(
-            "legacy_candidate_message", "legacy candidate fallback disabled by options.legacy_candidate_mode"
-        )
-        return out
-    min_tpd = out.get("stability_min_tpd", out.get("min_tpd"))
-    try:
-        unstable = float(min_tpd) < -max(float(options.tolerance), 1.0e-8)
-    except (TypeError, ValueError):
-        unstable = out.get("acceptance_gate") == "predictive_solve_failed"
-    collapsed_or_failed = (
-        out.get("best_failure_reason") == "candidate collapsed to one phase"
-        or out.get("acceptance_gate") == "predictive_solve_failed"
-    )
-    if not unstable or not collapsed_or_failed:
-        out.setdefault("legacy_candidate_found", False)
-        out.setdefault("legacy_candidate_message", "legacy candidate fallback was not triggered")
-        return out
-    out.setdefault("legacy_candidate_found", False)
-    out.setdefault(
-        "legacy_candidate_message",
-        "legacy candidate fallback disabled; Python equilibrium candidates are not exposed.",
-    )
     return out
 
 
@@ -2407,11 +2339,7 @@ def electrolyte_lle_flash_native(
             "best_failure_reason": str(exc),
         }
         diagnostics.update(feed_diagnostics)
-        diagnostics = _diagnostics_with_legacy_candidate(
-            kind="electrolyte_lle",
-            options=opts,
-            diagnostics=diagnostics,
-        )
+        diagnostics = _diagnostics_with_options(options=opts, diagnostics=diagnostics)
         if diagnostics is not None:
             diagnostics = _normalize_derivative_diagnostics(
                 diagnostics,

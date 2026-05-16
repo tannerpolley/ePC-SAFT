@@ -378,6 +378,8 @@ Task 6 progress note: the first route slice adds explicit `solver_backend="ipopt
 
 Task 8 progress note: the public `EquilibriumOptions.solver_backend` contract no longer accepts explicit `newton`; public selection is limited to `auto` for the still-existing internal native routes and `ipopt` for explicit native-Ipopt requests while the route builders are being replaced.
 
+Task 8 continuation note: obsolete public candidate fallback controls and diagnostics were removed from `EquilibriumOptions`, option normalization, and electrolyte LLE failure diagnostics. The old compatibility dictionary aliases for split and solver-acceptance tolerances are no longer accepted.
+
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
 **Files:**

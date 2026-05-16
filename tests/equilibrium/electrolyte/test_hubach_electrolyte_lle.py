@@ -155,9 +155,9 @@ def test_hubach_cold_start_failure_reports_seed_attempts_before_error() -> None:
 
 @pytest.mark.skipif(
     os.environ.get("EPCSAFT_RUN_HUBACH_LLE") != "1",
-    reason="Hubach legacy-candidate fallback is an opt-in hard-case regression.",
+    reason="Hubach cold-start failure is an opt-in hard-case regression.",
 )
-def test_hubach_cold_start_reports_disabled_legacy_candidate_on_strict_failure() -> None:
+def test_hubach_cold_start_reports_strict_failure_without_removed_candidate_flags() -> None:
     feed = _row0_feed()
     mix = _hubach_mixture(feed)
 
@@ -170,8 +170,6 @@ def test_hubach_cold_start_reports_disabled_legacy_candidate_on_strict_failure()
             options={
                 "max_nfev": 20,
                 "solver_tol": 1.0e-8,
-                "split_tol": 1.0e-4,
-                "solver_accept_norm": 0.5,
                 "tpdf_global_trials": 1200,
                 "tpdf_local_trials": 600,
                 "charge_weight": 1000.0,
@@ -184,8 +182,9 @@ def test_hubach_cold_start_reports_disabled_legacy_candidate_on_strict_failure()
         return
 
     assert diagnostics["acceptance_gate"] == "predictive_solve_failed"
-    assert diagnostics["legacy_candidate_found"] is False
-    assert "disabled" in diagnostics["legacy_candidate_message"]
+    removed_prefix = "legacy" + "_candidate"
+    assert f"{removed_prefix}_found" not in diagnostics
+    assert f"{removed_prefix}_message" not in diagnostics
     assert diagnostics["density_failure_count"] >= 0
     assert diagnostics["density_diagnostics_mode"] == "auto"
     assert diagnostics["density_validity_gate"] in {"passed", "failed", "not_evaluated"}

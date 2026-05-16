@@ -138,7 +138,7 @@ def test_electrolyte_lle_solver_failure_reports_production_derivatives() -> None
             T=298.15,
             P=1.0e5,
             z=_case2_feed(),
-            options=epcsaft.EquilibriumOptions(max_iterations=1, tolerance=1.0e-12, legacy_candidate_mode="off"),
+            options=epcsaft.EquilibriumOptions(max_iterations=1, tolerance=1.0e-12),
         )
 
     diagnostics = excinfo.value.args[1]
@@ -156,7 +156,6 @@ def test_electrolyte_lle_best_effort_reports_production_derivatives() -> None:
         options=epcsaft.EquilibriumOptions(
             max_iterations=1,
             tolerance=1.0e-12,
-            legacy_candidate_mode="off",
             return_best_effort=True,
         ),
     )
@@ -180,7 +179,6 @@ def test_electrolyte_lle_seed_budget_reports_production_derivatives() -> None:
                 max_iterations=80,
                 tolerance=1.0e-12,
                 max_seed_attempts=1,
-                legacy_candidate_mode="off",
             ),
         )
 
@@ -202,7 +200,6 @@ def test_electrolyte_lle_objective_budget_reports_production_derivatives() -> No
                 max_iterations=80,
                 tolerance=1.0e-12,
                 max_total_objective_evaluations=1,
-                legacy_candidate_mode="off",
             ),
         )
 
@@ -223,7 +220,6 @@ def test_experimental_coupled_density_lle_option_is_reported_without_changing_de
             options=epcsaft.EquilibriumOptions(
                 max_iterations=1,
                 tolerance=1.0e-12,
-                legacy_candidate_mode="off",
                 density_diagnostics="full",
                 experimental_coupled_density_lle=True,
             ),
@@ -234,7 +230,7 @@ def test_experimental_coupled_density_lle_option_is_reported_without_changing_de
     assert diagnostics["density_diagnostics_mode"] == "full"
     _assert_ceres_production_diagnostics(diagnostics)
 
-def test_electrolyte_lle_accepts_legacy_option_dict_before_production_failure() -> None:
+def test_electrolyte_lle_accepts_ignored_legacy_option_dict_before_production_failure() -> None:
     mix = _case2_mixture()
 
     with pytest.raises(epcsaft.SolutionError) as excinfo:
@@ -246,9 +242,6 @@ def test_electrolyte_lle_accepts_legacy_option_dict_before_production_failure() 
             options={
                 "max_nfev": 1,
                 "solver_tol": 1.0e-12,
-                "split_tol": 1.0e-4,
-                "solver_accept_norm": 0.5,
-                "legacy_candidate_mode": "off",
                 "tpdf_global_trials": 1200,
                 "tpdf_local_trials": 600,
                 "charge_weight": 1000.0,
@@ -259,5 +252,4 @@ def test_electrolyte_lle_accepts_legacy_option_dict_before_production_failure() 
 
     diagnostics = excinfo.value.args[1]
     assert diagnostics["acceptance_gate"] == "predictive_solve_failed"
-    assert diagnostics["legacy_candidate_found"] is False
     _assert_ceres_production_diagnostics(diagnostics)
