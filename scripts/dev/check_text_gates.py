@@ -91,7 +91,13 @@ def _blocked_terms() -> tuple[str, ...]:
 def _source_blocked_terms(rel: str) -> tuple[str, ...]:
     if not rel.startswith(("src/", "tests/", "scripts/")):
         return ()
-    return ("fall" + "back",)
+    return (
+        "fall" + "back",
+        "return" + "_best" + "_effort",
+        "best" + "_effort",
+        "_solve" + "_electrolyte" + "_bubble" + "_native",
+        "native" + "_log" + "_pressure" + "_bisection",
+    )
 
 
 def main() -> int:

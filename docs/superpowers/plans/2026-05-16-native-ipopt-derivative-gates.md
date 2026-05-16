@@ -525,6 +525,8 @@ Task 12 continuation note: `EquilibriumOptions` no longer exposes the equilibriu
 
 Task 12 continuation note: the duplicate reactive-speciation best-effort option alias was removed. Diagnostic nonconverged reactive-speciation payloads now use the explicit `error_mode="result"` contract only, leaving active source, tests, and docs free of the old best-effort token.
 
+Task 12 continuation note: the tracked source/test/script text gate now blocks reintroducing best-effort option tokens and the deleted electrolyte bubble private native binding/solver labels in active executable surfaces.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**
