@@ -13,7 +13,6 @@ GENERIC_TEST_TARGETS = (
     "tests/api/parameters/test_parameter_templates.py::test_runtime_options_accept_autodiff_modes_and_preserve_explicit_overrides",
     "tests/api/regression/test_regression_api_native_backends.py::test_public_pure_neutral_regression_is_robust_to_distinct_initial_guesses",
     "tests/regression/core/test_hydrocarbon.py::test_methane_reference_parameters_keep_native_objective_pinned",
-    "tests/equilibrium/core/test_api.py::test_tp_flash_requires_native_ipopt_route",
     "tests/equilibrium/core/test_vle.py::test_ternary_hydrocarbon_basis_tp_flash_requires_native_ipopt_route",
     "tests/equilibrium/core/test_lle.py::test_methanol_cyclohexane_lle_flash_requires_native_ipopt_with_seed",
     "tests/equilibrium/core/test_lle.py::test_lle_flash_requested_ipopt_requires_native_ipopt_route",
@@ -55,7 +54,7 @@ EQUILIBRIUM_CONFIDENCE_TEST_TARGETS = (
     ),
 )
 EQUILIBRIUM_API_TEST_TARGETS = (
-    "tests/equilibrium/core/test_api.py::test_tp_flash_requires_native_ipopt_route",
+    "tests/equilibrium/core/test_vle.py::test_ternary_hydrocarbon_basis_tp_flash_requires_native_ipopt_route",
     "tests/equilibrium/core/test_lle.py::test_methanol_cyclohexane_lle_flash_requires_native_ipopt_with_seed",
     "tests/equilibrium/core/test_stability.py::test_stability_requires_native_ipopt_route_after_validation",
     (

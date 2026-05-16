@@ -292,6 +292,10 @@ calls. Together with the dependency gate, native Eigen nonlinear-optimizer gate,
 gate, the tracked test suite now covers the required no-SciPy, no-Eigen-nonlinear, no-Python-production-solver-loop, and
 no banned derivative/status concepts. Obsolete status-only tests remain a separate cleanup stream.
 
+Task 2 continuation note: duplicate neutral-equilibrium route-pending tests were pruned from the broad public API file.
+Representative route-pending coverage stays in the route-specific VLE/LLE/stability/bubble-dew files, derivative-policy
+tests, typed problem-object tests, and native route-result conversion tests.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**

@@ -7,7 +7,6 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
-from tests.api.reactive.test_reactive_speciation_options import _assert_reactive_speciation_route_pending
 from tests.equilibrium.core.test_stability import _assert_stability_route_pending
 from tests.equilibrium.core.test_vle import _assert_tp_flash_route_pending
 from tests.helpers.numeric import assert_allclose
@@ -52,28 +51,6 @@ def test_equilibrium_public_exports_are_available() -> None:
     assert hasattr(epcsaft, "dew_t")
 
 
-def test_tp_flash_requires_native_ipopt_route() -> None:
-    mix = _hydrocarbon_mixture()
-
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        mix.equilibrium(kind="tp_flash", T=220.0, P=1.0e5, z=np.asarray([0.1, 0.3, 0.6]))
-
-    _assert_tp_flash_route_pending(excinfo)
-
-
-def test_explicit_flash_tp_matches_equilibrium_route_pending_policy() -> None:
-    mix = _hydrocarbon_mixture()
-    feed = np.asarray([0.1, 0.3, 0.6])
-
-    with pytest.raises(epcsaft.InputError) as direct_exc:
-        mix.flash_tp(T=220.0, P=1.0e5, z=feed)
-    with pytest.raises(epcsaft.InputError) as dispatched_exc:
-        mix.equilibrium(kind="tp_flash", T=220.0, P=1.0e5, z=feed)
-
-    _assert_tp_flash_route_pending(direct_exc)
-    _assert_tp_flash_route_pending(dispatched_exc)
-
-
 @pytest.mark.parametrize(
     ("kind", "kwargs", "route"),
     [
@@ -108,80 +85,6 @@ def test_solve_equilibrium_accepts_typed_problem_objects() -> None:
 
     with pytest.raises(epcsaft.InputError, match=r"dew_p requires a native Ipopt equilibrium NLP route"):
         mix.solve_equilibrium(epcsaft.DewPoint(T=260.0, y=feed))
-
-
-def test_explicit_stability_tp_matches_equilibrium_route_pending_policy() -> None:
-    feed = np.asarray([0.1, 0.3, 0.6])
-
-    with pytest.raises(epcsaft.InputError) as direct_exc:
-        _hydrocarbon_mixture().stability_tp(T=300.0, P=1.0e5, z=feed, parent_phase="liq", trial_phases=("liq",))
-    with pytest.raises(epcsaft.InputError) as dispatched_exc:
-        _hydrocarbon_mixture().equilibrium(
-            kind="stability",
-            T=300.0,
-            P=1.0e5,
-            z=feed,
-            parent_phase="liq",
-            trial_phases=("liq",),
-        )
-
-    _assert_stability_route_pending(direct_exc)
-    _assert_stability_route_pending(dispatched_exc)
-
-
-def test_explicit_lle_tp_matches_equilibrium_route_pending_policy() -> None:
-    mix = ePCSAFTMixture.from_params(
-        {
-            "m": np.asarray([1.5255, 2.5303]),
-            "s": np.asarray([3.2300, 3.8499]),
-            "e": np.asarray([188.90, 278.11]),
-            "e_assoc": np.asarray([2899.5, 0.0]),
-            "vol_a": np.asarray([0.035176, 0.0]),
-            "assoc_scheme": ["2B", None],
-            "k_ij": np.asarray([[0.0, 0.051], [0.051, 0.0]]),
-        },
-        species=["Methanol", "Cyclohexane"],
-    )
-    feed = np.asarray([0.5, 0.5])
-
-    with pytest.raises(epcsaft.InputError, match=r"lle_flash requires a native Ipopt equilibrium NLP route"):
-        mix.lle_tp(T=298.15, P=1.013e5, z=feed)
-    with pytest.raises(epcsaft.InputError, match=r"lle_flash requires a native Ipopt equilibrium NLP route"):
-        mix.equilibrium(kind="lle_flash", T=298.15, P=1.013e5, z=feed)
-
-
-def test_explicit_chemical_equilibrium_matches_dispatch_route_pending_policy() -> None:
-    mix = ePCSAFTMixture.from_params(
-        {
-            "m": np.asarray([1.0, 1.0]),
-            "s": np.asarray([3.0, 3.0]),
-            "e": np.asarray([200.0, 200.0]),
-        },
-        species=["A", "B"],
-    )
-    request = {
-        "T": 298.15,
-        "P": 1.0e5,
-        "z": [0.5, 0.5],
-        "balances": {"total": {"A": 1.0, "B": 1.0}},
-        "totals": {"total": 1.0},
-        "reactions": [
-            epcsaft.ReactionDefinition(
-                {"A": -1.0, "B": 1.0},
-                np.log(3.0),
-                standard_state="ideal_mole_fraction",
-            )
-        ],
-        "options": epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
-    }
-
-    with pytest.raises(epcsaft.InputError) as direct_exc:
-        mix.chemical_equilibrium(**request)
-    with pytest.raises(epcsaft.InputError) as dispatched_exc:
-        mix.equilibrium(kind="chemical_equilibrium", **request)
-
-    _assert_reactive_speciation_route_pending(direct_exc)
-    _assert_reactive_speciation_route_pending(dispatched_exc)
 
 
 def test_equilibrium_phase_exposes_ln_and_coefficient_fugacity_fields() -> None:
