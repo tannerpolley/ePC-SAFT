@@ -15,6 +15,7 @@ namespace epcsaft::native::equilibrium_nlp {
 namespace {
 
 constexpr double kGasConstant = 8.31446261815324;
+constexpr double kContractPhaseDistance = 1.0e-8;
 
 struct NeutralTwoPhaseEosInitialPoint {
     std::vector<std::vector<double>> phase_amounts;
@@ -315,7 +316,8 @@ public:
         std::vector<double> volumes,
         std::vector<double> feed_amounts,
         std::vector<double> charges = {},
-        std::string problem_name = "neutral_two_phase_eos"
+        std::string problem_name = "neutral_two_phase_eos",
+        double minimum_phase_distance = 0.0
     )
         : args_(std::move(args)),
           temperature_(temperature),
@@ -324,7 +326,8 @@ public:
           initial_volumes_(std::move(volumes)),
           feed_amounts_(std::move(feed_amounts)),
           charges_(std::move(charges)),
-          problem_name_(std::move(problem_name)) {
+          problem_name_(std::move(problem_name)),
+          minimum_phase_distance_(minimum_phase_distance) {
         if (initial_phase_amounts_.size() != 2) {
             throw ValueError("Neutral EOS route builder currently requires exactly two phases.");
         }
@@ -353,6 +356,29 @@ public:
                 throw ValueError("Neutral EOS route feed amounts must be finite and non-negative.");
             }
         }
+        if (minimum_phase_distance_ > 0.0) {
+            const std::vector<double> first = phase_composition(
+                initial_phase_amounts_[0],
+                "Neutral EOS route first phase amount total"
+            );
+            const std::vector<double> second = phase_composition(
+                initial_phase_amounts_[1],
+                "Neutral EOS route second phase amount total"
+            );
+            double max_distance = 0.0;
+            for (int species = 0; species < species_count_; ++species) {
+                const double diff =
+                    first[static_cast<std::size_t>(species)] - second[static_cast<std::size_t>(species)];
+                if (std::abs(diff) > max_distance) {
+                    max_distance = std::abs(diff);
+                    separation_species_index_ = species;
+                    separation_sign_ = diff >= 0.0 ? 1.0 : -1.0;
+                }
+            }
+            if (max_distance <= 0.0) {
+                throw ValueError("Neutral EOS route requires distinct initial phases for phase-separation gating.");
+            }
+        }
     }
 
     std::string name() const override {
@@ -364,7 +390,8 @@ public:
     }
 
     int constraint_count() const override {
-        return species_count_ + phase_count() + (charges_.empty() ? 0 : phase_count());
+        return species_count_ + phase_count() + (charges_.empty() ? 0 : phase_count())
+            + separation_constraint_count();
     }
 
     int jacobian_nonzero_count() const override {
@@ -386,6 +413,10 @@ public:
         }
         out.constraint_lower.assign(static_cast<std::size_t>(constraint_count()), 0.0);
         out.constraint_upper.assign(static_cast<std::size_t>(constraint_count()), 0.0);
+        if (separation_constraint_count() > 0) {
+            out.constraint_lower.back() = minimum_phase_distance_;
+            out.constraint_upper.back() = 1.0e12;
+        }
         return out;
     }
 
@@ -408,7 +439,11 @@ public:
     }
 
     std::vector<double> constraints(const std::vector<double>& variables) const override {
-        return phase_system(variables).constraints;
+        std::vector<double> out = phase_system(variables).constraints;
+        if (separation_constraint_count() > 0) {
+            out.push_back(phase_separation(phase_amounts_from_variables(variables)));
+        }
+        return out;
     }
 
     NlpJacobianStructure jacobian_structure() const override {
@@ -425,7 +460,12 @@ public:
     }
 
     std::vector<double> jacobian_values(const std::vector<double>& variables) const override {
-        return phase_system(variables).constraint_jacobian_row_major;
+        std::vector<double> out = phase_system(variables).constraint_jacobian_row_major;
+        if (separation_constraint_count() > 0) {
+            const std::vector<double> row = phase_separation_jacobian(phase_amounts_from_variables(variables));
+            out.insert(out.end(), row.begin(), row.end());
+        }
+        return out;
     }
 
     NlpScaling scaling() const override {
@@ -435,6 +475,9 @@ public:
         out.objective = 1.0 / amount_scale;
         out.variables.assign(static_cast<std::size_t>(variable_count()), 1.0 / amount_scale);
         out.constraints.assign(static_cast<std::size_t>(constraint_count()), 1.0 / amount_scale);
+        if (separation_constraint_count() > 0) {
+            out.constraints.back() = 1.0;
+        }
         return out;
     }
 
@@ -449,6 +492,68 @@ public:
 private:
     int local_variable_count() const {
         return species_count_ + 1;
+    }
+
+    int separation_constraint_count() const {
+        return minimum_phase_distance_ > 0.0 ? 1 : 0;
+    }
+
+    std::vector<double> phase_composition(
+        const std::vector<double>& amounts,
+        const std::string& total_label
+    ) const {
+        require_size(amounts, static_cast<std::size_t>(species_count_), "Neutral EOS route phase amount");
+        const double total = std::accumulate(amounts.begin(), amounts.end(), 0.0);
+        require_positive_finite(total, total_label);
+        std::vector<double> composition;
+        composition.reserve(amounts.size());
+        for (double amount : amounts) {
+            composition.push_back(amount / total);
+        }
+        return composition;
+    }
+
+    double phase_separation(const std::vector<std::vector<double>>& phase_amounts) const {
+        const std::vector<double> first = phase_composition(
+            phase_amounts[0],
+            "Neutral EOS route first phase amount total"
+        );
+        const std::vector<double> second = phase_composition(
+            phase_amounts[1],
+            "Neutral EOS route second phase amount total"
+        );
+        const std::size_t species = static_cast<std::size_t>(separation_species_index_);
+        return separation_sign_ * (first[species] - second[species]);
+    }
+
+    std::vector<double> phase_separation_jacobian(
+        const std::vector<std::vector<double>>& phase_amounts
+    ) const {
+        const std::vector<double> first = phase_composition(
+            phase_amounts[0],
+            "Neutral EOS route first phase amount total"
+        );
+        const std::vector<double> second = phase_composition(
+            phase_amounts[1],
+            "Neutral EOS route second phase amount total"
+        );
+        const double first_total = std::accumulate(phase_amounts[0].begin(), phase_amounts[0].end(), 0.0);
+        const double second_total = std::accumulate(phase_amounts[1].begin(), phase_amounts[1].end(), 0.0);
+        require_positive_finite(first_total, "Neutral EOS route first phase amount total");
+        require_positive_finite(second_total, "Neutral EOS route second phase amount total");
+
+        std::vector<double> row(static_cast<std::size_t>(variable_count()), 0.0);
+        const std::size_t selected = static_cast<std::size_t>(separation_species_index_);
+        for (int species = 0; species < species_count_; ++species) {
+            const std::size_t index = static_cast<std::size_t>(species);
+            const double first_indicator = index == selected ? 1.0 : 0.0;
+            row[index] = separation_sign_ * (first_indicator - first[selected]) / first_total;
+
+            const std::size_t second_offset = static_cast<std::size_t>(local_variable_count() + species);
+            const double second_indicator = index == selected ? 1.0 : 0.0;
+            row[second_offset] = -separation_sign_ * (second_indicator - second[selected]) / second_total;
+        }
+        return row;
     }
 
     std::vector<std::vector<double>> phase_amounts_from_variables(const std::vector<double>& variables) const {
@@ -499,6 +604,9 @@ private:
     std::vector<double> feed_amounts_;
     std::vector<double> charges_;
     std::string problem_name_;
+    double minimum_phase_distance_ = 0.0;
+    int separation_species_index_ = 0;
+    double separation_sign_ = 1.0;
     int species_count_ = 0;
 };
 
@@ -557,14 +665,18 @@ NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_tp_flash_nlp_contra
 ) {
     const NeutralTwoPhaseEosInitialPoint initial =
         build_neutral_two_phase_eos_initial_point(feed_amounts, temperature, target_pressure, "Neutral TP flash route");
-    return evaluate_neutral_two_phase_eos_nlp_contract(
+    NeutralTwoPhaseEosProblem problem(
         args,
         temperature,
         target_pressure,
         initial.phase_amounts,
         initial.volumes,
-        feed_amounts
+        feed_amounts,
+        {},
+        "neutral_two_phase_eos",
+        kContractPhaseDistance
     );
+    return make_nlp_contract(problem, problem.phase_count(), problem.species_count());
 }
 
 NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_lle_nlp_contract(
@@ -575,14 +687,18 @@ NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_lle_nlp_contract(
 ) {
     const NeutralTwoPhaseEosInitialPoint initial =
         build_neutral_two_phase_eos_initial_point(feed_amounts, temperature, target_pressure, "Neutral LLE route");
-    return evaluate_neutral_two_phase_eos_nlp_contract(
+    NeutralTwoPhaseEosProblem problem(
         args,
         temperature,
         target_pressure,
         initial.phase_amounts,
         initial.volumes,
-        feed_amounts
+        feed_amounts,
+        {},
+        "neutral_two_phase_eos",
+        kContractPhaseDistance
     );
+    return make_nlp_contract(problem, problem.phase_count(), problem.species_count());
 }
 
 NeutralTwoPhaseEosNlpContract evaluate_electrolyte_lle_eos_nlp_contract(
@@ -606,7 +722,8 @@ NeutralTwoPhaseEosNlpContract evaluate_electrolyte_lle_eos_nlp_contract(
         initial.volumes,
         feed_amounts,
         args.z,
-        "electrolyte_lle_eos"
+        "electrolyte_lle_eos",
+        kContractPhaseDistance
     );
     return make_nlp_contract(problem, problem.phase_count(), problem.species_count());
 }
@@ -620,7 +737,8 @@ IpoptSolveResult solve_neutral_two_phase_eos_ipopt(
     const std::vector<double>& feed_amounts,
     const IpoptSolveOptions& options,
     const std::vector<double>& charges,
-    const std::string& problem_name
+    const std::string& problem_name,
+    double minimum_phase_distance
 ) {
     NeutralTwoPhaseEosProblem problem(
         args,
@@ -630,7 +748,8 @@ IpoptSolveResult solve_neutral_two_phase_eos_ipopt(
         volumes,
         feed_amounts,
         charges,
-        problem_name
+        problem_name,
+        minimum_phase_distance
     );
     return solve_ipopt_nlp(problem, options);
 }
@@ -735,6 +854,7 @@ NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_route(
     double pressure_tolerance,
     double chemical_potential_tolerance,
     double phase_distance_tolerance,
+    double minimum_phase_distance,
     const std::vector<double>& charges,
     const std::string& problem_name,
     double charge_tolerance
@@ -765,7 +885,8 @@ NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_route(
         feed_amounts,
         options,
         charges,
-        problem_name
+        problem_name,
+        minimum_phase_distance
     );
     out.ran = solve.solver_ran;
     out.solver_accepted = solve.accepted;
@@ -831,6 +952,7 @@ NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_tp_flash_route(
         material_tolerance,
         pressure_tolerance,
         chemical_potential_tolerance,
+        phase_distance_tolerance,
         phase_distance_tolerance
     );
 }
@@ -859,6 +981,7 @@ NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_lle_route(
         material_tolerance,
         pressure_tolerance,
         chemical_potential_tolerance,
+        phase_distance_tolerance,
         phase_distance_tolerance
     );
 }
@@ -893,6 +1016,7 @@ NeutralTwoPhaseEosRouteResult solve_electrolyte_lle_eos_route(
         material_tolerance,
         pressure_tolerance,
         chemical_potential_tolerance,
+        phase_distance_tolerance,
         phase_distance_tolerance,
         args.z,
         "electrolyte_lle_eos",

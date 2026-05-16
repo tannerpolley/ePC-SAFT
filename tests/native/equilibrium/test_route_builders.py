@@ -115,6 +115,9 @@ def test_neutral_tp_flash_route_contract_builds_native_initial_point_from_feed()
     assert np.sum(phase_amounts, axis=0) == pytest.approx(feed_amounts)
     assert phase_compositions[0] != pytest.approx(phase_compositions[1])
     assert np.asarray(payload["constraints_at_initial"], dtype=float)[:2] == pytest.approx([0.0, 0.0])
+    assert payload["constraint_lower_bounds"][-1] == pytest.approx(1.0e-8)
+    assert payload["constraint_upper_bounds"][-1] > 1.0e6
+    assert payload["constraints_at_initial"][-1] >= payload["constraint_lower_bounds"][-1]
 
 
 def test_neutral_lle_route_contract_builds_native_initial_point_from_feed() -> None:
@@ -142,6 +145,9 @@ def test_neutral_lle_route_contract_builds_native_initial_point_from_feed() -> N
     assert np.sum(phase_amounts, axis=0) == pytest.approx(feed_amounts)
     assert phase_compositions[0] != pytest.approx(phase_compositions[1])
     assert np.asarray(payload["constraints_at_initial"], dtype=float)[:2] == pytest.approx([0.0, 0.0])
+    assert payload["constraint_lower_bounds"][-1] == pytest.approx(1.0e-8)
+    assert payload["constraint_upper_bounds"][-1] > 1.0e6
+    assert payload["constraints_at_initial"][-1] >= payload["constraint_lower_bounds"][-1]
 
 
 def test_electrolyte_lle_route_contract_adds_phase_charge_rows() -> None:
@@ -176,25 +182,33 @@ def test_electrolyte_lle_route_contract_adds_phase_charge_rows() -> None:
     assert payload["phase_count"] == 2
     assert payload["species_count"] == 3
     assert payload["variable_count"] == 8
-    assert payload["constraint_count"] == 7
-    assert payload["jacobian_nonzero_count"] == 56
+    assert payload["constraint_count"] == 8
+    assert payload["jacobian_nonzero_count"] == 64
     assert np.all(phase_amounts > 0.0)
     assert np.all(volumes > 0.0)
     assert np.sum(phase_amounts, axis=0) == pytest.approx(feed_amounts)
     assert phase_amounts @ charges == pytest.approx([0.0, 0.0], abs=1.0e-14)
     assert payload["constraints_at_initial"][:3] == pytest.approx([0.0, 0.0, 0.0], abs=1.0e-14)
-    assert payload["constraints_at_initial"][5:] == pytest.approx([0.0, 0.0], abs=1.0e-14)
+    assert payload["constraints_at_initial"][5:7] == pytest.approx([0.0, 0.0], abs=1.0e-14)
+    assert payload["constraint_lower_bounds"][-1] == pytest.approx(1.0e-8)
+    assert payload["constraint_upper_bounds"][-1] > 1.0e6
+    assert payload["constraints_at_initial"][-1] >= payload["constraint_lower_bounds"][-1]
     assert phase_system["constraint_names"][-2:] == ["phase_0.charge_balance", "phase_1.charge_balance"]
-    assert payload["constraints_at_initial"] == pytest.approx(
+    assert payload["constraints_at_initial"][:-1] == pytest.approx(
         phase_system["constraints"],
         rel=1.0e-12,
         abs=1.0e-8,
     )
-    assert payload["jacobian_values_at_initial"] == pytest.approx(
+    payload_jacobian = np.asarray(payload["jacobian_values_at_initial"], dtype=float).reshape(
+        payload["constraint_count"],
+        payload["variable_count"],
+    )
+    assert payload_jacobian[:-1].reshape(-1).tolist() == pytest.approx(
         phase_system["constraint_jacobian_row_major"],
         rel=1.0e-12,
         abs=1.0e-8,
     )
+    assert np.count_nonzero(np.abs(payload_jacobian[-1]) > 0.0) > 0
 
 
 def test_electrolyte_lle_route_result_uses_ipopt_adapter_gate_and_charge_rows() -> None:

@@ -797,6 +797,12 @@ Task 9 continuation note: electrolyte LLE now has a native route-result binding 
 EOS NLP. The public `electrolyte_lle` adapter validates the feed, formula basis, and optional `aq`/`org` seed, then
 dispatches to the native Ipopt route-result binding before raising the no-Ipopt build gate.
 
+Task 8/9 continuation note: neutral TP/LLE and electrolyte LLE two-phase EOS route builders now carry a deterministic
+phase-separation inequality inside the Ipopt NLP instead of leaving phase collapse as postsolve-only evidence. The row
+uses the largest deterministic initial composition split, exact analytical derivatives, and the existing single-route
+Ipopt adapter. An Ipopt-enabled electrolyte LLE proof now rejects the collapsed split through the native solver gate
+rather than returning an accepted single-phase-like postsolve.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

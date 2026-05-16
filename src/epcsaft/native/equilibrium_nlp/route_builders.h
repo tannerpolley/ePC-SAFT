@@ -132,7 +132,8 @@ IpoptSolveResult solve_neutral_two_phase_eos_ipopt(
     const std::vector<double>& feed_amounts,
     const IpoptSolveOptions& options,
     const std::vector<double>& charges = {},
-    const std::string& problem_name = "neutral_two_phase_eos"
+    const std::string& problem_name = "neutral_two_phase_eos",
+    double minimum_phase_distance = 0.0
 );
 
 NeutralTwoPhaseEosPostsolve evaluate_neutral_two_phase_eos_postsolve(
@@ -160,6 +161,7 @@ NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_route(
     double pressure_tolerance,
     double chemical_potential_tolerance,
     double phase_distance_tolerance,
+    double minimum_phase_distance = 0.0,
     const std::vector<double>& charges = {},
     const std::string& problem_name = "neutral_two_phase_eos",
     double charge_tolerance = 0.0
