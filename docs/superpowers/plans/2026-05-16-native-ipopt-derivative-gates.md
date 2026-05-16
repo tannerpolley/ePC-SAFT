@@ -793,6 +793,10 @@ Task 12 continuation note: active source, tests, and dev scripts no longer expos
 diagnostic alias. Positive derivative reporting uses `derivative_backend` plus block-specific backend fields, and the
 tracked text gate blocks the removed alias in executable surfaces.
 
+Task 9 continuation note: electrolyte LLE now has a native route-result binding for the charge-constrained two-phase
+EOS NLP. The public `electrolyte_lle` adapter validates the feed, formula basis, and optional `aq`/`org` seed, then
+dispatches to the native Ipopt route-result binding before raising the no-Ipopt build gate.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

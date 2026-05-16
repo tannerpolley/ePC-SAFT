@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import epcsaft
-from epcsaft import ePCSAFTMixture
+from epcsaft import _core, ePCSAFTMixture
 
 
 def _ascani_water_butanol_nacl_mixture(feed=None) -> ePCSAFTMixture:
@@ -34,6 +34,63 @@ def test_one_salt_electrolyte_lle_direct_feed_requires_native_ipopt_route() -> N
         )
 
     _assert_electrolyte_lle_route_pending(excinfo)
+
+
+def test_electrolyte_lle_builds_native_route_before_ipopt_gate(monkeypatch) -> None:
+    feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
+    mix = _ascani_water_butanol_nacl_mixture(feed)
+    calls: list[tuple[object, ...]] = []
+
+    def fake_route(_native, *route_args):
+        calls.append(route_args)
+        return {
+            "backend": "ipopt",
+            "compiled": False,
+            "ran": False,
+            "accepted": False,
+            "status": "requires_ipopt_build",
+            "postsolve": {"accepted": False},
+        }
+
+    monkeypatch.setattr(_core, "_native_electrolyte_lle_eos_route_result", fake_route)
+
+    with pytest.raises(epcsaft.InputError) as excinfo:
+        mix.equilibrium(
+            kind="electrolyte_lle",
+            T=298.15,
+            P=1.013e5,
+            z=feed,
+            options=epcsaft.EquilibriumOptions(
+                solver_backend="ipopt",
+                max_iterations=70,
+                tolerance=1.0e-7,
+            ),
+        )
+
+    _assert_electrolyte_lle_route_pending(excinfo)
+    assert len(calls) == 1
+    (
+        temperature,
+        target_pressure,
+        feed_amounts,
+        max_iterations,
+        tolerance,
+        material_tolerance,
+        pressure_tolerance,
+        charge_tolerance,
+        chemical_potential_tolerance,
+        phase_distance_tolerance,
+    ) = calls[0]
+    assert temperature == pytest.approx(298.15)
+    assert target_pressure == pytest.approx(1.013e5)
+    assert feed_amounts == pytest.approx(feed.tolist())
+    assert max_iterations == 70
+    assert tolerance == pytest.approx(1.0e-7)
+    assert material_tolerance == pytest.approx(1.0e-7)
+    assert pressure_tolerance == pytest.approx(1.013e-2)
+    assert charge_tolerance == pytest.approx(1.0e-8)
+    assert chemical_potential_tolerance == pytest.approx(1.0e-7)
+    assert phase_distance_tolerance > 0.0
 
 
 def test_electrolyte_lle_direct_feed_requested_ipopt_requires_native_ipopt_route() -> None:

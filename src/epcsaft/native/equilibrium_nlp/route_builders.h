@@ -130,7 +130,9 @@ IpoptSolveResult solve_neutral_two_phase_eos_ipopt(
     const std::vector<std::vector<double>>& phase_amounts,
     const std::vector<double>& volumes,
     const std::vector<double>& feed_amounts,
-    const IpoptSolveOptions& options
+    const IpoptSolveOptions& options,
+    const std::vector<double>& charges = {},
+    const std::string& problem_name = "neutral_two_phase_eos"
 );
 
 NeutralTwoPhaseEosPostsolve evaluate_neutral_two_phase_eos_postsolve(
@@ -157,7 +159,10 @@ NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_route(
     double material_tolerance,
     double pressure_tolerance,
     double chemical_potential_tolerance,
-    double phase_distance_tolerance
+    double phase_distance_tolerance,
+    const std::vector<double>& charges = {},
+    const std::string& problem_name = "neutral_two_phase_eos",
+    double charge_tolerance = 0.0
 );
 
 NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_tp_flash_route(
@@ -180,6 +185,19 @@ NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_lle_route(
     const IpoptSolveOptions& options,
     double material_tolerance,
     double pressure_tolerance,
+    double chemical_potential_tolerance,
+    double phase_distance_tolerance
+);
+
+NeutralTwoPhaseEosRouteResult solve_electrolyte_lle_eos_route(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<double>& feed_amounts,
+    const IpoptSolveOptions& options,
+    double material_tolerance,
+    double pressure_tolerance,
+    double charge_tolerance,
     double chemical_potential_tolerance,
     double phase_distance_tolerance
 );

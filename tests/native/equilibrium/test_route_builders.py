@@ -197,6 +197,51 @@ def test_electrolyte_lle_route_contract_adds_phase_charge_rows() -> None:
     )
 
 
+def test_electrolyte_lle_route_result_uses_ipopt_adapter_gate_and_charge_rows() -> None:
+    mix = _ionic_mixture()
+    payload = _core._native_electrolyte_lle_eos_route_result(
+        mix._native,
+        298.15,
+        1.013e5,
+        [0.9998, 1.0e-4, 1.0e-4],
+        30,
+        1.0e-8,
+        1.0e-7,
+        1.0e-5,
+        1.0e-8,
+        1.0e-7,
+        1.0e-4,
+    )
+
+    assert payload["backend"] == "ipopt"
+    assert payload["problem_name"] == "electrolyte_lle_eos"
+    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["exact_gradient_required"] is True
+    assert payload["exact_jacobian_required"] is True
+    if not payload["compiled"]:
+        assert payload["ran"] is False
+        assert payload["solver_accepted"] is False
+        assert payload["accepted"] is False
+        assert payload["status"] == "requires_ipopt_build"
+        assert payload["phase_amounts"] == []
+        assert payload["phase_volumes"] == []
+        assert payload["postsolve"]["accepted"] is False
+        return
+
+    assert payload["ran"] is True
+    if not payload["solver_accepted"]:
+        assert payload["accepted"] is False
+        assert payload["status"] == "solver_rejected"
+        return
+
+    assert np.asarray(payload["variables"], dtype=float).shape == (8,)
+    assert np.asarray(payload["constraints"], dtype=float).shape == (7,)
+    assert np.asarray(payload["phase_amounts"], dtype=float).shape == (2, 3)
+    assert np.asarray(payload["phase_volumes"], dtype=float).shape == (2,)
+    assert payload["postsolve"]["derivative_backend"] == "analytic_cppad"
+    assert payload["postsolve"]["charge_balance_norm"] <= 1.0e-8 or payload["status"] == "postsolve_rejected"
+
+
 @pytest.mark.parametrize(
     ("binding_name", "problem_name"),
     [

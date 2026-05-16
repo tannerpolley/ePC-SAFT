@@ -971,6 +971,7 @@ def _accepted_native_neutral_two_phase_result(
     route_label: str,
     problem_kind: str,
     phase_labels: tuple[str, str],
+    route_family: str = "neutral",
 ) -> EquilibriumResult:
     from . import _core
 
@@ -980,7 +981,7 @@ def _accepted_native_neutral_two_phase_result(
         diagnostics = dict(postsolve) if isinstance(postsolve, Mapping) else {}
         diagnostics["route_status"] = route.get("status", "rejected")
         diagnostics["solver_status"] = route.get("solver_status", "not_started")
-        raise SolutionError(f"Native neutral {route_label} route was rejected.", diagnostics)
+        raise SolutionError(f"Native {route_family} {route_label} route was rejected.", diagnostics)
 
     result_payload = _core._native_neutral_two_phase_eos_result(
         mixture._native,
@@ -1558,7 +1559,35 @@ def electrolyte_lle_flash_native(
     basis_payload = _electrolyte_formula_basis(mixture, feed, feed_diagnostics)
     if initial_phases is not None:
         _electrolyte_initial_phase_seed(mixture, feed, basis_payload, initial_phases, opts)
-    _raise_native_ipopt_lle_required(
-        "electrolyte_lle",
-        previous_route="Ceres residual electrolyte LLE route",
+    from . import _core
+
+    route_tolerances = _neutral_two_phase_eos_tolerances(P, opts)
+    material_tolerance, pressure_tolerance, chemical_potential_tolerance, phase_distance_tolerance = route_tolerances
+    charge_tolerance = min(opts.tolerance, 1.0e-8)
+    route = _core._native_electrolyte_lle_eos_route_result(
+        mixture._native,
+        T,
+        P,
+        feed.tolist(),
+        opts.max_iterations,
+        opts.tolerance,
+        material_tolerance,
+        pressure_tolerance,
+        charge_tolerance,
+        chemical_potential_tolerance,
+        phase_distance_tolerance,
+    )
+    if str(route.get("status", "")) == "requires_ipopt_build":
+        _raise_native_ipopt_lle_required("electrolyte_lle")
+    return _accepted_native_neutral_two_phase_result(
+        mixture,
+        T=T,
+        P=P,
+        feed=feed,
+        route=route,
+        tolerances=route_tolerances,
+        route_label="LLE",
+        problem_kind="electrolyte_lle",
+        phase_labels=("aq", "org"),
+        route_family="electrolyte",
     )

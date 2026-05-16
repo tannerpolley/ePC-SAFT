@@ -1740,6 +1740,41 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    m.def("_native_electrolyte_lle_eos_route_result", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        double target_pressure,
+        const std::vector<double>& feed_amounts,
+        int max_iterations,
+        double tolerance,
+        double material_tolerance,
+        double pressure_tolerance,
+        double charge_tolerance,
+        double chemical_potential_tolerance,
+        double phase_distance_tolerance
+    ) {
+        if (!mixture) {
+            throw ValueError("Electrolyte LLE EOS route result requires a native mixture.");
+        }
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options;
+        options.max_iterations = max_iterations;
+        options.tolerance = tolerance;
+        options.acceptable_tolerance = std::max(tolerance * 100.0, 1.0e-10);
+        return neutral_two_phase_eos_route_result_to_dict(
+            epcsaft::native::equilibrium_nlp::solve_electrolyte_lle_eos_route(
+                mixture->args(),
+                temperature,
+                target_pressure,
+                feed_amounts,
+                options,
+                material_tolerance,
+                pressure_tolerance,
+                charge_tolerance,
+                chemical_potential_tolerance,
+                phase_distance_tolerance
+            )
+        );
+    });
     m.def("_native_neutral_bubble_p_eos_route_result", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
