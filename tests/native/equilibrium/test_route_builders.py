@@ -5,6 +5,7 @@ import pytest
 
 import epcsaft
 from epcsaft import _core
+from tests.helpers.runtime_cases import _ionic_params
 
 
 def _neutral_binary_mixture() -> epcsaft.ePCSAFTMixture:
@@ -15,6 +16,14 @@ def _neutral_binary_mixture() -> epcsaft.ePCSAFTMixture:
         "k_ij": np.asarray([[0.0, 3.0e-4], [3.0e-4, 0.0]]),
     }
     return epcsaft.ePCSAFTMixture.from_params(params, species=["Methane", "Ethane"])
+
+
+def _ionic_mixture() -> epcsaft.ePCSAFTMixture:
+    params = _ionic_params()
+    params["assoc_scheme"] = [None, None, None]
+    params["e_assoc"] = np.zeros(3)
+    params["vol_a"] = np.zeros(3)
+    return epcsaft.ePCSAFTMixture.from_params(params, species=["water", "Na+", "Cl-"])
 
 
 def test_neutral_two_phase_eos_nlp_contract_uses_phase_system_blocks() -> None:
@@ -133,6 +142,59 @@ def test_neutral_lle_route_contract_builds_native_initial_point_from_feed() -> N
     assert np.sum(phase_amounts, axis=0) == pytest.approx(feed_amounts)
     assert phase_compositions[0] != pytest.approx(phase_compositions[1])
     assert np.asarray(payload["constraints_at_initial"], dtype=float)[:2] == pytest.approx([0.0, 0.0])
+
+
+def test_electrolyte_lle_route_contract_adds_phase_charge_rows() -> None:
+    mix = _ionic_mixture()
+    temperature = 298.15
+    target_pressure = 1.013e5
+    feed_amounts = np.asarray([0.9998, 1.0e-4, 1.0e-4], dtype=float)
+    charges = np.asarray([0.0, 1.0, -1.0], dtype=float)
+
+    payload = _core._native_electrolyte_lle_eos_nlp_contract(
+        mix._native,
+        temperature,
+        target_pressure,
+        feed_amounts.tolist(),
+    )
+
+    initial = np.asarray(payload["initial_point"], dtype=float).reshape(2, 4)
+    phase_amounts = initial[:, :3]
+    volumes = initial[:, 3]
+    phase_system = _core._native_eos_phase_system(
+        mix._native,
+        temperature,
+        target_pressure,
+        phase_amounts.tolist(),
+        volumes.tolist(),
+        feed_amounts.tolist(),
+        charges.tolist(),
+    )
+
+    assert payload["problem_name"] == "electrolyte_lle_eos"
+    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["phase_count"] == 2
+    assert payload["species_count"] == 3
+    assert payload["variable_count"] == 8
+    assert payload["constraint_count"] == 7
+    assert payload["jacobian_nonzero_count"] == 56
+    assert np.all(phase_amounts > 0.0)
+    assert np.all(volumes > 0.0)
+    assert np.sum(phase_amounts, axis=0) == pytest.approx(feed_amounts)
+    assert phase_amounts @ charges == pytest.approx([0.0, 0.0], abs=1.0e-14)
+    assert payload["constraints_at_initial"][:3] == pytest.approx([0.0, 0.0, 0.0], abs=1.0e-14)
+    assert payload["constraints_at_initial"][5:] == pytest.approx([0.0, 0.0], abs=1.0e-14)
+    assert phase_system["constraint_names"][-2:] == ["phase_0.charge_balance", "phase_1.charge_balance"]
+    assert payload["constraints_at_initial"] == pytest.approx(
+        phase_system["constraints"],
+        rel=1.0e-12,
+        abs=1.0e-8,
+    )
+    assert payload["jacobian_values_at_initial"] == pytest.approx(
+        phase_system["constraint_jacobian_row_major"],
+        rel=1.0e-12,
+        abs=1.0e-8,
+    )
 
 
 @pytest.mark.parametrize(

@@ -602,6 +602,12 @@ phase: ionic residual Helmholtz, Born residual Helmholtz, their electrolyte tota
 vector, and phase charge residual. The EOS phase block embeds this contribution payload for diagnostics and route-builder
 assembly. This is still block-level wiring; electrolyte LLE/VLE/bubble route builders remain open.
 
+Task 9 continuation note: a private electrolyte LLE EOS NLP contract now reuses the two-phase EOS phase-system assembly
+with analytical phase charge-balance rows. Its canonical initial point preserves material balance and per-phase charge
+neutrality for charge-neutral feeds, and focused coverage checks the dense exact Jacobian against the reusable
+`eos_phase_system` block. This is route-builder contract plumbing only; no public electrolyte LLE solve or alternate
+solve path has been added.
+
 ### Task 10: Make Regression Ceres-Only
 
 **Files:**

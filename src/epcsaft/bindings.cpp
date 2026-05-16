@@ -1570,6 +1570,24 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    m.def("_native_electrolyte_lle_eos_nlp_contract", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        double target_pressure,
+        const std::vector<double>& feed_amounts
+    ) {
+        if (!mixture) {
+            throw ValueError("Electrolyte LLE EOS NLP contract requires a native mixture.");
+        }
+        return neutral_two_phase_eos_nlp_contract_to_dict(
+            epcsaft::native::equilibrium_nlp::evaluate_electrolyte_lle_eos_nlp_contract(
+                mixture->args(),
+                temperature,
+                target_pressure,
+                feed_amounts
+            )
+        );
+    });
     m.def("_native_neutral_bubble_p_eos_nlp_contract", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,

@@ -97,6 +97,13 @@ NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_lle_nlp_contract(
     const std::vector<double>& feed_amounts
 );
 
+NeutralTwoPhaseEosNlpContract evaluate_electrolyte_lle_eos_nlp_contract(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<double>& feed_amounts
+);
+
 NeutralTwoPhaseEosNlpContract evaluate_neutral_bubble_p_eos_nlp_contract(
     const add_args& args,
     double temperature,

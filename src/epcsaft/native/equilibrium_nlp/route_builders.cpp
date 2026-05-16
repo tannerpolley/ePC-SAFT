@@ -58,9 +58,19 @@ std::vector<double> normalized_positive_values(const std::vector<double>& values
     return normalized;
 }
 
-std::vector<double> deterministic_composition_shift(const std::vector<double>& composition) {
+std::vector<double> deterministic_composition_shift(
+    const std::vector<double>& composition,
+    const std::vector<double>& charges,
+    const std::string& route_label
+) {
     std::vector<double> shifted = composition;
+    if (!charges.empty()) {
+        require_size(charges, composition.size(), route_label + " charge");
+    }
     if (composition.size() <= 1) {
+        if (!charges.empty()) {
+            throw ValueError(route_label + " requires at least two species.");
+        }
         return shifted;
     }
 
@@ -82,6 +92,33 @@ std::vector<double> deterministic_composition_shift(const std::vector<double>& c
         direction.push_back(value);
         max_abs_direction = std::max(max_abs_direction, std::abs(value));
     }
+
+    if (!charges.empty()) {
+        double composition_charge = 0.0;
+        double charge_square_weight = 0.0;
+        double charge_direction = 0.0;
+        for (std::size_t index = 0; index < composition.size(); ++index) {
+            composition_charge += composition[index] * charges[index];
+            charge_square_weight += composition[index] * charges[index] * charges[index];
+            charge_direction += composition[index] * charges[index] * direction[index];
+        }
+        if (charge_square_weight <= 0.0) {
+            throw ValueError(route_label + " requires at least one charged species.");
+        }
+        if (std::abs(composition_charge) > 1.0e-10) {
+            throw ValueError(route_label + " feed must be charge neutral.");
+        }
+        const double charge_projection = charge_direction / charge_square_weight;
+        max_abs_direction = 0.0;
+        for (std::size_t index = 0; index < direction.size(); ++index) {
+            direction[index] -= charge_projection * charges[index];
+            max_abs_direction = std::max(max_abs_direction, std::abs(direction[index]));
+        }
+        if (max_abs_direction <= 0.0) {
+            throw ValueError(route_label + " could not construct a charge-neutral initial direction.");
+        }
+    }
+
     double shifted_sum = 0.0;
     for (std::size_t index = 0; index < composition.size(); ++index) {
         const double scaled_direction = max_abs_direction > 0.0 ? direction[index] / max_abs_direction : 0.0;
@@ -95,8 +132,9 @@ std::vector<double> deterministic_composition_shift(const std::vector<double>& c
     return shifted;
 }
 
-NeutralTwoPhaseEosInitialPoint build_neutral_two_phase_eos_initial_point(
+NeutralTwoPhaseEosInitialPoint build_two_phase_eos_initial_point(
     const std::vector<double>& feed_amounts,
+    const std::vector<double>& first_composition,
     double temperature,
     double target_pressure,
     const std::string& route_label
@@ -104,8 +142,7 @@ NeutralTwoPhaseEosInitialPoint build_neutral_two_phase_eos_initial_point(
     require_positive_finite(temperature, route_label + " temperature");
     require_positive_finite(target_pressure, route_label + " pressure");
     const double total_feed = positive_sum(feed_amounts, route_label + " feed amount");
-    const std::vector<double> composition = normalized_positive_values(feed_amounts, route_label + " feed amount");
-    const std::vector<double> first_composition = deterministic_composition_shift(composition);
+    require_size(first_composition, feed_amounts.size(), route_label + " first phase composition");
 
     NeutralTwoPhaseEosInitialPoint out;
     out.phase_amounts.assign(2, std::vector<double>(feed_amounts.size(), 0.0));
@@ -124,6 +161,31 @@ NeutralTwoPhaseEosInitialPoint build_neutral_two_phase_eos_initial_point(
         out.volumes.push_back(phase_total / density);
     }
     return out;
+}
+
+NeutralTwoPhaseEosInitialPoint build_neutral_two_phase_eos_initial_point(
+    const std::vector<double>& feed_amounts,
+    double temperature,
+    double target_pressure,
+    const std::string& route_label
+) {
+    const std::vector<double> composition = normalized_positive_values(feed_amounts, route_label + " feed amount");
+    const std::vector<double> first_composition =
+        deterministic_composition_shift(composition, {}, route_label + " composition");
+    return build_two_phase_eos_initial_point(feed_amounts, first_composition, temperature, target_pressure, route_label);
+}
+
+NeutralTwoPhaseEosInitialPoint build_charge_neutral_two_phase_eos_initial_point(
+    const std::vector<double>& feed_amounts,
+    const std::vector<double>& charges,
+    double temperature,
+    double target_pressure,
+    const std::string& route_label
+) {
+    const std::vector<double> composition = normalized_positive_values(feed_amounts, route_label + " feed amount");
+    const std::vector<double> first_composition =
+        deterministic_composition_shift(composition, charges, route_label + " composition");
+    return build_two_phase_eos_initial_point(feed_amounts, first_composition, temperature, target_pressure, route_label);
 }
 
 double vector_infinity_norm(const std::vector<double>& values, std::size_t begin, std::size_t end) {
@@ -232,14 +294,18 @@ public:
         double target_pressure,
         std::vector<std::vector<double>> phase_amounts,
         std::vector<double> volumes,
-        std::vector<double> feed_amounts
+        std::vector<double> feed_amounts,
+        std::vector<double> charges = {},
+        std::string problem_name = "neutral_two_phase_eos"
     )
         : args_(std::move(args)),
           temperature_(temperature),
           target_pressure_(target_pressure),
           initial_phase_amounts_(std::move(phase_amounts)),
           initial_volumes_(std::move(volumes)),
-          feed_amounts_(std::move(feed_amounts)) {
+          feed_amounts_(std::move(feed_amounts)),
+          charges_(std::move(charges)),
+          problem_name_(std::move(problem_name)) {
         if (initial_phase_amounts_.size() != 2) {
             throw ValueError("Neutral EOS route builder currently requires exactly two phases.");
         }
@@ -249,6 +315,9 @@ public:
         species_count_ = static_cast<int>(feed_amounts_.size());
         if (species_count_ <= 0) {
             throw ValueError("Neutral EOS route builder requires at least one feed species.");
+        }
+        if (!charges_.empty()) {
+            require_size(charges_, static_cast<std::size_t>(species_count_), "Two-phase EOS route charge");
         }
         require_size(initial_volumes_, initial_phase_amounts_.size(), "Neutral EOS route volume");
         for (const auto& amounts : initial_phase_amounts_) {
@@ -268,7 +337,7 @@ public:
     }
 
     std::string name() const override {
-        return "neutral_two_phase_eos";
+        return problem_name_;
     }
 
     int variable_count() const override {
@@ -276,7 +345,7 @@ public:
     }
 
     int constraint_count() const override {
-        return species_count_ + phase_count();
+        return species_count_ + phase_count() + (charges_.empty() ? 0 : phase_count());
     }
 
     int jacobian_nonzero_count() const override {
@@ -399,7 +468,7 @@ private:
             phase_amounts_from_variables(variables),
             volumes_from_variables(variables),
             feed_amounts_,
-            {}
+            charges_
         );
     }
 
@@ -409,6 +478,8 @@ private:
     std::vector<std::vector<double>> initial_phase_amounts_;
     std::vector<double> initial_volumes_;
     std::vector<double> feed_amounts_;
+    std::vector<double> charges_;
+    std::string problem_name_;
     int species_count_ = 0;
 };
 
@@ -493,6 +564,32 @@ NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_lle_nlp_contract(
         initial.volumes,
         feed_amounts
     );
+}
+
+NeutralTwoPhaseEosNlpContract evaluate_electrolyte_lle_eos_nlp_contract(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<double>& feed_amounts
+) {
+    const NeutralTwoPhaseEosInitialPoint initial = build_charge_neutral_two_phase_eos_initial_point(
+        feed_amounts,
+        args.z,
+        temperature,
+        target_pressure,
+        "Electrolyte LLE route"
+    );
+    NeutralTwoPhaseEosProblem problem(
+        args,
+        temperature,
+        target_pressure,
+        initial.phase_amounts,
+        initial.volumes,
+        feed_amounts,
+        args.z,
+        "electrolyte_lle_eos"
+    );
+    return make_nlp_contract(problem, problem.phase_count(), problem.species_count());
 }
 
 IpoptSolveResult solve_neutral_two_phase_eos_ipopt(
