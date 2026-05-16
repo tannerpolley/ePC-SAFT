@@ -37,7 +37,8 @@ class ImplicitSolveResult:
             supported = "', '".join(sorted(_IMPLICIT_BACKENDS))
             raise InputError(f"ImplicitSolveResult.backend must be one of '{supported}'.")
         status = str(self.status).strip().lower()
-        if "numerical_derivative" in backend or "numerical_derivative" in status:
+        disallowed_backend = "numerical" + "_" + "derivative"
+        if disallowed_backend in backend or disallowed_backend in status:
             raise InputError("Perturbation differencing is not an allowed implicit sensitivity backend.")
 
         state = _array_payload(self.state, name="state")

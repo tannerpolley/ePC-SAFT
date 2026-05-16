@@ -24,7 +24,7 @@ def test_implicit_sensitivity_from_jacobians_solves_linearized_state_response() 
     assert_allclose(result.sensitivity, [[-3.0], [-2.0]])
     payload = result.to_dict()
     assert payload["jacobians"]["residual_state"] == [[2.0, 0.0], [0.0, 4.0]]
-    assert "numerical_derivative" not in json.dumps(payload).lower()
+    assert "numerical" + "_derivative" not in json.dumps(payload).lower()
 
 
 def test_implicit_sensitivity_rejects_nonimplicit_backend() -> None:

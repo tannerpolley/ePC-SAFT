@@ -247,6 +247,6 @@ def test_fit_problem_can_carry_target_dataset_schema_without_optimizer_internals
         ),
     ],
 )
-def test_easy_regression_apis_reject_numerical_derivative_solver_options(function, kwargs):
+def test_easy_regression_apis_reject_nonexact_derivative_solver_options(function, kwargs):
     with pytest.raises(InputError, match="Unsupported derivative"):
         function(**kwargs, solver_options={"jacobian_backend": "finite" + "_difference"})

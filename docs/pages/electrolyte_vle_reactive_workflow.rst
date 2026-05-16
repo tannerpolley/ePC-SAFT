@@ -18,8 +18,8 @@ phase-equilibrium calls, structured results, and diagnostics only after those
 native route builders exist.
 
 ``ReactiveSpeciationOptions`` accepts ``solver_backend="auto" | "ipopt"``.
-``auto`` keeps the current native chemical-equilibrium solve while the full
-migration is underway. Explicit ``ipopt`` routes homogeneous
+``auto`` validates the request and raises until production route selection is
+explicitly native Ipopt. Explicit ``ipopt`` routes homogeneous
 ``ideal_mole_fraction`` speciation through the native Ipopt constrained-NLP
 adapter when the extension is built with Ipopt; activity and concentration
 standard states still require the EOS derivative NLP blocks.
@@ -30,9 +30,8 @@ analytic or CppAD-backed callbacks. Limited-memory Hessian handling is allowed
 only as Ipopt solver-internal behavior and is not reported as a package
 derivative backend.
 
-Solver-selection policy is intentionally conservative. ``auto`` keeps the native
-chemical-equilibrium solver until the corresponding native Ipopt route is
-implemented and validated.
+Solver-selection policy is intentionally conservative. ``auto`` does not run a
+package-owned reactive solve loop while native Ipopt route builders are pending.
 
 Homogeneous reactive speciation
 -------------------------------
@@ -47,7 +46,8 @@ The near-term reactive workflow is sequential and fixed-constant first:
 1. pass fixed or literature reaction constants through
    ``ReactionDefinition.log_equilibrium_constant`` or
    ``ReactionDefinition.from_literature_constant(...)``;
-2. evaluate activity-coupled reactive speciation with ePC-SAFT states;
+2. evaluate explicit native-Ipopt ideal reactive speciation where that route
+   applies, or hold activity-coupled speciation as route-pending;
 3. hand the equilibrated composition to phase or electrolyte-equilibrium
    routes; and
 4. regress ePC-SAFT pure, binary, or electrolyte parameters against that fixed
@@ -57,17 +57,11 @@ Reaction-constant fitting is therefore an optional later refinement, not the
 default workflow and not a blocking dependency for pure, binary, or electrolyte
 parameter regression.
 
-The native backend solves material balances, charge balance, and reaction
-residuals in log mole amounts. Activity coefficients are evaluated only when
-the selected reaction standard state needs them or when
-``ReactiveSpeciationOptions.activity_output="always"`` is requested. This keeps
-``standard_state="concentration"`` and ``"ideal_mole_fraction"`` workflows from
-paying for unused activity calls under the default ``activity_output="auto"``.
-The derivative default is native-owned and diagnostic-friendly:
-``jacobian_backend="auto"`` uses the analytic log-amount Jacobian for
-``standard_state="ideal_mole_fraction"``. Activity- or concentration-coupled
-standard states raise until analytic, CppAD, or implicit residual derivatives
-are implemented. Diagnostics report
+The native Ipopt ideal route solves material balances, charge balance, and
+reaction constraints in amount variables with exact analytic derivatives.
+``jacobian_backend="auto"`` is accepted for this ideal route and reports the
+analytic derivative backend. Activity- or concentration-coupled standard states
+raise until their EOS derivative NLP blocks are implemented. Diagnostics report
 ``requested_jacobian_backend``, ``derivative_backend``, and ``derivative_status``
 for strict route-boundary failures. Approximate Jacobian substitutes are not
 supported.

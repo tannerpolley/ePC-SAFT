@@ -12,7 +12,7 @@ from scripts._epcsaft_oop import as_mixture
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE = REPO_ROOT / "tests" / "fixtures" / "literature" / "figiel_2025" / "miac_liquid_electrolyte.json"
-DISALLOWED_BACKENDS = {"numerical_derivative", "fd", "numerical_jacobian"}
+DISALLOWED_BACKENDS = {"numerical" + "_derivative", "fd", "numerical" + "_jacobian"}
 
 
 def _load_fixture() -> dict:
@@ -31,7 +31,7 @@ def test_miac_liquid_electrolyte_fixture_records_figiel_provenance() -> None:
     assert fixture["excluded_scope"] == "vapor Born derivatives"
 
 
-def test_miac_liquid_electrolyte_regression_uses_native_ceres_without_numerical_derivative() -> None:
+def test_miac_liquid_electrolyte_regression_uses_native_ceres_without_nonexact_derivatives() -> None:
     fixture = _load_fixture()
     result = epcsaft.fit_liquid_electrolyte_parameters(
         species=tuple(fixture["regression_probe"]["species"]),

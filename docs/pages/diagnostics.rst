@@ -26,19 +26,18 @@ while row batching and diagnostic formatting stay outside the optimizer path.
 Reactive Speciation And Bubble Diagnostics
 ------------------------------------------
 
-Native reactive speciation returns enough diagnostics to prove that the
-activity-coupled residual and solved composition sensitivity were actually used.
-For activity- or concentration-coupled reaction constants, check:
+Native reactive speciation returns enough diagnostics to prove that the explicit
+Ipopt ideal route and exact derivative path were actually used. Activity- and
+concentration-coupled reaction constants remain route-gated until their EOS NLP
+blocks exist. For accepted ideal routes, check:
 
 * ``solver_language`` is ``c++``.
 * ``native_entrypoint`` is ``_solve_chemical_equilibrium_native``.
-* ``activity_or_fugacity_terms_in_residual`` is true.
+* ``selected_solver_backend`` is ``native_ipopt``.
+* ``problem_class`` is ``homogeneous_ideal_gibbs_speciation``.
 * ``reaction_standard_states`` records the public reaction-constant convention.
-* ``derivative_backend_by_block["reactive_speciation_variables"]`` reports an
-  implicit solved-state backend.
-* ``implicit_solve_results["reactive_speciation_variables"]`` includes the
-  state, residual, residual-state Jacobian, residual-parameter Jacobian, and
-  sensitivity payload.
+* ``derivative_backend`` and ``derivative_status`` report ``analytic``.
+* ``ipopt_solver_ran`` and ``ipopt_accepted`` describe the native NLP solve.
 
 Reactive electrolyte bubble result fields are retained as the target structured
 diagnostics shape, but the public route currently raises ``InputError`` until

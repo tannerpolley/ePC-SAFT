@@ -3,18 +3,17 @@ from __future__ import annotations
 import csv
 import importlib.util
 import math
-from pathlib import Path
 import sys
-
-
+from pathlib import Path
 
 import matplotlib
 import numpy as np
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import sys as _bootstrap_sys
 from pathlib import Path as _BootstrapPath
+
+import matplotlib.pyplot as plt
 
 for _candidate in _BootstrapPath(__file__).resolve().parents:
     if (_candidate / "scripts" / "plot_outputs.py").is_file():
@@ -242,7 +241,7 @@ def main() -> None:
         "- The original Figure 2 replication bug was that it zeroed all $k_{ij}$ values, but the 2019 paper uses the Table 6 water-IL unlike parameters.",
         "- For panel 2a, the raw API cation derivative is not the closest salt-basis match. The strongest current candidate is the mean-ionic salt-basis quantity $0.25\\,(d a^{ion}/d x_{cat} + d a^{ion}/d x_{anion})$.",
         "- For panel 2b, the paper scale around $14$ at low $x_{IL}$ is incompatible with the raw API $\\ln\\varphi_{cat}$. The closest current candidate is the concentration-referenced ionic quantity $\\ln\\varphi^{ion}_{cat} - \\ln x_{IL} + \\ln(\\rho RT/P)$.",
-        "- Numerical vs analytical DH derivatives are essentially identical for these curves; the main mismatch is the plotted quantity definition, not numerical derivative error.",
+        "- The auxiliary DH derivative checks agree for these curves; the main mismatch is the plotted quantity definition, not derivative-evaluation error.",
         "",
         "## Best Current Matches",
         "",

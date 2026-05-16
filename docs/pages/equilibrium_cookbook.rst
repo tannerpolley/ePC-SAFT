@@ -32,15 +32,15 @@ these fields as routing hints, not as proof that a physical case is valid.
      - Status
      - Use
    * - Neutral TP flash, LLE, stability
-     - Production native
-     - Default phase-equilibrium workflows for neutral systems.
+     - Route pending
+     - Requires native Ipopt constrained-NLP route builders.
    * - Electrolyte LLE
-     - Production native
-     - Fixed-species charge-neutral LLE, preferably after stability checks.
+     - Route pending
+     - Requires the native Ipopt electrolyte LLE route builder.
    * - Reactive speciation
-     - Production native
-     - Homogeneous chemical equilibrium for a single phase, including activity-
-       and concentration-coupled standard states.
+     - Explicit Ipopt ideal route
+     - Homogeneous ``ideal_mole_fraction`` chemical equilibrium when Ipopt is
+       compiled; activity and concentration standard states are route-gated.
    * - Electrolyte bubble pressure
      - Route pending
      - Requires the native Ipopt electrolyte bubble route builder.
@@ -271,23 +271,22 @@ initial composition. Use ``error_mode="result"`` only for diagnostic sweeps.
    print(result.diagnostics["jacobian_backend"])
 
 With ``jacobian_backend="auto"``, the native chemical-equilibrium residual uses
-the analytic log-amount Jacobian for ideal, activity-coupled, and
-concentration-coupled standard states. Activity and fugacity terms are
-evaluated inside the native residual, not from a cached external activity
-vector. Check these fields before treating a result as a production
-activity-coupled solve:
+the analytic derivative path for the explicit native-Ipopt
+``ideal_mole_fraction`` route. Activity- and concentration-coupled routes raise
+until their EOS derivative NLP blocks exist. Check these fields before treating
+a result as a production reactive-speciation solve:
 
 - ``diagnostics["solver_language"] == "c++"``
 - ``diagnostics["activity_model"]``
 - ``diagnostics["reaction_standard_states"]``
-- ``diagnostics["activity_or_fugacity_terms_in_residual"]``
-- ``diagnostics["derivative_backend_by_block"]["reactive_speciation_variables"]``
-- ``diagnostics["implicit_sensitivity_blocks"]``
-- ``diagnostics["implicit_solve_results"]["reactive_speciation_variables"]``
+- ``diagnostics["derivative_backend"]``
+- ``diagnostics["derivative_status"]``
+- ``diagnostics["ipopt_solver_ran"]``
+- ``diagnostics["ipopt_accepted"]``
 
 Request a specific derivative backend only when unsupported routes should fail
-loudly. The required solved composition sensitivity is reported as an implicit
-solved-state block rather than by differentiating through solver iterations.
+loudly. Ipopt limited-memory Hessian behavior is solver-internal and is not a
+package derivative backend.
 
 Electrolyte bubble and reactive bubble
 --------------------------------------

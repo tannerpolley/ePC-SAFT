@@ -338,7 +338,7 @@ def solve_reactive_speciation(
     options: ReactiveSpeciationOptions | None = None,
     warm_start: Any = None,
 ) -> ReactiveSpeciationResult:
-    """Solve homogeneous activity-coupled reactive speciation."""
+    """Solve homogeneous reactive speciation through the accepted native route."""
     opts = _normalize_options(options)
     labels = [str(label) for label in species]
     if not labels:

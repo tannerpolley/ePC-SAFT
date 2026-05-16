@@ -69,10 +69,10 @@ Native IPOPT plan
 -----------------
 
 ``EquilibriumOptions`` accepts ``solver_backend="auto" | "ipopt"``. The
-default ``auto`` keeps the current native route. ``solver_backend="ipopt"`` is
-reserved for the native Ipopt constrained-NLP adapter. Until that adapter is
-wired to public electrolyte equilibrium routes, an explicit IPOPT request raises
-``InputError``.
+default ``auto`` validates the public request shape and then raises while the
+native Ipopt electrolyte LLE route builder is pending. ``solver_backend="ipopt"``
+is reserved for that native constrained-NLP adapter and also raises until the
+route is implemented.
 
 The planned native adapter will expose material balance, charge balance, phase
 amounts, thermodynamic objective terms, and derivative callbacks as formal NLP
@@ -81,9 +81,9 @@ blocks. The old Python IPOPT bridge has been removed.
 Solver-selection policy
 -----------------------
 
-``solver_backend="auto"`` remains conservative and does not switch to IPOPT
-until the native adapter is implemented and validated. Prefer the current native
-route for ordinary fixed-species electrolyte LLE solves and continuation.
+``solver_backend="auto"`` remains conservative and does not switch to any
+package-owned solve loop while the native adapter is pending. Treat electrolyte
+LLE calls as route-gated until the native Ipopt implementation lands.
 
 Hubach-style example
 --------------------

@@ -8,7 +8,7 @@ def test_equilibrium_capabilities_expose_derivative_policy() -> None:
 
     assert policy["unsupported_derivative_behavior"] == "raise"
     assert policy["auto_policy"] == "analytic_or_cppad_or_implicit_else_raise"
-    assert "numerical_derivative" not in {str(item).lower() for item in policy["accepted_derivative_backends"]}
+    assert "numerical" + "_derivative" not in {str(item).lower() for item in policy["accepted_derivative_backends"]}
     assert {
         "analytic",
         "cppad",
@@ -28,7 +28,7 @@ def test_equilibrium_capabilities_expose_derivative_policy() -> None:
     }.issubset(set(policy["diagnostic_fields"]))
 
 
-def test_reactive_speciation_capabilities_include_activity_standard_states() -> None:
+def test_reactive_speciation_capabilities_gate_nonideal_standard_states() -> None:
     capabilities = epcsaft.capabilities()
     reactive = capabilities["equilibrium"]["reactive_speciation"]
     ipopt = capabilities["optimizers"]["ipopt"]
@@ -38,14 +38,14 @@ def test_reactive_speciation_capabilities_include_activity_standard_states() -> 
     assert reactive["status"] == ("available" if ipopt["available"] else "route_pending")
     assert reactive["sweep_available"] is ipopt["available"]
     assert reactive["continuation_state_available"] is ipopt["available"]
-    assert {
-        "ideal_mole_fraction",
+    assert reactive["jacobian_auto_supported_standard_states"] == ["ideal_mole_fraction"]
+    assert set(reactive["route_gated_standard_states"]) == {
         "mole_fraction_activity",
         "thermodynamic_activity",
         "concentration",
         "apparent",
-    }.issubset(set(reactive["jacobian_auto_supported_standard_states"]))
-    assert reactive["derivative_gap_status"] == "implicit_sensitivity_available_for_reaction_constant_response"
+    }
+    assert reactive["derivative_gap_status"] == "activity_and_concentration_routes_pending_eos_derivative_nlp_blocks"
 
 
 def test_reactive_phase_equilibrium_capabilities_state_reaction_scope() -> None:

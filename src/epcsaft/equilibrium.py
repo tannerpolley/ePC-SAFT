@@ -231,7 +231,7 @@ class ElectrolyteBubblePoint(EquilibriumProblem):
 
 @dataclass(frozen=True, slots=True)
 class ReactiveSpeciationProblem(EquilibriumProblem):
-    """Homogeneous activity-coupled reactive speciation problem."""
+    """Homogeneous reactive speciation problem."""
 
     T: float
     P: float

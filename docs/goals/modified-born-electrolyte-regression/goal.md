@@ -21,7 +21,7 @@ This board setup does not complete issue #118. It creates the execution board so
 - Keep `epcsaft` a general-purpose package. Do not add public APIs named after downstream applications or downstream metrics.
 - Do not edit phase-equilibrium solvers unless the change is only an import or path compatibility fix.
 - The production claim is liquid-electrolyte only unless vapor electrolyte support is implemented and tested inside this issue.
-- Do not commit the old forbidden backend token, old forbidden numeric derivative token, or old forbidden numeric derivative phrase as contiguous text. Construct guard searches from fragments when needed.
+- Do not commit the old forbidden backend token or old forbidden non-exact derivative text contiguously. Construct guard searches from fragments when needed.
 - The actual modified Born / SSM / DS formula must be taken from the repository equation registry and Figiel/Bulow/Held source equations, not from memory or from the simplified reminder in the issue.
 
 ## Required Phase Order

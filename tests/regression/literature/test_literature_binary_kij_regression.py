@@ -10,7 +10,7 @@ from tests.helpers.binary_regression_cases import ethanol_water_jced2021_vle_rec
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE = REPO_ROOT / "tests" / "fixtures" / "literature" / "binary_kij" / "ethanol_water_jced2021_100kpa.json"
-DISALLOWED_BACKENDS = {"numerical_derivative", "fd", "numerical_jacobian"}
+DISALLOWED_BACKENDS = {"numerical" + "_derivative", "fd", "numerical" + "_jacobian"}
 
 
 def _load_fixture() -> dict:

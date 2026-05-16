@@ -30,7 +30,7 @@ Ion and binary V1 intentionally do not add dataset manifests or new regression-s
 
 Non-native optimizer loops are not an approved production backend for package-owned regression helpers. Python code may prepare records, declare provenance, and call native regression, but coupled electrolyte, reactive, phase-equilibrium, ``d_born``, and ``k_ij`` fitting should use a native backend with explicit derivative metadata. Public production helpers route supported generic targets through native Ceres paths with analytic, CppAD, or implicit sensitivities.
 
-The public easy APIs intentionally do not expose numerical derivative
+The public easy APIs intentionally do not expose non-exact derivative
 configuration. Unsupported derivative or optimizer paths raise with diagnostics
 tied to the missing analytic, CppAD, or implicit derivative path.
 
@@ -643,18 +643,18 @@ Derivative availability
    * - Runtime ``dadt()``, ``dadx()``, ``z(return_contribution_terms=True)``, ``mures(return_contribution_terms=True)``
      - Analytical where available, CppAD where implemented; unsupported derivative paths raise clearly
      - Not exposed
-   * - Pure-neutral regression
+  * - Pure-neutral regression
      - Native CppAD/implicit Jacobian through ``evaluate_pure_neutral_derivatives(...)``
-     - Skeleton metadata only
-   * - Generic ion/binary regression
+     - Solver-internal only; exact Hessian callbacks are not exposed
+  * - Generic ion/binary regression
      - Binary ``k_ij`` fitting uses native Ceres ``cppad_implicit`` Jacobians; other generic residual families raise until analytic or CppAD coverage is implemented
-     - Metadata only
-   * - Neutral LLE
+     - Solver-internal only; exact Hessian callbacks are not exposed
+  * - Neutral LLE
      - Native stability and seed checks remain available; solve derivative callbacks raise until residual coverage is implemented
-     - Metadata only
-   * - Chemical equilibrium / reactive speciation
-     - Analytic log-amount Jacobian for ideal-mole-fraction reactions under ``auto``; activity/concentration paths raise until derivative coverage is implemented
-     - Native Ipopt adapter work remains open
+     - Route pending
+  * - Chemical equilibrium / reactive speciation
+     - Explicit native Ipopt ideal-mole-fraction route uses analytic derivatives when Ipopt is compiled; activity/concentration paths raise until EOS derivative NLP blocks exist
+     - Ipopt limited-memory Hessian handling is solver-internal
 
 The Hessian fields are reserved metadata for native optimizer integration. They
 do not mean exact second-derivative evaluation is implemented.

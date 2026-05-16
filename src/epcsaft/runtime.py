@@ -397,11 +397,6 @@ def capabilities() -> dict[str, object]:
     return {
         "native_extension": bool(runtime_build_info()["native_extension_available"]),
         "derivatives": {
-            "numerical_derivative": {
-                "available": False,
-                "production": False,
-                "reason": "numerical_derivative_derivatives_forbidden",
-            },
             "cppad": cppad_capability,
             "coverage_matrix": derivative_coverage,
             "ssmds_born_derivatives": {
@@ -586,22 +581,24 @@ def capabilities() -> dict[str, object]:
                 "sweep_available": ipopt_route_available,
                 "continuation_state_available": ipopt_route_available,
                 "activity_output_modes": ["auto", "always", "never"],
-                "jacobian_auto_policy": "native_analytic_log_amount_residual_jacobian_with_implicit_sensitivity",
-                "jacobian_auto_supported_standard_states": [
-                    "ideal_mole_fraction",
+                "jacobian_auto_policy": "native_ipopt_ideal_mole_fraction_analytic_else_raise",
+                "jacobian_auto_supported_standard_states": ["ideal_mole_fraction"],
+                "route_gated_standard_states": [
                     "mole_fraction_activity",
                     "thermodynamic_activity",
                     "concentration",
                     "apparent",
                 ],
-                "derivative_gap_status": "implicit_sensitivity_available_for_reaction_constant_response",
+                "derivative_gap_status": "activity_and_concentration_routes_pending_eos_derivative_nlp_blocks",
                 "explicit_cppad_request_raises_until_implemented": True,
+                "auto_request": "raises_until_native_ipopt_route_selection_is_explicit",
                 "solver_backends": ["auto", "ipopt"],
                 "ipopt_available": bool(ipopt["available"]),
                 "explicit_ipopt_request": "ideal_mole_fraction_routes_to_native_ipopt_when_compiled",
                 "ipopt_routes": ipopt_public_routes,
                 "ipopt_formulation": "thermodynamic_constrained_nlp",
-                "full_constrained_nlp_available": ipopt_route_available,
+                "ideal_speciation_nlp_available": ipopt_route_available,
+                "full_constrained_nlp_available": False,
             },
             "repeated_state_properties": {
                 "available": True,

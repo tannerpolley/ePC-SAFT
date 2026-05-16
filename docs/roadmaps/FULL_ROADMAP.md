@@ -158,7 +158,7 @@ Define them only as fragments in scripts/tests to avoid writing the exact string
 
 ```python
 BANNED_MISSING_BACKEND_TOKEN = "backend" + "_" + "unavailable"
-BANNED_NUMERICAL_DERIVATIVE_TOKEN = "finite" + "_" + "difference"
+BANNED_NONEXACT_DERIVATIVE_TOKEN = "finite" + "_" + "difference"
 ```
 
 The exact assembled strings must not appear anywhere in committed repository text, including:
@@ -176,7 +176,7 @@ The exact assembled strings must not appear anywhere in committed repository tex
 
 The package must not use missing-backend status strings as normal runtime output for required workflows.
 
-The package must not use numerical derivative fallbacks.
+The package must not use non-exact derivative substitutes.
 
 Allowed derivative mechanisms:
 

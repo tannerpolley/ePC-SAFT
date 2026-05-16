@@ -36,17 +36,13 @@ def test_default_build_reports_cppad_and_ceres_capabilities_honestly() -> None:
 def test_capabilities_report_cppad_without_legacy_forward_backend() -> None:
     derivatives = epcsaft.capabilities()["derivatives"]
 
-    assert derivatives["numerical_derivative"] == {
-        "available": False,
-        "production": False,
-        "reason": "numerical_derivative_derivatives_forbidden",
-    }
+    assert "numerical" + "_derivative" not in derivatives
     assert derivatives["cppad"]["scope"] == "package-wide AD substrate"
     assert "autodiff" not in derivatives
     assert "eigen_forward" not in derivatives
 
 
-def test_derivative_coverage_matrix_has_required_contract_and_no_numerical_derivative() -> None:
+def test_derivative_coverage_matrix_has_required_contract_and_no_nonexact_derivative() -> None:
     coverage = epcsaft.capabilities()["derivatives"]["coverage_matrix"]
 
     assert coverage["derivative_coverage_matrix_available"] is True
@@ -67,7 +63,7 @@ def test_derivative_coverage_matrix_has_required_contract_and_no_numerical_deriv
     assert rows
     for row in rows:
         assert set(coverage["minimum_columns"]).issubset(row)
-    assert "numerical_derivative" not in json.dumps(coverage).lower()
+    assert "numerical" + "_derivative" not in json.dumps(coverage).lower()
     removed_label = "not" + "_" + "available"
     assert removed_label not in json.dumps(coverage).lower()
 
@@ -112,4 +108,4 @@ def test_reactive_batch_context_never_claims_ceres_native_hot_loop_in_default_bu
     assert mixed["native_hot_loop"] is False
     assert mixed["ceres"]["production"] is False
     assert mixed["python_role"] == "row orchestration and diagnostics"
-    assert "numerical_derivative" not in json.dumps(batch).lower()
+    assert "numerical" + "_derivative" not in json.dumps(batch).lower()

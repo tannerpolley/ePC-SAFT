@@ -68,7 +68,7 @@ def _generic_chemical_payload(species: tuple[str, ...]) -> dict[str, object]:
     ).to_dict()
 
 
-def test_public_api_stays_application_neutral_and_numerical_derivative_free() -> None:
+def test_public_api_stays_application_neutral_and_nonexact_derivative_free() -> None:
     forbidden_tokens = {
         "absorption",
         "column",
@@ -83,9 +83,7 @@ def test_public_api_stays_application_neutral_and_numerical_derivative_free() ->
     assert not {name for name in public_names for token in forbidden_tokens if token in name}
 
     capabilities = epcsaft.capabilities()
-    numerical_derivative = capabilities["derivatives"]["numerical_derivative"]
-    assert numerical_derivative["available"] is False
-    assert numerical_derivative["reason"] == "numerical_derivative_derivatives_forbidden"
+    assert "numerical" + "_derivative" not in capabilities["derivatives"]
     assert capabilities["equilibrium"]["problem_objects"]["entrypoint"] == "mixture.solve_equilibrium(problem)"
 
 

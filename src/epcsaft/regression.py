@@ -2691,7 +2691,7 @@ _USER_TARGET_ALIASES = {
 }
 
 
-def _reject_numerical_derivative_options(options: Any) -> None:
+def _reject_unapproved_derivative_options(options: Any) -> None:
     repeated_start_key = "multi" + "start"
     if isinstance(options, Mapping) and any(str(key).lower() == repeated_start_key for key in options):
         raise InputError("Regression solver_options must provide one deterministic initial_guess.")
@@ -2699,7 +2699,15 @@ def _reject_numerical_derivative_options(options: Any) -> None:
     legacy_underscore_token = "finite" + "_" + "difference"
     legacy_hyphen_token = "finite" + "-" + "difference"
     legacy_phrase_token = "finite" + " " + "difference"
-    tokens = (legacy_underscore_token, "numerical_derivative", legacy_hyphen_token, legacy_phrase_token)
+    legacy_numeric_derivative_token = "numerical" + "_" + "derivative"
+    legacy_numeric_jacobian_token = "numerical" + "_" + "jacobian"
+    tokens = (
+        legacy_underscore_token,
+        legacy_numeric_derivative_token,
+        legacy_numeric_jacobian_token,
+        legacy_hyphen_token,
+        legacy_phrase_token,
+    )
 
     def visit(value: Any) -> bool:
         if isinstance(value, str):
@@ -2774,7 +2782,7 @@ def fit_pure_parameters(
 ) -> FitResult:
     """Fit pure-component parameters through the easy regression API contract."""
 
-    _reject_numerical_derivative_options(solver_options)
+    _reject_unapproved_derivative_options(solver_options)
     labels = _fit_species_tuple(species)
     if len(labels) != 1:
         raise InputError("fit_pure_parameters expects exactly one species label.")
@@ -2852,7 +2860,7 @@ def fit_binary_parameters(
 ) -> FitResult:
     """Fit binary interaction parameters through the easy regression API contract."""
 
-    _reject_numerical_derivative_options(solver_options)
+    _reject_unapproved_derivative_options(solver_options)
     labels = _fit_species_tuple(species)
     if len(labels) != 2:
         raise InputError("fit_binary_parameters expects exactly two species labels.")
@@ -3027,7 +3035,7 @@ def fit_liquid_electrolyte_parameters(
 ) -> FitResult:
     """Fit liquid-electrolyte parameters through the native Ceres regression backend."""
 
-    _reject_numerical_derivative_options(solver_options)
+    _reject_unapproved_derivative_options(solver_options)
     labels = _fit_species_tuple(species)
     if len(labels) < 2:
         raise InputError("fit_liquid_electrolyte_parameters expects at least two species labels.")

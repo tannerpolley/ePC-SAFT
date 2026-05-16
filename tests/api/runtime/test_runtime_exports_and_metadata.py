@@ -78,11 +78,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert cppad["backend"] == "cppad"
     assert cppad["status"] in {"disabled", "enabled_available", "enabled_missing", "not_configured"}
     assert cppad["compiled"] is (cppad["status"] == "enabled_available")
-    assert capabilities["derivatives"]["numerical_derivative"] == {
-        "available": False,
-        "production": False,
-        "reason": "numerical_derivative_derivatives_forbidden",
-    }
+    assert "numerical" + "_derivative" not in capabilities["derivatives"]
     assert "eigen_forward" not in capabilities["derivatives"]
     assert capabilities["derivatives"]["cppad"] == {
         **cppad,
@@ -147,15 +143,18 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert reactive_speciation["continuation_state_available"] is ipopt["available"]
     assert reactive_speciation["solver_backends"] == ["auto", "ipopt"]
     assert reactive_speciation["ipopt_routes"] == ["reactive_speciation:ideal_mole_fraction"]
-    assert reactive_speciation["full_constrained_nlp_available"] is ipopt["available"]
+    assert reactive_speciation["ideal_speciation_nlp_available"] is ipopt["available"]
+    assert reactive_speciation["full_constrained_nlp_available"] is False
     assert (
         reactive_speciation["jacobian_auto_policy"]
-        == "native_analytic_log_amount_residual_jacobian_with_implicit_sensitivity"
+        == "native_ipopt_ideal_mole_fraction_analytic_else_raise"
     )
+    assert reactive_speciation["jacobian_auto_supported_standard_states"] == ["ideal_mole_fraction"]
     assert (
         reactive_speciation["derivative_gap_status"]
-        == "implicit_sensitivity_available_for_reaction_constant_response"
+        == "activity_and_concentration_routes_pending_eos_derivative_nlp_blocks"
     )
+    assert reactive_speciation["auto_request"] == "raises_until_native_ipopt_route_selection_is_explicit"
     assert reactive_speciation["explicit_cppad_request_raises_until_implemented"] is True
     assert capabilities["regression"]["pure_neutral"]["backend"] == "native_ceres"
     reactive_regression = capabilities["regression"]["reactive_electrolyte_residuals"]

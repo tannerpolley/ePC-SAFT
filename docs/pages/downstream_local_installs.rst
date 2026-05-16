@@ -153,7 +153,10 @@ Use ``capabilities()`` before wiring high-level downstream workflows:
    assert not caps["equilibrium"]["electrolyte_bubble_pressure"]["available"]
    assert not caps["equilibrium"]["reactive_electrolyte_bubble"]["available"]
 
-Native neutral TP flash, neutral LLE, electrolyte LLE, reactive speciation, and native regression helpers are available. Neutral bubble/dew, electrolyte bubble pressure, and reactive electrolyte bubble pressure are declared but require native Ipopt route builders before use.
+Native EOS/property calls and native regression helpers are available.
+Equilibrium routes are declared public contracts, but production solves are
+gated on native Ipopt route builders. Homogeneous ideal reactive speciation is
+the first explicit Ipopt route when the extension is built with Ipopt.
 
 For routing examples and the production/opt-in solver table, see
 :doc:`equilibrium_cookbook`.
@@ -168,14 +171,14 @@ Capability status summary
      - Status
      - Notes
    * - Neutral TP flash, LLE, stability
-     - Production native
-     - Use the explicit mixture methods in new code.
+     - Route pending
+     - Requires native Ipopt constrained-NLP route builders.
    * - Electrolyte LLE
-     - Production native
-     - Fixed-species, charge-neutral LLE; use stability and explicit seeds for hard cases.
+     - Route pending
+     - Requires the native Ipopt electrolyte LLE route builder.
    * - Reactive speciation
-     - Production native
-     - Homogeneous one-phase chemistry with caller-owned balances and reactions.
+     - Explicit Ipopt ideal route
+     - ``solver_backend="ipopt"`` supports homogeneous ``ideal_mole_fraction`` when Ipopt is compiled; activity and concentration routes are pending.
    * - Electrolyte bubble pressure
      - Route pending
      - Requires the native Ipopt electrolyte bubble route builder.
@@ -183,8 +186,8 @@ Capability status summary
      - Route pending
      - Requires the native Ipopt electrolyte bubble route builder after speciation.
    * - IPOPT
-     - Optional opt-in bridge
-     - Residual-minimization refinement only; ``auto`` never selects IPOPT.
+     - Optional native NLP backend
+     - Owns production equilibrium solves as route builders land; Python does not provide an alternate optimizer path.
 
 Package-side generic contract smoke coverage
 --------------------------------------------

@@ -498,7 +498,7 @@ tasks:
       - "Run all issue #118 required validation commands before claiming completion."
       - "Use the post-PR-113 build and validation commands from issue #118."
       - "Do not broaden public capabilities beyond proven package behavior."
-      - "Do not introduce forbidden contiguous backend or numeric derivative text."
+      - "Do not introduce forbidden contiguous backend or non-exact derivative text."
       - "If validation failure requires files outside allowed_files, stop and ask Judge for a scoped follow-up."
     verify:
       - "uv run python scripts/dev/build_epcsaft.py --clean"
