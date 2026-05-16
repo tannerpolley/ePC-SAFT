@@ -502,7 +502,7 @@ class ePCSAFTMixture:
         z=None,
         options=None,
     ):
-        """Solve homogeneous activity-coupled chemical equilibrium."""
+        """Validate homogeneous reactive speciation and use the accepted Ipopt route."""
         from .reactive_speciation import ReactiveSpeciationOptions, solve_reactive_speciation
 
         if initial_x is None:

@@ -30,6 +30,21 @@ def _fixed_literature_reaction() -> epcsaft.ReactionDefinition:
     )
 
 
+def _successful_speciation_result() -> epcsaft.ReactiveSpeciationResult:
+    return epcsaft.ReactiveSpeciationResult(
+        success=True,
+        message="converged",
+        x={"A": 0.25, "B": 0.75},
+        activity_coefficients={},
+        mass_balance_residuals={"total": 0.0},
+        charge_residual=0.0,
+        reaction_residuals=[0.0],
+        named_reaction_residuals={"literature_a_to_b": 0.0},
+        state_failure_count=0,
+        diagnostics={"phase_equilibrium_handoff": {}},
+    )
+
+
 def test_literature_reaction_constant_is_explicit_fixed_input() -> None:
     reaction = _fixed_literature_reaction()
 
@@ -39,8 +54,12 @@ def test_literature_reaction_constant_is_explicit_fixed_input() -> None:
     assert reaction.metadata["fitting_role"] == "fixed_input"
 
 
-def test_staged_workflow_requires_native_ipopt_phase_route_after_fixed_constant_speciation() -> None:
+def test_staged_workflow_requires_native_ipopt_phase_route_after_fixed_constant_speciation(monkeypatch) -> None:
     mix = _toy_mixture()
+    monkeypatch.setattr(
+        "epcsaft.reactive_staged.solve_reactive_speciation",
+        lambda **kwargs: _successful_speciation_result(),
+    )
 
     with pytest.raises(epcsaft.InputError) as excinfo:
         epcsaft.solve_reactive_staged_equilibrium(

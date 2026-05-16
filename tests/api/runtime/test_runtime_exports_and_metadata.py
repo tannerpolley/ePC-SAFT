@@ -146,24 +146,26 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert reactive_bubble["available"] is False
     assert reactive_bubble["backend"] == "native_ipopt_equilibrium_nlp_required"
     assert reactive_bubble["status"] == "route_pending"
-    assert capabilities["equilibrium"]["reactive_speciation"]["default_auto_uses_ipopt"] is False
-    assert capabilities["equilibrium"]["reactive_speciation"]["solver_backends"] == ["auto", "ipopt"]
-    assert capabilities["equilibrium"]["reactive_speciation"]["ipopt_routes"] == [
-        "reactive_speciation:ideal_mole_fraction"
-    ]
+    reactive_speciation = capabilities["equilibrium"]["reactive_speciation"]
+    assert reactive_speciation["available"] is ipopt["available"]
+    assert reactive_speciation["backend"] == "native_ipopt_equilibrium_nlp_required"
+    assert reactive_speciation["status"] == ("available" if ipopt["available"] else "route_pending")
+    assert reactive_speciation["previous_solver_disabled"] == "native_chemical_equilibrium_residual_route"
+    assert reactive_speciation["sweep_available"] is ipopt["available"]
+    assert reactive_speciation["continuation_state_available"] is ipopt["available"]
+    assert reactive_speciation["default_auto_uses_ipopt"] is False
+    assert reactive_speciation["solver_backends"] == ["auto", "ipopt"]
+    assert reactive_speciation["ipopt_routes"] == ["reactive_speciation:ideal_mole_fraction"]
+    assert reactive_speciation["full_constrained_nlp_available"] is ipopt["available"]
     assert (
-        capabilities["equilibrium"]["reactive_speciation"]["full_constrained_nlp_available"]
-        is ipopt["available"]
-    )
-    assert (
-        capabilities["equilibrium"]["reactive_speciation"]["jacobian_auto_policy"]
+        reactive_speciation["jacobian_auto_policy"]
         == "native_analytic_log_amount_residual_jacobian_with_implicit_sensitivity"
     )
     assert (
-        capabilities["equilibrium"]["reactive_speciation"]["derivative_gap_status"]
+        reactive_speciation["derivative_gap_status"]
         == "implicit_sensitivity_available_for_reaction_constant_response"
     )
-    assert capabilities["equilibrium"]["reactive_speciation"]["explicit_cppad_request_raises_until_implemented"] is True
+    assert reactive_speciation["explicit_cppad_request_raises_until_implemented"] is True
     assert capabilities["regression"]["pure_neutral"]["backend"] == "native_ceres"
     reactive_regression = capabilities["regression"]["reactive_electrolyte_residuals"]
     assert reactive_regression["available"] is True

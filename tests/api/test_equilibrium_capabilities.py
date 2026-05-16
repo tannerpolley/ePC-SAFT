@@ -29,8 +29,16 @@ def test_equilibrium_capabilities_expose_derivative_policy() -> None:
 
 
 def test_reactive_speciation_capabilities_include_activity_standard_states() -> None:
-    reactive = epcsaft.capabilities()["equilibrium"]["reactive_speciation"]
+    capabilities = epcsaft.capabilities()
+    reactive = capabilities["equilibrium"]["reactive_speciation"]
+    ipopt = capabilities["optimizers"]["ipopt"]
 
+    assert reactive["available"] is ipopt["available"]
+    assert reactive["backend"] == "native_ipopt_equilibrium_nlp_required"
+    assert reactive["status"] == ("available" if ipopt["available"] else "route_pending")
+    assert reactive["previous_solver_disabled"] == "native_chemical_equilibrium_residual_route"
+    assert reactive["sweep_available"] is ipopt["available"]
+    assert reactive["continuation_state_available"] is ipopt["available"]
     assert {
         "ideal_mole_fraction",
         "mole_fraction_activity",

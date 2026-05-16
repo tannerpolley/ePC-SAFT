@@ -368,6 +368,8 @@ Task 6 continuation note: the legacy `jacobian_backend="autodiff"` selector was 
 
 Task 6 continuation note: no-reaction, failed, and best-effort reactive speciation paths now omit implicit-sensitivity payloads when the native result has no reaction-constant sensitivity matrix. Real implicit solve payloads remain required when the native matrices exist.
 
+Task 6 continuation note: public `solve_reactive_speciation`, `mixture.chemical_equilibrium`, and `mixture.equilibrium(kind="chemical_equilibrium")` no longer execute the transitional native chemical-equilibrium residual solve when `solver_backend="auto"`. The public auto route now validates request shape and reaction-convention support, then raises until the native Ipopt homogeneous reactive-speciation NLP owns the route; explicit `solver_backend="ipopt"` remains the accepted ideal-speciation path when the build includes Ipopt. Tests that only protected custom residual-solver success were deleted or rewritten as public route-gate checks, while the private residual evaluator remains covered as derivative-surface diagnostics.
+
 ### Task 7: Build EOS Phase Blocks For Equilibrium
 
 **Files:**

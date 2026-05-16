@@ -65,10 +65,10 @@ EQUILIBRIUM_API_TEST_TARGETS = (
     "tests/api/runtime/test_runtime_exports_and_metadata.py::test_runtime_build_info_and_capabilities_are_json_like",
     (
         "tests/api/reactive/test_reactive_speciation_results.py::"
-        "test_solve_reactive_speciation_activity_coupled_state_uses_epcsaft_activities"
+        "test_solve_reactive_speciation_activity_coupled_state_requires_native_ipopt_route"
     ),
     "tests/api/reactive/test_reactive_speciation_options.py::test_reactive_speciation_options_expose_jacobian_backend_selector",
-    "tests/api/reactive/test_reactive_speciation_options.py::test_reactive_speciation_requested_ipopt_requires_native_adapter",
+    "tests/api/reactive/test_reactive_speciation_options.py::test_reactive_speciation_requested_ipopt_routes_ideal_speciation_when_compiled",
     "tests/api/reactive/test_reactive_electrolyte_bubble_setup.py",
     "tests/api/reactive/test_reactive_electrolyte_bubble_results.py",
     (

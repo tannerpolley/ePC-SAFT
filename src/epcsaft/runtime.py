@@ -588,10 +588,12 @@ def capabilities() -> dict[str, object]:
                 },
             },
             "reactive_speciation": {
-                "available": True,
-                "backend": "native chemical-equilibrium residual with ePC-SAFT activity/fugacity terms",
-                "sweep_available": True,
-                "continuation_state_available": True,
+                "available": ipopt_route_available,
+                "backend": "native_ipopt_equilibrium_nlp_required",
+                "status": "available" if ipopt_route_available else "route_pending",
+                "previous_solver_disabled": "native_chemical_equilibrium_residual_route",
+                "sweep_available": ipopt_route_available,
+                "continuation_state_available": ipopt_route_available,
                 "activity_output_modes": ["auto", "always", "never"],
                 "jacobian_auto_policy": "native_analytic_log_amount_residual_jacobian_with_implicit_sensitivity",
                 "jacobian_auto_supported_standard_states": [

@@ -54,6 +54,15 @@ _REACTION_CONSTANT_FITTING_ROLES = {
     "fitted_parameter",
     "regularized_correction",
 }
+
+
+def _raise_native_ipopt_reactive_speciation_required() -> None:
+    raise InputError(
+        "reactive_speciation requires a native Ipopt homogeneous reactive-speciation NLP route. "
+        "The previous native chemical-equilibrium residual route is disabled by the solver gate."
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class ReactionConstantConvention:
     """Explicit convention for interpreting a reaction equilibrium constant."""
@@ -342,6 +351,8 @@ def solve_reactive_speciation(
     )
     balance_matrix, total_vector, balance_names = _normalize_balances(labels, balances, totals)
     reaction_defs = _normalize_reactions(labels, reactions)
+    if opts.solver_backend == "auto":
+        _raise_native_ipopt_reactive_speciation_required()
     return _solve_reactive_speciation_native(
         species=labels,
         mixture_factory=mixture_factory,
@@ -905,6 +916,7 @@ def _normalize_reactions(species: list[str], reactions: Any) -> list[ReactionDef
                 for label in coeffs:
                     if label not in species:
                         raise InputError(f"Unknown species '{label}' in reaction phase_stoichiometry.")
+        _ = reaction.convention.native_standard_state_code
         out.append(reaction)
     return out
 

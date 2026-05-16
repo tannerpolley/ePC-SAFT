@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import json
-
 import numpy as np
 import pytest
 
 import epcsaft
+from tests.api.reactive.test_reactive_speciation_options import _assert_reactive_speciation_route_pending
 
 
 def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
@@ -20,11 +19,11 @@ def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
     }
     return epcsaft.ePCSAFTMixture.from_params(params, species=["H2O", "NaCl", "Na+", "Cl-"])
 
-def test_solve_reactive_speciation_strict_failure_reports_best_state() -> None:
+def test_solve_reactive_speciation_auto_requires_native_ipopt_route_before_legacy_failure_payload() -> None:
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
 
-    with pytest.raises(epcsaft.SolutionError) as excinfo:
+    with pytest.raises(epcsaft.InputError) as excinfo:
         epcsaft.solve_reactive_speciation(
             species=species,
             mixture_factory=lambda x, T, P: mix,
@@ -51,52 +50,42 @@ def test_solve_reactive_speciation_strict_failure_reports_best_state() -> None:
             ),
         )
 
-    diagnostics = excinfo.value.diagnostics
-    assert set(diagnostics["best_x"]) == set(species)
-    assert diagnostics["best_activity_coefficients"] == {}
-    assert diagnostics["named_reaction_residuals"].keys() == {"salt_dissociation"}
-    assert diagnostics["native_success"] is False
-    json.dumps(diagnostics, allow_nan=False)
+    _assert_reactive_speciation_route_pending(excinfo)
 
-def test_solve_reactive_speciation_result_mode_returns_nonconverged_result() -> None:
+
+def test_solve_reactive_speciation_result_mode_does_not_mask_route_gate() -> None:
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
 
-    result = epcsaft.solve_reactive_speciation(
-        species=species,
-        mixture_factory=lambda x, T, P: mix,
-        T=298.15,
-        P=1.0e5,
-        balances={
-            "water_total": {"H2O": 1.0},
-            "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
-            "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
-        },
-        totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
-        reactions=[
-            epcsaft.ReactionDefinition(
-                stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
-                log_equilibrium_constant=100.0,
-                name="salt_dissociation",
-                standard_state="ideal_mole_fraction",
-            )
-        ],
-        initial_x=[0.998, 0.001, 0.0005, 0.0005],
-        options=epcsaft.ReactiveSpeciationOptions(
-            max_iterations=0,
-            tolerance=1.0e-12,
-            error_mode="result",
-        ),
-    )
+    with pytest.raises(epcsaft.InputError) as excinfo:
+        epcsaft.solve_reactive_speciation(
+            species=species,
+            mixture_factory=lambda x, T, P: mix,
+            T=298.15,
+            P=1.0e5,
+            balances={
+                "water_total": {"H2O": 1.0},
+                "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
+                "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
+            },
+            totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
+            reactions=[
+                epcsaft.ReactionDefinition(
+                    stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
+                    log_equilibrium_constant=100.0,
+                    name="salt_dissociation",
+                    standard_state="ideal_mole_fraction",
+                )
+            ],
+            initial_x=[0.998, 0.001, 0.0005, 0.0005],
+            options=epcsaft.ReactiveSpeciationOptions(
+                max_iterations=0,
+                tolerance=1.0e-12,
+                error_mode="result",
+            ),
+        )
 
-    assert isinstance(result, epcsaft.ReactiveSpeciationResult)
-    assert result.success is False
-    assert set(result.x) == set(species)
-    assert result.activity_coefficients == {}
-    assert set(result.named_reaction_residuals) == {"salt_dissociation"}
-    assert result.diagnostics["best_x"] == result.x
-    assert result.diagnostics["best_activity_coefficients"] == result.activity_coefficients
-    json.dumps(result.to_dict(), allow_nan=False)
+    _assert_reactive_speciation_route_pending(excinfo)
 
 @pytest.mark.parametrize(
     ("kwargs", "message"),

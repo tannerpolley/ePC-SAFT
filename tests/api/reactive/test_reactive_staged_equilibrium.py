@@ -23,8 +23,27 @@ def _hydrocarbon_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_params(params, species=["Methane", "Ethane", "Propane"])
 
 
-def test_solve_reactive_staged_equilibrium_requires_native_ipopt_phase_route() -> None:
+def _successful_speciation_result() -> epcsaft.ReactiveSpeciationResult:
+    return epcsaft.ReactiveSpeciationResult(
+        success=True,
+        message="converged",
+        x={"Methane": 0.1, "Ethane": 0.3, "Propane": 0.6},
+        activity_coefficients={},
+        mass_balance_residuals={"methane": 0.0, "ethane": 0.0, "propane": 0.0},
+        charge_residual=0.0,
+        reaction_residuals=[],
+        named_reaction_residuals={},
+        state_failure_count=0,
+        diagnostics={"phase_equilibrium_handoff": {}},
+    )
+
+
+def test_solve_reactive_staged_equilibrium_requires_native_ipopt_phase_route(monkeypatch) -> None:
     mix = _hydrocarbon_mixture()
+    monkeypatch.setattr(
+        "epcsaft.reactive_staged.solve_reactive_speciation",
+        lambda **kwargs: _successful_speciation_result(),
+    )
 
     with pytest.raises(epcsaft.InputError) as excinfo:
         epcsaft.solve_reactive_staged_equilibrium(

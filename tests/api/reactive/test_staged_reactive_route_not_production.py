@@ -9,6 +9,32 @@ from tests.api.reactive.test_reactive_phase_equilibrium_problem_routes_native im
 def test_explicit_staged_kind_remains_separate_from_production_reactive_lle(monkeypatch) -> None:
     mix, feed, initial_phases, reaction = _toy_reactive_phase_case()
 
+    def successful_staged(**_kwargs):
+        chemical = epcsaft.ReactiveSpeciationResult(
+            success=True,
+            message="converged",
+            x={"Methanol": float(feed[0]), "Cyclohexane": float(feed[1])},
+            activity_coefficients={},
+            mass_balance_residuals={"total": 0.0},
+            charge_residual=0.0,
+            reaction_residuals=[0.0],
+            named_reaction_residuals={"methanol_to_cyclohexane": 0.0},
+            state_failure_count=0,
+            diagnostics={"phase_equilibrium_handoff": {}},
+        )
+        return epcsaft.ReactiveStagedEquilibriumResult(
+            success=True,
+            message="converged",
+            z=chemical.x,
+            chemical=chemical,
+            phase={},
+            diagnostics={
+                "reactive_workflow_class": "staged",
+                "staged_feed": chemical.x,
+            },
+        )
+
+    monkeypatch.setattr(mix, "reactive_staged_equilibrium", successful_staged)
     staged = mix.equilibrium(
         kind="reactive_staged",
         T=298.15,

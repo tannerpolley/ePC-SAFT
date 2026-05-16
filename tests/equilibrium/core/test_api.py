@@ -7,6 +7,7 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
+from tests.api.reactive.test_reactive_speciation_options import _assert_reactive_speciation_route_pending
 from tests.equilibrium.core.test_stability import _assert_stability_route_pending
 from tests.equilibrium.core.test_vle import _assert_tp_flash_route_pending
 from tests.helpers.numeric import assert_allclose
@@ -149,7 +150,7 @@ def test_explicit_lle_tp_matches_equilibrium_route_pending_policy() -> None:
         mix.equilibrium(kind="lle_flash", T=298.15, P=1.013e5, z=feed)
 
 
-def test_explicit_chemical_equilibrium_matches_legacy_equilibrium_dispatch() -> None:
+def test_explicit_chemical_equilibrium_matches_dispatch_route_pending_policy() -> None:
     mix = ePCSAFTMixture.from_params(
         {
             "m": np.asarray([1.0, 1.0]),
@@ -174,12 +175,13 @@ def test_explicit_chemical_equilibrium_matches_legacy_equilibrium_dispatch() -> 
         "options": epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
     }
 
-    direct = mix.chemical_equilibrium(**request)
-    legacy = mix.equilibrium(kind="chemical_equilibrium", **request)
+    with pytest.raises(epcsaft.InputError) as direct_exc:
+        mix.chemical_equilibrium(**request)
+    with pytest.raises(epcsaft.InputError) as dispatched_exc:
+        mix.equilibrium(kind="chemical_equilibrium", **request)
 
-    assert isinstance(direct, epcsaft.ReactiveSpeciationResult)
-    assert direct.x == pytest.approx(legacy.x)
-    assert direct.reaction_residuals == pytest.approx(legacy.reaction_residuals)
+    _assert_reactive_speciation_route_pending(direct_exc)
+    _assert_reactive_speciation_route_pending(dispatched_exc)
 
 
 def test_equilibrium_phase_exposes_explicit_ln_fugacity_alias() -> None:

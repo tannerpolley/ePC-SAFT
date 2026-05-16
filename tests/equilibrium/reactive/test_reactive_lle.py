@@ -78,9 +78,28 @@ def _phase_result(feed: np.ndarray) -> epcsaft.EquilibriumResult:
     )
 
 
+def _speciation_result(feed: np.ndarray) -> epcsaft.ReactiveSpeciationResult:
+    return epcsaft.ReactiveSpeciationResult(
+        success=True,
+        message="converged",
+        x={"Methanol": float(feed[0]), "Cyclohexane": float(feed[1])},
+        activity_coefficients={},
+        mass_balance_residuals={"total": 0.0},
+        charge_residual=0.0,
+        reaction_residuals=[0.0],
+        named_reaction_residuals={"methanol_to_cyclohexane": 0.0},
+        state_failure_count=0,
+        diagnostics={"phase_equilibrium_handoff": {}},
+    )
+
+
 def test_explicit_reactive_staged_equilibrium_routes_reaction_coordinates_into_neutral_lle_split(monkeypatch) -> None:
     mix = _reactive_lle_mixture()
     feed, initial_phases = _lle_seed()
+    monkeypatch.setattr(
+        "epcsaft.reactive_staged.solve_reactive_speciation",
+        lambda **kwargs: _speciation_result(feed),
+    )
     monkeypatch.setattr(
         mix,
         "lle_tp",
@@ -118,9 +137,13 @@ def test_explicit_reactive_staged_equilibrium_routes_reaction_coordinates_into_n
     assert_allclose([result.z["Methanol"], result.z["Cyclohexane"]], feed, atol=1.0e-10)
 
 
-def test_explicit_reactive_staged_equilibrium_routes_generic_lle() -> None:
+def test_explicit_reactive_staged_equilibrium_routes_generic_lle(monkeypatch) -> None:
     mix = _reactive_lle_mixture()
     feed, initial_phases = _lle_seed()
+    monkeypatch.setattr(
+        "epcsaft.reactive_staged.solve_reactive_speciation",
+        lambda **kwargs: _speciation_result(feed),
+    )
     mix.lle_tp = lambda *, T, P, z, options=None, initial_phases=None: _phase_result(np.asarray(z, dtype=float))
     result = mix.reactive_staged_equilibrium(
         T=298.15,

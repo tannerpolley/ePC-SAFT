@@ -7,6 +7,7 @@ import pytest
 
 import epcsaft
 from epcsaft import _core
+from tests.api.reactive.test_reactive_speciation_options import _assert_reactive_speciation_route_pending
 from tests.equilibrium.core.test_stability import _assert_stability_route_pending
 from tests.helpers.numeric import assert_allclose
 
@@ -161,7 +162,7 @@ def test_native_chemical_equilibrium_residual_evaluator_uses_analytic_jacobian_b
     assert payload["objective"] == pytest.approx(0.5 * float(residual @ residual))
     assert len(payload["lower_bounds"]) == len(payload["variables"]) == len(payload["upper_bounds"])
 
-def test_mixture_equilibrium_routes_chemical_equilibrium_to_native_speciation() -> None:
+def test_mixture_equilibrium_routes_chemical_equilibrium_to_native_ipopt_gate() -> None:
     mix = epcsaft.ePCSAFTMixture.from_params(
         {
             "m": np.asarray([1.0, 1.0]),
@@ -171,32 +172,46 @@ def test_mixture_equilibrium_routes_chemical_equilibrium_to_native_speciation() 
         species=["A", "B"],
     )
 
-    result = mix.equilibrium(
-        kind="chemical_equilibrium",
-        T=298.15,
-        P=1.0e5,
-        z=[0.5, 0.5],
-        balances={"total": {"A": 1.0, "B": 1.0}},
-        totals={"total": 1.0},
-        reactions=[
-            epcsaft.ReactionDefinition(
-                {"A": -1.0, "B": 1.0},
-                math.log(3.0),
-                standard_state="ideal_mole_fraction",
-            )
-        ],
-        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
-    )
+    with pytest.raises(epcsaft.InputError) as excinfo:
+        mix.equilibrium(
+            kind="chemical_equilibrium",
+            T=298.15,
+            P=1.0e5,
+            z=[0.5, 0.5],
+            balances={"total": {"A": 1.0, "B": 1.0}},
+            totals={"total": 1.0},
+            reactions=[
+                epcsaft.ReactionDefinition(
+                    {"A": -1.0, "B": 1.0},
+                    math.log(3.0),
+                    standard_state="ideal_mole_fraction",
+                )
+            ],
+            options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
+        )
 
-    assert isinstance(result, epcsaft.ReactiveSpeciationResult)
-    assert result.x["B"] / result.x["A"] == pytest.approx(3.0, rel=1.0e-8)
-    assert result.diagnostics["native_entrypoint"] == "_solve_chemical_equilibrium_native"
+    _assert_reactive_speciation_route_pending(excinfo)
 
-def test_reactive_stability_requires_native_ipopt_stability_route_after_speciation() -> None:
+
+def test_reactive_stability_requires_native_ipopt_stability_route_after_speciation(monkeypatch) -> None:
     mix = _methanol_cyclohexane_mixture()
     target_x = np.asarray([0.45, 0.55], dtype=float)
-    stoich = {"Methanol": -1.0, "Cyclohexane": 1.0}
-    log_k = _neutral_log_k_from_fugacity_activity(mix, 298.15, 1.013e5, target_x, stoich)
+
+    def successful_speciation(*_args, **_kwargs):
+        return epcsaft.ReactiveSpeciationResult(
+            success=True,
+            message="converged",
+            x={"Methanol": float(target_x[0]), "Cyclohexane": float(target_x[1])},
+            activity_coefficients={},
+            mass_balance_residuals={"total": 0.0},
+            charge_residual=0.0,
+            reaction_residuals=[0.0],
+            named_reaction_residuals={"methanol_to_cyclohexane": 0.0},
+            state_failure_count=0,
+            diagnostics={"phase_equilibrium_handoff": {}},
+        )
+
+    monkeypatch.setattr(mix, "chemical_equilibrium", successful_speciation)
 
     with pytest.raises(epcsaft.InputError) as excinfo:
         mix.equilibrium(
@@ -206,7 +221,13 @@ def test_reactive_stability_requires_native_ipopt_stability_route_after_speciati
             z=[0.5, 0.5],
             balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
             totals={"total": 1.0},
-            reactions=[epcsaft.ReactionDefinition(stoich, log_k)],
+            reactions=[
+                epcsaft.ReactionDefinition(
+                    {"Methanol": -1.0, "Cyclohexane": 1.0},
+                    0.0,
+                    name="methanol_to_cyclohexane",
+                )
+            ],
             parent_phase="liq",
             trial_phases=("liq",),
             options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
