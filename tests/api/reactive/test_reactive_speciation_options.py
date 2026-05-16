@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import math
 from dataclasses import fields
 
@@ -8,7 +7,7 @@ import numpy as np
 import pytest
 
 import epcsaft
-import epcsaft.ipopt_backend as ipopt_backend
+from epcsaft._optional_backends import ipopt as ipopt_backend
 
 def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
     params = {

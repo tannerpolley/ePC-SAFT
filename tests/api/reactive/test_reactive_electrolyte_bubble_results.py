@@ -3,7 +3,6 @@ from __future__ import annotations
 import pytest
 
 import epcsaft
-from epcsaft import reactive_electrolyte
 from epcsaft.electrolyte_bubble import ElectrolyteBubbleResult
 from epcsaft.reactive_speciation import ReactiveSpeciationResult
 

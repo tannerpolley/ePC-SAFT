@@ -347,7 +347,7 @@ def solve_reactive_speciation(
     balance_matrix, total_vector, balance_names = _normalize_balances(labels, balances, totals)
     reaction_defs = _normalize_reactions(labels, reactions)
     if opts.solver_backend == "ipopt":
-        from .ipopt_backend import solve_reactive_speciation_ipopt
+        from ._optional_backends.ipopt import solve_reactive_speciation_ipopt
 
         return solve_reactive_speciation_ipopt(
             species=labels,

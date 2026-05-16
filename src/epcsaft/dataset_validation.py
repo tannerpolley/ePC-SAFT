@@ -147,8 +147,4 @@ def _charge_hint(label: str) -> float | None:
         return 1.0
     if token.endswith("-"):
         return -1.0
-    if "^2-" in token or "2-" in token:
-        return -1.0
-    if "^2+" in token or "2+" in token:
-        return 1.0
     return None

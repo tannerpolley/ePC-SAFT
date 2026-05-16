@@ -103,9 +103,8 @@ def unsupported_ipopt_route(route: str) -> None:
 
 
 class _NativeLeastSquaresProblem:
-    def __init__(self, evaluator: Any, hessian_strategy: str) -> None:
+    def __init__(self, evaluator: Any) -> None:
         self._evaluator = evaluator
-        self._hessian_strategy = str(hessian_strategy)
         self._cache_x: np.ndarray | None = None
         self._cache_payload: dict[str, Any] | None = None
         self.evaluation_count = 0
@@ -175,7 +174,7 @@ def _solve_bound_constrained_least_squares(
     x0 = np.asarray(initial_payload["variables"], dtype=float)
     lb = np.asarray(initial_payload["lower_bounds"], dtype=float)
     ub = np.asarray(initial_payload["upper_bounds"], dtype=float)
-    problem_obj = _NativeLeastSquaresProblem(evaluator, hessian_strategy)
+    problem_obj = _NativeLeastSquaresProblem(evaluator)
     problem_obj._cache_x = np.array(x0, dtype=float, copy=True)
     problem_obj._cache_payload = initial_payload
     problem = cyipopt.Problem(

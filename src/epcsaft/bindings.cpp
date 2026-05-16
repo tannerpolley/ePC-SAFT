@@ -19,9 +19,7 @@ epcsaft::native::cppad_support::CppADDerivativeResult cppad_eos_contribution_der
 );
 epcsaft::native::cppad_support::CppADDerivativeResult cppad_pressure_density_derivative_cpp(
     double t,
-    double rho,
-    const std::vector<double>& x,
-    const add_args& cppargs
+    double rho
 );
 PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensitivity_cpp(
     double t,
@@ -1625,7 +1623,9 @@ PYBIND11_MODULE(_core, m) {
         return cppad_smoke_to_dict(cppad_eos_contribution_derivatives_cpp(t, rho, x, args));
     });
     m.def("_native_cppad_pressure_density", [](double t, double rho, const std::vector<double>& x, const add_args& args) {
-        return cppad_smoke_to_dict(cppad_pressure_density_derivative_cpp(t, rho, x, args));
+        (void)x;
+        (void)args;
+        return cppad_smoke_to_dict(cppad_pressure_density_derivative_cpp(t, rho));
     });
     m.def("_native_phase_state_ln_fugacity_composition_sensitivity", [](
         double t,

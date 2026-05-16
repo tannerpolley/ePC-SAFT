@@ -3,17 +3,10 @@
 import numpy as np
 import pytest
 
-import epcsaft
-import epcsaft.epcsaft as epcsaft_module
-import epcsaft.ipopt_backend as ipopt_backend
-from epcsaft import ePCSAFTMixture
 from tests.helpers.runtime_cases import (
     _assert_array,
-    _ionic_params,
     _ionic_state,
     _ionic_state_with_elec_model,
-    _neutral_state,
-    _sum_term_arrays,
 )
 
 def test_ionic_activity_and_solution_methods_return_expected_values():

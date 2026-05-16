@@ -1,17 +1,14 @@
 from __future__ import annotations
 
 import csv
-import json
 from pathlib import Path
 
 import numpy as np
 import pytest
 
 import epcsaft
-import epcsaft.ipopt_backend as ipopt_backend
+from epcsaft._optional_backends import ipopt as ipopt_backend
 from epcsaft import ePCSAFTMixture
-from epcsaft.equilibrium import _explicit_to_formula_composition, _formula_to_explicit_composition
-from epcsaft.equilibrium_core.electrolyte_basis import build_electrolyte_basis
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 

@@ -24,11 +24,6 @@ The target internal shape is:
      regression/
      native/
      data/
-     benchmarks/
-
-The current source tree may keep some compatibility-shim modules as single
-Python files while those boundaries settle. Documentation, tests, and new code
-should still treat the subsystems below as the ownership model.
 
 Subsystem Boundaries
 --------------------
@@ -65,12 +60,12 @@ Data
 
 Benchmarks
    Owns package-maintained timing, smoke, and regression benchmarks that protect
-   runtime expectations. Benchmarks may consume the public package API and
-   packaged/reference data, but they should not become required import-time
-   dependencies for normal users. The package-owned literature benchmark suite
-   inventory also belongs here: it is the canonical classification surface for
-   which literature anchors are already supported by tests versus still blocked
-   on follow-up generic capability work.
+   runtime expectations. Benchmark execution lives under ``scripts/benchmarks``,
+   may consume the public package API and packaged/reference data, and should
+   not become a runtime package import dependency for normal users. The
+   package-owned literature benchmark suite inventory also belongs there: it is
+   the canonical classification surface for which literature anchors are already
+   supported by tests versus still blocked on follow-up generic capability work.
 
 Core Surfaces
 -------------
@@ -89,8 +84,8 @@ Use these imports for new code:
 * ``epcsaft.diagnostics`` for ``capabilities()`` and ``runtime_build_info()``.
 
 Top-level imports remain stable for existing users. Benchmark execution helpers
-are validation assets, not runtime thermodynamic APIs; any
-``epcsaft.benchmarks`` imports are temporary compatibility shims.
+are validation assets, not runtime thermodynamic APIs; import them from
+``scripts.benchmarks`` rather than from the runtime package.
 
 Import Policy
 -------------

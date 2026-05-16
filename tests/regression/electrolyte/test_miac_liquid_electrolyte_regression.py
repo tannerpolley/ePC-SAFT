@@ -11,7 +11,7 @@ from scripts._epcsaft_oop import as_mixture
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE = REPO_ROOT / "tests" / "fixtures" / "literature" / "figiel_2025" / "miac_liquid_electrolyte.json"
-DISALLOWED_BACKENDS = {"numerical_derivative", "fd", "numerical_derivative", "numerical_jacobian"}
+DISALLOWED_BACKENDS = {"numerical_derivative", "fd", "numerical_jacobian"}
 
 
 def _load_fixture() -> dict:

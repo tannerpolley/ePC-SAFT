@@ -101,7 +101,7 @@ double dadt_ion_cpp(const IonIntermediateState &ion_state, double t, const vecto
 }
 
 // EqID: dh_ares_dxi
-ContributionDadxResult dadx_ion_cpp(const MixtureState &thermo, const IonIntermediateState &ion_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {
+ContributionDadxResult dadx_ion_cpp(const IonIntermediateState &ion_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     ContributionDadxResult result;
     result.dadx.assign(ncomp, 0.0);

@@ -169,8 +169,7 @@ BornIntermediateState born_intermediate_state_cpp(
     double t,
     const vector<double> &x,
     const add_args &cppargs,
-    bool include_dt,
-    bool include_dx
+    bool include_dt
 ) {
     BornIntermediateState state;
     if (cppargs.z.empty() || cppargs.born_model == 0) {

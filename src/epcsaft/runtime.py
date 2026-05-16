@@ -19,16 +19,15 @@ def _package_version() -> str:
     try:
         return metadata.version("epcsaft")
     except metadata.PackageNotFoundError:
-        pass
-    pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
-    if pyproject.exists():
-        match = re.search(
-            r'(?m)^version\s*=\s*"([^"]+)"',
-            pyproject.read_text(encoding="utf-8", errors="replace"),
-        )
-        if match:
-            return match.group(1)
-    return "0+unknown"
+        pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
+        if pyproject.exists():
+            match = re.search(
+                r'(?m)^version\s*=\s*"([^"]+)"',
+                pyproject.read_text(encoding="utf-8", errors="replace"),
+            )
+            if match:
+                return match.group(1)
+        return "0+unknown"
 
 
 __version__ = _package_version()
@@ -171,7 +170,7 @@ def _mtime_utc(path: Path) -> str:
 def runtime_build_info() -> dict[str, object]:
     """Return JSON-like package, source, and native-extension metadata."""
 
-    from .ipopt_backend import cyipopt_backend_info
+    from ._optional_backends.ipopt import cyipopt_backend_info
 
     direct_url = _direct_url_payload()
     source_root = _source_checkout_from_package() or _source_checkout_from_direct_url(direct_url)

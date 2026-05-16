@@ -1367,7 +1367,7 @@ AresContributions ares_contributions_cpp(double t, double rho, const vector<doub
     DispersionPolynomialState dispersion = dispersion_polynomials_cpp(thermo.m_avg, hc_state.eta);
     AssociationIntermediateState assoc_state = association_intermediate_state_cpp(thermo, hc_state, t, x, cppargs, false, false);
     IonIntermediateState ion_state = ion_intermediate_state_cpp(thermo, t, x, cppargs, false);
-    BornIntermediateState born_state = born_intermediate_state_cpp(t, x, cppargs, false, false);
+    BornIntermediateState born_state = born_intermediate_state_cpp(t, x, cppargs, false);
 
     out.hc = ares_detail::ares_hc_cpp(thermo, hc_state, x, cppargs);
     out.disp = ares_detail::ares_disp_cpp(thermo, dispersion);
@@ -2053,7 +2053,7 @@ ScalarContributionTerms temperature_derivative_residual_helmholtz_result_cpp(dou
     DispersionPolynomialState dispersion = dispersion_polynomials_cpp(thermo.m_avg, hc_state.eta);
     AssociationIntermediateState assoc_state = association_intermediate_state_cpp(thermo, hc_state, t, x, cppargs, true, false, &dghs_dt);
     IonIntermediateState ion_state = ion_intermediate_state_cpp(thermo, t, x, cppargs, false);
-    BornIntermediateState born_state = born_intermediate_state_cpp(t, x, cppargs, true, false);
+    BornIntermediateState born_state = born_intermediate_state_cpp(t, x, cppargs, true);
 
     double hc = dadt_hc_cpp(thermo, hc_state, dzeta_dt, x, cppargs);
     double disp = dadt_disp_cpp(thermo, dzeta_dt[3], t, dispersion);
@@ -2079,12 +2079,12 @@ CompositionContributionResult composition_derivative_residual_helmholtz_result_c
     DispersionPolynomialState dispersion = dispersion_polynomials_cpp(thermo.m_avg, hc_state.eta);
     AssociationIntermediateState assoc_state = association_intermediate_state_cpp(thermo, hc_state, t, x, cppargs, false, false);
     IonIntermediateState ion_state = ion_intermediate_state_cpp(thermo, t, x, cppargs, true);
-    BornIntermediateState born_state = born_intermediate_state_cpp(t, x, cppargs, false, true);
+    BornIntermediateState born_state = born_intermediate_state_cpp(t, x, cppargs, false);
 
     ContributionDadxResult hc = dadx_hc_cpp(thermo, hc_state, t, rho, x, cppargs);
     ContributionDadxResult disp = dadx_disp_cpp(thermo, hc_state, dispersion, t, rho, x, cppargs);
     ContributionDadxResult assoc = dadx_assoc_cpp(thermo, hc_state, assoc_state, t, rho, x, cppargs);
-    ContributionDadxResult ion = dadx_ion_cpp(thermo, ion_state, t, rho, x, cppargs);
+    ContributionDadxResult ion = dadx_ion_cpp(ion_state, t, rho, x, cppargs);
     ContributionDadxResult born = dadx_born_cpp(born_state, t, rho, x, cppargs);
 
     CompositionContributionResult result;

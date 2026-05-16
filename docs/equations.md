@@ -510,7 +510,7 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - Description: Provides a supporting relation used in dispersion contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
 - LaTeX: `docs/latex/equations.tex:479`
-- C++: `src/epcsaft/native/epcsaft_density.cpp:697` (double reduced_density_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_density.cpp:696` (double reduced_density_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs) {)
 
 ```tex
 \rho=\frac{6}{\pi} \eta\left(\sum_{i} x_{i} m_{i} d_{i}^3\right)^{-1}
@@ -523,7 +523,7 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - Description: Provides a supporting relation used in dispersion contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
 - LaTeX: `docs/latex/equations.tex:490`
-- C++: `src/epcsaft/native/epcsaft_density.cpp:697` (double reduced_density_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_density.cpp:696` (double reduced_density_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs) {)
 
 ```tex
 \rho_{N}=N_{\mathrm{AV}}\rho,
@@ -570,7 +570,7 @@ Z
 - Description: Provides the explicit scalar residual used to locate density roots at specified \(T\), \(P\), and \(\mathbf{x}\).
 - Change note: Added as a solver-facing closeout equation so the initial-density section ends with the actual root-finding constraint rather than only helper relations.
 - LaTeX: `docs/latex/equations.tex:534`
-- C++: `src/epcsaft/native/epcsaft_density.cpp:849` (double density_root_residual_cpp(double rhomolar, double t, double p, vector<double> x, const add_args &cppargs){)
+- C++: `src/epcsaft/native/epcsaft_density.cpp:848` (double density_root_residual_cpp(double rhomolar, double t, double p, vector<double> x, const add_args &cppargs){)
 
 ```tex
 R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
@@ -1754,7 +1754,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Moved back under the Debye-Huckel Helmholtz contribution so Section 4 owns all equations carrying the Debye-Huckel contribution label.
 - LaTeX: `docs/latex/equations.tex:1639`
-- C++: `src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp:104` (ContributionDadxResult dadx_ion_cpp(const MixtureState &thermo, const IonIntermediateState &ion_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp:104` (ContributionDadxResult dadx_ion_cpp(const IonIntermediateState &ion_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \begin{aligned}
@@ -1825,7 +1825,7 @@ D_{i,\delta}^{(m_\delta)},
 - Description: Provides the density differential of the Born Helmholtz contribution.
 - Change note: Moved back under the Born Helmholtz contribution so Section 4 owns all equations carrying the Born contribution label.
 - LaTeX: `docs/latex/equations.tex:1706`
-- C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:212` (double dadrho_born_cpp() {)
+- C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:211` (double dadrho_born_cpp() {)
 
 ```tex
 \rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}= 0
@@ -1838,7 +1838,7 @@ D_{i,\delta}^{(m_\delta)},
 - Description: Provides a differential relation needed for born electrolyte term contribution calculations.
 - Change note: Moved back under the Born Helmholtz contribution so Section 4 owns all equations carrying the Born contribution label.
 - LaTeX: `docs/latex/equations.tex:1717`
-- C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:235` (ContributionDadxResult dadx_born_cpp(const BornIntermediateState &born_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:234` (ContributionDadxResult dadx_born_cpp(const BornIntermediateState &born_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \begin{aligned}
@@ -1863,7 +1863,7 @@ D_{i,\delta}^{(m_\delta)},
 - Description: Provides a differential relation needed for born electrolyte term contribution calculations.
 - Change note: Moved back under the Born Helmholtz contribution so Section 4 owns all equations carrying the Born contribution label.
 - LaTeX: `docs/latex/equations.tex:1740`
-- C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:235` (ContributionDadxResult dadx_born_cpp(const BornIntermediateState &born_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:234` (ContributionDadxResult dadx_born_cpp(const BornIntermediateState &born_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \begin{aligned}
@@ -1908,7 +1908,7 @@ D_{i,\delta}^{(m_\delta)},
 - Description: Provides the temperature differential of the Born Helmholtz contribution.
 - Change note: Moved back under the Born Helmholtz contribution so Section 4 owns all equations carrying the Born contribution label.
 - LaTeX: `docs/latex/equations.tex:1783`
-- C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:217` (double dadt_born_cpp(double t, const BornIntermediateState &born_state) {)
+- C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:216` (double dadt_born_cpp(double t, const BornIntermediateState &born_state) {)
 
 ```tex
 \begin{aligned}

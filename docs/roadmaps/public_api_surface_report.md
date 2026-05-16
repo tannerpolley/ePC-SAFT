@@ -120,11 +120,9 @@ behavior.
 | `epcsaft.diagnostics` | Organized public diagnostics namespace | Keep. |
 | `epcsaft.runtime` | Public runtime metadata implementation module | Keep. |
 | `epcsaft.implicit_sensitivity` | Public sensitivity helper module | Keep, but status-token helper naming should be revisited only with API migration. |
-| `epcsaft.ipopt_backend` | Compatibility module alias for optional backend bridge | Keep as shim. |
-| `epcsaft.benchmarks` | Temporary compatibility shim for old benchmark imports | Keep during cleanup window; benchmark execution lives under `scripts/benchmarks/helpers`. |
 | `epcsaft._types` | Private implementation module | Do not promote. |
-| `epcsaft._optional_backends` | Private optional-backend implementation package | Do not promote. |
-| `epcsaft.equilibrium_core` | Internal equilibrium support package with validation shims | Keep internal; do not add top-level exports. |
+| `epcsaft._optional_backends` | Private optional-backend implementation package | Do not promote as public API. |
+| `epcsaft.equilibrium_core` | Internal equilibrium support package | Keep internal; do not add top-level exports. |
 
 ## Entry Points
 
@@ -140,9 +138,9 @@ No entrypoint changes are needed for issue #120.
 
 - Public namespaces are now documented in `docs/pages/package_architecture.rst`.
 - Benchmark runtime logic has already moved out of the installable runtime
-  package; remaining `epcsaft.benchmarks` imports are compatibility shims.
-- Optional IPOPT implementation has already moved under `_optional_backends`;
-  `epcsaft.ipopt_backend` remains a compatibility alias.
+  package; benchmark helpers are imported from `scripts/benchmarks/helpers`.
+- Optional IPOPT implementation lives under `_optional_backends`; no top-level
+  compatibility alias remains in the runtime package.
 - Sequential reactive workflow names remain public for compatibility, but docs
   now state the workflow boundary explicitly.
 - No application-specific downstream helper was found in `epcsaft.__all__` that
@@ -150,8 +148,6 @@ No entrypoint changes are needed for issue #120.
 
 ## Future API Work
 
-- Decide whether to deprecate benchmark import shims after downstream users and
-  docs no longer import `epcsaft.benchmarks`.
 - Decide whether the legacy implicit-sensitivity status helper should be renamed
   or retained permanently.
 - Decide whether `DATASET_ROOT` should stay public or move behind a documented

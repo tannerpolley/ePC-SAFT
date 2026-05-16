@@ -2324,7 +2324,6 @@ def create_assoc_matrix(params):
     for comp in params["assoc_scheme"]:
         if comp is None:
             assoc_num.append(0)
-            pass
         elif type(comp) is list:
             num = 0
             for site in comp:
@@ -2403,32 +2402,12 @@ def _resolve_solvent_override(mixture, species, solvent):
 
 def np_to_vector_double(np_array):
     """Take a numpy array and return a C++ vector."""
-    cpp_vector = []
-
-    try:
-        np_array = np_array.flatten()
-        N = np_array.shape[0]
-        for i in range(N):
-            cpp_vector.append(float(np_array[i]))
-    except TypeError:
-        cpp_vector.append(float(np_array))
-
-    return cpp_vector
+    return np.asarray(np_array, dtype=float).ravel().tolist()
 
 
 def np_to_vector_int(np_array):
     """Take a numpy array and return a C++ vector."""
-    cpp_vector = []
-
-    try:
-        np_array = np_array.flatten()
-        N = np_array.shape[0]
-        for i in range(N):
-            cpp_vector.append(int(np_array[i]))
-    except TypeError:
-        cpp_vector.append(int(np_array))
-
-    return cpp_vector
+    return np.asarray(np_array, dtype=int).ravel().tolist()
 
 
 def create_struct(params):

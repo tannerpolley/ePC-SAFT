@@ -32,7 +32,6 @@ from .parameters import (
     _matrix_value,
     _normalize_component,
     _resolve_component_field_with_source,
-    _solvent_token_for_component,
     get_prop_dict,
     molality_to_molefraction,
 )
@@ -981,7 +980,7 @@ def _assoc_is_enabled(assoc_scheme: str | None) -> bool:
     return token not in {"", "none", "null", "0"}
 
 
-def _normalize_fit_targets(mode: str, fit_targets: Iterable[str] | None, assoc_scheme: str = "") -> tuple[str, ...]:
+def _normalize_fit_targets(mode: str, fit_targets: Iterable[str] | None) -> tuple[str, ...]:
     if fit_targets is None:
         if mode == PURE_NEUTRAL_MODE:
             return tuple(DEFAULT_TARGETS[PURE_NEUTRAL_MODE]["nonassociating"])
@@ -2370,7 +2369,7 @@ def _fit_pure_neutral_internal_with_native(
 ) -> tuple[FitResult, dict[str, Any]]:
     normalized_component = _normalize_component(component)
     normalized_records = _normalize_records(records)
-    normalized_fit_targets = _normalize_fit_targets(PURE_NEUTRAL_MODE, fit_targets, assoc_scheme=assoc_scheme)
+    normalized_fit_targets = _normalize_fit_targets(PURE_NEUTRAL_MODE, fit_targets)
     for target in normalized_fit_targets:
         if target not in {"m", "s", "e"}:
             raise InputError("Phase-1 pure_neutral regression supports only the targets 'm', 's', and 'e'.")
@@ -2579,7 +2578,7 @@ def _fit_pure_neutral_associating_native(
     normalized_fit_targets = (
         tuple(DEFAULT_TARGETS[PURE_NEUTRAL_MODE]["associating"])
         if fit_targets is None
-        else _normalize_fit_targets(PURE_NEUTRAL_MODE, fit_targets, assoc_scheme=assoc_scheme)
+        else _normalize_fit_targets(PURE_NEUTRAL_MODE, fit_targets)
     )
     unsupported = [target for target in normalized_fit_targets if target not in {"m", "s", "e", "e_assoc", "vol_a"}]
     if unsupported:
@@ -2683,7 +2682,7 @@ def _debug_native_pure_neutral_objective(
 
     normalized_component = _normalize_component(component)
     normalized_records = _normalize_records(records)
-    normalized_fit_targets = _normalize_fit_targets(PURE_NEUTRAL_MODE, fit_targets, assoc_scheme=assoc_scheme)
+    normalized_fit_targets = _normalize_fit_targets(PURE_NEUTRAL_MODE, fit_targets)
     for target in normalized_fit_targets:
         if target not in {"m", "s", "e"}:
             raise InputError("Phase-1 pure_neutral regression supports only the targets 'm', 's', and 'e'.")

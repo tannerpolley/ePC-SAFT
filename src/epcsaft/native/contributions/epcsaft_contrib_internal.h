@@ -95,8 +95,7 @@ BornIntermediateState born_intermediate_state_cpp(
     double t,
     const vector<double> &x,
     const add_args &cppargs,
-    bool include_dt,
-    bool include_dx
+    bool include_dt
 );
 
 vector<double> dzeta_dt_cpp(const MixtureState &thermo, const vector<double> &x, const add_args &cppargs);
@@ -168,7 +167,6 @@ ContributionDadxResult dadx_assoc_cpp(
 double dadrho_ion_cpp(double t, const IonIntermediateState &ion_state);
 double dadt_ion_cpp(const IonIntermediateState &ion_state, double t, const vector<double> &x, const add_args &cppargs);
 ContributionDadxResult dadx_ion_cpp(
-    const MixtureState &thermo,
     const IonIntermediateState &ion_state,
     double t,
     double rho,

@@ -1303,7 +1303,7 @@ def _call_native_equilibrium(
     trial_phases: Any = None,
 ) -> EquilibriumResult | StabilityResult:
     if options.solver_backend == "ipopt":
-        from .ipopt_backend import unsupported_ipopt_route
+        from ._optional_backends.ipopt import unsupported_ipopt_route
 
         unsupported_ipopt_route(kind)
     from . import _core
@@ -1329,11 +1329,7 @@ def _call_native_equilibrium(
         message = str(exc.args[0]) if getattr(exc, "args", ()) else str(exc)
         diagnostics = exc.args[1] if len(getattr(exc, "args", ())) > 1 and isinstance(exc.args[1], dict) else None
         diagnostics = _diagnostics_with_legacy_candidate(
-            mixture,
             kind=kind,
-            T=float(T),
-            P=float(P),
-            feed=np.asarray(z, dtype=float).flatten(),
             options=options,
             diagnostics=diagnostics,
         )
@@ -1377,12 +1373,8 @@ def _add_legacy_option_diagnostics(diagnostics: dict[str, Any], options: Equilib
 
 
 def _diagnostics_with_legacy_candidate(
-    mixture: Any,
     *,
     kind: str,
-    T: float,
-    P: float,
-    feed: np.ndarray,
     options: EquilibriumOptions,
     diagnostics: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
@@ -2229,6 +2221,17 @@ def lle_flash(
         initial_phases=native_initial_phases,
     )
     assert isinstance(result, EquilibriumResult)
+    diagnostics = dict(result.diagnostics)
+    if (
+        not opts.return_best_effort
+        and result.split_detected is False
+        and diagnostics.get("solution_accepted") is False
+        and diagnostics.get("stability_stable") is False
+        and "initial liquid phases are compositionally identical" not in str(diagnostics.get("message", ""))
+    ):
+        seed = diagnostics.get("seed_name", "unknown")
+        reason = diagnostics.get("point_solver_message") or diagnostics.get("message") or "not accepted"
+        raise SolutionError(f"neutral LLE flash did not converge; best_seed={seed}; {reason}", _json_like(diagnostics))
     return result
 
 
@@ -2351,7 +2354,7 @@ def electrolyte_lle_flash_native(
         }
         _ = seed
     if opts.solver_backend == "ipopt":
-        from .ipopt_backend import solve_electrolyte_lle_ipopt
+        from ._optional_backends.ipopt import solve_electrolyte_lle_ipopt
 
         return solve_electrolyte_lle_ipopt(
             mixture=mixture,
@@ -2411,11 +2414,7 @@ def electrolyte_lle_flash_native(
         }
         diagnostics.update(feed_diagnostics)
         diagnostics = _diagnostics_with_legacy_candidate(
-            mixture,
             kind="electrolyte_lle",
-            T=temperature,
-            P=pressure,
-            feed=feed,
             options=opts,
             diagnostics=diagnostics,
         )

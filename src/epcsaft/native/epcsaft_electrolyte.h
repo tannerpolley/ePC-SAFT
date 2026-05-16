@@ -518,13 +518,8 @@ vector<double> dXAdx_find(vector<int> assoc_num, vector<double> delta_ij,
 vector<double> dXAdt_find(vector<double> delta_ij, double den,
     vector<double> XA, vector<double> ddelta_dt, vector<double> x);
 
-// helper functions
-inline bool IsNotZero (double x) {return x != 0.0;}
-double reduced_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs);
 double dielectric_eps_cpp(vector<double> x, const add_args &cppargs);
 vector<double> dielectric_diff_cpp(vector<double> x, const add_args &cppargs);
-double dielc_eps_cpp(vector<double> x, const add_args &cppargs);
-vector<double> dielc_diff_cpp(vector<double> x, const add_args &cppargs);
 PureNeutralRegressionResult fit_pure_neutral_least_squares_cpp(
     const add_args &base_args,
     const vector<PureNeutralRegressionDensityRecord> &density_records,
@@ -610,7 +605,7 @@ private:
 
 // density and composition helpers
 double density_root_residual_cpp(double rhomolar, double t, double p, vector<double> x, const add_args &cppargs);
-double density_brent_cpp(double t, double p, vector<double> x, int phase, const add_args &cppargs, double a, double b,
+double density_brent_cpp(double t, double p, vector<double> x, const add_args &cppargs, double a, double b,
     double macheps, double tol_abs, int maxiter);
 double reduced_density_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs);
 vector<double> association_site_fractions_cpp(vector<double> XA_guess, vector<double> delta_ij, double den,

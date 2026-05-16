@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from ._types import InputError, SolutionError
@@ -93,8 +93,8 @@ def solve_reactive_electrolyte_bubble(
     if not isinstance(options, ReactiveElectrolyteBubbleOptions):
         raise InputError("options must be a ReactiveElectrolyteBubbleOptions instance.")
     speciation_options = options.speciation_options or ReactiveSpeciationOptions()
-    bubble_options = options.bubble_options or ElectrolyteBubbleOptions(initial_pressure=float(P_seed))
-    if options.bubble_options is None:
+    bubble_options = options.bubble_options
+    if bubble_options is None:
         bubble_options = ElectrolyteBubbleOptions(
             initial_pressure=float(P_seed),
             return_best_effort=options.error_mode != "raise",
@@ -253,28 +253,13 @@ def _with_bubble_continuation(
         initial_pressure=float(fallback_pressure),
         return_best_effort=options.error_mode != "raise",
     )
-    return ReactiveElectrolyteBubbleOptions(
-        speciation_options=options.speciation_options,
-        bubble_options=ElectrolyteBubbleOptions(
+    return replace(
+        options,
+        bubble_options=replace(
+            base,
             initial_pressure=float(initial_pressure),
-            min_pressure=base.min_pressure,
-            max_pressure=base.max_pressure,
-            max_iterations=base.max_iterations,
-            max_vapor_iterations=base.max_vapor_iterations,
-            max_bracket_expansions=base.max_bracket_expansions,
-            tolerance=base.tolerance,
-            vapor_tolerance=base.vapor_tolerance,
-            pressure_factor=base.pressure_factor,
-            min_composition=base.min_composition,
-            charge_tolerance=base.charge_tolerance,
-            return_best_effort=base.return_best_effort,
             initial_y_vap=initial_y_vap or base.initial_y_vap,
         ),
-        error_mode=options.error_mode,
-        penalty_value=options.penalty_value,
-        phase_handoff_mass_tolerance=options.phase_handoff_mass_tolerance,
-        phase_handoff_charge_tolerance=options.phase_handoff_charge_tolerance,
-        phase_handoff_reaction_tolerance=options.phase_handoff_reaction_tolerance,
     )
 
 

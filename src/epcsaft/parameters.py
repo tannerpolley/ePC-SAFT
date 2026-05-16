@@ -675,15 +675,6 @@ def _load_mixed_rel_perm_tables(rel_perm_dir: Path) -> dict[str, list[dict]]:
     return tables
 
 
-def _strip_preset_keys(canonical: dict) -> dict:
-    cleaned = copy.deepcopy(canonical)
-    elec = cleaned.get("elec_model")
-    if isinstance(elec, dict):
-        elec.pop("preset", None)
-        elec.pop("base", None)
-    return cleaned
-
-
 def _load_canonical_user_options(dataset_dir: Path) -> dict:
     path = dataset_dir / "user_options.json"
     if not path.exists():
@@ -702,7 +693,12 @@ def _load_canonical_user_options(dataset_dir: Path) -> dict:
         raise ValueError(
             f"Dataset '{dataset_dir}' canonical_user_options still contains removed key 'elec_model.polar_model'."
         )
-    return _strip_preset_keys(canonical)
+    cleaned = copy.deepcopy(canonical)
+    elec = cleaned.get("elec_model")
+    if isinstance(elec, dict):
+        elec.pop("preset", None)
+        elec.pop("base", None)
+    return cleaned
 
 
 def _load_dataset(dataset_name_or_path) -> dict:

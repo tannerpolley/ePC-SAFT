@@ -86,9 +86,7 @@ double p_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
 
 epcsaft::native::cppad_support::CppADDerivativeResult cppad_pressure_density_derivative_cpp(
     double t,
-    double rho,
-    const vector<double> &x,
-    const add_args &cppargs
+    double rho
 ) {
 #ifdef EPCSAFT_HAS_CPPAD
     using CppADScalar = CppAD::AD<double>;
@@ -118,8 +116,6 @@ epcsaft::native::cppad_support::CppADDerivativeResult cppad_pressure_density_der
 #else
     (void)t;
     (void)rho;
-    (void)x;
-    (void)cppargs;
     epcsaft::native::cppad_support::CppADDerivativeResult result;
     result.supported = false;
     result.backend = "not_available";

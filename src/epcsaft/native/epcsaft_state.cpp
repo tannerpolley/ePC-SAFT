@@ -202,7 +202,7 @@ double ePCSAFTMixtureNative::solve_density_with_guess(
     const add_args& cppargs = args_;
     DensityRootCandidate candidate;
     double rho_root = 0.0;
-    if (density_root_from_seed_cpp(t, p, x, phase, cppargs, rho_guess, &candidate, &rho_root)) {
+    if (density_root_from_seed_cpp(t, p, x, cppargs, rho_guess, &candidate, &rho_root)) {
         last_density_diagnostics_ = DensitySolveDiagnostics{};
         last_density_diagnostics_.warm_start_source = "rho_guess";
         last_density_diagnostics_.validity_gate = "passed";
@@ -245,7 +245,7 @@ double ePCSAFTMixtureNative::solve_density_scoped(double t, double p, const vect
         if (scoped != scoped_density_seeds_.end() && std::isfinite(scoped->second) && scoped->second > 0.0) {
             DensityRootCandidate candidate;
             double rho_root = 0.0;
-            if (density_root_from_seed_cpp(t, p, x, phase, cppargs, scoped->second, &candidate, &rho_root)) {
+            if (density_root_from_seed_cpp(t, p, x, cppargs, scoped->second, &candidate, &rho_root)) {
                 scoped->second = rho_root;
                 last_density_diagnostics_.warm_start_source = "scoped:" + scope;
                 last_density_diagnostics_.validity_gate = "passed";
@@ -260,7 +260,7 @@ double ePCSAFTMixtureNative::solve_density_scoped(double t, double p, const vect
     if (seed != nullptr && seed_valid != nullptr && *seed_valid && std::isfinite(*seed) && *seed > 0.0) {
         DensityRootCandidate candidate;
         double rho_root = 0.0;
-        if (density_root_from_seed_cpp(t, p, x, phase, cppargs, *seed, &candidate, &rho_root)) {
+        if (density_root_from_seed_cpp(t, p, x, cppargs, *seed, &candidate, &rho_root)) {
             *seed = rho_root;
             last_density_diagnostics_.warm_start_source = (phase == 1) ? "phase_global:vap" : "phase_global:liq";
             last_density_diagnostics_.validity_gate = "passed";
@@ -567,14 +567,6 @@ double dielectric_eps_cpp(vector<double> x, const add_args &cppargs) {
 
 vector<double> dielectric_diff_cpp(vector<double> x, const add_args &cppargs) {
     return dielectric_state_cpp(x, cppargs).deps_dx;
-}
-
-double dielc_eps_cpp(vector<double> x, const add_args &cppargs) {
-    return dielectric_eps_cpp(std::move(x), cppargs);
-}
-
-vector<double> dielc_diff_cpp(vector<double> x, const add_args &cppargs) {
-    return dielectric_diff_cpp(std::move(x), cppargs);
 }
 
 double ePCSAFTStateNative::osmotic_coefficient()

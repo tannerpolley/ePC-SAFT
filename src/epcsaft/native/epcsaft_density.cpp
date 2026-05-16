@@ -213,7 +213,6 @@ bool density_root_from_seed_cpp(
     double t,
     double p,
     const vector<double> &x,
-    int phase,
     const add_args &cppargs,
     double rho_seed,
     DensityRootCandidate *candidate,
@@ -317,7 +316,7 @@ bool density_root_from_seed_cpp(
     }
 
     try {
-        double rho_root = density_brent_cpp(t, p, x, phase, cppargs, rho_lo, rho_hi, DBL_EPSILON, 1e-14, 200);
+        double rho_root = density_brent_cpp(t, p, x, cppargs, rho_lo, rho_hi, DBL_EPSILON, 1e-14, 200);
         DensityRootCandidate root_candidate;
         if (!density_root_valid_cpp(t, p, x, cppargs, rho_root, &root_candidate)) {
             return false;
@@ -449,7 +448,7 @@ DensitySolveResult density_solve_report_cpp(double t, double p, vector<double> x
         if (std::isfinite(diagnostics.best_near_root.rho) && diagnostics.best_near_root.rho > 0.0) {
             DensityRootCandidate fallback_candidate;
             double rho_root = 0.0;
-            if (density_root_from_seed_cpp(t, p, x, phase, cppargs, diagnostics.best_near_root.rho, &fallback_candidate, &rho_root)) {
+            if (density_root_from_seed_cpp(t, p, x, cppargs, diagnostics.best_near_root.rho, &fallback_candidate, &rho_root)) {
                 diagnostics.candidate_roots.push_back(density_candidate_diagnostics_cpp(fallback_candidate));
                 diagnostics.candidate_root_count = static_cast<int>(diagnostics.candidate_roots.size());
                 diagnostics.validity_gate = "passed";
@@ -478,7 +477,7 @@ DensitySolveResult density_solve_report_cpp(double t, double p, vector<double> x
         try {
             double rho_lo = ::reduced_density_to_molar(bracket.nu_lo, t, ncomp, x, cppargs);
             double rho_hi = ::reduced_density_to_molar(bracket.nu_hi, t, ncomp, x, cppargs);
-            double rho_root = ::density_brent_cpp(t, p, x, phase, cppargs, rho_lo, rho_hi, DBL_EPSILON, 1e-14, 200);
+            double rho_root = ::density_brent_cpp(t, p, x, cppargs, rho_lo, rho_hi, DBL_EPSILON, 1e-14, 200);
             if (!density_root_valid_cpp(t, p, x, cppargs, rho_root, &candidate)) {
                 candidate = density_near_root_candidate_cpp(t, p, x, cppargs, rho_root);
             }
@@ -545,7 +544,7 @@ DensitySolveResult density_solve_report_cpp(double t, double p, vector<double> x
     if (std::isfinite(diagnostics.best_near_root.rho) && diagnostics.best_near_root.rho > 0.0) {
         DensityRootCandidate fallback_candidate;
         double rho_root = 0.0;
-        if (density_root_from_seed_cpp(t, p, x, phase, cppargs, diagnostics.best_near_root.rho, &fallback_candidate, &rho_root)) {
+        if (density_root_from_seed_cpp(t, p, x, cppargs, diagnostics.best_near_root.rho, &fallback_candidate, &rho_root)) {
             diagnostics.candidate_roots.push_back(density_candidate_diagnostics_cpp(fallback_candidate));
             diagnostics.candidate_root_count = static_cast<int>(diagnostics.candidate_roots.size());
             diagnostics.validity_gate = "passed";
@@ -637,7 +636,7 @@ double den_cpp(double t, double p, vector<double> x, int phase, const add_args &
         try {
             double rho_lo = ::reduced_density_to_molar(bracket.nu_lo, t, ncomp, x, cppargs);
             double rho_hi = ::reduced_density_to_molar(bracket.nu_hi, t, ncomp, x, cppargs);
-            double rho_root = ::density_brent_cpp(t, p, x, phase, cppargs, rho_lo, rho_hi, DBL_EPSILON, 1e-14, 200);
+            double rho_root = ::density_brent_cpp(t, p, x, cppargs, rho_lo, rho_hi, DBL_EPSILON, 1e-14, 200);
             density_root_valid_cpp(t, p, x, cppargs, rho_root, &candidate);
         }
         catch (const std::exception&) {
@@ -721,7 +720,7 @@ at least one solution in the interval [a,b].
 @param tol_abs Tolerance (absolute)
 @param maxiter Maximum number of steps allowed.  Will throw a SolutionError if the solution cannot be found
 */
-double density_brent_cpp(double t, double p, vector<double> x, int phase, const add_args &cppargs, double a, double b,
+double density_brent_cpp(double t, double p, vector<double> x, const add_args &cppargs, double a, double b,
     double macheps, double tol_abs, int maxiter)
 {
     int iter;

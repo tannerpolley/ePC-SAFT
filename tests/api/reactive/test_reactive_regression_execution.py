@@ -6,7 +6,6 @@ import numpy as np
 import pytest
 
 import epcsaft
-import epcsaft.reactive_regression as reactive_regression
 
 def _tiny_base_parameters() -> dict[str, np.ndarray]:
     return {

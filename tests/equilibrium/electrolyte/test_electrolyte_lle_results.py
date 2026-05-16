@@ -8,7 +8,6 @@ import numpy as np
 import pytest
 
 import epcsaft
-import epcsaft.ipopt_backend as ipopt_backend
 from epcsaft import ePCSAFTMixture
 from epcsaft.equilibrium import _explicit_to_formula_composition, _formula_to_explicit_composition
 from epcsaft.equilibrium_core.electrolyte_basis import build_electrolyte_basis

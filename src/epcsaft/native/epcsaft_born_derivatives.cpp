@@ -234,7 +234,7 @@ BornSSMDSDerivativeResult born_ssmds_liquid_derivatives_cpp(
         return result;
     }
 
-    BornIntermediateState born_state = born_intermediate_state_cpp(t, x, cppargs, false, true);
+    BornIntermediateState born_state = born_intermediate_state_cpp(t, x, cppargs, false);
     initialize_supported_result(result, ncomp);
 
     const BornParamPartials d_born = born_d_born_partials_cpp(born_state, t, x, cppargs);

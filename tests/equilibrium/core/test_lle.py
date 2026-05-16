@@ -225,7 +225,7 @@ def test_lle_flash_distinct_poor_seed_fails_loudly_without_forced_pass() -> None
 
     message = str(excinfo.value)
     assert "best_seed=user" in message
-    assert "maximum iterations" in message
+    assert "best candidate collapsed" in message
     assert "numerical_derivative" not in message.lower()
 
 
@@ -266,7 +266,7 @@ def test_lle_flash_rejects_invalid_options_through_public_api(options, match) ->
 
 
 def test_lle_flash_requested_ipopt_requires_cyipopt(monkeypatch) -> None:
-    import epcsaft.ipopt_backend as ipopt_backend
+    from epcsaft._optional_backends import ipopt as ipopt_backend
 
     monkeypatch.setattr(ipopt_backend, "cyipopt_available", lambda: False)
     mix = _methanol_cyclohexane_mixture()

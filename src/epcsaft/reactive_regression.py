@@ -16,7 +16,7 @@ import numpy as np
 
 from . import reactive_electrolyte as reactive_electrolyte_module
 from . import reactive_speciation as reactive_speciation_module
-from ._types import InputError, SolutionError
+from ._types import InputError
 from .epcsaft import ePCSAFTMixture
 from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions, ReactiveElectrolyteBubbleResult
 from .reactive_speciation import ReactionDefinition, ReactiveSpeciationOptions, ReactiveSpeciationResult
@@ -103,23 +103,15 @@ def _mapping_float(values: Mapping[str, Any] | None) -> dict[str, float]:
     return {str(k): float(v) for k, v in values.items()}
 
 
-def _weights_float(values: Mapping[str, Any] | None) -> dict[str, float]:
-    if values is None:
-        return {}
-    out: dict[str, float] = {}
-    for key, raw in values.items():
-        out[str(key)] = _positive(float(raw), f"weights[{key!r}]")
-    return out
-
-
-def _weights_nonnegative(values: Mapping[str, Any] | None) -> dict[str, float]:
+def _weights_float(values: Mapping[str, Any] | None, *, allow_zero: bool = False) -> dict[str, float]:
     if values is None:
         return {}
     out: dict[str, float] = {}
     for key, raw in values.items():
         number = float(raw)
-        if not math.isfinite(number) or number < 0.0:
-            raise InputError(f"weights[{key!r}] must be finite and non-negative.")
+        if not math.isfinite(number) or number < 0.0 or (not allow_zero and number <= 0.0):
+            adjective = "non-negative" if allow_zero else "positive"
+            raise InputError(f"weights[{key!r}] must be finite and {adjective}.")
         out[str(key)] = number
     return out
 
@@ -316,7 +308,7 @@ class ReactiveRegressionObjective:
         object.__setattr__(self, "row_weights", _weights_float(self.row_weights))
         object.__setattr__(self, "source_weights", _weights_float(self.source_weights))
         object.__setattr__(self, "split_weights", _weights_float(self.split_weights))
-        object.__setattr__(self, "residual_weights", _weights_nonnegative(self.residual_weights))
+        object.__setattr__(self, "residual_weights", _weights_float(self.residual_weights, allow_zero=True))
         object.__setattr__(self, "failure_penalty", _positive(float(self.failure_penalty), "failure_penalty"))
         if self.residual_clip is not None:
             object.__setattr__(self, "residual_clip", _positive(float(self.residual_clip), "residual_clip"))
@@ -661,7 +653,7 @@ class ReactiveElectrolyteRegressionContext:
             if charge_vector.size != len(species_labels):
                 charge_vector = np.zeros(len(species_labels), dtype=float)
         reaction_names = _reaction_names(batch.reactions)
-        residual_template = _compile_residual_name_template(batch.rows, resolved_objective, reaction_names)
+        residual_template = _compile_residual_name_template(batch.rows, reaction_names)
         row_static = [
             {
                 "row_id": row.row_id,
@@ -1312,7 +1304,6 @@ def _reaction_names(reactions: Sequence[ReactionDefinition]) -> tuple[str, ...]:
 
 def _compile_residual_name_template(
     rows: Sequence[ReactiveElectrolyteRow],
-    objective: ReactiveRegressionObjective,
     reaction_names: Sequence[str],
 ) -> tuple[str, ...]:
     names: list[str] = []
@@ -1368,7 +1359,7 @@ def _build_row_mixture(
 
 
 def _mixture_factory_from_batch(batch: ReactiveElectrolyteBatch, parameter_map: Mapping[str, float]) -> Any:
-    def factory(x: Sequence[float], T: float, P: float) -> ePCSAFTMixture:
+    def factory(x: Sequence[float], _T: float, P: float) -> ePCSAFTMixture:
         return _build_row_mixture(batch, batch.rows[0], parameter_map, x_override=x, P_override=P)
 
     return factory
