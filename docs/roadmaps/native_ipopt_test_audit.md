@@ -71,14 +71,12 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Stale native electrolyte LLE contract tests were rewritten from missing-derivative assertions to the implemented Ceres plus CppAD-implicit residual/Jacobian surface.
 - The reactive phase diagnostic extent helper no longer uses NumPy's least-squares convenience path; it uses a direct library linear solve for the small stoichiometric normal system.
 
-Full-suite failures from the duration run that align with planned cleanup or next implementation:
+The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 
 - `tests/native/contracts/test_equilibrium_native_contracts.py::test_package_runtime_has_no_external_optimizer_dependency_or_imports`
 - `tests/native/cppad/test_cppad_lle_derivatives.py::test_associating_neutral_lle_solves_with_cppad_implicit_derivatives`
 - `tests/native/equilibrium/test_reactive_phase_equilibrium_ceres_solver.py::test_reactive_phase_native_ceres_solver_rejects_unusable_solution`
 - `tests/workflows/repo/test_dependency_issue_triage.py::test_issue_number_and_url_resolve_to_same_gh_issue_view_call`
-
-The last two failures were caused or exposed by this cleanup slice and were fixed before commit. The remaining failures are gate-aligned evidence for the upcoming dependency and solver-route overhaul.
 
 ## Dependency And Solver Gate Gaps
 

@@ -271,6 +271,8 @@ Task 1 continuation note: the CppAD disabled smoke/default derivative result no 
 
 Task 2 continuation note: native derivative tests that previously used source perturbations as oracle evidence have been rewritten around analytical/CppAD derivative contracts, exact chain-rule identities, backend identity, and finite/nonzero payload checks. The tracked text gate now also blocks common perturbation-oracle and Eigen nonlinear optimizer tokens.
 
+Task 2 continuation note: the stale full-duration failure list in the tracked test audit has been retired. The previously listed dependency, CppAD LLE, reactive-phase Ceres, and dependency-triage nodes now pass individually.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**
