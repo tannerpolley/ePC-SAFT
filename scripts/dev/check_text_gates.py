@@ -105,6 +105,11 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "native" + "_log" + "_pressure" + "_bisection",
         "hessian" + "_backend",
         "multi" + "start",
+        "line" + "_search",
+        "soft" + "_start",
+        "damp" + "ing",
+        "native" + "_scalar" + "_binary" + "_activity",
+        "binary" + "_log" + "_amounts",
     )
 
 

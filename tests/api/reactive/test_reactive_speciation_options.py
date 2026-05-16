@@ -50,7 +50,7 @@ def test_reactive_speciation_options_expose_jacobian_backend_selector() -> None:
     assert "backend" not in {field.name for field in fields(epcsaft.ReactiveSpeciationOptions)}
     assert "jacobian_backend" in {field.name for field in fields(epcsaft.ReactiveSpeciationOptions)}
     assert "finite" + "_difference_step" not in {field.name for field in fields(epcsaft.ReactiveSpeciationOptions)}
-    assert "damping" not in {field.name for field in fields(epcsaft.ReactiveSpeciationOptions)}
+    assert "damp" + "ing" not in {field.name for field in fields(epcsaft.ReactiveSpeciationOptions)}
     assert "solver_backend" in {field.name for field in fields(epcsaft.ReactiveSpeciationOptions)}
 
 @pytest.mark.parametrize(

@@ -433,11 +433,11 @@ Task 8 continuation note: `EquilibriumOptions.jacobian_backend` no longer accept
 
 Task 9 progress note: the public `ReactiveSpeciationOptions.hessian_strategy` knob was removed for the same reason as the equilibrium facade knob. Hessian behavior remains internal to native solver adapters.
 
-Task 9 continuation note: `ReactiveSpeciationOptions` no longer exposes a public `damping` control. Homogeneous reactive-speciation callers keep tolerance/backend/error controls only; remaining native damping is transitional until the Ipopt chemical/speciation route replaces the current loop.
+Task 9 continuation note: `ReactiveSpeciationOptions` no longer exposes a public `damping` control. Homogeneous reactive-speciation callers keep tolerance/backend/error controls only.
 
 Task 9 continuation note: chemical-equilibrium residual evaluation payloads no longer report Gauss-Newton as a public Hessian backend, and the ideal Ipopt speciation route reports limited-memory Hessian behavior only as a solver-internal mode. The residual evaluator exposes the implemented analytic Jacobian/gradient surface and explicitly marks Hessian callbacks unavailable until an exact solver-owned Hessian path exists.
 
-Task 9 continuation note: direct pybind native equilibrium and chemical-equilibrium request parsing no longer accepts a `damping` option. Remaining damping values are internal native defaults until the route implementations are replaced.
+Task 9 continuation note: direct pybind native equilibrium and chemical-equilibrium request parsing no longer accepts a `damping` option.
 
 Task 9 continuation note: the unused native chemical-equilibrium `hessian_strategy` request field and parser branch were deleted. Hessian strategy reporting remains limited to the Ipopt adapter's solver-internal metadata.
 
@@ -580,6 +580,8 @@ Task 12 continuation note: unbound native neutral stability, electrolyte stabili
 Task 13 validation note: the `_core` pybind module now disables pybind11 release extras and MSVC optimization for `bindings.cpp`. Native objects still use the configured Release build, while the large binding translation unit avoids the MSVC heap exhaustion seen during rebuild.
 
 Task 14 continuation note: public and native regression no longer expose repeated-start Ceres controls. The Ceres routes now receive one canonical clipped initial point, stale repeated-start tests were simplified, and the tracked source/test/script text gate blocks reintroducing that control surface.
+
+Task 15 continuation note: the native homogeneous chemical-equilibrium solve entrypoint no longer contains the old scalar activity bracket, soft-start, or damped residual-loop implementations. The solve path validates the request and dispatches only to the native Ipopt ideal-speciation NLP; activity/concentration standard states remain route-gated until their EOS derivative NLP blocks exist. The residual evaluator remains available for analytic Jacobian diagnostics.
 
 ### Task 13: Final Validation And Cleanup
 

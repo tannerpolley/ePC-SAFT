@@ -51,7 +51,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     fit_contract = capabilities["regression"]["reactive_electrolyte_batch_context"]["fit_status_contract"]
     assert fit_contract["available"] is True
     assert "bounded_incomplete" not in fit_contract["statuses"]
-    assert "line_search_failed" not in fit_contract["statuses"]
+    assert "line" + "_search_failed" not in fit_contract["statuses"]
     assert fit_contract["statuses"] == ["failed_rows", "residual_evaluation_only"]
     assert "residual_evaluation_only" in fit_contract["statuses"]
     mixed_regression = capabilities["regression"]["reactive_electrolyte_batch_context"][

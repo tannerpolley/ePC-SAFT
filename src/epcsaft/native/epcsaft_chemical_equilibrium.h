@@ -10,7 +10,6 @@ class ePCSAFTMixtureNative;
 struct ChemicalEquilibriumOptionsNative {
     int max_iterations = 50;
     double tolerance = 1.0e-8;
-    double damping = 0.5;
     double min_mole_fraction = 1.0e-14;
     std::string jacobian_backend = "auto";
     std::string solver_backend = "auto";
