@@ -495,6 +495,8 @@ and they state the convex formulation scope as homogeneous ideal subkernels only
 
 Task 12 continuation note: reactive electrolyte fit status metadata no longer carries an empty placeholder-status list; the active diagnostic route is labeled `diagnostic_only`. EOS derivative coverage matrices now report implemented or out-of-scope rows only instead of acting as a missing-derivative backlog. Unsupported public property-derivative methods raise `InputError` directly rather than returning placeholder derivative result objects.
 
+Task 12 continuation note: Python/native EOS property wrappers no longer reintroduce removed regression fallback/Hessian skeleton metadata, and public `dadx()` payloads no longer expose an empty missing-derivative reason field. The composition-derivative path now either reports implemented derivative backends or raises a typed unsupported-derivative error.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**
