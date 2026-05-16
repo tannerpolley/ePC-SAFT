@@ -515,6 +515,8 @@ Task 12 continuation note: active source, tests, and dev scripts no longer carry
 
 Task 12 continuation note: reactive/speciation capabilities and staged reactive diagnostics no longer expose negative numerical-derivative availability flags. The positive contract is now the accepted derivative backend list plus typed raise-on-unsupported behavior.
 
+Task 12 continuation note: the tracked text gate now enforces that active source, tests, and dev scripts stay free of old retry/default fallback tokens, while the broader documentation cleanup remains separate from executable surfaces.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

@@ -88,14 +88,21 @@ def _blocked_terms() -> tuple[str, ...]:
     )
 
 
+def _source_blocked_terms(rel: str) -> tuple[str, ...]:
+    if not rel.startswith(("src/", "tests/", "scripts/")):
+        return ()
+    return ("fall" + "back",)
+
+
 def main() -> int:
     terms = _blocked_terms()
     matches: list[str] = []
     for path in _tracked_files():
         rel = path.relative_to(REPO_ROOT).as_posix()
         text = path.read_text(encoding="utf-8", errors="ignore").lower()
+        path_terms = terms + _source_blocked_terms(rel)
         for line_number, line in enumerate(text.splitlines(), start=1):
-            if any(term in line for term in terms):
+            if any(term in line for term in path_terms):
                 matches.append(f"{rel}:{line_number}: blocked solver/derivative gate term")
 
     if matches:
