@@ -413,7 +413,7 @@ class ePCSAFTMixture:
         return lle_flash(self, T=T, P=P, z=z, options=options, initial_phases=initial_phases)
 
     def stability_tp(self, T, P, z, *, options=None, parent_phase=None, trial_phases=None):
-        """Run neutral TP tangent-plane-distance stability analysis."""
+        """Validate a neutral TP stability request."""
         from .equilibrium import neutral_stability
 
         return neutral_stability(
@@ -427,7 +427,7 @@ class ePCSAFTMixture:
         )
 
     def electrolyte_stability_tp(self, T, P, *, z=None, solvent_feed=None, salt_molality=None, options=None):
-        """Run transformed-basis electrolyte TP stability analysis."""
+        """Validate a transformed-basis electrolyte TP stability request."""
         from .equilibrium import electrolyte_stability
 
         return electrolyte_stability(

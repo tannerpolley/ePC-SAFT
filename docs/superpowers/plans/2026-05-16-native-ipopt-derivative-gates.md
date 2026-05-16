@@ -551,6 +551,8 @@ Task 12 continuation note: public electrolyte LLE no longer executes the transit
 
 Task 12 continuation note: public neutral TP flash no longer executes the native package-owned TP flash route from `tp_flash`, `flash_tp`, typed `TPFlash`, or neutral `auto` dispatch. The public adapter validates feed, mixture, and scalar inputs, then raises until a native Ipopt constrained NLP route owns production TP flash. Neutral equilibrium benchmark coverage was narrowed to property-state timing so benchmark scripts do not exercise disabled public flash/LLE routes.
 
+Task 12 continuation note: public neutral and electrolyte stability routes no longer execute native TPD searches from `stability`, `stability_tp`, `electrolyte_stability`, `electrolyte_stability_tp`, typed `StabilityAnalysis`, or reactive-stability post-speciation dispatch. The public adapters validate inputs, phase labels, charge neutrality, and electrolyte formula bases, then raise until native Ipopt stability/NLP route builders own production stability analysis.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

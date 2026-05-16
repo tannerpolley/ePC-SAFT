@@ -117,6 +117,12 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert neutral_lle["methods"] == ["lle_flash", "lle_tp"]
     assert neutral_lle["status"] == "route_pending"
     assert neutral_lle["previous_solver_disabled"] == "ceres_residual_lle_route"
+    neutral_stability = capabilities["equilibrium"]["neutral_stability"]
+    assert neutral_stability["available"] is False
+    assert neutral_stability["backend"] == "native_ipopt_equilibrium_nlp_required"
+    assert neutral_stability["methods"] == ["stability", "stability_tp"]
+    assert neutral_stability["status"] == "route_pending"
+    assert neutral_stability["previous_solver_disabled"] == "native_tpd_stability_route"
     electrolyte_bubble = capabilities["equilibrium"]["electrolyte_bubble_pressure"]
     assert electrolyte_bubble["available"] is False
     assert electrolyte_bubble["backend"] == "native_ipopt_equilibrium_nlp_required"
@@ -130,6 +136,12 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert electrolyte_lle["previous_solver_disabled"] == "ceres_residual_electrolyte_lle_route"
     assert electrolyte_lle["default_auto_uses_ipopt"] is False
     assert electrolyte_lle["full_constrained_nlp_available"] is False
+    electrolyte_stability = capabilities["equilibrium"]["electrolyte_stability"]
+    assert electrolyte_stability["available"] is False
+    assert electrolyte_stability["backend"] == "native_ipopt_equilibrium_nlp_required"
+    assert electrolyte_stability["methods"] == ["electrolyte_stability", "electrolyte_stability_tp"]
+    assert electrolyte_stability["status"] == "route_pending"
+    assert electrolyte_stability["previous_solver_disabled"] == "native_tpd_electrolyte_stability_route"
     reactive_bubble = capabilities["equilibrium"]["reactive_electrolyte_bubble"]
     assert reactive_bubble["available"] is False
     assert reactive_bubble["backend"] == "native_ipopt_equilibrium_nlp_required"

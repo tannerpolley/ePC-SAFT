@@ -7,6 +7,7 @@ import pytest
 
 import epcsaft
 from epcsaft import _core
+from tests.equilibrium.core.test_stability import _assert_stability_route_pending
 from tests.helpers.numeric import assert_allclose
 
 
@@ -191,23 +192,24 @@ def test_mixture_equilibrium_routes_chemical_equilibrium_to_native_speciation() 
     assert result.x["B"] / result.x["A"] == pytest.approx(3.0, rel=1.0e-8)
     assert result.diagnostics["native_entrypoint"] == "_solve_chemical_equilibrium_native"
 
-def test_reactive_stability_chemical_equilibrates_feed_before_native_tpd() -> None:
+def test_reactive_stability_requires_native_ipopt_stability_route_after_speciation() -> None:
     mix = _methanol_cyclohexane_mixture()
     target_x = np.asarray([0.45, 0.55], dtype=float)
     stoich = {"Methanol": -1.0, "Cyclohexane": 1.0}
     log_k = _neutral_log_k_from_fugacity_activity(mix, 298.15, 1.013e5, target_x, stoich)
 
-    result = mix.equilibrium(
-        kind="reactive_stability",
-        T=298.15,
-        P=1.013e5,
-        z=[0.5, 0.5],
-        balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
-        totals={"total": 1.0},
-        reactions=[epcsaft.ReactionDefinition(stoich, log_k)],
-        parent_phase="liq",
-        trial_phases=("liq",),
-        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
-    )
+    with pytest.raises(epcsaft.InputError) as excinfo:
+        mix.equilibrium(
+            kind="reactive_stability",
+            T=298.15,
+            P=1.013e5,
+            z=[0.5, 0.5],
+            balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
+            totals={"total": 1.0},
+            reactions=[epcsaft.ReactionDefinition(stoich, log_k)],
+            parent_phase="liq",
+            trial_phases=("liq",),
+            options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
+        )
 
-    assert result.diagnostics["reactive_chemical_equilibrium"]["success"] is True
+    _assert_stability_route_pending(excinfo)

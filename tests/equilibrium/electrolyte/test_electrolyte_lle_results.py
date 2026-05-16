@@ -11,6 +11,7 @@ import epcsaft
 from epcsaft import ePCSAFTMixture
 from epcsaft.equilibrium import _explicit_to_formula_composition, _formula_to_explicit_composition
 from epcsaft.equilibrium_core.electrolyte_basis import build_electrolyte_basis
+from tests.equilibrium.core.test_stability import _assert_stability_route_pending
 from tests.equilibrium.electrolyte.test_electrolyte_lle_smokes import _assert_electrolyte_lle_route_pending
 from tests.helpers.numeric import assert_allclose
 
@@ -126,24 +127,19 @@ def test_mixed_monovalent_divalent_shared_anion_basis_builds() -> None:
     assert labels == ["LiCl", "MgCl2"]
     assert basis.rank == 2
 
-def test_electrolyte_stability_payload_is_json_serializable() -> None:
+def test_electrolyte_stability_requires_native_ipopt_route_after_validation() -> None:
     mix = _case2_mixture()
 
-    result = mix.equilibrium(
-        kind="electrolyte_stability",
-        T=298.15,
-        P=1.0e5,
-        z=_case2_feed(),
-        options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8),
-    )
+    with pytest.raises(epcsaft.InputError) as excinfo:
+        mix.equilibrium(
+            kind="electrolyte_stability",
+            T=298.15,
+            P=1.0e5,
+            z=_case2_feed(),
+            options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8),
+        )
 
-    assert result.backend == "electrolyte_tpd"
-    assert result.diagnostics["variable_model"] == "ascani_transformed_salt_pairs"
-    assert result.diagnostics["basis_rank"] == 2
-    assert result.diagnostics["solver_language"] == "c++"
-    assert result.diagnostics["tpd_objective_value"] == pytest.approx(result.min_tpd)
-    assert result.diagnostics["phase_charge_balance"]["trial"] == pytest.approx(0.0, abs=1.0e-8)
-    json.dumps(result.to_dict(), allow_nan=False)
+    _assert_stability_route_pending(excinfo, route="electrolyte_stability")
 
 def test_mixed_electrolyte_lle_requires_native_ipopt_route_for_distributed_ions() -> None:
     mix = _case2_mixture()

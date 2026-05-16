@@ -7,6 +7,7 @@ import pytest
 
 import epcsaft
 from epcsaft import _core, ePCSAFTMixture
+from tests.equilibrium.core.test_stability import _assert_stability_route_pending
 from tests.equilibrium.core.test_vle import _assert_tp_flash_route_pending
 from tests.equilibrium.electrolyte.test_electrolyte_lle_smokes import _assert_electrolyte_lle_route_pending
 
@@ -99,21 +100,20 @@ def test_native_electrolyte_stability_honors_explicit_max_iterations() -> None:
     assert payload["diagnostics"]["effective_max_iterations"] == 2
 
 
-def test_public_electrolyte_stability_uses_native_backend() -> None:
+def test_public_electrolyte_stability_requires_native_ipopt_route() -> None:
     mix = _electrolyte_mixture()
 
-    result = mix.equilibrium(
-        kind="electrolyte_stability",
-        T=298.15,
-        P=1.013e5,
-        z=[0.55, 0.40, 0.025, 0.025],
-        backend="native",
-        options=epcsaft.EquilibriumOptions(max_iterations=60, tolerance=1.0e-8),
-    )
+    with pytest.raises(epcsaft.InputError) as excinfo:
+        mix.equilibrium(
+            kind="electrolyte_stability",
+            T=298.15,
+            P=1.013e5,
+            z=[0.55, 0.40, 0.025, 0.025],
+            backend="native",
+            options=epcsaft.EquilibriumOptions(max_iterations=60, tolerance=1.0e-8),
+        )
 
-    assert result.backend == "electrolyte_tpd"
-    assert result.diagnostics["solver_language"] == "c++"
-    assert result.diagnostics["native_entrypoint"] == "_solve_equilibrium_native"
+    _assert_stability_route_pending(excinfo, route="electrolyte_stability")
 
 
 def test_public_electrolyte_lle_requires_native_ipopt_route() -> None:

@@ -17,7 +17,7 @@ GENERIC_TEST_TARGETS = (
     "tests/equilibrium/core/test_vle.py::test_ternary_hydrocarbon_basis_tp_flash_requires_native_ipopt_route",
     "tests/equilibrium/core/test_lle.py::test_methanol_cyclohexane_lle_flash_requires_native_ipopt_with_seed",
     "tests/equilibrium/core/test_lle.py::test_lle_flash_requested_ipopt_requires_native_ipopt_route",
-    "tests/equilibrium/core/test_stability.py::test_stability_returns_structured_result_and_json_like_dict",
+    "tests/equilibrium/core/test_stability.py::test_stability_requires_native_ipopt_route_after_validation",
     (
         "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::"
         "test_one_salt_electrolyte_lle_direct_feed_requires_native_ipopt_route"
@@ -57,7 +57,7 @@ EQUILIBRIUM_CONFIDENCE_TEST_TARGETS = (
 EQUILIBRIUM_API_TEST_TARGETS = (
     "tests/equilibrium/core/test_api.py::test_tp_flash_requires_native_ipopt_route",
     "tests/equilibrium/core/test_lle.py::test_methanol_cyclohexane_lle_flash_requires_native_ipopt_with_seed",
-    "tests/equilibrium/core/test_stability.py::test_stability_returns_structured_result_and_json_like_dict",
+    "tests/equilibrium/core/test_stability.py::test_stability_requires_native_ipopt_route_after_validation",
     (
         "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::"
         "test_one_salt_electrolyte_lle_direct_feed_requires_native_ipopt_route"

@@ -7,6 +7,7 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
+from tests.equilibrium.core.test_stability import _assert_stability_route_pending
 from tests.equilibrium.core.test_vle import _assert_tp_flash_route_pending
 from tests.helpers.numeric import assert_allclose
 
@@ -96,36 +97,35 @@ def test_solve_equilibrium_accepts_typed_problem_objects() -> None:
 
     with pytest.raises(epcsaft.InputError) as flash_exc:
         mix.solve_equilibrium(epcsaft.TPFlash(T=220.0, P=1.0e5, z=feed))
-    stability = mix.solve_equilibrium(
-        epcsaft.StabilityAnalysis(T=300.0, P=1.0e5, z=feed, parent_phase="liq", trial_phases=("liq",))
-    )
+    with pytest.raises(epcsaft.InputError) as stability_exc:
+        mix.solve_equilibrium(
+            epcsaft.StabilityAnalysis(T=300.0, P=1.0e5, z=feed, parent_phase="liq", trial_phases=("liq",))
+        )
 
     _assert_tp_flash_route_pending(flash_exc)
-    assert isinstance(stability, epcsaft.StabilityResult)
-    assert stability.problem_kind == "stability"
+    _assert_stability_route_pending(stability_exc)
 
     with pytest.raises(epcsaft.InputError, match=r"dew_p requires a native Ipopt equilibrium NLP route"):
         mix.solve_equilibrium(epcsaft.DewPoint(T=260.0, y=feed))
 
 
-def test_explicit_stability_tp_matches_legacy_equilibrium_dispatch() -> None:
+def test_explicit_stability_tp_matches_equilibrium_route_pending_policy() -> None:
     feed = np.asarray([0.1, 0.3, 0.6])
 
-    direct = _hydrocarbon_mixture().stability_tp(T=300.0, P=1.0e5, z=feed, parent_phase="liq", trial_phases=("liq",))
-    legacy = _hydrocarbon_mixture().equilibrium(
-        kind="stability",
-        T=300.0,
-        P=1.0e5,
-        z=feed,
-        parent_phase="liq",
-        trial_phases=("liq",),
-    )
+    with pytest.raises(epcsaft.InputError) as direct_exc:
+        _hydrocarbon_mixture().stability_tp(T=300.0, P=1.0e5, z=feed, parent_phase="liq", trial_phases=("liq",))
+    with pytest.raises(epcsaft.InputError) as dispatched_exc:
+        _hydrocarbon_mixture().equilibrium(
+            kind="stability",
+            T=300.0,
+            P=1.0e5,
+            z=feed,
+            parent_phase="liq",
+            trial_phases=("liq",),
+        )
 
-    assert isinstance(direct, epcsaft.StabilityResult)
-    assert direct.problem_kind == legacy.problem_kind
-    assert direct.parent_phase == legacy.parent_phase
-    assert direct.trial_phase == legacy.trial_phase
-    assert direct.min_tpd == pytest.approx(legacy.min_tpd)
+    _assert_stability_route_pending(direct_exc)
+    _assert_stability_route_pending(dispatched_exc)
 
 
 def test_explicit_lle_tp_matches_equilibrium_route_pending_policy() -> None:

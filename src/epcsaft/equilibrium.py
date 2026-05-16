@@ -55,6 +55,13 @@ def _raise_native_ipopt_tp_flash_required() -> None:
     )
 
 
+def _raise_native_ipopt_stability_required(route: str) -> None:
+    raise InputError(
+        f"{route} requires a native Ipopt equilibrium stability NLP route. "
+        "The previous native TPD stability route is disabled by the solver gate."
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class EquilibriumOptions:
     """Numerical controls for equilibrium solvers."""
@@ -1620,24 +1627,17 @@ def neutral_stability(
     parent_phase: Any = None,
     trial_phases: Any = None,
 ) -> StabilityResult:
-    """Run native C++ neutral tangent-plane-distance stability analysis."""
+    """Validate a neutral stability request and require the native Ipopt route."""
     opts = _normalize_options(options)
-    feed = _normalize_feed(z, mixture.ncomp, opts.min_composition, "stability")
+    _normalize_feed(z, mixture.ncomp, opts.min_composition, "stability")
     _reject_ion_containing_mixture(mixture)
-    temperature = _positive_scalar(T, "T", "stability")
-    pressure = _positive_scalar(P, "P", "stability")
-    result = _call_native_equilibrium(
-        mixture,
-        kind="stability",
-        T=temperature,
-        P=pressure,
-        z=feed,
-        options=opts,
-        parent_phase=parent_phase,
-        trial_phases=trial_phases,
-    )
-    assert isinstance(result, StabilityResult)
-    return result
+    _positive_scalar(T, "T", "stability")
+    _positive_scalar(P, "P", "stability")
+    if parent_phase is not None:
+        _normalize_parent_phases(parent_phase)
+    if trial_phases is not None:
+        _normalize_trial_phases(trial_phases)
+    _raise_native_ipopt_stability_required("stability")
 
 
 def electrolyte_stability(
@@ -1650,11 +1650,11 @@ def electrolyte_stability(
     salt_molality: Any = None,
     options: EquilibriumOptions | None = None,
 ) -> StabilityResult:
-    """Run native C++ electrolyte transformed-basis stability analysis."""
+    """Validate an electrolyte stability request and require the native Ipopt route."""
     opts = _normalize_options(options)
     _require_ion_containing_mixture(mixture, "electrolyte_stability")
-    temperature = _positive_scalar(T, "T", "electrolyte_stability")
-    pressure = _positive_scalar(P, "P", "electrolyte_stability")
+    _positive_scalar(T, "T", "electrolyte_stability")
+    _positive_scalar(P, "P", "electrolyte_stability")
     feed, feed_diagnostics = _normalize_electrolyte_feed(
         mixture,
         z=z,
@@ -1664,33 +1664,8 @@ def electrolyte_stability(
     )
     charges = _mixture_charges(mixture)
     _require_charge_neutral(feed, charges, "electrolyte_stability feed")
-    basis_payload = _electrolyte_formula_basis(mixture, feed, feed_diagnostics)
-    result = _call_native_equilibrium(
-        mixture,
-        kind="electrolyte_stability",
-        T=temperature,
-        P=pressure,
-        z=feed,
-        options=opts,
-    )
-    assert isinstance(result, StabilityResult)
-    diagnostics = dict(result.diagnostics)
-    diagnostics.setdefault("algorithm_reference", dict(_ASCANI_2022_REFERENCE))
-    diagnostics.setdefault("basis_rank", int(basis_payload["basis_rank"]))
-    diagnostics.setdefault("e_matrix", np.asarray(basis_payload["e_matrix"], dtype=float).tolist())
-    diagnostics.setdefault("salt_pairs", [dict(pair) for pair in basis_payload["salt_pairs"]])
-    diagnostics.update(feed_diagnostics)
-    return StabilityResult(
-        backend=result.backend,
-        problem_kind=result.problem_kind,
-        stable=result.stable,
-        min_tpd=result.min_tpd,
-        parent_phase=result.parent_phase,
-        trial_phase=result.trial_phase,
-        trial_composition=result.trial_composition,
-        trials=result.trials,
-        diagnostics=diagnostics,
-    )
+    _electrolyte_formula_basis(mixture, feed, feed_diagnostics)
+    _raise_native_ipopt_stability_required("electrolyte_stability")
 
 
 def electrolyte_lle_flash_native(

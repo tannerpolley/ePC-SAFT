@@ -523,7 +523,14 @@ def capabilities() -> dict[str, object]:
                 "previous_solver_disabled": "ceres_residual_lle_route",
                 "ipopt_formulation": "thermodynamic_constrained_nlp",
             },
-            "neutral_stability": {"available": True, "backend": "native"},
+            "neutral_stability": {
+                "available": False,
+                "backend": "native_ipopt_equilibrium_nlp_required",
+                "methods": ["stability", "stability_tp"],
+                "status": "route_pending",
+                "previous_solver_disabled": "native_tpd_stability_route",
+                "ipopt_formulation": "thermodynamic_constrained_nlp",
+            },
             "neutral_bubble_dew": {
                 "available": False,
                 "backend": "native_ipopt_equilibrium_nlp_required",
@@ -542,6 +549,14 @@ def capabilities() -> dict[str, object]:
                 "default_auto_uses_ipopt": False,
                 "ipopt_formulation": "thermodynamic_constrained_nlp",
                 "full_constrained_nlp_available": False,
+            },
+            "electrolyte_stability": {
+                "available": False,
+                "backend": "native_ipopt_equilibrium_nlp_required",
+                "methods": ["electrolyte_stability", "electrolyte_stability_tp"],
+                "status": "route_pending",
+                "previous_solver_disabled": "native_tpd_electrolyte_stability_route",
+                "ipopt_formulation": "thermodynamic_constrained_nlp",
             },
             "electrolyte_bubble_pressure": {
                 "available": False,
