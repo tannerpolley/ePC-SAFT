@@ -1,0 +1,478 @@
+# Native Ipopt Derivative Gates Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` when sub-agents are available, or `superpowers:executing-plans` when working inline. Steps use checkbox syntax for tracking.
+
+**Goal:** Follow this plan to its entirety while keeping the strict derivative, solver, packaging, and cleanup gates discussed in the active `/goal`.
+
+**Architecture:** Keep one installable `epcsaft` package for now, but split the internals into EOS/property core, equilibrium extension, and regression extension. Build the new equilibrium implementation as a native C++ Ipopt thermodynamic NLP core in new files, then route public facades into it and delete old paths as parity gates pass.
+
+**Tech Stack:** uv, scikit-build-core, CMake, pybind11, native C++, Ipopt, Ceres, CppAD, Eigen for linear algebra only, pytest through `run_pytest.py`, and repo validation through `scripts/dev/validate_project.py`.
+
+---
+
+## Goal UI Contract
+
+- Active native Codex goal objective:
+  - `Follow docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md to its entirety while keeping to the strict derivative, solver, packaging, and cleanup gates discussed.`
+- Future agents must start by checking the active `/goal` state and this plan.
+- If the goal is interrupted, resume from the checklist in this file and the current git branch state. Do not reconstruct intent from chat history.
+- The intended implementation branch is `codex/native-ipopt-derivative-gates`.
+
+## Non-Negotiable Gates
+
+### Derivative Gates
+
+- No numerical perturbation derivative routes anywhere, including tests, examples, diagnostics, benchmarks, and analysis workflows that remain active.
+- The old FD-derived concepts are banned even when used as a test oracle.
+- Derivatives must be one of:
+  - exact analytical derivatives;
+  - CppAD derivatives for explicit algebraic terms;
+  - CppAD implicit sensitivities for solved state variables;
+  - Ceres autodiff only where Ceres owns the regression residual/cost function.
+- Exact gradients and Jacobians are required for production Ipopt/Ceres routes.
+- Exact Hessians are preferred where available. Ipopt limited-memory Hessian approximation and Ceres Gauss-Newton behavior are allowed only as solver-internal mechanisms and must not be reported as package derivative backends.
+- Gate scripts must search for banned derivative/status literals by assembling strings at runtime so the literal banned terms are not checked into source.
+
+### Solver Gates
+
+- Ipopt owns every production equilibrium solve.
+- Ceres owns every production regression solve.
+- ePC-SAFT code may build thermodynamic functions, residuals, constraints, bounds, scaling, canonical initial points, and derivative callbacks.
+- ePC-SAFT code must not own public nonlinear solve algorithms:
+  - no package-owned Newton iteration;
+  - no package-owned bracketing or bisection;
+  - no package-owned scalar search;
+  - no package-owned line search or damping loop;
+  - no hidden retry loop;
+  - no adaptive multistart loop;
+  - no legacy status-string route that pretends unsupported work is a valid capability.
+- Each equilibrium route gets exactly one canonical deterministic initial point.
+- If the canonical point is insufficient, the route fails with typed diagnostics. Fix formulation, scaling, bounds, derivatives, or the canonical initializer rather than adding retries.
+- Eigen is allowed only for matrices, factorizations, and linear algebra used by analytical/implicit derivative calculations. Eigen must not be a nonlinear solver or optimizer backend.
+
+### Package Gates
+
+- Keep one installable package until internal boundaries are proven.
+- Design internally as three extensions:
+  - EOS/property core;
+  - native Ipopt equilibrium extension;
+  - native Ceres regression extension.
+- EOS/property usage must not import or execute equilibrium or regression code.
+- Public APIs may remain as facades, but real implementation must move behind subsystem boundaries.
+- Separate installable packages are deferred until the boundaries are real and tested.
+
+### Documentation And Test Gates
+
+- Capabilities must report only implemented, validated routes.
+- Missing-backend and missing-method wording must be deleted from active source, tests, docs, and roadmaps. If a gate must refer to historical tokens, construct the text by concatenation.
+- Delete or rewrite tests that only protect legacy status or dodge behavior.
+- The normal quick gate should stay under 10 minutes. Focused slices should be around 90 seconds when practical. Individual unit tests should generally stay under 5 seconds unless marked as confidence/slow coverage.
+- Validation must be proportional but real: no final success claim without commands and outputs.
+
+---
+
+## Target File Structure
+
+### Keep As Public Facades
+
+- `src/epcsaft/equilibrium.py`
+  - Keep public dataclasses and public function names during migration.
+  - Remove old solver option values once the native Ipopt route is implemented.
+  - Route supported equilibrium work to native Ipopt entry points.
+- `src/epcsaft/reactive_speciation.py`
+  - Keep public request/result contracts while moving solve ownership to native Ipopt.
+- `src/epcsaft/regression.py`
+  - Keep public regression request/result contracts while moving all optimization ownership to native Ceres.
+- `src/epcsaft/epcsaft.py`
+  - Keep EOS/property public APIs stable while removing direct orchestration of equilibrium/regression internals.
+
+### Add New Native Equilibrium Core
+
+Create a new native subsystem, mostly under:
+
+```text
+src/epcsaft/native/equilibrium_nlp/
+```
+
+Initial files should be:
+
+- `nlp_problem.h/.cpp`
+  - Abstract native problem contract for variables, bounds, constraints, objective, derivatives, scaling, and result unpacking.
+- `ipopt_adapter.h/.cpp`
+  - The only native layer that calls Ipopt.
+  - Converts an `NlpProblem` into Ipopt callbacks.
+  - Owns Ipopt status mapping, iteration metadata, and typed failure translation.
+- `variable_block.h/.cpp`
+  - Variable index registry, bounds, scaling, and named variable slices.
+- `constraint_block.h/.cpp`
+  - Constraint registry, bounds, scaling, and named constraint slices.
+- `gibbs_blocks.h/.cpp`
+  - Ideal mixing and reaction-standard-state Gibbs terms.
+  - Contains the convex homogeneous ideal chemical-equilibrium subkernel.
+- `eos_phase_block.h/.cpp`
+  - Helmholtz/EOS phase objective terms, phase volume/density variables, pressure consistency, fugacity/chemical-potential derivatives.
+- `reaction_block.h/.cpp`
+  - Stoichiometry, reaction extents, reaction constraints, and reaction diagnostic residuals.
+- `association_block.h/.cpp`
+  - Association site variables and mass-action constraints where coupled into equilibrium NLPs.
+- `electrolyte_block.h/.cpp`
+  - Charge constraints, ionic contribution wiring, electrolyte-specific diagnostics.
+- `route_builders.h/.cpp`
+  - Builds route-specific NLPs from common blocks.
+- `result_builder.h/.cpp`
+  - Converts Ipopt solution plus postsolve diagnostics into native result payloads.
+
+### Add Thin Python Internal Helpers
+
+Use internal Python modules only for request/result payload conversion:
+
+```text
+src/epcsaft/equilibrium_core/
+```
+
+Expected helpers:
+
+- `native_requests.py`
+  - Serialize public Python problem/options into native dictionaries.
+- `native_results.py`
+  - Convert native dictionaries into public result dataclasses.
+- `test_audit.py` or docs-only audit artifact
+  - Summarize slow, unnecessary, and weak tests when the test cleanup tranche is executed.
+
+Do not put production solve loops in Python.
+
+---
+
+## Native Ipopt Equilibrium Design
+
+### Core Flow
+
+Every supported equilibrium route must follow this shape:
+
+```text
+public Python problem
+-> validated native request
+-> native route builder
+-> one canonical initial point
+-> one native Ipopt solve
+-> postsolve thermodynamic gates
+-> public result or typed failure
+```
+
+### Objective Form
+
+For phase equilibrium with an EOS, prefer thermodynamic-potential minimization rather than residual least-squares:
+
+```text
+minimize sum_phase [ A_phase(T, V_phase, n_phase) + P_spec * V_phase ]
+```
+
+where `A_phase` includes ideal and residual Helmholtz terms. This aligns with ePC-SAFT's Helmholtz-residual structure and allows phase volume/density to be solved as part of the NLP rather than through nested closure solves.
+
+For Gibbs-style homogeneous speciation routes, use Gibbs minimization directly when that is the natural form.
+
+### Constraints
+
+Constraints should represent physical model contracts:
+
+- material balance;
+- charge balance;
+- phase-sum and phase-amount bounds;
+- reaction stoichiometry;
+- reaction equilibrium constraints when extents are not represented directly in the objective;
+- EOS pressure consistency when using phase volume/density variables;
+- association mass-action equations when site fractions are coupled into the route;
+- route-specific fixed specifications such as fixed `T`, fixed `P`, bubble pressure variable, or dew pressure variable.
+
+### Convex Chemical Equilibrium Subkernel
+
+Use the Rawlings/Ekerdt-style reduced Gibbs formulation only where its assumptions hold:
+
+- homogeneous chemical/speciation equilibrium;
+- fixed `T` and `P`;
+- ideal liquid or ideal vapor activity model, or an ideal reference subproblem;
+- reaction extents or species amounts tied by linear stoichiometric constraints;
+- nonnegative species amounts enforced as bounds.
+
+For those cases, use:
+
+```text
+reaction term:       -sum_i log(K_i) * extent_i
+ideal mixing term:    sum_j nbar_j * log(nbar_j) - nbar_T * log(nbar_T)
+vapor pressure term: +nbar_T * log(P / P_ref), when applicable
+```
+
+Use this subkernel as:
+
+- the ideal reaction-equilibrium validation kernel;
+- a deterministic initialization/reference formulation for reactive speciation;
+- the replacement for custom reaction-extent root/bracket update code in ideal homogeneous cases;
+- an exact analytical derivative source for ideal homogeneous reaction/speciation tests.
+
+Do not overclaim convexity. Once ePC-SAFT residual chemical potentials, activity coefficients, density/volume variables, association variables, electrolyte terms, or multiphase splitting are added, the full problem is generally nonconvex. In those cases, retain the thermodynamic NLP structure but do not describe the full route as convex.
+
+### Density And Association Coupling
+
+For equilibrium routes:
+
+- include phase density or volume as Ipopt variables where practical;
+- include association site fractions as Ipopt variables where practical;
+- express EOS and association consistency as constraints with analytical/CppAD derivatives;
+- avoid nested nonlinear closures inside Ipopt objective/constraint callbacks.
+
+For standalone property/state calls:
+
+- density and association closures are evidence-gated internal exceptions;
+- replacement with Ceres/Ipopt is allowed only if runtime is near parity, or up to 2x slower with a documented accuracy/stability improvement;
+- if the current closure remains, remove numerical perturbation derivative checks and legacy status/dodge diagnostics from it.
+
+---
+
+## Implementation Tasks
+
+### Task 1: Record And Enforce Plan/Gate Baseline
+
+**Files:**
+- Modify: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
+- Later create/modify: gate script under `scripts/dev/` or `tests/workflows/repo/`
+
+- [ ] Verify the branch is `codex/native-ipopt-derivative-gates`.
+- [ ] Run `git status --short --branch` and confirm no unrelated changes.
+- [ ] Add tracked text gate tests that assemble banned terms from pieces.
+- [ ] Gate active source, tests, docs, roadmaps, scripts, and retained analysis workflows.
+- [ ] Allow historical archived paper text under `docs/papers/**` only if explicitly excluded and documented.
+- [ ] Run the gate and make it fail on current legacy terms.
+- [ ] Remove or rewrite enough legacy terms for the gate to pass.
+- [ ] Commit as `Add strict solver derivative text gates`.
+
+### Task 2: Test Audit And Prune
+
+**Files:**
+- Create: `docs/roadmaps/native_ipopt_test_audit.md` or equivalent concise tracked audit.
+- Modify: `tests/**`
+- Modify: `scripts/dev/validate_project.py` if suite boundaries change.
+
+- [ ] Collect test inventory and durations with pytest collection and a duration-enabled run.
+- [ ] Classify tests as fast gate, focused native, confidence, slow/scientific, docs, package-boundary, or obsolete.
+- [ ] Identify tests that only protect legacy status/dodge behavior.
+- [ ] Delete or rewrite obsolete tests.
+- [ ] Move slow scientific matrix coverage out of the quick gate.
+- [ ] Add strict tests for new gates:
+  - no banned derivative/status concepts;
+  - no SciPy package/dev/test dependency;
+  - no Eigen nonlinear optimizer route;
+  - no Python production solver loop.
+- [ ] Validate the quick gate remains under 10 minutes.
+- [ ] Commit as `Audit and tighten solver gate tests`.
+
+### Task 3: Build Dependency Boundary
+
+**Files:**
+- Modify: `pyproject.toml`
+- Modify: `CMakeLists.txt`
+- Modify: `scripts/dev/build_epcsaft.py`
+- Modify: `scripts/dev/doctor.py`
+- Modify: `.codex/environments/*.toml` if workflow commands change.
+
+- [ ] Remove SciPy from package/dev/test dependency groups.
+- [ ] Replace or delete the single SciPy-based Rezaee fitting analysis workflow.
+- [ ] Make Ceres required for regression builds.
+- [ ] Make CppAD required for derivative-capable builds.
+- [ ] Add native system Ipopt discovery and fail loudly when the required Ipopt build is requested but missing.
+- [ ] Remove Python `cyipopt` as a production backend.
+- [ ] Update doctor/build scripts to report Ceres, CppAD, and Ipopt status.
+- [ ] Validate TOML parsing and stale command searches.
+- [ ] Commit as `Require native solver dependency gates`.
+
+### Task 4: Create Native Ipopt Adapter
+
+**Files:**
+- Create: `src/epcsaft/native/equilibrium_nlp/ipopt_adapter.h`
+- Create: `src/epcsaft/native/equilibrium_nlp/ipopt_adapter.cpp`
+- Create: `src/epcsaft/native/equilibrium_nlp/nlp_problem.h`
+- Create: `src/epcsaft/native/equilibrium_nlp/nlp_problem.cpp`
+- Modify: `CMakeLists.txt`
+- Modify: `src/epcsaft/bindings.cpp`
+
+- [ ] Add native C++ abstraction for NLP variables, constraints, objective, gradients, Jacobians, scaling, and result unpacking.
+- [ ] Implement one Ipopt adapter and keep all direct Ipopt calls there.
+- [ ] Add a tiny ideal quadratic/linear-constraint smoke problem to prove callback wiring.
+- [ ] Bind a private smoke entry point only if needed for tests.
+- [ ] Add tests proving Ipopt availability and adapter callback behavior.
+- [ ] Commit as `Add native Ipopt adapter`.
+
+### Task 5: Add Gibbs And Reaction Blocks
+
+**Files:**
+- Create: `src/epcsaft/native/equilibrium_nlp/gibbs_blocks.h`
+- Create: `src/epcsaft/native/equilibrium_nlp/gibbs_blocks.cpp`
+- Create: `src/epcsaft/native/equilibrium_nlp/reaction_block.h`
+- Create: `src/epcsaft/native/equilibrium_nlp/reaction_block.cpp`
+- Add tests under `tests/native/equilibrium/`
+
+- [ ] Implement ideal homogeneous reduced Gibbs objective terms.
+- [ ] Implement reaction extent/species amount variable mapping.
+- [ ] Add analytical gradients/Jacobians for ideal reaction/speciation cases.
+- [ ] Add ideal liquid and ideal vapor validation cases proving `Q = K`.
+- [ ] Explicitly label these tests as convex ideal subkernel coverage only.
+- [ ] Commit as `Add ideal Gibbs reaction NLP blocks`.
+
+### Task 6: Replace Reactive Speciation Solve Ownership
+
+**Files:**
+- Modify: `src/epcsaft/reactive_speciation.py`
+- Modify: `src/epcsaft/native/epcsaft_chemical_equilibrium.cpp` or replace route with new `equilibrium_nlp` files.
+- Modify: `src/epcsaft/bindings.cpp`
+- Modify: reactive speciation tests.
+
+- [ ] Route homogeneous reactive speciation to native Ipopt for ideal and nonideal cases.
+- [ ] Remove package-owned Newton, scalar bracket, manual damping, and route retry behavior from accepted paths.
+- [ ] Feed activity/EOS terms through analytical/CppAD derivatives.
+- [ ] Keep Python as request/result facade only.
+- [ ] Add tests for ideal, nonideal, charged, and failure diagnostics.
+- [ ] Commit as `Route reactive speciation through native Ipopt`.
+
+### Task 7: Build EOS Phase Blocks For Equilibrium
+
+**Files:**
+- Create: `src/epcsaft/native/equilibrium_nlp/eos_phase_block.h`
+- Create: `src/epcsaft/native/equilibrium_nlp/eos_phase_block.cpp`
+- Modify: relevant native EOS derivative files.
+- Add tests under `tests/native/equilibrium/`.
+
+- [ ] Add phase amount, composition, and volume/density variables.
+- [ ] Add Helmholtz/free-energy phase terms.
+- [ ] Add EOS pressure consistency constraints where required.
+- [ ] Use CppAD/analytical derivatives for objective and constraints.
+- [ ] Add single-phase and two-phase consistency tests.
+- [ ] Commit as `Add EOS phase NLP blocks`.
+
+### Task 8: Replace Neutral Equilibrium Routes
+
+**Files:**
+- Modify: `src/epcsaft/equilibrium.py`
+- Modify or replace: `src/epcsaft/native/epcsaft_equilibrium.cpp`
+- Add new route builders under `src/epcsaft/native/equilibrium_nlp/`.
+- Modify neutral equilibrium tests.
+
+- [ ] Implement native Ipopt route builders for neutral TP flash, VLE, LLE, bubble, and dew workflows.
+- [ ] Use one canonical initial point per route.
+- [ ] Remove accepted-path bisection/bracketing/scalar-search/golden-section behavior.
+- [ ] Add postsolve gates for material balance, phase distance, pressure consistency, and chemical-potential/fugacity consistency.
+- [ ] Delete or rewrite legacy tests that assert old diagnostics.
+- [ ] Commit as `Replace neutral equilibrium with native Ipopt NLPs`.
+
+### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
+
+**Files:**
+- Create: `src/epcsaft/native/equilibrium_nlp/electrolyte_block.h`
+- Create: `src/epcsaft/native/equilibrium_nlp/electrolyte_block.cpp`
+- Create: `src/epcsaft/native/equilibrium_nlp/association_block.h`
+- Create: `src/epcsaft/native/equilibrium_nlp/association_block.cpp`
+- Modify electrolyte/reactive public facades and tests.
+
+- [ ] Add charge-balance and electrolyte contribution blocks.
+- [ ] Couple density/volume and association variables where practical.
+- [ ] Implement electrolyte LLE/VLE/bubble route builders.
+- [ ] Implement reactive phase equilibrium route builders.
+- [ ] Remove Ceres equilibrium residual-solve ownership from accepted equilibrium paths.
+- [ ] Add charge/material/reaction/phase-distance acceptance tests.
+- [ ] Commit as `Replace electrolyte reactive equilibrium with native Ipopt`.
+
+### Task 10: Make Regression Ceres-Only
+
+**Files:**
+- Modify: `src/epcsaft/regression.py`
+- Modify: `src/epcsaft/native/epcsaft_regression.cpp`
+- Modify: `src/epcsaft/bindings.cpp`
+- Modify regression tests and docs.
+
+- [ ] Delete Eigen unsupported nonlinear optimizer production paths.
+- [ ] Delete old least-squares backend public aliases.
+- [ ] Route pure-neutral, pure-ion, binary pair, and generic supported fits through Ceres.
+- [ ] Use Ceres autodiff where residuals can be templated.
+- [ ] Use analytical/CppAD Jacobians where residuals depend on implicit EOS/state derivatives.
+- [ ] Add tests proving no numeric-diff Ceres route exists.
+- [ ] Commit as `Make regression Ceres-only`.
+
+### Task 11: Internal Extension Boundaries
+
+**Files:**
+- Modify: `src/epcsaft/__init__.py`
+- Modify: `src/epcsaft/epcsaft.py`
+- Modify: `src/epcsaft/equilibrium.py`
+- Modify: `src/epcsaft/regression.py`
+- Add subsystem modules as needed.
+
+- [ ] Ensure EOS/property imports do not import equilibrium/regression implementation modules.
+- [ ] Keep public facades stable while moving implementation behind internal modules.
+- [ ] Add import-boundary tests.
+- [ ] Update docs to describe EOS core, equilibrium extension, and regression extension as internal subsystems.
+- [ ] Commit as `Separate EOS equilibrium regression internals`.
+
+### Task 12: Capabilities, Docs, And Roadmap Cleanup
+
+**Files:**
+- Modify: `src/epcsaft/runtime.py`
+- Modify: `docs/pages/**`
+- Modify: `docs/roadmaps/**`
+- Modify: `README.md` if public workflow changes.
+
+- [ ] Remove stale compatibility wording.
+- [ ] Remove legacy solver option docs.
+- [ ] Make capabilities report only implemented validated routes.
+- [ ] Document native Ipopt/Ceres/CppAD build requirements.
+- [ ] Document convex ideal subkernel scope and nonconvex full-route scope.
+- [ ] Commit as `Document native solver gate architecture`.
+
+### Task 13: Final Validation And Cleanup
+
+**Files:**
+- No planned source changes except fixes from validation failures.
+
+- [ ] Run normal native build:
+  - `uv run python scripts/dev/build_epcsaft.py`
+- [ ] Run doctor:
+  - `uv run python scripts/dev/doctor.py`
+- [ ] Run focused tests for changed areas with `uv run python run_pytest.py ... -q`.
+- [ ] Run quick validation:
+  - `uv run python scripts/dev/validate_project.py quick`
+- [ ] Run docs validation:
+  - `uv run python scripts/dev/validate_project.py docs`
+- [ ] Run package boundary check:
+  - `uv run python scripts/dev/build_dist.py`
+- [ ] Run cleanup hook:
+  - `pwsh.exe -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\.codex\hooks\codex-cleanup.ps1" -RepoRoot .`
+- [ ] Confirm clean git status.
+- [ ] Commit any final validation/doc fixes.
+
+---
+
+## Acceptance Criteria
+
+The overhaul is complete only when all are true:
+
+- `main` contains the previous pruning commit.
+- This branch contains this plan and subsequent implementation commits.
+- EOS/property import/use is isolated from equilibrium/regression implementation.
+- Production equilibrium routes use native Ipopt.
+- Production regression routes use native Ceres.
+- Active source/tests/docs contain no banned derivative/status concepts except gate code that assembles terms safely.
+- No SciPy package/dev/test dependency remains.
+- The Rezaee SciPy-based fitting workflow is replaced or deleted.
+- Old custom public solve algorithms are removed from accepted equilibrium/regression paths.
+- Standalone density/association closure decisions have benchmark evidence and clear exception notes if retained.
+- Convex chemical equilibrium is implemented only as an ideal homogeneous subkernel and validation target.
+- Quick/docs/package validations pass.
+- Cleanup hook passes.
+- Final git status is clean.
+
+## Stop Conditions
+
+Stop and ask before proceeding if:
+
+- native Ipopt cannot be installed/discovered on the target build environment;
+- a route cannot be expressed with analytical/CppAD/Ceres-autodiff derivatives;
+- replacing density or association closures would be slower without a documented robustness/accuracy gain;
+- public API removal would break documented downstream contracts beyond the agreed solver/backend cleanup;
+- validation failures reveal a chemistry/input-basis problem rather than an implementation bug.
