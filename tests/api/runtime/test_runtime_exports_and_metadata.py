@@ -51,7 +51,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     fit_contract = capabilities["regression"]["reactive_electrolyte_batch_context"]["fit_status_contract"]
     assert fit_contract["available"] is True
     assert "bounded_incomplete" not in fit_contract["statuses"]
-    assert "diagnostic_only" in fit_contract["statuses"]
+    assert "residual_evaluation_only" in fit_contract["statuses"]
     mixed_regression = capabilities["regression"]["reactive_electrolyte_batch_context"][
         "bounded_mixed_pressure_speciation_regression"
     ]
@@ -145,7 +145,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert batch_context["backend"] == "python_batched_native_solvers"
     assert "ReactiveElectrolyteRegressionContext" in batch_context["classes"]
     assert batch_context["methods"] == ["evaluate_objective"]
-    assert "diagnostic_only" in batch_context["fit_status_contract"]["statuses"]
+    assert "residual_evaluation_only" in batch_context["fit_status_contract"]["statuses"]
     assert capabilities["equilibrium"]["problem_objects"]["entrypoint"] == "mixture.solve_equilibrium(problem)"
     assert (
         capabilities["equilibrium"]["contribution_maps"]["activity_coefficient_term_decomposition_available"] is False

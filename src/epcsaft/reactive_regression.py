@@ -978,7 +978,7 @@ def summarize_regression_result(
             "covariance_available": bool(result.covariance_available),
             "covariance_matrix": _json_like(result.covariance_matrix),
             "identifiability_status": result.identifiability_status,
-            "covariance_status": "available" if result.covariance_available else "unavailable",
+            "covariance_status": "available" if result.covariance_available else "not_computed",
             "diagnostics": _json_like(result.diagnostics),
         }
     else:
@@ -994,8 +994,8 @@ def summarize_regression_result(
             "gradient_norm": None,
             "step_norm": None,
             "covariance_available": False,
-            "identifiability_status": "unavailable",
-            "covariance_status": "unavailable",
+            "identifiability_status": "not_computed",
+            "covariance_status": "not_computed",
         }
     batch = objective_result.batch_result
     row_norms: list[tuple[str, float]] = []
@@ -1202,15 +1202,15 @@ def _fit_reactive_parameters_impl(
     trajectory: list[dict[str, Any]] = []
     objective_result = context.evaluate_objective(current)
     objective_initial = float(objective_result.objective)
-    message = "reactive-regression optimization is diagnostic-only until native Ceres derivative coverage is routed."
-    termination_reason = "diagnostic_only"
+    message = "reactive-regression optimization is residual-evaluation-only until native Ceres derivative coverage is routed."
+    termination_reason = "residual_evaluation_only"
     final_jacobian: ReactiveRegressionJacobianResult | None = None
     last_step_norm: float | None = None
 
     covariance_available = False
     covariance_matrix: np.ndarray | None = None
-    identifiability_status = "unavailable"
-    covariance_diagnostics: dict[str, Any] = {"covariance_reason": "jacobian unavailable"}
+    identifiability_status = "not_computed"
+    covariance_diagnostics: dict[str, Any] = {"covariance_reason": "jacobian_not_computed"}
     if final_jacobian is not None:
         finite = np.all(np.isfinite(final_jacobian.jacobian))
         if finite and final_jacobian.jacobian.size:
@@ -1243,7 +1243,7 @@ def _fit_reactive_parameters_impl(
     elif termination_reason == "line_search_failed":
         status = "line_search_failed"
     else:
-        status = "diagnostic_only"
+        status = "residual_evaluation_only"
     return ReactiveRegressionFitResult(
         success=success,
         message=message,
@@ -1267,7 +1267,7 @@ def _fit_reactive_parameters_impl(
             "trajectory": trajectory,
             "jacobian": None if final_jacobian is None else final_jacobian.to_dict(),
             "covariance": covariance_diagnostics,
-            "derivative_status": "diagnostic_only",
+            "derivative_status": "residual_evaluation_only",
             "route_boundary_reason": message,
         },
     )

@@ -64,7 +64,7 @@ these fields as routing hints, not as proof that a physical case is valid.
      - You expect IPOPT to run automatically.
    * - ``jacobian_backend="auto"``
      - You want the native chemical-equilibrium default: analytic, CppAD, or implicit sensitivities where available, clear failures otherwise.
-     - You need strict failure when a specific derivative backend is unavailable.
+     - You need strict failure when a specific derivative backend cannot run.
    * - ``jacobian_backend="cppad"``
      - You need a CppAD residual derivative path and want unsupported routes to fail loudly.
      - You expect a substitute derivative backend.

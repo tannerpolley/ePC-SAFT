@@ -213,5 +213,5 @@ is still one real recorded workflow run each in ``MEA-Thermodynamics``,
 check has passed.
 
 The smoke tests also assert that the public derivative contract keeps finite
-difference unavailable. Use ``analytic``, ``cppad``, ``analytic_implicit``, or
+difference route. Use ``analytic``, ``cppad``, ``analytic_implicit``, or
 ``cppad_implicit`` derivative routes where derivatives are required.

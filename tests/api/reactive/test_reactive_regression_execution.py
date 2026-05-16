@@ -125,8 +125,8 @@ def test_fit_reactive_electrolyte_parameters_returns_fit_result_and_applies_boun
     )
 
     assert isinstance(fit, epcsaft.ReactiveRegressionFitResult)
-    assert fit.status == "diagnostic_only"
-    assert fit.termination_reason == "diagnostic_only"
+    assert fit.status == "residual_evaluation_only"
+    assert fit.termination_reason == "residual_evaluation_only"
     assert fit.objective_final == pytest.approx(fit.objective_initial)
     assert fit.gradient_norm is None
     assert fit.step_norm is None
@@ -135,10 +135,10 @@ def test_fit_reactive_electrolyte_parameters_returns_fit_result_and_applies_boun
     assert fit.covariance_available is False
     summary = epcsaft.summarize_regression_result(fit)
     assert summary["fit_success"] is False
-    assert summary["fit_status"] == "diagnostic_only"
+    assert summary["fit_status"] == "residual_evaluation_only"
     assert summary["termination_reason"] == fit.termination_reason
     assert summary["upper_bounds"]["A.sigma"] == pytest.approx(3.05)
-    assert summary["covariance_status"] == "unavailable"
+    assert summary["covariance_status"] == "not_computed"
 
     summary_path = tmp_path / "fit_summary.json"
     rows_path = tmp_path / "fit_rows.csv"
@@ -363,8 +363,11 @@ def test_fit_reactive_electrolyte_parameters_reports_nonconverged_fit(monkeypatc
     )
 
     assert fit.success is False
-    assert fit.message == "reactive-regression optimization is diagnostic-only until native Ceres derivative coverage is routed."
-    assert fit.status == "diagnostic_only"
-    assert fit.termination_reason == "diagnostic_only"
+    assert (
+        fit.message
+        == "reactive-regression optimization is residual-evaluation-only until native Ceres derivative coverage is routed."
+    )
+    assert fit.status == "residual_evaluation_only"
+    assert fit.termination_reason == "residual_evaluation_only"
     assert fit.objective_final <= fit.objective_initial
     assert fit.iterations == 0

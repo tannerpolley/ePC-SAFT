@@ -125,7 +125,7 @@ ContributionDadxResult dadx_ion_cpp(const IonIntermediateState &ion_state, doubl
     result.z = -ion_state.kappa / 24.0 / PI / kb / t / (ion_state.dielectric.eps * perm_vac) * ion_state.sigma_sum * E_CHRG * E_CHRG;
 
     if (cppargs.mu_DH_diff_mode == 1) {
-        throw ValueError("unsupported: ion composition derivative backend is unavailable.");
+        throw ValueError("unsupported: ion composition derivative backend is not enabled.");
     } else if (cppargs.mu_DH_diff_mode == 2) {
         result.dadx = contribution_dadx_cppad_cpp(AresContributionKind::ION, t, rho, x, cppargs);
     } else {

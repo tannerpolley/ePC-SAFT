@@ -642,7 +642,13 @@ def capabilities() -> dict[str, object]:
                 "backend": "python_batched_native_solvers",
                 "fit_status_contract": {
                     "available": True,
-                    "statuses": ["converged", "max_iterations", "line_search_failed", "failed_rows", "diagnostic_only"],
+                    "statuses": [
+                        "converged",
+                        "max_iterations",
+                        "line_search_failed",
+                        "failed_rows",
+                        "residual_evaluation_only",
+                    ],
                     "fields": [
                         "status",
                         "termination_reason",

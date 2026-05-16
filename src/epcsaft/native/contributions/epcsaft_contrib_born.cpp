@@ -244,7 +244,7 @@ ContributionDadxResult dadx_born_cpp(const BornIntermediateState &born_state, do
         result.ares = -Kborn * (1.0 - 1.0 / born_state.eps_value) * born_state.charge_radius_sum;
 
         if (cppargs.born_diff_mode == 1) {
-            throw ValueError("unsupported: Born composition derivative backend is unavailable.");
+            throw ValueError("unsupported: Born composition derivative backend is not enabled.");
         } else if (cppargs.born_diff_mode == 4) {
             result.dadx = contribution_dadx_cppad_cpp(AresContributionKind::BORN, t, rho, x, cppargs);
         } else {
@@ -271,7 +271,7 @@ ContributionDadxResult dadx_born_cpp(const BornIntermediateState &born_state, do
         result.ares = -Kborn * born_state.shell.sum_bracket;
 
         if (cppargs.born_diff_mode == 1) {
-            throw ValueError("unsupported: Born composition derivative backend is unavailable.");
+            throw ValueError("unsupported: Born composition derivative backend is not enabled.");
         } else if (cppargs.born_diff_mode == 4) {
             result.dadx = contribution_dadx_cppad_cpp(AresContributionKind::BORN, t, rho, x, cppargs);
         } else {
