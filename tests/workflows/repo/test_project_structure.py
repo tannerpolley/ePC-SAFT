@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -69,6 +70,15 @@ def _tracked_files(*paths: str) -> list[str]:
     return [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
 
+def test_strict_solver_derivative_text_gate_passes() -> None:
+    subprocess.run(
+        [sys.executable, "scripts/dev/check_text_gates.py"],
+        cwd=REPO_ROOT,
+        text=True,
+        check=True,
+    )
+
+
 def test_reference_data_root_is_canonical() -> None:
     assert (REPO_ROOT / "data" / "reference" / "epcsaft_parameters").is_dir()
     assert not (REPO_ROOT / "data" / "epcsaft_parameters").exists()
@@ -114,8 +124,7 @@ def test_generated_output_roots_are_not_tracked_in_analyses() -> None:
         if "/out/" in path.replace("\\", "/")
         or "/results/runs/" in path.replace("\\", "/")
         or "/results/final/" in path.replace("\\", "/")
-        or "/figures/" in path.replace("\\", "/")
-        and "/output/runs/" in path.replace("\\", "/")
+        or ("/figures/" in path.replace("\\", "/") and "/output/runs/" in path.replace("\\", "/"))
     ]
     assert stale == []
 

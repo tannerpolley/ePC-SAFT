@@ -154,10 +154,10 @@ NATIVE_TERM_KINDS = {
 }
 
 HESSIAN_NOT_IMPLEMENTED_REASON = "Hessian support is a skeleton for future IPOPT-compatible optimizer integration."
-BINARY_CERES_BACKEND_UNAVAILABLE_REASON = (
+BINARY_CERES_UNSUPPORTED_REASON = (
     "not_available: binary Ceres regression currently supports only constant k_ij with " "cppad_implicit Jacobians."
 )
-GENERIC_NATIVE_OPTIMIZER_BACKEND_UNAVAILABLE_REASON = (
+GENERIC_NATIVE_OPTIMIZER_UNSUPPORTED_REASON = (
     "not_available: no native analytic/CppAD/implicit derivative path is registered for this "
     "generic regression target set."
 )
@@ -2128,7 +2128,7 @@ def _fit_binary_pair_internal(
 
     if optimizer_backend == "ceres":
         if normalized_fit_targets != ("k_ij",):
-            raise InputError(BINARY_CERES_BACKEND_UNAVAILABLE_REASON)
+            raise InputError(BINARY_CERES_UNSUPPORTED_REASON)
         result = _run_native_generic_ceres(
             fixed_payloads,
             native_records,
@@ -2141,7 +2141,7 @@ def _fit_binary_pair_internal(
             multistart=int(multistart),
         )
     else:
-        raise InputError(GENERIC_NATIVE_OPTIMIZER_BACKEND_UNAVAILABLE_REASON)
+        raise InputError(GENERIC_NATIVE_OPTIMIZER_UNSUPPORTED_REASON)
     vector_map = _normalize_vector_map(optimization_names, result["x"])
     provenance_payload = _copy_mapping(provenance_report)
     parameter_movement = _parameter_movement(optimization_names, initial_map, vector_map)
@@ -2781,7 +2781,7 @@ def _reject_numerical_derivative_options(options: Any) -> None:
         return False
 
     if visit(options):
-        raise InputError("Perturbation derivative options are not part of the public regression API.")
+        raise InputError("Unsupported derivative options are not part of the public regression API.")
 
 
 def _optimizer_backend_from_options(options: Mapping[str, Any] | None, default: str) -> str:

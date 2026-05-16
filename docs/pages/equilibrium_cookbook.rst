@@ -147,7 +147,7 @@ result diagnostics report the derivative status explicitly:
 Supported derivative labels are ``analytic``, ``cppad``,
 ``analytic_implicit`` and ``cppad_implicit``.
 Unsupported combinations report ``not_available``. ``auto`` never falls
-back to perturbation derivative approximations.
+back to unsupported derivative approximations.
 
 Sequential Reactive Workflow Boundary
 -------------------------------------

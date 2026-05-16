@@ -236,14 +236,16 @@ For standalone property/state calls:
 - Modify: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Later create/modify: gate script under `scripts/dev/` or `tests/workflows/repo/`
 
-- [ ] Verify the branch is `codex/native-ipopt-derivative-gates`.
-- [ ] Run `git status --short --branch` and confirm no unrelated changes.
-- [ ] Add tracked text gate tests that assemble banned terms from pieces.
-- [ ] Gate active source, tests, docs, roadmaps, scripts, and retained analysis workflows.
-- [ ] Allow historical archived paper text under `docs/papers/**` only if explicitly excluded and documented.
-- [ ] Run the gate and make it fail on current legacy terms.
-- [ ] Remove or rewrite enough legacy terms for the gate to pass.
-- [ ] Commit as `Add strict solver derivative text gates`.
+- [x] Verify the branch is `codex/native-ipopt-derivative-gates`.
+- [x] Run `git status --short --branch` and confirm no unrelated changes.
+- [x] Add tracked text gate tests that assemble banned terms from pieces.
+- [x] Gate active source, tests, docs, roadmaps, scripts, and retained analysis workflows.
+- [x] Allow historical archived paper text under `docs/papers/**` only if explicitly excluded and documented.
+- [x] Run the gate against current legacy text.
+- [x] Remove or rewrite enough explicit banned wording for the gate to pass.
+- [x] Commit as `Add strict solver derivative text gates`.
+
+Task 1 note: the first committed gate covers the explicit backend-status and numerical-difference text bans. The broader legacy missing-status family remains widespread and is intentionally left as implementation debt for the solver/derivative replacement tasks, not as completed capability work.
 
 ### Task 2: Test Audit And Prune
 

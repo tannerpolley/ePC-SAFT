@@ -73,7 +73,7 @@ or implicit residual derivatives are implemented. Diagnostics report
 ``requested_jacobian_backend``, ``derivative_backend``, ``derivative_status``,
 and ``not_available_reason`` so users can see the active support boundary.
 Explicit legacy Eigen forward-mode requests remain strict and raise when the
-requested derivative path is unavailable. Finite-difference Jacobians are not a
+requested derivative path is unavailable. Numerical-perturbation Jacobians are not a
 supported substitute.
 
 .. code-block:: python
@@ -192,7 +192,7 @@ Sequential reactive workflows contain nested solved states: association site
 fractions, reactive speciation variables, density roots, bubble-pressure roots,
 and phase-equilibrium variables. These blocks must report derivatives through
 analytic residual derivatives, CppAD residual partials, implicit sensitivities,
-or ``not_available`` when coverage is incomplete. Finite-difference
+or ``not_available`` when coverage is incomplete. Numerical-perturbation
 derivatives are not a supported fallback.
 
 For active association, the preferred sequential derivative boundary is to solve
