@@ -468,7 +468,6 @@ void add_ideal_implicit_sensitivity_diagnostics(
         log_amounts[index] = std::log(amounts[index]);
     }
     result.diagnostics_string["implicit_sensitivity_backend"] = "analytic_implicit";
-    result.diagnostics_string["implicit_sensitivity_status"] = "residual_jacobian_available";
     result.diagnostics_string["reactive_speciation_sensitivity_parameter"] = "log_equilibrium_constants";
     result.diagnostics_int["reactive_speciation_residual_rows"] = static_cast<int>(residual_state.rows());
     result.diagnostics_int["reactive_speciation_state_size"] = static_cast<int>(residual_state.cols());

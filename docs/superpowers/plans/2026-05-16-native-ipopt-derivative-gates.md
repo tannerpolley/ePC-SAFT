@@ -605,15 +605,15 @@ production electrolyte route builders remain open.
 
 Task 10 progress note: the first regression slice moves public nonassociating pure-neutral regression to the native Ceres route by default, rejects the old native least-squares backend from that public path, removes the Python and pybind private pure-neutral least-squares entry points, and updates capability metadata so Ceres is a production optimizer when compiled.
 
-Task 10 continuation note: the second regression slice removes the private generic Eigen Levenberg-Marquardt route, its derivative-approximation Jacobian, its pybind/Python wrapper, and the doctor-required symbol. Supported generic production fits remain Ceres-owned. Associating and MEA-CO2-H2O benchmark helpers now do residual-only scoring and reject optimization until native analytic/CppAD/implicit Ceres derivative coverage exists for those target families.
+Task 10 continuation note: the second regression slice removes the private generic Eigen regression route, its derivative-approximation Jacobian, its pybind/Python wrapper, and the doctor-required symbol. Supported generic production fits remain Ceres-owned. Associating and MEA-CO2-H2O benchmark helpers now do residual scoring and reject optimization until native analytic/CppAD/implicit Ceres derivative coverage exists for those target families.
 
 Task 10 continuation note: a tracked repo gate now scans native C++ sources and blocks Ceres numeric-diff APIs plus legacy shifted-source derivative tokens. This closes the explicit test-gate item, while templated Ceres autodiff and broader implicit derivative coverage remain open.
 
 Task 10 continuation note: regression public/native result payloads no longer expose placeholder fallback booleans, empty missing-derivative reason fields, or Hessian skeleton metadata. The retained regression derivative surface reports optimizer backend, derivative backend, objective/evaluation counters, gradient/step norms, and implemented Jacobian availability/backend only.
 
-Task 10 continuation note: the residual-only reactive electrolyte fit wrapper no longer exposes a public `damping` argument or stale line-search status documentation. It remains a structured residual-evaluation result until native Ceres derivative coverage owns that optimization route.
+Task 10 continuation note: the reactive electrolyte fit entrypoint no longer exposes a public `damping` argument or stale line-search status documentation. It now validates requested fit inputs and raises until native Ceres derivative coverage owns that optimization route.
 
-Task 10 continuation note: reactive electrolyte batch capabilities now expose only the implemented residual-only/failed-row fit statuses and renamed the mixed pressure/speciation entry to a residual-context capability. The public metadata no longer advertises bounded step control or line-search fit outcomes for this route.
+Task 10 continuation note: reactive electrolyte batch capabilities now expose a gated native-Ceres fit route plus the mixed pressure/speciation residual-context capability. The public metadata no longer advertises bounded step control or line-search fit outcomes for this route.
 
 ### Task 11: Internal Extension Boundaries
 
@@ -669,7 +669,7 @@ Task 12 continuation note: density closure diagnostics no longer expose legacy r
 
 Task 12 continuation note: stale planning and GoalBuddy notes no longer preserve the removed missing-backend label. The tracked text gate now also blocks common approximate-derivative wording so future docs, scripts, tests, and source files cannot reintroduce those routes under alternate spelling.
 
-Task 12 continuation note: reactive electrolyte regression no longer exposes the unused failed warm-start policy or the per-row reused-seed status flag. Failed reused seeds remain visible through `warm_start_failed` and `warm_start_source`, while the residual-only route keeps explicit penalty/drop failure handling.
+Task 12 continuation note: reactive electrolyte regression no longer exposes the unused failed warm-start policy or the per-row reused-seed status flag. Failed reused seeds remain visible through `warm_start_failed` and `warm_start_source`, while the residual-evaluation route keeps explicit penalty/drop failure handling.
 
 Task 12 continuation note: active source, tests, and dev scripts no longer carry the remaining old retry/default token names. The cleanup renamed internal pressure-seed/default variables, removed an unused reactive regression seed helper, and kept deterministic parameter defaults explicit under non-retry naming.
 
@@ -704,6 +704,8 @@ Task 12 continuation note: public route-pending errors for neutral flash/LLE/sta
 Task 12 continuation note: reactive-regression runtime capability labels now describe structured residual-evaluation contexts instead of naming Python orchestration as a solver backend. The metadata keeps the route explicitly non-optimizer until native Ceres derivative coverage owns the production fit.
 
 Task 10/12 continuation note: public `fit_reactive_electrolyte_parameters(...)` now validates the batch/context, fitted parameter map, bounds, iteration count, and tolerance, then raises `InputError` until native Ceres owns the reactive-electrolyte optimizer with exact derivatives. The supported public diagnostic path remains `evaluate_reactive_regression_objective(...)`; tests, docs, runtime capabilities, and the text gate no longer protect the retired residual-only fit status.
+
+Task 6/12 continuation note: public `ImplicitSolveResult` no longer carries a generic success/status string. Exact implicit sensitivity payloads now carry the backend, residuals, residual Jacobians, sensitivity matrix, and diagnostics; unsupported or incomplete implicit derivative routes raise rather than returning status-bearing payloads.
 
 Task 12 continuation note: the unreferenced tracked LaTeX backup `docs/latex/equations_old.tex` was deleted. The current source of truth remains `docs/latex/equations.tex`, with generated equation navigation kept in `docs/equations.md` and `docs/equations_registry.yaml`.
 

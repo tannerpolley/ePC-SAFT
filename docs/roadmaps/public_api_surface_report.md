@@ -119,7 +119,7 @@ package surface and the current facade/import-boundary behavior.
 | `epcsaft.dataset_validation` | Public validation helper API | Keep. |
 | `epcsaft.diagnostics` | Organized public diagnostics namespace | Keep. |
 | `epcsaft.runtime` | Public runtime metadata implementation module | Keep. |
-| `epcsaft.implicit_sensitivity` | Public sensitivity helper module | Keep, but status-token helper naming should be revisited only with API migration. |
+| `epcsaft.implicit_sensitivity` | Public sensitivity helper module | Keep as the exact analytical/CppAD implicit sensitivity payload helper. |
 | `epcsaft._types` | Private implementation module | Do not promote. |
 | `epcsaft.equilibrium_core` | Internal equilibrium support package | Keep internal; do not add top-level exports. |
 
@@ -147,8 +147,9 @@ No entrypoint changes are needed for issue #120.
 
 ## Future API Work
 
-- Decide whether the implicit-sensitivity status helper should be renamed or
-  retained permanently.
+- Keep implicit-sensitivity results free of generic status strings; exact
+  payloads carry backend, residual/Jacobian matrices, sensitivity, and
+  diagnostics, while unsupported routes raise.
 - Decide whether `DATASET_ROOT` should stay public or move behind a documented
   dataset accessor in a future major cleanup.
 - Do not use issue #120 to remove public names that tests or docs currently

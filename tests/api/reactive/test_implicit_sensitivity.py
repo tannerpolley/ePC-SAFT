@@ -20,10 +20,10 @@ def test_implicit_sensitivity_from_jacobians_solves_linearized_state_response() 
 
     assert isinstance(result, epcsaft.ImplicitSolveResult)
     assert result.backend == "analytic_implicit"
-    assert result.status == "ok"
     assert_allclose(result.sensitivity, [[-3.0], [-2.0]])
     payload = result.to_dict()
     assert payload["jacobians"]["residual_state"] == [[2.0, 0.0], [0.0, 4.0]]
+    assert "status" not in payload
     assert "numerical" + "_derivative" not in json.dumps(payload).lower()
 
 

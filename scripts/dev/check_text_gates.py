@@ -141,6 +141,7 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "sci" + "py.optimize",
         "np.linalg." + "lstsq",
         "numpy.linalg." + "lstsq",
+        "implicit" + "_sensitivity" + "_status",
     )
 
 

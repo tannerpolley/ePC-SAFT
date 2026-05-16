@@ -28,7 +28,6 @@ class ImplicitSolveResult:
     jacobians: Mapping[str, Any] = field(default_factory=dict)
     sensitivity: Any = None
     backend: str = "analytic_implicit"
-    status: str = "ok"
     diagnostics: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -36,9 +35,8 @@ class ImplicitSolveResult:
         if backend not in _IMPLICIT_BACKENDS:
             supported = "', '".join(sorted(_IMPLICIT_BACKENDS))
             raise InputError(f"ImplicitSolveResult.backend must be one of '{supported}'.")
-        status = str(self.status).strip().lower()
         disallowed_backend = "numerical" + "_" + "derivative"
-        if disallowed_backend in backend or disallowed_backend in status:
+        if disallowed_backend in backend:
             raise InputError("Implicit solved-state sensitivities require analytic or CppAD residual Jacobians.")
 
         state = _array_payload(self.state, name="state")
@@ -54,7 +52,6 @@ class ImplicitSolveResult:
         object.__setattr__(self, "jacobians", jacobians)
         object.__setattr__(self, "sensitivity", sensitivity)
         object.__setattr__(self, "backend", backend)
-        object.__setattr__(self, "status", status)
         object.__setattr__(self, "diagnostics", diagnostics)
 
     def to_dict(self) -> dict[str, Any]:
@@ -65,7 +62,6 @@ class ImplicitSolveResult:
             "jacobians": _json_like(dict(self.jacobians)),
             "sensitivity": _json_like(self.sensitivity),
             "backend": self.backend,
-            "status": self.status,
             "diagnostics": _json_like(dict(self.diagnostics)),
         }
 
@@ -114,7 +110,6 @@ def implicit_sensitivity_from_jacobians(
         },
         sensitivity=sensitivity,
         backend=normalized_backend,
-        status="ok",
         diagnostics=dict(diagnostics or {}),
     )
 

@@ -730,7 +730,6 @@ def _native_reactive_implicit_result(
         },
         sensitivity=sensitivity,
         backend=solved_state_backend,
-        status=str(diagnostics.get("implicit_sensitivity_status", "residual_jacobian_available")),
         diagnostics={
             "residual_backend": derivative_backend,
             "sensitivity_scope": "log_amount_response_to_reaction_constants",
