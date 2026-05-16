@@ -435,6 +435,8 @@ Task 9 continuation note: chemical-equilibrium residual evaluation payloads no l
 
 Task 9 continuation note: direct pybind native equilibrium and chemical-equilibrium request parsing no longer accepts a `damping` option. Remaining damping values are internal native defaults until the route implementations are replaced.
 
+Task 9 continuation note: the unused native chemical-equilibrium `hessian_strategy` request field and parser branch were deleted. Hessian strategy reporting remains limited to the Ipopt adapter's solver-internal metadata.
+
 Task 9 continuation note: stale electrolyte LLE contract tests that expected missing residual derivatives were rewritten to assert the implemented Ceres solve plus CppAD-implicit transformed-variable residual Jacobian surface.
 
 Task 9 continuation note: the Python reactive-phase diagnostics no longer call NumPy's least-squares convenience routine for reaction extent reporting. The helper uses a small direct linear solve of the stoichiometric normal system and remains diagnostic-only.
