@@ -64,9 +64,10 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert mixed_regression["ceres"]["production"] is False
     assert ipopt["available"] is info["optional_dependencies"]["ipopt"]["available"]
     assert ipopt["formulations"] == ["thermodynamic_constrained_nlp"]
-    assert ipopt["adapter_available"] is False
-    assert ipopt["production"] is False
-    assert ipopt["full_constrained_nlp_available"] is False
+    assert ipopt["adapter_available"] is info["optional_dependencies"]["ipopt"]["adapter_available"]
+    assert ipopt["production"] is ipopt["available"]
+    assert ipopt["public_routes"] == ["reactive_speciation:ideal_mole_fraction"]
+    assert ipopt["full_constrained_nlp_available"] is ipopt["available"]
     assert ipopt["default_auto_uses_ipopt"] is False
     assert ipopt["exact_hessian_available"] is False
     assert info["optional_dependencies"]["ipopt"]["available"] is ipopt["available"]
@@ -114,7 +115,14 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         == "native chemical speciation with fixed-liquid native bubble-pressure handoff and explicit partial-pressure diagnostics"
     )
     assert capabilities["equilibrium"]["reactive_speciation"]["default_auto_uses_ipopt"] is False
-    assert capabilities["equilibrium"]["reactive_speciation"]["full_constrained_nlp_available"] is False
+    assert capabilities["equilibrium"]["reactive_speciation"]["solver_backends"] == ["auto", "ipopt"]
+    assert capabilities["equilibrium"]["reactive_speciation"]["ipopt_routes"] == [
+        "reactive_speciation:ideal_mole_fraction"
+    ]
+    assert (
+        capabilities["equilibrium"]["reactive_speciation"]["full_constrained_nlp_available"]
+        is ipopt["available"]
+    )
     assert (
         capabilities["equilibrium"]["reactive_speciation"]["jacobian_auto_policy"]
         == "native_analytic_log_amount_residual_jacobian_with_implicit_sensitivity"

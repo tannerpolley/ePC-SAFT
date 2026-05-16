@@ -7,19 +7,21 @@ Native-default solver policy
 Package-owned regression and equilibrium solves must run through the native
 C++ backend exposed by ``epcsaft._core``. Python package code may normalize
 inputs, build request payloads, validate units and compositions, and convert
-native payloads into structured result objects. The default production paths
-remain native Newton and native least-squares.
+native payloads into structured result objects. New production equilibrium
+ownership is moving to native Ipopt constrained NLPs; legacy native residual
+solves remain only where the migration is not finished.
 
 Consequently, electrolyte bubble-pressure and composed reactive electrolyte
 bubble-pressure entry points route through native C++ kernels. The Python layer
 only coordinates native speciation, native phase-equilibrium calls, fixed-liquid
 bubble-pressure handoffs, structured results, and diagnostics.
 
-``ReactiveSpeciationOptions`` accepts ``solver_backend="auto" | "newton" |
-"ipopt"`` and ``hessian_strategy="gauss_newton" | "lbfgs"``. ``auto`` keeps
-the current native chemical-equilibrium solve. ``ipopt`` is reserved for the
-native Ipopt constrained-NLP adapter and raises ``InputError`` until that adapter
-is wired to public reactive speciation routes.
+``ReactiveSpeciationOptions`` accepts ``solver_backend="auto" | "ipopt"``.
+``auto`` keeps the current native chemical-equilibrium solve while the full
+migration is underway. Explicit ``ipopt`` routes homogeneous
+``ideal_mole_fraction`` speciation through the native Ipopt constrained-NLP
+adapter when the extension is built with Ipopt; activity and concentration
+standard states still require the EOS derivative NLP blocks.
 
 The target IPOPT formulation is constrained Gibbs minimization with formal
 material, charge, and reaction constraints plus exact gradients/Jacobians from
@@ -28,8 +30,8 @@ only as Ipopt solver-internal behavior and is not reported as a package
 derivative backend.
 
 Solver-selection policy is intentionally conservative. ``auto`` keeps the native
-chemical-equilibrium solver until the native Ipopt adapter is implemented and
-validated.
+chemical-equilibrium solver until the corresponding native Ipopt route is
+implemented and validated.
 
 Homogeneous reactive speciation
 -------------------------------

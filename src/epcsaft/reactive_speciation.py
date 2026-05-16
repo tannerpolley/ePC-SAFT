@@ -320,13 +320,6 @@ class ReactiveSpeciationResult:
         }
 
 
-def _raise_native_ipopt_not_routed() -> None:
-    raise InputError(
-        "solver_backend='ipopt' was requested, but the native Ipopt adapter for reactive_speciation is not wired to "
-        "public reactive speciation routes yet. Use the current native route until the Ipopt NLP adapter is implemented."
-    )
-
-
 def solve_reactive_speciation(
     *,
     species: Any,
@@ -353,8 +346,6 @@ def solve_reactive_speciation(
     )
     balance_matrix, total_vector, balance_names = _normalize_balances(labels, balances, totals)
     reaction_defs = _normalize_reactions(labels, reactions)
-    if opts.solver_backend == "ipopt":
-        _raise_native_ipopt_not_routed()
     return _solve_reactive_speciation_native(
         species=labels,
         mixture_factory=mixture_factory,
@@ -453,8 +444,8 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
             "ReactiveSpeciationOptions.jacobian_backend must be 'auto', 'autodiff', 'analytic', or 'cppad'."
         )
     solver_backend = str(options.solver_backend).strip().lower()
-    if solver_backend not in {"auto", "newton", "ipopt"}:
-        raise InputError("ReactiveSpeciationOptions.solver_backend must be 'auto', 'newton', or 'ipopt'.")
+    if solver_backend not in {"auto", "ipopt"}:
+        raise InputError("ReactiveSpeciationOptions.solver_backend must be 'auto' or 'ipopt'.")
     hessian_strategy = str(options.hessian_strategy).strip().lower()
     hessian_aliases = {"gn": "gauss_newton", "gauss-newton": "gauss_newton", "bfgs": "lbfgs"}
     hessian_strategy = hessian_aliases.get(hessian_strategy, hessian_strategy)
@@ -544,6 +535,8 @@ def _solve_reactive_speciation_native(
         payload = _core._solve_chemical_equilibrium_native(native, request)
     except _core.NativeValueError as exc:
         raise InputError(str(exc)) from exc
+    except _core.NativeSolutionError as exc:
+        raise SolutionError(str(exc)) from exc
     x = {label: float(value) for label, value in zip(species, payload["composition"])}
     activity_coefficients = {label: float(value) for label, value in zip(species, payload["activity_coefficients"])}
     mass_balance_residuals = {

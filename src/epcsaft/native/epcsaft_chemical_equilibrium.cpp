@@ -3,6 +3,7 @@
 #include <Eigen/Dense>
 
 #include "epcsaft_electrolyte.h"
+#include "ideal_speciation_problem.h"
 
 #include <algorithm>
 #include <cmath>
@@ -1339,6 +1340,9 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
         || options.min_mole_fraction <= 0.0) {
         throw ValueError("chemical equilibrium options contain invalid numerical controls.");
     }
+    if (options.solver_backend != "auto" && options.solver_backend != "ipopt") {
+        throw ValueError("chemical equilibrium solver_backend must be 'auto' or 'ipopt'.");
+    }
 
     Eigen::MatrixXd balances = matrix_from_row_major(balance_matrix_row_major, balance_rows, ncomp, "balance_matrix");
     Eigen::VectorXd totals = vector_from_values(total_vector);
@@ -1361,6 +1365,29 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
         options,
         reaction_standard_states
     );
+    if (options.solver_backend == "ipopt") {
+        if (!standard_states_all_ideal_mole_fraction(reaction_standard_states)) {
+            throw ValueError(
+                "Native Ipopt reactive speciation currently supports ideal_mole_fraction standard states; "
+                "activity and concentration routes require the EOS derivative NLP blocks."
+            );
+        }
+        epcsaft::native::equilibrium_nlp::IdealSpeciationRequest request;
+        request.species_count = ncomp;
+        request.balance_rows = balance_rows;
+        request.balance_matrix_row_major = balance_matrix_row_major;
+        request.total_vector = total_vector;
+        request.reaction_rows = reaction_rows;
+        request.reaction_stoichiometry_row_major = reaction_stoichiometry_row_major;
+        request.log_equilibrium_constants = log_equilibrium_constants;
+        request.initial_x = initial_x;
+        request.charges = mixture->args().z;
+        request.min_mole_fraction = options.min_mole_fraction;
+        return epcsaft::native::equilibrium_nlp::solve_ideal_speciation_chemical_equilibrium_ipopt(
+            request,
+            options
+        );
+    }
     ChemicalEquilibriumResultNative scalar_result;
     if (try_scalar_binary_activity_solve_native(
         mixture,

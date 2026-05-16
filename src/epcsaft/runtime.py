@@ -439,6 +439,8 @@ def capabilities() -> dict[str, object]:
     ceres = dict(runtime_build_info()["optional_dependencies"]["ceres"])  # type: ignore[index]
     cppad = dict(runtime_build_info()["optional_dependencies"]["cppad"])  # type: ignore[index]
     ipopt = dict(runtime_build_info()["optional_dependencies"]["ipopt"])  # type: ignore[index]
+    ipopt_public_routes = ["reactive_speciation:ideal_mole_fraction"]
+    ipopt_route_available = bool(ipopt.get("available", False))
     cppad_capability = _dependency_capability(
         cppad,
         production=False,
@@ -530,15 +532,15 @@ def capabilities() -> dict[str, object]:
             "ipopt": {
                 **ipopt,
                 "solver_backend": "ipopt",
-                "production": False,
+                "production": ipopt_route_available,
                 "scope": "native Ipopt dependency for production equilibrium NLP routes",
                 "hessian_strategies": ["limited_memory"],
                 "formulations": ["thermodynamic_constrained_nlp"],
                 "adapter_available": bool(ipopt.get("adapter_available", False)),
                 "adapter_source_available": bool(ipopt.get("adapter_source_available", False)),
                 "adapter_kind": ipopt.get("adapter_kind", "native_tnlp_adapter"),
-                "public_routes": [],
-                "full_constrained_nlp_available": False,
+                "public_routes": ipopt_public_routes,
+                "full_constrained_nlp_available": ipopt_route_available,
                 "default_auto_uses_ipopt": False,
                 "exact_hessian_available": False,
                 "hessian_includes_second_residual_derivatives": False,
@@ -646,12 +648,13 @@ def capabilities() -> dict[str, object]:
                 ],
                 "derivative_gap_status": "implicit_sensitivity_available_for_reaction_constant_response",
                 "explicit_autodiff_raises_when_unavailable": True,
-                "solver_backends": ["auto"],
+                "solver_backends": ["auto", "ipopt"],
                 "ipopt_available": bool(ipopt["available"]),
-                "explicit_ipopt_request": "raises_until_native_adapter_is_implemented",
+                "explicit_ipopt_request": "ideal_mole_fraction_routes_to_native_ipopt_when_compiled",
+                "ipopt_routes": ipopt_public_routes,
                 "default_auto_uses_ipopt": False,
                 "ipopt_formulation": "thermodynamic_constrained_nlp",
-                "full_constrained_nlp_available": False,
+                "full_constrained_nlp_available": ipopt_route_available,
             },
             "repeated_state_properties": {
                 "available": True,

@@ -13,6 +13,8 @@ struct ChemicalEquilibriumOptionsNative {
     double damping = 0.5;
     double min_mole_fraction = 1.0e-14;
     std::string jacobian_backend = "auto";
+    std::string solver_backend = "auto";
+    std::string hessian_strategy = "limited_memory";
     std::string phase = "liq";
     std::string activity_output = "auto";
 };

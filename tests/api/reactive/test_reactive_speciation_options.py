@@ -79,31 +79,47 @@ def test_reactive_speciation_rejects_invalid_optimizer_options(options, message)
             options=options,
         )
 
-def test_reactive_speciation_requested_ipopt_requires_native_adapter() -> None:
-    species = ["H2O", "NaCl", "Na+", "Cl-"]
-    mix = _salt_speciation_mixture()
+def test_reactive_speciation_requested_ipopt_routes_ideal_speciation_when_compiled() -> None:
+    from epcsaft import _core
 
-    with pytest.raises(epcsaft.InputError, match=r"native Ipopt adapter.*reactive_speciation"):
-        epcsaft.solve_reactive_speciation(
-            species=species,
-            mixture_factory=lambda x, T, P: mix,
-            T=298.15,
-            P=1.0e5,
-            balances={
-                "water_total": {"H2O": 1.0},
-                "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
-                "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
-            },
-            totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
-            reactions=[
-                epcsaft.ReactionDefinition(
-                    stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
-                    log_equilibrium_constant=0.0,
-                )
-            ],
-            initial_x=[0.998, 0.001, 0.0005, 0.0005],
-            options=epcsaft.ReactiveSpeciationOptions(solver_backend="ipopt"),
-        )
+    mix = epcsaft.ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([1.0, 1.0]),
+            "s": np.asarray([3.0, 3.0]),
+            "e": np.asarray([200.0, 200.0]),
+        },
+        species=["A", "B"],
+    )
+    kwargs = {
+        "species": ["A", "B"],
+        "mixture_factory": lambda x, T, P: mix,
+        "T": 298.15,
+        "P": 1.0e5,
+        "balances": {"total": {"A": 1.0, "B": 1.0}},
+        "totals": {"total": 1.0},
+        "reactions": [
+            epcsaft.ReactionDefinition(
+                {"A": -1.0, "B": 1.0},
+                log_equilibrium_constant=math.log(3.0),
+                standard_state="ideal_mole_fraction",
+            )
+        ],
+        "initial_x": [0.5, 0.5],
+        "options": epcsaft.ReactiveSpeciationOptions(solver_backend="ipopt", tolerance=1.0e-9),
+    }
+
+    if not _core._native_ipopt_smoke()["compiled"]:
+        with pytest.raises(epcsaft.SolutionError, match=r"EPCSAFT_ENABLE_IPOPT=ON"):
+            epcsaft.solve_reactive_speciation(**kwargs)
+        return
+
+    result = epcsaft.solve_reactive_speciation(**kwargs)
+
+    assert result.success is True
+    assert result.x["B"] / result.x["A"] == pytest.approx(3.0, rel=1.0e-7)
+    assert result.diagnostics["selected_solver_backend"] == "native_ipopt"
+    assert result.diagnostics["problem_class"] == "homogeneous_ideal_gibbs_speciation"
+    assert result.diagnostics["jacobian_backend"] == "analytic"
 
 def test_reactive_speciation_auto_uses_current_native_route() -> None:
     mix = epcsaft.ePCSAFTMixture.from_params(

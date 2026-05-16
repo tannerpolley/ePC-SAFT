@@ -25,10 +25,11 @@ def test_default_build_reports_cppad_and_ceres_capabilities_honestly() -> None:
         assert capabilities["optimizers"]["ceres"]["production"] is False
         assert capabilities["optimizers"]["ceres"]["reason"] == "dependency_not_compiled"
     assert capabilities["optimizers"]["ceres"]["native_hot_loop"] is False
-    assert capabilities["optimizers"]["ipopt"]["production"] is False
+    assert capabilities["optimizers"]["ipopt"]["production"] is ipopt["available"]
     assert capabilities["optimizers"]["ipopt"]["adapter_available"] is ipopt["adapter_available"]
     assert capabilities["optimizers"]["ipopt"]["adapter_source_available"] is True
     assert capabilities["optimizers"]["ipopt"]["adapter_kind"] == "native_tnlp_adapter"
+    assert capabilities["optimizers"]["ipopt"]["public_routes"] == ["reactive_speciation:ideal_mole_fraction"]
 
 
 def test_capabilities_report_cppad_without_legacy_forward_backend() -> None:

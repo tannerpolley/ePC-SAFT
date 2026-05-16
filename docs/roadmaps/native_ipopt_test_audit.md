@@ -83,9 +83,9 @@ The last two failures were caused or exposed by this cleanup slice and were fixe
 
 - The first Task 3 slice removed the legacy numerical package from the test dependency group.
 - The first Task 3 slice deleted the legacy Rezaee fitting script and its generated fit outputs.
-- The second Task 3 slice removed the Python IPOPT adapter, added native system Ipopt discovery, and added doctor/build status reporting. The native Ipopt adapter and public route wiring remain open.
+- The second Task 3 slice removed the Python IPOPT adapter, added native system Ipopt discovery, and added doctor/build status reporting. The native Ipopt adapter is present; public route wiring is currently limited to explicit homogeneous ideal reactive speciation.
 - The third Task 3 slice made Ceres and CppAD mandatory native dependencies for dev-script, package-backend, and CMake builds, excluded vendored Ceres install rules from package artifacts, and validated the actual local extension with Ceres enabled.
-- Public equilibrium options still expose `newton` and `ipopt` through Python-side routing.
+- Public `EquilibriumOptions` still expose `newton` and `ipopt` through Python-side routing; `ReactiveSpeciationOptions` now accepts only `auto` and explicit `ipopt`.
 - Native and Python equilibrium paths still contain custom bracketing, bisection, golden-section, retry, and fallback behavior.
 - Regression still exposes native least-squares compatibility paths that must be replaced by Ceres-only production routes.
 

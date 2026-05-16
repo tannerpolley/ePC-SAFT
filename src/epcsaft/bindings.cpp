@@ -966,6 +966,12 @@ ChemicalEquilibriumOptionsNative chemical_options_from_request(const py::dict& r
     if (input.contains("jacobian_backend")) {
         options.jacobian_backend = input["jacobian_backend"].cast<std::string>();
     }
+    if (input.contains("solver_backend")) {
+        options.solver_backend = input["solver_backend"].cast<std::string>();
+    }
+    if (input.contains("hessian_strategy")) {
+        options.hessian_strategy = input["hessian_strategy"].cast<std::string>();
+    }
     if (input.contains("phase")) {
         options.phase = input["phase"].cast<std::string>();
     }
