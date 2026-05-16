@@ -285,7 +285,7 @@ if(EPCSAFT_CPPAD_LIBRARY)
     target_link_libraries(epcsaft_native PUBLIC "${EPCSAFT_CPPAD_LIBRARY}")
 endif()
 
-pybind11_add_module(_core src/epcsaft/bindings.cpp)
+pybind11_add_module(_core NO_EXTRAS src/epcsaft/bindings.cpp)
 target_link_libraries(_core PRIVATE epcsaft_native)
 target_include_directories(_core
     PRIVATE
@@ -297,6 +297,9 @@ target_include_directories(_core
         "${EPCSAFT_EIGEN_INCLUDE}"
 )
 target_compile_features(_core PRIVATE cxx_std_17)
+if(MSVC)
+    set_source_files_properties(src/epcsaft/bindings.cpp PROPERTIES COMPILE_OPTIONS "/Od;/Ob0")
+endif()
 
 set(EPCSAFT_NATIVE_TARGETS epcsaft_native _core)
 

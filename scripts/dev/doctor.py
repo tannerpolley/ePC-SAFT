@@ -14,7 +14,6 @@ REQUIRED_CORE_SYMBOLS = (
     "_fit_pure_neutral_native_ceres",
     "_fit_generic_native_ceres",
     "_evaluate_generic_native_debug",
-    "_solve_equilibrium_native",
     "_native_cppad_smoke",
     "_native_ipopt_smoke",
     "NativeSolutionError",

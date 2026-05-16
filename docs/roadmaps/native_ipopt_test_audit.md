@@ -71,6 +71,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - The unreferenced tracked LaTeX backup `docs/latex/equations_old.tex` was deleted; `docs/latex/equations.tex` remains the equation source of truth.
 - Completed, unreferenced JetBrains cleanup plan artifacts were removed now that the repo-owned script exists.
 - Remaining unreferenced stale handoff/planning artifacts under `docs/handoffs/` and `docs/plans/` were removed so the native Ipopt gate plan is the active implementation handoff.
+- The unused private `_solve_equilibrium_native` pybind wrapper and Python payload adapter were removed; public equilibrium routes remain gated to native Ipopt builders, and private residual-surface bindings stay separate.
+- The `_core` pybind module now disables pybind11 release extras and MSVC optimization for the large binding translation unit; native thermodynamic objects remain Release-optimized.
 - The reactive phase diagnostic extent helper no longer uses NumPy's least-squares convenience path; it uses a direct library linear solve for the small stoichiometric normal system.
 - No-reaction, failed, and best-effort reactive speciation paths now omit implicit-sensitivity payloads when the native route has no reaction-constant sensitivity matrix instead of returning placeholders or raising during diagnostic normalization.
 - The MIAC electrolyte fixture check now uses a strict approximate comparison instead of exact binary float equality.

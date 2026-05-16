@@ -402,7 +402,7 @@ StabilityResultNative neutral_stability_result_from_trials(
     result.diagnostics_string["min_seed_name"] = best_iter->seed_name;
     result.diagnostics_string["message"] = result.stable ? "no negative TPD trial found" : "unstable trial phase detected";
     result.diagnostics_string["solver_language"] = "c++";
-    result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
+    result.diagnostics_string["native_entrypoint"] = "native_equilibrium_internal";
     result.diagnostics_string["tpd_method"] = tpd_method;
     return result;
 }
@@ -1729,7 +1729,7 @@ EquilibriumResultNative lle_two_phase_result(
     result.diagnostics_bool["point_solver_split_detected"] = true;
     result.diagnostics_string["point_solver_message"] = "converged";
     result.diagnostics_string["solver_language"] = "c++";
-    result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
+    result.diagnostics_string["native_entrypoint"] = "native_equilibrium_internal";
     result.diagnostics_string["acceptance_gate"] = "residual_and_physical_gates";
     result.diagnostics_string["solver_backend"] = "ceres";
     result.diagnostics_string["selected_solver_backend"] = "ceres";
@@ -1777,7 +1777,7 @@ EquilibriumResultNative lle_no_split_result(
     result.diagnostics_bool["point_solver_split_detected"] = false;
     result.diagnostics_string["point_solver_message"] = attempt.message;
     result.diagnostics_string["solver_language"] = "c++";
-    result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
+    result.diagnostics_string["native_entrypoint"] = "native_equilibrium_internal";
     result.diagnostics_string["acceptance_gate"] = "neutral_lle_not_accepted";
     result.diagnostics_string["solver_backend"] = "none";
     result.diagnostics_string["selected_solver_backend"] = "none";
@@ -1864,7 +1864,7 @@ StabilityResultNative electrolyte_stability_native(
     result.diagnostics_string["seed_name"] = best_iter->seed_name;
     result.diagnostics_string["tpd_best_seed_name"] = best_iter->seed_name;
     result.diagnostics_string["solver_language"] = "c++";
-    result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
+    result.diagnostics_string["native_entrypoint"] = "native_equilibrium_internal";
     result.diagnostics_double["tpd_threshold"] = threshold;
     result.diagnostics_double["tpd_objective_value"] = best_iter->tpd;
     result.diagnostics_double["min_tpd"] = best_iter->tpd;
@@ -1939,7 +1939,7 @@ EquilibriumResultNative tp_flash_native(
         result.diagnostics_bool["point_solver_split_detected"] = false;
         result.diagnostics_string["point_solver_message"] = no_split_message;
         result.diagnostics_string["solver_language"] = "c++";
-        result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
+        result.diagnostics_string["native_entrypoint"] = "native_equilibrium_internal";
         result.diagnostics_bool["neutral_fast_path"] = true;
         return result;
     }
@@ -2018,7 +2018,7 @@ EquilibriumResultNative tp_flash_native(
             result.diagnostics_bool["point_solver_split_detected"] = true;
             result.diagnostics_string["point_solver_message"] = "converged";
             result.diagnostics_string["solver_language"] = "c++";
-            result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
+            result.diagnostics_string["native_entrypoint"] = "native_equilibrium_internal";
             result.diagnostics_string["nonlinear_solver"] = "native_successive_substitution";
             result.diagnostics_bool["neutral_fast_path"] = true;
             return result;
@@ -2357,7 +2357,7 @@ EquilibriumResultNative electrolyte_lle_failure_result(
     result.diagnostics_string["solver_method"] = "none";
     result.diagnostics_string["attempted_solver_method"] = "ceres_trust_region_residual_solve";
     result.diagnostics_string["solver_language"] = "c++";
-    result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
+    result.diagnostics_string["native_entrypoint"] = "native_equilibrium_internal";
     result.diagnostics_string["jacobian_backend"] = "none";
     result.diagnostics_string["derivative_backend"] = "none";
     result.diagnostics_string["accepted_derivative_backend"] = "none";
@@ -2973,7 +2973,7 @@ EquilibriumResultNative electrolyte_lle_native(
     result.diagnostics_string["solver_seed_name"] = best_seed;
     result.diagnostics_string["solver_method"] = "ceres_trust_region_residual_solve";
     result.diagnostics_string["solver_language"] = "c++";
-    result.diagnostics_string["native_entrypoint"] = "_solve_equilibrium_native";
+    result.diagnostics_string["native_entrypoint"] = "native_equilibrium_internal";
     result.diagnostics_string["jacobian_backend"] = "cppad_implicit";
     result.diagnostics_string["derivative_backend"] = "cppad_implicit";
     result.diagnostics_string["accepted_derivative_backend"] = "cppad_implicit";

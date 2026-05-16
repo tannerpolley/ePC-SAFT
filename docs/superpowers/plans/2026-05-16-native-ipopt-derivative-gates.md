@@ -569,6 +569,10 @@ Task 12 continuation note: completed, unreferenced JetBrains cleanup plan artifa
 
 Task 12 continuation note: remaining unreferenced stale handoff/planning artifacts under `docs/handoffs/` and `docs/plans/` were removed. This plan remains the active implementation handoff for equilibrium, regression, derivative, and documentation gate work.
 
+Task 12 continuation note: the unused private `_solve_equilibrium_native` pybind wrapper and Python payload adapter were removed. Public equilibrium routes remain route-gated to native Ipopt builders, and private residual-surface bindings stay separate for derivative diagnostics.
+
+Task 13 validation note: the `_core` pybind module now disables pybind11 release extras and MSVC optimization for `bindings.cpp`. Native objects still use the configured Release build, while the large binding translation unit avoids the MSVC heap exhaustion seen during rebuild.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

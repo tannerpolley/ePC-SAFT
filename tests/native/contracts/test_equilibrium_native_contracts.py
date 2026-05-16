@@ -36,7 +36,6 @@ def _electrolyte_mixture() -> ePCSAFTMixture:
 
 
 def test_native_equilibrium_entrypoint_is_exposed() -> None:
-    assert hasattr(_core, "_solve_equilibrium_native")
     assert hasattr(_core, "_evaluate_electrolyte_lle_residual_native")
 
 
@@ -47,57 +46,6 @@ def test_public_tp_flash_requires_native_ipopt_route() -> None:
         mix.equilibrium(kind="tp_flash", T=220.0, P=1.0e5, z=[0.1, 0.3, 0.6], backend="native")
 
     _assert_tp_flash_route_pending(excinfo)
-
-
-def test_native_electrolyte_stability_entrypoint_runs_in_cpp() -> None:
-    mix = _electrolyte_mixture()
-    request = {
-        "kind": "electrolyte_stability",
-        "T": 298.15,
-        "P": 1.013e5,
-        "z": [0.55, 0.40, 0.025, 0.025],
-        "species": mix.species,
-        "options": {
-            "max_iterations": 60,
-            "tolerance": 1.0e-8,
-            "min_composition": 1.0e-12,
-            "include_phase_diagnostics": False,
-            "stability_precheck": True,
-        },
-    }
-
-    payload = _core._solve_equilibrium_native(mix._native, request)
-
-    assert payload["result_type"] == "stability"
-    assert payload["backend"] == "electrolyte_tpd"
-    assert payload["diagnostics"]["solver_language"] == "c++"
-    assert payload["diagnostics"]["native_entrypoint"] == "_solve_equilibrium_native"
-    assert payload["diagnostics"]["tpd_trial_count"] == len(payload["trials"])
-    assert payload["diagnostics"]["tpd_best_seed_name"] == payload["diagnostics"]["seed_name"]
-    assert payload["diagnostics"]["phase_charge_balance"]["trial"] == pytest.approx(0.0, abs=1.0e-8)
-
-
-def test_native_electrolyte_stability_honors_explicit_max_iterations() -> None:
-    mix = _electrolyte_mixture()
-    request = {
-        "kind": "electrolyte_stability",
-        "T": 298.15,
-        "P": 1.013e5,
-        "z": [0.55, 0.40, 0.025, 0.025],
-        "species": mix.species,
-        "options": {
-            "max_iterations": 2,
-            "tolerance": 1.0e-8,
-            "min_composition": 1.0e-12,
-            "include_phase_diagnostics": False,
-            "stability_precheck": True,
-        },
-    }
-
-    payload = _core._solve_equilibrium_native(mix._native, request)
-
-    assert payload["diagnostics"]["requested_max_iterations"] == 2
-    assert payload["diagnostics"]["effective_max_iterations"] == 2
 
 
 def test_public_electrolyte_stability_requires_native_ipopt_route() -> None:
