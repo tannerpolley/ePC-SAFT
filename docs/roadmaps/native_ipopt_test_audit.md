@@ -53,11 +53,11 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - `tests/profile/**` is opt-in through `EPCSAFT_RUN_PERF`.
 - MEA regression literature tests are opt-in through `EPCSAFT_RUN_MEA_TABLE2_REGRESSION` or `EPCSAFT_RUN_MEA_REGRESSION`.
 - Khudaida matrix and digitized-data validation tests use explicit skip gates for unavailable local validation assets.
-- Hubach hard-case electrolyte LLE tests use opt-in legacy-candidate gating.
 
 ## Unnecessary Or Weak Coverage Found
 
 - Test import and unused mock-argument bloat was mechanical and removed.
+- Hubach electrolyte LLE status-only continuation tests were deleted, and removed-option checks now run as fast validation-path tests instead of opt-in skips.
 - NumPy testing imports were removed from tests because the lazy `np.testing` import path can stall Windows validation before the thermodynamic assertion runs.
 - Several tests still assert legacy missing-status behavior instead of implemented derivative coverage.
 - Remaining weak coverage is concentrated in opt-in diagnostics, debug skip controls, and legacy route-gate docs; continue deleting tests that only protect status/debug surfaces.
