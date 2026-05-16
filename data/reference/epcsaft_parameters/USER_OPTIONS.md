@@ -54,7 +54,7 @@ The loader deep-merges it onto the package defaults defined in
 
 - Top level: `solvated_ion_diameter_mixing_rule`, `ion_dispersion_mixing_rule`, `elec_model`
 - `elec_model.rel_perm.rule`: default `1`; accepts integers and aliases such as `constant`, `linear`, `linear-massfraction`, `combined`, `empirical`, `aqueous-organic`, and `salt-free-massfraction`
-- `elec_model.rel_perm.differential_mode`: default `analytical`; accepts `analytical` or `numerical`
+- `elec_model.rel_perm.differential_mode`: default `analytical`; accepts `analytical`, `autodiff`, or `auto`
 - `elec_model.hc_model.dadx_differential_mode`: default `analytical`
 - `elec_model.disp_model.dadx_differential_mode`: default `analytical`
 - `elec_model.assoc_model.dadx_differential_mode`: default `analytical`
@@ -104,15 +104,13 @@ Use the Figiel/Khudaida-style non-default Born settings:
 {
   "elec_model": {
     "rel_perm": {
-      "rule": "empirical",
-      "differential_mode": "numerical"
+      "rule": "empirical"
     },
     "born_model": {
       "d_Born_mode": 3,
       "solvation_shell_model": true,
       "dielectric_saturation": true,
       "mu_born_model": {
-        "differential_mode": "numerical",
         "comp_dep_delta_d": true
       }
     }

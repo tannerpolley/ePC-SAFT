@@ -80,6 +80,7 @@ def _blocked_terms() -> tuple[str, ...]:
     twenty_second = "numerical" + " jacobian"
     twenty_third = "numeric" + " jacobian"
     twenty_fourth = "perturbation" + " differencing"
+    twenty_fifth = "differential_mode" + '": "' + "numerical"
     return (
         first,
         second,
@@ -105,6 +106,7 @@ def _blocked_terms() -> tuple[str, ...]:
         twenty_second,
         twenty_third,
         twenty_fourth,
+        twenty_fifth,
     )
 
 

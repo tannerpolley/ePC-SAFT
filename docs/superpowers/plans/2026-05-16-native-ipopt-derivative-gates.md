@@ -712,6 +712,10 @@ Task 12 continuation note: implicit solved-state sensitivity errors now state th
 analytic or CppAD residual Jacobians. The tracked text gate also blocks reintroducing the old derivative-approximation
 wording in active tracked files.
 
+Task 12 continuation note: stale data-script and parameter-options examples no longer advertise numerical differential
+modes. Generated parameter metadata now keeps those modes analytical, and the tracked text gate blocks the removed
+configuration literal in active tracked files.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

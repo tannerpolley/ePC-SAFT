@@ -269,7 +269,7 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
     },
     "2025_Figiel": {
         "elec_model": {
-            "rel_perm": {"rule": "empirical", "differential_mode": "numerical"},
+            "rel_perm": {"rule": "empirical", "differential_mode": "analytical"},
             "DH_model": {
                 "d_ion_mode": 1,
                 "bjeruum_treatment": False,
@@ -282,7 +282,7 @@ DATASET_USER_OPTIONS: Dict[str, Dict[str, Any]] = {
                 "dielectric_saturation": True,
                 "bulk_mode": "mix",
                 "mu_born_model": {
-                    "differential_mode": "numerical",
+                    "differential_mode": "analytical",
                     "comp_dep_rel_perm": True,
                     "include_sum_term": True,
                     "comp_dep_delta_d": True,
