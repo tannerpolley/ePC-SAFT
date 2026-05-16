@@ -434,12 +434,14 @@ Task 9 continuation note: the Python reactive-phase diagnostics no longer call N
 - [x] Route pure-neutral, pure-ion, binary pair, and generic supported fits through Ceres.
 - [ ] Use Ceres autodiff where residuals can be templated.
 - [ ] Use analytical/CppAD Jacobians where residuals depend on implicit EOS/state derivatives.
-- [ ] Add tests proving no numeric-diff Ceres route exists.
+- [x] Add tests proving no numeric-diff Ceres route exists.
 - [ ] Commit as `Make regression Ceres-only`.
 
 Task 10 progress note: the first regression slice moves public nonassociating pure-neutral regression to the native Ceres route by default, rejects the old native least-squares backend from that public path, removes the Python and pybind private pure-neutral least-squares entry points, and updates capability metadata so Ceres is a production optimizer when compiled.
 
 Task 10 continuation note: the second regression slice removes the private generic Eigen Levenberg-Marquardt route, its perturbation Jacobian, its pybind/Python wrapper, and the doctor-required symbol. Supported generic production fits remain Ceres-owned. Associating and MEA-CO2-H2O benchmark helpers now do residual-only scoring and reject optimization until native analytic/CppAD/implicit Ceres derivative coverage exists for those target families.
+
+Task 10 continuation note: a tracked repo gate now scans native C++ sources and blocks Ceres numeric-diff APIs and legacy perturbation tokens. This closes the explicit test-gate item, while templated Ceres autodiff and broader implicit derivative coverage remain open.
 
 ### Task 11: Internal Extension Boundaries
 

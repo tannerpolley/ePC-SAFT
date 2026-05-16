@@ -109,6 +109,26 @@ def test_native_regression_source_has_no_eigen_nonlinear_optimizer_route():
         assert term not in source
 
 
+def test_native_ceres_sources_have_no_numeric_diff_route():
+    source = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted(Path("src/epcsaft/native").rglob("*"))
+        if path.suffix in {".cpp", ".h", ".hpp"}
+    )
+    source_lower = source.lower()
+
+    blocked_terms = (
+        "Numeric" + "Diff",
+        "Numeric" + "DiffCostFunction",
+        "Dynamic" + "Numeric" + "DiffCostFunction",
+        "CERES_" + "NUMERIC" + "_DIFF",
+        "numeric" + "_diff",
+        "finite" + "_difference",
+    )
+    for term in blocked_terms:
+        assert term.lower() not in source_lower
+
+
 def test_native_cppad_source_does_not_assemble_removed_backend_status():
     source = "\n".join(
         path.read_text(encoding="utf-8")
