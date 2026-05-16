@@ -685,9 +685,6 @@ py::dict native_chemical_residual_evaluation_to_dict(const ChemicalResidualEvalu
     out["jacobian_backend"] = result.diagnostics_string.count("jacobian_backend")
         ? result.diagnostics_string.at("jacobian_backend")
         : "unspecified";
-    out["hessian_backend"] = result.diagnostics_string.count("hessian_backend")
-        ? result.diagnostics_string.at("hessian_backend")
-        : "gauss_newton";
     out["composition"] = result.composition;
     out["activity_coefficients"] = result.activity_coefficients;
     out["mass_balance_residuals"] = result.mass_balance_residuals;
@@ -717,9 +714,6 @@ py::dict native_electrolyte_lle_residual_evaluation_to_dict(const ElectrolyteLLE
     out["jacobian_backend"] = result.diagnostics_string.count("jacobian_backend")
         ? result.diagnostics_string.at("jacobian_backend")
         : "unspecified";
-    out["hessian_backend"] = result.diagnostics_string.count("hessian_backend")
-        ? result.diagnostics_string.at("hessian_backend")
-        : "gauss_newton";
     out["aq_composition"] = result.aq_composition;
     out["org_composition"] = result.org_composition;
     out["aq_ln_fugacity_coefficient"] = result.aq_ln_fugacity_coefficient;

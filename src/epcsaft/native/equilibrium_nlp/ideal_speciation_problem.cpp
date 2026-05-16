@@ -559,7 +559,7 @@ ChemicalEquilibriumResultNative solve_ideal_speciation_chemical_equilibrium_ipop
         "chemical_equilibrium:ideal_mole_fraction:ipopt_amount_gibbs";
     result.diagnostics_string["selected_solver_backend"] = "native_ipopt";
     result.diagnostics_string["solver_selection_reason"] = "explicit_request";
-    result.diagnostics_string["hessian_backend"] = "ipopt_limited_memory_solver_internal";
+    result.diagnostics_string["solver_hessian_mode"] = "ipopt_limited_memory";
     result.diagnostics_string["hessian_strategy"] = ipopt_result.ipopt.hessian_strategy;
     result.diagnostics_string["ipopt_solver_status"] = ipopt_result.ipopt.solver_status;
     result.diagnostics_string["ipopt_application_status"] = ipopt_result.ipopt.application_status;
