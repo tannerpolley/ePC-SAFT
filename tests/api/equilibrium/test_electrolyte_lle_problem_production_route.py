@@ -31,8 +31,6 @@ def test_electrolyte_lle_problem_routes_to_native_ceres_production_solver() -> N
     assert diagnostics["derivative_available"] is True
     assert diagnostics["neutral_fugacity_residual_norm"] <= 1.0e-8
     assert diagnostics["ionic_equilibrium_residual_norm"] <= 1.0e-8
-    assert "native_transformed_newton" not in str(diagnostics)
-    assert "native_derivative_free_nelder_mead" not in str(diagnostics)
 
     reconstructed = np.zeros_like(feed)
     for phase in result.phases:

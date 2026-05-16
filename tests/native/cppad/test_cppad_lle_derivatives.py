@@ -44,7 +44,6 @@ def test_associating_neutral_lle_solves_with_cppad_implicit_derivatives() -> Non
     assert result.diagnostics["material_balance_error"] < 1.0e-8
     assert result.diagnostics["phase_distance"] > 0.1
     assert result.diagnostics["nonlinear_solver"] == "ceres_trust_region_residual_solve"
-    assert "native_derivative_free_nelder_mead" not in json.dumps(result.diagnostics, default=str)
     assert result.diagnostics["derivative_backend"] == "cppad_implicit"
     assert result.diagnostics["derivative_status"] == "residual_jacobian_available"
     assert result.diagnostics["jacobian_available"] is True

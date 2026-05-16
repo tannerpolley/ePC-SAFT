@@ -85,8 +85,8 @@ The last two failures were caused or exposed by this cleanup slice and were fixe
 - The first Task 3 slice deleted the legacy Rezaee fitting script and its generated fit outputs.
 - The second Task 3 slice removed the Python IPOPT adapter, added native system Ipopt discovery, and added doctor/build status reporting. The native Ipopt adapter is present; public route wiring is currently limited to explicit homogeneous ideal reactive speciation.
 - The third Task 3 slice made Ceres and CppAD mandatory native dependencies for dev-script, package-backend, and CMake builds, excluded vendored Ceres install rules from package artifacts, and validated the actual local extension with Ceres enabled.
-- Public `EquilibriumOptions` still expose `newton` and `ipopt` through Python-side routing; `ReactiveSpeciationOptions` now accepts only `auto` and explicit `ipopt`.
-- Native and Python equilibrium paths still contain custom bracketing, bisection, golden-section, retry, and fallback behavior.
+- Public `EquilibriumOptions` now accepts only `auto` and explicit `ipopt`; `ReactiveSpeciationOptions` has the same public solver selector shape.
+- Native equilibrium paths still contain custom bracketing, bisection, golden-section, retry, and fallback behavior, but the Python neutral bubble/dew scalar route has been removed from accepted public execution.
 - Regression public pure-neutral fitting now defaults to Ceres and rejects the old native least-squares backend. The private generic Eigen least-squares binding and perturbation-Jacobian route are removed; generic supported production fits go through Ceres, while associating/MEA benchmark helpers are residual scorers until native Ceres derivative coverage exists.
 
 ## Required Cleanup Still Open

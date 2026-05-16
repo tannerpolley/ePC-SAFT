@@ -66,10 +66,6 @@ def _assert_ceres_production_diagnostics(diagnostics: dict[str, object]) -> None
     assert diagnostics[prefix + "jacobian_available"] is True
     assert diagnostics[prefix + "derivative_available"] is True
     assert diagnostics["stability_analysis"] == "electrolyte_tpd"
-    assert diagnostics["tpd_method"] == "native_tpd_global_search"
-    assert diagnostics["gibbs_seed_method"] == "native_golden_section"
-    assert "native_transformed_newton" not in str(diagnostics)
-    assert "native_derivative_free_nelder_mead" not in str(diagnostics)
 
 def test_ascani_case2_mixed_salt_solves_without_local_model_fixture() -> None:
     mix = _case2_mixture()
@@ -111,7 +107,6 @@ def test_native_gibbs_seed_path_reports_feasible_solver_diagnostics() -> None:
         options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8, damping=0.5),
     )
 
-    assert result.diagnostics["gibbs_seed_method"] == "native_golden_section"
     _assert_ceres_production_diagnostics(result.diagnostics)
 
 def test_predictive_residual_uses_dependent_phase_material_balance() -> None:

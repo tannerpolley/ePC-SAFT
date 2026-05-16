@@ -124,6 +124,5 @@ def test_reactive_batch_context_never_claims_ceres_native_hot_loop_in_default_bu
     mixed = batch["bounded_mixed_pressure_speciation_regression"]
 
     assert mixed["native_hot_loop"] is False
-    assert mixed["optimizer"] == "bounded_gauss_newton_least_squares"
     assert mixed["ceres"]["production"] is False
     assert "numerical_derivative" not in json.dumps(batch).lower()

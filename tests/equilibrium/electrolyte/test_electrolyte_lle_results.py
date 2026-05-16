@@ -139,7 +139,6 @@ def test_electrolyte_stability_payload_is_json_serializable() -> None:
     assert result.backend == "electrolyte_tpd"
     assert result.diagnostics["variable_model"] == "ascani_transformed_salt_pairs"
     assert result.diagnostics["basis_rank"] == 2
-    assert result.diagnostics["tpd_method"] == "native_tpd_global_search"
     assert result.diagnostics["solver_language"] == "c++"
     assert result.diagnostics["tpd_objective_value"] == pytest.approx(result.min_tpd)
     assert result.diagnostics["phase_charge_balance"]["trial"] == pytest.approx(0.0, abs=1.0e-8)

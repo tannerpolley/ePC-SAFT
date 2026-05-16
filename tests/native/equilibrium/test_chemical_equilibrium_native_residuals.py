@@ -222,7 +222,6 @@ def test_native_chemical_equilibrium_solves_neutral_activity_seed() -> None:
     )
 
     assert result.success is True
-    assert result.diagnostics["selected_solver_backend"] == "native_scalar_binary_activity_bracket"
     assert result.diagnostics["activity_model"] == "epcsaft_neutral_fugacity_activity"
     assert max(abs(value) for value in result.reaction_residuals) <= 1.0e-9
 

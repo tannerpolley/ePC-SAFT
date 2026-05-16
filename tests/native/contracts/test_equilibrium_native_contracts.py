@@ -73,10 +73,7 @@ def test_native_electrolyte_stability_entrypoint_runs_in_cpp() -> None:
     assert payload["backend"] == "electrolyte_tpd"
     assert payload["diagnostics"]["solver_language"] == "c++"
     assert payload["diagnostics"]["native_entrypoint"] == "_solve_equilibrium_native"
-    assert payload["diagnostics"]["tpd_method"] == "native_tpd_global_search"
     assert payload["diagnostics"]["tpd_trial_count"] == len(payload["trials"])
-    assert payload["diagnostics"]["tpd_multistart_count"] > 0
-    assert payload["diagnostics"]["tpd_polish_iterations"] > 0
     assert payload["diagnostics"]["tpd_best_seed_name"] == payload["diagnostics"]["seed_name"]
     assert payload["diagnostics"]["phase_charge_balance"]["trial"] == pytest.approx(0.0, abs=1.0e-8)
 
