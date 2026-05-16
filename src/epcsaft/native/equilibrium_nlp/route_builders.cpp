@@ -45,6 +45,21 @@ double phase_distance_inf_norm(const std::vector<double>& first, const std::vect
     return distance;
 }
 
+double chemical_potential_inf_norm(
+    const EosPhaseBlockResult& first,
+    const EosPhaseBlockResult& second,
+    std::size_t species_count
+) {
+    if (first.gradient.size() < species_count || second.gradient.size() < species_count) {
+        throw ValueError("Neutral EOS postsolve phase gradient sizes did not match species count.");
+    }
+    double norm = 0.0;
+    for (std::size_t species = 0; species < species_count; ++species) {
+        norm = std::max(norm, std::abs(first.gradient[species] - second.gradient[species]));
+    }
+    return norm;
+}
+
 class NeutralTwoPhaseEosProblem final : public NlpProblem {
 public:
     NeutralTwoPhaseEosProblem(
@@ -294,10 +309,15 @@ NeutralTwoPhaseEosPostsolve evaluate_neutral_two_phase_eos_postsolve(
     const std::vector<double>& feed_amounts,
     double material_tolerance,
     double pressure_tolerance,
+    double chemical_potential_tolerance,
     double phase_distance_tolerance
 ) {
     require_positive_finite(material_tolerance, "Neutral EOS postsolve material tolerance");
     require_positive_finite(pressure_tolerance, "Neutral EOS postsolve pressure tolerance");
+    require_positive_finite(
+        chemical_potential_tolerance,
+        "Neutral EOS postsolve chemical-potential tolerance"
+    );
     require_positive_finite(phase_distance_tolerance, "Neutral EOS postsolve phase-distance tolerance");
 
     const EosPhaseSystemResult system = evaluate_eos_phase_system(
@@ -334,10 +354,16 @@ NeutralTwoPhaseEosPostsolve evaluate_neutral_two_phase_eos_postsolve(
         species_count,
         system.constraints.size()
     );
+    out.chemical_potential_consistency_norm = chemical_potential_inf_norm(
+        system.phase_blocks[0],
+        system.phase_blocks[1],
+        species_count
+    );
     out.phase_distance = phase_distance_inf_norm(out.phase_compositions[0], out.phase_compositions[1]);
 
     out.accepted = out.material_balance_norm <= material_tolerance
         && out.pressure_consistency_norm <= pressure_tolerance
+        && out.chemical_potential_consistency_norm <= chemical_potential_tolerance
         && out.phase_distance >= phase_distance_tolerance;
     if (out.accepted) {
         out.rejection_reason = "accepted";
@@ -345,6 +371,8 @@ NeutralTwoPhaseEosPostsolve evaluate_neutral_two_phase_eos_postsolve(
         out.rejection_reason = "material_balance";
     } else if (out.pressure_consistency_norm > pressure_tolerance) {
         out.rejection_reason = "pressure_consistency";
+    } else if (out.chemical_potential_consistency_norm > chemical_potential_tolerance) {
+        out.rejection_reason = "chemical_potential_consistency";
     } else {
         out.rejection_reason = "phase_distance";
     }

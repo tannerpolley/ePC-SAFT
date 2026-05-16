@@ -38,6 +38,7 @@ struct NeutralTwoPhaseEosPostsolve {
     int species_count = 0;
     double material_balance_norm = 0.0;
     double pressure_consistency_norm = 0.0;
+    double chemical_potential_consistency_norm = 0.0;
     double phase_distance = 0.0;
     double objective = 0.0;
     std::vector<double> constraints;
@@ -74,6 +75,7 @@ NeutralTwoPhaseEosPostsolve evaluate_neutral_two_phase_eos_postsolve(
     const std::vector<double>& feed_amounts,
     double material_tolerance,
     double pressure_tolerance,
+    double chemical_potential_tolerance,
     double phase_distance_tolerance
 );
 

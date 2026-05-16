@@ -612,6 +612,7 @@ py::dict neutral_two_phase_eos_postsolve_to_dict(
     out["species_count"] = result.species_count;
     out["material_balance_norm"] = result.material_balance_norm;
     out["pressure_consistency_norm"] = result.pressure_consistency_norm;
+    out["chemical_potential_consistency_norm"] = result.chemical_potential_consistency_norm;
     out["phase_distance"] = result.phase_distance;
     out["objective"] = result.objective;
     out["constraints"] = result.constraints;
@@ -1442,6 +1443,7 @@ PYBIND11_MODULE(_core, m) {
         const std::vector<double>& feed_amounts,
         double material_tolerance,
         double pressure_tolerance,
+        double chemical_potential_tolerance,
         double phase_distance_tolerance
     ) {
         if (!mixture) {
@@ -1457,6 +1459,7 @@ PYBIND11_MODULE(_core, m) {
                 feed_amounts,
                 material_tolerance,
                 pressure_tolerance,
+                chemical_potential_tolerance,
                 phase_distance_tolerance
             )
         );

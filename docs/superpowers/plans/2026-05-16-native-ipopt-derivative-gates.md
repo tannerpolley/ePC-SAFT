@@ -455,10 +455,10 @@ private route-builder plumbing; public neutral equilibrium dispatch remains rout
 acceptance and result translation are implemented.
 
 Task 8 continuation note: neutral two-phase EOS postsolve gates now evaluate material balance, pressure consistency,
-and phase-distance acceptance from the native phase-system block. Focused coverage proves collapsed phases are rejected
-by the phase-distance gate and pressure-inconsistent phase states are rejected by the pressure gate. The public neutral
-routes remain gated until fugacity/chemical-potential consistency, result translation, and route-specific dispatch are
-implemented.
+chemical-potential consistency, and phase-distance acceptance from the native phase-system block. Focused coverage
+proves collapsed phases are rejected by the phase-distance gate, pressure-inconsistent phase states are rejected by the
+pressure gate, and chemical-potential-inconsistent phase states are rejected by the chemical-potential gate. The public
+neutral routes remain gated until result translation and route-specific dispatch are implemented.
 
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
