@@ -505,6 +505,8 @@ Task 12 continuation note: liquid-electrolyte SSM/DS Born parameter derivatives 
 
 Task 12 continuation note: native EOS/CppAD derivative contracts no longer use the old missing-backend label in the C++ and Python property-derivative surfaces touched by the CppAD contract tests. Disabled CppAD reports `cppad_disabled`; unsupported derivative configurations raise typed `unsupported` errors or are excluded from implemented coverage rows.
 
+Task 12 continuation note: density closure diagnostics no longer expose legacy retry wording. Native/Python result payloads now report `density_best_candidate_refinement_used`, `density_best_candidate_rejection_reason`, and `density_warm_start_rejections`, with focused runtime and equilibrium tests updated to enforce the renamed contract. The underlying standalone density closure remains an evidence-gated internal exception rather than a completed Ipopt/Ceres replacement.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**
