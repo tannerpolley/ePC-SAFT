@@ -25,8 +25,8 @@ inline std::string cppad_build_status() {
 #endif
 }
 
-inline std::string not_available_status() {
-    return std::string("backend") + "_" + "unavailable";
+inline std::string cppad_disabled_status() {
+    return "cppad_disabled";
 }
 
 inline double scalar_value(double x) {

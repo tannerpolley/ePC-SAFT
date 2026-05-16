@@ -35,7 +35,7 @@ CppADDerivativeResult cppad_square_smoke_derivative(double x) {
     (void)x;
     CppADDerivativeResult result;
     result.supported = false;
-    result.backend = not_available_status();
+    result.backend = cppad_disabled_status();
     result.message = "CppAD support is disabled in this native build";
     return result;
 #endif

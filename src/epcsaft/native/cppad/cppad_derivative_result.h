@@ -7,7 +7,7 @@ namespace epcsaft::native::cppad_support {
 
 struct CppADDerivativeResult {
     bool supported = false;
-    std::string backend = std::string("backend") + "_" + "unavailable";
+    std::string backend = "cppad_disabled";
     std::string message;
     std::vector<double> value;
     std::vector<double> jacobian_row_major;

@@ -247,6 +247,8 @@ For standalone property/state calls:
 
 Task 1 note: the first committed gate covers the explicit backend-status and numerical-difference text bans. The broader legacy missing-status family remains widespread and is intentionally left as implementation debt for the solver/derivative replacement tasks, not as completed capability work.
 
+Task 1 continuation note: the CppAD disabled smoke/default derivative result no longer assembles the removed backend-status token at runtime. Disabled CppAD smoke payloads now report `cppad_disabled`, and a repo test blocks reintroducing the old assembled source pattern.
+
 ### Task 2: Test Audit And Prune
 
 **Files:**

@@ -13,7 +13,7 @@ def test_native_cppad_smoke_reports_disabled_or_exact_cppad_derivative() -> None
 
     if not smoke["cppad_compiled"]:
         assert smoke["cppad_used"] is False
-        assert smoke["derivative_backend"] == "not_available"
+        assert smoke["derivative_backend"] == "cppad_disabled"
         return
 
     assert smoke["cppad_used"] is True
