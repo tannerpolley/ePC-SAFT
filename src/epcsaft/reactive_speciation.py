@@ -12,7 +12,6 @@ from ._types import InputError, SolutionError
 from .implicit_sensitivity import (
     ImplicitSolveResult,
     implicit_backend_for_residual_backend,
-    not_available_implicit_result,
 )
 
 _SPECIATION_EVALUATION_ERRORS = (
@@ -115,7 +114,7 @@ class ReactionConstantConvention:
         code = _REACTION_STANDARD_STATES[self.standard_state]
         if code is None:
             raise InputError(
-                "not_available: reaction constant convention "
+                "unsupported reaction constant convention "
                 f"'{self.standard_state}' is defined but is not supported by the native speciation backend."
             )
         return int(code)
@@ -620,7 +619,9 @@ def _solve_reactive_speciation_native(
 
 
 def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> None:
-    derivative_backend = str(diagnostics.get("derivative_backend", "not_available"))
+    derivative_backend = str(diagnostics.get("derivative_backend", "")).strip().lower()
+    if not derivative_backend:
+        raise InputError("native reactive speciation diagnostics must include a derivative backend.")
     solved_state_backend = implicit_backend_for_residual_backend(derivative_backend)
     diagnostics.setdefault("thermodynamic_backend", "epcsaft_state_activity_chemical_potential_api")
     diagnostics.setdefault("solver_backend", diagnostics.get("nonlinear_solver", "native_newton"))
@@ -629,13 +630,6 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
     diagnostics.setdefault("jacobian_fallback_used", False)
     diagnostics.setdefault("hessian_fallback_used", False)
     diagnostics.setdefault("numerical_derivative_backend_available", False)
-    if derivative_backend == "not_available":
-        diagnostics.setdefault(
-            "not_available_reason",
-            "not_available: reactive speciation sensitivities are not implemented for this route.",
-        )
-        diagnostics.setdefault("derivative_available", False)
-        diagnostics.setdefault("jacobian_available", False)
     if "residual_norm" in diagnostics:
         diagnostics.setdefault("residual_norm_by_block", {"reactive_speciation": float(diagnostics["residual_norm"])})
     else:
@@ -645,7 +639,6 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
         "derivative_backend_by_block",
         {
             "reaction_residual_jacobian": derivative_backend,
-            "density_root": "not_available",
             "activity_or_fugacity_state": "analytic" if derivative_backend == "analytic" else derivative_backend,
         },
     )
@@ -653,7 +646,7 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
     diagnostics.setdefault("best_state_available", True)
     diagnostics.setdefault("best_state", {"source": "native_chemical_equilibrium_result"})
     diagnostics.setdefault("row_failure_count", int(diagnostics.get("state_failure_count", 0)))
-    diagnostics.setdefault("association_solver_status", "not_available_if_active")
+    diagnostics.setdefault("association_solver_status", "not_coupled")
     diagnostics.setdefault(
         "derivative_policy",
         {
@@ -664,9 +657,8 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
                 "cppad",
                 "analytic_implicit",
                 "cppad_implicit",
-                "not_available",
             ],
-            "unsupported_derivative_status": "not_available",
+            "unsupported_derivative_behavior": "raise",
         },
     )
     diagnostics.setdefault(
@@ -683,31 +675,19 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
         "reactive_speciation_variables",
         solved_state_backend,
     )
-    diagnostics["derivative_backend_by_block"].setdefault("association_site_fractions", "not_available")
-    if solved_state_backend == "not_available":
-        reactive_implicit_result = not_available_implicit_result(
-            reason="reactive speciation implicit sensitivities are unavailable for this residual backend.",
-            diagnostics={"residual_backend": derivative_backend},
-        )
-    else:
-        reactive_implicit_result = _native_reactive_implicit_result(
-            diagnostics,
-            solved_state_backend=solved_state_backend,
-            derivative_backend=derivative_backend,
-        )
-        if reactive_implicit_result.backend != "not_available":
-            blocks = list(diagnostics.get("implicit_sensitivity_blocks", []))
-            if "reactive_speciation_variables" not in blocks:
-                blocks.append("reactive_speciation_variables")
-            diagnostics["implicit_sensitivity_blocks"] = blocks
+    reactive_implicit_result = _native_reactive_implicit_result(
+        diagnostics,
+        solved_state_backend=solved_state_backend,
+        derivative_backend=derivative_backend,
+    )
+    blocks = list(diagnostics.get("implicit_sensitivity_blocks", []))
+    if "reactive_speciation_variables" not in blocks:
+        blocks.append("reactive_speciation_variables")
+    diagnostics["implicit_sensitivity_blocks"] = blocks
     diagnostics.setdefault(
         "implicit_solve_results",
         {
             "reactive_speciation_variables": reactive_implicit_result.to_dict(),
-            "association_site_fractions": not_available_implicit_result(
-                reason="association site-fraction implicit sensitivities are unavailable for this reactive speciation route.",
-                diagnostics={"residual_backend": "not_available"},
-            ).to_dict(),
         },
     )
 
@@ -722,10 +702,7 @@ def _native_reactive_implicit_result(
     state_size = int(diagnostics.get("reactive_speciation_state_size", 0))
     parameter_size = int(diagnostics.get("reactive_speciation_parameter_size", 0))
     if rows <= 0 or state_size <= 0 or parameter_size <= 0:
-        return not_available_implicit_result(
-            reason="native reactive speciation did not return implicit sensitivity matrices.",
-            diagnostics={"residual_backend": derivative_backend},
-        )
+        raise InputError("native reactive speciation did not return implicit sensitivity matrices.")
     state = np.asarray(diagnostics.get("reactive_speciation_state", []), dtype=float)
     residual = np.asarray(diagnostics.get("reactive_speciation_residual", []), dtype=float)
     residual_state = np.asarray(

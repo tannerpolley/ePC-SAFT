@@ -10,7 +10,7 @@ import numpy as np
 
 from ._types import InputError
 
-_IMPLICIT_BACKENDS = {"analytic_implicit", "cppad_implicit", "not_available"}
+_IMPLICIT_BACKENDS = {"analytic_implicit", "cppad_implicit"}
 _EXPLICIT_TO_IMPLICIT_BACKEND = {
     "analytic": "analytic_implicit",
     "cppad": "cppad_implicit",
@@ -27,8 +27,8 @@ class ImplicitSolveResult:
     residual: Any
     jacobians: Mapping[str, Any] = field(default_factory=dict)
     sensitivity: Any = None
-    backend: str = "not_available"
-    status: str = "not_available"
+    backend: str = "analytic_implicit"
+    status: str = "ok"
     diagnostics: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -42,7 +42,9 @@ class ImplicitSolveResult:
 
         state = _array_payload(self.state, name="state")
         residual = _array_payload(self.residual, name="residual")
-        sensitivity = None if self.sensitivity is None else _array_payload(self.sensitivity, name="sensitivity")
+        if self.sensitivity is None:
+            raise InputError("ImplicitSolveResult.sensitivity is required for implicit derivative payloads.")
+        sensitivity = _array_payload(self.sensitivity, name="sensitivity")
         jacobians = {str(key): _json_like(value) for key, value in dict(self.jacobians).items()}
         diagnostics = {str(key): _json_like(value) for key, value in dict(self.diagnostics).items()}
 
@@ -60,7 +62,7 @@ class ImplicitSolveResult:
             "state": _json_like(self.state),
             "residual": _json_like(self.residual),
             "jacobians": _json_like(dict(self.jacobians)),
-            "sensitivity": None if self.sensitivity is None else _json_like(self.sensitivity),
+            "sensitivity": _json_like(self.sensitivity),
             "backend": self.backend,
             "status": self.status,
             "diagnostics": _json_like(dict(self.diagnostics)),
@@ -70,7 +72,11 @@ class ImplicitSolveResult:
 def implicit_backend_for_residual_backend(backend: str) -> str:
     """Map an explicit residual-Jacobian backend onto its implicit solved-state backend."""
 
-    return _EXPLICIT_TO_IMPLICIT_BACKEND.get(str(backend).strip().lower(), "not_available")
+    normalized = str(backend).strip().lower()
+    try:
+        return _EXPLICIT_TO_IMPLICIT_BACKEND[normalized]
+    except KeyError as exc:
+        raise InputError("implicit solved-state sensitivities require an analytic or CppAD residual Jacobian.") from exc
 
 
 def implicit_sensitivity_from_jacobians(
@@ -112,28 +118,6 @@ def implicit_sensitivity_from_jacobians(
     )
 
 
-def not_available_implicit_result(
-    *,
-    state: Any = (),
-    residual: Any = (),
-    reason: str,
-    diagnostics: Mapping[str, Any] | None = None,
-) -> ImplicitSolveResult:
-    """Create a structured payload for an explicitly unavailable implicit derivative."""
-
-    merged = dict(diagnostics or {})
-    merged.setdefault("reason", str(reason))
-    return ImplicitSolveResult(
-        state=state,
-        residual=residual,
-        jacobians={},
-        sensitivity=None,
-        backend="not_available",
-        status="not_available",
-        diagnostics=merged,
-    )
-
-
 def _array_payload(value: Any, *, name: str) -> np.ndarray:
     array = np.asarray(value, dtype=float)
     if not np.all(np.isfinite(array)):
@@ -164,7 +148,6 @@ def _json_like(value: Any) -> Any:
 
 __all__ = [
     "ImplicitSolveResult",
-    "not_available_implicit_result",
     "implicit_backend_for_residual_backend",
     "implicit_sensitivity_from_jacobians",
 ]

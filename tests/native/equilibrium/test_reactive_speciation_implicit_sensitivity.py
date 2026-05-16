@@ -37,16 +37,13 @@ def test_reactive_speciation_reports_solved_state_derivative_boundaries() -> Non
 
     diagnostics = result.diagnostics
     assert diagnostics["derivative_policy"]["numerical_derivative_backend_available"] is False
-    assert diagnostics["derivative_policy"]["unsupported_derivative_status"] == "not_available"
+    assert diagnostics["derivative_policy"]["unsupported_derivative_behavior"] == "raise"
     assert "reactive_speciation_variables" in diagnostics["solved_state_derivative_blocks"]
     assert "association_site_fractions" in diagnostics["solved_state_derivative_blocks"]
     assert diagnostics["derivative_backend_by_block"]["reactive_speciation_variables"] == "analytic_implicit"
-    assert diagnostics["derivative_backend_by_block"]["association_site_fractions"] in {
-        "analytic_implicit",
-        "cppad_implicit",
-        "not_available",
-    }
+    assert "association_site_fractions" not in diagnostics["derivative_backend_by_block"]
     implicit_results = diagnostics["implicit_solve_results"]
+    assert set(implicit_results) == {"reactive_speciation_variables"}
     reactive_implicit = implicit_results["reactive_speciation_variables"]
     assert reactive_implicit["backend"] == "analytic_implicit"
     assert reactive_implicit["status"] == "residual_jacobian_available"
@@ -61,7 +58,7 @@ def test_reactive_speciation_reports_solved_state_derivative_boundaries() -> Non
     assert "numerical_derivative" not in backend_values
 
 
-def test_explicit_cppad_request_reports_not_available_without_numerical_derivative() -> None:
+def test_explicit_cppad_request_fails_without_numerical_derivative() -> None:
     mix = epcsaft.ePCSAFTMixture.from_params(
         {
             "m": np.asarray([1.0, 1.0]),
@@ -71,7 +68,7 @@ def test_explicit_cppad_request_reports_not_available_without_numerical_derivati
         species=["A", "B"],
     )
 
-    with pytest.raises(epcsaft.InputError, match="not_available"):
+    with pytest.raises(epcsaft.InputError, match="CppAD chemical-equilibrium residual jacobian"):
         epcsaft.solve_reactive_speciation(
             species=["A", "B"],
             mixture_factory=lambda x, T, P: mix,

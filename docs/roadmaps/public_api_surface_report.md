@@ -90,10 +90,9 @@ behavior.
 - Public implicit-sensitivity helpers: `ImplicitSolveResult`,
   `implicit_backend_for_residual_backend`,
   `implicit_sensitivity_from_jacobians`.
-- One legacy implicit-sensitivity helper with an unsupported-backend status
-  name remains exported for compatibility. Its exact identifier is intentionally
-  retained in code but not repeated here because issue #120 asks new committed
-  text to avoid status-token wording.
+- The previous helper that created missing implicit-derivative payloads is no
+  longer exported; unsupported implicit derivative requests now raise instead
+  of returning a placeholder result.
 
 ## Top-Level Module Classification
 

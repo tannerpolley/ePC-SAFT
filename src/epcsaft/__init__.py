@@ -50,7 +50,6 @@ from .equilibrium import (
 )
 from .implicit_sensitivity import (
     ImplicitSolveResult,
-    not_available_implicit_result,
     implicit_backend_for_residual_backend,
     implicit_sensitivity_from_jacobians,
 )
@@ -192,7 +191,6 @@ __all__ = [  # noqa: RUF022
     "__git_commit__",
     "__version__",
     "available_datasets",
-    "not_available_implicit_result",
     "bubble_p",
     "bubble_t",
     "build_reactive_regression_objective",

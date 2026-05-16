@@ -38,14 +38,19 @@ def test_implicit_sensitivity_rejects_nonimplicit_backend() -> None:
         )
 
 
-def test_not_available_implicit_result_is_structured() -> None:
-    result = epcsaft.not_available_implicit_result(
-        state=[1.0],
-        residual=[0.0],
-        reason="missing residual parameter jacobian",
-    )
+def test_implicit_solve_result_rejects_missing_backend_placeholder() -> None:
+    with pytest.raises(epcsaft.InputError, match="analytic_implicit"):
+        epcsaft.ImplicitSolveResult(
+            state=[1.0],
+            residual=[0.0],
+            backend="missing_placeholder",
+        )
 
-    assert result.backend == "not_available"
-    assert result.status == "not_available"
-    assert result.sensitivity is None
-    assert result.to_dict()["diagnostics"]["reason"] == "missing residual parameter jacobian"
+
+def test_implicit_solve_result_requires_sensitivity_payload() -> None:
+    with pytest.raises(epcsaft.InputError, match="sensitivity is required"):
+        epcsaft.ImplicitSolveResult(
+            state=[1.0],
+            residual=[0.0],
+            backend="analytic_implicit",
+        )
