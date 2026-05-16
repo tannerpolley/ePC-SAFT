@@ -1684,68 +1684,6 @@ def _run_native_generic_ceres(
     )
 
 
-def _run_native_generic_derivative_debug(
-    fixed_payloads: Sequence[Mapping[str, Any]],
-    native_records: Sequence[Mapping[str, Any]],
-    optimization_names: Sequence[str],
-    species: Sequence[str],
-    x: Sequence[float],
-    *,
-    component: str | None = None,
-    pair: tuple[str, str] | None = None,
-) -> dict[str, Any]:
-    target_kinds, target_indices, target_indices_2 = _native_target_payload(
-        optimization_names,
-        species,
-        component=component,
-        pair=pair,
-    )
-    return _evaluate_generic_native_debug(
-        [dict(payload) for payload in fixed_payloads],
-        [dict(record) for record in native_records],
-        target_kinds,
-        target_indices,
-        target_indices_2,
-        np.asarray(x, dtype=float),
-    )
-
-
-def evaluate_generic_regression_derivatives(
-    fixed_payloads: Sequence[Mapping[str, Any]],
-    native_records: Sequence[Mapping[str, Any]],
-    optimization_names: Sequence[str],
-    species: Sequence[str],
-    x: Sequence[float],
-    *,
-    component: str | None = None,
-    pair: Sequence[str] | None = None,
-    jacobian_backend: str = "auto",
-) -> dict[str, Any]:
-    """Evaluate native generic-regression residual derivative payloads where available."""
-
-    backend = str(jacobian_backend).strip().lower()
-    if backend not in {"auto", "autodiff", "analytic"}:
-        raise InputError("jacobian_backend must be 'auto', 'autodiff', or 'analytic'.")
-    raise InputError("unsupported: generic regression sensitivities are not implemented for this residual path.")
-
-    normalized_species = tuple(_normalize_component(str(name)) for name in species)
-    normalized_pair = None if pair is None else _normalize_pair(pair)
-    normalized_component = None if component is None else _normalize_component(component)
-    normalized_names = tuple(str(name) for name in optimization_names)
-    theta = np.asarray(x, dtype=float)
-    if theta.size != len(normalized_names):
-        raise InputError(f"Expected {len(normalized_names)} values for x, got {theta.size}.")
-    return _run_native_generic_derivative_debug(
-        fixed_payloads,
-        native_records,
-        normalized_names,
-        normalized_species,
-        theta,
-        component=normalized_component,
-        pair=normalized_pair,
-    )
-
-
 def _terms_support_ion_activity(terms: Sequence[FitTerm]) -> bool:
     return any(term.term_type in {TERM_OSMOTIC, TERM_MIAC} for term in terms)
 

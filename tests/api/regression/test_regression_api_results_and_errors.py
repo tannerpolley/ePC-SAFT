@@ -11,9 +11,6 @@ import epcsaft
 import epcsaft.regression as regression_module
 from epcsaft import FitProblem, FitResult, create_parameter_template, write_fit_result
 from epcsaft._types import InputError
-from epcsaft.regression import (
-    evaluate_generic_regression_derivatives,
-)
 
 
 def _minimal_nacl_records():
@@ -239,34 +236,3 @@ def test_write_fit_result_updates_ion_row_and_binary_matrix_symmetrically(tmp_pa
         assert ethanol_row[h2o_col] == expected
     with pytest.raises(InputError, match="overwrite"):
         write_fit_result(binary_result, binary_root, overwrite=False)
-
-def test_public_generic_derivative_evaluator_rejects_removed_backend_names():
-    with pytest.raises(InputError, match="jacobian_backend"):
-        evaluate_generic_regression_derivatives(
-            fixed_payloads=[{"m": [1.0, 1.0], "s": [3.0, 3.0], "e": [200.0, 200.0]}],
-            native_records=[],
-            optimization_names=("k_ij",),
-            species=("H2O", "Ethanol"),
-            x=(-0.01,),
-            jacobian_backend="finite" + "_difference",
-        )
-
-def test_public_generic_derivative_evaluator_rejects_auto_without_registered_derivatives():
-    with pytest.raises(InputError, match="unsupported"):
-        evaluate_generic_regression_derivatives(
-            fixed_payloads=[{"m": [1.0, 1.0], "s": [3.0, 3.0], "e": [200.0, 200.0]}],
-            native_records=[
-                {
-                    "term_name": "binary_vle_fugacity_balance",
-                    "term": regression_module.NATIVE_TERM_KINDS["binary_vle_fugacity_balance"],
-                    "T": 330.0,
-                    "P": 101325.0,
-                    "x": [0.7, 0.3],
-                    "y": [0.5, 0.5],
-                }
-            ],
-            optimization_names=("k_ij", "l_ij"),
-            species=("H2O", "Ethanol"),
-            pair=("H2O", "Ethanol"),
-            x=(-0.01, 0.02),
-        )

@@ -119,7 +119,6 @@ _EXPORT_GROUPS = {
         "RelativePermittivityResidual",
         "TargetDataset",
         "TargetRow",
-        "evaluate_generic_regression_derivatives",
         "evaluate_pure_neutral_derivatives",
         "evaluate_reactive_electrolyte_bubble_residuals",
         "fit_binary_pair",

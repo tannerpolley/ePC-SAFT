@@ -5,7 +5,7 @@ package surface and the current facade/import-boundary behavior.
 
 ## Summary
 
-- `epcsaft.__all__` currently exposes 103 names.
+- `epcsaft.__all__` currently exposes 102 names.
 - `pyproject.toml` defines no `project.scripts` and no entry-point groups.
 - `python -m epcsaft` is supported through `src/epcsaft/__main__.py`.
 - The package intentionally provides both direct top-level exports and organized
@@ -72,7 +72,6 @@ package surface and the current facade/import-boundary behavior.
   `fit_binary_pair`, `load_regression_records`, `validate_regression_provenance`,
   `write_fit_result`.
 - Derivative/result helpers: `evaluate_pure_neutral_derivatives`,
-  `evaluate_generic_regression_derivatives`,
   `evaluate_reactive_electrolyte_bubble_residuals`.
 - Reactive electrolyte regression: `ReactiveElectrolyteRegressionResult`,
   `ReactiveElectrolyteBatch`, `ReactiveElectrolyteBatchOptions`,

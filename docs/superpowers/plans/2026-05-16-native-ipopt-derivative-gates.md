@@ -615,6 +615,8 @@ Task 10 continuation note: the reactive electrolyte fit entrypoint no longer exp
 
 Task 10 continuation note: reactive electrolyte batch capabilities now expose a gated native-Ceres fit route plus the mixed pressure/speciation residual-context capability. The public metadata no longer advertises bounded step control or line-search fit outcomes for this route.
 
+Task 10 continuation note: the public generic native-record derivative helper was deleted because it only advertised derivative backend selection and then raised without returning an exact derivative payload. Public derivative-matrix access now remains limited to implemented exact routes such as the native pure-neutral Ceres objective until each generic target family has analytical, CppAD, or implicit derivative matrices behind its Ceres path.
+
 ### Task 11: Internal Extension Boundaries
 
 **Files:**

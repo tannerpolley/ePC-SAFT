@@ -564,7 +564,7 @@ Normal ``FitResult`` payloads report compact derivative metadata:
 
 Large matrices are exposed only through explicit derivative-evaluation helpers. Use ``evaluate_pure_neutral_derivatives(...)`` for the native pure-neutral objective. It returns residuals, gradient, ``jacobian_row_major``, and ``jacobian_shape``. Pure-neutral Jacobians use the Ceres-owned autodiff path.
 
-For lower-level generic native records, ``evaluate_generic_regression_derivatives(...)`` raises until the requested residual state calls have analytic, CppAD, or implicit derivative coverage. Public generic fitting does not route through non-native optimizer loops.
+Generic native-record derivative helpers are exposed only after the target family returns exact analytical, CppAD, or implicit derivative matrices from the native Ceres route. Public generic fitting does not route through non-native optimizer loops.
 
 Reactive electrolyte residual evaluator
 ---------------------------------------
