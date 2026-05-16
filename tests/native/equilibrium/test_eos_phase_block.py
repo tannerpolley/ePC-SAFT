@@ -5,6 +5,7 @@ import pytest
 
 import epcsaft
 from epcsaft import _core
+from tests.helpers.runtime_cases import _ionic_params
 
 
 def _neutral_binary_mixture() -> epcsaft.ePCSAFTMixture:
@@ -15,6 +16,14 @@ def _neutral_binary_mixture() -> epcsaft.ePCSAFTMixture:
         "k_ij": np.asarray([[0.0, 3.0e-4], [3.0e-4, 0.0]]),
     }
     return epcsaft.ePCSAFTMixture.from_params(params, species=["Methane", "Ethane"])
+
+
+def _ionic_mixture() -> epcsaft.ePCSAFTMixture:
+    params = _ionic_params()
+    params["assoc_scheme"] = [None, None, None]
+    params["e_assoc"] = np.zeros(3)
+    params["vol_a"] = np.zeros(3)
+    return epcsaft.ePCSAFTMixture.from_params(params, species=["water", "Na+", "Cl-"])
 
 
 def _two_phase_binary_case() -> tuple[
@@ -239,6 +248,46 @@ def test_eos_phase_system_can_append_phase_charge_balance_rows() -> None:
     jacobian = np.asarray(payload["constraint_jacobian_row_major"], dtype=float).reshape((6, 6))
     assert jacobian[4, :] == pytest.approx([1.0, -1.0, 0.0, 0.0, 0.0, 0.0], abs=0.0)
     assert jacobian[5, :] == pytest.approx([0.0, 0.0, 0.0, 1.0, -1.0, 0.0], abs=0.0)
+
+
+def test_eos_phase_block_embeds_electrolyte_contribution_terms() -> None:
+    mix = _ionic_mixture()
+    temperature = 298.15
+    composition = np.asarray([0.9998, 1.0e-4, 1.0e-4], dtype=float)
+    amounts = composition.copy()
+    density = 55344.274540081075
+    volume = float(amounts.sum() / density)
+    state = mix.state(T=temperature, rho=density, x=composition, phase="liq")
+    helmholtz = state.residual_helmholtz(return_contribution_terms=True)
+
+    standalone = _core._native_electrolyte_contribution_block(
+        mix._native,
+        temperature,
+        density,
+        composition.tolist(),
+        amounts.tolist(),
+    )
+    payload = _core._native_eos_phase_block(
+        mix._native,
+        temperature,
+        state.pressure(),
+        amounts.tolist(),
+        volume,
+    )
+
+    for block in (standalone, payload["electrolyte_terms"]):
+        assert block["block"] == "electrolyte_contribution"
+        assert block["value_backend"] == "native_eos"
+        assert block["term_basis"] == "dimensionless_residual_helmholtz"
+        assert block["active"] is True
+        assert block["charges"] == pytest.approx([0.0, 1.0, -1.0])
+        assert block["phase_charge_residual"] == pytest.approx(0.0, abs=1.0e-14)
+        assert block["ion_residual_helmholtz"] == pytest.approx(helmholtz["terms"]["ion"])
+        assert block["born_residual_helmholtz"] == pytest.approx(helmholtz["terms"]["born"])
+        assert block["electrolyte_residual_helmholtz"] == pytest.approx(
+            helmholtz["terms"]["ion"] + helmholtz["terms"]["born"]
+        )
+        assert block["total_residual_helmholtz"] == pytest.approx(helmholtz["total"])
 
 
 def test_eos_phase_system_can_append_association_mass_action_rows() -> None:

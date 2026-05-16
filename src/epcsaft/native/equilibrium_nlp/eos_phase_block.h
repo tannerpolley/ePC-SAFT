@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 
+#include "electrolyte_block.h"
+
 struct add_args;
 
 namespace epcsaft::native::equilibrium_nlp {
@@ -26,6 +28,7 @@ struct EosPhaseBlockResult {
     double ideal_helmholtz = 0.0;
     double residual_helmholtz_term = 0.0;
     double pressure_work = 0.0;
+    ElectrolyteContributionBlockResult electrolyte_contribution;
     double objective = 0.0;
     std::vector<double> gradient;
     std::string objective_curvature_backend;

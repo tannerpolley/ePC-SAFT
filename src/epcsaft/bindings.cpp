@@ -11,6 +11,7 @@
 #include "epcsaft_chemical_equilibrium.h"
 #include "epcsaft_equilibrium.h"
 #include "cppad_smoke_checks.h"
+#include "electrolyte_block.h"
 #include "eos_phase_block.h"
 #include "gibbs_blocks.h"
 #include "ipopt_adapter.h"
@@ -515,6 +516,23 @@ py::dict eos_phase_block_to_dict(const epcsaft::native::equilibrium_nlp::EosPhas
     objective_terms["residual_helmholtz"] = result.residual_helmholtz_term;
     objective_terms["pressure_work"] = result.pressure_work;
     out["objective_terms"] = objective_terms;
+    py::dict electrolyte_terms;
+    electrolyte_terms["block"] = result.electrolyte_contribution.block;
+    electrolyte_terms["value_backend"] = result.electrolyte_contribution.value_backend;
+    electrolyte_terms["term_basis"] = result.electrolyte_contribution.term_basis;
+    electrolyte_terms["active"] = result.electrolyte_contribution.active;
+    electrolyte_terms["temperature"] = result.electrolyte_contribution.temperature;
+    electrolyte_terms["density"] = result.electrolyte_contribution.density;
+    electrolyte_terms["composition"] = result.electrolyte_contribution.composition;
+    electrolyte_terms["amounts"] = result.electrolyte_contribution.amounts;
+    electrolyte_terms["charges"] = result.electrolyte_contribution.charges;
+    electrolyte_terms["phase_charge_residual"] = result.electrolyte_contribution.phase_charge_residual;
+    electrolyte_terms["ion_residual_helmholtz"] = result.electrolyte_contribution.ion_residual_helmholtz;
+    electrolyte_terms["born_residual_helmholtz"] = result.electrolyte_contribution.born_residual_helmholtz;
+    electrolyte_terms["electrolyte_residual_helmholtz"] =
+        result.electrolyte_contribution.electrolyte_residual_helmholtz;
+    electrolyte_terms["total_residual_helmholtz"] = result.electrolyte_contribution.total_residual_helmholtz;
+    out["electrolyte_terms"] = electrolyte_terms;
     out["objective"] = result.objective;
     out["gradient"] = result.gradient;
     out["objective_curvature_backend"] = result.objective_curvature_backend;
@@ -529,6 +547,27 @@ py::dict eos_phase_block_to_dict(const epcsaft::native::equilibrium_nlp::EosPhas
     out["pressure_jacobian_shape"] = py::make_tuple(result.pressure_jacobian_rows, result.pressure_jacobian_cols);
     out["pressure_jacobian"] = result.pressure_jacobian_row_major;
     out["pressure_density_derivative"] = result.pressure_density_derivative;
+    return out;
+}
+
+py::dict electrolyte_contribution_block_to_dict(
+    const epcsaft::native::equilibrium_nlp::ElectrolyteContributionBlockResult& result
+) {
+    py::dict out;
+    out["block"] = result.block;
+    out["value_backend"] = result.value_backend;
+    out["term_basis"] = result.term_basis;
+    out["active"] = result.active;
+    out["temperature"] = result.temperature;
+    out["density"] = result.density;
+    out["composition"] = result.composition;
+    out["amounts"] = result.amounts;
+    out["charges"] = result.charges;
+    out["phase_charge_residual"] = result.phase_charge_residual;
+    out["ion_residual_helmholtz"] = result.ion_residual_helmholtz;
+    out["born_residual_helmholtz"] = result.born_residual_helmholtz;
+    out["electrolyte_residual_helmholtz"] = result.electrolyte_residual_helmholtz;
+    out["total_residual_helmholtz"] = result.total_residual_helmholtz;
     return out;
 }
 
@@ -1447,6 +1486,26 @@ PYBIND11_MODULE(_core, m) {
                 site_fractions,
                 site_composition,
                 delta_row_major
+            )
+        );
+    });
+    m.def("_native_electrolyte_contribution_block", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        double density,
+        const std::vector<double>& composition,
+        const std::vector<double>& amounts
+    ) {
+        if (!mixture) {
+            throw ValueError("Electrolyte contribution block requires a native mixture.");
+        }
+        return electrolyte_contribution_block_to_dict(
+            epcsaft::native::equilibrium_nlp::evaluate_electrolyte_contribution_block(
+                mixture->args(),
+                temperature,
+                density,
+                composition,
+                amounts
             )
         );
     });

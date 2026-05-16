@@ -177,6 +177,13 @@ EosPhaseBlockResult evaluate_eos_phase_block(
     result.ideal_helmholtz = ideal_helmholtz_amount_volume_term(amounts, volume);
     result.residual_helmholtz_term = total_amount * helmholtz.total;
     result.pressure_work = target_pressure * volume / rt;
+    result.electrolyte_contribution = evaluate_electrolyte_contribution_block(
+        args,
+        temperature,
+        density,
+        composition,
+        amounts
+    );
     result.objective = result.ideal_helmholtz + result.residual_helmholtz_term + result.pressure_work;
     result.pressure_consistency_residual = eos_pressure - target_pressure;
     result.gradient.reserve(amounts.size() + 1);

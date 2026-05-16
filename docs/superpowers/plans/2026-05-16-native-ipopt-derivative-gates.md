@@ -587,6 +587,11 @@ residuals and Jacobian rows, and the EOS phase-system assembler can append one c
 charges are supplied. This is block-level NLP wiring only; electrolyte contribution terms, association variables, and
 production electrolyte route builders remain open.
 
+Task 9 continuation note: the electrolyte block now also exposes native EOS-backed electrolyte contribution terms for a
+phase: ionic residual Helmholtz, Born residual Helmholtz, their electrolyte total, total residual Helmholtz, charge
+vector, and phase charge residual. The EOS phase block embeds this contribution payload for diagnostics and route-builder
+assembly. This is still block-level wiring; electrolyte LLE/VLE/bubble route builders remain open.
+
 ### Task 10: Make Regression Ceres-Only
 
 **Files:**
