@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import epcsaft
+import pytest
+from epcsaft._types import InputError
 from tests.helpers.native_cases import _neutral_state
 
 
@@ -30,14 +32,7 @@ def test_public_derivative_result_methods_share_required_shape() -> None:
 
     for method_name in (
         "pressure_density_derivative_result",
-        "pressure_composition_derivative_result",
-        "pressure_parameter_derivative_result",
-        "density_pressure_derivative_result",
         "ares_composition_derivative_result",
-        "chemical_potential_composition_derivative_result",
-        "chemical_potential_parameter_derivative_result",
-        "ln_fugacity_composition_derivative_result",
-        "ln_fugacity_parameter_derivative_result",
     ):
         result = getattr(state, method_name)()
         assert set(
@@ -48,3 +43,19 @@ def test_public_derivative_result_methods_share_required_shape() -> None:
         assert isinstance(result["outputs"], list)
         assert isinstance(result["variables"], list)
         assert "numerical_derivative" not in str(result).lower()
+
+
+def test_unsupported_property_derivative_methods_raise() -> None:
+    state = _state()
+
+    for method_name in (
+        "pressure_composition_derivative_result",
+        "pressure_parameter_derivative_result",
+        "density_pressure_derivative_result",
+        "chemical_potential_composition_derivative_result",
+        "chemical_potential_parameter_derivative_result",
+        "ln_fugacity_composition_derivative_result",
+        "ln_fugacity_parameter_derivative_result",
+    ):
+        with pytest.raises(InputError, match="unsupported"):
+            getattr(state, method_name)()

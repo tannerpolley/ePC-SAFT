@@ -166,10 +166,10 @@ def _derivative_result_payload(
 
 def _backend_from_contribution_details(details, *, available=True, reason=""):
     if not available:
-        return "not_available", reason or "not_available"
+        _unsupported_derivative(reason or "composition derivative contribution backend is unsupported")
     labels = {str(v) for v in dict(details).values()}
     if "not_available" in labels:
-        return "not_available", reason or "not_available"
+        _unsupported_derivative(reason or "composition derivative contribution backend is unsupported")
     if "cppad" in labels:
         return "cppad", "mixed CppAD/analytic derivative contributions"
     if "cppad_implicit" in labels:
@@ -1349,7 +1349,6 @@ class ePCSAFTState:
         backend, message = _backend_from_contribution_details(
             result["derivative_backend"],
             available=bool(result["derivative_available"]),
-            reason=str(result["not_available_reason"]),
         )
         return _derivative_result_payload(
             supported=backend != "not_available",
@@ -1757,7 +1756,6 @@ class ePCSAFTState:
             "z_total": float(z_terms["total"]),
             "derivative_backend": {str(k): str(v) for k, v in dict(result.derivative_backend).items()},
             "derivative_available": bool(result.derivative_available),
-            "not_available_reason": str(result.not_available_reason),
         }
 
     def _fugacity_coefficient_term_result(self):

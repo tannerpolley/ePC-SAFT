@@ -2107,7 +2107,6 @@ CompositionContributionResult composition_derivative_residual_helmholtz_result_c
     for (const auto& item : result.derivative_backend) {
         if (item.second == "not_available") {
             result.derivative_available = false;
-            result.not_available_reason = "not_available";
             break;
         }
     }

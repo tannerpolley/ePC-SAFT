@@ -1721,8 +1721,7 @@ PYBIND11_MODULE(_core, m) {
         .def_readonly("z_raw", &CompositionContributionResult::z_raw)
         .def_readonly("z", &CompositionContributionResult::z)
         .def_readonly("derivative_backend", &CompositionContributionResult::derivative_backend)
-        .def_readonly("derivative_available", &CompositionContributionResult::derivative_available)
-        .def_readonly("not_available_reason", &CompositionContributionResult::not_available_reason);
+        .def_readonly("derivative_available", &CompositionContributionResult::derivative_available);
 
     py::class_<ResidualChemicalPotentialResult>(m, "ResidualChemicalPotentialResult")
         .def_readonly("mu", &ResidualChemicalPotentialResult::mu)

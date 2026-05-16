@@ -113,7 +113,6 @@ struct CompositionContributionResult {
     ScalarContributionTerms z;
     std::map<std::string, std::string> derivative_backend;
     bool derivative_available = true;
-    std::string not_available_reason;
 };
 
 struct ResidualChemicalPotentialResult {
