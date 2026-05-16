@@ -516,7 +516,18 @@ py::dict eos_phase_block_to_dict(const epcsaft::native::equilibrium_nlp::EosPhas
     out["objective_terms"] = objective_terms;
     out["objective"] = result.objective;
     out["gradient"] = result.gradient;
+    out["objective_curvature_backend"] = result.objective_curvature_backend;
+    out["objective_curvature_shape"] =
+        py::make_tuple(result.objective_curvature_rows, result.objective_curvature_cols);
+    out["objective_curvature_row_major"] = result.objective_curvature_row_major;
     out["pressure_consistency_residual"] = result.pressure_consistency_residual;
+    out["constraint_jacobian_backend"] = result.constraint_jacobian_backend;
+    out["constraint_jacobian_shape"] = py::make_tuple(result.constraint_jacobian_rows, result.constraint_jacobian_cols);
+    out["constraint_jacobian_row_major"] = result.constraint_jacobian_row_major;
+    out["pressure_jacobian_backend"] = result.pressure_jacobian_backend;
+    out["pressure_jacobian_shape"] = py::make_tuple(result.pressure_jacobian_rows, result.pressure_jacobian_cols);
+    out["pressure_jacobian"] = result.pressure_jacobian_row_major;
+    out["pressure_density_derivative"] = result.pressure_density_derivative;
     return out;
 }
 

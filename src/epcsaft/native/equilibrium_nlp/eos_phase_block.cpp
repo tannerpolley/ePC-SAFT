@@ -2,6 +2,7 @@
 
 #include "epcsaft_core_internal.h"
 
+#include <algorithm>
 #include <cmath>
 #include <numeric>
 #include <sstream>
@@ -130,6 +131,50 @@ EosPhaseBlockResult evaluate_eos_phase_block(
         result.gradient.push_back(std::log(amounts[index] / volume) + mu.mu.total[index]);
     }
     result.gradient.push_back((target_pressure - eos_pressure) / rt);
+    double cppad_objective = 0.0;
+    std::vector<double> cppad_gradient;
+    std::vector<double> cppad_hessian;
+    eos_phase_objective_derivatives_cpp(
+        temperature,
+        target_pressure,
+        amounts,
+        volume,
+        args,
+        &cppad_objective,
+        &cppad_gradient,
+        &cppad_hessian
+    );
+    const int nvars = static_cast<int>(amounts.size()) + 1;
+    if (cppad_gradient.size() != result.gradient.size()
+        || cppad_hessian.size() != static_cast<std::size_t>(nvars * nvars)) {
+        throw ValueError("EOS phase objective CppAD derivative shape did not match the phase variable model.");
+    }
+    const double objective_scale = std::max(1.0, std::abs(result.objective));
+    if (std::abs(cppad_objective - result.objective) > 1.0e-8 * objective_scale) {
+        throw ValueError("EOS phase objective CppAD value did not match the analytical block value.");
+    }
+    result.objective_curvature_backend = "cppad";
+    result.objective_curvature_rows = nvars;
+    result.objective_curvature_cols = nvars;
+    result.objective_curvature_row_major = std::move(cppad_hessian);
+    result.constraint_jacobian_backend = "cppad";
+    result.constraint_jacobian_rows = 1;
+    result.constraint_jacobian_cols = nvars;
+    result.constraint_jacobian_row_major.reserve(static_cast<std::size_t>(nvars));
+    const int volume_row = nvars - 1;
+    for (int col = 0; col < nvars; ++col) {
+        result.constraint_jacobian_row_major.push_back(
+            -rt * result.objective_curvature_row_major[
+                static_cast<std::size_t>(volume_row * nvars + col)
+            ]
+        );
+    }
+    result.pressure_jacobian_backend = result.constraint_jacobian_backend;
+    result.pressure_jacobian_rows = result.constraint_jacobian_rows;
+    result.pressure_jacobian_cols = result.constraint_jacobian_cols;
+    result.pressure_jacobian_row_major = result.constraint_jacobian_row_major;
+    result.pressure_density_derivative =
+        -result.pressure_jacobian_row_major[static_cast<std::size_t>(volume_row)] * volume / density;
     return result;
 }
 

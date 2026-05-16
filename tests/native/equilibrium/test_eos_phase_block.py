@@ -64,3 +64,51 @@ def test_eos_phase_block_gradient_matches_chemical_potential_and_pressure_identi
     assert payload["gradient"][-1] == pytest.approx(expected_volume_gradient, rel=1.0e-12, abs=1.0e-12)
     assert payload["pressure_consistency_residual"] == pytest.approx(eos_pressure - target_pressure, abs=1.0e-8)
     assert np.isfinite(payload["objective"])
+
+
+def test_eos_phase_block_pressure_jacobian_uses_exact_cppad_homogeneity_identity() -> None:
+    mix = _neutral_binary_mixture()
+    amounts = np.asarray([0.8, 1.2], dtype=float)
+    temperature = 300.0
+    density = 120.0
+    volume = float(amounts.sum() / density)
+    composition = amounts / amounts.sum()
+    state = mix.state(T=temperature, rho=density, x=composition, phase="vapor")
+    target_pressure = state.pressure() + 2500.0
+
+    payload = _core._native_eos_phase_block(mix._native, temperature, target_pressure, amounts.tolist(), volume)
+
+    jacobian = np.asarray(payload["pressure_jacobian"], dtype=float)
+    assert payload["pressure_jacobian_backend"] == "cppad"
+    assert payload["pressure_jacobian_shape"] == (1, 3)
+    assert jacobian.size == 3
+    assert jacobian[-1] == pytest.approx(
+        -payload["pressure_density_derivative"] * payload["density"] / payload["volume"],
+        rel=1.0e-12,
+        abs=1.0e-8,
+    )
+    assert float(np.dot(amounts, jacobian[:-1]) + volume * jacobian[-1]) == pytest.approx(0.0, abs=1.0e-8)
+
+
+def test_eos_phase_block_reports_pressure_constraint_jacobian_from_exact_curvature_identity() -> None:
+    mix = _neutral_binary_mixture()
+    amounts = np.asarray([0.8, 1.2], dtype=float)
+    temperature = 300.0
+    density = 120.0
+    volume = float(amounts.sum() / density)
+    composition = amounts / amounts.sum()
+    state = mix.state(T=temperature, rho=density, x=composition, phase="vapor")
+
+    payload = _core._native_eos_phase_block(mix._native, temperature, state.pressure(), amounts.tolist(), volume)
+
+    assert payload["objective_curvature_backend"] == "cppad"
+    assert payload["constraint_jacobian_backend"] == "cppad"
+    assert payload["objective_curvature_shape"] == (3, 3)
+    assert payload["constraint_jacobian_shape"] == (1, 3)
+    objective_curvature = np.asarray(payload["objective_curvature_row_major"], dtype=float).reshape((3, 3))
+    constraint_jacobian = np.asarray(payload["constraint_jacobian_row_major"], dtype=float).reshape((1, 3))
+    expected_pressure_jacobian = -payload["gas_constant_temperature"] * objective_curvature[-1, :]
+
+    assert np.all(np.isfinite(objective_curvature))
+    assert np.all(np.isfinite(constraint_jacobian))
+    assert constraint_jacobian[0, :] == pytest.approx(expected_pressure_jacobian, rel=1.0e-11, abs=1.0e-8)

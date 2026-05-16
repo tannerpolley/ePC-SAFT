@@ -389,12 +389,12 @@ Task 6 continuation note: public `solve_reactive_speciation`, `mixture.chemical_
 
 Task 7 progress note: the first EOS phase-block slice adds a native `eos_phase_block` helper under
 `equilibrium_nlp/` with phase species amounts, phase volume, composition, molar density, residual Helmholtz,
-`PV` pressure-work objective terms, an EOS pressure-consistency residual, and exact analytical objective
-gradient identities using residual chemical potentials and the pressure identity. Focused tests prove the
-amount/volume variable model and pressure-gradient identities for a neutral binary phase. The broader Task 7
-checkbox remains open because pressure-constraint Jacobian callbacks, association/electrolyte-coupled variables,
-and route-builder integration still need to be implemented before neutral/electrolyte Ipopt routes can consume
-the block.
+`PV` pressure-work objective terms, an EOS pressure-consistency residual, exact analytical objective
+gradient identities using residual chemical potentials and the pressure identity, and a CppAD objective curvature
+matrix used to expose the pressure-constraint Jacobian. Focused tests prove the amount/volume variable model,
+pressure-gradient identities, and curvature-to-pressure-Jacobian identity for a neutral binary phase. The broader
+Task 7 checkbox remains open because association/electrolyte-coupled variables and route-builder integration
+still need to be implemented before neutral/electrolyte Ipopt routes can consume the block.
 
 ### Task 8: Replace Neutral Equilibrium Routes
 

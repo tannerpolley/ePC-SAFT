@@ -259,6 +259,16 @@ BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, dou
 double ares_contribution_value_cpp(const AresContributions &terms, AresContributionKind kind);
 AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs);
 epcsaft::native::cppad_support::CppADDerivativeResult cppad_eos_contribution_derivatives_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs);
+void eos_phase_objective_derivatives_cpp(
+    double t,
+    double target_pressure,
+    const vector<double> &amounts,
+    double volume,
+    const add_args &cppargs,
+    double *objective,
+    vector<double> *gradient,
+    vector<double> *hessian_row_major
+);
 epcsaft::native::cppad_support::CppADDerivativeResult cppad_pressure_density_derivative_cpp(double t, double rho);
 PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensitivity_cpp(
     double t,
