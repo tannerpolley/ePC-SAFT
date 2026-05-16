@@ -30,6 +30,22 @@ struct NeutralTwoPhaseEosNlpContract {
     std::vector<double> jacobian_values_at_initial;
 };
 
+struct NeutralTwoPhaseEosPostsolve {
+    bool accepted = false;
+    std::string rejection_reason;
+    std::string derivative_backend;
+    int phase_count = 0;
+    int species_count = 0;
+    double material_balance_norm = 0.0;
+    double pressure_consistency_norm = 0.0;
+    double phase_distance = 0.0;
+    double objective = 0.0;
+    std::vector<double> constraints;
+    std::vector<double> phase_amount_totals;
+    std::vector<double> phase_volumes;
+    std::vector<std::vector<double>> phase_compositions;
+};
+
 NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_nlp_contract(
     const add_args& args,
     double temperature,
@@ -47,6 +63,18 @@ IpoptSolveResult solve_neutral_two_phase_eos_ipopt(
     const std::vector<double>& volumes,
     const std::vector<double>& feed_amounts,
     const IpoptSolveOptions& options
+);
+
+NeutralTwoPhaseEosPostsolve evaluate_neutral_two_phase_eos_postsolve(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<std::vector<double>>& phase_amounts,
+    const std::vector<double>& volumes,
+    const std::vector<double>& feed_amounts,
+    double material_tolerance,
+    double pressure_tolerance,
+    double phase_distance_tolerance
 );
 
 }  // namespace epcsaft::native::equilibrium_nlp

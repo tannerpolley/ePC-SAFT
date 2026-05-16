@@ -454,6 +454,12 @@ gate, while Ipopt-enabled builds run the adapter with exact objective gradients 
 private route-builder plumbing; public neutral equilibrium dispatch remains route-gated until route-specific postsolve
 acceptance and result translation are implemented.
 
+Task 8 continuation note: neutral two-phase EOS postsolve gates now evaluate material balance, pressure consistency,
+and phase-distance acceptance from the native phase-system block. Focused coverage proves collapsed phases are rejected
+by the phase-distance gate and pressure-inconsistent phase states are rejected by the pressure gate. The public neutral
+routes remain gated until fugacity/chemical-potential consistency, result translation, and route-specific dispatch are
+implemented.
+
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
 **Files:**

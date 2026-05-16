@@ -601,6 +601,26 @@ py::dict neutral_two_phase_eos_nlp_contract_to_dict(
     return out;
 }
 
+py::dict neutral_two_phase_eos_postsolve_to_dict(
+    const epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosPostsolve& result
+) {
+    py::dict out;
+    out["accepted"] = result.accepted;
+    out["rejection_reason"] = result.rejection_reason;
+    out["derivative_backend"] = result.derivative_backend;
+    out["phase_count"] = result.phase_count;
+    out["species_count"] = result.species_count;
+    out["material_balance_norm"] = result.material_balance_norm;
+    out["pressure_consistency_norm"] = result.pressure_consistency_norm;
+    out["phase_distance"] = result.phase_distance;
+    out["objective"] = result.objective;
+    out["constraints"] = result.constraints;
+    out["phase_amount_totals"] = result.phase_amount_totals;
+    out["phase_volumes"] = result.phase_volumes;
+    out["phase_compositions"] = result.phase_compositions;
+    return out;
+}
+
 py::dict native_density_failure_payload(const DensitySolveDiagnostics& diagnostics) {
     py::dict out;
     py::list contexts;
@@ -1412,6 +1432,34 @@ PYBIND11_MODULE(_core, m) {
         out["material_balance_norm"] = material_norm;
         out["pressure_consistency_norm"] = pressure_norm;
         return out;
+    });
+    m.def("_native_neutral_two_phase_eos_postsolve", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        double target_pressure,
+        const std::vector<std::vector<double>>& phase_amounts,
+        const std::vector<double>& volumes,
+        const std::vector<double>& feed_amounts,
+        double material_tolerance,
+        double pressure_tolerance,
+        double phase_distance_tolerance
+    ) {
+        if (!mixture) {
+            throw ValueError("Neutral two-phase EOS postsolve requires a native mixture.");
+        }
+        return neutral_two_phase_eos_postsolve_to_dict(
+            epcsaft::native::equilibrium_nlp::evaluate_neutral_two_phase_eos_postsolve(
+                mixture->args(),
+                temperature,
+                target_pressure,
+                phase_amounts,
+                volumes,
+                feed_amounts,
+                material_tolerance,
+                pressure_tolerance,
+                phase_distance_tolerance
+            )
+        );
     });
     m.def("_native_cppad_eos_contributions", [](double t, double rho, const std::vector<double>& x, const add_args& args) {
         return cppad_smoke_to_dict(cppad_eos_contribution_derivatives_cpp(t, rho, x, args));

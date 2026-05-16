@@ -123,3 +123,74 @@ def test_neutral_two_phase_eos_ipopt_solve_is_native_and_dependency_gated() -> N
     assert payload["material_balance_norm"] <= 1.0e-7
     assert payload["pressure_consistency_norm"] <= 1.0e-3
     assert np.asarray(payload["variables"], dtype=float).shape == (6,)
+
+
+def test_neutral_two_phase_eos_postsolve_rejects_collapsed_phases() -> None:
+    mix = _neutral_binary_mixture()
+    temperature = 300.0
+    phase_amounts = [
+        np.asarray([0.4, 0.6], dtype=float),
+        np.asarray([0.4, 0.6], dtype=float),
+    ]
+    density = 120.0
+    volumes = [float(phase.sum() / density) for phase in phase_amounts]
+    feed_amounts = phase_amounts[0] + phase_amounts[1]
+    target_pressure = mix.state(
+        T=temperature,
+        rho=density,
+        x=phase_amounts[0] / phase_amounts[0].sum(),
+        phase="liquid",
+    ).pressure()
+
+    payload = _core._native_neutral_two_phase_eos_postsolve(
+        mix._native,
+        temperature,
+        target_pressure,
+        [phase.tolist() for phase in phase_amounts],
+        volumes,
+        feed_amounts.tolist(),
+        1.0e-8,
+        1.0e-6,
+        1.0e-3,
+    )
+
+    assert payload["accepted"] is False
+    assert payload["rejection_reason"] == "phase_distance"
+    assert payload["material_balance_norm"] <= 1.0e-12
+    assert payload["pressure_consistency_norm"] <= 1.0e-6
+    assert payload["phase_distance"] == pytest.approx(0.0, abs=1.0e-14)
+
+
+def test_neutral_two_phase_eos_postsolve_reports_pressure_gate() -> None:
+    mix = _neutral_binary_mixture()
+    temperature = 300.0
+    phase_amounts = [
+        np.asarray([0.7, 0.3], dtype=float),
+        np.asarray([0.1, 0.9], dtype=float),
+    ]
+    volumes = [float(phase_amounts[0].sum() / 80.0), float(phase_amounts[1].sum() / 140.0)]
+    feed_amounts = phase_amounts[0] + phase_amounts[1]
+    target_pressure = mix.state(
+        T=temperature,
+        rho=phase_amounts[0].sum() / volumes[0],
+        x=phase_amounts[0] / phase_amounts[0].sum(),
+        phase="liquid",
+    ).pressure()
+
+    payload = _core._native_neutral_two_phase_eos_postsolve(
+        mix._native,
+        temperature,
+        target_pressure,
+        [phase.tolist() for phase in phase_amounts],
+        volumes,
+        feed_amounts.tolist(),
+        1.0e-8,
+        1.0e-6,
+        1.0e-3,
+    )
+
+    assert payload["accepted"] is False
+    assert payload["rejection_reason"] == "pressure_consistency"
+    assert payload["material_balance_norm"] <= 1.0e-12
+    assert payload["pressure_consistency_norm"] > 1.0e-6
+    assert payload["phase_distance"] > 1.0e-3

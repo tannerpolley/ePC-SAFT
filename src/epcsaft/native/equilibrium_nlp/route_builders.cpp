@@ -7,7 +7,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <limits>
 #include <numeric>
 #include <utility>
 
@@ -27,6 +26,23 @@ void require_positive_finite(double value, const std::string& label) {
         return;
     }
     throw ValueError(label + " must be positive and finite.");
+}
+
+double vector_infinity_norm(const std::vector<double>& values, std::size_t begin, std::size_t end) {
+    double norm = 0.0;
+    for (std::size_t index = begin; index < end; ++index) {
+        norm = std::max(norm, std::abs(values[index]));
+    }
+    return norm;
+}
+
+double phase_distance_inf_norm(const std::vector<double>& first, const std::vector<double>& second) {
+    require_size(second, first.size(), "Neutral EOS postsolve phase composition");
+    double distance = 0.0;
+    for (std::size_t index = 0; index < first.size(); ++index) {
+        distance = std::max(distance, std::abs(first[index] - second[index]));
+    }
+    return distance;
 }
 
 class NeutralTwoPhaseEosProblem final : public NlpProblem {
@@ -90,8 +106,17 @@ public:
 
     NlpBounds bounds() const override {
         NlpBounds out;
+        const double total_feed = std::accumulate(feed_amounts_.begin(), feed_amounts_.end(), 0.0);
+        const double amount_upper = std::max(1.0, 10.0 * total_feed);
+        const double volume_upper = std::max(1.0, 1.0e6 * total_feed);
         out.variable_lower.assign(static_cast<std::size_t>(variable_count()), 1.0e-14);
-        out.variable_upper.assign(static_cast<std::size_t>(variable_count()), std::numeric_limits<double>::infinity());
+        out.variable_upper.reserve(static_cast<std::size_t>(variable_count()));
+        for (int phase = 0; phase < phase_count(); ++phase) {
+            for (int species = 0; species < species_count_; ++species) {
+                out.variable_upper.push_back(amount_upper);
+            }
+            out.variable_upper.push_back(volume_upper);
+        }
         out.constraint_lower.assign(static_cast<std::size_t>(constraint_count()), 0.0);
         out.constraint_upper.assign(static_cast<std::size_t>(constraint_count()), 0.0);
         return out;
@@ -258,6 +283,72 @@ IpoptSolveResult solve_neutral_two_phase_eos_ipopt(
 ) {
     NeutralTwoPhaseEosProblem problem(args, temperature, target_pressure, phase_amounts, volumes, feed_amounts);
     return solve_ipopt_nlp(problem, options);
+}
+
+NeutralTwoPhaseEosPostsolve evaluate_neutral_two_phase_eos_postsolve(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<std::vector<double>>& phase_amounts,
+    const std::vector<double>& volumes,
+    const std::vector<double>& feed_amounts,
+    double material_tolerance,
+    double pressure_tolerance,
+    double phase_distance_tolerance
+) {
+    require_positive_finite(material_tolerance, "Neutral EOS postsolve material tolerance");
+    require_positive_finite(pressure_tolerance, "Neutral EOS postsolve pressure tolerance");
+    require_positive_finite(phase_distance_tolerance, "Neutral EOS postsolve phase-distance tolerance");
+
+    const EosPhaseSystemResult system = evaluate_eos_phase_system(
+        args,
+        temperature,
+        target_pressure,
+        phase_amounts,
+        volumes,
+        feed_amounts,
+        {}
+    );
+    if (system.phase_count != 2) {
+        throw ValueError("Neutral EOS postsolve currently requires exactly two phases.");
+    }
+
+    NeutralTwoPhaseEosPostsolve out;
+    out.derivative_backend = system.derivative_backend;
+    out.phase_count = system.phase_count;
+    out.species_count = system.species_count;
+    out.objective = system.objective;
+    out.constraints = system.constraints;
+    out.phase_volumes = volumes;
+    out.phase_amount_totals.reserve(system.phase_blocks.size());
+    out.phase_compositions.reserve(system.phase_blocks.size());
+    for (const EosPhaseBlockResult& block : system.phase_blocks) {
+        out.phase_amount_totals.push_back(block.total_amount);
+        out.phase_compositions.push_back(block.composition);
+    }
+
+    const std::size_t species_count = static_cast<std::size_t>(system.species_count);
+    out.material_balance_norm = vector_infinity_norm(system.constraints, 0, species_count);
+    out.pressure_consistency_norm = vector_infinity_norm(
+        system.constraints,
+        species_count,
+        system.constraints.size()
+    );
+    out.phase_distance = phase_distance_inf_norm(out.phase_compositions[0], out.phase_compositions[1]);
+
+    out.accepted = out.material_balance_norm <= material_tolerance
+        && out.pressure_consistency_norm <= pressure_tolerance
+        && out.phase_distance >= phase_distance_tolerance;
+    if (out.accepted) {
+        out.rejection_reason = "accepted";
+    } else if (out.material_balance_norm > material_tolerance) {
+        out.rejection_reason = "material_balance";
+    } else if (out.pressure_consistency_norm > pressure_tolerance) {
+        out.rejection_reason = "pressure_consistency";
+    } else {
+        out.rejection_reason = "phase_distance";
+    }
+    return out;
 }
 
 }  // namespace epcsaft::native::equilibrium_nlp
