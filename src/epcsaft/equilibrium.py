@@ -11,6 +11,9 @@ import numpy as np
 
 from ._types import InputError, SolutionError
 from .equilibrium_core.electrolyte_basis import build_electrolyte_basis
+from .equilibrium_core.native_results import neutral_two_phase_payload_to_result
+
+_GAS_CONSTANT = 8.31446261815324
 
 _ASCANI_2022_REFERENCE = {
     "authors": "Ascani, Sadowski, and Held",
@@ -983,6 +986,83 @@ def _phase_state(
     }
 
 
+def _neutral_tp_flash_initial_guess(
+    feed: np.ndarray,
+    T: float,
+    P: float,
+) -> tuple[list[list[float]], list[float]]:
+    feed = np.asarray(feed, dtype=float)
+    if feed.size == 1:
+        first_composition = feed.copy()
+    else:
+        positions = np.linspace(-1.0, 1.0, feed.size)
+        direction = positions - float(np.dot(feed, positions))
+        max_abs = float(np.max(np.abs(direction)))
+        if max_abs > 0.0:
+            direction = direction / max_abs
+        first_composition = feed * (1.0 + 0.2 * direction)
+        first_composition = first_composition / float(np.sum(first_composition))
+    first_amounts = 0.5 * first_composition
+    second_amounts = feed - first_amounts
+    density = max(P / (_GAS_CONSTANT * T), 1.0e-12)
+    phase_amounts = [first_amounts.tolist(), second_amounts.tolist()]
+    volumes = [float(np.sum(first_amounts) / density), float(np.sum(second_amounts) / density)]
+    return phase_amounts, volumes
+
+
+def _native_neutral_tp_flash(
+    mixture: Any,
+    *,
+    T: float,
+    P: float,
+    feed: np.ndarray,
+    options: EquilibriumOptions,
+) -> EquilibriumResult:
+    from . import _core
+
+    phase_amounts, volumes = _neutral_tp_flash_initial_guess(feed, T, P)
+    material_tolerance = options.tolerance
+    pressure_tolerance = max(abs(P) * options.tolerance, options.tolerance)
+    chemical_potential_tolerance = options.tolerance
+    phase_distance_tolerance = max(10.0 * options.min_composition, 1.0e-8)
+    route = _core._native_neutral_two_phase_eos_route_result(
+        mixture._native,
+        T,
+        P,
+        phase_amounts,
+        volumes,
+        feed.tolist(),
+        options.max_iterations,
+        options.tolerance,
+        material_tolerance,
+        pressure_tolerance,
+        chemical_potential_tolerance,
+        phase_distance_tolerance,
+    )
+    if str(route.get("status", "")) == "requires_ipopt_build":
+        _raise_native_ipopt_tp_flash_required()
+    if not bool(route.get("accepted", False)):
+        postsolve = route.get("postsolve", {})
+        diagnostics = dict(postsolve) if isinstance(postsolve, Mapping) else {}
+        diagnostics["route_status"] = route.get("status", "rejected")
+        diagnostics["solver_status"] = route.get("solver_status", "not_started")
+        raise SolutionError("Native neutral TP flash route was rejected.", diagnostics)
+
+    result_payload = _core._native_neutral_two_phase_eos_result(
+        mixture._native,
+        T,
+        P,
+        route["phase_amounts"],
+        route["phase_volumes"],
+        feed.tolist(),
+        material_tolerance,
+        pressure_tolerance,
+        chemical_potential_tolerance,
+        phase_distance_tolerance,
+    )
+    return neutral_two_phase_payload_to_result(result_payload)
+
+
 def _normalize_parent_phases(parent_phase: Any) -> tuple[str, ...]:
     if parent_phase is None:
         return ("liq", "vap")
@@ -1300,11 +1380,11 @@ def tp_flash(
 ) -> EquilibriumResult:
     """Validate a neutral TP flash request and require the native Ipopt route."""
     opts = _normalize_options(options)
-    _normalize_feed(z, mixture.ncomp, opts.min_composition, "tp_flash")
+    feed = _normalize_feed(z, mixture.ncomp, opts.min_composition, "tp_flash")
     _reject_ion_containing_mixture(mixture)
-    _positive_scalar(T, "T", "tp_flash")
-    _positive_scalar(P, "P", "tp_flash")
-    _raise_native_ipopt_tp_flash_required()
+    temperature = _positive_scalar(T, "T", "tp_flash")
+    pressure = _positive_scalar(P, "P", "tp_flash")
+    return _native_neutral_tp_flash(mixture, T=temperature, P=pressure, feed=feed, options=opts)
 
 
 def lle_flash(
