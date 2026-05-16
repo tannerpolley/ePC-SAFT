@@ -10,6 +10,7 @@
 #include "epcsaft_chemical_equilibrium.h"
 #include "epcsaft_equilibrium.h"
 #include "cppad_smoke_checks.h"
+#include "eos_phase_block.h"
 #include "gibbs_blocks.h"
 #include "ipopt_adapter.h"
 #include "reaction_block.h"
@@ -489,6 +490,33 @@ py::dict native_density_diagnostics_to_dict(const DensitySolveDiagnostics& diagn
         roots.append(native_density_candidate_to_dict(candidate));
     }
     out["density_candidate_roots"] = roots;
+    return out;
+}
+
+py::dict eos_phase_block_to_dict(const epcsaft::native::equilibrium_nlp::EosPhaseBlockResult& result) {
+    py::dict out;
+    out["block"] = result.block;
+    out["derivative_backend"] = result.derivative_backend;
+    out["variable_names"] = result.variable_names;
+    out["constraint_names"] = result.constraint_names;
+    out["temperature"] = result.temperature;
+    out["target_pressure"] = result.target_pressure;
+    out["gas_constant_temperature"] = result.gas_constant_temperature;
+    out["total_amount"] = result.total_amount;
+    out["volume"] = result.volume;
+    out["density"] = result.density;
+    out["composition"] = result.composition;
+    out["residual_helmholtz"] = result.residual_helmholtz;
+    out["eos_pressure"] = result.eos_pressure;
+    out["compressibility_factor"] = result.compressibility_factor;
+    py::dict objective_terms;
+    objective_terms["ideal_helmholtz"] = result.ideal_helmholtz;
+    objective_terms["residual_helmholtz"] = result.residual_helmholtz_term;
+    objective_terms["pressure_work"] = result.pressure_work;
+    out["objective_terms"] = objective_terms;
+    out["objective"] = result.objective;
+    out["gradient"] = result.gradient;
+    out["pressure_consistency_residual"] = result.pressure_consistency_residual;
     return out;
 }
 
@@ -1155,6 +1183,24 @@ PYBIND11_MODULE(_core, m) {
         phase_residuals["ideal_vapor"] = reactions.residuals[0];
         out["phase_validation_residuals"] = phase_residuals;
         return out;
+    });
+    m.def("_native_eos_phase_block", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        double target_pressure,
+        const std::vector<double>& amounts,
+        double volume
+    ) {
+        if (!mixture) {
+            throw ValueError("EOS phase block requires a native mixture.");
+        }
+        return eos_phase_block_to_dict(epcsaft::native::equilibrium_nlp::evaluate_eos_phase_block(
+            mixture->args(),
+            temperature,
+            target_pressure,
+            amounts,
+            volume
+        ));
     });
     m.def("_native_cppad_eos_contributions", [](double t, double rho, const std::vector<double>& x, const add_args& args) {
         return cppad_smoke_to_dict(cppad_eos_contribution_derivatives_cpp(t, rho, x, args));
