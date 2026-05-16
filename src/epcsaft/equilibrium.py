@@ -13,8 +13,6 @@ from ._types import InputError, SolutionError
 from .equilibrium_core.electrolyte_basis import build_electrolyte_basis
 from .equilibrium_core.native_results import neutral_two_phase_payload_to_result
 
-_GAS_CONSTANT = 8.31446261815324
-
 _ASCANI_2022_REFERENCE = {
     "authors": "Ascani, Sadowski, and Held",
     "year": 2022,
@@ -986,30 +984,6 @@ def _phase_state(
     }
 
 
-def _neutral_tp_flash_initial_guess(
-    feed: np.ndarray,
-    T: float,
-    P: float,
-) -> tuple[list[list[float]], list[float]]:
-    feed = np.asarray(feed, dtype=float)
-    if feed.size == 1:
-        first_composition = feed.copy()
-    else:
-        positions = np.linspace(-1.0, 1.0, feed.size)
-        direction = positions - float(np.dot(feed, positions))
-        max_abs = float(np.max(np.abs(direction)))
-        if max_abs > 0.0:
-            direction = direction / max_abs
-        first_composition = feed * (1.0 + 0.2 * direction)
-        first_composition = first_composition / float(np.sum(first_composition))
-    first_amounts = 0.5 * first_composition
-    second_amounts = feed - first_amounts
-    density = max(P / (_GAS_CONSTANT * T), 1.0e-12)
-    phase_amounts = [first_amounts.tolist(), second_amounts.tolist()]
-    volumes = [float(np.sum(first_amounts) / density), float(np.sum(second_amounts) / density)]
-    return phase_amounts, volumes
-
-
 def _native_neutral_tp_flash(
     mixture: Any,
     *,
@@ -1020,17 +994,14 @@ def _native_neutral_tp_flash(
 ) -> EquilibriumResult:
     from . import _core
 
-    phase_amounts, volumes = _neutral_tp_flash_initial_guess(feed, T, P)
     material_tolerance = options.tolerance
     pressure_tolerance = max(abs(P) * options.tolerance, options.tolerance)
     chemical_potential_tolerance = options.tolerance
     phase_distance_tolerance = max(10.0 * options.min_composition, 1.0e-8)
-    route = _core._native_neutral_two_phase_eos_route_result(
+    route = _core._native_neutral_tp_flash_eos_route_result(
         mixture._native,
         T,
         P,
-        phase_amounts,
-        volumes,
         feed.tolist(),
         options.max_iterations,
         options.tolerance,

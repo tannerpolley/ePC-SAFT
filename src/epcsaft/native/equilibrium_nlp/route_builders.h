@@ -80,6 +80,13 @@ NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_nlp_contract(
     const std::vector<double>& feed_amounts
 );
 
+NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_tp_flash_nlp_contract(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<double>& feed_amounts
+);
+
 IpoptSolveResult solve_neutral_two_phase_eos_ipopt(
     const add_args& args,
     double temperature,
@@ -109,6 +116,18 @@ NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_route(
     double target_pressure,
     const std::vector<std::vector<double>>& phase_amounts,
     const std::vector<double>& volumes,
+    const std::vector<double>& feed_amounts,
+    const IpoptSolveOptions& options,
+    double material_tolerance,
+    double pressure_tolerance,
+    double chemical_potential_tolerance,
+    double phase_distance_tolerance
+);
+
+NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_tp_flash_route(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
     const std::vector<double>& feed_amounts,
     const IpoptSolveOptions& options,
     double material_tolerance,

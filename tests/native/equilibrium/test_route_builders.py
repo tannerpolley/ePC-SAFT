@@ -79,6 +79,35 @@ def test_neutral_two_phase_eos_nlp_contract_uses_phase_system_blocks() -> None:
     assert payload["constraint_upper_bounds"] == pytest.approx([0.0, 0.0, 0.0, 0.0])
 
 
+def test_neutral_tp_flash_route_contract_builds_native_initial_point_from_feed() -> None:
+    mix = _neutral_binary_mixture()
+    temperature = 300.0
+    target_pressure = 1.0e5
+    feed_amounts = np.asarray([0.3, 0.7], dtype=float)
+
+    payload = _core._native_neutral_tp_flash_eos_nlp_contract(
+        mix._native,
+        temperature,
+        target_pressure,
+        feed_amounts.tolist(),
+    )
+
+    initial = np.asarray(payload["initial_point"], dtype=float).reshape(2, 3)
+    phase_amounts = initial[:, :2]
+    volumes = initial[:, 2]
+    phase_compositions = phase_amounts / np.sum(phase_amounts, axis=1, keepdims=True)
+
+    assert payload["problem_name"] == "neutral_two_phase_eos"
+    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["phase_count"] == 2
+    assert payload["species_count"] == 2
+    assert np.all(phase_amounts > 0.0)
+    assert np.all(volumes > 0.0)
+    assert np.sum(phase_amounts, axis=0) == pytest.approx(feed_amounts)
+    assert phase_compositions[0] != pytest.approx(phase_compositions[1])
+    assert np.asarray(payload["constraints_at_initial"], dtype=float)[:2] == pytest.approx([0.0, 0.0])
+
+
 def test_neutral_two_phase_eos_route_result_translates_solver_and_postsolve() -> None:
     mix = _neutral_binary_mixture()
     temperature = 300.0

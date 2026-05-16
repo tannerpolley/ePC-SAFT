@@ -1465,6 +1465,24 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    m.def("_native_neutral_tp_flash_eos_nlp_contract", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        double target_pressure,
+        const std::vector<double>& feed_amounts
+    ) {
+        if (!mixture) {
+            throw ValueError("Neutral TP flash EOS NLP contract requires a native mixture.");
+        }
+        return neutral_two_phase_eos_nlp_contract_to_dict(
+            epcsaft::native::equilibrium_nlp::evaluate_neutral_two_phase_eos_tp_flash_nlp_contract(
+                mixture->args(),
+                temperature,
+                target_pressure,
+                feed_amounts
+            )
+        );
+    });
     m.def("_native_neutral_two_phase_eos_route_result", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -1493,6 +1511,39 @@ PYBIND11_MODULE(_core, m) {
                 target_pressure,
                 phase_amounts,
                 volumes,
+                feed_amounts,
+                options,
+                material_tolerance,
+                pressure_tolerance,
+                chemical_potential_tolerance,
+                phase_distance_tolerance
+            )
+        );
+    });
+    m.def("_native_neutral_tp_flash_eos_route_result", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        double target_pressure,
+        const std::vector<double>& feed_amounts,
+        int max_iterations,
+        double tolerance,
+        double material_tolerance,
+        double pressure_tolerance,
+        double chemical_potential_tolerance,
+        double phase_distance_tolerance
+    ) {
+        if (!mixture) {
+            throw ValueError("Neutral TP flash EOS route result requires a native mixture.");
+        }
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options;
+        options.max_iterations = max_iterations;
+        options.tolerance = tolerance;
+        options.acceptable_tolerance = std::max(tolerance * 100.0, 1.0e-10);
+        return neutral_two_phase_eos_route_result_to_dict(
+            epcsaft::native::equilibrium_nlp::solve_neutral_two_phase_eos_tp_flash_route(
+                mixture->args(),
+                temperature,
+                target_pressure,
                 feed_amounts,
                 options,
                 material_tolerance,

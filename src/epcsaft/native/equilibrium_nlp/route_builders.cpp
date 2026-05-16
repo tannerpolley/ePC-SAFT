@@ -14,6 +14,13 @@ namespace epcsaft::native::equilibrium_nlp {
 
 namespace {
 
+constexpr double kGasConstant = 8.31446261815324;
+
+struct NeutralTwoPhaseEosInitialPoint {
+    std::vector<std::vector<double>> phase_amounts;
+    std::vector<double> volumes;
+};
+
 void require_size(const std::vector<double>& values, std::size_t expected, const std::string& label) {
     if (values.size() == expected) {
         return;
@@ -26,6 +33,80 @@ void require_positive_finite(double value, const std::string& label) {
         return;
     }
     throw ValueError(label + " must be positive and finite.");
+}
+
+NeutralTwoPhaseEosInitialPoint build_neutral_tp_flash_initial_point(
+    const std::vector<double>& feed_amounts,
+    double temperature,
+    double target_pressure
+) {
+    require_positive_finite(temperature, "Neutral TP flash route temperature");
+    require_positive_finite(target_pressure, "Neutral TP flash route pressure");
+    if (feed_amounts.empty()) {
+        throw ValueError("Neutral TP flash route requires at least one feed amount.");
+    }
+    double total_feed = 0.0;
+    for (double amount : feed_amounts) {
+        require_positive_finite(amount, "Neutral TP flash route feed amount");
+        total_feed += amount;
+    }
+    require_positive_finite(total_feed, "Neutral TP flash route total feed amount");
+
+    std::vector<double> composition;
+    composition.reserve(feed_amounts.size());
+    for (double amount : feed_amounts) {
+        composition.push_back(amount / total_feed);
+    }
+
+    std::vector<double> first_composition = composition;
+    if (composition.size() > 1) {
+        std::vector<double> positions;
+        positions.reserve(composition.size());
+        const double denominator = static_cast<double>(composition.size() - 1);
+        for (std::size_t index = 0; index < composition.size(); ++index) {
+            positions.push_back(-1.0 + 2.0 * static_cast<double>(index) / denominator);
+        }
+        double weighted_position = 0.0;
+        for (std::size_t index = 0; index < composition.size(); ++index) {
+            weighted_position += composition[index] * positions[index];
+        }
+        std::vector<double> direction;
+        direction.reserve(composition.size());
+        double max_abs_direction = 0.0;
+        for (double position : positions) {
+            const double value = position - weighted_position;
+            direction.push_back(value);
+            max_abs_direction = std::max(max_abs_direction, std::abs(value));
+        }
+        double first_sum = 0.0;
+        for (std::size_t index = 0; index < composition.size(); ++index) {
+            const double scaled_direction = max_abs_direction > 0.0 ? direction[index] / max_abs_direction : 0.0;
+            first_composition[index] = composition[index] * (1.0 + 0.2 * scaled_direction);
+            first_sum += first_composition[index];
+        }
+        require_positive_finite(first_sum, "Neutral TP flash route first phase composition sum");
+        for (double& value : first_composition) {
+            value /= first_sum;
+        }
+    }
+
+    NeutralTwoPhaseEosInitialPoint out;
+    out.phase_amounts.assign(2, std::vector<double>(feed_amounts.size(), 0.0));
+    for (std::size_t index = 0; index < feed_amounts.size(); ++index) {
+        out.phase_amounts[0][index] = 0.5 * total_feed * first_composition[index];
+        out.phase_amounts[1][index] = feed_amounts[index] - out.phase_amounts[0][index];
+        require_positive_finite(out.phase_amounts[0][index], "Neutral TP flash route first phase amount");
+        require_positive_finite(out.phase_amounts[1][index], "Neutral TP flash route second phase amount");
+    }
+
+    const double density = std::max(target_pressure / (kGasConstant * temperature), 1.0e-12);
+    out.volumes.reserve(2);
+    for (const auto& amounts : out.phase_amounts) {
+        const double phase_total = std::accumulate(amounts.begin(), amounts.end(), 0.0);
+        require_positive_finite(phase_total, "Neutral TP flash route phase amount total");
+        out.volumes.push_back(phase_total / density);
+    }
+    return out;
 }
 
 double vector_infinity_norm(const std::vector<double>& values, std::size_t begin, std::size_t end) {
@@ -312,6 +393,24 @@ NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_nlp_contract(
     return out;
 }
 
+NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_tp_flash_nlp_contract(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<double>& feed_amounts
+) {
+    const NeutralTwoPhaseEosInitialPoint initial =
+        build_neutral_tp_flash_initial_point(feed_amounts, temperature, target_pressure);
+    return evaluate_neutral_two_phase_eos_nlp_contract(
+        args,
+        temperature,
+        target_pressure,
+        initial.phase_amounts,
+        initial.volumes,
+        feed_amounts
+    );
+}
+
 IpoptSolveResult solve_neutral_two_phase_eos_ipopt(
     const add_args& args,
     double temperature,
@@ -470,6 +569,34 @@ NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_route(
     out.accepted = out.postsolve.accepted;
     out.status = out.accepted ? "accepted" : "postsolve_rejected";
     return out;
+}
+
+NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_tp_flash_route(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<double>& feed_amounts,
+    const IpoptSolveOptions& options,
+    double material_tolerance,
+    double pressure_tolerance,
+    double chemical_potential_tolerance,
+    double phase_distance_tolerance
+) {
+    const NeutralTwoPhaseEosInitialPoint initial =
+        build_neutral_tp_flash_initial_point(feed_amounts, temperature, target_pressure);
+    return solve_neutral_two_phase_eos_route(
+        args,
+        temperature,
+        target_pressure,
+        initial.phase_amounts,
+        initial.volumes,
+        feed_amounts,
+        options,
+        material_tolerance,
+        pressure_tolerance,
+        chemical_potential_tolerance,
+        phase_distance_tolerance
+    );
 }
 
 }  // namespace epcsaft::native::equilibrium_nlp

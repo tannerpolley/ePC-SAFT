@@ -473,10 +473,11 @@ for rejected native payloads. Public equilibrium phase payloads now keep `ln_fug
 `fugacity_coefficient` as coefficient-form `phi`. The converter does not own initialization, iteration, retry, or
 solver orchestration.
 
-Task 8 continuation note: public neutral `tp_flash` now validates the request, builds one deterministic two-phase
-native Ipopt route seed, submits exactly one native route-result call, and converts accepted native payloads through
-the public result converter. Local no-Ipopt builds still fail loudly with the native Ipopt ownership message. Python
-does not own solver iteration, retry, bracketing, residual packing, or route acceptance.
+Task 8 continuation note: public neutral `tp_flash` now validates the request, submits exactly one native route-result
+call, and converts accepted native payloads through the public result converter. The native route builder owns the
+deterministic two-phase TP-flash initial point and exposes a focused contract test for that seed. Local no-Ipopt builds
+still fail loudly with the native Ipopt ownership message. Python does not own solver iteration, retry, bracketing,
+residual packing, initialization, or route acceptance.
 
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
