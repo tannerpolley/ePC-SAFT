@@ -63,6 +63,76 @@ std::vector<double> shifted_composition(const std::vector<double>& composition) 
     return normalized_positive_values(shifted, "shifted composition");
 }
 
+std::vector<double> charge_neutral_shifted_composition(
+    const std::vector<double>& composition,
+    const std::vector<double>& charges,
+    const std::string& label
+) {
+    require_size(charges, composition.size(), label + " charge");
+    if (composition.size() <= 1) {
+        throw ValueError(label + " requires at least two species.");
+    }
+    double composition_charge = 0.0;
+    double charge_square_weight = 0.0;
+    for (std::size_t index = 0; index < composition.size(); ++index) {
+        if (!std::isfinite(charges[index])) {
+            throw ValueError(label + " charge values must be finite.");
+        }
+        composition_charge += composition[index] * charges[index];
+        charge_square_weight += composition[index] * charges[index] * charges[index];
+    }
+    if (charge_square_weight <= 0.0) {
+        throw ValueError(label + " requires at least one charged species.");
+    }
+    if (std::abs(composition_charge) > 1.0e-10) {
+        throw ValueError(label + " fixed composition must be charge neutral.");
+    }
+
+    std::vector<double> positions;
+    positions.reserve(composition.size());
+    const double denominator = static_cast<double>(composition.size() - 1);
+    for (std::size_t index = 0; index < composition.size(); ++index) {
+        positions.push_back(-1.0 + 2.0 * static_cast<double>(index) / denominator);
+    }
+    double weighted_position = 0.0;
+    for (std::size_t index = 0; index < composition.size(); ++index) {
+        weighted_position += composition[index] * positions[index];
+    }
+
+    std::vector<double> direction;
+    direction.reserve(composition.size());
+    double charge_direction = 0.0;
+    for (std::size_t index = 0; index < composition.size(); ++index) {
+        const double value = positions[index] - weighted_position;
+        direction.push_back(value);
+        charge_direction += composition[index] * charges[index] * value;
+    }
+    const double charge_projection = charge_direction / charge_square_weight;
+    double max_abs_direction = 0.0;
+    for (std::size_t index = 0; index < direction.size(); ++index) {
+        direction[index] -= charge_projection * charges[index];
+        max_abs_direction = std::max(max_abs_direction, std::abs(direction[index]));
+    }
+    if (max_abs_direction <= 0.0) {
+        throw ValueError(label + " could not construct a charge-neutral initial direction.");
+    }
+
+    std::vector<double> shifted;
+    shifted.reserve(composition.size());
+    double shifted_sum = 0.0;
+    for (std::size_t index = 0; index < composition.size(); ++index) {
+        const double value = composition[index] * (1.0 + 0.2 * direction[index] / max_abs_direction);
+        require_positive_finite(value, label + " shifted composition");
+        shifted.push_back(value);
+        shifted_sum += value;
+    }
+    require_positive_finite(shifted_sum, label + " shifted composition sum");
+    for (double& value : shifted) {
+        value /= shifted_sum;
+    }
+    return shifted;
+}
+
 std::vector<std::vector<double>> pressure_route_phase_amounts(
     const std::vector<double>& variables,
     int species_count
@@ -139,18 +209,27 @@ public:
         double temperature,
         std::vector<double> fixed_composition,
         int fixed_phase_index,
-        std::string problem_name
+        std::string problem_name,
+        std::vector<double> charges = {}
     )
         : args_(std::move(args)),
           temperature_(temperature),
           fixed_composition_(normalized_positive_values(fixed_composition, problem_name + " composition")),
           fixed_phase_index_(fixed_phase_index),
-          problem_name_(std::move(problem_name)) {
+          problem_name_(std::move(problem_name)),
+          charges_(std::move(charges)) {
         require_positive_finite(temperature_, problem_name_ + " temperature");
         if (fixed_phase_index_ < 0 || fixed_phase_index_ >= phase_count()) {
             throw ValueError(problem_name_ + " fixed phase index is out of range.");
         }
         species_count_ = static_cast<int>(fixed_composition_.size());
+        if (!charges_.empty()) {
+            charge_neutral_shifted_composition(
+                fixed_composition_,
+                charges_,
+                problem_name_ + " fixed composition"
+            );
+        }
     }
 
     std::string name() const override {
@@ -162,7 +241,8 @@ public:
     }
 
     int constraint_count() const override {
-        return composition_constraint_count() + 2 * phase_count() + species_count_ + 1;
+        return composition_constraint_count() + 2 * phase_count() + species_count_ + 1
+            + charge_constraint_count();
     }
 
     int jacobian_nonzero_count() const override {
@@ -198,7 +278,13 @@ public:
     }
 
     std::vector<double> initial_point() const override {
-        const std::vector<double> shifted = shifted_composition(fixed_composition_);
+        const std::vector<double> shifted = charges_.empty()
+            ? shifted_composition(fixed_composition_)
+            : charge_neutral_shifted_composition(
+                fixed_composition_,
+                charges_,
+                problem_name_ + " shifted composition"
+            );
         const double vapor_density = std::max(initial_pressure_ / (kGasConstant * temperature_), 1.0e-12);
         std::vector<double> out;
         out.reserve(static_cast<std::size_t>(variable_count()));
@@ -248,6 +334,15 @@ public:
             out[static_cast<std::size_t>(row++)] =
                 std::accumulate(phase_amounts.begin(), phase_amounts.end(), 0.0) - 1.0;
         }
+        for (int phase = 0; phase < charge_constraint_count(); ++phase) {
+            const auto& phase_amounts = amounts[static_cast<std::size_t>(phase)];
+            double phase_charge = 0.0;
+            for (int species = 0; species < species_count_; ++species) {
+                phase_charge += phase_amounts[static_cast<std::size_t>(species)]
+                    * charges_[static_cast<std::size_t>(species)];
+            }
+            out[static_cast<std::size_t>(row++)] = phase_charge;
+        }
         const auto blocks = phase_blocks(variables);
         for (const EosPhaseBlockResult& block : blocks) {
             out[static_cast<std::size_t>(row++)] = block.pressure_consistency_residual;
@@ -294,6 +389,14 @@ public:
             const int offset = phase * local_variable_count();
             for (int species = 0; species < species_count_; ++species) {
                 out[static_cast<std::size_t>(row * variable_count() + offset + species)] = 1.0;
+            }
+            ++row;
+        }
+        for (int phase = 0; phase < charge_constraint_count(); ++phase) {
+            const int offset = phase * local_variable_count();
+            for (int species = 0; species < species_count_; ++species) {
+                out[static_cast<std::size_t>(row * variable_count() + offset + species)] =
+                    charges_[static_cast<std::size_t>(species)];
             }
             ++row;
         }
@@ -361,6 +464,10 @@ private:
         return std::max(0, species_count_ - 1);
     }
 
+    int charge_constraint_count() const {
+        return charges_.empty() ? 0 : phase_count();
+    }
+
     int fixed_col(int species) const {
         return fixed_phase_index_ * local_variable_count() + species;
     }
@@ -415,6 +522,7 @@ private:
     std::vector<double> fixed_composition_;
     int fixed_phase_index_ = 0;
     std::string problem_name_;
+    std::vector<double> charges_;
     int species_count_ = 0;
 };
 
@@ -566,6 +674,22 @@ NeutralTwoPhaseEosNlpContract evaluate_neutral_bubble_p_eos_nlp_contract(
         liquid_composition,
         0,
         "neutral_bubble_p_eos"
+    );
+    return make_contract(problem);
+}
+
+NeutralTwoPhaseEosNlpContract evaluate_electrolyte_bubble_p_eos_nlp_contract(
+    const add_args& args,
+    double temperature,
+    const std::vector<double>& liquid_composition
+) {
+    NeutralFixedTemperaturePressureProblem problem(
+        args,
+        temperature,
+        liquid_composition,
+        0,
+        "electrolyte_bubble_p_eos",
+        args.z
     );
     return make_contract(problem);
 }

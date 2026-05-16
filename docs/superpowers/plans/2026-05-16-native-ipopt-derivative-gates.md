@@ -612,6 +612,11 @@ neutrality for charge-neutral feeds, and focused coverage checks the dense exact
 `eos_phase_system` block. This is route-builder contract plumbing only; no public electrolyte LLE solve or alternate
 solve path has been added.
 
+Task 9 continuation note: private electrolyte bubble-pressure EOS NLP contract plumbing now exists for fixed-liquid
+composition routes. The contract adds analytical phase charge-balance rows to the fixed-temperature pressure NLP and
+uses a deterministic charge-neutral vapor initial composition for charge-neutral liquid inputs. This is private route
+builder coverage only; the public electrolyte bubble-pressure API still requires the native Ipopt production route.
+
 ### Task 10: Make Regression Ceres-Only
 
 **Files:**

@@ -256,6 +256,49 @@ def test_neutral_fixed_temperature_pressure_route_contract_pins_specified_phase(
     assert upper_bounds[liquid_volume_col] < lower_bounds[vapor_volume_col]
 
 
+def test_electrolyte_bubble_pressure_contract_adds_phase_charge_rows() -> None:
+    mix = _ionic_mixture()
+    temperature = 298.15
+    liquid_composition = np.asarray([0.9998, 1.0e-4, 1.0e-4], dtype=float)
+    charges = np.asarray([0.0, 1.0, -1.0], dtype=float)
+
+    payload = _core._native_electrolyte_bubble_p_eos_nlp_contract(
+        mix._native,
+        temperature,
+        liquid_composition.tolist(),
+    )
+
+    initial = np.asarray(payload["initial_point"], dtype=float)
+    jacobian = np.asarray(payload["jacobian_values_at_initial"], dtype=float).reshape(
+        payload["constraint_count"],
+        payload["variable_count"],
+    )
+    local_variable_count = liquid_composition.size + 1
+    liquid_amounts = initial[: liquid_composition.size]
+    vapor_amounts = initial[local_variable_count : local_variable_count + liquid_composition.size]
+    charge_row_start = liquid_composition.size - 1 + 2
+
+    assert payload["problem_name"] == "electrolyte_bubble_p_eos"
+    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["phase_count"] == 2
+    assert payload["species_count"] == 3
+    assert payload["variable_count"] == 9
+    assert payload["constraint_count"] == 12
+    assert payload["jacobian_nonzero_count"] == 108
+    assert np.all(initial > 0.0)
+    assert liquid_amounts / liquid_amounts.sum() == pytest.approx(liquid_composition)
+    assert liquid_amounts @ charges == pytest.approx(0.0, abs=1.0e-14)
+    assert vapor_amounts @ charges == pytest.approx(0.0, abs=1.0e-14)
+    assert payload["constraints_at_initial"][: charge_row_start + 2] == pytest.approx(
+        [0.0] * (charge_row_start + 2),
+        abs=1.0e-14,
+    )
+    assert jacobian[charge_row_start, : liquid_composition.size] == pytest.approx(charges)
+    assert jacobian[charge_row_start + 1, local_variable_count : local_variable_count + liquid_composition.size] == (
+        pytest.approx(charges)
+    )
+
+
 @pytest.mark.parametrize(
     ("binding_name", "problem_name"),
     [

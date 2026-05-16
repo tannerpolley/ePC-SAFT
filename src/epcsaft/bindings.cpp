@@ -1604,6 +1604,22 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    m.def("_native_electrolyte_bubble_p_eos_nlp_contract", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        const std::vector<double>& liquid_composition
+    ) {
+        if (!mixture) {
+            throw ValueError("Electrolyte bubble pressure EOS NLP contract requires a native mixture.");
+        }
+        return neutral_two_phase_eos_nlp_contract_to_dict(
+            epcsaft::native::equilibrium_nlp::evaluate_electrolyte_bubble_p_eos_nlp_contract(
+                mixture->args(),
+                temperature,
+                liquid_composition
+            )
+        );
+    });
     m.def("_native_neutral_dew_p_eos_nlp_contract", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,

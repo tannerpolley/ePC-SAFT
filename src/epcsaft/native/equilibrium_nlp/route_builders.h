@@ -110,6 +110,12 @@ NeutralTwoPhaseEosNlpContract evaluate_neutral_bubble_p_eos_nlp_contract(
     const std::vector<double>& liquid_composition
 );
 
+NeutralTwoPhaseEosNlpContract evaluate_electrolyte_bubble_p_eos_nlp_contract(
+    const add_args& args,
+    double temperature,
+    const std::vector<double>& liquid_composition
+);
+
 NeutralTwoPhaseEosNlpContract evaluate_neutral_dew_p_eos_nlp_contract(
     const add_args& args,
     double temperature,
