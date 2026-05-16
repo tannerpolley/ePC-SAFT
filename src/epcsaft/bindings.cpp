@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "association_block.h"
 #include "epcsaft_chemical_equilibrium.h"
 #include "epcsaft_equilibrium.h"
 #include "cppad_smoke_checks.h"
@@ -555,6 +556,22 @@ py::dict eos_phase_system_to_dict(const epcsaft::native::equilibrium_nlp::EosPha
         phase_blocks.append(eos_phase_block_to_dict(block));
     }
     out["phase_blocks"] = phase_blocks;
+    return out;
+}
+
+py::dict association_mass_action_block_to_dict(
+    const epcsaft::native::equilibrium_nlp::AssociationMassActionBlockResult& result
+) {
+    py::dict out;
+    out["block"] = result.block;
+    out["derivative_backend"] = result.derivative_backend;
+    out["site_count"] = result.site_count;
+    out["constraint_names"] = result.constraint_names;
+    out["residuals"] = result.residuals;
+    out["density_derivative"] = result.density_derivative;
+    out["jacobian_shape"] = py::make_tuple(result.jacobian_rows, result.jacobian_cols);
+    out["site_fraction_jacobian_row_major"] = result.site_fraction_jacobian_row_major;
+    out["site_composition_jacobian_row_major"] = result.site_composition_jacobian_row_major;
     return out;
 }
 
@@ -1268,6 +1285,21 @@ PYBIND11_MODULE(_core, m) {
        py::arg("volumes"),
        py::arg("feed_amounts"),
        py::arg("charges") = std::vector<double>{});
+    m.def("_native_association_mass_action_block", [](
+        double density,
+        const std::vector<double>& site_fractions,
+        const std::vector<double>& site_composition,
+        const std::vector<double>& delta_row_major
+    ) {
+        return association_mass_action_block_to_dict(
+            epcsaft::native::equilibrium_nlp::evaluate_association_mass_action_block(
+                density,
+                site_fractions,
+                site_composition,
+                delta_row_major
+            )
+        );
+    });
     m.def("_native_cppad_eos_contributions", [](double t, double rho, const std::vector<double>& x, const add_args& args) {
         return cppad_smoke_to_dict(cppad_eos_contribution_derivatives_cpp(t, rho, x, args));
     });

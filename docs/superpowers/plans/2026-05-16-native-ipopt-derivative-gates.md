@@ -408,6 +408,12 @@ Task 7/9 continuation note: the first electrolyte-coupled block is now a reusabl
 Jacobian rows after the material-balance and pressure-consistency rows. This covers the charge-balance constraint
 mechanics only; Debye-Huckel/Born/electrolyte contribution blocks and production electrolyte Ipopt routes remain open.
 
+Task 7/9 continuation note: the first association-coupled block is now a reusable native mass-action constraint block
+under `equilibrium_nlp/`. It evaluates association site-fraction residuals for supplied site-fraction variables and
+returns exact analytical Jacobians with respect to site fractions, site compositions, and density. It deliberately does
+not solve the association closure; coupling these rows into EOS phase-system variables and Ipopt route builders remains
+open.
+
 ### Task 8: Replace Neutral Equilibrium Routes
 
 **Files:**
