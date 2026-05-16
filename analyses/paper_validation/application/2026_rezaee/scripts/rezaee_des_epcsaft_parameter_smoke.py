@@ -43,8 +43,7 @@ SOURCE_INPUTS = {
     "optimum_neighborhood": INPUT_DIR / "rezaee_2025_optimum_neighborhood.csv",
     "screening_extraction": INPUT_DIR / "rezaee_2025_screening_extraction.csv",
     "real_brine_extraction": INPUT_DIR / "rezaee_2025_real_brine_extraction.csv",
-    "extraction_equilibrium_mole_fractions": INPUT_DIR
-    / "rezaee_2025_extraction_equilibrium_mole_fractions.csv",
+    "extraction_equilibrium_mole_fractions": INPUT_DIR / "rezaee_2025_extraction_equilibrium_mole_fractions.csv",
 }
 
 SOURCE = {
@@ -141,11 +140,7 @@ def _jsonable(value: Any) -> Any:
 def _strip_volatile_diagnostics(value: Any) -> Any:
     payload = _jsonable(value)
     if isinstance(payload, dict):
-        return {
-            key: _strip_volatile_diagnostics(item)
-            for key, item in payload.items()
-            if key != "elapsed_seconds"
-        }
+        return {key: _strip_volatile_diagnostics(item) for key, item in payload.items() if key != "elapsed_seconds"}
     if isinstance(payload, list):
         return [_strip_volatile_diagnostics(item) for item in payload]
     return payload
@@ -267,9 +262,7 @@ def _summarize_lle_result(result: Any) -> dict[str, Any]:
 
 
 def _summarize_exception(exc: BaseException) -> dict[str, Any]:
-    traceback_tail = [
-        line for line in traceback.format_exc().splitlines()[-8:] if "elapsed_seconds" not in line
-    ]
+    traceback_tail = [line for line in traceback.format_exc().splitlines()[-8:] if "elapsed_seconds" not in line]
     payload: dict[str, Any] = {
         "status": "error",
         "error_type": type(exc).__name__,
@@ -329,9 +322,6 @@ def _phase_smoke(fitted: dict[str, float]) -> dict[str, Any]:
             initial_phases={"aq": aq, "org": org, "phase_fraction": beta_org},
             options=EquilibriumOptions(
                 timeout_seconds=8.0,
-                max_seed_attempts=4,
-                max_total_objective_evaluations=8000,
-                return_best_effort=True,
             ),
         )
         payload["electrolyte_lle"] = _summarize_lle_result(lle)
@@ -458,4 +448,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

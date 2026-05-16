@@ -304,6 +304,10 @@ Task 2 continuation note: Hubach removed-option checks now run as normal fast te
 before any native route execution. The last Hubach-specific opt-in skip scaffolding was removed from the equilibrium
 test tree.
 
+Task 2 continuation note: opt-in package plot smokes no longer build derivative parity figures from locally sampled
+slopes. The stale regression plot smoke now calls the public Ceres-backed fit path, and redundant derivative-oracle
+plots were removed from the opt-in native/regression plot tests.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**
@@ -324,6 +328,9 @@ test tree.
 - [x] Commit as `Require native solver dependency gates`.
 
 Task 3 note: the first dependency-boundary slice removed the external numerical package from test dependencies, refreshed the lockfile, and deleted the legacy Rezaee package-local fitting workflow. The second slice added explicit native system Ipopt discovery/reporting and removed the Python IPOPT wrapper. The third slice made Ceres and CppAD required for dev-script, package-backend, and CMake builds, excluded vendored Ceres install rules from the wheel boundary, and validated the local extension with Ceres enabled. Ceres-only regression ownership still remains open for Task 10.
+
+Task 3 continuation note: the tracked Rezaee 2026 smoke artifacts were regenerated through the current package script so
+they report the Ceres regression path and CppAD derivative backend instead of stale removed optimizer/status payloads.
 
 ### Task 4: Create Native Ipopt Adapter
 
@@ -727,6 +734,10 @@ configuration literal in active tracked files.
 Task 12 continuation note: density root diagnostics no longer sample pressure slopes around candidate densities.
 Candidate acceptance now uses pressure residual and finite residual Gibbs data only; exact pressure-density
 derivatives remain in the native analytical/CppAD derivative APIs rather than density failure payloads.
+
+Task 12 continuation note: stale tracked GoalBuddy artifacts for superseded native electrolyte, neutral LLE,
+reactive-equilibrium, and PR #126 repair stories were removed from active docs. This plan is now the authoritative
+tracked handoff for native Ipopt equilibrium, native Ceres regression, derivative gates, and solver-cleanup work.
 
 ### Task 13: Final Validation And Cleanup
 

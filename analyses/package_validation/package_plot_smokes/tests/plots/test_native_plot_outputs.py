@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import numpy as np
 
+from analyses.package_validation.package_plot_smokes.tests.plots.plot_helpers import (
+    hydrocarbon_basis_mixture,
+    save_comparison_plot,
+    save_parity_plot,
+)
 from tests.helpers.native_cases import _ionic_state as _native_ionic_state
 from tests.helpers.native_cases import _neutral_state as _native_neutral_state
-from analyses.package_validation.package_plot_smokes.tests.plots.plot_helpers import hydrocarbon_basis_mixture
-from analyses.package_validation.package_plot_smokes.tests.plots.plot_helpers import save_comparison_plot
-from analyses.package_validation.package_plot_smokes.tests.plots.plot_helpers import save_parity_plot
 
 
 def test_native_branch_and_contribution_reference_comparison_plot() -> None:
@@ -83,68 +85,4 @@ def test_runtime_pressure_density_constructor_parity_plot() -> None:
         category=("native", "branches"),
         xlabel="Density constructor",
         ylabel="Pressure constructor",
-    )
-
-
-def test_native_temperature_derivative_centered_delta_parity_plot() -> None:
-    mix, _species, _pressure, density, temperature, composition = _native_neutral_state()
-    states = [
-        ("rho state", mix.state(T=temperature, x=composition, rho=density)),
-        ("vap branch", mix.state(T=300.0, x=composition, P=1.0e3, phase="vap")),
-        ("liq branch", mix.state(T=300.0, x=composition, P=1.0e3, phase="liq")),
-    ]
-    labels: list[str] = []
-    actual: list[float] = []
-    expected: list[float] = []
-    delta_t = 1.0e-3
-    for label, state in states:
-        plus = mix.state(T=state.T + delta_t, x=composition, rho=state.density(), phase="liq")
-        minus = mix.state(T=state.T - delta_t, x=composition, rho=state.density(), phase="liq")
-        centered_delta = (plus.ares() - minus.ares()) / (2.0 * delta_t)
-        derivative = state.temperature_derivative_residual_helmholtz(return_contribution_terms=True)
-        labels.append(label)
-        actual.append(float(derivative["total"]))
-        expected.append(float(centered_delta))
-
-    save_parity_plot(
-        "native_temperature_derivative_centered_delta_parity.png",
-        "Native temperature derivative vs centered perturbation",
-        labels,
-        np.asarray(actual, dtype=float),
-        np.asarray(expected, dtype=float),
-        category=("native", "derivatives"),
-    )
-
-
-def test_native_composition_derivative_centered_delta_parity_plot() -> None:
-    labels: list[str] = []
-    actual: list[float] = []
-    expected: list[float] = []
-    for state_name, state_factory in (("neutral", _native_neutral_state), ("ionic", _native_ionic_state)):
-        mix, _species, _pressure, density, temperature, composition = state_factory()
-        state = mix.state(T=temperature, x=composition, rho=density)
-        derivative = np.asarray(state.composition_derivative_residual_helmholtz()["total"], dtype=float)
-        for i, j in ((0, 1), (1, 2), (0, 2)):
-            delta_x = min(1.0e-6, 0.25 * float(composition[i]), 0.25 * float(composition[j]))
-            plus = composition.copy()
-            minus = composition.copy()
-            plus[i] += delta_x
-            plus[j] -= delta_x
-            minus[i] -= delta_x
-            minus[j] += delta_x
-            centered_delta = (
-                mix.state(T=temperature, x=plus, rho=density).ares()
-                - mix.state(T=temperature, x=minus, rho=density).ares()
-            ) / (2.0 * delta_x)
-            labels.append(f"{state_name} d{i}-d{j}")
-            actual.append(float(derivative[i] - derivative[j]))
-            expected.append(float(centered_delta))
-
-    save_parity_plot(
-        "native_composition_derivative_centered_delta_parity.png",
-        "Native composition derivative vs constrained centered perturbation",
-        labels,
-        np.asarray(actual, dtype=float),
-        np.asarray(expected, dtype=float),
-        category=("native", "derivatives"),
     )

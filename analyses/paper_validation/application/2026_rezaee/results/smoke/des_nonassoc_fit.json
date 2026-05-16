@@ -8,41 +8,34 @@
   "des_mw_note": "Average formula-unit molecular weight for TBAC + 2 decanoic acid divided by 3. This is a diagnostic pseudo-component basis for the density fit, not a general DES molecular definition.",
   "fit_result": {
     "active_bounds": [],
-    "backend": "least_squares_native",
-    "cost": 5.3081250411304765e-05,
+    "backend": "ceres",
+    "cost": 1.2052090610984014e-06,
     "derivative_backend": "cppad_implicit",
     "final_parameters": {},
     "fitted_values": {
-      "e": 311.1917999999999,
-      "m": 11.319494,
-      "s": 3.09386
+      "e": 440.6082022662183,
+      "m": 5.267583918647538,
+      "s": 4.071711615465913
     },
-    "gradient_norm": NaN,
-    "hessian_available": false,
-    "hessian_backend": "not_implemented",
-    "hessian_fallback_reason": "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.",
-    "hessian_fallback_used": false,
+    "gradient_norm": 0.0003006653739647088,
     "initial_parameters": {},
     "jacobian_available": true,
     "jacobian_backend": "cppad_implicit",
-    "jacobian_fallback_reason": "",
-    "jacobian_fallback_used": false,
-    "message": "Levenberg-Marquardt terminated early by user request.",
+    "message": "Ceres Solver Report: Iterations: 101, Initial cost: 3.609192e-04, Final cost: 1.205209e-06, Termination: NO_CONVERGENCE",
     "metrics_by_term": {
-      "density": 0.010303518856323288,
+      "density": 0.0015525521318773172,
       "pure_vle_fugacity_balance": 0.0
     },
-    "n_jacobian_evaluations": 1,
-    "n_residual_evaluations": 2,
-    "nfev": 3,
-    "not_available_reason": "",
-    "objective_final": 5.3081250411304765e-05,
-    "objective_initial": 5.308125041130658e-05,
-    "optimizer_backend": "least_squares_native",
+    "n_jacobian_evaluations": 241,
+    "n_residual_evaluations": 100,
+    "nfev": 341,
+    "objective_final": 1.2052090610984014e-06,
+    "objective_initial": 0.00036091920809500696,
+    "optimizer_backend": "ceres",
     "parameter_map": {
-      "e": 311.1917999999999,
-      "m": 11.319494,
-      "s": 3.09386
+      "e": 440.6082022662183,
+      "m": 5.267583918647538,
+      "s": 4.071711615465913
     },
     "parameter_movement": {},
     "problem": {
@@ -298,15 +291,15 @@
     "provenance_report": {},
     "python_objective_used": false,
     "rendered_values": {
-      "e": 311.1917999999999,
-      "m": 11.319494,
-      "s": 3.09386
+      "e": 440.6082022662183,
+      "m": 5.267583918647538,
+      "s": 4.071711615465913
     },
     "residual_block_norms": {},
-    "residual_norm": 0.010303518856323286,
+    "residual_norm": 0.0015525521318773172,
     "row_diagnostics": [
       {
-        "metric": 0.010303518856323288,
+        "metric": 0.0015525521318773172,
         "row_family": "density"
       },
       {
@@ -315,9 +308,9 @@
       }
     ],
     "source_summaries": {},
-    "status": 9,
-    "step_norm": NaN,
-    "success": false,
+    "status": 1,
+    "step_norm": 135.6420421539311,
+    "success": true,
     "target_family_summaries": {}
   },
   "model_status": "nonassociating_diagnostic_fit",

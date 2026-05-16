@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
 import textwrap
-from typing import Iterable
+from collections.abc import Iterable
+from pathlib import Path
 
 import matplotlib
 
@@ -14,10 +14,7 @@ matplotlib.rcParams["svg.fonttype"] = "none"
 matplotlib.rcParams["svg.hashsalt"] = "epcsaft-test-plots"
 
 from epcsaft import ePCSAFTMixture
-from epcsaft.regression import _debug_native_pure_neutral_objective
 from scripts import plot_outputs
-from tests.helpers.regression_cases import _methane_like_records
-from tests.helpers.regression_cases import _minimal_neutral_metadata
 
 MATPLOTLIB_COLORWAY = (
     "#1f77b4",
@@ -144,7 +141,7 @@ def math_label(label: object) -> str:
     for prefix in ("neutral", "ionic", "vap", "liq", "stable", "unstable"):
         marker = f"{prefix} "
         if text.startswith(marker):
-            return f"{prefix} {math_label(text[len(marker):])}"
+            return f"{prefix} {math_label(text[len(marker) :])}"
 
     for prefix, rendered_prefix in (
         ("beta", r"$\beta"),
@@ -542,38 +539,3 @@ def save_contribution_term_breakdown_plot(
         plt.close(fig)
     assert_plot_with_data(output_path)
     return output_path
-
-
-def centered_delta_gradient_values() -> tuple[np.ndarray, np.ndarray]:
-    theta = {"m": 1.05, "s": 3.68, "e": 151.0}
-
-    def objective_at(m: float, s: float, e: float) -> float:
-        debug = _debug_native_pure_neutral_objective(
-            _methane_like_records(),
-            "Methane",
-            assoc_scheme="",
-            fixed_parameters=_minimal_neutral_metadata(16.043e-3),
-            initial_guess=theta,
-            x={"m": m, "s": s, "e": e},
-        )
-        return float(debug["objective"])
-
-    debug = _debug_native_pure_neutral_objective(
-        _methane_like_records(),
-        "Methane",
-        assoc_scheme="",
-        fixed_parameters=_minimal_neutral_metadata(16.043e-3),
-        initial_guess=theta,
-        x=theta,
-    )
-    exact = np.asarray(debug["gradient"], dtype=float)
-    eps = np.asarray([1.0e-6, 1.0e-6, 1.0e-5], dtype=float)
-    fd = np.empty(3, dtype=float)
-    base = np.asarray([theta["m"], theta["s"], theta["e"]], dtype=float)
-    for i in range(3):
-        forward = base.copy()
-        backward = base.copy()
-        forward[i] += eps[i]
-        backward[i] -= eps[i]
-        fd[i] = (objective_at(*forward) - objective_at(*backward)) / (2.0 * eps[i])
-    return exact, fd

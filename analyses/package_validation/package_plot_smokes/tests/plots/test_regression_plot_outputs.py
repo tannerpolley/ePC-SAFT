@@ -3,23 +3,24 @@ from __future__ import annotations
 import numpy as np
 
 import epcsaft
-from tests.helpers.binary_regression_cases import ETHANOL_WATER_HELD_2012_KIJ
-from tests.helpers.binary_regression_cases import ETHANOL_WATER_PAPER_PCSAFT_KIJ_100KPA
-from tests.helpers.binary_regression_cases import ethanol_water_jced2021_vle_records
-from epcsaft.regression import _fit_pure_neutral_least_squares_internal
-from scripts import plot_outputs
-from tests.helpers.regression_cases import _load_workbook_reference_rows
-from tests.helpers.regression_cases import _methane_like_records
-from tests.helpers.regression_cases import _minimal_neutral_metadata
-from tests.helpers.regression_cases import _neutral_fixed_parameters
-from tests.helpers.regression_cases import _real_saturation_records
-from analyses.package_validation.package_plot_smokes.tests.plots.plot_helpers import centered_delta_gradient_values
 from analyses.package_validation.package_plot_smokes.tests.plots.plot_helpers import save_comparison_plot
-from analyses.package_validation.package_plot_smokes.tests.plots.plot_helpers import save_parity_plot
+from scripts import plot_outputs
+from tests.helpers.binary_regression_cases import (
+    ETHANOL_WATER_HELD_2012_KIJ,
+    ETHANOL_WATER_PAPER_PCSAFT_KIJ_100KPA,
+    ethanol_water_jced2021_vle_records,
+)
+from tests.helpers.regression_cases import (
+    _load_workbook_reference_rows,
+    _methane_like_records,
+    _minimal_neutral_metadata,
+    _neutral_fixed_parameters,
+    _real_saturation_records,
+)
 
 
 def test_regression_parameter_reference_comparison_plot() -> None:
-    result = _fit_pure_neutral_least_squares_internal(
+    result = epcsaft.fit_pure_neutral(
         _methane_like_records(),
         "Methane",
         assoc_scheme="",
@@ -80,18 +81,6 @@ def test_full_hydrocarbon_basis_parameter_comparison_plot() -> None:
     )
 
 
-def test_regression_gradient_centered_delta_parity_plot() -> None:
-    actual, expected = centered_delta_gradient_values()
-    save_parity_plot(
-        "regression_gradient_centered_delta_parity.png",
-        "Native regression gradient vs centered perturbation",
-        ["m", "sigma", "epsilon"],
-        actual,
-        expected,
-        category=("regression", "gradients"),
-    )
-
-
 def test_ethanol_water_binary_vle_real_data_kij_plot() -> None:
     result = epcsaft.fit_binary_pair(
         ethanol_water_jced2021_vle_records(smoke_only=True),
@@ -99,7 +88,6 @@ def test_ethanol_water_binary_vle_real_data_kij_plot() -> None:
         dataset="2012_Held",
         initial_guess={"k_ij": ETHANOL_WATER_HELD_2012_KIJ},
         bounds={"k_ij": (-0.15, 0.10)},
-        multistart=0,
     )
     assert result.success, result.message
 

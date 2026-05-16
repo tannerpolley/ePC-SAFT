@@ -13,23 +13,23 @@ The 2026 supporting information supplies the reaction constants, Gibbs-energy ba
 - Density source: `Rezaee2026_SI_TableS5` from `analyses/rezaee_2026_pcsaft_epcsaft/data/input/rezaee_2026_si_density_tables.csv`.
 - DES molecular-weight basis: `0.20748` kg/mol.
 - MW note: Average formula-unit molecular weight for TBAC + 2 decanoic acid divided by 3. This is a diagnostic pseudo-component basis for the density fit, not a general DES molecular definition.
-- Fit success: `False`.
-- Fitted nonassociating `m`: `11.319494`.
-- Fitted nonassociating `sigma`: `3.09386` A.
-- Fitted nonassociating `epsilon/k`: `311.1918` K.
-- Density metric: `0.010303518856323288`.
+- Fit success: `True`.
+- Fitted nonassociating `m`: `5.2675839`.
+- Fitted nonassociating `sigma`: `4.0717116` A.
+- Fitted nonassociating `epsilon/k`: `440.6082` K.
+- Density metric: `0.0015525521318773172`.
 
 ## Equilibrium Smoke
 
-- Electrolyte stability status: `success`.
-- Stable flag: `False`.
-- Minimum TPD: `-0.5346836582364658`.
-- Electrolyte LLE status: `not_accepted`.
-- Electrolyte LLE accepted: `False`.
-- Electrolyte LLE split detected: `False`.
-- Electrolyte LLE residual norm: `2.359750191692001`.
-- Electrolyte LLE acceptance gate: `predictive_budget_exhausted`.
-- Electrolyte LLE best-effort phases returned: `True`.
+- Electrolyte stability status: `error`.
+- Stable flag: `None`.
+- Minimum TPD: `None`.
+- Electrolyte LLE status: `error`.
+- Electrolyte LLE accepted: `None`.
+- Electrolyte LLE split detected: `None`.
+- Electrolyte LLE residual norm: `None`.
+- Electrolyte LLE acceptance gate: `None`.
+- Electrolyte LLE best-effort phases returned: `None`.
 
 ## Source-Gated Extraction Comparison
 
