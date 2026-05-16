@@ -2686,19 +2686,6 @@ def _fit_pure_neutral_native_debug(
         "jacobian_shape": (result["jacobian_shape"]),
         "jacobian_available": bool(result.get("jacobian_available", True)),
         "jacobian_backend": str(result.get("jacobian_backend", "autodiff")),
-        "jacobian_fallback_used": bool(result.get("jacobian_fallback_used", False)),
-        "jacobian_fallback_reason": str(result.get("jacobian_fallback_reason", "")),
-        "hessian_row_major": vector_to_array(result.get("hessian_row_major", [])),
-        "hessian_shape": tuple(result.get("hessian_shape", (0, 0))),
-        "hessian_available": bool(result.get("hessian_available", False)),
-        "hessian_backend": str(result.get("hessian_backend", "not_implemented")),
-        "hessian_fallback_used": bool(result.get("hessian_fallback_used", False)),
-        "hessian_fallback_reason": str(
-            result.get(
-                "hessian_fallback_reason",
-                "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.",
-            )
-        ),
         "density_raw_residuals": vector_to_array(result["density_raw_residuals"]),
         "pure_vle_raw_residuals": vector_to_array(result["pure_vle_raw_residuals"]),
         "residual_evaluations": int(result["residual_evaluations"]),
@@ -2751,19 +2738,7 @@ def _fit_generic_native_ceres(
         "message": str(result["message"]),
         "backend": str(result["backend"]),
         "jacobian_available": bool(result.get("jacobian_available", True)),
-        "jacobian_backend": str(result.get("jacobian_backend", "not_available")),
-        "jacobian_fallback_used": bool(result.get("jacobian_fallback_used", False)),
-        "jacobian_fallback_reason": str(result.get("jacobian_fallback_reason", "")),
-        "not_available_reason": str(result.get("not_available_reason", "")),
-        "hessian_available": bool(result.get("hessian_available", False)),
-        "hessian_backend": str(result.get("hessian_backend", "not_implemented")),
-        "hessian_fallback_used": bool(result.get("hessian_fallback_used", False)),
-        "hessian_fallback_reason": str(
-            result.get(
-                "hessian_fallback_reason",
-                "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.",
-            )
-        ),
+        "jacobian_backend": str(result.get("jacobian_backend", "unspecified")),
     }
 
 
@@ -2791,24 +2766,5 @@ def _evaluate_generic_native_debug(
         "jacobian_row_major": vector_to_array(result.get("jacobian_row_major", [])),
         "jacobian_shape": tuple(result.get("jacobian_shape", (len(result["residuals"]), 0))),
         "jacobian_available": bool(result.get("jacobian_available", True)),
-        "jacobian_backend": str(result.get("jacobian_backend", "not_available")),
-        "jacobian_fallback_used": bool(result.get("jacobian_fallback_used", False)),
-        "jacobian_fallback_reason": str(
-            result.get(
-                "jacobian_fallback_reason",
-                "",
-            )
-        ),
-        "not_available_reason": str(result.get("not_available_reason", "")),
-        "hessian_row_major": vector_to_array(result.get("hessian_row_major", [])),
-        "hessian_shape": tuple(result.get("hessian_shape", (0, 0))),
-        "hessian_available": bool(result.get("hessian_available", False)),
-        "hessian_backend": str(result.get("hessian_backend", "not_implemented")),
-        "hessian_fallback_used": bool(result.get("hessian_fallback_used", False)),
-        "hessian_fallback_reason": str(
-            result.get(
-                "hessian_fallback_reason",
-                "Hessian support is a skeleton for future IPOPT-compatible optimizer integration.",
-            )
-        ),
+        "jacobian_backend": str(result.get("jacobian_backend", "unspecified")),
     }
