@@ -179,16 +179,11 @@ def _backend_from_contribution_details(details, *, available=True, reason=""):
     return "analytic", "analytic derivative contributions"
 
 
-def _not_available_result(value, rows, cols, message, **extra):
-    return _derivative_result_payload(
-        supported=False,
-        backend="not_available",
-        message=message,
-        value=value,
-        jacobian=np.asarray([], dtype=float),
-        shape=[rows, cols],
-        **extra,
-    )
+def _unsupported_derivative(message):
+    text = str(message).replace("not_available:", "unsupported:").replace("not_available", "unsupported")
+    if not text.startswith("unsupported:"):
+        text = f"unsupported: {text}"
+    raise InputError(text)
 
 
 def _as_rule_number(value, aliases, default):
@@ -1293,21 +1288,9 @@ class ePCSAFTState:
                 self._native_args_copy(),
             )
         except _NATIVE_CALL_ERRORS as exc:
-            return _not_available_result(
-                [self.pressure()],
-                1,
-                1,
-                f"not_available: pressure-density derivative backend failed: {exc}",
-                variable_order=("density",),
-            )
+            _unsupported_derivative(f"pressure-density derivative backend failed: {exc}")
         if not bool(raw.get("cppad_compiled", False)):
-            return _not_available_result(
-                [self.pressure()],
-                1,
-                1,
-                str(raw.get("message", "not_available: CppAD support is disabled in this native build")),
-                variable_order=("density",),
-            )
+            _unsupported_derivative(str(raw.get("message", "CppAD support is disabled in this native build")))
         return _derivative_result_payload(
             supported=bool(raw.get("cppad_used", False)),
             backend=str(raw.get("derivative_backend", "cppad")),
@@ -1321,15 +1304,8 @@ class ePCSAFTState:
         )
 
     def pressure_composition_derivative_result(self):
-        """Return pressure composition-derivative support status."""
-        return _not_available_result(
-            [self.pressure()],
-            1,
-            int(self._x.size),
-            "not_available: pressure composition derivatives require EOS pressure sensitivity routing.",
-            output_order=("pressure",),
-            variable_order=tuple(self._mixture.species),
-        )
+        """Return pressure composition derivatives when production support exists."""
+        _unsupported_derivative("pressure composition derivatives require EOS pressure sensitivity routing.")
 
     def pressure_parameter_derivative_result(self):
         """Return pressure parameter-derivative support status."""
@@ -1361,25 +1337,11 @@ class ePCSAFTState:
                 parameter_order=parameter_order,
                 source_equation_ids=("pressure_from_z", "ares_disp"),
             )
-        return _not_available_result(
-            [self.pressure()],
-            1,
-            0,
-            "not_available: pressure parameter derivatives are not implemented.",
-            output_order=("pressure",),
-            parameter_order=(),
-        )
+        _unsupported_derivative("pressure parameter derivatives are not implemented for this state.")
 
     def density_pressure_derivative_result(self):
-        """Return density pressure-derivative support status for pressure-root states."""
-        return _not_available_result(
-            [self.molar_density()],
-            1,
-            1,
-            "not_available: density-root implicit pressure derivatives are not implemented.",
-            output_order=("density",),
-            variable_order=("pressure",),
-        )
+        """Return density pressure derivatives when production support exists."""
+        _unsupported_derivative("density-root implicit pressure derivatives are not implemented.")
 
     def ares_composition_derivative_result(self):
         """Return residual-Helmholtz composition derivatives in the public result shape."""
@@ -1403,16 +1365,8 @@ class ePCSAFTState:
         )
 
     def chemical_potential_composition_derivative_result(self):
-        """Return chemical-potential composition-derivative support status."""
-        ncomp = int(self._x.size)
-        return _not_available_result(
-            self.residual_chemical_potential(),
-            ncomp,
-            ncomp,
-            "not_available: chemical-potential composition Jacobians require second composition derivatives.",
-            variable_order=tuple(self._mixture.species),
-            component_order=tuple(self._mixture.species),
-        )
+        """Return chemical-potential composition derivatives when production support exists."""
+        _unsupported_derivative("chemical-potential composition Jacobians require second composition derivatives.")
 
     def chemical_potential_parameter_derivative_result(self):
         """Return residual-chemical-potential parameter derivatives where production support exists."""
@@ -1459,27 +1413,14 @@ class ePCSAFTState:
                 value_basis="residual_chemical_potential",
                 source_equation_ids=("mu_res", "ares_disp"),
             )
-        return _not_available_result(
-            value,
-            ncomp,
-            0,
-            "not_available: chemical-potential parameter derivatives are not implemented.",
-            component_order=tuple(self._mixture.species),
-            parameter_order=(),
-            value_basis="residual_chemical_potential",
-        )
+        _unsupported_derivative("chemical-potential parameter derivatives are not implemented for this state.")
 
     def ln_fugacity_composition_derivative_result(self):
         """Return ln-fugacity composition derivatives for pressure-based native states."""
         ncomp = int(self._x.size)
         if self._P is None:
-            return _not_available_result(
-                self.fugacity_coefficient(natural_log=True),
-                ncomp,
-                ncomp,
-                "not_available: ln-fugacity composition Jacobians require second composition derivatives through a pressure-based phase state.",
-                variable_order=tuple(self._mixture.species),
-                component_order=tuple(self._mixture.species),
+            _unsupported_derivative(
+                "ln-fugacity composition Jacobians require second composition derivatives through a pressure-based phase state."
             )
         try:
             raw = _core._native_phase_state_ln_fugacity_composition_sensitivity(
@@ -1490,65 +1431,37 @@ class ePCSAFTState:
                 self._native_args_copy(),
             )
         except _NATIVE_CALL_ERRORS as exc:
-            return _not_available_result(
-                self.fugacity_coefficient(natural_log=True),
-                ncomp,
-                ncomp,
-                f"not_available: phase-state ln-fugacity composition sensitivity backend failed: {exc}",
-                variable_order=tuple(self._mixture.species),
-                component_order=tuple(self._mixture.species),
-            )
+            _unsupported_derivative(f"phase-state ln-fugacity composition sensitivity backend failed: {exc}")
         if not bool(raw.get("supported", False)):
-            return _not_available_result(
-                self.fugacity_coefficient(natural_log=True),
-                ncomp,
-                ncomp,
-                str(
-                    raw.get(
-                        "message",
-                        "not_available: phase-state ln-fugacity composition sensitivities are not implemented.",
-                    )
-                ),
-                variable_order=tuple(self._mixture.species),
-                component_order=tuple(self._mixture.species),
-                density_backend=str(raw.get("density_backend", "not_available")),
-                density=float(raw.get("density", self.molar_density())),
+            _unsupported_derivative(
+                str(raw.get("message", "phase-state ln-fugacity composition sensitivities are not implemented."))
             )
         shape = [int(raw["shape"][0]), int(raw["shape"][1])]
-        return (
-            _not_available_result(
-                self.fugacity_coefficient(natural_log=True),
-                ncomp,
-                ncomp,
-                "not_available: invalid phase-state sensitivity payload.",
-                variable_order=tuple(self._mixture.species),
-                component_order=tuple(self._mixture.species),
-            )
-            if shape != [ncomp, ncomp]
-            else _derivative_result_payload(
-                supported=True,
-                backend=str(raw.get("backend", "cppad_implicit")),
-                message=str(raw.get("message", "CppAD phase-state ln-fugacity composition sensitivities available.")),
-                value=np.asarray(raw.get("ln_fugacity", self.fugacity_coefficient(natural_log=True)), dtype=float),
-                jacobian=np.asarray(raw.get("jacobian_row_major", []), dtype=float),
-                shape=shape,
-                component_order=tuple(self._mixture.species),
-                variable_order=tuple(self._mixture.species),
-                value_basis="natural_log_fugacity_coefficient_at_fixed_pressure",
-                density=float(raw.get("density", self.molar_density())),
-                density_backend=str(raw.get("density_backend", "implicit_density_root")),
-                density_composition_derivative=np.asarray(raw.get("density_composition_derivative", []), dtype=float),
-                pressure_density_derivative=float(raw.get("pressure_density_derivative", 0.0)),
-                pressure_composition_fixed_density_derivative=np.asarray(
-                    raw.get("pressure_composition_fixed_density_derivative", []),
-                    dtype=float,
-                ),
-                ln_fugacity_density_derivative=np.asarray(raw.get("ln_fugacity_density_derivative", []), dtype=float),
-                fixed_density_jacobian=np.asarray(raw.get("fixed_density_jacobian_row_major", []), dtype=float).reshape(
-                    (ncomp, ncomp)
-                ),
-                source_equation_ids=("lnphi_total", "pressure_from_z", "density_root_implicit"),
-            )
+        if shape != [ncomp, ncomp]:
+            _unsupported_derivative("invalid phase-state sensitivity payload.")
+        return _derivative_result_payload(
+            supported=True,
+            backend=str(raw.get("backend", "cppad_implicit")),
+            message=str(raw.get("message", "CppAD phase-state ln-fugacity composition sensitivities available.")),
+            value=np.asarray(raw.get("ln_fugacity", self.fugacity_coefficient(natural_log=True)), dtype=float),
+            jacobian=np.asarray(raw.get("jacobian_row_major", []), dtype=float),
+            shape=shape,
+            component_order=tuple(self._mixture.species),
+            variable_order=tuple(self._mixture.species),
+            value_basis="natural_log_fugacity_coefficient_at_fixed_pressure",
+            density=float(raw.get("density", self.molar_density())),
+            density_backend=str(raw.get("density_backend", "implicit_density_root")),
+            density_composition_derivative=np.asarray(raw.get("density_composition_derivative", []), dtype=float),
+            pressure_density_derivative=float(raw.get("pressure_density_derivative", 0.0)),
+            pressure_composition_fixed_density_derivative=np.asarray(
+                raw.get("pressure_composition_fixed_density_derivative", []),
+                dtype=float,
+            ),
+            ln_fugacity_density_derivative=np.asarray(raw.get("ln_fugacity_density_derivative", []), dtype=float),
+            fixed_density_jacobian=np.asarray(raw.get("fixed_density_jacobian_row_major", []), dtype=float).reshape(
+                (ncomp, ncomp)
+            ),
+            source_equation_ids=("lnphi_total", "pressure_from_z", "density_root_implicit"),
         )
 
     def ln_fugacity_parameter_derivative_result(self):
@@ -1588,14 +1501,7 @@ class ePCSAFTState:
             )
         born = self.born_ssmds_liquid_derivatives()
         if not bool(born.get("supported", False)):
-            return _not_available_result(
-                value,
-                ncomp,
-                0,
-                str(born.get("message", "not_available: ln-fugacity parameter derivatives are not implemented.")),
-                component_order=tuple(self._mixture.species),
-                parameter_order=(),
-            )
+            _unsupported_derivative(str(born.get("message", "ln-fugacity parameter derivatives are not implemented.")))
         jacobian = np.concatenate(
             [
                 np.asarray(born["lnfug_d_d_born"], dtype=float),
@@ -1619,21 +1525,9 @@ class ePCSAFTState:
         )
 
     def activity_composition_derivative_result(self, species=None):
-        """Return activity-coefficient composition-derivative support status."""
-        species = self._mixture.species if species is None else [str(s) for s in species]
-        ncomp = int(self._x.size)
-        try:
-            values = np.asarray([self.activity_coefficient(species=species)[label] for label in species], dtype=float)
-        except _DERIVATIVE_VALUE_ERRORS:
-            values = np.asarray([], dtype=float)
-        return _not_available_result(
-            values,
-            ncomp,
-            ncomp,
-            "not_available: activity-coefficient composition Jacobians are not implemented.",
-            variable_order=tuple(species),
-            component_order=tuple(species),
-        )
+        """Return activity-coefficient composition derivatives when production support exists."""
+        _ = self._mixture.species if species is None else [str(s) for s in species]
+        _unsupported_derivative("activity-coefficient composition Jacobians are not implemented.")
 
     def activity_parameter_derivative_result(self, species=None):
         """Return activity-coefficient parameter derivatives where production support exists."""
@@ -1646,15 +1540,7 @@ class ePCSAFTState:
         except _DERIVATIVE_VALUE_ERRORS:
             value = np.asarray([], dtype=float)
         if not bool(born.get("supported", False)):
-            return _not_available_result(
-                value,
-                ncomp,
-                0,
-                str(born.get("message", "not_available: activity parameter derivatives are not implemented.")),
-                component_order=tuple(species),
-                parameter_order=(),
-                value_basis="natural_log_activity_coefficient",
-            )
+            _unsupported_derivative(str(born.get("message", "activity parameter derivatives are not implemented.")))
         jacobian = np.concatenate(
             [
                 np.asarray(born["lngamma_d_d_born"], dtype=float),
@@ -1683,13 +1569,7 @@ class ePCSAFTState:
         try:
             epsilon, deps_dx = self.relative_permittivity()
         except _DERIVATIVE_VALUE_ERRORS as exc:
-            return _not_available_result(
-                [],
-                1,
-                int(self._x.size),
-                f"not_available: relative-permittivity derivative backend failed: {exc}",
-                variable_order=tuple(self._mixture.species),
-            )
+            _unsupported_derivative(f"relative-permittivity derivative backend failed: {exc}")
         return _derivative_result_payload(
             supported=True,
             backend=_relative_permittivity_backend(self._mixture._params),
@@ -1708,22 +1588,12 @@ class ePCSAFTState:
         try:
             epsilon, _ = self.relative_permittivity()
         except _DERIVATIVE_VALUE_ERRORS as exc:
-            return _not_available_result(
-                [],
-                1,
-                0,
-                f"not_available: relative-permittivity derivative backend failed: {exc}",
-                parameter_order=(),
-            )
+            _unsupported_derivative(f"relative-permittivity derivative backend failed: {exc}")
         rule, _mode = _state_rel_perm_rule_and_mode(params)
         dielc = np.asarray(params.get("dielc", []), dtype=float).flatten()
         if rule != 1 or dielc.size != self._x.size:
-            return _not_available_result(
-                [float(epsilon)],
-                1,
-                0,
-                "not_available: relative-permittivity parameter derivatives are implemented for linear mole-fraction mixing only.",
-                parameter_order=(),
+            _unsupported_derivative(
+                "relative-permittivity parameter derivatives are implemented for linear mole-fraction mixing only."
             )
         return _derivative_result_payload(
             supported=True,

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import pytest
+
+from epcsaft._types import InputError
 from tests.helpers.native_cases import _ionic_state
 
 
@@ -8,23 +11,15 @@ def _state():
     return mix.state(T=temperature, x=composition, rho=density)
 
 
-def test_activity_composition_derivative_result_truthfully_unavailable() -> None:
+def test_activity_composition_derivative_route_raises_until_supported() -> None:
     state = _state()
 
-    result = state.activity_composition_derivative_result()
-
-    assert result["supported"] is False
-    assert result["backend"] == "not_available"
-    assert result["shape"] == [state.x.size, state.x.size]
-    assert "numerical_derivative" not in str(result).lower()
+    with pytest.raises(InputError, match="unsupported"):
+        state.activity_composition_derivative_result()
 
 
-def test_activity_parameter_derivative_result_reports_not_available_without_ssmds_path() -> None:
+def test_activity_parameter_derivative_route_raises_without_ssmds_path() -> None:
     state = _state()
 
-    result = state.activity_parameter_derivative_result()
-
-    assert result["supported"] is False
-    assert result["backend"] == "not_available"
-    assert result["shape"] == [state.x.size, 0]
-    assert "numerical_derivative" not in str(result).lower()
+    with pytest.raises(InputError, match="unsupported"):
+        state.activity_parameter_derivative_result()

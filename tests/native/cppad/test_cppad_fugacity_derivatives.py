@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from epcsaft import ePCSAFTMixture
+from epcsaft._types import InputError
 from tests.helpers.native_cases import _neutral_state
 
 
@@ -64,26 +65,18 @@ def test_ares_composition_derivative_result_uses_explicit_backend_labels() -> No
     assert "numerical_derivative" not in str(result).lower()
 
 
-def test_ln_fugacity_composition_derivative_result_truthfully_unavailable() -> None:
+def test_ln_fugacity_composition_derivative_route_raises_until_supported() -> None:
     state = _state()
 
-    result = state.ln_fugacity_composition_derivative_result()
-
-    assert result["supported"] is False
-    assert result["backend"] == "not_available"
-    assert result["shape"] == [state.x.size, state.x.size]
-    assert "second composition derivatives" in result["message"]
-    assert "numerical_derivative" not in str(result).lower()
+    with pytest.raises(InputError, match="second composition derivatives"):
+        state.ln_fugacity_composition_derivative_result()
 
 
-def test_ln_fugacity_parameter_derivative_result_truthfully_unavailable_without_born_path() -> None:
+def test_ln_fugacity_parameter_derivative_route_raises_without_born_path() -> None:
     state = _state()
 
-    result = state.ln_fugacity_parameter_derivative_result()
-
-    assert result["supported"] is False
-    assert result["backend"] == "not_available"
-    assert result["shape"] == [state.x.size, 0]
+    with pytest.raises(InputError, match="unsupported"):
+        state.ln_fugacity_parameter_derivative_result()
 
 
 def test_ln_fugacity_parameter_derivative_result_supports_neutral_binary_kij() -> None:

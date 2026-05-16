@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from epcsaft import ePCSAFTMixture
+from epcsaft._types import InputError
 from tests.helpers.native_cases import _neutral_state
 
 
@@ -47,18 +49,14 @@ def test_pressure_density_derivative_result_reports_backend_contract() -> None:
         assert np.asarray(result["jacobian"], dtype=float).shape == (1, 1)
 
 
-def test_pressure_unsupported_derivative_results_are_explicit() -> None:
+def test_pressure_unsupported_derivative_routes_raise() -> None:
     state = _state()
 
-    composition = state.pressure_composition_derivative_result()
-    parameters = state.pressure_parameter_derivative_result()
+    with pytest.raises(InputError, match="unsupported"):
+        state.pressure_composition_derivative_result()
 
-    assert composition["supported"] is False
-    assert composition["backend"] == "not_available"
-    assert composition["shape"] == [1, state.x.size]
-    assert parameters["supported"] is False
-    assert parameters["backend"] == "not_available"
-    assert "numerical_derivative" not in str(composition).lower()
+    with pytest.raises(InputError, match="unsupported"):
+        state.pressure_parameter_derivative_result()
 
 
 def test_pressure_parameter_derivative_result_supports_neutral_binary_kij() -> None:
