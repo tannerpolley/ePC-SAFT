@@ -251,7 +251,6 @@ class ReactiveSpeciationOptions:
 
     max_iterations: int = 50
     tolerance: float = 1.0e-8
-    damping: float = 0.5
     min_mole_fraction: float = 1.0e-14
     jacobian_backend: str = "auto"
     solver_backend: str = "auto"
@@ -422,8 +421,6 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
         raise InputError("ReactiveSpeciationOptions.max_iterations must be non-negative.")
     if options.tolerance <= 0.0 or options.min_mole_fraction <= 0.0:
         raise InputError("ReactiveSpeciationOptions tolerances must be positive.")
-    if not (0.0 < options.damping <= 1.0):
-        raise InputError("ReactiveSpeciationOptions.damping must be in (0, 1].")
     error_mode = str(options.error_mode).strip().lower()
     if error_mode not in {"raise", "result"}:
         raise InputError("ReactiveSpeciationOptions.error_mode must be 'raise' or 'result'.")
@@ -454,7 +451,6 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
     return ReactiveSpeciationOptions(
         max_iterations=options.max_iterations,
         tolerance=options.tolerance,
-        damping=options.damping,
         min_mole_fraction=options.min_mole_fraction,
         jacobian_backend=jacobian_backend,
         solver_backend=solver_backend,
@@ -507,7 +503,6 @@ def _solve_reactive_speciation_native(
         "options": {
             "max_iterations": int(options.max_iterations),
             "tolerance": float(options.tolerance),
-            "damping": float(options.damping),
             "min_mole_fraction": float(options.min_mole_fraction),
             "jacobian_backend": str(options.jacobian_backend),
             "solver_backend": str(options.solver_backend),

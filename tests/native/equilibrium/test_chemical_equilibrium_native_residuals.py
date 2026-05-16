@@ -193,7 +193,7 @@ def test_native_chemical_equilibrium_solves_hard_mea_like_speciation_and_returns
         },
         reactions=[epcsaft.ReactionDefinition(reaction, value) for reaction, value in zip(reactions, log_k)],
         initial_x=initial_x,
-        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-7, max_iterations=40, damping=0.7),
+        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-7, max_iterations=40),
     )
 
     assert result.success is True
@@ -251,7 +251,7 @@ def test_native_chemical_equilibrium_solves_hard_ionic_speciation() -> None:
         },
         reactions=[epcsaft.ReactionDefinition(reaction, value) for reaction, value in zip(reactions, log_k)],
         initial_x=hard_initial_x,
-        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-7, max_iterations=45, damping=0.7),
+        options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-7, max_iterations=45),
     )
 
     assert result.success is True
