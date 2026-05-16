@@ -12,7 +12,7 @@ The main user objects are:
 
 - `ePCSAFTMixture`: stores species parameters and creates states.
 - `ePCSAFTState`: evaluates density, pressure, residual properties, fugacity coefficients, activity coefficients, and diagnostics.
-- `ParameterSet`, `PureRecord`, and `BinaryRecord`: canonical parameter records that can still emit the legacy native payload.
+- `ParameterSet`, `PureRecord`, and `BinaryRecord`: canonical parameter records that emit the native array payload.
 - `TPFlash`, `ElectrolyteLLEProblem`, `ReactiveSpeciationProblem`, and related problem objects: optional typed wrappers for `mixture.solve_equilibrium(problem)`.
 - `create_parameter_template(...)`: creates a user-owned parameter folder to fill in.
 - `fit_pure_neutral(...)`, `fit_pure_ion(...)`, and related helpers: fit supported parameter sets.
@@ -92,7 +92,7 @@ uv pip install -e .
 
 ### Optional IPOPT Support
 
-IPOPT support is a native build dependency for the planned constrained-NLP equilibrium adapter. Request it only when CMake can discover a system Ipopt package or a native Ipopt install root:
+IPOPT support is a native build dependency for constrained-NLP equilibrium routes. Request it only when CMake can discover a system Ipopt package or a native Ipopt install root:
 
 ```powershell
 $env:EPCSAFT_PEP517_ENABLE_IPOPT = "1"
@@ -102,7 +102,7 @@ python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.gi
 
 Use `EPCSAFT_PEP517_IPOPT_DIR` instead when the install provides an `IpoptConfig.cmake` directory. Runtime processes that execute Ipopt on Windows must expose the Ipopt `bin` directory through both `PATH` and `EPCSAFT_RUNTIME_DLL_DIRS`.
 
-IPOPT is never selected automatically by `solver_backend="auto"`. Public equilibrium routes require the native adapter work before they can use Ipopt as a production solver.
+IPOPT is never selected automatically by `solver_backend="auto"`. The native adapter is currently wired only for explicitly requested homogeneous ideal reactive-speciation routes; broader multiphase and electrolyte equilibrium routes remain route-builder work.
 
 ## Architecture And Diagnostics
 

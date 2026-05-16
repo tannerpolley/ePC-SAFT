@@ -42,11 +42,20 @@ Example
 Solver Selection
 ----------------
 
-``solver_backend="auto"`` uses the production native defaults. IPOPT is an
-explicit opt-in residual-minimization bridge; it is not selected automatically
-and is not a full constrained Gibbs/NLP formulation. Use
-``epcsaft.capabilities()`` to check which optional solver paths are available
-in the current install.
+``solver_backend="auto"`` uses the production native defaults. ``ipopt`` is an
+explicit opt-in native constrained-NLP backend and is not selected
+automatically. The current public Ipopt route is homogeneous ideal reactive
+speciation; broader multiphase, electrolyte, and EOS-coupled equilibrium routes
+remain route-builder work. Use ``epcsaft.capabilities()`` to check which
+optional solver paths are available in the current install.
+
+The convex Gibbs formulation is limited to homogeneous ideal reaction or
+speciation subkernels and validation tests. Full ePC-SAFT multiphase,
+electrolyte, density-coupled, or association-coupled equilibrium should be
+treated as a thermodynamic constrained NLP, not as a globally convex problem.
+Production equilibrium routes require exact analytic or CppAD Jacobians. Native
+Ceres owns package regression solves, while CppAD and implicit sensitivities
+provide derivative payloads where the route is validated.
 
 Repeated State Work
 -------------------

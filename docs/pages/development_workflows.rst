@@ -228,7 +228,10 @@ The harness benchmarks these package-owned neutral cases:
 - ``tp_flash`` for methane/ethane/propane at ``T=220 K``, ``P=1e5 Pa``, ``z=[0.1, 0.3, 0.6]``
 - ``lle_seeded`` for the methanol/cyclohexane seeded LLE fixture
 
-Each case reports a deterministic fingerprint plus medians, spread metrics, failures, and whether a neutral fast path or fallback was used. This harness does not require FeOs and should remain the local performance guardrail for issue-driven neutral-equilibrium work.
+Each case reports a deterministic fingerprint plus medians, spread metrics,
+failures, and whether a neutral fast path was used. This harness does not
+require FeOs and should remain the local performance guardrail for
+issue-driven neutral-equilibrium work.
 
 Literature benchmark inventory
 ------------------------------

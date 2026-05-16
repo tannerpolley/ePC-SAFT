@@ -50,6 +50,7 @@ def test_derivative_coverage_matrix_has_required_contract_and_no_numerical_deriv
     coverage = epcsaft.capabilities()["derivatives"]["coverage_matrix"]
 
     assert coverage["derivative_coverage_matrix_available"] is True
+    assert coverage["implemented_routes_only"] is True
     assert coverage["minimum_columns"] == [
         "row_family",
         "subsystem",
@@ -67,62 +68,46 @@ def test_derivative_coverage_matrix_has_required_contract_and_no_numerical_deriv
     for row in rows:
         assert set(coverage["minimum_columns"]).issubset(row)
     assert "numerical_derivative" not in json.dumps(coverage).lower()
+    assert "not_available" not in json.dumps(coverage).lower()
 
 
-def test_derivative_coverage_matrix_classifies_runtime_rows_by_hard_gate_status() -> None:
+def test_derivative_coverage_matrix_reports_only_production_supported_routes() -> None:
     coverage = epcsaft.capabilities()["derivatives"]["coverage_matrix"]
     rows = coverage["rows"]
 
     classifications = {row["classification"] for row in rows}
     row_families = {row["row_family"] for row in rows}
 
-    assert classifications == {"production_supported", "blocker", "out_of_scope"}
-    assert {"regression", "solved_state", "electrolyte_property"}.issubset(row_families)
+    assert classifications == {"production_supported"}
+    assert {"regression", "electrolyte_property"}.issubset(row_families)
     for row in rows:
-        if row["classification"] == "production_supported":
-            assert row["supported"] is True
-            assert row["not_applicable"] is False
-            assert row["backend"] != "not_available"
-        elif row["classification"] == "out_of_scope":
-            assert row["supported"] is False
-            assert row["not_applicable"] is True
-        else:
-            assert row["classification"] == "blocker"
-            assert row["supported"] is False
-            assert row["not_applicable"] is False
+        assert row["supported"] is True
+        assert row["not_applicable"] is False
 
 
 def test_issue_68_required_coverage_gate_fields_are_reported_honestly() -> None:
     coverage = epcsaft.capabilities()["derivatives"]["coverage_matrix"]
     required = {
-        "association_direct_cppad_recording",
         "association_implicit_sensitivities",
         "density_root_implicit_sensitivities",
         "speciation_implicit_sensitivities",
-        "bubble_pressure_implicit_sensitivities",
         "born_ssmds_liquid_derivatives",
-        "regression_ceres_explicit_cppad_jacobians",
-        "regression_ceres_implicit_jacobians",
+        "regression_ceres_jacobians",
     }
     assert required.issubset(coverage)
-    assert coverage["association_direct_cppad_recording"] == {
-        "available": False,
-        "production": False,
-        "reason": "active association uses solved site fractions; production derivative is implicit",
-    }
+    assert coverage["association_implicit_sensitivities"]["production"] is True
+    assert coverage["density_root_implicit_sensitivities"]["production"] is True
     assert coverage["born_ssmds_liquid_derivatives"]["phase_scope"] == "liquid_electrolyte_only"
     assert coverage["born_ssmds_liquid_derivatives"]["vapor_support"] is False
-    assert coverage["regression_ceres_implicit_jacobians"] == {
-        "available": False,
-        "production": False,
-        "reason": "not_available",
-    }
+    assert coverage["regression_ceres_jacobians"]["routes"] == ["pure_neutral_parameters", "binary_kij"]
 
 
 def test_reactive_batch_context_never_claims_ceres_native_hot_loop_in_default_build_contract() -> None:
     batch = epcsaft.capabilities()["regression"]["reactive_electrolyte_batch_context"]
     mixed = batch["bounded_mixed_pressure_speciation_regression"]
 
+    assert mixed["production_optimizer"] is False
+    assert mixed["optimizer"] is None
     assert mixed["native_hot_loop"] is False
     assert mixed["ceres"]["production"] is False
     assert "numerical_derivative" not in json.dumps(batch).lower()

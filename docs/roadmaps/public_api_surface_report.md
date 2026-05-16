@@ -101,7 +101,7 @@ package surface and the current facade/import-boundary behavior.
 | --- | --- | --- |
 | `epcsaft` | Stable public package root | Keep. |
 | `epcsaft.__main__` | Public CLI module for `python -m epcsaft` | Keep; no project script entrypoint is declared. |
-| `epcsaft.epcsaft` | Historical core class module | Keep as public/legacy import path. |
+| `epcsaft.epcsaft` | Historical core class module | Keep as public import path. |
 | `epcsaft.eos` | Organized public import namespace | Keep. |
 | `epcsaft.equilibrium` | Stable public equilibrium API | Keep. |
 | `epcsaft.electrolyte` | Organized public electrolyte namespace | Keep. |
@@ -147,8 +147,8 @@ No entrypoint changes are needed for issue #120.
 
 ## Future API Work
 
-- Decide whether the legacy implicit-sensitivity status helper should be renamed
-  or retained permanently.
+- Decide whether the implicit-sensitivity status helper should be renamed or
+  retained permanently.
 - Decide whether `DATASET_ROOT` should stay public or move behind a documented
   dataset accessor in a future major cleanup.
 - Do not use issue #120 to remove public names that tests or docs currently

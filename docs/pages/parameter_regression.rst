@@ -24,16 +24,15 @@ Supported workflows
   imply vapor electrolyte Born support.
 - ``fit_pure_neutral(...)`` fits nonassociating neutral pure-component ``m``, ``s``, and ``e`` against density and vapor-pressure records with the native Ceres backend.
 - ``fit_pure_ion(...)`` fits ion ``s``, ``e``, and ``d_born`` declarations with native provenance guardrails through the Ceres backend and ``cppad_implicit`` density-root sensitivities for density, osmotic-coefficient, and mean-ionic-activity rows.
-- ``fit_binary_pair(...)`` fits supported constant ``k_ij`` binary interaction values from direct VLE x/y records with the native Ceres backend and provenance guardrails. Constant ``l_ij`` and ``k_hb_ij`` declarations are validated, then report ``not_available`` until native analytic or autodiff derivatives are implemented for those targets.
+- ``fit_binary_pair(...)`` fits supported constant ``k_ij`` binary interaction values from direct VLE x/y records with the native Ceres backend and provenance guardrails. Constant ``l_ij`` and ``k_hb_ij`` declarations are schema-supported, but fitting them raises until native analytic, CppAD, or implicit derivatives are implemented for those targets.
 
 Ion and binary V1 intentionally do not add dataset manifests or new regression-specific parameter namespaces. The helpers build runtime states from the existing dataset loader and caller-provided records.
 
 Non-native optimizer loops are not an approved production backend for package-owned regression helpers. Python code may prepare records, declare provenance, and call native regression, but coupled electrolyte, reactive, phase-equilibrium, ``d_born``, and ``k_ij`` fitting should use a native backend with explicit derivative metadata. Public production helpers route supported generic targets through native Ceres paths with analytic, CppAD, or implicit sensitivities.
 
 The public easy APIs intentionally do not expose numerical derivative
-configuration. Unsupported derivative or optimizer paths report a loud
-``not_available`` diagnostic tied to the missing analytic, CppAD, or
-implicit derivative path.
+configuration. Unsupported derivative or optimizer paths raise with diagnostics
+tied to the missing analytic, CppAD, or implicit derivative path.
 
 Generic target-row schemas
 --------------------------
@@ -524,7 +523,7 @@ Binary VLE records
 - liquid mole-fraction columns such as ``x_H2O`` and ``x_Ethanol``
 - vapor mole-fraction columns such as ``y_H2O`` and ``y_Ethanol``
 
-The V1 native optimizer target is constant ``k_ij`` through Ceres with ``cppad_implicit`` Jacobians, including neutral associating binaries where the constant-pressure response combines CppAD explicit EOS terms with association site-fraction implicit density sensitivities. Constant ``l_ij`` and ``k_hb_ij`` remain schema-supported targets, but fitting them raises ``not_available`` until a native analytic, CppAD, or implicit derivative path is registered. Linear temperature models and LLE fitting are future phases and raise ``InputError``. Ion-involving binary targets require explicit provenance and are rejected by default unless they are tied to direct electrolyte/neutral-ion data or an explicit override.
+The V1 native optimizer target is constant ``k_ij`` through Ceres with ``cppad_implicit`` Jacobians, including neutral associating binaries where the constant-pressure response combines CppAD explicit EOS terms with association site-fraction implicit density sensitivities. Constant ``l_ij`` and ``k_hb_ij`` remain schema-supported targets, but fitting them raises until a native analytic, CppAD, or implicit derivative path is registered. Linear temperature models and LLE fitting are future phases and raise ``InputError``. Ion-involving binary targets require explicit provenance and are rejected by default unless they are tied to direct electrolyte/neutral-ion data or an explicit override.
 
 Example:
 
@@ -593,17 +592,13 @@ Normal ``FitResult`` payloads report compact derivative metadata:
 - ``residual_block_norms``
 - ``jacobian_available``
 - ``jacobian_backend``
-- ``jacobian_fallback_used``
-- ``jacobian_fallback_reason``
 - ``not_available_reason``
 - ``hessian_available``
 - ``hessian_backend``
-- ``hessian_fallback_used``
-- ``hessian_fallback_reason``
 
-Large matrices are exposed only through explicit derivative-evaluation helpers. Use ``evaluate_pure_neutral_derivatives(...)`` for the native pure-neutral objective. It returns residuals, gradient, ``jacobian_row_major``, ``jacobian_shape``, and Hessian skeleton fields. Pure-neutral Jacobians use the native autodiff path.
+Large matrices are exposed only through explicit derivative-evaluation helpers. Use ``evaluate_pure_neutral_derivatives(...)`` for the native pure-neutral objective. It returns residuals, gradient, ``jacobian_row_major``, ``jacobian_shape``, and Hessian skeleton fields. Pure-neutral Jacobians use the Ceres-owned autodiff path.
 
-For lower-level generic native records, ``evaluate_generic_regression_derivatives(...)`` reports ``not_available`` until the requested residual state calls have analytic, CppAD, or implicit derivative coverage. Public generic fitting does not route through non-native optimizer loops.
+For lower-level generic native records, ``evaluate_generic_regression_derivatives(...)`` raises until the requested residual state calls have analytic, CppAD, or implicit derivative coverage. Public generic fitting does not route through non-native optimizer loops.
 
 Reactive electrolyte residual evaluator
 ---------------------------------------
@@ -645,8 +640,9 @@ temperature, loading, or pressure:
 Pass ``result.residuals`` to a downstream-owned optimizer. Use
 ``result.record_results`` and ``result.diagnostics`` to decide whether a
 candidate failed numerically, hit phase-equilibrium limits, or simply predicts
-poorly. Do not treat this helper as a full constrained Gibbs/NLP solve; IPOPT
-remains an explicit opt-in refinement elsewhere and is not used automatically.
+poorly. Do not treat this helper as a full constrained Gibbs/NLP solve; Ipopt
+equilibrium routes are explicit native constrained-NLP routes and are not used
+automatically.
 
 Derivative availability
 -----------------------
@@ -658,19 +654,19 @@ Derivative availability
      - Current Jacobian access
      - Hessian status
    * - Runtime ``dadt()``, ``dadx()``, ``z(return_contribution_terms=True)``, ``mures(return_contribution_terms=True)``
-     - Analytical where available, autodiff where implemented; unsupported derivative paths raise clearly
+     - Analytical where available, CppAD where implemented; unsupported derivative paths raise clearly
      - Not exposed
    * - Pure-neutral regression
-     - Native autodiff Jacobian through ``evaluate_pure_neutral_derivatives(...)``
+     - Native CppAD/implicit Jacobian through ``evaluate_pure_neutral_derivatives(...)``
      - Skeleton metadata only
    * - Generic ion/binary regression
-     - Binary ``k_ij`` fitting uses native Ceres ``cppad_implicit`` Jacobians; other generic residual families report ``not_available`` until analytic or autodiff coverage is implemented
+     - Binary ``k_ij`` fitting uses native Ceres ``cppad_implicit`` Jacobians; other generic residual families raise until analytic or CppAD coverage is implemented
      - Skeleton metadata only
    * - Neutral LLE
-     - Native stability and seed checks remain available; solve derivative callbacks report ``not_available`` until residual coverage is implemented
+     - Native stability and seed checks remain available; solve derivative callbacks raise until residual coverage is implemented
      - Skeleton metadata only
    * - Chemical equilibrium / reactive speciation
-     - Analytic log-amount Jacobian for ideal-mole-fraction reactions under ``auto``; activity/concentration paths report ``not_available`` until derivative coverage is implemented
+     - Analytic log-amount Jacobian for ideal-mole-fraction reactions under ``auto``; activity/concentration paths raise until derivative coverage is implemented
      - Native Ipopt adapter work remains open
 
 The Hessian fields are deliberately a contract skeleton for future

@@ -56,7 +56,9 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         "bounded_mixed_pressure_speciation_regression"
     ]
     assert mixed_regression["available"] is True
-    assert mixed_regression["status"] == "production"
+    assert mixed_regression["status"] == "diagnostic_residual_context"
+    assert mixed_regression["production_optimizer"] is False
+    assert mixed_regression["optimizer"] is None
     assert mixed_regression["supports_pressure_targets"] is True
     assert mixed_regression["supports_speciation_targets"] is True
     assert mixed_regression["supports_bounds"] is True

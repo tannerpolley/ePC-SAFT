@@ -472,12 +472,18 @@ equilibrium extension, and regression extension split.
 - Modify: `docs/roadmaps/**`
 - Modify: `README.md` if public workflow changes.
 
-- [ ] Remove stale compatibility wording.
-- [ ] Remove legacy solver option docs.
-- [ ] Make capabilities report only implemented validated routes.
-- [ ] Document native Ipopt/Ceres/CppAD build requirements.
-- [ ] Document convex ideal subkernel scope and nonconvex full-route scope.
-- [ ] Commit as `Document native solver gate architecture`.
+- [x] Remove stale compatibility wording.
+- [x] Remove legacy solver option docs.
+- [x] Make capabilities report only implemented validated routes.
+- [x] Document native Ipopt/Ceres/CppAD build requirements.
+- [x] Document convex ideal subkernel scope and nonconvex full-route scope.
+- [x] Commit as `Document native solver gate architecture`.
+
+Task 12 note: runtime derivative capabilities now list implemented production coverage only instead of embedding open
+blocker rows. Reactive electrolyte batch regression is no longer described as a production optimizer in capabilities; it
+is documented as a diagnostic residual context until native Ceres owns that route. README and docs now describe native
+Ipopt as an explicit constrained-NLP backend with current public wiring limited to homogeneous ideal reactive speciation,
+and they state the convex formulation scope as homogeneous ideal subkernels only.
 
 ### Task 13: Final Validation And Cleanup
 

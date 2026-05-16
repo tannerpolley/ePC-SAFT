@@ -49,8 +49,9 @@ these fields as routing hints, not as proof that a physical case is valid.
      - Native speciation followed by native fixed-liquid electrolyte bubble
        pressure for neutral vapor species.
    * - IPOPT
-     - Optional opt-in bridge
-     - Bound-constrained residual-minimization refinement only; not full Gibbs/NLP.
+     - Optional native constrained-NLP backend
+     - Wired for explicit homogeneous ideal reactive speciation; broader routes
+       are still route-builder work.
 
 .. list-table::
    :header-rows: 1
@@ -61,23 +62,14 @@ these fields as routing hints, not as proof that a physical case is valid.
    * - ``solver_backend="auto"``
      - You want the supported native default.
      - You expect IPOPT to run automatically.
-   * - Native Newton/default
-     - Ordinary equilibrium/speciation solves and continuation.
-     - You need active-bound NLP refinement.
-   * - Native least squares
-     - Package regression helpers.
-     - You need a Python optimizer loop.
    * - ``jacobian_backend="auto"``
      - You want the native chemical-equilibrium default: analytic, CppAD, or implicit sensitivities where available, clear failures otherwise.
      - You need strict failure when a specific derivative backend is unavailable.
    * - ``jacobian_backend="cppad"``
      - You need a CppAD residual derivative path and want unsupported routes to fail loudly.
-     - You expect a fallback derivative substitute.
-   * - ``differential_mode="autodiff"``
-     - You need implemented autodiff derivative paths.
-     - You need an automatic analytical substitute.
+     - You expect a substitute derivative backend.
    * - ``solver_backend="ipopt"``
-     - You are testing the future native Ipopt constrained-NLP route once it is implemented.
+     - You are testing an implemented native Ipopt constrained-NLP route.
      - You need the current native equilibrium route.
 
 Neutral VLE, LLE, and stability
@@ -112,19 +104,16 @@ scripts.
    assert lle.split_detected
    print(lle.phase_labels, lle.diagnostics)
 
-For neutral TP flash diagnostics, check these fields before concluding that a speedup changed solver semantics:
+For neutral TP flash diagnostics, check these fields before concluding that a
+speedup changed solver semantics:
 
 - ``diagnostics["neutral_fast_path"]``
-- ``diagnostics["neutral_fallback_used"]``
-- ``diagnostics["neutral_fallback_reason"]``
 
 Neutral bubble/dew public methods now raise until native Ipopt route builders
 replace the removed Python scalar route.
 
 The fast-path flag means the current native or local-first neutral route handled
-the solve directly. The ``neutral_fallback_*`` keys are legacy diagnostics:
-they indicate the optimized route used the more conservative neutral path while
-preserving the same result contract.
+the solve directly.
 
 Derivative policy
 -----------------
@@ -146,8 +135,8 @@ result diagnostics report the derivative status explicitly:
 
 Supported derivative labels are ``analytic``, ``cppad``,
 ``analytic_implicit`` and ``cppad_implicit``.
-Unsupported combinations report ``not_available``. ``auto`` never falls
-back to unsupported derivative approximations.
+Unsupported combinations raise at the route boundary. ``auto`` never switches
+to substitute derivative approximations.
 
 Sequential Reactive Workflow Boundary
 -------------------------------------

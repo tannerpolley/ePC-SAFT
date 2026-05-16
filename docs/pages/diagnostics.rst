@@ -19,9 +19,9 @@ It lists the public fit statuses, the top-level convergence fields, and the
 empty ``public_placeholder_statuses`` list that downstream agents can use to
 confirm the package is not returning provisional labels. The sibling
 ``bounded_mixed_pressure_speciation_regression`` capability advertises the
-bounded least-squares production path, its supported target families, and the
-fact that Python still owns row orchestration and bounded step control while the
-thermodynamic calculations remain native.
+diagnostic residual context, its supported target families, and the fact that
+it is not a production optimizer. Python still owns row orchestration and
+bounded step diagnostics while the thermodynamic calculations remain native.
 
 Reactive Speciation And Bubble Diagnostics
 ------------------------------------------

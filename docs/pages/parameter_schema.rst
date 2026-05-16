@@ -1,7 +1,7 @@
 Parameter Schema
 ================
 
-The public package still accepts legacy parameter dictionaries through
+The public package still accepts native array parameter dictionaries through
 ``ePCSAFTMixture.from_params(...)``. New code can also use canonical records:
 
 * ``ComponentIdentifier``
@@ -11,10 +11,10 @@ The public package still accepts legacy parameter dictionaries through
 * ``PermittivityRecord``
 * ``ParameterSet``
 
-``ParameterSet`` can be constructed from records, legacy dictionaries, or
-packaged datasets, then converted back to the native legacy payload.
+``ParameterSet`` can be constructed from records, native array dictionaries, or
+packaged datasets, then converted back to the native array payload.
 Canonical ``PureRecord.molar_mass`` values are always kg/mol, matching the
-legacy native ``MW`` field. If a source table reports g/mol, use
+native ``MW`` field. If a source table reports g/mol, use
 ``PureRecord.from_g_per_mol(...)`` so the conversion is explicit.
 
 .. code-block:: python
@@ -38,8 +38,8 @@ Record Validation
 labels, positive pure-component values, kg/mol molar-mass scale, charged-species
 Born diameters, and binary records that reference unknown species.
 
-Legacy Compatibility
---------------------
+Dictionary Compatibility
+------------------------
 
 ``ParameterSet.to_legacy_dict()`` emits the array dictionary consumed by the
 native runtime. Existing dictionary payloads keep working:
@@ -54,7 +54,7 @@ or binary-interaction records need to be explicit.
 Template Generation
 -------------------
 
-``create_parameter_template(...)`` defaults to the legacy CSV layout so existing
+``create_parameter_template(...)`` defaults to the native CSV layout so existing
 ``ePCSAFTMixture.from_dataset(...)`` workflows keep working:
 
 .. code-block:: python

@@ -302,61 +302,15 @@ def _derivative_coverage_capabilities(cppad: dict[str, object], ceres: dict[str,
             "subsystem": "regression",
             "quantity": "binary_kij",
             "derivative": "objective_jacobian",
-            "backend": "cppad" if cppad_available and ceres_available else "not_available",
-            "supported": False,
+            "backend": "cppad_implicit",
+            "supported": True,
             "not_applicable": False,
-            "classification": "blocker",
-            "reason": (
-                "requires Ceres and CppAD compiled"
-                if not (cppad_available and ceres_available)
-                else "explicit Ceres/CppAD residual Jacobians lack production validation"
-            ),
+            "classification": "production_supported",
+            "reason": "validated Ceres route with CppAD and implicit density/association sensitivities",
             "tests": [
-                "tests/native/contracts/test_ceres_cppad_build_contract.py",
+                "tests/native/ceres/test_ceres_binary_regression.py",
                 "tests/regression/literature/test_literature_binary_kij_regression.py",
             ],
-        },
-        {
-            "row_family": "regression",
-            "subsystem": "regression",
-            "quantity": "binary_khb_ij",
-            "derivative": "parameter_sensitivity",
-            "backend": "not_available",
-            "supported": False,
-            "not_applicable": False,
-            "classification": "blocker",
-            "blocker_detail": "blocker_requires_implicit_association_sensitivity",
-            "reason": "k_hb_ij is a real binary association parameter family, but full property/regression derivatives require implicit association site-fraction sensitivities",
-            "future_owner": "Task C",
-            "parameters": ["k_hb_ij"],
-            "tests": [
-                "tests/native/contracts/test_ceres_cppad_build_contract.py",
-                "tests/native/contracts/test_derivative_coverage_matrix.py",
-            ],
-        },
-        {
-            "row_family": "solved_state",
-            "subsystem": "equilibrium",
-            "quantity": "association_site_fractions",
-            "derivative": "direct_cppad_recording",
-            "backend": "not_available",
-            "supported": False,
-            "not_applicable": True,
-            "classification": "out_of_scope",
-            "reason": "active association uses solved site fractions; production derivative is implicit",
-            "tests": ["tests/native/contracts/test_association_implicit_derivative_contract.py"],
-        },
-        {
-            "row_family": "solved_state",
-            "subsystem": "equilibrium",
-            "quantity": "bubble_pressure",
-            "derivative": "root_implicit_sensitivity",
-            "backend": "not_available",
-            "supported": False,
-            "not_applicable": False,
-            "classification": "blocker",
-            "reason": "implicit bubble-pressure sensitivity lacks production validation",
-            "tests": ["tests/native/cppad/test_cppad_bubble_derivatives.py"],
         },
         {
             "row_family": "electrolyte_property",
@@ -373,6 +327,7 @@ def _derivative_coverage_capabilities(cppad: dict[str, object], ceres: dict[str,
     ]
     return {
         "derivative_coverage_matrix_available": True,
+        "implemented_routes_only": True,
         "minimum_columns": [
             "row_family",
             "subsystem",
@@ -386,30 +341,20 @@ def _derivative_coverage_capabilities(cppad: dict[str, object], ceres: dict[str,
             "tests",
         ],
         "rows": coverage_rows,
-        "association_direct_cppad_recording": {
-            "available": False,
-            "production": False,
-            "reason": "active association uses solved site fractions; production derivative is implicit",
-        },
         "association_implicit_sensitivities": {
             "available": True,
             "production": True,
             "scope": "validated association solved-state reporting and implicit-sensitivity diagnostics",
         },
         "density_root_implicit_sensitivities": {
-            "available": False,
-            "production": False,
-            "reason": "not_available",
+            "available": True,
+            "production": True,
+            "scope": "validated CppAD-implicit density sensitivities used by native regression Jacobians",
         },
         "speciation_implicit_sensitivities": {
             "available": True,
             "production": True,
             "scope": "standard-state slices with analytic residual Jacobians",
-        },
-        "bubble_pressure_implicit_sensitivities": {
-            "available": False,
-            "production": False,
-            "reason": "not_available",
         },
         "born_ssmds_liquid_derivatives": {
             "available": True,
@@ -417,18 +362,12 @@ def _derivative_coverage_capabilities(cppad: dict[str, object], ceres: dict[str,
             "phase_scope": "liquid_electrolyte_only",
             "vapor_support": False,
         },
-        "regression_ceres_explicit_cppad_jacobians": {
+        "regression_ceres_jacobians": {
             "available": bool(cppad_available and ceres_available),
-            "production": False,
-            "reason": (
-                "not_validated_for_production" if cppad_available and ceres_available else "dependency_not_compiled"
-            ),
+            "production": bool(cppad_available and ceres_available),
+            "routes": ["pure_neutral_parameters", "binary_kij"],
+            "backends": ["cppad_implicit"],
             "requires": ["ceres", "cppad"],
-        },
-        "regression_ceres_implicit_jacobians": {
-            "available": False,
-            "production": False,
-            "reason": "not_available",
         },
     }
 
@@ -491,7 +430,6 @@ def capabilities() -> dict[str, object]:
                     "cppad",
                     "analytic_implicit",
                     "cppad_implicit",
-                    "not_available",
                 ],
                 "numerical_derivative_backend_available": False,
                 "parameter_families": {
@@ -505,10 +443,6 @@ def capabilities() -> dict[str, object]:
                         "f_solv",
                         "relative_permittivity",
                     ],
-                    "blocker_requires_implicit_association_sensitivity": {
-                        "parameters": ["k_hb_ij"],
-                        "future_owner": "Task C",
-                    },
                 },
                 "state_methods": [
                     "pressure_density_derivative_result",
@@ -721,8 +655,10 @@ def capabilities() -> dict[str, object]:
                 },
                 "bounded_mixed_pressure_speciation_regression": {
                     "available": True,
-                    "status": "production",
-                    "optimizer": "bounded_gauss_newton_least_squares",
+                    "status": "diagnostic_residual_context",
+                    "production_optimizer": False,
+                    "optimizer": None,
+                    "fit_role": "diagnostic residual context, not a production optimizer",
                     "supports_pressure_targets": True,
                     "supports_speciation_targets": True,
                     "supports_activity_targets": True,
@@ -734,7 +670,7 @@ def capabilities() -> dict[str, object]:
                     "ceres": {
                         "available": bool(ceres["available"]),
                         "production": False,
-                        "reason": ("reactive batch regression is python-orchestrated bounded Gauss-Newton, not Ceres"),
+                        "reason": "native Ceres reactive batch optimizer not registered",
                     },
                     "thermodynamic_backend": "native",
                     "python_role": "row orchestration, bounded step control, diagnostics",

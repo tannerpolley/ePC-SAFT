@@ -8,8 +8,8 @@ Package-owned regression and equilibrium solves must run through the native
 C++ backend exposed by ``epcsaft._core``. Python package code may normalize
 inputs, build request payloads, validate units and compositions, and convert
 native payloads into structured result objects. New production equilibrium
-ownership is moving to native Ipopt constrained NLPs; legacy native residual
-solves remain only where the migration is not finished.
+ownership is moving to native Ipopt constrained NLPs; existing native residual
+routes remain transitional until each Ipopt route builder lands.
 
 Consequently, electrolyte bubble-pressure and composed reactive electrolyte
 bubble-pressure entry points route through native C++ kernels. The Python layer
@@ -65,13 +65,11 @@ paying for unused activity calls under the default ``activity_output="auto"``.
 The derivative default is native-owned and diagnostic-friendly:
 ``jacobian_backend="auto"`` uses the analytic log-amount Jacobian for
 ``standard_state="ideal_mole_fraction"``. Activity- or concentration-coupled
-standard states currently raise ``not_available`` until analytic, CppAD,
-or implicit residual derivatives are implemented. Diagnostics report
+standard states raise until analytic, CppAD, or implicit residual derivatives
+are implemented. Diagnostics report
 ``requested_jacobian_backend``, ``derivative_backend``, ``derivative_status``,
-and ``not_available_reason`` so users can see the active support boundary.
-Explicit legacy Eigen forward-mode requests remain strict and raise when the
-requested derivative path is unavailable. Numerical-perturbation Jacobians are not a
-supported substitute.
+and ``not_available_reason`` for strict route-boundary failures. Numerical
+perturbation Jacobians are not a supported substitute.
 
 .. code-block:: python
 
@@ -189,8 +187,8 @@ Sequential reactive workflows contain nested solved states: association site
 fractions, reactive speciation variables, density roots, bubble-pressure roots,
 and phase-equilibrium variables. These blocks must report derivatives through
 analytic residual derivatives, CppAD residual partials, implicit sensitivities,
-or ``not_available`` when coverage is incomplete. Numerical-perturbation
-derivatives are not a supported fallback.
+or strict route-boundary failures when coverage is incomplete. Numerical
+perturbation derivatives are not a supported substitute.
 
 For active association, the preferred sequential derivative boundary is to solve
 the association site fractions, compute residual partials, solve the implicit

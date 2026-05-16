@@ -21,9 +21,8 @@ def test_capabilities_expose_property_derivative_result_apis() -> None:
     assert "derivative_backend" in payload["result_shape"]
     assert "pressure_density_derivative_result" in payload["state_methods"]
     assert "relative_permittivity_parameter_derivative_result" in payload["state_methods"]
-    assert "k_hb_ij" in payload["parameter_families"]["blocker_requires_implicit_association_sensitivity"]["parameters"]
-    assert payload["parameter_families"]["blocker_requires_implicit_association_sensitivity"]["future_owner"] == "Task C"
     assert "numerical_derivative" not in str(payload["backend_labels"])
+    assert "not_available" not in str(payload["backend_labels"])
 
 
 def test_public_derivative_result_methods_share_required_shape() -> None:
