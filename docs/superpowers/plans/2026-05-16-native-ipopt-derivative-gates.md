@@ -503,6 +503,8 @@ Task 12 continuation note: Python/native EOS property wrappers no longer reintro
 
 Task 12 continuation note: liquid-electrolyte SSM/DS Born parameter derivatives now either return the implemented analytical liquid payload or raise a typed unsupported-scope error for out-of-scope states. The old unsupported derivative payload row was removed from the native result contract and coverage matrix handling.
 
+Task 12 continuation note: native EOS/CppAD derivative contracts no longer use the old missing-backend label in the C++ and Python property-derivative surfaces touched by the CppAD contract tests. Disabled CppAD reports `cppad_disabled`; unsupported derivative configurations raise typed `unsupported` errors or are excluded from implemented coverage rows.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**
