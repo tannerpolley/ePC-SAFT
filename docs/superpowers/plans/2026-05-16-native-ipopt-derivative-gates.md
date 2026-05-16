@@ -724,6 +724,10 @@ Task 12 continuation note: stale data-script and parameter-options examples no l
 modes. Generated parameter metadata now keeps those modes analytical, and the tracked text gate blocks the removed
 configuration literal in active tracked files.
 
+Task 12 continuation note: density root diagnostics no longer sample pressure slopes around candidate densities.
+Candidate acceptance now uses pressure residual and finite residual Gibbs data only; exact pressure-density
+derivatives remain in the native analytical/CppAD derivative APIs rather than density failure payloads.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

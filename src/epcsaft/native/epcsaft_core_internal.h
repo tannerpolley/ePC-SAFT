@@ -92,7 +92,6 @@ struct DensityRootCandidate {
     double gres = 0.0;
     double rel_resid = 0.0;
     double abs_p_error = 0.0;
-    double dpdrho = 0.0;
     bool valid = false;
 };
 

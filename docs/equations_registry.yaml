@@ -632,8 +632,8 @@
     \rho=\frac{6}{\pi} \eta\left(\sum_{i} x_{i} m_{i} d_{i}^3\right)^{-1}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_density.cpp"
-      line: 696
-      comment_line: 694
+      line: 644
+      comment_line: 642
       context: "double reduced_density_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs) {"
 - eqid: "rho_reduced"
   section: "Density"
@@ -652,8 +652,8 @@
         \hat{\rho}=\rho_{N}\cdot 10^{-30}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_density.cpp"
-      line: 696
-      comment_line: 695
+      line: 644
+      comment_line: 643
       context: "double reduced_density_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs) {"
 - eqid: "pressure_from_z"
   section: "Density"
@@ -716,8 +716,8 @@
         0
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_density.cpp"
-      line: 848
-      comment_line: 847
+      line: 796
+      comment_line: 795
       context: "double density_root_residual_cpp(double rhomolar, double t, double p, vector<double> x, const add_args &cppargs){"
 - eqid: "ares_hs"
   section: "Contribution Intermediates"

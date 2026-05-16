@@ -164,7 +164,6 @@ struct DensityCandidateDiagnostics {
     double gres = 1.0e300;
     double rel_resid = 1.0e300;
     double abs_p_error = 1.0e300;
-    double dpdrho = 1.0e300;
     bool valid = false;
 };
 

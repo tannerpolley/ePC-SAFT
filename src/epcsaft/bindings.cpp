@@ -462,7 +462,6 @@ py::dict native_density_candidate_to_dict(const DensityCandidateDiagnostics& can
     out["gres"] = json_safe_native_double(candidate.gres);
     out["rel_resid"] = json_safe_native_double(candidate.rel_resid);
     out["abs_p_error"] = json_safe_native_double(candidate.abs_p_error);
-    out["dpdrho"] = json_safe_native_double(candidate.dpdrho);
     out["valid"] = candidate.valid;
     return out;
 }
@@ -481,7 +480,6 @@ py::dict native_density_diagnostics_to_dict(const DensitySolveDiagnostics& diagn
     out["candidate_root_count"] = diagnostics.candidate_root_count;
     out["best_near_root_pressure_error"] = json_safe_native_double(diagnostics.best_near_root.abs_p_error);
     out["best_near_root"] = native_density_candidate_to_dict(diagnostics.best_near_root);
-    out["dpdrho"] = json_safe_native_double(diagnostics.best_near_root.dpdrho);
     out["gres"] = json_safe_native_double(diagnostics.best_near_root.gres);
     out["rejection_reason"] = diagnostics.rejection_reason;
     out["density_best_candidate_refinement_used"] = diagnostics.best_candidate_refinement_used;

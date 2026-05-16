@@ -112,7 +112,6 @@ def test_pressure_density_failure_reports_state_context_and_native_outcome() -> 
     assert context["refined_bracket_count"] >= 0
     assert context["candidate_root_count"] >= 0
     assert "best_near_root_pressure_error" in context
-    assert "dpdrho" in context
     assert "gres" in context
     assert context["rejection_reason"]
     json.dumps(diagnostics, allow_nan=False)

@@ -164,31 +164,6 @@ bool density_root_valid_cpp(
         return false;
     }
 
-    double h = std::max(1e-12, std::abs(rho) * 1e-6);
-    double dpdrho = 0.0;
-    try {
-        double p_plus = p_cpp(t, rho + h, x, cppargs);
-        if (!std::isfinite(p_plus)) {
-            return false;
-        }
-        if (rho > h) {
-            double p_minus = p_cpp(t, rho - h, x, cppargs);
-            if (!std::isfinite(p_minus)) {
-                return false;
-            }
-            dpdrho = (p_plus - p_minus) / (2.0 * h);
-        }
-        else {
-            dpdrho = (p_plus - p_calc) / h;
-        }
-    }
-    catch (const std::exception&) {
-        return false;
-    }
-    if (!(std::isfinite(dpdrho) && dpdrho > 0.0)) {
-        return false;
-    }
-
     double gres = 0.0;
     try {
         gres = gres_cpp(t, rho, x, cppargs);
@@ -204,7 +179,6 @@ bool density_root_valid_cpp(
     candidate->gres = gres;
     candidate->rel_resid = rel_resid;
     candidate->abs_p_error = abs_p_error;
-    candidate->dpdrho = dpdrho;
     candidate->valid = true;
     return true;
 }
@@ -347,33 +321,12 @@ DensityRootCandidate density_near_root_candidate_cpp(
     candidate.rho_sort = rho;
     candidate.abs_p_error = 1.0e300;
     candidate.rel_resid = 1.0e300;
-    candidate.dpdrho = 1.0e300;
     candidate.gres = 1.0e300;
     try {
         double p_calc = p_cpp(t, rho, x, cppargs);
         if (std::isfinite(p_calc)) {
             candidate.abs_p_error = std::abs(p_calc - p);
             candidate.rel_resid = candidate.abs_p_error / std::max(std::abs(p), 1e-300);
-        }
-    }
-    catch (const std::exception&) {
-    }
-    try {
-        double h = std::max(1e-12, std::abs(rho) * 1e-6);
-        double p_plus = p_cpp(t, rho + h, x, cppargs);
-        if (std::isfinite(p_plus)) {
-            if (rho > h) {
-                double p_minus = p_cpp(t, rho - h, x, cppargs);
-                if (std::isfinite(p_minus)) {
-                    candidate.dpdrho = (p_plus - p_minus) / (2.0 * h);
-                }
-            }
-            else {
-                double p_calc = p_cpp(t, rho, x, cppargs);
-                if (std::isfinite(p_calc)) {
-                    candidate.dpdrho = (p_plus - p_calc) / h;
-                }
-            }
         }
     }
     catch (const std::exception&) {
@@ -387,8 +340,6 @@ DensityRootCandidate density_near_root_candidate_cpp(
     catch (const std::exception&) {
     }
     candidate.valid = std::isfinite(candidate.abs_p_error)
-        && std::isfinite(candidate.dpdrho)
-        && candidate.dpdrho > 0.0
         && std::isfinite(candidate.gres);
     return candidate;
 }
@@ -400,7 +351,6 @@ DensityCandidateDiagnostics density_candidate_diagnostics_cpp(const DensityRootC
     out.gres = candidate.gres;
     out.rel_resid = candidate.rel_resid;
     out.abs_p_error = candidate.abs_p_error;
-    out.dpdrho = candidate.dpdrho;
     out.valid = candidate.valid;
     return out;
 }
@@ -415,7 +365,6 @@ DensitySolveResult density_solve_report_cpp(double t, double p, vector<double> x
     diagnostics.validity_gate = "failed";
     diagnostics.best_near_root.abs_p_error = 1.0e300;
     diagnostics.best_near_root.rel_resid = 1.0e300;
-    diagnostics.best_near_root.dpdrho = 1.0e300;
     diagnostics.best_near_root.gres = 1.0e300;
 
     int ncomp = static_cast<int>(x.size());
@@ -472,7 +421,6 @@ DensitySolveResult density_solve_report_cpp(double t, double p, vector<double> x
         candidate.rho_sort = ::reduced_density_to_molar(0.5 * (bracket.nu_lo + bracket.nu_hi), t, ncomp, x, cppargs);
         candidate.abs_p_error = 1.0e300;
         candidate.rel_resid = 1.0e300;
-        candidate.dpdrho = 1.0e300;
         candidate.gres = 1.0e300;
         try {
             double rho_lo = ::reduced_density_to_molar(bracket.nu_lo, t, ncomp, x, cppargs);
