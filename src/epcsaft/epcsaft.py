@@ -1007,8 +1007,8 @@ class ePCSAFTMixture:
                 raise InputError("initial_phases is not supported for kind='electrolyte_stability'.")
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are not supported for kind='electrolyte_stability'.")
-            if backend not in (None, "native", "electrolyte_tpd"):
-                raise InputError("Electrolyte stability backend must be None, 'native', or 'electrolyte_tpd'.")
+            if backend not in (None, "native"):
+                raise InputError("Electrolyte stability backend must be None or 'native'.")
             return self.electrolyte_stability_tp(
                 T=T,
                 P=P,
@@ -1031,8 +1031,8 @@ class ePCSAFTMixture:
                 )
             if initial_phases is not None:
                 raise InputError("initial_phases is only supported for kind='lle_flash'.")
-            if backend not in (None, "native", "neutral_tpd"):
-                raise InputError("Stability backend must be None, 'native', or 'neutral_tpd'.")
+            if backend not in (None, "native"):
+                raise InputError("Stability backend must be None or 'native'.")
             return self.stability_tp(
                 T=T,
                 P=P,

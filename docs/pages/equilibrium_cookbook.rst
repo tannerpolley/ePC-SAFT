@@ -104,16 +104,10 @@ scripts.
    assert lle.split_detected
    print(lle.phase_labels, lle.diagnostics)
 
-For neutral TP flash diagnostics, check these fields before concluding that a
-speedup changed solver semantics:
-
-- ``diagnostics["neutral_fast_path"]``
-
-Neutral bubble/dew public methods now raise until native Ipopt route builders
-replace the removed Python scalar route.
-
-The fast-path flag means the current native or local-first neutral route handled
-the solve directly.
+Neutral TP flash, neutral LLE, stability, and neutral bubble/dew public methods
+now raise until native Ipopt route builders own those constrained equilibrium
+NLPs. Downstream sweeps should catch the typed route-pending errors and treat
+them as missing production routes, not accepted phase-equilibrium results.
 
 Derivative policy
 -----------------

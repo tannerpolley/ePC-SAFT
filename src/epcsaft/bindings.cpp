@@ -529,26 +529,6 @@ py::dict native_phase_to_dict(const EquilibriumPhaseNative& phase) {
     return out;
 }
 
-py::dict native_trial_to_dict(const StabilityTrialNative& trial) {
-    py::dict out;
-    out["parent_phase"] = trial.parent_phase;
-    out["trial_phase"] = trial.trial_phase;
-    out["seed_name"] = trial.seed_name;
-    out["composition"] = trial.composition;
-    out["tpd"] = trial.tpd;
-    out["iterations"] = trial.iterations;
-    out["converged"] = trial.converged;
-    out["unstable"] = trial.unstable;
-    out["diagnostics"] = native_diagnostics_to_dict(
-        trial.diagnostics_double,
-        {},
-        {},
-        trial.diagnostics_string,
-        {}
-    );
-    return out;
-}
-
 py::list native_attempts_to_list(const std::vector<EquilibriumAttemptDiagnosticsNative>& attempts) {
     auto json_safe_double = [](double value) {
         return std::isfinite(value) ? value : 1.0e300;
@@ -566,39 +546,6 @@ py::list native_attempts_to_list(const std::vector<EquilibriumAttemptDiagnostics
         item["gibbs_delta"] = json_safe_double(attempt.gibbs_delta);
         item["iterations"] = attempt.iterations;
         out.append(item);
-    }
-    return out;
-}
-
-py::dict native_stability_to_dict(const StabilityResultNative& result) {
-    py::dict out;
-    out["result_type"] = "stability";
-    out["backend"] = result.backend;
-    out["problem_kind"] = result.problem_kind;
-    out["stable"] = result.stable;
-    out["min_tpd"] = result.min_tpd;
-    out["parent_phase"] = result.parent_phase;
-    out["trial_phase"] = result.trial_phase;
-    out["trial_composition"] = result.trial_composition;
-    py::list trials;
-    for (const auto& trial : result.trials) {
-        trials.append(native_trial_to_dict(trial));
-    }
-    out["trials"] = trials;
-    out["diagnostics"] = native_diagnostics_to_dict(
-        result.diagnostics_double,
-        result.diagnostics_int,
-        result.diagnostics_bool,
-        result.diagnostics_string,
-        result.diagnostics_vector
-    );
-    if (result.backend == "electrolyte_tpd") {
-        py::dict diagnostics = out["diagnostics"].cast<py::dict>();
-        py::dict charge_balance;
-        charge_balance["feed"] = diagnostics.contains("phase_charge_balance_feed") ? diagnostics["phase_charge_balance_feed"] : py::float_(0.0);
-        charge_balance["trial"] = diagnostics.contains("phase_charge_balance_trial") ? diagnostics["phase_charge_balance_trial"] : py::float_(0.0);
-        diagnostics["phase_charge_balance"] = charge_balance;
-        out["diagnostics"] = diagnostics;
     }
     return out;
 }

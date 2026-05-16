@@ -33,7 +33,7 @@ def classify_equilibrium_route(mixture: Any, kind: str, backend: str | None = No
     }:
         return {"route": "neutral_vle", "reason": "requested vapor-liquid path"}
     if token == "stability":
-        return {"route": "neutral_tpd", "reason": "requested neutral stability path"}
+        return {"route": "neutral_stability", "reason": "requested neutral stability path"}
     if token == "auto":
         if has_ions:
             return {"route": "electrolyte_lle", "reason": "ion-containing mixture"}

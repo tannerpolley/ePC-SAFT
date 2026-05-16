@@ -571,6 +571,8 @@ Task 12 continuation note: remaining unreferenced stale handoff/planning artifac
 
 Task 12 continuation note: the unused private `_solve_equilibrium_native` pybind wrapper and Python payload adapter were removed. Public equilibrium routes remain route-gated to native Ipopt builders, and private residual-surface bindings stay separate for derivative diagnostics.
 
+Task 12 continuation note: unbound native neutral stability, electrolyte stability, neutral TP flash, neutral LLE, and electrolyte LLE solve entry points were deleted from the C++ header/source. The removed code included custom TPD searches, Rachford-Rice/bisection flash loops, neutral LLE Ceres residual solves, electrolyte LLE Ceres residual solves, and the generic private Ceres residual-solver utility. The retained native electrolyte LLE surface is residual/Jacobian evaluation only.
+
 Task 13 validation note: the `_core` pybind module now disables pybind11 release extras and MSVC optimization for `bindings.cpp`. Native objects still use the configured Release build, while the large binding translation unit avoids the MSVC heap exhaustion seen during rebuild.
 
 ### Task 13: Final Validation And Cleanup
