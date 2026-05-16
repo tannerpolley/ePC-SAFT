@@ -501,6 +501,8 @@ Task 12 continuation note: reactive electrolyte fit status metadata no longer ca
 
 Task 12 continuation note: Python/native EOS property wrappers no longer reintroduce removed regression fallback/Hessian skeleton metadata, and public `dadx()` payloads no longer expose an empty missing-derivative reason field. The composition-derivative path now either reports implemented derivative backends or raises a typed unsupported-derivative error.
 
+Task 12 continuation note: liquid-electrolyte SSM/DS Born parameter derivatives now either return the implemented analytical liquid payload or raise a typed unsupported-scope error for out-of-scope states. The old unsupported derivative payload row was removed from the native result contract and coverage matrix handling.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**
