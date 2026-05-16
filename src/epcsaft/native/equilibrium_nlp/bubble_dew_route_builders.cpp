@@ -60,6 +60,75 @@ std::vector<double> shifted_composition(const std::vector<double>& composition) 
     return normalized_positive_values(shifted, "shifted composition");
 }
 
+std::vector<std::vector<double>> pressure_route_phase_amounts(
+    const std::vector<double>& variables,
+    int species_count
+) {
+    const int local_variable_count = species_count + 1;
+    require_size(
+        variables,
+        static_cast<std::size_t>(2 * local_variable_count + 1),
+        "fixed-temperature pressure route variable"
+    );
+    std::vector<std::vector<double>> phase_amounts(2, std::vector<double>(static_cast<std::size_t>(species_count)));
+    for (int phase = 0; phase < 2; ++phase) {
+        const int offset = phase * local_variable_count;
+        for (int species = 0; species < species_count; ++species) {
+            phase_amounts[static_cast<std::size_t>(phase)][static_cast<std::size_t>(species)] =
+                variables[static_cast<std::size_t>(offset + species)];
+        }
+    }
+    return phase_amounts;
+}
+
+std::vector<double> pressure_route_phase_volumes(const std::vector<double>& variables, int species_count) {
+    const int local_variable_count = species_count + 1;
+    require_size(
+        variables,
+        static_cast<std::size_t>(2 * local_variable_count + 1),
+        "fixed-temperature pressure route variable"
+    );
+    return {
+        variables[static_cast<std::size_t>(species_count)],
+        variables[static_cast<std::size_t>(local_variable_count + species_count)]
+    };
+}
+
+std::vector<double> summed_feed_amounts(const std::vector<std::vector<double>>& phase_amounts, int species_count) {
+    std::vector<double> feed_amounts(static_cast<std::size_t>(species_count), 0.0);
+    for (const auto& phase : phase_amounts) {
+        require_size(phase, static_cast<std::size_t>(species_count), "fixed-temperature pressure phase amount");
+        for (int species = 0; species < species_count; ++species) {
+            feed_amounts[static_cast<std::size_t>(species)] += phase[static_cast<std::size_t>(species)];
+        }
+    }
+    return feed_amounts;
+}
+
+double fixed_composition_norm(
+    const std::vector<std::vector<double>>& phase_amounts,
+    int fixed_phase_index,
+    const std::vector<double>& fixed_composition
+) {
+    const auto& fixed_amounts = phase_amounts[static_cast<std::size_t>(fixed_phase_index)];
+    const double total = std::accumulate(fixed_amounts.begin(), fixed_amounts.end(), 0.0);
+    require_positive_finite(total, "fixed-temperature pressure fixed-phase amount total");
+    double norm = 0.0;
+    for (std::size_t species = 0; species < fixed_composition.size(); ++species) {
+        norm = std::max(norm, std::abs(fixed_amounts[species] / total - fixed_composition[species]));
+    }
+    return norm;
+}
+
+double phase_total_norm(const std::vector<std::vector<double>>& phase_amounts) {
+    double norm = 0.0;
+    for (const auto& phase : phase_amounts) {
+        const double total = std::accumulate(phase.begin(), phase.end(), 0.0);
+        norm = std::max(norm, std::abs(total - 1.0));
+    }
+    return norm;
+}
+
 class NeutralFixedTemperaturePressureProblem final : public NlpProblem {
 public:
     NeutralFixedTemperaturePressureProblem(
@@ -151,7 +220,7 @@ public:
     }
 
     std::vector<double> constraints(const std::vector<double>& variables) const override {
-        const auto amounts = phase_amounts_from_variables(variables);
+        const auto amounts = pressure_route_phase_amounts(variables, species_count_);
         std::vector<double> out(static_cast<std::size_t>(constraint_count()), 0.0);
         int row = 0;
         const auto& fixed_amounts = amounts[static_cast<std::size_t>(fixed_phase_index_)];
@@ -252,38 +321,12 @@ private:
         return fixed_phase_index_ * local_variable_count() + species;
     }
 
-    std::vector<std::vector<double>> phase_amounts_from_variables(const std::vector<double>& variables) const {
-        require_size(variables, static_cast<std::size_t>(variable_count()), problem_name_ + " variable");
-        std::vector<std::vector<double>> amounts(
-            static_cast<std::size_t>(phase_count()),
-            std::vector<double>(static_cast<std::size_t>(species_count_), 0.0)
-        );
-        for (int phase = 0; phase < phase_count(); ++phase) {
-            const std::size_t offset = static_cast<std::size_t>(phase * local_variable_count());
-            for (int species = 0; species < species_count_; ++species) {
-                amounts[static_cast<std::size_t>(phase)][static_cast<std::size_t>(species)] =
-                    variables[offset + static_cast<std::size_t>(species)];
-            }
-        }
-        return amounts;
-    }
-
-    std::vector<double> volumes_from_variables(const std::vector<double>& variables) const {
-        require_size(variables, static_cast<std::size_t>(variable_count()), problem_name_ + " variable");
-        std::vector<double> volumes(static_cast<std::size_t>(phase_count()), 0.0);
-        for (int phase = 0; phase < phase_count(); ++phase) {
-            volumes[static_cast<std::size_t>(phase)] =
-                variables[static_cast<std::size_t>(phase * local_variable_count() + species_count_)];
-        }
-        return volumes;
-    }
-
     std::vector<EosPhaseBlockResult> phase_blocks(const std::vector<double>& variables) const {
         require_size(variables, static_cast<std::size_t>(variable_count()), problem_name_ + " variable");
         const double pressure = variables.back();
         require_positive_finite(pressure, problem_name_ + " pressure");
-        const auto amounts = phase_amounts_from_variables(variables);
-        const auto volumes = volumes_from_variables(variables);
+        const auto amounts = pressure_route_phase_amounts(variables, species_count_);
+        const auto volumes = pressure_route_phase_volumes(variables, species_count_);
         std::vector<EosPhaseBlockResult> blocks;
         blocks.reserve(static_cast<std::size_t>(phase_count()));
         for (int phase = 0; phase < phase_count(); ++phase) {
@@ -338,6 +381,112 @@ NeutralTwoPhaseEosNlpContract make_contract(const NeutralFixedTemperaturePressur
     return out;
 }
 
+NeutralTwoPhaseEosPostsolve fixed_temperature_pressure_postsolve(
+    const add_args& args,
+    double temperature,
+    double pressure,
+    const std::vector<std::vector<double>>& phase_amounts,
+    const std::vector<double>& volumes,
+    int fixed_phase_index,
+    const std::vector<double>& fixed_composition,
+    double phase_total_tolerance,
+    double pressure_tolerance,
+    double chemical_potential_tolerance,
+    double phase_distance_tolerance
+) {
+    NeutralTwoPhaseEosPostsolve out = evaluate_neutral_two_phase_eos_postsolve(
+        args,
+        temperature,
+        pressure,
+        phase_amounts,
+        volumes,
+        summed_feed_amounts(phase_amounts, static_cast<int>(fixed_composition.size())),
+        phase_total_tolerance,
+        pressure_tolerance,
+        chemical_potential_tolerance,
+        phase_distance_tolerance
+    );
+    out.fixed_composition_norm = fixed_composition_norm(phase_amounts, fixed_phase_index, fixed_composition);
+    out.phase_amount_total_norm = phase_total_norm(phase_amounts);
+    out.accepted = out.accepted
+        && out.fixed_composition_norm <= phase_total_tolerance
+        && out.phase_amount_total_norm <= phase_total_tolerance;
+    if (!out.accepted && out.phase_amount_total_norm > phase_total_tolerance) {
+        out.rejection_reason = "phase_amount_total";
+    } else if (!out.accepted && out.fixed_composition_norm > phase_total_tolerance) {
+        out.rejection_reason = "fixed_composition";
+    }
+    return out;
+}
+
+NeutralTwoPhaseEosRouteResult solve_pressure_route(
+    const add_args& args,
+    double temperature,
+    const std::vector<double>& fixed_composition,
+    int fixed_phase_index,
+    const std::string& problem_name,
+    const IpoptSolveOptions& options,
+    double phase_total_tolerance,
+    double pressure_tolerance,
+    double chemical_potential_tolerance,
+    double phase_distance_tolerance
+) {
+    const IpoptAdapterInfo adapter = native_ipopt_adapter_info();
+    NeutralTwoPhaseEosRouteResult out;
+    out.compiled = adapter.compiled;
+    out.adapter_available = adapter.adapter_available;
+    out.adapter_kind = adapter.adapter_kind;
+    out.hessian_strategy = adapter.hessian_strategy;
+    out.exact_gradient_required = adapter.exact_gradient_required;
+    out.exact_jacobian_required = adapter.exact_jacobian_required;
+    out.problem_name = problem_name;
+    if (!adapter.compiled) {
+        out.status = "requires_ipopt_build";
+        return out;
+    }
+
+    NeutralFixedTemperaturePressureProblem problem(
+        args,
+        temperature,
+        fixed_composition,
+        fixed_phase_index,
+        problem_name
+    );
+    const IpoptSolveResult solve = solve_ipopt_nlp(problem, options);
+    out.ran = solve.solver_ran;
+    out.solver_accepted = solve.accepted;
+    out.solver_status = solve.solver_status;
+    out.application_status = solve.application_status;
+    out.hessian_strategy = solve.hessian_strategy;
+    out.objective = solve.objective;
+    out.variables = solve.variables;
+    out.constraints = solve.constraints;
+    if (!solve.accepted) {
+        out.status = "solver_rejected";
+        return out;
+    }
+
+    const int species_count = problem.species_count();
+    out.phase_amounts = pressure_route_phase_amounts(solve.variables, species_count);
+    out.phase_volumes = pressure_route_phase_volumes(solve.variables, species_count);
+    out.postsolve = fixed_temperature_pressure_postsolve(
+        args,
+        temperature,
+        solve.variables.back(),
+        out.phase_amounts,
+        out.phase_volumes,
+        fixed_phase_index,
+        normalized_positive_values(fixed_composition, problem_name + " composition"),
+        phase_total_tolerance,
+        pressure_tolerance,
+        chemical_potential_tolerance,
+        phase_distance_tolerance
+    );
+    out.accepted = out.postsolve.accepted;
+    out.status = out.accepted ? "accepted" : "postsolve_rejected";
+    return out;
+}
+
 }  // namespace
 
 NeutralTwoPhaseEosNlpContract evaluate_neutral_bubble_p_eos_nlp_contract(
@@ -368,6 +517,54 @@ NeutralTwoPhaseEosNlpContract evaluate_neutral_dew_p_eos_nlp_contract(
         "neutral_dew_p_eos"
     );
     return make_contract(problem);
+}
+
+NeutralTwoPhaseEosRouteResult solve_neutral_bubble_p_eos_route(
+    const add_args& args,
+    double temperature,
+    const std::vector<double>& liquid_composition,
+    const IpoptSolveOptions& options,
+    double phase_total_tolerance,
+    double pressure_tolerance,
+    double chemical_potential_tolerance,
+    double phase_distance_tolerance
+) {
+    return solve_pressure_route(
+        args,
+        temperature,
+        liquid_composition,
+        0,
+        "neutral_bubble_p_eos",
+        options,
+        phase_total_tolerance,
+        pressure_tolerance,
+        chemical_potential_tolerance,
+        phase_distance_tolerance
+    );
+}
+
+NeutralTwoPhaseEosRouteResult solve_neutral_dew_p_eos_route(
+    const add_args& args,
+    double temperature,
+    const std::vector<double>& vapor_composition,
+    const IpoptSolveOptions& options,
+    double phase_total_tolerance,
+    double pressure_tolerance,
+    double chemical_potential_tolerance,
+    double phase_distance_tolerance
+) {
+    return solve_pressure_route(
+        args,
+        temperature,
+        vapor_composition,
+        1,
+        "neutral_dew_p_eos",
+        options,
+        phase_total_tolerance,
+        pressure_tolerance,
+        chemical_potential_tolerance,
+        phase_distance_tolerance
+    );
 }
 
 }  // namespace epcsaft::native::equilibrium_nlp

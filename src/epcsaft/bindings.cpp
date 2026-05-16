@@ -615,6 +615,8 @@ py::dict neutral_two_phase_eos_postsolve_to_dict(
     out["material_balance_norm"] = result.material_balance_norm;
     out["pressure_consistency_norm"] = result.pressure_consistency_norm;
     out["chemical_potential_consistency_norm"] = result.chemical_potential_consistency_norm;
+    out["fixed_composition_norm"] = result.fixed_composition_norm;
+    out["phase_amount_total_norm"] = result.phase_amount_total_norm;
     out["phase_distance"] = result.phase_distance;
     out["objective"] = result.objective;
     out["constraints"] = result.constraints;
@@ -1637,6 +1639,68 @@ PYBIND11_MODULE(_core, m) {
                 feed_amounts,
                 options,
                 material_tolerance,
+                pressure_tolerance,
+                chemical_potential_tolerance,
+                phase_distance_tolerance
+            )
+        );
+    });
+    m.def("_native_neutral_bubble_p_eos_route_result", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        const std::vector<double>& liquid_composition,
+        int max_iterations,
+        double tolerance,
+        double phase_total_tolerance,
+        double pressure_tolerance,
+        double chemical_potential_tolerance,
+        double phase_distance_tolerance
+    ) {
+        if (!mixture) {
+            throw ValueError("Neutral bubble pressure EOS route result requires a native mixture.");
+        }
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options;
+        options.max_iterations = max_iterations;
+        options.tolerance = tolerance;
+        options.acceptable_tolerance = std::max(tolerance * 100.0, 1.0e-10);
+        return neutral_two_phase_eos_route_result_to_dict(
+            epcsaft::native::equilibrium_nlp::solve_neutral_bubble_p_eos_route(
+                mixture->args(),
+                temperature,
+                liquid_composition,
+                options,
+                phase_total_tolerance,
+                pressure_tolerance,
+                chemical_potential_tolerance,
+                phase_distance_tolerance
+            )
+        );
+    });
+    m.def("_native_neutral_dew_p_eos_route_result", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        const std::vector<double>& vapor_composition,
+        int max_iterations,
+        double tolerance,
+        double phase_total_tolerance,
+        double pressure_tolerance,
+        double chemical_potential_tolerance,
+        double phase_distance_tolerance
+    ) {
+        if (!mixture) {
+            throw ValueError("Neutral dew pressure EOS route result requires a native mixture.");
+        }
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options;
+        options.max_iterations = max_iterations;
+        options.tolerance = tolerance;
+        options.acceptable_tolerance = std::max(tolerance * 100.0, 1.0e-10);
+        return neutral_two_phase_eos_route_result_to_dict(
+            epcsaft::native::equilibrium_nlp::solve_neutral_dew_p_eos_route(
+                mixture->args(),
+                temperature,
+                vapor_composition,
+                options,
+                phase_total_tolerance,
                 pressure_tolerance,
                 chemical_potential_tolerance,
                 phase_distance_tolerance

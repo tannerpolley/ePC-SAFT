@@ -497,6 +497,12 @@ phase, unit phase-amount scaling rows, pressure-consistency rows with exact pres
 deterministic initial point. These contracts are not public accepted routes yet; public bubble/dew methods remain
 native-Ipopt route-gated until a full accepted solve and postsolve proof exists.
 
+Task 8 continuation note: the private fixed-temperature bubble/dew pressure contracts now have route-result plumbing
+through the generic native Ipopt adapter. Local no-Ipopt builds return the explicit `requires_ipopt_build` gate, while
+Ipopt-enabled builds can submit the exact-gradient/exact-Jacobian NLP and then apply postsolve checks for fixed
+composition, phase amount scaling, pressure consistency, chemical-potential consistency, and phase distance. Public
+bubble/dew methods remain route-gated until accepted result translation is implemented and proven.
+
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
 **Files:**

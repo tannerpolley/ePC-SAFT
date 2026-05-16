@@ -181,6 +181,59 @@ def test_neutral_fixed_temperature_pressure_route_contract_pins_specified_phase(
     assert jacobian[-1, pressure_col] == pytest.approx(-1.0)
 
 
+@pytest.mark.parametrize(
+    ("binding_name", "problem_name"),
+    [
+        ("_native_neutral_bubble_p_eos_route_result", "neutral_bubble_p_eos"),
+        ("_native_neutral_dew_p_eos_route_result", "neutral_dew_p_eos"),
+    ],
+)
+def test_neutral_fixed_temperature_pressure_route_result_uses_ipopt_adapter_gate(
+    binding_name: str,
+    problem_name: str,
+) -> None:
+    mix = _neutral_binary_mixture()
+    payload = getattr(_core, binding_name)(
+        mix._native,
+        300.0,
+        [0.35, 0.65],
+        30,
+        1.0e-8,
+        1.0e-7,
+        1.0e-5,
+        1.0e-7,
+        1.0e-4,
+    )
+
+    assert payload["backend"] == "ipopt"
+    assert payload["problem_name"] == problem_name
+    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["exact_gradient_required"] is True
+    assert payload["exact_jacobian_required"] is True
+    if not payload["compiled"]:
+        assert payload["ran"] is False
+        assert payload["solver_accepted"] is False
+        assert payload["accepted"] is False
+        assert payload["status"] == "requires_ipopt_build"
+        assert payload["phase_amounts"] == []
+        assert payload["phase_volumes"] == []
+        assert "fixed_composition_norm" in payload["postsolve"]
+        assert "phase_amount_total_norm" in payload["postsolve"]
+        return
+
+    assert payload["ran"] is True
+    if not payload["solver_accepted"]:
+        assert payload["accepted"] is False
+        assert payload["status"] == "solver_rejected"
+        return
+
+    assert np.asarray(payload["variables"], dtype=float).shape == (7,)
+    assert np.asarray(payload["phase_amounts"], dtype=float).shape == (2, 2)
+    assert np.asarray(payload["phase_volumes"], dtype=float).shape == (2,)
+    assert payload["postsolve"]["derivative_backend"] == "analytic_cppad"
+    assert payload["status"] in {"accepted", "solver_rejected", "postsolve_rejected"}
+
+
 def test_neutral_two_phase_eos_route_result_translates_solver_and_postsolve() -> None:
     mix = _neutral_binary_mixture()
     temperature = 300.0

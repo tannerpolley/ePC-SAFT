@@ -39,6 +39,8 @@ struct NeutralTwoPhaseEosPostsolve {
     double material_balance_norm = 0.0;
     double pressure_consistency_norm = 0.0;
     double chemical_potential_consistency_norm = 0.0;
+    double fixed_composition_norm = 0.0;
+    double phase_amount_total_norm = 0.0;
     double phase_distance = 0.0;
     double objective = 0.0;
     std::vector<double> constraints;
@@ -162,6 +164,28 @@ NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_lle_route(
     const std::vector<double>& feed_amounts,
     const IpoptSolveOptions& options,
     double material_tolerance,
+    double pressure_tolerance,
+    double chemical_potential_tolerance,
+    double phase_distance_tolerance
+);
+
+NeutralTwoPhaseEosRouteResult solve_neutral_bubble_p_eos_route(
+    const add_args& args,
+    double temperature,
+    const std::vector<double>& liquid_composition,
+    const IpoptSolveOptions& options,
+    double phase_total_tolerance,
+    double pressure_tolerance,
+    double chemical_potential_tolerance,
+    double phase_distance_tolerance
+);
+
+NeutralTwoPhaseEosRouteResult solve_neutral_dew_p_eos_route(
+    const add_args& args,
+    double temperature,
+    const std::vector<double>& vapor_composition,
+    const IpoptSolveOptions& options,
+    double phase_total_tolerance,
     double pressure_tolerance,
     double chemical_potential_tolerance,
     double phase_distance_tolerance
