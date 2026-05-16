@@ -281,21 +281,6 @@ std::vector<double> explicit_to_formula(const std::vector<double>& composition, 
     return clip_normalize(values, 1.0e-300);
 }
 
-std::vector<double> indices_to_double_vector(const std::vector<int>& indices) {
-    std::vector<double> out;
-    out.reserve(indices.size());
-    for (int index : indices) {
-        out.push_back(static_cast<double>(index));
-    }
-    return out;
-}
-
-std::vector<int> charged_indices_from_basis(const ElectrolyteBasisNative& basis) {
-    std::vector<int> out = basis.cation_indices;
-    out.insert(out.end(), basis.anion_indices.begin(), basis.anion_indices.end());
-    return out;
-}
-
 std::vector<double> electrolyte_basis_vectors_row_major(const ElectrolyteBasisNative& basis, std::size_t ncomp) {
     std::vector<double> out(basis.salt_pairs.size() * ncomp, 0.0);
     for (std::size_t row = 0; row < basis.salt_pairs.size(); ++row) {
@@ -304,58 +289,6 @@ std::vector<double> electrolyte_basis_vectors_row_major(const ElectrolyteBasisNa
         out[row * ncomp + static_cast<std::size_t>(pair.anion)] = static_cast<double>(pair.anion_stoich);
     }
     return out;
-}
-
-std::vector<double> salt_pair_field_vector(const ElectrolyteBasisNative& basis, const std::string& field) {
-    std::vector<double> out;
-    out.reserve(basis.salt_pairs.size());
-    for (const auto& pair : basis.salt_pairs) {
-        if (field == "cation") {
-            out.push_back(static_cast<double>(pair.cation));
-        } else if (field == "anion") {
-            out.push_back(static_cast<double>(pair.anion));
-        } else if (field == "cation_stoich") {
-            out.push_back(static_cast<double>(pair.cation_stoich));
-        } else if (field == "anion_stoich") {
-            out.push_back(static_cast<double>(pair.anion_stoich));
-        }
-    }
-    return out;
-}
-
-void add_electrolyte_basis_diagnostics(
-    EquilibriumResultNative& result,
-    const ElectrolyteBasisNative& basis,
-    std::size_t ncomp
-) {
-    result.diagnostics_string["basis_model"] = "charge_neutral_salt_pair_coordinates";
-    result.diagnostics_string["basis_vector_model"] = "salt_pair_stoichiometry_rows_by_public_species";
-    result.diagnostics_int["basis_rank"] = basis.basis_rank;
-    result.diagnostics_int["explicit_species_count"] = static_cast<int>(ncomp);
-    result.diagnostics_int["neutral_species_count"] = static_cast<int>(basis.neutral_indices.size());
-    result.diagnostics_int["charged_species_count"] = static_cast<int>(basis.cation_indices.size() + basis.anion_indices.size());
-    result.diagnostics_int["cation_species_count"] = static_cast<int>(basis.cation_indices.size());
-    result.diagnostics_int["anion_species_count"] = static_cast<int>(basis.anion_indices.size());
-    result.diagnostics_int["salt_pair_count"] = static_cast<int>(basis.salt_pairs.size());
-    result.diagnostics_int["formula_variable_count"] = static_cast<int>(basis.formula_feed.size());
-    result.diagnostics_int["transformed_variable_count"] = static_cast<int>(basis.formula_feed.size());
-    result.diagnostics_int["basis_vector_rows"] = static_cast<int>(basis.salt_pairs.size());
-    result.diagnostics_int["basis_vector_cols"] = static_cast<int>(ncomp);
-    result.diagnostics_bool["phase_charge_enforced_by_basis"] = true;
-    result.diagnostics_bool["material_balance_enforced_by_formula_transform"] = true;
-    result.diagnostics_bool["formula_phase_positivity_enforced_by_transform"] = true;
-    result.diagnostics_bool["explicit_public_species_reported"] = true;
-    result.diagnostics_vector["neutral_species_indices"] = indices_to_double_vector(basis.neutral_indices);
-    result.diagnostics_vector["cation_species_indices"] = indices_to_double_vector(basis.cation_indices);
-    result.diagnostics_vector["anion_species_indices"] = indices_to_double_vector(basis.anion_indices);
-    result.diagnostics_vector["charged_species_indices"] = indices_to_double_vector(charged_indices_from_basis(basis));
-    result.diagnostics_vector["species_charge_vector"] = basis.species_charges;
-    result.diagnostics_vector["formula_feed"] = basis.formula_feed;
-    result.diagnostics_vector["salt_pair_cation_indices"] = salt_pair_field_vector(basis, "cation");
-    result.diagnostics_vector["salt_pair_anion_indices"] = salt_pair_field_vector(basis, "anion");
-    result.diagnostics_vector["salt_pair_cation_stoich"] = salt_pair_field_vector(basis, "cation_stoich");
-    result.diagnostics_vector["salt_pair_anion_stoich"] = salt_pair_field_vector(basis, "anion_stoich");
-    result.diagnostics_vector["basis_vectors_row_major"] = electrolyte_basis_vectors_row_major(basis, ncomp);
 }
 
 double electrolyte_gibbs_proxy(const std::vector<double>& composition, const PhaseStateNative& state) {

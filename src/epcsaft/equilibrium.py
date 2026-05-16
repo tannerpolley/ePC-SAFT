@@ -1050,47 +1050,6 @@ def _json_like(value: Any) -> Any:
     return value
 
 
-def _options_to_native_dict(options: EquilibriumOptions) -> dict[str, Any]:
-    return {
-        "max_iterations": int(options.max_iterations),
-        "tolerance": float(options.tolerance),
-        "min_composition": float(options.min_composition),
-        "include_phase_diagnostics": bool(options.include_phase_diagnostics),
-        "stability_precheck": bool(options.stability_precheck),
-        "density_diagnostics": str(options.density_diagnostics),
-        "experimental_coupled_density_lle": bool(options.experimental_coupled_density_lle),
-        "jacobian_backend": str(options.jacobian_backend),
-        "solver_backend": str(options.solver_backend),
-        "timeout_seconds": None if options.timeout_seconds is None else float(options.timeout_seconds),
-        "max_seed_attempts": None if options.max_seed_attempts is None else int(options.max_seed_attempts),
-        "max_density_failures": None if options.max_density_failures is None else int(options.max_density_failures),
-        "max_total_objective_evaluations": (
-            None if options.max_total_objective_evaluations is None else int(options.max_total_objective_evaluations)
-        ),
-    }
-
-
-def _add_legacy_option_diagnostics(diagnostics: dict[str, Any], options: EquilibriumOptions) -> None:
-    diagnostics.setdefault("ignored_legacy_options", list(options.ignored_legacy_options))
-    diagnostics.setdefault("density_diagnostics_mode", str(options.density_diagnostics))
-    diagnostics.setdefault("experimental_coupled_density_lle", bool(options.experimental_coupled_density_lle))
-    diagnostics.setdefault("requested_solver_backend", str(options.solver_backend))
-    diagnostics.setdefault("selected_solver_backend", "native")
-    diagnostics.setdefault(
-        "solver_selection_reason", "transitional_private_native_route"
-    )
-    diagnostics.setdefault("default_auto_uses_ipopt", False)
-    diagnostics.setdefault("density_failure_count", 0)
-    diagnostics.setdefault("density_failure_contexts", [])
-    diagnostics.setdefault("density_scan_summary", {})
-    diagnostics.setdefault("density_candidate_roots", [])
-    diagnostics.setdefault("density_best_near_root", {})
-    diagnostics.setdefault("density_best_candidate_refinement_used", False)
-    diagnostics.setdefault("density_best_candidate_rejection_reason", "")
-    diagnostics.setdefault("density_warm_start_source", "")
-    diagnostics.setdefault("density_validity_gate", "not_evaluated")
-
-
 def reactive_phase_equilibrium(
     mixture: Any,
     *,

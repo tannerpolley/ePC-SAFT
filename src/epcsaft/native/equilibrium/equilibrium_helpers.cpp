@@ -77,25 +77,6 @@ double phase_distance(const std::vector<double>& a, const std::vector<double>& b
     return out;
 }
 
-double split_distance_tolerance(const EquilibriumOptionsNative& options) {
-    return std::max(1.0e-8, 100.0 * options.min_composition);
-}
-
-std::vector<double> composition_from_log_weights(const std::vector<double>& log_weights, double min_composition) {
-    double largest = *std::max_element(log_weights.begin(), log_weights.end());
-    std::vector<double> weights(log_weights.size(), 0.0);
-    for (std::size_t i = 0; i < log_weights.size(); ++i) {
-        weights[i] = std::exp(std::max(-700.0, std::min(700.0, log_weights[i] - largest)));
-    }
-    return clip_normalize(weights, min_composition);
-}
-
-std::vector<double> component_rich_composition(std::size_t ncomp, std::size_t rich_index, double min_composition) {
-    std::vector<double> composition(ncomp, min_composition);
-    composition[rich_index] = std::max(min_composition, 1.0 - min_composition * static_cast<double>(ncomp - 1));
-    return clip_normalize(composition, min_composition);
-}
-
 double composition_charge(const std::vector<double>& composition, const std::vector<double>& charges) {
     double out = 0.0;
     for (std::size_t i = 0; i < composition.size(); ++i) {
@@ -110,11 +91,6 @@ double l2_norm(const std::vector<double>& values) {
         sum += value * value;
     }
     return std::sqrt(sum);
-}
-
-std::vector<double> damping_schedule(double damping) {
-    double start = std::max(1.0e-6, std::min(1.0, damping));
-    return {start, start * 0.5, start * 0.25, start * 0.1, start * 0.05, start * 0.01, start * 0.001};
 }
 
 }  // namespace epcsaft::native::equilibrium

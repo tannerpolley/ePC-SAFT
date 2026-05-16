@@ -512,7 +512,6 @@ def capabilities() -> dict[str, object]:
                 "backend": "native_ipopt_equilibrium_nlp_required",
                 "methods": ["tp_flash", "flash_tp"],
                 "status": "route_pending",
-                "previous_solver_disabled": "native_tp_flash_route",
                 "ipopt_formulation": "thermodynamic_constrained_nlp",
             },
             "neutral_lle_flash": {
@@ -520,7 +519,6 @@ def capabilities() -> dict[str, object]:
                 "backend": "native_ipopt_equilibrium_nlp_required",
                 "methods": ["lle_flash", "lle_tp"],
                 "status": "route_pending",
-                "previous_solver_disabled": "ceres_residual_lle_route",
                 "ipopt_formulation": "thermodynamic_constrained_nlp",
             },
             "neutral_stability": {
@@ -528,7 +526,6 @@ def capabilities() -> dict[str, object]:
                 "backend": "native_ipopt_equilibrium_nlp_required",
                 "methods": ["stability", "stability_tp"],
                 "status": "route_pending",
-                "previous_solver_disabled": "native_tpd_stability_route",
                 "ipopt_formulation": "thermodynamic_constrained_nlp",
             },
             "neutral_bubble_dew": {
@@ -542,7 +539,6 @@ def capabilities() -> dict[str, object]:
                 "backend": "native_ipopt_equilibrium_nlp_required",
                 "methods": ["electrolyte_lle", "electrolyte_lle_tp"],
                 "status": "route_pending",
-                "previous_solver_disabled": "ceres_residual_electrolyte_lle_route",
                 "solver_backends": ["auto", "ipopt"],
                 "ipopt_available": bool(ipopt["available"]),
                 "explicit_ipopt_request": "raises_until_native_route_is_implemented",
@@ -555,7 +551,6 @@ def capabilities() -> dict[str, object]:
                 "backend": "native_ipopt_equilibrium_nlp_required",
                 "methods": ["electrolyte_stability", "electrolyte_stability_tp"],
                 "status": "route_pending",
-                "previous_solver_disabled": "native_tpd_electrolyte_stability_route",
                 "ipopt_formulation": "thermodynamic_constrained_nlp",
             },
             "electrolyte_bubble_pressure": {
@@ -576,7 +571,6 @@ def capabilities() -> dict[str, object]:
                 "methods": ["reactive_lle", "reactive_electrolyte_lle"],
                 "problem_class": "ReactivePhaseEquilibriumProblem",
                 "status": "route_pending",
-                "previous_solver_disabled": "ceres_coupled_residual_route",
                 "reaction_semantics": "reaction residuals support both per-phase same-stoichiometry reactions and phase-tagged cross-phase quotients",
                 "supported_reaction_scopes": ["same_phase_activity_reaction", "phase_tagged_cross_phase_quotient"],
                 "unsupported_reaction_scopes": [],
@@ -591,7 +585,6 @@ def capabilities() -> dict[str, object]:
                 "available": ipopt_route_available,
                 "backend": "native_ipopt_equilibrium_nlp_required",
                 "status": "available" if ipopt_route_available else "route_pending",
-                "previous_solver_disabled": "native_chemical_equilibrium_residual_route",
                 "sweep_available": ipopt_route_available,
                 "continuation_state_available": ipopt_route_available,
                 "activity_output_modes": ["auto", "always", "never"],

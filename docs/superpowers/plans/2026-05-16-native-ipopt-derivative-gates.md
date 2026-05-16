@@ -406,7 +406,7 @@ Task 8 continuation note: obsolete public candidate fallback controls and diagno
 
 Task 8 continuation note: the public `EquilibriumOptions.hessian_strategy` knob was removed. Hessian choices are now native solver-internal details only, consistent with the gate that allows Ipopt limited-memory and Ceres Gauss-Newton behavior without reporting them as package derivative backends.
 
-Task 8 continuation note: `EquilibriumOptions` no longer exposes the public `damping` control. Public equilibrium callers can no longer tune old manual damping behavior; remaining native damping code is transitional implementation debt until the Ipopt route builders replace those paths.
+Task 8 continuation note: `EquilibriumOptions` no longer exposes the public `damping` control. Public equilibrium callers can no longer tune old manual damping behavior, and native equilibrium residual request parsing no longer carries a damping field.
 
 Task 8 continuation note: public neutral bubble/dew scalar solve paths were removed from accepted public execution. The public methods remain declared, validate inputs, and fail loudly until native Ipopt route builders own those production solves.
 
@@ -446,6 +446,8 @@ Task 9 continuation note: the Python reactive-phase diagnostics no longer call N
 Task 9 continuation note: public coupled reactive LLE and reactive electrolyte LLE no longer execute the transitional Ceres coupled residual route. Public `ReactivePhaseEquilibriumProblem` and `mixture.equilibrium(kind="reactive_lle" | "reactive_electrolyte_lle")` validate requests and raise until native Ipopt reactive phase-equilibrium route builders own those solves; the lower-level native residual surface remains diagnostic/private coverage.
 
 Task 9 continuation note: private tests that asserted accepted Ceres equilibrium solves for electrolyte LLE, neutral associating LLE, and coupled reactive phase equilibrium were deleted. Remaining native coverage for these transitional surfaces is limited to residual/Jacobian evaluators and public route-gate tests until native Ipopt NLP builders own accepted equilibrium solves.
+
+Task 9 continuation note: the unbound native coupled reactive phase Ceres solve implementation and pybind entrypoint were deleted. The retained native surface is residual/Jacobian evaluation only, with solver diagnostics labeled `residual_surface_only`.
 
 ### Task 10: Make Regression Ceres-Only
 

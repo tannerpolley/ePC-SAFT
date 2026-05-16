@@ -8,58 +8,8 @@
 #include "epcsaft_electrolyte.h"
 
 struct EquilibriumOptionsNative {
-    int max_iterations = 80;
-    double tolerance = 1.0e-6;
-    double damping = 0.5;
     double min_composition = 1.0e-12;
-    bool include_phase_diagnostics = false;
-    bool stability_precheck = true;
-    std::string density_diagnostics = "auto";
-    bool experimental_coupled_density_lle = false;
     std::string jacobian_backend = "auto";
-    double timeout_seconds = 0.0;
-    int max_seed_attempts = 0;
-    int max_density_failures = 0;
-    int max_total_objective_evaluations = 0;
-};
-
-struct EquilibriumPhaseNative {
-    std::string label;
-    std::vector<double> composition;
-    double density = 0.0;
-    double temperature = 0.0;
-    double pressure = 0.0;
-    double phase_fraction = 0.0;
-    std::vector<double> ln_fugacity_coefficient;
-    std::map<std::string, double> diagnostics_double;
-    std::map<std::string, std::string> diagnostics_string;
-};
-
-struct EquilibriumAttemptDiagnosticsNative {
-    std::string seed_name;
-    std::string rejection_reason;
-    double beta_org = 0.0;
-    double phase_distance = 0.0;
-    double solver_residual_norm = 0.0;
-    double material_balance_error = 0.0;
-    double charge_balance_error = 0.0;
-    double gibbs_delta = 0.0;
-    int iterations = 0;
-};
-
-struct EquilibriumResultNative {
-    std::string backend;
-    std::string problem_kind;
-    std::vector<EquilibriumPhaseNative> phases;
-    bool stable = false;
-    bool split_detected = false;
-    std::map<std::string, double> diagnostics_double;
-    std::map<std::string, int> diagnostics_int;
-    std::map<std::string, bool> diagnostics_bool;
-    std::map<std::string, std::string> diagnostics_string;
-    std::map<std::string, std::vector<double>> diagnostics_vector;
-    std::vector<EquilibriumAttemptDiagnosticsNative> attempt_diagnostics;
-    std::vector<DensitySolveDiagnostics> density_diagnostics;
 };
 
 struct ElectrolyteLLEResidualEvaluationNative {
@@ -157,25 +107,6 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     const std::vector<double>& reaction_phase_stoichiometry_row_major = {},
     const std::vector<double>& variables = {},
     bool has_variables = false,
-    const std::vector<double>& initial_phase1 = {},
-    const std::vector<double>& initial_phase2 = {},
-    double initial_phase_fraction_phase2 = 0.5,
-    bool has_initial_phases = false
-);
-EquilibriumResultNative reactive_phase_equilibrium_native(
-    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
-    double t,
-    double p,
-    const std::vector<double>& feed,
-    const EquilibriumOptionsNative& options,
-    const std::vector<double>& balance_matrix_row_major,
-    int balance_rows,
-    const std::vector<double>& total_vector,
-    const std::vector<double>& reaction_stoichiometry_row_major,
-    int reaction_rows,
-    const std::vector<double>& log_equilibrium_constants,
-    const std::vector<int>& reaction_standard_states,
-    const std::vector<double>& reaction_phase_stoichiometry_row_major = {},
     const std::vector<double>& initial_phase1 = {},
     const std::vector<double>& initial_phase2 = {},
     double initial_phase_fraction_phase2 = 0.5,

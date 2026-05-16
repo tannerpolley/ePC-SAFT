@@ -2,12 +2,6 @@
 
 #include "equilibrium_helpers.h"
 
-#ifdef EPCSAFT_HAS_CERES
-#include <ceres/cost_function.h>
-#include <ceres/problem.h>
-#include <ceres/solver.h>
-#endif
-
 #include <algorithm>
 #include <cmath>
 #include <numeric>
@@ -29,7 +23,6 @@ using epcsaft::native::equilibrium::l2_norm;
 using epcsaft::native::equilibrium::max_abs;
 using epcsaft::native::equilibrium::normalize_feed;
 using epcsaft::native::equilibrium::phase_distance;
-using epcsaft::native::equilibrium::split_distance_tolerance;
 
 constexpr int STANDARD_STATE_MOLE_FRACTION_ACTIVITY = 0;
 constexpr int STANDARD_STATE_IDEAL_MOLE_FRACTION = 1;
@@ -351,24 +344,6 @@ std::vector<double> neutral_phase_residuals(
     return residual;
 }
 
-bool composition_vector_physical(const std::vector<double>& composition, double tolerance) {
-    if (composition.empty()) {
-        return false;
-    }
-    double sum = 0.0;
-    for (double value : composition) {
-        if (!std::isfinite(value) || value < -tolerance) {
-            return false;
-        }
-        sum += value;
-    }
-    return std::isfinite(sum) && std::abs(sum - 1.0) <= tolerance;
-}
-
-bool density_physical(double density) {
-    return std::isfinite(density) && density > 0.0;
-}
-
 std::vector<double> ionic_phase_residuals(
     const std::vector<double>& charges,
     const std::vector<double>& ln_activity1,
@@ -660,108 +635,6 @@ void validate_jacobian_backend(const EquilibriumOptionsNative& options) {
     throw ValueError("reactive phase jacobian_backend must be auto, analytic, or cppad.");
 }
 
-#ifdef EPCSAFT_HAS_CERES
-std::string ceres_termination_type_name_reactive(ceres::TerminationType type) {
-    switch (type) {
-        case ceres::CONVERGENCE:
-            return "convergence";
-        case ceres::NO_CONVERGENCE:
-            return "no_convergence";
-        case ceres::FAILURE:
-            return "failure";
-        case ceres::USER_SUCCESS:
-            return "user_success";
-        case ceres::USER_FAILURE:
-            return "user_failure";
-        default:
-            return "unknown";
-    }
-}
-
-class ReactivePhaseEquilibriumCostFunction final : public ceres::CostFunction {
-public:
-    ReactivePhaseEquilibriumCostFunction(
-        std::shared_ptr<ePCSAFTMixtureNative> mixture,
-        double t,
-        double p,
-        std::vector<double> feed,
-        EquilibriumOptionsNative options,
-        std::vector<double> balance_matrix,
-        int balance_rows,
-        std::vector<double> total_vector,
-        std::vector<double> reaction_stoichiometry,
-        int reaction_rows,
-        std::vector<double> log_equilibrium_constants,
-        std::vector<int> reaction_standard_states,
-        std::vector<double> reaction_phase_stoichiometry,
-        int residual_size,
-        int variable_count
-    )
-        : mixture_(std::move(mixture)),
-          t_(t),
-          p_(p),
-          feed_(std::move(feed)),
-          options_(std::move(options)),
-          balance_matrix_(std::move(balance_matrix)),
-          balance_rows_(balance_rows),
-          total_vector_(std::move(total_vector)),
-          reaction_stoichiometry_(std::move(reaction_stoichiometry)),
-          reaction_rows_(reaction_rows),
-          log_equilibrium_constants_(std::move(log_equilibrium_constants)),
-          reaction_standard_states_(std::move(reaction_standard_states)),
-          reaction_phase_stoichiometry_(std::move(reaction_phase_stoichiometry)) {
-        set_num_residuals(residual_size);
-        mutable_parameter_block_sizes()->push_back(variable_count);
-    }
-
-    bool Evaluate(double const* const* parameters, double* residuals, double** jacobians) const override {
-        std::vector<double> variables(parameters[0], parameters[0] + parameter_block_sizes()[0]);
-        ReactivePhaseResidualEvaluationNative eval = evaluate_reactive_phase_equilibrium_residual_native(
-            mixture_,
-            t_,
-            p_,
-            feed_,
-            options_,
-            balance_matrix_,
-            balance_rows_,
-            total_vector_,
-            reaction_stoichiometry_,
-            reaction_rows_,
-            log_equilibrium_constants_,
-            reaction_standard_states_,
-            reaction_phase_stoichiometry_,
-            variables,
-            true
-        );
-        for (std::size_t i = 0; i < eval.residual.size(); ++i) {
-            residuals[i] = eval.residual[i];
-        }
-        if (jacobians != nullptr && jacobians[0] != nullptr) {
-            if (eval.jacobian_row_major.size() != eval.residual.size() * variables.size()) {
-                return false;
-            }
-            std::copy(eval.jacobian_row_major.begin(), eval.jacobian_row_major.end(), jacobians[0]);
-        }
-        return true;
-    }
-
-private:
-    std::shared_ptr<ePCSAFTMixtureNative> mixture_;
-    double t_;
-    double p_;
-    std::vector<double> feed_;
-    EquilibriumOptionsNative options_;
-    std::vector<double> balance_matrix_;
-    int balance_rows_;
-    std::vector<double> total_vector_;
-    std::vector<double> reaction_stoichiometry_;
-    int reaction_rows_;
-    std::vector<double> log_equilibrium_constants_;
-    std::vector<int> reaction_standard_states_;
-    std::vector<double> reaction_phase_stoichiometry_;
-};
-#endif
-
 }  // namespace
 
 ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residual_native(
@@ -941,7 +814,7 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
         ? "element_balance,phase_tagged_reaction_equilibrium,neutral_phase_equilibrium,ionic_equilibrium,phase_charge"
         : "element_balance,reaction_equilibrium,neutral_phase_equilibrium,ionic_equilibrium,phase_charge";
     out.diagnostics_string["solver_backend"] = "residual_surface_only";
-    out.diagnostics_string["solver_method"] = "not_started_until_ceres_slice";
+    out.diagnostics_string["solver_method"] = "residual_surface_only";
     out.diagnostics_string["jacobian_backend"] = "cppad_implicit";
     out.diagnostics_string["derivative_backend"] = "cppad_implicit";
     out.diagnostics_string["coupling_level"] = "single_native_residual_state";
@@ -959,7 +832,6 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     out.diagnostics_bool["cross_phase_reaction_residuals"] = phase_tagged_reactions;
     out.diagnostics_bool["nonnegative_amounts_enforced_by_transform"] = true;
     out.diagnostics_bool["composition_normalization_enforced_by_transform"] = true;
-    out.diagnostics_bool["ceres_accepted_solve"] = false;
     out.diagnostics_int["phase_count"] = 2;
     out.diagnostics_int["component_count"] = static_cast<int>(ncomp);
     out.diagnostics_int["reaction_count"] = reaction_rows;
@@ -1002,307 +874,4 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     );
     out.diagnostics_vector["reaction_standard_state_codes"] = out.diagnostics_vector["reaction_standard_states"];
     return out;
-}
-
-EquilibriumResultNative reactive_phase_equilibrium_native(
-    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
-    double t,
-    double p,
-    const std::vector<double>& raw_feed,
-    const EquilibriumOptionsNative& options,
-    const std::vector<double>& balance_matrix_row_major,
-    int balance_rows,
-    const std::vector<double>& total_vector,
-    const std::vector<double>& reaction_stoichiometry_row_major,
-    int reaction_rows,
-    const std::vector<double>& log_equilibrium_constants,
-    const std::vector<int>& reaction_standard_states,
-    const std::vector<double>& reaction_phase_stoichiometry_row_major,
-    const std::vector<double>& initial_phase1,
-    const std::vector<double>& initial_phase2,
-    double initial_phase_fraction_phase2,
-    bool has_initial_phases
-) {
-#ifndef EPCSAFT_HAS_CERES
-    (void)mixture;
-    (void)t;
-    (void)p;
-    (void)raw_feed;
-    (void)options;
-    (void)balance_matrix_row_major;
-    (void)balance_rows;
-    (void)total_vector;
-    (void)reaction_stoichiometry_row_major;
-    (void)reaction_rows;
-    (void)log_equilibrium_constants;
-    (void)reaction_standard_states;
-    (void)reaction_phase_stoichiometry_row_major;
-    (void)initial_phase1;
-    (void)initial_phase2;
-    (void)initial_phase_fraction_phase2;
-    (void)has_initial_phases;
-    throw ValueError("Ceres support is required for native reactive phase-equilibrium solve.");
-#else
-    EquilibriumOptionsNative solve_options = options;
-    solve_options.jacobian_backend = "cppad";
-    ReactivePhaseResidualEvaluationNative initial = evaluate_reactive_phase_equilibrium_residual_native(
-        mixture,
-        t,
-        p,
-        raw_feed,
-        solve_options,
-        balance_matrix_row_major,
-        balance_rows,
-        total_vector,
-        reaction_stoichiometry_row_major,
-        reaction_rows,
-        log_equilibrium_constants,
-        reaction_standard_states,
-        reaction_phase_stoichiometry_row_major,
-        {},
-        false,
-        initial_phase1,
-        initial_phase2,
-        initial_phase_fraction_phase2,
-        has_initial_phases
-    );
-    std::vector<double> variables = initial.variables;
-    ceres::Problem problem;
-    auto* cost = new ReactivePhaseEquilibriumCostFunction(
-        mixture,
-        t,
-        p,
-        raw_feed,
-        solve_options,
-        balance_matrix_row_major,
-        balance_rows,
-        total_vector,
-        reaction_stoichiometry_row_major,
-        reaction_rows,
-        log_equilibrium_constants,
-        reaction_standard_states,
-        reaction_phase_stoichiometry_row_major,
-        static_cast<int>(initial.residual.size()),
-        static_cast<int>(variables.size())
-    );
-    problem.AddResidualBlock(cost, nullptr, variables.data());
-    ceres::Solver::Options ceres_options;
-    ceres_options.linear_solver_type = ceres::DENSE_QR;
-    ceres_options.max_num_iterations = options.max_iterations;
-    ceres_options.minimizer_progress_to_stdout = false;
-    ceres_options.logging_type = ceres::SILENT;
-    ceres_options.function_tolerance = std::min(1.0e-12, std::max(1.0e-18, options.tolerance * options.tolerance));
-    ceres_options.gradient_tolerance = std::min(1.0e-10, std::max(1.0e-14, options.tolerance));
-    ceres_options.parameter_tolerance = std::min(1.0e-10, std::max(1.0e-14, options.tolerance));
-    ceres::Solver::Summary summary;
-    ceres::Solve(ceres_options, &problem, &summary);
-    ReactivePhaseResidualEvaluationNative final_eval = evaluate_reactive_phase_equilibrium_residual_native(
-        mixture,
-        t,
-        p,
-        raw_feed,
-        solve_options,
-        balance_matrix_row_major,
-        balance_rows,
-        total_vector,
-        reaction_stoichiometry_row_major,
-        reaction_rows,
-        log_equilibrium_constants,
-        reaction_standard_states,
-        reaction_phase_stoichiometry_row_major,
-        variables,
-        true
-    );
-    const double final_residual_norm = max_abs(final_eval.residual);
-    const double residual_acceptance_tolerance = std::max(1.0e-7, 100.0 * options.tolerance);
-    const double physical_acceptance_tolerance = std::max(1.0e-8, 100.0 * options.tolerance);
-    const bool final_residuals_finite = std::all_of(
-        final_eval.residual.begin(),
-        final_eval.residual.end(),
-        [](double value) { return std::isfinite(value); }
-    );
-    const bool ceres_solution_usable = summary.IsSolutionUsable();
-    const bool ceres_converged = summary.termination_type == ceres::CONVERGENCE;
-    const bool final_residuals_accepted =
-        final_residuals_finite && final_residual_norm <= residual_acceptance_tolerance;
-    const bool element_balance_accepted =
-        max_abs(final_eval.element_balance_residuals) <= physical_acceptance_tolerance;
-    const bool reaction_residuals_accepted =
-        reaction_residual_norm(final_eval) <= residual_acceptance_tolerance;
-    const bool phase_equilibrium_accepted =
-        std::max(max_abs(final_eval.neutral_phase_equilibrium_residuals), max_abs(final_eval.ionic_equilibrium_residuals))
-            <= residual_acceptance_tolerance;
-    const bool phase_charge_accepted =
-        max_abs(final_eval.phase_charge_residuals) <= std::max(1.0e-8, physical_acceptance_tolerance);
-    const bool phase_fraction_accepted =
-        std::isfinite(final_eval.phase_fraction_phase2)
-        && final_eval.phase_fraction_phase2 > options.min_composition
-        && final_eval.phase_fraction_phase2 < 1.0 - options.min_composition;
-    const bool phase_distance_accepted =
-        std::isfinite(final_eval.phase_distance)
-        && final_eval.phase_distance > split_distance_tolerance(options);
-    const bool densities_accepted =
-        density_physical(final_eval.phase1_density) && density_physical(final_eval.phase2_density);
-    const bool compositions_accepted =
-        composition_vector_physical(final_eval.phase1_composition, physical_acceptance_tolerance)
-        && composition_vector_physical(final_eval.phase2_composition, physical_acceptance_tolerance);
-    const bool physical_gates_accepted =
-        element_balance_accepted
-        && reaction_residuals_accepted
-        && phase_equilibrium_accepted
-        && phase_charge_accepted
-        && phase_fraction_accepted
-        && phase_distance_accepted
-        && densities_accepted
-        && compositions_accepted;
-    const bool accepted_solve =
-        ceres_solution_usable && ceres_converged && final_residuals_accepted && physical_gates_accepted;
-    if (!accepted_solve) {
-        std::ostringstream message;
-        message << "reactive phase Ceres solve was not accepted"
-                << ": termination=" << ceres_termination_type_name_reactive(summary.termination_type)
-                << ", solution_usable=" << (ceres_solution_usable ? "true" : "false")
-                << ", final_residual_norm=" << final_residual_norm
-                << ", physical_gates_accepted=" << (physical_gates_accepted ? "true" : "false")
-                << ", residual_acceptance_tolerance=" << residual_acceptance_tolerance
-                << ", summary=" << summary.BriefReport();
-        EquilibriumResultNative failed;
-        failed.backend = "reactive_phase_equilibrium";
-        failed.problem_kind = "reactive_phase_equilibrium";
-        failed.stable = true;
-        failed.split_detected = false;
-        failed.diagnostics_string = final_eval.diagnostics_string;
-        failed.diagnostics_string["native_entrypoint"] = "_solve_reactive_phase_equilibrium_native";
-        failed.diagnostics_string["equilibrium_route"] = "reactive_phase_equilibrium";
-        failed.diagnostics_string["solver_attempted"] = "ceres";
-        failed.diagnostics_string["solver_attempt_result"] = "failed";
-        failed.diagnostics_string["accepted_solver_backend"] = "none";
-        failed.diagnostics_string["accepted_solver_method"] = "none";
-        failed.diagnostics_string["accepted_derivative_backend"] = "none";
-        failed.diagnostics_string["solver_backend"] = "none";
-        failed.diagnostics_string["selected_solver_backend"] = "none";
-        failed.diagnostics_string["attempted_solver_backend"] = "ceres";
-        failed.diagnostics_string["attempted_solver_method"] = "ceres_trust_region_coupled_reactive_phase_equilibrium";
-        failed.diagnostics_string["attempted_jacobian_backend"] = "cppad_implicit";
-        failed.diagnostics_string["attempted_derivative_backend"] = "cppad_implicit";
-        failed.diagnostics_string["acceptance_gate"] = "reactive_solve_failed";
-        failed.diagnostics_string["rejection_reason"] = message.str();
-        failed.diagnostics_string["message"] = "reactive phase equilibrium did not converge to an accepted two-phase state";
-        failed.diagnostics_string["ceres_trust_region_strategy"] = "ceres_internal_trust_region";
-        failed.diagnostics_string["ceres_linear_solver"] = "dense_qr";
-        failed.diagnostics_string["ceres_termination_type"] = ceres_termination_type_name_reactive(summary.termination_type);
-        failed.diagnostics_string["ceres_summary"] = summary.BriefReport();
-        failed.diagnostics_bool = final_eval.diagnostics_bool;
-        failed.diagnostics_bool["solution_accepted"] = false;
-        failed.diagnostics_bool["ceres_solution_usable"] = ceres_solution_usable;
-        failed.diagnostics_bool["ceres_converged"] = ceres_converged;
-        failed.diagnostics_bool["ceres_residuals_accepted"] = final_residuals_accepted;
-        failed.diagnostics_bool["ceres_physical_gates_accepted"] = physical_gates_accepted;
-        failed.diagnostics_bool["ceres_accepted_solve"] = false;
-        failed.diagnostics_bool["element_balance_accepted"] = element_balance_accepted;
-        failed.diagnostics_bool["reaction_residuals_accepted"] = reaction_residuals_accepted;
-        failed.diagnostics_bool["phase_equilibrium_accepted"] = phase_equilibrium_accepted;
-        failed.diagnostics_bool["phase_charge_accepted"] = phase_charge_accepted;
-        failed.diagnostics_bool["phase_fraction_accepted"] = phase_fraction_accepted;
-        failed.diagnostics_bool["phase_distance_accepted"] = phase_distance_accepted;
-        failed.diagnostics_bool["densities_accepted"] = densities_accepted;
-        failed.diagnostics_bool["compositions_accepted"] = compositions_accepted;
-        failed.diagnostics_bool["attempted_jacobian_available"] = true;
-        failed.diagnostics_bool["attempted_derivative_available"] = true;
-        failed.diagnostics_bool["jacobian_available"] = false;
-        failed.diagnostics_bool["derivative_available"] = false;
-        failed.diagnostics_bool["solved_state_sensitivity_available"] = false;
-        failed.diagnostics_bool["jacobian_available_for_accepted_state"] = false;
-        failed.diagnostics_bool["derivative_available_for_accepted_state"] = false;
-        failed.diagnostics_int = final_eval.diagnostics_int;
-        failed.diagnostics_int["ceres_iteration_count"] = static_cast<int>(summary.iterations.size());
-        failed.diagnostics_int["ceres_status"] = static_cast<int>(summary.termination_type);
-        failed.diagnostics_double = final_eval.diagnostics_double;
-        failed.diagnostics_double["ceres_initial_cost"] = summary.initial_cost;
-        failed.diagnostics_double["ceres_final_cost"] = summary.final_cost;
-        failed.diagnostics_double["final_residual_norm"] = final_residual_norm;
-        failed.diagnostics_double["residual_acceptance_tolerance"] = residual_acceptance_tolerance;
-        failed.diagnostics_double["physical_acceptance_tolerance"] = physical_acceptance_tolerance;
-        failed.diagnostics_vector = final_eval.diagnostics_vector;
-        failed.diagnostics_vector["variables"] = final_eval.variables;
-        failed.diagnostics_vector["residual"] = final_eval.residual;
-        failed.diagnostics_vector["jacobian_row_major"] = final_eval.jacobian_row_major;
-        return failed;
-    }
-
-    EquilibriumResultNative result;
-    result.backend = "reactive_phase_equilibrium";
-    result.problem_kind = "reactive_phase_equilibrium";
-    result.stable = false;
-    result.split_detected = final_eval.phase_distance > split_distance_tolerance(options);
-    EquilibriumPhaseNative phase1;
-    phase1.label = "liq1";
-    phase1.composition = final_eval.phase1_composition;
-    phase1.density = final_eval.phase1_density;
-    phase1.temperature = t;
-    phase1.pressure = p;
-    phase1.phase_fraction = 1.0 - final_eval.phase_fraction_phase2;
-    phase1.ln_fugacity_coefficient = final_eval.phase1_ln_fugacity_coefficient;
-    EquilibriumPhaseNative phase2;
-    phase2.label = "liq2";
-    phase2.composition = final_eval.phase2_composition;
-    phase2.density = final_eval.phase2_density;
-    phase2.temperature = t;
-    phase2.pressure = p;
-    phase2.phase_fraction = final_eval.phase_fraction_phase2;
-    phase2.ln_fugacity_coefficient = final_eval.phase2_ln_fugacity_coefficient;
-    result.phases = {phase1, phase2};
-
-    result.diagnostics_string = final_eval.diagnostics_string;
-    result.diagnostics_string["native_entrypoint"] = "_solve_reactive_phase_equilibrium_native";
-    result.diagnostics_string["equilibrium_route"] = "reactive_phase_equilibrium";
-    result.diagnostics_string["solver_backend"] = "ceres";
-    result.diagnostics_string["selected_solver_backend"] = "ceres";
-    result.diagnostics_string["solver_method"] = "ceres_trust_region_coupled_reactive_phase_equilibrium";
-    result.diagnostics_string["ceres_trust_region_strategy"] = "ceres_internal_trust_region";
-    result.diagnostics_string["ceres_linear_solver"] = "dense_qr";
-    result.diagnostics_string["ceres_termination_type"] = ceres_termination_type_name_reactive(summary.termination_type);
-    result.diagnostics_string["ceres_summary"] = summary.BriefReport();
-    result.diagnostics_string["jacobian_backend"] = "cppad_implicit";
-    result.diagnostics_string["derivative_backend"] = "cppad_implicit";
-    result.diagnostics_string["solved_state_sensitivity_backend"] = "cppad_implicit";
-    result.diagnostics_string["acceptance_gate"] = "ceres_residual_and_physical_gates";
-    result.diagnostics_string["solver_attempted"] = "ceres";
-    result.diagnostics_string["solver_attempt_result"] = "accepted";
-    result.diagnostics_string["accepted_solver_backend"] = "ceres";
-    result.diagnostics_string["accepted_solver_method"] = "ceres_trust_region_coupled_reactive_phase_equilibrium";
-    result.diagnostics_string["accepted_derivative_backend"] = "cppad_implicit";
-    result.diagnostics_bool = final_eval.diagnostics_bool;
-    result.diagnostics_bool["solution_accepted"] = true;
-    result.diagnostics_bool["ceres_solution_usable"] = ceres_solution_usable;
-    result.diagnostics_bool["ceres_converged"] = ceres_converged;
-    result.diagnostics_bool["ceres_residuals_accepted"] = final_residuals_accepted;
-    result.diagnostics_bool["ceres_physical_gates_accepted"] = physical_gates_accepted;
-    result.diagnostics_bool["ceres_accepted_solve"] = accepted_solve;
-    result.diagnostics_bool["element_balance_accepted"] = element_balance_accepted;
-    result.diagnostics_bool["reaction_residuals_accepted"] = reaction_residuals_accepted;
-    result.diagnostics_bool["phase_equilibrium_accepted"] = phase_equilibrium_accepted;
-    result.diagnostics_bool["phase_charge_accepted"] = phase_charge_accepted;
-    result.diagnostics_bool["phase_fraction_accepted"] = phase_fraction_accepted;
-    result.diagnostics_bool["phase_distance_accepted"] = phase_distance_accepted;
-    result.diagnostics_bool["densities_accepted"] = densities_accepted;
-    result.diagnostics_bool["compositions_accepted"] = compositions_accepted;
-    result.diagnostics_bool["jacobian_available_for_accepted_state"] = true;
-    result.diagnostics_bool["derivative_available_for_accepted_state"] = true;
-    result.diagnostics_bool["jacobian_available"] = true;
-    result.diagnostics_bool["derivative_available"] = true;
-    result.diagnostics_bool["solved_state_sensitivity_available"] = true;
-    result.diagnostics_int = final_eval.diagnostics_int;
-    result.diagnostics_int["ceres_iteration_count"] = static_cast<int>(summary.iterations.size());
-    result.diagnostics_int["ceres_status"] = static_cast<int>(summary.termination_type);
-    result.diagnostics_double = final_eval.diagnostics_double;
-    result.diagnostics_double["ceres_initial_cost"] = summary.initial_cost;
-    result.diagnostics_double["ceres_final_cost"] = summary.final_cost;
-    result.diagnostics_double["phase_distance"] = final_eval.phase_distance;
-    result.diagnostics_vector = final_eval.diagnostics_vector;
-    result.diagnostics_vector["variables"] = final_eval.variables;
-    result.diagnostics_vector["residual"] = final_eval.residual;
-    result.diagnostics_vector["jacobian_row_major"] = final_eval.jacobian_row_major;
-    return result;
-#endif
 }

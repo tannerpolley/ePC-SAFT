@@ -121,4 +121,3 @@ def test_opt_in_confidence_report_generates_full_outputs(tmp_path: Path) -> None
     assert summary["mode"] == "full"
     assert summary["case_count"] >= 35
     assert summary["accepted_count"] + summary["diagnostic_failure_count"] == summary["case_count"]
-    assert summary["ceres_reported"] is False

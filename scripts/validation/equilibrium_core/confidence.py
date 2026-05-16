@@ -678,7 +678,6 @@ def _write_benchmark_csv(path: Path, predictions: Sequence[BenchmarkPrediction])
         "gibbs_delta",
         "phase_distance",
         "tpd_trial_count",
-        "tpd_multistart_count",
         "tpd_polish_iterations",
         "acceptance_gate",
         "best_failure_reason",
@@ -705,7 +704,6 @@ def _write_benchmark_csv(path: Path, predictions: Sequence[BenchmarkPrediction])
                 "gibbs_delta": diag.get("gibbs_delta", math.nan),
                 "phase_distance": diag.get("phase_distance", math.nan),
                 "tpd_trial_count": diag.get("tpd_trial_count", math.nan),
-                "tpd_multistart_count": diag.get("tpd_multistart_count", math.nan),
                 "tpd_polish_iterations": diag.get("tpd_polish_iterations", math.nan),
                 "acceptance_gate": diag.get("acceptance_gate", ""),
                 "best_failure_reason": diag.get("best_failure_reason", ""),
@@ -778,7 +776,6 @@ def _write_summary(
         "oracle_flags": sum(1 for row in oracle if row.oracle_flags_native),
         "sensitivity_rows": len(sensitivity),
         "stress_rows": len(stress),
-        "ceres_reported": "ceres" in json.dumps([item.diagnostics for item in predictions], default=str).lower(),
     }
     path.write_text(json.dumps(_json_ready(summary), indent=2, allow_nan=False), encoding="utf-8")
 

@@ -49,8 +49,6 @@ namespace py = pybind11;
 
 namespace {
 
-py::object native_solution_error_type;
-
 py::dict cppad_smoke_to_dict(const epcsaft::native::cppad_support::CppADDerivativeResult& result) {
     py::dict out;
     out["cppad_compiled"] = epcsaft::native::cppad_support::cppad_compiled();
@@ -510,86 +508,6 @@ py::dict native_density_failure_payload(const DensitySolveDiagnostics& diagnosti
     return out;
 }
 
-py::dict native_phase_to_dict(const EquilibriumPhaseNative& phase) {
-    py::dict out;
-    out["label"] = phase.label;
-    out["composition"] = phase.composition;
-    out["density"] = phase.density;
-    out["temperature"] = phase.temperature;
-    out["pressure"] = phase.pressure;
-    out["phase_fraction"] = phase.phase_fraction;
-    out["ln_fugacity_coefficient"] = phase.ln_fugacity_coefficient;
-    out["diagnostics"] = native_diagnostics_to_dict(
-        phase.diagnostics_double,
-        {},
-        {},
-        phase.diagnostics_string,
-        {}
-    );
-    return out;
-}
-
-py::list native_attempts_to_list(const std::vector<EquilibriumAttemptDiagnosticsNative>& attempts) {
-    auto json_safe_double = [](double value) {
-        return std::isfinite(value) ? value : 1.0e300;
-    };
-    py::list out;
-    for (const auto& attempt : attempts) {
-        py::dict item;
-        item["seed_name"] = attempt.seed_name;
-        item["rejection_reason"] = attempt.rejection_reason;
-        item["beta_org"] = json_safe_double(attempt.beta_org);
-        item["phase_distance"] = json_safe_double(attempt.phase_distance);
-        item["solver_residual_norm"] = json_safe_double(attempt.solver_residual_norm);
-        item["material_balance_error"] = json_safe_double(attempt.material_balance_error);
-        item["charge_balance_error"] = json_safe_double(attempt.charge_balance_error);
-        item["gibbs_delta"] = json_safe_double(attempt.gibbs_delta);
-        item["iterations"] = attempt.iterations;
-        out.append(item);
-    }
-    return out;
-}
-
-py::dict native_equilibrium_to_dict(const EquilibriumResultNative& result) {
-    py::dict out;
-    out["result_type"] = "equilibrium";
-    out["backend"] = result.backend;
-    out["problem_kind"] = result.problem_kind;
-    py::list phases;
-    for (const auto& phase : result.phases) {
-        phases.append(native_phase_to_dict(phase));
-    }
-    out["phases"] = phases;
-    out["stable"] = result.stable;
-    out["split_detected"] = result.split_detected;
-    out["diagnostics"] = native_diagnostics_to_dict(
-        result.diagnostics_double,
-        result.diagnostics_int,
-        result.diagnostics_bool,
-        result.diagnostics_string,
-        result.diagnostics_vector
-    );
-    py::dict diagnostics = out["diagnostics"].cast<py::dict>();
-    diagnostics["seed_attempts"] = native_attempts_to_list(result.attempt_diagnostics);
-    if (!result.density_diagnostics.empty()) {
-        py::list contexts;
-        for (const auto& density : result.density_diagnostics) {
-            contexts.append(native_density_diagnostics_to_dict(density));
-        }
-        diagnostics["density_failure_contexts"] = contexts;
-        diagnostics["density_failure_count"] = static_cast<int>(result.density_diagnostics.size());
-        diagnostics["density_scan_summary"] = native_density_diagnostics_to_dict(result.density_diagnostics.back());
-        diagnostics["density_candidate_roots"] = native_density_diagnostics_to_dict(result.density_diagnostics.back())["density_candidate_roots"];
-        diagnostics["density_best_near_root"] = native_density_diagnostics_to_dict(result.density_diagnostics.back())["best_near_root"];
-        diagnostics["density_best_candidate_refinement_used"] = result.density_diagnostics.back().best_candidate_refinement_used;
-        diagnostics["density_best_candidate_rejection_reason"] = result.density_diagnostics.back().best_candidate_rejection_reason;
-        diagnostics["density_warm_start_source"] = result.density_diagnostics.back().warm_start_source;
-        diagnostics["density_validity_gate"] = result.density_diagnostics.back().validity_gate;
-    }
-    out["diagnostics"] = diagnostics;
-    return out;
-}
-
 py::dict native_chemical_equilibrium_to_dict(const ChemicalEquilibriumResultNative& result) {
     py::dict out;
     out["success"] = result.success;
@@ -723,81 +641,17 @@ py::dict native_reactive_phase_residual_evaluation_to_dict(const ReactivePhaseRe
     return out;
 }
 
-[[noreturn]] void raise_native_solution_error_with_diagnostics(
-    const std::string& message,
-    const EquilibriumResultNative& result
-) {
-    py::dict diagnostics = native_diagnostics_to_dict(
-        result.diagnostics_double,
-        result.diagnostics_int,
-        result.diagnostics_bool,
-        result.diagnostics_string,
-        result.diagnostics_vector
-    );
-    diagnostics["seed_attempts"] = native_attempts_to_list(result.attempt_diagnostics);
-    if (!result.density_diagnostics.empty()) {
-        py::list contexts;
-        for (const auto& density : result.density_diagnostics) {
-            contexts.append(native_density_diagnostics_to_dict(density));
-        }
-        diagnostics["density_failure_contexts"] = contexts;
-        diagnostics["density_failure_count"] = static_cast<int>(result.density_diagnostics.size());
-        diagnostics["density_scan_summary"] = native_density_diagnostics_to_dict(result.density_diagnostics.back());
-        diagnostics["density_candidate_roots"] = native_density_diagnostics_to_dict(result.density_diagnostics.back())["density_candidate_roots"];
-        diagnostics["density_best_near_root"] = native_density_diagnostics_to_dict(result.density_diagnostics.back())["best_near_root"];
-        diagnostics["density_best_candidate_refinement_used"] = result.density_diagnostics.back().best_candidate_refinement_used;
-        diagnostics["density_best_candidate_rejection_reason"] = result.density_diagnostics.back().best_candidate_rejection_reason;
-        diagnostics["density_warm_start_source"] = result.density_diagnostics.back().warm_start_source;
-        diagnostics["density_validity_gate"] = result.density_diagnostics.back().validity_gate;
-    }
-    py::tuple args(2);
-    args[0] = py::str(message);
-    args[1] = diagnostics;
-    PyErr_SetObject(native_solution_error_type.ptr(), args.ptr());
-    throw py::error_already_set();
-}
-
 EquilibriumOptionsNative options_from_request(const py::dict& request) {
     EquilibriumOptionsNative options;
     if (!request.contains("options") || request["options"].is_none()) {
         return options;
     }
     py::dict input = request["options"].cast<py::dict>();
-    if (input.contains("max_iterations")) {
-        options.max_iterations = input["max_iterations"].cast<int>();
-    }
-    if (input.contains("tolerance")) {
-        options.tolerance = input["tolerance"].cast<double>();
-    }
     if (input.contains("min_composition")) {
         options.min_composition = input["min_composition"].cast<double>();
     }
-    if (input.contains("include_phase_diagnostics")) {
-        options.include_phase_diagnostics = input["include_phase_diagnostics"].cast<bool>();
-    }
-    if (input.contains("stability_precheck")) {
-        options.stability_precheck = input["stability_precheck"].cast<bool>();
-    }
-    if (input.contains("density_diagnostics")) {
-        options.density_diagnostics = input["density_diagnostics"].cast<std::string>();
-    }
-    if (input.contains("experimental_coupled_density_lle")) {
-        options.experimental_coupled_density_lle = input["experimental_coupled_density_lle"].cast<bool>();
-    }
     if (input.contains("jacobian_backend")) {
         options.jacobian_backend = input["jacobian_backend"].cast<std::string>();
-    }
-    if (input.contains("timeout_seconds") && !input["timeout_seconds"].is_none()) {
-        options.timeout_seconds = input["timeout_seconds"].cast<double>();
-    }
-    if (input.contains("max_seed_attempts") && !input["max_seed_attempts"].is_none()) {
-        options.max_seed_attempts = input["max_seed_attempts"].cast<int>();
-    }
-    if (input.contains("max_density_failures") && !input["max_density_failures"].is_none()) {
-        options.max_density_failures = input["max_density_failures"].cast<int>();
-    }
-    if (input.contains("max_total_objective_evaluations") && !input["max_total_objective_evaluations"].is_none()) {
-        options.max_total_objective_evaluations = input["max_total_objective_evaluations"].cast<int>();
     }
     return options;
 }
@@ -1057,83 +911,6 @@ py::dict evaluate_reactive_phase_equilibrium_residual_native_binding(
     return native_reactive_phase_residual_evaluation_to_dict(result);
 }
 
-py::dict solve_reactive_phase_equilibrium_native_binding(
-    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
-    const py::dict& request
-) {
-    double t = request["T"].cast<double>();
-    double p = request["P"].cast<double>();
-    std::vector<double> feed = request["z"].cast<std::vector<double>>();
-    EquilibriumOptionsNative options = options_from_request(request);
-    std::vector<double> balance_matrix = request["balance_matrix"].cast<std::vector<double>>();
-    int balance_rows = request["balance_rows"].cast<int>();
-    std::vector<double> total_vector = request["total_vector"].cast<std::vector<double>>();
-    std::vector<double> reaction_stoichiometry = request["reaction_stoichiometry"].cast<std::vector<double>>();
-    int reaction_rows = request["reaction_rows"].cast<int>();
-    std::vector<double> log_equilibrium_constants = request["log_equilibrium_constants"].cast<std::vector<double>>();
-    std::vector<int> reaction_standard_states;
-    if (request.contains("reaction_standard_states") && !request["reaction_standard_states"].is_none()) {
-        reaction_standard_states = request["reaction_standard_states"].cast<std::vector<int>>();
-    } else {
-        reaction_standard_states = std::vector<int>(static_cast<std::size_t>(reaction_rows), 0);
-    }
-    std::vector<double> reaction_phase_stoichiometry;
-    if (request.contains("reaction_phase_stoichiometry") && !request["reaction_phase_stoichiometry"].is_none()) {
-        reaction_phase_stoichiometry = request["reaction_phase_stoichiometry"].cast<std::vector<double>>();
-    }
-    std::vector<double> phase1;
-    std::vector<double> phase2;
-    double beta2 = 0.5;
-    bool has_initial = false;
-    if (request.contains("initial_phases") && !request["initial_phases"].is_none()) {
-        py::dict initial = request["initial_phases"].cast<py::dict>();
-        if (initial.contains("liq1")) {
-            phase1 = initial["liq1"].cast<std::vector<double>>();
-        } else if (initial.contains("aq")) {
-            phase1 = initial["aq"].cast<std::vector<double>>();
-        } else {
-            throw ValueError("initial reactive phases require liq1/liq2 or aq/org keys.");
-        }
-        if (initial.contains("liq2")) {
-            phase2 = initial["liq2"].cast<std::vector<double>>();
-        } else if (initial.contains("org")) {
-            phase2 = initial["org"].cast<std::vector<double>>();
-        } else {
-            throw ValueError("initial reactive phases require liq1/liq2 or aq/org keys.");
-        }
-        beta2 = initial["phase_fraction"].cast<double>();
-        has_initial = true;
-    }
-    EquilibriumResultNative result;
-    {
-        py::gil_scoped_release release;
-        result = reactive_phase_equilibrium_native(
-            mixture,
-            t,
-            p,
-            feed,
-            options,
-            balance_matrix,
-            balance_rows,
-            total_vector,
-            reaction_stoichiometry,
-            reaction_rows,
-            log_equilibrium_constants,
-            reaction_standard_states,
-            reaction_phase_stoichiometry,
-            phase1,
-            phase2,
-            beta2,
-            has_initial
-        );
-    }
-    const std::string acceptance_gate = result.diagnostics_string["acceptance_gate"];
-    if (!result.split_detected && acceptance_gate == "reactive_solve_failed") {
-        raise_native_solution_error_with_diagnostics("reactive phase equilibrium did not converge", result);
-    }
-    return native_equilibrium_to_dict(result);
-}
-
 py::dict fit_pure_neutral_native_ceres_binding(
     const add_args& args,
     const py::array& density_t,
@@ -1277,7 +1054,6 @@ PYBIND11_MODULE(_core, m) {
 
     py::register_exception<ValueError>(m, "NativeValueError");
     py::register_exception<SolutionError>(m, "NativeSolutionError");
-    native_solution_error_type = m.attr("NativeSolutionError");
 
     m.def("_native_cppad_smoke", []() {
         return cppad_smoke_to_dict(epcsaft::native::cppad_support::cppad_square_smoke_derivative(3.0));
@@ -1588,7 +1364,6 @@ PYBIND11_MODULE(_core, m) {
     m.def("_evaluate_generic_native_debug", &evaluate_generic_native_debug_binding);
     m.def("_evaluate_electrolyte_lle_residual_native", &evaluate_electrolyte_lle_residual_native_binding);
     m.def("_evaluate_reactive_phase_equilibrium_residual_native", &evaluate_reactive_phase_equilibrium_residual_native_binding);
-    m.def("_solve_reactive_phase_equilibrium_native", &solve_reactive_phase_equilibrium_native_binding);
     m.def("_solve_chemical_equilibrium_native", &solve_chemical_equilibrium_native_binding);
     m.def("_evaluate_chemical_equilibrium_residual_native", &evaluate_chemical_equilibrium_residual_native_binding);
 }
