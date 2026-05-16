@@ -278,7 +278,6 @@ def test_native_chemical_equilibrium_uses_epcsaft_activities_for_neutral_reactio
     assert result.success is True
     assert result.x["Methanol"] == pytest.approx(target_x[0], abs=1.0e-7)
     assert result.diagnostics["activity_model"] == "epcsaft_neutral_fugacity_activity"
-    assert result.diagnostics["numerical_derivative_backend_available"] is False
 
 def test_native_chemical_equilibrium_solution_shifts_when_fugacity_model_changes() -> None:
     base_mix = _methanol_cyclohexane_mixture(kij=0.051)

@@ -41,7 +41,6 @@ def _generic_result_payload(problem_kind: str, species: tuple[str, ...]) -> dict
         split_detected=False,
         diagnostics={
             "derivative_policy": {
-                "numerical_derivative_backend_available": False,
                 "accepted_derivative_backends": ["analytic", "cppad", "analytic_implicit", "cppad_implicit"],
             }
         },
@@ -63,7 +62,6 @@ def _generic_chemical_payload(species: tuple[str, ...]) -> dict[str, object]:
         diagnostics={
             "backend": "native",
             "derivative_policy": {
-                "numerical_derivative_backend_available": False,
                 "accepted_derivative_backends": ["analytic", "cppad", "analytic_implicit", "cppad_implicit"],
             },
         },
@@ -126,7 +124,6 @@ def test_mea_thermodynamics_smoke_uses_generic_reactive_problem_and_targets() ->
     assert isinstance(problem, epcsaft.EquilibriumProblem)
     assert dataset.families == ("speciation", "vle_partial_pressure", "activity")
     assert output["x"]["CO2"] > 0.0
-    assert output["diagnostics"]["derivative_policy"]["numerical_derivative_backend_available"] is False
 
 
 def test_lithium_extraction_smoke_uses_generic_electrolyte_lle_contracts() -> None:
@@ -198,4 +195,3 @@ def test_absorption_column_smoke_uses_generic_reactive_bubble_contracts() -> Non
     assert isinstance(problem, epcsaft.EquilibriumProblem)
     assert dataset.families == ("vle_partial_pressure", "speciation", "fugacity")
     assert output["problem_kind"] == "reactive_electrolyte_bubble_pressure"
-    assert output["diagnostics"]["derivative_policy"]["numerical_derivative_backend_available"] is False

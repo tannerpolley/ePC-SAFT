@@ -124,7 +124,6 @@ def solve_reactive_staged_equilibrium(
         "material_balance_error": phase_audit["material_balance_error"],
         "ascani_benchmark_attempt": _ascani_benchmark_attempt(kind),
         "derivative_policy": {
-            "numerical_derivative_backend_available": False,
             "accepted_derivative_backends": [
                 "auto",
                 "analytic",

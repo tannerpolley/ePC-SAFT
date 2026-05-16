@@ -36,7 +36,6 @@ def test_reactive_speciation_reports_solved_state_derivative_boundaries() -> Non
     )
 
     diagnostics = result.diagnostics
-    assert diagnostics["derivative_policy"]["numerical_derivative_backend_available"] is False
     assert diagnostics["derivative_policy"]["unsupported_derivative_behavior"] == "raise"
     assert "reactive_speciation_variables" in diagnostics["solved_state_derivative_blocks"]
     assert "association_site_fractions" in diagnostics["solved_state_derivative_blocks"]

@@ -431,7 +431,6 @@ def capabilities() -> dict[str, object]:
                     "analytic_implicit",
                     "cppad_implicit",
                 ],
-                "numerical_derivative_backend_available": False,
                 "parameter_families": {
                     "production_supported": [
                         "m",
@@ -483,7 +482,6 @@ def capabilities() -> dict[str, object]:
         },
         "equilibrium": {
             "derivative_policy": {
-                "numerical_derivative_backend_available": False,
                 "accepted_derivative_backends": [
                     "auto",
                     "analytic",
@@ -519,7 +517,6 @@ def capabilities() -> dict[str, object]:
                 "derivative_backend": "not_applicable",
                 "stability_precheck": "neutral_tpd",
                 "anti_trivial_solution_strategy": "phase_fraction_and_phase_distance_gate",
-                "numerical_derivative_backend_available": False,
             },
             "neutral_stability": {"available": True, "backend": "native"},
             "neutral_bubble_dew": {

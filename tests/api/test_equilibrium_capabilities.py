@@ -6,7 +6,6 @@ import epcsaft
 def test_equilibrium_capabilities_expose_derivative_policy() -> None:
     policy = epcsaft.capabilities()["equilibrium"]["derivative_policy"]
 
-    assert policy["numerical_derivative_backend_available"] is False
     assert policy["unsupported_derivative_behavior"] == "raise"
     assert policy["auto_policy"] == "analytic_or_cppad_or_implicit_else_raise"
     assert "numerical_derivative" not in {str(item).lower() for item in policy["accepted_derivative_backends"]}

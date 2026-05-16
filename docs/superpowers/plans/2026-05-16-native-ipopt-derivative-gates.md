@@ -513,6 +513,8 @@ Task 12 continuation note: reactive electrolyte regression no longer exposes the
 
 Task 12 continuation note: active source, tests, and dev scripts no longer carry the remaining old retry/default token names. The cleanup renamed internal pressure-seed/default variables, removed an unused reactive regression seed helper, and kept deterministic parameter defaults explicit under non-retry naming.
 
+Task 12 continuation note: reactive/speciation capabilities and staged reactive diagnostics no longer expose negative numerical-derivative availability flags. The positive contract is now the accepted derivative backend list plus typed raise-on-unsupported behavior.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

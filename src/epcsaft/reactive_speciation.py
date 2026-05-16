@@ -624,10 +624,12 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
         raise InputError("native reactive speciation diagnostics must include a derivative backend.")
     solved_state_backend = implicit_backend_for_residual_backend(derivative_backend)
     diagnostics.setdefault("thermodynamic_backend", "epcsaft_state_activity_chemical_potential_api")
-    diagnostics.setdefault("solver_backend", diagnostics.get("nonlinear_solver", "native_newton"))
+    diagnostics.setdefault(
+        "solver_backend",
+        diagnostics.get("selected_solver_backend", diagnostics.get("nonlinear_solver", "native")),
+    )
     diagnostics.setdefault("derivative_backend", derivative_backend)
     diagnostics.setdefault("derivative_status", derivative_backend)
-    diagnostics.setdefault("numerical_derivative_backend_available", False)
     if "residual_norm" in diagnostics:
         diagnostics.setdefault("residual_norm_by_block", {"reactive_speciation": float(diagnostics["residual_norm"])})
     else:
@@ -648,7 +650,6 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
     diagnostics.setdefault(
         "derivative_policy",
         {
-            "numerical_derivative_backend_available": False,
             "accepted_derivative_backends": [
                 "auto",
                 "analytic",

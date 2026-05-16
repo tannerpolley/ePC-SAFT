@@ -18,7 +18,6 @@ def test_capabilities_expose_property_derivative_result_apis() -> None:
     payload = capabilities["derivatives"]["property_derivative_result_apis"]
 
     assert payload["available"] is True
-    assert payload["numerical_derivative_backend_available"] is False
     assert "outputs" in payload["result_shape"]
     assert "variables" in payload["result_shape"]
     assert "derivative_backend" in payload["result_shape"]

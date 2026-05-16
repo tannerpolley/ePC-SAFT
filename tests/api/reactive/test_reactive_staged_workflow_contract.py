@@ -64,7 +64,6 @@ def test_staged_workflow_reports_fixed_constant_boundaries() -> None:
     assert result.diagnostics["coupling_level"] == "staged_not_full_simultaneous_nlp"
     assert result.diagnostics["reaction_coordinates"]["named_reactions"] == ["literature_a_to_b"]
     assert result.diagnostics["nonnegativity"]["status"] == "pass"
-    assert result.diagnostics["derivative_policy"]["numerical_derivative_backend_available"] is False
     assert result.diagnostics["derivative_policy"]["unsupported_derivative_behavior"] == "raise"
     assert result.chemical.diagnostics["reaction_constant_sources"]["literature_a_to_b"] == "literature"
 
