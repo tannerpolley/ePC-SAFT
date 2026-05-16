@@ -29,7 +29,7 @@ def test_runtime_cache_stats_track_density_and_reference_state_reuse() -> None:
     assert first.density() == pytest.approx(second.density())
     stats = mix.runtime_cache_stats()
     assert stats["density_warm_start_hits"] >= 1
-    assert stats["density_warm_start_fallbacks"] == 0
+    assert stats["density_warm_start_rejections"] == 0
 
     for _ in range(3):
         second.activity_coefficient(species=species, mean_ionic_form=True, basis="molality")
@@ -62,7 +62,7 @@ def test_activity_coefficient_cache_behavior_distinguishes_aux_cache_from_solven
     assert after_second_override["reference_state_cache_hits"] > after_first_override["reference_state_cache_hits"]
     assert after_second_override["reference_state_cache_misses"] == after_first_override["reference_state_cache_misses"]
 
-def test_runtime_cache_stats_track_warm_start_fallbacks_without_hiding_failures() -> None:
+def test_runtime_cache_stats_track_warm_start_rejections_without_hiding_failures() -> None:
     mix, _, pressure, _, temperature, composition = _ionic_state()
     mix.clear_runtime_caches()
     mix.reset_runtime_cache_stats()
@@ -78,9 +78,9 @@ def test_runtime_cache_stats_track_warm_start_fallbacks_without_hiding_failures(
         "reference_state_cache_hits": 0,
         "reference_state_cache_misses": 0,
         "density_warm_start_hits": 0,
-        "density_warm_start_fallbacks": 0,
+        "density_warm_start_rejections": 0,
     }
-    assert after_failure["density_warm_start_fallbacks"] == 1
+    assert after_failure["density_warm_start_rejections"] == 1
 
 def test_miac_electrolyte_variants_cover_water_nonaqueous_and_mixed_solvents() -> None:
     from analyses.data_validation.miac_fits.scripts import validate_miac_fits as vmf

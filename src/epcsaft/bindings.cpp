@@ -482,8 +482,8 @@ py::dict native_density_diagnostics_to_dict(const DensitySolveDiagnostics& diagn
     out["dpdrho"] = json_safe_native_double(diagnostics.best_near_root.dpdrho);
     out["gres"] = json_safe_native_double(diagnostics.best_near_root.gres);
     out["rejection_reason"] = diagnostics.rejection_reason;
-    out["density_fallback_used"] = diagnostics.fallback_used;
-    out["density_fallback_rejected_reason"] = diagnostics.fallback_rejected_reason;
+    out["density_best_candidate_refinement_used"] = diagnostics.best_candidate_refinement_used;
+    out["density_best_candidate_rejection_reason"] = diagnostics.best_candidate_rejection_reason;
     out["density_warm_start_source"] = diagnostics.warm_start_source;
     out["density_validity_gate"] = diagnostics.validity_gate;
     py::list roots;
@@ -503,8 +503,8 @@ py::dict native_density_failure_payload(const DensitySolveDiagnostics& diagnosti
     out["density_scan_summary"] = native_density_diagnostics_to_dict(diagnostics);
     out["density_candidate_roots"] = contexts[0].cast<py::dict>()["density_candidate_roots"];
     out["density_best_near_root"] = contexts[0].cast<py::dict>()["best_near_root"];
-    out["density_fallback_used"] = diagnostics.fallback_used;
-    out["density_fallback_rejected_reason"] = diagnostics.fallback_rejected_reason;
+    out["density_best_candidate_refinement_used"] = diagnostics.best_candidate_refinement_used;
+    out["density_best_candidate_rejection_reason"] = diagnostics.best_candidate_rejection_reason;
     out["density_warm_start_source"] = diagnostics.warm_start_source;
     out["density_validity_gate"] = diagnostics.validity_gate;
     return out;
@@ -634,8 +634,8 @@ py::dict native_equilibrium_to_dict(const EquilibriumResultNative& result) {
         diagnostics["density_scan_summary"] = native_density_diagnostics_to_dict(result.density_diagnostics.back());
         diagnostics["density_candidate_roots"] = native_density_diagnostics_to_dict(result.density_diagnostics.back())["density_candidate_roots"];
         diagnostics["density_best_near_root"] = native_density_diagnostics_to_dict(result.density_diagnostics.back())["best_near_root"];
-        diagnostics["density_fallback_used"] = result.density_diagnostics.back().fallback_used;
-        diagnostics["density_fallback_rejected_reason"] = result.density_diagnostics.back().fallback_rejected_reason;
+        diagnostics["density_best_candidate_refinement_used"] = result.density_diagnostics.back().best_candidate_refinement_used;
+        diagnostics["density_best_candidate_rejection_reason"] = result.density_diagnostics.back().best_candidate_rejection_reason;
         diagnostics["density_warm_start_source"] = result.density_diagnostics.back().warm_start_source;
         diagnostics["density_validity_gate"] = result.density_diagnostics.back().validity_gate;
     }
@@ -804,8 +804,8 @@ py::dict native_reactive_phase_residual_evaluation_to_dict(const ReactivePhaseRe
         diagnostics["density_scan_summary"] = native_density_diagnostics_to_dict(result.density_diagnostics.back());
         diagnostics["density_candidate_roots"] = native_density_diagnostics_to_dict(result.density_diagnostics.back())["density_candidate_roots"];
         diagnostics["density_best_near_root"] = native_density_diagnostics_to_dict(result.density_diagnostics.back())["best_near_root"];
-        diagnostics["density_fallback_used"] = result.density_diagnostics.back().fallback_used;
-        diagnostics["density_fallback_rejected_reason"] = result.density_diagnostics.back().fallback_rejected_reason;
+        diagnostics["density_best_candidate_refinement_used"] = result.density_diagnostics.back().best_candidate_refinement_used;
+        diagnostics["density_best_candidate_rejection_reason"] = result.density_diagnostics.back().best_candidate_rejection_reason;
         diagnostics["density_warm_start_source"] = result.density_diagnostics.back().warm_start_source;
         diagnostics["density_validity_gate"] = result.density_diagnostics.back().validity_gate;
     }
@@ -1757,7 +1757,7 @@ PYBIND11_MODULE(_core, m) {
         .def("reference_state_cache_hits", &ePCSAFTMixtureNative::reference_state_cache_hits)
         .def("reference_state_cache_misses", &ePCSAFTMixtureNative::reference_state_cache_misses)
         .def("density_warm_start_hits", &ePCSAFTMixtureNative::density_warm_start_hits)
-        .def("density_warm_start_fallbacks", &ePCSAFTMixtureNative::density_warm_start_fallbacks)
+        .def("density_warm_start_rejections", &ePCSAFTMixtureNative::density_warm_start_rejections)
         .def("last_density_diagnostics", [](const ePCSAFTMixtureNative& mixture) {
             return native_density_failure_payload(mixture.last_density_diagnostics());
         });

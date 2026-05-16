@@ -99,7 +99,7 @@ def test_pressure_density_failure_reports_state_context_and_native_outcome() -> 
     diagnostics = excinfo.value.diagnostics
     assert diagnostics["density_failure_count"] == 1
     assert diagnostics["density_validity_gate"] == "failed"
-    assert diagnostics["density_fallback_used"] in {True, False}
+    assert diagnostics["density_best_candidate_refinement_used"] in {True, False}
     context = diagnostics["density_failure_contexts"][0]
     assert context["phase_label"] == "state"
     assert context["phase_kind"] == "liq"
@@ -141,4 +141,4 @@ def test_density_guess_uses_native_warm_start_diagnostics() -> None:
     assert diagnostics["density_validity_gate"] == "passed"
     stats = mix.runtime_cache_stats()
     assert stats["density_warm_start_hits"] == 1
-    assert stats["density_warm_start_fallbacks"] == 0
+    assert stats["density_warm_start_rejections"] == 0

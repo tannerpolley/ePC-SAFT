@@ -218,9 +218,9 @@ double ePCSAFTMixtureNative::solve_density_with_guess(
         return rho_root;
     }
 
-    density_warm_start_fallbacks_ += 1;
+    density_warm_start_rejections_ += 1;
     double rho = solve_density_scoped(t, p, x, phase, "");
-    last_density_diagnostics_.warm_start_source = "rho_guess_fallback";
+    last_density_diagnostics_.warm_start_source = "rho_guess_rejected_scan";
     return rho;
 }
 
@@ -252,8 +252,8 @@ double ePCSAFTMixtureNative::solve_density_scoped(double t, double p, const vect
                 density_warm_start_hits_ += 1;
                 return rho_root;
             }
-            density_warm_start_fallbacks_ += 1;
-            last_density_diagnostics_.warm_start_source = "scoped_fallback:" + scope;
+            density_warm_start_rejections_ += 1;
+            last_density_diagnostics_.warm_start_source = "scoped_rejected_scan:" + scope;
         }
     }
 
@@ -267,7 +267,7 @@ double ePCSAFTMixtureNative::solve_density_scoped(double t, double p, const vect
             density_warm_start_hits_ += 1;
             return rho_root;
         }
-        density_warm_start_fallbacks_ += 1;
+        density_warm_start_rejections_ += 1;
     }
 
     DensitySolveResult solved = density_solve_report_cpp(t, p, x, phase, cppargs);
@@ -356,7 +356,7 @@ void ePCSAFTMixtureNative::reset_runtime_cache_stats()
     reference_state_cache_hits_ = 0;
     reference_state_cache_misses_ = 0;
     density_warm_start_hits_ = 0;
-    density_warm_start_fallbacks_ = 0;
+    density_warm_start_rejections_ = 0;
 }
 
 size_t ePCSAFTMixtureNative::reference_state_cache_hits() const
@@ -374,9 +374,9 @@ size_t ePCSAFTMixtureNative::density_warm_start_hits() const
     return density_warm_start_hits_;
 }
 
-size_t ePCSAFTMixtureNative::density_warm_start_fallbacks() const
+size_t ePCSAFTMixtureNative::density_warm_start_rejections() const
 {
-    return density_warm_start_fallbacks_;
+    return density_warm_start_rejections_;
 }
 
 ePCSAFTStateNative::ePCSAFTStateNative(

@@ -444,12 +444,12 @@ DensitySolveResult density_solve_report_cpp(double t, double p, vector<double> x
     diagnostics.refined_bracket_count = static_cast<int>(refined_brackets.size());
 
     if (refined_brackets.empty()) {
-        diagnostics.fallback_used = true;
+        diagnostics.best_candidate_refinement_used = true;
         if (std::isfinite(diagnostics.best_near_root.rho) && diagnostics.best_near_root.rho > 0.0) {
-            DensityRootCandidate fallback_candidate;
+            DensityRootCandidate refinement_candidate;
             double rho_root = 0.0;
-            if (density_root_from_seed_cpp(t, p, x, cppargs, diagnostics.best_near_root.rho, &fallback_candidate, &rho_root)) {
-                diagnostics.candidate_roots.push_back(density_candidate_diagnostics_cpp(fallback_candidate));
+            if (density_root_from_seed_cpp(t, p, x, cppargs, diagnostics.best_near_root.rho, &refinement_candidate, &rho_root)) {
+                diagnostics.candidate_roots.push_back(density_candidate_diagnostics_cpp(refinement_candidate));
                 diagnostics.candidate_root_count = static_cast<int>(diagnostics.candidate_roots.size());
                 diagnostics.validity_gate = "passed";
                 diagnostics.rejection_reason = "";
@@ -459,7 +459,7 @@ DensitySolveResult density_solve_report_cpp(double t, double p, vector<double> x
                 return out;
             }
         }
-        diagnostics.fallback_rejected_reason = "no refined density brackets";
+        diagnostics.best_candidate_rejection_reason = "no refined density brackets";
         diagnostics.rejection_reason = "No continuous density root brackets were found for the requested state";
         out.diagnostics = diagnostics;
         return out;
@@ -540,12 +540,12 @@ DensitySolveResult density_solve_report_cpp(double t, double p, vector<double> x
         out.diagnostics = diagnostics;
         return out;
     }
-    diagnostics.fallback_used = true;
+    diagnostics.best_candidate_refinement_used = true;
     if (std::isfinite(diagnostics.best_near_root.rho) && diagnostics.best_near_root.rho > 0.0) {
-        DensityRootCandidate fallback_candidate;
+        DensityRootCandidate refinement_candidate;
         double rho_root = 0.0;
-        if (density_root_from_seed_cpp(t, p, x, cppargs, diagnostics.best_near_root.rho, &fallback_candidate, &rho_root)) {
-            diagnostics.candidate_roots.push_back(density_candidate_diagnostics_cpp(fallback_candidate));
+        if (density_root_from_seed_cpp(t, p, x, cppargs, diagnostics.best_near_root.rho, &refinement_candidate, &rho_root)) {
+            diagnostics.candidate_roots.push_back(density_candidate_diagnostics_cpp(refinement_candidate));
             diagnostics.candidate_root_count = static_cast<int>(diagnostics.candidate_roots.size());
             diagnostics.validity_gate = "passed";
             diagnostics.rejection_reason = "";
@@ -555,7 +555,7 @@ DensitySolveResult density_solve_report_cpp(double t, double p, vector<double> x
             return out;
         }
     }
-    diagnostics.fallback_rejected_reason = diagnostics.rejection_reason;
+    diagnostics.best_candidate_rejection_reason = diagnostics.rejection_reason;
     out.diagnostics = diagnostics;
     return out;
 }

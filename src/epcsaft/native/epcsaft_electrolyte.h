@@ -182,8 +182,8 @@ struct DensitySolveDiagnostics {
     int candidate_root_count = 0;
     DensityCandidateDiagnostics best_near_root;
     std::vector<DensityCandidateDiagnostics> candidate_roots;
-    bool fallback_used = false;
-    std::string fallback_rejected_reason = "";
+    bool best_candidate_refinement_used = false;
+    std::string best_candidate_rejection_reason = "";
     std::string warm_start_source = "scan";
     std::string validity_gate = "not_evaluated";
 };
@@ -417,7 +417,7 @@ public:
     size_t reference_state_cache_hits() const;
     size_t reference_state_cache_misses() const;
     size_t density_warm_start_hits() const;
-    size_t density_warm_start_fallbacks() const;
+    size_t density_warm_start_rejections() const;
 
 private:
     add_args args_;
@@ -439,7 +439,7 @@ private:
     size_t reference_state_cache_hits_ = 0;
     size_t reference_state_cache_misses_ = 0;
     size_t density_warm_start_hits_ = 0;
-    size_t density_warm_start_fallbacks_ = 0;
+    size_t density_warm_start_rejections_ = 0;
 };
 
 double Z_cpp(double t, double rho, vector<double> x, const add_args &cppargs);

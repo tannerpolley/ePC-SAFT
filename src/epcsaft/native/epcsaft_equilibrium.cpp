@@ -2820,7 +2820,7 @@ EquilibriumResultNative electrolyte_lle_failure_result(
     result.diagnostics_string["density_warm_start_source"] = "";
     result.diagnostics_bool["experimental_coupled_density_lle"] = options.experimental_coupled_density_lle;
     result.diagnostics_bool["coupled_density_lle_attempted"] = options.experimental_coupled_density_lle;
-    result.diagnostics_bool["density_fallback_used"] = false;
+    result.diagnostics_bool["density_best_candidate_refinement_used"] = false;
     result.diagnostics_bool["return_best_effort"] = options.return_best_effort;
     result.diagnostics_int["density_failure_count"] = 0;
     result.diagnostics_bool["stability_checked"] = true;
@@ -3446,7 +3446,7 @@ EquilibriumResultNative electrolyte_lle_native(
     result.diagnostics_bool["phase_labels_swapped"] = labels_swapped;
     result.diagnostics_bool["experimental_coupled_density_lle"] = options.experimental_coupled_density_lle;
     result.diagnostics_bool["coupled_density_lle_attempted"] = options.experimental_coupled_density_lle;
-    result.diagnostics_bool["density_fallback_used"] = false;
+    result.diagnostics_bool["density_best_candidate_refinement_used"] = false;
     result.diagnostics_bool["return_best_effort"] = options.return_best_effort;
     result.diagnostics_bool["best_effort_phases_returned"] = false;
     result.diagnostics_bool["stability_checked"] = true;

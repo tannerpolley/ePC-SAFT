@@ -317,7 +317,7 @@ class ePCSAFTMixture:
         self._native.clear_runtime_caches()
 
     def reset_runtime_cache_stats(self):
-        """Reset runtime cache hit/fallback counters without clearing cached values."""
+        """Reset runtime cache hit/rejection counters without clearing cached values."""
         self._native.reset_runtime_cache_stats()
 
     def runtime_cache_stats(self):
@@ -326,7 +326,7 @@ class ePCSAFTMixture:
             "reference_state_cache_hits": int(self._native.reference_state_cache_hits()),
             "reference_state_cache_misses": int(self._native.reference_state_cache_misses()),
             "density_warm_start_hits": int(self._native.density_warm_start_hits()),
-            "density_warm_start_fallbacks": int(self._native.density_warm_start_fallbacks()),
+            "density_warm_start_rejections": int(self._native.density_warm_start_rejections()),
         }
 
     def state(self, T, x, P=None, rho=None, phase="liq", rho_guess=None, rho_seed=None):

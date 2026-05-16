@@ -9,8 +9,8 @@
 
 ## Remaining Search Matches
 
-- Public API names and diagnostic keys remain unchanged, including `reactive_staged_equilibrium`, `neutral_fallback_used`, `density_fallback_used`, and `experimental_coupled_density_lle`.
-- C++/Python result-contract fields with fallback in their names remain unchanged because renaming them would break result schemas.
+- Public API names and diagnostic keys were intentionally left unchanged during this audit, including staged reactive-equilibrium route names, neutral candidate-selection flags, density closure candidate-selection flags, and `experimental_coupled_density_lle`.
+- Later pruning work removed the neutral fallback flag and renamed density closure diagnostics to `density_best_candidate_refinement_used`, `density_best_candidate_rejection_reason`, and `density_warm_start_rejections`.
 - Source-literature and validation-data labels named experimental remain unchanged because they refer to paper or digitized data, not package maturity.
 - Git staging language in the LaTeX mirror helper remains unchanged because it refers to Git index state.
 - FULL_ROADMAP warnings remain unchanged where they explicitly forbid closure on staged-only or diagnostic-only evidence.
