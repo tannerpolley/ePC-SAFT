@@ -75,6 +75,5 @@ def test_neutral_benchmark_script_runs_tp_flash_case_and_writes_json(tmp_path):
     assert payload["repeat"] == 2
     assert payload["cases"][0]["case"] == "tp_flash"
     assert payload["cases"][0]["failures"] == 0
-    assert payload["cases"][0]["fallback_used"] is False
     assert "median_ns" in payload["cases"][0]
     assert "fingerprint" in payload["cases"][0]

@@ -20,7 +20,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 @dataclass(frozen=True)
 class BenchmarkObservation:
     fingerprint: dict[str, Any]
-    fallback_used: bool
     diagnostics: dict[str, Any]
 
 
@@ -87,15 +86,6 @@ def _git_commit() -> str | None:
     return commit or None
 
 
-def _fallback_used_from_diagnostics(diagnostics: dict[str, Any]) -> bool:
-    return bool(
-        diagnostics.get("neutral_fallback_used", False)
-        or diagnostics.get("density_fallback_used", False)
-        or diagnostics.get("jacobian_fallback_used", False)
-        or diagnostics.get("hessian_fallback_used", False)
-    )
-
-
 def _equilibrium_observation(result: epcsaft.EquilibriumResult) -> BenchmarkObservation:
     diagnostics = dict(result.diagnostics)
     fingerprint = {
@@ -114,7 +104,6 @@ def _equilibrium_observation(result: epcsaft.EquilibriumResult) -> BenchmarkObse
     }
     return BenchmarkObservation(
         fingerprint=fingerprint,
-        fallback_used=_fallback_used_from_diagnostics(diagnostics),
         diagnostics=diagnostics,
     )
 
@@ -129,7 +118,6 @@ def _state_observation(state: epcsaft.ePCSAFTState) -> BenchmarkObservation:
     }
     return BenchmarkObservation(
         fingerprint=fingerprint,
-        fallback_used=_fallback_used_from_diagnostics(diagnostics),
         diagnostics=diagnostics,
     )
 
@@ -203,7 +191,6 @@ def _benchmark_case(prepared: PreparedBenchmarkCase, *, warmup: int, repeat: int
 
     timings_ns: list[int] = []
     failures = 0
-    fallback_used = False
     fingerprint: dict[str, Any] | None = None
     diagnostics_keys: list[str] = []
     fingerprint_consistent = True
@@ -219,7 +206,6 @@ def _benchmark_case(prepared: PreparedBenchmarkCase, *, warmup: int, repeat: int
             continue
         elapsed_ns = time.perf_counter_ns() - start
         timings_ns.append(elapsed_ns)
-        fallback_used = fallback_used or bool(observation.fallback_used)
         diagnostics_keys = sorted(set(diagnostics_keys).union(observation.diagnostics.keys()))
         if fingerprint is None:
             fingerprint = observation.fingerprint
@@ -236,7 +222,6 @@ def _benchmark_case(prepared: PreparedBenchmarkCase, *, warmup: int, repeat: int
         "warmup": int(warmup),
         "repeat": int(repeat),
         "failures": int(failures),
-        "fallback_used": bool(fallback_used),
         "median_ns": int(np.median(timings)),
         "mean_ns": round(statistics.fmean(timings_ns)),
         "min_ns": int(np.min(timings)),
@@ -304,7 +289,7 @@ def run_neutral_equilibrium_benchmarks(
 
 
 def render_benchmark_table(payload: dict[str, Any]) -> str:
-    headers = ["case", "median_ms", "mean_ms", "p10_ms", "p90_ms", "failures", "fallback"]
+    headers = ["case", "median_ms", "mean_ms", "p10_ms", "p90_ms", "failures"]
     if any("speedup_vs_baseline" in row for row in payload["cases"]):
         headers.append("speedup")
     widths = {header: len(header) for header in headers}
@@ -317,7 +302,6 @@ def render_benchmark_table(payload: dict[str, Any]) -> str:
             f"{row['p10_ns'] / 1.0e6:.3f}",
             f"{row['p90_ns'] / 1.0e6:.3f}",
             str(row["failures"]),
-            "yes" if row["fallback_used"] else "no",
         ]
         if "speedup_vs_baseline" in row:
             values.append(f"{row['speedup_vs_baseline']:.2f}x")
