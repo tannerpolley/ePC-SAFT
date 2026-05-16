@@ -254,9 +254,9 @@ Task 1 note: the first committed gate covers the explicit backend-status and num
 - Modify: `tests/**`
 - Modify: `scripts/dev/validate_project.py` if suite boundaries change.
 
-- [ ] Collect test inventory and durations with pytest collection and a duration-enabled run.
-- [ ] Classify tests as fast gate, focused native, confidence, slow/scientific, docs, package-boundary, or obsolete.
-- [ ] Identify tests that only protect legacy status/dodge behavior.
+- [x] Collect test inventory and durations with pytest collection and a duration-enabled run.
+- [x] Classify tests as fast gate, focused native, confidence, slow/scientific, docs, package-boundary, or obsolete.
+- [x] Identify tests that only protect legacy status/dodge behavior.
 - [ ] Delete or rewrite obsolete tests.
 - [ ] Move slow scientific matrix coverage out of the quick gate.
 - [ ] Add strict tests for new gates:
@@ -264,8 +264,8 @@ Task 1 note: the first committed gate covers the explicit backend-status and num
   - no SciPy package/dev/test dependency;
   - no Eigen nonlinear optimizer route;
   - no Python production solver loop.
-- [ ] Validate the quick gate remains under 10 minutes.
-- [ ] Commit as `Audit and tighten solver gate tests`.
+- [x] Validate the quick gate remains under 10 minutes.
+- [x] Commit as `Audit and tighten solver gate tests`.
 
 ### Task 3: Build Dependency Boundary
 

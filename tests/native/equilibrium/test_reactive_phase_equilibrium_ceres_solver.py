@@ -25,7 +25,7 @@ def _toy_mixture() -> epcsaft.ePCSAFTMixture:
     )
 
 
-def _request(mix: epcsaft.ePCSAFTMixture) -> dict[str, object]:
+def _request() -> dict[str, object]:
     liq1 = np.asarray([0.11757838279937723, 0.8824216172006228])
     liq2 = np.asarray([0.7985874308392054, 0.20141256916079467])
     beta2 = 0.48813098468607985
@@ -48,7 +48,7 @@ def _request(mix: epcsaft.ePCSAFTMixture) -> dict[str, object]:
 
 def test_reactive_phase_native_ceres_solver_reports_coupled_jacobian_route() -> None:
     mix = _toy_mixture()
-    payload = _core._solve_reactive_phase_equilibrium_native(mix._native, _request(mix))
+    payload = _core._solve_reactive_phase_equilibrium_native(mix._native, _request())
     diagnostics = payload["diagnostics"]
 
     assert payload["backend"] == "reactive_phase_equilibrium"
@@ -74,7 +74,7 @@ def test_reactive_phase_native_ceres_solver_reports_coupled_jacobian_route() -> 
 
 def test_reactive_phase_native_ceres_solver_rejects_unusable_solution() -> None:
     mix = _toy_mixture()
-    request = _request(mix)
+    request = _request()
     request["log_equilibrium_constants"] = [10.0]
     request["options"] = dict(request["options"])
     request["options"]["max_iterations"] = 0

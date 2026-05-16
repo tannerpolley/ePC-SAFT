@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import csv
 from types import SimpleNamespace
 
 import numpy as np
@@ -10,14 +9,6 @@ import pytest
 
 import epcsaft
 import epcsaft.regression as regression_module
-from epcsaft import FitProblem, FitResult, create_parameter_template, fit_pure_neutral, write_fit_result
-from epcsaft._types import InputError
-from epcsaft.regression import (
-    _debug_native_pure_neutral_objective,
-    _fit_pure_neutral_least_squares_internal,
-    evaluate_generic_regression_derivatives,
-)
-from tests.helpers.regression_cases import _methane_like_records, _minimal_neutral_metadata
 
 def _minimal_nacl_records():
     return [

@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
-from pathlib import Path
 
 
 def test_neutral_benchmark_module_exposes_required_cases():

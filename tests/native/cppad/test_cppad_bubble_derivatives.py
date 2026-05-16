@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import numpy as np
 
-import epcsaft
 from tests.helpers.native_cases import _neutral_state
 
 

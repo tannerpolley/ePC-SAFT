@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 
 import numpy as np
-import pytest
 
 import epcsaft
 from epcsaft import _core
@@ -29,7 +28,7 @@ def _electrolyte_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_dataset("2022_Ascani", ["H2O", "Butanol", "Na+", "Cl-"], feed, 298.15)
 
 
-def test_associating_neutral_lle_solves_without_numerical_derivative_derivatives() -> None:
+def test_associating_neutral_lle_solves_without_numerical_perturbation_derivatives() -> None:
     mix = _associating_lle_mixture()
 
     result = mix.lle_tp(
@@ -44,9 +43,11 @@ def test_associating_neutral_lle_solves_without_numerical_derivative_derivatives
     assert result.diagnostics["fugacity_residual_norm"] < 1.0e-8
     assert result.diagnostics["material_balance_error"] < 1.0e-8
     assert result.diagnostics["phase_distance"] > 0.1
-    assert result.diagnostics["nonlinear_solver"] == "native_derivative_free_nelder_mead"
-    assert result.diagnostics["derivative_backend"] == "not_applicable"
-    assert result.diagnostics["derivative_status"] == "not_required"
+    assert result.diagnostics["nonlinear_solver"] == "ceres_trust_region_residual_solve"
+    assert "native_derivative_free_nelder_mead" not in json.dumps(result.diagnostics, default=str)
+    assert result.diagnostics["derivative_backend"] == "cppad_implicit"
+    assert result.diagnostics["derivative_status"] == "residual_jacobian_available"
+    assert result.diagnostics["jacobian_available"] is True
     payload = json.dumps(result.to_dict(), default=str).lower()
     assert "not_available" not in payload
     assert "numerical_derivative" not in payload

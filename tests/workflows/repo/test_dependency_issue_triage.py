@@ -120,6 +120,7 @@ def test_issue_number_and_url_resolve_to_same_gh_issue_view_call(monkeypatch) ->
     calls: list[list[str]] = []
 
     def fake_run(cmd, check, capture_output, text):
+        _ = (check, capture_output, text)
         calls.append(cmd)
         payload = json.dumps(_issue_payload(_body()))
         return subprocess.CompletedProcess(cmd, 0, stdout=payload, stderr="")

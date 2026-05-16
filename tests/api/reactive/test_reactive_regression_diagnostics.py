@@ -62,7 +62,7 @@ def _native_mixed_pressure_speciation_batch() -> tuple[epcsaft.ReactiveElectroly
     return batch, water_sigma
 
 def test_reactive_regression_reporting_helpers_write_outputs(monkeypatch, tmp_path: Path) -> None:
-    def fake_solve(**kwargs):
+    def fake_solve(**_kwargs):
         return epcsaft.ReactiveElectrolyteBubbleResult(
             success=True,
             message="converged",
@@ -127,7 +127,7 @@ def test_reactive_regression_reporting_helpers_write_outputs(monkeypatch, tmp_pa
     assert "objective" in summary.read_text(encoding="utf-8")
 
 def test_reactive_regression_legacy_wrapper_keeps_fixed_shape(monkeypatch) -> None:
-    def fake_solve(**kwargs):
+    def fake_solve(**_kwargs):
         return epcsaft.ReactiveElectrolyteBubbleResult(
             success=True,
             message="converged",

@@ -6,7 +6,6 @@ import numpy as np
 import pytest
 
 import epcsaft
-from epcsaft import _core
 
 def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
     params = {

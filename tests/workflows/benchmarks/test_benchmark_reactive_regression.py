@@ -102,7 +102,7 @@ def test_reactive_regression_benchmark_baseline_merge(tmp_path):
     assert case_payload["speedup_vs_baseline"] > 0.0
 
 
-def test_reactive_regression_benchmark_excludes_failed_repeats_from_timing(monkeypatch):
+def test_reactive_regression_benchmark_excludes_failed_repeats_from_timing():
     from scripts.benchmarks.helpers import reactive_regression as bench
 
     calls = {"count": 0}

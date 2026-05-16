@@ -440,7 +440,7 @@ def test_density_based_native_constructor_failure_raises_public_solution_error(m
 
     original_native_state = epcsaft_module._core.NativeState
 
-    def raising_native_state(*args, **kwargs):
+    def raising_native_state(*_args, **_kwargs):
         raise RuntimeError("simulated density native failure")
 
     monkeypatch.setattr(epcsaft_module._core, "NativeState", raising_native_state)
