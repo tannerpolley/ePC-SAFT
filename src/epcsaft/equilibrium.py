@@ -47,7 +47,7 @@ class EquilibriumOptions:
     ignored_legacy_options: tuple[str, ...] = ()
     density_diagnostics: Literal["auto", "off", "full"] = "auto"
     experimental_coupled_density_lle: bool = False
-    jacobian_backend: Literal["auto", "autodiff", "analytic", "cppad"] = "auto"
+    jacobian_backend: Literal["auto", "analytic", "cppad"] = "auto"
     solver_backend: Literal["auto", "ipopt"] = "auto"
     timeout_seconds: float | None = None
     max_seed_attempts: int | None = None
@@ -601,8 +601,8 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
     if not isinstance(options.experimental_coupled_density_lle, bool):
         raise InputError("options.experimental_coupled_density_lle must be boolean.")
     jacobian_backend = str(options.jacobian_backend).strip().lower()
-    if jacobian_backend not in {"auto", "autodiff", "analytic", "cppad"}:
-        raise InputError("options.jacobian_backend must be 'auto', 'autodiff', 'analytic', or 'cppad'.")
+    if jacobian_backend not in {"auto", "analytic", "cppad"}:
+        raise InputError("options.jacobian_backend must be 'auto', 'analytic', or 'cppad'.")
     solver_backend = str(options.solver_backend).strip().lower()
     if solver_backend not in {"auto", "ipopt"}:
         raise InputError("options.solver_backend must be 'auto' or 'ipopt'.")

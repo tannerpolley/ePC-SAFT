@@ -25,6 +25,18 @@ def test_equilibrium_options_reject_removed_numerical_derivative_backend() -> No
         )
 
 
+def test_equilibrium_options_reject_legacy_autodiff_backend() -> None:
+    mix, feed = _neutral_mixture()
+
+    with pytest.raises(epcsaft.InputError, match="jacobian_backend"):
+        mix.flash_tp(
+            T=220.0,
+            P=1.0e5,
+            z=feed,
+            options=epcsaft.EquilibriumOptions(jacobian_backend="autodiff"),
+        )
+
+
 def test_auto_equilibrium_diagnostics_do_not_fallback_to_numerical_derivative() -> None:
     mix, feed = _neutral_mixture()
 

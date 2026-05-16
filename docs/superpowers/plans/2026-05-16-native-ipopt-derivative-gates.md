@@ -390,6 +390,8 @@ Task 8 continuation note: the public `EquilibriumOptions.hessian_strategy` knob 
 
 Task 8 continuation note: the previous Python-owned neutral bubble/dew scalar solve path was removed from accepted public execution. The public methods remain declared, validate inputs, and fail loudly until native Ipopt route builders replace the removed path.
 
+Task 8 continuation note: `EquilibriumOptions.jacobian_backend` no longer accepts the legacy `autodiff` spelling. Public equilibrium derivative selection is limited to `auto`, `analytic`, or `cppad`, matching the analytical/CppAD derivative gate outside Ceres-owned regression.
+
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
 **Files:**

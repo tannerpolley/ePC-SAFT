@@ -67,6 +67,7 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Native derivative tests now avoid perturbation-derived oracle checks; the reactive-phase Jacobian test is rewritten around CppAD backend, shape, finite-value, and analytical row-contract evidence.
 - The public implicit-sensitivity placeholder helper was removed. Reactive speciation tests now require real analytical/CppAD-backed implicit solve payloads and raising behavior for unsupported implicit derivative requests.
 - The legacy reactive-speciation `jacobian_backend="autodiff"` selector was removed; option tests now reject it and explicit derivative requests are limited to analytical/CppAD semantics.
+- The public `EquilibriumOptions.jacobian_backend` selector now rejects the same legacy backend spelling, keeping phase-equilibrium derivative requests aligned to analytical/CppAD semantics.
 
 Full-suite failures from the duration run that align with planned cleanup or next implementation:
 
