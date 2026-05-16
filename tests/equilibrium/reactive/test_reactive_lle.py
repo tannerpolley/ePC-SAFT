@@ -95,7 +95,7 @@ def test_explicit_reactive_staged_equilibrium_routes_reaction_coordinates_into_n
         totals={"total": 1.0},
         reactions=[_reaction_for_feed(feed)],
         phase_kind="lle_flash",
-        phase_options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10, damping=0.5),
+        phase_options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10),
         phase_kwargs={"initial_phases": initial_phases},
     )
 
@@ -130,7 +130,7 @@ def test_explicit_reactive_staged_equilibrium_routes_generic_lle() -> None:
         totals={"total": 1.0},
         reactions=[_reaction_for_feed(feed)],
         phase_kind="lle_flash",
-        phase_options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10, damping=0.5),
+        phase_options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10),
         phase_kwargs={"initial_phases": initial_phases},
     )
 

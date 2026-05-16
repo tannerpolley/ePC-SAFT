@@ -404,6 +404,8 @@ Task 8 continuation note: obsolete public candidate fallback controls and diagno
 
 Task 8 continuation note: the public `EquilibriumOptions.hessian_strategy` knob was removed. Hessian choices are now native solver-internal details only, consistent with the gate that allows Ipopt limited-memory and Ceres Gauss-Newton behavior without reporting them as package derivative backends.
 
+Task 8 continuation note: `EquilibriumOptions` no longer exposes the public `damping` control. Public equilibrium callers can no longer tune old manual damping behavior; remaining native damping code is transitional implementation debt until the Ipopt route builders replace those paths.
+
 Task 8 continuation note: the previous Python-owned neutral bubble/dew scalar solve path was removed from accepted public execution. The public methods remain declared, validate inputs, and fail loudly until native Ipopt route builders replace the removed path.
 
 Task 8 continuation note: `EquilibriumOptions.jacobian_backend` no longer accepts the legacy `autodiff` spelling. Public equilibrium derivative selection is limited to `auto`, `analytic`, or `cppad`, matching the analytical/CppAD derivative gate outside Ceres-owned regression.

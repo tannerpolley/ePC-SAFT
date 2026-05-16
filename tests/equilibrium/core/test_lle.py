@@ -95,7 +95,7 @@ def test_methanol_cyclohexane_lle_flash_solves_seeded_phase_split() -> None:
         z=feed,
         backend="neutral_lle",
         initial_phases=initial_phases,
-        options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10, damping=0.5),
+        options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10),
     )
 
     _assert_methanol_cyclohexane_split(result, feed)
@@ -112,7 +112,7 @@ def test_lle_flash_without_initial_phases_solves_from_stability_seed() -> None:
         T=298.15,
         P=1.013e5,
         z=feed,
-        options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10, damping=0.5),
+        options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10),
     )
 
     _assert_methanol_cyclohexane_split(result, feed)
@@ -181,7 +181,6 @@ def test_lle_flash_phase_diagnostics_request_returns_clear_phase_details() -> No
         options=epcsaft.EquilibriumOptions(
             max_iterations=240,
             tolerance=1.0e-10,
-            damping=0.5,
             include_phase_diagnostics=True,
         ),
     )
@@ -218,7 +217,7 @@ def test_lle_flash_distinct_poor_seed_fails_loudly_without_forced_pass() -> None
             P=1.013e5,
             z=feed,
             initial_phases={"liq1": [0.25, 0.75], "liq2": [0.65, 0.35], "phase_fraction": 0.5},
-            options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-6, damping=0.5),
+            options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-6),
         )
 
     message = str(excinfo.value)
@@ -233,7 +232,6 @@ def test_lle_flash_distinct_poor_seed_fails_loudly_without_forced_pass() -> None
         (epcsaft.EquilibriumOptions(max_iterations=1.5), "max_iterations"),
         (epcsaft.EquilibriumOptions(max_iterations=True), "max_iterations"),
         (epcsaft.EquilibriumOptions(tolerance=float("nan")), "tolerance"),
-        (epcsaft.EquilibriumOptions(damping=float("inf")), "damping"),
         (epcsaft.EquilibriumOptions(min_composition=float("nan")), "min_composition"),
         (epcsaft.EquilibriumOptions(include_phase_diagnostics="yes"), "include_phase_diagnostics"),
         (epcsaft.EquilibriumOptions(stability_precheck="yes"), "stability_precheck"),

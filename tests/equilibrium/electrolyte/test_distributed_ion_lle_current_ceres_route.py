@@ -23,7 +23,7 @@ def test_distributed_ion_lle_current_ceres_route_reports_residual_proof() -> Non
         T=298.15,
         P=1.0e5,
         z=feed,
-        options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8, damping=0.5),
+        options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
     )
     diagnostics = result.diagnostics
 

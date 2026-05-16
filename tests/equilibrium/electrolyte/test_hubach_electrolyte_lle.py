@@ -99,7 +99,7 @@ def test_hubach_row0_explicit_seed_converges_to_distinct_fixed_species_lle() -> 
         P=P_PA,
         z=feed,
         initial_phases=_row0_initial_phases(),
-        options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8, damping=0.5),
+        options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
     )
 
     diagnostics = result.diagnostics

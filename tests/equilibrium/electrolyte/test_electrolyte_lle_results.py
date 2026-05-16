@@ -151,7 +151,7 @@ def test_mixed_electrolyte_lle_reports_phase_charge_balance_for_distributed_ions
         T=298.15,
         P=1.0e5,
         z=_case2_feed(),
-        options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8, damping=0.5),
+        options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
     )
 
     charge_balance = result.diagnostics["phase_charge_balance"]

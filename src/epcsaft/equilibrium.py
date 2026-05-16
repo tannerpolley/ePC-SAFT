@@ -40,7 +40,6 @@ class EquilibriumOptions:
 
     max_iterations: int = 180
     tolerance: float = 1.0e-6
-    damping: float = 0.5
     min_composition: float = 1.0e-12
     include_phase_diagnostics: bool = False
     stability_precheck: bool = True
@@ -553,7 +552,6 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
         allowed = {
             "max_iterations",
             "tolerance",
-            "damping",
             "min_composition",
             "include_phase_diagnostics",
             "stability_precheck",
@@ -582,9 +580,6 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
     tolerance = _finite_float_option(options.tolerance, "tolerance")
     if tolerance <= 0.0:
         raise InputError("options.tolerance must be positive.")
-    damping = _finite_float_option(options.damping, "damping")
-    if not (0.0 < damping <= 1.0):
-        raise InputError("options.damping must be > 0 and <= 1.")
     min_composition = _finite_float_option(options.min_composition, "min_composition")
     if min_composition <= 0.0:
         raise InputError("options.min_composition must be positive.")
@@ -613,7 +608,6 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
     return EquilibriumOptions(
         max_iterations=max_iterations,
         tolerance=tolerance,
-        damping=damping,
         min_composition=min_composition,
         include_phase_diagnostics=options.include_phase_diagnostics,
         stability_precheck=options.stability_precheck,
@@ -1038,7 +1032,6 @@ def _options_to_native_dict(options: EquilibriumOptions) -> dict[str, Any]:
     return {
         "max_iterations": int(options.max_iterations),
         "tolerance": float(options.tolerance),
-        "damping": float(options.damping),
         "min_composition": float(options.min_composition),
         "include_phase_diagnostics": bool(options.include_phase_diagnostics),
         "stability_precheck": bool(options.stability_precheck),
@@ -1525,7 +1518,6 @@ def _equilibrium_options_from_reactive_options(options: Any) -> EquilibriumOptio
     return EquilibriumOptions(
         max_iterations=int(options.max_iterations),
         tolerance=float(options.tolerance),
-        damping=float(options.damping),
         min_composition=float(options.min_mole_fraction),
         jacobian_backend=str(options.jacobian_backend),
         solver_backend="auto",

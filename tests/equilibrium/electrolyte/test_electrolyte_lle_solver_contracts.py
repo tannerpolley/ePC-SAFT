@@ -75,7 +75,7 @@ def test_ascani_case2_mixed_salt_solves_without_local_model_fixture() -> None:
         T=298.15,
         P=1.0e5,
         z=_case2_feed(),
-        options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8, damping=0.5),
+        options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
     )
 
     assert result.split_detected is True
@@ -90,7 +90,7 @@ def test_auto_kind_routes_explicit_ionic_feed_to_electrolyte_lle() -> None:
         T=298.15,
         P=1.0e5,
         z=_case2_feed(),
-        options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8, damping=0.5),
+        options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
     )
 
     assert result.split_detected is True
@@ -104,7 +104,7 @@ def test_native_gibbs_seed_path_reports_feasible_solver_diagnostics() -> None:
         T=298.15,
         P=1.0e5,
         z=_case2_feed(),
-        options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8, damping=0.5),
+        options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
     )
 
     _assert_transitional_ceres_diagnostics(result.diagnostics)
@@ -117,7 +117,7 @@ def test_predictive_residual_uses_dependent_phase_material_balance() -> None:
         T=298.15,
         P=1.0e5,
         z=feed,
-        options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8, damping=0.5),
+        options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
     )
 
     aq, org = result.phases

@@ -215,7 +215,6 @@ def predict_case(
     *,
     max_iterations: int = 180,
     tolerance: float = 1.0e-8,
-    damping: float = 0.5,
     params_override: Mapping[str, Any] | None = None,
 ) -> BenchmarkPrediction:
     native = benchmark_case_to_native_inputs(case)
@@ -237,7 +236,6 @@ def predict_case(
             options=EquilibriumOptions(
                 max_iterations=max_iterations,
                 tolerance=tolerance,
-                damping=damping,
                 include_phase_diagnostics=True,
             ),
         )

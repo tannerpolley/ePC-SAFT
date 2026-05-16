@@ -161,7 +161,6 @@ def _prepare_lle_seeded() -> PreparedBenchmarkCase:
     options = epcsaft.EquilibriumOptions(
         max_iterations=240,
         tolerance=1.0e-10,
-        damping=0.5,
         jacobian_backend="auto",
     )
 
