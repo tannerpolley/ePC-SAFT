@@ -120,7 +120,8 @@ For IDE run configurations, keep commands explicit instead of relying on one ove
 - Native incremental build: ``uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10``
 - Native configure/build: ``uv run python scripts/dev/build_epcsaft.py --profile fast``
 - Clean Ceres + CppAD proof: ``uv run python scripts/dev/build_epcsaft.py --clean --profile full --parallel 4``
-- Native Ipopt proof: ``uv run python scripts/dev/build_epcsaft.py --profile ipopt --ipopt-dir C:\path\to\lib\cmake\Ipopt``
+- Native Ipopt proof with an install root: ``uv run python scripts/dev/build_epcsaft.py --clean --profile ipopt --ipopt-root C:\path\to\Ipopt``
+- Native Ipopt proof with an ``IpoptConfig.cmake`` directory: ``uv run python scripts/dev/build_epcsaft.py --clean --profile ipopt --ipopt-dir C:\path\to\lib\cmake\Ipopt``
 
 Do not use ``--clean`` for routine validation. ``uv run python scripts/dev/build_epcsaft.py --clean`` is a repair action for stale CMake state or stale/locked ``_core`` artifacts. A clean dev build deletes the reusable CMake tree, so Ceres source/configuration/build work under ``build/dev/_deps`` may run again unless you use a prebuilt system Ceres package. If Windows reports that ``_core*.pyd`` is locked, stop Python REPLs, tests, IDE run configurations, or parallel workers that imported ``epcsaft._core`` before retrying. If ``--status`` reports a stale Ninja lock, inspect the listed process ids and stop only repo-owned build processes before retrying.
 

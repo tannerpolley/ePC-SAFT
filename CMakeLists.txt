@@ -24,6 +24,7 @@ option(EPCSAFT_ENABLE_CPPAD "Enable package-wide CppAD support" ON)
 option(EPCSAFT_USE_SYSTEM_CPPAD "Use installed CppAD instead of FetchContent" OFF)
 option(EPCSAFT_ENABLE_IPOPT "Enable native Ipopt support for production equilibrium NLP solves" OFF)
 option(EPCSAFT_USE_SYSTEM_IPOPT "Use an installed Ipopt package for native equilibrium NLP solves" ON)
+set(EPCSAFT_IPOPT_ROOT "" CACHE PATH "Root directory for an installed Ipopt tree with include/, lib/, and bin/")
 option(EPCSAFT_WARNINGS_AS_ERRORS "Treat native warnings as errors" OFF)
 option(EPCSAFT_ENABLE_SANITIZERS "Enable ASAN/UBSAN in debug builds" OFF)
 
@@ -119,22 +120,51 @@ if(EPCSAFT_ENABLE_IPOPT)
     if(NOT EPCSAFT_USE_SYSTEM_IPOPT)
         message(FATAL_ERROR "EPCSAFT_ENABLE_IPOPT=ON requires EPCSAFT_USE_SYSTEM_IPOPT=ON; vendored Ipopt builds are not supported.")
     endif()
-    find_package(Ipopt CONFIG QUIET)
-    if(TARGET Ipopt::ipopt)
-        set(EPCSAFT_IPOPT_TARGET Ipopt::ipopt)
-    elseif(TARGET Ipopt::Ipopt)
-        set(EPCSAFT_IPOPT_TARGET Ipopt::Ipopt)
-    else()
-        find_package(PkgConfig QUIET)
-        if(PkgConfig_FOUND)
-            pkg_check_modules(EPCSAFT_IPOPT_PC QUIET IMPORTED_TARGET ipopt)
+    if(EPCSAFT_IPOPT_ROOT)
+        file(TO_CMAKE_PATH "${EPCSAFT_IPOPT_ROOT}" EPCSAFT_IPOPT_ROOT_CMAKE)
+        find_path(EPCSAFT_IPOPT_INCLUDE_DIR
+            NAMES coin-or/IpIpoptApplication.hpp IpIpoptApplication.hpp
+            PATHS
+                "${EPCSAFT_IPOPT_ROOT_CMAKE}/include"
+                "${EPCSAFT_IPOPT_ROOT_CMAKE}/include/coin-or"
+                "${EPCSAFT_IPOPT_ROOT_CMAKE}/include/coin"
+            NO_DEFAULT_PATH
+        )
+        find_library(EPCSAFT_IPOPT_LIBRARY
+            NAMES ipopt ipopt-3 libipopt
+            PATHS "${EPCSAFT_IPOPT_ROOT_CMAKE}/lib"
+            NO_DEFAULT_PATH
+        )
+        if(NOT EPCSAFT_IPOPT_INCLUDE_DIR OR NOT EPCSAFT_IPOPT_LIBRARY)
+            message(FATAL_ERROR "EPCSAFT_IPOPT_ROOT must contain a usable Ipopt include/ and lib/ tree: ${EPCSAFT_IPOPT_ROOT}")
         endif()
-        if(TARGET PkgConfig::EPCSAFT_IPOPT_PC)
-            set(EPCSAFT_IPOPT_TARGET PkgConfig::EPCSAFT_IPOPT_PC)
+        if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND EPCSAFT_IPOPT_LIBRARY MATCHES "\\.lib$")
+            message(FATAL_ERROR "EPCSAFT_IPOPT_ROOT resolved to an MSVC import library, but the active compiler is GNU. Use an MSVC CMake toolchain or provide a MinGW-compatible Ipopt library.")
+        endif()
+        add_library(EPCSAFT::Ipopt UNKNOWN IMPORTED)
+        set_target_properties(EPCSAFT::Ipopt PROPERTIES
+            IMPORTED_LOCATION "${EPCSAFT_IPOPT_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${EPCSAFT_IPOPT_INCLUDE_DIR}"
+        )
+        set(EPCSAFT_IPOPT_TARGET EPCSAFT::Ipopt)
+    else()
+        find_package(Ipopt CONFIG QUIET)
+        if(TARGET Ipopt::ipopt)
+            set(EPCSAFT_IPOPT_TARGET Ipopt::ipopt)
+        elseif(TARGET Ipopt::Ipopt)
+            set(EPCSAFT_IPOPT_TARGET Ipopt::Ipopt)
+        else()
+            find_package(PkgConfig QUIET)
+            if(PkgConfig_FOUND)
+                pkg_check_modules(EPCSAFT_IPOPT_PC QUIET IMPORTED_TARGET ipopt)
+            endif()
+            if(TARGET PkgConfig::EPCSAFT_IPOPT_PC)
+                set(EPCSAFT_IPOPT_TARGET PkgConfig::EPCSAFT_IPOPT_PC)
+            endif()
         endif()
     endif()
     if(NOT EPCSAFT_IPOPT_TARGET)
-        message(FATAL_ERROR "EPCSAFT_ENABLE_IPOPT=ON requested, but native Ipopt was not found. Set Ipopt_DIR or provide pkg-config metadata for ipopt.")
+        message(FATAL_ERROR "EPCSAFT_ENABLE_IPOPT=ON requested, but native Ipopt was not found. Set Ipopt_DIR, EPCSAFT_IPOPT_ROOT, or provide pkg-config metadata for ipopt.")
     endif()
     set(EPCSAFT_IPOPT_STATUS "enabled_available")
 endif()

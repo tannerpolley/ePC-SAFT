@@ -1,4 +1,25 @@
+# ruff: noqa: I001
 """Public package interface for the native ePC-SAFT runtime."""
+
+import os
+
+
+_DLL_DIRECTORY_HANDLES: list[object] = []
+
+
+def _add_runtime_dll_directories() -> None:
+    if os.name != "nt" or not hasattr(os, "add_dll_directory"):
+        return
+    raw_dirs = os.environ.get("EPCSAFT_RUNTIME_DLL_DIRS", "")
+    for raw_dir in raw_dirs.split(os.pathsep):
+        dll_dir = raw_dir.strip()
+        if not dll_dir:
+            continue
+        _DLL_DIRECTORY_HANDLES.append(os.add_dll_directory(dll_dir))
+
+
+# Register external native dependency directories before imports that load _core.
+_add_runtime_dll_directories()
 
 from .dataset_validation import validate_dataset_bundle
 from .electrolyte_bubble import ElectrolyteBubbleOptions, ElectrolyteBubbleResult
@@ -111,7 +132,7 @@ from .regression import (
 )
 from .runtime import __git_commit__, __version__, capabilities, runtime_build_info
 
-__all__ = [
+__all__ = [  # noqa: RUF022
     "DATASET_ROOT",
     "ActivityCoefficientResult",
     "AssociationSite",

@@ -29,7 +29,7 @@ Use the normal build path first:
    uv run python scripts/dev/doctor.py
    uv run python run_pytest.py --confidence -q
 
-The normal local dev build is the fast profile: Ceres ON, CppAD ON, and Ipopt OFF. Ceres is required for native regression builds and CppAD is required for derivative-capable builds. Use ``uv run python scripts/dev/build_epcsaft.py --profile ipopt --ipopt-dir <IpoptConfig-dir>`` only when the debug task needs native Ipopt adapter coverage.
+The normal local dev build is the fast profile: Ceres ON, CppAD ON, and Ipopt OFF. Ceres is required for native regression builds and CppAD is required for derivative-capable builds. Use ``uv run python scripts/dev/build_epcsaft.py --clean --profile ipopt --ipopt-root <Ipopt-root>`` or ``uv run python scripts/dev/build_epcsaft.py --clean --profile ipopt --ipopt-dir <IpoptConfig-dir>`` only when the debug task needs native Ipopt adapter coverage.
 
 For C++ iteration after the build tree is configured:
 

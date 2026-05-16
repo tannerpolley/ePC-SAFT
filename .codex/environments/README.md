@@ -15,7 +15,8 @@ Ceres and CppAD are both required, while Ipopt is explicit adapter work.
 Use ``uv run python scripts/dev/validate_project.py ceres-cppad`` when the task
 needs the focused Ceres regression/backend slice.
 Native Ipopt discovery is explicit system-dependency work. Use
-``uv run python scripts/dev/build_epcsaft.py --profile ipopt --ipopt-dir <IpoptConfig-dir>``
+``uv run python scripts/dev/build_epcsaft.py --profile ipopt --ipopt-root <Ipopt-root>``
+or ``uv run python scripts/dev/build_epcsaft.py --profile ipopt --ipopt-dir <IpoptConfig-dir>``
 only for native Ipopt adapter development or validation.
 This local dev-script default matches package installs for required Ceres/CppAD
 dependencies.

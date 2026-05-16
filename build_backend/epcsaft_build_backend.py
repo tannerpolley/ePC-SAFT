@@ -109,6 +109,35 @@ def _validate_ipopt_dir(raw_path: str) -> Path:
     return ipopt_dir
 
 
+def _validate_ipopt_root(raw_path: str) -> Path:
+    ipopt_root = Path(raw_path).expanduser().resolve()
+    if not ipopt_root.is_dir():
+        raise FileNotFoundError(f"EPCSAFT_PEP517_IPOPT_ROOT does not exist or is not a directory: {ipopt_root}")
+    include_dir = ipopt_root / "include"
+    lib_dir = ipopt_root / "lib"
+    if not include_dir.is_dir() or not lib_dir.is_dir():
+        raise FileNotFoundError(
+            "EPCSAFT_PEP517_IPOPT_ROOT must point at an Ipopt tree with include/ and lib/: "
+            f"{ipopt_root}"
+        )
+    headers = (
+        include_dir / "coin-or" / "IpIpoptApplication.hpp",
+        include_dir / "coin" / "IpIpoptApplication.hpp",
+        include_dir / "IpIpoptApplication.hpp",
+    )
+    libraries = (
+        lib_dir / "ipopt.lib",
+        lib_dir / "ipopt-3.lib",
+        lib_dir / "libipopt.dll.a",
+        lib_dir / "libipopt.a",
+    )
+    if not any(path.is_file() for path in headers):
+        raise FileNotFoundError(f"EPCSAFT_PEP517_IPOPT_ROOT is missing Ipopt C++ headers: {ipopt_root}")
+    if not any(path.is_file() for path in libraries):
+        raise FileNotFoundError(f"EPCSAFT_PEP517_IPOPT_ROOT is missing an Ipopt link library: {ipopt_root}")
+    return ipopt_root
+
+
 def _apply_system_ceres_config(config: dict) -> dict:
     ceres_dir_env = os.environ.get("EPCSAFT_PEP517_CERES_DIR") or os.environ.get("Ceres_DIR")
     use_system_ceres = bool(ceres_dir_env) or _truthy_env("EPCSAFT_PEP517_USE_SYSTEM_CERES")
@@ -124,8 +153,12 @@ def _apply_system_ceres_config(config: dict) -> dict:
 
 def _apply_system_ipopt_config(config: dict) -> dict:
     ipopt_dir_env = os.environ.get("EPCSAFT_PEP517_IPOPT_DIR") or os.environ.get("Ipopt_DIR")
+    ipopt_root_env = os.environ.get("EPCSAFT_PEP517_IPOPT_ROOT") or os.environ.get("EPCSAFT_IPOPT_ROOT")
+    if ipopt_dir_env and ipopt_root_env:
+        raise ValueError("Use either EPCSAFT_PEP517_IPOPT_DIR or EPCSAFT_PEP517_IPOPT_ROOT, not both.")
     use_system_ipopt = (
         bool(ipopt_dir_env)
+        or bool(ipopt_root_env)
         or _truthy_env("EPCSAFT_PEP517_ENABLE_IPOPT")
         or _truthy_env("EPCSAFT_PEP517_USE_SYSTEM_IPOPT")
     )
@@ -136,6 +169,15 @@ def _apply_system_ipopt_config(config: dict) -> dict:
     _set_config_default(config, "cmake.define.EPCSAFT_USE_SYSTEM_IPOPT", "ON")
     if ipopt_dir_env:
         _set_config_default(config, "cmake.define.Ipopt_DIR", str(_validate_ipopt_dir(ipopt_dir_env)))
+    if ipopt_root_env:
+        ipopt_root = _validate_ipopt_root(ipopt_root_env)
+        _set_config_default(config, "cmake.define.EPCSAFT_IPOPT_ROOT", str(ipopt_root))
+        bin_dir = ipopt_root / "bin"
+        if bin_dir.is_dir():
+            os.environ["PATH"] = str(bin_dir) + os.pathsep + os.environ.get("PATH", "")
+            os.environ["EPCSAFT_RUNTIME_DLL_DIRS"] = (
+                str(bin_dir) + os.pathsep + os.environ.get("EPCSAFT_RUNTIME_DLL_DIRS", "")
+            )
     return config
 
 

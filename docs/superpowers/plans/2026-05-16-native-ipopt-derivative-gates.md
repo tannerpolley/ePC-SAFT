@@ -307,6 +307,8 @@ Task 3 note: the first dependency-boundary slice removed the external numerical 
 
 Task 4 note: the adapter boundary now lives under `src/epcsaft/native/equilibrium_nlp/`. The local fast build intentionally reports Ipopt disabled, so the quadratic smoke is dependency-gated locally and will execute only in an Ipopt-enabled build.
 
+Task 4 continuation note: the local Windows Ipopt proof uses the install root at `C:\ProgramData\miniconda3\envs\ePC-SAFT\Library` with the MSVC toolchain. The old MinGW probe compiled/linked against that root but crashed because the Ipopt C++ ABI is MSVC-oriented. The supported proof command is `uv run python scripts/dev/build_epcsaft.py --clean --profile ipopt --ipopt-root C:\ProgramData\miniconda3\envs\ePC-SAFT\Library --parallel 4`, followed by setting both `PATH` and `EPCSAFT_RUNTIME_DLL_DIRS` to the Ipopt `Library\bin` directory for Ipopt-executing tests. This adapter proof passed with the native quadratic Ipopt smoke before the active dev build was restored to the default no-Ipopt quick profile.
+
 ### Task 5: Add Gibbs And Reaction Blocks
 
 **Files:**
