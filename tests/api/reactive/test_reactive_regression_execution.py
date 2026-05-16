@@ -275,7 +275,7 @@ def test_fit_reactive_electrolyte_parameters_accepts_speciation_rows(monkeypatch
     assert "holdout" in summary["train_validation"]
     assert isinstance(summary["fit_success"], bool)
 
-def test_fit_reactive_electrolyte_parameters_real_mixed_objective_improves() -> None:
+def test_fit_reactive_electrolyte_parameters_reports_route_pending_mixed_objective() -> None:
     batch, _water_sigma = _native_mixed_pressure_speciation_batch()
 
     fit = epcsaft.fit_reactive_electrolyte_parameters(
@@ -290,10 +290,15 @@ def test_fit_reactive_electrolyte_parameters_real_mixed_objective_improves() -> 
     payload = fit.to_dict()
     summary = epcsaft.summarize_regression_result(fit)
     target_counts = fit.objective_result.batch_result.diagnostics["target_family_counts"]
+    row = fit.objective_result.batch_result.row_results[0]
 
     assert fit.objective_final == pytest.approx(fit.objective_initial)
-    assert fit.objective_result.batch_result.success_count == 1
-    assert fit.objective_result.batch_result.failure_count == 0
+    assert fit.status == "failed_rows"
+    assert fit.objective_result.batch_result.success_count == 0
+    assert fit.objective_result.batch_result.failure_count == 1
+    assert row.success is False
+    assert row.solver_status == "exception"
+    assert "native Ipopt equilibrium route builder" in row.message
     assert target_counts["partial_pressure"] == 1
     assert target_counts["speciation"] == 1
     assert payload["status"] == fit.status
@@ -358,7 +363,6 @@ def test_fit_reactive_electrolyte_parameters_reports_nonconverged_fit(monkeypatc
         batch,
         initial_parameters={"A.sigma": 2.8},
         max_iterations=1,
-        damping=0.25,
         tolerance=1.0e-12,
     )
 

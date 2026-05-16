@@ -935,7 +935,6 @@ def fit_reactive_electrolyte_parameters(
     upper_bounds: Mapping[str, float | None] | None = None,
     max_iterations: int = 6,
     tolerance: float = 1.0e-6,
-    damping: float = 1.0,
 ) -> ReactiveRegressionFitResult:
     return _fit_reactive_parameters_impl(
         batch_or_context,
@@ -944,7 +943,6 @@ def fit_reactive_electrolyte_parameters(
         upper_bounds=upper_bounds,
         max_iterations=max_iterations,
         tolerance=tolerance,
-        damping=damping,
     )
 
 
@@ -1144,7 +1142,6 @@ def _fit_reactive_parameters_impl(
     upper_bounds: Mapping[str, float | None] | None = None,
     max_iterations: int = 6,
     tolerance: float = 1.0e-6,
-    damping: float = 1.0,
 ) -> ReactiveRegressionFitResult:
     if isinstance(batch_or_context, ReactiveElectrolyteRegressionContext):
         context = batch_or_context
@@ -1187,8 +1184,6 @@ def _fit_reactive_parameters_impl(
         raise InputError("max_iterations must be positive.")
     if tolerance <= 0.0:
         raise InputError("tolerance must be positive.")
-    if damping <= 0.0:
-        raise InputError("damping must be positive.")
 
     trajectory: list[dict[str, Any]] = []
     objective_result = context.evaluate_objective(current)
@@ -1231,8 +1226,6 @@ def _fit_reactive_parameters_impl(
     success = False
     if objective_result.batch_result.failure_count:
         status = "failed_rows"
-    elif termination_reason == "line_search_failed":
-        status = "line_search_failed"
     else:
         status = "residual_evaluation_only"
     return ReactiveRegressionFitResult(

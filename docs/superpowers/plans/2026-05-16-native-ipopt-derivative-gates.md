@@ -457,6 +457,8 @@ Task 10 continuation note: a tracked repo gate now scans native C++ sources and 
 
 Task 10 continuation note: regression public/native result payloads no longer expose placeholder fallback booleans, empty missing-derivative reason fields, or Hessian skeleton metadata. The retained regression derivative surface reports optimizer backend, derivative backend, objective/evaluation counters, gradient/step norms, and implemented Jacobian availability/backend only.
 
+Task 10 continuation note: the residual-only reactive electrolyte fit wrapper no longer exposes a public `damping` argument or stale line-search status documentation. It remains a structured residual-evaluation result until native Ceres derivative coverage owns that optimization route.
+
 ### Task 11: Internal Extension Boundaries
 
 **Files:**

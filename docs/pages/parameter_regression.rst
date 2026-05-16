@@ -363,7 +363,7 @@ Main entry points:
 - ``ReactiveElectrolyteBatch``: shared species, balances, reactions, parameter payload, and solver options
 - ``ReactiveElectrolyteRegressionContext.from_batch(...)``: compile invariant row/schema metadata once
 - ``evaluate_reactive_regression_objective(...)``: evaluate a structured mixed residual objective
-- ``fit_reactive_electrolyte_parameters(...)``: bounded Gauss-Newton fit wrapper over the compiled context
+- ``fit_reactive_electrolyte_parameters(...)``: residual-only fit-result wrapper over the compiled context
 - ``summarize_regression_result(...)`` plus ``write_regression_*`` helpers: stable JSON/CSV reporting
 
 Minimal example:
@@ -473,30 +473,21 @@ map and optional fit controls:
        upper_bounds={"Na+.sigma": 3.1},
        max_iterations=6,
        tolerance=1e-6,
-       damping=1.0,
-       jacobian_mode="central",
-       relative_step=1e-4,
-       absolute_step=None,
-       log_parameters=True,
    )
 
 ``summarize_regression_result(...)`` returns ``fit_success = null`` for
 objective-only results and a boolean for true fit results. Fit results also
-carry a production status contract:
+carry an explicit transitional status contract:
 
 .. list-table::
    :header-rows: 1
 
    * - ``status``
      - Meaning
-   * - ``converged``
-     - The bounded fit met a stopping tolerance and all objective rows solved.
-   * - ``max_iterations``
-     - The bounded fit improved or evaluated normally but exhausted the
-       configured iteration budget.
-   * - ``line_search_failed``
-     - The Gauss-Newton step and bounded line search could not improve the
-       current objective.
+   * - ``residual_evaluation_only``
+     - Native Ceres derivative coverage has not yet taken ownership of this
+       optimization route, so the wrapper evaluates the objective and returns a
+       structured fit payload without moving parameters.
    * - ``failed_rows``
      - The final objective includes failed rows; inspect row diagnostics before
        using the parameters.
