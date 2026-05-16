@@ -551,6 +551,10 @@ residual, `ln(x_i) + ln(phi_i)`, from the same EOS phase blocks and native fugac
 translation. This is diagnostic exposure for thermodynamic acceptance evidence, not a new solver tolerance, retry path,
 or public capability expansion.
 
+Task 8 continuation note: the reduced log fugacity residual now participates in neutral two-phase EOS postsolve
+acceptance using the existing chemical-potential tolerance. This makes the chemical-potential/fugacity consistency gate
+literal in the native result path while preserving the single deterministic Ipopt route and typed rejection diagnostics.
+
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
 **Files:**

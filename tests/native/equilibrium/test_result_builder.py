@@ -61,6 +61,7 @@ def test_neutral_two_phase_eos_result_builder_translates_accepted_candidate() ->
     assert payload["diagnostics"]["ln_fugacity_consistency_norm"] == pytest.approx(
         payload["ln_fugacity_consistency_norm"]
     )
+    assert payload["ln_fugacity_consistency_norm"] <= 1.0e12
     assert len(payload["phases"]) == 2
 
     reduced_ln_fugacity = []

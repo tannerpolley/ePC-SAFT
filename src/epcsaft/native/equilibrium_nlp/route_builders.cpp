@@ -578,6 +578,7 @@ NeutralTwoPhaseEosPostsolve evaluate_neutral_two_phase_eos_postsolve(
     out.accepted = out.material_balance_norm <= material_tolerance
         && out.pressure_consistency_norm <= pressure_tolerance
         && out.chemical_potential_consistency_norm <= chemical_potential_tolerance
+        && out.ln_fugacity_consistency_norm <= chemical_potential_tolerance
         && out.phase_distance >= phase_distance_tolerance;
     if (out.accepted) {
         out.rejection_reason = "accepted";
@@ -587,6 +588,8 @@ NeutralTwoPhaseEosPostsolve evaluate_neutral_two_phase_eos_postsolve(
         out.rejection_reason = "pressure_consistency";
     } else if (out.chemical_potential_consistency_norm > chemical_potential_tolerance) {
         out.rejection_reason = "chemical_potential_consistency";
+    } else if (out.ln_fugacity_consistency_norm > chemical_potential_tolerance) {
+        out.rejection_reason = "ln_fugacity_consistency";
     } else {
         out.rejection_reason = "phase_distance";
     }
