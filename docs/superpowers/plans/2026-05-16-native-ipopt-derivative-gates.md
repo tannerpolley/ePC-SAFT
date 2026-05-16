@@ -509,6 +509,8 @@ Task 12 continuation note: density closure diagnostics no longer expose legacy r
 
 Task 12 continuation note: stale planning and GoalBuddy notes no longer preserve the removed missing-backend label. The tracked text gate now also blocks common approximate-derivative wording so future docs, scripts, tests, and source files cannot reintroduce those routes under alternate spelling.
 
+Task 12 continuation note: reactive electrolyte regression no longer exposes the unused failed warm-start policy or the per-row reused-seed status flag. Failed reused seeds remain visible through `warm_start_failed` and `warm_start_source`, while the residual-only route keeps explicit penalty/drop failure handling.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

@@ -246,7 +246,6 @@ class ReactiveElectrolyteBatchOptions:
     reuse_density_seeds: bool = True
     reuse_pressure_seeds: bool = True
     max_seed_age: int | None = None
-    failed_warm_start_policy: str = "fallback"
     penalty_value: float = 8.0
     failure_residual_mode: str = "penalty"
     include_state_outputs: bool = True
@@ -254,10 +253,6 @@ class ReactiveElectrolyteBatchOptions:
     def __post_init__(self) -> None:
         if self.max_seed_age is not None and int(self.max_seed_age) < 0:
             raise InputError("ReactiveElectrolyteBatchOptions.max_seed_age must be non-negative when provided.")
-        policy = str(self.failed_warm_start_policy).strip().lower()
-        if policy not in {"fallback", "keep"}:
-            raise InputError("ReactiveElectrolyteBatchOptions.failed_warm_start_policy must be 'fallback' or 'keep'.")
-        object.__setattr__(self, "failed_warm_start_policy", policy)
         mode = str(self.failure_residual_mode).strip().lower()
         if mode not in {"penalty", "drop"}:
             raise InputError("ReactiveElectrolyteBatchOptions.failure_residual_mode must be 'penalty' or 'drop'.")
@@ -377,7 +372,6 @@ class ReactiveElectrolyteRowResult:
     warm_start_used: bool = False
     warm_start_source: str = ""
     warm_start_failed: bool = False
-    fallback_seed_used: bool = False
     partial_pressures: Mapping[str, float] = field(default_factory=dict)
     y_vap: Mapping[str, float] = field(default_factory=dict)
     named_reaction_residuals: Mapping[str, float] = field(default_factory=dict)
@@ -408,7 +402,6 @@ class ReactiveElectrolyteRowResult:
             "warm_start_used": bool(self.warm_start_used),
             "warm_start_source": self.warm_start_source,
             "warm_start_failed": bool(self.warm_start_failed),
-            "fallback_seed_used": bool(self.fallback_seed_used),
             "partial_pressures": _json_like(self.partial_pressures),
             "y_vap": _json_like(self.y_vap),
             "named_reaction_residuals": _json_like(self.named_reaction_residuals),
@@ -1012,8 +1005,6 @@ def summarize_regression_result(
         warm_counter["used" if row.warm_start_used else "not_used"] += 1
         if row.warm_start_failed:
             warm_counter["failed"] += 1
-        if row.fallback_seed_used:
-            warm_counter["fallback"] += 1
         for name, value in row.residuals.items():
             target_counter.setdefault(_residual_family_from_name(name), []).append(float(abs(value)))
             species = name.rsplit(".", 1)[-1]
@@ -1475,7 +1466,6 @@ def _row_result_from_speciation(
         warm_start_used=seed_source != "user_initial",
         warm_start_source=seed_source,
         warm_start_failed=False,
-        fallback_seed_used=False,
         named_reaction_residuals=dict(raw_result.named_reaction_residuals),
         source=row.source,
         split=row.split,
@@ -1537,7 +1527,6 @@ def _row_result_from_bubble(
         warm_start_used=seed_source != "user_initial",
         warm_start_source=seed_source,
         warm_start_failed=False,
-        fallback_seed_used=False,
         partial_pressures=dict(getattr(raw_result, "partial_pressures", {}) or {}),
         y_vap=dict(getattr(raw_result, "y_vap", {}) or {}),
         named_reaction_residuals=dict(getattr(raw_result, "named_reaction_residuals", {}) or {}),
@@ -1575,7 +1564,6 @@ def _failed_row_result(
         warm_start_used=seed_source != "user_initial",
         warm_start_source=seed_source,
         warm_start_failed=seed_source != "user_initial",
-        fallback_seed_used=seed_source != "user_initial",
         source=row.source,
         split=row.split,
         metadata=dict(row.metadata),

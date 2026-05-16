@@ -432,9 +432,9 @@ Structured outputs follow stable field names:
   ``relative_permittivity``, ``residuals``, ``residual_names``,
   ``failure_diagnostics``, ``active_bounds``, ``solver_status``,
   ``elapsed_seconds``, ``cache_stats``, ``warm_start_used``,
-  ``warm_start_source``, ``warm_start_failed``, ``fallback_seed_used``,
-  ``partial_pressures``, ``y_vap``, ``named_reaction_residuals``, ``source``,
-  ``split``, ``metadata``
+  ``warm_start_source``, ``warm_start_failed``, ``partial_pressures``,
+  ``y_vap``, ``named_reaction_residuals``, ``source``, ``split``,
+  ``metadata``
 - batch: ``success_count``, ``failure_count``, ``row_results``, ``residuals``,
   ``residual_names``, ``residual_row_map``, ``diagnostics``, ``cache_stats``,
   ``timing_summary``
