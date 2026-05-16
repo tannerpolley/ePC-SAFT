@@ -44,7 +44,6 @@ commands:
     - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_des_epcsaft_parameter_smoke.py
     - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_2025_target_summary.py
     - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_equilibrium_replay.py
-    - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_equilibrium_fit.py
     - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_convention_scan.py
     - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_epcsaft_option_scan.py
     - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_paper_basis_reaction_coordinate.py

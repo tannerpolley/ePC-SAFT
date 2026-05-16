@@ -48,6 +48,8 @@ def _tracked_files() -> list[Path]:
         if rel in EXCLUDED_PATHS or any(rel.startswith(prefix) for prefix in EXCLUDED_PREFIXES):
             continue
         path = REPO_ROOT / rel
+        if not path.exists():
+            continue
         if path.suffix.lower() in TEXT_SUFFIXES:
             paths.append(path)
     return paths

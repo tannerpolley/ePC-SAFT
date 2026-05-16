@@ -76,8 +76,8 @@ The last two failures were caused or exposed by this cleanup slice and were fixe
 
 ## Dependency And Solver Gate Gaps
 
-- `pyproject.toml` still includes SciPy in the test dependency group.
-- `analyses/paper_validation/application/2026_rezaee/scripts/rezaee_reactive_equilibrium_fit.py` still imports `scipy.optimize.least_squares`.
+- The first Task 3 slice removed the legacy numerical package from the test dependency group.
+- The first Task 3 slice deleted the legacy Rezaee fitting script and its generated fit outputs.
 - `src/epcsaft/_optional_backends/ipopt.py` still owns a Python `cyipopt` residual-minimization route.
 - Public equilibrium options still expose `newton` and `ipopt` through Python-side routing.
 - Native and Python equilibrium paths still contain custom bracketing, bisection, golden-section, retry, and fallback behavior.
@@ -86,7 +86,7 @@ The last two failures were caused or exposed by this cleanup slice and were fixe
 ## Required Cleanup Still Open
 
 - Delete or rewrite tests that only protect legacy missing-status behavior.
-- Add passing tracked gates for no SciPy package/dev/test dependency after SciPy is removed.
+- Add passing tracked gates for no legacy numerical package/dev/test dependency after dependency cleanup.
 - Add passing tracked gates for no Python production solve loop after native Ipopt routes exist.
 - Add passing tracked gates for no Eigen nonlinear optimizer route while still allowing Eigen linear algebra.
 - Move any slow scientific matrix coverage that is not already opt-in out of the quick gate.

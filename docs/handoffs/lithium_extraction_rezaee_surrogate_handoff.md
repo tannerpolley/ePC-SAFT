@@ -96,11 +96,9 @@ The key pre-surrogate outputs are:
 - `data\processed\rezaee_2025_extraction_target_summary.csv`
 - `data\processed\rezaee_2025_extraction_equilibrium_summary.csv`
 - `data\processed\rezaee_2026_reactive_equilibrium_replay.csv`
-- `data\processed\rezaee_2026_reactive_equilibrium_fit.csv`
 - `data\processed\rezaee_2026_section32_basis_inference_rows.csv`
 - `data\processed\rezaee_2026_section32_equilibrium_replication_rows.csv`
 - `results\reaction_equilibrium\rezaee_2026_reactive_equilibrium_replay_summary.json`
-- `results\reaction_equilibrium\rezaee_2026_reactive_equilibrium_fit_summary.json`
 - `results\reaction_equilibrium\rezaee_2026_section32_equilibrium_replication_summary.json`
 
 ## Reproduce The Package Validation Workflow
@@ -111,7 +109,6 @@ Run these from `C:\Users\Tanner\Documents\git\ePC-SAFT`:
 uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_des_epcsaft_parameter_smoke.py
 uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_2025_target_summary.py
 uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_equilibrium_replay.py
-uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_equilibrium_fit.py
 uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_convention_scan.py
 uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_epcsaft_option_scan.py
 uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_paper_basis_reaction_coordinate.py

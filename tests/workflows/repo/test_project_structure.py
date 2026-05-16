@@ -79,6 +79,37 @@ def test_strict_solver_derivative_text_gate_passes() -> None:
     )
 
 
+def test_removed_numerics_stack_is_not_a_package_dev_test_or_analysis_runtime_dependency() -> None:
+    removed_dependency_name = "sci" + "py"
+    pyproject_text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8").lower()
+    assert removed_dependency_name not in pyproject_text
+
+    tracked = _tracked_files("src", "tests", "scripts", "analyses")
+    import_offenders: list[str] = []
+    import_snippets = (f"import {removed_dependency_name}", f"from {removed_dependency_name}")
+    for relpath in tracked:
+        if not relpath.endswith(".py"):
+            continue
+        path = REPO_ROOT / relpath
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8", errors="ignore").lower()
+        if any(snippet in text for snippet in import_snippets):
+            import_offenders.append(relpath)
+    assert import_offenders == []
+    removed_fit_script = "/".join(
+        (
+            "analyses",
+            "paper_validation",
+            "application",
+            "2026_rezaee",
+            "scripts",
+            "rezaee_reactive_" + "equilibrium_fit.py",
+        )
+    )
+    assert not (REPO_ROOT / removed_fit_script).exists()
+
+
 def test_reference_data_root_is_canonical() -> None:
     assert (REPO_ROOT / "data" / "reference" / "epcsaft_parameters").is_dir()
     assert not (REPO_ROOT / "data" / "epcsaft_parameters").exists()

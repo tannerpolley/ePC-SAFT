@@ -10,15 +10,18 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-
 from _paths import ANALYSIS_DIR, REPO_ROOT
 
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from _epcsaft_properties import pcsaft_prop  # noqa: E402
-from epcsaft import EquilibriumOptions, ePCSAFTMixture  # noqa: E402
-from epcsaft import fit_pure_neutral  # noqa: E402
+from _epcsaft_properties import pcsaft_prop
+
+from epcsaft import (
+    EquilibriumOptions,
+    ePCSAFTMixture,
+    fit_pure_neutral,
+)
 
 INPUT_DIR = ANALYSIS_DIR / "data" / "input"
 PROCESSED_DIR = ANALYSIS_DIR / "data" / "processed"
@@ -314,7 +317,7 @@ def _phase_smoke(fitted: dict[str, float]) -> dict[str, Any]:
     try:
         stability = mix.equilibrium(kind="electrolyte_stability", T=298.15, P=101325.0, z=feed)
         payload["electrolyte_stability"] = _summarize_stability(stability)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         payload["electrolyte_stability"] = _summarize_exception(exc)
 
     try:
@@ -332,7 +335,7 @@ def _phase_smoke(fitted: dict[str, float]) -> dict[str, Any]:
             ),
         )
         payload["electrolyte_lle"] = _summarize_lle_result(lle)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         payload["electrolyte_lle"] = _summarize_exception(exc)
 
     return payload
@@ -381,7 +384,7 @@ def _write_report(path: Path, fit_result: Any, phase_payload: dict[str, Any]) ->
         "- The 2025 SI equilibrium mole fractions are tracked at `analyses/rezaee_2026_pcsaft_epcsaft/data/input/rezaee_2025_extraction_equilibrium_mole_fractions.csv`.",
         "- Rezaee 2026 closes extraction by phase-specific reaction equilibrium, not by a conventional same-species LLE fugacity equality.",
         "- Run `scripts/rezaee_reactive_equilibrium_replay.py` for the current chemical-equilibrium replay and source-convention diagnostics.",
-        "- Run `scripts/rezaee_reactive_equilibrium_fit.py` for the bounded Rezaee-style fit diagnostic at the experimental SI phase compositions.",
+        "- Legacy package-local fitting was removed; future calibration must route through the native regression gate.",
         "",
         "## Interpretation",
         "",

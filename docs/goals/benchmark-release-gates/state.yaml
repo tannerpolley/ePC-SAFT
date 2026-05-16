@@ -356,7 +356,7 @@ tasks:
       - `& "C:\Users\Tanner\Documents\git\Lithium_Extraction\.venv\Scripts\python.exe" "C:\Users\Tanner\Documents\git\Lithium_Extraction\scripts\check_epcsaft_integration.py" --mode dev`
       - Result: blocked by downstream `dev_worktree_root` configuration still pointing at the missing path `C:/Users/Tanner/.codex/worktrees/epcsaft-dev/ePC-SAFT`; this is a downstream contract-path blocker, not a package runtime failure.
       Real workflow command:
-      - `& "C:\Users\Tanner\Documents\git\Lithium_Extraction\.venv\Scripts\python.exe" "C:\Users\Tanner\Documents\git\Lithium_Extraction\analyses\rezaee_2026_pcsaft_epcsaft\scripts\rezaee_reactive_equilibrium_fit.py"`
+      - Legacy package-local Rezaee fitting command removed; future calibration must route through the native regression gate.
       - `& "C:\Users\Tanner\Documents\git\Lithium_Extraction\.venv\Scripts\python.exe" "C:\Users\Tanner\Documents\git\Lithium_Extraction\analyses\rezaee_2026_pcsaft_epcsaft\scripts\rezaee_reactive_equilibrium_replay.py"`
       - `& "C:\Users\Tanner\Documents\git\Lithium_Extraction\.venv\Scripts\python.exe" -m pytest "C:\Users\Tanner\Documents\git\Lithium_Extraction\tests\test_rezaee_reactive_equilibrium_replay.py" -q`
       Verified runtime result:

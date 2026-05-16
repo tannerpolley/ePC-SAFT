@@ -27,7 +27,6 @@ Run these from the repository root:
 uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_des_epcsaft_parameter_smoke.py
 uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_2025_target_summary.py
 uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_equilibrium_replay.py
-uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_equilibrium_fit.py
 uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_convention_scan.py
 uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_epcsaft_option_scan.py
 uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_paper_basis_reaction_coordinate.py
@@ -51,7 +50,7 @@ The strict pre-surrogate evidence bundle is:
 - `results/reaction_equilibrium/rezaee_2026_section32_equilibrium_replication_summary.json`
 - `results/reaction_equilibrium/rezaee_2026_section32_equilibrium_replication.md`
 
-Additional guardrail outputs in `results/reaction_equilibrium/` record replay, bounded refit, convention-scan, ePC-SAFT option-scan, and paper-basis reaction-coordinate diagnostics.
+Additional guardrail outputs in `results/reaction_equilibrium/` record replay, convention-scan, ePC-SAFT option-scan, and paper-basis reaction-coordinate diagnostics.
 
 ## Current Result
 

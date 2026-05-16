@@ -36,7 +36,7 @@ The 2026 supporting information supplies the reaction constants, Gibbs-energy ba
 - The 2025 SI equilibrium mole fractions are tracked at `analyses/rezaee_2026_pcsaft_epcsaft/data/input/rezaee_2025_extraction_equilibrium_mole_fractions.csv`.
 - Rezaee 2026 closes extraction by phase-specific reaction equilibrium, not by a conventional same-species LLE fugacity equality.
 - Run `scripts/rezaee_reactive_equilibrium_replay.py` for the current chemical-equilibrium replay and source-convention diagnostics.
-- Run `scripts/rezaee_reactive_equilibrium_fit.py` for the bounded Rezaee-style fit diagnostic at the experimental SI phase compositions.
+- Legacy package-local fitting was removed; future calibration must route through the native regression gate.
 
 ## Interpretation
 

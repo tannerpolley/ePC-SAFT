@@ -276,8 +276,8 @@ Task 1 note: the first committed gate covers the explicit backend-status and num
 - Modify: `scripts/dev/doctor.py`
 - Modify: `.codex/environments/*.toml` if workflow commands change.
 
-- [ ] Remove SciPy from package/dev/test dependency groups.
-- [ ] Replace or delete the single SciPy-based Rezaee fitting analysis workflow.
+- [x] Remove SciPy from package/dev/test dependency groups.
+- [x] Replace or delete the single SciPy-based Rezaee fitting analysis workflow.
 - [ ] Make Ceres required for regression builds.
 - [ ] Make CppAD required for derivative-capable builds.
 - [ ] Add native system Ipopt discovery and fail loudly when the required Ipopt build is requested but missing.
@@ -285,6 +285,8 @@ Task 1 note: the first committed gate covers the explicit backend-status and num
 - [ ] Update doctor/build scripts to report Ceres, CppAD, and Ipopt status.
 - [ ] Validate TOML parsing and stale command searches.
 - [ ] Commit as `Require native solver dependency gates`.
+
+Task 3 note: the first dependency-boundary slice removed the external numerical package from test dependencies, refreshed the lockfile, and deleted the legacy Rezaee package-local fitting workflow. Ceres, CppAD, native Ipopt, and doctor/build status gates remain open.
 
 ### Task 4: Create Native Ipopt Adapter
 
